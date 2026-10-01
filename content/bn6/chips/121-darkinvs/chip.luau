@@ -3,11 +3,10 @@
 -- record of DarkInvs (dimming chip subtype 38; a dark chip, with a
 -- substitute) runs its chip's `dimming` hook (chips/darkinvs). The
 -- subtype's other chips (HubBatc, BugRSwrd, BgDthThd and the arms) are
--- definitions and don't come here; a record of their rows (the test
--- content's) gets the controller with what its parameter bytes say, as
--- the original's reads them (`off_80E95C8` by the first; the weapon
--- routine in the second, the glow's palette in the third). It goes when
--- definitions take dark chips' substitutes.
+-- definitions and don't come here: their rows (`off_80E95C8` by the first
+-- parameter byte) name a weapon by its routine's number, which only a
+-- definition can name. It goes when definitions take dark chips'
+-- substitutes.
 
 local darkinvs = require("../darkinvs/chip")
 local navi_boost = require("../../lib/navi-boost/controller")
@@ -17,10 +16,8 @@ local function dimming_chip(user: Object, spec: DimmingChipSpec): Object?
     local row = p[1]
     if row == 0 then
         return navi_boost.hub(user, spec)
-    elseif row == 1 then
-        return navi_boost.spawn(user, spec, "bug", p[2], 0)
-    elseif row == 2 then
-        return navi_boost.spawn(user, spec, "arm", p[2], p[3])
+    elseif row == 1 or row == 2 then
+        error(string.format("a record of navi-changing row %d names its weapon by number: the chip's definition names it", row))
     elseif row == 3 then
         return darkinvs.dimming(user, spec)
     end

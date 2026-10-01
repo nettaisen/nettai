@@ -101,7 +101,7 @@ timing (`Content::animations`), then runs the define phase
 (`Content::define`): every module once, what they define into the
 registries, and, from the definitions, the tables registration by number
 reads (bn6-battle's `content::legacy`: the chips, navis and forms by
-number, the weapons' charge times, the stages' panel layouts and actor
+number, the stages' panel layouts and actor
 lists, the rule sections, collision types by row, statuses, lock-on modes,
 effects, sparks, regions and the object kinds' rows). It reports, by
 module, a definition that doesn't read (a missing field, a gap in a
@@ -113,9 +113,10 @@ the define phase.
 define phase with its lints. The verification workspace's `gen-content
 check <rom> <content>` defines the content root with compat's asset names
 and compares every table it builds with the ROM's, field by field: chips,
-navis, forms, the charge times of all 148 weapon routines, the stages with
-their layouts and actors, every rule section, the registries and the
-object kinds' rows.
+navis, forms, the weapons by the routine numbers compat gives them (their
+charge times, the traits the ruleset asks, the forms' and navis' weapon
+slots, the navis' fresh stats), the stages with their layouts and actors,
+every rule section, the registries and the object kinds' rows.
 
 Loading is straight from the files: there is no derived cache. A frontend
 that doesn't play sound (headless rendering, `--mute`) skips the sound.
@@ -233,6 +234,7 @@ content-model-v2.md §12's step 5: `gen-content luau` wrote the same data
 as definitions into content/bn6, and `gen-content check` compares what
 they build with the ROM, field by field, as §7's check did for the
 compiled tables. The 56 chip records with no name (`????`) that nothing
-reaches have no definition. The weapon routines' charge times now cover
-all 148 routines (the TOML's `rules/weapons.toml` had 50 of them): a weapon
-holds its own, and the routines no weapon names are a legacy table.
+reaches have no definition. A weapon holds its own charge times (the
+TOML's `rules/weapons.toml` had 50 routines' rows); since step 11 a
+routine no weapon names (70 of the original's 148) has nothing in the
+content: nothing names a weapon by number.

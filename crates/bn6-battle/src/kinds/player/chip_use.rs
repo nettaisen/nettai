@@ -49,10 +49,11 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
         } else {
             ai(b, r).a_charge
         };
-        match routine.map(|w| b.content.weapon_number(w)) {
+        use crate::content::ChargedChip;
+        match routine.map(|w| b.content.weapon(w).charged_chip) {
             // sub_8012CB2: GroundCross's rocks fall first; its leftover r0
             // (2 after a barrage, 0 without targets) marks the chip.
-            Some(Some(0x18)) => charge = rock_barrage(b, r),
+            Some(Some(ChargedChip::RockBarrage)) => charge = rock_barrage(b, r),
             // No routine: the chip is used with the register that held its
             // family byte as the argument (cleared with the chip id for the
             // Null family).
@@ -64,9 +65,9 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
                 charge = b.content.chip(chip).family as u8;
             }
             // These forms' charged chips are the chip with a bonus.
-            Some(Some(0x05 | 0x0D | 0x1F | 0x20 | 0x29 | 0x2D)) => charge = 1,
+            Some(Some(ChargedChip::Bonus)) => charge = 1,
             // The rest run a weapon routine instead of the chip.
-            Some(_) => {
+            Some(None) => {
                 let weapon = routine.expect("a weapon");
                 ai_mut(b, r).attack.charged = 0;
                 let action = super::idle::weapon_routine(b, r, weapon);

@@ -10,6 +10,7 @@
 local attachment = require("../../../../objects/attachment/attachment")
 local buster = require("../../../../lib/buster")
 local falzar_beast_buster = require("../falzar-beast-buster/weapon")
+local plain_buster = require("../buster/weapon")
 local projectile = require("../../../../lib/projectile")
 local variants = require("../../../../objects/projectile/variants")
 local weapon = require("../../../../lib/weapon")
@@ -149,8 +150,10 @@ gregar_beast_buster.weapon = define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 80, 75, 70, 65, 60, 20, 20, 20 },
     setup = gregar_beast_buster.setup,
-    -- (Transitional: the routine number the pack's forms name it by.)
-    legacy = { routines = { 0x04 } },
+    -- As a buster it fires while B is held, and gives way to the plain
+    -- buster while the charged shot is a chip's (a sticky one).
+    held = true,
+    plain = plain_buster.weapon,
 }
 
 return gregar_beast_buster

@@ -857,14 +857,12 @@ fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     }
 }
 
-/// `sub_800FEEC`: the weapon routine bytes, from the navi stats (base
-/// form) or the form table.
+/// `sub_800FEEC`: the navi's weapons, from the navi stats (base form) or
+/// the form's own.
 fn load_weapons(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
     let mode9 = battle_mode(b) == 9;
     let content = b.content.clone();
-    // A form's weapons are the pack's routine numbers (0xFF: none).
-    let weapon = |n: u8| (n != 0xFF).then(|| content.weapon_numbered(n));
     let base = form_of(b, r) == Form::NONE;
     let a = ai_mut(b, r);
     if base {
@@ -877,12 +875,12 @@ fn load_weapons(b: &mut Battle, r: ObjectRef) {
         a.alt_a_charge = None;
     } else {
         let w = content.form(s.form).weapons;
-        a.mode9_a = weapon(w.mode9_a);
-        a.a_charge = weapon(w.a_charge);
-        a.buster = weapon(w.buster);
-        set_charge_shot_routine(a, weapon(w.charge_shot), &content);
-        a.back_special = weapon(w.back_special);
-        a.alt_a_charge = weapon(w.alt_a_charge);
+        a.mode9_a = w.mode9_a;
+        a.a_charge = w.a_charge;
+        a.buster = w.buster;
+        set_charge_shot_routine(a, w.charge_shot, &content);
+        a.back_special = w.back_special;
+        a.alt_a_charge = w.alt_a_charge;
     }
 }
 
@@ -894,20 +892,19 @@ fn reload_base_weapons(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_800FFAA`: set the charge-shot routine; the special routines
-/// 0x21..=0x26 stick, and change some buster routines.
+/// `sub_800FFAA`: set the charged shot. A sticky one (a chip's weapon)
+/// stays unless the new one is sticky too, and while the charged shot is
+/// sticky a buster with a plain counterpart (the Beast busters, the Beast
+/// form's throw) gives way to it.
 fn set_charge_shot_routine(a: &mut ActorData, v: Option<WeaponHandle>, content: &Content) {
-    let number = |w: Option<WeaponHandle>| w.and_then(|w| content.weapon_number(w));
-    let special = |w: Option<WeaponHandle>| number(w).is_some_and(|x| (0x21..=0x26).contains(&x));
-    if special(v) || !special(a.charge_shot) {
+    let sticky = |w: Option<WeaponHandle>| w.is_some_and(|w| content.weapon(w).sticky);
+    if sticky(v) || !sticky(a.charge_shot) {
         a.charge_shot = v;
     }
-    if special(a.charge_shot) {
-        match number(a.buster) {
-            Some(3 | 4) => a.buster = Some(content.weapon_numbered(0)),
-            Some(0x2C) => a.buster = Some(content.weapon_numbered(0x2B)),
-            _ => {}
-        }
+    if sticky(a.charge_shot)
+        && let Some(plain) = a.buster.and_then(|w| content.weapon(w).plain)
+    {
+        a.buster = Some(plain);
     }
 }
 
