@@ -56,23 +56,21 @@ Not emitted: the custom screen's own UI sounds (cursor 0x7F, select
 the screen (docs/engine/custom-screen.md), but its sounds belong to the
 console showing it, and nothing draws the screen yet either.
 
-Known differences, both from one variable. The original's actions share
-their attack variables, and nothing clears them between actions, so two
-routines read what an earlier action left in one halfword of them:
+Two sounds depend on a word the original's actions share. Every action
+keeps a count in its attack variables (AIAttackVars+0x12: shots, swings,
+slashes, a hold's ticks, the recovery after a shot) and nothing clears it
+between actions, so a routine that reads it before writing it reads what
+an earlier action left. The engine keeps that word as the navi's
+`attack_count` (`AttackVars::count`), which every action that has a count
+keeps it in (44 routines, all content's), and so:
 
-- Beast Over's rumble (0x19A) sounds once in the original where the engine
-  also makes it on the two later ticks of the vanish (`sub_80151D4`). The
-  game compares the timer there as a 32-bit word, whose upper half is that
-  halfword (a buster shot leaves 2); the engine's form change keeps only
-  the timer, so its comparison passes.
-- A burner's roar (0x12B: FireBrn's flames, HeatCross's charged shot)
-  sounds every 16 ticks of a count the original never starts
-  (`sub_80ECD44`): it goes on from the halfword. The engine's count starts
-  at 0, so the roars can come up to 15 ticks apart from the original's.
-
-The engine keeps each action's variables typed and its own, so neither
-read sees an earlier action's; modelling it means carrying that halfword
-from every action that writes it (44 of the ported routines do).
+- Beast Over's rumble (0x19A) sounds on the vanish's ticks 0x35 and 0x25
+  only when the count is 0: the game compares the timer as a 32-bit word,
+  whose upper half is the count (`sub_80151D4`; a buster shot leaves 2,
+  and then it sounds once, at the vanish's start);
+- a burner's roar (0x12B: FireBrn's flames, HeatCross's charged shot)
+  sounds every 16 ticks of the count, which the burn counts on from what
+  the last action left (`sub_80ECD44`).
 
 The low-HP latch (BattleState+0x20) isn't reset between rounds in the
 game: rounds after the first start with it set, so they emit only
@@ -172,12 +170,9 @@ sounds are left out.
 
 - The two golden traces, over every frame of every round: 89 calls over
   2405 frames and 1360 calls over 57,331 frames, call for call.
-- Chip-lab scenarios recorded with their sound calls: the 132 scenarios of
-  the frame comparison (3185 calls over 145,465 frames) and 775 more, a
-  scenario or two of every chip, Program Advance, form, link navi and
-  stage (14,094 calls over 656,209 frames). All match call for call but
-  the two differences above, in five scenarios (Beast Over's rumble in two,
-  HeatCross's charged flames in three).
+- Chip-lab scenarios recorded with their sound calls: 4553 of the lab's
+  scenarios (84,832 calls over 3,667,325 frames), every one call for
+  call.
 - Every sound the content names (148 names) is in the pack's index,
   has a song, starts on the driver and makes sound; so does every number
   the engine's own routines play.

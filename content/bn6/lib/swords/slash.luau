@@ -17,17 +17,16 @@ local regions = require("../regions")
 local slash = {}
 
 export type State = {
-    -- Ticks left in the phase (AIAttackVars+0x10).
+    -- Ticks left in the phase (AIAttackVars+0x10). (The swings left are
+    -- the navi's `attack_count`.)
     timer: number,
-    -- Swings left (+0x12).
-    hits: number,
     -- The navi turned round while stepping (+0x34; nothing in the
     -- player's actions sets it).
     turned: number,
 }
 
 -- One state for every sword's slash.
-slash.STATE = { timer = "u16", hits = "u16", turned = "u32" }
+slash.STATE = { timer = "u16", turned = "u32" }
 
 -- The phases, on the attack's step.
 local START, SET_UP, SWING, STEP_BACK, RECOVER = 0x0, 0x4, 0x8, 0xC, 0x10
@@ -111,7 +110,7 @@ function slash.action(spec: SlashSpec): Action
 
     -- `sub_80EB84C`: one swing, or DblDream's two.
     local function set_up(me: Object, s: State)
-        s.hits = spec.swings or 1
+        me.attack_count = spec.swings or 1
         me.marker = 0
         set_step(me, SWING)
     end
@@ -198,8 +197,8 @@ function slash.action(spec: SlashSpec): Action
         if t >= 0 then
             return
         end
-        local hits = s.hits - 1
-        s.hits = hits
+        local hits = me.attack_count - 1
+        me.attack_count = hits
         if hits > 0 then
             -- The next swing: a fresh blade.
             parts.drop(me)

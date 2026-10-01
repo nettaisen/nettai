@@ -740,8 +740,11 @@ definition, each table row a variant record written out in Luau.
   wave reads it among its parameters; the port hands it to the wave. CornSht's corn takes its generation from the
   chip's first parameter, 0 for all three, which the port writes as 0. The curse's marks sound every 16 frames of
   the game's frame counter, which the port doesn't keep: every 16 ticks of the marking, as gauge-speed's port does.
-  The layer copies its owner's palette, colour shader, priority and blending, but the final palette and the HUD
-  calls (the HP display, the HUD element) are drawn only and not kept.
+  The layer copies its owner's palette, colour shader, priority and blending, but the final palette is drawn only
+  and not kept. LilBoiler's HP display is the HUD's (`battle.show_hp`, `battle.hide_hp`: the original's
+  `sub_801DC7C` gives NameID 0xEB the flags that show its damage taken, MaxHP − HP, uncentred), presentation
+  that the engine keeps by place (`Battle::hp_numbers`); VDoll's curse and the gauge chips' warning arrow are
+  `battle.warn`.
 - **Verified** on the traces (machgun at its floors; soundmod's second round now runs to its end, its first stops
   at JudgeMan) and on the families' lab scenarios: every one matches but BatCan4's `counter`, where the original
   keeps Full Synchro's aura through the counter's paralysis and the engine drops it at the hit (the emotion's, not

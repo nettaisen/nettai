@@ -12,11 +12,10 @@ local regions = require("../../../../lib/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
-    -- Ticks left in the phase (AIAttackVars+0x10).
+    -- Ticks left in the phase (AIAttackVars+0x10). (The slashes still to
+    -- come, this one included, which the setup counts from, are the navi's
+    -- `attack_count`.)
     timer: number,
-    -- Slashes still to come, this one included (AIAttackVars+0x12), which
-    -- the setup counts from.
-    slashes: number,
 }
 
 local beast_claw = {}
@@ -55,8 +54,7 @@ local function setup(navi: Object): Action
     navi.hit_param = HIT_PARAM
     navi.attack_damage = weapon.charge_damage(navi, 0x32, 0xA)
     navi.attack_element = 0
-    local s = navi:action_state(beast_claw.action) :: State
-    s.slashes = 2
+    navi.attack_count = 2
     return beast_claw.action
 end
 
@@ -86,7 +84,7 @@ local function slash(me: Object, s: State)
     me.step = RECOVER
     me.step_init = 0
     -- (The game reads the count's low byte.)
-    local count = bit32.band(s.slashes, 0xFF)
+    local count = bit32.band(me.attack_count, 0xFF)
     battle.play_sound(if count == 2 then FIRST_SOUND else SECOND_SOUND)
     local k = 2 - count
     local look, region, hit_mod = LOOKS[k], REGIONS[k], HIT_MODS[k]
@@ -118,8 +116,8 @@ local function recover(me: Object, s: State)
     if left > 0 then
         return
     end
-    local slashes = s.slashes - 1
-    s.slashes = slashes
+    local slashes = me.attack_count - 1
+    me.attack_count = slashes
     if slashes ~= 0 then
         me.step = SLASH
         me.step_init = 0
@@ -131,7 +129,7 @@ end
 
 beast_claw.action = define.action {
     id = "megaman/beast-claw/action",
-    state = { timer = "u16", slashes = "u16" },
+    state = { timer = "u16" },
     -- `sub_80EF534`.
     update = function(me: Object, s: State)
         local step = me.step
