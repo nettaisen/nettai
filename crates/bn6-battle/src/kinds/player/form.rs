@@ -4,6 +4,7 @@
 //! come off (the death hooks `off_801105C`, `sub_8011384`), and the flags
 //! and helper objects a form adds (`sub_8014536`).
 
+use bn6_content_api::IdentityHandle;
 use super::{ai, body_hit_modifier, form_of, set_flag1};
 use crate::actor::ActorType;
 use crate::battle::Battle;
@@ -102,7 +103,7 @@ fn init_routine(b: &mut Battle, r: ObjectRef, row: u8, param3: u8) {
 /// `sub_8010DD0` / `sub_8010DDA`: the init hook of NameID `name_id`'s
 /// actor record, run on the object `r` (the navi, or an image of it):
 /// most navis' is nothing; a few wear overlays.
-pub(crate) fn navi_init_hook(b: &mut Battle, r: ObjectRef, name_id: u16) {
+pub(crate) fn navi_init_hook(b: &mut Battle, r: ObjectRef, name_id: Option<IdentityHandle>) {
     let rec = b.content.navi_record(name_id);
     record_init_hook(b, r, rec.actor_type, rec.ai_index, 0);
 }
@@ -196,7 +197,7 @@ fn has_death_routine(row: u8) -> bool {
 /// `sub_8011020` / `sub_8011044`: what an object with a navi's NameID
 /// takes down when it goes (`off_801105C`, by actor type and AI index):
 /// the overlay in its `related[1]` (and row 14's second one).
-pub(crate) fn navi_death_hook(b: &mut Battle, r: ObjectRef, name_id: u16) {
+pub(crate) fn navi_death_hook(b: &mut Battle, r: ObjectRef, name_id: Option<IdentityHandle>) {
     let rec = b.content.navi_record(name_id);
     record_death_hook(b, r, rec.actor_type, rec.ai_index);
 }
