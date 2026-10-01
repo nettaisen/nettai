@@ -18,7 +18,7 @@ return define.form {
     sprite = asset.sprite("megaman"),
     element = "fire",
     buster_bonus = 0,
-    weapons = { buster = buster.weapon, charge_shot = tackle, a_charge = charged_chip_bonus_29 },
+    weapons = { buster = buster.weapon, charge_shot = tackle.weapon, a_charge = charged_chip_bonus_29 },
     palette = 19,
     mugshot = asset.mugshot("dustcross"),
     identity = {
