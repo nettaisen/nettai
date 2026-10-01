@@ -17,6 +17,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
@@ -47,8 +48,14 @@ local BURST_INTERVAL = 2
 local BLAST_SOUND = asset.sound("burst")
 -- The sound of the puff where it was broken.
 local PUFF_SOUND = asset.sound("hit-bomb-1")
--- Its kind among absorbed obstacles (`data.objects.absorbed_sprites`).
-local ABSORBED_KIND = 2
+-- How it looks absorbed (the original's obstacle kind 2): its own sprite,
+-- with the sprite parts it hid (its digits); thrown, its parts keep their
+-- own facing.
+local ABSORBED = absorbed_obstacle.look {
+    sprite = SPRITE,
+    keeps_parts = true,
+    own_facing = true,
+}
 
 -- Its actions (`off_80CD9F4`).
 local APPEAR, DESTROYED, COUNTDOWN, BLINK_AWAY = 0, 2, 8, 9
@@ -210,7 +217,7 @@ local function destroyed(me: Object)
             battle.effect(me.pos, effects.explosion)
         end
     elseif how == "absorbed" then
-        obstacle.fly_to_absorber(me, ABSORBED_KIND)
+        obstacle.fly_to_absorber(me, ABSORBED)
     else
         local blink = obstacle.blink_out(me)
         if blink == "blinking" then

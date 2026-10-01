@@ -1,4 +1,4 @@
-# FireHit2, an instant chip (action 0x1C, subtype 8): its effect strikes with fists
-# (`sub_80CFE08`).
+# FireHit2, an instant chip (action 0x1C, subtype 8) kept on its record for the Program
+# Advances that name it: its fists through ../06b-firehit1/chip.luau.
 
-script = "../../objects/fire-hit/fire_hit.luau"
+script = "../06b-firehit1/chip.luau"
