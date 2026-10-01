@@ -358,7 +358,8 @@ matches: a code run with a `*` first, in the middle or last forms, `[*,A,B]`, `[
 sequence recipe out of order doesn't; a recipe between two other chips forms from the second pick; a recipe picked
 again on the next screen stays three chips (once a round); a modifier after a Program Advance folds onto it;
 Atk+10 twice, Atk+10 with WhiCapsl and Atk+30, and Navi+20 with Atk+30 on a navi chip all fold; a modifier picked
-first, or after a chip it doesn't apply to (Atk+10 after Invisibl, Navi+20 after AirShot), stays a chip of its own.
+first, or after a chip it doesn't apply to (Atk+10 after Invisibl, Navi+20 after AirShot, Uninstll after Roll, which
+dims: `custom/modifier-uninstll-dimming`), stays a chip of its own.
 A recipe with the Regular chip as a part carries its bit (`custom/pa-regular`), and one made of the tag pair and
 the Regular chip forms from the first deal (`pa-tags`). The folder's upkeep (step 5) is in `custom/folder-odd-picks`
 (picks from the middle of the hand, screen after screen) and `folder-runs-out` (30 chips, five a screen, then two
