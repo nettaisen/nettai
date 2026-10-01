@@ -257,6 +257,8 @@ pub struct Defs {
     pub stages: Vec<StageDef>,
     /// The Beast Out lock-on modes, by handle.
     pub lockons: Vec<LockonDef>,
+    /// The identities, by handle (`define.identity`, in key order).
+    pub identities: Vec<super::Identity>,
     /// The status effects, by handle.
     pub statuses: Vec<StatusDef>,
     pub records: Vec<RecordDef>,
@@ -394,6 +396,11 @@ impl Defs {
         self.statuses.binary_search_by(|s| s.key.as_str().cmp(key)).ok().map(|i| bn6_content_api::StatusHandle(i as u16))
     }
 
+    /// The identity with this key.
+    pub fn identity_by_key(&self, key: &str) -> Option<bn6_content_api::IdentityHandle> {
+        self.identities.binary_search_by(|i| i.key.as_str().cmp(key)).ok().map(|i| bn6_content_api::IdentityHandle(i as u16))
+    }
+
     /// The lock-on mode with this key.
     pub fn lockon_by_key(&self, key: &str) -> Option<bn6_content_api::LockonHandle> {
         self.lockons.binary_search_by(|l| l.key.as_str().cmp(key)).ok().map(|i| bn6_content_api::LockonHandle(i as u16))
@@ -454,6 +461,28 @@ impl<T> Entries<T> {
         }
         Ok(self.entries.into_iter().map(|(k, v, _)| (k, v)).collect())
     }
+}
+
+/// An identity a navi or form names is that navi's or form's: one owner
+/// each, of a player's class.
+fn claim_identity(
+    identities: &mut [super::Identity],
+    h: bn6_content_api::IdentityHandle,
+    owner: super::IdentityOwner,
+    whose: &str,
+) -> Result<(), ContentError> {
+    let id = &mut identities[h.index()];
+    if let Some(other) = id.owner {
+        return Err(ContentError::new(format!("identity {} is both {other:?}'s and {whose}'s", id.key)));
+    }
+    if !id.class.is_player() {
+        return Err(ContentError::new(format!(
+            "identity {} ({whose}'s) is of class {:?}: a navi's or a form's is a player's (megaman, link_navi, cross, beast, cross_beast, beast_over)",
+            id.key, id.class
+        )));
+    }
+    id.owner = Some(owner);
+    Ok(())
 }
 
 /// Functions, each once.
@@ -1120,6 +1149,28 @@ impl Defs {
         let key_of = |defined: &BTreeMap<String, u8>, n: u8, v1: String| -> String {
             defined.iter().find(|(_, m)| **m == n).map_or(v1, |(k, _)| k.clone())
         };
+        // The identities, by key (the definitions' order). A navi's and a
+        // form's name theirs: each knows whose it is.
+        let mut identities = Vec::new();
+        for d in definitions.of(Registry::Identity) {
+            identities.push(super::identity::read(d, &content.assets)?);
+        }
+        if identities.windows(2).any(|w| w[0].key >= w[1].key) {
+            return Err(ContentError::new("the identities are not in key order (the define phase sorts each registry)"));
+        }
+        let identity_of = |d: &Definition, identities: &[super::Identity]| -> Result<Option<bn6_content_api::IdentityHandle>, ContentError> {
+            match d.spec.field("identity") {
+                Data::Nil => Ok(None),
+                Data::Ref(Registry::Identity, key) => {
+                    let i = identities.binary_search_by(|i| i.key.as_str().cmp(key)).expect("a defined identity");
+                    Ok(Some(bn6_content_api::IdentityHandle(i as u16)))
+                }
+                other => Err(ContentError::new(format!(
+                    "{}.luau: {} {}: `identity` is {other:?}, not an identity (define.identity {{ ... }})",
+                    d.module, d.registry, d.key
+                ))),
+            }
+        };
         let navi_keys: BTreeMap<String, u8> = legacy.navis.iter().map(|(k, n)| (k.clone(), n.id)).collect();
         let form_keys: BTreeMap<String, u8> = legacy.forms.iter().map(|(k, f)| (k.clone(), f.id)).collect();
         let mut navis = Entries::new(Registry::Navi);
@@ -1131,6 +1182,7 @@ impl Defs {
                 record.weapons = read_weapons(d)?;
                 record.fresh = super::navis::read_fresh(d)?;
                 record.cross_hp = super::navis::read_cross_hp(d)?;
+                record.identity = identity_of(d, &identities)?;
             }
             let own_chip = match &n.own_chip {
                 Some(c) => Some((chip_handle(&c.chip, &format!("navi {key}'s own chip"))?, c.code)),
@@ -1139,10 +1191,14 @@ impl Defs {
             navis.add(key.clone(), NaviDef { key, record, own_chip }, "the pack's navi".into());
         }
         let navis: Vec<NaviDef> = navis.sorted()?.into_iter().map(|(_, n)| n).collect();
-        // (Each navi's own chip knows its navi.)
+        // (Each navi's own chip knows its navi, and its identity whose it
+        // is.)
         for (i, n) in navis.iter().enumerate() {
             if let Some((chip, _)) = n.own_chip {
                 chips[chip.index()].links.own_chip_of = Some(NaviHandle(i as u16));
+            }
+            if let Some(h) = n.record.identity {
+                claim_identity(&mut identities, h, super::IdentityOwner::Navi(NaviHandle(i as u16)), &n.key)?;
             }
         }
         let mut forms = Entries::new(Registry::Form);
@@ -1151,10 +1207,16 @@ impl Defs {
             let mut record = f.clone();
             if let Some(d) = definitions.get(Registry::Form, &key) {
                 record.weapons = read_weapons(d)?;
+                record.identity = identity_of(d, &identities)?;
             }
             forms.add(key.clone(), FormDef { key, record }, "the pack's form".into());
         }
         let forms: Vec<FormDef> = forms.sorted()?.into_iter().map(|(_, f)| f).collect();
+        for (i, f) in forms.iter().enumerate() {
+            if let Some(h) = f.record.identity {
+                claim_identity(&mut identities, h, super::IdentityOwner::Form(FormHandle(i as u16)), &f.key)?;
+            }
+        }
         // Stages: what they place names kinds and their variant records.
         let mut stages = Entries::new(Registry::Stage);
         for d in definitions.of(Registry::Stage) {
@@ -1311,6 +1373,7 @@ impl Defs {
             forms,
             stages,
             lockons,
+            identities,
             statuses,
             records,
             effects,

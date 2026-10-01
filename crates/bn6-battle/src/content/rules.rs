@@ -50,9 +50,6 @@ pub struct Rules {
     pub berserk: BerserkRules,
     /// The custom screen's slot layout.
     pub custom_screen: CustomScreenLayout,
-    /// Every NameID's actor record (`byte_80182C4`), by NameID; the player
-    /// ones are also in their navi's or form's `name_record`.
-    pub actor_records: Vec<super::NaviRecord>,
     /// The palette MegaMan's sprite takes in each Cross, by form (0 for the
     /// base form; `byte_80203EA`).
     pub cross_palettes: Vec<u8>,

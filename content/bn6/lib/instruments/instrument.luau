@@ -208,7 +208,7 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
-    me.name_id = i.identity
+    me.identity = i.identity
     me.hp, me.max_hp = HP, HP
     me.timer = LIFETIME
     sprite.palette = i.palette

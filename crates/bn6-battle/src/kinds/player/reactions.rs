@@ -136,8 +136,8 @@ fn fade_out(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_8011020`: the navi's death hook (its overlays come down).
 fn death_hook(b: &mut Battle, r: ObjectRef) {
-    let name_id = b.objects.get(r).name_id;
-    super::form::navi_death_hook(b, r, name_id);
+    let identity = b.objects.get(r).identity;
+    super::form::navi_death_hook(b, r, identity);
 }
 
 // ---- Common reaction entry ---------------------------------------------------------

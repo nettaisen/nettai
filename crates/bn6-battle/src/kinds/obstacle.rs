@@ -289,7 +289,7 @@ pub fn absorb_all(b: &mut Battle, absorber: ObjectRef) {
     for i in 0..b.field.objects.slots.len() {
         let Some(obj) = b.field.objects.slots[i] else { continue };
         let o = b.objects.get(obj);
-        if o.name_id == 0xDA {
+        if !b.content.identity(o.identity).absorbable {
             continue;
         }
         let Some(c) = o.collision else { continue };

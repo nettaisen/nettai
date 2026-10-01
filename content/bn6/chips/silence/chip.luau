@@ -43,7 +43,13 @@ return define.chip {
     slot_in_limit = 3,
     -- `byte_80D4078` row 3.
     dimming = instruments.hook(instrument.instrument {
-        identity = 0xE0,
+        identity = define.identity {
+            id = "silence",
+            class = "field_object",
+            version = 1,
+            ai_index = 1,
+            look = { sprite = asset.sprite("instrument"), anim = 0, palette = 6, shadow = true },
+        },
         palette = 6,
         play_ticks = 0x78 * 2,
         pause_ticks = 0x1E,
