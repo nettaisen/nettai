@@ -1,37 +1,26 @@
 --!strict
--- Roll's heart (attack object #0x4E, `sub_80CE118`): it sinks from 160
+-- Roll's heart (the original's attack object #0x4E, `sub_80CE118`): it
+-- sinks from 160
 -- pixels above her user's panel, 3 pixels a tick, sparkling every 10
 -- ticks; landed, it heals the user by its damage (or to full, with none),
 -- with a sound and an effect, and goes 60 ticks later. See
 -- docs/engine/chips.md §3.6.20.
 
-local roll_heart = {}
+local heart = {}
 
-local SPRITE = "0C-50"
+local SPRITE = asset.sprite("roll-heart")
+local SOUND_HEAL = asset.sound("heal")
 local ANIM = 4
 
 -- Its height, and how far it sinks a tick (Z's whole part).
 local HEIGHT = 0xA0
 local SINK = 3
 
--- The sparkle (effect 0x26), and the effect on the healed navi.
-local SPARKLE, HEALED = 0x26, 6
-
--- `sub_80CE224`: a heart over (x, y) for `user`, healing `amount`;
--- `params` are the spawner's register (its owner's flags byte). (Its
--- position is the spawner's registers, all of which its init overwrites.)
-function roll_heart.spawn(user: Object, x: number, y: number, amount: number, params: { number }): Object?
-    local o = battle.spawn_kind("roll-heart", Vec3.zero, params)
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.damage = amount
-        o.stamina = bit32.rshift(amount, 16)
-        o.alliance = user.alliance
-        o.related1 = user
-        o.run_while_dimmed = true
-    end
-    return o
-end
+-- The sparkle around it, and around Roll as she warps (effect 0x26), and
+-- the effect on the healed navi (effect 0x06).
+heart.sparkle = define.effect { sprite = asset.sprite("elmnt-ice"), anim = 0, palette = 0 }
+local SPARKLE = heart.sparkle
+local HEALED = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
 
 -- `sub_80CE198`: sink, sparkling every 10 ticks; landed, hidden, on to
 -- the heal.
@@ -60,7 +49,7 @@ local function heal(me: Object)
             amount = user.max_hp
         end
         user.hp = math.min(user.hp + amount, user.max_hp)
-        battle.play_sound(0x8A)
+        battle.play_sound(SOUND_HEAL)
         battle.effect(user.pos, HEALED)
         me.timer = 0x3C
         me.phase = 4
@@ -104,16 +93,34 @@ local function init(me: Object)
     tick(me)
 end
 
--- `sub_80CE118`.
-function roll_heart.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        me:free()
+heart.kind = define.kind {
+    id = "roll/heart",
+    pool = "attack",
+    -- `sub_80CE118`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:free()
+        end
+    end,
+}
+
+-- `sub_80CE224`: a heart over (x, y) for `user`, healing `amount`. (Its
+-- position is the spawner's registers, all of which its init overwrites.)
+function heart.spawn(user: Object, x: number, y: number, amount: number): Object?
+    local o = battle.spawn(heart.kind, Vec3.zero)
+    if o then
+        o.panel_x, o.panel_y = x, y
+        o:set_damage_word(amount)
+        o.alliance = user.alliance
+        o.related1 = user
+        o.run_while_dimmed = true
     end
+    return o
 end
 
-return roll_heart
+return heart

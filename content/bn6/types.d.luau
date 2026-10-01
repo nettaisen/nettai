@@ -638,3 +638,13 @@ export type GeyserMark = {
     ticks: number,
     while_dimmed: boolean?,
 }
+
+-- A fire blast (chips/blastman/fire): its speed (16.16 a tick), which way
+-- it crosses the field, and whether it acts while the battle is dimmed
+-- (the navi chip's).
+export type FireBlastDirection = "left" | "right" | "up" | "down"
+export type FireBlast = {
+    speed: number,
+    direction: FireBlastDirection,
+    while_dimmed: boolean?,
+}

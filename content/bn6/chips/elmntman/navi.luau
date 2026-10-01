@@ -1,30 +1,38 @@
 --!strict
--- ElmntMan, the navi of the ElmntMan chips (actor object #0x10,
--- `sub_80BAA8C`), brought by their navi chip controller. He appears and
--- cycles through the four elements, a palette each, every Param1 ticks
--- until his user presses A (or 20 cycles' worth pass, then one at
--- random), and attacks with it:
+-- ElmntMan, the navi of the ElmntMan chips (the original's actor object
+-- #0x10, `sub_80BAA8C`), brought by their navi chip controller. He appears
+-- and cycles through the four elements, a palette each, every few ticks
+-- (the chip's) until his user presses A (or 20 cycles' worth pass, then
+-- one at random), and attacks with it:
 --
---   Fire: a meteor on each panel with an enemy navi (objects/meteor);
---   Aqua: ice in the three panels of the column ahead (objects/elmnt-ice);
---   Elec: a lightning bolt in each row of the column three ahead
---         (objects/elmnt-bolt);
+--   Fire: a meteor on each panel with an enemy navi (./meteor);
+--   Aqua: ice in the three panels of the column ahead (./ice);
+--   Elec: a lightning bolt in each row of the column three ahead (./bolt);
 --   Wood: the field turns to grass first; then vines along his row, one
---         panel at a time, until a panel can't hold one (objects/elmnt-vine).
+--         panel at a time, until a panel can't hold one (./vine).
 --
 -- Then he leaves, and the controller moves on. See docs/engine/chips.md
 -- §3.6.7.
---
--- The chips' script (navi chip subtype 16): `navi_chip` is his spawner,
--- `off_802CD5C[16]`.
 
 local panels = require("../../lib/panels")
-local meteor = require("../meteor/meteor")
-local elmnt_ice = require("../elmnt-ice/elmnt_ice")
-local elmnt_bolt = require("../elmnt-bolt/elmnt_bolt")
-local elmnt_vine = require("../elmnt-vine/elmnt_vine")
+local bolt = require("./bolt")
+local effects = require("../../lib/effects")
+local ice = require("./ice")
+local meteor = require("./meteor")
+local vine = require("./vine")
+local navi_chips = require("../../lib/navi-chips/navi")
+
+-- What a chip summons him with: the ticks each element shows (the chips'
+-- first parameter).
+export type Summon = { cycle_ticks: number }
 
 export type State = {
+    -- The ticks each element shows (Param1).
+    cycle_ticks: number,
+    -- Fire's targets (Param2), and how many meteors, bolts or vines are
+    -- out (Param3).
+    count: number,
+    sent: number,
     -- The element shown: 0 Fire, 1 Aqua, 2 Elec, 3 Wood (ExtraVars[0]).
     element: number,
     -- Fire's targets, packed panels (object +0x64).
@@ -34,11 +42,14 @@ export type State = {
     controller: Object?,
 }
 
-local elmnt_man = {
-    state = { element = "u8", targets = "u8[18]", controller = "object" },
-}
+local elmntman = {}
 
-local SPRITE = "08-10"
+local SPRITE = asset.sprite("elmnt-man")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_ELMNT_MAN = asset.sound("elmnt-man")
+local SOUND_ELMNT_MAN_2 = asset.sound("elmnt-man-2")
+local SOUND_ELMNT_MAN_3 = asset.sound("elmnt-man-3")
+local SOUND_ELMNT_MAN_4 = asset.sound("elmnt-man-4")
 
 -- His actor record (the parts it adds: his overlay, `sub_8011004`).
 local ACTOR_TYPE: ActorType = "player"
@@ -49,42 +60,15 @@ local AI_INDEX = 0x10
 local PALETTES = { [0] = 2, 4, 8, 6 }
 local FIRE, AQUA, ELEC, WOOD = 0, 1, 2, 3
 
--- Panel flags he needs to stay (as one word).
-local CAN_STAND = 0x10010
+-- How long Aqua's ice stands.
+local ICE_TICKS = 0x1E
 
 -- The panels Fire aims at, by side (`off_80BAE58`: an enemy navi's body).
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 
--- `sub_80BAE16`: ElmntMan for `user`, reporting to `controller`.
-function elmnt_man.navi_chip(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn_kind("elmnt-man", Vec3.zero, spec.params)
-    if not o then
-        return nil
-    end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.related1 = user
-    o.alliance, o.flip = user.alliance, user.flip
-    o.damage = spec.damage
-    o.stamina = bit32.rshift(spec.damage, 16)
-    local s = o.state :: State
-    s.controller = controller
-    return o
-end
-
 -- `sub_80BAAB0`: on his panel, on the ground, with his parts.
 local function init(me: Object)
-    me:set_coordinates_from_panel()
-    local p = me.pos
-    me.pos = Vec3.new(p.x, p.y, 0)
-    local sprite = me.sprite
-    sprite:load(SPRITE)
-    sprite.shadow = "ground"
-    me.anim = 0
-    me.anim_loaded = 0
-    sprite:set_animation(0)
-    sprite.palette = 0
-    sprite:set_flip(bit32.bxor(me.alliance, me.flip))
+    navi_chips.stand(me, SPRITE, "ground", true)
     me:add_navi_parts(ACTOR_TYPE, AI_INDEX, 1)
     me:set_lifecycle("update")
 end
@@ -112,7 +96,7 @@ local function appear(me: Object)
     if me.phase_init == 0 then
         me.phase_init = 4
         me.anim = 3
-        battle.play_sound(0x94)
+        battle.play_sound(SOUND_APPEAR)
         me.visible = true
         me.timer = 2
         return
@@ -122,8 +106,7 @@ local function appear(me: Object)
     if left > 0 then
         return
     end
-    local stands = bit32.band(field.flags(me.panel_x, me.panel_y), CAN_STAND) == CAN_STAND
-    me:set_action(if stands then 4 else 0x18)
+    me:set_action(if navi_chips.has_footing(me) then 4 else 0x18)
 end
 
 -- `sub_80BAB84`: 10 ticks standing.
@@ -136,7 +119,7 @@ local function stand(me: Object)
     end
 end
 
--- `sub_80BABAC`: the next element every Param1 ticks until the user
+-- `sub_80BABAC`: the next element every few ticks until the user
 -- presses A while dimmed; after 20 cycles' worth, one at random.
 local function cycle(me: Object)
     local s = me.state :: State
@@ -144,14 +127,14 @@ local function cycle(me: Object)
         me.phase_init = 4
         s.element = FIRE
         show_element(me)
-        battle.play_sound(0x134)
-        me.timer = me:param(1)
-        me.timer2 = me:param(1) * 20
+        battle.play_sound(SOUND_ELMNT_MAN)
+        me.timer = s.cycle_ticks
+        me.timer2 = s.cycle_ticks * 20
         return
     end
     local user = me.related1 :: Object
     if user:dimmed_pressed("a") then
-        battle.play_sound(0x182)
+        battle.play_sound(SOUND_ELMNT_MAN_2)
         me:set_action(0xC)
         return
     end
@@ -160,8 +143,8 @@ local function cycle(me: Object)
     if left <= 0 then
         s.element = bit32.band(s.element + 1, 3)
         show_element(me)
-        battle.play_sound(0x134)
-        me.timer = me:param(1)
+        battle.play_sound(SOUND_ELMNT_MAN)
+        me.timer = s.cycle_ticks
     end
     left = me.timer2 - 1
     me.timer2 = left
@@ -181,7 +164,7 @@ local function grass(me: Object)
             if field.solid(x, y) then
                 field.set_type(x, y, "grass")
                 local cx, cy = field.center(x, y)
-                battle.effect(Vec3.new(cx, cy, 8), 2, 0, 5)
+                battle.effect(Vec3.new(cx, cy, 8), effects.ripple, 0, 5)
             end
         end
     end
@@ -197,7 +180,7 @@ local function wind_up(me: Object)
         me.timer = 0x23
         if s.element == WOOD then
             grass(me)
-            battle.play_sound(0x11B)
+            battle.play_sound(SOUND_ELMNT_MAN_3)
         end
         return
     end
@@ -215,7 +198,7 @@ local function wind_up(me: Object)
 end
 
 -- `sub_80BACBC`: Fire: a meteor on each target (`sub_80BAE3C`), 12 ticks
--- apart (Param2 targets, Param3 dropped).
+-- apart.
 local function fire(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
@@ -228,8 +211,8 @@ local function fire(me: Object)
         for i, p in found do
             s.targets[i] = p
         end
-        me:set_param(2, #found)
-        me:set_param(3, 0)
+        s.count = #found
+        s.sent = 0
         me.timer = 0
         return
     end
@@ -239,13 +222,13 @@ local function fire(me: Object)
         return
     end
     -- sub_80BAE60
-    local n = me:param(3)
+    local n = s.sent
     local p = s.targets[n + 1]
     local x, y = panels.x(p), panels.y(p)
     meteor.spawn(me, x, y, 1, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)), true)
     n += 1
-    me:set_param(3, n)
-    if n >= me:param(2) then
+    s.sent = n
+    if n >= s.count then
         me:set_action(0x14)
         return
     end
@@ -260,13 +243,13 @@ local function aqua(me: Object)
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
         for dy = -1, 1 do
             local x, y = me.panel_x + me.facing, me.panel_y + dy
-            -- r3 (1 << 16) becomes the ice's Z; r4 its params.
-            elmnt_ice.spawn(me, x, y, 2, { 0, 0x1E, 1 }, damage, 0x1_0000)
+            -- r3 (1 << 16) becomes the ice's Z.
+            ice.spawn(me, x, y, 2, ICE_TICKS, true, damage, 0x1_0000)
             if field.solid(x, y) then
                 field.set_type(x, y, "ice")
             end
         end
-        battle.play_sound(0x99)
+        battle.play_sound(SOUND_ELMNT_MAN_4)
         me.timer = 0x1E
         return
     end
@@ -281,9 +264,10 @@ end
 -- ticks (`sub_80BAEDC`), five at most, until a panel isn't solid (or no
 -- vine could spawn).
 local function wood(me: Object)
+    local s = me.state :: State
     if me.phase_init == 0 then
         me.phase_init = 4
-        me:set_param(3, 0)
+        s.sent = 0
         me.timer = 0
         return
     end
@@ -292,21 +276,21 @@ local function wood(me: Object)
     if left > 0 then
         return
     end
-    local n = me:param(3)
+    local n = s.sent
     local x, y = me.panel_x + me.facing * (n + 1), me.panel_y
-    local vine: Object? = nil
+    local grown: Object? = nil
     if field.solid(x, y) then
-        -- r4 (n + 1) becomes its params; r3, left by the solidity check
-        -- (`_object_getPanelDataOffset`), its Z: the row minus 1.
+        -- r3, left by the solidity check (`_object_getPanelDataOffset`),
+        -- becomes its Z: the row minus 1.
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-        vine = elmnt_vine.spawn(me, x, y, 4, { n + 1 }, damage, y - 1)
+        grown = vine.spawn(me, x, y, 4, damage, y - 1)
     end
-    if not vine then
+    if not grown then
         me:set_action(0x14)
         return
     end
     n += 1
-    me:set_param(3, n)
+    s.sent = n
     if n >= 5 then
         me:set_action(0x14)
         return
@@ -317,9 +301,10 @@ end
 -- `sub_80BAD76`: Elec: a bolt in each row of the column three ahead
 -- (`sub_80BAEC0`), 16 ticks apart.
 local function elec(me: Object)
+    local s = me.state :: State
     if me.phase_init == 0 then
         me.phase_init = 4
-        me:set_param(3, 0)
+        s.sent = 0
         me.timer = 0
         return
     end
@@ -328,11 +313,11 @@ local function elec(me: Object)
     if left > 0 then
         return
     end
-    local n = me:param(3)
+    local n = s.sent
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    elmnt_bolt.spawn(me, me.panel_x + me.facing * 3, n + 1, 3, { n }, damage)
+    bolt.spawn(me, me.panel_x + me.facing * 3, n + 1, 3, damage)
     n += 1
-    me:set_param(3, n)
+    s.sent = n
     if n >= 3 then
         me:set_action(0x14)
         return
@@ -379,11 +364,7 @@ local function leave(me: Object)
         return
     end
     me:remove_navi_parts(ACTOR_TYPE, AI_INDEX)
-    local controller = (me.state :: State).controller
-    if controller then
-        navi_chip.navi_left(controller)
-    end
-    me:set_lifecycle("destroy")
+    navi_chips.leave(me, (me.state :: State).controller)
 end
 
 local ACTIONS = {
@@ -396,21 +377,50 @@ local ACTIONS = {
     [0x18] = leave,
 }
 
--- `sub_80BAA8C`.
-function elmnt_man.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        local action = ACTIONS[me.action]
-        if not action then
-            error(string.format("ElmntMan action %#x reads past his table (off_80BAB14)", me.action))
+elmntman.kind = define.kind {
+    id = "elmntman/navi",
+    pool = "actor",
+    state = {
+        element = "u8",
+        targets = "u8[18]",
+        controller = "object",
+        cycle_ticks = "u8",
+        count = "u8",
+        sent = "u8",
+    },
+    -- `sub_80BAA8C`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            local action = ACTIONS[me.action]
+            if not action then
+                error(string.format("ElmntMan action %#x reads past his table (off_80BAB14)", me.action))
+            end
+            action(me)
+        else
+            me:free()
         end
-        action(me)
-    else
-        me:free()
+        me:update_sprite_while_dimmed()
+    end,
+}
+
+-- `sub_80BAE16`: the ElmntMan chips' navi hook (`off_802CD5C[16]`):
+-- ElmntMan for `user`, reporting to `controller`, each element showing
+-- `cycle_ticks`. (His position is the spawner's registers, all of which
+-- his init overwrites.)
+function elmntman.summon(args: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+    return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
+        local o = navi_chips.spawn(elmntman.kind, user, spec)
+        if not o then
+            return nil
+        end
+        local s = o.state :: State
+        s.controller = controller
+        s.cycle_ticks = args.cycle_ticks
+        return o
     end
-    me:update_sprite_while_dimmed()
 end
 
-return elmnt_man
+return elmntman

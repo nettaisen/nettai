@@ -1,6 +1,0 @@
-# ElmntMan's ice (attack object #0x8E, `sub_80D6D80`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x8E
-script = "elmnt_ice.luau"
