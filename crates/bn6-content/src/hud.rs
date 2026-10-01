@@ -69,6 +69,10 @@ pub struct HudDoc {
     pub banner_digits: TileImage,
     /// "Cstmzing..." and its palette.
     pub waiting: TileImage,
+    /// The warning marker's two frames (2x2 tiles each) and its palette
+    /// (none in a pack extracted before it was).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warning: Option<TileImage>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -166,6 +170,8 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         .collect();
     let banner_digits = image("banner-digits.png", &h.banner_digits, GLYPHS(11), &[h.banner_palette], 0);
     let waiting = image("waiting.png", &h.waiting, Layout::Grid { columns: 8 }, &[h.waiting_palette], 1);
+    let warning = (!h.warning.is_empty())
+        .then(|| image("warning.png", &h.warning, Layout::Blocks { width: 2, height: 2, columns: 2 }, &[h.warning_palette], 1));
     let texts = |m: &[MapEntry]| m.iter().map(tiles::entry_text).collect();
     let doc = HudDoc {
         format: FORMAT.into(),
@@ -192,6 +198,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         banners,
         banner_digits,
         waiting,
+        warning,
     };
     files.push(("hud.json".into(), json_lines(&doc)));
     files
@@ -233,6 +240,10 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
     }
     let (banner_digits, _) = img(&doc.banner_digits, report)?;
     let (waiting, waiting_pal) = img(&doc.waiting, report)?;
+    let (warning, warning_pal) = match &doc.warning {
+        Some(i) => img(i, report)?,
+        None => (Tiles::default(), vec![Palette::default()]),
+    };
     let mut mugshots = Vec::new();
     for m in &doc.mugshots {
         let (t, p) = img(m, report)?;
@@ -303,5 +314,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         banner_palette: banner_pal[0],
         waiting,
         waiting_palette: waiting_pal[0],
+        warning,
+        warning_palette: warning_pal[0],
     })
 }

@@ -294,6 +294,11 @@ pub struct Hud {
     /// custom screen, and its palette.
     pub waiting: Tiles,
     pub waiting_palette: Palette,
+    /// The warning marker (`sub_800AE90`: a blinking arrow over the custom
+    /// gauge or a place on the field): two 16x16 frames of 2x2 tiles, and
+    /// its palette. Empty in a pack extracted before it was.
+    pub warning: Tiles,
+    pub warning_palette: Palette,
 }
 
 /// A link navi's mugshot (4x2 tiles) with its palettes: normal, angry.
