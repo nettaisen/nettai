@@ -195,8 +195,8 @@ T is the tick that took the key; "input from" is the first tick the grid reads k
 | Sub-state | Entered by | Input from |
 |---|---|---|
 | 0x0C hide (`sub_8026D06`) | SELECT at T | T+1 hides; any key pressed at P ≥ T+2 brings it back; input from P+2 (that key is used up) **[dumps]** |
-| 0x18 chip description (`sub_8026E4C`) | R at T on a chip | the chatbox takes any key from T+6; after a key at P, input from P+6 **[dumps, 5 cases]** |
-| 0x1C run message (`sub_8026E98`) | L at T | A or B once the message has printed; P+6 **[unverified: the printing time is an estimate, 72 ticks]** |
+| 0x18 chip description (`sub_8026E4C`) | R at T on a chip | the chatbox takes any key from T+5 plus the lines of the chip's text (T+8 for most chips, T+7 for the Recov chips, SloGauge and FstGauge, T+6 for the invalid chip), or B held for 11 ticks from then; after a key at P, input from P+6 **[lab: custom/description-*]** |
+| 0x1C run message (`sub_8026E98`) | L at T | the chatbox starts at T+1; it takes A or B from T+80 for MegaMan (by the message's lines; from T+21 at the earliest when A is pressed or B held as it prints); after a key at P, input from P+9 **[lab: custom/run-message*]** |
 | 0x4C Cross window opening | UP at T | window from T+13 |
 | 0x50 Cross window closing | B or START in the window at T | T+7 |
 | 0x5C Cross chosen | A in the window at T | T+35 **[dumps, 15 cases]** |
@@ -205,7 +205,33 @@ T is the tick that took the key; "input from" is the first tick the grid reads k
 | 0x38 DustCross scrap | A on the scrap button at T | T+4+25k for k chips scrapped **[dumps, 13 cases]** |
 | 0x28 ChpShufl re-deal (`sub_80271F8`) | A on the re-deal button at T | T+34 **[lab: navicust/chpshufl-redeal*]** |
 
-The chip description's chatbox also closes on B held for 10 frames; that is not ported.
+**The chatbox** (`custom::chatbox`). Both sub-screens wait on the original's chatbox, which runs a text script
+once a frame after the screen (`chatbox_onUpdate`) and clears its flag (`eFlags2009F38` 0x80) when the script ends.
+The port runs what those scripts' commands do to the timing:
+
+- **The box**: a description's opens at once (`E8 06`); the message's (`E8 00`) takes a tick and three steps, and
+  then waits for the portrait. Closing (`E6`) takes three steps and a tick, after the portrait is gone.
+- **The portrait** (`F5`, the message's): it fades in while the box is fully open (its tint 0x18C6, one 0x421 a
+  tick: seven ticks) and out before the box closes (0x842 a tick until a channel reaches 6: three ticks).
+- **Text**: at print speed 0 (`F1 00 00`, the descriptions') a whole line a tick; at the default speed 2 a
+  character every other tick. A line break (`E9`) ends the tick's printing, so each line of a description costs a
+  tick. Once the box has run four ticks without waiting on a command, B held or A pressed prints all the rest at
+  once (`chatbox_8040154`).
+- **The key wait** (`E7`): five ticks of delay, then A or B pressed (`E7 00`, the message) or any key (`E7 01`, the
+  descriptions), or B held for an eleventh tick (the held ticks needn't be in a row).
+
+A chip's description is its record's `description` (its lines apart by `\n`; the engine reads how many); the
+invalid chip's (one line) is shown for an invalid chip. Every Cross's has three lines. The message is the operated
+navi's (`NaviData::run_message`, the characters in each line): MegaMan's is 19 and 12 characters, each link navi
+has its own script (`TextScriptBattleRunDialog`'s script 3 sends it there).
+
+**Verified** in the lab: `custom/description-arm-001-5..9` and `-09a-5..9` (Cannon, three lines, takes A from
+R+8; Recov10, two lines, from R+7), `description-invalid-4..6` (from R+6), `description-cross-7`, `-8` (a Cross's,
+from R+8, back to the Cross window), `description-b-held-12`, `-30`, `description-keys`; `run-message`, `-b`,
+`-wait`, `-taps-0`, `-taps-1` (A on every other frame, from either parity), `-b-held`, and the link navis'
+`run-message-navi-1`, `-2`, `-6` and `-navi-1-wait`, `-6-wait`. Not reached: the descriptions of DblBeast, Gregar
+and Falzar, which print a value with a command (`FF`) the port doesn't run (it counts as text), and what
+`sub_802A220` closes a description for (it answers 0xFF in a netbattle with MegaMan).
 
 ### 3.6 DustCross's scrap (`sub_8027406`)
 

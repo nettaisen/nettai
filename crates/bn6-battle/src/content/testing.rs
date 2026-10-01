@@ -836,6 +836,7 @@ fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
     ChipData {
         id: Some(id),
         name: name.into(),
+        description: None,
         codes: vec![ChipCode(0), ChipCode::ASTERISK],
         element: Element::Null,
         rarity: 0,
@@ -1198,6 +1199,7 @@ fn navi() -> NaviData {
         merge_height: 0,
         own_chip: None,
         chip_bonus: None,
+        run_message: vec![19, 12],
         name_record: Some(NameData { id: 0x1A0, version: 0, actor_type: ActorType::Player, ai_index: 0, attach_points }),
     }
 }

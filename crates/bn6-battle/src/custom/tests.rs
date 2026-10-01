@@ -487,3 +487,105 @@ fn the_tag_pair_index_follows_the_folder_as_picks_leave_it() {
     assert_eq!(after.chips[10..12], pair[..]);
     assert_ne!(after.chips, before.chips);
 }
+
+/// A screen whose first chip (SHOT A) has a description of `lines` lines,
+/// taking keys.
+fn describing(lines: usize) -> Player {
+    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1)], GameVersion::Falzar);
+    p.lib.chips[0].1.description = Some(["a", "b", "c"][..lines].join("\n"));
+    p.open();
+    p.wait(10);
+    p.step(0);
+    p
+}
+
+#[test]
+fn a_description_takes_keys_later_for_each_line() {
+    for (lines, first) in [(1usize, 6u32), (2, 7), (3, 8)] {
+        // A the tick before the box takes keys is lost.
+        let mut p = describing(lines);
+        p.step(keys::R);
+        assert!(matches!(p.phase(), Phase::Description { .. }));
+        for _ in 1..first - 1 {
+            p.step(0);
+        }
+        p.step(keys::A);
+        for _ in 0..30 {
+            p.step(0);
+        }
+        assert!(matches!(p.phase(), Phase::Description { .. }), "{lines} lines: A on tick {} closed it", first - 1);
+        // On the tick it does, the box closes; the grid takes keys six
+        // ticks after the key (not five).
+        let mut p = describing(lines);
+        p.step(keys::R);
+        for _ in 1..first {
+            p.step(0);
+        }
+        p.step(keys::A);
+        for _ in 0..4 {
+            p.step(0);
+            assert!(matches!(p.phase(), Phase::Description { .. }));
+        }
+        p.step(keys::A);
+        assert_eq!(p.phase(), Phase::Choosing, "{lines} lines");
+        assert_eq!(p.screen().selection(), &[] as &[u8]);
+        p.step(0);
+        p.step(keys::A);
+        assert_eq!(p.screen().selection(), [0]);
+    }
+}
+
+#[test]
+fn b_held_closes_a_description() {
+    // B pressed before the box takes keys and held: its eleventh tick of
+    // taking keys answers it (tick 18 of a three-line description), and
+    // the screen is back four ticks later.
+    let mut p = describing(3);
+    p.step(keys::R);
+    for _ in 1..=17 {
+        p.step(keys::B);
+    }
+    for _ in 0..10 {
+        p.step(0);
+    }
+    assert!(matches!(p.phase(), Phase::Description { .. }));
+    let mut p = describing(3);
+    p.step(keys::R);
+    for _ in 1..=18 {
+        p.step(keys::B);
+    }
+    for _ in 0..4 {
+        assert!(matches!(p.phase(), Phase::Description { .. }));
+        p.step(0);
+    }
+    p.step(0);
+    assert_eq!(p.phase(), Phase::Choosing);
+}
+
+#[test]
+fn the_no_running_message_starts_a_tick_after_l() {
+    let mut p = describing(3);
+    p.step(keys::L);
+    assert_eq!(p.phase(), Phase::RunMessage { chatbox: None });
+    // Its box takes A or B from its 80th tick (the 80th after L): a press
+    // a tick before is lost.
+    for _ in 1..79 {
+        p.step(0);
+    }
+    p.step(keys::A);
+    for _ in 0..20 {
+        p.step(0);
+    }
+    assert!(matches!(p.phase(), Phase::RunMessage { .. }));
+    p.step(keys::A);
+    // Closed seven ticks later; the screen sees it the tick after, and
+    // takes keys the tick after that.
+    for _ in 0..8 {
+        assert!(matches!(p.phase(), Phase::RunMessage { .. }));
+        p.step(0);
+    }
+    assert_eq!(p.phase(), Phase::Choosing);
+    assert_eq!(p.screen().selection(), &[] as &[u8]);
+    p.step(keys::A);
+    assert_eq!(p.screen().selection(), [0]);
+}
