@@ -569,6 +569,10 @@ impl UserData for Object {
         methods.add_method("wear_navi_image", |_, this, user: mlua::UserDataRef<Object>| {
             with(|api, _| api.wear_navi_image(this.0, user.0).map_err(api_error))
         });
+        methods.add_method("wear_cross_image", |_, this, form: LuaValue| {
+            let form = u8_arg(form, "form")?;
+            with(|api, _| api.wear_cross_image(this.0, form).map_err(api_error))
+        });
         methods.add_method("navi_image_parts", |_, this, on: bool| with(|api, _| Ok(api.navi_image_parts(this.0, on))));
         methods.add_method("wear_junk_look", |_, this, look: LuaValue| {
             let look = u16_arg(look, "junk look")?;

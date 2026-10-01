@@ -549,6 +549,11 @@ declare class Object
     -- sprite (a ground shadow, animation 0 loaded by the next sprite
     -- update) and the side's form's palette.
     function wear_navi_image(self, user: Object): boolean
+    -- MstrCros's Crosses (`sub_80BE7BC`): take the identity of MegaMan's
+    -- form `form` (by number, as the navi stats give it): its sprite (a
+    -- ground shadow, animation 0 loaded by the next sprite update) and
+    -- palette.
+    function wear_cross_image(self, form: number): ()
     -- The parts of that identity (`sub_8010DF6` with r2 1, or
     -- `sub_8011044`).
     function navi_image_parts(self, on: boolean): ()

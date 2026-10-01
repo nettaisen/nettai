@@ -1697,6 +1697,27 @@ impl CoreApi for Battle {
         Ok(own)
     }
 
+    fn wear_cross_image(&mut self, o: ObjectRef, form: u8) -> ApiResult<()> {
+        let Some(h) = self.content.defs.form_numbered(crate::setup::Form(form)) else {
+            return Err(ApiError::Other(format!("form {form:#x} is not in the content")));
+        };
+        let data = self.content.form(h);
+        let Some(name) = data.name_record.as_ref().map(|n| n.id) else {
+            return Err(ApiError::Other(format!("form {form:#x} has no NameID of its own (0x1AB + form)")));
+        };
+        let sprite = data.sprite;
+        let palette = self.content.rules.cross_palettes.get(form as usize).copied().unwrap_or(0);
+        self.sprite_load(o, sprite);
+        let obj = self.objects.get_mut(o);
+        obj.name_id = name;
+        obj.anim = 0;
+        obj.anim_loaded = 0xFF;
+        let look = &mut self.objects.sprite_mut(o).look;
+        look.shadow = sprite::Shadow::Ground;
+        look.palette = palette;
+        Ok(())
+    }
+
     fn navi_image_parts(&mut self, o: ObjectRef, on: bool) {
         let rec = self.content.navi_record(self.objects.get(o).name_id);
         if on {
