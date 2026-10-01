@@ -1635,6 +1635,7 @@ export type RolesSpec = {
         absorbed_obstacle: (Kind | LegacyKind)?,
         falling_rock: (Kind | LegacyKind)?,
         support: (Kind | LegacyKind)?,
+        anti_recovery: (Kind | LegacyKind)?,
     }?,
     hooks: {
         -- The NaviCust FirstBarrier: raise its barrier and the barrier's

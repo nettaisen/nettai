@@ -1,7 +1,0 @@
-# ElemTrap's trap (attack object #0x4D, `sub_80CDF84`) is a script. Its
-# position is its spawner's registers, which nothing reads.
-
-[kind]
-pool = "attack"
-index = 0x4D
-script = "elem_trap.luau"

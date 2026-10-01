@@ -1081,18 +1081,21 @@ fn tengu_cross_back_special_blows_a_gust_down_each_row() {
 fn slash_cross_charged_shot_sends_a_sword_wave() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
+    // The charged shot's own wave reaches one panel past the one it starts
+    // on: two columns from the navi.
+    stand_at(&mut b, p0, 3);
     assert_eq!(start_weapon_as(&mut b, p0, 0x12, 2), 0x41);
     // 60 damage and 20 per buster damage point (1).
     assert_eq!(ai_mut(&mut b, p0).attack.damage, 80);
     let mut t = 0;
     run_to(&mut b, p, &mut t, 11, 0);
-    assert!(kind_objects(&b, "sword-wave").is_empty());
+    assert!(kind_objects(&b, "slashcross/sword-wave").is_empty());
     // The slash starts on tick 3; the wave goes out 9 ticks later, from
     // the panel in front.
     run_to(&mut b, p, &mut t, 12, 0);
-    let waves = kind_objects(&b, "sword-wave");
+    let waves = kind_objects(&b, "slashcross/sword-wave");
     assert_eq!(waves.len(), 1);
-    assert_eq!(b.objects.get(waves[0]).panel, PanelPos { x: 3, y: 2 });
+    assert_eq!(b.objects.get(waves[0]).panel, PanelPos { x: 4, y: 2 });
     run_to(&mut b, p, &mut t, 29, 0);
     assert_eq!(b.objects.get(p1).hp, 920);
     assert_eq!(act(&b, p0), 0x41);
@@ -1243,8 +1246,8 @@ fn heat_beast_charge_raises_fire_pillars_on_its_region() {
     run_to(&mut b, p, &mut t, 1, 0);
     assert_eq!(b.objects.get(p0).anim, 0x12);
     assert_eq!(f1_of(&b, p0) & (f1::USING_ACTION | f1::MOVING), f1::USING_ACTION | f1::MOVING);
-    // When the wind-up ends: pillars on the test region 0x1A from the
-    // panel in front (it and two past it).
+    // When the wind-up ends: pillars on the panel in front and the two
+    // columns past it.
     while of_kind(&b, "element-pillar").is_empty() {
         let next = t + 1;
         run_to(&mut b, p, &mut t, next, 0);
@@ -1253,8 +1256,9 @@ fn heat_beast_charge_raises_fire_pillars_on_its_region() {
     assert_eq!(b.objects.get(p0).anim, 0x13);
     // (Each runs right after its spawner: the later one first.)
     let panels: Vec<PanelPos> = of_kind(&b, "element-pillar").iter().map(|&o| b.objects.get(o).panel).collect();
-    assert_eq!(panels, [PanelPos { x: 5, y: 2 }, PanelPos { x: 3, y: 2 }]);
-    let pillar = of_kind(&b, "element-pillar")[1];
+    let at = |x, y| PanelPos { x, y };
+    assert_eq!(panels, [at(5, 3), at(5, 2), at(5, 1), at(4, 3), at(4, 2), at(4, 1), at(3, 2)]);
+    let pillar = of_kind(&b, "element-pillar")[6];
     let (x, y) = crate::kinds::player::panel_coordinates(3, 2);
     let o = b.objects.get(pillar);
     assert_eq!((o.pos.x, o.pos.y, o.pos.z, o.timer), (x, y + (2 << 16), 2 << 16, 0x5A - 1));
