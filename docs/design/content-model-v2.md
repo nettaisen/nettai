@@ -716,7 +716,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | dash-hit | GroundCross Beast's dash, ChargeCross's tackle | navis/megaman/ |
 | delta-ray | DeltaRay | chips/deltaray/ |
 | dragon-head, dragon-body | HeatDrgn, ElecDrgn, AquaDrgn, WoodDrgn | lib/dragons/ |
-| drill | DrilArm; GroundCross's drill | objects/drill |
+| drill | DrilArm; GroundCross's drill | chips/drilarm/drill (as built; GroundCross's drill and MstrCros require it) |
 | drip-shower | DripShwr (SpoutMan's link chip) | navis/spoutman/ |
 | dust-ball | DustCross's charged shot | navis/megaman/forms/dustcross/ |
 | dust-cloud | DustBrk (DustMan's link chip) | navis/dustman/ |
@@ -805,7 +805,8 @@ objects/ too.)
 folder, keyed under it, even when other chips or forms use it too; they `require` it from there. So Invisibl's
 controller is chips/invisibl/controller (`invisibl/controller`, which the second WhiCapsl requires), and the
 boomerang chips/boomer/boomerang (`boomer/boomerang`, which TomahawkCross Beast's throw and BoomrArm's charged
-shot use).
+shot use), and the drill chips/drilarm/drill (`drilarm/drill`, which GroundCross's charged shot and MstrCros's
+GroundCross use).
 
 The rest of v1's layout moves as follows: `lib/sword.luau` and `lib/vari_sword.luau` into `lib/swords/`,
 `lib/dragon.luau` into `lib/dragons/`, `lib/instant-chips/` into `lib/instant/`, `lib/buster.luau` into
@@ -1671,7 +1672,7 @@ its typed state or a variant record:
 | Reflectr | chips/rflectr/guard (`{ ticks, look, counter?, heedless? }`) | `rflectr/shield` (`reflector-shield-look`: `byte_80C9664`'s rows, the chips' and the programs' by name), `rflectr/shot` | Rflectr1-3: definitions; the NaviCust Shield and Reflect (weapons 0x3B, 0x3C, 0x8B, 0x8C) return their own guards, `megaman/shield/action` and `megaman/reflect/action` |
 | IronShl | chips/ironshl/throw (`{ shell = { palette, speed, bumps, para? } }`) | `ironshl/shell` | IronShl1-3, ParaShl: records |
 | BblStar | chips/bblstar/chips' `blow { speed, palette }` | `bblstar/star` | BblStar1-3: definitions |
-| DrilArm | | `drill` (objects/drill, with the drill arm look; GroundCross's charged shot and MstrCros's GroundCross spawn it too, `drill.spawn(owner, element, z, damage, { ticks, light? }, slot?)`) | a definition |
+| DrilArm | | `drill` (chips/drilarm/drill, kind `drilarm/drill`, with the drill arm look; GroundCross's charged shot and MstrCros's GroundCross spawn it too, `drill.spawn(owner, element, z, damage, { ticks, light? }, slot?)`) | a definition |
 | Tornado | chips/tornado/chips' `blow { fan, single? / spread? }` | `tornado/tornado` (`tornado-variant`: `byte_80CA064`'s rows) | Tornado, Static: definitions; the action's subtype 3 (no chip) is `tornado/back-spread` |
 | WaveArm | chips/wavearm/strike (`{ wave, three_rows? }`) | `wavearm/wave` (`shock-wave-variant`: `byte_80C6B00`'s rows, the chips' by name; the viruses' too) | WaveArm1-3, PwrWave1-3: records |
 

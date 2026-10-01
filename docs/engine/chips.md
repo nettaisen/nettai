@@ -2429,7 +2429,7 @@ A Cross (Param4 = its place in its wave):
   10-tick flash; at Timer 40 `sub_80D8FB8` (its Param2 = 1 if its Param1 is 2); 70 ticks → 0x20.
 - 0x14 (`sub_80BEE62`), GroundCross's drill (move 2): phase 0: 10 ticks, then phase 4 at once. Phase 4
   (`sub_80BEEA2`): anim 0xA, attachment 0x20 (r4 0x10120: animation 1) in ExtraVars[1]; `sub_80D2B8E` (attack #0x71,
-  objects/drill; his element, r4 0x11E00: Param2 0x1E, Param3 1; Z 16 pixels; his damage word; held in ExtraVars[2])
+  DrilArm's drill, chips/drilarm/drill; his element, r4 0x11E00: Param2 0x1E, Param3 1; Z 16 pixels; his damage word; held in ExtraVars[2])
   with flags |= 0x10; Timer 30; sound 0xF0; a 10-tick flash; Y's and Z's whole parts + 1; 30 ticks → 8. Phase 8: the
   attachment's animation 0 (`sub_80B8E70`), 10 ticks → 0x20.
 - 0x18 (`sub_80BEF2C`), TenguCross's fan (move 3): anim 5, sound 0x11F, attachment 0x2A (r4 0x1002A) in

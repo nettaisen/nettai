@@ -254,7 +254,7 @@
 "sprites.diveman" = "08-0d: DiveMan, chips/diveman; used by effect 0x2B, effect 0x2C, body overlay 0x03"
 "sprites.django" = "0c-0f: Django, chips/crosover/navi.luau"
 "sprites.dragon" = "04-10: lib/dragon.luau"
-"sprites.drill-arm" = "0c-58: attachment 0x20, the drill arm (objects/drill/drill.luau; GroundCross's in chips/mstrcros/navi.luau); DblBeast's Gregar bites with it (chips/dblbeast/gregar.luau)"
+"sprites.drill-arm" = "0c-58: attachment 0x20, the drill arm (chips/drilarm/drill.luau; GroundCross's in chips/mstrcros/navi.luau); DblBeast's Gregar bites with it (chips/dblbeast/gregar.luau)"
 "sprites.drip-shower" = "10-22: navis/spoutman/drip_shower.luau"
 "sprites.dust" = "14-0e: effect 0x30 in objects/crack-shot/crack_shot.luau"
 "sprites.dust-2" = "10-2c: effect 0x34 in objects/golem/golem.luau"
