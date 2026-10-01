@@ -66,7 +66,7 @@ local function strike(me: Object, packed: number)
         element = 0,
         z = 0,
         region = regions.single,
-        hit_effect = sparks.pierce,
+        hit_effect = sparks.heavy,
         target = collision.hits_navis,
         self_type = collision.curse,
         damage = bit32.band(word, 0xFFFF),

@@ -118,7 +118,8 @@ collision.probe = define.collision { id = "probe", side0 = 0x00000080, side1 = 0
 collision.nothing = define.collision { id = "nothing", side0 = 0x00000000, side1 = 0x00000000, row_offset = 0x00 }
 
 -- Another body of its side, while dimmed too (row 0x13: the obstacles a
--- chip sets down: the instruments, AirRaid's plane, Sensor's turret).
+-- chip sets down: the instruments, AirRaid's plane, Sensor's turret, Wind's fan,
+-- the Anubis statue).
 collision.own_body = define.collision { id = "own-body", side0 = 0x02010080, side1 = 0x01010080, row_offset = 0x98 }
 
 -- An attack that breaks guards (row 0x32: the instruments' notes).
