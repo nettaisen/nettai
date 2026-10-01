@@ -469,10 +469,11 @@ fn registrations_follow_the_content_data() {
         0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x56, 0x57, 0x58,
     ];
     assert_eq!(actions, expected, "{:?}", d.actions);
-    // The instant chip registers its subtype's effect, and a weapon the
-    // subtype it names.
-    assert!(d.hook(bn6_content_api::Hook::InstantChip(5)).is_some(), "{:?}", d.hooks);
-    assert!(d.hook(bn6_content_api::Hook::InstantChip(0x14)).is_some(), "{:?}", d.hooks);
+    // An instant chip's record resolves its subtype's effect, and a weapon
+    // that names an effect no chip has (TenguCross's wind) has its own.
+    let gauge = d.chip(c.chip_numbered(testing::FULL_GAUGE).unwrap());
+    assert!(matches!(gauge.usage, crate::content::ChipUsage::Instant(_)), "{:?}", gauge.usage);
+    assert!(d.weapon(c.weapon_numbered(0x10)).instant.is_some());
     // Handles number each registry in key order: the engine's kinds and
     // the content's together.
     assert!(d.kinds.windows(2).all(|w| w[0].key < w[1].key));

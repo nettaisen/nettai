@@ -14,57 +14,6 @@ use crate::assets::AssetNames;
 use crate::state::{Schema, StateId, Value};
 use crate::types::{ObjectRef, PanelPos};
 
-/// A ruleset table that content fills by number, instead of an object
-/// kind or a navi action. (Registration by number, until the content model
-/// v2 migration ends: docs/design/content-model-v2.md §3.10 has the
-/// definition slots that replace it.)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Hook {
-    /// Weapon routine `n` (`off_80117D4`): sets up the attack from the
-    /// navi's weapon and names its action. The module's `setup(navi)`.
-    Weapon(u8),
-    /// The dimming chips' dimming controllers by chip subtype
-    /// (`off_802CCB4`, chips with action 0x15). The module's
-    /// `dimming_chip(user, spec)`.
-    DimmingChip(u8),
-    /// The navi chips' navis by chip subtype (`off_802CD5C`, chips with
-    /// action 0x1B). The module's `navi_chip(user, controller, spec)`.
-    NaviChip(u8),
-    /// The instant chips' effects by subtype (`off_80EC3F0`, run once by
-    /// action 0x1C: chips with that action, and weapons that name it).
-    /// The module's `instant_chip(user, spec)`.
-    InstantChip(u8),
-    /// The field objects actor lists place when a round starts, by entry
-    /// type (`off_80073A0`: 8 a rock). The module's
-    /// `actor_list_entry(spec)`.
-    ActorListEntry(u8),
-}
-
-impl Hook {
-    /// The function the module exports for the hook.
-    pub fn function(self) -> &'static str {
-        match self {
-            Hook::Weapon(_) => "setup",
-            Hook::DimmingChip(_) => "dimming_chip",
-            Hook::NaviChip(_) => "navi_chip",
-            Hook::InstantChip(_) => "instant_chip",
-            Hook::ActorListEntry(_) => "actor_list_entry",
-        }
-    }
-}
-
-impl fmt::Display for Hook {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Hook::Weapon(n) => write!(f, "weapon routine {n:#04x}"),
-            Hook::DimmingChip(n) => write!(f, "dimming chip subtype {n}"),
-            Hook::NaviChip(n) => write!(f, "navi chip subtype {n}"),
-            Hook::InstantChip(n) => write!(f, "instant chip subtype {n:#04x}"),
-            Hook::ActorListEntry(n) => write!(f, "actor list entry type {n}"),
-        }
-    }
-}
-
 /// Where a function content implements is.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum FnSource {

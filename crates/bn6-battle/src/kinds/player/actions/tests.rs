@@ -1509,7 +1509,8 @@ fn buster_up_and_sync_trigger_change_the_navi() {
     assert_eq!(b.stats[0].attack, 9);
     // SyncTrgr's effect alone (the Full Synchro aura that follows is the
     // framework's, not ported yet): the mood goes to the top.
-    let hook = b.content.defs.hook(bn6_content_api::Hook::InstantChip(13)).expect("SyncTrgr's effect");
+    let sync = b.content.defs.chip(testing::chip_in(&b.content, testing::SYNC));
+    let crate::content::ChipUsage::Instant(hook) = sync.usage else { panic!("SyncTrgr's effect: {:?}", sync.usage) };
     let spec = bn6_content_api::InstantChipSpec::default();
     crate::behavior::call_hook(&mut b, hook, bn6_content_api::HookCall::InstantChip { user: p0, spec });
     assert_eq!(b.stats[0].mood, 0xFF);
@@ -1776,7 +1777,7 @@ fn chips_of_a_series_run_their_own_actions() {
     let (mut b, p0, p1) = fight_on_test_pack();
     let defs = &b.content.defs;
     let [ticker1, ticker2] = [testing::TICKER_1, testing::TICKER_2].map(|key| defs.chip_by_key(key).unwrap());
-    let [one, two] = [ticker1, ticker2].map(|h| match defs.chip(h).usage.unwrap() {
+    let [one, two] = [ticker1, ticker2].map(|h| match defs.chip(h).usage {
         crate::content::ChipUsage::Action(h) => h,
         u => panic!("{u:?}"),
     });
@@ -1872,7 +1873,7 @@ fn an_action_starts_the_next_by_definition() {
     let (mut b, p0, p1) = fight_on_test_pack();
     let defs = &b.content.defs;
     let ticker3 = defs.chip_by_key(testing::TICKER_3).unwrap();
-    let Some(crate::content::ChipUsage::Action(first)) = defs.chip(ticker3).usage else { panic!("an action") };
+    let crate::content::ChipUsage::Action(first) = defs.chip(ticker3).usage else { panic!("an action") };
     let next = bn6_content_api::ActionHandle(
         defs.actions.iter().position(|a| a.key == "test/ticker3/action/args/next").expect("a derived key") as u16,
     );
