@@ -51,7 +51,7 @@ local function init(me: Object)
     me:set_panel_from_coordinates()
     local sprite = me.sprite
     sprite:load(s.look.sprite)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     local anim = s.anim
     me.anim = anim
     me.anim_loaded = anim

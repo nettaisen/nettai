@@ -5,7 +5,6 @@
 //! by the status routine (`status.rs`), which links it in the navi's
 //! collision data. See docs/engine/objects-and-player.md §H5.
 
-use crate::actor::ActorType;
 use crate::battle::Battle;
 use crate::collision::{f1, link};
 use crate::object::{ObjectRef, flags, state};
@@ -14,21 +13,6 @@ use crate::object::{ObjectRef, flags, state};
 /// above it (16.16).
 const ATTACH_POINT: usize = 0x21;
 const OFFSET: i32 = 0x6_0000;
-
-/// `byte_80E9C30`: the block's size (its animation: 0 small, 1 medium,
-/// 2 large) for a virus, by its AI index.
-///
-/// Game data held in the engine for now: it belongs with the actors'
-/// records in the content (to move there with the content model's next
-/// version).
-const VIRUS_SIZES: [u8; 30] =
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 1, 1, 0, 0, 2, 0, 2, 1];
-/// `byte_80E9C4E`: the size for a navi or a player, by its AI index (the
-/// same content note).
-const NAVI_SIZES: [u8; 50] = [
-    1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-];
 
 /// `sub_80E9BDC`: an ice block on `owner`, linked in the owner's collision
 /// data. It runs while paused and while dimmed. (The game spawns it at the
@@ -60,13 +44,12 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     crate::kinds::common::load_or_step_sprite(b, r);
 }
 
-/// `sub_80E9C06`: the block's size for the owner, by its actor record.
+/// `sub_80E9C06`: the block's size for the owner (its animation: 0 small,
+/// 1 medium, 2 large): its identity's `ice` (the original's by the actor
+/// record: `byte_80E9C30` for a virus, `byte_80E9C4E` for a navi or a
+/// player, by AI index).
 fn size(b: &Battle, owner: ObjectRef) -> u8 {
-    let rec = b.content.navi_record(b.objects.get(owner).identity);
-    let sizes: &[u8] = if rec.actor_type == ActorType::Virus { &VIRUS_SIZES } else { &NAVI_SIZES };
-    *sizes.get(rec.ai_index as usize).unwrap_or_else(|| {
-        panic!("the ice block's size for AI index {} reads past its table (sub_80E9C06)", rec.ai_index)
-    })
+    b.content.identity(b.objects.get(owner).identity).ice as u8
 }
 
 /// `sub_80E9B14`: the block, in the owner's size.

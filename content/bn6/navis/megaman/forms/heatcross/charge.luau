@@ -4,10 +4,7 @@
 -- original's action 0x27) from HeatCross's burner, as a Fire attack of 30
 -- damage and 20 more per point of buster Attack (up to 5): it burns 60
 -- ticks and spreads two panels forward, leaving the panels as they were.
---
--- Transitional (docs/design/content-model-v2.md §5.7, "As built"): the form
--- is still the pack's record, which names this weapon by its routine
--- number (the `legacy` marker).
+-- HeatCross's form definition names it as its charged shot.
 
 local burn = require("../../../../lib/burner/burn")
 local weapon = require("../../../../lib/weapon")

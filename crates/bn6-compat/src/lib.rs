@@ -27,6 +27,16 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
 
+/// The original's object type number of a pool (1, 3, 4: the `T1`, `T3`,
+/// `T4` the traces print).
+pub fn pool_type(pool: Pool) -> u8 {
+    match pool {
+        Pool::Actor => 1,
+        Pool::Attack => 3,
+        Pool::Effect => 4,
+    }
+}
+
 /// A chip: its id, and the action and subtype its record names (the
 /// latter two documentation).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
@@ -116,8 +126,9 @@ pub struct RuleNumbers {
     /// Statuses (`off_80209EC`): a hit's status byte, by key.
     #[serde(default)]
     pub statuses: BTreeMap<String, u8>,
-    /// The field objects' identities: the NameID of each, by key (a
-    /// navi's and a form's is in navis.toml and forms.toml).
+    /// The identities with a key of their own (the field objects', and
+    /// the navi chips' navis' for what they wear): the NameID of each, by
+    /// key (a navi's and a form's is in navis.toml and forms.toml).
     #[serde(default)]
     pub identities: BTreeMap<String, u16>,
     /// The ruleset's roles (rules/roles.luau), by role name: the effect
@@ -174,8 +185,11 @@ pub struct Text {
 }
 
 /// content/bn6/compat: the original's numbers by content key. Every map
-/// is key to numbers; many-to-one maps are allowed (weapon aliases, the
-/// chips of one action handler).
+/// is key to numbers. One key may have several numbers (a weapon's alias
+/// routines, a stage's settings records), and several actions may share a
+/// number (the chips of one action handler); otherwise a number belongs to
+/// one key: two definitions with one number is an error when the tables
+/// are read.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Compat {
     pub chips: BTreeMap<String, ChipEntry>,
@@ -267,7 +281,53 @@ impl Compat {
                 return Err(format!("kinds.toml: {k} and {other} both fill {} #{:#04X}", e.pool, e.index));
             }
         }
+        c.check_unique()?;
         Ok(c)
+    }
+
+    /// No number belongs to two keys (but the actions', which share
+    /// theirs, and the kinds', checked by slot above).
+    fn check_unique(&self) -> Result<(), String> {
+        fn unique<'a, V: Ord + std::fmt::Debug>(
+            what: &str,
+            entries: impl Iterator<Item = (&'a String, V)>,
+        ) -> Result<(), String> {
+            let mut seen: BTreeMap<V, &String> = BTreeMap::new();
+            for (key, v) in entries {
+                if let Some(other) = seen.get(&v) {
+                    return Err(format!("{what}: {other} and {key} are both {v:#X?}"));
+                }
+                seen.insert(v, key);
+            }
+            Ok(())
+        }
+        unique("chips.toml", self.chips.iter().map(|(k, c)| (k, c.id)))?;
+        unique("navis.toml", self.navis.iter().map(|(k, n)| (k, n.navi)))?;
+        unique("navis.toml: NameIDs", self.navis.iter().map(|(k, n)| (k, n.name_id)))?;
+        unique("forms.toml", self.forms.iter().map(|(k, f)| (k, f.form)))?;
+        unique("forms.toml: NameIDs", self.forms.iter().filter_map(|(k, f)| Some((k, f.name_id?))))?;
+        unique("weapons.toml: routines", self.weapons.iter().flat_map(|(k, routines)| routines.iter().map(move |&n| (k, n))))?;
+        unique("stages.toml: settings records", self.stages.iter().flat_map(|(k, st)| st.settings.iter().map(move |&n| (k, n))))?;
+        unique("records.toml: sp_slots", self.records.sp_slots.iter().map(|(k, &n)| (k, n)))?;
+        unique("records.toml: rock_variants", self.records.rock_variants.iter().map(|(k, &n)| (k, n)))?;
+        unique("records.toml: projectile_variants", self.records.projectile_variants.iter().map(|(k, &n)| (k, n)))?;
+        unique("rules.toml: lockon", self.rules.lockon.iter().map(|(k, &n)| (k, n)))?;
+        unique("rules.toml: statuses", self.rules.statuses.iter().map(|(k, &n)| (k, n)))?;
+        unique("assets.toml: sprites", self.assets.sprites.iter().map(|(k, n)| (k, n.clone())))?;
+        unique("assets.toml: sounds", self.assets.sounds.iter().map(|(k, &n)| (k, n)))?;
+        unique("assets.toml: backgrounds", self.assets.backgrounds.iter().map(|(k, &n)| (k, n)))?;
+        unique("assets.toml: banners", self.assets.banners.iter().map(|(k, &n)| (k, n)))?;
+        unique("assets.toml: mugshots", self.assets.mugshots.iter().map(|(k, &n)| (k, n)))?;
+        Ok(())
+    }
+
+    /// BN6's compat with `file` replaced by `text`, as it reads (for the
+    /// tests of what reading rejects).
+    #[doc(hidden)]
+    pub fn bn6_with(file: &str, text: &str) -> Result<Compat, String> {
+        Compat::parse(|f| {
+            Ok(if f == file { text.to_string() } else { BN6.iter().find(|(name, _)| *name == f).map(|(_, t)| t.to_string()).unwrap_or_default() })
+        })
     }
 
     /// The kind that fills an object slot, and its entry.
@@ -303,15 +363,10 @@ impl Compat {
     }
 
     /// The original's object slot for object `r`'s kind. The engine never
-    /// learns it for a kind content defines: the object records the kind's
-    /// handle, and compat has the slot by key. The engine's own kinds and
-    /// the kinds the pack registers by number (keyed by their folders)
-    /// carry the slot their registration gives.
+    /// learns it: the object records the kind's handle, and compat has the
+    /// slot by the kind's key.
     pub fn object_slot(&self, b: &Battle, r: ObjectRef) -> Result<(Pool, u8), String> {
         let kind = b.content.defs.kind(b.objects.get(r).kind);
-        if let Some(slot) = kind.slot {
-            return Ok(slot);
-        }
         let e = self.kinds.get(&kind.key).ok_or_else(|| format!("kinds.toml has no {:?}", kind.key))?;
         match Pool::from_name(&e.pool) {
             Some(pool) if pool == kind.pool => Ok((pool, e.index)),
@@ -319,10 +374,25 @@ impl Compat {
         }
     }
 
+    /// What a navi runs when its CurAction is the original's `number`: one
+    /// of the framework's states, else the ruleset's own action or the
+    /// content action compat gives the number (the first by key, where
+    /// several share it). None for a number nothing here has.
+    pub fn navi_action_numbered(&self, content: &bn6_battle::Content, number: u8) -> Option<NaviAction> {
+        use bn6_battle::kinds::player::EngineAction;
+        if let Some(state) = NaviAction::state(number) {
+            return Some(state);
+        }
+        let keys = || self.actions.iter().filter(|&(_, &n)| n == number).map(|(key, _)| key.as_str());
+        if let Some(e) = EngineAction::ALL.into_iter().find(|e| keys().any(|k| k == e.key())) {
+            return Some(NaviAction::Engine(e));
+        }
+        keys().find_map(|key| content.defs.action_by_key(key)).map(NaviAction::Content)
+    }
+
     /// The original's action number for object `r`'s CurAction: a navi's
     /// NaviAction (the framework's states as themselves, the ruleset's
-    /// actions and content's by key; a v1 registration by its number), any
-    /// other object's its own byte.
+    /// actions and content's by key), any other object's its own byte.
     pub fn navi_action(&self, b: &Battle, r: ObjectRef) -> Result<u8, String> {
         if b.objects.get(r).actor.is_none() {
             return Ok(b.objects.get(r).action);
@@ -333,14 +403,7 @@ impl Compat {
         }
         let key = match action {
             NaviAction::Engine(e) => e.key(),
-            NaviAction::Content(h) => {
-                let d = b.content.defs.action(h);
-                if let Some(n) = d.number {
-                    return Ok(n);
-                }
-                &d.key
-            }
-            NaviAction::Unported(n) => return Ok(n),
+            NaviAction::Content(h) => &b.content.defs.action(h).key,
             state => unreachable!("{state:?} is a state"),
         };
         self.actions.get(key).copied().ok_or_else(|| format!("actions.toml has no {key:?}"))

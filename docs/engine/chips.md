@@ -1443,7 +1443,7 @@ alliance (and, for most, flip), damage word, and chip and bonus at +0x30/+0x32. 
 subtype:
 
 - 1 (Invisibl, WhiCapsl; T4 0x5D): the user flashes invisible for Param1-2 ticks (`sub_8010474`), 31 ticks.
-  objects/invisible (`invisible.hook(ticks)`).
+  chips/invisibl/controller (`invisible.hook(ticks)`).
 - 6 (RockCube, IceCube; T4 0x37): a rock of variant Param1 (1 a rock cube, 3 an ice block) on the panel in front
   (`sub_80CFBC4`, the rock's spawner), sound 0x112, 60 ticks. chips/rockcube; the rock is objects/rock
   (field-objects.md).
@@ -1491,7 +1491,8 @@ Ported too, and specified elsewhere (the chip lab's scenarios for all of them ma
   FirstBarrier: specified in docs/engine/dimming-chips.md.
 - 7 (LifeSync; T4 0x5C; chips/lifesync): in a link battle `sub_80E72C8` branches into another routine's body
   (`loc_80E73C4`), harmlessly: LifeSync does nothing in PvP (dimming-chip-effects.md §14).
-- The others (and the ElemTrap object, chips/elemtrap): see docs/design/content-migration.md §5.
+- The others are in their chips' folders and lib/ (the trap chips' controller is lib/traps/controller; ElemTrap's
+  trap and strike are chips/elemtrap).
 - Subtypes 2, 3, 7, 8, 12, 14–19, 21–24, 29, 30, 32 and 37, every object they spawn, branch by branch with
   their lab coverage: docs/engine/dimming-chip-effects.md.
 

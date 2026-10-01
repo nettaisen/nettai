@@ -13,13 +13,7 @@ local riding_hit = {}
 -- What it is spawned with: its collision types (the original's ExtraVars
 -- +0 and +4), hit modifier and spark (Param1, Param2), and whether it goes
 -- on after hitting a body (Param3).
-export type Spec = {
-    is: CollisionType,
-    hits: CollisionType,
-    hit_mod: number,
-    spark: Spark?,
-    keeps_going: boolean,
-}
+type Spec = RidingHit
 
 export type State = {
     is: CollisionType,

@@ -50,17 +50,13 @@ local function effect(me: Object)
         me.timer = WAIT
         me.phase_init = 4
     end
-    -- sub_800AE90: a blinking warning over the gauge (drawn only), with
-    -- its sound every 16 frames of the game's frame counter, which the
-    -- port doesn't keep: every 16 ticks of this effect instead. With
+    -- sub_800AE90: a blinking warning over the gauge, with its sound. With
     -- per-player gauges in a link battle, only the user's player sees and
     -- hears it.
-    if me.timer % 16 == 0 then
-        if battle.per_player_gauges() and battle.link() then
-            battle.play_sound_for(me.alliance, WARNING_SOUND)
-        else
-            battle.play_sound(WARNING_SOUND)
-        end
+    if battle.per_player_gauges() and battle.link() then
+        battle.warn(WARNING_SOUND, nil, me.alliance)
+    else
+        battle.warn(WARNING_SOUND)
     end
     local t = me.timer - 1
     me.timer = t

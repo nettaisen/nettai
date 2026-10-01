@@ -137,7 +137,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-local PHASES = { [PULL] = draw_in, [CRUSH] = crush, [RECOVER] = recover }
+local PHASES: { [number]: (me: Object, s: State) -> () } = { [PULL] = draw_in, [CRUSH] = crush, [RECOVER] = recover }
 
 return define.chip {
     id = "dustbrk",
