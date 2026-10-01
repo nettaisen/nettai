@@ -36,7 +36,7 @@ local JUMP_TICKS, STAY_TICKS, STAY_RECOVER_TICKS = 2, 2, 8
 -- The shower: 2 turns of a quarter every 10 ticks, not following his
 -- action. Its spawner leaves its row, the element and 10 << 16 as its
 -- position.
-local SHOWER = { turns = 2, quarter_ticks = 0xA, follows_action = false }
+local SHOWER: DripShower = { turns = 2, quarter_ticks = 0xA, follows_action = false }
 local SHOWER_Z = 0xA_0000
 
 local RISE_TICKS, BACK_TICKS = 6, 8
@@ -151,7 +151,7 @@ local function back(me: Object, s: State)
     end
 end
 
-local PHASES = {
+local PHASES: { [number]: (me: Object, s: State) -> () } = {
     [WIND_UP] = wind_up,
     [JUMP] = jump,
     [LAND] = land,

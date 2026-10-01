@@ -26,6 +26,9 @@ collision.thrown = define.collision { id = "thrown", side0 = 0x80000088, side1 =
 -- A slash (row 0x07: the swords' hits).
 collision.slash = define.collision { id = "slash", side0 = 0x80002080, side1 = 0x40002080, row_offset = 0x38 }
 
+-- A thrown slash (row 0x1C: AntiDmg's and BodyGrd's shurikens).
+collision.thrown_slash = define.collision { id = "thrown-slash", side0 = 0x80002088, side1 = 0x40002088, row_offset = 0xE0 }
+
 -- An attack that pierces invisibility and flashing (row 0x0B: the
 -- FlashBomb's flash).
 collision.piercing = define.collision { id = "piercing", side0 = 0x80000084, side1 = 0x40000084, row_offset = 0x58 }
@@ -128,7 +131,7 @@ collision.floating_navi = define.collision {
 collision.thrown_break = define.collision { id = "thrown-break", side0 = 0x8000008a, side1 = 0x4000008a, row_offset = 0xA8 }
 
 -- A thrown attack that pierces and breaks (row 0x17: Django's Gun del
--- Sol, a flying shot variant).
+-- Sol, a flying shot variant, Guardian's strike).
 collision.thrown_piercing_break = define.collision {
     id = "thrown-piercing-break",
     side0 = 0x8000008e,
@@ -152,7 +155,7 @@ collision.attack_90 = define.collision { id = "attack-90", side0 = 0x80000090, s
 collision.pushing = define.collision { id = "pushing", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }
 
 -- The VDoll curse's hits (row 0x19: a thrown attack that pierces; JudgeMan's
--- lash too).
+-- lash and GrabBnsh's hit too).
 collision.curse = define.collision { id = "curse", side0 = 0x8000008c, side1 = 0x4000008c, row_offset = 0xC8 }
 
 -- An attack of row 0x25 (the wide shot's variant nothing fires).
@@ -162,7 +165,7 @@ collision.attack_480 = define.collision { id = "attack-480", side0 = 0x80000480,
 collision.attack_a0 = define.collision { id = "attack-a0", side0 = 0x800000a0, side1 = 0x400000a0, row_offset = 0x238 }
 
 -- A neutral body, while dimmed too (row 0x0E: a VDoll that landed, AirSpin's
--- top, a rock, a boulder).
+-- top, a rock, a boulder, Guardian's statue, an encased obstacle's bubble).
 collision.neutral_body = define.collision { id = "neutral-body", side0 = 0x00810082, side1 = 0x00810082, row_offset = 0x70 }
 
 -- A probe (row 0x3D): what finds the first thing its target type reaches

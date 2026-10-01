@@ -4,7 +4,7 @@
 -- ticks on the paralysis timer. The freezing ones cancel the flinch and the
 -- bubbling ones survive a counter hit, as BN6's do.
 
-local PLAIN = {
+local PLAIN: { string } = {
     "paralyze-90", "paralyze-120", "paralyze-150", "paralyze-4", "paralyze-300", "paralyze-600",
     "confuse-480-past-paralyze", "confuse-720-past-paralyze", "confuse-960-past-paralyze",
     "confuse-4-past-paralyze", "confuse-300-past-paralyze", "confuse-600-past-paralyze",
@@ -29,10 +29,10 @@ local PLAIN = {
     "timer-64-65535-2", "timer-00-150", "timer-ff-0-3", "timer-01-65535", "timer-00-200",
     "timer-ff-100", "timer-01-65535-2",
 }
-local FREEZING = {
+local FREEZING: { string } = {
     "freeze-150", "freeze-150-2", "freeze-150-3", "freeze-4", "freeze-300", "freeze-600",
 }
-local BUBBLING = {
+local BUBBLING: { string } = {
     "bubble-150", "bubble-150-2", "bubble-150-3", "bubble-4", "bubble-300", "bubble-600",
 }
 

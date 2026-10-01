@@ -7,14 +7,14 @@
 //! pack; the modules make *definitions* (docs/design/content-model-v2.md):
 //! records in registries ([`registry`]), each with a key that interns to a
 //! dense handle when content loads. What content implements is found by
-//! definition slot, or (until the model v2 migration ends) by module export
-//! registered from the pack's data (see [`host`]):
+//! definition slot (see [`host`]):
 //!
 //! - *object kinds*: the schema of a kind's own state ([`state::Schema`]:
 //!   named, typed fields the core stores next to the object) and its update;
 //! - *navi actions*: an action's state and update;
-//! - *hooks*: ruleset tables content fills (weapon routines, dimming chips'
-//!   dimming controllers, navi chips' navis).
+//! - *hooks*: the other function slots the ruleset calls (a weapon's setup,
+//!   a dimming chip's `dimming`, a navi chip's `navi`, an instant chip's
+//!   `instant`).
 //!
 //! Content functions are stateless: everything they keep between ticks
 //! lives in engine-owned state, reached through [`CoreApi`]. That is what
@@ -22,8 +22,8 @@
 //! docs/design/scripting.md).
 //!
 //! A runtime (Luau) implements [`ContentHost`]; the engine implements
-//! [`CoreApi`], plans what the runtime binds ([`BindPlan`]) and builds the
-//! scripts' [`Data`] from the pack.
+//! [`CoreApi`] and plans what the runtime binds ([`BindPlan`]) from the
+//! definitions the runtime read back as [`Data`].
 
 pub mod api;
 pub mod assets;
@@ -47,7 +47,7 @@ pub use api::AfterimageSpec;
 pub use api::{ObstacleHold, ObstaclePush, WindSource};
 pub use assets::{AssetKind, AssetNames};
 pub use data::{Data, Key as DataKey};
-pub use definitions::{Definition, Definitions, ModuleExports};
+pub use definitions::{Definition, Definitions};
 pub use host::{
     BindPlan, ContentError, ContentHost, DimmingChipSpec, FnId, FnSource, HookCall,
     InstantChipSpec, Manifest, NaviChipSpec, PlaceSpec,
