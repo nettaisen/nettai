@@ -35,11 +35,11 @@ local PASSES = { [0] = { require = 0x10000, forbid = 0x05800000 }, [1] = { requi
 local SOUND_TWANG = asset.sound("twang")
 
 -- `sub_80ECF00`: an arrow over (x, y), leaving after `delay` ticks: at the
--- panel's center a pixel up, at the navi's hand height (its NameID's
--- attach point, a number until identities come).
+-- panel's center a pixel up, at the navi's hand height (its sprite's
+-- attach point, `sub_8018810`).
 local function arrow(me: Object, x: number, y: number, delay: number)
     local cx, cy = field.center(x, y)
-    local _, az = battle.attach_point(me.name_id, HAND, me.alliance, me.flip)
+    local _, az = me:attach_point(HAND)
     local damage = me.attack_damage + me.hit_param * 0x10000
     -- (The game passes the attack variables' address as the shot's word;
     -- an arrow doesn't read it.)

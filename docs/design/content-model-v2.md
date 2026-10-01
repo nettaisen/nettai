@@ -1220,11 +1220,12 @@ What it settled:
   its rows by number privately and exports the chips' by name (`puck.variants.airhocky`,
   `wave.variants.pwrwave`, `shield.looks.rflectr2`), and an action's form no chip has is a definition with
   its own compat key (`tornado/back-spread`, `recov/none`).
-- **Asset names**: the sprites `yoyo-arm`, `burner`, `burner-2`, `bow`, `drill-arm`, `hand-fan`, `shock-wave` and
-  `beast-shot` (compat/assets.toml and curation.toml).
-- **What stays numeric**: the NameID attach points (TrnArrw's arrows, the flame at its owner's hand), the
-  absorbed obstacle's sprite (objects/absorbed-obstacle's `sprite`, by its kind number), statuses and bug codes,
-  elements (the attack's element byte), Beast forms by number (the Reflector's head animation).
+- **Asset names**: the sprites `yoyo-arm`, `burner`, `burner-2`, `drill-arm`, `hand-fan` and `shock-wave`
+  (compat/assets.toml and curation.toml).
+- **What stays numeric**: statuses and bug codes, elements (the attack's element byte), Beast forms by number
+  (the Reflector's head animation), and in the shims the subtype or parameter that picks a record's action.
+  TrnArrw's arrows and the flame take their navi's hand from its sprite's attach point (`me:attach_point`), not
+  from a NameID.
 - **Verified** on the test content (CrakShot's duel and its rollback, Recov50's heal, Rflectr1's guard and
   wave), the type check, and the traces and the chip lab on a pack extracted with asset names: every scenario of
   these families matches as before.
