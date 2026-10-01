@@ -1386,6 +1386,13 @@ impl CoreApi for Battle {
         self.objects.sprite_mut(o).update(&self.content);
     }
 
+    fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32) {
+        let s = self.objects.sprite(o);
+        s.id
+            .and_then(|id| self.content.animations.part_offset(id, s.anim, s.frame, n as usize))
+            .map_or((0, 0), |(x, y)| (x as i32, y as i32))
+    }
+
     fn sprite_get(&self, o: ObjectRef, f: SpriteField) -> Value {
         let s = self.objects.sprite(o);
         let look = &s.look;

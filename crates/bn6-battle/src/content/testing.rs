@@ -1682,5 +1682,5 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x0C, index: 0x23 }, [rise_and_stand.clone(), rise_and_stand].concat());
     sprites.insert(SpriteId { category: 0x0C, index: 0x22 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
     sprites.insert(SpriteId { category: 0x0C, index: 0x35 }, vec![vec![f(20, LAST | LOOP)], vec![f(4, 0), f(8, LAST)]]);
-    Animations { sprites }
+    Animations { sprites, ..Default::default() }
 }

@@ -691,6 +691,10 @@ impl UserData for Sprite {
             with(|api, _| Ok(api.sprite_set_animation(this.0, anim)))
         });
         methods.add_method("step", |_, this, ()| with(|api, _| Ok(api.sprite_step(this.0))));
+        methods.add_method("part_offset", |_, this, n: LuaValue| {
+            let n = u8_arg(n, "n")?;
+            with(|api, _| Ok(api.sprite_part_offset(this.0, n)))
+        });
         methods.add_method("set_flip", |_, this, flip: LuaValue| {
             let flip = u8_arg(flip, "flip")?;
             with(|api, _| {

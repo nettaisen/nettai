@@ -1334,6 +1334,9 @@ pub trait CoreApi {
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8);
     /// Advance the animation one tick (no gating).
     fn sprite_step(&mut self, o: ObjectRef);
+    /// `sub_80030BA`: where part `n` of the current frame sits, in pixels
+    /// from the object, unflipped; (0, 0) when the frame has fewer parts.
+    fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32);
     fn sprite_get(&self, o: ObjectRef, f: SpriteField) -> Value;
     fn sprite_set(&mut self, o: ObjectRef, f: SpriteField, v: Value) -> ApiResult<()>;
 
