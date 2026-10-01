@@ -77,7 +77,7 @@ local function fall(me: Object)
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = HIT_MOD,
-        status = 0,
+        status = nil,
         bug = BUG,
         bug_arg = BUG_ARG,
     })

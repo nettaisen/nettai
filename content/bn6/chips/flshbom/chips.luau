@@ -6,6 +6,7 @@
 
 local flash_bomb = require("./bomb")
 local lockon = require("../../rules/lockon")
+local statuses = require("../../rules/status")
 local throw = require("../../lib/bombs/throw")
 
 -- A level's throw (`byte_80D9A20`'s row).
@@ -31,7 +32,7 @@ return {
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.stay },
-        action = level(0, { ticks = 0x3C, hp = 0x0A, status = 0x10, final_status = 0x00, palette = 0x0 }),
+        action = level(0, { ticks = 0x3C, hp = 0x0A, status = statuses.paralyze_90, final_status = nil, palette = 0x0 }),
     },
     define.chip {
         id = "flshbom2",
@@ -45,7 +46,7 @@ return {
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.stay },
-        action = level(3, { ticks = 0x3C, hp = 0x0F, status = 0x12, final_status = 0x00, palette = 0x3 }),
+        action = level(3, { ticks = 0x3C, hp = 0x0F, status = statuses.paralyze_150, final_status = nil, palette = 0x3 }),
     },
     define.chip {
         id = "flshbom3",
@@ -59,6 +60,6 @@ return {
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.stay },
-        action = level(6, { ticks = 0x3C, hp = 0x14, status = 0x12, final_status = 0x30, palette = 0x6 }),
+        action = level(6, { ticks = 0x3C, hp = 0x14, status = statuses.paralyze_150, final_status = statuses.blind_480, palette = 0x6 }),
     },
 }
