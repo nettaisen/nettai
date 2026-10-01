@@ -77,8 +77,13 @@ impl<'a> Resolver<'a> {
         for d in definitions.of(Registry::Weapon) {
             put(d, d.spec.field("legacy").field("routines").item(1).int());
         }
-        for d in definitions.of(Registry::Status).iter().chain(definitions.of(Registry::Lockon)) {
+        for d in definitions.of(Registry::Status) {
             put(d, d.spec.field("legacy").field("id").int());
+        }
+        // A lock-on mode reads as its handle (its place among the
+        // definitions, which are in key order).
+        for (i, d) in definitions.of(Registry::Lockon).iter().enumerate() {
+            put(d, Some(i as i64));
         }
         for d in definitions.of(Registry::Collision) {
             put(d, d.spec.field("row_offset").int().map(|o| o / 8));
@@ -247,7 +252,6 @@ struct StatusSection {
 struct LockonSection {
     column_shifts: Vec<i8>,
     clear_path: [PanelCondition; 2],
-    charged_sword_modes: Vec<u8>,
 }
 
 #[derive(Deserialize)]
@@ -442,7 +446,6 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
                 let s: LockonSection = r.read(spec, &at).map_err(e)?;
                 rules.lockon.column_shifts = s.column_shifts;
                 rules.lockon.clear_path = s.clear_path;
-                rules.lockon.charged_sword_modes = s.charged_sword_modes;
             }
             "sp-chips" => {
                 let s: SpChipsSection = r.read(spec, &at).map_err(e)?;
@@ -513,7 +516,7 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
     Ok(())
 }
 
-// ---- Collision types, statuses, lock-on modes ------------------------------------------------
+// ---- Collision types, statuses ------------------------------------------------
 
 fn registries(content: &mut Content, definitions: &Definitions) -> Result<(), ContentError> {
     // Collision types by row, when the content has no table of its own.
@@ -576,32 +579,6 @@ fn registries(content: &mut Content, definitions: &Definitions) -> Result<(), Co
         content.rules.status_effects = out;
     }
 
-    // Lock-on modes by mode.
-    let modes: Vec<&Definition> = definitions.of(Registry::Lockon).iter().filter(|d| !d.spec.field("legacy").is_nil()).collect();
-    if !modes.is_empty() {
-        let mut table: BTreeMap<i64, (LockonMode, &Definition)> = BTreeMap::new();
-        for d in modes {
-            let mode = d.spec.field("legacy").field("id").int().ok_or_else(|| err(d, "its legacy marker needs `id`"))?;
-            let mut spec = d.spec.clone();
-            strip(&mut spec, &["id", "legacy"]);
-            let mut j = Resolver::plain().json(&spec, &d.key).map_err(|m| err(d, m))?;
-            if let Json::Object(o) = &mut j {
-                o.insert("mode".into(), Json::from(mode));
-            }
-            let m: LockonMode = serde_json::from_value(j).map_err(|m| err(d, m))?;
-            if let Some((_, first)) = table.insert(mode, (m, d)) {
-                return Err(err(d, format!("lock-on mode {mode:#x} is also {}'s", first.key)));
-            }
-        }
-        let mut out = Vec::new();
-        for (expect, (mode, (m, d))) in table.into_iter().enumerate() {
-            if mode != expect as i64 {
-                return Err(err(d, format!("mode {mode:#x} leaves a gap ({expect:#x} is missing)")));
-            }
-            out.push(m);
-        }
-        content.rules.lockon.modes = out;
-    }
     Ok(())
 }
 
