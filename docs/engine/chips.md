@@ -1388,6 +1388,24 @@ and `sub_802CE8A` records {chip, bonus, damage word, user, object} (0x10 bytes p
 (`sub_802CEF4`). Note `sub_802CEA6` clears only the low half of the record's damage word. The pack's script:
 objects/trap-chip.
 
+**The traps' counters.** A trap that caught a hit sets its request on the navi, and the ruleset (`sub_801056A`,
+`sub_80105F2`; kinds/player/actions/reactive.rs) starts the counter by role (`define.roles`, rules/roles.luau).
+The counters are content:
+
+- AntiDmg's (action 0x47, `sub_80EE90C`; chips/antidmg/counter): the navi vanishes and throws a shuriken (attack
+  object #0xC2, `sub_80DD764`; chips/antidmg/shuriken) at a random enemy, or by the attack's variant 1 at the
+  nearest one ahead.
+- AntiSwrd's (action 0x48, `sub_80EEA3C`; chips/antiswrd/counter): three swings, each throwing a sonic boom
+  (attack object #0x58, lib/swords/sonic_boom; shot-chips.md §12.1).
+- BodyGrd's (action 0x4B, `sub_80EED56`; chips/bodygrd/counter): the navi vanishes and leaves a striker (effect
+  object #0x6E, `sub_80E8268`; chips/bodygrd/striker), a field object that drops ten shurikens (attack object
+  #0x5C, `sub_80CFEC4`; chips/bodygrd/shuriken) on the enemy navi.
+
+**Lab**: `chips/0x0bb-antidmg/counter` springs AntiDmg's trap: its counter and shuriken match (variant 0; all but
+two blocks of the throw, `sub_80EE996`). **Unverified**: AntiDmg's variant 1, AntiSwrd's counter and BodyGrd's
+counter with its striker and shuriken (no scenario springs those traps: 0 blocks of `sub_80EEA3C` and
+`sub_80EED56`).
+
 #### 3.6.10 The other dimming chips' controllers (`off_802CCB4`)
 
 Every subtype's controller is a T4 object on the standard dimming phases (`object_timefreezeBegin`, then actions
