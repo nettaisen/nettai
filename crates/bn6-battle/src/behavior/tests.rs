@@ -1567,6 +1567,40 @@ fn bugfix_plays() {
 }
 
 #[test]
+fn bugfix_ends_the_emotion_window_glitch() {
+    // sub_801E658: BugFix clears the save's emotion window glitch on every
+    // console, so their windows stop flickering (and drawing RNG1).
+    let chips = defined(BUGFIX_CHIPS);
+    let setup = || {
+        let mut s = scenario::setup_with_handles(&chips);
+        for p in &mut s.players {
+            p.console.emotion_window_glitch = true;
+        }
+        s
+    };
+    let tape = scenario::record_on_content(setup(), scenario::content(), 2400, 11);
+    let mut b = Battle::new(setup(), scenario::content());
+    let mut glitched = false;
+    let mut fixed = false;
+    for t in &tape {
+        b.tick(&t.input, t.events.clone());
+        let glitch = b.consoles.iter().map(|c| c.emotion_window.glitch).collect::<Vec<_>>();
+        if !fixed && b.objects.in_order().any(|r| b.kind_key(r) == "bugfix/controller") {
+            fixed = true;
+        }
+        if fixed {
+            if glitch == [false, false] {
+                assert!(glitched, "the glitch was on before BugFix");
+                return;
+            }
+        } else {
+            glitched |= glitch == [true, true];
+        }
+    }
+    panic!("BugFix used: {fixed}; the glitch on before it: {glitched}; it stayed");
+}
+
+#[test]
 fn the_panel_chips_play() {
     let d = duel(PANEL_CHIPS);
     assert!(d.ticks("panel-chips/controller") > 0, "the panel chips' controller: {:?}", d.seen);
