@@ -2,8 +2,10 @@
 
 The chip actions (`JumpTable80EAC60`, action ≥ 0x10) that neither fire the buster's projectile (attack #0) nor
 dim the screen, and the objects they spawn. Each is a pack script (docs/design/content-migration.md): the action in
-the first chip's folder, the chips that share it naming that module, the objects under `objects/`. This document
-describes what the original does; the scripts are the port.
+the first chip's folder, the chips that share it naming that module, the objects under `objects/`; those in
+content model v2 are builders and kinds by family, their records' actions behind a shim in the first chip's
+folder (docs/design/content-model-v2.md §5.8). This document describes what the original does; the scripts are
+the port.
 
 Conventions (chips.md §3.3):
 
@@ -25,18 +27,18 @@ framework's gap are listed with it. Branches no scenario reaches are marked **[u
 
 | action | handler | chips | objects | module |
 |---|---|---|---|---|
-| 0x18 | `sub_80EC02A` | 0x13 YoYo, 0x154 GreatYo | attack #0x52 yoyo, effect #0x70 GreatYo's controller | chips/013-yoyo, objects/yoyo, objects/great-yoyo |
-| 0x1F | `sub_80EC7A6` | 0x1E Thunder, 0x11F DarkThnd | attack #0x2A thunder ball | chips/01e-thunder, objects/thunder-ball |
-| 0x22 | `sub_80EC960` | 0x59 CrakShot, 0x5A DublShot, 0x5B TrplShot | attack #0x33 crack shot | chips/059-crakshot, objects/crack-shot |
-| 0x23 | `sub_80ECA34` | 0xBE CopyDmg | attack #0x28 copy mark | chips/0be-copydmg, objects/copy-mark |
-| 0x26 | `sub_80ECCB0` | 0x32 AirHocky, 0x155 PitHocky | attack #0x2E puck (and PitHocky's afterimages, effect #0x28) | chips/032-airhocky, objects/hockey-puck |
-| 0x27 | `sub_80ECD28` | 0x14..0x16 FireBrn, 0x143..0x145 WideBrn | attack #0x04 flame | chips/014-firebrn1, objects/flame |
-| 0x28 | `sub_80ECDFC` | 0x18..0x1A TrnArrw | attack #0xB flying shot (kind 2) | chips/018-trnarrw1, objects/flying-shot (group D's) |
-| 0x2C | `sub_80ED25C` | 0x7B..0x7D IronShl, 0x14D ParaShl | attack #0x34 iron shell | chips/07b-ironshl1, objects/iron-shell |
-| 0x2D | `sub_80ED2F8` | 0x1B..0x1D BblStar | attack #0x42 bubble star | chips/01b-bblstar1, objects/bubble-star |
-| 0x2E | `sub_80ED374` | 0x33 DrilArm | attack #0x71 drill | chips/033-drilarm, objects/drill |
-| 0x2F | `sub_80ED454` | 0x34 Tornado, 0x35 Static | attack #0x31 tornado | chips/034-tornado, objects/tornado |
-| 0x31 | `sub_80ED64C` | 0x5C..0x5E WaveArm, 0x149..0x14B PwrWave | attack #0x16 shock wave | chips/05c-wavearm1, objects/shock-wave |
+| 0x18 | `sub_80EC02A` | 0x13 YoYo, 0x154 GreatYo | attack #0x52 yoyo, effect #0x70 GreatYo's controller | chips/yoyo (yoyo, throw), chips/greatyo; shim chips/013-yoyo |
+| 0x1F | `sub_80EC7A6` | 0x1E Thunder, 0x11F DarkThnd | attack #0x2A thunder ball | chips/thunder (ball, shoot), chips/darkthnd; shim chips/01e-thunder |
+| 0x22 | `sub_80EC960` | 0x59 CrakShot, 0x5A DublShot, 0x5B TrplShot | attack #0x33 crack shot | chips/crakshot (chips, shot) |
+| 0x23 | `sub_80ECA34` | 0xBE CopyDmg | attack #0x28 copy mark | chips/copydmg (chip, mark) |
+| 0x26 | `sub_80ECCB0` | 0x32 AirHocky, 0x155 PitHocky | attack #0x2E puck (and PitHocky's afterimages, effect #0x28) | chips/airhocky (puck, flick), chips/pithocky; shim chips/032-airhocky |
+| 0x27 | `sub_80ECD28` | 0x14..0x16 FireBrn, 0x143..0x145 WideBrn | attack #0x04 flame | lib/burner (burn, flame), chips/firebrn, chips/widebrn, HeatCross's charge; shim chips/014-firebrn1 |
+| 0x28 | `sub_80ECDFC` | 0x18..0x1A TrnArrw | attack #0xB flying shot (kind 2) | chips/trnarrw, objects/flying-shot (its arrow variant); shim chips/018-trnarrw1 |
+| 0x2C | `sub_80ED25C` | 0x7B..0x7D IronShl, 0x14D ParaShl | attack #0x34 iron shell | chips/ironshl (shell, throw), chips/parashl; shim chips/07b-ironshl1 |
+| 0x2D | `sub_80ED2F8` | 0x1B..0x1D BblStar | attack #0x42 bubble star | chips/bblstar (chips, star) |
+| 0x2E | `sub_80ED374` | 0x33 DrilArm | attack #0x71 drill | chips/drilarm, objects/drill |
+| 0x2F | `sub_80ED454` | 0x34 Tornado, 0x35 Static | attack #0x31 tornado | chips/tornado (chips, tornado); shim chips/034-tornado |
+| 0x31 | `sub_80ED64C` | 0x5C..0x5E WaveArm, 0x149..0x14B PwrWave | attack #0x16 shock wave | chips/wavearm (wave, strike), chips/pwrwave; shim chips/05c-wavearm1 |
 | 0x32 | `sub_80ED6E6` | 0x3D..0x3F AquaNdl | effect #0x40 needle volley, attack #0x50 aqua needle | chips/aquandl (action, volley, needle) |
 | 0x34 | `sub_80ED810` | 0x152 H-Burst | attack #0x9E hyper burst | chips/h-burst (action, burst) |
 | 0x36 | `sub_80ED9AE` | 0x28..0x2A RlngLog | attack #0x66 rolling log | chips/rlnglog (action, log) |
@@ -91,8 +93,8 @@ attachment shows), lib/swords/vari.luau, and group G1's lib/region.luau and lib/
   the panel's element, turns it normal and doubles its damage.
 - **0x31 WaveArm, PwrWave.** The navi strikes the ground; on timer 0xD a shock wave starts on the panel ahead
   (PwrWave also from its own column one row up and down); 32 ticks. The wave's look, ticks and panel mark come from
-  its variant (`byte_80C6B00`, pack data in objects/shock-wave); WaveArm's variants 0xC..0xE steer toward an
-  enemy's row.
+  its variant (`byte_80C6B00`, the variant records in chips/wavearm/wave.luau); WaveArm's variants 0xC..0xE
+  steer toward an enemy's row.
 - **0x32 AquaNdl.** The volley picks three targets among the enemies alive at the start (viruses first, then
   navis; with two, the third is the one with more HP, a tie drawn at random), farthest first, and drops a needle
   every 8 ticks: 12 ticks down, one tick hitting, 12 blinking out.
