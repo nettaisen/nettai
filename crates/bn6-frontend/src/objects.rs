@@ -10,6 +10,7 @@
 //! recent part first (`copyTo_iObjectAttr3001D70_3006814`): a part drawn
 //! later, or lower on the field, ends up in front.
 
+use crate::audit::Problems;
 use crate::compose::SpritePart;
 use bn6_assets::{Bundle, Palette};
 use bn6_battle::Battle;
@@ -147,8 +148,18 @@ fn is(b: &Battle, o: &Object, kind: EngineKind) -> bool {
     b.content.defs.engine_kind(o.kind) == Some(kind)
 }
 
-/// Queue every visible object's sprite.
-pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut SpriteList<'a>) {
+/// A sprite as content names it (the pack's asset index), for a problem's
+/// text.
+pub fn sprite_name(b: &Battle, id: bn6_battle::content::SpriteId) -> String {
+    match b.content.assets.sprites.iter().find(|(_, s)| **s == id) {
+        Some((name, _)) => format!("sprite {name:?}"),
+        None => format!("sprite {:02x}-{:02x}", id.category, id.index),
+    }
+}
+
+/// Queue every visible object's sprite. What an object names that the
+/// pack's graphics don't have goes to `problems`.
+pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut SpriteList<'a>, problems: &mut Problems) {
     for pool in Pool::ALL {
         for r in b.objects.in_order().filter(|r| r.pool == pool) {
             let o = b.objects.get(r);
@@ -159,9 +170,25 @@ pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut
             }
             let s = b.objects.sprite(r);
             let Some(id) = s.id else { continue };
-            let Some(sheet) = assets.sprite(id.category, id.index) else { continue };
-            let Some(frames) = sheet.animations.get(s.anim as usize) else { continue };
-            let Some(frame) = frames.get(s.frame as usize).or(frames.last()) else { continue };
+            let kind = || &b.content.defs.kind(o.kind).key;
+            let Some(sheet) = assets.sprite(id.category, id.index) else {
+                problems.note(format!("{} of kind {:?} is not in the pack's graphics", sprite_name(b, id), kind()));
+                continue;
+            };
+            let Some(frames) = sheet.animations.get(s.anim as usize) else {
+                problems.note(format!(
+                    "{} has no animation {} (kind {:?}; it has {})",
+                    sprite_name(b, id),
+                    s.anim,
+                    kind(),
+                    sheet.animations.len()
+                ));
+                continue;
+            };
+            let Some(frame) = frames.get(s.frame as usize).or(frames.last()) else {
+                problems.note(format!("{} animation {} has no frames (kind {:?})", sprite_name(b, id), s.anim, kind()));
+                continue;
+            };
             let parts = &sheet.part_lists[frame.parts as usize];
             let tiles = &sheet.tilesets[frame.tileset as usize];
             let look = s.look;
@@ -196,10 +223,19 @@ pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut
             let palette = if look.white && !form_overlay || owner_white() {
                 WHITE
             } else {
-                let p = sheet.palette_sets[frame.palette_set as usize]
-                    .get(look.palette.wrapping_add(first_palette) as usize)
-                    .copied()
-                    .unwrap_or([0; 16]);
+                let set = &sheet.palette_sets[frame.palette_set as usize];
+                let index = look.palette.wrapping_add(first_palette) as usize;
+                let p = set.get(index).copied().unwrap_or_else(|| {
+                    problems.note(format!(
+                        "{} has no palette {index} (kind {:?} asks for {} on animation {}; the set has {})",
+                        sprite_name(b, id),
+                        kind(),
+                        look.palette,
+                        s.anim,
+                        set.len()
+                    ));
+                    [0; 16]
+                });
                 shade(p, look.color_shader)
             };
 

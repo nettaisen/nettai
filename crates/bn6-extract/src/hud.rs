@@ -2,7 +2,8 @@
 //! the ROM; the HUD tasks (`sub_801BF64`) copy it to VRAM as needed.
 
 use crate::{Rom, u32at};
-use bn6_assets::{BannerLayout, Hud, MapEntry, Palette, Tiles, palettes_from_bytes};
+use bn6_assets::{BannerLayout, ChipIcon, Hud, MapEntry, Palette, Tiles, palettes_from_bytes};
+use bn6_content::names::AssetNames;
 
 /// HUD layer tiles 0x1A0..=0x1D1: HP digits and blank, the box border,
 /// damage digits, '+' (list `off_801ECB4`).
@@ -20,10 +21,7 @@ const GAUGE_FRAME: u32 = 0x0801_ED6C;
 /// The 8x16 font (glyph k = 0x40 bytes).
 const FONT: u32 = 0x086B_7AE0;
 const FONT_GLYPHS: u32 = 0xA0;
-/// Chip name archives (ids 0..=0xFF, then 0x100..).
-const CHIP_NAMES: [u32; 2] = [0x086E_A94C, 0x086E_B354];
-/// ChipData: 0x2C bytes per chip; +0x09 flags (bit 1: shows damage),
-/// +0x20 icon pointer.
+/// ChipData: 0x2C bytes per chip; +0x20 icon pointer.
 const CHIP_DATA: u32 = 0x0802_1DA8;
 const CHIP_COUNT: u32 = 411;
 /// The opponent's HP digits by colour, and their sprite palette.
@@ -40,10 +38,10 @@ const COUNTS: u32 = 0x0872_E994;
 const COUNT_BOX: u32 = 0x0872_D914;
 /// Mugshot emotion by transformation (`byte_801E700`).
 const FORM_EMOTIONS: u32 = 0x0801_E700;
-/// Banner descriptors (`pt_801EF84`), their glyph filler, digits and
-/// palette.
+/// Banner descriptors (`pt_801EF84`: every banner up to the navis' win
+/// and deletion banners), their glyph filler, digits and palette.
 const BANNERS: u32 = 0x0801_EF84;
-const BANNER_COUNT: u32 = 20;
+const BANNER_COUNT: u32 = 47;
 const BANNER_FILLER: u32 = 0x0801_FDC0;
 const BANNER_DIGITS: u32 = 0x086F_1DC0;
 const BANNER_PALETTE: u32 = 0x086F_2900;
@@ -61,21 +59,6 @@ fn palette(rom: &Rom, a: u32) -> Palette {
 
 fn map(rom: &Rom, a: u32, n: u32) -> Vec<MapEntry> {
     (0..n).map(|i| MapEntry::from_gba(rom.u16(a + 2 * i))).collect()
-}
-
-fn chip_name(rom: &Rom, id: u32) -> Vec<u8> {
-    let archive = CHIP_NAMES[(id >> 8) as usize];
-    let mut a = archive + rom.u16(archive + 2 * (id & 0xFF)) as u32;
-    let mut name = Vec::new();
-    while name.len() < 8 {
-        let c = rom.u8(a);
-        if c == 0xE6 {
-            break;
-        }
-        name.push(c);
-        a += 1;
-    }
-    name
 }
 
 fn banner(rom: &Rom, id: u32) -> BannerLayout {
@@ -107,7 +90,9 @@ fn banner(rom: &Rom, id: u32) -> BannerLayout {
     BannerLayout { x, y, kind, glyphs, number_at }
 }
 
-pub fn hud(rom: &Rom) -> Hud {
+/// The HUD's graphics; `names` gives the chip icons their chips' keys and
+/// the font its characters.
+pub fn hud(rom: &Rom, names: &AssetNames) -> Hud {
     let mut hud_tiles = tiles(rom, HUD_TILES, 0x640);
     for g in [TIMES_GLYPH, TWO_GLYPH] {
         let t = tiles(rom, g, 0x40);
@@ -129,14 +114,14 @@ pub fn hud(rom: &Rom) -> Hud {
         hp_box: map(rom, HP_BOX, 12),
         gauge_frame: map(rom, GAUGE_FRAME, 36),
         font: tiles(rom, FONT, 0x40 * FONT_GLYPHS as usize),
-        chip_names: (0..CHIP_COUNT).map(|id| chip_name(rom, id)).collect(),
-        chip_shows_damage: (0..CHIP_COUNT).map(|id| rom.u8(chip(id) + 9) & 2 != 0).collect(),
+        font_chars: names.glyphs.iter().take(FONT_GLYPHS as usize).cloned().collect(),
         enemy_digits: ENEMY_DIGITS.map(|a| tiles(rom, a, 0x40 * 10)),
         enemy_palette: palette(rom, ENEMY_PALETTE),
         chip_icons: (0..CHIP_COUNT)
             .map(|id| {
                 let p = u32at(rom, chip(id) + 0x20);
-                if (0x0800_0000..0x0A00_0000).contains(&p) { tiles(rom, p, 0x80) } else { Tiles::default() }
+                let icon = if (0x0800_0000..0x0A00_0000).contains(&p) { tiles(rom, p, 0x80) } else { Tiles::default() };
+                ChipIcon { key: names.chip_icon(id as u16), tiles: icon }
             })
             .collect(),
         hidden_icon: tiles(rom, HIDDEN_ICON, 0x80),

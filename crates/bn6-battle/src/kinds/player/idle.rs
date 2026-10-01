@@ -393,6 +393,9 @@ fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Optio
         o.stamina = 0;
         let telop = bn6_content_api::Value::Int(support.telop_chip() as i64);
         crate::behavior::set_state_field(b, c, "telop_chip", telop);
+        // The same for the presentation.
+        let named = b.content.chip_numbered(support.telop_chip());
+        b.objects.get_mut(c).telop_chip = named.map(|chip| crate::dimming::DimmingChip { chip: Some(chip), bonus: 0 });
     }
     b.start_dimming(side, true, controller, host);
 }

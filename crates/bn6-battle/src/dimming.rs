@@ -10,7 +10,7 @@
 use crate::battle::{Battle, FadeMode, battle_flags};
 use crate::content::{BannerId, ChipId};
 use bn6_content_api::ChipHandle;
-use crate::hud::BannerStatus;
+use crate::hud::{BannerStatus, Telop, TelopHidden};
 use crate::kinds::common::{self, Progress};
 use crate::object::{ObjectRef, state};
 
@@ -210,9 +210,15 @@ fn telop(b: &mut Battle, r: ObjectRef, no_cut_in_runs: bool) {
             return;
         }
         // (The HUD's other parts hide.) The telop: the chip's name, with its
-        // damage and bonus for damaging chips.
-        let banner = if b.is_remote(side) { REMOTE_TELOP } else { LOCAL_TELOP };
-        b.start_banner(banner);
+        // damage and bonus for damaging chips. A hidden chip's shows the
+        // other player "????", and its user too if its fourth parameter
+        // says so.
+        let hidden = match (no_cut_in_runs, b.objects.get(r).params[3]) {
+            (true, _) => TelopHidden::No,
+            (false, 1) => TelopHidden::FromBoth,
+            (false, _) => TelopHidden::FromOpponent,
+        };
+        start_telop(b, r, side, hidden);
         b.play_sound(crate::sound::SoundId(0x173));
         b.objects.get_mut(r).phase_init = 4;
         return;
@@ -229,6 +235,25 @@ fn telop(b: &mut Battle, r: ObjectRef, no_cut_in_runs: bool) {
     let rec = b.dimming[side as usize];
     let user_alive = rec.user.is_some_and(|u| b.objects.get(u).hp != 0);
     advance(b, r, if (no_cut_in_runs && rec.no_cut_in) || user_alive { 1 } else { 2 });
+}
+
+/// The telop of controller `r`, `side`'s (`sub_801E792` with banner 0x4C
+/// or 0x50, the controller's chip, and for a chip whose damage shows the
+/// controller's damage and the chip's bonus): what it says is
+/// presentation, kept with the banner.
+fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
+    let o = b.objects.get(r);
+    let named = o.telop_chip;
+    // A controller's zeroed chip field names the pack's chip 0.
+    let chip = named.and_then(|c| c.chip.or_else(|| b.content.chip_numbered(0)));
+    let shows_damage = chip.is_some_and(|c| b.content.chip(c).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0);
+    let (damage, bonus) = if shows_damage { (o.damage, named.map_or(0, |c| c.bonus)) } else { (0, 0) };
+    let telop =
+        Telop { side, chip, damage: damage & 0x7FF, doubled: damage & 0x8000 != 0, bonus: bonus & !0x7800, hidden };
+    let banner = if b.is_remote(side) { REMOTE_TELOP } else { LOCAL_TELOP };
+    if b.start_banner(banner) {
+        b.banner.telop = Some(telop);
+    }
 }
 
 /// Navi chips (0xDD..=0x118) that AntiNavi turns back.
@@ -320,7 +345,11 @@ fn anti_navi_turn(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance;
     if b.objects.get(r).phase_init == 0 {
         let banner = if b.is_remote(side ^ 1) { REMOTE_TELOP } else { LOCAL_TELOP };
-        b.start_banner(banner);
+        let chip = b.content.chip_numbered(ANTI_NAVI);
+        let telop = Telop { side: side ^ 1, chip, damage: 0, doubled: false, bonus: 0, hidden: TelopHidden::No };
+        if b.start_banner(banner) {
+            b.banner.telop = Some(telop);
+        }
         b.play_sound(TELOP_SOUND);
         b.objects.get_mut(r).phase_init = 4;
         return;
@@ -368,8 +397,10 @@ pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
                 return;
             }
         }
-        let banner = if b.is_remote(side) { REMOTE_TELOP } else { LOCAL_TELOP };
-        b.start_banner(banner);
+        if b.objects.get(r).telop_chip.is_none() {
+            b.objects.get_mut(r).telop_chip = Some(DimmingChip { chip, bonus: 0 });
+        }
+        start_telop(b, r, side, TelopHidden::No);
         b.play_sound(TELOP_SOUND);
         b.objects.get_mut(r).phase_init = 4;
         return;

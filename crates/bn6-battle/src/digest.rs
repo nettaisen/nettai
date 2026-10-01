@@ -15,7 +15,9 @@
 //!
 //! - the tick's sound cues (`Battle::sound_cues`);
 //! - how sprites are drawn ([`Look`](crate::object::sprite::Look));
-//! - which banner is showing ([`Banner::id`](crate::hud::Banner::id));
+//! - which banner is showing ([`Banner::id`](crate::hud::Banner::id)) and
+//!   what a telop says ([`Banner::telop`](crate::hud::Banner::telop), from
+//!   the controller's `Object::telop_chip`);
 //! - the objects' `VISIBLE` header flag.
 //!
 //! Also left out: the behaviors handle (`Battle::behaviors`), which is
@@ -269,6 +271,7 @@ impl Hash for Object {
             actor,
             saved_state,
             vars,
+            telop_chip: _,
         } = self;
         (header & !flags::VISIBLE).hash(h);
         kind.hash(h);
@@ -298,7 +301,7 @@ impl Hash for Sprite {
 /// A banner's lifetime (flow code waits on it), without which banner it is.
 impl Hash for Banner {
     fn hash<H: Hasher>(&self, h: &mut H) {
-        let Banner { active, step, timer, holds, id: _ } = self;
+        let Banner { active, step, timer, holds, id: _, telop: _ } = self;
         (active, step, timer, holds).hash(h);
     }
 }

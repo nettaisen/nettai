@@ -1,5 +1,6 @@
 //! Rendering chosen frames to PNG files without a window.
 
+use crate::audit::Problems;
 use crate::compose::{HEIGHT, WIDTH, to_rgb};
 use crate::render::Renderer;
 use crate::session::Session;
@@ -60,6 +61,7 @@ pub fn render_frames(
         while s.step(0) {
             renderer.observe(&s.battle);
             let Some(f) = s.frame else { continue };
+            renderer.problems.at(Some(f));
             if wanted.contains(&f) {
                 let frame = renderer.render(&s.battle);
                 write_png(&out.join(format!("frame_{f:05}.png")), &frame, scale)?;
@@ -80,6 +82,55 @@ pub fn render_frames(
         }
     }
     Ok(written)
+}
+
+/// What an audit found.
+#[derive(Clone, Debug, Default)]
+pub struct Audit {
+    /// Frames drawn.
+    pub frames: u32,
+    /// Sound cues played.
+    pub cues: u32,
+    /// What the frames and the cues named that the pack doesn't have.
+    pub problems: Problems,
+    /// Sessions the engine stopped, or that left their trace.
+    pub stopped: Vec<String>,
+}
+
+/// Run sessions to their end, drawing every frame and playing every
+/// tick's sound cues into nothing (with `sound`, the pack's): everything a
+/// battle shows and plays is asked of the pack once, and what it lacks is
+/// collected (see [`crate::audit`]).
+pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<std::sync::Arc<m4a::SoundBank>>) -> Audit {
+    let mut out = Audit::default();
+    renderer.problems.clear();
+    let mut audio = sound.clone().map(bn6_audio::BattleAudio::new);
+    let mut samples = Vec::new();
+    for mut s in sessions {
+        renderer.reset();
+        while s.step(0) {
+            renderer.observe(&s.battle);
+            renderer.problems.at(s.frame);
+            renderer.render(&s.battle);
+            out.frames += 1;
+            let cues = s.battle.sound_cues();
+            out.cues += cues.len() as u32;
+            if let Some(bank) = &sound {
+                for &cue in cues {
+                    crate::audit::check_cue(&s.battle, bank, cue, &mut renderer.problems);
+                }
+            }
+            if let Some(a) = &mut audio {
+                a.handle(cues);
+                samples.clear();
+                a.tick(&mut samples);
+            }
+        }
+        out.stopped.extend(s.diverged.clone());
+        out.stopped.extend(s.stopped.clone().filter(|_| !s.finished));
+    }
+    out.problems = std::mem::take(&mut renderer.problems);
+    out
 }
 
 #[cfg(test)]

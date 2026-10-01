@@ -6,9 +6,10 @@ use crate::{Rom, lz77, u32at};
 use bn6_assets::*;
 use std::collections::HashMap;
 
-/// The battle graphics of a ROM.
-pub fn bundle(rom: &Rom) -> Bundle {
-    Bundle { sprites: sprites(rom), field: field(rom), backgrounds: backgrounds(rom), hud: crate::hud::hud(rom) }
+/// The battle graphics of a ROM; `names` gives the chip icons their keys
+/// and the font its characters.
+pub fn bundle(rom: &Rom, names: &bn6_content::names::AssetNames) -> Bundle {
+    Bundle { sprites: sprites(rom), field: field(rom), backgrounds: backgrounds(rom), hud: crate::hud::hud(rom, names) }
 }
 
 /// Bytes starting at a ROM address.
