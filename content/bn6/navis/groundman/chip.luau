@@ -57,7 +57,7 @@ local ROCK_TARGETS = { [0] = { 0x0400_0020, 0 }, { 0x0800_0000, 0x20 } }
 
 -- His rocks: 10 ticks' warning, waiting a dimming out, not cracking the
 -- panel.
-local ROCK = { warning = 0xA, while_dimmed = false, cracks = false, silent = false }
+local ROCK: GroundRockDrop = { warning = 0xA, while_dimmed = false, cracks = false, silent = false }
 
 -- `sub_80F1C48`: the drill readied, nine rocks to drop; 12 ticks after the
 -- entry.
@@ -212,7 +212,7 @@ local function rest(me: Object, s: State)
     end
 end
 
-local PHASES = { [READY] = ready, [DIG] = dig, [ROCKFALL] = rockfall, [RISE] = rise, [HOME] = home, [REST] = rest }
+local PHASES: { [number]: (me: Object, s: State) -> () } = { [READY] = ready, [DIG] = dig, [ROCKFALL] = rockfall, [RISE] = rise, [HOME] = home, [REST] = rest }
 
 return define.chip {
     id = "rc-brakr",

@@ -5,8 +5,8 @@
 //! the pack once (the *define phase*): modules make definitions with
 //! `define.<registry>(spec)` (a chip, an object kind, an action...) and
 //! return tables of their own. The engine plans what it will call from the
-//! definitions and from what the pack's data still registers by module
-//! (`bn6_content_api::BindPlan`); the runtime binds those functions:
+//! definitions (`bn6_content_api::BindPlan`); the runtime binds those
+//! functions:
 //!
 //! ```luau
 //! local bomb = define.kind {
@@ -19,7 +19,7 @@
 //!
 //! `state` declares the kind's or action's typed state, which the engine
 //! stores and snapshots; the functions run on demand and keep nothing
-//! themselves. The pack's data is the frozen global `data`.
+//! themselves. What modules share they `require`.
 //!
 //! Loading enforces that: modules are checked for writes to globals and to
 //! module-level locals (`verify`), everything a module returns or captures
@@ -39,8 +39,8 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use bn6_content_api::{
-    AssetKind, AssetNames, BindPlan, ContentError, ContentHost, CoreApi, Data, DataKey, Definitions, FnId, FnSource,
-    HookCall, Manifest, ObjectRef, Registry, StateId, Value,
+    AssetKind, AssetNames, BindPlan, ContentError, ContentHost, CoreApi, Definitions, FnId, FnSource, HookCall, Manifest,
+    ObjectRef, Registry, StateId, Value,
 };
 use mlua::chunk::ChunkMode;
 use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
@@ -167,8 +167,7 @@ pub(crate) struct Bound {
     /// (definitions are frozen and live as long as the VM).
     defs: HashMap<usize, (Registry, u16)>,
     /// Each definition's table by registry and handle; for an entry that is
-    /// no definition (an engine kind, a v1 kind, a pack's chip record), a
-    /// stand-in `{ id = key }`.
+    /// no definition (an engine kind), a stand-in `{ id = key }`.
     tables: HashMap<(Registry, u16), Table>,
     /// Records' types, by handle.
     record_types: HashMap<u16, String>,
@@ -223,10 +222,9 @@ pub struct LuauContent {
 
 impl LuauContent {
     /// Load a pack's modules (the define phase), check they define what
-    /// `plan` was made from, and bind the functions `plan` names, with the
-    /// pack's data as the global `data`.
-    pub fn load(pack: &Pack, plan: &BindPlan, data: &Data, options: Options) -> Result<LuauContent, ContentError> {
-        let (lua, defined, modules, _, assets) = open(pack, data, &plan.assets, options)?;
+    /// `plan` was made from, and bind the functions `plan` names.
+    pub fn load(pack: &Pack, plan: &BindPlan, options: Options) -> Result<LuauContent, ContentError> {
+        let (lua, defined, _, _, assets) = open(pack, &plan.assets, options)?;
         if defined.definitions != plan.definitions {
             return Err(ContentError::new(format!(
                 "loading Luau content: the scripts define something other than what the content was made from ({})",
@@ -262,7 +260,7 @@ impl LuauContent {
         let mut functions = Vec::with_capacity(plan.functions.len());
         for source in &plan.functions {
             functions.push(
-                resolve_function(source, &defined, &modules)
+                resolve_function(source, &defined)
                     .map_err(|e| ContentError::new(format!("loading Luau content: {e}")))?,
             );
         }
@@ -342,13 +340,8 @@ impl LuauContent {
 /// Read a pack's definitions: the define phase, in a VM of its own (which
 /// is dropped). The engine makes its content from what this returns, and
 /// keeps the modules' bytecode for its runtimes (`Pack::with_compiled`).
-pub fn define(
-    pack: &Pack,
-    data: &Data,
-    assets: &AssetNames,
-    options: Options,
-) -> Result<(Definitions, Compiled), ContentError> {
-    open(pack, data, assets, options).map(|(_, defined, _, compiled, _)| (defined.definitions, compiled))
+pub fn define(pack: &Pack, assets: &AssetNames, options: Options) -> Result<(Definitions, Compiled), ContentError> {
+    open(pack, assets, options).map(|(_, defined, _, compiled, _)| (defined.definitions, compiled))
 }
 
 /// The first place two readings of the definitions differ, for messages.
@@ -364,7 +357,7 @@ fn first_difference(a: &Definitions, b: &Definitions) -> String {
     if a.defs.len() != b.defs.len() {
         return format!("{} definitions against {}", a.defs.len(), b.defs.len());
     }
-    "the modules' exports differ".to_string()
+    "nothing".to_string()
 }
 
 /// Module loading state (only while loading).
@@ -431,41 +424,11 @@ fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Res
     Ok(value)
 }
 
-/// The pack's data as Luau values.
-fn data_value(lua: &Lua, d: &Data) -> mlua::Result<LuaValue> {
-    Ok(match d {
-        Data::Nil | Data::Function => LuaValue::Nil,
-        Data::Bool(b) => LuaValue::Boolean(*b),
-        Data::Int(i) => LuaValue::Number(*i as f64),
-        Data::Str(s) => LuaValue::String(lua.create_string(s)?),
-        Data::Ref(r, k) => LuaValue::String(lua.create_string(format!("{r}:{k}"))?),
-        Data::Asset(kind, name) => LuaValue::String(lua.create_string(format!("{kind}:{name}"))?),
-        Data::List(items) => {
-            let t = lua.create_table_with_capacity(items.len(), 0)?;
-            for (i, v) in items.iter().enumerate() {
-                t.raw_set(i + 1, data_value(lua, v)?)?;
-            }
-            LuaValue::Table(t)
-        }
-        Data::Map(entries) => {
-            let t = lua.create_table_with_capacity(0, entries.len())?;
-            for (k, v) in entries {
-                let v = data_value(lua, v)?;
-                match k {
-                    DataKey::Int(i) => t.raw_set(*i as f64, v)?,
-                    DataKey::Str(s) => t.raw_set(s.as_str(), v)?,
-                }
-            }
-            LuaValue::Table(t)
-        }
-    })
-}
-
-/// A VM with the content API, `data`, `define` and `require`, every module
-/// of the pack loaded, and the define phase finished.
+/// A VM with the content API, `define` and `require`, every module of the
+/// pack loaded, and the define phase finished.
 type Opened = (Lua, define::Defined, BTreeMap<String, LuaValue>, Compiled, define::AssetTables);
 
-fn open(pack: &Pack, data: &Data, assets: &AssetNames, options: Options) -> Result<Opened, ContentError> {
+fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, ContentError> {
     let err = |e: mlua::Error| ContentError::new(format!("loading Luau content: {e}"));
     let lua = sandbox::new_vm(options.debug_print).map_err(err)?;
     #[cfg(feature = "jit")]
@@ -475,9 +438,6 @@ fn open(pack: &Pack, data: &Data, assets: &AssetNames, options: Options) -> Resu
         return Err(ContentError::new("native code needs bn6-luau's `jit` feature"));
     }
     bind::install(&lua).map_err(err)?;
-    let data = data_value(&lua, data).map_err(err)?;
-    sandbox::deep_freeze(&lua, &data).map_err(err)?;
-    lua.globals().set("data", data).map_err(err)?;
     let loader = Rc::new(RefCell::new(Loader {
         pack: pack.clone(),
         loaded: BTreeMap::new(),
@@ -530,7 +490,7 @@ fn open(pack: &Pack, data: &Data, assets: &AssetNames, options: Options) -> Resu
     let compiled = std::mem::take(&mut loader.borrow_mut().compiled);
     drop(loader);
     let assets = Rc::try_unwrap(assets).ok().expect("the resolvers hold the asset tables weakly").into_inner();
-    let defined = define::finish(&lua, &collector, &modules, &assets)
+    let defined = define::finish(&lua, &collector, &assets)
         .map_err(|e| ContentError::new(format!("loading Luau content: {e}")))?;
     // Nothing a script can reach may change after loading.
     lua.globals().set_readonly(true);
@@ -541,27 +501,15 @@ fn open(pack: &Pack, data: &Data, assets: &AssetNames, options: Options) -> Resu
 fn resolve_function(
     source: &FnSource,
     defined: &define::Defined,
-    modules: &BTreeMap<String, LuaValue>,
 ) -> Result<Function, String> {
-    let (table, what, path): (Table, String, &str) = match source {
-        FnSource::Export { module, name } => {
-            let t = match modules.get(module) {
-                Some(LuaValue::Table(t)) => t.clone(),
-                Some(v) => return Err(format!("{module}.luau returned {}, not a table", v.type_name())),
-                None => return Err(format!("no module {module}.luau in the pack")),
-            };
-            (t, format!("{module}.luau"), name)
-        }
-        FnSource::Slot { registry, key, path } => {
-            let defs = &defined.definitions.defs;
-            let i = defs
-                .iter()
-                .position(|d| d.registry == *registry && d.key == *key)
-                .ok_or_else(|| format!("no {registry} is defined as {key:?}"))?;
-            (defined.tables[i].clone(), format!("{registry} {key}"), path)
-        }
-    };
-    let mut at = LuaValue::Table(table);
+    let FnSource { registry, key, path } = source;
+    let defs = &defined.definitions.defs;
+    let i = defs
+        .iter()
+        .position(|d| d.registry == *registry && d.key == *key)
+        .ok_or_else(|| format!("no {registry} is defined as {key:?}"))?;
+    let what = format!("{registry} {key}");
+    let mut at = LuaValue::Table(defined.tables[i].clone());
     for segment in path.split('.') {
         let LuaValue::Table(t) = &at else {
             return Err(format!("{what}: `{path}` is not a function slot"));
