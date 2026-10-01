@@ -1841,7 +1841,7 @@ name is a load error naming the module. The resolved value is a handle into the 
 
 - **Names** come from compat/assets.toml, which the generator writes: the disassembly's song and sound enum names
   where they exist (`SONG_VIRUS_BATTLE` is `virus-battle`, `SOUND_HIT_BOMB_1` is `hit-bomb-1`), else a name from
-  the asset's first user (`erase-mark`), else a numbered placeholder (`sprite-0c-01`, `sound-101`, `banner-54`). The
+  the asset's first user (`erase-mark`), else a numbered placeholder (`sprite-0c-26`, `sound-101`, `banner-NN`). The
   table lists every asset the ROM has, so a placeholder is an entry too. Content may not use a placeholder (the
   checker warns); naming one is part of using it.
 - **The extractor** reads compat/assets.toml and writes `graphics/sprites/<name>/`, `sound/songs/<name>.mid`,
@@ -2735,7 +2735,7 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    `setup` with their own charge times), and every routine has its charge times (the TOML's
    rules/weapons.toml had 50 of the 148; a routine a navi's or form's stats name and nothing implements, like
    ProtoMan's 0x32, now charges as the game does). Content may not use a placeholder asset
-   name, so compat names what the tables use for its first user (`effect-0e`, `held-28`), for curation. The loader is
+   name, so compat names what the tables use for its first user (`effect-0e`, `held-28`, since curated as `hit-damage-judge`), for curation. The loader is
    `bn6_content::pack::load_battle(content, assets)`; bn6-extract writes assets only. The check: `gen-content
    check` defines the content root and compares every table with the ROM's (§3 of content-pack.md).
    A chip's `description` (what R shows on the custom screen: the battle reads its line count) and a navi's
