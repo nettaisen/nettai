@@ -44,7 +44,7 @@ local function arrow(me: Object, x: number, y: number, delay: number)
     -- (The game passes the attack variables' address as the shot's word;
     -- an arrow doesn't read it.)
     local pos = Vec3.new(cx, int.i32(cy - 0x10000), int.shl(az, 16))
-    flying_shot.spawn(me, pos, flying_shot.variants.arrow, damage, { wait = delay })
+    flying_shot.launch(me, pos, { variant = flying_shot.variants.arrow, wait = delay, damage = damage })
 end
 
 -- `sub_80ECE18`: the arrows, the bow; after 24 ticks the last arrow.

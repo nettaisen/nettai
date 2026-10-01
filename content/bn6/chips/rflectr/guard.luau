@@ -10,6 +10,7 @@
 local projectile = require("../../lib/projectile")
 local shield = require("./shield")
 local shot = require("./shot")
+local variants = require("../../objects/projectile/variants")
 
 local guard = {}
 
@@ -28,11 +29,10 @@ local BREAKS_GUARD = 0x2
 -- The wave's height, and its sound.
 local WAVE_Z = 0x10_0000
 local WAVE_SOUND = asset.sound("wave")
--- The NaviCust Reflect's shot: the buster's projectile (`sub_80C4FFE`) at
--- this height, of this kind (lib/projectile's, by number until the
--- projectile's kinds are records).
+-- The NaviCust Reflect's shot: the charged shot's projectile
+-- (`sub_80C4FFE`) at this height. (The game passes the literal 2 its flag
+-- test loaded as the shot's element, which the shot's init replaces.)
 local SHOT_Z = 0x14_0000
-local SHOT_KIND = 6
 
 -- The Beast forms whose head overlay mirrors the navi's animation (by
 -- form number, until forms are definitions).
@@ -70,7 +70,7 @@ function guard.action(spec: ReflectorGuard): Action
             shot.spawn(me, x, y, WAVE_Z, damage)
             battle.play_sound(WAVE_SOUND)
         elseif spec.counter == "shot" then
-            projectile.spawn(me, x, y, { kind = SHOT_KIND, damage = damage, z = SHOT_Z })
+            projectile.spawn(me, x, y, { variant = variants.charged, damage = damage, z = SHOT_Z })
         end
     end
 

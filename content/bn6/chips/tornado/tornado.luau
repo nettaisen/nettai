@@ -151,7 +151,7 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(collision.tornado, collision.hits_navis, 1)
+    me:setup_collision(collision.pushing, collision.hits_navis, 1)
     local c = me.collision
     c:set_hit_effect(sparks.of_element(me.element))
     local status = s.status

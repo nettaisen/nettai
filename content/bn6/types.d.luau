@@ -23,11 +23,121 @@ export type LinkChipState = {
     held2: Object?,
 }
 
--- What a projectile (attack object #0, objects/projectile) is fired with
+-- A projectile's variant (objects/projectile, the original's `off_80C4C78`
+-- rows): what it is and hits, its hit modifier, its element and secondary
+-- elements, its hit spark (nil: none), its look (none: not drawn), the
+-- status byte and bug its hits carry (nil or 0: none), what its hit does
+-- to the panel, whether it bursts (around what it hits, and over the last
+-- two columns when it leaves the field), whether it climbs (a pixel lower
+-- down the field and higher on each panel).
+export type ProjectileVariant = {
+    collision: { is: CollisionType, hits: CollisionType },
+    hit_mod: number,
+    element: string,
+    secondary: { string }?,
+    spark: Spark?,
+    sprite: SpriteAsset?,
+    anim: number?,
+    status: number?,
+    bug: number?,
+    bug_arg: number?,
+    hit_panel: PanelHit?,
+    bursts: boolean?,
+    climbs: boolean?,
+}
+
+-- A flying shot's variant (objects/flying-shot, the original's
+-- `byte_80C6038` rows): what it is and hits, its hit modifier, element and
+-- secondary elements, hit spark (nil: none), look and shadow, speed (16.16
+-- a tick, forward), range (panel centers it passes before it ends), the
+-- status byte its hits carry; it lights its panel (`highlight`), is a
+-- thrown obstacle (its look is the obstacle's), sparks over its panel's
+-- center (`panel_spark`), sounds as it sets off after a wait, leaves an
+-- effect when its range runs out.
+export type FlyingShotVariant = {
+    collision: { is: CollisionType, hits: CollisionType },
+    hit_mod: number,
+    element: string,
+    secondary: { string }?,
+    spark: Spark?,
+    sprite: SpriteAsset,
+    anim: number?,
+    shadow: boolean?,
+    speed: number,
+    range: number,
+    status: number?,
+    highlight: boolean?,
+    obstacle: boolean?,
+    panel_spark: boolean?,
+    launch_sound: Sound?,
+    end_effect: Effect?,
+}
+
+-- What a flying shot is launched with (objects/flying-shot): its variant,
+-- the ticks it waits before it sets off, whether it falls, its palette,
+-- the damage word, and a thrown obstacle's kind | animation << 4.
+export type FlyingShot = {
+    variant: FlyingShotVariant,
+    wait: number?,
+    falls: boolean?,
+    palette: number?,
+    damage: number,
+    obstacle: number?,
+}
+
+-- A bullet's variant (objects/bullet, the original's `byte_80C68D4` rows):
+-- the region its burst hits on the panel it found, the burst's hit
+-- modifier and status byte (nil or 0: none), the effect it shows (over
+-- the region, or once at the bullet when `single`), and its sound.
+export type BulletVariant = {
+    region: Region,
+    hit_mod: number,
+    effect: Effect,
+    single: boolean?,
+    status: number?,
+    sound: Sound?,
+}
+
+-- A cannon (lib/cannon.luau, the original's action 0x14): the arm the navi
+-- holds, the projectile it fires, and whether it leaves afterimages as it
+-- charges (the GigaCans).
+export type CannonSpec = {
+    -- The action's key when no chip definition holds it (its compat key).
+    id: string?,
+    arm: AttachmentLook,
+    shot: ProjectileVariant,
+    afterimages: boolean?,
+}
+
+-- A wide wave (chips/widesht/wave.luau, the original's attack #0x3B by
+-- kind): its speed (16.16 pixels a tick); whether it goes through what it
+-- hits (with the hit modifier it's fired with), holds its spawner's attack
+-- and waits before sliding, or trails afterimages; what it is (a collision
+-- type), the bug it gives and its palette.
+export type WaveVariant = {
+    speed: number,
+    pierces: boolean,
+    holds: boolean,
+    trails: boolean,
+    collision: CollisionType,
+    bug: number?,
+    palette: number?,
+}
+
+-- A sonic boom (lib/swords/sonic_boom.luau): its hit modifier, whether it
+-- goes through what it hits.
+export type SonicBoom = { hit_mod: number, pierces: boolean }
+
+-- TankCan's shell (chips/tankcan/shell.luau): its hit's modifier, whether
+-- its blast at the field's edge cracks the panels, how far the blast's
+-- damage word shifts right.
+export type ShellSpec = { hit_mod: number, cracks: boolean, shift: number }
+
+-- What a projectile (objects/projectile) is fired with
 -- (lib/projectile.luau).
 export type ProjectileShot = {
-    -- The kind (data.objects.projectiles): its first parameter.
-    kind: number,
+    -- What it is.
+    variant: ProjectileVariant,
     -- The damage word: the damage (with its flag bits) | the counter
     -- byte << 16.
     damage: number,
@@ -279,34 +389,6 @@ export type TornadoSpec = { variant: TornadoVariant, status: number, ticks: numb
 -- (12 makes DarkThnd's look and sound), the status its hits inflict and
 -- their bug (none by default).
 export type ThunderBall = { fast: boolean?, panels: number, status: number?, bug: number? }
-
--- A flying shot (objects/flying-shot, a row of the original's
--- `byte_80C6038`): what it is and hits, its hit modifier, element and
--- secondary elements (by name, lib/element), hit spark, look (and whether
--- its shadow is on the ground), speed (16.16 a tick forward), range (panel
--- centers it passes before it ends), the status its hits inflict;
--- `highlight`: it lights its panel; `obstacle`: a thrown obstacle, whose
--- look is the obstacle's; `panel_spark`: its spark shows over its panel's
--- center; the sound as it sets off after a wait, and the effect it leaves
--- when its range runs out.
-export type FlyingShotVariant = {
-    collision: { is: CollisionType, hits: CollisionType },
-    hit_mod: number,
-    element: string,
-    secondary: { string }?,
-    spark: Spark?,
-    sprite: SpriteAsset,
-    anim: number?,
-    shadow: boolean?,
-    speed: number,
-    range: number,
-    status: number?,
-    highlight: boolean?,
-    obstacle: boolean?,
-    panel_spark: boolean?,
-    launch_sound: Sound?,
-    end_effect: Effect?,
-}
 
 -- How a yoyo flies (chips/yoyo/yoyo): GreatYo's (three that move
 -- together), the panels it rolls out and its spinning rounds.
