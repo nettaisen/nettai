@@ -369,7 +369,9 @@ mod tests {
     #[test]
     fn an_affine_part_turns_about_its_centre() {
         // A 16x16 sprite with its top-left 8x8 quarter coloured; a half
-        // turn (pa = pd = -1) shows it at the bottom right.
+        // turn (pa = pd = -1) shows it at the bottom right: box pixel x
+        // reads texture column 16 - x (so the box's first column is past
+        // the texture).
         let mut tiles = solid_tiles(4, 0);
         tiles.pixels[..64].fill(1);
         let mut p = part(&tiles, 0, 0, 2, 0x001F);
@@ -378,8 +380,8 @@ mod tests {
         let out = compose(0, &[], &[p.clone()], Fades::default());
         assert_eq!(out[0], 0);
         assert_eq!(out[15 * WIDTH + 15], 0x001F);
-        assert_eq!(out[8 * WIDTH + 8], 0x001F);
-        assert_eq!(out[7 * WIDTH + 7], 0);
+        assert_eq!(out[9 * WIDTH + 9], 0x001F);
+        assert_eq!(out[8 * WIDTH + 8], 0);
         // A doubled box, unrotated: the sprite sits in its middle.
         p.affine = Some(Affine { pa: 0x100, pb: 0, pc: 0, pd: 0x100, double: true });
         let out = compose(0, &[], &[p], Fades::default());
