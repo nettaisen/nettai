@@ -1,8 +1,0 @@
-# Rocks (attack object #0x59, `sub_80CF954`) are a script on the obstacle
-# framework. The actor lists' rocks (entry type 8, `sub_80074FA`) are its.
-
-[kind]
-pool = "attack"
-index = 0x59
-script = "rock.luau"
-actor_list_entry = 8
