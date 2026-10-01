@@ -10,4 +10,11 @@ return define.roles {
         anti_damage_counter = ticker.action { id = "test/anti-damage-counter", length = 4 },
         forced_charged_shot = ticker.action { id = "test/forced-charged-shot", length = 3 },
     },
+    -- The engine's test content's v1 kinds, which this pack's content
+    -- comes with.
+    kinds = {
+        rock = { legacy = { kind = "rock" } },
+        absorbed_obstacle = { legacy = { kind = "absorbed-obstacle" } },
+        falling_rock = { legacy = { kind = "falling-rock" } },
+    },
 }

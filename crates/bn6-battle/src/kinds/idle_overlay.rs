@@ -11,8 +11,6 @@ use crate::kinds::common::{self, Progress};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, flags, state};
 
-pub const INDEX: u8 = 0x55;
-
 /// Its sprites by Param1 (`dword_80C40D4`: one entry).
 const SPRITES: [SpriteId; 1] = [SpriteId { category: 0x10, index: 0x21 }];
 

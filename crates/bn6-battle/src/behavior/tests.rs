@@ -476,8 +476,10 @@ fn registrations_follow_the_content_data() {
     // Handles number each registry in key order: the engine's kinds and
     // the content's together.
     assert!(d.kinds.windows(2).all(|w| w[0].key < w[1].key));
+    // The engine's kinds have no object slot (the validator has theirs).
     let h = d.kind_by_key("engine/hitbox").unwrap();
-    assert_eq!(d.kind_at(crate::object::Pool::Attack, 3), Some(h));
+    assert_eq!(d.kind(h).slot, None);
+    assert_eq!(d.kind_at(crate::object::Pool::Attack, 3), None);
     // Two chips implementing one action with different scripts is an error.
     let mut c = testing::build();
     c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
@@ -690,11 +692,10 @@ fn breaking_a_scripted_rock_throws_debris() {
         rng.next();
     }
     assert_eq!(b.rng.state, rng.state);
-    let order: Vec<_> =
-        b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| (o.pool, b.slot_index(o))).collect();
+    let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.kind_key(o)).collect();
     assert_eq!(
         &order[..4],
-        [(Pool::Attack, 0x59), (Pool::Effect, 0), (Pool::Effect, 0x38), (Pool::Effect, 0x38)],
+        ["rock", "engine/effect", "rock-debris", "rock-debris"],
         "the rock, then what it spawned in reverse order"
     );
     assert_eq!(b.objects.get(r).state, state::DESTROY);
