@@ -485,12 +485,12 @@ impl<'de> Deserialize<'de> for AttachPoint {
 /// handle is read with the registries: `Defs::build`.)
 pub(crate) fn read_navi(
     d: &bn6_content_api::Definition,
-    r: &super::legacy::Resolver,
+    r: &super::reader::SpecReader,
 ) -> Result<NaviData, bn6_content_api::ContentError> {
     use serde_json::Value as Json;
-    let err = |m: String| super::legacy::err(d, m);
+    let err = |m: String| super::reader::err(d, m);
     // (`mugshots` and `actions` are the frontend's and the content's own.)
-    let mut o = super::legacy::fields(
+    let mut o = super::reader::fields(
         d,
         r,
         &["id", "identity", "banners", "own_chip", "actions", "mugshots", "weapons", "fresh", "cross_hp", "forms"],
@@ -510,19 +510,19 @@ pub(crate) fn read_navi(
 /// A form definition's record, likewise.
 pub(crate) fn read_form(
     d: &bn6_content_api::Definition,
-    r: &super::legacy::Resolver,
+    r: &super::reader::SpecReader,
 ) -> Result<FormData, bn6_content_api::ContentError> {
     use serde_json::Value as Json;
     // (`mugshot` is the frontend's; `buster_arm` the content's own: the
     // arm a navi raises.)
-    let o = super::legacy::fields(
+    let o = super::reader::fields(
         d,
         r,
         &["id", "identity", "cross_of", "beast", "breaks_to", "mugshot", "weapons", "buster_arm"],
     )?;
-    let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::legacy::err(d, m))?;
+    let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
     if form.kind != FormKind::Base && form.game.is_none() {
-        return Err(super::legacy::err(d, "a form that is not the base form says whose `game` it is (gregar, falzar)"));
+        return Err(super::reader::err(d, "a form that is not the base form says whose `game` it is (gregar, falzar)"));
     }
     Ok(form)
 }
