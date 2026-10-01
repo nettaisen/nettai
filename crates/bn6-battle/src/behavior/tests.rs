@@ -75,13 +75,13 @@ fn battles_run_the_content_scripts() {
             "eraseman/mark",
             "eraseman/navi",
             "falling-rock",
-            "fire-hit",
-            "flame-hook",
-            "flame-hook-fire",
+            "firehit/fist",
+            "flmhook/fire",
+            "flmhook/hook",
             "flshbom/bomb",
             "flying-shot",
             "gauge-speed",
-            "golem",
+            "golmhit/golem",
             "grab/controller",
             "grab/shot",
             "gust",
@@ -91,8 +91,8 @@ fn battles_run_the_content_scripts() {
             "honey-bee",
             "invisible",
             "junk-shot",
-            "justice-one",
-            "lance",
+            "justcone/strike",
+            "lance/lance",
             "land-mine",
             "lunge-slash",
             "meteor",
@@ -109,9 +109,9 @@ fn battles_run_the_content_scripts() {
             "rock-chip",
             "rock-cube",
             "rock-debris",
-            "sand-hole",
-            "sand-spray",
-            "sand-worm",
+            "sandwrm/hole",
+            "sandwrm/spray",
+            "sandwrm/worm",
             "seed",
             "slash-man",
             "slash-wave",
@@ -469,9 +469,9 @@ fn registrations_follow_the_content_data() {
         0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x56, 0x57, 0x58,
     ];
     assert_eq!(actions, expected, "{:?}", d.actions);
-    // The instant chip registers its subtype's effect, and a weapon the
-    // subtype it names.
-    assert!(d.hook(bn6_content_api::Hook::InstantChip(5)).is_some(), "{:?}", d.hooks);
+    // An instant chip's record registers its subtype's effect (the plus
+    // chips' records, the shim's), and a weapon the subtype it names.
+    assert!(d.hook(bn6_content_api::Hook::InstantChip(3)).is_some(), "{:?}", d.hooks);
     assert!(d.hook(bn6_content_api::Hook::InstantChip(0x14)).is_some(), "{:?}", d.hooks);
     // Handles number each registry in key order: the engine's kinds and
     // the content's together.
@@ -502,7 +502,7 @@ fn scripted_instant_chips_play_and_roll_back() {
     // with GunDelSols: the plus chip's sparkle shows, and a copy of the
     // battle taken at any tick plays on as the battle does.
     let chips = [
-        testing::chip_handle(testing::FULL_GAUGE),
+        testing::defined_chip(testing::FULL_CUST),
         testing::chip_handle(testing::PLUS),
         testing::defined_chip(testing::BUSTER_UP),
         testing::chip_handle(testing::SUN_GUN_3),
@@ -528,8 +528,15 @@ fn spawning_instant_chips_play_in_a_duel_and_roll_back() {
     // Folders of instant chips that spawn objects (boomerangs, lances,
     // fists, flame hooks, falling fists, golems): a copy of the battle taken
     // at any tick plays on as the battle does.
-    let chips = [testing::BOOMERANG, testing::LANCE, testing::FIST, testing::FLAME_HOOK, testing::JUSTICE, testing::GOLEM];
-    let setup = || scenario::setup_with(&chips);
+    let chips = [
+        testing::defined_chip(testing::BOOMER),
+        testing::defined_chip(testing::LANCE),
+        testing::chip_handle(testing::FIST),
+        testing::chip_handle(testing::FLAME_HOOK),
+        testing::defined_chip(testing::JUSTICE_ONE),
+        testing::defined_chip(testing::GOLEM_HIT),
+    ];
+    let setup = || scenario::setup_with_handles(&chips);
     let tape = scenario::record_on(setup(), 2400, 17);
     let mut b = Battle::new(setup(), scenario::content());
     let whole = digests(&tape, Battle::new(setup(), scenario::content()));

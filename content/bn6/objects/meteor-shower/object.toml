@@ -1,6 +1,0 @@
-# A meteor shower (effect object #0x46, `sub_80E59E8`), instant chip effect 16's, is a script.
-
-[kind]
-pool = "effect"
-index = 0x46
-script = "meteor_shower.luau"

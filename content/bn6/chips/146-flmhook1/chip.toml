@@ -1,4 +1,4 @@
-# FlmHook1, an instant chip (action 0x1C, subtype 14): its effect swings flames
-# (`sub_80EA11C`).
+# FlmHook1, an instant chip (action 0x1C, subtype 14) kept on its record (a Program
+# Advance): its hook through chip.luau (registration by number).
 
-script = "../../objects/flame-hook/flame_hook.luau"
+script = "chip.luau"

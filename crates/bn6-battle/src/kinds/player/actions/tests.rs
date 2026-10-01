@@ -1293,7 +1293,7 @@ fn fight_on(settings: u8, stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
 fn an_instant_chip_runs_its_effect_once_and_idles() {
     let (mut b, p0, p1) = fight();
     let mut hand = ChipHand::empty(&b.content);
-    hand.ids[0] = Some(testing::chip_in(&b.content, testing::FULL_GAUGE));
+    hand.ids[0] = b.content.defs.chip_by_key(testing::FULL_CUST);
     b.hands[0] = hand;
     b.gauge.value = 0;
     tick(&mut b, p0, p1, keys::A);
@@ -1509,7 +1509,10 @@ fn buster_up_and_sync_trigger_change_the_navi() {
     assert_eq!(b.stats[0].attack, 9);
     // SyncTrgr's effect alone (the Full Synchro aura that follows is the
     // framework's, not ported yet): the mood goes to the top.
-    let hook = b.content.defs.hook(bn6_content_api::Hook::InstantChip(13)).expect("SyncTrgr's effect");
+    let sync = b.content.defs.chip_by_key(testing::SYNC_TRIGGER).unwrap();
+    let Some(crate::content::ChipUsage::Instant(hook)) = b.content.defs.chip(sync).usage else {
+        panic!("SyncTrgr is an instant chip")
+    };
     let spec = bn6_content_api::InstantChipSpec::default();
     crate::behavior::call_hook(&mut b, hook, bn6_content_api::HookCall::InstantChip { user: p0, spec });
     assert_eq!(b.stats[0].mood, 0xFF);
@@ -1525,28 +1528,30 @@ fn count_kind(b: &Battle, name: &str) -> usize {
 fn spawning_instant_chips_run_their_objects_and_roll_back() {
     // Each effect's object appears the tick the chip's effect runs, plays
     // out, rolls back at any point, and is gone within 200 ticks.
+    // BN6's definitions, and the numbered chips that reach the records'
+    // shims (FireHit's, FlmHook's).
     let chips = [
-        (testing::BOOMERANG, "boomerang"),
-        (testing::LANCE, "lance"),
-        (testing::FIST, "fire-hit"),
-        (testing::WORM, "sand-worm"),
-        (testing::FLAME_HOOK, "flame-hook"),
-        (testing::JUSTICE, "justice-one"),
-        (testing::GOLEM, "golem"),
+        (testing::defined_chip(testing::BOOMER), "boomerang"),
+        (testing::defined_chip(testing::LANCE), "lance/lance"),
+        (testing::chip_handle(testing::FIST), "firehit/fist"),
+        (testing::defined_chip(testing::SAND_WORM), "sandwrm/worm"),
+        (testing::chip_handle(testing::FLAME_HOOK), "flmhook/hook"),
+        (testing::defined_chip(testing::JUSTICE_ONE), "justcone/strike"),
+        (testing::defined_chip(testing::GOLEM_HIT), "golmhit/golem"),
     ];
     for (chip, name) in chips {
         let (mut b, p0, p1) = fight();
-        if chip == testing::WORM {
+        if name == "sandwrm/worm" {
             // The worm comes out behind the enemy, on a panel with the flag
             // the test content's panel types don't give.
             let mut hand = ChipHand::empty(&b.content);
-            hand.ids[0] = Some(testing::chip_in(&b.content, chip));
+            hand.ids[0] = Some(chip);
             b.hands[0] = hand;
             tick(&mut b, p0, p1, keys::A);
             b.field.panel_mut(6, 2).unwrap().flags |= 0x1_0000;
             tick(&mut b, p0, p1, 0);
         } else {
-            use_instant_chip(&mut b, p0, p1, chip);
+            use_instant_chip_handle(&mut b, p0, p1, chip);
         }
         assert!(count_kind(&b, name) > 0, "{name} didn't appear");
         for _ in 0..8 {
@@ -1565,12 +1570,13 @@ fn spawning_instant_chips_run_their_objects_and_roll_back() {
 #[test]
 fn lances_thrust_from_the_far_column() {
     let (mut b, p0, p1) = fight();
-    use_instant_chip(&mut b, p0, p1, testing::LANCE);
+    let lance = testing::defined_chip(testing::LANCE);
+    use_instant_chip_handle(&mut b, p0, p1, lance);
     // Three lances on column 6, one per row, 64 pixels out and one 8-pixel
     // step back already (the init runs the first tick).
 
     let lances: Vec<ObjectRef> =
-        b.objects.in_order().filter(|&o| b.kind_key(o) == "lance").collect();
+        b.objects.in_order().filter(|&o| b.kind_key(o) == "lance/lance").collect();
     let mut rows: Vec<u8> = lances.iter().map(|&l| b.objects.get(l).panel.y).collect();
     rows.sort();
     assert_eq!(rows, [1, 2, 3]);
@@ -1585,9 +1591,10 @@ fn lances_thrust_from_the_far_column() {
 
 #[test]
 fn the_tomahawk_throw_sends_two_tomahawks() {
+    // The boomerangs out, by their sprites and rows.
     let tomahawks = |b: &Battle| {
         let t = b.objects.in_order().filter(|&o| b.kind_key(o) == "boomerang");
-        t.map(|o| (b.objects.get(o).params[0], b.objects.get(o).panel.y)).collect::<Vec<_>>()
+        t.map(|o| (b.objects.sprite(o).id, b.objects.get(o).panel.y)).collect::<Vec<_>>()
     };
     let start = || {
         let (mut b, p0, p1) = fight();
@@ -1609,8 +1616,8 @@ fn the_tomahawk_throw_sends_two_tomahawks() {
         }
     }
     let first = first.expect("no tomahawk");
-    // Two tomahawks (boomerang kind 4); the second 10 ticks after the
-    // first, on row 3.
+    // Two tomahawks (the boomerang's tomahawk variant, on its own sprite);
+    // the second 10 ticks after the first, on row 3.
     let (mut b, p0, p1) = start();
     let mut t = 0;
     run_to(&mut b, [p0, p1], &mut t, first + 9, 0);
@@ -1618,7 +1625,8 @@ fn the_tomahawk_throw_sends_two_tomahawks() {
     run_to(&mut b, [p0, p1], &mut t, first + 10, 0);
     let mut both = tomahawks(&b);
     both.sort();
-    assert_eq!(both, [(4, 1), (4, 3)]);
+    let tomahawk = Some(b.content.assets.sprites["boomerang-tomahawk"]);
+    assert_eq!(both, [(tomahawk, 1), (tomahawk, 3)]);
     assert_rolls_back(&mut b, [p0, p1], 20, 0);
     // 96 ticks into the swing, idle.
     run_to(&mut b, [p0, p1], &mut t, first + 120, 0);
