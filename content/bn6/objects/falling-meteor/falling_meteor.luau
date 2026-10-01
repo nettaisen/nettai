@@ -95,6 +95,8 @@ local function init(me: Object)
     me.visible = true
     local sprite = me.sprite
     sprite:load(SPRITE)
+    -- sprite_noShadow: the first part is drawn with the sprite.
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = ANIM, ANIM
     sprite:set_animation(ANIM)
     sprite:step()

@@ -168,7 +168,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-local PHASES = { [SLIDE] = slide, [SLASH] = slash, [RETURN] = return_home, [RECOVER] = recover }
+local PHASES: { [number]: (me: Object, s: State) -> () } = { [SLIDE] = slide, [SLASH] = slash, [RETURN] = return_home, [RECOVER] = recover }
 
 return define.chip {
     id = "delecswd",

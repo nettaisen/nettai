@@ -55,7 +55,7 @@ reproduced every recording on every frame at the lab's last full run; the 684 re
    through spawns; the chips' action table (`JumpTable80EAC60`) whole, since every chip is a netbattle's; the
    hook tables indexed by actor type (`sub_800F35C` and its six siblings) through the player's table only; the
    weapon table (`off_80117D4`) through the numbers the data names (the forms' rows, the navis' rows and the
-   NaviStats bytes: `compat/weapons.toml`, which the verification workspace's generator checks against the ROM).
+   NaviStats bytes: `compat/weapons.toml`, which the verification workspace's `gen-content check` checks against the ROM).
    A routine that the rules of §5 say a netbattle never enters is not followed. The audit stops with an error if a
    recording runs a routine a rule excludes: that caught a wrong rule once (the tutorial checks' callers run on
    every pick; only what they call is the tutorial's).
