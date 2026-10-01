@@ -100,6 +100,7 @@ end
 return define.chip {
     id = "drilarm",
     name = "DrilArm",
+    description = "Knocks\nenmy 2sq\naway",
     codes = { "G", "M", "W" },
     element = "null", family = "break", class = "standard",
     rarity = 2, mb = 32, damage = 70, hit_param = 10, lockout = 0,

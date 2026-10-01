@@ -30,6 +30,7 @@ end
 return define.chip {
     id = "busterup",
     name = "BusterUp",
+    description = "Power \ngoes up\nby 1",
     codes = { "*" },
     element = "null", family = "plus", class = "standard",
     rarity = 1, mb = 11, damage = 0, hit_param = 0, lockout = 20,

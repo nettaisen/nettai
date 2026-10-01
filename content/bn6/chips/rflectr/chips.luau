@@ -10,6 +10,7 @@ return {
     define.chip {
         id = "rflectr1",
         name = "Rflectr1",
+        description = "Bounce an\nattk back\nat them!",
         codes = { "A", "C", "P", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 7, damage = 60, hit_param = 20, lockout = 0,
@@ -21,6 +22,7 @@ return {
     define.chip {
         id = "rflectr2",
         name = "Rflectr2",
+        description = "Bounce an\nattk back\nat them!",
         codes = { "B", "G", "Y", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 16, damage = 120, hit_param = 20, lockout = 0,
@@ -32,6 +34,7 @@ return {
     define.chip {
         id = "rflectr3",
         name = "Rflectr3",
+        description = "Bounce an\nattk back\nat them!",
         codes = { "E", "F", "O", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 25, damage = 200, hit_param = 20, lockout = 0,

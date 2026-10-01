@@ -84,6 +84,7 @@ return {
     define.chip {
         id = "bblstar1",
         name = "BblStar1",
+        description = "Seals an \nenemy in \na bubble.",
         codes = { "B", "E", "T" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 0, mb = 30, damage = 60, hit_param = 30, lockout = 0,
@@ -97,6 +98,7 @@ return {
     define.chip {
         id = "bblstar2",
         name = "BblStar2",
+        description = "Seals an \nenemy in \na bubble.",
         codes = { "C", "L", "V" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 1, mb = 38, damage = 80, hit_param = 30, lockout = 0,
@@ -110,6 +112,7 @@ return {
     define.chip {
         id = "bblstar3",
         name = "BblStar3",
+        description = "Seals an \nenemy in \na bubble.",
         codes = { "G", "R", "S" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 2, mb = 46, damage = 100, hit_param = 30, lockout = 0,
