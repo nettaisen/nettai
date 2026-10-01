@@ -653,3 +653,103 @@ export type DblBeastHit = {
     damage: number,
     z: number?,
 }
+
+-- ---- The navi chips' navis (content model v2: the earlier navis) ---------
+
+-- A thunderbolt (chips/elecman/thunder): whether it acts while the battle
+-- is dimmed (the navi chip's; one that doesn't cracks its panel), and
+-- whether it also hits the eight panels around it.
+export type Thunderbolt = {
+    while_dimmed: boolean?,
+    spreads: boolean?,
+}
+
+-- A sword wave (chips/slashman/wave): its wind-up and swing in ticks, its
+-- speed (16.16 a tick); whether it hits its panel as it winds up, whether
+-- its owner can steer it with B, whether it acts while the battle is
+-- dimmed.
+export type SlashWave = {
+    wind_up: number,
+    swing: number,
+    speed: number,
+    hits_early: boolean?,
+    steers: boolean?,
+    while_dimmed: boolean?,
+}
+
+-- A train car (chips/chrgeman/car): whether it is the navi chip's (it
+-- waits before it rolls, and acts while the battle is dimmed), its place
+-- in the train, the ticks it waits, and its owner's action it is tied to
+-- (none: it never checks).
+export type ChargeCar = {
+    while_dimmed: boolean?,
+    place: number,
+    wait: number,
+    owner_action: number?,
+}
+
+-- SpoutMan's water ball and its splashes (chips/spoutman/ball, splash):
+-- whether it acts while the battle is dimmed (the navi chip's), and
+-- whether it cracks the panel it lands on.
+export type WaterBall = {
+    while_dimmed: boolean?,
+    cracks: boolean?,
+}
+
+-- SpoutMan's geyser (chips/spoutman/geyser): whether it acts while the
+-- battle is dimmed (the navi chip's), how long it erupts, and the column
+-- its spawner aims it at.
+export type Geyser = {
+    while_dimmed: boolean?,
+    ticks: number,
+    target: number,
+}
+
+-- A mark of SpoutMan's geyser (chips/spoutman/mark): the geyser's column
+-- (else the trail to it), how long it shows, and whether it counts down
+-- while the battle is dimmed.
+export type GeyserMark = {
+    column: boolean?,
+    ticks: number,
+    while_dimmed: boolean?,
+}
+
+-- A fire blast (chips/blastman/fire): its speed (16.16 a tick), which way
+-- it crosses the field, and whether it acts while the battle is dimmed
+-- (the navi chip's).
+export type FireBlastDirection = "left" | "right" | "up" | "down"
+export type FireBlast = {
+    speed: number,
+    direction: FireBlastDirection,
+    while_dimmed: boolean?,
+}
+
+-- A panel strike (objects/panel-strike): whether its burst cracks an
+-- uncracked panel, the ticks its panel blinks first, its hit modifier, and
+-- whether it bursts only on a solid panel.
+export type PanelStrike = {
+    cracks: boolean?,
+    warning: number,
+    hit_mod: number,
+    solid_only: boolean?,
+}
+
+-- BassAnly's dark ball (chips/bassanly/shot): its level (0 to 3: its
+-- speeds), its slant (-1 up, 1 down), and how it homes.
+export type DarkBallHoming = "none" | "diagonal" | "seeking"
+export type DarkBall = {
+    level: number,
+    slant: number,
+    homing: DarkBallHoming,
+}
+
+-- SunMoon's meteor (chips/sunmoon/meteor): its look, what it is and hits,
+-- whether its landing shakes the camera, and what it does to a panel that
+-- holds something.
+export type SunMeteor = {
+    sprite: SpriteAsset,
+    anim: number,
+    collision: { is: CollisionType, hits: CollisionType },
+    shake: boolean,
+    panel: "none" | "crack" | "break",
+}

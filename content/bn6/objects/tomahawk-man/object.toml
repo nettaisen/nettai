@@ -1,6 +1,0 @@
-# TomahawkMan, the TmhkMan chips' navi (actor object #0x0A, `sub_80B97C0`), is a script.
-
-[kind]
-pool = "actor"
-index = 0x0A
-script = "tomahawk_man.luau"

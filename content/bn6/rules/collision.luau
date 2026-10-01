@@ -169,4 +169,12 @@ collision.guard_breaking = define.collision {
 -- (row 0x2C: GunDelSol's hits under the sun beam).
 collision.drain = define.collision { id = "drain", side0 = 0x8000408c, side1 = 0x4000408c, row_offset = 0x160 }
 
+-- A drain that also breaks (row 0x30: SunMoon's moonlight).
+collision.breaking_drain = define.collision {
+    id = "breaking-drain",
+    side0 = 0x8000408e,
+    side1 = 0x4000408e,
+    row_offset = 0x180,
+}
+
 return collision

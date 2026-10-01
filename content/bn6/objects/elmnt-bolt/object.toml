@@ -1,8 +1,0 @@
-# ElmntMan's lightning bolt (attack object #0xB8, `sub_80DC3F8`) is a script. The
-# fraction of its Z is its spawner's register garbage (the object loop's count of
-# the objects of the one before it, times 4), which its init keeps.
-
-[kind]
-pool = "attack"
-index = 0xB8
-script = "elmnt_bolt.luau"
