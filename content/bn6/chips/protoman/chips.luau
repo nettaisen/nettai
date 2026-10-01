@@ -23,7 +23,7 @@ local protoman = define.chip {
         action = 0x1B,
         subtype = 1,
         params = { 0, 0, 8, 0 },
-        script = "objects/proto-man/proto_man",
+        script = "chips/0e0-protoman/chip",
     },
 }
 
@@ -48,7 +48,7 @@ local protomn_ex = define.chip {
         action = 0x1B,
         subtype = 1,
         params = { 1, 0, 8, 0 },
-        script = "objects/proto-man/proto_man",
+        script = "chips/0e0-protoman/chip",
     },
 }
 
@@ -72,7 +72,7 @@ local protomn_sp = define.chip {
         action = 0x1B,
         subtype = 1,
         params = { 2, 0, 8, 0 },
-        script = "objects/proto-man/proto_man",
+        script = "chips/0e0-protoman/chip",
         damage = 1011,
         sp_damage = { 290, 280, 270, 260, 250, 240, 230, 220, 210, 200, 190 },
     },

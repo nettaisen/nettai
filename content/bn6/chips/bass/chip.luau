@@ -24,6 +24,6 @@ return define.chip {
         action = 0x1B,
         subtype = 26,
         params = { 0, 0, 0, 0 },
-        script = "objects/bass/bass",
+        script = "chips/12d-bass/chip",
     },
 }

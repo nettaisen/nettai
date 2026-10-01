@@ -1,6 +1,0 @@
-# A fire blast (attack object #0x21, `sub_80C8388`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x21
-script = "blast_fire.luau"

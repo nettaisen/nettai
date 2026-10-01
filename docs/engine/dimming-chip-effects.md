@@ -550,10 +550,10 @@ sprite twice a tick).
   off, state destroy (word).
 
 **Lab**: 19 scenarios; `adjacent` and `obstacle` place no statue; in the other 17 it stands and blesses, but
-the next chip is never a damaging one. `chips/0x099-otenko/bonus` (a Cannon next), `broken` and `pushed` are
-recorded for the bonus and the statue's ends; the port doesn't replay them yet. **Unverified**: the bonus itself,
-the 50 cap, a new hand entry, the non-player user, the body check at appearing, the slide, breaking, removal,
-blink-out, absorption, eviction by a third field object, the lifetime.
+the next chip is never a damaging one. `chips/0x099-otenko/bonus` (a Cannon next, 700 ticks on: the blessing up to
+its cap), `broken` (M-Cannons break it) and `pushed` (AirShot at it) match every frame. **Unverified**: a new hand
+entry, the non-player user, the body check at appearing, removal by a chip, blink-out, absorption, eviction by a
+third field object, the lifetime.
 
 ## 10. Subtype 21: BlzrdBal (T4#0x58, T1#4, T3#0xB2, T3#0xB7)
 

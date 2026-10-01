@@ -24,7 +24,7 @@ local slashman = define.chip {
         action = 0x1B,
         subtype = 4,
         params = { 10, 0, 0, 0 },
-        script = "objects/slash-man/slash_man",
+        script = "chips/0e9-slashman/chip",
     },
 }
 
@@ -50,7 +50,7 @@ local slashmn_ex = define.chip {
         action = 0x1B,
         subtype = 4,
         params = { 20, 0, 0, 0 },
-        script = "objects/slash-man/slash_man",
+        script = "chips/0e9-slashman/chip",
     },
 }
 
@@ -75,7 +75,7 @@ local slashmn_sp = define.chip {
         action = 0x1B,
         subtype = 4,
         params = { 20, 0, 0, 0 },
-        script = "objects/slash-man/slash_man",
+        script = "chips/0e9-slashman/chip",
         damage = 1003,
         sp_damage = { 220, 210, 200, 190, 180, 170, 160, 150, 140, 130, 120 },
     },

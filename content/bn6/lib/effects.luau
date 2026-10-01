@@ -18,6 +18,9 @@ effects.dust = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1,
 -- object a chip removes (effect 0x14).
 effects.puff = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 
+-- Bubbles: Otenko's statue breaking (effect 0x02).
+effects.bubbles = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
+
 -- A fiery burst: a bullet's (objects/bullet) and TankCan's shell's hit
 -- (effect 0x22).
 effects.shell_burst = define.effect { sprite = asset.sprite("shell-burst"), anim = 0, palette = 0 }
@@ -32,6 +35,10 @@ effects.flash = define.effect { sprite = asset.sprite("reflected-shot"), anim = 
 -- A small splash: something diving into or out of the field (effect 0x02:
 -- the dragons).
 effects.ripple = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
+
+-- A burst of smoke: a train car blowing up, a navi coming or going in a
+-- puff (effect 0x12).
+effects.smoke = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
 
 -- The rest of the original's effects (gen-content).
 -- Effect 0x03.
@@ -60,8 +67,6 @@ effects.impact = define.effect { sprite = asset.sprite("impact"), anim = 0, pale
 effects.hit = define.effect { sprite = asset.sprite("hit"), anim = 0, palette = 0 }
 -- Effect 0x10.
 effects.reflected_shot_1 = define.effect { sprite = asset.sprite("reflected-shot"), anim = 1, palette = 0 }
--- Effect 0x12.
-effects.puff_2 = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
 -- Effect 0x13.
 effects.puff_1 = define.effect { sprite = asset.sprite("puff"), anim = 1, palette = 0 }
 -- Effect 0x15.
@@ -163,7 +168,7 @@ effects.sight = define.effect { sprite = asset.sprite("sight"), anim = 0, palett
 -- Effect 0x4A.
 effects.explosion_4a = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 2 }
 -- Effect 0x4B.
-effects.effect_4b_82 = define.effect { sprite = asset.sprite("effect-4b"), anim = 82, palette = 16 }
+effects.small_ring_82 = define.effect { sprite = asset.sprite("small-ring"), anim = 82, palette = 16 }
 -- Effect 0x4C.
 effects.slash_man_effect_2 = define.effect { sprite = asset.sprite("slash-man-effect"), anim = 2, palette = 0 }
 -- Effect 0x4D.

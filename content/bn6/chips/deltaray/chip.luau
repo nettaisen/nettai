@@ -24,6 +24,6 @@ return define.chip {
         action = 0x1B,
         subtype = 28,
         params = { 0, 0, 12, 0 },
-        script = "objects/delta-ray/delta_ray",
+        script = "chips/12f-deltaray/chip",
     },
 }

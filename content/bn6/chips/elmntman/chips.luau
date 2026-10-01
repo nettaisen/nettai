@@ -23,7 +23,7 @@ local elmntman = define.chip {
         action = 0x1B,
         subtype = 16,
         params = { 16, 0, 0, 0 },
-        script = "objects/elmnt-man/elmnt_man",
+        script = "chips/10d-elmntman/chip",
     },
 }
 
@@ -48,7 +48,7 @@ local elmntmn_ex = define.chip {
         action = 0x1B,
         subtype = 16,
         params = { 14, 0, 0, 0 },
-        script = "objects/elmnt-man/elmnt_man",
+        script = "chips/10d-elmntman/chip",
     },
 }
 
@@ -72,7 +72,7 @@ local elmntmn_sp = define.chip {
         action = 0x1B,
         subtype = 16,
         params = { 12, 0, 0, 0 },
-        script = "objects/elmnt-man/elmnt_man",
+        script = "chips/10d-elmntman/chip",
         damage = 1016,
         sp_damage = { 240, 230, 220, 210, 200, 190, 180, 170, 160, 150, 140 },
     },

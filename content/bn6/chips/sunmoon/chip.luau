@@ -28,6 +28,6 @@ return define.chip {
         action = 0x1B,
         subtype = 25,
         params = { 0, 0, 0, 0 },
-        script = "objects/sun-moon/sun_moon",
+        script = "chips/15b-sunmoon/chip",
     },
 }

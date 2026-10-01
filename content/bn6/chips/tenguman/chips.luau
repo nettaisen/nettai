@@ -23,7 +23,7 @@ local tenguman = define.chip {
         action = 0x1B,
         subtype = 9,
         params = { 0, 0, 0, 0 },
-        script = "objects/tengu-man/tengu_man",
+        script = "chips/0f8-tenguman/chip",
     },
 }
 
@@ -48,7 +48,7 @@ local tengumn_ex = define.chip {
         action = 0x1B,
         subtype = 9,
         params = { 3, 0, 0, 0 },
-        script = "objects/tengu-man/tengu_man",
+        script = "chips/0f8-tenguman/chip",
     },
 }
 
@@ -72,7 +72,7 @@ local tengumn_sp = define.chip {
         action = 0x1B,
         subtype = 9,
         params = { 4, 0, 0, 0 },
-        script = "objects/tengu-man/tengu_man",
+        script = "chips/0f8-tenguman/chip",
         damage = 1008,
         sp_damage = { 160, 155, 150, 145, 140, 135, 130, 125, 120, 115, 110 },
     },

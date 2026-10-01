@@ -1,6 +1,0 @@
-# BassAnly's shot (attack object #0xC1, `sub_80DD34C`) is a script.
-
-[kind]
-pool = "attack"
-index = 0xC1
-script = "bass_anly_shot.luau"
