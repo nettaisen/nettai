@@ -39,8 +39,8 @@ local TRAIL_FIRST, TRAIL_INTERVAL = 0xA, 5
 local TRAIL_SPRITE = asset.sprite("immobilized")
 local TRAIL_ANIM, TRAIL_SHADER, TRAIL_TICKS = 1, 0xC3FF, 0x14
 -- What a holding variant writes over its spawner's attack (the step and
--- its entry flag, the element and the variant, as one word): at its spawn,
--- its first update, and its end.
+-- its entry flag, the element and the variant byte, which nothing reads,
+-- as one word): at its spawn, its first update, and its end.
 local HOLD_SPAWN, HOLD_INIT, HOLD_END = 2, 3, 0
 
 local function panel_word(me: Object): number
@@ -52,7 +52,7 @@ local function hold(me: Object, word: number)
     local owner = me.related1
     if owner then
         owner.step, owner.step_init = word, 0
-        owner.attack_element, owner.variant = 0, 0
+        owner.attack_element = 0
     end
 end
 
