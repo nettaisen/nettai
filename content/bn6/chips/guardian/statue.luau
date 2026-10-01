@@ -12,6 +12,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local regions = require("../../lib/regions")
@@ -38,7 +39,9 @@ export type State = {
 local SPRITE = asset.sprite("guardian-statue")
 -- Its NameID (the field objects' look) and its kind among absorbed
 -- obstacles.
-local NAME, ABSORBED_KIND = 0xE3, 9
+local NAME = 0xE3
+-- How it looks absorbed (the original's obstacle kind's sprite: its own).
+local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 local LIFETIME = 0x1770
 -- It takes its panel on its third update.
 local APPEAR_TICKS = 3
@@ -117,7 +120,7 @@ local function destroyed(me: Object)
     obstacle.unregister(me)
     local how = obstacle.removal(me)
     if how == "absorbed" then
-        obstacle.fly_to_absorber(me, ABSORBED_KIND)
+        obstacle.fly_to_absorber(me, ABSORBED)
         leave(me)
         return
     elseif how ~= "broken" then

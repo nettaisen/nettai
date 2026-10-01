@@ -6,7 +6,7 @@
 //! full old-name mapping is in docs/engine/field-names.md.
 
 use crate::object::ObjectRef;
-use bn6_content_api::{ChipHandle, WeaponHandle};
+use bn6_content_api::{ChipHandle, RecordHandle, WeaponHandle};
 
 pub const SLOTS: usize = 8;
 
@@ -155,6 +155,12 @@ pub struct AttackVars {
     /// +0x30: a marker: the move's "direction changed", or a heat trap
     /// swallowing a hit.
     pub marker: u32,
+    /// +0x30 as a throw of an absorbed obstacle keeps it (DustCross's
+    /// weapons 0x2B and 0x2C; the buster's shot throws it): the obstacle's
+    /// look and animation (the original packs its kind and animation into
+    /// the marker word). Kept until the next throw sets them.
+    pub thrown_look: Option<RecordHandle>,
+    pub thrown_anim: u8,
     /// +0x12: the recovery a shot waits after firing (actions 0x11 and
     /// 0x16 write it). The word outlives the action: a thrown obstacle
     /// (action 0x11's variant 2) fires without writing it and waits
@@ -319,8 +325,9 @@ pub struct ActorData {
 /// An obstacle the obstacle-absorbing chip pulled in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct AbsorbedObstacle {
-    /// Obstacle kind (`ObjectData::absorbed_sprites`).
-    pub kind: u8,
+    /// How it looks thrown: its absorbed look, content's record (the
+    /// original's obstacle kind, an index into `byte_80E98C0`'s sprites).
+    pub look: RecordHandle,
     /// Its animation when absorbed.
     pub anim: u8,
 }
