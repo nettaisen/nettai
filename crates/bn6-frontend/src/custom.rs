@@ -171,6 +171,14 @@ pub fn hud_jitter(b: &Battle) -> (i32, i32) {
     (x >> 16, y >> 16)
 }
 
+/// The custom gauge stays off the local console's HUD from the screen's
+/// opening until its own result is sent (HUD task 4: `sub_8026840` stops
+/// it, `sub_8027D78` starts it), even once the other player's result has
+/// restarted the battle's gauge.
+pub fn gauge_held(b: &Battle) -> bool {
+    local(b).is_some_and(|(_, s)| !matches!(s.phase, Phase::Sending { started: true }))
+}
+
 /// The camera's offset (16.16, added to its Y) while the window is in.
 pub fn camera_y(b: &Battle) -> i32 {
     local(b).map_or(0, |(_, s)| -CAMERA_STEP * placement(s).slid)
