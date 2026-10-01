@@ -1047,6 +1047,15 @@ chips/193-edeletbm, spawns it too). The beam's collision type (`piercing-break`,
 - **Parameters became state**: the mark's time, the beam's aim, time and owner kind, EraseMan's switching time.
 - **Verified** on the test content (the navi chip duel and its rollback), the type check, and the traces and the
   chip lab on a real pack: every EraseMan scenario matches.
+- **The other navi chips took the same shape** (group A2): chips/grndman, dustman, diveman, crcusman and judgeman
+  (each series' navi and what he brings), and the Program Advance and Giga navis chips/twinldrs, crosover,
+  mstrcros, darkness and chips/flmhook (BigHook's and FlmHook's hook and fire). lib/navi-chips/navi.luau holds
+  what the navis share (the spawn, the stand, the footing test, the action timers, the leaving). Their chips
+  stay records behind the same registration by number, one module a series (chips/0fb-grndman, 0fe-dustman,
+  104-diveman, 107-crcusman, 10a-judgeman by navi chip subtype; 15c-twinldrs, 15d-crosover, 15a-mstrcros,
+  159-darkness and 12e-bighook likewise; 146-flmhook1 by instant chip effect 14): the navi chips for AntiNavi and
+  the SP formulas, the PAs because the Program Advance table names its results by number. They go with
+  EraseMan's (step 10). No `legacy` marker among them.
 
 ### 5.6 Instant chips: a hook per chip
 
