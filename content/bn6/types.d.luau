@@ -209,3 +209,16 @@ export type Barrier = {
     sound: Sound,
     down_sound: Sound?,
 }
+
+-- An instrument (lib/instruments, a row of the original's `byte_80D4078`):
+-- its identity (its NameID, a number until identities come) and palette,
+-- how long it plays and pauses, its tune, and the effect it has every
+-- third tick of playing (`off_80D4298`).
+export type Instrument = {
+    identity: number,
+    palette: number,
+    play_ticks: number,
+    pause_ticks: number,
+    tune: Sound,
+    effect: (me: Object) -> (),
+}

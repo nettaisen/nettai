@@ -47,6 +47,7 @@ lib/dragon.luau 4
 lib/hp.luau 2
 lib/instant-chips/02-invisible.luau 1
 lib/instant-chips/06-repair-obstacles.luau 2
+lib/instruments/instrument.luau 2
 lib/object_setup.luau 2
 lib/panels.luau 2
 lib/swords/vari.luau 4
