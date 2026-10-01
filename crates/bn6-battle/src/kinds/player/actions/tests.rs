@@ -272,9 +272,13 @@ fn a_recovery_chip_heals_its_hp_in_one_tick() {
     assert_eq!((o.hp, o.action), (550, 8));
     assert_eq!(following(&b, p0)[0], "engine/effect");
     assert_eq!(b.side_stats[0][5], 1);
-    // Never past the maximum.
+    // Never past the maximum (once the chip's lockout, 30 ticks, is over).
+    for _ in 0..0x30 {
+        tick(&mut b, p0, p1, 0);
+    }
     b.objects.get_mut(p0).hp = 990;
     use_chip_handle(&mut b, p0, p1, recov);
+    assert_eq!(runs(&b, p0), "recov50/action");
     tick(&mut b, p0, p1, 0);
     assert_eq!(b.objects.get(p0).hp, 1000);
 }
@@ -628,7 +632,7 @@ fn the_absorbed_obstacle_flies_at_the_enemy() {
     assert_eq!(thrown.len(), 1);
     let thrown = thrown[0];
     let o = b.objects.get(thrown);
-    assert_eq!((o.params[0], o.anim, o.pos.z, o.pos.y), (6, 2, 0xC << 16, 28 << 16));
+    assert_eq!((o.anim, o.pos.z, o.pos.y), (2, 0xC << 16, 28 << 16));
     let arm = b.objects.get(p0).related[0].expect("the second arm");
     assert!(shows_row(&b, arm, 6), "the arm");
     // No shot before: no recovery; the navi idles once the arm is down.

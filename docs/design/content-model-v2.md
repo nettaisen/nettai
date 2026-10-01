@@ -1205,7 +1205,7 @@ What it settled:
   review); sparks `null`, `fire`, `aqua`, `elec`, `impact` (hit effects 0 to 3 and 5) and `breaking` (0x0A);
   `trajectory.sine` (the sine table, which stays the pack data's until rules/math.luau); lib/panels'
   `random_in_region` takes a region definition.
-- **Asset names**: the sprites `yoyo-arm`, `burner`, `burner-2`, `bow`, `drill-arm`, `fan`, `shock-wave` and
+- **Asset names**: the sprites `yoyo-arm`, `burner`, `burner-2`, `bow`, `drill-arm`, `hand-fan`, `shock-wave` and
   `beast-shot` (compat/assets.toml and curation.toml).
 - **What stays numeric**: the NameID attach points (TrnArrw's arrows, the flame at its owner's hand), the
   absorbed obstacle's sprite (objects/absorbed-obstacle's `sprite`, by its kind number), statuses and bug codes,
