@@ -215,7 +215,8 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
    chips/13f-beastout and chips/0c0-atk-10), 1 the boomerang (objects/boomerang, chips/boomer), 4 Lance
    (chips/lance), 5 FullCust `sub_800AF34` (chips/fullcust), 8 FireHit (chips/firehit, the records' shim
    chips/06b-firehit1), 10 BusterUp `sub_8010820` (chips/busterup), 12 SandWrm (chips/sandwrm), 13 SyncTrgr
-   `sub_80EC44C` (chips/synctrgr), 19 JustcOne (chips/justcone), 21 GolmHit (chips/golmhit). Subtypes 2
+   `sub_80EC44C` (chips/synctrgr), 15 ColForce (chips/colforce), 19 JustcOne (chips/justcone), 21 GolmHit
+   (chips/golmhit), 22 ColArmy (chips/colarmy). Subtypes 2
    (`sub_8010474`, invisibility), 6 (`sub_801050C`, repairs the side's obstacles), 9 (`sub_8015AA6`, an
    immobilizing hit, attack #0x3F, on every enemy body in the row ahead), 11 (`sub_802E1BE`, writes side state
    nothing reads), 16 (`sub_80E5A64`, a meteor shower) and 17 (`sub_80C6330`, a dust storm) are named by no chip
@@ -1213,7 +1214,7 @@ registers none. `sub_800B8EE(side)`: effect #0 look 0x1E at panel ((side^1)*3+2,
 
 **The port** (kinds/player/status.rs `cut_in`): `chip_use::prepare_detached` runs `sub_80127C0(0)` on a copy of
 the attack variables and restores the navi's own; the controller comes from the same spawners as actions 0x15
-(`dimming_chip::spawn_controller`, the pack's `Hook::DimmingChip`) and 0x1B (`navi_chip::spawn_controller`);
+(`dimming_chip::spawn_controller`, the chip's dimming controller) and 0x1B (`navi_chip::spawn_controller`);
 `Battle::cut_in_dimming` is `loc_800BF30`, `dimming::cut_in_flash` `sub_800B8EE`. The chip lab's 26 counter cut-in
 scenarios (the other side's copy of the chip, answered during the telop) match every frame, and show the order:
 

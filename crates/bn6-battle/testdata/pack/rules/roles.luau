@@ -9,5 +9,29 @@ return define.roles {
     actions = {
         anti_damage_counter = ticker.action { id = "test/anti-damage-counter", length = 4 },
         forced_charged_shot = ticker.action { id = "test/forced-charged-shot", length = 3 },
+        -- The strike the navi's request 0x80000 starts from idle (the
+        -- machine swords' strike by the attack's variant).
+        stun_strike = { legacy = { action = 0x49 } },
+        -- What a Cross navi protected at the battle's end runs.
+        cross_protect = { legacy = { action = 0x4D } },
+        -- The turn L or R starts where turning is enabled.
+        turn = { legacy = { action = 0x3B } },
+        -- A Cross navi's knock-out.
+        cross_death = { legacy = { action = 0x4C } },
+        -- A Cross navi's volley.
+        volley = { legacy = { action = 0x30 } },
+        -- SlashCross's charged slash, which the Beast rush recognizes.
+        charged_sword = { legacy = { action = 0x41 } },
+        -- The Beast forms' charged claw.
+        beast_claw = { legacy = { action = 0x52 } },
+        -- DustCross Beast's scatter, during which the navi isn't grounded.
+        dust_beast_scatter = { legacy = { action = 0x50 } },
+    },
+    -- The engine's test content's v1 kinds, which this pack's content
+    -- comes with.
+    kinds = {
+        rock = { legacy = { kind = "rock" } },
+        absorbed_obstacle = { legacy = { kind = "absorbed-obstacle" } },
+        falling_rock = { legacy = { kind = "falling-rock" } },
     },
 }

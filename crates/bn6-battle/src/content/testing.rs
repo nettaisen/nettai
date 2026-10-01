@@ -249,6 +249,9 @@ pub const TICK_SHOT: &str = "test/tick-shot";
 /// definitions the engine's tests run.
 const TEST_PACK: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/pack");
 
+/// The test content's own modules (its roles).
+const TEST_CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/content");
+
 /// Every `.luau` module under `dir`, by path without `.luau`.
 pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
     fn walk(root: &std::path::Path, dir: &std::path::Path, out: &mut std::collections::BTreeMap<String, String>) {
@@ -275,6 +278,8 @@ pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
 /// hands and navi stats hold them (`TICKER_1`, `TICKER_2`, `TICK_SHOT`).
 pub fn with_test_pack() -> Content {
     let mut c = make();
+    // The test pack brings its own roles.
+    c.scripts.modules.remove("rules/roles");
     for (path, source) in modules_under(TEST_PACK) {
         c.scripts.modules.insert(format!("test/{path}"), source);
     }
@@ -668,7 +673,8 @@ pub fn scripts() -> Scripts {
                 (module.clone(), module)
             });
             let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string())).chain(weapons);
-            Scripts::new(modules.map(|(to, from)| (to, read(&from))).collect())
+            let own = modules_under(TEST_CONTENT);
+            Scripts::new(modules.map(|(to, from)| (to, read(&from))).chain(own).collect())
         })
         .clone()
 }
