@@ -123,6 +123,8 @@ fn bundle() -> Bundle {
         banner_palette: palette(47),
         waiting: tiles(16, 32),
         waiting_palette: palette(47),
+        warning: tiles(8, 33),
+        warning_palette: palette(49),
     };
     Bundle { sprites: vec![sprite(0, 1), sprite(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud }
 }

@@ -64,6 +64,11 @@ const BANNER_PALETTE: u32 = 0x086F_2900;
 /// "Cstmzing..." (16 tiles, drawn on the HUD layer in palette 10 =
 /// the banner palette).
 const WAITING: u32 = 0x086F_2040;
+/// The warning marker's two 16x16 frames (`dword_86E55FC`, which the gauge
+/// chips' controller, VDoll's curse and LifeSync copy to sprite tiles
+/// 0x3CA..=0x3D1) and its palette (`byte_86E56FC`, sprite palette 13).
+const WARNING: u32 = 0x086E_55FC;
+const WARNING_PALETTE: u32 = 0x086E_56FC;
 
 fn tiles(rom: &Rom, a: u32, len: usize) -> Tiles {
     Tiles::from_4bpp(rom.bytes(a, len))
@@ -185,5 +190,7 @@ pub fn hud(rom: &Rom, names: &AssetNames) -> Hud {
         banner_palette: palette(rom, BANNER_PALETTE),
         waiting: tiles(rom, WAITING, 0x200),
         waiting_palette: palette(rom, BANNER_PALETTE),
+        warning: tiles(rom, WARNING, 0x100),
+        warning_palette: palette(rom, WARNING_PALETTE),
     }
 }
