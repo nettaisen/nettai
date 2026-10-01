@@ -25,7 +25,6 @@ mod damage_flags {
 }
 
 /// The Beast forms' claw, the action weapon routine 0x1E names.
-const BEAST_CLAW: u8 = 0x52;
 
 /// The chip-use sound of a damage bonus (`SOUND_HIT_87`).
 const BONUS_SOUND: crate::sound::SoundId = crate::sound::SoundId(0x87);
@@ -75,7 +74,9 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
                 let form = form_of(b, r);
                 // The Beast forms' claw (weapon 0x1E) and SlashCross Beast's
                 // charged sword run inside the Beast Out rush.
-                if action.number == BEAST_CLAW || (action.number == 0x41 && form.0 == 0x0F) {
+                use crate::content::ActionRole;
+                let runs = |role| matches!(action, super::NaviAction::Content(h) if b.content.defs.roles.is_action(role, h));
+                if runs(ActionRole::BeastClaw) || (runs(ActionRole::ChargedSword) && form.0 == 0x0F) {
                     ai_mut(b, r).attack.beast_lockon = 1;
                 }
                 ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
@@ -158,7 +159,7 @@ fn entry_record(content: &Content, chip: Option<ChipHandle>) -> &ChipData {
 /// the dark chip's substitute) and name its action. `charge` marks the
 /// attack as charged (AIAttackVars+4): 1 for the forms' charged chips, 2
 /// after GroundCross's rocks.
-pub(super) fn prepare(b: &mut Battle, r: ObjectRef, charge: u8) -> super::NaviAttack {
+pub(super) fn prepare(b: &mut Battle, r: ObjectRef, charge: u8) -> super::NaviAction {
     let slot_in = ai(b, r).requests & request::ALT_CHIP != 0;
     prepare_from(b, r, charge, slot_in)
 }
@@ -171,7 +172,7 @@ pub(super) fn prepare(b: &mut Battle, r: ObjectRef, charge: u8) -> super::NaviAt
 /// happens (the Full Synchro and anger doubling, the heal on use, the navi
 /// chip count, a dark chip's cost). Returns the chip's action and the
 /// filled variables.
-pub(super) fn prepare_detached(b: &mut Battle, r: ObjectRef) -> (super::NaviAttack, AttackVars) {
+pub(super) fn prepare_detached(b: &mut Battle, r: ObjectRef) -> (super::NaviAction, AttackVars) {
     let own = ai(b, r).attack.clone();
     let action = prepare_from(b, r, 0, false);
     let scratch = std::mem::replace(&mut ai_mut(b, r).attack, own);
@@ -180,7 +181,7 @@ pub(super) fn prepare_detached(b: &mut Battle, r: ObjectRef) -> (super::NaviAtta
 
 /// `sub_80127C0`, reading the slot-in chip (`sub_800EE26`) when `slot_in`
 /// (the caller's r4 bit 0x10000), else the hand (`sub_800EDD0`).
-fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> super::NaviAttack {
+fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> super::NaviAction {
     if slot_in {
         ai_mut(b, r).attack.special_source = 1;
     }
@@ -190,7 +191,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     }
     let content = b.content.clone();
     let cd = entry_record(&content, e.chip);
-    let action = load_attack(b, r, e.chip);
+    load_attack(b, r, e.chip);
     let a = &mut ai_mut(b, r).attack;
     a.charged = charge;
     // The hand's damage replaces the chip data's.
@@ -236,15 +237,32 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         b.bump_side_stat(side, 6, 1);
     }
     dark_chip_side_effect(b, r, e.chip);
-    // A chip content defines runs its own action, or the engine's action
-    // for its kind of use (which calls its hook).
-    use crate::content::{ChipUsage, DIMMING_CHIP_ACTION, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION};
-    match e.chip.and_then(|c| content.defs.chip(c).usage) {
-        Some(ChipUsage::Action(h)) => super::NaviAttack::content(&content.defs, h),
-        Some(ChipUsage::Dimming(_)) => DIMMING_CHIP_ACTION.into(),
-        Some(ChipUsage::Navi(_)) => NAVI_CHIP_ACTION.into(),
-        Some(ChipUsage::Instant(_)) => INSTANT_CHIP_ACTION.into(),
-        None => action.into(),
+    chip_action(b, r, e.chip)
+}
+
+/// The action chip `chip` starts by its usage (none: the pack's chip 0,
+/// which a zeroed chip field reads): its own action, or the engine's action
+/// for its kind of use (which calls its hook); an instant chip's effect
+/// goes into the attack.
+pub(super) fn chip_action(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> super::NaviAction {
+    use crate::content::{ChipUsage, Unported};
+    use super::actions::instant::Effect;
+    use super::{EngineAction as E, NaviAction as A};
+    let content = b.content.clone();
+    let chip = chip.or_else(|| content.chip_numbered(0)).expect("the pack's chip 0 (a zeroed chip field reads it)");
+    match content.defs.chip(chip).usage {
+        ChipUsage::Action(h) => A::Content(h),
+        ChipUsage::Dimming(_) | ChipUsage::Unported(Unported::Dimming(_)) => A::Engine(E::DimmingChip),
+        ChipUsage::Navi(_) | ChipUsage::Unported(Unported::Navi(_)) => A::Engine(E::NaviChip),
+        ChipUsage::Instant(f) => {
+            ai_mut(b, r).attack.instant = Some(Effect::Runs(f));
+            A::Engine(E::InstantChip)
+        }
+        ChipUsage::Unported(Unported::Instant(subtype)) => {
+            ai_mut(b, r).attack.instant = Some(Effect::Unported(subtype));
+            A::Engine(E::InstantChip)
+        }
+        ChipUsage::Unported(Unported::Action(n)) => A::numbered(&content.defs, n),
     }
 }
 
@@ -342,10 +360,10 @@ fn pay_for_special_chip(b: &mut Battle, side: usize, chip: Option<ChipHandle>) {
     s.gauge = s.gauge.saturating_sub(cost);
 }
 
-/// `sub_80126E4`: the attack variables from the chip data; returns the
-/// chip's action. (The game also counts the use per side, for a report
-/// only the battle-flag 0x40 mode reads.)
-fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u8 {
+/// `sub_80126E4`: the attack variables from the chip data (its action is
+/// [`chip_action`]'s). (The game also counts the use per side, for a
+/// report only the battle-flag 0x40 mode reads.)
+fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let content = b.content.clone();
     let cd = entry_record(&content, chip);
     let side = b.objects.get(r).alliance;
@@ -360,7 +378,6 @@ fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u8 {
     a.variant = cd.subtype;
     a.element = cd.element as u8 | content.rules.family_elements(cd.family).0;
     a.charged = 0;
-    cd.action
 }
 
 /// `sub_800EF34`: the damage bonus MegaMan's form gives a chip (a link
@@ -562,7 +579,8 @@ fn rock_barrage(b: &mut Battle, r: ObjectRef) -> u8 {
     for (n, p) in panels.iter().enumerate() {
         // sub_80C7F20: Param1 counts down 3, 2, 1.
         let params = [3 - n as u8, 0, 0, 0];
-        if let Some(rock) = crate::behavior::spawn_kind(b, "falling-rock", Vec3::default(), params) {
+        let kind = b.content.defs.roles.kind(crate::content::KindRole::FallingRock);
+        if let Some(rock) = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, Vec3::default(), params) {
             let o = b.objects.get_mut(rock);
             o.panel = *p;
             o.element = 0x10;
