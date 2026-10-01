@@ -5,7 +5,7 @@
 //!
 //! A role names a definition, or, while what it needs is still a v1
 //! registration, that registration through the transitional `legacy`
-//! marker (`{ legacy = { action = 0x49 } }`, `{ legacy = { kind = "rock" } }`;
+//! marker (`{ legacy = { action = 0x49 } }`, `{ legacy = { kind = "a-v1-kind" } }`;
 //! counted by the ratchet). A legacy action number nothing implements yet
 //! leaves the role unported: starting it is "not implemented yet", as the
 //! number was. A role content hasn't filled is an error where the ruleset
@@ -92,14 +92,6 @@ impl ActionRole {
 /// The object kinds the ruleset spawns by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum KindRole {
-    /// The rock a stage's actor list places (entry type 8; its `place`).
-    Rock,
-    /// The boulder a stage's actor list places (entry type 3; its
-    /// `place`), one of the field's stage objects.
-    Boulder,
-    /// The Guardian statue a stage's actor list places (entry type 9; its
-    /// `place`).
-    Statue,
     /// What an obstacle absorbed flies off as (`obstacle.fly_to_absorber`).
     AbsorbedObstacle,
     /// GroundCross's charged chips' falling rocks (`sub_8012CB2`).
@@ -114,10 +106,7 @@ pub enum KindRole {
 }
 
 impl KindRole {
-    pub const ALL: [KindRole; 7] = [
-        KindRole::Rock,
-        KindRole::Boulder,
-        KindRole::Statue,
+    pub const ALL: [KindRole; 4] = [
         KindRole::AbsorbedObstacle,
         KindRole::FallingRock,
         KindRole::Support,
@@ -127,9 +116,6 @@ impl KindRole {
     /// Its name in `rules/roles.luau`'s `kinds`.
     pub fn name(self) -> &'static str {
         match self {
-            KindRole::Rock => "rock",
-            KindRole::Boulder => "boulder",
-            KindRole::Statue => "statue",
             KindRole::AbsorbedObstacle => "absorbed_obstacle",
             KindRole::FallingRock => "falling_rock",
             KindRole::Support => "support",

@@ -24,25 +24,6 @@ impl BattleSettings {
     }
 }
 
-/// A stage's battle settings record (the game's 16-byte BattleSettings,
-/// `BattleSettingsList1`'s entries).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct StageSettings {
-    /// Panel layout (`Content::panel_layout`).
-    pub layout: u8,
-    pub music: u8,
-    /// Battle mode (0 = netbattle).
-    pub mode: u8,
-    pub background: u8,
-    pub battle_number: u8,
-    /// Panel column pattern (which columns belong to which side).
-    pub panel_pattern: u8,
-    /// `effects` bits (see `effects`).
-    pub effects: u32,
-    /// Who and what spawns where.
-    pub actors: ActorListId,
-}
-
 /// Battle effects bits.
 pub mod effects {
     /// A ranked boss (`BATTLE_EFFECT_BOSS_RANK`).
@@ -53,82 +34,6 @@ pub mod effects {
     pub const SET: u32 = 0x400;
     /// Random battle.
     pub const RANDOM: u32 = 0x20_0000;
-}
-
-/// An entry of a battle's actor list: something placed on the field when
-/// the round starts (`sub_8007368`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ActorEntry {
-    /// What to spawn.
-    pub kind: ActorKind,
-    /// The side, for navis. Rocks take the side of their panel instead.
-    pub alliance: u8,
-    /// Panel.
-    pub x: u8,
-    pub y: u8,
-}
-
-/// What an actor-list entry spawns. These are the kinds the game's lists
-/// use; the spawn loop (`off_80073A0`) knows a few more.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ActorKind {
-    /// A player navi (`sub_80073CC`).
-    Navi,
-    /// A rock (attack object #0x59, `sub_80074FA`), placed at the start
-    /// (by content: objects/rock).
-    Rock {
-        /// Which rock (`ObjectData::rocks`).
-        variant: u8,
-    },
-    /// A boulder (attack object #0x6E, `sub_8007450`), kept in the
-    /// field-object registry's stage slots (by content: objects/boulder).
-    Object6E,
-    /// A Guardian statue (attack object #0x7D, `sub_800751C`), placed at
-    /// the start (by content: chips/guardian). Its `variant` is the
-    /// entry's argument, which only reaches the position its spawner
-    /// leaves before its init.
-    Object7D { variant: u8 },
-}
-
-impl ActorKind {
-    /// The entry's type: its spawn routine in `off_80073A0`.
-    pub fn entry_type(self) -> u8 {
-        match self {
-            ActorKind::Navi => 0,
-            ActorKind::Object6E => 3,
-            ActorKind::Rock { .. } => 8,
-            ActorKind::Object7D { .. } => 9,
-        }
-    }
-
-    /// The entry's argument (a rock's variant).
-    pub fn variant(self) -> u8 {
-        match self {
-            ActorKind::Rock { variant } | ActorKind::Object7D { variant } => variant,
-            ActorKind::Navi | ActorKind::Object6E => 0,
-        }
-    }
-}
-
-/// A battle's actor list (`Stages::actor_lists`).
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ActorList {
-    /// The address the original's battle settings records name the list
-    /// by: what link data and traces carry.
-    pub original_address: u32,
-    pub entries: Vec<ActorEntry>,
-}
-
-/// An actor list: its index in the content's `Stages::actor_lists`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct ActorListId(pub u8);
-
-impl<'a> IntoIterator for &'a ActorList {
-    type Item = &'a ActorEntry;
-    type IntoIter = std::slice::Iter<'a, ActorEntry>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.entries.iter()
-    }
 }
 
 /// A navi (NaviStats+0x29): MegaMan, or one of the link navis.

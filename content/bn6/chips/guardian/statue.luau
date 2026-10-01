@@ -370,15 +370,16 @@ KIND = define.kind {
             me:destroy()
         end
     end,
-    -- `sub_800751C`: a stage's statue (an actor list's entry type 9; the
-    -- role `kinds.statue`), on its panel's side, striking for 200.
-    place = function(spec: ActorListEntrySpec): Object?
+    -- `sub_800751C`: a stage's statue (an actor list's entry type 9), on
+    -- its panel's side, striking for 200. The entry's argument only reaches
+    -- the position the spawner leaves before its init.
+    place = function(spec: PlaceSpec): Object?
         local x, y = spec.panel_x, spec.panel_y
         local panel = field.panel(x, y)
         if not panel then
-            error(string.format("an actor list places a Guardian statue off the field at (%d, %d)", x, y))
+            error(string.format("a stage places a Guardian statue off the field at (%d, %d)", x, y))
         end
-        return statue.spawn(nil, x, y, STAGE_DAMAGE, Vec3.new(y, panel.alliance, spec.variant))
+        return statue.spawn(nil, x, y, STAGE_DAMAGE, Vec3.new(y, panel.alliance, spec.argument))
     end,
 }
 statue.kind = KIND

@@ -279,4 +279,3 @@ rules/lockon.luau 19
 rules/numbers.luau 4
 rules/roles.luau 3
 rules/status.luau 96
-stages/netbattle.luau 192
