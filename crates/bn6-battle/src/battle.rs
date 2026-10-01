@@ -192,6 +192,18 @@ pub enum FadeMode {
     TransformIn = 0x40,
     /// 0x44: the transformation sequencer's fade out.
     TransformOut = 0x44,
+    /// 0x10: the custom screen's Program Advance animation fades back in.
+    ProgramAdvanceBack = 0x10,
+    /// 0x14: ... and out, a quarter of the way.
+    ProgramAdvance = 0x14,
+    /// 0x50: the custom screen's cursor leaves a dark chip.
+    DarkChipBack = 0x50,
+    /// 0x54: the cursor rests on a dark chip: five sixteenths of the way.
+    DarkChip = 0x54,
+    /// 0x60: the custom screen's Beast Out fades back in.
+    BeastOutBack = 0x60,
+    /// 0x64: ... and out, half the way.
+    BeastOut = 0x64,
     /// 0x6C: battle mode 1's fade back in after a transformation.
     Mode1TransformIn = 0x6C,
     /// 0x70: battle mode 1's fade out for a transformation.
@@ -209,6 +221,10 @@ impl FadeMode {
             FadeMode::Dim => (true, 0x40),
             FadeMode::TransformIn | FadeMode::Mode1TransformIn => (false, 0),
             FadeMode::TransformOut | FadeMode::Mode1TransformOut => (true, 0x100),
+            FadeMode::ProgramAdvanceBack | FadeMode::DarkChipBack | FadeMode::BeastOutBack => (false, 0),
+            FadeMode::ProgramAdvance => (true, 0x40),
+            FadeMode::DarkChip => (true, 0x50),
+            FadeMode::BeastOut => (true, 0x80),
         }
     }
 }
@@ -219,7 +235,7 @@ impl FadeMode {
 /// (`subsystem_triggerTransition_800630A`). The level outlives a fade: the
 /// next one starts wherever the last one left it (a counter cut-in's dim
 /// starts from the dimmed screen and is done after one step).
-#[derive(Clone, Copy, Debug, Hash)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct Fade {
     /// +1: the running (or last) fade.
     pub mode: FadeMode,
