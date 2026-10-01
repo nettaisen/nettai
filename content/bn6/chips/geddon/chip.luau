@@ -8,6 +8,7 @@ local controller = require("./controller")
 return define.chip {
     id = "geddon",
     name = "Geddon",
+    description = "Breaks\nall empty\npanels",
     codes = { "A", "L", "R", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 2, mb = 47, damage = 0, hit_param = 0, lockout = 0,

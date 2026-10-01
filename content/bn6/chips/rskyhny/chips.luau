@@ -22,6 +22,7 @@ return {
     define.chip {
         id = "rskyhny1",
         name = "RskyHny1",
+        description = "Bees attk\nwhle hive\ndefending",
         codes = { "B", "G", "S" },
         element = "wood", family = "wood", class = "standard",
         rarity = 0, mb = 21, damage = 10, hit_param = 30, lockout = 0,
@@ -35,6 +36,7 @@ return {
     define.chip {
         id = "rskyhny2",
         name = "RskyHny2",
+        description = "Bees attk\nwhle hive\ndefending",
         codes = { "C", "R", "V" },
         element = "wood", family = "wood", class = "standard",
         rarity = 1, mb = 28, damage = 15, hit_param = 30, lockout = 0,
