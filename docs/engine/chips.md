@@ -1423,7 +1423,12 @@ The counters are content:
 **Lab**: the scenarios that spring a trap match every frame: `chips/0x0bb-antidmg/counter`, `sprung` and
 `sprung-side0` (AntiDmg's counter and its shuriken, variant 0), `chips/0x0bc-antiswrd/sprung` (the three swings and
 their sonic booms: every block of `sub_80EEA78`) and `pa/0x157-bodygrd/sprung` (the counter, the striker and its
-shurikens). **Unverified**: AntiDmg's variant 1 (two blocks of the throw, `sub_80EE996`), the striker's offline
+shurikens); and the traps sprung by other hits: AntiDmg by a sword, a volley, a bomb, a flame, a charged
+shot and hits inside a dimming, by both sides in turn, and deleting its target (`chips/0x0bb-antidmg/sprung-sword`,
+`-vulcan`, `-minibomb`, `-firebrn`, `-charge-shot`, `-heatman`, `-meteors`, `-twice`, `-ko`); AntiSwrd by the
+other swords and by ProtoMan's and SlashMan's slashes (`chips/0x0bc-antiswrd/sprung-sword`, `-wideswrd`,
+`-fireswrd`, `-stepswrd`, `-moonbld`, `-protoman`, `-slashman`); BodyGrd by a sword and a navi chip
+(`pa/0x157-bodygrd/sprung-sword`, `-heatman`). **Unverified**: AntiDmg's variant 1 (two blocks of the throw, `sub_80EE996`), the striker's offline
 target (`sub_80E8326`'s other branches: a netbattle takes the player navi) and three branch sides of its tick
 (`sub_80E82D4`).
 

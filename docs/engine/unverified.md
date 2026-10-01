@@ -19,6 +19,11 @@ this survey are written by the library's `gen_coverage.py` from its tables (`cov
 didn't have, it still checks data the others don't (another table row, another side, another timing), and the
 table says so.
 
+A caution for every scenario: the falzar base's save gives side 0 AirShoes, FlotShoe and BugStop unless the
+scenario sets `navicust` (side 1 has none). A scenario that means a panel to act on side 0, or a NaviCust bug to
+take effect, sets side 0's `navicust` (as the `no-footing` and `static/bugs` scenarios here do) or uses side 1.
+None of this section's other scenarios depends on a panel acting on side 0.
+
 ## Templates over every action handler family
 
 Four templates run over the first damaging chip of each action handler family that the lab's `hit` or `adjacent`
@@ -62,7 +67,8 @@ standard chip action…), whichever section below the family belongs to:
 | Instruments | removed (DustMan), blinking out (ColArmy), absorbed (DustCross) | no remover | yes | chips/0x092-fanfare, 0x093-discord, 0x094-timpani, 0x095-silence/{dustman, colarmy, absorbed}, chips/0x092-fanfare/absorbed-by-enemy, colarmy-by-enemy: verified |
 | Instruments | a failed collision | pool full | unreachable | |
 | AirRaid (subtype 13) | the plane shot down, the battle-over branch, the bombs against a barrier or no body | the plane is never hit | yes | chips/0x068-airraid1/broken, ko, barrier, invisible: verified |
-| AirRaid | the plane removed, absorbed, blinking out | no remover | yes | chips/0x068-airraid1/dustman, colarmy, absorbed: AIRRAID_STATUS |
+| AirRaid | the plane removed, absorbed, blinking out | no remover | yes | chips/0x068-airraid1/dustman, colarmy, absorbed: verified |
+| AirRaid | the plane's lifetime, AirRaid3's plane shot down, the bombs' panel list as the opponent walks | | yes | chips/0x068-airraid1/lifetime, moving-target, chips/0x06a-airraid3/broken: verified |
 | Sensor (subtype 28) | the pushed turret, the broken turret | the turret is never hit or pushed | yes | chips/0x071-sensor1/broken, pushed: verified |
 | Sensor | the laser's re-arming | one firing per scenario | yes | chips/0x071-sensor1/twice: verified |
 | Sensor | the battle-over branches | no KO | yes | chips/0x071-sensor1/ko: verified (the comparison now keeps a spark's garbage Z fraction after its laser is freed) |
@@ -70,7 +76,8 @@ standard chip action…), whichever section below the family belongs to:
 | Sensor | the turret removed, blinking out, absorbed; the scanner and the laser through a pause | | yes | chips/0x071-sensor1/dustman, colarmy, absorbed, paused: verified |
 | Sensor | the scanner's Param2 0, failed collisions | no spawner; pool full | unreachable | |
 | SumnBlk (subtype 36) | the whole navi (§9.2, §9.3) | no hole in front of the user | yes | chips/0x087-sumnblk1/hole-ahead, after-geddon, chips/0x089-sumnblk3/hole-ahead: verified |
-| ColorPt, DblPoint (subtype 27) | the bonus itself (080E66E0, 080E66EC, 080E66F6) | the next chip is none or has no damage | yes | chips/0x0c2-colorpt/bonus, chips/0x0c4-dblpoint/bonus, chips/0x062-lilbolr1/colorpt: COLORPT_STATUS |
+| SumnBlk | the target search: the opponent in each row, near, in the back column, behind a RockCube (no target: the navi leaves); side 1's; the battle's end; SumnBlk2 | one opponent on its start panel | yes | chips/0x087-sumnblk1/hole-ahead-up, hole-ahead-down, hole-ahead-near, hole-ahead-back, hole-ahead-rock, hole-ahead-side1, hole-ahead-ko, chips/0x088-sumnblk2/hole-ahead: verified |
+| ColorPt, DblPoint (subtype 27) | the bonus itself (080E66E0, 080E66EC, 080E66F6) | the next chip is none or has no damage | yes | chips/0x0c2-colorpt/bonus, chips/0x0c4-dblpoint/bonus, chips/0x062-lilbolr1/colorpt: verified |
 | ColorPt | the special-source branch, a missing navi, `sub_800D53C` running off the field | no such user | unreachable | |
 
 ### Dimming chip effects (dimming-chip-effects.md)
@@ -105,7 +112,8 @@ standard chip action…), whichever section below the family belongs to:
 | CircGun | a start column holding none of the enemy's home panels (the opponent's two AreaGrabs) | | yes | chips/0x08e-circgun/grabbed: verified |
 | CircGun | Param3 1, a non-player first actor | no chip | unreachable | |
 | Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken, pushed: verified |
-| Otenko | the statue removed, absorbed, blinking out | no remover | yes | chips/0x099-otenko/dustman, colarmy, absorbed: OTENKO_STATUS |
+| Otenko | the statue removed, absorbed, blinking out | no remover | yes | chips/0x099-otenko/dustman, colarmy, absorbed: verified |
+| Otenko | the lifetime (1800 ticks), a second statue, the blessing on two chips in turn | | yes | chips/0x099-otenko/lifetime, replaced, bonus-two-chips: verified |
 | BlzrdBal (subtype 21) | a non-solid thrower panel, the roller's battle-over end, three swallows | | yes | chips/0x0c7-blzrdbal/no-footing, ko, three-rocks: verified |
 | BlzrdBal | the excluded NameIDs, more than 4 hit objects | | hard | open |
 | Magnum (subtype 24) | A to fire, the cursor's later rows | no scenario presses A | yes | chips/0x08d-magnum/a-fires, a-fires-late: verified |
@@ -137,9 +145,11 @@ standard chip action…), whichever section below the family belongs to:
 | AntiRecv | Roll's damage with the double-damage flag; the trap taking over a cut-in | | yes | chips/0x0bd-antirecv/roll-full-synchro, roll-cut-in: verified |
 | AntiRecv | a full effect pool | | unreachable | |
 | AntiDmg | the trap sprung: the stars thrown back | the lab never hits a trap's user | yes | chips/0x0bb-antidmg/sprung, sprung-side0, small-hit, turn-end, replaced: verified (the counter is chips/antidmg/counter) |
+| AntiDmg | sprung by a sword, a volley, a bomb, a flame, a charged shot, hits inside a dimming; both sides' traps in turn; the stars deleting their target | one Cannon | yes | chips/0x0bb-antidmg/sprung-sword, sprung-vulcan, sprung-minibomb, sprung-firebrn, sprung-charge-shot, sprung-heatman, sprung-meteors, sprung-twice, sprung-ko: verified |
 | AntiSwrd | the trap sprung by a sword | | yes | chips/0x0bc-antiswrd/sprung, not-a-sword: verified (the counter is chips/antiswrd/counter) |
+| AntiSwrd | the other swords: Sword, WideSwrd, FireSwrd, StepSwrd, MoonBld, ProtoMan's and SlashMan's slashes | one LongSwrd | yes | chips/0x0bc-antiswrd/sprung-sword, sprung-wideswrd, sprung-fireswrd, sprung-stepswrd, sprung-moonbld, sprung-protoman, sprung-slashman: verified |
 | ElemTrap (§3.6.10) | the spring, the sparkles, the counterattack, the panel bursts | the lab never hits the trap with an element | yes | chips/0x0c5-elemtrap/sprung-fire, sprung-elec, null-hit: verified |
-| BodyGrd (PA 0x157) | the trap itself | recorded only as its recipe | yes | pa/0x157-bodygrd/sprung: verified (the counter is chips/bodygrd/counter) |
+| BodyGrd (PA 0x157) | the trap itself, sprung by a shot, a sword and a navi chip | recorded only as its recipe | yes | pa/0x157-bodygrd/sprung, sprung-sword, sprung-heatman: verified (the counter is chips/bodygrd/counter) |
 | IceCube (0x17C) | its record | no folder holds it | yes (save edit) | chips/0x17c-icecube/hit, pushed, broken, melted: verified |
 | WhiCapsl (0x17E) | its dimming record | no folder can hold it (no codes: chip 0x185 instead) | unreachable | chips/0x17e-whicapsl/hit shows the 0x185: verified |
 | Invisibl | shots and swords through an invisible navi | | yes | chips/0x0b1-invisibl/shot-at, the `invisible` template: verified |
@@ -165,7 +175,7 @@ standard chip action…), whichever section below the family belongs to:
 | Navi chips | the navi AI's variants (Param1 0 and the like): SpoutMan's, BlastMan's, ElecMan's, ChargeMan's, SlashMan's, DiveMan's, JudgeMan's whip | only the bosses' AI spawns them | unreachable | |
 | GroundMan | the rock's non-solid landing, the rocks and the drill at the battle's end | | yes | chips/0x0fb-grndman/rockfall-holes, rockfall-after-geddon, rockfall-ko: verified |
 | GroundMan | no rock candidate | the enemy's area always has a panel | unreachable | |
-| DustMan | the junk's looks by NameID (the instruments, the turret, the fans, the statues, the bombs, the boiler, the doll: a look without a shadow, the none look), the excluded NameIDs (the mine) | he only ever took RockCubes | yes | chips/…/dustman for Fanfare, Discord, Timpani, Silence, Sensor1, Wind, Fan, Anubis, Guardian, TimeBom1, Mine, BlkBomb, LilBolr1, VDoll: verified (AirRaid1's and Otenko's: differs, their subtypes being ported) |
+| DustMan | the junk's looks by NameID (the instruments, the turret, the fans, the statues, the bombs, the boiler, the doll: a look without a shadow, the none look), the excluded NameIDs (the mine) | he only ever took RockCubes | yes | chips/…/dustman for Fanfare, Discord, Timpani, Silence, Sensor1, Wind, Fan, Anubis, Guardian, TimeBom1, Mine, BlkBomb, LilBolr1, VDoll, AirRaid1, Otenko: verified |
 | DustMan | NameIDs outside 0xCD..0xFF, the flag check after moving | no such object | unreachable | |
 | JudgeMan | a book arriving at its target, leaving solid ground, ending with the battle | the books always hit | yes | chips/0x10a-judgeman/books-invisible, books-holes, books-ko: verified |
 | JudgeMan | the heading's reversal, the target past the far edge (no enemy navi at all) | an invisible navi still has its body on its panel | unreachable | |
