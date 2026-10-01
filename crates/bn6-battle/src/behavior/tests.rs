@@ -39,7 +39,6 @@ fn battles_run_the_content_scripts() {
         kinds,
         [
             "absorbed-obstacle",
-            "aqua-surge",
             "attachment",
             "bass",
             "blast-fire",
@@ -133,11 +132,13 @@ fn battles_run_the_content_scripts() {
             "spout-mark",
             "spout-pillar",
             "spout-splash",
+            "spoutcross-beast/surge",
             "spoutman/drip-shower",
             "sun-meteor",
             "sun-moon",
             "sword-wave",
             "tengu-man",
+            "tengucross-beast/whirlwind",
             "tenguman/tornado",
             "thunder-column",
             "time-bom",
@@ -148,7 +149,6 @@ fn battles_run_the_content_scripts() {
             "vdoll/curse",
             "vdoll/doll",
             "vdoll/sparkles",
-            "whirlwind",
         ]
     );
     assert!(b.content.defs.action_numbered(0x37).is_some(), "GunDelSol is a script");
