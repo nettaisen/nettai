@@ -193,7 +193,7 @@ subtype 3 and params 0.
   stays ≥ 0: X, Y, Z += velocity, Z velocity −= 0x18000, his panel from the coordinates; then Z's whole part 0 and
   his panel solid (0x10) → 4, else 8. 4 (`sub_80F0832`), the press: the bonus; four flames
   (`sub_80F37D8`: on each of the panels left, right, above and below him (`byte_80F3824`: (−1, 0), (1, 0), (0, −1),
-  (0, 1)) that is solid, attack #0x26, objects/heat-flame, Param1 0 (it waits a dimming out), Param2 60, the damage
+  (0, 1)) that is solid, attack #0x26, chips/heatman/flame, Param1 0 (it waits a dimming out), Param2 60, the damage
   word; its Z the r3 `_object_getPanelDataOffset` leaves: the row − 1); a hit on his panel lasting 60
   (`object_spawnCollisionRegion`: region 1, hit effect 1, target 5, self 4, modifier 3, Z 0, Timer 60); sound 0xC0;
   60 ticks → 8. 8 (`sub_80F0898`): anim 0, region 1, back onto FuturePanel (unreserved), `object_exitAttackState`.
@@ -214,7 +214,7 @@ subtype 3 and params 0.
   state word = 8 (`sub_80E3FC4`); 3 ticks → 0xC. 0xC (`sub_80F0B0E`): anim 0, 30 ticks → exit.
 - **RSlash (AI 3, `sub_80F0CB0`).** 0 (`sub_80F0CD4`): the bonus; `av+0x30` = 0; speed `av+0x34` = 0x40000; anim 0x12;
   20 ticks → 4. 4 (`sub_80F0D08`): region cleared; FuturePanel his, reserved; flag 0x40; anim 0x13; the riding hit
-  (`sub_80D19D4`: attack #0x69, objects/riding-hit: self 7, target 5, Param1 3 (modifier), Param2 0xFF (no spark),
+  (`sub_80D19D4`: attack #0x69, navis/slashman/riding_hit: self 7, target 5, Param1 3 (modifier), Param2 0xFF (no spark),
   Param3 1 (goes on after hitting a body), the element and damage word; it lasts while he is in action 0xA) in
   `av+0x30`; sound 0x164; 10 ticks: the heading (`sub_80F0E96`: on row 3 X velocity front · speed and route step
   `av[0xC]` = 1; else Y velocity + speed (down), step 0) → 8. 8 (`sub_80F0D64`), the roll: c = his panel's centre on
@@ -258,18 +258,18 @@ subtype 3 and params 0.
   flag 0x40, Timer 2 → 8; else Timer 2 → 0xC. 8 (`sub_80F1694`): 2 ticks: onto the reserved panel, coordinates and
   collision panels → 0x10. 0xC (`sub_80F16B4`), no jump: the timer counts before the entry: 2 ticks, then anim 3,
   Timer 8, and 8 ticks → exit. 0x10 (`sub_80F16E0`): the bonus (here: the no-jump path never adds it); the spray
-  (`sub_80C92CC`: attack #0x29, objects/drip-shower, on his panel, Param1 4, Param2 2, Param3 0xA, the element and
+  (`sub_80C92CC`: attack #0x29, navis/spoutman/drip_shower, on his panel, Param1 4, Param2 2, Param3 0xA, the element and
   damage word); Timer 0xA · 4 · 2 + 0xA = 90 → 0x14. 0x14 (`sub_80F172C`): anim 4, flag 0x40, 6 ticks → 0x18. 0x18
   (`sub_80F1756`): anim 3; his panel unreserved, back onto FuturePanel (unreserved), coordinates, collision panels,
   region 1, flags 0x40 off, 0x80000 on, 0x400000 off; 8 ticks → exit.
 - **ETomahwk (AI 7, `sub_80F18AC`).** 0 (`sub_80F18CC`): the bonus; anim 0x11; his axe (`sub_80E40C2`: effect #0x32,
-  objects/eagle-tomahawk, r4 1, kept in `av+0x30`); 16 ticks → 4. 4 (`sub_80F1902`): anim 0x12, Timer 30, the axe's
+  navis/tomahawkman/axe, r4 1, kept in `av+0x30`); 16 ticks → 4. 4 (`sub_80F1902`): anim 0x12, Timer 30, the axe's
   CurAction = 1; the tick it reaches 20: a camera shake (2, 30), sound 0x10C, the strikes (`sub_80F197A`: on the
-  panels 1..6 ahead in his row, stopping at the edge, attack #0x6A, objects/tomahawk-strike, Param1 (n − 1) · 5 (the
+  panels 1..6 ahead in his row, stopping at the edge, attack #0x6A, navis/tomahawkman/strike, Param1 (n − 1) · 5 (the
   delay), Param2 7, Param3 5, Param4 0xFF, the element and damage word); 30 ticks → 8. 8 (`sub_80F194C`): anim 7,
   the axe's CurAction = 2, 30 ticks → exit.
 - **FTornado (AI 8, `sub_80F1A46`).** 0 (`sub_80F1A60`): anim 0x10; the bonus; a tornado (`sub_80D05C4`: attack
-  #0x60, objects/tengu-tornado, the element and damage word) on every panel ahead of him (rows 1..3, columns 1..6,
+  #0x60, navis/tenguman/tornado, the element and damage word) on every panel ahead of him (rows 1..3, columns 1..6,
   columns beyond his toward the front) with the other side's body or object or a neutral object
   (`byte_80F1B70[side]`: 0x05800000; side 1 0x0A800000), in that order; a whole-field hit of no damage
   (`sub_80F1B78`: region 0x80, no spark, target 2, self 1, modifier 0, element 0, at (0, 0)); sound 0xB8; T4#0 effect
@@ -293,7 +293,7 @@ subtype 3 and params 0.
   0x400000 off; invulnerability off (`sub_800EB08`: its timer 0, flag 8 off); anim 3, 9 ticks → 0x14. 0x14
   (`sub_80F1DE4`): anim 0, 20 ticks → exit.
 - **DustBrk (AI 10, `sub_80F1FA0`).** 0 (`sub_80F1FC0`): the bonus; anim 0x12; the first dust cloud (`sub_80E887C`, r4
-  0xA00: effect #0x72, objects/dust-cloud) in `av+0x30`; sound 0xAD; Timer 30; every tick, the entry's too, the pull
+  0xA00: effect #0x72, navis/dustman/clouds) in `av+0x30`; sound 0xAD; Timer 30; every tick, the entry's too, the pull
   (`sub_80F20A0`: in his row, on each panel of the other side's area (`byte_80F20E0[side]`: side 0 require 0x20;
   side 1 forbid 0x20), a hit of no damage, element 0, region 1, no spark, target 5, self 0x1E, modifier 0x10); 30
   ticks → 4. 4 (`sub_80F2004`): anim 0x14; the second cloud (`sub_80E8770`, r4 0xA: effect #0x71) in `av+0x34`, Timer
