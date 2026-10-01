@@ -1,6 +1,0 @@
-# ElecMan, the ElecMan chips' navi (actor object #0x08, `sub_80B92B8`), is a script.
-
-[kind]
-pool = "actor"
-index = 0x08
-script = "elec_man.luau"

@@ -1,3 +1,4 @@
-# A navi chip (subtype 27): its navi is BassAnly.
+# BassAnly (navi chip subtype 27) summon BassAnly
+# (chips/bassanly/navi.luau), through chip.luau.
 
-script = "../../objects/bass-anly/bass_anly.luau"
+script = "chip.luau"
