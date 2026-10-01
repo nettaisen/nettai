@@ -142,20 +142,16 @@ impl<'a> Ids<'a> {
 
     /// The stage a battle settings index names.
     pub fn stage(&self, settings: u8) -> StageHandle {
-        let defs = &self.content.defs;
-        self.compat
-            .stage_key(settings)
-            .and_then(|k| defs.stage_by_key(k))
-            .or_else(|| defs.stage_numbered(settings))
-            .unwrap_or_else(|| panic!("battle settings {settings:#x} are neither defined nor in the pack"))
+        let key = self.compat.stage_key(settings).unwrap_or_else(|| panic!("stages.toml has no battle settings {settings:#x}"));
+        self.content
+            .defs
+            .stage_by_key(key)
+            .unwrap_or_else(|| panic!("the content has no stage {key:?} (battle settings {settings:#x})"))
     }
 
     /// A stage's battle settings index.
     pub fn stage_index(&self, h: StageHandle) -> u8 {
         let def = self.content.defs.stage(h);
-        if let Some(n) = def.number {
-            return n;
-        }
         let e = self.compat.stages.get(&def.key).unwrap_or_else(|| panic!("stages.toml has no {:?}", def.key));
         *e.settings.first().unwrap_or_else(|| panic!("stages.toml gives {:?} no settings", def.key))
     }
@@ -382,32 +378,35 @@ pub fn transform_request(b: &[u8], ids: &Ids) -> TransformRequest {
 
 // ---- Battle settings, stages, SP times ---------------------------------------------
 
+/// The music byte of battle settings that start no music (`PlayMusic` of
+/// it stops the music).
+const NO_MUSIC: u8 = 0x63;
+
 /// Netbattle settings from the game's 16-byte BattleSettings record: the
-/// stage whose record it is (the first whose layout, music, mode, battle
-/// number, panel pattern and actor list match; bytes 12..16 name the actor
-/// list by its original address, which `content` resolves), with the
-/// record's background and effects. Byte 1 (read by
-/// `GetBattleSettingsUnk01`, outside the battle simulation) and byte 7 (no
-/// reader found) are not kept.
+/// stage whose record it is, with the record's background and effects.
+/// Byte 0 names the panel layout by number and bytes 12..16 the actor list
+/// by its address, which compat's stages have; the stage is the first, by
+/// key, with that layout and actor list whose music, mode, battle number
+/// and panel pattern match. Byte 1 (read by `GetBattleSettingsUnk01`,
+/// outside the battle simulation) and byte 7 (no reader found) are not
+/// kept.
 pub fn battle_settings(b: &[u8], ids: &Ids) -> BattleSettings {
     let content = ids.content;
     let address = u32::from_le_bytes(b[12..16].try_into().unwrap());
-    let actors = content
-        .rules
-        .stages
-        .actor_list_at(address)
-        .unwrap_or_else(|| panic!("battle settings name an unknown actor list {address:#010x}"));
-    let stage = content
-        .defs
+    let stage = ids
+        .compat
         .stages
         .iter()
-        .position(|st| {
-            let r = &st.record;
-            (r.layout, r.music, r.mode, r.battle_number, r.panel_pattern, r.actors) == (b[0], b[2], b[3], b[5], b[6], actors)
+        .filter(|(_, e)| e.layout == b[0] && e.actor_list == address)
+        .find_map(|(key, _)| {
+            let h = content.defs.stage_by_key(key)?;
+            let r = content.stage(h);
+            let music = r.music.map_or(NO_MUSIC as u16, |m| m.0);
+            ((music, r.mode, r.battle_number, r.panel_pattern) == (b[2] as u16, b[3], b[5], b[6])).then_some(h)
         })
         .unwrap_or_else(|| panic!("no stage has the battle settings {b:02x?}"));
     BattleSettings {
-        stage: StageHandle(stage as u16),
+        stage,
         background: b[4],
         effects: u32::from_le_bytes(b[8..12].try_into().unwrap()),
     }

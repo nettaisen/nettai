@@ -1,8 +1,7 @@
 //! The tables the ruleset and v1 modules still read by number, built from
 //! what the content defines (docs/design/content-model-v2.md §12, step 5):
 //! the pack's chips, navis and forms by number, weapons' charge times,
-//! stages' panel layouts and actor lists, the rule sections, collision
-//! types, statuses and lock-on modes, and the numbered tables (effects,
+//! the rule sections, collision types, statuses and lock-on modes, and the numbered tables (effects,
 //! sparks, regions, the object kinds' rows).
 //!
 //! Where a definition still carries what only registration by number reads
@@ -24,10 +23,9 @@ use serde_json::{Map, Value as Json};
 
 use super::*;
 use crate::field::PanelType;
-use crate::setup::{ActorEntry, ActorKind, ActorList, ActorListId, StageSettings};
 
-/// What registration by number reads of the chips, navis, forms, weapons
-/// and stages the content defines, by their definitions' keys.
+/// What registration by number reads of the chips, navis, forms and
+/// weapons the content defines, by their definitions' keys.
 #[derive(Clone, Debug, Default)]
 pub struct Legacy {
     /// The pack's chips: each definition's record, with its number.
@@ -37,9 +35,6 @@ pub struct Legacy {
     pub weapons: BTreeMap<String, LegacyWeapon>,
     /// Charge times of the weapon routine numbers no weapon names.
     pub routine_charges: BTreeMap<u8, Vec<u16>>,
-    /// Stages: their records, and their place in the original's battle
-    /// settings table.
-    pub stages: BTreeMap<String, (StageSettings, Option<u8>)>,
 }
 
 /// A weapon registration by number reads: its routine numbers, the v1
@@ -626,7 +621,7 @@ impl Resolver<'static> {
     }
 }
 
-// ---- Chips, navis, forms, weapons, stages -----------------------------------------------------
+// ---- Chips, navis, forms, weapons -----------------------------------------------------
 
 /// Whether a chip definition is a numbered record whose behaviour is still
 /// a v1 module: its `legacy` marker gives its `number`.
@@ -772,76 +767,6 @@ fn weapon(d: &Definition) -> Result<LegacyWeapon, ContentError> {
     })
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ActorRow {
-    kind: String,
-    #[serde(default)]
-    variant: Option<u8>,
-    side: u8,
-    x: u8,
-    y: u8,
-}
-
-/// What a stage definition holds: its record and number, its panel layout
-/// and its actor list.
-type StageParts = ((StageSettings, Option<u8>), (u8, PanelLayout), (u32, Vec<ActorEntry>));
-
-/// A stage: its record, its place in the battle settings table, its panel
-/// layout and its actor list (by the numbers its legacy marker gives them).
-fn stage(d: &Definition, r: &Resolver) -> Result<StageParts, ContentError> {
-    let what = |m: String| err(d, m);
-    let marker = d.spec.field("legacy");
-    let layout_number = marker.field("layout").int().ok_or_else(|| what("needs a legacy `layout` number".into()))? as u8;
-    let address = marker.field("actor_list").int().ok_or_else(|| what("needs a legacy `actor_list` address".into()))? as u32;
-    let rows: Vec<String> = r.read(d.spec.field("layout"), "layout").map_err(what)?;
-    let mut layout = PanelLayout::default();
-    if rows.len() != 3 {
-        return Err(what("`layout` is three rows of six panel types".into()));
-    }
-    for (y, row) in rows.iter().enumerate() {
-        let names: Vec<&str> = row.split_whitespace().collect();
-        if names.len() != 6 {
-            return Err(what(format!("layout row {} has {} panels, not 6", y + 1, names.len())));
-        }
-        for (x, name) in names.iter().enumerate() {
-            layout.rows[y][x] = PanelType::ALL
-                .into_iter()
-                .find(|t| serde_name(t) == *name)
-                .ok_or_else(|| what(format!("{name:?} is not a panel type")))?;
-        }
-    }
-    let actors: Vec<ActorRow> = r.read(d.spec.field("actors"), "actors").map_err(what)?;
-    let mut entries = Vec::new();
-    for a in actors {
-        let kind = match (a.kind.as_str(), a.variant) {
-            ("navi", None) => ActorKind::Navi,
-            ("object6e", None) => ActorKind::Object6E,
-            ("rock", Some(variant)) => ActorKind::Rock { variant },
-            ("object7d", Some(variant)) => ActorKind::Object7D { variant },
-            (k, v) => return Err(what(format!("an actor {k:?} with variant {v:?} is not one the actor lists hold"))),
-        };
-        entries.push(ActorEntry { kind, alliance: a.side, x: a.x, y: a.y });
-    }
-    let int = |f: &str| -> Result<i64, ContentError> { d.spec.field(f).int().ok_or_else(|| what(format!("needs `{f}`"))) };
-    let asset = |f: &str| -> Result<i64, ContentError> {
-        r.json(d.spec.field(f), f).map_err(what)?.as_i64().ok_or_else(|| what(format!("`{f}` is an asset")))
-    };
-    let settings = StageSettings {
-        layout: layout_number,
-        music: asset("music")? as u8,
-        mode: int("mode")? as u8,
-        background: asset("background")? as u8,
-        battle_number: int("battle_number")? as u8,
-        panel_pattern: int("panel_pattern")? as u8,
-        effects: int("effects")? as u32,
-        // Set once the lists are numbered.
-        actors: ActorListId(0),
-    };
-    let number = marker.field("number").int().map(|n| n as u8);
-    Ok(((settings, number), (layout_number, layout), (address, entries)))
-}
-
 /// Everything registration by number reads of what the content defines:
 /// the tables into `content`, the per-definition records returned.
 pub fn build(content: &mut Content, definitions: &Definitions) -> Result<Legacy, ContentError> {
@@ -916,42 +841,6 @@ pub fn build(content: &mut Content, definitions: &Definitions) -> Result<Legacy,
         content.weapons = out;
     }
 
-    // Stages: their records, and the panel layouts and actor lists they
-    // hold, by the numbers the original gives them.
-    let mut layouts: BTreeMap<u8, (PanelLayout, &str)> = BTreeMap::new();
-    let mut lists: BTreeMap<u32, (Vec<ActorEntry>, &str)> = BTreeMap::new();
-    let mut stages = Vec::new();
-    for d in definitions.of(Registry::Stage) {
-        let (settings, (n, layout), (address, entries)) = stage(d, &r)?;
-        match layouts.get(&n) {
-            Some((l, first)) if *l != layout => {
-                return Err(err(d, format!("panel layout {n:#x} differs from stage {first}'s")));
-            }
-            _ => {
-                layouts.insert(n, (layout, &d.key));
-            }
-        }
-        match lists.get(&address) {
-            Some((l, first)) if *l != entries => {
-                return Err(err(d, format!("actor list {address:#010x} differs from stage {first}'s")));
-            }
-            _ => {
-                lists.insert(address, (entries, &d.key));
-            }
-        }
-        stages.push((d.key.clone(), settings, address));
-    }
-    if !stages.is_empty() {
-        let max = layouts.keys().max().copied().unwrap_or(0) as usize;
-        content.panel_layouts = (0..=max).map(|n| layouts.get(&(n as u8)).map(|(l, _)| *l).unwrap_or_default()).collect();
-        let ids: BTreeMap<u32, u8> = lists.keys().enumerate().map(|(i, &a)| (a, i as u8)).collect();
-        content.rules.stages.actor_lists =
-            lists.into_iter().map(|(original_address, (entries, _))| ActorList { original_address, entries }).collect();
-        for (key, (mut settings, number), address) in stages {
-            settings.actors = ActorListId(ids[&address]);
-            legacy.stages.insert(key, (settings, number));
-        }
-    }
     Ok(legacy)
 }
 

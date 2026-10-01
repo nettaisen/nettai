@@ -229,14 +229,14 @@ has its own script (`TextScriptBattleRunDialog`'s script 3 sends it there).
 R+8; Recov10, two lines, from R+7), `description-invalid-4..6` (from R+6), `description-cross-7`, `-8` (a Cross's,
 from R+8, back to the Cross window), `description-b-held-12`, `-30`, `description-keys`; `run-message`, `-b`,
 `-wait`, `-taps-0`, `-taps-1` (A on every other frame, from either parity), `-b-held`, and the link navis'
-`run-message-navi-1`, `-2`, `-6` and `-navi-1-wait`, `-6-wait`.
+`run-message-navi-1` to `-11` with their `-wait` (every link navi's message).
 
 Three chips' descriptions aren't in their scripts: DblBeast's, Gregar's and Falzar's scripts copy their text from
 the console's memory (`FF 01 nn`, `chatbox_FF_copytext`: 0x40 bytes of a buffer the game keeps, run as script and
 returned from at its end), so the pack has no `description` for them and they count as three lines. That is what
 the game shows for them (DblBeast's reads "Ferocious / beast / power!"): `description-arm-137-5..9` and
-`description-arm-139-7`, `-8` (the Falzar chip, dug out over two turns) take A from R+8. Gregar's copies the same
-buffer as Falzar's. Not reached: what `sub_802A220` closes a description for (it answers 0xFF in a netbattle with
+`description-arm-139-7`, `-8` (the Falzar chip, dug out over two turns) and `description-arm-138-7`, `-8` (the
+Gregar chip, which copies the same buffer) take A from R+8. Not reached: what `sub_802A220` closes a description for (it answers 0xFF in a netbattle with
 MegaMan).
 
 ### 3.6 DustCross's scrap (`sub_8027406`)
@@ -475,7 +475,8 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
     0x20, which a netbattle doesn't have (L gives the run message there, §3.5; the lab's `custom/run-message*`).
 - **Chip 0x13F picked as a chip** (state 0x44, `Phase::BeastOutChipChosen`): the chip lab's BeastOut scenarios match.
 - **Tag chips**: laid out and shuffled; only ChpShufl's re-deal reads the tag pair (§3.7).
-- **Link navis** (NaviStats+0x29 ≠ 0): their own chip in slot 9 is from the code only.
+- **Link navis** (NaviStats+0x29 ≠ 0): their own chip in slot 9 is picked in the chip lab's `navis/` scenarios, whose
+  custom screens match.
 - The builder's stale-register write on the first fold (chips.md §2.4) is not reproduced.
 - Battle mode 1 paths, tutorials, escape, the Beast Link Gate (state 0x40).
 - NaviStats +0x0A (CustomLevel) and +0x63 change during fights in soundmod (6878, 10341, 36618, 54134); the hand
