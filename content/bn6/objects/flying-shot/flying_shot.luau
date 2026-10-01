@@ -230,7 +230,7 @@ local function tick(me: Object)
     c:present()
     -- `object_highlightCurrentCollisionPanels`: its region is its own
     -- panel (region 1) until it ends (none). Drawn only.
-    if v.highlight and c.region ~= 0 then
+    if v.highlight and c.region ~= nil then
         field.highlight(me.panel_x, me.panel_y)
     end
 end

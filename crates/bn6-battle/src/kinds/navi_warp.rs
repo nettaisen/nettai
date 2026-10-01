@@ -70,7 +70,7 @@ fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
 /// steps even while paused), at its position.
 fn init(b: &mut Battle, r: ObjectRef) {
     let navi = owner(b, r);
-    let owner_type = b.content.navi_record(b.objects.get(navi).name_id).actor_type;
+    let owner_type = b.content.navi_record(b.objects.get(navi).identity).actor_type;
     if let crate::kinds::Vars::NaviWarp(v) = &mut b.objects.get_mut(r).vars {
         v.owner_type = owner_type;
     }
@@ -135,8 +135,8 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     if left <= 0 {
         o.flags &= !flags::VISIBLE;
         let navi = owner(b, r);
-        let name_id = b.objects.get(navi).name_id;
-        form::navi_death_hook(b, r, name_id);
+        let identity = b.objects.get(navi).identity;
+        form::navi_death_hook(b, r, identity);
         if warp == Warp::In {
             show_user(b, navi);
         }

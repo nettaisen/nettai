@@ -52,8 +52,32 @@ function statue.variant(v: AnubisVariant): AnubisVariant
     return define.record("anubis-variant", v)
 end
 
-statue.anubis = statue.variant { anim = 0, period = 6, hp = 100, lifetime = 3000, name = 0xDB }
-statue.poisphar = statue.variant { anim = 1, period = 1, hp = 100, lifetime = 1441, name = 0xDC }
+statue.anubis = statue.variant {
+    anim = 0,
+    period = 6,
+    hp = 100,
+    lifetime = 3000,
+    identity = define.identity {
+        id = "anubis",
+        class = "field_object",
+        version = 2,
+        ai_index = 1,
+        look = { sprite = asset.sprite("anubis"), anim = 0, palette = 0, shadow = true },
+    },
+}
+statue.poisphar = statue.variant {
+    anim = 1,
+    period = 1,
+    hp = 100,
+    lifetime = 1441,
+    identity = define.identity {
+        id = "poisphar",
+        class = "field_object",
+        version = 3,
+        ai_index = 1,
+        look = { sprite = asset.sprite("anubis"), anim = 1, palette = 0, shadow = true },
+    },
+}
 
 -- `sub_80CF250`: drop; landed, take the panel if it is free solid ground
 -- (the camera shaking), else break.
@@ -131,7 +155,7 @@ local function poison(me: Object)
         element = DRAIN_ELEMENT,
         z = me.pos.z,
         region = regions.area[1 - me.alliance],
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.nothing,
         self_type = DRAIN_IS,
         damage = DRAIN_DAMAGE,
@@ -214,7 +238,7 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     me.pos = Vec3.new(me.pos.x, me.pos.y, HEIGHT)
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
-    me.name_id = v.name
+    me.identity = v.identity
     me.vel = Vec3.new(me.vel.x, me.vel.y, FALL_SPEED)
     me.element = 0
     me.timer = v.lifetime

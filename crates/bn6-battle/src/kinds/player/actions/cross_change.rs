@@ -133,7 +133,7 @@ fn land(b: &mut Battle, r: ObjectRef, knockout: bool) {
         if knockout {
             ai_mut(b, r).full_synchro_aura = None;
         } else {
-            coll_mut(b, r).region = 1;
+            coll_mut(b, r).region = b.anchor_region();
         }
         vars(b, r).timer = 4;
         ai_mut(b, r).attack.step_init = 4;
@@ -163,7 +163,7 @@ fn settle(b: &mut Battle, r: ObjectRef) -> bool {
 fn take_identity(b: &mut Battle, r: ObjectRef) {
     let navi = navi_of(b, r);
     ai_mut(b, r).ai_index = navi.0;
-    b.objects.get_mut(r).name_id = 0x1A0 + navi.0 as u16;
+    b.objects.get_mut(r).identity = b.content.navi_data(navi).identity;
     load_sprite(b, r);
     common::set_animation(b, r, 3);
 }
@@ -173,8 +173,8 @@ fn become_other_navi(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
     let old_form = form_of(b, r);
     form::take_off_overlay(b, r, old_form);
-    let name_id = b.objects.get(r).name_id;
-    form::navi_death_hook(b, r, name_id);
+    let identity = b.objects.get(r).identity;
+    form::navi_death_hook(b, r, identity);
     navi_status::end_anger(b, r);
     // The navi it leaves is kept when it is the kept one (with its HP).
     if b.cross_stats[side].navi == b.stats[side].navi {
@@ -194,7 +194,7 @@ fn become_other_navi(b: &mut Battle, r: ObjectRef) {
     if navi == Navi::MEGAMAN {
         form::put_on_overlay(b, r, form_of(b, r));
     } else {
-        form::navi_init_hook(b, r, b.objects.get(r).name_id);
+        form::navi_init_hook(b, r, b.objects.get(r).identity);
     }
     post_init_hook(b, r);
     clear_statuses(b, r);
@@ -210,11 +210,11 @@ fn become_other_navi(b: &mut Battle, r: ObjectRef) {
 /// `sub_802D9B0`: the knockout's change back to the kept navi (one tick).
 fn take_back(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
-    let name_id = b.objects.get(r).name_id;
-    form::navi_death_hook(b, r, name_id);
+    let identity = b.objects.get(r).identity;
+    form::navi_death_hook(b, r, identity);
     b.stats[side] = b.cross_stats[side];
     take_identity(b, r);
-    form::navi_init_hook(b, r, b.objects.get(r).name_id);
+    form::navi_init_hook(b, r, b.objects.get(r).identity);
     let s = *stats(b, r);
     form::put_on_overlay(b, r, form_of(b, r));
     clear_statuses(b, r);

@@ -54,7 +54,7 @@ local function field_hit(me: Object)
         element = FIELD_ELEMENT,
         z = 0,
         region = regions.solid,
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.guard_breaking,
         damage = 0,

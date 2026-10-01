@@ -24,7 +24,8 @@ return define.navi {
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = a_charge },
     fresh = { hp = 250, first_barrier = 0, mega_level = 5, giga_level = 1 },
     cross_hp = { 200, 200 },
-    identity = {
+    identity = define.identity {
+        class = "link_navi",
         version = 0,
         actor_type = "player",
         ai_index = 5,

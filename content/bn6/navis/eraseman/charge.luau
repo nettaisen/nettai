@@ -53,7 +53,7 @@ local function slash(me: Object)
         element = me.attack_element,
         z = 0,
         region = regions.wide,
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.slash,
         damage = link.damage(me),

@@ -266,7 +266,7 @@ local function tick(me: Object)
             error(string.format("yoyo action %#x reads past off_80CE8CC", a))
         end
     end
-    if c.region ~= 0 then
+    if c.region ~= nil then
         field.highlight(me.panel_x, me.panel_y)
     end
     if not dimmed then

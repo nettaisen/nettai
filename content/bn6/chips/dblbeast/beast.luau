@@ -188,7 +188,7 @@ end
 -- with `sprite` (no shadow, animation 0, facing its way), with its
 -- identity's NameID (its attachments sit at that sprite's attach
 -- points); no attack has missed.
-function beast.init(me: Object, sprite: SpriteAsset, ahead: boolean, name: number)
+function beast.init(me: Object, sprite: SpriteAsset, ahead: boolean, identity: Identity)
     beast.rest(me, ahead)
     local sp = me.sprite
     sp:load(sprite)
@@ -197,7 +197,7 @@ function beast.init(me: Object, sprite: SpriteAsset, ahead: boolean, name: numbe
     sp:set_animation(0)
     sp.palette = 0
     sp:set_flip(bit32.bxor(me.alliance, me.flip))
-    me.name_id = name
+    me.identity = identity
     local s = me.state :: DblBeastState
     s.missed = false
 end
