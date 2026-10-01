@@ -9,6 +9,7 @@ local boulder = require("../objects/boulder/boulder")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local rock = require("../objects/rock/rock")
+local supports = require("../lib/supports/controller")
 
 return define.roles {
     actions = {
@@ -38,5 +39,6 @@ return define.roles {
         boulder = boulder.kind,
         absorbed_obstacle = absorbed_obstacle.kind,
         falling_rock = falling_rock.kind,
+        support = supports.kind,
     },
 }

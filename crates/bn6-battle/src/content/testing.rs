@@ -436,6 +436,15 @@ fn assets() -> bn6_content_api::AssetNames {
         ("moon-blade", sprite(0x10, 0x3C)),
         ("element-pillar-flames", sprite(0x0C, 0x1C)),
         ("element-pillar-lightning", sprite(0x10, 0x32)),
+        // The supports, and the barrier Tango's heal raises.
+        ("rush", sprite(0x0C, 0x48)),
+        ("beat", sprite(0x0C, 0x4B)),
+        ("tango", sprite(0x0C, 0x4C)),
+        ("tango-heal", sprite(0x0C, 0x4D)),
+        ("heal", sprite(0x0C, 0x12)),
+        ("barrier", sprite(0x0C, 0x3D)),
+        ("bubble", sprite(0x0C, 0x20)),
+        ("aura", sprite(0x0C, 0x07)),
         // SunMoon and its meteors.
         ("moon-beam", sprite(0x0C, 0x64)),
         ("meteor", sprite(0x0C, 0x31)),
@@ -497,6 +506,16 @@ fn assets() -> bn6_content_api::AssetNames {
         // The waves.
         ("ok-8b", 0x8B),
         ("aqua-needle-2", 0xB3),
+        // The supports, and the barrier Tango's heal raises.
+        ("bite", 0x122),
+        ("set-down", 0x120),
+        ("snatch", 0x126),
+        ("arrive", 0x116),
+        ("tango-land", 0xD4),
+        ("heal", 0x8A),
+        ("barrier", 0x89),
+        ("bubble", 0x12D),
+        ("bubble-pop", 0x124),
         // SunMoon.
         ("sun-moon", 0x110),
         ("moon-beam", 0x111),
@@ -726,6 +745,17 @@ pub fn scripts() -> Scripts {
                 ("chips/rockcube/cube", "chips/rockcube/cube"),
                 ("chips/rockcube/chips", "chips/rockcube/chips"),
                 ("objects/boulder/boulder", "objects/boulder/boulder"),
+                // The NaviCust supports (content model v2): the controller the
+                // ruleset spawns by role, Rush, Beat, Tango and her heal, with
+                // the barrier it raises.
+                ("lib/viewer", "lib/viewer"),
+                ("lib/barriers/visual", "lib/barriers/visual"),
+                ("lib/barriers/barriers", "lib/barriers/barriers"),
+                ("lib/supports/heal", "lib/supports/heal"),
+                ("lib/supports/tango", "lib/supports/tango"),
+                ("lib/supports/beat", "lib/supports/beat"),
+                ("lib/supports/rush", "lib/supports/rush"),
+                ("lib/supports/controller", "lib/supports/controller"),
                 // The trap chips, the navi-changing chips and the gauge chips
                 // (content model v2): the numbered trap and boosts reach
                 // theirs through the numbered registrations' modules;
