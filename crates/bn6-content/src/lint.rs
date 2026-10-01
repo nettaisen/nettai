@@ -37,8 +37,10 @@ pub fn definitions(c: &Content, r: &mut Report) {
                 Some(RoleKind::Kind(_)) => {}
             }
         }
-        // The roles that name a definition of their registry.
-        use bn6_battle::content::{CollisionRole, EffectRole, LockonRole, RegionRole, SparkRole, StatusRole};
+        // The roles that name a definition of their registry, or an asset.
+        use bn6_battle::content::{
+            BannerRole, CollisionRole, EffectRole, LockonRole, MusicRole, RegionRole, SoundRole, SparkRole, StatusRole,
+        };
         let roles = &defs.roles;
         let mut unfilled = |group: &str, name: &str, filled: bool| {
             if !filled {
@@ -62,6 +64,15 @@ pub fn definitions(c: &Content, r: &mut Report) {
         }
         for &role in CollisionRole::ALL {
             unfilled("collision", role.name(), roles.collisions.contains_key(&role));
+        }
+        for &role in SoundRole::ALL {
+            unfilled("sounds", role.name(), roles.sounds.contains_key(&role));
+        }
+        for &role in MusicRole::ALL {
+            unfilled("music", role.name(), roles.music.contains_key(&role));
+        }
+        for &role in BannerRole::ALL {
+            unfilled("banners", role.name(), roles.banners.contains_key(&role));
         }
     }
     for (kind, owners) in single_owner_kinds(c) {

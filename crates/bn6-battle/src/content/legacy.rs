@@ -141,6 +141,9 @@ struct PanelTypeSection {
     flags: u32,
     #[serde(default)]
     road_slide: Option<SlideVector>,
+    /// A sound asset, as the pack identifies it.
+    #[serde(default)]
+    trail_sound: Option<u16>,
 }
 
 #[derive(Deserialize, Clone, Copy)]
@@ -349,7 +352,11 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
                 for t in PanelType::ALL {
                     let name = serde_name(&t);
                     let rule = s.types.get(&name).ok_or_else(|| e(format!("{at}: panel type {name} is missing")))?;
-                    types[t as usize] = PanelTypeRule { flags: rule.flags, road_slide: rule.road_slide };
+                    types[t as usize] = PanelTypeRule {
+                        flags: rule.flags,
+                        road_slide: rule.road_slide,
+                        trail_sound: rule.trail_sound.map(crate::sound::SoundId),
+                    };
                 }
                 if s.types.len() != PanelType::ALL.len() {
                     return Err(e(format!("{at}: types names a panel type the engine doesn't have")));

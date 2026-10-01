@@ -8,7 +8,7 @@
 //! on each other. See docs/engine/chips.md §3.6.
 
 use crate::battle::{Battle, FadeMode, battle_flags};
-use crate::content::{BannerId, ChipFlags, ChipTraits, Trap};
+use crate::content::{BannerId, BannerRole, ChipFlags, ChipTraits, SoundRole, Trap};
 use bn6_content_api::ChipHandle;
 use crate::hud::{BannerStatus, Telop, TelopChip, TelopHidden};
 use crate::kinds::common::{self, Progress};
@@ -54,8 +54,9 @@ pub struct DimmingRecord {
 const FADE_SPEED: u8 = 4;
 
 /// The telops: the local player's, and the other player's.
-pub(crate) const LOCAL_TELOP: BannerId = BannerId(0x4C);
-pub(crate) const REMOTE_TELOP: BannerId = BannerId(0x50);
+pub(crate) fn telop_banner(b: &Battle, remote: bool) -> BannerId {
+    b.content.defs.roles.banner(if remote { BannerRole::TelopRemote } else { BannerRole::Telop })
+}
 
 /// What every controller knows about its chip (object +0x30 / +0x32): for
 /// the name the HUD shows.
@@ -136,7 +137,6 @@ impl Battle {
 /// The cut-in flash (the role `effects.cut_in_flash`): 120 pixels up, below
 /// the middle of the other side's area.
 const CUT_IN_FLASH_Z: i32 = 0x78 << 16;
-const CUT_IN_SOUND: crate::sound::SoundId = crate::sound::SoundId(0xA5);
 
 /// `sub_800B8EE(side)`: `side` cut in: a flash at panel (2 + 3 · the other
 /// side, 4) and its sound.
@@ -144,7 +144,7 @@ pub(crate) fn cut_in_flash(b: &mut Battle, side: u8) {
     let (x, y) = crate::kinds::player::panel_coordinates((side ^ 1) * 3 + 2, 4);
     let look = b.content.defs.roles.effect(crate::content::EffectRole::CutInFlash);
     crate::kinds::effect::spawn(b, crate::object::Vec3 { x, y, z: CUT_IN_FLASH_Z }, look, 0, 0, 0);
-    b.play_sound(CUT_IN_SOUND);
+    b.sound(SoundRole::CutIn);
 }
 
 /// Kill a controller: it frees itself at its next update without its end
@@ -225,7 +225,7 @@ fn telop(b: &mut Battle, r: ObjectRef, no_cut_in_runs: bool) {
             (false, _) => TelopHidden::FromOpponent,
         };
         start_telop(b, r, side, hidden);
-        b.play_sound(crate::sound::SoundId(0x173));
+        b.sound(SoundRole::Telop);
         b.objects.get_mut(r).phase_init = 4;
         return;
     }
@@ -259,7 +259,7 @@ fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
     };
     let telop =
         Telop { side, chip, damage: damage & 0x7FF, doubled: damage & 0x8000 != 0, bonus: bonus & !0x7800, hidden };
-    let banner = if b.is_remote(side) { REMOTE_TELOP } else { LOCAL_TELOP };
+    let banner = telop_banner(b, b.is_remote(side));
     if b.start_banner(banner) {
         b.banner.telop = Some(telop);
     }
@@ -287,12 +287,10 @@ fn anti_navi_waits(b: &Battle, side: u8) -> bool {
 /// first.
 const ANTI_NAVI_WAIT: u16 = 0x1E;
 /// `sub_800ABC6`'s sparkle (the role `effects.trap_mark`): 16 pixels down
-/// the field and 32 up from the panel's center, with its sound.
+/// the field and 32 up from the panel's center, with its sound (the role
+/// `sounds.cut_in`).
 const SPARKLE_DY: i32 = 0x10_0000;
 const SPARKLE_Z: i32 = 0x20_0000;
-const SPARKLE_SOUND: crate::sound::SoundId = crate::sound::SoundId(0xA5);
-/// The telop's sound.
-const TELOP_SOUND: crate::sound::SoundId = crate::sound::SoundId(0x173);
 
 /// `sub_800BDB2` (a navi chip's action after the dim; `off_800BDC4` by
 /// phase): on to the name, unless the other side's AntiNavi turns the
@@ -330,7 +328,7 @@ fn anti_navi_check(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let local = b.round.local_side;
     let look = b.content.defs.roles.effect(crate::content::EffectRole::TrapMark);
     crate::kinds::effect::spawn(b, crate::object::Vec3 { x, y: y + SPARKLE_DY, z: SPARKLE_Z }, look, local, 0, 0);
-    b.play_sound(SPARKLE_SOUND);
+    b.sound(SoundRole::CutIn);
     set_phase(b, r, 4);
 }
 
@@ -358,7 +356,7 @@ fn anti_navi_wait(b: &mut Battle, r: ObjectRef) {
 fn anti_navi_turn(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance;
     if b.objects.get(r).phase_init == 0 {
-        let banner = if b.is_remote(side ^ 1) { REMOTE_TELOP } else { LOCAL_TELOP };
+        let banner = telop_banner(b, b.is_remote(side ^ 1));
         // (AntiNavi: the chip its user's record holds.)
         let chip = b.linked[(side ^ 1) as usize & 1].chip;
         let telop = Telop { side: side ^ 1, chip, damage: 0, doubled: false, bonus: 0, hidden: TelopHidden::No };
@@ -366,7 +364,7 @@ fn anti_navi_turn(b: &mut Battle, r: ObjectRef) {
             b.banner.telop = Some(telop);
         }
         b.used_chips = [None; 2];
-        b.play_sound(TELOP_SOUND);
+        b.sound(SoundRole::Telop);
         b.objects.get_mut(r).phase_init = 4;
         return;
     }
@@ -417,7 +415,7 @@ pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
             b.objects.get_mut(r).telop_chip = Some(TelopChip { chip, bonus: 0, damage: None });
         }
         start_telop(b, r, side, TelopHidden::No);
-        b.play_sound(TELOP_SOUND);
+        b.sound(SoundRole::Telop);
         b.objects.get_mut(r).phase_init = 4;
         return;
     }

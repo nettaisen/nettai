@@ -8,9 +8,8 @@
 
 use crate::battle::Battle;
 use crate::collision::{f1, link};
-use crate::content::SpriteId;
+use crate::content::{SoundRole, SpriteId};
 use crate::object::{ObjectRef, flags, state};
-use crate::sound::SoundId;
 
 /// Which status it shows (Param1, a row of `byte_80E08E4`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -57,7 +56,7 @@ fn vars(b: &Battle, r: ObjectRef) -> Status {
 
 /// Ticks between the confusion's sounds.
 const CONFUSION_SOUND_TICKS: u16 = 0x3C;
-const SOUND_CONFUSION: SoundId = SoundId(0x88);
+const SOUND_CONFUSION: SoundRole = SoundRole::Confusion;
 /// The navi's attach point it sits at.
 const ATTACH_POINT: usize = 5;
 
@@ -127,7 +126,7 @@ fn follow(b: &mut Battle, r: ObjectRef) {
         o.timer = t as u16;
         if t <= 0 {
             o.timer = CONFUSION_SOUND_TICKS;
-            b.play_sound(SOUND_CONFUSION);
+            b.sound(SOUND_CONFUSION);
         }
     }
     let owner = b.objects.get(r).related[0].expect("a status visual without its owner");
