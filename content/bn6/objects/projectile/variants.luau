@@ -7,7 +7,7 @@
 -- `by_number`: the variants by the original's row number, for what still
 -- names one by number: the navi stats' NaviCust shots (the buster's and
 -- the charged shot's program bytes, NaviStats+0x4D and +0x4F), which the
--- setups carry as the save's bytes until they carry variants
+-- weapons' setups turn into variants until the stats carry them
 -- (docs/design/content-model-v2.md §5.3, §7.2).
 
 local projectile = require("./projectile")
