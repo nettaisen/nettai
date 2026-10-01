@@ -17,6 +17,7 @@ attachment = { pool = "actor", index = 0x05 }
 "tenguman/navi" = { pool = "actor", index = 0x0C }
 "slashman/navi" = { pool = "actor", index = 0x0D }
 "crcusman/navi" = { pool = "actor", index = 0x0E }
+"judgeman/navi" = { pool = "actor", index = 0x0F }
 "elmntman/navi" = { pool = "actor", index = 0x10 }
 "eraseman/navi" = { pool = "actor", index = 0x15 }
 "chrgeman/navi" = { pool = "actor", index = 0x16 }
@@ -96,6 +97,7 @@ thunder-column = { pool = "attack", index = 0x8B }
 "elmntman/meteor" = { pool = "attack", index = 0x8D }
 "elmntman/ice" = { pool = "attack", index = 0x8E }
 "aurahed/head" = { pool = "attack", index = 0x92 }
+"judgeman/book" = { pool = "attack", index = 0x94 }
 "magcoil/magnet" = { pool = "attack", index = 0x95 }
 "slashcross/sword-wave" = { pool = "attack", index = 0x96 }
 "airspin/top" = { pool = "attack", index = 0x9B }
@@ -156,6 +158,7 @@ trap-chip = { pool = "effect", index = 0x2A, scratch_position = true }
 "aquandl/volley" = { pool = "effect", index = 0x40, scratch_position = true }
 meteor-shower = { pool = "effect", index = 0x46 }
 "gundels/beam" = { pool = "effect", index = 0x48 }
+"judgeman/whip" = { pool = "effect", index = 0x5A }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "grndman/drill" = { pool = "effect", index = 0x61 }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
