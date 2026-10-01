@@ -57,13 +57,18 @@ pub fn compare_graphics(a: &Bundle, b: &Bundle) -> Vec<String> {
 pub fn compare_timing(t: &Timing, b: &Bundle) -> Vec<String> {
     let mut out = Vec::new();
     for s in &b.sprites {
-        let want: Vec<Vec<(u8, u8)>> = s.animations.iter().map(|a| a.iter().map(|f| (f.duration, f.flags)).collect()).collect();
-        let got: Option<Vec<Vec<(u8, u8)>>> = t
+        let want: Vec<Vec<(u8, u8, u16)>> =
+            s.animations.iter().map(|a| a.iter().map(|f| (f.duration, f.flags, f.parts)).collect()).collect();
+        let got: Option<Vec<Vec<(u8, u8, u16)>>> = t
             .sprites
             .get(&(s.category, s.index))
-            .map(|a| a.iter().map(|fr| fr.iter().map(|f| (f.ticks, f.flags)).collect()).collect());
+            .map(|a| a.iter().map(|fr| fr.iter().map(|f| (f.ticks, f.flags, f.layout)).collect()).collect());
         if got.as_ref() != Some(&want) {
             out.push(format!("sprite {:02x}-{:02x}: timing differs", s.category, s.index));
+        }
+        let want: Vec<Vec<[i8; 2]>> = s.part_lists.iter().map(|l| l.iter().map(|p| [p.x, p.y]).collect()).collect();
+        if t.layouts.get(&(s.category, s.index)) != Some(&want) {
+            out.push(format!("sprite {:02x}-{:02x}: part offsets differ", s.category, s.index));
         }
     }
     if t.sprites.len() != b.sprites.len() {

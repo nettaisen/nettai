@@ -236,22 +236,29 @@ objects/elem-trap, its strike objects/elem-trap-strike and objects/panel-bursts)
 objects/countdown-bomb), 11 (objects/mine, objects/land-mine), 25 (objects/gauge-speed), 38 (objects/navi-boost).
 Shared: lib/panels (the game's panel lists and shuffle), objects/rising-bubble (effect #0x14).
 
-Left (each a controller and its objects, every branch; docs/engine/chips.md §3.6.10 has what is known):
+Ported in content model v2 (group B2a; docs/engine/dimming-chips.md, branch by branch, with where each lives):
+4 the barriers (lib/barriers, chips/barrier, chips/bblwrap, chips/lifeaur; FirstBarrier through rules/roles), 5
+the panel chips (lib/panel-chips, objects/panel-changer, chips/pnlretrn and kin), 9 the instruments
+(lib/instruments, chips/fanfare and kin), 13 AirRaid (chips/airraid), 26 BugFix (chips/bugfix), 27 ColorPt and
+DblPoint (chips/colorpt), 28 Sensor (chips/sensor), 36 SumnBlk (chips/sumnblk).
 
-- 14 Guardian: objects/guardian, guardian-statue and guardian-strike are written but no chip names them yet and
-  they are unverified; register chip 0x097 and check them against the lab.
-- 4 Barrier (with the FirstBarrier framework `sub_801A7CC` and the barrier visual, effect #7), 5 PanlRetrn and the
-  road/holy chips (its 19-row table is pack data to extract), 9 Fanfare and kin, 13 AirRaid, 26 BugFix, 27
-  ColorPt/DblPoint, 28 Sensor, 36 SumnBlk (group B2a): specified branch by branch in docs/engine/dimming-chips.md,
-  waiting for content model v2.
-- 2 (no chip), 3 Geddon and the capsules, 7 LifeSync, 8 Wind/Fan, 12 Snake, 15
-  GrabBnsh/GrabRvng, 16 Meteors, 17 Anubis/PoisPhar, 18 Otenko, 19 CircGun, 21 BlzrdBal, 22 NumbrBl, 23 BurnSqr,
-  24 Magnum, 29 CornFsta, 30 DblHero, 32 MetrKnuk, 37 DblBeast (group B2b): specified branch by branch in
-  docs/engine/dimming-chip-effects.md (14 Guardian's scripts exist, unregistered), waiting for content model v2;
-  31, 33 and 41 (no chip; their actors are navi chips' navis).
+Ported in content model v2 (groups B2b and B2c; docs/engine/dimming-chip-effects.md, branch by branch): 2, which
+no chip has (lib/dimming/blinding_flash), 8 Wind and Fan (chips/wind), 14 Guardian (chips/guardian), 15 GrabBnsh
+and GrabRvng (chips/grabbnsh), 16 Meteors (chips/meteors, objects/falling-meteor), 17 Anubis and PoisPhar
+(chips/anubis, chips/poisphar), 18 Otenko (chips/otenko), 19 CircGun (chips/circgun), 21 BlzrdBal
+(chips/blzrdbal), 23 BurnSqr (chips/burnsqr), 24 Magnum (chips/magnum); and B2c's 3 Geddon and the capsules
+(chips/geddon and the capsules' folders), 7 LifeSync (chips/lifesync), 12 Snake (chips/snake), 22 NumbrBl
+(chips/numbrbl), 29 CornFsta (chips/cornfsta), 30 DblHero (chips/dblhero), 32 MetrKnuk (chips/metrknuk), 37
+DblBeast (chips/dblbeast). The trap chips' counters are content too, started by role (rules/roles.luau):
+AntiDmg's, AntiSwrd's and BodyGrd's (chips/antidmg, chips/antiswrd, chips/bodygrd).
+
+Left:
+
+- 31, 33 and 41 (no chip; their actors are navi chips' navis).
 - Framework (Rust): the counter cut-in (`sub_8017AB4`, kinds/player/status.rs; chips.md §3.6.5 has the port's
-  notes), encased obstacles (`sub_801813A`; thrown ones, `sub_8018002`, are ported). AntiNavi in the dimming
-  service is done (dimming.rs; dimming-chips.md §2).
+  notes). Encased obstacles (`sub_801813A`, with the role `hooks.encased` and objects/encased-bubble) and thrown
+  ones (`sub_8018002`) are ported, unverified (nothing in the game starts them). AntiNavi in the dimming service
+  is done (dimming.rs; dimming-chips.md §2).
 
 ### Group C: DustCross and the Beast forms' weapons (ported; what is left)
 
@@ -336,8 +343,7 @@ split the list):
 
 ### Framework gaps (Rust, not content)
 
-These are the ruleset's, and are fixed in Rust by whoever needs them: the barrier routine and visual
-(dimming-chips.md §3), the Full
+These are the ruleset's, and are fixed in Rust by whoever needs them: the Full
 Synchro aura, Cross changes and Cross Beast, Beast Over, the NaviCust hooks (style, emotion timer, low HP, chip
 interception, the panel trail and auto-step bugs), dark chips, the SELECT/Cross specials, the status visuals (ice,
 bubble, confusion, blindness), reactive defensive chips (`sub_801056A`), mid-battle appearance, link navis' actions.

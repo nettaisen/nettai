@@ -24,7 +24,7 @@ local elecman = define.chip {
         action = 0x1B,
         subtype = 3,
         params = { 0, 0, 0, 0 },
-        script = "objects/elec-man/elec_man",
+        script = "chips/0e6-elecman/chip",
     },
 }
 
@@ -50,7 +50,7 @@ local elecman_ex = define.chip {
         action = 0x1B,
         subtype = 3,
         params = { 3, 0, 0, 0 },
-        script = "objects/elec-man/elec_man",
+        script = "chips/0e6-elecman/chip",
     },
 }
 
@@ -75,7 +75,7 @@ local elecman_sp = define.chip {
         action = 0x1B,
         subtype = 3,
         params = { 4, 0, 0, 0 },
-        script = "objects/elec-man/elec_man",
+        script = "chips/0e6-elecman/chip",
         damage = 1002,
         sp_damage = { 210, 205, 200, 195, 190, 185, 180, 175, 170, 165, 160 },
     },

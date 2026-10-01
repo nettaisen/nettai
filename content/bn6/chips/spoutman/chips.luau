@@ -23,7 +23,7 @@ local spoutman = define.chip {
         action = 0x1B,
         subtype = 7,
         params = { 0, 0, 0, 0 },
-        script = "objects/spout-man/spout_man",
+        script = "chips/0f2-spoutman/chip",
     },
 }
 
@@ -48,7 +48,7 @@ local spoutmn_ex = define.chip {
         action = 0x1B,
         subtype = 7,
         params = { 0, 0, 0, 0 },
-        script = "objects/spout-man/spout_man",
+        script = "chips/0f2-spoutman/chip",
     },
 }
 
@@ -72,7 +72,7 @@ local spoutmn_sp = define.chip {
         action = 0x1B,
         subtype = 7,
         params = { 0, 0, 0, 0 },
-        script = "objects/spout-man/spout_man",
+        script = "chips/0f2-spoutman/chip",
         damage = 1006,
         sp_damage = { 120, 115, 110, 105, 100, 95, 90, 85, 80, 75, 70 },
     },

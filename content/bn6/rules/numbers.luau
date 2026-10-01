@@ -83,7 +83,7 @@ return {
         [72] = { sprite = asset.sprite("copy-mark"), anim = 12, palette = 0 },
         [73] = { sprite = asset.sprite("sight"), anim = 0, palette = 0 },
         [74] = { sprite = asset.sprite("explosion"), anim = 0, palette = 2 },
-        [75] = { sprite = asset.sprite("effect-4b"), anim = 82, palette = 16 },
+        [75] = { sprite = asset.sprite("small-ring"), anim = 82, palette = 16 },
         [76] = { sprite = asset.sprite("slash-man-effect"), anim = 2, palette = 0 },
         [77] = { sprite = asset.sprite("slash-man-effect"), anim = 3, palette = 0 },
         [78] = { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 },

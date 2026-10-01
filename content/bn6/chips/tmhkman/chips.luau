@@ -23,7 +23,7 @@ local tmhkman = define.chip {
         action = 0x1B,
         subtype = 8,
         params = { 0, 0, 0, 0 },
-        script = "objects/tomahawk-man/tomahawk_man",
+        script = "chips/0f5-tmhkman/chip",
     },
 }
 
@@ -48,7 +48,7 @@ local tmhkman_ex = define.chip {
         action = 0x1B,
         subtype = 8,
         params = { 0, 0, 0, 0 },
-        script = "objects/tomahawk-man/tomahawk_man",
+        script = "chips/0f5-tmhkman/chip",
     },
 }
 
@@ -72,7 +72,7 @@ local tmhkman_sp = define.chip {
         action = 0x1B,
         subtype = 8,
         params = { 0, 0, 0, 0 },
-        script = "objects/tomahawk-man/tomahawk_man",
+        script = "chips/0f5-tmhkman/chip",
         damage = 1007,
         sp_damage = { 280, 270, 260, 250, 240, 230, 220, 210, 200, 190, 180 },
     },

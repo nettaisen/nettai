@@ -24,7 +24,7 @@ local chrgeman = define.chip {
         action = 0x1B,
         subtype = 6,
         params = { 0, 0, 0, 0 },
-        script = "objects/charge-man/charge_man",
+        script = "chips/0ef-chrgeman/chip",
     },
 }
 
@@ -50,7 +50,7 @@ local chrgemn_ex = define.chip {
         action = 0x1B,
         subtype = 6,
         params = { 0, 0, 0, 0 },
-        script = "objects/charge-man/charge_man",
+        script = "chips/0ef-chrgeman/chip",
     },
 }
 
@@ -75,7 +75,7 @@ local chrgemn_sp = define.chip {
         action = 0x1B,
         subtype = 6,
         params = { 4, 0, 0, 0 },
-        script = "objects/charge-man/charge_man",
+        script = "chips/0ef-chrgeman/chip",
         damage = 1005,
         sp_damage = { 130, 125, 120, 115, 110, 105, 100, 95, 90, 85, 80 },
     },

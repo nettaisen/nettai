@@ -24,7 +24,7 @@ local heatman = define.chip {
         action = 0x1B,
         subtype = 2,
         params = { 0, 0, 0, 0 },
-        script = "objects/heat-man/heat_man",
+        script = "chips/0e3-heatman/chip",
     },
 }
 
@@ -50,7 +50,7 @@ local heatman_ex = define.chip {
         action = 0x1B,
         subtype = 2,
         params = { 0, 0, 0, 0 },
-        script = "objects/heat-man/heat_man",
+        script = "chips/0e3-heatman/chip",
     },
 }
 
@@ -75,7 +75,7 @@ local heatman_sp = define.chip {
         action = 0x1B,
         subtype = 2,
         params = { 0, 0, 0, 0 },
-        script = "objects/heat-man/heat_man",
+        script = "chips/0e3-heatman/chip",
         damage = 1001,
         sp_damage = { 260, 250, 240, 230, 220, 210, 200, 190, 180, 170, 160 },
     },

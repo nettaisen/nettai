@@ -23,7 +23,7 @@ local roll = define.chip {
         action = 0x1B,
         subtype = 0,
         params = { 0, 0, 0, 0 },
-        script = "objects/roll/roll",
+        script = "chips/0dd-roll/chip",
     },
 }
 
@@ -48,7 +48,7 @@ local roll2 = define.chip {
         action = 0x1B,
         subtype = 0,
         params = { 3, 0, 0, 0 },
-        script = "objects/roll/roll",
+        script = "chips/0dd-roll/chip",
     },
 }
 
@@ -73,7 +73,7 @@ local roll3 = define.chip {
         action = 0x1B,
         subtype = 0,
         params = { 4, 0, 0, 0 },
-        script = "objects/roll/roll",
+        script = "chips/0dd-roll/chip",
     },
 }
 

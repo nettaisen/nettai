@@ -169,6 +169,14 @@ collision.guard_breaking = define.collision {
 -- (row 0x2C: GunDelSol's hits under the sun beam).
 collision.drain = define.collision { id = "drain", side0 = 0x8000408c, side1 = 0x4000408c, row_offset = 0x160 }
 
+-- A drain that also breaks (row 0x30: SunMoon's moonlight).
+collision.breaking_drain = define.collision {
+    id = "breaking-drain",
+    side0 = 0x8000408e,
+    side1 = 0x4000408e,
+    row_offset = 0x180,
+}
+
 -- The rest of the original's rows (gen-content).
 -- Row 0x03.
 collision.collision_03 = define.collision { id = "collision-03", side0 = 0x51800100, side1 = 0xA2800100, row_offset = 0x18 }
@@ -184,8 +192,6 @@ collision.collision_18 = define.collision { id = "collision-18", side0 = 0x50000
 collision.collision_1a = define.collision { id = "collision-1a", side0 = 0x8000009E, side1 = 0x4000009E, row_offset = 0xD0 }
 -- Row 0x1B.
 collision.collision_1b = define.collision { id = "collision-1b", side0 = 0x800040A0, side1 = 0x400040A0, row_offset = 0xD8 }
--- Row 0x1C.
-collision.collision_1c = define.collision { id = "collision-1c", side0 = 0x80002088, side1 = 0x40002088, row_offset = 0xE0 }
 -- Row 0x1D.
 collision.collision_1d = define.collision { id = "collision-1d", side0 = 0x8000009C, side1 = 0x4000009C, row_offset = 0xE8 }
 -- Row 0x1F.
@@ -216,14 +222,10 @@ collision.collision_2d = define.collision { id = "collision-2d", side0 = 0x80004
 collision.collision_2e = define.collision { id = "collision-2e", side0 = 0x80004086, side1 = 0x40004086, row_offset = 0x170 }
 -- Row 0x2F.
 collision.collision_2f = define.collision { id = "collision-2f", side0 = 0x80004088, side1 = 0x40004088, row_offset = 0x178 }
--- Row 0x30.
-collision.collision_30 = define.collision { id = "collision-30", side0 = 0x8000408E, side1 = 0x4000408E, row_offset = 0x180 }
 -- Row 0x31.
 collision.collision_31 = define.collision { id = "collision-31", side0 = 0x80005084, side1 = 0x40005084, row_offset = 0x188 }
 -- Row 0x33.
 collision.collision_33 = define.collision { id = "collision-33", side0 = 0xC004000E, side1 = 0xC004000E, row_offset = 0x198 }
--- Row 0x34.
-collision.collision_34 = define.collision { id = "collision-34", side0 = 0x80004084, side1 = 0x40004084, row_offset = 0x1A0 }
 -- Row 0x35.
 collision.collision_35 = define.collision { id = "collision-35", side0 = 0x08410082, side1 = 0x04210082, row_offset = 0x1A8 }
 -- Row 0x36.

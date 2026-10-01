@@ -232,10 +232,19 @@ pub fn battle_content(content: &Path, assets: &Path) -> Result<(bn6_battle::Cont
     Ok((c, report))
 }
 
-/// Every sprite's animation timing, from the pack's `animations.json`s.
+/// Every sprite's animation timing, from the pack's `animations.json`s,
+/// and its frames' part offsets, from its `sprite.json`s.
 fn load_animations(root: &Path, report: &mut Report) -> Option<bn6_battle::content::Animations> {
-    use bn6_battle::content::{AnimFrame, SpriteId};
+    use bn6_battle::content::{AnimFrame, SpriteId, SpriteParts};
     let t = crate::timing::load(root, report)?;
+    // (A sprite without its `sprite.json` has no parts.)
+    let mut parts = std::collections::BTreeMap::new();
+    for (&(category, index), anims) in &t.sprites {
+        let Some(layouts) = t.layouts.get(&(category, index)) else { continue };
+        let layouts = layouts.iter().map(|l| l.iter().map(|p| (p[0], p[1])).collect()).collect();
+        let frame_layouts = anims.iter().map(|a| a.iter().map(|f| f.layout).collect()).collect();
+        parts.insert(SpriteId { category, index }, SpriteParts { frame_layouts, layouts });
+    }
     let sprites = t
         .sprites
         .into_iter()
@@ -244,7 +253,7 @@ fn load_animations(root: &Path, report: &mut Report) -> Option<bn6_battle::conte
             (SpriteId { category, index }, anims)
         })
         .collect();
-    Some(bn6_battle::content::Animations { sprites })
+    Some(bn6_battle::content::Animations { sprites, parts })
 }
 
 /// A pack's graphics, for a frontend.

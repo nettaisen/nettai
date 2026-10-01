@@ -487,7 +487,7 @@ return define.rules("identities", legacy {
         [228] = { sprite = asset.sprite("sensor"), anim = 0, palette = 0, shadow = true },
         [229] = { sprite = asset.sprite("air-spin"), anim = 1, palette = 0, shadow = false },
         [230] = { anim = 0, palette = 0, shadow = false },
-        [231] = { sprite = asset.sprite("name-look-0e7"), anim = 0, palette = 0, shadow = true },
+        [231] = { sprite = asset.sprite("air-raid-plane"), anim = 0, palette = 0, shadow = true },
         [232] = { anim = 0, palette = 0, shadow = false },
         [233] = { anim = 0, palette = 0, shadow = false },
         [234] = { anim = 0, palette = 0, shadow = false },
