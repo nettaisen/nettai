@@ -389,6 +389,7 @@ fn assets() -> bn6_content_api::AssetNames {
         ("buster-up", sprite(0x14, 0x1B)),
         ("erase-mark", sprite(0x10, 0x50)),
         ("erase-beam", sprite(0x10, 0x51)),
+        ("flame-hook-fire", sprite(0x0C, 0x45)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -416,6 +417,7 @@ fn assets() -> bn6_content_api::AssetNames {
         ("junk-shot", 0xFF),
         ("gundels1", 0xF8),
         ("bonus", 0x157),
+        ("flame-hook-fire", 0x158),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -488,8 +490,9 @@ pub fn scripts() -> Scripts {
                 ("objects/sand-worm/sand_worm", "objects/sand-worm/sand_worm"),
                 ("objects/sand-hole/sand_hole", "objects/sand-hole/sand_hole"),
                 ("objects/sand-spray/sand_spray", "objects/sand-spray/sand_spray"),
-                ("objects/flame-hook/flame_hook", "objects/flame-hook/flame_hook"),
-                ("objects/flame-hook-fire/flame_hook_fire", "objects/flame-hook-fire/flame_hook_fire"),
+                ("chips/flmhook/fire", "chips/flmhook/fire"),
+                ("chips/flmhook/hook", "chips/flmhook/hook"),
+                ("chips/146-flmhook1/chip", "chips/146-flmhook1/chip"),
                 ("objects/justice-one/justice_one", "objects/justice-one/justice_one"),
                 ("objects/golem/golem", "objects/golem/golem"),
                 ("lib/element", "lib/element"),
@@ -699,8 +702,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("sand-worm", Pool::Attack, 0xCB, "objects/sand-worm/sand_worm"),
         kind("sand-hole", Pool::Actor, 0x1C, "objects/sand-hole/sand_hole"),
         kind("sand-spray", Pool::Attack, 0xCC, "objects/sand-spray/sand_spray"),
-        kind("flame-hook", Pool::Effect, 0x8C, "objects/flame-hook/flame_hook"),
-        kind("flame-hook-fire", Pool::Attack, 0xCA, "objects/flame-hook-fire/flame_hook_fire"),
         kind("justice-one", Pool::Attack, 0xAE, "objects/justice-one/justice_one"),
         kind("golem", Pool::Effect, 0x3F, "objects/golem/golem"),
         kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
@@ -1098,7 +1099,7 @@ fn named_chips() -> Vec<ChipData> {
         spawning(LANCE, "Lance", 4, [0, 0, 0, 0], "objects/lance/lance"),
         spawning(FIST, "Fist", 8, [0, 3, 0, 0], "objects/fire-hit/fire_hit"),
         spawning(WORM, "Worm", 12, [0, 0, 0, 0], "objects/sand-worm/sand_worm"),
-        spawning(FLAME_HOOK, "FlmHook", 14, [0, 1, 0, 0], "objects/flame-hook/flame_hook"),
+        spawning(FLAME_HOOK, "FlmHook", 14, [0, 1, 0, 0], "chips/146-flmhook1/chip"),
         spawning(JUSTICE, "Justice", 19, [0, 0, 0, 0], "objects/justice-one/justice_one"),
         spawning(GOLEM, "Golem", 21, [0, 0, 0, 0], "objects/golem/golem"),
     ]
