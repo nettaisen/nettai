@@ -539,7 +539,7 @@ local function drill_out(me: Object)
         me.anim = 0xA
         attachment.attach(me, DRILL_ARM, "held", { anim = 1, while_dimmed = true })
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-        local d = drill.spawn(me, me.element, 0x10_0000, damage, { 0, 0x1E, 1, 0 }, "child")
+        local d = drill.spawn(me, me.element, 0x10_0000, damage, { ticks = 0x1E, light = true }, "child")
         if d then
             d.run_while_dimmed = true
         end

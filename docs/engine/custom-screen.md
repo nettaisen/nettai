@@ -195,8 +195,8 @@ T is the tick that took the key; "input from" is the first tick the grid reads k
 | Sub-state | Entered by | Input from |
 |---|---|---|
 | 0x0C hide (`sub_8026D06`) | SELECT at T | T+1 hides; any key pressed at P ≥ T+2 brings it back; input from P+2 (that key is used up) **[dumps]** |
-| 0x18 chip description (`sub_8026E4C`) | R at T on a chip | the chatbox takes any key from T+6; after a key at P, input from P+6 **[dumps, 5 cases]** |
-| 0x1C run message (`sub_8026E98`) | L at T | A or B once the message has printed; P+6 **[unverified: the printing time is an estimate, 72 ticks]** |
+| 0x18 chip description (`sub_8026E4C`) | R at T on a chip | the chatbox takes any key from T+5 plus the lines of the chip's text (T+8 for most chips, T+7 for the Recov chips, SloGauge and FstGauge, T+6 for the invalid chip), or B held for 11 ticks from then; after a key at P, input from P+6 **[lab: custom/description-*]** |
+| 0x1C run message (`sub_8026E98`) | L at T | the chatbox starts at T+1; it takes A or B from T+80 for MegaMan (by the message's lines; from T+21 at the earliest when A is pressed or B held as it prints); after a key at P, input from P+9 **[lab: custom/run-message*]** |
 | 0x4C Cross window opening | UP at T | window from T+13 |
 | 0x50 Cross window closing | B or START in the window at T | T+7 |
 | 0x5C Cross chosen | A in the window at T | T+35 **[dumps, 15 cases]** |
@@ -205,7 +205,33 @@ T is the tick that took the key; "input from" is the first tick the grid reads k
 | 0x38 DustCross scrap | A on the scrap button at T | T+4+25k for k chips scrapped **[dumps, 13 cases]** |
 | 0x28 ChpShufl re-deal (`sub_80271F8`) | A on the re-deal button at T | T+34 **[lab: navicust/chpshufl-redeal*]** |
 
-The chip description's chatbox also closes on B held for 10 frames; that is not ported.
+**The chatbox** (`custom::chatbox`). Both sub-screens wait on the original's chatbox, which runs a text script
+once a frame after the screen (`chatbox_onUpdate`) and clears its flag (`eFlags2009F38` 0x80) when the script ends.
+The port runs what those scripts' commands do to the timing:
+
+- **The box**: a description's opens at once (`E8 06`); the message's (`E8 00`) takes a tick and three steps, and
+  then waits for the portrait. Closing (`E6`) takes three steps and a tick, after the portrait is gone.
+- **The portrait** (`F5`, the message's): it fades in while the box is fully open (its tint 0x18C6, one 0x421 a
+  tick: seven ticks) and out before the box closes (0x842 a tick until a channel reaches 6: three ticks).
+- **Text**: at print speed 0 (`F1 00 00`, the descriptions') a whole line a tick; at the default speed 2 a
+  character every other tick. A line break (`E9`) ends the tick's printing, so each line of a description costs a
+  tick. Once the box has run four ticks without waiting on a command, B held or A pressed prints all the rest at
+  once (`chatbox_8040154`).
+- **The key wait** (`E7`): five ticks of delay, then A or B pressed (`E7 00`, the message) or any key (`E7 01`, the
+  descriptions), or B held for an eleventh tick (the held ticks needn't be in a row).
+
+A chip's description is its record's `description` (its lines apart by `\n`; the engine reads how many); the
+invalid chip's (one line) is shown for an invalid chip. Every Cross's has three lines. The message is the operated
+navi's (`NaviData::run_message`, the characters in each line): MegaMan's is 19 and 12 characters, each link navi
+has its own script (`TextScriptBattleRunDialog`'s script 3 sends it there).
+
+**Verified** in the lab: `custom/description-arm-001-5..9` and `-09a-5..9` (Cannon, three lines, takes A from
+R+8; Recov10, two lines, from R+7), `description-invalid-4..6` (from R+6), `description-cross-7`, `-8` (a Cross's,
+from R+8, back to the Cross window), `description-b-held-12`, `-30`, `description-keys`; `run-message`, `-b`,
+`-wait`, `-taps-0`, `-taps-1` (A on every other frame, from either parity), `-b-held`, and the link navis'
+`run-message-navi-1`, `-2`, `-6` and `-navi-1-wait`, `-6-wait`. Not reached: the descriptions of DblBeast, Gregar
+and Falzar, which print a value with a command (`FF`) the port doesn't run (it counts as text), and what
+`sub_802A220` closes a description for (it answers 0xFF in a netbattle with MegaMan).
 
 ### 3.6 DustCross's scrap (`sub_8027406`)
 
@@ -235,10 +261,13 @@ entries as the screen had chips beyond the hand size (+5 − +6), skipping the t
 draws each) for n chips (the table that would shuffle the dealt part apart, `byte_80298C8`, is all zeros).
 
 A quirk comes with the walk: with NumbrOpn's ten chips the button covers slots 8 and 9, so the walk counts eight
-dealt entries and leaves the folder's last two out **[unverified]**. The pair's index is kept up as OK takes chips
+dealt entries and leaves the folder's last two out. The pair's index is kept up as OK takes chips
 out (§1), so the walk skips the pair on later screens too; a pair in the hand is dealt again like any chips (+0x44 is
 clear by then). Where the tag pair straddles the walk's end the original runs on past the folder (a buffer overrun);
-the port stops at the folder's end **[unverified]**.
+the port stops at the folder's end. A netbattle can't get there: the chips left less the pair's index never change
+from what the shuffle made them (OK takes one off both for every chip, the scrap changes neither), at least 10. With
+NumbrOpn the walk would count eight dealt entries, but NumbrOpn and ChpShufl can't both be installed (docs/engine/
+unverified.md).
 
 Port: `Phase::Redealing`, `Screen::redeal` (custom/screen.rs); the index's upkeep is in `Side::confirm`
 (custom/mod.rs). **Verified** on three chip-lab scenarios, every frame of each: `navicust/chpshufl-redeal` (side 0
@@ -418,8 +447,11 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
   - link stalls: frames on which a console waits for the link still draw (the main loop) but don't tick. They are
     the console's own network timing and can't be reproduced; the port's link never stalls, and nor did the
     recordings (their frames and ticks stay a constant apart through each round);
-  - the save's event flag 0x1720 isn't recorded: bn6-compat reads it as clear. The lab's three support scenarios
-    (navicust/beat, rush, tango) have it set, and their consoles fall one draw behind at the first check;
+  - the save's event flag 0x1720 is in the setups of traces recorded since the coverage push
+    (`emotion_window_glitches`, both consoles'); bn6-compat reads it as clear in older ones. The NaviCust sets it
+    at load when a bug's routine ran (`sub_813CBCC`), also for the bugs the navi's stats don't show in battle (the
+    support bug, the result bug): the lab's `navicust/bug-support` has it set and keeps step (the three support
+    scenarios had it, unintended, until their parts were moved off the grid's outer ring);
   - the other console's RNG1 (and tag pair) isn't recorded either: bn6-compat gives it 0 (and none), which only a
     re-deal on that player's screen would read;
   - shakes of content not ported yet (most viruses', and the chips and objects still to come) are missing until

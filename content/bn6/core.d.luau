@@ -1535,6 +1535,8 @@ export type Weapon = WeaponSpec
 export type ChipSpec = {
     id: string,
     name: string,
+    -- What R shows on the custom screen, its lines apart by "\n": the box
+    -- takes keys a tick later for each line. None counts as three lines.
     description: string?,
     codes: { string }?,
     element: string?,
