@@ -1570,7 +1570,6 @@ export type ChipSpec = {
         sp_damage: { number }?,
         navi_damage: { base: number, per_level: number }?,
         dark_substitute: number?,
-        gun_del_sol: any?,
         recovery: number?,
         sword: any?,
     }?,

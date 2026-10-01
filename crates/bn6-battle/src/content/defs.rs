@@ -520,6 +520,23 @@ fn export(definitions: &Definitions, module: &str, name: &str, whose: &str) -> R
     Ok(FnSource::export(module, name))
 }
 
+/// The action a chip record's module exports as `action`, which the record
+/// runs as its own (a chip definition's `action`), whatever its action
+/// number names: the link navis' chips, whose number (0x0A) is the user's
+/// own action table's (docs/design/content-model-v2.md §12, "A record's
+/// action by its module"). None for a module registered by number (its
+/// `update` and `state`); a module can't be both.
+fn record_action<'d>(definitions: &'d Definitions, module: &str, whose: &str) -> Result<Option<&'d str>, ContentError> {
+    let Some(m) = definitions.module(module) else { return Ok(None) };
+    let Some(action) = &m.action else { return Ok(None) };
+    if m.functions.iter().any(|f| f == "update") {
+        return Err(ContentError::new(format!(
+            "{whose}: {module}.luau exports both an action ({action}) and `update`: a chip runs one"
+        )));
+    }
+    Ok(Some(action))
+}
+
 /// A chip definition's record (docs/design/content-model-v2.md §3.1): the
 /// fields the engine reads, with the lock-on mode and the Program Advance
 /// recipes' chips by the numbers `r` gives them. Damage formulas and dark
@@ -841,6 +858,10 @@ impl Defs {
         for c in &content.chips {
             let Some(module) = &c.script else { continue };
             let whose = format!("chip {:#05x} ({})", c.id.unwrap_or_default(), c.name);
+            if record_action(&definitions, module, &whose)?.is_some() {
+                // The chip runs the action its module exports, below.
+                continue;
+            }
             match c.action {
                 DIMMING_CHIP_ACTION => {
                     let f = export(&definitions, module, "dimming_chip", &whose)?;
@@ -1042,16 +1063,23 @@ impl Defs {
                 None => (format!("v1/chip-{n:03x}"), "the pack's chip record".to_string(), None),
             };
             // Registration by number: the record's action, or for the
-            // ruleset's generic chip actions its subtype's registration.
+            // ruleset's generic chip actions its subtype's registration. A
+            // record whose module exports an action runs that instead, as
+            // a chip definition's `action` does.
             let by_subtype = |table: &BTreeMap<u8, FnId>, f: fn(FnId) -> ChipUsage, unported: fn(u8) -> Unported| {
                 table.get(&c.subtype).map_or(ChipUsage::Unported(unported(c.subtype)), |&h| f(h))
             };
-            let usage = match (own, c.action) {
-                (Some(usage), _) => usage,
-                (None, DIMMING_CHIP_ACTION) => by_subtype(&dimming_hooks, ChipUsage::Dimming, Unported::Dimming),
-                (None, NAVI_CHIP_ACTION) => by_subtype(&navi_hooks, ChipUsage::Navi, Unported::Navi),
-                (None, INSTANT_CHIP_ACTION) => by_subtype(&instant_hooks, ChipUsage::Instant, Unported::Instant),
-                (None, n) => match actions.iter().position(|a| a.number == Some(n)) {
+            let exported = match (&own, &c.script) {
+                (None, Some(module)) => record_action(&definitions, module, &key)?,
+                _ => None,
+            };
+            let usage = match (own, exported, c.action) {
+                (Some(usage), _, _) => usage,
+                (None, Some(a), _) => ChipUsage::Action(action_handle(a).expect("a defined action")),
+                (None, None, DIMMING_CHIP_ACTION) => by_subtype(&dimming_hooks, ChipUsage::Dimming, Unported::Dimming),
+                (None, None, NAVI_CHIP_ACTION) => by_subtype(&navi_hooks, ChipUsage::Navi, Unported::Navi),
+                (None, None, INSTANT_CHIP_ACTION) => by_subtype(&instant_hooks, ChipUsage::Instant, Unported::Instant),
+                (None, None, n) => match actions.iter().position(|a| a.number == Some(n)) {
                     Some(i) => ChipUsage::Action(ActionHandle(i as u16)),
                     None => ChipUsage::Unported(Unported::Action(n)),
                 },
