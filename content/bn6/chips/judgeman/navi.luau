@@ -13,7 +13,14 @@ local regions = require("../../lib/regions")
 local sparks = require("../../lib/sparks")
 local whip = require("./whip")
 
-local navi = {}
+local judgeman = {}
+
+-- What a chip summons him with.
+export type Summon = {
+    -- His books' damage (the original's first chip parameter: JudgeMan 20,
+    -- JudgeMn[EX] 30, JudgeMn[SP] 40).
+    book_damage: number,
+}
 
 export type State = {
     -- His whip (ExtraVars[0]).
@@ -267,7 +274,7 @@ end
 local ACTIONS =
     { [APPEAR] = appear, [STAND] = stand, [RAISE] = raise, [LASH] = lash, [BOOKS] = books, [WAIT_BOOKS] = wait_books, [LEAVE] = leave }
 
-navi.kind = define.kind {
+judgeman.kind = define.kind {
     id = "judgeman/navi",
     pool = "actor",
     state = {
@@ -296,23 +303,24 @@ navi.kind = define.kind {
     end,
 }
 
--- `sub_80BA920`: JudgeMan for `user`, reporting to `controller` (the
--- JudgeMan chips' navi hook, `off_802CD5C[15]`); his books deal the
--- chip's first parameter.
-function navi.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn(navi.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
-    if not o then
-        return nil
+-- A chip's `navi` hook (`sub_80BA920`, `off_802CD5C[15]`): JudgeMan for
+-- the user, on the panel the controller picked, reporting to `controller`.
+function judgeman.summon(args: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+    return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
+        local o = battle.spawn(judgeman.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
+        if not o then
+            return nil
+        end
+        o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
+        o.element = spec.element
+        o.related1 = user
+        o.alliance, o.flip = user.alliance, user.flip
+        o:set_damage_word(spec.damage)
+        local s = o.state :: State
+        s.controller = controller
+        s.book_damage = args.book_damage
+        return o
     end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.related1 = user
-    o.alliance, o.flip = user.alliance, user.flip
-    o:set_damage_word(spec.damage)
-    local s = o.state :: State
-    s.controller = controller
-    s.book_damage = spec.params[1]
-    return o
 end
 
-return navi
+return judgeman

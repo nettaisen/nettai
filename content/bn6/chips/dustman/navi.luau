@@ -9,7 +9,7 @@
 local dust_ball = require("../../objects/dust-ball/dust_ball")
 local junk = require("./junk")
 
-local navi = {}
+local dustman = {}
 
 export type State = {
     -- What he took: their junk looks (his ExtraVars), how many (Param1)
@@ -189,7 +189,7 @@ end
 
 local ACTIONS = { [APPEAR] = appear, [TAKE] = suck, [WIND_UP] = wind_up, [THROW] = throw, [LEAVE] = leave }
 
-navi.kind = define.kind {
+dustman.kind = define.kind {
     id = "dustman/navi",
     pool = "actor",
     state = { taken = "u16[8]", count = "u8", thrown = "u8", controller = "object" },
@@ -213,8 +213,8 @@ navi.kind = define.kind {
 
 -- `sub_80BC0DA`: DustMan for `user`, reporting to `controller` (the
 -- DustMan chips' navi hook, `off_802CD5C[11]`).
-function navi.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn(navi.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
+function dustman.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
+    local o = battle.spawn(dustman.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
     if not o then
         return nil
     end
@@ -228,4 +228,4 @@ function navi.summon(user: Object, controller: Object, spec: NaviChipSpec): Obje
     return o
 end
 
-return navi
+return dustman

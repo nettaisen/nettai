@@ -1,3 +1,4 @@
-# CircusMan (navi chip subtype 14), in chips/crcusman.
+# CrcusMan, CrcusMan[EX] and CrcusMan[SP] (navi chip subtype 14) summon CircusMan
+# (chips/crcusman/navi.luau), through chip.luau.
 
-script = "../crcusman/chip.luau"
+script = "chip.luau"

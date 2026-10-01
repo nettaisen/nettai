@@ -1,3 +1,3 @@
-# DiveMan (navi chip subtype 13), in chips/diveman.
+# A navi chip (subtype 13): DiveMan, as chips/104-diveman summons him.
 
-script = "../diveman/chip.luau"
+script = "../104-diveman/chip.luau"
