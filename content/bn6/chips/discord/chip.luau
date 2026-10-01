@@ -3,15 +3,10 @@
 -- while it plays, the other side's navi is confused (lib/instruments).
 
 local collision = require("../../rules/collision")
+local regions = require("../../lib/regions")
 local instrument = require("../../lib/instruments/instrument")
 local instruments = require("../../lib/instruments/controller")
 
--- The other side's player navi's panels (whole-field regions 0x85 for side
--- 0, 0x84 for side 1).
-local OTHER_NAVI = {
-    [0] = define.region { field = { require = 0x0020_0000, forbid = 0 } },
-    [1] = define.region { field = { require = 0x0040_0000, forbid = 0 } },
-}
 -- Confusion (status 0x23: 4 ticks), with the sixth element's damage 0.
 local CONFUSE, ELEMENT_NONE = 0x23, 5
 
@@ -23,7 +18,7 @@ local function confuse(me: Object)
         panel_y = me.panel_y,
         element = ELEMENT_NONE,
         z = 0,
-        region = OTHER_NAVI[me.alliance],
+        region = regions.other_navi[me.alliance],
         -- None.
         hit_effect = 0xFF,
         target = collision.nothing,
