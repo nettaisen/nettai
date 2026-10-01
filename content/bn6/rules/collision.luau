@@ -118,7 +118,7 @@ collision.breaking = define.collision { id = "breaking", side0 = 0x80000082, sid
 -- An attack of row 0x08 (a projectile variant nothing names yet).
 collision.attack_90 = define.collision { id = "attack-90", side0 = 0x80000090, side1 = 0x40000090, row_offset = 0x40 }
 
--- A pushing attack (row 0x12: AirShot's shot, WindRack's swing, AirSpin's spin).
+-- A pushing attack (row 0x12: AirShot's shot, a tornado, WindRack's swing, AirSpin's spin).
 collision.pushing = define.collision { id = "pushing", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }
 
 -- The VDoll curse's hits (row 0x19: a thrown attack that pierces; JudgeMan's
@@ -147,6 +147,15 @@ collision.nothing = define.collision { id = "nothing", side0 = 0x00000000, side1
 -- chip sets down: the instruments, AirRaid's plane, Sensor's turret, Wind's fan,
 -- the Anubis statue).
 collision.own_body = define.collision { id = "own-body", side0 = 0x02010080, side1 = 0x01010080, row_offset = 0x98 }
+
+-- A breaking attack with the flag 0x400, whose test no routine was found
+-- for (row 0x4A: a drill's second).
+collision.second_drill = define.collision {
+    id = "second-drill",
+    side0 = 0x80000482,
+    side1 = 0x40000482,
+    row_offset = 0x250,
+}
 
 -- An attack that breaks guards (row 0x32: the instruments' notes).
 collision.guard_breaking = define.collision {

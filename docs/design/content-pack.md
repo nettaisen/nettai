@@ -67,8 +67,8 @@ graphics/...  sound/...                   see asset-formats.md
 
 | File | Holds | Engine side |
 |---|---|---|
-| `chips/NNN-name/chip.toml` (411) | the chip record; `[gun_del_sol]` (firing time, beam looks, the gun), `[sword]` (the blade; action 0x13's `[sword.slash]`: hit region and effect), `recovery` (a recovery chip's HP), `sp_damage`, `[[program_advance]]` recipes that make this chip, `modifier`, `script` | `Content::chips`, `ChipData` |
-| `navis/NN-name/navi.toml` (12) | sprite, element, weakness, buster bonus, move lag by variant, result banners, Cross merge height, `[own_chip]`, `[name_record]` (NameID, actor record, attach points) | `Content::navis`, `NaviData` |
+| `chips/NNN-name/chip.toml` (411) | the chip record (with `description`, what R shows on the custom screen: the battle reads its line count); `[gun_del_sol]` (firing time, beam looks, the gun), `[sword]` (the blade; action 0x13's `[sword.slash]`: hit region and effect), `recovery` (a recovery chip's HP), `sp_damage`, `[[program_advance]]` recipes that make this chip, `modifier`, `script` | `Content::chips`, `ChipData` |
+| `navis/NN-name/navi.toml` (12) | sprite, element, weakness, buster bonus, move lag by variant, result banners, Cross merge height, `run_message` (the no-running message's lines, in characters), `[own_chip]`, `[name_record]` (NameID, actor record, attach points) | `Content::navis`, `NaviData` |
 | `navis/00-megaman/forms/NN-name/form.toml` (25) | sprite, element, weakness, `[weapons]`, buster bonus, `[name_record]` | `Content::forms`, `FormData` |
 | `objects/rock/object.toml` | rock variants | `ObjectData::rocks` |
 | `navis/00-megaman/weapons/NN-name/weapon.toml` | a weapon routine a script implements: its number, name, the action it brings, the instant chip effect it names (`instant_chip`) and the script | `Content::weapons`, `WeaponData` |

@@ -170,6 +170,11 @@ pub struct ChipData {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<ChipId>,
     pub name: String,
+    /// The description the custom screen shows (R), its lines apart by
+    /// `\n`. The battle reads only how many lines it has
+    /// (`description_lines`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     /// Codes the chip comes in (up to four).
     #[serde(default)]
     pub codes: Vec<ChipCode>,
@@ -240,6 +245,16 @@ pub struct ChipData {
     /// its folder (`chip.luau`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub script: Option<String>,
+}
+
+impl ChipData {
+    /// Lines of the chip's description: the custom screen's description
+    /// box takes keys a tick later for each line after the first
+    /// (docs/engine/custom-screen.md §3.5). A chip without one counts as
+    /// three, what nearly every chip has.
+    pub fn description_lines(&self) -> u8 {
+        self.description.as_ref().map_or(3, |d| d.split('\n').count().clamp(1, 3) as u8)
+    }
 }
 
 /// What an attachment (attachment object #5) looks like and where it sits

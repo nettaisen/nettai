@@ -1,7 +1,0 @@
-# GreatYo's controller (effect object #0x70, `sub_80E857C`) is a script. Its position
-# is the registers its spawner left (never read).
-
-[kind]
-pool = "effect"
-index = 0x70
-script = "great_yoyo.luau"
