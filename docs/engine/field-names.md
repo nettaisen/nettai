@@ -58,7 +58,7 @@ Fields that already had names are unchanged. `drain_counter` (+0x0A) kept its na
 |---|---|---|---|
 | `unk_03` | deleted | u8 | AIData+0x03: byte 2 of the actor's enemy record (`enemy_getStruct1`), copied at spawn (`sub_800753C`); 1 for player navis. Read by `sub_800F334` and `sub_81095D0` (virus code). The port wrote it at spawn but never read it. |
 | `unk_09` | `hp_drain_counter` | u8 | AIData+0x09: ticks toward the next HP lost to the fight-time HP bug. Players: `sub_8010230` (level from NaviStats+0x18). Actors without navi stats: `sub_801026A` (level from AIData+0x12). |
-| `unk_0b` | deleted | u8 | AIData+0x0B: the emotion last picked by the NaviCust emotion-swing bug (`sub_8013DA0`, unported). Re-add as `swing_emotion`. |
+| `unk_0b` | `swung_emotion` | u8 | AIData+0x0B: the emotion last picked by the NaviCust emotion-swing bug (`sub_8013DA0`). Deleted by the pass, and back with the bug's port. |
 | `unk_0c` | deleted | u8 | AIData+0x0C: written by virus/navi init `sub_8016F56` (the opponent's max base HP / 100, clamped to 1..10). Read by `sub_800FE12` and `sub_800FE36`, which multiply a table value by it for actors of version 4. |
 | `unk_0d` | deleted | u8 | AIData+0x0D: count of absorbed obstacles (`sub_80E991C`, `sub_8011F8C`, `sub_8011FCE`). Already modeled as `absorbed.len()`. |
 | `unk_0e` | deleted | u8 | AIData+0x0E: set to 0xFF at spawn (`sub_800753C`) and at deletion (`sub_8016C4E`). Its only reader, `sub_800A86E`, has no effect. The port wrote it at spawn and in `destroy`; both writes are gone. |
@@ -99,7 +99,7 @@ Fields that already had names are unchanged. `drain_counter` (+0x0A) kept its na
 | `unk_17` | deleted | u8 | AIAttackVars+0x17: the step's destination y, as above. |
 | `unk_18` | deleted | u16 | AIAttackVars+0x18: a step's end lag in ticks, set when a step starts (`sub_80116AE`, `sub_80116D8`); the step copies it into its timer (+0x10) on arrival (`sub_80EB194`). The ported step keeps it as `movement::Vars::end_lag`. (Before the merge this pass had renamed it `move_lag`.) Navi AI uses the halfword too (about 120 routines). |
 | `unk_1a` | deleted | u8 | AIAttackVars+0x1A: navi AI scratch. Written by about 76 AI routines; read by `sub_80F59E8`, `sub_8101E24`...`sub_8101EE2`, `sub_810A080`, `sub_811239A`. |
-| `unk_1e` | deleted | u16 | AIAttackVars+0x1E: the Beast Out attack wrapper's step. `sub_80EAD9C` dispatches on the byte at +0x1E; `sub_801011A` (`reset_attack_links`, from every `set_attack`) clears the halfword. The wrapper is not ported, so the port's clear is gone. Re-add as `beast_step: u8` (plus the byte at +0x1F if the wrapper needs it). |
+| `unk_1e` | `rush` | u16 | AIAttackVars+0x1E: the Beast Out attack wrapper's step. `sub_80EAD9C` dispatches on the byte at +0x1E; `sub_801011A` (`reset_attack_links`, from every `set_attack`) clears the halfword. Deleted by the pass; back as `attack.rush` (`beast_rush::Vars`: its phase and the bytes after it, +0x1E..+0x27) with the wrapper's port, the Beast Out rush. |
 | `move_arg` | deleted | u32 | AIAttackVars+0x2C: the absolute step's panel-trail argument (`sub_80116AE`/`sub_80116D8` store 0). After the merge nothing writes or reads it. |
 
 ## Object (`object/mod.rs`; the game's BattleObject)
