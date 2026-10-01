@@ -956,7 +956,7 @@ fn style_hook(b: &mut Battle, r: ObjectRef) {
         0 => {
             coll_mut(b, r).status_timers[timer::FLASH] = ticks;
             set_flag1(b, r, f1::INVISIBLE);
-            b.play_sound(crate::sound::SoundId(0x93));
+            b.sound(crate::content::SoundRole::Invisible);
         }
         1 => set_invulnerable(b, r, ticks),
         2 => {

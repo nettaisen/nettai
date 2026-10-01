@@ -876,16 +876,15 @@ fn used_chip_parts<'a>(
     out: &mut Vec<SpritePart<'a>>,
     problems: &mut Problems,
 ) {
-    let Some(layout) = hud.banners.get(REMOTE_TELOP / 4) else {
-        problems.note(format!("the telop's banner {REMOTE_TELOP:#04x} is not in the pack"));
+    // (Its place is the banner of the other player's telop.)
+    let remote_telop = b.content.defs.roles.banner(bn6_battle::content::BannerRole::TelopRemote).0 as usize;
+    let Some(layout) = hud.banners.get(remote_telop / 4) else {
+        problems.note(format!("the telop's banner {remote_telop:#04x} is not in the pack"));
         return;
     };
     let name = name_glyphs(b, hud, used.chip, problems);
     name_parts(hud, layout, name, (used.damage, used.bonus, used.doubled), true, None, out);
 }
-
-/// The banner whose place the other player's telop and used chip take.
-const REMOTE_TELOP: usize = 0x50;
 
 /// A chip's name with its numbers (damage, bonus, doubled) as `sub_801E95C`
 /// lays them out from a telop banner's place: centred as fifteen glyphs

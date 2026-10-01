@@ -159,8 +159,8 @@ pub fn take_damage(b: &mut Battle, r: ObjectRef, mode: u8) -> i32 {
         return 0;
     }
     match mode {
-        0 => b.play_sound(crate::sound::SoundId(0x85)),
-        2 => b.play_sound(crate::sound::SoundId(0x6D)),
+        0 => b.sound(crate::content::SoundRole::Damage),
+        2 => b.sound(crate::content::SoundRole::Hit),
         _ => return 1,
     }
     0
@@ -178,7 +178,7 @@ pub fn spawn_guard_spark(b: &mut Battle, r: ObjectRef) {
     if b.collision.get(c).acc.hit_flags & 0x2_0000 == 0 {
         return;
     }
-    b.play_sound(crate::sound::SoundId(0x6E));
+    b.sound(crate::content::SoundRole::Guard);
     let o = b.objects.get(r);
     let pos = Vec3 { z: o.pos.z.wrapping_add(0x10 << 16), ..o.pos };
     let pos = crate::kinds::spark::jitter(b, 0xF, pos);

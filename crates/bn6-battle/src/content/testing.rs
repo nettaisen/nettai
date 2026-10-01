@@ -366,15 +366,105 @@ fn assets() -> bn6_content_api::AssetNames {
     for (name, id) in used.sounds {
         a.sounds.entry(name).or_insert(id);
     }
-    a.banners.extend(used.banners);
+    for (name, id) in used.banners {
+        a.banners.entry(name).or_insert(id);
+    }
     a.backgrounds.extend(used.backgrounds);
     a.mugshots.extend(used.mugshots);
     a
 }
 
+/// The ids of the test content's sounds, music, sprites and banners for the
+/// ruleset's roles (testdata/content/rules/ruleset.luau's assets, by role
+/// name): what the tests look for in the cues and the HUD.
+const ROLE_SOUNDS: &[(&str, u16)] = &[
+    ("panel-crack", 0x97),
+    ("panel-poison", 0x90),
+    ("own-hit", 0x6b),
+    ("hit", 0x6d),
+    ("damage", 0x85),
+    ("guard", 0x6e),
+    ("counter-hit", 0x86),
+    ("deleted", 0x6c),
+    ("recovery", 0x8a),
+    ("damage-bonus", 0x87),
+    ("pause", 0x9f),
+    ("gauge-full", 0x8f),
+    ("low-hp", 0x84),
+    ("cut-in", 0xa5),
+    ("telop", 0x173),
+    ("buster-charge", 0x71),
+    ("buster-charged", 0x72),
+    ("freeze", 0x118),
+    ("bubble", 0x12d),
+    ("bubble-pop", 0x124),
+    ("confusion", 0x88),
+    ("invisible", 0x93),
+    ("appear", 0x94),
+    ("arrive", 0x129),
+    ("fade", 0x8e),
+    ("obstacle-lift", 0x12a),
+    ("obstacle-throw", 0x10c),
+    ("cross-merge", 0x8c),
+    ("form-change", 0xf7),
+    ("cross-change", 0x8d),
+    ("cross-change-chime", 0x77),
+    ("beast-out", 0x100),
+    ("gregar-roar", 0x1cc),
+    ("falzar-roar", 0x1cd),
+    ("beast-over-rumble", 0x19a),
+    ("beast-over-burst", 0x12e),
+    ("cross-special", 0x182),
+    ("refused", 0x69),
+];
+const ROLE_MUSIC: &[(&str, u16)] = &[
+    ("link-battle", 0x15),
+    ("winner-special", 0x19),
+    ("winner", 0x1f),
+    ("loser", 0x1a),
+];
+const ROLE_SPRITES: &[(&str, (u8, u8))] = &[
+    ("charge-glow", (0x14, 0x08)),
+    ("charge-glow-a", (0x14, 0x15)),
+    ("full-synchro-aura", (0x14, 0x16)),
+    ("confusion", (0x14, 0x0b)),
+    ("blindness", (0x14, 0x09)),
+    ("immobilized", (0x10, 0x00)),
+    ("ice", (0x14, 0x1c)),
+    ("bubble", (0x0c, 0x20)),
+    ("hit-marker", (0x14, 0x07)),
+    ("eruption", (0x10, 0x24)),
+    ("lockon-marker", (0x0c, 0x09)),
+    ("idle-overlay", (0x10, 0x21)),
+    ("beast-head", (0x0c, 0x0a)),
+];
+const ROLE_BANNERS: &[(&str, u8)] = &[
+    ("round-start", 0x30),
+    ("turn-start", 0xc),
+    ("final-turn", 0x10),
+    ("draw", 0x1c),
+    ("judge", 0x28),
+    ("telop", 0x4c),
+    ("telop-remote", 0x50),
+    ("program-advance", 0x24),
+    ("program-advance-empty", 0x34),
+];
+
 /// The test content's assets with BN6's numbers.
 fn numbered_assets() -> bn6_content_api::AssetNames {
     let mut a = bn6_content_api::AssetNames::default();
+    for (role, id) in ROLE_SOUNDS {
+        a.sounds.insert(format!("test-sound-{role}"), *id);
+    }
+    for (role, id) in ROLE_MUSIC {
+        a.sounds.insert(format!("test-music-{role}"), *id);
+    }
+    for (role, (category, index)) in ROLE_SPRITES {
+        a.sprites.insert(format!("test-sprite-{role}"), SpriteId { category: *category, index: *index });
+    }
+    for (role, id) in ROLE_BANNERS {
+        a.banners.insert(format!("test-banner-{role}"), *id);
+    }
     // The test stages' (testdata/content/stages/test.luau).
     a.sounds.insert("test-stage-music".into(), STAGE_MUSIC.0);
     a.backgrounds.insert("test-background".into(), 0);
@@ -1223,7 +1313,7 @@ fn rules() -> Rules {
             };
             // Every panel type is on the field (the step sword looks for
             // this bit).
-            PanelTypeRule { flags: flags | ON_FIELD, road_slide }
+            PanelTypeRule { flags: flags | ON_FIELD, road_slide, trail_sound: None }
         })
         .collect();
     // Steps: onto a free panel of one's own side, solid unless floor-free.
