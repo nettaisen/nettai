@@ -96,9 +96,11 @@ Port: crates/bn6-battle/src/dimming.rs (`check_anti_navi`, `show_navi_telop`), w
 (`anti_navi_turns_a_navi_chip_around`, `two_anti_navis_send_the_chip_back`). **Verified** against two scenarios
 recorded for it, in the lab library as `chips/0x0ba-antinavi/heatman` and `chips/0x0ba-antinavi/bounce`: AntiNavi
 (side 1) then HeatMan (side 0), 1170/1170 frames; both AntiNavis armed, then HeatMan, 1708/1708 frames (the
-bounce). Their TOML files are in §12. Unverified: a turn
-when T has its own controller registered, a turn with AntiNavi's user deleted (owner null), a user without HP
-before the turn.
+bounce). Their TOML files are in §12. Also **verified**: a turn when T has its own controller registered
+(`chips/0x0ba-antinavi/own-controller`: T's AreaGrab is under way and the navi chip is the cut-in on it; T's
+controller is freed without its end logic), and a user without HP at its telop's end
+(`chips/0x0e3-heatman/user-deleted`: the other side's cut-in ran first and deleted it). Unverified: a turn with
+AntiNavi's user deleted (owner null), which a netbattle can't reach (the round is over).
 
 ## 3. Subtype 4: the barriers (Barrier, Barr100, Barr200, BblWrap, LifeAur)
 
@@ -218,8 +220,10 @@ Every Barrier-family scenario reaches the controller, `sub_801A7CC` and the visu
 `chips/0x0b3-barr100/over-barrier`), the visual's regrowth (`chips/0x0b5-bblwrap/popped`), action 8, a barrier
 blown away (`chips/0x0b3-barr100/blown-away`, `chips/0x0b6-lifeaur/weak-and-strong`, and AirShot, WindRack and
 AirSpin against Barr100), and a barrier broken with damage to spare (`chips/0x0b3-barr100/broken`, and every
-family's first chip against Barr100). **Unverified**: the hidden-parts rule for type 9 on the remote side, the
-blind viewer and off-field owner branches.
+family's first chip against Barr100), the blind viewer (`chips/0x0b2-barrier/blind-viewer`: the opponent's
+Silence, then its Barrier) and the visual hidden and shown with its owner (`chips/0x0e3-heatman/user-barrier`,
+`chips/0x08d-magnum/user-barrier`, `chips/0x06e-burnsqr1/user-barrier`: a chip used from behind a Barrier).
+**Unverified**: the hidden-parts rule for type 9 on the remote side, the off-field owner branch.
 
 ## 4. Subtype 5: the panel chips (PnlRetrn, HolyPanl, Snctuary, ComingRd, GoingRd)
 
@@ -420,8 +424,12 @@ Fanfare [0x55, 3, 0, 0x40], Discord [0x37, 3, 2, 0x40], Timpani [0x3C, 3, 4, 0x4
 
 **Lab**: the four instruments' appear, rest and play with every effect are reached; the destroyed action
 (`chips/0x092-fanfare/broken`, `pushed`, and Discord's, Timpani's and Silence's `broken`) and a tune played to its
-end (`chips/0x092-fanfare/lifetime`) are **verified**. **Unverified**: the removal paths (absorb, blink),
-Fanfare's Beast Over test, the battle-over branches, a failed collision.
+end (`chips/0x092-fanfare/lifetime`) are **verified**; so are the removal paths (each instrument's `dustman`,
+`colarmy` and `absorbed`: taken by DustMan, blinking out under ColArmy, absorbed by DustCross's B+Back, by its own
+side and by the other), Fanfare's Beast Over test in both versions' Beast Over (`chips/0x092-fanfare/beast-over`,
+`beast-over-gregar`, with `beast-shot-at` for Beast Out) and the battle-over branches while playing and while
+resting (`chips/0x092-fanfare/round-end`, `chips/0x095-silence/round-end-rest`). **Unverified**: a failed
+collision.
 
 ## 7. Subtype 13: AirRaid1-3
 
@@ -503,9 +511,11 @@ takes off 519..548, bombs from 550 (overlay) with the first strike at 551, then 
 
 **Lab**: the plane, its propeller and overlay, the bombs with and without the neighbour pick are reached.
 The plane shot down, the battle's end and the bombs against a barrier and an invisible navi
-(`chips/0x068-airraid1/broken`, `ko`, `barrier`, `invisible`) match every frame. **Unverified**: the destroyed
-action's removal paths (absorb, blink), the no-target branch (step 2), a failed collision, the overlay's
-EV+0x10/0x14/0x18 and Param3-0 branches (LilBoiler's).
+(`chips/0x068-airraid1/broken`, `ko`, `barrier`, `invisible`) match every frame, as do the destroyed action's
+removal paths (`dustman`, `colarmy`, `absorbed`), the plane's lifetime (`lifetime`), the bombs' panel list as the
+opponent walks (`moving-target`) and AirRaid3's plane shot down (`chips/0x06a-airraid3/broken`). **Unverified**:
+the no-target branch (step 2), a failed collision, the overlay's EV+0x10/0x14/0x18 and Param3-0 branches
+(LilBoiler's).
 
 ## 8. Subtype 28: Sensor1-3
 
@@ -589,8 +599,11 @@ at once) → VISIBLE, action 4; 4 `sub_80D94B8`: region 1; 8 `sub_80D94C2`: when
 
 **Lab**: the scan, the fire and the laser are reached (Sensor1-3, 21/22 scenarios per chip before the panic).
 The pushed turret (`chips/0x071-sensor1/pushed`), the broken turret (`broken`), the laser's re-arming (`twice`)
-and the battle-over branches (`ko`) are **verified**. **Unverified**: the removal and absorb paths, the scanner's
-blocked-by-object and edge branches, failed collisions.
+and the battle-over branches (`ko`) are **verified**; so are the removal, blink-out and absorb paths
+(`dustman`, `colarmy`, `absorbed`), the scanner blocked by an object on its first panel and on its step
+(`blocked-rock`, `blocked-rock-far`), running off the bottom and top rows (`row1`, `row3`) and the far column for
+the turret's whole lifetime (`long-miss`), and the scanner and laser through a pause (`paused`). **Unverified**:
+the scanner's Param2 0 (no spawner), failed collisions.
 
 ## 9. Subtype 36: SumnBlk1-3
 
@@ -637,7 +650,10 @@ controller, damage word, +0x64 = Param1, EV+0 = the flag pointer, `*flag = 1` (w
 
 **Lab**: `chips/0x087-sumnblk1/hole-ahead`, `after-geddon` and `chips/0x089-sumnblk3/hole-ahead` have a hole in
 front of the user and reach the whole navi (§9.2, §9.3: 127 blocks and branch sides the lab didn't have); they
-match every frame.
+match every frame. The target search with the opponent elsewhere matches too: in the hole's row and the bottom
+row, a column nearer, in the back column (`hole-ahead-up`, `-down`, `-near`, `-back`), behind its own RockCube
+(`hole-ahead-rock`: no panel to strike from, and the navi leaves), from side 1 (`hole-ahead-side1`), with the
+battle ending at its strike (`hole-ahead-ko`), and SumnBlk2's (`chips/0x088-sumnblk2/hole-ahead`).
 
 ## 10. Subtype 27: ColorPt, DblPoint
 
