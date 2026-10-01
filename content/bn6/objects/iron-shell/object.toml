@@ -1,6 +1,0 @@
-# The iron shell (attack object #0x34, `sub_80CA6B8`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x34
-script = "iron_shell.luau"
