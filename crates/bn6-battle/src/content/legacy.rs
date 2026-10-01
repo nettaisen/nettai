@@ -439,7 +439,6 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
             // The object kinds' tables by number, each while something
             // still reads it (the rocks', the absorbed obstacles' and the
             // sun beam's are their kinds' own definitions now).
-            "attachments" => content.objects.attachments = numbered(r, spec, &at, Some("id")).map_err(e)?,
             "body-overlays" => content.objects.body_overlays = numbered(r, spec, &at, Some("id")).map_err(e)?,
             "sword-waves" => content.objects.sword_waves = numbered(r, spec, &at, Some("id")).map_err(e)?,
             "boomerangs" => content.objects.boomerangs = numbered(r, spec, &at, Some("id")).map_err(e)?,

@@ -4,7 +4,7 @@
 //! `"CC-II"`), keyed by their ids:
 //!
 //! ```text
-//! data.objects.attachments[id], .rocks[id], .absorbed_sprites[kind],
+//! data.objects.rocks[id], .absorbed_sprites[kind],
 //!             .body_overlays[id], .sun_beam_looks[look], .projectiles[kind],
 //!             .flying_shots[kind], .shock_waves[variant], .name_looks[name_id],
 //!             .boomerangs[id], .sword_waves[kind]
@@ -45,7 +45,6 @@ fn by_id<T>(items: impl IntoIterator<Item = (i64, T)>, f: impl Fn(&T) -> Data) -
 pub fn script_data(c: &Content) -> Data {
     let o = &c.objects;
     let objects = Data::map([
-        ("attachments", by_id(o.attachments.iter().map(|a| (a.id as i64, a)), |a| value(*a))),
         ("rocks", by_id(o.rocks.iter().map(|r| (r.id as i64, r)), |r| value(*r))),
         ("absorbed_sprites", by_id(o.absorbed_sprites.iter().enumerate().map(|(i, s)| (i as i64, s)), |s| value(*s))),
         ("body_overlays", by_id(o.body_overlays.iter().map(|b| (b.id as i64, b)), |b| value(*b))),

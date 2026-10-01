@@ -199,9 +199,8 @@ fn a_blank_shot_raises_the_arm_and_recovers_from_its_own_panel() {
     assert_eq!(b.objects.get(p0).anim, 0x0E);
     assert_ne!(f1_of(&b, p0) & f1::USING_ACTION, 0);
     let arm = ai_mut(&mut b, p0).overlay.expect("the buster arm");
-    // The arm is the pack data's attachment row 6.
-    assert_eq!(b.kind_key(arm), "attachment");
-    assert_eq!(b.objects.sprite(arm).id, Some(b.content.attachment(6).sprite));
+    // The arm is an attachment with the buster arm's look.
+    assert!(shows(&b, arm, "buster-arm"), "the arm");
 
     // Five ticks up, then the recovery by the open panels from its own
     // (its body is off the field while it updates) to the enemy's:
@@ -400,10 +399,9 @@ fn use_chip_handle(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: bn6_conte
     tick(b, p0, p1, keys::A);
 }
 
-/// Whether `r` is an attachment showing the pack data's attachment row
-/// `row` (its sprite).
-fn shows_row(b: &Battle, r: ObjectRef, row: u8) -> bool {
-    b.kind_key(r) == "attachment" && b.objects.sprite(r).id == Some(b.content.attachment(row).sprite)
+/// Whether `r` is an attachment showing the sprite named `sprite`.
+fn shows(b: &Battle, r: ObjectRef, sprite: &str) -> bool {
+    b.kind_key(r) == "attachment" && b.objects.sprite(r).id == Some(b.content.assets.sprites[sprite])
 }
 
 /// What the one-shot effect `o` shows.
@@ -551,7 +549,7 @@ fn a_buster_shot_flies_a_panel_every_two_ticks_and_hits() {
     let o = b.objects.get(shot);
     assert_eq!((o.panel, o.pos.z, o.params[0]), (PanelPos { x: 3, y: 2 }, 0x18 << 16, 0));
     let flash = b.objects.get(p0).related[0].expect("the muzzle flash");
-    assert!(shows_row(&b, flash, 5), "the muzzle flash");
+    assert!(shows(&b, flash, "muzzle-flash"), "the muzzle flash");
 
     // A panel every two ticks, from the tick after it appears.
     run_to(&mut b, p, &mut t, 3, 0);
@@ -639,7 +637,7 @@ fn a_charged_shot_waits_then_fires_the_charged_kind() {
     assert_eq!(variant.0, bn6_content_api::Registry::Record);
     assert_eq!(b.content.defs.records[variant.1 as usize].record_type, "projectile-variant");
     let flash = b.objects.get(p0).related[0].expect("the muzzle flash");
-    assert!(shows_row(&b, flash, 5), "the muzzle flash");
+    assert!(shows(&b, flash, "muzzle-flash"), "the muzzle flash");
     // (Attack + 1) * 10 damage, four ticks later.
     run_to(&mut b, p, &mut t, 10, 0);
     assert_eq!(b.objects.get(p1).hp, 990);
@@ -717,7 +715,7 @@ fn the_absorbed_obstacle_flies_at_the_enemy() {
     let o = b.objects.get(thrown);
     assert_eq!((o.anim, o.pos.z, o.pos.y), (2, 0xC << 16, 28 << 16));
     let arm = b.objects.get(p0).related[0].expect("the second arm");
-    assert!(shows_row(&b, arm, 6), "the arm");
+    assert!(shows(&b, arm, "buster-arm"), "the arm");
     // No shot before: no recovery; the navi idles once the arm is down.
     run_to(&mut b, p, &mut t, 6, 0);
     assert_eq!(act(&b, p0), 8);
@@ -1524,7 +1522,7 @@ fn the_beast_busters_raise_the_arm_for_their_projectile() {
         run_to(&mut b, p, &mut t, 1, 0);
         assert_eq!(b.objects.get(p0).anim, 0x0E);
         let arm = ai_mut(&mut b, p0).overlay.expect("the buster arm");
-        assert!(shows_row(&b, arm, 6), "the arm");
+        assert!(shows(&b, arm, "buster-arm"), "the arm");
         // (The shot is the buster's projectile, which isn't content yet.)
     }
 }

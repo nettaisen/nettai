@@ -1,15 +1,12 @@
 //! Object kinds' data.
 
-use super::{AttachmentKind, Element, SecondaryElements, SpriteId};
+use super::{Element, SecondaryElements, SpriteId};
 use crate::field::PanelType;
 use serde::{Deserialize, Serialize};
 
 /// Data of the object kinds that have their own.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ObjectData {
-    /// Attachment kinds by number (attachment object #5's first
-    /// parameter): those the chips declare, and the rest.
-    pub attachments: Vec<AttachmentKind>,
     /// Rocks by variant (the rock's first parameter).
     pub rocks: Vec<RockKind>,
     /// The sprite an absorbed obstacle flies with, by obstacle kind.
@@ -36,11 +33,6 @@ pub struct ObjectData {
 }
 
 impl ObjectData {
-    /// Attachment kind `kind`.
-    pub fn attachment(&self, kind: u8) -> &AttachmentKind {
-        self.attachments.get(kind as usize).unwrap_or_else(|| panic!("attachment kind {kind:#x} is not in the content"))
-    }
-
     /// Rock variant `variant`.
     pub fn rock(&self, variant: u8) -> &RockKind {
         self.rocks.get(variant as usize).unwrap_or_else(|| panic!("rock variant {variant} is not in the content"))
