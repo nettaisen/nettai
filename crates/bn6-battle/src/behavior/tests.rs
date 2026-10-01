@@ -69,11 +69,11 @@ fn battles_run_the_content_scripts() {
             "elmnt-man",
             "elmnt-vine",
             "energbom/burst",
-            "erase-beam",
             "erase-drop",
-            "erase-man",
-            "erase-mark",
             "erase-ray",
+            "eraseman/beam",
+            "eraseman/mark",
+            "eraseman/navi",
             "falling-rock",
             "fire-hit",
             "flame-hook",
@@ -199,9 +199,9 @@ fn the_scripted_navi_and_dimming_chips_play() {
     let seen = chip_duel(2400);
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The eraser navi comes, marks its aim and slashes along it.
-    assert!(ticks("erase-man") > 0, "EraseMan: {seen:?}");
-    assert!(ticks("erase-mark") > 0, "EraseMan's marks: {seen:?}");
-    assert!(ticks("erase-beam") > 0, "EraseMan's slash: {seen:?}");
+    assert!(ticks("eraseman/navi") > 0, "EraseMan: {seen:?}");
+    assert!(ticks("eraseman/mark") > 0, "EraseMan's marks: {seen:?}");
+    assert!(ticks("eraseman/beam") > 0, "EraseMan's slash: {seen:?}");
     // The grabs' controller drops grab shots.
     assert!(ticks("grab/controller") > 0, "the grabs' controller: {seen:?}");
     assert!(ticks("grab/shot") > 0, "grab shots: {seen:?}");

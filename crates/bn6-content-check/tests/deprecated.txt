@@ -126,10 +126,7 @@ objects/elmnt-bolt/elmnt_bolt.luau 2
 objects/elmnt-ice/elmnt_ice.luau 5
 objects/elmnt-man/elmnt_man.luau 22
 objects/elmnt-vine/elmnt_vine.luau 2
-objects/erase-beam/erase_beam.luau 6
 objects/erase-drop/erase_drop.luau 7
-objects/erase-man/erase_man.luau 7
-objects/erase-mark/erase_mark.luau 2
 objects/erase-ray/erase_ray.luau 6
 objects/falling-rock/falling_rock.luau 3
 objects/fire-hit/fire_hit.luau 3
