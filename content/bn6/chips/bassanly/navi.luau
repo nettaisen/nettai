@@ -1,16 +1,14 @@
 --!strict
--- BassAnly, the navi of the BassAnly chip (actor object #0x50,
--- `sub_80C3CE8`), brought by its navi chip controller. He appears (with his
--- cloak, a form overlay) on his user's panel, waits 51 ticks, raises his
--- arm, and fires four dark balls in turn, up and down the slant, that
--- home in on enemy navis (objects/bass-anly-shot). Then he goes in a
+-- BassAnly, the navi of the BassAnly chip (the original's actor object
+-- #0x50, `sub_80C3CE8`), brought by its navi chip controller. He appears
+-- (with his cloak, a form overlay) on his user's panel, waits 51 ticks,
+-- raises his arm, and fires four dark balls in turn, up and down the
+-- slant, that home in on enemy navis (./shot). Then he goes in a
 -- burst, and the controller moves on. He goes at once if his panel is off
 -- the field. See docs/engine/chips.md §3.6.35.
---
--- The chip's script (navi chip subtype 27): `navi_chip` is his spawner,
--- `off_802CD5C[27]`.
 
-local bass_anly_shot = require("../bass-anly-shot/bass_anly_shot")
+local shot = require("./shot")
+local effects = require("../../lib/effects")
 
 export type State = {
     -- The controller waiting for him (its pointer sits in his
@@ -18,44 +16,26 @@ export type State = {
     controller: Object?,
 }
 
-local bass_anly = {
-    state = { controller = "object" },
-}
+local bassanly = {}
 
-local SPRITE = "08-13"
+local SPRITE = asset.sprite("bass-anly")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_BASS_ANLY = asset.sound("bass-anly")
 
 -- His cloak: a form overlay on his sprite, stepping while dimmed, on his
 -- animation + 0x14 (`dword_80C3D98`).
 local CLOAK: FormOverlaySpec = { sprite = SPRITE, stepping = "while_dimmed", anim_offset = 0x14 }
 
--- When his shots go (ticks left of his firing), each up (0) or down (1)
+-- When his shots go (ticks left of his firing), each up (-1) or down (1)
 -- the slant.
-local SHOTS = { { 0x69, 0 }, { 0x55, 1 }, { 0x41, 0 }, { 0x2D, 1 } }
+local SHOTS = { { 0x69, -1 }, { 0x55, 1 }, { 0x41, -1 }, { 0x2D, 1 } }
+-- His shots: the fastest, seeking enemy navis along the slant.
+local SHOT_LEVEL = 3
 
--- `sub_80C3E98`: BassAnly on the user's panel, reporting to `controller`.
--- (His position is the spawner's registers, all of which his init
--- overwrites; he keeps no user.)
-function bass_anly.navi_chip(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn_kind("bass-anly", Vec3.zero, spec.params)
-    if not o then
-        return nil
-    end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.alliance, o.flip = user.alliance, user.flip
-    o.damage = spec.damage
-    o.stamina = bit32.rshift(spec.damage, 16)
-    local s = o.state :: State
-    s.controller = controller
-    return o
-end
-
--- `sub_80C3EBC`: a shot from his panel, up (0) or down (1) the slant,
--- homing (Param3 2).
-local function shoot(me: Object, down: number)
-    local slant = bit32.band(2 * down - 1, 0xFF)
+-- `sub_80C3EBC`: a shot from his panel, up or down the slant, seeking.
+local function shoot(me: Object, slant: number)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    bass_anly_shot.spawn(me, me.panel_x, me.panel_y, 0, { 3, slant, 2 }, damage, 0)
+    shot.spawn(me, me.panel_x, me.panel_y, 0, { level = SHOT_LEVEL, slant = slant, homing = "seeking" }, damage, 0)
 end
 
 -- `sub_80C3DC8`: waiting, 51 ticks (to -1).
@@ -68,7 +48,7 @@ local function wait(me: Object)
 end
 
 -- `sub_80C3E00`: raising his arm (animation 8) until its last frame ends;
--- then his firing stance (sound 0xFD), 31 ticks.
+-- then his firing stance, 31 ticks.
 local function raise(me: Object)
     if me.phase_init == 0 then
         me.phase_init = 1
@@ -78,7 +58,7 @@ local function raise(me: Object)
         return
     end
     me.anim = 0xD
-    battle.play_sound(0xFD)
+    battle.play_sound(SOUND_BASS_ANLY)
     me.timer = 0x1E
     me.phase, me.phase_init = 4, 0
 end
@@ -98,9 +78,9 @@ end
 -- `sub_80C3E46`: the shots, at 105, 85, 65 and 45 left; then 21 ticks.
 local function fire(me: Object)
     local t = me.timer
-    for _, shot in SHOTS do
-        if t == shot[1] then
-            shoot(me, shot[2])
+    for _, at in SHOTS do
+        if t == at[1] then
+            shoot(me, at[2])
             break
         end
     end
@@ -149,7 +129,7 @@ local function tick(me: Object)
 end
 
 -- `sub_80C3D32`: on his panel, on the ground, with his cloak (kept in
--- related1); sound 0x94; then his first update.
+-- related1); then his first update.
 local function init(me: Object)
     local sprite = me.sprite
     sprite:load(SPRITE)
@@ -164,17 +144,17 @@ local function init(me: Object)
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y, 0)
     me.related1 = battle.form_overlay(me, CLOAK)
-    battle.play_sound(0x94)
+    battle.play_sound(SOUND_APPEAR)
     me.timer = 0x32
     me:set_lifecycle("update")
     tick(me)
 end
 
--- `sub_80C3D0C`: a burst (effect 0x12) 16 pixels above him, his cloak
+-- `sub_80C3D0C`: a burst of smoke 16 pixels above him, his cloak
 -- off, the controller moves on, and he goes.
 local function leave(me: Object)
     local p = me.pos
-    battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), 0x12)
+    battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), effects.smoke)
     -- (Without one the game writes into ROM.)
     local cloak = me.related1
     if cloak then
@@ -187,17 +167,40 @@ local function leave(me: Object)
     me:free()
 end
 
--- `sub_80C3CE8`.
-function bass_anly.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        leave(me)
+bassanly.kind = define.kind {
+    id = "bassanly/navi",
+    pool = "actor",
+    state = { controller = "object" },
+    -- `sub_80C3CE8`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            leave(me)
+        end
+        me:update_sprite_while_dimmed()
+    end,
+}
+
+-- `sub_80C3E98`: BassAnly on the user's panel, reporting to `controller`
+-- (the BassAnly chip's navi hook, `off_802CD5C[27]`). (His position is the
+-- spawner's registers, all of which his init overwrites; he keeps no
+-- user.)
+function bassanly.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
+    local o = battle.spawn(bassanly.kind, Vec3.zero)
+    if not o then
+        return nil
     end
-    me:update_sprite_while_dimmed()
+    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
+    o.element = spec.element
+    o.alliance, o.flip = user.alliance, user.flip
+    o:set_damage_word(spec.damage)
+    local s = o.state :: State
+    s.controller = controller
+    return o
 end
 
-return bass_anly
+return bassanly
