@@ -1,8 +1,12 @@
 # Deprecated numeric API uses allowed per module (crates/bn6-content-check/tests/ratchet.rs).
 # Only ever lowered: BN6_RATCHET_LOWER=1 cargo test -p bn6-content-check --test ratchet
+chips/001-cannon/chip.luau 1
+chips/005-vulcan1/chip.luau 1
+chips/009-spreadr1/chip.luau 1
 chips/00f-gundels1/chip.luau 3
 chips/013-yoyo/chip.luau 5
 chips/014-firebrn1/chip.luau 7
+chips/017-widesht/chip.luau 1
 chips/018-trnarrw1/chip.luau 3
 chips/01b-bblstar1/chip.luau 6
 chips/01e-thunder/chip.luau 4
@@ -14,7 +18,7 @@ chips/02e-heatdrgn/chip.luau 1
 chips/032-airhocky/chip.luau 4
 chips/033-drilarm/chip.luau 6
 chips/034-tornado/chip.luau 6
-chips/036-minibomb/chip.luau 3
+chips/036-minibomb/chip.luau 2
 chips/03d-aquandl1/chip.luau 4
 chips/047-sword/chip.luau 3
 chips/050-windrack/chip.luau 3
@@ -25,11 +29,12 @@ chips/05c-wavearm1/chip.luau 6
 chips/05f-aurahed1/chip.luau 9
 chips/07b-ironshl1/chip.luau 4
 chips/07e-airspin1/chip.luau 6
-chips/083-rflectr1/chip.luau 9
+chips/083-rflectr1/chip.luau 8
 chips/09a-recov10/chip.luau 1
 chips/0b7-magcoil/chip.luau 5
 chips/0be-copydmg/chip.luau 5
 chips/152-h-burst/chip.luau 5
+chips/173-sonicbom/chip.luau 1
 chips/191-delecswd/elec_sword.luau 2
 chips/192-rslash/rolling_slash.luau 9
 chips/193-edeletbm/erase_delete.luau 1
@@ -42,8 +47,10 @@ chips/crosswrd/chip.luau 1
 chips/dbldream/chip.luau 1
 chips/ftrsword/chip.luau 1
 chips/guardian/statue.luau 2
+chips/lilbolr/boiler.luau 2
 chips/sensor/turret.luau 2
 chips/stepswrd/chip.luau 1
+chips/vdoll/doll.luau 2
 chips/wind/fan.luau 2
 lib/buster.luau 1
 lib/dragon.luau 4
@@ -128,7 +135,7 @@ objects/falling-rock/falling_rock.luau 3
 objects/flame-hook-fire/flame_hook_fire.luau 14
 objects/flame-hook/flame_hook.luau 5
 objects/flame/flame.luau 17
-objects/flying-shot/flying_shot.luau 11
+objects/flying-shot/flying_shot.luau 1
 objects/follow-effect/follow_effect.luau 10
 objects/gauge-speed/gauge_speed.luau 4
 objects/great-yoyo/great_yoyo.luau 5
@@ -154,7 +161,6 @@ objects/navi-effect/navi_effect.luau 8
 objects/needle-volley/needle_volley.luau 6
 objects/panel-bursts/panel_bursts.luau 11
 objects/panel-strike/panel_strike.luau 7
-objects/projectile/projectile.luau 7
 objects/proto-man/proto_man.luau 8
 objects/reflected-shot/reflected_shot.luau 2
 objects/reflector-shield/reflector_shield.luau 4
