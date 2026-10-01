@@ -551,6 +551,16 @@ fn registrations_follow_the_content_data() {
     let gauge = d.chip(c.chip_numbered(testing::FULL_GAUGE).unwrap());
     assert!(matches!(gauge.usage, crate::content::ChipUsage::Instant(_)), "{:?}", gauge.usage);
     assert!(d.weapon(c.weapon_numbered(0x10)).instant.is_some());
+    // A record whose module exports an action runs it, whatever its
+    // action number names (the link navis' chips: action 0x0A).
+    for (id, _, module) in testing::LINK_CHIPS {
+        let chip = d.chip(c.chip_numbered(id).unwrap());
+        assert_eq!(chip.record.action, 0x0A);
+        match chip.usage {
+            crate::content::ChipUsage::Action(h) => assert!(d.action(h).number.is_none(), "{module}: {:?}", d.action(h)),
+            ref other => panic!("{module}: {other:?}"),
+        }
+    }
     // Handles number each registry in key order: the engine's kinds and
     // the content's together.
     assert!(d.kinds.windows(2).all(|w| w[0].key < w[1].key));
