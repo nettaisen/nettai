@@ -13,7 +13,9 @@ use bn6_battle::Battle;
 use bn6_battle::actor::status;
 use bn6_battle::transform::{SequencerState, TransformPhase};
 use bn6_battle::battle::{fight, mode, top};
-use bn6_battle::content::ChipFlags;
+use bn6_battle::content::{ChipFlags, FormKind};
+use bn6_battle::kinds::player::{Emotion, emotion};
+use bn6_content_api::FormHandle;
 use bn6_content_api::ChipHandle;
 use bn6_battle::hud::HpNumber;
 use bn6_battle::object::ObjectRef;
@@ -44,69 +46,37 @@ pub struct HudState {
     gauge_is_on: bool,
 }
 
-/// The local navi's face in the emotion window (`sub_801E6A8`): its
-/// emotion's picture (`byte_801E6F4`: 0 normal, 1 angry, 2 Beast Out spent,
-/// 3 Full Synchro, 4 worn out), its form's number and the count beside it.
+/// The local navi's face in the emotion window (`sub_801E6A8`): what its
+/// form's definition shows for its emotion (`mugshot`), and the count
+/// beside it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Face {
-    emotion: u8,
-    form: u8,
+    /// The mugshot's number (none: the form names no face).
+    picture: Option<u8>,
+    /// One of MegaMan's own faces (the base form's: pictures 0..=4 in
+    /// BN6), which blink when they change.
+    own: bool,
+    full_synchro: bool,
     count: u8,
-}
-
-/// The pack's faces are in the original's order of forms and navis
-/// (hud.json), until the window reads a form's and a navi's mugshot from
-/// its definition: compat has the numbers of the content's keys. (A form
-/// compat doesn't know shows as the base form.)
-fn form_number(b: &Battle, form: bn6_content_api::FormHandle) -> u8 {
-    let key = &b.content.defs.form(form).key;
-    bn6_compat::Compat::bn6().forms.get(key).map_or(0, |f| f.form)
-}
-
-/// A link navi's number among the pack's faces (see [`form_number`]).
-fn navi_number(b: &Battle, navi: bn6_content_api::NaviHandle) -> Option<u8> {
-    let key = &b.content.defs.navi(navi).key;
-    bn6_compat::Compat::bn6().navis.get(key).map(|n| n.navi)
 }
 
 impl Face {
     fn of(b: &Battle, r: ObjectRef) -> Face {
-        let stats = &b.stats[b.objects.get(r).alliance as usize];
+        let side = b.objects.get(r).alliance;
+        Face::in_form(b, r, b.stats[side as usize].form)
+    }
+
+    /// The face `r`'s navi shows in `form`.
+    fn in_form(b: &Battle, r: ObjectRef, form: FormHandle) -> Face {
+        let side = b.objects.get(r).alliance;
+        let emotion = emotion(b, side);
+        let f = b.content.form(form);
         Face {
-            emotion: [0u8, 2, 3, 1, 5, 4][mood_index(b, r) as usize],
-            form: form_number(b, stats.form),
-            count: stats.beast_out_counter,
+            picture: f.mugshot.map(|faces| faces.of(emotion)),
+            own: f.kind == FormKind::Base,
+            full_synchro: emotion == Emotion::FullSynchro,
+            count: b.stats[side as usize].beast_out_counter,
         }
-    }
-
-    /// The pack's picture: the emotion's, or the form's (a Beast's has a
-    /// Full Synchro one, a Cross's a spent one).
-    fn picture(self, hud: &Hud) -> u8 {
-        if self.form == 0 {
-            return self.emotion;
-        }
-        let base = hud.form_emotions.get(self.form as usize).copied().unwrap_or(0);
-        match self.form {
-            11 | 12 if self.emotion == 3 => base + 1,
-            1..=10 if self.emotion == 2 => base + 5,
-            _ => base,
-        }
-    }
-
-    /// What tells two pictures apart without the pack.
-    fn key(self) -> (u8, u8) {
-        match self.form {
-            0 => (0, self.emotion),
-            11 | 12 => (self.form, (self.emotion == 3) as u8),
-            1..=10 => (self.form, (self.emotion == 2) as u8),
-            f => (f, 0),
-        }
-    }
-
-    /// Whether the picture is one of MegaMan's own emotions' (the forms'
-    /// come after them).
-    fn plain(self) -> bool {
-        self.form == 0 && self.emotion < 5
     }
 }
 
@@ -128,24 +98,6 @@ struct Mood {
 impl Mood {
     fn shown(self) -> Face {
         if self.flash { self.before } else { self.now }
-    }
-}
-
-/// `sub_80139C8`'s emotion as the mugshot reads it.
-fn mood_index(b: &Battle, r: ObjectRef) -> u8 {
-    let o = b.objects.get(r);
-    let mood = b.stats[o.alliance as usize].mood;
-    let Some(a) = o.actor.map(|a| b.actors.get(a)) else { return 0 };
-    if a.beast_over_exhausted || mood == 0 {
-        5
-    } else if a.anger != 0 {
-        3
-    } else if a.beast_out_spent {
-        1
-    } else if mood == 0xFF {
-        2
-    } else {
-        0
     }
 }
 
@@ -189,17 +141,17 @@ impl HudState {
         if let Some(r) = b.player(b.setup.local_side) {
             let now = Face::of(b, r);
             let m = self.mood.get_or_insert(Mood { now, before: now, blink: 0, flash: false, white: false });
-            if now.key() != m.now.key() {
+            if now.picture != m.now.picture {
                 *m = Mood { now, before: m.now, blink: 12, flash: false, white: false };
             } else if now.count != m.now.count {
                 m.before.count = m.now.count;
                 m.now = now;
             }
             (m.flash, m.white) = (false, false);
-            if m.now.plain() && m.blink > 0 {
+            if m.now.own && m.blink > 0 {
                 let on = m.blink & 2 != 0;
                 m.blink -= 1;
-                if m.now.emotion == 3 {
+                if m.now.full_synchro {
                     m.white = on;
                 } else {
                     m.flash = on;
@@ -769,19 +721,17 @@ fn mugshot_parts<'a>(
 ) {
     let side = b.objects.get(r).alliance as usize;
     let stats = &b.stats[side];
-    // A link navi's own face (MegaMan's, the navi that changes form, is
-    // his emotion's or his form's).
-    if !b.content.navi(stats.navi).changes_form() {
-        let face = navi_number(b, stats.navi)
-            .and_then(|navi| hud.navi_mugshot_of.get((navi as usize).checked_sub(1)?))
-            .and_then(|&i| hud.navi_mugshots.get(i as usize));
-        let Some(face) = face else {
+    // A link navi's own face, its definition's (MegaMan's, the navi that
+    // changes form, is his form's): in its second palette in Full Synchro.
+    let navi = b.content.navi(stats.navi);
+    if !navi.changes_form() {
+        let Some((tiles, palettes)) = navi.mugshot.and_then(|n| hud.mugshot(n)) else {
             problems.note(format!("navi {:?} has no mugshot in the pack", b.content.defs.navi(stats.navi).key));
             return;
         };
-        let full_synchro = Face::of(b, r).emotion == 3;
-        let pal = face.palettes[full_synchro as usize];
-        out.push(block(&face.tiles, 32, 16, pal, x, 18));
+        let full_synchro = emotion(b, side as u8) == Emotion::FullSynchro;
+        let pal = palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default();
+        out.push(block(tiles, 32, 16, pal, x, 18));
         out.push(block(&hud.navi_box, 16, 16, pal, x + 32, 18));
         return;
     }
@@ -790,11 +740,14 @@ fn mugshot_parts<'a>(
     // screens close (`sub_802A040`, `sub_802A088`).
     let chosen = (b.round.mode == mode::CUSTOM).then(|| b.custom.sides[side].sent.as_ref()).flatten();
     if let Some(form) = chosen.and_then(|sent| sent.result.transform.form) {
-        face = Face { form: form_number(b, form), ..Face::of(b, r) };
+        face = Face::in_form(b, r, form);
     }
-    let Some((gfx, pal)) = hud.mugshots.get(face.picture(hud) as usize) else { return };
+    let Some((gfx, palettes)) = face.picture.and_then(|n| hud.mugshot(n)) else {
+        problems.note(format!("form {:?} has no mugshot in the pack", b.content.defs.form(b.stats[side].form).key));
+        return;
+    };
     // (The white of a change to Full Synchro: `byte_801CD80`.)
-    let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { *pal };
+    let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
     out.push(block(gfx, 32, 16, pal, x, 18));
     let tiles = hud.counts.get(face.count as usize).unwrap_or(&hud.count_box);
     out.push(block(tiles, 16, 16, pal, x + 32, 18));
@@ -992,21 +945,6 @@ mod tests {
     use super::*;
     use bn6_assets::BannerLayout;
 
-    #[test]
-    fn a_face_is_its_emotions_picture_or_its_forms() {
-        let hud = Hud { form_emotions: vec![0, 5, 6, 7, 8, 9, 5, 6, 7, 8, 9, 0x14, 0x14], ..Hud::default() };
-        let face = |emotion, form| Face { emotion, form, count: 3 };
-        // MegaMan's own emotions are pictures 0-4, and blink when they change.
-        assert_eq!(face(1, 0).picture(&hud), 1);
-        assert!(face(1, 0).plain());
-        // A Cross has its face and a spent one; a Beast its face and a Full Synchro one.
-        assert_eq!((face(0, 3).picture(&hud), face(2, 3).picture(&hud)), (7, 12));
-        assert_eq!((face(0, 11).picture(&hud), face(3, 11).picture(&hud)), (0x14, 0x15));
-        assert!(!face(0, 3).plain());
-        // Emotions a form has no picture for don't change its face.
-        assert_eq!(face(0, 3).key(), face(1, 3).key());
-        assert_ne!(face(0, 3).key(), face(2, 3).key());
-    }
     use bn6_battle::content::{BannerId, testing};
     use bn6_battle::hud::{Telop, TelopHidden};
 

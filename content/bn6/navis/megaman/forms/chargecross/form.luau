@@ -23,7 +23,9 @@ return define.form {
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = tackle.weapon, a_charge = charged_chip_bonus_29 },
     palette = 19,
-    mugshot = asset.mugshot("dustcross"),
+    -- Its faces in the emotion window, and once Beast Out is spent
+    -- (`byte_801E700`): the Falzar ROM has no ChargeCross face, and shows DustCross's.
+    mugshot = { normal = asset.mugshot("dustcross"), tired = asset.mugshot("dustcross-tired") },
     -- The chips A charges.
     charged_chips = { { family = "fire" } },
     -- The A charge builds up the next Fire chip's damage, up to this much.

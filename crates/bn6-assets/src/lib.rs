@@ -267,14 +267,10 @@ pub struct Hud {
     /// without a number.
     pub counts: Vec<Tiles>,
     pub count_box: Tiles,
-    /// A transformed navi's mugshot emotion by form.
-    pub form_emotions: Vec<u8>,
-    /// The link navis' mugshots, and which a navi shows: by the navi's
-    /// number less one (`byte_801CDDC`; a ROM holds its own version's
-    /// navis' faces and ProtoMan's or Colonel's, and the other version's
-    /// navis show them).
+    /// The link navis' faces (a ROM holds its own version's navis' and
+    /// ProtoMan's or Colonel's). Which face a form or a navi shows is its
+    /// definition's (`mugshot`), by number (see [`NAVI_MUGSHOTS`]).
     pub navi_mugshots: Vec<NaviMugshot>,
-    pub navi_mugshot_of: Vec<u8>,
     /// The box beside a link navi's mugshot (2x2 tiles), where MegaMan's
     /// count is.
     pub navi_box: Tiles,
@@ -299,6 +295,21 @@ pub struct Hud {
     /// its palette. Empty in a pack extracted before it was.
     pub warning: Tiles,
     pub warning_palette: Palette,
+}
+
+/// Where the link navis' faces (`Hud::navi_mugshots`) start among the
+/// mugshots' numbers; the emotion window's (`Hud::mugshots`) start at 0.
+pub const NAVI_MUGSHOTS: u8 = 0x80;
+
+impl Hud {
+    /// Mugshot `number`: its tiles and palettes (an emotion window face
+    /// has one; a link navi's two, normal and Full Synchro).
+    pub fn mugshot(&self, number: u8) -> Option<(&Tiles, &[Palette])> {
+        match number.checked_sub(NAVI_MUGSHOTS) {
+            Some(i) => self.navi_mugshots.get(i as usize).map(|m| (&m.tiles, &m.palettes[..])),
+            None => self.mugshots.get(number as usize).map(|(t, p)| (t, std::slice::from_ref(p))),
+        }
+    }
 }
 
 /// A link navi's mugshot (4x2 tiles) with its palettes: normal, angry.

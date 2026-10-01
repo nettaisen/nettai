@@ -41,19 +41,15 @@ const MUGSHOT_PALETTES: u32 = 0x0872_F114;
 const COUNTS: u32 = 0x0872_E994;
 const COUNT_BOX: u32 = 0x0872_D914;
 /// The link navis' mugshots (`sub_801CC34`): six faces of 0x100 bytes,
-/// the box beside them, two palettes a face (normal, angry), and the face
-/// of each navi from navi 1 on (`byte_801CDDC`).
+/// the box beside them, two palettes a face (normal, Full Synchro). (Which
+/// face each navi shows, `byte_801CDDC`, is its definition's.)
 const NAVI_MUGSHOTS: u32 = 0x0872_D094;
 const NAVI_MUGSHOT_COUNT: u32 = 6;
 const NAVI_BOX: u32 = 0x0872_D014;
 const NAVI_MUGSHOT_PALETTES: u32 = 0x0872_D694;
-const NAVI_MUGSHOT_OF: u32 = 0x0801_CDDC;
-const LINK_NAVIS: usize = 11;
 /// "PAUSE" (`off_801E188`): a 32x16 sprite's eight tiles and an 8x16
 /// one's two.
 const PAUSE: u32 = 0x086E_611C;
-/// Mugshot emotion by transformation (`byte_801E700`).
-const FORM_EMOTIONS: u32 = 0x0801_E700;
 /// Banner descriptors (`pt_801EF84`: every banner up to the navis' win
 /// and deletion banners), their glyph filler, digits and palette.
 const BANNERS: u32 = 0x0801_EF84;
@@ -174,14 +170,12 @@ pub fn hud(rom: &Rom, names: &AssetNames) -> Hud {
             .collect(),
         counts: (0..=10u32).map(|n| tiles(rom, COUNTS + 0x80 * (10 - n), 0x80)).collect(),
         count_box: tiles(rom, COUNT_BOX, 0x80),
-        form_emotions: rom.bytes(FORM_EMOTIONS, 25).to_vec(),
         navi_mugshots: (0..NAVI_MUGSHOT_COUNT)
             .map(|n| NaviMugshot {
                 tiles: tiles(rom, NAVI_MUGSHOTS + 0x100 * n, 0x100),
                 palettes: std::array::from_fn(|k| palette(rom, NAVI_MUGSHOT_PALETTES + 0x40 * n + 0x20 * k as u32)),
             })
             .collect(),
-        navi_mugshot_of: rom.bytes(NAVI_MUGSHOT_OF, LINK_NAVIS).to_vec(),
         navi_box: tiles(rom, NAVI_BOX, 0x80),
         pause,
         texts: texts(rom),

@@ -17,6 +17,8 @@ return define.form {
     element = "null",
     buster_bonus = 0,
     weapons = { buster = gregar_beast_buster.weapon, alt_a_charge = beast_claw.weapon },
+    -- Its face in the emotion window (`byte_801E700`): the Falzar ROM has no
+    -- Gregar Beast Over face, and shows Falzar Beast Over's.
     mugshot = asset.mugshot("falzar-beast-over"),
     -- What its status reset gives the navi (`sub_8014536`).
     status_reset = { "super_armor", "lockon_marker", "invulnerable", "berserk" },
