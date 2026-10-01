@@ -9,7 +9,7 @@ use super::folder::{BattleFolder, FOLDER_SIZE, FolderChip, shuffle};
 use super::builder::{ClassCounts, FormedAdvance};
 use super::chatbox::{Chatbox, Script};
 use super::library::Library;
-use super::look::ScreenLook;
+use super::look::{ScreenLook, ScreenSound};
 use super::Unlocks;
 use crate::console::Console;
 use crate::battle::FadeMode;
@@ -479,6 +479,9 @@ impl Screen {
             Phase::Opening { tick } => {
                 // sub_8026B04: the window moves in 12 pixels a tick.
                 let tick = tick + 1;
+                if tick == 1 {
+                    self.look.play(ScreenSound::Open);
+                }
                 self.phase = if tick >= 10 { Phase::Choosing } else { Phase::Opening { tick } };
                 self.look.frame = SLIDE - SLIDE_STEP * tick as u32;
                 self.look.draw_emblem(self.look.frame);
@@ -506,10 +509,12 @@ impl Screen {
                 self.phase = match stage {
                     HiddenStage::Hiding => {
                         self.look.turn_limit = false;
+                        self.look.play(ScreenSound::Hide);
                         Phase::Hidden { stage: HiddenStage::Waiting }
                     }
                     HiddenStage::Waiting if joy.pressed != 0 => {
                         self.look.draw_emblem(0);
+                        self.look.play(ScreenSound::Hide);
                         Phase::Hidden { stage: HiddenStage::Restoring }
                     }
                     HiddenStage::Waiting => self.phase,
@@ -527,6 +532,7 @@ impl Screen {
                 // drawn every tick (`sub_8026E4C`).
                 self.look.draw_emblem(0);
                 if !chatbox.is_open() {
+                    self.look.play(ScreenSound::DescriptionClose);
                     self.phase = if from_cross_window { Phase::CrossWindow { entered: false } } else { Phase::Choosing };
                     return None;
                 }
@@ -537,7 +543,11 @@ impl Screen {
             Phase::RunMessage { chatbox } => {
                 self.look.draw_emblem(0);
                 let mut chatbox = match chatbox {
-                    None => Chatbox::new(Script::RunMessage { lines: view.library.run_message(view.stats.navi) }),
+                    None => {
+                        // sub_8026EC8
+                        self.look.play(ScreenSound::RunMessage);
+                        Chatbox::new(Script::RunMessage { lines: view.library.run_message(view.stats.navi) })
+                    }
                     Some(c) if !c.is_open() => {
                         self.phase = Phase::Choosing;
                         return None;
@@ -550,6 +560,9 @@ impl Screen {
             }
             Phase::CrossWindowOpening { tick } => {
                 let tick = tick + 1;
+                if tick == 1 {
+                    self.look.play(ScreenSound::CrossWindowOpen);
+                }
                 self.phase = if tick >= 12 { Phase::CrossWindow { entered: true } } else { Phase::CrossWindowOpening { tick } };
                 None
             }
@@ -563,11 +576,18 @@ impl Screen {
             }
             Phase::CrossWindowClosing { tick } => {
                 let tick = tick + 1;
+                if tick == 1 {
+                    self.look.play(ScreenSound::CrossWindowClose);
+                }
                 self.phase = if tick >= 6 { Phase::Choosing } else { Phase::CrossWindowClosing { tick } };
                 None
             }
             Phase::CrossChosen { tick } => {
                 let tick = tick + 1;
+                // sub_8027AAE: the white fade is over.
+                if tick == CROSS_PUT_ON_TICK {
+                    self.look.play(ScreenSound::CrossChosen);
+                }
                 self.phase = if tick >= 34 { Phase::Choosing } else { Phase::CrossChosen { tick } };
                 None
             }
@@ -586,6 +606,9 @@ impl Screen {
                         console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
                         self.look.frame = 0;
                         self.look.fade.start(FadeMode::BeastOut, BEAST_OUT_FADE_SPEED);
+                        self.look.play(ScreenSound::BeastOut);
+                        self.look.play(ScreenSound::Pick);
+                        self.look.play(ScreenSound::BeastOutFlash);
                     }
                     // sub_802777C
                     3..=52 => self.look.frame += 1,
@@ -627,6 +650,8 @@ impl Screen {
                         console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
                         self.look.frame = 0;
                         self.look.fade.start(FadeMode::BeastOut, BEAST_OUT_FADE_SPEED);
+                        self.look.play(ScreenSound::BeastOut);
+                        self.look.play(ScreenSound::BeastOutFlash);
                     }
                     // sub_8027672
                     68 => {
@@ -735,6 +760,10 @@ impl Screen {
                 if old & 7 != 0 {
                     return;
                 }
+                let k = old >> 3;
+                if (pa.start as u16..(pa.start + pa.len) as u16).contains(&k) {
+                    self.look.play(ScreenSound::ProgramAdvancePart);
+                }
                 if (anim.timer >> 3) + 1 >= pa.picks as u16 {
                     next(anim, S::Pause);
                 }
@@ -748,6 +777,9 @@ impl Screen {
             S::Result => {
                 // The Program Advance's name shows at 16 ticks.
                 anim.timer += 1;
+                if anim.timer == 0x10 {
+                    self.look.play(ScreenSound::ProgramAdvance);
+                }
                 if anim.timer >= 0x60 {
                     next(anim, S::BannerOut);
                     // sub_801E780
@@ -793,6 +825,9 @@ impl Screen {
         };
         if let Some(target) = target {
             if let Some(t) = target {
+                if t != self.cursor {
+                    self.look.play(ScreenSound::Cursor);
+                }
                 self.cursor = t;
                 self.show_chip_window(folder, view);
             }
@@ -804,6 +839,9 @@ impl Screen {
         } else if p & keys::B != 0 {
             self.deselect(view, folder);
         } else if p & keys::START != 0 {
+            if self.cursor != OK_SLOT {
+                self.look.play(ScreenSound::Cursor);
+            }
             self.cursor = OK_SLOT;
             self.show_chip_window(folder, view);
         } else if p & keys::SELECT != 0 {
@@ -814,6 +852,7 @@ impl Screen {
             if let Some(c) = self.chip_in(self.cursor, folder) {
                 let lines = view.library.chip(checked(c, view).id).description_lines();
                 self.describe(joy, lines, false);
+                self.look.play(ScreenSound::Description);
             }
         } else if p & keys::L != 0 {
             self.phase = Phase::RunMessage { chatbox: None };
@@ -829,10 +868,12 @@ impl Screen {
             SlotKind::Chip { .. } | SlotKind::NaviChip(_) => {
                 // sub_8028CCC
                 if here.state != SlotState::Selectable || self.selected as usize >= MAX_SELECTIONS {
+                    self.look.play(ScreenSound::Refused);
                     return None;
                 }
                 self.push_selection(cursor);
                 self.slots[cursor as usize].state = SlotState::Selected;
+                self.look.play(ScreenSound::Pick);
                 self.update_availability(view, folder);
                 // The pick's icon in the column, and the emblem spins.
                 self.look.column[self.selected as usize - 1] = self.chip_in(cursor, folder).map(|c| checked(c, view));
@@ -846,14 +887,17 @@ impl Screen {
                 // sub_8028D3A: the battle builds the hand and the
                 // transform request, then the window slides out.
                 self.phase = Phase::Closing { tick: 0 };
+                self.look.play(ScreenSound::Ok);
                 return Some(Request::Confirm);
             }
             SlotKind::BeastOut => {
                 // sub_8028D6C
                 if here.state != SlotState::Selectable || self.selected as usize >= MAX_SELECTIONS {
+                    self.look.play(ScreenSound::Refused);
                     return None;
                 }
                 self.push_selection(cursor);
+                self.look.play(ScreenSound::Pick);
                 self.phase = Phase::BeastOutChosen { tick: 0 };
                 // (sub_802A034: the column shows the BeastOut chip.)
                 self.look.column[self.selected as usize - 1] = beast_out_icon(view);
@@ -862,7 +906,10 @@ impl Screen {
                 // sub_8028E04
                 let button = if right_half { 8 } else { cursor };
                 if self.slots[button as usize].state == SlotState::Selectable {
+                    self.look.play(ScreenSound::Pick);
                     self.phase = Phase::Scrapping { tick: 0, done: false, scrapped: [None; MAX_SELECTIONS], count: 0 };
+                } else {
+                    self.look.play(ScreenSound::Refused);
                 }
             }
             SlotKind::Redeal { right_half } => {
@@ -871,6 +918,9 @@ impl Screen {
                 if self.slots[button as usize].state == SlotState::Selectable {
                     let deal = Deal { chips: [None; FOLDER_SIZE], count: 0 };
                     self.phase = Phase::Redealing { started: false, elapsed: 0, deal };
+                    self.look.play(ScreenSound::Redeal);
+                } else {
+                    self.look.play(ScreenSound::Refused);
                 }
             }
             SlotKind::Empty | SlotKind::Hidden => {}
@@ -913,10 +963,14 @@ impl Screen {
     /// B (`sub_8029032`): take back the last pick; with none, the Cross.
     fn deselect(&mut self, view: &PlayerView, folder: &BattleFolder) {
         if self.selected == 0 {
-            let Some(_) = self.crosses.chosen else { return };
+            let Some(_) = self.crosses.chosen else {
+                self.look.play(ScreenSound::Refused);
+                return;
+            };
             self.crosses.marked[self.crosses.cursor as usize] = false;
             self.crosses.chosen = None;
             self.look.face = None;
+            self.look.play(ScreenSound::Cancel);
         } else {
             let last = self.selection[self.selected as usize - 1];
             self.selected -= 1;
@@ -930,10 +984,13 @@ impl Screen {
             let beast_chip = self.chip_in(last, folder).is_some_and(|c| is_beast_out(c, view));
             if self.slots[last as usize].kind == SlotKind::BeastOut || beast_chip {
                 self.look.face = None;
+                self.look.play(ScreenSound::Back);
+                self.look.play(ScreenSound::Cancel);
             }
         }
         self.update_availability(view, folder);
         self.show_chip_window(folder, view);
+        self.look.play(ScreenSound::Back);
     }
 
     /// The Cross window's keys (`sub_8028A78`).
@@ -941,19 +998,27 @@ impl Screen {
         let w = &mut self.crosses;
         if w.chosen.is_none() {
             let n = w.count;
-            if joy.repeat & keys::UP != 0 {
-                w.cursor = if w.cursor == 0 { n - 1 } else { w.cursor - 1 };
-                return;
-            }
-            if joy.repeat & keys::DOWN != 0 {
-                w.cursor = if w.cursor + 1 >= n { 0 } else { w.cursor + 1 };
+            if joy.repeat & (keys::UP | keys::DOWN) != 0 {
+                w.cursor = if joy.repeat & keys::UP != 0 {
+                    if w.cursor == 0 { n - 1 } else { w.cursor - 1 }
+                } else if w.cursor + 1 >= n {
+                    0
+                } else {
+                    w.cursor + 1
+                };
+                if n > 1 {
+                    self.look.play(ScreenSound::Cursor);
+                }
                 return;
             }
             if joy.pressed & keys::A != 0 {
                 let i = w.cursor as usize;
                 if w.marked[i] {
+                    self.look.play(ScreenSound::Refused);
                     return;
                 }
+                self.look.play(ScreenSound::Pick);
+                let w = &mut self.crosses;
                 w.marked[i] = true;
                 w.chosen = Some(w.offered[i]);
                 self.phase = Phase::CrossChosen { tick: 0 };
@@ -968,9 +1033,11 @@ impl Screen {
         } else if p & keys::START != 0 {
             self.cursor = OK_SLOT;
             self.phase = Phase::CrossWindowClosing { tick: 0 };
+            self.look.play(ScreenSound::Cursor);
         } else if p & keys::R != 0 {
             // Every Cross's description has three lines.
             self.describe(joy, 3, true);
+            self.look.play(ScreenSound::Description);
         }
     }
 
@@ -989,6 +1056,7 @@ impl Screen {
         let Phase::Scrapping { tick, done, mut scrapped, mut count } = self.phase else { unreachable!() };
         if done {
             // sub_802750C
+            self.look.play(ScreenSound::ScrapDone);
             let button = &mut self.slots[8];
             button.uses_left = button.uses_left.saturating_sub(1);
             button.state = if button.uses_left == 0 { SlotState::Selected } else { SlotState::Selectable };
@@ -1004,6 +1072,7 @@ impl Screen {
                     scrapped[count as usize] = folder.take(index as usize);
                     count += 1;
                     self.selected -= 1;
+                    self.look.play(ScreenSound::Scrap);
                 }
                 _ => {
                     // sub_802945A, sub_80294E0, sub_802A61A: close up, put
@@ -1078,6 +1147,7 @@ impl Screen {
             }
         }
         self.update_availability(view, folder);
+        self.look.play(ScreenSound::RedealShuffle);
     }
 
     /// The folder entries a re-deal shuffles, as its routines walk them
@@ -1203,6 +1273,10 @@ impl<T: PartialEq + Copy> Common<T> {
         }
     }
 }
+
+/// The tick of a Cross's choice the white fade is over and the Cross put
+/// on (`sub_8027AAE`: 16 ticks, then 8 steps of the fade, then one more).
+const CROSS_PUT_ON_TICK: u8 = 25;
 
 /// The window's offset off the screen, and its slide a tick.
 const SLIDE: u32 = 0x78;

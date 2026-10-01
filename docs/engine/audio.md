@@ -51,10 +51,23 @@ which counts frames since the match began whatever the battle does
 `battle.warn(sound, at, side)` every tick the marker shows, and the engine
 makes the cue on those frames, for each console that shows it.
 
-Not emitted: the custom screen's own UI sounds (cursor 0x7F, select
-0x81/0x82, open 0x79, a Cross chosen 0x92, Beast Out, ...). The engine runs
-the screen (docs/engine/custom-screen.md), but its sounds belong to the
-console showing it, and nothing draws the screen yet either.
+The custom screen's own sounds are cues each player's own console makes
+(`Battle::sound_for`): the screen records what a tick played
+(`ScreenLook::drawn`, `ScreenSound`, in the order the original's states call
+`PlaySoundEffect`) and the battle plays each by its role (`sounds.custom_*`,
+`program_advance*` in rules/roles.luau): the window sliding in 0x79
+(`sub_8026B04`); the cursor 0x7F (a move to another slot, START, the Cross
+window's cursor with more than one Cross); SELECT's hide and show 0x80; a
+pick 0x81, OK 0x82, a take-back 0x83, what can't be picked or taken back
+0x69 (`sub_8028CCC`, `sub_8028D3A`, `sub_8028D6C`, `sub_8029032`); a Beast
+Out or Cross taken back 0x1D2; the Cross window opening 0x7A and closing
+0x7D, a Cross put on 0x92 (`sub_8027AAE`); L's message 0x7B; R's
+description 0x9C and its close 0x9E; Beast Out chosen 0x193, 0x81, 0xBC
+(`sub_802774C`; the BeastOut chip's 0x193, 0xBC); ChpShufl's re-deal 0x182
+and its shuffles 0x113 (`sub_802723A`); DustCross's scrap 0x196 a chip, 0x182
+when done; the Program Advance animation's chips of the recipe 0x91 and the
+Program Advance 0x92 (`sub_802B80C`, `sub_802B920`). The chatbox makes no
+sound in battle.
 
 Known differences, both from one variable. The original's actions share
 their attack variables, and nothing clears them between actions, so two
@@ -221,8 +234,8 @@ verification suite outside this repo. It replays a trace, turns each tick's
 cues into driver calls with `SoundCalls`, and compares them with the calls
 the original queued on the same frames, recorded from the original under
 emulation (the queue at 0x0200A490: count, then 16-byte entries r0, r1, r2,
-function), over every frame the engine reproduces. The custom screen's own
-sounds are left out.
+function), over every frame the engine reproduces, the custom screen's own
+sounds included.
 
 - The two golden traces, over every frame of every round: 89 calls over
   2405 frames and 1360 calls over 57,331 frames, call for call.

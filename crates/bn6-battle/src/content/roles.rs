@@ -390,8 +390,46 @@ definition_roles! {
         /// A Cross navi starts its special's chip.
         CrossSpecial = "cross_special",
         /// SELECT pressed with too little gauge: its player hears that it
-        /// can't.
+        /// can't (and what can't be picked or taken back on the custom
+        /// screen).
         Refused = "refused",
+        // The custom screen's (its player hears them).
+        /// The custom screen's window starts sliding in.
+        CustomOpen = "custom_open",
+        /// The custom screen's cursor moves (also in the Cross window).
+        CustomCursor = "custom_cursor",
+        /// SELECT hides the custom screen's window, and a key brings it back.
+        CustomHide = "custom_hide",
+        /// A chip, Beast Out, the scrap or a Cross is picked.
+        CustomPick = "custom_pick",
+        /// OK is pressed.
+        CustomOk = "custom_ok",
+        /// A pick is taken back.
+        CustomBack = "custom_back",
+        /// The Cross window opens, and closes.
+        CustomCrossOpen = "custom_cross_open",
+        CustomCrossClose = "custom_cross_close",
+        /// A Cross is put on (when its white fade is over).
+        CustomCrossChosen = "custom_cross_chosen",
+        /// L: the no-running message.
+        CustomRunMessage = "custom_run_message",
+        /// R: a description opens, and closes.
+        CustomDescription = "custom_description",
+        CustomDescriptionClose = "custom_description_close",
+        /// Beast Out chosen: its two sounds.
+        CustomBeastOut = "custom_beast_out",
+        CustomBeastOutFlash = "custom_beast_out_flash",
+        /// A Beast Out or a Cross taken back.
+        CustomCancel = "custom_cancel",
+        /// ChpShufl's re-deal pressed, and each of its shuffles.
+        CustomRedeal = "custom_redeal",
+        CustomRedealShuffle = "custom_redeal_shuffle",
+        /// DustCross scraps a chip, and is done.
+        CustomScrap = "custom_scrap",
+        CustomScrapDone = "custom_scrap_done",
+        /// The Program Advance animation names a chip of the recipe, and the Program Advance.
+        ProgramAdvancePart = "program_advance_part",
+        ProgramAdvance = "program_advance",
     }
 }
 

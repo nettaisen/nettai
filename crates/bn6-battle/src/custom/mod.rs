@@ -418,6 +418,12 @@ impl Battle {
             let mut s = self.custom.sides[side as usize].clone();
             let mut console = self.consoles[side as usize];
             let request = s.tick(&ctx, &mut console, |id| crate::hand::chip_damage(self, Some(id), side));
+            // The screen's sounds, which only its player hears.
+            if let Some(screen) = &s.screen {
+                for sound in screen.look.drawn.sounds() {
+                    self.sound_for(side, sound.role());
+                }
+            }
             self.custom.sides[side as usize] = s;
             self.consoles[side as usize] = console;
             if request == Some(Request::Send) {

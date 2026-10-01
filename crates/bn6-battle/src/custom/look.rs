@@ -5,6 +5,7 @@
 //! (bn6-frontend `custom`). See docs/engine/custom-screen.md §9.
 
 use crate::battle::{Fade, FadeMode};
+use crate::content::SoundRole;
 
 /// The original's presentation state of a screen (the control block at
 /// `0x020364C0`).
@@ -75,6 +76,92 @@ pub struct Drawn {
     pub emblem: Option<(u32, u8)>,
     /// The Regular chip's frame (`sub_802899C`).
     pub regular: bool,
+    /// The sounds the tick made, in order (its player hears them).
+    pub sounds: [Option<ScreenSound>; 6],
+}
+
+impl ScreenSound {
+    /// The ruleset's role for it.
+    pub fn role(self) -> SoundRole {
+        match self {
+            ScreenSound::Open => SoundRole::CustomOpen,
+            ScreenSound::Cursor => SoundRole::CustomCursor,
+            ScreenSound::Hide => SoundRole::CustomHide,
+            ScreenSound::Pick => SoundRole::CustomPick,
+            ScreenSound::Ok => SoundRole::CustomOk,
+            ScreenSound::Back => SoundRole::CustomBack,
+            ScreenSound::Refused => SoundRole::Refused,
+            ScreenSound::CrossWindowOpen => SoundRole::CustomCrossOpen,
+            ScreenSound::CrossWindowClose => SoundRole::CustomCrossClose,
+            ScreenSound::CrossChosen => SoundRole::CustomCrossChosen,
+            ScreenSound::RunMessage => SoundRole::CustomRunMessage,
+            ScreenSound::Description => SoundRole::CustomDescription,
+            ScreenSound::DescriptionClose => SoundRole::CustomDescriptionClose,
+            ScreenSound::BeastOut => SoundRole::CustomBeastOut,
+            ScreenSound::BeastOutFlash => SoundRole::CustomBeastOutFlash,
+            ScreenSound::Cancel => SoundRole::CustomCancel,
+            ScreenSound::Redeal => SoundRole::CustomRedeal,
+            ScreenSound::RedealShuffle => SoundRole::CustomRedealShuffle,
+            ScreenSound::Scrap => SoundRole::CustomScrap,
+            ScreenSound::ScrapDone => SoundRole::CustomScrapDone,
+            ScreenSound::ProgramAdvancePart => SoundRole::ProgramAdvancePart,
+            ScreenSound::ProgramAdvance => SoundRole::ProgramAdvance,
+        }
+    }
+}
+
+impl Drawn {
+    pub fn sounds(&self) -> impl Iterator<Item = ScreenSound> + '_ {
+        self.sounds.iter().flatten().copied()
+    }
+}
+
+/// A sound the screen makes (`PlaySoundEffect` in its states), which only
+/// its own player hears. The battle plays each by its role
+/// (`SoundRole::Custom*`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ScreenSound {
+    /// The window starts sliding in (`sub_8026B04`).
+    Open,
+    /// The cursor moves to another slot (`sub_8028B74`), or in the Cross
+    /// window.
+    Cursor,
+    /// SELECT hides the window, and a key brings it back (`sub_8026D06`).
+    Hide,
+    /// A chip, Beast Out, the scrap or a Cross picked.
+    Pick,
+    /// OK (`sub_8028D3A`).
+    Ok,
+    /// A pick taken back (`sub_8029032`).
+    Back,
+    /// What can't be picked or taken back.
+    Refused,
+    /// The Cross window opens (`sub_8027834`) and closes (`sub_802790C`);
+    /// a Cross is put on (`sub_8027AAE`).
+    CrossWindowOpen,
+    CrossWindowClose,
+    CrossChosen,
+    /// L: the no-running message (`sub_8026EC8`).
+    RunMessage,
+    /// R: a description opens, and closes (`sub_8026E4C`).
+    Description,
+    DescriptionClose,
+    /// Beast Out chosen (`sub_802774C`): its two sounds with the pick's.
+    BeastOut,
+    BeastOutFlash,
+    /// A Beast Out or a Cross taken back.
+    Cancel,
+    /// ChpShufl's re-deal pressed, and each of its shuffles
+    /// (`sub_802723A`).
+    Redeal,
+    RedealShuffle,
+    /// DustCross scraps a chip (`sub_8027458`), and is done (`sub_802750C`).
+    Scrap,
+    ScrapDone,
+    /// The Program Advance animation names a chip of the recipe
+    /// (`sub_802B80C`), and the Program Advance (`sub_802B920`).
+    ProgramAdvancePart,
+    ProgramAdvance,
 }
 
 /// The emblem's spin (`byte_8029CAC`): per step, the angle and the scale
@@ -106,6 +193,13 @@ const EMBLEM_HIDDEN_PAST: u32 = 0x67;
 const SPIN_STEPS: u8 = 0x14;
 
 impl ScreenLook {
+    /// The screen makes a sound this tick.
+    pub(crate) fn play(&mut self, sound: ScreenSound) {
+        if let Some(slot) = self.drawn.sounds.iter_mut().find(|s| s.is_none()) {
+            *slot = Some(sound);
+        }
+    }
+
     pub fn new(late_turns: bool, cross_tab: bool, last_chip: Option<super::FolderChip>) -> ScreenLook {
         ScreenLook {
             frame: 0,
