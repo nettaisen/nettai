@@ -33,8 +33,6 @@ return define.roles {
     -- with: named by their keys, since this pack's modules can't require
     -- that content's.
     kinds = {
-        rock = { legacy = { kind = "rock" } },
-        boulder = { legacy = { kind = "boulder" } },
         absorbed_obstacle = { legacy = { kind = "absorbed-obstacle" } },
         falling_rock = { legacy = { kind = "falling-rock" } },
     },

@@ -133,15 +133,20 @@ pub struct InstantChipSpec {
     pub damage: u32,
 }
 
-/// An actor list's entry, as its spawner (`off_80073A0[type]`) reads it.
+/// What a stage places, as the kind's `place` reads it (the original's
+/// spawner for the actor list's entry, `off_80073A0[type]`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct ActorListEntrySpec {
+pub struct PlaceSpec {
     pub panel: PanelPos,
     /// The entry's side (the one navis take; field objects take their
     /// panel's).
     pub side: u8,
-    /// The entry's argument (a rock's variant).
-    pub variant: u8,
+    /// Which of the kind's variants the stage names (a record of the
+    /// kind's: a rock's).
+    pub variant: Option<crate::RecordHandle>,
+    /// The entry's raw argument (what a spawner that ignores it leaves in
+    /// a register: the Guardian statue's).
+    pub argument: u8,
 }
 
 /// A call of a hook, with its arguments.
@@ -157,8 +162,8 @@ pub enum HookCall {
     NaviChip { user: ObjectRef, controller: ObjectRef, spec: NaviChipSpec },
     /// `instant_chip(user, spec)`: its result is unused.
     InstantChip { user: ObjectRef, spec: InstantChipSpec },
-    /// `actor_list_entry(spec)`: returns what it placed, or nil.
-    ActorListEntry { spec: ActorListEntrySpec },
+    /// A kind's `place(spec)`: returns what it placed, or nil.
+    Place { spec: PlaceSpec },
     /// A role hook the ruleset calls with a navi (`define.roles`'
     /// `hooks`): its result is unused.
     RoleNavi { navi: ObjectRef },

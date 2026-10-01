@@ -10,7 +10,7 @@ local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local drill = require("../../objects/drill/drill")
 local effects = require("../../lib/effects")
-local erase_ray = require("../../objects/erase-ray/erase_ray")
+local erase_ray = require("../../navis/00-megaman/forms/erasecross/ray")
 local navi_chips = require("../../lib/navi-chips/navi")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
 local panels = require("../../lib/panels")
@@ -512,7 +512,7 @@ local function beam(me: Object)
     if me.phase_init == 0 then
         me.anim = 0xF
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-        local ray = erase_ray.spawn(me, me.panel_x + me.facing, me.panel_y, me.element, 0, { 2, 0, 0, 0 }, damage)
+        local ray = erase_ray.spawn(me, me.panel_x + me.facing, me.panel_y, me.element, 0, erase_ray.rays.held, damage)
         if ray then
             ray.run_while_dimmed = true
         end

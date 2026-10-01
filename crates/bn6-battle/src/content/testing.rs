@@ -19,7 +19,7 @@ use super::*;
 use crate::actor::ActorType;
 use bn6_content_api::Pool;
 use crate::field::{PanelType, pflags};
-use crate::setup::{ActorEntry, ActorKind, ActorList, ActorListId, StageSettings, effects};
+
 use std::sync::Arc;
 
 /// Chips: three GunDelSol levels (action 0x37 with subtypes 0..=2) and
@@ -110,22 +110,17 @@ pub const LINK_CHIPS: [(ChipId, &str, &str); 10] = [
 /// no hooks).
 pub const LINK_NAVI: crate::setup::Navi = crate::setup::Navi(1);
 
-/// Actor lists: two navis, side 1's first (the usual netbattle order)...
-pub const TWO_NAVIS: ActorListId = ActorListId(0);
-/// ...side 0's first...
-pub const TWO_NAVIS_SIDE0_FIRST: ActorListId = ActorListId(1);
-/// ...two navis with two rocks, one on each side...
-pub const NAVIS_AND_ROCKS: ActorListId = ActorListId(2);
-/// ...and two navis with three boulders (the field has two stage slots).
-pub const NAVIS_AND_BOULDERS: ActorListId = ActorListId(3);
+/// The test stages (testdata/content/stages/test.luau), link battles on
+/// the plain field: two navis, side 1's placed first (the usual netbattle
+/// order); side 0's first; two navis with two rocks, one on each side; and
+/// two navis with three boulders (the field has two stage slots).
+pub const LINK_BATTLE: &str = "test/link-battle";
+pub const LINK_BATTLE_SIDE0_FIRST: &str = "test/link-battle-side0-first";
+pub const ROCK_BATTLE: &str = "test/rock-battle";
+pub const BOULDER_BATTLE: &str = "test/boulder-battle";
 
-/// Battle settings: a link battle on the plain field with `TWO_NAVIS`,
-/// the same with `TWO_NAVIS_SIDE0_FIRST`, with `NAVIS_AND_ROCKS` and with
-/// `NAVIS_AND_BOULDERS`.
-pub const LINK_BATTLE: u8 = 0;
-pub const LINK_BATTLE_SIDE0_FIRST: u8 = 1;
-pub const ROCK_BATTLE: u8 = 2;
-pub const BOULDER_BATTLE: u8 = 3;
+/// The test stages' music (the asset `test-stage-music`).
+pub const STAGE_MUSIC: crate::sound::SoundId = crate::sound::SoundId(0x16);
 
 /// The navi's sprite (base form).
 pub const NAVI_SPRITE: SpriteId = SpriteId { category: 0, index: 0 };
@@ -163,14 +158,13 @@ fn shared() -> &'static (Arc<Content>, crate::content::ContentHash) {
     })
 }
 
-/// A round on this content with battle settings `settings`, both navis
-/// with `stats`: RNG seed 1, side 0's perspective, no set score, no
-/// folders.
-pub fn round_setup(settings: u8, stats: crate::setup::NaviStats) -> crate::setup::RoundSetup {
+/// A round on this content on stage `stage` (its key), both navis with
+/// `stats`: RNG seed 1, side 0's perspective, no set score, no folders.
+pub fn round_setup(stage: &str, stats: crate::setup::NaviStats) -> crate::setup::RoundSetup {
     let (content, hash) = shared();
     crate::setup::RoundSetup {
         content: *hash,
-        settings: crate::setup::BattleSettings::on(content, content.stage_numbered(settings)),
+        settings: crate::setup::BattleSettings::on(content, content.stage_by_key(stage)),
         navi_stats: [stats; 2],
         rng: 1,
         local_side: 0,
@@ -317,11 +311,10 @@ pub fn with_test_pack() -> Content {
     c
 }
 
-/// The content set with stage `stage`'s record changed by `f` (its music,
-/// say).
-pub fn restaged(stage: u8, f: impl FnOnce(&mut StageSettings)) -> Content {
+/// The content set with stage `stage` changed by `f` (its music, say).
+pub fn restaged(stage: &str, f: impl FnOnce(&mut StageData)) -> Content {
     let mut c = build();
-    let h = c.stage_numbered(stage);
+    let h = c.stage_by_key(stage);
     f(&mut c.defs.stages[h.index()].record);
     c
 }
@@ -343,9 +336,9 @@ fn make() -> Content {
         effects: vec![EffectSprite { sprite: SpriteId { category: 0x14, index: 0 }, anim: 0, palette: 0 }; 0x70],
         sparks: vec![EffectSprite { sprite: SpriteId { category: 0x14, index: 1 }, anim: 0, palette: 0 }; 16],
         regions: regions(),
-        panel_layouts: vec![PanelLayout { rows: [[PanelType::Normal; 6]; 3] }],
         animations: animations(),
-        weapons: weapons(),
+        // (Every weapon the test content has is a definition.)
+        weapons: Vec::new(),
         scripts: scripts(),
         assets: assets(),
         defs: Default::default(),
@@ -412,6 +405,9 @@ fn assets() -> bn6_content_api::AssetNames {
 /// The test content's assets with BN6's numbers.
 fn numbered_assets() -> bn6_content_api::AssetNames {
     let mut a = bn6_content_api::AssetNames::default();
+    // The test stages' (testdata/content/stages/test.luau).
+    a.sounds.insert("test-stage-music".into(), STAGE_MUSIC.0);
+    a.backgrounds.insert("test-background".into(), 0);
     let sprite = |c, i| SpriteId { category: c, index: i };
     for (name, id) in [
         ("test-burst", sprite(0x14, 0)),
@@ -624,7 +620,46 @@ fn numbered_assets() -> bn6_content_api::AssetNames {
         a.sounds.insert(name.into(), id);
     }
     standard_chip_assets(&mut a);
+    form_weapon_assets(&mut a);
     a
+}
+
+/// The asset names MegaMan's weapon definitions and the forms' kinds use
+/// (content model v2, step 8e), with BN6's numbers.
+fn form_weapon_assets(a: &mut bn6_content_api::AssetNames) {
+    let sprite = |c, i| SpriteId { category: c, index: i };
+    for (name, id) in [
+        ("aqua-surge", sprite(0x10, 0x2E)),
+        ("whirlwind", sprite(0x10, 0x44)),
+        ("erase-ray", sprite(0x10, 0x4C)),
+        ("erase-drop", sprite(0x10, 0x4D)),
+        ("charge-wave", sprite(0x10, 0x09)),
+        ("junk-shot", sprite(0x10, 0x56)),
+        ("ground-drill-effect", sprite(0x0C, 0x2D)),
+        ("slash-man-effect", sprite(0x10, 0x38)),
+        ("groundman", sprite(0x08, 0x09)),
+    ] {
+        a.sprites.insert(name.into(), id);
+    }
+    for (name, id) in [
+        ("aqua-needle-2", 0xB3),
+        ("col-army-2", 0xB9),
+        ("spout-beast-charge", 0xF4),
+        ("moon-beam", 0x111),
+        ("tomahawk-man", 0x10A),
+        ("ground-beast-dash", 0x1BF),
+        ("ground-beast-dash-2", 0x1C7),
+        ("iron-shell", 0x187),
+        ("beast-claw", 0x1C5),
+        ("beast-claw-2", 0x1C6),
+        ("charge-train", 0xE4),
+        ("tenguman-nose", 0xFB),
+        ("drill-launch", 0x14C),
+        ("spin", 0xC7),
+        ("drilarm", 0xF0),
+    ] {
+        a.sounds.insert(name.into(), id);
+    }
 }
 
 /// The asset names the standard chip actions' modules use (content model
@@ -742,7 +777,6 @@ pub fn scripts() -> Scripts {
                 ("lib/grab/controller", "lib/grab/controller"),
                 ("chips/areagrab/chip", "chips/areagrab/chip"),
                 ("chips/panlgrab/chip", "chips/panlgrab/chip"),
-                ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
                 ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
                 ("objects/falling-rock/chip", "objects/falling-rock/chip"),
                 ("objects/projectile/projectile", "objects/projectile/projectile"),
@@ -763,14 +797,67 @@ pub fn scripts() -> Scripts {
                 ("navis/00-megaman/forms/heatcross/charge", "navis/00-megaman/forms/heatcross/charge"),
                 ("lib/weapon", "lib/weapon"),
                 ("objects/element-pillar/element_pillar", "objects/element-pillar/element_pillar"),
-                ("objects/aqua-surge/aqua_surge", "objects/aqua-surge/aqua_surge"),
-                ("objects/whirlwind/whirlwind", "objects/whirlwind/whirlwind"),
-                ("objects/dash-hit/dash_hit", "objects/dash-hit/dash_hit"),
-                ("objects/erase-drop/erase_drop", "objects/erase-drop/erase_drop"),
-                ("objects/lunge-slash/lunge_slash", "objects/lunge-slash/lunge_slash"),
-                ("objects/hit-flash/hit_flash", "objects/hit-flash/hit_flash"),
-                ("objects/charge-wave/charge_wave", "objects/charge-wave/charge_wave"),
-                ("objects/junk-shot/junk_shot", "objects/junk-shot/junk_shot"),
+                // The form weapons content defines (their routine numbers
+                // their `legacy` markers), with the kinds only they spawn.
+                (
+                    "navis/00-megaman/weapons/falzar-beast-buster/weapon",
+                    "navis/00-megaman/weapons/falzar-beast-buster/weapon",
+                ),
+                (
+                    "navis/00-megaman/weapons/gregar-beast-buster/weapon",
+                    "navis/00-megaman/weapons/gregar-beast-buster/weapon",
+                ),
+                ("navis/00-megaman/weapons/tengu-wind/weapon", "navis/00-megaman/weapons/tengu-wind/weapon"),
+                ("navis/00-megaman/forms/spoutcross-beast/surge", "navis/00-megaman/forms/spoutcross-beast/surge"),
+                ("navis/00-megaman/forms/spoutcross-beast/charge", "navis/00-megaman/forms/spoutcross-beast/charge"),
+                ("navis/00-megaman/forms/tengucross-beast/whirlwind", "navis/00-megaman/forms/tengucross-beast/whirlwind"),
+                ("navis/00-megaman/forms/tengucross-beast/charge", "navis/00-megaman/forms/tengucross-beast/charge"),
+                ("navis/00-megaman/forms/eleccross/charge", "navis/00-megaman/forms/eleccross/charge"),
+                ("navis/00-megaman/forms/tengucross/charge", "navis/00-megaman/forms/tengucross/charge"),
+                ("navis/00-megaman/forms/dustcross/throw_absorbed", "navis/00-megaman/forms/dustcross/throw_absorbed"),
+                (
+                    "navis/00-megaman/forms/dustcross-beast/throw_absorbed",
+                    "navis/00-megaman/forms/dustcross-beast/throw_absorbed",
+                ),
+                ("navis/00-megaman/forms/erasecross/ray", "navis/00-megaman/forms/erasecross/ray"),
+                ("navis/00-megaman/forms/erasecross/charge", "navis/00-megaman/forms/erasecross/charge"),
+                (
+                    "navis/00-megaman/forms/erasecross-beast/erase_drop",
+                    "navis/00-megaman/forms/erasecross-beast/erase_drop",
+                ),
+                ("navis/00-megaman/forms/erasecross-beast/drop", "navis/00-megaman/forms/erasecross-beast/drop"),
+                ("navis/00-megaman/forms/tomahawkcross/charge", "navis/00-megaman/forms/tomahawkcross/charge"),
+                (
+                    "navis/00-megaman/forms/tomahawkcross-beast/throw",
+                    "navis/00-megaman/forms/tomahawkcross-beast/throw",
+                ),
+                (
+                    "navis/00-megaman/forms/slashcross-beast/lunge_slash",
+                    "navis/00-megaman/forms/slashcross-beast/lunge_slash",
+                ),
+                ("navis/00-megaman/forms/slashcross-beast/lunge", "navis/00-megaman/forms/slashcross-beast/lunge"),
+                ("navis/00-megaman/dash_hit", "navis/00-megaman/dash_hit"),
+                ("navis/00-megaman/forms/groundcross-beast/dash", "navis/00-megaman/forms/groundcross-beast/dash"),
+                ("navis/00-megaman/forms/groundcross/drill", "navis/00-megaman/forms/groundcross/drill"),
+                ("navis/00-megaman/forms/chargecross/tackle", "navis/00-megaman/forms/chargecross/tackle"),
+                (
+                    "navis/00-megaman/forms/chargecross-beast/charge_wave",
+                    "navis/00-megaman/forms/chargecross-beast/charge_wave",
+                ),
+                ("navis/00-megaman/forms/chargecross-beast/wave", "navis/00-megaman/forms/chargecross-beast/wave"),
+                (
+                    "navis/00-megaman/forms/dustcross-beast/junk_shot",
+                    "navis/00-megaman/forms/dustcross-beast/junk_shot",
+                ),
+                ("navis/00-megaman/forms/dustcross-beast/scatter", "navis/00-megaman/forms/dustcross-beast/scatter"),
+                ("navis/00-megaman/forms/dustcross/junk_ball", "navis/00-megaman/forms/dustcross/junk_ball"),
+                ("navis/00-megaman/forms/dustcross/charge", "navis/00-megaman/forms/dustcross/charge"),
+                ("navis/00-megaman/weapons/beast-claw/weapon", "navis/00-megaman/weapons/beast-claw/weapon"),
+                ("navis/00-megaman/weapons/absorb/weapon", "navis/00-megaman/weapons/absorb/weapon"),
+                (
+                    "navis/00-megaman/forms/slashcross-beast/hit_flash",
+                    "navis/00-megaman/forms/slashcross-beast/hit_flash",
+                ),
                 ("objects/absorbed-obstacle/absorbed_obstacle", "objects/absorbed-obstacle/absorbed_obstacle"),
                 // The instant chips (content model v2): BN6's definitions,
                 // and the numbered test chips that reach the shims of the
@@ -802,7 +889,6 @@ pub fn scripts() -> Scripts {
                 ("chips/golmhit/chips", "chips/golmhit/chips"),
                 ("lib/element", "lib/element"),
                 ("lib/projectile", "lib/projectile"),
-                ("lib/sword", "lib/sword"),
                 ("objects/gust/gust", "objects/gust/gust"),
                 // WindRack's action, which TenguCross's charged shot swings
                 // with its fan, and DolThdr's, which ElecCross's strikes
@@ -811,11 +897,21 @@ pub fn scripts() -> Scripts {
                 ("chips/windrack/action", "chips/windrack/action"),
                 ("chips/dolthdr/action", "chips/dolthdr/action"),
                 ("chips/dolthdr/doll", "chips/dolthdr/doll"),
+                // SlashCross's charged slash: its waves, the slashes the
+                // swords name, its charged shot and A-charge; and the
+                // Beast charged chips' pillars' weapons.
                 (
                     "navis/00-megaman/forms/slashcross/sword_wave",
                     "navis/00-megaman/forms/slashcross/sword_wave",
                 ),
-                ("objects/erase-ray/erase_ray", "objects/erase-ray/erase_ray"),
+                ("navis/00-megaman/forms/slashcross/slashes", "navis/00-megaman/forms/slashcross/slashes"),
+                ("navis/00-megaman/forms/slashcross/charge", "navis/00-megaman/forms/slashcross/charge"),
+                (
+                    "navis/00-megaman/weapons/slash-a-charge/weapon",
+                    "navis/00-megaman/weapons/slash-a-charge/weapon",
+                ),
+                ("navis/00-megaman/forms/heatcross-beast/charge", "navis/00-megaman/forms/heatcross-beast/charge"),
+                ("navis/00-megaman/forms/eleccross-beast/charge", "navis/00-megaman/forms/eleccross-beast/charge"),
                 // The Reflectors, the recovery chips and HeatCross's charged
                 // shot's burner (content model v2).
                 ("chips/rflectr/shield", "chips/rflectr/shield"),
@@ -1019,6 +1115,19 @@ pub fn scripts() -> Scripts {
                 ("navis/tenguman/chip", "navis/tenguman/chip"),
                 ("navis/tenguman/tornado", "navis/tenguman/tornado"),
                 ("navis/dustman/chip", "navis/dustman/chip"),
+                // Their charged attacks (weapon definitions), and the
+                // drills GroundMan's throws.
+                ("navis/heatman/charge", "navis/heatman/charge"),
+                ("navis/elecman/charge", "navis/elecman/charge"),
+                ("navis/slashman/charge", "navis/slashman/charge"),
+                ("navis/eraseman/charge", "navis/eraseman/charge"),
+                ("navis/chargeman/charge", "navis/chargeman/charge"),
+                ("navis/spoutman/charge", "navis/spoutman/charge"),
+                ("navis/tomahawkman/charge", "navis/tomahawkman/charge"),
+                ("navis/tenguman/charge", "navis/tenguman/charge"),
+                ("navis/groundman/charge", "navis/groundman/charge"),
+                ("navis/dustman/charge", "navis/dustman/charge"),
+                ("navis/groundman/drill", "navis/groundman/drill"),
                 ("navis/dustman/clouds", "navis/dustman/clouds"),
                 ("navis/groundman/chip", "navis/groundman/chip"),
                 ("chips/grndman/drill", "chips/grndman/drill"),
@@ -1065,87 +1174,25 @@ pub fn scripts() -> Scripts {
                 ("chips/colorpt/controller", "chips/colorpt/controller"),
                 ("chips/colorpt/point", "chips/colorpt/point"),
             ];
-            let weapons = weapons().into_iter().map(|w| {
-                let module = w.script;
-                (module.clone(), module)
-            });
-            let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string())).chain(weapons);
+            let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string()));
             let own = modules_under(TEST_CONTENT);
             Scripts::new(modules.map(|(to, from)| (to, read(&from))).chain(own).collect())
         })
         .clone()
 }
 
-/// MegaMan's weapon routines v1 modules implement, registered by number:
-/// the Beast claw, DustCross's charged shot, its obstacle absorbing and the
-/// absorbed obstacle throw, the Beast and Cross charges. (The buster, the
-/// charged and blank shots and HeatCross's charge are definitions.)
-fn weapons() -> Vec<WeaponData> {
-    let weapon = |id: u8, name: &str, action: Option<u8>, script: &str| WeaponData {
-        id,
-        name: name.into(),
-        action,
-        instant_chip: None,
-        script: format!("navis/00-megaman/weapons/{script}"),
-    };
-    let mut weapons = vec![
-        weapon(0x1B, "Tomahawk throw", Some(0x4E), "1b-tomahawk-throw/tomahawk_throw"),
-        weapon(0x1E, "Beast claw", Some(0x52), "1e-beast-claw/beast_claw"),
-        weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
-        weapon(0x2A, "Absorb", Some(0x58), "2a-absorb/absorb"),
-        weapon(0x2B, "Throw absorbed", None, "2b-throw-absorbed/throw_absorbed"),
-        weapon(0x15, "EraseCross Beast drop", Some(0x46), "15-erase-beast-drop/erase_beast_drop"),
-        weapon(0x17, "GroundCross Beast dash", Some(0x1A), "17-ground-beast-dash/ground_beast_dash"),
-        weapon(0x1A, "SlashCross Beast lunge", Some(0x4C), "1a-slash-beast-lunge/slash_beast_lunge"),
-        weapon(0x1C, "ChargeCross Beast wave", Some(0x4F), "1c-charge-beast-wave/charge_beast_wave"),
-        weapon(0x1D, "DustCross Beast scatter", Some(0x50), "1d-dust-beast-scatter/dust_beast_scatter"),
-        weapon(0x27, "ChargeCross tackle", Some(0x56), "27-charge-cross-tackle/charge_cross_tackle"),
-        weapon(0x03, "Falzar Beast buster", Some(0x1E), "03-falzar-beast-buster/falzar_beast_buster"),
-        weapon(0x04, "Gregar Beast buster", Some(0x1D), "04-gregar-beast-buster/gregar_beast_buster"),
-        weapon(0x2C, "Beast throw absorbed", None, "2c-beast-throw-absorbed/beast_throw_absorbed"),
-        weapon(0x07, "HeatCross Beast charge", Some(0x35), "07-heat-beast-charge/heat_beast_charge"),
-        weapon(0x08, "SpoutCross Beast charge", Some(0x3A), "08-spout-beast-charge/spout_beast_charge"),
-        weapon(0x09, "ElecCross Beast charge", Some(0x3C), "09-elec-beast-charge/elec_beast_charge"),
-        weapon(0x0A, "TenguCross Beast charge", Some(0x3D), "0a-tengu-beast-charge/tengu_beast_charge"),
-        weapon(0x0B, "Elec charge", None, "0b-elec-charge/elec_charge"),
-        weapon(0x0C, "Spout charge", None, "0c-spout-charge/spout_charge"),
-        weapon(0x0F, "Tengu charge", None, "0f-tengu-charge/tengu_charge"),
-        WeaponData { instant_chip: Some(0x14), ..weapon(0x10, "Tengu wind", None, "10-tengu-wind/tengu_wind") },
-        weapon(0x11, "Slash A-charge", None, "11-slash-a-charge/slash_a_charge"),
-        weapon(0x12, "Slash charge", Some(0x41), "12-slash-charge/slash_charge"),
-        weapon(0x14, "Erase charge", Some(0x45), "14-erase-charge/erase_charge"),
-        weapon(0x16, "Tomahawk charge", Some(0x4A), "16-tomahawk-charge/tomahawk_charge"),
-        weapon(0x19, "Ground drill", Some(0x4D), "19-ground-drill/ground_drill"),
-    ];
-    // In id order, as a pack lists them.
-    weapons.sort_by_key(|w| w.id);
-    weapons
-}
-
-/// The object kinds scripts implement, by name (in name order, as a pack
-/// lists them).
+/// The object kinds registered by number (the v1 form: a module that
+/// returns its `update`). None of BN6's is one any more; these two are the
+/// test content's own (testdata/content/objects/numbered), for the tests of
+/// registration by number.
 fn kinds() -> Vec<ObjectKind> {
-    let kind = |name: &str, pool, index, script: &str| ObjectKind {
+    let kind = |name: &str, index| ObjectKind {
         name: name.into(),
-        pool,
+        pool: Pool::Effect,
         index,
-        script: script.into(),
-        actor_list_entry: None,
+        script: "objects/numbered/numbered".into(),
     };
-    let mut kinds = vec![
-        kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball"),
-        kind("aqua-surge", Pool::Attack, 0x76, "objects/aqua-surge/aqua_surge"),
-        kind("whirlwind", Pool::Attack, 0x81, "objects/whirlwind/whirlwind"),
-        kind("dash-hit", Pool::Attack, 0xAF, "objects/dash-hit/dash_hit"),
-        kind("erase-drop", Pool::Attack, 0xA1, "objects/erase-drop/erase_drop"),
-        kind("lunge-slash", Pool::Attack, 0xB1, "objects/lunge-slash/lunge_slash"),
-        kind("hit-flash", Pool::Effect, 0x73, "objects/hit-flash/hit_flash"),
-        kind("charge-wave", Pool::Attack, 0xC4, "objects/charge-wave/charge_wave"),
-        kind("junk-shot", Pool::Attack, 0xC5, "objects/junk-shot/junk_shot"),
-        kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
-    ];
-    kinds.sort_by(|a, b| a.name.cmp(&b.name));
-    kinds
+    vec![kind("numbered", 0xF0), kind("numbered-2", 0xF1)]
 }
 
 /// A chip record with the fields tests don't care about filled in.
@@ -1623,7 +1670,6 @@ fn rules() -> Rules {
             dash_step: step,
             any_side_step: StepRuleSet { grounded: [solid(any_side); 2], floor_free: [any_side; 2] },
         },
-        stages: stages(),
         holding_banners: vec![BannerId(0x24)],
         status_effects: vec![[StatusEffect { requests: 0, duration: 60, timer: StatusTimer::Paralyze }; 16]; 6],
         hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
@@ -1727,39 +1773,6 @@ pub fn custom_screen_layout() -> CustomScreenLayout {
         right_scan_bottom: vec![5, 6, 7, 8, 9, 11, 10],
         left_scan_start: [5, 4, 3, 2, 1, 5, 4, 3, 2, 1, 0, 0],
         right_scan_start: [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 0, 0],
-    }
-}
-
-fn stages() -> Stages {
-    let navi = |alliance, x| ActorEntry { kind: ActorKind::Navi, alliance, x, y: 2 };
-    let rock = |x, y| ActorEntry { kind: ActorKind::Rock { variant: 1 }, alliance: 0, x, y };
-    let boulder = |x, y| ActorEntry { kind: ActorKind::Object6E, alliance: 0, x, y };
-    let settings = |actors| StageSettings {
-        layout: 0,
-        music: 0x16,
-        mode: 0,
-        background: 0,
-        battle_number: 0,
-        panel_pattern: 0x38,
-        effects: effects::LINK,
-        actors,
-    };
-    Stages {
-        settings: vec![
-            settings(TWO_NAVIS),
-            settings(TWO_NAVIS_SIDE0_FIRST),
-            settings(NAVIS_AND_ROCKS),
-            settings(NAVIS_AND_BOULDERS),
-        ],
-        actor_lists: vec![
-            ActorList { original_address: 1, entries: vec![navi(1, 5), navi(0, 2)] },
-            ActorList { original_address: 2, entries: vec![navi(0, 2), navi(1, 5)] },
-            ActorList { original_address: 3, entries: vec![navi(0, 1), navi(1, 6), rock(3, 3), rock(4, 1)] },
-            ActorList {
-                original_address: 4,
-                entries: vec![navi(0, 1), navi(1, 6), boulder(2, 2), boulder(5, 2), boulder(3, 1)],
-            },
-        ],
     }
 }
 

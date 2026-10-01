@@ -173,7 +173,7 @@ fn the_game_queue_holds_32_calls_a_frame() {
 fn a_battle_drives_the_music() {
     use bn6_battle::content::testing;
     use bn6_battle::{Battle, PlayerTick, TickEvents};
-    let content = testing::restaged(testing::LINK_BATTLE_SIDE0_FIRST, |s| s.music = 0);
+    let content = testing::restaged(testing::LINK_BATTLE_SIDE0_FIRST, |s| s.music = Some(bn6_battle::SoundId(0)));
     let mut setup = testing::round_setup(testing::LINK_BATTLE_SIDE0_FIRST, testing::stats(500));
     setup.content = content.hash();
     let mut b = Battle::new(setup, std::sync::Arc::new(content));

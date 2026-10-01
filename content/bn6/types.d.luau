@@ -159,12 +159,15 @@ export type VariSwordSpec = {
     sword: Action,
     -- A random pick is `picks` by `rng % random`, a Sword past them.
     random: number,
-    -- The pick that doesn't turn into the charged sword (action 0x41).
+    -- The pick that doesn't turn into SlashCross's charged slash.
     no_charged: Action,
+    -- What SlashCross's A-charge makes of the chip: `"own"`, its own
+    -- action, charged (its pick becomes the charged slash).
+    charged: "own",
     -- Transitional (counted by the ratchet): the picks' chips' numbers
-    -- (`picks`' in order, and Sword's), which the attack's chip takes
-    -- (their records' subtype and parameters are what the Beast rush and
-    -- SlashCross's charged sword read) until those chips are definitions.
+    -- (`picks`' in order, and Sword's), which the attack's chip takes (the
+    -- Beast rush reads its lock-on mode) until those chips are definitions
+    -- the spec can name (`navi.attack_chip`).
     legacy: { chips: { number }, sword: number },
 }
 
@@ -250,6 +253,24 @@ export type SlashSpec = {
     swings: number?,
     second_hit: SwordHit?,
     step: boolean?,
+    -- What SlashCross's charged slash makes of it (a step sword dashes in
+    -- first).
+    charged: ChargedSlash?,
+}
+
+-- What SlashCross's charged slash is, of one sword
+-- (navis/00-megaman/forms/slashcross/slashes): the sword wave it sends,
+-- and a second one unseen under it (CrosSwrd's); the blade the navi
+-- raises (none: it swings its arm alone, without one); the swing's sound;
+-- the slash that follows it (DblDream's second); and the lock-on mode the
+-- Beast Out rush takes for it (a number until rules/lockon.luau).
+export type ChargedSlash = {
+    wave: SwordWaveVariant,
+    hidden_wave: SwordWaveVariant?,
+    blade: AttachmentLook?,
+    sound: Sound,
+    again: ChargedSlash?,
+    lockon: number,
 }
 
 -- A machine sword's strike (lib/swords/strike, the original's action 0x49):
@@ -282,6 +303,8 @@ export type FlashBombVariant = {
 -- into, the sound it breaks with, and its NameID (the field objects' look,
 -- a number until identities come).
 export type RockVariant = {
+    -- Its key (`rock/cube`): stages name their rocks' variants.
+    id: string?,
     anim: number,
     hp: number,
     element: string,

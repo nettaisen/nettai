@@ -18,9 +18,7 @@
 -- bn6-content-check's ratchet (tests/deprecated.txt), which only shrinks:
 --
 --   objects/NAME/object.toml  [kind] pool, index, script   an object kind:
---       the module exports `state` and `update(me)`; with `actor_list_entry
---       = N`, also `actor_list_entry(spec)` for the actor lists' entries
---       of type N (the field objects a stage places)
+--       the module exports `state` and `update(me)`
 --   chips/NNN-name/chip.toml  script = "chip.luau"          the chip's action:
 --       `state` and `update(me, s)`; for a dimming chip (action 0x15)
 --       `dimming_chip(user, spec)`, for a navi chip (0x1B) `navi_chip(user,
@@ -378,6 +376,12 @@ declare class Object
     step_init: number
     variant: number
     chip: number
+    -- The attack's chip as its definition (nil when the attack has none;
+    -- a chip that is still a pack record reads as a stand-in with only its
+    -- `id`): what a weapon that uses the chip asks for the chip's own
+    -- parts (`navi.attack_chip.action`), and what an action that becomes
+    -- another chip's sets.
+    attack_chip: Chip?
     attack_element: number
     attack_damage: number
     -- The attack's hitboxes' counter byte.
@@ -392,6 +396,10 @@ declare class Object
     attack_kind: number
     -- 1 while the action runs inside a form's action wrapper.
     beast_lockon: number
+    -- The lock-on mode the attack's own action asks the Beast Out rush for
+    -- (the charged sword's, by its slash); 0: the chip's. (A number until
+    -- lock-on modes are definitions.)
+    rush_lockon: number
     -- A per-action word some actions keep.
     marker: number
     -- The absorbed obstacle a throw carries (the marker word, as
@@ -636,7 +644,7 @@ declare class Object
     -- The attack state as content action `action`'s (zeroed unless that
     -- action last used it): how a weapon routine sets up the action it
     -- names before it starts. Cast it to the action's State type.
-    function action_state(self, action: number): any
+    function action_state(self, action: Action | number): any
     -- The obstacles it absorbed, oldest first: their looks and
     -- animations.
     function absorbed(self): { { look: AbsorbedLook, anim: number } }
@@ -672,6 +680,9 @@ declare class Navi
     -- buster's blank and charged slots (of 16).
     buster_shot: number
     charge_shot_kind: number
+    -- The damage a B+Back special takes from the navi's stats (ProtoMan's
+    -- reflecting guard).
+    back_special_damage: number
     buster_blanks: number
     buster_charged: number
     -- NaviCust bugs: the HP drain in the fight and while the custom
@@ -1062,16 +1073,20 @@ declare navi_chip: {
     warp: (user: Object, out: boolean) -> (),
 }
 
--- What an actor list's entry is placed with (`off_80073A0[type]`): an
--- object kind's `place(spec)`.
-export type ActorListEntrySpec = {
+-- What a stage places a field object with (the original's spawner for
+-- the actor list's entry, `off_80073A0[type]`): an object kind's
+-- `place(spec)`.
+export type PlaceSpec = {
     panel_x: number,
     panel_y: number,
     -- The entry's side (field objects take their panel's instead).
     side: number,
-    -- The entry's argument (a rock's variant: objects/rock's
-    -- `by_number`).
-    variant: number,
+    -- Which of the kind's variants the stage names (a record of the
+    -- kind's: one of objects/rock's `variants`).
+    variant: any?,
+    -- The entry's raw argument (0 unless the stage gives one), for a
+    -- spawner that only leaves it in a register.
+    argument: number,
 }
 
 -- How an absorbed obstacle looks (objects/absorbed-obstacle's `look`, an
@@ -1505,9 +1520,9 @@ export type KindSpec = {
     pool: Pool,
     state: StateSchema?,
     update: (me: Object) -> (),
-    -- What places it when a stage's actor list names it (the role
-    -- `kinds.rock`, say): it returns what it placed, if anything.
-    place: ((spec: ActorListEntrySpec) -> Object?)?,
+    -- What places it when a stage names it among its `actors`: it returns
+    -- what it placed, if anything.
+    place: ((spec: PlaceSpec) -> Object?)?,
 }
 export type Kind = KindSpec
 
@@ -1528,11 +1543,15 @@ export type WeaponSpec = {
     name: string,
     charge_ticks: { number },
     -- `off_80117D4[n]`: prepare the attack, name its action (an `Action`
-    -- or an action number). None while the weapon is still a v1 module,
-    -- which its legacy marker names. (Typed loosely until the markers go:
-    -- Luau's checker doesn't check a function against an optional
-    -- function type.)
+    -- or an action number). A weapon with an `instant` effect names none:
+    -- the instant chips' action runs it. None while the weapon is still a
+    -- v1 module, which its legacy marker names. (Typed loosely until the
+    -- markers go: Luau's checker doesn't check a function against an
+    -- optional function type.)
     setup: ((navi: Object) -> any)?,
+    -- Its own instant effect (one no chip has: TenguCross's wind), which
+    -- the instant chips' action runs once.
+    instant: ((user: Object, spec: InstantChipSpec) -> ())?,
     -- Transitional (counted by the ratchet): the routine numbers the pack's
     -- forms and the ruleset still name it by (`weapon_numbered`); for a
     -- weapon still a v1 module, the module (`script`), the action it brings
@@ -1573,7 +1592,8 @@ export type ChipSpec = {
     program_advances: { any }?,
     -- Transitional (counted by the ratchet): the original's subtype and
     -- parameter bytes, for what reads them of the chip besides its own use
-    -- (SlashCross's charged slash reads a sword's); its `number`, for a
+    -- (a chip still on the by-number shims; SlashCross's A-charge for a
+    -- sword whose slash doesn't name its charged slash); its `number`, for a
     -- chip something still names by number (a recipe, the Cross special, a
     -- navi's own chip), with what the ruleset reads of it by number (the
     -- action number, a damage formula as `damage = 1000 + n` and its
@@ -1605,7 +1625,31 @@ export type Chip = ChipSpec
 -- them (steps 5 and 10 to 12). (`NaviDef`, since `Navi` is a side's stats.)
 export type NaviDef = { id: string, [string]: any }
 export type FormDef = { id: string, [string]: any }
-export type StageDef = { id: string, [string]: any }
+-- Something a stage places when the round starts: a navi of `side`, or a
+-- field object by its kind (which needs a `place`), with one of the kind's
+-- variants or a raw argument where the kind takes one.
+export type StageActor = {
+    place: "navi" | Kind,
+    side: number?,
+    x: number,
+    y: number,
+    variant: any?,
+    argument: number?,
+}
+-- A stage (§3.7): its panels, three rows of six panel types (`"normal
+-- normal cracked ..."`), which columns are whose, its music outside link
+-- battles (none: no music starts), and what it places, in order.
+export type StageDef = {
+    id: string,
+    layout: { string },
+    panel_pattern: number,
+    music: Sound?,
+    background: Background,
+    mode: number,
+    battle_number: number,
+    effects: number?,
+    actors: { StageActor },
+}
 export type StatusDef = { id: string, [string]: any }
 export type LockonDef = { id: string, [string]: any }
 

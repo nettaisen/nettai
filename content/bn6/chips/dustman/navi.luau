@@ -2,12 +2,12 @@
 -- DustMan (the original's actor object #0x18, `sub_80BBF0C`), the navi of
 -- the DustMan chips, brought by the navi chip controller. He appears, takes
 -- every field object he can, rolls a ball of junk forward (DustCross's
--- junk ball, objects/dust-ball, running on while dimmed), then throws what
+-- junk ball, navis/00-megaman/forms/dustcross, running on while dimmed), then throws what
 -- he took back at the other side one by one, 20 ticks apart (./junk). See
 -- docs/engine/chips.md §3.6.26.
 
 local navi_chips = require("../../lib/navi-chips/navi")
-local dust_ball = require("../../objects/dust-ball/dust_ball")
+local junk_ball = require("../../navis/00-megaman/forms/dustcross/junk_ball")
 local junk = require("./junk")
 
 local dustman = {}
@@ -118,7 +118,7 @@ local function throw(me: Object)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
     if me.phase == 0 then
         me.phase = 4
-        dust_ball.spawn(me, me.panel_x, me.panel_y, me.element, damage, true)
+        junk_ball.spawn(me, me.panel_x, me.panel_y, me.element, damage, true)
         battle.play_sound(SOUND_THROW)
         s.thrown = 0
         me.timer = (s.count + 1) * THROW_TICKS

@@ -360,5 +360,14 @@ mod tests {
         assert_eq!(lints("navis/00-megaman/forms/heatcross/sword_wave.luau", wave).len(), 1);
         assert_eq!(lints("navis/00-megaman/sword_wave.luau", wave).len(), 1);
         assert_eq!(lints("compat/x.luau", "").len(), 1);
+        // A form's kinds are keyed under the form, and a navi's under its
+        // name, whatever number its folder still carries.
+        let surge = "local K = define.kind { id = 'spoutcross-beast/surge', pool = 'attack' }";
+        assert!(lints("navis/00-megaman/forms/spoutcross-beast/surge.luau", surge).is_empty());
+        assert_eq!(lints("navis/00-megaman/forms/tengucross-beast/surge.luau", surge).len(), 1);
+        let shared = "local K = define.kind { id = 'megaman/dash-hit', pool = 'attack' }";
+        assert!(lints("navis/00-megaman/dash_hit.luau", shared).is_empty());
+        assert!(lints("navis/megaman/dash_hit.luau", shared).is_empty());
+        assert_eq!(lints("navis/heatman/dash_hit.luau", shared).len(), 1);
     }
 }

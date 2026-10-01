@@ -229,9 +229,15 @@ has its own script (`TextScriptBattleRunDialog`'s script 3 sends it there).
 R+8; Recov10, two lines, from R+7), `description-invalid-4..6` (from R+6), `description-cross-7`, `-8` (a Cross's,
 from R+8, back to the Cross window), `description-b-held-12`, `-30`, `description-keys`; `run-message`, `-b`,
 `-wait`, `-taps-0`, `-taps-1` (A on every other frame, from either parity), `-b-held`, and the link navis'
-`run-message-navi-1`, `-2`, `-6` and `-navi-1-wait`, `-6-wait`. Not reached: the descriptions of DblBeast, Gregar
-and Falzar, which print a value with a command (`FF`) the port doesn't run (it counts as text), and what
-`sub_802A220` closes a description for (it answers 0xFF in a netbattle with MegaMan).
+`run-message-navi-1` to `-11` with their `-wait` (every link navi's message).
+
+Three chips' descriptions aren't in their scripts: DblBeast's, Gregar's and Falzar's scripts copy their text from
+the console's memory (`FF 01 nn`, `chatbox_FF_copytext`: 0x40 bytes of a buffer the game keeps, run as script and
+returned from at its end), so the pack has no `description` for them and they count as three lines. That is what
+the game shows for them (DblBeast's reads "Ferocious / beast / power!"): `description-arm-137-5..9` and
+`description-arm-139-7`, `-8` (the Falzar chip, dug out over two turns) and `description-arm-138-7`, `-8` (the
+Gregar chip, which copies the same buffer) take A from R+8. Not reached: what `sub_802A220` closes a description for (it answers 0xFF in a netbattle with
+MegaMan).
 
 ### 3.6 DustCross's scrap (`sub_8027406`)
 
@@ -346,8 +352,17 @@ Built on the OK tick from the picks in order, with each chip as checked (§3.4):
 chips don't count) is added to the player's counts for the round; the invalid-chip rule reads them from the next
 screen on.
 
-All 40 sent hands (every screen, both players; Regular chips and invalid-free) match **[dumps]**. No recording
-forms a Program Advance or folds a modifier: those are **[code]** and covered by unit tests.
+All 40 sent hands (every screen, both players; Regular chips and invalid-free) match **[dumps]**. The chip lab
+records the rest (`custom/pa-*`, `custom/modifier-*`, and a recording of every recipe under `pa/`), and every one
+matches: a code run with a `*` first, in the middle or last forms, `[*,A,B]`, `[A,*,*]` and `[A,A,A]` don't; a
+sequence recipe out of order doesn't; a recipe between two other chips forms from the second pick; a recipe picked
+again on the next screen stays three chips (once a round); a modifier after a Program Advance folds onto it;
+Atk+10 twice, Atk+10 with WhiCapsl and Atk+30, and Navi+20 with Atk+30 on a navi chip all fold; a modifier picked
+first, or after a chip it doesn't apply to (Atk+10 after Invisibl, Navi+20 after AirShot), stays a chip of its own.
+A recipe with the Regular chip as a part carries its bit (`custom/pa-regular`), and one made of the tag pair and
+the Regular chip forms from the first deal (`pa-tags`). The folder's upkeep (step 5) is in `custom/folder-odd-picks`
+(picks from the middle of the hand, screen after screen) and `folder-runs-out` (30 chips, five a screen, then two
+screens with none).
 
 ## 6. Closing, sending, and the exchange
 
@@ -362,7 +377,7 @@ For a player who presses OK on tick **C**:
 | **A = P + 50 + delay** | the result has arrived (on both consoles, the sender's own included) |
 
 With a Program Advance, its animation (`sub_8026DB0`) runs after the slide-out and **P = C + 177 + 8n** for n
-picked chips **[code, unverified]**.
+picked chips (the lab's recordings with three, four and five picks match).
 
 The fight resumes when both results are in: on **K = max(A₀, A₁)** both hands (with chips) and both NaviStats
 are installed (`sub_800B3D8`), the transformations wait for the turn's start; on K+1 the gauge restarts again,
@@ -456,13 +471,12 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
     re-deal on that player's screen would read;
   - shakes of content not ported yet (most viruses', and the chips and objects still to come) are missing until
     their content calls `battle.shake_camera` where the original calls `camera_initShakeEffect_80302a8`;
-  - the run-away check (`sub_8026F1A`, one RNG1 draw on the answer) isn't ported, like the run message's chatbox
-    (§3.5); battle effects 0x20 decide whether it can come up in a netbattle **[unverified]**.
+  - the run-away check (`sub_8026F1A`, one RNG1 draw on the answer) isn't ported: it runs only with battle effects
+    0x20, which a netbattle doesn't have (L gives the run message there, §3.5; the lab's `custom/run-message*`).
 - **Chip 0x13F picked as a chip** (state 0x44, `Phase::BeastOutChipChosen`): the chip lab's BeastOut scenarios match.
-- **The run message's timing** (L): an estimate; the chatbox's text timing isn't ported.
-- **The Program Advance animation's length**: from the code, not a recording.
 - **Tag chips**: laid out and shuffled; only ChpShufl's re-deal reads the tag pair (§3.7).
-- **Link navis** (NaviStats+0x29 ≠ 0): their own chip in slot 9 is from the code only.
+- **Link navis** (NaviStats+0x29 ≠ 0): their own chip in slot 9 is picked in the chip lab's `navis/` scenarios, whose
+  custom screens match.
 - The builder's stale-register write on the first fold (chips.md §2.4) is not reproduced.
 - Battle mode 1 paths, tutorials, escape, the Beast Link Gate (state 0x40).
 - NaviStats +0x0A (CustomLevel) and +0x63 change during fights in soundmod (6878, 10341, 36618, 54134); the hand

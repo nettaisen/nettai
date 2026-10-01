@@ -156,8 +156,10 @@ fn afterimage_anim(name_id: u16) -> u8 {
 }
 
 /// The lock-on mode: none (stay) while blind or confused outside Beast
-/// Over; else the claw's 0xC (`sub_80EAF1A`), the charged sword's by its
-/// variant (`sub_80EAF26`), and failing those (0), the chip's.
+/// Over; else the claw's 0xC (`sub_80EAF1A`), the charged sword's own
+/// (`sub_80EAF26`: a table by the attack's variant in the original; here
+/// the mode the charged sword's setup gave with its slash,
+/// `AttackVars::rush_lockon`), and failing those (0), the chip's.
 fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
     let beast_over = matches!(form_of(b, r).0, 0x17 | 0x18);
     if !beast_over && flag1(b, r) & (f1::BLIND | f1::CONFUSED) != 0 {
@@ -168,10 +170,7 @@ fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
     let special = if crate::kinds::player::runs_role(b, r, ActionRole::BeastClaw) {
         0x0C
     } else if crate::kinds::player::runs_role(b, r, ActionRole::ChargedSword) {
-        let modes = &b.content.rules.lockon.charged_sword_modes;
-        *modes.get(attack.variant as usize).unwrap_or_else(|| {
-            panic!("the charged sword's lock-on for variant {:#x} reads past its table (sub_80EAF26)", attack.variant)
-        })
+        attack.rush_lockon
     } else {
         0
     };
