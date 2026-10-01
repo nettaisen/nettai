@@ -59,6 +59,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0xc1 | 0x080dd34c | 296 |
 | T3 0xc2 | 0x080dd764 | 967 |
 | T3 0xc3 | 0x080dd940 | 732 (EraseMan's slash: the pack's `chips/eraseman/beam`, chips.md §3.6.7) |
+| T3 0xc6 | 0x080dddf0 | lab only (GroundMan's flying drill: the pack's `navis/groundman/drill`, standard-chips.md, "Action 9") |
 | T3 0xc8 | 0x080de13c | 2774 (a dragon's body segment: the pack's `lib/dragons/body`, chips.md §3.8) |
 | T3 0xc9 | 0x080de404 | 579 (a dragon's head: the pack's `lib/dragons/head`, chips.md §3.8) |
 | T3 0xcf | 0x080df328 | 4170 |

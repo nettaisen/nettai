@@ -341,9 +341,8 @@ The link navi's chip bonus (`sub_800F09E`) and ChargeMan's charge limit read the
 (`dword_203CFA0`, from each console's init block: 0xFF without one), which the recorder writes into a trace's setup
 as `navi_levels`; the chip lab's link navis are at level 14.
 
-Lab: the ten generated scenarios, navis/navi-01-heatpres to navi-10-dustbrk, match through the chip and the buster
-shots after it, and stop where the navi first charges (the charge times of the link navis' weapon routines, past
-the pack's fifty rows: not this action's). 105 hand-written scenarios under navis/navi-NN-chip/ match on every
+Lab: the ten generated scenarios, navis/navi-01-heatpres to navi-10-dustbrk, match on every frame (the chip, the
+buster, the charged attack twice and B+Back: "Action 9" below). 105 hand-written scenarios under navis/navi-NN-chip/ match on every
 frame, and between them run every branch of the ten routines but those below: used by side 1, with the opponent
 off his row, a row down or in the far column (`miss`, `far`, `edge`), from other columns and rows (`back`,
 `forward`, `row1`, `row3`), over the holes stage's holes (`holes`), against a RockCube of his own or the
@@ -369,3 +368,124 @@ its nine rocks, the dig stopped by a rock and by a hole, and the rockfall with n
   action (TomahawkMan is neither flinched nor paralyzed out of it) and its holder's word being null; the drill
   and DustBrk's clouds once their owner has left the action while the battle goes on are reached only through the
   paralysis scenarios (DustMan and GroundMan before the dig), not through a flinch.
+
+## Action 9: the link navis' charged attacks
+
+Entry 9 of a link navi's action table (`off_80EA4C8[AIIndex]`) is his charged attack. His weapon routine
+(`off_80117D4`, the charged-shot routine of his stats: 0x40 HeatMan `sub_80121DC`, 0x41 SpoutMan `sub_80121F8`, 0x42
+TenguMan `sub_8012210`, 0x43 SlashMan `sub_8012228`, 0x44 ElecMan `sub_8012240`, 0x45 TomahawkMan `sub_8012258`, 0x47
+EraseMan `sub_8012292`, 0x48 ChargeMan `sub_80122AA`, 0x49 DustMan `sub_80122C2`, 0x4A GroundMan `sub_80122DA`) is
+a setup: `set_attack(9)`, the damage `sub_8010D04(base, step)` = base + step · the buster Attack points (1 to 5,
+`byte_80212D4`), the counter byte 0x8A, the attack's element byte (`av[2]`), and for TomahawkMan two parameter bytes
+(the ticks he raises the axe and recovers for, 30 and 30). Routine 0x46 (`sub_8012278`), which no navi's stats
+name, starts TomahawkMan's action with 10 damage and 6-tick waits. The actions run their phases as the chips' do
+(by `av[0]`, the timer in `av.u16[0x10]`), without the Atk+ bonus except where noted; "the damage word" is
+`av.u32[8]`.
+
+| Navi | Routine | Damage | Element | Charge ticks (Charge 0 to 4) |
+|---|---|---|---|---|
+| HeatMan | 0x40 | 20 + 20n | Fire | 90, 80, 70, 65, 60 |
+| SpoutMan | 0x41 | 20 + 20n | Aqua | 40, 35, 30, 25, 20 |
+| TenguMan | 0x42 | 40 + 10n | Null | 60, 55, 50, 45, 40 |
+| SlashMan | 0x43 | 10 + 10n | Null | 40, 35, 30, 25, 20 |
+| ElecMan | 0x44 | 40 + 20n | Elec | 110, 100, 90, 85, 80 |
+| TomahawkMan | 0x45 | 100 + 20n | Wood | 140, 130, 120, 115, 110 |
+| EraseMan | 0x47 | 50 + 20n | Null | 60, 55, 50, 45, 40 |
+| ChargeMan | 0x48 | 20 + 10n | Fire | 120, 110, 100, 95, 90 |
+| DustMan | 0x49 | 60 + 20n | Null | 100, 90, 80, 75, 70 |
+| GroundMan | 0x4A | 10 + 10n | Null | 130, 120, 110, 105, 100 |
+
+- **HeatMan (`sub_80F070E`).** 0 (`sub_80F0728`): anim 0x15, 8 ticks; then anim 0x10 and the flames (`sub_80F08BA`:
+  the panel ahead must be a panel of the field with a floor (0x10010), else none; a flame, attack #0x26,
+  chips/heatman/flame, Param1 0 (it waits a dimming out), Param2 30, the element and damage word, on it and on
+  each of the three panels of the column past it that passes the same test) → 4. 4 (`sub_80F0754`): 30 ticks →
+  anim 0, exit.
+- **ElecMan (`sub_80F094C`).** 0 (`sub_80F0968`): anim 0x12; a thunderbolt (`sub_80F0B32`: chips/elecman/thunder,
+  the kind that cracks its panel and waits a dimming out) over every panel an enemy navi stands on
+  (`object_getPanelsExceptCurrentFiltered` with `off_80F0B78[side]`: 0x04000000; side 1 0x08000000), from the last
+  found to the first; 20 ticks → 4. 4 (`sub_80F0990`): anim 0x13, 30 ticks → anim 0, exit.
+- **SlashMan (`sub_80F0C48`).** 0 (`sub_80F0C64`): anim 0xC; the waves (`sub_80F0E3A`: a sword wave,
+  chips/slashman/wave, his AI's plain one, from the panel ahead and from the panels above and below his own, each
+  if on the field); 15 ticks → 4. 4 (`sub_80F0C8C`): 30 ticks → anim 0, exit.
+- **EraseMan (`sub_80F0FB4`).** 0 (`sub_80F0FD4`): anim 0x13, 20 ticks → 4. 4 (`sub_80F0FF8`): anim 0x14, sound
+  0xC7, Timer 10; the tick it reaches 5, the slash (`sub_80F10F2`: a hit on the panel two ahead with region 3, the
+  column; no spark, target 5, self 7, modifier 3, the element and damage) and its effect (`sub_80F111C`: T4#0
+  effect at that panel's centre 24 pixels up, the swords' wide slash in palette 6, his flip); 10 ticks → 8. 8
+  (`sub_80F1032`): 30 ticks → anim 0, exit.
+- **ChargeMan (`sub_80F1198`).** 0 (`sub_80F11BC`), the charge: FuturePanel his, reserved; flags 0x40 and
+  0x400000; invulnerable (0xFFFF); his body no longer hurts (`sub_801A082` with modifier 0, self damage and
+  counter byte 0); anim 0xF; sound 0xE4; X velocity front · 0x60000 and Timer = the distance to the edge column
+  (7; side 1: 0) over the speed (`sub_80F146E`). Each later tick: X += velocity; passing his panel's centre
+  (`sub_800E708`), a train car (`sub_80F14BC`: chips/chrgeman/car on the panel he started from, its place 0 or 1,
+  no wait, his speed, the damage word; two at most, kept in `av+0x30`, `av+0x34`); the panel under him on the
+  field and without a floor → 4; else his panel and collision panels follow, a hit on each new panel
+  (`sub_80F149C`: region 1, the breaking spark, target 5, self 6, modifier 1), and the timer run out → 8. 4
+  (`sub_80F1284`): anim 4, his cars burst (`sub_80F1500` → `sub_80DB03E`), 3 ticks → 8. 8 (`sub_80F12AC`): back
+  onto FuturePanel (unreserved), coordinates, collision panels, the flags and the invulnerability off
+  (`sub_800EB08`), his body's hit again (modifier 3, his damage, its low byte as the counter byte), anim 3, 3
+  ticks → 0xC. 0xC (`sub_80F1310`): anim 0, 30 ticks → exit.
+- **SpoutMan (`sub_80F153C`).** 0 (`sub_80F1558`): anim 0x13, 8 ticks; then anim 0x14, a water ball from his own
+  panel (chips/spoutman/ball, the one whose splash cracks its panel), a T4#0 effect at his position on the ground
+  (his flip), sound 0x8E → 4. 4 (`sub_80F15AA`): 30 ticks → anim 0, exit.
+- **TomahawkMan (`sub_80F17C4`).** 0 (`sub_80F17E4`): anim 0xF, the first parameter's ticks → 4. 4
+  (`sub_80F1808`): anim 0x10, sound 0x10B, Timer 30; the tick it reaches 20, a hit on the panel ahead with region
+  the two columns ahead (no spark, target 0, self 7, modifier 1, the element; **the damage word plus the Atk+
+  bonus**) and a T4#0 effect at that panel's centre 16 pixels up (the big slash, anim 1, his flip); 30 ticks → 8.
+  8 (`sub_80F1888`): anim 7, the second parameter's ticks → exit.
+- **TenguMan (`sub_80F19D4`).** 0 (`sub_80F19F0`): anim 0x16; three hits (`sub_80F1ADE`, `byte_80F1B18`): on the
+  panels one, two and three ahead in his row (region 1, no spark, target 0, self 1; modifiers 3, 3 and, the
+  farthest, 0 with status 0x10); sound 0xFB; 30 ticks → 4. 4 (`sub_80F1A1E`): anim 7, 20 ticks → anim 0, exit.
+- **GroundMan (`sub_80F1BA8`).** 0 (`sub_80F1BC4`): anim 0xF; the drills (`sub_80F1E08`, `byte_80F1E48`: on the
+  column ahead, the rows above, his and below, each if on the field: attack #0xC6 with Param1 1, 0, 1 (a side
+  drill or the middle one) and Param2 12, 0, 24 (its wait), the element and damage word); sound 0x14C; 70 ticks →
+  4. 4 (`sub_80F1BF4`): anim 7, 20 ticks → anim 0, exit.
+  **The flying drill, T3 0xC6 (`sub_80DDDF0`)**: init (`sub_80DDE14`): over its panel 20 pixels up, his sprite
+  (0x08, 0x09), a ground shadow, anim 0x15 (a side drill: 0x17), a breaking attack at navis (self 6, target 5,
+  modifier 1, the breaking spark). Each tick (`sub_80DDE82`): the battle over or its owner out of the action he
+  threw it in → gone; a hit on an enemy's body or object or a neutral object (`byte_80DDEEC[side]`: 0x05800000;
+  side 1 0x0A800000) → it drills; then, unless dimmed, its action. 0 (`sub_80DDEF4`): it waits Param2 ticks. 4
+  (`sub_80DDF18`): anim 0x16 (0x18), sound 0xF0, X velocity front · 0x80000 for 10 ticks (two panels), moving from
+  the entry tick; off the field → gone; the timer run out → it drills. 8 (`sub_80DDF86`): 30 ticks, a hit on its
+  panel (`sub_80DDFDE`: region 1, the breaking spark, target 5, self 6, modifier 1) at 20 and at 10 left, then
+  gone.
+- **DustMan (`sub_80F1F18`).** 0 (`sub_80F1F34`): anim 0x17; a junk ball from his own panel (DustCross's,
+  forms/dustcross/junk_ball, the element and damage word); sound 0x12B; 35 ticks → 4. (The routine loads the
+  registers for an effect at his position and spawns none.) 4 (`sub_80F1F7C`): anim 0, 30 ticks → exit.
+
+**ProtoMan** (navi 11, AI index 0xB: his table has no entry 9). His charged attack, routine 0x32
+(`sub_801206E`), is WideSwrd's slash: it loads the chip into the attack (`loc_80126EA`: its action, element with
+the Sword bit, no lockout, no bonus, not charged) without spending one, then sets 60 + 20n damage and counter
+byte 0x8A. His B+Back specials: 0x34 (`sub_80120A6`) is the Reflector's action (0x2B) as its subtype 3 with
+params 0x114, a guard of 20 ticks in the NaviCust Reflect's look that fires nothing back, damage 0, chip lockout
+40; 0x30 (`sub_8012018`) is the NaviCust Reflect's own guard, its shot's damage NaviStats+0x48.
+
+As ported, each is a weapon definition with its action a definition, beside the navi:
+
+| Weapon | Module | Kinds it spawns |
+|---|---|---|
+| `heatman/charge` | navis/heatman/charge.luau | chips/heatman/flame |
+| `spoutman/charge` | navis/spoutman/charge.luau | chips/spoutman/ball |
+| `tenguman/charge` | navis/tenguman/charge.luau | |
+| `slashman/charge` | navis/slashman/charge.luau | chips/slashman/wave |
+| `elecman/charge` | navis/elecman/charge.luau | chips/elecman/thunder |
+| `tomahawkman/charge` | navis/tomahawkman/charge.luau | |
+| `eraseman/charge` | navis/eraseman/charge.luau | |
+| `chargeman/charge` | navis/chargeman/charge.luau | chips/chrgeman/car (and `car.burst`) |
+| `dustman/charge` | navis/dustman/charge.luau | DustCross's junk ball |
+| `groundman/charge` | navis/groundman/charge.luau | navis/groundman/drill.luau (`groundman/drill`) |
+| `protoman/charge` | navis/protoman/charge.luau | (WideSwrd's action and record) |
+| `protoman/back-special`, `protoman/back-special-2` | navis/protoman/back_special.luau | the Reflector's shield |
+
+The drill keeps the action its owner threw it in and compares it with his running action. A kind's position
+between its spawn and its init is its spawner's registers, and several keep the fraction of the Z they were
+spawned with: the first of SlashMan's waves the low half of the battle state's address (the navi's update leaves
+it in r3), a later wave or thunderbolt the side and flip halfword of the one before, a drill twice its place, a
+car the speed.
+
+Lab: navis/navi-01-heatpres to navi-11-stepswrd run each navi's charged attack twice (from his start panel and
+from the row above, the opponent standing still on his own row) and B+Back, and match on every frame. Not
+reached by a recording: HeatMan with no floor ahead (no flames), or a column of fewer than three; ElecMan with
+no enemy on a panel or more than one; SlashMan's and GroundMan's rows off the field (the charge from row 1 covers
+the upper one only); ChargeMan stopped by a hole or a broken panel (his cars' burst) and his second car's
+absence from a column near the edge; GroundMan's drills stopped by a hit, flown off the field, or orphaned by a
+flinch; the charge at Charge levels past 0 and buster Attack past 1; routine 0x46; ProtoMan's 0x34.
