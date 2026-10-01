@@ -31,8 +31,9 @@ local SHOOT, RECOVER = 0x0, 0x4
 -- Falzar Beast Over.
 local BEAST_OVER = 0x18
 
--- The shots: the one ahead, and the volley's other two.
-local SHOT, VOLLEY_SHOT = flying_shot.variants.beast_shot, flying_shot.variants.volley_shot
+-- The shots (the flying shot's kind, its Param1): the one ahead, and the
+-- volley's other two.
+local SHOT, VOLLEY_SHOT = 3, 5
 
 -- The first shot's height (`dword_80EC70C`'s first byte), pixels.
 local HEIGHT = 0x16
@@ -41,7 +42,7 @@ local HEIGHT = 0x16
 -- 12 lower.
 local VOLLEY_BACK, VOLLEY_SIDE, VOLLEY_DROP = 0x1E_0000, 0x18_0000, 0xC_0000
 
--- The shots' palette by Beast form (`byte_80EC784`, forms
+-- The shots' palette (their Param4) by Beast form (`byte_80EC784`, forms
 -- 0xB..0x18).
 local PALETTES = {
     [0xB] = 0, [0xC] = 0, [0xD] = 0, [0xE] = 0, [0xF] = 0, [0x10] = 0, [0x11] = 0,
@@ -82,29 +83,28 @@ function falzar_beast_buster.setup(navi: Object): number
     return ACTION
 end
 
--- `sub_80C6248`: one flying shot of `variant` at `pos`, falling (when the
--- navi is airborne) and in `palette`. (Its spawner's word is the shot's
--- height here, which only a thrown obstacle's kind reads.)
-local function projectile(me: Object, pos: Vec3, variant: FlyingShotVariant, falls: boolean, palette: number, damage: number)
-    flying_shot.spawn(me, pos, variant, damage, { falls = falls, palette = palette })
+-- `sub_80C6248`: one flying shot, at `pos`. (Its spawner's word is the
+-- shot's height here, which only a thrown obstacle's kind reads.)
+local function projectile(me: Object, pos: Vec3, params: { number }, damage: number)
+    flying_shot.spawn(me, pos, params, damage)
 end
 
 -- `sub_80EC710`: the shot from the panel in front, and with the volley
 -- cycle on, the two behind it.
-local function shoot_volley(me: Object, falls: boolean, z: number, damage: number)
+local function shoot_volley(me: Object, param3: number, z: number, damage: number)
     local form = battle.navi(me.alliance).form
     local palette = PALETTES[form]
     if palette == nil then
         error(string.format("form %#x reads outside sub_80EC710's palette table", form))
     end
     local x, y = field.center(me.panel_x + me.facing, me.panel_y)
-    projectile(me, Vec3.new(x, y, z), SHOT, falls, palette, damage)
+    projectile(me, Vec3.new(x, y, z), { SHOT, 0, param3, palette }, damage)
     if me:attack_param(3) == 0 then
         return
     end
     local back = x - me.facing * VOLLEY_BACK
-    projectile(me, Vec3.new(back, y - VOLLEY_SIDE, z), VOLLEY_SHOT, falls, palette, damage)
-    projectile(me, Vec3.new(back, y + VOLLEY_SIDE, z - VOLLEY_DROP), VOLLEY_SHOT, falls, palette, damage)
+    projectile(me, Vec3.new(back, y - VOLLEY_SIDE, z), { VOLLEY_SHOT, 0, param3, palette }, damage)
+    projectile(me, Vec3.new(back, y + VOLLEY_SIDE, z - VOLLEY_DROP), { VOLLEY_SHOT, 0, param3, palette }, damage)
 end
 
 -- `sub_80EC792`: the arm goes and the navi idles.
@@ -134,15 +134,15 @@ local function shoot(me: Object, s: State)
     end
     if s.timer == 1 then
         battle.play_sound(0xB3)
-        -- Airborne, the shots fall from the navi's height.
-        local z, falls = HEIGHT * 0x10000, false
+        -- Airborne, the shots fall (Param3) from the navi's height.
+        local z, param3 = HEIGHT * 0x10000, 0
         if me.pos.z ~= 0 then
-            falls = true
+            param3 = 1
             z += me.pos.z
         end
         -- The damage word plus the bonus.
         local damage = int.u32(me.attack_damage + bit32.lshift(me.hit_param, 16) + me.extra)
-        shoot_volley(me, falls, z, damage)
+        shoot_volley(me, param3, z, damage)
         s.recovery = 2
         local cycle = me:attack_param(3) + 1
         me:set_attack_param(3, if cycle < 3 then cycle else 0)

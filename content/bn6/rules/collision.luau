@@ -84,6 +84,35 @@ collision.neutral_object = define.collision {
 -- neutral objects (row 0x0F: what a BlkBomb reacts to).
 collision.everything = define.collision { id = "everything", side0 = 0xff800002, side1 = 0xff800002, row_offset = 0x78 }
 
+-- A breaking attack (row 0x06: a shot that breaks guards; the break
+-- family's shots, a thrown obstacle).
+collision.breaking = define.collision { id = "breaking", side0 = 0x80000082, side1 = 0x40000082, row_offset = 0x30 }
+
+-- An attack of row 0x08 (a projectile variant nothing names yet).
+collision.attack_90 = define.collision { id = "attack-90", side0 = 0x80000090, side1 = 0x40000090, row_offset = 0x40 }
+
+-- A pushing attack (row 0x12: AirShot's shot, a tornado).
+collision.pushing = define.collision { id = "pushing", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }
+
+-- An attack of row 0x17 (a flying shot variant nothing names yet).
+collision.attack_8e = define.collision { id = "attack-8e", side0 = 0x8000008e, side1 = 0x4000008e, row_offset = 0xB8 }
+
+-- The VDoll curse's hits (row 0x19).
+collision.curse = define.collision { id = "curse", side0 = 0x8000008c, side1 = 0x4000008c, row_offset = 0xC8 }
+
+-- An attack of row 0x25 (the wide shot's variant nothing fires).
+collision.attack_480 = define.collision { id = "attack-480", side0 = 0x80000480, side1 = 0x40000480, row_offset = 0x128 }
+
+-- An attack of row 0x47 (a projectile variant nothing names yet).
+collision.attack_a0 = define.collision { id = "attack-a0", side0 = 0x800000a0, side1 = 0x400000a0, row_offset = 0x238 }
+
+-- A neutral body, while dimmed too (row 0x0E: a VDoll that landed).
+collision.neutral_body = define.collision { id = "neutral-body", side0 = 0x00810082, side1 = 0x00810082, row_offset = 0x70 }
+
+-- A probe (row 0x3D): what finds the first thing its target type reaches
+-- without hurting it (the bullet, the corn).
+collision.probe = define.collision { id = "probe", side0 = 0x00000080, side1 = 0x00000080, row_offset = 0x1E8 }
+
 -- Nothing (row 0x00: a target that reaches nothing; Discord's notes, which
 -- confuse without learning they hit).
 collision.nothing = define.collision { id = "nothing", side0 = 0x00000000, side1 = 0x00000000, row_offset = 0x00 }
@@ -93,30 +122,14 @@ collision.nothing = define.collision { id = "nothing", side0 = 0x00000000, side1
 -- the Anubis statue).
 collision.own_body = define.collision { id = "own-body", side0 = 0x02010080, side1 = 0x01010080, row_offset = 0x98 }
 
--- An attack that breaks guards and ice (row 0x06: a drill).
-collision.breaking = define.collision { id = "breaking", side0 = 0x80000082, side1 = 0x40000082, row_offset = 0x30 }
-
--- The same with the flag 0x400, whose test no routine was found for (row
--- 0x4A: a drill's second).
+-- A breaking attack with the flag 0x400, whose test no routine was found
+-- for (row 0x4A: a drill's second).
 collision.second_drill = define.collision {
     id = "second-drill",
     side0 = 0x80000482,
     side1 = 0x40000482,
     row_offset = 0x250,
 }
-
--- A thrown attack that pierces invisibility and flashing and breaks guards
--- and ice (row 0x17: the flying shot's first kind).
-collision.piercing_break_thrown = define.collision {
-    id = "piercing-break-thrown",
-    side0 = 0x8000008E,
-    side1 = 0x4000008E,
-    row_offset = 0xB8,
-}
-
--- An attack with the flag 0x800, whose test no routine was found for (row
--- 0x12: a tornado).
-collision.tornado = define.collision { id = "tornado", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }
 
 -- An attack that breaks guards (row 0x32: the instruments' notes).
 collision.guard_breaking = define.collision {

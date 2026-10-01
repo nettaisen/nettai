@@ -1,139 +1,143 @@
 --!strict
 -- The flying shot (the original's attack object #0xB, `sub_80C60A8`):
--- TrnArrw's arrows, the Falzar Beast buster's shots, a thrown obstacle. It
--- flies forward at a steady speed (and falls, if fired falling) until it
--- has passed its range in panel centers, and ends on the first thing it
+-- TrnArrw's arrows, the Beast forms' slash waves, a thrown obstacle. It
+-- flies forward at a steady speed (and falls, if it was launched to) until
+-- it has passed its range in panel centers, and ends on the first thing it
 -- hits or when it leaves the field. What differs between its uses is its
--- variant, a record (a row of `byte_80C6038`): its collision, element,
--- spark, look, speed, range and status. It may wait some ticks before it
--- sets off, and takes a palette. See docs/engine/objects-and-player.md
--- §B8.
+-- variant (`flying_shot.variant { ... }`, the original's `byte_80C6038`
+-- rows): its collision, element, spark, look, speed, range and status.
+-- It may wait some ticks before it sets off, and wear a palette.
+-- See docs/engine/objects-and-player.md §B8a.
 
-local absorbed_obstacle = require("../absorbed-obstacle/absorbed_obstacle")
-local collision = require("../../rules/collision")
 local element = require("../../lib/element")
+local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
 
 local flying_shot = {}
 
--- A flying shot's variant (`FlyingShotVariant`, types.d.luau).
-export type Variant = FlyingShotVariant
-
--- How a shot is fired: the ticks it waits before it sets off, whether it
--- falls, its palette, and for a thrown obstacle, the obstacle (kind |
--- animation << 4).
-export type Options = { wait: number?, falls: boolean?, palette: number?, obstacle: number? }
-
 export type State = {
-    variant: Variant,
-    -- Ticks left to wait (Param2), whether it falls (Param3), its palette
-    -- and then its range left (Param4).
+    variant: FlyingShotVariant,
+    -- Ticks it waits before it sets off (its second parameter).
     wait: number,
+    -- It falls as it flies (its third parameter).
     falls: boolean,
+    -- Its palette (its fourth parameter), then the panel centers it has
+    -- left to pass (the game reuses the parameter).
+    palette: number,
     range: number,
     -- A thrown obstacle's kind and animation (kind | animation << 4), its
     -- spawner's word (the game's ExtraVars).
     obstacle: number,
 }
 
-function flying_shot.variant(v: Variant): Variant
-    return define.record("flying-shot-variant", v)
-end
-
--- `byte_80C6038`'s rows.
-flying_shot.variants = {
-    -- Row 0: a sword-like wave (no user ported).
-    wave = flying_shot.variant {
-        collision = { is = collision.piercing_break_thrown, hits = collision.hits_navis },
-        hit_mod = 3,
-        element = "null",
-        spark = sparks.null,
-        sprite = asset.sprite("sword"),
-        speed = 0x5_0000,
-        range = 8,
-    },
-    -- Row 1: a faster one with a heavy spark (no user ported).
-    heavy_wave = flying_shot.variant {
-        collision = { is = collision.attack, hits = collision.hits_navis },
-        hit_mod = 3,
-        element = "null",
-        spark = sparks.heavy,
-        sprite = asset.sprite("sword"),
-        speed = 0xA_0000,
-        range = 8,
-    },
-    -- Row 2: TrnArrw's arrow: an aqua hit whose spark shows over the
-    -- panel's center, twanging as it sets off.
-    arrow = flying_shot.variant {
-        collision = { is = collision.attack, hits = collision.hits_navis },
-        hit_mod = 1,
-        element = "aqua",
-        spark = sparks.aqua,
-        sprite = asset.sprite("bow"),
-        anim = 3,
-        speed = 0x6_0000,
-        range = 8,
-        panel_spark = true,
-        launch_sound = asset.sound("twang"),
-    },
-    -- Row 3: the Falzar Beast buster's shot.
-    beast_shot = flying_shot.variant {
-        collision = { is = collision.attack, hits = collision.hits_navis },
-        hit_mod = 0,
-        element = "null",
-        spark = sparks.impact,
-        sprite = asset.sprite("beast-shot"),
-        speed = 0xC_0000,
-        range = 8,
-    },
-    -- Row 4: a slower one (no user ported).
-    slow_beast_shot = flying_shot.variant {
-        collision = { is = collision.attack, hits = collision.hits_navis },
-        hit_mod = 1,
-        element = "null",
-        spark = sparks.impact,
-        sprite = asset.sprite("beast-shot"),
-        speed = 0x8_0000,
-        range = 8,
-    },
-    -- Row 5: the Falzar Beast buster's volley shots: two panels' range,
-    -- ending in a burst (effect 7).
-    volley_shot = flying_shot.variant {
-        collision = { is = collision.attack, hits = collision.hits_navis },
-        hit_mod = 0,
-        element = "null",
-        spark = sparks.impact,
-        sprite = asset.sprite("beast-shot"),
-        speed = 0xC_0000,
-        range = 2,
-        end_effect = define.effect { sprite = asset.sprite("copy-mark"), anim = 0, palette = 0 },
-    },
-    -- Row 6: a thrown obstacle (the buster's throw): it looks like the
-    -- obstacle, breaks, and lights its panel.
-    thrown = flying_shot.variant {
-        collision = { is = collision.breaking, hits = collision.hits_navis },
-        hit_mod = 3,
-        element = "null",
-        secondary = { "break" },
-        spark = sparks.breaking,
-        sprite = asset.sprite("beast-shot"),
-        speed = 0xA_0000,
-        range = 8,
-        highlight = true,
-        obstacle = true,
-    },
-}
-
--- How fast it falls when fired falling, 16.16 a tick.
+-- How fast it falls when launched to, 16.16 a tick.
 local FALL = -0x1_2000
--- A thrown obstacle with a sprite of this index keeps its parts' own
--- facing (`sub_8002EAC`), and is not flipped.
+-- A thrown obstacle whose sprite is the absorbed obstacles' 0x23 keeps
+-- its parts' own facing (`sub_8002EAC`), and is not flipped.
 local UNFLIPPED_INDEX = 0x23
 -- The height of a panel spark (`sub_801A100`), 16.16.
 local PANEL_SPARK_Z = 0x10_0000
 -- Collision results that show a hit spark (`object_spawnCollisionEffect`),
 -- unless the first bit is set too.
 local SPARKS, NO_SPARK = 0x3F800000, 1
+
+-- A flying shot variant.
+function flying_shot.variant(v: FlyingShotVariant): FlyingShotVariant
+    return define.record("flying-shot-variant", v)
+end
+
+local ARROW_SPRITE = asset.sprite("bow")
+local SHOT_SPRITE = asset.sprite("beast-shot")
+local BLADE_SPRITE = asset.sprite("sword")
+local SHOT = { is = collision.attack, hits = collision.hits_navis }
+
+-- The variants (the original's rows; `by_number` for the callers that
+-- still name one by number).
+local ROWS: { [number]: FlyingShotVariant } = {
+    [0] = flying_shot.variant {
+        collision = { is = collision.attack_8e, hits = collision.hits_navis },
+        hit_mod = 3,
+        element = "null",
+        spark = sparks.plain,
+        sprite = BLADE_SPRITE,
+        speed = 0x5_0000,
+        range = 8,
+    },
+    [1] = flying_shot.variant {
+        collision = SHOT,
+        hit_mod = 3,
+        element = "null",
+        spark = sparks.heavy,
+        sprite = BLADE_SPRITE,
+        speed = 0xA_0000,
+        range = 8,
+    },
+    -- TrnArrw's arrow.
+    [2] = flying_shot.variant {
+        collision = SHOT,
+        hit_mod = 1,
+        element = "aqua",
+        spark = sparks.of_element(2),
+        sprite = ARROW_SPRITE,
+        anim = 3,
+        speed = 0x6_0000,
+        range = 8,
+        panel_spark = true,
+        launch_sound = asset.sound("twang"),
+    },
+    [3] = flying_shot.variant {
+        collision = SHOT,
+        hit_mod = 0,
+        element = "null",
+        spark = sparks.charged,
+        sprite = SHOT_SPRITE,
+        speed = 0xC_0000,
+        range = 8,
+    },
+    [4] = flying_shot.variant {
+        collision = SHOT,
+        hit_mod = 1,
+        element = "null",
+        spark = sparks.charged,
+        sprite = SHOT_SPRITE,
+        speed = 0x8_0000,
+        range = 8,
+    },
+    [5] = flying_shot.variant {
+        collision = SHOT,
+        hit_mod = 0,
+        element = "null",
+        spark = sparks.charged,
+        sprite = SHOT_SPRITE,
+        speed = 0xC_0000,
+        range = 2,
+        end_effect = define.effect { sprite = asset.sprite("copy-mark"), anim = 0, palette = 0 },
+    },
+    -- A thrown obstacle.
+    [6] = flying_shot.variant {
+        collision = { is = collision.breaking, hits = collision.hits_navis },
+        hit_mod = 3,
+        element = "null",
+        secondary = { "break" },
+        spark = sparks.breaking,
+        sprite = SHOT_SPRITE,
+        speed = 0xA_0000,
+        range = 8,
+        highlight = true,
+        obstacle = true,
+    },
+}
+flying_shot.variants = { arrow = ROWS[2], thrown = ROWS[6] }
+
+-- The variant of row `n` (past the table the game reads on into the
+-- routine's code: an error).
+function flying_shot.by_number(n: number): FlyingShotVariant
+    local r = ROWS[n]
+    if not r then
+        error(string.format("flying shot row %#x reads past byte_80C6038", n))
+    end
+    return r
+end
 
 -- Its end: not drawn, its hit region cleared (`object_clearCollisionRegion`);
 -- the next update frees it.
@@ -153,8 +157,9 @@ end
 
 -- `sub_801A100`: the hit spark over the center of the panel it is over
 -- (`sub_800E258`), 16 pixels up (one RNG draw when it shows).
-local function panel_spark(me: Object, v: Variant)
-    local f = me.collision.hit_flags
+local function panel_spark(me: Object, v: FlyingShotVariant)
+    local c = me.collision
+    local f = c.hit_flags
     if not bit32.btest(f, SPARKS) or bit32.btest(f, NO_SPARK) or v.spark == nil then
         return
     end
@@ -162,13 +167,14 @@ local function panel_spark(me: Object, v: Variant)
     local x = int.tdiv(int.asr(p.x, 16) + 0xA0, 0x28)
     local y = int.tdiv(int.asr(p.y, 16) + 0x20, 0x18)
     local cx, cy = field.center(x, y)
-    battle.spark(me, battle.jitter(0xF, Vec3.new(cx, cy, PANEL_SPARK_Z)), v.spark)
+    battle.spark(me, battle.jitter(0xF, Vec3.new(cx, cy, PANEL_SPARK_Z)), v.spark :: Spark)
 end
 
 -- Fly (and fall); each panel center passed spends its range, and it ends
 -- when that runs out (leaving its variant's end effect) or it leaves the
 -- field.
 local function fly(me: Object, s: State)
+    local v = s.variant
     local p, vel = me.pos, me.vel
     local cx = field.center(me.panel_x, me.panel_y)
     local x = int.i32(p.x + vel.x)
@@ -177,7 +183,7 @@ local function fly(me: Object, s: State)
         local left = s.range - 1
         s.range = left
         if left <= 0 then
-            local effect = s.variant.end_effect
+            local effect = v.end_effect
             if effect then
                 me:set_coordinates_from_panel()
                 battle.effect(me.pos, effect)
@@ -223,7 +229,7 @@ local function tick(me: Object)
     end
     c:present()
     -- `object_highlightCurrentCollisionPanels`: its region is its own
-    -- panel until it ends (none). Drawn only.
+    -- panel (region 1) until it ends (none). Drawn only.
     if v.highlight and c.region ~= 0 then
         field.highlight(me.panel_x, me.panel_y)
     end
@@ -239,16 +245,19 @@ local function init(me: Object)
     me.related1 = nil
     local look = me.sprite
     local anim: number = v.anim or 0
-    local unflipped = false
+    local keeps_facing = false
     if v.obstacle then
-        -- The absorbed obstacle's sprite (a number until the absorbed
-        -- obstacles' kinds are definitions).
+        -- The absorbed obstacle's sprite, by its kind (the absorbed
+        -- obstacles' own table, numbered until they are kinds).
         local kind = bit32.band(s.obstacle, 0xF)
-        local sprite = absorbed_obstacle.sprite(kind)
-        look:load(sprite)
+        local thrown = data.objects.absorbed_sprites[kind]
+        if not thrown then
+            error(string.format("absorbed obstacle kind %d is not in the content", kind))
+        end
+        look:load(thrown)
         anim = bit32.band(bit32.rshift(s.obstacle, 4), 0xF)
         -- The sprite's index: the part of "CC-II" after the dash.
-        unflipped = tonumber(string.sub(sprite, 4), 16) == UNFLIPPED_INDEX
+        keeps_facing = (tonumber(string.sub(thrown, 4), 16) or -1) == UNFLIPPED_INDEX
     else
         look:load(v.sprite)
     end
@@ -256,14 +265,12 @@ local function init(me: Object)
     me.anim = anim
     me.anim_loaded = 0xFF
     me.visible = true
-    if not unflipped then
-        -- (A thrown obstacle that keeps its parts' own facing, `sub_8002EAC`,
-        -- is not flipped. Drawn only.)
+    if not keeps_facing then
+        -- (`sub_8002EAC` otherwise: its parts keep their own facing, and
+        -- the sprite itself is not flipped. Drawn only.)
         look:set_flip(bit32.bxor(me.alliance, me.flip))
     end
-    -- (Its palette is the fourth spawn parameter, which then holds its
-    -- range.)
-    look.palette = s.range
+    look.palette = s.palette
     me.element = element.byte(v.element, v.secondary)
     s.range = v.range
     me:set_panel_from_coordinates()
@@ -288,43 +295,57 @@ end
 flying_shot.kind = define.kind {
     id = "flying-shot",
     pool = "attack",
-    state = {
-        variant = "record:flying-shot-variant",
-        wait = "u8",
-        falls = "bool",
-        range = "u8",
-        obstacle = "u8",
-    },
+    state = { variant = "record:flying-shot-variant", wait = "u8", falls = "bool", palette = "u8", range = "u8", obstacle = "u8" },
     -- `sub_80C60A8`.
     update = function(me: Object)
         local l = me.lifecycle
         if l == "init" then
             init(me)
+            if not me.active then
+                return
+            end
         elseif l == "update" then
             tick(me)
         else
             me:destroy()
+            return
         end
         me:update_sprite()
     end,
 }
 
--- `sub_80C6248`: a flying shot of `variant` from `owner` at `pos`, with the
--- damage word `damage`, fired as `options` say. It takes the owner's side
--- and flip, and runs later this tick, right after its spawner.
-function flying_shot.spawn(owner: Object, pos: Vec3, variant: Variant, damage: number, options: Options?): Object?
+-- `sub_80C6248`: a flying shot from `owner` at `pos`: of `shot.variant`,
+-- waiting `shot.wait` ticks, falling if `shot.falls`, in `shot.palette`,
+-- with the damage word and, for a thrown obstacle, the obstacle (kind |
+-- animation << 4). It takes the owner's side and flip, and runs later this
+-- tick, right after its spawner.
+function flying_shot.launch(owner: Object, pos: Vec3, shot: FlyingShot): Object?
     local o = battle.spawn(flying_shot.kind, pos)
     if o then
-        local opt: Options = options or {}
         local s = o.state :: State
-        s.variant = variant
-        s.wait, s.falls, s.range = opt.wait or 0, opt.falls or false, opt.palette or 0
-        s.obstacle = opt.obstacle or 0
-        o:set_damage_word(damage)
+        s.variant = shot.variant
+        s.wait = shot.wait or 0
+        s.falls = shot.falls or false
+        s.palette = shot.palette or 0
+        s.obstacle = shot.obstacle or 0
+        o:set_damage_word(shot.damage)
         o.alliance, o.flip = owner.alliance, owner.flip
         o.related1 = owner
     end
     return o
+end
+
+-- The same with the original's four parameters (the row, the wait, the
+-- fall, the palette), for the callers that still pass them.
+function flying_shot.spawn(owner: Object, pos: Vec3, params: { number }, damage: number, obstacle: number?): Object?
+    return flying_shot.launch(owner, pos, {
+        variant = flying_shot.by_number(params[1]),
+        wait = params[2],
+        falls = params[3] ~= 0,
+        palette = params[4],
+        damage = damage,
+        obstacle = obstacle,
+    })
 end
 
 return flying_shot

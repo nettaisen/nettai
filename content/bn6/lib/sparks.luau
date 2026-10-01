@@ -14,22 +14,36 @@ local BY_ELEMENT: { [number]: Spark } = {
     [5] = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 0 },
 }
 
--- The erase beams' spark (hit effect 0x0C).
-sparks.erase = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
+-- The plain hit (spark 0) and the charged shot's (5), as named sparks.
+sparks.plain = BY_ELEMENT[0]
+sparks.charged = BY_ELEMENT[5]
 
--- The element sparks by name (hit effects 0 to 3: a sword wave's, a
--- flame's, a bubble star's, a thunder ball's), and the white burst of hit
--- effect 5 (a crack shot's, the Falzar Beast buster's).
-sparks.null = BY_ELEMENT[0]
+-- The element sparks by name (hit effects 1 to 3: a flame's, a bubble
+-- star's, a thunder ball's).
 sparks.fire = BY_ELEMENT[1]
 sparks.aqua = BY_ELEMENT[2]
 sparks.elec = BY_ELEMENT[3]
-sparks.impact = BY_ELEMENT[5]
 
--- A breaking hit's (hit effect 0x0A): a drill's, a thrown obstacle's.
+-- A cannon's impact (spark 7: the cannons, AirShot).
+sparks.impact = define.spark { sprite = asset.sprite("impact"), anim = 0, palette = 0 }
+
+-- A breaking hit (spark 0x0A: the break family's shots, a thrown obstacle).
 sparks.breaking = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
 
--- A heavy hit's (hit effect 6): Magnum's shot, the beasts' claws and bites.
+-- A shot's impact (spark 9: a projectile variant nothing names yet).
+sparks.shot = define.spark { sprite = asset.sprite("shot-impact"), anim = 0, palette = 0 }
+
+-- A blast (spark 0x0B: GigaCan's shot).
+sparks.blast = define.spark { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+
+-- A bat's impact (spark 0x0D: BatCan's shot).
+sparks.bat = define.spark { sprite = asset.sprite("bat-impact"), anim = 1, palette = 0 }
+
+-- The erase beams' spark (hit effect 0x0C).
+sparks.erase = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
+
+-- A heavy hit's (hit effect 6): Magnum's shot, the beasts' claws and bites,
+-- the flying shot's arrows, VDoll's curse.
 sparks.heavy = define.spark { sprite = asset.sprite("copy-mark"), anim = 8, palette = 0 }
 
 -- `sub_801A146`: the spark of an attack of `element` (its primary

@@ -109,7 +109,11 @@ end
 local function throw(me: Object)
     local x, y = field.center(me.panel_x + me.facing, me.panel_y)
     local obstacle = bit32.band(me.marker, 0xFF)
-    flying_shot.spawn(me, Vec3.new(x, y, THROW_Z), flying_shot.variants.thrown, damage_word(me), { obstacle = obstacle })
+    flying_shot.launch(me, Vec3.new(x, y, THROW_Z), {
+        variant = flying_shot.variants.thrown,
+        damage = damage_word(me),
+        obstacle = obstacle,
+    })
 end
 
 -- `sub_80EB450`: raise the buster; on the second tick the shot (its kind
