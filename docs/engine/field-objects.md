@@ -10,10 +10,11 @@ kinds are content's definitions (content model v2): RockCube's and
 IceCube's folder, `chips/rockcube`, holds the rock (kind `rockcube/rock`)
 with its variants (`byte_80CF934`'s rows, records) and its debris
 (T4#0x38, `rockcube/debris`), which the stages, the encasing and the
-boulder use too, beside the chips and their controller; the stages' boulder (T3#0x6E) in `objects/boulder`; the
-absorbed obstacle (T4#0x87) in `objects/absorbed-obstacle`, whose looks
-(the original's obstacle kinds, `byte_80E98C0`) are records each obstacle
-defines for itself (`absorbed_obstacle.look { sprite, ... }`). What a
+boulder use too, beside the chips and their controller; the stages'
+boulder (T3#0x6E) is in `objects/boulder`; the absorbed obstacle
+(T4#0x87) in `objects/absorbed-obstacle`, whose looks (the original's
+obstacle kinds, `byte_80E98C0`) are records each obstacle defines for
+itself (`absorbed_obstacle.look { sprite, ... }`). What a
 stage places goes through its kind's `place`: the stage's `actors` name
 the kind and, for a rock, its variant (stages/netbattle.luau); the
 absorbed obstacle is the role `kinds.absorbed_obstacle`.
@@ -80,16 +81,17 @@ Params: Param1 = variant (row of `byte_80CF934`), Param2 = registry class,
 Param3 = entrance: 0 rise (wait for sprite animation 0 to end), 1 instant,
 2 fall, 3 placed at round start (also runs while paused until it stands,
 and starts with the standing animation). Content: `rock.spawn(x, y, side,
-{ variant, class, entrance }, damage)` (chips/rockcube/rock: the kind's state
-holds the variant record and the entrance, "rise", "instant", "fall" or
-"placed").
+{ variant, class, entrance }, damage)` (chips/rockcube/rock: the kind's
+state holds the variant record and the entrance, "rise", "instant", "fall"
+or "placed").
 
 **Variants (`byte_80CF934`, 8-byte rows):** anim, (unused 0xC8), HP/2,
 debris palette, break sound (u16), NameID (u16). Init makes HP/2 = 0 into
 1 HP and variant >= 3 aqua. In content they are `rock.variants` (brittle,
-cube, hard, ice; records `rockcube/brittle` to `rockcube/ice` with `anim`, `hp`, `element`, `debris_palette`,
-`break_sound`, `name`); a stage names the one its rocks are (the actor
-list's entry gives the row, which compat's records.toml keeps):
+cube, hard, ice; records `rockcube/brittle` to `rockcube/ice` with `anim`,
+`hp`, `element`, `debris_palette`, `break_sound`, `name`); a stage names
+the one its rocks are (the actor list's entry gives the row, which
+compat's records.toml keeps):
 
 | variant | anim | HP | element | debris palette | sound | NameID |
 |---|---|---|---|---|---|---|

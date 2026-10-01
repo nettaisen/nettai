@@ -345,8 +345,8 @@ Chip 0x8B Meteors (fire, damage 40, hit param 138, params 0).
 damage word, the spawner's alliance/flip halfword; then flags |= 0x10 (acts while dimmed). (The instant
 chips' meteor shower, `lib/instant/meteor_shower`, spawns the same kind through `sub_80CF594` without the flag.)
 
-**The meteor, T3#0x56 (`sub_80CF3BE`)** (chips/meteors/falling_meteor, kind `meteors/falling-meteor`): states init `sub_80CF3DC`, update `sub_80CF488`,
-`object_genericDestroy`.
+**The meteor, T3#0x56 (`sub_80CF3BE`)** (chips/meteors/falling_meteor, kind `meteors/falling-meteor`): states
+init `sub_80CF3DC`, update `sub_80CF488`, `object_genericDestroy`.
 
 - `byte_80CF3AC` (6 bytes by Param1; three rows, all {0x31, 0, 0xA, 5, 1, 0}): sprite index (category 0xC),
   animation, self type, target type, camera shake, panel effect. Param1 ≥ 3 reads past it.
@@ -367,8 +367,8 @@ chips' meteor shower, `lib/instant/meteor_shower`, spawns the same kind through 
   3 `GetPositiveSignedRNG2() & 1` 0 → crack (1 → nothing); other → `object_breakPanel_dup2`. (Every row has
   0.) Then VISIBLE off, region 0, state destroy (word). So a meteor's hit is live for one tick.
 
-**The marker, T4#0x35 (`sub_80E4344`)** (chips/meteors/marker, kind `meteors/marker`), spawned by `sub_80E43F6` with position (PanelX, PanelY, garbage),
-params r4, the spawner's alliance.
+**The marker, T4#0x35 (`sub_80E4344`)** (chips/meteors/marker, kind `meteors/marker`), spawned by `sub_80E43F6`
+with position (PanelX, PanelY, garbage), params r4, the spawner's alliance.
 
 - Init `sub_80E4364`: PanelX/Y = the low bytes of X and Y; an invalid panel → `object_freeMemory`. ExtraVars+0
   = `&byte_80E4334[Param1 * 4]`, ExtraVars+4 = Param2 (the region highlighted: 1); Timer = row[0]; Param2,
