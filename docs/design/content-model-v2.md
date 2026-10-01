@@ -956,6 +956,23 @@ calls the dimming service's steps in the original's order (`object_timefreezeBeg
 `object_timefreezeEnd`), and `dimming.spawn_controller` does the spawn every `off_802CCB4` entry does. The
 spec's `chip` field is a chip handle now, so the telop draws the chip by name.
 
+**As built** (step 7): content/bn6/lib/dimming.luau (`dimming_chips.phases { name, effect }`,
+`dimming_chips.done(me)` when the effect is over, `dimming_chips.spawn(kind, user, spec)`; a file, named so it
+doesn't shadow the `dimming` service global), lib/grab/controller.luau (the `grab/controller` kind, state
+`{ bonus, whole_column }`, and the hooks `grab.area` and `grab.panel`), lib/grab/shot.luau (the `grab/shot`
+kind), and chips/areagrab and chips/panlgrab, which are definitions with their records (nothing names them by
+number). What it settled:
+
+- **The controller keeps no chip.** The telop draws the chip the dimming registered (`register_dimming`), so
+  the v1 state's `chip` went; `DimmingChipSpec.chip` stays a number until the hooks' specs take handles.
+- **The chip's parameter became the hook's argument**: AreaGrab's first parameter (1, a whole column) is
+  `grab.area`, PanelGrab's (0) `grab.panel`; the shot's side is its `alliance` (the original also keeps it in
+  the shot's first parameter).
+- **The test content** puts the definitions in the folders by handle (`scenario::setup_with_handles`, a chip
+  in code A, else `*`); its numbered grab chip went.
+- **Verified** on the test content (the dimming duel and its rollback), the type check, and the traces and the
+  chip lab on a real pack: every AreaGrab and PanelGrab scenario matches, the counter cut-in's too.
+
 ### 5.5 Navi chips: a navi kind, per-chip parameters
 
 v1: action 0x1B registers `Hook::NaviChip(subtype)`; EraseMan reads `me:param(1)` (the aim's switching time)
