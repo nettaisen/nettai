@@ -10,6 +10,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
@@ -43,8 +44,8 @@ local SPEED, GRAVITY = 0x2C000, -0x2800
 -- hit spark (0x0A).
 local HIT_MOD, SELF_DAMAGE, COUNTER = 3, 0x64, 0x1E
 local HIT_SPARK = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
--- Its kind among absorbed obstacles (`data.objects.absorbed_sprites`).
-local ABSORBED_KIND = 1
+-- How it looks absorbed (the original's obstacle kind's sprite: its own).
+local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 local SOUND_LAND, SOUND_HIT_BOMB, SOUND_BURST = asset.sound("land"), asset.sound("hit-bomb-1"), asset.sound("burst")
 -- The burst (`byte_80CD828`): over the whole area of the side it hits, no
 -- hit spark, hit modifier 3, fire; then explosions there every 3 ticks
@@ -125,7 +126,7 @@ local function destroyed(me: Object)
     local how = obstacle.removal(me)
     if how ~= "broken" then
         if how == "absorbed" then
-            obstacle.fly_to_absorber(me, ABSORBED_KIND)
+            obstacle.fly_to_absorber(me, ABSORBED)
         else
             local blink = obstacle.blink_out(me)
             if blink == "blinking" then

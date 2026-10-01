@@ -6,10 +6,12 @@
 -- the navi. On the custom screen a plus chip folds into the chip before it
 -- (its `modifier`); this is its use alone.
 --
--- Atk+10 and Navi+20 are `instant = plus.attack` and `plus.navi`. The
--- pack's records of the effect (MegaBstr, Atk+30, WhiCapsl, Uninstll,
--- DarkPlus and the special chips) run `plus.by_record` through
--- chips/0c0-atk-10. The BeastOut chip's effect is the sparkle alone.
+-- Atk+10, FinalGun and NumTrap are `instant = plus.attack`, Navi+20
+-- `plus.navi`, WhiCapsl `plus.attack_with(plus.PARALYZE)`. The pack's
+-- records of the effect that the ruleset or a Program Advance still names
+-- by number (MegaBstr, Atk+10's record, Atk+30, Uninstll, DarkPlus) run
+-- `plus.by_record` through chips/0c0-atk-10. The BeastOut chip's effect is
+-- the sparkle alone.
 
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 
@@ -23,6 +25,11 @@ local BONUS_SOUND = asset.sound("bonus")
 
 -- The side's special chip bonuses (`battle.add_special_bonus`'s index).
 local ATTACK_BONUS, NAVI_BONUS = 0, 1
+
+-- The damage word's flag bits a modifier chip's bonus carries (the
+-- extra, its record's third and fourth parameter bytes): WhiCapsl's
+-- paralysis and Uninstll's uninstall.
+plus.PARALYZE, plus.UNINSTALL = 0x4000, 0x2000
 
 -- `loc_80104B6` (shared with `sub_80104E0`): a sparkle by the navi's
 -- panel, on the enemy's side of it.
@@ -52,6 +59,14 @@ end
 -- Navi+'s `instant` hook: the side's navi bonus.
 function plus.navi(user: Object, _spec: InstantChipSpec)
     effect(user, NAVI_BONUS, 0)
+end
+
+-- A modifier chip's `instant` hook: the side's attack bonus, with the
+-- damage word's flag bits `flags` (`plus.PARALYZE`, `plus.UNINSTALL`).
+function plus.attack_with(flags: number): (user: Object, spec: InstantChipSpec) -> ()
+    return function(user: Object, _spec: InstantChipSpec)
+        effect(user, ATTACK_BONUS, flags)
+    end
 end
 
 -- A record of the effect: the bonus its first parameter names, and the
