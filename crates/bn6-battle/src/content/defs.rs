@@ -26,7 +26,7 @@
 use std::collections::BTreeMap;
 
 use bn6_content_api::{
-    ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, FnId, FnSource, FormHandle, Hook, KindHandle,
+    ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, FnId, FnSource, FormHandle, KindHandle,
     NaviHandle, Pool, RecordHandle, Registry, Schema, StageHandle, StateId, WeaponHandle,
 };
 
@@ -34,6 +34,7 @@ use super::{
     ChipData, ChipId, Content, DIMMING_CHIP_ACTION,
     FormData, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION, NaviData,
 };
+use super::roles::{ActionRole, HookRole, KindRole, RoleAction, RoleKind, Roles};
 use crate::setup::{Form, Navi, StageSettings};
 use crate::kinds::{ENGINE_KINDS, EngineKind};
 
@@ -56,9 +57,12 @@ pub struct KindDef {
     /// A content kind's state layout.
     pub schema: StateId,
     /// The object slot (pool and index) registration by number reaches it
-    /// by: the engine's own kinds' and the pack's `object.toml`s'. A kind
-    /// content defines has none.
+    /// by: the pack's `object.toml`s'. The engine's kinds and the kinds
+    /// content defines have none (the validator has their slots by key).
     pub slot: Option<(Pool, u8)>,
+    /// What places it when a stage's actor list names it (`kind.place`, or
+    /// a v1 module's `actor_list_entry`).
+    pub place: Option<FnId>,
 }
 
 /// A navi action content implements.
@@ -97,6 +101,9 @@ pub struct WeaponDef {
     /// Ticks to a full charge by Charge stat, for a weapon content defines
     /// (the pack's routines' are the charge table's, by number).
     pub charge_ticks: Vec<u16>,
+    /// The instant effect its action (the instant chips' action) runs: a
+    /// weapon that names one no chip has (TenguCross's wind).
+    pub instant: Option<FnId>,
 }
 
 /// How a chip is used.
@@ -110,6 +117,23 @@ pub enum ChipUsage {
     Navi(FnId),
     /// An instant chip: its effect, `(user, spec)`.
     Instant(FnId),
+    /// A pack record whose action or subtype nothing implements yet: using
+    /// it is "not implemented yet" where the original runs it.
+    Unported(Unported),
+}
+
+/// What a pack record names that nothing implements yet (the numbers are
+/// for the error).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Unported {
+    /// A navi action.
+    Action(u8),
+    /// A dimming chip's controller, by subtype (`off_802CCB4`).
+    Dimming(u8),
+    /// A navi chip's navi, by subtype (`off_802CD5C`).
+    Navi(u8),
+    /// An instant chip's effect, by subtype (`off_80EC3F0`).
+    Instant(u8),
 }
 
 /// A chip: the pack's record (registration by number, keyed `v1/chip-036`)
@@ -120,9 +144,9 @@ pub struct ChipDef {
     /// Its record. A definition's has no `id`: the engine never learns the
     /// original's number for what content defines.
     pub record: ChipData,
-    /// How its definition uses it; none for the pack's records, which are
-    /// used by their action number and subtype.
-    pub usage: Option<ChipUsage>,
+    /// How it is used: a definition's own use, or a pack record's, which
+    /// registration by number resolves from its action and subtype.
+    pub usage: ChipUsage,
 }
 
 /// A navi: the pack's record (keyed `v1/navi-01`).
@@ -162,77 +186,6 @@ pub struct CollisionTypeDef {
     pub row_offset: u16,
 }
 
-/// What the ruleset needs from content by role (docs/design/
-/// content-model-v2.md §7.4): `define.roles { ... }`, once. A role content
-/// hasn't filled yet is `None` until the BN6 content fills every one (then
-/// an unfilled role is a load error).
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Roles {
-    pub actions: RoleActions,
-    pub hooks: RoleHooks,
-}
-
-/// The functions the ruleset calls by role.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct RoleHooks {
-    /// `(navi)`: the NaviCust FirstBarrier's barrier and its visual
-    /// (`sub_8013892`: `sub_801A7CC` with the navi stat, which the game's
-    /// program sets to 1, and `sub_80E0D98`).
-    pub first_barrier: Option<FnId>,
-}
-
-impl RoleHooks {
-    const NAMES: [&str; 1] = ["first_barrier"];
-
-    fn slot(&mut self, name: &str) -> Option<&mut Option<FnId>> {
-        match name {
-            "first_barrier" => Some(&mut self.first_barrier),
-            _ => None,
-        }
-    }
-}
-
-/// The actions the ruleset starts by role.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct RoleActions {
-    /// AntiDmg's counter (`sub_801056A`, `sub_80105F2`).
-    pub anti_damage_counter: Option<ActionHandle>,
-    /// AntiSwrd's counter.
-    pub anti_sword_counter: Option<ActionHandle>,
-    /// BodyGrd's counter.
-    pub body_guard_counter: Option<ActionHandle>,
-    /// The charged shot a navi's request starts from idle without its
-    /// weapon's setup (`sub_8010312`'s request 0x20; the original's action
-    /// 0x16, MegaMan's charged shot).
-    pub forced_charged_shot: Option<ActionHandle>,
-}
-
-impl RoleActions {
-    /// The roles by name, as `rules/roles.luau` names them.
-    const NAMES: [&str; 4] = ["anti_damage_counter", "anti_sword_counter", "body_guard_counter", "forced_charged_shot"];
-
-    fn slot(&mut self, name: &str) -> Option<&mut Option<ActionHandle>> {
-        match name {
-            "anti_damage_counter" => Some(&mut self.anti_damage_counter),
-            "anti_sword_counter" => Some(&mut self.anti_sword_counter),
-            "body_guard_counter" => Some(&mut self.body_guard_counter),
-            "forced_charged_shot" => Some(&mut self.forced_charged_shot),
-            _ => None,
-        }
-    }
-}
-
-impl Roles {
-    /// An action role, or a panic naming it when content hasn't filled it.
-    pub fn action(role: Option<ActionHandle>, name: &str) -> ActionHandle {
-        role.unwrap_or_else(|| panic!("the role actions.{name} is not filled (define.roles in rules/roles.luau)"))
-    }
-
-    /// A hook role, or a panic naming it when content hasn't filled it.
-    pub fn hook(role: Option<FnId>, name: &str) -> FnId {
-        role.unwrap_or_else(|| panic!("the role hooks.{name} is not filled (define.roles in rules/roles.luau)"))
-    }
-}
 
 /// A record only content reads: the engine keeps its handle and type.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -291,8 +244,6 @@ pub struct Defs {
     pub schemas: Vec<SchemaDef>,
     /// The functions the runtime binds, by [`FnId`].
     pub functions: Vec<FnSource>,
-    /// Registration by number: hooks by table and number (the bridge).
-    pub hooks: BTreeMap<Hook, FnId>,
     kind_keys: BTreeMap<String, KindHandle>,
     /// The engine's kinds, in [`ENGINE_KINDS`]' order.
     engine: Vec<KindHandle>,
@@ -424,14 +375,6 @@ impl Defs {
         self.weapon_keys.get(key).copied()
     }
 
-    /// The function a hook by number runs: a weapon routine's `setup`, or
-    /// what the pack's data registers for a subtype or an entry type.
-    pub fn hook(&self, hook: Hook) -> Option<FnId> {
-        match hook {
-            Hook::Weapon(n) => self.weapon_numbered(n).and_then(|w| self.weapons[w.index()].setup),
-            _ => self.hooks.get(&hook).copied(),
-        }
-    }
 
     /// A record's handle by key.
     pub fn record(&self, key: &str) -> Option<RecordHandle> {
@@ -627,6 +570,88 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
     serde_json::from_value(Json::Object(o)).map_err(|e| what(e.to_string()))
 }
 
+/// `define.roles { actions = { ... }, kinds = { ... } }` (content::roles):
+/// each role a definition, or a v1 registration through its `legacy`
+/// marker (an action by number, a kind by key).
+fn read_roles(d: &Definition, actions: &[ActionDef], kinds: &[KindDef], functions: &mut Functions) -> Result<Roles, ContentError> {
+    let what = |e: String| ContentError::new(format!("{}.luau: roles: {e}", d.module));
+    let Data::Map(groups) = &d.spec else { return Err(what("a table of role groups".into())) };
+    let legacy = |name: &str, v: &Data, field: &str| -> Result<Option<Data>, ContentError> {
+        let Data::Map(_) = v else { return Ok(None) };
+        match v.field("legacy").field(field) {
+            Data::Nil => Err(what(format!("{name} is a table, but not a legacy marker `{{ legacy = {{ {field} = ... }} }}`"))),
+            x => Ok(Some(x.clone())),
+        }
+    };
+    let mut roles = Roles::default();
+    for (group, entries) in groups {
+        let group = group.to_string();
+        let Data::Map(entries) = entries else { return Err(what(format!("`{group}` is a table"))) };
+        for (name, v) in entries {
+            let name = name.to_string();
+            match group.as_str() {
+                "actions" => {
+                    let names: Vec<&str> = ActionRole::ALL.iter().map(|r| r.name()).collect();
+                    let role = ActionRole::named(&name).ok_or_else(|| {
+                        what(format!("the ruleset has no role actions.{name} (it has {})", names.join(", ")))
+                    })?;
+                    let full = format!("actions.{name}");
+                    let target = if let Data::Ref(Registry::Action, key) = v {
+                        RoleAction::Action(ActionHandle(
+                            actions.iter().position(|a| &a.key == key).expect("a defined action") as u16,
+                        ))
+                    } else if let Some(n) = legacy(&full, v, "action")? {
+                        let Data::Int(n @ 0..=0xFF) = n else {
+                            return Err(what(format!("{full}'s legacy action is {n:?}, not an action number")));
+                        };
+                        match actions.iter().position(|a| a.number == Some(n as u8)) {
+                            Some(i) => RoleAction::Action(ActionHandle(i as u16)),
+                            None => RoleAction::Unported(n as u8),
+                        }
+                    } else {
+                        return Err(what(format!("{full} is not an action")));
+                    };
+                    roles.actions.insert(role, target);
+                }
+                "kinds" => {
+                    let names: Vec<&str> = KindRole::ALL.iter().map(|r| r.name()).collect();
+                    let role = KindRole::named(&name).ok_or_else(|| {
+                        what(format!("the ruleset has no role kinds.{name} (it has {})", names.join(", ")))
+                    })?;
+                    let full = format!("kinds.{name}");
+                    let key = if let Data::Ref(Registry::Kind, key) = v {
+                        key.clone()
+                    } else if let Some(k) = legacy(&full, v, "kind")? {
+                        let Data::Str(k) = k else {
+                            return Err(what(format!("{full}'s legacy kind is {k:?}, not a kind's key")));
+                        };
+                        k
+                    } else {
+                        return Err(what(format!("{full} is not a kind")));
+                    };
+                    let target = match kinds.iter().position(|k| k.key == key) {
+                        Some(i) => RoleKind::Kind(KindHandle(i as u16)),
+                        None => RoleKind::Missing(key),
+                    };
+                    roles.kinds.insert(role, target);
+                }
+                "hooks" => {
+                    let names: Vec<&str> = HookRole::ALL.iter().map(|r| r.name()).collect();
+                    let role = HookRole::named(&name).ok_or_else(|| {
+                        what(format!("the ruleset has no role hooks.{name} (it has {})", names.join(", ")))
+                    })?;
+                    if !matches!(v, Data::Function) {
+                        return Err(what(format!("hooks.{name} is not a function")));
+                    }
+                    roles.hooks.insert(role, functions.id(FnSource::slot(Registry::Roles, &d.key, &format!("hooks.{name}"))));
+                }
+                _ => return Err(what(format!("the ruleset has no role group `{group}` (it has actions, kinds, hooks)"))),
+            }
+        }
+    }
+    Ok(roles)
+}
+
 /// A weapon definition's `legacy = { routines = { ... } }` marker: the
 /// routine numbers it takes (none without one).
 fn weapon_routines(d: &Definition) -> Result<Vec<u8>, ContentError> {
@@ -712,25 +737,28 @@ impl Defs {
 
         // Object kinds.
         let mut kinds = Entries::new(Registry::Kind);
-        for (kind, key, pool, index) in ENGINE_KINDS {
+        for (kind, key, pool) in ENGINE_KINDS {
             let def = KindDef {
                 key: key.to_string(),
                 pool,
                 implementation: KindImpl::Engine(kind),
                 schema: schema_id(NO_STATE),
-                slot: Some((pool, index)),
+                slot: None,
+                place: None,
             };
             kinds.add(key.to_string(), def, "the engine's".into());
         }
-        let mut hooks: BTreeMap<Hook, (FnSource, String)> = BTreeMap::new();
-        let mut add_hook = |hook: Hook, f: FnSource, whose: String| -> Result<(), ContentError> {
-            match hooks.get(&hook) {
-                Some((g, first)) if *g != f => {
-                    Err(ContentError::new(format!("{whose} implements {hook} with {f}, but {first} with {g}")))
-                }
+        // Registration by number of the generic chip actions' parts, by
+        // subtype: what each pack record resolves its usage from.
+        let mut subtype_hooks: BTreeMap<(u8, u8), (FnSource, String)> = BTreeMap::new();
+        let mut add_hook = |action: u8, subtype: u8, f: FnSource, whose: String| -> Result<(), ContentError> {
+            match subtype_hooks.get(&(action, subtype)) {
+                Some((g, first)) if *g != f => Err(ContentError::new(format!(
+                    "{whose} implements action {action:#x}'s subtype {subtype} with {f}, but {first} with {g}"
+                ))),
                 Some(_) => Ok(()),
                 None => {
-                    hooks.insert(hook, (f, whose));
+                    subtype_hooks.insert((action, subtype), (f, whose));
                     Ok(())
                 }
             }
@@ -738,17 +766,21 @@ impl Defs {
         for k in &content.objects.kinds {
             let whose = format!("objects/{} (object.toml)", k.name);
             let update = export(&definitions, &k.script, "update", &whose)?;
+            // (The entry type `actor_list_entry` names is the stage data's;
+            // the ruleset reaches the kind by its role.)
+            let place = match k.actor_list_entry {
+                Some(_) => Some(functions.id(export(&definitions, &k.script, "actor_list_entry", &whose)?)),
+                None => None,
+            };
             let def = KindDef {
                 key: k.name.clone(),
                 pool: k.pool,
                 implementation: KindImpl::Script { update: functions.id(update) },
                 schema: module_state(&k.script),
                 slot: Some((k.pool, k.index)),
+                place,
             };
             kinds.add(k.name.clone(), def, whose.clone());
-            if let Some(entry) = k.actor_list_entry {
-                add_hook(Hook::ActorListEntry(entry), export(&definitions, &k.script, "actor_list_entry", &whose)?, whose)?;
-            }
         }
         for d in definitions.of(Registry::Kind) {
             let pool = d
@@ -757,12 +789,17 @@ impl Defs {
                 .str()
                 .and_then(Pool::from_name)
                 .ok_or_else(|| ContentError::new(format!("{}.luau: kind {} needs a `pool` (actor, attack or effect)", d.module, d.key)))?;
+            let place = match d.spec.field("place") {
+                Data::Nil => None,
+                _ => Some(functions.id(slot(d, "place")?)),
+            };
             let def = KindDef {
                 key: d.key.clone(),
                 pool,
                 implementation: KindImpl::Script { update: functions.id(slot(d, "update")?) },
                 schema: state_of(d)?,
                 slot: None,
+                place,
             };
             kinds.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
@@ -791,29 +828,30 @@ impl Defs {
             match c.action {
                 DIMMING_CHIP_ACTION => {
                     let f = export(&definitions, module, "dimming_chip", &whose)?;
-                    add_hook(Hook::DimmingChip(c.subtype), f, whose)?;
+                    add_hook(c.action, c.subtype, f, whose)?;
                 }
                 NAVI_CHIP_ACTION => {
                     let f = export(&definitions, module, "navi_chip", &whose)?;
-                    add_hook(Hook::NaviChip(c.subtype), f, whose)?;
+                    add_hook(c.action, c.subtype, f, whose)?;
                 }
                 INSTANT_CHIP_ACTION => {
                     let f = export(&definitions, module, "instant_chip", &whose)?;
-                    add_hook(Hook::InstantChip(c.subtype), f, whose)?;
+                    add_hook(c.action, c.subtype, f, whose)?;
                 }
                 action => add_numbered(action, module, whose)?,
             }
         }
         for w in &content.weapons {
             let whose = format!("weapon routine {:#04x} ({})", w.id, w.name);
-            if let Some(subtype) = w.instant_chip {
-                let f = export(&definitions, &w.script, "instant_chip", &whose)?;
-                add_hook(Hook::InstantChip(subtype), f, whose.clone())?;
-            }
             if let Some(action) = w.action {
                 add_numbered(action, &w.script, whose)?;
             }
         }
+        let mut subtype_table = |action: u8| -> BTreeMap<u8, FnId> {
+            subtype_hooks.iter().filter(|((a, _), _)| *a == action).map(|(&(_, st), (f, _))| (st, functions.id(f.clone()))).collect()
+        };
+        let (dimming_hooks, navi_hooks, instant_hooks) =
+            (subtype_table(DIMMING_CHIP_ACTION), subtype_table(NAVI_CHIP_ACTION), subtype_table(INSTANT_CHIP_ACTION));
         let mut actions = Entries::new(Registry::Action);
         for (&number, (module, whose)) in &numbered {
             let update = export(&definitions, module, "update", whose)?;
@@ -850,6 +888,10 @@ impl Defs {
                 Some(script) => Some(functions.id(export(&definitions, script, "setup", &whose)?)),
                 None => None,
             };
+            let instant = match (&w.script, w.instant_chip) {
+                (Some(script), Some(_)) => Some(functions.id(export(&definitions, script, "instant_chip", &whose)?)),
+                _ => None,
+            };
             let def = WeaponDef {
                 key: key.clone(),
                 name: w.name.clone(),
@@ -857,12 +899,17 @@ impl Defs {
                 number: w.routines.first().copied(),
                 routines: w.routines.clone(),
                 charge_ticks: w.charge_ticks.clone(),
+                instant,
             };
             weapons.add(key.clone(), def, whose);
         }
         for w in content.weapons.iter().filter(|w| !claimed.contains_key(&w.id)) {
             let whose = format!("weapon routine {:#04x} ({})", w.id, w.name);
             let setup = export(&definitions, &w.script, "setup", &whose)?;
+            let instant = match w.instant_chip {
+                Some(_) => Some(functions.id(export(&definitions, &w.script, "instant_chip", &whose)?)),
+                None => None,
+            };
             let def = WeaponDef {
                 key: format!("v1/weapon-{:02x}", w.id),
                 name: w.name.clone(),
@@ -870,6 +917,7 @@ impl Defs {
                 routines: vec![w.id],
                 number: Some(w.id),
                 charge_ticks: Vec::new(),
+                instant,
             };
             weapons.add(def.key.clone(), def, whose);
         }
@@ -892,6 +940,7 @@ impl Defs {
                     routines: vec![n],
                     number: Some(n),
                     charge_ticks: legacy.routine_charges.get(&n).cloned().unwrap_or_default(),
+                    instant: None,
                 };
                 weapons.add(def.key.clone(), def, "a weapon routine number".into());
             }
@@ -923,7 +972,7 @@ impl Defs {
             let setup = Some(functions.id(slot(d, "setup")?));
             let routines = weapon_routines(d)?;
             let number = routines.first().copied();
-            let def = WeaponDef { key: d.key.clone(), name, setup, routines, number, charge_ticks };
+            let def = WeaponDef { key: d.key.clone(), name, setup, routines, number, charge_ticks, instant: None };
             weapons.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
         let weapons: Vec<WeaponDef> = weapons.sorted()?.into_iter().map(|(_, w)| w).collect();
@@ -944,7 +993,21 @@ impl Defs {
                 Some(k) => (k.to_string(), "the pack's chip, defined by number".to_string()),
                 None => (format!("v1/chip-{n:03x}"), "the pack's chip record".to_string()),
             };
-            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage: None }, whose);
+            // Registration by number: the record's action, or for the
+            // ruleset's generic chip actions its subtype's registration.
+            let by_subtype = |table: &BTreeMap<u8, FnId>, f: fn(FnId) -> ChipUsage, unported: fn(u8) -> Unported| {
+                table.get(&c.subtype).map_or(ChipUsage::Unported(unported(c.subtype)), |&h| f(h))
+            };
+            let usage = match c.action {
+                DIMMING_CHIP_ACTION => by_subtype(&dimming_hooks, ChipUsage::Dimming, Unported::Dimming),
+                NAVI_CHIP_ACTION => by_subtype(&navi_hooks, ChipUsage::Navi, Unported::Navi),
+                INSTANT_CHIP_ACTION => by_subtype(&instant_hooks, ChipUsage::Instant, Unported::Instant),
+                n => match actions.iter().position(|a| a.number == Some(n)) {
+                    Some(i) => ChipUsage::Action(ActionHandle(i as u16)),
+                    None => ChipUsage::Unported(Unported::Action(n)),
+                },
+            };
+            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage }, whose);
         }
         for d in definitions.of(Registry::Chip) {
             if legacy.chips.contains_key(&d.key) {
@@ -972,7 +1035,7 @@ impl Defs {
                 )));
             };
             let record = chip_record(d, &resolver)?;
-            chips.add(d.key.clone(), ChipDef { key: d.key.clone(), record, usage: Some(usage) }, format!("defined in {}.luau", d.module));
+            chips.add(d.key.clone(), ChipDef { key: d.key.clone(), record, usage }, format!("defined in {}.luau", d.module));
         }
         let chips: Vec<ChipDef> = chips.sorted()?.into_iter().map(|(_, c)| c).collect();
 
@@ -1067,40 +1130,7 @@ impl Defs {
         // The roles.
         let mut roles = Roles::default();
         if let [d] = definitions.of(Registry::Roles) {
-            let what = |e: String| ContentError::new(format!("{}.luau: roles: {e}", d.module));
-            let Data::Map(groups) = &d.spec else { return Err(what("a table of role groups".into())) };
-            for (group, entries) in groups {
-                if group.to_string() == "hooks" {
-                    let Data::Map(entries) = entries else { return Err(what("`hooks` is a table".into())) };
-                    for (name, v) in entries {
-                        let name = name.to_string();
-                        let slot = roles.hooks.slot(&name).ok_or_else(|| {
-                            what(format!("the ruleset has no role hooks.{name} (it has {})", RoleHooks::NAMES.join(", ")))
-                        })?;
-                        if !matches!(v, Data::Function) {
-                            return Err(what(format!("hooks.{name} is not a function")));
-                        }
-                        *slot = Some(functions.id(FnSource::slot(Registry::Roles, &d.key, &format!("hooks.{name}"))));
-                    }
-                    continue;
-                }
-                if group.to_string() != "actions" {
-                    return Err(what(format!("the ruleset has no role group `{group}`")));
-                }
-                let Data::Map(entries) = entries else { return Err(what("`actions` is a table".into())) };
-                for (name, v) in entries {
-                    let name = name.to_string();
-                    let slot = roles.actions.slot(&name).ok_or_else(|| {
-                        what(format!("the ruleset has no role actions.{name} (it has {})", RoleActions::NAMES.join(", ")))
-                    })?;
-                    let Data::Ref(Registry::Action, key) = v else {
-                        return Err(what(format!("actions.{name} is not an action")));
-                    };
-                    *slot = Some(ActionHandle(
-                        actions.binary_search_by(|a| a.key.as_str().cmp(key)).expect("a defined action") as u16,
-                    ));
-                }
-            }
+            roles = read_roles(d, &actions, &kinds, &mut functions)?;
         }
 
         let records: Vec<RecordDef> = definitions
@@ -1168,7 +1198,6 @@ impl Defs {
             collision_base,
             schemas,
             functions: Vec::new(),
-            hooks: BTreeMap::new(),
         };
         for (i, k) in kinds.iter().enumerate() {
             if let Some((pool, index)) = k.slot {
@@ -1205,9 +1234,7 @@ impl Defs {
         }
         for (i, c) in defs.chips.iter().enumerate() {
             defs.chip_keys.insert(c.key.clone(), ChipHandle(i as u16));
-            if c.usage.is_none()
-                && let Some(id) = c.record.id
-            {
+            if let Some(id) = c.record.id {
                 defs.chip_numbers.insert(id, ChipHandle(i as u16));
             }
         }
@@ -1225,7 +1252,6 @@ impl Defs {
                 defs.stage_numbers[n as usize] = Some(StageHandle(i as u16));
             }
         }
-        defs.hooks = hooks.into_iter().map(|(hook, (f, _))| (hook, functions.id(f))).collect();
         defs.functions = functions.list;
         Ok(defs)
     }

@@ -7,6 +7,7 @@
 # and here; remove the entry once the name is settled.
 
 ["actions.toml"]
+"engine/cross-special" = "0x59: the Cross special's controller (the ruleset's cross_special)"
 "megaman/turn" = "0x3B: the turn the ruleset starts on TURN_L/TURN_R (idle.rs)"
 
 ["assets.toml"]

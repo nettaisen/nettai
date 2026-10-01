@@ -12,8 +12,6 @@ use crate::kinds::common;
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Vec3, flags, state};
 
-pub const INDEX: u8 = 0x56;
-
 /// Overlay-private state (the spawn parameters, and ExtraVars[0]).
 #[derive(Clone, Copy, Debug, Default, Hash)]
 pub struct Vars {

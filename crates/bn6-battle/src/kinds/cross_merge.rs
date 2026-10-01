@@ -13,8 +13,6 @@ use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
 use crate::setup::Navi;
 
-pub const INDEX: u8 = 0x1B;
-
 /// The image's own state.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
