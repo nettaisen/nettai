@@ -1,3 +1,0 @@
-# A dimming chip (subtype 0): its dimming controller is AreaGrab's.
-
-script = "../../objects/area-grab/area_grab.luau"

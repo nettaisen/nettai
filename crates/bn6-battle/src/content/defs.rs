@@ -84,14 +84,16 @@ pub struct WeaponDef {
     /// `setup(navi) -> action`; none for a routine number nothing
     /// implements yet.
     pub setup: Option<FnId>,
-    /// The weapon routine number registration by number gives it (a
-    /// `weapon.toml`'s, or the number of a routine nothing implements): the
-    /// ruleset's numeric logic asks it until phase C. A weapon content
-    /// defines has none.
+    /// The weapon routine numbers that name it: the routines a weapon
+    /// content defines takes with its transitional `legacy = { routines }`
+    /// marker (the pack's forms and the ruleset still name weapons by
+    /// number; a weapon's alias routines with the same charge times are one
+    /// weapon), the test content's `WeaponData`, or the number of a routine
+    /// nothing implements. Registration by number finds it by any of them.
+    pub routines: Vec<u8>,
+    /// Its first routine number: what the ruleset's numeric logic asks
+    /// until phase C (none for a weapon content defines without routines).
     pub number: Option<u8>,
-    /// Every routine number it is (the first is `number`): a weapon
-    /// registration by number gives several routines that are one weapon.
-    pub numbers: Vec<u8>,
     /// Ticks to a full charge by Charge stat, for a weapon content defines
     /// (the pack's routines' are the charge table's, by number).
     pub charge_ticks: Vec<u16>,
@@ -178,17 +180,22 @@ pub struct RoleActions {
     pub anti_sword_counter: Option<ActionHandle>,
     /// BodyGrd's counter.
     pub body_guard_counter: Option<ActionHandle>,
+    /// The charged shot a navi's request starts from idle without its
+    /// weapon's setup (`sub_8010312`'s request 0x20; the original's action
+    /// 0x16, MegaMan's charged shot).
+    pub forced_charged_shot: Option<ActionHandle>,
 }
 
 impl RoleActions {
     /// The roles by name, as `rules/roles.luau` names them.
-    const NAMES: [&str; 3] = ["anti_damage_counter", "anti_sword_counter", "body_guard_counter"];
+    const NAMES: [&str; 4] = ["anti_damage_counter", "anti_sword_counter", "body_guard_counter", "forced_charged_shot"];
 
     fn slot(&mut self, name: &str) -> Option<&mut Option<ActionHandle>> {
         match name {
             "anti_damage_counter" => Some(&mut self.anti_damage_counter),
             "anti_sword_counter" => Some(&mut self.anti_sword_counter),
             "body_guard_counter" => Some(&mut self.body_guard_counter),
+            "forced_charged_shot" => Some(&mut self.forced_charged_shot),
             _ => None,
         }
     }
@@ -534,6 +541,12 @@ fn export(definitions: &Definitions, module: &str, name: &str, whose: &str) -> R
 /// chips' substitutes by definition come with the v2 API (a chip still read
 /// by number gives them in its legacy marker); a definition that gives one
 /// is refused.
+///
+/// The transitional `legacy = { subtype, params }` marker gives the record
+/// the original's subtype and parameter bytes, for what still reads them
+/// of a chip besides its own action (SlashCross's charged slash reads a
+/// sword's); a chip whose behaviour is still a v1 module gives its number,
+/// action and module there too (`content::legacy` reads those).
 pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result<ChipData, ContentError> {
     use serde_json::{Map, Value as Json};
     let what = |e: String| ContentError::new(format!("{}.luau: chip {}: {e}", d.module, d.key));
@@ -581,11 +594,64 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
     if o["program_advance"].is_null() {
         o.insert("program_advance".into(), Json::Array(Vec::new()));
     }
-    for (field, v) in [("action", 0), ("subtype", 0)] {
-        o.insert(field.into(), v.into());
-    }
-    o.insert("params".into(), Json::Array(vec![0.into(); 4]));
+    let (subtype, params) = legacy_bytes(spec).map_err(what)?;
+    o.insert("action".into(), 0.into());
+    o.insert("subtype".into(), subtype.into());
+    o.insert("params".into(), Json::Array(params.iter().map(|&p| p.into()).collect()));
     serde_json::from_value(Json::Object(o)).map_err(|e| what(e.to_string()))
+}
+
+/// A weapon definition's `legacy = { routines = { ... } }` marker: the
+/// routine numbers it takes (none without one).
+fn weapon_routines(d: &Definition) -> Result<Vec<u8>, ContentError> {
+    let what = |e: String| ContentError::new(format!("{}.luau: weapon {}: {e}", d.module, d.key));
+    let legacy = d.spec.field("legacy");
+    match legacy {
+        Data::Nil => return Ok(Vec::new()),
+        Data::Map(_) => {}
+        other => return Err(what(format!("`legacy` is {other:?}, not a table"))),
+    }
+    match legacy.field("routines") {
+        Data::List(items) if !items.is_empty() => items
+            .iter()
+            .map(|r| match r {
+                Data::Int(i) if (0..0xFF).contains(i) => Ok(*i as u8),
+                other => Err(what(format!("`legacy.routines` holds {other:?}, not a routine number below 0xFF"))),
+            })
+            .collect(),
+        other => Err(what(format!("`legacy.routines` is {other:?}, not a list of routine numbers"))),
+    }
+}
+
+/// A chip definition's `legacy` marker: the subtype and parameter bytes
+/// (none: 0).
+fn legacy_bytes(spec: &Data) -> Result<(u8, [u8; 4]), String> {
+    let legacy = spec.field("legacy");
+    match legacy {
+        Data::Nil => return Ok((0, [0; 4])),
+        Data::Map(_) => {}
+        Data::List(l) if l.is_empty() => return Ok((0, [0; 4])),
+        other => return Err(format!("`legacy` is {other:?}, not a table")),
+    }
+    let byte = |d: &Data, what: &str| match d {
+        Data::Int(i) if (0..=0xFF).contains(i) => Ok(*i as u8),
+        other => Err(format!("`legacy.{what}` holds {other:?}, not a byte")),
+    };
+    let subtype = match legacy.field("subtype") {
+        Data::Nil => 0,
+        d => byte(d, "subtype")?,
+    };
+    let mut params = [0; 4];
+    match legacy.field("params") {
+        Data::Nil => {}
+        Data::List(items) if items.len() <= 4 => {
+            for (p, item) in params.iter_mut().zip(items) {
+                *p = byte(item, "params")?;
+            }
+        }
+        other => return Err(format!("`legacy.params` is {other:?}, not up to four bytes")),
+    }
+    Ok((subtype, params))
 }
 
 impl Defs {
@@ -763,7 +829,7 @@ impl Defs {
                 name: w.name.clone(),
                 setup,
                 number: w.routines.first().copied(),
-                numbers: w.routines.clone(),
+                routines: w.routines.clone(),
                 charge_ticks: w.charge_ticks.clone(),
             };
             weapons.add(key.clone(), def, whose);
@@ -775,20 +841,30 @@ impl Defs {
                 key: format!("v1/weapon-{:02x}", w.id),
                 name: w.name.clone(),
                 setup: Some(functions.id(setup)),
+                routines: vec![w.id],
                 number: Some(w.id),
-                numbers: vec![w.id],
                 charge_ticks: Vec::new(),
             };
             weapons.add(def.key.clone(), def, whose);
         }
+        // The routines the other definitions take (their `legacy` markers).
+        let mut defined_routines = Vec::new();
+        for d in definitions.of(Registry::Weapon) {
+            if !legacy.weapons.contains_key(&d.key) {
+                defined_routines.extend(weapon_routines(d)?);
+            }
+        }
+        // Every other routine number a navi's stats may name: a weapon
+        // nothing implements yet (using it is the ruleset's error), with the
+        // charge times the content gives its routine.
         for n in 0..=0xFEu8 {
-            if !claimed.contains_key(&n) && !content.weapons.iter().any(|w| w.id == n) {
+            if !claimed.contains_key(&n) && !content.weapons.iter().any(|w| w.id == n) && !defined_routines.contains(&n) {
                 let def = WeaponDef {
                     key: format!("v1/weapon-{n:02x}"),
                     name: String::new(),
                     setup: None,
+                    routines: vec![n],
                     number: Some(n),
-                    numbers: vec![n],
                     charge_ticks: legacy.routine_charges.get(&n).cloned().unwrap_or_default(),
                 };
                 weapons.add(def.key.clone(), def, "a weapon routine number".into());
@@ -819,7 +895,9 @@ impl Defs {
                 }
             };
             let setup = Some(functions.id(slot(d, "setup")?));
-            let def = WeaponDef { key: d.key.clone(), name, setup, number: None, numbers: Vec::new(), charge_ticks };
+            let routines = weapon_routines(d)?;
+            let number = routines.first().copied();
+            let def = WeaponDef { key: d.key.clone(), name, setup, routines, number, charge_ticks };
             weapons.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
         let weapons: Vec<WeaponDef> = weapons.sorted()?.into_iter().map(|(_, w)| w).collect();
@@ -1074,7 +1152,7 @@ impl Defs {
         }
         for (i, w) in defs.weapons.iter().enumerate() {
             defs.weapon_keys.insert(w.key.clone(), WeaponHandle(i as u16));
-            for &id in &w.numbers {
+            for &id in &w.routines {
                 if let Some(other) = defs.weapon_ids[id as usize] {
                     return Err(ContentError::new(format!(
                         "weapons {} and {} both are routine {id:#04x}",

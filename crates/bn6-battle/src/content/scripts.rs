@@ -2,7 +2,7 @@
 //!
 //! A pack's Luau modules live next to the data they implement
 //! (`objects/sun-beam/sun_beam.luau`, `chips/00f-gundels1/chip.luau`,
-//! `navis/00-megaman/weapons/02-blank-shot/blank_shot.luau`, `lib/...`).
+//! `navis/00-megaman/weapons/2a-absorb/absorb.luau`, `lib/...`).
 //! Entities name their script in their data:
 //!
 //! - an object kind's `[kind]` table (`objects/<name>/object.toml`) gives
