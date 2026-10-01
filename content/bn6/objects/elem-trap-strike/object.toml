@@ -1,7 +1,0 @@
-# ElemTrap's counterattack (effect object #0x2B, `sub_80E35A4`) is a
-# script. Its position is its spawner's registers, which nothing reads.
-
-[kind]
-pool = "effect"
-index = 0x2B
-script = "elem_trap_strike.luau"
