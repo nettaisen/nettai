@@ -5,7 +5,8 @@
 -- Letting go of A, or 48 ticks, gives a Sword.
 --
 -- Its record stays the pack's for now (SlashCross's A-charge, weapon 0x11,
--- asks for its action by number): this is its action, which registration
+-- asks for its action by number, and the Beast rush's chain leaves the
+-- variable swords out by theirs): this is its action, which registration
 -- by number runs (chips/053-neovari; docs/design/content-model-v2.md §12).
 
 local crosswrd = require("../crosswrd/chip")
@@ -37,6 +38,7 @@ return {
         sword = sword.action,
         random = 4,
         no_charged = sonicbom.actions.sprsonic,
+        -- The picks' chips, by number until they are definitions (§12).
         legacy = { chips = { 0x176, 0x177, 0x178 }, sword = 0x47 },
     },
 }
