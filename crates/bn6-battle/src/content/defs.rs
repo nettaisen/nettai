@@ -26,7 +26,7 @@
 use std::collections::BTreeMap;
 
 use bn6_content_api::{
-    ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, FnId, FnSource, FormHandle, Hook, KindHandle,
+    ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, FnId, FnSource, FormHandle, KindHandle,
     NaviHandle, Pool, RecordHandle, Registry, Schema, StageHandle, StateId, WeaponHandle,
 };
 
@@ -100,6 +100,9 @@ pub struct WeaponDef {
     /// Ticks to a full charge by Charge stat, for a weapon content defines
     /// (the pack's routines' are the charge table's, by number).
     pub charge_ticks: Vec<u16>,
+    /// The instant effect its action (the instant chips' action) runs: a
+    /// weapon that names one no chip has (TenguCross's wind).
+    pub instant: Option<FnId>,
 }
 
 /// How a chip is used.
@@ -113,6 +116,23 @@ pub enum ChipUsage {
     Navi(FnId),
     /// An instant chip: its effect, `(user, spec)`.
     Instant(FnId),
+    /// A pack record whose action or subtype nothing implements yet: using
+    /// it is "not implemented yet" where the original runs it.
+    Unported(Unported),
+}
+
+/// What a pack record names that nothing implements yet (the numbers are
+/// for the error).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Unported {
+    /// A navi action.
+    Action(u8),
+    /// A dimming chip's controller, by subtype (`off_802CCB4`).
+    Dimming(u8),
+    /// A navi chip's navi, by subtype (`off_802CD5C`).
+    Navi(u8),
+    /// An instant chip's effect, by subtype (`off_80EC3F0`).
+    Instant(u8),
 }
 
 /// A chip: the pack's record (registration by number, keyed `v1/chip-036`)
@@ -123,9 +143,9 @@ pub struct ChipDef {
     /// Its record. A definition's has no `id`: the engine never learns the
     /// original's number for what content defines.
     pub record: ChipData,
-    /// How its definition uses it; none for the pack's records, which are
-    /// used by their action number and subtype.
-    pub usage: Option<ChipUsage>,
+    /// How it is used: a definition's own use, or a pack record's, which
+    /// registration by number resolves from its action and subtype.
+    pub usage: ChipUsage,
 }
 
 /// A navi: the pack's record (keyed `v1/navi-01`).
@@ -222,8 +242,6 @@ pub struct Defs {
     pub schemas: Vec<SchemaDef>,
     /// The functions the runtime binds, by [`FnId`].
     pub functions: Vec<FnSource>,
-    /// Registration by number: hooks by table and number (the bridge).
-    pub hooks: BTreeMap<Hook, FnId>,
     kind_keys: BTreeMap<String, KindHandle>,
     /// The engine's kinds, in [`ENGINE_KINDS`]' order.
     engine: Vec<KindHandle>,
@@ -355,14 +373,6 @@ impl Defs {
         self.weapon_keys.get(key).copied()
     }
 
-    /// The function a hook by number runs: a weapon routine's `setup`, or
-    /// what the pack's data registers for a subtype or an entry type.
-    pub fn hook(&self, hook: Hook) -> Option<FnId> {
-        match hook {
-            Hook::Weapon(n) => self.weapon_numbered(n).and_then(|w| self.weapons[w.index()].setup),
-            _ => self.hooks.get(&hook).copied(),
-        }
-    }
 
     /// A record's handle by key.
     pub fn record(&self, key: &str) -> Option<RecordHandle> {
@@ -804,15 +814,17 @@ impl Defs {
             };
             kinds.add(key.to_string(), def, "the engine's".into());
         }
-        let mut hooks: BTreeMap<Hook, (FnSource, String)> = BTreeMap::new();
-        let mut add_hook = |hook: Hook, f: FnSource, whose: String| -> Result<(), ContentError> {
-            match hooks.get(&hook) {
-                Some((g, first)) if *g != f => {
-                    Err(ContentError::new(format!("{whose} implements {hook} with {f}, but {first} with {g}")))
-                }
+        // Registration by number of the generic chip actions' parts, by
+        // subtype: what each pack record resolves its usage from.
+        let mut subtype_hooks: BTreeMap<(u8, u8), (FnSource, String)> = BTreeMap::new();
+        let mut add_hook = |action: u8, subtype: u8, f: FnSource, whose: String| -> Result<(), ContentError> {
+            match subtype_hooks.get(&(action, subtype)) {
+                Some((g, first)) if *g != f => Err(ContentError::new(format!(
+                    "{whose} implements action {action:#x}'s subtype {subtype} with {f}, but {first} with {g}"
+                ))),
                 Some(_) => Ok(()),
                 None => {
-                    hooks.insert(hook, (f, whose));
+                    subtype_hooks.insert((action, subtype), (f, whose));
                     Ok(())
                 }
             }
@@ -882,29 +894,30 @@ impl Defs {
             match c.action {
                 DIMMING_CHIP_ACTION => {
                     let f = export(&definitions, module, "dimming_chip", &whose)?;
-                    add_hook(Hook::DimmingChip(c.subtype), f, whose)?;
+                    add_hook(c.action, c.subtype, f, whose)?;
                 }
                 NAVI_CHIP_ACTION => {
                     let f = export(&definitions, module, "navi_chip", &whose)?;
-                    add_hook(Hook::NaviChip(c.subtype), f, whose)?;
+                    add_hook(c.action, c.subtype, f, whose)?;
                 }
                 INSTANT_CHIP_ACTION => {
                     let f = export(&definitions, module, "instant_chip", &whose)?;
-                    add_hook(Hook::InstantChip(c.subtype), f, whose)?;
+                    add_hook(c.action, c.subtype, f, whose)?;
                 }
                 action => add_numbered(action, module, whose)?,
             }
         }
         for w in &content.weapons {
             let whose = format!("weapon routine {:#04x} ({})", w.id, w.name);
-            if let Some(subtype) = w.instant_chip {
-                let f = export(&definitions, &w.script, "instant_chip", &whose)?;
-                add_hook(Hook::InstantChip(subtype), f, whose.clone())?;
-            }
             if let Some(action) = w.action {
                 add_numbered(action, &w.script, whose)?;
             }
         }
+        let mut subtype_table = |action: u8| -> BTreeMap<u8, FnId> {
+            subtype_hooks.iter().filter(|((a, _), _)| *a == action).map(|(&(_, st), (f, _))| (st, functions.id(f.clone()))).collect()
+        };
+        let (dimming_hooks, navi_hooks, instant_hooks) =
+            (subtype_table(DIMMING_CHIP_ACTION), subtype_table(NAVI_CHIP_ACTION), subtype_table(INSTANT_CHIP_ACTION));
         let mut actions = Entries::new(Registry::Action);
         for (&number, (module, whose)) in &numbered {
             let update = export(&definitions, module, "update", whose)?;
@@ -928,6 +941,10 @@ impl Defs {
         for w in &content.weapons {
             let whose = format!("weapon routine {:#04x} ({})", w.id, w.name);
             let setup = export(&definitions, &w.script, "setup", &whose)?;
+            let instant = match w.instant_chip {
+                Some(_) => Some(functions.id(export(&definitions, &w.script, "instant_chip", &whose)?)),
+                None => None,
+            };
             let def = WeaponDef {
                 key: format!("v1/weapon-{:02x}", w.id),
                 name: w.name.clone(),
@@ -935,6 +952,7 @@ impl Defs {
                 routines: vec![w.id],
                 number: Some(w.id),
                 charge_ticks: Vec::new(),
+                instant,
             };
             weapons.add(def.key.clone(), def, whose);
         }
@@ -954,6 +972,7 @@ impl Defs {
                     routines: vec![n],
                     number: Some(n),
                     charge_ticks: Vec::new(),
+                    instant: None,
                 };
                 weapons.add(def.key.clone(), def, "a weapon routine number".into());
             }
@@ -982,7 +1001,7 @@ impl Defs {
             let setup = Some(functions.id(slot(d, "setup")?));
             let routines = weapon_routines(d)?;
             let number = routines.first().copied();
-            let def = WeaponDef { key: d.key.clone(), name, setup, routines, number, charge_ticks };
+            let def = WeaponDef { key: d.key.clone(), name, setup, routines, number, charge_ticks, instant: None };
             weapons.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
         let weapons: Vec<WeaponDef> = weapons.sorted()?.into_iter().map(|(_, w)| w).collect();
@@ -994,7 +1013,21 @@ impl Defs {
         let mut chips = Entries::new(Registry::Chip);
         for c in &content.chips {
             let key = format!("v1/chip-{:03x}", c.id.unwrap_or_default());
-            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage: None }, "the pack's chip record".into());
+            // Registration by number: the record's action, or for the
+            // ruleset's generic chip actions its subtype's registration.
+            let by_subtype = |table: &BTreeMap<u8, FnId>, f: fn(FnId) -> ChipUsage, unported: fn(u8) -> Unported| {
+                table.get(&c.subtype).map_or(ChipUsage::Unported(unported(c.subtype)), |&h| f(h))
+            };
+            let usage = match c.action {
+                DIMMING_CHIP_ACTION => by_subtype(&dimming_hooks, ChipUsage::Dimming, Unported::Dimming),
+                NAVI_CHIP_ACTION => by_subtype(&navi_hooks, ChipUsage::Navi, Unported::Navi),
+                INSTANT_CHIP_ACTION => by_subtype(&instant_hooks, ChipUsage::Instant, Unported::Instant),
+                n => match actions.iter().position(|a| a.number == Some(n)) {
+                    Some(i) => ChipUsage::Action(ActionHandle(i as u16)),
+                    None => ChipUsage::Unported(Unported::Action(n)),
+                },
+            };
+            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage }, "the pack's chip record".into());
         }
         for d in definitions.of(Registry::Chip) {
             let mut usages = Vec::new();
@@ -1019,7 +1052,7 @@ impl Defs {
                 )));
             };
             let record = chip_record(d)?;
-            chips.add(d.key.clone(), ChipDef { key: d.key.clone(), record, usage: Some(usage) }, format!("defined in {}.luau", d.module));
+            chips.add(d.key.clone(), ChipDef { key: d.key.clone(), record, usage }, format!("defined in {}.luau", d.module));
         }
         let chips: Vec<ChipDef> = chips.sorted()?.into_iter().map(|(_, c)| c).collect();
 
@@ -1174,7 +1207,6 @@ impl Defs {
             collision_base,
             schemas,
             functions: Vec::new(),
-            hooks: BTreeMap::new(),
         };
         for (i, k) in kinds.iter().enumerate() {
             if let Some((pool, index)) = k.slot {
@@ -1211,9 +1243,7 @@ impl Defs {
         }
         for (i, c) in defs.chips.iter().enumerate() {
             defs.chip_keys.insert(c.key.clone(), ChipHandle(i as u16));
-            if c.usage.is_none()
-                && let Some(id) = c.record.id
-            {
+            if let Some(id) = c.record.id {
                 defs.chip_numbers.insert(id, ChipHandle(i as u16));
             }
         }
@@ -1229,7 +1259,6 @@ impl Defs {
         for (i, st) in defs.stages.iter().enumerate() {
             defs.stage_numbers[st.number as usize] = Some(StageHandle(i as u16));
         }
-        defs.hooks = hooks.into_iter().map(|(hook, (f, _))| (hook, functions.id(f))).collect();
         defs.functions = functions.list;
         Ok(defs)
     }

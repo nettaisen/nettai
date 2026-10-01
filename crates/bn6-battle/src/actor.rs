@@ -167,6 +167,9 @@ pub struct AttackVars {
     pub content_action: Option<bn6_content_api::ActionHandle>,
     /// The running action's own state (timers, destinations).
     pub action: crate::kinds::player::actions::ActionVars,
+    /// The effect the instant chips' action runs (`off_80EC3F0[subtype]`):
+    /// the chip's, or a weapon's that names one (TenguCross's wind).
+    pub instant: Option<crate::kinds::player::actions::instant::Effect>,
     /// +0x1E..+0x27: the Beast Out rush around the action, when
     /// `beast_lockon` is 1.
     pub rush: crate::kinds::player::actions::beast_rush::Vars,
