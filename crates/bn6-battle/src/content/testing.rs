@@ -1043,7 +1043,7 @@ pub fn scripts() -> Scripts {
                 ("chips/elemswrd/chip", "chips/elemswrd/chip"),
                 ("chips/assnswrd/chip", "chips/assnswrd/chip"),
                 // Invisibl's hook, which the veil composes.
-                ("objects/invisible/invisible", "objects/invisible/invisible"),
+                ("chips/invisibl/controller", "chips/invisibl/controller"),
                 ("chips/invisibl/chip", "chips/invisibl/chip"),
                 ("chips/whicapsl-invisible/chip", "chips/whicapsl-invisible/chip"),
                 // The field objects (content model v2): the rock with its
