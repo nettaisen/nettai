@@ -6,6 +6,7 @@ local antiswrd_counter = require("../chips/antiswrd/counter")
 local barriers = require("../lib/barriers/barriers")
 local bodygrd_counter = require("../chips/bodygrd/counter")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
+local encased_bubble = require("../objects/encased-bubble/bubble")
 
 return define.roles {
     actions = {
@@ -25,5 +26,8 @@ return define.roles {
         first_barrier = function(navi: Object)
             barriers.raise(navi, barriers.barrier_10, true)
         end,
+        -- What an obstacle encased in ice or a bubble becomes
+        -- (`sub_801813A`'s end).
+        encased = encased_bubble.replace,
     },
 }
