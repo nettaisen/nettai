@@ -898,15 +898,16 @@ user, the user's alliance/flip halfword, the damage word, ExtraVars+0 = r7 and `
 - 8 (`sub_80D73AC`): X += Xvel; panels and collision panels from the coordinates; X's pixels + 150 past 300
   (unsigned) → region 0, state destroy (word).
 
-**Lab**: 20 scenarios. The balls hit in 18; `miss`'s roll off. Beast
+**Lab**: 22 scenarios. The balls hit in 20; `miss`'s roll off. Beast
 and Cross scenarios use the index − 0x18 attachment. `counter-cut-in` reaches the navi telop's cut-in branch.
-**Unverified**: a non-player user, a record index 1..0x18, the user deleted before the effect, no player
-for formula 21.
+`link-navi` (HeatMan uses it) reaches a record index 1..0x18: no arm, and nothing to restart with each ball.
+`hp-digits` (a base HP of 137) is the one whose formula gives more than 0: 37 a ball. **Unverified**: a
+non-player user, the user deleted before the effect, no player for formula 21.
 
 **Ported**: chips/numbrbl (`numbrbl/controller` with the navi chip phases, `numbrbl/numberman` on
 lib/dimming/stand_in, `numbrbl/ball`); the record stays (formula 21) and chips/08a-numbrbl registers its hook by
 number. The arm's record index comes from the user's NameID: MegaMan's (0x1A0) is 0 and his forms' (0x1AB + form)
-0x18 + form, so the arm's animation is the form; other navis' (1 to 11) get none. Lab: 20/20.
+0x18 + form, so the arm's animation is the form; other navis' (1 to 11) get none. Lab: 22/22.
 
 ## 16. Subtype 29: CornFsta (T4#0x68, T1#0x1E, T3#0xAA, T3#0x10)
 
@@ -992,15 +993,19 @@ damage word, the spawner's alliance/flip halfword, RelatedObject1 = the spawner)
   walks the whole object list) gets a burst with Params Param1 + 1 (so a CornFsta burst's 0xFF would give
   0x100: Param1 0, Param2 1).
 
-**Lab**: the three CornFsta recipes: the corn steps once and bursts, then fifteen bursts by both panel
-choices, grass on each solid panel. CornFsta's bursts (Param1 0xFF) make no spread list. **Unverified**: the
-corn touching a body, the corn leaving the field, the battle ending, no panel for a burst, the ring's
-effect, a non-solid burst panel, the moving burst and the spread (Param1 0 or 1..0xFE), a failed spawn.
+**Lab**: 8 scenarios. The three recipes: the corn steps once and bursts, then fifteen bursts by both panel
+choices (the ring keeping panels out of the second), grass on each solid panel. CornFsta's bursts (Param1
+0xFF) make no spread list. `adjacent`: the corn touches the body in front and bursts there without a step.
+`off-field`: from column 5, after two AreaGrabs, it steps off the field and nothing bursts. `far`: no body
+is near, so the first choice finds none and every burst is a free panel's. `deleted`: the first burst deletes
+an opponent of 40 HP, and the corn and its bursts end with the battle. `stage-holes`: bursts on missing
+panels leave them. **Unverified**: no panel for a burst, the free panels all in the ring, a failed spawn.
+(The moving burst and the spread, Param1 0 or 1..0xFE, are CornSht's: shot-chips.md §9.1.)
 
 **Ported**: chips/cornfsta (`cornfsta/controller`, `cornfsta/farmer` on lib/dimming/stand_in with the
 user's NameID, `cornfsta/sower` for T3#0xAA); the bursts are CornSht's corns (chips/cornsht/corn, generation
 0xFF) and the farmer holds CornSht's gun. The record stays (a Program Advance) and chips/14c-cornfsta registers its
-hook by number. Lab: 3/3.
+hook by number. Lab: 8/8.
 
 ## 17. Subtype 30: DblHero (T4#0x6A, T1#0x1F)
 
@@ -1075,15 +1080,20 @@ ProtoMan (Param1 1):
 - 0xC (`sub_80BD1DA`): first tick CurAnim 4, the attachment ends, Timer 4; negative (5 ticks) → VISIBLE off,
   state destroy (word). (Its navi parts, added for NameID 0x1AB's record, aren't taken off.)
 
-**Lab**: `pa/0x158-dblhero/recipe1` reaches all of the above but the failed spawns, ProtoMan on a non-solid
-panel (action 0xC first, MegaMan's early end) and a field with no enemy panel. **Unverified**: those.
+**Lab**: 6 scenarios. `pa/0x158-dblhero/recipe1` reaches all of the above but the failed spawns, ProtoMan on
+a non-solid panel and a field with no enemy panel; its shots start three panels from the far edge (region
+6). `on-hole` (AirShoes, over a missing panel): ProtoMan leaves at once (action 0xC first) and MegaMan ends
+without a volley. `own-grab-twice`, `own-grab`, `grabbed` and `grabbed-twice` (AreaGrabs by the user or
+the opponent first) start the shots one, two, four and five panels from the far edge (regions 1, 2, 7 and
+0x20). **Unverified**: the failed spawns, a field with no enemy panel, a row with no panel of another side
+ahead (distance 0: no region). (Six and seven panels can't be: the walk starts in front of the user.)
 
 **Ported**: chips/dblhero (`dblhero/controller`, `dblhero/heroes`); the record stays (a Program
 Advance) and chips/158-dblhero registers its hook by number. `sub_80EB572`'s second argument (1) is the
 attachment's third byte, animating while dimmed, not its animation: the arm's animation is the side's form, as
 the buster's (lib/buster `attach_arm`, by the user's actor data, which MegaMan's copy shares; a player's second
 actor would clear the user's overlay slot). A field with no panel of the other side's makes the flash divide by
-zero: an error. Lab: 1/1.
+zero: an error. Lab: 6/6.
 
 ## 18. Subtype 32: MetrKnuk (T4#0x76, T3#0xB4)
 
