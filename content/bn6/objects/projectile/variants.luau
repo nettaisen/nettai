@@ -73,7 +73,7 @@ local ROWS: { [number]: ProjectileVariant } = {
     [0x0D] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("grass") },
     [0x0E] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("ice") },
     [0x0F] = v { collision = SHOT, hit_mod = 1, element = "null", spark = sparks.plain },
-    [0x10] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.bubble },
+    [0x10] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.erase },
     [0x11] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = 0x10 },
     [0x12] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x20 },
     [0x13] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x10 },

@@ -9,6 +9,7 @@
 use crate::battle::{Battle, TickEvents, mode};
 use crate::behavior::Behaviors;
 use crate::content::{ChipCode, ChipId, Content, testing};
+use bn6_content_api::ChipHandle;
 use crate::custom::screen::{OK_SLOT, Phase, SlotKind, SlotState};
 use crate::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
 use crate::input::{PlayerTick, keys};
@@ -82,11 +83,27 @@ pub fn setup() -> RoundSetup {
 /// The same round with both folders holding `chips` (in turn, all code
 /// A) instead.
 pub fn setup_with(chips: &[ChipId]) -> RoundSetup {
+    let content = testing::content();
+    let handles: Vec<ChipHandle> = chips.iter().map(|&id| testing::chip_in(&content, id)).collect();
+    setup_with_handles(&handles)
+}
+
+/// The same round with both folders holding `chips` by handle (in turn),
+/// so they may be chips content defines: each in code A if it comes in
+/// it (the test content's numbered chips all do), else `*`, else its
+/// first code.
+pub fn setup_with_handles(chips: &[ChipHandle]) -> RoundSetup {
     let mut s = setup();
     let content = testing::content();
     let mut folder = BattleFolder::empty();
-    for (slot, &id) in folder.chips.iter_mut().zip(chips.iter().cycle()) {
-        *slot = Some(FolderChip::new(testing::chip_in(&content, id), ChipCode(0)));
+    for (slot, &h) in folder.chips.iter_mut().zip(chips.iter().cycle()) {
+        let codes = &content.chip(h).codes;
+        let code = [ChipCode(0), ChipCode::ASTERISK]
+            .into_iter()
+            .find(|c| codes.contains(c))
+            .or_else(|| codes.first().copied())
+            .unwrap_or_else(|| panic!("chip {h:?} comes in no code"));
+        *slot = Some(FolderChip::new(h, code));
     }
     for p in &mut s.players {
         p.folder = Some(folder);
