@@ -23,6 +23,10 @@ regions.line = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 } } }
 -- The anchor and its four diagonals (region 0x0B: CrosSwrd).
 regions.x = define.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } } }
 
+-- The anchor and the two panels diagonally ahead (region 0x0D: a bullet's
+-- burst).
+regions.fork = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 } } }
+
 -- The anchor's column and the one ahead (region 0x11: LifeSrd).
 regions.wide_long = define.region {
     panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { 1, -1 }, { 1, 1 } },
@@ -119,8 +123,6 @@ regions.region_09 = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 
 regions.region_0a = define.region { panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
 -- Region 0x0C.
 regions.region_0c = define.region { panels = { { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } } }
--- Region 0x0D.
-regions.region_0d = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 } } }
 -- Region 0x0E.
 regions.region_0e = define.region { panels = { { 1, -1 }, { 1, 1 } } }
 -- Region 0x12.

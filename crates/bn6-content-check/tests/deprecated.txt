@@ -1,8 +1,12 @@
 # Deprecated numeric API uses allowed per module (crates/bn6-content-check/tests/ratchet.rs).
 # Only ever lowered: BN6_RATCHET_LOWER=1 cargo test -p bn6-content-check --test ratchet
+chips/001-cannon/chip.luau 1
+chips/005-vulcan1/chip.luau 1
+chips/009-spreadr1/chip.luau 1
 chips/00f-gundels1/chip.luau 3
 chips/013-yoyo/chip.luau 5
 chips/014-firebrn1/chip.luau 7
+chips/017-widesht/chip.luau 1
 chips/018-trnarrw1/chip.luau 3
 chips/01b-bblstar1/chip.luau 6
 chips/01e-thunder/chip.luau 4
@@ -14,7 +18,7 @@ chips/02e-heatdrgn/chip.luau 1
 chips/032-airhocky/chip.luau 4
 chips/033-drilarm/chip.luau 6
 chips/034-tornado/chip.luau 6
-chips/036-minibomb/chip.luau 3
+chips/036-minibomb/chip.luau 2
 chips/03d-aquandl1/chip.luau 4
 chips/047-sword/chip.luau 3
 chips/050-windrack/chip.luau 3
@@ -25,12 +29,13 @@ chips/05c-wavearm1/chip.luau 6
 chips/05f-aurahed1/chip.luau 9
 chips/07b-ironshl1/chip.luau 4
 chips/07e-airspin1/chip.luau 6
-chips/083-rflectr1/chip.luau 9
+chips/083-rflectr1/chip.luau 8
 chips/09a-recov10/chip.luau 1
 chips/0b7-magcoil/chip.luau 5
 chips/0be-copydmg/chip.luau 5
 chips/11d-synctrgr/chip.luau 1
 chips/152-h-burst/chip.luau 5
+chips/173-sonicbom/chip.luau 1
 chips/191-delecswd/elec_sword.luau 2
 chips/192-rslash/rolling_slash.luau 9
 chips/193-edeletbm/erase_delete.luau 1
@@ -39,7 +44,6 @@ chips/197-ftornado/tengu_tornado.luau 2
 chips/199-dustbrk/dust_break.luau 2
 chips/airhocky/chip.luau 1
 chips/airraid/chips.luau 3
-chips/airshot/chip.luau 1
 chips/airspin/chips.luau 3
 chips/antidmg/chip.luau 1
 chips/antinavi/chip.luau 1
@@ -55,7 +59,6 @@ chips/aurahed/chips.luau 3
 chips/bambswrd/record.luau 1
 chips/bass/chip.luau 1
 chips/bassanly/chip.luau 1
-chips/batcan/chips.luau 4
 chips/bblstar/chips.luau 3
 chips/beastout-dimming-1/chip.luau 1
 chips/beastout-dimming-2/chip.luau 1
@@ -69,7 +72,7 @@ chips/bodygrd/chip.luau 1
 chips/boomer/chips.luau 3
 chips/boomrarm/chip.luau 1
 chips/bugrswrd/chip.luau 1
-chips/cannon/chips.luau 3
+chips/cannon/records.luau 3
 chips/chrgeman/chips.luau 3
 chips/colarmy/chip.luau 1
 chips/colforce/chip.luau 1
@@ -77,7 +80,7 @@ chips/colonel/chips.luau 3
 chips/colorpt/chip.luau 1
 chips/copydmg/chip.luau 1
 chips/cornfsta/chip.luau 1
-chips/cornsht/chips.luau 3
+chips/cornsht/records.luau 3
 chips/crakshot/chips.luau 3
 chips/crcusman/chips.luau 3
 chips/crosover/chip.luau 1
@@ -118,7 +121,7 @@ chips/fstgauge/chip.luau 1
 chips/ftrsword/chip.luau 1
 chips/fullcust/chip.luau 1
 chips/geddon/chip.luau 1
-chips/gigacan/chips.luau 3
+chips/gigacan/records.luau 3
 chips/golmhit/chips.luau 3
 chips/greatyo/chip.luau 1
 chips/gregar/chip.luau 1
@@ -141,10 +144,9 @@ chips/justcone/chip.luau 1
 chips/lance/chip.luau 1
 chips/lifesrd/record.luau 1
 chips/lifesync/chip.luau 1
-chips/lilbolr/chips.luau 3
+chips/lilbolr/boiler.luau 2
 chips/longblde/record.luau 1
 chips/longswrd/record.luau 1
-chips/machgun/chips.luau 3
 chips/magcoil/chip.luau 1
 chips/magpanl/chip.luau 1
 chips/megabstr/chip.luau 1
@@ -184,7 +186,7 @@ chips/slogauge/chip.luau 1
 chips/snake/chip.luau 1
 chips/sonicbom/chip.luau 1
 chips/spoutman/chips.luau 3
-chips/spreadr/chips.luau 3
+chips/spreadr/records.luau 3
 chips/sprsonic/chip.luau 1
 chips/static/chip.luau 1
 chips/stepswrd/chip.luau 1
@@ -192,11 +194,9 @@ chips/streamhd/chip.luau 1
 chips/sumnblk/chips.luau 3
 chips/sunmoon/chip.luau 1
 chips/suprspr/chip.luau 1
-chips/suprvulc/chip.luau 1
 chips/sword/record.luau 1
 chips/synctrgr/chip.luau 1
 chips/tango/chip.luau 1
-chips/tankcan/chips.luau 3
 chips/tenguman/chips.luau 3
 chips/thunder/chip.luau 1
 chips/timebom/chips.luau 4
@@ -205,10 +205,9 @@ chips/tornado/chip.luau 1
 chips/trnarrw/chips.luau 3
 chips/twinldrs/chip.luau 1
 chips/uninstll/chip.luau 1
-chips/v1.luau 52
+chips/v1.luau 71
 chips/varswrd/chip.luau 1
-chips/vdoll/chip.luau 1
-chips/vulcan/chips.luau 3
+chips/vdoll/doll.luau 2
 chips/wavearm/chips.luau 3
 chips/whicapsl-invisible/chip.luau 1
 chips/whicapsl/chip.luau 1
@@ -426,7 +425,7 @@ objects/fire-hit/fire_hit.luau 3
 objects/flame-hook-fire/flame_hook_fire.luau 14
 objects/flame-hook/flame_hook.luau 5
 objects/flame/flame.luau 17
-objects/flying-shot/flying_shot.luau 11
+objects/flying-shot/flying_shot.luau 1
 objects/flying-shot/rows.luau 1
 objects/follow-effect/follow_effect.luau 10
 objects/gauge-speed/gauge_speed.luau 4
@@ -458,7 +457,6 @@ objects/navi-effect/navi_effect.luau 8
 objects/needle-volley/needle_volley.luau 6
 objects/panel-bursts/panel_bursts.luau 11
 objects/panel-strike/panel_strike.luau 7
-objects/projectile/projectile.luau 7
 objects/projectile/rows.luau 1
 objects/proto-man/proto_man.luau 8
 objects/reflected-shot/reflected_shot.luau 2

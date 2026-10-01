@@ -84,6 +84,35 @@ collision.neutral_object = define.collision {
 -- neutral objects (row 0x0F: what a BlkBomb reacts to).
 collision.everything = define.collision { id = "everything", side0 = 0xff800002, side1 = 0xff800002, row_offset = 0x78 }
 
+-- A breaking attack (row 0x06: a shot that breaks guards; the break
+-- family's shots, a thrown obstacle).
+collision.breaking = define.collision { id = "breaking", side0 = 0x80000082, side1 = 0x40000082, row_offset = 0x30 }
+
+-- An attack of row 0x08 (a projectile variant nothing names yet).
+collision.attack_90 = define.collision { id = "attack-90", side0 = 0x80000090, side1 = 0x40000090, row_offset = 0x40 }
+
+-- A pushing attack (row 0x12: AirShot's shot).
+collision.pushing = define.collision { id = "pushing", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }
+
+-- An attack of row 0x17 (a flying shot variant nothing names yet).
+collision.attack_8e = define.collision { id = "attack-8e", side0 = 0x8000008e, side1 = 0x4000008e, row_offset = 0xB8 }
+
+-- The VDoll curse's hits (row 0x19).
+collision.curse = define.collision { id = "curse", side0 = 0x8000008c, side1 = 0x4000008c, row_offset = 0xC8 }
+
+-- An attack of row 0x25 (the wide shot's variant nothing fires).
+collision.attack_480 = define.collision { id = "attack-480", side0 = 0x80000480, side1 = 0x40000480, row_offset = 0x128 }
+
+-- An attack of row 0x47 (a projectile variant nothing names yet).
+collision.attack_a0 = define.collision { id = "attack-a0", side0 = 0x800000a0, side1 = 0x400000a0, row_offset = 0x238 }
+
+-- A neutral body, while dimmed too (row 0x0E: a VDoll that landed).
+collision.neutral_body = define.collision { id = "neutral-body", side0 = 0x00810082, side1 = 0x00810082, row_offset = 0x70 }
+
+-- A probe (row 0x3D): what finds the first thing its target type reaches
+-- without hurting it (the bullet, the corn).
+collision.probe = define.collision { id = "probe", side0 = 0x00000080, side1 = 0x00000080, row_offset = 0x1E8 }
+
 -- Nothing (row 0x00: a target that reaches nothing; Discord's notes, which
 -- confuse without learning they hit).
 collision.nothing = define.collision { id = "nothing", side0 = 0x00000000, side1 = 0x00000000, row_offset = 0x00 }
@@ -108,18 +137,12 @@ collision.player = define.collision { id = "player", side0 = 0x08410080, side1 =
 collision.hits_player = define.collision { id = "hits-player", side0 = 0x55800200, side1 = 0xAA800200, row_offset = 0x10 }
 -- Row 0x03.
 collision.collision_03 = define.collision { id = "collision-03", side0 = 0x51800100, side1 = 0xA2800100, row_offset = 0x18 }
--- Row 0x06.
-collision.collision_06 = define.collision { id = "collision-06", side0 = 0x80000082, side1 = 0x40000082, row_offset = 0x30 }
--- Row 0x08.
-collision.collision_08 = define.collision { id = "collision-08", side0 = 0x80000090, side1 = 0x40000090, row_offset = 0x40 }
 -- Row 0x09.
 collision.collision_09 = define.collision { id = "collision-09", side0 = 0x80000180, side1 = 0x40000180, row_offset = 0x48 }
 -- Row 0x10.
 collision.collision_10 = define.collision { id = "collision-10", side0 = 0x08510080, side1 = 0x04310080, row_offset = 0x80 }
 -- Row 0x11.
 collision.collision_11 = define.collision { id = "collision-11", side0 = 0x80002480, side1 = 0x40002480, row_offset = 0x88 }
--- Row 0x12.
-collision.collision_12 = define.collision { id = "collision-12", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }
 -- Row 0x15.
 collision.collision_15 = define.collision { id = "collision-15", side0 = 0x8000008A, side1 = 0x4000008A, row_offset = 0xA8 }
 -- Row 0x18.
@@ -146,8 +169,6 @@ collision.collision_22 = define.collision { id = "collision-22", side0 = 0xC0048
 collision.collision_23 = define.collision { id = "collision-23", side0 = 0x00080000, side1 = 0x00080000, row_offset = 0x118 }
 -- Row 0x24.
 collision.collision_24 = define.collision { id = "collision-24", side0 = 0x80000C88, side1 = 0x40000C88, row_offset = 0x120 }
--- Row 0x25.
-collision.collision_25 = define.collision { id = "collision-25", side0 = 0x80000480, side1 = 0x40000480, row_offset = 0x128 }
 -- Row 0x26.
 collision.collision_26 = define.collision { id = "collision-26", side0 = 0xC0040088, side1 = 0xC0040088, row_offset = 0x130 }
 -- Row 0x27.
@@ -190,8 +211,6 @@ collision.collision_3a = define.collision { id = "collision-3a", side0 = 0x08410
 collision.collision_3b = define.collision { id = "collision-3b", side0 = 0x20010082, side1 = 0x10010082, row_offset = 0x1D8 }
 -- Row 0x3C.
 collision.collision_3c = define.collision { id = "collision-3c", side0 = 0x8000408A, side1 = 0x4000408A, row_offset = 0x1E0 }
--- Row 0x3D.
-collision.collision_3d = define.collision { id = "collision-3d", side0 = 0x00000080, side1 = 0x00000080, row_offset = 0x1E8 }
 -- Row 0x3E.
 collision.collision_3e = define.collision { id = "collision-3e", side0 = 0x02110080, side1 = 0x01110080, row_offset = 0x1F0 }
 -- Row 0x3F.
@@ -210,8 +229,6 @@ collision.collision_44 = define.collision { id = "collision-44", side0 = 0x20050
 collision.collision_45 = define.collision { id = "collision-45", side0 = 0x8000208A, side1 = 0x4000208A, row_offset = 0x228 }
 -- Row 0x46.
 collision.collision_46 = define.collision { id = "collision-46", side0 = 0x800140A0, side1 = 0x400140A0, row_offset = 0x230 }
--- Row 0x47.
-collision.collision_47 = define.collision { id = "collision-47", side0 = 0x800000A0, side1 = 0x400000A0, row_offset = 0x238 }
 -- Row 0x48.
 collision.hitbox = define.collision { id = "hitbox", side0 = 0xC0040080, side1 = 0xC0040080, row_offset = 0x240 }
 -- Row 0x4A.

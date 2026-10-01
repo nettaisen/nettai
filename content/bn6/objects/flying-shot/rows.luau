@@ -34,7 +34,7 @@ return define.rules("flying-shots", legacy {
         range = 8,
         self_type = 4,
         speed = 393216,
-        sprite = asset.sprite("attachment-17"),
+        sprite = asset.sprite("bow"),
         target_type = 5,
     },
     [3] = {
@@ -44,7 +44,7 @@ return define.rules("flying-shots", legacy {
         range = 8,
         self_type = 4,
         speed = 786432,
-        sprite = asset.sprite("flying-shot-03"),
+        sprite = asset.sprite("beast-shot"),
         target_type = 5,
     },
     [4] = {
@@ -54,7 +54,7 @@ return define.rules("flying-shots", legacy {
         range = 8,
         self_type = 4,
         speed = 524288,
-        sprite = asset.sprite("flying-shot-03"),
+        sprite = asset.sprite("beast-shot"),
         target_type = 5,
     },
     [5] = {
@@ -65,7 +65,7 @@ return define.rules("flying-shots", legacy {
         range = 2,
         self_type = 4,
         speed = 786432,
-        sprite = asset.sprite("flying-shot-03"),
+        sprite = asset.sprite("beast-shot"),
         target_type = 5,
     },
     [6] = {
@@ -78,7 +78,7 @@ return define.rules("flying-shots", legacy {
         secondary = { "break" },
         self_type = 6,
         speed = 655360,
-        sprite = asset.sprite("flying-shot-03"),
+        sprite = asset.sprite("beast-shot"),
         target_type = 5,
     },
 })

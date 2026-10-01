@@ -16,5 +16,11 @@ return define.chip {
     lockout = 0,
     library = { number = 381, index = 0, sort = 0 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x17D, action = 0x5B, subtype = 0, params = { 0, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x17D,
+        action = 0x5B,
+        subtype = 0,
+        params = { 0, 0, 0, 0 },
+        script = "chips/17d-zsaver/chip",
+    },
 }
