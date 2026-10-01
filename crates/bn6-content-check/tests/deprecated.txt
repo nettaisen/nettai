@@ -37,6 +37,7 @@ chips/193-edeletbm/erase_delete.luau 1
 chips/196-etomahwk/eagle_tomahawk.luau 1
 chips/197-ftornado/tengu_tornado.luau 2
 chips/199-dustbrk/dust_break.luau 2
+chips/anubis/statue.luau 2
 chips/blkbomb/bomb.luau 2
 chips/crosswrd/chip.luau 1
 chips/dbldream/chip.luau 1
