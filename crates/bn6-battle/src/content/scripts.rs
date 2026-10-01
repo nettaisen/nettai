@@ -1,32 +1,13 @@
-//! The content pack's scripts and what its entities say they implement.
-//!
-//! A pack's Luau modules live next to the data they implement
-//! (`objects/sun-beam/sun_beam.luau`, `chips/00f-gundels1/chip.luau`,
+//! The content pack's scripts: its Luau modules, which live next to what
+//! they define (`chips/minibomb/chip.luau`, `objects/rock/rock.luau`,
 //! `navis/megaman/weapons/absorb/weapon.luau`, `lib/...`).
-//! Entities name their script in their data:
 //!
-//! - an object kind's `[kind]` table (`objects/<name>/object.toml`) gives
-//!   the object slot it implements (pool and index) and its script
-//!   ([`ObjectKind`]);
-//! - a chip's `script` implements the chip's action, or for the ruleset's
-//!   generic actions its part of them by the chip's subtype: action 0x15
-//!   (dimming chips) its dimming controller, action 0x1B (navi chips) its
-//!   navi, action 0x1C (instant chips) its effect
-//!   ([`ChipData::script`](super::ChipData::script));
-//! - a weapon is a definition (`define.weapon`): nothing registers one by
-//!   number.
-//!
-//! [`Content::define`] turns that, with what the modules define, into
-//! what the script runtime binds (`content::defs`). Nothing in the engine says which kind, action or hook is a
-//! script: whatever the pack registers runs as content, and the engine's
-//! own Rust runs the rest.
+//! [`Content::define`](super::Content::define) turns what the modules
+//! define into what the script runtime binds (`content::defs`). Nothing in
+//! the engine says which kind, action or hook is a script: whatever the
+//! pack defines runs as content, and the engine's own Rust runs the rest.
 
 use std::collections::BTreeMap;
-
-use bn6_content_api::Pool;
-use serde::{Deserialize, Serialize};
-
-use super::Content;
 
 /// The pack's Luau modules.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -75,47 +56,4 @@ impl Eq for CompiledModules {}
 
 impl std::hash::Hash for CompiledModules {
     fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
-}
-
-/// An object kind a script implements (an object folder's `[kind]`).
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ObjectKind {
-    /// The kind's name: its folder under `objects/` (how scripts and
-    /// engine code spawn it).
-    #[serde(skip)]
-    pub name: String,
-    /// The object slot it fills: its pool and index, the original's
-    /// identity the traces compare.
-    #[serde(with = "pool_name")]
-    pub pool: Pool,
-    pub index: u8,
-    /// The module (see [`Scripts::modules`]); in the file, a path relative
-    /// to the folder.
-    pub script: String,
-}
-
-mod pool_name {
-    use bn6_content_api::Pool;
-
-    pub fn serialize<S: serde::Serializer>(p: &Pool, s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(p.name())
-    }
-
-    pub fn deserialize<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Pool, D::Error> {
-        let s = <String as serde::Deserialize>::deserialize(d)?;
-        Pool::from_name(&s).ok_or_else(|| serde::de::Error::custom(format!("{s:?} is not a pool (actor, attack, effect)")))
-    }
-}
-
-impl Content {
-    /// The object kind named `name`.
-    pub fn object_kind(&self, name: &str) -> Option<&ObjectKind> {
-        self.objects.kinds.iter().find(|k| k.name == name)
-    }
-
-    /// The content object kind in a slot, if a script implements it.
-    pub fn object_kind_at(&self, pool: Pool, index: u8) -> Option<&ObjectKind> {
-        self.objects.kinds.iter().find(|k| (k.pool, k.index) == (pool, index))
-    }
 }

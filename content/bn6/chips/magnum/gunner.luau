@@ -30,8 +30,11 @@ export type State = {
 local FAR_X: { [number]: number } = { [0] = 6, [1] = 1 }
 local TIMEOUT, STEP = 300, 12
 local FIRE_TICKS, FIRE_ANIM, FIRE_ANIM_AT, AFTER = 0x10, 0xC, 4, 0x3C
-local SOUND_STEP = asset.sound("target-move")
+-- (The cursor steps with the sound EraseMan's mark has, the original's
+-- 0x10E.)
+local SOUND_STEP = asset.sound("erase-man")
 local SOUND_SHOT = asset.sound("hockey-puck")
+local SOUND_BLAST = asset.sound("target-move")
 -- The sight (effect 0x49), each part 12 ticks: its panel and the column's
 -- other rows (24 pixels up and down) or the row's other columns (40
 -- pixels either side).
@@ -142,7 +145,7 @@ local function shoot(me: Object, s: State)
         local cx, cy = field.center(x, y)
         battle.effect(Vec3.new(cx, cy, 0), effects.explosion)
     end
-    battle.play_sound(SOUND_STEP)
+    battle.play_sound(SOUND_BLAST)
     battle.shake_camera(1, 0x1E)
 end
 

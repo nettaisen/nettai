@@ -61,9 +61,9 @@ fn attach(b: &mut Battle, n: usize) {
             (o.panel, o.alliance, o.flip)
         };
         let r = if beam {
-            behavior::spawn_kind(b, "gundels/beam", offset, [0; 4]).unwrap()
+            behavior::spawn_kind(b, "gundels/beam", offset).unwrap()
         } else {
-            behavior::spawn_kind(b, "attachment", Vec3::default(), [0; 4]).unwrap()
+            behavior::spawn_kind(b, "attachment", Vec3::default()).unwrap()
         };
         let o = b.objects.get_mut(r);
         o.related[0] = Some(owner);

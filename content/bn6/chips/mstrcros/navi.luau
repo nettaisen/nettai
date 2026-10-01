@@ -3,7 +3,7 @@
 -- each appearing by an enemy navi and using his Cross's move, then three
 -- of them together. One kind (the original's actor object #0x23,
 -- `sub_80BE798`): the leader the navi chip controller brings (no sprite,
--- `form` 0), who brings the Crosses (`form` their form) in two waves and
+-- no `form`), who brings the Crosses (`form` their form) in two waves and
 -- waits for each to finish. See docs/engine/chips.md §3.6.34.
 
 local attachment = require("../../objects/attachment/attachment")
@@ -25,8 +25,8 @@ local mstrcros = {}
 export type Move = "sword" | "beam" | "drill" | "fan" | "charge"
 
 export type State = {
-    -- MegaMan's form the Cross is (Param1), or 0: the leader.
-    form: number,
+    -- MegaMan's form the Cross is (Param1), or none: the leader.
+    form: FormDef?,
     move: Move,
     -- The sword's look (Param3), and the Cross's place in its wave (Param4).
     look: number,
@@ -44,15 +44,23 @@ export type State = {
     child: Object?,
 }
 
--- MegaMan's forms by number, as the navi stats give them
--- (compat/forms.toml).
-local HEATCROSS, ELECCROSS, SLASHCROSS, ERASECROSS, CHARGECROSS = 1, 2, 3, 4, 5
-local SPOUTCROSS, TOMAHAWKCROSS, TENGUCROSS, GROUNDCROSS, DUSTCROSS = 6, 7, 8, 9, 0xA
+-- MegaMan and his Crosses.
+local megaman = require("../../navis/megaman/navi")
+local HEATCROSS = require("../../navis/megaman/forms/heatcross/form")
+local ELECCROSS = require("../../navis/megaman/forms/eleccross/form")
+local SLASHCROSS = require("../../navis/megaman/forms/slashcross/form")
+local ERASECROSS = require("../../navis/megaman/forms/erasecross/form")
+local CHARGECROSS = require("../../navis/megaman/forms/chargecross/form")
+local SPOUTCROSS = require("../../navis/megaman/forms/spoutcross/form")
+local TOMAHAWKCROSS = require("../../navis/megaman/forms/tomahawkcross/form")
+local TENGUCROSS = require("../../navis/megaman/forms/tengucross/form")
+local GROUNDCROSS = require("../../navis/megaman/forms/groundcross/form")
+local DUSTCROSS = require("../../navis/megaman/forms/dustcross/form")
 
 -- A wave's Cross: his form, move and sword look, which side of his
 -- target he stands on (`beside`: 1 in front of it, 0 behind it), his
 -- element.
-type Entry = { form: number, move: Move, look: number, beside: number, element: number }
+type Entry = { form: FormDef, move: Move, look: number, beside: number, element: number }
 
 -- The first wave (`byte_80BE91C`, `byte_80BE936`) and the finale
 -- (`byte_80BE9D8`, `byte_80BE9F3`), by the user's game.
@@ -225,7 +233,7 @@ end
 local function bring(me: Object, entry: Entry, i: number): Object?
     local s = me.state :: State
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = entry.element, params = { 0, 0, 0, 0 }, damage = damage }
+    local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = entry.element, damage = damage }
     local o = navi_chips.spawn(mstrcros.kind, me, spec, 0)
     if not o then
         return nil
@@ -402,7 +410,7 @@ local function wait_turn(me: Object)
 end
 
 -- `sub_80BEA50`: the first wave's entry.
-local FIRST_PHASES = { [0] = fade_in, [4] = circle_out, [8] = hover, [0xC] = blink_out, [0x10] = wait_turn }
+local FIRST_PHASES: { [number]: (me: Object) -> () } = { [0] = fade_in, [4] = circle_out, [8] = hover, [0xC] = blink_out, [0x10] = wait_turn }
 
 -- `sub_80BEC84`: beside his target, turned to face it when he stands
 -- behind it; 3 ticks.
@@ -440,7 +448,7 @@ local function ready(me: Object)
 end
 
 -- `sub_80BEC68`.
-local ARRIVE_PHASES = { [0] = arrive, [4] = ready }
+local ARRIVE_PHASES: { [number]: (me: Object) -> () } = { [0] = arrive, [4] = ready }
 
 -- `sub_80BEBD8`: the finale's Crosses appear at the end of the first
 -- wave's circle (places 0 to 2 seen); 3 ticks.
@@ -473,7 +481,7 @@ local function finale_ready(me: Object)
 end
 
 -- `sub_80BEBBC`.
-local FINALE_PHASES = { [0] = finale_appear, [4] = finale_ready }
+local FINALE_PHASES: { [number]: (me: Object) -> () } = { [0] = finale_appear, [4] = finale_ready }
 
 -- `sub_80BED0C`: the sword (his look's blade); at 9 the hit on the panel
 -- ahead, the slash 16 pixels up, a flash; past 21, he leaves. (The
@@ -580,7 +588,7 @@ local function drill_back(me: Object)
 end
 
 -- `sub_80BEE62`.
-local DRILL_PHASES = { [0] = drill_ready, [4] = drill_out, [8] = drill_back }
+local DRILL_PHASES: { [number]: (me: Object) -> () } = { [0] = drill_ready, [4] = drill_out, [8] = drill_back }
 
 -- `sub_80BEF48`: TenguCross's fan and its gust; at 12 left the hit on the
 -- panel ahead and a flash; to -1.
@@ -611,7 +619,7 @@ local function fan_after(me: Object)
 end
 
 -- `sub_80BEF2C`.
-local FAN_PHASES = { [0] = fan, [4] = fan_after }
+local FAN_PHASES: { [number]: (me: Object) -> () } = { [0] = fan, [4] = fan_after }
 
 -- An effect at his attach point 0 (`sub_8018810` by his identity).
 local function at_hand(me: Object, effect: Effect): Object?
@@ -682,7 +690,7 @@ local function settle(me: Object)
 end
 
 -- `sub_80BEFE2`.
-local CHARGE_PHASES = { [0] = charge, [4] = strike, [8] = settle }
+local CHARGE_PHASES: { [number]: (me: Object) -> () } = { [0] = charge, [4] = strike, [8] = settle }
 
 -- `sub_80BF11A`: what he holds goes; 3 ticks: out of sight, done, his
 -- parts off, gone.
@@ -746,7 +754,7 @@ end
 
 -- `sub_80BE834`.
 local function update(me: Object)
-    if (me.state :: State).form == 0 then
+    if (me.state :: State).form == nil then
         lead(me)
     else
         act(me)
@@ -759,8 +767,9 @@ end
 -- once.
 local function init(me: Object)
     local s = me.state :: State
-    if s.form ~= 0 then
-        me:wear_megaman_image(s.form)
+    local form = s.form
+    if form then
+        me:wear_form_image(megaman, form)
         me:set_coordinates_from_panel()
         local p = me.pos
         me.pos = Vec3.new(p.x, p.y, 0)
@@ -768,7 +777,7 @@ local function init(me: Object)
         me:navi_image_parts(true)
     end
     me:set_lifecycle("update")
-    if s.form ~= 0 and s.move == "charge" then
+    if form and s.move == "charge" then
         me.action = FINALE_ENTRY
     end
     update(me)
@@ -778,7 +787,7 @@ mstrcros.kind = define.kind {
     id = "mstrcros/navi",
     pool = "actor",
     state = {
-        form = "u8",
+        form = "form",
         move = MOVE_TYPE,
         look = "u8",
         place = "u8",
@@ -812,7 +821,7 @@ function mstrcros.summon(user: Object, controller: Object, spec: NaviChipSpec): 
     end
     o.run_while_dimmed = true
     local s = o.state :: State
-    s.form = 0
+    s.form = nil
     s.controller = controller
     return o
 end

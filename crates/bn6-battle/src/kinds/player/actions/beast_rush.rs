@@ -162,7 +162,7 @@ fn afterimage_anim(class: crate::content::IdentityClass) -> u8 {
 /// the original; here the mode the charged sword's setup gave with its
 /// slash, `AttackVars::rush_lockon`), and failing those, the chip's.
 fn lockon_mode(b: &Battle, r: ObjectRef) -> Option<LockonHandle> {
-    let beast_over = matches!(form_of(b, r).0, 0x17 | 0x18);
+    let beast_over = form_of(b, r).kind.is_beast_over();
     if !beast_over && flag1(b, r) & (f1::BLIND | f1::CONFUSED) != 0 {
         return None;
     }
@@ -301,7 +301,7 @@ fn can_stand(b: &Battle, r: ObjectRef, x: u8, y: u8) -> bool {
 /// the queued chip or warp home.
 fn attack(b: &mut Battle, r: ObjectRef) {
     let action = crate::kinds::player::navi_action(b, r);
-    if action.is_attack(&b.content.defs) {
+    if action.is_attack() {
         super::dispatch(b, r, action);
         if crate::kinds::player::navi_action(b, r) != crate::kinds::player::NaviAction::Idle {
             return;

@@ -12,15 +12,7 @@ local sparks = require("../../lib/sparks")
 local flame = {}
 
 -- What a flame is spawned with (the original's three parameters).
-export type Spec = {
-    -- It acts and steps its sprite while dimmed (Param1 4: the navi
-    -- chip's).
-    while_dimmed: boolean,
-    -- How long it lasts (Param2).
-    ticks: number,
-    -- What it is: an attack, or (Param3 set) a thrown attack.
-    is: CollisionType,
-}
+type Spec = HeatFlame
 export type State = Spec
 
 local SPRITE = asset.sprite("heat-flame")

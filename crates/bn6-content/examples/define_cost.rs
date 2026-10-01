@@ -32,10 +32,6 @@ fn main() {
     let mut defined = content.clone();
     defined.define().expect("the pack defines");
     println!("{} modules, {} definitions, best of {runs} runs:", content.scripts.modules.len(), defined.defs.definitions.defs.len());
-    let data = best(runs, || {
-        std::hint::black_box(bn6_battle::behavior::script_data(&content));
-    });
-    println!("  the scripts' data (script_data):        {data:>10.2?}");
     let define = best(runs, || {
         let mut c = content.clone();
         c.define().expect("the pack defines");

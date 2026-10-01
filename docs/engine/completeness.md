@@ -55,7 +55,7 @@ reproduced every recording on every frame at the lab's last full run; the 684 re
    through spawns; the chips' action table (`JumpTable80EAC60`) whole, since every chip is a netbattle's; the
    hook tables indexed by actor type (`sub_800F35C` and its six siblings) through the player's table only; the
    weapon table (`off_80117D4`) through the numbers the data names (the forms' rows, the navis' rows and the
-   NaviStats bytes: `compat/weapons.toml`, which the verification workspace's generator checks against the ROM).
+   NaviStats bytes: `compat/weapons.toml`, which the verification workspace's `gen-content check` checks against the ROM).
    A routine that the rules of §5 say a netbattle never enters is not followed. The audit stops with an error if a
    recording runs a routine a rule excludes: that caught a wrong rule once (the tutorial checks' callers run on
    every pick; only what they call is the tutorial's).
@@ -180,7 +180,7 @@ condition that keeps a netbattle out; `excl.py` has all 50.
 | The end exchange and results (mode state 0x10), and the rewards (`sub_802CAA6`) | 9 | battle effects 2, which no link settings record has (they are 0x8C, 0x88C or 0x20088C) |
 | The battle's end for link types 4 and 8 (`sub_8007C50`) | 1 | a cable netbattle is type 0 |
 
-Two more things are out of scope without a rule in the audit, since no routine is theirs alone:
+Three more things are out of scope without a rule in the audit, since no routine is theirs alone:
 
 - **The random battle** (battle effects 0x200000; the 96 settings records from 0x60 on, another match type's) is
   out of scope by decision. The port keeps the flag (`setup::effects::RANDOM`) and what already reads it (the
@@ -193,6 +193,19 @@ Two more things are out of scope without a rule in the audit, since no routine i
   (`sub_80CA19E`); Tornado is subtype 1, Static 2, and no weapon routine starts the action. All 9,994 stat blocks
   of the lab's setups have it 0. The port has the stat, the code, the variant and the action
   (`tornado/back-spread`), all unreachable.
+
+- **Two ruleset roles name actions the port doesn't have**, and neither can start in a netbattle. They are
+  left as they are for content model v2's step 13 to keep as documented stubs or remove:
+  - `actions.turn`, the turn L or R starts (the original's action 0x3B, `sub_80EDF0C`, documented in
+    chip-table.md and not ported). The ruleset decodes L and R as a turn only for a navi that can turn
+    (`sub_80141F4` sets the bit at the navi's init), and that routine returns without setting it when the
+    stage's panel pattern is one of the standard columns (0x38, 0x30, 0x3C) or the battle is DustMan's
+    mini-game. All 192 link stages have pattern 0x38, so L and R only ask for the custom screen.
+  - `actions.volley`, a volley of buster shots (the original's action 0x30 entered from the status routine,
+    `loc_801B006`, on request bit 0x40000000 of AIData+0x44). That bit is tested there and nowhere raised: of
+    the 26 calls of the request setter (`SetAIData_Unk_44_Flag`) none passes it, as a literal or as a shift, and
+    the literal's six other uses are sprite attributes and object flags. The port's content API can name the
+    request (`"volley"`), and nothing does.
 
 The 3,175 unreachable routines are mostly the other 138 object kinds' (viruses, bosses, story objects) and what
 only they call.

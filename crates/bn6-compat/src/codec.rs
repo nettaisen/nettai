@@ -13,7 +13,7 @@ use bn6_battle::custom::folder::FOLDER_SIZE;
 use bn6_battle::custom::{BattleFolder, FolderChip};
 use bn6_battle::hand::ChipHand;
 use bn6_battle::setup::{
-    BattleSettings, Form, GaugeSpeed, Navi, NaviCustBugs, NaviStats, NaviWeapons, SpTimes, Stage, Supports,
+    BattleSettings, GaugeSpeed, NaviCustBugs, NaviStats, NaviWeapons, SpTimes, Stage, Supports,
 };
 use bn6_battle::transform::TransformRequest;
 use bn6_content_api::{ChipHandle, FormHandle, NaviHandle, RecordHandle, StageHandle, WeaponHandle};
@@ -26,10 +26,9 @@ pub type ChipId = u16;
 
 /// The original's numbers for a content's identities, and back. A number
 /// names compat's key, and a definition of that key is the thing (a chip
-/// content defines, reached from a recorded folder); for a navi, a form or
-/// a weapon, else the pack's record with that number. Back, a definition
-/// gives compat's number for its key. A chip is always a definition: the
-/// engine has no number for one.
+/// content defines, reached from a recorded folder; a navi, a form, a
+/// weapon). Back, a definition gives compat's number for its key. The
+/// engine has no number for any of them.
 ///
 /// Numbers a setup can't hold panic: the records are the original's, and
 /// the content is BN6's.
@@ -78,35 +77,26 @@ impl<'a> Ids<'a> {
 
     /// The navi with this number.
     pub fn navi(&self, navi: u8) -> NaviHandle {
-        let defs = &self.content.defs;
-        self.compat
-            .navi_key(navi)
-            .and_then(|k| defs.navi_by_key(k))
-            .or_else(|| defs.navi_numbered(Navi(navi)))
-            .unwrap_or_else(|| panic!("navi {navi:#x} is neither defined nor in the pack"))
+        let key = self.compat.navi_key(navi).unwrap_or_else(|| panic!("navis.toml has no navi {navi:#x}"));
+        self.content.defs.navi_by_key(key).unwrap_or_else(|| panic!("the content defines no navi {key:?} (navi {navi:#x})"))
     }
 
     /// A navi's number.
     pub fn navi_number(&self, h: NaviHandle) -> u8 {
-        // The engine's navis are the pack's, by number (content defines
-        // none of its own yet).
-        self.content.defs.navi(h).record.id
+        let key = &self.content.defs.navi(h).key;
+        self.compat.navis.get(key).map(|n| n.navi).unwrap_or_else(|| panic!("navis.toml has no {key:?}"))
     }
 
     /// MegaMan's form with this number.
     pub fn form(&self, form: u8) -> FormHandle {
-        let defs = &self.content.defs;
-        self.compat
-            .form_key(form)
-            .and_then(|k| defs.form_by_key(k))
-            .or_else(|| defs.form_numbered(Form(form)))
-            .unwrap_or_else(|| panic!("form {form:#x} is neither defined nor in the pack"))
+        let key = self.compat.form_key(form).unwrap_or_else(|| panic!("forms.toml has no form {form:#x}"));
+        self.content.defs.form_by_key(key).unwrap_or_else(|| panic!("the content defines no form {key:?} (form {form:#x})"))
     }
 
     /// A form's number.
     pub fn form_number(&self, h: FormHandle) -> u8 {
-        // MegaMan's forms are the pack's, by number.
-        self.content.defs.form(h).record.id
+        let key = &self.content.defs.form(h).key;
+        self.compat.forms.get(key).map(|f| f.form).unwrap_or_else(|| panic!("forms.toml has no {key:?}"))
     }
 
     /// The weapon a routine number names; none for 0xFF.
@@ -499,8 +489,8 @@ mod tests {
         let ids = ids();
         let s = navi_stats(&bytes(MACHGUN_P0), &ids);
         assert_eq!((s.hp, s.max_hp, s.max_base_hp), (1000, 1000, 1000));
-        assert_eq!(ids.navi_number(s.navi), Navi::MEGAMAN.0);
-        assert_eq!(ids.form_number(s.form), Form::NONE.0);
+        assert_eq!(ids.content.defs.navi(s.navi).key, "megaman");
+        assert_eq!(s.form, ids.content.base_form());
         assert!(s.float_shoes && s.air_shoes && !s.undershirt && !s.super_armor);
         assert_eq!(s.mood, 0x80);
         assert_eq!(s.support, Some(Supports::default()));
@@ -540,11 +530,13 @@ mod tests {
             // (A value that doesn't decode is read as naming content: the
             // byte is modeled.)
             let modeled = values.iter().any(|&v| decoded(v).is_none_or(|d| d != base));
-            // The engine has no numbers for weapons or shot programs: a
-            // bug code can only clear those bytes.
+            // The engine has no numbers for weapons, shot programs, forms
+            // or navis: a bug code can only clear those bytes (a form's
+            // to the base form), and can't write a navi's.
             let by_handle = |v: u8| match offset {
                 0x04 | 0x05 | 0x07 | 0x39 | 0x44 => v != 0xFF,
-                0x4D | 0x4F => v != 0,
+                0x4D | 0x4F | 0x17 | 0x2C => v != 0,
+                0x29 => true,
                 _ => false,
             };
             for &value in values {

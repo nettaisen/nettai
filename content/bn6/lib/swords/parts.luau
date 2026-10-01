@@ -50,11 +50,6 @@ parts.sounds = {
     big_swing = asset.sound("big-sword-swing"),
 }
 
--- The Beast forms (and Beast Over): forms 0xB to 0x18.
-function parts.beast(form: number): boolean
-    return form >= 0x0B and form <= 0x18
-end
-
 -- `sub_80EBAE8`: the blade's animation, which matches the user's arm: a
 -- navi AI's (under 0xD), a form's (AI index 0x13 has animation 0xE), or
 -- for MegaMan's base AI, 0 or a Beast form's (0xC for Gregar's, 0xD for
@@ -76,15 +71,11 @@ end
 -- form's (0xC for Gregar's, 0xD for Falzar's). (CrosOver's MegaMan, whose
 -- user may be anyone, picks his blade as MegaMan's base AI.)
 function parts.base_blade_anim(side: number): number
-    local form = battle.navi(side).form
-    if form < 0x0B then
+    local stats = battle.navi(side)
+    if not stats.beast then
         return 0
-    elseif form == 0x0C then
-        return 0x0D
-    elseif form == 0x17 or form <= 0x11 then
-        return 0x0C
     end
-    return 0x0D
+    return if stats.form.game == "gregar" then 0x0C else 0x0D
 end
 
 -- `sub_80EBB78`: added to the blade's palette: 0xC for navi AI 0x12's
