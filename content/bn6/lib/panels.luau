@@ -129,6 +129,33 @@ function panels.in_column(x: number, require: number, forbid: number): { number 
     return list
 end
 
+-- An enemy's body on a panel, while dimmed too, by `me`'s side
+-- (`byte_80ED080`).
+local ENEMY_COLUMN = { [0] = 0x0401_0000, [1] = 0x0801_0000 }
+
+-- `sub_80ED040` (MachGun's, the dragons'): from the column ahead of `me`
+-- forward, the first with an enemy's body in some row, and true; with
+-- none, the last column ahead, and false.
+function panels.enemy_column(me: Object): (number, boolean)
+    local dir, x = me.facing, me.panel_x
+    local enemy = ENEMY_COLUMN[me.alliance]
+    while true do
+        x += dir
+        if x == 0 or x >= 7 then
+            break
+        end
+        if x < 0 then
+            error("sub_80ED040 searches off the field's left edge (it would run on for 2^31 columns)")
+        end
+        for y = 1, 3 do
+            if field.check(x, y, enemy, 0) then
+                return x, true
+            end
+        end
+    end
+    return if dir > 0 then 6 else 1, false
+end
+
 -- A hit region's offsets ({dx, dy} each, dx toward the facing side).
 local function region_shape(n: number): { { number } }
     local r = data.regions[n]

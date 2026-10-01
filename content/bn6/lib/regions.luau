@@ -47,6 +47,15 @@ regions.ring = define.region {
     panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } },
 }
 
+-- The anchor and its four neighbours (region 0x09: H-Burst's even bursts).
+regions.plus = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
+
+-- The anchor and the panel above it (region 0x18: a big rolling log).
+regions.tall = define.region { panels = { { 0, 0 }, { 0, -1 } } }
+
+-- The anchor and the column ahead of it (region 0x15: ElcPuls's pulse).
+regions.fan = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 }, { 1, 0 } } }
+
 -- A side's area: side 0's (region 0x81, the panels without flag 0x20) and
 -- side 1's (0x82, with it).
 regions.area = {
