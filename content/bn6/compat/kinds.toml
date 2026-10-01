@@ -81,8 +81,10 @@ seed = { pool = "attack", index = 0x4F }
 "yoyo/yoyo" = { pool = "attack", index = 0x52 }
 "anubis/statue" = { pool = "attack", index = 0x55 }
 falling-meteor = { pool = "attack", index = 0x56 }
+"antiswrd/wave" = { pool = "attack", index = 0x58 }
 rock = { pool = "attack", index = 0x59, actor_list_entry = 8 }
 "firehit/fist" = { pool = "attack", index = 0x5B }
+"bodygrd/shuriken" = { pool = "attack", index = 0x5C }
 "megaman/element-pillar" = { pool = "attack", index = 0x61 }
 "slashman/wave" = { pool = "attack", index = 0x62 }
 "elecman/thunder" = { pool = "attack", index = 0x64 }
@@ -127,6 +129,7 @@ thunder-column = { pool = "attack", index = 0x8B }
 "elmntman/bolt" = { pool = "attack", index = 0xB8, scratch_z_fraction = true }
 "elmntman/vine" = { pool = "attack", index = 0xB9 }
 "bassanly/shot" = { pool = "attack", index = 0xC1 }
+"antidmg/shuriken" = { pool = "attack", index = 0xC2 }
 "eraseman/beam" = { pool = "attack", index = 0xC3 }
 "chargecross-beast/wave" = { pool = "attack", index = 0xC4 }
 "dustcross-beast/junk-shot" = { pool = "attack", index = 0xC5 }
@@ -190,6 +193,7 @@ invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
 "sensor/controller" = { pool = "effect", index = 0x65, scratch_position = true }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
+"bodygrd/striker" = { pool = "effect", index = 0x6E, scratch_position = true }
 "yoyo/great-yoyo" = { pool = "effect", index = 0x70 }
 "slashcross-beast/hit-flash" = { pool = "effect", index = 0x73, scratch_position = true }
 "support/controller" = { pool = "effect", index = 0x79 }
