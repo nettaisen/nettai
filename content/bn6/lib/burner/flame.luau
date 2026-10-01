@@ -139,10 +139,13 @@ local function init(me: Object)
     local p = me.pos
     -- (On its panel, `byte_80C54D0`'s offset is 0.)
     if not s.on_panel then
-        -- The owner's hand: its NameID's attach point (a number until
-        -- identities come).
+        -- The owner's hand: its sprite's attach point (`sub_8018810`),
+        -- which the game turns the flame's way, not the owner's.
         local owner = me.related1 :: Object
-        local ax, az = battle.attach_point(owner.name_id, HAND, me.alliance, me.flip)
+        local ax, az = owner:attach_point(HAND)
+        if owner.facing ~= me.facing then
+            ax = -ax
+        end
         p = Vec3.new(int.i32(p.x - me.facing * BACK * 0x10000 + ax * 0x10000), p.y, int.i32(p.z + az * 0x10000))
     end
     -- (Its Y and Z also rise by its spread count, in pixels.)
