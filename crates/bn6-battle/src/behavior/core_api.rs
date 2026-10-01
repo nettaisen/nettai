@@ -761,6 +761,11 @@ impl CoreApi for Battle {
             Lifecycle::Finish => Progress { state: state::FINISH, action: 0, phase: 0, phase_init: 0 },
         };
         common::set_progress(self, o, p);
+        // A navi's action is its NaviAction.
+        if self.objects.get(o).actor.is_some() {
+            let action = kinds::player::NaviAction::numbered(&self.content.defs, p.action);
+            kinds::player::set_navi_action(self, o, action);
+        }
     }
 
     fn set_lifecycle_only(&mut self, o: ObjectRef, l: Lifecycle) {
