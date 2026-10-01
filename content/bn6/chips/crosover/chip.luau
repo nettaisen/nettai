@@ -22,5 +22,11 @@ return define.chip {
     program_advances = {
         { order = 11, sequence = { django_chips.django, django_chips.django2, django_chips.django3 } },
     },
-    legacy = legacy { number = 0x15D, action = 0x1B, subtype = 21, params = { 0, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x15D,
+        action = 0x1B,
+        subtype = 21,
+        params = { 0, 0, 0, 0 },
+        script = "chips/15d-crosover/chip",
+    },
 }

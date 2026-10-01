@@ -17,7 +17,13 @@ local crcusman = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 263, index = 28, sort = 115 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x107, action = 0x1B, subtype = 14, params = { 0, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x107,
+        action = 0x1B,
+        subtype = 14,
+        params = { 0, 0, 0, 0 },
+        script = "chips/107-crcusman/chip",
+    },
 }
 
 local crcusmn_ex = define.chip {
@@ -35,7 +41,13 @@ local crcusmn_ex = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 264, index = 29, sort = 116 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x108, action = 0x1B, subtype = 14, params = { 0, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x108,
+        action = 0x1B,
+        subtype = 14,
+        params = { 0, 0, 0, 0 },
+        script = "chips/107-crcusman/chip",
+    },
 }
 
 local crcusmn_sp = define.chip {
@@ -57,6 +69,7 @@ local crcusmn_sp = define.chip {
         action = 0x1B,
         subtype = 14,
         params = { 4, 0, 0, 0 },
+        script = "chips/107-crcusman/chip",
         damage = 1014,
         sp_damage = { 55, 55, 50, 50, 45, 45, 40, 40, 35, 35, 30 },
     },
