@@ -1725,11 +1725,12 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
 
 **As built** (step 8f, the field objects):
 
-- **The rock** (objects/rock; since moved to chips/rockcube/rock, kind `rockcube/rock`) is a definition. Its rows are `rock-variant` records (`rock.variants.cube`,
-  `ice`, ...: animation, HP, element, debris palette, break sound, NameID), its entrance a state enum
-  (`"rise" | "instant" | "fall" | "placed"`), and `rock.spawn(x, y, side, { variant, class, entrance },
-  damage)` takes them; its debris is `rock/debris` beside it (since `rockcube/debris`, chips/rockcube/debris). A stage names the variant its rocks are (step
-  12), and the kind's `place` gets it as `spec.variant`.
+- **The rock** (objects/rock; since moved to chips/rockcube/rock, kind `rockcube/rock`) is a definition. Its rows
+  are `rock-variant` records (`rock.variants.cube`, `ice`, ...: animation, HP, element, debris palette, break
+  sound, NameID), its entrance a state enum (`"rise" | "instant" | "fall" | "placed"`), and `rock.spawn(x, y,
+  side, { variant, class, entrance }, damage)` takes them; its debris is `rock/debris` beside it (since
+  `rockcube/debris`, chips/rockcube/debris). A stage names the variant its rocks are (step 12), and the kind's
+  `place` gets it as `spec.variant`.
 - **RockCube and IceCube** (chips/rockcube) are definitions whose `dimming` hook is `cube.places { variant =
   rock.variants.cube }`: the chip's parameters (the rock's row, class and entrance) are the builder's argument.
   No Program Advance, dark chip or recipe names either, so neither keeps a record.
