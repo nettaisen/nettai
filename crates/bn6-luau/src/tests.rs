@@ -126,6 +126,10 @@ fn definition_mistakes_are_load_errors() {
         ("local t = {}\nt.me = t\nreturn define.chip { id = 'x', loop = t }", "contains itself"),
         ("return define.chip(3)", "takes a table"),
         ("local s = define.chip { id = 'x' }\nreturn define.chip(s)", "defined twice"),
+        // The migration's markers are gone: neither the global nor the
+        // field.
+        ("return define.navi { id = 'x', legacy = { number = 1 } }", "takes no `legacy` field"),
+        ("return define.navi { id = 'x', marker = legacy { number = 1 } }", "legacy"),
     ];
     for (source, want) in cases {
         let e = define_pack(&[("chips/x/chip", source)]).unwrap_err();

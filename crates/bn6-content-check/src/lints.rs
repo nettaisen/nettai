@@ -1,9 +1,7 @@
 //! Static checks the type checker can't make (docs/design/content-model-v2.md
-//! §7.7): uses of the numeric API that the v2 API replaces, counted per
-//! module against an allowance that only shrinks (the ratchet, §12), and
-//! lints (placeholder asset names, modules under `compat/`, kind keys not
-//! qualified by their owner's folder, table constants passed on without a
-//! type).
+//! §7.7): lints for placeholder asset names, modules under `compat/`, kind
+//! keys not qualified by their owner's folder, and table constants passed on
+//! without a type.
 //!
 //! The checks read the source through a small scanner: comments are
 //! dropped and string contents masked, so a pattern never matches inside
@@ -99,34 +97,6 @@ impl Scanned<'_> {
         let rest = &self.source[at + 1..];
         rest.find(q).map(|end| &rest[..end])
     }
-}
-
-/// A use of the numeric API that the v2 API replaces.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Deprecated {
-    pub line: usize,
-    pub what: &'static str,
-    pub instead: &'static str,
-}
-
-/// What is still deprecated: pattern, what, instead. (What the API no
-/// longer has isn't here: a use of it is a type error.)
-const DEPRECATED: &[(&str, &str, &str)] = &[
-    ("legacy {", "a legacy marker", "the v2 form it stands for"),
-    ("legacy = {", "a legacy marker", "the v2 form it stands for"),
-];
-
-/// Every deprecated use in a module.
-pub fn deprecated(source: &str) -> Vec<Deprecated> {
-    let s = Scanned::new(source);
-    let mut out = Vec::new();
-    for &(pattern, what, instead) in DEPRECATED {
-        for at in s.find(pattern) {
-            out.push(Deprecated { line: s.line(at), what, instead });
-        }
-    }
-    out.sort_by_key(|d| d.line);
-    out
 }
 
 /// The owner whose folder module `path` is in, if it is in one: a chip's
@@ -275,17 +245,6 @@ mod tests {
         let s = Scanned::new("local x = 'me:set_action(1)' -- me:set_action(2)\n--[[ me:set_action(3) ]] me:set_action(4)\n");
         assert_eq!(s.find(":set_action(").count(), 1);
         assert_eq!(s.code.len(), s.source.len());
-    }
-
-    #[test]
-    fn legacy_markers_count_and_definitions_do_not() {
-        let src = "local THROW = asset.sound('throw')\n\
-                   battle.play_sound(THROW)\n\
-                   local k = battle.spawn(bomb.kind, me.pos)\n\
-                   local N = define.navi { id = 'n', legacy = legacy { number = 1 } }\n\
-                   local legacy_name = 'legacy { }' -- legacy { }\n";
-        let d: Vec<(usize, &str)> = deprecated(src).iter().map(|d| (d.line, d.what)).collect();
-        assert_eq!(d, [(4, "a legacy marker")]);
     }
 
     #[test]
