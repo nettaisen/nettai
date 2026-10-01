@@ -805,8 +805,10 @@ objects/ too.)
 folder, keyed under it, even when other chips or forms use it too; they `require` it from there. So Invisibl's
 controller is chips/invisibl/controller (`invisibl/controller`, which the second WhiCapsl requires), and the
 boomerang chips/boomer/boomerang (`boomer/boomerang`, which TomahawkCross Beast's throw and BoomrArm's charged
-shot use), and the drill chips/drilarm/drill (`drilarm/drill`, which GroundCross's charged shot and MstrCros's
-GroundCross use).
+shot use), the drill chips/drilarm/drill (`drilarm/drill`, which GroundCross's charged shot and MstrCros's
+GroundCross use), and the falling meteor with its panel marker chips/meteors/falling_meteor and marker
+(`meteors/falling-meteor`, `meteors/marker`; the instant chips' meteor shower, lib/instant/meteor_shower, uses
+them).
 
 The rest of v1's layout moves as follows: `lib/sword.luau` and `lib/vari_sword.luau` into `lib/swords/`,
 `lib/dragon.luau` into `lib/dragons/`, `lib/instant-chips/` into `lib/instant/`, `lib/buster.luau` into
