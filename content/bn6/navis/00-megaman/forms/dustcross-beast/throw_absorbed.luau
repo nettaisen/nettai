@@ -14,7 +14,7 @@ local beast_throw_absorbed = {}
 -- `sub_8011FCE`.
 local function setup(navi: Object): Action
     if throw_absorbed.take(navi) then
-        return buster.shot
+        return buster.throw(navi)
     end
     return falzar_beast_buster.setup(navi)
 end

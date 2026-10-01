@@ -66,7 +66,6 @@ function falzar_beast_buster.beast_setup(navi: Object, over: number, volleys: Vo
     navi.charged = 0
     navi.extra = 0
     navi.attack_lockout = 0
-    navi.variant = 0
     navi.marker = 0
     local cross_special = battle.per_player_gauges() and battle.side_special(navi.alliance) == "cross"
     if cross_special or battle.navi(navi.alliance).form == over then

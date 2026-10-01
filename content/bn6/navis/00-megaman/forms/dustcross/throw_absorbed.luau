@@ -8,7 +8,6 @@ local buster = require("../../weapons/buster/weapon")
 
 local throw_absorbed = {}
 
-local THROW = 2
 local DAMAGE = 200
 
 -- `sub_8011F8C`'s throw (`sub_8011FCE`'s too): the newest obstacle
@@ -29,14 +28,13 @@ function throw_absorbed.take(navi: Object): boolean
     navi.charged = 0
     navi.extra = 0
     navi.attack_lockout = 0
-    navi.variant = THROW
     return true
 end
 
 -- `sub_8011F8C`.
 local function setup(navi: Object): Action
     if throw_absorbed.take(navi) then
-        return buster.shot
+        return buster.throw(navi)
     end
     return buster.setup(navi)
 end
