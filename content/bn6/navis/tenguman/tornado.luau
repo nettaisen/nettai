@@ -12,7 +12,7 @@ local tornado = {}
 
 local SPRITE = asset.sprite("tengu-tornado")
 
--- Its hits: a tornado's, reaching nothing by its target; no spark.
+-- Its hits: pushing, reaching nothing by its target; no spark.
 local HIT_MOD = 1
 local HIT_EVERY, TICKS = 0x0C, 0x1E
 
@@ -26,7 +26,7 @@ local function hit(me: Object)
         region = regions.single,
         hit_effect = 0xFF,
         target = collision.nothing,
-        self_type = collision.tornado,
+        self_type = collision.pushing,
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = HIT_MOD,
