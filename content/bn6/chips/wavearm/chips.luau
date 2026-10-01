@@ -10,7 +10,7 @@ local strike = require("./strike")
 local wave = require("./wave")
 
 return {
-    { action = strike.action { id = "wavearm1/action", wave = wave.variants[0xC] } },
-    { action = strike.action { id = "wavearm2/action", wave = wave.variants[0xD] } },
-    { action = strike.action { id = "wavearm3/action", wave = wave.variants[0xE] } },
+    { action = strike.action { id = "wavearm1/action", wave = wave.variants.wavearm1 } },
+    { action = strike.action { id = "wavearm2/action", wave = wave.variants.wavearm2 } },
+    { action = strike.action { id = "wavearm3/action", wave = wave.variants.wavearm3 } },
 }

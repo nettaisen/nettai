@@ -11,7 +11,7 @@ local strike = require("../wavearm/strike")
 local wave = require("../wavearm/wave")
 
 return {
-    { action = strike.action { id = "pwrwave1/action", wave = wave.variants[0xF], three_rows = true } },
-    { action = strike.action { id = "pwrwave2/action", wave = wave.variants[0xF], three_rows = true } },
-    { action = strike.action { id = "pwrwave3/action", wave = wave.variants[0xF], three_rows = true } },
+    { action = strike.action { id = "pwrwave1/action", wave = wave.variants.pwrwave, three_rows = true } },
+    { action = strike.action { id = "pwrwave2/action", wave = wave.variants.pwrwave, three_rows = true } },
+    { action = strike.action { id = "pwrwave3/action", wave = wave.variants.pwrwave, three_rows = true } },
 }

@@ -24,11 +24,11 @@ local function look(l: Look): Look
     return define.record("reflector-shield-look", l)
 end
 
--- `byte_80C9664`'s rows: Rflectr1's (0), the NaviCust Reflect's (1) and
--- Shield's (2), Rflectr2's (7) and Rflectr3's (8); the others no chip or
--- program ported holds up.
+-- `byte_80C9664`'s rows: Rflectr1's, the NaviCust Reflect's and Shield's,
+-- four no chip or program ported holds up, Rflectr2's and Rflectr3's, and
+-- one more nothing ported holds up.
 local REFLECTOR, NAVI, SHIELD = asset.sprite("reflector-shield"), asset.sprite("megaman-navi"), asset.sprite("reflector-shield-2")
-shield.looks = {
+local ROWS: { [number]: Look } = {
     [0] = look { sprite = REFLECTOR, anim = 0, fade_anim = 1, fade_ticks = 0xE, palette = 0 },
     [1] = look { sprite = REFLECTOR, anim = 2, fade_anim = 3, fade_ticks = 0xE, palette = 0 },
     [2] = look { sprite = REFLECTOR, anim = 4, fade_anim = 5, fade_ticks = 0xE, palette = 0 },
@@ -39,6 +39,14 @@ shield.looks = {
     [7] = look { sprite = REFLECTOR, anim = 6, fade_anim = 7, fade_ticks = 0xE, palette = 0 },
     [8] = look { sprite = REFLECTOR, anim = 8, fade_anim = 9, fade_ticks = 0xE, palette = 0 },
     [9] = look { sprite = asset.sprite("sword"), anim = 0xA, fade_anim = 0xB, fade_ticks = 0xE, palette = 0 },
+}
+-- The looks by who holds them up: the chips, and the NaviCust programs.
+shield.looks = {
+    rflectr1 = ROWS[0],
+    rflectr2 = ROWS[7],
+    rflectr3 = ROWS[8],
+    navicust_reflect = ROWS[1],
+    navicust_shield = ROWS[2],
 }
 
 local SOUND = asset.sound("follow-effect")

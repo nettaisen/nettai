@@ -10,7 +10,6 @@
 -- their substitutes (phase C, step 10).
 
 local drkrecov = require("../drkrecov/chip")
-local heal = require("../recov/heal")
 local recov = require("../recov/chips")
 
 local by_number = {}
@@ -27,7 +26,7 @@ local BY_SUBTYPE: { [number]: Action } = {
     recov[7].action,
     recov[8].action,
     drkrecov.action,
-    heal.action { id = "recov/none", hp = 0 },
+    recov.none,
 }
 
 function by_number.update(me: Object, s: any)

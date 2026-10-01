@@ -16,7 +16,7 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 91, index = 91, sort = 341 },
         slot_in_limit = 3,
-        action = guard.action { ticks = 60, look = shield.looks[0], counter = "wave" },
+        action = guard.action { ticks = 60, look = shield.looks.rflectr1, counter = "wave" },
     },
     define.chip {
         id = "rflectr2",
@@ -27,7 +27,7 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 92, index = 92, sort = 342 },
         slot_in_limit = 3,
-        action = guard.action { ticks = 60, look = shield.looks[7], counter = "wave" },
+        action = guard.action { ticks = 60, look = shield.looks.rflectr2, counter = "wave" },
     },
     define.chip {
         id = "rflectr3",
@@ -38,6 +38,6 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 93, index = 93, sort = 343 },
         slot_in_limit = 3,
-        action = guard.action { ticks = 60, look = shield.looks[8], counter = "wave" },
+        action = guard.action { ticks = 60, look = shield.looks.rflectr3, counter = "wave" },
     },
 }

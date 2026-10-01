@@ -82,6 +82,7 @@
 "darkthnd/action" = 0x1F
 "thunder/action" = 0x1F
 "drkrecov/action" = 0x20
+"recov/none" = 0x20
 "recov10/action" = 0x20
 "recov120/action" = 0x20
 "recov150/action" = 0x20
