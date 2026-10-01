@@ -2,7 +2,7 @@
 -- BoomrArm's charged shot (`boomrarm/charge`): the weapon the chip makes
 -- the navi's charged shot (lib/navi-boost/controller; the original's weapon
 -- routine 0x26, `sub_8011F10`). It is Boomer's effect (instant chip effect
--- 1, objects/boomerang: the original's parameter bytes are 0, Boomer's
+-- 1, chips/boomer/boomerang: the original's parameter bytes are 0, Boomer's
 -- boomerang) for 100 Wood. Sticky: a form's own charged shot doesn't
 -- replace it, and while the navi has it a Beast buster gives way to the
 -- plain one.
