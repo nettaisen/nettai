@@ -128,6 +128,31 @@ fn output_runs_at_32768_hz() {
 }
 
 #[test]
+fn the_fifos_play_each_frames_mix_during_the_next() {
+    let mut d = Driver::new(bank(vec![(2, 20, vec![note_track(SAMPLE, 60, 90, 90)])], 4));
+    assert_eq!(d.dac_rate(), 65536);
+    d.start(SongId(0));
+    let mut dac = Vec::new();
+    d.step_frame();
+    d.take_dac_output(&mut dac);
+    // The note's first frame is mixed, but the DAC still plays silence.
+    let (right, left) = d.last_mix().unwrap();
+    assert!(right.iter().chain(left).any(|&s| s != 0));
+    assert!(dac.iter().all(|s| *s == [0, 0]), "the mix sounds in the frame it is mixed");
+    let (right, _) = d.last_mix().map(|(r, l)| (r.to_vec(), l.to_vec())).unwrap();
+    dac.clear();
+    d.step_frame();
+    d.take_dac_output(&mut dac);
+    // Each byte of it, held a timer period, four DAC steps a level (the
+    // FIFOs' latency moves it by a few samples).
+    let level = |b: i8| (((b as i32) << 2) * 0x100 * 3 >> 4) as i16;
+    let heard: Vec<i16> = dac.iter().map(|s| s[1]).collect();
+    let first = right.iter().position(|&b| b != 0).unwrap();
+    assert!(heard.contains(&level(right[first])));
+    assert_eq!(dac.len(), 1097);
+}
+
+#[test]
 fn a_busy_effect_player_refuses_lower_priority_songs() {
     let long = vec![note_track(SQUARE, 60, 20, 20)];
     let mut d = Driver::new(bank(vec![(0, 100, long.clone()), (0, 50, long.clone()), (0, 100, long)], 4));
