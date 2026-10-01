@@ -712,8 +712,8 @@ and `colarmy` scenarios.)
 Content model v2 (docs/design/content-model-v2.md): each action is a builder its chips compose, each object a kind
 definition, each table row a variant record written out in Luau.
 
-- **Where.** The projectile and its variants: objects/projectile (`variants.by_number` for the NaviCust's numbered
-  shots), lib/projectile; the flying shot: objects/flying-shot; the bullet: objects/bullet (its rows, and the
+- **Where.** The projectile and its variants: objects/projectile (the shot programs a navi's stats name are the
+  named records `shot/...`), lib/projectile; the flying shot: objects/flying-shot; the bullet: objects/bullet (its rows, and the
   variants the Vulcans, the Spreaders, SpoutCross's charged shot, ColArmy and ColForce fire). The cannons:
   lib/cannon with chips/cannon and chips/gigacan; AirShot, BatCan, MachGun: chips/airshot, chips/batcan (with its
   shot), chips/machgun; the Vulcans, the Spreaders, the TankCans, CornSht, WideSht and SuprSpr: chips/vulcan,
