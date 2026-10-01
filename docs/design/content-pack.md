@@ -32,10 +32,11 @@ in [asset-formats.md](asset-formats.md); the definitions and their API in
 - **Content is definitions.** The chips, navis, forms, weapons, stages,
   rule sections, collision types, statuses, lock-on modes, effects, sparks
   and regions are `define.*` calls in the content root's modules. What
-  only registration by number still reads (a chip's number, action and v1
-  module; the original's numbering of a table) sits in a definition's
-  `legacy` marker, which goes when its family converts
-  (content-model-v2.md §12).
+  only registration by number still reads (a navi's or a form's number, a
+  weapon's routine numbers, the original's numbering of a table) sits in a
+  definition's `legacy` marker, which goes when its family converts
+  (content-model-v2.md §12). A chip has none: it is its definition, with
+  its own use.
 - **Exact.** The tables the definitions build equal the ROM's, field by
   field (`gen-content check`, §3), and every golden trace, the sound calls
   and the chip lab hold.
@@ -49,9 +50,7 @@ in [asset-formats.md](asset-formats.md); the definitions and their API in
 
 ```text
 chips/KEY/chip.luau, chips.luau           a chip or a series (`define.chip`), with its use
-chips/KEY/record.luau, records.luau       a chip's definition beside the action module people wrote there
-chips/v1.luau                             the numbered records of the chips content defines (`v1/<key>`)
-chips/NNN-name/*.luau                     v1 modules a chip's legacy marker names (until step 6's moves)
+chips/KEY/*.luau                          what only that chip or series uses (its action's builder, its kinds)
 navis/KEY/navi.luau, chip.luau, *.luau    a navi, its own chip, its weapons
 navis/megaman/navi.luau                   MegaMan
 navis/megaman/forms/KEY/form.luau         MegaMan's forms, with their weapons next to them
@@ -100,7 +99,7 @@ and, from the pack, the asset index (`Content::assets`) and the sprites'
 timing (`Content::animations`), then runs the define phase
 (`Content::define`): every module once, what they define into the
 registries, and, from the definitions, the tables registration by number
-reads (bn6-battle's `content::legacy`: the chips, navis and forms by
+reads (bn6-battle's `content::legacy`: the navis and forms by
 number, the stages' panel layouts and actor
 lists, the rule sections, collision types by row, statuses, lock-on modes,
 effects, sparks, regions and the object kinds' rows). It reports, by

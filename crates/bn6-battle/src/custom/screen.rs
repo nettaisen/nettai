@@ -11,7 +11,7 @@ use super::chatbox::{Chatbox, Script};
 use super::library::Library;
 use super::{GameVersion, Unlocks};
 use crate::console::Console;
-use crate::content::{BannerId, ChipClass, ChipCode, ChipId, CustomScreenLayout, TemplateSlot};
+use crate::content::{BannerId, ChipClass, ChipCode, CustomScreenLayout, TemplateSlot};
 use crate::hud::{Banner, BannerStatus};
 use crate::input::{Joypad, keys};
 use crate::kinds::player::Emotion;
@@ -28,14 +28,17 @@ pub const MAX_SELECTIONS: usize = 5;
 /// Crosses a version has.
 pub const CROSSES: usize = 5;
 
-/// The chip id a selection turns into when it isn't allowed (the
-/// "error" chip), with code 0x1B.
-pub const INVALID_CHIP: (ChipId, ChipCode) = (0x185, ChipCode(0x1B));
+/// The code a selection that isn't allowed takes, with the invalid chip
+/// (the "error" chip, `Library::invalid_chip`).
+pub const INVALID_CODE: ChipCode = ChipCode(0x1B);
 /// Codes outside the alphabet that the selection rules treat apart:
 /// the invalid chip's, and one no chip has.
 const SPECIAL_CODES: [ChipCode; 2] = [ChipCode(0x1B), ChipCode(0x1C)];
-/// The "BeastOut" chip, as a folder chip (not the Beast Out button).
-const BEAST_OUT_CHIP: ChipId = 0x13F;
+/// Whether `c` is the "BeastOut" chip, as a folder chip (not the Beast Out
+/// button): `Library::beast_out_chip`.
+fn is_beast_out(c: FolderChip, view: &PlayerView) -> bool {
+    view.library.beast_out_chip() == Some(c.id)
+}
 
 /// What a slot holds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -745,7 +748,7 @@ impl Screen {
                 self.slots[cursor as usize].state = SlotState::Selected;
                 self.update_availability(view, folder);
                 // sub_802A00C
-                if self.chip_in(cursor, folder).is_some_and(|c| view.library.chip_number(c.id) == Some(BEAST_OUT_CHIP)) {
+                if self.chip_in(cursor, folder).is_some_and(|c| is_beast_out(c, view)) {
                     self.phase = Phase::BeastOutChipChosen { tick: 0 };
                 }
             }
@@ -993,7 +996,7 @@ impl Screen {
         for &s in self.selection() {
             let Some(c) = self.chip_in(s, folder) else { continue };
             let c = checked(c, view);
-            if view.library.chip_number(c.id) == Some(BEAST_OUT_CHIP) {
+            if is_beast_out(c, view) {
                 continue;
             }
             if SPECIAL_CODES.contains(&c.code) {
@@ -1016,7 +1019,7 @@ impl Screen {
             let c = checked(c, view);
             let ok = if full {
                 false
-            } else if view.library.chip_number(c.id) == Some(BEAST_OUT_CHIP) {
+            } else if is_beast_out(c, view) {
                 true
             } else if SPECIAL_CODES.contains(&c.code) {
                 special.is_none_or(|s| s == c.code)
@@ -1091,11 +1094,7 @@ fn scan(list: &[u8], start: u8, absent: impl Fn(u8) -> bool) -> u8 {
 /// invalid chip when it is a Mega or Giga chip past the navi's limit for
 /// the battle, or its code isn't one the chip comes in.
 pub fn checked(c: FolderChip, view: &PlayerView) -> FolderChip {
-    let invalid = || {
-        let (id, code) = INVALID_CHIP;
-        let id = view.library.chip_numbered(id).unwrap_or_else(|| panic!("the invalid chip, chip {id:#x}"));
-        FolderChip { id, code }
-    };
+    let invalid = || FolderChip { id: view.library.invalid_chip(), code: INVALID_CODE };
     let d = view.library.chip(c.id);
     if !SPECIAL_CODES.contains(&c.code) {
         let limit = match d.class {
@@ -1107,9 +1106,9 @@ pub fn checked(c: FolderChip, view: &PlayerView) -> FolderChip {
             return invalid();
         }
     }
-    // (A chip content defines has no number: its codes are checked.)
-    let code_checked = c.code != ChipCode(0x1B) && view.library.chip_number(c.id).is_none_or(|n| n < 0x19B);
-    if code_checked && !d.codes.contains(&c.code) {
+    // (The original also skips the check for chips past its chip table,
+    // which no folder holds.)
+    if c.code != INVALID_CODE && !d.codes.contains(&c.code) {
         return invalid();
     }
     c

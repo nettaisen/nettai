@@ -28,12 +28,6 @@ use serde::{Deserialize, Serialize};
 
 use super::Content;
 
-/// The chips' actions the ruleset implements itself and dispatches to a
-/// chip's script by its subtype.
-pub const DIMMING_CHIP_ACTION: u8 = 0x15;
-pub const NAVI_CHIP_ACTION: u8 = 0x1B;
-pub const INSTANT_CHIP_ACTION: u8 = 0x1C;
-
 /// The pack's Luau modules.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Scripts {
