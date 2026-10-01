@@ -1059,6 +1059,16 @@ navis/eraseman/chip.luau, spawns it too). The beam's collision type (`piercing-b
   the SP formulas, the PAs because the Program Advance table names its results by number. They go with
   EraseMan's (step 10). No `legacy` marker among them.
 
+**The link navis' own chips** (phase B, A3): each navi's folder has its chip's action and the kinds only it spawns
+(navis/heatman ... navis/dustman: `chip.luau`, and `riding_hit`, `volcano_rock`, `drip_shower`, `axe`, `strike`,
+`tornado`, `clouds`); a kind the navi chip series has too stays with the series (`heatman/flame`,
+`eraseman/beam`, `grndman/drill`, `grndman/rock`, rule 4), and the follow effect, which DeltaRay's bursts and
+DElecSwd's glow share, is objects/follow-effect with its looks as records. lib/link_chips.luau is what the ten
+routines share. Their records stay the pack's and run the action their module exports (§12, "A record's action by
+its module"). The kinds that lasted while their owner's action number was 0x0A keep his running action in an
+`"action"` state field and compare definitions (§7.6). Verified against the chip lab (docs/engine/
+standard-chips.md, "Action 0x0A").
+
 ### 5.6 Instant chips: a hook per chip
 
 v1: action 0x1C calls `Hook::InstantChip(subtype)`; one module serves the 30 chips of subtype 3.
