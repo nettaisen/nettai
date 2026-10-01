@@ -1,0 +1,3 @@
+# A navi chip (subtype 10): GroundMan, as chips/0fb-grndman summons him.
+
+script = "../0fb-grndman/chip.luau"

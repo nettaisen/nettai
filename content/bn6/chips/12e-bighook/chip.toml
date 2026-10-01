@@ -1,0 +1,4 @@
+# BigHook (navi chip subtype 23) brings FlmHook's hook with big flames
+# (chips/flmhook/hook.luau), through chip.luau.
+
+script = "chip.luau"
