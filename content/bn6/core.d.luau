@@ -678,8 +678,8 @@ export type HitboxSpec = {
     panel_y: number,
     element: number,
     z: number?,
-    -- Region shape (a definition; deprecated: a number).
-    region: Region | number,
+    -- Region shape (a definition; nil, none; deprecated: a number).
+    region: (Region | number)?,
     hit_effect: Spark | number,
     -- Collision types (definitions; deprecated: indices).
     target: CollisionType | number,
@@ -817,6 +817,8 @@ declare battle: {
     -- the original keeps it in the objects' visibility.
     viewer_sees: (side: number) -> boolean,
     link: () -> boolean,
+    -- A battle against a ranked boss (battle effect 1).
+    boss_rank: () -> boolean,
     mode: () -> number,
     panel_pattern: () -> number,
     -- Every navi is in (the intro's bit 2).
