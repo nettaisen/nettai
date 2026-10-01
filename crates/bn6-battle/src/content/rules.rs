@@ -50,9 +50,6 @@ pub struct Rules {
     pub berserk: BerserkRules,
     /// The custom screen's slot layout.
     pub custom_screen: CustomScreenLayout,
-    /// The palette MegaMan's sprite takes in each Cross, by form (0 for the
-    /// base form; `byte_80203EA`).
-    pub cross_palettes: Vec<u8>,
 }
 
 /// One of the Cross special's chips (`sub_802D4F0`): the chip its

@@ -37,10 +37,11 @@ local function arm_anim(user: Object): number?
         return nil
     end
     local stats = battle.navi(user.alliance)
-    if stats.navi ~= 0 then
+    if not stats.navi.forms then
         return nil
     end
-    return stats.form
+    local arm = stats.form.buster_arm
+    return if arm then arm.anim else 0
 end
 
 local function next_action(me: Object, a: number)

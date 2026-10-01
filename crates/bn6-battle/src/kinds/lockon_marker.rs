@@ -7,7 +7,6 @@ use crate::battle::Battle;
 use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress, set_progress};
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
-use crate::setup::Navi;
 
 const SPRITE: SpriteId = SpriteId { category: 0x0C, index: 0x09 };
 
@@ -109,7 +108,7 @@ fn link(b: &mut Battle, r: ObjectRef) -> &mut Option<ObjectRef> {
 fn tick(b: &mut Battle, r: ObjectRef) {
     let alliance = b.objects.get(r).alliance;
     let side = alliance as usize;
-    let shown = b.navi(side) == Navi::MEGAMAN && b.form(side).is_beast() && !b.is_remote(alliance);
+    let shown = b.navi(side).changes_form() && b.form(side).kind.is_beast() && !b.is_remote(alliance);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::VISIBLE;
     if shown {

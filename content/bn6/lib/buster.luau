@@ -70,23 +70,25 @@ function buster.raise_arm_for(navi: Object, holder: Object, which: Slot, while_d
     local side = navi.alliance
     local stats = battle.navi(side)
     local form = stats.form
+    -- The form's arm (`buster_arm`): its animation, and what it adds to
+    -- the palette (the Gregar Crosses in Beast Out: palettes 5 to 9).
+    local arm = form.buster_arm
     local palette_add = 0
-    if form == 0 then
+    if form.kind == "base" then
         if navi:navi_state("no_charge") then
             palette_add = NO_CHARGE_PALETTE
         elseif stats.element ~= 0 then
             palette_add = 0x14 + stats.element
         end
-    elseif form == 0xB or form == 0xC then
+    elseif form.kind == "beast" then
         -- Gregar and Falzar Beast.
         if battle.emotion(side) == "full_synchro" then
             palette_add = NO_CHARGE_PALETTE
         end
-    elseif form >= 0xD and form <= 0x11 then
-        -- The first five Beast Crosses: palettes 5 to 9.
-        palette_add = 5 + form - 0xD
+    elseif arm and arm.palette_add then
+        palette_add = arm.palette_add
     end
-    attach(buster.arm, form, palette_add)
+    attach(buster.arm, if arm then arm.anim else 0, palette_add)
 end
 
 -- What stops a shot's panel count (`byte_800FB4C`, by side): bodies,

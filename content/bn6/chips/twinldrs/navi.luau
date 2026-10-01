@@ -42,12 +42,30 @@ export type State = {
     home_z: number,
 }
 
--- How each looks and stands (`byte_80BD464`): his sprite, his actor
--- record's AI index (his parts), and where beside his user he comes in,
--- in pixels (forward, down).
-type Look = { sprite: SpriteAsset, ai_index: number, dx: number, dy: number }
-local PROTOMAN: Look = { sprite = asset.sprite("protoman"), ai_index = 0xB, dx = 10, dy = 10 }
-local COLONEL: Look = { sprite = asset.sprite("colonel"), ai_index = 0x12, dx = -10, dy = -10 }
+-- What Colonel is taken for: his actor record, and what he wears (his
+-- cape, `sub_8010FAC`).
+local COLONEL_IDENTITY = define.identity {
+    id = "colonel",
+    class = "navi",
+    version = 0,
+    ai_index = 0x12,
+    ice = "large",
+    parts = {
+        body = {
+            sprite = asset.sprite("colonel"),
+            anims = 192,
+            behind = { { 0x0D, 0x0F }, { 0x35, 0x37 }, { 0x42, 0x43 }, { 0x5B, 0x6F }, { 0x84, 0xAB }, { 0xBF, 0xBF } },
+            anim_offset = 0x0D,
+        },
+    },
+}
+
+-- How each looks and stands (`byte_80BD464`): his sprite, whose parts he
+-- wears (his actor record's: ProtoMan's wears nothing), and where beside
+-- his user he comes in, in pixels (forward, down).
+type Look = { sprite: SpriteAsset, identity: Identity?, dx: number, dy: number }
+local PROTOMAN: Look = { sprite = asset.sprite("protoman"), dx = 10, dy = 10 }
+local COLONEL: Look = { sprite = asset.sprite("colonel"), identity = COLONEL_IDENTITY, dx = -10, dy = -10 }
 
 local SOUND_APPEAR = asset.sound("appear")
 local SOUND_STRIKE = asset.sound("spin")
@@ -622,7 +640,9 @@ local function init(me: Object)
     me.pos = Vec3.new(x, y, 0)
     me.visible = true
     sprite:set_flip(flip_of(me))
-    me:add_navi_parts("navi", look.ai_index, 1)
+    if look.identity then
+        me:add_parts(look.identity, 1)
+    end
     if not s.colonel then
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
         local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = me.element, params = { 1, 0, 0, 0 }, damage = damage }
@@ -640,7 +660,9 @@ end
 local function destroy(me: Object)
     local s = me.state :: State
     local look = if s.colonel then COLONEL else PROTOMAN
-    me:remove_navi_parts("navi", look.ai_index)
+    if look.identity then
+        me:remove_parts(look.identity)
+    end
     if s.controller then
         navi_chip.navi_left(s.controller)
     end

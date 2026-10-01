@@ -17,7 +17,6 @@ use crate::content::{Content, SpriteId};
 use crate::kinds::common::{Progress, set_progress};
 use crate::kinds::player::form;
 use crate::object::{ObjectRef, Vec3, flags, state};
-use crate::setup::Form;
 
 /// The colour shader `sub_80EAFC2` gives its afterimages.
 const COLOR_SHADER: u16 = 0x83E0;
@@ -103,7 +102,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u1
     o.alliance = alliance;
     o.flags |= flags::RUN_WHILE_PAUSED;
     // sub_80E341E: tied to the Beast form, or to the attack.
-    let tether = if b.form(alliance as usize).is_beast() { Tether::BeastForm } else { Tether::Attack };
+    let tether = if b.form(alliance as usize).kind.is_beast() { Tether::BeastForm } else { Tether::Attack };
     // Less green, with a ground shadow (the spawner's r7 is 0x01010014 - n).
     let look = PlainLook { color_shader: COLOR_SHADER, shadow: PlainShadow::Ground, ..Default::default() };
     *vars(b, r) = Vars { lifetime, tether, anim, plain: look };
@@ -176,14 +175,13 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// reads the same sprites the form and navi tables give): MegaMan's base
 /// form's, a link navi's, a form's.
 fn player_sprite(content: &Content, identity: Option<IdentityHandle>) -> SpriteId {
-    use crate::content::{IdentityClass, IdentityOwner};
+    use crate::content::IdentityOwner;
     let id = content.identity(identity);
-    match (id.class, id.owner) {
-        (IdentityClass::MegaMan, _) => content.form_data(Form::NONE).sprite,
-        (IdentityClass::LinkNavi, Some(IdentityOwner::Navi(n))) => content.navi(n).sprite,
-        (_, Some(IdentityOwner::Form(f))) => content.form(f).sprite,
+    match id.owner {
+        Some(IdentityOwner::Navi(n)) => content.navi_sprite(n, content.base_form()),
+        Some(IdentityOwner::Form(f)) => content.form(f).sprite,
         // Only players' Beast Out rush leaves afterimages.
-        _ => unreachable!("an afterimage of identity {:?}, which is not a player's", id.key),
+        None => unreachable!("an afterimage of identity {:?}, which is not a player's", id.key),
     }
 }
 
@@ -262,7 +260,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let tether = vars(b, r).tether;
     let alliance = b.objects.get(r).alliance;
     let cut = match tether {
-        Tether::BeastForm => !b.form(alliance as usize).is_beast(),
+        Tether::BeastForm => !b.form(alliance as usize).kind.is_beast(),
         Tether::Attack => !crate::kinds::player::navi_action(b, owner).is_attack(&b.content.defs),
         Tether::None => false,
     };
