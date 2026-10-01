@@ -255,7 +255,7 @@ impl Hash for Object {
             timer2,
             hp,
             max_hp,
-            name_id,
+            identity,
             chip,
             damage,
             stamina,
@@ -279,7 +279,7 @@ impl Hash for Object {
         (panel, future_panel, alliance, flip).hash(h);
         (prevent_anim, shake_timer, chips_held).hash(h);
         (slide_tiles, slide_dx, slide_dy, slide_timer, slide_state).hash(h);
-        (timer, timer2, hp, max_hp, name_id, chip, damage, stamina).hash(h);
+        (timer, timer2, hp, max_hp, identity, chip, damage, stamina).hash(h);
         (shake_origin_x, shake_origin_z).hash(h);
         (pos, vel).hash(h);
         (related, second_overlay, collision, actor, saved_state).hash(h);

@@ -413,7 +413,7 @@ fn emerge(b: &mut Battle, r: ObjectRef, seq: Sequence, target: Form) {
             b.play_sound(crate::sound::SoundId(0x100));
         }
         // sub_8015B22: the form's NameID.
-        b.objects.get_mut(r).name_id = 0x1AB + target.0 as u16;
+        b.objects.get_mut(r).identity = super::super::form_identity(&b.content, target);
         form::put_on_overlay(b, r, target);
         if let Some(o) = b.objects.get(r).related[1] {
             match seq {
@@ -543,7 +543,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
         spend_form(b, r);
         stats_mut(b, r).form = b.content.form_numbered(Form::NONE);
-        b.objects.get_mut(r).name_id = 0x1A0;
+        b.objects.get_mut(r).identity = super::super::form_identity(&b.content, Form::NONE);
         reset_status(b, r);
         // sub_80143B4: anger ends (the mood is left alone).
         calm_down(b, r);
@@ -657,7 +657,7 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
         s.look.white = true;
         stats_mut(b, r).form = b.content.form_numbered(new);
         // sub_8015B22
-        b.objects.get_mut(r).name_id = if new == Form::NONE { 0x1A0 } else { 0x1AB + new.0 as u16 };
+        b.objects.get_mut(r).identity = super::super::form_identity(&b.content, new);
         let side = b.objects.get(r).alliance;
         set_mood(b, side, 0x80);
         reset_status(b, r);

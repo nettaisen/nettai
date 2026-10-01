@@ -56,7 +56,6 @@ pub fn script_data(c: &Content) -> Data {
         ("projectiles", by_id(o.projectiles.iter().map(|p| (p.id as i64, p)), |p| value(*p))),
         ("flying_shots", by_id(o.flying_shots.iter().map(|p| (p.id as i64, p)), |p| value(*p))),
         ("sword_waves", by_id(o.sword_waves.iter().map(|w| (w.id as i64, w)), |w| value(*w))),
-        ("name_looks", by_id(o.name_looks.iter().map(|l| (l.name_id as i64, l)), |l| value(*l))),
         ("shock_waves", by_id(o.shock_waves.iter().map(|w| (w.id as i64, w)), |w| value(*w))),
         (
             "kinds",
