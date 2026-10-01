@@ -129,7 +129,8 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
 
     let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(testing::chip_in(&b.content, testing::SUN_GUN_3));
-    let firing = b.content.chip(testing::chip_in(&b.content, testing::SUN_GUN_3)).gun_del_sol.unwrap().firing_ticks as u32;
+    // GunDelS3's firing time (chips/gundels), which a level-2 SunGun runs.
+    let firing = 120u32;
     b.hands[0] = hand;
     let mut t = 0;
     tick(&mut b, p0, p1, keys::A);
@@ -149,7 +150,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     // Tick 7: the beam, two panels ahead.
     run_to(&mut b, p, &mut t, 7, 0);
     let beam = b.objects.get(p0).related[0].unwrap();
-    assert_eq!(b.kind_key(beam), "sun-beam");
+    assert_eq!(b.kind_key(beam), "gundels/beam");
     assert_eq!(b.objects.get(beam).pos.x, 60 << 16);
     assert_eq!(b.objects.get(gun).anim, 1);
 
@@ -314,6 +315,39 @@ fn a_reflector_guards_for_its_first_parameter_then_its_shield_fades() {
 fn a_reflector_sends_the_first_blocked_hit_back_along_the_row() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
+    // Side 0 steps to (3,2).
+    let mut t = 0;
+    tick(&mut b, p0, p1, keys::RIGHT);
+    run_to(&mut b, p, &mut t, 12, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 3, y: 2 });
+    hand_with(&mut b, 0, testing::MIRROR);
+    let both = |b: &mut Battle, held: [u16; 2]| {
+        ai_mut(b, p0).pad.update(held[0] | keys::PRESENT);
+        ai_mut(b, p1).pad.update(held[1] | keys::PRESENT);
+        b.run_objects();
+    };
+    // Side 0 raises its guard; side 1 fires its buster down the row (B, on
+    // its release).
+    both(&mut b, [keys::A, keys::B]);
+    assert_eq!(act(&b, p0), 0x2B);
+    both(&mut b, [0, 0]);
+    assert_eq!(runs(&b, p1), "megaman/buster/shot");
+    // The guard blocks the shot, and sends a wave back that runs along the
+    // row into side 1: 50 damage, once.
+    let mut waves = 0;
+    for _ in 0..30 {
+        both(&mut b, [0, 0]);
+        waves += find_kind(&b, "reflected-shot").is_some() as u32;
+    }
+    assert!(waves > 0, "no wave");
+    assert_eq!(b.objects.get(p0).hp, 1000);
+    assert_eq!(b.objects.get(p1).hp, 950);
+}
+
+#[test]
+fn a_guard_blocks_gun_del_sol_without_a_wave() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
     // Side 0 steps to (3,2), in the column side 1's GunDelSol hits.
     let mut t = 0;
     tick(&mut b, p0, p1, keys::RIGHT);
@@ -329,16 +363,15 @@ fn a_reflector_sends_the_first_blocked_hit_back_along_the_row() {
     };
     both(&mut b, [keys::A, keys::A]);
     assert_eq!((act(&b, p0), act(&b, p1)), (0x2B, 0x37));
-    // The guard blocks the beam's hits (no drain), and the first one sends
-    // a wave back that runs along the row into side 1: 50 damage, once.
-    let mut waves = 0;
+    // The guard blocks the beam's hits (no drain) while it is up, but a
+    // drain (collision type `drain`, the game's row 0x2C) doesn't tell the
+    // guard where it came from: no wave goes back.
     for _ in 0..30 {
         both(&mut b, [0, 0]);
-        waves += find_kind(&b, "reflected-shot").is_some() as u32;
+        assert_eq!(find_kind(&b, "reflected-shot"), None);
     }
-    assert!(waves > 0, "no wave");
     assert_eq!(b.objects.get(p0).hp, 1000);
-    assert_eq!(b.objects.get(p1).hp, 950);
+    assert_eq!(b.objects.get(p1).hp, 1000);
 }
 
 /// Side 0 uses `chip` (the first in its hand) from idle: the tick the

@@ -1465,7 +1465,8 @@ sparkles, the counterattack and the bursts are **unverified**.
 
 ### 3.7 RskyHny (action 0x39, `sub_80EDD80`)
 
-Content: chips/025-rskyhny1/chip.luau (the action), objects/honey-bee (the bee, T3#0x74).
+Content: chips/rskyhny (`action`: the action's builder; `bee`: the bee, T3#0x74; `chips`: the three chips, each
+level's bees its own).
 
 The action (`off_80EDD94`, three phases on `av[0]`; no counter window, no reactive abort):
 
@@ -1513,8 +1514,9 @@ in a row; the destination behind the user or off the edge (`sub_80D3342`'s fallb
 
 ### 3.8 The dragons (action 0x51, `sub_80EF4B4`)
 
-Content: chips/02e-heatdrgn/chip.luau (the action), objects/dragon-head (T3#0xC9), objects/dragon-body (T3#0xC8),
-lib/dragon.luau.
+Content: lib/dragons (`action`: the action's builder; `head`, T3#0xC9; `body`, T3#0xC8; `dragon`: what the two
+share, and a dragon's variant), with a chip folder each (chips/heatdrgn, elecdrgn, aquadrgn, wooddrgn). The target
+column is lib/panels' `enemy_column`, which MachGun shares.
 
 The action: phase 0 (`sub_80EF4D0`): anim 0xC, counter window, USING_ACTION, `av+0x10` = 15; at 13, the dragon; at -1,
 `av+0x10` = 5 and phase 4 (`sub_80ECA0C`: 6 ticks, then `object_exitAttackState`). The column (`sub_80ED040`): the
@@ -2182,7 +2184,7 @@ Django's actions (`off_80BDD34`):
 - 0 (`sub_80BE144`): sound 0x94, Timer 60, anim 1; 60 ticks → 4.
 - 4 (`sub_80BE174`): 0 (`sub_80BE190`): anim 3, Timer 10, his gun (`sub_80B8E30`, r4 0x1080B: attachment 0xB,
   animation 8, in ExtraVars[2]), sound 0xF8; 10 ticks (the entry's included): the sun beam (`sub_80E5D12`: effect
-  #0x48, objects/sun-beam, offset (80 · front, 0, 0) pixels from him in its velocity, r4 0x10000: look 0, palette
+  #0x48, chips/gundels/beam, offset (80 · front, 0, 0) pixels from him in its velocity, r4 0x10000: look 0, palette
   0, Param3 1: it goes on while dimmed; r7 = &ExtraVars[3], where it is kept) → 4. 4 (`sub_80BE1DC`): anim 4, the
   gun's animation 9 (`sub_80B8E70`), Timer 120; every tick, the entry's too, a hit on the panel two ahead (element 5,
   Z 0, r4 0x1705FF04: region 4, no hit spark, target 5, self 0x17; damage 3, modifier 0: the silent drain of
