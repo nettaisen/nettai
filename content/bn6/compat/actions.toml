@@ -165,7 +165,9 @@
 "dolthdr1/action" = 0x3E
 "dolthdr2/action" = 0x3E
 "dolthdr3/action" = 0x3E
+"eleccross/charge/thunder" = 0x3E
 "windrack/action" = 0x3F
+"tengucross/charge/gust" = 0x3F
 "moonbld/action" = 0x40
 "slashcross/charge/action" = 0x41
 "destpuls/action" = 0x42

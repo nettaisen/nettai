@@ -402,7 +402,7 @@ scenario reaches it **[unverified]**.
 ## 12. Action 0x55: SonicBom, SprSonic (`sub_80EF970`)
 
 VarSwrd's fifth pick (0x173 SonicBom: parameters 3, variant 0) and NeoVari's second (0x177 SprSonic: 0x101,
-variant 1) start it through `set_attack`, keeping the sword's damage (lib/vari_sword.luau). 0x174 Curse (VDoll's
+variant 1) start it through `set_attack`, keeping the sword's damage (lib/swords/vari.luau). 0x174 Curse (VDoll's
 telop, §14.2) and 0x175 Punisher name it too, with parameters 0.
 
 - **Count** (`sub_80EF990`, tick 1): slashes `av.u16[0x12]` = 1 (both branches of its variant test store 1); the

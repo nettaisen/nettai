@@ -3,10 +3,11 @@
 -- built"): a record that names the original's action 0x55 runs this
 -- module, which runs the chip's own action (chips/sonicbom) by the boom's
 -- hit modifier (the record's first parameter: SonicBom's 3, SprSonic's 1,
--- which goes through, Curse's and Punisher's 0). Records reach it where something names a chip
--- by number: VarSwrd's and NeoVari's picks (SonicBom, SprSonic), and the
--- records of Curse and Punisher. It goes when those are definitions (step
--- 5, phase C).
+-- which goes through, Curse's and Punisher's 0). Records reach it where
+-- something names a chip by number: the records of SonicBom, SprSonic,
+-- Curse and Punisher. (VarSwrd and NeoVari start SonicBom's and SprSonic's
+-- actions themselves, lib/swords/vari.) It goes when those are definitions
+-- (step 5, phase C).
 
 local sonicbom = require("../sonicbom/chips")
 
