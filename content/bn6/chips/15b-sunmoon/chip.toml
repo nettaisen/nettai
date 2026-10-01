@@ -1,3 +1,4 @@
-# A navi chip (subtype 25): its navi is SunMoon.
+# SunMoon (navi chip subtype 25) summon SunMoon (chips/sunmoon/sun.luau),
+# through chip.luau.
 
-script = "../../objects/sun-moon/sun_moon.luau"
+script = "chip.luau"
