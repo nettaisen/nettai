@@ -658,3 +658,14 @@ export type DarkBall = {
     slant: number,
     homing: DarkBallHoming,
 }
+
+-- SunMoon's meteor (chips/sunmoon/meteor): its look, what it is and hits,
+-- whether its landing shakes the camera, and what it does to a panel that
+-- holds something.
+export type SunMeteor = {
+    sprite: SpriteAsset,
+    anim: number,
+    collision: { is: CollisionType, hits: CollisionType },
+    shake: boolean,
+    panel: "none" | "crack" | "break",
+}

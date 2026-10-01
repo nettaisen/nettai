@@ -1,30 +1,32 @@
 --!strict
--- SunMoon, the navi of the SunMoon Program Advance (actor object #0x24,
--- `sub_80BF260`), brought by its navi chip controller: a sun-and-moon
--- above its user's panel. It throws six fire meteors at the panel three
--- columns ahead, 15 ticks apart (objects/sun-meteor); flashes; turns to
--- the moon and shines on that panel for 100 ticks (objects/moon-beam);
--- flashes back; and dives onto it, hitting its panel and those around it
--- (region 0xF), cracking them, with a palette flash. Then it goes and the
--- controller moves on. See docs/engine/chips.md §3.6.32.
---
--- The chip's script (navi chip subtype 25): `navi_chip` is its spawner,
--- `off_802CD5C[25]`.
+-- SunMoon, the navi of the SunMoon Program Advance (the original's actor
+-- object #0x24, `sub_80BF260`), brought by its navi chip controller: a
+-- sun-and-moon above its user's panel. It throws six fire meteors at the
+-- panel three columns ahead, 15 ticks apart (./meteor); flashes; turns to
+-- the moon and shines on that panel for 100 ticks (./moon_beam); flashes
+-- back; and dives onto it, hitting its panel and those around it,
+-- cracking them, with a palette flash. Then it goes and the controller
+-- moves on. See docs/engine/chips.md §3.6.32.
 
 local panels = require("../../lib/panels")
-local sun_meteor = require("../sun-meteor/sun_meteor")
-local moon_beam = require("../moon-beam/moon_beam")
+local meteor = require("./meteor")
+local moon_beam = require("./moon_beam")
+local collision = require("../../rules/collision")
+local effects = require("../../lib/effects")
+local regions = require("../../lib/regions")
 
 export type State = {
     -- The controller waiting for it (ExtraVars[0]).
     controller: Object?,
 }
 
-local sun_moon = {
-    state = { controller = "object" },
-}
+local sunmoon = {}
 
-local SPRITE = "0C-64"
+local SPRITE = asset.sprite("moon-beam")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_BLAST_MAN = asset.sound("blast-man")
+local SOUND_BURST = asset.sound("burst")
+local SOUND_SUN_MOON = asset.sound("sun-moon")
 
 -- Where it hovers (16.16).
 local HEIGHT = 0x40_0000
@@ -37,28 +39,11 @@ local DIVE_TICKS = 0x10
 -- occupied: as one word).
 local HOLDS = 0x0F80_0010
 
--- The region its dive hits, cracks and marks.
-local DIVE_REGION = 0x0F
-
--- `sub_80BF6AE`: SunMoon for `user`, reporting to `controller`. It runs
--- while dimmed. (Its position is the spawner's registers, which its init
--- overwrites.)
-function sun_moon.navi_chip(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn_kind("sun-moon", Vec3.zero, spec.params)
-    if not o then
-        return nil
-    end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.damage = spec.damage
-    o.stamina = bit32.rshift(spec.damage, 16)
-    o.related1 = user
-    local s = o.state :: State
-    s.controller = controller
-    o.alliance, o.flip = user.alliance, user.flip
-    o.run_while_dimmed = true
-    return o
-end
+-- The region its dive hits, cracks and marks (the 3x3 around its panel).
+local DIVE_REGION = regions.square
+-- Its meteors' and its moonlight's damage (with its damage word's flag
+-- bits).
+local METEOR_DAMAGE, MOONLIGHT_DAMAGE = 0x32, 2
 
 -- The damage word's flag bits (0xF000 of the damage) with `damage`.
 local function flagged(me: Object, damage: number): number
@@ -80,7 +65,7 @@ end
 -- `sub_80BF2FC`: it appears; 60 ticks.
 local function appear(me: Object)
     if me.phase_init == 0 then
-        battle.play_sound(0x94)
+        battle.play_sound(SOUND_APPEAR)
     end
     if countdown(me, 0x3C) then
         me:set_action(4)
@@ -101,7 +86,7 @@ local function meteors(me: Object)
         return
     end
     me.timer = 0xF
-    sun_meteor.spawn(me, me.panel_x, me.panel_y, 1, { 0 }, flagged(me, 0x32), me.pos.z)
+    meteor.spawn(me, me.panel_x, me.panel_y, 1, meteor.fire, flagged(me, METEOR_DAMAGE), me.pos.z)
     left = me.timer2 - 1
     me.timer2 = left
     if left > 0 then
@@ -135,14 +120,13 @@ local function blink(me: Object, timer: number, inverted: boolean)
     me.sprite.palette = if lit then 4 else 0
 end
 
--- `sub_80BF3CC` / `sub_80BF4EC`: 30 ticks of blinking (sound 0x110),
--- ending on the moon's palette (4) or the sun's (0).
+-- `sub_80BF3CC` / `sub_80BF4EC`: 30 ticks of blinking, ending on the moon's palette (4) or the sun's (0).
 local function turn(inverted: boolean): (Object) -> ()
     return function(me: Object)
         if me.phase_init == 0 then
             me.anim = 1
             me.timer = 0x1E
-            battle.play_sound(0x110)
+            battle.play_sound(SOUND_SUN_MOON)
             me.phase_init = 4
         end
         blink(me, me.timer, inverted)
@@ -162,7 +146,7 @@ local function moonlight(me: Object)
         me.timer = 0x64
         me.anim = 3
         me.sprite.palette = 0
-        moon_beam.spawn(me, me.panel_x, me.panel_y, 0, { 0 }, flagged(me, 2))
+        moon_beam.spawn(me, me.panel_x, me.panel_y, 0, flagged(me, MOONLIGHT_DAMAGE))
         me.phase_init = 4
     end
     local left = me.timer - 1
@@ -188,7 +172,7 @@ local function after_moonlight(me: Object)
 end
 
 -- `sub_80BF588`: 10 ticks (the camera shakes for them, magnitude 1); then
--- aim the dive at the panel three columns toward the enemy (sound 0x17F).
+-- aim the dive at the panel three columns toward the enemy.
 local function aim_dive(me: Object)
     if me.phase_init == 0 then
         battle.shake_camera(1, 0xA)
@@ -199,14 +183,14 @@ local function aim_dive(me: Object)
         local target = field.center(me.panel_x + direction * 3, me.panel_y)
         local p = me.pos
         me.vel = Vec3.new(int.tdiv(int.i32(target - p.x), DIVE_TICKS), 0, int.tdiv(int.i32(-p.z), DIVE_TICKS))
-        battle.play_sound(0x17F)
+        battle.play_sound(SOUND_BLAST_MAN)
         me.phase, me.phase_init = 4, 0
     end
 end
 
 -- `sub_80BF5E0`: dive; landing on a panel that holds something, the hit
--- (region 0xF), its panels cracked and marked, a palette flash; on one
--- that doesn't, just a burst. Then it is out of sight.
+-- (the 3x3), its panels cracked and marked, a palette flash; on one that
+-- doesn't, just a burst of smoke. Then it is out of sight.
 local function dive(me: Object)
     local left = me.timer - 1
     me.timer = left
@@ -222,9 +206,9 @@ local function dive(me: Object)
     me.pos = Vec3.new(p.x, p.y, 0)
     local x, y = me.panel_x, me.panel_y
     if bit32.band(field.flags(x, y), HOLDS) == 0 then
-        battle.effect(Vec3.new(p.x, p.y, 0x10_0000), 0x12)
+        battle.effect(Vec3.new(p.x, p.y, 0x10_0000), effects.smoke)
     else
-        battle.play_sound(0xC3)
+        battle.play_sound(SOUND_BURST)
         battle.shake_camera(3, 0x1E)
         local box = battle.hitbox(me, {
             panel_x = x,
@@ -233,8 +217,8 @@ local function dive(me: Object)
             z = 0,
             region = DIVE_REGION,
             hit_effect = 0xFF,
-            target = 5,
-            self_type = 0x0A,
+            target = collision.hits_navis,
+            self_type = collision.thrown,
             damage = me.damage,
             stamina = me.stamina,
             hit_mod = 3,
@@ -244,7 +228,7 @@ local function dive(me: Object)
         end
         panels.crack_region(x, y, DIVE_REGION)
         -- sub_801BD3C, with the 3 left in r7 as the marks' Z.
-        battle.region_effects(x, y, DIVE_REGION, me.alliance, 5, 3)
+        battle.region_effects(x, y, DIVE_REGION, me.alliance, effects.burst, 3)
         battle.palette_flash(0, 0x1E, true)
     end
     me.phase, me.phase_init = 8, 0
@@ -311,17 +295,41 @@ local function leave(me: Object)
     me:free()
 end
 
--- `sub_80BF260`.
-function sun_moon.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        leave(me)
+sunmoon.kind = define.kind {
+    id = "sunmoon/sun",
+    pool = "actor",
+    state = { controller = "object" },
+    -- `sub_80BF260`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            leave(me)
+        end
+        me:update_sprite()
+    end,
+}
+
+-- `sub_80BF6AE`: SunMoon for `user`, reporting to `controller` (the
+-- SunMoon chip's navi hook, `off_802CD5C[25]`). It runs while dimmed. (Its
+-- position is the spawner's registers, which its init overwrites.)
+function sunmoon.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
+    local o = battle.spawn(sunmoon.kind, Vec3.zero)
+    if not o then
+        return nil
     end
-    me:update_sprite()
+    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
+    o.element = spec.element
+    o:set_damage_word(spec.damage)
+    o.related1 = user
+    local s = o.state :: State
+    s.controller = controller
+    o.alliance, o.flip = user.alliance, user.flip
+    o.run_while_dimmed = true
+    return o
 end
 
-return sun_moon
+return sunmoon
