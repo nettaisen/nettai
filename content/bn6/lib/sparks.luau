@@ -17,6 +17,9 @@ local BY_ELEMENT: { [number]: Spark } = {
 -- The erase beams' spark (hit effect 0x0C).
 sparks.erase = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
 
+-- A heavy hit's (hit effect 6): Magnum's shot, the beasts' claws and bites.
+sparks.heavy = define.spark { sprite = asset.sprite("copy-mark"), anim = 8, palette = 0 }
+
 -- The plain hit (spark 0) and the elements' (1 to 4), as named sparks:
 -- what an attack that always shows one element's spark sets.
 sparks.plain = BY_ELEMENT[0]
