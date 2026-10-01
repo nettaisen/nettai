@@ -51,16 +51,16 @@ fn battles_run_the_content_scripts() {
             "bugbomb/bomb",
             "charge-car",
             "charge-man",
-            "charge-wave",
+            "chargecross-beast/wave",
             "chargeman/volcano-rock",
             "countdown-bomb",
             "crakshot/shot",
-            "dash-hit",
             "dolthdr/doll",
             "dragon-body",
             "dragon-head",
             "drill",
-            "dust-ball",
+            "dustcross-beast/junk-shot",
+            "dustcross/junk-ball",
             "dustman/cloud",
             "dustman/overlay",
             "elec-man",
@@ -73,8 +73,8 @@ fn battles_run_the_content_scripts() {
             "elmnt-man",
             "elmnt-vine",
             "energbom/burst",
-            "erase-drop",
-            "erase-ray",
+            "erasecross-beast/drop",
+            "erasecross/ray",
             "eraseman/beam",
             "eraseman/mark",
             "eraseman/navi",
@@ -99,13 +99,12 @@ fn battles_run_the_content_scripts() {
             "heatman/flame",
             "hit-flash",
             "invisible",
-            "junk-shot",
             "justcone/strike",
             "lance/lance",
             "land-mine",
             "lilbolr/boiler",
             "lilbolr/layer",
-            "lunge-slash",
+            "megaman/dash-hit",
             "meteor",
             "mine",
             "moon-beam",
@@ -126,6 +125,7 @@ fn battles_run_the_content_scripts() {
             "seed",
             "slash-man",
             "slash-wave",
+            "slashcross-beast/lunge-slash",
             "slashman/riding-hit",
             "spout-ball",
             "spout-geyser",
@@ -564,15 +564,13 @@ fn registrations_follow_the_content_data() {
     let c = testing::build();
     let d = &c.defs;
     // The four SunGun chips share one action, as the thrown chips and the
-    // three swords share theirs; the v1 weapons have theirs (the buster's,
-    // the charged shot's and the blank shot's are definitions). (The mend,
+    // three swords share theirs; the v1 weapons have theirs (HeatCross
+    // Beast's and ElecCross Beast's charges and SlashCross's slash: the
+    // other weapons' are definitions). (The mend,
     // mirror, bee and dragon chips are definitions.)
     let mut actions: Vec<u8> = d.actions.iter().filter_map(|a| a.number).collect();
     actions.sort();
-    let expected = [
-        0x12, 0x13, 0x1A, 0x1D, 0x1E, 0x35, 0x37, 0x3A, 0x3C, 0x3D, 0x41, 0x45, 0x46, 0x49, 0x4A, 0x4C, 0x4D, 0x4E, 0x4F,
-        0x50, 0x52, 0x56, 0x57, 0x58,
-    ];
+    let expected = [0x12, 0x13, 0x35, 0x37, 0x3C, 0x41, 0x49];
     assert_eq!(actions, expected, "{:?}", d.actions);
     // An instant chip's record resolves its subtype's effect (the plus
     // chips' records, the shim's), and a weapon that names an effect no

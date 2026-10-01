@@ -102,6 +102,7 @@
 "spreadr1/action" = 0x25
 "spreadr2/action" = 0x25
 "spreadr3/action" = 0x25
+"spoutcross/charge/action" = 0x25
 "airhocky/action" = 0x26
 "pithocky/action" = 0x26
 "firebrn1/action" = 0x27

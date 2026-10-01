@@ -1230,8 +1230,8 @@ buster alias folders) went. What it settled:
 - **HeatCross is partial.** Its form stays the pack's record until step 5's form reader; its charged shot is a
   weapon definition (routine 0x06) whose setup returns its own burn (lib/burner, FireBrn's action, with
   HeatCross's burner and flame: `heatcross/charge/action`, step 8g).
-- **What the attack keeps stays numeric for now**: the shot's kind in the attack's first parameter (the
-  projectile family's, §5.3), the throw as the shot's variant 2, the arm `raise_arm` raises by attachment row.
+- **What the attack keeps** was numeric at step 7 (the shot's kind in the attack's first parameter, the throw as
+  the shot's variant 2); it is the shot's state since step 8e (below).
 - **SlashCross's charged slash** (weapons 0x11 and 0x12, action 0x41) is left to family 8e. It reads the
   charged chip's subtype and first parameter (the four Sword-family definitions' `legacy` marker gives them).
   Its proper hook needs a runtime read of the attack chip's definition (so the charge can ask the chip for its
@@ -1239,6 +1239,43 @@ buster alias folders) went. What it settled:
   wave's variants as records (it spawns the wave with the chip's subtype as its first parameter).
 - **Verified** on the test content (the shots' timelines, the throw, the aliases, the role, the definitions'
   routines and charge times), the type check, and the traces and the chip lab on a real pack.
+
+**As built** (step 8e, MegaMan's weapons): every weapon routine a v1 module implemented is a `define.weapon`
+with its action a `define.action`, in the module the weapon's key names: a form's own under
+navis/00-megaman/forms/`<form>`/ (`charge`, `drop`, `wave`, `lunge`, `scatter`, `dash`, `drill`, `tackle`,
+`throw`, `throw_absorbed`, beside the kinds only it spawns: SpoutCross Beast's `surge`, TenguCross Beast's
+`whirlwind`, EraseCross's `ray`, EraseCross Beast's `erase_drop`, SlashCross Beast's `lunge_slash`, ChargeCross
+Beast's `charge_wave`, DustCross Beast's `junk_shot`, DustCross's `junk_ball`), one several forms or the
+NaviCust name under navis/00-megaman/weapons/`<name>`/weapon.luau (the Beast busters, the Beast claw,
+`tengu-wind`, `absorb`, `anti-damage`, and `shield`, which defines the four NaviCust shields and reflects), and
+the hit the dash and the tackle share in navis/00-megaman/dash_hit.luau (`megaman/dash-hit`). (The folder stays
+`00-megaman` until the navis are definitions.) What it settled:
+
+- **A setup writes its action's state**, not attack parameters: `navi:action_state(action)` gives the state of
+  the action the setup is about to return (zeroed unless that action ran last), and the setup fills what the
+  original put in the attack's variant and parameter bytes (the Beast busters' volleys, EraseCross's beam for
+  its Beast form, the claw's slashes). The buster's shot keeps what it fires as `mode` (`"shot"`, `"spread"`,
+  `"throw"`) and its projectile as a variant record; the charged shot its projectile. The NaviCust's shot
+  programs are still the navi stats' bytes (rows of the projectile's table), which the setups turn into
+  variants (`variants.by_number`); `lib/projectile`'s shots are variants only.
+- **A weapon without an action**: TenguCross's wind names no action of its own. Its definition has an
+  `instant` slot (`instant = function(user, spec)`), its setup returns nothing, and the instant chips' action
+  runs the effect once and waits its 8 ticks (`Effect::RunsThenWaits`, where the original tested the attack's
+  variant).
+- **A kind that follows its owner's action keeps the action**: where the original compared the owner's action
+  number (the whirlwind, the erase ray, the dash hit), the kind's state holds the action it was spawned under
+  and compares `owner:navi_action()` with it; the absorbed obstacle asks whether its navi runs
+  `megaman/absorb`'s action.
+- **Roles name the definitions**: `cross_protect` is GroundCross's drill's action, `cross_death` SlashCross
+  Beast's lunge's, `beast_claw` the claw's, `dust_beast_scatter` the scatter's (rules/roles.luau; the test
+  content's roles too).
+- **Kind keys by form**: a kind in navis/`<navi>`/forms/`<form>`/ is keyed `<form>/<name>` (the lint takes
+  the form as the owner), one beside the navi `megaman/<name>`.
+- **Charge times** are each definition's own row with the next row's first entry, as step 7's; a B+Back
+  special, which nothing charges, still gives its row (zeros).
+- **Still numeric**: `lockon_panel(x, y, mode)` in GroundCross's drill and SlashCross Beast's lunge (lock-on
+  modes are step 10's), the forms by number (`battle.navi(side).form`), and each weapon's
+  `legacy = { routines }`.
 
 ### 5.8 Standard chip actions: a builder per action, the chips' parameters its arguments
 
@@ -2105,8 +2142,8 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   or when family 8e converts the forms. The marker's `action` and `script` (a behaviour still a v1 module) are
   step 5's; the reader refuses them until then.
 - **The weapon legacy marker.** A weapon definition may carry `legacy = { routines = { ... } }`, the routine
-  numbers the pack's forms, the navis' rows and the ruleset name it by (MegaMan's buster, charged shot and blank
-  shot, HeatCross's charge). Counted by the ratchet; it goes when the forms are definitions (step 5's form
+  numbers the pack's forms, the navis' rows and the ruleset name it by (every weapon content defines: step 8e).
+  Counted by the ratchet; it goes when the forms are definitions (step 5's form
   reader) and the ruleset names weapons by handle (phase C).
 - **Registration-by-number shims.** chips/036-minibomb (action 0x12), chips/047-sword (0x13) and
   chips/056-mchnswrd (0x49) run a record's action by its subtype for records something still names by number:

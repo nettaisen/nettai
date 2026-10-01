@@ -54,12 +54,37 @@ local function setup_counter(navi: Object): Action
     return REFLECT
 end
 
--- (B+Back specials, never charge routines: their rows lie past the charge
--- table's fifty. Transitional: the routine numbers the NaviCust's programs
--- name them by.)
-shield.shield = define.weapon { id = "megaman/shield", name = "Shield", setup = setup, legacy = { routines = { 0x3B } } }
-shield.shield_2 = define.weapon { id = "megaman/shield-2", name = "Shield", setup = setup, legacy = { routines = { 0x8C } } }
-shield.reflect = define.weapon { id = "megaman/reflect", name = "Reflect", setup = setup_counter, legacy = { routines = { 0x8B } } }
-shield.reflect_2 = define.weapon { id = "megaman/reflect-2", name = "Reflect", setup = setup_counter, legacy = { routines = { 0x3C } } }
+-- (B+Back specials, which nothing charges; their charge times are the
+-- charge table's rows 0x3B, 0x8C, 0x8B and 0x3C all the same, each with the
+-- next row's first entry, as the original's table reads on. Transitional:
+-- the `legacy` markers, the numbers the NaviCust's programs name them by.)
+shield.shield = define.weapon {
+    id = "megaman/shield",
+    name = "Shield",
+    charge_ticks = { 0, 0, 0, 0, 0, 0 },
+    setup = setup,
+    legacy = { routines = { 0x3B } },
+}
+shield.shield_2 = define.weapon {
+    id = "megaman/shield-2",
+    name = "Shield",
+    charge_ticks = { 0, 0, 0, 0, 0, 100 },
+    setup = setup,
+    legacy = { routines = { 0x8C } },
+}
+shield.reflect = define.weapon {
+    id = "megaman/reflect",
+    name = "Reflect",
+    charge_ticks = { 0, 0, 0, 0, 0, 0 },
+    setup = setup_counter,
+    legacy = { routines = { 0x8B } },
+}
+shield.reflect_2 = define.weapon {
+    id = "megaman/reflect-2",
+    name = "Reflect",
+    charge_ticks = { 0, 0, 0, 0, 0, 0 },
+    setup = setup_counter,
+    legacy = { routines = { 0x3C } },
+}
 
 return shield

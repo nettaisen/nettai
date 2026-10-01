@@ -52,7 +52,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x94 | 0x080d7acc | 217 |
 | T3 0xac | 0x080dae94 | lab only (ChargeMan's train car: the pack's `objects/charge-car`, chips.md §3.6.17) |
 | T3 0xaf | 0x080db570 | 2197 |
-| T3 0xb0 | 0x080db6a4 | 1852 (DustCross junk ball: the pack's `objects/dust-ball`, objects-and-player.md §B6) |
+| T3 0xb0 | 0x080db6a4 | 1852 (DustCross junk ball: the content's `navis/00-megaman/forms/dustcross/junk_ball`, objects-and-player.md §B6) |
 | T3 0xb4 | 0x080dbcec | 512 (MetrKnuk's fist: the pack's `chips/metrknuk/fist`, dimming-chip-effects.md §18) |
 | T3 0xb8 | 0x080dc3f8 | lab only (ElmntMan's bolt: the pack's `objects/elmnt-bolt`, chips.md §3.6.7) |
 | T3 0xb9 | 0x080dc4fc | 96 (ElmntMan's vine: the pack's `objects/elmnt-vine`, chips.md §3.6.7) |
