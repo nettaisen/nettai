@@ -302,14 +302,14 @@ export type FlashBombVariant = {
     own_side: boolean?,
 }
 
--- ---- The field objects (objects/rock, objects/boulder) ---------------------
+-- ---- The field objects (chips/rockcube/rock, objects/boulder) ---------------
 
--- A rock's variant (objects/rock, a row of the original's `byte_80CF934`):
--- its standing animation, HP, element, the palette of the debris it breaks
--- into, the sound it breaks with, and its identity (what it is taken for:
--- a rock, an ice block).
+-- A rock's variant (chips/rockcube/rock, a row of the original's
+-- `byte_80CF934`): its standing animation, HP, element, the palette of the
+-- debris it breaks into, the sound it breaks with, and its identity (what
+-- it is taken for: a rock, an ice block).
 export type RockVariant = {
-    -- Its key (`rock/cube`): stages name their rocks' variants.
+    -- Its key (`rockcube/cube`): stages name their rocks' variants.
     id: string?,
     anim: number,
     hp: number,
@@ -319,15 +319,15 @@ export type RockVariant = {
     identity: Identity,
 }
 
--- How a rock comes onto the field (objects/rock, the original's third
--- parameter): rising out of its panel (its sprite's first animation), there
+-- How a rock comes onto the field (chips/rockcube/rock, the original's
+-- third parameter): rising out of its panel (its sprite's first animation), there
 -- at once, falling from above, or placed when the round starts (standing
 -- from the start, and running while the battle is paused until it stands).
 export type RockEntrance = "rise" | "instant" | "fall" | "placed"
 
--- What a rock is spawned with (objects/rock): its variant, the class of
--- field-object slot it takes (0, the default: one of its side's two; 1: its
--- side's one), and its entrance ("rise" by default).
+-- What a rock is spawned with (chips/rockcube/rock): its variant, the
+-- class of field-object slot it takes (0, the default: one of its side's
+-- two; 1: its side's one), and its entrance ("rise" by default).
 export type RockSpec = {
     variant: RockVariant,
     class: number?,

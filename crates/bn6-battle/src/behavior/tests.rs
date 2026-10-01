@@ -132,9 +132,9 @@ fn battles_run_the_content_scripts() {
             "rflectr/shield",
             "rflectr/shot",
             "rising-bubble",
-            "rock",
-            "rock/debris",
             "rockcube/cube",
+            "rockcube/debris",
+            "rockcube/rock",
             "rskyhny/bee",
             "rush",
             "sandwrm/hole",
@@ -720,7 +720,7 @@ fn the_scripted_dimming_chips_and_rocks_play() {
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The cube's controller places rocks, which break into debris.
     assert!(ticks("rockcube/cube") > 0, "the cube's controller: {seen:?}");
-    assert!(ticks("rock") > 0, "rocks: {seen:?}");
+    assert!(ticks("rockcube/rock") > 0, "rocks: {seen:?}");
     // The veil's controller makes its user invisible.
     assert!(ticks("invisibl/controller") > 0, "the veil's controller: {seen:?}");
     assert!(ticks("an invisible navi") > 0, "an invisible navi: {seen:?}");
@@ -777,10 +777,10 @@ fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
     use crate::object::Pool;
     let mut b = rock_battle();
     let stage = b.content.stage(b.content.stage_by_key(testing::ROCK_BATTLE)).clone();
-    let rock = Place::Kind(b.content.defs.kind_by_key("rock").expect("the rock"));
+    let rock = Place::Kind(b.content.defs.kind_by_key("rockcube/rock").expect("the rock"));
     assert_eq!(stage.actors.iter().map(|e| e.place).collect::<Vec<_>>(), [Place::Navi, Place::Navi, rock, rock]);
     // Each rock names its variant, a record of the rock's.
-    let cube = b.content.defs.record("rock/cube");
+    let cube = b.content.defs.record("rockcube/cube");
     assert!(cube.is_some() && stage.actors[2..].iter().all(|e| e.variant == cube));
     b.spawn_actors();
     assert_eq!(b.round.alive, [1, 1]);
@@ -788,7 +788,7 @@ fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
     let rocks: Vec<_> = b.objects.in_order().filter(|r| r.pool == Pool::Attack).collect();
     assert_eq!(rocks.len(), 2);
     let o = b.objects.get(rocks[0]);
-    assert_eq!(b.kind_key(rocks[0]), "rock");
+    assert_eq!(b.kind_key(rocks[0]), "rockcube/rock");
     assert_eq!((o.damage, o.stamina), (200, 0), "the stage's rocks hit with 200 when thrown");
     // Registered on their panels' sides: (3,3) is side 0's, (4,1) side 1's.
     assert_eq!(b.field.objects.slots[0], Some(rocks[0]));
@@ -800,7 +800,7 @@ fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
 #[test]
 fn breaking_a_scripted_rock_throws_debris() {
     use crate::object::{Pool, state};
-    const ROCK_KINDS: [&str; 3] = ["rock", "rock/debris", "engine/effect"];
+    const ROCK_KINDS: [&str; 3] = ["rockcube/rock", "rockcube/debris", "engine/effect"];
     let mut b = rock_battle();
     b.spawn_actors();
     let r = b.objects.in_order().find(|r| r.pool == Pool::Attack).unwrap();
@@ -821,7 +821,7 @@ fn breaking_a_scripted_rock_throws_debris() {
     let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.kind_key(o)).collect();
     assert_eq!(
         &order[..4],
-        ["rock", "engine/effect", "rock/debris", "rock/debris"],
+        ["rockcube/rock", "engine/effect", "rockcube/debris", "rockcube/debris"],
         "the rock, then what it spawned in reverse order"
     );
     assert_eq!(b.objects.get(r).state, state::DESTROY);
@@ -838,7 +838,7 @@ fn breaking_a_scripted_rock_throws_debris() {
 fn a_stage_places_boulders_in_the_stage_slots() {
     use crate::object::{PanelPos, Pool, flags, state};
     use crate::setup::NaviStats;
-    const BOULDER_KINDS: [&str; 3] = ["boulder", "rock/debris", "engine/effect"];
+    const BOULDER_KINDS: [&str; 3] = ["boulder", "rockcube/debris", "engine/effect"];
     let stats = NaviStats { support: Some(Default::default()), ..Default::default() };
     let mut setup = testing::round_setup(testing::BOULDER_BATTLE, stats);
     setup.settings.effects = 0;
@@ -881,7 +881,7 @@ fn a_stage_places_boulders_in_the_stage_slots() {
     }
     assert_eq!(b.rng.state, rng.state);
     let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.kind_key(o)).collect();
-    assert_eq!(&order[..4], ["boulder", "engine/effect", "rock/debris", "rock/debris"]);
+    assert_eq!(&order[..4], ["boulder", "engine/effect", "rockcube/debris", "rockcube/debris"]);
     assert_eq!(b.objects.get(boulders[0]).state, state::DESTROY);
     assert_eq!(b.field.objects.slots[6..], [None, Some(boulders[1])]);
     run_only(&mut b, &BOULDER_KINDS);
@@ -896,7 +896,7 @@ fn a_stage_places_boulders_in_the_stage_slots() {
 fn a_thrown_rock_flies_to_its_target_and_breaks() {
     use crate::kinds::obstacle::{f2, obstacle_f1};
     use crate::object::{PanelPos, Pool};
-    const ROCK: [&str; 1] = ["rock"];
+    const ROCK: [&str; 1] = ["rockcube/rock"];
     let mut b = rock_battle();
     b.spawn_actors();
     b.round.flags |= crate::battle::battle_flags::FIGHTING;
@@ -957,7 +957,7 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
 fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
     use crate::kinds::obstacle::{f2, obstacle_f1};
     use crate::object::{Pool, flags};
-    const KINDS: [&str; 2] = ["rock", "encased-bubble"];
+    const KINDS: [&str; 2] = ["rockcube/rock", "encased-bubble"];
     // The rock stage on the test pack's content, which fills the role.
     let stats = crate::setup::NaviStats { support: Some(Default::default()), ..Default::default() };
     let mut setup = testing::round_setup(testing::ROCK_BATTLE, stats);
@@ -996,11 +996,11 @@ fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
 fn an_obstacle_encased_in_ice_becomes_an_ice_block() {
     let (mut b, r) = encase_rock(true);
     let panel = b.objects.get(r).panel;
-    let block = b.objects.in_order().find(|&o| o != r && b.kind_key(o) == "rock").expect("the ice block");
+    let block = b.objects.in_order().find(|&o| o != r && b.kind_key(o) == "rockcube/rock").expect("the ice block");
     // In the class the obstacle was in; once it has run, the ice variant
     // (its name, element and HP).
     assert_eq!(b.field.objects.class_of(block), Some(0));
-    run_only(&mut b, &["rock", "encased-bubble"]);
+    run_only(&mut b, &["rockcube/rock", "encased-bubble"]);
     let o = b.objects.get(block);
     let ice = b.content.identity_by_key("ice-block");
     assert_eq!((o.panel, o.identity, o.element, o.hp), (panel, Some(ice), 2, 200));

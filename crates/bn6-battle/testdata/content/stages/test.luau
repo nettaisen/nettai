@@ -4,7 +4,7 @@
 -- on the field (the BN6 overlay's kinds).
 
 local boulder = require("../objects/boulder/boulder")
-local rock = require("../objects/rock/rock")
+local rock = require("../chips/rockcube/rock")
 
 local PLAIN = {
     "normal normal normal normal normal normal",

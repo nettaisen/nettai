@@ -1,8 +1,8 @@
 //! The obstacle framework: what field objects share (rocks, cubes and the
 //! like, obstacles without actor data) taking hits, living out their
 //! timer, reacting to status and chips through one dispatcher, and leaving
-//! the field. The kinds themselves are content (objects/rock and the
-//! others); they call these steps through the content API's `obstacle`
+//! the field. The kinds themselves are content (chips/rockcube/rock and
+//! the others); they call these steps through the content API's `obstacle`
 //! service. See docs/engine/field-objects.md.
 //!
 //! An obstacle's update is, in the game's order: [`take_hits`], hit
