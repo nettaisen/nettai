@@ -1599,7 +1599,7 @@ The emotion function is `sub_8015B64`. It returns the first matching case:
 
 In the match, Mood = 0x80 for both sides, so emotion = 0.
 
-**Action 0x11, `sub_80EB436`** (the pack's `navis/00-megaman/weapons/buster/weapon.luau`, with the weapon
+**Action 0x11, `sub_80EB436`** (the pack's `navis/megaman/weapons/buster/weapon.luau`, with the weapon
 routine; the weapon ids that alias `sub_8011A26` in `off_80117D4`, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D..0x51, 0x6F, 0x70,
 0x77, 0x79, 0x7B, 0x7E and 0x82, name the same module). It dispatches on AV.Unk_00 (a sub-phase past 4 reads
 past its two-entry table):
@@ -1696,7 +1696,7 @@ Minimum buster cycle: N+7 frames.
 - Store s to AV.Unk_0C as a **u32** (this zeroes Unk_0D..0F).
 - Zero AV.Unk_02, 03, 04, 05, 06, 0A. Return **0x16**.
 
-**Action 0x16, `sub_80EBE00`** (the pack's `navis/00-megaman/weapons/charged-shot/weapon.luau`, with the
+**Action 0x16, `sub_80EBE00`** (the pack's `navis/megaman/weapons/charged-shot/weapon.luau`, with the
 weapon routine; a sub-phase past 8 reads past its table):
 - **Sub-phase 0** (`sub_80EBE20`): on init AV.Unk_10 = 5 (`nullsub_12` is a no-op). Each tick `Unk_10--`. When the result ≤ 0, set sub-phase 4 and run `sub_80EBE54` in the same tick.
 - **Sub-phase 4** (`sub_80EBE54`): same as the buster's sub-phase 0 (anim 0x0E, arm T1#5, USING_ACTION, fire on its 2nd tick) with these differences:

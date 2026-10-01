@@ -1,7 +1,7 @@
 --!strict
 -- Spreadr1-3: a bullet from the panel ahead that bursts over the 3x3
 -- around what it finds (action.luau). (SpoutCross's charged shot composes
--- the same action with its water cannon: navis/00-megaman/forms/
+-- the same action with its water cannon: navis/megaman/forms/
 -- spoutcross/charge.)
 
 local bullet = require("../../objects/bullet/bullet")

@@ -1,7 +1,7 @@
 --!strict
 -- An absorbed obstacle (the original's effect object #0x87, `sub_80E97F0`):
 -- what an obstacle the absorbing special pulled in (DustCross's B+Back,
--- navis/00-megaman/weapons/absorb) leaves behind. It flies in 9 ticks to a point 20 pixels in
+-- navis/megaman/weapons/absorb) leaves behind. It flies in 9 ticks to a point 20 pixels in
 -- front of the absorbing side's navi and, if that navi is still absorbing,
 -- joins its absorbed list (up to 8). It puffs away if the battle ends or
 -- it leaves the field. The obstacle framework spawns it (`sub_800F90E`,
@@ -10,7 +10,7 @@
 -- side that absorbs it, and the obstacle's animation, palette and hidden
 -- sprite parts. See docs/engine/field-objects.md §4.4.
 
-local absorb = require("../../navis/00-megaman/weapons/absorb/weapon")
+local absorb = require("../../navis/megaman/weapons/absorb/weapon")
 
 local absorbed_obstacle = {}
 

@@ -24,7 +24,7 @@
 --       `dimming_chip(user, spec)`, for a navi chip (0x1B) `navi_chip(user,
 --       controller, spec)`, for an instant chip (0x1C) `instant_chip(user,
 --       spec)`
---   navis/00-megaman/weapons/NN-name/weapon.toml            a weapon routine:
+--   navis/megaman/weapons/NN-name/weapon.toml            a weapon routine:
 --       `setup(navi) -> action`, and `state`/`update` for its `action`,
 --       `instant_chip(user, spec)` for its `instant_chip`
 --
@@ -680,6 +680,9 @@ declare class Navi
     -- buster's blank and charged slots (of 16).
     buster_shot: number
     charge_shot_kind: number
+    -- The damage a B+Back special takes from the navi's stats (ProtoMan's
+    -- reflecting guard).
+    back_special_damage: number
     buster_blanks: number
     buster_charged: number
     -- NaviCust bugs: the HP drain in the fight and while the custom
