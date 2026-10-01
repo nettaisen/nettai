@@ -9,6 +9,7 @@
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 
 local laser = {}
 
@@ -29,7 +30,7 @@ local HEIGHTS: { [number]: number } = { [0] = 0x10, [1] = 0x16, [2] = 0x14 }
 local ANIMS: { [number]: number } = { [0] = 1, [1] = 0, [2] = 2 }
 -- Its hits' status (`byte_80D941C`'s row +0x64, its Param3, which its
 -- spawner leaves 0): paralysis.
-local STATUS = 0x10
+local STATUS = statuses.paralyze_90
 -- The ticks before it shows (its Param2, which its spawner leaves 0: at
 -- once).
 local DELAY = 0

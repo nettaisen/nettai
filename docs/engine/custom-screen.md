@@ -358,7 +358,8 @@ matches: a code run with a `*` first, in the middle or last forms, `[*,A,B]`, `[
 sequence recipe out of order doesn't; a recipe between two other chips forms from the second pick; a recipe picked
 again on the next screen stays three chips (once a round); a modifier after a Program Advance folds onto it;
 Atk+10 twice, Atk+10 with WhiCapsl and Atk+30, and Navi+20 with Atk+30 on a navi chip all fold; a modifier picked
-first, or after a chip it doesn't apply to (Atk+10 after Invisibl, Navi+20 after AirShot), stays a chip of its own.
+first, or after a chip it doesn't apply to (Atk+10 after Invisibl, Navi+20 after AirShot, Uninstll after Roll, which
+dims: `custom/modifier-uninstll-dimming`), stays a chip of its own.
 A recipe with the Regular chip as a part carries its bit (`custom/pa-regular`), and one made of the tag pair and
 the Regular chip forms from the first deal (`pa-tags`). The folder's upkeep (step 5) is in `custom/folder-odd-picks`
 (picks from the middle of the hand, screen after screen) and `folder-runs-out` (30 chips, five a screen, then two
@@ -469,8 +470,8 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
     scenarios had it, unintended, until their parts were moved off the grid's outer ring);
   - the other console's RNG1 (and tag pair) isn't recorded either: bn6-compat gives it 0 (and none), which only a
     re-deal on that player's screen would read;
-  - shakes of content not ported yet (most viruses', and the chips and objects still to come) are missing until
-    their content calls `battle.shake_camera` where the original calls `camera_initShakeEffect_80302a8`;
+  - shakes are the content's to start: it calls `battle.shake_camera` where the original calls
+    `camera_initShakeEffect_80302a8`. The viruses' are missing with the viruses, which aren't a netbattle's;
   - the run-away check (`sub_8026F1A`, one RNG1 draw on the answer) isn't ported: it runs only with battle effects
     0x20, which a netbattle doesn't have (L gives the run message there, §3.5; the lab's `custom/run-message*`).
 - **Chip 0x13F picked as a chip** (state 0x44, `Phase::BeastOutChipChosen`): the chip lab's BeastOut scenarios match.

@@ -8,6 +8,7 @@
 local collision = require("../../rules/collision")
 local link = require("../../lib/link_chips")
 local regions = require("../../lib/regions")
+local statuses = require("../../rules/status")
 local weapon = require("../../lib/weapon")
 
 export type State = { timer: number }
@@ -27,7 +28,7 @@ local NULL = 0
 
 -- The hits, one, two and three panels ahead (`byte_80F1B18`): their hit
 -- modifier and status.
-local HITS = { { hit_mod = 3, status = 0 }, { hit_mod = 3, status = 0 }, { hit_mod = 0, status = 0x10 } }
+local HITS = { { hit_mod = 3, status = nil }, { hit_mod = 3, status = nil }, { hit_mod = 0, status = statuses.paralyze_90 } }
 
 -- `sub_8012210`: 40 damage and 10 more per point of buster Attack (up to
 -- 5).

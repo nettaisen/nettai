@@ -398,6 +398,20 @@ and the clear-path condition); the charged sword's table by variant went, since 
 mode. The numbers are compat's rules.toml, for `gen-content check` alone. The engine's test content defines
 its made-up modes under the same names (crates/bn6-battle/testdata/content/rules/lockon.luau).
 
+**As built** (step 12, statuses). A status is `StatusEffect` by `StatusHandle` (`Content::status`,
+`Defs::statuses`), with no byte anywhere in the engine: a collision's `status_base` and `status_final`, a
+hitbox's `status` and the content API's `collision.status_base` and `battle.hitbox { status }` hold or take the
+definition (nil: none), and a kind keeps one in a `"status"` state field. What the ruleset inflicts itself are
+roles (`statuses.damage_word_paralysis`, `counter_paralysis`, `ice_freeze`, `hit_bug_blind`,
+`hit_bug_confuse`), and its two tests of the byte's range are traits of the definition: `cancels_flinch` (the
+freezing statuses, the original's 0x50 to 0x55) and `survives_counter` (the bubbling ones, 0x60 to 0x65).
+Content tests a status's own fields where the original tested its byte (FlashBomb's flash has no hit modifier
+when its status's timer is paralysis). rules/status.luau names each group's own entries plainly
+(`paralyze-90`, `confuse-480`, `freeze-150`) and the entries the original reads past a group's end for what
+they read (`confuse-480-past-paralyze`); the bytes are compat's rules.toml. A chip's legacy `sword` marker
+(v1 record data nothing reads) keeps its raw status byte. The engine's test content defines dummy statuses
+under the same names (crates/bn6-battle/testdata/content/rules/status.luau).
+
 ### 3.7 Stages
 
 ```luau
@@ -1630,7 +1644,7 @@ need.
 | kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
 | stages.toml | `"netbattle-1" = { settings = [0x00], layout = 0x00, actor_list = 0x080B1989 }`: the settings indices that are the stage, its panel layout's number and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
 | records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rock/cube" = 1`); NaviCust buster shots when their producers are known |
-| rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`) |
+| rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`), `[statuses] paralyze-90 = 0x10` (a hit's status byte, `off_80209EC`) |
 | assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
 | text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the EX and SP glyphs as `[EX]`, `[SP]`) |
 | curation.toml | the names the generator made up, by file and key, with where each came from: the review list (§13) |
@@ -1917,7 +1931,8 @@ trait on the definition instead (§7.5).
 shot, the stun strike, the Cross protect, the turn, the Cross death, the volley, the charged sword, the beast
 claw, DustCross Beast's scatter), `KindRole` (the absorbed obstacle, the falling rock, the supports' controller, AntiRecv's counterattack; until
 step 12 also what an actor list places, which stages name now), `HookRole` (the FirstBarrier, the encased
-obstacle) and, since step 12, `LockonRole` (the Beast claw's lock-on mode). A role names a definition, or, while its
+obstacle) and, since step 12, `LockonRole` (the Beast claw's lock-on mode) and `StatusRole` (the statuses the
+ruleset inflicts itself). A role names a definition, or, while its
 target is still a v1 registration, that registration through the transitional legacy marker (`{ legacy = {
 action = 0x49 } }`, `{ legacy = { kind = "a-v1-kind" } }`; counted by the ratchet); a legacy action number nothing
 implements leaves the role `Unported`, and starting it fails as the number did. The charged sword, the beast claw
@@ -2204,10 +2219,10 @@ registries, the object tables, the text). It is not committed here.
 
 **The committed definitions are the source.** Nothing regenerates a module once it is written, and the
 generator can't run over a content root that has people's modules at its paths, so a writer whose modules
-people have since reshaped is dead code. With step 12 the stages' and the lock-on modes' writers are retired
-(`gen_stages`, `gen_lockon`: the definitions lost their legacy markers and name kinds, variants and each other
-in forms the generator never wrote): content/bn6/stages/netbattle.luau and rules/lockon.luau are edited by
-hand, and `gen-content check` compares them with the ROM through compat. `gen-content write` still writes
+people have since reshaped is dead code. With step 12 the stages', the lock-on modes' and the statuses'
+writers are retired (`gen_stages`, `gen_lockon`, `gen_status`: the definitions lost their legacy markers and
+name kinds, variants and each other in forms the generator never wrote): content/bn6/stages/netbattle.luau,
+rules/lockon.luau and rules/status.luau are edited by hand, and `gen-content check` compares them with the ROM through compat. `gen-content write` still writes
 compat's numbers for them (stages.toml, records.toml, rules.toml), keeping the committed keys.
 
 ### 9.4 The frontend and the audio
@@ -2449,7 +2464,7 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    subtype, params, script` (with what the ruleset and v1 modules read of it by number: a damage formula,
    `sp_damage`, `navi_damage`, `dark_substitute`, `recovery`, `sword`); a weapon still a v1
    module has no `setup` and its marker gives `routines, script, action, instant_chip`; a navi's and a form's
-   give `number, name_id`, a stage's `number, layout, actor_list` (until step 12: compat has them), a status's and (until step 12) a lock-on mode's `id`. The
+   give `number, name_id`, a stage's `number, layout, actor_list` (until step 12: compat has them), (until step 12) a status's and a lock-on mode's `id`. The
    generator writes them with the `legacy { }` call (identity; typed `any`), which is how it tells its own
    definitions from people's. The tables v1 modules read by number are legacy rule
    sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (effects, sparks, regions, and

@@ -256,7 +256,8 @@ declare class Collision
     -- object's element byte; `sub_8019F8C` sets them again.
     element: number
     secondary_element: number
-    status_base: number
+    -- The status its hits carry (rules/status), if any.
+    status_base: Status?
     -- Bug code (low byte) and argument (high byte).
     bugs: number
     hit_mod_base: number
@@ -716,7 +717,7 @@ export type HitboxSpec = {
     damage: number,
     stamina: number?,
     hit_mod: number?,
-    status: number?,
+    status: Status?,
     bug: number?,
     bug_arg: number?,
 }
@@ -1628,7 +1629,20 @@ export type StageDef = {
     effects: number?,
     actors: { StageActor },
 }
-export type StatusDef = { id: string, [string]: any }
+-- A status (rules/status): the requests it raises on its target
+-- (`ObjectFlags2` bits), for how long, and the timer it runs on.
+-- `cancels_flinch`: the hit that lands it doesn't flinch or flash its
+-- target (the freezing statuses). `survives_counter`: a counter hit that
+-- lands it keeps it rather than paralyzing (the bubbling statuses).
+export type StatusDef = {
+    id: string,
+    requests: number,
+    duration: number,
+    timer: string | { other: number },
+    cancels_flinch: boolean?,
+    survives_counter: boolean?,
+}
+export type Status = StatusDef
 -- A Beast Out lock-on mode (rules/lockon): how the rush picks the panel to
 -- attack a target from. `stay`: the navi's own panel. `row`: along the
 -- target's row counting from the navi's own column (`same_row_offsets`
@@ -1694,6 +1708,16 @@ export type RolesSpec = {
         falling_rock: (Kind | LegacyKind)?,
         support: (Kind | LegacyKind)?,
         anti_recovery: (Kind | LegacyKind)?,
+    }?,
+    -- The statuses the ruleset inflicts itself: what a damage word's
+    -- paralysis bit carries, what a counter hit lands, what an aqua hit
+    -- gives a body on ice, and the NaviCust on-hit bug's.
+    statuses: {
+        damage_word_paralysis: Status?,
+        counter_paralysis: Status?,
+        ice_freeze: Status?,
+        hit_bug_blind: Status?,
+        hit_bug_confuse: Status?,
     }?,
     -- The Beast Out lock-on modes the ruleset names itself: the Beast
     -- forms' charged claw's.

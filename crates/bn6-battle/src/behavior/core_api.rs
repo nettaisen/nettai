@@ -1611,6 +1611,9 @@ impl CoreApi for Battle {
 
     fn collision_get(&self, o: ObjectRef, f: CollisionField) -> ApiResult<Value> {
         let c = self.collision_of(o)?;
+        if f == CollisionField::StatusBase {
+            return Ok(c.status_base.map_or(Value::Nil, |h| Value::Def(Registry::Status, h.0)));
+        }
         Ok(Value::Int(match f {
             CollisionField::Region => c.region as i64,
             CollisionField::PanelX => c.panel.x as i64,
@@ -1618,7 +1621,7 @@ impl CoreApi for Battle {
             CollisionField::HitEffect => c.hit_effect as i64,
             CollisionField::Element => c.element as i64,
             CollisionField::SecondaryElement => c.secondary_element as i64,
-            CollisionField::StatusBase => c.status_base as i64,
+            CollisionField::StatusBase => unreachable!("handled above"),
             CollisionField::Bugs => c.bugs as i64,
             CollisionField::HitModBase => c.hit_mod_base as i64,
             CollisionField::SelfDamage => c.self_damage as i64,
@@ -1656,6 +1659,17 @@ impl CoreApi for Battle {
 
     fn collision_set(&mut self, o: ObjectRef, f: CollisionField, v: Value) -> ApiResult<()> {
         let v = store(f.name(), f.writable(), f.ty(), v)?;
+        if f == CollisionField::StatusBase {
+            let status = match v {
+                FieldValue::Ref(Some((Registry::Status, h))) if (h as usize) < self.content.defs.statuses.len() => {
+                    Some(bn6_content_api::StatusHandle(h))
+                }
+                FieldValue::Ref(None) => None,
+                other => return Err(ApiError::Other(format!("status_base: {other:?} is not a status"))),
+            };
+            self.collision_of_mut(o)?.status_base = status;
+            return Ok(());
+        }
         let c = self.collision_of_mut(o)?;
         let x = int(v);
         match f {
@@ -1665,7 +1679,7 @@ impl CoreApi for Battle {
             CollisionField::HitEffect => c.hit_effect = x as u8,
             CollisionField::Element => c.element = x as u8,
             CollisionField::SecondaryElement => c.secondary_element = x as u8,
-            CollisionField::StatusBase => c.status_base = x as u8,
+            CollisionField::StatusBase => unreachable!("handled above"),
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,

@@ -1643,7 +1643,7 @@ fn rules() -> Rules {
             any_side_step: StepRuleSet { grounded: [solid(any_side); 2], floor_free: [any_side; 2] },
         },
         holding_banners: vec![BannerId(0x24)],
-        status_effects: vec![[StatusEffect { requests: 0, duration: 60, timer: StatusTimer::Paralyze }; 16]; 6],
+        // (The statuses are testdata/content/rules/status.luau's.)
         hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
         empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
