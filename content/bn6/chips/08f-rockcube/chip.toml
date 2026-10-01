@@ -1,3 +1,0 @@
-# A dimming chip (subtype 6): its dimming controller places a rock cube.
-
-script = "../../objects/rock-cube/rock_cube.luau"
