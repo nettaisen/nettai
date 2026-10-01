@@ -1,6 +1,0 @@
-# A dust storm's mote (effect object #0x19, `sub_80E2080`) is a script.
-
-[kind]
-pool = "effect"
-index = 0x19
-script = "dust_storm_mote.luau"

@@ -515,7 +515,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | elec-man, elec-thunder | ElecMan series | chips/elecman/ |
 | elec-pulse | ElcPuls1-3, DestPuls | chips/elcpuls/ |
 | elem-trap, elem-trap-strike | ElemTrap | chips/elemtrap/ |
-| element-pillar | HeatCross Beast's and ElecCross Beast's charged shots | navis/megaman/ |
+| element-pillar | HeatCross Beast's and ElecCross Beast's charged shots; Darkness's dark flames | objects/element-pillar |
 | elmnt-man, elmnt-bolt, elmnt-ice, elmnt-vine, meteor | ElmntMan series | chips/elmntman/ |
 | energy-burst | EnergBom, MegEnBom (through bomb) | chips/energbom/ |
 | erase-man, erase-mark | EraseMan series | chips/eraseman/ |
@@ -585,7 +585,9 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 
 What stays in `objects/`: absorbed-obstacle, attachment, boomerang, drill, falling-rock (with rock-chip),
 flying-shot, gust, invisible, panel-bursts, projectile, rising-bubble, rock (with rock-debris), thunder-column.
-Thirteen folders from 139.
+Thirteen folders from 139. (Step 8f adds objects/boulder, the boulder the stages place: a role's kind, newly
+ported. Darkness, ported after this table, shares the element pillar with MegaMan's Beast forms, so it stays in
+objects/ too.)
 
 The rest of v1's layout moves as follows: `lib/sword.luau` and `lib/vari_sword.luau` into `lib/swords/`,
 `lib/dragon.luau` into `lib/dragons/`, `lib/instant-chips/` into `lib/instant/`, `lib/buster.luau` into
@@ -1004,6 +1006,38 @@ chips/numbrbl, chips/cornfsta and chips/dblhero. What it settled:
   attachments sit at their sprites' attach points; the shots' `hit_effect = 0xFF`. LifeSync's immune virus is
   told by its actor data (AI 13). `battle.boss_rank` (battle effect 1) joins `battle.link` for LifeSync.
 
+**As built** (phase B, group C5: dimming subtypes 1, 10, 11, 20, 25 and 38, converted from their v1 modules;
+docs/engine/chips.md §3.6.9 and §3.6.10): lib/traps/controller (the trap chips'), chips/elemtrap (its trap and
+strike), chips/timebom (controller, countdown), chips/mine (controller, land_mine), lib/gauge-speed/controller,
+objects/invisible, lib/navi-boost/controller, and objects/panel-bursts. What it settled:
+
+- **The parameter that picked a table row is the hook's argument**: a trap chip's trap object (`traps.hook(trap?)`,
+  a `trap` record whose `set` spawns it: ElemTrap's; the others pass none), a TimeBom's bomb
+  (`controller.hook(variant)`, a `CountdownVariant` record: the two rows the chips set; the table's other six,
+  which no chip sets, are its optional fields), the gauge's speed (`gauge_speed.slow`, `.fast`), the
+  invisibility's time (`invisible.hook(ticks)`), and what a navi-changing chip changes (`navi_boost.hub`,
+  `bug(routine)`, `arm(routine, palette)`, `dark`).
+- **`dimming_chips.phases { hidden = true }`** shows a hidden chip's telop (`sub_800BBA8`, the trap chips').
+- **A parameter the ruleset poked became a question the object asks**: `sub_802CEA6` tells a cleared record's
+  object to end through its second parameter; ElemTrap's trap ends when its side's record no longer names it
+  (`battle.linked(side).object ~= me`), and `Battle::clear_linked` only clears.
+- **A panel burst's look is its spawner's**: `panel_bursts.spawn(spawner, region, interval, z, effect, sound?)`
+  takes the effect its table row named (and the row's sound, which no row has).
+- **Which chips are definitions.** ElemTrap, Mine, SloGauge, FstGauge, HubBatc, BugRSwrd, BgDthThd and the four
+  arm chips (PunchArm, NeedlArm, PuzzlArm, BoomrArm; their records' unnamed extra flags 0x04 to 0x20 have no
+  battle reader and are left out). The others keep the pack's records and give their hooks from
+  chips/<key>/chip.luau: AntiNavi, AntiDmg, AntiSwrd, AntiRecv and BodyGrd (the ruleset names them by number;
+  BodyGrd is a Program Advance of three of them), TimeBom1-3 and TimeBom+ (a Program Advance and its
+  ingredients), Invisibl (a dark chip's substitute), the second WhiCapsl (chip 0x17E: the dimming service finds
+  the chips no one can cut in on by number) and DarkInvs (a dark chip with a substitute).
+- **The shims** (registration by number, §12): chips/0ba-antinavi (subtype 20, by the trap's row),
+  090-timebom1 (10, by the bomb's row), 0b1-invisibl (1, by the time) and 121-darkinvs (38: DarkInvs's hook;
+  the other rows, whose chips are definitions, from their parameter bytes for the test content's records).
+- **Still numbers**: the mine's and the bombs' NameIDs (`me.name_id`, counted), the statuses the strike's hits
+  carry, `hit_effect = 0xFF`, the linked record's chip (`LinkedChip.chip`, the numeric API's), and the weapon
+  routines the navi-changing chips install (0x21 to 0x26, the B+Back shield 0x3B, the busters `sub_80E97BE`
+  replaces): the navi's weapon slots take numbers until the weapons are definitions (family 8e).
+
 ### 5.5 Navi chips: a navi kind, per-chip parameters
 
 v1: action 0x1B registers `Hook::NaviChip(subtype)`; EraseMan reads `me:param(1)` (the aim's switching time)
@@ -1115,6 +1149,32 @@ settled:
   `ExtraChipFlags::MODIFIER` (`"modifier"`), so a definition can give it; the battle reads `modifier`.
 - **Verified** on the test content (the instant chips' duel and its rollback, the plus chips' bonuses from a
   special source, BusterUp's cap), the type check, and the traces and the chip lab on a real pack.
+
+**As built** (step 8d, the instant chips): every chip of action 0x1C is a definition with an `instant` hook
+where nothing names it by number: Boomer, HiBoomer and M-Boomer (chips/boomer, `boomerang.instant(variant)`,
+the boomerang's speeds a `boomerang-variant` record; objects/boomerang also holds `boomerang.tomahawk`, which
+TomahawkCross Beast's throw names), Lance (chips/lance), SandWrm1-3 (chips/sandwrm, `worm.instant(level)`, with
+the hole and the sand), GolmHit1-3 (chips/golmhit, `golem.instant { palette }`), JustcOne (chips/justcone),
+FullCust, SyncTrgr, WhiCapsl (`plus.attack_with(plus.PARALYZE)`), FinalGun and NumTrap. What settled:
+
+- **A record's parameter is the builder's argument**, and a branch only another record or caller reaches is
+  an argument too: the golem's `own_panel` and `cracks` (Param2 to Param4), the lance's palette, the
+  boomerang's `turns`, `column` and `strong`. The effects no chip names (2, 6, 9, 11, 16, 17) are builders in
+  lib/instant (`invisible.instant(ticks)`, `repair.instant`, `immobilize.instant`, `side_special.instant`,
+  `meteor_shower.instant(drops)`, `dust_storm.instant { ticks, tied }`), which a link navi's weapon calls when
+  it is ported; the dust storm's tie to its user's action (the game's table of action numbers by mode) is the
+  action itself, compared with `navi_action()`.
+- **Records kept, and their shims**: FireHit1-3 (FlmHook's and MstrCros's Program Advances name them) run
+  `fist.instant(hit_mod)` through chips/06b-firehit1; MegaBstr (chip 0), Atk+10's record (the dark chips'
+  substitute), Atk+30 and Uninstll (SunMoon's ingredients) and DarkPlus (a dark chip) run `plus.by_record`
+  through chips/0c0-atk-10; BeastOut and the invalid chip (the custom screen's 0x13F and 0x185) run
+  `plus.sparkle` through chips/13f-beastout. The nameless copies of the plus chips' record and the records
+  that became definitions no longer register (any record of a subtype reaches the subtype's one registration).
+- **Bytes no battle routine reads stay out**: SyncTrgr's and ColForce's menu classification flags (0x04,
+  0x10, 0x20 of the second flag byte) aren't in their definitions; a lock-on mode without the Beast rush is
+  `beast = { rush = false, lockon = n }` (SandWrm's).
+- **Verified** on the test content (the spawning chips' duels and their rollback, the lances, the tomahawks),
+  the type check, and the chip lab on a real pack.
 
 ### 5.7 Weapons and forms
 
@@ -1268,13 +1328,77 @@ What it settled:
   chips/sonicbom), started with `me:set_attack(action, 0)`. The attack still takes the pick's chip number, with
   its record's subtype and parameters (`legacy = { chips, sword }`, §12): the Beast rush reads the chip's
   lock-on mode, and SlashCross's charged sword (action 0x41, v1) the subtype and first parameter.
-- **What stays numeric**, having no v2 form yet: NameIDs (the volley's and the top's target tests), the
-  absorbed-obstacle kind a top flies off as, statuses and bug codes, forms and navis by number in the variable
+- **What stays numeric**, having no v2 form yet: NameIDs (the volley's and the top's target tests), statuses
+  and bug codes, forms and navis by number in the variable
   swords, the charged sword's action (0x41, a v1 weapon action) a charged pick becomes.
 - **The test content** runs BN6's GunDelSol through its numbered SunGuns (chips/010-gundels2's registration),
   and takes RskyHny2 and ElecDrgn as the definitions they are (`testing::BEES`, `testing::DRAGON`). The pack's
   `gun_del_sol` chip data and `sun_beam_looks` are read by no script any more; they go with the pack's battle
   data (step 5).
+
+### 5.9 Field objects: obstacles, their variants and their looks
+
+v1: the rock reads its row of the pack's `rocks` table by its first parameter and its entrance by its third; an
+obstacle a navi absorbs passes its "obstacle kind", an index into the pack's `absorbed_sprites`; an actor list's
+entry reaches the rock's `actor_list_entry` by its type number, and the other types panic.
+
+**As built** (step 8f, the field objects):
+
+- **The rock** (objects/rock) is a definition. Its rows are `rock-variant` records (`rock.variants.cube`,
+  `ice`, ...: animation, HP, element, debris palette, break sound, NameID), its entrance a state enum
+  (`"rise" | "instant" | "fall" | "placed"`), and `rock.spawn(x, y, side, { variant, class, entrance },
+  damage)` takes them; its debris is `rock/debris` beside it. An actor list still gives a row number, which
+  the kind's `place` turns into the record (`rock.by_number`, until stages name their rocks, step 12).
+- **RockCube and IceCube** (chips/rockcube) are definitions whose `dimming` hook is `cube.places { variant =
+  rock.variants.cube }`: the chip's parameters (the rock's row, class and entrance) are the builder's argument.
+  No Program Advance, dark chip or recipe names either, so neither keeps a record.
+- **An absorbed obstacle's look is its obstacle's own record** (`absorbed_obstacle.look { sprite, keeps_parts?,
+  own_facing? }`, an `absorbed-look`): the original's kind numbers and their sprite table are gone, and so are
+  the two tests the original made of the kind (kind 2 keeps the hidden sprite parts; sprite 0x23 keeps its own
+  facing when thrown), which are the look's flags. `obstacle.fly_to_absorber(me, look)`, the navi's absorbed
+  list (`absorbed`, `push_absorbed`, `pop_absorbed`), the throw's attack (`thrown_look`, `thrown_anim`, which
+  replace the packed marker word) and the flying shot's state carry the record; the engine stores its handle
+  and checks its type. The absorbed obstacle itself (objects/absorbed-obstacle) and the falling rock with its
+  chips (objects/falling-rock) are definitions, which their roles name.
+- **What a stage places** is a kind with a `place`, named by role: the rock (entry type 8), the boulder
+  (type 3, objects/boulder: newly ported, one of the field's two stage objects, `obstacle.stage_slot_free`,
+  `enter_stage`, `leave_stage`) and the Guardian statue (type 9, chips/guardian/statue's `place`). The roles
+  are a stopgap for the stages' own entries (`{ place = boulder.kind, x, y }`, §3.7).
+- **A spawner's bug is content's**: the boulder's spawner replaces the new object's header flags with a byte
+  it reads through the wrong register (the console's open bus). The module says what is read and stores it
+  (`me:set_header_flags`), the one place content writes the flag byte whole.
+- **Verified** on the test content (the rocks' placement, breaking and throw; the cube chip's duel and its
+  rollback; DustCross's absorption and throws; the boulders' placement, flags and breaking), the type check,
+  the traces (the soundmod stage's ice blocks and their absorption), and the chip lab on a real pack, with
+  sixteen new stage scenarios for the boulders and the stages' statues.
+
+### 5.10 The supports, the shared waves and pillars
+
+**As built** (phase B, group C5: converted from their v1 modules):
+
+- **The supports** (lib/supports: `controller`, `rush`, `beat`, `tango`, `heal`). The controller is the role
+  `kinds.support`'s definition. The ruleset told it which support comes and the chip Rush eats through its
+  spawn parameters; it sets the controller's state instead (`support`, an enum it sets by name:
+  `set_state_variant`; `eaten`; `telop_chip`), and the support's out flag (the original's second parameter,
+  which the support sets and clears) is the controller's `out`. Rush leaves the second WhiCapsl in the hand by
+  its chip number still (that chip is a record, §5.4): the one chip number left in these modules.
+- **SlashMan's sword wave** (chips/slashman/wave): its two rows are `slash-wave` records (`slash_wave.chip`,
+  the navi chip's; `slash_wave.plain`, his navi AI's), which say what the original's tests of the first
+  parameter said (`panel_hits`, `steerable`, `while_dimmed`).
+- **SlashCross's sword wave** (navis/00-megaman/forms/slashcross/sword_wave): its rows (`byte_80D7F4C`) are
+  `SwordWaveVariant` records, `sword_wave.spawn(owner, variant, x, y, element, damage, hidden?)`. The charged
+  slash (weapons 0x11 and 0x12, a v1 module) still names a wave by the number of the sword it charges, so the
+  rows are kept by that number (`sword_wave.by_slash`) until the charge asks the chip for its slash (family
+  8e). The pack's `sword_waves` data is read by no script any more.
+- **The element pillar** stays in objects/ (HeatCross Beast's and ElecCross Beast's charged chips and
+  Darkness's dark flames share it), keyed `element-pillar`. What its kind number picked is the spawner's
+  `ElementPillar`: lightning or flames, its times, how far back it stands, and the owner's action it lasts
+  through: the navi action its owner runs as it sends it (`owner:navi_action()`, kept in an `action` state
+  field), or, for an owner that is no navi, that owner's own action (Darkness's).
+- **SunMoon** (chips/sunmoon: `navi`, `meteor`, `moon_beam`) keeps the pack's record (a Program Advance);
+  chips/15b-sunmoon gives registration by number its `navi` hook (`sunmoon.summon`).
+- **A kind's key in a form's folder**: the checker takes `navis/<navi>/forms/<form>/` as the form's folder (a
+  kind there is `<form>/...`), and leaves a navi folder's index prefix out of its owner's name.
 
 ## 6. Compat: the original's numbers
 
@@ -1290,7 +1414,7 @@ need.
 | actions.toml | action key to navi action number: `"minibomb/action" = 0x12` (every chip whose use is an action has `<chip>/action`), `"megaman/buster/shot" = 0x11`, a weapon's `"<weapon>/action"`, `"engine/move" = 0x10`, `"engine/form-change" = 0x1C`. A role action whose number a chip's or weapon's action has is that action (the volley is WideSht's 0x30); only the turn (0x3B) has its own, `"megaman/turn"` |
 | navis.toml, forms.toml | `eraseman = { navi = 0x04, name_id = 0x1A4 }`, `heatcross = { form = 0x01, name_id = 0x1AC }`; the base form has no `name_id` (it is MegaMan's) |
 | weapons.toml | `"megaman/buster" = [0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, ...]`, one line per weapon: the numbers whose `off_80117D4` entries are one routine. `nullsub_44`'s numbers are split by what the ruleset does with them (`megaman/rock-barrage`, `megaman/charged-chip-bonus`, `megaman/stale-register`). Every number a form's row (`byte_8020354`), a navi's (`byte_80210DD`) or a known NaviStats (NaviCust programs) names |
-| kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (8 for `rock`); the engine's kinds as `"engine/..."` |
+| kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
 | stages.toml | `"netbattle-1" = { settings = [0x00], actor_list = 0x080B1989 }`: the settings indices that are the stage, and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
 | records.toml | the few records a setup names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); NaviCust buster shots when their producers are known |
 | assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
@@ -1576,8 +1700,8 @@ trait on the definition instead (§7.5).
 
 **As built** (steps 4 and 9): content::roles has typed roles, `ActionRole` (the trap counters, the forced charged
 shot, the stun strike, the Cross protect, the turn, the Cross death, the volley, the charged sword, the beast
-claw, DustCross Beast's scatter), `KindRole` (the rock an actor list places, the absorbed obstacle, the falling
-rock, the supports' controller) and `HookRole` (the FirstBarrier). A role names a definition, or, while its
+claw, DustCross Beast's scatter), `KindRole` (what an actor list places: the rock, the boulder and the Guardian
+statue; the absorbed obstacle, the falling rock, the supports' controller) and `HookRole` (the FirstBarrier). A role names a definition, or, while its
 target is still a v1 registration, that registration through the transitional legacy marker (`{ legacy = {
 action = 0x49 } }`, `{ legacy = { kind = "rock" } }`; counted by the ratchet); a legacy action number nothing
 implements leaves the role `Unported`, and starting it fails as the number did. The charged sword, the beast claw
@@ -1955,7 +2079,13 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
 
 **Transitional, and when it goes** (from the exemplars, step 7, and step 9):
 - **The roles' legacy markers.** rules/roles.luau names the v1 actions and kinds the ruleset needs by their
-  numbers and keys until their families convert them, and then names the definitions (§7.4).
+  numbers and keys until their families convert them, and then names the definitions (§7.4). The field
+  objects' kinds (the rock, the boulder, the Guardian statue, the absorbed obstacle, the falling rock) are
+  definitions since step 8f, and the supports' controller since group C5: no kind is named by key any more.
+- **The kinds an actor list places, by role** (step 8f): `kinds.rock`, `kinds.boulder` and `kinds.statue`
+  stand for the stages' own entries, and the rock's `place` maps the entry's row number to its variant
+  (`rock.by_number`). They go when stages are definitions whose entries name the kind and its variant (§3.7,
+  step 12).
 - **The legacy marker in a v2 definition.** A chip definition may carry `legacy = { subtype, params }`: the
   original's subtype and parameter bytes in its record, for what reads them of a chip besides its own use.
   Counted by the ratchet (the lint matches `legacy = {` and `legacy {`). StepSwrd, FtrSword, CrosSwrd and
@@ -1981,12 +2111,27 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd), `dark_substitute`
   (DrkSword) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
   anyway), and those chips become definitions.
+- **The instant chips' record shims** (step 8d): chips/0c0-atk-10 (subtype 3: MegaBstr, chip 0, which a zeroed
+  chip field reads; Atk+10's record, the dark chips' fifth substitute; Atk+30 and Uninstll, SunMoon's
+  ingredients; DarkPlus, a dark chip), chips/06b-firehit1 (subtype 8: FireHit1-3, Program Advance ingredients)
+  and chips/13f-beastout (subtype 0: BeastOut and the invalid chip, which the custom screen names by number).
+  They go when the zeroed chip, the substitutes, the dark chips, the custom screen's chips and the recipes
+  name chips by handle (phase C, step 10).
 - **The standard chips' shims** (step 8g, §5.8): chips/03f-aquandl3 (0x32), 152-h-burst (0x34), 029-rlnglog2
   (0x36), 010-gundels2 (0x37), 027-rskyhny3 (0x39), 021-dolthdr3 (0x3E), 054-moonbld (0x40), 022-elcpuls1
   (0x42), 05f-aurahed1 (0x43), 052-varswrd (0x53) and 053-neovari (0x54) run a record's action for the chips kept
   on records (Program Advances and their ingredients, MoonBld and the variable swords) and for the Cross
   special's chips. They go as the 0x12 and 0x13 shims do (step 5 for the recipes, step 10 for the Cross
   special's list, the aura chips and the Beast rush's chain; SlashCross's A-charge with family 8e).
+- **The dimming chips' record shims** (group C5, §5.4): chips/0ba-antinavi (subtype 20: the trap chips the
+  ruleset names by number, and BodyGrd), 090-timebom1 (10: TimeBom+'s recipes and their ingredients),
+  0b1-invisibl (1: Invisibl, a dark chip's substitute; the second WhiCapsl, past 0x170) and 121-darkinvs (38:
+  DarkInvs, a dark chip), and chips/15b-sunmoon (navi chip subtype 25: SunMoon, a Program Advance). They go
+  when the ruleset names those chips by trait and the recipes by handle (phase C, step 10). Rush's spared chip
+  (lib/supports/rush: the second WhiCapsl's number) goes with them.
+- **The sword waves by number.** `sword_wave.by_slash` (navis/00-megaman/forms/slashcross/sword_wave) keeps
+  the waves by the charged slash's variant, the sword chip's subtype, for the v1 weapon module that names them
+  so (weapons 0x11 and 0x12). It goes when the charged slash asks the chip for its slash (family 8e).
 - **The variable swords' picks by number.** `VariSwordSpec.legacy = { chips, sword }` (chips/varswrd,
   chips/neovari; counted by the ratchet): the chip numbers of the picks, in the picks' order, and Sword's. A
   pick starts its action by definition, but the attack's chip, subtype and parameters are still the pick's

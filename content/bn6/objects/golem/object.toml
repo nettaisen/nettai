@@ -1,6 +1,0 @@
-# GolmHit's golem fist (effect object #0x3F, `sub_80E4DB0`) is a script.
-
-[kind]
-pool = "effect"
-index = 0x3F
-script = "golem.luau"

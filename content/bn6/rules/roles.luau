@@ -7,8 +7,13 @@
 -- BodyGrd's) join when those chips convert; until then their roles are
 -- unfilled.
 
+local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
 local barriers = require("../lib/barriers/barriers")
+local boulder = require("../objects/boulder/boulder")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
+local falling_rock = require("../objects/falling-rock/falling_rock")
+local guardian_statue = require("../chips/guardian/statue")
+local rock = require("../objects/rock/rock")
 local supports = require("../lib/supports/controller")
 
 return define.roles {
@@ -35,12 +40,15 @@ return define.roles {
         dust_beast_scatter = { legacy = { action = 0x50 } },
     },
     kinds = {
-        -- The rock a stage's actor list places (entry type 8).
-        rock = { legacy = { kind = "rock" } },
+        -- What a stage's actor list places, by its `place`: the rock (entry
+        -- type 8), the boulder (3) and the Guardian statue (9).
+        rock = rock.kind,
+        boulder = boulder.kind,
+        statue = guardian_statue.kind,
         -- What an obstacle absorbed flies off as.
-        absorbed_obstacle = { legacy = { kind = "absorbed-obstacle" } },
+        absorbed_obstacle = absorbed_obstacle.kind,
         -- GroundCross's charged chips' falling rocks.
-        falling_rock = { legacy = { kind = "falling-rock" } },
+        falling_rock = falling_rock.kind,
         -- The NaviCust supports' controller (Rush's, Beat's and Tango's).
         support = supports.kind,
     },

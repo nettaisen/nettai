@@ -10,6 +10,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local laser = require("./laser")
@@ -37,8 +38,8 @@ local SPRITE = asset.sprite("sensor")
 local LIFETIME = 0x2D0
 -- Its collision: another body of its side, reached by the other side.
 local HIT_MOD = 3
--- Its kind among absorbed obstacles (`data.objects.absorbed_sprites`).
-local ABSORBED_KIND = 0xD
+-- How it looks absorbed (the original's obstacle kind's sprite: its own).
+local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 local APPEAR_SOUND, BREAK_SOUND = asset.sound("appear"), asset.sound("hit-bomb-1")
 local FIRE_SOUND = asset.sound("beast-over")
 -- The aim by row (`dword_80DA104`), the aim's row step (`dword_80DA3E8`).
@@ -222,7 +223,7 @@ local function destroyed(me: Object)
     local how = obstacle.removal(me)
     local p = me.pos
     if how == "absorbed" then
-        obstacle.fly_to_absorber(me, ABSORBED_KIND)
+        obstacle.fly_to_absorber(me, ABSORBED)
     elseif how ~= "broken" then
         local b = obstacle.blink_out(me)
         if b == "blinking" then

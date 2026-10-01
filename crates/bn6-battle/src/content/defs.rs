@@ -1289,8 +1289,10 @@ mod tests {
         c.assets = crate::content::testing::asset_names_used(&c.scripts.modules);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        // The modules that return a table with a `state` give its layout.
+        // The modules that return a table with a `state` (the v1 modules
+        // registration by number runs: fewer as families convert) give its
+        // layout.
         let states = c.defs.definitions.modules.iter().filter(|m| m.state.is_some()).count();
-        assert!(states > 100, "{states} module states");
+        assert!(states > 0, "{states} module states");
     }
 }
