@@ -48,6 +48,12 @@ The graphics load into the types of the `bn6-assets` crate, decoded
   with what each glyph draws, chip icons by chip, the opponent's HP digits,
   MegaMan's mugshots and count boxes, the link navis' mugshots, the HUD's
   text lines, banner layouts and glyphs, "Cstmzing...", "PAUSE".
+- **The custom screen** (`graphics/custom`): the window's tiles, maps and
+  patches, each chip's picture (`chip-art/<chip>.png`) and the buttons',
+  chip codes, element icons and their colours, damage digits, the slots'
+  codes and buttons, the cursor, the navis' emblems, the Regular chip's
+  frame. A pack extracted before it loads without them (with a warning),
+  and the screen isn't drawn.
 
 What the HUD shows of the content comes from the content: a chip's name is
 its definition's, spelled with the font's glyphs (`Hud::glyphs`); its icon
@@ -119,7 +125,8 @@ Other per-tick consumers can plug in the same way, as a `TickHook`
 
 Layers, back to front: the backdrop colour, the background (priority 3),
 the field (priority 2), sprites of priority 2, the HUD layer (priority 1),
-sprites of priority 0 (banners).
+sprites of priority 0 (banners), and BG0 (priority 0: the custom screen's
+enemy names).
 
 **Objects** (`objects.rs`) follow the original's render passes
 (`sub_8003E18`/`sub_8004218`/`sub_8004510`, `sub_30061E8`, `sub_3006440`,
@@ -193,6 +200,41 @@ sprites and the HUD's layer. The transformation sequencer fades every tile
 layer to black while navis change form (sprites keep their colours) and
 the palette flash whitens them.
 
+**The custom screen** (`custom.rs`): the local player's screen as the
+original draws it on its console (`sub_8026A28` and its states), from the
+engine's `Screen` and its presentation state (`Screen::look`,
+docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
+
+- the window on the HUD layer: the original's 15x20 map (with or without
+  the Cross tab) and its patches, composed from the tile numbers the map
+  names: the blocks the battle loads at fixed places (the frame from tile
+  1, the picked column's cells, the last turns' block) and what the screen
+  copies in as it runs; it slides in and out a column or two a tick under
+  the layer's scroll, and SELECT takes it off;
+- the chip window: the chip's name (8 cells of the 8x16 font, in the
+  window's colours), its picture and palette, the window's colours by its
+  class, its code, its element's icon and colours, its damage ("???" for
+  Muramasa); for OK, Beast Out and the buttons their pictures;
+- the slots (each dealt chip's icon and code, greyed or picked by its
+  palette; the empty slots; the Beast Out, re-deal and scrap buttons) and
+  the picked column's icons and cells;
+- sprites (layer 1, bucket 0, each in front of the last, as the raw OAM
+  list `sub_8009FF8` fills): the cursor's four corners in its two frames,
+  the navi's emblem over the column (a 32x32 affine sprite: it spins after a
+  pick), the Regular chip's frame;
+- the enemy names on BG0 over their bar on the HUD layer, on a round's
+  first screen;
+- what the screen does to the rest: the HP box and the mugshot move right
+  with the window and the field and the sprites 15 pixels down (the
+  camera), the gauge stays off until the local result is sent, Beast Out's
+  fade darkens the stage, the HUD layer and the objects (sprite palettes
+  0-10) half way, the camera's jitter moves the HUD layer in Beast Out's
+  states, and the emotion window shows the Beast form chosen.
+
+The text it draws goes through `fonts.rs` (the cell-text helper for the
+8x16 font), so that a later font-rendering step can change what is behind
+it (docs/design/text-rendering.md).
+
 ### What the engine gives the frontend
 
 Presentation outputs: the simulation reads none of them (`digest.rs` lists
@@ -226,21 +268,15 @@ engine doesn't read: its telop shows no name (`--audit` lists these).
 
 Headless frames are compared pixel for pixel with screenshots of the
 original running under emulation, one per battle frame; the frames where
-the custom screen is up, which the frontend doesn't draw, are counted
-apart.
+the custom screen is up are counted apart.
 
 **The vanilla PvP test match** (round 1 frames 72..=1145, round 2 frames
-1224..=2554): of the 2404 frames the engine simulates, **1949 are
-pixel-exact**, the HUD included: the intro fades and the opponent's mosaic
-fade-in, round and turn banners, movement, GunDelSol with its name and
-icons, the deletion, the win banner and the fade out, and in round 2 Beast
-Out with its overlay, afterimages, lock-on, camera shake and screen dim.
-What differs:
-
-| Frames | What |
-|---|---|
-| 208-384, 1360-1636 | the custom screen itself |
-| 1637 | the mugshot shows the Beast Out chosen on the custom screen a frame before the replay knows it |
+1224..=2554): **all 2404 frames the engine simulates are pixel-exact**, the
+HUD and both custom screens included (the second with Beast Out): the intro
+fades and the opponent's mosaic fade-in, round and turn banners, movement,
+GunDelSol with its name and icons, the deletion, the win banner and the
+fade out, and in round 2 Beast Out with its overlay, afterimages, lock-on,
+camera shake and screen dim.
 
 **A second match**, three rounds traced on the right-hand player's console
 (so the field is drawn mirrored), with Crosses, rock cubes, ice and grass
@@ -282,10 +318,12 @@ console.
 
 ## 5. Known gaps
 
-- The custom screen (chip selection UI) isn't drawn, and its own sounds
-  aren't cues: live play shows it as text.
+- The custom screen's Cross window, Program Advance animation, scrap,
+  re-deal and chatbox (descriptions, the run message) aren't drawn yet, and
+  its own sounds aren't cues; live play also shows it as text.
 - Affine (rotated or scaled) object sprites (`sprite_makeScalable`: no kind
-  in the engine or the content uses one yet), the per-part palette override
+  in the engine or the content uses one yet; compose draws affine parts, the
+  custom screen's emblem is one), the per-part palette override
   of `sub_3006440`, and the original's sprite block bits 0x20/0x40.
 - HP numbers under objects that aren't navis (LilBoiler, the AirSpin top:
   `sub_801DC7C` with an offset): content has no way to ask for one.

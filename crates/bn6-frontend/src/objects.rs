@@ -25,6 +25,9 @@ pub struct View {
     /// 16.16 camera offset (shakes move it).
     pub camera: (i32, i32, i32),
     pub mirror: bool,
+    /// A fade of the objects' palettes (the custom screen's Beast Out
+    /// darkens sprite palettes 0-10, the battle's objects).
+    pub fade: crate::compose::Fade,
 }
 
 /// The hardware sprite limit.
@@ -312,6 +315,7 @@ pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut
                 });
                 shade(p, look.color_shader)
             };
+            let palette = palette.map(|c| crate::compose::apply_fade(c, view.fade));
 
             let mut group = Vec::new();
             for (i, part) in parts.iter().take(32).enumerate() {
@@ -341,6 +345,7 @@ pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut
                     alpha: look.alpha,
                     mosaic: look.mosaic,
                     vscale: None,
+                    affine: None,
                 };
                 // Ground shadows go one layer back, in the first bucket.
                 let (layer, bucket) = if on_ground { (3, 0) } else { (2, p.ground + 0x40) };
@@ -374,7 +379,7 @@ mod tests {
         // The camera 3 pixels right and 2 down: everything moves left and up
         // on both consoles; the HUD's pieces move right on the mirrored one.
         let pos = ((-60) << 16, 28 << 16, 0);
-        let shaken = View { camera: (3 << 16, 2 << 16, 0), mirror: false };
+        let shaken = View { camera: (3 << 16, 2 << 16, 0), ..View::default() };
         assert_eq!(project(pos, &shaken), Projected { x: 57, ground: 106, y: 106 });
         assert_eq!(project_hud(pos, &shaken).x, 57);
         let mirrored = View { mirror: true, ..shaken };
@@ -399,6 +404,7 @@ mod tests {
             alpha: None,
             mosaic: None,
             vscale: None,
+            affine: None,
         };
         let mut list = SpriteList::default();
         list.insert_group(vec![(2, 100, part(1)), (2, 100, part(2))]);
