@@ -66,11 +66,11 @@ anti_damage.action = define.action {
 anti_damage.weapon = define.weapon {
     id = "megaman/anti-damage",
     name = "AntiDmg",
-    -- (A B+Back special, never a charge routine: its row lies past the
-    -- charge table's fifty.)
+    -- (A B+Back special, which nothing charges: the charge table's row
+    -- 0x3D, with row 0x3E's first entry.)
+    charge_ticks = { 0, 0, 0, 0, 0, 0 },
     setup = setup,
-    -- (Transitional: the routine number the NaviCust's program names it
-    -- by.)
+    -- (Transitional: the number the NaviCust's program names it by.)
     legacy = { routines = { 0x3D } },
 }
 

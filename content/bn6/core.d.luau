@@ -1508,9 +1508,7 @@ export type Action = ActionSpec
 export type WeaponSpec = {
     id: string,
     name: string,
-    -- Ticks to a full charge at each Charge stat (0 to 5); none for a
-    -- weapon that is never a charge routine (a B+Back special).
-    charge_ticks: { number }?,
+    charge_ticks: { number },
     -- `off_80117D4[n]`: prepare the attack, name its action. A weapon with
     -- an `instant` effect names none: the instant chips' action runs it.
     setup: (navi: Object) -> (Action | number)?,

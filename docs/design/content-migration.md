@@ -17,9 +17,10 @@ The exemplars (content model v2, step 7) show the patterns end to end, and are t
 | EraseMan | A navi chip: a navi kind and a `navi` hook builder (`eraseman.summon { aim_ticks }`); kinds spawned with state instead of parameters; chips kept on records behind a registration shim | chips/eraseman/, chips/0ec-eraseman |
 | BusterUp and the plus chips | Instant chips: an `instant` hook per chip; a shared library with the records' path beside it | chips/busterup, chips/atk-10, chips/navi-20, lib/instant/plus.luau, chips/0c0-atk-10 |
 | The link navis' own chips | A record that runs the action its module exports (`{ action = define.action { ... } }`), for an action number registration can't claim; a phased routine on the attack's step with shared helpers; kinds beside the navi, or with the navi chip series that shares them | lib/link_chips.luau, navis/heatman ... navis/dustman (chip.luau and their kinds), chips/190-heatpres ... chips/199-dustbrk |
-| MegaMan's buster, charged shot and blank shot; HeatCross's charged shot | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a role the ruleset starts (`forced_charged_shot`, rules/roles.luau) | navis/00-megaman/weapons/{buster,charged-shot,blank-shot}, navis/00-megaman/forms/heatcross/charge.luau, lib/buster.luau |
+| MegaMan's weapons | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a setup that writes its action's state (`navi:action_state(action)`); a weapon whose effect is instant (`instant`); roles the ruleset starts (`forced_charged_shot`, `cross_protect`, `beast_claw`, ..., rules/roles.luau); the kinds only a form's weapon spawns beside it | navis/00-megaman/weapons/`<name>`/weapon.luau, navis/00-megaman/forms/`<form>`/, navis/00-megaman/dash_hit.luau, lib/buster.luau, lib/weapon.luau |
 
-The other weapon routines (navis/00-megaman/weapons/NN-name) are still v1, registered by number.
+HeatCross Beast's and ElecCross Beast's charges and SlashCross's slashes (navis/00-megaman/weapons/07-, 09-,
+11- and 12-) are still v1, registered by number.
 
 ## 1. What moves and what stays
 
@@ -242,13 +243,13 @@ Left (each a controller and its objects, every branch; docs/engine/chips.md §3.
 
 ### Group C: DustCross and the Beast forms' weapons (ported; what is left)
 
-Ported (navis/00-megaman/weapons/, objects/): every form weapon routine of `off_80117D4` the forms name (0x03,
+Ported (navis/00-megaman/weapons/ and forms/): every form weapon routine of `off_80117D4` the forms name (0x03,
 0x04, 0x06, 0x07..0x0C, 0x0F..0x12, 0x14..0x17, 0x19..0x1E, 0x27, 0x2A, 0x2C; 0x06, 0x0B, 0x0C and 0x0F are setups
 whose actions are standard chips'), their actions (0x1A, 0x1D, 0x1E, 0x35, 0x3A, 0x3C, 0x3D, 0x41, 0x45, 0x46, 0x4A,
 0x4C..0x50, 0x52, 0x56, 0x58) and kinds, and the absorbed obstacle. The chip-use framework's charged paths
 (`sub_80127C0(charged)`, `sub_8012C7C`, the cross doubles of `sub_8012A38`, GroundCross's A-charge 0x18
 `sub_8012CB2`) are group H's `chip_use.rs`, with the A-charge 0xFF path's argument (the chip's family byte) from
-this group; GroundCross's drill uses objects/drill and EraseCross's beam objects/thunder-column (one script per
+this group; GroundCross's drill uses objects/drill and EraseCross's beam objects/thunder-column (one module per
 kind). Left:
 
 - Blocked by the framework: a charged use of the empty hand in a form without an A-charge routine (it needs the
@@ -282,7 +283,7 @@ built", step 8d): 0, 3 (lib/instant/plus with chips/atk-10, chips/navi-20, chips
 chips/numtrap; the records' shims chips/13f-beastout and chips/0c0-atk-10; objects/rising-bubble), 1
 (objects/boomerang, chips/boomer), 4 (chips/lance), 5 (chips/fullcust), 8 (chips/firehit; the records' shim
 chips/06b-firehit1), 10 (chips/busterup), 12 (chips/sandwrm), 13 (chips/synctrgr), 14 (chips/flmhook, the navi
-chips'; the records' shim chips/146-flmhook1), 15 (chips/colforce), 19 (chips/justcone), 20 (weapons/10-tengu-wind, objects/gust), 21
+chips'; the records' shim chips/146-flmhook1), 15 (chips/colforce), 19 (chips/justcone), 20 (weapons/tengu-wind, objects/gust), 21
 (chips/golmhit), 22 (chips/colarmy); 7 and 0x12 are NULL (an explicit panic). 2, 6, 9, 11, 16 and 17 have no chip or
 MegaMan weapon: they are builders in lib/instant, which the link navis' weapons (0x71, 0x83) and actions call when
 ported. Left: the Full Synchro aura after SyncTrgr (framework).
