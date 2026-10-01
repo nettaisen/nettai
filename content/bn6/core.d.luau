@@ -387,6 +387,10 @@ declare class Object
     beast_lockon: number
     -- A per-action word some actions keep.
     marker: number
+    -- The absorbed obstacle a throw carries (the marker word, as
+    -- DustCross's throws keep it): its look and animation.
+    thrown_look: AbsorbedLook?
+    thrown_anim: number
     -- The recovery a shot waits after firing: a word of the attack that
     -- outlives the action, so an action that waits it without writing it
     -- (a thrown obstacle) waits the last shot's.
@@ -519,6 +523,12 @@ declare class Object
     -- the low half, the counter byte above (the object's damage and
     -- stamina).
     function set_damage_word(self, word: number): ()
+    -- Replace the whole header flag byte (the flags above are its bits: in
+    -- use 0x01, `visible` 0x02, `run_while_paused` 0x04, `no_sprite_update`
+    -- 0x08, `run_while_dimmed` 0x10, `holds_reservation` 0x20; 0x40 and
+    -- 0x80 nothing reads): what a spawner's bug leaves (the boulder's reads
+    -- the byte from the wrong address). Everything else sets flags by name.
+    function set_header_flags(self, flags: number): ()
     -- `object_spawnCollisionEffect`: the hit spark after a hit (one RNG
     -- draw when it shows).
     function hit_spark(self): ()
@@ -615,10 +625,11 @@ declare class Object
     -- action last used it): how a weapon routine sets up the action it
     -- names before it starts. Cast it to the action's State type.
     function action_state(self, action: number): any
-    -- The obstacles it absorbed, oldest first.
-    function absorbed(self): { { kind: number, anim: number } }
-    function push_absorbed(self, kind: number, anim: number): boolean
-    function pop_absorbed(self): (number?, number?)
+    -- The obstacles it absorbed, oldest first: their looks and
+    -- animations.
+    function absorbed(self): { { look: AbsorbedLook, anim: number } }
+    function push_absorbed(self, look: AbsorbedLook, anim: number): boolean
+    function pop_absorbed(self): (AbsorbedLook?, number?)
 
     -- Field objects (obstacles): whether another object asked this of it
     -- (the rest is the `obstacle` service).
@@ -1034,15 +1045,24 @@ declare navi_chip: {
 }
 
 -- What an actor list's entry is placed with (`off_80073A0[type]`): an
--- object kind's `actor_list_entry(spec)`.
+-- object kind's `place(spec)`.
 export type ActorListEntrySpec = {
     panel_x: number,
     panel_y: number,
     -- The entry's side (field objects take their panel's instead).
     side: number,
-    -- The entry's argument (a rock's variant).
+    -- The entry's argument (a rock's variant: objects/rock's
+    -- `by_number`).
     variant: number,
 }
+
+-- How an absorbed obstacle looks (objects/absorbed-obstacle's `look`, an
+-- "absorbed-look" record; the original's obstacle kinds, `byte_80E98C0`):
+-- its sprite; `keeps_parts`, it flies with the obstacle's hidden sprite
+-- parts (the original's kind 2); `own_facing`, thrown, its sprite's parts
+-- keep their own facing and it isn't flipped (sprite 0x23 in the
+-- original's test).
+export type AbsorbedLook = { sprite: SpriteAsset, keeps_parts: boolean?, own_facing: boolean? }
 
 export type ObstacleCrush = "breaks" | "destroys" | "spares_bodies" | "ignores"
 -- Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
@@ -1103,11 +1123,19 @@ declare obstacle: {
     removal: (me: Object) -> ObstacleRemoval,
     -- `sub_800F8CE`: blink out for 20 ticks when it vanishes.
     blink_out: (me: Object) -> BlinkOut,
-    -- `sub_800F90E`: absorbed, it flies to the absorbing navi as obstacle
-    -- kind `kind` (`data.objects.absorbed_sprites`).
-    fly_to_absorber: (me: Object, kind: number) -> (),
+    -- `sub_800F90E`: absorbed, it flies to the absorbing navi as an
+    -- absorbed obstacle of look `look` (objects/absorbed-obstacle's
+    -- `look { ... }`; the original's obstacle kind).
+    fly_to_absorber: (me: Object, look: AbsorbedLook) -> (),
     -- `sub_802EF5C`: the per-side target tracking some chips keep.
     release_tracking: (me: Object) -> (),
+    -- The field's two stage objects (the registry's stage slots, which the
+    -- actor lists' entry types 3 and 0xA fill; `sub_8007450`): whether one
+    -- is free; `me` takes the first free one; `me` leaves the one it holds
+    -- (the original clears the slot the object remembers).
+    stage_slot_free: () -> boolean,
+    enter_stage: (me: Object) -> (),
+    leave_stage: (me: Object) -> (),
     -- A chip's requests: `sub_800F884` removes it, `sub_800F898` makes it
     -- blink out, `sub_800F8B0` has the absorber's side's navi absorb it.
     remove: (obj: Object) -> (),
@@ -1460,8 +1488,8 @@ export type KindSpec = {
     state: StateSchema?,
     update: (me: Object) -> (),
     -- What places it when a stage's actor list names it (the role
-    -- `kinds.rock`, say).
-    place: ((spec: ActorListEntrySpec) -> ())?,
+    -- `kinds.rock`, say): it returns what it placed, if anything.
+    place: ((spec: ActorListEntrySpec) -> Object?)?,
 }
 export type Kind = KindSpec
 
@@ -1507,7 +1535,9 @@ export type ChipSpec = {
     lockout: number?,
     flags: { string }?,
     extra_flags: { string }?,
-    beast: { lockon: any }?,
+    -- Its lock-on mode, and whether it goes through the Beast rush (`rush
+    -- = false`: a mode without the rush, as some records have).
+    beast: { lockon: any, rush: boolean? }?,
     library: { number: number, index: number, sort: number }?,
     slot_in_limit: number?,
     traits: { string }?,
@@ -1575,6 +1605,8 @@ export type RolesSpec = {
     }?,
     kinds: {
         rock: (Kind | LegacyKind)?,
+        boulder: (Kind | LegacyKind)?,
+        statue: (Kind | LegacyKind)?,
         absorbed_obstacle: (Kind | LegacyKind)?,
         falling_rock: (Kind | LegacyKind)?,
         support: (Kind | LegacyKind)?,

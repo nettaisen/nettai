@@ -25,8 +25,9 @@ sparks.charged = BY_ELEMENT[5]
 -- A cannon's impact (spark 7: the cannons, AirShot).
 sparks.impact = define.spark { sprite = asset.sprite("impact"), anim = 0, palette = 0 }
 
--- A breaking hit (spark 0x0A: the break family's shots, a thrown obstacle;
--- GroundMan's drill and rocks, DustMan's junk, BigHook's flames).
+-- A breaking hit (spark 0x0A: the break family's shots, a thrown obstacle,
+-- JustcOne's fist, a rock; GroundMan's drill and rocks, DustMan's junk,
+-- BigHook's flames).
 sparks.breaking = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
 
 -- A shot's impact (spark 9: a projectile variant nothing names yet).
@@ -37,6 +38,13 @@ sparks.blast = define.spark { sprite = asset.sprite("explosion"), anim = 0, pale
 
 -- A bat's impact (spark 0x0D: BatCan's shot).
 sparks.bat = define.spark { sprite = asset.sprite("bat-impact"), anim = 1, palette = 0 }
+
+-- The element sparks by name (hit effects 1 to 3), for hits that name
+-- theirs rather than take their element's.
+sparks.fire, sparks.aqua, sparks.elec = BY_ELEMENT[1], BY_ELEMENT[2], BY_ELEMENT[3]
+
+-- The wood spark (hit effect 4): the boomerang's, the lances'.
+sparks.wood = BY_ELEMENT[4]
 
 -- The erase beams' spark (hit effect 0x0C).
 sparks.erase = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
