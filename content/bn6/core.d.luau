@@ -1379,6 +1379,16 @@ export type ElementName = "null" | "fire" | "aqua" | "elec" | "wood"
 -- family's.
 export type ChipMatch = { element: ElementName?, family: ChipFamily? }
 
+-- A form's faces in the emotion window by its navi's emotion: an emotion
+-- without one shows `normal`.
+export type MugshotFaces = {
+    normal: Mugshot,
+    angry: Mugshot?,
+    tired: Mugshot?,
+    full_synchro: Mugshot?,
+    worn_out: Mugshot?,
+}
+
 -- A navi (§3.2): MegaMan or a link navi. (`NaviDef`, since `Navi` is a
 -- side's stats.)
 export type NaviDef = {
@@ -1392,7 +1402,9 @@ export type NaviDef = {
     -- Ticks of lag after a move, by navi variant.
     move_lag: { number },
     banners: { win: Banner, lose: Banner },
-    mugshots: { [string]: Mugshot }?,
+    -- A link navi's face in the emotion window (shown in its second palette
+    -- in Full Synchro); MegaMan's face is his form's.
+    mugshot: Mugshot?,
     -- Extra height of its image as it merges with MegaMan in a Cross.
     merge_height: number?,
     -- The no-running message's lines (the characters in each).
@@ -1490,7 +1502,8 @@ export type FormDef = {
     breaks_to: FormDef?,
     -- MegaMan's palette in a Cross.
     palette: number?,
-    mugshot: Mugshot?,
+    -- Its face in the emotion window, or its faces by its navi's emotion.
+    mugshot: (Mugshot | MugshotFaces)?,
     weapons: FormWeapons?,
     identity: Identity?,
     -- The damage it adds to a family's damaging chips, and to damaging

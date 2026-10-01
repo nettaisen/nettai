@@ -13,6 +13,9 @@ return define.navi {
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("heatman-win"), lose = asset.banner("heatman-deleted") },
+    -- Its face in the emotion window (`byte_801CDDC`): the Falzar ROM has no
+    -- HeatMan face, and shows SpoutMan's.
+    mugshot = asset.mugshot("spoutman"),
     merge_height = 8,
     run_message = { 18, 17 },
     own_chip = { chip = heatman, code = "H" },

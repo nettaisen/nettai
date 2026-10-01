@@ -53,12 +53,9 @@ pub struct HudDoc {
     pub mugshots: Vec<TileImage>,
     /// The count box showing 0..=10, then without a number.
     pub counts: TileImage,
-    pub form_emotions: Vec<u8>,
-    /// The link navis' mugshots, each with its two palettes (normal, Full
-    /// Synchro); which a navi shows, by the navi's number less one; and the
-    /// box beside them.
+    /// The link navis' faces, each with its two palettes (normal, Full
+    /// Synchro), and the box beside them.
     pub navi_mugshots: Vec<TileImage>,
-    pub navi_mugshot_of: Vec<u8>,
     pub navi_box: TileImage,
     /// "PAUSE": five glyphs (shown with the opponents' HP digits' palette).
     pub pause: TileImage,
@@ -141,7 +138,10 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         .navi_mugshots
         .iter()
         .enumerate()
-        .map(|(i, m)| image(&format!("mugshots/link-navi-{i}.png"), &m.tiles, face, &m.palettes, 2))
+        .map(|(i, m)| {
+            let file = format!("mugshots/{}.png", names.mugshot(bn6_assets::NAVI_MUGSHOTS + i as u8));
+            image(&file, &m.tiles, face, &m.palettes, 2)
+        })
         .collect();
     let navi0 = h.navi_mugshots.first().map(|m| m.palettes[0]).unwrap_or([0; 16]);
     let navi_box = image("navi-box.png", &h.navi_box, icon, &[navi0], 0);
@@ -189,9 +189,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         hidden_icon,
         mugshots,
         counts,
-        form_emotions: h.form_emotions.clone(),
         navi_mugshots,
-        navi_mugshot_of: h.navi_mugshot_of.clone(),
         navi_box,
         pause,
         texts: h.texts.clone(),
@@ -303,9 +301,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         mugshots,
         counts: (0..counts.len() / 4 - 1).map(|i| slice(&counts, 4 * i, 4)).collect(),
         count_box: slice(&counts, counts.len() - 4, 4),
-        form_emotions: doc.form_emotions.clone(),
         navi_mugshots,
-        navi_mugshot_of: doc.navi_mugshot_of.clone(),
         navi_box,
         pause,
         texts: doc.texts.clone(),
