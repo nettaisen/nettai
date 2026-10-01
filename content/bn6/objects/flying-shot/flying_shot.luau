@@ -25,16 +25,14 @@ export type State = {
     -- left to pass (the game reuses the parameter).
     palette: number,
     range: number,
-    -- A thrown obstacle's kind and animation (kind | animation << 4), its
-    -- spawner's word (the game's ExtraVars).
-    obstacle: number,
+    -- A thrown obstacle's look and animation (the game's ExtraVars word,
+    -- kind | animation << 4).
+    obstacle: AbsorbedLook?,
+    obstacle_anim: number,
 }
 
 -- How fast it falls when launched to, 16.16 a tick.
 local FALL = -0x1_2000
--- A thrown obstacle whose sprite is the absorbed obstacles' 0x23 keeps
--- its parts' own facing (`sub_8002EAC`), and is not flipped.
-local UNFLIPPED_INDEX = 0x23
 -- The height of a panel spark (`sub_801A100`), 16.16.
 local PANEL_SPARK_Z = 0x10_0000
 -- Collision results that show a hit spark (`object_spawnCollisionEffect`),
@@ -247,17 +245,17 @@ local function init(me: Object)
     local anim: number = v.anim or 0
     local keeps_facing = false
     if v.obstacle then
-        -- The absorbed obstacle's sprite, by its kind (the absorbed
-        -- obstacles' own table, numbered until they are kinds).
-        local kind = bit32.band(s.obstacle, 0xF)
-        local thrown = data.objects.absorbed_sprites[kind]
-        if not thrown then
-            error(string.format("absorbed obstacle kind %d is not in the content", kind))
+        -- The absorbed obstacle's look (objects/absorbed-obstacle's; the
+        -- game's by the kind in its word's low nibble), its animation (the
+        -- next nibble); a look whose sprite is the original's 0x23 keeps
+        -- its parts' own facing (`sub_8002EAC`) and is not flipped.
+        local thrown = s.obstacle
+        if thrown == nil then
+            error("a thrown obstacle's flying shot without the obstacle's look")
         end
-        look:load(thrown)
-        anim = bit32.band(bit32.rshift(s.obstacle, 4), 0xF)
-        -- The sprite's index: the part of "CC-II" after the dash.
-        keeps_facing = (tonumber(string.sub(thrown, 4), 16) or -1) == UNFLIPPED_INDEX
+        look:load(thrown.sprite)
+        anim = bit32.band(s.obstacle_anim, 0xF)
+        keeps_facing = thrown.own_facing == true
     else
         look:load(v.sprite)
     end
@@ -295,7 +293,15 @@ end
 flying_shot.kind = define.kind {
     id = "flying-shot",
     pool = "attack",
-    state = { variant = "record:flying-shot-variant", wait = "u8", falls = "bool", palette = "u8", range = "u8", obstacle = "u8" },
+    state = {
+        variant = "record:flying-shot-variant",
+        wait = "u8",
+        falls = "bool",
+        palette = "u8",
+        range = "u8",
+        obstacle = "record:absorbed-look",
+        obstacle_anim = "u8",
+    },
     -- `sub_80C60A8`.
     update = function(me: Object)
         local l = me.lifecycle
@@ -316,9 +322,9 @@ flying_shot.kind = define.kind {
 
 -- `sub_80C6248`: a flying shot from `owner` at `pos`: of `shot.variant`,
 -- waiting `shot.wait` ticks, falling if `shot.falls`, in `shot.palette`,
--- with the damage word and, for a thrown obstacle, the obstacle (kind |
--- animation << 4). It takes the owner's side and flip, and runs later this
--- tick, right after its spawner.
+-- with the damage word and, for a thrown obstacle, the obstacle's look and
+-- animation. It takes the owner's side and flip, and runs later this tick,
+-- right after its spawner.
 function flying_shot.launch(owner: Object, pos: Vec3, shot: FlyingShot): Object?
     local o = battle.spawn(flying_shot.kind, pos)
     if o then
@@ -327,7 +333,8 @@ function flying_shot.launch(owner: Object, pos: Vec3, shot: FlyingShot): Object?
         s.wait = shot.wait or 0
         s.falls = shot.falls or false
         s.palette = shot.palette or 0
-        s.obstacle = shot.obstacle or 0
+        s.obstacle = shot.obstacle
+        s.obstacle_anim = shot.obstacle_anim or 0
         o:set_damage_word(shot.damage)
         o.alliance, o.flip = owner.alliance, owner.flip
         o.related1 = owner
@@ -337,14 +344,13 @@ end
 
 -- The same with the original's four parameters (the row, the wait, the
 -- fall, the palette), for the callers that still pass them.
-function flying_shot.spawn(owner: Object, pos: Vec3, params: { number }, damage: number, obstacle: number?): Object?
+function flying_shot.spawn(owner: Object, pos: Vec3, params: { number }, damage: number): Object?
     return flying_shot.launch(owner, pos, {
         variant = flying_shot.by_number(params[1]),
         wait = params[2],
         falls = params[3] ~= 0,
         palette = params[4],
         damage = damage,
-        obstacle = obstacle,
     })
 end
 
