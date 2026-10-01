@@ -7,6 +7,7 @@
 -- 25 at random; blocked on the way (no floor, or the other side's body or an
 -- object), he leaves at once. See docs/engine/chips.md §3.6.25.
 
+local navi_chips = require("../../lib/navi-chips/navi")
 local collision = require("../../rules/collision")
 local drill = require("./drill")
 local panels = require("../../lib/panels")
@@ -37,9 +38,6 @@ local SOUND_ROCKFALL = asset.sound("rockfall")
 local ACTOR_TYPE: ActorType = "player"
 local AI_INDEX = 9
 
--- Panel flags he needs to stay (as one word).
-local CAN_STAND = 0x10010
-
 -- How fast he backs off and drills (16.16).
 local BACK_SPEED, DRILL_SPEED = 0x8000, 0x8_0000
 
@@ -62,17 +60,7 @@ local APPEAR, BACK_OFF, DIG, ROCKFALL, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10
 -- `sub_80BBBBC`: on his panel, on the ground (a word store: nothing of the
 -- spawner's register is kept), with his parts.
 local function init(me: Object)
-    me:set_coordinates_from_panel()
-    local p = me.pos
-    me.pos = Vec3.new(p.x, p.y, 0)
-    local sprite = me.sprite
-    sprite:load(SPRITE)
-    sprite.shadow = "ground"
-    me.anim = 0
-    me.anim_loaded = 0
-    sprite:set_animation(0)
-    sprite.palette = 0
-    sprite:set_flip(bit32.bxor(me.alliance, me.flip))
+    navi_chips.stand(me, SPRITE, "ground", true)
     me:add_navi_parts(ACTOR_TYPE, AI_INDEX, 1)
     me:set_lifecycle("update")
 end
@@ -99,8 +87,7 @@ local function appear(me: Object)
     if left > 0 then
         return
     end
-    local stands = bit32.band(field.flags(me.panel_x, me.panel_y), CAN_STAND) == CAN_STAND
-    me:set_action(if stands then BACK_OFF else LEAVE)
+    me:set_action(if navi_chips.has_footing(me) then BACK_OFF else LEAVE)
 end
 
 -- `sub_80BBC80`: 40 ticks; half a pixel back a tick while the timer is 25
@@ -251,11 +238,7 @@ local function leave(me: Object)
         return
     end
     me:remove_navi_parts(ACTOR_TYPE, AI_INDEX)
-    local controller = (me.state :: State).controller
-    if controller then
-        navi_chip.navi_left(controller)
-    end
-    me:set_lifecycle("destroy")
+    navi_chips.leave(me, (me.state :: State).controller)
 end
 
 local ACTIONS = { [APPEAR] = appear, [BACK_OFF] = back_off, [DIG] = dig, [ROCKFALL] = rockfall, [LEAVE] = leave }
@@ -286,15 +269,10 @@ grndman.kind = define.kind {
 -- GrndMan chips' navi hook, `off_802CD5C[10]`). His position is the
 -- spawner's registers until his init places him.
 function grndman.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn(grndman.kind, Vec3.new(spec.panel_y, spec.element, 0))
+    local o = navi_chips.spawn(grndman.kind, user, spec)
     if not o then
         return nil
     end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.related1 = user
-    o.alliance, o.flip = user.alliance, user.flip
-    o:set_damage_word(spec.damage)
     local s = o.state :: State
     s.controller = controller
     return o

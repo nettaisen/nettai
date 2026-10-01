@@ -6,6 +6,7 @@
 -- stands free, a book (./book) flies at the enemy; once every book is done,
 -- his columns start coming back. See docs/engine/chips.md §3.6.29.
 
+local navi_chips = require("../../lib/navi-chips/navi")
 local book = require("./book")
 local collision = require("../../rules/collision")
 local panels = require("../../lib/panels")
@@ -44,9 +45,6 @@ local SOUND_LASH = asset.sound("erase-man-2")
 -- its address with the Thumb bit, whose fraction his Z keeps.
 local SPAWNER_ADDRESS = 0x080BA921
 
--- Panel flags he needs to stay (as one word).
-local CAN_STAND = 0x10010
-
 -- His columns, by side (`byte_80BA9F8`, `off_80BAA84`).
 local COLUMNS = { [0] = { 5, 4, 3, 2 }, [1] = { 2, 3, 4, 5 } }
 
@@ -61,34 +59,8 @@ local APPEAR, STAND, RAISE, LASH, BOOKS, WAIT_BOOKS, LEAVE = 0x0, 0x4, 0x8, 0xC,
 
 -- `sub_80BA72C`: on his panel, on the ground (Z's whole part cleared).
 local function init(me: Object)
-    me:set_coordinates_from_panel()
-    local p = me.pos
-    me.pos = Vec3.new(p.x, p.y, bit32.band(p.z, 0xFFFF))
-    local sprite = me.sprite
-    sprite:load(SPRITE)
-    sprite.shadow = "ground"
-    me.anim = 0
-    me.anim_loaded = 0
-    sprite:set_animation(0)
-    sprite.palette = 0
-    sprite:set_flip(bit32.bxor(me.alliance, me.flip))
+    navi_chips.stand(me, SPRITE, "ground")
     me:set_lifecycle("update")
-end
-
--- Enter the phase (phase 4; a word store of the timers when `word`), or
--- count down; true once the timer is 0 or below.
-local function countdown(me: Object, ticks: number, word: boolean): boolean
-    if me.phase == 0 then
-        me.phase = 4
-        me.timer = ticks
-        if word then
-            me.timer2 = 0
-        end
-        return false
-    end
-    local left = me.timer - 1
-    me.timer = left
-    return left <= 0
 end
 
 -- `sub_800D618`: a panel his side owns by home that the other side holds.
@@ -105,11 +77,10 @@ local function appear(me: Object)
         battle.play_sound(SOUND_APPEAR)
         me.visible = true
     end
-    if not countdown(me, 2, true) then
+    if not navi_chips.wait(me, 2, true) then
         return
     end
-    local stands = bit32.band(field.flags(me.panel_x, me.panel_y), CAN_STAND) == CAN_STAND
-    me:set_action(if stands then STAND else LEAVE)
+    me:set_action(if navi_chips.has_footing(me) then STAND else LEAVE)
 end
 
 -- `sub_80BA7F4`: 30 ticks.
@@ -117,7 +88,7 @@ local function stand(me: Object)
     if me.phase == 0 then
         me.anim = 0
     end
-    if countdown(me, 0x1E, true) then
+    if navi_chips.wait(me, 0x1E, true) then
         me:set_action(RAISE)
     end
 end
@@ -128,7 +99,7 @@ local function raise(me: Object)
         me.anim = 6;
         (me.state :: State).whip = whip.raise(me)
     end
-    if countdown(me, 0xF, false) then
+    if navi_chips.wait(me, 0xF, false) then
         me:set_action(LASH)
     end
 end
@@ -261,14 +232,10 @@ local function leave(me: Object)
     if me.phase == 0 then
         me.anim = 4
     end
-    if not countdown(me, 2, false) then
+    if not navi_chips.wait(me, 2, false) then
         return
     end
-    local controller = (me.state :: State).controller
-    if controller then
-        navi_chip.navi_left(controller)
-    end
-    me:set_lifecycle("destroy")
+    navi_chips.leave(me, (me.state :: State).controller)
 end
 
 local ACTIONS =
@@ -307,15 +274,10 @@ judgeman.kind = define.kind {
 -- the user, on the panel the controller picked, reporting to `controller`.
 function judgeman.summon(args: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
-        local o = battle.spawn(judgeman.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
+        local o = navi_chips.spawn(judgeman.kind, user, spec, SPAWNER_ADDRESS)
         if not o then
             return nil
         end
-        o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-        o.element = spec.element
-        o.related1 = user
-        o.alliance, o.flip = user.alliance, user.flip
-        o:set_damage_word(spec.damage)
         local s = o.state :: State
         s.controller = controller
         s.book_damage = args.book_damage
