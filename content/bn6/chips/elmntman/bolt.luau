@@ -1,29 +1,22 @@
 --!strict
--- ElmntMan's lightning bolt (attack object #0xB8, `sub_80DC3F8`): it
+-- ElmntMan's lightning bolt (the original's attack object #0xB8,
+-- `sub_80DC3F8`): it
 -- strikes its panel, hitting it once (a hit region that runs while
 -- dimmed) and breaking it (cracking it if it holds something), and shows
 -- for 16 ticks. His Elec strikes the column three ahead of him, a row at
--- a time. It runs while dimmed. See docs/engine/chips.md §3.6.7.
+-- a time. It runs while dimmed. The fraction of its Z is its spawner's
+-- register garbage (the object loop's count of the objects of the one
+-- before it, times 4), which its init keeps (compat's
+-- `scratch_z_fraction`). See docs/engine/chips.md §3.6.7.
 
-local elmnt_bolt = {}
+local collision = require("../../rules/collision")
+local regions = require("../../lib/regions")
+local sparks = require("../../lib/sparks")
 
-local SPRITE = "14-14"
+local bolt = {}
 
--- `sub_80DC4B8`: a bolt on (x, y) with `element` and the damage word;
--- `params` are the spawner's register (ElmntMan's strike count). (The
--- fraction of its Z is the spawner's register garbage: see object.toml.)
-function elmnt_bolt.spawn(owner: Object, x: number, y: number, element: number, params: { number }, damage: number): Object?
-    local o = battle.spawn_kind("elmnt-bolt", Vec3.new(y, element, 0), params)
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = element
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = owner.alliance, owner.flip
-        o.run_while_dimmed = true
-    end
-    return o
-end
+local SPRITE = asset.sprite("beast-over-burst")
+local SOUND_BEAST_OVER_BURST = asset.sound("beast-over-burst")
 
 -- `sub_80DC41C`: on its panel, on the ground (Z's whole part cleared).
 local function init(me: Object)
@@ -49,10 +42,10 @@ local function hit(me: Object)
         panel_y = me.panel_y,
         element = me.element,
         z = 0,
-        region = 1,
-        hit_effect = 3,
-        target = 5,
-        self_type = 0x0A,
+        region = regions.single,
+        hit_effect = sparks.elec,
+        target = collision.hits_navis,
+        self_type = collision.thrown,
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = 3,
@@ -68,7 +61,7 @@ local function strike(me: Object)
         me.phase = 4
         hit(me)
         field.break_panel(me.panel_x, me.panel_y)
-        battle.play_sound(0x12E)
+        battle.play_sound(SOUND_BEAST_OVER_BURST)
         me.timer = 0x10
         return
     end
@@ -91,17 +84,34 @@ local function tick(me: Object)
     strike(me)
 end
 
--- `sub_80DC3F8`.
-function elmnt_bolt.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
+bolt.kind = define.kind {
+    id = "elmntman/bolt",
+    pool = "attack",
+    -- `sub_80DC3F8`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
+        end
+        me:update_sprite_while_dimmed()
+    end,
+}
+
+-- `sub_80DC4B8`: a bolt on (x, y) with `element` and the damage word.
+function bolt.spawn(owner: Object, x: number, y: number, element: number, damage: number): Object?
+    local o = battle.spawn(bolt.kind, Vec3.new(y, element, 0))
+    if o then
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o:set_damage_word(damage)
+        o.alliance, o.flip = owner.alliance, owner.flip
+        o.run_while_dimmed = true
     end
-    me:update_sprite_while_dimmed()
+    return o
 end
 
-return elmnt_bolt
+return bolt

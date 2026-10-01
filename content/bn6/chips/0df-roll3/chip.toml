@@ -1,3 +1,3 @@
-# A navi chip (subtype 0): its navi is Roll.
+# A navi chip (subtype 0): Roll, as chips/0dd-roll summons her.
 
-script = "../../objects/roll/roll.luau"
+script = "../0dd-roll/chip.luau"

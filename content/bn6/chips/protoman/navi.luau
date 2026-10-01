@@ -1,18 +1,19 @@
 --!strict
--- ProtoMan, the navi of the ProtoMan chips (actor object #0x3C,
--- `sub_80C26F0`), brought by their navi chip controller. He fades in on
--- his user's panel (and leaves at once if it isn't solid); then, column
--- by column ahead and row by row, he finds each enemy navi with a free
--- panel (or his user's) in front of it, blinks there and slashes it with
--- his sword (attachment 0x11: a hit region 0x04 and a slash effect). When
--- none is left he goes, and the controller moves on. See
--- docs/engine/chips.md §3.6.21.
---
--- The chips' script (navi chip subtype 1): `navi_chip` is his spawner,
--- `off_802CD5C[1]`. His sword sits in his first related slot, which held
--- his user until his first slash (so later searches find no user there).
+-- ProtoMan, the navi of the ProtoMan chips (the original's actor object
+-- #0x3C, `sub_80C26F0`), brought by their navi chip controller. He fades
+-- in on his user's panel (and leaves at once if it isn't solid); then,
+-- column by column ahead and row by row, he finds each enemy navi with a
+-- free panel (or his user's) in front of it, blinks there and slashes it
+-- with his sword (a column of three and a slash drawn over it). When none
+-- is left he goes, and the controller moves on. His sword sits in his
+-- first related slot, which held his user until his first slash (so later
+-- searches find no user there). See docs/engine/chips.md §3.6.21.
 
-local attachment = require("../attachment/attachment")
+local attachment = require("../../objects/attachment/attachment")
+local parts = require("../../lib/swords/parts")
+local collision = require("../../rules/collision")
+local effects = require("../../lib/effects")
+local regions = require("../../lib/regions")
 
 export type State = {
     -- The grey of his colour shader, fading in (object +0x19).
@@ -25,22 +26,23 @@ export type State = {
     flip: number,
 }
 
-local proto_man = {
-    state = { grey = "u8", controller = "object", fresh = "u8", flip = "u8" },
-}
+local protoman = {}
 
-local SPRITE = "08-0B"
+local SPRITE = asset.sprite("protoman")
+local SOUND_APPEAR = asset.sound("appear")
 
 -- The controller calls his spawner through r3, which his position takes
 -- (his init sets it all).
 local SPAWNER_ADDRESS = 0x080C2A4D
 
--- His palette by Param1 (`dword_80C276C`).
-local PALETTES = { [0] = 0, 0, 0, 0 }
+-- His palette (`dword_80C276C`: 0 for each of the chips' levels).
+local PALETTE = 0
 
--- His sword by Param1 (`byte_80C29F0`: attachment 0x11, animation 0xB,
--- animating while dimmed).
-local SWORDS = { [0] = { 0x11, 0xB, 1, 0 }, { 0x11, 0xB, 1, 0 }, { 0x11, 0xB, 1, 0 } }
+-- His sword (`byte_80C29F0`, the same row for each of the chips' levels:
+-- the original's attachment 0x11, the swords' blade), its animation 0xB,
+-- animating while dimmed.
+local SWORD = parts.blades.sword
+local SWORD_ANIM = 0xB
 
 -- His fade-in's starting grey.
 local FADE_GREY = 0x1F
@@ -52,26 +54,9 @@ local SOLID = 0x10
 local OCCUPIED = 0x0F80_0000
 
 -- When his slash lands (the timer before its tick's count down), and its
--- effect (0x27).
+-- effect (0x27: the swords' slash over a column).
 local SLASH_TICK = 0xA
-local SLASH_EFFECT = 0x27
-
--- `sub_80C2A4C`: ProtoMan for `user`, reporting to `controller`.
-function proto_man.navi_chip(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn_kind("proto-man", Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS), spec.params)
-    if not o then
-        return nil
-    end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.alliance, o.flip = user.alliance, user.flip
-    o.related1 = user
-    o.damage = spec.damage
-    o.stamina = bit32.rshift(spec.damage, 16)
-    local s = o.state :: State
-    s.controller = controller
-    return o
-end
+local SLASH_EFFECT = parts.effects.wide
 
 -- Enter the phase with a timer (PhaseInitialized), or count down; true
 -- once the timer is 0 or below.
@@ -92,7 +77,7 @@ local function fade_in(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
         s.grey = FADE_GREY
-        battle.play_sound(0x94)
+        battle.play_sound(SOUND_APPEAR)
         me.timer = 0
         me.phase_init = 4
         return
@@ -206,20 +191,16 @@ local function blink_in(me: Object)
     end
 end
 
--- `sub_80C296C`: the slash (his sword in his first related slot, sound
--- 0xB0): at 10 left, a hit region 0x04 16 pixels up on the panel ahead
+-- `sub_80C296C`: the slash (his sword in his first related slot): at 10
+-- left, a hit on a column of three 16 pixels up on the panel ahead
 -- (running while dimmed, `sub_80C53A6`) and its effect; 20 ticks, then
 -- the next search.
 local function slash(me: Object)
     if me.phase_init == 0 then
         me.anim = 5
         me.anim_loaded = 6
-        local sword = SWORDS[me:param(1)]
-        if not sword then
-            error(string.format("ProtoMan's sword %d reads past byte_80C29F0", me:param(1)))
-        end
-        attachment.spawn_with(me, sword, "related")
-        battle.play_sound(0xB0)
+        attachment.attach(me, SWORD, "related", { anim = SWORD_ANIM, while_dimmed = true })
+        battle.play_sound(parts.sounds.swing)
         me.timer = 0x14
         me.phase_init = 4
         return
@@ -231,10 +212,10 @@ local function slash(me: Object)
             panel_y = y,
             element = 0,
             z = 0x10_0000,
-            region = 4,
+            region = regions.wide,
             hit_effect = 0xFF,
-            target = 5,
-            self_type = 7,
+            target = collision.hits_navis,
+            self_type = collision.slash,
             damage = me.damage,
             stamina = me.stamina,
             hit_mod = 3,
@@ -309,11 +290,7 @@ local function init(me: Object)
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y, 0)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    local palette = PALETTES[me:param(1)]
-    if palette == nil then
-        error(string.format("ProtoMan's palette %d reads past dword_80C276C", me:param(1)))
-    end
-    sprite.palette = palette
+    sprite.palette = PALETTE
     sprite.color_shader = 0x7FFF
     me.visible = true
     me:set_lifecycle("update")
@@ -329,16 +306,38 @@ local function finish(me: Object)
     me:free()
 end
 
--- `sub_80C26F0`.
-function proto_man.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        update_state(me)
-    else
-        finish(me)
+protoman.kind = define.kind {
+    id = "protoman/navi",
+    pool = "actor",
+    state = { grey = "u8", controller = "object", fresh = "u8", flip = "u8" },
+    -- `sub_80C26F0`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            update_state(me)
+        else
+            finish(me)
+        end
+    end,
+}
+
+-- `sub_80C2A4C`: ProtoMan for `user`, reporting to `controller` (the
+-- ProtoMan chips' navi hook, `off_802CD5C[1]`).
+function protoman.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
+    local o = battle.spawn(protoman.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
+    if not o then
+        return nil
     end
+    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
+    o.element = spec.element
+    o.alliance, o.flip = user.alliance, user.flip
+    o.related1 = user
+    o:set_damage_word(spec.damage)
+    local s = o.state :: State
+    s.controller = controller
+    return o
 end
 
-return proto_man
+return protoman

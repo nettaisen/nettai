@@ -1,23 +1,34 @@
 --!strict
--- Roll, the navi of the Roll chips (actor object #0x2C, `sub_80C07BC`),
--- brought by their navi chip controller. She fades in over her user's
--- panel; warps up and down in front of the nearest enemy navi ahead
--- (`sub_80C0C9A`); whips it three times (a hit region 10 ticks apart,
--- with her ribbon: attachment 0x12); warps up and away; warps her user
--- back in herself; and drops a heart on her user's panel (objects/
--- roll-heart) that heals three times her damage. Then she goes, and the
--- controller moves on. With no enemy navi ahead she leaves at once. See
--- docs/engine/chips.md §3.6.20.
---
--- The chips' script (navi chip subtype 0): `navi_chip` is her spawner,
--- `off_802CD5C[0]`. (The controller skips the user's warp back in for
--- her: she brings it herself.)
+-- Roll, the navi of the Roll chips (the original's actor object #0x2C,
+-- `sub_80C07BC`), brought by their navi chip controller. She fades in over
+-- her user's panel; warps up and down in front of the nearest enemy navi
+-- ahead (`sub_80C0C9A`); whips it three times (a hit region 10 ticks
+-- apart, with her ribbon out); warps up and away; warps her user back in
+-- herself; and drops a heart on her user's panel (./heart) that heals
+-- three times her damage. Then she goes, and the controller moves on. With
+-- no enemy navi ahead she leaves at once. (The controller skips the user's
+-- warp back in for her: she brings it herself.) See docs/engine/chips.md
+-- §3.6.20.
 
+local attachment = require("../../objects/attachment/attachment")
+local heart = require("./heart")
 local panels = require("../../lib/panels")
-local attachment = require("../attachment/attachment")
-local roll_heart = require("../roll-heart/roll_heart")
+local collision = require("../../rules/collision")
+local regions = require("../../lib/regions")
+local sparks = require("../../lib/sparks")
+
+-- What a chip summons her with (the chips' first parameter picks them):
+-- her whip's rounds of three hits (1; 3 for the parameter 5, which no chip
+-- has) and her palette (Roll3's is 1).
+export type Summon = { rounds: number, palette: number }
 
 export type State = {
+    -- Her whip's rounds and her palette (from Param1).
+    whip_rounds: number,
+    palette: number,
+    -- Where she lands (Param3, Param4).
+    target_x: number,
+    target_y: number,
     -- Her user's panel when the chip was used (object +0xC, +0xD), where
     -- her heart falls.
     home_x: number,
@@ -34,27 +45,20 @@ export type State = {
     held: Object?,
 }
 
-local roll = {
-    state = {
-        home_x = "u8",
-        home_y = "u8",
-        grey = "u8",
-        rounds = "u8",
-        swish = "u8",
-        controller = "object",
-        held = "object",
-    },
-}
+local roll = {}
 
-local SPRITE = "0C-50"
+local SPRITE = asset.sprite("roll-heart")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_ROLL = asset.sound("roll")
+local SOUND_ROLL_2 = asset.sound("roll-2")
 
 -- The controller calls her spawner through r3, which her position takes
 -- (her init sets it all).
 local SPAWNER_ADDRESS = 0x080C0DD9
 
--- Her fade-in's starting grey, and her warp's sparkle (effect 0x26).
+-- Her fade-in's starting grey, and her warp's sparkle.
 local FADE_GREY = 0x1F
-local SPARKLE = 0x26
+local SPARKLE = heart.sparkle
 
 -- What she looks for (`off_80C0D90`: an enemy navi's body), and what a
 -- panel she lands on must be free of (as words).
@@ -65,45 +69,10 @@ local OCCUPIED = 0x0F80_0000
 local WARP_HEIGHT = 0xA0
 local WARP_SPEED = 0xF_0000
 
--- Her ribbon: attachment 0x12, animation 5, animating while dimmed.
-local RIBBON = { 0x12, 5, 1, 0 }
-
--- `sub_80C0DD8`: Roll for `user`, reporting to `controller`. (Unlike the
--- others she takes no element.)
-function roll.navi_chip(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn_kind("roll", Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS), spec.params)
-    if not o then
-        return nil
-    end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    local s = o.state :: State
-    s.home_x, s.home_y = spec.panel_x, spec.panel_y
-    o.alliance, o.flip = user.alliance, user.flip
-    o.damage = spec.damage
-    o.stamina = bit32.rshift(spec.damage, 16)
-    o.related1 = user
-    s.controller = controller
-    return o
-end
-
--- Her flags byte (the object loop's r4, which her heart takes as its
--- params).
-local function flags_byte(me: Object): number
-    local f = 1
-    if me.visible then
-        f += 2
-    end
-    if me.run_while_paused then
-        f += 4
-    end
-    if me.no_sprite_update then
-        f += 8
-    end
-    if me.run_while_dimmed then
-        f += 0x10
-    end
-    return f
-end
+-- Her ribbon (the original's attachment row 0x12), its animation 5,
+-- animating while dimmed.
+local RIBBON = attachment.look { sprite = asset.sprite("roll-heart"), palette = 0 }
+local RIBBON_ANIM = 5
 
 -- A sparkle 20 pixels above her.
 local function sparkle_above(me: Object)
@@ -124,10 +93,10 @@ local function whip(me: Object, x: number, y: number)
         panel_y = y,
         element = 0,
         z = 0x14_0000,
-        region = 1,
-        hit_effect = 0,
-        target = 5,
-        self_type = 4,
+        region = regions.single,
+        hit_effect = sparks.plain,
+        target = collision.hits_navis,
+        self_type = collision.attack,
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = 3,
@@ -201,7 +170,7 @@ local function fade_in(me: Object)
     if me.phase_init == 0 then
         sparkle_above(me)
         s.grey = FADE_GREY
-        battle.play_sound(0x94)
+        battle.play_sound(SOUND_APPEAR)
         me.timer = 0
         me.phase_init = 4
         return
@@ -230,24 +199,24 @@ local function settle(me: Object)
 end
 
 -- Action 4 (`sub_80C0912`): warp to her target.
--- `sub_80C0938`: find it (Param3, Param4), or leave.
+-- `sub_80C0938`: find it, or leave.
 local function aim(me: Object)
     local x, y = target(me)
     if x == 0 then
         me:set_action(0xC)
         return
     end
-    me:set_param(3, x)
-    me:set_param(4, y)
+    local s = me.state :: State
+    s.target_x, s.target_y = x, y
     me.phase, me.phase_init = 4, 0
 end
 
--- `sub_80C0956` / `sub_80C0B90`: animation 2, sound 0xBE; 5 ticks, then
+-- `sub_80C0956` / `sub_80C0B90`: animation 2, her warp's sound; 5 ticks, then
 -- hidden (true).
 local function vanish(me: Object): boolean
     if me.phase_init == 0 then
         me.anim, me.anim_loaded = 2, 0
-        battle.play_sound(0xBE)
+        battle.play_sound(SOUND_ROLL)
         me.timer = 5
         me.phase_init = 4
         return false
@@ -304,7 +273,8 @@ local function warp_down(me: Object)
         me.timer = 1
         local v = me.vel
         me.vel = Vec3.new(v.x, v.y, -v.z)
-        me.panel_x, me.panel_y = me:param(3), me:param(4)
+        local s = me.state :: State
+        me.panel_x, me.panel_y = s.target_x, s.target_y
         me:set_coordinates_from_panel()
         me.phase_init = 4
     else
@@ -352,19 +322,19 @@ local function wind_up(me: Object)
 end
 
 -- `sub_80C0A90`: her ribbon out; a hit on the panel ahead every 10 ticks,
--- three to a round (a round, or three with Param1 5), the whip swishing
+-- three to a round (a round, or as many as her chip gives), the whip swishing
 -- every 8 ticks; the animation restarts each round.
 local function lash(me: Object)
     local s = me.state :: State
     local x, y = me.panel_x + me.facing, me.panel_y
     if me.phase_init == 0 then
-        local ribbon = attachment.spawn_with(me, RIBBON, "held")
+        local ribbon = attachment.attach(me, RIBBON, "held", { anim = RIBBON_ANIM, while_dimmed = true })
         if ribbon then
             ribbon.run_while_dimmed = true
         end
         me.timer = 0xA
         me.timer2 = 3
-        s.rounds = if me:param(1) == 5 then 3 else 1
+        s.rounds = s.whip_rounds
         whip(me, x, y)
         me.phase_init = 4
         return
@@ -372,7 +342,7 @@ local function lash(me: Object)
     local swish = bit32.band(s.swish + 1, 7)
     s.swish = swish
     if swish == 1 then
-        battle.play_sound(0xBF)
+        battle.play_sound(SOUND_ROLL_2)
     end
     local left = me.timer - 1
     me.timer = left
@@ -439,10 +409,10 @@ local function heal_amount(damage: number): number
 end
 
 -- `sub_80C0C48`: her heart on her user's panel; 90 ticks, then she goes.
-local function heart(me: Object)
+local function drop_heart(me: Object)
     if me.phase_init == 0 then
         local s = me.state :: State
-        roll_heart.spawn(me.related1 :: Object, s.home_x, s.home_y, heal_amount(me.damage), { flags_byte(me) })
+        heart.spawn(me.related1 :: Object, s.home_x, s.home_y, heal_amount(me.damage))
     end
     if countdown(me, 0x5A) then
         me:set_lifecycle("destroy")
@@ -454,7 +424,7 @@ local PHASES = {
     [4] = { [0] = aim, [4] = warp_out, [8] = warp_up, [0xC] = warp_down, [0x10] = arrive },
     [8] = { [0] = wind_up, [4] = lash, [8] = rest },
     [0xC] = { [0] = leave_out, [4] = leave_up },
-    [0x10] = { [0] = recall, [4] = heart },
+    [0x10] = { [0] = recall, [4] = drop_heart },
 }
 
 -- `sub_80C0840`: the action's phase; her sprite; her colour shader from
@@ -474,8 +444,8 @@ local function update_state(me: Object)
     me.sprite.color_shader = grey * 0x421
 end
 
--- `sub_80C07DC`: over her user's panel, faded out (grey), Roll3's palette
--- 1; then her first update at once.
+-- `sub_80C07DC`: over her user's panel, faded out (grey), in her chip's
+-- palette; then her first update at once.
 local function init(me: Object)
     me.visible = true
     local sprite = me.sprite
@@ -488,7 +458,7 @@ local function init(me: Object)
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y, 0)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    sprite.palette = if me:param(1) == 4 then 1 else 0
+    sprite.palette = (me.state :: State).palette
     sprite.color_shader = 0x7FFF
     me:set_lifecycle("update")
     update_state(me)
@@ -503,15 +473,54 @@ local function finish(me: Object)
     me:free()
 end
 
--- `sub_80C07BC`.
-function roll.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        update_state(me)
-    else
-        finish(me)
+roll.kind = define.kind {
+    id = "roll/navi",
+    pool = "actor",
+    state = {
+            home_x = "u8",
+            home_y = "u8",
+            grey = "u8",
+            rounds = "u8",
+            swish = "u8",
+            controller = "object",
+            held = "object",
+            whip_rounds = "u8",
+            palette = "u8",
+            target_x = "u8",
+            target_y = "u8",
+        },
+    -- `sub_80C07BC`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            update_state(me)
+        else
+            finish(me)
+        end
+    end,
+}
+
+-- `sub_80C0DD8`: the Roll chips' navi hook (`off_802CD5C[0]`): Roll for
+-- `user`, reporting to `controller`. (Unlike the others she takes no
+-- element.)
+function roll.summon(args: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+    return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
+        local o = battle.spawn(roll.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
+        if not o then
+            return nil
+        end
+        o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
+        local s = o.state :: State
+        s.home_x, s.home_y = spec.panel_x, spec.panel_y
+        o.alliance, o.flip = user.alliance, user.flip
+        o:set_damage_word(spec.damage)
+        o.related1 = user
+        s.controller = controller
+        s.whip_rounds = args.rounds
+        s.palette = args.palette
+        return o
     end
 end
 
