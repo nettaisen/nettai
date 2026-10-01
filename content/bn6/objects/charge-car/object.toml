@@ -1,6 +1,0 @@
-# A train car (attack object #0xAC, `sub_80DAE94`) is a script.
-
-[kind]
-pool = "attack"
-index = 0xAC
-script = "charge_car.luau"
