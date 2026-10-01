@@ -1480,9 +1480,19 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
     })
 }
 
-/// Every sprite's animation timing, from `animations.json`.
+/// Every sprite's animation timing, from `animations.json`, and its
+/// frames' part offsets, from `sprite.json`.
 fn load_animations(root: &Path, report: &mut Report) -> Option<Animations> {
     let t = crate::timing::load(root, report)?;
+    // (A sprite without its `sprite.json`, as in a pack of battle data
+    // alone, has no parts.)
+    let mut parts = BTreeMap::new();
+    for (&(category, index), anims) in &t.sprites {
+        let Some(layouts) = t.layouts.get(&(category, index)) else { continue };
+        let layouts = layouts.iter().map(|l| l.iter().map(|p| (p[0], p[1])).collect()).collect();
+        let frame_layouts = anims.iter().map(|a| a.iter().map(|f| f.layout).collect()).collect();
+        parts.insert(SpriteId { category, index }, SpriteParts { frame_layouts, layouts });
+    }
     let sprites = t
         .sprites
         .into_iter()
@@ -1491,7 +1501,7 @@ fn load_animations(root: &Path, report: &mut Report) -> Option<Animations> {
             (SpriteId { category, index }, anims)
         })
         .collect();
-    Some(Animations { sprites })
+    Some(Animations { sprites, parts })
 }
 
 /// MegaMan's weapon routines that scripts implement.

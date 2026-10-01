@@ -222,3 +222,7 @@ export type Instrument = {
     tune: Sound,
     effect: (me: Object) -> (),
 }
+
+-- AirRaid's plane (chips/airraid, a row of the original's `byte_80D34C0`):
+-- its lifetime in ticks, its bombs, its palette and HP.
+export type AirRaidPlane = { lifetime: number, bombs: number, palette: number, hp: number }
