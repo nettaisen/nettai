@@ -438,6 +438,9 @@ named_fields! {
     pub enum BattleInfo {
         /// A link (net) battle.
         Link = "link", Bool, ro;
+        /// A battle against a ranked boss (battle effect 1: LifeSync does
+        /// nothing in one, `sub_80E72C8`).
+        BossRank = "boss_rank", Bool, ro;
         Mode = "mode", U8, ro;
         PanelPattern = "panel_pattern", U8, ro;
         /// Every navi is in (the intro's bit 2).

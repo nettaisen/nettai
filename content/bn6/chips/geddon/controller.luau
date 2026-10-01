@@ -14,8 +14,11 @@ local quake = require("./quake")
 
 local controller = {}
 
+-- What the quake does to the panels (./quake's `Change`).
+type Change = "crack" | "break" | "poison"
+
 export type State = {
-    change: quake.Change,
+    change: Change,
     -- The quake runs (the original's second parameter, whose address it
     -- holds).
     busy: boolean,
@@ -51,11 +54,10 @@ controller.kind = define.kind {
 
 -- `sub_80E2566`: a chip's `dimming` hook, for the quake's change. (The
 -- spawner copies the user's side, not its facing.)
-function controller.hook(change: quake.Change): (user: Object, spec: DimmingChipSpec) -> Object?
+function controller.hook(change: Change): (user: Object, spec: DimmingChipSpec) -> Object?
     return function(user: Object, spec: DimmingChipSpec): Object?
-        local o = dimming_chips.spawn(controller.kind, user, spec)
+        local o = dimming_chips.spawn(controller.kind, user, spec, true)
         if o then
-            o.flip = 0
             (o.state :: State).change = change
         end
         return o

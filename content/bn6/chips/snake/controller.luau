@@ -24,8 +24,7 @@ local AFTER = 0x28
 local function effect(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
-        local damage = int.u32(bit32.bor(me.damage, bit32.lshift(me.stamina, 16)) + s.bonus)
-        nest.spawn(me, me.panel_x, me.panel_y, damage, me)
+        nest.spawn(me, me.panel_x, me.panel_y, s.bonus, dimming_chips.damage_plus(me, s.bonus), me)
         -- Set after the spawn, by the controller itself: a nest that fails
         -- to spawn leaves the dimming waiting for good, as in the
         -- original.
