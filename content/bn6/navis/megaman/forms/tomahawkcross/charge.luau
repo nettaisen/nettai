@@ -75,7 +75,7 @@ local function swing(me: Object, s: State)
             element = WOOD,
             z = 0,
             region = regions.wide_long,
-            hit_effect = 0xFF,
+            hit_effect = nil,
             target = collision.hits_navis,
             self_type = collision.slash,
             damage = me.attack_damage,

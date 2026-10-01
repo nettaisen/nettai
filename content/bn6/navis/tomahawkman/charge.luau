@@ -64,7 +64,7 @@ local function slash(me: Object)
         element = me.attack_element,
         z = 0,
         region = regions.wide_long,
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.nothing,
         self_type = collision.slash,
         damage = bit32.band(word, 0xFFFF),

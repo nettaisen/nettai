@@ -62,7 +62,7 @@ local function tick(me: Object)
     -- in, which no navi it rides is in, so it ends then too.
     local running = (me.related1 :: Object):navi_action()
     local gone = running ~= s.action
-    if c.region == 0 and s.hit_panel ~= me.panel_x + me.panel_y * 0x100 then
+    if c.region == nil and s.hit_panel ~= me.panel_x + me.panel_y * 0x100 then
         c:set_region(regions.single)
         gone = running ~= "take_control"
     end

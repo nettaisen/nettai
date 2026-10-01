@@ -131,7 +131,7 @@ local function poison(me: Object)
         element = DRAIN_ELEMENT,
         z = me.pos.z,
         region = regions.area[1 - me.alliance],
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.nothing,
         self_type = DRAIN_IS,
         damage = DRAIN_DAMAGE,

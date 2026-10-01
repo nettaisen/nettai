@@ -7,20 +7,19 @@
 //! original's effect #0x2C, `sub_80E3728`) takes the amount from the healer.
 
 use crate::battle::Battle;
-use crate::content::ChipId;
+use crate::content::{ChipId, EffectRole};
 use crate::kinds::effect;
 use crate::object::{ObjectRef, Vec3};
 use crate::sound::SoundId;
 
 /// AntiRecv, the trap chip that turns a heal into damage.
 pub const ANTI_RECOVERY: ChipId = 0xBD;
-/// The recovery sparkle (effect #0's look), and its sound.
-const SPARKLE: u8 = 6;
+/// The recovery sparkle's (the role `effects.recovery`) sound.
 const HEAL_SOUND: u16 = 0x8A;
 /// AntiRecv's counterattack: the counter byte its damage carries, the
-/// "trap!" mark (effect #0's look) raised over the healer, and its sound.
+/// "trap!" mark (the role `effects.trap_mark`) raised over the healer, and
+/// its sound.
 pub(crate) const TRAP_HIT_PARAM: u32 = 0x1E;
-const TRAP_MARK: u8 = 0x46;
 /// The mark's height, 32 pixels.
 pub(crate) const TRAP_MARK_Z: i32 = 0x20_0000;
 const TRAP_SOUND: u16 = 0xA5;
@@ -37,7 +36,8 @@ pub fn heal(b: &mut Battle, r: ObjectRef, amount: u16, anti_recovery: bool) -> b
     }
     add_hp(b, r, amount);
     let pos = b.objects.get(r).pos;
-    effect::spawn(b, pos, SPARKLE, 0, 0, 0);
+    let look = b.content.defs.roles.effect(EffectRole::Recovery);
+    effect::spawn(b, pos, look, 0, 0, 0);
     b.play_sound(SoundId(HEAL_SOUND));
     false
 }
@@ -97,6 +97,7 @@ pub(crate) fn trap_mark(b: &mut Battle, r: ObjectRef) {
     let panel = b.objects.get(r).panel;
     let (x, y) = crate::kinds::player::panel_coordinates(panel.x, panel.y);
     let local = b.round.local_side;
-    effect::spawn(b, Vec3 { x, y: y.wrapping_add(0x10_0000), z: TRAP_MARK_Z }, TRAP_MARK, local, 0, 0);
+    let look = b.content.defs.roles.effect(EffectRole::TrapMark);
+    effect::spawn(b, Vec3 { x, y: y.wrapping_add(0x10_0000), z: TRAP_MARK_Z }, look, local, 0, 0);
     b.play_sound(SoundId(TRAP_SOUND));
 }

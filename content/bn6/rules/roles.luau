@@ -13,13 +13,17 @@ local barriers = require("../lib/barriers/barriers")
 local beast_claw = require("../navis/megaman/weapons/beast-claw/weapon")
 local bodygrd_counter = require("../chips/bodygrd/counter")
 local charged_shot = require("../navis/megaman/weapons/charged-shot/weapon")
+local collision = require("./collision")
 local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatter")
+local effects = require("../lib/effects")
 local encased_bubble = require("../objects/encased-bubble/bubble")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
 local lockon = require("./lockon")
+local regions = require("../lib/regions")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/megaman/forms/slashcross/charge")
+local sparks = require("../lib/sparks")
 local statuses = require("./status")
 local supports = require("../lib/supports/controller")
 
@@ -78,6 +82,58 @@ return define.roles {
         -- The Beast forms' charged claw's lock-on mode, whatever chip its
         -- attack carries.
         beast_claw = lockon.beast_claw,
+    },
+    effects = {
+        -- A navi deleted (its two explosions), a cross merged into MegaMan,
+        -- a navi arriving mid-battle or back from a Cross special, a form
+        -- put on or taken off.
+        deletion = effects.deletion,
+        -- HP recovered: a heal's sparkle, a recovery chip's, the
+        -- undershirt's credits'; a navi appearing mid-battle.
+        recovery = effects.heal,
+        -- The flash where a side cut in.
+        cut_in_flash = effects.bat_impact,
+        -- The mark over a navi whose trap sprang (AntiNavi, AntiRecv).
+        trap_mark = effects.copy_mark_7,
+        -- What an obstacle encased in ice or a bubble flickers with.
+        encased = effects.explosion,
+        -- A Cross or Beast Out put on.
+        form_change = effects.form_change,
+        -- Beast Over: its beast (Gregar's, Falzar's), the blast after it,
+        -- and the bursts around the navi.
+        beast_over_gregar = effects.beast_over_gregar,
+        beast_over_falzar = effects.beast_over_falzar,
+        beast_over_blast = effects.beast_over_blast,
+        beast_over_burst = effects.beast_over_burst_45,
+    },
+    sparks = {
+        -- What a new collision registration's hits show until its owner
+        -- names another.
+        plain = sparks.plain,
+        -- A blocked hit's.
+        guard = sparks.hit,
+        -- An eruption's hits' (a volcano panel's).
+        eruption = sparks.fire,
+        -- A thrown obstacle's landing's.
+        thrown_obstacle = sparks.charged,
+        -- A navi's programs uninstalled.
+        uninstall = sparks.spark_0e,
+    },
+    regions = {
+        -- A registration's own panel, which every setup gives it.
+        anchor = regions.single,
+    },
+    collision = {
+        -- A navi's body, its body when it floats, and what it reacts to.
+        navi = collision.navi,
+        floating_navi = collision.floating_navi,
+        navi_target = collision.navi_target,
+        -- An eruption (a volcano panel's), and what it reaches.
+        eruption = collision.hitbox,
+        eruption_target = collision.hits_both_sides,
+        -- A thrown obstacle's landing, and what it reaches.
+        thrown_obstacle = collision.breaking,
+        thrown_obstacle_target = collision.hits_navis,
     },
     hooks = {
         -- The NaviCust FirstBarrier (`sub_8013892`): the navi enters with
