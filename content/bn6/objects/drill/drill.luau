@@ -11,6 +11,7 @@
 local attachment = require("../attachment/attachment")
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
+local sparks = require("../../lib/sparks")
 
 local drill = {}
 
@@ -39,8 +40,6 @@ export type Spec = { ticks: number, light: boolean? }
 local PERIOD = 0x0C
 -- Hit modifiers.
 local HIT_MOD, LIGHT_HIT_MOD = 0x61, 3
--- Its hit spark (hit effect 0x0A).
-local SPARK = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
 
 -- Whether the slot that holds it still does.
 local function held(me: Object): boolean
@@ -149,7 +148,7 @@ local function init(me: Object)
     follow(me)
     local c = me.collision
     c:set_region(regions.single)
-    c:set_hit_effect(SPARK)
+    c:set_hit_effect(sparks.breaking)
     me:set_lifecycle("update")
     tick(me)
 end

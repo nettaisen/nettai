@@ -23,10 +23,12 @@ export type State = {
 -- side's statistic 3 (`by`); and the fan it holds, with an addition to its
 -- palette.
 type Blow = {
+    -- The action's key when no chip definition holds it.
+    id: string?,
     fan: AttachmentLook,
     fan_palette: number?,
-    single: tornado.Spec?,
-    spread: { by: "bug_kinds" | "side_stat", panels: { [number]: { { number } } }, tornado: tornado.Spec }?,
+    single: TornadoSpec?,
+    spread: { by: "bug_kinds" | "side_stat", panels: { [number]: { { number } } }, tornado: TornadoSpec }?,
 }
 
 -- One state for the action's blows.
@@ -143,7 +145,7 @@ local function blow(spec: Blow): Action
         end
     end
 
-    return define.action { state = STATE, args = spec, update = update }
+    return define.action { id = spec.id, state = STATE, args = spec, update = update }
 end
 
 local chips = {
@@ -188,6 +190,7 @@ local chips = {
 -- The action's third form, which no chip has (the original's subtype 3,
 -- with `byte_80CA208`'s tornadoes).
 chips.back_spread = blow {
+    id = "tornado/back-spread",
     fan = CHARGED_FAN,
     fan_palette = 1,
     spread = {

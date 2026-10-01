@@ -258,3 +258,52 @@ export type Instrument = {
     tune: Sound,
     effect: (me: Object) -> (),
 }
+
+-- A shock wave's look and timing (chips/wavearm/wave, a row of the
+-- original's `byte_80C6B00`): its animation, ticks on a panel before the
+-- next rolls on, the panel type it leaves ("cracked" cracks the panel,
+-- "broken" breaks it, or cracks it under something); `quick`: it goes 4
+-- ticks after sending the next; `steers`: it turns toward an enemy's row.
+export type ShockWaveVariant = { anim: number, ticks: number, panel: PanelType?, quick: boolean?, steers: boolean? }
+
+-- A tornado's look and rhythm (chips/tornado/tornado, a row of the
+-- original's `byte_80CA064`): its palette, the ticks between hits, the bug
+-- its hits carry (nil: none); `plain`: it takes its panel's variant.
+export type TornadoVariant = { palette: number, rearm: number, bug: number?, plain: boolean? }
+
+-- What a tornado is spawned with: its variant, the status its hits
+-- inflict (0: none) and its ticks.
+export type TornadoSpec = { variant: TornadoVariant, status: number, ticks: number }
+
+-- A thunder ball (chips/thunder/ball): fast or not, the panels it drifts
+-- (12 makes DarkThnd's look and sound), the status its hits inflict and
+-- their bug (none by default).
+export type ThunderBall = { fast: boolean?, panels: number, status: number?, bug: number? }
+
+-- A flying shot (objects/flying-shot, a row of the original's
+-- `byte_80C6038`): what it is and hits, its hit modifier, element and
+-- secondary elements (by name, lib/element), hit spark, look (and whether
+-- its shadow is on the ground), speed (16.16 a tick forward), range (panel
+-- centers it passes before it ends), the status its hits inflict;
+-- `highlight`: it lights its panel; `obstacle`: a thrown obstacle, whose
+-- look is the obstacle's; `panel_spark`: its spark shows over its panel's
+-- center; the sound as it sets off after a wait, and the effect it leaves
+-- when its range runs out.
+export type FlyingShotVariant = {
+    collision: { is: CollisionType, hits: CollisionType },
+    hit_mod: number,
+    element: string,
+    secondary: { string }?,
+    spark: Spark?,
+    sprite: SpriteAsset,
+    anim: number?,
+    shadow: boolean?,
+    speed: number,
+    range: number,
+    status: number?,
+    highlight: boolean?,
+    obstacle: boolean?,
+    panel_spark: boolean?,
+    launch_sound: Sound?,
+    end_effect: Effect?,
+}
