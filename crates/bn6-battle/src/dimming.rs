@@ -404,9 +404,24 @@ pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
 /// with it). (Its barrier visual too, once the port has one:
 /// docs/engine/dimming-chips.md §3.3.)
 pub fn hide_user(b: &mut Battle, user: ObjectRef) {
+    vanish(b, user, false);
+}
+
+/// `sub_80E1352(user, 0xF)`: the same, but the user's barrier, confusion
+/// and blindness visuals and the HUD stay (the stand-in navis of BurnSqr,
+/// Magnum, BlzrdBal, NumbrBl and CornFsta).
+pub fn hide_user_keeping_visuals(b: &mut Battle, user: ObjectRef) {
+    vanish(b, user, true);
+}
+
+/// `sub_80E1352`: the mask's bits (0x1 barrier, 0x2 confusion, 0x4
+/// blindness, 0x8 the HUD) keep those shown; the callers pass 0 or 0xF.
+fn vanish(b: &mut Battle, user: ObjectRef, keep_visuals: bool) {
     b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
     set_vanished(b, user, true);
-    set_links_visible(b, user, false);
+    if !keep_visuals {
+        set_links_visible(b, user, false);
+    }
     set_charge_glow(b, user, false);
     if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
         crate::kinds::full_synchro_aura::hide(b, aura);
