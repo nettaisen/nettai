@@ -20,7 +20,7 @@ local SOUND_FALL, SOUND_LAND = asset.sound("grab-shot-2"), asset.sound("grab-sho
 local HEIGHT, FALL_SPEED = 0xC0_0000, 0x8_0000
 -- Its hit (`dword_80CCD20`): an attack that pierces invisibility (row
 -- 0x19), hitting navis, hit modifier 0x4B, no spark, element 0.
-local HIT_IS = define.collision { id = "grabbnsh/hit", side0 = 0x8000008C, side1 = 0x4000008C, row_offset = 0xC8 }
+local HIT_IS = collision.curse
 local HIT_MOD = 0x4B
 local GRAB_ANIM = 1
 
@@ -89,6 +89,8 @@ end
 local function init(me: Object)
     me.visible = true
     me.sprite:load(SPRITE)
+    -- sprite_noShadow: the first part is drawn with the sprite.
+    me.sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0xFF
     me.vel = Vec3.new(me.vel.x, me.vel.y, FALL_SPEED)
     local x, y = field.center(me.panel_x, me.panel_y)

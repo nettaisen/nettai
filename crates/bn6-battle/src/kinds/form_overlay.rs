@@ -9,9 +9,6 @@ use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress, set_progress};
 use crate::object::{ObjectRef, Vec3, flags, state};
 
-/// The Falzar beast head (sprite 0x0C/0x0A).
-pub const BEAST_HEAD: crate::content::SpriteRole = crate::content::SpriteRole::BeastHead;
-
 /// How the overlay's sprite steps once it runs (Param3).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Stepping {

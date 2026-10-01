@@ -14,8 +14,8 @@ use crate::link::{Link, Packet};
 use crate::object::{ObjectRef, Objects};
 use crate::console::Console;
 use crate::rng::Rng;
-use crate::content::{BannerId, BannerRole, Content, MusicRole, SoundRole};
-use crate::setup::{BattleSettings, Form, Navi, NaviStats, RoundSetup, SetScore, effects};
+use crate::content::{BannerId, BannerRole, Content, FormData, FormKind, MusicRole, NaviData, SoundRole};
+use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, effects};
 use crate::transform::{TransformRequest, TransformSequencer};
 use crate::sound::SoundCue;
 use bn6_content_api::ChipHandle;
@@ -364,6 +364,9 @@ pub struct Battle {
     /// The message the HUD shows (presentation only; left out of the
     /// digest).
     pub message: Option<crate::hud::MessageLine>,
+    /// The warning markers each console's HUD shows this tick
+    /// (presentation only; left out of the digest).
+    pub warnings: [Vec<crate::hud::Warning>; 2],
     pub paused: bool,
     pub inputs: [InputRecord; 2],
     pub hands: [ChipHand; 2],
@@ -528,15 +531,14 @@ impl Battle {
         self.content.stage(self.setup.settings.stage).panel_pattern
     }
 
-    /// A side's form, by number (the ruleset asks forms by number until
-    /// phase C).
-    pub fn form(&self, side: usize) -> Form {
-        self.content.form_number(self.stats[side].form)
+    /// A side's form.
+    pub fn form(&self, side: usize) -> &FormData {
+        self.content.form(self.stats[side].form)
     }
 
-    /// A side's navi, by number.
-    pub fn navi(&self, side: usize) -> Navi {
-        self.content.navi_number(self.stats[side].navi)
+    /// A side's navi.
+    pub fn navi(&self, side: usize) -> &NaviData {
+        self.content.navi(self.stats[side].navi)
     }
 
     /// `battle_networkInvert`: whether `alliance` is not the local side.
@@ -631,6 +633,7 @@ impl Battle {
             used_chips: [None; 2],
             chip_hud: Default::default(),
             message: None,
+            warnings: Default::default(),
             paused: false,
             inputs: [InputRecord::default(); 2],
             hands,
@@ -696,17 +699,8 @@ impl Battle {
         self.round.time_up != 0 && self.round.alive[0] != 0 && self.round.alive[1] != 0
     }
 
-    /// The object slot index registration by number gives `r`'s kind (the
-    /// engine's kinds and the pack's `object.toml`s have one): for tests
-    /// and tools that name kinds by number. Panics for a kind content
-    /// defines, which has none.
-    pub fn slot_index(&self, r: ObjectRef) -> u8 {
-        let k = self.content.defs.kind(self.objects.get(r).kind);
-        k.slot.unwrap_or_else(|| panic!("object kind {} has no number", k.key)).1
-    }
-
-    /// The key of `r`'s kind (`"bomb"`, `"engine/effect"`, a v1 kind's
-    /// folder name): how tests and tools name what an object is.
+    /// The key of `r`'s kind (`"bomb"`, `"engine/effect"`): how tests and
+    /// tools name what an object is.
     pub fn kind_key(&self, r: ObjectRef) -> &str {
         &self.content.defs.kind(self.objects.get(r).kind).key
     }
@@ -764,6 +758,10 @@ impl Battle {
     pub fn tick(&mut self, input: &[PlayerTick; 2], events: TickEvents) {
         for heard in &mut self.sound {
             heard.clear();
+        }
+        for (shown, console) in self.warnings.iter_mut().zip(&mut self.consoles) {
+            shown.clear();
+            console.frames = console.frames.wrapping_add(1);
         }
         // Panel highlights and blinks last one frame: the game's field
         // renderer clears them after drawing.
@@ -1417,10 +1415,9 @@ impl Battle {
     /// `sub_8015A38`: a turn in Beast Out uses up one of MegaMan's turns,
     /// unless he started the battle in Beast Out.
     fn count_down_beast_out(&mut self, side: u8) {
-        let started_beast =
-            matches!(self.content.form_number(self.stats[side as usize].starting_form), Form::GREGAR_BEAST | Form::FALZAR_BEAST);
-        let beast = self.form(side as usize).is_beast();
-        let megaman = self.navi(side as usize) == Navi::MEGAMAN;
+        let started_beast = self.content.form(self.stats[side as usize].starting_form).kind == FormKind::Beast;
+        let beast = self.form(side as usize).kind.is_beast();
+        let megaman = self.navi(side as usize).changes_form();
         let s = &mut self.stats[side as usize];
         if megaman && !started_beast && beast && s.beast_out_counter != 0 {
             s.beast_out_counter -= 1;
@@ -1431,7 +1428,7 @@ impl Battle {
         for side in 0..2u8 {
             let Some(a) = self.player_actor(side) else { continue };
             let over = self.is_battle_over();
-            let form = self.form(side as usize);
+            let berserk = self.form(side as usize).kind.is_beast_over();
             let held = self.inputs[side as usize].held;
             let dimmed = self.is_dimmed();
             let ad = self.actors.get_mut(a);
@@ -1439,7 +1436,7 @@ impl Battle {
                 ad.pad = Default::default();
                 continue;
             }
-            if form.is_beast_over() {
+            if berserk {
                 continue;
             }
             ad.pad.update(held);
@@ -1573,7 +1570,7 @@ impl Battle {
                 // sub_8015A16: a Beast Out check comes due.
                 for side in 0..2u8 {
                     if let Some(a) = self.player_actor(side)
-                        && self.navi(side as usize) == Navi::MEGAMAN
+                        && self.navi(side as usize).changes_form()
                     {
                         let d = &mut self.actors.get_mut(a).beast_out_check_delay;
                         if *d != 0 && *d != 0xFF {
@@ -1639,7 +1636,7 @@ impl Battle {
         if self.is_dimmed() || self.is_battle_over() {
             return false;
         }
-        let berserk = |side: usize| self.form(side).is_beast_over();
+        let berserk = |side: usize| self.form(side).kind.is_beast_over();
         ((berserk(0) || berserk(1)) && self.round.flags & battle_flags::GAUGE_FULL != 0)
             || self.round.flags & battle_flags::CUSTOM_REQUESTED != 0
     }
@@ -1708,9 +1705,14 @@ impl Battle {
             }
             self.fight.init = 4;
             self.fight.timer = 0x66;
-            // Netbattle win/lose banners are the navi's.
+            // Netbattle win/lose banners are the navi's; a round lost on
+            // time (the judge's ruling) says "YOU LOSE" (`sub_800825A`).
             let navi = self.content.navi(self.stats[self.round.local_side as usize].navi);
-            let id = if win { navi.win_banner } else { navi.lose_banner };
+            let id = match win {
+                true => navi.win_banner,
+                false if self.round_result() == 7 => BannerId(0x18),
+                false => navi.lose_banner,
+            };
             self.start_banner(id);
         }
         self.fight.timer -= 1;
@@ -1768,6 +1770,23 @@ impl Battle {
                 let o = self.objects.get_mut(r);
                 o.chips_held = held;
                 o.chip = next;
+            }
+        }
+    }
+
+    /// `sub_800AE90`: a warning marker on the HUD this tick, over the
+    /// custom gauge or over the place `at` on the field, with `sound` on
+    /// every 16th frame of the console's frame counter; on `console`'s HUD
+    /// only, or on both.
+    pub fn warn(&mut self, sound: impl Into<SoundCue>, at: Option<crate::object::Vec3>, console: Option<u8>) {
+        let sound = sound.into();
+        for side in 0..2u8 {
+            if console.is_some_and(|c| c & 1 != side) {
+                continue;
+            }
+            self.warnings[side as usize].push(crate::hud::Warning { at });
+            if self.consoles[side as usize].frames & 0xF == 0 {
+                self.play_sound_for(side, sound);
             }
         }
     }
@@ -2051,6 +2070,31 @@ mod tests {
         assert_eq!(b.sound_cues(), [SoundCue::Music(b.content.defs.roles.music(MusicRole::LinkBattle))]);
         tick(&mut b);
         assert_eq!(b.sound_cues(), [SoundCue::Pinch(false)]);
+    }
+
+    #[test]
+    fn a_warning_sounds_on_a_consoles_sixteenth_frames() {
+        let mut b = Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::stats(500)), testing::content());
+        (b.consoles[0].frames, b.consoles[1].frames) = (15, 3);
+        tick(&mut b);
+        assert_eq!((b.consoles[0].frames, b.consoles[1].frames), (16, 4));
+        // (Any sound: content names the marker's own.)
+        let id = b.content.defs.roles.sound(SoundRole::Pause);
+        let sound = SoundCue::from(id);
+        let heard = |b: &Battle, side: u8| b.sound_cues_for(side).iter().filter(|&&c| c == sound).count();
+        // Over the gauge, on both consoles: only the one on a 16th frame
+        // sounds it.
+        b.warn(id, None, None);
+        assert_eq!((b.warnings[0].len(), b.warnings[1].len()), (1, 1));
+        assert_eq!((heard(&b, 0), heard(&b, 1)), (1, 0));
+        // Over a place, on one console: every call sounds on such a frame.
+        let at = crate::object::Vec3 { x: 20 << 16, y: 12 << 16, z: 0 };
+        b.warn(id, Some(at), Some(0));
+        assert_eq!(b.warnings[0][1].at, Some(at));
+        assert_eq!((b.warnings[0].len(), b.warnings[1].len(), heard(&b, 0)), (2, 1, 2));
+        // The markers last the tick.
+        tick(&mut b);
+        assert!(b.warnings.iter().all(Vec::is_empty));
     }
 
     #[test]

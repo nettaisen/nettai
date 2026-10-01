@@ -125,10 +125,17 @@ timer-00-200 = 0x6D
 timer-ff-100 = 0x6E
 timer-01-65535-2 = 0x6F
 
-# The field objects' identities (what an object is taken for): the original's NameID,
-# which picks the object's actor record (`byte_80182C4`) and its look (`byte_8021220`). A
-# navi's and a form's identity has its NameID in navis.toml and forms.toml.
+# The identities with a key of their own (what an object is taken for): the original's
+# NameID, which picks the object's actor record (`byte_80182C4`), a field object's look
+# (`byte_8021220`) and what a navi wears (`off_8010E0C`, by the record). A link navi's and a
+# form's identity has its NameID in navis.toml and forms.toml. First the navis of navi
+# chips whose parts their chips put on, then the field objects.
 [identities]
+bass = 0x16D
+circusman = 0x14F
+colonel = 0x167
+diveman = 0x149
+elementman = 0x15B
 boulder = 0xCE
 otenko = 0xCF
 rock = 0xD0
@@ -246,10 +253,8 @@ winner = 0x01F
 # load for each.
 [sprites]
 lockon_marker = "0c-09"
-beast_head = "0c-0a"
 bubble = "0c-20"
 immobilized = "10-00"
-idle_overlay = "10-21"
 eruption = "10-24"
 hit_marker = "14-07"
 charge_glow = "14-08"

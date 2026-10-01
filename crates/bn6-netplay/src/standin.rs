@@ -11,7 +11,7 @@ use bn6_battle::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unl
 use bn6_battle::content::{ChipCode, Content};
 use bn6_battle::input::keys;
 use bn6_battle::setup::{
-    BattleSettings, Form, GaugeSpeed, Navi, NaviCustBugs, NaviStats, NaviWeapons, RoundSetup, SetScore, Supports,
+    BattleSettings, GaugeSpeed, NaviCustBugs, NaviStats, NaviWeapons, RoundSetup, SetScore, Supports,
 };
 use bn6_battle::{Battle, PlayerTick, TickEvents, TickInput};
 
@@ -68,8 +68,9 @@ pub fn folder(content: &Content, chips: &[(&str, u8)]) -> BattleFolder {
 /// A MegaMan (base form, Falzar Beast Out available) with `hp` HP, on
 /// `content`.
 pub fn megaman(content: &Content, hp: u16) -> NaviStats {
-    let base = content.form_numbered(Form::NONE);
-    let megaman = content.navi_numbered(Navi::MEGAMAN);
+    let base = content.base_form();
+    // MegaMan: the content's navi that changes form.
+    let megaman = content.form_changing_navi().unwrap_or_else(|| panic!("the content has no navi that changes form"));
     // MegaMan's own weapons; the A button of battle mode 9 is his buster.
     let own = content.navi(megaman).weapons;
     NaviStats {

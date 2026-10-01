@@ -8,6 +8,7 @@
 -- both close in from either side and slash it, an X when both stand in
 -- place. See docs/engine/chips.md §3.6.31.
 
+local megaman = require("../../navis/megaman/navi")
 local attachment = require("../../objects/attachment/attachment")
 local buster = require("../../lib/buster")
 local collision = require("../../rules/collision")
@@ -300,7 +301,7 @@ local function lower(me: Object)
 end
 
 -- `sub_80BDD88`.
-local SHOOT_PHASES = { [0] = ready, [4] = shoot, [8] = lower }
+local SHOOT_PHASES: { [number]: (me: Object) -> () } = { [0] = ready, [4] = shoot, [8] = lower }
 
 -- `sub_80BDEF0`: 30 ticks.
 local function pause(me: Object)
@@ -468,7 +469,7 @@ local function drain(me: Object)
 end
 
 -- `sub_80BE174`.
-local GUN_PHASES = { [0] = draw_gun, [4] = drain }
+local GUN_PHASES: { [number]: (me: Object) -> () } = { [0] = draw_gun, [4] = drain }
 
 -- `sub_80BE254`: all let go; 30 ticks.
 local function holster(me: Object)
@@ -607,7 +608,7 @@ end
 local function init_megaman(me: Object)
     local s = me.state :: State
     local user = me.related1 :: Object
-    s.user_image = me:wear_navi_image(user)
+    s.user_image = me:wear_navi_image(user, megaman)
     dimming.hide_user_sparing(user)
     me:set_coordinates_from_panel()
     me.pos = user.pos
@@ -622,7 +623,7 @@ local function init_megaman(me: Object)
         return
     end
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local spec = { panel_x = dx, panel_y = dy, element = me.element, params = { 1, 0, 0, 0 }, damage = damage }
+    local spec = { panel_x = dx, panel_y = dy, element = me.element, damage = damage }
     local django = spawn(user, spec, ty, true, nil)
     if django then
         (django.state :: State).partner = me

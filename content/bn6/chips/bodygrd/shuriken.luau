@@ -22,7 +22,7 @@ local LIE, BLINK = 0x1E, 0x14
 local SOUND_LAND = asset.sound("panel-crack")
 local LANDED_ANIM = 1
 -- What it is (row 0x1C: a thrown slash) and hits.
-local IS = define.collision { id = "bodygrd/shuriken", side0 = 0x80002088, side1 = 0x40002088, row_offset = 0xE0 }
+local IS = collision.thrown_slash
 local HITS = collision.hits_navis
 
 -- `sub_80CFFB0`.
@@ -114,6 +114,8 @@ local function init(me: Object)
     end
     local sprite = me.sprite
     sprite:load(SPRITE)
+    -- sprite_noShadow: the first part is drawn with the sprite.
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0xFF
     local x, y = field.center(me.panel_x, me.panel_y)
     me.pos = Vec3.new(int.i32(x - START * me.facing), y, START)

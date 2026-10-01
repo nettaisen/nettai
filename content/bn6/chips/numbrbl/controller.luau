@@ -18,7 +18,7 @@ export type State = {
     -- The chip the telop shows and AntiNavi checks (object +0x30), and
     -- its Atk+ / cross bonus (+0x32), which adds to NumberMan's damage
     -- word.
-    chip: number,
+    chip: Chip?,
     bonus: number,
     -- The balls NumberMan sets down (the chip's first parameter).
     balls: number,
@@ -45,7 +45,7 @@ end
 controller.kind = define.kind {
     id = "numbrbl/controller",
     pool = "effect",
-    state = { chip = "u16", bonus = "u16", balls = "u8", busy = "bool" },
+    state = { chip = "chip", bonus = "u16", balls = "u8", busy = "bool" },
     -- `sub_80E7F38`: `object_timefreezeBegin` at its init; by its action
     -- `object_dimScreen`, `sub_800BDB2` (AntiNavi), `sub_800BA8A` (the
     -- navi telop), the effect and `object_undimScreen`; and
