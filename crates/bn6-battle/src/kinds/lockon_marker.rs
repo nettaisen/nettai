@@ -9,8 +9,6 @@ use crate::kinds::common::{self, Progress, set_progress};
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
 use crate::setup::Navi;
 
-pub const INDEX: u8 = 0x0F;
-
 const SPRITE: SpriteId = SpriteId { category: 0x0C, index: 0x09 };
 
 /// Its attach point on the target.
