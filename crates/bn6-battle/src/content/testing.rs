@@ -926,7 +926,7 @@ pub fn scripts() -> Scripts {
                 ("chips/busterup/chip", "chips/busterup/chip"),
                 ("chips/fullcust/chip", "chips/fullcust/chip"),
                 ("chips/synctrgr/chip", "chips/synctrgr/chip"),
-                ("objects/boomerang/boomerang", "objects/boomerang/boomerang"),
+                ("chips/boomer/boomerang", "chips/boomer/boomerang"),
                 ("chips/boomer/chips", "chips/boomer/chips"),
                 ("chips/lance/lance", "chips/lance/lance"),
                 ("chips/lance/chip", "chips/lance/chip"),
@@ -1047,8 +1047,8 @@ pub fn scripts() -> Scripts {
                 ("chips/whicapsl-invisible/chip", "chips/whicapsl-invisible/chip"),
                 // The field objects (content model v2): the rock with its
                 // debris, RockCube and IceCube, and the stages' boulder.
-                ("objects/rock/rock", "objects/rock/rock"),
-                ("objects/rock/debris", "objects/rock/debris"),
+                ("chips/rockcube/rock", "chips/rockcube/rock"),
+                ("chips/rockcube/debris", "chips/rockcube/debris"),
                 ("chips/rockcube/cube", "chips/rockcube/cube"),
                 ("chips/rockcube/chips", "chips/rockcube/chips"),
                 ("objects/boulder/boulder", "objects/boulder/boulder"),
@@ -1190,8 +1190,8 @@ pub fn scripts() -> Scripts {
                 ("chips/grndman/drill", "chips/grndman/drill"),
                 ("chips/grndman/rock", "chips/grndman/rock"),
                 ("objects/panel-strike/panel_strike", "objects/panel-strike/panel_strike"),
-                ("objects/drill/drill", "objects/drill/drill"),
-                ("objects/thunder-column/thunder_column", "objects/thunder-column/thunder_column"),
+                ("chips/drilarm/drill", "chips/drilarm/drill"),
+                ("chips/dolthdr/column", "chips/dolthdr/column"),
                 // The dimming chips of subtypes 4, 5, 9, 13, 26, 27, 28 and 36
                 // (content model v2): the barriers, the panel chips, the
                 // instruments, AirRaid, BugFix, ColorPt, Sensor and SumnBlk.

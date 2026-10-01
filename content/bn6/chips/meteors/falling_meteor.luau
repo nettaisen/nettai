@@ -3,8 +3,9 @@
 -- docs/engine/dimming-chip-effects.md §6): marked on its panel (./marker),
 -- it waits 30 ticks high up behind it, falls onto it in 16, and if the
 -- panel is solid or holds a body, bursts with a one-tick hit and the camera
--- shaking. Meteors drops thirty (running while dimmed); the instant chips'
--- meteor shower drops them one at a time.
+-- shaking. Meteors (./chip) drops thirty (running while dimmed); the
+-- instant chips' meteor shower (lib/instant/meteor_shower) uses it too,
+-- dropping them one at a time.
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
@@ -119,7 +120,7 @@ local function init(me: Object)
 end
 
 falling_meteor.kind = define.kind {
-    id = "falling-meteor",
+    id = "meteors/falling-meteor",
     pool = "attack",
     -- `sub_80CF3BE`.
     update = function(me: Object)
