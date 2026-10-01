@@ -250,16 +250,16 @@ pub fn tiles_survey(b: &Bundle) {
     .concat();
     println!("hud palettes bit15 {}", pals.iter().map(bit15).sum::<usize>());
     println!(
-        "hud: tiles {} gauge {} font {} icons {} (empty {}) mugshots {} counts {} banners {} names {}",
+        "hud: tiles {} gauge {} font {} icons {} (empty {}) mugshots {} counts {} banners {} font chars {}",
         h.tiles.len(),
         h.gauge_tiles.len(),
         h.font.len(),
         h.chip_icons.len(),
-        h.chip_icons.iter().filter(|t| t.is_empty()).count(),
+        h.chip_icons.iter().filter(|i| i.tiles.is_empty()).count(),
         h.mugshots.len(),
         h.counts.len(),
         h.banners.len(),
-        h.chip_names.len()
+        h.font_chars.len()
     );
     let hp: BTreeSet<u8> = h.hp_box.iter().chain(&h.gauge_frame).map(|e| e.palette).collect();
     println!("hud map palettes {hp:?}");

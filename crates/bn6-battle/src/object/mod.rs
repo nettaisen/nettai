@@ -199,6 +199,12 @@ pub struct Object {
     pub saved_state: Option<StateWord>,
     /// Behavior-private state.
     pub vars: crate::kinds::Vars,
+    /// A dimming controller's chip and bonus, which its telop shows
+    /// (BattleObject+0x30 / +0x32 of a controller). Presentation only:
+    /// nothing in the simulation reads it, and it is left out of the
+    /// digest. None: no one told the engine which chip the controller's
+    /// telop names (a dimming content starts itself).
+    pub telop_chip: Option<crate::dimming::DimmingChip>,
 }
 
 /// A position in the update list: the head, the tail sentinel, or an

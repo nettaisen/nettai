@@ -1,9 +1,10 @@
 //! The HUD's graphics: one indexed PNG per tile block, laid out as the
 //! game draws it (8x16 glyphs, 2x2 icons, 4x2 mugshots), and `hud.json`
-//! (map entries, chip names in the game's text codes, banner layouts).
-//! Mugshots, banners and chip icons are a file each, under their names
-//! (`mugshots/<name>.png`, `banners/<name>.png`, `chip-icons/<chip>.png`);
-//! `hud.json` lists them in the game's order.
+//! (map entries, what the font's glyphs draw, banner layouts). Mugshots,
+//! banners and chip icons are a file each, under their names
+//! (`mugshots/<name>.png`, `banners/<name>.png`, `chip-icons/<chip>.png`,
+//! a chip's key); `hud.json` lists them in the game's order. A chip's name
+//! and whether its damage shows are the content's (its chip definition).
 //!
 //! Each palette belongs to one image, as rows of that image's palette
 //! (`palettes` in its entry). Images drawn with another image's palette
@@ -13,12 +14,12 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
-use bn6_assets::{BannerLayout, Hud, MapEntry, Palette, Tiles};
+use bn6_assets::{BannerLayout, ChipIcon, Hud, MapEntry, Palette, Tiles};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 pub const FORMAT: &str = "bn6-content/hud";
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 
@@ -37,16 +38,15 @@ pub struct HudDoc {
     pub hp_box: Vec<String>,
     pub gauge_frame: Vec<String>,
     pub font: TileImage,
-    /// Chip names in the game's text codes, by chip id.
-    pub chip_names: Vec<Vec<u8>>,
-    /// Chips whose damage shows after the name.
-    pub chip_shows_damage: Vec<u16>,
+    /// What each glyph of the font draws, as text (`[EX]` for a glyph
+    /// with no character of its own).
+    pub font_chars: Vec<String>,
     /// The opponent's HP digits: normal, dropping, rising (a row each),
     /// with their palette.
     pub enemy_digits: TileImage,
-    /// Chip icons by chip id (none for a chip without one), each with the
-    /// icon palette.
-    pub chip_icons: Vec<Option<TileImage>>,
+    /// Chip icons by chip key, in the game's order, each with the icon
+    /// palette.
+    pub chip_icons: Vec<ChipIconDoc>,
     /// The icon a hidden chip shows.
     pub hidden_icon: TileImage,
     /// Mugshots in the mugshot table's order, each with its palette.
@@ -62,15 +62,23 @@ pub struct HudDoc {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct ChipIconDoc {
+    /// The chip's key.
+    pub chip: String,
+    /// None for a chip without an icon.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<TileImage>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct BannerDoc {
     pub at: [u8; 2],
     pub kind: u8,
-    /// Glyphs it has (20, or 0 for banners drawn from text at run time).
+    /// Glyphs it has (20, or 0 for the telops, drawn from the chip's name).
     pub glyphs: usize,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number_at: Option<[u8; 2]>,
-    /// Its glyphs, with the banner palette (none for banners drawn from
-    /// text at run time).
+    /// Its glyphs, with the banner palette (none for the telops).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<TileImage>,
 }
@@ -97,9 +105,10 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
     let chip_icons = h
         .chip_icons
         .iter()
-        .enumerate()
-        .map(|(id, t)| {
-            (!t.is_empty()).then(|| image(&format!("chip-icons/{}.png", names.chip_icon(id as u16)), t, icon, &[h.icon_palette], 1))
+        .map(|i| ChipIconDoc {
+            chip: i.key.clone(),
+            image: (!i.tiles.is_empty())
+                .then(|| image(&format!("chip-icons/{}.png", i.key), &i.tiles, icon, &[h.icon_palette], 1)),
         })
         .collect();
     // Not in chip-icons/, where a chip may be named anything.
@@ -148,8 +157,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         hp_box: texts(&h.hp_box),
         gauge_frame: texts(&h.gauge_frame),
         font,
-        chip_names: h.chip_names.clone(),
-        chip_shows_damage: h.chip_shows_damage.iter().enumerate().filter(|(_, s)| **s).map(|(i, _)| i as u16).collect(),
+        font_chars: h.font_chars.clone(),
         enemy_digits,
         chip_icons,
         hidden_icon,
@@ -179,10 +187,11 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
     let (hidden_icon, icon_pal) = img(&doc.hidden_icon, report)?;
     let mut chip_icons = Vec::new();
     for icon in &doc.chip_icons {
-        chip_icons.push(match icon {
+        let tiles = match &icon.image {
             Some(i) => img(i, report)?.0,
             None => Tiles::default(),
-        });
+        };
+        chip_icons.push(ChipIcon { key: icon.chip.clone(), tiles });
     }
     let (counts, _) = img(&doc.counts, report)?;
     let mut banner_pal = vec![Palette::default()];
@@ -215,15 +224,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
             })
             .collect()
     };
-    let chips = doc.chip_names.len();
     let per_digit_set = digits.len() / 3;
-    let mut shows = vec![false; chips];
-    for &c in &doc.chip_shows_damage {
-        match shows.get_mut(c as usize) {
-            Some(s) => *s = true,
-            None => report.error(&name, format!("chip_shows_damage names chip {c}, past the {chips} chips")),
-        }
-    }
     let banners = doc
         .banners
         .iter()
@@ -246,8 +247,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         hp_box: map(&doc.hp_box, report),
         gauge_frame: map(&doc.gauge_frame, report),
         font,
-        chip_names: doc.chip_names.clone(),
-        chip_shows_damage: shows,
+        font_chars: doc.font_chars.clone(),
         enemy_digits: [0, 1, 2].map(|k| slice(&digits, k * per_digit_set, per_digit_set)),
         enemy_palette: enemy_pal[0],
         chip_icons,

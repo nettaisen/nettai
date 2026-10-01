@@ -88,7 +88,9 @@ pub(crate) fn spawn_counterattack(b: &mut Battle, healer: ObjectRef, damage: u32
     o.alliance = alliance;
     o.damage = damage as u16;
     o.stamina = (damage >> 16) as u16;
-    // (+0x30 also gets the trap's chip id, for the telop only.)
+    // +0x30 also gets the trap's chip id, for the telop only.
+    let named = b.content.chip_numbered(ANTI_RECOVERY);
+    b.objects.get_mut(c).telop_chip = named.map(|chip| crate::dimming::DimmingChip { chip: Some(chip), bonus: 0 });
     Some(c)
 }
 

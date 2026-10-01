@@ -2,6 +2,7 @@
 //! the banner lifetime. Drawing is left to the frontend.
 
 use crate::content::BannerId;
+use bn6_content_api::ChipHandle;
 use crate::setup::GaugeSpeed;
 
 /// The custom gauge: one per battle, shared by both players.
@@ -42,6 +43,40 @@ pub struct Banner {
     pub holds: bool,
     /// Which banner is showing (presentation only).
     pub id: Option<BannerId>,
+    /// A telop's text (presentation only).
+    pub telop: Option<Telop>,
+}
+
+/// What a telop says (`sub_801E792`'s arguments for banners 0x4C and
+/// 0x50): the chip's name and, for a chip whose damage shows, the damage
+/// and the bonus. Presentation only; what each player is shown is
+/// [`Battle::telop_for`](crate::Battle::telop_for).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Telop {
+    /// The side whose chip it is.
+    pub side: u8,
+    /// The chip named. None: the controller's telop names a chip the
+    /// engine wasn't told (a dimming content starts itself).
+    pub chip: Option<ChipHandle>,
+    /// The controller's damage (0: none shown).
+    pub damage: u16,
+    /// The damage word's double flag: "x2" after the numbers.
+    pub doubled: bool,
+    /// The bonus shown as "+N" after the damage (0: none shown).
+    pub bonus: u16,
+    pub hidden: TelopHidden,
+}
+
+/// Who sees "????" for a telop's chip (`sub_800BBA8`, the trap chips).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TelopHidden {
+    /// Both players see the chip.
+    #[default]
+    No,
+    /// The other player sees "????".
+    FromOpponent,
+    /// Both players see "????".
+    FromBoth,
 }
 
 /// `sub_801E754`: what the flow sees of the banner.
@@ -60,7 +95,7 @@ impl Banner {
         if self.active {
             return false;
         }
-        *self = Banner { active: true, step: 0, timer: 0, holds, id: Some(id) };
+        *self = Banner { active: true, step: 0, timer: 0, holds, id: Some(id), telop: None };
         true
     }
 
