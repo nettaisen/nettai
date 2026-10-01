@@ -7,7 +7,7 @@
 -- stands on. Broken otherwise (by a body, by hits from both sides, by its
 -- time running out) it just crumbles. The Guardian chip places one
 -- (./controller, with the user's side); stages can place one at the start
--- (`statue.place`, with its panel's side).
+-- (the kind's `place`, with its panel's side).
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
@@ -323,22 +323,8 @@ local function init(me: Object)
     me.lifecycle = "update"
 end
 
-statue.kind = define.kind {
-    id = "guardian/statue",
-    pool = "attack",
-    state = { staged = "bool", quiet = "bool", strike = "bool", attackers = "u32" },
-    -- `sub_80D4C84`.
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            init(me)
-        elseif l == "update" then
-            tick(me)
-        else
-            me:destroy()
-        end
-    end,
-}
+-- The kind (below; its `place` spawns one).
+local KIND: Kind
 
 -- `sub_80D4FA6`: a statue on (x, y) with the damage word `damage`: placed
 -- by `owner`, of its side and facing; placed by a stage (`owner` nil), of
@@ -346,7 +332,7 @@ statue.kind = define.kind {
 -- of class 1, running while dimmed. (Until its init places it, its
 -- position is `pos`, the spawner's registers.)
 function statue.spawn(owner: Object?, x: number, y: number, damage: number, pos: Vec3): Object?
-    local o = battle.spawn(statue.kind, pos)
+    local o = battle.spawn(KIND, pos)
     if not o then
         return nil
     end
@@ -369,15 +355,32 @@ function statue.spawn(owner: Object?, x: number, y: number, damage: number, pos:
     return o
 end
 
--- `sub_800751C`: a stage's statue (an actor list's entry type 9), on its
--- panel's side, striking for 200.
-function statue.place(spec: ActorListEntrySpec): Object?
-    local x, y = spec.panel_x, spec.panel_y
-    local panel = field.panel(x, y)
-    if not panel then
-        error(string.format("an actor list places a Guardian statue off the field at (%d, %d)", x, y))
-    end
-    return statue.spawn(nil, x, y, STAGE_DAMAGE, Vec3.new(y, panel.alliance, spec.variant))
-end
+KIND = define.kind {
+    id = "guardian/statue",
+    pool = "attack",
+    state = { staged = "bool", quiet = "bool", strike = "bool", attackers = "u32" },
+    -- `sub_80D4C84`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
+        end
+    end,
+    -- `sub_800751C`: a stage's statue (an actor list's entry type 9; the
+    -- role `kinds.statue`), on its panel's side, striking for 200.
+    place = function(spec: ActorListEntrySpec): Object?
+        local x, y = spec.panel_x, spec.panel_y
+        local panel = field.panel(x, y)
+        if not panel then
+            error(string.format("an actor list places a Guardian statue off the field at (%d, %d)", x, y))
+        end
+        return statue.spawn(nil, x, y, STAGE_DAMAGE, Vec3.new(y, panel.alliance, spec.variant))
+    end,
+}
+statue.kind = KIND
 
 return statue
