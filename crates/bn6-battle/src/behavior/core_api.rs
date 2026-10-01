@@ -659,6 +659,10 @@ impl CoreApi for Battle {
         common::highlight_panel(self, p.x, p.y);
     }
 
+    fn set_header_flags(&mut self, o: ObjectRef, flags: u8) {
+        self.objects.get_mut(o).flags = flags;
+    }
+
     fn reserve_panel(&mut self, o: ObjectRef, p: PanelPos) -> bool {
         Battle::reserve_panel(self, o, p.x, p.y)
     }

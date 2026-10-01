@@ -1096,6 +1096,12 @@ pub trait CoreApi {
     fn panel_solid(&self, p: PanelPos) -> bool;
     /// `object_highlightPanel` (drawn only).
     fn highlight_panel(&mut self, p: PanelPos);
+    /// Replace an object's whole header flag byte (in use 0x01, visible
+    /// 0x02, runs while paused 0x04, sprite not animating 0x08, runs while
+    /// dimmed 0x10, holds a reservation 0x20; 0x40 and 0x80 nothing reads):
+    /// what a spawner's bug leaves (the boulder's, `sub_80D2430`, reads the
+    /// byte from the wrong address). Everything else sets flags by name.
+    fn set_header_flags(&mut self, o: ObjectRef, flags: u8);
     /// `object_reservePanel`.
     fn reserve_panel(&mut self, o: ObjectRef, p: PanelPos) -> bool;
     /// `object_removePanelReserve`.

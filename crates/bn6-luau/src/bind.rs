@@ -443,6 +443,10 @@ impl UserData for Object {
             let p = panel(x, y)?;
             with(|api, _| Ok(api.reserve_panel(this.0, p)))
         });
+        methods.add_method("set_header_flags", |_, this, flags: LuaValue| {
+            let flags = u8_arg(flags, "header flags")?;
+            with(|api, _| Ok(api.set_header_flags(this.0, flags)))
+        });
         methods.add_method("unreserve_panel", |_, this, (x, y): (LuaValue, LuaValue)| {
             let p = panel(x, y)?;
             with(|api, _| Ok(api.unreserve_panel(this.0, p)))
