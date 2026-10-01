@@ -504,7 +504,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | countdown-bomb | time-bom | chips/timebom/ |
 | crack-shot | CrakShot, DublShot, TrplShot | chips/crakshot/ |
 | dash-hit | GroundCross Beast's dash, ChargeCross's tackle | navis/megaman/ |
-| delta-ray, follow-effect | DeltaRay | chips/deltaray/ |
+| delta-ray | DeltaRay | chips/deltaray/ |
 | dragon-head, dragon-body | HeatDrgn, ElecDrgn, AquaDrgn, WoodDrgn | lib/dragons/ |
 | drill | DrilArm; GroundCross's drill | objects/drill |
 | drip-shower | DripShwr (SpoutMan's link chip) | navis/spoutman/ |
@@ -528,13 +528,15 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | flame-hook, flame-hook-fire | FlmHook1-3 | chips/flmhook/ |
 | flash-bomb | FlshBom1-3 | chips/flshbom/ |
 | flying-shot | TrnArrw, the buster's throw, the Falzar beast's buster | objects/flying-shot |
+| follow-effect | DeltaRay's bursts, DElecSwd's glow (ElecMan's link chip) | objects/follow-effect |
 | gauge-speed | SloGauge, FstGauge | lib/gauge-speed/ |
 | golem | GolmHit1-3 | chips/golmhit/ |
 | grab-shot | area-grab | lib/grab/ |
 | great-yoyo, yoyo | YoYo, GreatYo | chips/yoyo/ |
 | guardian, guardian-statue, guardian-strike | Guardian (written, unregistered) | chips/guardian/ |
 | gust | WindRack; TenguCross's wind | objects/gust |
-| heat-man, heat-flame | HeatMan series | chips/heatman/ |
+| heat-man | HeatMan series | chips/heatman/ |
+| heat-flame | HeatMan's navi; HeatPres | chips/heatman/ (rule 4) |
 | hit-flash, lunge-slash | SlashCross Beast's lunge | navis/megaman/forms/slashcross-beast/ |
 | hockey-puck | AirHocky, PitHocky | chips/airhocky/ |
 | honey-bee | RskyHny1-3 | chips/rskyhny/ |
@@ -550,7 +552,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | meteor-shower | instant effect 16 (no chip yet) | lib/instant/ |
 | moon-blade | MoonBld | chips/moonbld/ |
 | navi-boost | PunchArm, NeedlArm, PuzzlArm, BoomrArmSyncTrgr, DarkInvs, BugRSwrd, HubBatc, BgDthThd | lib/navi-boost/ |
-| navi-effect | DElecSwd (ElecMan's link chip) | navis/elecman/ |
+| navi-effect | a second port of follow-effect (effect #0x31), deleted | objects/follow-effect |
 | needle-volley | AquaNdl1-3 | chips/aquandl/ |
 | panel-bursts | black-bomb, countdown-bomb, elem-trap-strike | objects/panel-bursts |
 | panel-strike | bass | chips/bass/ |
@@ -1056,7 +1058,7 @@ the navis share (appearing, leaving, the SP deletion-time damage).
 **As built** (step 7): chips/eraseman/navi.luau (the `eraseman/navi` kind, state `{ cycle, aim, controller,
 aim_ticks }`, and `eraseman.summon { aim_ticks }`, the `navi` hook), chips/eraseman/mark.luau (`eraseman/mark`)
 and chips/eraseman/beam.luau (`eraseman/beam`, spawned with `{ aim, ticks, navis }`; EraseMan's own EDeletBm,
-chips/193-edeletbm, spawns it too). The beam's collision type (`piercing-break`, row 0x16) and spark
+navis/eraseman/chip.luau, spawns it too). The beam's collision type (`piercing-break`, row 0x16) and spark
 (`sparks.erase`, hit effect 0x0C) are definitions. What it settled:
 
 - **The chips stay records.** The ruleset turns navi chips back by number (AntiNavi, `is_navi_chip`: 0xDD to
@@ -1077,6 +1079,16 @@ chips/193-edeletbm, spawns it too). The beam's collision type (`piercing-break`,
   159-darkness and 12e-bighook likewise; 146-flmhook1 by instant chip effect 14): the navi chips for AntiNavi and
   the SP formulas, the PAs because the Program Advance table names its results by number. They go with
   EraseMan's (step 10). No `legacy` marker among them.
+
+**The link navis' own chips** (phase B, A3): each navi's folder has its chip's action and the kinds only it spawns
+(navis/heatman ... navis/dustman: `chip.luau`, and `riding_hit`, `volcano_rock`, `drip_shower`, `axe`, `strike`,
+`tornado`, `clouds`); a kind the navi chip series has too stays with the series (`heatman/flame`,
+`eraseman/beam`, `grndman/drill`, `grndman/rock`, rule 4), and the follow effect, which DeltaRay's bursts and
+DElecSwd's glow share, is objects/follow-effect with its looks as records. lib/link_chips.luau is what the ten
+routines share. Their records stay the pack's and run the action their module exports (§12, "A record's action by
+its module"). The kinds that lasted while their owner's action number was 0x0A keep his running action in an
+`"action"` state field and compare definitions (§7.6). Verified against the chip lab (docs/engine/
+standard-chips.md, "Action 0x0A").
 
 ### 5.6 Instant chips: a hook per chip
 
@@ -2046,6 +2058,17 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   are the chips), the test content's numbered chips. The 0x12 and 0x13 shims go when the Cross special's list and the recipes go by
   handle (phase C, step 10); the 0x49 one when the stun strike (idle.rs `set_attack(0x49)`) is
   `roles.actions.stun_strike`.
+- **A record's action by its module.** A chip record whose `script` names a module that exports `action` (an
+  action definition) runs that action as its use, as a chip definition's `action` does, whatever its action
+  number names (`record_action` in content/defs.rs; such a module can't also export `update`). The link navis'
+  own chips, 0x190 HeatPres to 0x199 DustBrk, need it: their action number 0x0A is below 0x10, an entry of the
+  user's own action table (`off_80EA4C8[AIIndex][0xA]`) that registration by number can't claim, and all ten
+  share subtype 3, so no shim could pick by subtype; and they stay records for their damage by the navi's
+  level (formulas 24 to 44). Each record (chips/19N-<chip>/chip.toml) names its navi's module
+  (navis/<navi>/chip.luau), which returns `{ action = define.action { id = "<chip>/action", ... } }`. Which
+  link navi has which chip is the navi record's `own_chip`, not the original's table by AI index: any navi that
+  holds the chip runs its action. It goes when chip definitions take damage formulas (step 10): each chip
+  becomes a `define.chip` beside its action and its navi's definition names it as `own_chip` (step 5's navis).
 - **Chips kept on records** (their modules give only the action, with the compat key as `id`): besides the
   above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd), `dark_substitute`
   (DrkSword) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
@@ -2123,14 +2146,17 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    field, `legacy` (step 7's, which gives a converted chip its subtype and parameter bytes and a converted
    weapon its routine numbers): a chip still a v1 module has no `action` and its marker gives `number, action,
    subtype, params, script` (with what the ruleset and v1 modules read of it by number: a damage formula,
-   `sp_damage`, `navi_damage`, `dark_substitute`, `gun_del_sol`, `recovery`, `sword`); a weapon still a v1
+   `sp_damage`, `navi_damage`, `dark_substitute`, `recovery`, `sword`); a weapon still a v1
    module has no `setup` and its marker gives `routines, script, action, instant_chip`; a navi's and a form's
    give `number, name_id`, a stage's `number, layout, actor_list`, a status's and a lock-on mode's `id`. The
    generator writes them with the `legacy { }` call (identity; typed `any`), which is how it tells its own
    definitions from people's. The tables v1 modules read by number are legacy rule
    sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (effects, sparks, regions, and
-   the charge times of the routines no weapon names), rules/identities.luau, rules/body-overlays.luau and each
-   kind's objects/KIND/rows.luau. bn6-battle's `content::legacy` builds the v1 tables from all of it. Weapons
+   the charge times of the routines no weapon names), rules/identities.luau, rules/body-overlays.luau and a
+   kind's objects/KIND/rows.luau while something still reads its table by number (`data.objects.<table>` in a
+   module, or the engine: the attachments, the sword and shock waves; the rocks', the absorbed obstacles', the
+   sun beam's, the projectiles', the flying shots' and the boomerangs' went with their readers, and GunDelSol's
+   data is its chips' own). bn6-battle's `content::legacy` builds the v1 tables from all of it. Weapons
    are a routine's numbers with the same address *and* charge times (alias routines whose rows differ are
    weapons of their own: `megaman/buster` is routine 0 alone, and `megaman/buster-2e` and five more take its
    `setup` with their own charge times), and every routine has its charge times (the TOML's

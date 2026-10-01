@@ -462,11 +462,11 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
                 let field: Vec<FieldRegionRow> = numbered(r, spec.field("field"), &format!("{at}.field"), None).map_err(e)?;
                 rules.field_regions = field.into_iter().map(|x| PanelCondition { require: x.require, forbid: x.forbid }).collect();
             }
+            // The object kinds' tables by number, each while something
+            // still reads it (the rocks', the absorbed obstacles' and the
+            // sun beam's are their kinds' own definitions now).
             "attachments" => content.objects.attachments = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            "rocks" => content.objects.rocks = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            "absorbed-sprites" => content.objects.absorbed_sprites = numbered(r, spec, &at, None).map_err(e)?,
             "body-overlays" => content.objects.body_overlays = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            "sun-beam-looks" => content.objects.sun_beam_looks = numbered(r, spec, &at, None).map_err(e)?,
             "sword-waves" => content.objects.sword_waves = numbered(r, spec, &at, Some("id")).map_err(e)?,
             "boomerangs" => content.objects.boomerangs = numbered(r, spec, &at, Some("id")).map_err(e)?,
             "shock-waves" => content.objects.shock_waves = numbered(r, spec, &at, Some("id")).map_err(e)?,
