@@ -1528,7 +1528,7 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     type Me = mlua::UserDataRef<Object>;
     let t = lua.create_table()?;
     lib_fn!(lua, t, "register", |_, (me, side, class): (Me, LuaValue, LuaValue)| {
-        let (side, class) = (u8_arg(side, "side")? & 1, u8_arg(class, "class")?);
+        let (side, class) = (u8_arg(side, "side")?, u8_arg(class, "class")?);
         if class > 1 {
             return Err(mlua::Error::runtime(format!("obstacle.register: class {class} (0 or 1)")));
         }
