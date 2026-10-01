@@ -1,7 +1,7 @@
 --!strict
 -- The bullet (the original's attack object #0x12, `sub_80C6946`): the
--- Vulcans' and Spreaders' shot, SpoutCross's charged shot, the soldiers'
--- and ColForce's. An unseen probe that steps a panel a tick from where it
+-- Vulcans' and Spreaders' shot, SpoutCross's charged shot, ColArmy's and
+-- ColForce's soldiers'. An unseen probe that steps a panel a tick from where it
 -- appears; on the first thing it would hit it bursts there: its variant's
 -- region is hit once (the tick after it finds the target), with an effect
 -- shown over the region or at the bullet. What differs between its uses
@@ -184,6 +184,10 @@ bullet.variants = {
     spreader = ROWS[0x03],
     -- SpoutCross's charged shot (row 0xD).
     spout = ROWS[0x0D],
+    -- ColArmy's soldiers' (row 0x11) and ColForce's (0x12): staggering,
+    -- with their statuses.
+    col_army = ROWS[0x11],
+    col_force = ROWS[0x12],
 }
 
 -- The variant of row `n`, for the callers that still name one by number
