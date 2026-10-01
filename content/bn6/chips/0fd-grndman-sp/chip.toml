@@ -1,0 +1,3 @@
+# GroundMan (navi chip subtype 10), in chips/grndman.
+
+script = "../grndman/chip.luau"

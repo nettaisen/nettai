@@ -9,6 +9,10 @@
 "megaman/turn" = "0x3B: the turn the ruleset starts on TURN_L/TURN_R (idle.rs)"
 
 ["assets.toml"]
+"sprites.ground-drill" = "10-4f: chips/grndman/drill.luau"
+"sounds.rockfall" = "0x0E5: chips/grndman/navi.luau"
+"sounds.drill-spin" = "0x1C0: chips/grndman/navi.luau"
+"sounds.drill-out" = "0x0E6: chips/grndman/navi.luau"
 "sounds.big-sword-swing" = "0x0CE: LifeSrd's, DrkSword's and DblDream's swing (the swords exemplar)"
 "backgrounds.calendar-blue" = "0x0A: by what it shows"
 "backgrounds.calendar-bright-blue" = "0x0E: by what it shows"
