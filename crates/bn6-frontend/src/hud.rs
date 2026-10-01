@@ -466,7 +466,8 @@ pub fn draw<'a>(
             && let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten()
         {
             let bonus = bn6_battle::kinds::player::next_chip_bonus(b, r);
-            draw_chip_name(b, layer, hud, &hud.hp_palettes[colour.min(2)], hand, chip, bonus, problems);
+            let doubled = bn6_battle::kinds::player::next_chip_doubles(b, r);
+            draw_chip_name(b, layer, hud, &hud.hp_palettes[colour.min(2)], hand, chip, (bonus, doubled), problems);
         }
     }
 
@@ -600,7 +601,7 @@ fn draw_chip_name(
     pal: &Palette,
     hand: &bn6_battle::hand::ChipHand,
     chip: ChipHandle,
-    bonus: u16,
+    (bonus, doubled): (u16, bool),
     problems: &mut Problems,
 ) {
     let mut col = 0;
@@ -635,6 +636,15 @@ fn draw_chip_name(
         }
         col += 1;
         number(layer, bonus, &mut col);
+    }
+    // "x2" while the use would double it (two glyphs: tiles 0x1D2..).
+    if doubled {
+        for k in 0..2u16 {
+            for half in 0..2u16 {
+                let e = MapEntry { tile: 0x1D2 + 2 * k + half, hflip: false, vflip: false, palette: 13 };
+                put(layer, hud, pal, e, col + k as i32, 18 + half as i32);
+            }
+        }
     }
 }
 
