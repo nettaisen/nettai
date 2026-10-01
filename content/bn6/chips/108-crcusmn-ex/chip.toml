@@ -1,0 +1,3 @@
+# CircusMan (navi chip subtype 14), in chips/crcusman.
+
+script = "../crcusman/chip.luau"

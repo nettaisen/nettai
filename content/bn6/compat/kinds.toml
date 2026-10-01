@@ -16,6 +16,7 @@ attachment = { pool = "actor", index = 0x05 }
 "diveman/navi" = { pool = "actor", index = 0x0B }
 "tenguman/navi" = { pool = "actor", index = 0x0C }
 "slashman/navi" = { pool = "actor", index = 0x0D }
+"crcusman/navi" = { pool = "actor", index = 0x0E }
 "elmntman/navi" = { pool = "actor", index = 0x10 }
 "eraseman/navi" = { pool = "actor", index = 0x15 }
 "chrgeman/navi" = { pool = "actor", index = 0x16 }
