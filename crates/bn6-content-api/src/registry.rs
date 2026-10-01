@@ -26,6 +26,10 @@ pub enum Registry {
     Collision,
     Status,
     Lockon,
+    /// What an object is taken for (docs/design/content-model-v2.md §3.2):
+    /// the original's NameID record. A navi's and a form's are nested in
+    /// their definitions; a field object's is its kind's.
+    Identity,
     /// A rule section (docs/design/content-model-v2.md §3.8): one table of
     /// rules no entity owns, `define.rules("elements", { ... })`, keyed by
     /// its section name.
@@ -42,7 +46,7 @@ pub enum Registry {
 }
 
 impl Registry {
-    pub const ALL: [Registry; 17] = [
+    pub const ALL: [Registry; 18] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -56,6 +60,7 @@ impl Registry {
         Registry::Collision,
         Registry::Status,
         Registry::Lockon,
+        Registry::Identity,
         Registry::Rules,
         Registry::Roles,
         Registry::Record,
@@ -64,7 +69,7 @@ impl Registry {
 
     /// The registries content defines with `define.<name>` (schemas come
     /// from the `state` tables of kinds, actions and modules).
-    pub const DEFINED: [Registry; 16] = [
+    pub const DEFINED: [Registry; 17] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -78,6 +83,7 @@ impl Registry {
         Registry::Collision,
         Registry::Status,
         Registry::Lockon,
+        Registry::Identity,
         Registry::Rules,
         Registry::Roles,
         Registry::Record,
@@ -100,6 +106,7 @@ impl Registry {
             Registry::Collision => "collision",
             Registry::Status => "status",
             Registry::Lockon => "lockon",
+            Registry::Identity => "identity",
             Registry::Rules => "rules",
             Registry::Roles => "roles",
             Registry::Record => "record",
@@ -192,6 +199,8 @@ handles! {
     StatusHandle => Status,
     /// A Beast Out lock-on mode.
     LockonHandle => Lockon,
+    /// An identity: what an object is taken for.
+    IdentityHandle => Identity,
     /// A record only content reads.
     RecordHandle => Record,
 }

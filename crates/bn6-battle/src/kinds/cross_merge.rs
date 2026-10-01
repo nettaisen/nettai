@@ -73,8 +73,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// `sub_80BC670`: the navi's sprite, ahead of MegaMan by a full swing.
 fn init(b: &mut Battle, r: ObjectRef) {
     let navi = vars(b, r).navi;
-    let name_id = 0x1A0 + navi.0 as u16;
-    b.objects.get_mut(r).name_id = name_id;
+    let name_id = b.content.navi_data(navi).identity;
+    b.objects.get_mut(r).identity = name_id;
     // sub_800FC9E(navi, no form)
     let sprite =
         if navi == Navi::MEGAMAN { b.content.form_data(crate::setup::Form::NONE).sprite } else { b.content.navi_data(navi).sprite };
@@ -177,7 +177,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 /// overlay, if its init hook put one on, comes off), an effect on the
 /// panel, and it is freed at once.
 fn burst(b: &mut Battle, r: ObjectRef) {
-    let name_id = b.objects.get(r).name_id;
+    let name_id = b.objects.get(r).identity;
     crate::kinds::player::form::navi_death_hook(b, r, name_id);
     let o = b.objects.get(r);
     let (x, y) = crate::kinds::player::panel_coordinates(o.panel.x, o.panel.y);

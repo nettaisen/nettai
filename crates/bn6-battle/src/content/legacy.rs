@@ -260,24 +260,6 @@ struct CrossSpecialSection {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct ActorRecordRow {
-    version: u8,
-    actor_type: crate::actor::ActorType,
-    ai_index: u8,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct NameLookRow {
-    #[serde(default)]
-    sprite: Option<SpriteId>,
-    anim: u8,
-    palette: u8,
-    shadow: bool,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct EffectRow {
     sprite: SpriteId,
     #[serde(default)]
@@ -445,23 +427,6 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
                     })
                     .collect();
             }
-            "identities" => {
-                let records: Vec<ActorRecordRow> = numbered(r, spec.field("actor_records"), &format!("{at}.actor_records"), None).map_err(e)?;
-                rules.actor_records = records
-                    .into_iter()
-                    .map(|x| NaviRecord { version: x.version, actor_type: x.actor_type, ai_index: x.ai_index })
-                    .collect();
-                let Data::Map(looks) = spec.field("name_looks") else {
-                    return Err(e(format!("{at}: name_looks is a table by NameID")));
-                };
-                let mut out = Vec::new();
-                for (k, v) in looks {
-                    let DataKey::Int(name_id) = k else { return Err(e(format!("{at}: name_looks is by NameID"))) };
-                    let row: NameLookRow = r.read(v, &format!("{at}.name_looks[{name_id:#x}]")).map_err(e)?;
-                    out.push(NameLook { name_id: *name_id as u16, sprite: row.sprite, anim: row.anim, palette: row.palette, shadow: row.shadow });
-                }
-                content.objects.name_looks = out;
-            }
             "effects" => {
                 let rows: Vec<EffectRow> = numbered(r, spec, &at, None).map_err(e)?;
                 content.effects = rows.into_iter().map(|x| EffectSprite { sprite: x.sprite, anim: x.anim, palette: x.palette }).collect();
@@ -538,21 +503,6 @@ fn strip(spec: &mut Data, fields: &[&str]) {
 
 // ---- Chips, navis, forms ---------------------------------------------------------------
 
-/// A navi or form definition's identity (`identity`, with its NameID from
-/// the legacy marker) as a record's `name_record`.
-fn name_record(d: &Definition, r: &Resolver) -> Result<Option<Json>, ContentError> {
-    let identity = d.spec.field("identity");
-    if identity.is_nil() {
-        return Ok(None);
-    }
-    let mut j = r.json(identity, &format!("{} {}.identity", d.registry, d.key)).map_err(|m| err(d, m))?;
-    let name_id = d.spec.field("legacy").field("name_id").int().ok_or_else(|| err(d, "its identity needs a legacy `name_id`"))?;
-    if let Json::Object(o) = &mut j {
-        o.insert("id".into(), Json::from(name_id));
-    }
-    Ok(Some(j))
-}
-
 /// The fields of a spec, as the record's data: all but those named.
 fn fields(d: &Definition, r: &Resolver, skip: &[&str]) -> Result<Map<String, Json>, ContentError> {
     let mut spec = d.spec.clone();
@@ -586,9 +536,6 @@ fn navi(d: &Definition, r: &Resolver) -> Result<NaviData, ContentError> {
     if !own.is_nil() {
         o.insert("own_chip".into(), r.json(own, &format!("navi {}.own_chip", d.key)).map_err(|m| err(d, m))?);
     }
-    if let Some(n) = name_record(d, r)? {
-        o.insert("name_record".into(), n);
-    }
     serde_json::from_value(Json::Object(o)).map_err(|m| err(d, m))
 }
 
@@ -603,9 +550,6 @@ fn form(d: &Definition, r: &Resolver) -> Result<(FormData, Option<u8>), ContentE
     let number = d.spec.field("legacy").field("number").int().ok_or_else(|| err(d, "needs a legacy `number`"))?;
     o.insert("id".into(), Json::from(number));
     o.entry("weakness").or_insert(Json::Array(Vec::new()));
-    if let Some(n) = name_record(d, r)? {
-        o.insert("name_record".into(), n);
-    }
     let palette = d.spec.field("palette").int().map(|p| p as u8);
     Ok((serde_json::from_value(Json::Object(o)).map_err(|m| err(d, m))?, palette))
 }

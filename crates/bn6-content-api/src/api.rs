@@ -208,7 +208,8 @@ named_fields! {
         Damage = "damage", U16, rw;
         /// The damage word's high half (the counter byte in its low byte).
         Stamina = "stamina", U16, rw;
-        NameId = "name_id", U16, rw;
+        /// What it is taken for (none: a virus).
+        Identity = "identity", Ref(Registry::Identity, None), rw;
         /// Holds an object's sprite (and more, by kind: `PreventAnim`).
         PreventAnim = "prevent_anim", U8, rw;
         Pos = "pos", Vec3, rw;
@@ -918,14 +919,6 @@ pub struct DamageCarryInfo {
     pub target: Option<ObjectRef>,
 }
 
-/// A NameID's actor record.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct NaviRecordInfo {
-    /// Index into [`ACTOR_TYPES`].
-    pub actor_type: u8,
-    pub ai_index: u8,
-}
-
 /// Why an API call failed. Content errors are bugs in the content: the
 /// engine stops the battle, the same way on every machine.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1068,8 +1061,6 @@ pub trait CoreApi {
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// `sub_800AB3A`: a side's statistics counter.
     fn side_stat(&self, side: u8, index: u8) -> u8;
-    /// A player NameID's actor record, if it is one.
-    fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo>;
     // Subtype 8 (Wind and Fan):
     /// `sub_80E543C`: a side's wind (BattleState+0xC0) and who placed it.
     fn wind(&self, side: u8) -> (Option<ObjectRef>, WindSource);
@@ -1272,9 +1263,6 @@ pub trait CoreApi {
     /// `variant` (0 white or red, 1 white over two layers) for `ticks`,
     /// optionally going on while dimmed or paused.
     fn spawn_palette_flash(&mut self, variant: u8, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef>;
-    /// `sub_8011044`: what an object with a navi's NameID takes down when
-    /// it goes (for most, the overlay in its second related slot).
-    fn death_hook(&mut self, o: ObjectRef, name_id: u16);
     /// `sub_80E33FA`: an afterimage of `owner`'s side at `pos` (a sprite of
     /// its own, or a copy of the owner's).
     fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
@@ -1532,17 +1520,17 @@ pub trait CoreApi {
     /// and `sub_80EFD8C` make before taking an obstacle.
     fn obstacle_present(&self, o: ObjectRef) -> bool;
     /// DustMan's take (`sub_80BC100`): the look the field object `o` would
-    /// have thrown back as junk, an opaque value its taker keeps (the
-    /// object's NameID, `sub_800F26C`'s argument, until identities); None
-    /// for the objects DustMan leaves (`sub_800F486`).
-    fn junk_look(&self, o: ObjectRef) -> Option<u16>;
+    /// have thrown back as junk, which its taker keeps: the object's
+    /// identity (`sub_800F26C`'s argument); None for the objects DustMan
+    /// leaves (`sub_800F486`) and for one with no identity.
+    fn junk_look(&self, o: ObjectRef) -> Option<crate::IdentityHandle>;
     /// The r3 the object update loop (`object_800372A`) leaves for the
     /// object updating now: 4 × how many objects of the previous object's
     /// pool it passed before that one this tick. Routines that never set
     /// r3 spawn with it as a position (DustMan's junk).
     fn loop_register(&self) -> u32;
     /// CrosOver's MegaMan (`sub_80BDBC8`): `o` takes its user's identity
-    /// (NameID) when the user is MegaMan or one of his forms, else MegaMan's
+    /// when the user is MegaMan or one of his forms, else MegaMan's
     /// own; that identity's sprite (a player's by its side's navi and form,
     /// `sub_800FC9E`; MegaMan's base sprite for another user's), with a
     /// ground shadow at animation 0 (loaded by the next sprite update); and
@@ -1551,27 +1539,25 @@ pub trait CoreApi {
     fn wear_navi_image(&mut self, o: ObjectRef, user: ObjectRef) -> ApiResult<bool>;
     /// MstrCros's Crosses (`sub_80BE7BC`) and Darkness's Dark MegaMan
     /// (`sub_80BF710`): `o` takes the identity of MegaMan in form `form` (the
-    /// form's NameID; MegaMan's for his base form 0), the form's sprite
+    /// form's; MegaMan's for his base form 0), the form's sprite
     /// (`sub_800FC9E(0, form)`) with a ground shadow at animation 0 (loaded
     /// by the next sprite update), and the form's palette (`byte_80203EA`).
     fn wear_megaman_image(&mut self, o: ObjectRef, form: u8) -> ApiResult<()>;
     /// `sub_8010DF6` (`on`, its r2 1) or `sub_8011044` by the actor record
     /// of `o`'s identity: the parts the navi image wears.
     fn navi_image_parts(&mut self, o: ObjectRef, on: bool);
-    /// `sub_80DBB64`: put the junk look `look` on `o`'s sprite (`sub_800F26C`:
-    /// the sprite, a shadow if the look has one, its animation and
-    /// palette; flipped by `o`'s side unless the look keeps its own);
-    /// false when the look is the table's none (category 0xFF).
-    fn wear_junk_look(&mut self, o: ObjectRef, look: u16) -> ApiResult<bool>;
-    /// `sub_80DC3B2`'s test: a field object by its NameID word (0xCD to
-    /// 0xFF, the +0x2A half 0) but those `sub_800F486` excludes (0xD3,
-    /// 0xDA, 0xE9, 0xEA), which BlzrdBal's ball swallows.
+    /// `sub_80DBB64`: put the junk look `look` (a field object's identity)
+    /// on `o`'s sprite (`sub_800F26C`: the sprite, a shadow if the look has
+    /// one, its animation and palette; flipped by `o`'s side unless the
+    /// look keeps its own); false when the look shows nothing (the table's
+    /// category 0xFF).
+    fn wear_junk_look(&mut self, o: ObjectRef, look: crate::IdentityHandle) -> ApiResult<bool>;
+    /// `sub_80DC3B2`'s test: a field object by its identity (the
+    /// original's NameID word 0xCD to 0xFF, its +0x2A half 0) but those
+    /// `sub_800F486` excludes, which BlzrdBal's ball swallows.
     fn obstacle_swallowable(&self, o: ObjectRef) -> bool;
     // ---- Field objects (obstacles) -------------------------------------------
 
     /// Whether another object asked `flag` of the field object `o`.
     fn obstacle_flag(&self, o: ObjectRef, flag: ObstacleFlag) -> ApiResult<bool>;
-    /// `sub_8018810`: NameID `name_id`'s sprite attach point `point`, in
-    /// pixels, facing the way `alliance` and `flip` say.
-    fn name_attach_point(&self, name_id: u16, point: u8, alliance: u8, flip: u8) -> (i32, i32);
 }
