@@ -1696,9 +1696,14 @@ impl Battle {
             }
             self.fight.init = 4;
             self.fight.timer = 0x66;
-            // Netbattle win/lose banners are the navi's.
+            // Netbattle win/lose banners are the navi's; a round lost on
+            // time (the judge's ruling) says "YOU LOSE" (`sub_800825A`).
             let navi = self.content.navi(self.stats[self.round.local_side as usize].navi);
-            let id = if win { navi.win_banner } else { navi.lose_banner };
+            let id = match win {
+                true => navi.win_banner,
+                false if self.round_result() == 7 => BannerId(0x18),
+                false => navi.lose_banner,
+            };
             self.start_banner(id);
         }
         self.fight.timer -= 1;
