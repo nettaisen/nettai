@@ -1,0 +1,3 @@
+# Vulcan1 runs the vulcans (action 0x17, `sub_80EBF10`), in chip.luau.
+
+script = "chip.luau"
