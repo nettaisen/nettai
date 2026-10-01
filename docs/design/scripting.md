@@ -21,8 +21,8 @@ several runs.
 
 - **Luau is the only runtime**, through a narrow typed API (`CoreApi`), with stateless scripts over engine-owned
   state. There is no build feature for it and no Rust version of anything a script implements.
-- **Scripts live in the pack** beside their data (`objects/grab-shot/grab_shot.luau`, `chips/00f-gundels1/
-  chip.luau`, `navis/00-megaman/weapons/02-blank-shot/blank_shot.luau`, `lib/buster.luau`). The data registers
+- **Scripts live in the pack** beside their data (`objects/sun-beam/sun_beam.luau`, `chips/00f-gundels1/
+  chip.luau`, `navis/00-megaman/weapons/2a-absorb/absorb.luau`, `lib/buster.luau`). The data registers
   them: an object folder's `[kind]`, a chip's `script`, a weapon's `weapon.toml`. The engine loads them from the
   `Content` it runs on (`Content::scripts`); nothing is compiled in and nothing in the engine names a script. The
   content hash covers them. BN6's scripts are this repository's source overlay (content/bn6), which `bn6-extract
@@ -275,7 +275,8 @@ state out of the VM, which is what rollback needs.
 
 ## 4. An example
 
-EraseMan (content/bn6/objects/erase-man/erase_man.luau) is a navi chip's navi: an object kind (actor 0x15) whose
+EraseMan, as v1 wrote him (content/bn6/objects/erase-man/erase_man.luau; content model v2 moved him to
+chips/eraseman, docs/design/content-model-v2.md §5.5), is a navi chip's navi: an object kind (actor 0x15) whose
 module also implements the EraseMan chips' `navi_chip` hook. The spawner and one of his actions:
 
 ```luau

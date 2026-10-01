@@ -190,7 +190,7 @@ fn a_blank_shot_raises_the_arm_and_recovers_from_its_own_panel() {
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
-    assert_eq!(b.objects.get(p0).action, 0x33);
+    assert_eq!(runs(&b, p0), "megaman/blank-shot/action");
 
     // Tick 1: the arm is up.
     run_to(&mut b, p, &mut t, 1, 0);
@@ -206,7 +206,7 @@ fn a_blank_shot_raises_the_arm_and_recovers_from_its_own_panel() {
     // rules.buster_recovery[Rapid 0][3].
     let recovery = b.content.rules.buster_recovery(0, 3) as u32;
     run_to(&mut b, p, &mut t, 5 + recovery, 0);
-    assert_eq!(b.objects.get(p0).action, 0x33);
+    assert_eq!(runs(&b, p0), "megaman/blank-shot/action");
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
     assert_eq!(b.objects.get(p0).action, 8);
     assert_eq!(ai_mut(&mut b, p0).overlay, None);
@@ -457,7 +457,7 @@ fn a_buster_shot_flies_a_panel_every_two_ticks_and_hits() {
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
-    assert_eq!(b.objects.get(p0).action, 0x11);
+    assert_eq!(runs(&b, p0), "megaman/buster/shot");
 
     // Tick 1: the arm is up; tick 2: the shot, in front of the navi, and
     // the muzzle flash in the first related slot.
@@ -491,7 +491,7 @@ fn a_buster_shot_flies_a_panel_every_two_ticks_and_hits() {
     // front (3,2) to the enemy's: rules.buster_recovery[Rapid 0][2].
     let recovery = b.content.rules.buster_recovery(0, 2) as u32;
     run_to(&mut b, p, &mut t, 5 + recovery, 0);
-    assert_eq!(b.objects.get(p0).action, 0x11);
+    assert_eq!(runs(&b, p0), "megaman/buster/shot");
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
     assert_eq!(b.objects.get(p0).action, 8);
     assert_eq!((ai_mut(&mut b, p0).overlay, b.objects.get(p0).related[0]), (None, None));
@@ -507,7 +507,7 @@ fn a_move_cuts_the_buster_recovery_short() {
     // Up is held from tick 6 (the recovery's first tick): the step starts
     // at once.
     run_to(&mut b, p, &mut t, 5, 0);
-    assert_eq!(b.objects.get(p0).action, 0x11);
+    assert_eq!(runs(&b, p0), "megaman/buster/shot");
     run_to(&mut b, p, &mut t, 6, keys::UP);
     assert_eq!(b.objects.get(p0).action, 0x10);
     assert_eq!(b.objects.get(p0).future_panel, PanelPos { x: 2, y: 1 });
@@ -548,7 +548,7 @@ fn a_charged_shot_waits_then_fires_the_charged_kind() {
     }
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
-    assert_eq!(b.objects.get(p0).action, 0x16);
+    assert_eq!(runs(&b, p0), "megaman/charged-shot/action");
     // Five ticks of waiting, the arm on tick 5, the shot on tick 6.
     run_to(&mut b, p, &mut t, 4, 0);
     assert_ne!(b.objects.get(p0).anim, 0x0E);
@@ -565,7 +565,7 @@ fn a_charged_shot_waits_then_fires_the_charged_kind() {
     assert_eq!(b.objects.get(p1).hp, 990);
     let recovery = b.content.rules.buster_recovery(0, 2) as u32;
     run_to(&mut b, p, &mut t, 9 + recovery, 0);
-    assert_eq!(b.objects.get(p0).action, 0x16);
+    assert_eq!(runs(&b, p0), "megaman/charged-shot/action");
     run_to(&mut b, p, &mut t, 10 + recovery, 0);
     assert_eq!(b.objects.get(p0).action, 8);
 }
@@ -604,7 +604,7 @@ fn a_buster_alias_fires_the_buster() {
     let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.buster = testing::weapon(0x2E)));
     tick(&mut b, p0, p1, keys::B);
     tick(&mut b, p0, p1, 0);
-    assert_eq!(b.objects.get(p0).action, 0x11);
+    assert_eq!(runs(&b, p0), "megaman/buster/shot");
 }
 
 #[test]
@@ -616,7 +616,7 @@ fn the_absorbed_obstacle_flies_at_the_enemy() {
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
-    assert_eq!(b.objects.get(p0).action, 0x11);
+    assert_eq!(runs(&b, p0), "megaman/buster/shot");
     assert!(ai_mut(&mut b, p0).absorbed.is_empty());
 
     // Tick 2: it flies from the center of the panel in front, 12 pixels
@@ -664,9 +664,9 @@ fn a_throw_waits_the_last_shots_recovery() {
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
-    assert_eq!((b.objects.get(p0).action, ai_mut(&mut b, p0).attack.variant), (0x11, 2));
+    assert_eq!((runs(&b, p0), ai_mut(&mut b, p0).attack.variant), ("megaman/buster/shot".to_string(), 2));
     run_to(&mut b, p, &mut t, 5 + recovery, 0);
-    assert_eq!(b.objects.get(p0).action, 0x11);
+    assert_eq!(runs(&b, p0), "megaman/buster/shot");
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
     assert_eq!(b.objects.get(p0).action, 8);
 }
@@ -1095,6 +1095,15 @@ fn start_weapon(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
     action.number
 }
 
+/// What navi `r` runs, as the traces name it: a content action's key, else
+/// the ruleset's action number.
+fn runs(b: &Battle, r: ObjectRef) -> String {
+    match super::super::running_content_action(b, r) {
+        Some(h) => b.content.defs.action(h).key.clone(),
+        None => format!("{:#04x}", b.objects.get(r).action),
+    }
+}
+
 /// A copy of the battle plays the next `n` ticks exactly as the battle
 /// does (the scripts' state is all in the battle).
 fn plays_on_the_same(b: &mut Battle, p: [ObjectRef; 2], n: u32) {
@@ -1256,7 +1265,8 @@ fn dustcross_beast_throws_its_newest_obstacle_or_fires_the_beast_buster() {
     assert_eq!(start_weapon(&mut b, p0, 0x2C), 0x1E);
     let actor = b.objects.get(p0).actor.unwrap();
     b.actors.get_mut(actor).absorbed.push(crate::actor::AbsorbedObstacle { kind: 2, anim: 1 });
-    assert_eq!(start_weapon(&mut b, p0, 0x2C), 0x11);
+    start_weapon(&mut b, p0, 0x2C);
+    assert_eq!(runs(&b, p0), "megaman/buster/shot");
     let a = &ai_mut(&mut b, p0).attack;
     assert_eq!((a.damage, a.variant, a.marker), (200, 2, 0x12));
     assert!(b.actors.get(actor).absorbed.is_empty());
@@ -1886,6 +1896,36 @@ fn the_ruleset_starts_a_role_action() {
     assert_eq!(b.navi_action(p0).unwrap(), bn6_content_api::NaviAction::Content(role.0));
     // It ran its first tick with the counter's set-up; three more.
     assert_eq!(ticks_in(&mut b, p0, p1, role), 3);
+}
+
+#[test]
+fn a_forced_charged_shot_starts_its_role() {
+    // The request that starts the charged shot from idle without its
+    // weapon's setup starts the role's action.
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let role = b.content.defs.roles.actions.forced_charged_shot.expect("the test pack fills it");
+    ai_mut(&mut b, p0).requests |= request::FORCED_CHARGED_SHOT;
+    tick(&mut b, p0, p1, 0);
+    assert_eq!(super::super::running_content_action(&b, p0), Some(role));
+    assert_eq!(runs(&b, p0), "test/forced-charged-shot");
+}
+
+#[test]
+fn a_weapon_definition_takes_its_legacy_routines() {
+    // The buster's definition is what every routine number aliasing it
+    // names (the pack's forms name weapons by number), and the ruleset's
+    // numeric logic reads its first; the charged shot's charge times are
+    // its own, with Charge 5 read on into the next row.
+    let c = testing::content();
+    let buster = c.defs.weapon_by_key("megaman/buster").expect("the buster's definition");
+    for n in [0x00, 0x2E, 0x82] {
+        assert_eq!(c.weapon_numbered(n), buster, "routine {n:#x}");
+    }
+    assert_eq!(c.weapon_number(buster), Some(0));
+    let charged = c.defs.weapon(c.weapon_numbered(1));
+    assert_eq!((charged.key.as_str(), &charged.charge_ticks[..]), ("megaman/charged-shot", &[100, 90, 80, 70, 60, 180][..]));
+    // A routine nobody implements is still a placeholder of its own.
+    assert_eq!(c.defs.weapon(c.weapon_numbered(0x81)).key, "v1/weapon-81");
 }
 
 #[test]
