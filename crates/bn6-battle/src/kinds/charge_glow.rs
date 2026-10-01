@@ -3,9 +3,8 @@
 //! lifetime follows the player's. See docs/engine/objects-and-player.md §A.5.
 
 use crate::battle::Battle;
-use crate::content::SpriteId;
+use crate::content::{SoundRole, SpriteId};
 use crate::object::{ObjectRef, Vec3, flags, state};
-use crate::sound::SoundId;
 
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
@@ -125,14 +124,14 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 fn charge_sound(b: &mut Battle, r: ObjectRef, alliance: u8, source: u8) {
     let v = vars(b, r);
     let id = match (v.level, v.previous_level) {
-        (1, 0) => SoundId::BUSTER_CHARGE,
-        (2, 1) => SoundId::BUSTER_CHARGED,
+        (1, 0) => SoundRole::BusterCharge,
+        (2, 1) => SoundRole::BusterCharged,
         _ => return,
     };
     if source == 2 {
-        b.play_sound(id);
+        b.sound(id);
     } else {
-        b.play_sound_for(alliance, id);
+        b.sound_for(alliance, id);
     }
 }
 

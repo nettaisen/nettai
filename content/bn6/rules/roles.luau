@@ -155,6 +155,89 @@ return define.roles {
         thrown_obstacle = collision.breaking,
         thrown_obstacle_target = collision.hits_navis,
     },
+    sounds = {
+        -- A panel cracks or breaks; a panel turns to poison.
+        panel_crack = asset.sound("panel-crack"),
+        panel_poison = asset.sound("panel-poison"),
+        -- A navi hit, as its own player hears it (and the custom-HP bug's
+        -- damage) and as the other does (and an object hurt without
+        -- flinching); an object taking damage; a blocked hit; a counter
+        -- hit; a navi deleted.
+        own_hit = asset.sound("hit-6b"),
+        hit = asset.sound("hit-6d"),
+        damage = asset.sound("damage"),
+        guard = asset.sound("hit-6e"),
+        counter_hit = asset.sound("select-86"),
+        deleted = asset.sound("deleted"),
+        -- HP recovered; a chip's damage bonus as it is used.
+        recovery = asset.sound("heal"),
+        damage_bonus = asset.sound("hit-87"),
+        -- The battle pauses and resumes; the custom gauge fills; the
+        -- low-HP alarm.
+        pause = asset.sound("pause"),
+        gauge_full = asset.sound("gauge-full"),
+        low_hp = asset.sound("low-hp"),
+        -- A side cuts in, a trap springs; a telop shows.
+        cut_in = asset.sound("dimming-sparkle"),
+        telop = asset.sound("telop"),
+        -- The buster starts charging, and is charged.
+        buster_charge = asset.sound("buster-charge"),
+        buster_charged = asset.sound("buster-charged"),
+        -- A navi frozen, bubbled, its bubble popped; confusion's stars.
+        freeze = asset.sound("freeze"),
+        bubble = asset.sound("bubble"),
+        bubble_pop = asset.sound("bubble-pop"),
+        confusion = asset.sound("confusion"),
+        -- A navi turns invisible, shows again (or enters), arrives
+        -- mid-battle; something goes (a cancelled defensive chip,
+        -- uninstalled programs, a Cross navi's special, a form taken off).
+        invisible = asset.sound("invisible"),
+        appear = asset.sound("appear"),
+        arrive = asset.sound("point-appear"),
+        fade = asset.sound("fade-8e"),
+        -- A thrown obstacle lifted, and flying.
+        obstacle_lift = asset.sound("point-rise"),
+        obstacle_throw = asset.sound("etomahwk"),
+        -- A cross merging into MegaMan; a form change starting; a Cross
+        -- put on (two sounds at once); a Beast Out put on; the beasts'
+        -- roars; Beast Over's rumbles and bursts.
+        cross_merge = asset.sound("cross-merge"),
+        form_change = asset.sound("form-change"),
+        cross_change = asset.sound("cross-change"),
+        cross_change_chime = asset.sound("log-in-77"),
+        beast_out = asset.sound("beast-out"),
+        gregar_roar = asset.sound("gregar-roar"),
+        falzar_roar = asset.sound("falzar-roar"),
+        beast_over_rumble = asset.sound("beast-over"),
+        beast_over_burst = asset.sound("beast-over-burst"),
+        -- A Cross navi starting its special's chip.
+        cross_special = asset.sound("elmnt-man-2"),
+        -- SELECT with too little gauge: its player hears that it can't.
+        refused = asset.sound("cant-jack-in"),
+    },
+    music = {
+        -- A link battle's, whatever its stage's.
+        link_battle = asset.sound("virus-battle"),
+        -- The winner's (in special battles, and otherwise) and the loser's.
+        winner_special = asset.sound("winner-0"),
+        winner = asset.sound("winner-1"),
+        loser = asset.sound("loser"),
+    },
+    banners = {
+        -- A round's start (the battle's number), a turn's, the final turns'.
+        round_start = asset.banner("battle-number-start"),
+        turn_start = asset.banner("turn-start"),
+        final_turn = asset.banner("final-turn"),
+        -- A draw; the damage judge's.
+        draw = asset.banner("draw"),
+        judge = asset.banner("held-28"),
+        -- A telop on the local player's side, and on the other's.
+        telop = asset.banner("telop"),
+        telop_remote = asset.banner("telop-remote"),
+        -- A Program Advance, and a selection that makes none.
+        program_advance = asset.banner("program-advance"),
+        program_advance_empty = asset.banner("program-advance-empty"),
+    },
     hooks = {
         -- The NaviCust FirstBarrier (`sub_8013892`): the navi enters with
         -- the barrier its stat names, which the game's program sets to type
