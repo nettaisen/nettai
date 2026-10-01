@@ -5,9 +5,10 @@
 local shoot = require("../thunder/shoot")
 local lockon = require("../../rules/lockon")
 local thunder = require("../thunder/chip")
+local statuses = require("../../rules/status")
 
 -- Its hits' status: paralysis.
-local PARALYZE = 0x10
+local PARALYZE = statuses.paralyze_90
 
 return define.chip {
     id = "darkthnd",

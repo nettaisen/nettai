@@ -279,6 +279,43 @@ routine's row; the generator writes those values into the weapon's own list, so 
 neighbour. The same rule applies wherever the original reads past a table into the next entry: the value is
 written where it is used, with a comment naming the quirk.
 
+**As built** (step 11, weapons). A weapon is its definition and nothing else: no routine number reaches the
+engine (`weapon_numbered`, `weapon_number`, the `v1/weapon-NN` placeholders and the charge table by routine are
+gone), and compat's weapons.toml alone maps the original's bytes to keys (several numbers to one key: alias
+routines with the same charge times). The traits the ruleset asked routine numbers for are fields of the
+definition, not a `traits` list:
+
+```luau
+export type WeaponSpec = {
+    id: string, name: string,
+    charge_ticks: { number },
+    setup: ((navi: Object) -> Action)?,   -- none: nothing can start it (an A-charge that is its chip; a weapon nothing implements yet)
+    instant: ((user: Object, spec: InstantChipSpec) -> ())?,
+    sticky: boolean?,          -- as a charged shot: a chip's weapon, which a form's own doesn't replace (`sub_800FFAA`); its attack runs through a dimming
+    held: boolean?,            -- as a buster: fires while B is held
+    plain: Weapon?,            -- as a buster: what it gives way to while the charged shot is sticky
+    charged_chip: ("bonus" | "rock_barrage")?,   -- as an A-charge with no attack of its own: the chip itself, with the bonus or after GroundCross's rocks
+}
+```
+
+`plain` is on the buster that gives way (the two Beast busters, DustCross Beast's throw) rather than a `demotes`
+map on each sticky weapon: six sticky weapons would repeat the same three pairs. `charged_chip` covers the
+original's `nullsub_44` entries, which `sub_800FB54` tells apart by number before it would call them; started as
+a weapon, one is the game's "action from a stale register" error, as before. The sticky charged shots are the
+chips' own weapons, beside the chip that gives them (`bugrswrd/charge`, `bgdththd/charge`, `puncharm/charge`,
+`needlarm/charge`, `puzzlarm/charge`, `boomrarm/charge`); nothing implements their attacks yet, so they have no
+`setup` and firing one is an error. A form's `weapons` and a navi's are handles (`FormWeapons` of
+`Option<WeaponHandle>`); a navi's definition also carries what a Cross change brings it with (`fresh`: HP, the
+body's programs, the first barrier, the Mega and Giga levels, the B+Back special's damage) and its HP after one
+(`cross_hp`, by side), which were tables in the engine (`byte_80210DD`, `byte_802DD88`). The content API's
+weapon fields are definitions (`navi.buster_weapon`, `navi.charge_shot_weapon`, `navi.back_special_weapon`;
+`battle.navi(side).charge_shot_weapon`, `.back_special_weapon`), and so are the shot programs
+(`battle.navi(side).buster_shot`, `.charge_shot_kind`: a projectile variant or nil). The projectile's variants a
+navi's stats can name are named records (`shot/...`, objects/projectile/variants; compat records.toml,
+`projectile_variants`), and which of them come on 1 draw in 8 is each weapon's own list. A hit's bug code can
+still clear a weapon byte or a shot program (0xFF, 0), but not set one by number: the engine has no numbers for
+them, and no hit of the game's carries such a code.
+
 ### 3.4 Object kinds
 
 ```luau
@@ -366,6 +403,20 @@ chip names are `beast-claw` and `beast-lunge`. The rule section keeps what the m
 and the clear-path condition); the charged sword's table by variant went, since each charged slash names its
 mode. The numbers are compat's rules.toml, for `gen-content check` alone. The engine's test content defines
 its made-up modes under the same names (crates/bn6-battle/testdata/content/rules/lockon.luau).
+
+**As built** (step 12, statuses). A status is `StatusEffect` by `StatusHandle` (`Content::status`,
+`Defs::statuses`), with no byte anywhere in the engine: a collision's `status_base` and `status_final`, a
+hitbox's `status` and the content API's `collision.status_base` and `battle.hitbox { status }` hold or take the
+definition (nil: none), and a kind keeps one in a `"status"` state field. What the ruleset inflicts itself are
+roles (`statuses.damage_word_paralysis`, `counter_paralysis`, `ice_freeze`, `hit_bug_blind`,
+`hit_bug_confuse`), and its two tests of the byte's range are traits of the definition: `cancels_flinch` (the
+freezing statuses, the original's 0x50 to 0x55) and `survives_counter` (the bubbling ones, 0x60 to 0x65).
+Content tests a status's own fields where the original tested its byte (FlashBomb's flash has no hit modifier
+when its status's timer is paralysis). rules/status.luau names each group's own entries plainly
+(`paralyze-90`, `confuse-480`, `freeze-150`) and the entries the original reads past a group's end for what
+they read (`confuse-480-past-paralyze`); the bytes are compat's rules.toml. A chip's legacy `sword` marker
+(v1 record data nothing reads) keeps its raw status byte. The engine's test content defines dummy statuses
+under the same names (crates/bn6-battle/testdata/content/rules/status.luau).
 
 ### 3.7 Stages
 
@@ -1186,8 +1237,8 @@ DustCross's junk ball for DustMan, and one kind of its own, GroundMan's flying d
 the navi), which lasts while he runs the action he threw it in. ProtoMan's charge runs WideSwrd's action with
 the chip as the attack's (`navi.attack_chip = <the record>`); his B+Back specials are the Reflector's guard with
 the NaviCust Reflect's look and the NaviCust's Reflect itself, whose damage is a navi stat
-(`battle.navi(side).back_special_damage`). The definitions keep `legacy = { routines }` until step 11 (the navis
-don't name their weapons yet: a link navi's stats name the routine). docs/engine/standard-chips.md, "Action 9".
+(`battle.navi(side).back_special_damage`). Each navi's definition names them as its `weapons` (step 11).
+docs/engine/standard-chips.md, "Action 9".
 
 ### 5.6 Instant chips: a hook per chip
 
@@ -1312,12 +1363,9 @@ weapon definition `megaman/buster` with its shot `megaman/buster/shot`, `megaman
 navis/megaman/forms/heatcross/charge.luau (`heatcross/charge`). The v1 registrations (`weapon.toml`, the 16
 buster alias folders) went. What it settled:
 
-- **A weapon definition takes routine numbers** with the transitional `legacy = { routines = { ... } }`
-  marker: the pack's forms, the navis' rows and the ruleset still name weapons by number, and
-  `weapon_numbered(n)` finds the definition by any of its routines (the buster's are the 17 numbers whose
-  `off_80117D4` entries are `sub_8011A26`); `weapon_number(h)`, which the ruleset's numeric logic asks, is the
-  first. Counted by the ratchet; it goes when the forms (step 5's form reader) and the ruleset (phase C) name
-  weapons by handle.
+- **A weapon definition took routine numbers** with a transitional `legacy = { routines = { ... } }` marker
+  while the pack's forms, the navis' rows and the ruleset named weapons by number. *Gone with step 11* (§3.3,
+  "As built"): compat alone has the numbers.
 - **Charge times are the definition's own**: the charge table's row, plus the next row's first entry for
   Charge 5, which the original's table reads on into (written out and commented in each definition).
 - **A role for the forced charged shot**: idle.rs's request 0x20 starts `roles.actions.forced_charged_shot`
@@ -1353,8 +1401,8 @@ the hit the dash and the tackle share in navis/megaman/dash_hit.luau (`megaman/d
   original put in the attack's variant and parameter bytes (the Beast busters' volleys, EraseCross's beam for
   its Beast form, the claw's slashes). The buster's shot keeps what it fires as `mode` (`"shot"`, `"spread"`,
   `"throw"`) and its projectile as a variant record; the charged shot its projectile. The NaviCust's shot
-  programs are still the navi stats' bytes (rows of the projectile's table), which the setups turn into
-  variants (`variants.by_number`); `lib/projectile`'s shots are variants only.
+  programs are projectile variants the navi's stats hold (step 11); `lib/projectile`'s shots are variants
+  only.
 - **A weapon without an action**: TenguCross's wind names no action of its own. Its definition has an
   `instant` slot (`instant = function(user, spec)`), its setup returns nothing, and the instant chips' action
   runs the effect once and waits its 8 ticks (`Effect::RunsThenWaits`, where the original tested the attack's
@@ -1389,8 +1437,8 @@ the hit the dash and the tackle share in navis/megaman/dash_hit.luau (`megaman/d
   number (the variable swords', MoonBld's) and the record's subtype and first parameter (`slashes.by_row`,
   the one table by number left). It goes when the swords SlashCross charges are definitions.
 - **Still numeric**: `lockon_panel(x, y, mode)` in GroundCross's drill and SlashCross Beast's lunge and the
-  slashes' `lockon` (lock-on modes are step 10's), the forms by number (`battle.navi(side).form`), each
-  weapon's `legacy = { routines }`, and the variable swords' picks' chips (§12).
+  slashes' `lockon` (lock-on modes are step 10's), the forms by number (`battle.navi(side).form`), and the
+  variable swords' picks' chips (§12). (Each weapon's `legacy = { routines }` went with step 11.)
 
 ### 5.8 Standard chip actions: a builder per action, the chips' parameters its arguments
 
@@ -1602,7 +1650,7 @@ need.
 | kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
 | stages.toml | `"netbattle-1" = { settings = [0x00], layout = 0x00, actor_list = 0x080B1989 }`: the settings indices that are the stage, its panel layout's number and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
 | records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rock/cube" = 1`); NaviCust buster shots when their producers are known |
-| rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`) |
+| rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`), `[statuses] paralyze-90 = 0x10` (a hit's status byte, `off_80209EC`) |
 | assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
 | text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the EX and SP glyphs as `[EX]`, `[SP]`) |
 | curation.toml | the names the generator made up, by file and key, with where each came from: the review list (§13) |
@@ -1889,7 +1937,8 @@ trait on the definition instead (§7.5).
 shot, the stun strike, the Cross protect, the turn, the Cross death, the volley, the charged sword, the beast
 claw, DustCross Beast's scatter), `KindRole` (the absorbed obstacle, the falling rock, the supports' controller, AntiRecv's counterattack; until
 step 12 also what an actor list places, which stages name now), `HookRole` (the FirstBarrier, the encased
-obstacle) and, since step 12, `LockonRole` (the Beast claw's lock-on mode). A role names a definition, or, while its
+obstacle) and, since step 12, `LockonRole` (the Beast claw's lock-on mode) and `StatusRole` (the statuses the
+ruleset inflicts itself). A role names a definition, or, while its
 target is still a v1 registration, that registration through the transitional legacy marker (`{ legacy = {
 action = 0x49 } }`, `{ legacy = { kind = "a-v1-kind" } }`; counted by the ratchet); a legacy action number nothing
 implements leaves the role `Unported`, and starting it fails as the number did. The charged sword, the beast claw
@@ -2010,7 +2059,9 @@ original's routines.
   stick; buster 3 and 4 become 0, 0x2C becomes 0x2B), `idle.rs` `kind = 2` for 0x21..=0x26, `chip_use.rs`
   charged paths (0x18 rock barrage, 0xFF, 0x05 | 0x0D | 0x1F | 0x20 | 0x29 | 0x2D), `form.rs` `24 + form`.
   → the weapon's `setup` slot; traits `sticky`, `demotes`, `charged_chip_kind`, `rock_barrage`,
-  `stale_register` (the `nullsub_44` entries, an explicit error as today).
+  `stale_register` (the `nullsub_44` entries, an explicit error as today). *Done (step 11)*: `sticky`, `held`,
+  `plain` and `charged_chip` (§3.3, "As built"); the form's init routine by number (`24 + form`) is the form
+  traits' batch.
 
 **Assets and presentation.**
 - 52 `SoundId(0x..)` literals in 16 files; sound.rs's named constants. → `roles.sounds`, `roles.music`; a stage's
@@ -2213,10 +2264,10 @@ registries, the object tables, the text). It is not committed here.
 
 **The committed definitions are the source.** Nothing regenerates a module once it is written, and the
 generator can't run over a content root that has people's modules at its paths, so a writer whose modules
-people have since reshaped is dead code. With step 12 the stages' and the lock-on modes' writers are retired
-(`gen_stages`, `gen_lockon`: the definitions lost their legacy markers and name kinds, variants and each other
-in forms the generator never wrote): content/bn6/stages/netbattle.luau and rules/lockon.luau are edited by
-hand, and `gen-content check` compares them with the ROM through compat. `gen-content write` still writes
+people have since reshaped is dead code. With step 12 the stages', the lock-on modes' and the statuses'
+writers are retired (`gen_stages`, `gen_lockon`, `gen_status`: the definitions lost their legacy markers and
+name kinds, variants and each other in forms the generator never wrote): content/bn6/stages/netbattle.luau,
+rules/lockon.luau and rules/status.luau are edited by hand, and `gen-content check` compares them with the ROM through compat. `gen-content write` still writes
 compat's numbers for them (stages.toml, records.toml, rules.toml), keeping the committed keys.
 
 ### 9.4 The frontend and the audio
@@ -2330,10 +2381,9 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   step 8e the sword chips' slashes say what the charge needs in a spec field (`charged`, §5.7) and no BN6 chip
   carries the marker (the test pack's tickers do). The marker's `action` and `script` (a behaviour still a v1
   module) are step 5's; the reader refuses them until then.
-- **The weapon legacy marker.** A weapon definition may carry `legacy = { routines = { ... } }`, the routine
-  numbers the pack's forms, the navis' rows and the ruleset name it by (every weapon content defines: step 8e).
-  Counted by the ratchet; it goes when the forms are definitions (step 5's form
-  reader) and the ruleset names weapons by handle (phase C).
+- **The weapon legacy marker.** A weapon definition carried `legacy = { routines = { ... } }`, the routine
+  numbers the pack's forms, the navis' rows and the ruleset named it by. *Gone with step 11*: forms and navis
+  name weapons by value, the ruleset asks a weapon's traits, and compat's weapons.toml has the numbers.
 - **Registration-by-number shims.** chips/036-minibomb (action 0x12), chips/047-sword (0x13) and
   chips/056-mchnswrd (0x49) run a record's action by its subtype for records something still names by number:
   the Cross special's chips (berserk.rs `CROSS_SPECIAL_CHIPS`: MiniBomb, EnergBom, MegEnBom and swords), the
@@ -2467,7 +2517,7 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    subtype, params, script` (with what the ruleset and v1 modules read of it by number: a damage formula,
    `sp_damage`, `navi_damage`, `dark_substitute`, `recovery`, `sword`); a weapon still a v1
    module has no `setup` and its marker gives `routines, script, action, instant_chip`; a navi's and a form's
-   give `number, name_id`, a stage's `number, layout, actor_list` (until step 12: compat has them), a status's and (until step 12) a lock-on mode's `id`. The
+   give `number, name_id`, a stage's `number, layout, actor_list` (until step 12: compat has them), (until step 12) a status's and a lock-on mode's `id`. The
    generator writes them with the `legacy { }` call (identity; typed `any`), which is how it tells its own
    definitions from people's. The tables v1 modules read by number are legacy rule
    sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (effects, sparks, regions, and

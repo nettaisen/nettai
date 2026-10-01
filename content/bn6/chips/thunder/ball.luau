@@ -27,7 +27,7 @@ export type State = {
     fast: boolean,
     -- Panels left (Param2).
     panels: number,
-    status: number,
+    status: Status?,
     bug: number,
 }
 
@@ -176,7 +176,7 @@ local function init(me: Object)
     local c = me.collision
     c:set_region(regions.single)
     c:set_hit_effect(sparks.elec)
-    if s.status ~= 0 then
+    if s.status then
         c.status_base = s.status
     end
     if s.bug ~= 0 then
@@ -200,7 +200,7 @@ end
 ball.kind = define.kind {
     id = "thunder/ball",
     pool = "attack",
-    state = { fast = "bool", panels = "u8", status = "u8", bug = "u8" },
+    state = { fast = "bool", panels = "u8", status = "status", bug = "u8" },
     -- `sub_80C93CC`.
     update = function(me: Object)
         local l = me.lifecycle
@@ -225,7 +225,7 @@ function ball.spawn(owner: Object, x: number, y: number, element: number, damage
     local o = battle.spawn(ball.kind, Vec3.new(y, element, 0xA_0000))
     if o then
         local s = o.state :: State
-        s.fast, s.panels, s.status, s.bug = spec.fast or false, spec.panels, spec.status or 0, spec.bug or 0
+        s.fast, s.panels, s.status, s.bug = spec.fast or false, spec.panels, spec.status, spec.bug or 0
         o.panel_x, o.panel_y = x, y
         o.element = element
         o:set_damage_word(damage)

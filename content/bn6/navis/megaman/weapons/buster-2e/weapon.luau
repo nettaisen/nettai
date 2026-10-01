@@ -9,5 +9,4 @@ return define.weapon {
     name = "Buster 2e",
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 }, -- by Charge 0..7; past 4, the next routine's row
     setup = buster.weapon.setup,
-    legacy = legacy { routines = { 0x2E, 0x2F, 0x3E, 0x4D, 0x4E, 0x4F, 0x50, 0x51 } },
 }

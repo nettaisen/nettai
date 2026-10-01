@@ -13,6 +13,7 @@
 local collision = require("../../rules/collision")
 local effects = require("../effects")
 local regions = require("../regions")
+local statuses = require("../../rules/status")
 
 export type State = {
     -- The chip he eats (the original's third and fourth parameters), if
@@ -26,7 +27,7 @@ local SPRITE = asset.sprite("rush")
 local APPEAR_SOUND = asset.sound("place")
 local BITE_SOUND = asset.sound("bite")
 -- The status byte his bite carries.
-local STATUS = 0x12
+local STATUS = statuses.paralyze_150
 -- The chip he leaves in the hand: the second WhiCapsl.
 local SPARED_CHIP = require("../../chips/whicapsl-invisible/chip")
 

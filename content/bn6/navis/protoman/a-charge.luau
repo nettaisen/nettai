@@ -6,5 +6,7 @@ return define.weapon {
     id = "protoman/a-charge",
     name = "A charge",
     charge_ticks = { 60, 60, 60, 60, 60, 0, 0, 0 }, -- by Charge 0..7; past 4, the next routine's row
-    legacy = legacy { routines = { 0x2D } },
+    -- As an A-charge: the charged chip is the chip itself, with the charge's
+    -- bonus. (The original's routine is empty; nothing starts it.)
+    charged_chip = "bonus",
 }

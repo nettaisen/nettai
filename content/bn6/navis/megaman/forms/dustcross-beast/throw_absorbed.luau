@@ -26,8 +26,10 @@ beast_throw_absorbed.weapon = define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 60, 60, 60 },
     setup = setup,
-    -- (Transitional: the routine number the pack's forms name it by.)
-    legacy = { routines = { 0x2C } },
+    -- As a buster it fires while B is held, and gives way to DustCross's
+    -- throw while the charged shot is a chip's (a sticky one).
+    held = true,
+    plain = throw_absorbed.weapon,
 }
 
 return beast_throw_absorbed

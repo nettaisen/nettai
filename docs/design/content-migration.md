@@ -17,7 +17,7 @@ The exemplars (content model v2, step 7) show the patterns end to end, and are t
 | EraseMan | A navi chip: a navi kind and a `navi` hook builder (`eraseman.summon { aim_ticks }`); kinds spawned with state instead of parameters; a series' chips composing the hook with their own arguments, an SP chip's damage a formula | chips/eraseman/ (navi, chips) |
 | BusterUp and the plus chips | Instant chips: an `instant` hook per chip; a shared library | chips/busterup, chips/atk-10, chips/navi-20, lib/instant/plus.luau |
 | The link navis' own chips | A chip in its navi's folder, its damage by the navi's level (`damage = { formula = "navi_level", ... }`), which the navi's `own_chip` names; a phased routine on the attack's step with shared helpers; kinds beside the navi, or with the navi chip series that shares them | lib/link_chips.luau, navis/heatman ... navis/dustman (chip.luau and their kinds) |
-| MegaMan's weapons | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a setup that writes its action's state (`navi:action_state(action)`); a weapon whose effect is instant (`instant`); roles the ruleset starts (`forced_charged_shot`, `cross_protect`, `beast_claw`, ..., rules/roles.luau); the kinds only a form's weapon spawns beside it; a weapon that asks the attack's chip for its part (`navi.attack_chip`: SlashCross's charged slash, a record a sword's slash names) | navis/megaman/weapons/`<name>`/weapon.luau, navis/megaman/forms/`<form>`/, navis/megaman/dash_hit.luau, lib/buster.luau, lib/weapon.luau |
+| MegaMan's weapons | Weapons: `define.weapon` with its action a definition, charge times of its own, the traits the ruleset asks (`held`, `plain`, `sticky`, `charged_chip`); a setup that writes its action's state (`navi:action_state(action)`); a weapon whose effect is instant (`instant`); roles the ruleset starts (`forced_charged_shot`, `cross_protect`, `beast_claw`, ..., rules/roles.luau); the kinds only a form's weapon spawns beside it; a weapon that asks the attack's chip for its part (`navi.attack_chip`: SlashCross's charged slash, a record a sword's slash names) | navis/megaman/weapons/`<name>`/weapon.luau, navis/megaman/forms/`<form>`/, navis/megaman/dash_hit.luau, lib/buster.luau, lib/weapon.luau |
 | The link navis' charged attacks | A weapon whose action is the navi's own (the original's entry 9 of his action table): the setup gives the damage by the buster's Attack, the counter byte and the element; the phased routine of his chip (lib/link_chips); a kind of his AI's with the variant the attack names (a record or an options table); a kind that lasts while its owner's action does; a weapon that runs a chip's action with the chip as the attack's (ProtoMan's WideSwrd) | navis/heatman/charge.luau ... navis/dustman/charge.luau, navis/groundman/drill.luau, navis/protoman/charge.luau, back_special.luau |
 
 Every weapon routine MegaMan's forms and the NaviCust name is a hand-written definition (step 8e), and so are the
@@ -122,7 +122,7 @@ step 5 (navis/megaman/weapons/NAME/weapon.luau, a form's or navi's own beside it
 | A dimming chip | `define.chip { ..., dimming = function(user, spec: DimmingChipSpec): Object? }` | action 0x15's framework spawns the controller through it; its update calls the `dimming` service (lib/dimming) |
 | A navi chip | `define.chip { ..., navi = function(user, controller, spec: NaviChipSpec): Object? }` | the navi chip controller brings the navi through it; the navi calls `navi_chip.navi_left(controller)` |
 | An instant chip | `define.chip { ..., instant = function(user, spec: InstantChipSpec) }` | action 0x1C runs it once |
-| A weapon | `define.weapon { id, name, charge_ticks, setup }` (and, while forms name weapons by number, `legacy = { routines }`) | `setup(navi)` names the action |
+| A weapon | `define.weapon { id, name, charge_ticks, setup }`, with what the ruleset asks of it as fields (`sticky`, `held`, `plain`, `charged_chip`) | `setup(navi)` names the action; a form or a navi names the weapon in its `weapons` |
 | A role the ruleset starts | `define.roles { actions = { ... } }` | the ruleset's by-role starts (the trap chips' counters) |
 
 A definition's key is its `id` (or the key it derives: `minibomb/action`); two of one key is an error.
@@ -135,12 +135,10 @@ registration, until step 13 removes it (`script` is a module's path from the con
 | To implement | Write | The module exports |
 |---|---|---|
 | An object kind | `objects/NAME/object.toml`: `[kind] pool, index, script` | `state` (optional), `update(me)` |
-| An instant effect a weapon names by number | `instant_chip = N` in the weapon's marker | `instant_chip(user, spec)` |
-| A weapon routine | the weapon definition's marker, `legacy { routines, script }` and optionally `action` (and no `setup`) | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` |
 
-No chip is registered this way: a chip is its definition, with its own `action`, `dimming`, `navi` or
-`instant` (content-model-v2.md §7.5, "As built", step 10). Scripts are paths relative to the registering file;
-a slot or action claimed twice is an error. The ruleset reads only the definitions' slots. When the ruleset
+No chip or weapon is registered this way: a chip is its definition, with its own `action`, `dimming`, `navi` or
+`instant` (content-model-v2.md §7.5, "As built", step 10), and a weapon is a `define.weapon`. Scripts are paths
+relative to the registering file; a slot claimed twice is an error. The ruleset reads only the definitions' slots. When the ruleset
 needs a kind, an action or a chip itself (the absorbed obstacle, the stun strike, the chip a zeroed field
 reads), rules/roles.luau names it, a v1 action through a legacy marker (`{ legacy = { action = 0x3B } }`); a
 family that converts it names its definition there instead.

@@ -1381,7 +1381,7 @@ Which attacks use which types is catalogued per chip as the chips are ported.
 
 1. **DiveMan's AI** sets bit 0x4 directly while its AI state has bit 0x20 (`sub_80FDEFC`, entry 13 of the navi
    routine tables at `off_80F25A0`; navi 13's sprite is category 8, index 0x0D, whose animations include the
-   dive with only the periscope showing). It's the "dove underwater" state. Navi AI isn't ported yet.
+   dive with only the periscope showing). It's the "dove underwater" state. Navi AI isn't ported: it isn't a netbattle's (completeness.md §5).
 2. **`sub_80101AE`** starts the timed form: it stores the duration in `+0x26`, sets bit 0x4 and clears the
    object's VISIBLE flag. Its only caller is **variant 1 of actor object #0x5D** (`sub_80C49E4`, chosen by
    Param1): after a 30-tick white flash it runs the dimming return (`sub_80E13DC`), then makes its owner
@@ -1533,12 +1533,17 @@ In tick 647 the navi's stage A computes FinalDamage 0 (the +0x8C slot is exclude
    - Upper collision bits 0x02000000/0x01000000 ("other bodies"), 0x00080000 ("blocker") and 0x00008000 ("ground-only").
    - Low Self bits 0x1008 / 0x3000 and the ObjectFlags1 bits they gate (0x4, 0x00800000, 0x01000000, 0x08000000). The header names 0x08000000 UNAFFECTED_BY_POISON; the code treats it as "fully intangible".
    - Barrier type names, the Anti-chip ids (0xBB / 0xBC / 0x157), and NaviStats bytes 0x11–0x19, 0x21, 0x24, 0x29, 0x31, 0x52, 0x54.
-2. **Code only (never observed in any replay):**
-   - counter hits, guard sparks, the Undershirt clamp, holy halving;
-   - ice slides, poison, grass heal at HP ≤ 9;
-   - barriers, traps, bug codes;
-   - Region-0x80 shapes, timer-driven area return;
-   - the air/ground rule, and aqua-on-ice freeze.
+2. **Code only when this was written, recorded by the chip lab since** (the engine matches):
+   - counter hits (`chips/*/counter-hit`, §4.9), guard sparks (`chips/*/guard`), the UnderShirt clamp
+     (`chips/0x0b9-uninstll/folded-undershirt`);
+   - ice slides, poison and the grass heal (a navi without shoes on every stage: `forms/*/bare-stage-*`,
+     `forms/falzar/cross-tomahawk-grass`);
+   - barriers, traps and bug codes (their chips' scenarios);
+   - the timer-driven area return (`chips/0x0a3-areagrab/returns`), aqua-on-ice freeze
+     (`forms/falzar/base-ice-widesht`).
+
+   Not matched to a recording here: holy halving, the grass heal's rate at HP ≤ 9, the filtered whole-field
+   regions (Region & 0x80) and the air/ground rule. docs/engine/unverified.md is the survey.
 3. The push directions (bits 0x04/0x08) are derived from `sub_800E548` and the receiver's alliance; the chip-to-bit mapping (Wind, Fan, AirShot…) is not checked.
 4. The drain-heal counter (+0x92) uses hitter Self bit **0x100** (from `lsr #9` → carry). One sub-report claimed 0x200; the Rust translation confirms 0x100.
 5. Whether anything outside rendering reads panel +0x06 / +0x07 / +0x10: none found.

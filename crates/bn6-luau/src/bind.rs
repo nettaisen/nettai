@@ -1341,7 +1341,15 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             damage: table_int(&spec, "damage")? as u16,
             stamina: table_int(&spec, "stamina")? as u16,
             hit_mod: table_int(&spec, "hit_mod")? as u8,
-            status: table_int(&spec, "status")? as u8,
+            // A status definition, or nothing.
+            status: {
+                let v: LuaValue = spec.raw_get("status")?;
+                bound(|b| match (&v, b.def(&v)) {
+                    (LuaValue::Nil, _) => Ok(None),
+                    (_, Some((Registry::Status, h))) => Ok(Some(bn6_content_api::StatusHandle(h))),
+                    _ => Err(mlua::Error::runtime("battle.hitbox: `status` is a status definition (rules/status) or nil")),
+                })?
+            },
             bug: table_int(&spec, "bug")? as u8,
             bug_arg: table_int(&spec, "bug_arg")? as u8,
         };

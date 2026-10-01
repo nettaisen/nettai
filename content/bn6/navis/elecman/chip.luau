@@ -13,6 +13,7 @@ local link = require("../../lib/link_chips")
 local panels = require("../../lib/panels")
 local regions = require("../../lib/regions")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 local swords = require("../../lib/swords/parts")
 
 export type State = {
@@ -42,7 +43,7 @@ local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 -- The slash: a wide hit on the panel ahead (toward the enemy's side), elec
 -- spark, paralyzing; its effect (the wide sword's slash, 16 pixels up,
 -- palette 3) over the panel ahead (his facing's).
-local SLASH_HIT = { is = collision.slash, hits = collision.hits_navis, hit_mod = 1, status = 0x10 }
+local SLASH_HIT = { is = collision.slash, hits = collision.hits_navis, hit_mod = 1, status = statuses.paralyze_90 }
 local SLASH_Z, SLASH_PALETTE = 0x10_0000, 3
 
 local SLASH_TICKS, RETURN_TICKS, RECOVER_TICKS = 0x14, 3, 0x1E

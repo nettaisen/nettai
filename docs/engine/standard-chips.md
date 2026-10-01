@@ -132,8 +132,8 @@ Advance banner.
 **[unverified]** (ported, reached by no scenario): the shock wave's virus variants 0..0xB and their panel marks;
 the needle volley with three or more enemies, the two-enemy HP tie, and none; the aqua needle's crack; the pulse's
 looks 2 and 3; the aura head's speed tables past 1; the thunder doll's Param1 ≠ 0 path and the thunder column's
-kind 1; ParaShl, GreatYo's controller and PitHocky (Program Advances, stopped at the banner); Tornado subtype 3 and
-Static's larger spreads; the drill without a slot; AirSpin variant 1 and the whirlwind's removed, absorbed and
+kind 1; ParaShl, GreatYo's controller and PitHocky (Program Advances, stopped at the banner); Tornado subtype 3 (no chip has it:
+completeness.md §5) and Static's larger spreads; the drill without a slot; AirSpin variant 1 and the whirlwind's removed, absorbed and
 blink-out paths; WideBrn's spread and flame looks 1 and 2; RlngLog's drop-in path and the log's stop and break;
 DarkThnd and the thunder ball's bug; MoonBld's repeat swings; WindRack variant ≠ 0 and the gust's other
 spawners; H-Burst's whole-field branch; every "pool full" path. Off-table parameters are explicit errors naming

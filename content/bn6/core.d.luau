@@ -19,9 +19,6 @@
 --
 --   objects/NAME/object.toml  [kind] pool, index, script   an object kind:
 --       the module exports `state` and `update(me)`
---   navis/megaman/weapons/NN-name/weapon.toml            a weapon routine:
---       `setup(navi) -> action`, and `state`/`update` for its `action`,
---       `instant_chip(user, spec)` for its `instant_chip`
 --
 -- Functions keep nothing between calls: what an object or action keeps
 -- lives in its declared `state` (typed fields the engine stores and
@@ -254,7 +251,8 @@ declare class Collision
     -- object's element byte; `sub_8019F8C` sets them again.
     element: number
     secondary_element: number
-    status_base: number
+    -- The status its hits carry (rules/status), if any.
+    status_base: Status?
     -- Bug code (low byte) and argument (high byte).
     bugs: number
     hit_mod_base: number
@@ -423,14 +421,11 @@ declare class Object
     buffered_move: number
     chip_lockout: number
     back_special_cooldown: number
-    -- The weapon routines the navi's buttons run (0xFF = none; the
-    -- buster's and the charged shot's writable).
-    buster_routine: number
-    charge_shot_routine: number
-    back_special_routine: number
-    a_charge_routine: number
-    alt_a_charge_routine: number
-    mode9_a_routine: number
+    -- The weapons the navi's buttons run (nil: none; the buster's and the
+    -- charged shot's writable).
+    buster_weapon: Weapon?
+    charge_shot_weapon: Weapon?
+    back_special_weapon: Weapon?
     -- Writable: the Beast Out counter is spent (AIData+0x32).
     beast_out_spent: boolean
     -- Writable: the barrier's visual (AIData+0x60), which hides and shows
@@ -670,10 +665,11 @@ declare class Navi
     version: number
     max_base_hp: number
     chip_recovery: number
-    -- NaviCust: the buster's spread shot, the charged shot's kind, and the
+    -- NaviCust: the buster shot's and the charged shot's programs (the
+    -- projectile variant a shot is on a lucky draw; nil: none), and the
     -- buster's blank and charged slots (of 16).
-    buster_shot: number
-    charge_shot_kind: number
+    buster_shot: ProjectileVariant?
+    charge_shot_kind: ProjectileVariant?
     -- The damage a B+Back special takes from the navi's stats (ProtoMan's
     -- reflecting guard).
     back_special_damage: number
@@ -690,9 +686,9 @@ declare class Navi
     custom_level: number
     -- NaviCust bug: the hand shrinks from this turn on (0 none).
     hand_shrink_turn: number
-    -- The weapon routines rounds start with (0xFF none).
-    charge_shot_routine: number
-    back_special_routine: number
+    -- The weapons rounds start with (nil: none).
+    charge_shot_weapon: Weapon?
+    back_special_weapon: Weapon?
     float_shoes: boolean
     air_shoes: boolean
     undershirt: boolean
@@ -716,7 +712,7 @@ export type HitboxSpec = {
     damage: number,
     stamina: number?,
     hit_mod: number?,
-    status: number?,
+    status: Status?,
     bug: number?,
     bug_arg: number?,
 }
@@ -1226,59 +1222,6 @@ export type AttachmentKind = {
     attach_point: number?,
 }
 
--- Which sun beam look (data.objects.sun_beam_looks) and palette GunDelSol
--- shows.
-export type SunBeamLook = { look: number, palette: number }
-
--- GunDelSol's data, in its chip's folder.
-export type GunDelSol = {
-    -- Ticks of hits under the beam.
-    firing_ticks: number,
-    -- The sun beam in the shade and in the sun.
-    beam: SunBeamLook,
-    beam_in_sun: SunBeamLook,
-    -- The gun attached to the user.
-    gun: AttachmentKind,
-}
-
--- Action 0x13's slash: its hit region and the effect that draws it.
-export type SwordSlash = {
-    region: number,
-    hit_effect: number,
-    target: number,
-    self_type: number,
-    hit_mod: number,
-    status: number,
-    bug: number,
-    bug_arg: number,
-    effect: number,
-}
-
--- A sword's data (actions 0x13 and 0x49), in its chip's folder.
-export type Sword = {
-    -- The blade the user holds: an attachment kind.
-    blade: number,
-    -- Action 0x13's slash.
-    slash: SwordSlash?,
-}
-
-export type NaviData = {
-    id: number,
-    name: string,
-    sprite: SpriteId,
-    element: string,
-    buster_bonus: number,
-    merge_height: number,
-}
-
-export type FormData = {
-    id: number,
-    name: string,
-    sprite: SpriteId,
-    element: string,
-    buster_bonus: number,
-}
-
 export type RockKind = {
     id: number,
     anim: number,
@@ -1388,8 +1331,6 @@ export type FlyingShotKind = {
 -- 0xCD..=0xFF, as `sub_800F26C` gives it); no sprite is the table's none.
 export type NameLook = { name_id: number, sprite: SpriteId?, anim: number, palette: number, shadow: boolean }
 
-export type WeaponData = { id: number, name: string, action: number?, instant_chip: number?, script: string }
-
 -- A shock wave's look and timing (attack object #0x16, by its first
 -- parameter): ticks on a panel before the next rolls on, and the panel
 -- type it leaves ("cracked" cracks the panel, "broken" breaks it).
@@ -1401,9 +1342,6 @@ export type PackData = {
     -- Hit-region shapes by region number: the panels' offsets `{ dx, dy }`
     -- from the anchor (dx facing right).
     regions: { [number]: { { number } } },
-    navis: { [number]: NaviData },
-    forms: { [number]: FormData },
-    weapons: { [number]: WeaponData },
     -- Region shapes by region number (`PanelOffsetListsPointerTable`): the
     -- panels as {dx, dy}, dx toward the facing side, in the order hits and
     -- panel searches (`object_getPanelRegion`) take them.
@@ -1511,24 +1449,31 @@ export type Action = ActionSpec
 export type WeaponSpec = {
     id: string,
     name: string,
+    -- Ticks to a full charge, by Charge stat 0 to 7 (past 4, what the
+    -- original reads on into: the next routine's row).
     charge_ticks: { number },
-    -- `off_80117D4[n]`: prepare the attack, name its action (an `Action`
-    -- or an action number). A weapon with an `instant` effect names none:
-    -- the instant chips' action runs it. None while the weapon is still a
-    -- v1 module, which its legacy marker names. (Typed loosely until the
-    -- markers go: Luau's checker doesn't check a function against an
+    -- `off_80117D4[n]`: prepare the attack, name its action (an `Action`).
+    -- A weapon with an `instant` effect names none: the instant chips'
+    -- action runs it. None for a weapon nothing can start: an A-charge
+    -- that is its chip (`charged_chip`), or one nothing implements yet.
+    -- (Typed loosely: Luau's checker doesn't check a function against an
     -- optional function type.)
     setup: ((navi: Object) -> any)?,
     -- Its own instant effect (one no chip has: TenguCross's wind), which
     -- the instant chips' action runs once.
     instant: ((user: Object, spec: InstantChipSpec) -> ())?,
-    -- Transitional (counted by the ratchet): the routine numbers the pack's
-    -- forms and the ruleset still name it by (`weapon_numbered`); for a
-    -- weapon still a v1 module, the module (`script`), the action it brings
-    -- and the instant chip effect it names (§12, step 5).
-    legacy: { routines: { number }, script: string?, action: number?, instant_chip: number? }?,
+    -- As a charged shot: it stays when a form's own would replace it (a
+    -- chip's weapon, `sub_800FFAA`), and its attack runs through a dimming.
     sticky: boolean?,
-    traits: { string }?,
+    -- As a buster: it fires while B is held.
+    held: boolean?,
+    -- As a buster: the buster it gives way to while the charged shot is a
+    -- sticky one.
+    plain: Weapon?,
+    -- As an A-charge without an attack of its own: the charged chip is the
+    -- chip itself with the charge's bonus ("bonus"), or that after
+    -- GroundCross's falling rocks ("rock_barrage").
+    charged_chip: ("bonus" | "rock_barrage")?,
 }
 export type Weapon = WeaponSpec
 
@@ -1629,7 +1574,20 @@ export type StageDef = {
     effects: number?,
     actors: { StageActor },
 }
-export type StatusDef = { id: string, [string]: any }
+-- A status (rules/status): the requests it raises on its target
+-- (`ObjectFlags2` bits), for how long, and the timer it runs on.
+-- `cancels_flinch`: the hit that lands it doesn't flinch or flash its
+-- target (the freezing statuses). `survives_counter`: a counter hit that
+-- lands it keeps it rather than paralyzing (the bubbling statuses).
+export type StatusDef = {
+    id: string,
+    requests: number,
+    duration: number,
+    timer: string | { other: number },
+    cancels_flinch: boolean?,
+    survives_counter: boolean?,
+}
+export type Status = StatusDef
 -- A Beast Out lock-on mode (rules/lockon): how the rush picks the panel to
 -- attack a target from. `stay`: the navi's own panel. `row`: along the
 -- target's row counting from the navi's own column (`same_row_offsets`
@@ -1706,6 +1664,16 @@ export type RolesSpec = {
         rush: Chip?,
         beat: Chip?,
         tango: Chip?,
+    }?,
+    -- The statuses the ruleset inflicts itself: what a damage word's
+    -- paralysis bit carries, what a counter hit lands, what an aqua hit
+    -- gives a body on ice, and the NaviCust on-hit bug's.
+    statuses: {
+        damage_word_paralysis: Status?,
+        counter_paralysis: Status?,
+        ice_freeze: Status?,
+        hit_bug_blind: Status?,
+        hit_bug_confuse: Status?,
     }?,
     -- The Beast Out lock-on modes the ruleset names itself: the Beast
     -- forms' charged claw's.

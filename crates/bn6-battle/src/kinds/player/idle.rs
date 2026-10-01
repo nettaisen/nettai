@@ -122,8 +122,8 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         leave_idle(b, r);
         let routine = ai(b, r).charge_shot;
         let action = weapon_slot_routine(b, r, routine);
-        let special = b.weapon_number(ai(b, r).charge_shot).is_some_and(|n| (0x21..=0x26).contains(&n));
-        let kind = if special { 2 } else { 1 };
+        let sticky = ai(b, r).charge_shot.is_some_and(|w| b.content.weapon(w).sticky);
+        let kind = if sticky { 2 } else { 1 };
         return set_attack(b, r, action, kind);
     }
     if ai(b, r).requests & request::BACK_SPECIAL != 0 {
@@ -273,16 +273,15 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle)
         }
         return action;
     }
-    let Some(routine) = b.content.weapon_number(weapon) else {
-        panic!("content error: weapon {:?} has no setup", b.content.defs.weapon(weapon).key)
-    };
-    // These entries are `nullsub_44`: the game starts whatever action the
-    // register it called through holds. (Forms name them only as charged
-    // chip bonuses, which `chip_use` handles before calling here.)
-    if matches!(routine, 0x05 | 0x0D | 0x0E | 0x13 | 0x18 | 0x1F | 0x20 | 0x29 | 0x2D | 0x38) {
-        panic!("weapon routine {routine:#x} is nullsub_44 (off_80117D4): the game starts an action from a stale register")
+    let w = b.content.weapon(weapon);
+    // An A-charge that is its chip has no routine (the original's entry is
+    // `nullsub_44`): started as a weapon, the game starts whatever action
+    // the register it called through holds. (Forms name them only as
+    // A-charges, which `chip_use` handles before calling here.)
+    if w.charged_chip.is_some() {
+        panic!("weapon {:?} is no routine (nullsub_44, off_80117D4): the game starts an action from a stale register", w.key)
     }
-    panic!("weapon routine {routine:#x} (off_80117D4) has no script in the content pack")
+    panic!("weapon {:?} has no setup: nothing implements it yet", w.key)
 }
 
 /// `sub_801265A`: buster damage, attack + 1 (+1 in some forms), at most
