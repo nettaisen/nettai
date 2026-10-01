@@ -7,6 +7,7 @@
 -- one. Then he leaves, and the controller moves on. See
 -- docs/engine/chips.md §3.6.15.
 
+local collision = require("../../rules/collision")
 local flame = require("./flame")
 local navi_chips = require("../../lib/navi-chips/navi")
 
@@ -32,8 +33,8 @@ local CAN_HOLD = 0x10010
 -- its address with the Thumb bit, whose fraction his Z keeps.
 local SPAWNER_ADDRESS = 0x080B921B
 
--- His flames: they burn 30 ticks, and act while the battle is dimmed.
-local FLAME: HeatFlame = { ticks = 0x1E, while_dimmed = true }
+-- His flames act while dimmed and last 30 ticks, as attacks.
+local FLAME = { while_dimmed = true, ticks = 0x1E, is = collision.attack }
 
 -- His actions.
 local APPEAR, STAND, INHALE, FIRE, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10
@@ -103,8 +104,9 @@ local function set_alight(me: Object, x: number, y: number)
         return
     end
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    -- r3 (0 << 16) becomes its Z.
-    flame.spawn(me, x, y, me.element, FLAME, damage, 0)
+    -- The registers (the row, the element and r3, 0 << 16) are its
+    -- position until its init.
+    flame.spawn(me, x, y, me.element, FLAME, damage, Vec3.new(y, me.element, 0))
 end
 
 -- `sub_80B9240`: the cone: one, three, then five panels wide.
