@@ -2,18 +2,19 @@
 -- AirRaid's plane (the original's attack object #0x75, `sub_80D34CC`;
 -- docs/engine/dimming-chips.md §7.2): one of its side's field objects (an
 -- obstacle) in front of its user with a propeller (propeller.luau). It
--- takes off, then, with a jet flame under it (lib/overlay), drops a bomb
+-- takes off, then, with a jet flame under it, drops a bomb
 -- every 10 ticks: a panel strike (objects/panel-strike) on one of the
 -- other side's bodies ahead of it in turn, now and then on a panel next
 -- to it, or on the other side's back column with none ahead. It stays
--- until its lifetime runs out.
+-- until its lifetime runs out. (Its jet flame is LilBoiler's layer kind,
+-- chips/lilbolr/layer.)
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local overlay = require("../../lib/overlay")
+local layer = require("../lilbolr/layer")
 local panel_strike = require("../../objects/panel-strike/panel_strike")
 local panels = require("../../lib/panels")
 local propeller = require("./propeller")
@@ -179,7 +180,7 @@ local function bombing(me: Object)
         me.anim = 2
         me.timer2 = s.plane.bombs
         s.bomb_in = 1
-        s.flame = overlay.spawn(me, { sprite = FLAME, anim = 1, palette = 0 })
+        s.flame = layer.spawn(me, { sprite = FLAME, anim = 1, z_offset = 0, behind = false, own_flip = false, palette = 0 })
         me.phase, me.phase_init = 4, 0
     elseif phase == 4 then
         if battle.over() then
@@ -308,9 +309,7 @@ plane.kind = define.kind {
             if s.propeller then
                 propeller.stop(s.propeller)
             end
-            if s.flame then
-                overlay.stop(s.flame)
-            end
+            layer.finish(s.flame)
             me:destroy()
         end
     end,

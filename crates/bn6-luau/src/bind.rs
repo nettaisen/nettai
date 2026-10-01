@@ -382,9 +382,9 @@ impl UserData for Object {
         });
         methods.add_method(
             "add_parts_of",
-            |_, this, (owner, keep): (mlua::UserDataRef<Object>, Option<bool>)| {
+            |_, this, (owner, keep, stepping): (mlua::UserDataRef<Object>, Option<bool>, Option<bool>)| {
                 let owner = owner.0;
-                with(|api, _| Ok(api.add_parts_of(this.0, owner, keep.unwrap_or(false))))
+                with(|api, _| Ok(api.add_parts_of(this.0, owner, keep.unwrap_or(false), stepping.unwrap_or(false))))
             },
         );
         methods.add_method("remove_parts_of", |_, this, owner: mlua::UserDataRef<Object>| {
@@ -408,6 +408,7 @@ impl UserData for Object {
         methods.add_method("update_sprite_while_paused", |_, this, ()| {
             with(|api, _| Ok(api.update_sprite_while_paused(this.0)))
         });
+        methods.add_method("load_or_step_sprite", |_, this, ()| with(|api, _| Ok(api.load_or_step_sprite(this.0))));
         methods.add_method("attach_point", |_, this, n: LuaValue| {
             let n = u8_arg(n, "attach point")?;
             with(|api, _| Ok(api.attach_point(this.0, n)))
@@ -456,6 +457,7 @@ impl UserData for Object {
             let flag = named(&name, "status flag", StatusFlag::from_name)?;
             with(|api, _| api.set_status(this.0, flag, on).map_err(api_error))
         });
+        methods.add_method("clear_statuses", |_, this, ()| with(|api, _| api.clear_statuses(this.0).map_err(api_error)));
         methods.add_method("status_timer", |_, this, name: mlua::LuaString| {
             let t = named(&name, "status timer", StatusTimer::from_name)?;
             with(|api, _| api.status_timer(this.0, t).map_err(api_error))
@@ -686,6 +688,9 @@ impl UserData for Sprite {
             let id = sprite_id(a, b)?;
             with(|api, _| Ok(api.sprite_load(this.0, id)))
         });
+        methods.add_method("load_like", |_, this, like: mlua::UserDataRef<Object>| {
+            with(|api, _| api.sprite_load_like(this.0, like.0).map_err(api_error))
+        });
         methods.add_method("load_look_of", |_, this, owner: mlua::UserDataRef<Object>| {
             let owner = owner.0;
             with(|api, _| Ok(api.sprite_load_look_of(this.0, owner)))
@@ -759,6 +764,10 @@ impl UserData for Collision {
         methods.add_method("element_damage", |_, this, element: LuaValue| {
             let element = u8_arg(element, "element")?;
             with(|api, _| api.collision_element_damage(this.0, element).map_err(api_error))
+        });
+        methods.add_method("hit_by", |lua, this, ()| {
+            let hitters = with(|api, _| api.collision_hit_by(this.0).map_err(api_error))?;
+            lua.create_sequence_from(hitters.into_iter().map(Object))
         });
     }
 }
@@ -996,6 +1005,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "paused", |_, ()| with(|api, _| Ok(api.is_paused())));
     lib_fn!(lua, t, "over", |_, ()| with(|api, _| Ok(api.is_battle_over())));
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
+    lib_fn!(lua, t, "viewer_sees", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.viewer_sees(side)))
+    });
     for &f in BattleInfo::ALL {
         t.set(
             f.name(),
@@ -1041,6 +1054,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "alive_actors", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         let list = with(|api, _| Ok(api.alive_actors(side)))?;
+        lua.create_sequence_from(list.into_iter().map(Object))
+    });
+    lib_fn!(lua, t, "objects_of", |lua, kind: LuaValue| {
+        let list = with(|api, b| match b.def(&kind) {
+            Some((Registry::Kind, h)) => Ok(api.objects_of_kind(h)),
+            Some((r, _)) => Err(mlua::Error::runtime(format!("battle.objects_of: a {r} is not a kind"))),
+            None => Err(mlua::Error::runtime("battle.objects_of: expected a kind definition")),
+        })?;
         lua.create_sequence_from(list.into_iter().map(Object))
     });
     lib_fn!(lua, t, "rng", |_, ()| with(|api, _| Ok(api.rng())));
@@ -1551,6 +1572,7 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "release_tracking", |_, me: Me| with(|api, _| Ok(api.obstacle_release_tracking(me.0))));
     lib_fn!(lua, t, "absorb_all", |_, absorber: Me| with(|api, _| Ok(api.obstacle_absorb_all(absorber.0))));
     lib_fn!(lua, t, "present", |_, o: Me| with(|api, _| Ok(api.obstacle_present(o.0))));
+    lib_fn!(lua, t, "swallowable", |_, o: Me| with(|api, _| Ok(api.obstacle_swallowable(o.0))));
     for &r in ObstacleRequest::ALL {
         t.set(
             r.name(),

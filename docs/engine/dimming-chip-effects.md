@@ -490,7 +490,7 @@ alliance byte (no flip), RelatedObject1 = r7 and `*r7 = 1`, flags |= 0x10.
   (0x1C for CircGun); palette Param3; sound 0xBD. State update (word); the update runs at once.
 - 0 (`sub_80D6874`): Timer −= 1 (u16); negative (29 updates) → CurAnim 1, action 4.
 - 4 (`sub_80D688C`): if its panel is solid: `sub_80C53A6(x, y, Element, z 0, r4, r6 = damage word, r7 =
-  byte_80D68D8[Param3])` with r4 = 0x0A050001 (Param3 0: region 1, hit effect 5, target 5, self 0xA) or
+  byte_80D68D8[Param3])` with r4 = 0x0A050001 (Param3 0: region 1, hit effect 0, target 5, self 0xA) or
   0x2B050001 (self 0x2B), r7 = 0x00000003 (hit modifier 3) or 0x32540003 (hit modifier 3, bug 0x54 with
   argument 0x32); resolving while dimmed; T4#0 effect 0x21 at (X, Y, Z); sound 0xB9. Then (solid or not)
   `*RelatedObject1 = 0`, state destroy (word).
