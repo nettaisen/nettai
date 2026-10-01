@@ -30,7 +30,7 @@ local bambswrd = require("../bambswrd/chip")
 local stepswrd = require("../stepswrd/chip")
 local protoman_stepswrd = require("../stepswrd/protoman")
 
-local legacy = {
+local by_number = {
     state = slash.STATE,
 }
 
@@ -65,8 +65,8 @@ local function action_of(me: Object): Action
     return a
 end
 
-function legacy.update(me: Object, s: any)
+function by_number.update(me: Object, s: any)
     action_of(me).update(me, s)
 end
 
-return legacy
+return by_number

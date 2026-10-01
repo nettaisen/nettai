@@ -27,10 +27,8 @@ chips/07b-ironshl1/chip.luau 4
 chips/07e-airspin1/chip.luau 6
 chips/083-rflectr1/chip.luau 9
 chips/09a-recov10/chip.luau 1
-chips/0af-busterup/chip.luau 2
 chips/0b7-magcoil/chip.luau 5
 chips/0be-copydmg/chip.luau 5
-chips/0c0-atk-10/chip.luau 5
 chips/11d-synctrgr/chip.luau 1
 chips/152-h-burst/chip.luau 5
 chips/191-delecswd/elec_sword.luau 2
@@ -40,7 +38,11 @@ chips/196-etomahwk/eagle_tomahawk.luau 1
 chips/197-ftornado/tengu_tornado.luau 2
 chips/199-dustbrk/dust_break.luau 2
 chips/blkbomb/bomb.luau 2
+chips/crosswrd/chip.luau 1
+chips/dbldream/chip.luau 1
+chips/ftrsword/chip.luau 1
 chips/guardian/statue.luau 2
+chips/stepswrd/chip.luau 1
 chips/wind/fan.luau 2
 lib/buster.luau 1
 lib/dragon.luau 4
@@ -83,7 +85,6 @@ objects/air-spin/air_spin.luau 15
 objects/anti-recovery/anti_recovery.luau 2
 objects/aqua-needle/aqua_needle.luau 7
 objects/aqua-surge/aqua_surge.luau 7
-objects/area-grab/area_grab.luau 2
 objects/attachment/attachment.luau 4
 objects/aura-head/aura_head.luau 9
 objects/bass-anly-shot/bass_anly_shot.luau 18
@@ -125,10 +126,7 @@ objects/elmnt-bolt/elmnt_bolt.luau 2
 objects/elmnt-ice/elmnt_ice.luau 5
 objects/elmnt-man/elmnt_man.luau 22
 objects/elmnt-vine/elmnt_vine.luau 2
-objects/erase-beam/erase_beam.luau 6
 objects/erase-drop/erase_drop.luau 7
-objects/erase-man/erase_man.luau 7
-objects/erase-mark/erase_mark.luau 2
 objects/erase-ray/erase_ray.luau 6
 objects/falling-rock/falling_rock.luau 3
 objects/fire-hit/fire_hit.luau 3
@@ -139,7 +137,6 @@ objects/flying-shot/flying_shot.luau 11
 objects/follow-effect/follow_effect.luau 10
 objects/gauge-speed/gauge_speed.luau 4
 objects/golem/golem.luau 11
-objects/grab-shot/grab_shot.luau 4
 objects/great-yoyo/great_yoyo.luau 5
 objects/gust/gust.luau 4
 objects/heat-flame/heat_flame.luau 7
