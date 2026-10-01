@@ -13,8 +13,6 @@
 --
 -- When it is done it clears its spawner's `busy` flag.
 
-local viewer = require("../../lib/viewer")
-
 local glow = {}
 
 -- Its variants (the original's first parameter, `off_80C4930`).
@@ -177,7 +175,7 @@ end
 -- `sub_80C48FC`: seen unless the viewer is blind to its side; its variant;
 -- the sprite, while dimmed too.
 local function tick(me: Object)
-    me.visible = viewer.sees(me.alliance)
+    me.visible = battle.viewer_sees(me.alliance)
     act(me)
     me:update_sprite_while_dimmed()
 end
