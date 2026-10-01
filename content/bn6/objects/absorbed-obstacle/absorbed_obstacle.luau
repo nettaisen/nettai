@@ -10,8 +10,6 @@
 -- side that absorbs it, and the obstacle's animation, palette and hidden
 -- sprite parts. See docs/engine/field-objects.md §4.4.
 
-local effects = require("../../lib/effects")
-
 local absorbed_obstacle = {}
 
 export type State = {

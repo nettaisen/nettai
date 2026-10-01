@@ -207,6 +207,34 @@ impl FieldObjects {
         }
     }
 
+    /// Whether one of the two stage slots is free (`sub_8007450`'s test
+    /// before it places a stage object).
+    pub fn stage_slot_free(&self) -> bool {
+        self.slots[Self::OBSTACLE_SLOTS..].iter().any(|s| s.is_none())
+    }
+
+    /// `sub_8007450`'s store: `obj` takes the first free stage slot. False
+    /// if both are taken.
+    pub fn enter_stage(&mut self, obj: ObjectRef) -> bool {
+        match self.slots[Self::OBSTACLE_SLOTS..].iter_mut().find(|s| s.is_none()) {
+            Some(slot) => {
+                *slot = Some(obj);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// A stage object leaves its slot (the original clears the slot whose
+    /// address the object keeps).
+    pub fn leave_stage(&mut self, obj: ObjectRef) {
+        for s in &mut self.slots[Self::OBSTACLE_SLOTS..] {
+            if *s == Some(obj) {
+                *s = None;
+            }
+        }
+    }
+
     /// `sub_800F806`: the class `obj` is registered in (None if it isn't).
     pub fn class_of(&self, obj: ObjectRef) -> Option<u8> {
         let i = self.slots[..Self::OBSTACLE_SLOTS].iter().position(|&s| s == Some(obj))?;

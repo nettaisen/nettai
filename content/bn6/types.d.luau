@@ -281,6 +281,36 @@ export type FlashBombVariant = {
     own_side: boolean?,
 }
 
+-- ---- The field objects (objects/rock, objects/boulder) ---------------------
+
+-- A rock's variant (objects/rock, a row of the original's `byte_80CF934`):
+-- its standing animation, HP, element, the palette of the debris it breaks
+-- into, the sound it breaks with, and its NameID (the field objects' look,
+-- a number until identities come).
+export type RockVariant = {
+    anim: number,
+    hp: number,
+    element: string,
+    debris_palette: number,
+    break_sound: Sound,
+    name: number,
+}
+
+-- How a rock comes onto the field (objects/rock, the original's third
+-- parameter): rising out of its panel (its sprite's first animation), there
+-- at once, falling from above, or placed when the round starts (standing
+-- from the start, and running while the battle is paused until it stands).
+export type RockEntrance = "rise" | "instant" | "fall" | "placed"
+
+-- What a rock is spawned with (objects/rock): its variant, the class of
+-- field-object slot it takes (0, the default: one of its side's two; 1: its
+-- side's one), and its entrance ("rise" by default).
+export type RockSpec = {
+    variant: RockVariant,
+    class: number?,
+    entrance: RockEntrance?,
+}
+
 -- ---- The dimming chips (chips/wind, chips/guardian, ...) -------------------
 
 -- A Wind's or Fan's fan (chips/wind/fan): its palette; `pulls`: it blows

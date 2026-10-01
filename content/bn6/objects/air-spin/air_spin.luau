@@ -17,6 +17,8 @@ export type State = {
     interval: number,
 }
 
+local absorbed_obstacle = require("../absorbed-obstacle/absorbed_obstacle")
+
 local air_spin = {
     state = { target_x = "i32", interval = "i32" },
 }
@@ -28,8 +30,10 @@ local SELF_TYPE, TARGET_TYPE, HIT_MOD = 0x0E, 0x0F, 0x03
 -- Rolling speed (16.16), panels it rolls at most, HP.
 local SPEED, MAX_PANELS, HP = 0x4_0000, 4, 0x190
 local NAME_ID = 0xE5
--- Its field-object class, and its absorbed kind.
-local CLASS, ABSORBED_KIND = 1, 0x0C
+-- Its field-object class, and how it looks absorbed (the original's
+-- obstacle kind 0x0C: its own sprite).
+local CLASS = 1
+local ABSORBED = absorbed_obstacle.look { sprite = asset.sprite("air-spin") }
 -- Effects: a puff of wind (0x14), an explosion (0), the spin's gust (0x43).
 local PUFF, EXPLOSION, GUST = 0x14, 0, 0x43
 local SOUND_SET_DOWN, SOUND_SPIN, SOUND_HIT_BOMB = 0x120, 0xC7, 0x70
@@ -229,7 +233,7 @@ end
 -- navi; blinking out, it blinks first; otherwise it goes in a puff.
 local function removed(me: Object)
     if me:obstacle_flag("absorbed") then
-        obstacle.fly_to_absorber(me, ABSORBED_KIND)
+        obstacle.fly_to_absorber(me, ABSORBED)
     else
         local b = obstacle.blink_out(me)
         if b == "blinking" then
