@@ -62,7 +62,7 @@ local SOUND_STRIKE = asset.sound("beast-over-burst")
 local ARRIVAL = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 }
 -- What it is and reaches: a neutral obstacle that everything reaches
 -- (row 0x0E, while dimmed too, breaking), hit modifier 3.
-local IS = define.collision { id = "guardian/statue", side0 = 0x00810082, side1 = 0x00810082, row_offset = 0x70 }
+local IS = collision.neutral_body
 local HITS, HIT_MOD = collision.everything, 3
 -- The collision types of each side's hits (`sub_80D4FF6`): side 0's
 -- attacks, objects and bodies are the bits 0xAA000000, side 1's
@@ -77,7 +77,7 @@ local STRIKE_REGION: { [number]: Region } = {
     [0] = define.region { field = { require = 0x0020_0000, forbid = 0 } },
     [1] = define.region { field = { require = 0x0040_0000, forbid = 0 } },
 }
-local STRIKE_IS = define.collision { id = "guardian/strike-hit", side0 = 0x8000008E, side1 = 0x4000008E, row_offset = 0xB8 }
+local STRIKE_IS = collision.thrown_piercing_break
 local STRIKE_HITS, STRIKE_HIT_MOD = collision.hits_navis, 3
 local STRIKE_BURST = define.effect { sprite = asset.sprite("beast-over-burst"), anim = 0, palette = 0 }
 local STRIKE_ANIM = 1
