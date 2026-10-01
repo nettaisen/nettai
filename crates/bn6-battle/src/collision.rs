@@ -464,10 +464,19 @@ impl Battle {
         if rm.counter_timer != 0 && c & 0x7F != 0 && c & 0x80 == 0 {
             rm.acc.hit_flags |= 0x40;
         }
+        // What the hit wears off the mood: the byte's low seven bits, but
+        // none on a counter hit (the original reads them from the register
+        // it has just put the counter mark, 0x8000, in).
+        let mut mood_damage = (c & 0x7F) as u16;
         if c & 0x80 == 0 && c & 0x7F != 0 {
-            rm.acc.counter = if rm.counter_timer != 0 { 0x8000 } else { rm.acc.counter.wrapping_add((c & 0x7F) as u16) };
+            if rm.counter_timer != 0 {
+                rm.acc.counter = 0x8000;
+                mood_damage = 0;
+            } else {
+                rm.acc.counter = rm.acc.counter.wrapping_add((c & 0x7F) as u16);
+            }
         }
-        rm.acc.mood_damage = rm.acc.mood_damage.wrapping_add((c & 0x7F) as u16);
+        rm.acc.mood_damage = rm.acc.mood_damage.wrapping_add(mood_damage);
         if hs & 0x100 != 0 {
             rm.acc.drain_hits = rm.acc.drain_hits.wrapping_add(1);
         }
