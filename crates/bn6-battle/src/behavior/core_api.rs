@@ -60,6 +60,7 @@ fn status_bit(flag: StatusFlag) -> u32 {
         StatusFlag::AffectedByIce => f1::AFFECTED_BY_ICE,
         StatusFlag::Bubbled => f1::BUBBLED,
         StatusFlag::HitWhileDimmed => f1::HIT_WHILE_DIMMED,
+        StatusFlag::Carried => kinds::obstacle::obstacle_f1::CARRIED,
     }
 }
 
@@ -939,6 +940,10 @@ impl CoreApi for Battle {
         common::update_sprite_while_paused(self, o);
     }
 
+    fn load_or_step_sprite(&mut self, o: ObjectRef) {
+        common::load_or_step_sprite(self, o);
+    }
+
     fn attach_point(&self, o: ObjectRef, n: u8) -> (i32, i32) {
         kinds::player::attach_point(self, o, n as usize)
     }
@@ -1255,6 +1260,11 @@ impl CoreApi for Battle {
         } else {
             c.f1 &= !status_bit(flag);
         }
+        Ok(())
+    }
+
+    fn clear_statuses(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.collision_of_mut(o)?.f1 = 0;
         Ok(())
     }
 
@@ -1613,6 +1623,7 @@ impl CoreApi for Battle {
             ObstacleCrush::Breaks => Crush::Breaks,
             ObstacleCrush::Destroys => Crush::Destroys,
             ObstacleCrush::SparesBodies => Crush::SparesBodies,
+            ObstacleCrush::Ignores => Crush::Ignores,
         };
         let hold = match hold {
             ObstacleHold::AfterAppearing => Hold::AfterAppearing,
