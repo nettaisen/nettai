@@ -1044,7 +1044,7 @@ export type PlaceSpec = {
     -- The entry's side (field objects take their panel's instead).
     side: number,
     -- Which of the kind's variants the stage names (a record of the
-    -- kind's: one of objects/rock's `variants`).
+    -- kind's: one of chips/rockcube/rock's `variants`).
     variant: any?,
     -- The entry's raw argument (0 unless the stage gives one), for a
     -- spawner that only leaves it in a register.

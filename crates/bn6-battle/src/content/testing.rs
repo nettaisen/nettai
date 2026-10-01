@@ -1047,8 +1047,8 @@ pub fn scripts() -> Scripts {
                 ("chips/whicapsl-invisible/chip", "chips/whicapsl-invisible/chip"),
                 // The field objects (content model v2): the rock with its
                 // debris, RockCube and IceCube, and the stages' boulder.
-                ("objects/rock/rock", "objects/rock/rock"),
-                ("objects/rock/debris", "objects/rock/debris"),
+                ("chips/rockcube/rock", "chips/rockcube/rock"),
+                ("chips/rockcube/debris", "chips/rockcube/debris"),
                 ("chips/rockcube/cube", "chips/rockcube/cube"),
                 ("chips/rockcube/chips", "chips/rockcube/chips"),
                 ("objects/boulder/boulder", "objects/boulder/boulder"),
