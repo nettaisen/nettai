@@ -48,6 +48,7 @@ fn battles_run_the_content_scripts() {
             "bomb",
             "bomb-slash",
             "boomerang",
+            "boulder",
             "bugbomb/bomb",
             "charge-car",
             "charge-man",
@@ -79,14 +80,15 @@ fn battles_run_the_content_scripts() {
             "eraseman/mark",
             "eraseman/navi",
             "falling-rock",
-            "fire-hit",
+            "falling-rock/chip",
+            "firehit/fist",
             "flmhook/fire",
             "flmhook/hook",
             "flshbom/bomb",
             "flying-shot",
             "follow-effect",
             "gauge-speed",
-            "golem",
+            "golmhit/golem",
             "grab/controller",
             "grab/shot",
             "grndman/drill",
@@ -98,8 +100,8 @@ fn battles_run_the_content_scripts() {
             "hit-flash",
             "invisible",
             "junk-shot",
-            "justice-one",
-            "lance",
+            "justcone/strike",
+            "lance/lance",
             "land-mine",
             "lilbolr/boiler",
             "lilbolr/layer",
@@ -115,13 +117,12 @@ fn battles_run_the_content_scripts() {
             "reflector-shield",
             "rising-bubble",
             "rock",
-            "rock-chip",
-            "rock-cube",
-            "rock-debris",
+            "rock/debris",
+            "rockcube/cube",
             "rskyhny/bee",
-            "sand-hole",
-            "sand-spray",
-            "sand-worm",
+            "sandwrm/hole",
+            "sandwrm/spray",
+            "sandwrm/worm",
             "seed",
             "slash-man",
             "slash-wave",
@@ -568,10 +569,11 @@ fn registrations_follow_the_content_data() {
         0x4D, 0x4E, 0x4F, 0x50, 0x52, 0x56, 0x57, 0x58,
     ];
     assert_eq!(actions, expected, "{:?}", d.actions);
-    // An instant chip's record resolves its subtype's effect, and a weapon
-    // that names an effect no chip has (TenguCross's wind) has its own.
-    let gauge = d.chip(c.chip_numbered(testing::FULL_GAUGE).unwrap());
-    assert!(matches!(gauge.usage, crate::content::ChipUsage::Instant(_)), "{:?}", gauge.usage);
+    // An instant chip's record resolves its subtype's effect (the plus
+    // chips' records, the shim's), and a weapon that names an effect no
+    // chip has (TenguCross's wind) has its own.
+    let plus = d.chip(c.chip_numbered(testing::PLUS).unwrap());
+    assert!(matches!(plus.usage, crate::content::ChipUsage::Instant(_)), "{:?}", plus.usage);
     assert!(d.weapon(c.weapon_numbered(0x10)).instant.is_some());
     // A record whose module exports an action runs it, whatever its
     // action number names (the link navis' chips: action 0x0A).
@@ -614,7 +616,7 @@ fn scripted_instant_chips_play_and_roll_back() {
     // with GunDelSols: the plus chip's sparkle shows, and a copy of the
     // battle taken at any tick plays on as the battle does.
     let chips = [
-        testing::chip_handle(testing::FULL_GAUGE),
+        testing::defined_chip(testing::FULL_CUST),
         testing::chip_handle(testing::PLUS),
         testing::defined_chip(testing::BUSTER_UP),
         testing::chip_handle(testing::SUN_GUN_3),
@@ -640,8 +642,15 @@ fn spawning_instant_chips_play_in_a_duel_and_roll_back() {
     // Folders of instant chips that spawn objects (boomerangs, lances,
     // fists, flame hooks, falling fists, golems): a copy of the battle taken
     // at any tick plays on as the battle does.
-    let chips = [testing::BOOMERANG, testing::LANCE, testing::FIST, testing::FLAME_HOOK, testing::JUSTICE, testing::GOLEM];
-    let setup = || scenario::setup_with(&chips);
+    let chips = [
+        testing::defined_chip(testing::BOOMER),
+        testing::defined_chip(testing::LANCE),
+        testing::chip_handle(testing::FIST),
+        testing::chip_handle(testing::FLAME_HOOK),
+        testing::defined_chip(testing::JUSTICE_ONE),
+        testing::defined_chip(testing::GOLEM_HIT),
+    ];
+    let setup = || scenario::setup_with_handles(&chips);
     let tape = scenario::record_on(setup(), 2400, 17);
     let mut b = Battle::new(setup(), scenario::content());
     let whole = digests(&tape, Battle::new(setup(), scenario::content()));
@@ -667,7 +676,12 @@ fn spawning_instant_chips_play_in_a_duel_and_roll_back() {
 /// (and GunDelSols in side 1's: two sides with dimming chips would cut in
 /// on each other).
 fn dimming_setup() -> crate::setup::RoundSetup {
-    let mut s = scenario::setup_with(&[testing::CUBE, testing::VEIL, testing::TRAP]);
+    let chips = [
+        testing::defined_chip(testing::ROCK_CUBE),
+        testing::chip_handle(testing::VEIL),
+        testing::chip_handle(testing::TRAP),
+    ];
+    let mut s = scenario::setup_with_handles(&chips);
     s.players[1] = scenario::setup().players[1];
     s
 }
@@ -704,7 +718,7 @@ fn the_scripted_dimming_chips_and_rocks_play() {
     let (seen, _) = dimming_duel(2400);
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The cube's controller places rocks, which break into debris.
-    assert!(ticks("rock-cube") > 0, "the cube's controller: {seen:?}");
+    assert!(ticks("rockcube/cube") > 0, "the cube's controller: {seen:?}");
     assert!(ticks("rock") > 0, "rocks: {seen:?}");
     // The veil's controller makes its user invisible.
     assert!(ticks("invisible") > 0, "the veil's controller: {seen:?}");
@@ -772,7 +786,7 @@ fn actor_lists_place_scripted_rocks_outside_the_navi_bookkeeping() {
     let rocks: Vec<_> = b.objects.in_order().filter(|r| r.pool == Pool::Attack).collect();
     assert_eq!(rocks.len(), 2);
     let o = b.objects.get(rocks[0]);
-    assert_eq!((b.slot_index(rocks[0]), o.params), (0x59, [1, 0, 3, 0]));
+    assert_eq!(b.kind_key(rocks[0]), "rock");
     assert_eq!((o.damage, o.stamina), (200, 0), "the stage's rocks hit with 200 when thrown");
     // Registered on their panels' sides: (3,3) is side 0's, (4,1) side 1's.
     assert_eq!(b.field.objects.slots[0], Some(rocks[0]));
@@ -784,7 +798,7 @@ fn actor_lists_place_scripted_rocks_outside_the_navi_bookkeeping() {
 #[test]
 fn breaking_a_scripted_rock_throws_debris() {
     use crate::object::{Pool, state};
-    const ROCK_KINDS: [&str; 3] = ["rock", "rock-debris", "engine/effect"];
+    const ROCK_KINDS: [&str; 3] = ["rock", "rock/debris", "engine/effect"];
     let mut b = rock_battle();
     b.spawn_actors();
     let r = b.objects.in_order().find(|r| r.pool == Pool::Attack).unwrap();
@@ -793,7 +807,7 @@ fn breaking_a_scripted_rock_throws_debris() {
     b.round.flags |= crate::battle::battle_flags::FIGHTING;
     run_only(&mut b, &ROCK_KINDS);
     assert_eq!(b.objects.get(r).action, 8, "placed rocks stand at once");
-    assert_eq!(b.objects.get(r).hp, b.content.objects.rock(1).hp);
+    assert_eq!(b.objects.get(r).hp, 200, "the stages' rock cubes have RockCube's HP");
     let before = b.rng.state;
     b.objects.get_mut(r).hp = 0;
     run_only(&mut b, &ROCK_KINDS);
@@ -805,13 +819,71 @@ fn breaking_a_scripted_rock_throws_debris() {
     let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.kind_key(o)).collect();
     assert_eq!(
         &order[..4],
-        ["rock", "engine/effect", "rock-debris", "rock-debris"],
+        ["rock", "engine/effect", "rock/debris", "rock/debris"],
         "the rock, then what it spawned in reverse order"
     );
     assert_eq!(b.objects.get(r).state, state::DESTROY);
     assert_eq!(b.field.objects.slots[0], None);
     run_only(&mut b, &ROCK_KINDS);
     assert!(!b.objects.is_allocated(r));
+}
+
+/// A stage's boulders (the actor lists' entry type 3) take the field's two
+/// stage slots, on their panels' sides, with the header flags their
+/// spawner's bug leaves; they stand once the fight is on, and break into
+/// two debris chunks and dust, leaving their slot.
+#[test]
+fn actor_lists_place_boulders_in_the_stage_slots() {
+    use crate::object::{PanelPos, Pool, flags, state};
+    use crate::setup::NaviStats;
+    const BOULDER_KINDS: [&str; 3] = ["boulder", "rock/debris", "engine/effect"];
+    let stats = NaviStats { support: Some(Default::default()), ..Default::default() };
+    let mut setup = testing::round_setup(testing::BOULDER_BATTLE, stats);
+    setup.settings.effects = 0;
+    let mut b = Battle::new(setup, testing::content());
+    b.spawn_actors();
+    assert_eq!(b.round.alive, [1, 1]);
+    let boulders: Vec<_> = b.objects.in_order().filter(|r| r.pool == Pool::Attack).collect();
+    assert_eq!(boulders.len(), 2, "the field has two stage slots: the list's third boulder isn't placed");
+    assert!(boulders.iter().all(|&r| b.kind_key(r) == "boulder"));
+    let panels: Vec<_> = boulders.iter().map(|&r| b.objects.get(r).panel).collect();
+    assert_eq!(panels, [PanelPos { x: 2, y: 2 }, PanelPos { x: 5, y: 2 }]);
+    // Their panels' sides, and the registry's stage slots (not the sides').
+    assert_eq!(boulders.iter().map(|&r| b.objects.get(r).alliance).collect::<Vec<_>>(), [0, 1]);
+    assert_eq!(b.field.objects.slots, [None, None, None, None, None, None, Some(boulders[0]), Some(boulders[1])]);
+    // The spawner reads the flags through the column (open bus): pause and
+    // dimming bits over garbage, and "not in use".
+    assert_eq!(boulders.iter().map(|&r| b.objects.get(r).flags).collect::<Vec<_>>(), [0xB4, 0x34]);
+    // Before the fight they wait, a pixel back and a pixel down, 500 HP.
+    b.paused = true;
+    run_only(&mut b, &BOULDER_KINDS);
+    run_only(&mut b, &BOULDER_KINDS);
+    let o = b.objects.get(boulders[0]);
+    assert_eq!((o.hp, o.action, o.pos.z, o.flags), (500, 0, -0x1_0000, 0xB4 | flags::VISIBLE));
+    let (_, y) = crate::kinds::player::panel_coordinates(2, 2);
+    assert_eq!(o.pos.y, y - 0x1_0000);
+    // The fight is on: they stand, and stop running while paused.
+    b.paused = false;
+    b.round.flags |= crate::battle::battle_flags::FIGHTING;
+    run_only(&mut b, &BOULDER_KINDS);
+    let o = b.objects.get(boulders[0]);
+    assert_eq!((o.action, o.flags), (8, 0xB0 | flags::VISIBLE));
+    // Broken: two chunks (a jitter draw each, two draws in each one's
+    // init) and dust; it leaves its slot.
+    let before = b.rng.state;
+    b.objects.get_mut(boulders[0]).hp = 0;
+    run_only(&mut b, &BOULDER_KINDS);
+    let mut rng = crate::rng::Rng::new(before);
+    for _ in 0..6 {
+        rng.next();
+    }
+    assert_eq!(b.rng.state, rng.state);
+    let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.kind_key(o)).collect();
+    assert_eq!(&order[..4], ["boulder", "engine/effect", "rock/debris", "rock/debris"]);
+    assert_eq!(b.objects.get(boulders[0]).state, state::DESTROY);
+    assert_eq!(b.field.objects.slots[6..], [None, Some(boulders[1])]);
+    run_only(&mut b, &BOULDER_KINDS);
+    assert!(!b.objects.is_allocated(boulders[0]));
 }
 
 /// A rock picked up and thrown (`sub_8018002`, the request `sub_800F6AC`

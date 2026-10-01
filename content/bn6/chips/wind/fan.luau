@@ -10,6 +10,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local gust = require("../../objects/gust/gust")
@@ -24,6 +25,9 @@ export type State = {
 }
 
 local SPRITE = asset.sprite("fan")
+-- How a fan looks absorbed (both variants' obstacle kind 0: its own
+-- sprite).
+fan.absorbed = absorbed_obstacle.look { sprite = SPRITE }
 local LIFETIME = 0x5A0
 -- Ticks between gusts.
 local GUST_INTERVAL = 0xC
@@ -148,7 +152,7 @@ end
 local function destroyed(me: Object)
     local how = obstacle.removal(me)
     if how == "absorbed" then
-        obstacle.fly_to_absorber(me, (me.state :: State).variant.absorbed_kind)
+        obstacle.fly_to_absorber(me, (me.state :: State).variant.absorbed)
     elseif how ~= "broken" then
         local blink = obstacle.blink_out(me)
         if blink == "blinking" then
