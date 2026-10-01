@@ -6,6 +6,7 @@
 -- he took back at the other side one by one, 20 ticks apart (./junk). See
 -- docs/engine/chips.md §3.6.26.
 
+local navi_chips = require("../../lib/navi-chips/navi")
 local dust_ball = require("../../objects/dust-ball/dust_ball")
 local junk = require("./junk")
 
@@ -30,9 +31,6 @@ local SOUND_THROW = asset.sound("junk-shot")
 -- its address with the Thumb bit, whose fraction his Z keeps.
 local SPAWNER_ADDRESS = 0x080BC0DB
 
--- Panel flags he needs to stay (as one word).
-local CAN_STAND = 0x10010
-
 -- Ticks between throws.
 local THROW_TICKS = 0x14
 
@@ -41,32 +39,8 @@ local APPEAR, TAKE, WIND_UP, THROW, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10
 
 -- `sub_80BBF30`: on his panel, on the ground (Z's whole part cleared).
 local function init(me: Object)
-    me:set_coordinates_from_panel()
-    local p = me.pos
-    me.pos = Vec3.new(p.x, p.y, bit32.band(p.z, 0xFFFF))
-    local sprite = me.sprite
-    sprite:load(SPRITE)
-    sprite.shadow = "ground"
-    me.anim = 0
-    me.anim_loaded = 0
-    sprite:set_animation(0)
-    sprite.palette = 0
-    sprite:set_flip(bit32.bxor(me.alliance, me.flip))
+    navi_chips.stand(me, SPRITE, "ground")
     me:set_lifecycle("update")
-end
-
--- Enter the phase (phase 4; a word store of the timers), or count down;
--- the timer's new value.
-local function countdown(me: Object, ticks: number): number?
-    if me.phase == 0 then
-        me.phase = 4
-        me.timer = ticks
-        me.timer2 = 0
-        return nil
-    end
-    local left = me.timer - 1
-    me.timer = left
-    return left
 end
 
 -- `sub_80BBF94`: he appears; 10 ticks; on, or away if his panel can't
@@ -77,12 +51,11 @@ local function appear(me: Object)
         battle.play_sound(SOUND_APPEAR)
         me.visible = true
     end
-    local left = countdown(me, 0xA)
+    local left = navi_chips.countdown(me, 0xA, true)
     if left == nil or left > 0 then
         return
     end
-    local stands = bit32.band(field.flags(me.panel_x, me.panel_y), CAN_STAND) == CAN_STAND
-    me:set_action(if stands then TAKE else LEAVE)
+    me:set_action(if navi_chips.has_footing(me) then TAKE else LEAVE)
 end
 
 -- `sub_80BC100`: every field object he can take, in the registry's slot
@@ -103,7 +76,7 @@ end
 
 -- `sub_80BBFE8`: 20 ticks; at 10 he takes the field's objects.
 local function suck(me: Object)
-    local left = countdown(me, 0x14)
+    local left = navi_chips.countdown(me, 0x14, true)
     if left == nil then
         return
     end
@@ -125,7 +98,7 @@ local function wind_up(me: Object)
     if me.phase == 0 then
         me.anim = 0xF
     end
-    local left = countdown(me, 0x22)
+    local left = navi_chips.countdown(me, 0x22, true)
     if left == nil then
         return
     end
@@ -176,15 +149,11 @@ local function leave(me: Object)
     if me.phase == 0 then
         me.anim = 4
     end
-    local left = countdown(me, 4)
+    local left = navi_chips.countdown(me, 4, true)
     if left == nil or left >= 0 then
         return
     end
-    local controller = (me.state :: State).controller
-    if controller then
-        navi_chip.navi_left(controller)
-    end
-    me:set_lifecycle("destroy")
+    navi_chips.leave(me, (me.state :: State).controller)
 end
 
 local ACTIONS = { [APPEAR] = appear, [TAKE] = suck, [WIND_UP] = wind_up, [THROW] = throw, [LEAVE] = leave }
@@ -214,15 +183,10 @@ dustman.kind = define.kind {
 -- `sub_80BC0DA`: DustMan for `user`, reporting to `controller` (the
 -- DustMan chips' navi hook, `off_802CD5C[11]`).
 function dustman.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn(dustman.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
+    local o = navi_chips.spawn(dustman.kind, user, spec, SPAWNER_ADDRESS)
     if not o then
         return nil
     end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.related1 = user
-    o.alliance, o.flip = user.alliance, user.flip
-    o:set_damage_word(spec.damage)
     local s = o.state :: State
     s.controller = controller
     return o

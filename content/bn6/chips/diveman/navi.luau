@@ -5,6 +5,7 @@
 -- at his side's front edge of each row, then leaves. See
 -- docs/engine/chips.md §3.6.27.
 
+local navi_chips = require("../../lib/navi-chips/navi")
 local wave = require("./wave")
 
 local diveman = {}
@@ -37,35 +38,9 @@ local SURFACE, WAIT, DIVE, WAVES, RISE, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10, 0x14
 -- `sub_80B99E4`: on his panel, on the ground (Z's whole part cleared),
 -- with his parts.
 local function init(me: Object)
-    me:set_coordinates_from_panel()
-    local p = me.pos
-    me.pos = Vec3.new(p.x, p.y, bit32.band(p.z, 0xFFFF))
-    local sprite = me.sprite
-    sprite:load(SPRITE)
-    sprite.shadow = "ground"
-    me.anim = 0
-    me.anim_loaded = 0
-    sprite:set_animation(0)
-    sprite.palette = 0
-    sprite:set_flip(bit32.bxor(me.alliance, me.flip))
+    navi_chips.stand(me, SPRITE, "ground")
     me:add_navi_parts(ACTOR_TYPE, AI_INDEX, 1)
     me:set_lifecycle("update")
-end
-
--- Enter the phase (phase 4; a word store of the timers when `word`), or
--- count down; true once the timer is 0 or below.
-local function countdown(me: Object, ticks: number, word: boolean): boolean
-    if me.phase == 0 then
-        me.phase = 4
-        me.timer = ticks
-        if word then
-            me.timer2 = 0
-        end
-        return false
-    end
-    local left = me.timer - 1
-    me.timer = left
-    return left <= 0
 end
 
 -- `sub_80B9A60`: he surfaces; 19 ticks.
@@ -75,14 +50,14 @@ local function surface(me: Object)
         battle.play_sound(SOUND_SURFACE)
         me.visible = true
     end
-    if countdown(me, 0x13, true) then
+    if navi_chips.wait(me, 0x13, true) then
         me:set_action(WAIT)
     end
 end
 
 -- `sub_80B9A96`: 30 ticks.
 local function wait(me: Object)
-    if countdown(me, 0x1E, true) then
+    if navi_chips.wait(me, 0x1E, true) then
         me:set_action(DIVE)
     end
 end
@@ -93,7 +68,7 @@ local function dive(me: Object)
         me.anim = 4
         battle.shake_camera(0, 0x1E)
     end
-    if countdown(me, 0x1E, false) then
+    if navi_chips.wait(me, 0x1E, false) then
         me:set_action(WAVES)
     end
 end
@@ -143,7 +118,7 @@ local function rise(me: Object)
     if me.phase == 0 then
         me.anim = 8
     end
-    if countdown(me, 0xE, false) then
+    if navi_chips.wait(me, 0xE, false) then
         me:set_action(LEAVE)
     end
 end
@@ -152,11 +127,7 @@ end
 -- moves on.
 local function leave(me: Object)
     me:remove_navi_parts(ACTOR_TYPE, AI_INDEX)
-    local controller = (me.state :: State).controller
-    if controller then
-        navi_chip.navi_left(controller)
-    end
-    me:set_lifecycle("destroy")
+    navi_chips.leave(me, (me.state :: State).controller)
 end
 
 local ACTIONS = { [SURFACE] = surface, [WAIT] = wait, [DIVE] = dive, [WAVES] = waves, [RISE] = rise, [LEAVE] = leave }
@@ -186,15 +157,10 @@ diveman.kind = define.kind {
 -- `sub_80B9B6E`: DiveMan for `user`, reporting to `controller` (the
 -- DiveMan chips' navi hook, `off_802CD5C[13]`).
 function diveman.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn(diveman.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
+    local o = navi_chips.spawn(diveman.kind, user, spec, SPAWNER_ADDRESS)
     if not o then
         return nil
     end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.related1 = user
-    o.alliance, o.flip = user.alliance, user.flip
-    o:set_damage_word(spec.damage)
     local s = o.state :: State
     s.controller = controller
     return o
