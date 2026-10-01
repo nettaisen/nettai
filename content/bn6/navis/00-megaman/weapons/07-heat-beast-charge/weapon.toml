@@ -1,7 +1,0 @@
-# MegaMan's weapon routine 0x07, HeatCross Beast's charged chip (`sub_8011BD0`),
-# and its action 0x35 (`sub_80ED8C4`) are a script.
-
-id = 0x07
-name = "HeatCross Beast charge"
-action = 0x35
-script = "heat_beast_charge.luau"

@@ -36,6 +36,9 @@ return {
         -- CrosSwrd, SprSonic, DblDream (`byte_80EF958`).
         picks = { crosswrd.action, sonicbom.actions.sprsonic, dbldream.action },
         sword = sword.action,
+        -- SlashCross's A-charge runs it charged: its pick is what becomes
+        -- the charged slash.
+        charged = "own",
         random = 4,
         no_charged = sonicbom.actions.sprsonic,
         -- The picks' chips, by number until they are definitions (§12).

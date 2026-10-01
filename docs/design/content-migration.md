@@ -17,10 +17,9 @@ The exemplars (content model v2, step 7) show the patterns end to end, and are t
 | EraseMan | A navi chip: a navi kind and a `navi` hook builder (`eraseman.summon { aim_ticks }`); kinds spawned with state instead of parameters; chips kept on records behind a registration shim | chips/eraseman/, chips/0ec-eraseman |
 | BusterUp and the plus chips | Instant chips: an `instant` hook per chip; a shared library with the records' path beside it | chips/busterup, chips/atk-10, chips/navi-20, lib/instant/plus.luau, chips/0c0-atk-10 |
 | The link navis' own chips | A record that runs the action its module exports (`{ action = define.action { ... } }`), for an action number registration can't claim; a phased routine on the attack's step with shared helpers; kinds beside the navi, or with the navi chip series that shares them | lib/link_chips.luau, navis/heatman ... navis/dustman (chip.luau and their kinds), chips/190-heatpres ... chips/199-dustbrk |
-| MegaMan's weapons | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a setup that writes its action's state (`navi:action_state(action)`); a weapon whose effect is instant (`instant`); roles the ruleset starts (`forced_charged_shot`, `cross_protect`, `beast_claw`, ..., rules/roles.luau); the kinds only a form's weapon spawns beside it | navis/00-megaman/weapons/`<name>`/weapon.luau, navis/00-megaman/forms/`<form>`/, navis/00-megaman/dash_hit.luau, lib/buster.luau, lib/weapon.luau |
+| MegaMan's weapons | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a setup that writes its action's state (`navi:action_state(action)`); a weapon whose effect is instant (`instant`); roles the ruleset starts (`forced_charged_shot`, `cross_protect`, `beast_claw`, ..., rules/roles.luau); the kinds only a form's weapon spawns beside it; a weapon that asks the attack's chip for its part (`navi.attack_chip`: SlashCross's charged slash, a record a sword's slash names) | navis/00-megaman/weapons/`<name>`/weapon.luau, navis/00-megaman/forms/`<form>`/, navis/00-megaman/dash_hit.luau, lib/buster.luau, lib/weapon.luau |
 
-HeatCross Beast's and ElecCross Beast's charges and SlashCross's slashes (navis/00-megaman/weapons/07-, 09-,
-11- and 12-) are still v1, registered by number.
+No weapon routine is a v1 module any more.
 
 ## 1. What moves and what stays
 
@@ -85,8 +84,9 @@ the migration ends, registration by number (§3.2) resolves the pack's records i
    names by number keeps the pack's record (a Program Advance's ingredient, a dark chip, a navi chip AntiNavi
    checks, a chip with a damage formula): its module returns its action with the compat key as `id`, and a
    registration-by-number shim runs it (chips/036-minibomb, chips/047-sword, chips/056-mchnswrd, chips/0ec-eraseman,
-   chips/0c0-atk-10). A definition whose subtype or parameters a v1 module still reads carries
-   `legacy = { subtype, params }` (the swords SlashCross charges). Both are counted and go with the numbers.
+   chips/0c0-atk-10). A definition whose subtype or parameters a v1 module still reads may carry
+   `legacy = { subtype, params }` (none does since SlashCross's charged slash asks a sword's slash for its
+   charged slash). Both are counted and go with the numbers.
 6. **API.** When a script needs something the API lacks, add it: a `CoreApi` method (crates/bn6-content-api/src/
    api.rs, documented with the routine it is), its implementation (crates/bn6-battle/src/behavior/core_api.rs),
    its binding (crates/bn6-luau/src/bind.rs), and its declaration with a comment in content/bn6/core.d.luau
