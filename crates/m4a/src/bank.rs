@@ -34,7 +34,8 @@ pub struct KeyMapId(pub u16);
 /// The sound mode the game sets up at boot (`m4aSoundInit`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MixerConfig {
-    /// Direct Sound mixing rate, Hz.
+    /// Direct Sound mixing rate, Hz (one of the driver's rates,
+    /// [`MIX_RATES`]).
     pub mix_rate: u32,
     /// Direct Sound channels (the PSG always has four).
     pub ds_channels: u8,
@@ -42,6 +43,31 @@ pub struct MixerConfig {
     pub master_volume: u8,
     /// Reverb level before any song sets one (0 = off).
     pub reverb: u8,
+    /// The DAC's resolution (the sound mode's DA bits, SOUNDBIAS bits
+    /// 14-15): 0 is 9 bits at 32768 Hz, 1 is 8 bits at 65536 Hz, 2 is 7
+    /// bits at 131072 Hz, 3 is 6 bits at 262144 Hz.
+    pub dac_resolution: u8,
+}
+
+/// The driver's mixing rates (`m4aSoundMode`'s rates 1 to 12), Hz.
+pub const MIX_RATES: [u32; 12] = [5734, 7884, 10512, 13379, 15768, 18157, 21024, 26758, 31536, 36314, 40137, 42048];
+/// Samples mixed per frame at each of those rates (`pcmSamplesPerVBlank`).
+const SAMPLES_PER_FRAME: [u32; 12] = [96, 132, 176, 224, 264, 304, 352, 448, 528, 608, 672, 704];
+
+impl MixerConfig {
+    /// Direct Sound samples mixed per frame: the driver's figure for its
+    /// rate, else the nearest whole number.
+    pub fn samples_per_frame(&self) -> u32 {
+        match MIX_RATES.iter().position(|&r| r == self.mix_rate) {
+            Some(i) => SAMPLES_PER_FRAME[i],
+            None => ((self.mix_rate as f64 * 10000.0 - 5000.0) / 597275.0).round().max(1.0) as u32,
+        }
+    }
+
+    /// The DAC's output rate, Hz.
+    pub fn dac_rate(&self) -> u32 {
+        32768 << (self.dac_resolution & 3)
+    }
 }
 
 /// A music player's fixed configuration (the driver's player table).
@@ -128,6 +154,56 @@ pub enum Command {
     EndTie { key: Option<u8> },
     /// TIE (gate 0: held until EOT) or N01..N96 (gate in ticks).
     Note { gate: u8, key: Option<u8>, velocity: Option<u8> },
+    /// MEMACC: an operation on the driver's memory area, a few bytes the
+    /// game reads and writes too (a song tells the game where it is, or
+    /// the game steers a song), on the byte at `address`.
+    MemAcc { op: MemOp, address: u8, operand: u8 },
+}
+
+/// What a MEMACC does to its byte.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MemOp {
+    /// The byte becomes the operand (`mem_set`).
+    Set,
+    /// The operand is added to it, wrapping (`mem_add`).
+    Add,
+    /// The operand is taken from it, wrapping (`mem_sub`).
+    Sub,
+    /// The byte becomes the area's byte at the operand (`mem_mem_set`).
+    SetFromMemory,
+    /// The area's byte at the operand is added to it (`mem_mem_add`).
+    AddFromMemory,
+    /// The area's byte at the operand is taken from it (`mem_mem_sub`).
+    SubFromMemory,
+    /// The track jumps to command `target` if the byte compares so with
+    /// the operand (or, `with_memory`, with the area's byte at the operand).
+    JumpIf { test: MemTest, with_memory: bool, target: u32 },
+}
+
+/// A MEMACC comparison: the byte at the address against the other value,
+/// unsigned.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MemTest {
+    Equal,
+    NotEqual,
+    Greater,
+    GreaterOrEqual,
+    LessOrEqual,
+    Less,
+}
+
+impl MemTest {
+    /// Whether `byte` compares so with `other`.
+    pub fn holds(self, byte: u8, other: u8) -> bool {
+        match self {
+            MemTest::Equal => byte == other,
+            MemTest::NotEqual => byte != other,
+            MemTest::Greater => byte > other,
+            MemTest::GreaterOrEqual => byte >= other,
+            MemTest::LessOrEqual => byte <= other,
+            MemTest::Less => byte < other,
+        }
+    }
 }
 
 /// A voicegroup, a drum kit or a key split's instruments.
@@ -144,6 +220,8 @@ pub struct Voice {
     pub key: u8,
     /// A drum kit instrument's own pan (-128..=126).
     pub pan: Option<i8>,
+    /// A PSG voice's sound length (NRx1's length bits; 0: until stopped).
+    pub length: u8,
     pub envelope: Envelope,
 }
 
@@ -157,6 +235,10 @@ pub struct Envelope {
     pub release: u8,
 }
 
+/// NR10 with no frequency sweep (what the driver writes for a square 1
+/// voice without one).
+pub const NO_SWEEP: u8 = 8;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VoiceKind {
     /// A sample; `fixed` plays it at the mixing rate whatever the key.
@@ -164,16 +246,23 @@ pub enum VoiceKind {
         sample: SampleId,
         fixed: bool,
     },
-    /// PSG square 1 (duty 0..=3: 12.5%, 25%, 50%, 75%).
+    /// PSG square 1 (duty 0..=3: 12.5%, 25%, 50%, 75%), with the NR10
+    /// value it starts its notes with ([`NO_SWEEP`]: none). `fixed` (the
+    /// voice type's 0x08 bit) rounds the frequency to what the DAC's
+    /// resolution plays exactly.
     Square1 {
         duty: u8,
+        sweep: u8,
+        fixed: bool,
     },
     Square2 {
         duty: u8,
+        fixed: bool,
     },
     /// PSG wave channel.
     Wave {
         wave: WaveId,
+        fixed: bool,
     },
     /// PSG noise; `narrow` is the 7-bit LFSR.
     Noise {
@@ -213,6 +302,17 @@ pub struct Sample {
     pub rate: u32,
     pub loop_start: Option<u32>,
     pub data: Vec<i8>,
+    /// The byte after the data: the mixer reads it to interpolate the last
+    /// sample ([`Sample::usual_tail`] is what the game's tools put there).
+    pub tail: i8,
+}
+
+impl Sample {
+    /// The byte the game's tools put after a sample's data: its loop
+    /// start's sample if it loops, else 0.
+    pub fn usual_tail(data: &[i8], loop_start: Option<u32>) -> i8 {
+        loop_start.and_then(|l| data.get(l as usize).copied()).unwrap_or(0)
+    }
 }
 
 /// A PSG wave: 32 4-bit steps.
@@ -263,6 +363,9 @@ impl std::error::Error for BankError {}
 impl SoundBank {
     /// Every index in range, so the driver can trust the bank.
     pub fn validate(&self) -> Result<(), BankError> {
+        if self.mixer.ds_channels == 0 || self.mixer.ds_channels > 12 || self.mixer.mix_rate == 0 {
+            return Err(BankError::Invalid("mixer"));
+        }
         let group_ok = |g: VoicegroupId| (g.0 as usize) < self.voicegroups.len();
         for g in &self.voicegroups {
             for v in &g.voices {
@@ -270,7 +373,7 @@ impl SoundBank {
                     VoiceKind::DirectSound { sample, .. } => self.samples.get(sample.0 as usize).is_some_and(|s| {
                         !s.data.is_empty() && s.loop_start.is_none_or(|l| (l as usize) < s.data.len())
                     }),
-                    VoiceKind::Wave { wave } => (wave.0 as usize) < self.waves.len(),
+                    VoiceKind::Wave { wave, .. } => (wave.0 as usize) < self.waves.len(),
                     VoiceKind::Drums { kit } => group_ok(kit),
                     VoiceKind::Split { group, map } => {
                         group_ok(group)
@@ -293,6 +396,7 @@ impl SoundBank {
                 let n = t.commands.len() as u32;
                 let ok = t.commands.iter().all(|c| match *c {
                     Command::Goto(i) | Command::Call(i) | Command::Repeat { target: i, .. } => i < n,
+                    Command::MemAcc { op: MemOp::JumpIf { target, .. }, .. } => target < n,
                     _ => true,
                 });
                 if !ok {
@@ -303,4 +407,3 @@ impl SoundBank {
         Ok(())
     }
 }
-
