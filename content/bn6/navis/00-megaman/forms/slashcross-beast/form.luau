@@ -17,7 +17,7 @@ return define.form {
     element = "null",
     weakness = { "break" },
     buster_bonus = 0,
-    weapons = { buster = gregar_beast_buster, a_charge = slash_a_charge, alt_a_charge = lunge },
+    weapons = { buster = gregar_beast_buster.weapon, a_charge = slash_a_charge.weapon, alt_a_charge = lunge.weapon },
     mugshot = asset.mugshot("tengucross-beast"),
     identity = {
         version = 0,

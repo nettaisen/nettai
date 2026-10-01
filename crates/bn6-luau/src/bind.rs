@@ -1738,7 +1738,9 @@ pub fn hook_args(lua: &Lua, call: HookCall) -> mlua::Result<mlua::MultiValue> {
 /// A hook's result as the engine takes it.
 pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<Value> {
     match call {
-        // An action: its number (registration by number) or its definition.
+        // An action: its number (registration by number) or its definition;
+        // nothing for a weapon whose own instant effect the engine runs.
+        HookCall::Weapon { .. } if v.is_nil() => Ok(Value::Nil),
         HookCall::Weapon { .. } => match bound.def(&v) {
             Some((Registry::Action, h)) => Ok(Value::Def(Registry::Action, h)),
             Some((r, _)) => Err(mlua::Error::runtime(format!("a weapon routine returns an action, not a {r}"))),
