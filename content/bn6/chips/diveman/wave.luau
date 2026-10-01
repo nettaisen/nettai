@@ -18,7 +18,7 @@ export type State = {
 }
 
 local SPRITE = asset.sprite("diveman")
-local SOUND = asset.sound("tidal-wave")
+local SOUND = asset.sound("wide-shot")
 local ANIM = 0x14
 
 -- The splash (effect 0x2B): DiveMan's sprite.

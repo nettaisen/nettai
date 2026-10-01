@@ -116,7 +116,7 @@ local function lash_hits(me: Object)
             region = regions.single,
             hit_effect = sparks.elec,
             target = collision.hits_navis,
-            self_type = collision.thrown_piercing,
+            self_type = collision.curse,
             damage = me.damage,
             stamina = me.stamina,
             hit_mod = 1,

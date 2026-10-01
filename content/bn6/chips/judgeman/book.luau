@@ -73,7 +73,7 @@ local function init(me: Object)
         return
     end
     me:setup_collision(collision.attack, collision.hits_navis, 1)
-    me.collision:set_hit_effect(sparks.burst)
+    me.collision:set_hit_effect(sparks.heavy)
     me.collision:present()
     me:set_lifecycle("update")
 end

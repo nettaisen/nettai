@@ -100,7 +100,7 @@ local SWORDS = {
 -- GroundCross's drill arm (attachment 0x20) and TenguCross's fan (0x2A)
 -- and its gust (effect 0x44).
 local DRILL_ARM = attachment.look { sprite = asset.sprite("drill-arm"), palette = 0, attach_point = 19 }
-local FAN = attachment.look { sprite = asset.sprite("fan"), palette = 0 }
+local FAN = attachment.look { sprite = asset.sprite("tengu-fan"), palette = 0 }
 local GUST = define.effect { sprite = asset.sprite("swirl"), anim = 0, palette = 0 }
 
 -- The finale's charge: the glow while it builds (effect 0x4E) and the
