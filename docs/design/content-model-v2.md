@@ -2314,9 +2314,9 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (effects, sparks, regions, and
    the charge times of the routines no weapon names), rules/identities.luau, rules/body-overlays.luau and a
    kind's objects/KIND/rows.luau while something still reads its table by number (`data.objects.<table>` in a
-   module, or the engine: the attachments, the sword and shock waves; the rocks', the absorbed obstacles', the
-   sun beam's, the projectiles', the flying shots' and the boomerangs' went with their readers, and GunDelSol's
-   data is its chips' own). bn6-battle's `content::legacy` builds the v1 tables from all of it. Weapons
+   module, or the engine: the attachments' is the last; the rocks', the absorbed obstacles', the sun beam's,
+   the projectiles', the flying shots', the boomerangs' and the sword and shock waves' went with their
+   readers, and GunDelSol's data is its chips' own). bn6-battle's `content::legacy` builds the v1 tables from all of it. Weapons
    are a routine's numbers with the same address *and* charge times (alias routines whose rows differ are
    weapons of their own: `megaman/buster` is routine 0 alone, and `megaman/buster-2e` and five more take its
    `setup` with their own charge times), and every routine has its charge times (the TOML's
