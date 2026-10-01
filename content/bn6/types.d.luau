@@ -160,15 +160,24 @@ export type VariSwordState = {
 
 -- What differs between VarSwrd and NeoVari (lib/swords/vari.luau).
 export type VariSwordSpec = {
+    -- The action's key when no chip definition holds it (its compat key).
+    id: string?,
     -- The sequences by direction flip (0, 1), each a list of joypad words
     -- ending in 0.
     sequences: { [number]: { { number } } },
-    -- The chip each sequence gives.
-    choices: { number },
-    -- A random pick is `choices` by `rng % random`, a Sword past them.
+    -- The action of the chip each sequence gives, and Sword's (what A let
+    -- go of, or the time running out, gives).
+    picks: { Action },
+    sword: Action,
+    -- A random pick is `picks` by `rng % random`, a Sword past them.
     random: number,
-    -- The chip that doesn't turn into the charged sword (action 0x41).
-    no_charged: number,
+    -- The pick that doesn't turn into the charged sword (action 0x41).
+    no_charged: Action,
+    -- Transitional (counted by the ratchet): the picks' chips' numbers
+    -- (`picks`' in order, and Sword's), which the attack's chip takes
+    -- (their records' subtype and parameters are what the Beast rush and
+    -- SlashCross's charged sword read) until those chips are definitions.
+    legacy: { chips: { number }, sword: number },
 }
 
 -- An attachment's look (objects/attachment): its sprite (a sprite asset,
