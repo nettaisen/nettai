@@ -7,9 +7,8 @@
 -- user. The fist, hidden, highlights its panel for 10 ticks, then
 -- strikes: a hit on its panel and 37 ticks of its animation.
 --
--- FireHit1-3 keep the pack's records (they are the ingredients of
--- FlmHook's Program Advances, which name them by number), and run
--- `fist.instant` through chips/06b-firehit1.
+-- The chips are ./chips (FireHit1-3 are the ingredients of FlmHook's
+-- Program Advances).
 
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")

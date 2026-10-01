@@ -2,10 +2,6 @@
 -- Otenko: a statue in front of the user that, for 1800 ticks, raises the
 -- Atk+ bonus of the user's next damaging chip by 1 every 5 ticks, up to 50
 -- (docs/engine/dimming-chip-effects.md §9).
---
--- Its record stays the pack's for now: its extra flags hold a bit (0x01)
--- the chip definitions have no name for. This is its `dimming` hook, which
--- registration by number runs (chips/099-otenko).
 
 local dimming_chips = require("../../lib/dimming")
 local statue = require("./statue")
@@ -45,4 +41,22 @@ local function hook(user: Object, spec: DimmingChipSpec): Object?
     return dimming_chips.spawn(kind, user, spec)
 end
 
-return { dimming = hook }
+return define.chip {
+    id = "otenko",
+    name = "Otenko",
+    description = "Put Otnko\nto raise\natk pwr",
+    codes = { "O" },
+    element = "null",
+    family = "summon",
+    class = "standard",
+    rarity = 4,
+    mb = 66,
+    damage = 1,
+    hit_param = 0,
+    lockout = 0,
+    flags = { "dimming" },
+    extra_flags = { 1 },
+    library = { number = 202, index = 2, sort = 324 },
+    slot_in_limit = 1,
+    dimming = hook,
+}

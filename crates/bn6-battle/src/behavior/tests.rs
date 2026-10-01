@@ -184,7 +184,8 @@ fn battles_run_the_content_scripts() {
             "vdoll/sparkles",
         ]
     );
-    assert!(b.content.defs.action_numbered(0x37).is_some(), "GunDelSol is a script");
+    let sun_gun = b.content.defs.chip(testing::chip_handle(testing::SUN_GUN_3));
+    assert!(matches!(sun_gun.usage, crate::content::ChipUsage::Action(_)), "GunDelSol is a script");
     assert!(b.content.defs.action_numbered(0x10).is_none(), "the step is the engine's");
 }
 
@@ -215,8 +216,8 @@ fn the_duel_fires_scripted_gun_del_sols() {
 fn navi_and_dimming_chips() -> Vec<bn6_content_api::ChipHandle> {
     vec![
         testing::chip_handle(testing::ERASER),
-        testing::defined_chip(testing::AREA_GRAB),
-        testing::defined_chip(testing::PANEL_GRAB),
+        testing::chip_handle(testing::AREA_GRAB),
+        testing::chip_handle(testing::PANEL_GRAB),
         testing::chip_handle(testing::SUN_GUN_3),
     ]
 }
@@ -264,7 +265,7 @@ fn the_scripted_navi_and_dimming_chips_play() {
 fn bee_and_dragon_setup() -> crate::setup::RoundSetup {
     use crate::content::ChipCode;
     use crate::custom::{BattleFolder, FolderChip};
-    let chips = [testing::defined_chip(testing::BEES), testing::defined_chip(testing::DRAGON)];
+    let chips = [testing::chip_handle(testing::BEES), testing::chip_handle(testing::DRAGON)];
     let code = ChipCode::from_letter('V').unwrap();
     let content = testing::content();
     let mut folder = BattleFolder::empty();
@@ -394,7 +395,7 @@ fn the_navi_chip_navis_come_and_go() {
         (testing::BLAST, "blastman/navi"),
     ] {
         let seen = duel_with(&[testing::chip_handle(chip)], 1500, 11);
-        assert!(seen.get(navi).copied().unwrap_or(0) > 0, "navi {navi} of chip {chip:#x}: {seen:?}");
+        assert!(seen.get(navi).copied().unwrap_or(0) > 0, "navi {navi} of chip {chip}: {seen:?}");
     }
 }
 
@@ -420,7 +421,7 @@ fn the_shooting_and_sun_moon_navis_attack() {
 fn scripted_chips_roll_back() {
     // A copy of the battle taken at any tick plays on exactly as the
     // battle does: the scripts' state is all in the battle.
-    let numbered = |ids: &[crate::content::ChipId]| ids.iter().map(|&id| testing::chip_handle(id)).collect::<Vec<_>>();
+    let numbered = |keys: &[&str]| keys.iter().map(|&key| testing::chip_handle(key)).collect::<Vec<_>>();
     for chips in [
         navi_and_dimming_chips(),
         numbered(&[testing::ELEMENTS]),
@@ -447,7 +448,7 @@ fn scripted_chips_roll_back() {
 /// The standard chips content defines that the test content has (actions
 /// that don't fire the buster's projectile), for the folders of a duel.
 fn standard_chips() -> Vec<bn6_content_api::ChipHandle> {
-    vec![testing::defined_chip(testing::CRAK_SHOT)]
+    vec![testing::chip_handle(testing::CRAK_SHOT)]
 }
 
 /// A duel with the standard chips: the ticks each kind was on the field,
@@ -515,17 +516,18 @@ fn the_scripted_swords_play_and_roll_back() {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
             let key = match b.kind_key(r) {
-                "engine/player" => {
-                    format!("engine/player in action {:#04x}", crate::kinds::player::navi_action(&b, r).number(&b.content.defs))
-                }
+                "engine/player" => match crate::kinds::player::running_content_action(&b, r) {
+                    Some(h) => format!("engine/player in {}", b.content.defs.action(h).key),
+                    None => "engine/player".to_string(),
+                },
                 k => k.to_string(),
             };
             *seen.entry(key).or_insert(0) += 1;
         }
     }
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
-    assert!(ticks("engine/player in action 0x13") > 0, "a sword swung: {seen:?}");
-    assert!(ticks("engine/player in action 0x49") > 0, "a strike swung: {seen:?}");
+    assert!(ticks("engine/player in wideswrd/action") > 0, "a sword swung: {seen:?}");
+    assert!(ticks("engine/player in assnswrd/action") > 0, "a strike swung: {seen:?}");
     assert!(ticks("attachment") > 0, "a blade: {seen:?}");
     assert!(ticks("engine/effect") > 0, "a slash: {seen:?}");
     assert!(ticks("engine/afterimage") > 0, "a step sword's afterimages: {seen:?}");
@@ -534,7 +536,7 @@ fn the_scripted_swords_play_and_roll_back() {
 /// Two link navis with some of the link navis' own chips (`LINK_CHIPS`'
 /// entries `chips`) in their folders.
 fn link_chip_setup(chips: &[usize]) -> crate::setup::RoundSetup {
-    let chips: Vec<_> = chips.iter().map(|&i| testing::chip_handle(testing::LINK_CHIPS[i].0)).collect();
+    let chips: Vec<_> = chips.iter().map(|&i| testing::chip_handle(testing::LINK_CHIPS[i])).collect();
     let mut s = scenario::setup_with_handles(&chips);
     let navi = testing::content().navi_numbered(testing::LINK_NAVI);
     for stats in &mut s.navi_stats {
@@ -545,7 +547,7 @@ fn link_chip_setup(chips: &[usize]) -> crate::setup::RoundSetup {
 
 #[test]
 fn the_link_navis_chips_play_and_roll_back() {
-    // Each link navi chip's record runs the action its module exports (its
+    // Each test link chip runs the action of BN6's link navi's chip (its
     // CurAction the content action's): every one runs, with what it
     // spawns, and a copy taken at any tick plays on as the battle does.
     let mut seen = std::collections::BTreeMap::new();
@@ -595,28 +597,21 @@ fn the_link_navis_chips_play_and_roll_back() {
 fn registrations_follow_the_content_data() {
     let c = testing::build();
     let d = &c.defs;
-    // The four SunGun chips share one action, as the thrown chips and the
-    // three swords share theirs (the weapons' actions are definitions, as
-    // are the mend, mirror, bee and dragon chips).
-    let mut actions: Vec<u8> = d.actions.iter().filter_map(|a| a.number).collect();
-    actions.sort();
-    let expected = [0x12, 0x13, 0x37, 0x49];
-    assert_eq!(actions, expected, "{:?}", d.actions);
-    // An instant chip's record resolves its subtype's effect (the plus
-    // chips' records, the shim's), and a weapon that names an effect no
-    // chip has (TenguCross's wind) has its own.
-    let plus = d.chip(c.chip_numbered(testing::PLUS).unwrap());
+    // Every chip's action is a definition (no action is a registration
+    // by number: the weapons' are definitions too).
+    let numbered: Vec<u8> = d.actions.iter().filter_map(|a| a.number).collect();
+    assert_eq!(numbered, [0u8; 0], "{:?}", d.actions);
+    // An instant chip's use is its effect, and a weapon that names an
+    // effect no chip has (TenguCross's wind) has its own.
+    let plus = d.chip(testing::chip_in(&c, testing::PLUS));
     assert!(matches!(plus.usage, crate::content::ChipUsage::Instant(_)), "{:?}", plus.usage);
     assert!(d.weapon(c.weapon_by_key("megaman/tengu-wind")).instant.is_some());
-    // A record whose module exports an action runs it, whatever its
-    // action number names (the link navis' chips: action 0x0A).
-    for (id, _, module) in testing::LINK_CHIPS {
-        let chip = d.chip(c.chip_numbered(id).unwrap());
-        assert_eq!(chip.record.action, 0x0A);
-        match chip.usage {
-            crate::content::ChipUsage::Action(h) => assert!(d.action(h).number.is_none(), "{module}: {:?}", d.action(h)),
-            ref other => panic!("{module}: {other:?}"),
-        }
+    // A chip's action may be another chip's (the test link chips run
+    // BN6's link navis' chips' actions).
+    for (key, bn6) in testing::LINK_CHIPS.iter().zip(["heatpres", "delecswd", "rslash"]) {
+        let (chip, other) = (d.chip(testing::chip_in(&c, key)), d.chip(testing::chip_in(&c, bn6)));
+        assert!(matches!(chip.usage, crate::content::ChipUsage::Action(_)), "{key}: {:?}", chip.usage);
+        assert_eq!(chip.usage, other.usage, "{key}");
     }
     // Handles number each registry in key order: the engine's kinds and
     // the content's together.
@@ -625,12 +620,7 @@ fn registrations_follow_the_content_data() {
     let h = d.kind_by_key("engine/hitbox").unwrap();
     assert_eq!(d.kind(h).slot, None);
     assert_eq!(d.kind_at(crate::object::Pool::Attack, 3), None);
-    // Two chips implementing one action with different scripts is an error.
-    let mut c = testing::build();
-    c.chips[testing::SUN_GUN_2 as usize].script = Some("chips/009-mend/chip".into());
-    let e = c.define().unwrap_err().message;
-    assert!(e.contains("implements action 0x37"), "{e}");
-    // So is naming a script the pack doesn't have.
+    // Naming a script the pack doesn't have is an error.
     let mut c = testing::build();
     c.objects.kinds[0].script = "objects/nowhere".into();
     let e = c.define().unwrap_err().message;
@@ -649,9 +639,9 @@ fn scripted_instant_chips_play_and_roll_back() {
     // with GunDelSols: the plus chip's sparkle shows, and a copy of the
     // battle taken at any tick plays on as the battle does.
     let chips = [
-        testing::defined_chip(testing::FULL_CUST),
+        testing::chip_handle(testing::FULL_CUST),
         testing::chip_handle(testing::PLUS),
-        testing::defined_chip(testing::BUSTER_UP),
+        testing::chip_handle(testing::BUSTER_UP),
         testing::chip_handle(testing::SUN_GUN_3),
     ];
     let setup = || scenario::setup_with_handles(&chips);
@@ -676,12 +666,12 @@ fn spawning_instant_chips_play_in_a_duel_and_roll_back() {
     // fists, flame hooks, falling fists, golems): a copy of the battle taken
     // at any tick plays on as the battle does.
     let chips = [
-        testing::defined_chip(testing::BOOMER),
-        testing::defined_chip(testing::LANCE),
+        testing::chip_handle(testing::BOOMER),
+        testing::chip_handle(testing::LANCE),
         testing::chip_handle(testing::FIST),
         testing::chip_handle(testing::FLAME_HOOK),
-        testing::defined_chip(testing::JUSTICE_ONE),
-        testing::defined_chip(testing::GOLEM_HIT),
+        testing::chip_handle(testing::JUSTICE_ONE),
+        testing::chip_handle(testing::GOLEM_HIT),
     ];
     let setup = || scenario::setup_with_handles(&chips);
     let tape = scenario::record_on(setup(), 2400, 17);
@@ -710,7 +700,7 @@ fn spawning_instant_chips_play_in_a_duel_and_roll_back() {
 /// on each other).
 fn dimming_setup() -> crate::setup::RoundSetup {
     let chips = [
-        testing::defined_chip(testing::ROCK_CUBE),
+        testing::chip_handle(testing::ROCK_CUBE),
         testing::chip_handle(testing::VEIL),
         testing::chip_handle(testing::TRAP),
     ];
@@ -1044,7 +1034,7 @@ fn the_navi_changing_chips_change_the_navi() {
         use crate::content::ChipCode;
         use crate::custom::{BattleFolder, FolderChip};
         let mut s = scenario::setup();
-        let chips = [(testing::defined_chip("hubbatc"), ChipCode(9)), (testing::defined_chip("puncharm"), ChipCode::ASTERISK)];
+        let chips = [(testing::chip_handle("hubbatc"), ChipCode(9)), (testing::chip_handle("puncharm"), ChipCode::ASTERISK)];
         let mut folder = BattleFolder::empty();
         for (slot, &(chip, code)) in folder.chips.iter_mut().zip(chips.iter().cycle()) {
             assert!(testing::content().chip(chip).codes.contains(&code));
@@ -1081,7 +1071,7 @@ fn the_navi_changing_chips_change_the_navi() {
 #[test]
 fn the_slow_gauge_chip_slows_the_gauge() {
     let setup = || {
-        let mut s = scenario::setup_with_handles(&[testing::defined_chip(testing::SLOW_GAUGE)]);
+        let mut s = scenario::setup_with_handles(&[testing::chip_handle(testing::SLOW_GAUGE)]);
         s.players[1] = scenario::setup().players[1];
         s
     };
@@ -1190,11 +1180,10 @@ fn play_error(behaviors: Behaviors) -> Option<String> {
     r.err().map(|e| e.downcast_ref::<String>().cloned().unwrap_or_default())
 }
 
-const GUN_DEL_SOL: &str = "chips/001-sungun1/chip";
-const UPDATE: &str = "function by_number.update(me: Object, s: any)\n";
+const GUN_DEL_SOL: &str = "chips/gundels/action";
+const UPDATE: &str = "    local function update(me: Object, s: State)\n";
 
-/// GunDelSol's update (the numbered registration's, which runs the chip's
-/// own) with `line` added at its top.
+/// GunDelSol's action's update with `line` added at its top.
 fn in_update(line: &str) -> Content {
     patched(GUN_DEL_SOL, &[(UPDATE, &format!("{UPDATE}    {line}\n"))])
 }
@@ -1217,7 +1206,7 @@ fn global_writes_are_rejected_at_load() {
 
 #[test]
 fn module_tables_and_data_are_frozen() {
-    for line in ["by_number.uses = me.step", "data.chips[me.chip].gun_del_sol.firing_ticks = 1", "math.floor = math.ceil"] {
+    for line in ["action.uses = me.step", "data.rules.sine[1] = 0", "math.floor = math.ceil"] {
         let e = play_error(load(&in_update(line)).unwrap()).expect("the write fails");
         assert!(e.contains("readonly"), "{line}: {e}");
     }
@@ -1227,7 +1216,7 @@ fn module_tables_and_data_are_frozen() {
 fn tables_captured_by_functions_are_frozen() {
     let c = patched(
         GUN_DEL_SOL,
-        &[("local by_number = {", "local seen = {}\nlocal by_number = {"), (UPDATE, &format!("{UPDATE}    seen[1] = me.step\n"))],
+        &[("local action = {}", "local seen = {}\nlocal action = {}"), (UPDATE, &format!("{UPDATE}    seen[1] = me.step\n"))],
     );
     let e = play_error(load(&c).unwrap()).expect("the write fails");
     assert!(e.contains("readonly"), "{e}");
@@ -1270,7 +1259,7 @@ fn runaway_scripts_stop() {
 fn content_errors_name_the_script() {
     let b = load(&in_update("error(\"boom\")")).unwrap();
     let e = play_error(b).expect("stopped");
-    assert!(e.contains("action v1/action-37 (chips/001-sungun1/chip.luau's update)") && e.contains("boom"), "{e}");
+    assert!(e.contains("action gundels3/action") && e.contains("chips/gundels/action.luau") && e.contains("boom"), "{e}");
 }
 
 #[test]
@@ -1321,7 +1310,8 @@ fn a_panic_inside_content_leaves_the_vm_sound() {
         // A Rust panic inside a Luau call: the reactive abort GunDelSol
         // calls isn't ported and panics when a defense triggered.
         if let Some(p) = c.player(0)
-            && crate::kinds::player::navi_action(&c, p).number(&c.content.defs) == 0x37
+            && crate::kinds::player::running_content_action(&c, p)
+                .is_some_and(|h| c.content.defs.action(h).key == "gundels3/action")
         {
             let actor = c.objects.get(p).actor.unwrap();
             c.actors.get_mut(actor).requests |= crate::actor::request::ANTI_SWORD_TRIGGERED;
@@ -1397,7 +1387,7 @@ fn trap_bomb_mine_setup() -> crate::setup::RoundSetup {
         testing::chip_handle(testing::ELEM_TRAP),
         testing::chip_handle(testing::TIME_BOMB),
         testing::chip_handle(testing::TIME_BOMB_PLUS),
-        testing::defined_chip(testing::MINE),
+        testing::chip_handle(testing::MINE),
     ]);
     s.players[1] = scenario::setup().players[1];
     s
@@ -1495,7 +1485,7 @@ const SENSOR_CHIPS: &[&str] = &["sensor1", "sensor2", "sensor3"];
 const SUMMON_CHIPS: &[&str] = &["sumnblk1", "sumnblk2", "sumnblk3"];
 
 fn defined(keys: &[&str]) -> Vec<bn6_content_api::ChipHandle> {
-    keys.iter().map(|k| testing::defined_chip(k)).collect()
+    keys.iter().map(|k| testing::chip_handle(k)).collect()
 }
 
 /// The test content with the middle column (4) missing: the panel in

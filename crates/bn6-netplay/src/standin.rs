@@ -8,7 +8,7 @@ use crate::world::Game;
 use bn6_battle::battle::top;
 use bn6_battle::console::ConsoleSetup;
 use bn6_battle::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
-use bn6_battle::content::{ChipCode, ChipId, Content};
+use bn6_battle::content::{ChipCode, Content};
 use bn6_battle::input::keys;
 use bn6_battle::setup::{
     BattleSettings, Form, GaugeSpeed, Navi, NaviCustBugs, NaviStats, NaviWeapons, RoundSetup, SetScore, Supports,
@@ -54,12 +54,12 @@ impl Game for StandInBattle {
     }
 }
 
-/// A battle folder of `content`'s chips with these numbers (id, code)
-/// over and over, in this order (not shuffled).
-pub fn folder(content: &Content, chips: &[(ChipId, u8)]) -> BattleFolder {
+/// A battle folder of these chips of `content` (key, code) over and over,
+/// in this order (not shuffled).
+pub fn folder(content: &Content, chips: &[(&str, u8)]) -> BattleFolder {
     let mut f = BattleFolder::empty();
-    for (slot, &(id, code)) in f.chips.iter_mut().zip(chips.iter().cycle()) {
-        let chip = content.chip_numbered(id).unwrap_or_else(|| panic!("chip {id:#x} is not in the content"));
+    for (slot, &(key, code)) in f.chips.iter_mut().zip(chips.iter().cycle()) {
+        let chip = content.defs.chip_by_key(key).unwrap_or_else(|| panic!("the content defines no chip {key:?}"));
         *slot = Some(FolderChip::new(chip, ChipCode(code)));
     }
     f

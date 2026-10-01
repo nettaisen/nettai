@@ -4,7 +4,8 @@
 use super::library::testing::{EVERY_CODE, TestLibrary, chip};
 use super::screen::{OK_SLOT, SPECIAL_SLOT};
 use super::*;
-use crate::content::{ChipClass, ChipCode, ChipFlags, ChipId};
+use crate::content::{ChipClass, ChipCode, ChipFlags};
+use crate::custom::library::testing::ChipId;
 use crate::input::keys;
 use bn6_content_api::{ChipHandle, FormHandle};
 
@@ -229,7 +230,7 @@ fn mega_chips_past_the_limit_turn_invalid() {
     p.press(keys::A);
     p.wait(20);
     let hand = p.side.sent.as_ref().unwrap().result.hand.clone().unwrap();
-    let (invalid, code) = screen::INVALID_CHIP;
+    let (invalid, code) = (library::testing::INVALID, screen::INVALID_CODE);
     assert_eq!(hand.ids[0], Some(ChipHandle(invalid)));
     assert_eq!(hand.selection[0], Some(FolderChip::new(ChipHandle(invalid), code)));
 }

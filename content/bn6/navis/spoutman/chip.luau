@@ -5,10 +5,6 @@
 -- shower (navis/spoutman/drip_shower) around him for 90 ticks before
 -- jumping back; else he only recovers. See docs/engine/standard-chips.md,
 -- "Action 0x0A".
---
--- Its record stays the pack's (its damage grows with his level, which
--- chip definitions take with step 10's damage formulas) and names this
--- module, whose `action` it runs (docs/design/content-model-v2.md §12).
 
 local drip_shower = require("./drip_shower")
 local link = require("../../lib/link_chips")
@@ -165,7 +161,22 @@ local PHASES = {
     [BACK] = back,
 }
 
-return {
+return define.chip {
+    id = "dripshwr",
+    name = "DripShwr",
+    description = "Send rvlv\nshwr 3fwd\nhit 8pnls",
+    codes = { "A" },
+    element = "aqua",
+    family = "aqua",
+    class = "special",
+    rarity = 0,
+    mb = 99,
+    damage = { formula = "navi_level", base = 20, per_level = 10 },
+    hit_param = 10,
+    lockout = 0,
+    flags = { "has_damage", "library", "variable_damage" },
+    library = { number = 405, index = 0, sort = 7 },
+    slot_in_limit = 1,
     -- `sub_80F15CE` (`off_80F15E0`).
     action = define.action {
         id = "dripshwr/action",
