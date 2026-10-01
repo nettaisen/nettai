@@ -277,4 +277,3 @@ rules/body-overlays.luau 1
 rules/identities.luau 1
 rules/numbers.luau 4
 rules/roles.luau 3
-rules/status.luau 96

@@ -12,6 +12,7 @@ local collision = require("../../rules/collision")
 local panels = require("../../lib/panels")
 local regions = require("../../lib/regions")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 local whip = require("./whip")
 
 local judgeman = {}
@@ -52,7 +53,7 @@ local COLUMNS = { [0] = { 5, 4, 3, 2 }, [1] = { 2, 3, 4, 5 } }
 local BOOK_FLOOR, BOOK_FORBID = 0x10, 0x0F88_0080
 
 -- The lash: paralysing (status 0x11).
-local LASH_STATUS = 0x11
+local LASH_STATUS = statuses.paralyze_120
 
 -- His actions.
 local APPEAR, STAND, RAISE, LASH, BOOKS, WAIT_BOOKS, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10, 0x14, 0x18
