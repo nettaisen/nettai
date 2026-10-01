@@ -1,10 +1,10 @@
 --!strict
--- Meteors: thirty meteors (objects/falling-meteor) fall on the enemy's
+-- Meteors: thirty meteors (./falling_meteor) fall on the enemy's
 -- area, one every 10 ticks, cycling through its panels from the far column
 -- (docs/engine/dimming-chip-effects.md §6).
 
 local dimming_chips = require("../../lib/dimming")
-local falling_meteor = require("../../objects/falling-meteor/falling_meteor")
+local falling_meteor = require("./falling_meteor")
 
 export type State = {
     -- The Atk+ / cross bonus the telop shows (+0x32), which the meteors'
