@@ -168,6 +168,42 @@ export type FlashBombVariant = {
     own_side: boolean?,
 }
 
+-- ---- The dimming chips (chips/wind, chips/guardian, ...) -------------------
+
+-- A Wind's or Fan's fan (chips/wind/fan): its palette; `pulls`: it blows
+-- Fan's pulling gust from the far column rather than Wind's pushing one
+-- from the enemy's front column; ticks from becoming its side's wind to
+-- the first gust; HP; its NameID (the field objects' look) and its kind
+-- among absorbed obstacles.
+export type FanVariant = {
+    palette: number,
+    pulls: boolean,
+    wait: number,
+    hp: number,
+    name: number,
+    absorbed_kind: number,
+}
+
+-- CircGun's gun (chips/circgun/gun; the original's chip parameters): the
+-- ticks between its steps less one, its shots, and its look (the palette;
+-- look 1's shots hit as another attacker with a bug).
+export type CircGunVariant = {
+    period: number,
+    shots: number,
+    look: number,
+}
+
+-- An Anubis statue (chips/anubis/statue, `byte_80CF0C0`): its animation,
+-- the ticks between its drains, HP, lifetime, and NameID (the field
+-- objects' look).
+export type AnubisVariant = {
+    anim: number,
+    period: number,
+    hp: number,
+    lifetime: number,
+    name: number,
+}
+
 -- A panel change (objects/panel-changer, a row of the original's
 -- `byte_80E272C`): which panels (all, the changer's row, the panel in
 -- front of it, its own) meeting its side's condition become `panel` (on
