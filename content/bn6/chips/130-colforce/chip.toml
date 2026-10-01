@@ -1,4 +1,0 @@
-# ColForce, an instant chip (action 0x1C, subtype 15): its effect calls the
-# soldiers (`sub_80E94DC`).
-
-script = "../../objects/col-force/col_force.luau"
