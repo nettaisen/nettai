@@ -93,6 +93,8 @@ roles (rules/roles.luau: what it starts, spawns and shows itself), never by numb
    `scratch_position` for a position the spawner's registers leave), an action's (actions.toml: a chip's
    action is `<chip>/action`, the key it gets by default; give `id` when no chip holds it). A number belongs to
    one key (actions may share one); a key or name you add goes into compat/curation.toml too, for review.
+   Compat is edited by hand, as the modules are (nothing generates it any more); `gen-content check`
+   compares every number in it with the ROM's (§5.2).
 5. **Roles.** When the ruleset must start, spawn or show the thing itself (a counter, a kind, the chip a
    zeroed field reads), it is a role: the enum in crates/bn6-battle/src/content/roles.rs, its type in
    core.d.luau's `RolesSpec`, and its entry in rules/roles.luau.
