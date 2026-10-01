@@ -8,7 +8,7 @@
 
 local stand_in = require("../../lib/dimming/stand_in")
 local attachment = require("../../objects/attachment/attachment")
-local cornsht = require("../cornsht/chips")
+local cornsht = require("../cornsht/action")
 local sower = require("./sower")
 
 local farmer = {}

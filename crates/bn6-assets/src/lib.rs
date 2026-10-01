@@ -312,12 +312,9 @@ pub struct ChipIcon {
 }
 
 impl Hud {
-    /// The icon of the chip with this key, else of the pack's chip with
-    /// this number (a record the pack numbers isn't keyed by its name
-    /// yet); none if the chip has no icon.
-    pub fn chip_icon(&self, key: &str, number: Option<u16>) -> Option<&Tiles> {
-        let by_key = self.chip_icons.iter().find(|i| i.key == key);
-        let icon = by_key.or_else(|| self.chip_icons.get(number? as usize))?;
+    /// The icon of the chip with this key; none if the chip has no icon.
+    pub fn chip_icon(&self, key: &str) -> Option<&Tiles> {
+        let icon = self.chip_icons.iter().find(|i| i.key == key)?;
         (!icon.tiles.is_empty()).then_some(&icon.tiles)
     }
 
@@ -383,10 +380,9 @@ mod tests {
     fn chip_icons_are_found_by_key_then_number() {
         let icon = |key: &str, n: usize| ChipIcon { key: key.into(), tiles: Tiles { pixels: vec![1; n * Tiles::TILE] } };
         let hud = Hud { chip_icons: vec![icon("cannon", 4), icon("no-icon", 0), icon("sword", 4)], ..Hud::default() };
-        assert_eq!(hud.chip_icon("sword", None), Some(&hud.chip_icons[2].tiles));
-        assert_eq!(hud.chip_icon("v1/chip-000", Some(0)), Some(&hud.chip_icons[0].tiles));
-        assert_eq!(hud.chip_icon("no-icon", None), None);
-        assert_eq!(hud.chip_icon("other", None), None);
+        assert_eq!(hud.chip_icon("sword"), Some(&hud.chip_icons[2].tiles));
+        assert_eq!(hud.chip_icon("no-icon"), None);
+        assert_eq!(hud.chip_icon("other"), None);
     }
 
     #[test]

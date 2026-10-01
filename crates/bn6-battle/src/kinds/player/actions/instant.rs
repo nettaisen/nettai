@@ -25,8 +25,6 @@ pub enum Effect {
     /// A weapon's own effect (the original's subtype 0x14, TenguCross's
     /// wind): it runs, and the navi waits 8 ticks.
     RunsThenWaits(FnId),
-    /// A pack record's subtype nothing implements yet.
-    Unported(u8),
 }
 
 /// The wait after a weapon's effect.
@@ -75,13 +73,8 @@ fn run_effect(b: &mut Battle, r: ObjectRef) {
         Some(Effect::Runs(hook) | Effect::RunsThenWaits(hook)) => {
             crate::behavior::call_hook(b, hook, HookCall::InstantChip { user: r, spec });
         }
-        // Null entries: the game jumps to address 0.
-        Some(Effect::Unported(subtype)) if matches!(subtype, 7 | 0x12) => {
-            panic!("instant chip subtype {subtype:#x} has no routine in off_80EC3F0 (the game jumps to address 0)")
-        }
-        Some(Effect::Unported(subtype)) => {
-            panic!("instant chip subtype {subtype:#x} (off_80EC3F0) has no script in the content pack")
-        }
+        // (The original's table has null entries, effects 7 and 0x12,
+        // where the game jumps to address 0: no chip names them.)
         None => panic!("the instant chips' action without an effect (neither a chip's nor a weapon's)"),
     }
 }

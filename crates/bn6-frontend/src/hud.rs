@@ -760,10 +760,9 @@ fn icon_parts<'a>(
     }
     let hand = &b.hands[o.alliance as usize];
     let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten() else { return };
-    // A chip's icon is the pack's image under the chip's key (a record the
-    // pack numbers is found by its number).
+    // A chip's icon is the pack's image under the chip's key.
     let def = b.content.defs.chip(chip);
-    let Some(tiles) = hud.chip_icon(&def.key, def.record.id) else {
+    let Some(tiles) = hud.chip_icon(&def.key) else {
         problems.note(format!("chip {:?} ({}) has no icon in the pack", def.key, def.record.name));
         return;
     };

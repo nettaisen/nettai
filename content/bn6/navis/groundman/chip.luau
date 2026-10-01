@@ -8,10 +8,6 @@
 -- the way (no solid ground, a body of the other side's or an object), he
 -- drops none. Then he comes up and is back on his panel. See
 -- docs/engine/standard-chips.md, "Action 0x0A".
---
--- Its record stays the pack's (its damage grows with his level, which
--- chip definitions take with step 10's damage formulas) and names this
--- module, whose `action` it runs (docs/design/content-model-v2.md §12).
 
 local collision = require("../../rules/collision")
 local drill = require("../../chips/grndman/drill")
@@ -218,7 +214,22 @@ end
 
 local PHASES = { [READY] = ready, [DIG] = dig, [ROCKFALL] = rockfall, [RISE] = rise, [HOME] = home, [REST] = rest }
 
-return {
+return define.chip {
+    id = "rc-brakr",
+    name = "RC Brakr",
+    description = "DrillAtk.\nGo fwd &\nshwr rock",
+    codes = { "G" },
+    element = "null",
+    family = "break",
+    class = "special",
+    rarity = 0,
+    mb = 99,
+    damage = { formula = "navi_level", base = 30, per_level = 10 },
+    hit_param = 10,
+    lockout = 0,
+    flags = { "has_damage", "library", "variable_damage" },
+    library = { number = 408, index = 0, sort = 7 },
+    slot_in_limit = 1,
     -- `sub_80F1C1C` (`off_80F1C30`).
     action = define.action {
         id = "rc-brakr/action",

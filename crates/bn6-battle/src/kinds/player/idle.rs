@@ -321,14 +321,15 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     a.status &= !status::CONTROLLABLE;
     a.status |= status::CHIP_IN_PROGRESS;
     // The other player's console shows the chip's name (sub_801EB18),
-    // unless it is a cut-in chip (its telop does) or chip 0x185.
+    // unless it is a cut-in chip (its telop does) or the invalid chip
+    // (the original's 0x185).
     let (used, damage, bonus) = {
         let a = &ai(b, r).attack;
         (a.chip, a.damage, a.extra)
     };
     if let Some(used) = used
         && chip.is_some_and(|c| b.content.chip(c).flags.0 & crate::content::ChipFlags::DIMMING == 0)
-        && b.chip_number(Some(used)) != Some(0x185)
+        && !b.content.defs.roles.is_chip(crate::content::ChipRole::Invalid, used)
     {
         let side = b.objects.get(r).alliance;
         b.show_used_chip(side, used, damage, bonus);
@@ -395,12 +396,12 @@ impl Support {
         }
     }
 
-    /// The chip record the controller's telop names (its +0x30).
-    fn telop_chip(self) -> u16 {
+    /// The role of the chip the controller's telop names (its +0x30).
+    fn telop_chip(self) -> crate::content::ChipRole {
         match self {
-            Support::Rush => 0x179,
-            Support::Beat => 0x17A,
-            Support::Tango => 0x17B,
+            Support::Rush => crate::content::ChipRole::Rush,
+            Support::Beat => crate::content::ChipRole::Beat,
+            Support::Tango => crate::content::ChipRole::Tango,
         }
     }
 }
@@ -415,8 +416,12 @@ impl Support {
 fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Option<ChipHandle>) {
     let h = b.objects.get(host);
     let (panel, side) = (h.panel, h.alliance);
-    // (The numeric API's chip, as the controller's state carries it.)
-    let chip = if support == Support::Rush { b.api_chip_field(chip, 0) } else { 0 };
+    // (The chip Rush eats, which the controller's state carries.)
+    let chip_value = |h: Option<ChipHandle>| {
+        h.map_or(bn6_content_api::Value::Nil, |h| bn6_content_api::Value::Def(bn6_content_api::Registry::Chip, h.0))
+    };
+    let eaten = chip_value(chip.filter(|_| support == Support::Rush));
+    let telop = chip_value(b.content.defs.roles.try_chip(support.telop_chip()));
     // The spawn's position is the caller's r1..r3: the host's panel row
     // and two zeros.
     let pos = crate::object::Vec3 { x: panel.y as i32, y: 0, z: 0 };
@@ -430,13 +435,12 @@ fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Optio
         o.alliance = side;
         o.damage = 0;
         o.stamina = 0;
-        let telop = bn6_content_api::Value::Int(support.telop_chip() as i64);
         crate::behavior::set_state_field(b, c, "telop_chip", telop);
         // The same for the presentation.
-        let named = b.content.chip_numbered(support.telop_chip());
+        let named = b.content.defs.roles.try_chip(support.telop_chip());
         b.objects.get_mut(c).telop_chip = named.map(|chip| crate::hud::TelopChip { chip: Some(chip), ..Default::default() });
         crate::behavior::set_state_variant(b, c, "support", support.name());
-        crate::behavior::set_state_field(b, c, "eaten", bn6_content_api::Value::Int(chip as i64));
+        crate::behavior::set_state_field(b, c, "eaten", eaten);
     }
     b.start_dimming(side, true, controller, host);
 }

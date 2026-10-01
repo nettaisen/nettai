@@ -14,9 +14,10 @@ use crate::dimming::{self, DimmingChip};
 /// What the controller needs to bring its navi.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
+    /// The chip (the original keeps its navi's number, the chip's
+    /// subtype, at object +0x19: the chip says what the controller asks of
+    /// it).
     pub chip: DimmingChip,
-    /// Which navi (`off_802CD5C`; object +0x19, the chip's subtype).
-    pub navi: u8,
     /// The damage word (object +0x2C).
     pub damage: u32,
     /// The chip's parameters (object +4).
@@ -44,7 +45,6 @@ fn vars_mut(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 #[derive(Clone, Copy, Debug)]
 pub struct Spec {
     pub element: u8,
-    pub navi: u8,
     pub params: [u8; 4],
     pub damage: u32,
     pub chip: DimmingChip,
@@ -56,7 +56,8 @@ pub struct Spec {
 /// trap instead: the controller is AntiRecv's counterattack.
 pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
     let side = b.objects.get(user).alliance;
-    if s.navi == ROLL && b.chip_number(b.linked[(side ^ 1) as usize].chip) == Some(heal::ANTI_RECOVERY) {
+    let heals = s.chip.chip.is_some_and(|h| b.content.chip(h).traits.has(crate::content::ChipTraits::HEALS));
+    if heals && b.linked_trap(side ^ 1) == Some(crate::content::Trap::AntiRecovery) {
         return spring_anti_recovery(b, user, s);
     }
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::NaviChip, Vec3::default(), s.params)?;
@@ -72,16 +73,12 @@ pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
     o.flip = flip;
     o.vars = crate::kinds::Vars::NaviChip(Vars {
         chip: s.chip,
-        navi: s.navi,
         damage: s.damage,
         params: s.params,
         navi_acting: false,
     });
     Some(r)
 }
-
-/// Roll's navi (`off_802CD5C[0]`), whose chips heal.
-const ROLL: u8 = 0;
 
 /// `loc_80E1968`: Roll against AntiRecv. The trap's mark over the user
 /// (`sub_800ABC6`), the other side's record is spent (`sub_802CEA6`), and
@@ -151,9 +148,12 @@ fn set_phase(b: &mut Battle, r: ObjectRef, phase: u8) {
 
 /// `sub_80E1830`: the user warps out (30 ticks), the navi acts until it
 /// leaves, 30 ticks, the user warps back in (30 ticks), then the undim.
-/// Navi 0x17 leaves the user in place.
+/// A chip whose user stays (the original's navi 0x17) warps it neither
+/// way; one whose navi brings the user back (navi 0) doesn't warp it in.
 fn effect(b: &mut Battle, r: ObjectRef) {
-    let navi = vars(b, r).navi;
+    use crate::content::ChipTraits;
+    let traits = b.content.chip(b.content.chip_or_zeroed(vars(b, r).chip.chip)).traits;
+    let stays = traits.has(ChipTraits::USER_STAYS);
     match b.objects.get(r).phase {
         // sub_80E1854
         0 => {
@@ -161,7 +161,7 @@ fn effect(b: &mut Battle, r: ObjectRef) {
                 let o = b.objects.get_mut(r);
                 o.timer = 0x1E;
                 o.phase_init = 4;
-                if navi != 0x17 {
+                if !stays {
                     let u = user(b, r);
                     navi_warp::spawn(b, u, navi_warp::Warp::Out);
                 }
@@ -194,7 +194,7 @@ fn effect(b: &mut Battle, r: ObjectRef) {
         // sub_80E18F8
         _ => {
             if b.objects.get(r).phase_init == 0 {
-                if navi == 0 || navi == 0x17 {
+                if stays || traits.has(ChipTraits::NAVI_RETURNS_USER) {
                     return common::set_action(b, r, 0x10);
                 }
                 let u = user(b, r);
@@ -211,31 +211,22 @@ fn effect(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `off_802CD5C[navi]`: bring the chip's navi, with the damage and the
-/// bonus: the chip's `navi` hook, or a pack record's subtype's
-/// registration. (The
-/// game also records the last navi chip used, `byte_203C960`, which
-/// nothing in a battle reads.)
+/// bonus: the chip's `navi` hook. (HackJack's and Django's entries of the
+/// original's table are null, and the game jumps to address 0: their
+/// chips' hooks say so. The game also records the last navi chip used,
+/// `byte_203C960`, which nothing in a battle reads.)
 fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let v = vars(b, r).clone();
     let damage = v.damage.wrapping_add(v.chip.bonus as u32);
     let o = b.objects.get(r);
     let (panel, element) = (o.panel, o.element);
     let user = user(b, r);
-    use crate::content::{ChipUsage, Unported};
-    let chip =
-        v.chip.chip.or_else(|| b.content.chip_numbered(0)).expect("the pack's chip 0 (a zeroed chip field reads it)");
+    use crate::content::ChipUsage;
+    let chip = b.content.chip_or_zeroed(v.chip.chip);
     let navi = match b.content.defs.chip(chip).usage {
         ChipUsage::Navi(hook) => {
             let spec = NaviChipSpec { panel, element, params: v.params, damage };
             crate::behavior::call_hook(b, hook, HookCall::NaviChip { user, controller: r, spec }).object()
-        }
-        // HackJack's and Django's entries are NULL: the game jumps to
-        // address 0.
-        ChipUsage::Unported(Unported::Navi(navi @ (0x12 | 0x13))) => {
-            panic!("navi chip navi {navi:#x} is NULL in off_802CD5C (the game jumps to address 0)")
-        }
-        ChipUsage::Unported(Unported::Navi(navi)) => {
-            panic!("content error: no script implements navi chip subtype {navi} (off_802CD5C)")
         }
         u => panic!("chip {:?} is a navi chip's, but it is used as {u:?}", b.content.defs.chip(chip).key),
     };
