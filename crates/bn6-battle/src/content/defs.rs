@@ -543,23 +543,6 @@ fn export(definitions: &Definitions, module: &str, name: &str, whose: &str) -> R
     Ok(FnSource::export(module, name))
 }
 
-/// The action a chip record's module exports as `action`, which the record
-/// runs as its own (a chip definition's `action`), whatever its action
-/// number names: the link navis' chips, whose number (0x0A) is the user's
-/// own action table's (docs/design/content-model-v2.md §12, "A record's
-/// action by its module"). None for a module registered by number (its
-/// `update` and `state`); a module can't be both.
-fn record_action<'d>(definitions: &'d Definitions, module: &str, whose: &str) -> Result<Option<&'d str>, ContentError> {
-    let Some(m) = definitions.module(module) else { return Ok(None) };
-    let Some(action) = &m.action else { return Ok(None) };
-    if m.functions.iter().any(|f| f == "update") {
-        return Err(ContentError::new(format!(
-            "{whose}: {module}.luau exports both an action ({action}) and `update`: a chip runs one"
-        )));
-    }
-    Ok(Some(action))
-}
-
 /// A chip definition's record (docs/design/content-model-v2.md §3.1): the
 /// fields the engine reads, with the lock-on mode by the number `r` gives
 /// it, and the chips it names (its Program Advance recipes' ingredients, a
@@ -937,10 +920,6 @@ impl Defs {
         for c in &content.chips {
             let Some(module) = &c.script else { continue };
             let whose = format!("chip {:#05x} ({})", c.id.unwrap_or_default(), c.name);
-            if record_action(&definitions, module, &whose)?.is_some() {
-                // The chip runs the action its module exports, below.
-                continue;
-            }
             match c.action {
                 DIMMING_CHIP_ACTION => {
                     let f = export(&definitions, module, "dimming_chip", &whose)?;
@@ -1104,9 +1083,33 @@ impl Defs {
             actions.binary_search_by(|a| a.key.as_str().cmp(key)).ok().map(|i| ActionHandle(i as u16))
         };
         let mut chips = Entries::new(Registry::Chip);
-        // A chip definition's own use: exactly one of its `action`,
-        // `dimming`, `navi` and `instant` (none: `Ok(None)`).
-        let own_usage = |d: &Definition, functions: &mut Functions| -> Result<Option<ChipUsage>, ContentError> {
+        // Chip records by number (content whose chips are Rust records,
+        // the engine's test content's): each under a transitional key,
+        // used as registration by number resolves from its action and
+        // subtype.
+        for c in &content.chips {
+            let key = format!("v1/chip-{:03x}", c.id.unwrap_or_default());
+            let by_subtype = |table: &BTreeMap<u8, FnId>, f: fn(FnId) -> ChipUsage, unported: fn(u8) -> Unported| {
+                table.get(&c.subtype).map_or(ChipUsage::Unported(unported(c.subtype)), |&h| f(h))
+            };
+            let usage = match c.action {
+                DIMMING_CHIP_ACTION => by_subtype(&dimming_hooks, ChipUsage::Dimming, Unported::Dimming),
+                NAVI_CHIP_ACTION => by_subtype(&navi_hooks, ChipUsage::Navi, Unported::Navi),
+                INSTANT_CHIP_ACTION => by_subtype(&instant_hooks, ChipUsage::Instant, Unported::Instant),
+                n => match actions.iter().position(|a| a.number == Some(n)) {
+                    Some(i) => ChipUsage::Action(ActionHandle(i as u16)),
+                    None => ChipUsage::Unported(Unported::Action(n)),
+                },
+            };
+            chips.add(
+                key.clone(),
+                ChipDef { key, record: c.clone(), usage, links: ChipLinks::default() },
+                "a chip record".to_string(),
+            );
+        }
+        // The chips content defines: each with exactly one use, its
+        // `action`, `dimming`, `navi` or `instant`.
+        for d in definitions.of(Registry::Chip) {
             let mut usages = Vec::new();
             match d.spec.field("action") {
                 Data::Nil => {}
@@ -1122,62 +1125,9 @@ impl Defs {
                     usages.push(usage(functions.id(slot(d, field)?)));
                 }
             }
-            match usages[..] {
-                [] => Ok(None),
-                [usage] => Ok(Some(usage)),
-                _ => Err(ContentError::new(format!(
-                    "{}.luau: chip {} needs exactly one of `action`, `dimming`, `navi` and `instant`",
-                    d.module, d.key
-                ))),
-            }
-        };
-        // The pack's chips: those a definition gives by number (its legacy
-        // marker) under its key, the others' records (the test content's)
-        // under a transitional key. A numbered definition's use is its own
-        // where it has one, else what registration by number resolves from
-        // the record's action and subtype (a behaviour still a v1 module).
-        let chip_keys: BTreeMap<ChipId, &str> =
-            legacy.chips.iter().filter_map(|(k, c)| Some((c.id?, k.as_str()))).collect();
-        for c in &content.chips {
-            let n = c.id.unwrap_or_default();
-            let (key, whose, own) = match chip_keys.get(&n) {
-                Some(k) => {
-                    let d = definitions.get(Registry::Chip, k).expect("a numbered chip's definition");
-                    (k.to_string(), format!("defined in {}.luau", d.module), own_usage(d, &mut functions)?)
-                }
-                None => (format!("v1/chip-{n:03x}"), "the pack's chip record".to_string(), None),
-            };
-            // Registration by number: the record's action, or for the
-            // ruleset's generic chip actions its subtype's registration. A
-            // record whose module exports an action runs that instead, as
-            // a chip definition's `action` does.
-            let by_subtype = |table: &BTreeMap<u8, FnId>, f: fn(FnId) -> ChipUsage, unported: fn(u8) -> Unported| {
-                table.get(&c.subtype).map_or(ChipUsage::Unported(unported(c.subtype)), |&h| f(h))
-            };
-            let exported = match (&own, &c.script) {
-                (None, Some(module)) => record_action(&definitions, module, &key)?,
-                _ => None,
-            };
-            let usage = match (own, exported, c.action) {
-                (Some(usage), _, _) => usage,
-                (None, Some(a), _) => ChipUsage::Action(action_handle(a).expect("a defined action")),
-                (None, None, DIMMING_CHIP_ACTION) => by_subtype(&dimming_hooks, ChipUsage::Dimming, Unported::Dimming),
-                (None, None, NAVI_CHIP_ACTION) => by_subtype(&navi_hooks, ChipUsage::Navi, Unported::Navi),
-                (None, None, INSTANT_CHIP_ACTION) => by_subtype(&instant_hooks, ChipUsage::Instant, Unported::Instant),
-                (None, None, n) => match actions.iter().position(|a| a.number == Some(n)) {
-                    Some(i) => ChipUsage::Action(ActionHandle(i as u16)),
-                    None => ChipUsage::Unported(Unported::Action(n)),
-                },
-            };
-            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage, links: ChipLinks::default() }, whose);
-        }
-        for d in definitions.of(Registry::Chip) {
-            if legacy.chips.contains_key(&d.key) {
-                continue;
-            }
-            let Some(usage) = own_usage(d, &mut functions)? else {
+            let [usage] = usages[..] else {
                 return Err(ContentError::new(format!(
-                    "{}.luau: chip {} needs exactly one of `action`, `dimming`, `navi` and `instant` (or, for a behaviour still a v1 module, a legacy marker with its `number`)",
+                    "{}.luau: chip {} needs exactly one of `action`, `dimming`, `navi` and `instant`",
                     d.module, d.key
                 )));
             };
@@ -1581,11 +1531,10 @@ mod tests {
         c.assets = crate::content::testing::asset_names_used(&c.scripts.modules);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        // The modules that return a table with a `state` (the v1 modules
-        // registration by number runs: fewer as families convert) give its
-        // layout.
-        let states = c.defs.definitions.modules.iter().filter(|m| m.state.is_some()).count();
-        assert!(states > 0, "{states} module states");
+        // Every chip is a definition with its own use: none is a record
+        // registration by number runs.
+        assert!(c.chips.is_empty() && c.defs.chips.len() > 300, "{} chips", c.defs.chips.len());
+        assert!(c.defs.chips.iter().all(|chip| !matches!(chip.usage, ChipUsage::Unported(_))));
         // The numbered tables are the definitions' (step 5): what the
         // modules define of them shares their entries, so the engine's
         // byte holds them all.

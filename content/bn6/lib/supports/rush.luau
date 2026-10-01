@@ -15,9 +15,9 @@ local effects = require("../effects")
 local regions = require("../regions")
 
 export type State = {
-    -- The chip he eats, as the ruleset's numeric API gives it (the
-    -- original's third and fourth parameters).
-    eaten: number,
+    -- The chip he eats (the original's third and fourth parameters), if
+    -- any.
+    eaten: Chip?,
 }
 
 local rush = {}
@@ -27,10 +27,8 @@ local APPEAR_SOUND = asset.sound("place")
 local BITE_SOUND = asset.sound("bite")
 -- The status byte his bite carries.
 local STATUS = 0x12
--- The chip he leaves in the hand: the second WhiCapsl
--- (chips/whicapsl-invisible). A chip's number until that chip is a
--- definition (its record stays for the dimming service).
-local SPARED_CHIP = 0x17E
+-- The chip he leaves in the hand: the second WhiCapsl.
+local SPARED_CHIP = require("../../chips/whicapsl-invisible/chip")
 
 -- `byte_80C34A8`: what his navi's panel must be for him to appear there,
 -- by side (else at his side's middle).
@@ -226,13 +224,13 @@ end
 rush.kind = define.kind {
     id = "rush",
     pool = "actor",
-    state = { eaten = "u16" },
+    state = { eaten = "chip" },
     update = update,
 }
 
 -- `sub_80C34B8`: Rush, for `controller` (whose `out` flag he sets, and
 -- clears when he goes), eating chip `eaten`.
-function rush.spawn(controller: Object, eaten: number): Object?
+function rush.spawn(controller: Object, eaten: Chip?): Object?
     local o = battle.spawn(rush.kind, Vec3.zero)
     if not o then
         return nil

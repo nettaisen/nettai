@@ -6,12 +6,11 @@
 -- the navi. On the custom screen a plus chip folds into the chip before it
 -- (its `modifier`); this is its use alone.
 --
--- Atk+10, FinalGun and NumTrap are `instant = plus.attack`, Navi+20
--- `plus.navi`, WhiCapsl `plus.attack_with(plus.PARALYZE)`. The pack's
--- records of the effect that the ruleset or a Program Advance still names
--- by number (MegaBstr, Atk+10's record, Atk+30, Uninstll, DarkPlus) run
--- `plus.by_record` through chips/0c0-atk-10. The BeastOut chip's effect is
--- the sparkle alone.
+-- Atk+10, Atk+30, FinalGun, NumTrap, MegaBstr and DarkPlus are `instant =
+-- plus.attack`, Navi+20 `plus.navi`, WhiCapsl
+-- `plus.attack_with(plus.PARALYZE)` and Uninstll
+-- `plus.attack_with(plus.UNINSTALL)`. The BeastOut chip's effect and the
+-- invalid chip's are the sparkle alone (`plus.sparkle_alone`).
 
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 
@@ -69,11 +68,10 @@ function plus.attack_with(flags: number): (user: Object, spec: InstantChipSpec) 
     end
 end
 
--- A record of the effect: the bonus its first parameter names, and the
--- extra in its third and fourth (the upper halfword).
-function plus.by_record(user: Object, spec: InstantChipSpec)
-    local p = spec.params
-    effect(user, p[1], bit32.bor(p[3], bit32.lshift(p[4], 8)))
+-- The BeastOut chip's `instant` hook, and the invalid chip's (instant chip
+-- effect 0, `sub_80104E0`): the sparkle, whatever the source.
+function plus.sparkle_alone(user: Object, _spec: InstantChipSpec)
+    plus.sparkle(user)
 end
 
 return plus

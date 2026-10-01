@@ -170,10 +170,15 @@ pub enum ChipRole {
     BeastOut,
     /// What an illegal pick counts as in a selection (`getChipID_802A54E`).
     Invalid,
+    /// The chips the NaviCust supports' telops name (`sub_80E90FE`).
+    Rush,
+    Beat,
+    Tango,
 }
 
 impl ChipRole {
-    pub const ALL: [ChipRole; 3] = [ChipRole::Zeroed, ChipRole::BeastOut, ChipRole::Invalid];
+    pub const ALL: [ChipRole; 6] =
+        [ChipRole::Zeroed, ChipRole::BeastOut, ChipRole::Invalid, ChipRole::Rush, ChipRole::Beat, ChipRole::Tango];
 
     /// Its name in `rules/roles.luau`'s `chips`.
     pub fn name(self) -> &'static str {
@@ -181,6 +186,9 @@ impl ChipRole {
             ChipRole::Zeroed => "zeroed",
             ChipRole::BeastOut => "beast_out",
             ChipRole::Invalid => "invalid",
+            ChipRole::Rush => "rush",
+            ChipRole::Beat => "beat",
+            ChipRole::Tango => "tango",
         }
     }
 

@@ -1265,29 +1265,6 @@ export type Sword = {
     slash: SwordSlash?,
 }
 
--- A chip's record and its own data.
-export type ChipData = {
-    id: number,
-    name: string,
-    element: string,
-    family: string,
-    class: string,
-    flags: { string },
-    hit_param: number,
-    action: number,
-    subtype: number,
-    beast_lockon: boolean,
-    params: { number },
-    lockout: number,
-    lockon_mode: number,
-    damage: number,
-    gun_del_sol: GunDelSol?,
-    -- The HP a recovery chip restores (action 0x20).
-    recovery: number?,
-    sword: Sword?,
-    script: string?,
-}
-
 export type NaviData = {
     id: number,
     name: string,
@@ -1424,7 +1401,6 @@ export type ShockWave = { id: number, sprite: SpriteId, anim: number, ticks: num
 export type ObjectKindData = { pool: Pool, index: number, script: string }
 
 export type PackData = {
-    chips: { [number]: ChipData },
     -- Hit-region shapes by region number: the panels' offsets `{ dx, dy }`
     -- from the anchor (dx facing right).
     regions: { [number]: { { number } } },
@@ -1560,6 +1536,20 @@ export type WeaponSpec = {
 export type Weapon = WeaponSpec
 
 -- A chip: its record, and exactly one use.
+-- A chip's damage by formula: the opponent's HP; an SP navi chip's, by its
+-- navi's deletion time (its slot of the rules' `sp-chips`, and the damage
+-- for each of that section's time steps); the custom gauge's; the HP the
+-- user has lost; the last two digits of the user's HP; half the opponent's
+-- max HP; a link navi's own chip's, by its level.
+export type DamageFormula =
+    { formula: "opponent_hp" }
+    | { formula: "sp_navi", slot: string, by_time: { number } }
+    | { formula: "gauge" }
+    | { formula: "hp_lost" }
+    | { formula: "hp_last_digits" }
+    | { formula: "half_opponent_max_hp" }
+    | { formula: "navi_level", base: number, per_level: number }
+
 export type ChipSpec = {
     id: string,
     name: string,
@@ -1572,7 +1562,9 @@ export type ChipSpec = {
     class: string?,
     rarity: number?,
     mb: number?,
-    damage: any?,
+    -- A number below 1000, or a formula the ruleset computes when the chip
+    -- enters a hand.
+    damage: (number | DamageFormula)?,
     hit_param: number?,
     lockout: number?,
     flags: { string }?,
@@ -1583,33 +1575,24 @@ export type ChipSpec = {
     beast: { lockon: any, rush: boolean? }?,
     library: { number: number, index: number, sort: number }?,
     slot_in_limit: number?,
+    -- What the ruleset asks of the chip: "no_chain" (the Beast rush's
+    -- chain leaves it out), "aura_bonus" (it hits harder while the user's
+    -- barrier holds), "no_cut_in" (the other side can't cut in on its
+    -- dimming), "element_sword" (a link navi's own chip's family bonus
+    -- counts it), "navi_slot" (AntiNavi turns it back though it lacks the
+    -- `navi` flag), "heals" (AntiRecv springs on it).
     traits: { string }?,
-    dark_substitute: any?,
+    -- The trap it is while a side's defensive-chip record holds it:
+    -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
+    -- "anti_recovery".
+    trap: string?,
+    -- A dark chip: the chip its user gets without bug frags, and what its
+    -- use adds to the user's HP bug.
+    dark_substitute: Chip?,
+    hp_bug: number?,
     modifier: any?,
     program_advances: { any }?,
-    -- Transitional (counted by the ratchet): the original's subtype and
-    -- parameter bytes, for what reads them of the chip besides its own use
-    -- (a chip still on the by-number shims; SlashCross's A-charge for a
-    -- sword whose slash doesn't name its charged slash); its `number`, for a
-    -- chip something still names by number (a recipe, the Cross special, a
-    -- navi's own chip), with what the ruleset reads of it by number (the
-    -- action number, a damage formula as `damage = 1000 + n` and its
-    -- table, a dark chip's substitute, the per-family data v1 modules
-    -- read); and for a chip still a v1 module (with no use of its own
-    -- here), that module (`script`). docs/design/content-model-v2.md §12.
-    legacy: {
-        subtype: number?,
-        params: { number }?,
-        number: number?,
-        action: number?,
-        script: string?,
-        damage: number?,
-        sp_damage: { number }?,
-        navi_damage: { base: number, per_level: number }?,
-        dark_substitute: number?,
-        recovery: number?,
-        sword: any?,
-    }?,
+    -- Its use: exactly one of these.
     action: Action?,
     dimming: ((user: Object, spec: DimmingChipSpec) -> Object?)?,
     navi: ((user: Object, controller: Object, spec: NaviChipSpec) -> Object?)?,
@@ -1696,6 +1679,17 @@ export type RolesSpec = {
         falling_rock: (Kind | LegacyKind)?,
         support: (Kind | LegacyKind)?,
         anti_recovery: (Kind | LegacyKind)?,
+    }?,
+    -- The chips the ruleset names: what a zeroed chip field reads, the
+    -- custom screen's Beast Out chip and its invalid selection's, and the
+    -- chips the supports' telops name.
+    chips: {
+        zeroed: Chip?,
+        beast_out: Chip?,
+        invalid: Chip?,
+        rush: Chip?,
+        beat: Chip?,
+        tango: Chip?,
     }?,
     hooks: {
         -- The NaviCust FirstBarrier: raise its barrier and the barrier's
