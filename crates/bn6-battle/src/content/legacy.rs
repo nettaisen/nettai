@@ -1,6 +1,6 @@
 //! The tables the ruleset and v1 modules still read by number, built from
 //! what the content defines (docs/design/content-model-v2.md §12, step 5):
-//! the pack's chips, navis and forms by number, weapons' charge times,
+//! the pack's chips, navis and forms by number,
 //! the rule sections, collision types, statuses and lock-on modes, and the numbered tables (effects,
 //! sparks, regions, the object kinds' rows).
 //!
@@ -24,29 +24,14 @@ use serde_json::{Map, Value as Json};
 use super::*;
 use crate::field::PanelType;
 
-/// What registration by number reads of the chips, navis, forms and
-/// weapons the content defines, by their definitions' keys.
+/// What registration by number reads of the chips, navis and forms the
+/// content defines, by their definitions' keys.
 #[derive(Clone, Debug, Default)]
 pub struct Legacy {
     /// The pack's chips: each definition's record, with its number.
     pub chips: BTreeMap<String, ChipData>,
     pub navis: BTreeMap<String, NaviData>,
     pub forms: BTreeMap<String, FormData>,
-    pub weapons: BTreeMap<String, LegacyWeapon>,
-    /// Charge times of the weapon routine numbers no weapon names.
-    pub routine_charges: BTreeMap<u8, Vec<u16>>,
-}
-
-/// A weapon registration by number reads: its routine numbers, the v1
-/// module that implements it and what else that module implements.
-#[derive(Clone, Debug, Default)]
-pub struct LegacyWeapon {
-    pub name: String,
-    pub routines: Vec<u8>,
-    pub script: Option<String>,
-    pub action: Option<u8>,
-    pub instant_chip: Option<u8>,
-    pub charge_ticks: Vec<u16>,
 }
 
 fn err(d: &Definition, e: impl std::fmt::Display) -> ContentError {
@@ -62,9 +47,9 @@ pub struct Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    /// The numbers of the chips, navis, forms, weapons, collision types,
-    /// statuses and lock-on modes the definitions give (their `legacy`
-    /// markers, a collision type's row).
+    /// The numbers of the chips, navis, forms, collision types, statuses
+    /// and lock-on modes the definitions give (their `legacy` markers, a
+    /// collision type's row).
     pub fn new(assets: &'a AssetNames, definitions: &Definitions) -> Resolver<'a> {
         let mut numbers = HashMap::new();
         let mut put = |d: &Definition, n: Option<i64>| {
@@ -74,9 +59,6 @@ impl<'a> Resolver<'a> {
         };
         for d in definitions.of(Registry::Chip).iter().chain(definitions.of(Registry::Navi)).chain(definitions.of(Registry::Form)) {
             put(d, d.spec.field("legacy").field("number").int());
-        }
-        for d in definitions.of(Registry::Weapon) {
-            put(d, d.spec.field("legacy").field("routines").item(1).int());
         }
         // A lock-on mode reads as its handle (its place among the
         // definitions, which are in key order).
@@ -467,8 +449,6 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
             "shock-waves" => content.objects.shock_waves = numbered(r, spec, &at, Some("id")).map_err(e)?,
             "projectiles" => content.objects.projectiles = numbered(r, spec, &at, Some("id")).map_err(e)?,
             "flying-shots" => content.objects.flying_shots = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            // The weapons' charge times by routine are built with the weapons.
-            "weapon-routines" => {}
             other => return Err(e(format!("{at}: the engine has no rule section `{other}`"))),
         }
     }
@@ -518,7 +498,7 @@ fn strip(spec: &mut Data, fields: &[&str]) {
     }
 }
 
-// ---- Chips, navis, forms, weapons -----------------------------------------------------
+// ---- Chips, navis, forms ---------------------------------------------------------------
 
 /// Whether a chip definition is a numbered record whose behaviour is still
 /// a v1 module: its `legacy` marker gives its `number`.
@@ -580,7 +560,13 @@ fn fields(d: &Definition, r: &Resolver, skip: &[&str]) -> Result<Map<String, Jso
 
 fn navi(d: &Definition, r: &Resolver) -> Result<NaviData, ContentError> {
     // The design's fields the engine doesn't read yet (phase C).
-    let mut o = fields(d, r, &["id", "legacy", "identity", "banners", "own_chip", "actions", "traits", "mugshots"])?;
+    // (Its weapons, fresh stats and HP after a Cross change are read by
+    // handle, with the registries: `Defs::build`.)
+    let mut o = fields(
+        d,
+        r,
+        &["id", "legacy", "identity", "banners", "own_chip", "actions", "traits", "mugshots", "weapons", "fresh", "cross_hp"],
+    )?;
     let number = d.spec.field("legacy").field("number").int().ok_or_else(|| err(d, "needs a legacy `number`"))?;
     o.insert("id".into(), Json::from(number));
     let banners = d.spec.field("banners");
@@ -600,7 +586,8 @@ fn navi(d: &Definition, r: &Resolver) -> Result<NaviData, ContentError> {
     serde_json::from_value(Json::Object(o)).map_err(|m| err(d, m))
 }
 
-/// A form's record, and its palette in a Cross (none: 0).
+/// A form's record (its weapons are read by handle, with the registries:
+/// `Defs::build`), and its palette in a Cross (none: 0).
 fn form(d: &Definition, r: &Resolver) -> Result<(FormData, Option<u8>), ContentError> {
     let mut o = fields(
         d,
@@ -610,58 +597,11 @@ fn form(d: &Definition, r: &Resolver) -> Result<(FormData, Option<u8>), ContentE
     let number = d.spec.field("legacy").field("number").int().ok_or_else(|| err(d, "needs a legacy `number`"))?;
     o.insert("id".into(), Json::from(number));
     o.entry("weakness").or_insert(Json::Array(Vec::new()));
-    // Its weapon routines (0xFF: none), by slot: a weapon (its first
-    // routine), or `legacy { routine = n }` for another of its routines.
-    let weapons = d.spec.field("weapons");
-    let mut w = Map::new();
-    for slot in ["mode9_a", "a_charge", "buster", "charge_shot", "back_special", "alt_a_charge"] {
-        let at = format!("form {}.weapons.{slot}", d.key);
-        let n = match weapons.field(slot) {
-            Data::Nil => 0xFF,
-            v => match r.json(v, &at).map_err(|m| err(d, m))? {
-                Json::Number(n) => n.as_i64().unwrap_or(0xFF),
-                Json::Object(o) => o.get("routine").and_then(Json::as_i64).ok_or_else(|| err(d, format!("{at}: a weapon, or a legacy `routine`")))?,
-                _ => return Err(err(d, format!("{at}: a weapon, or a legacy `routine`"))),
-            },
-        };
-        w.insert(slot.into(), Json::from(n));
-    }
-    o.insert("weapons".into(), Json::Object(w));
     if let Some(n) = name_record(d, r)? {
         o.insert("name_record".into(), n);
     }
     let palette = d.spec.field("palette").int().map(|p| p as u8);
     Ok((serde_json::from_value(Json::Object(o)).map_err(|m| err(d, m))?, palette))
-}
-
-/// Whether a weapon definition's behaviour is still a v1 module: it has no
-/// `setup` of its own, and its `legacy` marker names its routines (and the
-/// module, if any implements them).
-fn v1_weapon(d: &Definition) -> bool {
-    d.spec.field("setup").is_nil() && matches!(d.spec.field("legacy"), Data::Map(_))
-}
-
-fn weapon(d: &Definition) -> Result<LegacyWeapon, ContentError> {
-    let setup = d.spec.field("legacy");
-    let routines: Vec<u8> = match setup.field("routines") {
-        Data::List(items) => items.iter().map(|i| i.int().map(|n| n as u8)).collect::<Option<_>>(),
-        _ => None,
-    }
-    .ok_or_else(|| err(d, "its legacy marker needs `routines`, the routine numbers"))?;
-    let ticks = match d.spec.field("charge_ticks") {
-        Data::List(items) => items.iter().map(|t| t.int().map(|n| n as u16)).collect::<Option<Vec<_>>>(),
-        Data::Nil => Some(Vec::new()),
-        _ => None,
-    }
-    .ok_or_else(|| err(d, "`charge_ticks` is a list of tick counts"))?;
-    Ok(LegacyWeapon {
-        name: d.spec.field("name").str().unwrap_or(&d.key).to_string(),
-        routines,
-        script: setup.field("script").str().map(str::to_string),
-        action: setup.field("action").int().map(|n| n as u8),
-        instant_chip: setup.field("instant_chip").int().map(|n| n as u8),
-        charge_ticks: ticks,
-    })
 }
 
 /// Everything registration by number reads of what the content defines:
@@ -713,29 +653,6 @@ pub fn build(content: &mut Content, definitions: &Definitions) -> Result<Legacy,
         // The Cross palettes, by form up to the last form with one.
         let last = palettes.iter().filter(|(_, p)| **p != 0).map(|(f, _)| *f).max().unwrap_or(0);
         content.rules.cross_palettes = (0..=last).map(|f| palettes.get(&f).copied().unwrap_or(0)).collect();
-    }
-
-    // Weapons whose behaviour is a v1 module, and the routines no weapon
-    // names.
-    for d in definitions.of(Registry::Weapon) {
-        if v1_weapon(d) {
-            legacy.weapons.insert(d.key.clone(), weapon(d)?);
-        }
-    }
-    if let Some(d) = definitions.get(Registry::Rules, "weapon-routines") {
-        let rows: BTreeMap<u8, Vec<u16>> = r.read(&d.spec, "rules weapon-routines").map_err(|m| err(d, m))?;
-        legacy.routine_charges = rows;
-    }
-    if !legacy.weapons.is_empty() {
-        let mut out = Vec::new();
-        for w in legacy.weapons.values() {
-            let Some(script) = &w.script else { continue };
-            for &id in &w.routines {
-                out.push(WeaponData { id, name: w.name.clone(), action: w.action, instant_chip: w.instant_chip, script: script.clone() });
-            }
-        }
-        out.sort_by_key(|w| w.id);
-        content.weapons = out;
     }
 
     Ok(legacy)

@@ -32,3 +32,48 @@
 "rock/cube" = 1
 "rock/hard" = 2
 "rock/ice" = 3
+
+# The projectile's variants a navi's stats name as a shot program (NaviStats+0x4D the
+# buster shot's, +0x4F the charged shot's), by the row of `off_80C4C78`. (The byte 0 is no
+# program.)
+[projectile_variants]
+"shot/plain" = 0
+"shot/cannon" = 1
+"shot/blade" = 2
+"shot/bright" = 3
+"shot/air" = 4
+"shot/breaking" = 5
+"shot/charged" = 6
+"shot/cracking" = 7
+"shot/poisoning" = 8
+"shot/attack-90" = 9
+"shot/confusing" = 10
+"shot/blinding" = 11
+"shot/gigacan" = 12
+"shot/grass" = 13
+"shot/ice" = 14
+"shot/flinching" = 15
+"shot/erasing" = 16
+"shot/paralyzing" = 17
+"shot/charged-confusing" = 18
+"shot/charged-paralyzing" = 19
+"shot/charged-blinding" = 20
+"shot/charged-cracking" = 21
+"shot/charged-panel-breaking" = 22
+"shot/charged-volcano" = 23
+"shot/charged-poisoning" = 24
+"shot/charged-attack-a0" = 25
+"shot/charged-uninstalling" = 26
+"shot/charged-hp-bug" = 27
+"shot/charged-flinching" = 28
+"shot/climbing" = 29
+"shot/pushing" = 30
+"shot/shoving" = 31
+"shot/charged-pulling" = 32
+"shot/charged-bubbling" = 33
+"shot/charged-road" = 34
+"shot/charged-hp-bug-marked" = 35
+"shot/charged-road-back" = 36
+"shot/charged-grass" = 37
+"shot/charged-freezing" = 38
+"shot/charged-ice" = 39

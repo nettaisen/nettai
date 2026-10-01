@@ -173,8 +173,6 @@ pub struct Content {
     /// fills it from the pack's asset names (docs/design/
     /// content-model-v2.md §6.3).
     pub assets: bn6_content_api::AssetNames,
-    /// MegaMan's weapon routines that scripts implement (see `scripts`).
-    pub weapons: Vec<WeaponData>,
     /// The pack's scripts (see `scripts`).
     pub scripts: Scripts,
     /// What the content defines: the registries and their handles, and the
@@ -301,15 +299,14 @@ impl Content {
         self.defs.form_numbered(form).unwrap_or_else(|| panic!("form {:#x} is not in the content", form.0))
     }
 
-    /// A weapon's routine number (the ruleset's numeric logic asks it until
-    /// phase C); none for a weapon content defines.
-    pub fn weapon_number(&self, h: WeaponHandle) -> Option<u8> {
-        self.defs.weapon(h).number
+    /// A weapon.
+    pub fn weapon(&self, h: WeaponHandle) -> &WeaponDef {
+        self.defs.weapon(h)
     }
 
-    /// The weapon a routine number names.
-    pub fn weapon_numbered(&self, routine: u8) -> WeaponHandle {
-        self.defs.weapon_numbered(routine).unwrap_or_else(|| panic!("weapon routine {routine:#04x} is not in the content"))
+    /// The weapon with this key (setups by name, tools and tests).
+    pub fn weapon_by_key(&self, key: &str) -> WeaponHandle {
+        self.defs.weapon_by_key(key).unwrap_or_else(|| panic!("weapon {key:?} is not in the content"))
     }
 
     /// A status effect.
