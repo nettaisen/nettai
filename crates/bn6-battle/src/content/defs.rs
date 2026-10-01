@@ -31,8 +31,8 @@ use bn6_content_api::{
 };
 
 use super::{
-    ChipClass, ChipCode, ChipData, ChipFamily, ChipFlags, ChipId, ChipModifier, Content, DIMMING_CHIP_ACTION, Element,
-    ExtraChipFlags, FormData, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION, NaviData,
+    ChipData, ChipId, Content, DIMMING_CHIP_ACTION,
+    FormData, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION, NaviData,
 };
 use crate::setup::{Form, Navi, StageSettings};
 use crate::kinds::{ENGINE_KINDS, EngineKind};
@@ -89,6 +89,9 @@ pub struct WeaponDef {
     /// ruleset's numeric logic asks it until phase C. A weapon content
     /// defines has none.
     pub number: Option<u8>,
+    /// Every routine number it is (the first is `number`): a weapon
+    /// registration by number gives several routines that are one weapon.
+    pub numbers: Vec<u8>,
     /// Ticks to a full charge by Charge stat, for a weapon content defines
     /// (the pack's routines' are the charge table's, by number).
     pub charge_ticks: Vec<u16>,
@@ -140,8 +143,9 @@ pub struct FormDef {
 pub struct StageDef {
     pub key: String,
     pub record: StageSettings,
-    /// Its place in the pack's settings table.
-    pub number: u8,
+    /// Its place in the pack's settings table (the test content's); none
+    /// for a stage content defines.
+    pub number: Option<u8>,
 }
 
 /// A collision type content defines (`define.collision`): what an object is
@@ -525,142 +529,70 @@ fn export(definitions: &Definitions, module: &str, name: &str, whose: &str) -> R
 }
 
 /// A chip definition's record (docs/design/content-model-v2.md §3.1): the
-/// fields the engine reads. Damage formulas, Program Advance recipes, dark
-/// chips' substitutes and lock-on modes by definition come with the v2 API
-/// (steps 4 and 10); a definition that gives one is refused.
-fn chip_record(d: &Definition) -> Result<ChipData, ContentError> {
+/// fields the engine reads, with the lock-on mode and the Program Advance
+/// recipes' chips by the numbers `r` gives them. Damage formulas and dark
+/// chips' substitutes by definition come with the v2 API (a chip still read
+/// by number gives them in its legacy marker); a definition that gives one
+/// is refused.
+pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result<ChipData, ContentError> {
+    use serde_json::{Map, Value as Json};
     let what = |e: String| ContentError::new(format!("{}.luau: chip {}: {e}", d.module, d.key));
     let spec = &d.spec;
-    let int = |field: &str, max: i64| -> Result<i64, ContentError> {
-        match spec.field(field) {
-            Data::Nil => Ok(0),
-            Data::Int(i) if (0..=max).contains(i) => Ok(*i),
-            other => Err(what(format!("`{field}` is {other:?}, not a number from 0 to {max}"))),
-        }
-    };
-    let name_of = |field: &str| -> Result<Option<String>, ContentError> {
-        match spec.field(field) {
-            Data::Nil => Ok(None),
-            Data::Str(s) => Ok(Some(s.clone())),
-            other => Err(what(format!("`{field}` is {other:?}, not a name"))),
-        }
-    };
-    fn named<T: serde::de::DeserializeOwned>(name: &str) -> Option<T> {
-        serde_json::from_value(serde_json::Value::String(name.to_string())).ok()
+    if !spec.field("dark_substitute").is_nil() {
+        return Err(what("`dark_substitute` in a definition comes with the v2 API".into()));
     }
-    let enum_field = |field: &str| -> Result<Option<String>, ContentError> { name_of(field) };
-    let element = match enum_field("element")? {
-        None => Element::Null,
-        Some(n) => named(&n).ok_or_else(|| what(format!("`element` {n:?} is not an element")))?,
-    };
-    let family = match enum_field("family")? {
-        None => ChipFamily::Null,
-        Some(n) => named(&n).ok_or_else(|| what(format!("`family` {n:?} is not a chip family")))?,
-    };
-    let class = match enum_field("class")? {
-        None => ChipClass::Standard,
-        Some(n) => named(&n).ok_or_else(|| what(format!("`class` {n:?} is not a chip class")))?,
-    };
-    let modifier: Option<ChipModifier> = match enum_field("modifier")? {
-        None => None,
-        Some(n) => Some(named(&n).ok_or_else(|| what(format!("`modifier` {n:?} is not a modifier")))?),
-    };
-    let flags = |field: &str, names: &[(u32, &str)]| -> Result<u8, ContentError> {
-        let mut bits = 0u8;
-        match spec.field(field) {
-            Data::Nil => {}
-            Data::List(items) => {
-                for item in items {
-                    let n = item.str().ok_or_else(|| what(format!("`{field}` holds {item:?}, not a flag's name")))?;
-                    let (bit, _) = names.iter().find(|(_, f)| *f == n).ok_or_else(|| what(format!("`{field}`: no flag {n:?}")))?;
-                    bits |= *bit as u8;
-                }
-            }
-            other => Err(what(format!("`{field}` is {other:?}, not a list of flags")))?,
-        }
-        Ok(bits)
-    };
-    let codes = match spec.field("codes") {
-        Data::Nil => Vec::new(),
-        Data::List(items) => items
-            .iter()
-            .map(|c| {
-                c.str()
-                    .and_then(|s| {
-                        let mut chars = s.chars();
-                        match (chars.next().and_then(ChipCode::from_letter), chars.next()) {
-                            (Some(code), None) => Some(code),
-                            _ => None,
-                        }
-                    })
-                    .ok_or_else(|| what(format!("`codes` holds {c:?}, not a code (A-Z or *)")))
-            })
-            .collect::<Result<Vec<_>, _>>()?,
-        other => return Err(what(format!("`codes` is {other:?}, not a list"))),
-    };
-    for field in ["program_advances", "dark_substitute"] {
-        if !spec.field(field).is_nil() {
-            return Err(what(format!("`{field}` in a definition comes with the v2 API")));
-        }
+    let json = |field: &str| -> Result<Json, ContentError> { r.json(spec.field(field), &format!("chip {}.{field}", d.key)).map_err(what) };
+    let mut o = Map::new();
+    o.insert("name".into(), Json::String(spec.field("name").str().unwrap_or(&d.key).to_string()));
+    let defaults: [(&str, Json); 13] = [
+        ("codes", Json::Array(Vec::new())),
+        ("element", "null".into()),
+        ("family", "null".into()),
+        ("class", "standard".into()),
+        ("rarity", 0.into()),
+        ("mb", 0.into()),
+        ("flags", Json::Array(Vec::new())),
+        ("extra_flags", Json::Array(Vec::new())),
+        ("hit_param", 0.into()),
+        ("lockout", 0.into()),
+        ("damage", 0.into()),
+        ("slot_in_limit", 0.into()),
+        ("modifier", Json::Null),
+    ];
+    for (field, default) in defaults {
+        let v = json(field)?;
+        o.insert(field.into(), if v.is_null() { default } else { v });
     }
-    let damage = match spec.field("damage") {
-        Data::Nil => 0,
-        Data::Int(i) if (0..1000).contains(i) => *i as u16,
-        other => return Err(what(format!("`damage` is {other:?}: a number below 1000 (formulas come with the v2 API)"))),
-    };
-    let (beast_lockon, lockon_mode) = match spec.field("beast") {
-        Data::Nil => (false, 0),
-        beast => {
-            let rush = !matches!(beast.field("rush"), Data::Bool(false));
-            let mode = match beast.field("lockon") {
-                Data::Nil => 0,
-                Data::Int(i) if (0..=0xFF).contains(i) => *i as u8,
-                other => return Err(what(format!("`beast.lockon` is {other:?}: a lock-on mode's number until the v2 API"))),
-            };
-            (rush, mode)
-        }
-    };
+    if o["damage"].as_i64().is_some_and(|v| v >= 1000) {
+        return Err(what("`damage` is a number below 1000 (formulas come with the v2 API)".into()));
+    }
     let library = spec.field("library");
-    let lib_int = |field: &str| library.field(field).int().unwrap_or(0);
-    Ok(ChipData {
-        id: None,
-        name: name_of("name")?.unwrap_or_else(|| d.key.clone()),
-        codes,
-        element,
-        rarity: int("rarity", 0xFF)? as u8,
-        family,
-        class,
-        mb: int("mb", 0xFF)? as u8,
-        flags: ChipFlags(flags("flags", ChipFlags::NAMES)?),
-        hit_param: int("hit_param", 0xFF)? as u8,
-        action: 0,
-        subtype: 0,
-        beast_lockon,
-        params: [0; 4],
-        lockout: int("lockout", 0xFF)? as u8,
-        extra_flags: ExtraChipFlags(flags("extra_flags", ExtraChipFlags::NAMES)?),
-        lockon_mode,
-        damage,
-        library_number: lib_int("number") as u16,
-        library_index: lib_int("index") as u8,
-        sort_key: lib_int("sort") as u16,
-        slot_in_limit: int("slot_in_limit", 0xFF)? as u8,
-        dark_substitute: None,
-        sp_damage: None,
-        navi_damage: None,
-        modifier,
-        program_advances: Vec::new(),
-        gun_del_sol: None,
-        recovery: None,
-        sword: None,
-        script: None,
-    })
+    for (field, from) in [("library_number", "number"), ("library_index", "index"), ("sort_key", "sort")] {
+        o.insert(field.into(), library.field(from).int().unwrap_or(0).into());
+    }
+    let beast = spec.field("beast");
+    o.insert("beast_lockon".into(), Json::Bool(!beast.is_nil() && !matches!(beast.field("rush"), Data::Bool(false))));
+    let mode = match beast.field("lockon") {
+        Data::Nil => 0,
+        v => r.json(v, &format!("chip {}.beast.lockon", d.key)).map_err(what)?.as_i64().unwrap_or(0),
+    };
+    o.insert("lockon_mode".into(), mode.into());
+    o.insert("program_advance".into(), json("program_advances")?);
+    if o["program_advance"].is_null() {
+        o.insert("program_advance".into(), Json::Array(Vec::new()));
+    }
+    for (field, v) in [("action", 0), ("subtype", 0)] {
+        o.insert(field.into(), v.into());
+    }
+    o.insert("params".into(), Json::Array(vec![0.into(); 4]));
+    serde_json::from_value(Json::Object(o)).map_err(|e| what(e.to_string()))
 }
 
 impl Defs {
     /// What `content` (its data's registrations and the engine's own) and
     /// `definitions` (what its modules define) make.
-    pub fn build(content: &Content, definitions: Definitions) -> Result<Defs, ContentError> {
+    pub fn build(content: &Content, definitions: Definitions, legacy: &super::legacy::Legacy) -> Result<Defs, ContentError> {
+        let resolver = super::legacy::Resolver::new(&content.assets, &definitions);
         let mut functions = Functions::default();
 
         // Layouts: the definitions' and modules' state tables, and the
@@ -808,9 +740,35 @@ impl Defs {
         }
         let actions: Vec<ActionDef> = actions.sorted()?.into_iter().map(|(_, a)| a).collect();
 
-        // Weapons.
+        // Weapons: those a definition gives by routine number (its legacy
+        // setup marker: every routine number it is, the v1 module that
+        // implements it), the test content's by routine, the other routine
+        // numbers (a weapon nothing implements yet, with the charge times
+        // the content gives them), and the ones content defines.
         let mut weapons = Entries::new(Registry::Weapon);
-        for w in &content.weapons {
+        let mut claimed: BTreeMap<u8, &str> = BTreeMap::new();
+        for (key, w) in &legacy.weapons {
+            let whose = format!("weapon {key}");
+            for &n in &w.routines {
+                if let Some(first) = claimed.insert(n, key) {
+                    return Err(ContentError::new(format!("weapons {first} and {key} are both routine {n:#04x}")));
+                }
+            }
+            let setup = match &w.script {
+                Some(script) => Some(functions.id(export(&definitions, script, "setup", &whose)?)),
+                None => None,
+            };
+            let def = WeaponDef {
+                key: key.clone(),
+                name: w.name.clone(),
+                setup,
+                number: w.routines.first().copied(),
+                numbers: w.routines.clone(),
+                charge_ticks: w.charge_ticks.clone(),
+            };
+            weapons.add(key.clone(), def, whose);
+        }
+        for w in content.weapons.iter().filter(|w| !claimed.contains_key(&w.id)) {
             let whose = format!("weapon routine {:#04x} ({})", w.id, w.name);
             let setup = export(&definitions, &w.script, "setup", &whose)?;
             let def = WeaponDef {
@@ -818,25 +776,28 @@ impl Defs {
                 name: w.name.clone(),
                 setup: Some(functions.id(setup)),
                 number: Some(w.id),
+                numbers: vec![w.id],
                 charge_ticks: Vec::new(),
             };
             weapons.add(def.key.clone(), def, whose);
         }
-        // Every other routine number a navi's stats may name: a weapon
-        // nothing implements yet (using it is the ruleset's error).
         for n in 0..=0xFEu8 {
-            if !content.weapons.iter().any(|w| w.id == n) {
+            if !claimed.contains_key(&n) && !content.weapons.iter().any(|w| w.id == n) {
                 let def = WeaponDef {
                     key: format!("v1/weapon-{n:02x}"),
                     name: String::new(),
                     setup: None,
                     number: Some(n),
-                    charge_ticks: Vec::new(),
+                    numbers: vec![n],
+                    charge_ticks: legacy.routine_charges.get(&n).cloned().unwrap_or_default(),
                 };
                 weapons.add(def.key.clone(), def, "a weapon routine number".into());
             }
         }
         for d in definitions.of(Registry::Weapon) {
+            if legacy.weapons.contains_key(&d.key) {
+                continue;
+            }
             let name = d.spec.field("name").str().unwrap_or(&d.key).to_string();
             let charge_ticks = match d.spec.field("charge_ticks") {
                 Data::Nil => Vec::new(),
@@ -858,7 +819,7 @@ impl Defs {
                 }
             };
             let setup = Some(functions.id(slot(d, "setup")?));
-            let def = WeaponDef { key: d.key.clone(), name, setup, number: None, charge_ticks };
+            let def = WeaponDef { key: d.key.clone(), name, setup, number: None, numbers: Vec::new(), charge_ticks };
             weapons.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
         let weapons: Vec<WeaponDef> = weapons.sorted()?.into_iter().map(|(_, w)| w).collect();
@@ -868,11 +829,23 @@ impl Defs {
             actions.binary_search_by(|a| a.key.as_str().cmp(key)).ok().map(|i| ActionHandle(i as u16))
         };
         let mut chips = Entries::new(Registry::Chip);
+        // The pack's chips: those a definition gives by number (its legacy
+        // action marker) under its key, the others' records (the test
+        // content's) under a transitional key.
+        let chip_keys: BTreeMap<ChipId, &str> =
+            legacy.chips.iter().filter_map(|(k, c)| Some((c.id?, k.as_str()))).collect();
         for c in &content.chips {
-            let key = format!("v1/chip-{:03x}", c.id.unwrap_or_default());
-            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage: None }, "the pack's chip record".into());
+            let n = c.id.unwrap_or_default();
+            let (key, whose) = match chip_keys.get(&n) {
+                Some(k) => (k.to_string(), "the pack's chip, defined by number".to_string()),
+                None => (format!("v1/chip-{n:03x}"), "the pack's chip record".to_string()),
+            };
+            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage: None }, whose);
         }
         for d in definitions.of(Registry::Chip) {
+            if legacy.chips.contains_key(&d.key) {
+                continue;
+            }
             let mut usages = Vec::new();
             match d.spec.field("action") {
                 Data::Nil => {}
@@ -894,28 +867,36 @@ impl Defs {
                     d.module, d.key
                 )));
             };
-            let record = chip_record(d)?;
+            let record = chip_record(d, &resolver)?;
             chips.add(d.key.clone(), ChipDef { key: d.key.clone(), record, usage: Some(usage) }, format!("defined in {}.luau", d.module));
         }
         let chips: Vec<ChipDef> = chips.sorted()?.into_iter().map(|(_, c)| c).collect();
 
         // The pack's navis, forms and stages.
+        let key_of = |defined: &BTreeMap<String, u8>, n: u8, v1: String| -> String {
+            defined.iter().find(|(_, m)| **m == n).map_or(v1, |(k, _)| k.clone())
+        };
+        let navi_keys: BTreeMap<String, u8> = legacy.navis.iter().map(|(k, n)| (k.clone(), n.id)).collect();
+        let form_keys: BTreeMap<String, u8> = legacy.forms.iter().map(|(k, f)| (k.clone(), f.id)).collect();
         let mut navis = Entries::new(Registry::Navi);
         for n in &content.navis {
-            let key = format!("v1/navi-{:02x}", n.id);
+            let key = key_of(&navi_keys, n.id, format!("v1/navi-{:02x}", n.id));
             navis.add(key.clone(), NaviDef { key, record: n.clone() }, "the pack's navi".into());
         }
         let navis: Vec<NaviDef> = navis.sorted()?.into_iter().map(|(_, n)| n).collect();
         let mut forms = Entries::new(Registry::Form);
         for f in &content.forms {
-            let key = format!("v1/form-{:02x}", f.id);
+            let key = key_of(&form_keys, f.id, format!("v1/form-{:02x}", f.id));
             forms.add(key.clone(), FormDef { key, record: f.clone() }, "the pack's form".into());
         }
         let forms: Vec<FormDef> = forms.sorted()?.into_iter().map(|(_, f)| f).collect();
         let mut stages = Entries::new(Registry::Stage);
         for (i, st) in content.rules.stages.settings.iter().enumerate() {
             let key = format!("v1/stage-{i:02x}");
-            stages.add(key.clone(), StageDef { key, record: *st, number: i as u8 }, "the pack's battle settings".into());
+            stages.add(key.clone(), StageDef { key, record: *st, number: Some(i as u8) }, "the pack's battle settings".into());
+        }
+        for (key, (st, number)) in &legacy.stages {
+            stages.add(key.clone(), StageDef { key: key.clone(), record: *st, number: *number }, "a stage".into());
         }
         let stages: Vec<StageDef> = stages.sorted()?.into_iter().map(|(_, s)| s).collect();
 
@@ -1093,7 +1074,7 @@ impl Defs {
         }
         for (i, w) in defs.weapons.iter().enumerate() {
             defs.weapon_keys.insert(w.key.clone(), WeaponHandle(i as u16));
-            if let Some(id) = w.number {
+            for &id in &w.numbers {
                 if let Some(other) = defs.weapon_ids[id as usize] {
                     return Err(ContentError::new(format!(
                         "weapons {} and {} both are routine {id:#04x}",
@@ -1122,7 +1103,9 @@ impl Defs {
         }
         defs.stage_numbers = vec![None; 256];
         for (i, st) in defs.stages.iter().enumerate() {
-            defs.stage_numbers[st.number as usize] = Some(StageHandle(i as u16));
+            if let Some(n) = st.number {
+                defs.stage_numbers[n as usize] = Some(StageHandle(i as u16));
+            }
         }
         defs.hooks = hooks.into_iter().map(|(hook, (f, _))| (hook, functions.id(f))).collect();
         defs.functions = functions.list;
