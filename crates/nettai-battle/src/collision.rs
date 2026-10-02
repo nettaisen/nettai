@@ -598,13 +598,10 @@ impl Battle {
         }
         let e = s.element;
         let Some(p) = self.field.panel(x, y) else { return };
-        let convert = match p.kind {
-            PanelType::Grass => e == 1,
-            PanelType::Volcano => e == 2,
-            t if t.is_road() => e == 4,
-            _ => false,
-        };
-        if convert {
+        // (BN6: fire on grass, aqua on volcano, wood on roads; BN5's
+        // 0x08016D14 the same with lava and metal.)
+        let cleared_by = self.content.rules_of(self.games.arena).panels.types[p.kind as usize].cleared_by;
+        if cleared_by == Some(e) {
             self.set_panel_type(x, y, PanelType::Normal);
         }
     }

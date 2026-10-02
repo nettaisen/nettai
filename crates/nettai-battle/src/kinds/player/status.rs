@@ -694,8 +694,17 @@ fn tick_minor_statuses(b: &mut Battle, r: ObjectRef, f2: u32) {
 }
 
 /// `sub_8010162`: the timed submerged state (0xFFFF = indefinite);
-/// the flag is off while an action runs.
+/// the flag is off while an action runs. In an arena with a panel that
+/// submerges (BN5's sea, 0x08017030), the state is that panel's: a body
+/// that dives is submerged on it, and none is off it.
 fn tick_submerged(b: &mut Battle, r: ObjectRef) {
+    let rules = &b.arena_rules().panels;
+    if rules.types.iter().any(|t| t.submerges) {
+        let p = coll(b, r).panel;
+        let on = b.field.panel(p.x, p.y).is_some_and(|p| rules.types[p.kind as usize].submerges);
+        let dives = b.objects.get(r).actor.is_some_and(|a| b.actors.get(a).status & crate::actor::status::DIVES != 0);
+        coll_mut(b, r).status_timers[timer::SUBMERGED] = if on && dives { 0xFFFF } else { 0 };
+    }
     let t = coll(b, r).status_timers[timer::SUBMERGED];
     if t != 0xFFFF {
         let t = t as i32 - 1;

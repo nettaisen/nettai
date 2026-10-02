@@ -170,6 +170,10 @@ pub struct PanelRules {
     pub step: StepRuleSet,
     pub dash_step: StepRuleSet,
     pub any_side_step: StepRuleSet,
+    /// Ticks a broken panel stays broken, and in battle mode 1 (BN6: 0x258
+    /// and 0x1E0, `sub_800C4BC`; BN5: 600 in both, 0x0800A998).
+    pub mend: u16,
+    pub mend_in_battle_mode_1: u16,
 }
 
 impl PanelRules {
@@ -185,7 +189,9 @@ impl PanelRules {
     }
 }
 
-/// What one panel type is.
+/// What one panel type is, and what it does (docs/design/bn5-map.md
+/// §15.2; the behaviours are the engine's, keyed by the panel type, their
+/// numbers the game's).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PanelTypeRule {
     /// Flag bits the type adds to a panel's flags word.
@@ -195,6 +201,43 @@ pub struct PanelTypeRule {
     /// The sound a NaviCust panel trail makes turning a panel into the
     /// type (`byte_8013D44`; none: silent).
     pub trail_sound: Option<crate::sound::SoundId>,
+    /// Ticks the type lasts before the panel turns normal, blinking its
+    /// last 60 (BN6's roads 0x708, `sub_800C380`; BN5's lava and sea 960,
+    /// 0x0800A998).
+    pub expires: Option<u16>,
+    /// The fire damage a grounded body standing on it takes, shifted by
+    /// its weakness to fire, as the panel turns normal (BN5's lava,
+    /// 0x08016D80 and 0x08016E18).
+    pub burn: Option<u16>,
+    /// The element of the bodies it drains as poison drains any (BN5's
+    /// sea: fire, 0x08016C7E).
+    pub drains: Option<u8>,
+    /// Ticks a body that ends a move on it is held there, with a splash
+    /// (BN5's sea, 0x0801715E).
+    pub holds: Option<u16>,
+    /// A body that can dive (its AI's flag 0x20) is submerged while on it,
+    /// and no body is submerged off it (BN5's sea, 0x08017030).
+    pub submerges: bool,
+    /// A move's end on it starts a slide (slide type 3), tried in turn by
+    /// the direction of the move (BN5's metal, 0x08017216, 0x0800C8A8).
+    pub slide: Option<PanelSlide>,
+    /// The element of the hitboxes that turn it normal as they pass over
+    /// it (`sub_3007708`: fire grass, aqua the volcano, wood roads; BN5's
+    /// 0x08016D14: and aqua lava, wood metal).
+    pub cleared_by: Option<u8>,
+    /// Whether the game's own section names the type; one it doesn't is
+    /// the first other loaded game's that does (docs/design/rules-in-luau.md
+    /// §7.4).
+    pub named: bool,
+}
+
+/// A panel's slide (BN5's metal): by the direction the body last moved
+/// (`CollisionData::direction`: none, up, down, back, forward, other),
+/// the steps tried in turn, `dx` toward the body's front; the first one
+/// the body can slide to is the slide, a panel at a time.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct PanelSlide {
+    pub tries: [[Option<(i8, i8)>; 4]; 6],
 }
 
 /// Step rules by whether the object is floor-free (AirShoes, or standing

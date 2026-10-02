@@ -24,6 +24,8 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     if b.is_battle_over() || flag1(b, r) & f1::DEAD != 0 {
         return;
     }
+    // (BN5's lava burns first: 0x080178EC.)
+    crate::kinds::common::panel_burn(b, r);
     barrier(b, r);
     standing_effects(b, r);
     slide_triggers(b, r);
@@ -206,7 +208,8 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
 // ---- Panels ------------------------------------------------------------------
 
 /// `sub_801A186`: poison panels hurt 1 HP every 7 ticks (through
-/// element 5); wood navis on grass heal.
+/// element 5), and a panel that drains a body's element (BN5's sea, fire
+/// bodies: 0x08016C7E) the same; wood navis on grass heal.
 fn standing_effects(b: &mut Battle, r: ObjectRef) {
     if b.is_dimmed() || b.paused || coll(b, r).region.is_none() {
         return;
@@ -214,8 +217,9 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
     let p = coll(b, r).panel;
     let Some(t) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
     let f = flag1(b, r);
+    let drains = b.arena_rules().panels.types[t as usize].drains;
     let on_grass;
-    if t == PanelType::Poison {
+    if t == PanelType::Poison || drains.is_some_and(|e| e == coll(b, r).element) {
         if f & (f1::UNTOUCHABLE | f1::FLOATSHOE | f1::INVULNERABLE) == 0 {
             let c = coll_mut(b, r);
             let v = c.poison_timer as i32 - 1;
@@ -270,7 +274,19 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     }
     super::clear_flag1(b, r, f1::MOVE_COMPLETE);
     let p = coll(b, r).panel;
-    if b.field.panel(p.x, p.y).map(|p| p.kind) != Some(PanelType::Ice) {
+    let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
+    // BN5's panels at a move's end (0x0801715E, after its own flag test):
+    // metal slides the body, sea holds it.
+    let rule = b.arena_rules().panels.types[kind as usize];
+    if (rule.slide.is_some() || rule.holds.is_some()) && flag1(b, r) & 0x0010_0040 == 0 {
+        if rule.slide.is_some() {
+            return metal_slide(b, r);
+        }
+        if let Some(ticks) = rule.holds {
+            return panel_hold(b, r, ticks);
+        }
+    }
+    if kind != PanelType::Ice {
         return;
     }
     // sub_801A3DA
@@ -279,6 +295,36 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
         set_flag2(b, r, 0x10);
         b.objects.get_mut(r).slide_type = 2;
     }
+}
+
+/// BN5's 0x08017216: a move's end on metal slides the body (slide type
+/// 3), unless it slid within the cooldown, is floating or slide-proof
+/// (flags 0x24), or is a navi whose form stands on metal (BN5's soul 5).
+fn metal_slide(b: &mut Battle, r: ObjectRef) {
+    if ai(b, r).road_cooldown != 0 || flag1(b, r) & 0x24 != 0 {
+        return;
+    }
+    if form_of(b, r).traits.has(crate::content::FormTraits::STANDS_ON_METAL) {
+        return;
+    }
+    set_flag2(b, r, 0x10);
+    b.objects.get_mut(r).slide_type = 3;
+}
+
+/// BN5's 0x080171C2: a move's end on a panel that holds (sea) holds the
+/// body there for `ticks` (immobilized: BN6's `sub_800EB18`) with a splash
+/// (the arena's effect `panel_splash`), unless it floats, dives or is of
+/// aqua.
+fn panel_hold(b: &mut Battle, r: ObjectRef, ticks: u16) {
+    let dives = b.objects.get(r).actor.is_some_and(|a| b.actors.get(a).status & crate::actor::status::DIVES != 0);
+    if flag1(b, r) & f1::FLOATSHOE != 0 || dives || b.objects.get(r).element == 2 {
+        return;
+    }
+    coll_mut(b, r).status_timers[crate::collision::timer::IMMOBILIZE] = ticks;
+    super::set_flag1(b, r, f1::IMMOBILIZED);
+    let pos = b.objects.get(r).pos;
+    let look = b.arena_roles().effect(crate::content::EffectRole::PanelSplash);
+    crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
 }
 
 // ---- NaviCust bugs and traps ------------------------------------------------------

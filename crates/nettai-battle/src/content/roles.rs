@@ -258,6 +258,10 @@ definition_roles! {
         /// One of the bursts around a navi going Beast Over
         /// (`sub_80E7D0C`).
         BeastOverBurst = "beast_over_burst",
+        /// The splash of a body held by a panel at a move's end (BN5's sea,
+        /// effect 0x63: 0x0801715E). Only a game whose panels hold needs
+        /// it.
+        PanelSplash = "panel_splash",
     }
 }
 
@@ -275,6 +279,9 @@ definition_roles! {
         ThrownObstacle = "thrown_obstacle",
         /// A navi's programs uninstalled (`sub_80140EE`).
         Uninstall = "uninstall",
+        /// A panel's burn (BN5's lava, the sparks' row 1: 0x08016D80). Only
+        /// a game whose panels burn needs it.
+        PanelBurn = "panel_burn",
     }
 }
 
