@@ -213,9 +213,27 @@ the transform records hold the requesting navi at +8. Three layouts differ besid
 **BN5's own:** the custom screen's entry (`sub_8009338`, similar 0.66) runs BN6's screen (`sub_8026A28`) unless
 the battle flag 0x40 mode is on (`sub_800A8F8`, the same code), in which case it runs BN5's own screen (0x08025EF2,
 in a 2.9 KB block from 0x08025E4E, beside another of 3.2 KB from 0x080269A0). BN6's flag-0x40 mode is the "Cross
-change mode", never in a netbattle; in BN5 it selects another custom screen, likely the Team Battle's (§8).
-Where Soul Unison's window is (in the shared screen's sub-screens, or in BN5's own blocks) is the next thing to
-read.
+change mode", never in a netbattle. **Tango's Team Battles don't set it** (the battle flags, battle state +0x32, read 0
+in the traces): their custom screen is the shared one, and the per-player gauges and SELECT special of the flag-0x40
+mode don't run either.
+
+**Soul Unison on the shared screen** (read in Team ProtoMan's code, driven in the chip lab, §10): Beast Out's
+button under OK (slot 11, kind 2) is BN5's Soul Unison button. After every pick and take-back (`sub_8028E32`'s
+counterpart calls 0x08024B28 first) it is offered when the **last pick** is a chip whose family (record +6) is a
+soul's (the family table at 0x08024BE0: twelve souls, a family each), the save has that soul (an event flag per
+soul in the version's table at 0x08024BF0: Team ProtoMan has souls 1–6, Team Colonel 7–12), and the soul wasn't
+used this battle (a bit per soul in 0x02034E10). A **dark chip** (record +9 flag 0x20) of the family offers the
+soul's **Chaos Unison** instead, if event flag 0x236 is set (its own bit, +16). A to the button (sub-state 0x24,
+Beast Out's) gives the last pick up for the soul; the hand builder (`sub_8029110`'s counterpart, 0x08024DAC) then
+writes the transform record (`sub_8015952`: the soul, Chaos or not, the turns: 3 plus a NaviStats-derived bonus,
+1 to 9; a Chaos Unison 1) and marks the soul used. The pick count stays. The souls by family: 1 sword (6), 2 wind
+(10), 3 cursor (8), 4 fire (0), 5 elec (2), 6 recovery (4); 7 obstacle (9), 8 invisible (7), 9 plus (5), 10 wood
+(3), 11 break (11), 12 aqua (1) (by the lab's pictures: 1 is ProtoSoul, 10 TomahawkSoul).
+
+**Light and dark MegaMan** (observed in the lab): a dark MegaMan has no Soul Unison button (slot 11 isn't kind 2)
+and can't use the navi chips (0xDD–0x118) but the DS ones; a light MegaMan can't use the dark chips or the DS navi
+chips. Each such chip fizzles: the navi enters action 0x1A for a frame and a puff of smoke appears. Which branch
+decides is not read yet.
 
 ## 5. Transformations: Soul Unison, the navi switch
 
@@ -227,8 +245,14 @@ read.
   out, presumably.
 - **The navi switch:** BN6's Cross change (the pause handler's action 0x1C, `sub_802D714`, `sub_802D738`,
   `sub_802D7A0`, `sub_802D8F0`, the fall-back `sub_802DD2A`, `sub_802D926`, `sub_802D9B0`) is all in BN5, the same
-  or 0.97–1.00 similar. In BN6 no custom screen sends it (custom-screen.md §6); in BN5 it is presumably the Team
-  Battle's switch to a team navi.
+  or 0.97–1.00 similar. In BN6 no custom screen sends it (custom-screen.md §6). **In BN5 the custom screen does,
+  from the Battle Chip Gate:** on every tick of the screen's state 4, 0x080259A0 asks the gate for an inserted navi
+  chip (0x0812A074; in a link battle through the link, 0x08143CB8); a navi other than the current one (a set of
+  rules: not used this battle, `0x02034E10`+14, and others) moves the screen to its state 0x40 (0x08023840), which
+  sets the screen's navi (+0x10); the hand builder then writes the transform record's +4 (`sub_802DCD8`'s
+  counterpart, BN6's has no caller) and the pause handler switches. **Tango never inserts a gate chip** (its primer
+  raises the gate-present flag and nothing else), so in Tango's Team Battles the navi switch is unreachable, as in
+  BN6. A chip lab scenario would need the gate's answer faked (the gate's RAM, not read yet).
 - **The form record:** a navi's form data (the charged chips by form `sub_800F09E`, similar 0.50) reads NaviStats
   +0x2C in BN5 where BN6 reads +0x29, with other forms and families (BN5's souls).
 
@@ -274,9 +298,10 @@ setup, and its few routines are version branches.
   (the Team Battle's: Tango's Team Battles return there).
 - **Tango and Team Battles:** since 2026-08-05 Tango's BN5 primer raises the Battle Chip Gate flag and confirms
   the comm menu's Team Battle row (チームバトル), so every Tango BN5 match is a Team Battle (mode bytes 4–7), with
-  Patch Cards on. **The user's decision (2026-10-02): Team Battle first**, as Tango plays it (its custom screen,
-  team navis and switching); a plain NetBattle later. A plain NetBattle would add the comm menu's first row in the
-  primer and the other link applet, and leave out the flag-0x40 custom screen and the navi switch.
+  Patch Cards on. **The user's decision (2026-10-02): Team Battle first**, as Tango plays it; a plain NetBattle
+  later. The Team Battle is the Battle Chip Gate's mode (two consoles, each with a gate); Tango's runs the shared
+  custom screen with Soul Unison, and its navi switch (from a gate's navi chip) never happens (§5). A plain
+  NetBattle would add the comm menu's first row in the primer and the other link applet.
 - **Replays:** no BN5 replay in Tango's current format. Three of 2022 in the oldest format (0x10) and six in
   format 0x11 (made with the bn5_gate patch), the same kind of savestate-started rounds the 2022 BN6 replays are;
   two BN5 DS replays (another platform, out of scope).
@@ -327,8 +352,10 @@ The verification workspace traces BN5 consoles as it does BN6's, with the same l
   The hooks test checks every BN5 hook against BN6's code (masked for what moves, RAM included), Team Colonel's
   against Team ProtoMan's, and each Japanese ROM's against the US ROM of its version.
 - **chiplab** runs BN5 consoles from a base of BN5 ROMs and saves (Tango's primer walks into a Team Battle),
-  edits BN5 saves (folder, Regular chip, navi, HP) and drives them; BN5's navi stands idle in action 6 (BN6 8).
-  BN5's scenarios are a library of their own, recorded apart from BN6's lab.
+  edits BN5 saves (folder, Regular chip, navi, NaviCust, HP) and drives them (`custom CHIP soul` for Soul Unison);
+  BN5's navi stands idle in action 6 (BN6 8). BN5's scenarios are a library of their own (generated from the ROM's
+  chip, Program Advance and soul tables), recorded apart from BN6's lab: bases with a light and a dark MegaMan on
+  either side (§4), every chip from both sides, the Program Advances, each soul's Soul and Chaos Unison.
 - **difftest** takes BN5 replays (none exists in Tango's current format yet).
 - **The first traces:** a plain Team Battle, Team ProtoMan (traced) against Team Colonel, each picking the first
   chip dealt every turn and shooting until Team ProtoMan's navi is deleted: 3,216 frames, a full round from the
@@ -361,6 +388,11 @@ as bn6-extract takes BN6's) writes a pack whose manifest says `game = "bn5"`:
   - The Japanese ROMs' one different sprite (14-17, which has text on it): the US release localized it rather than
     cut it, so the pack keeps the US's, as BN6's does.
   - BN5's HUD and custom-screen layouts (§9).
+  - **Languages** (BN6's shape, text-rendering.md §10): with a BN5 content root, its strings go in
+    `content/bn5/locales/en.toml` (from the US ROMs) and `ja.toml` (from the Japanese ROMs), keyed by definition
+    key; and bn5-extract writes the Japanese ROMs' lettering beside the US's as nettai-assets' `HudLettering` and
+    `CustomLettering` (the fonts in the Japanese encoding, the HUD's lines, the banners and pictures with words in
+    them), as bn6-extract's `lettering` does. Neither exists yet: the pack is the US ROMs' lettering alone.
 - **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until a BN5 content
   root names them in its compat, as BN6's does.
 - **Shared decoding:** the sprite archive and GFX-animation decoders are BN6's format and code; bn5-extract has its
