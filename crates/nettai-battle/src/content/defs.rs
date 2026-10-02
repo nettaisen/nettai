@@ -496,6 +496,14 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
         }
         other => return Err(what(format!("`description` is {other}, not text"))),
     }
+    // (The custom screen draws the chip's picture with it.)
+    match json("art_palette")? {
+        Json::Null => {}
+        Json::Array(colours) if colours.len() == 16 && colours.iter().all(|c| c.as_u64().is_some_and(|c| c < 0x8000)) => {
+            o.insert("art_palette".into(), Json::Array(colours));
+        }
+        other => return Err(what(format!("`art_palette` is {other}: 16 BGR555 colours (below 0x8000)"))),
+    }
     let defaults: [(&str, Json); 13] = [
         ("codes", Json::Array(Vec::new())),
         ("element", "null".into()),
