@@ -108,6 +108,11 @@ impl ChipFlags {
     pub const STANDARD_LIBRARY: u8 = 0x08;
     /// Damage shown as variable (menus only).
     pub const DAMAGE_SHOWN_VARIABLE: u8 = 0x10;
+    /// A dark chip as the custom screen treats it: the cursor starts on it,
+    /// and while it rests on it the screen darkens and the music quiets
+    /// (`sub_802806C`, `sub_802A2B0`); its window frame is the dark one. No
+    /// BN6 chip has it (docs/engine/unverified.md).
+    pub const DARK: u8 = 0x20;
     /// In a library (menus only).
     pub const LIBRARY: u8 = 0x40;
     /// Damage recomputed every tick while this is the next chip.
@@ -118,6 +123,7 @@ impl ChipFlags {
         (0x04, "navi"),
         (0x08, "standard_library"),
         (0x10, "damage_shown_variable"),
+        (0x20, "dark"),
         (0x40, "library"),
         (0x80, "variable_damage"),
     ];
