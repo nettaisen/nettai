@@ -200,6 +200,7 @@ impl Hash for Battle {
             rules,
             sound: _,
             outcome,
+            folder_check: _,
         } = self;
         setup.hash(h);
         stats.hash(h);

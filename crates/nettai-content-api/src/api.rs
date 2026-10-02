@@ -417,6 +417,8 @@ named_fields! {
         StartingForm = "starting_form", Ref(Registry::Form, None), ro;
         /// The navi's game: 0 Gregar, 1 Falzar.
         Version = "version", U8, ro;
+        /// The Regular chip's MB at most (+0x09, RegUp's).
+        RegularMemory = "regular_memory", U8, ro;
         MaxBaseHp = "max_base_hp", U16, ro;
         /// The NaviCust's heal on chip use.
         ChipRecovery = "chip_recovery", U16, rw;
@@ -654,6 +656,20 @@ named_flags! {
         /// (`sub_80E1352` sets it, `sub_80E13DC` clears it).
         Vanished = "vanished",
     }
+}
+
+/// A folder a tool asks a side's rules to check (`folder_check`): whose
+/// side it is, its chips in order (handles and codes), its Regular and tag
+/// chips (entries of `chips`), and whether it is all of a folder (else the
+/// chips so far, as a random folder is drawn: the rules about a whole
+/// folder wait).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CheckedFolder {
+    pub side: u8,
+    pub chips: Vec<(u16, u8)>,
+    pub regular: Option<u8>,
+    pub tags: Option<(u8, u8)>,
+    pub complete: bool,
 }
 
 /// A program on a side's NaviCust, as content reads it
@@ -1109,6 +1125,12 @@ pub trait CoreApi {
     /// board's expansions and its programs in its list's order; none when
     /// the setup gives none (its stats are already the NaviCust's).
     fn navicust(&self, side: u8) -> Option<(u8, Vec<PlacedProgram>)>;
+    /// The folder a tool asks the side's rules to check (`folder_check`),
+    /// while it is checked.
+    fn checked_folder(&self) -> Option<CheckedFolder>;
+    /// A rule the checked folder breaks: the rule's name (`copies`, `mega`,
+    /// ... the game's own) and what to say.
+    fn folder_problem(&mut self, rule: &str, text: &str);
     /// A side's bug frags in the battle (`sub_800F4A8`).
     fn bug_frags(&self, side: u8) -> u32;
     /// `sub_800F4B2`: a side spends `n` bug frags (the count wraps below

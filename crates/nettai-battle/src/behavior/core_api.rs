@@ -358,6 +358,7 @@ impl CoreApi for Battle {
             NaviStat::BeastOutCounter => i(s.beast_out_counter as i64),
             NaviStat::StartingForm => Value::Def(Registry::Form, s.starting_form.0),
             NaviStat::Version => i(s.version as i64),
+            NaviStat::RegularMemory => i(s.reg_up as i64),
             NaviStat::MaxBaseHp => i(s.max_base_hp as i64),
             NaviStat::ChipRecovery => i(s.chip_recovery as i64),
             NaviStat::BusterShot => record(s.weapons.buster_shot),
@@ -544,6 +545,16 @@ impl CoreApi for Battle {
             })
             .collect();
         Some((n.expansions, parts))
+    }
+
+    fn checked_folder(&self) -> Option<nettai_content_api::api::CheckedFolder> {
+        self.folder_check.as_ref().map(|c| c.folder.clone())
+    }
+
+    fn folder_problem(&mut self, rule: &str, text: &str) {
+        if let Some(c) = &mut self.folder_check {
+            c.problems.push(crate::rules::FolderProblem { rule: rule.to_string(), text: text.to_string() });
+        }
     }
 
     fn bug_frags(&self, side: u8) -> u32 {

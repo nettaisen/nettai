@@ -712,6 +712,8 @@ declare class Navi
     starting_form: FormDef
     -- The navi's game: 0 Gregar, 1 Falzar.
     version: number
+    -- The Regular chip's MB at most.
+    regular_memory: number
     max_base_hp: number
     chip_recovery: number
     -- NaviCust: the buster shot's and the charged shot's programs (the
@@ -983,6 +985,13 @@ declare battle: {
     -- 7x7 grid, its quarter turns clockwise and whether it is compressed;
     -- nil when the setup gives none (the stats are already the NaviCust's).
     navicust: (side: number) -> NaviCust?,
+    -- The folder a tool asks the rules to check (a system's `folder_check`):
+    -- whose side, its chips in order, its Regular and tag chips (places in
+    -- `chips`), and whether it is all of a folder (else the chips so far:
+    -- the rules about a whole folder wait); nil when none is.
+    checked_folder: () -> CheckedFolder?,
+    -- A rule the checked folder breaks: the rule's name and what to say.
+    folder_problem: (rule: string, text: string) -> (),
     -- A side's bug frags, and spending some (its callers check there are
     -- enough: the count wraps below 0).
     bug_frags: (side: number) -> number,
@@ -1412,6 +1421,10 @@ export type SystemSpec = {
         custom_requested: ((side: number) -> ())?,
         -- Both results are in and the fight resumes (`sub_8009338`).
         custom_closed: ((side: number) -> ())?,
+        -- A tool asks whether a folder keeps the side's game's folder rules
+        -- (not the simulation): the folder is `battle.checked_folder()`, and
+        -- each rule it breaks is `battle.folder_problem(rule, text)`.
+        folder_check: ((side: number) -> ())?,
     }?,
 }
 export type System = SystemSpec
@@ -1836,6 +1849,15 @@ export type PlacedProgram = {
 export type NaviCust = {
     expansions: number,
     parts: { PlacedProgram },
+}
+
+-- A folder being checked (`battle.checked_folder`).
+export type CheckedFolder = {
+    side: number,
+    chips: { { chip: Chip, code: string } },
+    regular: number?,
+    tags: { number }?,
+    complete: boolean,
 }
 
 export type LockonDef = {

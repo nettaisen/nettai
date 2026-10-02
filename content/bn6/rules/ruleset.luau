@@ -5,6 +5,7 @@
 -- take them slice by slice (§8).
 
 local beast = require("./beast/system")
+local folder = require("./folder/system")
 local forms = require("./forms/system")
 local navicust = require("./navicust/system")
 local patch_cards = require("./patch-cards/system")
@@ -23,5 +24,7 @@ return define.ruleset {
         forms.system,
         -- Beast Out's turns.
         beast,
+        -- The folder's rules, which tools ask (the simulation never does).
+        folder,
     },
 }
