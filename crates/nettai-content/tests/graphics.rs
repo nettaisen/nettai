@@ -123,6 +123,26 @@ fn bundle() -> Bundle {
         waiting_palette: palette(47),
         warning: tiles(8, 33),
         warning_palette: palette(49),
+        dialogue_font: DialogueFont {
+            pixels: (0..3 * 16 * 12).map(|i| (i % 5) as u8).collect(),
+            advances: vec![8, 6, 11],
+            chars: vec!["A".into(), "i".into(), "研".into()],
+        },
+        chatbox: Chatbox {
+            tiles: tiles(11, 51),
+            palette: palette(52),
+            boxes: (0..2u16)
+                .map(|kind| {
+                    std::array::from_fn(|step| {
+                        (0..(Chatbox::COLUMNS * Chatbox::ROWS) as u16)
+                            .map(|i| MapEntry { tile: (i + kind + step as u16) % 11, hflip: i % 3 == 0, vflip: i % 5 == 0, palette: 15 })
+                            .collect()
+                    })
+                })
+                .collect(),
+            arrow: tiles(12, 53),
+            text_palette: palette(54),
+        },
     };
     Bundle { sprites: vec![sprite(0, 1), sprite(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud, custom: custom() }
 }

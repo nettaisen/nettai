@@ -1414,8 +1414,8 @@ export type NaviDef = {
     mugshot: Mugshot?,
     -- Extra height of its image as it merges with MegaMan in a Cross.
     merge_height: number?,
-    -- The no-running message's lines (the characters in each).
-    run_message: { number }?,
+    -- The no-running message (L on the custom screen in a netbattle).
+    run_message: RunMessage?,
     -- A link navi's own chip, offered once a round.
     own_chip: { chip: Chip, code: string }?,
     -- Its damage bonus on its family's damaging chips, by its level.
@@ -1451,6 +1451,17 @@ export type NaviDef = {
         back_special_damage: number?,
     }?,
     cross_hp: { number }?,
+}
+-- A navi's no-running message.
+export type RunMessage = {
+    -- The characters in each of its lines (up to three), which time its
+    -- printing.
+    counts: { number },
+    -- Its words, a line break between lines (presentation: what the
+    -- chatbox shows; gen-content checks they agree with the counts).
+    text: string?,
+    -- Who says it: the portrait beside the box (presentation).
+    portrait: SpriteAsset?,
 }
 export type FormSet = { crosses: { FormDef }, beast_out: FormDef?, beast_over: FormDef? }
 export type FormWeapons = {
@@ -1511,6 +1522,9 @@ export type FormDef = {
     palette: number?,
     -- Its face in the emotion window, or its faces by its navi's emotion.
     mugshot: (Mugshot | MugshotFaces)?,
+    -- A Cross's description, which R shows in the Cross window, its lines
+    -- apart by "\n" (the box takes keys a tick later for each).
+    description: string?,
     weapons: FormWeapons?,
     identity: Identity?,
     -- The damage it adds to a family's damaging chips, and to damaging

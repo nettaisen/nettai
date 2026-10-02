@@ -306,6 +306,21 @@ ice-block = "14-1c"
 sprite-14-1d = "14-1d"
 hub = "14-1e"
 bug = "14-1f"
+# The chatbox's portraits (`mugshotSpritePtrs`, category 0x20): the run
+# messages' speakers. Each ROM has black placeholders for the other game's
+# link navis; the pack takes the true face from whichever ROM has it.
+megaman-portrait = "20-37"
+protoman-portrait = "20-3b"
+heatman-portrait = "20-47"
+spoutman-portrait = "20-48"
+elecman-portrait = "20-49"
+tomahawkman-portrait = "20-4a"
+slashman-portrait = "20-4b"
+tenguman-portrait = "20-4c"
+groundman-portrait = "20-4d"
+dustman-portrait = "20-4e"
+chargeman-portrait = "20-4f"
+eraseman-portrait = "20-50"
 
 # Songs and sound effects: song-table entries.
 [sounds]

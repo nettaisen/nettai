@@ -20,8 +20,12 @@ definitions, `compat/text.toml`), [rollback.md](rollback.md) §3 (presentation u
   about 460 glyphs with kana and kanji) draws the chatbox: chip descriptions and the no-running message. Banners,
   every number but the turn countdown (HP, damage, the count box, round numbers), "PAUSE" and "Cstmzing..." are
   tile pictures.
-- **The frontend draws only the 8x16 font today.** The custom screen is not drawn yet, so descriptions and the
-  run message are not drawn, and the dialogue font is not in the pack.
+- **Step 0 is done** (the custom screen's milestone 4): the dialogue font is in the pack (HUD format 6, with its
+  advances and its charmap, the two-byte glyphs included), the run message's words are in the navi definitions
+  (`run_message = { counts, text, portrait }`), the Crosses have their descriptions, and the chatbox is drawn.
+  Every string the frontend draws goes through `fonts.rs`: `cell_glyphs`, `cell_text`, `draw_cell_text` and
+  `cell_glyph` for the 8x16 font (the HUD's sites too), `dialogue_glyphs` and `dialogue_text` for the dialogue
+  font. (The paragraphs below describe the state before it.)
 - **The 8x16 font spells every BN6 chip name** (298 of 298, all within 8 glyphs). It has Latin letters, digits,
   kana, two kanji and some signs: no accents, no kanji to speak of, nothing else. A character it lacks is dropped
   from the name and reported by `--audit`; glyphs past the eighth are cut silently.

@@ -18,7 +18,13 @@ return define.navi {
     -- ChargeMan face, and shows DustMan's.
     mugshot = asset.mugshot("chargeman"),
     merge_height = 0,
-    run_message = { 15, 19, 11 },
+    -- The no-running message: its lines' characters (which time it), its
+    -- words, and the portrait beside it.
+    run_message = {
+        counts = { 15, 19, 11 },
+        text = "Chug-a-chug-a!!\nNo time to steam on\noutta here!",
+        portrait = asset.sprite("chargeman-portrait"),
+    },
     own_chip = { chip = chargeman, code = "C" },
     -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side

@@ -18,7 +18,13 @@ return define.navi {
     -- SlashMan face, and shows TenguMan's.
     mugshot = asset.mugshot("slashman"),
     merge_height = 4,
-    run_message = { 18, 15, 15 },
+    -- The no-running message: its lines' characters (which time it), its
+    -- words, and the portrait beside it.
+    run_message = {
+        counts = { 18, 15, 15 },
+        text = "Now's not the time\nto cut and run!\nKeep slashing!!",
+        portrait = asset.sprite("slashman-portrait"),
+    },
     own_chip = { chip = slashman, code = "S" },
     chip_bonus = {
         family = "sword",

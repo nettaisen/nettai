@@ -18,7 +18,13 @@ return define.navi {
     -- Its face in the emotion window (`byte_801CDDC`).
     mugshot = asset.mugshot("protoman"),
     merge_height = 0,
-    run_message = { 19 },
+    -- The no-running message: its lines' characters (which time it), its
+    -- words, and the portrait beside it.
+    run_message = {
+        counts = { 19 },
+        text = "Don't run away now!",
+        portrait = asset.sprite("protoman-portrait"),
+    },
     own_chip = { chip = protoman, code = "B" },
     -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side

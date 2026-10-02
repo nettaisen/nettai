@@ -256,12 +256,16 @@ pub struct Assets {
     pub mugshots: BTreeMap<String, u8>,
 }
 
-/// The game's text encoding: what each byte below `first_control` draws.
+/// The game's text encoding: what each byte below `first_control` draws,
+/// and what the dialogue font draws past them (bytes 0xE0-0xE3, then the
+/// two-byte codes E4 00 on).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Text {
     pub glyphs: Vec<String>,
     pub first_control: u8,
+    #[serde(default)]
+    pub dialogue_glyphs: Vec<String>,
 }
 
 /// content/bn6/compat: the original's numbers by content key. Every map
