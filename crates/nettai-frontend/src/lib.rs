@@ -16,6 +16,7 @@ pub mod folders;
 pub mod fonts;
 pub mod headless;
 pub mod hud;
+pub mod netplay;
 pub mod objects;
 pub mod present;
 pub mod render;

@@ -11,6 +11,9 @@ nettai-battle = { path = "../nettai-battle" }
 bn6-compat = { workspace = true, features = ["trace"] }
 nettai-assets = { path = "../nettai-assets" }
 nettai-audio = { path = "../nettai-audio" }
+# Live play against another player: rollback (getgud) over the rennet
+# protocol, on UDP.
+nettai-netplay = { path = "../nettai-netplay" }
 nettai-content = { path = "../nettai-content" }
 # The handles the engine names content by (a chip in a hand).
 nettai-content-api = { path = "../nettai-content-api" }
