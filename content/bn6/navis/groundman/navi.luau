@@ -41,7 +41,7 @@ return define.navi {
         -- What he wears over his body.
         parts = {
             body = {
-                sprite = asset.sprite("body-overlay-0b"),
+                sprite = asset.sprite("groundman-overlay"),
                 anims = 60,
                 behind = { { 0x00, 0x27 }, { 0x3B, 0x3B } },
             },
