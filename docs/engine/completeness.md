@@ -315,8 +315,8 @@ each naming the branch it takes in its description.
 **What has been read**, in the order above: every area but the chip families (read in their own pass, the
 subsection below) and a dozen presentation branches: the collision and damage area, the statuses and hit
 reactions, the custom screen and hand (164 branches), movement (116, with 13 the first batches' recordings made
-one-sided), chip use and dimming (135) and the forms and flow (447): 1,110 branches. 173 are taken by a new
-recording, 516 can't be taken in a netbattle (the tables below), 421 can but have no scenario yet (the list after
+one-sided), chip use and dimming (135) and the forms and flow (447): 1,110 branches. 174 are taken by a new
+recording, 515 can't be taken in a netbattle (the tables below), 421 can but have no scenario yet (the list after
 them). The forms and flow were filed by kind first: their guards (the battle mode and effects, flag 0x40, the
 pools, null players, NameID ranges) are in the tables, the reachable ones were filed by kind (an attack object
 alive when the battle ends, an object during a dimming or a pause, a refused move, an attack off the field), and
@@ -388,8 +388,8 @@ Two more scenarios record a side the branch list can't credit: `chips/0x081-wind
 the first through the field-object registry; the earlier `then-fan` never placed its Fan, the panel being taken)
 and `flow/counter-ko` (a counter that deletes: it is booked before the deletion ends the battle).
 
-**Not reachable in a netbattle** (516 branches; `onesided_notes.py` has every address). First the collision,
-damage and status areas (and the first of the others), 131:
+**Not reachable in a netbattle** (515 branches; `onesided_notes.py` has every address). First the collision,
+damage and status areas (and the first of the others), 130:
 
 | Routines | Branches | Why |
 |---|---|---|
@@ -399,7 +399,7 @@ damage and status areas (and the first of the others), 131:
 | `sub_8009338`, `sub_80102AC`, `sub_8015994`, `sub_80159C6`, `sub_8015A16`, `sub_8015BEC`, `sub_8016934` | 8 | a null player object: both navis exist all battle |
 | object spawns, `object_createCollisionData` and the collision region | 9 | the pools never fill |
 | the panel break, crack and reservation routines, `sub_801A36A` | 5 | a panel pointer off the field: every caller passes a panel on it |
-| `object_breakPanel` | 3 | its callers test the panel first (CrakShot breaks only a solid, empty panel in front of a navi on the field) |
+| `object_breakPanel` | 2 | its callers pass a panel on the field and never an occupied one (CrakShot breaks only an empty panel, SunMoon's meteor only one holding nothing); a panel that isn't solid it does meet, from SunMoon's meteor over a hole (the chip families' second pass, batch 4) |
 | `sub_801A802` | 5 | barrier type 0xA and the weak elements of types 0xB-0xE: only a navi AI raises them |
 | `sub_80139F6`, `sub_801A4A6`, `sub_8019F44` | 8 | bug codes 0x54, 0xF4, 0xF9-0xFF: no hit a netbattle has carries them; the damage word's bit 0x800, whose test branches to its own fall-through |
 | `sub_801A2CC`, `sub_801A324`, `sub_80C532E` | 3 | collision rows 3, 8 and 9 (a chip-erasing hit, drain hits) are used by no attack; the region's report pointer is zeroed at its spawn and set by no caller |
@@ -525,7 +525,7 @@ The first sample, of 10 routines read before this list was worked through, as it
 
 None of the one-sided branches read, in the sample or since, is missing from the port.
 
-#### Chip families
+#### Chip families: G4
 
 The chip families' branches (`onesided_rank.py`'s area 7: routines cited by content/bn6, 1,066 branches in 720
 routines at main 29aac858) are read family by family, most-played chips first. The verdicts are in
@@ -675,6 +675,101 @@ with no slot (2), ElcPuls's one-tick wait and its pulse's linked objects (2: not
 FireHit's search running off the field, which needs no enemy body ahead (as SpoutMan's scans). The 5 recordings
 are in the lab and match the engine at main f8764b51 (2,712 frames).
 
+**Batch 6, the barriers, the Reflectors and IronShl (26 branches: the barrier visual of `lib/barriers`, Rflectr and
+the NaviCust Reflect's guard, IronShl's shell):** 14 taken by 14 new recordings, 9 unreachable, 3 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0b2-barrier/paused`, `chips/0x0b6-lifeaur/link-navi` | a barrier's visual through a pause; LifeAur on a link navi, its aura's part 6 hidden |
+| `chips/0x0b3-barr100/deleted-under-it`, `chips/0x0b2-barrier/deleted-going-down`, `deleted-blown` | the navi deleted with its barrier up, going down, and blown away: the visual finds itself unlinked |
+| `chips/0x0b2-barrier/fan-pull` | a barrier popped by Fan's pull, blown forward |
+| `chips/0x083-rflectr1/cross-beast`, `blind-viewer`, `counter-ko` | Rflectr in a Falzar Cross Beast (the head animates); the shield hidden from a blind viewer; the counter wave's KO |
+| `navicust/reflect-counter` | the Reflect program's guard firing the buster shot back |
+| `chips/0x07b-ironshl1/hole-ahead`, `far-column`, `side-1`, `side-1-far-column` | a hole ahead; the shell on column 6 and on column 1; side 1's shell |
+
+The unreachable ones: a barrier on a navi that isn't a player or is off the field (3), a barrier other than the
+bubble growing back (1: a new barrier ends the old visual first), the visual's end called without one (1), the
+Shield program's guard countering (1: it heeds nothing), an iron shell off the field, with more than one bump or
+no collision slot (3). The hard ones: the bubble growing back while its navi is bubbled (its timer stops then),
+the shield outliving its owner's vanishing for a navi chip (it fades long before the cut-in ends), and a guard
+dropped by a breaking hit, which only arrives with an ordinary hit the guard blocks on the same tick. The 14
+recordings are in the lab and match the engine at main 9ed59b90.
+
+**Batch 7, the traps (34 branches: CopyDmg, AntiDmg, ElemTrap, Mine, BodyGrd):** 12 taken by 9 new recordings,
+9 unreachable, 13 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0be-copydmg/side-1`, `twice` | side 1's damage-carry record; a second mark taking the record from the first |
+| `chips/0x0bb-antidmg/counter-after-ko` | AntiDmg's counter finding no living enemy: the catch lands four ticks before TimeBom1's blast deletes the thrower |
+| `chips/0x0c5-elemtrap/replaced`, `battle-over`, `hit-as-set`, `sprung-dimmed` | the trap's record moving on (AntiDmg after it), the battle's end, a hit in the tick it appears (FireBrn's flames), springing inside HeatMan's dimming |
+| `pa/0x157-bodygrd/all-ten`, `striker-replaced` | BodyGrd's striker running out its ten shurikens (an opponent of 1,500 HP); the striker evicted by Fan, a second field object |
+
+The unreachable ones: spawns that never fail (2), AntiDmg's counter variants its starters never set and shurikens
+off the field (3), the hidden mine's HP (1: no attack's target type reaches it), ElemTrap's counterattack in an
+element without a sound (1: only the four that spring it, all with one), and BodyGrd's striker while dimmed or
+choosing an offline target (2). The hard ones are mostly timings: a CopyDmg probe (about 5 ticks long) seeing the
+battle's end, which comes with the deletion some 50 ticks after the KO hit, after which no chip can be used; a
+shuriken of AntiDmg or BodyGrd starting with the battle over, or BodyGrd's striker meeting its target at 0 HP
+before the deletion; CopyDmg's search meeting anything but the navi it hit (4); the mine finding no free enemy
+panel (2); and ElemTrap's searches finding no enemy body (2, as SpoutMan's). The 9 recordings are in the lab and
+match the engine at main ca994e37 (9,340 frames).
+
+**Batch 8, Thunder, AirHocky, Snake, YoYo (31 branches; BgDthThd's charged ball is Thunder's; GreatYo's own yoyo
+branches are left with the Program Advances):** 4 taken by 3 new recordings, 14 unreachable, 13 hard:
+`chips/0x01e-thunder/target-below` (the ball going down its target's column),
+`chips/0x136-bgdththd/charge-vertical` (the fast ball moving along a column) and `chips/0x032-airhocky/one-column`
+(two AreaGrabs leave the opponent one column, and the puck, across, can neither go on nor turn back). The
+unreachable ones: thunder-ball parameters no chip gives (4: a linked object, no status, a bug), puck rules no row
+has and steps the bounces rule out (7), a snake off the field or off its target's row (2), and the yoyo's
+collision slot (1). The hard ones: the thunder ball's searches failing (6: the enemy navi always on the field, and
+a search ahead failing only with the enemy behind the ball) or its panels running out before it reaches a moving
+opponent (1), Snake with no target or a second one (5: tried the opponent's RockCube after Geddon's holes), and a
+YoYo's slot taken while it is out (1: its navi waits for it). The 3 recordings are in the lab and match the engine
+(4,229 frames).
+
+**Batch 9, Tornado, Meteors, Lance, GolmHit, SonicBom and GroundCross's falling rocks (25 branches):** 1 taken by 1
+new recording, 22 unreachable, 2 hard. `chips/0x034-tornado/off-the-field`: after two AreaGrabs, from (5,2), the
+tornado's panel two ahead is off the field. The unreachable ones are parameters and rows no chip sets (a tornado's
+status, the action's third form, other meteor rows, a lance's second palette, GolmHit's own-panel and cracking
+fist, more than one SonicBom swing, a rock counter: 13), positions the field rules out (a far column or a row
+without the other side's panels, a column walk past the field, markers and rocks off the field: 5), markers ticking
+outside Meteors' dimming (1: the instant meteor shower has no user) and slots that never fail (3). The hard ones: a
+tornado and a falling rock seeing the battle over, which comes with a deletion some 50 ticks after a knockback KO,
+while neither lasts or starts that late. The recording is in the lab and matches the engine (1,034 frames).
+
+**Batch 10, LilBolr and AirRaid (27 branches, with the layer object both use):** 6 taken by 4 new recordings, 17
+unreachable, 4 hard. `chips/0x062-lilbolr1/erupt-dimmed` (P0's HeatMan dims the screen as the boiler erupts: the
+steam layer runs dimmed, and the flames' KO ends the battle with the boiler erupting), `erupt-paused` (a pause
+during the eruption), `full-synchro` (LilBolr1 thrown in Full Synchro: the doubled damage word) and
+`chips/0x068-airraid1/side-1-far-column` (side 1's plane on column 1, with no column ahead). The unreachable ones:
+the layer's own-palette and the viruses' settings no chip's layer uses (8), the boiler's zero-tick throw, its
+flight timer (the lifetime), a break with HP left and an eruption while dimmed (5: the obstacle framework holds its
+actions then), the plane's actions while dimmed, its propeller's own flip and a stop with nothing (4). The hard
+ones: a layer's or propeller's owner held by a status, the plane seeing the battle over (tried the opponent's
+Cannon, Thunder and Silence, and KOs), and a hit that doesn't lower the boiler's HP (tried Fan and MagCoil). The 4
+recordings are in the lab and match the engine (3,719 frames).
+
+**Batch 11, MetrKnuk and SandWrm (26 branches):** 6 taken by 4 new recordings, 17 unreachable, 3 hard.
+`chips/0x133-metrknuk/corner-target` (P1 on (6,3): the 3x3 around it runs past the far column and the bottom row),
+`side-1` (side 1's MetrKnuk at P0 on (1,2): past column 1), `chips/0x065-sandwrm1/user-flinched` (the opponent's
+AirShot hits the user as the worm emerges: the start hole's opening stalls while its navi flinches) and
+`heatman-dimming` (the opponent's HeatMan dims the screen as the worm emerges: the holes run through the dimming
+without opening further, while the worm and its sand wait). The unreachable ones: a slow fist (MetrKnuk's spawner
+sets the fast fall), full pools (2), no panel of the enemy's area or a second enemy body (3), no target around the
+enemy navi but the last one (3: panels are taken front first in each row and come back front first, and the back
+column is never taken, so the navi's 3x3 always holds another panel of its side), a hole's opening outlasting the
+worm's 20-tick timer, a hole seeing a pause (2: it has no run-while-paused flag), the worm and the sand seeing a
+dimming (2: no run-while-dimmed flag), the start hole's timer running out in the 16-tick arc, the worm changing
+row, and an arc's fifth quarter. The hard ones: MetrKnuk's first fist finding no enemy body (the enemy navi keeps
+it on the panel flags until its deletion), and a hole whose navi is at 0 HP with the battle not over (2: a KO
+starts the deletion, and the battle's end that destroys the holes, at once; tried MiniBomb, AirShot and HeatMan on
+a 10 HP user). The 4 recordings are in the lab and match the engine (6,879 frames).
+
+<!-- end: chip families, G4 -->
+
+##### Chip families: onesided's share
+
 The rest of the area is shared from here: the cannons, guns and shots, the arm chips, the traps and barriers
 and ColArmy stay with this pass; the remaining navi chips, the Program Advances, the panel and stage chips, the
 elemental and status chips and the recovery, support and field chips are read in a second one, whose verdicts
@@ -705,26 +800,6 @@ spawned with someone waiting (2). The hard one: link GroundMan's drill outliving
 interruption of his invulnerable dig would do.
 
 All 10 recordings match the engine, every frame (16,698) and every sound call (286).
-
-**Batch 6, the barriers, the Reflectors and IronShl (26 branches: the barrier visual of `lib/barriers`, Rflectr and
-the NaviCust Reflect's guard, IronShl's shell):** 14 taken by 14 new recordings, 9 unreachable, 3 hard:
-
-| Scenarios | What they take the other way |
-|---|---|
-| `chips/0x0b2-barrier/paused`, `chips/0x0b6-lifeaur/link-navi` | a barrier's visual through a pause; LifeAur on a link navi, its aura's part 6 hidden |
-| `chips/0x0b3-barr100/deleted-under-it`, `chips/0x0b2-barrier/deleted-going-down`, `deleted-blown` | the navi deleted with its barrier up, going down, and blown away: the visual finds itself unlinked |
-| `chips/0x0b2-barrier/fan-pull` | a barrier popped by Fan's pull, blown forward |
-| `chips/0x083-rflectr1/cross-beast`, `blind-viewer`, `counter-ko` | Rflectr in a Falzar Cross Beast (the head animates); the shield hidden from a blind viewer; the counter wave's KO |
-| `navicust/reflect-counter` | the Reflect program's guard firing the buster shot back |
-| `chips/0x07b-ironshl1/hole-ahead`, `far-column`, `side-1`, `side-1-far-column` | a hole ahead; the shell on column 6 and on column 1; side 1's shell |
-
-The unreachable ones: a barrier on a navi that isn't a player or is off the field (3), a barrier other than the
-bubble growing back (1: a new barrier ends the old visual first), the visual's end called without one (1), the
-Shield program's guard countering (1: it heeds nothing), an iron shell off the field, with more than one bump or
-no collision slot (3). The hard ones: the bubble growing back while its navi is bubbled (its timer stops then),
-the shield outliving its owner's vanishing for a navi chip (it fades long before the cut-in ends), and a guard
-dropped by a breaking hit, which only arrives with an ordinary hit the guard blocks on the same tick. The 14
-recordings are in the lab and match the engine at main 9ed59b90.
 
 **Second pass, batch 2: DblBeast, CrossDiv's Colonel, HubBatc** (30 branches): 15 taken by 9 new recordings,
 9 unreachable, 6 hard:
@@ -762,25 +837,83 @@ phases (6), Django's sun beam or partner missing (2), DblHero's shot row leaving
 keeps its back column) and DblHero with no controller waiting (1). The 7 recordings match the engine, every frame
 (11,219) and sound call (408).
 
-**Batch 7, the traps (34 branches: CopyDmg, AntiDmg, ElemTrap, Mine, BodyGrd):** 12 taken by 9 new recordings,
-9 unreachable, 13 hard:
+**Second pass, batch 4: the other Program Advances (MstrCros, SunMoon, CornFsta, TwinLdrs, H-Burst; 37
+branches):** 7 taken by 6 new recordings (and an earlier unreachable verdict of the collision area with them),
+29 unreachable, 1 hard:
 
 | Scenarios | What they take the other way |
 |---|---|
-| `chips/0x0be-copydmg/side-1`, `twice` | side 1's damage-carry record; a second mark taking the record from the first |
-| `chips/0x0bb-antidmg/counter-after-ko` | AntiDmg's counter finding no living enemy: the catch lands four ticks before TimeBom1's blast deletes the thrower |
-| `chips/0x0c5-elemtrap/replaced`, `battle-over`, `hit-as-set`, `sprung-dimmed` | the trap's record moving on (AntiDmg after it), the battle's end, a hit in the tick it appears (FireBrn's flames), springing inside HeatMan's dimming |
-| `pa/0x157-bodygrd/all-ten`, `striker-replaced` | BodyGrd's striker running out its ten shurikens (an opponent of 1,500 HP); the striker evicted by Fan, a second field object |
+| `pa/0x15a-mstrcros/user-column`, `pa/0x15c-twinldrs/user-column` | a Cross's and ProtoMan's landing panel in the user's column a row away |
+| `pa/0x15c-twinldrs/colonel-fallback-column` | Colonel with no enemy navi in his row, standing on his fallback column (two AreaGrabs put the user on column 5) |
+| `pa/0x15b-sunmoon/hole-ahead` | SunMoon's meteors over the holes stage's hole (`object_breakPanel` on a panel that isn't solid, which `completeness.md`'s collision table had as unreachable) and its dive ending in smoke |
+| `pa/0x14c-cornfsta/corner` | CornFsta's sower at the corner beside the enemy, its three free panels all among its last three bursts (AreaGrab a turn before, as the PA's codes take no other chip, and the user standing in the taken column so it isn't returned; seed 4 for the draws) |
+| `pa/0x152-h-burst/miss` | H-Burst's shot flying off the field |
 
-The unreachable ones: spawns that never fail (2), AntiDmg's counter variants its starters never set and shurikens
-off the field (3), the hidden mine's HP (1: no attack's target type reaches it), ElemTrap's counterattack in an
-element without a sound (1: only the four that spring it, all with one), and BodyGrd's striker while dimmed or
-choosing an offline target (2). The hard ones are mostly timings: a CopyDmg probe (about 5 ticks long) seeing the
-battle's end, which comes with the deletion some 50 ticks after the KO hit, after which no chip can be used; a
-shuriken of AntiDmg or BodyGrd starting with the battle over, or BodyGrd's striker meeting its target at 0 HP
-before the deletion; CopyDmg's search meeting anything but the navi it hit (4); the mine finding no free enemy
-panel (2); and ElemTrap's searches finding no enemy body (2, as SpoutMan's). The 9 recordings are in the lab and
-match the engine at main ca994e37 (9,340 frames).
+The unreachable ones: missing links (a controller, a leader, 5), one-tick phases (4), spawns (2), a second enemy
+navi panel and a second target for ProtoMan (2), MstrCros's fade below 0 and a finale Cross past the third (2),
+panel bursts around a panel or with a sound (2: every spawner passes a whole-field region, no row has a sound),
+SunMoon's dead blink test (2) and other meteors (2: it throws one kind), CornFsta's user not a navi, a sower that
+steps twice, finds no panel or outlives its farmer, or fails to spawn (5), ProtoMan's search off the field (1),
+ProtoMan back before Colonel's charge has run 40 ticks (1: his quickest way back, with no panel to land on,
+comes at its 42nd), and H-Burst seeing the fight stopped (1: battle flag 1 stays set for the battle). The hard one:
+no enemy navi on the field for MstrCros. The 6 recordings match the engine at main 9aedd5a4, every frame (15,413)
+and sound call (418).
+
+**Second pass, batch 5: GreatYo's yoyos, AreaGrab and PanlGrab, the panel changer, GrabBnsh's hands (36
+branches):** 8 taken by 6 new recordings, 27 unreachable, 1 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `pa/0x154-greatyo/adjacent` | GreatYo's middle yoyo hitting as it starts out: it spins at once and the others roll back no panels |
+| `chips/0x0a3-areagrab/third-grab`, `home-partly-stolen` | a third AreaGrab on the other side's last column, which can't be taken; AreaGrab from a column the other side's PanlGrab has partly taken, its home the column behind |
+| `chips/0x0a2-panlgrab/twice-then-areagrab` | the grab's "keeps a full column" test meeting a column PanlGrab has taken a panel of |
+| `chips/0x0a8-holypanl/hole-ahead`, `chips/0x0bd-antirecv/healer-over-hole` | the panel changer's panel a hole: HolyPanl's panel in front, AntiRecv's poison under a healer over a hole (AirShoes) |
+
+The unreachable ones: GreatYo's signal to an empty slot and a yoyo without its controller (2: the three go out
+together and the controller outlasts them), a grab with no column to take (2: a side keeps a full column), the
+grab searches' walks from the far edge (5: that panel is always the other side's), spawns (3), the panel
+changer's kinds 7, 8 and 0xA to 0xC (9: its spawners are the panel chips and AntiRecv), a change that doesn't
+flicker and one with no holder (2), GrabBnsh's later hands (2: one enemy navi panel, one hand a strike) and its
+region (1), and CornFsta's sower with no panel at all (1). The hard one: AreaGrab's home search running off the
+field, which needs every column from the user's back partly stolen. The 6 recordings match the engine at main
+1703b936, every frame (8,062) and sound call (177).
+
+**Second pass, batch 6: Sensor, Guardian, Anubis (28 branches):** 6 taken by 5 new recordings, 17
+unreachable, 5 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x071-sensor1/side1`, `dimmed`, `ko-scanning` | side 1's Sensor (its scanner's test and its line leaving at column 0); the scanner under the other side's dimming; the scanner, sent up the diagonal past the opponent, seeing the battle over |
+| `chips/0x097-guardian/broken-in-dimming`, `broken-and-ko` | the statue broken inside HeatMan's dimming: the strike back waits the dimming out, and finds the battle over when HeatMan also deletes its owner |
+
+The unreachable ones: the turret's own dimmed tests (2: the obstacles' shared update runs its actions only
+outside a dimming), spawns (2), links (2), a scanner that passes objects (2) and the laser's delay (1); the
+statue appearing on a taken panel, broken with HP left, quiet, or striking back with no side, and a repeated test
+(5); Anubis's drain seeing the battle over (1: the statue's shared update ends it first, at a KO or at the 15th
+turn's time-up alike) and its bubbles finding no panel (2). The hard ones: a laser hit on its turret's last
+tick, the turret pushed while it fires (its target is paralyzed for the whole fire; with a Barrier, AirShot still
+didn't push it), and the statue broken by both sides' hits at once or by a hit with neither side's bits (3). The 5
+recordings match the engine at main eda65622, every frame (6,173) and sound call (189).
+
+**Second pass, batch 7: VDoll, the supports, the instruments, Otenko, RockCube, MagCoil (35 branches):** 6
+taken by 5 new recordings, 26 unreachable, 3 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x096-vdoll/dimmed-flight`, `hole-landing`, `heatman-burns` | the doll in the air under the other side's dimming; landing on a hole and breaking; burned inside its own side's HeatMan dimming, its end waiting the dimming out and then finding the battle over |
+| `chips/0x099-otenko/next-turn` | Otenko's blessing meeting the same hand position in the next turn (another turn's chip) |
+| `chips/0x0b7-magcoil/side1` | side 1's magnet pull |
+
+The unreachable ones: the doll's hit without its record (1), the sparkles' slot, length and silence (4: the curse
+is a netbattle's only spawner), the curse without one combatant on the other side (4), the supports without a
+navi, Rush's spared chip (no folder holds it), his controller and his fallback panel (8), the instruments' own
+dimmed and battle-over tests (4: the obstacles' shared update runs their actions only outside a dimming and ends
+them at the battle's end, like the Sensor turret's and Anubis's), Otenko's statue without collision or on a
+taken panel (2), the rock rows and entrances no spawner uses (2), and MagCoil's one-tick wait (1). The hard
+ones: the doll broken while carried, Tango's heal over a barrier, and the magnet seeing the battle over. The 5
+recordings match the engine at main bc71b739, every frame (4,862) and sound call (97).
+
+<!-- end: chip families, onesided -->
 
 ### 6.3 Custom screen keys
 
