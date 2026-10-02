@@ -235,7 +235,9 @@ fn custom_open(b: &Battle) -> bool {
 /// the ticks "Cstmzing..." has been up (`sub_801E474` starts it).
 fn waiting_ticks(b: &Battle) -> Option<u32> {
     let sent = b.custom.sides[b.setup.local_side as usize].sent.as_ref()?;
-    (b.round.mode == mode::CUSTOM && !b.custom.committed).then(|| b.round.ticks.saturating_sub(sent.sent_at + 1))
+    // (On the tick the custom mode starts the screens haven't opened yet:
+    // what was sent is the last screen's.)
+    (crate::custom::screens_open(b) && !b.custom.committed).then(|| b.round.ticks.saturating_sub(sent.sent_at + 1))
 }
 
 /// Whether the custom gauge is drawn.
