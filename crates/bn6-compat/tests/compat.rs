@@ -1,14 +1,14 @@
 //! Compat stays out of the engine, and BN6's reads.
 
-use bn6_battle::object::Pool;
+use nettai_battle::object::Pool;
 use bn6_compat::Compat;
 
 /// The engine can't depend on compat (docs/design/content-model-v2.md
 /// §6.4): its manifest names no bn6-compat.
 #[test]
 fn the_engine_does_not_depend_on_compat() {
-    let manifest = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../bn6-battle/Cargo.toml")).unwrap();
-    assert!(!manifest.contains("bn6-compat"), "bn6-battle's Cargo.toml names bn6-compat");
+    let manifest = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../nettai-battle/Cargo.toml")).unwrap();
+    assert!(!manifest.contains("bn6-compat"), "nettai-battle's Cargo.toml names bn6-compat");
 }
 
 /// What content defines has no number in the engine: an object records its
@@ -17,20 +17,20 @@ fn the_engine_does_not_depend_on_compat() {
 /// engine's own kinds' too (their keys are `engine/...`).
 #[test]
 fn compat_numbers_what_the_engine_runs_by_handle() {
-    use bn6_battle::content::testing;
-    use bn6_battle::kinds::player::{NaviAction, navi_action};
-    use bn6_content_api::CoreApi;
+    use nettai_battle::content::testing;
+    use nettai_battle::kinds::player::{NaviAction, navi_action};
+    use nettai_content_api::CoreApi;
 
     let content = std::sync::Arc::new(testing::with_test_pack());
     let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(1000));
     setup.content = content.hash();
-    let mut b = bn6_battle::Battle::new(setup, content);
+    let mut b = nettai_battle::Battle::new(setup, content);
     b.spawn_actors();
     let player = b.player(0).unwrap();
-    let ticker = bn6_battle::behavior::spawn_kind(&mut b, "test/ticker", Default::default()).unwrap();
+    let ticker = nettai_battle::behavior::spawn_kind(&mut b, "test/ticker", Default::default()).unwrap();
     let shot = b.content.defs.actions.iter().position(|a| a.key == "test/tick-shot/shot").unwrap() as u16;
     b.set_content_attack(player, shot, 1).unwrap();
-    assert_eq!(navi_action(&b, player), NaviAction::Content(bn6_content_api::ActionHandle(shot)));
+    assert_eq!(navi_action(&b, player), NaviAction::Content(nettai_content_api::ActionHandle(shot)));
 
     let mut compat = Compat::default();
     // Without entries, compat says what it lacks.
