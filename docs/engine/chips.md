@@ -203,8 +203,8 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
      entries; slots 34, 35, 39, 40 are NULL). Chips 0x138 Gregar and 0x139 Falzar point at NULL slots 34/35. In the
      US ROM using them crashes the game, so the port can treat them as unsupported: their definitions' `dimming`
      hooks stop the battle saying so (lib/unusable, as HackJack's and Django's `navi` hooks do for
-     `off_802CD5C`'s null entries 18 and 19). The JP ROM would be needed to define real behaviour; that is out of
-     scope.
+     `off_802CD5C`'s null entries 18 and 19). The JP ROMs have the behaviour: jp-differences.md §4 has their
+     entries and objects.
    - **0x1B** `sub_80EC350` (0x080EC350), navi chips. It spawns T4 object 0x10 via `sub_80E192C`. That controller
      later calls **`off_802CD5C[subtype]`** (0x0802CD5C, 29 entries).
 4. Action **0x1C** `sub_80EC39C` (0x080EC39C) is the "instant" handler. It calls `off_80EC3F0[av[3]]` once and exits
