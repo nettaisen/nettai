@@ -25,9 +25,11 @@ fn the_test_pack_and_test_content_type_check() {
         let modules = nettai_content_check::modules(&dir).unwrap();
         assert!(modules.len() >= at_least, "testdata/{name}: {} modules", modules.len());
         for (path, source) in &modules {
-            let path = format!("testdata/{name}/{path}");
-            problems.extend(checker.check(&path, source).unwrap());
-            problems.extend(nettai_content_check::lints::lints(&path, source));
+            let full = format!("testdata/{name}/{path}");
+            problems.extend(checker.check(&full, source).unwrap());
+            // (The lints read a module's path in its root: rules/ holds a
+            // game's rules.)
+            problems.extend(nettai_content_check::lints::lints(path, source).into_iter().map(|p| format!("testdata/{name}/{p}")));
         }
     }
     assert!(problems.is_empty(), "problems:\n{}", problems.join("\n"));
