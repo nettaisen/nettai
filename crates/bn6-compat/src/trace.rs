@@ -70,7 +70,8 @@ pub struct Setup {
     pub link_delay: Option<u8>,
     /// The recording console's frame counter on the setup's frame (the
     /// halfword its 16-frame sounds go by). Traces recorded without it read
-    /// it as the frame number and 2, which every cable recording shows.
+    /// it as the frame number and 2: in a cable recording the counter is
+    /// the frame number and 50 (machgun's two rounds), the same modulo 16.
     #[serde(default)]
     pub frame_counter: Option<u16>,
 }
@@ -332,8 +333,9 @@ impl Round {
         // than on the setup's frame, the round's first. The trace gives the
         // recording console's; without it (and for the other console,
         // which isn't recorded) it is the frame number and 2 on a battle
-        // frame (measured on its 16-frame sounds, in every cable
-        // recording).
+        // frame, which in a cable recording is the counter modulo 16, all
+        // its 16-frame sounds read. A recording that starts from a
+        // savestate (Tango's first netplay engine) gives the counter.
         let frames = match self.setup.frame_counter {
             Some(c) => (c as u32).wrapping_sub(1) & 0xFFFF,
             None => self.battle_frames().next().map_or(0, |f| f.frame + 1),
