@@ -913,6 +913,24 @@ taken panel (2), the rock rows and entrances no spawner uses (2), and MagCoil's 
 ones: the doll broken while carried, Tango's heal over a barrier, and the magnet seeing the battle over. The 5
 recordings match the engine at main bc71b739, every frame (4,862) and sound call (97).
 
+**Second pass, batch 8: the dragons and the element pillar (33 branches):** 14 taken by 9 new recordings, 19
+unreachable:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x030-aquadrgn/side1-column1`, `chips/0x02f-elecdrgn/hole-column`, `chips/0x031-wooddrgn/tackle-away` | side 1's dragon swimming out to column 0 and climbing there; a dragon passing a hole, which it leaves unmarked; a dragon with no enemy body on any panel (side 1's ChargeCross tackling off the field), rising in the column ahead |
+| `pa/0x159-darkness/top-row` | Dark MegaMan's flames above the top row, never placed |
+| `forms/gregar/cross-heat-beast-charged-aqua-break` | HeatCross Beast's flames dying down early once a WideSht breaks the Cross out of the burn |
+| `forms/gregar/cross-heat-beast-charged-off-field`, `-side1`, `forms/gregar/cross-elec-beast-charged-off-field`, `-side1` | HeatCross Beast's and ElecCross Beast's pillars past column 6, above row 1 and below row 3 (side 0 on a grabbed column 4), and past column 1 (Gregar on side 1 on a grabbed column 3) |
+
+The unreachable ones: the dragons' own dimmed tests (2: head and body are attack objects, which the update loop
+skips while dimmed; side 1's RockCube while HeatDrgn was out left it standing still), a second splash (2: the climb
+out's end ends the object in the same tick), a dragon that never crosses a panel, a splash on the way down and the
+climb out at a downward speed (6: every dragon swims 4 pixels a tick, and only the up leg climbs out), a panel left
+below row 3 (1: the dip stays inside the bottom row), a swim's fifth past 4 (1: a panel takes 10 ticks), and the
+pillar kinds 2 to 4 (7: the viruses'; a netbattle's pillars are HeatCross Beast's, ElecCross Beast's and
+Darkness's). The 9 recordings match the engine at main 91fc002f, every frame (15,759) and sound call (314).
+
 <!-- end: chip families, onesided -->
 
 ### 6.3 Custom screen keys
