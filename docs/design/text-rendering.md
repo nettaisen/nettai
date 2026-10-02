@@ -871,6 +871,16 @@ character, so a string encodes and decodes the same way and a mark is one charac
   lacks (the bat, End, Ƶ, ﹒) sends its string to the game's font, as any character the font lacks does.
 - **The battle** counts characters (a description's lines; the run message's characters per line and which move
   the mouth): a mark is one, as the bracketed name was, so no record and no hash changed.
+- **The hyphen of "power-up"** (the user's "fix character", 2026-10-02: SpoutMan's descriptions had read
+  "powerーup"). The US ROM's text has byte 0xA1 there, which the encodings name ー, the Japanese fonts' long vowel
+  mark; the US fonts draw 0xA1 as they draw 0x98, the hyphen (the same pictures in the 8x16 font and the dialogue
+  font, the same advance). So the US encoding reads 0xA1 as a hyphen too: two bytes draw one character, as 0x00
+  and 0xB1 both draw a space, and a string is encoded with the first (0x98), which draws the same pixels. The
+  Japanese encoding keeps ー: its fonts draw a long vowel mark. A sweep of the US ROM's battle text (chip names and
+  descriptions, the Crosses' descriptions, the names by NameID) found no other glyph the US fonts draw as an ASCII
+  one: the rest of its non-ASCII text is the marks, and ミテイ (未定, "not decided"), which the US ROM really has
+  as the description of 57 chips (0x15E-0x17B, 0x181-0x18F but 0x185, 0x19B-0x1A7), in katakana; en.toml keeps
+  it for the 17 of them the content defines.
 - **Checked**: `--text original` renders byte for byte the same PNGs as before (the frontend before the change with
   its pack, against this one with a pack extracted again): 206 English scenarios and traces, 275,844 frames (the
   sample, the custom-screen and chatbox lists, machgun, soundmod and the EX and SP navi chips), and the 142 Japanese
