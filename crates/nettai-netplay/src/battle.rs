@@ -14,10 +14,14 @@
 //! docs/design/rollback.md.
 
 use std::collections::VecDeque;
+use std::io;
 
+use crate::protocol::WireInput;
+use crate::wire;
 use crate::world::{Game, Observer};
 use nettai_battle::cues::{CueAction, CueId, CueTracker};
-use nettai_battle::{Battle, PlayerTick, SoundCue, TickEvents, TickInput};
+use nettai_battle::custom::Recorded;
+use nettai_battle::{Battle, CustomResult, PlayerTick, SoundCue, TickEvents, TickInput};
 
 /// One player's share of a tick's input.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -42,6 +46,59 @@ pub fn tick_input(inputs: [&PlayerInput; 2]) -> TickInput {
         }
     }
     TickInput { players: [inputs[0].tick, inputs[1].tick], events }
+}
+
+/// A player's input on the wire: the buttons, the events as flags
+/// ([`flags`]), and a recorded result's bytes as the payload (only when
+/// checking against a recording, once a custom screen).
+impl WireInput for PlayerInput {
+    fn encode(&self, payload: &mut Vec<u8>) -> (u16, u8) {
+        let TickEvents { link_closed, recorded } = &self.events;
+        let mut f = if *link_closed { flags::LINK_CLOSED } else { 0 };
+        for (side, r) in recorded.iter().enumerate() {
+            let Some(Recorded { in_custom, result }) = r else { continue };
+            f |= flags::RECORDED[side];
+            if *in_custom {
+                f |= flags::IN_CUSTOM[side];
+            }
+            if let Some(result) = result {
+                f |= flags::RESULT[side];
+                wire::Writer(payload).put(&**result);
+            }
+        }
+        (self.tick.held, f)
+    }
+
+    fn decode(held: u16, f: u8, payload: &[u8]) -> io::Result<PlayerInput> {
+        if f & !flags::ALL != 0 {
+            return Err(crate::protocol::invalid("unknown event flags"));
+        }
+        let mut bytes = wire::Reader::new(payload);
+        let mut events = TickEvents { link_closed: f & flags::LINK_CLOSED != 0, ..TickEvents::default() };
+        for side in 0..2 {
+            let result = if f & flags::RESULT[side] != 0 { Some(Box::new(bytes.get::<CustomResult>()?)) } else { None };
+            if f & flags::RECORDED[side] != 0 {
+                events.recorded[side] = Some(Recorded { in_custom: f & flags::IN_CUSTOM[side] != 0, result });
+            } else if result.is_some() || f & flags::IN_CUSTOM[side] != 0 {
+                return Err(crate::protocol::invalid("a recorded result without its record"));
+            }
+        }
+        bytes.finish()?;
+        Ok(PlayerInput { tick: PlayerTick { held }, events })
+    }
+}
+
+/// A [`PlayerInput`]'s events as a tick's flags.
+pub mod flags {
+    /// `TickEvents::link_closed`.
+    pub const LINK_CLOSED: u8 = 1 << 0;
+    /// `TickEvents::recorded[side]` is there.
+    pub const RECORDED: [u8; 2] = [1 << 1, 1 << 2];
+    /// ... and says the side's custom screen is open.
+    pub const IN_CUSTOM: [u8; 2] = [1 << 3, 1 << 4];
+    /// ... and carries a result (in the tick's payload, side 0's first).
+    pub const RESULT: [u8; 2] = [1 << 5, 1 << 6];
+    pub const ALL: u8 = 0x7F;
 }
 
 impl Game for Battle {

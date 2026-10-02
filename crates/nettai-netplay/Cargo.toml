@@ -7,7 +7,10 @@ description = "Rollback netplay for the battle engine on getgud, with a simulate
 
 [dependencies]
 nettai-battle.workspace = true
+# The handles a tick's payload and a player's setup name content by.
+nettai-content-api = { path = "../nettai-content-api" }
 getgud.workspace = true
+rennet.workspace = true
 
 [features]
 # rollback_cost reports the calls into Luau per advance
