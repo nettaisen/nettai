@@ -4,34 +4,14 @@
 -- and the screen shakes (lib/instruments).
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local effects = require("../../lib/instruments/effects")
 local instrument = require("../../lib/instruments/instrument")
 local instruments = require("../../lib/instruments/controller")
 local statuses = require("../../rules/status")
 
--- Held in place (status 0x43: 4 ticks), with the sixth element's damage 0.
-local IMMOBILIZE, ELEMENT_NONE = statuses.immobilize_4, 5
-
--- `sub_80D43C0`: a one-tick hit over the solid panels that immobilizes
--- the other side, and a camera shake.
-local function drum(me: Object)
-    battle.hitbox(me, {
-        panel_x = me.panel_x,
-        panel_y = me.panel_y,
-        element = ELEMENT_NONE,
-        z = 0,
-        region = regions.solid,
-        -- None.
-        hit_effect = nil,
-        target = collision.hits_navis,
-        self_type = collision.guard_breaking,
-        damage = 0,
-        stamina = 0,
-        hit_mod = 0,
-        status = IMMOBILIZE,
-    })
-    battle.shake_camera(2, 4)
-end
+-- Held in place (status 0x43: 4 ticks) over the solid panels, and a
+-- camera shake (`sub_80D43C0`).
+local drum = effects.drum(statuses.immobilize_4, collision.guard_breaking, collision.hits_navis)
 
 return define.chip {
     id = "timpani",

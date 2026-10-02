@@ -1,0 +1,64 @@
+--!strict
+-- BN5's MegaMan (navi 0, NameID 0x180), from BN5's tables: his battle sprite (08-00, 0x0800DA65 by navi), his
+-- element (0x0800E634), his buster bonus (0x0800F5AC), his move lag (4 after a move, `sub_8010332`'s
+-- counterpart 0x0800E0BE: MegaMan's isn't by variant), his netbattle banners (0x080090D8, 0x080090B0), his
+-- weapons (weapons/: the buster and the charged shot, BN6's actions with BN5's setups), and his identity: his
+-- actor record (0x08014C94: version 0, a player, AI index 0) and his sprite's 30 attach points (0x080151C0,
+-- 0x3C bytes a sprite: BN6's have 34). BN5 has no weakness table (BN6's `byte_80108D1`).
+--
+-- Not yet (docs/design/bn5-map.md §15.7): his souls (forms, with Soul Unison), his move lag in soul 8 (0), the
+-- held offset and the custom screen's no-running message.
+
+local buster = require("./weapons/buster")
+local charged_shot = require("./weapons/charged-shot")
+
+return define.navi {
+    id = "megaman",
+    sprite = asset.sprite("megaman-navi"),
+    element = "null",
+    buster_bonus = 1,
+    move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
+    banners = { win = asset.banner("megaman-win"), lose = asset.banner("megaman-deleted") },
+    weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
+    identity = define.identity {
+        class = "megaman",
+        version = 0,
+        actor_type = "player",
+        ai_index = 0,
+        -- The Full Synchro aura's animation: BN6's rule (`sub_80C4C52`: the AI index), which BN5 hasn't (its aura
+        -- is its own, to come with BN5's emotions); the engine asks every player for one.
+        aura_anim = 0,
+        attach_points = {
+            { 0, 0 },
+            { 0, 0 },
+            { 0, 0 },
+            { 8, 48 },
+            { 8, 50 },
+            { 8, 50 },
+            { 16, 0 },
+            { 16, 24 },
+            { 16, 24 },
+            { 24, 24 },
+            { 18, 24 },
+            { 18, 24 },
+            { 18, 24 },
+            { 24, 24 },
+            { 24, 24 },
+            { 24, 24 },
+            { 40, 26 },
+            { 0, 18 },
+            { 24, 28 },
+            { 40, 26 },
+            { -1, 26 },
+            { 0, 16 },
+            { 24, 26 },
+            { 24, 26 },
+            { 24, 23 },
+            { 24, 26 },
+            { 0, 18 },
+            { 0, 18 },
+            { 24, 25 },
+            { 40, 20 },
+        },
+    },
+}
