@@ -1002,6 +1002,35 @@ below row 3 (1: the dip stays inside the bottom row), a swim's fifth past 4 (1: 
 pillar kinds 2 to 4 (7: the viruses'; a netbattle's pillars are HeatCross Beast's, ElecCross Beast's and
 Darkness's). The 9 recordings match the engine at main 91fc002f, every frame (15,759) and sound call (314).
 
+**Second pass, batch 9: AirSpin, SumnBlk, AquaNdl (30 branches):** 10 taken by 7 new recordings, 20
+unreachable:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x07e-airspin1/holes`, `gigacan3`, `airshot`, `tenguman`, `geddon` | the top set down on a hole, and stopping at once before side 1's hole; its 400 HP taken by GigaCan3; one more spin for a pushing hit (AirShot) and for a wind hit that isn't one (TenguMan); a panel broken under it (Geddon's quake breaks the panel it rolls toward inside the dimming, and it rolls on afterwards) |
+| `chips/0x087-sumnblk1/hole-ahead-adjacent` | the other side's navi one column ahead of the user: too near, no target |
+| `chips/0x03d-aquandl1/side1` | the volley's ordering for a left-facing user |
+
+The unreachable ones: the top's fourth panel (1: it starts one panel ahead of its navi), its own panel blocked (1:
+whatever blocks it touches it first, and it breaks), the panel under its coordinates not its own (1: the routine
+reads the object's own position), the gust without a slot (1), the SumnBlk navi's one-tick raise seen twice (1),
+its target search over no actor, two actors or a wide one (7: one navi a side), the needle off the field, its own
+dimmed test (an attack object, skipped while dimmed) and a needle that cracks its panel (3: the volley never asks
+for one), and the volley's two or more targets (5: all three needles fall on the one navi's panel; the two side-1
+comparisons the new recording reaches one way are noted the same). The 7 recordings match the engine (main d5a4c6f4
+with the dragons' fifth fix), every frame (5,692) and sound call (166).
+
+**Second pass, batch 10: BugFix, LifeSync, FullCust (8 branches):** 2 taken by 2 new recordings, 6 unreachable:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0b0-bugfix/blind-viewer`, `beast-spent` | the glow hidden from a blind viewer (side 1's Silence on the recording console's player); BugFix with the Beast Out counter run out |
+
+The unreachable ones: BugFix's glow over a navi that isn't a player's (1: it copies its user's side's navi),
+LifeSync's sync (3: every netbattle is a link battle, where its effect skips to the end), FullCust's per-player
+gauge (1: battle flag 0x40) and the gauge set past full (1: its callers pass 0 or 0x4000, the limit). The 2
+recordings match the engine (this branch on main 2a35e451), every frame (4,797) and sound call (91).
+
 <!-- end: chip families, onesided -->
 
 ### 6.3 Custom screen keys
