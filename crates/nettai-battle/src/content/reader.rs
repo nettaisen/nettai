@@ -5,11 +5,10 @@
 
 use std::collections::HashMap;
 
-use nettai_content_api::{AssetKind, AssetNames, ContentError, Data, DataKey, Definition, Definitions, Registry};
+use nettai_content_api::{AssetNames, ContentError, Data, DataKey, Definition, Definitions, Registry};
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value as Json};
 
-use super::*;
 
 pub(crate) fn err(d: &Definition, e: impl std::fmt::Display) -> ContentError {
     ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key))
@@ -42,11 +41,6 @@ impl<'a> SpecReader<'a> {
         self.handles.get(&(registry, key.to_string())).copied()
     }
 
-    /// A sprite asset's identity.
-    pub fn sprite(&self, name: &str) -> Option<SpriteId> {
-        self.assets.sprites.get(name).copied()
-    }
-
     /// `d` as the data a record reads (serde's form).
     pub fn json(&self, d: &Data, at: &str) -> Result<Json, String> {
         Ok(match d {
@@ -77,13 +71,9 @@ impl<'a> SpecReader<'a> {
                 Some(h) => Json::from(h),
                 None => return Err(format!("{at}: a {registry} ({key:?}) is no value a record holds")),
             },
-            Data::Asset(AssetKind::Sprite, name) => match self.sprite(name) {
-                Some(s) => Json::String(s.to_string()),
-                None => return Err(format!("{at}: the pack has no sprite {name:?}")),
-            },
+            // An asset by its handle (every kind's id is one).
             Data::Asset(kind, name) => {
-                let h = self.assets.handle(*kind, name).ok_or_else(|| format!("{at}: the pack has no {kind} {name:?}"))?;
-                Json::from(self.assets.number(*kind, h).expect("a handle's asset"))
+                Json::from(self.assets.handle(*kind, name).ok_or_else(|| format!("{at}: the packs have no {kind} {name:?}"))?)
             }
             Data::Function => return Err(format!("{at}: a function isn't data")),
         })

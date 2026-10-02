@@ -4,10 +4,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// A sprite: (category byte offset, index) into the game's sprite table.
-/// In a content file, `"CC-II"` in hex (the sprite's `sprite.json` holds
-/// it; its folder in a pack's `graphics/sprites` is its name).
-pub use nettai_content_api::SpriteId;
+/// A sprite: its handle over the loaded packs' sprites (what its pack
+/// calls it, a `PackSprite`, is the asset names'; docs/design/
+/// rules-in-luau.md §7.4). The asset types come along for the frontends.
+pub use nettai_content_api::{AssetNames, InPack, PackId, PackSprite, SpriteId};
 
 /// One animation frame's timing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -25,6 +25,32 @@ pub struct AnimFrame {
 pub struct Animations {
     pub sprites: BTreeMap<SpriteId, Vec<Vec<AnimFrame>>>,
     pub parts: BTreeMap<SpriteId, SpriteParts>,
+}
+
+impl Animations {
+    /// Add pack `pack`'s sprites' timing and parts (by the pack's own ids),
+    /// keyed by the content's handles: each name the asset names give a
+    /// sprite of the pack is a handle of it.
+    pub fn add_pack(
+        &mut self,
+        assets: &AssetNames,
+        pack: PackId,
+        sprites: &BTreeMap<PackSprite, Vec<Vec<AnimFrame>>>,
+        parts: &BTreeMap<PackSprite, SpriteParts>,
+    ) {
+        for (h, a) in assets.sprites.values().enumerate() {
+            if a.pack != pack {
+                continue;
+            }
+            let id = SpriteId(h as u16);
+            if let Some(anims) = sprites.get(&a.id) {
+                self.sprites.insert(id, anims.clone());
+            }
+            if let Some(p) = parts.get(&a.id) {
+                self.parts.insert(id, p.clone());
+            }
+        }
+    }
 }
 
 /// A sprite's frames' parts, as far as the simulation reads them: each

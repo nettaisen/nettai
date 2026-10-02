@@ -81,7 +81,9 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, sprite: SpriteId, nudged: bool) -
 /// ExtraVars from the rest).
 pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<ObjectRef> {
     let sprite = spec.sprite.expect("a form overlay has a sprite");
-    let params = [sprite.category, sprite.index, spec.stepping as u8, spec.anim_offset];
+    // (The sprite's handle in the first two parameters.)
+    let [hi, lo] = sprite.0.to_be_bytes();
+    let params = [hi, lo, spec.stepping as u8, spec.anim_offset];
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::FormOverlay, Vec3::default(), params)?;
     let alliance = b.objects.get(owner).alliance;
     let o = b.objects.get_mut(r);
