@@ -152,8 +152,13 @@ impl std::fmt::Display for ContentHash {
 /// the module docs.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Content {
-    /// The ruleset's tables.
-    pub rules: Rules,
+    /// The tables every root's rule sections start from: the engine's
+    /// defaults (the test content's made-up tables).
+    pub base_rules: Rules,
+    /// Each root's game's tables (the base with the root's rule sections),
+    /// by `RootId`: made by [`Content::define`]. A battle reads its arena's
+    /// and each side's game's (docs/design/rules-in-luau.md §2.3).
+    pub rules: Vec<Rules>,
     /// Every sprite's animation timing.
     pub animations: Animations,
     /// The assets content can name (`asset.sprite("bomb")`): the loader
@@ -227,6 +232,16 @@ impl Content {
         ContentHash(crate::digest::stable_hash(self))
     }
 
+    /// Root `root`'s game's tables.
+    pub fn rules_of(&self, root: RootId) -> &Rules {
+        &self.rules[root.index()]
+    }
+
+    /// The content's own root's tables (tools and tests with no battle).
+    pub fn home_rules(&self) -> &Rules {
+        &self.rules[RootId::HOME.index()]
+    }
+
     /// A chip's record.
     pub fn chip(&self, h: ChipHandle) -> &ChipData {
         &self.defs.chip(h).record
@@ -245,13 +260,13 @@ impl Content {
     /// The chip a zeroed chip field reads (`roles.chips.zeroed`: the chip
     /// the original's chip 0 is), if the content has one.
     pub fn zeroed_chip(&self) -> Option<ChipHandle> {
-        self.defs.roles.try_chip(ChipRole::Zeroed)
+        self.defs.home_roles().try_chip(ChipRole::Zeroed)
     }
 
     /// The chip a chip field names: itself, or for none (a zeroed field)
     /// the zeroed chip, which is what the game reads.
     pub fn chip_or_zeroed(&self, h: Option<ChipHandle>) -> ChipHandle {
-        h.unwrap_or_else(|| self.defs.roles.chip(ChipRole::Zeroed))
+        h.unwrap_or_else(|| self.defs.home_roles().chip(ChipRole::Zeroed))
     }
 
     /// The record a chip field names (see [`Content::chip_or_zeroed`]).

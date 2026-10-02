@@ -3,6 +3,7 @@
 //! See docs/engine/battle-flow.md.
 
 use nettai_content_api::SystemHook;
+use crate::content::RootId;
 use crate::actor::{ActorId, Actors};
 use crate::collision::Collision;
 use crate::behavior::Behaviors;
@@ -371,6 +372,8 @@ pub struct Battle {
     /// share it, and it is not part of the digest; `setup.content` is its
     /// identity).
     pub content: Arc<Content>,
+    /// Whose data the battle reads (docs/design/rules-in-luau.md §2.3).
+    pub games: BattleGames,
     pub setup: RoundSetup,
     pub stats: [NaviStats; 2],
     /// Each side's other navi's stats for a Cross change
@@ -632,6 +635,36 @@ pub struct DamageCarry {
     pub target: Option<ObjectRef>,
 }
 
+/// Whose data a battle reads (docs/design/rules-in-luau.md §2.3): the
+/// arena's game (the stage's root) for the battle's own (the flow, the
+/// field, the hit kernel's tables, the music and banners), each side's game
+/// (its ruleset's, `RulesetDef::game`) for the side's (its navi's roles, its
+/// screen, the rule sections about one navi). In a battle of one game they
+/// are all that game.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct BattleGames {
+    pub arena: RootId,
+    pub sides: [RootId; 2],
+}
+
+impl BattleGames {
+    /// A round's: its stage's root and its players' rulesets' games.
+    pub fn of(content: &Content, setup: &RoundSetup) -> BattleGames {
+        let defs = &content.defs;
+        BattleGames {
+            arena: defs.root_of(&defs.stage(setup.settings.stage).key),
+            sides: [0, 1].map(|p| defs.ruleset_game(setup.players[p].ruleset)),
+        }
+    }
+
+    /// The pools' capacities: each the larger of the two players' games'
+    /// (the user's decision: a capacity-only limit takes the larger game).
+    pub fn pool_capacity(&self, content: &Content) -> [u8; 3] {
+        let [a, b] = self.sides.map(|g| content.rules_of(g).pools.slots());
+        std::array::from_fn(|i| a[i].max(b[i]))
+    }
+}
+
 impl Battle {
     /// Start a round on `content`: the state the game is in when its init
     /// finishes and the first battle tick is about to run, with the
@@ -646,12 +679,16 @@ impl Battle {
         assert!(content.defs.defined, "a battle runs on defined content (Content::define)");
         Behaviors::for_content(&content).unwrap_or_else(|e| panic!("{e}"));
         let score = setup.score;
+        let games = BattleGames::of(&content, &setup);
         let stage = content.stage(setup.settings.stage);
-        let (field, mode) = (Field::new(&content, &stage.layout, stage.panel_pattern, stage.mode), stage.mode);
+        let panels = &content.rules_of(games.arena).panels;
+        let (field, mode) = (Field::new(panels, &stage.layout, stage.panel_pattern, stage.mode), stage.mode);
+        let objects = Objects::with_capacity(games.pool_capacity(&content));
         let hands = [ChipHand::empty(&content), ChipHand::empty(&content)];
         let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p]));
         let mut b = Battle {
             content,
+            games,
             stats: setup.navi_stats,
             cross_stats: setup.navi_stats,
             rng: Rng::new(setup.rng),
@@ -687,7 +724,7 @@ impl Battle {
             custom_reversion: Default::default(),
             bug_frags: [setup.players[0].bug_frags, setup.players[1].bug_frags],
             navi_levels: [setup.players[0].navi_level, setup.players[1].navi_level],
-            objects: Objects::new(),
+            objects,
             actors: Actors::default(),
             collision: Collision::new(),
             field,
@@ -712,15 +749,61 @@ impl Battle {
         b.cross_stats = b.stats;
         // Init's last steps: refresh every panel, then one unpaused panel
         // update.
-        b.field.refresh_all(&b.content, &b.collision);
+        b.field.refresh_all(&b.content.rules_of(b.games.arena).panels, &b.collision);
         b.tick_panels();
         b
+    }
+
+    /// The battle's tables: the arena's game's (§2.3: the flow, the field,
+    /// the hit kernel's).
+    pub fn arena_rules(&self) -> &crate::content::Rules {
+        self.content.rules_of(self.games.arena)
+    }
+
+    /// The battle's roles: the arena's game's (the flow's banners and
+    /// music, the field's and the hit kernel's effects, sparks, statuses).
+    pub fn arena_roles(&self) -> &crate::content::Roles {
+        self.content.defs.roles(self.games.arena)
+    }
+
+    /// Side `side`'s game's tables (the rule sections about one navi).
+    pub fn side_game_rules(&self, side: u8) -> &crate::content::Rules {
+        self.content.rules_of(self.games.sides[side as usize & 1])
+    }
+
+    /// Side `side`'s game's roles (what the framework uses for the side's
+    /// navi and objects: the actions its requests start, the sounds its
+    /// player hears, its navi's effects and sprites).
+    pub fn side_roles(&self, side: u8) -> &crate::content::Roles {
+        self.content.defs.roles(self.games.sides[side as usize & 1])
+    }
+
+    /// The side object `r` is on, if it is on one (its alliance).
+    pub fn side_of(&self, r: ObjectRef) -> Option<u8> {
+        let a = self.objects.get(r).alliance;
+        (a < 2).then_some(a)
+    }
+
+    /// The roles for object `r`: its side's game's, else the arena's.
+    pub fn roles_for(&self, r: ObjectRef) -> &crate::content::Roles {
+        match self.side_of(r) {
+            Some(side) => self.side_roles(side),
+            None => self.arena_roles(),
+        }
+    }
+
+    /// The tables for object `r`: its side's game's, else the arena's.
+    pub fn rules_for(&self, r: ObjectRef) -> &crate::content::Rules {
+        match self.side_of(r) {
+            Some(side) => self.side_game_rules(side),
+            None => self.arena_rules(),
+        }
     }
 
     /// Start a banner unless one is showing (`Banner::start`). Returns
     /// false if one was.
     pub fn start_banner(&mut self, id: BannerId) -> bool {
-        self.banner.start(id, self.content.rules.banner_holds(id))
+        self.banner.start(id, self.content.rules_of(self.games.arena).banner_holds(id))
     }
 
     pub fn is_dimmed(&self) -> bool {
@@ -788,12 +871,12 @@ impl Battle {
     /// Play the sound content gives `role`, heard on both sides; and to
     /// `side`'s player only.
     pub fn sound(&mut self, role: SoundRole) {
-        let id = self.content.defs.roles.sound(role);
+        let id = self.arena_roles().sound(role);
         self.play_sound(id);
     }
 
     pub fn sound_for(&mut self, side: u8, role: SoundRole) {
-        let id = self.content.defs.roles.sound(role);
+        let id = self.side_roles(side).sound(role);
         self.play_sound_for(side, id);
     }
 
@@ -1079,7 +1162,7 @@ impl Battle {
             self.gauge.rate = CustomGauge::rate_for(self.stats[0].gauge_speed, self.stats[1].gauge_speed);
             let link = self.setup.settings.effects & effects::LINK != 0;
             let music = if link {
-                Some(self.content.defs.roles.music(MusicRole::LinkBattle))
+                Some(self.arena_roles().music(MusicRole::LinkBattle))
             } else {
                 self.content.stage(self.setup.settings.stage).music
             };
@@ -1164,7 +1247,7 @@ impl Battle {
             }
             4 => {
                 if self.round.init == 0 {
-                    self.start_banner(self.content.defs.roles.banner(BannerRole::RoundStart));
+                    self.start_banner(self.arena_roles().banner(BannerRole::RoundStart));
                     self.round.init = 4;
                 } else if self.banner.status() == BannerStatus::Done {
                     self.round.sub = 8;
@@ -1300,7 +1383,7 @@ impl Battle {
             self.stop_emotion_windows();
             self.fight.timer = 0x66;
             self.fight.init = 4;
-            self.start_banner(self.content.defs.roles.banner(BannerRole::Draw));
+            self.start_banner(self.arena_roles().banner(BannerRole::Draw));
         }
         self.fight.timer = self.fight.timer.wrapping_sub(1);
         if self.banner.status() != BannerStatus::Done {
@@ -1399,7 +1482,7 @@ impl Battle {
                     j.step = 4;
                     j.sub = 0;
                     j.sub_init = false;
-                    self.start_banner(self.content.defs.roles.banner(BannerRole::Judge));
+                    self.start_banner(self.arena_roles().banner(BannerRole::Judge));
                 }
                 // sub_802CBF2
                 4 => match j.sub {
@@ -1527,9 +1610,9 @@ impl Battle {
             self.fight.init = 4;
             if self.late_turns() {
                 self.fight.turn_timer = 0xA5 * 4 - 1;
-                self.start_banner(self.content.defs.roles.banner(BannerRole::FinalTurn));
+                self.start_banner(self.arena_roles().banner(BannerRole::FinalTurn));
             } else if self.setup.settings.effects & effects::LINK != 0 {
-                self.start_banner(self.content.defs.roles.banner(BannerRole::TurnStart));
+                self.start_banner(self.arena_roles().banner(BannerRole::TurnStart));
             }
         }
         if self.banner.status() == BannerStatus::Done {
@@ -1761,10 +1844,11 @@ impl Battle {
             // battles the other one plays the defeat music.
             let special = self.setup.settings.effects & 2 != 0;
             let link = self.setup.settings.effects & effects::LINK != 0;
-            let roles = &self.content.defs.roles;
-            let winner = roles.music(if special { MusicRole::WinnerSpecial } else { MusicRole::Winner });
-            let loser = roles.music(MusicRole::Loser);
+            // (Each console's music is its player's game's.)
             for side in 0..2 {
+                let roles = self.side_roles(side);
+                let winner = roles.music(if special { MusicRole::WinnerSpecial } else { MusicRole::Winner });
+                let loser = roles.music(MusicRole::Loser);
                 if side == self.round.winner {
                     self.play_sound_for(side, SoundCue::Music(winner));
                 } else if link {
@@ -2186,7 +2270,7 @@ mod tests {
         setup.low_hp_music_latched = true;
         let mut b = Battle::new(setup, testing::content());
         tick(&mut b);
-        assert_eq!(b.sound_cues(), [SoundCue::Music(b.content.defs.roles.music(MusicRole::LinkBattle))]);
+        assert_eq!(b.sound_cues(), [SoundCue::Music(b.arena_roles().music(MusicRole::LinkBattle))]);
         tick(&mut b);
         assert_eq!(b.sound_cues(), [SoundCue::Pinch(false)]);
     }
@@ -2198,7 +2282,7 @@ mod tests {
         tick(&mut b);
         assert_eq!((b.consoles[0].frames, b.consoles[1].frames), (16, 4));
         // (Any sound: content names the marker's own.)
-        let id = b.content.defs.roles.sound(SoundRole::Pause);
+        let id = b.arena_roles().sound(SoundRole::Pause);
         let sound = SoundCue::from(id);
         let heard = |b: &Battle, side: u8| b.sound_cues_for(side).iter().filter(|&&c| c == sound).count();
         // Over the gauge, on both consoles: only the one on a 16th frame
@@ -2224,7 +2308,7 @@ mod tests {
         let navi = b.player(0).expect("side 0's navi");
         b.objects.get_mut(navi).hp = 125;
         b.paused = false;
-        let alarm = SoundCue::from(b.content.defs.roles.sound(SoundRole::LowHp));
+        let alarm = SoundCue::from(b.arena_roles().sound(SoundRole::LowHp));
         let heard = |b: &Battle, side: u8| b.sound_cues_for(side).iter().filter(|&&c| c == alarm).count();
         for _ in 0..44 {
             b.low_hp_sound();

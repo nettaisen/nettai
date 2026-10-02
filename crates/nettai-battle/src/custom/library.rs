@@ -68,11 +68,11 @@ impl Library for Content {
     }
 
     fn beast_out_chip(&self) -> Option<ChipHandle> {
-        self.defs.roles.try_chip(ChipRole::BeastOut)
+        self.defs.home_roles().try_chip(ChipRole::BeastOut)
     }
 
     fn invalid_chip(&self) -> ChipHandle {
-        self.defs.roles.chip(ChipRole::Invalid)
+        self.defs.home_roles().chip(ChipRole::Invalid)
     }
 
     fn advance_index(&self, result: ChipHandle) -> u8 {
@@ -138,16 +138,112 @@ impl Library for Content {
     }
 
     fn layout(&self) -> &CustomScreenLayout {
-        &self.rules.custom_screen
+        &self.home_rules().custom_screen
     }
 
     fn banner_holds(&self, id: BannerId) -> bool {
-        self.rules.banner_holds(id)
+        self.home_rules().banner_holds(id)
     }
 
     fn program_advance_banner(&self, made: bool) -> BannerId {
         use crate::content::BannerRole;
-        self.defs.roles.banner(if made { BannerRole::ProgramAdvance } else { BannerRole::ProgramAdvanceEmpty })
+        self.defs.home_roles().banner(if made { BannerRole::ProgramAdvance } else { BannerRole::ProgramAdvanceEmpty })
+    }
+}
+
+/// The content as a player's custom screen reads it: its game's data (its
+/// layout, its Beast Out and invalid chips, its banners; docs/design/
+/// rules-in-luau.md §2.3), the content's records for the rest.
+/// (`Library for Content` reads the content's own root's: tools and tests.)
+pub struct GameLibrary<'a> {
+    pub content: &'a Content,
+    pub game: crate::content::RootId,
+}
+
+impl Library for GameLibrary<'_> {
+    fn chip(&self, id: ChipHandle) -> &ChipData {
+        self.content.chip(id)
+    }
+
+    fn beast_out_chip(&self) -> Option<ChipHandle> {
+        self.content.defs.roles(self.game).try_chip(ChipRole::BeastOut)
+    }
+
+    fn invalid_chip(&self) -> ChipHandle {
+        self.content.defs.roles(self.game).chip(ChipRole::Invalid)
+    }
+
+    fn advance_index(&self, result: ChipHandle) -> u8 {
+        self.content.advance_index(result)
+    }
+
+    fn own_chip_of(&self, id: ChipHandle) -> Option<NaviHandle> {
+        self.content.own_chip_of(id)
+    }
+
+    fn changes_form(&self, navi: NaviHandle) -> bool {
+        self.content.changes_form(navi)
+    }
+
+    fn cross_form(&self, navi: NaviHandle, version: GameVersion, cross: u8) -> Option<FormHandle> {
+        self.content.cross_form(navi, version, cross)
+    }
+
+    fn beast_out_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle> {
+        self.content.beast_out_form(navi, version)
+    }
+
+    fn beast_over_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle> {
+        self.content.beast_over_form(navi, version)
+    }
+
+    fn form_kind(&self, form: FormHandle) -> FormKind {
+        self.content.form_kind(form)
+    }
+
+    fn form_game(&self, form: FormHandle) -> Option<GameVersion> {
+        self.content.form_game(form)
+    }
+
+    fn form_traits(&self, form: FormHandle) -> FormTraits {
+        self.content.form_traits(form)
+    }
+
+    fn form_in_beast_out(&self, form: FormHandle) -> Option<FormHandle> {
+        self.content.form_in_beast_out(form)
+    }
+
+    fn program_advances(&self) -> &[ProgramAdvance] {
+        self.content.program_advances()
+    }
+
+    fn navi_chip(&self, navi: NaviHandle) -> Option<FolderChip> {
+        Library::navi_chip(self.content, navi)
+    }
+
+    fn run_message(&self, navi: NaviHandle) -> [u8; 3] {
+        self.content.run_message(navi)
+    }
+
+    fn run_message_talking(&self, navi: NaviHandle) -> [u32; 3] {
+        self.content.run_message_talking(navi)
+    }
+
+    fn cross_description_lines(&self, form: FormHandle) -> u8 {
+        self.content.cross_description_lines(form)
+    }
+
+    fn layout(&self) -> &CustomScreenLayout {
+        &self.content.rules_of(self.game).custom_screen
+    }
+
+    fn banner_holds(&self, id: BannerId) -> bool {
+        self.content.rules_of(self.game).banner_holds(id)
+    }
+
+    fn program_advance_banner(&self, made: bool) -> BannerId {
+        use crate::content::BannerRole;
+        self.content.defs.roles(self.game).banner(if made { BannerRole::ProgramAdvance } else { BannerRole::ProgramAdvanceEmpty })
     }
 }
 

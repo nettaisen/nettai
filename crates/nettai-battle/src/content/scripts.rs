@@ -101,6 +101,12 @@ impl Scripts {
         self.roots.first().map(|r| r.name.as_str())
     }
 
+    /// The roots' names, the content's own first, by `RootId`; content
+    /// without roots is one root of no name.
+    pub fn root_names(&self) -> Vec<String> {
+        if self.roots.is_empty() { vec![String::new()] } else { self.roots.iter().map(|r| r.name.clone()).collect() }
+    }
+
     /// Module `path` of the content's own root, to change (tests and
     /// tools).
     pub fn home_module_mut(&mut self, path: &str) -> Option<&mut String> {
@@ -243,5 +249,65 @@ mod tests {
         ];
         let e = content(vec![root("game", &[], two)]).unwrap_err();
         assert!(e.contains("root game has 2 stock rulesets"), "{e}");
+    }
+
+    /// docs/design/rules-in-luau.md §2.2: a mix is its base's systems,
+    /// less `remove`, with `add` after them; its game is its base's unless
+    /// it names one.
+    #[test]
+    fn a_mix_changes_its_base() {
+        let mix: &[(&str, &str)] = &[
+            ("rules/extra", "return define.system { id = 'extra' }"),
+            (
+                "rules/mixes",
+                "local game = require('@game/rules/ruleset')\n\
+                 local turns = require('@game/rules/turns')\n\
+                 local extra = require('./extra')\n\
+                 return {\n\
+                   define.ruleset { id = 'plus', base = game, add = { extra } },\n\
+                   define.ruleset { id = 'minus', base = game, remove = { turns } },\n\
+                 }",
+            ),
+        ];
+        let c = content(vec![root("mix", &["game"], mix), root("game", &[], GAME)]).unwrap();
+        let d = &c.defs;
+        let systems = |key: &str| -> Vec<&str> {
+            let r = d.ruleset(d.ruleset_by_key(key).unwrap());
+            r.systems.iter().map(|&h| d.system(h).key.as_str()).collect()
+        };
+        assert_eq!(systems("mix:plus"), ["game:turns", "mix:extra"]);
+        assert!(systems("mix:minus").is_empty());
+        let game = d.root_id("game").unwrap();
+        assert_eq!(d.ruleset(d.ruleset_by_key("mix:plus").unwrap()).game, game, "its base's game");
+        // What a ruleset refuses.
+        let bad = |source: &str| -> String {
+            let modules: &[(&str, &str)] = &[("rules/bad", source)];
+            content(vec![root("mix", &["game"], modules), root("game", &[], GAME)]).unwrap_err()
+        };
+        let base = "local game = require('@game/rules/ruleset')\nlocal turns = require('@game/rules/turns')\n";
+        let cases = [
+            ("return define.ruleset { id = 'x', stock = true, base = game }", "has no `base`"),
+            ("return define.ruleset { id = 'x', base = game, systems = { turns } }", "not `systems`"),
+            ("return define.ruleset { id = 'x', base = game, add = { turns } }", "which it has already"),
+            ("return define.ruleset { id = 'x', systems = {}, remove = { turns } }", "names none"),
+            ("return define.ruleset { id = 'x', systems = { turns } }", "no game's"),
+            ("return define.ruleset { id = 'x', systems = { turns }, game = 'nowhere' }", "no loaded root"),
+            ("return define.ruleset { id = 'x', systems = { turns }, game = 'mix' }", "which is no game's"),
+        ];
+        for (source, want) in cases {
+            let e = bad(&format!("{base}{source}"));
+            assert!(e.contains(want), "{source}: {e}");
+        }
+        let e = bad("return define.ruleset { id = 'x', base = require('@game/rules/ruleset'), remove = { define.system { id = 'y' } } }");
+        assert!(e.contains("which its base doesn't have"), "{e}");
+        // A mix in a mod's root names its game: it is that game's.
+        let named = bad_free(&format!("{base}return define.ruleset {{ id = 'x', systems = {{ turns }}, game = 'game' }}"));
+        assert_eq!(named.ruleset(named.ruleset_by_key("mix:x").unwrap()).game, named.root_id("game").unwrap());
+    }
+
+    /// The definitions of a `mix` root holding `source` beside `game`.
+    fn bad_free(source: &str) -> crate::content::Defs {
+        let modules: &[(&str, &str)] = &[("rules/ok", source)];
+        content(vec![root("mix", &["game"], modules), root("game", &[], GAME)]).unwrap().defs
     }
 }
