@@ -255,13 +255,6 @@ definition_roles! {
         /// What an obstacle encased in ice or a bubble flickers with
         /// (`sub_8018186`).
         Encased = "encased",
-        /// A Cross or Beast Out put on (`sub_8015166`).
-        FormChange = "form_change",
-        /// Beast Over's beast (`sub_80151D4`), Gregar's and Falzar's.
-        BeastOverGregar = "beast_over_gregar",
-        BeastOverFalzar = "beast_over_falzar",
-        /// Beast Over's blast, after its beast.
-        BeastOverBlast = "beast_over_blast",
         /// One of the bursts around a navi going Beast Over
         /// (`sub_80E7D0C`).
         BeastOverBurst = "beast_over_burst",
@@ -372,20 +365,7 @@ definition_roles! {
         /// A thrown obstacle is lifted, and flies.
         ObstacleLift = "obstacle_lift",
         ObstacleThrow = "obstacle_throw",
-        /// A cross merges into MegaMan.
-        CrossMerge = "cross_merge",
-        /// A form change starts.
-        FormChange = "form_change",
-        /// A Cross is put on (two sounds at once).
-        CrossChange = "cross_change",
-        CrossChangeChime = "cross_change_chime",
-        /// A Beast Out is put on.
-        BeastOut = "beast_out",
-        /// The beast's roar as a Beast form starts: Gregar's and Falzar's.
-        GregarRoar = "gregar_roar",
-        FalzarRoar = "falzar_roar",
-        /// Beast Over's rumbles, and each of its bursts.
-        BeastOverRumble = "beast_over_rumble",
+        /// Each of Beast Over's bursts.
         BeastOverBurst = "beast_over_burst",
         /// A Cross navi starts its special's chip.
         CrossSpecial = "cross_special",

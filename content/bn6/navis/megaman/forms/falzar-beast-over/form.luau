@@ -4,10 +4,13 @@
 local falzar_beast = require("../falzar-beast/form")
 local falzar_beast_buster = require("../../weapons/falzar-beast-buster/weapon")
 local beast_claw = require("../../weapons/beast-claw/weapon")
+local forms = require("../../../../rules/forms/system")
 
 return define.form {
     id = "falzar-beast-over",
     kind = "beast_over",
+    -- What changes MegaMan into it (BN6's five sequences).
+    change = forms.action,
     game = "falzar",
     -- (No hit breaks Beast Over; the original's routine, by the form's number, would drop
     -- either to the Falzar beast.)
