@@ -225,9 +225,9 @@ own for them.
 ## 5. Names
 
 The cards' names, like every display text, are the locales' (content/bn6/locales/<lang>.toml, `records` by the
-card's key), and so are their weapons' (`weapons`). ja.toml has the Japanese games' card names, as the ROMs' name
-archive has them (a two-line name with its line break); gen-content checks them against the Japanese ROM. The
-card weapons' names are the content's own.
+card's key). ja.toml has the Japanese games' card names, as the ROMs' name archive has them (a two-line name with
+its line break); gen-content checks them against the Japanese ROM. The card weapons have no names: nothing shows a
+weapon's name, so the locales have no `weapons` table (docs/design/text-rendering.md §10.2).
 
 The ROMs have Japanese names only. The cards' English names and keys come from the fan translation of EXE6 (the
 MMEXE6F and MMEXE6G IPS patches over the Japanese ROMs, with the idealexe English charset), which names every card
