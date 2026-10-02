@@ -35,3 +35,6 @@
 "bn6:instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
 "bn6:protoman/navi" = { pool = "actor", index = 0x3C }
 "sonic-boom" = { pool = "attack", index = 0x58 }
+"holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
+"holydrem/actor" = { pool = "actor", index = 0x1C }
+"holydrem/shot" = { pool = "attack", index = 0x83 }
