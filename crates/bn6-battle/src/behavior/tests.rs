@@ -151,6 +151,7 @@ fn battles_run_the_content_scripts() {
             "slashman/navi",
             "slashman/riding-hit",
             "slashman/wave",
+            "sonic-boom",
             "spoutcross-beast/surge",
             "spoutman/ball",
             "spoutman/drip-shower",
@@ -780,7 +781,7 @@ fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
     let rock = Place::Kind(b.content.defs.kind_by_key("rockcube/rock").expect("the rock"));
     assert_eq!(stage.actors.iter().map(|e| e.place).collect::<Vec<_>>(), [Place::Navi, Place::Navi, rock, rock]);
     // Each rock names its variant, a record of the rock's.
-    let cube = b.content.defs.record("rockcube/cube");
+    let cube = b.content.defs.record("rockcube/rock/cube");
     assert!(cube.is_some() && stage.actors[2..].iter().all(|e| e.variant == cube));
     b.spawn_actors();
     assert_eq!(b.round.alive, [1, 1]);
@@ -1545,6 +1546,40 @@ fn bugfix_plays() {
 }
 
 #[test]
+fn bugfix_ends_the_emotion_window_glitch() {
+    // sub_801E658: BugFix clears the save's emotion window glitch on every
+    // console, so their windows stop flickering (and drawing RNG1).
+    let chips = defined(BUGFIX_CHIPS);
+    let setup = || {
+        let mut s = scenario::setup_with_handles(&chips);
+        for p in &mut s.players {
+            p.console.emotion_window_glitch = true;
+        }
+        s
+    };
+    let tape = scenario::record_on_content(setup(), scenario::content(), 2400, 11);
+    let mut b = Battle::new(setup(), scenario::content());
+    let mut glitched = false;
+    let mut fixed = false;
+    for t in &tape {
+        b.tick(&t.input, t.events.clone());
+        let glitch = b.consoles.iter().map(|c| c.emotion_window.glitch).collect::<Vec<_>>();
+        if !fixed && b.objects.in_order().any(|r| b.kind_key(r) == "bugfix/controller") {
+            fixed = true;
+        }
+        if fixed {
+            if glitch == [false, false] {
+                assert!(glitched, "the glitch was on before BugFix");
+                return;
+            }
+        } else {
+            glitched |= glitch == [true, true];
+        }
+    }
+    panic!("BugFix used: {fixed}; the glitch on before it: {glitched}; it stayed");
+}
+
+#[test]
 fn the_panel_chips_play() {
     let d = duel(PANEL_CHIPS);
     assert!(d.ticks("panel-chips/controller") > 0, "the panel chips' controller: {:?}", d.seen);
@@ -1612,6 +1647,30 @@ fn first_barrier_raises_a_barrier() {
     assert!(b.actors.get(a).barrier_visual.is_some(), "its visual");
     let other = b.objects.get(b.player(1).unwrap()).collision.unwrap();
     assert_eq!(b.collision.get(other).barrier, 0, "the other side has none");
+}
+
+#[test]
+fn the_other_sides_first_barrier_is_hidden_until_the_local_navi_is_in() {
+    // The other side's navi inits first: its FirstBarrier's visual asks
+    // whether the local navi is blind before that navi has collision data,
+    // and the game's read through the null pointer (BIOS open bus) has the
+    // blind bit, so the visual is hidden on that tick only.
+    let mut s = scenario::setup();
+    s.navi_stats[1].first_barrier = 1;
+    let mut b = Battle::new(s, scenario::content());
+    let visual = |b: &Battle| b.player(1).and_then(|p| b.objects.get(p).actor).and_then(|a| b.actors.get(a).barrier_visual);
+    let mut ticks = 0;
+    while visual(&b).is_none() {
+        b.tick(&Default::default(), Default::default());
+        ticks += 1;
+        assert!(ticks < 10, "no visual");
+    }
+    let v = visual(&b).unwrap();
+    let local = b.objects.get(b.player(0).unwrap());
+    assert!(b.objects.get(v).flags & crate::object::flags::VISIBLE == 0, "hidden on its first tick");
+    assert!(local.collision.is_some(), "the local navi is in by the tick's end");
+    b.tick(&Default::default(), Default::default());
+    assert!(b.objects.get(v).flags & crate::object::flags::VISIBLE != 0, "shown from the next");
 }
 
 #[test]

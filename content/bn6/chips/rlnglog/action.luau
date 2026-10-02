@@ -14,15 +14,14 @@ local log = require("./log")
 local action = {}
 
 export type State = {
-    -- Ticks left in the current phase (AIAttackVars+0x10), and logs left
-    -- to throw (AIAttackVars+0x12).
+    -- Ticks left in the current phase (AIAttackVars+0x10). (The logs left
+    -- to throw are the navi's `attack_count`.)
     timer: number,
-    logs: number,
 }
 
 -- One state for every RlngLog: a use continues the last one's attack
 -- variables, as the original's one action does.
-action.STATE = { timer = "u16", logs = "u16" }
+action.STATE = { timer = "u16" }
 
 -- The phases, on the attack's step.
 local READY, THROW, RECOVER = 0x0, 0x4, 0x8
@@ -53,7 +52,7 @@ function action.action(spec: RollingLogSpec): Action
         local t = s.timer - 1
         s.timer = t
         if t < 0 then
-            s.logs = 2
+            me.attack_count = 2
             me.step = THROW
             me.step_init = 0
         end
@@ -85,7 +84,7 @@ function action.action(spec: RollingLogSpec): Action
             return
         end
         s.timer = 0x0A
-        local i = (me.panel_y - 1) * 2 + s.logs - 1
+        local i = (me.panel_y - 1) * 2 + me.attack_count - 1
         local row = ROWS[i]
         if row == nil then
             error(string.format("RlngLog reads byte_80EDAB4 at %d, past its end", i))
@@ -98,8 +97,8 @@ function action.action(spec: RollingLogSpec): Action
         battle.play_sound(SOUND_ROLL)
         me.step_init = WAIT
         s.timer = 0x0A
-        local left = s.logs - 1
-        s.logs = left
+        local left = me.attack_count - 1
+        me.attack_count = left
         if left <= 0 then
             me.step = RECOVER
             me.step_init = 0

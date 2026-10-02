@@ -59,6 +59,13 @@ pub mod f1 {
     /// Hits still reach it while the battle is dimmed (`sub_3007218`; else
     /// only hitters set up while dimmed do): ElemTrap's trap sets it.
     pub const HIT_WHILE_DIMMED: u32 = 0x0100_0000;
+    /// The status word read through an object's missing collision data
+    /// (a null pointer): BIOS memory, which game code can't read, gives
+    /// the opcode the BIOS last fetched (open bus). After a software
+    /// interrupt, such as the object spawn's fill (`ZeroFillByWord`'s
+    /// CpuSet), that is 0xE3A02004 (an interrupt in between would leave
+    /// 0xE55EC002; unverified).
+    pub const NULL_READ: u32 = 0xE3A0_2004;
 }
 
 /// Per-registration-window hit results (zeroed on present).

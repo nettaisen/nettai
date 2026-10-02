@@ -27,7 +27,7 @@ end
 -- `byte_80C9664`'s rows: Rflectr1's, the NaviCust Reflect's and Shield's,
 -- four no chip or program ported holds up, Rflectr2's and Rflectr3's, and
 -- one more nothing ported holds up.
-local REFLECTOR, NAVI, SHIELD = asset.sprite("reflector-shield"), asset.sprite("megaman-navi"), asset.sprite("reflector-shield-2")
+local REFLECTOR, NAVI, SHIELD = asset.sprite("reflector-shield"), asset.sprite("megaman-navi"), asset.sprite("dummy-shield")
 local ROWS: { [number]: Look } = {
     [0] = look { sprite = REFLECTOR, anim = 0, fade_anim = 1, fade_ticks = 0xE, palette = 0 },
     [1] = look { sprite = REFLECTOR, anim = 2, fade_anim = 3, fade_ticks = 0xE, palette = 0 },
@@ -53,17 +53,6 @@ local SOUND = asset.sound("follow-effect")
 
 -- The actions: held up, then fading.
 local UP, FADING = 0, 4
-
--- `sub_800EB6C`: the local player sees the other side's things unless
--- their navi is blind.
-local function viewer_sees(alliance: number): boolean
-    local viewer = battle.local_side()
-    if alliance == viewer then
-        return true
-    end
-    local p = battle.player(viewer)
-    return not (p and p:status("blind"))
-end
 
 -- `sub_80C9774`: at the owner's position plus the offset kept in the
 -- velocity, shown as the owner is; once the slot is cleared, fade.
@@ -106,7 +95,7 @@ local function tick(me: Object)
         error(string.format("reflector shield action %#x reads past its table", a))
     end
     me.visible = true
-    if not viewer_sees(me.alliance) then
+    if not battle.viewer_sees(me.alliance) then
         me.visible = false
     end
     local owner = me.related1 :: Object

@@ -12,15 +12,14 @@ local bee = require("./bee")
 local action = {}
 
 export type State = {
-    -- Ticks left in the current phase or window (+0x10).
+    -- Ticks left in the current phase or window (+0x10). (The windows
+    -- left are the navi's `attack_count`.)
     timer: number,
-    -- Windows left (+0x12).
-    windows: number,
 }
 
 -- One state for every RskyHny: a use continues the last one's attack
 -- variables, as the original's one action does.
-action.STATE = { timer = "u16", windows = "u16" }
+action.STATE = { timer = "u16" }
 
 -- The phases, on the attack's step.
 local RAISE, RELEASE, WINDOWS = 0x0, 0x4, 0x8
@@ -77,7 +76,7 @@ function action.action(spec: HoneySpec): Action
         else
             release_bee(me)
         end
-        s.windows = WINDOW_COUNT
+        me.attack_count = WINDOW_COUNT
         set_phase(me, WINDOWS)
     end
 
@@ -100,8 +99,8 @@ function action.action(spec: HoneySpec): Action
         if t >= 0 then
             return
         end
-        local left = s.windows - 1
-        s.windows = left
+        local left = me.attack_count - 1
+        me.attack_count = left
         if left > 0 then
             me.step_init = 0
             return

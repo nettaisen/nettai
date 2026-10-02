@@ -23,7 +23,9 @@ return define.form {
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = a_charge, alt_a_charge = a_charge },
     palette = 7,
-    mugshot = asset.mugshot("tomahawkcross"),
+    -- Its faces in the emotion window, and once Beast Out is spent
+    -- (`byte_801E700`): the Falzar ROM has no ElecCross face, and shows TomahawkCross's.
+    mugshot = { normal = asset.mugshot("tomahawkcross"), tired = asset.mugshot("tomahawkcross-tired") },
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "elec", damage = 50 },
     -- The chips A charges.
@@ -43,7 +45,7 @@ return define.form {
         aura_anim = 26,
         ice = "medium",
         -- What it wears over MegaMan's body.
-        parts = cross_overlay(asset.sprite("body-overlay-08")),
+        parts = cross_overlay(asset.sprite("eleccross-overlay")),
         attach_points = {
             { 2, 0 },
             { 2, 0 },

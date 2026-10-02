@@ -22,7 +22,7 @@ return define.chip {
             palette = 2,
             panel = "grass",
             effect = seed.green_sprout,
-            sound = asset.sound("elmnt-man-3"),
+            sound = asset.sound("grass"),
         }),
     },
 }

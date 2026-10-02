@@ -11,6 +11,7 @@
 //! version control (data/content/ is ignored).
 
 mod content;
+mod custom;
 mod graphics;
 mod hud;
 

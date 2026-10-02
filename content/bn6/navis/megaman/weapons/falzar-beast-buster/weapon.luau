@@ -16,9 +16,8 @@ local weapon = require("../../../../lib/weapon")
 
 export type State = {
     -- Ticks into the shot, then ticks of recovery (AIAttackVars+0x10).
+    -- (The recovery after a shot is the navi's `attack_count`.)
     timer: number,
-    -- The recovery after a shot (AIAttackVars+0x12).
-    recovery: number,
     -- The shots still to follow (the attack's parameter byte +0x0D), and
     -- where the volley cycle is (+0x0E): 0 a single shot, else a volley.
     repeats: number,
@@ -156,7 +155,7 @@ local function shoot(me: Object, s: State)
         -- The damage word plus the bonus.
         local damage = int.u32(me.attack_damage + bit32.lshift(me.hit_param, 16) + me.extra)
         shoot_volley(me, s, falls, z, damage)
-        s.recovery = 2
+        me.attack_count = 2
         local cycle = s.cycle + 1
         s.cycle = if cycle < 3 then cycle else 0
     end
@@ -173,7 +172,7 @@ end
 -- for a player holding B) while B is held.
 local function recover(me: Object, s: State)
     if me.step_init == 0 then
-        s.timer = s.recovery
+        s.timer = me.attack_count
         me.step_init = 4
     end
     local t = s.timer - 1
@@ -223,7 +222,7 @@ end
 
 falzar_beast_buster.action = define.action {
     id = "megaman/falzar-beast-buster/action",
-    state = { timer = "u16", recovery = "u16", repeats = "u8", cycle = "u8" },
+    state = { timer = "u16", repeats = "u8", cycle = "u8" },
     update = update,
 }
 

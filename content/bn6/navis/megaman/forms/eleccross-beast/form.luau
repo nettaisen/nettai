@@ -19,6 +19,8 @@ return define.form {
     element = "elec",
     buster_bonus = 0,
     weapons = { buster = gregar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = charge.weapon },
+    -- Its face in the emotion window (`byte_801E700`): the Falzar ROM has no
+    -- ElecCross Beast face, and shows TomahawkCross Beast's.
     mugshot = asset.mugshot("tomahawkcross-beast"),
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "elec", damage = 50 },

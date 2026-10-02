@@ -48,7 +48,7 @@ local SPRITE = asset.sprite("elmnt-man")
 local SOUND_APPEAR = asset.sound("appear")
 local SOUND_ELMNT_MAN = asset.sound("elmnt-man")
 local SOUND_ELMNT_MAN_2 = asset.sound("elmnt-man-2")
-local SOUND_ELMNT_MAN_3 = asset.sound("elmnt-man-3")
+local SOUND_ELMNT_MAN_3 = asset.sound("grass")
 local SOUND_ELMNT_MAN_4 = asset.sound("elmnt-man-4")
 
 -- What he is taken for: his actor record, and what he wears (his overlay, `sub_8011004`).

@@ -12,10 +12,9 @@ local regions = require("../../../../lib/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
-    -- AIAttackVars+0x10: ticks of the phase.
+    -- AIAttackVars+0x10: ticks of the phase. (The throws to go are the
+    -- navi's `attack_count`.)
     timer: number,
-    -- AIAttackVars+0x12: throws to go.
-    throws: number,
     -- AIAttackVars+0x30..+0x35: the target panels (x | y << 4; 0 none),
     -- thrown at from the last.
     targets: { number },
@@ -138,7 +137,7 @@ local function throw(me: Object, s: State)
         me.step_init = 1
         pick_targets(me, s)
         s.timer = 4
-        s.throws = THROWS
+        me.attack_count = THROWS
         me:set_animation(0x19)
     end
     local left = s.timer - 1
@@ -147,13 +146,13 @@ local function throw(me: Object, s: State)
         return
     end
     s.timer = 0xA
-    local t = s.targets[s.throws]
+    local t = s.targets[me.attack_count]
     if t ~= 0 then
         local damage = bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
         junk_shot.spawn(me, me.panel_x, me.panel_y, me.attack_element, damage, me.pos.z, t)
     end
-    local throws = s.throws - 1
-    s.throws = throws
+    local throws = me.attack_count - 1
+    me.attack_count = throws
     if throws ~= 0 then
         return
     end
@@ -179,7 +178,7 @@ end
 
 scatter.action = define.action {
     id = "dustcross-beast/scatter/action",
-    state = { timer = "u16", throws = "u16", targets = "u8[6]" },
+    state = { timer = "u16", targets = "u8[6]" },
     -- `sub_80EF328`.
     update = function(me: Object, s: State)
         local step = me.step

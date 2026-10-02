@@ -384,10 +384,13 @@ declare class Object
     -- DustCross's throws keep it): its look and animation.
     thrown_look: AbsorbedLook?
     thrown_anim: number
-    -- The recovery a shot waits after firing: a word of the attack that
-    -- outlives the action, so an action that waits it without writing it
-    -- (a thrown obstacle) waits the last shot's.
-    recovery: number
+    -- The attack's count (AIAttackVars+0x12): what an action counts (its
+    -- shots, swings, slashes, a hold's ticks, the recovery after a shot).
+    -- Every action shares the word and none clears it, so an action that
+    -- reads it before writing it reads what an earlier one left (a thrown
+    -- obstacle waits the last shot's recovery). An action keeps its count
+    -- here, not in its state, as the original's do.
+    attack_count: number
     -- The actor data (read-only unless noted).
     actor_type: ActorType
     ai_index: number
@@ -842,6 +845,12 @@ declare battle: {
     -- counter; on `side`'s console only, or on both. Call it every tick the
     -- warning shows.
     warn: (sound: Sound, at: Vec3?, side: number?) -> (),
+    -- `sub_801DC7C`: every console's HUD numbers `object`'s HP under it
+    -- (drawn only; one of four places, none when they are taken), rolling
+    -- to it as it changes, until its HP is 0 or `hide_hp`.
+    show_hp: (object: Object, spec: HpNumberSpec) -> (),
+    -- `sub_801DD34`: the object's HP number goes.
+    hide_hp: (object: Object) -> (),
     -- `camera_initShakeEffect_80302a8`: the camera shakes for `ticks` ticks
     -- at `magnitude` (0-3). Drawn only, but each shaking tick draws from
     -- the consoles' own RNGs, which ChpShufl's re-deal reads.
@@ -878,6 +887,10 @@ declare battle: {
     -- status, the custom damage, the emotion, the drains, the battle-start
     -- bug and the hand-shrink turn zeroed).
     clear_navicust_bugs: (side: number) -> (),
+    -- `sub_801E658` (BugFix): the save's emotion window glitch is gone from
+    -- every console's emotion window, which then flickers (and draws its
+    -- console's RNG1) for NaviCust bugs only.
+    clear_emotion_window_glitch: () -> (),
     fill_custom_gauge: () -> (),
     -- `sub_801DF8C`: the custom gauge fills `rate` a tick (full at 0x4000).
     set_gauge_rate: (rate: number) -> (),
@@ -994,6 +1007,18 @@ declare field: {
     blink: (x: number, y: number, kind: PanelType, side: number) -> (),
 }
 
+-- Where an object's HP number shows (`battle.show_hp`): `dx`, `dy` pixels
+-- from where the HUD projects its position (0 if nil), the digits centred
+-- there; with `damage`, the damage it took (its max HP less its HP), its
+-- digits right-aligned in four places from there (what the original does
+-- for LilBoiler).
+export type HpNumberSpec = { dx: number?, dy: number?, damage: boolean? }
+
+-- What the telop of a dimming content starts itself names (`dimming.start`):
+-- a chip (nil: a zeroed chip field's, the roles' `zeroed` chip), and the
+-- Atk+ / cross bonus shown after its damage (0 if nil).
+export type DimmingTelop = { chip: Chip?, bonus: number? }
+
 -- The dimming service: the steps of a dimming chip's controller, which its
 -- update calls in its routine's order.
 declare dimming: {
@@ -1016,7 +1041,9 @@ declare dimming: {
     -- `sub_800BF16`: `side` starts a dimming with `controller` (nil if its
     -- spawn failed), used by `user`; `no_cut_in`: the other side can't cut
     -- in. For controllers no chip action registers (a trap springing).
-    start: (side: number, no_cut_in: boolean, controller: Object?, user: Object) -> (),
+    -- `telop`: what the controller's telop names (the chip and bonus its
+    -- spawn stores); without one the telop names no chip.
+    start: (side: number, no_cut_in: boolean, controller: Object?, user: Object, telop: DimmingTelop?) -> (),
     -- `object_timefreezeEnd` (the controller's destroy state).
     finish: (controller: Object) -> (),
     -- `sub_80E1352` / `sub_80E13DC`: a navi chip's user vanishes and comes
@@ -1359,6 +1386,16 @@ export type ElementName = "null" | "fire" | "aqua" | "elec" | "wood"
 -- family's.
 export type ChipMatch = { element: ElementName?, family: ChipFamily? }
 
+-- A form's faces in the emotion window by its navi's emotion: an emotion
+-- without one shows `normal`.
+export type MugshotFaces = {
+    normal: Mugshot,
+    angry: Mugshot?,
+    tired: Mugshot?,
+    full_synchro: Mugshot?,
+    worn_out: Mugshot?,
+}
+
 -- A navi (§3.2): MegaMan or a link navi. (`NaviDef`, since `Navi` is a
 -- side's stats.)
 export type NaviDef = {
@@ -1372,7 +1409,9 @@ export type NaviDef = {
     -- Ticks of lag after a move, by navi variant.
     move_lag: { number },
     banners: { win: Banner, lose: Banner },
-    mugshots: { [string]: Mugshot }?,
+    -- A link navi's face in the emotion window (shown in its second palette
+    -- in Full Synchro); MegaMan's face is his form's.
+    mugshot: Mugshot?,
     -- Extra height of its image as it merges with MegaMan in a Cross.
     merge_height: number?,
     -- The no-running message's lines (the characters in each).
@@ -1470,7 +1509,8 @@ export type FormDef = {
     breaks_to: FormDef?,
     -- MegaMan's palette in a Cross.
     palette: number?,
-    mugshot: Mugshot?,
+    -- Its face in the emotion window, or its faces by its navi's emotion.
+    mugshot: (Mugshot | MugshotFaces)?,
     weapons: FormWeapons?,
     identity: Identity?,
     -- The damage it adds to a family's damaging chips, and to damaging
