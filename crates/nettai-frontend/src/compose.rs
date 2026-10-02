@@ -152,29 +152,65 @@ pub enum Palettes {
 /// Combine layers and sprite parts (in hardware order: earlier parts are
 /// in front) into a BGR555 frame.
 pub fn compose(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fades) -> Vec<u16> {
+    compose_with_depth(backdrop, layers, parts, fades).0
+}
+
+/// The depth key of what is drawn at a pixel, as the text layer compares
+/// it (`TextItem::depth`): by priority, then a sprite before a layer
+/// (layers by their order), then among sprites the earlier part. A smaller
+/// key is further in front; 0 is in front of everything (the frontend's
+/// own status text).
+pub fn depth_key(priority: u8, rank: u8, index: usize) -> u32 {
+    (priority as u32) << 24 | (rank as u32) << 16 | index.min(0xFFFF) as u32
+}
+
+/// The depth key of a sprite part, `index` in hardware order.
+pub fn sprite_depth(priority: u8, index: usize) -> u32 {
+    depth_key(priority, 0, index + 1)
+}
+
+/// The depth key of a tile layer.
+pub fn layer_depth(layer: &Layer) -> u32 {
+    depth_key(layer.priority, 1 + layer.order, 0)
+}
+
+/// The backdrop's depth key: behind everything.
+pub const BACKDROP_DEPTH: u32 = 5 << 24;
+
+/// [`compose`], and per pixel the depth key of what won it (the frontmost
+/// opaque thing; a semi-transparent sprite counts as in front).
+pub fn compose_with_depth(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fades) -> (Vec<u16>, Vec<u32>) {
     let backdrop = apply_fade(backdrop, fades.stage);
     // The sprite layer: per pixel the frontmost sprite's colour.
-    let mut obj = vec![CLEAR; PIXELS];
-    let mut obj_prio = vec![4u8; PIXELS];
-    let mut obj_alpha = vec![0xFFu8; PIXELS];
-    for p in parts {
-        draw_part(p, &mut obj, &mut obj_prio, &mut obj_alpha);
+    let mut obj = SpriteBuffers {
+        colour: vec![CLEAR; PIXELS],
+        priority: vec![4u8; PIXELS],
+        alpha: vec![0xFFu8; PIXELS],
+        index: vec![0u16; PIXELS],
+    };
+    for (k, p) in parts.iter().enumerate() {
+        draw_part(p, k as u16, &mut obj);
     }
     let mut out = vec![0u16; PIXELS];
+    let mut depth = vec![BACKDROP_DEPTH; PIXELS];
     for i in 0..PIXELS {
-        // The two frontmost opaque candidates: (priority, rank, colour).
+        // The two frontmost opaque candidates: (priority, rank, colour),
+        // and the frontmost's depth key.
         let mut first: (u8, u8, u16) = (5, 0, backdrop);
         let mut second: (u8, u8, u16) = (5, 0, backdrop);
-        let mut consider = |key: (u8, u8), c: u16| {
+        let mut front = BACKDROP_DEPTH;
+        let mut consider = |key: (u8, u8), c: u16, d: u32| {
             if (key.0, key.1) < (first.0, first.1) {
                 second = first;
                 first = (key.0, key.1, c);
+                front = d;
             } else if (key.0, key.1) < (second.0, second.1) {
                 second = (key.0, key.1, c);
             }
         };
-        if obj[i] != CLEAR {
-            consider((obj_prio[i], 0), apply_fade(obj[i], fades.sprites));
+        if obj.colour[i] != CLEAR {
+            let d = sprite_depth(obj.priority[i], obj.index[i] as usize);
+            consider((obj.priority[i], 0), apply_fade(obj.colour[i], fades.sprites), d);
         }
         for l in layers {
             let c = l.pixels[i];
@@ -183,21 +219,40 @@ pub fn compose(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fa
                     Palettes::Stage => fades.stage,
                     Palettes::Hud => fades.hud,
                 };
-                consider((l.priority, 1 + l.order), apply_fade(c, fade));
+                consider((l.priority, 1 + l.order), apply_fade(c, fade), layer_depth(l));
             }
         }
         let mut c = first.2;
-        if first.1 == 0 && obj_alpha[i] != 0xFF {
-            c = blend(c, second.2, obj_alpha[i]);
+        if first.1 == 0 && obj.alpha[i] != 0xFF {
+            c = blend(c, second.2, obj.alpha[i]);
         }
         out[i] = apply_fade(c, fades.screen);
+        depth[i] = front;
     }
-    out
+    (out, depth)
 }
 
-fn draw_part(p: &SpritePart, obj: &mut [u16], obj_prio: &mut [u8], obj_alpha: &mut [u8]) {
+/// The sprite layer, per pixel: the frontmost sprite's colour, priority,
+/// blend weight and index in hardware order.
+struct SpriteBuffers {
+    colour: Vec<u16>,
+    priority: Vec<u8>,
+    alpha: Vec<u8>,
+    index: Vec<u16>,
+}
+
+impl SpriteBuffers {
+    fn set(&mut self, i: usize, p: &SpritePart, k: u16, colour: u16) {
+        self.colour[i] = colour;
+        self.priority[i] = p.priority;
+        self.alpha[i] = p.alpha.unwrap_or(0xFF);
+        self.index[i] = k;
+    }
+}
+
+fn draw_part(p: &SpritePart, k: u16, obj: &mut SpriteBuffers) {
     if let Some(m) = p.affine {
-        draw_affine(p, m, obj, obj_prio, obj_alpha);
+        draw_affine(p, m, k, obj);
         return;
     }
     let (w, h) = (p.width as i32, p.height as i32);
@@ -237,7 +292,7 @@ fn draw_part(p: &SpritePart, obj: &mut [u16], obj_prio: &mut [u8], obj_alpha: &m
                 continue;
             }
             let i = sy as usize * WIDTH + sx as usize;
-            if obj_prio[i] <= p.priority {
+            if obj.priority[i] <= p.priority {
                 continue;
             }
             let col = match mosaic {
@@ -252,16 +307,14 @@ fn draw_part(p: &SpritePart, obj: &mut [u16], obj_prio: &mut [u8], obj_alpha: &m
             if index == 0 {
                 continue;
             }
-            obj[i] = p.palette[index as usize] & 0x7FFF;
-            obj_prio[i] = p.priority;
-            obj_alpha[i] = p.alpha.unwrap_or(0xFF);
+            obj.set(i, p, k, p.palette[index as usize] & 0x7FFF);
         }
     }
 }
 
 /// An affine part (as mGBA draws it): the box, its pixels read through
 /// the matrix about the centres.
-fn draw_affine(p: &SpritePart, m: Affine, obj: &mut [u16], obj_prio: &mut [u8], obj_alpha: &mut [u8]) {
+fn draw_affine(p: &SpritePart, m: Affine, k: u16, obj: &mut SpriteBuffers) {
     let (w, h) = (p.width as i32, p.height as i32);
     let (bw, bh) = if m.double { (2 * w, 2 * h) } else { (w, h) };
     let tiles_per_row = (p.width / 8) as usize;
@@ -284,7 +337,7 @@ fn draw_affine(p: &SpritePart, m: Affine, obj: &mut [u16], obj_prio: &mut [u8], 
                 continue;
             }
             let i = sy as usize * WIDTH + sx as usize;
-            if obj_prio[i] <= p.priority {
+            if obj.priority[i] <= p.priority {
                 continue;
             }
             let t = p.first_tile + (ty as usize / 8) * tiles_per_row + tx as usize / 8;
@@ -293,9 +346,7 @@ fn draw_affine(p: &SpritePart, m: Affine, obj: &mut [u16], obj_prio: &mut [u8], 
             if index == 0 {
                 continue;
             }
-            obj[i] = p.palette[index as usize] & 0x7FFF;
-            obj_prio[i] = p.priority;
-            obj_alpha[i] = p.alpha.unwrap_or(0xFF);
+            obj.set(i, p, k, p.palette[index as usize] & 0x7FFF);
         }
     }
 }
@@ -399,6 +450,25 @@ mod tests {
         assert_eq!(out[11], 0x7C00, "priority 1 beats priority 2");
         assert_eq!(out[8], 0x03E0);
         assert_eq!(out[20], 0, "the backdrop shows where nothing is drawn");
+    }
+
+    #[test]
+    fn the_depth_mask_names_what_won_each_pixel() {
+        // A priority-1 layer over pixels 0..4, a priority-0 sprite over
+        // 2..10, a priority-2 sprite queued before it over 8..16.
+        let t = solid_tiles(1, 1);
+        let mut hud = Layer::new(1, 3);
+        hud.pixels[..4].fill(0x1234);
+        let parts = [part(&t, 8, 0, 2, 0x001F), part(&t, 2, 0, 0, 0x03E0)];
+        let (out, depth) = compose_with_depth(0, &[&hud], &parts, Fades::default());
+        assert_eq!(out[1], 0x1234);
+        assert_eq!(depth[1], layer_depth(&hud));
+        assert_eq!(depth[3], sprite_depth(0, 1), "the priority-0 sprite is in front of the layer");
+        assert_eq!(depth[12], sprite_depth(2, 0));
+        assert_eq!(depth[20], BACKDROP_DEPTH);
+        // Smaller is further in front; 0 is in front of every key.
+        assert!(sprite_depth(0, 1) < layer_depth(&hud) && layer_depth(&hud) < sprite_depth(2, 0));
+        assert!(0 < sprite_depth(0, 0));
     }
 
     #[test]
