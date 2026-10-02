@@ -15,9 +15,10 @@
 //!   ([`song`]), voicegroups, key maps and PSG waves as TOML, samples as
 //!   WAV ([`sound`]).
 //!
-//! - Display text in other languages than the definitions' own: a content
-//!   root's `locale/<language>.toml`, read by the frontend only and left
-//!   out of the content (and so of its hash) ([`locale`]).
+//! - Display text: a content root's `locales/<language>.toml`, by
+//!   definition key; the own language's is the content's strings, which the
+//!   battle counts the chatbox's timing from, the others a frontend's alone
+//!   ([`locale`]).
 //!
 //! [`pack`] ties them together and loads each part straight from its
 //! files; [`timing`] reads the simulation's animation timing alone. Every import reports what

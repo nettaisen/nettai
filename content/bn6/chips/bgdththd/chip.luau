@@ -9,8 +9,6 @@ local navi_boost = require("../../lib/navi-boost/controller")
 -- name.)
 return define.chip {
     id = "bgdththd",
-    name = "BgDthThd",
-    description = "Use Bug\nFrag with\nDarkThnd!",
     codes = { "V" },
     element = "elec", family = "elec", class = "giga",
     rarity = 4, mb = 80, damage = 0, hit_param = 138, lockout = 0,

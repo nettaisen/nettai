@@ -9,8 +9,6 @@ local wavearms = require("../wavearm/chips")
 
 local pwrwave1 = define.chip {
     id = "pwrwave1",
-    name = "PwrWave1",
-    description = "Send a\npwrfl wav\n3rows fwd",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -29,8 +27,6 @@ local pwrwave1 = define.chip {
 
 local pwrwave2 = define.chip {
     id = "pwrwave2",
-    name = "PwrWave2",
-    description = "Send a\npwrfl wav\n3rows fwd",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -49,8 +45,6 @@ local pwrwave2 = define.chip {
 
 local pwrwave3 = define.chip {
     id = "pwrwave3",
-    name = "PwrWave3",
-    description = "Send a\npwrfl wav\n3rows fwd",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

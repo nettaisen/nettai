@@ -180,16 +180,15 @@ fn load<T>(pack: &Path, what: &str, f: impl Fn(&Path) -> Result<(T, nettai_conte
     }
 }
 
-/// The battle's words in `lang`: the pack's lettering in it (fonts, HUD
-/// lines, pictures with words) and the content root's strings table, if
+/// The battle's display text in `lang`: the pack's lettering in it (fonts,
+/// HUD lines, pictures with words) and the content root's strings table, if
 /// the language isn't the content's own.
 fn language(assets: nettai_assets::Bundle, root: &Path, lang: &str) -> (nettai_assets::Bundle, Option<nettai_content::locale::Strings>) {
-    let own = assets.hud.language().to_string();
-    let strings = nettai_content::locale::Strings::load(root, lang).unwrap_or_else(|e| fail(e));
+    let own = nettai_content::locale::OWN;
+    let strings = if lang == own { None } else { nettai_content::locale::load(root, lang).unwrap_or_else(|e| fail(e)) };
     if strings.is_none() && lang != own {
-        let mut have = vec![own];
-        have.extend(nettai_content::locale::Strings::languages(root));
-        fail(format!("the content ({}) has no strings in {lang:?} (it has {})", root.display(), have.join(", ")));
+        let have = nettai_content::locale::languages(root).join(", ");
+        fail(format!("the content ({}) has no strings in {lang:?} (it has {have})", root.display()));
     }
     let assets = assets.in_language(lang).unwrap_or_else(|e| fail(format!("{e} (extract the pack again with the Japanese ROMs)")));
     (assets, strings)

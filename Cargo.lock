@@ -799,6 +799,7 @@ dependencies = [
  "nettai-luau",
  "serde",
  "serde_json",
+ "toml",
 ]
 
 [[package]]

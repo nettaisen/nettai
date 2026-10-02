@@ -7,8 +7,6 @@ local shot = require("./action")
 
 return define.chip {
     id = "widesht",
-    name = "WideSht",
-    description = "Fires 3sq\nshotgun\nblast!",
     codes = { "P", "Q", "R" },
     element = "aqua",
     family = "aqua",

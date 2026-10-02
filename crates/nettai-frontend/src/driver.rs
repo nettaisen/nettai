@@ -243,7 +243,7 @@ impl LiveChoices {
         }
         for side in 0..2 {
             let who = if side == 0 { "you" } else { "the right navi" };
-            let names: Vec<&str> = self.crosses[side].forms().map(|f| content.form(f).name.as_str()).collect();
+            let names: Vec<&str> = self.crosses[side].forms().map(|f| crate::strings::own_form_name(content, f)).collect();
             let game = match self.games[side] {
                 GameVersion::Gregar => "Gregar",
                 GameVersion::Falzar => "Falzar",
@@ -471,7 +471,7 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
             SlotKind::Scrap { right_half: false } => "SCRAP".to_string(),
             SlotKind::Redeal { right_half: false } => "REDEAL".to_string(),
             SlotKind::Empty | SlotKind::Hidden | SlotKind::Scrap { .. } | SlotKind::Redeal { .. } => return String::new(),
-            _ => screen.chip_in(slot, folder).map(|c| format!("{} {}", b.content.chip(c.id).name, c.code.letter())).unwrap_or_default(),
+            _ => screen.chip_in(slot, folder).map(|c| format!("{} {}", crate::strings::own_chip_name(&b.content, c.id), c.code.letter())).unwrap_or_default(),
         };
         let mark = match x.state {
             SlotState::Selected => "+",
@@ -492,7 +492,7 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         .selection()
         .iter()
         .map(|&s| match screen.chip_in(s, folder) {
-            Some(c) => format!("{} {}", b.content.chip(c.id).name, c.code.letter()),
+            Some(c) => format!("{} {}", crate::strings::own_chip_name(&b.content, c.id), c.code.letter()),
             None => "BEAST OUT".to_string(),
         })
         .collect();
@@ -501,7 +501,7 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
     }
     let w = &screen.crosses;
     let cross_name = |place: u8| match s.unlocks.cross_at(&*b.content, b.stats[side].navi, place) {
-        Some(f) => b.content.form(f).name.to_uppercase(),
+        Some(f) => crate::strings::own_form_name(&b.content, f).to_uppercase(),
         None => format!("CROSS {}", place + 1),
     };
     if matches!(screen.phase, Phase::CrossWindow { .. }) {

@@ -11,7 +11,6 @@ local absorb = require("../../weapons/absorb/weapon")
 
 return define.form {
     id = "dustcross",
-    name = "DustCross",
     kind = "cross",
     game = "falzar",
     cross_of = dustman,
@@ -27,7 +26,6 @@ return define.form {
     -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
     mugshot = { normal = asset.mugshot("dustcross"), tired = asset.mugshot("dustcross-tired") },
     -- What R shows in the Cross window.
-    description = "CustScrn:Dscrd\nChip.[B]+Left:\nSuckIn [B]:Fire!",
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 10,
     traits = { "scrap_button" },

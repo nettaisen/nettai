@@ -8,7 +8,6 @@ local tenguman = require("./chip")
 
 return define.navi {
     id = "tenguman",
-    name = "TenguMan",
     sprite = asset.sprite("tenguman"),
     element = "null",
     weakness = { "sword" },
@@ -18,11 +17,9 @@ return define.navi {
     -- Its face in the emotion window (`byte_801CDDC`).
     mugshot = asset.mugshot("tenguman"),
     merge_height = -8,
-    -- The no-running message: its lines' characters (which time it), its
-    -- words, and the portrait beside it.
+    -- The no-running message's portrait: the speaker beside the box. Its
+    -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        counts = { 15, 7 },
-        text = "Don't turn your\nback...",
         portrait = asset.sprite("tenguman-portrait"),
     },
     own_chip = { chip = tenguman, code = "T" },

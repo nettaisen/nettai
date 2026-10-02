@@ -11,7 +11,6 @@ local charged_chip_bonus_29 = require("../../weapons/charged-chip-bonus-29/weapo
 
 return define.form {
     id = "chargecross",
-    name = "ChargeCross",
     kind = "cross",
     game = "gregar",
     cross_of = chargeman,
@@ -27,7 +26,6 @@ return define.form {
     -- (`byte_801E700`): the Falzar ROM has no ChargeCross face, and shows DustCross's.
     mugshot = { normal = asset.mugshot("chargecross"), tired = asset.mugshot("chargecross-tired") },
     -- What R shows in the Cross window.
-    description = "Chrg FireChip\nAtk Up!In turn\nslct more chip",
     -- The chips A charges.
     charged_chips = { { family = "fire" } },
     -- The A charge builds up the next Fire chip's damage, up to this much.

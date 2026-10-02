@@ -1,8 +1,8 @@
 # Japanese: the words the Japanese games (EXE6 Falzar and Gregar) show, by definition key, for
 # the frontend's --lang ja (docs/design/text-rendering.md §10). Display text only: the
-# battle reads the definitions' own words (a description's lines, the run message's
-# characters per line), and this file is no module, so it changes neither the battle nor
-# the content's hash. Written from the Japanese ROMs, which gen-content checks it against.
+# battle counts the content's own words (en.toml: a description's lines, the run message's
+# characters per line), so this table changes neither the battle nor the content's hash.
+# Written from the Japanese ROMs, which gen-content checks it against.
 
 language = "ja"
 

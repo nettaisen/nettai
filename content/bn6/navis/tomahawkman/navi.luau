@@ -8,7 +8,6 @@ local tomahawkman = require("./chip")
 
 return define.navi {
     id = "tomahawkman",
-    name = "TmhkMan",
     sprite = asset.sprite("tomahawkman"),
     element = "wood",
     buster_bonus = 1,
@@ -17,11 +16,9 @@ return define.navi {
     -- Its face in the emotion window (`byte_801CDDC`).
     mugshot = asset.mugshot("tomahawkman"),
     merge_height = 0,
-    -- The no-running message: its lines' characters (which time it), its
-    -- words, and the portrait beside it.
+    -- The no-running message's portrait: the speaker beside the box. Its
+    -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        counts = { 13, 17 },
-        text = "Strange to be\nrunning away now!",
         portrait = asset.sprite("tomahawkman-portrait"),
     },
     own_chip = { chip = tomahawkman, code = "T" },

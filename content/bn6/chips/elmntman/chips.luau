@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 local elmntman = define.chip {
     id = "elmntman",
-    name = "ElmntMan",
-    description = "Hit [A] whn\ncol chges\nelem attk",
     codes = { "E", "*" },
     element = "null",
     family = "null",
@@ -25,8 +23,6 @@ local elmntman = define.chip {
 
 local elmntmn_ex = define.chip {
     id = "elmntmn-ex",
-    name = "ElmntMn[EX]",
-    description = "Hit [A] whn\ncol chges\nelem attk",
     codes = { "E" },
     element = "null",
     family = "null",
@@ -44,8 +40,6 @@ local elmntmn_ex = define.chip {
 
 local elmntmn_sp = define.chip {
     id = "elmntmn-sp",
-    name = "ElmntMn[SP]",
-    description = "Hit [A] whn\ncol chges\nelem attk",
     codes = { "E" },
     element = "null",
     family = "null",

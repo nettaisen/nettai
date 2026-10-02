@@ -24,7 +24,7 @@ pub mod stage;
 pub mod text;
 pub mod textlayer;
 pub mod vfont;
-pub mod words;
+pub mod strings;
 
 pub use render::{Frame, Renderer};
 pub use session::{Session, TickHook};

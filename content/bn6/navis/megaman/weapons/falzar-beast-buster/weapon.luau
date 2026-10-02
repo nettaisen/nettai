@@ -228,7 +228,6 @@ falzar_beast_buster.action = define.action {
 
 falzar_beast_buster.weapon = define.weapon {
     id = "megaman/falzar-beast-buster",
-    name = "Falzar Beast buster",
     -- The charge table's row 3, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 40, 60, 90, 120, 150, 80, 75, 70 },

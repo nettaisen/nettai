@@ -92,16 +92,16 @@ pub fn folder_chips(content: &Content) -> Vec<ChipHandle> {
 pub fn violations(content: &Content, folder: &SavedFolder, limits: FolderLimits) -> Vec<String> {
     let pool = folder_chips(content);
     let mut out = Vec::new();
-    let name = |c: ChipHandle| content.chip(c).name.clone();
+    let name = |c: ChipHandle| crate::strings::own_chip_name(content, c).to_string();
     let mut copies: std::collections::BTreeMap<ChipHandle, usize> = Default::default();
     let (mut mega, mut giga, mut dark) = (0, 0, 0);
     for (i, c) in folder.chips.iter().enumerate() {
         let d = content.chip(c.id);
         if !pool.contains(&c.id) {
-            out.push(format!("entry {i}: {} is no chip a folder can hold", d.name));
+            out.push(format!("entry {i}: {} is no chip a folder can hold", name(c.id)));
         }
         if !d.codes.contains(&c.code) {
-            out.push(format!("entry {i}: {} doesn't come in code {}", d.name, c.code.letter()));
+            out.push(format!("entry {i}: {} doesn't come in code {}", name(c.id), c.code.letter()));
         }
         *copies.entry(c.id).or_default() += 1;
         if d.flags.has(ChipFlags::DARK) {
@@ -227,7 +227,7 @@ pub fn describe(content: &Content, folder: &SavedFolder) -> String {
         .enumerate()
         .map(|(i, c)| {
             let mark = if folder.regular == Some(i as u8) { " (Regular)" } else { "" };
-            format!("{} {}{mark}", content.chip(c.id).name, c.code.letter())
+            format!("{} {}{mark}", crate::strings::own_chip_name(content, c.id), c.code.letter())
         })
         .collect::<Vec<_>>()
         .join(", ")
@@ -245,6 +245,9 @@ pub(crate) fn bn6_test_content() -> std::sync::Arc<Content> {
         let mut c = Content::default();
         c.scripts.modules = testing::modules_under(dir);
         c.assets = testing::asset_names_used(&c.scripts.modules);
+        c.strings = nettai_content::locale::load(std::path::Path::new(dir), nettai_content::locale::OWN)
+            .and_then(|s| s.ok_or_else(|| "no locales/en.toml".into()))
+            .unwrap_or_else(|e| panic!("content/bn6: {e}"));
         let mut navi = testing::content().animations.sprites[&testing::NAVI_SPRITE].clone();
         navi.resize(0x40, navi[1].clone());
         for &id in c.assets.sprites.values() {
