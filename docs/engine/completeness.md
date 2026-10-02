@@ -862,6 +862,23 @@ region (1), and CornFsta's sower with no panel at all (1). The hard one: AreaGra
 field, which needs every column from the user's back partly stolen. The 6 recordings match the engine at main
 1703b936, every frame (8,062) and sound call (177).
 
+**Second pass, batch 6: Sensor, Guardian, Anubis (28 branches):** 6 taken by 5 new recordings, 17
+unreachable, 5 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x071-sensor1/side1`, `dimmed`, `ko-scanning` | side 1's Sensor (its scanner's test and its line leaving at column 0); the scanner under the other side's dimming; the scanner, sent up the diagonal past the opponent, seeing the battle over |
+| `chips/0x097-guardian/broken-in-dimming`, `broken-and-ko` | the statue broken inside HeatMan's dimming: the strike back waits the dimming out, and finds the battle over when HeatMan also deletes its owner |
+
+The unreachable ones: the turret's own dimmed tests (2: the obstacles' shared update runs its actions only
+outside a dimming), spawns (2), links (2), a scanner that passes objects (2) and the laser's delay (1); the
+statue appearing on a taken panel, broken with HP left, quiet, or striking back with no side, and a repeated test
+(5); Anubis's drain seeing the battle over (1: the statue's shared update ends it first, at a KO or at the 15th
+turn's time-up alike) and its bubbles finding no panel (2). The hard ones: a laser hit on its turret's last
+tick, the turret pushed while it fires (its target is paralyzed for the whole fire; with a Barrier, AirShot still
+didn't push it), and the statue broken by both sides' hits at once or by a hit with neither side's bits (3). The 5
+recordings match the engine at main eda65622, every frame (6,173) and sound call (189).
+
 <!-- end: chip families, onesided -->
 
 ### 6.3 Custom screen keys
