@@ -17,7 +17,7 @@
 //! - [`world`]: [`BattleWorld`], getgud's `World` for one peer's battle
 //!   (its player's side, snapshots, prediction), generic over a [`Game`],
 //!   and the [`Observer`] that sees every tick it simulates;
-//! - [`bn6`]: [`nettai_battle::Battle`] as a game, on the engine's per-tick
+//! - [`battle`]: [`nettai_battle::Battle`] as a game, on the engine's per-tick
 //!   input record, and the sound cue feed;
 //! - [`standin`]: a battle stepped on the buttons alone, for synthetic
 //!   matches;
@@ -28,7 +28,7 @@
 //!
 //! See docs/design/rollback.md.
 
-pub mod bn6;
+pub mod battle;
 pub mod network;
 pub mod rng;
 pub mod sim;

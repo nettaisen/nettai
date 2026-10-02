@@ -56,7 +56,7 @@ Two battles started from the same `RoundSetup` and stepped with the same inputs 
 simulation keeps no state outside `Battle`, reads no clock, does no I/O, and uses no floats, statics, interior
 mutability, hash-map iteration or addresses (§7).
 
-Each player contributes their share. In nettai-netplay that is `Bn6Input { tick: PlayerTick, events: TickEvents }`;
+Each player contributes their share. In nettai-netplay that is `PlayerInput { tick: PlayerTick, events: TickEvents }`;
 the frame's record combines both shares (`bn6::tick_input`).
 
 **The custom screen is simulated.** Both players' custom screens run in the engine from their buttons
@@ -241,7 +241,7 @@ produced cues that didn't happen. `cues::CueTracker` handles that:
 The result is a list of `CueAction::Play(cue)` / `Cancel(cue)`. nettai-audio's `BattleAudio::handle_actions`
 plays the plays like `handle` and takes back cancels: a sound effect stops if its player is still playing it
 (`m4aSongNumStop`), a music change goes back to the previous music (restarted), a pinch switch is switched back.
-`nettai_netplay::bn6::CueFeed` is the observer that connects a peer to a tracker for one viewer: the peer's world
+`nettai_netplay::battle::CueFeed` is the observer that connects a peer to a tracker for one viewer: the peer's world
 holds it and the host shares it (`BattleWorld::with_observer` with an `Rc<RefCell<CueFeed>>`, since getgud owns
 the world). It also keeps each unconfirmed frame's cues from its latest simulation, which are the confirmed
 frame's cues once it settles.
@@ -268,7 +268,7 @@ settled state and computes the clock skew; it has no game logic and speaks of on
 |---|---|
 | `World` | `BattleWorld<G, O>`: one peer's live battle (a `Game`), its player's side, the tick it is parked at, and an observer |
 | `World::step(local, remotes)` | `Game::step([side 0's input, side 1's input])`: `local` goes to the world's side, the one remote slot to the other |
-| `World::Input` | `Bn6Input` for `Battle` (buttons and the frame's events), the buttons for `StandInBattle`; `Default` is the input before any has arrived (`initial_remotes`) |
+| `World::Input` | `PlayerInput` for `Battle` (buttons and the frame's events), the buttons for `StandInBattle`; `Default` is the input before any has arrived (`initial_remotes`) |
 | `World::State`, `save`, `load` | `BattleState`: a `Snapshot` (§1.3) and its tick. `load` copies nothing and reports no rollback when the world is parked at that tick already: getgud loads the settled state before simulating confirmed rows even when nothing was speculated past it, and then the world is that state |
 | `World::predict` | `Game::predict`: buttons carry on, events happen once |
 | `World::recycle` | Not implemented: `Battle`'s `clone_from` is the derived one, which reuses no allocation, so pooling snapshots would save nothing |
@@ -284,7 +284,7 @@ settled state and computes the clock skew; it has no game logic and speaks of on
   (`rolled_back`, `simulated`, `confirmed`, implemented for `&mut`, `&RefCell` and `Rc<RefCell>` of an observer
   so that the world and the host can share one), `BattleWorld` and `BattleState`. `BattleWorld::session` makes the
   session.
-- `bn6`: `Battle` as a `Game` on the engine's input record (`Bn6Input`, `tick_input`), and the sound feed
+- `bn6`: `Battle` as a `Game` on the engine's input record (`PlayerInput`, `tick_input`), and the sound feed
   (`CueFeed`).
 - `standin`: `StandInBattle` as a `Game` on the buttons alone; a MegaMan built in code, a netbattle setup on given
   content with given folders, and a seeded button masher.
