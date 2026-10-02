@@ -5,7 +5,6 @@ local cards = require("../../rules/patch-cards/cards")
 
 return cards.card {
     id = "patch-card/needler",
-    name = "Needler",
     mb = 10,
     effects = {
         cards.super_armor(true),

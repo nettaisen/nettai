@@ -6,7 +6,6 @@ local charge = require("./charge")
 
 return cards.card {
     id = "patch-card/django",
-    name = "Django",
     mb = 52,
     effects = {
         cards.hp(200),

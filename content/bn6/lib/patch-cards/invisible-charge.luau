@@ -23,7 +23,6 @@ end
 
 return define.weapon {
     id = "patch-cards/invisible-charge",
-    name = "Invis",
     -- The charge table's row 0x71, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 170, 160, 150, 145, 140, 90, 80, 70 },

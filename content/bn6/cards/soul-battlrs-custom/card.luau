@@ -6,7 +6,6 @@ local charge = require("./charge")
 
 return cards.card {
     id = "patch-card/soul-battlrs-custom",
-    name = "Soul Battlr's Custom",
     mb = 66,
     effects = {
         cards.super_armor(true),

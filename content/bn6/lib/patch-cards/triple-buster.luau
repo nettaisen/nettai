@@ -22,7 +22,6 @@ end
 
 return define.weapon {
     id = "patch-cards/triple-buster",
-    name = "TriBustr",
     -- The charge table's row 0x8F (the buster isn't charged), by Charge 0
     -- to 7: past 4 it reads on into the next routine's row.
     charge_ticks = { 0, 0, 0, 0, 0, 130, 120, 110 },

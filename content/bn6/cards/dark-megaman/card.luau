@@ -7,7 +7,6 @@ local variants = require("../../objects/projectile/variants")
 
 return cards.card {
     id = "patch-card/dark-megaman",
-    name = "Dark MegaMan",
     mb = 80,
     effects = {
         cards.attack(3),

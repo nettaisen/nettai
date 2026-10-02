@@ -618,12 +618,12 @@ mod tests {
             // (A value that doesn't decode is read as naming content: the
             // byte is modeled.)
             let modeled = values.iter().any(|&v| decoded(v).is_none_or(|d| d != base));
-            // The engine has no numbers for weapons, shot programs, forms
-            // or navis: a bug code can only clear those bytes (a form's
-            // to the base form), and can't write a navi's.
+            // The engine has no numbers for weapons, shot programs, first
+            // barriers, forms or navis: a bug code can only clear those
+            // bytes (a form's to the base form), and can't write a navi's.
             let by_handle = |v: u8| match offset {
                 0x04 | 0x05 | 0x07 | 0x39 | 0x44 => v != 0xFF,
-                0x4D | 0x4F | 0x17 | 0x2C => v != 0,
+                0x06 | 0x4D | 0x4F | 0x17 | 0x2C => v != 0,
                 0x29 => true,
                 _ => false,
             };

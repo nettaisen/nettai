@@ -9,7 +9,6 @@ local chips = require("../../chips/cannon/chips")
 
 return define.weapon {
     id = "patch-cards/canodumb/charge",
-    name = "M-Cannon",
     -- The charge table's row 0x54, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 150, 140, 130, 125, 120, 180, 170, 160 },

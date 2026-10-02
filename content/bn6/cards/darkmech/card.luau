@@ -6,7 +6,6 @@ local back_special = require("./back-special")
 
 return cards.card {
     id = "patch-card/darkmech",
-    name = "DarkMech",
     mb = 22,
     effects = {
         cards.hp_percent(10),

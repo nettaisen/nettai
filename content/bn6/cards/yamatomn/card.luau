@@ -6,7 +6,6 @@ local shield = require("../../navis/megaman/weapons/shield/weapon")
 
 return cards.card {
     id = "patch-card/yamatomn",
-    name = "YamatoMn",
     mb = 35,
     effects = {
         cards.hp_percent(10),

@@ -6,7 +6,6 @@ local charge = require("./charge")
 
 return cards.card {
     id = "patch-card/tenguman",
-    name = "TenguMan",
     mb = 34,
     effects = {
         cards.air_shoes(true),

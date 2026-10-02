@@ -5,7 +5,6 @@ local cards = require("../../rules/patch-cards/cards")
 
 return cards.card {
     id = "patch-card/miney",
-    name = "Miney",
     mb = 12,
     effects = {
         cards.bug(cards.air_shoes(false)),

@@ -5,7 +5,6 @@ local cards = require("../../rules/patch-cards/cards")
 
 return cards.card {
     id = "patch-card/heavy",
-    name = "Heavy",
     mb = 15,
     effects = {
         cards.super_armor(true),

@@ -9,7 +9,6 @@ local circgun = require("../../chips/circgun/chip")
 
 return define.weapon {
     id = "patch-cards/searchmn/charge",
-    name = "CircGun",
     -- The charge table's row 0x84, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 180, 170, 160, 155, 150, 120, 110, 100 },

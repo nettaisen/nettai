@@ -5,7 +5,6 @@ local cards = require("../../rules/patch-cards/cards")
 
 return cards.card {
     id = "patch-card/stoneman",
-    name = "StoneMan",
     mb = 45,
     effects = {
         cards.hp(360),

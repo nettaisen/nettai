@@ -6,7 +6,6 @@ local charge = require("./charge")
 
 return cards.card {
     id = "patch-card/bombcorn",
-    name = "BombCorn",
     mb = 16,
     effects = {
         cards.hp(110),

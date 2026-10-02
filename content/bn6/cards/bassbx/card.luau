@@ -7,7 +7,6 @@ local triple_buster = require("../../lib/patch-cards/triple-buster")
 
 return cards.card {
     id = "patch-card/bassbx",
-    name = "BassBX",
     mb = 70,
     effects = {
         cards.super_armor(true),
