@@ -221,4 +221,9 @@ Still unverified: the battle flag 0x40 HUD mask (no netbattle sets it); the aim'
 panel (only the navi has an enemy's body there in a netbattle: the field cleaner breaks every obstacle before
 the first aim); the whole area's list empty or of one panel (unreachable: a side keeps a whole column); the
 feather's Param2 0 (no caller); a summon, arrival or flame spawn failing, or a flame without a collision slot.
-The HUD's hiding and the fades are presentation, which the traces don't compare.
+The traces don't compare the HUD's hiding or the fades; the frontend's frames do (bn6battle-verify's
+tools/frontend-compare, on `hit` of both chips, Gregar's `side1` and Falzar's `as-counter`). The fade to black and
+back, the hidden gauge and emotion window, the feathers, flames, rocks and whirlwind are exact on every frame.
+What differs is the summons' and the arrival's look (sprites 0c-66 and 0c-68, which the US ROMs fill with a
+placeholder: the Japanese ROMs' are the extractor's to add) and what a Japanese console writes in Japanese (the
+chip names, the telops, the custom gauge's "L or R").
