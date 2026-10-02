@@ -7,10 +7,13 @@ local throw_absorbed = require("./throw_absorbed")
 local absorb = require("../../weapons/absorb/weapon")
 local charged_chip_bonus = require("../../weapons/charged-chip-bonus/weapon")
 local scatter = require("./scatter")
+local forms = require("../../../../rules/forms/system")
 
 return define.form {
     id = "dustcross-beast",
     kind = "cross_beast",
+    -- What changes MegaMan into it (BN6's five sequences).
+    change = forms.action,
     game = "falzar",
     cross_of = dustman,
     -- A weakness hit breaks the Cross: back to the Beast.

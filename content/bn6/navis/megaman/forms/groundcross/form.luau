@@ -8,10 +8,13 @@ local groundcross_beast = require("../groundcross-beast/form")
 local buster = require("../../weapons/buster/weapon")
 local drill = require("./drill")
 local rock_barrage = require("../../weapons/rock-barrage/weapon")
+local forms = require("../../../../rules/forms/system")
 
 return define.form {
     id = "groundcross",
     kind = "cross",
+    -- What changes MegaMan into it (BN6's five sequences).
+    change = forms.action,
     game = "falzar",
     cross_of = groundman,
     beast = groundcross_beast,

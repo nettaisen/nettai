@@ -235,7 +235,8 @@ system uses colocated:
 content/bn6/rules/
   ruleset.luau                the stock ruleset
   sections.luau, roles.luau   (and the rule sections' modules as today: elements, panels, collision, ...)
-  cross/                      the Cross forms' change sequences, the Cross merge, the Cross window, the Cross bonuses
+  forms/                      the form changes: BN6's five sequences (the action every BN6 form names), the Cross merge
+  cross/                      the Cross window, the Cross bonuses
   beast/                      Beast Out and Beast Over: the button and chip, the counter, the rush, berserk
   cross-special/              the Cross special (DarkInvs' request)
   emotion/                    BN6's emotions, the swing bug
@@ -256,7 +257,7 @@ In slice order (§8). "Per tick" is what each costs in Luau while its state last
 | System | Moves | Hooks and points | Per-tick Luau |
 |---|---|---|---|
 | **beast** (turn-start part, S1) | Beast Out's end check and count-down, the check delay | `turn_check`, `turn_started`, `custom_requested`, `custom_closed` | none |
-| **cross**, **beast** (form changes, S2) | the five sequences of `sub_8014A38` as actions forms name; the Cross merge kind | forms' `change` actions | per tick of a change, paused |
+| **forms** (form changes, S2) | the five sequences of `sub_8014A38` as the action forms name; the Cross merge kind; `beast_out_used`, `crossed` | forms' `change` actions; a system's own actions | per tick of a change, paused |
 | **beast** (S3) | the rush (a wrapper), berserk (a controller), Beast Over's drain and exhaustion; `beast_lockon`, `beast_out_spent`, `beast_over_exhausted`; the glow as form data | `chip_used`, `form_changed`; `navi:set_wrapper`, `navi:set_controller`, `navi:hold_input`, `battle.forces_custom` | during a rush; in Beast Over |
 | **cross-special**, **cross** (S4) | the Cross special; the Cross bonuses and charged chips by form (`sub_800EF34`, `sub_8013236`, `sub_8012AFA`); the fire charge as form data | `chip_used`, a controller, the charge hook | while a special runs |
 | **emotion** (S5) | BN6's emotion rules, anger, the swing bug; the mood stays framework | `navi_hit`, `countered`, `form_changed`; the pushed emotion and `mood_held` | none, but the swing bug's timer while a navi has it |
@@ -534,8 +535,9 @@ Rules 4 to 6 of §2.1 exist to avoid this.
 1. **A plain fight stays free.** No slice adds a per-tick Luau call to a navi in a plain state (no controller,
    wrapper, window or special): soundmod 1–3 and machgun 2 stay within the noise (±10 %).
 2. **The ceiling**: every basket row under **500 µs per rendered frame** (3 % of a frame), best of five.
-3. **Every slice reports** its basket before and after, with its Luau calls per advance; a row that grows by more
-   than 25 % is explained.
+3. **No per-slice measurement** after S2 (the user, 2026-10-02: "don't bother doing all this costing, it's
+   fine"). Through S2 every slice reported its basket before and after; the tools stay for when a slice adds
+   per-tick Luau to a plain fight, or someone asks.
 
 The estimate at the end of the BN6-only slices: plain fights unchanged; machgun 1 about unchanged (the marker stays
 Rust, the rush only during rushes); beast-over plus berserk (about 5 µs an advance) near 190 µs. Two rulesets in one
@@ -611,6 +613,24 @@ A definition's asset names resolve in its root's `assets` pack: `bn5:cannon`'s s
 asset handles cover every loaded pack; a sprite's identity gains its pack (`SpriteId` is a pack, a category and an
 index); the frontend and the audio load each pack the battle's roots name.
 
+#### The field's art in a mixed battle (proposed, pending the user; to build in slice R)
+
+The field's rules follow the stage's game (§2.3); its art does too.
+
+1. **The field's art is the stage's game's**, like its rules: the panel tiles, their palettes and palette cycles,
+   the highlights, the front edges and the background all come from the arena's pack. Both viewers see the same
+   field.
+2. **Every pack declares which panel types it draws.** BN5's field has 11 panel types (BN6's 13) and one highlight
+   block (BN6's two).
+3. **A panel type the arena's game lacks** (a BN6 chip making a BN6-only panel in a BN5 arena):
+   - the simulation runs it by the type's own definition, so the rules never depend on the art;
+   - it is drawn from the first pack that has it: the arena's, then the pack of the game that defines the type. Its
+     blocks keep their own palettes, loaded into free palette slots;
+   - if no loaded pack has it, a fallback block is drawn: a normal panel with a tint, never a hole.
+4. **Today's frontend** skips drawing a panel whose block is missing (a hole), and indexes `highlights[1]`, which a
+   pack with one highlight block would panic on. Both are fixed in slice R.
+5. **The pack check reports**, per pack, which panel types and highlights it lacks.
+
 ### 7.5 Which rules apply where
 
 - **A player's ruleset rules that player** (§2.3): their custom screen, transformations, emotions, controls, and the
@@ -658,7 +678,8 @@ under each stock ruleset, a battle with a different ruleset on each side, and a 
 - Ports from the Rust as it stands; every branch kept; anything the move shows wrong is fixed and listed.
 - Gates once at the end (phase-b-brief): the build without warnings, `cargo test --workspace`, the content check,
   `gen-content check` when compat or definitions changed, both golden traces with rollback at every latency and the
-  sound calls, the full lab with the sound gate, and **the rollback cost basket before and after** (§6.5).
+  sound calls, and the full lab with the sound gate. (The rollback cost basket before and after was a gate through
+  S2; the user dropped it, §6.3.)
 - Verify-side changes on a verify branch of the same name.
 - Docs: this document's "As built" notes; core-content-boundary.md and content-migration.md where the line or the
   patterns move; docs/engine where it names moved code.
@@ -669,7 +690,7 @@ under each stock ruleset, a battle with a different ruleset on each side, and a 
 |---|---|---|---|---|
 | S0 | **Groundwork** | none | `define.system`, `define.ruleset` (stock); per-side system state and player setups; `PlayerSetup::ruleset` (default the stage's game's stock); the `system` library and its call context; the hook lists with `round_start` wired; the lint; rollback_cost's `--frames` and `luau-profile`; tools/rollback-cost.sh | all (a no-op) |
 | S1 | **Turn starts** | Beast Out's end check, count-down and check delay into BN6's beast system; the sequencer framework with per-side hooks | `turn_check`, `turn_started`, `custom_requested`, `custom_closed` | forms/*, custom/take-back-*, flow/*; machgun 1 |
-| S2 | **Form changes** | the five sequences into BN6's cross and beast systems as actions the forms name; the Cross merge kind | forms' `change` actions; pause actions | forms/* |
+| S2 | **Form changes** | the five sequences into BN6's forms system as the action the forms name; the Cross merge kind | forms' `change` actions; a system's own actions | forms/* |
 | R | **Roots** (after S2) | none | root manifests, qualified keys, content/nettai declarations, per-root compat and packs, roles and sections per ruleset, the battle's data from the stage's game, mixes (`base`, `add`, `remove`); a test root with its own stock ruleset; a battle with a ruleset per side | everything |
 | S3 | **Beast Out and Beast Over** | the rush, berserk, Beast Over's drain and exhaustion, the marker's targeting and freeze; the kinds renamed shared | wrappers, controllers, `chip_used`, `navi:hold_input`, `battle.forces_custom` | forms/*/beast-*, machgun 1 |
 | S4 | **The Cross special and the Cross bonuses** (with the "Cross change" renamed the navi switch, §3.2) | berserk.rs's special, cross_special.rs, `sub_800EF34`, `sub_8013236`, `sub_8012AFA`, the fire charge as data | controllers, the charge hook | forms/*/cross-*, the specials' scenarios |
@@ -800,3 +821,37 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
   with the sound gate. (Before the patch cards, on ca90a72e: the same, the lab 6299/6299.)
 - **Cost**, best of 15 against main: +1.0 % to +3.8 % on every row (soundmod 1–3 83.4 / 107.6 / 74.0 µs, machgun
   1–2 105.1 / 84.8, beast-over 119.9): the four hooks' calls at turn starts and custom-screen requests, all paused.
+
+### S2, form changes (2026-10-02)
+
+- **BN6's forms system** (content/bn6/rules/forms): the change into a form (`sub_8014A38` and its five sequences, a
+  Cross, Beast Out, a Cross in Beast Out either way, Beast Over) is a Luau action, `forms/change` (compat 0x1C, as
+  the original's CurAction), which every BN6 form other than the base form names as its `change`; the Cross navi's
+  image merging (actor #0x1B) is a Luau kind, `forms/cross-merge` (compat keeps its slot). What a change notes of the
+  round (`sub_800AB2E`: Beast Out used, crossed, read after the battle) is the system's state:
+  `Battle::{beast_out_used, crossed}` are gone. The system sits in the stock ruleset after the patch cards.
+- **A form's `change`** (`FormData::change`): the pause handler runs the action the form asked for names (a form other
+  than the base form must name one); unpaused, such an action is the instant chips' (the original's CurAction 0x1C), as
+  before. The revert (`sub_8015614`, the same code in BN5) and the Cross break stay the framework's.
+- **A system's own actions** (`define.system { actions = { ... } }`): running one, the binding gives it the system's
+  state of the navi's side (`system.state()`), if the side plays by that system (`Defs::action_owner`,
+  `Battle::system_slot`, `ContentHost::update_action`'s system).
+- **API** for a game's rules over a navi (§4.5): `clear_invulnerable`, `face_default`, `reset_charge`,
+  `end_full_synchro_aura`, `drop_statuses`, `end_statuses` (`sub_801A264`, which isn't `clear_statuses`'s whole status
+  word: the first lab run showed Beast Over keeping three flags the wrong one dropped), `overlay_stepping`,
+  `take_off_form_overlay`, `put_on_form_overlay`, `load_form_sprite`, `reset_status`, `end_anger`,
+  `form_change_target`, `pin_overlay`; `battle.shake_camera_secondary`, `battle.burst`; the navi stats' `form`
+  writable.
+- **Roles** only the change used are gone (the sounds of a form change, a Cross, Beast Out, the roars, Beast Over's
+  rumble, the Cross merge; the effects of a form change and Beast Over's beast and blast): the Luau names the assets.
+- `kinds::cross_merge` and `EngineKind::CrossMerge` are gone; the engine has 21 kinds of its own.
+- **Compat**: compat/actions.toml gains `"forms/change" = 0x1C`, compat/kinds.toml `"forms/cross-merge"` (actor
+  #0x1B); the roles removed leave compat/rules.toml. Verify (branch rules-design): gen-content checks every form but
+  the base form names `forms/change`.
+- **Gates** (on main 356f5971 merged): the build without warnings, 399 tests, the content check (832 modules),
+  machgun 1074/1331 and soundmod 21962/14933/20436 with 48 rollback rows and the 189 legacy rounds, the lab
+  6521/6521 (5,756,487 frames) with 0 sound rounds differing. After main a33fc1da (locales, fonts): the build
+  without warnings, 402 tests, the content check, gen-content check 0 errors.
+- **Cost**: the basket under load 34 to 64 was noise either way (soundmod 1 read 119 against 345 µs in one pass, 236
+  against 198 alternating); the user then dropped the measurement (§6.3). A change runs Luau only during its own
+  frames (about 100 a change); a plain fight runs none of S2's.
