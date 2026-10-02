@@ -43,12 +43,13 @@ pub struct ContentAudit {
     pub chips: usize,
     pub navis: usize,
     pub forms: usize,
-    /// The assets the content's modules name, by kind.
+    /// The loaded packs' assets, by kind.
     pub assets: Vec<(AssetKind, usize)>,
     /// The languages it checked, the content's own first.
     pub languages: Vec<String>,
-    /// Lookups made (over every language).
-    pub lookups: usize,
+    /// The lookups made (in any language), each as `Lookup::describe` says
+    /// it: what the trace cover needn't make again.
+    pub made: BTreeSet<String>,
     /// What is missing: one line each, a language's other than the
     /// content's own marked with it.
     pub problems: Vec<String>,
@@ -90,7 +91,7 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
         // (A string a language's table lacks shows in the content's own,
         // by design: not a lookup that fails.)
         out.untranslated.extend(text.take_missing().into_iter().map(|what| format!("{lang}: {what}")));
-        out.lookups += problems.lookups().count();
+        out.made.extend(problems.lookups().map(|l| l.describe(c)));
         out.languages.push(lang.clone());
         // (A language's problems that the content's own has too are told
         // once.)
@@ -247,5 +248,34 @@ fn sprite(c: &Content, packs: &Packs, id: SpriteId, p: &mut Problems) {
             let what = || format!("its animation {anim}'s own");
             lookups::palette(set, c, id, f, first, &what, p);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nettai_assets::{ChipIcon, Tiles};
+    use nettai_battle::content::testing;
+
+    /// The static audit's chips without an icon, with the pack's icons
+    /// named by `name` of each chip's key.
+    fn chips_without_icons(name: impl Fn(&str) -> String) -> usize {
+        let c = testing::content();
+        let mut b = Bundle::default();
+        for d in &c.defs.chips {
+            b.hud.chip_icons.push(ChipIcon { key: name(&d.key), tiles: Tiles { pixels: vec![1; 4 * Tiles::TILE] } });
+        }
+        let own = c.assets.pack(testing::ROOT).expect("the test pack");
+        let found = audit(&c, vec![b], own, None, &[("en".into(), None)]);
+        found.problems.iter().filter(|p| p.ends_with("has no icon in the pack")).count()
+    }
+
+    /// A lookup by the wrong key fails for every chip (R1's: a chip's icon
+    /// by its qualified key, where the pack names it by the key its root
+    /// writes), not only for the chips a trace shows.
+    #[test]
+    fn a_lookup_by_the_wrong_key_fails_for_every_chip() {
+        assert_eq!(chips_without_icons(|key| nettai_content_api::keys::local(key).to_string()), 0);
+        assert_eq!(chips_without_icons(str::to_string), testing::content().defs.chips.len());
     }
 }
