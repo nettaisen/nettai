@@ -2,7 +2,7 @@
 //! the ROM; the HUD tasks (`sub_801BF64`) copy it to VRAM as needed.
 
 use crate::{Rom, u32at};
-use nettai_assets::{BannerLayout, ChipIcon, Hud, MapEntry, NaviMugshot, Palette, Tiles, palettes_from_bytes};
+use nettai_assets::{BannerLayout, ChipIcon, DialogueFont, Hud, MapEntry, NaviMugshot, Palette, Tiles, palettes_from_bytes};
 use nettai_content::names::AssetNames;
 
 /// HUD layer tiles 0x1A0..=0x1D1: HP digits and blank, the box border,
@@ -47,6 +47,14 @@ const NAVI_MUGSHOTS: u32 = 0x0872_D094;
 const NAVI_MUGSHOT_COUNT: u32 = 6;
 const NAVI_BOX: u32 = 0x0872_D014;
 const NAVI_MUGSHOT_PALETTES: u32 = 0x0872_D694;
+/// The dialogue font (`byte_86ACD60`: 16x12 glyphs, 0x60 bytes each, a
+/// row of eight bytes, the left pixel in each byte's low nibble) and its
+/// advances (`byte_8043CA4`): the one-byte glyphs below 0xE4 and the
+/// two-byte codes' (E4 00 - E4 E8) after them.
+const DIALOGUE_FONT: u32 = 0x086A_CD60;
+const DIALOGUE_ADVANCES: u32 = 0x0804_3CA4;
+const DIALOGUE_GLYPHS: u32 = 0xE4 + 0xE9;
+
 /// "PAUSE" (`off_801E188`): a 32x16 sprite's eight tiles and an 8x16
 /// one's two.
 const PAUSE: u32 = 0x086E_611C;
@@ -196,6 +204,15 @@ pub fn hud(rom: &Rom, gregar: &Rom, names: &AssetNames) -> Hud {
             )
             .collect(),
         navi_box: tiles(rom, NAVI_BOX, 0x80),
+        dialogue_font: DialogueFont {
+            pixels: rom
+                .bytes(DIALOGUE_FONT, 0x60 * DIALOGUE_GLYPHS as usize)
+                .iter()
+                .flat_map(|&b| [b & 15, b >> 4])
+                .collect(),
+            advances: rom.bytes(DIALOGUE_ADVANCES, DIALOGUE_GLYPHS as usize).to_vec(),
+            chars: names.glyphs.iter().chain(&names.dialogue_glyphs).take(DIALOGUE_GLYPHS as usize).cloned().collect(),
+        },
         pause,
         texts: texts(rom),
         banners: (0..BANNER_COUNT).map(|id| banner(rom, id)).collect(),

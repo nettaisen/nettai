@@ -339,6 +339,9 @@ pub struct Hud {
     /// its palette. Empty in a pack extracted before it was.
     pub warning: Tiles,
     pub warning_palette: Palette,
+    /// The dialogue font (the chatbox's). Empty in a pack extracted before
+    /// it was.
+    pub dialogue_font: DialogueFont,
 }
 
 /// Where the link navis' faces (`Hud::navi_mugshots`) start among the

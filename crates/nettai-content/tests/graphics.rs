@@ -123,6 +123,11 @@ fn bundle() -> Bundle {
         waiting_palette: palette(47),
         warning: tiles(8, 33),
         warning_palette: palette(49),
+        dialogue_font: DialogueFont {
+            pixels: (0..3 * 16 * 12).map(|i| (i % 5) as u8).collect(),
+            advances: vec![8, 6, 11],
+            chars: vec!["A".into(), "i".into(), "研".into()],
+        },
     };
     Bundle { sprites: vec![sprite(0, 1), sprite(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud, custom: custom() }
 }
