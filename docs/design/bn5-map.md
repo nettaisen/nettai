@@ -337,6 +337,32 @@ ProtoMan's code and recorded both ways (the chip lab's `chips/0x133-holydrem/`):
   dark MegaMan turning holy panels Normal under him every tick (§6.1), which changes the count when a dark
   MegaMan stands on one.
 
+### 6.3 Chips that need a set-up (read for the chip lab)
+
+The chip lab's templates stand the opponent where each chip lands (verification workspace, tools/chiplab/
+reach_bn5.py); a few chips hit nobody standing anywhere, and their code says what they need:
+
+- **WavePit, RedWave, MudWave** (action 0x1A, sub-type 0x13, 0x080DAF18; the chip's parameter picks the panel):
+  for each row, from the user's end of the field toward the other, the first panel with the kind's flag starts a
+  wave along that row: a sea panel (flag 0x20000) for WavePit, a lava panel (0x1000) for RedWave, both then set
+  Normal; for MudWave a panel without the standable flag 0x10 (a hole), left as it is. No such panel in a row, no
+  wave there; none on the field, the chip does nothing.
+- **The mode chips** (CannMode to DrilMode, FinalGun; action 0x1A, sub-type 0x0C, 0x0802D62A): they set the
+  user's side's buster mode (the per-side block of BN6's flag-0x40 gauges, `sub_802E070`: its +0x0B the chip's
+  parameter, +0x2E 480 ticks, 360 in flag-0x40 mode). The damage comes from the buster afterwards.
+- **Slasher** (action 0x29, 0x080ED328): while A is held, it looks over the whole field for the opponent's navi on
+  a panel of the user's alliance (`sub_801273E`'s counterpart, panel flags: the opponent navi's body bit, and the
+  panel's alliance); only then it strikes. So it needs the opponent standing on a panel of the user's area (the lab's
+  user takes the opponent's panel with a PanlGrab).
+- The others need what their kind does (recorded, not read): the time bombs' countdown, BoyBomb's bomb hit by its user's buster, the
+  guards' reflection, Snake from holes in the user's area, Mine waiting for a step, the Anti traps (sprung by the
+  opponent's chip of their element when it is used; a thrown BlkBomb doesn't spring AntiFire, a FireHit does),
+  Muramasa's lost HP, Guardian's punishment, Jealousy's held hand, Poltrgst's obstacles, SerchMan's scope fired
+  with A.
+- **By chance:** Phoenix's fireballs fall on random panels of columns 2 to 5, counted from the left whichever
+  side uses it (from side 1 most fall in its own area), and MetrKnuk's meteors on random panels too; the lab
+  stands the opponent on a panel they hit with its RNG (recorded, not read).
+
 ## 7. Team ProtoMan and Team Colonel
 
 `versions.py` (fmap.py's method between the two BN5 ROMs): the battle code is the same, moved (mostly +0xE8,
