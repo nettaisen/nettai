@@ -1503,6 +1503,7 @@ fn rules() -> Rules {
             SlideVector::NONE,
         ],
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
+        push_reading: Default::default(),
         // A triangle wave: 256 at a quarter turn, -256 at three quarters,
         // over a turn and a half.
         sine: (0..384)

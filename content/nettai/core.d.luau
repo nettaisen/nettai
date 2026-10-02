@@ -1555,6 +1555,8 @@ export type ChipFamily =
     | "null"
     | "program_advance"
     | "special"
+    | "recovery"
+    | "invisible"
 export type ElementName = "null" | "fire" | "aqua" | "elec" | "wood"
 -- The chips a navi's or a form's rule is about: an element's, or a
 -- family's.
