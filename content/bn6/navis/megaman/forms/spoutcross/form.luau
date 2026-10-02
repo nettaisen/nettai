@@ -25,6 +25,8 @@ return define.form {
     palette = 5,
     -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
     mugshot = { normal = asset.mugshot("spoutcross"), tired = asset.mugshot("spoutcross-tired") },
+    -- What R shows in the Cross window.
+    description = "Chrg WatrChip:\nAtk x2! Watr\nChip = HP Rcvr",
     -- The chips A charges.
     charged_chips = { { family = "aqua" } },
     -- A charged Aqua chip hits twice as hard, and an Aqua chip's use heals.

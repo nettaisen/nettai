@@ -25,6 +25,8 @@ return define.form {
     -- Its faces in the emotion window, and once Beast Out is spent
     -- (`byte_801E700`): the Falzar ROM has no HeatCross face, and shows SpoutCross's.
     mugshot = { normal = asset.mugshot("heatcross"), tired = asset.mugshot("heatcross-tired") },
+    -- What R shows in the Cross window.
+    description = "Fire Chip Attk\n+50! Buster \nAttk +1!",
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "fire", damage = 50 },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.

@@ -11,7 +11,7 @@ use std::collections::HashMap;
 /// keys and the font its characters.
 pub fn bundle(rom: &Rom, gregar: &Rom, names: &nettai_content::names::AssetNames) -> Bundle {
     Bundle {
-        sprites: sprites(rom),
+        sprites: sprites(rom, gregar, names),
         field: field(rom),
         backgrounds: backgrounds(rom),
         hud: crate::hud::hud(rom, gregar, names),
@@ -37,9 +37,15 @@ const SPRITE_LIST: u32 = 0x0803_1CC4;
 /// Categories with battle sprites (the byte offsets 0x00..=0x14).
 const BATTLE_CATEGORIES: u32 = 6;
 
-fn sprites(rom: &Rom) -> Vec<SpriteSheet> {
+/// The portraits' category (`mugshotSpritePtrs`, byte offset 0x20) and its
+/// black placeholder (`mugshotBlack`), which each US ROM has in place of
+/// the other game's link navis.
+const PORTRAITS: u8 = 0x20;
+const BLACK_PORTRAIT: u32 = 7;
+
+fn sprites(rom: &Rom, gregar: &Rom, names: &nettai_content::names::AssetNames) -> Vec<SpriteSheet> {
     let cats: Vec<u32> = (0..10).map(|i| u32at(rom, SPRITE_LIST + 4 * i)).collect();
-    let mut out = Vec::new();
+    let mut out = portraits(rom, gregar, names);
     for (ci, &c) in cats.iter().enumerate().take(BATTLE_CATEGORIES as usize) {
         let next = cats.iter().copied().filter(|&s| s > c).min().unwrap_or(c + 0x400);
         for idx in 0..((next - c) / 4).min(256) {
@@ -63,6 +69,98 @@ fn sprites(rom: &Rom) -> Vec<SpriteSheet> {
     }
     out.sort_by_key(|s| (s.category, s.index));
     out
+}
+
+/// The portraits content names (the chatbox's speakers), each from the
+/// ROM that has its true face: the Falzar ROM's unless it has the black
+/// placeholder there (the table is at the same place in both).
+fn portraits(rom: &Rom, gregar: &Rom, names: &nettai_content::names::AssetNames) -> Vec<SpriteSheet> {
+    let entry = |r: &Rom, i: u32| u32at(r, u32at(r, SPRITE_LIST + PORTRAITS as u32) + 4 * i);
+    let mut out = Vec::new();
+    for &(category, index) in names.sprites.keys().filter(|(c, _)| *c == PORTRAITS) {
+        let source = if entry(rom, index as u32) == entry(rom, BLACK_PORTRAIT) { gregar } else { rom };
+        let p = entry(source, index as u32);
+        let data = if p & 0x8000_0000 != 0 {
+            match lz77(source, p & 0x7FFF_FFFF) {
+                Some(d) if d.len() > 4 => d[4..].to_vec(),
+                _ => continue,
+            }
+        } else {
+            rom_from(source, p, 0x8_0000)
+        };
+        if let Some(s) = portrait_sheet(&data, category, index) {
+            out.push(s);
+        }
+    }
+    out
+}
+
+/// A portrait (loaded without the sprite flag 0x80): one frame, whose
+/// mini-animations are its faces (`sub_3006730` takes the sprite's
+/// animation number as the mini-animation's); each becomes an animation
+/// of the sheet, and each of its entries (part list, duration, flags) a
+/// frame.
+fn portrait_sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
+    const BASE: usize = 4;
+    let rd32 = |o: usize| data.get(o..o + 4).map(|b| u32::from_le_bytes(b.try_into().unwrap()) as usize);
+    // Animation 0's frame (the table's first offset is also its size).
+    let f = BASE + rd32(BASE).filter(|&o| o != 0)?;
+    let (t, p, m, o) = (rd32(f)?, rd32(f + 4)?, rd32(f + 8)?, rd32(f + 12)?);
+    let mut sheet = SpriteSheet { category, index, ..Default::default() };
+    let size = rd32(BASE + t)?;
+    sheet.tilesets.push(Tiles::from_4bpp(data.get(BASE + t + 4..BASE + t + 4 + size)?));
+    let start = BASE + p + 4;
+    let avail = data.len().saturating_sub(start) / 32;
+    sheet.palette_sets.push(palettes_from_bytes(&data[start..start + 32 * avail.min(16)]));
+    let (mini, table) = (BASE + m, BASE + o);
+    let mut lists: HashMap<usize, u16> = HashMap::new();
+    for a in 0..(rd32(mini)? / 4).min(16) {
+        let mut e = mini + rd32(mini + 4 * a)?;
+        let mut frames = Vec::new();
+        loop {
+            let (list_index, duration, flags) = (*data.get(e)? as usize, *data.get(e + 1)?, *data.get(e + 2)?);
+            let list = table + rd32(table + 4 * list_index)?;
+            let parts = match lists.get(&list) {
+                Some(&i) => i,
+                None => {
+                    sheet.part_lists.push(part_list(data, list)?);
+                    let i = (sheet.part_lists.len() - 1) as u16;
+                    lists.insert(list, i);
+                    i
+                }
+            };
+            frames.push(SpriteFrame { tileset: 0, palette_set: 0, parts, duration, flags });
+            if flags & 0x80 != 0 || frames.len() > 64 {
+                break;
+            }
+            e += 3;
+        }
+        sheet.animations.push(frames);
+    }
+    Some(sheet)
+}
+
+/// A part list: five bytes a part (tile, x, y, size and flips, shape and
+/// palette offset), up to 0xFF.
+fn part_list(data: &[u8], list: usize) -> Option<Vec<SpritePart>> {
+    let mut v = Vec::new();
+    let mut e = list;
+    while *data.get(e)? != 0xFF && v.len() < 128 {
+        let b = data.get(e..e + 5)?;
+        let (width, height) = part_size(b[4] & 3, b[3] & 3);
+        v.push(SpritePart {
+            tile: b[0] as u16,
+            x: b[1] as i8,
+            y: b[2] as i8,
+            width,
+            height,
+            hflip: b[3] & 0x40 != 0,
+            vflip: b[3] & 0x80 != 0,
+            palette: b[4] >> 4,
+        });
+        e += 5;
+    }
+    Some(v)
 }
 
 /// Size of a sprite part by (shape, size).
@@ -153,24 +251,7 @@ fn sprite_sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
             let parts_index = match parts.get(&list) {
                 Some(&i) => i,
                 None => {
-                    let mut v = Vec::new();
-                    let mut e = list;
-                    while *data.get(e)? != 0xFF && v.len() < 128 {
-                        let b = data.get(e..e + 5)?;
-                        let (width, height) = part_size(b[4] & 3, b[3] & 3);
-                        v.push(SpritePart {
-                            tile: b[0] as u16,
-                            x: b[1] as i8,
-                            y: b[2] as i8,
-                            width,
-                            height,
-                            hflip: b[3] & 0x40 != 0,
-                            vflip: b[3] & 0x80 != 0,
-                            palette: b[4] >> 4,
-                        });
-                        e += 5;
-                    }
-                    sheet.part_lists.push(v);
+                    sheet.part_lists.push(part_list(data, list)?);
                     let i = (sheet.part_lists.len() - 1) as u16;
                     parts.insert(list, i);
                     i

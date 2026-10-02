@@ -26,6 +26,8 @@ return define.form {
     -- Its faces in the emotion window, and once Beast Out is spent
     -- (`byte_801E700`): the Falzar ROM has no ElecCross face, and shows TomahawkCross's.
     mugshot = { normal = asset.mugshot("eleccross"), tired = asset.mugshot("eleccross-tired") },
+    -- What R shows in the Cross window.
+    description = "Elec Chip Attk\n+50! Chrg Elm-\nntless: Parlyz",
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "elec", damage = 50 },
     -- The chips A charges.

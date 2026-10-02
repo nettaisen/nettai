@@ -26,6 +26,8 @@ return define.form {
     palette = 11,
     -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
     mugshot = { normal = asset.mugshot("tengucross"), tired = asset.mugshot("tengucross-tired") },
+    -- What R shows in the Cross window.
+    description = "WindChip Atk\n+10!AirShsOn!\n[B]+Left:SuckIn",
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "wind", damage = 10 },
     -- What its status reset gives the navi (`sub_8014536`).

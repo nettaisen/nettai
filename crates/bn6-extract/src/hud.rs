@@ -2,7 +2,7 @@
 //! the ROM; the HUD tasks (`sub_801BF64`) copy it to VRAM as needed.
 
 use crate::{Rom, u32at};
-use nettai_assets::{BannerLayout, ChipIcon, Hud, MapEntry, NaviMugshot, Palette, Tiles, palettes_from_bytes};
+use nettai_assets::{BannerLayout, ChipIcon, DialogueFont, Hud, MapEntry, NaviMugshot, Palette, Tiles, palettes_from_bytes};
 use nettai_content::names::AssetNames;
 
 /// HUD layer tiles 0x1A0..=0x1D1: HP digits and blank, the box border,
@@ -47,6 +47,28 @@ const NAVI_MUGSHOTS: u32 = 0x0872_D094;
 const NAVI_MUGSHOT_COUNT: u32 = 6;
 const NAVI_BOX: u32 = 0x0872_D014;
 const NAVI_MUGSHOT_PALETTES: u32 = 0x0872_D694;
+/// The dialogue font (`byte_86ACD60`: 16x12 glyphs, 0x60 bytes each, a
+/// row of eight bytes, the left pixel in each byte's low nibble) and its
+/// advances (`byte_8043CA4`): the one-byte glyphs below 0xE4 and the
+/// two-byte codes' (E4 00 - E4 E8) after them.
+const DIALOGUE_FONT: u32 = 0x086A_CD60;
+const DIALOGUE_ADVANCES: u32 = 0x0804_3CA4;
+const DIALOGUE_GLYPHS: u32 = 0xE4 + 0xE9;
+/// The chatbox (`chatbox_runScript`): the box's eleven tiles (to BG0's
+/// tile 0x2E4, which its maps count from) and palette, the text's palette
+/// (the arrow's too); the box's maps (`spritePtrArr8045CEC`: eight
+/// pointers a kind, the opening steps 0-3 first, 30x8 entries each); the
+/// key-wait arrow's three 16x16 frames (`chatbox_804082C`).
+const CHATBOX_TILES: u32 = 0x086B_EB20;
+const CHATBOX_TILE_COUNT: usize = 11;
+const CHATBOX_FIRST_TILE: u16 = 0x2E4;
+const CHATBOX_PALETTE: u32 = 0x086B_EC80;
+const CHATBOX_TEXT_PALETTE: u32 = 0x086B_7AC0;
+const CHATBOX_BOXES: u32 = 0x0804_5CEC;
+/// The message box (`E8 00`) and the description box (`E8 06 01`).
+const CHATBOX_KINDS: u32 = 2;
+const CHATBOX_ARROW: u32 = 0x086A_4740;
+
 /// "PAUSE" (`off_801E188`): a 32x16 sprite's eight tiles and an 8x16
 /// one's two.
 const PAUSE: u32 = 0x086E_611C;
@@ -196,6 +218,15 @@ pub fn hud(rom: &Rom, gregar: &Rom, names: &AssetNames) -> Hud {
             )
             .collect(),
         navi_box: tiles(rom, NAVI_BOX, 0x80),
+        dialogue_font: DialogueFont {
+            pixels: rom
+                .bytes(DIALOGUE_FONT, 0x60 * DIALOGUE_GLYPHS as usize)
+                .iter()
+                .flat_map(|&b| [b & 15, b >> 4])
+                .collect(),
+            advances: rom.bytes(DIALOGUE_ADVANCES, DIALOGUE_GLYPHS as usize).to_vec(),
+            chars: names.glyphs.iter().chain(&names.dialogue_glyphs).take(DIALOGUE_GLYPHS as usize).cloned().collect(),
+        },
         pause,
         texts: texts(rom),
         banners: (0..BANNER_COUNT).map(|id| banner(rom, id)).collect(),
@@ -205,5 +236,27 @@ pub fn hud(rom: &Rom, gregar: &Rom, names: &AssetNames) -> Hud {
         waiting_palette: palette(rom, BANNER_PALETTE),
         warning: tiles(rom, WARNING, 0x100),
         warning_palette: palette(rom, WARNING_PALETTE),
+        chatbox: chatbox(rom),
+    }
+}
+
+fn chatbox(rom: &Rom) -> nettai_assets::Chatbox {
+    let n = nettai_assets::Chatbox::COLUMNS * nettai_assets::Chatbox::ROWS;
+    let map = |a: u32| -> Vec<MapEntry> {
+        (0..n as u32)
+            .map(|i| {
+                let e = MapEntry::from_gba(rom.u16(a + 2 * i));
+                MapEntry { tile: e.tile.wrapping_sub(CHATBOX_FIRST_TILE), ..e }
+            })
+            .collect()
+    };
+    nettai_assets::Chatbox {
+        tiles: tiles(rom, CHATBOX_TILES, 0x20 * CHATBOX_TILE_COUNT),
+        palette: palette(rom, CHATBOX_PALETTE),
+        boxes: (0..CHATBOX_KINDS)
+            .map(|kind| std::array::from_fn(|step| map(u32at(rom, CHATBOX_BOXES + 4 * (8 * kind + step as u32)))))
+            .collect(),
+        arrow: tiles(rom, CHATBOX_ARROW, 3 * 0x80),
+        text_palette: palette(rom, CHATBOX_TEXT_PALETTE),
     }
 }
