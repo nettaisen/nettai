@@ -322,7 +322,9 @@ struct View<'a> {
 impl View<'_> {
     fn icon(&self, c: FolderChip, problems: &mut Problems) -> Option<&Tiles> {
         let def = self.b.content.defs.chip(c.id);
-        let icon = self.hud.chip_icon(&def.key);
+        // The pack names a chip's art by the key its root writes (`cannon`
+        // of `bn6:cannon`).
+        let icon = self.hud.chip_icon(nettai_content_api::keys::local(&def.key));
         if icon.is_none() {
             problems.note(format!("chip {:?} has no icon in the pack", def.key));
         }
@@ -680,7 +682,7 @@ impl Window {
         let art = if beast_out {
             Some((&v.beast.beast_out, None))
         } else {
-            a.chip_art(&def.key).map(|art| (&art.picture, Some(art)))
+            a.chip_art(nettai_content_api::keys::local(&def.key)).map(|art| (&art.picture, Some(art)))
         };
         match art {
             Some((p, art)) => {
