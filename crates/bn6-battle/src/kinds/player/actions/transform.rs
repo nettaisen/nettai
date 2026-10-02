@@ -289,9 +289,12 @@ fn vanish(b: &mut Battle, r: ObjectRef, seq: Sequence, target: FormHandle) {
         }
         ai_mut(b, r).attack.step_init = 4;
     }
-    // Beast Over's rumbles. (The game compares the timer as a word with
-    // the halfword after it, which its steps leave at 0.)
-    if seq == Sequence::BeastOver && matches!(vars(b, r).timer, 0x35 | 0x25) {
+    // Beast Over's rumbles. (The game compares the timer as a word, whose
+    // upper half is the attack's count, which none of its steps writes:
+    // what an earlier action left there, 2 after a buster shot, keeps them
+    // quiet.)
+    let word = vars(b, r).timer as u32 | (ai(b, r).attack.count as u32) << 16;
+    if seq == Sequence::BeastOver && matches!(word, 0x35 | 0x25) {
         b.sound(SoundRole::BeastOverRumble);
     }
     if !timer_ran_out(b, r) {

@@ -473,26 +473,26 @@ local status = {
         duration = 600,
         timer = "bubble",
     },
-    collision_panel_65535 = define.status {
-        id = "collision-panel-65535",
+    after_table_1_past_freeze = define.status {
+        id = "after-table-1-past-freeze",
         requests = 0x00000000,
         duration = 65535,
         timer = "collision_panel",
     },
-    timer_00_30 = define.status {
-        id = "timer-00-30",
+    after_table_2_past_freeze = define.status {
+        id = "after-table-2-past-freeze",
         requests = 0xFFFF0000,
         duration = 30,
         timer = { other = 0 },
     },
-    timer_ff_0 = define.status {
-        id = "timer-ff-0",
+    after_table_3_past_freeze = define.status {
+        id = "after-table-3-past-freeze",
         requests = 0x0032FFFF,
         duration = 0,
         timer = { other = 255 },
     },
-    timer_64_65535 = define.status {
-        id = "timer-64-65535",
+    after_table_4_past_freeze = define.status {
+        id = "after-table-4-past-freeze",
         requests = 0x00000050,
         duration = 65535,
         timer = { other = 100 },
@@ -540,62 +540,62 @@ local status = {
         timer = "bubble",
         survives_counter = true,
     },
-    collision_panel_65535_2 = define.status {
-        id = "collision-panel-65535-2",
+    after_table_1_past_bubble = define.status {
+        id = "after-table-1-past-bubble",
         requests = 0x00000000,
         duration = 65535,
         timer = "collision_panel",
     },
-    timer_00_30_2 = define.status {
-        id = "timer-00-30-2",
+    after_table_2_past_bubble = define.status {
+        id = "after-table-2-past-bubble",
         requests = 0xFFFF0000,
         duration = 30,
         timer = { other = 0 },
     },
-    timer_ff_0_2 = define.status {
-        id = "timer-ff-0-2",
+    after_table_3_past_bubble = define.status {
+        id = "after-table-3-past-bubble",
         requests = 0x0032FFFF,
         duration = 0,
         timer = { other = 255 },
     },
-    timer_64_65535_2 = define.status {
-        id = "timer-64-65535-2",
+    after_table_4_past_bubble = define.status {
+        id = "after-table-4-past-bubble",
         requests = 0x00000050,
         duration = 65535,
         timer = { other = 100 },
     },
-    timer_00_150 = define.status {
-        id = "timer-00-150",
+    after_table_5_past_bubble = define.status {
+        id = "after-table-5-past-bubble",
         requests = 0xFFFF0000,
         duration = 150,
         timer = { other = 0 },
     },
-    timer_ff_0_3 = define.status {
-        id = "timer-ff-0-3",
+    after_table_6_past_bubble = define.status {
+        id = "after-table-6-past-bubble",
         requests = 0x00C8FFFF,
         duration = 0,
         timer = { other = 255 },
     },
-    timer_01_65535 = define.status {
-        id = "timer-01-65535",
+    after_table_7_past_bubble = define.status {
+        id = "after-table-7-past-bubble",
         requests = 0x00000001,
         duration = 65535,
         timer = { other = 1 },
     },
-    timer_00_200 = define.status {
-        id = "timer-00-200",
+    after_table_8_past_bubble = define.status {
+        id = "after-table-8-past-bubble",
         requests = 0x0BB800C8,
         duration = 200,
         timer = { other = 0 },
     },
-    timer_ff_100 = define.status {
-        id = "timer-ff-100",
+    after_table_9_past_bubble = define.status {
+        id = "after-table-9-past-bubble",
         requests = 0x00010000,
         duration = 100,
         timer = { other = 255 },
     },
-    timer_01_65535_2 = define.status {
-        id = "timer-01-65535-2",
+    after_table_10_past_bubble = define.status {
+        id = "after-table-10-past-bubble",
         requests = 0x00640001,
         duration = 65535,
         timer = { other = 1 },

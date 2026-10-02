@@ -12,10 +12,9 @@ local regions = require("../../../../lib/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
-    -- AIAttackVars+0x10: ticks of the phase.
+    -- AIAttackVars+0x10: ticks of the phase. (The ticks of slowing down
+    -- after the hit are the navi's `attack_count`.)
     timer: number,
-    -- AIAttackVars+0x12: ticks of slowing down after the hit.
-    slowing: number,
 }
 
 local tackle = {}
@@ -81,7 +80,7 @@ local function wind_up(me: Object, s: State)
     local v = me.vel
     me.vel = Vec3.new(me.facing * SPEED, v.y, v.z)
     s.timer = CHARGE_TICKS
-    s.slowing = SLOWING_TICKS
+    me.attack_count = SLOWING_TICKS
     me:set_animation(0x15)
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y + 0x1_0000, p.z)
@@ -128,8 +127,8 @@ local function charge(me: Object, s: State)
     me.pos = Vec3.new(p.x + me.vel.x, p.y, p.z)
     me:set_panel_from_coordinates()
     if not hitting then
-        local left = s.slowing - 1
-        s.slowing = left
+        local left = me.attack_count - 1
+        me.attack_count = left
         if left > 0 then
             return
         end
@@ -185,7 +184,7 @@ end
 
 tackle.action = define.action {
     id = "chargecross/tackle/action",
-    state = { timer = "u16", slowing = "u16" },
+    state = { timer = "u16" },
     -- `sub_80EFA56`.
     update = function(me: Object, s: State)
         local step = me.step

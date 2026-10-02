@@ -24,7 +24,8 @@ return define.form {
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = drill.weapon, a_charge = rock_barrage },
     palette = 15,
-    mugshot = asset.mugshot("groundcross"),
+    -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
+    mugshot = { normal = asset.mugshot("groundcross"), tired = asset.mugshot("groundcross-tired") },
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "break", damage = 10 },
     -- The chips A charges.
@@ -46,7 +47,7 @@ return define.form {
         aura_anim = 33,
         ice = "medium",
         -- What it wears over MegaMan's body.
-        parts = cross_overlay(asset.sprite("body-overlay-0d")),
+        parts = cross_overlay(asset.sprite("groundcross-overlay")),
         attach_points = {
             { 2, 0 },
             { 2, 0 },

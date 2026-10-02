@@ -20,6 +20,8 @@ return define.form {
     weakness = { "wind" },
     buster_bonus = 0,
     weapons = { buster = gregar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = drop.weapon },
+    -- Its face in the emotion window (`byte_801E700`): the Falzar ROM has no
+    -- EraseCross Beast face, and shows GroundCross Beast's.
     mugshot = asset.mugshot("groundcross-beast"),
     -- The damage it adds to its family's damaging chips (dimming chips too).
     chip_bonus = { family = "cursor", damage = 30, dimming_chips = true },
