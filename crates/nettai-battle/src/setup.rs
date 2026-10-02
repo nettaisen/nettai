@@ -195,6 +195,52 @@ pub struct NaviStats {
 }
 
 impl NaviStats {
+    /// `init_8013B64`: `navi`'s stats, fresh: the defaults
+    /// (`initNaviStats_WithDefaultStatsMaybe_8013438`) with what the navi
+    /// comes with (`byte_80210DD`'s row: the navi's `fresh` and `weapons`).
+    /// What a Cross change brings a link navi with, and what MegaMan's
+    /// NaviCust starts from (`sub_8136C24`). None for a navi without a row.
+    pub fn fresh(navi: NaviHandle, content: &Content) -> Option<NaviStats> {
+        let data = content.navi(navi);
+        let fresh = data.fresh?;
+        let defaults = NaviStats::default();
+        let base = content.base_form();
+        Some(NaviStats {
+            version: 1,
+            reg_up: 4,
+            custom_level: 5,
+            support: Some(Default::default()),
+            mood: 0x99,
+            beast_out_counter: 3,
+            form: base,
+            starting_form: base,
+            folder: 0,
+            folder_reg: [0xFF; 2],
+            folder_tags: [[0xFF; 2]; 2],
+            navi,
+            max_base_hp: fresh.hp,
+            hp: fresh.hp,
+            max_hp: fresh.hp,
+            super_armor: fresh.super_armor,
+            float_shoes: fresh.float_shoes,
+            air_shoes: fresh.air_shoes,
+            undershirt: fresh.undershirt,
+            first_barrier: fresh.first_barrier,
+            mega_level: fresh.mega_level,
+            giga_level: fresh.giga_level,
+            weapons: NaviWeapons {
+                buster: data.weapons.buster,
+                charge_shot: data.weapons.charge_shot,
+                back_special: data.weapons.back_special,
+                a_charge: data.weapons.a_charge,
+                back_special_damage: fresh.back_special_damage,
+                ..defaults.weapons
+            },
+            bugs: NaviCustBugs { panel_trail_kind: 0xFF, ..defaults.bugs },
+            ..defaults
+        })
+    }
+
     /// A hit's bug code can name any stat byte below 0x64 by its offset
     /// and set it (`sub_80139F6`): the field at that offset takes the
     /// byte (a halfword's low or high byte; a flag is set by any nonzero
