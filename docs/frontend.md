@@ -720,7 +720,7 @@ is said with where it is:
 - the folder keeps BN6's rules (`nettai_match::folders`: 30 entries, copies
   by MB, each chip in one of its codes, at most three dark chips, chips the
   chip pack lists; the tag chips two other entries of 60 MB together at most,
-  `sub_81349B4`), and its Mega, Giga and Regular limits are the navi's stats
+  `sub_81349E8`), and its Mega, Giga and Regular limits are the navi's stats
   as the round starts them (after the rules' `round_setup`: the patch cards'
   folder limits, as the original's folder editor and link battle check read
   the reloaded stats);
