@@ -14,7 +14,7 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
-use nettai_assets::{BannerLayout, ChipIcon, DialogueFont, Hud, MapEntry, NaviMugshot, Palette, Tiles};
+use nettai_assets::{BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, MapEntry, NaviMugshot, Palette, Tiles};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -73,6 +73,20 @@ pub struct HudDoc {
     /// The dialogue font (none in a pack extracted before it was).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dialogue_font: Option<DialogueFontDoc>,
+    /// The chatbox (none in a pack extracted before it was).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chatbox: Option<ChatboxDoc>,
+}
+
+/// The chatbox: the box's tiles with its palette, its maps (30x8 entries a
+/// row of text each, the tiles counted from the image's first) by kind (the
+/// message box, the description box) and opening step (0 to 3, open), and
+/// the key-wait arrow's three frames with the palette the text draws with.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ChatboxDoc {
+    pub tiles: TileImage,
+    pub boxes: Vec<Vec<Vec<String>>>,
+    pub arrow: TileImage,
 }
 
 /// The dialogue font: an indexed image of its glyphs (16x12 cells, 32 a
@@ -211,6 +225,15 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
     let waiting = image("waiting.png", &h.waiting, Layout::Grid { columns: 8 }, &[h.waiting_palette], 1);
     let warning = (!h.warning.is_empty())
         .then(|| image("warning.png", &h.warning, Layout::Blocks { width: 2, height: 2, columns: 2 }, &[h.warning_palette], 1));
+    let chatbox = (!h.chatbox.is_empty()).then(|| {
+        let c = &h.chatbox;
+        let rows = |m: &[MapEntry]| m.chunks(Chatbox::COLUMNS).map(|r| r.iter().map(tiles::entry_text).collect::<Vec<_>>().join(" ")).collect();
+        ChatboxDoc {
+            tiles: image("chatbox.png", &c.tiles, grid, &[c.palette], 1),
+            boxes: c.boxes.iter().map(|steps| steps.iter().map(|m| rows(m)).collect()).collect(),
+            arrow: image("chatbox-arrow.png", &c.arrow, Layout::Blocks { width: 2, height: 2, columns: 3 }, &[c.text_palette], 1),
+        }
+    });
     let dialogue_font = (!h.dialogue_font.is_empty()).then(|| {
         let file = "dialogue-font.png".to_string();
         files.push((file.clone(), dialogue_image(&h.dialogue_font).to_png()));
@@ -248,6 +271,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         waiting,
         warning,
         dialogue_font,
+        chatbox,
     };
     files.push(("hud.json".into(), json_lines(&doc)));
     files
@@ -337,6 +361,30 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         Some(d) => import_dialogue_font(dir, prefix, d, report)?,
         None => DialogueFont::default(),
     };
+    let chatbox = match &doc.chatbox {
+        Some(c) => {
+            let (tiles, palette) = img(&c.tiles, report)?;
+            let (arrow, text_palette) = img(&c.arrow, report)?;
+            let mut boxes = Vec::new();
+            for steps in &c.boxes {
+                let maps: Vec<Vec<MapEntry>> = steps
+                    .iter()
+                    .map(|rows| map(&rows.iter().flat_map(|r| r.split(' ').map(str::to_string)).collect::<Vec<_>>(), report))
+                    .collect();
+                let Ok(maps) = <[Vec<MapEntry>; 4]>::try_from(maps) else {
+                    report.error(&name, "a chatbox box needs its four opening steps");
+                    return None;
+                };
+                if maps.iter().any(|m| m.len() != Chatbox::COLUMNS * Chatbox::ROWS) {
+                    report.error(&name, format!("a chatbox box's map is {}x{} entries", Chatbox::COLUMNS, Chatbox::ROWS));
+                    return None;
+                }
+                boxes.push(maps);
+            }
+            Chatbox { tiles, palette: palette[0], boxes, arrow, text_palette: text_palette[0] }
+        }
+        None => Chatbox::default(),
+    };
     Some(Hud {
         tiles,
         first_tile: doc.first_tile,
@@ -368,6 +416,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         warning,
         warning_palette: warning_pal[0],
         dialogue_font,
+        chatbox,
     })
 }
 

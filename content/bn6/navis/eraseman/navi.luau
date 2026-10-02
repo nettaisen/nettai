@@ -18,8 +18,13 @@ return define.navi {
     -- EraseMan face, and shows GroundMan's.
     mugshot = asset.mugshot("eraseman"),
     merge_height = 0,
-    run_message = { 19, 15, 19 },
-    run_message_text = "Why are you running\naway!? I've got\nmore erasing to do!",
+    -- The no-running message: its lines' characters (which time it), its
+    -- words, and the portrait beside it.
+    run_message = {
+        counts = { 19, 15, 19 },
+        text = "Why are you running\naway!? I've got\nmore erasing to do!",
+        portrait = asset.sprite("eraseman-portrait"),
+    },
     own_chip = { chip = eraseman, code = "K" },
     chip_bonus = {
         family = "cursor",

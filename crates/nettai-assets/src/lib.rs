@@ -342,6 +342,35 @@ pub struct Hud {
     /// The dialogue font (the chatbox's). Empty in a pack extracted before
     /// it was.
     pub dialogue_font: DialogueFont,
+    /// The chatbox's box and key-wait arrow. Empty in a pack extracted
+    /// before it was.
+    pub chatbox: Chatbox,
+}
+
+/// The chatbox's graphics (`chatbox_runScript`'s transfers): the box's
+/// tiles and palette, its maps by kind and opening step, the key-wait
+/// arrow's frames, and the palette the text and the arrow draw with.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Chatbox {
+    /// The box's tiles; its maps' entries count from the first.
+    pub tiles: Tiles,
+    pub palette: Palette,
+    /// The box's maps (`spritePtrArr8045CEC`): by kind (0 the message box,
+    /// 1 the description box), its four opening steps (0 to 3, open),
+    /// each `Chatbox::COLUMNS` x `Chatbox::ROWS` entries row by row.
+    pub boxes: Vec<[Vec<MapEntry>; 4]>,
+    /// The arrow's three 16x16 frames (2x2 tiles each).
+    pub arrow: Tiles,
+    pub text_palette: Palette,
+}
+
+impl Chatbox {
+    pub const COLUMNS: usize = 30;
+    pub const ROWS: usize = 8;
+
+    pub fn is_empty(&self) -> bool {
+        self.tiles.is_empty()
+    }
 }
 
 /// Where the link navis' faces (`Hud::navi_mugshots`) start among the
