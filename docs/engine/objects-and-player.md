@@ -118,10 +118,21 @@ Offsets are relative to the object pointer (`r5` in all handlers); the 16-byte l
 | 0x04 | PAUSE_UPDATE | **update even while `GameState.BattlePaused`** (see §4) |
 | 0x08 | STOP_SPRITE_UPDATE | set at spawn for T1/T3/T4; `sprite_load` clears it (e.g. player 0x1D -> 0x15 in `sub_80172F0`) |
 | 0x10 | UPDATE_DURING_TIMESTOP | **update even while battle flag 0x4 (dimming) is set** |
-| 0x20 | (UNK_20) | set by `object_reservePanel` (object holds a panel reservation); observed on the player from its first move (0x17 -> 0x37) |
-| 0x40, 0x80 | unknown | not observed in the trace |
+| 0x20 | (UNK_20) | set by `object_reservePanel` (object holds a panel reservation); observed on the player from its first move (0x17 -> 0x37). Nothing clears it; `sub_801BB78` (`object_genericDestroy`) reads it, to look for reservations to release |
+| 0x40, 0x80 | unknown | nothing reads them; only the boulder's spawner sets them (below) |
 
 Spawn writes the whole byte: 0x19 for T1 and T4, 0x09 for T3 (table `dword_80032D0`). So by default T1/T4 objects run while dimmed but not during pause, and T3 objects run in neither. Spawners that must run during pause OR in `|= 4` themselves (players: `sub_800753C`; T4 objects spawned by the player: e.g. `sub_80EA438`).
+
+**Flags from the open bus, where the two consoles disagree.** The stages' boulder (T3#0x6E, `sub_80D2430`, field-objects.md) loads its flags byte from address X, its panel column, in the BIOS, so the whole byte (then `| 0x14`) is a byte of the last opcode the BIOS fetched. That is 0xE3A02004 after a software interrupt, and the spawn has just done one (`ZeroFillByWord`'s CpuSet); but an interrupt landing between it and the read leaves 0xE55EC002. Each console of a link battle takes its own interrupts, so the two can read different bytes for the same boulder. Recorded: stage 0x18 on seed 1457683801, where side 0's console read 0xD4 for the column-5 boulder (an interrupt) and side 1's 0x34, the value the engine keeps (the lab's `stages/look/18-grass-boulders-openbus/side0`). The stages put boulders on columns 2 and 5:
+
+| column | after a software interrupt | after an interrupt | bits that differ once its init has run |
+|---|---|---|---|
+| 5 | 0x34 | 0xD4 | 0x20, 0x40, 0x80 |
+| 2 | 0xB4 | 0x5E (0x56 after the init's `sprite_load` clears 0x08) | 0x20, 0x40, 0x80, and 0x02 until its first update (not recorded) |
+
+No behavior differs. Bits 0x40 and 0x80 have no reader. Bit 0x20 only makes `object_genericDestroy` look for reservations: `object_reservePanel` sets it whenever the boulder reserves a panel and nothing clears it, so a boulder destroyed while holding a reservation has the bit on both consoles, and one holding none releases nothing either way. (It could matter only if a panel were reserved for the boulder's slot without its own `object_reservePanel`; no code does that.) In column 2, 0x5E is also visible (0x02) before the boulder's first update sets that on both consoles: drawn one frame earlier, in the intro, on that console only. The trace comparison skips the boulder's bits 0x20, 0x40 and 0x80 (compat/kinds.toml `open_bus_flags`); a column-2 read after an interrupt would still show as that one frame's difference in 0x02.
+
+Stage setup has no other read of this kind: the navis' spawn (`sub_800753C`), the rock's (`sub_80CFBC4`), the statue's (`sub_80D4FA6`) and the other actor-list entries' spawners read their own header and fields. Elsewhere the game reads the BIOS through null pointers (field-collision-damage.md's off-field lookups, the dimming chips', the link navis', the flames', the lock-on marker's), and every one but one gives the same result for each of the BIOS's four open-bus words. The exception is `Battle::viewer_sees` on a round's first tick (dimming-chips.md): after an interrupt the word has no blind bit, so the FirstBarrier visual would show for that tick on that console (presentation only; not recorded).
 
 ## 3. Pools and spawning
 

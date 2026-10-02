@@ -183,9 +183,12 @@ stage traces show them). "Not in use" only stops the sprite stepping
 animation); the slot stays allocated (the pools' bitfield) and the object
 updates and is drawn as any other. The reservation bit only makes
 `object_genericDestroy` look for reservations it doesn't hold. (If an
-interrupt returned after the last software interrupt, the word would be
-the one an interrupt's return leaves, 0xE55EC002: other stray bits, the
-same behavior. The port takes the word the traces show.)
+interrupt lands between the spawn's software interrupt and the read, the
+word is the one an interrupt leaves, 0xE55EC002: other stray bits, the
+same behavior. Each console takes its own interrupts, so the two can
+disagree: objects-and-player.md §2 has the recorded case. The port takes
+the software interrupt's word; the trace comparison skips bits 0x20, 0x40
+and 0x80.)
 
 **Init `sub_80D22B0`:** `sprite_load(0x10, 8)`; CurAnim = CurAnimCopy = 0,
 set and loaded, one sprite update; shadow; X/Y from the panel, Z = 0;
