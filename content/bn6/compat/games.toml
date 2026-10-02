@@ -1,9 +1,10 @@
 # The consoles' games: what a trace or link record from a console carries
 # that is that game's own. The US Falzar ROM (BR6E) is the one every other
-# compat table numbers; the US Gregar ROM (BR5E) is built from the same code
-# with parts of the ROM moved, and its RAM is laid out the same. (The
-# verification workspace's tools/gregar/fmap.py maps one ROM's code to the
-# other's.)
+# compat table numbers; the US Gregar ROM (BR5E) and the Japanese EXE6 ROMs
+# (BR6J, BR5J) are built from nearly the same code with parts of the ROM
+# moved, and the battle's RAM is laid out the same. (The verification
+# workspace's tools/gregar/fmap.py maps the US Falzar's code into the
+# others.)
 
 [gregar]
 # The stages' actor lists (a battle settings record's bytes 12..16, which
@@ -43,3 +44,57 @@ actor_lists = 0x1870
 [gregar.panel_ys]
 # MoonBld's blade: its swing routine's (`sub_80EE2CE`) with the Thumb bit.
 "moonbld/blade" = [0xCF, 0x0F]
+
+# The Japanese Falzar (EXE6, BR6J): as for the US Gregar, its own ROM's
+# addresses.
+[jp-falzar]
+actor_lists = 0x2530
+
+[jp-falzar.spawner_z_fractions]
+"colonel/navi" = [0x080B84ED, 0x080BA57D]
+"heatman/navi" = [0x080B921B, 0x080BB2AB]
+"spoutman/navi" = [0x080B9751, 0x080BB7E1]
+"tmhkman/navi" = [0x080B999B, 0x080BBA2B]
+"diveman/navi" = [0x080B9B6F, 0x080BBBFF]
+"tenguman/navi" = [0x080B9F0F, 0x080BBF9F]
+"crcusman/navi" = [0x080BA661, 0x080BC6F1]
+"judgeman/navi" = [0x080BA921, 0x080BC9B1]
+"dustman/navi" = [0x080BC0DB, 0x080BE9AB]
+"twinldrs/navi" = [0x080BD9A3, 0x080C025F]
+"crosover/navi" = [0x080BE3E9, 0x080C0CA5]
+"mstrcros/navi" = [0x080BF161, 0x080C1A09]
+"darkness/navi" = [0x080BFCD1, 0x080C2579]
+"roll/navi" = [0x080C0DD9, 0x080C3681]
+"protoman/navi" = [0x080C2A4D, 0x080C598D]
+"flmhook/hook" = [0x080EA11D, 0x080EFAAD]
+"tenguman/tornado" = [0x080F1B70, 0x080F7514]
+
+[jp-falzar.panel_ys]
+"moonbld/blade" = [0xCF, 0x6F]
+
+# The Japanese Gregar (EXE6, BR5J): as for the US Gregar, its own ROM's
+# addresses.
+[jp-gregar]
+actor_lists = 0x3D90
+
+[jp-gregar.spawner_z_fractions]
+"colonel/navi" = [0x080B84ED, 0x080BBDDD]
+"heatman/navi" = [0x080B921B, 0x080BCB0B]
+"spoutman/navi" = [0x080B9751, 0x080BD041]
+"tmhkman/navi" = [0x080B999B, 0x080BD28B]
+"diveman/navi" = [0x080B9B6F, 0x080BD45F]
+"tenguman/navi" = [0x080B9F0F, 0x080BD7FF]
+"crcusman/navi" = [0x080BA661, 0x080BDF51]
+"judgeman/navi" = [0x080BA921, 0x080BE211]
+"dustman/navi" = [0x080BC0DB, 0x080C020B]
+"twinldrs/navi" = [0x080BD9A3, 0x080C1ABF]
+"crosover/navi" = [0x080BE3E9, 0x080C2505]
+"mstrcros/navi" = [0x080BF161, 0x080C3269]
+"darkness/navi" = [0x080BFCD1, 0x080C3DD9]
+"roll/navi" = [0x080C0DD9, 0x080C4EE1]
+"protoman/navi" = [0x080C2A4D, 0x080C71ED]
+"flmhook/hook" = [0x080EA11D, 0x080F0DDD]
+"tenguman/tornado" = [0x080F1B70, 0x080F8844]
+
+[jp-gregar.panel_ys]
+"moonbld/blade" = [0xCF, 0x9F]
