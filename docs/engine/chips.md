@@ -202,8 +202,8 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
    - **0x15** `sub_80EBD9C` (0x080EBD9C), dimming chips. It calls **`off_802CCB4[av[3]]`** (0x0802CCB4, 42
      entries; slots 34, 35, 39, 40 are NULL). Chips 0x138 Gregar and 0x139 Falzar point at NULL slots 34/35. In the
      US ROM using them crashes the game; the Japanese ROMs fill the slots, and the port's chips are theirs
-     (docs/engine/beast-chips.md; chips/gregar, chips/falzar). The same holds for HackJack's and Django's navis,
-     `off_802CD5C`'s null entries 18 and 19 (chips/hackjack, chips/django; jp-differences.md §4).
+     (docs/engine/beast-chips.md; chips/gregar, chips/falzar). The same holds for Count's and Django's navis,
+     `off_802CD5C`'s null entries 18 and 19 (chips/count, chips/django; jp-differences.md §4).
    - **0x1B** `sub_80EC350` (0x080EC350), navi chips. It spawns T4 object 0x10 via `sub_80E192C`. That controller
      later calls **`off_802CD5C[subtype]`** (0x0802CD5C, 29 entries).
 4. Action **0x1C** `sub_80EC39C` (0x080EC39C) is the "instant" handler. It calls `off_80EC3F0[av[3]]` once and exits
@@ -2281,7 +2281,8 @@ MegaMan's actions (`off_80BDD24`):
 Django's actions (`off_80BDD34`):
 - 0 (`sub_80BE144`): sound 0x94, Timer 60, anim 1; 60 ticks → 4.
 - 4 (`sub_80BE174`): 0 (`sub_80BE190`): anim 3, Timer 10, his gun (`sub_80B8E30`, r4 0x1080B: attachment 0xB,
-  animation 8, in ExtraVars[2]), sound 0xF8; 10 ticks (the entry's included): the sun beam (`sub_80E5D12`: effect
+  animation 8, in ExtraVars[2]; row 0xB is the blades' sheet (0xC, 0) in the US games, Django's sprite (0xC, 0xF) in
+  the Japanese games, whose look the content has), sound 0xF8; 10 ticks (the entry's included): the sun beam (`sub_80E5D12`: effect
   #0x48, chips/gundels/beam, offset (80 · front, 0, 0) pixels from him in its velocity, r4 0x10000: look 0, palette
   0, Param3 1: it goes on while dimmed; r7 = &ExtraVars[3], where it is kept) → 4. 4 (`sub_80BE1DC`): anim 4, the
   gun's animation 9 (`sub_80B8E70`), Timer 120; every tick, the entry's too, a hit on the panel two ahead (element 5,
@@ -2523,17 +2524,19 @@ Lab: the official pa/0x159-darkness recipes end before (they match every frame);
 pa/0x159-darkness/long{,-miss} (Bass's recipe) and long-bassanly{,-miss} (BassAnly's) reach every branch but the
 failed spawns and a missing flag pointer (**unverified**), and match every frame.
 
-#### 3.6.37 HackJack (navi chip subtype 18, chips 0x113–0x115, T1 0x11; the Japanese games')
+#### 3.6.37 Count (navi chip subtype 18, chips 0x113–0x115, T1 0x11; the Japanese games')
 
-HackJack H\* + HackJck[EX] H + HackJck[SP] H (Count in the Japanese games). **The US games have no routine**: their
+Count H\* + Count[EX] H + Count[SP] H: the Japanese games' names, which the content uses; the US release calls them
+HackJack, HackJck[EX] and HackJck[SP]. **The US games have no routine**: their
 `off_802CD5C[18]` is null (the game jumps to address 0), T1 0x11 and T3 0x0D point at placeholder routines and
 sprite (8, 0x16) is a placeholder archive. The Japanese games (EXE6 Falzar BR6J, EXE6 Gregar BR5J) have them; the
 two are the same code at different addresses (EXE6 Falzar's below; EXE6 Gregar's +0x1860 for the navi, +0x1860 for
 the lance). There is no Japanese disassembly: the addresses are the ROMs', the routines they call the US games'
-(the verification workspace's `fmap.py --to` maps them). Content: chips/hackjack (navi, lance, chips).
+(the verification workspace's `fmap.py --to` maps them). Content: chips/count (navi, lance, chips).
 
-The records: as the US games' but for flags 0x47 (the US games' 0x07: the library bit) and the sort key. Damage
-20/25/SP formula 17 (the rain's hits); parameters 0x32/0x46/0x64 (the lances' damage, 50/70/100).
+The records: as the US games' but for flags 0x47 (the US games' 0x07: the library bit) and the sort key; the content
+has the Japanese records. Damage 20/25/SP formula 17 (the rain's hits); parameters 0x32/0x46/0x64 (the lances'
+damage, 50/70/100).
 
 **The spawner, 0x080BD236** (`off_802CD5C[18]` in the Japanese table at 0x0802D8B8): `object_spawnType1(0x11)` with
 r1..r3 the panel Y, element and the spawner's own address (the controller's r3) as its position and r4 the chip's
@@ -2571,7 +2574,9 @@ fewer than three, a second call with `dword_80BD37C[side]`: side 0 (0x30, 0x0400
 (the area's other solid panels), appended. Then `sub_8000C72` (RNG2) shuffles: the second batch alone when there
 is one (as many swaps as its panels), else the first (as many swaps as its panels). The first three are the
 targets; none (both calls empty) returns 0. (0x080BD25C, the same with `object_getPanelsExceptCurrentFiltered`, has
-no caller.)
+no caller.) The flags' "solid" is the plain panels' kind: on the grass and ice stages both calls come up empty (no
+lance; on to 0x14), and on the poison stage only the enemy's panel is found (one lance, the first batch shuffled).
+A netbattle has one enemy navi, and a RockCube carries no enemy's body, so the first call finds at most one panel.
 
 **The lance (0x080BD394 → the spawner 0x080C9614)**: at the target, his element, r4 0x20000 (Param3 2), the damage
 word Param1 | (Damage & 0xF000) (the chip's parameter with his damage word's flag bits; hit parameter 0), and r3 =
@@ -2592,10 +2597,17 @@ damage word, alliance and flip his, flags |= 0x10 (no RelatedObject1).
 - Action 4 (0x080C95CA): Z's whole part 0, anim 0xC (restarted), region 1, sound 0x181, Timer 30; a hit turns the
   region off; at 0 region off, state 8.
 
-Every lance HackJack drops has Param3 2: it strikes at once, while dimmed. Action 0 and the Param3 ≠ 2 branches are
+Every lance Count drops has Param3 2: it strikes at once, while dimmed. Action 0 and the Param3 ≠ 2 branches are
 the other user's: attack 0x0C (0x080C91E0), which drops lances with them, is spawned only by the Japanese games'
-HackJack navi AI (0x08107908, 0x0810DE6E; out of a netbattle's reach, as every navi AI). **Unverified**: those
-branches, a full pool (no navi, no lance, no collision data), and every timing above until JP-console traces exist.
+Count navi AI (0x08107908, 0x0810DE6E; out of a netbattle's reach, as every navi AI).
+
+**Verified** on Japanese consoles (EXE6 Falzar and Gregar: the chip lab's jp/chips/0x113-count, 0x114-count-ex and
+0x115-count-sp, 43 scenarios): every timing above, each level's rain and lances, the targets (the enemy where it
+stands, invisible, killed by the rain; the grass, ice and poison stages' lists), no footing, the guards, AntiNavi
+(Count turned on his user), Beat (a Mega chip), the counter and the counter cut-ins both ways, Atk+10 and Navi+20
+(the rain takes them, the lances only the flags), Full Synchro (both doubled), side 1 and the KOs. The opponent is
+dimmed through all of it, so it can't move during the rain or before the search. **Unverified**: those branches and
+a full pool (no navi, no lance, no collision data); the first call's two or more panels can't happen.
 
 Not this chip's: attacks 0x13, 0x14 and 0x15 and effects 0x17 and 0x18, which use sprite (8, 0x16) too, are spawned
 only by that navi AI's code (0x0810xxxx).
@@ -2608,10 +2620,14 @@ Japanese games': (0xC, 0xF), Django's: the US games' CrosOver shows his gun from
 games' code below (EXE6 Falzar; EXE6 Gregar +0x1860). Content: chips/django (navi, chips).
 
 The records differ: the US games' are class 3 (not a folder chip) with flags 0; the Japanese games' class 1 (Mega)
-with flags 0x47 (dimming, damage, navi, library). Damage 130/180/260 (the ride's); parameters 0x32/0x50/0x78 (the
-slash's damage, 50/80/120). The content keeps the US records (with the `navi_slot` trait for AntiNavi).
+with flags 0x47 (dimming, damage, navi, library), and their sort keys are the Japanese order. Damage 130/180/260 (the
+ride's); parameters 0x32/0x50/0x78 (the slash's damage, 50/80/120). The content has the Japanese records (as for
+every JP-content chip; `gen-content check` compares them with a Japanese ROM's): a folder chip that cuts in (a
+counter cut-in during the other side's dimming), shows its damage on the telop, takes Atk+ and Navi+, which Beat turns
+back as a Mega chip and AntiNavi by the `navi` flag. (The US records would need the `navi_slot` trait for AntiNavi,
+which turns back the chip table's block 0xDD..0x118 by number.)
 
-**The spawner, 0x080BD6A2** (`off_802CD5C[19]`): as HackJack's with `object_spawnType1(0x12)`.
+**The spawner, 0x080BD6A2** (`off_802CD5C[19]`): as Count's with `object_spawnType1(0x12)`.
 
 **The object, 0x080BD3B8**: by state (init, update, `object_freeMemory`), then `object_updateSpriteTimestop`.
 Init (0x080BD3DC): PanelX 0 (side 0) or 7 (side 1: by the alliance), `object_setCoordinatesFromPanels`, Z's whole part
@@ -2632,7 +2648,8 @@ Actions (0x080BD46C):
   flag cleared, freed.
 - The command (0x080BD6C8), while Param2 is 0: with a key in, ExtraVars[1] down, at 0 both cleared; the user's
   pressed keys (AIData+0x24) against `word_80BD71C[ExtraVars[0]]` (L, L, L, A); a match moves ExtraVars[0] on: at 4
-  Param2 1 and sound 0x8B, at 1 ExtraVars[1] 60.
+  Param2 1 and sound 0x8B, at 1 ExtraVars[1] 60. Only the ride checks it, and the ride is 48 ticks: the 60 never
+  run out (a key after the ride goes unread).
 - 8 (0x080BD5BA): the target (0x080BD782); none: Param3 0 and his user's panel; anim 1, a ground shadow, sound
   0x94, Timer 3; 3 ticks → 0xC.
 - 0xC (0x080BD606): anim 0, Timer 20; at 0 → 0x10, or 0x14 with Param3 0.
@@ -2647,7 +2664,17 @@ whose panel toward the user is solid with none of 0x03800000; that panel. A colu
 with none.
 
 Timeline from his init tick S: landed and riding S+10; the ride's end S+59 (freed then without the command).
-**Unverified**: all of it until JP-console traces exist; a full pool (no bike, no Django).
+
+**Verified** on Japanese consoles (EXE6 Falzar and Gregar: the chip lab's jp/chips/0x116-django, 0x117-django2 and
+0x118-django3, 48 scenarios): the drop, the ride's hits and misses at each level, a crash into a hole mid-ride and on
+the landing panel (with and without the command), the command with a target (in his row, a row or two away, the
+adjacent column) and without one (invisible), keys out of turn and after the ride, a RockCube in his row (his or the
+opponent's), the guards, AntiNavi and Beat (the Japanese record's navi flag and Mega class), the counter, the counter
+cut-ins both ways (the record's dimming flag), Atk+10 and Navi+20 (the ride takes them, the slash only the flags),
+Full Synchro, side 1 and the KOs. On EXE6 Gregar his spawner's address (his Z's fraction) is 0x080BEF03: his drop's
+velocity, so his and his bike's Z, differ from EXE6 Falzar's until he lands (compat's games.toml maps it).
+**Unverified**: the command's 60 ticks running out (unreachable: the ride is 48) and a full pool (no bike, no
+Django).
 
 ---
 

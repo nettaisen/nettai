@@ -22,7 +22,7 @@ return define.rules("sp-chips", {
         "sp/crcusman",
         "sp/judgeman",
         "sp/elmntman",
-        "sp/hackjack",
+        "sp/count",
         "sp/colonel",
     },
     deletion_times = {
