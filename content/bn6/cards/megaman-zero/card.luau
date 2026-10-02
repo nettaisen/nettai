@@ -5,8 +5,8 @@ local cards = require("../../rules/patch-cards/cards")
 local b_sword = require("../../lib/patch-cards/b-sword")
 local charge = require("./charge")
 
-return cards.card {
-    id = "patch-card/megaman-zero",
+return define.patch_card {
+    id = "megaman-zero",
     mb = 45,
     effects = {
         cards.b_button(b_sword),
