@@ -1,0 +1,5 @@
+# BN5's content root (rules-in-luau.md R): its keys are qualified bn5:<key> by the loader, its asset names
+# resolve in the pack whose content.toml says game = "bn5" (bn5-extract's), and it requires no other root.
+name = "bn5"
+assets = "bn5"
+requires = []
