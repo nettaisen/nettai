@@ -650,7 +650,7 @@ mod tests {
         };
         for t in &tape {
             b.tick(&t.input, t.events.clone());
-            let seen: Vec<_> = b.objects.in_order().map(|r| (b.kind_key(r).to_string(), b.objects.get(r).alliance)).collect();
+            let seen: Vec<_> = b.objects.in_order().map(|r| (b.local_kind_key(r).to_string(), b.objects.get(r).alliance)).collect();
             for (key, alliance) in seen {
                 if key == CONTROLLER && user.is_none() {
                     user = Some(alliance);

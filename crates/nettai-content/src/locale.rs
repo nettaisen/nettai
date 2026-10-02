@@ -29,6 +29,10 @@
 //! "patch-card/canodumb" = { name = "..." }
 //! ```
 //!
+//! A root's table writes its keys unqualified, as its modules do; loaded,
+//! they are qualified with the root (`bn6:cannon`, [`Strings::qualified`]),
+//! and the tables of every root the content loads are one ([`load_all`]).
+//!
 //! A line break in a description or a message is `\n`. A translated
 //! description may have another number of lines than the own language's:
 //! the battle keeps the own language's timing. The game's marks are
@@ -76,6 +80,19 @@ pub fn load(root: &Path, lang: &str) -> Result<Option<Strings>, String> {
     Ok(Some(s))
 }
 
+/// The tables of `lang` of the root in `dir` and the roots it requires,
+/// qualified and merged into one (`None` when none has one).
+pub fn load_all(dir: &Path, lang: &str) -> Result<Option<Strings>, String> {
+    let mut out: Option<Strings> = None;
+    for d in crate::root::dirs(dir)? {
+        let name = crate::root::read_manifest(&d)?.name;
+        if let Some(s) = load(&d, lang)? {
+            out.get_or_insert_with(|| Strings { language: lang.to_string(), ..Default::default() }).merge(s.qualified(&name));
+        }
+    }
+    Ok(out)
+}
+
 /// The languages a content root has tables of.
 pub fn languages(root: &Path) -> Vec<String> {
     let Ok(entries) = std::fs::read_dir(root.join(DIR)) else { return Vec::new() };
@@ -87,14 +104,18 @@ pub fn languages(root: &Path) -> Vec<String> {
     out
 }
 
-/// What is wrong with a table against the definitions: a key no definition
+/// What is wrong with root `root`'s table (as the root writes it, keys
+/// unqualified) against the definitions: a key no definition of the root
 /// has, a form's strings for a form that isn't a Cross (nothing shows
 /// them), a string with a combining mark (write the composed character);
-/// and in the own language's (`own`), a chip, navi or Cross without a
-/// name, which a frontend would show by its key. (A string may be empty:
-/// the invalid chip's name is, and the Japanese games print no description
-/// for some chips.)
-pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
+/// and in the own language's (`own`), a chip, navi or Cross of the root
+/// without a name, which a frontend would show by its key. (A string may
+/// be empty: the invalid chip's name is, and the Japanese games print no
+/// description for some chips.)
+pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
+    use nettai_content_api::keys::{local, qualify, root_of};
+    let q = |key: &str| qualify(root, key);
+    let ours = |key: &str| root_of(key) == Some(root);
     let mut out = Vec::new();
     let mut text = |what: String, v: &Option<String>| {
         if let Some(v) = v {
@@ -105,21 +126,21 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
     };
     let mut unknown = Vec::new();
     for (key, c) in &s.chips {
-        if defs.chip_by_key(key).is_none() {
+        if defs.chip_by_key(&q(key)).is_none() {
             unknown.push(format!("chips.{key}: no chip has this key"));
         }
         text(format!("chips.{key}.name"), &c.name);
         text(format!("chips.{key}.description"), &c.description);
     }
     for (key, n) in &s.navis {
-        if defs.navi_by_key(key).is_none() {
+        if defs.navi_by_key(&q(key)).is_none() {
             unknown.push(format!("navis.{key}: no navi has this key"));
         }
         text(format!("navis.{key}.name"), &n.name);
         text(format!("navis.{key}.run_message"), &n.run_message);
     }
     for (key, f) in &s.forms {
-        match defs.form_by_key(key) {
+        match defs.form_by_key(&q(key)) {
             None => unknown.push(format!("forms.{key}: no form has this key")),
             Some(h) if defs.form(h).record.kind != FormKind::Cross => {
                 unknown.push(format!("forms.{key}: not a Cross (nothing shows another form's strings)"))
@@ -130,26 +151,26 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
         text(format!("forms.{key}.description"), &f.description);
     }
     for (key, r) in &s.records {
-        if defs.record(key).is_none() {
+        if defs.record(&q(key)).is_none() {
             unknown.push(format!("records.{key}: no record has this key"));
         }
         text(format!("records.{key}.name"), &r.name);
     }
     if own {
         let named = |n: Option<&Option<String>>| n.is_some_and(|n| n.is_some());
-        for d in &defs.chips {
-            if !named(s.chip(&d.key).map(|c| &c.name)) {
-                unknown.push(format!("chips.{}: the content's own language names every chip", d.key));
+        for d in defs.chips.iter().filter(|d| ours(&d.key)) {
+            if !named(s.chip(local(&d.key)).map(|c| &c.name)) {
+                unknown.push(format!("chips.{}: the content's own language names every chip", local(&d.key)));
             }
         }
-        for d in &defs.navis {
-            if !named(s.navi(&d.key).map(|n| &n.name)) {
-                unknown.push(format!("navis.{}: the content's own language names every navi", d.key));
+        for d in defs.navis.iter().filter(|d| ours(&d.key)) {
+            if !named(s.navi(local(&d.key)).map(|n| &n.name)) {
+                unknown.push(format!("navis.{}: the content's own language names every navi", local(&d.key)));
             }
         }
-        for d in defs.forms.iter().filter(|d| d.record.kind == FormKind::Cross) {
-            if !named(s.form(&d.key).map(|f| &f.name)) {
-                unknown.push(format!("forms.{}: the content's own language names every Cross", d.key));
+        for d in defs.forms.iter().filter(|d| ours(&d.key) && d.record.kind == FormKind::Cross) {
+            if !named(s.form(local(&d.key)).map(|f| &f.name)) {
+                unknown.push(format!("forms.{}: the content's own language names every Cross", local(&d.key)));
             }
         }
     }
@@ -157,9 +178,17 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
     unknown
 }
 
-/// Check every strings table of a content root against its definitions
-/// (`check`), into `r` as errors; the own language's must be there.
+/// Check every strings table of the content root in `root` against its
+/// definitions (`check`), into `r` as errors; the own language's must be
+/// there.
 pub fn check_root(root: &Path, c: &nettai_battle::Content, r: &mut crate::report::Report) {
+    let name = match crate::root::read_manifest(root) {
+        Ok(m) => m.name,
+        Err(e) => {
+            r.error(crate::root::MANIFEST, e);
+            return;
+        }
+    };
     let langs = languages(root);
     if !langs.iter().any(|l| l == OWN) {
         r.error(format!("{DIR}/{OWN}.toml"), "the content's own words are missing");
@@ -168,7 +197,7 @@ pub fn check_root(root: &Path, c: &nettai_battle::Content, r: &mut crate::report
         let file = format!("{DIR}/{lang}.toml");
         match load(root, &lang) {
             Ok(Some(s)) => {
-                for problem in check(&s, &c.defs, lang == OWN) {
+                for problem in check(&s, &name, &c.defs, lang == OWN) {
                     r.error(&file, problem);
                 }
             }

@@ -274,7 +274,7 @@ sub_8000D12(base, cnt, sw):                  // custom::folder::shuffle(base[..c
 
 `sub_8000C72` (RNG2: the panel lists chips and navis shuffle, `panels.shuffle` in content/bn6/lib/panels.luau) and
 `sub_8000CA6` (its RNG1 twin) are the same shuffle on their streams. Content reaches it through
-`battle.shuffle_order` (content/bn6/core.d.luau).
+`battle.shuffle_order` (content/nettai/core.d.luau).
 
 PvP P0 in the trace has no reg, tag or giga: 30 rounds, 60 RNG1 draws (frames 70 and 1222).
 

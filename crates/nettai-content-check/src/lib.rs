@@ -1,10 +1,12 @@
-//! Type-check a Luau content pack (docs/design/scripting.md §3.3) against
-//! the content API definitions in its `core.d.luau`, with Luau's own
-//! analysis (strict mode, the new solver), in process.
+//! Type-check a Luau content root (docs/design/scripting.md §3.3) against
+//! the engine's content API definitions (content/nettai/core.d.luau, beside
+//! the roots) and the root's own (its `*.d.luau`), with Luau's own analysis
+//! (strict mode, the new solver), in process.
 //!
 //! Each module is checked on its own and `require` is typed `any`; an
-//! editor running luau-lsp with `--definitions=<pack>/core.d.luau`
-//! resolves requires and checks across modules too.
+//! editor running luau-lsp with `--definitions=content/nettai/core.d.luau
+//! --definitions=<root>/types.d.luau` resolves requires and checks across
+//! modules too.
 
 pub mod lints;
 
@@ -64,13 +66,28 @@ pub fn modules(dir: &Path) -> std::io::Result<Vec<(String, String)>> {
     Ok(out)
 }
 
-/// The pack's definitions: the API (`core.d.luau`) and, if present, the
-/// pack's shared types (`types.d.luau`).
+/// The definitions a root's modules check against: the engine's (every
+/// `*.d.luau` of content/nettai, the sibling `nettai` of `dir`), then the
+/// root's own (its `*.d.luau`: BN6's shared types, `types.d.luau`), each in
+/// name order.
 pub fn definitions(dir: &Path) -> Result<String, String> {
-    let mut defs = std::fs::read_to_string(dir.join("core.d.luau")).map_err(|e| format!("core.d.luau: {e}"))?;
-    if let Ok(types) = std::fs::read_to_string(dir.join("types.d.luau")) {
-        defs += "\n";
-        defs += &types;
+    let engine = dir.parent().unwrap_or(Path::new(".")).join("nettai");
+    let mut defs = String::new();
+    for d in [engine.as_path(), dir] {
+        let mut files: Vec<_> = std::fs::read_dir(d)
+            .map_err(|e| format!("{}: {e}", d.display()))?
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.to_string_lossy().ends_with(".d.luau"))
+            .collect();
+        files.sort();
+        if d == engine && files.is_empty() {
+            return Err(format!("{}: the engine's API definitions (core.d.luau) aren't here", engine.display()));
+        }
+        for f in files {
+            defs += &std::fs::read_to_string(&f).map_err(|e| format!("{}: {e}", f.display()))?;
+            defs += "\n";
+        }
     }
     Ok(defs)
 }

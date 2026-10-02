@@ -1,0 +1,4 @@
+# The engine's test content root (crates/nettai-battle/src/content/testing.rs):
+# its own modules, which the tests load with the BN6 modules they borrow
+# (content/bn6) as one root, so every key is `test:...`.
+name = "test"
