@@ -142,6 +142,8 @@ export type WaveVariant = {
     collision: CollisionType,
     bug: number?,
     palette: number?,
+    -- Its sprite where a game's isn't BN6's wide wave (BN5's).
+    sprite: SpriteAsset?,
 }
 
 -- A sonic boom (lib/swords/sonic_boom.luau): its hit modifier, whether it
@@ -563,6 +565,22 @@ export type TornadoSpec = { variant: TornadoVariant, status: Status?, ticks: num
 -- (12 makes DarkThnd's look and sound), the status its hits inflict and
 -- their bug (none by default).
 export type ThunderBall = { fast: boolean?, panels: number, status: Status?, bug: number? }
+
+-- A game's thunder ball (chips/thunder/ball, `make_kind`): its sprite and
+-- animation small and big (fast, or DarkThnd's 12 panels), its collision
+-- type (a 12-panel one's, if another) and hit modifier, its sound (a
+-- 12-panel one's, if another).
+export type ThunderBallLook = {
+    sprite: SpriteAsset,
+    small_anim: number,
+    big_sprite: SpriteAsset,
+    big_anim: number,
+    is: CollisionType,
+    dark_is: CollisionType?,
+    hit_mod: number,
+    sound: Sound,
+    dark_sound: Sound?,
+}
 
 -- How a yoyo flies (chips/yoyo/yoyo): GreatYo's (three that move
 -- together), the panels it rolls out and its spinning rounds.
