@@ -8,3 +8,12 @@
 "engine/intro" = { pool = "effect", index = 0x02, scratch_position = true }
 "bn6:barrier-visual" = { pool = "effect", index = 0x07 }
 "engine/charge-glow" = { pool = "effect", index = 0x08, scratch_position_without_sprite = true }
+"blkbomb/bomb" = { pool = "attack", index = 0x47 }
+"thunder/ball" = { pool = "attack", index = 0x2A }
+"engine/effect" = { pool = "effect", index = 0x00 }
+"engine/hitbox" = { pool = "attack", index = 0x03 }
+"engine/spark" = { pool = "effect", index = 0x04 }
+"engine/status-visual" = { pool = "effect", index = 0x06 }
+"engine/afterimage" = { pool = "effect", index = 0x28 }
+"bn6:attachment" = { pool = "actor", index = 0x05 }
+"bn6:widesht/wave" = { pool = "attack", index = 0x3B }
