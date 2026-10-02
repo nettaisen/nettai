@@ -9,7 +9,6 @@ local dash = require("./dash")
 
 return define.form {
     id = "groundcross-beast",
-    name = "GroundCross Beast",
     kind = "cross_beast",
     game = "falzar",
     cross_of = groundman,

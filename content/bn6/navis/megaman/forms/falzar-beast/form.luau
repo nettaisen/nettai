@@ -8,7 +8,6 @@ local beast_claw = require("../../weapons/beast-claw/weapon")
 
 return define.form {
     id = "falzar-beast",
-    name = "Falzar Beast",
     kind = "beast",
     game = "falzar",
     -- (A weakness hit breaks a Beast as a Cross: the original's routine, by the form's

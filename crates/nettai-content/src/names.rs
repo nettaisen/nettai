@@ -42,6 +42,10 @@ pub struct AssetNames {
     /// them.
     pub glyphs: Vec<String>,
     pub dialogue_glyphs: Vec<String>,
+    /// The same for the fonts of other languages the pack has lettering in
+    /// (`nettai_assets::HudLettering`), by language: (the 8x16 font's, the
+    /// dialogue font's past them).
+    pub language_glyphs: BTreeMap<String, (Vec<String>, Vec<String>)>,
 }
 
 impl AssetNames {

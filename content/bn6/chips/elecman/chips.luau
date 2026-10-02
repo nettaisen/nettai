@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 local elecman = define.chip {
     id = "elecman",
-    name = "ElecMan",
-    description = "Attk your\nsurrndngs\nwith thdr",
     codes = { "E", "*" },
     element = "elec",
     family = "elec",
@@ -26,8 +24,6 @@ local elecman = define.chip {
 
 local elecman_ex = define.chip {
     id = "elecman-ex",
-    name = "ElecMan[EX]",
-    description = "Attk your\nsurrndngs\nwith thdr",
     codes = { "E" },
     element = "elec",
     family = "elec",
@@ -46,8 +42,6 @@ local elecman_ex = define.chip {
 
 local elecman_sp = define.chip {
     id = "elecman-sp",
-    name = "ElecMan[SP]",
-    description = "Attk your\nsurrndngs\nwith thdr",
     codes = { "E" },
     element = "elec",
     family = "elec",

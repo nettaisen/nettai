@@ -96,7 +96,6 @@ charge.action = define.action {
 
 charge.weapon = define.weapon {
     id = "erasecross/charge",
-    name = "Erase charge",
     -- The charge table's row 0x14, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 110, 100, 90, 85, 80, 120, 120, 120 },

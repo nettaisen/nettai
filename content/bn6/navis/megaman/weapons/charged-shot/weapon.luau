@@ -156,7 +156,6 @@ charged_shot.action = define.action {
 
 charged_shot.weapon = define.weapon {
     id = "megaman/charged-shot",
-    name = "Charged shot",
     -- The charge table's row 1; Charge 5 reads on into row 2's first
     -- entry, as the original's table does.
     charge_ticks = { 100, 90, 80, 70, 60, 180 },

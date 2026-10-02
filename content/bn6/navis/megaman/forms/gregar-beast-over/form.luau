@@ -7,7 +7,6 @@ local beast_claw = require("../../weapons/beast-claw/weapon")
 
 return define.form {
     id = "gregar-beast-over",
-    name = "Gregar Beast Over",
     kind = "beast_over",
     game = "gregar",
     -- (No hit breaks Beast Over; the original's routine, by the form's number, would drop

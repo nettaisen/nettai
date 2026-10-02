@@ -14,8 +14,6 @@ local HOLD, SHORT_HOLD = TICKS - 5, 5
 
 local elcpuls1 = define.chip {
     id = "elcpuls1",
-    name = "ElcPuls1",
-    description = "Sprd elec\npuls that\nparalyzes",
     codes = { "J", "L", "S" },
     element = "elec",
     family = "elec",
@@ -38,8 +36,6 @@ local elcpuls1 = define.chip {
 
 local elcpuls2 = define.chip {
     id = "elcpuls2",
-    name = "ElcPuls2",
-    description = "Sprd elec\npulse.Pul\nenemy in.",
     codes = { "A", "E", "J" },
     element = "elec",
     family = "elec",
@@ -62,8 +58,6 @@ local elcpuls2 = define.chip {
 
 local elcpuls3 = define.chip {
     id = "elcpuls3",
-    name = "ElcPuls3",
-    description = "Sprd elec\npuls. Hit\nw/HP bug.",
     codes = { "A", "J", "S" },
     element = "elec",
     family = "elec",
@@ -87,8 +81,6 @@ local elcpuls3 = define.chip {
 
 local destpuls = define.chip {
     id = "destpuls",
-    name = "DestPuls",
-    description = "Fire puls\nthat caus\nstrg bug!",
     codes = { "A", "B", "C", "*" },
     element = "elec",
     family = "program_advance",

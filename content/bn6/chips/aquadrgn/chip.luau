@@ -9,8 +9,6 @@ local sparks = require("../../lib/sparks")
 
 return define.chip {
     id = "aquadrgn",
-    name = "AquaDrgn",
-    description = "Drgn near\nclst enmy\nHit 2rows",
     codes = { "H", "P", "S" },
     element = "aqua", family = "aqua", class = "standard",
     rarity = 3, mb = 44, damage = 120, hit_param = 30, lockout = 0,

@@ -9,8 +9,6 @@ local airhocky = require("../airhocky/chip")
 
 return define.chip {
     id = "pithocky",
-    name = "PitHocky",
-    description = "Reflect\nhockey\nattack",
     codes = {},
     element = "null",
     family = "program_advance",

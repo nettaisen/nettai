@@ -16,8 +16,6 @@ end
 
 local firebrn1 = define.chip {
     id = "firebrn1",
-    name = "FireBrn1",
-    description = "Crcks 3\nsqrs ahd\nwith fire",
     codes = { "F", "G", "H", "*" },
     element = "fire",
     family = "fire",
@@ -36,8 +34,6 @@ local firebrn1 = define.chip {
 
 local firebrn2 = define.chip {
     id = "firebrn2",
-    name = "FireBrn2",
-    description = "Crcks 3\nsqrs ahd\nwith fire",
     codes = { "S", "T", "U" },
     element = "fire",
     family = "fire",
@@ -56,8 +52,6 @@ local firebrn2 = define.chip {
 
 local firebrn3 = define.chip {
     id = "firebrn3",
-    name = "FireBrn3",
-    description = "Crcks 3\nsqrs ahd\nwith fire",
     codes = { "C", "D", "E" },
     element = "fire",
     family = "fire",

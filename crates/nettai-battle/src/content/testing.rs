@@ -314,7 +314,17 @@ fn make() -> Content {
         scripts: scripts(),
         assets: assets(),
         defs: Default::default(),
+        strings: strings(),
     }
+}
+
+/// The test content's strings (testdata/content/locales/en.toml): its
+/// chips', navis' and forms' display text, whose shape the define phase
+/// counts (the navis' no-running message: 19 and 12 characters).
+pub fn strings() -> crate::content::strings::Strings {
+    let file = format!("{TEST_CONTENT}/locales/en.toml");
+    let text = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}"));
+    toml::from_str(&text).unwrap_or_else(|e| panic!("{file}: {e}"))
 }
 
 /// A synthetic asset index for `modules`: every name they give an

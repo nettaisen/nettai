@@ -7,8 +7,6 @@ local sonic = require("../sonicbom/action")
 
 return define.chip {
     id = "sprsonic",
-    name = "SprSonic",
-    description = "ミテイ",
     codes = { "E", "L", "S", "*" },
     element = "null",
     family = "sword",

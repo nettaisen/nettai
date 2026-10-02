@@ -6,8 +6,6 @@ local colonel = require("../colonel/navi")
 
 return define.chip {
     id = "crossdiv",
-    name = "CrossDiv",
-    description = "Cross-\nslice!",
     codes = { "D" },
     element = "null",
     family = "sword",

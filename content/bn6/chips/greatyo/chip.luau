@@ -8,8 +8,6 @@ local yoyo = require("../yoyo/chip")
 
 return define.chip {
     id = "greatyo",
-    name = "GreatYo",
-    description = "Moves 3sq\nvertical",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

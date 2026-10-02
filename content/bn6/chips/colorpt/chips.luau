@@ -8,8 +8,6 @@ local controller = require("./controller")
 return {
     define.chip {
         id = "colorpt",
-        name = "ColorPt",
-        description = "+10 for\nnext chip\nattack",
         codes = { "*" },
         element = "null", family = "plus", class = "standard",
         rarity = 1, mb = 31, damage = 0, hit_param = 0, lockout = 0,
@@ -20,8 +18,6 @@ return {
     },
     define.chip {
         id = "dblpoint",
-        name = "DblPoint",
-        description = "+20 for\nnext chip\nattack",
         codes = { "*" },
         element = "null", family = "plus", class = "standard",
         rarity = 3, mb = 50, damage = 0, hit_param = 0, lockout = 0,

@@ -12,8 +12,6 @@ local PARALYZE = statuses.paralyze_90
 
 return define.chip {
     id = "darkthnd",
-    name = "DarkThnd",
-    description = "\n\n",
     codes = { "A", "B", "C", "*" },
     element = "elec",
     family = "elec",
