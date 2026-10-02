@@ -468,8 +468,9 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         hidden_icon,
         icon_palette: icon_pal[0],
         mugshots,
-        counts: (0..counts.len() / 4 - 1).map(|i| slice(&counts, 4 * i, 4)).collect(),
-        count_box: slice(&counts, counts.len() - 4, 4),
+        // (A pack without a count box, BN5's, has none of them.)
+        counts: (0..(counts.len() / 4).saturating_sub(1)).map(|i| slice(&counts, 4 * i, 4)).collect(),
+        count_box: if counts.len() >= 4 { slice(&counts, counts.len() - 4, 4) } else { Tiles::default() },
         navi_mugshots,
         navi_box,
         pause,
