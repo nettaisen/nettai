@@ -279,6 +279,7 @@ The first batch of the survey's scenarios covered the rows below; the rest of th
 | Flying shot | kinds 2 and 5, the wait (TrnArrw, the Beast buster) | | yes | chips/0x018-trnarrw1/ko, barrier, invisible, dimmed: verified |
 | Projectile | the bursts (Param1 0xC), climbing (Param1 0x1D) | | check | open |
 | Target tracking (`sub_802EF74`) | battle flag 0x40 | never in netbattles | unreachable | |
+| Boulder (`sub_80D2430`) | its flags read from the BIOS's open bus after an interrupt (0xE55EC002) instead of a software interrupt's word: the two consoles disagree (objects-and-player.md §2) | an interrupt must land just before the read, which only some seeds give | yes, by seed | stages/look/18-grass-boulders-openbus/side0 (seed 1457683801: side 0 reads 0xD4 for the column-5 boulder, side 1 and the engine 0x34): matches, with the comparison skipping the boulder's bits 0x20, 0x40 and 0x80, which change nothing. The column-2 case (0x5E: also visible a frame early) is open |
 
 ### Field objects and stages: the third agent's batches
 
