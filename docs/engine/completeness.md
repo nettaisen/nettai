@@ -659,6 +659,22 @@ never fail (2). The hard ones: ColArmy meeting an obstacle registered before its
 and TrnArrw's bow waiting for an animation that has always ended by its first look. The 7 recordings are in the
 lab and match the engine at main 83158fe6 (4,918 frames).
 
+**Batch 5, the arm chips (20 branches: WaveArm, DrilArm, and Boomer's and FireHit's effects, which BoomrArm's and
+PunchArm's charged shots run; ElcPuls, whose pulse PuzzlArm's charged shot fires):** 7 taken by 5 new recordings,
+12 unreachable, 1 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x05c-wavearm1/steer-down-from-top`, `bottom-row-no-turn` | the steering from the edge rows: no row above, so down toward the opponent and down again; no row below and nothing ahead |
+| `chips/0x05c-wavearm1/into-hole`, `geddon-under` | a wave sent onto a hole; a wave whose panel the opponent's Geddon breaks |
+| `chips/0x022-elcpuls1/whicapsl` | WhiCapsl folded in: the damage word's paralysis kept over the pulse's own status |
+
+The unreachable ones: the shock wave's virus variants (4: panel-marking ones and those below 0xC) and a quick
+wave's animation ending first (1), a boomerang that flies straight or hits harder (3: nothing spawns one), a drill
+with no slot (2), ElcPuls's one-tick wait and its pulse's linked objects (2: nothing links one). The hard one is
+FireHit's search running off the field, which needs no enemy body ahead (as SpoutMan's scans). The 5 recordings
+are in the lab and match the engine at main f8764b51 (2,712 frames).
+
 ### 6.3 Custom screen keys
 
 Four custom screen routines were verified only by the golden traces' dumps, with no lab recording: SELECT hiding
