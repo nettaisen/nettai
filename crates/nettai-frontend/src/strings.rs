@@ -9,6 +9,7 @@
 use nettai_battle::Content;
 use nettai_battle::content::strings::Strings;
 use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::BTreeSet;
 
@@ -117,10 +118,21 @@ impl<'a> DisplayText<'a> {
 }
 
 /// A chip's name in the content's own strings, else its key (for the
-/// frontend's own text: status lines, folder listings).
-pub fn own_chip_name(content: &Content, chip: ChipHandle) -> &str {
+/// frontend's own text: status lines, folder listings), `spelled` for a
+/// terminal.
+pub fn own_chip_name(content: &Content, chip: ChipHandle) -> Cow<'_, str> {
     let key = &content.defs.chip(chip).key;
-    content.strings.chip(key).and_then(|c| c.name.as_deref()).unwrap_or(key)
+    spelled(content.strings.chip(key).and_then(|c| c.name.as_deref()).unwrap_or(key))
+}
+
+/// A string for a terminal: a stacked mark, a character of the Private Use
+/// Area that a terminal has no glyph for, spelled as its letters (`Count`
+/// and U+E002, the stacked EX, as `CountEX`).
+pub fn spelled(text: &str) -> Cow<'_, str> {
+    if !text.chars().any(|c| crate::vfont::stacked_letters(c).is_some()) {
+        return Cow::Borrowed(text);
+    }
+    Cow::Owned(text.chars().flat_map(|c| crate::vfont::stacked_letters(c).map_or_else(|| vec![c], Vec::from)).collect())
 }
 
 /// A Cross's name in the content's own strings, else its key (for the
@@ -129,4 +141,16 @@ pub fn own_chip_name(content: &Content, chip: ChipHandle) -> &str {
 pub fn own_form_name(content: &Content, form: FormHandle) -> &str {
     let key = &content.defs.form(form).key;
     content.strings.form(key).and_then(|f| f.name.as_deref()).unwrap_or(key)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_terminal_gets_a_stacked_mark_spelled() {
+        assert_eq!(spelled("Count\u{E002}"), "CountEX");
+        assert_eq!(spelled("TmhkMan\u{E003}"), "TmhkManSP");
+        assert!(matches!(spelled("Press Ⓐ"), Cow::Borrowed("Press Ⓐ")));
+    }
 }

@@ -47,8 +47,8 @@ const BUTTON_STROKE: f32 = 0.1;
 /// much wider than the font's they are drawn (the game's stacked letters
 /// are as wide as its others, half as high), and the weight added to the
 /// text's so their strokes hold at that size.
-const STACK_GAP: f32 = 0.14;
-const STACK_STRETCH: f32 = 1.3;
+const STACK_GAP: f32 = 0.1;
+const STACK_STRETCH: f32 = 1.55;
 const STACK_WEIGHT: f32 = 100.0;
 /// The shadow's offset, right and down, in frame pixels (the original's
 /// is one pixel).
@@ -201,6 +201,15 @@ fn mark(c: char) -> Option<Mark> {
         '\u{E005}' => Mark::Stacked('M', 'B'),
         _ => return None,
     })
+}
+
+/// A stacked mark's letters, side by side (U+E002 is `EX`), for text where
+/// it can't be drawn (a terminal's).
+pub fn stacked_letters(c: char) -> Option<[char; 2]> {
+    match mark(c)? {
+        Mark::Stacked(a, b) => Some([a, b]),
+        Mark::Button(_) => None,
+    }
 }
 
 /// A glyph laid out: frame pixels from the box's left and up from the

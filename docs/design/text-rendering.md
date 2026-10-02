@@ -865,8 +865,8 @@ character, so a string encodes and decodes the same way and a mark is one charac
 - **The font mode**: a mark the font has is drawn by the font (Ⓡ, ✕, ○ with Murecho). One it lacks the text layer
   draws (`vfont::mark`): a button as its letter at 68% of the size, centred in an antialiased ring 1.15 times the
   capitals' height with a stroke a tenth of it; a stacked mark as its two letters in one cell, each as high as half
-  the capitals less a gap (14%), the first on top, so the pair spans the capitals' height as the game's glyph does,
-  drawn 1.3 times wider and a weight heavier than the text (the game's stacked letters are as wide as its others,
+  the capitals less a gap (10%), the first on top, so the pair spans the capitals' height as the game's glyph does,
+  drawn 1.55 times wider and a weight heavier than the text (the game's stacked letters are as wide as its others,
   half as high) and hinted at their size, so they stay crisp at 3x and up. A mark with no drawing that the font
   lacks (the bat, End, Ƶ, ﹒) sends its string to the game's font, as any character the font lacks does.
 - **The battle** counts characters (a description's lines; the run message's characters per line and which move
