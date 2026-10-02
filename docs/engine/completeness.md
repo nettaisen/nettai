@@ -800,6 +800,24 @@ past the Reflect program's. The hard ones: four objects hitting BlzrdBal's rolle
 more than a navi's body and a field object on its panel), and a corn in the spread's column on another row at the
 spread's tick (not tried). The 5 recordings are in the lab and match the engine (11,318 frames).
 
+**Batch 14, leftovers: ColForce, DeltaRay, Geddon's quake, AuraHed's head, ColorPt, the burners' flame and the
+gusts (27 branches):** 10 taken by 8 new recordings, 14 unreachable, 3 hard. `chips/0x130-colforce/own-areagrab`
+(on the gregar base: the user's own AreaGrab dims the screen while the soldiers fire, and the force and the
+soldiers see it), `chips/0x12f-deltaray/far-corner` (the opponent on (6,2): the second corner is off the field),
+`side-1-three-strikes` (side 1's finish), `pa/0x150-streamhd/side-1` (side 1's heads run to column 0),
+`chips/0x05f-aurahed1/cube-then-navi` (a head hits the opponent's RockCube and then the opponent behind it),
+`chips/0x0c2-colorpt/no-damage-cursor` (the points reach a Recov10 at the cursor), `front-column-1` (the opponent's
+PanlGrabs leave row 2's front at side 0's column 1, which it can't give away) and `chips/0x081-wind/ko` (a gust
+sees the battle over with its spawner's pointer set: Wind's record in ROM, where the clearing write goes nowhere).
+The unreachable ones: ColForce's look in a column off the field (2), a second enemy body for DeltaRay, the quake's
+poison change and a field with no solid panel (2), an aura head starting off the field or with a full pool (2), a
+side with no front panel, a point with no navi and the special source (3), a flame of look 1 and one whose
+keep-burning word reads 0 (2: every flame's pointer is null, and address 0 reads the BIOS's last fetched opcode),
+and a gust that stops at its first hit or whose spawner's byte is 0 (2: Fan's and Wind's pointer is their record in
+ROM, WindRack's and TenguCross's are null). The hard ones: a quake panel no longer solid at its turn (inside
+Geddon's dimming nothing else breaks panels), and Fan's gust start running past the edge (2: a row of six neutral
+objects). The 8 recordings are in the lab and match the engine (12,605 frames).
+
 <!-- end: chip families, G4 -->
 
 ##### Chip families: onesided's share
