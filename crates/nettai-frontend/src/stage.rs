@@ -13,7 +13,10 @@ const PANEL_COLUMNS: [[i32; 8]; 2] = [[-5, 0, 5, 10, 15, 20, 25, 30], [30, 25, 2
 
 /// Background tiles and palettes at one moment.
 pub struct Stage<'a> {
+    /// The field's graphics' pack (the content's own: a mixed battle's
+    /// field art is still to come, docs/design/rules-in-luau.md §7.4).
     assets: &'a Bundle,
+    /// The background, from its own pack.
     background: Option<&'a Background>,
     /// Background palettes 0..16.
     pub palettes: [Palette; 16],
@@ -44,8 +47,8 @@ impl StageClock {
 }
 
 impl<'a> Stage<'a> {
-    pub fn new(assets: &'a Bundle, background_id: u8, clock: StageClock) -> Stage<'a> {
-        let background = assets.background(background_id);
+    /// The field of `assets` behind `background` (none: the backdrop).
+    pub fn new(assets: &'a Bundle, background: Option<&'a Background>, clock: StageClock) -> Stage<'a> {
         let mut palettes = [[0u16; 16]; 16];
         let f = &assets.field;
         for (i, p) in f.palettes.iter().enumerate() {

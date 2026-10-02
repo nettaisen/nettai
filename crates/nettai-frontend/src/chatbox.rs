@@ -69,7 +69,7 @@ pub struct Shown<'a> {
 }
 
 /// The local player's chatbox, if one is up, with its text composed.
-pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &mut Problems) -> Option<Shown<'a>> {
+pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'a>, sink: &TextSink, problems: &mut Problems) -> Option<Shown<'a>> {
     let (side, screen) = crate::custom::local(b)?;
     let navi = b.stats[b.setup.local_side as usize & 1].navi;
     // The text: the content's own strings, or the player's language's
@@ -109,7 +109,7 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &m
         (text_tiles(assets, &chatbox, string, translated, problems), None)
     };
     let portrait = match (portrait, chatbox.look().portrait) {
-        (Some(id), Some(look)) => match crate::packs::sprite(&b.content, id).and_then(|p| assets.sprite(p.category, p.index)) {
+        (Some(id), Some(look)) => match packs.sprite(&b.content, id) {
             Some(sheet) => {
                 note_true_face(b, navi, side.unlocks.version, problems);
                 Some((sheet, look))
