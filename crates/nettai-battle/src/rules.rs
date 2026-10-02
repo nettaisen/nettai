@@ -54,13 +54,6 @@ impl PlayerSetup {
         block.set(schema, i, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
     }
 
-    /// Set element `k` (from 0) of array field `field` of system `system`'s
-    /// setup to `v`, as [`PlayerSetup::set_rule`] sets a field.
-    pub fn set_rule_elem(&mut self, content: &Content, system: &str, field: &str, k: usize, v: Value) -> Result<(), String> {
-        let (block, schema, i) = self.rule_field(content, system, field)?;
-        block.set_elem(schema, i, k, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
-    }
-
     /// The setup block of system `system` (by key) of the player's ruleset,
     /// its schema and the index of its field `field`; the blocks made zero
     /// first if the setup gives none.
@@ -78,7 +71,7 @@ impl PlayerSetup {
         let slot = def
             .systems
             .iter()
-            .position(|&h| content.defs.system(h).key == system)
+            .position(|&h| nettai_content_api::keys::names(&content.defs.system(h).key, system))
             .ok_or_else(|| format!("ruleset {} has no system {system}", def.key))?;
         let block = &mut self.rules[slot];
         let schema = &content.defs.schemas[block.id().0 as usize].schema;
@@ -153,7 +146,7 @@ mod tests {
         let b = started(scenario::setup());
         let content = &b.content;
         let stock = content.defs.stock_ruleset().expect("the test content's stock rules");
-        assert_eq!(content.defs.ruleset(stock).key, "test");
+        assert_eq!(content.defs.ruleset(stock).key, "test:test");
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).ruleset, Some(stock));
             // (BN6's beast system first, then the counter, then BN6's forms

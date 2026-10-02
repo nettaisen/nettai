@@ -392,6 +392,10 @@ pub struct Compat {
     pub patch_cards: BTreeMap<String, u8>,
     /// The kinds by the slot they fill.
     slots: BTreeMap<(Pool, u8), String>,
+    /// The root its keys are written in (`bn6`; docs/design/
+    /// rules-in-luau.md §7.2): compat writes keys unqualified, as its root
+    /// does, and the content qualifies them (`bn6:minibomb`).
+    pub root: String,
 }
 
 /// The files, in the order they are read.
@@ -410,6 +414,9 @@ pub const FILES: [&str; 13] = [
     "games.toml",
     "patch-cards.toml",
 ];
+
+/// The root BN6's compat writes its keys in.
+pub const ROOT: &str = "bn6";
 
 /// This repository's compat (content/bn6/compat), built in.
 const BN6: [(&str, &str); 13] = [
@@ -466,6 +473,7 @@ impl Compat {
             games: get(&text, "games.toml")?,
             patch_cards: get(&text, "patch-cards.toml")?,
             slots: BTreeMap::new(),
+            root: ROOT.to_string(),
         };
         for (k, e) in &c.kinds {
             let pool = Pool::from_name(&e.pool)
@@ -525,6 +533,36 @@ impl Compat {
         })
     }
 
+    /// The root compat's keys are in, in `content`: its own (`bn6`) where
+    /// the content loads it, else the content's own root (the engine's
+    /// test content stands in for BN6's).
+    pub fn root_in<'c>(&'c self, content: &'c nettai_battle::Content) -> &'c str {
+        let roots = &content.defs.roots;
+        if roots.iter().any(|r| *r == self.root) { &self.root } else { roots.first().map_or(&self.root, |r| r.as_str()) }
+    }
+
+    /// Compat's key `key` as `content` keys it (`bn6:minibomb`).
+    pub fn def_key(&self, content: &nettai_battle::Content, key: &str) -> String {
+        nettai_content_api::keys::qualify(self.root_in(content), key)
+    }
+
+    /// A definition's key as compat writes it (`minibomb`), or None for a
+    /// definition of another root (it has no BN6 number). An engine key is
+    /// itself.
+    pub fn compat_key<'k>(&self, content: &nettai_battle::Content, key: &'k str) -> Option<&'k str> {
+        use nettai_content_api::keys;
+        if key.starts_with(keys::ENGINE) {
+            return Some(key);
+        }
+        (keys::root_of(key) == Some(self.root_in(content))).then(|| keys::local(key))
+    }
+
+    /// [`Compat::compat_key`] for messages and lookups that need one: the
+    /// key itself (qualified) when it is another root's.
+    fn compat_key_or_own<'k>(&self, content: &nettai_battle::Content, key: &'k str) -> &'k str {
+        self.compat_key(content, key).unwrap_or(key)
+    }
+
     /// The kind that fills an object slot, and its entry.
     pub fn kind_at(&self, pool: Pool, index: u8) -> Option<(&str, &KindEntry)> {
         let key = self.slots.get(&(pool, index))?;
@@ -562,10 +600,11 @@ impl Compat {
     /// slot by the kind's key.
     pub fn object_slot(&self, b: &Battle, r: ObjectRef) -> Result<(Pool, u8), String> {
         let kind = b.content.defs.kind(b.objects.get(r).kind);
-        let e = self.kinds.get(&kind.key).ok_or_else(|| format!("kinds.toml has no {:?}", kind.key))?;
+        let key = self.compat_key_or_own(&b.content, &kind.key);
+        let e = self.kinds.get(key).ok_or_else(|| format!("kinds.toml has no {key:?}"))?;
         match Pool::from_name(&e.pool) {
             Some(pool) if pool == kind.pool => Ok((pool, e.index)),
-            _ => Err(format!("kinds.toml puts {} in the {} pool; it is defined in the {}", kind.key, e.pool, kind.pool.name())),
+            _ => Err(format!("kinds.toml puts {key} in the {} pool; it is defined in the {}", e.pool, kind.pool.name())),
         }
     }
 
@@ -582,7 +621,7 @@ impl Compat {
         if let Some(e) = EngineAction::ALL.into_iter().find(|e| keys().any(|k| k == e.key())) {
             return Some(NaviAction::Engine(e));
         }
-        keys().find_map(|key| content.defs.action_by_key(key)).map(NaviAction::Content)
+        keys().find_map(|key| content.defs.action_by_key(&self.def_key(content, key))).map(NaviAction::Content)
     }
 
     /// The original's action number for object `r`'s CurAction: a navi's
@@ -598,7 +637,7 @@ impl Compat {
         }
         let key = match action {
             NaviAction::Engine(e) => e.key(),
-            NaviAction::Content(h) => &b.content.defs.action(h).key,
+            NaviAction::Content(h) => self.compat_key_or_own(&b.content, &b.content.defs.action(h).key),
             state => unreachable!("{state:?} is a state"),
         };
         self.actions.get(key).copied().ok_or_else(|| format!("actions.toml has no {key:?}"))

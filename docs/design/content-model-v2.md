@@ -664,7 +664,7 @@ from the definition. Its name is the locales' (`[patch-cards]`).
 
 ```text
 content/bn6/
-  core.d.luau  types.d.luau          the API and shared types
+  root.toml  types.d.luau            the root's manifest and shared types (the API: content/nettai/core.d.luau)
   chips/<id>/                         one chip: chip.luau, and kinds only it uses
   chips/<series>/                     a series (X1-X3, Hi-/M-, EX/SP, Recov*, the upgrades of one chip): all of them
   navis/megaman/                      navi.luau; kinds and weapons several forms share

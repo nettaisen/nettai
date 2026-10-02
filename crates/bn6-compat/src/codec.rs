@@ -44,15 +44,26 @@ impl<'a> Ids<'a> {
         Ids { content, compat }
     }
 
+    /// Compat's key as the content keys it (`bn6:cannon`).
+    fn def_key(&self, key: &str) -> String {
+        self.compat.def_key(self.content, key)
+    }
+
+    /// A definition's key as compat writes it; a definition of another
+    /// root has no BN6 number.
+    fn key<'k>(&self, key: &'k str) -> &'k str {
+        self.compat.compat_key(self.content, key).unwrap_or_else(|| panic!("{key} is no definition of BN6's content: it has no BN6 number"))
+    }
+
     /// The chip with this id.
     pub fn chip(&self, id: ChipId) -> ChipHandle {
         let key = self.compat.chip_key(id).unwrap_or_else(|| panic!("chips.toml has no chip {id:#x}"));
-        self.content.defs.chip_by_key(key).unwrap_or_else(|| panic!("the content defines no chip {key:?} (chip {id:#x})"))
+        self.content.defs.chip_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content defines no chip {key:?} (chip {id:#x})"))
     }
 
     /// A chip's id.
     pub fn chip_id(&self, h: ChipHandle) -> ChipId {
-        let key = &self.content.defs.chip(h).key;
+        let key = self.key(&self.content.defs.chip(h).key);
         self.compat.chips.get(key).map(|c| c.id).unwrap_or_else(|| panic!("chips.toml has no {key:?}"))
     }
 
@@ -79,24 +90,24 @@ impl<'a> Ids<'a> {
     /// The navi with this number.
     pub fn navi(&self, navi: u8) -> NaviHandle {
         let key = self.compat.navi_key(navi).unwrap_or_else(|| panic!("navis.toml has no navi {navi:#x}"));
-        self.content.defs.navi_by_key(key).unwrap_or_else(|| panic!("the content defines no navi {key:?} (navi {navi:#x})"))
+        self.content.defs.navi_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content defines no navi {key:?} (navi {navi:#x})"))
     }
 
     /// A navi's number.
     pub fn navi_number(&self, h: NaviHandle) -> u8 {
-        let key = &self.content.defs.navi(h).key;
+        let key = self.key(&self.content.defs.navi(h).key);
         self.compat.navis.get(key).map(|n| n.navi).unwrap_or_else(|| panic!("navis.toml has no {key:?}"))
     }
 
     /// MegaMan's form with this number.
     pub fn form(&self, form: u8) -> FormHandle {
         let key = self.compat.form_key(form).unwrap_or_else(|| panic!("forms.toml has no form {form:#x}"));
-        self.content.defs.form_by_key(key).unwrap_or_else(|| panic!("the content defines no form {key:?} (form {form:#x})"))
+        self.content.defs.form_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content defines no form {key:?} (form {form:#x})"))
     }
 
     /// A form's number.
     pub fn form_number(&self, h: FormHandle) -> u8 {
-        let key = &self.content.defs.form(h).key;
+        let key = self.key(&self.content.defs.form(h).key);
         self.compat.forms.get(key).map(|f| f.form).unwrap_or_else(|| panic!("forms.toml has no {key:?}"))
     }
 
@@ -112,7 +123,7 @@ impl<'a> Ids<'a> {
         let h = self
             .content
             .defs
-            .weapon_by_key(key)
+            .weapon_by_key(&self.def_key(key))
             .unwrap_or_else(|| panic!("the content has no weapon {key:?} (weapon routine {routine:#x})"));
         Some(h)
     }
@@ -121,7 +132,7 @@ impl<'a> Ids<'a> {
     /// none.
     pub fn weapon_number(&self, w: Option<WeaponHandle>) -> u8 {
         let Some(w) = w else { return 0xFF };
-        let key = &self.content.defs.weapon(w).key;
+        let key = self.key(&self.content.defs.weapon(w).key);
         let numbers = self.compat.weapons.get(key).unwrap_or_else(|| panic!("weapons.toml has no {key:?}"));
         *numbers.first().unwrap_or_else(|| panic!("weapons.toml gives {key:?} no number"))
     }
@@ -143,7 +154,7 @@ impl<'a> Ids<'a> {
         let h = self
             .content
             .defs
-            .record(key)
+            .record(&self.def_key(key))
             .unwrap_or_else(|| panic!("the content has no projectile variant {key:?} (row {row:#x})"));
         Some(h)
     }
@@ -158,12 +169,12 @@ impl<'a> Ids<'a> {
             .find(|(_, n)| **n == number)
             .map(|(k, _)| k.as_str())
             .unwrap_or_else(|| panic!("patch-cards.toml has no patch card {number}"));
-        self.content.defs.patch_card_by_key(key).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
+        self.content.defs.patch_card_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
     }
 
     /// A patch card's number.
     pub fn patch_card_number(&self, h: PatchCardHandle) -> u8 {
-        let key = &self.content.defs.patch_card(h).key;
+        let key = self.key(&self.content.defs.patch_card(h).key);
         *self.compat.patch_cards.get(key).unwrap_or_else(|| panic!("patch-cards.toml has no patch card {key:?}"))
     }
 
@@ -181,20 +192,20 @@ impl<'a> Ids<'a> {
             .find(|(_, n)| **n == ty)
             .map(|(k, _)| k.as_str())
             .unwrap_or_else(|| panic!("records.toml has no barrier type {ty:#x}"));
-        Some(self.content.defs.record(key).unwrap_or_else(|| panic!("the content has no barrier {key:?} (type {ty:#x})")))
+        Some(self.content.defs.record(&self.def_key(key)).unwrap_or_else(|| panic!("the content has no barrier {key:?} (type {ty:#x})")))
     }
 
     /// A first-barrier byte; 0 for none.
     pub fn barrier_type(&self, r: Option<RecordHandle>) -> u8 {
         let Some(r) = r else { return 0 };
-        let key = &self.content.defs.records[r.index()].key;
+        let key = self.key(&self.content.defs.records[r.index()].key);
         *self.compat.records.barriers.get(key).unwrap_or_else(|| panic!("records.toml has no barrier {key:?}"))
     }
 
     /// A shot program's byte; 0 for none.
     pub fn shot_program_number(&self, r: Option<RecordHandle>) -> u8 {
         let Some(r) = r else { return 0 };
-        let key = &self.content.defs.records[r.index()].key;
+        let key = self.key(&self.content.defs.records[r.index()].key);
         *self
             .compat
             .records
@@ -208,15 +219,15 @@ impl<'a> Ids<'a> {
         let key = self.compat.stage_key(settings).unwrap_or_else(|| panic!("stages.toml has no battle settings {settings:#x}"));
         self.content
             .defs
-            .stage_by_key(key)
+            .stage_by_key(&self.def_key(key))
             .unwrap_or_else(|| panic!("the content has no stage {key:?} (battle settings {settings:#x})"))
     }
 
     /// A stage's battle settings index.
     pub fn stage_index(&self, h: StageHandle) -> u8 {
-        let def = self.content.defs.stage(h);
-        let e = self.compat.stages.get(&def.key).unwrap_or_else(|| panic!("stages.toml has no {:?}", def.key));
-        *e.settings.first().unwrap_or_else(|| panic!("stages.toml gives {:?} no settings", def.key))
+        let key = self.key(&self.content.defs.stage(h).key);
+        let e = self.compat.stages.get(key).unwrap_or_else(|| panic!("stages.toml has no {key:?}"));
+        *e.settings.first().unwrap_or_else(|| panic!("stages.toml gives {key:?} no settings"))
     }
 }
 
@@ -484,7 +495,7 @@ pub fn battle_settings_of(game: Game, b: &[u8], ids: &Ids) -> BattleSettings {
         .iter()
         .filter(|(_, e)| e.layout == b[0] && games.actor_list(game, e.actor_list) == address)
         .find_map(|(key, _)| {
-            let h = content.defs.stage_by_key(key)?;
+            let h = content.defs.stage_by_key(&ids.compat.def_key(content, key))?;
             let r = content.stage(h);
             let music = r.music.map_or(NO_MUSIC as u16, |m| m.0);
             ((music, r.mode, r.battle_number, r.panel_pattern) == (b[2] as u16, b[3], b[5], b[6])).then_some(h)
@@ -553,7 +564,7 @@ mod tests {
         let ids = ids();
         let s = navi_stats(&bytes(MACHGUN_P0), &ids);
         assert_eq!((s.hp, s.max_hp, s.max_base_hp), (1000, 1000, 1000));
-        assert_eq!(ids.content.defs.navi(s.navi).key, "megaman");
+        assert_eq!(nettai_content_api::keys::local(&ids.content.defs.navi(s.navi).key), "megaman");
         assert_eq!(s.form, ids.content.base_form());
         assert!(s.float_shoes && s.air_shoes && !s.undershirt && !s.super_armor);
         assert_eq!(s.mood, 0x80);
