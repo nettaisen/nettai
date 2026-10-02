@@ -91,7 +91,7 @@ impl<'a> Renderer<'a> {
 
     /// Follow a tick of the battle being shown (call after every tick).
     pub fn observe(&mut self, b: &Battle) {
-        self.hud_state.tick(b);
+        self.hud_state.tick(b, self.console_region);
     }
 
     /// Forget presentation state (a new battle starts).
