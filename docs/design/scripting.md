@@ -33,33 +33,33 @@ Max in release builds, on a machine shared with other work, so single runs vary 
   action), so snapshots and the digest cover it unchanged. The VM holds no battle state: writes to globals and
   module locals are rejected at load, module tables and definitions are frozen at run time.
 - **Typing.** `core.d.luau` types the whole API for luau-lsp and for an in-process type check
-  (`bn6-content-check`) that runs in `cargo test`, with lints for what the checker can't see.
+  (`nettai-content-check`) that runs in `cargo test`, with lints for what the checker can't see.
 
 ## 1. Where it lives
 
 | Where | What |
 |---|---|
-| crates/bn6-content-api | The contract. `CoreApi`: what content can see and do. `ContentHost`: what a runtime provides (update functions for kinds and actions; hook calls). `BindPlan` (what a runtime binds: function slots, state layouts, the definitions it must read back) and `Manifest` (what loaded). `Definitions`, `Registry` and the handle types. Typed content state: `Schema`, `ContentState`, `FieldType`. The shared value types (`ObjectRef`, `Vec3`, `PanelPos`, `Pool`, `SpriteId`), which the engine re-exports. |
-| crates/bn6-luau | The runtime: the VM and freezing (`sandbox`), the bytecode check (`verify`), the define phase (`define`), the API binding (`bind`), module loading. |
-| crates/bn6-battle/src/behavior | The engine side: `impl CoreApi for Battle` (`core_api`), and dispatch of object kinds, actions and hooks to the runtime (`Behaviors`). |
-| crates/bn6-battle/src/content | `Content`: the registries the definitions build (`defs`), the roles (`roles`), the typed records, and `Scripts` (the modules). |
-| crates/bn6-content | Reads a content root and a pack (`root`, `pack`), reports on definitions (`lint`), reads and writes the pack's assets. |
-| crates/bn6-content-check | Type-checks a content root's Luau against its declarations with Luau's analysis, in process; lints; the guards (§3.3). |
+| crates/nettai-content-api | The contract. `CoreApi`: what content can see and do. `ContentHost`: what a runtime provides (update functions for kinds and actions; hook calls). `BindPlan` (what a runtime binds: function slots, state layouts, the definitions it must read back) and `Manifest` (what loaded). `Definitions`, `Registry` and the handle types. Typed content state: `Schema`, `ContentState`, `FieldType`. The shared value types (`ObjectRef`, `Vec3`, `PanelPos`, `Pool`, `SpriteId`), which the engine re-exports. |
+| crates/nettai-luau | The runtime: the VM and freezing (`sandbox`), the bytecode check (`verify`), the define phase (`define`), the API binding (`bind`), module loading. |
+| crates/nettai-battle/src/behavior | The engine side: `impl CoreApi for Battle` (`core_api`), and dispatch of object kinds, actions and hooks to the runtime (`Behaviors`). |
+| crates/nettai-battle/src/content | `Content`: the registries the definitions build (`defs`), the roles (`roles`), the typed records, and `Scripts` (the modules). |
+| crates/nettai-content | Reads a content root and a pack (`root`, `pack`), reports on definitions (`lint`), reads and writes the pack's assets. |
+| crates/nettai-content-check | Type-checks a content root's Luau against its declarations with Luau's analysis, in process; lints; the guards (§3.3). |
 | crates/bn6-compat | The original's numbers by key (content/bn6/compat), the setup codecs and the trace harness. The engine doesn't depend on it. |
 | content/bn6 | BN6's content, with `core.d.luau` (the API) and `types.d.luau` (types the modules share). |
-| crates/bn6-battle/src/content/testing.rs, crates/bn6-battle/testdata | The test content and the test pack (content-pack.md §6). |
-| crates/bn6-netplay | Rollback tests on the test content; `examples/rollback_cost` measures a golden-trace round. |
-| crates/bn6-battle/examples | `content_bench` (duel and snapshot costs), `luau_ops` (cost per API operation). |
+| crates/nettai-battle/src/content/testing.rs, crates/nettai-battle/testdata | The test content and the test pack (content-pack.md §6). |
+| crates/nettai-netplay | Rollback tests on the test content; `examples/rollback_cost` measures a golden-trace round. |
+| crates/nettai-battle/examples | `content_bench` (duel and snapshot costs), `luau_ops` (cost per API operation). |
 
 Running it:
 
 ```sh
 cargo test --workspace                                         # engine, runtime, rollback, the type check, the guards
-cargo run -p bn6-content-check -- content/bn6                  # type-check and lint the content root
+cargo run -p nettai-content-check -- content/bn6                  # type-check and lint the content root
 cargo run --release -p bn6-extract -- content <rom> <pack>     # a BN6 pack (assets), checked against content/bn6
-cargo run --release -p bn6-content -- check <pack>             # the define phase and its report
-cargo run --release -p bn6-netplay --example rollback_cost -- <trace.jsonl> <pack> 1
-cargo run --release -p bn6-battle --example luau_ops --features test-content
+cargo run --release -p nettai-content -- check <pack>             # the define phase and its report
+cargo run --release -p nettai-netplay --example rollback_cost -- <trace.jsonl> <pack> 1
+cargo run --release -p nettai-battle --example luau_ops --features test-content
 ```
 
 `luau-jit` (optional) enables Luau's native code generation where it is supported (§3.1).
@@ -257,7 +257,7 @@ and the set of definitions are static. Between calls the VM holds only frozen co
 can differ between machines or between a run and its rollback. The tests (`behavior::tests`) show each rule
 fires, and that the VM carries nothing: a battle moved to a fresh VM halfway continues identically; a second
 battle interleaved on the same VM changes nothing, even when its updates panic inside a Luau call; a full GC
-after every call changes nothing. bn6-netplay's `state_outside_the_snapshot_is_caught` shows what a leak would
+after every call changes nothing. nettai-netplay's `state_outside_the_snapshot_is_caught` shows what a leak would
 do (the peers diverge within a few hundred frames).
 
 ### 3.2 Loading
@@ -281,7 +281,7 @@ the same data and code. Pixels, palettes and audio are presentation and are left
 ### 3.3 Typing and the checks
 
 `content/bn6/core.d.luau` declares the API; `types.d.luau` the types the pack's modules share. Scripts are
-`--!strict` and declare their state types (`export type State = { timer: number }`). `bn6-content-check`
+`--!strict` and declare their state types (`export type State = { timer: number }`). `nettai-content-check`
 type-checks every module with Luau's own analysis (the `luau-analyze` crate, in process), and its tests also
 check that API misuse (a misspelled field, a lifecycle state or status flag or button that doesn't exist, `Vec3
 + number`, a number where a definition goes) is a type error.
@@ -291,7 +291,7 @@ So a type two modules both name is declared once in types.d.luau (`HeatFlame`, `
 caller annotates what it passes. An editor with luau-lsp and both definition files resolves `require` across
 modules and checks those calls too.
 
-The lints cover what the checker can't see (`bn6-content-check`'s `lints`):
+The lints cover what the checker can't see (`nettai-content-check`'s `lints`):
 
 - a module-level table constant passed to a function needs its type (`local FLAME: HeatFlame = { ... }`): an
   unannotated table literal is unsealed and passes for any record whose required fields it has, and another
@@ -300,18 +300,18 @@ The lints cover what the checker can't see (`bn6-content-check`'s `lints`):
 - a kind in an owner's folder is keyed under its owner (`minibomb/held`);
 - no module lives under compat/.
 
-`bn6-content check` adds what needs the definitions: roles left unfilled, kinds under `objects/` that one owner
+`nettai-content check` adds what needs the definitions: roles left unfilled, kinds under `objects/` that one owner
 alone uses, a collision type defined twice. Reading compat refuses two keys with one of the original's numbers.
 
-Two tests guard that content names nothing by the original's numbers (`bn6-content-check`'s `guards`, with
+Two tests guard that content names nothing by the original's numbers (`nettai-content-check`'s `guards`, with
 no exceptions): no folder under the content roots is named with one (`00f-gundels1`), and no module carries a
 `legacy` marker or field, the form the migration's numbers took. The define phase refuses a `legacy` field on a
-definition too, and `legacy` is no global. A third guard, bn6-battle's `no_compat` test, keeps compat out of the
-engine and the crates it runs content through (bn6-battle, bn6-content-api, bn6-luau): the word appears in
+definition too, and `legacy` is no global. A third guard, nettai-battle's `no_compat` test, keeps compat out of the
+engine and the crates it runs content through (nettai-battle, nettai-content-api, nettai-luau): the word appears in
 their code only in comments, and none of their manifests names it.
 
 The checker bundles its own Luau, whose C++ symbols collide with mlua's, so it lives in its own crate and must
-never share a binary with bn6-luau.
+never share a binary with nettai-luau.
 
 The state schema (`state = { timer = "u16" }`) and the Luau type (`State = { timer: number }`) are written
 twice. A generator could emit one from the other.
@@ -440,7 +440,7 @@ rollback.md §8.2 lists what content must guarantee:
 | Re-running a tick free of side effects outside `Battle` | Scripts can't reach the host; the VM keeps nothing |
 
 In-repo, `scripted_chips_roll_back` copies a battle every 97 ticks of a duel and checks the copy plays on
-exactly as the battle does; bn6-netplay's tests play synthetic netbattles on the test content through two
+exactly as the battle does; nettai-netplay's tests play synthetic netbattles on the test content through two
 peers with latency and jitter, in sync to the KO.
 
 ### 6.2 Cost
@@ -448,7 +448,7 @@ peers with latency and jitter, in sync to the KO.
 The worst case is a 10-frame rollback on every rendered frame: a restore, 11 advances each followed by a save,
 and a digest. The verification workspace's rollback cost test measures it on soundmod round 1 (frames 10164 to
 12164, up to 27 objects): about 135 µs per rendered frame, of a 16,667 µs frame (0.8%); a restore about 5 µs,
-an advance 6 µs, a save 3 µs, the digest 29 µs. `crates/bn6-netplay/examples/rollback_cost` measures any round.
+an advance 6 µs, a save 3 µs, the digest 29 µs. `crates/nettai-netplay/examples/rollback_cost` measures any round.
 
 ## 7. Performance
 
