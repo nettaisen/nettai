@@ -23,10 +23,9 @@ local sword_wave = require("./sword_wave")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
-    -- AIAttackVars+0x10: ticks into the slash, or of the end.
+    -- AIAttackVars+0x10: ticks into the slash, or of the end. (The slashes
+    -- to go are the navi's `attack_count`.)
     timer: number,
-    -- AIAttackVars+0x12: slashes to go.
-    slashes: number,
     -- The slash (the original's attack variant), and whether the navi
     -- dashes in first (its first parameter).
     slash: ChargedSlash,
@@ -124,7 +123,7 @@ end
 
 -- `sub_80EE3F0`: how many slashes.
 local function count(me: Object, s: State)
-    s.slashes = if s.slash.again then 2 else 1
+    me.attack_count = if s.slash.again then 2 else 1
     me.marker = 0
     me.step = SLASH
     me.step_init = 0
@@ -165,8 +164,8 @@ local function slash(me: Object, s: State)
     if t >= 0 then
         return
     end
-    local left = s.slashes - 1
-    s.slashes = left
+    local left = me.attack_count - 1
+    me.attack_count = left
     if left > 0 then
         -- Again from the entry. (The game returns through a mismatched
         -- `pop`, leaving r8 with the navi's AIData pointer.)
@@ -212,7 +211,7 @@ end
 
 slash_charge.action = define.action {
     id = "slashcross/charge/action",
-    state = { timer = "u16", slashes = "u16", slash = "record:charged-slash", dash = "bool" },
+    state = { timer = "u16", slash = "record:charged-slash", dash = "bool" },
     -- `sub_80EE34A`.
     update = function(me: Object, s: State)
         local step = me.step

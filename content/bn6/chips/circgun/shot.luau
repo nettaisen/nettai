@@ -24,7 +24,7 @@ export type State = {
 
 local SPRITE = asset.sprite("sight")
 local ANIM = 1
-local SOUND_MARK = asset.sound("copy-mark")
+local SOUND_MARK = asset.sound("mark")
 local SOUND_HIT = asset.sound("col-army-2")
 -- Its hit (`dword_80D690C`, `byte_80D68D8`, by its look): look 0 a thrown
 -- attack, look 1 another attacker's with bug 0x54 (argument 0x32); hitting

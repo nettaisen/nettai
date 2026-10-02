@@ -102,7 +102,7 @@ end
 -- byte), three slashes, the command cleared.
 local function start(me: Object, s: State)
     me:set_status("using_action", true)
-    me.recovery = bit32.band(me.recovery, 0xFF00)
+    me.attack_count = bit32.band(me.attack_count, 0xFF00)
     s.slashes = SLASHES
     s.timer = 0
     s.done, s.slot, s.ticks = false, 0, 0
@@ -137,7 +137,7 @@ local function slash(me: Object, s: State)
         me.step_init = 4
     end
     if s.timer == HIT_TICK then
-        local index = me.recovery
+        local index = me.attack_count
         local x, y = me.panel_x + me.facing, me.panel_y
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
         if index < 3 then
@@ -169,8 +169,8 @@ local function slash(me: Object, s: State)
     if t >= 0 then
         return
     end
-    local index = bit32.band(me.recovery + 1, 0xFFFF)
-    me.recovery = index
+    local index = bit32.band(me.attack_count + 1, 0xFFFF)
+    me.attack_count = index
     if index < s.slashes then
         me.step_init = 0
     else

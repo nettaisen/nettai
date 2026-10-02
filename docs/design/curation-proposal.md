@@ -12,9 +12,12 @@ It covers 1107 names: 217 proposed renames (38 high, 159 medium and
 (`sprite-0c-26`, `sound-108`) to leave numbered. 26 names are flagged as wrong now: they say something
 their asset or definition isn't.
 
+**Applied so far: 60 renames** (accepted-1: the user's "High + flagged", every high-confidence
+rename and every row flagged wrong now), marked *applied* below. The rest wait for review.
+
 The machine-readable list is [curation-proposal.tsv](curation-proposal.tsv), one row per name: registry, current
 name, proposed name, confidence, flag (`wrong`, or `number` for a name carrying one of the original's numbers)
-and evidence.
+and evidence, and a status naming the accepted list that applied it.
 
 ## How to accept
 
@@ -26,6 +29,14 @@ tools/curation/apply.py <checkout> <checkout>/docs/design/curation-proposal.tsv 
 tools/curation/apply.py <checkout> <checkout>/docs/design/curation-proposal.tsv --only medium --verify .
 # Exactly the rows a file lists, as `registry current` lines (`sprite copy-mark`):
 tools/curation/apply.py <checkout> <checkout>/docs/design/curation-proposal.tsv --names accepted.txt --verify .
+```
+
+An accepted list is committed in the verification workspace (`tools/curation/accepted-1.txt`) and can run again:
+a rename applied before only has its remaining uses renamed. So a branch that merged main after a list was
+applied catches up its own new content with the same command, then reads the leftover list:
+
+```sh
+tools/curation/apply.py <checkout> <checkout>/docs/design/curation-proposal.tsv --names tools/curation/accepted-1.txt --verify .
 ```
 
 For each accepted rename it changes compat (assets.toml; rules.toml's [statuses] and [lockon]; records.toml's
@@ -49,32 +60,32 @@ are garbage. Their renames are worth taking even where the proposed name is only
 
 | registry | current | proposed | confidence | evidence |
 |---|---|---|---|---|
-| sprite | `bat-impact` | `hit-marker` | medium | The role sprites.hit_marker (the "!!" over a navi), the cut-in flash (effect 0x1E) and BatCan's spark (animation 1). Shows bursts, "!!" marks and bats: BatCan is one user of three. |
-| sprite | `beast-over-burst` | `lightning` | high | Shows lightning bolts. ElecMan's thunder, ElemTrap's and ElmntMan's bolts, and Beast Over's burst (effect 0x45) use it. |
-| sprite | `copy-mark` | `hit-sparks` | high | Shows the hit sparks (plain, breaking, and one per element: sparks by element use its animations 0, 2-5) and the TRAP! mark (animation 7); 30 uses, CopyDmg's mark only one of them. |
-| sprite | `immobilized` | `rock-cubes` | medium | Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (chips/rockcube/rock.luau), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it. |
-| sprite | `reflected-shot` | `pink-flash` | medium | Shows a pink starburst. The effect `flash` (0x21), CrcusMan's sparkle, H-Burst's explosion and DblBeast's spark use it. |
-| sprite | `reflector-shield-2` | `dummy-shield` | low | The ROM's dummy sprite (a 16x16 dot). Rflectr's rows 4-6 name it, which nothing ported holds up. |
-| sprite | `rising-bubble` | `small-puff` | medium | Shows small grey puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble. |
-| sprite | `small-ring` | `wide-navi` | medium | The ROM's dummy sprite (a 16x16 dot, like 40 unused slots): it shows no ring. SumnBlk asks whether an actor wears it to know it stands two panels wide. |
-| sound | `copy-mark` | `mark` | medium | A mark set: BurnSqr's fire, CircGun's and CopyDmg's marks. CopyDmg is one user of three. |
-| effect | `bat_impact` | `cut_in_flash` | high | The role effects.cut_in_flash: the flash where a side cut in (effect 0x1E). |
-| effect | `small_ring_82` | `dummy_look` | low | Effect 0x4B reads animation 82, palette 16 of the dummy sprite: a row of the original's table that names no real look. |
-| status | `collision-panel-65535` | `after-table-1-past-freeze` | medium | Status 0x5C: the freeze group's entry 12, past the bubble rows it also reads, reads row 1 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
-| status | `collision-panel-65535-2` | `after-table-1-past-bubble` | medium | Status 0x66: the bubble group's entry 6 reads row 1 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| status | `timer-00-150` | `after-table-5-past-bubble` | medium | Status 0x6A: the bubble group's entry 10 reads row 5 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| status | `timer-00-200` | `after-table-8-past-bubble` | medium | Status 0x6D: the bubble group's entry 13 reads row 8 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| status | `timer-00-30` | `after-table-2-past-freeze` | medium | Status 0x5D: the freeze group's entry 13, past the bubble rows it also reads, reads row 2 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
-| status | `timer-00-30-2` | `after-table-2-past-bubble` | medium | Status 0x67: the bubble group's entry 7 reads row 2 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| status | `timer-01-65535` | `after-table-7-past-bubble` | medium | Status 0x6C: the bubble group's entry 12 reads row 7 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| status | `timer-01-65535-2` | `after-table-10-past-bubble` | medium | Status 0x6F: the bubble group's entry 15 reads row 10 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| status | `timer-64-65535` | `after-table-4-past-freeze` | medium | Status 0x5F: the freeze group's entry 15, past the bubble rows it also reads, reads row 4 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
-| status | `timer-64-65535-2` | `after-table-4-past-bubble` | medium | Status 0x69: the bubble group's entry 9 reads row 4 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| status | `timer-ff-0` | `after-table-3-past-freeze` | medium | Status 0x5E: the freeze group's entry 14, past the bubble rows it also reads, reads row 3 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
-| status | `timer-ff-0-2` | `after-table-3-past-bubble` | medium | Status 0x68: the bubble group's entry 8 reads row 3 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| status | `timer-ff-0-3` | `after-table-6-past-bubble` | medium | Status 0x6B: the bubble group's entry 11 reads row 6 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| status | `timer-ff-100` | `after-table-9-past-bubble` | medium | Status 0x6E: the bubble group's entry 14 reads row 9 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| rock-variant | `rockcube/cube` | `rockcube/rock/cube` | high | The rock's variant (RockCube's and the stages' cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
+| sprite | `bat-impact` | `hit-marker` *applied* | medium | The role sprites.hit_marker (the "!!" over a navi), the cut-in flash (effect 0x1E) and BatCan's spark (animation 1). Shows bursts, "!!" marks and bats: BatCan is one user of three. |
+| sprite | `beast-over-burst` | `lightning` *applied* | high | Shows lightning bolts. ElecMan's thunder, ElemTrap's and ElmntMan's bolts, and Beast Over's burst (effect 0x45) use it. |
+| sprite | `copy-mark` | `hit-sparks` *applied* | high | Shows the hit sparks (plain, breaking, and one per element: sparks by element use its animations 0, 2-5) and the TRAP! mark (animation 7); 30 uses, CopyDmg's mark only one of them. |
+| sprite | `immobilized` | `rock-cubes` *applied* | medium | Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (chips/rockcube/rock.luau), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it. |
+| sprite | `reflected-shot` | `pink-flash` *applied* | medium | Shows a pink starburst. The effect `flash` (0x21), CrcusMan's sparkle, H-Burst's explosion and DblBeast's spark use it. |
+| sprite | `reflector-shield-2` | `dummy-shield` *applied* | low | The ROM's dummy sprite (a 16x16 dot). Rflectr's rows 4-6 name it, which nothing ported holds up. |
+| sprite | `rising-bubble` | `small-puff` *applied* | medium | Shows small grey puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble. |
+| sprite | `small-ring` | `wide-navi` *applied* | medium | The ROM's dummy sprite (a 16x16 dot, like 40 unused slots): it shows no ring. SumnBlk asks whether an actor wears it to know it stands two panels wide. |
+| sound | `copy-mark` | `mark` *applied* | medium | A mark set: BurnSqr's fire, CircGun's and CopyDmg's marks. CopyDmg is one user of three. |
+| effect | `bat_impact` | `cut_in_flash` *applied* | high | The role effects.cut_in_flash: the flash where a side cut in (effect 0x1E). |
+| effect | `small_ring_82` | `dummy_look` *applied* | low | Effect 0x4B reads animation 82, palette 16 of the dummy sprite: a row of the original's table that names no real look. |
+| status | `collision-panel-65535` | `after-table-1-past-freeze` *applied* | medium | Status 0x5C: the freeze group's entry 12, past the bubble rows it also reads, reads row 1 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
+| status | `collision-panel-65535-2` | `after-table-1-past-bubble` *applied* | medium | Status 0x66: the bubble group's entry 6 reads row 1 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| status | `timer-00-150` | `after-table-5-past-bubble` *applied* | medium | Status 0x6A: the bubble group's entry 10 reads row 5 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| status | `timer-00-200` | `after-table-8-past-bubble` *applied* | medium | Status 0x6D: the bubble group's entry 13 reads row 8 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| status | `timer-00-30` | `after-table-2-past-freeze` *applied* | medium | Status 0x5D: the freeze group's entry 13, past the bubble rows it also reads, reads row 2 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
+| status | `timer-00-30-2` | `after-table-2-past-bubble` *applied* | medium | Status 0x67: the bubble group's entry 7 reads row 2 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| status | `timer-01-65535` | `after-table-7-past-bubble` *applied* | medium | Status 0x6C: the bubble group's entry 12 reads row 7 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| status | `timer-01-65535-2` | `after-table-10-past-bubble` *applied* | medium | Status 0x6F: the bubble group's entry 15 reads row 10 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| status | `timer-64-65535` | `after-table-4-past-freeze` *applied* | medium | Status 0x5F: the freeze group's entry 15, past the bubble rows it also reads, reads row 4 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
+| status | `timer-64-65535-2` | `after-table-4-past-bubble` *applied* | medium | Status 0x69: the bubble group's entry 9 reads row 4 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| status | `timer-ff-0` | `after-table-3-past-freeze` *applied* | medium | Status 0x5E: the freeze group's entry 14, past the bubble rows it also reads, reads row 3 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
+| status | `timer-ff-0-2` | `after-table-3-past-bubble` *applied* | medium | Status 0x68: the bubble group's entry 8 reads row 3 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| status | `timer-ff-0-3` | `after-table-6-past-bubble` *applied* | medium | Status 0x6B: the bubble group's entry 11 reads row 6 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| status | `timer-ff-100` | `after-table-9-past-bubble` *applied* | medium | Status 0x6E: the bubble group's entry 14 reads row 9 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| rock-variant | `rockcube/cube` | `rockcube/rock/cube` *applied* | high | The rock's variant (RockCube's and the stages' cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
 
 Also found while reviewing (no rename needed):
 
@@ -95,69 +106,69 @@ Each name follows from a single, clear use or from what the asset reads: a Cross
 
 | current | proposed | evidence |
 |---|---|---|
-| `beast-over-burst` | `lightning` (wrong now) | Shows lightning bolts. ElecMan's thunder, ElemTrap's and ElmntMan's bolts, and Beast Over's burst (effect 0x45) use it. |
-| `body-overlay-02` | `heatman-overlay` | Only HeatMan wears it (navis/heatman/navi.luau): his flames. |
-| `body-overlay-04` | `heatcross-overlay` | Only the heatcross form wears it (navis/megaman/forms/heatcross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-05` | `spoutcross-overlay` | Only the spoutcross form wears it (navis/megaman/forms/spoutcross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-08` | `eleccross-overlay` | Only the eleccross form wears it (navis/megaman/forms/eleccross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-09` | `tengucross-overlay` | Only the tengucross form wears it (navis/megaman/forms/tengucross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-0a` | `slashcross-overlay` | Only the slashcross form wears it (navis/megaman/forms/slashcross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-0b` | `groundman-overlay` | Only GroundMan wears it (navis/groundman/navi.luau). |
-| `body-overlay-0c` | `erasecross-overlay` | Only the erasecross form wears it (navis/megaman/forms/erasecross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-0d` | `groundcross-overlay` | Only the groundcross form wears it (navis/megaman/forms/groundcross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-0e` | `tomahawkcross-overlay` | Only the tomahawkcross form wears it (navis/megaman/forms/tomahawkcross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-11` | `chargecross-overlay` | Only the chargecross form wears it (navis/megaman/forms/chargecross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-12` | `dustcross-overlay` | Only the dustcross form wears it (navis/megaman/forms/dustcross/form.luau, `parts`); named for the body overlay row it had. |
-| `burner-2` | `heatcross-burner` | HeatCross's burner (lib/burner/burn.luau, attachment row 0x1E); `burner` is FireBrn's. |
-| `copy-mark` | `hit-sparks` (wrong now) | Shows the hit sparks (plain, breaking, and one per element: sparks by element use its animations 0, 2-5) and the TRAP! mark (animation 7); 30 uses, CopyDmg's mark only one of them. |
+| `beast-over-burst` | `lightning` (wrong now) *applied* | Shows lightning bolts. ElecMan's thunder, ElemTrap's and ElmntMan's bolts, and Beast Over's burst (effect 0x45) use it. |
+| `body-overlay-02` | `heatman-overlay` *applied* | Only HeatMan wears it (navis/heatman/navi.luau): his flames. |
+| `body-overlay-04` | `heatcross-overlay` *applied* | Only the heatcross form wears it (navis/megaman/forms/heatcross/form.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-05` | `spoutcross-overlay` *applied* | Only the spoutcross form wears it (navis/megaman/forms/spoutcross/form.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-08` | `eleccross-overlay` *applied* | Only the eleccross form wears it (navis/megaman/forms/eleccross/form.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-09` | `tengucross-overlay` *applied* | Only the tengucross form wears it (navis/megaman/forms/tengucross/form.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-0a` | `slashcross-overlay` *applied* | Only the slashcross form wears it (navis/megaman/forms/slashcross/form.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-0b` | `groundman-overlay` *applied* | Only GroundMan wears it (navis/groundman/navi.luau). |
+| `body-overlay-0c` | `erasecross-overlay` *applied* | Only the erasecross form wears it (navis/megaman/forms/erasecross/form.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-0d` | `groundcross-overlay` *applied* | Only the groundcross form wears it (navis/megaman/forms/groundcross/form.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-0e` | `tomahawkcross-overlay` *applied* | Only the tomahawkcross form wears it (navis/megaman/forms/tomahawkcross/form.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-11` | `chargecross-overlay` *applied* | Only the chargecross form wears it (navis/megaman/forms/chargecross/form.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-12` | `dustcross-overlay` *applied* | Only the dustcross form wears it (navis/megaman/forms/dustcross/form.luau, `parts`); named for the body overlay row it had. |
+| `burner-2` | `heatcross-burner` *applied* | HeatCross's burner (lib/burner/burn.luau, attachment row 0x1E); `burner` is FireBrn's. |
+| `copy-mark` | `hit-sparks` (wrong now) *applied* | Shows the hit sparks (plain, breaking, and one per element: sparks by element use its animations 0, 2-5) and the TRAP! mark (animation 7); 30 uses, CopyDmg's mark only one of them. |
 
 ### Sounds (9)
 
 | current | proposed | evidence |
 |---|---|---|
-| `buster-6a` | `buster-shot` | The disassembly's SOUND_BUSTER_6A: a buster shot (CopyDmg, CrosOver's MegaMan, DblHero's volley). |
-| `elmnt-man-3` | `grass` | The grass panel's trail sound (rules/panels.luau), GrassSeed, ElmntMan turning the field to grass. |
-| `fade-8e` | `fade` | The disassembly's SOUND_FADE_8E; the role sounds.fade. |
-| `hit-6b` | `own-hit` | The disassembly's SOUND_HIT_6B; the role sounds.own_hit: a navi hit, as its own player hears it. |
-| `hit-6d` | `hit` | The disassembly's SOUND_HIT_6D; the role sounds.hit: a navi hit, as the other player hears it. |
-| `hit-6e` | `guard-hit` | The disassembly's SOUND_HIT_6E; the role sounds.guard: a blocked hit. |
-| `hit-87` | `damage-bonus` | The disassembly's SOUND_HIT_87; the role sounds.damage_bonus. |
-| `log-in-77` | `log-in` | The disassembly's SOUND_LOG_IN_77: the Cross change's chime (a role), AntiSwrd's counter, BugFix, DeltaRay, the navi boosts. |
-| `select-86` | `counter-hit` | The disassembly's SOUND_SELECT_86 (a menu name); the role sounds.counter_hit. |
+| `buster-6a` | `buster-shot` *applied* | The disassembly's SOUND_BUSTER_6A: a buster shot (CopyDmg, CrosOver's MegaMan, DblHero's volley). |
+| `elmnt-man-3` | `grass` *applied* | The grass panel's trail sound (rules/panels.luau), GrassSeed, ElmntMan turning the field to grass. |
+| `fade-8e` | `fade` *applied* | The disassembly's SOUND_FADE_8E; the role sounds.fade. |
+| `hit-6b` | `own-hit` *applied* | The disassembly's SOUND_HIT_6B; the role sounds.own_hit: a navi hit, as its own player hears it. |
+| `hit-6d` | `hit` *applied* | The disassembly's SOUND_HIT_6D; the role sounds.hit: a navi hit, as the other player hears it. |
+| `hit-6e` | `guard-hit` *applied* | The disassembly's SOUND_HIT_6E; the role sounds.guard: a blocked hit. |
+| `hit-87` | `damage-bonus` *applied* | The disassembly's SOUND_HIT_87; the role sounds.damage_bonus. |
+| `log-in-77` | `log-in` *applied* | The disassembly's SOUND_LOG_IN_77: the Cross change's chime (a role), AntiSwrd's counter, BugFix, DeltaRay, the navi boosts. |
+| `select-86` | `counter-hit` *applied* | The disassembly's SOUND_SELECT_86 (a menu name); the role sounds.counter_hit. |
 
 ### Banners (5)
 
 | current | proposed | evidence |
 |---|---|---|
-| `banner-54` | `time-up` | Reads "TIME UP!"; no netbattle shows it. |
-| `banner-58` | `liberate-success` | Reads "LIBERATE SUCCESS!"; no netbattle shows it. |
-| `banner-5c` | `liberate-failed` | Reads "LIBERATE FAILED!"; no netbattle shows it. |
-| `banner-60` | `turn-liberate` | Reads "TURN LIBERATE!"; no netbattle shows it. |
-| `held-28` | `hit-damage-judge` | Reads "HIT DAMAGE JUDGE" (the role banners.judge). |
+| `banner-54` | `time-up` *applied* | Reads "TIME UP!"; no netbattle shows it. |
+| `banner-58` | `liberate-success` *applied* | Reads "LIBERATE SUCCESS!"; no netbattle shows it. |
+| `banner-5c` | `liberate-failed` *applied* | Reads "LIBERATE FAILED!"; no netbattle shows it. |
+| `banner-60` | `turn-liberate` *applied* | Reads "TURN LIBERATE!"; no netbattle shows it. |
+| `held-28` | `hit-damage-judge` *applied* | Reads "HIT DAMAGE JUDGE" (the role banners.judge). |
 
 ### Effects (lib/effects.luau) (3)
 
 | current | proposed | evidence |
 |---|---|---|
-| `bat_impact` | `cut_in_flash` (wrong now) | The role effects.cut_in_flash: the flash where a side cut in (effect 0x1E). |
-| `beast_over_burst_45` | `beast_over_burst` | The role effects.beast_over_burst (effect 0x45). |
-| `copy_mark_7` | `trap_mark` | The role effects.trap_mark: the TRAP! mark over a navi whose trap sprang (effect 0x46). |
+| `bat_impact` | `cut_in_flash` (wrong now) *applied* | The role effects.cut_in_flash: the flash where a side cut in (effect 0x1E). |
+| `beast_over_burst_45` | `beast_over_burst` *applied* | The role effects.beast_over_burst (effect 0x45). |
+| `copy_mark_7` | `trap_mark` *applied* | The role effects.trap_mark: the TRAP! mark over a navi whose trap sprang (effect 0x46). |
 
 ### Sparks (lib/sparks.luau) (2)
 
 | current | proposed | evidence |
 |---|---|---|
-| `hit` | `guard` | Spark 0x08 is the role sparks.guard: a blocked hit. |
-| `spark_0e` | `uninstall` | Spark 0x0E is the role sparks.uninstall: a navi's programs uninstalled. |
+| `hit` | `guard` *applied* | Spark 0x08 is the role sparks.guard: a blocked hit. |
+| `spark_0e` | `uninstall` *applied* | Spark 0x0E is the role sparks.uninstall: a navi's programs uninstalled. |
 
 ### Rock variants (chips/rockcube/rock.luau, compat/records.toml) (4)
 
 | current | proposed | evidence |
 |---|---|---|
-| `rockcube/brittle` | `rockcube/rock/brittle` | The rock's variant (a rock cube anything breaks): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
-| `rockcube/cube` | `rockcube/rock/cube` (wrong now) | The rock's variant (RockCube's and the stages' cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
-| `rockcube/hard` | `rockcube/rock/hard` | The rock's variant (a hard cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
-| `rockcube/ice` | `rockcube/rock/ice` | The rock's variant (the ice block): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
+| `rockcube/brittle` | `rockcube/rock/brittle` *applied* | The rock's variant (a rock cube anything breaks): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
+| `rockcube/cube` | `rockcube/rock/cube` (wrong now) *applied* | The rock's variant (RockCube's and the stages' cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
+| `rockcube/hard` | `rockcube/rock/hard` *applied* | The rock's variant (a hard cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
+| `rockcube/ice` | `rockcube/rock/ice` *applied* | The rock's variant (the ice block): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
 
 ## Medium confidence (159)
 
@@ -167,15 +178,15 @@ Named from several uses that agree, from the look (the effects named for sprite,
 
 | current | proposed | evidence |
 |---|---|---|
-| `bat-impact` | `hit-marker` (wrong now) | The role sprites.hit_marker (the "!!" over a navi), the cut-in flash (effect 0x1E) and BatCan's spark (animation 1). Shows bursts, "!!" marks and bats: BatCan is one user of three. |
+| `bat-impact` | `hit-marker` (wrong now) *applied* | The role sprites.hit_marker (the "!!" over a navi), the cut-in flash (effect 0x1E) and BatCan's spark (animation 1). Shows bursts, "!!" marks and bats: BatCan is one user of three. |
 | `colonel-effect` | `colonel-slashes` | Shows green and white slashes: Colonel's (chips/colonel), his screen divide among them. |
 | `elmnt-ice` | `sparkle` | Shows twinkling sparkles: Roll's heart's sparkle, ElmntMan's ice, effect 0x26. |
 | `hit` | `guard-ripple` | Shows cyan ripples. Its one spark (0x08) is the role sparks.guard, a blocked hit. |
-| `immobilized` | `rock-cubes` (wrong now) | Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (chips/rockcube/rock.luau), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it. |
-| `reflected-shot` | `pink-flash` (wrong now) | Shows a pink starburst. The effect `flash` (0x21), CrcusMan's sparkle, H-Burst's explosion and DblBeast's spark use it. |
-| `rising-bubble` | `small-puff` (wrong now) | Shows small grey puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble. |
+| `immobilized` | `rock-cubes` (wrong now) *applied* | Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (chips/rockcube/rock.luau), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it. |
+| `reflected-shot` | `pink-flash` (wrong now) *applied* | Shows a pink starburst. The effect `flash` (0x21), CrcusMan's sparkle, H-Burst's explosion and DblBeast's spark use it. |
+| `rising-bubble` | `small-puff` (wrong now) *applied* | Shows small grey puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble. |
 | `slash-man-effect` | `claw-slash` | Shows cyan claw slashes: SlashMan's slash and DblBeast's Gregar claw and slam. |
-| `small-ring` | `wide-navi` (wrong now) | The ROM's dummy sprite (a 16x16 dot, like 40 unused slots): it shows no ring. SumnBlk asks whether an actor wears it to know it stands two panels wide. |
+| `small-ring` | `wide-navi` (wrong now) *applied* | The ROM's dummy sprite (a 16x16 dot, like 40 unused slots): it shows no ring. SumnBlk asks whether an actor wears it to know it stands two panels wide. |
 | `spark-0e` | `uninstall-spark` | Its spark (0x0E) is the role sparks.uninstall: a navi's programs uninstalled. |
 
 ### Sounds (34)
@@ -186,7 +197,7 @@ Named from several uses that agree, from the look (the effects named for sprite,
 | `beast-over-burst` | `thunder` | ElecMan's thunder, ElemTrap's and ElmntMan's bolts, Guardian's strike; also the role sounds.beast_over_burst. Its sprite shows lightning (proposed `lightning`). |
 | `col-army` | `army-appear` | ColArmy's soldiers appearing. |
 | `col-army-2` | `rifle-shot` | ColArmy's and ColForce's shots, CircGun's hit. |
-| `copy-mark` | `mark` (wrong now) | A mark set: BurnSqr's fire, CircGun's and CopyDmg's marks. CopyDmg is one user of three. |
+| `copy-mark` | `mark` (wrong now) *applied* | A mark set: BurnSqr's fire, CircGun's and CopyDmg's marks. CopyDmg is one user of three. |
 | `dimming-sparkle` | `cut-in` | The role sounds.cut_in: a side cuts in, a trap springs. |
 | `drilarm` | `drill` | DrilArm, MstrCros's drill, DblBeast's Gregar bite. |
 | `dustbrk` | `suction` | DustMan drawing things in (DustBrk), Wind's fan blowing. |
@@ -332,20 +343,20 @@ Named from several uses that agree, from the look (the effects named for sprite,
 
 | current | proposed | evidence |
 |---|---|---|
-| `collision-panel-65535` | `after-table-1-past-freeze` (wrong now) | Status 0x5C: the freeze group's entry 12, past the bubble rows it also reads, reads row 1 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
-| `collision-panel-65535-2` | `after-table-1-past-bubble` (wrong now) | Status 0x66: the bubble group's entry 6 reads row 1 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| `timer-00-150` | `after-table-5-past-bubble` (wrong now) | Status 0x6A: the bubble group's entry 10 reads row 5 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| `timer-00-200` | `after-table-8-past-bubble` (wrong now) | Status 0x6D: the bubble group's entry 13 reads row 8 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| `timer-00-30` | `after-table-2-past-freeze` (wrong now) | Status 0x5D: the freeze group's entry 13, past the bubble rows it also reads, reads row 2 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
-| `timer-00-30-2` | `after-table-2-past-bubble` (wrong now) | Status 0x67: the bubble group's entry 7 reads row 2 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| `timer-01-65535` | `after-table-7-past-bubble` (wrong now) | Status 0x6C: the bubble group's entry 12 reads row 7 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| `timer-01-65535-2` | `after-table-10-past-bubble` (wrong now) | Status 0x6F: the bubble group's entry 15 reads row 10 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| `timer-64-65535` | `after-table-4-past-freeze` (wrong now) | Status 0x5F: the freeze group's entry 15, past the bubble rows it also reads, reads row 4 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
-| `timer-64-65535-2` | `after-table-4-past-bubble` (wrong now) | Status 0x69: the bubble group's entry 9 reads row 4 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| `timer-ff-0` | `after-table-3-past-freeze` (wrong now) | Status 0x5E: the freeze group's entry 14, past the bubble rows it also reads, reads row 3 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
-| `timer-ff-0-2` | `after-table-3-past-bubble` (wrong now) | Status 0x68: the bubble group's entry 8 reads row 3 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| `timer-ff-0-3` | `after-table-6-past-bubble` (wrong now) | Status 0x6B: the bubble group's entry 11 reads row 6 after the table (the same bytes as the freeze group's overflow, for the first four). |
-| `timer-ff-100` | `after-table-9-past-bubble` (wrong now) | Status 0x6E: the bubble group's entry 14 reads row 9 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| `collision-panel-65535` | `after-table-1-past-freeze` (wrong now) *applied* | Status 0x5C: the freeze group's entry 12, past the bubble rows it also reads, reads row 1 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
+| `collision-panel-65535-2` | `after-table-1-past-bubble` (wrong now) *applied* | Status 0x66: the bubble group's entry 6 reads row 1 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| `timer-00-150` | `after-table-5-past-bubble` (wrong now) *applied* | Status 0x6A: the bubble group's entry 10 reads row 5 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| `timer-00-200` | `after-table-8-past-bubble` (wrong now) *applied* | Status 0x6D: the bubble group's entry 13 reads row 8 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| `timer-00-30` | `after-table-2-past-freeze` (wrong now) *applied* | Status 0x5D: the freeze group's entry 13, past the bubble rows it also reads, reads row 2 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
+| `timer-00-30-2` | `after-table-2-past-bubble` (wrong now) *applied* | Status 0x67: the bubble group's entry 7 reads row 2 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| `timer-01-65535` | `after-table-7-past-bubble` (wrong now) *applied* | Status 0x6C: the bubble group's entry 12 reads row 7 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| `timer-01-65535-2` | `after-table-10-past-bubble` (wrong now) *applied* | Status 0x6F: the bubble group's entry 15 reads row 10 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| `timer-64-65535` | `after-table-4-past-freeze` (wrong now) *applied* | Status 0x5F: the freeze group's entry 15, past the bubble rows it also reads, reads row 4 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
+| `timer-64-65535-2` | `after-table-4-past-bubble` (wrong now) *applied* | Status 0x69: the bubble group's entry 9 reads row 4 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| `timer-ff-0` | `after-table-3-past-freeze` (wrong now) *applied* | Status 0x5E: the freeze group's entry 14, past the bubble rows it also reads, reads row 3 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
+| `timer-ff-0-2` | `after-table-3-past-bubble` (wrong now) *applied* | Status 0x68: the bubble group's entry 8 reads row 3 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| `timer-ff-0-3` | `after-table-6-past-bubble` (wrong now) *applied* | Status 0x6B: the bubble group's entry 11 reads row 6 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| `timer-ff-100` | `after-table-9-past-bubble` (wrong now) *applied* | Status 0x6E: the bubble group's entry 14 reads row 9 after the table (the same bytes as the freeze group's overflow, for the first four). |
 
 ### Lock-on modes (rules/lockon.luau) (4)
 
@@ -372,7 +383,7 @@ The evidence is thin: a sound with mixed users, a look with no user. A proposal 
 |---|---|---|
 | `dust-2` | `dust-spray` | Shows white and blue sprays: GolmHit's golem landing and TomahawkMan's strike (effect 0x34). |
 | `effect-61` | `grey-shards` | Shows grey shard shapes; only effect 0x61 uses it. |
-| `reflector-shield-2` | `dummy-shield` (wrong now) | The ROM's dummy sprite (a 16x16 dot). Rflectr's rows 4-6 name it, which nothing ported holds up. |
+| `reflector-shield-2` | `dummy-shield` (wrong now) *applied* | The ROM's dummy sprite (a 16x16 dot). Rflectr's rows 4-6 name it, which nothing ported holds up. |
 | `spout-man-effect` | `water-ring` | Shows a splash of water rings: SpoutMan's throw and charge (effect 0x2A). |
 
 ### Sounds (7)
@@ -397,7 +408,7 @@ The evidence is thin: a sound with mixed users, a look with no user. A proposal 
 | `dust_2_2` | `dust_spray` | Effect 0x34: the dust-spray sprite (GolmHit's landing). |
 | `effect_61` | `grey_shards` | Effect 0x61: the grey-shards sprite. Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 | `reflected_shot_1` | `pink_flash_1` | Effect 0x10: pink-flash animation 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
-| `small_ring_82` | `dummy_look` (wrong now) | Effect 0x4B reads animation 82, palette 16 of the dummy sprite: a row of the original's table that names no real look. |
+| `small_ring_82` | `dummy_look` (wrong now) *applied* | Effect 0x4B reads animation 82, palette 16 of the dummy sprite: a row of the original's table that names no real look. |
 | `spout_man_effect` | `water_ring` | Effect 0x2A: the water-ring sprite (SpoutMan's throw). Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 | `swirl_1` | `swirl_1_p1` | Effect 0x41: swirl animation 1, palette 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 

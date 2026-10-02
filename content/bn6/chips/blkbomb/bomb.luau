@@ -51,7 +51,7 @@ local SPEED, GRAVITY = 0x2C000, -0x2800
 -- Its collision: hit modifier 3; it deals 100 with counter byte 0x1E; its
 -- hit spark (0x0A).
 local HIT_MOD, SELF_DAMAGE, COUNTER = 3, 0x64, 0x1E
-local HIT_SPARK = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
+local HIT_SPARK = define.spark { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
 -- How it looks absorbed (the original's obstacle kind's sprite: its own).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 local SOUND_LAND, SOUND_HIT_BOMB, SOUND_BURST = asset.sound("land"), asset.sound("hit-bomb-1"), asset.sound("burst")

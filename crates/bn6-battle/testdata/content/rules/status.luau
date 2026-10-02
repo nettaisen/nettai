@@ -24,10 +24,10 @@ local PLAIN: { string } = {
     "freeze-600-past-immobilize", "bubble-150-past-immobilize", "bubble-150-2-past-immobilize",
     "bubble-150-3-past-immobilize", "bubble-150-past-freeze", "bubble-150-2-past-freeze",
     "bubble-150-3-past-freeze", "bubble-4-past-freeze", "bubble-300-past-freeze",
-    "bubble-600-past-freeze", "collision-panel-65535", "timer-00-30", "timer-ff-0",
-    "timer-64-65535", "collision-panel-65535-2", "timer-00-30-2", "timer-ff-0-2",
-    "timer-64-65535-2", "timer-00-150", "timer-ff-0-3", "timer-01-65535", "timer-00-200",
-    "timer-ff-100", "timer-01-65535-2",
+    "bubble-600-past-freeze", "after-table-1-past-freeze", "after-table-2-past-freeze", "after-table-3-past-freeze",
+    "after-table-4-past-freeze", "after-table-1-past-bubble", "after-table-2-past-bubble", "after-table-3-past-bubble",
+    "after-table-4-past-bubble", "after-table-5-past-bubble", "after-table-6-past-bubble", "after-table-7-past-bubble", "after-table-8-past-bubble",
+    "after-table-9-past-bubble", "after-table-10-past-bubble",
 }
 local FREEZING: { string } = {
     "freeze-150", "freeze-150-2", "freeze-150-3", "freeze-4", "freeze-300", "freeze-600",
