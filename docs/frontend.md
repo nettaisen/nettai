@@ -236,9 +236,22 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   pick), the Regular chip's frame;
 - the enemy names on BG0 over their bar on the HUD layer, on a round's
   first screen;
+- the Cross window: its opening steps, its map with the Crosses' names (the
+  one under the cursor in its own look, palette 10 the Cross's), its
+  cursor; a Cross's choice whitens everything and puts the Cross's face in
+  the emotion window;
+- the Program Advance animation (the window out): the picks' names and
+  codes a column right of the layer's scroll, the recipe's in the blinking
+  palette 10 and taken off, the Program Advance's in their place; the
+  stage and the objects fade a quarter of the way;
+- the scrap and the re-deal: the column losing the scrapped picks, the
+  slots dealt again, the emblem and the Regular chip's frame throughout;
+- a console's own pictures by its version (`Versioned`: a Gregar console's
+  Cross names, Beast and emblem, from the pack's `gregar/`);
 - what the screen does to the rest: the HP box and the mugshot move right
   with the window and the field and the sprites 15 pixels down (the
-  camera), the gauge stays off until the local result is sent, Beast Out's
+  camera), the gauge and the HUD's "????" stay off until the local result
+  is sent, Beast Out's
   fade darkens the stage, the HUD layer and the objects (sprite palettes
   0-10) half way, the camera's jitter moves the HUD layer in Beast Out's
   states, and the emotion window shows the Beast form chosen. A dark
@@ -333,9 +346,8 @@ them).
 
 ## 5. Known gaps
 
-- The custom screen's Cross window, Program Advance animation, scrap,
-  re-deal and chatbox (descriptions, the run message) aren't drawn yet;
-  live play also shows it as text.
+- The custom screen's chatbox (descriptions, the run message) isn't drawn
+  yet; live play also shows the screen as text.
 - Affine (rotated or scaled) object sprites (`sprite_makeScalable`: no kind
   in the engine or the content uses one yet; compose draws affine parts, the
   custom screen's emblem is one), the per-part palette override
