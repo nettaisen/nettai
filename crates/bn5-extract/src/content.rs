@@ -134,7 +134,8 @@ fn difference(a: &nettai_assets::Bundle, b: &nettai_assets::Bundle) -> String {
     if a.custom != b.custom {
         for (x, y) in a.custom.chip_art.iter().zip(&b.custom.chip_art) {
             if x != y {
-                return format!("chip {}'s picture", x.key);
+                let what = if x.picture.tiles != y.picture.tiles { "tiles" } else if x.picture.palette != y.picture.palette { "palette" } else { "version or region" };
+                return format!("chip {}'s picture ({what}: {:?} against {:?})", x.key, x.picture.palette, y.picture.palette);
             }
         }
         return "the custom screen's".into();
