@@ -554,6 +554,24 @@ he stands in his back columns.
 
 All 8 recordings match the engine at main af3e0c39 (6,463 frames).
 
+ElmntMan (16 branches, with the vines' battle-end test) and SlashMan (11, with link navi SlashMan's charged
+waves): 15 taken by 8 new recordings, 12 unreachable, 4 hard more:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x10d-elmntman/wood-from-back`, `wood-ko` | Wood from (1,2): five vines; a vine deleting the opponent, the others seeing the battle over |
+| `chips/0x10d-elmntman/aqua-by-hole`, `aqua-adjacent`, `aqua-ko` | Aqua with a hole in the column ahead; the ice hitting the opponent; the ice deleting it and seeing the battle over |
+| `chips/0x0e9-slashman/steered`, `landing-hole` | B held while the waves swing (each steers); the panel in front of the enemy a hole in his own column (no leap) |
+| `navis/navi-03-rslash/charge-dimmed` | the link navi's waves waiting out the opponent's dimming |
+
+The unreachable ones: ElmntMan's Fire with a second target (2: the enemy side's only body is its navi), his own
+AI's meteor and ice (5), the ice's action finding hit flags its tick has zeroed (1); SlashMan's column walks
+passing the field's edge (4: they meet his own column first). The hard ones: Fire with no enemy body and
+SlashMan's landing scan passing the edge (3, as SpoutMan's), and a meteor seeing the battle over (1: it falls
+inside ElmntMan's dimming, where only hits that run dimmed act, and its own hit ends it).
+
+All 8 recordings match the engine at main af3e0c39 (6,525 frames).
+
 ### 6.3 Custom screen keys
 
 Four custom screen routines were verified only by the golden traces' dumps, with no lab recording: SELECT hiding
