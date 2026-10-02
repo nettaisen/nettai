@@ -556,6 +556,46 @@ pub fn undim_screen(b: &mut Battle, r: ObjectRef) {
     }
 }
 
+/// The black-out's speed: a sixteenth of the way a tick.
+const BLACK_OUT_SPEED: u8 = 0x10;
+/// `sub_800BCF6`'s way back to the dim, at once (its speed 0x100, which
+/// `SetScreenFade` keeps as it is, as it makes 0xFF).
+const AT_ONCE: u8 = 0xFF;
+
+/// The Gregar and Falzar chips' controllers' first action (the Japanese
+/// ROMs' 0x080EDD0C and 0x080EDED0, one routine twice): the field darkens
+/// to black (`SetScreenFade(0x88, 0x10)`: from a clear screen 16 ticks),
+/// then the next action. (Their controllers have no dim.)
+pub fn fade_to_black(b: &mut Battle, r: ObjectRef) {
+    if b.objects.get(r).phase_init == 0 {
+        b.objects.get_mut(r).phase_init = 4;
+        b.fade.start(FadeMode::BlackOut, BLACK_OUT_SPEED);
+    }
+    if !b.fade.active() {
+        advance(b, r, 1);
+    }
+}
+
+/// `sub_800BCF6`: the end of a controller that faded the field to black:
+/// back to clear (`SetScreenFade(0x84, 0x10)`), unless the other side's
+/// dimming still runs, when the field goes to the dim at once
+/// (`SetScreenFade(0x3C, 0x100)`); once the fade is done, the controller
+/// ends.
+pub fn fade_from_black(b: &mut Battle, r: ObjectRef) {
+    if b.objects.get(r).phase_init == 0 {
+        let side = b.objects.get(r).alliance;
+        if out_of_the_way(b.dimming[(side ^ 1) as usize].state) {
+            b.fade.start(FadeMode::BlackOutBack, BLACK_OUT_SPEED);
+        } else {
+            b.fade.start(FadeMode::Dim, AT_ONCE);
+        }
+        b.objects.get_mut(r).phase_init = 4;
+    }
+    if !b.fade.active() {
+        common::set_progress(b, r, Progress::DESTROY);
+    }
+}
+
 /// `object_timefreezeEnd` (the controller's state 8): once the other side
 /// is done too, the side that started the dimming ends it (ending the
 /// other side's controller), and the controller is freed.

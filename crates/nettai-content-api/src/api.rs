@@ -647,6 +647,20 @@ named_flags! {
 }
 
 named_flags! {
+    /// A HUD part a chip's effect hides and shows (`sub_801DACC` and
+    /// `sub_801DA48` with its draw task).
+    pub enum HudPart {
+        /// The custom gauge (draw task 4).
+        Gauge = "gauge",
+        /// The emotion window (draw task 14).
+        EmotionWindow = "emotion_window",
+        /// The battle flag 0x40 mode's gauge, drawn by its levels (draw
+        /// task 17).
+        LevelGauge = "level_gauge",
+    }
+}
+
+named_flags! {
     /// A side's SELECT or Cross special in progress (battle flag 0x40
     /// mode; `sub_802E4B8`).
     pub enum SideSpecial {
@@ -677,6 +691,13 @@ named_flags! {
         ShowNaviTelop = "show_navi_telop",
         /// `object_undimScreen`: brighten the screen, then end.
         UndimScreen = "undim_screen",
+        /// The Gregar and Falzar chips' controllers' first action, in
+        /// place of the dim (the Japanese ROMs' 0x080EDD0C and
+        /// 0x080EDED0): darken the field to black, then the next action.
+        FadeToBlack = "fade_to_black",
+        /// `sub_800BCF6`: back from black (to the dim, if the other side's
+        /// dimming still runs), then end.
+        FadeFromBlack = "fade_from_black",
         /// `object_timefreezeEnd`: the controller's state 8; ends the
         /// dimming once both sides are done, and frees the controller.
         Finish = "finish",
@@ -998,6 +1019,9 @@ pub trait CoreApi {
     /// `ticks` ticks at `magnitude` (0-3). Each shaking tick draws from
     /// the consoles' own RNGs, which ChpShufl's re-deal reads.
     fn shake_camera(&mut self, magnitude: u16, ticks: u16);
+    /// `sub_801DA48` (`shown`) or `sub_801DACC` with a HUD part's draw
+    /// task: every console shows or hides it (output only).
+    fn show_hud(&mut self, part: HudPart, shown: bool);
     fn navi_stat(&self, side: u8, stat: NaviStat) -> Value;
     /// Change one of a side's navi stats (the writable ones).
     fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()>;

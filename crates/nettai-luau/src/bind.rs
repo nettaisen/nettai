@@ -23,7 +23,7 @@ use std::ptr::NonNull;
 
 use nettai_content_api::{
     ActorField, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
-    HitboxSpec, HookCall, Key, Lifecycle, LinkedChip, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction,
+    HitboxSpec, HookCall, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction,
     AssetKind, SpawnAt,
     ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Registry, RequestFlag, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
@@ -1049,6 +1049,18 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             return Err(mlua::Error::runtime(format!("camera shake magnitude {magnitude} reads past byte_8030284")));
         }
         with(|api, _| Ok(api.shake_camera(magnitude, ticks)))
+    });
+    lib_fn!(lua, t, "show_hud", |_, (parts, shown): (mlua::Table, bool)| {
+        let parts = parts
+            .sequence_values::<mlua::LuaString>()
+            .map(|p| named(&p?, "HUD part", HudPart::from_name))
+            .collect::<mlua::Result<Vec<_>>>()?;
+        with(|api, _| {
+            for p in parts {
+                api.show_hud(p, shown);
+            }
+            Ok(())
+        })
     });
     lib_fn!(lua, t, "navi", |_, side: LuaValue| Ok(Navi(u8_arg(side, "side")? & 1)));
     lib_fn!(lua, t, "emotion", |_, side: LuaValue| {
