@@ -11,8 +11,6 @@ local navi = require("./navi")
 
 local count = define.chip {
     id = "count",
-    name = "Count",
-    description = "Rain on\nenmy then\nlance atk",
     codes = { "H", "*" },
     element = "null",
     family = "null",
@@ -30,8 +28,6 @@ local count = define.chip {
 
 local count_ex = define.chip {
     id = "count-ex",
-    name = "Count[EX]",
-    description = "Rain on\nenmy then\nlance atk",
     codes = { "H" },
     element = "null",
     family = "null",
@@ -49,8 +45,6 @@ local count_ex = define.chip {
 
 local count_sp = define.chip {
     id = "count-sp",
-    name = "Count[SP]",
-    description = "Rain on\nenmy then\nlance atk",
     codes = { "H" },
     element = "null",
     family = "null",

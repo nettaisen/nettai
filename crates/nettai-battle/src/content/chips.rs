@@ -261,12 +261,14 @@ pub enum DamageFormula {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChipData {
-    pub name: String,
-    /// The description the custom screen shows (R), its lines apart by
-    /// `\n`. The battle reads only how many lines it has
-    /// (`description_lines`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    /// The lines of the description the custom screen shows (R; its text
+    /// is the content's strings, `Content::strings`): the description box
+    /// takes keys a tick later for each line after the first
+    /// (docs/engine/custom-screen.md §3.5). A chip without one counts as
+    /// three, what nearly every chip has. The define phase counts it from
+    /// the content's own strings.
+    #[serde(skip_deserializing, default = "super::strings::three_lines")]
+    pub description_lines: u8,
     /// The palette of the chip's picture on the custom screen, 16 BGR555
     /// colours, for a chip whose palette no ROM holds (the pack's picture
     /// has a black one): presentation only.
@@ -330,16 +332,6 @@ pub struct ChipData {
     /// The Program Advances that make this chip, their ingredients by key.
     #[serde(default, rename = "program_advance", skip_serializing_if = "Vec::is_empty")]
     pub program_advances: Vec<ProgramAdvanceRecipe>,
-}
-
-impl ChipData {
-    /// Lines of the chip's description: the custom screen's description
-    /// box takes keys a tick later for each line after the first
-    /// (docs/engine/custom-screen.md §3.5). A chip without one counts as
-    /// three, what nearly every chip has.
-    pub fn description_lines(&self) -> u8 {
-        self.description.as_ref().map_or(3, |d| d.split('\n').count().clamp(1, 3) as u8)
-    }
 }
 
 /// A lock-on mode's handle in a record's data form: its index, or nothing.

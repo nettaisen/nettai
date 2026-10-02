@@ -7,7 +7,6 @@ local SHOT = ticker.action { id = "test/tick-shot/shot", length = 12 }
 
 return define.weapon {
     id = "test/tick-shot",
-    name = "Tick shot",
     charge_ticks = { 0, 0, 0, 0, 0 },
     setup = function(navi: Object): any
         return SHOT

@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 return define.chip {
     id = "deltaray",
-    name = "DeltaRay",
-    description = "A Button\npower up\nby 3 swrd",
     codes = { "Z" },
     element = "null",
     family = "sword",

@@ -26,8 +26,6 @@ end
 return {
     define.chip {
         id = "energbom",
-        name = "EnergBom",
-        description = "Throws a\nbomb 3sq\nahead",
         codes = { "C", "K", "V", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 11, damage = 40, hit_param = 10, lockout = 0,
@@ -40,8 +38,6 @@ return {
     },
     define.chip {
         id = "megenbom",
-        name = "MegEnBom",
-        description = "Throws a\nbomb 3sq\nahead",
         codes = { "G", "M", "O", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 27, damage = 60, hit_param = 10, lockout = 0,

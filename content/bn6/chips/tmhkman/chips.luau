@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 local tmhkman = define.chip {
     id = "tmhkman",
-    name = "TmhkMan",
-    description = "Slice 2sq\nside,3sq\nvertical",
     codes = { "T", "*" },
     element = "wood",
     family = "wood",
@@ -25,8 +23,6 @@ local tmhkman = define.chip {
 
 local tmhkman_ex = define.chip {
     id = "tmhkman-ex",
-    name = "TmhkMan[EX]",
-    description = "Slice 2sq\nside,3sq\nvertical",
     codes = { "T" },
     element = "wood",
     family = "wood",
@@ -44,8 +40,6 @@ local tmhkman_ex = define.chip {
 
 local tmhkman_sp = define.chip {
     id = "tmhkman-sp",
-    name = "TmhkMan[SP]",
-    description = "Slice 2sq\nside,3sq\nvertical",
     codes = { "T" },
     element = "wood",
     family = "wood",

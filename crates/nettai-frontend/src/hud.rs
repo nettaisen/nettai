@@ -47,6 +47,14 @@ pub struct HudState {
     gauge_was_on: bool,
     is_over: bool,
     gauge_is_on: bool,
+    /// A Japanese console's chip window, from the custom screen's close
+    /// until the fight's decisions set it (`tick`), the fight's ticks it
+    /// has run through, and the battle's mode and the chip icons as of the
+    /// previous tick.
+    early_window: bool,
+    early_fight_ticks: u8,
+    mode_was: u8,
+    icons_were: bool,
 }
 
 /// The local navi's face in the emotion window (`sub_801E6A8`): what its
@@ -133,8 +141,40 @@ fn roll(shown: u16, target: u16, extra: u16) -> u16 {
 }
 
 impl HudState {
-    /// Follow one tick of the battle.
-    pub fn tick(&mut self, b: &Battle) {
+    /// Follow one tick of the battle, as the console of `region` ("us",
+    /// "jp") shows it.
+    pub fn tick(&mut self, b: &Battle, region: &str) {
+        // A Japanese console's custom screen, as it closes, starts the chip
+        // window's HUD task too (`sub_8026DC4` calls `sub_801E012`: task
+        // 0x40, besides the icons' task the US games' starts): the next
+        // chip's name shows with the icons through the turn's banner, where
+        // the US games' shows it from the navi's first decision in the
+        // fight (`Battle::chip_hud`). Presentation of the Japanese games'
+        // HUD code (docs/engine/jp-differences.md §5); once the fight runs
+        // its decisions set the window on either console.
+        // (The task starts as the screens' results are exchanged, on the
+        // tick the icons come back.)
+        let fighting = b.round.mode == mode::FIGHTING;
+        let icons = b.chip_hud_for(b.setup.local_side).icons;
+        if region == "jp" && icons && !self.icons_were && (b.round.mode == mode::CUSTOM || self.mode_was == mode::CUSTOM) {
+            (self.early_window, self.early_fight_ticks) = (true, 0);
+        }
+        if self.early_window {
+            // Through the screen's closing and the turn's banner, then the
+            // fight's first ticks until a decision shows the window (or
+            // four went by: one that keeps it off).
+            let closing = b.round.mode == mode::CUSTOM && icons;
+            let banner = fighting && matches!(b.fight.state, fight::CUSTOM_SEQUENCE | fight::SETUP | fight::START_BANNER);
+            let undecided = fighting
+                && b.fight.state == fight::FIGHTING
+                && !b.chip_hud_for(b.setup.local_side).window
+                && self.early_fight_ticks < 4;
+            self.early_window = closing || banner || undecided;
+            if undecided {
+                self.early_fight_ticks += 1;
+            }
+        }
+        (self.mode_was, self.icons_were) = (b.round.mode, icons);
         (self.was_over, self.gauge_was_on) = (self.is_over, self.gauge_is_on);
         if let Some(n) = waiting_ticks(b) {
             self.frame = (n & 0x3F) as u8;
@@ -344,10 +384,13 @@ pub fn draw<'a>(
 
     // "Cstmzing...": once the local player's result is sent, while waiting
     // for the opponent's; it blinks every 32 frames.
+    // (Two rows as wide as its words: eight tiles in English, seven in
+    // Japanese, where `sub_801CA34` copies one column fewer.)
     if waiting_ticks(b).is_some_and(|n| (n / 32) % 2 == 0) {
-        for i in 0..16usize {
+        let columns = (hud.waiting.len() / 2).max(1);
+        for i in 0..2 * columns {
             if let Some(t) = hud.waiting.get(i) {
-                layer.draw_tile(t, &hud.waiting_palette, (22 + (i % 8) as i32) * 8, (4 + (i / 8) as i32) * 8, false, false);
+                layer.draw_tile(t, &hud.waiting_palette, (22 + (i % columns) as i32) * 8, (4 + (i / columns) as i32) * 8, false, false);
             }
         }
     }
@@ -431,7 +474,7 @@ pub fn draw<'a>(
     if let Some(r) = player {
         let o = b.objects.get(r);
         let hand = &b.hands[local as usize];
-        if b.chip_hud_for(local).window
+        if (b.chip_hud_for(local).window || state.early_window)
             && o.chips_held != 0
             && let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten()
         {
@@ -604,11 +647,11 @@ fn put_px(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, x: i32, y: i
     }
 }
 
-/// A chip's name in the font's glyphs: the content's name for it, written
-/// in the characters the pack's font has (`sub_8027D10`'s text for the
-/// chip, at most eight glyphs).
-fn name_glyphs(b: &Battle, hud: &Hud, chip: ChipHandle, problems: &mut Problems) -> Vec<u16> {
-    let name = &b.content.chip(chip).name;
+/// A chip's name in the font's glyphs: its display text (the content's
+/// own, or the player's language's: `DisplayText::chip_name`), written in the
+/// characters the pack's font has (`sub_8027D10`'s text for the chip, at
+/// most eight glyphs).
+fn name_glyphs(b: &Battle, hud: &Hud, name: &str, chip: ChipHandle, problems: &mut Problems) -> Vec<u16> {
     let (mut glyphs, missing) = fonts::cell_glyphs(hud, name);
     if !missing.is_empty() {
         let key = &b.content.defs.chip(chip).key;
@@ -635,8 +678,8 @@ fn draw_chip_name(
     (bonus, doubled): (u16, bool),
     problems: &mut Problems,
 ) {
-    let name = name_glyphs(b, hud, chip, problems);
-    let words = &b.content.chip(chip).name;
+    let words = text.strings.chip_name(b, chip);
+    let name = name_glyphs(b, hud, words, chip, problems);
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, name.len(), pal, (0, 18 * 8), Align::Left);
     // The damage follows the name: after the cells its glyphs take, or in
     // the font mode a pixel after the name as the text layer draws it.
@@ -858,7 +901,7 @@ fn icon_parts<'a>(
     // A chip's icon is the pack's image under the chip's key.
     let def = b.content.defs.chip(chip);
     let Some(tiles) = hud.chip_icon(&def.key) else {
-        problems.note(format!("chip {:?} ({}) has no icon in the pack", def.key, def.record.name));
+        problems.note(format!("chip {:?} has no icon in the pack", def.key));
         return;
     };
     let p = project_hud((o.pos.x, o.pos.y, o.pos.z), view);
@@ -942,7 +985,10 @@ fn telop_parts<'a>(
         return None;
     };
     let name = match telop.name {
-        TelopName::Chip(chip) => (b.content.chip(chip).name.as_str(), name_glyphs(b, hud, chip, problems)),
+        TelopName::Chip(chip) => {
+            let words = text.strings.chip_name(b, chip);
+            (words, name_glyphs(b, hud, words, chip, problems))
+        }
         TelopName::Hidden => ("????", fonts::cell_glyphs(hud, "????").0),
         TelopName::Unknown => {
             problems.note("a telop names a chip the engine wasn't told (a dimming content starts itself)".into());
@@ -970,7 +1016,8 @@ fn used_chip_parts<'a>(
         problems.note(format!("the telop's banner {remote_telop:#04x} is not in the pack"));
         return None;
     };
-    let name = (b.content.chip(used.chip).name.as_str(), name_glyphs(b, hud, used.chip, problems));
+    let words = text.strings.chip_name(b, used.chip);
+    let name = (words, name_glyphs(b, hud, words, used.chip, problems));
     name_parts(hud, layout, name, (used.damage, used.bonus, used.doubled), true, None, out, text)
 }
 
@@ -1150,13 +1197,41 @@ mod tests {
     }
 
     #[test]
+    fn a_telop_names_the_chip_in_the_players_language() {
+        let mut b = battle();
+        let chip = testing::chip_in(&b.content, testing::SUN_GUN_3);
+        assert!(b.start_banner(BannerId(0x4C)));
+        b.banner.telop =
+            Some(Telop { side: 0, chip: Some(chip), damage: 0, doubled: false, bonus: 0, hidden: TelopHidden::No });
+        let hud = hud();
+        let key = b.content.defs.chip(chip).key.clone();
+        let table = format!("language = \"xx\"\n[chips]\n\"{key}\" = {{ name = \"Sol\" }}\n");
+        let strings = nettai_content::locale::parse(&table, "xx.toml").unwrap();
+        let text = TextSink::original().with_language(Some(&strings));
+        let mut problems = Problems::default();
+        let mut parts = Vec::new();
+        telop_parts(&b, &hud, 0x4C, b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
+        assert_eq!(parts.iter().map(|p| p.first_tile).collect::<Vec<_>>(), "Sol".chars().map(glyph_of).collect::<Vec<_>>());
+        // Centred as fifteen glyphs are: the translation's three.
+        assert_eq!(parts[0].x, 6 * 8);
+        assert!(text.strings.take_missing().is_empty());
+        // A chip the table has no name for shows the definition's, noted.
+        let empty = nettai_content::locale::parse("language = \"xx\"\n", "xx.toml").unwrap();
+        let text = TextSink::original().with_language(Some(&empty));
+        let mut parts = Vec::new();
+        telop_parts(&b, &hud, 0x4C, b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
+        assert_eq!(parts.len(), 7);
+        assert_eq!(text.strings.take_missing(), [format!("chips.{key}.name")]);
+    }
+
+    #[test]
     fn a_chip_name_the_font_cannot_write_is_a_problem() {
         let b = battle();
         let chip = testing::chip_in(&b.content, testing::SUN_GUN_3);
         let mut hud = hud();
         hud.font_chars.retain(|c| c != "G");
         let mut problems = Problems::default();
-        assert_eq!(name_glyphs(&b, &hud, chip, &mut problems).len(), 6);
+        assert_eq!(name_glyphs(&b, &hud, "SunGun3", chip, &mut problems).len(), 6);
         assert_eq!(problems.len(), 1);
         assert!(problems.lines()[0].contains("no glyph for ['G']"), "{:?}", problems.lines());
     }

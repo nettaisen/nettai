@@ -8,8 +8,6 @@ local controller = require("./controller")
 
 return define.chip {
     id = "metrknuk",
-    name = "MetrKnuk",
-    description = "Meteors\nbombard\nfrom sky",
     codes = { "N" },
     element = "null", family = "break", class = "giga",
     rarity = 4, mb = 90, damage = 100, hit_param = 148, lockout = 0,

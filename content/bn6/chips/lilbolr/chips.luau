@@ -16,8 +16,6 @@ end
 return {
     define.chip {
         id = "lilbolr1",
-        name = "LilBolr1",
-        description = "3pnl fwd\nKttl attk\nAttack+",
         codes = { "F", "K", "L" },
         element = "null", family = "summon", class = "standard",
         rarity = 0, mb = 18, damage = 100, hit_param = 30, lockout = 0,
@@ -28,8 +26,6 @@ return {
     },
     define.chip {
         id = "lilbolr2",
-        name = "LilBolr2",
-        description = "3pnl fwd\nKttl attk\nAttack+",
         codes = { "E", "M", "V" },
         element = "null", family = "summon", class = "standard",
         rarity = 1, mb = 23, damage = 140, hit_param = 30, lockout = 0,
@@ -40,8 +36,6 @@ return {
     },
     define.chip {
         id = "lilbolr3",
-        name = "LilBolr3",
-        description = "3pnl fwd\nKttl attk\nAttack+",
         codes = { "G", "S", "Z" },
         element = "null", family = "summon", class = "standard",
         rarity = 2, mb = 28, damage = 180, hit_param = 30, lockout = 0,

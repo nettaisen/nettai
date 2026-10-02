@@ -133,8 +133,6 @@ end
 
 chips[1] = define.chip {
     id = "trnarrw1",
-    name = "TrnArrw1",
-    description = "Hits enmy\nw/arrow.\nUse dstnc",
     codes = { "A", "F", "K" },
     element = "aqua", family = "aqua", class = "standard",
     rarity = 0, mb = 30, damage = 30, hit_param = 30, lockout = 0,
@@ -147,8 +145,6 @@ chips[1] = define.chip {
 }
 chips[2] = define.chip {
     id = "trnarrw2",
-    name = "TrnArrw2",
-    description = "Hits enmy\nw/arrow.\nUse dstnc",
     codes = { "G", "M", "Z" },
     element = "aqua", family = "aqua", class = "standard",
     rarity = 1, mb = 36, damage = 40, hit_param = 30, lockout = 0,
@@ -161,8 +157,6 @@ chips[2] = define.chip {
 }
 chips[3] = define.chip {
     id = "trnarrw3",
-    name = "TrnArrw3",
-    description = "Hits enmy\nw/arrow.\nUse dstnc",
     codes = { "M", "S", "Y" },
     element = "aqua", family = "aqua", class = "standard",
     rarity = 2, mb = 42, damage = 50, hit_param = 30, lockout = 0,

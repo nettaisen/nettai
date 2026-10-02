@@ -7,6 +7,9 @@
 //!                                 stages, rules...) and the code that runs it
 //! *.d.luau                        the API's definitions, for editors and the checker
 //! compat/                         the original's numbers by key: tools' data, not content
+//! locales/<language>.toml         display text by key, one table a language: the own
+//!                                 language's (en) is the content's strings, the others a
+//!                                 frontend's (crate::locale)
 //! ```
 //!
 //! [`read`] reads one. The assets the definitions name (`asset.sprite`)
@@ -32,6 +35,10 @@ pub fn bn6() -> PathBuf {
 pub struct Root {
     /// Modules by path without `.luau` (not the `.d.luau` definitions).
     pub modules: BTreeMap<String, String>,
+    /// The content's own language's strings (`locales/en.toml`): its
+    /// display text, which the define phase counts the chatbox's timing
+    /// from (`Content::strings`).
+    pub strings: crate::locale::Strings,
 }
 
 /// Read the content root in `dir`.
@@ -44,7 +51,7 @@ pub fn read(dir: &Path, report: &mut Report) -> Option<Root> {
         return None;
     }
     for rel in paths {
-        if rel.starts_with("compat/") || rel.ends_with(".d.luau") {
+        if rel.starts_with("compat/") || rel.starts_with("locales/") || rel.ends_with(".d.luau") {
             continue;
         }
         let full = dir.join(&rel);
@@ -58,6 +65,11 @@ pub fn read(dir: &Path, report: &mut Report) -> Option<Root> {
             }
             Err(e) => report.error(&rel, format!("can't read: {e}")),
         }
+    }
+    match crate::locale::load(dir, crate::locale::OWN) {
+        Ok(Some(s)) => root.strings = s,
+        Ok(None) => report.warn(format!("{}/{}.toml", crate::locale::DIR, crate::locale::OWN), "the content has no strings: its chips, navis and forms show by their keys"),
+        Err(e) => report.error(format!("{}/{}.toml", crate::locale::DIR, crate::locale::OWN), e),
     }
     (!report.has_errors()).then_some(root)
 }

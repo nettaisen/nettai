@@ -11,7 +11,6 @@ local slash_a_charge = require("../../weapons/slash-a-charge/weapon")
 
 return define.form {
     id = "slashcross",
-    name = "SlashCross",
     kind = "cross",
     game = "gregar",
     cross_of = slashman,
@@ -28,7 +27,6 @@ return define.form {
     -- (`byte_801E700`): the Falzar ROM has no SlashCross face, and shows TenguCross's.
     mugshot = { normal = asset.mugshot("slashcross"), tired = asset.mugshot("slashcross-tired") },
     -- What R shows in the Cross window.
-    description = "Swrd Chip Attk\n+50! Chrg Swrd\nChip: WaveAttk",
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "sword", damage = 50 },
     -- The chips A charges.
