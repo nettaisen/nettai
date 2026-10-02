@@ -9,7 +9,7 @@ local protoman = require("./chip")
 
 return define.navi {
     id = "protoman",
-    name = "Navi 11",
+    name = "ProtoMan",
     sprite = asset.sprite("protoman"),
     element = "null",
     buster_bonus = 1,
