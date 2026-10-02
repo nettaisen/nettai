@@ -23,7 +23,7 @@ attachment = { pool = "actor", index = 0x05 }
 "crcusman/navi" = { pool = "actor", index = 0x0E }
 "judgeman/navi" = { pool = "actor", index = 0x0F }
 "elmntman/navi" = { pool = "actor", index = 0x10 }
-"hackjack/navi" = { pool = "actor", index = 0x11 }
+"count/navi" = { pool = "actor", index = 0x11 }
 "django/navi" = { pool = "actor", index = 0x12 }
 "burnsqr/burner" = { pool = "actor", index = 0x13 }
 "magnum/gunner" = { pool = "actor", index = 0x14 }
@@ -70,7 +70,7 @@ bomb = { pool = "attack", index = 0x08 }
 panel-strike = { pool = "attack", index = 0x09 }
 bomb-slash = { pool = "attack", index = 0x0A }
 flying-shot = { pool = "attack", index = 0x0B }
-"hackjack/lance" = { pool = "attack", index = 0x0D }
+"count/lance" = { pool = "attack", index = 0x0D }
 dust-storm = { pool = "attack", index = 0x0E }
 "grab/shot" = { pool = "attack", index = 0x0F }
 "cornsht/corn" = { pool = "attack", index = 0x10 }

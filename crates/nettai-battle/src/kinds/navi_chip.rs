@@ -206,7 +206,7 @@ fn effect(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `off_802CD5C[navi]`: bring the chip's navi, with the damage and the
-/// bonus: the chip's `navi` hook. (HackJack's and Django's entries of the
+/// bonus: the chip's `navi` hook. (Count's and Django's entries of the
 /// US games' table are null, and the game jumps to address 0; their chips'
 /// hooks bring the Japanese games' navis. The game also records the last
 /// navi chip used, `byte_203C960`, which nothing in a battle reads.)

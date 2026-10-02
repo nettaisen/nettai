@@ -22,7 +22,7 @@ lists 17 variants with their sizes and how to switch them.
 The JP-only content is:
 
 - the Gregar and Falzar chips (handlers 34 and 35, five object kinds);
-- HackJack (Count in JP: handler 18, two object kinds);
+- Count (HackJack in the US release: handler 18, two object kinds);
 - Django (handler 19, one object kind);
 - patch-card hooks, out of scope.
 
@@ -192,7 +192,7 @@ chips). Every other entry is the same in both ROMs.
 |---|---|---|---|---|
 | dimming 34 | Gregar (0x138) | 0 | 0x080EDE3D (in T4 0x7A, +0x174) | 0x080EF16D |
 | dimming 35 | Falzar (0x139) | 0 | 0x080EE087 (in T4 0x7B, +0x1FA) | 0x080EF3B7 |
-| navi chip 18 | HackJack, HackJck EX, HackJck SP (0x113..0x115; Count in JP) | 0 | 0x080BD237 (in T1 0x11, +0x26A) | 0x080BEA97 |
+| navi chip 18 | Count, Count[EX], Count[SP] (0x113..0x115; HackJack in the US release) | 0 | 0x080BD237 (in T1 0x11, +0x26A) | 0x080BEA97 |
 | navi chip 19 | Django, Django2, Django3 (0x116..0x118) | 0 | 0x080BD6A3 (in T1 0x12, +0x2EA) | 0x080BEF03 |
 
 `sub_813BF1C` is the other jp-content routine. JP also counts the emotion window's glitch as on when a JP-only
@@ -206,7 +206,7 @@ are given as category-index (`sprite_load(0x80, category, index)`).
 
 | Kind | JP Falzar (Gregar) | Spawned by | Sprite | What it is |
 |---|---|---|---|---|
-| T1 0x11 | 0x080BCFCC (0x080BE82C) | navi chip 18 | 08-16, Count | **Count**, HackJack's navi: drops his lances (T3 0x0D) |
+| T1 0x11 | 0x080BCFCC (0x080BE82C) | navi chip 18 | 08-16, Count | **Count**, the Count chips' navi: drops his lances (T3 0x0D) |
 | T1 0x12 | 0x080BD3B8 (0x080BEC18) | navi chip 19 | 0C-0F, Django | **Django**'s navi: one-shot effects, sounds 0xCB, 0x94, 0xB0 and 0x8B. The same archive is CrosOver's partner (§5) |
 | T1 0x30 | 0x080C3E0C (0x080C566C) | T4 0x7A | 0C-68 | **Gregar**'s beast. Draws RNG2; spawns T4 0x7D; its attack is the US-present T3 0xCD (§4.3) |
 | T1 0x31 | 0x080C4268 (0x080C5AC8) | T4 0x7B | 0C-66 | **Falzar**'s beast. Spawns T4 0x7D; its attack is the US-present T3 0xCE |
@@ -261,7 +261,7 @@ original's behaviour (bn6-lmao "fixes" it, §9).
   0x47 in JP (dimming, damage, navi chip, library). Action 0x1B, subtype 0x13 and damage 130, 180, 260 in both.
 - **GunDelEX (0x012)**: class 3 in the US, 0 (standard) in JP; flags 0x00 against 0x40 (library). Its
   behaviour (GunDelSol's subtype 3) is in both.
-- **HackJack ×3 (0x113..0x115)**: flags 0x07 against 0x47; **Otenko (0x099)**: 0x01 against 0x41. Only the
+- **Count ×3 (0x113..0x115)**: flags 0x07 against 0x47; **Otenko (0x099)**: 0x01 against 0x41. Only the
   library bit 0x40 differs.
 - Chips 0x119..0x121: flags2 (+0x16) 0x30 in the US, 0x20 or 0x00 in JP (menu classification only).
 - 278 chips' sort keys (+0x18) differ: JP's alphabetical order. Menus only.
@@ -471,7 +471,7 @@ Then there is the content the engine lacks altogether, which the other work pack
 
 - the Gregar and Falzar chips: their controllers, beasts and overlay, the orphaned US attacks T3 0xBC, 0xCD and
   0xCE, and `sub_800BCF6`;
-- HackJack (Count: T1 0x11 and T3 0x0D);
+- Count (T1 0x11 and T3 0x0D);
 - Django (T1 0x12, sprite 0C-0F);
 - the Django and GunDelEX records' JP class and flags.
 
@@ -489,6 +489,13 @@ These sizes from bn6-lmao's regions are exact (§9):
 | the beasts' overlay | 200 |
 
 ### 8.1 The console-region switch
+
+**Decided (the user, 2026-10-02): no switch, "just these chips".** The engine runs the US behaviour for §8's variants
+and has none of this section's switch. The JP-content chips (GunDelEX, Otenko, Count's three, Django's three, Gregar,
+Falzar) take the Japanese games' records and routines outright (`gen-content check` compares their records with a
+Japanese ROM's), and the content has the Japanese games' looks where the US games blanked them (CrosOver's Django
+gun, attachment row 0xB). A JP-console recording that reaches one of §8's variants differs from the engine there.
+What follows is the switch as proposed.
 
 The JP and US code differ, not the data a console sends. So nothing in NaviStats or the init exchange says which
 one ran. The region belongs in the setup:

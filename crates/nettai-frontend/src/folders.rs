@@ -22,9 +22,9 @@
 //! chips 1 to 0x13A, without the extra flag 0x20 (the dark chips); of them
 //! the folder chips, Standard, Mega and Giga. The JP-content chips are among
 //! them: content/bn6 has the Japanese games' records and routines for
-//! GunDelEX, Otenko, HackJack's, Django's, Gregar and Falzar (GunDelEX and
+//! GunDelEX, Otenko, Count's, Django's, Gregar and Falzar (GunDelEX and
 //! Django's are folder chips only in the Japanese records; a US console has
-//! no routine for HackJack's, Django's, Gregar or Falzar).
+//! no routine for Count's, Django's, Gregar or Falzar).
 
 use bn6_compat::Compat;
 use nettai_battle::content::{ChipClass, ChipCode, ChipFlags, Content};
@@ -276,7 +276,7 @@ mod tests {
         // has (GunDelEX and Django's aren't in the US games').
         let keys: Vec<&str> = pool.iter().map(|&c| content.defs.chip(c).key.as_str()).collect();
         assert!(keys.len() > 250, "{} chips", keys.len());
-        for key in ["cannon", "roll", "bass", "gundels1", "gundelex", "areagrab", "otenko", "gregar", "falzar", "hackjack", "django"] {
+        for key in ["cannon", "roll", "bass", "gundels1", "gundelex", "areagrab", "otenko", "gregar", "falzar", "count", "django"] {
             assert!(keys.contains(&key), "{key}");
         }
         for key in ["drksword", "beastout", "gigacan1"] {

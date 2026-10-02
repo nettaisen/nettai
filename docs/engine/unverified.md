@@ -199,8 +199,8 @@ standard chip action…), whichever section below the family belongs to:
 | BugBomb | its other bug choices; landed and broken | one RNG seed | yes | chips/0x043-bugbomb/seed-1 … seed-4, landed: verified |
 | FlashBomb | landed, broken before the flash | | yes | chips/0x039-flshbom1/landed, shot: verified |
 | Bombs | bomb kind 1, seed kind 3, FlashBomb levels 3 to 8 | no chip | unreachable | |
-| Navi chips (§3.6.7-§3.6.36) | no footing for the navi (action 0 to its leave) | the user always stands on solid ground | yes (AirShoes over a hole) | chips/…/no-footing for Roll, ProtoMan, HeatMan, ElecMan, SlashMan, EraseMan, ChrgeMan, SpoutMan, TmhkMan, TenguMan, GrndMan, DustMan, BlastMan, DiveMan, CrcusMan, JudgeMan, ElmntMan, Colonel, HackJack, Bass, BigHook, DeltaRay, BassAnly, CrossDiv: verified |
-| Navi chips | the battle ending mid-attack | no KO inside a navi chip | yes | chips/…/ko for the same navis (ElecMan's and TmhkMan's from the adjacent column, the only one their strikes reach; none for HackJack, whose original stops), pa/0x15c-twinldrs/ko, pa/0x15d-crosover/ko, pa/0x15a-mstrcros/ko: verified |
+| Navi chips (§3.6.7-§3.6.36) | no footing for the navi (action 0 to its leave) | the user always stands on solid ground | yes (AirShoes over a hole) | chips/…/no-footing for Roll, ProtoMan, HeatMan, ElecMan, SlashMan, EraseMan, ChrgeMan, SpoutMan, TmhkMan, TenguMan, GrndMan, DustMan, BlastMan, DiveMan, CrcusMan, JudgeMan, ElmntMan, Colonel, Count, Bass, BigHook, DeltaRay, BassAnly, CrossDiv: verified |
+| Navi chips | the battle ending mid-attack | no KO inside a navi chip | yes | chips/…/ko for the same navis (ElecMan's and TmhkMan's from the adjacent column, the only one their strikes reach; none for Count, whose original stops), pa/0x15c-twinldrs/ko, pa/0x15d-crosover/ko, pa/0x15a-mstrcros/ko: verified |
 | Navi chips | an opponent the navi can't find or reach, and one behind a barrier | the opponent always stands in the open | yes | chips/…/invisible, rock-front and barrier for each of the nineteen navi chips: verified |
 | Navi chips | a pool with no free slot, a missing collision slot | pool full | unreachable | |
 | Navi chips | the navi AI's variants (Param1 0 and the like): SpoutMan's, BlastMan's, ElecMan's, ChargeMan's, SlashMan's, DiveMan's, JudgeMan's whip | only the bosses' AI spawns them | unreachable | |
@@ -217,10 +217,10 @@ standard chip action…), whichever section below the family belongs to:
 | CrosOver | a link navi user, no Django | a link navi can't hold the PA | unreachable | |
 | MstrCros | the Gregar tables (the beam, move 1) | the Falzar side always uses it | yes (the gregar base) | pa/0x15a-mstrcros/gregar: verified |
 | Bass, BigHook, Darkness | failed spawns, a missing flag pointer, the strike's MachGun branches | | unreachable | |
-| HackJack (§3.6.37, the Japanese games') | all of it: the rain, the targets (an enemy in the area, the rest shuffled), the lances, his leave, no footing | the US games' handler is null; no JP-console recording yet | yes (on a JP console) | |
-| HackJack | the lance's warning and stand-still-while-dimmed branches (Param3 not 2), the empty target list | only the JP navi AI's attack 0x0C drops such lances; the other side's area always has a solid panel | unreachable | |
+| Count (§3.6.37, the Japanese games') | all of it: the rain, the targets (an enemy in the area, the rest shuffled), the lances, his leave, no footing | the US games' handler is null; no JP-console recording yet | yes (on a JP console) | |
+| Count | the lance's warning and stand-still-while-dimmed branches (Param3 not 2), the empty target list | only the JP navi AI's attack 0x0C drops such lances; the other side's area always has a solid panel | unreachable | |
 | Django (§3.6.38, the Japanese games') | all of it: the drop, the ride's hits, a crash into a hole, the L L L A command, the slash, no target | the US games' handler is null; no JP-console recording yet | yes (on a JP console) | |
-| HackJack, Django | a full pool (no navi, lance, bike or collision data) | pool full | unreachable | |
+| Count, Django | a full pool (no navi, lance, bike or collision data) | pool full | unreachable | |
 
 ### Shot chips (shot-chips.md §16)
 
