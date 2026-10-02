@@ -21,8 +21,9 @@
 //! What can be in a folder is what the chip pack lists (`sub_811FE7C`):
 //! chips 1 to 0x13A, without the extra flag 0x20 (the dark chips); of them
 //! the folder chips, Standard, Mega and Giga. Left out too are the chips
-//! the US game has a record of and no routine for (content/bn6's
-//! lib/unusable.luau: using one stops the battle), which no US save holds.
+//! the US game has a record of and no routine for (using one stops a US
+//! console; content/bn6 has the Japanese games' routines for HackJack's),
+//! which no US save holds.
 
 use bn6_compat::Compat;
 use nettai_battle::content::{ChipClass, ChipCode, ChipFlags, Content};
@@ -35,9 +36,9 @@ use nettai_content_api::ChipHandle;
 const LAST_PACK_CHIP: u16 = 0x13A;
 /// The extra flag of the chips the pack doesn't list (the dark chips).
 const NOT_IN_PACK: u8 = 0x20;
-/// The chips with no routine in the US game (lib/unusable.luau's: the
-/// Gregar and Falzar chips' dimmings, HackJack's navi; Django's chips are
-/// no folder chips).
+/// The chips with no routine in the US game (the Gregar and Falzar chips'
+/// dimmings, lib/unusable.luau's; HackJack's navi, which content/bn6 has
+/// from the Japanese games; Django's chips are no folder chips there).
 const NO_ROUTINE: [&str; 5] = ["gregar", "falzar", "hackjack", "hackjck-ex", "hackjck-sp"];
 /// Chips with the dark flag a folder can hold (`sub_8135080`).
 const DARK_CHIPS: usize = 3;
