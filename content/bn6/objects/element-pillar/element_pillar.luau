@@ -36,7 +36,7 @@ export type State = {
 
 local element_pillar = {}
 
-local FLAMES, LIGHTNING = asset.sprite("element-pillar-flames"), asset.sprite("element-pillar-lightning")
+local FLAMES, LIGHTNING = asset.sprite("bn6:element-pillar-flames"), asset.sprite("bn6:element-pillar-lightning")
 
 -- Lightning's paralysis (a status byte).
 local PARALYZE = statuses.paralyze_150
@@ -142,7 +142,7 @@ local function update(me: Object)
 end
 
 element_pillar.kind = define.kind {
-    id = "element-pillar",
+    id = "bn6:element-pillar",
     pool = "attack",
     state = {
         lightning = "bool",

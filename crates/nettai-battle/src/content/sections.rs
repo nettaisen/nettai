@@ -364,7 +364,7 @@ fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definit
 pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), ContentError> {
     let r = SpecReader::new(&content.assets, definitions);
     let mut all = Vec::new();
-    for root in content.scripts.root_names() {
+    for root in Content::game_names(&content.scripts, definitions) {
         let mut rules = content.base_rules.clone();
         sections(&mut rules, &root, &r, definitions)?;
         all.push(rules);

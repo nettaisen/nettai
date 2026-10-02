@@ -54,7 +54,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "colorpt/controller",
+    id = "bn6:colorpt/controller",
     pool = "effect",
     state = { point = "record:colorpt-point", out = "bool[3]" },
     update = dimming_chips.phases { name = "ColorPt", effect = effect },

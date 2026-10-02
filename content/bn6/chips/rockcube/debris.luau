@@ -14,7 +14,7 @@ export type State = {
     palette: number,
 }
 
-local SPRITE = asset.sprite("rock-debris")
+local SPRITE = asset.sprite("bn6:rock-debris")
 -- Gravity, 16.16 a tick.
 local GRAVITY = 0x14000
 
@@ -58,7 +58,7 @@ local function init(me: Object)
 end
 
 debris.kind = define.kind {
-    id = "rockcube/debris",
+    id = "bn6:rockcube/debris",
     pool = "effect",
     state = { palette = "u8" },
     -- `sub_80E46D8`.

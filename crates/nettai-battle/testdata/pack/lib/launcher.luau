@@ -7,16 +7,16 @@
 local ticker = require("./ticker")
 
 local SHORT = ticker.variant { lifetime = 5 }
-local BURST = define.effect { sprite = asset.sprite("test-burst"), anim = 2 }
+local BURST = define.effect { sprite = asset.sprite("test:test-burst"), anim = 2 }
 local WIDE = define.region { panels = { { 1, -1 }, { 1, 0 }, { 1, 1 } } }
-local THROWN = define.collision { id = "test/thrown", side0 = 0x80000088, side1 = 0x40000088 }
-local HITS = define.collision { id = "test/hits-navis", side0 = 0x15800000, side1 = 0x2a800000 }
-local TICK = asset.sound("test-tick")
+local THROWN = define.collision { id = "test:test/thrown", side0 = 0x80000088, side1 = 0x40000088 }
+local HITS = define.collision { id = "test:test/hits-navis", side0 = 0x15800000, side1 = 0x2a800000 }
+local TICK = asset.sound("test:test-tick")
 
 local launcher = {}
 
 launcher.kind = define.kind {
-    id = "test/launcher",
+    id = "test:test/launcher",
     pool = "attack",
     state = { launched = "bool" },
     update = function(me: Object)
@@ -43,7 +43,7 @@ launcher.kind = define.kind {
 local OTHER = define.record("other-variant", { lifetime = 1 })
 
 launcher.misuse = define.kind {
-    id = "test/misuse",
+    id = "test:test/misuse",
     pool = "effect",
     update = function(me: Object)
         local o = battle.spawn(ticker.kind, me.pos)

@@ -6,14 +6,14 @@
 //!
 //! [arena]                            # the stage's game decides the battle's data
 //! stage = "bn6:netbattle-43"
-//! background = "honeycomb"           # optional: else the stage's own
+//! background = "bn6:honeycomb"       # optional: else the stage's own
 //! later = [                          # optional: the set's later rounds (else the first's)
-//!     { stage = "bn6:netbattle-12", background = "code" },
+//!     { stage = "bn6:netbattle-12", background = "bn6:code" },
 //!     { stage = "bn6:netbattle-7" },
 //! ]
 //!
 //! [left]                             # you, side 0; then [right]
-//! ruleset = "bn6:bn6"                # optional: else the content's stock ruleset
+//! ruleset = "bn6:stock"              # optional: else BN6's (crate::DEFAULT_GAME)
 //! navi = "bn6:megaman"
 //! game = "falzar"                    # or "gregar"
 //! crosses = ["bn6:heatcross", "bn6:spoutcross"]   # optional: else the game's own five
@@ -158,7 +158,7 @@ fn resolve_place(content: &Content, stage: &str, background: &Option<String>, at
     if let Some(b) = background
         && crate::background(content, b).is_none()
     {
-        problems.push(format!("{at}: no background {b:?}"));
+        problems.push(crate::no_background(at, b));
     }
     Some(Place { stage: stage?, background: background.clone() })
 }
@@ -383,7 +383,7 @@ mod tests {
         m.sides[0].cards = crate::patch_cards(&content, "canodumb,amonicul,coldbear,megalian,mettfire,kilplant").unwrap();
         has(crate::check_match(&content, &m), "left: the patch cards are");
         let mut m = drawn.clone();
-        let protoman = content.defs.navi_by_key("protoman").unwrap();
+        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].game);
         has(crate::check_match(&content, &m), "right: a Cross list, but ProtoMan doesn't change form");
@@ -394,8 +394,8 @@ mod tests {
     #[test]
     fn crosses_need_the_forms_system() {
         let content = nettai_battle::content::testing::content();
-        let mix = content.defs.ruleset_by_key("test-mix").unwrap();
-        let stock = content.defs.stock_ruleset();
+        let mix = content.defs.ruleset_by_key("test:test-mix").unwrap();
+        let stock = content.defs.stock_ruleset_of("test");
         assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM));
         assert!(!crate::ruleset_has_system(&content, Some(mix), crate::FORMS_SYSTEM));
     }

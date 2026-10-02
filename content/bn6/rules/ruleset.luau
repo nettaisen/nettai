@@ -9,7 +9,7 @@ local forms = require("./forms/system")
 local patch_cards = require("./patch-cards/system")
 
 return define.ruleset {
-    id = "bn6",
+    id = "bn6:stock",
     stock = true,
     systems = {
         -- The Japanese games' patch cards (docs/engine/patch-cards.md).

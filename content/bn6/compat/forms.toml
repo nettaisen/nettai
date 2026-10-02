@@ -4,28 +4,28 @@
 # MegaMan's forms: the form number (NaviStats+0x2C) and the form's NameID (the base
 # form has none of its own: it is MegaMan's, navis.toml).
 
-base = { form = 0x00 }
-heatcross = { form = 0x01, name_id = 0x1AC }
-eleccross = { form = 0x02, name_id = 0x1AD }
-slashcross = { form = 0x03, name_id = 0x1AE }
-erasecross = { form = 0x04, name_id = 0x1AF }
-chargecross = { form = 0x05, name_id = 0x1B0 }
-spoutcross = { form = 0x06, name_id = 0x1B1 }
-tomahawkcross = { form = 0x07, name_id = 0x1B2 }
-tengucross = { form = 0x08, name_id = 0x1B3 }
-groundcross = { form = 0x09, name_id = 0x1B4 }
-dustcross = { form = 0x0A, name_id = 0x1B5 }
-gregar-beast = { form = 0x0B, name_id = 0x1B6 }
-falzar-beast = { form = 0x0C, name_id = 0x1B7 }
-heatcross-beast = { form = 0x0D, name_id = 0x1B8 }
-eleccross-beast = { form = 0x0E, name_id = 0x1B9 }
-slashcross-beast = { form = 0x0F, name_id = 0x1BA }
-erasecross-beast = { form = 0x10, name_id = 0x1BB }
-chargecross-beast = { form = 0x11, name_id = 0x1BC }
-spoutcross-beast = { form = 0x12, name_id = 0x1BD }
-tomahawkcross-beast = { form = 0x13, name_id = 0x1BE }
-tengucross-beast = { form = 0x14, name_id = 0x1BF }
-groundcross-beast = { form = 0x15, name_id = 0x1C0 }
-dustcross-beast = { form = 0x16, name_id = 0x1C1 }
-gregar-beast-over = { form = 0x17, name_id = 0x1C2 }
-falzar-beast-over = { form = 0x18, name_id = 0x1C3 }
+"bn6:base" = { form = 0x00 }
+"bn6:heatcross" = { form = 0x01, name_id = 0x1AC }
+"bn6:eleccross" = { form = 0x02, name_id = 0x1AD }
+"bn6:slashcross" = { form = 0x03, name_id = 0x1AE }
+"bn6:erasecross" = { form = 0x04, name_id = 0x1AF }
+"bn6:chargecross" = { form = 0x05, name_id = 0x1B0 }
+"bn6:spoutcross" = { form = 0x06, name_id = 0x1B1 }
+"bn6:tomahawkcross" = { form = 0x07, name_id = 0x1B2 }
+"bn6:tengucross" = { form = 0x08, name_id = 0x1B3 }
+"bn6:groundcross" = { form = 0x09, name_id = 0x1B4 }
+"bn6:dustcross" = { form = 0x0A, name_id = 0x1B5 }
+"bn6:gregar-beast" = { form = 0x0B, name_id = 0x1B6 }
+"bn6:falzar-beast" = { form = 0x0C, name_id = 0x1B7 }
+"bn6:heatcross-beast" = { form = 0x0D, name_id = 0x1B8 }
+"bn6:eleccross-beast" = { form = 0x0E, name_id = 0x1B9 }
+"bn6:slashcross-beast" = { form = 0x0F, name_id = 0x1BA }
+"bn6:erasecross-beast" = { form = 0x10, name_id = 0x1BB }
+"bn6:chargecross-beast" = { form = 0x11, name_id = 0x1BC }
+"bn6:spoutcross-beast" = { form = 0x12, name_id = 0x1BD }
+"bn6:tomahawkcross-beast" = { form = 0x13, name_id = 0x1BE }
+"bn6:tengucross-beast" = { form = 0x14, name_id = 0x1BF }
+"bn6:groundcross-beast" = { form = 0x15, name_id = 0x1C0 }
+"bn6:dustcross-beast" = { form = 0x16, name_id = 0x1C1 }
+"bn6:gregar-beast-over" = { form = 0x17, name_id = 0x1C2 }
+"bn6:falzar-beast-over" = { form = 0x18, name_id = 0x1C3 }

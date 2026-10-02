@@ -11,7 +11,7 @@ export type CounterState = { starts: number, side: number, bonus: number }
 -- Counts the round starts it sees, and keeps its side and twice its
 -- player's setup bonus.
 local counter = define.system {
-    id = "test/counter",
+    id = "test:test/counter",
     state = { starts = "u8", side = "u8", bonus = "u16" },
     setup = { bonus = "u8" },
     hooks = {
@@ -28,7 +28,7 @@ export type MarkerState = { mark: number }
 
 -- Marks its side's state, to tell the rulesets apart.
 local marker = define.system {
-    id = "test/marker",
+    id = "test:test/marker",
     state = { mark = "u8" },
     hooks = {
         round_start = function(side: number)
@@ -47,9 +47,9 @@ return {
     counter = counter,
     marker = marker,
     -- The test content's own rules.
-    stock = define.ruleset { id = "test", stock = true, systems = { beast, counter, forms.system } },
+    stock = define.ruleset { id = "test:stock", stock = true, systems = { beast, counter, forms.system } },
     -- Another player's: the marker first, then the counter.
-    other = define.ruleset { id = "test-other", systems = { marker, counter } },
+    other = define.ruleset { id = "test:test-other", systems = { marker, counter } },
     -- BN6's patch cards, then the counter.
-    cards = define.ruleset { id = "test-cards", systems = { patch_cards, counter } },
+    cards = define.ruleset { id = "test:test-cards", systems = { patch_cards, counter } },
 }

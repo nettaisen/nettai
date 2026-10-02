@@ -7,7 +7,7 @@ local barriers = require("../../lib/barriers/barriers")
 
 return {
     define.chip {
-        id = "barrier",
+        id = "bn6:barrier",
         codes = { "A", "F", "R", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 7, damage = 0, hit_param = 0, lockout = 0,
@@ -18,7 +18,7 @@ return {
         dimming = barrier_chips.hook(barriers.barrier_10),
     },
     define.chip {
-        id = "barr100",
+        id = "bn6:barr100",
         codes = { "H", "O", "Y" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 30, damage = 0, hit_param = 0, lockout = 0,
@@ -28,7 +28,7 @@ return {
         dimming = barrier_chips.hook(barriers.barrier_100),
     },
     define.chip {
-        id = "barr200",
+        id = "bn6:barr200",
         codes = { "K", "U", "W" },
         element = "null", family = "null", class = "standard",
         rarity = 3, mb = 52, damage = 0, hit_param = 0, lockout = 0,

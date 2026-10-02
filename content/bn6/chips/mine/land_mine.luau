@@ -25,11 +25,11 @@ export type State = {
 
 local land_mine = {}
 
-local SPRITE = asset.sprite("land-mine")
+local SPRITE = asset.sprite("bn6:land-mine")
 -- Its identity: a field object nothing absorbs, swallows or leaves as
 -- junk, with no look.
 local IDENTITY = define.identity {
-    id = "mine",
+    id = "bn6:mine",
     class = "field_object",
     version = 1,
     ai_index = 1,
@@ -41,7 +41,7 @@ local IDENTITY = define.identity {
 local LIFETIME = 0x1770
 -- Hops: one every 2 ticks, 59 of them before it arms (`Timer2`).
 local HOP_TICKS, HOPS = 2, 0x3C
-local HOP_SOUND = asset.sound("hop")
+local HOP_SOUND = asset.sound("bn6:hop")
 -- The shuffle's swaps.
 local SHUFFLE_SWAPS = 0x14
 -- Where it hops (`byte_80CDF50`, by side): a free solid enemy panel
@@ -54,8 +54,8 @@ local TARGETS: { [number]: PanelCondition } = {
 -- either side).
 local HIT_MOD = 3
 -- The blast (the original's effect 0x47) and its sound.
-local BLAST = define.effect { sprite = asset.sprite("blast"), anim = 0, palette = 0 }
-local BLAST_SOUND = asset.sound("hit-bomb-1")
+local BLAST = define.effect { sprite = asset.sprite("bn6:blast"), anim = 0, palette = 0 }
+local BLAST_SOUND = asset.sound("bn6:hit-bomb-1")
 
 -- Its actions (`off_80CDE20`, by index).
 local DESTROYED, ARMED = 2, 8
@@ -239,7 +239,7 @@ local function update(me: Object)
 end
 
 land_mine.kind = define.kind {
-    id = "mine/land-mine",
+    id = "bn6:mine/land-mine",
     pool = "attack",
     state = { targets = "u8[18]", count = "u32", index = "u32", hop_ticks = "u8" },
     update = update,

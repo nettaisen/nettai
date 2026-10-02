@@ -20,7 +20,7 @@ local DRAW_TICKS, SWING_TICKS, RECOVER_TICKS = 0x14, 0xA, 0x1E
 -- The swing's timer when the slash lands.
 local SLASH_AT = 5
 
-local SOUND = asset.sound("spin")
+local SOUND = asset.sound("bn6:spin")
 
 -- The hits' counter byte, and the slash's element: Null (the attack's
 -- element byte).
@@ -31,7 +31,7 @@ local NULL = 0
 -- swords' wide slash in his colour) 24 pixels up.
 local AHEAD = 2
 local HIT_MOD = 3
-local SLASH = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 6 }
+local SLASH = define.effect { sprite = asset.sprite("bn6:sword-slash"), anim = 0, palette = 6 }
 local SLASH_Z = 0x18_0000
 
 -- `sub_8012292`: 50 damage and 20 more per point of buster Attack (up to
@@ -107,7 +107,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [DRAW] = draw, [SWING] = swing, [RECOVER] = recover }
 
 charge.action = define.action {
-    id = "eraseman/charge/action",
+    id = "bn6:eraseman/charge/action",
     state = { timer = "u16" },
     -- `sub_80F0FB4` (`off_80F0FC8`).
     update = function(me: Object, s: State)
@@ -116,7 +116,7 @@ charge.action = define.action {
 }
 
 charge.weapon = define.weapon {
-    id = "eraseman/charge",
+    id = "bn6:eraseman/charge",
     -- The charge table's row 0x47, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 60, 55, 50, 45, 40, 120, 110, 100 },

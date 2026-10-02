@@ -22,16 +22,16 @@ export type State = {
     ticks: number,
 }
 
-local SPRITE = asset.sprite("sight")
+local SPRITE = asset.sprite("bn6:sight")
 local ANIM = 1
-local SOUND_MARK = asset.sound("mark")
-local SOUND_HIT = asset.sound("col-army-2")
+local SOUND_MARK = asset.sound("bn6:mark")
+local SOUND_HIT = asset.sound("bn6:col-army-2")
 -- Its hit (`dword_80D690C`, `byte_80D68D8`, by its look): look 0 a thrown
 -- attack, look 1 another attacker's with bug 0x54 (argument 0x32); hitting
 -- navis, hit modifier 3, element 0's spark.
 local HIT_IS: { [number]: CollisionType } = {
     [0] = collision.thrown,
-    [1] = define.collision { id = "circgun/other-hit", side0 = 0x80000488, side1 = 0x40000488, row_offset = 0x158 },
+    [1] = define.collision { id = "bn6:circgun/other-hit", side0 = 0x80000488, side1 = 0x40000488, row_offset = 0x158 },
 }
 local HIT_BUG: { [number]: { number } } = { [0] = { 0, 0 }, [1] = { 0x54, 0x32 } }
 
@@ -125,7 +125,7 @@ local function init(me: Object)
 end
 
 shot.kind = define.kind {
-    id = "circgun/shot",
+    id = "bn6:circgun/shot",
     pool = "attack",
     state = { gun = "object", slot = "u8", look = "u8", ticks = "u8" },
     -- `sub_80D67EC`.

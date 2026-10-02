@@ -20,7 +20,7 @@ local seed = {}
 export type State = { variant: SeedVariant }
 
 -- `sub_8011504`: sprite `bomb`, animation 9, with a ground shadow.
-local SPRITE = asset.sprite("bomb")
+local SPRITE = asset.sprite("bn6:bomb")
 local ANIM = 9
 local HIT_MOD = 1
 -- Flight: as the bomb's (`byte_80CE3AC`).
@@ -29,8 +29,8 @@ local SPEED, RISE, GRAVITY = 0x2E666, 0x20666, -0x2800
 
 -- What grows on each panel: a sprout (poison, ice) or a green one (grass)
 -- (effects 0x3B, 0x3C).
-seed.sprout = define.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 0 }
-seed.green_sprout = define.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 8 }
+seed.sprout = define.effect { sprite = asset.sprite("bn6:grab-shot"), anim = 1, palette = 0 }
+seed.green_sprout = define.effect { sprite = asset.sprite("bn6:grab-shot"), anim = 1, palette = 8 }
 
 -- What the navi holds while throwing a seed: the bomb's sprite in the
 -- seed's colours (the original's attachment rows 0x24, 0x25, 0x26).
@@ -150,7 +150,7 @@ local function init(me: Object)
 end
 
 seed.kind = define.kind {
-    id = "seed",
+    id = "bn6:seed",
     pool = "attack",
     state = { variant = "record:seed-variant" },
     -- `sub_80CE24C`.

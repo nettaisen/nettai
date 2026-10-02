@@ -101,7 +101,7 @@ local function tick(me: Object)
 end
 
 hook.kind = define.kind {
-    id = "flmhook/hook",
+    id = "bn6:flmhook/hook",
     pool = "effect",
     state = { big = "bool", spark = "spark", controller = "object" },
     -- `sub_80EA010`.

@@ -3,7 +3,7 @@
 -- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
 
 return define.chip {
-    id = "boybomb3",
+    id = "bn5:boybomb3",
     codes = { "B", "Q", "Y" },
     element = "null",
     family = "summon",

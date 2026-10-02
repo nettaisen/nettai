@@ -533,28 +533,26 @@ impl Compat {
         })
     }
 
-    /// The root compat's keys are in, in `content`: its own (`bn6`) where
-    /// the content loads it, else the content's own root (the engine's
-    /// test content stands in for BN6's).
-    pub fn root_in<'c>(&'c self, content: &'c nettai_battle::Content) -> &'c str {
-        let roots = &content.defs.roots;
-        if roots.iter().any(|r| *r == self.root) { &self.root } else { roots.first().map_or(&self.root, |r| r.as_str()) }
+    /// The game compat's ids are of (`bn6`).
+    pub fn root_in<'c>(&'c self, _content: &'c nettai_battle::Content) -> &'c str {
+        &self.root
     }
 
-    /// Compat's key `key` as `content` keys it (`bn6:minibomb`).
-    pub fn def_key(&self, content: &nettai_battle::Content, key: &str) -> String {
-        nettai_content_api::keys::qualify(self.root_in(content), key)
+    /// Compat's id `key` as content writes it: the same, in full
+    /// (`bn6:minibomb`; docs/design/rules-in-luau.md, the flat namespace).
+    pub fn def_key(&self, _content: &nettai_battle::Content, key: &str) -> String {
+        key.to_string()
     }
 
-    /// A definition's key as compat writes it (`minibomb`), or None for a
-    /// definition of another root (it has no BN6 number). An engine key is
-    /// itself.
-    pub fn compat_key<'k>(&self, content: &nettai_battle::Content, key: &'k str) -> Option<&'k str> {
+    /// A definition's id if compat has numbers for it (one of its game's,
+    /// or an engine key), else None (another game's: it has no BN6
+    /// number).
+    pub fn compat_key<'k>(&self, _content: &nettai_battle::Content, key: &'k str) -> Option<&'k str> {
         use nettai_content_api::keys;
         if key.starts_with(keys::ENGINE) {
             return Some(key);
         }
-        (keys::root_of(key) == Some(self.root_in(content))).then(|| keys::local(key))
+        (keys::root_of(key) == Some(self.root.as_str())).then_some(key)
     }
 
     /// [`Compat::compat_key`] for messages and lookups that need one: the

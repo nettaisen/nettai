@@ -120,7 +120,7 @@ local function init(me: Object)
 end
 
 thunder_column.kind = define.kind {
-    id = "dolthdr/thunder-column",
+    id = "bn6:dolthdr/thunder-column",
     pool = "attack",
     state = { owner = "object", link = "u8", variant = "record:thunder-column-variant" },
     -- `sub_80D6924`.

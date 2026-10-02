@@ -5,7 +5,7 @@
 -- straight away (no state 0x24); no escape check (BN6's `sub_800AAD6` is absent); the result's banner holds at
 -- least 102 ticks, 65 in a special battle.
 
-return define.rules("flow", {
+return define.rules("bn5:flow", {
     custom_closes_with_results = true,
     sequencer_before_custom = false,
     escape_check = false,

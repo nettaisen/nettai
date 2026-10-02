@@ -50,9 +50,9 @@ export type State = {
     target: boolean,
 }
 
-local SPRITE = asset.sprite("django")
-local SOUND_APPEAR, SOUND_BIKE = asset.sound("appear"), asset.sound("django-bike")
-local SOUND_COMMAND, SOUND_SWING = asset.sound("ok-8b"), asset.sound("sword-swing")
+local SPRITE = asset.sprite("bn6:django")
+local SOUND_APPEAR, SOUND_BIKE = asset.sound("bn6:appear"), asset.sound("bn6:django-bike")
+local SOUND_COMMAND, SOUND_SWING = asset.sound("bn6:ok-8b"), asset.sound("bn6:sword-swing")
 
 -- The controller calls his spawner through r3, which his position takes:
 -- EXE6 Falzar's address with the Thumb bit (EXE6 Gregar's is 0x080BEF03),
@@ -398,7 +398,7 @@ local ACTIONS: { [number]: (me: Object) -> () } = {
 }
 
 django.kind = define.kind {
-    id = "django/navi",
+    id = "bn6:django/navi",
     pool = "actor",
     state = {
         controller = "object",

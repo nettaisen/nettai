@@ -10,7 +10,7 @@ export type State = {
     ticks: number,
 }
 
-local SPRITE = asset.sprite("erase-mark")
+local SPRITE = asset.sprite("bn6:erase-mark")
 
 -- `sub_80E78E0`: on its panel, at the fraction of its Z.
 local function init(me: Object)
@@ -44,7 +44,7 @@ local function tick(me: Object)
 end
 
 mark.kind = define.kind {
-    id = "eraseman/mark",
+    id = "bn6:eraseman/mark",
     pool = "effect",
     state = { ticks = "u8" },
     -- `sub_80E78BC`.

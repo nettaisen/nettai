@@ -23,7 +23,7 @@ export type State = {
     target_y: number,
 }
 
-local SPRITE, ANIM = asset.sprite("bomb"), 5
+local SPRITE, ANIM = asset.sprite("bn6:bomb"), 5
 -- Thrown at 0x2C000 a tick along the ground, to land 10 pixels up,
 -- falling 0x2800 a tick.
 local SPEED, LANDING_Z, GRAVITY = 0x2C000, 0x0A * 0x10000, -0x2800
@@ -33,8 +33,8 @@ local HIT_MOD, STATUS = 0, statuses.confuse_480
 -- The burst: ticks it sits (61), over the eight around it, and an
 -- explosion (effect 0x4A) on each panel of the 3x3.
 local SIT_TICKS = 0x3C
-local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 2 }
-local SOUND_LAND, SOUND_HIT_BOMB = asset.sound("bug-bomb-land"), asset.sound("hit-bomb-1")
+local EXPLOSION = define.effect { sprite = asset.sprite("bn6:explosion"), anim = 0, palette = 2 }
+local SOUND_LAND, SOUND_HIT_BOMB = asset.sound("bn6:bug-bomb-land"), asset.sound("bn6:hit-bomb-1")
 -- What in its hits ends it at once.
 local CRUSHED = 0x3F800000
 
@@ -206,7 +206,7 @@ local function init(me: Object, s: State)
 end
 
 bug_bomb.kind = define.kind {
-    id = "bugbomb/bomb",
+    id = "bn6:bugbomb/bomb",
     pool = "attack",
     state = { angle = "u8", target_x = "u8", target_y = "u8" },
     -- `sub_80D9D4C`.

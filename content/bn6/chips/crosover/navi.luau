@@ -39,10 +39,10 @@ export type State = {
     in_position: boolean,
 }
 
-local DJANGO_SPRITE = asset.sprite("django")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_SHOT = asset.sound("buster-shot")
-local SOUND_GUN = asset.sound("gundels1")
+local DJANGO_SPRITE = asset.sprite("bn6:django")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_SHOT = asset.sound("bn6:buster-shot")
+local SOUND_GUN = asset.sound("bn6:gundels1")
 
 -- (MegaMan's arm for a user who isn't MegaMan and his muzzle flash are
 -- lib/buster's, attachments 6 and 5.) Django's gun is his own sprite's
@@ -67,7 +67,7 @@ local DRAIN_ELEMENT, DRAIN_DAMAGE, DRAIN_TICKS = 5, 3, 0x78
 -- place too (effects 0x18 and 0x36).
 local SLASH = { effect = parts.effects.slash, region = regions.single }
 local CROSS_HALF = {
-    effect = define.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
+    effect = define.effect { sprite = asset.sprite("bn6:colonel-effect"), anim = 1, palette = 0 },
     region = regions.falling,
 }
 
@@ -672,7 +672,7 @@ local function destroy(me: Object)
 end
 
 crosover.kind = define.kind {
-    id = "crosover/navi",
+    id = "bn6:crosover/navi",
     pool = "actor",
     state = {
         django = "bool",

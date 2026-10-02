@@ -24,11 +24,11 @@ export type State = {
     bubble_in: number,
 }
 
-local SPRITE = asset.sprite("anubis")
+local SPRITE = asset.sprite("bn6:anubis")
 -- It drops from 160 pixels, 8 a tick.
 local HEIGHT, FALL_SPEED = 0xA0_0000, 0x8_0000
-local SOUND_LAND = asset.sound("land")
-local SOUND_BREAK = asset.sound("hit-bomb-1")
+local SOUND_LAND = asset.sound("bn6:land")
+local SOUND_BREAK = asset.sound("bn6:hit-bomb-1")
 -- Where it can stand: a solid panel with nothing on it.
 local SOLID, OCCUPIED = 0x10, 0x0F88_0080
 -- What it is and reaches: a field obstacle of its side, hit modifier 3.
@@ -43,7 +43,7 @@ local OTHER_SIDE: { [number]: { number } } = { [0] = { 0x20, 0 }, [1] = { 0, 0x2
 -- The drain (`byte_80CF31C`, by side): the other side's whole area, the
 -- silent element 5, 1 damage that can't counter (0x81), hitting by what it
 -- is alone (row 0x52, target row 0), no spark, hit modifier 0.
-local DRAIN_IS = define.collision { id = "anubis/drain", side0 = 0x80001080, side1 = 0x40001080, row_offset = 0x290 }
+local DRAIN_IS = define.collision { id = "bn6:anubis/drain", side0 = 0x80001080, side1 = 0x40001080, row_offset = 0x290 }
 local DRAIN_ELEMENT, DRAIN_DAMAGE, DRAIN_COUNTER = 5, 1, 0x81
 
 -- An Anubis statue's variant (`byte_80CF0C0`, by the chip's first
@@ -58,11 +58,11 @@ statue.anubis = statue.variant {
     hp = 100,
     lifetime = 3000,
     identity = define.identity {
-        id = "anubis",
+        id = "bn6:anubis",
         class = "field_object",
         version = 2,
         ai_index = 1,
-        look = { sprite = asset.sprite("anubis"), anim = 0, palette = 0, shadow = true },
+        look = { sprite = asset.sprite("bn6:anubis"), anim = 0, palette = 0, shadow = true },
     },
 }
 statue.poisphar = statue.variant {
@@ -71,11 +71,11 @@ statue.poisphar = statue.variant {
     hp = 100,
     lifetime = 1441,
     identity = define.identity {
-        id = "poisphar",
+        id = "bn6:poisphar",
         class = "field_object",
         version = 3,
         ai_index = 1,
-        look = { sprite = asset.sprite("anubis"), anim = 1, palette = 0, shadow = true },
+        look = { sprite = asset.sprite("bn6:anubis"), anim = 1, palette = 0, shadow = true },
     },
 }
 
@@ -257,7 +257,7 @@ local function init(me: Object)
 end
 
 statue.kind = define.kind {
-    id = "anubis/statue",
+    id = "bn6:anubis/statue",
     pool = "attack",
     state = { variant = "record:anubis-variant", bubble_in = "u32" },
     -- `sub_80CF0D0`.

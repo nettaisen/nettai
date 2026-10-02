@@ -558,15 +558,15 @@ mod tests {
         let mut report = nettai_content::report::Report::default();
         let root = nettai_content::root::read(dir, &mut report).expect("content/bn6 reads");
         let mut c = Content::default();
-        c.strings = root.strings.qualified(&root.manifest.name);
+        c.strings = root.strings;
         c.scripts = nettai_battle::content::Scripts::root(root.manifest, root.modules);
         c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        let ja = nettai_content::locale::load_all(dir, "ja").unwrap().expect("ja.toml");
+        let ja = nettai_content::locale::load(dir, "ja").unwrap().expect("ja.toml");
         let form = |key: &str| c.defs.form_by_key(key).unwrap_or_else(|| panic!("no form {key}"));
-        let navi = c.defs.navi_by_key("megaman").expect("megaman");
+        let navi = c.defs.navi_by_key("bn6:megaman").expect("megaman");
         let list = Unlocks {
-            cross_list: Some(CrossList::new(&[form("heatcross"), form("groundcross")])),
+            cross_list: Some(CrossList::new(&[form("bn6:heatcross"), form("bn6:groundcross")])),
             ..Unlocks::everything(GameVersion::Falzar)
         };
         let version = Unlocks::everything(GameVersion::Falzar);

@@ -42,8 +42,8 @@ export type State = {
     next: number,
 }
 
-local SPRITE = asset.sprite("count")
-local SOUND_APPEAR, SOUND_RAIN = asset.sound("appear"), asset.sound("drip-shower")
+local SPRITE = asset.sprite("bn6:count")
+local SOUND_APPEAR, SOUND_RAIN = asset.sound("bn6:appear"), asset.sound("bn6:drip-shower")
 
 -- The controller calls his spawner through r3, which his position takes
 -- (EXE6 Falzar's address with the Thumb bit; EXE6 Gregar's is 0x080BEA97).
@@ -275,7 +275,7 @@ local ACTIONS: { [number]: (me: Object) -> () } = {
 }
 
 count.kind = define.kind {
-    id = "count/navi",
+    id = "bn6:count/navi",
     pool = "actor",
     state = { controller = "object", lance_damage = "u8", targets = "u8[3]", count = "u8", next = "u8" },
     update = function(me: Object)

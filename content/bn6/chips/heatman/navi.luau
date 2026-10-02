@@ -20,8 +20,8 @@ export type State = {
     controller: Object?,
 }
 
-local SPRITE = asset.sprite("heatman")
-local SOUND_APPEAR = asset.sound("appear")
+local SPRITE = asset.sprite("bn6:heatman")
+local SOUND_APPEAR = asset.sound("bn6:appear")
 
 -- What he wears (his overlay, `sub_8010F6A`): the link navi's own parts.
 local IDENTITY = heatman_navi.identity
@@ -158,7 +158,7 @@ end
 local ACTIONS = { [APPEAR] = appear, [STAND] = stand, [INHALE] = inhale, [FIRE] = fire, [LEAVE] = leave }
 
 heatman.kind = define.kind {
-    id = "heatman/navi",
+    id = "bn6:heatman/navi",
     pool = "actor",
     state = { controller = "object" },
     -- `sub_80B9078`.

@@ -274,7 +274,7 @@ impl CoreApi for Battle {
             }
         } else {
             // Another object's chip word: zeroed, the zeroed chip.
-            match o.chip.or_else(|| self.content.zeroed_chip()) {
+            match o.chip.or_else(|| self.zeroed_chip()) {
                 Some(h) => self.content.chip(h).flags,
                 None => ChipFlags(0),
             }
@@ -2127,7 +2127,7 @@ impl CoreApi for Battle {
         // The original tests the NameID word, whose high half is an
         // actor's next chip (0xFFFF for none) and 0 for anything else: an
         // actor's word is a field object's only with chip 0 next.
-        let plain = ob.actor.is_none() || (ob.chip.is_some() && ob.chip == self.content.zeroed_chip());
+        let plain = ob.actor.is_none() || (ob.chip.is_some() && ob.chip == self.zeroed_chip());
         let identity = self.content.identity(ob.identity);
         plain && identity.class == crate::content::IdentityClass::FieldObject && identity.scrap
     }

@@ -120,13 +120,12 @@ pub(crate) fn install_assets(
     lua: &Lua,
     tables: &Rc<RefCell<AssetTables>>,
     module: Rc<dyn Fn() -> Option<String>>,
-    pack: Rc<crate::Pack>,
 ) -> mlua::Result<()> {
     let asset = lua.create_table()?;
     for kind in AssetKind::ALL {
         let tables = Rc::downgrade(tables);
         let module = module.clone();
-        let pack = pack.clone();
+
         let f = lua.create_function(move |lua, name: LuaValue| {
             let what = format!("asset.{kind}");
             let at = module().ok_or_else(|| mlua::Error::runtime(format!("{what}: assets are named while content loads")))?;
@@ -135,9 +134,8 @@ pub(crate) fn install_assets(
                 return Err(mlua::Error::runtime(format!("{at}: {what} takes a name, not {}", name.type_name())));
             };
             let name = name.to_str()?.to_string();
-            // (Qualified with the module's root's pack: `bn6:bomb`.)
-            let root = keys::root_of(&at).unwrap_or("");
-            let qualified = pack.asset_name(root, &name).map_err(|e| mlua::Error::runtime(format!("{at}: {what}: {e}")))?;
+            // (Written in full: `bn6:bomb`.)
+            let qualified = crate::Pack::asset_name(&name).map_err(|e| mlua::Error::runtime(format!("{at}: {what}: {e}")))?;
             let h = tables.borrow().names.handle(kind, &qualified).ok_or_else(|| {
                 mlua::Error::runtime(format!("{at}: no {kind} is named {name:?} (the pack {})", keys::root_of(&qualified).unwrap_or("")))
             })?;
@@ -252,37 +250,48 @@ pub(crate) fn finish(
     let index: HashMap<Ptr, usize> = made.iter().enumerate().map(|(i, m)| (m.table.to_pointer(), i)).collect();
     let mut keys: Vec<Option<String>> = vec![None; made.len()];
 
-    // Explicit ids (a root's roles are one definition, `roles`), in the
-    // module's root.
+    // Explicit ids, written in full (docs/design/rules-in-luau.md, the
+    // flat namespace: "in the chip ids directly have bn6:cannon"): the
+    // game, then the key (`bn6:cannon`, `bn6:eraseman/mark`); a section's
+    // name too (`bn6:panels`), and a game's roles' (`bn6:roles`).
+    let full = |what: &str, id: &str, kind: &str, folder: &str| -> Result<String, String> {
+        let local = match keys::root_of(id) {
+            Some(game) if keys::valid_root_name(game) => keys::local(id),
+            _ => return Err(format!("{what}: {kind} {id:?} names no game: write it in full (\"{folder}:{id}\")")),
+        };
+        if !valid_key(local) {
+            return Err(format!("{what}: {id:?} is not a valid {kind} (a game, then lowercase words in -, qualified with /: \"bn6:eraseman/mark\")"));
+        }
+        Ok(id.to_string())
+    };
+    // (Every id not in full is reported at once.)
+    let mut unwritten = Vec::new();
     for (i, m) in made.iter().enumerate() {
         let what = format!("{}: define.{}", m.module, m.registry.name());
-        let root = keys::root_of(&m.module).ok_or_else(|| format!("{what}: module {:?} names no root", m.module))?;
-        if m.registry == Registry::Roles {
-            keys[i] = Some(keys::qualify(root, "roles"));
-            continue;
-        }
+        let folder = keys::root_of(&m.module).unwrap_or("bn6");
         if m.registry == Registry::Rules {
             let name = m.record_type.clone().unwrap_or_default();
-            if !valid_key(&name) {
-                return Err(format!("{what}: {name:?} is not a valid section name (lowercase words in -)"));
+            match full(&what, &name, "section name", folder) {
+                Ok(k) => keys[i] = Some(k),
+                Err(e) => unwritten.push(e),
             }
-            keys[i] = Some(keys::qualify(root, &name));
             continue;
         }
         match m.table.raw_get::<LuaValue>("id").map_err(|e| format!("{what}: {e}"))? {
-            LuaValue::Nil if m.registry.keyed() => return Err(format!("{what} needs an `id`")),
+            LuaValue::Nil if m.registry.keyed() || m.registry == Registry::Roles => return Err(format!("{what} needs an `id`")),
             LuaValue::Nil => {}
             LuaValue::String(s) => {
                 let id = s.to_str().map_err(|e| format!("{what}: {e}"))?.to_string();
-                if !valid_key(&id) {
-                    return Err(format!(
-                        "{what}: {id:?} is not a valid id (lowercase words in -, qualified with /: \"eraseman/mark\")"
-                    ));
+                match full(&what, &id, "id", folder) {
+                    Ok(k) => keys[i] = Some(k),
+                    Err(e) => unwritten.push(e),
                 }
-                keys[i] = Some(keys::qualify(root, &id));
             }
             v => return Err(format!("{what}: `id` is a {}, not a string", v.type_name())),
         }
+    }
+    if !unwritten.is_empty() {
+        return Err(unwritten.join("\n"));
     }
 
     // Keys from owners: definitions nested in a keyed one, made while the

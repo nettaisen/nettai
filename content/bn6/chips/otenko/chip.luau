@@ -32,7 +32,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "otenko/controller",
+    id = "bn6:otenko/controller",
     pool = "effect",
     -- `sub_80E7624`.
     update = dimming_chips.phases { name = "Otenko", effect = effect },
@@ -44,7 +44,7 @@ local function hook(user: Object, spec: DimmingChipSpec): Object?
 end
 
 return define.chip {
-    id = "otenko",
+    id = "bn6:otenko",
     codes = { "O" },
     element = "null",
     family = "summon",

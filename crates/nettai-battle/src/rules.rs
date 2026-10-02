@@ -25,11 +25,11 @@ pub struct SideRules {
 
 impl SideRules {
     /// A player's rules at a round's start: the ruleset their setup names
-    /// (or the content's stock one), its systems' state zeroed. Their
-    /// setup's blocks are made zero for a setup that gives none, and must
-    /// otherwise be the ruleset's.
-    pub fn for_player(content: &Content, player: &mut PlayerSetup) -> SideRules {
-        let ruleset = player.ruleset.or_else(|| content.defs.stock_ruleset());
+    /// (or game `arena`'s stock one, the stage's game's), its systems'
+    /// state zeroed. Their setup's blocks are made zero for a setup that
+    /// gives none, and must otherwise be the ruleset's.
+    pub fn for_player(content: &Content, player: &mut PlayerSetup, arena: crate::content::RootId) -> SideRules {
+        let ruleset = player.ruleset.or_else(|| content.defs.stock_ruleset_of(&content.defs.roots[arena.index()]));
         let Some(r) = ruleset else {
             assert!(player.rules.is_empty(), "a player's setup gives system setups, and the content has no ruleset");
             return SideRules::default();
@@ -63,7 +63,9 @@ impl PlayerSetup {
         system: &str,
         field: &str,
     ) -> Result<(&'a mut ContentState, &'a nettai_content_api::Schema, usize), String> {
-        let r = self.ruleset.or_else(|| content.defs.stock_ruleset()).ok_or("the content has no ruleset")?;
+        // (No ruleset in the setup: the system's game's stock rules.)
+        let game = nettai_content_api::keys::root_of(system).ok_or_else(|| format!("system {system:?} names no game"))?;
+        let r = self.ruleset.or_else(|| content.defs.stock_ruleset_of(game)).ok_or("the content has no ruleset")?;
         let def = content.defs.ruleset(r);
         if self.rules.is_empty() {
             self.rules = def.systems.iter().map(|&h| ContentState::new(content.defs.system(h).setup)).collect();
@@ -145,8 +147,8 @@ mod tests {
     fn each_side_runs_its_rulesets_systems_for_itself() {
         let b = started(scenario::setup());
         let content = &b.content;
-        let stock = content.defs.stock_ruleset().expect("the test content's stock rules");
-        assert_eq!(content.defs.ruleset(stock).key, "test:test");
+        let stock = content.defs.stock_ruleset_of(testing::ROOT).expect("the test content's stock rules");
+        assert_eq!(content.defs.ruleset(stock).key, "test:stock");
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).ruleset, Some(stock));
             // (BN6's beast system first, then the counter, then BN6's forms
@@ -161,7 +163,7 @@ mod tests {
     fn a_player_plays_by_the_ruleset_their_setup_names() {
         let content = scenario::content();
         let mut setup = scenario::setup();
-        setup.players[1].ruleset = content.defs.ruleset_by_key("test-other");
+        setup.players[1].ruleset = content.defs.ruleset_by_key("test:test-other");
         let b = started(setup);
         assert_eq!(b.side_rules(0).states.len(), 3, "side 0 keeps the stock rules");
         assert_eq!(b.side_rules(1).states.len(), 2, "side 1 plays by its own");
@@ -200,11 +202,11 @@ mod tests {
     fn a_mix_is_its_bases_systems_changed() {
         let content = scenario::content();
         let defs = &content.defs;
-        let mix = defs.ruleset_by_key("test-mix").expect("the mix");
+        let mix = defs.ruleset_by_key("test:test-mix").expect("the mix");
         let names: Vec<&str> = defs.ruleset(mix).systems.iter().map(|&h| defs.system(h).key.as_str()).collect();
         assert_eq!(names, ["test:beast", "test:test/counter", "test:test/marker"]);
-        assert_eq!(defs.ruleset(mix).base, defs.stock_ruleset());
-        assert_eq!(defs.ruleset(mix).game, crate::content::RootId::HOME);
+        assert_eq!(defs.ruleset(mix).base, defs.stock_ruleset_of(testing::ROOT));
+        assert_eq!(Some(defs.ruleset(mix).game), defs.root_id(testing::ROOT));
         let mut setup = scenario::setup();
         setup.players[1].ruleset = Some(mix);
         let b = started(setup);
@@ -226,7 +228,7 @@ mod tests {
             (
                 "rules/ruleset",
                 "local systems = require('@test/rules/systems')\n\
-                 return define.ruleset { id = 'twin', stock = true, systems = { systems.counter } }",
+                 return define.ruleset { id = 'twin:stock', stock = true, systems = { systems.counter } }",
             ),
             (
                 "rules/roles",
@@ -235,11 +237,12 @@ mod tests {
                  for k, v in test do spec[k] = v end\n\
                  local sounds = {}\n\
                  for k, v in test.sounds do sounds[k] = v end\n\
-                 sounds.pause = asset.sound('pause')\n\
+                 sounds.pause = asset.sound('twin:pause')\n\
                  spec.sounds = sounds\n\
+                 spec.id = 'twin:roles'\n\
                  return define.roles(spec)",
             ),
-            ("rules/pools", "return define.rules('pools', { actor = 16, attack = 32, effect = 32 })"),
+            ("rules/pools", "return define.rules('twin:pools', { actor = 16, attack = 32, effect = 32 })"),
         ];
 
         /// The test content with the `twin` root beside it, and twin's own
@@ -254,7 +257,7 @@ mod tests {
                 index.sprites.insert("navi".into(), navi);
                 let frame = crate::content::AnimFrame { duration: 4, flags: crate::object::sprite::FRAME_LAST };
                 testing::add_pack(&mut c, "twin", index, [(navi, vec![vec![frame]])].into_iter().collect());
-                let manifest = RootManifest { name: "twin".into(), assets: None, requires: vec!["test".into()] };
+                let manifest = RootManifest::named("twin");
                 c.scripts.add_root(manifest, TWIN.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
                 c.define().unwrap_or_else(|e| panic!("{e}"));
                 Arc::new(c)
@@ -279,11 +282,12 @@ mod tests {
 
         #[test]
         fn each_side_reads_its_games_data_and_the_battle_its_arenas() {
-            let b = battle(["test", "twin"]);
+            let b = battle(["test:stock", "twin:stock"]);
             let twin = b.content.defs.root_id("twin").expect("the twin root");
+            let test = b.content.defs.root_id(testing::ROOT).expect("the test game");
             // The stage is the test content's: the arena's game is.
-            assert_eq!(b.games.arena, RootId::HOME);
-            assert_eq!(b.games.sides, [RootId::HOME, twin]);
+            assert_eq!(b.games.arena, test);
+            assert_eq!(b.games.sides, [test, twin]);
             let pause = |side| b.side_roles(side).sound(SoundRole::Pause);
             assert_ne!(pause(0), pause(1), "each side's sounds are its game's");
             assert_eq!(b.arena_roles().sound(SoundRole::Pause), pause(0));
@@ -356,7 +360,7 @@ mod tests {
             let content = scenario::content();
             let mut s = scenario::setup();
             let p = &mut s.players[0];
-            p.ruleset = content.defs.ruleset_by_key("test-cards");
+            p.ruleset = content.defs.ruleset_by_key("test:test-cards");
             let list: Vec<InstalledCard> = cards
                 .iter()
                 .map(|&(key, enabled)| InstalledCard {
@@ -372,7 +376,7 @@ mod tests {
         #[test]
         fn the_cards_are_definitions_and_the_setups_part() {
             let content = scenario::content();
-            let h = content.defs.patch_card_by_key("test-stats").expect("the test card");
+            let h = content.defs.patch_card_by_key("test:test-stats").expect("the test card");
             let card = content.patch_card(h);
             assert_eq!(card.mb, 20);
             let kinds: Vec<(&str, bool)> = card.effects.iter().map(|e| (e.kind.as_str(), e.bug)).collect();
@@ -414,8 +418,8 @@ mod tests {
             let s = &b.stats[0];
             let content = &b.content;
             assert!(s.super_armor && !s.float_shoes);
-            assert_eq!(s.first_barrier, content.defs.record("barrier/200"));
-            assert_eq!(s.weapons.charge_shot_kind, content.defs.record("shot/charged-confusing"));
+            assert_eq!(s.first_barrier, content.defs.record("test:barrier/200"));
+            assert_eq!(s.weapons.charge_shot_kind, content.defs.record("test:shot/charged-confusing"));
             assert_eq!(s.support, Some(Supports { rush: true, ..Supports::default() }));
             assert_eq!(s.gauge_speed, GaugeSpeed::Fast);
             assert!(s.chip_shuffle && !s.number_open, "ChpShufl turns NumbrOpn off");

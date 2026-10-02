@@ -614,7 +614,7 @@ fn registrations_follow_the_content_data() {
     // effect no chip has (TenguCross's wind) has its own.
     let plus = d.chip(testing::chip_in(&c, testing::PLUS));
     assert!(matches!(plus.usage, crate::content::ChipUsage::Instant(_)), "{:?}", plus.usage);
-    assert!(d.weapon(c.weapon_by_key("megaman/tengu-wind")).instant.is_some());
+    assert!(d.weapon(c.weapon_by_key("test:megaman/tengu-wind")).instant.is_some());
     // A chip's action may be another chip's (the test link chips run
     // BN6's link navis' chips' actions).
     for (key, bn6) in testing::LINK_CHIPS.iter().zip(["heatpres", "delecswd", "rslash"]) {
@@ -793,10 +793,10 @@ fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
     use crate::object::Pool;
     let mut b = rock_battle();
     let stage = b.content.stage(b.content.stage_by_key(testing::ROCK_BATTLE)).clone();
-    let rock = Place::Kind(b.content.defs.kind_by_key("rockcube/rock").expect("the rock"));
+    let rock = Place::Kind(b.content.defs.kind_by_key("test:rockcube/rock").expect("the rock"));
     assert_eq!(stage.actors.iter().map(|e| e.place).collect::<Vec<_>>(), [Place::Navi, Place::Navi, rock, rock]);
     // Each rock names its variant, a record of the rock's.
-    let cube = b.content.defs.record("rockcube/rock/cube");
+    let cube = b.content.defs.record("test:rockcube/rock/cube");
     assert!(cube.is_some() && stage.actors[2..].iter().all(|e| e.variant == cube));
     b.spawn_actors();
     assert_eq!(b.round.alive, [1, 1]);
@@ -1018,7 +1018,7 @@ fn an_obstacle_encased_in_ice_becomes_an_ice_block() {
     assert_eq!(b.field.objects.class_of(block), Some(0));
     run_only(&mut b, &["rockcube/rock", "encased-bubble"]);
     let o = b.objects.get(block);
-    let ice = b.content.identity_by_key("ice-block");
+    let ice = b.content.identity_by_key("test:ice-block");
     assert_eq!((o.panel, o.identity, o.element, o.hp), (panel, Some(ice), 2, 200));
 }
 
@@ -1041,7 +1041,7 @@ fn the_navi_changing_chips_change_the_navi() {
         use crate::content::ChipCode;
         use crate::custom::{BattleFolder, FolderChip};
         let mut s = scenario::setup();
-        let chips = [(testing::chip_handle("hubbatc"), ChipCode(9)), (testing::chip_handle("puncharm"), ChipCode::ASTERISK)];
+        let chips = [(testing::chip_handle("test:hubbatc"), ChipCode(9)), (testing::chip_handle("test:puncharm"), ChipCode::ASTERISK)];
         let mut folder = BattleFolder::empty();
         for (slot, &(chip, code)) in folder.chips.iter_mut().zip(chips.iter().cycle()) {
             assert!(testing::content().chip(chip).codes.contains(&code));
@@ -1062,7 +1062,7 @@ fn the_navi_changing_chips_change_the_navi() {
     let after = &b.stats[0];
     assert_eq!((after.rapid, after.charge, after.custom_level), (4, 4, 8), "{before:?}");
     assert!(after.float_shoes && after.air_shoes && after.undershirt);
-    assert_eq!(after.weapons.charge_shot, testing::weapon("puncharm/charge"), "the arm's charged shot");
+    assert_eq!(after.weapons.charge_shot, testing::weapon("test:puncharm/charge"), "the arm's charged shot");
     let copy = digests(&tape, Battle::new(setup(), scenario::content()));
     let mut b = Battle::new(setup(), scenario::content());
     for (i, t) in tape.iter().enumerate() {
@@ -1663,7 +1663,7 @@ fn first_barrier_raises_a_barrier() {
     // barrier, with its visual, as the navi comes in.
     let mut s = scenario::setup();
     let content = scenario::content();
-    s.navi_stats[0].first_barrier = Some(content.defs.record("barrier/10").expect("the Barrier chip's barrier"));
+    s.navi_stats[0].first_barrier = Some(content.defs.record("test:barrier/10").expect("the Barrier chip's barrier"));
     let mut b = Battle::new(s, content);
     for _ in 0..300 {
         b.tick(&Default::default(), Default::default());
@@ -1685,7 +1685,7 @@ fn the_other_sides_first_barrier_is_hidden_until_the_local_navi_is_in() {
     // blind bit, so the visual is hidden on that tick only.
     let mut s = scenario::setup();
     let content = scenario::content();
-    s.navi_stats[1].first_barrier = Some(content.defs.record("barrier/10").expect("the Barrier chip's barrier"));
+    s.navi_stats[1].first_barrier = Some(content.defs.record("test:barrier/10").expect("the Barrier chip's barrier"));
     let mut b = Battle::new(s, content);
     let visual = |b: &Battle| b.player(1).and_then(|p| b.objects.get(p).actor).and_then(|a| b.actors.get(a).barrier_visual);
     let mut ticks = 0;

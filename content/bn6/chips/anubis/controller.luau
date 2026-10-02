@@ -28,7 +28,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "anubis/controller",
+    id = "bn6:anubis/controller",
     pool = "effect",
     state = { variant = "record:anubis-variant" },
     -- `sub_80E40EC`.

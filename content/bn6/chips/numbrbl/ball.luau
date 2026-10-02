@@ -15,9 +15,9 @@ export type State = {
     wait: number,
 }
 
-local SPRITE = asset.sprite("number-ball")
-local SOUND_SET = asset.sound("place")
-local SOUND_HIT = asset.sound("damage")
+local SPRITE = asset.sprite("bn6:number-ball")
+local SOUND_SET = asset.sound("bn6:place")
+local SOUND_HIT = asset.sound("bn6:damage")
 -- An attack hitting navis, hit modifier 3; rolling 3 pixels a tick.
 local IS, HITS, HIT_MOD = collision.attack, collision.hits_navis, 3
 local SPEED = 0x3_0000
@@ -122,7 +122,7 @@ local function init(me: Object)
 end
 
 ball.kind = define.kind {
-    id = "numbrbl/ball",
+    id = "bn6:numbrbl/ball",
     pool = "attack",
     state = { wait = "u8" },
     -- `sub_80D7278`: by state, then the sprite (stepping while dimmed).

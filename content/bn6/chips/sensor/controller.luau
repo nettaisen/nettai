@@ -44,7 +44,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "sensor/controller",
+    id = "bn6:sensor/controller",
     pool = "effect",
     state = { palette = "u8", hp = "u8", bonus = "u16" },
     update = dimming_chips.phases { name = "Sensor", effect = effect },

@@ -108,7 +108,7 @@ local function init(me: Object)
 end
 
 attachment.kind = define.kind {
-    id = "attachment",
+    id = "bn6:attachment",
     pool = "actor",
     state = {
         slot = slot.TYPE,

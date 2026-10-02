@@ -18,9 +18,9 @@ local plus = {}
 
 -- The sparkle: 4 pixels toward the enemy's side, 48 up; and its sound.
 local TOWARD, HEIGHT = 4, 48
-local SPARKLE_SOUND = asset.sound("panel-poison")
+local SPARKLE_SOUND = asset.sound("bn6:panel-poison")
 
-local BONUS_SOUND = asset.sound("bonus")
+local BONUS_SOUND = asset.sound("bn6:bonus")
 
 -- The side's special chip bonuses (`battle.add_special_bonus`'s index).
 local ATTACK_BONUS, NAVI_BONUS = 0, 1

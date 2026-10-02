@@ -9,6 +9,10 @@
 //! a side of one: the same checks refuse a bad file and a bad offer.
 //! nettai-editor edits them.
 
+/// The game a match plays when it names no ruleset: BN6 (docs/design/rules-in-luau.md,
+/// the flat namespace: the default game is a frontend's, by name).
+pub const DEFAULT_GAME: &str = "bn6";
+
 pub mod check;
 pub mod draw;
 pub mod file;
@@ -101,7 +105,7 @@ impl Side {
 
     /// The ruleset the side plays by: its own, else the content's stock.
     pub fn ruleset_or_stock(&self, content: &Content) -> Option<RulesetHandle> {
-        self.ruleset.or_else(|| content.defs.stock_ruleset())
+        self.ruleset.or_else(|| content.defs.stock_ruleset_of(crate::DEFAULT_GAME))
     }
 
     /// Whether the side's ruleset has the system with this key (unqualified,
@@ -146,14 +150,20 @@ pub struct Match {
 /// were, 0x600).
 pub const MATCH_EFFECTS: u32 = 0x600;
 
-/// The background a match names, `name` (the content's own pack's unless
-/// qualified, `bn6:clouds`): its handle, if the packs have it
-/// (docs/design/rules-in-luau.md §7.4).
+/// The background a match names, `name`, written in full (`bn6:clouds`):
+/// its handle, if the packs have it (docs/design/rules-in-luau.md, the flat
+/// namespace).
 pub fn background(content: &Content, name: &str) -> Option<nettai_battle::content::BackgroundId> {
-    use nettai_content_api::keys;
-    let home = content.scripts.roots.first().map_or("", |r| r.assets());
-    let q = if keys::is_qualified(name) { name.to_string() } else { keys::qualify(home, name) };
-    content.assets.handle(nettai_content_api::AssetKind::Background, &q).map(nettai_battle::content::BackgroundId)
+    content.assets.handle(nettai_content_api::AssetKind::Background, name).map(nettai_battle::content::BackgroundId)
+}
+
+/// What is wrong with a background a match names that the packs haven't.
+pub(crate) fn no_background(at: &str, name: &str) -> String {
+    if nettai_content_api::keys::is_qualified(name) {
+        format!("{at}: no background {name:?}")
+    } else {
+        format!("{at}: background {name:?} names no pack: write it in full (\"bn6:{name}\")")
+    }
 }
 
 /// The background a place shows.
@@ -271,7 +281,7 @@ pub fn patch_cards(content: &Content, list: &str) -> Result<Vec<InstalledCard>, 
             None => (item, true),
         };
         let card = content.defs.patch_card_by_key(key).ok_or_else(|| {
-            let keys: Vec<&str> = content.defs.patch_cards.iter().map(|c| nettai_content_api::keys::local(&c.key)).collect();
+            let keys: Vec<&str> = content.defs.patch_cards.iter().map(|c| c.key.as_str()).collect();
             format!("no patch card {key:?}; the content's are {}", keys.join(", "))
         })?;
         cards.push(InstalledCard { card, enabled });

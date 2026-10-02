@@ -167,7 +167,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "metrknuk/controller",
+    id = "bn6:metrknuk/controller",
     pool = "effect",
     state = { bonus = "u16", last = "u32", grid = "u8[40]" },
     -- `sub_80E8B00`.

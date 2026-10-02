@@ -25,85 +25,85 @@ use std::sync::Arc;
 // The test chips (testdata/content/chips/test/chips.luau), by key: made-up
 // records whose uses are BN6's builders and actions.
 /// Three GunDelSol levels and an EX (two columns).
-pub const SUN_GUN_1: &str = "test/sun-gun-1";
-pub const SUN_GUN_2: &str = "test/sun-gun-2";
-pub const SUN_GUN_3: &str = "test/sun-gun-3";
-pub const SUN_GUN_EX: &str = "test/sun-gun-ex";
+pub const SUN_GUN_1: &str = "test:test/sun-gun-1";
+pub const SUN_GUN_2: &str = "test:test/sun-gun-2";
+pub const SUN_GUN_3: &str = "test:test/sun-gun-3";
+pub const SUN_GUN_EX: &str = "test:test/sun-gun-ex";
 /// A dimming chip (the invisibility freeze).
-pub const VEIL: &str = "test/veil";
+pub const VEIL: &str = "test:test/veil";
 /// A navi chip (the eraser navi).
-pub const ERASER: &str = "test/eraser";
+pub const ERASER: &str = "test:test/eraser";
 /// Instant chips: a plus chip used on its own, fists (FireHit's) and flame
 /// hooks (FlmHook's).
-pub const PLUS: &str = "test/plus";
-pub const FIST: &str = "test/fist";
-pub const FLAME_HOOK: &str = "test/flame-hook";
+pub const PLUS: &str = "test:test/plus";
+pub const FIST: &str = "test:test/fist";
+pub const FLAME_HOOK: &str = "test:test/flame-hook";
 /// The thrown chips: a bomb, a seed that poisons panels, a flash bomb and
 /// a bug bomb.
-pub const BOMB: &str = "test/bomb";
-pub const SEED: &str = "test/seed";
-pub const FLASH: &str = "test/flash";
-pub const BUG: &str = "test/bug";
+pub const BOMB: &str = "test:test/bomb";
+pub const SEED: &str = "test:test/seed";
+pub const FLASH: &str = "test:test/flash";
+pub const BUG: &str = "test:test/bug";
 /// A sword (a column of three panels ahead).
-pub const BLADE: &str = "test/blade";
+pub const BLADE: &str = "test:test/blade";
 /// A step sword (the same, after a step two panels ahead).
-pub const STEP_BLADE: &str = "test/step-blade";
+pub const STEP_BLADE: &str = "test:test/step-blade";
 /// A strike at stunned or grounded opponents.
-pub const STUN_BLADE: &str = "test/stun-blade";
+pub const STUN_BLADE: &str = "test:test/stun-blade";
 /// A blank chip that is the AntiNavi trap when a side's defensive-chip
 /// record holds it.
-pub const ANTI_NAVI: &str = "test/anti-navi";
+pub const ANTI_NAVI: &str = "test:test/anti-navi";
 /// A trap chip that sets no object.
-pub const TRAP: &str = "test/trap";
+pub const TRAP: &str = "test:test/trap";
 /// An element trap (the trap object).
-pub const ELEM_TRAP: &str = "test/elem-trap";
+pub const ELEM_TRAP: &str = "test:test/elem-trap";
 /// Time bombs: the plain one and the big one.
-pub const TIME_BOMB: &str = "test/time-bomb";
-pub const TIME_BOMB_PLUS: &str = "test/time-bomb-plus";
+pub const TIME_BOMB: &str = "test:test/time-bomb";
+pub const TIME_BOMB_PLUS: &str = "test:test/time-bomb-plus";
 // Navi chips: the elements navi, the water navi, the heat, elec, slash,
 // charge, tomahawk, tengu and blast navis, the shooting navi (Bass's) and
 // the sun-and-moon navi.
-pub const ELEMENTS: &str = "test/elements";
-pub const SPOUT: &str = "test/spout";
-pub const HEAT: &str = "test/heat";
-pub const ELEC: &str = "test/elec";
-pub const SLASH: &str = "test/slash";
-pub const CHARGE: &str = "test/charge";
-pub const TOMAHAWK: &str = "test/tomahawk";
-pub const TENGU: &str = "test/tengu";
-pub const BLAST: &str = "test/blast";
-pub const BASS: &str = "test/shooter";
-pub const SUN_MOON: &str = "test/sun-moon";
+pub const ELEMENTS: &str = "test:test/elements";
+pub const SPOUT: &str = "test:test/spout";
+pub const HEAT: &str = "test:test/heat";
+pub const ELEC: &str = "test:test/elec";
+pub const SLASH: &str = "test:test/slash";
+pub const CHARGE: &str = "test:test/charge";
+pub const TOMAHAWK: &str = "test:test/tomahawk";
+pub const TENGU: &str = "test:test/tengu";
+pub const BLAST: &str = "test:test/blast";
+pub const BASS: &str = "test:test/shooter";
+pub const SUN_MOON: &str = "test:test/sun-moon";
 /// The link navis' own chips: BN6's HeatPres, DElecSwd, RSlash, EDeletBm,
 /// VolcChrg, DripShwr, ETomahwk, FTornado, RC Brakr and DustBrk's actions
 /// (navis/<navi>/chip.luau), as chips of made-up damage. Any navi can use
 /// them here.
 pub const LINK_CHIPS: [&str; 10] = [
-    "test/heatpres",
-    "test/delecswd",
-    "test/rslash",
-    "test/edeletbm",
-    "test/volcchrg",
-    "test/dripshwr",
-    "test/etomahwk",
-    "test/ftornado",
-    "test/rc-brakr",
-    "test/dustbrk",
+    "test:test/heatpres",
+    "test:test/delecswd",
+    "test:test/rslash",
+    "test:test/edeletbm",
+    "test:test/volcchrg",
+    "test:test/dripshwr",
+    "test:test/etomahwk",
+    "test:test/ftornado",
+    "test:test/rc-brakr",
+    "test:test/dustbrk",
 ];
 /// A link navi (the content's navi 1; AI index 4, whose actor record has
 /// no hooks).
-pub const LINK_NAVI: &str = "test/link-navi";
+pub const LINK_NAVI: &str = "test:test/link-navi";
 /// MegaMan, the navi that changes form.
-pub const MEGAMAN: &str = "megaman";
+pub const MEGAMAN: &str = "test:megaman";
 
 /// The test stages (testdata/content/stages/test.luau), link battles on
 /// the plain field: two navis, side 1's placed first (the usual netbattle
 /// order); side 0's first; two navis with two rocks, one on each side; and
 /// two navis with three boulders (the field has two stage slots).
-pub const LINK_BATTLE: &str = "test/link-battle";
-pub const LINK_BATTLE_SIDE0_FIRST: &str = "test/link-battle-side0-first";
-pub const ROCK_BATTLE: &str = "test/rock-battle";
-pub const BOULDER_BATTLE: &str = "test/boulder-battle";
+pub const LINK_BATTLE: &str = "test:test/link-battle";
+pub const LINK_BATTLE_SIDE0_FIRST: &str = "test:test/link-battle-side0-first";
+pub const ROCK_BATTLE: &str = "test:test/rock-battle";
+pub const BOULDER_BATTLE: &str = "test:test/boulder-battle";
 
 /// The test stages' music's song (the asset `test-stage-music`).
 pub const STAGE_SONG: u16 = 0x16;
@@ -141,11 +141,10 @@ pub fn sound(n: u16) -> crate::sound::SoundId {
     crate::sound::SoundId(c.assets.sound_handle(pack, n).unwrap_or_else(|| panic!("the test pack has no song {n:#x}")))
 }
 
-/// The test content's asset `name` of `kind` (its own pack's unless
-/// qualified): its handle.
+/// The test content's asset `name` of `kind`, written in full
+/// (`test:test-navi`): its handle.
 pub fn asset_named(c: &Content, kind: nettai_content_api::AssetKind, name: &str) -> u16 {
-    let q = if nettai_content_api::keys::is_qualified(name) { name.to_string() } else { nettai_content_api::keys::qualify(ROOT, name) };
-    c.assets.handle(kind, &q).unwrap_or_else(|| panic!("the test content has no {kind} {q:?}"))
+    c.assets.handle(kind, name).unwrap_or_else(|| panic!("the test content has no {kind} {name:?}"))
 }
 
 /// The test content's sprite `name` (its handle).
@@ -250,55 +249,62 @@ pub fn weapon(key: &str) -> Option<nettai_content_api::WeaponHandle> {
 
 /// The test pack's ticker chips and tick shot weapon (`with_test_pack`),
 /// by key: setups reach them by handle.
-pub const TICKER_1: &str = "test/ticker1";
-pub const TICKER_2: &str = "test/ticker2";
-pub const TICKER_3: &str = "test/ticker3";
+pub const TICKER_1: &str = "test:test/ticker1";
+pub const TICKER_2: &str = "test:test/ticker2";
+pub const TICKER_3: &str = "test:test/ticker3";
 /// BN6's AreaGrab and PanelGrab (chips/areagrab, chips/panlgrab): dimming
 /// chips content defines, which grab a column and a panel.
-pub const AREA_GRAB: &str = "areagrab";
-pub const PANEL_GRAB: &str = "panlgrab";
+pub const AREA_GRAB: &str = "test:areagrab";
+pub const PANEL_GRAB: &str = "test:panlgrab";
 /// BN6's BusterUp, Atk+10 and Navi+20 (chips/busterup, chips/atk-10,
 /// chips/navi-20): instant chips content defines.
-pub const BUSTER_UP: &str = "busterup";
-pub const ATTACK_10: &str = "atk-10";
-pub const NAVI_20: &str = "navi-20";
+pub const BUSTER_UP: &str = "test:busterup";
+pub const ATTACK_10: &str = "test:atk-10";
+pub const NAVI_20: &str = "test:navi-20";
 /// BN6's instant chips content defines whose effects fill the gauge, sync
 /// the navi, and spawn objects: FullCust, SyncTrgr, Boomer, Lance,
 /// SandWrm1, JustcOne, GolmHit1 (chips/fullcust ... chips/golmhit).
-pub const FULL_CUST: &str = "fullcust";
-pub const SYNC_TRIGGER: &str = "synctrgr";
-pub const BOOMER: &str = "boomer";
-pub const LANCE: &str = "lance";
-pub const SAND_WORM: &str = "sandwrm1";
-pub const JUSTICE_ONE: &str = "justcone";
-pub const GOLEM_HIT: &str = "golmhit1";
+pub const FULL_CUST: &str = "test:fullcust";
+pub const SYNC_TRIGGER: &str = "test:synctrgr";
+pub const BOOMER: &str = "test:boomer";
+pub const LANCE: &str = "test:lance";
+pub const SAND_WORM: &str = "test:sandwrm1";
+pub const JUSTICE_ONE: &str = "test:justcone";
+pub const GOLEM_HIT: &str = "test:golmhit1";
 /// BN6's RockCube (chips/rockcube): a dimming chip content defines, which
 /// places a rock in front of its user.
-pub const ROCK_CUBE: &str = "rockcube";
-pub const TICK_SHOT: &str = "test/tick-shot";
+pub const ROCK_CUBE: &str = "test:rockcube";
+pub const TICK_SHOT: &str = "test:test/tick-shot";
 /// BN6's CrakShot, Rflectr1 and Recov50 (chips/crakshot, chips/rflectr,
 /// chips/recov): standard chips content defines, which dig up the panel
 /// ahead, guard and reflect, and heal.
-pub const CRAK_SHOT: &str = "crakshot";
-pub const REFLECTOR_1: &str = "rflectr1";
-pub const RECOV_50: &str = "recov50";
+pub const CRAK_SHOT: &str = "test:crakshot";
+pub const REFLECTOR_1: &str = "test:rflectr1";
+pub const RECOV_50: &str = "test:recov50";
 /// BN6's SloGauge and Mine (chips/slogauge, chips/mine): dimming chips
 /// content defines, which slow the custom gauge and lay a mine.
-pub const SLOW_GAUGE: &str = "slogauge";
-pub const MINE: &str = "mine";
+pub const SLOW_GAUGE: &str = "test:slogauge";
+pub const MINE: &str = "test:mine";
 /// BN6's RskyHny2 and ElecDrgn (chips/rskyhny, chips/elecdrgn): chips
 /// content defines, which send bees and an elec dragon.
-pub const BEES: &str = "rskyhny2";
-pub const DRAGON: &str = "elecdrgn";
+pub const BEES: &str = "test:rskyhny2";
+pub const DRAGON: &str = "test:elecdrgn";
 /// BN6's Gregar and Falzar (chips/gregar, chips/falzar: the Japanese ROMs'
 /// giga cut-in chips), which summon the cyber beasts.
-pub const GREGAR: &str = "gregar";
-pub const FALZAR: &str = "falzar";
+pub const GREGAR: &str = "test:gregar";
+pub const FALZAR: &str = "test:falzar";
 
-/// The test content's root: its own modules and the BN6 modules it
-/// borrows are one root, so its keys are `test:...`
-/// (docs/design/rules-in-luau.md §7.2).
+/// The test content's game: its own modules and the BN6 modules it borrows
+/// are one folder, `test`, whose ids are `test:...` (the borrowed modules'
+/// `bn6:` ids and asset names read as `test:` ones: `borrowed`).
 pub const ROOT: &str = "test";
+
+/// A BN6 module as the test content borrows it: its ids and asset names,
+/// which BN6 writes in full (`bn6:...`), are the test content's
+/// (`test:...`), on its synthetic pack.
+fn borrowed(source: String) -> String {
+    source.replace("\"bn6:", "\"test:").replace("'bn6:", "'test:")
+}
 
 /// The content model v2 test pack (crates/nettai-battle/testdata/pack):
 /// definitions the engine's tests run.
@@ -379,27 +385,62 @@ pub fn strings() -> crate::content::strings::Strings {
     let file = format!("{TEST_CONTENT}/locales/en.toml");
     let text = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}"));
     let s: crate::content::strings::Strings = toml::from_str(&text).unwrap_or_else(|e| panic!("{file}: {e}"));
-    s.qualified(ROOT)
+    s
 }
 
-/// A synthetic asset index for `modules`: every name they give an
-/// `asset.<kind>("...")` call, each a made-up asset of its own (nothing
-/// ROM-derived; for tests that load modules the test content doesn't
-/// list).
+/// A synthetic asset index for `modules`: every name of `game`'s pack they
+/// give an `asset.<kind>("...")` call, each a made-up asset of its own
+/// (nothing ROM-derived; for tests that load modules the test content
+/// doesn't list).
 pub fn asset_names_used(game: &str, modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::AssetNames {
-    nettai_content_api::AssetNames::of_pack(game, pack_index_used(modules))
+    nettai_content_api::AssetNames::of_pack(game, pack_index_of(game, modules))
 }
 
-/// [`asset_names_used`] for every root of `scripts`: each root's modules'
-/// names in its assets pack (a pack a game).
+/// [`asset_names_used`] for every pack the modules of `scripts` name (a
+/// name's game is its prefix: `bn6:bomb` is the bn6 pack's).
 pub fn asset_names_for(scripts: &Scripts) -> nettai_content_api::AssetNames {
-    let mut by_game: std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>> = Default::default();
-    for root in &scripts.roots {
-        let prefix = Scripts::name(&root.name, "");
-        let modules = scripts.modules.iter().filter(|(k, _)| k.starts_with(&prefix)).map(|(k, v)| (k.clone(), v.clone()));
-        by_game.entry(root.assets().to_string()).or_default().extend(modules);
+    let mut games = std::collections::BTreeSet::new();
+    for source in scripts.modules.values() {
+        for (game, _) in asset_names_in(source) {
+            games.insert(game);
+        }
     }
-    nettai_content_api::AssetNames::of_packs(by_game.into_iter().map(|(g, m)| (g, pack_index_used(&m))).collect())
+    let packs = games.into_iter().map(|g| {
+        let index = pack_index_of(&g, &scripts.modules);
+        (g, index)
+    });
+    nettai_content_api::AssetNames::of_packs(packs.collect())
+}
+
+/// The asset names a module's source gives `asset.<kind>("...")` calls, each
+/// its game and kind with its own name (`bn6:bomb` -> bn6, bomb).
+fn asset_names_in(source: &str) -> Vec<(String, (nettai_content_api::AssetKind, String))> {
+    let mut out = Vec::new();
+    for kind in nettai_content_api::AssetKind::ALL {
+        for piece in source.split(&format!("asset.{kind}(")).skip(1) {
+            let piece = piece.trim_start();
+            let Some(quote) = piece.chars().next().filter(|c| matches!(c, '"' | '\'')) else { continue };
+            let Some(name) = piece[1..].split(quote).next() else { continue };
+            if let Some(game) = nettai_content_api::keys::root_of(name) {
+                out.push((game.to_string(), (kind, nettai_content_api::keys::local(name).to_string())));
+            }
+        }
+    }
+    out
+}
+
+/// Game `game`'s pack index of the names `modules` give it.
+fn pack_index_of(game: &str, modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::PackIndex {
+    let mut own = std::collections::BTreeMap::new();
+    for (k, source) in modules {
+        let names: Vec<String> = asset_names_in(source)
+            .into_iter()
+            .filter(|(g, _)| g == game)
+            .map(|(_, (kind, name))| format!("asset.{kind}(\"{name}\")"))
+            .collect();
+        own.insert(k.clone(), names.join("\n"));
+    }
+    pack_index_used(&own)
 }
 
 /// [`asset_names_used`]'s pack index (its own, unqualified names).
@@ -413,6 +454,8 @@ pub fn pack_index_used(modules: &std::collections::BTreeMap<String, String>) -> 
                 let piece = piece.trim_start();
                 let Some(quote) = piece.chars().next().filter(|c| matches!(c, '"' | '\'')) else { continue };
                 let Some(name) = piece[1..].split(quote).next() else { continue };
+                // (A name written in full, its pack's own part.)
+                let name = nettai_content_api::keys::local(name);
                 n += 1;
                 let id = n;
                 match kind {
@@ -467,72 +510,72 @@ fn pack_index() -> nettai_content_api::PackIndex {
 /// ruleset's roles (testdata/content/rules/ruleset.luau's assets, by role
 /// name): what the tests look for in the cues and the HUD.
 const ROLE_SOUNDS: &[(&str, u16)] = &[
-    ("panel-crack", 0x97),
-    ("panel-poison", 0x90),
-    ("own-hit", 0x6b),
-    ("hit", 0x6d),
-    ("damage", 0x85),
-    ("guard", 0x6e),
-    ("counter-hit", 0x86),
-    ("deleted", 0x6c),
-    ("recovery", 0x8a),
-    ("damage-bonus", 0x87),
-    ("pause", 0x9f),
-    ("gauge-full", 0x8f),
-    ("low-hp", 0x84),
-    ("cut-in", 0xa5),
-    ("telop", 0x173),
-    ("buster-charge", 0x71),
-    ("buster-charged", 0x72),
-    ("freeze", 0x118),
-    ("bubble", 0x12d),
-    ("bubble-pop", 0x124),
-    ("confusion", 0x88),
-    ("invisible", 0x93),
-    ("appear", 0x94),
-    ("arrive", 0x129),
-    ("fade", 0x8e),
-    ("obstacle-lift", 0x12a),
-    ("obstacle-throw", 0x10c),
-    ("cross-merge", 0x8c),
-    ("form-change", 0xf7),
-    ("cross-change", 0x8d),
-    ("cross-change-chime", 0x77),
-    ("beast-out", 0x100),
-    ("gregar-roar", 0x1cc),
-    ("falzar-roar", 0x1cd),
-    ("beast-over-rumble", 0x19a),
-    ("beast-over-burst", 0x12e),
-    ("cross-special", 0x182),
-    ("refused", 0x69),
-    ("custom-open", 0x79),
-    ("custom-cursor", 0x7f),
-    ("custom-hide", 0x80),
-    ("custom-pick", 0x81),
-    ("custom-ok", 0x82),
-    ("custom-back", 0x83),
-    ("custom-cross-open", 0x7a),
-    ("custom-cross-close", 0x7d),
-    ("custom-cross-chosen", 0x92),
-    ("custom-run-message", 0x7b),
-    ("custom-description", 0x9c),
-    ("custom-description-close", 0x9e),
-    ("custom-beast-out-falzar", 0x193),
-    ("custom-beast-out-gregar", 0x191),
-    ("custom-beast-out-flash", 0xbc),
-    ("custom-cancel", 0x1d2),
-    ("custom-redeal", 0x182),
-    ("custom-redeal-shuffle", 0x113),
-    ("custom-scrap", 0x196),
-    ("custom-scrap-done", 0x182),
-    ("program-advance-part", 0x91),
-    ("program-advance", 0x92),
+    ("test:panel-crack", 0x97),
+    ("test:panel-poison", 0x90),
+    ("test:own-hit", 0x6b),
+    ("test:hit", 0x6d),
+    ("test:damage", 0x85),
+    ("test:guard", 0x6e),
+    ("test:counter-hit", 0x86),
+    ("test:deleted", 0x6c),
+    ("test:recovery", 0x8a),
+    ("test:damage-bonus", 0x87),
+    ("test:pause", 0x9f),
+    ("test:gauge-full", 0x8f),
+    ("test:low-hp", 0x84),
+    ("test:cut-in", 0xa5),
+    ("test:telop", 0x173),
+    ("test:buster-charge", 0x71),
+    ("test:buster-charged", 0x72),
+    ("test:freeze", 0x118),
+    ("test:bubble", 0x12d),
+    ("test:bubble-pop", 0x124),
+    ("test:confusion", 0x88),
+    ("test:invisible", 0x93),
+    ("test:appear", 0x94),
+    ("test:arrive", 0x129),
+    ("test:fade", 0x8e),
+    ("test:obstacle-lift", 0x12a),
+    ("test:obstacle-throw", 0x10c),
+    ("test:cross-merge", 0x8c),
+    ("test:form-change", 0xf7),
+    ("test:cross-change", 0x8d),
+    ("test:cross-change-chime", 0x77),
+    ("test:beast-out", 0x100),
+    ("test:gregar-roar", 0x1cc),
+    ("test:falzar-roar", 0x1cd),
+    ("test:beast-over-rumble", 0x19a),
+    ("test:beast-over-burst", 0x12e),
+    ("test:cross-special", 0x182),
+    ("test:refused", 0x69),
+    ("test:custom-open", 0x79),
+    ("test:custom-cursor", 0x7f),
+    ("test:custom-hide", 0x80),
+    ("test:custom-pick", 0x81),
+    ("test:custom-ok", 0x82),
+    ("test:custom-back", 0x83),
+    ("test:custom-cross-open", 0x7a),
+    ("test:custom-cross-close", 0x7d),
+    ("test:custom-cross-chosen", 0x92),
+    ("test:custom-run-message", 0x7b),
+    ("test:custom-description", 0x9c),
+    ("test:custom-description-close", 0x9e),
+    ("test:custom-beast-out-falzar", 0x193),
+    ("test:custom-beast-out-gregar", 0x191),
+    ("test:custom-beast-out-flash", 0xbc),
+    ("test:custom-cancel", 0x1d2),
+    ("test:custom-redeal", 0x182),
+    ("test:custom-redeal-shuffle", 0x113),
+    ("test:custom-scrap", 0x196),
+    ("test:custom-scrap-done", 0x182),
+    ("test:program-advance-part", 0x91),
+    ("test:program-advance", 0x92),
 ];
 const ROLE_MUSIC: &[(&str, u16)] = &[
-    ("link-battle", 0x15),
-    ("winner-special", 0x19),
-    ("winner", 0x1f),
-    ("loser", 0x1a),
+    ("test:link-battle", 0x15),
+    ("test:winner-special", 0x19),
+    ("test:winner", 0x1f),
+    ("test:loser", 0x1a),
 ];
 const ROLE_SPRITES: &[(&str, (u8, u8))] = &[
     ("charge-glow", (0x14, 0x08)),
@@ -550,15 +593,15 @@ const ROLE_SPRITES: &[(&str, (u8, u8))] = &[
     ("beast-head", (0x0c, 0x0a)),
 ];
 const ROLE_BANNERS: &[(&str, u8)] = &[
-    ("round-start", 0x30),
-    ("turn-start", 0xc),
-    ("final-turn", 0x10),
-    ("draw", 0x1c),
-    ("judge", 0x28),
-    ("telop", 0x4c),
-    ("telop-remote", 0x50),
-    ("program-advance", 0x24),
-    ("program-advance-empty", 0x34),
+    ("test:round-start", 0x30),
+    ("test:turn-start", 0xc),
+    ("test:final-turn", 0x10),
+    ("test:draw", 0x1c),
+    ("test:judge", 0x28),
+    ("test:telop", 0x4c),
+    ("test:telop-remote", 0x50),
+    ("test:program-advance", 0x24),
+    ("test:program-advance-empty", 0x34),
 ];
 
 /// The test content's assets with BN6's numbers.
@@ -693,105 +736,105 @@ fn numbered_assets() -> nettai_content_api::PackIndex {
         a.sprites.insert(name.into(), id);
     }
     for (name, id) in [
-        ("test-tick", 0x1A6),
-        ("minibomb-throw", 0xB2),
-        ("hit-bomb-1", 0x70),
-        ("panel-poison", 0x90),
-        ("freeze", 0x118),
-        ("grass", 0x11B),
-        ("flash", 0x1BD),
-        ("bug-bomb-land", 0x115),
-        ("land", 0xC0),
-        ("burst", 0xC3),
-        ("energy-burst", 0xBB),
-        ("sword-swing", 0xB0),
-        ("big-sword-swing", 0xCE),
-        ("grab-shot", 0xA2),
-        ("grab-shot-2", 0xA1),
-        ("appear", 0x94),
-        ("place", 0x112),
-        ("falling-rock", 0xD9),
-        ("erase-man", 0x10E),
-        ("erase-man-2", 0xBA),
-        ("hub", 0x119),
-        ("buster-shot", 0x6A),
-        ("junk-shot", 0xFF),
-        ("gundels1", 0xF8),
-        ("bonus", 0x157),
-        ("barrier", 0x89),
-        ("beast-over", 0x19A),
-        ("bubble", 0x12D),
-        ("bubble-pop", 0x124),
-        ("bug", 0x143),
-        ("bugfix-flash", 0xD1),
-        ("cross-merge", 0x8C),
-        ("discord", 0xA9),
-        ("fanfare", 0xA8),
-        ("invisible", 0x93),
-        ("log-in", 0x77),
-        ("panel-change", 0xA4),
-        ("panel-change-tick", 0xA3),
-        ("point-appear", 0x129),
-        ("point-rise", 0x12A),
-        ("silence", 0xAB),
-        ("take-off", 0x1A9),
-        ("timpani", 0xAA),
-        ("tomahawk-man", 0x10A),
-        ("flame-hook-fire", 0x158),
-        ("twang", 0x18A),
-        ("boiler-erupt", 0x184),
-        ("boiler-steam", 0x185),
-        ("err-select-91", 0x91),
-        ("hit-bomb-0", 0x6F),
-        ("crack-shot", 0xDA),
-        ("bblstar1", 0xD8),
-        ("follow-effect", 0xA0),
-        ("wave", 0xC5),
-        ("roar", 0x12B),
-        ("cross-change", 0x8D),
-        ("boomerang", 0xB7),
-        ("fire-hit", 0xED),
-        ("sand-worm", 0xE1),
-        ("sand-worm-2", 0x1BE),
-        ("justice-one", 0xC4),
-        ("golem", 0x10D),
-        ("golem-2", 0x188),
-        ("place", 0x112),
-        ("panel-crack", 0x97),
-        ("falling-rock", 0xD9),
-        ("form-change", 0xF7),
-        ("follow-effect", 0xA0),
-        ("drip-shower", 0x128),
-        ("etomahwk", 0x10C),
-        ("aqua-surge", 0xB8),
-        ("volcano", 0x146),
-        ("rslash", 0x164),
-        ("dustbrk", 0xAD),
-        ("dustbrk-2", 0x17B),
-        ("rockfall", 0xE5),
-        ("drill-spin", 0x1C0),
+        ("test:test-tick", 0x1A6),
+        ("test:minibomb-throw", 0xB2),
+        ("test:hit-bomb-1", 0x70),
+        ("test:panel-poison", 0x90),
+        ("test:freeze", 0x118),
+        ("test:grass", 0x11B),
+        ("test:flash", 0x1BD),
+        ("test:bug-bomb-land", 0x115),
+        ("test:land", 0xC0),
+        ("test:burst", 0xC3),
+        ("test:energy-burst", 0xBB),
+        ("test:sword-swing", 0xB0),
+        ("test:big-sword-swing", 0xCE),
+        ("test:grab-shot", 0xA2),
+        ("test:grab-shot-2", 0xA1),
+        ("test:appear", 0x94),
+        ("test:place", 0x112),
+        ("test:falling-rock", 0xD9),
+        ("test:erase-man", 0x10E),
+        ("test:erase-man-2", 0xBA),
+        ("test:hub", 0x119),
+        ("test:buster-shot", 0x6A),
+        ("test:junk-shot", 0xFF),
+        ("test:gundels1", 0xF8),
+        ("test:bonus", 0x157),
+        ("test:barrier", 0x89),
+        ("test:beast-over", 0x19A),
+        ("test:bubble", 0x12D),
+        ("test:bubble-pop", 0x124),
+        ("test:bug", 0x143),
+        ("test:bugfix-flash", 0xD1),
+        ("test:cross-merge", 0x8C),
+        ("test:discord", 0xA9),
+        ("test:fanfare", 0xA8),
+        ("test:invisible", 0x93),
+        ("test:log-in", 0x77),
+        ("test:panel-change", 0xA4),
+        ("test:panel-change-tick", 0xA3),
+        ("test:point-appear", 0x129),
+        ("test:point-rise", 0x12A),
+        ("test:silence", 0xAB),
+        ("test:take-off", 0x1A9),
+        ("test:timpani", 0xAA),
+        ("test:tomahawk-man", 0x10A),
+        ("test:flame-hook-fire", 0x158),
+        ("test:twang", 0x18A),
+        ("test:boiler-erupt", 0x184),
+        ("test:boiler-steam", 0x185),
+        ("test:err-select-91", 0x91),
+        ("test:hit-bomb-0", 0x6F),
+        ("test:crack-shot", 0xDA),
+        ("test:bblstar1", 0xD8),
+        ("test:follow-effect", 0xA0),
+        ("test:wave", 0xC5),
+        ("test:roar", 0x12B),
+        ("test:cross-change", 0x8D),
+        ("test:boomerang", 0xB7),
+        ("test:fire-hit", 0xED),
+        ("test:sand-worm", 0xE1),
+        ("test:sand-worm-2", 0x1BE),
+        ("test:justice-one", 0xC4),
+        ("test:golem", 0x10D),
+        ("test:golem-2", 0x188),
+        ("test:place", 0x112),
+        ("test:panel-crack", 0x97),
+        ("test:falling-rock", 0xD9),
+        ("test:form-change", 0xF7),
+        ("test:follow-effect", 0xA0),
+        ("test:drip-shower", 0x128),
+        ("test:etomahwk", 0x10C),
+        ("test:aqua-surge", 0xB8),
+        ("test:volcano", 0x146),
+        ("test:rslash", 0x164),
+        ("test:dustbrk", 0xAD),
+        ("test:dustbrk-2", 0x17B),
+        ("test:rockfall", 0xE5),
+        ("test:drill-spin", 0x1C0),
         // The traps, mines, time bombs, gauge and navi-changing chips.
-        ("dimming-sparkle", 0xA5),
-        ("target-move", 0x10F),
-        ("spout-ball", 0x11D),
-        ("beast-over-burst", 0x12E),
-        ("hop", 0x113),
-        ("tick", 0xC1),
-        ("last", 0xC2),
+        ("test:dimming-sparkle", 0xA5),
+        ("test:target-move", 0x10F),
+        ("test:spout-ball", 0x11D),
+        ("test:beast-over-burst", 0x12E),
+        ("test:hop", 0x113),
+        ("test:tick", 0xC1),
+        ("test:last", 0xC2),
         // The waves.
-        ("ok-8b", 0x8B),
-        ("aqua-needle-2", 0xB3),
+        ("test:ok-8b", 0x8B),
+        ("test:aqua-needle-2", 0xB3),
         // The supports, and the barrier Tango's heal raises.
-        ("bite", 0x122),
-        ("set-down", 0x120),
-        ("snatch", 0x126),
-        ("arrive", 0x116),
-        ("tango-land", 0xD4),
-        ("heal", 0x8A),
+        ("test:bite", 0x122),
+        ("test:set-down", 0x120),
+        ("test:snatch", 0x126),
+        ("test:arrive", 0x116),
+        ("test:tango-land", 0xD4),
+        ("test:heal", 0x8A),
         // SunMoon.
-        ("sun-moon", 0x110),
-        ("moon-beam", 0x111),
-        ("blast-man", 0x17F),
+        ("test:sun-moon", 0x110),
+        ("test:moon-beam", 0x111),
+        ("test:blast-man", 0x17F),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -818,21 +861,21 @@ fn form_weapon_assets(a: &mut nettai_content_api::PackIndex) {
         a.sprites.insert(name.into(), id);
     }
     for (name, id) in [
-        ("aqua-needle-2", 0xB3),
-        ("col-army-2", 0xB9),
-        ("spout-beast-charge", 0xF4),
-        ("moon-beam", 0x111),
-        ("tomahawk-man", 0x10A),
-        ("ground-beast-dash", 0x1BF),
-        ("ground-beast-dash-2", 0x1C7),
-        ("iron-shell", 0x187),
-        ("beast-claw", 0x1C5),
-        ("beast-claw-2", 0x1C6),
-        ("charge-train", 0xE4),
-        ("tenguman-nose", 0xFB),
-        ("drill-launch", 0x14C),
-        ("spin", 0xC7),
-        ("drilarm", 0xF0),
+        ("test:aqua-needle-2", 0xB3),
+        ("test:col-army-2", 0xB9),
+        ("test:spout-beast-charge", 0xF4),
+        ("test:moon-beam", 0x111),
+        ("test:tomahawk-man", 0x10A),
+        ("test:ground-beast-dash", 0x1BF),
+        ("test:ground-beast-dash-2", 0x1C7),
+        ("test:iron-shell", 0x187),
+        ("test:beast-claw", 0x1C5),
+        ("test:beast-claw-2", 0x1C6),
+        ("test:charge-train", 0xE4),
+        ("test:tenguman-nose", 0xFB),
+        ("test:drill-launch", 0x14C),
+        ("test:spin", 0xC7),
+        ("test:drilarm", 0xF0),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -860,7 +903,7 @@ fn standard_chip_assets(a: &mut nettai_content_api::PackIndex) {
     }
     navi_chip_assets(a);
     for (name, id) in
-        [("windrack", 0x11F), ("beast-over", 0x19A), ("sun-beam", 0xF9), ("buzz", 0x1A8), ("form-change", 0xF7)]
+        [("test:windrack", 0x11F), ("test:beast-over", 0x19A), ("test:sun-beam", 0xF9), ("test:buzz", 0x1A8), ("test:form-change", 0xF7)]
     {
         a.sounds.insert(name.into(), id);
     }
@@ -901,24 +944,24 @@ fn navi_chip_assets(a: &mut nettai_content_api::PackIndex) {
         a.sprites.insert(name.into(), id);
     }
     for (name, id) in [
-        ("aqua-needle-2", 0xB3),
-        ("beast-over-burst", 0x12E),
-        ("blast-man", 0x17F),
-        ("bubble", 0x12D),
-        ("charge-man", 0xE3),
-        ("col-army-2", 0xB9),
-        ("elec-man", 0xC6),
-        ("elmnt-man", 0x134),
-        ("elmnt-man-2", 0x182),
-        ("elmnt-man-4", 0x99),
-        ("elmnt-vine", 0x181),
-        ("moon-beam", 0x111),
-        ("ok-8b", 0x8B),
-        ("spout-ball", 0x11D),
-        ("spout-man", 0x189),
-        ("sun-moon", 0x110),
-        ("tengu-man", 0x13C),
-        ("tomahawk-man", 0x10A),
+        ("test:aqua-needle-2", 0xB3),
+        ("test:beast-over-burst", 0x12E),
+        ("test:blast-man", 0x17F),
+        ("test:bubble", 0x12D),
+        ("test:charge-man", 0xE3),
+        ("test:col-army-2", 0xB9),
+        ("test:elec-man", 0xC6),
+        ("test:elmnt-man", 0x134),
+        ("test:elmnt-man-2", 0x182),
+        ("test:elmnt-man-4", 0x99),
+        ("test:elmnt-vine", 0x181),
+        ("test:moon-beam", 0x111),
+        ("test:ok-8b", 0x8B),
+        ("test:spout-ball", 0x11D),
+        ("test:spout-man", 0x189),
+        ("test:sun-moon", 0x110),
+        ("test:tengu-man", 0x13C),
+        ("test:tomahawk-man", 0x10A),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -935,7 +978,7 @@ pub fn scripts() -> Scripts {
         .get_or_init(|| {
             let read = |path: &str| {
                 let file = format!("{OVERLAY}/{path}.luau");
-                std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}"))
+                borrowed(std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}")))
             };
             let modules = [
                 ("lib/slot", "lib/slot"),
@@ -1374,12 +1417,7 @@ pub fn scripts() -> Scripts {
                     }
                 }
             }
-            // (testdata/content/root.toml names the root.)
-            let file = format!("{TEST_CONTENT}/root.toml");
-            let text = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}"));
-            let manifest: RootManifest = toml::from_str(&text).unwrap_or_else(|e| panic!("{file}: {e}"));
-            assert_eq!(manifest.name, ROOT, "{file}");
-            Scripts::root(manifest, all)
+            Scripts::root(RootManifest::named(ROOT), all)
         })
         .clone()
 }

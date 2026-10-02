@@ -27,15 +27,15 @@ burn.STATE = { timer = "u16" }
 -- The burners (the original's attachment rows 0x16 and 0x1E): FireBrn's
 -- and WideBrn's, and HeatCross's, in their animation 1.
 burn.burners = {
-    fire = attachment.look { sprite = asset.sprite("burner"), palette = 0, attach_point = 0x14 },
-    heat = attachment.look { sprite = asset.sprite("heatcross-burner"), palette = 0, attach_point = 0x16 },
+    fire = attachment.look { sprite = asset.sprite("bn6:burner"), palette = 0, attach_point = 0x14 },
+    heat = attachment.look { sprite = asset.sprite("bn6:heatcross-burner"), palette = 0, attach_point = 0x16 },
 }
 local BURNER_ANIM = 1
 
 -- The phases, on the attack's step.
 local BURN, RECOVER = 0x0, 0x4
 
-local SOUND_ROAR = asset.sound("roar")
+local SOUND_ROAR = asset.sound("bn6:roar")
 
 -- A burn (`BurnSpec`, types.d.luau): the burner held and the flame lit;
 -- `id`, the action's key when no chip definition holds it.

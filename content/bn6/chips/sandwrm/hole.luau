@@ -12,7 +12,7 @@ export type State = {
     worm: Object?,
 }
 
-local SPRITE = asset.sprite("sand-hole")
+local SPRITE = asset.sprite("bn6:sand-hole")
 
 -- The actions.
 local OPEN, WAIT, CLOSE = 0, 4, 8
@@ -120,7 +120,7 @@ local function init(me: Object)
 end
 
 hole.kind = define.kind {
-    id = "sandwrm/hole",
+    id = "bn6:sandwrm/hole",
     pool = "actor",
     state = { worm = "object" },
     -- `sub_80BC87C`: gone at once once the battle is over.

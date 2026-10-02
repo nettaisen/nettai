@@ -6,7 +6,7 @@ local charge = require("./charge")
 local triple_buster = require("../../lib/patch-cards/triple-buster")
 
 return define.patch_card {
-    id = "bass-cross-megaman",
+    id = "bn6:bass-cross-megaman",
     mb = 70,
     effects = {
         cards.hp_percent(20),
