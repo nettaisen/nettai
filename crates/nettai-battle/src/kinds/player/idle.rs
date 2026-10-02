@@ -281,8 +281,9 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle)
             // returns false: the original returns the idle state's number
             // (8), which the attack then runs, and the attack update ends
             // it on the next tick (`sub_80EAF36`'s end path); the navi is
-            // idle here at once (unverified: the patch cards' invisibility
-            // taken by Rush).
+            // idle here at once, which no frame tells apart (the patch
+            // cards' invisibility taken by Rush, the chip lab's
+            // jp/cards/combos/invisible-charge-rush).
             Value::Bool(false) => super::NaviAction::Idle,
             v => panic!("weapon {:?} names {v:?}, not an action", b.content.defs.weapon(weapon).key),
         };

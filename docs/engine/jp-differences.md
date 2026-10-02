@@ -24,7 +24,8 @@ The JP-only content is:
 - the Gregar and Falzar chips (handlers 34 and 35, five object kinds);
 - Count (HackJack in the US release: handler 18, two object kinds);
 - Django (handler 19, one object kind);
-- patch-card hooks, out of scope.
+- the patch cards' hook (the emotion window's glitch; the cards themselves are BN6's patch-cards system,
+  docs/engine/patch-cards.md).
 
 The other JP-only objects belong to code no netbattle runs: battle mode 1, battle modes 10 and 11, the Count
 boss, and one object that nothing spawns (§4).
@@ -195,9 +196,10 @@ chips). Every other entry is the same in both ROMs.
 | navi chip 18 | Count, Count[EX], Count[SP] (0x113..0x115; HackJack in the US release) | 0 | 0x080BD237 (in T1 0x11, +0x26A) | 0x080BEA97 |
 | navi chip 19 | Django, Django2, Django3 (0x116..0x118) | 0 | 0x080BD6A3 (in T1 0x12, +0x2EA) | 0x080BEF03 |
 
-`sub_813BF1C` is the other jp-content routine. JP also counts the emotion window's glitch as on when a JP-only
-byte (0x020065F0) is nonzero. By its use that byte is patch-card state. Patch cards are out of scope;
-**unverified**.
+`sub_813BF1C` is the other jp-content routine. JP reads the emotion window's glitch from event flag 0x1723
+rather than 0x1720 when the patch card block's count (0x020065F0) is nonzero: the patch cards' routine sets 0x1723
+when the stats after the cards have a NaviCust bug (docs/engine/patch-cards.md §1.3). The patch-cards system
+pushes the glitch so (#17).
 
 ### 4.2 The kinds
 
@@ -493,7 +495,7 @@ show against the engine.
 | 14 | GroundCross's drill burrows while moving (`sub_80EF004`) | US: +3 instructions | the drill's timing | content/bn6/navis/megaman/forms/groundcross/drill.luau |
 | 15 | SpoutMan's DripShwr flags (`sub_80F1694`) | JP: +5 instructions | SpoutMan's ObjectFlags1 0x40 and 0x80000 during the spray (what reads them then is **unverified**) | content/bn6/navis/spoutman/chip.luau |
 | 16 | Otenko's statue as DustMan's junk (`byte_8021220`, NameID 0xCF) | 5 data bytes | US: no junk (look none, freed); JP: a junk with sprite 0C-49, animation 1, shadow, which flies and hits | content/bn6/chips/otenko/statue.luau (the identity's `look`): **the content has the JP row on every console** (the user's call), so a US console's trace of it differs; bn6battle-verify records it on JP consoles (jp/chips/0x099-otenko/dustman), and gen-content's check expects the JP row |
-| 17 | The emotion window's glitch from patch cards (`sub_813BF1C`) | JP: +3 instructions | the console's emotion-window flicker | the setup: `emotion_window_glitch` from a JP save includes the patch cards' byte (out of scope) |
+| 17 | The emotion window's glitch from patch cards (`sub_813BF1C`) | JP: +3 instructions | the console's emotion-window flicker | content/bn6/rules/patch-cards/system.luau: with cards installed (a JP save's), the glitch is the stats' NaviCust bugs after the cards (flag 0x1723), `battle.set_emotion_window_glitch`; without, the console setup's (0x1720). Verified: chip lab jp/cards/ (the setup check compares it) |
 
 Not counted:
 
@@ -622,7 +624,6 @@ The kind and handler tables move too: JP Falzar's T1, T3 and T4 tables are at 0x
 - **The weakness request (#3):** whether a request can be pending when a form change ends. It would need a
   weakness hit just before the change, with no recording of one. The difference is certain; how often a
   netbattle reaches it isn't.
-- **0x020065F0** as patch-card state (#17).
 - **Sprite slots** 18-34..36 (§4.5: the window differences of 0C-0E, 0C-47, 0C-67 and 10-16..19 are data read
   past the archives; 14-17 is battle mode 1's label).
 - **The out-of-scope routines** (AI, viruses, the overworld) that differ were not classified one by one. 72 in
