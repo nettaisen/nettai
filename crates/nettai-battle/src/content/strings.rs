@@ -1,6 +1,7 @@
 //! The content's display text (its strings): chip names and descriptions,
 //! navi names and no-running messages, the Crosses' names and descriptions,
-//! by the definitions' keys. A definition holds no display text; a content root's
+//! records' names (BN6's patch cards), by the definitions' keys. A
+//! definition holds no display text; a content root's
 //! `locales/<lang>.toml` does, one table a language (the loader, nettai-
 //! content `locale`, reads them). The game's marks are characters: Ⓐ and
 //! Ⓑ for its buttons, the Private Use Area's for the glyphs Unicode has
@@ -55,6 +56,14 @@ pub struct FormStrings {
     pub description: Option<String>,
 }
 
+/// A record's strings: its name (a patch card's, which its menu shows).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RecordStrings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
 /// One language's strings, by definition key.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -67,6 +76,8 @@ pub struct Strings {
     pub navis: BTreeMap<String, NaviStrings>,
     #[serde(default)]
     pub forms: BTreeMap<String, FormStrings>,
+    #[serde(default)]
+    pub records: BTreeMap<String, RecordStrings>,
 }
 
 /// Presentation: the records hold what the battle reads of the strings (the
@@ -86,6 +97,10 @@ impl Strings {
 
     pub fn form(&self, key: &str) -> Option<&FormStrings> {
         self.forms.get(key)
+    }
+
+    pub fn record(&self, key: &str) -> Option<&RecordStrings> {
+        self.records.get(key)
     }
 }
 

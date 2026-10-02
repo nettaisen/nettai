@@ -4,10 +4,9 @@
 -- apart, each from the panel in front and a row up, down or level in an
 -- order one draw picks. See docs/engine/shot-chips.md §11.
 --
--- Weapon routine 0x39 is named by no form, navi or NaviStats byte, so
--- nothing in BN6's data starts it: a weapon that does composes
--- `rapid_buster.setup` and `rapid_buster.action`. (Not verified: no lab
--- scenario reaches it.)
+-- Weapon routine 0x39 is named by no form, navi or NaviStats byte; its
+-- twin 0x92 (the same routine, its own charge row) is the patch card Bass
+-- BX's charged shot (cards/bassbx/charge), which composes `rapid_buster.setup`.
 
 local attachment = require("../objects/attachment/attachment")
 local buster = require("./buster")
@@ -119,6 +118,7 @@ local function recover(me: Object, s: State)
 end
 
 rapid_buster.action = define.action {
+    id = "rapid-buster/action",
     state = { timer = "u16", pattern = "u8" },
     -- `sub_80F00F2`.
     update = function(me: Object, s: State)

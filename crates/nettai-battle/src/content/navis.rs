@@ -140,7 +140,7 @@ pub struct FreshStats {
     pub float_shoes: bool,
     pub air_shoes: bool,
     pub undershirt: bool,
-    pub first_barrier: u8,
+    pub first_barrier: Option<nettai_content_api::RecordHandle>,
     pub mega_level: u8,
     pub giga_level: u8,
     pub back_special_damage: u16,
@@ -605,7 +605,10 @@ pub(crate) fn read_form(
 }
 
 /// A navi definition's `fresh`: what a Cross change brings it with.
-pub(crate) fn read_fresh(d: &nettai_content_api::Definition) -> Result<Option<FreshStats>, nettai_content_api::ContentError> {
+pub(crate) fn read_fresh(
+    d: &nettai_content_api::Definition,
+    record: impl Fn(&str) -> Option<nettai_content_api::RecordHandle>,
+) -> Result<Option<FreshStats>, nettai_content_api::ContentError> {
     use nettai_content_api::{ContentError, Data};
     let what = |m: String| ContentError::new(format!("{}.luau: navi {}: {m}", d.module, d.key));
     let fresh = match d.spec.field("fresh") {
@@ -632,7 +635,13 @@ pub(crate) fn read_fresh(d: &nettai_content_api::Definition) -> Result<Option<Fr
         float_shoes: flag("float_shoes")?,
         air_shoes: flag("air_shoes")?,
         undershirt: flag("undershirt")?,
-        first_barrier: number("first_barrier", 0xFF)? as u8,
+        first_barrier: match fresh.field("first_barrier") {
+            Data::Nil => None,
+            Data::Ref(nettai_content_api::Registry::Record, key) => {
+                Some(record(key).ok_or_else(|| what(format!("fresh.first_barrier names no record {key:?}")))?)
+            }
+            other => return Err(what(format!("fresh.first_barrier is {other:?}, not a barrier (lib/barriers)"))),
+        },
         mega_level: number("mega_level", 0xFF)? as u8,
         giga_level: number("giga_level", 0xFF)? as u8,
         back_special_damage: match fresh.field("back_special_damage") {

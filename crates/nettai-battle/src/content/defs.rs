@@ -1142,7 +1142,9 @@ impl Defs {
         for d in definitions.of(Registry::Navi) {
             let mut record = super::navis::read_navi(d, &reader)?;
             record.weapons = read_weapons(d)?;
-            record.fresh = super::navis::read_fresh(d)?;
+            record.fresh = super::navis::read_fresh(d, |key| {
+                definitions.of(Registry::Record).iter().position(|r| r.key == key).map(|i| RecordHandle(i as u16))
+            })?;
             record.cross_hp = super::navis::read_cross_hp(d)?;
             record.identity = identity_of(d, &identities)?;
             record.forms = match d.spec.field("forms") {

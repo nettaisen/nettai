@@ -167,6 +167,10 @@ pub enum HookCall {
 /// Which hook of a system is called (docs/design/rules-in-luau.md §4.1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SystemHook {
+    /// `round_setup(side)`: once per side as the round is set up
+    /// (`Battle::new`), before anything reads the side's navi stats: a
+    /// system may change them (BN6's patch cards). Its result is unused.
+    RoundSetup,
     /// `round_start(side)`: once per side, after the navis spawn. Its result
     /// is unused.
     RoundStart,
@@ -176,11 +180,12 @@ impl SystemHook {
     /// The hook's name in a system's `hooks` table.
     pub fn name(self) -> &'static str {
         match self {
+            SystemHook::RoundSetup => "round_setup",
             SystemHook::RoundStart => "round_start",
         }
     }
 
-    pub const ALL: [SystemHook; 1] = [SystemHook::RoundStart];
+    pub const ALL: [SystemHook; 2] = [SystemHook::RoundSetup, SystemHook::RoundStart];
 }
 
 /// A content error: a bug in the content, or a script breaking the

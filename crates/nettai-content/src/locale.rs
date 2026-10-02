@@ -3,11 +3,12 @@
 //! `content::strings`).
 //!
 //! A definition holds no display text. A chip's name and description, a
-//! navi's name and no-running message, and a Cross's name and description
-//! are its language's table's. The content's own language
-//! (`OWN`, English for BN6) is part of the content: the loader puts its
-//! table in `Content::strings`, and the define phase counts what the battle
-//! reads of it (a description's lines, a message's characters per line).
+//! navi's name and no-running message, a Cross's name and description and
+//! a record's name (a patch card's) are its language's table's. The
+//! content's own language (`OWN`, English for BN6) is part of the content:
+//! the loader puts its table in `Content::strings`, and the define phase
+//! counts what the battle reads of it (a description's lines, a message's
+//! characters per line).
 //! Another language's table is a frontend's alone (`--lang`): it changes
 //! neither the battle nor `Content::hash()`, so each player reads their own
 //! language in one netbattle.
@@ -23,21 +24,25 @@
 //!
 //! [forms]
 //! heatcross = { name = "...", description = "..." }
+//!
+//! [records]
+//! "patch-card/canodumb" = { name = "..." }
 //! ```
 //!
 //! A line break in a description or a message is `\n`. A translated
 //! description may have another number of lines than the own language's:
 //! the battle keeps the own language's timing. The game's marks are
 //! characters (Ⓐ, Ⓑ; the Private Use Area's for the stacked EX and SP,
-//! `""`: docs/design/text-rendering.md §10.5).
+//! `"\uE002"` in a table: docs/design/text-rendering.md §10.5).
 //!
 //! What reads them: a chip's name and description, a navi's name and
 //! no-running message (the battle's screens); a Cross's description (R in
 //! the Cross window) and its name (a frontend's own text: live play's
-//! Crosses, the plain-text screen). Nothing shows another form's name or
-//! a weapon's, so a table has none.
+//! Crosses, the plain-text screen); a record's name is for a patch card's
+//! menu. Nothing shows another form's name or a weapon's, so a table has
+//! none.
 
-pub use nettai_battle::content::strings::{ChipStrings, FormStrings, NaviStrings, Strings};
+pub use nettai_battle::content::strings::{ChipStrings, FormStrings, NaviStrings, RecordStrings, Strings};
 use nettai_battle::content::{Defs, FormKind};
 use std::path::{Path, PathBuf};
 
@@ -123,6 +128,12 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
         }
         text(format!("forms.{key}.name"), &f.name);
         text(format!("forms.{key}.description"), &f.description);
+    }
+    for (key, r) in &s.records {
+        if defs.record(key).is_none() {
+            unknown.push(format!("records.{key}: no record has this key"));
+        }
+        text(format!("records.{key}.name"), &r.name);
     }
     if own {
         let named = |n: Option<&Option<String>>| n.is_some_and(|n| n.is_some());
