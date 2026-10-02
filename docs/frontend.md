@@ -205,8 +205,12 @@ after the camera, so a shake moves them against the sprites there.
 black after the first battle of a set), the round's end to black. A dimming
 darkens the stage (background and field: the palettes 0-8) and leaves the
 sprites and the HUD's layer. The transformation sequencer fades every tile
-layer to black while navis change form (sprites keep their colours) and
-the palette flash whitens them.
+layer to black while navis change form (sprites keep their colours). A
+palette flash takes the transformation's palette transform: variant 0
+(`sub_80E10C0`) whitens the stage's palettes on the frames its counter has
+bit 2 clear and leaves the HUD's colours, variant 1 (`sub_80E114C`, the
+FlashBomb's) whitens the stage, the HUD and the sprites every frame;
+neither shows while the battle holds it (`objects::palette_flash`).
 
 **The custom screen** (`custom.rs`): the local player's screen as the
 original draws it on its console (`sub_8026A28` and its states), from the
@@ -301,10 +305,7 @@ camera shake and screen dim.
 **A second match**, three rounds traced on the right-hand player's console
 (so the field is drawn mirrored), with Crosses, rock cubes, ice and grass
 panels, traps and Invisibl: of the 6397 frames outside the custom screen
-that have screenshots, **6395 are pixel-exact** (rows 152-159 left
-out, below). What differs: on two frames (7498, 25885) the whole
-background is the next frame's, which is how the screenshots were taken
-(below), not the game.
+that have screenshots, **all 6397 are pixel-exact**, every row of them.
 
 **Chip-lab scenarios**: 132 scenarios, a few of every family
 (shot, sword, thrown, placed and dimming chips, navi chips, the link
@@ -320,15 +321,15 @@ The comparison needs the ROM, so it lives outside this repository, with the
 list of scenarios. The frontend's own tests (`cargo test -p nettai-frontend`)
 use a small synthetic asset set and a live battle built in code.
 
-Screenshots of the right-hand player's console that the recorders took as
-the emulated pair's tick ended (the golden traces', and the chip lab's
-before its pictures were taken at the console's own VBlank) have the
-previous picture in their last rows: the tick ends at the first console's
-VBlank, when the second console's video is still some seven scanlines from
-the picture's end (152-159). The comparison leaves rows 152-159 out for
-those; the chip lab's pictures taken at the VBlank match on every row. The
-golden match's two whole-frame differences are most likely the same timing
-drifting by a frame (its screenshots are still taken at the tick's end).
+The recorders take each picture at the traced console's own VBlank, as
+its main loop leaves `main_awaitFrame`. Screenshots of the right-hand
+player's console taken as the emulated pair's tick ended instead (both
+recorders' before) have the previous picture in their last rows: the tick
+ends at the first console's VBlank, when the second console's video is
+still some seven scanlines from the picture's end (152-159), and on two
+frames of the second match (7498, 25885) a whole picture off. The
+comparison leaves rows 152-159 out for those (no `vblank` file beside
+them).
 
 ## 5. Known gaps
 
@@ -346,9 +347,5 @@ drifting by a frame (its screenshots are still taken at the tick's end).
   training viruses' (NameIDs 0x49..=0x4E: moved 32 pixels left), and a
   warning marker within 16 pixels left of or above the screen, for which
   the original writes a garbled sprite.
-- During the palette flash (`sub_80E10C0`) the original keeps the HUD
-  layer's colours (the HP box and the gauge), where the frontend whitens
-  every tile layer (seen in a longer recording of DeltaRay's hit, not yet
-  in the sample).
 - The background scroll starts one frame earlier in the first round of a
   set than in later ones (measured).

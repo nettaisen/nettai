@@ -86,9 +86,28 @@ impl<'a> Renderer<'a> {
         // the HUD's).
         let transform = layer_fade(b);
         let custom = crate::custom::fade(b).unwrap_or_default();
-        let stage = if transform != Fade::None { transform } else if custom != Fade::None { custom } else { dim_fade(b) };
-        let hud = if transform != Fade::None { transform } else { crate::custom::hud_fade(b).unwrap_or_default() };
-        let fades = Fades { stage, hud, screen: screen_fade(b) };
+        let custom_hud = crate::custom::hud_fade(b).unwrap_or_default();
+        let flash = objects::palette_flash(b);
+        let stage = if flash.is_some() {
+            Fade::White(16)
+        } else if transform != Fade::None {
+            transform
+        } else if custom != Fade::None {
+            custom
+        } else {
+            dim_fade(b)
+        };
+        // (The flash takes the palette transform the transformation's fade
+        // uses: on its frames the HUD's palettes are the flash's, which
+        // leaves them be in variant 0.)
+        let hud = match flash {
+            Some(1) => Fade::White(16),
+            Some(_) => custom_hud,
+            None if transform != Fade::None => transform,
+            None => custom_hud,
+        };
+        let sprites = if flash == Some(1) { Fade::White(16) } else { Fade::None };
+        let fades = Fades { stage, hud, sprites, screen: screen_fade(b) };
         compose::compose(backdrop, &[&self.names, &self.hud, &self.field, &self.background], &parts, fades)
     }
 }
@@ -105,12 +124,9 @@ pub fn dim_fade(b: &Battle) -> Fade {
 }
 
 /// The transformation sequencer fades the tile layers (not the sprites)
-/// out to black while the navis change form, and back in; the palette
-/// flash whitens them.
+/// out to black while the navis change form, and back in (a palette flash
+/// takes its place: `objects::palette_flash`).
 pub fn layer_fade(b: &Battle) -> Fade {
-    if objects::palette_flash(b) {
-        return Fade::White(16);
-    }
     let left = b.fade.remaining();
     match b.transform_seq.state {
         SequencerState::Transform { phase: TransformPhase::FadeOut, started: true } => Fade::Black(16u8.saturating_sub(left)),
