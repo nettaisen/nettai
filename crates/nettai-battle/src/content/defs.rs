@@ -19,7 +19,8 @@ use std::collections::BTreeMap;
 
 use nettai_content_api::{
     ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, FnId, FnSource, FormHandle, KindHandle,
-    NaviHandle, Pool, RecordHandle, Registry, Schema, StageHandle, StateId, WeaponHandle,
+    NaviHandle, Pool, RecordHandle, Registry, RulesetHandle, Schema, StageHandle, StateId, SystemHandle, SystemHook,
+    WeaponHandle,
 };
 
 use super::{
@@ -204,6 +205,40 @@ pub struct CollisionTypeDef {
 }
 
 
+/// A system of a game's rules (docs/design/rules-in-luau.md §2.2): its state
+/// per side, its player setup, its hooks.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SystemDef {
+    pub key: String,
+    /// The layout of its state of a side, and of its player setup.
+    pub state: StateId,
+    pub setup: StateId,
+    /// Its hooks, in [`SystemHook::ALL`]'s order.
+    hooks: Vec<Option<FnId>>,
+}
+
+impl SystemDef {
+    /// Its function for `hook`, if it has one.
+    pub fn hook(&self, hook: SystemHook) -> Option<FnId> {
+        let i = SystemHook::ALL.iter().position(|&h| h == hook).expect("every hook is listed");
+        self.hooks[i]
+    }
+}
+
+/// A player's rules (docs/design/rules-in-luau.md §2.2): its systems, in
+/// the order the framework calls them.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct RulesetDef {
+    pub key: String,
+    /// The game's own rules: what a player has unless their setup names
+    /// another.
+    pub stock: bool,
+    pub systems: Vec<SystemHandle>,
+}
+
+/// Most systems a ruleset may list.
+pub const MAX_SYSTEMS: usize = 16;
+
 /// A record only content reads: the engine keeps its handle and type.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RecordDef {
@@ -254,6 +289,9 @@ pub struct Defs {
     pub collisions: Vec<CollisionTypeDef>,
     /// What the ruleset needs from content by role (`define.roles`).
     pub roles: Roles,
+    /// The systems and rulesets (docs/design/rules-in-luau.md), by handle.
+    pub systems: Vec<SystemDef>,
+    pub rulesets: Vec<RulesetDef>,
     /// The Program Advances, in the order they are tried (each chip holds
     /// the recipes that make it; `sub_8029520`).
     pub program_advances: Vec<super::ProgramAdvance>,
@@ -275,6 +313,25 @@ pub struct Defs {
 }
 
 impl Defs {
+    pub fn system(&self, h: SystemHandle) -> &SystemDef {
+        &self.systems[h.index()]
+    }
+
+    pub fn ruleset(&self, h: RulesetHandle) -> &RulesetDef {
+        &self.rulesets[h.index()]
+    }
+
+    /// The game's own rules (docs/design/rules-in-luau.md §2.3): what a
+    /// player has unless their setup names another.
+    pub fn stock_ruleset(&self) -> Option<RulesetHandle> {
+        self.rulesets.iter().position(|r| r.stock).map(|i| RulesetHandle(i as u16))
+    }
+
+    /// The ruleset with this key.
+    pub fn ruleset_by_key(&self, key: &str) -> Option<RulesetHandle> {
+        self.rulesets.iter().position(|r| r.key == key).map(|i| RulesetHandle(i as u16))
+    }
+
     /// The kind with this key.
     pub fn kind_by_key(&self, key: &str) -> Option<KindHandle> {
         self.kind_keys.get(key).copied()
@@ -1292,6 +1349,90 @@ impl Defs {
             roles = read_roles(d, &definitions, &content.assets, &actions, &kinds, &chips, &lockons, &statuses, &mut functions)?;
         }
 
+        // The systems and the rulesets.
+        let mut systems = Vec::new();
+        for d in definitions.of(Registry::System) {
+            let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
+            if let Data::Map(entries) = &d.spec {
+                for (k, _) in entries {
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks)")));
+                    }
+                }
+            }
+            let layout = |field: &str| -> Result<StateId, ContentError> {
+                match d.spec.field(field) {
+                    Data::Nil => Ok(schema_id(NO_STATE)),
+                    Data::Ref(Registry::Schema, key) => Ok(schema_id(key)),
+                    _ => Err(what(&format!("`{field}` is not a table of fields"))),
+                }
+            };
+            let mut hooks = vec![None; SystemHook::ALL.len()];
+            match d.spec.field("hooks") {
+                Data::Nil => {}
+                Data::Map(entries) => {
+                    for (k, v) in entries {
+                        let name = k.to_string();
+                        let Some(i) = SystemHook::ALL.iter().position(|h| h.name() == name) else {
+                            let known: Vec<&str> = SystemHook::ALL.iter().map(|h| h.name()).collect();
+                            return Err(what(&format!("no hook is named `{name}` (the hooks: {})", known.join(", "))));
+                        };
+                        if !matches!(v, Data::Function) {
+                            return Err(what(&format!("hook `{name}` is not a function")));
+                        }
+                        hooks[i] = Some(functions.id(FnSource::slot(Registry::System, &d.key, &format!("hooks.{name}"))));
+                    }
+                }
+                _ => return Err(what("`hooks` is a table of functions by hook name")),
+            }
+            systems.push(SystemDef { key: d.key.clone(), state: layout("state")?, setup: layout("setup")?, hooks });
+        }
+        let mut rulesets = Vec::new();
+        for d in definitions.of(Registry::Ruleset) {
+            let what = |e: &str| ContentError::new(format!("{}.luau: ruleset {}: {e}", d.module, d.key));
+            if let Data::Map(entries) = &d.spec {
+                for (k, _) in entries {
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "stock", "systems"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a ruleset (id, stock, systems)")));
+                    }
+                }
+            }
+            let stock = match d.spec.field("stock") {
+                Data::Nil => false,
+                Data::Bool(b) => *b,
+                _ => return Err(what("`stock` is true or false")),
+            };
+            let mut list = Vec::new();
+            let items: &[Data] = match d.spec.field("systems") {
+                Data::Nil => &[],
+                Data::List(items) => items,
+                Data::Map(m) if m.is_empty() => &[],
+                _ => return Err(what("`systems` is a list of systems")),
+            };
+            for v in items {
+                let Data::Ref(Registry::System, key) = v else {
+                    return Err(what("`systems` lists system definitions (define.system { ... })"));
+                };
+                let h = SystemHandle(definitions.of(Registry::System).iter().position(|s| &s.key == key).expect("a defined system") as u16);
+                if list.contains(&h) {
+                    return Err(what(&format!("system {key} is listed twice")));
+                }
+                list.push(h);
+            }
+            if list.len() > MAX_SYSTEMS {
+                return Err(what(&format!("{} systems; a ruleset has at most {MAX_SYSTEMS}", list.len())));
+            }
+            rulesets.push(RulesetDef { key: d.key.clone(), stock, systems: list });
+        }
+        let stocks: Vec<&str> = rulesets.iter().filter(|r| r.stock).map(|r| r.key.as_str()).collect();
+        if stocks.len() > 1 {
+            return Err(ContentError::new(format!(
+                "the content has {} stock rulesets ({}); a game has one",
+                stocks.len(),
+                stocks.join(", ")
+            )));
+        }
+
         let records: Vec<RecordDef> = definitions
             .of(Registry::Record)
             .iter()
@@ -1349,6 +1490,8 @@ impl Defs {
             regions,
             collisions,
             roles,
+            systems,
+            rulesets,
             program_advances,
             cross_special,
             schemas,

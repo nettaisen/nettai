@@ -25,6 +25,10 @@ test-content = []
 # options (deterministic, but not faster for this content:
 # docs/design/scripting.md §7).
 luau-jit = ["nettai-luau/jit"]
+# Count and time the engine's calls into Luau, by what is called
+# (`behavior::profile`): what docs/design/rules-in-luau.md §6.5 measures
+# with rollback_cost. Off, it costs nothing.
+luau-profile = []
 
 [[example]]
 name = "content_bench"

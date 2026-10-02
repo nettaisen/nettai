@@ -344,3 +344,39 @@ fn songs_mixing_loops_and_endings_are_refused_for_now() {
     assert_eq!(failures.len(), 1);
     assert!(failures[0].1.contains("one loop per song"));
 }
+
+/// Songs a version has its own of (BN5's Team Colonel) are song files of their
+/// own named with their version, beside the base version's, and read back as
+/// they were; a pack without versions names no version anywhere.
+#[test]
+fn version_songs_round_trip() {
+    use nettai_content::sound::SongVersions;
+    let dir = temp("versions");
+    let b = bank();
+    // Song 1 as the "colonel" version has it: song 0's tracks.
+    let other = b.songs[0].clone().unwrap();
+    let versions = SongVersions {
+        base_version: "protoman".into(),
+        versions: vec![("colonel".into(), std::collections::BTreeMap::from([(1u16, other.clone())]))],
+    };
+    let (files, failures) = pack::export_sound_versions(&b, &versions, &nettai_content::names::AssetNames::default());
+    assert!(failures.is_empty(), "{failures:?}");
+    let names: Vec<&str> = files.iter().map(|(n, _)| n.as_str()).filter(|n| n.starts_with("sound/songs/")).collect();
+    for n in ["sound/songs/sound-000.toml", "sound/songs/sound-001-protoman.toml", "sound/songs/sound-001-colonel.toml"] {
+        assert!(names.contains(&n), "{n} in {names:?}");
+    }
+    let mut all = vec![pack::manifest("test", None, true)];
+    all.extend(files);
+    pack::write_files(&dir, &all).unwrap();
+    let mut r = Report::default();
+    let (back, back_versions) = pack::import_sound_versions(&dir, &mut r).expect("the pack loads");
+    assert!(!r.has_errors() && r.count(Level::Warning) == 0, "{r}");
+    assert_plays_the_same(&b, &back);
+    assert_eq!(back_versions.base_version, "protoman");
+    let colonel = back_versions.song("colonel", 1).expect("colonel's song 1");
+    assert_eq!(verify::compare_song(colonel, &other), None);
+    // Without versions, no file names one.
+    let (plain, _) = pack::export_sound(&b, &nettai_content::names::AssetNames::default());
+    let says_version = |d: &[u8]| String::from_utf8_lossy(d).lines().any(|l| l.starts_with("version = \"") || l.starts_with("base_version"));
+    assert!(plain.iter().filter(|(n, _)| n.ends_with(".toml")).all(|(_, d)| !says_version(d)));
+}
