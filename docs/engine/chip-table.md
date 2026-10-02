@@ -675,4 +675,4 @@ that object's phase `sub_80E1880` calls `off_802CD5C[Unk_19]`.
 | 1044 | `sub_8010C50` (08010C50) | 19A StepSwrd |
 
 Note: chips 0x138 Gregar and 0x139 Falzar have action 0x15 with +0x0C = 34/35, whose `off_802CCB4` slots are NULL;
-in the US ROM using them crashes the game (the JP ROM would be needed to define real behaviour; out of scope).
+in the US ROM using them crashes the game. The JP ROMs have the behaviour (jp-differences.md §4).
