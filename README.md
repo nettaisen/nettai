@@ -44,8 +44,8 @@ Then run the frontend:
     cargo run --release -p nettai-frontend -- --play --headless 1-120 --out <dir>   # render frames to PNG
 
 In live play you are the left navi, and the right one stands still. Each start draws its setup from a seed, which
-it prints: a link battle stage and background, a legal random folder for each side, and five Crosses of both games
-in each Cross window. `--seed N` replays a setup, `--stage NAME` forces the stage (`netbattle-1` to `netbattle-96`)
+it prints: a link battle stage and background, each side's game (Falzar's or Gregar's Beast), a legal random folder
+for each side, and five Crosses of both games in each Cross window. `--seed N` replays a setup, `--stage NAME` forces the stage (`netbattle-1` to `netbattle-96`)
 and `--show-folders` prints the folders. Keys: the arrows move, Z is A, X is B, A is L,
 S is R, Enter is START and Backspace is SELECT; Space pauses, `.` steps a frame while paused, `-` and `=` change
 the speed, F5 restarts the round, H toggles the status line and Esc quits. `--help` lists the options, and
