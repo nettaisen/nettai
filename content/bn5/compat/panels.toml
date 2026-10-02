@@ -1,6 +1,6 @@
 # BN5's panel types by number, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs:
-# the panel flag word each has (the table at 0x0800BCF0) and the engine's panel type it is; `engine` is absent where the
-# engine has none (metal: the flag BN6 gives its roads, its look a plate; sea: a flag of its own, 0x20000).
+# the panel flag word each has (the table at 0x0800BCF0) and the engine's panel type it is (metal, lava and sea BN5's
+# own: docs/design/bn5-map.md §15.3 item 1).
 # bn5-map.md §3.4.
 
 [types.0]
@@ -31,6 +31,7 @@ engine = "poison"
 [types.5]
 name = "metal"
 flags = 0x10210
+engine = "metal"
 
 [types.6]
 name = "grass"
@@ -45,7 +46,7 @@ engine = "ice"
 [types.8]
 name = "lava"
 flags = 0x11010
-engine = "volcano"
+engine = "lava"
 
 [types.9]
 name = "holy"
@@ -55,3 +56,4 @@ engine = "holy"
 [types.10]
 name = "sea"
 flags = 0x30010
+engine = "sea"

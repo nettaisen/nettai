@@ -203,4 +203,18 @@ fn bn5s_rules_are_its_games() {
         let (six, five) = (d.chip_by_key(&format!("bn6:{key}")), d.chip_by_key(&format!("bn5:{key}")));
         assert!(five.is_some() && six != five, "bn5:{key}");
     }
+    // docs/design/bn5-map.md §15.3 items 10 and 11: BN5's chips leave
+    // their action on the use frame, and AntiNavi's sparkle sits on the
+    // panel's center.
+    assert!(five.chip_use.leave_on_use && !six.chip_use.leave_on_use);
+    assert_eq!((five.chip_use.anti_navi_sparkle.dy, five.chip_use.anti_navi_sparkle.z), (0, 16));
+    assert_eq!((six.chip_use.anti_navi_sparkle.dy, six.chip_use.anti_navi_sparkle.z), (16, 32));
+    // Item 9: no BN5 module that uses BN6's names a BN5 collision type
+    // that tests BN6's 0x80 self bit (BN5's own row 0x3D, `probe`, does).
+    assert_eq!(nettai_content::lint::self_bit_targets(&c), vec![]);
+    let text = "local shot = require(\"@bn6/lib/shot\")\nlocal collision = require(\"../../rules/collision\")\n\
+                return shot.chip { hits = collision.probe }";
+    c.scripts.modules.insert("bn5:chips/probing/chip".into(), text.into());
+    let found = nettai_content::lint::self_bit_targets(&c);
+    assert_eq!(found, vec![("bn5:probe".to_string(), "bn5:chips/probing/chip".to_string(), "bn6".to_string())]);
 }

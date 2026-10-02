@@ -118,6 +118,10 @@ pub struct CollisionData {
     pub counter_timer: u8,
     pub hit_mod_base: u8,
     pub hit_mod_final: u8,
+    /// The hit modifiers of the hits it took by the hitter's side (BN5's
+    /// +0x18 and +0x19, 0x08016AA6), which BN5's push reads
+    /// (`PushReading::Bn5`); BN6 keeps them unread.
+    pub hit_mod_by_side: [u8; 2],
     /// The status its hits carry, and the one the hits it took landed.
     pub status_base: Option<StatusHandle>,
     pub status_final: Option<StatusHandle>,
@@ -344,6 +348,8 @@ impl Battle {
         let s = self.collision.get_mut(id);
         if !dimmed {
             s.hit_mod_final = 0;
+            // (BN5's clear, 0x08016B22, takes its two by-side bytes too.)
+            s.hit_mod_by_side = [0; 2];
             s.guard_dirs = 0;
         }
         s.status_final = None;
@@ -479,8 +485,11 @@ impl Battle {
         if hd.status_base.is_some() {
             rm.status_final = hd.status_base;
         }
-        // Aqua on ice: freeze a body standing on ice.
-        if rd.element == 2
+        // Aqua on ice: freeze a body standing on ice (in a game that has
+        // the freeze: the arena's role `statuses.ice_freeze`; BN5 has none,
+        // docs/design/bn5-map.md §15.3 item 4).
+        if let Some(freeze) = self.arena_roles().try_status(StatusRole::IceFreeze)
+            && rd.element == 2
             && hs & 0x0C00_0000 != 0
             && rs & 0x0C00_0000 == 0
             && hd.status_timers[timer::INVULNERABLE] == 0
@@ -488,7 +497,7 @@ impl Battle {
             && self.field.panel(hd.panel.x, hd.panel.y).map(|p| p.kind) == Some(PanelType::Ice)
         {
             self.set_panel_type(hd.panel.x, hd.panel.y, PanelType::Normal);
-            self.collision.get_mut(h).status_final = Some(self.arena_roles().status(StatusRole::IceFreeze));
+            self.collision.get_mut(h).status_final = Some(freeze);
         }
         let c = hd.counter_byte;
         let rm = self.collision.get_mut(r);
@@ -512,6 +521,8 @@ impl Battle {
             rm.acc.drain_hits = rm.acc.drain_hits.wrapping_add(1);
         }
         rm.hit_mod_final |= hd.hit_mod_base;
+        // BN5 also keeps it by the hitter's side (0x08016AA6).
+        rm.hit_mod_by_side[hd.alliance as usize & 1] |= hd.hit_mod_base;
         if hd.bugs & 0xFF != 0 {
             rm.acc.inflicted_bugs = hd.bugs;
         }
@@ -587,13 +598,10 @@ impl Battle {
         }
         let e = s.element;
         let Some(p) = self.field.panel(x, y) else { return };
-        let convert = match p.kind {
-            PanelType::Grass => e == 1,
-            PanelType::Volcano => e == 2,
-            t if t.is_road() => e == 4,
-            _ => false,
-        };
-        if convert {
+        // (BN6: fire on grass, aqua on volcano, wood on roads; BN5's
+        // 0x08016D14 the same with lava and metal.)
+        let cleared_by = self.content.rules_of(self.games.arena).panels.types[p.kind as usize].cleared_by;
+        if cleared_by == Some(e) {
             self.set_panel_type(x, y, PanelType::Normal);
         }
     }
