@@ -748,7 +748,7 @@ fn tick_anger(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80143A6`: calm down.
-pub(super) fn end_anger(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn end_anger(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
     b.stats[side].mood = 0x80;
     clear_flag1(b, r, f1::ANGER);
@@ -869,7 +869,7 @@ fn update_visibility(b: &mut Battle, r: ObjectRef) {
 fn pause_requests(b: &mut Battle, r: ObjectRef) {
     let st = ai(b, r).status;
     if st & ai_status::FORM_CHANGE != 0 {
-        return actions::transform::form_change(b, r);
+        return form_change(b, r);
     }
     if st & ai_status::REVERTING_FORM != 0 {
         return actions::transform::revert(b, r);
@@ -895,10 +895,34 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
     } else {
         return;
     };
+    // The change into a form runs the action that form names; the rest are
+    // the framework's own (the original's CurAction is 0x1C for all).
+    let action = match form_change_action(b, r) {
+        Some(h) if bit == request::FORM_CHANGE => NaviAction::Content(h),
+        _ => NaviAction::Engine(super::EngineAction::FormChange),
+    };
     let a = ai_mut(b, r);
     a.requests &= !bit;
     a.status |= state;
-    set_attack(b, r, super::EngineAction::FormChange, 0);
+    set_attack(b, r, action, 0);
+}
+
+/// The change into the form the side asked for at this turn's start
+/// (`sub_8014A38`'s place): the form's `change` (BN6's forms':
+/// content/bn6/rules/forms), run while paused. Without a form asked for (or
+/// with the base form) the change is none.
+fn form_change(b: &mut Battle, r: ObjectRef) {
+    match form_change_action(b, r) {
+        Some(action) => crate::behavior::run_action(b, action, r),
+        None => ai_mut(b, r).status &= !ai_status::FORM_CHANGE,
+    }
+}
+
+/// The action that changes the navi into the form its side asked for.
+fn form_change_action(b: &Battle, r: ObjectRef) -> Option<nettai_content_api::ActionHandle> {
+    let target = super::form_change_target(b, r)?;
+    let change = b.content.form(target).change;
+    Some(change.unwrap_or_else(|| panic!("form {} names no action that changes a navi into it", b.content.defs.form(target).key)))
 }
 
 /// `sub_800BEDA`: the navi may cut in on the other side's dimming: its own

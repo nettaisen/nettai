@@ -8,10 +8,13 @@ local spoutcross_beast = require("../spoutcross-beast/form")
 local buster = require("../../weapons/buster/weapon")
 local charge = require("./charge")
 local charged_chip_bonus_1f = require("../../weapons/charged-chip-bonus-1f/weapon")
+local forms = require("../../../../rules/forms/system")
 
 return define.form {
     id = "spoutcross",
     kind = "cross",
+    -- What changes MegaMan into it (BN6's five sequences).
+    change = forms.action,
     game = "falzar",
     cross_of = spoutman,
     beast = spoutcross_beast,

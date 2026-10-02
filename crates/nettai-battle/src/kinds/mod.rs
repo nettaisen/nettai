@@ -9,7 +9,6 @@ pub mod body_overlay;
 pub mod bubble_visual;
 pub mod charge_glow;
 pub mod common;
-pub mod cross_merge;
 pub mod effect;
 pub mod eruption;
 pub mod form_overlay;
@@ -50,7 +49,6 @@ pub enum Vars {
     Afterimage(afterimage::Vars),
     LockonMarker(lockon_marker::Vars),
     PaletteFlash(palette_flash::Vars),
-    CrossMerge(cross_merge::Vars),
     BodyOverlay(body_overlay::Vars),
     NaviChip(navi_chip::Vars),
     NaviWarp(navi_warp::Vars),
@@ -76,7 +74,6 @@ impl Vars {
             EngineKind::Afterimage => Vars::Afterimage(Default::default()),
             EngineKind::LockonMarker => Vars::LockonMarker(Default::default()),
             EngineKind::PaletteFlash => Vars::PaletteFlash(Default::default()),
-            EngineKind::CrossMerge => Vars::CrossMerge(Default::default()),
             EngineKind::BodyOverlay => Vars::BodyOverlay(Default::default()),
             EngineKind::IdleOverlay => Vars::IdleOverlay(Default::default()),
             EngineKind::FullSynchroAura => Vars::FullSynchroAura(Default::default()),
@@ -134,7 +131,6 @@ pub enum EngineKind {
     Afterimage,
     LockonMarker,
     PaletteFlash,
-    CrossMerge,
     BodyOverlay,
     IdleOverlay,
     FullSynchroAura,
@@ -148,7 +144,7 @@ pub enum EngineKind {
 /// The engine's kinds: their keys (`engine/...`) and pools. (The object
 /// slots they fill in the original, which the traces compare, are the
 /// validator's, by key.)
-pub const ENGINE_KINDS: [(EngineKind, &str, Pool); 22] = [
+pub const ENGINE_KINDS: [(EngineKind, &str, Pool); 21] = [
     (EngineKind::Player, "engine/player", Pool::Actor),
     (EngineKind::Intro, "engine/intro", Pool::Effect),
     (EngineKind::ChargeGlow, "engine/charge-glow", Pool::Effect),
@@ -162,7 +158,6 @@ pub const ENGINE_KINDS: [(EngineKind, &str, Pool); 22] = [
     (EngineKind::Afterimage, "engine/afterimage", Pool::Effect),
     (EngineKind::LockonMarker, "engine/lockon-marker", Pool::Effect),
     (EngineKind::PaletteFlash, "engine/palette-flash", Pool::Effect),
-    (EngineKind::CrossMerge, "engine/cross-merge", Pool::Actor),
     (EngineKind::BodyOverlay, "engine/body-overlay", Pool::Actor),
     (EngineKind::IdleOverlay, "engine/idle-overlay", Pool::Actor),
     (EngineKind::FullSynchroAura, "engine/full-synchro-aura", Pool::Actor),
@@ -193,7 +188,6 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             EngineKind::Afterimage => afterimage::update(b, r),
             EngineKind::LockonMarker => lockon_marker::update(b, r),
             EngineKind::PaletteFlash => palette_flash::update(b, r),
-            EngineKind::CrossMerge => cross_merge::update(b, r),
             EngineKind::BodyOverlay => body_overlay::update(b, r),
             EngineKind::IdleOverlay => idle_overlay::update(b, r),
             EngineKind::FullSynchroAura => full_synchro_aura::update(b, r),
