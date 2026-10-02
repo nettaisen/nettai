@@ -350,13 +350,14 @@ fn a_setups_cross_list_offers_crosses_of_either_game() {
     assert_eq!((w.count, w.offered[0]), (1, 1));
 }
 
-/// Beast Out from a Cross of the other game: the player's own game's Beast
-/// (a Falzar player's Falzar Beast), not that Cross's form in Beast Out.
-/// Without a Cross list Beast Out from a Cross is the Cross's Beast form,
-/// as in the original.
+/// Beast Out from a Cross of the other game is that Cross's form in Beast
+/// Out, of that game's Beast (a Falzar player in Gregar's first Cross goes
+/// to its Beast form, 0x0D), with that game's roar; tired, that game's
+/// Beast Over. Without a Cross list the Beast's game is the version's.
 #[test]
-fn beast_out_from_the_other_games_cross_keeps_the_players_beast() {
-    for (list, beast) in [(true, library::testing::FALZAR_BEAST), (false, FormHandle(0x0D))] {
+fn beast_out_from_the_other_games_cross_is_its_beast_form() {
+    use super::look::ScreenSound;
+    for list in [true, false] {
         let mut p = Player::new(&[], GameVersion::Falzar);
         if list {
             p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
@@ -369,28 +370,42 @@ fn beast_out_from_the_other_games_cross_keeps_the_players_beast() {
         p.press(keys::START);
         p.press(keys::DOWN);
         p.step(keys::A);
+        let mut roars = Vec::new();
         while p.phase() != Phase::Choosing && p.tick < 1000 {
             p.step(0);
+            roars.extend(p.screen().look.drawn.sounds().filter(|s| matches!(s, ScreenSound::BeastOut(_))));
         }
-        assert_eq!(p.screen().look.face, Some(beast), "list {list}");
+        let game = if list { GameVersion::Gregar } else { GameVersion::Falzar };
+        assert_eq!(roars, [ScreenSound::BeastOut(game)], "list {list}");
+        assert_eq!(p.screen().look.face, Some(FormHandle(0x0D)), "list {list}");
         p.press(keys::UP);
         p.press(keys::A);
         p.wait(20);
-        assert_eq!(p.side.sent.as_ref().unwrap().result.transform.form, Some(beast), "list {list}");
+        assert_eq!(p.side.sent.as_ref().unwrap().result.transform.form, Some(FormHandle(0x0D)), "list {list}");
+        // Tired: Beast Over of the Beast's game (Gregar's 0x17, Falzar's 0x18).
+        let over = p.side.unlocks.beast_form(&p.lib, p.stats.navi, FormHandle(1), true);
+        assert_eq!(over, Some(FormHandle(if list { 0x17 } else { 0x18 })), "list {list}");
+        // From the base form Beast Out is the version's.
+        let base = p.side.unlocks.beast_form(&p.lib, p.stats.navi, FormHandle(0), false);
+        assert_eq!(base, Some(library::testing::FALZAR_BEAST));
+        assert_eq!(p.side.unlocks.beast_game(&p.lib, FormHandle(0)), GameVersion::Falzar);
     }
 }
 
-/// In Beast Out a Cross list offers only the player's game's Crosses,
-/// which take the navi to their form in Beast Out.
+/// In a Beast form a Cross list offers the Crosses whose Beast it is: in
+/// Falzar's Beast Falzar's, in a Gregar Cross's Beast form Gregar's; each
+/// takes the navi to its form in Beast Out.
 #[test]
-fn in_beast_out_a_cross_list_offers_the_players_games_crosses() {
-    let mut p = Player::new(&[], GameVersion::Falzar);
-    p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
-    p.stats.form = library::testing::FALZAR_BEAST;
-    choose_cross(&mut p, 0);
-    let w = p.screen().crosses;
-    assert_eq!((w.count, w.offered[0], w.chosen), (1, 1, Some(1)));
-    assert_eq!(confirm(&mut p).transform.form, Some(FormHandle(9 + 0x0C)));
+fn in_a_beast_form_a_cross_list_offers_that_beasts_crosses() {
+    for (beast, place, form) in [(library::testing::FALZAR_BEAST, 1, 9), (FormHandle(0x0E), 0, 1)] {
+        let mut p = Player::new(&[], GameVersion::Falzar);
+        p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
+        p.stats.form = beast;
+        choose_cross(&mut p, 0);
+        let w = p.screen().crosses;
+        assert_eq!((w.count, w.offered[0], w.chosen), (1, place, Some(place)));
+        assert_eq!(confirm(&mut p).transform.form, Some(FormHandle(form + 0x0C)));
+    }
 }
 
 /// A Cross list names Crosses only, and leaves out the navi's starting
