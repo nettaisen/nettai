@@ -108,13 +108,22 @@ fn manifest(bundle: &nettai_assets::Bundle) -> (String, Vec<u8>) {
     (path, out.into_bytes())
 }
 
-/// What the other ROMs have that the pack doesn't take: a song the US Team
-/// Colonel ROM plays otherwise (none is known), said if found.
+/// What the US Team Colonel ROM plays otherwise than Team ProtoMan's: its
+/// own songs at the same numbers (11 of them), which the pack doesn't hold
+/// yet (a song's number is its identity; a version's own songs need a
+/// version-aware sound index first). Said by number.
 fn check_versions(roms: &Roms, bank: &m4a::SoundBank) {
     match m4a::rom::extract(&roms.us(Version::Colonel).0) {
         Ok((colonel, _)) if colonel.songs != bank.songs => {
-            let differ = bank.songs.iter().zip(&colonel.songs).filter(|(a, b)| a != b).count();
-            eprintln!("note: {differ} songs differ in the Team Colonel ROM; the pack has Team ProtoMan's");
+            let differ: Vec<String> = bank
+                .songs
+                .iter()
+                .zip(&colonel.songs)
+                .enumerate()
+                .filter(|(_, (a, b))| a != b)
+                .map(|(i, _)| format!("{i:#05x}"))
+                .collect();
+            eprintln!("note: the Team Colonel ROM's songs {} differ; the pack has Team ProtoMan's", differ.join(", "));
         }
         Ok(_) => {}
         Err(e) => eprintln!("note: the Team Colonel ROM's sound doesn't read: {e}"),
