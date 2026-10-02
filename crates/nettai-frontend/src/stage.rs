@@ -2,6 +2,7 @@
 //! field's panels (priority 2), which share one set of tiles and the first
 //! nine background palettes.
 
+use crate::audit::Problems;
 use crate::compose::{Layer, HEIGHT, WIDTH};
 use nettai_assets::{AnimTarget, Background, Bundle, GfxAnim, MapEntry, Palette, PaletteAnim};
 use nettai_battle::Battle;
@@ -139,7 +140,7 @@ impl<'a> Stage<'a> {
     /// panel's 5x3 tile block by its displayed type and owner (from the
     /// viewer's side), highlights, missing panels, and front edges. The
     /// layer scrolls with the camera (a shake moves it by whole pixels).
-    pub fn draw_field(&self, b: &Battle, layer: &mut Layer, local_side: u8, view: &crate::objects::View) {
+    pub fn draw_field(&self, b: &Battle, layer: &mut Layer, local_side: u8, view: &crate::objects::View, problems: &mut Problems) {
         let (cx, cy) = (view.camera.0 >> 16, view.camera.1 >> 16);
         let f = &self.assets.field;
         if f.panels.is_empty() {
@@ -180,25 +181,46 @@ impl<'a> Stage<'a> {
                 if p.highlight != 0 && p.blink.is_none() {
                     let h = &f.highlights[(p.highlight as usize - 1).min(1)];
                     block(layer, h, col, row, 5);
-                } else {
-                    let (mut kind, alliance) = p.blink.unwrap_or((p.display_kind, p.display_alliance));
-                    if mirror == 1 {
-                        kind = match kind {
-                            PanelType::RoadLeft => PanelType::RoadRight,
-                            PanelType::RoadRight => PanelType::RoadLeft,
-                            k => k,
-                        };
-                    }
-                    let owner = (alliance ^ local_side) as usize & 1;
-                    let i = 6 * kind as usize + 3 * owner + y as usize - 1;
-                    if let Some(entries) = f.panels.get(i) {
-                        block(layer, entries, col, row, 5);
-                    }
+                } else if let Some(entries) = panel_block(f, p, local_side, y, problems) {
+                    block(layer, entries, col, row, 5);
                 }
                 if p.front_edge {
                     let owner = (p.display_alliance ^ local_side) as usize & 1;
                     block(layer, &f.front_edges[owner], col, edge_row, 5);
                 }
+            }
+        }
+    }
+}
+
+/// A panel's 5x3 block by its displayed type (or its blink's) and owner,
+/// from the viewer's side (a road's direction mirrored on the right-hand
+/// console), in row `y`.
+fn panel_block<'a>(f: &'a nettai_assets::Field, p: &field::Panel, local_side: u8, y: u8, problems: &mut Problems) -> Option<&'a [MapEntry]> {
+    let (mut kind, alliance) = p.blink.unwrap_or((p.display_kind, p.display_alliance));
+    if local_side & 1 == 1 {
+        kind = match kind {
+            PanelType::RoadLeft => PanelType::RoadRight,
+            PanelType::RoadRight => PanelType::RoadLeft,
+            k => k,
+        };
+    }
+    let owner = (alliance ^ local_side) as usize & 1;
+    crate::lookups::panel_block(f, kind as usize, owner, y, problems)
+}
+
+/// The lookups `Stage::draw_field` makes, without drawing (`--audit`): each
+/// shown panel's block.
+pub fn field_lookups(b: &Battle, assets: &Bundle, local_side: u8, problems: &mut Problems) {
+    let f = &assets.field;
+    if f.panels.is_empty() {
+        return;
+    }
+    for y in 0..5u8 {
+        for x in 0..8u8 {
+            let p = &b.field.panels[y as usize][x as usize];
+            if field::is_valid(x, y) && p.visible && !(p.highlight != 0 && p.blink.is_none()) {
+                panel_block(f, p, local_side, y, problems);
             }
         }
     }

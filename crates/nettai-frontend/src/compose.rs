@@ -23,15 +23,20 @@ pub struct Layer {
     /// The palettes it draws with (which fades reach it).
     pub palettes: Palettes,
     pub pixels: Vec<u16>,
+    /// Whether tiles are drawn into it (not while a frame makes only its
+    /// lookups, `Renderer::set_lookups_only`).
+    pub drawn: bool,
 }
 
 impl Layer {
     pub fn new(priority: u8, order: u8) -> Layer {
-        Layer { priority, order, palettes: Palettes::Stage, pixels: vec![CLEAR; PIXELS] }
+        Layer { priority, order, palettes: Palettes::Stage, pixels: vec![CLEAR; PIXELS], drawn: true }
     }
 
     pub fn clear(&mut self) {
-        self.pixels.fill(CLEAR);
+        if self.drawn {
+            self.pixels.fill(CLEAR);
+        }
     }
 
     /// Move everything drawn by (dx, dy), as a scroll of the layer by
@@ -57,6 +62,9 @@ impl Layer {
 
     /// Draw one 8x8 tile at (x, y), clipped to the screen.
     pub fn draw_tile(&mut self, tile: &[u8], palette: &Palette, x: i32, y: i32, hflip: bool, vflip: bool) {
+        if !self.drawn {
+            return;
+        }
         for ty in 0..8 {
             let sy = y + ty;
             if !(0..HEIGHT as i32).contains(&sy) {
