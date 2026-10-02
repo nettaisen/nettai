@@ -19,8 +19,9 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
-use nettai_assets::{ChipArt, CustomScreen, MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles, VersionPictures, Versioned};
+use nettai_assets::{ChipArt, CustomLettering, CustomScreen, MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles, VersionPictures, Versioned};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/custom";
@@ -89,6 +90,19 @@ pub struct CustomDoc {
     /// The Program Advance animation's names' first four colours, the sets
     /// it steps through.
     pub advance_name_colours: Vec<Vec<String>>,
+    /// The other languages' pictures with words, by language (the HUD's
+    /// `language` is the pack's own).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub languages: BTreeMap<String, CustomLanguageDoc>,
+}
+
+/// Another language's pictures with words: its own files, named with the
+/// language (`pictures/ok-ja.png`, `cross-names-falzar-ja.png`).
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CustomLanguageDoc {
+    pub pictures: PicturesDoc,
+    /// The Cross window's names by game version.
+    pub cross_names: BTreeMap<String, TileImage>,
 }
 
 /// A version's own pictures: Beast Out's picture with its palettes, the
@@ -245,6 +259,27 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let cross_cursor =
         image("cross-cursor.png", &c.cross_cursor, Layout::Blocks { width: 1, height: 1, columns: 4 }, &[c.cross_cursor_palette], 1, &none);
     let regular = image("regular.png", &c.regular, Layout::Blocks { width: 4, height: 4, columns: 2 }, &[emblem0], 0, &none);
+    let mut languages = BTreeMap::new();
+    for (lang, l) in &c.languages {
+        let p = &l.pictures;
+        let mut picture = |file: &str, pic: &Picture| image(&format!("pictures/{file}-{lang}.png"), &pic.tiles, PICTURE, &[pic.palette], 1, &none);
+        let pictures = PicturesDoc {
+            ok: picture("ok", &p.ok),
+            ok_picked: picture("ok-picked", &p.ok_picked),
+            redeal: picture("redeal", &p.redeal),
+            scrap: picture("scrap", &p.scrap),
+            other: picture("other", &p.other),
+        };
+        let mut cross_names = BTreeMap::new();
+        for (version, names) in &l.cross_names {
+            let own = vs.version(version).unwrap_or(&vs.base);
+            let n = names.len() / CROSS_NAME_TILES;
+            let file = format!("{}-{lang}.png", vs.name("cross-names", Some(version)));
+            let doc = image(&file, names, CROSS_NAME, &own.cross_palettes, 0, &|i| ((i / CROSS_NAME_TILES).min(n.saturating_sub(1))) as u8);
+            cross_names.insert(version.clone(), doc);
+        }
+        languages.insert(lang.clone(), CustomLanguageDoc { pictures, cross_names });
+    }
     let maps = |m: &[Vec<MapEntry>]| m.iter().map(|m| m.iter().map(tiles::entry_text).collect()).collect();
     let doc = CustomDoc {
         format: FORMAT.into(),
@@ -278,6 +313,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         emblem_palette_of: c.emblem_palette_of.clone(),
         regular,
         advance_name_colours: c.advance_name_colours.iter().map(|s| s.iter().map(|&c| tiles::colour_text(c)).collect()).collect(),
+        languages,
     };
     files.push(("custom.json".into(), json_lines(&doc)));
     files
@@ -347,6 +383,21 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         versioned.versions.push((v.version.clone(), version(&v.own, report)?.0));
     }
     let palette = |v: &[String], report: &mut Report| tiles::parse_palette(v, report, &name);
+    let mut languages = Vec::new();
+    for (lang, d) in &doc.languages {
+        let pictures = SlotPictures {
+            ok: one(img(&d.pictures.ok, report)?),
+            ok_picked: one(img(&d.pictures.ok_picked, report)?),
+            redeal: one(img(&d.pictures.redeal, report)?),
+            scrap: one(img(&d.pictures.scrap, report)?),
+            other: one(img(&d.pictures.other, report)?),
+        };
+        let mut cross_names = Vec::new();
+        for (version, i) in &d.cross_names {
+            cross_names.push((version.clone(), img(i, report)?.0));
+        }
+        languages.push((lang.clone(), CustomLettering { pictures, cross_names }));
+    }
     Some(CustomScreen {
         window_tiles,
         column_cells: img(&doc.column_cells, report)?.0,
@@ -388,5 +439,6 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
                 std::array::from_fn(|k| set.get(k).and_then(|c| tiles::parse_colour(c).ok()).map_or(0, |(c, _)| c))
             })
             .collect(),
+        languages,
     })
 }

@@ -7,6 +7,8 @@
 //!                                 stages, rules...) and the code that runs it
 //! *.d.luau                        the API's definitions, for editors and the checker
 //! compat/                         the original's numbers by key: tools' data, not content
+//! locale/<language>.toml          display text in other languages, by key: the frontend's,
+//!                                 not content (crate::locale)
 //! ```
 //!
 //! [`read`] reads one. The assets the definitions name (`asset.sprite`)
@@ -44,7 +46,7 @@ pub fn read(dir: &Path, report: &mut Report) -> Option<Root> {
         return None;
     }
     for rel in paths {
-        if rel.starts_with("compat/") || rel.ends_with(".d.luau") {
+        if rel.starts_with("compat/") || rel.starts_with("locale/") || rel.ends_with(".d.luau") {
             continue;
         }
         let full = dir.join(&rel);
