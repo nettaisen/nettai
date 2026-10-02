@@ -13,15 +13,14 @@ local doll = require("./doll")
 local action = {}
 
 export type State = {
-    -- Ticks left in the current phase (AIAttackVars+0x10), and the
-    -- thunder's hold (AIAttackVars+0x12).
+    -- Ticks left in the current phase (AIAttackVars+0x10). (The thunder's
+    -- hold is the navi's `attack_count`.)
     timer: number,
-    hold: number,
 }
 
 -- One state for every DolThdr: a use continues the last one's attack
 -- variables, as the original's one action does.
-action.STATE = { timer = "u16", hold = "u16" }
+action.STATE = { timer = "u16" }
 
 -- The phases, on the attack's step.
 local RAISE, STRIKE, LOWER = 0x0, 0x4, 0x8
@@ -69,7 +68,7 @@ function action.action(spec: DollThunderSpec): Action
                 return
             end
             step_held(me, 1)
-            s.hold = HOLD_TICKS
+            me.attack_count = HOLD_TICKS
             me.step_init = 4
             local damage = me.attack_damage + me.hit_param * 0x10000 + me.extra
             -- (The game hands the doll the navi's attack variables as its
@@ -77,8 +76,8 @@ function action.action(spec: DollThunderSpec): Action
             doll.spawn(me, me.panel_x + me.facing, me.panel_y, me.attack_element, spec.ticks, damage, nil)
             battle.play_sound(SOUND)
         end
-        local h = s.hold - 1
-        s.hold = h
+        local h = me.attack_count - 1
+        me.attack_count = h
         if h > 0 then
             return
         end

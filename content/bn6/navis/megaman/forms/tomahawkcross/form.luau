@@ -23,7 +23,8 @@ return define.form {
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = charged_chip_bonus_20 },
     palette = 17,
-    mugshot = asset.mugshot("tomahawkcross"),
+    -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
+    mugshot = { normal = asset.mugshot("tomahawkcross"), tired = asset.mugshot("tomahawkcross-tired") },
     -- The chips A charges.
     charged_chips = { { family = "wood" } },
     -- A charged Wood chip hits twice as hard.
@@ -44,7 +45,7 @@ return define.form {
         aura_anim = 31,
         ice = "medium",
         -- What it wears over MegaMan's body.
-        parts = cross_overlay(asset.sprite("body-overlay-0e")),
+        parts = cross_overlay(asset.sprite("tomahawkcross-overlay")),
         attach_points = {
             { 2, 0 },
             { 2, 0 },

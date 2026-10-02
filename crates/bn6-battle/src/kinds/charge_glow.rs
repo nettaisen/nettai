@@ -94,7 +94,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
     let alliance = b.objects.get(owner).alliance;
     let panel = b.objects.get(owner).panel;
-    let visible = viewer_sees(b, alliance) && vars(b, r).enabled && crate::field::is_valid(panel.x, panel.y);
+    let visible = b.viewer_sees(alliance) && vars(b, r).enabled && crate::field::is_valid(panel.x, panel.y);
     let source = b.actors.get(actor).charge_source;
     let shown_to_side = match source {
         0 => false,
@@ -142,17 +142,6 @@ fn set_visible(b: &mut Battle, r: ObjectRef, on: bool) {
     } else {
         o.flags &= !flags::VISIBLE;
     }
-}
-
-/// `sub_800EB6C`: the local player sees `alliance`'s effects unless they
-/// belong to the other side and the local navi is blind.
-pub(crate) fn viewer_sees(b: &Battle, alliance: u8) -> bool {
-    if !b.is_remote(alliance) {
-        return true;
-    }
-    let Some(viewer) = b.player(alliance ^ 1) else { return true };
-    let blind = b.objects.get(viewer).collision.map(|c| b.collision.get(c).f1 & crate::collision::f1::BLIND != 0);
-    !blind.unwrap_or(false)
 }
 
 /// `sub_80E0F2E`: the A charge glows differently from the B charge.

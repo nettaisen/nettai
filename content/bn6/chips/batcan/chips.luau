@@ -14,7 +14,7 @@ export type State = {
 }
 
 -- One state for the four (their shots left are the attack's word at
--- AIAttackVars+0x12, the navi's `recovery`).
+-- AIAttackVars+0x12, the navi's `attack_count`).
 local STATE = { timer = "u16" }
 
 -- The phases, on the attack's step.
@@ -38,7 +38,7 @@ export type BatCanSpec = { shots: { number } }
 local function batcan(spec: BatCanSpec): Action
     -- `sub_80EC104`: how many shots.
     local function count(me: Object)
-        me.recovery = #spec.shots
+        me.attack_count = #spec.shots
         me.step, me.step_init = FIRE, 0
     end
 
@@ -65,15 +65,15 @@ local function batcan(spec: BatCanSpec): Action
         end
         if s.timer == SHOT_TICK then
             battle.play_sound(SOUND)
-            local hit_mod = spec.shots[#spec.shots - me.recovery + 1]
+            local hit_mod = spec.shots[#spec.shots - me.attack_count + 1]
             local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
             shot.fire(me, me.panel_x + me.facing, me.panel_y, SHOT_Z, me.attack_element, damage, hit_mod)
         end
         local t = s.timer + 1
         s.timer = t
         if t == FIRE_TICKS then
-            local left = me.recovery - 1
-            me.recovery = left
+            local left = me.attack_count - 1
+            me.attack_count = left
             if left > 0 then
                 me.step_init = 0
             else

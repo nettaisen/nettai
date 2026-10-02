@@ -12,15 +12,14 @@ local pulse = require("./pulse")
 local action = {}
 
 export type State = {
-    -- Ticks left in the current phase (AIAttackVars+0x10), and the pulse's
-    -- hold (AIAttackVars+0x12).
+    -- Ticks left in the current phase (AIAttackVars+0x10). (The pulse's
+    -- hold is the navi's `attack_count`.)
     timer: number,
-    hold: number,
 }
 
 -- One state for every ElcPuls: a use continues the last one's attack
 -- variables, as the original's one action does.
-action.STATE = { timer = "u16", hold = "u16" }
+action.STATE = { timer = "u16" }
 
 -- The phases, on the attack's step.
 local RAISE, PULSE, LOWER = 0x0, 0x4, 0x8
@@ -64,13 +63,13 @@ function action.action(spec: ElecPulseSpec): Action
                 return
             end
             step_coil(me, 1)
-            s.hold = spec.hold
+            me.attack_count = spec.hold
             me.step_init = 4
             local damage = me.attack_damage + me.hit_param * 0x10000 + me.extra
             pulse.spawn(me, me.panel_x + me.facing, me.panel_y, me.attack_element, v, damage)
         end
-        local h = s.hold - 1
-        s.hold = h
+        local h = me.attack_count - 1
+        me.attack_count = h
         if h > 0 then
             return
         end

@@ -19,6 +19,8 @@ return define.form {
     element = "fire",
     buster_bonus = 0,
     weapons = { buster = gregar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = wave.weapon },
+    -- Its face in the emotion window (`byte_801E700`): the Falzar ROM has no
+    -- ChargeCross Beast face, and shows DustCross Beast's.
     mugshot = asset.mugshot("dustcross-beast"),
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
     null_bonus = 30,
