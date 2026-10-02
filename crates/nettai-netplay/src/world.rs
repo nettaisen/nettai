@@ -4,7 +4,7 @@
 //! sides. [`BattleWorld`] knows its player's side and puts `local` and the
 //! one remote into their places ([`Game::step`] takes both inputs by
 //! side). A [`Game`] is a battle plus how it steps: [`Battle`] on the
-//! engine's input record (`bn6`), or the stand-in battle on buttons alone
+//! engine's input record (`battle`), or the stand-in battle on buttons alone
 //! (`standin`).
 //!
 //! Saved states are the engine's snapshots ([`Battle::save_state`]), with

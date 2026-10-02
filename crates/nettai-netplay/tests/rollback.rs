@@ -7,7 +7,7 @@
 
 use nettai_battle::cues::CueAction;
 use nettai_battle::{Battle, SoundCue, TickInput};
-use nettai_netplay::bn6::{Bn6Input, CueFeed};
+use nettai_netplay::battle::{PlayerInput, CueFeed};
 use nettai_netplay::network::LinkConfig;
 use nettai_netplay::sim::{Match, NetConfig, Report};
 use nettai_netplay::standin::{Masher, StandInBattle, folder, netbattle};
@@ -171,7 +171,7 @@ fn recorded_events_ride_in_the_inputs() {
     }
     let shares = |p: usize, f: u32| {
         let t = &record[(f as usize).min(record.len() - 1)];
-        Bn6Input { tick: t.players[p], events: if p == 0 { t.events.clone() } else { Default::default() } }
+        PlayerInput { tick: t.players[p], events: if p == 0 { t.events.clone() } else { Default::default() } }
     };
     let final_digest = g.battle.digest();
     for latency in [3, 8] {
