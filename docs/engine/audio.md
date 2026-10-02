@@ -1,8 +1,8 @@
 # Battle audio (BN6 US Falzar, BR6E)
 
 The engine plays no sound. Each tick it reports the sound calls the
-original makes at that point as typed cues (`bn6_battle::sound`); a
-frontend plays them. `bn6-audio` does, with the game's own sound driver
+original makes at that point as typed cues (`nettai_battle::sound`); a
+frontend plays them. `nettai-audio` does, with the game's own sound driver
 (the `m4a` crate) and sound data (the sound of a content pack extracted
 from the user's ROM). Cues are output only: nothing in the simulation reads them.
 
@@ -77,7 +77,7 @@ game: rounds after the first start with it set, so they emit only
 `Pinch(false)` on their second tick. A frontend starting a round should
 carry it over like the other round counters.
 
-## 2. Playing cues: `bn6-audio`
+## 2. Playing cues: `nettai-audio`
 
 `SoundCalls` turns a cue into the driver calls the game queues for it
 (`Request`s: `Start`, `StopAll`, `Tempo`, `Pitch`, `Volume`); it keeps the
@@ -182,8 +182,8 @@ lists with running status resolved and jumps as command indices,
 voicegroups, drum kits, key splits, samples and PSG waves, the mixer
 settings and the player table) and writes it into the content pack as
 open, editable files: songs as MIDI in mid2agb's conventions, voicegroups
-as TOML, samples as WAV (`docs/design/asset-formats.md`). bn6-content reads
-them straight back into a `SoundBank` (`bn6_content::pack::load_sound`),
+as TOML, samples as WAV (`docs/design/asset-formats.md`). nettai-content reads
+them straight back into a `SoundBank` (`nettai_content::pack::load_sound`),
 and every song renders the same samples from them as from the ROM.
 `SoundBank::validate` checks every reference in a bank before the driver
 trusts it. The pack holds the game's recordings, so it is never committed
@@ -203,9 +203,9 @@ the path into a jump target is refused at extraction (none in BN6).
 ## 5. Hearing it
 
     cargo run -p bn6-extract -- content <rom> data/content/bn6
-    cargo run -p bn6-audio --example trace_audio -- <trace.jsonl> data/content/bn6
-    cargo run -p bn6-audio --example trace_audio -- <trace.jsonl> data/content/bn6 --wav out.wav --frames 600
-    cargo run -p bn6-audio --example play_song -- data/content/bn6 0x15,0x94 --every 120
+    cargo run -p nettai-audio --example trace_audio -- <trace.jsonl> data/content/bn6
+    cargo run -p nettai-audio --example trace_audio -- <trace.jsonl> data/content/bn6 --wav out.wav --frames 600
+    cargo run -p nettai-audio --example play_song -- data/content/bn6 0x15,0x94 --every 120
 
 `trace_audio` replays a golden trace's rounds with their recorded inputs,
 on the pack's battle data, prints each cue with its frame and plays them in real time (or renders a
