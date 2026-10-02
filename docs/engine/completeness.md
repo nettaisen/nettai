@@ -784,6 +784,19 @@ ones: a hit on the bee with neither an ending type nor a body (a guard's report 
 body; tried Rflectr1), and the bee finding no enemy body. The 11 recordings are in the lab and match the engine
 (7,779 frames).
 
+**Batch 13, DolThdr, BlzrdBal, NumbrBl, MoonBld and Z-Saver (22 branches):** 3 taken by 3 new recordings, 18
+unreachable, 1 hard. This ends the second group. `chips/0x0c7-blzrdbal/three-cubes` (RockCubes on (3,2), (4,2) and
+(5,2): the ball swallows all three and stops growing at its third size), `chips/0x0c7-blzrdbal/viewer-blind` and
+`chips/0x08a-numbrbl/viewer-blind` (side 1's Silence blinds the recording's console, then BlzrdBal's thrower and
+NumberMan are hidden from it). The unreachable ones: a DolThdr doll that registers in a slot (3: no chip's spawner
+passes one), full pools (2), a thunder column off the field or with a status or a bug (3: the columns start ahead
+of their navi, and neither variant has either), a ball or roller on a solid panel off the field (2), a dimming
+stand-in for a user that isn't a player navi (3: only player navis use chips in a netbattle, link navis included),
+a plain moon blade or a second MoonBld swing (2), and Z-Saver's command window past 12 ticks, its window flag at
+0xFF and its sonic boom's spawn failing (3). The hard one: four objects hitting BlzrdBal's roller in one tick (the
+lab never has more than a navi's body and a field object on its panel). The 3 recordings are in the lab and match
+the engine (3,118 frames).
+
 <!-- end: chip families, G4 -->
 
 ##### Chip families: onesided's share
