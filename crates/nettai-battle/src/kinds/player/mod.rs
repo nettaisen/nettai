@@ -13,6 +13,17 @@ pub(crate) mod berserk;
 mod navi_action;
 mod chip_use;
 pub use chip_use::{next_chip_bonus, next_chip_doubles};
+
+/// `sub_8010740`: the opponent's Rush takes `chip` (a weapon's).
+pub(crate) fn rush_cancels(b: &mut Battle, r: ObjectRef, chip: nettai_content_api::ChipHandle) -> bool {
+    idle::rush_intercepts(b, r, Some(chip))
+}
+
+/// `loc_80126EA`: `chip` as the navi's attack (a weapon that fires a
+/// chip).
+pub(crate) fn load_chip_attack(b: &mut Battle, r: ObjectRef, chip: nettai_content_api::ChipHandle) {
+    chip_use::load_attack(b, r, Some(chip));
+}
 mod entry;
 pub(crate) mod form;
 pub(crate) mod idle;

@@ -270,15 +270,28 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle)
         let instant = b.content.defs.weapon(weapon).instant;
         let action = match crate::behavior::call_hook(b, setup, HookCall::Weapon { navi: r }) {
             Value::Def(Registry::Action, h) => super::NaviAction::Content(ActionHandle(h)),
+            // A chip the weapon loaded as its attack: what the chip's use
+            // starts (its action, or the dimming, navi or instant chips'
+            // action), as `loc_80126EA` returns the chip record's action.
+            Value::Def(Registry::Chip, h) => super::chip_use::chip_action(b, r, Some(nettai_content_api::ChipHandle(h))),
             // A weapon with an instant effect of its own names no action:
             // the instant chips' action runs it.
             Value::Nil if instant.is_some() => super::EngineAction::InstantChip.into(),
+            // A routine that ended the attack itself (`object_exitAttackState`)
+            // returns false: the original returns the idle state's number
+            // (8), which the attack then runs, and the attack update ends
+            // it on the next tick (`sub_80EAF36`'s end path); the navi is
+            // idle here at once (unverified: the patch cards' invisibility
+            // taken by Rush).
+            Value::Bool(false) => super::NaviAction::Idle,
             v => panic!("weapon {:?} names {v:?}, not an action", b.content.defs.weapon(weapon).key),
         };
         // A weapon's instant effect: a chip's (it runs, and the navi
         // idles), or one no chip has (TenguCross's wind), after which the
-        // navi waits.
-        if let Some(f) = instant {
+        // navi waits. (Not when the routine ended the attack.)
+        if let Some(f) = instant
+            && action != super::NaviAction::Idle
+        {
             use super::actions::instant::Effect;
             let waits = b.content.defs.weapon(weapon).instant_waits;
             ai_mut(b, r).attack.instant = Some(if waits { Effect::RunsThenWaits(f) } else { Effect::Runs(f) });
@@ -350,6 +363,18 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
 /// chip, Rush (bit 0) a chip flagged for him. (The game reads the chip's
 /// record with the id as it is, flag bits and all.)
 fn intercepted(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
+    intercepted_by(b, r, chip, true)
+}
+
+/// `sub_8010740` alone: the opponent's Rush (a weapon that fires a chip
+/// asks it, the patch cards' invisibility).
+pub(super) fn rush_intercepts(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
+    intercepted_by(b, r, chip, false)
+}
+
+/// The opponent's Beat (`sub_80106C0`, when `beat`) or Rush (`sub_8010740`)
+/// takes the chip.
+fn intercepted_by(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>, beat: bool) -> bool {
     use crate::content::{ChipClass, ExtraChipFlags};
     if !is_link(b) {
         return false;
@@ -358,7 +383,7 @@ fn intercepted(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
     let record = b.content.chip_field(chip).clone();
     let other = b.objects.get(r).alliance ^ 1;
     let support = match b.stats[other as usize].support {
-        Some(opp) if opp.beat && matches!(record.class, ChipClass::Mega | ChipClass::Giga) => {
+        Some(opp) if beat && opp.beat && matches!(record.class, ChipClass::Mega | ChipClass::Giga) => {
             b.stats[other as usize].support = Some(crate::setup::Supports { beat: false, ..opp });
             Support::Beat
         }

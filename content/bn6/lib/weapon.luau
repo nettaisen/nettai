@@ -31,4 +31,14 @@ function weapon.move_input(navi: Object): number?
     return dir
 end
 
+-- `loc_80126EA`: a weapon that fires `chip`: the chip as the attack (its
+-- record's damage, hit parameter, lockout and element; no bonus; not
+-- charged), and the chip, whose use's action the navi starts (the weapon
+-- routines of the patch cards' charged shots, B buttons and B+Back
+-- specials, and the link navis' charges that are chips).
+function weapon.chip(navi: Object, chip: Chip): Chip
+    navi:load_chip_attack(chip)
+    return chip
+end
+
 return weapon

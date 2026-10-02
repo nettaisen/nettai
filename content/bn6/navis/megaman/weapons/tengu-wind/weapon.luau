@@ -25,11 +25,12 @@ local function setup(navi: Object)
     return nil
 end
 
--- `sub_80CD4AC`: a gust in each row, from column 6 when the navi faces
+-- `sub_80CD4AC` (instant effect 0x14; the patch card dustman's B+Back
+-- too): a gust in each row, from column 6 when the navi faces
 -- right (1 when it faces left). The gusts' side is the navi's shifted by
 -- its flip (the game's `lsl`), their flip 0; no damage, nothing tracks
 -- them.
-local function blow(user: Object, _spec: InstantChipSpec)
+function tengu_wind.blow(user: Object, _spec: InstantChipSpec)
     local facing = bit32.bxor(user.alliance, user.flip)
     local x = 5 * bit32.bxor(facing, 1) + 1
     local flip = user.flip
@@ -50,7 +51,7 @@ tengu_wind.weapon = define.weapon {
     setup = setup,
     -- (The original's instant effect 0x14, which no chip has: the navi
     -- waits 8 ticks after it.)
-    instant = blow,
+    instant = tengu_wind.blow,
     instant_waits = true,
 }
 

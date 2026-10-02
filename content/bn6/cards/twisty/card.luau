@@ -1,0 +1,18 @@
+--!strict
+-- The patch card Twisty (59, パララ& リモコゴロー in the Japanese games), 9 MB.
+
+local cards = require("../../rules/patch-cards")
+local variants = require("../../objects/projectile/variants")
+
+return define.patch_card {
+    id = "twisty",
+    name = "Twisty",
+    mb = 9,
+    effects = {
+        cards.hp(80),
+        cards.body("elec"),
+        cards.bug(cards.air_shoes(false)),
+        cards.buster_shot(variants.cracking),
+        cards.bug(cards.panel_trail("hole", 1)),
+    },
+}

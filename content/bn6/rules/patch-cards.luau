@@ -321,7 +321,8 @@ end
 -- same effect, the first.
 local function in_order(effects: { Effect }): { Effect }
     local seen: { [any]: boolean } = {}
-    local list: { { e: Effect, i: number } } = {}
+    type Entry = { e: Effect, i: number }
+    local list: { Entry } = {}
     for i, e in effects do
         local rank = RANK[e.kind]
         if rank == nil then
@@ -337,7 +338,7 @@ local function in_order(effects: { Effect }): { Effect }
             table.insert(list, { e = e, i = i })
         end
     end
-    table.sort(list, function(a, b)
+    table.sort(list, function(a: Entry, b: Entry): boolean
         local ra, rb = RANK[a.e.kind], RANK[b.e.kind]
         if ra ~= rb then
             return ra < rb
