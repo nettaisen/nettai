@@ -12,26 +12,26 @@
 //! and the redundancy window go every frame); then every peer that decided,
 //! having taken what arrived meanwhile, advances. With no latency a
 //! datagram arrives in the frame it was sent, so both peers confirm every
-//! tick at once.
+//! tick at once. A peer whose player's input has ended (at `max_frames`)
+//! drains its session instead ([`Peer::drain`]): it settles the last ticks
+//! as the other's last inputs arrive, without speculating past them.
 //!
-//! Checked on every advance: the rows the peer confirmed (getgud's
-//! `Advance::confirmed`) are the inputs both players decided, and the
-//! digest of its settled state equals the other peer's at that tick and a
-//! plain lockstep run's. A link that breaks (a gap past the horizon) tears
-//! the match down: the report says where.
+//! Checked on every advance: each row the peer confirmed (getgud's
+//! `Advance::confirmed`) is the inputs both players decided for its tick,
+//! and every settled state getgud returns with a row has the digest of the
+//! other peer's at that tick and of a plain lockstep run's. A link that
+//! breaks (a gap past the horizon) tears the match down: the report says
+//! where.
 
-use std::cell::RefCell;
-use std::panic::{AssertUnwindSafe, catch_unwind};
-
-use nettai_battle::Battle;
-use getgud::Session;
+use getgud::{Confirmed, Session, Settlement, World};
+use nettai_battle::{Battle, RoundEnd};
 
 use crate::link::LinkStats;
 use crate::network::{Network, NetworkConfig, NetworkStats};
 use crate::peer::{Peer, PeerConfig};
 pub use crate::peer::{PeerStats, SKEW_PER_STALL};
 use crate::protocol::{self, WireInput};
-use crate::world::{BattleState, BattleWorld, Game, Observer};
+use crate::world::{BattleState, BattleWorld, Game, Observer, step_game};
 
 /// How the peers are connected.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -96,23 +96,11 @@ impl NetConfig {
 pub struct Divergence {
     /// The settled state after this many ticks.
     pub tick: u32,
-    /// The two peers' digests of it (none from a peer that didn't settle
-    /// at that tick).
+    /// The two peers' digests of it (none from a peer that hasn't returned
+    /// a settled state for that tick).
     pub peers: [Option<u64>; 2],
     /// The lockstep run's.
     pub lockstep: u64,
-}
-
-/// A peer's simulation panicked.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Panicked {
-    pub peer: usize,
-    /// The frame being simulated.
-    pub frame: u32,
-    /// The lockstep run gets through that frame: the panic happened on
-    /// predicted input only.
-    pub speculative: bool,
-    pub message: String,
 }
 
 /// A peer's link broke, which ends the match.
@@ -139,11 +127,13 @@ pub struct Report {
     pub networks: [NetworkStats; 2],
     /// Both peers' settled states are over.
     pub over: bool,
+    /// How the battle ended in both peers' settled states, if it did and
+    /// they agree.
+    pub end: Option<RoundEnd>,
     pub divergence: Option<Divergence>,
-    pub panicked: Option<Panicked>,
     pub torn_down: Option<TornDown>,
-    /// Each peer's settled state's digest after every advance that settled
-    /// ticks: (tick, digest).
+    /// Each peer's settled states that getgud returned with a row:
+    /// (tick, digest), in tick order.
     pub settled: [Vec<(u32, u64)>; 2],
     /// The lockstep run's digest after each tick (0: the start), as far as
     /// the peers settled.
@@ -153,7 +143,7 @@ pub struct Report {
 impl Report {
     /// Ran to the end (or to the frame limit) with the peers in sync.
     pub fn in_sync(&self) -> bool {
-        self.divergence.is_none() && self.panicked.is_none() && self.torn_down.is_none()
+        self.divergence.is_none() && self.torn_down.is_none()
     }
 }
 
@@ -180,11 +170,12 @@ where
     }
 
     /// Play until both peers' settled states are over, both have settled
-    /// `max_frames` ticks (no peer presents a tick past it), the peers fall
-    /// out of sync or a link breaks. `inputs(player, tick)` decides a
-    /// player's input; it is called once per tick and player, in tick order
-    /// (past `max_frames` too). `observers[p]` sees what peer `p` simulates
-    /// and settles.
+    /// `max_frames` ticks, the peers fall out of sync or a link breaks.
+    /// `inputs(player, tick)` decides a player's input; it is called once
+    /// per tick and player, in tick order, for the ticks before
+    /// `max_frames`, where the players' input ends: a peer drains its
+    /// session from there, and no peer simulates a tick past it.
+    /// `observers[p]` sees what happens to peer `p`'s simulation.
     pub fn run<O: Observer<G>>(
         self,
         mut inputs: impl FnMut(usize, u32) -> G::Input,
@@ -193,27 +184,26 @@ where
     ) -> Report {
         let Match { config, peers: [a, b], lockstep } = self;
         let [first, second] = observers;
-        let tallies = [RefCell::new(Tally::new(first)), RefCell::new(Tally::new(second))];
         let mut peers = [
-            Peer::new(BattleWorld::with_observer(a, 0, &tallies[0]), config.peer()),
-            Peer::new(BattleWorld::with_observer(b, 1, &tallies[1]), config.peer()),
+            Peer::new(BattleWorld::with_observer(a, 0, Tally::new(first)), config.peer()),
+            Peer::new(BattleWorld::with_observer(b, 1, Tally::new(second)), config.peer()),
         ];
         let network = |p: usize| Network::new(config.networks[p], config.seed.wrapping_mul(0x9E37_79B9).wrapping_add(p as u64));
         // networks[p]: from peer p to the other.
         let mut networks = [network(0), network(1)];
         let mut referee = Referee::new(lockstep);
-        let mut panicked = None;
+        let mut promoted = [0u64; 2];
         let mut torn_down = None;
-        // A peer's settled tick, and whether its settled state is over.
-        let settled = |s: &Session<_>| -> (u32, bool) {
+        // A peer's settled tick, and how its settled state ended.
+        let settled = |s: &Session<_>| -> (u32, Option<RoundEnd>) {
             let state: &BattleState = s.settled_state();
-            (state.tick(), state.battle().round_end().is_some())
+            (state.tick(), state.battle().round_end().cloned())
         };
         let wall_limit = max_frames as u64 * 4 + 1000;
         let mut now = 0;
         'wall: while now < wall_limit {
             let ends = peers.each_ref().map(|p| settled(p.session()));
-            if ends.iter().all(|e| e.1) || ends.iter().all(|e| e.0 >= max_frames) {
+            if ends.iter().all(|e| e.1.is_some()) || ends.iter().all(|e| e.0 >= max_frames) {
                 break;
             }
             let started = [true, now >= config.head_start as u64];
@@ -225,7 +215,8 @@ where
             }
             let mut deciding = [false; 2];
             for p in (0..2).filter(|&p| started[p]) {
-                if peers[p].wait().is_none() {
+                // (A peer whose input has ended drains below.)
+                if peers[p].session().local_frontier() < max_frames && peers[p].wait().is_none() {
                     let input = inputs(p, peers[p].session().local_frontier());
                     referee.decided[p].push(input.clone());
                     peers[p].decide(input);
@@ -233,53 +224,49 @@ where
                 }
                 networks[p].send(now, peers[p].datagram(now));
             }
-            for p in (0..2).filter(|&p| deciding[p]) {
+            for p in 0..2 {
+                let draining = started[p] && peers[p].session().local_frontier() >= max_frames;
+                if !deciding[p] && !draining {
+                    continue;
+                }
                 if let Some(t) = take(p, now, &mut peers, &mut networks) {
                     torn_down = Some(t);
                     break 'wall;
                 }
-                let peer = &mut peers[p];
-                // Present nothing past the end.
-                let s = peer.session_mut();
-                s.set_present_delay(config.present_delay.max(s.local_frontier().saturating_sub(max_frames)));
-                let rows = match catch_unwind(AssertUnwindSafe(|| peer.advance(|advanced| advanced.confirmed))) {
-                    Ok(rows) => rows,
-                    Err(e) => {
-                        let frame = tallies[p].borrow().parked;
-                        let message = e
-                            .downcast_ref::<String>()
-                            .cloned()
-                            .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
-                            .unwrap_or_default();
-                        let speculative = referee.lockstep_passes(frame);
-                        panicked = Some(Panicked { peer: p, frame, speculative, message });
-                        break 'wall;
+                let (referee, promoted) = (&mut referee, &mut promoted[p]);
+                let mut check = |rows: &[Confirmed<'_, BattleWorld<G, Tally<'_, O>>>]| {
+                    for row in rows {
+                        referee.confirmed(p, row);
+                        *promoted += (row.settlement == Settlement::Promoted) as u64;
                     }
                 };
-                if !rows.is_empty() {
-                    referee.confirmed_rows(p, &rows);
-                    let state = peer.session().settled_state();
-                    assert_eq!(state.tick(), referee.confirmed[p], "the settled state is after every confirmed row");
-                    referee.settled(p, state.tick(), state.battle().digest());
-                    Observer::<G>::confirmed(&mut *tallies[p].borrow_mut(), state.tick(), state.battle());
-                    if referee.divergence.is_some() {
-                        break 'wall;
-                    }
+                if deciding[p] {
+                    peers[p].advance(|advanced| check(&advanced.confirmed));
+                } else {
+                    peers[p].drain(|rows| check(&rows));
+                }
+                if referee.divergence.is_some() {
+                    break 'wall;
                 }
             }
             now += 1;
         }
-        let stats = [0, 1].map(|p| PeerStats { simulated: tallies[p].borrow().simulated, ..peers[p].stats().clone() });
+        let stats = [0, 1].map(|p| PeerStats {
+            simulated: peers[p].session().world().observer().simulated,
+            promoted: promoted[p],
+            ..peers[p].stats().clone()
+        });
         let ends = peers.each_ref().map(|p| settled(p.session()));
+        let [(_, a), (_, b)] = &ends;
         Report {
             frames: ends[0].0.min(ends[1].0),
             wall_frames: now,
             peers: stats,
             links: peers.each_ref().map(|p| p.link_stats().clone()),
             networks: networks.each_ref().map(|n| *n.stats()),
-            over: ends.iter().all(|e| e.1),
+            over: ends.iter().all(|e| e.1.is_some()),
+            end: a.clone().filter(|_| a == b),
             divergence: referee.divergence,
-            panicked,
             torn_down,
             settled: referee.settled,
             lockstep: referee.lockstep_digests,
@@ -302,12 +289,10 @@ where
     None
 }
 
-/// Follows a peer's world for the simulator (where it is parked, what it
-/// simulated for the first time) and passes everything on.
+/// Follows a peer's world for the simulator (what it simulated for the
+/// first time) and passes everything on.
 struct Tally<'o, O> {
     inner: &'o mut O,
-    /// The next frame the world simulates.
-    parked: u32,
     /// Frames before this one were simulated at least once.
     reached: u32,
     simulated: u64,
@@ -315,31 +300,25 @@ struct Tally<'o, O> {
 
 impl<'o, O> Tally<'o, O> {
     fn new(inner: &'o mut O) -> Tally<'o, O> {
-        Tally { inner, parked: 0, reached: 0, simulated: 0 }
+        Tally { inner, reached: 0, simulated: 0 }
     }
 }
 
 impl<G, O: Observer<G>> Observer<G> for Tally<'_, O> {
     fn rolled_back(&mut self, frame: u32) {
-        self.parked = frame;
         self.inner.rolled_back(frame);
     }
     fn simulated(&mut self, frame: u32, game: &G) {
-        self.parked = frame + 1;
         if frame >= self.reached {
             self.reached = frame + 1;
             self.simulated += 1;
         }
         self.inner.simulated(frame, game);
     }
-    fn confirmed(&mut self, frames: u32, settled: &Battle) {
-        self.inner.confirmed(frames, settled);
+    fn confirmed(&mut self, frame: u32, settled: Option<&Battle>) {
+        self.inner.confirmed(frame, settled);
     }
 }
-
-/// A confirmed input row as getgud returns it: the peer's player's input,
-/// and the other player's (the one remote slot).
-type Row<I> = (I, Box<[I]>);
 
 /// The inputs both players decided, the lockstep run of them, and what
 /// the peers settled.
@@ -349,8 +328,8 @@ struct Referee<G: Game> {
     lockstep: G,
     /// The lockstep run's digest after each tick (0: the start).
     lockstep_digests: Vec<u64>,
-    /// Rows each peer confirmed.
-    confirmed: [u32; 2],
+    /// Each peer's next row's tick.
+    next_row: [u32; 2],
     settled: [Vec<(u32, u64)>; 2],
     divergence: Option<Divergence>,
 }
@@ -361,39 +340,44 @@ impl<G: Game + Clone> Referee<G> {
             decided: [Vec::new(), Vec::new()],
             lockstep_digests: vec![lockstep.battle().digest()],
             lockstep,
-            confirmed: [0, 0],
+            next_row: [0, 0],
             settled: [Vec::new(), Vec::new()],
             divergence: None,
         }
     }
 
-    /// Peer `p` confirmed these rows: its own player's input and the other
-    /// player's, which must be what the players decided.
-    fn confirmed_rows(&mut self, p: usize, rows: &[Row<G::Input>]) {
-        for (local, remotes) in rows {
-            let t = self.confirmed[p] as usize;
-            let decided = |player: usize| &self.decided[player][t];
-            assert!(
-                local == decided(p) && remotes.len() == 1 && &remotes[0] == decided(1 - p),
-                "peer {p} confirmed other inputs for tick {t} than its players decided"
-            );
-            self.confirmed[p] += 1;
+    /// Peer `p` confirmed this row: its own player's input and the other
+    /// player's, which must be what the players decided for its tick, and
+    /// the state after it, if getgud kept one, which must be the lockstep
+    /// run's and the other peer's.
+    fn confirmed<W: World<Input = G::Input, State = BattleState>>(&mut self, p: usize, row: &Confirmed<'_, W>) {
+        let t = row.tick as usize;
+        assert_eq!(row.tick, self.next_row[p], "peer {p}'s rows follow on");
+        self.next_row[p] += 1;
+        let decided = |player: usize| &self.decided[player][t];
+        assert!(
+            row.local == *decided(p) && row.remotes.len() == 1 && row.remotes[0] == *decided(1 - p),
+            "peer {p} confirmed other inputs for tick {t} than its players decided"
+        );
+        if let Some(state) = row.state {
+            assert_eq!(state.tick(), row.tick + 1);
+            self.check_settled(p, state.tick(), state.battle().digest());
         }
     }
 
     /// The lockstep run's digest after `tick` ticks (both players decided
-    /// their inputs that far).
+    /// their inputs that far). It steps as a peer does.
     fn lockstep_digest(&mut self, tick: u32) -> u64 {
         while self.lockstep_digests.len() <= tick as usize {
             let t = self.lockstep_digests.len() - 1;
-            self.lockstep.step([&self.decided[0][t], &self.decided[1][t]]);
+            step_game(&mut self.lockstep, [&self.decided[0][t], &self.decided[1][t]]);
             self.lockstep_digests.push(self.lockstep.battle().digest());
         }
         self.lockstep_digests[tick as usize]
     }
 
     /// Peer `p`'s settled state after `tick` ticks has this digest.
-    fn settled(&mut self, p: usize, tick: u32, digest: u64) {
+    fn check_settled(&mut self, p: usize, tick: u32, digest: u64) {
         self.settled[p].push((tick, digest));
         let lockstep = self.lockstep_digest(tick);
         let other = &self.settled[1 - p];
@@ -404,21 +388,5 @@ impl<G: Game + Clone> Referee<G> {
             peers[1 - p] = other;
             self.divergence = Some(Divergence { tick, peers, lockstep });
         }
-    }
-
-    /// Whether the lockstep run gets through `frame` (catching a panic).
-    fn lockstep_passes(&self, frame: u32) -> bool {
-        let decided = self.decided[0].len().min(self.decided[1].len());
-        if frame as usize >= decided {
-            return false;
-        }
-        let mut g = self.lockstep.clone();
-        let from = self.lockstep_digests.len() - 1;
-        catch_unwind(AssertUnwindSafe(|| {
-            for t in from..=frame as usize {
-                g.step([&self.decided[0][t], &self.decided[1][t]]);
-            }
-        }))
-        .is_ok()
     }
 }

@@ -449,7 +449,7 @@ pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
 /// acts (its barrier visual, status visuals, charge glow, Full Synchro
 /// aura and the HUD with it).
 pub fn hide_user(b: &mut Battle, user: ObjectRef) {
-    b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
+    b.objects.get_mut(user).set_visible(false);
     set_vanished(b, user, true);
     // Its console's chip icons go (sub_801DACC(2)).
     let side = b.objects.get(user).alliance as usize & 1;
@@ -465,7 +465,7 @@ pub fn hide_user(b: &mut Battle, user: ObjectRef) {
 /// `sub_80E1352(user, 0xF)`: the user vanishes, but its barrier visual,
 /// its confusion and blindness visuals and the HUD stay (BugFix's glow).
 pub fn hide_user_sparing(b: &mut Battle, user: ObjectRef) {
-    b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
+    b.objects.get_mut(user).set_visible(false);
     set_vanished(b, user, true);
     set_charge_glow(b, user, false);
     if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
@@ -478,11 +478,12 @@ pub fn hide_user_sparing(b: &mut Battle, user: ObjectRef) {
 pub fn show_user(b: &mut Battle, user: ObjectRef) {
     let o = b.objects.get(user);
     let f1 = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
-    // sub_800EB6C: the other side's navi is hidden from a blind viewer.
-    let viewer_blind = !b.viewer_sees(o.alliance);
-    if f1 & crate::collision::f1::SUBMERGED == 0 && !viewer_blind {
-        b.objects.get_mut(user).flags |= crate::object::flags::VISIBLE;
-    }
+    // sub_800EB6C: the other side's navi stays hidden from a blind viewer
+    // (each console's rule, decided for both viewers).
+    let alliance = o.alliance;
+    let submerged = f1 & crate::collision::f1::SUBMERGED != 0;
+    let shown = [0u8, 1].map(|v| (!submerged && b.sees(v, alliance)) || b.visible_to(user, v));
+    b.set_visible_by_viewer(user, shown);
     set_vanished(b, user, false);
     // Its console's chip icons are back (sub_801DA48(2)).
     let side = b.objects.get(user).alliance as usize & 1;
@@ -532,12 +533,7 @@ fn set_links_visible(b: &mut Battle, user: ObjectRef, visible: bool) {
     let Some(c) = b.objects.get(user).collision else { return };
     let links = b.collision.get(c).links;
     for o in [links[crate::collision::link::CONFUSE], links[crate::collision::link::BLIND]].into_iter().flatten() {
-        let f = &mut b.objects.get_mut(o).flags;
-        if visible {
-            *f |= crate::object::flags::VISIBLE;
-        } else {
-            *f &= !crate::object::flags::VISIBLE;
-        }
+        b.objects.get_mut(o).set_visible(visible);
     }
 }
 

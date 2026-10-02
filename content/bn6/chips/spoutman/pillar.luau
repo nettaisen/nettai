@@ -121,7 +121,7 @@ local function tick(me: Object)
         me:set_lifecycle("destroy")
         return
     end
-    me.visible = owner.visible
+    me:copy_visibility(owner)
     if not own and battle.dimmed() then
         return
     end

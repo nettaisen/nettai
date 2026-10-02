@@ -20,8 +20,9 @@
 //! This crate provides what getgud and rennet leave to the game:
 //!
 //! - [`world`]: [`BattleWorld`], getgud's `World` for one peer's battle
-//!   (its player's side, snapshots, prediction), generic over a [`Game`],
-//!   and the [`Observer`] that sees every tick it simulates;
+//!   (its player's side, snapshots, prediction, a tick that panics stopping
+//!   the battle), generic over a [`Game`], and the [`Observer`] that sees
+//!   every tick it simulates, every rewind and every tick that settles;
 //! - [`battle`]: [`nettai_battle::Battle`] as a game, on the engine's per-tick
 //!   input record, and the sound cue feed;
 //! - [`standin`]: a battle stepped on the buttons alone, for synthetic
@@ -42,6 +43,9 @@
 //!   checking their settled digests against each other and against a
 //!   plain lockstep run.
 //!
+//! A session runs on any thread: a battle world, with its states, inputs
+//! and sound feed, is `Send` (checked below at compile time).
+//!
 //! See docs/design/rollback.md.
 
 pub mod battle;
@@ -58,6 +62,21 @@ pub mod world;
 
 pub use getgud;
 pub use getgud::Session;
-pub use rennet;
 pub use peer::{Peer, PeerConfig, Wait};
-pub use world::{BattleState, BattleWorld, Game, Observer};
+pub use rennet;
+pub use world::{BattleState, BattleWorld, Game, Observer, step_game};
+
+// A session can run on a network thread: its world (the battle, its side
+// and its observer), the states it keeps and the inputs it queues are
+// `Send`, and the states and inputs `Sync` too. So can a whole peer.
+const _: () = {
+    const fn send<T: Send>() {}
+    const fn send_sync<T: Send + Sync>() {}
+    send_sync::<BattleState>();
+    send_sync::<battle::PlayerInput>();
+    send_sync::<battle::CueFeed>();
+    send::<BattleWorld<nettai_battle::Battle, battle::CueFeed>>();
+    send::<Session<BattleWorld<nettai_battle::Battle, battle::CueFeed>>>();
+    send::<Session<BattleWorld<standin::StandInBattle>>>();
+    send::<Peer<nettai_battle::Battle, battle::CueFeed>>();
+};

@@ -438,7 +438,7 @@ rollback.md §8.2 lists what content must guarantee:
 | Outputs write-only | `battle.play_sound` only adds a cue; scripts can't read cues back |
 | Content immutable during a battle, identified by a hash both peers compare | Modules and definitions frozen after load; `Content::hash` covers the scripts |
 | Bounded work that fails the same way on every peer | The interrupt budget counts VM checkpoints, not time |
-| No perspective in simulated state | `battle.local_side` and `battle.viewer_sees` are for presentation only; sound goes to both sides' cue lists (or one side's player's, `play_sound_for`) |
+| No perspective in simulated state | `battle.local_side` is for presentation only; what a blind player can't see is decided per viewer (`me:hide_from_blind()`, `me:copy_visibility(owner)`); sound goes to both sides' cue lists (or one side's player's, `play_sound_for`) |
 | Re-running a tick free of side effects outside `Battle` | Scripts can't reach the host; the VM keeps nothing |
 
 In-repo, `scripted_chips_roll_back` copies a battle every 97 ticks of a duel and checks the copy plays on
