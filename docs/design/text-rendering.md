@@ -590,7 +590,7 @@ Every string below comes from content or varies; each is drawn in the original's
 | The enemy names (round's first screen) | cell | their glyphs' cells on BG0, ending at column 30 | BG0's | BG0's (the HUD palettes') |
 | The HUD's lines: the turn timer's seconds, "TIME UP!", "COUNTER HIT!" | cell | the cells of the pack's line without its padding spaces | the HUD layer's | the HUD layer's |
 | "VS" between the judge's numbers | cell | 2 cells | the HUD layer's | the HUD layer's |
-| A description's and the run message's lines (the chatbox) | dialogue | the 192-pixel line, 12 rows, every 14 rows from (51, 108); cut where the line buffer's sprites end, plus 3 rows for a third line's descenders | its 18 sprite parts' (front layer, bucket 3: the key-wait arrow and the portrait are in front) | the sprites', the screen's |
+| A description's and the run message's lines (the chatbox) | dialogue | 12 rows, every 14 rows from (51, 108), as wide as the open box's inside (to a pixel short of its right frame: 160 pixels in the description box, 184 in the message box; the line buffer's 192 run past the description box); cut where the line buffer's sprites end, plus 3 rows for a third line's descenders | its 18 sprite parts' (front layer, bucket 3: the key-wait arrow and the portrait are in front) | the sprites', the screen's |
 
 Not text, so unchanged: the Crosses' names in the Cross window (the pack's pictures, by each Cross's game); the
 custom screen's slots and picked column, which show icons and the code strips' letters, no names; chip codes,
@@ -651,7 +651,12 @@ the frontend's own status text (`text.rs`).
   to 85%, or 70% for a string with kana or kanji (their glyphs are an em wide where the 8x16 font's cells are about
   half that); then made smaller, centred on its capitals. It never leaves its box. With the bundled font, 123 of
   the 342 chip names are squeezed in their own cells, and three (Magnum, TmhkMan[EX], TmhkMan[SP]) are also made
-  3% smaller.
+  3% smaller. A chatbox line's box is the open box's inside, which the frontend reads off the box's map
+  (`chatbox::text_room`: the right frame's inner edge on a text row), not the 192-pixel line buffer, which runs
+  past the description box's frame (until 2026-10-02 the Japanese Crosses' longest lines did too). Of the 2,064
+  description and message lines in en.toml and ja.toml, ten are wider than their box at the font's width, all
+  Japanese Crosses' descriptions in the description box, and are squeezed to 92-100%; the test
+  `every_chatbox_line_fits_its_box` measures them all.
 - **Alignment**: left, as the original's glyphs start their cells; a telop's name centred in its cells.
 - **Marks**: a mark is one character (§10.5). One the font has is the font's (Ⓡ, ✕, ○); else the layer draws it:
   a button (Ⓐ, Ⓑ) as its letter at 68% of the size in a ring centred on the capitals, a stacked mark (EX, SP) as

@@ -104,6 +104,11 @@ impl AudioOut {
         self.audio.handle(cues);
     }
 
+    /// Queue rollback cue actions (see [`BattleAudio::handle_actions`]).
+    pub fn handle_actions(&mut self, actions: impl IntoIterator<Item = nettai_battle::cues::CueAction>) {
+        self.audio.handle_actions(actions);
+    }
+
     /// Render one frame and queue it for the device. Call once per battle
     /// tick, at the game's 59.73 Hz.
     pub fn tick(&mut self) {

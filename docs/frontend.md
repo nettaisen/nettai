@@ -85,6 +85,8 @@ are the link navis' faces, with their Full Synchro palettes.
     cargo run -p nettai-frontend -- <trace.jsonl> --headless 150,300,600 --out <dir>
     cargo run -p nettai-frontend -- <trace.jsonl> --audit      # what is missing?
     cargo run -p nettai-frontend -- --play --pack <dir>        # another pack
+    cargo run -p nettai-frontend -- --play --host 7777         # netplay: host...
+    cargo run -p nettai-frontend -- --play --join 192.0.2.10:7777   # ...and join
 
 Options: `--pack <dir>` names the content pack and `--content <dir>` the
 battle content (see above), `--mute` turns the sound off, `--round N`
@@ -109,8 +111,8 @@ and with `--headless`, `--keys` holds buttons on given ticks (below).
 
 Keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START,
 Backspace = SELECT; Space pauses, `.` steps one frame while paused, `-` and
-`=` change speed (1/8x to 16x of 59.73 Hz), F5 restarts the round, H toggles
-the status line, Esc quits.
+`=` change speed (1/8x to 16x of 59.73 Hz), F5 restarts the round (none of
+these in netplay), H toggles the status line, Esc quits.
 
 **Trace playback** runs at the original's 59.73 frames per second until the
 input ends or the engine hits something it doesn't implement yet. Then it
@@ -159,6 +161,56 @@ hides). The right navi's screen picks its first chip and presses OK. As in
 the original's netbattles, the fight gets your buttons 4 ticks late (the
 link). F5 starts over with the same setup.
 
+**Netplay** (`--play --host PORT` or `--play --join ADDR:PORT`) plays another
+player over the network, with rollback (docs/design/rollback.md §4; the
+frontend's side is `netplay`):
+
+- **Hosting**: `--host 7777` listens on UDP port 7777 of every IPv4
+  interface and waits for a player (`--wait SECONDS`, default 300). On a LAN
+  the other player joins this machine's address; over the Internet, forward
+  the UDP port on the host's router to the host's machine, and the other
+  player joins the router's public address. The host is the left navi
+  (side 0).
+- **Joining**: `--join 192.0.2.10:7777` (a name works too) reaches the host
+  and waits for its answer (`--wait`, default 30). The joiner is the right
+  navi (side 1), and sees the battle from its side: its navi on the left of
+  the field, mirrored as the original's second console shows it, its own
+  custom screen, HUD and sounds.
+- **The handshake** checks that both players run the same netplay protocol,
+  the same engine and the same content (`Content::hash`: the definitions,
+  scripts and rule tables, and what the battle reads of the pack, the asset
+  names and the animations' timing), and refuses a mismatch on both sides with what
+  differs ("can't play: the other side plays other content (its hash ...,
+  this one's ...)"). Each player then brings their own setup: a folder, a game
+  and five Crosses drawn from their own `--seed` (as live play draws a
+  player's), and their patch cards (`--cards`); the other player's is
+  checked against the content (a legal folder, Crosses of MegaMan's, patch
+  cards of the content's). The language (`--lang`) is each player's own. The
+  field (stage, background, the set's later stages) and the battle's RNG
+  come from both players' halves of the seed; the host's `--stage` forces the
+  stage. Both print what was agreed.
+- **Playing**: the match is a best-of-three set; its rounds follow one
+  another (the folders shuffled again by each console's RNG). Every frame the
+  frontend sends your buttons and shows the frame its rollback session
+  presents: your input shows after the input delay (`--delay N`, default 2
+  frames), the other player's is predicted until it arrives, and the frame
+  is simulated again when a prediction was wrong. A cue played on a wrong
+  prediction is stopped or taken back (rollback.md §3.2). There is no pause,
+  speed change or restart (F5) in netplay.
+- **The status line** (H toggles it) shows `PING` (the round trip, in
+  milliseconds), `LOSS` (the share of the other player's datagrams that
+  were lost), `DELAY` (the input delay), `ROLLBACK` (the last rollback's
+  depth), `MAX` (the deepest, and in brackets how many) and `WAIT` (frames
+  held for clock sync or the stall guard).
+- **The end**: when the set is over the result shows on the status line and
+  the window stays open; Esc leaves, and tells the other player. If the
+  other player leaves, nothing arrives from them for 10 seconds, or their
+  input falls more than the rollback horizon behind, the match stops with
+  the reason on screen.
+
+The stand-in bot (the right navi standing still, picking its first chip)
+stays for playing alone.
+
 **Headless mode** renders the listed frames (`a,b,c-d`; trace frame
 numbers, or tick numbers in live play) to `frame_NNNNN.png`. It exits
 non-zero if some frames couldn't be rendered (the engine stopped first).
@@ -182,9 +234,11 @@ without glyphs, a text line, a song. It exits 1 if there was any. It is the
 quick check after a content or loader change: nothing is silently skipped.
 
 **Sound**: the window plays each tick's sound cues through nettai-audio, with
-the pack's sound, unless `--mute`; headless rendering never plays sound.
-Other per-tick consumers can plug in the same way, as a `TickHook`
-(`nettai_frontend::session`), which the window runs after every tick.
+the pack's sound, unless `--mute`; headless rendering never plays sound. In
+netplay it plays the cue actions of each frame (plays, and cancels of cues
+played on a wrong prediction). Other per-tick consumers can plug in the same
+way, as a `TickHook` (`nettai_frontend::session`), which the window runs
+after every step with the session.
 
 ## 3. What is drawn, and how
 
@@ -339,7 +393,8 @@ chatbox draws each tick: the box's map on BG0 at its opening step (row 12,
 the message box or the narrower description box); the text as the line
 buffer's three rows of six sprites at (51, 108), its lines 14 rows apart
 (the third row of sprites is 32x8: a third line's descenders are cut, as in
-the original); the speaker's portrait, a sprite whose animations are its
+the original; in the font mode each line fits the open box's inside,
+`text_room`); the speaker's portrait, a sprite whose animations are its
 faces, stepped by its updates and tinted while it fades; the key-wait
 arrow. The text is the content's strings (the chip's or the Cross's
 `description`, the navi's `run_message`, in the player's language), how
