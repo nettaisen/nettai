@@ -22,6 +22,7 @@ fn asset_names() -> nettai_content::names::AssetNames {
         sprites: c.sprite_names(),
         songs: c.assets.sounds.iter().map(|(k, &v)| (v, k.clone())).collect(),
         banners: c.assets.banners.iter().map(|(k, &v)| (v, k.clone())).collect(),
+        backgrounds: c.assets.backgrounds.iter().map(|(k, &v)| (v, k.clone())).collect(),
         chips: c.chip_keys.clone(),
         ..Default::default()
     }
