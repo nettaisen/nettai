@@ -28,6 +28,7 @@
 //! to what is deterministic (`sandbox`).
 
 mod bind;
+pub mod coverage;
 mod define;
 pub mod sandbox;
 pub mod verify;
@@ -350,6 +351,9 @@ impl LuauContent {
     ) -> Result<R, ContentError> {
         let _enter = bind::Enter::new(api, &self.bound, system);
         BUDGET.with(|b| b.set(self.budget));
+        if coverage::recording() {
+            coverage::called(f);
+        }
         let result = self.functions[f.0 as usize].call::<R>(args).map_err(|e| ContentError::new(e.to_string()));
         if self.collect_garbage {
             self.lua.gc_collect().map_err(|e| ContentError::new(e.to_string()))?;
@@ -555,7 +559,10 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
     // Libraries and globals become read-only; the budget stops runaway
     // loops (also while loading).
     lua.sandbox(true).map_err(err)?;
-    lua.set_interrupt(|_| {
+    lua.set_interrupt(|lua| {
+        if coverage::recording() {
+            coverage::interrupt(lua);
+        }
         BUDGET.with(|b| match b.get() {
             0 => Err(mlua::Error::runtime("content ran past its budget (a runaway loop?)")),
             n => {
