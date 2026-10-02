@@ -113,3 +113,30 @@ fn a_frame_line_decodes() {
     assert_eq!(d.panels[3].alliance, 1);
     assert_eq!(d.objects[0].pool, nettai_content_api::Pool::Actor);
 }
+
+/// A round's setup names what the content lacks (docs/design/bn5-map.md
+/// §15.5), and its replay stops there: on content without BN5's (the
+/// engine's test content), its chips, its navi and its stage.
+#[cfg(feature = "trace")]
+#[test]
+fn a_rounds_setup_names_what_the_content_lacks() {
+    use bn5_compat::trace::{self, Line, Stop};
+    let stats: String = TEAM_PROTOMAN.split_whitespace().collect();
+    // Cannon A (0x001, code 0) and a zeroed field (no chip).
+    let folder = "0100".to_string() + "0000" + &"ffff".repeat(38);
+    let line = format!(
+        r#"{{"setup": {{"frame": 10, "game": "bn5", "settings_ptr": 0, "settings": "{}", "navi_stats": ["{stats}", "{stats}"], "folder": "{folder}", "battle_state": "{}", "rng1": 1, "rng2": 2, "game_versions": ["protoman", "colonel"]}}}}"#,
+        "00".repeat(0x10),
+        "00".repeat(0xF0)
+    );
+    let Line::Setup(setup) = trace::parse_line(&line).unwrap() else { panic!("a setup line") };
+    let round = trace::Round { setup: *setup, exchanges: Vec::new(), frames: Vec::new() };
+    assert_eq!(round.chip_ids().unwrap(), [0x001]);
+    let content = std::sync::Arc::new(nettai_battle::content::testing::build());
+    let needs = round.needs(&content, Compat::bn5()).unwrap();
+    assert_eq!(needs[0], "chip bn5:cannon (0x001)");
+    assert!(needs.contains(&"side 1's navi bn5:megaman (0x00)".to_string()), "{needs:?}");
+    assert!(needs.last().unwrap().starts_with("the stage"), "{needs:?}");
+    let replay = trace::run_round(&round, &content, Compat::bn5());
+    assert!(matches!(replay.stopped, Some(Stop::Setup(ref e)) if e.contains("chip bn5:cannon")), "{:?}", replay.stopped);
+}

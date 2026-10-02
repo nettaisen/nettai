@@ -8,8 +8,8 @@
 //!   repository's, built in.
 //! - [`codec`]: BN5's records in the engine's terms: the 0x60-byte
 //!   NaviStats with BN5's light/dark value, the panels, the chip blocks.
-//! - `trace` (feature `trace`): the chip lab's BN5 recordings, read and
-//!   decoded.
+//! - `trace` (feature `trace`): the chip lab's BN5 recordings, read,
+//!   decoded and replayed (docs/design/bn5-map.md §15.5).
 //!
 //! Keys: content/bn5 writes them unqualified, as its root's loader reads
 //! them (rules-in-luau.md R: content/bn5/root.toml names the root `bn5`);
