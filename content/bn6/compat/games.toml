@@ -1,0 +1,12 @@
+# The consoles' games: what a trace or link record from a console carries
+# that is that game's own. The US Falzar ROM (BR6E) is the one every other
+# compat table numbers; the US Gregar ROM (BR5E) is built from the same code
+# with parts of the ROM moved, and its RAM is laid out the same. (The
+# verification workspace's tools/gregar/fmap.py maps one ROM's code to the
+# other's.)
+
+[gregar]
+# The stages' actor lists (a battle settings record's bytes 12..16, which
+# stages.toml numbers by Falzar's address): every one of them is this many
+# bytes later in the Gregar ROM.
+actor_lists = 0x1870
