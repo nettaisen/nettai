@@ -706,6 +706,26 @@ interruption of his invulnerable dig would do.
 
 All 10 recordings match the engine, every frame (16,698) and every sound call (286).
 
+**Batch 6, the barriers, the Reflectors and IronShl (26 branches: the barrier visual of `lib/barriers`, Rflectr and
+the NaviCust Reflect's guard, IronShl's shell):** 14 taken by 14 new recordings, 9 unreachable, 3 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0b2-barrier/paused`, `chips/0x0b6-lifeaur/link-navi` | a barrier's visual through a pause; LifeAur on a link navi, its aura's part 6 hidden |
+| `chips/0x0b3-barr100/deleted-under-it`, `chips/0x0b2-barrier/deleted-going-down`, `deleted-blown` | the navi deleted with its barrier up, going down, and blown away: the visual finds itself unlinked |
+| `chips/0x0b2-barrier/fan-pull` | a barrier popped by Fan's pull, blown forward |
+| `chips/0x083-rflectr1/cross-beast`, `blind-viewer`, `counter-ko` | Rflectr in a Falzar Cross Beast (the head animates); the shield hidden from a blind viewer; the counter wave's KO |
+| `navicust/reflect-counter` | the Reflect program's guard firing the buster shot back |
+| `chips/0x07b-ironshl1/hole-ahead`, `far-column`, `side-1`, `side-1-far-column` | a hole ahead; the shell on column 6 and on column 1; side 1's shell |
+
+The unreachable ones: a barrier on a navi that isn't a player or is off the field (3), a barrier other than the
+bubble growing back (1: a new barrier ends the old visual first), the visual's end called without one (1), the
+Shield program's guard countering (1: it heeds nothing), an iron shell off the field, with more than one bump or
+no collision slot (3). The hard ones: the bubble growing back while its navi is bubbled (its timer stops then),
+the shield outliving its owner's vanishing for a navi chip (it fades long before the cut-in ends), and a guard
+dropped by a breaking hit, which only arrives with an ordinary hit the guard blocks on the same tick. The 14
+recordings are in the lab and match the engine at main 9ed59b90.
+
 ### 6.3 Custom screen keys
 
 Four custom screen routines were verified only by the golden traces' dumps, with no lab recording: SELECT hiding
