@@ -697,8 +697,8 @@ Murecho (Neil Summerour, Positype; SIL Open Font License 1.1, no Reserved Font N
 - **Tests** (`cargo test -p nettai-frontend`): the depth mask; text hidden where a sprite in front won and faded
   with its layer; a font-mode telop as an item over blank parts where the original's glyph parts were; a HUD line
   without its padding; layout that never leaves its box, isn't stretched, and squeezes before shrinking; kana and
-  kanji laid out; the placement policy; marks as units. The font tests check layout and metrics, not pixels: the
-  rasterizer's arithmetic is floating point (§2.2).
+  kanji laid out; the placement policy; marks (a stacked mark in one cell, a button in its ring: §10.5). The font
+  tests check layout and metrics, not pixels: the rasterizer's arithmetic is floating point (§2.2).
 - **Looked at**, headless at 4x: the hand, the chip window, telops through their squash and stretch, a hidden
   telop, the other player's chip, a description and the run message (printing too), the Program Advance's names,
   "COUNTER HIT!", the seconds, "TIME UP!" and "VS", Beast Out's darkening of the enemy name, a Cross's whitening,
@@ -871,6 +871,12 @@ character, so a string encodes and decodes the same way and a mark is one charac
   lacks (the bat, End, Ƶ, ﹒) sends its string to the game's font, as any character the font lacks does.
 - **The battle** counts characters (a description's lines; the run message's characters per line and which move
   the mouth): a mark is one, as the bracketed name was, so no record and no hash changed.
+- **Checked**: `--text original` renders byte for byte the same PNGs as before (the frontend before the change with
+  its pack, against this one with a pack extracted again): 206 English scenarios and traces, 275,844 frames (the
+  sample, the custom-screen and chatbox lists, machgun, soundmod and the EX and SP navi chips), and the 142 Japanese
+  consoles' traces in Japanese, 171,684 frames. gen-content's check passes (the ROMs' names and descriptions decode
+  to the tables' characters). Looked at headless at 3x: Count's EX and SP in the chip window, the hand and the telop;
+  DustCross's description with its Ⓑ; ✕ in SpoutCross's Japanese one.
 
 ### 10.6 What reads each table
 
