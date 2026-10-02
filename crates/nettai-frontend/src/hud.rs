@@ -1157,6 +1157,34 @@ mod tests {
     }
 
     #[test]
+    fn a_telop_names_the_chip_in_the_players_language() {
+        let mut b = battle();
+        let chip = testing::chip_in(&b.content, testing::SUN_GUN_3);
+        assert!(b.start_banner(BannerId(0x4C)));
+        b.banner.telop =
+            Some(Telop { side: 0, chip: Some(chip), damage: 0, doubled: false, bonus: 0, hidden: TelopHidden::No });
+        let hud = hud();
+        let key = b.content.defs.chip(chip).key.clone();
+        let table = format!("language = \"xx\"\n[chips]\n\"{key}\" = {{ name = \"Sol\" }}\n");
+        let strings = nettai_content::locale::Strings::parse(&table, "xx.toml").unwrap();
+        let text = TextSink::original().with_words(Some(&strings));
+        let mut problems = Problems::default();
+        let mut parts = Vec::new();
+        telop_parts(&b, &hud, 0x4C, b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
+        assert_eq!(parts.iter().map(|p| p.first_tile).collect::<Vec<_>>(), "Sol".chars().map(glyph_of).collect::<Vec<_>>());
+        // Centred as fifteen glyphs are: the translation's three.
+        assert_eq!(parts[0].x, 6 * 8);
+        assert!(text.words.take_missing().is_empty());
+        // A chip the table has no name for shows the definition's, noted.
+        let empty = nettai_content::locale::Strings::parse("language = \"xx\"\n", "xx.toml").unwrap();
+        let text = TextSink::original().with_words(Some(&empty));
+        let mut parts = Vec::new();
+        telop_parts(&b, &hud, 0x4C, b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
+        assert_eq!(parts.len(), 7);
+        assert_eq!(text.words.take_missing(), [format!("chips.{key}.name")]);
+    }
+
+    #[test]
     fn a_chip_name_the_font_cannot_write_is_a_problem() {
         let b = battle();
         let chip = testing::chip_in(&b.content, testing::SUN_GUN_3);
