@@ -148,3 +148,36 @@ fn bn5_and_bn6_load_together_under_their_names() {
     assert_eq!(d.stock_ruleset(), d.ruleset_by_key("bn6:bn6"));
     assert_eq!(c.strings.chip("bn5:cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
 }
+
+/// docs/design/rules-in-luau.md R2: BN5's stock ruleset and rule sections
+/// (content/bn5/rules) are its game's, beside BN6's: its pools (16 actors),
+/// its banners, its element tables. (BN5's chips, which have no use yet, are
+/// left out; with them the define phase stops at the first, above.)
+#[test]
+fn bn5s_rules_are_its_games() {
+    let repo = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
+    let mut r = Report::default();
+    let bn6 = nettai_content::root::read(&repo.join("content/bn6"), &mut r).expect("content/bn6 reads");
+    let mut bn5 = nettai_content::root::read(&repo.join("content/bn5"), &mut r).expect("content/bn5 reads");
+    bn5.modules.retain(|path, _| !path.starts_with("chips/"));
+    let mut c = nettai_battle::Content {
+        strings: bn6.strings.qualified("bn6"),
+        scripts: Scripts::root(bn6.manifest, bn6.modules),
+        ..Default::default()
+    };
+    c.scripts.add_root(bn5.manifest, bn5.modules);
+    c.assets = testing::asset_names_used(&c.scripts.modules);
+    c.define().unwrap_or_else(|e| panic!("{e}"));
+    let d = &c.defs;
+    let five = d.root_id("bn5").expect("the bn5 root");
+    assert!(d.stock_ruleset_of("bn5").is_some(), "BN5's stock ruleset");
+    assert_eq!(d.stock_ruleset(), d.stock_ruleset_of("bn6"), "the content's own is BN6's");
+    let (six, five) = (c.home_rules(), c.rules_of(five));
+    assert_eq!(five.pools.slots(), [16, 32, 32]);
+    assert_eq!(six.pools.slots(), [32, 32, 32]);
+    // BN5's tables where they are BN6's, and where they aren't.
+    assert_eq!(five.element_weakness, six.element_weakness);
+    assert_eq!(five.sine, six.sine);
+    assert_eq!(five.holding_banners.len(), 3);
+    assert_eq!(five.hp_bug_periods, six.hp_bug_periods);
+}
