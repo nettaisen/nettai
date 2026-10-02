@@ -865,6 +865,7 @@ dependencies = [
  "nettai-battle",
  "nettai-content",
  "nettai-content-api",
+ "nettai-netplay",
  "png",
  "swash",
 ]
@@ -885,6 +886,8 @@ dependencies = [
  "getgud",
  "nettai-battle",
  "nettai-content",
+ "nettai-content-api",
+ "rennet",
 ]
 
 [[package]]
@@ -1141,6 +1144,11 @@ name = "regex-syntax"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
+
+[[package]]
+name = "rennet"
+version = "0.1.0"
+source = "git+https://github.com/tangobattle/rennet#0b45832f457b6e08e3f1853e824789aa94f09779"
 
 [[package]]
 name = "rustc-hash"
