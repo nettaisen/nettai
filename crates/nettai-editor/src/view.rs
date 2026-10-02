@@ -9,7 +9,7 @@ use iced::{Alignment, Color, Element, Length, Theme};
 use nettai_battle::content::{ChipClass, ChipFlags};
 use nettai_battle::custom::GameVersion;
 use nettai_match::stats::{self, Kind, Value};
-use nettai_match::{FORMS_SYSTEM, PATCH_CARDS_SYSTEM, folders};
+use nettai_match::{FORMS_SYSTEM, PATCH_CARDS_SYSTEM};
 
 const SIDES: [&str; 2] = ["Left (you)", "Right"];
 const RED: Color = Color::from_rgb(0.85, 0.2, 0.2);
@@ -255,9 +255,10 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
     let side = e.side(s);
     let f = &side.folder;
-    let limits = match &e.round {
-        Ok(st) => folders::FolderLimits::of(&st[s]),
-        Err(_) => folders::FolderLimits::of(&side.stats),
+    // The limits are the stats' (the rules check them).
+    let stats = match &e.round {
+        Ok(st) => st[s],
+        Err(_) => side.stats,
     };
     // The folder's entries.
     let mut entries = Column::new().spacing(1);
@@ -302,18 +303,18 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
     // The counts and the limits, live.
     let count = |class: ChipClass| f.chips.iter().filter(|x| c.chip(x.id).class == class).count();
     let regular = f.regular.and_then(|r| f.chips.get(r as usize)).map(|x| {
-        format!("Regular: {} ({} MB of {})", e.names.chip(c, x.id), c.chip(x.id).mb, limits.regular_mb)
+        format!("Regular: {} ({} MB; the navi's memory {})", e.names.chip(c, x.id), c.chip(x.id).mb, stats.reg_up)
     });
     let tags = f.tags.map(|(a, b)| {
         let mb: u32 = [a, b].iter().filter_map(|&i| f.chips.get(i as usize)).map(|x| c.chip(x.id).mb as u32).sum();
-        format!("Tags: entries {a} and {b} ({mb} MB of {})", folders::TAG_MB)
+        format!("Tags: entries {a} and {b} ({mb} MB)")
     });
     let counts = text(format!(
-        "Mega {}/{} · Giga {}/{} · {} · {}",
+        "Mega {} (the navi's level {}) · Giga {} (level {}) · {} · {}",
         count(ChipClass::Mega),
-        limits.mega,
+        stats.mega_level,
         count(ChipClass::Giga),
-        limits.giga,
+        stats.giga_level,
         regular.unwrap_or("no Regular chip".into()),
         tags.unwrap_or("no tag chips".into()),
     ))
@@ -323,8 +324,9 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
         .width(Length::FillPortion(1));
     // The chips a folder can hold, searched.
     let needle = e.search.to_lowercase();
-    let mut pool: Vec<(String, nettai_content_api::ChipHandle)> = folders::folder_chips(c)
-        .into_iter()
+    let mut pool: Vec<(String, nettai_content_api::ChipHandle)> = e.pool[s]
+        .iter()
+        .copied()
         .map(|h| (e.names.chip(c, h), h))
         .filter(|(name, h)| needle.is_empty() || name.to_lowercase().contains(&needle) || c.defs.chip(*h).key.contains(&needle))
         .collect();
@@ -336,7 +338,7 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
         let codes = d.codes.iter().fold(Row::new().spacing(2), |r, &code| {
             r.push(button(text(code.letter().to_string()).size(12)).padding([1, 5]).on_press(Msg::Put(s, h, code)))
         });
-        let count = if held > 0 { format!("{held}/{}", folders::copies_allowed(d.mb)) } else { String::new() };
+        let count = if held > 0 { format!("×{held}") } else { String::new() };
         let dark = d.flags.has(ChipFlags::DARK);
         list = list.push(
             row![

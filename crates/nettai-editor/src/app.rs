@@ -142,6 +142,8 @@ pub struct Editor {
     /// The stats each side's round starts with (after the NaviCust and the
     /// patch cards), or why the round doesn't start.
     pub round: Result<[NaviStats; 2], String>,
+    /// The chips each side's rules let a folder hold.
+    pub pool: [Vec<ChipHandle>; 2],
     pub status: String,
     frames: u32,
 }
@@ -170,6 +172,7 @@ impl Editor {
             typed: HashMap::new(),
             problems: Vec::new(),
             round: Err(String::new()),
+            pool: Default::default(),
             status: String::new(),
             frames: 0,
             content,
@@ -209,7 +212,13 @@ impl Editor {
     /// Check the match again, and the stats its round starts with.
     pub fn refresh(&mut self) {
         self.problems = nettai_match::check_match(&self.content, &self.m);
-        self.round = nettai_match::check::round_stats(&self.content, &self.m);
+        match nettai_match::check::start(&self.content, &self.m) {
+            Ok(mut b) => {
+                self.pool = [0u8, 1].map(|s| nettai_match::folders::pool(&self.content, &mut b, s));
+                self.round = Ok(b.stats);
+            }
+            Err(e) => self.round = Err(e),
+        }
     }
 
     fn edited(&mut self) {

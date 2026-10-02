@@ -460,7 +460,7 @@ mod tests {
     use nettai_netplay::standin::Masher;
     use nettai_netplay::transport::Udp;
 
-    fn offer(content: &Content, seed: u32) -> Offer {
+    fn offer(content: &Arc<Content>, seed: u32) -> Offer {
         Offer { side: Side::drawn(content, &mut Draws::new(seed)).unwrap(), stage: None, arena: None }
     }
 
