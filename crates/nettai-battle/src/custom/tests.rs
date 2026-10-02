@@ -644,7 +644,7 @@ fn the_tag_pair_index_follows_the_folder_as_picks_leave_it() {
 /// taking keys.
 fn describing(lines: usize) -> Player {
     let mut p = Player::new(&[(SHOT, 0), (SHOT, 1)], GameVersion::Falzar);
-    p.lib.chips[0].1.description = Some(["a", "b", "c"][..lines].join("\n"));
+    p.lib.chips[0].1.description_lines = lines as u8;
     p.open();
     p.wait(10);
     p.step(0);

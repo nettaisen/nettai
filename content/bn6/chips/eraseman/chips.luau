@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 local eraseman = define.chip {
     id = "eraseman",
-    name = "EraseMan",
-    description = "Press [A]\nfor 3panl\nbeam attk",
     codes = { "K", "*" },
     element = "null",
     family = "cursor",
@@ -26,8 +24,6 @@ local eraseman = define.chip {
 
 local erasemn_ex = define.chip {
     id = "erasemn-ex",
-    name = "EraseMn[EX]",
-    description = "Press [A]\nfor 3panl\nbeam attk",
     codes = { "K" },
     element = "null",
     family = "cursor",
@@ -46,8 +42,6 @@ local erasemn_ex = define.chip {
 
 local erasemn_sp = define.chip {
     id = "erasemn-sp",
-    name = "EraseMn[SP]",
-    description = "Press [A]\nfor 3panl\nbeam attk",
     codes = { "K" },
     element = "null",
     family = "cursor",

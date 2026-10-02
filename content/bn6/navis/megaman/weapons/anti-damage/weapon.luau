@@ -65,7 +65,6 @@ anti_damage.action = define.action {
 
 anti_damage.weapon = define.weapon {
     id = "megaman/anti-damage",
-    name = "AntiDmg",
     -- (A B+Back special, which nothing charges: the charge table's row
     -- 0x3D by Charge 0 to 7, reading on into the next routine's row.)
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },

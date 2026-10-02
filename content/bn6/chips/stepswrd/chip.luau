@@ -10,8 +10,6 @@ local slashes = require("../../navis/megaman/forms/slashcross/slashes")
 
 return define.chip {
     id = "stepswrd",
-    name = "StepSwrd",
-    description = "Use\nWideSwrd\n2sq ahead",
     codes = { "B", "L", "P" },
     element = "null", family = "sword", class = "standard",
     rarity = 2, mb = 28, damage = 160, hit_param = 20, lockout = 0,

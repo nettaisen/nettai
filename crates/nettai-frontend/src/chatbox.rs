@@ -66,10 +66,11 @@ pub struct Shown<'a> {
 pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &mut Problems) -> Option<Shown<'a>> {
     let (side, screen) = crate::custom::local(b)?;
     let navi = b.stats[b.setup.local_side as usize & 1].navi;
-    // The words: the content's, or the player's language's (`Words`); a
-    // translation prints in step with the content's, whose lines and
-    // characters the chatbox's timing counts (`shown`).
-    let words = &sink.words;
+    // The text: the content's own strings, or the player's language's
+    // (`DisplayText`); a translation prints in step with the content's
+    // own, whose lines and characters the chatbox's timing counts
+    // (`shown`).
+    let words = &sink.strings;
     let (chatbox, said, portrait) = match screen.phase {
         Phase::Description { from_cross_window: false, chatbox } => {
             // The chip under the cursor as the screen checked it (the chip
@@ -83,7 +84,7 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &m
             (chatbox, form.and_then(|f| words.form_description(b, f)), None)
         }
         Phase::RunMessage { chatbox: Some(chatbox) } => {
-            (chatbox, Some(words.run_message(b, navi)), b.content.navi(navi).run_message.portrait)
+            (chatbox, words.run_message(b, navi), b.content.navi(navi).run_message.portrait)
         }
         _ => return None,
     };

@@ -8,8 +8,6 @@ local rock = require("./rock")
 
 local rockcube = define.chip {
     id = "rockcube",
-    name = "RockCube",
-    description = "Place a\nRockCube\nin front",
     codes = { "*" },
     element = "null",
     family = "summon",
@@ -28,8 +26,6 @@ local rockcube = define.chip {
 
 local icecube = define.chip {
     id = "icecube",
-    name = "IceCube",
-    description = "Add an\neffect:\nConfuse",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "summon",

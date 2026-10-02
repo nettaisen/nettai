@@ -647,8 +647,8 @@ fn put_px(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, x: i32, y: i
     }
 }
 
-/// A chip's name in the font's glyphs: the words for it (the content's,
-/// or the player's language's: `Words::chip_name`), written in the
+/// A chip's name in the font's glyphs: its display text (the content's
+/// own, or the player's language's: `DisplayText::chip_name`), written in the
 /// characters the pack's font has (`sub_8027D10`'s text for the chip, at
 /// most eight glyphs).
 fn name_glyphs(b: &Battle, hud: &Hud, name: &str, chip: ChipHandle, problems: &mut Problems) -> Vec<u16> {
@@ -678,7 +678,7 @@ fn draw_chip_name(
     (bonus, doubled): (u16, bool),
     problems: &mut Problems,
 ) {
-    let words = text.words.chip_name(b, chip);
+    let words = text.strings.chip_name(b, chip);
     let name = name_glyphs(b, hud, words, chip, problems);
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, name.len(), pal, (0, 18 * 8), Align::Left);
     // The damage follows the name: after the cells its glyphs take, or in
@@ -901,7 +901,7 @@ fn icon_parts<'a>(
     // A chip's icon is the pack's image under the chip's key.
     let def = b.content.defs.chip(chip);
     let Some(tiles) = hud.chip_icon(&def.key) else {
-        problems.note(format!("chip {:?} ({}) has no icon in the pack", def.key, def.record.name));
+        problems.note(format!("chip {:?} has no icon in the pack", def.key));
         return;
     };
     let p = project_hud((o.pos.x, o.pos.y, o.pos.z), view);
@@ -986,7 +986,7 @@ fn telop_parts<'a>(
     };
     let name = match telop.name {
         TelopName::Chip(chip) => {
-            let words = text.words.chip_name(b, chip);
+            let words = text.strings.chip_name(b, chip);
             (words, name_glyphs(b, hud, words, chip, problems))
         }
         TelopName::Hidden => ("????", fonts::cell_glyphs(hud, "????").0),
@@ -1016,7 +1016,7 @@ fn used_chip_parts<'a>(
         problems.note(format!("the telop's banner {remote_telop:#04x} is not in the pack"));
         return None;
     };
-    let words = text.words.chip_name(b, used.chip);
+    let words = text.strings.chip_name(b, used.chip);
     let name = (words, name_glyphs(b, hud, words, used.chip, problems));
     name_parts(hud, layout, name, (used.damage, used.bonus, used.doubled), true, None, out, text)
 }
@@ -1206,22 +1206,22 @@ mod tests {
         let hud = hud();
         let key = b.content.defs.chip(chip).key.clone();
         let table = format!("language = \"xx\"\n[chips]\n\"{key}\" = {{ name = \"Sol\" }}\n");
-        let strings = nettai_content::locale::Strings::parse(&table, "xx.toml").unwrap();
-        let text = TextSink::original().with_words(Some(&strings));
+        let strings = nettai_content::locale::parse(&table, "xx.toml").unwrap();
+        let text = TextSink::original().with_language(Some(&strings));
         let mut problems = Problems::default();
         let mut parts = Vec::new();
         telop_parts(&b, &hud, 0x4C, b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
         assert_eq!(parts.iter().map(|p| p.first_tile).collect::<Vec<_>>(), "Sol".chars().map(glyph_of).collect::<Vec<_>>());
         // Centred as fifteen glyphs are: the translation's three.
         assert_eq!(parts[0].x, 6 * 8);
-        assert!(text.words.take_missing().is_empty());
+        assert!(text.strings.take_missing().is_empty());
         // A chip the table has no name for shows the definition's, noted.
-        let empty = nettai_content::locale::Strings::parse("language = \"xx\"\n", "xx.toml").unwrap();
-        let text = TextSink::original().with_words(Some(&empty));
+        let empty = nettai_content::locale::parse("language = \"xx\"\n", "xx.toml").unwrap();
+        let text = TextSink::original().with_language(Some(&empty));
         let mut parts = Vec::new();
         telop_parts(&b, &hud, 0x4C, b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
         assert_eq!(parts.len(), 7);
-        assert_eq!(text.words.take_missing(), [format!("chips.{key}.name")]);
+        assert_eq!(text.strings.take_missing(), [format!("chips.{key}.name")]);
     }
 
     #[test]
@@ -1231,7 +1231,7 @@ mod tests {
         let mut hud = hud();
         hud.font_chars.retain(|c| c != "G");
         let mut problems = Problems::default();
-        assert_eq!(name_glyphs(&b, &hud, &b.content.chip(chip).name, chip, &mut problems).len(), 6);
+        assert_eq!(name_glyphs(&b, &hud, "SunGun3", chip, &mut problems).len(), 6);
         assert_eq!(problems.len(), 1);
         assert!(problems.lines()[0].contains("no glyph for ['G']"), "{:?}", problems.lines());
     }

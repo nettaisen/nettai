@@ -7,8 +7,6 @@ local controller = require("./controller")
 
 local grabbnsh = define.chip {
     id = "grabbnsh",
-    name = "GrabBnsh",
-    description = "20 damage\nfor every\nstolen sq",
     codes = { "B", "M", "S" },
     element = "null",
     family = "null",
@@ -26,8 +24,6 @@ local grabbnsh = define.chip {
 
 local grabrvng = define.chip {
     id = "grabrvng",
-    name = "GrabRvng",
-    description = "40 damage\nfor every\nstolen sq",
     codes = { "I", "Q", "Z" },
     element = "null",
     family = "null",
