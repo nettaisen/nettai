@@ -9,7 +9,7 @@ use super::{
 use crate::actor::{request, status as ai_status};
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
-use crate::content::SlideVector;
+use crate::content::{PushReading, SlideVector};
 use crate::field::{self, PanelType};
 use crate::object::{DragStep, ObjectRef, PanelPos, state};
 
@@ -479,17 +479,44 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
     let facing = |v: SlideVector| SlideVector { dx: v.dx * front, ..v };
     let v = match o.slide_type {
         0 => SlideVector::NONE,
-        1 => {
+        1 => match b.arena_rules().push_reading {
             // sub_800E548: from the hit modifier bits.
-            let hm = coll(b, r).hit_mod_final;
-            let off = if hm & 0x80 != 0 { 5 } else { 0 };
-            let bits = (hm & 0x7F) >> 2;
-            let i = (0..4).find(|&i| bits & (1 << i) != 0).unwrap_or(4);
-            facing(b.arena_rules().push_vectors[i + off])
-        }
+            PushReading::Bn6 => {
+                let hm = coll(b, r).hit_mod_final;
+                let off = if hm & 0x80 != 0 { 5 } else { 0 };
+                let bits = (hm & 0x7F) >> 2;
+                let i = (0..4).find(|&i| bits & (1 << i) != 0).unwrap_or(4);
+                facing(b.arena_rules().push_vectors[i + off])
+            }
+            // BN5's 0x0800C9D8: the first of bits 2 to 5 of the side-0
+            // hits' modifier, else of the side-1 hits' with the direction
+            // reversed; five rows (none past the fifth).
+            PushReading::Bn5 => {
+                let [from0, from1] = coll(b, r).hit_mod_by_side;
+                let first = |hm: u8| (0..4).find(|&i| (hm >> 2) & (1 << i) != 0).unwrap_or(4);
+                let (i, sign) = match first(from0) {
+                    4 => (first(from1), -1),
+                    i => (i, 1),
+                };
+                let v = b.arena_rules().push_vectors[i];
+                SlideVector { dx: v.dx * front * sign, ..v }
+            }
+        },
         2 => facing(*b.arena_rules().ice_vectors.get(coll(b, r).direction as usize).expect("ice slide direction")),
         3 => {
-            b.arena_rules().panels.road_slide(panel_kind(b, o.panel)).unwrap_or(SlideVector::NONE)
+            let kind = panel_kind(b, o.panel);
+            // BN5's metal (0x0800C8A8): the steps its slide tries by the
+            // direction of the move, the first the navi can slide to.
+            if let Some(slide) = b.arena_rules().panels.types[kind as usize].slide {
+                let tries = slide.tries.get(coll(b, r).direction as usize).copied().unwrap_or_default();
+                return tries
+                    .into_iter()
+                    .flatten()
+                    .map(|(dx, dy)| SlideVector { dx: dx * front, dy, tiles: 1 })
+                    .find(|v| can_slide_to(b, r, PanelPos { x: (o.panel.x as i8 + v.dx) as u8, y: (o.panel.y as i8 + v.dy) as u8 }))
+                    .unwrap_or(SlideVector::NONE);
+            }
+            b.arena_rules().panels.road_slide(kind).unwrap_or(SlideVector::NONE)
         }
         t => panic!("slide type {t} reads past its table"),
     };
@@ -506,4 +533,121 @@ pub(super) fn can_slide_to(b: &Battle, r: ObjectRef, p: PanelPos) -> bool {
     }
     let airshoes = flag1(b, r) & f1::AIRSHOE != 0;
     b.field.meets(p.x, p.y, b.arena_rules().panels.step.get(airshoes, b.objects.get(r).alliance))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::battle::battle_flags;
+    use crate::content::{Content, testing};
+    use std::sync::Arc;
+
+    /// A fight on the test content whose arena reads pushes `reading`:
+    /// the battle and its two navis (side 0 at (2, 2), side 1 at (5, 2)).
+    fn fight(reading: PushReading) -> (Battle, [ObjectRef; 2]) {
+        let mut c: Content = testing::build();
+        c.define().unwrap_or_else(|e| panic!("{e}"));
+        for rules in &mut c.rules {
+            rules.push_reading = reading;
+        }
+        let c = Arc::new(c);
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+        setup.content = c.hash();
+        let mut b = Battle::new(setup, c);
+        b.spawn_actors();
+        b.run_objects();
+        b.round.flags |= battle_flags::FIGHTING;
+        let players = [b.player(0).unwrap(), b.player(1).unwrap()];
+        (b, players)
+    }
+
+    /// The push of side 1's navi after hits from side 0 with modifier
+    /// `from0` and from side 1 with `from1` (BN6 reads them together).
+    fn push(reading: PushReading, from0: u8, from1: u8) -> SlideVector {
+        let (mut b, [_, r]) = fight(reading);
+        let c = coll_mut(&mut b, r);
+        c.hit_mod_final = from0 | from1;
+        c.hit_mod_by_side = [from0, from1];
+        b.objects.get_mut(r).slide_type = 1;
+        slide_vector(&b, r)
+    }
+
+    /// docs/design/bn5-map.md §15.3 item 2: BN5's push reads the side-0
+    /// hits' modifier toward the navi's front, else the side-1 hits' the
+    /// other way; BN6's reads them together, toward the front.
+    #[test]
+    fn bn5_pushes_by_the_hitters_side() {
+        // Bit 2: row 0, six panels along +x times the navi's front (side
+        // 1's is -1).
+        let left = SlideVector { dx: -1, dy: 0, tiles: 6 };
+        let right = SlideVector { dx: 1, dy: 0, tiles: 6 };
+        assert_eq!(push(PushReading::Bn6, 0x04, 0), left);
+        assert_eq!(push(PushReading::Bn6, 0, 0x04), left);
+        assert_eq!(push(PushReading::Bn5, 0x04, 0), left);
+        assert_eq!(push(PushReading::Bn5, 0, 0x04), right, "a hit from its own side pushes it the other way");
+        // The side-0 hits come first.
+        assert_eq!(push(PushReading::Bn5, 0x04, 0x08), left);
+        // BN6's 0x80 picks the vertical rows; BN5 has no such bit.
+        let v = push(PushReading::Bn6, 0x84, 0);
+        assert_eq!((v.dx, v.dy), (0, -1));
+    }
+
+    /// docs/design/bn5-map.md §15.2: lava (the test content's burns for 50,
+    /// as BN5's does) burns a grounded navi not of fire in fire, turning
+    /// normal, with its burn's spark; a navi of fire it leaves be.
+    #[test]
+    fn lava_burns_a_grounded_navi() {
+        let (mut b, [_, r]) = fight(PushReading::Bn6);
+        b.set_panel_type(5, 2, PanelType::Lava);
+        let sparks = |b: &Battle| b.objects.in_order().filter(|&o| b.local_kind_key(o).contains("spark")).count();
+        let before = sparks(&b);
+        crate::kinds::common::panel_burn(&mut b, r);
+        assert_eq!(coll(&b, r).acc.element_damage[1], 50);
+        assert_eq!(coll(&b, r).hit_mod_final & 3, 3, "a hit");
+        assert_eq!(b.field.panels[2][5].kind, PanelType::Normal);
+        assert_eq!(sparks(&b), before + 1, "its burn shows");
+        // A navi of fire stands on it.
+        b.set_panel_type(5, 2, PanelType::Lava);
+        coll_mut(&mut b, r).element = 1;
+        crate::kinds::common::panel_burn(&mut b, r);
+        assert_eq!(b.field.panels[2][5].kind, PanelType::Lava);
+    }
+
+    /// BN5's metal (0x0800C8A8, the tables at 0x0800C920 and 0x0800C9C0):
+    /// its slide tries steps by the direction of the move, the first the
+    /// navi can slide to: after a move up, forward (side 1's front is -x),
+    /// then up; after a move forward, down first.
+    #[test]
+    fn metal_slides_by_the_direction_of_the_move() {
+        let (mut b, [_, r]) = fight(PushReading::Bn6);
+        b.set_panel_type(5, 2, PanelType::Metal);
+        b.objects.get_mut(r).slide_type = 3;
+        coll_mut(&mut b, r).direction = 1;
+        assert_eq!(slide_vector(&b, r), SlideVector { dx: -1, dy: 0, tiles: 1 });
+        // Forward is the other side's: up is next.
+        b.set_panel_alliance(4, 2, 0);
+        assert_eq!(slide_vector(&b, r), SlideVector { dx: 0, dy: -1, tiles: 1 });
+        coll_mut(&mut b, r).direction = 4;
+        assert_eq!(slide_vector(&b, r), SlideVector { dx: 0, dy: 1, tiles: 1 });
+    }
+
+    /// docs/design/bn5-map.md §15.3 item 6: the mood rises to 254 at most,
+    /// falls to 1 at least, and 0 (and, rising, 0xFF) stays.
+    #[test]
+    fn the_mood_rises_and_falls_within_its_bounds() {
+        let (mut b, _) = fight(PushReading::Bn6);
+        let mood = |b: &Battle| b.stats[0].mood;
+        b.stats[0].mood = 250;
+        super::super::gain_mood(&mut b, 0, 10);
+        assert_eq!(mood(&b), 254);
+        super::super::lose_mood(&mut b, 0, 300);
+        assert_eq!(mood(&b), 1);
+        b.stats[0].mood = 0xFF;
+        super::super::gain_mood(&mut b, 0, 1);
+        assert_eq!(mood(&b), 0xFF);
+        b.stats[0].mood = 0;
+        super::super::gain_mood(&mut b, 0, 1);
+        super::super::lose_mood(&mut b, 0, 1);
+        assert_eq!(mood(&b), 0);
+    }
 }
