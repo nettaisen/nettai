@@ -784,7 +784,8 @@ groundman-win = 0xB0
 dustman-win = 0xB4
 protoman-win = 0xB8
 
-# Mugshots (`off_801CD08`).
+# Mugshots: the emotion window's (`off_801CD08`), then from 0x80 the link navis' faces
+# (`sub_801CC34`'s table, two palettes each: normal and Full Synchro).
 [mugshots]
 megaman = 0x00
 megaman-angry = 0x01
@@ -796,16 +797,22 @@ tomahawkcross = 0x06
 tengucross = 0x07
 groundcross = 0x08
 dustcross = 0x09
-spoutcross-full-synchro = 0x0A
-tomahawkcross-full-synchro = 0x0B
-tengucross-full-synchro = 0x0C
-groundcross-full-synchro = 0x0D
-dustcross-full-synchro = 0x0E
+spoutcross-tired = 0x0A
+tomahawkcross-tired = 0x0B
+tengucross-tired = 0x0C
+groundcross-tired = 0x0D
+dustcross-tired = 0x0E
 spoutcross-beast = 0x0F
 tomahawkcross-beast = 0x10
 tengucross-beast = 0x11
 groundcross-beast = 0x12
 dustcross-beast = 0x13
 falzar-beast = 0x14
-falzar-beast-angry = 0x15
+falzar-beast-full-synchro = 0x15
 falzar-beast-over = 0x16
+spoutman = 0x80
+tomahawkman = 0x81
+tenguman = 0x82
+groundman = 0x83
+dustman = 0x84
+protoman = 0x85

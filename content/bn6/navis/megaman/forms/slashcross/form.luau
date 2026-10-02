@@ -24,7 +24,9 @@ return define.form {
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = slash_a_charge.weapon },
     palette = 9,
-    mugshot = asset.mugshot("tengucross"),
+    -- Its faces in the emotion window, and once Beast Out is spent
+    -- (`byte_801E700`): the Falzar ROM has no SlashCross face, and shows TenguCross's.
+    mugshot = { normal = asset.mugshot("tengucross"), tired = asset.mugshot("tengucross-tired") },
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "sword", damage = 50 },
     -- The chips A charges.

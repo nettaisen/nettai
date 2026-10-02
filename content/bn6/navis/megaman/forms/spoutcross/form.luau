@@ -23,7 +23,8 @@ return define.form {
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = charged_chip_bonus_1f },
     palette = 5,
-    mugshot = asset.mugshot("spoutcross"),
+    -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
+    mugshot = { normal = asset.mugshot("spoutcross"), tired = asset.mugshot("spoutcross-tired") },
     -- The chips A charges.
     charged_chips = { { family = "aqua" } },
     -- A charged Aqua chip hits twice as hard, and an Aqua chip's use heals.

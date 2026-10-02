@@ -16,10 +16,9 @@ local variants = require("../../../../objects/projectile/variants")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
-    -- Ticks into the shot (AIAttackVars+0x10).
+    -- Ticks into the shot (AIAttackVars+0x10). (The shot's length is the
+    -- navi's `attack_count`.)
     timer: number,
-    -- The shot's length (AIAttackVars+0x12).
-    length: number,
     -- The shots still to follow (the attack's parameter byte +0x0D), and
     -- the volley cycle its setup shares with the Falzar buster's (+0x0E),
     -- which this action never reads.
@@ -59,7 +58,7 @@ local function shoot(me: Object, s: State)
         buster.raise_arm(me)
         me:set_status("using_action", true)
         me.step_init = 4
-        s.length = 6 - 2
+        me.attack_count = 6 - 2
         s.timer = 0
     end
     if s.timer == 1 then
@@ -77,7 +76,7 @@ local function shoot(me: Object, s: State)
     end
     local t = s.timer + 1
     s.timer = t
-    if t > s.length then
+    if t > me.attack_count then
         me.step = NEXT
         me.step_init = 0
         return
@@ -139,7 +138,7 @@ end
 
 gregar_beast_buster.action = define.action {
     id = "megaman/gregar-beast-buster/action",
-    state = { timer = "u16", length = "u16", repeats = "u8", cycle = "u8" },
+    state = { timer = "u16", repeats = "u8", cycle = "u8" },
     update = update,
 }
 

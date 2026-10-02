@@ -19,6 +19,8 @@ return define.form {
     element = "fire",
     buster_bonus = 1,
     weapons = { buster = gregar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = charge.weapon },
+    -- Its face in the emotion window (`byte_801E700`): the Falzar ROM has no
+    -- HeatCross Beast face, and shows SpoutCross Beast's.
     mugshot = asset.mugshot("spoutcross-beast"),
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "fire", damage = 50 },
