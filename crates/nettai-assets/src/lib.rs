@@ -299,8 +299,9 @@ pub struct Hud {
     /// `font_chars[k]`.
     pub font: Tiles,
     /// What each glyph of the font draws, as text (the game's text
-    /// encoding; a glyph with no character of its own has a bracketed name,
-    /// `[EX]`). Content's names are written in these.
+    /// encoding; the game's marks are characters, one in the Private Use
+    /// Area for a glyph Unicode has none for: the stacked EX is U+E002).
+    /// Content's names are written in these.
     pub font_chars: Vec<String>,
     /// The opponent's HP digits by colour (normal, dropping, rising):
     /// glyph d is digit d.
@@ -493,7 +494,7 @@ impl Hud {
                 .enumerate()
                 .filter(|(_, g)| !g.is_empty() && rest.starts_with(g.as_str()))
                 // The first of equally long names: the encoding has two
-                // spaces.
+                // spaces and two hyphens, each pair drawn alike.
                 .min_by_key(|(k, g)| (std::cmp::Reverse(g.len()), *k));
             match best {
                 Some((k, g)) => {
@@ -529,14 +530,18 @@ pub struct BannerLayout {
 mod tests {
     use super::*;
 
+    /// A glyph name may be several characters (bn5-extract names a glyph
+    /// its content has no character for by its number, `[0a3]`); BN6's
+    /// are one each, its marks too (U+E002 the stacked EX).
     #[test]
     fn text_takes_the_longest_glyph_names() {
         let hud = Hud {
-            font_chars: [" ", "A", "[", "[EX]", "n", " "].map(String::from).to_vec(),
+            font_chars: [" ", "A", "[", "[0a3]", "n", " ", "\u{E002}"].map(String::from).to_vec(),
             ..Hud::default()
         };
-        assert_eq!(hud.glyphs("An [EX]"), (vec![1, 4, 0, 3], vec![]));
-        assert_eq!(hud.glyphs("A?[E"), (vec![1, 2], vec!['?', 'E']));
+        assert_eq!(hud.glyphs("An [0a3]"), (vec![1, 4, 0, 3], vec![]));
+        assert_eq!(hud.glyphs("A?[0"), (vec![1, 2], vec!['?', '0']));
+        assert_eq!(hud.glyphs("An\u{E002}"), (vec![1, 4, 6], vec![]));
     }
 
     #[test]

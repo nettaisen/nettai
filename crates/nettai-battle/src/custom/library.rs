@@ -303,6 +303,11 @@ pub(crate) mod testing {
         fn run_message(&self, _navi: NaviHandle) -> [u8; 3] {
             [19, 12, 0]
         }
+        /// Form f's description has f % 3 + 1 lines, so a test can tell
+        /// whose description a chatbox shows.
+        fn cross_description_lines(&self, form: FormHandle) -> u8 {
+            (form.0 % 3) as u8 + 1
+        }
         fn layout(&self) -> &CustomScreenLayout {
             &self.layout
         }

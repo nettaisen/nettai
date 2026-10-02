@@ -69,7 +69,7 @@ application is its `round_setup` hook. The engine knows nothing of cards.
   are for. compat records.toml's `[patch_cards]` gives each its number.
 - **Their names are the locales'** (content/bn6/locales/en.toml and ja.toml), as every display text since the
   locales landed: a `[records]` table by record key, a record's name, rather than a table of the cards' own, since
-  the engine knows no cards; the card weapons' names are in `[weapons]`.
+  the engine knows no cards. The card weapons have no names: nothing shows a weapon's (text-rendering.md §10.2).
 - **The setup** is `cards = "record:patch-card[16]"` and `off = "bool[16]"`: 48 of the setup block's 64 bytes.
   Sixteen cards is as many as the 80 MB allow (each card takes 5 or more); the save's list has room for 32, which
   the block couldn't hold, but no legal save has more than 16.
