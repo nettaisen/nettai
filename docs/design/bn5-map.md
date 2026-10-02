@@ -39,8 +39,11 @@ How to read a pair: `bmap.py diff NAME` prints a BN6 routine beside its BN5 coun
   88 KB, in some 450 blocks (§6).
 - **Team ProtoMan and Team Colonel** differ in about 22 battle routines; their code is otherwise the same, moved
   (mostly by 0xE8) (§7).
-- **Tango plays BN5 netbattles as Team Battles** (the Battle Chip Gate's row), not as plain NetBattles (§8). That
-  is a scope question.
+- **Tango plays BN5 netbattles as Team Battles** (the Battle Chip Gate's row), not as plain NetBattles (§8); the
+  user chose Team Battles first.
+- **BN5 is traced** (§10): oracle-trace, the chip lab and difftest know BN5's two US ROMs, and a first Team Battle
+  of the original is recorded. **bn5-extract** writes a BN5 pack (§11) that says its game, so it loads beside
+  BN6's under its own names (§9).
 
 ## 1. Method
 
@@ -167,9 +170,21 @@ reads:
 | 0x0203CDB0 | the battle folder | 0x0203C830 | −0x580 |
 | 0x0203CE00 | NaviStats (two) | 0x0203C880 | −0x580 |
 | 0x0203F7D8 | the link struct | 0x0203F244 | −0x594 |
+| 0x020352A0 | the custom gauge (rate at +2) | 0x02035700 | +0x460 |
+| 0x020352C0 | the HUD's task mask | 0x02035720 | +0x460 |
+| 0x02001B8A | the pause flag (toolkit +0x3C, +0xA) | 0x02002949 (+9) | |
+| 0x0203F558, 0x0203F658 | the exchanged transform records | 0x0203EFC8, 0x0203F0C8 | −0x590 |
+| 0x020364C0, 0x020365C0 | the custom screen's state and slots | 0x02036B10, 0x02036C10 | +0x650 |
 
-BattleState, RNG1, RNG2, the hands and actor 0 agree with Tango's BN5 support. The rest of the trace's addresses
-(the gauge, the HUD task mask, the pause flag, the stage list, the exchange records) are for the oracle work.
+BattleState, RNG1, RNG2, the hands and actor 0 agree with Tango's BN5 support, and every row was checked on
+running consoles (§10): the gauge fills to 0x4000, the pause flag is set through the turn's banners as BN6's is,
+the transform records hold the requesting navi at +8. Three layouts differ besides the moves:
+
+- **The panels are 0x24 bytes** (BN6 0x20): BN5's panel getter (0x0800BD1C, ROM code; BN6's is IWRAM code)
+  multiplies by 0x24. The type and owner are at +2 and +3, as in BN6.
+- **The sound queue's entries start at +8** (BN6 +0xC); the m4a players are BN6's moved 0xBE0 on, and BN5's queue
+  has no conditional-music request (BN6's `sub_8000822`).
+- **The actor pool** (§3.1): 16 slots.
 
 **IWRAM code:** BN5 copies 0x1C58 bytes from 0x081C7A00 to **0x03005C00** (BN6: 0x1ED4 bytes from 0x081D6000 to
 0x03005B00).
@@ -256,22 +271,29 @@ setup, and its few routines are version branches.
   0x0814D768, TempoControl 0x0814E698, PitchControl 0x0814E724, VolumeControl 0x0814E6BC, FadeOut 0x0814D58C,
   SongNumStop 0x0814D700, ImmInit 0x0814D82C, FadeIn 0x0814D800 (all the same code). **Two** link applets call
   the frame routine: 0x081359C4 (the plain NetBattle's, BN6 `sub_812B698`'s counterpart by shape) and 0x0813B4DC
-  (the Team Battle's, presumably).
+  (the Team Battle's: Tango's Team Battles return there).
 - **Tango and Team Battles:** since 2026-08-05 Tango's BN5 primer raises the Battle Chip Gate flag and confirms
   the comm menu's Team Battle row (チームバトル), so every Tango BN5 match is a Team Battle (mode bytes 4–7), with
-  Patch Cards on. Whether nettai's BN5 is the plain NetBattle, the Team Battle or both is a decision for the user
-  (multi-game.md §6 decision 5).
+  Patch Cards on. **The user's decision (2026-10-02): Team Battle first**, as Tango plays it (its custom screen,
+  team navis and switching); a plain NetBattle later. A plain NetBattle would add the comm menu's first row in the
+  primer and the other link applet, and leave out the flag-0x40 custom screen and the navi switch.
 - **Replays:** no BN5 replay in Tango's current format. Three of 2022 in the oldest format (0x10) and six in
   format 0x11 (made with the bn5_gate patch), the same kind of savestate-started rounds the 2022 BN6 replays are;
   two BN5 DS replays (another platform, out of scope).
-- **Saves:** both US ROMs have saves, and Tango carries light and dark templates for all four BN5 ROMs.
+- **Saves:** the .sav files beside the US ROMs are blank; Tango's saves folder has finished US saves (Team
+  ProtoMan light, Team Colonel dark), which the chip lab uses, and Tango carries light and dark templates for all
+  four BN5 ROMs.
 - **The Japanese ROMs** (BRBJ, BRKJ) are not mapped yet (`bmap.py --to BRBJ` would).
 
-## 9. Asset packs that load together (a proposal, for the rules design)
+## 9. Asset packs that load together (agreed)
 
-The user wants BN5 composable with BN6 content, and the rules design (rules-in-luau.md §7) has one ruleset per
-player, content roots with qualified keys (`bn6:minibomb`), a shared root content/nettai, and each root's `asset.*`
-names resolving in its own pack (`assets = "bn6"` in its root.toml). For the packs:
+The user wants BN5 composable with BN6 content. The rules design (rules-in-luau.md §7) and this proposal agree,
+and the user confirmed (2026-10-02): every pack and content root declares its game (`game = "bn5"`); the loader
+qualifies names as `<game>:<key>` (`bn5:cannon`) when roots load together; inside a root and its compat, keys and
+asset names stay unqualified; version suffixes `-protoman`/`-colonel` and the region as a field; a root manifest
+has `name` (its namespace) and `assets` (whose pack it resolves in, its own game by default). **No shared content
+library:** every game exports its own content, even where it overlaps with BN6's (`bn5:cannon` and `bn6:cannon`
+are separate), so BN5's assets are named for BN5 alone. For the packs:
 
 - **A pack says its game.** The manifest (content.toml) gains `game = "bn5"` (BN6's packs `game = "bn6"`), the
   name a root's `assets` refers to. A loader given several packs keys them by it, and refuses two of one game.
@@ -293,7 +315,50 @@ names resolving in its own pack (`assets = "bn6"` in its root.toml). For the pac
   HUD and custom screen differ (souls, team navis); bn5-extract writes what is shared in those formats and leaves
   the rest to formats the BN5 ruleset will need, rather than stretch BN6's.
 
-## 10. Reproducing
+## 10. Tracing BN5 (as built)
+
+The verification workspace traces BN5 consoles as it does BN6's, with the same line format:
+
+- **oracle-trace** has the games `TeamProtoMan` (BRBE) and `TeamColonel` (BRKE), their hooks (§8; both link
+  applets' returns are trapped) and a RAM `Layout` per game (§3.4). BN6's lines are byte-identical to before. A
+  BN5 setup line says `"game":"bn5"`, has BN5's 0x60-byte NaviStats blocks, and leaves out what is BN6's alone
+  (SP times, link navi levels, bug frags, event flags, Tag chips). The hooks test checks every BN5 hook against
+  BN6's code (masked for what moves, RAM included) and Team Colonel's against Team ProtoMan's.
+- **chiplab** runs BN5 consoles from a base of BN5 ROMs and saves (Tango's primer walks into a Team Battle),
+  edits BN5 saves (folder, Regular chip, navi, HP) and drives them; BN5's navi stands idle in action 6 (BN6 8).
+  BN5's scenarios are a library of their own, recorded apart from BN6's lab.
+- **difftest** takes BN5 replays (none exists in Tango's current format yet).
+- **The first trace:** a plain Team Battle, Team ProtoMan (traced) against Team Colonel, each picking the first chip
+  dealt every turn and shooting until Team ProtoMan's navi is deleted: 3,216 frames, a full round from the intro
+  to the deletion. Nothing replays it yet.
+- Observed on the way: a Team Battle's custom screen keeps its state in the shared screen's block; Patch Cards apply
+  in Team Battles (the Team ProtoMan save's take 150 off its max HP); the sound queue and panels differ (§3.4).
+
+## 11. The BN5 pack (as built)
+
+`bn5-extract content <protoman-us> <colonel-us> <protoman-jp> <colonel-jp> <pack-dir>` (the four ROMs by header,
+as bn6-extract takes BN6's) writes a pack whose manifest says `game = "bn5"`:
+
+- **What it has:** the 272 battle sprites (the same in both US ROMs), the field (11 panel types, BN6 13; one
+  highlight block for both highlights, BN6 two), the 29 battle backgrounds with their scrolling and animations, the
+  m4a bank (308 songs, 105 samples), the 368 chips' pictures and icons, the HUD's 8x16 font, and the dialogue font
+  (442 glyphs; BN5's advance table is a word a glyph, BN6's a byte).
+- **Versions:** 12 chips (0x12D–0x136, 0x139, 0x13A: the version navi chips) are drawn differently by each
+  version's ROM; their pictures and icons are in the pack twice, `chip-12d-protoman` and `chip-12d-colonel`, with
+  their `version`.
+- **Left out, for now:**
+  - Team Colonel's own songs 0x13C–0x142, 0x145, 0x146, 0x170, 0x171 (its navi chips' sounds): a song's number is
+    its identity in a pack, so a version's own songs need a version-aware sound index first.
+  - The Japanese ROMs' one different sprite (14-17, which has text on it): the US release localized it rather than
+    cut it, so the pack keeps the US's, as BN6's does.
+  - BN5's HUD and custom-screen layouts (§9).
+- **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until a BN5 content
+  root names them in its compat, as BN6's does.
+- **Shared decoding:** the sprite archive and GFX-animation decoders are BN6's format and code; bn5-extract has its
+  own copy, which belongs in one shared decoder with bn6-extract's when that is next reworked.
+- nettai-content's HUD reader now accepts a pack without the count box (BN5 has none).
+
+## 12. Reproducing
 
 In the verification workspace, with the ROMs in `$BN6_ROMS` and the BN6 disassembly's symbols in `$BN6F`:
 
