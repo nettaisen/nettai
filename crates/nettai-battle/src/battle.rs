@@ -800,6 +800,15 @@ impl Battle {
         }
     }
 
+    /// The rules of chip `chip`'s own game (docs/design/rules-in-luau.md
+    /// §7.5: a chip runs as its game wrote it); no chip, the arena's.
+    pub fn chip_rules(&self, chip: Option<nettai_content_api::ChipHandle>) -> &crate::content::Rules {
+        match chip {
+            Some(h) => self.content.rules_of(self.content.defs.root_of(&self.content.defs.chip(h).key)),
+            None => self.arena_rules(),
+        }
+    }
+
     /// Start a banner unless one is showing (`Banner::start`). Returns
     /// false if one was.
     pub fn start_banner(&mut self, id: BannerId) -> bool {
