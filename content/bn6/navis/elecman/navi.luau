@@ -17,8 +17,13 @@ return define.navi {
     -- ElecMan face, and shows TomahawkMan's.
     mugshot = asset.mugshot("elecman"),
     merge_height = 0,
-    run_message = { 20 },
-    run_message_text = "Don't run away now!!",
+    -- The no-running message: its lines' characters (which time it), its
+    -- words, and the portrait beside it.
+    run_message = {
+        counts = { 20 },
+        text = "Don't run away now!!",
+        portrait = asset.sprite("elecman-portrait"),
+    },
     own_chip = { chip = elecman, code = "E" },
     chip_bonus = {
         family = "elec",

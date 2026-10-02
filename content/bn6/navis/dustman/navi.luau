@@ -17,8 +17,13 @@ return define.navi {
     -- Its face in the emotion window (`byte_801CDDC`).
     mugshot = asset.mugshot("dustman"),
     merge_height = 0,
-    run_message = { 18, 16, 9 },
-    run_message_text = "Hahahah! You can't\nleave 'em in the\ndust now!",
+    -- The no-running message: its lines' characters (which time it), its
+    -- words, and the portrait beside it.
+    run_message = {
+        counts = { 18, 16, 9 },
+        text = "Hahahah! You can't\nleave 'em in the\ndust now!",
+        portrait = asset.sprite("dustman-portrait"),
+    },
     own_chip = { chip = dustman, code = "D" },
     chip_bonus = {
         family = "break",

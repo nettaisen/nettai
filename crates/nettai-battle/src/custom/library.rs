@@ -42,6 +42,15 @@ pub trait Library {
     /// The navi's no-running message: the characters in each of its lines
     /// (a line after the first with none isn't there).
     fn run_message(&self, navi: NaviHandle) -> [u8; 3];
+    /// Which of its characters move the speaker's mouth, by line
+    /// (`RunMessage::talking`). Presentation.
+    fn run_message_talking(&self, _navi: NaviHandle) -> [u32; 3] {
+        [0; 3]
+    }
+    /// The lines of a Cross's description (`FormData::description_lines`).
+    fn cross_description_lines(&self, _form: FormHandle) -> u8 {
+        3
+    }
     /// The screen's slot grid and neighbour scans.
     fn layout(&self) -> &CustomScreenLayout;
     /// Whether a banner stays up until let go (the Program Advance's).
@@ -110,8 +119,16 @@ impl Library for Content {
     }
 
     fn run_message(&self, navi: NaviHandle) -> [u8; 3] {
-        let lines = &self.navi(navi).run_message;
+        let lines = &self.navi(navi).run_message.counts;
         std::array::from_fn(|i| lines.get(i).copied().unwrap_or(0))
+    }
+
+    fn run_message_talking(&self, navi: NaviHandle) -> [u32; 3] {
+        self.navi(navi).run_message.talking()
+    }
+
+    fn cross_description_lines(&self, form: FormHandle) -> u8 {
+        self.form(form).description_lines()
     }
 
     fn layout(&self) -> &CustomScreenLayout {

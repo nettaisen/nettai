@@ -73,9 +73,13 @@ impl<'a> Renderer<'a> {
         self.names.clear();
         let navi = crate::custom::navi_number(b, b.setup.local_side);
         let emblem = crate::custom::emblem_tiles(&assets.custom, crate::custom::version_name(b, b.setup.local_side), navi);
+        let chatbox = crate::chatbox::prepare(b, assets, &mut self.problems);
         let mut list = SpriteList::default();
         objects::queue_objects(b, assets, &view, &mut list, &mut self.problems);
         crate::custom::draw(b, assets, &emblem, &mut self.hud, &mut self.names, &mut list, &mut self.problems);
+        if let Some(c) = &chatbox {
+            crate::chatbox::draw(c, assets, &mut self.names, &mut list);
+        }
         crate::hud::draw(b, assets, &self.hud_state, &mut self.hud, &mut list, &mut self.problems);
         let (jx, jy) = crate::custom::hud_jitter(b);
         self.hud.shift(-jx, -jy);

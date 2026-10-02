@@ -8,6 +8,7 @@
 
 pub mod app;
 pub mod audit;
+pub mod chatbox;
 pub mod compose;
 pub mod custom;
 pub mod driver;

@@ -25,6 +25,8 @@ return define.form {
     palette = 17,
     -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
     mugshot = { normal = asset.mugshot("tomahawkcross"), tired = asset.mugshot("tomahawkcross-tired") },
+    -- What R shows in the Cross window.
+    description = "Chrg WoodChip:\nAtk x2! Status\nGuard:NoAbnorm",
     -- The chips A charges.
     charged_chips = { { family = "wood" } },
     -- A charged Wood chip hits twice as hard.

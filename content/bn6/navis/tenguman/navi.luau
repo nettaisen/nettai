@@ -18,8 +18,13 @@ return define.navi {
     -- Its face in the emotion window (`byte_801CDDC`).
     mugshot = asset.mugshot("tenguman"),
     merge_height = -8,
-    run_message = { 15, 7 },
-    run_message_text = "Don't turn your\nback...",
+    -- The no-running message: its lines' characters (which time it), its
+    -- words, and the portrait beside it.
+    run_message = {
+        counts = { 15, 7 },
+        text = "Don't turn your\nback...",
+        portrait = asset.sprite("tenguman-portrait"),
+    },
     own_chip = { chip = tenguman, code = "T" },
     chip_bonus = {
         family = "wind",

@@ -17,8 +17,13 @@ return define.navi {
     -- HeatMan face, and shows SpoutMan's.
     mugshot = asset.mugshot("heatman"),
     merge_height = 8,
-    run_message = { 18, 17 },
-    run_message_text = "This is no time to\nrun out of here!!",
+    -- The no-running message: its lines' characters (which time it), its
+    -- words, and the portrait beside it.
+    run_message = {
+        counts = { 18, 17 },
+        text = "This is no time to\nrun out of here!!",
+        portrait = asset.sprite("heatman-portrait"),
+    },
     own_chip = { chip = heatman, code = "H" },
     chip_bonus = {
         family = "fire",
