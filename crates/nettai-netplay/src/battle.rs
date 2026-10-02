@@ -234,6 +234,8 @@ mod tests {
             .collect();
         assert_eq!(got, inputs);
         // The plain ticks are a byte each; the result is a few chunks.
+        let result = crate::wire::to_bytes(inputs[2].events.recorded[1].as_ref().unwrap().result.as_deref().unwrap());
+        eprintln!("a datagram of {} bytes, the result {} bytes", datagram.len(), result.len());
         assert!(datagram.len() < 200, "{} bytes", datagram.len());
     }
 }
