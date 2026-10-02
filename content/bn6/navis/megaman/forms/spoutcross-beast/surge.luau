@@ -57,12 +57,14 @@ local function count(me: Object, s: State)
 end
 
 -- `sub_80D390A`: resolve the hits (a hit takes the region away), count,
--- and present again (even on its last tick); gone once the battle is over.
+-- and present again (even on its last tick); gone once time is up (it
+-- reads battle_isBattleOver's Z flag, which a KO leaves clear: after one
+-- it surges on).
 local function tick(me: Object)
     local c = me.collision
     c:remove()
     me:hit_spark()
-    if battle.over() then
+    if battle.time_up() then
         me.visible = false
         c:set_region(nil)
         me:set_lifecycle("destroy")
