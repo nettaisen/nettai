@@ -147,13 +147,25 @@ pub fn shade(mut p: Palette, shader: u16) -> Palette {
     p
 }
 
-/// The palette flash effect (`sub_80E10C0`) turns the tile layers white on
-/// the frames its counter has bit 2 clear (measured: the sprites keep their
-/// colours).
-pub fn palette_flash(b: &Battle) -> bool {
-    b.objects.in_order().any(|r| {
-        let o = b.objects.get(r);
-        is(b, o, EngineKind::PaletteFlash) && o.state != 0 && o.timer & 4 == 0
+/// The palette flash showing this frame (`sub_80E10A4`), by its variant:
+/// 0 (`sub_80E10C0`) whitens the stage's palettes (background palettes
+/// 0-8) on the frames its counter has bit 2 clear; 1 (`sub_80E114C`, the
+/// FlashBomb's) the background palettes 0-14 (the stage's and the HUD's)
+/// and the sprites' every frame. Neither shows while the battle holds it
+/// (paused, or dimmed unless it keeps flashing then): it turns its palette
+/// transform off.
+pub fn palette_flash(b: &Battle) -> Option<u8> {
+    b.objects.in_order().map(|r| b.objects.get(r)).find_map(|o| {
+        if !is(b, o, EngineKind::PaletteFlash) || o.state == 0 {
+            return None;
+        }
+        let [variant, _, mode, _] = o.params;
+        let (while_dimmed, while_paused) = (mode & 1 != 0, mode & 2 != 0);
+        // (Variant 1 tests the pause bit where variant 0 tests the dimming
+        // one.)
+        let keeps_dimming = if variant == 1 { while_paused } else { while_dimmed };
+        let held = !while_paused && (b.paused || (!keeps_dimming && b.is_dimmed()));
+        (!held && (variant == 1 || o.timer & 4 == 0)).then_some(variant)
     })
 }
 

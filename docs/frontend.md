@@ -205,8 +205,12 @@ after the camera, so a shake moves them against the sprites there.
 black after the first battle of a set), the round's end to black. A dimming
 darkens the stage (background and field: the palettes 0-8) and leaves the
 sprites and the HUD's layer. The transformation sequencer fades every tile
-layer to black while navis change form (sprites keep their colours) and
-the palette flash whitens them.
+layer to black while navis change form (sprites keep their colours). A
+palette flash takes the transformation's palette transform: variant 0
+(`sub_80E10C0`) whitens the stage's palettes on the frames its counter has
+bit 2 clear and leaves the HUD's colours, variant 1 (`sub_80E114C`, the
+FlashBomb's) whitens the stage, the HUD and the sprites every frame;
+neither shows while the battle holds it (`objects::palette_flash`).
 
 **The custom screen** (`custom.rs`): the local player's screen as the
 original draws it on its console (`sub_8026A28` and its states), from the
@@ -339,9 +343,5 @@ drifting by a frame (its screenshots are still taken at the tick's end).
   training viruses' (NameIDs 0x49..=0x4E: moved 32 pixels left), and a
   warning marker within 16 pixels left of or above the screen, for which
   the original writes a garbled sprite.
-- During the palette flash (`sub_80E10C0`) the original keeps the HUD
-  layer's colours (the HP box and the gauge), where the frontend whitens
-  every tile layer (seen in a longer recording of DeltaRay's hit, not yet
-  in the sample).
 - The background scroll starts one frame earlier in the first round of a
   set than in later ones (measured).
