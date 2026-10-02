@@ -40,6 +40,8 @@ const TEXT_SPRITES: [(usize, usize); 3] = [(0, 16), (16, 16), (32, 8)];
 /// descenders in (a font's go lower than the dialogue font's, which the
 /// buffer's 40 rows hold; the box's frame is further down).
 const DESCENDER_ROWS: usize = 3;
+/// The pixels a line keeps clear of the box's right frame.
+const BORDER_GAP: i32 = 1;
 /// The key-wait arrow's place by the box (`byte_8045DCC`): the message
 /// box's (the default) and the description box's (`E8 06 01 01`).
 const ARROW_AT: [(i32, i32); 2] = [(0xE2, 0x8D), (0xCA, 0x8D)];
@@ -292,12 +294,12 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
 }
 
 /// The room a line of text has in an open box of `kind`, in pixels from
-/// the text's left: up to the inner edge of the box's right frame, on the
-/// map's row at the text's middle (the first pixel column, from the inside,
-/// of the rightmost tile drawn on that row that isn't the colour under the
-/// text's left). The description box ends 27 tiles in, short of the line
-/// buffer's 192 pixels; the message box spans the screen. The line
-/// buffer's width when the map has no such frame.
+/// the text's left: up to a pixel short of the inner edge of the box's
+/// right frame, on the map's row at the text's middle (the first pixel
+/// column, from the inside, of the rightmost tile drawn on that row that
+/// isn't the colour under the text's left). The description box ends 27
+/// tiles in, short of the line buffer's 192 pixels; the message box spans
+/// the screen. The line buffer's width when the map has no such frame.
 pub fn text_room(g: &Graphics, kind: usize) -> i32 {
     let fallback = TEXT_WIDTH as i32;
     let Some(map) = g.boxes.get(kind).map(|steps| &steps[3]) else { return fallback };
@@ -313,7 +315,7 @@ pub fn text_room(g: &Graphics, kind: usize) -> i32 {
     let drawn = |e: &&nettai_assets::MapEntry| g.tiles.get(e.tile as usize).is_some_and(|t| t.iter().any(|&p| p != 0));
     let Some((col, frame)) = row.iter().enumerate().rev().find(|(_, e)| drawn(e)) else { return fallback };
     let inner = (0..8).find(|&x| pixel(frame, x) != Some(fill)).unwrap_or(8);
-    (8 * col as i32 + inner as i32 - TEXT_X).clamp(1, fallback)
+    (8 * col as i32 + inner as i32 - BORDER_GAP - TEXT_X).clamp(1, fallback)
 }
 
 /// The box's map at an opening step (`chatbox_CopyBackgroundTiles_8040344`).
@@ -489,14 +491,14 @@ mod tests {
         Graphics { tiles, boxes: vec![steps(29), steps(26)], ..Graphics::default() }
     }
 
-    /// A line's room is the open box's inside: up to its right frame's
-    /// border, 212 for the description box and 236 for the message box,
-    /// from the text's left at 51.
+    /// A line's room is the open box's inside: up to a pixel short of its
+    /// right frame's border (212 for the description box, 236 for the
+    /// message box), from the text's left at 51.
     #[test]
     fn a_line_has_the_room_of_its_boxs_inside() {
         let g = bn6_like_boxes();
-        assert_eq!(text_room(&g, MESSAGE_BOX), 236 - TEXT_X);
-        assert_eq!(text_room(&g, DESCRIPTION_BOX), 212 - TEXT_X);
+        assert_eq!(text_room(&g, MESSAGE_BOX), 236 - 1 - TEXT_X);
+        assert_eq!(text_room(&g, DESCRIPTION_BOX), 212 - 1 - TEXT_X);
         // No graphics: the line buffer.
         assert_eq!(text_room(&Graphics::default(), DESCRIPTION_BOX), TEXT_WIDTH as i32);
     }
