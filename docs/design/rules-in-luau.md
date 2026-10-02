@@ -1071,7 +1071,7 @@ content.
   editor, `--match`, a netplay offer and live play's random draw go through it (`nettai_match::folders`). The draw
   makes a folder from the rules' pool (`rule = "chip"`: the chips the hook accepts one at a time) and keeps a
   chip only when the partial folder breaks nothing. Its draws are the same as the Rust rules': the same seed gives
-  the same folders (seed 42's drawn match file has the same folders and stats as before the move).
+  the same folders (seed 42's drawn match file has the same folders as before the move).
 - **The editor's chip pictures** come from each chip's own game's pack (R3b's "not done"): `Pictures::load`
   takes the packs in `pack_paths` order and looks a chip's icon and art up in its root's `assets` pack, by its
   local key.
