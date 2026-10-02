@@ -8,10 +8,13 @@ local chargecross_beast = require("../chargecross-beast/form")
 local buster = require("../../weapons/buster/weapon")
 local tackle = require("./tackle")
 local charged_chip_bonus_29 = require("../../weapons/charged-chip-bonus-29/weapon")
+local forms = require("../../../../rules/forms/system")
 
 return define.form {
     id = "chargecross",
     kind = "cross",
+    -- What changes MegaMan into it (BN6's five sequences).
+    change = forms.action,
     game = "gregar",
     cross_of = chargeman,
     beast = chargecross_beast,

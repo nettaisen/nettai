@@ -562,6 +562,43 @@ declare class Object
     function refresh_form_overlay(self): ()
     -- `object_exitAttackState`: back to idle with animation 0.
     function exit_attack(self): ()
+
+    -- What a game's rules do to a navi (docs/design/rules-in-luau.md §4.5).
+    -- The invulnerability ends (its timer and flag).
+    function clear_invulnerable(self): ()
+    -- `sub_800F46C` + `sub_800F2C6`: face the default way under the
+    -- standard column patterns, and the sprite with it.
+    function face_default(self): ()
+    -- The charge drops: its counters and the hold requests.
+    function reset_charge(self): ()
+    -- `sub_80C4C3A`: the Full Synchro aura goes.
+    function end_full_synchro_aura(self): ()
+    -- `sub_80158FA`: movement, reactions and the slower statuses end.
+    function drop_statuses(self): ()
+    -- `sub_801A264`: a navi's statuses end: their flags, requests and
+    -- timers (not the whole status word, as `clear_statuses`).
+    function end_statuses(self): ()
+    -- The navi's overlay (related2) keeps stepping through pauses and
+    -- dimming ("keep": its Param3 1, flags 0x14) or steps like any object
+    -- ("normal"). Nothing without an overlay.
+    function overlay_stepping(self, mode: "keep" | "normal"): ()
+    -- `sub_8011384`, `sub_8011268`: take off what a form wore, put on what
+    -- it wears.
+    function take_off_form_overlay(self, form: FormDef): ()
+    function put_on_form_overlay(self, form: FormDef): ()
+    -- `sub_800FC9E` and a form change's load: the navi's sprite in `form`,
+    -- its animation 0 from the start, shadow on the ground, facing, white.
+    function load_form_sprite(self, form: FormDef): ()
+    -- `sub_80144C0`: the full status reset.
+    function reset_status(self): ()
+    -- Anger ends; the mood is back to 0x80.
+    function end_anger(self): ()
+    -- The form the navi's side asked to change into at this turn's start
+    -- (nil: none, or the base form).
+    function form_change_target(self): FormDef?
+    -- `sub_80C4526(overlay, 1)`: an overlay on an image sits in front (an
+    -- idle overlay keeps its owner's height).
+    function pin_overlay(self): ()
     -- `sub_801171C`: back to idle, the animation as it is.
     function end_attack(self): ()
     -- `object_setAttack0..5`: start an action (a definition); kind 1
@@ -655,6 +692,7 @@ declare class Navi
     mood: number
     -- Writable: the Beast Out turns left.
     beast_out_counter: number
+    -- (`form` is writable too: a game's form change puts the navi in it.)
     -- The form the navi started the battle in.
     starting_form: FormDef
     -- The navi's game: 0 Gregar, 1 Falzar.
@@ -906,6 +944,11 @@ declare battle: {
     -- at `magnitude` (0-3). Drawn only, but each shaking tick draws from
     -- the consoles' own RNGs, which ChpShufl's re-deal reads.
     shake_camera: (magnitude: number, ticks: number) -> (),
+    -- `sub_80302B6`: the cameras' second shake.
+    shake_camera_secondary: (magnitude: number, ticks: number) -> (),
+    -- `sub_80EA438`: a burst around the navi's panel (effect #0x90, which
+    -- runs while paused).
+    burst: (navi: Object) -> Object?,
     -- `sub_801DA48` (`shown`) or `sub_801DACC` with the parts' HUD draw
     -- tasks: every console shows or hides them (drawn only).
     show_hud: (parts: { HudPart }, shown: boolean) -> (),
@@ -1326,6 +1369,9 @@ export type SystemSpec = {
     id: string,
     state: StateSchema?,
     setup: StateSchema?,
+    -- Its own actions, which reach its state (`system.state()`) for the
+    -- side of the navi running them.
+    actions: { Action }?,
     hooks: {
         -- Once per side as the round is set up, before anything reads the
         -- side's navi stats (`battle.navi(side)`), which it may change.
@@ -1611,6 +1657,10 @@ export type FormDef = {
     weakness: { string }?,
     buster_bonus: number,
     kind: "base" | "cross" | "beast" | "cross_beast" | "beast_over",
+    -- The action that changes a navi into it (a game's form change: BN6's
+    -- forms', rules/forms), which the pause handler runs at a turn's start.
+    -- Every form but the base form names one.
+    change: Action?,
     -- Whose game's form it is (the Beast's roar, Beast Over's glow).
     game: ("gregar" | "falzar")?,
     -- The navi a Cross (and one in Beast Out) is made with.
@@ -1878,10 +1928,6 @@ export type RolesSpec = {
         cut_in_flash: Effect?,
         trap_mark: Effect?,
         encased: Effect?,
-        form_change: Effect?,
-        beast_over_gregar: Effect?,
-        beast_over_falzar: Effect?,
-        beast_over_blast: Effect?,
         beast_over_burst: Effect?,
     }?,
     -- The hit sparks the ruleset shows itself: a new registration's until
@@ -1941,14 +1987,6 @@ export type RolesSpec = {
         fade: Sound?,
         obstacle_lift: Sound?,
         obstacle_throw: Sound?,
-        cross_merge: Sound?,
-        form_change: Sound?,
-        cross_change: Sound?,
-        cross_change_chime: Sound?,
-        beast_out: Sound?,
-        gregar_roar: Sound?,
-        falzar_roar: Sound?,
-        beast_over_rumble: Sound?,
         beast_over_burst: Sound?,
         cross_special: Sound?,
         refused: Sound?,

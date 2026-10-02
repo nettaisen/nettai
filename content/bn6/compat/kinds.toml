@@ -31,7 +31,7 @@ attachment = { pool = "actor", index = 0x05 }
 "chrgeman/navi" = { pool = "actor", index = 0x16 }
 "grndman/navi" = { pool = "actor", index = 0x17 }
 "dustman/navi" = { pool = "actor", index = 0x18 }
-"engine/cross-merge" = { pool = "actor", index = 0x1B }
+"forms/cross-merge" = { pool = "actor", index = 0x1B }
 "sandwrm/hole" = { pool = "actor", index = 0x1C }
 "cornfsta/farmer" = { pool = "actor", index = 0x1E }
 "dblhero/heroes" = { pool = "actor", index = 0x1F }
