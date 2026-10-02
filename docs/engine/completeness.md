@@ -818,6 +818,25 @@ ROM, WindRack's and TenguCross's are null). The hard ones: a quake panel no long
 Geddon's dimming nothing else breaks panels), and Fan's gust start running past the edge (2: a row of six neutral
 objects). The 8 recordings are in the lab and match the engine (12,605 frames).
 
+**Batch 15, leftovers: the yoyo, JustcOne, the shared panel crack, HubBatc, the `lib` group (the throw trajectory,
+the buster and its arm, the seeds' region effects) and the `core.d.luau` group (attach points, the visibility
+update, BlzrdBal's roller test, DustCross's absorb test) (26 branches):** 6 taken by 6 new recordings, 11
+unreachable, 9 hard. `chips/0x08c-justcone/onto-hole` (Geddon breaks (5,2), and JustcOne's fist comes down in the
+hole), `twice` (the second JustcOne cracks the cracked panel under the opponent, which stays cracked),
+`chips/0x135-hubbatc/custom-bug-early` (Custom2 on the command line deals HubBatc on the second turn, before the
+hand-shrink bug's), `forms/falzar/beast-full-synchro-buster` (the Beast's arm in Full Synchro),
+`chips/0x044-grasseed/beside-hole` (on the holes stage, a seed's 3x3 skips the missing panel) and
+`chips/0x0c7-blzrdbal/opponent-holding-chip` (the roller meets a navi whose NameID word carries its next chip). The
+unreachable ones: a yoyo parameter past GreatYo's, the throw trajectory's speed 0, rounding and zero ticks (3:
+every thrower releases from a fixed point onto the panel 3 ahead, so the distance never changes), the buster's
+recovery past 5 open panels, a buster arm for a virus, an AI navi or a no-charge navi (3), the seeds' whole-field
+and zero regions (2), and no local navi for the visibility update. The hard ones: MegaMan's base element byte set,
+an attach point missing from a frame, the visibility update with the local navi blind (tried Silence, then
+ChargeMan) and the HUD flash flag (2), BlzrdBal's roller hit with no hitter recorded, by a field object DustMan
+leaves, or by two objects at once (3), and DustCross's absorb finding an obstacle without a collision or already
+leaving (2, tried two specials). The 6 recordings are in the lab and match the engine (5,270 frames). With batch
+14, no branch of the leftovers is open.
+
 <!-- end: chip families, G4 -->
 
 ##### Chip families: onesided's share
