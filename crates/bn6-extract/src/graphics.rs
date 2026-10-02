@@ -1,14 +1,14 @@
 //! The battle graphics, decoded from the ROM into their typed form (see the
-//! bn6-assets crate); bn6-content writes them as the pack's images and
+//! nettai-assets crate); nettai-content writes them as the pack's images and
 //! JSON.
 
 use crate::{Rom, lz77, u32at};
-use bn6_assets::*;
+use nettai_assets::*;
 use std::collections::HashMap;
 
 /// The battle graphics of a ROM; `names` gives the chip icons their keys
 /// and the font its characters.
-pub fn bundle(rom: &Rom, names: &bn6_content::names::AssetNames) -> Bundle {
+pub fn bundle(rom: &Rom, names: &nettai_content::names::AssetNames) -> Bundle {
     Bundle {
         sprites: sprites(rom),
         field: field(rom),

@@ -12,7 +12,7 @@
 //! - `trace` (feature `trace`): golden traces recorded from the original,
 //!   replayed through the engine and compared with it.
 //!
-//! The engine never reads any of it: this crate depends on `bn6-battle`,
+//! The engine never reads any of it: this crate depends on `nettai-battle`,
 //! never the other way (a test guards it), and content (Luau) can't load
 //! compat's TOML.
 
@@ -20,9 +20,9 @@ pub mod codec;
 #[cfg(feature = "trace")]
 pub mod trace;
 
-use bn6_battle::Battle;
-use bn6_battle::kinds::player::{NaviAction, navi_action};
-use bn6_battle::object::{ObjectRef, Pool};
+use nettai_battle::Battle;
+use nettai_battle::kinds::player::{NaviAction, navi_action};
+use nettai_battle::object::{ObjectRef, Pool};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -421,8 +421,8 @@ impl Compat {
     /// of the framework's states, else the ruleset's own action or the
     /// content action compat gives the number (the first by key, where
     /// several share it). None for a number nothing here has.
-    pub fn navi_action_numbered(&self, content: &bn6_battle::Content, number: u8) -> Option<NaviAction> {
-        use bn6_battle::kinds::player::EngineAction;
+    pub fn navi_action_numbered(&self, content: &nettai_battle::Content, number: u8) -> Option<NaviAction> {
+        use nettai_battle::kinds::player::EngineAction;
         if let Some(state) = NaviAction::state(number) {
             return Some(state);
         }
