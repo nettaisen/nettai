@@ -2,7 +2,8 @@
 
 A Mega Man Battle Network battle engine in Rust. Its first game is Mega Man Battle Network 6 (US Falzar), whose
 battles are reimplemented frame for frame from the original, routine by routine from the disassembly. Other
-Battle Network games are meant to follow on the same core.
+Battle Network games are meant to follow on the same core ([multi-game.md](docs/design/multi-game.md) surveys
+what that takes).
 
 The engine is a content-independent core with BN6's ruleset on it. The game's content (chips, navis and their
 forms, weapons, stages, the rule tables) is Luau in [`content/bn6`](content/bn6), committed here and named by
@@ -62,7 +63,8 @@ These checks need no ROM:
 
 - [`docs/design`](docs/design): how the engine and its content are built: the content model
   ([content-model-v2.md](docs/design/content-model-v2.md)), how to write content
-  ([content-migration.md](docs/design/content-migration.md)), scripting, the content pack, rollback.
+  ([content-migration.md](docs/design/content-migration.md)), scripting, the content pack, rollback, and what
+  other games would need ([multi-game.md](docs/design/multi-game.md)).
 - [`docs/engine`](docs/engine): the original game's battle routines, specified from the disassembly.
 - [`docs/frontend.md`](docs/frontend.md): the frontend.
 
