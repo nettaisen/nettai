@@ -1,11 +1,11 @@
 --!strict
 -- The patch card EraseMan (49, キラーマン in the Japanese games), 40 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "eraseman",
+return cards.card {
+    id = "patch-card/eraseman",
     name = "EraseMan",
     mb = 40,
     effects = {

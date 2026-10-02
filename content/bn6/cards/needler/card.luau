@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Needler (66, ニドキャスター in the Japanese games), 10 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "needler",
+return cards.card {
+    id = "patch-card/needler",
     name = "Needler",
     mb = 10,
     effects = {

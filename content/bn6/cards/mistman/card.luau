@@ -1,11 +1,11 @@
 --!strict
 -- The patch card MistMan (93, ミストマン in the Japanese games), 37 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "mistman",
+return cards.card {
+    id = "patch-card/mistman",
     name = "MistMan",
     mb = 37,
     effects = {

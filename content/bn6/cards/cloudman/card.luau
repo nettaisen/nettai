@@ -1,11 +1,11 @@
 --!strict
 -- The patch card CloudMan (100, クラウドマン in the Japanese games), 40 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "cloudman",
+return cards.card {
+    id = "patch-card/cloudman",
     name = "CloudMan",
     mb = 40,
     effects = {

@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Starfish (23, ヒトデスタ in the Japanese games), 15 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "starfish",
+return cards.card {
+    id = "patch-card/starfish",
     name = "Starfish",
     mb = 15,
     effects = {

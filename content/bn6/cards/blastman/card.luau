@@ -1,10 +1,10 @@
 --!strict
 -- The patch card BlastMan (52, ブラストマン in the Japanese games), 28 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "blastman",
+return cards.card {
+    id = "patch-card/blastman",
     name = "BlastMan",
     mb = 28,
     effects = {

@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Skarab (72, スカラビア in the Japanese games), 7 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "skarab",
+return cards.card {
+    id = "patch-card/skarab",
     name = "Skarab",
     mb = 7,
     effects = {

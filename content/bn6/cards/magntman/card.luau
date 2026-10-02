@@ -1,12 +1,12 @@
 --!strict
 -- The patch card MagntMan (38, マグネットマン in the Japanese games), 37 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local back_special = require("./back-special")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "magntman",
+return cards.card {
+    id = "patch-card/magntman",
     name = "MagntMan",
     mb = 37,
     effects = {

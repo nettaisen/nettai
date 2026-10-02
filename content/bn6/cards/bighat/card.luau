@@ -1,11 +1,11 @@
 --!strict
 -- The patch card BigHat (24, グラサン in the Japanese games), 8 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "bighat",
+return cards.card {
+    id = "patch-card/bighat",
     name = "BigHat",
     mb = 8,
     effects = {

@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Number (14, ナンバーズ in the Japanese games), 17 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local chrgs = require("../../lib/patch-cards/chrgs")
 
-return define.patch_card {
-    id = "number",
+return cards.card {
+    id = "patch-card/number",
     name = "Number",
     mb = 17,
     effects = {

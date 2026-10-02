@@ -1,11 +1,11 @@
 --!strict
 -- The patch card SlashMan (48, スラッシュマン in the Japanese games), 31 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "slashman",
+return cards.card {
+    id = "patch-card/slashman",
     name = "SlashMan",
     mb = 31,
     effects = {

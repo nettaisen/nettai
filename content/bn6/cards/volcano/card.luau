@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Volcano (13, ボルカノ in the Japanese games), 10 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "volcano",
+return cards.card {
+    id = "patch-card/volcano",
     name = "Volcano",
     mb = 10,
     effects = {

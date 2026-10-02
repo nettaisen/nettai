@@ -1,12 +1,12 @@
 --!strict
 -- The patch card Dark MegaMan (108, ダークロックマン in the Japanese games), 80 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "dark-megaman",
+return cards.card {
+    id = "patch-card/dark-megaman",
     name = "Dark MegaMan",
     mb = 80,
     effects = {

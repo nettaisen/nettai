@@ -1,12 +1,12 @@
 --!strict
 -- The patch card Punk (107, パンク in the Japanese games), 50 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local shield = require("../../navis/megaman/weapons/shield/weapon")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "punk",
+return cards.card {
+    id = "patch-card/punk",
     name = "Punk",
     mb = 50,
     effects = {

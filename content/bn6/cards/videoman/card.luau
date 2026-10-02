@@ -1,11 +1,11 @@
 --!strict
 -- The patch card VideoMan (43, ビデオマン in the Japanese games), 32 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "videoman",
+return cards.card {
+    id = "patch-card/videoman",
     name = "VideoMan",
     mb = 32,
     effects = {

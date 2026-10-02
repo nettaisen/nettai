@@ -1,10 +1,10 @@
 --!strict
 -- The patch card NumbrMan (31, ナンバーマン in the Japanese games), 35 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "numbrman",
+return cards.card {
+    id = "patch-card/numbrman",
     name = "NumbrMan",
     mb = 35,
     effects = {

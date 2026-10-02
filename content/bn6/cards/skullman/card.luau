@@ -1,11 +1,11 @@
 --!strict
 -- The patch card SkullMan (33, スカルマン in the Japanese games), 30 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "skullman",
+return cards.card {
+    id = "patch-card/skullman",
     name = "SkullMan",
     mb = 30,
     effects = {

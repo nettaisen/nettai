@@ -1,10 +1,10 @@
 --!strict
 -- The patch card StoneMan (84, ストーンマン in the Japanese games), 45 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "stoneman",
+return cards.card {
+    id = "patch-card/stoneman",
     name = "StoneMan",
     mb = 45,
     effects = {

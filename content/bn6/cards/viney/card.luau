@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Viney (11, アゾマータ in the Japanese games), 24 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "viney",
+return cards.card {
+    id = "patch-card/viney",
     name = "Viney",
     mb = 24,
     effects = {

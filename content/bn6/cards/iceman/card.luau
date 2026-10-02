@@ -1,11 +1,11 @@
 --!strict
 -- The patch card IceMan (32, アイスマン in the Japanese games), 25 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "iceman",
+return cards.card {
+    id = "patch-card/iceman",
     name = "IceMan",
     mb = 25,
     effects = {

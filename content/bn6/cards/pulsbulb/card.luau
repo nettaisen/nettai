@@ -1,11 +1,11 @@
 --!strict
 -- The patch card PulsBulb (77, パルフォロン in the Japanese games), 13 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "pulsbulb",
+return cards.card {
+    id = "patch-card/pulsbulb",
     name = "PulsBulb",
     mb = 13,
     effects = {

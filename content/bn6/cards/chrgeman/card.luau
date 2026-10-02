@@ -1,11 +1,11 @@
 --!strict
 -- The patch card ChrgeMan (102, チャージマン in the Japanese games), 31 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local chrgs = require("../../lib/patch-cards/chrgs")
 
-return define.patch_card {
-    id = "chrgeman",
+return cards.card {
+    id = "patch-card/chrgeman",
     name = "ChrgeMan",
     mb = 31,
     effects = {

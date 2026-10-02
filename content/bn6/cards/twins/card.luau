@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Twins (67, ツインズ in the Japanese games), 15 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "twins",
+return cards.card {
+    id = "patch-card/twins",
     name = "Twins",
     mb = 15,
     effects = {

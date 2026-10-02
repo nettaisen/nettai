@@ -1,11 +1,11 @@
 --!strict
 -- The patch card OldStov (21, ダルスト in the Japanese games), 12 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "oldstov",
+return cards.card {
+    id = "patch-card/oldstov",
     name = "OldStov",
     mb = 12,
     effects = {

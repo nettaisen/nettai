@@ -1,10 +1,10 @@
 --!strict
 -- The patch card DesertMn (41, デザートマン in the Japanese games), 36 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "desertmn",
+return cards.card {
+    id = "patch-card/desertmn",
     name = "DesertMn",
     mb = 36,
     effects = {

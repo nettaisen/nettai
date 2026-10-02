@@ -1,12 +1,12 @@
 --!strict
 -- The patch card CanGuard (71, キャノガード in the Japanese games), 10 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 local shield = require("../../navis/megaman/weapons/shield/weapon")
 
-return define.patch_card {
-    id = "canguard",
+return cards.card {
+    id = "patch-card/canguard",
     name = "CanGuard",
     mb = 10,
     effects = {

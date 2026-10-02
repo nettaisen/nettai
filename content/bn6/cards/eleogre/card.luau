@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Eleogre (20, エレオーガ in the Japanese games), 16 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "eleogre",
+return cards.card {
+    id = "patch-card/eleogre",
     name = "Eleogre",
     mb = 16,
     effects = {

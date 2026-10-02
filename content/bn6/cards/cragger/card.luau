@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Cragger (27, レムゴン in the Japanese games), 19 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "cragger",
+return cards.card {
+    id = "patch-card/cragger",
     name = "Cragger",
     mb = 19,
     effects = {

@@ -1,11 +1,11 @@
 --!strict
 -- The patch card ThunMan (90, サンダーマン in the Japanese games), 36 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "thunman",
+return cards.card {
+    id = "patch-card/thunman",
     name = "ThunMan",
     mb = 36,
     effects = {

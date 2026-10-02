@@ -1,11 +1,11 @@
 --!strict
 -- The patch card GrndMan (50, グランドマン in the Japanese games), 43 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "grndman",
+return cards.card {
+    id = "patch-card/grndman",
     name = "GrndMan",
     mb = 43,
     effects = {

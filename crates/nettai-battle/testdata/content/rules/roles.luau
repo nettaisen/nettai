@@ -12,7 +12,6 @@ local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatt
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
 local lockon = require("./lockon")
-local patch_cards = require("./patch-cards")
 local ruleset = require("./ruleset")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/megaman/forms/slashcross/charge")
@@ -81,7 +80,5 @@ return define.roles {
                 barriers.raise(navi, barrier, true)
             end
         end,
-        -- The players' patch cards, as BN6's roles fill it.
-        patch_cards = patch_cards.apply,
     },
 }

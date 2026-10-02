@@ -698,7 +698,7 @@ fn dimming_setup() -> crate::setup::RoundSetup {
         testing::chip_handle(testing::TRAP),
     ];
     let mut s = scenario::setup_with_handles(&chips);
-    s.players[1] = scenario::setup().players[1];
+    s.players[1] = scenario::setup().players[1].clone();
     s
 }
 
@@ -1078,7 +1078,7 @@ fn the_navi_changing_chips_change_the_navi() {
 fn the_slow_gauge_chip_slows_the_gauge() {
     let setup = || {
         let mut s = scenario::setup_with_handles(&[testing::chip_handle(testing::SLOW_GAUGE)]);
-        s.players[1] = scenario::setup().players[1];
+        s.players[1] = scenario::setup().players[1].clone();
         s
     };
     let tape = scenario::record_on(setup(), 2400, 5);
@@ -1103,7 +1103,7 @@ fn support_duel(
 ) -> (std::collections::BTreeMap<String, usize>, Battle) {
     let setup = || {
         let mut s = scenario::setup_with_handles(chips);
-        s.players[1] = scenario::setup().players[1];
+        s.players[1] = scenario::setup().players[1].clone();
         stats(&mut s.navi_stats);
         s
     };
@@ -1256,6 +1256,16 @@ fn fractions_cannot_enter_battle_state() {
 }
 
 #[test]
+fn a_systems_state_is_out_of_reach_of_content() {
+    // (docs/design/rules-in-luau.md §5.3: only a system's own calls reach
+    // its state.)
+    for call in ["system.state()", "system.setup()", "system.side()"] {
+        let e = play_error(load(&in_update(&format!("local _ = {call}"))).unwrap()).unwrap_or_else(|| panic!("{call} ran"));
+        assert!(e.contains("only a system's own calls reach its state"), "{call}: {e}");
+    }
+}
+
+#[test]
 fn runaway_scripts_stop() {
     let b = load(&in_update("while true do end")).unwrap();
     assert!(play_error(b).expect("stopped").contains("past its budget"));
@@ -1395,7 +1405,7 @@ fn trap_bomb_mine_setup() -> crate::setup::RoundSetup {
         testing::chip_handle(testing::TIME_BOMB_PLUS),
         testing::chip_handle(testing::MINE),
     ]);
-    s.players[1] = scenario::setup().players[1];
+    s.players[1] = scenario::setup().players[1].clone();
     s
 }
 
@@ -1733,7 +1743,7 @@ fn drive(chip: &str, ticks: usize, fight: impl Fn(&Battle, usize, u32) -> u16, m
     use crate::battle::{TickEvents, battle_flags, mode};
     use crate::input::PlayerTick;
     let mut setup = scenario::setup_with_handles(&[testing::chip_handle(chip)]);
-    setup.players[1] = scenario::setup().players[1];
+    setup.players[1] = scenario::setup().players[1].clone();
     let mut b = Battle::new(setup, scenario::content());
     let mut last = [0u16; 2];
     let mut n = 0;

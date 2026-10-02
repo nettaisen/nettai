@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Gunner (76, ガンナー in the Japanese games), 11 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "gunner",
+return cards.card {
+    id = "patch-card/gunner",
     name = "Gunner",
     mb = 11,
     effects = {
