@@ -758,3 +758,11 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
 - **Cost tools.** rollback_cost takes `--frames A..B` (or `all`), and with nettai-netplay's feature `luau-profile`
   reports the calls into Luau per advance (`behavior::profile`). The verification workspace's
   tools/rollback-cost.sh runs the basket of §6.1, best of N, alternating a checkout with a baseline.
+- **Gates** (on main 3b1ffc6f, a pack from all four ROMs): the build without warnings, 384 tests, the content check
+  (653 modules), `gen-content check` (0 errors), both golden traces in full with rollback at every latency and their
+  sound calls (and the 189 replay rounds), the full lab 6299/6299 scenarios, 5,641,457 frames, with the sound gate (0
+  rounds differ).
+- **Cost**, best of 15 against main, alternating (load average 20 to 60): soundmod 1–3 95.0 / 117.9 / 81.5 µs per
+  rendered frame (main 96.5 / 114.0 / 77.9), machgun 1–2 137.9 / 86.9 (161.3 / 86.2), the lab basket within 3 %:
+  no change beyond the noise, as expected of a slice that adds no per-tick call. (Best of 5 at a load of 100 was not
+  enough: rows moved by ±60 %. Use 15 on a busy machine.)
