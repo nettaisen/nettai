@@ -9,7 +9,6 @@ local lunge = require("./lunge")
 
 return define.form {
     id = "slashcross-beast",
-    name = "SlashCross Beast",
     kind = "cross_beast",
     game = "gregar",
     cross_of = slashman,

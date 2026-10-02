@@ -7,8 +7,6 @@ local heal = require("./heal")
 local chips = {
     define.chip {
         id = "recov10",
-        name = "Recov10",
-        description = "Recovers\n10HP",
         codes = { "A", "D", "L", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 4, damage = 0, hit_param = 30, lockout = 30,
@@ -19,8 +17,6 @@ local chips = {
     },
     define.chip {
         id = "recov30",
-        name = "Recov30",
-        description = "Recovers\n30HP",
         codes = { "E", "L", "Q", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 12, damage = 0, hit_param = 30, lockout = 30,
@@ -31,8 +27,6 @@ local chips = {
     },
     define.chip {
         id = "recov50",
-        name = "Recov50",
-        description = "Recovers\n50HP",
         codes = { "C", "M", "P", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 18, damage = 0, hit_param = 40, lockout = 30,
@@ -43,8 +37,6 @@ local chips = {
     },
     define.chip {
         id = "recov80",
-        name = "Recov80",
-        description = "Recovers\n80HP",
         codes = { "H", "K", "V", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 24, damage = 0, hit_param = 40, lockout = 30,
@@ -55,8 +47,6 @@ local chips = {
     },
     define.chip {
         id = "recov120",
-        name = "Recov120",
-        description = "Recovers\n120HP",
         codes = { "F", "P", "S" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 32, damage = 0, hit_param = 50, lockout = 30,
@@ -67,8 +57,6 @@ local chips = {
     },
     define.chip {
         id = "recov150",
-        name = "Recov150",
-        description = "Recovers\n150HP",
         codes = { "J", "M", "T" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 38, damage = 0, hit_param = 50, lockout = 30,
@@ -79,8 +67,6 @@ local chips = {
     },
     define.chip {
         id = "recov200",
-        name = "Recov200",
-        description = "Recovers\n200HP",
         codes = { "I", "Q", "Z" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 42, damage = 0, hit_param = 50, lockout = 30,
@@ -91,8 +77,6 @@ local chips = {
     },
     define.chip {
         id = "recov300",
-        name = "Recov300",
-        description = "Recovers\n300HP",
         codes = { "J", "O", "Y" },
         element = "null", family = "null", class = "standard",
         rarity = 3, mb = 48, damage = 0, hit_param = 49, lockout = 30,

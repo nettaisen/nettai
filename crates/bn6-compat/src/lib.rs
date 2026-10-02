@@ -332,6 +332,21 @@ pub struct Text {
     pub first_control: u8,
     #[serde(default)]
     pub dialogue_glyphs: Vec<String>,
+    /// The Japanese ROMs' encoding (EXE6 Falzar and Gregar share it): their
+    /// fonts' glyphs, in the same shape.
+    #[serde(default)]
+    pub jp: Encoding,
+}
+
+/// A text encoding of other ROMs than the US ones (`Text::jp`): what each
+/// byte below `Text::first_control` draws, and the dialogue font's glyphs
+/// past them.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Encoding {
+    pub glyphs: Vec<String>,
+    #[serde(default)]
+    pub dialogue_glyphs: Vec<String>,
 }
 
 /// content/bn6/compat: the original's numbers by content key. Every map

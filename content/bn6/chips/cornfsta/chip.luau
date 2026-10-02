@@ -8,8 +8,6 @@ local cornsht = require("../cornsht/chips")
 
 return define.chip {
     id = "cornfsta",
-    name = "CornFsta",
-    description = "Explosive\ncorn with\n9pnl rch!",
     codes = { "A", "B", "C", "*" },
     element = "wood",
     family = "program_advance",

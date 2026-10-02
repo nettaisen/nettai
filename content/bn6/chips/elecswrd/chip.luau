@@ -10,8 +10,6 @@ local statuses = require("../../rules/status")
 
 return define.chip {
     id = "elecswrd",
-    name = "ElecSwrd",
-    description = "Cut enmy\n3sq fwrd\nw/elec!",
     codes = { "E", "K", "N" },
     element = "elec",
     family = "elec",

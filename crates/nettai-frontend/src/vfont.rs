@@ -146,9 +146,25 @@ impl VectorFont {
     pub fn covers(&self, text: &str) -> bool {
         let cmap = self.font().charmap();
         units(text).iter().all(|u| {
-            let s = if u.mark { &text[u.start + 1..u.end - 1] } else { &text[u.start..u.end] };
+            let s = if u.mark {
+                let inner = &text[u.start + 1..u.end - 1];
+                stand_in(inner).unwrap_or(inner)
+            } else {
+                &text[u.start..u.end]
+            };
             s.chars().all(|c| c.is_whitespace() || cmap.map(c) != 0)
         })
+    }
+}
+
+/// The character a mark that is a symbol stands for, drawn as the
+/// character rather than its name's letters: the dialogue font's ○ and ×
+/// (`[circle]`, `[cross]`: the Japanese descriptions' "攻撃力[cross]2").
+fn stand_in(mark: &str) -> Option<&'static str> {
+    match mark {
+        "circle" => Some("○"),
+        "cross" => Some("×"),
+        _ => None,
     }
 }
 
@@ -351,7 +367,19 @@ impl TextRenderer {
         };
         let mut i = 0;
         while i < units.len() {
-            if units[i].mark {
+            if units[i].mark
+                && let Some(c) = stand_in(&text[units[i].start + 1..units[i].end - 1])
+            {
+                let mut b = self.shaper.builder(font).size(size).variations(settings.iter().copied()).build();
+                b.add_str(c);
+                b.shape_with(|c| {
+                    for g in c.glyphs {
+                        out.glyphs.push(Placed { id: g.id, x: pen + g.x, y: g.y, size, width, weight, unit: i });
+                        pen += g.advance;
+                    }
+                });
+                i += 1;
+            } else if units[i].mark {
                 let inner = &text[units[i].start + 1..units[i].end - 1];
                 let small = size * MARK_SIZE;
                 let boxed = inner.chars().count() == 1;
@@ -620,6 +648,19 @@ mod tests {
         let l = r.layout("WWWWWWWW", Role::Cell, (wide * 0.3) as i32).clone();
         assert!(l.drop > 0.0);
         assert_eq!(l.xscale, SQUEEZE);
+    }
+
+    #[test]
+    fn a_symbol_mark_is_its_character() {
+        let f = VectorFont::bundled();
+        assert!(f.covers("攻撃力[cross]2 [circle]"));
+        let mut r = renderer();
+        // One glyph for the mark, the font's ×, at the text's size.
+        let mark = r.layout("[cross]", Role::Dialogue, 192).clone();
+        let times = r.layout("×", Role::Dialogue, 192).clone();
+        assert_eq!(mark.glyphs.len(), 1);
+        assert_eq!((mark.glyphs[0].id, mark.glyphs[0].size), (times.glyphs[0].id, times.glyphs[0].size));
+        assert_eq!(unit_count("力[cross]2"), 3);
     }
 
     #[test]

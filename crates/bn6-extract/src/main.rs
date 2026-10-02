@@ -25,6 +25,7 @@ mod graphics;
 mod gregar;
 mod hud;
 mod jp;
+mod lettering;
 
 pub(crate) struct Rom(Vec<u8>);
 

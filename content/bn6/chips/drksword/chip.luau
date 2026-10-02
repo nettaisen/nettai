@@ -10,8 +10,6 @@ local sword = require("../sword/chip")
 
 return define.chip {
     id = "drksword",
-    name = "DrkSword",
-    description = "\n\n",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "sword",

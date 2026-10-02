@@ -6,8 +6,6 @@ local throw = require("../../lib/bombs/throw")
 
 return define.chip {
     id = "poisseed",
-    name = "PoisSeed",
-    description = "Makes 9sq\npoisn swp\n3sq ahead",
     codes = { "H", "N", "P", "*" },
     element = "null",
     family = "null",

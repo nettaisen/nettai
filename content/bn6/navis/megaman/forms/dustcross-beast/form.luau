@@ -10,7 +10,6 @@ local scatter = require("./scatter")
 
 return define.form {
     id = "dustcross-beast",
-    name = "DustCross Beast",
     kind = "cross_beast",
     game = "falzar",
     cross_of = dustman,

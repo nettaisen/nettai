@@ -34,7 +34,6 @@ end
 
 puzzlarm.weapon = define.weapon {
     id = "puzzlarm/charge",
-    name = "PuzzlArm",
     charge_ticks = { 120, 120, 120, 120, 120, 100, 100, 100 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
     sticky = true,

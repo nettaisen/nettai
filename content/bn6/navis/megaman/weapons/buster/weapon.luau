@@ -220,7 +220,6 @@ buster.shot = define.action {
 
 buster.weapon = define.weapon {
     id = "megaman/buster",
-    name = "Buster",
     -- The buster isn't charged (the charge table's row 0).
     charge_ticks = { 0, 0, 0, 0, 0 },
     setup = buster.setup,

@@ -35,7 +35,6 @@ end
 
 heat_charge.weapon = define.weapon {
     id = "heatcross/charge",
-    name = "Heat charge",
     -- The charge table's row 6; Charge 5 reads on into row 7's first
     -- entry, as the original's table does.
     charge_ticks = { 70, 60, 50, 45, 40, 90 },

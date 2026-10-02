@@ -33,8 +33,6 @@ end
 
 return define.chip {
     id = "discord",
-    name = "Discord",
-    description = "Confuses \nenemies\nw/music",
     codes = { "A", "G", "S", "*" },
     element = "null", family = "summon", class = "standard",
     rarity = 1, mb = 20, damage = 0, hit_param = 0, lockout = 0,

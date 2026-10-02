@@ -7,8 +7,6 @@ local wave = require("./wave")
 
 local wavearm1 = define.chip {
     id = "wavearm1",
-    name = "WaveArm1",
-    description = "Fllw enmy\nand fire\ntrap wave",
     codes = { "E", "F", "G" },
     element = "null",
     family = "null",
@@ -26,8 +24,6 @@ local wavearm1 = define.chip {
 
 local wavearm2 = define.chip {
     id = "wavearm2",
-    name = "WaveArm2",
-    description = "Fllw enmy\nand fire\ntrap wave",
     codes = { "L", "M", "N" },
     element = "null",
     family = "null",
@@ -45,8 +41,6 @@ local wavearm2 = define.chip {
 
 local wavearm3 = define.chip {
     id = "wavearm3",
-    name = "WaveArm3",
-    description = "Fllw enmy\nand fire\ntrap wave",
     codes = { "R", "S", "T" },
     element = "null",
     family = "null",
