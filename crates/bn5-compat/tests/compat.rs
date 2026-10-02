@@ -28,6 +28,9 @@ fn bn5_compat_reads() {
     let phoenix = &built_in.chips["phoenix"];
     assert_eq!(phoenix.colonel.as_ref().and_then(|c| c.flags.as_deref()).map(|f| f.contains(&"library".to_string())), Some(true));
     assert_eq!(built_in.chips["custswrd"].damage_formula, Some(45));
+    // The e-Reader cards' chips: their strings and palettes are the save's.
+    assert_eq!((built_in.chips["leadraid"].id, built_in.chips["leadraid"].save_slot), (0x137, Some(0)));
+    assert_eq!((built_in.chips["chaoslrd"].id, built_in.chips["chaoslrd"].save_slot), (0x138, Some(1)));
     // BN5's holy panel is its type 9, the engine's Holy; metal and sea are
     // the engine's none.
     assert_eq!(built_in.panel_type(9), Ok(Some(PanelType::Holy)));
