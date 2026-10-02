@@ -638,6 +638,27 @@ spawns that never fail (3), a book heading from its own target (2: it ends there
 outliving BassAnly's dimming (1: none did, from his farthest panels). The 3 recordings match the engine (4,453
 frames).
 
+**Batch 4, ColArmy and the shots (34 branches: ColArmy, WideSht, the flying shot, the bullet, CrakShot, BblStar,
+CircGun, TrnArrw, MachGun, Magnum, CornSht):** 8 taken by 7 new recordings, 24 unreachable, 2 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0c6-colarmy/same-tick` | both sides' ColArmy on one tick: the second finds the cube already blinking out |
+| `chips/0x059-crakshot/hole-ahead`, `cracked-cube` | CrakShot facing a hole; an undiggable panel already cracked (the helper AquaNdl's needles and the panel strikes share) |
+| `chips/0x08e-circgun/shot-on-hole` | a CircGun shot on a hole, which it doesn't hit |
+| `chips/0x02b-machgun1/target-steps-in` | MachGun's next sweep a column nearer, the opponent having stepped in |
+| `chips/0x08d-magnum/viewer-blind` | the gunner hidden from a viewer Silence blinded |
+| `chips/0x040-cornsht1/spread-onto-probe` | a corn spreading onto a panel where the other side's corn probe has just appeared |
+
+The unreachable ones: variants and rows nothing fires (the wide wave's kinds 0-2 and 9 and WideSht's action
+subtype 2, 9; the flying shot's palette, status, waits and range ends outside rows 2 and 5, 4; bullet row 0xE,
+1; CircGun's shot look 1, 1), positions the field rules out (a crack shot's fifth crossing, a bubble star or a
+ColArmy soldier off the field, CircGun's own column going forward or a start column without the other side's
+panels, 5), a side with no player (1), Magnum standing in for something other than a navi (1), and slots that
+never fail (2). The hard ones: ColArmy meeting an obstacle registered before its init (the tick of its spawn),
+and TrnArrw's bow waiting for an animation that has always ended by its first look. The 7 recordings are in the
+lab and match the engine at main 83158fe6 (4,918 frames).
+
 ### 6.3 Custom screen keys
 
 Four custom screen routines were verified only by the golden traces' dumps, with no lab recording: SELECT hiding
