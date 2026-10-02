@@ -1,8 +1,9 @@
 --!strict
--- The patch-cards system (docs/engine/patch-cards.md): a player's installed
--- patch cards (the Japanese games' Modification Cards, ./cards.luau) are
--- their setup, and as the round is set up (`round_setup`, before anything
--- reads the stats) their effects change the navi's stats.
+-- The patch-cards system (docs/engine/patch-cards.md): as the round is set
+-- up (`round_setup`, before anything reads the stats), a player's installed
+-- patch cards (the engine's definitions and the player's setup,
+-- `battle.patch_cards`; their effects ./cards.luau's) change the navi's
+-- stats. The cards are the engine's; what their effects do is BN6's rules'.
 --
 -- The original (the Japanese `reloadCurNaviStatBoosts`, its card routine)
 -- keeps a block of slots, one per kind of effect, seeded from the stats the
@@ -98,11 +99,6 @@ local function bugged(stats: Navi): boolean
         or stats.support_bug
 end
 
--- What a player brings: their installed cards in their list's order (nil
--- past the last), and which of them are switched off (the menu's toggle,
--- bit 7 of a card's byte in the save's list).
-export type Setup = { cards: { PatchCard? }, off: { boolean } }
-
 -- `round_setup`: `side`'s switched-on cards change its stats; with cards
 -- installed, switched on or not, the console's emotion window glitches if
 -- the stats then have a NaviCust bug (the Japanese `sub_813BF1C` reads event
@@ -110,8 +106,8 @@ export type Setup = { cards: { PatchCard? }, off: { boolean } }
 -- MegaMan's stats: with a link navi operated the original doesn't run the
 -- routine, and the flag is as the stats are.
 local function apply(side: number)
-    local setup = system.setup() :: Setup
-    if setup.cards[1] == nil then
+    local installed = battle.patch_cards(side)
+    if #installed == 0 then
         return
     end
     local stats = battle.navi(side)
@@ -139,13 +135,9 @@ local function apply(side: number)
     local function stat(name: string, d: number, lo: number, hi: number)
         put(name, bit32.band(clamp(signed_byte(slot[name]) + d, lo, hi), 0xFF))
     end
-    for i = 1, #setup.cards do
-        local card = setup.cards[i]
-        if card == nil then
-            break
-        end
-        if not setup.off[i] then
-            for _, e in in_order(card.effects) do
+    for _, c in installed do
+        if c.enabled then
+            for _, e in in_order(c.card.effects) do
                 local k, n = e.kind, e.amount or 0
                 if k == "hp_add" then
                     hp = clamp(hp + n * 10, 1, 9999)
@@ -277,8 +269,5 @@ end
 
 return define.system {
     id = "patch-cards",
-    -- At most 16 cards: the 80 MB allow no more (each takes 5 or more; the
-    -- save's list has room for 32).
-    setup = { cards = "record:patch-card[16]", off = "bool[16]" },
     hooks = { round_setup = apply },
 }

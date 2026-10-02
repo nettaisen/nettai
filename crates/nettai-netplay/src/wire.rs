@@ -17,7 +17,8 @@ use nettai_battle::setup::{GaugeSpeed, NaviCustBugs, NaviWeapons, Supports};
 use nettai_battle::transform::TransformRequest;
 use nettai_battle::{ContentHash, CustomResult, NaviStats};
 use nettai_battle::content::ChipCode;
-use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, RecordHandle, RulesetHandle, StageHandle, WeaponHandle};
+use nettai_battle::patch_cards::InstalledCard;
+use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle, RecordHandle, RulesetHandle, StageHandle, WeaponHandle};
 
 use crate::protocol::invalid;
 
@@ -227,6 +228,7 @@ wire_newtype!(
     NaviHandle(u16),
     WeaponHandle(u16),
     RecordHandle(u16),
+    PatchCardHandle(u16),
     StageHandle(u16),
     RulesetHandle(u16),
     ChipCode(u8),
@@ -309,6 +311,16 @@ impl Wire for GameVersion {
 }
 
 /// The Crosses in order (the list holds at most the window's five).
+impl Wire for InstalledCard {
+    fn write(&self, w: &mut Writer) {
+        self.card.write(w);
+        self.enabled.write(w);
+    }
+    fn read(r: &mut Reader) -> io::Result<InstalledCard> {
+        Ok(InstalledCard { card: r.get()?, enabled: r.get()? })
+    }
+}
+
 impl Wire for CrossList {
     fn write(&self, w: &mut Writer) {
         let forms: Vec<FormHandle> = self.forms().collect();
@@ -380,6 +392,10 @@ mod tests {
         roundtrip(&GameVersion::Gregar);
         roundtrip(&ContentHash(0x0123_4567_89AB_CDEF));
         roundtrip(&vec![(RecordHandle(3), true), (RecordHandle(300), false)]);
+        roundtrip(&vec![
+            InstalledCard { card: PatchCardHandle(3), enabled: true },
+            InstalledCard { card: PatchCardHandle(116), enabled: false },
+        ]);
         roundtrip(&"nettai".to_string());
     }
 }

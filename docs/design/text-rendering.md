@@ -742,7 +742,7 @@ string is a content root's `locales/<lang>.toml`.
 | The no-running message (L) | `en.toml` `[navis]` `run_message` | `ja.toml` `[navis]` `run_message` |
 | The enemy names (a round's first custom screen) | `en.toml` `[navis]` `name`, the ROM's name for the navi's NameID (ChrgeMan, GrndMan, TmhkMan, ProtoMan) | `ja.toml` `[navis]` `name` (ロックマン, キラーマン, アクアマン, ブルース...) |
 | A Cross's name (the frontend's own text: live play's terminal summary, the plain-text screen's Cross window) | `en.toml` `[forms]` | (English) |
-| A patch card's name (gen-content checks them; no screen shows them yet) | `en.toml` `[records]`, the fan translation's | `ja.toml` `[records]`, the Japanese ROMs' card names |
+| A patch card's name (gen-content checks them; the frontend's `--cards` messages; no screen shows them yet) | `en.toml` `[patch-cards]`, the fan translation's | `ja.toml` `[patch-cards]`, the Japanese ROMs' card names |
 | The HUD's lines (the seconds, "TIME UP!", "COUNTER HIT!"), "VS", "????" | the pack's text script, in the US font's glyphs | the same words, in the Japanese font's glyphs (the pack's Japanese lettering) |
 | The 8x16 font and the dialogue font | the pack's | the pack's Japanese lettering: the Japanese ROMs' fonts, in their encoding |
 | Banners | the pack's | ten differ (the pack's `-ja` banners): ROCKMAN, KILLERMAN, AQUAMAN and BLUES where the US has MEGAMAN, ERASEMAN, SPOUTMAN and PROTOMAN, each starting where its longer or shorter name does; the Program Advance's プログラムアドバンス. The other 37 are the same pictures |
@@ -761,8 +761,8 @@ the US's (the user's choice).
 ### 10.2 Where the strings live
 
 - **Every display string is a content root's `locales/<lang>.toml`**, keyed by definition key: `[chips]` (name,
-  description), `[navis]` (name, run_message), `[forms]` (a Cross's name and description), `[records]` (name: the
-  patch cards'). What reads each is §10.6. The engine's
+  description), `[navis]` (name, run_message), `[forms]` (a Cross's name and description), `[patch-cards]` (a
+  patch card's name). What reads each is §10.6. The engine's
   `content::strings::Strings` is one table; nettai-content's `locale` reads them. A definition holds none: the define
   phase refuses a `name`, `description` or `description_lines` field (core.d.luau's specs have none).
 - **The content's own language** (`locale::OWN`, English for BN6) is part of the content: the loader puts its table
@@ -909,5 +909,6 @@ The user's question (2026-10-02): "are the forms/weapons sections even used in t
   Cross up by its form (`CrossWindow::hovered`; docs/engine/custom-screen.md §4.1).
 - `[weapons]` (124 names: 69 navi and form weapons', 55 patch card weapons') was read by nothing (no screen
   shows a weapon's name; `Strings::weapon` had no caller): the table, `WeaponStrings` and its check are gone.
-- `[records]`: the patch cards' names, which gen-content checks (the English ones there, the Japanese ones the
-  ROM's); no screen of the frontend shows them yet.
+- `[patch-cards]` (`PatchCardStrings`): the patch cards' names, by card key, which gen-content checks (the English
+  ones there, the Japanese ones the ROM's); no screen of the frontend shows them yet. (Until the cards became an
+  engine definition kind, 2026-10-02, they were records and their names a `[records]` table.)

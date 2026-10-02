@@ -5,8 +5,8 @@ local cards = require("../../rules/patch-cards/cards")
 local b_button = require("./b-button")
 local chrgs = require("../../lib/patch-cards/chrgs")
 
-return cards.card {
-    id = "patch-card/beetle",
+return define.patch_card {
+    id = "beetle",
     mb = 11,
     effects = {
         cards.hp(100),
