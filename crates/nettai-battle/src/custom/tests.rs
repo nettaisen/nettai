@@ -300,6 +300,112 @@ fn a_cross_from_the_window() {
     assert!(p.side.round.crosses_used[1]);
 }
 
+/// Open the screen, open the Cross window, move DOWN `down` times and
+/// choose that Cross; the screen is back to choosing chips after.
+fn choose_cross(p: &mut Player, down: usize) {
+    p.open();
+    p.wait(10);
+    p.step(0);
+    p.press(keys::UP);
+    while p.phase() != (Phase::CrossWindow { entered: true }) && p.tick < 1000 {
+        p.step(0);
+    }
+    for _ in 0..down {
+        p.press(keys::DOWN);
+    }
+    p.step(keys::A);
+    while p.phase() != Phase::Choosing && p.tick < 1000 {
+        p.step(0);
+    }
+}
+
+/// OK, and what goes out.
+fn confirm(p: &mut Player) -> CustomResult {
+    p.press(keys::START);
+    p.press(keys::A);
+    p.wait(20);
+    p.side.sent.as_ref().unwrap().result.clone()
+}
+
+/// A setup's Cross list (nettai's extension): a Falzar player offered
+/// Gregar's first Cross (form 1) and Falzar's fourth (9) gets those two,
+/// in that order, and the one chosen is what goes out.
+#[test]
+fn a_setups_cross_list_offers_crosses_of_either_game() {
+    let mut p = Player::new(&[], GameVersion::Falzar);
+    p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
+    choose_cross(&mut p, 0);
+    let w = p.screen().crosses;
+    assert_eq!((w.count, &w.offered[..2], w.chosen), (2, &[0, 1][..], Some(0)));
+    // The emotion window shows the Cross's face.
+    assert_eq!(p.screen().look.face, Some(FormHandle(1)));
+    assert_eq!(confirm(&mut p).transform.form, Some(FormHandle(1)));
+    assert_eq!(p.side.round.crosses_used, [true, false, false, false, false]);
+    // On the round's next screen the Cross used isn't offered again.
+    p.side.screen = None;
+    let ctx = p.context();
+    let (mut side, mut console) = (p.side.clone(), p.console);
+    side.open(&Context { turn: 2, ..ctx }, &mut console);
+    let w = side.screen.unwrap().crosses;
+    assert_eq!((w.count, w.offered[0]), (1, 1));
+}
+
+/// Beast Out from a Cross of the other game: the player's own game's Beast
+/// (a Falzar player's Falzar Beast), not that Cross's form in Beast Out.
+/// Without a Cross list Beast Out from a Cross is the Cross's Beast form,
+/// as in the original.
+#[test]
+fn beast_out_from_the_other_games_cross_keeps_the_players_beast() {
+    for (list, beast) in [(true, library::testing::FALZAR_BEAST), (false, FormHandle(0x0D))] {
+        let mut p = Player::new(&[], GameVersion::Falzar);
+        if list {
+            p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
+        }
+        // In Gregar's first Cross.
+        p.stats.form = FormHandle(1);
+        p.open();
+        p.wait(10);
+        p.step(0);
+        p.press(keys::START);
+        p.press(keys::DOWN);
+        p.step(keys::A);
+        while p.phase() != Phase::Choosing && p.tick < 1000 {
+            p.step(0);
+        }
+        assert_eq!(p.screen().look.face, Some(beast), "list {list}");
+        p.press(keys::UP);
+        p.press(keys::A);
+        p.wait(20);
+        assert_eq!(p.side.sent.as_ref().unwrap().result.transform.form, Some(beast), "list {list}");
+    }
+}
+
+/// In Beast Out a Cross list offers only the player's game's Crosses,
+/// which take the navi to their form in Beast Out.
+#[test]
+fn in_beast_out_a_cross_list_offers_the_players_games_crosses() {
+    let mut p = Player::new(&[], GameVersion::Falzar);
+    p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
+    p.stats.form = library::testing::FALZAR_BEAST;
+    choose_cross(&mut p, 0);
+    let w = p.screen().crosses;
+    assert_eq!((w.count, w.offered[0], w.chosen), (1, 1, Some(1)));
+    assert_eq!(confirm(&mut p).transform.form, Some(FormHandle(9 + 0x0C)));
+}
+
+/// A Cross list names Crosses only, and leaves out the navi's starting
+/// form, as the original's window does.
+#[test]
+fn a_cross_list_offers_crosses_only() {
+    let mut p = Player::new(&[], GameVersion::Gregar);
+    let list = [FormHandle(6), library::testing::GREGAR_BEAST, FormHandle(2), FormHandle(7)];
+    p.side.unlocks.cross_list = Some(CrossList::new(&list));
+    p.stats.starting_form = FormHandle(2);
+    p.open();
+    let w = p.screen().crosses;
+    assert_eq!((w.count, &w.offered[..2]), (2, &[0, 3][..]));
+}
+
 #[test]
 fn dust_cross_scraps_the_picks() {
     let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)], GameVersion::Falzar);

@@ -24,7 +24,7 @@ pub use screen::{Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind
 
 use crate::battle::{Battle, CustomResult, battle_flags};
 use crate::console::{Console, ConsoleSetup};
-use nettai_content_api::ChipHandle;
+use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
 use crate::hand::ChipHand;
 use crate::input::Joypad;
 use crate::kinds::player::Emotion;
@@ -57,12 +57,93 @@ pub struct Unlocks {
     /// then needs the navi to be MegaMan (instead of battle flag 0x40
     /// clear).
     pub beast_out_sealed: bool,
+    /// The Crosses the setup names for the Cross window, in place of the
+    /// version's that `crosses` owns: nettai's extension, which the
+    /// original has no way to say (any Crosses, of either game;
+    /// docs/engine/custom-screen.md §4.1). None: the original's.
+    pub cross_list: Option<CrossList>,
 }
 
 impl Unlocks {
     /// Every Cross and Beast Out, as in a finished game.
     pub fn everything(version: GameVersion) -> Unlocks {
-        Unlocks { version, crosses: [true; screen::CROSSES], beast_out: true, beast_out_sealed: false }
+        Unlocks { version, crosses: [true; screen::CROSSES], beast_out: true, beast_out_sealed: false, cross_list: None }
+    }
+
+    /// The Cross in place `place` of the player's Crosses, the places the
+    /// Cross window's entries and the round's record of Crosses used go
+    /// by: the setup's list's entry, else the version's Cross with that
+    /// number (none: the content has no such Cross).
+    pub fn cross_at(&self, library: &dyn Library, navi: NaviHandle, place: u8) -> Option<FormHandle> {
+        match &self.cross_list {
+            Some(list) => list.get(place),
+            None => library.cross_form(navi, self.version, place),
+        }
+    }
+
+    /// Whether the player has the Cross in place `place`: the save owns
+    /// it, or the setup's list names one there.
+    pub fn owns_cross(&self, place: u8) -> bool {
+        match &self.cross_list {
+            Some(list) => list.get(place).is_some(),
+            None => self.crosses.get(place as usize).copied().unwrap_or(false),
+        }
+    }
+
+    /// The Beast form Beast Out takes a navi in `form` to (`sub_802937A`,
+    /// `sub_802A040`): when `tired`, the version's Beast Over; from the
+    /// base form the version's Beast Out; from a Cross that Cross's form
+    /// in Beast Out. With a setup's Cross list a Cross of the other game
+    /// has no Beast form of the player's game, and Beast Out from it is
+    /// the version's own, as from the base form (nettai's extension, §4.1).
+    pub fn beast_form(&self, library: &dyn Library, navi: NaviHandle, form: FormHandle, tired: bool) -> Option<FormHandle> {
+        let kind = library.form_kind(form);
+        if tired {
+            library.beast_over_form(navi, self.version)
+        } else if kind == FormKind::Base || self.other_games_cross(library, form) {
+            library.beast_out_form(navi, self.version)
+        } else {
+            library.form_in_beast_out(form)
+        }
+    }
+
+    /// A Cross of the game the player doesn't play, which only a setup's
+    /// Cross list offers.
+    pub(crate) fn other_games_cross(&self, library: &dyn Library, form: FormHandle) -> bool {
+        self.cross_list.is_some()
+            && library.form_kind(form) == FormKind::Cross
+            && library.form_game(form).is_some_and(|g| g != self.version)
+    }
+}
+
+/// The Crosses a setup names for a player's Cross window
+/// (`Unlocks::cross_list`): up to five forms, each a Cross, which the
+/// window offers in this order (those not used this round, and not the
+/// navi's starting form).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct CrossList {
+    forms: [Option<FormHandle>; screen::CROSSES],
+}
+
+impl CrossList {
+    /// The list of `forms`, at most the window's five.
+    pub fn new(forms: &[FormHandle]) -> CrossList {
+        assert!(forms.len() <= screen::CROSSES, "a Cross window offers at most {} Crosses, not {}", screen::CROSSES, forms.len());
+        let mut list = CrossList::default();
+        for (slot, &f) in list.forms.iter_mut().zip(forms) {
+            *slot = Some(f);
+        }
+        list
+    }
+
+    /// The Cross in place `place`.
+    pub fn get(&self, place: u8) -> Option<FormHandle> {
+        self.forms.get(place as usize).copied().flatten()
+    }
+
+    /// The Crosses, in order.
+    pub fn forms(&self) -> impl Iterator<Item = FormHandle> + '_ {
+        self.forms.iter().flatten().copied()
     }
 }
 
@@ -323,20 +404,13 @@ impl Side {
         // Beast Out its form 0xC past it.)
         let (navi, form) = (ctx.stats.navi, ctx.stats.form);
         let kind = ctx.library.form_kind(form);
-        let version = self.unlocks.version;
         let mut transform = TransformRequest::NONE;
         if screen.selection().contains(&SPECIAL_SLOT) {
-            transform.form = if ctx.emotion == Emotion::Tired {
-                ctx.library.beast_over_form(navi, version)
-            } else if kind == FormKind::Base {
-                ctx.library.beast_out_form(navi, version)
-            } else {
-                ctx.library.form_in_beast_out(form)
-            };
+            transform.form = self.unlocks.beast_form(ctx.library, navi, form, ctx.emotion == Emotion::Tired);
             self.round.beast_out_used = true;
         }
         if let Some(cross) = screen.crosses.chosen {
-            let f = ctx.library.cross_form(navi, version, cross);
+            let f = self.unlocks.cross_at(ctx.library, navi, cross);
             transform.form = if kind.is_beast() { f.and_then(|f| ctx.library.form_in_beast_out(f)) } else { f };
             self.round.crosses_used[cross as usize] = true;
         }
