@@ -1,6 +1,7 @@
 # Patch cards (改造カード): the plan, and how it was built
 
-**Status: done (2026-10-02).** The patch cards are BN6's patch-cards system (content/bn6/rules/patch-cards/),
+**Status: done (2026-10-02).** Patch cards are an engine definition kind with a typed player setup, and BN6's
+patch-cards system (content/bn6/rules/patch-cards/) applies them,
 all 117 cards are content (content/bn6/cards/), and the chip lab's library/jp/cards/ (222 scenarios on Japanese
 consoles) matches on every frame. docs/engine/patch-cards.md is the reference: how the Japanese games do it, what
 the cards do, how nettai has it, and the cards (its appendix). This document keeps the plan's reasoning and the
@@ -60,19 +61,28 @@ All of it is content now (docs/engine/patch-cards.md §3).
 
 ## 3. The design as built
 
-**A system, not engine code.** The patch cards are a system of BN6's stock ruleset (docs/design/rules-in-luau.md
-§2.2), content/bn6/rules/patch-cards/system.luau: the installed cards are the system's player setup, and the
-application is its `round_setup` hook. The engine knows nothing of cards.
+**The cards are the engine's; their effects are a game's rules'** (the user, 2026-10-02: "the engine should know
+what a patch card is"). BN4, BN5 (JP) and BN6 (JP) all have patch cards, so a card and a player's installed cards
+are engine concepts, as chips and folders are; what an effect does is each game's rule, a system of its stock
+ruleset (docs/design/rules-in-luau.md §2.2): BN6's is content/bn6/rules/patch-cards/system.luau, whose
+`round_setup` hook applies them.
 
-- **The cards are records** of type "patch-card" (`cards.card { id = "patch-card/canodumb", mb, effects }` in
-  rules/patch-cards/cards.luau), not a registry of their own: only BN6's rules read them, which is what records
-  are for. compat records.toml's `[patch_cards]` gives each its number.
-- **Their names are the locales'** (content/bn6/locales/en.toml and ja.toml), as every display text since the
-  locales landed: a `[records]` table by record key, a record's name, rather than a table of the cards' own, since
-  the engine knows no cards. The card weapons have no names: nothing shows a weapon's (text-rendering.md §10.2).
-- **The setup** is `cards = "record:patch-card[16]"` and `off = "bool[16]"`: 48 of the setup block's 64 bytes.
-  Sixteen cards is as many as the 80 MB allow (each card takes 5 or more); the save's list has room for 32, which
-  the block couldn't hold, but no legal save has more than 16.
+- **A definition kind of its own**: `define.patch_card { id, mb, effects }`, `Registry::PatchCard`,
+  `PatchCardHandle`, `Content::patch_card(h)`; keys are plain names (`canodumb`), compat patch-cards.toml gives
+  each its number.
+- **The common record** (`PatchCardDef`), what every game's card has: its capacity cost (`mb`: BN6's MB; a game
+  without one gives 0) and its effects in the card's order, each a `kind` (a string the game's rules know) and
+  whether the card shows it as a `bug` (a menu's red text). The kinds' own fields (an amount, a weapon, a
+  variant...) stay the definition's data: the engine checks only that every effect has a kind, and the game's
+  rules read the rest from the definition (BN6's constructors in rules/patch-cards/cards.luau make them). The
+  name is the locales'. The cards' numbers are compat's, as every number is.
+- **Their names are the locales'** (content/bn6/locales/en.toml and ja.toml, `[patch-cards]` by card key,
+  `PatchCardStrings`). The card weapons have no names: nothing shows a weapon's (text-rendering.md §10.2).
+- **The setup is typed**: `PlayerSetup::patch_cards`, the card handles in the list's order with each switched on
+  or off, at most 32 (BN6's save list's room; its 80 MB allow 16). It is part of the setup the peers exchange and
+  the digest covers. The BN6 system reads it with `battle.patch_cards(side)`.
+- **Before** (until the user's decision), the cards were records of type "patch-card" and the installed cards the
+  system's own setup block (`record:patch-card[16]`, `bool[16]`), with the names in a `[records]` table.
 - **The hook.** The cards must change the stats before the battle copies them: the navi's init reads them as it
   spawns, and the battle-start copy (`cross_stats`) is made with the battle. S0's `round_start` runs after the
   navis spawn, too late, so this work added `round_setup(side)`: once per side in `Battle::new`, before anything
@@ -85,8 +95,8 @@ application is its `round_setup` hook. The engine knows nothing of cards.
   apply routine's entry for the stats before (`navi_stats_before_cards`), and the init exchange has the stats
   after. bn6-compat builds the setup from the first (the bytes the cards write; the rest from the exchange) and
   the card list, and checks the engine's result against the second and the glitch against flag 0x1723.
-- **Tools write the setup** with `PlayerSetup::set_rule_elem` (framework): bn6-compat's
-  `codec::install_patch_cards` (a save's or a trace's list), the frontend's `--cards` and `--their-cards`.
+- **Tools write the setup**: bn6-compat's `codec::patch_cards` (a save's or a trace's list), the frontend's
+  `--cards` and `--their-cards`.
 
 ## 4. Verification as built
 
@@ -110,8 +120,9 @@ application is its `round_setup` hook. The engine knows nothing of cards.
    ROMs' (ja.toml).
 2. **Applied by the simulation, from the setup** (§3), not by a setup builder outside it: the cards are part of
    the shared setup, and peers apply them alike.
-3. **A BN6 system in the stock ruleset** (the coordinator, after rules S0 landed), with the cards as records and
-   the installed cards as its player setup; `round_setup` added for it.
+3. **A BN6 system in the stock ruleset** applies them (the coordinator, after rules S0 landed); `round_setup` was
+   added for it. **The cards and a player's installed cards are the engine's** (the user, 2026-10-02), a definition
+   kind and a typed setup field, as patch cards are in BN4, BN5 and BN6.
 4. **Out of scope**: the card menus, the 80 MB limit as a rule (the MB is the card's data, for a loadout screen),
    NaviStats+0x4C (Bass BX's, read only by map scripts), and BugStop's effect on the NaviCust's own bug compile
    (`sub_813C490`: no card has BugStop, and the engine doesn't compile the NaviCust).
