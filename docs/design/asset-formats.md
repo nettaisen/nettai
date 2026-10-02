@@ -337,6 +337,13 @@ maps (30x8 entries, a row of text each, the tiles counted from the image's
 first) by kind (the message box, the description box) and opening step (0
 to 3, open).
 
+The HUD's format version 7 writes the game's marks as characters in
+`font_chars` and the dialogue font's `chars` (Ⓐ for the A button, U+E002
+for the stacked EX: `compat/text.toml`'s, text-rendering.md §10.5) where
+version 6 had bracketed names (`[A]`, `[EX]`); the files are otherwise
+version 6's, but a pack of version 6 can't spell content's strings, so the
+frontend asks for it to be extracted again.
+
 The chatbox's portraits are sprites (`graphics/sprites/NAME/`, category
 0x20, `mugshotSpritePtrs`): their animations are the speaker's faces (still,
 idle with its blinks, talking), the original's mini-animations of the

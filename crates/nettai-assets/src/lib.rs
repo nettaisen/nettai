@@ -299,8 +299,9 @@ pub struct Hud {
     /// `font_chars[k]`.
     pub font: Tiles,
     /// What each glyph of the font draws, as text (the game's text
-    /// encoding; a glyph with no character of its own has a bracketed name,
-    /// `[EX]`). Content's names are written in these.
+    /// encoding; the game's marks are characters, one in the Private Use
+    /// Area for a glyph Unicode has none for: the stacked EX is U+E002).
+    /// Content's names are written in these.
     pub font_chars: Vec<String>,
     /// The opponent's HP digits by colour (normal, dropping, rising):
     /// glyph d is digit d.
