@@ -63,6 +63,22 @@ pub mod flags {
     pub const HOLDS_RESERVATION: u8 = 0x20;
 }
 
+/// Who sees an object where the viewers differ: what a rule the original
+/// keeps per console decided for each viewer (a blind player doesn't see
+/// the other side's objects; a few markers show only on their owner's
+/// console). Presentation, like the `VISIBLE` flag: the simulation never
+/// reads it and the digest leaves it out.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Sight {
+    /// Every viewer sees what the `VISIBLE` flag says.
+    #[default]
+    Shared,
+    /// Whether each viewer (by side) sees it. The `VISIBLE` flag is the
+    /// local side's (`RoundSetup::local_side`), as the original's console
+    /// has it.
+    ByViewer([bool; 2]),
+}
+
 /// Object lifecycle states (the game's jump-table offsets).
 pub mod state {
     pub const INIT: u8 = 0;
@@ -206,6 +222,22 @@ pub struct Object {
     /// digest. None: no one told the engine which chip the controller's
     /// telop names (a dimming content starts itself).
     pub telop_chip: Option<crate::hud::TelopChip>,
+    /// Who sees it, where the viewers differ (presentation, see [`Sight`]):
+    /// `Battle::visible_to` reads it with the `VISIBLE` flag.
+    pub sight: Sight,
+}
+
+impl Object {
+    /// Shown or hidden for every viewer: the `VISIBLE` flag. (Rules that
+    /// decide it per viewer are `Battle::hide_from_blind` and its kin.)
+    pub fn set_visible(&mut self, on: bool) {
+        if on {
+            self.flags |= flags::VISIBLE;
+        } else {
+            self.flags &= !flags::VISIBLE;
+        }
+        self.sight = Sight::Shared;
+    }
 }
 
 /// A position in the update list: the head, the tail sentinel, or an

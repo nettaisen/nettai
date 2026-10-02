@@ -76,7 +76,7 @@ local function tick(me: Object)
     me.pos = Vec3.new(p.x, p.y + dz, int.i32(p.z + s.z_offset + dz))
     local sprite, look = me.sprite, owner.sprite
     if not s.own_look then
-        me.visible = owner.visible
+        me:copy_visibility(owner)
     end
     if not s.own_palette then
         sprite.palette = look.palette

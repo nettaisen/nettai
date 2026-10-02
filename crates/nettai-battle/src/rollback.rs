@@ -37,10 +37,24 @@ pub struct TickInput {
     pub events: TickEvents,
 }
 
+// A battle, its snapshots and its inputs go to any thread and are shared
+// between threads: a netplay session keeps snapshots in its buffers and may
+// run on a thread of its own (getgud requires its states and inputs to be
+// `Send`). This fails to compile if a battle ever holds something that
+// can't, like an `Rc`, a `RefCell` or the content's runtime.
+const _: () = {
+    const fn send_sync<T: Send + Sync>() {}
+    send_sync::<Battle>();
+    send_sync::<Snapshot>();
+    send_sync::<TickInput>();
+    send_sync::<PlayerTick>();
+    send_sync::<TickEvents>();
+};
+
 /// A saved battle: everything needed to resume the simulation exactly.
 ///
-/// A battle is plain data and `Send` (its content is an `Arc`, and the
-/// content's runtime is not part of it: each thread keeps its own, see
+/// A battle is plain data, `Send` and `Sync` (its content is an `Arc`, and
+/// the content's runtime is not part of it: each thread keeps its own, see
 /// `behavior`), so a snapshot is a copy a netplay layer can keep wherever
 /// it needs to (getgud requires its saved states to be `Send`).
 ///

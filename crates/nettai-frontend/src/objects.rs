@@ -218,7 +218,7 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
                 None => "no sprite".to_string(),
             };
             let mut notes = Vec::new();
-            if o.flags & flags::VISIBLE == 0 {
+            if !b.visible_to(r, b.setup.local_side) {
                 notes.push("not visible".to_string());
             }
             if o.flags & flags::NO_SPRITE_UPDATE != 0 {
@@ -283,7 +283,7 @@ pub fn queue_objects<'a>(
             let o = b.objects.get(r);
             // Objects whose sprite doesn't animate are culled to nothing
             // (`sub_30061E8` gives them a one-point mask).
-            if o.flags & flags::VISIBLE == 0 || o.flags & flags::NO_SPRITE_UPDATE != 0 {
+            if !b.visible_to(r, b.setup.local_side) || o.flags & flags::NO_SPRITE_UPDATE != 0 {
                 continue;
             }
             // An effect the game spawns without a position (the second

@@ -101,7 +101,7 @@ end
 -- for its time; then the record forgets it (`sub_802CDE6`) and it goes.
 local function marking(me: Object)
     local target = me.related1 :: Object
-    me.visible = target.visible
+    me:copy_visibility(target)
     local side = carry_side(me)
     local rec = battle.damage_carry(side)
     if rec.source == me and rec.target ~= nil then

@@ -14,14 +14,22 @@
 //!   and [`Battle::telop_for`] (a hidden chip's telop names it only to its
 //!   user, if to anyone) and [`Battle::used_chip_for`] (the other player's
 //!   chip, named for a second);
-//! - the result: [`Battle::round_end_for`].
+//! - the result: [`Battle::round_end_for`];
+//! - what each player sees of the objects: [`Battle::visible_to`] (a blind
+//!   player doesn't see the other side's objects, the Beast Out lock-on
+//!   marker and the A-button charge glow show only to their owner). Where
+//!   the original decides an object's `VISIBLE` flag by its console's
+//!   rule, the engine decides it for both viewers ([`Battle::hide_from_blind`],
+//!   [`Battle::hide_from_other_side`]) and keeps the local side's in the
+//!   flag, which the recordings check.
 //!
-//! Still shown only as the local side sees it (docs/design/rollback.md):
-//! which navi appears at once at the intro and which fades in, what a
-//! blinded player can't see, and the visibility of the Beast Out lock-on
-//! marker and of the A-button charge glow (the objects' `VISIBLE` flag).
+//! Still the local side's (docs/design/rollback.md §2.3): which navi
+//! appears at once at the intro and which fades in (simulation state), and
+//! a few looks (the counter blink, the parts a barrier visual hides unless
+//! its navi is the local MegaMan, the trap mark's facing).
 
 use crate::battle::{Battle, BattleResult, RoundEnd, fight};
+use crate::object::{ObjectRef, Sight, flags};
 use crate::content::BannerId;
 use crate::setup::SetScore;
 use crate::dimming::telop_banner;
@@ -72,21 +80,82 @@ impl SetScore {
 }
 
 impl Battle {
-    /// `sub_800EB6C`: the local player sees `alliance`'s objects unless
-    /// they are the other side's and the local navi (`sub_80103BC`) is
-    /// blind. A navi whose init hasn't run yet has no collision data: the
-    /// game reads its status word through the null pointer, from the BIOS,
-    /// which gives the opcode it last fetched (`f1::NULL_READ`), and that
-    /// has the blind bit. It happens on a round's first tick when the
-    /// other side's navi inits first and its FirstBarrier's visual asks.
-    pub fn viewer_sees(&self, alliance: u8) -> bool {
+    /// `sub_800EB6C` on `viewer`'s console: its player sees `alliance`'s
+    /// objects unless they are the other side's and its navi
+    /// (`sub_80103BC`) is blind. A navi whose init hasn't run yet has no
+    /// collision data: the game reads its status word through the null
+    /// pointer, from the BIOS, which gives the opcode it last fetched
+    /// (`f1::NULL_READ`), and that has the blind bit. It happens on a
+    /// round's first tick when the other side's navi inits first and its
+    /// FirstBarrier's visual asks.
+    pub fn sees(&self, viewer: u8, alliance: u8) -> bool {
         use crate::collision::f1;
-        if !self.is_remote(alliance) {
+        if alliance & 1 == viewer & 1 {
             return true;
         }
-        let Some(viewer) = self.player(alliance ^ 1) else { return true };
-        let status = self.objects.get(viewer).collision.map_or(f1::NULL_READ, |c| self.collision.get(c).f1);
+        let Some(navi) = self.player(viewer & 1) else { return true };
+        let status = self.objects.get(navi).collision.map_or(f1::NULL_READ, |c| self.collision.get(c).f1);
         status & f1::BLIND == 0
+    }
+
+    /// Whether `viewer`'s player sees object `r`: its `VISIBLE` flag, or
+    /// what a rule decided for that viewer ([`Object::sight`]).
+    ///
+    /// [`Object::sight`]: crate::object::Object::sight
+    pub fn visible_to(&self, r: ObjectRef, viewer: u8) -> bool {
+        let o = self.objects.get(r);
+        match o.sight {
+            Sight::Shared => o.flags & flags::VISIBLE != 0,
+            Sight::ByViewer(shown) => shown[viewer as usize & 1],
+        }
+    }
+
+    /// `r`'s header flags as `viewer`'s console has them: its `VISIBLE`
+    /// flag the viewer's (the others are the same for every viewer).
+    pub fn flags_for(&self, r: ObjectRef, viewer: u8) -> u8 {
+        let shown = if self.visible_to(r, viewer) { flags::VISIBLE } else { 0 };
+        self.objects.get(r).flags & !flags::VISIBLE | shown
+    }
+
+    /// `r` shown to the viewers `shown` says (by side). Its `VISIBLE` flag
+    /// is the local side's.
+    pub fn set_visible_by_viewer(&mut self, r: ObjectRef, shown: [bool; 2]) {
+        let local = self.round.local_side as usize & 1;
+        let o = self.objects.get_mut(r);
+        o.set_visible(shown[local]);
+        if shown[0] != shown[1] {
+            o.sight = Sight::ByViewer(shown);
+        }
+    }
+
+    /// `r` hidden from the viewers `hidden` names (by side), on top of what
+    /// each sees of it now: where a console of the original clears
+    /// `VISIBLE` by a rule of its own.
+    pub fn hide_from(&mut self, r: ObjectRef, hidden: [bool; 2]) {
+        let shown = [0u8, 1].map(|v| self.visible_to(r, v) && !hidden[v as usize]);
+        self.set_visible_by_viewer(r, shown);
+    }
+
+    /// `r` hidden from a viewer blind to its side ([`Battle::sees`] on
+    /// each console).
+    pub fn hide_from_blind(&mut self, r: ObjectRef) {
+        let alliance = self.objects.get(r).alliance;
+        let hidden = [0u8, 1].map(|v| !self.sees(v, alliance));
+        self.hide_from(r, hidden);
+    }
+
+    /// `r` shown on its own side's console only (`!is_remote` in the
+    /// original: a Beast Out lock-on marker, an A-button charge glow).
+    pub fn hide_from_other_side(&mut self, r: ObjectRef) {
+        let alliance = self.objects.get(r).alliance & 1;
+        self.hide_from(r, [0u8, 1].map(|v| v != alliance));
+    }
+
+    /// `to` seen by whoever sees `from`: an overlay or attachment that takes
+    /// its owner's visibility.
+    pub fn copy_visibility(&mut self, from: ObjectRef, to: ObjectRef) {
+        let shown = [0u8, 1].map(|v| self.visible_to(from, v));
+        self.set_visible_by_viewer(to, shown);
     }
 
     /// The banner on screen as `viewer`'s console shows it.
@@ -149,6 +218,7 @@ impl Battle {
         Some(match end {
             RoundEnd::Over(r) => RoundEnd::Over(r.for_other_side()),
             RoundEnd::NextRound { settings, score } => RoundEnd::NextRound { settings, score: score.for_other_side() },
+            RoundEnd::Error(message) => RoundEnd::Error(message),
         })
     }
 }
@@ -174,6 +244,59 @@ mod tests {
         let navi = b.content.navi(b.content.navi_by_key(testing::MEGAMAN)).clone();
         b.start_banner(navi.win_banner);
         assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(navi.win_banner), Some(navi.lose_banner)));
+    }
+
+    /// Each viewer sees the objects as its own console would: a blind
+    /// player doesn't see the other side's, whoever the local side is, and
+    /// a marker shows on its owner's console only. The `VISIBLE` flag stays
+    /// the local side's.
+    #[test]
+    fn each_viewer_sees_what_its_console_would() {
+        use crate::collision::f1;
+        let mut b = battle();
+        let no_buttons = [crate::input::PlayerTick::default(); 2];
+        for _ in 0..4 {
+            b.tick(&no_buttons, Default::default());
+        }
+        let navi = |b: &Battle, side: u8| b.player(side).expect("both navis are in");
+        let (n0, n1) = (navi(&b, 0), navi(&b, 1));
+        let blind = |b: &mut Battle, side: u8, on: bool| {
+            let c = b.objects.get(navi(b, side)).collision.unwrap();
+            let f = &mut b.collision.get_mut(c).f1;
+            *f = if on { *f | f1::BLIND } else { *f & !f1::BLIND };
+        };
+        for r in [n0, n1] {
+            b.objects.get_mut(r).set_visible(true);
+        }
+        // Side 1's player is blind: on its console, side 0's navi is gone.
+        blind(&mut b, 1, true);
+        assert!(!b.sees(1, 0) && b.sees(1, 1) && b.sees(0, 1));
+        for r in [n0, n1] {
+            b.hide_from_blind(r);
+        }
+        let seen = |b: &Battle| [n0, n1].map(|r| [0, 1].map(|viewer| b.visible_to(r, viewer)));
+        assert_eq!(seen(&b), [[true, false], [true, true]]);
+        // The flag is the local side's (side 0, who sees both).
+        assert!(b.objects.get(n0).flags & flags::VISIBLE != 0);
+        assert_eq!(b.flags_for(n0, 1) & flags::VISIBLE, 0);
+        // Showing it again shows it to everyone.
+        b.objects.get_mut(n0).set_visible(true);
+        blind(&mut b, 1, false);
+        blind(&mut b, 0, true);
+        for r in [n0, n1] {
+            b.hide_from_blind(r);
+        }
+        assert_eq!(seen(&b), [[true, true], [false, true]]);
+        assert_eq!(b.objects.get(n1).flags & flags::VISIBLE, 0);
+        // Something following side 1's navi is seen by whoever sees it.
+        let follower = n0;
+        b.copy_visibility(n1, follower);
+        assert_eq!(seen(&b)[0], [false, true]);
+        // A marker of side 1's shows on side 1's console only.
+        b.objects.get_mut(follower).set_visible(true);
+        b.objects.get_mut(follower).alliance = 1;
+        b.hide_from_other_side(follower);
+        assert_eq!(seen(&b)[0], [false, true]);
     }
 
     #[test]

@@ -44,13 +44,15 @@ local function unlink(me: Object)
     end
 end
 
--- Seen by the local player, shown with its navi, and its navi on the
--- field; `hide_only`: only the hiding half (the update's second pass).
+-- Seen unless the viewer is blind to its side, shown with its navi, and
+-- its navi on the field; `hide_only`: only the hiding half (the update's
+-- second pass).
 local function visibility(me: Object, owner: Object, hide_only: boolean)
     if not hide_only then
         me.visible = true
     end
-    if not battle.viewer_sees(me.alliance) or not (me.state :: State).shown then
+    me:hide_from_blind()
+    if not (me.state :: State).shown then
         me.visible = false
     end
     if not field.valid(owner.panel_x, owner.panel_y) then

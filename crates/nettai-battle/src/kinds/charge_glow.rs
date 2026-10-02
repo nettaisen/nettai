@@ -73,14 +73,14 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80E0E20`: follow the owner's charge: level as animation, shown
-/// only while charging (and to the local side unless the B button
-/// charges), at the owner's attach point 0.
+/// only while charging (and on the owner's console only unless the B
+/// button charges), at the owner's attach point 0.
 fn tick(b: &mut Battle, r: ObjectRef) {
     let owner = b.objects.get(r).related[0].expect("charge glow has an owner");
     let actor = b.objects.get(owner).actor.expect("charge glow owner has actor data");
     if b.paused {
         if b.actors.get(actor).charge_source == 0 {
-            b.objects.get_mut(r).flags &= !flags::VISIBLE;
+            b.objects.get_mut(r).set_visible(false);
         }
         return;
     }
@@ -94,14 +94,17 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
     let alliance = b.objects.get(owner).alliance;
     let panel = b.objects.get(owner).panel;
-    let visible = b.viewer_sees(alliance) && vars(b, r).enabled && crate::field::is_valid(panel.x, panel.y);
+    let visible = vars(b, r).enabled && crate::field::is_valid(panel.x, panel.y);
     let source = b.actors.get(actor).charge_source;
-    let shown_to_side = match source {
+    // Seen by a viewer who sees the owner's side (`sub_800EB6C`), and on
+    // its owner's console only unless the B button charges (source 2).
+    let shown_to = |b: &Battle, viewer: u8| match source {
         0 => false,
-        2 => true,
-        _ => !b.is_remote(alliance),
+        2 => b.sees(viewer, alliance),
+        _ => viewer == alliance & 1 && b.sees(viewer, alliance),
     };
-    set_visible(b, r, visible && shown_to_side);
+    let shown = [0u8, 1].map(|viewer| visible && shown_to(b, viewer));
+    b.set_visible_by_viewer(r, shown);
     select_sprite(b, r, source);
     let level = b.actors.get(actor).charge_level;
     let v = vars(b, r);
@@ -109,7 +112,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     v.level = level;
     b.objects.get_mut(r).anim = level;
     if level == 0 {
-        set_visible(b, r, false);
+        b.objects.get_mut(r).set_visible(false);
     }
     charge_sound(b, r, alliance, source);
     let (dx, dz) = crate::kinds::player::attach_point(b, owner, 0);
@@ -132,15 +135,6 @@ fn charge_sound(b: &mut Battle, r: ObjectRef, alliance: u8, source: u8) {
         b.sound(id);
     } else {
         b.sound_for(alliance, id);
-    }
-}
-
-fn set_visible(b: &mut Battle, r: ObjectRef, on: bool) {
-    let o = b.objects.get_mut(r);
-    if on {
-        o.flags |= flags::VISIBLE;
-    } else {
-        o.flags &= !flags::VISIBLE;
     }
 }
 
