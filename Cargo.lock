@@ -76,31 +76,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 
 [[package]]
-name = "nettai-assets"
-version = "0.1.0"
-
-[[package]]
-name = "nettai-audio"
-version = "0.1.0"
-dependencies = [
- "nettai-battle",
- "bn6-compat",
- "nettai-content",
- "cpal",
- "m4a",
-]
-
-[[package]]
-name = "nettai-battle"
-version = "0.1.0"
-dependencies = [
- "nettai-content-api",
- "nettai-luau",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "bn6-compat"
 version = "0.1.0"
 dependencies = [
@@ -112,77 +87,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "nettai-content"
-version = "0.1.0"
-dependencies = [
- "nettai-assets",
- "nettai-battle",
- "nettai-content-api",
- "m4a",
- "miniz_oxide 0.8.9",
- "png",
- "serde",
- "serde_json",
- "toml",
- "toml_edit 0.22.27",
-]
-
-[[package]]
-name = "nettai-content-api"
-version = "0.1.0"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "nettai-content-check"
-version = "0.1.0"
-dependencies = [
- "luau-analyze",
-]
-
-[[package]]
 name = "bn6-extract"
 version = "0.1.0"
 dependencies = [
- "nettai-assets",
  "bn6-compat",
- "nettai-content",
- "nettai-content-api",
  "m4a",
-]
-
-[[package]]
-name = "nettai-frontend"
-version = "0.1.0"
-dependencies = [
  "nettai-assets",
- "nettai-audio",
- "nettai-battle",
- "bn6-compat",
  "nettai-content",
  "nettai-content-api",
- "m4a",
- "minifb",
- "png",
-]
-
-[[package]]
-name = "nettai-luau"
-version = "0.1.0"
-dependencies = [
- "nettai-content-api",
- "mlua",
-]
-
-[[package]]
-name = "nettai-netplay"
-version = "0.1.0"
-dependencies = [
- "nettai-battle",
- "bn6-compat",
- "nettai-content",
- "getgud",
 ]
 
 [[package]]
@@ -833,6 +745,94 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c196769dd60fd4f363e11d948139556a344e79d451aeb2fa2fd040738ef7691"
 dependencies = [
  "jni-sys 0.3.1",
+]
+
+[[package]]
+name = "nettai-assets"
+version = "0.1.0"
+
+[[package]]
+name = "nettai-audio"
+version = "0.1.0"
+dependencies = [
+ "bn6-compat",
+ "cpal",
+ "m4a",
+ "nettai-battle",
+ "nettai-content",
+]
+
+[[package]]
+name = "nettai-battle"
+version = "0.1.0"
+dependencies = [
+ "nettai-content-api",
+ "nettai-luau",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "nettai-content"
+version = "0.1.0"
+dependencies = [
+ "m4a",
+ "miniz_oxide 0.8.9",
+ "nettai-assets",
+ "nettai-battle",
+ "nettai-content-api",
+ "png",
+ "serde",
+ "serde_json",
+ "toml",
+ "toml_edit 0.22.27",
+]
+
+[[package]]
+name = "nettai-content-api"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "nettai-content-check"
+version = "0.1.0"
+dependencies = [
+ "luau-analyze",
+]
+
+[[package]]
+name = "nettai-frontend"
+version = "0.1.0"
+dependencies = [
+ "bn6-compat",
+ "m4a",
+ "minifb",
+ "nettai-assets",
+ "nettai-audio",
+ "nettai-battle",
+ "nettai-content",
+ "nettai-content-api",
+ "png",
+]
+
+[[package]]
+name = "nettai-luau"
+version = "0.1.0"
+dependencies = [
+ "mlua",
+ "nettai-content-api",
+]
+
+[[package]]
+name = "nettai-netplay"
+version = "0.1.0"
+dependencies = [
+ "bn6-compat",
+ "getgud",
+ "nettai-battle",
+ "nettai-content",
 ]
 
 [[package]]
