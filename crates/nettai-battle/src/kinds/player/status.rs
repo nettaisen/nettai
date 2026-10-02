@@ -258,12 +258,8 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
             set_mood(b, opp, 0xFF);
         }
     }
-    // sub_8015C12
     let loss = coll(b, r).acc.mood_damage;
-    let s = &mut b.stats[side as usize];
-    if s.mood != 0 {
-        s.mood = (s.mood as i32 - loss as i32).max(1) as u8;
-    }
+    super::lose_mood(b, side, loss);
 }
 
 // ---- Special states ------------------------------------------------------------

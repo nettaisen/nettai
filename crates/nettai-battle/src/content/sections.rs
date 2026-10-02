@@ -378,7 +378,7 @@ pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), Con
 /// game's that does, in root order (docs/design/rules-in-luau.md §7.4: a
 /// BN6 chip's road in a BN5 arena runs by BN6's rule; never a panic). One
 /// no loaded game names keeps an empty rule.
-fn fill_panel_types(all: &mut [Rules]) {
+pub(crate) fn fill_panel_types(all: &mut [Rules]) {
     for rules in all.iter_mut() {
         rules.panels.types.resize(PanelType::ALL.len(), PanelTypeRule::default());
     }
