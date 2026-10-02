@@ -529,11 +529,35 @@ reads depends on it.
   one fade record; the port keeps them per screen, apart from the battle's `Fade`.
 - **The window's map variant**: with the Cross tab while MegaMan has a Cross he owns and hasn't used this round
   (`sub_8029EC8`, at the opening).
+- **The sounds** a tick made (`Drawn::sounds`, `ScreenSound`), in the order its states call `PlaySoundEffect`;
+  the battle plays each by its role for the screen's player only (docs/engine/audio.md §1 lists them). One is by
+  the console's version: Beast Out's first sound (`sub_802774C`, the BeastOut chip's `sub_8027624`) is 0x193 on
+  Falzar and 0x191 on Gregar (`custom_beast_out_falzar`, `_gregar`).
 
 What isn't in the look derives from the screen: the window's place (the phase's ticks), the slots' kinds and
 states, the cursor, the picks, and from the battle the camera's jitter, which in Beast Out's states, the Cross
 window's, the scrap's and the re-deal's moves the HUD layer too (`sub_80269E2`, `sub_8030158`).
 
-No chip record of the US ROM has bit 0x20 of its flags (the dark chips of the earlier games), so what the screen
-does for one is unreachable: the cursor starting on it (`sub_802806C`), its window palette, and the fade and music
-volume ramp while the cursor rests on it (`sub_802A2B0`). They are not ported.
+**Dark chips.** A chip whose record has bit 0x20 of its flags (the `dark` flag of chip definitions; the dark chips
+of the earlier games) gets three things on the screen, all ported though no chip record of the US ROM has the bit
+(unverified.md lists them as unreachable):
+
+- **The cursor's start** (`sub_802806C`, the last step of the opening's layout): a cursor on the first slot goes to
+  the first chip slot (0-9, the link navi's chip's too) whose chip, as the class limits count it (`sub_802A53C`: an
+  over-limit Mega or Giga chip is the invalid chip; the code isn't checked), has the flag. This is simulation
+  state: the cursor decides the picks.
+- **The window's frame**: the chip window's frame palette is by the chip's class (`byte_86E587C`: standard, Mega,
+  Giga), a class past Giga's the standard one, and a dark chip of the first three classes the fourth, dark one.
+- **The hover** (`sub_802A2B0`, after every tick's state; `+0x12` its state, `+0x13` its step): while the screen
+  chooses chips or shows a chip's description (states 4 and 0x18, not a Cross's) and the cursor's slot holds a
+  chip that, as it counts in a selection (`getChipID_802A54E`), has the flag (`sub_802A394`), the screen
+  darkens: fade 0x54 (background palettes 0-8, sprite palettes 0-9, to 0x50) on the console's first fade record
+  and 0x5C (background palettes 9-13, the window; sprite palettes 10-13, the screen's sprites; to 0x30) on its
+  second (`loc_8006274`), both at 0xA a frame. Each tick after, until the second record's fade is done, the music
+  (player 31) and the screen's player (22) change volume a step: the music down `byte_802A3F4` (0x100, 0xE0,
+  0xC0, 0xA0, 0x80, 0x80), the screen's player up `byte_802A400` (the same, reversed); 5 steps, the fade taking
+  5 frames. When the cursor leaves (or the state changes), fades 0x50 and 0x58 take both back and the volumes go
+  the other way, 6 steps (a fade toward clear holds its first frame). The volumes are cues
+  (`SoundCue::ScreenVolume`) for the screen's player; the closing's `sub_802A3CC` sets both to 0x100 again
+  (`RestoreVolume`), and `sub_80062EC` clears both fade records. A counter at `+0x14` the routine steps changes
+  nothing. The look keeps the hover (`ScreenLook::dark`) and the second record (`window_fade`).

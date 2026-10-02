@@ -525,12 +525,14 @@ The first sample, of 10 routines read before this list was worked through, as it
 
 None of the one-sided branches read, in the sample or since, is missing from the port.
 
-#### Chip families
+#### Chip families: G4
 
 The chip families' branches (`onesided_rank.py`'s area 7: routines cited by content/bn6, 1,066 branches in 720
 routines at main 29aac858) are read family by family, most-played chips first. The verdicts are in
 `onesided_notes.py`'s "chip families" section, and the scenarios in the chip lab library's
-`coverage_scenarios/m_onesided_chips.py`.
+`coverage_scenarios/m_onesided_chips.py`. At main ecdef997, with the lab's 5,279 recordings (batches 2 and 3's 39
+among them, all matching), 1,010 branches of the area still ran one way only: 258 guards, 365 unreachable in all,
+11 hard, 634 not yet read.
 
 **The guards (258):** a spawn or collision slot that never fails (255) and a panel pointer off the field (3).
 Each was checked against its instructions: the side never taken is the failure's, which a netbattle's pools
@@ -560,6 +562,240 @@ panels or more to the right or down as "other": the routine tests `>= 2` and not
 up along one axis counts by its sign. The port had made every multi-panel move "other". It no longer does, and
 the full lab matches (5,177 of 5,178 recordings; the other, `custom/no-beast-out`, is a new custom-screen
 recording whose own engine change is still on another branch).
+
+**Batch 2, the bombs, TankCan's shell, TimeBom and the projectile (59 branches):** 22 taken by 20 new
+recordings, 36 unreachable, 1 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x036-minibomb/off-field`, `0x044-grasseed/off-field`, `0x039-flshbom1/off-field` | a thrown bomb landing past the field's edge (AreaGrab, then the throw from the front of the taken column) |
+| `chips/0x036-minibomb/into-hole`, `0x044-grasseed/into-hole`, `0x039-flshbom1/into-hole`, `0x043-bugbomb/into-hole` | a thrown bomb landing in the holes stage's hole at (4,3) |
+| `chips/0x044-grasseed/battle-over`, `0x039-flshbom1/battle-over`, `0x043-bugbomb/battle-over`, `0x00c-tankcan1/battle-over` | the battle ending while a seed or TankCan's shell flies, or a FlshBom or BugBomb stands (the shell's case through SlashMan's dimming, which holds the shell until the battle is over) |
+| `chips/0x03c-blkbomb/fire-dimmed` | BlkBomb set off by HeatMan's flame inside his dimming: its leaving waits out the dimming |
+| `chips/0x043-bugbomb/dimmed`, `all-four-bugs` | a BugBomb that has set down running through a dimming; the fifth BugBomb on a navi with all four bugs picking among all four |
+| `chips/0x039-flshbom1/side-1`, `chips/0x00c-tankcan1/bottom-row` | FlshBom's own-body test for side 1; TankCan's explosion panel below row 3 |
+| `chips/0x090-timebom1/no-room`, `onto-reserved-panel`, `pa/0x14f-timebomplus/explodes` | TimeBom with no free enemy panel ahead; its bomb rising on a panel a set-down FlshBom reserved (the controller avoids only bodies); TimeBom+'s blast (the recipes end before it) |
+| `chips/0x001-cannon/target-over-hole` | a shot hitting side 0 over a hole (AirShoes): the panel isn't solid, so it is left as it is |
+
+The unreachable ones: the projectile's variants with a sprite, a status, a bug or a panel effect (9: only a
+navi's buster programs, NaviStats+0x4D and +0x4F, name them, and nothing sets those in a netbattle); the
+countdown bomb's table rows 2 to 7 (9: TimeBom1-3 set row 0, TimeBom+ row 1) and its blast after the battle's
+end (1: its tick breaks it first); BlkBomb's placed form (3: only `sub_80CD858` places one, and nothing calls
+it), a zero-tick throw, a flight timer that is the 6000-tick lifetime, and a break with HP left (3); a dimming
+while a bomb that doesn't run dimmed flies (3); bomb kind 1, which no chip throws (1); TankCan's shell
+constants (2: one tick a panel, always cracking); FlshBom's statuses and rows (2); BugBomb's arc, which ends 10
+pixels up (1); and two collision allocations (2). The hard one is a FlshBom landing on a navi of its own side:
+the only such body is the thrower, three panels back, and it can't get there in the 40 ticks of flight.
+
+All 20 recordings match the engine (14,759 frames); none of batch 2 changed it.
+
+**Batch 3, the navi chips.** SpoutMan (32 branches, with link navi SpoutMan's charged water ball, which is his
+ball): 13 taken by 8 new recordings, 17 unreachable, 2 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0f2-spoutman/corner-full-trail` | the geyser from (1,1): its row above off the field, its column the far edge's, a trail of four columns |
+| `chips/0x0f2-spoutman/side-1-front` | side 1's SpoutMan away from its back columns (the water ball) |
+| `navis/navi-06-dripshwr/charge-dimmed`, `charge-geddon` | the link navi's ball and splashes (which stand still while dimmed) in the opponent's dimming; a splash whose panel Geddon broke doesn't crack it |
+| `navis/navi-06-dripshwr/charge-into-hole`, `charge-next-hole` | the ball coming down in a hole; the panel beyond the splash a hole (one splash) |
+| `navis/navi-06-dripshwr/charge-ko`, `charge-battle-over` | a splash and the ball seeing the battle over (the ball's through TimeBom1's blast while it flies) |
+
+The unreachable ones: SpoutMan's own AI's geyser, pillar, mark and non-cracking splash (10: the navi chips spawn
+the chip's, Param1 4, and the link navi throws Param1 2); a second spout from one pillar, or its slot holding
+another (2: the navi chip's SpoutMan rises once a visit); his pillar slot empty when he signals it (2); the
+geyser's scan passing its target column (3: the target is the enemy's column or the edge, met first). The hard
+ones: his target scan reaching the field's edge (2), which needs the enemy navi's body off the panel flags while
+he stands in his back columns.
+
+All 8 recordings match the engine (6,463 frames).
+
+ElmntMan (16 branches, with the vines' battle-end test) and SlashMan (11, with link navi SlashMan's charged
+waves): 15 taken by 8 new recordings, 12 unreachable, 4 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x10d-elmntman/wood-from-back`, `wood-ko` | Wood from (1,2): five vines; a vine deleting the opponent, the others seeing the battle over |
+| `chips/0x10d-elmntman/aqua-by-hole`, `aqua-adjacent`, `aqua-ko` | Aqua with a hole in the column ahead; the ice hitting the opponent; the ice deleting it and seeing the battle over |
+| `chips/0x0e9-slashman/steered`, `landing-hole` | B held while the waves swing (each steers); the panel in front of the enemy a hole in his own column (no leap) |
+| `navis/navi-03-rslash/charge-dimmed` | the link navi's waves waiting out the opponent's dimming |
+
+The unreachable ones: ElmntMan's Fire with a second target (2: the enemy side's only body is its navi), his own
+AI's meteor and ice (5), the ice's action finding hit flags its tick has zeroed (1); SlashMan's column walks
+passing the field's edge (4: they meet his own column first). The hard ones: Fire with no enemy body and
+SlashMan's landing scan passing the edge (3, as SpoutMan's), and a meteor seeing the battle over (1: it falls
+inside ElmntMan's dimming, where only hits that run dimmed act, and its own hit ends it).
+
+All 8 recordings match the engine (6,525 frames).
+
+Roll, JudgeMan and BassAnly (9 branches each): 3 taken by 3 new recordings, 20 unreachable, 4 hard:
+`chips/0x0dd-roll/diagonal-target` (her landing panel in her user's column but another row, which must be
+free), `chips/0x10a-judgeman/book-panel-occupied` (a taken panel the opponent stands on gets no book) and
+`chips/0x132-bassanly/from-corner` (from (1,3) his dark balls fly long enough for their push to run out). The
+unreachable ones: parameters no chip has (Roll's three rounds, 2; BassAnly's levels below 3 and other homings,
+5; the navi AI's whip, 2), an enemy body behind Roll's user or more than one (4), a heart with no healing (1),
+spawns that never fail (3), a book heading from its own target (2: it ends there first), BassAnly off the field
+(1). The hard ones: Roll's and the books' searches finding no enemy body (3, as SpoutMan's), and a dark ball
+outliving BassAnly's dimming (1: none did, from his farthest panels). The 3 recordings match the engine (4,453
+frames).
+
+**Batch 4, ColArmy and the shots (34 branches: ColArmy, WideSht, the flying shot, the bullet, CrakShot, BblStar,
+CircGun, TrnArrw, MachGun, Magnum, CornSht):** 8 taken by 7 new recordings, 24 unreachable, 2 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0c6-colarmy/same-tick` | both sides' ColArmy on one tick: the second finds the cube already blinking out |
+| `chips/0x059-crakshot/hole-ahead`, `cracked-cube` | CrakShot facing a hole; an undiggable panel already cracked (the helper AquaNdl's needles and the panel strikes share) |
+| `chips/0x08e-circgun/shot-on-hole` | a CircGun shot on a hole, which it doesn't hit |
+| `chips/0x02b-machgun1/target-steps-in` | MachGun's next sweep a column nearer, the opponent having stepped in |
+| `chips/0x08d-magnum/viewer-blind` | the gunner hidden from a viewer Silence blinded |
+| `chips/0x040-cornsht1/spread-onto-probe` | a corn spreading onto a panel where the other side's corn probe has just appeared |
+
+The unreachable ones: variants and rows nothing fires (the wide wave's kinds 0-2 and 9 and WideSht's action
+subtype 2, 9; the flying shot's palette, status, waits and range ends outside rows 2 and 5, 4; bullet row 0xE,
+1; CircGun's shot look 1, 1), positions the field rules out (a crack shot's fifth crossing, a bubble star or a
+ColArmy soldier off the field, CircGun's own column going forward or a start column without the other side's
+panels, 5), a side with no player (1), Magnum standing in for something other than a navi (1), and slots that
+never fail (2). The hard ones: ColArmy meeting an obstacle registered before its init (the tick of its spawn),
+and TrnArrw's bow waiting for an animation that has always ended by its first look. The 7 recordings are in the
+lab and match the engine at main 83158fe6 (4,918 frames).
+
+**Batch 5, the arm chips (20 branches: WaveArm, DrilArm, and Boomer's and FireHit's effects, which BoomrArm's and
+PunchArm's charged shots run; ElcPuls, whose pulse PuzzlArm's charged shot fires):** 7 taken by 5 new recordings,
+12 unreachable, 1 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x05c-wavearm1/steer-down-from-top`, `bottom-row-no-turn` | the steering from the edge rows: no row above, so down toward the opponent and down again; no row below and nothing ahead |
+| `chips/0x05c-wavearm1/into-hole`, `geddon-under` | a wave sent onto a hole; a wave whose panel the opponent's Geddon breaks |
+| `chips/0x022-elcpuls1/whicapsl` | WhiCapsl folded in: the damage word's paralysis kept over the pulse's own status |
+
+The unreachable ones: the shock wave's virus variants (4: panel-marking ones and those below 0xC) and a quick
+wave's animation ending first (1), a boomerang that flies straight or hits harder (3: nothing spawns one), a drill
+with no slot (2), ElcPuls's one-tick wait and its pulse's linked objects (2: nothing links one). The hard one is
+FireHit's search running off the field, which needs no enemy body ahead (as SpoutMan's scans). The 5 recordings
+are in the lab and match the engine at main f8764b51 (2,712 frames).
+
+The rest of the area is shared from here: the cannons, guns and shots, the arm chips, the traps and barriers
+and ColArmy stay with this pass; the remaining navi chips, the Program Advances, the panel and stage chips, the
+elemental and status chips and the recovery, support and field chips are read in a second one, whose verdicts
+are in `onesided_notes.py`'s "chip families: onesided's share" section and whose scenarios are in
+`coverage_scenarios/n_onesided_chips.py`.
+
+**Batch 7, the traps (34 branches: CopyDmg, AntiDmg, ElemTrap, Mine, BodyGrd):** 12 taken by 9 new recordings,
+9 unreachable, 13 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0be-copydmg/side-1`, `twice` | side 1's damage-carry record; a second mark taking the record from the first |
+| `chips/0x0bb-antidmg/counter-after-ko` | AntiDmg's counter finding no living enemy: the catch lands four ticks before TimeBom1's blast deletes the thrower |
+| `chips/0x0c5-elemtrap/replaced`, `battle-over`, `hit-as-set`, `sprung-dimmed` | the trap's record moving on (AntiDmg after it), the battle's end, a hit in the tick it appears (FireBrn's flames), springing inside HeatMan's dimming |
+| `pa/0x157-bodygrd/all-ten`, `striker-replaced` | BodyGrd's striker running out its ten shurikens (an opponent of 1,500 HP); the striker evicted by Fan, a second field object |
+
+The unreachable ones: spawns that never fail (2), AntiDmg's counter variants its starters never set and shurikens
+off the field (3), the hidden mine's HP (1: no attack's target type reaches it), ElemTrap's counterattack in an
+element without a sound (1: only the four that spring it, all with one), and BodyGrd's striker while dimmed or
+choosing an offline target (2). The hard ones are mostly timings: a CopyDmg probe (about 5 ticks long) seeing the
+battle's end, which comes with the deletion some 50 ticks after the KO hit, after which no chip can be used; a
+shuriken of AntiDmg or BodyGrd starting with the battle over, or BodyGrd's striker meeting its target at 0 HP
+before the deletion; CopyDmg's search meeting anything but the navi it hit (4); the mine finding no free enemy
+panel (2); and ElemTrap's searches finding no enemy body (2, as SpoutMan's). The 9 recordings are in the lab and
+match the engine at main ca994e37 (9,340 frames).
+
+**Batch 8, Thunder, AirHocky, Snake, YoYo (31 branches; BgDthThd's charged ball is Thunder's; GreatYo's own yoyo
+branches are left with the Program Advances):** 4 taken by 3 new recordings, 14 unreachable, 13 hard:
+`chips/0x01e-thunder/target-below` (the ball going down its target's column),
+`chips/0x136-bgdththd/charge-vertical` (the fast ball moving along a column) and `chips/0x032-airhocky/one-column`
+(two AreaGrabs leave the opponent one column, and the puck, across, can neither go on nor turn back). The
+unreachable ones: thunder-ball parameters no chip gives (4: a linked object, no status, a bug), puck rules no row
+has and steps the bounces rule out (7), a snake off the field or off its target's row (2), and the yoyo's
+collision slot (1). The hard ones: the thunder ball's searches failing (6: the enemy navi always on the field, and
+a search ahead failing only with the enemy behind the ball) or its panels running out before it reaches a moving
+opponent (1), Snake with no target or a second one (5: tried the opponent's RockCube after Geddon's holes), and a
+YoYo's slot taken while it is out (1: its navi waits for it). The 3 recordings are in the lab and match the engine
+(4,229 frames).
+
+<!-- end: chip families, G4 -->
+
+**Second pass, batch 1: the navi chips the first pass had started** (Bass, ChrgeMan, DustMan, ProtoMan, ElecMan,
+DiveMan, GrndMan, BlastMan, HeatMan, EraseMan, and the Darkness PA; 35 branches): 13 taken by 10 new recordings,
+21 unreachable, 1 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x12d-bass/areagrab-twice`, `side1-forward` | two AreaGrabs leave Bass a column with no enemy panel and every panel left cooling down; side 1's Bass from column 4 counting columns from his own |
+| `chips/0x0ef-chrgeman/holes-row-1` | ChrgeMan and his cars reaching a hole (from (2,1) on the holes stage) |
+| `navis/navi-05-volcchrg/charge-cars-dimmed`, `navis/navi-02-delecswd/charge-bolts-dimmed` | link ChargeMan's cars and link ElecMan's bolts, which wait out a dimming, under the opponent's RockCube |
+| `chips/0x0fe-dustman/takes-timebom-plus`, `junk-ko` | DustMan throwing TimeBom+'s big bomb (its own look, identity `timebomb-big`); his junk deleting the opponent and seeing the battle over |
+| `chips/0x0e0-protoman/user-beside-landing` | ProtoMan's landing panel in his user's column, a row away |
+| `chips/0x104-diveman/areagrab-twice` | DiveMan's waves rising in column 5, their far hit and splash off the field |
+| `chips/0x0ec-eraseman/mark-ko` | the slash deleting the opponent while EraseMan's marks still show (A pressed just after a set is laid) |
+
+The unreachable ones: parameters only the navi AIs' spawners pass (DiveMan's wave and BlastMan's blast, 4),
+or that no spawner passes (a car tied to an action, a flame of collision type 0xA, a silent rock, which only an
+effect no netbattle spawns drops; 3); Bass's and ProtoMan's searches starting or standing off the field (2), a
+forbid mask Bass's searches never pass (1), a side with no column or row of its own left (AreaGrab and PanlGrab
+never take a side's last full column; 3); a fifth ChargeMan car, which needs column 6 behind him (1); the junk's
+hit record set by its move (1); spawns that never fail (2); Darkness's one-tick landing (2) and his parts always
+spawned with someone waiting (2). The hard one: link GroundMan's drill outliving his action, which only an
+interruption of his invulnerable dig would do.
+
+All 10 recordings match the engine, every frame (16,698) and every sound call (286).
+
+**Batch 6, the barriers, the Reflectors and IronShl (26 branches: the barrier visual of `lib/barriers`, Rflectr and
+the NaviCust Reflect's guard, IronShl's shell):** 14 taken by 14 new recordings, 9 unreachable, 3 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0b2-barrier/paused`, `chips/0x0b6-lifeaur/link-navi` | a barrier's visual through a pause; LifeAur on a link navi, its aura's part 6 hidden |
+| `chips/0x0b3-barr100/deleted-under-it`, `chips/0x0b2-barrier/deleted-going-down`, `deleted-blown` | the navi deleted with its barrier up, going down, and blown away: the visual finds itself unlinked |
+| `chips/0x0b2-barrier/fan-pull` | a barrier popped by Fan's pull, blown forward |
+| `chips/0x083-rflectr1/cross-beast`, `blind-viewer`, `counter-ko` | Rflectr in a Falzar Cross Beast (the head animates); the shield hidden from a blind viewer; the counter wave's KO |
+| `navicust/reflect-counter` | the Reflect program's guard firing the buster shot back |
+| `chips/0x07b-ironshl1/hole-ahead`, `far-column`, `side-1`, `side-1-far-column` | a hole ahead; the shell on column 6 and on column 1; side 1's shell |
+
+The unreachable ones: a barrier on a navi that isn't a player or is off the field (3), a barrier other than the
+bubble growing back (1: a new barrier ends the old visual first), the visual's end called without one (1), the
+Shield program's guard countering (1: it heeds nothing), an iron shell off the field, with more than one bump or
+no collision slot (3). The hard ones: the bubble growing back while its navi is bubbled (its timer stops then),
+the shield outliving its owner's vanishing for a navi chip (it fades long before the cut-in ends), and a guard
+dropped by a breaking hit, which only arrives with an ordinary hit the guard blocks on the same tick. The 14
+recordings are in the lab and match the engine at main 9ed59b90.
+
+**Second pass, batch 2: DblBeast, CrossDiv's Colonel, HubBatc** (30 branches): 15 taken by 9 new recordings,
+9 unreachable, 6 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x137-dblbeast/cubes-around-target`, `cubes-in-row` | the beasts' attack panels around the enemy all taken by RockCubes or off the field: the claw, the strike and the wing miss, each having tried all six panels |
+| `chips/0x137-dblbeast/user-column`, `user-column-falzar`, `user-two-ahead` | a taken attack panel in the user's column a row away (each beast's search); Falzar's breath falling back to the user's panel |
+| `chips/0x134-crossdiv/side1-miss` | side 1's Colonel finding no enemy navi in his row |
+| `chips/0x135-hubbatc/attackmax`, `custom-bug`, `shield` | HubBatc on a navi whose buster is at level 5 already, with the hand-shrink bug's turn set, and with a B+Back special |
+
+The unreachable ones: a second DblBeast target (4: the beasts list the panels with the enemy's navi body flag,
+which only its navi sets), Gregar's gun shot leaving the field (2: the gun stands in its target's row facing it),
+Colonel on the enemy's back column (2: he appears on his user's panel) and an attachment restarted that isn't
+there (1). The hard ones: no target for the beasts (3: the enemy navi's body off the panel flags), Gregar's gun
+missing (2: its panels three to five from the target, all taken but none its user's), and a new charged shot over
+DustCross Beast's throw (1). The 9 recordings match the engine at main 4f2ad68e, every frame (15,910) and sound
+call (409, the custom screen's now among them); batch 1's 10 too.
+
+**Second pass, batch 3: the Program Advances CrosOver and DblHero** (29 branches): 16 taken by 7 new
+recordings (and two of the forms' branches with them), 13 unreachable. A Program Advance needs its three chips
+in the first hand, and a side's first hand deals fixed folder slots (per side and stage seed), which a probe
+folder of thirty different chips shows; the scenarios place the chips there.
+
+| Scenarios | What they take the other way |
+|---|---|
+| `pa/0x15d-crosover/target-back` | the opponent on its back column: no panel for Django, so MegaMan waits for nobody and slashes alone |
+| `pa/0x15d-crosover/hole-in-front`, `django-blocked` | MegaMan's panel in front of the target a hole, Django's behind it a RockCube: each one's partner slashes alone |
+| `pa/0x15d-crosover/link-navi`, `in-cross` | a link navi's CrosOver (MegaMan in MegaMan's own image, raising his own arm); CrosOver in a Cross (MegaMan in the Cross's image) |
+| `pa/0x15d-crosover/side1`, `pa/0x158-dblhero/side1` | both on side 1: CrosOver's search and DblHero's shot rows going left |
+
+The unreachable ones: an image whose identity isn't a navi's (2: every user is a navi), MegaMan finding Django
+without his gun (1: Django, spawned by MegaMan's init, finishes the same 60-tick appearance first), one-tick
+phases (6), Django's sun beam or partner missing (2), DblHero's shot row leaving the field (1: the other side
+keeps its back column) and DblHero with no controller waiting (1). The 7 recordings match the engine, every frame
+(11,219) and sound call (408).
 
 ### 6.3 Custom screen keys
 

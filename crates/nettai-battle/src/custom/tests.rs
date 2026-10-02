@@ -15,6 +15,8 @@ const STAR: u8 = 26;
 const SHOT: ChipId = 1;
 const WAVE: ChipId = 2;
 const MEGA: ChipId = 3;
+/// A chip with the dark flag (no BN6 chip has it), in every code.
+const DARK: ChipId = 4;
 
 fn library() -> TestLibrary {
     const SHOT_CODES: &[ChipCode] = &[ChipCode(0), ChipCode(1), ChipCode(2), ChipCode(26)];
@@ -24,6 +26,7 @@ fn library() -> TestLibrary {
             (SHOT, chip(ChipClass::Standard, SHOT_CODES, ChipFlags::HAS_DAMAGE, 40)),
             (WAVE, chip(ChipClass::Standard, WAVE_CODES, ChipFlags::HAS_DAMAGE, 60)),
             (MEGA, chip(ChipClass::Mega, EVERY_CODE, ChipFlags::HAS_DAMAGE, 150)),
+            (DARK, chip(ChipClass::Standard, EVERY_CODE, ChipFlags::HAS_DAMAGE | ChipFlags::DARK, 300)),
         ],
         Vec::new(),
     )
@@ -616,4 +619,66 @@ fn the_no_running_message_starts_a_tick_after_l() {
     assert_eq!(p.screen().selection(), &[] as &[u8]);
     p.step(keys::A);
     assert_eq!(p.screen().selection(), [0]);
+}
+
+#[test]
+fn a_dark_chip_takes_the_cursor_and_darkens_the_screen() {
+    use crate::battle::FadeMode;
+    let mut p = Player::new(&[(SHOT, 0), (DARK, 0), (SHOT, 1)], GameVersion::Falzar);
+    p.open();
+    // sub_802806C: the cursor starts on the first dark chip dealt.
+    assert_eq!(p.screen().cursor, 1);
+    // The hover starts on the tick the window is in (the chips' state).
+    for _ in 0..10 {
+        p.step(0);
+    }
+    assert_eq!(p.phase(), Phase::Choosing);
+    let look = p.screen().look;
+    assert_eq!(look.dark, DarkHover::Darkening { step: 0 });
+    assert_eq!((look.fade.mode, look.window_fade.mode), (FadeMode::DarkChip, FadeMode::DarkChipWindow));
+    // The music turns down and the screen's player up, a step a tick, until
+    // the window's fade is done.
+    let volumes = |p: &mut Player, n: usize| {
+        (0..n)
+            .map(|_| {
+                p.step(0);
+                p.screen().look.drawn.volume
+            })
+            .collect::<Vec<_>>()
+    };
+    let down = volumes(&mut p, 6);
+    assert_eq!(down, [Some((0x100, 0x80)), Some((0xE0, 0x80)), Some((0xC0, 0xA0)), Some((0xA0, 0xC0)), Some((0x80, 0xE0)), None]);
+    let look = p.screen().look;
+    assert_eq!(look.dark, DarkHover::Dark);
+    assert_eq!(look.window_fade.level, 0x30);
+    // (The screen's own fade, eight steps to 0x50, has one to go.)
+    assert_eq!((look.fade.level, look.fade.active()), (0x46, true));
+    // The cursor leaves it (on the second tick of the hold): back the other
+    // way, a step longer.
+    p.step(keys::RIGHT);
+    p.step(keys::RIGHT);
+    assert_eq!(p.screen().cursor, 2);
+    assert_eq!(p.screen().look.dark, DarkHover::Clearing { step: 0 });
+    let up = volumes(&mut p, 7);
+    assert_eq!(
+        up,
+        [Some((0x80, 0x100)), Some((0x80, 0xE0)), Some((0xA0, 0xC0)), Some((0xC0, 0xA0)), Some((0xE0, 0x80)), Some((0x100, 0x80)), None]
+    );
+    let look = p.screen().look;
+    assert_eq!((look.dark, look.window_fade.level), (DarkHover::Clear, 0));
+    // The screen's own fade, back from 0x50, clears a tick later.
+    assert_eq!(p.screen().look.fade.level, 0xA);
+    p.step(0);
+    assert_eq!((p.screen().look.fade.level, p.screen().look.fade.active()), (0, false));
+}
+
+#[test]
+fn the_cursor_stays_put_without_a_dark_chip() {
+    let mut p = Player::new(&[(SHOT, 0), (MEGA, 0)], GameVersion::Falzar);
+    p.open();
+    assert_eq!(p.screen().cursor, 0);
+    for _ in 0..20 {
+        p.step(0);
+        assert_eq!((p.screen().look.dark, p.screen().look.drawn.volume), (DarkHover::Clear, None));
+    }
 }

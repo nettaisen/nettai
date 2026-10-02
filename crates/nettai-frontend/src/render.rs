@@ -55,7 +55,7 @@ impl<'a> Renderer<'a> {
     pub fn view(b: &Battle) -> View {
         let local = b.setup.local_side;
         let (x, y) = b.consoles[local as usize & 1].camera.jitter;
-        let fade = crate::custom::fade(b).unwrap_or_default();
+        let fade = crate::custom::object_fade(b).unwrap_or_default();
         View { camera: (x, y + crate::custom::camera_y(b), 0), mirror: local & 1 == 1, fade }
     }
 
@@ -71,7 +71,7 @@ impl<'a> Renderer<'a> {
         self.hud.clear();
         self.names.clear();
         let navi = crate::custom::navi_number(b, b.setup.local_side);
-        let emblem = crate::custom::emblem_tiles(&assets.custom, navi);
+        let emblem = crate::custom::emblem_tiles(&assets.custom, crate::custom::version_name(b, b.setup.local_side), navi);
         let mut list = SpriteList::default();
         objects::queue_objects(b, assets, &view, &mut list, &mut self.problems);
         crate::custom::draw(b, assets, &emblem, &mut self.hud, &mut self.names, &mut list, &mut self.problems);
@@ -82,9 +82,11 @@ impl<'a> Renderer<'a> {
         let backdrop = stage.palettes[0][0];
         // The transformation's fade takes every background palette, a
         // dimming's the stage's; the custom screen's Beast Out the stage's
-        // and the HUD's.
+        // and the HUD's, its other fades the stage's (a dark chip's second
+        // the HUD's).
         let transform = layer_fade(b);
         let custom = crate::custom::fade(b).unwrap_or_default();
+        let custom_hud = crate::custom::hud_fade(b).unwrap_or_default();
         let flash = objects::palette_flash(b);
         let stage = if flash.is_some() {
             Fade::White(16)
@@ -100,11 +102,11 @@ impl<'a> Renderer<'a> {
         // leaves them be in variant 0.)
         let hud = match flash {
             Some(1) => Fade::White(16),
-            Some(_) => custom,
+            Some(_) => custom_hud,
             None if transform != Fade::None => transform,
-            None => custom,
+            None => custom_hud,
         };
-        let sprites = if flash == Some(1) { Fade::White(16) } else { Fade::None };
+        let sprites = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b).unwrap_or_default() };
         let fades = Fades { stage, hud, sprites, screen: screen_fade(b) };
         compose::compose(backdrop, &[&self.names, &self.hud, &self.field, &self.background], &parts, fades)
     }

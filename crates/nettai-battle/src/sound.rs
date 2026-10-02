@@ -35,6 +35,11 @@ pub enum SoundCue {
     /// `sub_802A3CC`: the custom screen closed; any volume change it made to
     /// the music is undone.
     RestoreVolume,
+    /// `sub_802A30C`, `sub_802A362`: the custom screen's cursor came to or
+    /// left a dark chip, and the music and the screen's player change volume
+    /// a step (volume control on players 31 and 22, all tracks; 0x100 is
+    /// full).
+    ScreenVolume { music: u16, screen: u16 },
 }
 
 impl From<SoundId> for SoundCue {
