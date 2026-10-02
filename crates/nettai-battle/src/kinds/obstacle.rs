@@ -316,6 +316,8 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     if b.is_battle_over() || f1_of(b, r) & f1::DEAD != 0 {
         return;
     }
+    // (BN5's lava burns first: 0x08017A18 and its variants.)
+    common::panel_burn(b, r);
     if push == Push::AnyHit {
         push_on_any_hit(b, c);
     }

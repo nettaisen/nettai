@@ -504,7 +504,19 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
         },
         2 => facing(*b.arena_rules().ice_vectors.get(coll(b, r).direction as usize).expect("ice slide direction")),
         3 => {
-            b.arena_rules().panels.road_slide(panel_kind(b, o.panel)).unwrap_or(SlideVector::NONE)
+            let kind = panel_kind(b, o.panel);
+            // BN5's metal (0x0800C8A8): the steps its slide tries by the
+            // direction of the move, the first the navi can slide to.
+            if let Some(slide) = b.arena_rules().panels.types[kind as usize].slide {
+                let tries = slide.tries.get(coll(b, r).direction as usize).copied().unwrap_or_default();
+                return tries
+                    .into_iter()
+                    .flatten()
+                    .map(|(dx, dy)| SlideVector { dx: dx * front, dy, tiles: 1 })
+                    .find(|v| can_slide_to(b, r, PanelPos { x: (o.panel.x as i8 + v.dx) as u8, y: (o.panel.y as i8 + v.dy) as u8 }))
+                    .unwrap_or(SlideVector::NONE);
+            }
+            b.arena_rules().panels.road_slide(kind).unwrap_or(SlideVector::NONE)
         }
         t => panic!("slide type {t} reads past its table"),
     };
