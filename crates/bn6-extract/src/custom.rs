@@ -5,8 +5,8 @@
 //! `off_802A744` its sprites).
 
 use crate::{Rom, u32at};
-use bn6_assets::{ChipArt, CustomScreen, MapEntry, MapPatch, PatchList, Palette, Picture, SlotPictures, Tiles, palettes_from_bytes};
-use bn6_content::names::AssetNames;
+use nettai_assets::{ChipArt, CustomScreen, MapEntry, MapPatch, PatchList, Palette, Picture, SlotPictures, Tiles, palettes_from_bytes};
+use nettai_content::names::AssetNames;
 
 /// The window frame's tiles, loaded at tile 1 (0x87 tiles).
 const WINDOW_TILES: (u32, usize) = (0x086E_1D38, 0x10E0);
