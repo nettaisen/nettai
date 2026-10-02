@@ -33,7 +33,7 @@ fn battles_run_the_content_scripts() {
         .kinds
         .iter()
         .filter(|k| matches!(k.implementation, crate::content::KindImpl::Script { .. }))
-        .map(|k| k.key.as_str())
+        .map(|k| nettai_content_api::keys::local(&k.key))
         .collect();
     assert_eq!(
         kinds,
@@ -211,7 +211,7 @@ fn the_duel_fires_scripted_gun_del_sols() {
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            match b.kind_key(r) {
+            match b.local_kind_key(r) {
                 "gundels/beam" => beams += 1,
                 "attachment" => guns += 1,
                 _ => {}
@@ -251,7 +251,7 @@ fn duel_with(chips: &[nettai_content_api::ChipHandle], ticks: usize, seed: u32) 
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
+            *seen.entry(b.local_kind_key(r).to_string()).or_insert(0) += 1;
         }
     }
     seen
@@ -302,7 +302,7 @@ fn bee_and_dragon_duel(ticks: usize) -> (std::collections::BTreeMap<String, usiz
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
+            *seen.entry(b.local_kind_key(r).to_string()).or_insert(0) += 1;
         }
     }
     let hp = [0, 1].map(|s| b.objects.get(b.player(s).unwrap()).hp);
@@ -355,7 +355,7 @@ fn the_thrown_chips_play_and_roll_back() {
         }
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
+            *seen.entry(b.local_kind_key(r).to_string()).or_insert(0) += 1;
         }
     }
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
@@ -476,7 +476,7 @@ fn standard_duel() -> (std::collections::BTreeMap<String, usize>, bool) {
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
+            *seen.entry(b.local_kind_key(r).to_string()).or_insert(0) += 1;
         }
         broken |= (1..=6).any(|x| (1..=3).any(|y| b.field.panel(x, y).unwrap().kind == crate::field::PanelType::Broken));
     }
@@ -528,9 +528,9 @@ fn the_scripted_swords_play_and_roll_back() {
         }
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            let key = match b.kind_key(r) {
+            let key = match b.local_kind_key(r) {
                 "engine/player" => match crate::kinds::player::running_content_action(&b, r) {
-                    Some(h) => format!("engine/player in {}", b.content.defs.action(h).key),
+                    Some(h) => format!("engine/player in {}", nettai_content_api::keys::local(&b.content.defs.action(h).key)),
                     None => "engine/player".to_string(),
                 },
                 k => k.to_string(),
@@ -577,8 +577,8 @@ fn the_link_navis_chips_play_and_roll_back() {
             b.tick(&t.input, t.events.clone());
             for r in b.objects.in_order() {
                 let key = match crate::kinds::player::running_content_action(&b, r) {
-                    Some(h) => format!("action {}", b.content.defs.action(h).key),
-                    None => b.kind_key(r).to_string(),
+                    Some(h) => format!("action {}", nettai_content_api::keys::local(&b.content.defs.action(h).key)),
+                    None => b.local_kind_key(r).to_string(),
                 };
                 *seen.entry(key).or_insert(0) += 1;
             }
@@ -649,7 +649,7 @@ fn scripted_instant_chips_play_and_roll_back() {
             assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
         }
         b.tick(&t.input, t.events.clone());
-        sparkles += b.objects.in_order().filter(|&r| b.kind_key(r) == "rising-bubble").count();
+        sparkles += b.objects.in_order().filter(|&r| b.local_kind_key(r) == "rising-bubble").count();
     }
     assert!(sparkles > 0, "no plus chip was used");
 }
@@ -681,7 +681,7 @@ fn spawning_instant_chips_play_in_a_duel_and_roll_back() {
         spawned += b
             .objects
             .in_order()
-            .filter(|&r| !b.kind_key(r).starts_with("engine/") && b.kind_key(r) != "attachment")
+            .filter(|&r| !b.local_kind_key(r).starts_with("engine/") && b.local_kind_key(r) != "attachment")
             .count();
     }
     assert!(spawned > 0, "no instant chip spawned anything");
@@ -715,7 +715,7 @@ fn dimming_duel(ticks: usize) -> (std::collections::BTreeMap<String, usize>, Bat
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
+            *seen.entry(b.local_kind_key(r).to_string()).or_insert(0) += 1;
         }
         for side in 0..2 {
             let Some(p) = b.player(side) else { continue };
@@ -780,7 +780,7 @@ fn run_only(b: &mut Battle, kinds: &[&str]) {
         let o = b.objects.get(r);
         let gated = (b.paused && o.flags & flags::RUN_WHILE_PAUSED == 0)
             || (b.is_dimmed() && o.flags & flags::RUN_WHILE_DIMMED == 0);
-        if !gated && kinds.contains(&b.kind_key(r)) {
+        if !gated && kinds.contains(&b.local_kind_key(r)) {
             crate::kinds::update(b, r);
         }
         cur = b.objects.loop_next();
@@ -804,7 +804,7 @@ fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
     let rocks: Vec<_> = b.objects.in_order().filter(|r| r.pool == Pool::Attack).collect();
     assert_eq!(rocks.len(), 2);
     let o = b.objects.get(rocks[0]);
-    assert_eq!(b.kind_key(rocks[0]), "rockcube/rock");
+    assert_eq!(b.local_kind_key(rocks[0]), "rockcube/rock");
     assert_eq!((o.damage, o.stamina), (200, 0), "the stage's rocks hit with 200 when thrown");
     // Registered on their panels' sides: (3,3) is side 0's, (4,1) side 1's.
     assert_eq!(b.field.objects.slots[0], Some(rocks[0]));
@@ -834,7 +834,7 @@ fn breaking_a_scripted_rock_throws_debris() {
         rng.next();
     }
     assert_eq!(b.rng.state, rng.state);
-    let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.kind_key(o)).collect();
+    let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.local_kind_key(o)).collect();
     assert_eq!(
         &order[..4],
         ["rockcube/rock", "engine/effect", "rockcube/debris", "rockcube/debris"],
@@ -863,7 +863,7 @@ fn a_stage_places_boulders_in_the_stage_slots() {
     assert_eq!(b.round.alive, [1, 1]);
     let boulders: Vec<_> = b.objects.in_order().filter(|r| r.pool == Pool::Attack).collect();
     assert_eq!(boulders.len(), 2, "the field has two stage slots: the list's third boulder isn't placed");
-    assert!(boulders.iter().all(|&r| b.kind_key(r) == "boulder"));
+    assert!(boulders.iter().all(|&r| b.local_kind_key(r) == "boulder"));
     let panels: Vec<_> = boulders.iter().map(|&r| b.objects.get(r).panel).collect();
     assert_eq!(panels, [PanelPos { x: 2, y: 2 }, PanelPos { x: 5, y: 2 }]);
     // Their panels' sides, and the registry's stage slots (not the sides').
@@ -896,7 +896,7 @@ fn a_stage_places_boulders_in_the_stage_slots() {
         rng.next();
     }
     assert_eq!(b.rng.state, rng.state);
-    let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.kind_key(o)).collect();
+    let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.local_kind_key(o)).collect();
     assert_eq!(&order[..4], ["boulder", "engine/effect", "rockcube/debris", "rockcube/debris"]);
     assert_eq!(b.objects.get(boulders[0]).state, state::DESTROY);
     assert_eq!(b.field.objects.slots[6..], [None, Some(boulders[1])]);
@@ -950,7 +950,7 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
     run_only(&mut b, &ROCK);
     let o = b.objects.get(r);
     assert_eq!((o.panel, o.hp, o.action), (PanelPos { x: 5, y: 2 }, 0, 2), "landed and breaking");
-    let hit = b.objects.in_order().find(|&h| b.kind_key(h) == "engine/hitbox").unwrap();
+    let hit = b.objects.in_order().find(|&h| b.local_kind_key(h) == "engine/hitbox").unwrap();
     let h = b.objects.get(hit);
     assert_eq!((h.panel, h.damage), (PanelPos { x: 5, y: 2 }, 60));
     // Its own panel, with the thrown obstacle's spark and collision types.
@@ -1012,7 +1012,7 @@ fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
 fn an_obstacle_encased_in_ice_becomes_an_ice_block() {
     let (mut b, r) = encase_rock(true);
     let panel = b.objects.get(r).panel;
-    let block = b.objects.in_order().find(|&o| o != r && b.kind_key(o) == "rockcube/rock").expect("the ice block");
+    let block = b.objects.in_order().find(|&o| o != r && b.local_kind_key(o) == "rockcube/rock").expect("the ice block");
     // In the class the obstacle was in; once it has run, the ice variant
     // (its name, element and HP).
     assert_eq!(b.field.objects.class_of(block), Some(0));
@@ -1026,7 +1026,7 @@ fn an_obstacle_encased_in_ice_becomes_an_ice_block() {
 fn an_obstacle_encased_in_a_bubble_becomes_the_bubble() {
     let (b, r) = encase_rock(false);
     let panel = b.objects.get(r).panel;
-    let bubble = b.objects.in_order().find(|&o| b.kind_key(o) == "encased-bubble").expect("the bubble");
+    let bubble = b.objects.in_order().find(|&o| b.local_kind_key(o) == "encased-bubble").expect("the bubble");
     let o = b.objects.get(bubble);
     assert_eq!((o.panel, o.element, o.alliance), (panel, 2, b.objects.get(r).alliance));
 }
@@ -1056,7 +1056,7 @@ fn the_navi_changing_chips_change_the_navi() {
     let mut controllers = 0;
     for t in &tape {
         b.tick(&t.input, t.events.clone());
-        controllers += b.objects.in_order().filter(|&r| b.kind_key(r) == "navi-boost").count();
+        controllers += b.objects.in_order().filter(|&r| b.local_kind_key(r) == "navi-boost").count();
     }
     assert!(controllers > 0, "the controller ran");
     let after = &b.stats[0];
@@ -1118,7 +1118,7 @@ fn support_duel(
         }
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
+            *seen.entry(b.local_kind_key(r).to_string()).or_insert(0) += 1;
         }
     }
     (seen, b)
@@ -1167,7 +1167,7 @@ fn tango_heals_her_navi_at_a_quarter_of_its_hp() {
 /// once).
 fn patched(module: &str, edits: &[(&str, &str)]) -> Content {
     let mut c = testing::build();
-    let src = c.scripts.modules.get_mut(module).unwrap_or_else(|| panic!("no module {module}"));
+    let src = c.scripts.home_module_mut(module).unwrap_or_else(|| panic!("no module {module}"));
     for (from, to) in edits {
         assert!(src.contains(from), "{module}.luau has no {from:?}");
         *src = src.replacen(from, to, 1);
@@ -1276,7 +1276,7 @@ fn runaway_scripts_stop() {
 fn content_errors_name_the_script() {
     let b = load(&in_update("error(\"boom\")")).unwrap();
     let e = play_error(b).expect("stopped");
-    assert!(e.contains("action gundels3/action") && e.contains("chips/gundels/action.luau") && e.contains("boom"), "{e}");
+    assert!(e.contains("action test:gundels3/action") && e.contains("test:chips/gundels/action.luau") && e.contains("boom"), "{e}");
 }
 
 #[test]
@@ -1328,7 +1328,7 @@ fn a_panic_inside_content_leaves_the_vm_sound() {
         // calls isn't ported and panics when a defense triggered.
         if let Some(p) = c.player(0)
             && crate::kinds::player::running_content_action(&c, p)
-                .is_some_and(|h| c.content.defs.action(h).key == "gundels3/action")
+                .is_some_and(|h| nettai_content_api::keys::local(&c.content.defs.action(h).key) == "gundels3/action")
         {
             let actor = c.objects.get(p).actor.unwrap();
             c.actors.get_mut(actor).requests |= crate::actor::request::ANTI_SWORD_TRIGGERED;
@@ -1426,7 +1426,7 @@ fn trap_bomb_mine_duel(
         b.tick(&t.input, t.events.clone());
         poke(&mut b);
         for r in b.objects.in_order() {
-            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
+            *seen.entry(b.local_kind_key(r).to_string()).or_insert(0) += 1;
         }
     }
     seen
@@ -1455,7 +1455,7 @@ fn a_sprung_element_trap_strikes_back() {
         if sprung || b.is_dimmed() {
             return;
         }
-        let trap = b.objects.in_order().find(|&r| b.kind_key(r) == "elemtrap/trap");
+        let trap = b.objects.in_order().find(|&r| b.local_kind_key(r) == "elemtrap/trap");
         let Some(trap) = trap.filter(|&r| b.objects.get(r).state == state::UPDATE) else { return };
         let c = b.objects.get(trap).collision.unwrap();
         b.collision.get_mut(c).acc.element_damage[2] = 10;
@@ -1543,7 +1543,7 @@ fn duel_on(chips: &[nettai_content_api::ChipHandle], content: std::sync::Arc<Con
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *d.seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
+            *d.seen.entry(b.local_kind_key(r).to_string()).or_insert(0) += 1;
         }
         d.panel_changed_hands |= (1..=6).any(|x| {
             (1..=3).any(|y| b.field.panel(x, y).is_some_and(|p| p.kind != crate::field::PanelType::Missing && p.alliance != p.home))
@@ -1589,7 +1589,7 @@ fn bugfix_ends_the_emotion_window_glitch() {
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         let glitch = b.consoles.iter().map(|c| c.emotion_window.glitch).collect::<Vec<_>>();
-        if !fixed && b.objects.in_order().any(|r| b.kind_key(r) == "bugfix/controller") {
+        if !fixed && b.objects.in_order().any(|r| b.local_kind_key(r) == "bugfix/controller") {
             fixed = true;
         }
         if fixed {
@@ -1771,7 +1771,7 @@ fn drive(chip: &str, ticks: usize, fight: impl Fn(&Battle, usize, u32) -> u16, m
 
 /// The objects of kind `key` there are.
 fn all_of(b: &Battle, key: &str) -> Vec<crate::object::ObjectRef> {
-    b.objects.in_order().filter(|&o| b.kind_key(o) == key).collect()
+    b.objects.in_order().filter(|&o| b.local_kind_key(o) == key).collect()
 }
 
 /// Side 0 uses its first chip a while into the fight (A held for a tick).

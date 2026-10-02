@@ -92,7 +92,7 @@ fn run_to(b: &mut Battle, p: [ObjectRef; 2], now: &mut u32, last: u32) {
 
 /// The objects of kind `key`, in update order.
 fn all(b: &Battle, key: &str) -> Vec<ObjectRef> {
-    b.objects.in_order().filter(|&o| b.kind_key(o) == key).collect()
+    b.objects.in_order().filter(|&o| b.local_kind_key(o) == key).collect()
 }
 
 fn one(b: &Battle, key: &str) -> Option<ObjectRef> {

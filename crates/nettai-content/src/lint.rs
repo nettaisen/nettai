@@ -117,7 +117,7 @@ pub fn single_owner_kinds(c: &Content) -> Vec<(String, String)> {
             _ => {}
         }
     }
-    /// A module's owner folder: `chips/minibomb` for `chips/minibomb/chip`.
+    /// A module's owner folder: `bn6:chips/minibomb` for `bn6:chips/minibomb/chip`.
     fn owner(module: &str) -> String {
         module.split('/').take(2).collect::<Vec<_>>().join("/")
     }
@@ -132,7 +132,7 @@ pub fn single_owner_kinds(c: &Content) -> Vec<(String, String)> {
     }
     let mut out = Vec::new();
     for d in defs.of(Registry::Kind) {
-        if !d.module.starts_with("objects/") {
+        if !nettai_content_api::keys::local(&d.module).starts_with("objects/") {
             continue;
         }
         if let Some(owners) = users.get(&d.key)
