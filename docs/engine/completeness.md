@@ -555,7 +555,7 @@ he stands in his back columns.
 All 8 recordings match the engine at main af3e0c39 (6,463 frames).
 
 ElmntMan (16 branches, with the vines' battle-end test) and SlashMan (11, with link navi SlashMan's charged
-waves): 15 taken by 8 new recordings, 12 unreachable, 4 hard more:
+waves): 15 taken by 8 new recordings, 12 unreachable, 4 hard:
 
 | Scenarios | What they take the other way |
 |---|---|
@@ -571,6 +571,17 @@ SlashMan's landing scan passing the edge (3, as SpoutMan's), and a meteor seeing
 inside ElmntMan's dimming, where only hits that run dimmed act, and its own hit ends it).
 
 All 8 recordings match the engine at main af3e0c39 (6,525 frames).
+
+Roll, JudgeMan and BassAnly (9 branches each): 3 taken by 3 new recordings, 20 unreachable, 4 hard:
+`chips/0x0dd-roll/diagonal-target` (her landing panel in her user's column but another row, which must be
+free), `chips/0x10a-judgeman/book-panel-occupied` (a taken panel the opponent stands on gets no book) and
+`chips/0x132-bassanly/from-corner` (from (1,3) his dark balls fly long enough for their push to run out). The
+unreachable ones: parameters no chip has (Roll's three rounds, 2; BassAnly's levels below 3 and other homings,
+5; the navi AI's whip, 2), an enemy body behind Roll's user or more than one (4), a heart with no healing (1),
+spawns that never fail (3), a book heading from its own target (2: it ends there first), BassAnly off the field
+(1). The hard ones: Roll's and the books' searches finding no enemy body (3, as SpoutMan's), and a dark ball
+outliving BassAnly's dimming (1: none did, from his farthest panels). The 3 recordings match the engine (4,453
+frames).
 
 ### 6.3 Custom screen keys
 
