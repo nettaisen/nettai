@@ -556,7 +556,7 @@ Later, the Beast Out chip-use routine (`sub_80EAD9C` → `sub_80EAE28` → `sub_
 - **Spawner** `sub_80C468C`: `object_spawnType1(0x57)`, `RelatedObject1Ptr = r5` (owner), alliance copied, `ExtraVars = r2`, `ExtraVars+4 = r3`, `Flags |= 0x04`.
 - **Form overlay:** `sub_8011366` / `loc_8011368` passes `r4 = 0x0A0C | Param3<<16` (Param1 = category byte offset 0x0C, Param2 = sprite 0x0A), `r2 = 1`, and stores the object in `owner.RelatedObject2Ptr`. Forms 1–10 instead spawn a different kind via `sub_80C44A8`.
 - **Afterimage layer:** T4#0x28 creates one through `sub_8010DF6`.
-- **Init** `sub_80C4550`: `sprite_load(0x80, Param1, Param2)`, `CurAnim = CurAnimCopy = owner.CurAnim + Param4`, then load + `sprite_update`.
+- **Init** `sub_80C4550`: `sprite_load(0x80, Param1, Param2)`; one halfword store of `owner.CurAnim + Param4` sets CurAnim to the sum and CurAnimCopy to its carry (0 unless it passes 0xFF); then load + `sprite_update`. So unless the animation is 0, the update below restarts it in the same tick and the sprite step after that steps it once: the overlay keeps in step with an owner that loaded its animation that tick (Bass's cape, measured; with CurAnimCopy = CurAnim it would run a frame ahead).
 - **Update** `sub_80C458C`, every tick:
   - `CurAnim = owner.CurAnim + Param4`. If that differs from CurAnimCopy it calls `sprite_setAnimation` **without updating CurAnimCopy**, so the animation restarts every tick until the sprite step below records it (while paused, with Param3 = 0, that step never comes).
   - `pos = owner.pos`, minus 1 px on Y and Z when ExtraVars ≠ 0.
