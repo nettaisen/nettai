@@ -766,6 +766,24 @@ it on the panel flags until its deletion), and a hole whose navi is at 0 HP with
 starts the deletion, and the battle's end that destroys the holes, at once; tried MiniBomb, AirShot and HeatMan on
 a 10 HP user). The 4 recordings are in the lab and match the engine (6,879 frames).
 
+**Batch 12, RskyHny, GunDelSol and RlngLog (32 branches: 28, and 4 of the bee's vertical steering that `two-rows`
+first reached):** 16 taken by 11 new recordings, 14 unreachable, 2 hard. RskyHny1: `two-rows` (from row 1 at an
+opponent on row 3: the bee turns down and steers flying down), `same-column` (the opponent's PanlGrab puts it on
+(3,2), in P0's column: the bee's search ahead runs past column 6), `superarmor-moving` (an unflinched opponent
+leaves the panel before the bee looks for it, so it stings with no target), `target-steps-back` (the bee turns
+right on row 3 toward an opponent that stepped back) and `invisible-below` (the bee flies through an invisible
+opponent, turns back up in its column, and with its turns spent flies off the field). GunDelSol:
+`chips/0x00f-gundels1/indoors` (P0's save out of the sun, NaviStats +0x22 poked to 0: the shade's beam and 2
+damage), `opponent-areagrab` (the sun beam hidden through the dimming), `user-hit` (the opponent's Cannon ends the
+attack, and the beam finds its slot cleared), `antidmg-counter` (AntiDmg's counter takes over mid-attack) and
+`chips/0x012-gundelex/row-1` (the hits' panel reads above the field). RlngLog1: `geddon` (the logs land on holes
+above holes and burst). The unreachable ones: full pools (3), a bee off the field in its flight (its tick checks
+first), a second enemy body in a column, a RskyHny that drags, a sun beam with no slot or missing at the firing's
+end (2), and RlngLog's small, dropped or reporting logs (7: its logs are big and thrown, with no slot). The hard
+ones: a hit on the bee with neither an ending type nor a body (a guard's report comes with the guarding navi's
+body; tried Rflectr1), and the bee finding no enemy body. The 11 recordings are in the lab and match the engine
+(7,779 frames).
+
 <!-- end: chip families, G4 -->
 
 ##### Chip families: onesided's share
