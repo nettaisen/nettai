@@ -216,8 +216,6 @@ local PHASES: { [number]: (me: Object, s: State) -> () } = { [CURL] = curl, [LAU
 
 return define.chip {
     id = "rslash",
-    name = "RSlash",
-    description = "Slash an\nenmy whl\nrevolving",
     codes = { "S" },
     element = "null",
     family = "sword",

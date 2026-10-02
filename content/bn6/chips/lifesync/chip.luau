@@ -8,8 +8,6 @@ local lockon = require("../../rules/lockon")
 
 return define.chip {
     id = "lifesync",
-    name = "LifeSync",
-    description = "Makes HP\nsame as\nenemy",
     codes = { "*" },
     element = "null", family = "cursor", class = "standard",
     rarity = 1, mb = 12, damage = 0, hit_param = 0, lockout = 0,

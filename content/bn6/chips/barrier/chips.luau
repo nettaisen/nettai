@@ -8,8 +8,6 @@ local barriers = require("../../lib/barriers/barriers")
 return {
     define.chip {
         id = "barrier",
-        name = "Barrier",
-        description = "Nullifies\n10 HP of\ndamage",
         codes = { "A", "F", "R", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 7, damage = 0, hit_param = 0, lockout = 0,
@@ -21,8 +19,6 @@ return {
     },
     define.chip {
         id = "barr100",
-        name = "Barr100",
-        description = "Nullifies\n100 HP of\ndamage",
         codes = { "H", "O", "Y" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 30, damage = 0, hit_param = 0, lockout = 0,
@@ -33,8 +29,6 @@ return {
     },
     define.chip {
         id = "barr200",
-        name = "Barr200",
-        description = "Nullifies\n200 HP of\ndamage",
         codes = { "K", "U", "W" },
         element = "null", family = "null", class = "standard",
         rarity = 3, mb = 52, damage = 0, hit_param = 0, lockout = 0,

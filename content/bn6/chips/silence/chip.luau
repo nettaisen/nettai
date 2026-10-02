@@ -33,8 +33,6 @@ end
 
 return define.chip {
     id = "silence",
-    name = "Silence",
-    description = "Blinds\nenemies\nw/music",
     codes = { "B", "R", "W", "*" },
     element = "null", family = "summon", class = "standard",
     rarity = 1, mb = 20, damage = 0, hit_param = 0, lockout = 0,

@@ -199,9 +199,25 @@ pub fn export_sound(bank: &SoundBank, names: &AssetNames) -> (Files, Vec<(m4a::S
 }
 
 pub fn import_sound(root: &Path, report: &mut Report) -> Option<SoundBank> {
+    import_sound_versions(root, report).map(|(bank, _)| bank)
+}
+
+/// [`export_sound`], with the songs game versions have their own of
+/// (`sound::SongVersions`: BN5's Team Colonel's).
+pub fn export_sound_versions(
+    bank: &SoundBank,
+    versions: &sound::SongVersions,
+    names: &AssetNames,
+) -> (Files, Vec<(m4a::SongId, String)>) {
+    let (files, failures) = sound::export_with_versions(bank, versions, names);
+    (files.into_iter().map(|(n, d)| (format!("sound/{n}"), d)).collect(), failures)
+}
+
+/// [`import_sound`], with the songs game versions have their own of.
+pub fn import_sound_versions(root: &Path, report: &mut Report) -> Option<(SoundBank, sound::SongVersions)> {
     read_manifest(root, report)?;
-    let bank = sound::import(&root.join("sound"), "sound", report)?;
-    (!report.has_errors()).then_some(bank)
+    let got = sound::import_with_versions(&root.join("sound"), "sound", report)?;
+    (!report.has_errors()).then_some(got)
 }
 
 // ---- Loading -------------------------------------------------------------------
@@ -229,7 +245,13 @@ pub fn battle_content(content: &Path, assets: &Path) -> Result<(nettai_battle::C
     let Some(root) = crate::root::read(content, &mut report) else { return Err(report) };
     let Some(index) = crate::names::read_index(assets, &mut report) else { return Err(report) };
     let Some(animations) = load_animations(assets, &mut report) else { return Err(report) };
-    let c = nettai_battle::Content { assets: index, animations, scripts: nettai_battle::content::Scripts::new(root.modules), ..Default::default() };
+    let c = nettai_battle::Content {
+        assets: index,
+        animations,
+        scripts: nettai_battle::content::Scripts::new(root.modules),
+        strings: root.strings,
+        ..Default::default()
+    };
     Ok((c, report))
 }
 

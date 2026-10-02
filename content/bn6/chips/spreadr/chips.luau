@@ -17,8 +17,6 @@ end
 
 local spreadr1 = define.chip {
     id = "spreadr1",
-    name = "Spreadr1",
-    description = "Spreads \ndamg to \nadj panls",
     codes = { "L", "M", "N", "*" },
     element = "null",
     family = "null",
@@ -37,8 +35,6 @@ local spreadr1 = define.chip {
 
 local spreadr2 = define.chip {
     id = "spreadr2",
-    name = "Spreadr2",
-    description = "Spreads \ndamg to \nadj panls",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -57,8 +53,6 @@ local spreadr2 = define.chip {
 
 local spreadr3 = define.chip {
     id = "spreadr3",
-    name = "Spreadr3",
-    description = "Spreads \ndamg to \nadj panls",
     codes = { "Q", "R", "S", "*" },
     element = "null",
     family = "null",

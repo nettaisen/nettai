@@ -97,7 +97,8 @@ window after N ticks (with `NETTAI_WINDOW_SHOT=<file>` set, the window's
 last picture is written there as a PNG), `--text font|original` chooses
 how strings are drawn (default `font`; the frame comparison uses
 `original`), `--font <file>` puts another TrueType or OpenType font in the
-bundled one's place. For live play, `--seed N` gives the seed its
+bundled one's place, `--lang en|ja` the language of the battle's words
+(default `en`; §3, "Languages"). For live play, `--seed N` gives the seed its
 setup and battle are drawn from (default: from the clock; each start
 prints it), `--stage NAME` forces a link battle stage by its key
 (`netbattle-1` to `netbattle-96`), `--show-folders` prints both folders,
@@ -340,9 +341,10 @@ buffer's three rows of six sprites at (51, 108), its lines 14 rows apart
 (the third row of sprites is 32x8: a third line's descenders are cut, as in
 the original); the speaker's portrait, a sprite whose animations are its
 faces, stepped by its updates and tinted while it fades; the key-wait
-arrow. The words are the content's (the chip's or the Cross's
-`description`, the navi's `run_message`), how far they have printed and
-the rest the engine's chatbox (docs/engine/custom-screen.md §3.5).
+arrow. The text is the content's strings (the chip's or the Cross's
+`description`, the navi's `run_message`, in the player's language), how
+far it has printed and the rest the engine's chatbox
+(docs/engine/custom-screen.md §3.5).
 
 **Text** (docs/design/text-rendering.md §9). Every string goes through
 `fonts.rs`: the 8x16 font's (`cell_glyphs`, `cell_text`, `draw_cell_text`,
@@ -368,6 +370,25 @@ frame pixel under it: banners, the mugshot or the chatbox's arrow cover
 text as they do in the original, and a telop's squash is a transform of
 its text. A string the font lacks a character of is drawn in the game's
 font, whole.
+
+**Languages** (docs/design/text-rendering.md §10). `--lang ja` shows
+the battle's text as the Japanese games do, in either text mode: the
+pack's Japanese lettering (the Japanese ROMs' 8x16 and dialogue fonts in
+their encoding, the HUD's lines in their glyphs, the banners whose words
+differ, カスタム中…, the gauge's "L or R", the chip window's pictures for
+OK, the re-deal and scrap, the Cross window's names) swapped in for the
+English (`Bundle::in_language`), and the content's strings from the
+content root's `locales/ja.toml` (chip names and descriptions, the
+Crosses' descriptions, the navis' names and no-running messages;
+`strings.rs`, `DisplayText`: a string the table lacks is the content's
+own, `locales/en.toml`'s, which `--audit` lists). Only what is shown
+changes: the battle reads the shape of the content's own strings (a
+description's lines, a message's characters per line), and a translation
+prints in step with it (a description's whole lines in the proportion of
+the own lines printed, a message's characters in the proportion of the own
+characters), so two players of different languages play one battle. The
+frontend's own text (live play's status line, folder listings) is the
+content's own strings.
 
 The bundled font is Murecho (`crates/nettai-frontend/fonts/murecho`, SIL
 Open Font License 1.1, its licence beside it): Latin, kana and some 2,300

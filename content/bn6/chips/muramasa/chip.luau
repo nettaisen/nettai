@@ -9,8 +9,6 @@ local lockon = require("../../rules/lockon")
 
 return define.chip {
     id = "muramasa",
-    name = "Muramasa",
-    description = "Atk power\nequal amt\nof lostHP",
     codes = { "M" },
     element = "null",
     family = "sword",

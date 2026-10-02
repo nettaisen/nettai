@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 local judgeman = define.chip {
     id = "judgeman",
-    name = "JudgeMan",
-    description = "Whip 3\npanels\nforward",
     codes = { "J", "*" },
     element = "elec",
     family = "elec",
@@ -25,8 +23,6 @@ local judgeman = define.chip {
 
 local judgemn_ex = define.chip {
     id = "judgemn-ex",
-    name = "JudgeMn[EX]",
-    description = "Whip 3\npanels\nforward",
     codes = { "J" },
     element = "elec",
     family = "elec",
@@ -44,8 +40,6 @@ local judgemn_ex = define.chip {
 
 local judgemn_sp = define.chip {
     id = "judgemn-sp",
-    name = "JudgeMn[SP]",
-    description = "Whip 3\npanels\nforward",
     codes = { "J" },
     element = "elec",
     family = "elec",

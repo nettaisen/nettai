@@ -8,8 +8,6 @@ local golem = require("./golem")
 return {
     define.chip {
         id = "golmhit1",
-        name = "GolmHit1",
-        description = "Hit 3panl\narea arnd\nclst enmy",
         codes = { "I", "K", "Y" },
         element = "null", family = "break", class = "standard",
         rarity = 0, mb = 17, damage = 140, hit_param = 30, lockout = 20,
@@ -20,8 +18,6 @@ return {
     },
     define.chip {
         id = "golmhit2",
-        name = "GolmHit2",
-        description = "Hit 3panl\narea arnd\nclst enmy",
         codes = { "D", "P", "U" },
         element = "null", family = "break", class = "standard",
         rarity = 1, mb = 27, damage = 190, hit_param = 30, lockout = 20,
@@ -32,8 +28,6 @@ return {
     },
     define.chip {
         id = "golmhit3",
-        name = "GolmHit3",
-        description = "Hit 3panl\narea arnd\nclst enmy",
         codes = { "H", "M", "V" },
         element = "null", family = "break", class = "standard",
         rarity = 2, mb = 37, damage = 250, hit_param = 30, lockout = 20,

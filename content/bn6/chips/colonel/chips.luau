@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 local colonel = define.chip {
     id = "colonel",
-    name = "Colonel",
-    description = "Cut enmy\nlines in\nZ shape",
     codes = { "C", "*" },
     element = "null",
     family = "sword",
@@ -25,8 +23,6 @@ local colonel = define.chip {
 
 local colonel_ex = define.chip {
     id = "colonel-ex",
-    name = "Colonel[EX]",
-    description = "Cut enmy\nlines in\nZ shape",
     codes = { "C" },
     element = "null",
     family = "sword",
@@ -44,8 +40,6 @@ local colonel_ex = define.chip {
 
 local colonel_sp = define.chip {
     id = "colonel-sp",
-    name = "Colonel[SP]",
-    description = "Cut enmy\nlines in\nZ shape",
     codes = { "C" },
     element = "null",
     family = "sword",

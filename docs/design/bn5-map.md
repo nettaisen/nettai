@@ -319,18 +319,21 @@ are separate), so BN5's assets are named for BN5 alone. For the packs:
 
 The verification workspace traces BN5 consoles as it does BN6's, with the same line format:
 
-- **oracle-trace** has the games `TeamProtoMan` (BRBE) and `TeamColonel` (BRKE), their hooks (§8; both link
-  applets' returns are trapped) and a RAM `Layout` per game (§3.4). BN6's lines are byte-identical to before. A
-  BN5 setup line says `"game":"bn5"`, has BN5's 0x60-byte NaviStats blocks, and leaves out what is BN6's alone
-  (SP times, link navi levels, bug frags, event flags, Tag chips). The hooks test checks every BN5 hook against
-  BN6's code (masked for what moves, RAM included) and Team Colonel's against Team ProtoMan's.
+- **oracle-trace** has the games `TeamProtoMan` (BRBE), `TeamColonel` (BRKE) and the Japanese `JpTeamOfBlues`
+  (BRBJ) and `JpTeamOfColonel` (BRKJ), their hooks (§8; both link applets' returns are trapped) and a RAM
+  `Layout` per game (§3.4; the Japanese ROMs' RAM is the US ROMs'). BN6's lines are byte-identical to before. A
+  BN5 setup line says `"game":"bn5"`, has BN5's 0x60-byte NaviStats blocks, says the regions when a side is
+  Japanese, and leaves out what is BN6's alone (SP times, link navi levels, bug frags, event flags, Tag chips).
+  The hooks test checks every BN5 hook against BN6's code (masked for what moves, RAM included), Team Colonel's
+  against Team ProtoMan's, and each Japanese ROM's against the US ROM of its version.
 - **chiplab** runs BN5 consoles from a base of BN5 ROMs and saves (Tango's primer walks into a Team Battle),
   edits BN5 saves (folder, Regular chip, navi, HP) and drives them; BN5's navi stands idle in action 6 (BN6 8).
   BN5's scenarios are a library of their own, recorded apart from BN6's lab.
 - **difftest** takes BN5 replays (none exists in Tango's current format yet).
-- **The first trace:** a plain Team Battle, Team ProtoMan (traced) against Team Colonel, each picking the first chip
-  dealt every turn and shooting until Team ProtoMan's navi is deleted: 3,216 frames, a full round from the intro
-  to the deletion. Nothing replays it yet.
+- **The first traces:** a plain Team Battle, Team ProtoMan (traced) against Team Colonel, each picking the first
+  chip dealt every turn and shooting until Team ProtoMan's navi is deleted: 3,216 frames, a full round from the
+  intro to the deletion; and the same on Japanese consoles (Tango's netplay saves at 60 HP; 2,005 frames). Nothing
+  replays them yet.
 - Observed on the way: a Team Battle's custom screen keeps its state in the shared screen's block; Patch Cards apply
   in Team Battles (the Team ProtoMan save's take 150 off its max HP); the sound queue and panels differ (§3.4).
 
@@ -346,9 +349,15 @@ as bn6-extract takes BN6's) writes a pack whose manifest says `game = "bn5"`:
 - **Versions:** 12 chips (0x12D–0x136, 0x139, 0x13A: the version navi chips) are drawn differently by each
   version's ROM; their pictures and icons are in the pack twice, `chip-12d-protoman` and `chip-12d-colonel`, with
   their `version`.
+- **Version songs:** Team Colonel has 11 songs of its own at Team ProtoMan's numbers (0x13C–0x142, 0x145, 0x146,
+  0x170, 0x171: its navi chips' sounds). They are in the pack beside Team ProtoMan's, each a song file named with
+  its version (`sound-13c-protoman`, `sound-13c-colonel`, with `version` in its header and `base_version =
+  "protoman"` in sound.toml); the asset index keeps one name a number. They play with the bank's voicegroups:
+  Team Colonel's are matched to equal ones of Team ProtoMan's bank (samples, waves and key maps by content,
+  drum kits and splits in turn) or added. nettai-content's `sound::SongVersions` holds them; a pack without
+  versions (BN6's) names no version anywhere and is byte-identical to before. Which version a console plays is the
+  audio's choice by the viewer's console, not built yet.
 - **Left out, for now:**
-  - Team Colonel's own songs 0x13C–0x142, 0x145, 0x146, 0x170, 0x171 (its navi chips' sounds): a song's number is
-    its identity in a pack, so a version's own songs need a version-aware sound index first.
   - The Japanese ROMs' one different sprite (14-17, which has text on it): the US release localized it rather than
     cut it, so the pack keeps the US's, as BN6's does.
   - BN5's HUD and custom-screen layouts (§9).

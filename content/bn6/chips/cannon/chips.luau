@@ -9,8 +9,6 @@ local lockon = require("../../rules/lockon")
 
 local cannon = define.chip {
     id = "cannon",
-    name = "Cannon",
-    description = "Cannon to\nattack\n1 enemy",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -29,8 +27,6 @@ local cannon = define.chip {
 
 local hicannon = define.chip {
     id = "hicannon",
-    name = "HiCannon",
-    description = "Cannon to\nattack\n1 enemy",
     codes = { "L", "M", "N", "*" },
     element = "null",
     family = "null",
@@ -49,8 +45,6 @@ local hicannon = define.chip {
 
 local m_cannon = define.chip {
     id = "m-cannon",
-    name = "M-Cannon",
-    description = "Cannon to\nattack\n1 enemy",
     codes = { "R", "S", "T", "*" },
     element = "null",
     family = "null",

@@ -22,8 +22,6 @@ end
 return {
     define.chip {
         id = "flshbom1",
-        name = "FlshBom1",
-        description = "Thrw dlyd\nstun bomb\n3sq fwd.",
         codes = { "J", "L", "Q", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 30, damage = 40, hit_param = 30, lockout = 0,
@@ -36,8 +34,6 @@ return {
     },
     define.chip {
         id = "flshbom2",
-        name = "FlshBom2",
-        description = "Thrw dlyd\nstun bomb\n3sq fwd.",
         codes = { "G", "K", "R" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 34, damage = 70, hit_param = 30, lockout = 0,
@@ -50,8 +46,6 @@ return {
     },
     define.chip {
         id = "flshbom3",
-        name = "FlshBom3",
-        description = "Thrw dlyd\nstun bomb\n3sq fwd.",
         codes = { "H", "P", "S" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 38, damage = 100, hit_param = 30, lockout = 0,

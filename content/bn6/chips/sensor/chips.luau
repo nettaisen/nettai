@@ -8,8 +8,6 @@ local controller = require("./controller")
 return {
     define.chip {
         id = "sensor1",
-        name = "Sensor1",
-        description = "Hits enmy\nwith beam\nfrom snsr",
         codes = { "J", "O", "W" },
         element = "elec", family = "elec", class = "standard",
         rarity = 0, mb = 32, damage = 100, hit_param = 30, lockout = 0,
@@ -20,8 +18,6 @@ return {
     },
     define.chip {
         id = "sensor2",
-        name = "Sensor2",
-        description = "Hits enmy\nwith beam\nfrom snsr",
         codes = { "N", "U", "Y" },
         element = "elec", family = "elec", class = "standard",
         rarity = 1, mb = 35, damage = 130, hit_param = 30, lockout = 0,
@@ -32,8 +28,6 @@ return {
     },
     define.chip {
         id = "sensor3",
-        name = "Sensor3",
-        description = "Hits enmy\nwith beam\nfrom snsr",
         codes = { "I", "K", "Q" },
         element = "elec", family = "elec", class = "standard",
         rarity = 2, mb = 38, damage = 160, hit_param = 30, lockout = 0,

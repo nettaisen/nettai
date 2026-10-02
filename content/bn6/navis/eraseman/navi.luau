@@ -7,7 +7,6 @@ local eraseman = require("./chip")
 
 return define.navi {
     id = "eraseman",
-    name = "EraseMan",
     sprite = asset.sprite("eraseman"),
     element = "null",
     weakness = { "wind" },
@@ -18,11 +17,9 @@ return define.navi {
     -- EraseMan face, and shows GroundMan's.
     mugshot = asset.mugshot("eraseman"),
     merge_height = 0,
-    -- The no-running message: its lines' characters (which time it), its
-    -- words, and the portrait beside it.
+    -- The no-running message's portrait: the speaker beside the box. Its
+    -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        counts = { 19, 15, 19 },
-        text = "Why are you running\naway!? I've got\nmore erasing to do!",
         portrait = asset.sprite("eraseman-portrait"),
     },
     own_chip = { chip = eraseman, code = "K" },

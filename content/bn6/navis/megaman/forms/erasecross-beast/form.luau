@@ -9,7 +9,6 @@ local drop = require("./drop")
 
 return define.form {
     id = "erasecross-beast",
-    name = "EraseCross Beast",
     kind = "cross_beast",
     game = "gregar",
     cross_of = eraseman,

@@ -17,8 +17,6 @@ end
 
 local gigacan1 = define.chip {
     id = "gigacan1",
-    name = "GigaCan1",
-    description = "Giga lvl\ncannon\nattack!",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -38,8 +36,6 @@ local gigacan1 = define.chip {
 
 local gigacan2 = define.chip {
     id = "gigacan2",
-    name = "GigaCan2",
-    description = "Giga lvl\ncannon\nattack!",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -59,8 +55,6 @@ local gigacan2 = define.chip {
 
 local gigacan3 = define.chip {
     id = "gigacan3",
-    name = "GigaCan3",
-    description = "Giga lvl\ncannon\nattack!",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

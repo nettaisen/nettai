@@ -7,7 +7,6 @@ local slashman = require("./chip")
 
 return define.navi {
     id = "slashman",
-    name = "SlashMan",
     sprite = asset.sprite("slashman"),
     element = "null",
     weakness = { "break" },
@@ -18,11 +17,9 @@ return define.navi {
     -- SlashMan face, and shows TenguMan's.
     mugshot = asset.mugshot("slashman"),
     merge_height = 4,
-    -- The no-running message: its lines' characters (which time it), its
-    -- words, and the portrait beside it.
+    -- The no-running message's portrait: the speaker beside the box. Its
+    -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        counts = { 18, 15, 15 },
-        text = "Now's not the time\nto cut and run!\nKeep slashing!!",
         portrait = asset.sprite("slashman-portrait"),
     },
     own_chip = { chip = slashman, code = "S" },

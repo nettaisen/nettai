@@ -7,8 +7,6 @@ local fist = require("./fist")
 
 local firehit1 = define.chip {
     id = "firehit1",
-    name = "FireHit1",
-    description = "Slams\nclosest\nenemy",
     codes = { "D", "E", "F" },
     element = "fire",
     family = "fire",
@@ -27,8 +25,6 @@ local firehit1 = define.chip {
 
 local firehit2 = define.chip {
     id = "firehit2",
-    name = "FireHit2",
-    description = "Slams\nclosest\nenemy",
     codes = { "R", "S", "T" },
     element = "fire",
     family = "fire",
@@ -47,8 +43,6 @@ local firehit2 = define.chip {
 
 local firehit3 = define.chip {
     id = "firehit3",
-    name = "FireHit3",
-    description = "Slams\nclosest\nenemy",
     codes = { "A", "B", "C" },
     element = "fire",
     family = "fire",

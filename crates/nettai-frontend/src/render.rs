@@ -46,6 +46,9 @@ pub struct Renderer<'a> {
     /// The font mode's layouts, for what the frame places after a string
     /// (a chip's damage after its name).
     measure: Option<std::cell::RefCell<crate::vfont::TextRenderer>>,
+    /// The player's language's strings table (`--lang`), if not the
+    /// content's own.
+    strings: Option<Arc<nettai_content::locale::Strings>>,
 }
 
 impl<'a> Renderer<'a> {
@@ -64,7 +67,15 @@ impl<'a> Renderer<'a> {
             text_mode: TextMode::Original,
             font: None,
             measure: None,
+            strings: None,
         }
+    }
+
+    /// Show content's display text from a language's strings table (the
+    /// content's own strings where it has none); `None`, the content's
+    /// own.
+    pub fn set_strings(&mut self, strings: Option<Arc<nettai_content::locale::Strings>>) {
+        self.strings = strings;
     }
 
     /// Draw text in `mode`; the font mode hands the strings `font` has to
@@ -81,7 +92,7 @@ impl<'a> Renderer<'a> {
 
     /// Follow a tick of the battle being shown (call after every tick).
     pub fn observe(&mut self, b: &Battle) {
-        self.hud_state.tick(b);
+        self.hud_state.tick(b, self.console_region);
     }
 
     /// Forget presentation state (a new battle starts).
@@ -111,7 +122,8 @@ impl<'a> Renderer<'a> {
         stage.draw_field(b, &mut self.field, b.setup.local_side, &view);
         self.hud.clear();
         self.names.clear();
-        let mut text = TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref());
+        let mut text =
+            TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref()).with_language(self.strings.as_deref());
         let navi = crate::custom::navi_number(b, b.setup.local_side);
         let emblem = crate::custom::emblem_tiles(&assets.custom, crate::custom::version_name(b, b.setup.local_side), navi);
         let chatbox = crate::chatbox::prepare(b, assets, &text, &mut self.problems);
@@ -155,12 +167,13 @@ impl<'a> Renderer<'a> {
         };
         // (The flash takes the palette transform the transformation's fade
         // uses: on its frames the HUD's palettes are the flash's, which
-        // leaves them be in variant 0.)
+        // leaves them be in variant 0: as the transformation's fade left
+        // them, black through a form change. A Japanese console's chip
+        // window shows there, drawn black over the white stage.)
         let hud = match flash {
             Some(1) => Fade::White(16),
-            Some(_) => custom_hud,
-            None if transform != Fade::None => transform,
-            None => custom_hud,
+            _ if transform != Fade::None => transform,
+            _ => custom_hud,
         };
         let sprites = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b).unwrap_or_default() };
         let fades = Fades { stage, hud, sprites, screen: screen_fade(b) };
@@ -169,6 +182,12 @@ impl<'a> Renderer<'a> {
         // Each item's depth and fades: its layer's (the HUD layer's moved
         // with its shake), or its sprite parts' (an item whose parts the
         // sprite limit dropped isn't drawn).
+        if let Some(lang) = text.strings.language() {
+            let lang = lang.to_string();
+            for what in text.strings.take_missing() {
+                self.problems.note(format!("the {lang} strings table has no {what}: shown in the content's own"));
+            }
+        }
         let text = text
             .into_items()
             .into_iter()

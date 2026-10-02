@@ -27,7 +27,6 @@ end
 
 return define.weapon {
     id = "bugrswrd/charge",
-    name = "BugRSwrd",
     charge_ticks = { 120, 120, 120, 120, 120, 200, 200, 200 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
     sticky = true,

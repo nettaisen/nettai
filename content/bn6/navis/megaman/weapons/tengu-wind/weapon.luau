@@ -44,7 +44,6 @@ end
 
 tengu_wind.weapon = define.weapon {
     id = "megaman/tengu-wind",
-    name = "Tengu wind",
     -- The charge table's row 0x10, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 60, 60, 60 },

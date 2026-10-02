@@ -162,5 +162,7 @@ fn asset_names(compat: &Path) -> nettai_content::names::AssetNames {
     names.chips = c.chips.iter().map(|(k, e)| (e.id, k.clone())).collect();
     names.glyphs = c.text.glyphs.clone();
     names.dialogue_glyphs = c.text.dialogue_glyphs.clone();
+    // The Japanese ROMs' encoding is the pack's Japanese lettering's.
+    names.language_glyphs.insert(crate::lettering::LANGUAGE.into(), (c.text.jp.glyphs.clone(), c.text.jp.dialogue_glyphs.clone()));
     names
 }

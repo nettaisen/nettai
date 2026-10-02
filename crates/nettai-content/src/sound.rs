@@ -39,6 +39,11 @@ pub struct SoundDoc {
     pub version: u32,
     /// Entries in the song table (ids without a song file play nothing).
     pub song_table: usize,
+    /// The game version the table's songs are, when another version has
+    /// songs of its own at the same numbers (`SongVersions`); absent
+    /// otherwise.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_version: Option<String>,
     pub mixer: MixerDoc,
     pub players: Vec<PlayerDoc>,
 }
@@ -139,16 +144,51 @@ fn ordered<'a>(names: impl Iterator<Item = &'a String>, prefix: &str) -> Vec<Str
     v.into_iter().map(|x| x.1).collect()
 }
 
+/// Songs game versions have their own of at the same numbers as the bank's
+/// (BN5's Team Colonel has 11 of Team ProtoMan's numbers to itself). The
+/// bank's own songs are `base_version`'s; each other version's play with the
+/// bank's voicegroups. A console of a version plays its own, else the
+/// bank's. In a pack each is a song file of its own, named with its version
+/// (`sound-13c-protoman`, `sound-13c-colonel`), as `nettai_assets::Versioned`
+/// names a version's own pictures; the asset index keeps one name a number.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SongVersions {
+    pub base_version: String,
+    pub versions: Vec<(String, BTreeMap<u16, Song>)>,
+}
+
+impl SongVersions {
+    /// Whether some version has its own song `id`.
+    pub fn has(&self, id: u16) -> bool {
+        self.versions.iter().any(|(_, songs)| songs.contains_key(&id))
+    }
+
+    /// The version's own song `id`, if it has one.
+    pub fn song(&self, version: &str, id: u16) -> Option<&Song> {
+        self.versions.iter().find(|(v, _)| v == version).and_then(|(_, songs)| songs.get(&id))
+    }
+}
+
 // ---- Export ----------------------------------------------------------------------
 
 /// Files of the `sound/` folder; songs that can't be expressed yet are
 /// left out with the reason.
 pub fn export(bank: &SoundBank, names: &crate::names::AssetNames) -> (crate::pack::Files, Vec<(SongId, String)>) {
+    export_with_versions(bank, &SongVersions::default(), names)
+}
+
+/// [`export`], with the songs versions have their own of.
+pub fn export_with_versions(
+    bank: &SoundBank,
+    versions: &SongVersions,
+    names: &crate::names::AssetNames,
+) -> (crate::pack::Files, Vec<(SongId, String)>) {
     let mut files = Vec::new();
     let doc = SoundDoc {
         format: FORMAT.into(),
         version: VERSION,
         song_table: bank.songs.len(),
+        base_version: (!versions.versions.is_empty()).then(|| versions.base_version.clone()),
         mixer: MixerDoc {
             mix_rate: bank.mixer.mix_rate,
             channels: bank.mixer.ds_channels,
@@ -211,14 +251,21 @@ pub fn export(bank: &SoundBank, names: &crate::names::AssetNames) -> (crate::pac
         s.push_str("]\n");
         files.push((format!("voicegroups/{}.toml", name("vg", g)), s.into_bytes()));
     }
-    // Songs.
+    // Songs: the bank's, then each version's own. A song some version has its
+    // own of is named with its version, the bank's with the base version.
     let mut failures = Vec::new();
-    for (id, song) in bank.songs.iter().enumerate() {
-        let Some(song) = song else { continue };
-        let base = names.song(id as u16);
+    let own = versions.versions.iter().flat_map(|(v, songs)| songs.iter().map(move |(&id, s)| (id as usize, s, Some(v.as_str()))));
+    let all = bank.songs.iter().enumerate().filter_map(|(id, s)| s.as_ref().map(|s| (id, s, None))).chain(own);
+    for (id, song, own_version) in all {
+        let version = own_version.or((versions.has(id as u16)).then_some(versions.base_version.as_str()));
+        let base = match version {
+            Some(v) => format!("{}-{v}", names.song(id as u16)),
+            None => names.song(id as u16),
+        };
         let vg = name("vg", song.voicegroup.0 as usize);
         match song::export(song, id as u16, &format!("Song {id:#05x}"), &vg, &format!("{base}.mid")) {
-            Ok((midi, doc)) => {
+            Ok((midi, mut doc)) => {
+                doc.version = version.map(String::from);
                 files.push((format!("songs/{base}.mid"), midi));
                 let text = format!(
                     "# Song {id:#05x}: the MIDI file's header data. midi_stamp tells an untouched file from an edited one.\n{}",
@@ -330,6 +377,11 @@ fn files_in(dir: &Path, ext: &str) -> Vec<String> {
 }
 
 pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<SoundBank> {
+    import_with_versions(dir, prefix, report).map(|(bank, _)| bank)
+}
+
+/// [`import`], with the songs versions have their own of.
+pub fn import_with_versions(dir: &Path, prefix: &str, report: &mut Report) -> Option<(SoundBank, SongVersions)> {
     let f = |n: &str| format!("{prefix}/{n}");
     let doc: SoundDoc = read_toml(&dir.join("sound.toml"), &f("sound.toml"), report)?;
     if doc.format != FORMAT || doc.version > VERSION {
@@ -447,11 +499,18 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<SoundBank
     }
     // Songs.
     let mut songs: Vec<Option<Song>> = vec![None; doc.song_table];
+    let mut versions = SongVersions { base_version: doc.base_version.clone().unwrap_or_default(), versions: Vec::new() };
     for base in files_in(&dir.join("songs"), "toml") {
         let file = f(&format!("songs/{base}.toml"));
         let sd: SongDoc = read_toml(&dir.join(format!("songs/{base}.toml")), &file, report)?;
         let id = sd.id as usize;
-        if songs.get(id).is_some_and(Option::is_some) {
+        // A version's own song (not the base version's) goes with its version.
+        let own_version = sd.version.as_deref().filter(|v| Some(*v) != doc.base_version.as_deref());
+        let taken = match own_version {
+            Some(v) => versions.song(v, sd.id).is_some(),
+            None => songs.get(id).is_some_and(Option::is_some),
+        };
+        if taken {
             report.error(&file, format!("another song is song {id:#05x} too"));
             continue;
         }
@@ -471,17 +530,42 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<SoundBank
             report.error(&file, format!("player {} doesn't exist", sd.player));
             continue;
         }
-        if id >= songs.len() {
-            songs.resize(id + 1, None);
+        let song = song::import(&bytes, &sd, VoicegroupId(vg), &midi_name, report);
+        match own_version {
+            Some(v) => {
+                if let Some(song) = song {
+                    match versions.versions.iter_mut().find(|(name, _)| name == v) {
+                        Some((_, own)) => {
+                            own.insert(sd.id, song);
+                        }
+                        None => versions.versions.push((v.to_string(), BTreeMap::from([(sd.id, song)]))),
+                    }
+                }
+            }
+            None => {
+                if id >= songs.len() {
+                    songs.resize(id + 1, None);
+                }
+                songs[id] = song;
+            }
         }
-        songs[id] = song::import(&bytes, &sd, VoicegroupId(vg), &midi_name, report);
     }
+    versions.versions.sort_by(|a, b| a.0.cmp(&b.0));
     let bank = SoundBank { mixer, players, songs, voicegroups, key_maps, samples, waves };
     if let Err(e) = bank.validate() {
         report.error(f("sound.toml"), format!("the bank doesn't hold together: {e}"));
         return None;
     }
-    Some(bank)
+    // A version's own songs play with the bank's voicegroups.
+    for (v, own) in &versions.versions {
+        for (id, song) in own {
+            if song.voicegroup.0 as usize >= bank.voicegroups.len() {
+                report.error(f("sound.toml"), format!("{v}'s song {id:#05x} names a voicegroup the bank hasn't"));
+                return None;
+            }
+        }
+    }
+    Some((bank, versions))
 }
 
 fn import_sample(dir: &Path, prefix: &str, n: &str, d: &SampleDoc, report: &mut Report) -> Option<Sample> {
