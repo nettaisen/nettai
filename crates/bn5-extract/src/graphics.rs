@@ -93,8 +93,10 @@ fn tiles(rom: &Rom, a: u32, len: usize) -> Tiles {
     Tiles::from_4bpp(rom.bytes(a, len))
 }
 
+/// A palette (the hardware ignores bit 15 of a colour; chip 0's placeholder
+/// palette has it set, which an image can't hold).
 fn palette(rom: &Rom, a: u32) -> Palette {
-    palettes_from_bytes(rom.bytes(a, 32))[0]
+    palettes_from_bytes(rom.bytes(a, 32))[0].map(|c| c & 0x7FFF)
 }
 
 fn map_entries(rom: &Rom, a: u32, n: usize) -> Vec<MapEntry> {
@@ -134,11 +136,16 @@ fn sprites(rom: &Rom) -> Vec<SpriteSheet> {
 /// (one, 14-17, which has text on it): the pack keeps the US's, which the
 /// US release localized rather than cut.
 pub fn japanese_differences(roms: &Roms) -> Vec<(u8, u8)> {
-    let us: HashMap<(u8, u8), Vec<u8>> = archives(&roms.protoman, SPRITE_LIST).into_iter().collect();
+    // Decoded, not raw: an uncompressed archive is read up to a limit, past
+    // its end, where the ROMs differ.
+    let decode = |rom: &Rom, list: u32| -> HashMap<(u8, u8), Option<SpriteSheet>> {
+        archives(rom, list).into_iter().map(|((c, i), data)| ((c, i), crate::sprite::sheet(&data, c, i))).collect()
+    };
+    let us = decode(&roms.protoman, SPRITE_LIST);
     let mut out = Vec::new();
     for (v, list) in [Version::ProtoMan, Version::Colonel].into_iter().zip(JP_SPRITE_LISTS) {
-        for (id, data) in archives(roms.jp(v), list) {
-            if us.get(&id) != Some(&data) && !out.contains(&id) {
+        for (id, sheet) in decode(roms.jp(v), list) {
+            if us.get(&id) != Some(&sheet) && !out.contains(&id) {
                 out.push(id);
             }
         }
@@ -377,6 +384,13 @@ fn chip_art(roms: &Roms, names: &AssetNames) -> Vec<ChipArt> {
 
 // ---- The HUD: the chips' icons and the fonts -----------------------------------
 
+/// What glyph `k` draws: the content's name for it (BN5's text encoding,
+/// which a BN5 content root's compat will give), else its number in
+/// brackets.
+fn glyph_name(names: &AssetNames, k: usize) -> String {
+    names.glyphs.iter().chain(&names.dialogue_glyphs).nth(k).cloned().unwrap_or_else(|| format!("[{k:03x}]"))
+}
+
 fn hud(roms: &Roms, names: &AssetNames) -> Hud {
     let rom = &roms.protoman;
     let versioned = versioned_chips(roms);
@@ -394,14 +408,14 @@ fn hud(roms: &Roms, names: &AssetNames) -> Hud {
     Hud {
         hp_palettes: std::array::from_fn(|i| palette(rom, HUD_PALETTES + 0x20 * i as u32)),
         font: tiles(rom, FONT, 0x40 * FONT_GLYPHS),
-        font_chars: names.glyphs.iter().take(FONT_GLYPHS).cloned().collect(),
+        font_chars: (0..FONT_GLYPHS).map(|k| glyph_name(names, k)).collect(),
         chip_icons,
         hidden_icon: tiles(rom, HIDDEN_ICON, 0x80),
         icon_palette: palette(rom, ICON_PALETTE),
         dialogue_font: DialogueFont {
             pixels: rom.bytes(DIALOGUE_FONT, 0x60 * dialogue_glyphs).iter().flat_map(|&b| [b & 15, b >> 4]).collect(),
             advances: (0..dialogue_glyphs as u32).map(|i| rom.u32(DIALOGUE_ADVANCES + 4 * i) as u8).collect(),
-            chars: names.glyphs.iter().chain(&names.dialogue_glyphs).take(dialogue_glyphs).cloned().collect(),
+            chars: (0..dialogue_glyphs).map(|k| glyph_name(names, k)).collect(),
         },
         ..Default::default()
     }
