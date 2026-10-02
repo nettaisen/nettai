@@ -180,6 +180,9 @@ pub struct PlayerSetup {
     /// `setup` fields), in the ruleset's order; none given: all zero
     /// (`PlayerSetup::set_rule` writes one by name).
     pub rules: Vec<nettai_content_api::ContentState>,
+    /// The patch cards the player has installed (`crate::patch_cards`):
+    /// their ruleset's rules apply them (BN6's patch-cards system).
+    pub patch_cards: crate::patch_cards::PatchCards,
 }
 
 impl Default for PlayerSetup {
@@ -193,6 +196,7 @@ impl Default for PlayerSetup {
             console: ConsoleSetup::default(),
             ruleset: None,
             rules: Vec::new(),
+            patch_cards: Default::default(),
         }
     }
 }

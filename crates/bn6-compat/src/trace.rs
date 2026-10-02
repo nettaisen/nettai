@@ -382,9 +382,9 @@ impl Round {
     }
 
     /// A player's installed patch cards, as the trace has them.
-    fn patch_cards(&self, side: u8, ids: &Ids) -> Vec<(nettai_content_api::RecordHandle, bool)> {
-        let Some(lists) = &self.setup.patch_cards else { return Vec::new() };
-        codec::patch_card_list(&lists[side as usize & 1], ids)
+    fn patch_cards(&self, side: u8, ids: &Ids) -> nettai_battle::patch_cards::PatchCards {
+        let Some(lists) = &self.setup.patch_cards else { return Default::default() };
+        codec::patch_cards(&lists[side as usize & 1], ids).unwrap_or_else(|e| panic!("the trace's patch cards: {e}"))
     }
 
     /// For a player with patch cards: the stats the engine applies them to
@@ -476,7 +476,7 @@ impl Round {
             },
             None => self.sent_version(side),
         };
-        let mut player = PlayerSetup {
+        PlayerSetup {
             folder,
             unlocks: match &self.setup.unlock_flags {
                 Some(f) => unlocks_from_flags(version, &unhex(&f[side as usize])),
@@ -486,15 +486,11 @@ impl Round {
             bug_frags: self.setup.bug_frags.map_or(RECORDED_BUG_FRAGS, |f| f[side as usize]),
             navi_level: self.setup.navi_levels.map_or(0, |l| l[side as usize]),
             console: self.console_setup(side),
-            // BN6's stock rules; of its systems' setups, the patch cards.
+            // BN6's stock rules, with nothing its systems' setups say.
             ruleset: None,
             rules: Vec::new(),
-        };
-        let cards = self.patch_cards(side, ids);
-        if !cards.is_empty() {
-            codec::install_patch_cards(ids.content, &mut player, &cards).unwrap_or_else(|e| panic!("the trace's patch cards: {e}"));
+            patch_cards: self.patch_cards(side, ids),
         }
-        player
     }
 
     /// A player's console: the recording console's RNG1 and tag pair
