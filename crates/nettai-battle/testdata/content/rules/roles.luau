@@ -72,10 +72,13 @@ return define.roles {
     sprites = ruleset.sprites,
     banners = ruleset.banners,
     hooks = {
-        -- The NaviCust FirstBarrier, as BN6's roles fill it: the Barrier
-        -- chip's barrier and its visual.
+        -- The first barrier, as BN6's roles fill it: the barrier the
+        -- navi's stats name, and its visual.
         first_barrier = function(navi: Object)
-            barriers.raise(navi, barriers.barrier_10, true)
+            local barrier = battle.navi(navi.alliance).first_barrier
+            if barrier then
+                barriers.raise(navi, barrier, true)
+            end
         end,
     },
 }

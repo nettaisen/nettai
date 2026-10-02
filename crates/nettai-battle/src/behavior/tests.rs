@@ -1659,8 +1659,9 @@ fn first_barrier_raises_a_barrier() {
     // the test content fills as BN6's roles do, raises the Barrier chip's
     // barrier, with its visual, as the navi comes in.
     let mut s = scenario::setup();
-    s.navi_stats[0].first_barrier = 1;
-    let mut b = Battle::new(s, scenario::content());
+    let content = scenario::content();
+    s.navi_stats[0].first_barrier = Some(content.defs.record("barrier/10").expect("the Barrier chip's barrier"));
+    let mut b = Battle::new(s, content);
     for _ in 0..300 {
         b.tick(&Default::default(), Default::default());
     }
@@ -1680,8 +1681,9 @@ fn the_other_sides_first_barrier_is_hidden_until_the_local_navi_is_in() {
     // and the game's read through the null pointer (BIOS open bus) has the
     // blind bit, so the visual is hidden on that tick only.
     let mut s = scenario::setup();
-    s.navi_stats[1].first_barrier = 1;
-    let mut b = Battle::new(s, scenario::content());
+    let content = scenario::content();
+    s.navi_stats[1].first_barrier = Some(content.defs.record("barrier/10").expect("the Barrier chip's barrier"));
+    let mut b = Battle::new(s, content);
     let visual = |b: &Battle| b.player(1).and_then(|p| b.objects.get(p).actor).and_then(|a| b.actors.get(a).barrier_visual);
     let mut ticks = 0;
     while visual(&b).is_none() {
