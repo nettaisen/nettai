@@ -19,7 +19,7 @@ local WAIT, DRILL, DRAW_BACK = 0x0, 0x4, 0x8
 local HEIGHT = 0x10_0000
 -- How long the drills hit (the record's second parameter).
 local DRILL_TICKS = 0x18
-local SOUND = asset.sound("drilarm")
+local SOUND = asset.sound("bn6:drilarm")
 
 -- `sub_80ED3B6`: the arm and the drills; draw back when the time is up.
 local function grind(me: Object, s: State)
@@ -99,7 +99,7 @@ local function update(me: Object, s: State)
 end
 
 return define.chip {
-    id = "drilarm",
+    id = "bn6:drilarm",
     codes = { "G", "M", "W" },
     element = "null", family = "break", class = "standard",
     rarity = 2, mb = 32, damage = 70, hit_param = 10, lockout = 0,

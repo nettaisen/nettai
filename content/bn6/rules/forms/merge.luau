@@ -29,7 +29,7 @@ export type State = {
     sounded: boolean,
 }
 
-local CROSS_MERGE = asset.sound("cross-merge")
+local CROSS_MERGE = asset.sound("bn6:cross-merge")
 
 -- `object_getFlipDirection`: +1 when facing right, -1 when facing left.
 local function facing(o: Object): number
@@ -133,7 +133,7 @@ local function tick(me: Object, s: State)
 end
 
 merge.kind = define.kind {
-    id = "forms/cross-merge",
+    id = "bn6:forms/cross-merge",
     pool = "actor",
     state = {
         navi = "navi",

@@ -21,7 +21,7 @@ export type State = {
     while_dimmed: boolean,
 }
 
-local SPRITE = asset.sprite("elmnt-ice")
+local SPRITE = asset.sprite("bn6:elmnt-ice")
 
 -- Its height, in whole pixels (a halfword store over Z's whole part).
 local HEIGHT = 8
@@ -104,7 +104,7 @@ local function tick(me: Object)
 end
 
 ice.kind = define.kind {
-    id = "elmntman/ice",
+    id = "bn6:elmntman/ice",
     pool = "attack",
     state = { ticks = "u8", while_dimmed = "bool" },
     -- `sub_80D6D80`.

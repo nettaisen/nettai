@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local back_special = require("./back-special")
 
 return define.patch_card {
-    id = "darkmech",
+    id = "bn6:darkmech",
     mb = 22,
     effects = {
         cards.hp_percent(10),

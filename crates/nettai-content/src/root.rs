@@ -1,26 +1,25 @@
-//! A content root: the definitions and modules that make the battle
-//! content, as a checkout holds them (BN6's is content/bn6 in this
-//! repository; docs/design/content-model-v2.md §4, docs/design/
-//! rules-in-luau.md §7.2).
+//! The content: every content folder (content/bn6, content/bn5...) loads,
+//! one namespace (docs/design/rules-in-luau.md, the flat namespace; the
+//! user: "maybe you should just have it all in a flat namespace and then
+//! in the chip ids directly have bn6:cannon or whatever"). A folder holds:
 //!
 //! ```text
-//! root.toml                       the manifest: its name (its namespace: the keys its
-//!                                 modules define are qualified with it, `bn6:minibomb`),
-//!                                 whose pack its asset names resolve in, the roots it requires
 //! **/*.luau                       the modules: what they define (chips, navis, forms, weapons,
-//!                                 stages, rules...) and the code that runs it
+//!                                 stages, rules...) and the code that runs it; every id
+//!                                 written in full (`bn6:minibomb`), every asset name too
 //! *.d.luau                        its own API definitions, for editors and the checker (the
 //!                                 engine's are content/nettai's)
-//! compat/                         the original's numbers by key: tools' data, not content
-//! locales/<language>.toml         display text by key, one table a language: the own
+//! compat/                         the original's numbers by id: tools' data, not content
+//! locales/<language>.toml         display text by id, one table a language: the own
 //!                                 language's (en) is the content's strings, the others a
 //!                                 frontend's (crate::locale)
 //! ```
 //!
-//! [`read`] reads one, [`read_all`] one and the roots it requires (each a
-//! sibling directory named as the root: content/bn6 beside content/mix).
-//! The assets the definitions name (`asset.sprite`) come from an extracted
-//! pack's asset index; `crate::pack::load_battle` puts the two together.
+//! [`read`] reads one folder, [`read_all`] every folder of a content
+//! directory (content/nettai, the engine's declarations, aside). The assets
+//! the definitions name (`asset.sprite("bn6:bomb")`) come from the
+//! extracted packs' asset indices; `crate::pack::load_battle` puts the two
+//! together.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -29,27 +28,27 @@ pub use nettai_battle::content::RootManifest;
 
 use crate::report::Report;
 
-/// This repository's BN6 content.
-const BN6: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
+/// This repository's content directory.
+const CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content");
 
-/// The manifest's file in a root.
-pub const MANIFEST: &str = "root.toml";
+/// The engine's declarations' folder in a content directory.
+pub const DECLARATIONS: &str = "nettai";
 
-/// The BN6 content root: `$BN6_CONTENT`, else this repository's
-/// content/bn6.
-pub fn bn6() -> PathBuf {
-    std::env::var_os("BN6_CONTENT").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(BN6))
+/// The content directory: `$NETTAI_CONTENT`, else this repository's
+/// content/.
+pub fn content() -> PathBuf {
+    std::env::var_os("NETTAI_CONTENT").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(CONTENT))
 }
 
-/// The engine's API declarations for content (content/nettai beside the
-/// roots): `dir`'s sibling `nettai`.
-pub fn engine_declarations(dir: &Path) -> PathBuf {
-    dir.parent().unwrap_or(Path::new(".")).join("nettai")
+/// The engine's API declarations for content (content/nettai).
+pub fn engine_declarations(content: &Path) -> PathBuf {
+    content.join(DECLARATIONS)
 }
 
-/// What a content root holds.
+/// What a content folder holds.
 #[derive(Clone, Debug, Default)]
 pub struct Root {
+    /// Its name (the folder's).
     pub manifest: RootManifest,
     /// Where it was read from.
     pub dir: PathBuf,
@@ -62,21 +61,20 @@ pub struct Root {
     pub strings: crate::locale::Strings,
 }
 
-/// The manifest of the root in `dir`.
-pub fn read_manifest(dir: &Path) -> Result<RootManifest, String> {
-    let path = dir.join(MANIFEST);
-    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e} (is this a content root?)", path.display()))?;
-    let m: RootManifest = toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
-    m.check().map_err(|e| format!("{}: {e}", path.display()))?;
+/// The folder in `dir`'s name.
+pub fn folder_name(dir: &Path) -> Result<RootManifest, String> {
+    let name = dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    let m = RootManifest::named(&name);
+    m.check().map_err(|e| format!("{}: {e}", dir.display()))?;
     Ok(m)
 }
 
-/// Read the content root in `dir`.
+/// Read the content folder in `dir`.
 pub fn read(dir: &Path, report: &mut Report) -> Option<Root> {
-    let manifest = match read_manifest(dir) {
+    let manifest = match folder_name(dir) {
         Ok(m) => m,
         Err(e) => {
-            report.error(MANIFEST, e);
+            report.error(dir.display().to_string(), e);
             return None;
         }
     };
@@ -84,7 +82,7 @@ pub fn read(dir: &Path, report: &mut Report) -> Option<Root> {
     let mut paths = Vec::new();
     walk(dir, dir, &mut paths);
     for rel in paths {
-        if rel.starts_with("compat/") || rel.starts_with("locales/") || rel.ends_with(".d.luau") || rel == MANIFEST {
+        if rel.starts_with("compat/") || rel.starts_with("locales/") || rel.ends_with(".d.luau") {
             continue;
         }
         let full = dir.join(&rel);
@@ -111,38 +109,29 @@ pub fn read(dir: &Path, report: &mut Report) -> Option<Root> {
     (!report.has_errors()).then_some(root)
 }
 
-/// The directories of the root in `dir` and the roots it requires, its
-/// own first, each required root once (a required root is the sibling
-/// directory of its name).
-pub fn dirs(dir: &Path) -> Result<Vec<PathBuf>, String> {
-    let mut out: Vec<(String, PathBuf)> = Vec::new();
-    let mut pending = vec![dir.to_path_buf()];
-    while let Some(d) = pending.pop() {
-        let m = read_manifest(&d)?;
-        if let Some((_, other)) = out.iter().find(|(n, _)| *n == m.name) {
-            if other != &d {
-                return Err(format!("two roots are named {}: {} and {}", m.name, other.display(), d.display()));
-            }
-            continue;
-        }
-        let parent = d.parent().unwrap_or(Path::new(".")).to_path_buf();
-        for r in m.requires.iter().rev() {
-            if !out.iter().any(|(n, _)| n == r) {
-                pending.push(parent.join(r));
-            }
-        }
-        out.push((m.name, d));
+/// The content folders of the content directory `content`, by name (its
+/// declarations' folder, content/nettai, aside).
+pub fn dirs(content: &Path) -> Result<Vec<PathBuf>, String> {
+    let entries = std::fs::read_dir(content).map_err(|e| format!("{}: {e} (is this a content directory?)", content.display()))?;
+    let mut out: Vec<PathBuf> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .filter(|p| p.file_name().is_some_and(|n| n != DECLARATIONS && !n.to_string_lossy().starts_with('.')))
+        .collect();
+    out.sort();
+    if out.is_empty() {
+        return Err(format!("{}: no content folders", content.display()));
     }
-    Ok(out.into_iter().map(|(_, d)| d).collect())
+    Ok(out)
 }
 
-/// Read the content root in `dir` and every root it requires, its own
-/// first.
-pub fn read_all(dir: &Path, report: &mut Report) -> Option<Vec<Root>> {
-    let dirs = match dirs(dir) {
+/// Read every content folder of the content directory `content`.
+pub fn read_all(content: &Path, report: &mut Report) -> Option<Vec<Root>> {
+    let dirs = match dirs(content) {
         Ok(d) => d,
         Err(e) => {
-            report.error(MANIFEST, e);
+            report.error(content.display().to_string(), e);
             return None;
         }
     };

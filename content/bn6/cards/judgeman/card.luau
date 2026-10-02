@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
 return define.patch_card {
-    id = "judgeman",
+    id = "bn6:judgeman",
     mb = 38,
     effects = {
         cards.bug(cards.hp_percent(-10)),

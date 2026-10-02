@@ -11,7 +11,7 @@ local statuses = require("../../rules/status")
 local PARALYZE = statuses.paralyze_90
 
 return define.chip {
-    id = "darkthnd",
+    id = "bn6:darkthnd",
     codes = { "A", "B", "C", "*" },
     element = "elec",
     family = "elec",
@@ -28,5 +28,5 @@ return define.chip {
     slot_in_limit = 1,
     dark_substitute = thunder,
     hp_bug = 1,
-    action = shoot.action { id = "darkthnd/action", ball = { panels = 0x0C, status = PARALYZE } },
+    action = shoot.action { id = "bn6:darkthnd/action", ball = { panels = 0x0C, status = PARALYZE } },
 }

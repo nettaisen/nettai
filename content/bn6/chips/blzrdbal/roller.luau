@@ -21,8 +21,8 @@ type BallState = { roller: Object? }
 
 -- What it is and reaches (rows 0x58 and 0x49): every attack, object and
 -- body of either side; hit modifier 0, no spark.
-local IS = define.collision { id = "blzrdbal/roller", side0 = 0xC0044080, side1 = 0xC0044080, row_offset = 0x2C0 }
-local HITS = define.collision { id = "blzrdbal/roller-reach", side0 = 0x3F800000, side1 = 0x3F800000, row_offset = 0x248 }
+local IS = define.collision { id = "bn6:blzrdbal/roller", side0 = 0xC0044080, side1 = 0xC0044080, row_offset = 0x2C0 }
+local HITS = define.collision { id = "bn6:blzrdbal/roller-reach", side0 = 0x3F800000, side1 = 0x3F800000, row_offset = 0x248 }
 -- How far ahead of the ball it sits: 4 pixels at first, then 20.
 local START_AHEAD, AHEAD = 4, 20
 -- How many of the objects it touched it looks through (`sub_801A4DC`'s
@@ -133,7 +133,7 @@ local function init(me: Object)
 end
 
 roller.kind = define.kind {
-    id = "blzrdbal/roller",
+    id = "bn6:blzrdbal/roller",
     pool = "attack",
     state = { swallowed = "bool" },
     -- `sub_80DC260`.

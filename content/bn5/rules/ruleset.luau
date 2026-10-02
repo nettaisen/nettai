@@ -5,7 +5,7 @@
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
 return define.ruleset {
-    id = "bn5",
+    id = "bn5:stock",
     stock = true,
     systems = {},
 }

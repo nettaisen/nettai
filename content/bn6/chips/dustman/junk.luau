@@ -98,7 +98,7 @@ local function tick(me: Object)
 end
 
 junk.kind = define.kind {
-    id = "dustman/junk",
+    id = "bn6:dustman/junk",
     pool = "attack",
     state = { look = "identity" },
     -- `sub_80DBB40`.

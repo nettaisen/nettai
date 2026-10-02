@@ -19,7 +19,7 @@ local STATE = { timer = "u16" }
 
 local JUMP, PRESS, BACK = 0x0, 0x4, 0x8
 local ANIM_JUMP = 0x12
-local SOUND = asset.sound("land")
+local SOUND = asset.sound("bn6:land")
 
 -- The jump: three panels ahead, landing at Z 0 in 20 ticks, falling by
 -- 1.5 pixels a tick more each tick.
@@ -124,7 +124,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [JUMP] = jump, [PRESS] = press, [BACK] = back }
 
 return define.chip {
-    id = "heatpres",
+    id = "bn6:heatpres",
     codes = { "H" },
     element = "fire",
     family = "fire",
@@ -139,7 +139,7 @@ return define.chip {
     slot_in_limit = 1,
     -- `sub_80F0778` (`off_80F078C`).
     action = define.action {
-        id = "heatpres/action",
+        id = "bn6:heatpres/action",
         state = STATE,
         update = function(me: Object, s: State)
             link.run(me, s, PHASES, "HeatPres (sub_80F0778)")

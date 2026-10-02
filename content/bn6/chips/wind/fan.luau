@@ -24,16 +24,16 @@ export type State = {
     row_counter: number,
 }
 
-local SPRITE = asset.sprite("fan")
+local SPRITE = asset.sprite("bn6:fan")
 -- How a fan looks absorbed (both variants' obstacle kind 0: its own
 -- sprite).
 fan.absorbed = absorbed_obstacle.look { sprite = SPRITE }
 local LIFETIME = 0x5A0
 -- Ticks between gusts.
 local GUST_INTERVAL = 0xC
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_BLOW = asset.sound("dustbrk")
-local SOUND_BREAK = asset.sound("hit-bomb-1")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_BLOW = asset.sound("bn6:dustbrk")
+local SOUND_BREAK = asset.sound("bn6:hit-bomb-1")
 -- What it reaches: its side's obstacles' (the other side's attacks,
 -- objects and bodies, and neutral objects).
 local IS, HITS, HIT_MOD = collision.own_body, collision.hit_by_other_side, 0
@@ -242,7 +242,7 @@ local function init(me: Object)
 end
 
 fan.kind = define.kind {
-    id = "wind/fan",
+    id = "bn6:wind/fan",
     pool = "attack",
     state = { variant = "record:fan-variant", row_counter = "u32" },
     -- `sub_80CCFDC`.

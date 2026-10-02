@@ -33,7 +33,7 @@ local WAIT = 1
 -- A bursting variant's burst (`sub_80C5014`, `sub_80C5050`): its sound, the
 -- effect it shows over the panels, and the hit (which reaches as far as
 -- the effects but the panel the projectile hit itself).
-local BURST_SOUND = asset.sound("burst")
+local BURST_SOUND = asset.sound("bn6:burst")
 local BURST_HIT_MOD = 3
 
 -- A projectile variant.
@@ -187,7 +187,7 @@ local function init(me: Object)
 end
 
 projectile.kind = define.kind {
-    id = "projectile",
+    id = "bn6:projectile",
     pool = "attack",
     state = { variant = "record:projectile-variant", row = "i8" },
     -- `sub_80C4E58`.

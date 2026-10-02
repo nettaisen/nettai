@@ -22,7 +22,7 @@ spreader.STATE = { timer = "u16" }
 local FIRE, RECOVER = 0x0, 0x4
 
 local ANIM = 0xB
-local SOUND = asset.sound("h-burst")
+local SOUND = asset.sound("bn6:h-burst")
 -- The bullet leaves once the count passes this; the recovery's ticks.
 local FIRE_AFTER, RECOVER_TICKS = 1, 0x14
 
@@ -32,8 +32,8 @@ local FIRE_AFTER, RECOVER_TICKS = 1, 0x14
 export type SpreaderSpec = { id: string?, gun: AttachmentLook, z: number, bullet: BulletVariant }
 
 spreader.guns = {
-    spreader = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 11 },
-    water_cannon = attachment.look { sprite = asset.sprite("water-cannon"), palette = 0, attach_point = 25 },
+    spreader = attachment.look { sprite = asset.sprite("bn6:spreader"), palette = 0, attach_point = 11 },
+    water_cannon = attachment.look { sprite = asset.sprite("bn6:water-cannon"), palette = 0, attach_point = 25 },
 }
 
 -- `sub_80ECC86`: the gun's animation by the holder's AI index (the link

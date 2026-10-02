@@ -8,7 +8,7 @@ local slashes = require("../../navis/megaman/forms/slashcross/slashes")
 local lockon = require("../../rules/lockon")
 
 return define.chip {
-    id = "longswrd",
+    id = "bn6:longswrd",
     codes = { "H", "L", "S", "*" },
     element = "null",
     family = "sword",
@@ -23,7 +23,7 @@ return define.chip {
     library = { number = 72, index = 72, sort = 304 },
     slot_in_limit = 3,
     action = slash.action {
-        id = "longswrd/action",
+        id = "bn6:longswrd/action",
         blade = parts.blades.sword,
         hit = { region = regions.long, collision = parts.slashes_navis, hit_mod = 3 },
         effect = parts.effects.long,

@@ -52,7 +52,7 @@ impl<'a> Packs<'a> {
     /// The graphics of the pack a definition's root names its assets in
     /// (a chip's icon and picture are its game's, under its own key).
     pub fn of_key(&self, c: &Content, key: &str) -> &'a Bundle {
-        self.of_root(c, c.defs.root_of(key))
+        c.defs.root_of(key).map_or(self.own(), |r| self.of_root(c, r))
     }
 
     /// A chip's icon: its game's pack's, under its key there.
@@ -144,7 +144,7 @@ mod tests {
         index.mugshots.insert("face".into(), 3);
         let frame = nettai_battle::content::AnimFrame { duration: 4, flags: nettai_battle::object::sprite::FRAME_LAST };
         testing::add_pack(&mut c, "twin", index, [(testing::NAVI_SPRITE, vec![vec![frame]])].into_iter().collect());
-        let manifest = RootManifest { name: "twin".into(), assets: None, requires: vec![testing::ROOT.into()] };
+        let manifest = RootManifest::named("twin");
         c.scripts.add_root(manifest, Default::default());
         c.define().unwrap_or_else(|e| panic!("{e}"));
         c
@@ -171,7 +171,7 @@ mod tests {
     fn each_asset_draws_from_its_own_pack() {
         let c = content();
         let (test, twin) = (c.assets.pack(testing::ROOT).unwrap(), c.assets.pack("twin").unwrap());
-        let chip = c.defs.chip(c.defs.chip_by_key("gundels3").expect("a test chip")).key.clone();
+        let chip = c.defs.chip(c.defs.chip_by_key("test:gundels3").expect("a test chip")).key.clone();
         let (a, b) = (bundle(1, keys::local(&chip)), bundle(2, keys::local(&chip)));
         let mut by_pack = vec![&a, &a];
         by_pack[twin.index()] = &b;

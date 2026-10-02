@@ -62,16 +62,17 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` (default: $BN6_PACK, else
                    data/content/bn6); again for another game's pack, loaded
                    beside it: each asset draws and sounds from its own pack
-  --content DIR    the battle content: the definitions that name the pack's
-                   assets (default: $BN6_CONTENT, else this repository's
-                   content/bn6)
+  --content DIR    the battle content: a content directory, its folders
+                   one namespace, whose definitions name the packs' assets
+                   (default: $NETTAI_CONTENT, else this repository's
+                   content/)
   --mute           no sound (headless rendering never plays any)
   --round N        the trace round to start with (default 1; later rounds follow)
   --seed N         live play's seed: the field, the folders, the Crosses
                    offered and the battle's RNG are drawn from it (default:
                    from the clock); each start prints it
   --stage NAME     live play on this link battle stage (its key, e.g.
-                   netbattle-43) instead of a random one
+                   bn6:netbattle-43) instead of a random one
   --cards KEYS     live play: your patch cards (the Japanese games'
                    Modification Cards), their keys comma-separated in the
                    order they apply; -KEY installs one switched off (e.g.
@@ -278,7 +279,7 @@ fn language(assets: nettai_assets::Bundle, root: &Path, lang: &str) -> (nettai_a
     let own = nettai_content::locale::OWN;
     let strings = if lang == own { None } else { nettai_content::locale::load_all(root, lang).unwrap_or_else(|e| fail(e)) };
     if strings.is_none() && lang != own {
-        let have = nettai_content::locale::languages(root).join(", ");
+        let have = nettai_content::locale::languages_all(root).join(", ");
         fail(format!("the content ({}) has no strings in {lang:?} (it has {have})", root.display()));
     }
     let assets = assets.in_language(lang).unwrap_or_else(|e| fail(format!("{e} (extract the pack again with the Japanese ROMs)")));
@@ -384,13 +385,13 @@ fn main() {
         true => vec![std::env::var_os("BN6_PACK").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(DEFAULT_PACK))],
         false => args.packs.clone(),
     };
-    let root = args.content.clone().unwrap_or_else(nettai_content::root::bn6);
+    let root = args.content.clone().unwrap_or_else(nettai_content::root::content);
     let content = Arc::new(load(&all_packs[0], "battle content", |_| nettai_content::pack::load_battle_packs(&root, &all_packs)));
     // Each pack's graphics, by the content's pack order (`PackId`); the
     // content's own pack's in the player's language.
     let by_pack = nettai_content::pack::pack_paths(&content, &all_packs);
-    let home = content.scripts.roots.first().map(|r| r.assets()).and_then(|g| content.assets.pack(g));
-    let own = home.unwrap_or_else(|| fail("the content's own pack is not loaded"));
+    // (The frontend's own game, by name: its strings, its HUD.)
+    let own = content.assets.pack(nettai_match::DEFAULT_GAME).unwrap_or_else(|| fail(format!("no {} pack is loaded", nettai_match::DEFAULT_GAME)));
     let mut bundles: Vec<nettai_assets::Bundle> = Vec::new();
     let mut strings = None;
     for (i, path) in by_pack.iter().enumerate() {

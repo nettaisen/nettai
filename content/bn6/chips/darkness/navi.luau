@@ -33,16 +33,16 @@ export type State = {
 -- parts (NameID 0x16D's: his cape). Dark MegaMan wears MegaMan's identity,
 -- in his base form (NameID 0x1A0: no parts), whose attach points his aura
 -- takes.
-local BASS_SPRITE = asset.sprite("bass-anly")
+local BASS_SPRITE = asset.sprite("bn6:bass-anly")
 local BASS = define.identity {
-    id = "bass",
+    id = "bn6:bass",
     class = "navi",
     version = 0,
     ai_index = 0x13,
     ice = "medium",
     parts = {
         body = {
-            sprite = asset.sprite("bass-anly"),
+            sprite = asset.sprite("bn6:bass-anly"),
             anims = 20,
             behind = { { 0x13, 0x13 } },
             anim_offset = 0x14,
@@ -50,13 +50,13 @@ local BASS = define.identity {
     },
 }
 
-local SOUND_DARK, SOUND_APPEAR, SOUND_ROAR = asset.sound("immobilizer"), asset.sound("appear"), asset.sound("roar")
-local SOUND_SWOOP, SOUND_SLASH = asset.sound("swoop"), asset.sound("big-sword-swing")
-local SOUND_CHARGE, SOUND_CHARGED = asset.sound("buster-charge"), asset.sound("buster-charged")
+local SOUND_DARK, SOUND_APPEAR, SOUND_ROAR = asset.sound("bn6:immobilizer"), asset.sound("bn6:appear"), asset.sound("bn6:roar")
+local SOUND_SWOOP, SOUND_SLASH = asset.sound("bn6:swoop"), asset.sound("bn6:big-sword-swing")
+local SOUND_CHARGE, SOUND_CHARGED = asset.sound("bn6:buster-charge"), asset.sound("bn6:buster-charged")
 
 -- Dark MegaMan's palette, and his aura (attachment 0x32).
 local DARK_PALETTE = 0x19
-local AURA = attachment.look { sprite = asset.sprite("dark-aura"), palette = 0, attach_point = 24 }
+local AURA = attachment.look { sprite = asset.sprite("bn6:dark-aura"), palette = 0, attach_point = 24 }
 
 -- The dark flames (`sub_80BFD02`): element pillars (objects/element-pillar;
 -- the original's fifth kind: flames that stand back by their wave and last
@@ -73,8 +73,8 @@ local FLAME_PANELS = {
 -- Bass's charge: the glow while it builds (effect 0x4E) and the flash
 -- when it is full (0x4F), at his sprite's attach point 0 (`sub_8018810` by
 -- his NameID: his sprite's table row, whose point 0 is (0, 16)).
-local CHARGING = define.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
-local CHARGED = define.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
+local CHARGING = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 0, palette = 0 }
+local CHARGED = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 2, palette = 0 }
 local GLOW_X, GLOW_Z = 0, 16
 
 -- Bass's afterimages (`sub_80BFD90`): their colour shader and lifetime.
@@ -538,7 +538,7 @@ local function destroy(me: Object)
 end
 
 darkness.kind = define.kind {
-    id = "darkness/navi",
+    id = "bn6:darkness/navi",
     pool = "actor",
     state = { bass = "bool", held = "object", controller = "object", leader = "object" },
     -- `sub_80BF6EC`.

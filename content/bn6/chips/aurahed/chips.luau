@@ -9,7 +9,7 @@ local lockon = require("../../rules/lockon")
 local SPEED = 0xC_0000
 
 local aurahed1 = define.chip {
-    id = "aurahed1",
+    id = "bn6:aurahed1",
     codes = { "B", "C", "D" },
     element = "null",
     family = "break",
@@ -25,13 +25,13 @@ local aurahed1 = define.chip {
     slot_in_limit = 3,
     traits = { "aura_bonus" },
     action = action.action {
-        id = "aurahed1/action",
+        id = "bn6:aurahed1/action",
         head = { palette = 0, speed = SPEED, strong = true, far = false },
     },
 }
 
 local aurahed2 = define.chip {
-    id = "aurahed2",
+    id = "bn6:aurahed2",
     codes = { "D", "E", "F" },
     element = "null",
     family = "break",
@@ -47,13 +47,13 @@ local aurahed2 = define.chip {
     slot_in_limit = 3,
     traits = { "aura_bonus" },
     action = action.action {
-        id = "aurahed2/action",
+        id = "bn6:aurahed2/action",
         head = { palette = 1, speed = SPEED, strong = true, far = false },
     },
 }
 
 local aurahed3 = define.chip {
-    id = "aurahed3",
+    id = "bn6:aurahed3",
     codes = { "F", "G", "H" },
     element = "null",
     family = "break",
@@ -69,13 +69,13 @@ local aurahed3 = define.chip {
     slot_in_limit = 3,
     traits = { "aura_bonus" },
     action = action.action {
-        id = "aurahed3/action",
+        id = "bn6:aurahed3/action",
         head = { palette = 2, speed = SPEED, strong = true, far = false },
     },
 }
 
 local streamhd = define.chip {
-    id = "streamhd",
+    id = "bn6:streamhd",
     codes = {},
     element = "null",
     family = "program_advance",
@@ -97,7 +97,7 @@ local streamhd = define.chip {
     traits = { "aura_bonus" },
     -- Five heads to the far edge, the last one strong.
     action = action.action {
-        id = "streamhd/action",
+        id = "bn6:streamhd/action",
         head = { palette = 0, speed = SPEED, strong = false, far = true },
         stream = true,
     },

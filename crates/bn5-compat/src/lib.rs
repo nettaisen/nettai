@@ -32,17 +32,19 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// The root BN5's content and compat are (content/bn5/root.toml's `name`).
+/// BN5's game: its ids' prefix (content/bn5's).
 pub const ROOT: &str = "bn5";
 
-/// A key of BN5's root, qualified as the loader qualifies it: `bn5:<key>`.
+/// An id compat writes, in full (docs/design/rules-in-luau.md, the flat
+/// namespace: compat writes ids in full, `bn5:cannon`; a key written
+/// without its game is BN5's).
 pub fn qualify(key: &str) -> String {
-    format!("{ROOT}:{key}")
+    if key.contains(':') || key.starts_with("engine/") { key.to_string() } else { format!("{ROOT}:{key}") }
 }
 
-/// A qualified key's own key, if it is BN5's root's.
+/// An id, if it is BN5's (compat's tables are keyed by it).
 pub fn strip(key: &str) -> Option<&str> {
-    key.strip_prefix(ROOT).and_then(|k| k.strip_prefix(':'))
+    nettai_content_api::keys::root_of(key).filter(|r| *r == ROOT).map(|_| key)
 }
 
 /// BN5's object pools: how many slots each has (bn5-map.md §3.1). The

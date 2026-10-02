@@ -29,7 +29,7 @@ local STATE = { timer = "u16", rocks = "u8", drill = "object" }
 
 local READY, DIG, ROCKFALL, RISE, HOME, REST = 0x0, 0x4, 0x8, 0xC, 0x10, 0x14
 local ANIM_READY, ANIM_DIG, ANIM_RISE, ANIM_HOME = 0x11, 0x12, 4, 3
-local SOUND_DRILL, SOUND_ROCKFALL = asset.sound("drill-spin"), asset.sound("rockfall")
+local SOUND_DRILL, SOUND_ROCKFALL = asset.sound("bn6:drill-spin"), asset.sound("bn6:rockfall")
 
 local READY_TICKS, RISE_TICKS, HOME_TICKS, REST_TICKS = 0xC, 4, 9, 0x14
 
@@ -215,7 +215,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [READY] = ready, [DIG] = dig, [ROCKFALL] = rockfall, [RISE] = rise, [HOME] = home, [REST] = rest }
 
 return define.chip {
-    id = "rc-brakr",
+    id = "bn6:rc-brakr",
     codes = { "G" },
     element = "null",
     family = "break",
@@ -230,7 +230,7 @@ return define.chip {
     slot_in_limit = 1,
     -- `sub_80F1C1C` (`off_80F1C30`).
     action = define.action {
-        id = "rc-brakr/action",
+        id = "bn6:rc-brakr/action",
         state = STATE,
         update = function(me: Object, s: State)
             link.run(me, s, PHASES, "RC Brakr (sub_80F1C1C)")

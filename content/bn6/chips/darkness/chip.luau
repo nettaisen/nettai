@@ -8,7 +8,7 @@ local bassanly = require("../bassanly/chip")
 local navi = require("./navi")
 
 return define.chip {
-    id = "darkness",
+    id = "bn6:darkness",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

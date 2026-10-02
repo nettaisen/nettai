@@ -5,7 +5,7 @@
 local plus = require("../../lib/instant/plus")
 
 return define.chip {
-    id = "atk-30",
+    id = "bn6:atk-30",
     codes = { "*" },
     element = "null",
     family = "plus",

@@ -234,7 +234,7 @@ pub fn import_sound_versions(root: &Path, report: &mut Report) -> Option<(SoundB
 // ---- Loading -------------------------------------------------------------------
 
 /// The battle content, for the engine: the definitions and modules of the
-/// content root `content` (`crate::root::bn6()` for BN6's) and the roots it
+/// content root `content` (`crate::root::content()` for BN6's) and the roots it
 /// requires, with the assets of the pack `assets` (its asset index,
 /// `Content::assets`, and its sprites' animation timing), defined
 /// (`Content::define`). [`load_battle_packs`] loads several packs.
@@ -255,30 +255,36 @@ pub fn load_battle_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai_ba
     Ok((c, report))
 }
 
-/// [`load_battle`]'s content before the define phase: the modules of the
-/// root in `content` and of the roots it requires, the asset index and the
+/// [`load_battle`]'s content before the define phase: the modules of every
+/// folder of the content directory `content`, the asset index and the
 /// sprite timing.
 pub fn battle_content(content: &Path, assets: &Path) -> Result<(nettai_battle::Content, Report), Report> {
     battle_content_packs(content, &[assets.to_path_buf()])
 }
 
 /// [`battle_content`] with several packs: each says its game (a pack that
-/// says none is taken as the content's own root's assets, with a warning);
-/// two packs of one game are refused, and every root's `assets` must be
-/// loaded. Asset names are qualified with their pack's game (`bn6:bomb`).
+/// says none is taken as BN6's, with a warning: packs extracted before they
+/// said it); two packs of one game are refused. A game's folder whose
+/// modules name its assets loads only with its game's pack (content/bn5
+/// with BN5's), else it is left out, with a warning. Asset names are in
+/// full, their pack's game first (`bn6:bomb`).
 pub fn battle_content_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai_battle::Content, Report), Report> {
     let mut report = Report::default();
-    let Some(roots) = crate::root::read_all(content, &mut report) else { return Err(report) };
-    let home_assets = roots.first().map(|r| r.manifest.assets().to_string()).unwrap_or_default();
-    let Some(games) = pack_games(packs, &home_assets, &mut report) else { return Err(report) };
-    for r in &roots {
-        if !games.iter().any(|(g, _)| g == r.manifest.assets()) {
-            report.error(
-                crate::root::MANIFEST,
-                format!("root {}'s assets are {}'s, and no pack of {} is loaded", r.manifest.name, r.manifest.assets(), r.manifest.assets()),
-            );
+    let Some(mut roots) = crate::root::read_all(content, &mut report) else { return Err(report) };
+    let Some(games) = pack_games(packs, "bn6", &mut report) else { return Err(report) };
+    roots.retain(|r| {
+        let game = &r.manifest.name;
+        let own_assets = format!("(\"{game}{}", nettai_content_api::keys::SEPARATOR);
+        let names_assets = r.modules.values().any(|m| m.contains("asset.") && m.contains(&own_assets));
+        if games.iter().any(|(g, _)| g == game) || !names_assets {
+            return true;
         }
-    }
+        report.warn(
+            r.dir.display().to_string(),
+            format!("no {game} pack is loaded: {game}'s content is left out (extract its pack to play it)"),
+        );
+        false
+    });
     if report.has_errors() {
         return Err(report);
     }
@@ -295,7 +301,7 @@ pub fn battle_content_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai
     let mut scripts = nettai_battle::content::Scripts::default();
     let mut strings = crate::locale::Strings::default();
     for r in roots {
-        strings.merge(r.strings.qualified(&r.manifest.name));
+        strings.merge(r.strings);
         scripts.add_root(r.manifest, r.modules);
     }
     let c = nettai_battle::Content { assets, animations, scripts, strings, ..Default::default() };

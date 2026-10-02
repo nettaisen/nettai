@@ -63,7 +63,7 @@ local function tick(me: Object)
 end
 
 force.kind = define.kind {
-    id = "colforce/force",
+    id = "bn6:colforce/force",
     pool = "effect",
     -- `sub_80E9460`.
     update = function(me: Object)

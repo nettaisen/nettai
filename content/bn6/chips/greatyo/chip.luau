@@ -7,7 +7,7 @@ local throw = require("../yoyo/throw")
 local yoyo = require("../yoyo/chip")
 
 return define.chip {
-    id = "greatyo",
+    id = "bn6:greatyo",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -21,5 +21,5 @@ return define.chip {
     library = { number = 340, index = 21, sort = 0 },
     slot_in_limit = 1,
     program_advances = { { order = 27, code_run = { chip = yoyo, count = 3 } } },
-    action = throw.action { id = "greatyo/action", yoyo = { great = true, panels = 4, rounds = 5 } },
+    action = throw.action { id = "bn6:greatyo/action", yoyo = { great = true, panels = 4, rounds = 5 } },
 }

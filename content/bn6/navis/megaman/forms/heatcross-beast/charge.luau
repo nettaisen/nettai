@@ -34,7 +34,7 @@ local PILLARS: ElementPillar = { ticks = 0x5A, after = 4 }
 local REGION = regions.deep_fan
 local TICKS = 0x5A
 
-local HUM = asset.sound("roar")
+local HUM = asset.sound("bn6:roar")
 
 -- `sub_8011BD0`: 50 damage and 30 more per point of buster Attack (up to
 -- 5), Fire.
@@ -82,7 +82,7 @@ local function burn(me: Object, s: State)
 end
 
 heat_beast_charge.action = define.action {
-    id = "heatcross-beast/charge/action",
+    id = "bn6:heatcross-beast/charge/action",
     state = { timer = "u16" },
     -- `sub_80ED8C4`.
     update = function(me: Object, s: State)
@@ -98,7 +98,7 @@ heat_beast_charge.action = define.action {
 }
 
 heat_beast_charge.weapon = define.weapon {
-    id = "heatcross-beast/charge",
+    id = "bn6:heatcross-beast/charge",
     -- The charge table's row 7, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 90, 90, 90, 90, 90, 20, 20, 20 },

@@ -23,8 +23,8 @@ export type State = {
     target_y: number,
 }
 
-local SPRITE = asset.sprite("grab-shot")
-local APPEAR_SOUND, RISE_SOUND, ARRIVE_SOUND = asset.sound("point-appear"), asset.sound("point-rise"), asset.sound("cross-merge")
+local SPRITE = asset.sprite("bn6:grab-shot")
+local APPEAR_SOUND, RISE_SOUND, ARRIVE_SOUND = asset.sound("bn6:point-appear"), asset.sound("bn6:point-rise"), asset.sound("bn6:cross-merge")
 -- A taken panel stays the other side's this long
 -- (`object_setPanelAllianceTimerLong`).
 local STOLEN_TICKS = 0x708
@@ -141,7 +141,7 @@ local function init(me: Object)
 end
 
 point.kind = define.kind {
-    id = "colorpt/point",
+    id = "bn6:colorpt/point",
     pool = "effect",
     state = {
         holder = "object",

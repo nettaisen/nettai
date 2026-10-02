@@ -14,7 +14,7 @@ export type State = {
 local WAIT = 1
 
 turn.action = define.action {
-    id = "megaman/turn",
+    id = "bn6:megaman/turn",
     state = { timer = "u16" },
     update = function(me: Object, s: State)
         if me.step == 0 then

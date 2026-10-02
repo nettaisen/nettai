@@ -648,13 +648,13 @@ pub struct BattleGames {
 }
 
 impl BattleGames {
-    /// A round's: its stage's root and its players' rulesets' games.
+    /// A round's: its stage's game and its players' rulesets' games (a
+    /// player with none plays the stage's game's stock rules).
     pub fn of(content: &Content, setup: &RoundSetup) -> BattleGames {
         let defs = &content.defs;
-        BattleGames {
-            arena: defs.root_of(&defs.stage(setup.settings.stage).key),
-            sides: [0, 1].map(|p| defs.ruleset_game(setup.players[p].ruleset)),
-        }
+        let stage = &defs.stage(setup.settings.stage).key;
+        let arena = defs.root_of(stage).unwrap_or_else(|| panic!("stage {stage}'s id names no game"));
+        BattleGames { arena, sides: [0, 1].map(|p| defs.ruleset_game(setup.players[p].ruleset, arena)) }
     }
 
     /// The pools' capacities: each the larger of the two players' games'
@@ -684,8 +684,8 @@ impl Battle {
         let panels = &content.rules_of(games.arena).panels;
         let (field, mode) = (Field::new(panels, &stage.layout, stage.panel_pattern, stage.mode), stage.mode);
         let objects = Objects::with_capacity(games.pool_capacity(&content));
-        let hands = [ChipHand::empty(&content), ChipHand::empty(&content)];
-        let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p]));
+        let hands = [ChipHand::empty(&content, games.arena), ChipHand::empty(&content, games.arena)];
+        let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p], games.arena));
         let mut b = Battle {
             content,
             games,
@@ -800,11 +800,34 @@ impl Battle {
         }
     }
 
+    /// The game of the definition with id `key`: its prefix's (the engine's
+    /// own `engine/...`, the arena's).
+    pub fn game_of(&self, key: &str) -> crate::content::RootId {
+        self.content.defs.root_of(key).unwrap_or(self.games.arena)
+    }
+
+    /// The chip a zeroed chip field reads: the arena's game's zeroed chip
+    /// (`Content::chip_or_zeroed`).
+    pub fn chip_or_zeroed(&self, h: Option<nettai_content_api::ChipHandle>) -> nettai_content_api::ChipHandle {
+        self.content.chip_or_zeroed(self.games.arena, h)
+    }
+
+    /// The record a chip field names, a zeroed one the arena's game's
+    /// zeroed chip's.
+    pub fn chip_field(&self, h: Option<nettai_content_api::ChipHandle>) -> &crate::content::ChipData {
+        self.content.chip_field(self.games.arena, h)
+    }
+
+    /// The arena's game's zeroed chip.
+    pub fn zeroed_chip(&self) -> Option<nettai_content_api::ChipHandle> {
+        self.content.zeroed_chip(self.games.arena)
+    }
+
     /// The rules of chip `chip`'s own game (docs/design/rules-in-luau.md
     /// §7.5: a chip runs as its game wrote it); no chip, the arena's.
     pub fn chip_rules(&self, chip: Option<nettai_content_api::ChipHandle>) -> &crate::content::Rules {
         match chip {
-            Some(h) => self.content.rules_of(self.content.defs.root_of(&self.content.defs.chip(h).key)),
+            Some(h) => self.content.rules_of(self.game_of(&self.content.defs.chip(h).key)),
             None => self.arena_rules(),
         }
     }
