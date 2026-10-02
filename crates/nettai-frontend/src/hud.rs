@@ -678,7 +678,7 @@ fn draw_chip_name(
     (bonus, doubled): (u16, bool),
     problems: &mut Problems,
 ) {
-    let words = text.strings.chip_name(b, chip);
+    let words = text.strings.chip_name(&b.content, chip);
     let name = name_glyphs(b, hud, words, chip, problems);
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, name.len(), pal, (0, 18 * 8), Align::Left);
     // The damage follows the name: after the cells its glyphs take, or in
@@ -986,7 +986,7 @@ fn telop_parts<'a>(
     };
     let name = match telop.name {
         TelopName::Chip(chip) => {
-            let words = text.strings.chip_name(b, chip);
+            let words = text.strings.chip_name(&b.content, chip);
             (words, name_glyphs(b, hud, words, chip, problems))
         }
         TelopName::Hidden => ("????", fonts::cell_glyphs(hud, "????").0),
@@ -1016,7 +1016,7 @@ fn used_chip_parts<'a>(
         problems.note(format!("the telop's banner {remote_telop:#04x} is not in the pack"));
         return None;
     };
-    let words = text.strings.chip_name(b, used.chip);
+    let words = text.strings.chip_name(&b.content, used.chip);
     let name = (words, name_glyphs(b, hud, words, used.chip, problems));
     name_parts(hud, layout, name, (used.damage, used.bonus, used.doubled), true, None, out, text)
 }

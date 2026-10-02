@@ -6,9 +6,10 @@
 //! own strings (a description's lines, the run message's characters per
 //! line), never a translation (docs/design/text-rendering.md §10).
 
-use nettai_battle::Battle;
+use nettai_battle::Content;
 use nettai_battle::content::strings::Strings;
 use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::BTreeSet;
 
@@ -49,69 +50,58 @@ impl<'a> DisplayText<'a> {
     }
 
     /// A chip's name (its key when no table names it).
-    pub fn chip_name<'b>(&self, b: &'b Battle, chip: ChipHandle) -> &'b str
+    pub fn chip_name<'b>(&self, content: &'b Content, chip: ChipHandle) -> &'b str
     where
         'a: 'b,
     {
-        let key = &b.content.defs.chip(chip).key;
+        let key = &content.defs.chip(chip).key;
         let given = self.language.and_then(|s| s.chip(key)).and_then(|c| c.name.as_deref());
-        let own = b.content.strings.chip(key).and_then(|c| c.name.as_deref());
+        let own = content.strings.chip(key).and_then(|c| c.name.as_deref());
         self.pick(given, own, || format!("chips.{key}.name")).map_or(key.as_str(), |s| s.text)
     }
 
     /// A chip's description, if it has one.
-    pub fn chip_description<'b>(&self, b: &'b Battle, chip: ChipHandle) -> Option<Said<'b>>
+    pub fn chip_description<'b>(&self, content: &'b Content, chip: ChipHandle) -> Option<Said<'b>>
     where
         'a: 'b,
     {
-        let key = &b.content.defs.chip(chip).key;
+        let key = &content.defs.chip(chip).key;
         let given = self.language.and_then(|s| s.chip(key)).and_then(|c| c.description.as_deref());
-        let own = b.content.strings.chip(key).and_then(|c| c.description.as_deref());
+        let own = content.strings.chip(key).and_then(|c| c.description.as_deref());
         self.pick(given, own, || format!("chips.{key}.description"))
     }
 
     /// A form's (a Cross's) description, if it has one.
-    pub fn form_description<'b>(&self, b: &'b Battle, form: FormHandle) -> Option<Said<'b>>
+    pub fn form_description<'b>(&self, content: &'b Content, form: FormHandle) -> Option<Said<'b>>
     where
         'a: 'b,
     {
-        let key = &b.content.defs.form(form).key;
+        let key = &content.defs.form(form).key;
         let given = self.language.and_then(|s| s.form(key)).and_then(|f| f.description.as_deref());
-        let own = b.content.strings.form(key).and_then(|f| f.description.as_deref());
+        let own = content.strings.form(key).and_then(|f| f.description.as_deref());
         self.pick(given, own, || format!("forms.{key}.description"))
-    }
-
-    /// A form's name (its key when no table names it).
-    pub fn form_name<'b>(&self, b: &'b Battle, form: FormHandle) -> &'b str
-    where
-        'a: 'b,
-    {
-        let key = &b.content.defs.form(form).key;
-        let given = self.language.and_then(|s| s.form(key)).and_then(|f| f.name.as_deref());
-        let own = b.content.strings.form(key).and_then(|f| f.name.as_deref());
-        self.pick(given, own, || format!("forms.{key}.name")).map_or(key.as_str(), |s| s.text)
     }
 
     /// A navi's name (the custom screen's enemy name; its key when no
     /// table names it).
-    pub fn navi_name<'b>(&self, b: &'b Battle, navi: NaviHandle) -> &'b str
+    pub fn navi_name<'b>(&self, content: &'b Content, navi: NaviHandle) -> &'b str
     where
         'a: 'b,
     {
-        let key = &b.content.defs.navi(navi).key;
+        let key = &content.defs.navi(navi).key;
         let given = self.language.and_then(|s| s.navi(key)).and_then(|n| n.name.as_deref());
-        let own = b.content.strings.navi(key).and_then(|n| n.name.as_deref());
+        let own = content.strings.navi(key).and_then(|n| n.name.as_deref());
         self.pick(given, own, || format!("navis.{key}.name")).map_or(key.as_str(), |s| s.text)
     }
 
     /// A navi's no-running message, if it has one.
-    pub fn run_message<'b>(&self, b: &'b Battle, navi: NaviHandle) -> Option<Said<'b>>
+    pub fn run_message<'b>(&self, content: &'b Content, navi: NaviHandle) -> Option<Said<'b>>
     where
         'a: 'b,
     {
-        let key = &b.content.defs.navi(navi).key;
+        let key = &content.defs.navi(navi).key;
         let given = self.language.and_then(|s| s.navi(key)).and_then(|n| n.run_message.as_deref());
-        let own = b.content.strings.navi(key).and_then(|n| n.run_message.as_deref());
+        let own = content.strings.navi(key).and_then(|n| n.run_message.as_deref());
         self.pick(given, own, || format!("navis.{key}.run_message"))
     }
 
@@ -128,14 +118,39 @@ impl<'a> DisplayText<'a> {
 }
 
 /// A chip's name in the content's own strings, else its key (for the
-/// frontend's own text: status lines, folder listings).
-pub fn own_chip_name(content: &nettai_battle::Content, chip: ChipHandle) -> &str {
+/// frontend's own text: status lines, folder listings), `spelled` for a
+/// terminal.
+pub fn own_chip_name(content: &Content, chip: ChipHandle) -> Cow<'_, str> {
     let key = &content.defs.chip(chip).key;
-    content.strings.chip(key).and_then(|c| c.name.as_deref()).unwrap_or(key)
+    spelled(content.strings.chip(key).and_then(|c| c.name.as_deref()).unwrap_or(key))
 }
 
-/// A form's name in the content's own strings, else its key.
-pub fn own_form_name(content: &nettai_battle::Content, form: FormHandle) -> &str {
+/// A string for a terminal: a stacked mark, a character of the Private Use
+/// Area that a terminal has no glyph for, spelled as its letters (`Count`
+/// and U+E002, the stacked EX, as `CountEX`).
+pub fn spelled(text: &str) -> Cow<'_, str> {
+    if !text.chars().any(|c| crate::vfont::stacked_letters(c).is_some()) {
+        return Cow::Borrowed(text);
+    }
+    Cow::Owned(text.chars().flat_map(|c| crate::vfont::stacked_letters(c).map_or_else(|| vec![c], Vec::from)).collect())
+}
+
+/// A Cross's name in the content's own strings, else its key (for the
+/// frontend's own text: live play's Crosses, the plain-text screen's Cross
+/// window).
+pub fn own_form_name(content: &Content, form: FormHandle) -> &str {
     let key = &content.defs.form(form).key;
     content.strings.form(key).and_then(|f| f.name.as_deref()).unwrap_or(key)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_terminal_gets_a_stacked_mark_spelled() {
+        assert_eq!(spelled("Count\u{E002}"), "CountEX");
+        assert_eq!(spelled("TmhkMan\u{E003}"), "TmhkManSP");
+        assert!(matches!(spelled("Press Ⓐ"), Cow::Borrowed("Press Ⓐ")));
+    }
 }
