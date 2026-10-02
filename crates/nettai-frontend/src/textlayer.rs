@@ -152,13 +152,26 @@ pub enum Plane {
 pub struct TextSink<'f> {
     pub mode: TextMode,
     font: Option<&'f VectorFont>,
+    measure: Option<&'f std::cell::RefCell<crate::vfont::TextRenderer>>,
     items: Vec<(Plane, TextItem)>,
     next_tag: u32,
 }
 
 impl<'f> TextSink<'f> {
     pub fn new(mode: TextMode, font: Option<&'f VectorFont>) -> TextSink<'f> {
-        TextSink { mode, font, items: Vec::new(), next_tag: 0 }
+        TextSink { mode, font, measure: None, items: Vec::new(), next_tag: 0 }
+    }
+
+    /// With the layouts the text layer will use, so `fitted_width` can say
+    /// how wide a string it takes is drawn.
+    pub fn measuring(self, measure: Option<&'f std::cell::RefCell<crate::vfont::TextRenderer>>) -> TextSink<'f> {
+        TextSink { measure, ..self }
+    }
+
+    /// How wide, in frame pixels, the text layer draws `text` in a box
+    /// `room` wide (None without a measurer).
+    pub fn fitted_width(&self, text: &str, role: Role, room: i32) -> Option<f32> {
+        self.measure.map(|m| m.borrow_mut().fitted_width(text, role, room))
     }
 
     /// The original mode's: takes nothing.
