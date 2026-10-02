@@ -84,6 +84,11 @@ pub struct SongDoc {
     pub tracks: usize,
     /// FNV-1a of the MIDI file as exported.
     pub midi_stamp: String,
+    /// The game version whose song this is, for a song each version's ROM
+    /// has its own of at the same number (BN5's Team ProtoMan and Team
+    /// Colonel: `crate::sound::SongVersions`); absent for every other song.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
     /// What the MIDI file held when exported. Only for checking: the
     /// importer warns when an edit lost the loop or every command of a
     /// kind (what editors that don't know M4A's controllers do).
@@ -166,6 +171,7 @@ pub fn export(song: &Song, id: u16, title: &str, voicegroup: &str, midi_file: &s
         voicegroup: voicegroup.into(),
         tracks: song.tracks.len(),
         midi_stamp: crate::report::stamp(&bytes),
+        version: None,
         exported: Some(summary(&tls)),
     };
     Ok((bytes, doc))
