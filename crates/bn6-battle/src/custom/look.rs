@@ -6,6 +6,7 @@
 
 use crate::battle::{Fade, FadeMode};
 use crate::content::SoundRole;
+use crate::custom::GameVersion;
 
 /// The original's presentation state of a screen (the control block at
 /// `0x020364C0`).
@@ -29,8 +30,13 @@ pub struct ScreenLook {
     /// copies one every 8 frames).
     pub regular_frame: u8,
     /// The screen fade the screen runs on its console (Beast Out's, the
-    /// Program Advance's).
+    /// Program Advance's, a dark chip's).
     pub fade: Fade,
+    /// The console's second fade record (`loc_8006274`), which only a dark
+    /// chip's hover runs: the window and the screen's sprites.
+    pub window_fade: Fade,
+    /// `+0x12`, `+0x13`: the cursor's dark-chip hover (`sub_802A2B0`).
+    pub dark: DarkHover,
     /// What this tick drew.
     pub drawn: Drawn,
     /// What the chip window shows: what it was drawn for last
@@ -55,6 +61,30 @@ pub struct ScreenLook {
     pub late_turns: bool,
 }
 
+/// The cursor's dark-chip hover (`sub_802A2B0`, `+0x12`), with the step
+/// of its volume ramp (`+0x13`, a halfword's offset in the original).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DarkHover {
+    /// 0: not on a dark chip.
+    Clear,
+    /// 4: the fades run toward dark.
+    Darkening { step: u8 },
+    /// 8: dark.
+    Dark,
+    /// 0xC: the fades run back.
+    Clearing { step: u8 },
+}
+
+/// The dark-chip hover's fades' speed.
+const DARK_FADE_SPEED: u8 = 0xA;
+
+/// The hover's volume ramps (`byte_802A3F4`, `byte_802A400`): down for the
+/// music and up for the screen's player while darkening, the other way
+/// back. The window's fade takes 5 steps out and 6 back, so the ramps
+/// never run past their ends.
+const VOLUME_DOWN: [u16; 6] = [0x100, 0xE0, 0xC0, 0xA0, 0x80, 0x80];
+const VOLUME_UP: [u16; 6] = [0x80, 0x80, 0xA0, 0xC0, 0xE0, 0x100];
+
 /// What the chip window was last drawn for (`sub_8028476`): the slot
 /// under the cursor and how many picks there were then (OK's picture
 /// shows whether there are any), and the last chip it showed, whose
@@ -76,6 +106,9 @@ pub struct Drawn {
     pub emblem: Option<(u32, u8)>,
     /// The Regular chip's frame (`sub_802899C`).
     pub regular: bool,
+    /// The volumes a dark chip's hover set this tick (music, the screen's
+    /// player), after the tick's sounds.
+    pub volume: Option<(u16, u16)>,
     /// The sounds the tick made, in order (its player hears them).
     pub sounds: [Option<ScreenSound>; 6],
 }
@@ -97,7 +130,8 @@ impl ScreenSound {
             ScreenSound::RunMessage => SoundRole::CustomRunMessage,
             ScreenSound::Description => SoundRole::CustomDescription,
             ScreenSound::DescriptionClose => SoundRole::CustomDescriptionClose,
-            ScreenSound::BeastOut => SoundRole::CustomBeastOut,
+            ScreenSound::BeastOut(GameVersion::Falzar) => SoundRole::CustomBeastOutFalzar,
+            ScreenSound::BeastOut(GameVersion::Gregar) => SoundRole::CustomBeastOutGregar,
             ScreenSound::BeastOutFlash => SoundRole::CustomBeastOutFlash,
             ScreenSound::Cancel => SoundRole::CustomCancel,
             ScreenSound::Redeal => SoundRole::CustomRedeal,
@@ -146,8 +180,10 @@ pub enum ScreenSound {
     /// R: a description opens, and closes (`sub_8026E4C`).
     Description,
     DescriptionClose,
-    /// Beast Out chosen (`sub_802774C`): its two sounds with the pick's.
-    BeastOut,
+    /// Beast Out chosen (`sub_802774C`, and the BeastOut chip's
+    /// `sub_8027624`): its two sounds with the pick's. The first is the
+    /// version's (the console's own: Gregar's on a Gregar console).
+    BeastOut(GameVersion),
     BeastOutFlash,
     /// A Beast Out or a Cross taken back.
     Cancel,
@@ -209,6 +245,15 @@ impl ScreenLook {
             turn_limit: false,
             regular_frame: 0,
             fade: Fade { mode: FadeMode::BeastOutBack, level: 0, speed: 0, target: 0, active: false, stepped: false },
+            window_fade: Fade {
+                mode: FadeMode::DarkChipWindowBack,
+                level: 0,
+                speed: 0,
+                target: 0,
+                active: false,
+                stepped: false,
+            },
+            dark: DarkHover::Clear,
             drawn: Drawn::default(),
             chip_window: ChipWindow { slot: 0, picks: 0, last_chip },
             cross_tab,
@@ -217,6 +262,39 @@ impl ScreenLook {
             face: None,
             late_turns,
         }
+    }
+
+    /// `sub_802A2B0`, after every tick's state: the hover over a dark chip.
+    /// Resting on one (`on_dark`, `sub_802A394`) darkens the screen and
+    /// the window and turns the music down and the screen's player up, a
+    /// step a tick until the window's fade is done; leaving it undoes that
+    /// the same way. (Its `+0x14` counter changes nothing.)
+    pub(crate) fn hover(&mut self, on_dark: bool) {
+        self.dark = match self.dark {
+            DarkHover::Clear if on_dark => {
+                // sub_802A2E8
+                self.fade.start(FadeMode::DarkChip, DARK_FADE_SPEED);
+                self.window_fade.start(FadeMode::DarkChipWindow, DARK_FADE_SPEED);
+                DarkHover::Darkening { step: 0 }
+            }
+            DarkHover::Dark if !on_dark => {
+                // sub_802A33E
+                self.fade.start(FadeMode::DarkChipBack, DARK_FADE_SPEED);
+                self.window_fade.start(FadeMode::DarkChipWindowBack, DARK_FADE_SPEED);
+                DarkHover::Clearing { step: 0 }
+            }
+            DarkHover::Darkening { step } => {
+                // sub_802A30C
+                self.drawn.volume = Some((VOLUME_DOWN[step as usize], VOLUME_UP[step as usize]));
+                if self.window_fade.active() { DarkHover::Darkening { step: step + 1 } } else { DarkHover::Dark }
+            }
+            DarkHover::Clearing { step } => {
+                // sub_802A362
+                self.drawn.volume = Some((VOLUME_UP[step as usize], VOLUME_DOWN[step as usize]));
+                if self.window_fade.active() { DarkHover::Clearing { step: step + 1 } } else { DarkHover::Clear }
+            }
+            d => d,
+        };
     }
 
     /// `sub_8029C08`: the emblem over the picked column, at the window's
