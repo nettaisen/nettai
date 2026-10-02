@@ -14,4 +14,13 @@ local SHOT = { is = collision.attack, hits = collision.hits_navis }
 -- The cannons' shot: it staggers (hit modifier 3).
 variants.cannon = projectile.variant { id = "shot/cannon", collision = SHOT, hit_mod = 3, element = "null", spark = sparks.impact }
 
+-- AirShot's shot (BN5's row 4): it pushes (hit modifier 0x61), without BN6's wind element (BN5 has none).
+variants.air = projectile.variant {
+    id = "shot/air",
+    collision = { is = collision.pushing, hits = collision.hits_navis },
+    hit_mod = 0x61,
+    element = "null",
+    spark = sparks.impact,
+}
+
 return variants

@@ -8,6 +8,11 @@
 -- is left he goes, and the controller moves on. His sword sits in his
 -- first related slot, which held his user until his first slash (so later
 -- searches find no user there). See docs/engine/chips.md §3.6.21.
+--
+-- His look (sprite, palette, sword, the slash's effect, his spawner's
+-- address) is a game's: BN6's is `protoman.bn6`, which `protoman.summon`
+-- brings; another game's ProtoMan chips summon theirs
+-- (`protoman.summon_with(look)`).
 
 local attachment = require("../../objects/attachment/attachment")
 local parts = require("../../lib/swords/parts")
@@ -24,25 +29,34 @@ export type State = {
     -- (ExtraVars[2]), and his facing when he came (ExtraVars[3]).
     fresh: number,
     flip: number,
+    -- His game's look (`protoman.look`).
+    look: ProtoManLook,
 }
 
 local protoman = {}
 
-local SPRITE = asset.sprite("protoman")
 local SOUND_APPEAR = asset.sound("appear")
 
--- The controller calls his spawner through r3, which his position takes
--- (his init sets it all).
-local SPAWNER_ADDRESS = 0x080C2A4D
+-- A game's ProtoMan's look.
+function protoman.look(look: ProtoManLook): ProtoManLook
+    return define.record("protoman-look", look)
+end
 
--- His palette (`dword_80C276C`: 0 for each of the chips' levels).
-local PALETTE = 0
-
--- His sword (`byte_80C29F0`, the same row for each of the chips' levels:
--- the original's attachment 0x11, the swords' blade), its animation 0xB,
--- animating while dimmed.
-local SWORD = parts.blades.sword
-local SWORD_ANIM = 0xB
+-- BN6's: his sprite; his palette (`dword_80C276C`: 0 for each of the
+-- chips' levels); his sword (`byte_80C29F0`, the same row for each of the
+-- chips' levels: the original's attachment 0x11, the swords' blade), its
+-- animation 0xB, animating while dimmed; his slash's effect (0x27: the
+-- swords' slash over a column); and his spawner's address, which the
+-- controller calls through r3 and his position takes (his init sets it
+-- all).
+protoman.bn6 = protoman.look {
+    sprite = asset.sprite("protoman"),
+    palette = 0,
+    sword = parts.blades.sword,
+    sword_anim = 0xB,
+    slash = parts.effects.wide,
+    spawner_address = 0x080C2A4D,
+}
 
 -- His fade-in's starting grey.
 local FADE_GREY = 0x1F
@@ -53,10 +67,8 @@ local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 local SOLID = 0x10
 local OCCUPIED = 0x0F80_0000
 
--- When his slash lands (the timer before its tick's count down), and its
--- effect (0x27: the swords' slash over a column).
+-- When his slash lands (the timer before its tick's count down).
 local SLASH_TICK = 0xA
-local SLASH_EFFECT = parts.effects.wide
 
 -- Enter the phase with a timer (PhaseInitialized), or count down; true
 -- once the timer is 0 or below.
@@ -199,7 +211,8 @@ local function slash(me: Object)
     if me.phase_init == 0 then
         me.anim = 5
         me.anim_loaded = 6
-        attachment.attach(me, SWORD, "related", { anim = SWORD_ANIM, while_dimmed = true })
+        local look = (me.state :: State).look
+        attachment.attach(me, look.sword, "related", { anim = look.sword_anim, while_dimmed = true })
         battle.play_sound(parts.sounds.swing)
         me.timer = 0x14
         me.phase_init = 4
@@ -224,7 +237,8 @@ local function slash(me: Object)
             box.run_while_dimmed = true
         end
         local cx, cy = field.center(x, y)
-        battle.effect(Vec3.new(cx, cy, 0x10_0000), SLASH_EFFECT, (me.state :: State).flip)
+        local s = me.state :: State
+        battle.effect(Vec3.new(cx, cy, 0x10_0000), s.look.slash, s.flip)
     end
     local left = me.timer - 1
     me.timer = left
@@ -280,8 +294,9 @@ end
 -- `sub_80C2710`: on his user's panel, faded out (grey); then his first
 -- update at once.
 local function init(me: Object)
+    local look = (me.state :: State).look
     local sprite = me.sprite
-    sprite:load(SPRITE)
+    sprite:load(look.sprite)
     sprite.shadow = "ground"
     me.anim = 0
     me.anim_loaded = 0
@@ -290,7 +305,7 @@ local function init(me: Object)
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y, 0)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    sprite.palette = PALETTE
+    sprite.palette = look.palette
     sprite.color_shader = 0x7FFF
     me.visible = true
     me:set_lifecycle("update")
@@ -309,7 +324,7 @@ end
 protoman.kind = define.kind {
     id = "protoman/navi",
     pool = "actor",
-    state = { grey = "u8", controller = "object", fresh = "u8", flip = "u8" },
+    state = { grey = "u8", controller = "object", fresh = "u8", flip = "u8", look = "record:protoman-look" },
     -- `sub_80C26F0`.
     update = function(me: Object)
         local l = me.lifecycle
@@ -323,21 +338,27 @@ protoman.kind = define.kind {
     end,
 }
 
--- `sub_80C2A4C`: ProtoMan for `user`, reporting to `controller` (the
--- ProtoMan chips' navi hook, `off_802CD5C[1]`).
-function protoman.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn(protoman.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
-    if not o then
-        return nil
+-- `sub_80C2A4C`: ProtoMan of `look` for `user`, reporting to `controller`
+-- (the ProtoMan chips' navi hook, `off_802CD5C[1]`).
+function protoman.summon_with(look: ProtoManLook): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+    return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
+        local o = battle.spawn(protoman.kind, Vec3.new(spec.panel_y, spec.element, look.spawner_address))
+        if not o then
+            return nil
+        end
+        o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
+        o.element = spec.element
+        o.alliance, o.flip = user.alliance, user.flip
+        o.related1 = user
+        o:set_damage_word(spec.damage)
+        local s = o.state :: State
+        s.controller = controller
+        s.look = look
+        return o
     end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.alliance, o.flip = user.alliance, user.flip
-    o.related1 = user
-    o:set_damage_word(spec.damage)
-    local s = o.state :: State
-    s.controller = controller
-    return o
 end
+
+-- BN6's ProtoMan.
+protoman.summon = protoman.summon_with(protoman.bn6)
 
 return protoman
