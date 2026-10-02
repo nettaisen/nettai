@@ -29,7 +29,8 @@ use nettai_battle::cues::{CueAction, CueTracker};
 use nettai_battle::custom::{CrossList, SavedFolder};
 use nettai_battle::setup::RoundSetup;
 use nettai_battle::{Battle, BattleResult, RoundEnd};
-use nettai_content_api::{RecordHandle, StageHandle};
+use nettai_battle::patch_cards::{InstalledCard, MAX_CARDS};
+use nettai_content_api::StageHandle;
 use nettai_netplay::protocol::BUTTONS;
 use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::transport::{Connection, Datagram, Hello, Role};
@@ -70,7 +71,7 @@ impl Offer {
             let folder: SavedFolder = r.get()?;
             let game = r.get()?;
             let crosses: CrossList = r.get()?;
-            let cards: Vec<(RecordHandle, bool)> = r.get()?;
+            let cards: Vec<InstalledCard> = r.get()?;
             let stage: Option<StageHandle> = r.get()?;
             Ok(Offer { loadout: Loadout { folder, game, crosses, cards }, stage })
         })();
@@ -99,8 +100,7 @@ impl Offer {
         if l.crosses.forms().any(|f| !crosses.contains(&f)) {
             return Err("the other player's Cross window offers a form that isn't a Cross".into());
         }
-        let records = &content.defs.records;
-        if l.cards.iter().any(|(c, _)| records.get(c.index()).is_none_or(|r| !r.key.starts_with("patch-card/"))) {
+        if l.cards.len() > MAX_CARDS || l.cards.iter().any(|c| c.card.index() >= content.defs.patch_cards.len()) {
             return Err("the other player's patch cards aren't the content's".into());
         }
         if self.stage.is_some_and(|s| !driver::link_battle_stages(content).contains(&s)) {
