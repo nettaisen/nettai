@@ -109,7 +109,7 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &m
         (text_tiles(assets, &chatbox, string, translated, problems), None)
     };
     let portrait = match (portrait, chatbox.look().portrait) {
-        (Some(id), Some(look)) => match assets.sprite(id.category, id.index) {
+        (Some(id), Some(look)) => match crate::packs::sprite(&b.content, id).and_then(|p| assets.sprite(p.category, p.index)) {
             Some(sheet) => {
                 note_true_face(b, navi, side.unlocks.version, problems);
                 Some((sheet, look))
@@ -560,7 +560,7 @@ mod tests {
         let mut c = Content::default();
         c.strings = root.strings.qualified(&root.manifest.name);
         c.scripts = nettai_battle::content::Scripts::root(root.manifest, root.modules);
-        c.assets = nettai_battle::content::testing::asset_names_used(&c.scripts.modules);
+        c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
         let ja = nettai_content::locale::load_all(dir, "ja").unwrap().expect("ja.toml");
         let form = |key: &str| c.defs.form_by_key(key).unwrap_or_else(|| panic!("no form {key}"));

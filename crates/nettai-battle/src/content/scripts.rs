@@ -140,7 +140,7 @@ impl Scripts {
         let modules = self.modules.iter().map(|(k, v)| (k.clone(), v.clone()));
         let mut pack = nettai_luau::Pack::new(modules).with_compiled(self.compiled.0.clone());
         for r in &self.roots {
-            pack = pack.with_requires(&r.name, r.requires.clone());
+            pack = pack.with_requires(&r.name, r.requires.clone()).with_assets(&r.name, r.assets());
         }
         pack
     }

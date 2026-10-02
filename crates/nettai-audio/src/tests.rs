@@ -132,7 +132,7 @@ fn cancelling_a_cue_takes_it_back() {
 
 #[test]
 fn a_cancelled_effect_stops() {
-    let mut a = BattleAudio::new(bank());
+    let mut a = BattleAudio::new(bank(), Songs::numbers(0x200));
     let mut out = Vec::new();
     a.handle_actions([CueAction::Play(SoundCue::Effect(SoundId(0x94)))]);
     a.tick(&mut out);
@@ -145,7 +145,7 @@ fn a_cancelled_effect_stops() {
 
 #[test]
 fn a_cue_sounds_two_frames_later_as_in_the_game() {
-    let mut a = BattleAudio::new(bank());
+    let mut a = BattleAudio::new(bank(), Songs::numbers(0x200));
     let mut out = Vec::new();
     a.handle(&[SoundCue::Music(VIRUS_BATTLE)]);
     // The frame's VBlank comes first; the queued call runs after it.
@@ -160,7 +160,7 @@ fn a_cue_sounds_two_frames_later_as_in_the_game() {
 
 #[test]
 fn effects_play_over_the_music() {
-    let mut a = BattleAudio::new(bank());
+    let mut a = BattleAudio::new(bank(), Songs::numbers(0x200));
     let mut out = Vec::new();
     a.handle(&[SoundCue::Music(VIRUS_BATTLE)]);
     for _ in 0..3 {
@@ -175,7 +175,7 @@ fn effects_play_over_the_music() {
 
 #[test]
 fn the_game_queue_holds_32_calls_a_frame() {
-    let mut a = BattleAudio::new(bank());
+    let mut a = BattleAudio::new(bank(), Songs::numbers(0x200));
     a.handle(&[SoundCue::Effect(SoundId(0x94)); 40]);
     assert_eq!(a.queue.len(), QUEUE_LIMIT);
     a.tick(&mut Vec::new());
@@ -189,8 +189,9 @@ fn a_battle_drives_the_music() {
     let content = testing::restaged(testing::LINK_BATTLE_SIDE0_FIRST, |s| s.music = Some(nettai_battle::SoundId(0)));
     let mut setup = testing::round_setup(testing::LINK_BATTLE_SIDE0_FIRST, testing::stats(500));
     setup.content = content.hash();
+    let songs = Songs::of(&content.assets);
     let mut b = Battle::new(setup, std::sync::Arc::new(content));
-    let mut a = BattleAudio::new(bank());
+    let mut a = BattleAudio::new(bank(), songs);
     let mut out = Vec::new();
     for _ in 0..4 {
         b.tick(&[PlayerTick::default(), PlayerTick::default()], TickEvents::default());

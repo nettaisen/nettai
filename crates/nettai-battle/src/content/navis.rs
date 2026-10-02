@@ -30,7 +30,7 @@ pub struct NaviData {
     /// palette in Full Synchro), the mugshot's number; none for MegaMan,
     /// whose face is his form's. Presentation only.
     #[serde(default)]
-    pub mugshot: Option<u8>,
+    pub mugshot: Option<super::MugshotId>,
     /// Extra height, in whole pixels, of the navi's image as it merges
     /// with MegaMan in a Cross.
     #[serde(default)]
@@ -317,20 +317,20 @@ pub struct FormData {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Faces {
-    pub normal: u8,
+    pub normal: super::MugshotId,
     #[serde(default)]
-    pub angry: Option<u8>,
+    pub angry: Option<super::MugshotId>,
     #[serde(default)]
-    pub tired: Option<u8>,
+    pub tired: Option<super::MugshotId>,
     #[serde(default)]
-    pub full_synchro: Option<u8>,
+    pub full_synchro: Option<super::MugshotId>,
     #[serde(default)]
-    pub worn_out: Option<u8>,
+    pub worn_out: Option<super::MugshotId>,
 }
 
 impl Faces {
     /// The face for `emotion`.
-    pub fn of(&self, emotion: crate::kinds::player::Emotion) -> u8 {
+    pub fn of(&self, emotion: crate::kinds::player::Emotion) -> super::MugshotId {
         use crate::kinds::player::Emotion;
         let face = match emotion {
             Emotion::Normal => None,
@@ -348,7 +348,7 @@ fn faces<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Faces>, D::Err
     #[derive(Deserialize)]
     #[serde(untagged)]
     enum Spec {
-        One(u8),
+        One(super::MugshotId),
         ByEmotion(Faces),
     }
     Ok(Option::<Spec>::deserialize(d)?.map(|s| match s {
@@ -685,10 +685,10 @@ mod tests {
         let read = |json: &str| serde_json::from_str::<Form>(json).unwrap().mugshot;
         // One face, whatever the emotion.
         let one = read(r#"{ "mugshot": 15 }"#).unwrap();
-        assert_eq!([Emotion::Normal, Emotion::Tired, Emotion::FullSynchro].map(|e| one.of(e)), [15; 3]);
+        assert_eq!([Emotion::Normal, Emotion::Tired, Emotion::FullSynchro].map(|e| one.of(e).0), [15; 3]);
         // A Cross's: its own, and a tired one.
         let cross = read(r#"{ "mugshot": { "normal": 5, "tired": 10 } }"#).unwrap();
-        assert_eq!([Emotion::Normal, Emotion::Angry, Emotion::Tired].map(|e| cross.of(e)), [5, 5, 10]);
+        assert_eq!([Emotion::Normal, Emotion::Angry, Emotion::Tired].map(|e| cross.of(e).0), [5, 5, 10]);
         assert_eq!(read("{}"), None);
     }
 }

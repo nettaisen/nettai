@@ -196,9 +196,9 @@ fn is(b: &Battle, o: &Object, kind: EngineKind) -> bool {
 /// A sprite as content names it (the pack's asset index), for a problem's
 /// text.
 pub fn sprite_name(b: &Battle, id: nettai_battle::content::SpriteId) -> String {
-    match b.content.assets.sprites.iter().find(|(_, s)| **s == id) {
-        Some((name, _)) => format!("sprite {name:?}"),
-        None => format!("sprite {:02x}-{:02x}", id.category, id.index),
+    match crate::packs::name(&b.content, nettai_content_api::AssetKind::Sprite, id.0) {
+        Some(name) => format!("sprite {name:?}"),
+        None => format!("sprite handle {}", id.0),
     }
 }
 
@@ -295,7 +295,7 @@ pub fn queue_objects<'a>(
             let s = b.objects.sprite(r);
             let Some(id) = s.id else { continue };
             let kind = || &b.content.defs.kind(o.kind).key;
-            let Some(sheet) = assets.sprite(id.category, id.index) else {
+            let Some(sheet) = crate::packs::sprite(&b.content, id).and_then(|p| assets.sprite(p.category, p.index)) else {
                 problems.note(format!("{} of kind {:?} is not in the pack's graphics", sprite_name(b, id), kind()));
                 continue;
             };

@@ -146,9 +146,19 @@ pub struct Match {
 /// were, 0x600).
 pub const MATCH_EFFECTS: u32 = 0x600;
 
-/// The background id a place shows.
-fn background_id(content: &Content, p: &Place) -> u8 {
-    p.background.as_ref().and_then(|b| content.assets.backgrounds.get(b).copied()).unwrap_or(content.stage(p.stage).background)
+/// The background a match names, `name` (the content's own pack's unless
+/// qualified, `bn6:clouds`): its handle, if the packs have it
+/// (docs/design/rules-in-luau.md §7.4).
+pub fn background(content: &Content, name: &str) -> Option<nettai_battle::content::BackgroundId> {
+    use nettai_content_api::keys;
+    let home = content.scripts.roots.first().map_or("", |r| r.assets());
+    let q = if keys::is_qualified(name) { name.to_string() } else { keys::qualify(home, name) };
+    content.assets.handle(nettai_content_api::AssetKind::Background, &q).map(nettai_battle::content::BackgroundId)
+}
+
+/// The background a place shows.
+fn background_id(content: &Content, p: &Place) -> nettai_battle::content::BackgroundId {
+    p.background.as_ref().and_then(|b| background(content, b)).unwrap_or(content.stage(p.stage).background)
 }
 
 impl Match {

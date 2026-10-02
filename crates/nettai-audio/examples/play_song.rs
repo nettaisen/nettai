@@ -63,7 +63,7 @@ fn main() {
     };
     match out_path {
         Some(path) => {
-            let mut audio = BattleAudio::new(bank);
+            let mut audio = BattleAudio::new(bank.clone(), nettai_audio::Songs::numbers(bank.songs.len()));
             let mut samples = Vec::new();
             for f in 0..frames {
                 audio.handle(&cues(f));
@@ -73,7 +73,8 @@ fn main() {
             eprintln!("wrote {path}");
         }
         None => {
-            let mut out = AudioOut::new(bank).unwrap_or_else(|e| {
+            let songs = nettai_audio::Songs::numbers(bank.songs.len());
+            let mut out = AudioOut::new(bank, songs).unwrap_or_else(|e| {
                 eprintln!("{e}");
                 std::process::exit(1);
             });
