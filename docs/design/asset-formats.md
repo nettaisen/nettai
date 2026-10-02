@@ -89,8 +89,10 @@ graphics/
   custom/
     custom.json  window.png  column-cells.png  turn-limit.png  name-bar.png
     codes.png  elements.png  digits.png  slot-codes.png  empty-icon.png
-    beast-buttons.png  redeal-buttons.png  scrap-buttons.png  cursor.png
-    emblems.png  regular.png  chip-art/CHIP.png  pictures/NAME.png
+    redeal-buttons.png  scrap-buttons.png  cursor.png  cross-cursor.png
+    regular.png  chip-art/CHIP.png  pictures/NAME.png
+    beast-buttons-V.png  emblems-V.png  cross-names-V.png
+    pictures/beast-out-V.png  (V: falzar, gregar)
 sound/
   sound.toml                         mixer, music players, song table size
   samples.toml                       per sample: file, exact rate, loop start, stamp
@@ -313,17 +315,49 @@ navis' mugshots and which one a navi shows, the HUD's text lines as glyph
 numbers ("TIME UP!", the turn timer's seconds, "COUNTER HIT!"), banner
 layouts and the form emotions.
 
-**Custom screen** (`graphics/custom/`): the same scheme. `window.png` holds
-the window frame's tiles with the window's four palettes (by the chip under
-the cursor's class), each chip's picture (`chip-art/CHIP.png`, 7x6 tiles)
-its own palette, `elements.png` a palette row per element whose colours
-10-15 are the ones the element brings, `emblems.png` the emblems'
-palettes. `custom.json` holds the window's maps (15x20, without and with the
-Cross tab) and the Cross window's, their patch lists (a block of
-consecutive tile numbers at a cell, row or column first, in a palette), the
-three palettes no image owns as colour lists, and which emblem a navi shows.
-The frontend composes the tile numbers the maps name from these blocks, as
-the original's VRAM holds them.
+**Custom screen** (`graphics/custom/`, format version 2): the same scheme.
+`window.png` holds the window frame's tiles with the window's four palettes
+(by the chip under the cursor's class: standard, Mega, Giga, dark), each
+chip's picture (`chip-art/CHIP.png`, 7x6 tiles) its own palette,
+`elements.png` a palette row per element whose colours 10-15 are the ones
+the element brings, `emblems.png` the emblems' palettes, `cross-cursor.png`
+the Cross window's cursor (its corner and its edge, two frames) with sprite
+palette 14. `custom.json` holds the window's maps (15x20, without and with
+the Cross tab) and the Cross window's (three opening steps, then the window
+with one to five Crosses), their patch lists (a block of consecutive tile
+numbers at a cell, row or column first, in a palette), the three palettes
+no image owns as colour lists, which emblem a navi shows, and the Program
+Advance animation's three sets of name colours. The frontend composes the
+tile numbers the maps name from these blocks, as the original's VRAM holds
+them.
+
+**Two ROMs, and what differs by version.** A BN6 pack is made from both US
+ROMs (`bn6-extract content <falzar-rom> <gregar-rom> <pack>`): the Falzar
+ROM's data, with what only the Gregar ROM has right or of its own, read at
+the addresses the same code points at there (bn6-extract's `gregar`):
+
+- **What differs by version** is two assets, each named with its version:
+  `cross-names-falzar` and `cross-names-gregar` (nettai-assets
+  `Versioned`, whose halves the names find; an asset no version has its
+  own of has no suffix). On the custom screen these are the Beast's
+  picture in the chip window with its palettes (`pictures/beast-out-V`,
+  which the BeastOut chip shows too), the Beast Out button
+  (`beast-buttons-V`), the emblems (`emblems-V`: MegaMan's are the
+  version's; Falzar's owns the emblems' palettes) and the Cross window's
+  names, 9x2 tiles each, the five on the cursor's row then on the others',
+  with background palette 10 for the Cross under the cursor
+  (`cross-names-V`). `custom.json` lists the base's (`own`, its version in
+  `base_version`) and the others' (`versions`). A console shows its
+  version's, except a Cross's name, which is the Cross's own game's.
+- **Gregar's own faces**: the Falzar ROM has none for Gregar's Crosses,
+  its Beast and its link navis (its tables show the Falzar counterpart's).
+  The pack has the Gregar ROM's as faces of their own (`mugshots/heatcross`
+  and the others: numbers 0x17 to 0x28 after the Falzar ROM's emotion
+  pictures, 0x86 to 0x8A after its link navis'), and Gregar's forms and
+  navis name them: every form shows its true face on either console.
+- **Five chips' pictures and icons** the Falzar ROM has wrong (Bass,
+  BigHook, DeltaRay, ColForce, BugRSwrd: the other five Giga chips'
+  copied in): the pack has the Gregar ROM's, on either console.
 
 Tiled was considered for the field's panel blocks too, but a panel tile is
 drawn in different palettes for each side, which a Tiled tileset can't show
@@ -677,13 +711,13 @@ total ever pass about a second, the sound import is where to look first.
 `Content::animations` (see [content-pack.md](content-pack.md)); nothing is
 compiled into the engine.
 
-**From the ROM.** `bn6-extract content <rom> <dir>` writes a pack in one
+**From the ROMs.** `bn6-extract content <falzar-rom> <gregar-rom> <dir>` writes a pack in one
 step (the battle data, the graphics extraction, the sound extraction, then
 the exporters), about 1 s. It is the only extraction.
 
 ## 10. Commands
 
-    cargo run -p bn6-extract -- content <rom> data/content/bn6    # ROM -> pack
+    cargo run -p bn6-extract -- content <falzar-rom> <gregar-rom> data/content/bn6    # ROMs -> pack
     cargo run -p nettai-frontend -- <trace.jsonl> --pack data/content/bn6
     cargo run -p nettai-content -- check data/content/bn6            # lint every file
     cargo run -p nettai-content -- verify data/content/bn6 <reference-pack> [--seconds N]

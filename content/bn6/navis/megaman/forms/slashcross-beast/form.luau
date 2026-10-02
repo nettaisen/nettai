@@ -22,7 +22,7 @@ return define.form {
     weapons = { buster = gregar_beast_buster.weapon, a_charge = slash_a_charge.weapon, alt_a_charge = lunge.weapon },
     -- Its face in the emotion window (`byte_801E700`): the Falzar ROM has no
     -- SlashCross Beast face, and shows TenguCross Beast's.
-    mugshot = asset.mugshot("tengucross-beast"),
+    mugshot = asset.mugshot("slashcross-beast"),
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "sword", damage = 50 },
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
