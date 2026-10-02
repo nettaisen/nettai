@@ -1324,8 +1324,10 @@ fn a_panic_inside_content_leaves_the_vm_sound() {
     for (t, u) in tape.iter().zip(&other) {
         with_runtime(&shared, || a.tick(&t.input, t.events.clone()));
         have.push(a.digest());
-        // A Rust panic inside a Luau call: the reactive abort GunDelSol
-        // calls isn't ported and panics when a defense triggered.
+        // A Rust panic inside a Luau call: when a defense triggered, the
+        // reactive abort GunDelSol calls starts a trap's counter, whose
+        // action the test content doesn't fill (its role), and the engine
+        // panics there.
         if let Some(p) = c.player(0)
             && crate::kinds::player::running_content_action(&c, p)
                 .is_some_and(|h| nettai_content_api::keys::local(&c.content.defs.action(h).key) == "gundels3/action")

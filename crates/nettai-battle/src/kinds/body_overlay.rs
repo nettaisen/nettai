@@ -126,10 +126,11 @@ fn init(b: &mut Battle, r: ObjectRef) {
 fn tick(b: &mut Battle, r: ObjectRef) {
     let owner = owner(b, r);
     let Vars { anim_offset, forced_front, always_step, .. } = *vars(b, r);
-    let (owner_anim, owner_pos, owner_flags, owner_flip) = {
+    let (owner_anim, owner_pos, owner_flip) = {
         let o = b.objects.get(owner);
-        (o.anim, o.pos, o.flags, o.flip)
+        (o.anim, o.pos, o.flip)
     };
+    let owner_shown = [0u8, 1].map(|v| b.visible_to(owner, v));
     let in_front = |anim: u8| {
         *overlay(b, r).in_front.get(anim as usize).unwrap_or_else(|| {
             panic!("the body overlay depth for animation {anim:#x} reads past the depth tables into their pointers (sub_80C43C4)")
@@ -146,11 +147,12 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     o.anim = owner_anim.wrapping_add(anim_offset);
     o.pos = Vec3 { x: owner_pos.x, y: owner_pos.y.wrapping_add(nudge), z: owner_pos.z.wrapping_add(nudge) };
     // phase_init set (`sub_80C44E4` / `sub_80C44FA`) holds the visibility.
-    if o.phase_init == 0 {
-        o.flags = (o.flags & !flags::VISIBLE) | (owner_flags & flags::VISIBLE);
-    }
+    let holds = o.phase_init != 0;
     o.flip = owner_flip;
     let alliance = o.alliance;
+    if !holds {
+        b.set_visible_by_viewer(r, owner_shown);
+    }
     // The owner's palette (unless it has its own), colour shader, white
     // flash, alpha and facing.
     let own_palette = vars(b, r).own_palette;

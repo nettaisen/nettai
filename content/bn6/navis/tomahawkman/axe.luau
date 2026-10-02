@@ -40,7 +40,7 @@ end
 local function tick(me: Object)
     local owner = me.related1 :: Object
     me.pos = owner.pos
-    me.visible = owner.visible
+    me:copy_visibility(owner)
     me.run_while_paused = owner.run_while_paused
     me.no_sprite_update = owner.no_sprite_update
     me.run_while_dimmed = owner.run_while_dimmed

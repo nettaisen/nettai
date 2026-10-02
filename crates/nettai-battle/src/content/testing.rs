@@ -967,6 +967,10 @@ pub fn scripts() -> Scripts {
                 // the test chips compose (the plus chips', FireHit's fist,
                 // FlmHook's hook).
                 ("lib/instant/plus", "lib/instant/plus"),
+                // The chips the ruleset names: the custom screen's Beast Out
+                // button, and what a selection it can't allow becomes.
+                ("chips/beastout/chip", "chips/beastout/chip"),
+                ("chips/invalid/chip", "chips/invalid/chip"),
                 ("chips/atk-10/chip", "chips/atk-10/chip"),
                 ("chips/navi-20/chip", "chips/navi-20/chip"),
                 ("chips/busterup/chip", "chips/busterup/chip"),

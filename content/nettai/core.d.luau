@@ -342,6 +342,9 @@ declare class Object
     related2: Object?
     -- The slot is in use (read-only).
     active: boolean
+    -- Drawn (for every viewer, when set; read: the local side's console's).
+    -- What a console's rule hides per viewer is `hide_from_blind`, and an
+    -- attachment follows its owner with `copy_visibility`.
     visible: boolean
     run_while_paused: boolean
     -- Keeps updating while the battle is dimmed.
@@ -486,9 +489,17 @@ declare class Object
     function set_coordinates_from_panel(self): ()
     function set_panel_from_coordinates(self): ()
     function update_collision_panels(self): ()
-    -- `sub_80169BE`: shown unless the battle is dimmed; hidden if it is the
-    -- remote side's and the local player is blind.
+    -- `sub_80169BE`: shown unless the battle is dimmed; hidden from a
+    -- viewer whose navi is blind if it is the other side's.
     function update_visibility(self): ()
+    -- `sub_800EB6C` on each console: hidden from a viewer whose navi is
+    -- blind if it is the other side's, on top of what each viewer sees of
+    -- it now. (Presentation, decided per viewer: `visible` is for every
+    -- viewer.)
+    function hide_from_blind(self): ()
+    -- Seen by whoever sees `owner` (each viewer's view of it): an
+    -- attachment following its owner's visibility.
+    function copy_visibility(self, owner: Object): ()
     -- Onto the destination panel of a move (panel, reservation,
     -- coordinates, collision).
     function snap_to_future_panel(self): ()
@@ -906,10 +917,6 @@ declare battle: {
     -- The same as the routines that read its Z flag see it: true only once
     -- time is up (a KO reads false).
     time_up: () -> boolean,
-    -- `sub_800EB6C`: the local player sees `side`'s objects (unless they
-    -- are the other side's and the local navi is blind). Presentation, as
-    -- the original keeps it in the objects' visibility.
-    viewer_sees: (side: number) -> boolean,
     -- `sub_800ED90` and its record's flags: the chip `user` would use next
     -- deals damage (a player's at its hand's cursor; another object's own).
     next_chip_damages: (user: Object) -> boolean,

@@ -423,6 +423,10 @@ impl UserData for Object {
             with(|api, _| Ok(api.set_panel_from_coordinates(this.0)))
         });
         methods.add_method("update_visibility", |_, this, ()| with(|api, _| Ok(api.update_visibility(this.0))));
+        methods.add_method("hide_from_blind", |_, this, ()| with(|api, _| Ok(api.hide_from_blind(this.0))));
+        methods.add_method("copy_visibility", |_, this, from: mlua::UserDataRef<Object>| {
+            with(|api, _| Ok(api.copy_visibility(from.0, this.0)))
+        });
         methods.add_method("update_collision_panels", |_, this, ()| {
             with(|api, _| Ok(api.update_collision_panels(this.0)))
         });
@@ -1104,10 +1108,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
     lib_fn!(lua, t, "next_chip_damages", |_, user: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.next_chip_damages(user.0)))
-    });
-    lib_fn!(lua, t, "viewer_sees", |_, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.viewer_sees(side)))
     });
     for &f in BattleInfo::ALL {
         t.set(
