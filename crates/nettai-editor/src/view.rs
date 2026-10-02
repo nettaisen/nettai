@@ -11,7 +11,7 @@ use nettai_battle::custom::GameVersion;
 use nettai_match::stats::{self, Kind, Value};
 use nettai_match::{FORMS_SYSTEM, PATCH_CARDS_SYSTEM};
 
-const SIDES: [&str; 2] = ["Left (you)", "Right"];
+pub const SIDES: [&str; 2] = ["Left (you)", "Right"];
 const RED: Color = Color::from_rgb(0.85, 0.2, 0.2);
 const GREEN: Color = Color::from_rgb(0.15, 0.6, 0.25);
 const DIM: Color = Color::from_rgb(0.5, 0.5, 0.55);
@@ -83,7 +83,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         Tab::Folder(s) => folder(e, s),
         Tab::Crosses(s) => crosses(e, s),
         Tab::Cards(s) => cards(e, s),
-        Tab::NaviCust(s) => navicust_pane(e, s),
+        Tab::NaviCust(s) => crate::navicust::view(e, s),
         Tab::Stats(s) => stats_pane(e, s, None),
     };
 
@@ -184,7 +184,7 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
 }
 
 /// What the round starts the navi with, once the rules have set it up.
-fn round_stats(e: &Editor, s: usize) -> Element<'_, Msg> {
+pub fn round_stats(e: &Editor, s: usize) -> Element<'_, Msg> {
     match &e.round {
         Ok(stats) => {
             let st = &stats[s];
@@ -481,7 +481,8 @@ const NAVICUST_FIELDS: &[&str] = &[
     "hand_shrink_turn",
 ];
 
-fn navicust_pane(e: &Editor, s: usize) -> Element<'_, Msg> {
+/// The NaviCust's stats set directly (no grid of programs).
+pub fn navicust_stats(e: &Editor, s: usize) -> Element<'_, Msg> {
     stats_pane(e, s, Some(NAVICUST_FIELDS))
 }
 
@@ -490,14 +491,14 @@ fn stats_pane<'a>(e: &'a Editor, s: usize, only: Option<&'static [&'static str]>
     let side = e.side(s);
     let base = nettai_match::Side::base_stats(c, side.navi, side.game);
     let (title, about) = match only {
-        Some(_) => (
-            "NaviCust",
-            "What the NaviCust gives the navi, as its stats and bugs (the grid of programs comes next); a changed one is written to the file.",
+        Some(_) => (String::new(), "What the NaviCust gives the navi, as its stats and bugs, set directly; a changed one is written to the file."),
+        None => (
+            format!("{}: stats", SIDES[s]),
+            "What the save and the NaviCust give the navi, over its fresh stats; a changed one is written to the file.",
         ),
-        None => ("stats", "What the save and the NaviCust give the navi, over its fresh stats; a changed one is written to the file."),
     };
     let mut col = column![
-        row![heading(format!("{}: {title}", SIDES[s])), space().width(Length::Fill), button("Reset to fresh").on_press(Msg::StatsReset(s)).style(button::secondary)]
+        row![heading(title), space().width(Length::Fill), button("Reset to fresh").on_press(Msg::StatsReset(s)).style(button::secondary)]
             .align_y(Alignment::Center),
         text(about).size(13).color(DIM),
     ]
