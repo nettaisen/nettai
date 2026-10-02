@@ -26,6 +26,8 @@ return define.form {
     -- Its faces in the emotion window, and once Beast Out is spent
     -- (`byte_801E700`): the Falzar ROM has no ChargeCross face, and shows DustCross's.
     mugshot = { normal = asset.mugshot("chargecross"), tired = asset.mugshot("chargecross-tired") },
+    -- What R shows in the Cross window.
+    description = "Chrg FireChip\nAtk Up!In turn\nslct more chip",
     -- The chips A charges.
     charged_chips = { { family = "fire" } },
     -- The A charge builds up the next Fire chip's damage, up to this much.

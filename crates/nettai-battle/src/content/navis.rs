@@ -43,14 +43,9 @@ pub struct NaviData {
     #[serde(default)]
     pub chip_bonus: Option<NaviChipBonus>,
     /// The no-running message the custom screen shows for the navi (L in
-    /// a netbattle): the characters in each of its lines (up to three),
-    /// which set how long it prints (docs/engine/custom-screen.md §3.5).
+    /// a netbattle).
     #[serde(default)]
-    pub run_message: Vec<u8>,
-    /// Its words, the lines apart by `\n` (presentation: the chatbox's
-    /// text; the simulation reads only `run_message`).
-    #[serde(default)]
-    pub run_message_text: String,
+    pub run_message: RunMessage,
     /// The chips it charges with A, from a navi level (`sub_800F49E`,
     /// `byte_8021369`).
     #[serde(default)]
@@ -243,6 +238,11 @@ pub struct FormData {
     /// Presentation only.
     #[serde(default, deserialize_with = "faces")]
     pub mugshot: Option<Faces>,
+    /// A Cross's description, which R shows in the Cross window: its
+    /// lines apart by `\n`, as a chip's (the box's timing reads how many
+    /// there are).
+    #[serde(default)]
+    pub description: Option<String>,
     /// The damage it adds to a family's damaging chips (`sub_800EF34`).
     #[serde(default)]
     pub chip_bonus: Option<FormChipBonus>,
@@ -353,7 +353,71 @@ fn faces<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Faces>, D::Err
     }))
 }
 
+/// A navi's no-running message (L on the custom screen in a netbattle).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RunMessage {
+    /// The characters in each of its lines (up to three), which set how
+    /// long it prints (docs/engine/custom-screen.md §3.5).
+    pub counts: Vec<u8>,
+    /// Its words, the lines apart by `\n`. Presentation: what the chatbox
+    /// shows, and which characters move the speaker's mouth (`talking`);
+    /// the timing reads `counts` (gen-content checks the two agree).
+    #[serde(default)]
+    pub text: String,
+    /// Who says it: the portrait beside the box (a sprite whose
+    /// animations are its faces: still, idle, talking). Presentation.
+    #[serde(default)]
+    pub portrait: Option<SpriteId>,
+}
+
+impl RunMessage {
+    /// The characters that move the speaker's mouth, by line: bit k for
+    /// the line's character k (`chatbox_8040C44`: the letters and digits,
+    /// and four kana the Japanese charmap had beside them; a space,
+    /// punctuation and the bracketed glyphs don't). A bracketed glyph name
+    /// (`[B]`) is one character.
+    pub fn talking(&self) -> [u32; 3] {
+        let mut out = [0; 3];
+        for (line, words) in self.text.split('\n').take(3).enumerate() {
+            for (k, glyph) in glyphs(words).into_iter().take(32).enumerate() {
+                let mut chars = glyph.chars();
+                let talks = match (chars.next(), chars.next()) {
+                    (Some(c), None) => c.is_ascii_alphanumeric() || "ネノヌナ".contains(c),
+                    _ => false,
+                };
+                if talks {
+                    out[line] |= 1 << k;
+                }
+            }
+        }
+        out
+    }
+}
+
+/// A line's glyphs: its characters, a bracketed name (`[B]`) as one.
+pub fn glyphs(line: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut rest = line;
+    while let Some(c) = rest.chars().next() {
+        let n = match rest.find(']') {
+            Some(end) if c == '[' => end + 1,
+            _ => c.len_utf8(),
+        };
+        out.push(&rest[..n]);
+        rest = &rest[n..];
+    }
+    out
+}
+
 impl FormData {
+    /// The lines of a Cross's description in the Cross window (R): the
+    /// box takes keys a tick later for each (as a chip's,
+    /// `ChipData::description_lines`); none counts as three.
+    pub fn description_lines(&self) -> u8 {
+        self.description.as_ref().map_or(3, |d| d.split('\n').count().clamp(1, 3) as u8)
+    }
+
     /// What a NaviCust change gives the form back.
     pub fn refresh_effects(&self) -> FormEffects {
         self.navicust_refresh.unwrap_or(FormEffects(self.status_reset.0 & !FormEffects::LOCKON_MARKER))

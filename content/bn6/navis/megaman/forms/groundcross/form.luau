@@ -26,6 +26,8 @@ return define.form {
     palette = 15,
     -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
     mugshot = { normal = asset.mugshot("groundcross"), tired = asset.mugshot("groundcross-tired") },
+    -- What R shows in the Cross window.
+    description = "BrkChip Atk+10\nChrg Brk:Fall\nRck!SuprArmrOn",
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "break", damage = 10 },
     -- The chips A charges.

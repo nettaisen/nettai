@@ -17,8 +17,13 @@ return define.navi {
     -- Its face in the emotion window (`byte_801CDDC`).
     mugshot = asset.mugshot("groundman"),
     merge_height = 0,
-    run_message = { 17, 20, 6 },
-    run_message_text = "Don't be a fool!!\nYou can't be runnin'\naway!!",
+    -- The no-running message: its lines' characters (which time it), its
+    -- words, and the portrait beside it.
+    run_message = {
+        counts = { 17, 20, 6 },
+        text = "Don't be a fool!!\nYou can't be runnin'\naway!!",
+        portrait = asset.sprite("groundman-portrait"),
+    },
     own_chip = { chip = groundman, code = "G" },
     chip_bonus = {
         family = "break",
