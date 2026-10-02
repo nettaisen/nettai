@@ -55,7 +55,7 @@ const FADE_SPEED: u8 = 4;
 
 /// The telops: the local player's, and the other player's.
 pub(crate) fn telop_banner(b: &Battle, remote: bool) -> BannerId {
-    b.content.defs.roles.banner(if remote { BannerRole::TelopRemote } else { BannerRole::Telop })
+    b.arena_roles().banner(if remote { BannerRole::TelopRemote } else { BannerRole::Telop })
 }
 
 /// What every controller knows about its chip (object +0x30 / +0x32): for
@@ -142,7 +142,7 @@ const CUT_IN_FLASH_Z: i32 = 0x78 << 16;
 /// side, 4) and its sound.
 pub(crate) fn cut_in_flash(b: &mut Battle, side: u8) {
     let (x, y) = crate::kinds::player::panel_coordinates((side ^ 1) * 3 + 2, 4);
-    let look = b.content.defs.roles.effect(crate::content::EffectRole::CutInFlash);
+    let look = b.side_roles(side).effect(crate::content::EffectRole::CutInFlash);
     crate::kinds::effect::spawn(b, crate::object::Vec3 { x, y, z: CUT_IN_FLASH_Z }, look, 0, 0, 0);
     b.sound(SoundRole::CutIn);
 }
@@ -327,7 +327,7 @@ fn anti_navi_check(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     // sub_800ABC6: facing the local side's way (presentation).
     let (x, y) = crate::kinds::player::panel_coordinates(p.x, p.y);
     let local = b.round.local_side;
-    let look = b.content.defs.roles.effect(crate::content::EffectRole::TrapMark);
+    let look = b.roles_for(r).effect(crate::content::EffectRole::TrapMark);
     crate::kinds::effect::spawn(b, crate::object::Vec3 { x, y: y + SPARKLE_DY, z: SPARKLE_Z }, look, local, 0, 0);
     b.sound(SoundRole::CutIn);
     set_phase(b, r, 4);

@@ -101,6 +101,12 @@ impl Scripts {
         self.roots.first().map(|r| r.name.as_str())
     }
 
+    /// The roots' names, the content's own first, by `RootId`; content
+    /// without roots is one root of no name.
+    pub fn root_names(&self) -> Vec<String> {
+        if self.roots.is_empty() { vec![String::new()] } else { self.roots.iter().map(|r| r.name.clone()).collect() }
+    }
+
     /// Module `path` of the content's own root, to change (tests and
     /// tools).
     pub fn home_module_mut(&mut self, path: &str) -> Option<&mut String> {

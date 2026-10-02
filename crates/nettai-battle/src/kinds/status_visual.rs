@@ -91,7 +91,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// `sub_80E091C`.
 fn init(b: &mut Battle, r: ObjectRef) {
     let (sprite, _) = vars(b, r).row();
-    let sprite = b.content.defs.roles.sprite(sprite);
+    let sprite = b.roles_for(r).sprite(sprite);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;

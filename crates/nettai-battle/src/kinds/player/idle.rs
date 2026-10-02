@@ -27,7 +27,7 @@ pub(super) fn control(b: &mut Battle, r: ObjectRef) {
         return reactive_chip(b, r);
     }
     if f & request::STUN_STRIKE != 0 {
-        let strike = super::role_action(b, crate::content::ActionRole::StunStrike);
+        let strike = super::role_action(b, r, crate::content::ActionRole::StunStrike);
         return set_attack(b, r, strike, 0);
     }
     // JumpTable80EA7B0[enemy struct byte 4]: every entry is sub_80F0354.
@@ -45,7 +45,7 @@ fn battle_over(b: &mut Battle, r: ObjectRef) {
     if cross_protected(b, r) {
         // (The original stores 1 in the attack's variant byte first; the
         // action it starts doesn't use it.)
-        let protect = super::role_action(b, crate::content::ActionRole::CrossProtect);
+        let protect = super::role_action(b, r, crate::content::ActionRole::CrossProtect);
         return set_attack(b, r, protect, 0);
     }
     b.objects.get_mut(r).anim = 0;
@@ -114,7 +114,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     let f = ai(b, r).requests;
     if f & request::FORCED_CHARGED_SHOT != 0 {
         leave_idle(b, r);
-        let shot = super::role_action(b, crate::content::ActionRole::ForcedChargedShot);
+        let shot = super::role_action(b, r, crate::content::ActionRole::ForcedChargedShot);
         return set_attack(b, r, shot, 1);
     }
     if f & request::BUSTER != 0 {
@@ -148,7 +148,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         return start_move(b, r, dir);
     }
     if ai(b, r).requests & (request::TURN_L | request::TURN_R) != 0 {
-        let turn = super::role_action(b, crate::content::ActionRole::Turn);
+        let turn = super::role_action(b, r, crate::content::ActionRole::Turn);
         return set_attack(b, r, turn, 4);
     }
     let buffered = ai(b, r).buffered_move;
@@ -343,7 +343,7 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     };
     if let Some(used) = used
         && chip.is_some_and(|c| b.content.chip(c).flags.0 & crate::content::ChipFlags::DIMMING == 0)
-        && !b.content.defs.roles.is_chip(crate::content::ChipRole::Invalid, used)
+        && !b.roles_for(r).is_chip(crate::content::ChipRole::Invalid, used)
     {
         let side = b.objects.get(r).alliance;
         b.show_used_chip(side, used, damage, bonus);
@@ -447,11 +447,11 @@ fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Optio
         h.map_or(nettai_content_api::Value::Nil, |h| nettai_content_api::Value::Def(nettai_content_api::Registry::Chip, h.0))
     };
     let eaten = chip_value(chip.filter(|_| support == Support::Rush));
-    let telop = chip_value(b.content.defs.roles.try_chip(support.telop_chip()));
+    let telop = chip_value(b.roles_for(host).try_chip(support.telop_chip()));
     // The spawn's position is the caller's r1..r3: the host's panel row
     // and two zeros.
     let pos = crate::object::Vec3 { x: panel.y as i32, y: 0, z: 0 };
-    let kind = b.content.defs.roles.kind(crate::content::KindRole::Support);
+    let kind = b.roles_for(host).kind(crate::content::KindRole::Support);
     let controller = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, pos, [0; 4]);
     if let Some(c) = controller {
         let o = b.objects.get_mut(c);
@@ -463,7 +463,7 @@ fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Optio
         o.stamina = 0;
         crate::behavior::set_state_field(b, c, "telop_chip", telop);
         // The same for the presentation.
-        let named = b.content.defs.roles.try_chip(support.telop_chip());
+        let named = b.roles_for(host).try_chip(support.telop_chip());
         b.objects.get_mut(c).telop_chip = named.map(|chip| crate::hud::TelopChip { chip: Some(chip), ..Default::default() });
         crate::behavior::set_state_variant(b, c, "support", support.name());
         crate::behavior::set_state_field(b, c, "eaten", eaten);

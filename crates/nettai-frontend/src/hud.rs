@@ -1011,7 +1011,7 @@ fn used_chip_parts<'a>(
     problems: &mut Problems,
 ) -> Option<TextItem> {
     // (Its place is the banner of the other player's telop.)
-    let remote_telop = b.content.defs.roles.banner(nettai_battle::content::BannerRole::TelopRemote).0 as usize;
+    let remote_telop = b.arena_roles().banner(nettai_battle::content::BannerRole::TelopRemote).0 as usize;
     let Some(layout) = hud.banners.get(remote_telop / 4) else {
         problems.note(format!("the telop's banner {remote_telop:#04x} is not in the pack"));
         return None;

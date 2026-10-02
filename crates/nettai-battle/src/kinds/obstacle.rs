@@ -614,7 +614,7 @@ fn thrown(b: &mut Battle, r: ObjectRef) {
             o.panel = o.future_panel;
             common::set_coordinates_from_panels(b, r);
             let o = b.objects.get(r);
-            let roles = &b.content.defs.roles;
+            let roles = b.arena_roles();
             let spec = crate::kinds::hitbox::HitboxSpec {
                 panel: o.panel,
                 element: o.element,
@@ -654,7 +654,7 @@ fn aim_throw(b: &mut Battle, r: ObjectRef) -> u8 {
     let dx = px.wrapping_sub(((o.pos.x as u32 >> 16) << 16) as i32);
     let dy = py.wrapping_sub(((o.pos.y as u32 >> 16) << 16) as i32);
     let angle = bios_arctan2(dx >> 16, dy >> 16) >> 8;
-    let sine = &b.content.rules.sine;
+    let sine = &b.arena_rules().sine;
     let (cos, sin) = (sine[angle as usize + 64] as i32, -(sine[angle as usize + 128] as i32));
     let (vx, vy) = (cos.wrapping_mul(THROW_SPEED) >> 8, sin.wrapping_mul(THROW_SPEED) >> 8);
     let (ax, ay) = (dx as u32 >> 8, dy as u32 >> 8);
@@ -743,7 +743,7 @@ fn encased(b: &mut Battle, r: ObjectRef) {
             if b.objects.get(r).shake_timer & 2 == 0 {
                 b.objects.get_mut(r).set_visible(false);
                 let pos = b.objects.get(r).pos;
-                let look = b.content.defs.roles.effect(EffectRole::Encased);
+                let look = b.arena_roles().effect(EffectRole::Encased);
                 crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
             }
             let o = b.objects.get_mut(r);
@@ -757,7 +757,7 @@ fn encased(b: &mut Battle, r: ObjectRef) {
             unregister(b, r);
             clear_wind(b, r);
             let ice = f1_of(b, r) & obstacle_f1::ENCASED_ICE != 0;
-            let hook = b.content.defs.roles.hook(crate::content::HookRole::Encased);
+            let hook = b.arena_roles().hook(crate::content::HookRole::Encased);
             crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleEncased { obstacle: r, ice, class });
             common::set_progress(b, r, Progress::DESTROY);
         }
@@ -1102,7 +1102,7 @@ pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, look: RecordHandle) {
     let o = b.objects.get(r);
     let (pos, anim, alliance, flip) = (o.pos, o.anim, o.alliance, o.flip);
     let sprite = b.objects.sprite(r).look;
-    let kind = b.content.defs.roles.kind(crate::content::KindRole::AbsorbedObstacle);
+    let kind = b.arena_roles().kind(crate::content::KindRole::AbsorbedObstacle);
     let Some(e) = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, pos, [0; 4]) else { return };
     for (field, v) in [
         ("look", Value::Def(Registry::Record, look.0)),

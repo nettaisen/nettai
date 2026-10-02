@@ -99,7 +99,7 @@ fn animation(b: &Battle, r: ObjectRef) -> u8 {
 /// `sub_80C4B48`: the sprite, visible, on its animation.
 fn init(b: &mut Battle, r: ObjectRef) {
     let anim = animation(b, r);
-    let sprite = b.content.defs.roles.sprite(crate::content::SpriteRole::FullSynchroAura);
+    let sprite = b.roles_for(r).sprite(crate::content::SpriteRole::FullSynchroAura);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     s.look.shadow = Shadow::WithSprite;

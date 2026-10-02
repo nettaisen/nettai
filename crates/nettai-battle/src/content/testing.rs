@@ -314,7 +314,8 @@ fn make() -> Content {
     Content {
         // (The navis and the base form are definitions:
         // testdata/content/navis/test.luau.)
-        rules: rules(),
+        base_rules: rules(),
+        rules: Vec::new(),
         animations: animations(),
         scripts: scripts(),
         assets: assets(),
@@ -1455,6 +1456,7 @@ fn rules() -> Rules {
             opposing_player: [PLAYER[1], PLAYER[0]],
         },
         custom_screen: custom_screen_layout(),
+        pools: Default::default(),
     }
 }
 

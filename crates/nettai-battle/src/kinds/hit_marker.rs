@@ -37,7 +37,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// is kept as the offset from the owner (in the velocity).
 fn init(b: &mut Battle, r: ObjectRef) {
     let anim = b.objects.get(r).params[0];
-    let sprite = b.content.defs.roles.sprite(crate::content::SpriteRole::HitMarker);
+    let sprite = b.roles_for(r).sprite(crate::content::SpriteRole::HitMarker);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     s.set_animation(0, &b.content);

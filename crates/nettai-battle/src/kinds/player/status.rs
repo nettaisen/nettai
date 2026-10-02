@@ -280,14 +280,14 @@ fn cross_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     if f & request::CROSS_DEATH != 0 {
         ai_mut(b, r).requests &= !request::CROSS_DEATH;
         ai_mut(b, r).status |= ai_status::CROSS_KNOCKOUT;
-        let death = super::role_action(b, crate::content::ActionRole::CrossDeath);
+        let death = super::role_action(b, r, crate::content::ActionRole::CrossDeath);
         set_attack(b, r, death, 0);
         return Some(Flow::Dispatch);
     }
     if f & request::VOLLEY != 0 {
         ai_mut(b, r).requests &= !request::VOLLEY;
         ai_mut(b, r).status |= ai_status::VOLLEY;
-        let volley = super::role_action(b, crate::content::ActionRole::Volley);
+        let volley = super::role_action(b, r, crate::content::ActionRole::Volley);
         set_attack(b, r, volley, 0);
         return Some(Flow::Dispatch);
     }

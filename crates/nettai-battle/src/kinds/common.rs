@@ -182,7 +182,7 @@ pub fn spawn_guard_spark(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
     let pos = Vec3 { z: o.pos.z.wrapping_add(0x10 << 16), ..o.pos };
     let pos = crate::kinds::spark::jitter(b, 0xF, pos);
-    let spark = b.content.defs.roles.spark(crate::content::SparkRole::Guard);
+    let spark = b.roles_for(r).spark(crate::content::SparkRole::Guard);
     crate::kinds::spark::spawn(b, r, pos, spark);
 }
 
