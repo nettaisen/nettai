@@ -62,7 +62,7 @@ impl Offer {
         let mut out = Vec::new();
         let mut w = Writer(&mut out);
         let Offer { side, stage, arena } = self;
-        let Side { ruleset, navi, game, stats, emotion_window_glitch, folder, crosses, cards, navi_level, bug_frags } = side;
+        let Side { ruleset, navi, game, stats, emotion_window_glitch, folder, crosses, cards, navi_level, bug_frags, navicust } = side;
         w.put(ruleset);
         w.put(navi);
         w.put(game);
@@ -73,6 +73,16 @@ impl Offer {
         w.put(cards);
         w.put(navi_level);
         w.put(bug_frags);
+        w.put(&navicust.is_some());
+        if let Some(n) = navicust {
+            w.put(&n.expansions);
+            w.put(&(n.len() as u16));
+            for p in n.iter() {
+                w.put(&p.program.0);
+                w.put(&[p.color, p.x, p.y, p.rotation]);
+                w.put(&p.compressed);
+            }
+        }
         w.put(stage);
         w.put(&arena.is_some());
         if let Some(a) = arena {
@@ -101,6 +111,20 @@ impl Offer {
                 cards: r.get::<Vec<InstalledCard>>()?,
                 navi_level: r.get()?,
                 bug_frags: r.get()?,
+                navicust: if r.get::<bool>()? {
+                    let expansions: u8 = r.get()?;
+                    let n: u16 = r.get()?;
+                    let mut parts = Vec::with_capacity(n.min(64) as usize);
+                    for _ in 0..n {
+                        let program = nettai_content_api::NaviCustProgramHandle(r.get()?);
+                        let [color, x, y, rotation]: [u8; 4] = r.get()?;
+                        parts.push(nettai_battle::navicust::PlacedProgram { program, color, x, y, rotation, compressed: r.get()? });
+                    }
+                    let bad = |e: String| std::io::Error::new(std::io::ErrorKind::InvalidData, e);
+                    Some(nettai_battle::navicust::NaviCust::new(&parts, expansions).map_err(bad)?)
+                } else {
+                    None
+                },
             };
             let stage: Option<StageHandle> = r.get()?;
             let arena = if r.get::<bool>()? {

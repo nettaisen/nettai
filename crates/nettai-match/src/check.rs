@@ -128,10 +128,84 @@ pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
             }
         }
     }
+    // The NaviCust.
+    if let Some(n) = &s.navicust {
+        out.extend(check_navicust(content, s, n));
+    }
     // The folder's own rules (the limits wait for the round's stats).
     let unlimited = FolderLimits { mega: u8::MAX, giga: u8::MAX, regular_mb: u8::MAX };
     for v in folders::violations(content, &s.folder, unlimited) {
         out.push(format!("folder: {v}"));
+    }
+    out
+}
+
+/// What is wrong with a side's NaviCust: it is MegaMan's (the navi that
+/// changes form: BN6 compiles the PET's own navi's alone) under rules with
+/// the navicust system; the stats set besides are only what the save keeps
+/// through its compile; each program in one of its colors, on the board of
+/// its expansions (BN6's `sub_813BB00`: every cell it covers on the board or
+/// its frame, not all on the frame), over no other (`sub_813BB68`); copies
+/// of a program in one color all compressed or not (the save keeps it by
+/// program and color: event flag 0x2660 + the part id).
+pub fn check_navicust(content: &Content, s: &Side, n: &nettai_battle::navicust::NaviCust) -> Vec<String> {
+    use nettai_battle::content::NaviCustRules;
+    use nettai_battle::navicust::{SIZE, cells};
+    let mut out = Vec::new();
+    let defs = &content.defs;
+    if !s.has_system(content, crate::NAVICUST_SYSTEM) {
+        out.push("a NaviCust, but the ruleset has no navicust system".into());
+    }
+    if content.navi(s.navi).forms.is_none() {
+        out.push(format!("a NaviCust, but {}'s stats aren't a NaviCust's (only MegaMan's compiles)", crate::names::navi(content, s.navi)));
+    }
+    let base = crate::Side::base_stats(content, s.navi, s.game);
+    for name in crate::stats::diff(content, &base, &s.round_stats()).keys() {
+        if !crate::stats::SAVE_FIELDS.contains(&name.as_str()) {
+            out.push(format!("stats: {name} is the NaviCust's (with a NaviCust the stats set only {})", crate::stats::SAVE_FIELDS.join(", ")));
+        }
+    }
+    let rules = crate::navicust_rules(content, s);
+    let Some(board) = rules.board(n.expansions) else {
+        out.push(format!("a NaviCust with {} expansions: the game's board has {} sizes", n.expansions, rules.boards.len()));
+        return out;
+    };
+    let mut grid = [[None; SIZE]; SIZE];
+    let mut compression: Vec<((u16, u8), bool)> = Vec::new();
+    for (i, p) in n.iter().enumerate() {
+        if p.program.index() >= defs.navicust_programs.len() {
+            out.push(format!("navicust program {}: a program the content hasn't", i + 1));
+            continue;
+        }
+        let def = defs.navicust_program(p.program);
+        let name = crate::names::navicust_program(content, p.program);
+        if p.color as usize >= def.colors.len() {
+            out.push(format!("navicust program {} ({name}): a color it doesn't come in", i + 1));
+        }
+        if p.rotation > 3 {
+            out.push(format!("navicust program {} ({name}): turned {} quarters (0 to 3)", i + 1, p.rotation));
+        }
+        let shape = def.placed_shape(p.compressed, p.rotation);
+        if !NaviCustRules::fits(board, &shape, p.x, p.y) {
+            out.push(format!("navicust program {} ({name}) at ({}, {}): off the board", i + 1, p.x, p.y));
+            continue;
+        }
+        for (x, y) in cells(&shape, p.x, p.y) {
+            let cell = &mut grid[y as usize][x as usize];
+            if let Some(j) = *cell {
+                out.push(format!("navicust program {} ({name}) is over program {j}", i + 1));
+                break;
+            }
+            *cell = Some(i + 1);
+        }
+        let key = (p.program.0, p.color);
+        match compression.iter().find(|(k, _)| *k == key) {
+            Some(&(_, c)) if c != p.compressed => {
+                out.push(format!("navicust program {} ({name}): compressed and not (a save compresses every copy of a program in one color)", i + 1))
+            }
+            Some(_) => {}
+            None => compression.push((key, p.compressed)),
+        }
     }
     out
 }
@@ -198,4 +272,59 @@ pub fn check_match(content: &Arc<Content>, m: &Match) -> Vec<String> {
         Err(e) => out.push(e),
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nettai_battle::navicust::{NaviCust, PlacedProgram};
+
+    /// A MegaMan with a NaviCust of BN6's programs: the navicust system
+    /// compiles it into the stats the round starts with.
+    fn compiled(parts: &[(&str, &str, u8, u8)]) -> (NaviStats, bool, Vec<String>) {
+        let content = crate::testing::bn6_content();
+        let mut m = crate::draw::live(&content, 3, None).unwrap();
+        let s = &mut m.sides[0];
+        s.stats = crate::Side::base_stats(&content, s.navi, s.game);
+        (s.stats.max_base_hp, s.stats.hp, s.stats.max_hp, s.stats.reg_up) = (600, 600, 600, 50);
+        let placed: Vec<PlacedProgram> = parts
+            .iter()
+            .map(|&(key, color, x, y)| {
+                let program = content.defs.navicust_program_by_key(key).unwrap();
+                let color = content.defs.navicust_program(program).colors.iter().position(|c| c == color).unwrap() as u8;
+                PlacedProgram { program, color, x, y, rotation: 0, compressed: false }
+            })
+            .collect();
+        s.navicust = Some(NaviCust::new(&placed, 2).unwrap());
+        let problems = check_match(&content, &m);
+        let b = Battle::new(m.round(&content, 3), content.clone());
+        (b.stats[0], b.consoles[0].emotion_window_glitch, problems)
+    }
+
+    #[test]
+    fn a_navicust_compiles_into_the_stats() {
+        // UnderSht on the command line, Attack+1 and HP+100 off it: no bug.
+        let (s, glitch, problems) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 5, 2), ("hp-100", "white", 3, 2)]);
+        assert_eq!(problems, Vec::<String>::new());
+        assert!(s.undershirt && !glitch);
+        assert_eq!((s.attack, s.max_hp, s.hp), (1, 700, 700));
+        assert_eq!((s.bugs.buster_blanks, s.bugs.hp_drain), (0, 0));
+        // Attack+1 on the command line: the buster bug (and it still works).
+        let (s, glitch, _) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 5, 4), ("hp-100", "white", 3, 2)]);
+        assert!(glitch);
+        assert_eq!((s.attack, s.bugs.buster_blanks, s.bugs.buster_charged), (1, 6, 1));
+        // Attack+1 beside HP+100 of its color: each brings the other's bug.
+        let (s, glitch, _) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 5, 2), ("hp-100", "pink", 3, 2)]);
+        assert!(glitch);
+        assert_eq!((s.bugs.buster_blanks, s.bugs.hp_drain, s.bugs.hit_status), (6, 1, 3));
+        // UnderSht off the command line: the step bug, and no UnderSht.
+        let (s, glitch, _) = compiled(&[("undersht", "white", 1, 2)]);
+        assert!(glitch && !s.undershirt);
+        assert_eq!(s.bugs.processing, 1);
+        // Over another, and off the board: said.
+        let (_, _, problems) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 1, 3)]);
+        assert!(problems.iter().any(|p| p.contains("is over program 1")), "{problems:?}");
+        let (_, _, problems) = compiled(&[("undersht", "white", 0, 1)]);
+        assert!(problems.iter().any(|p| p.contains("off the board")), "{problems:?}");
+    }
 }

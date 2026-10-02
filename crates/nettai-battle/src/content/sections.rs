@@ -107,6 +107,13 @@ struct BannersSection {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
+struct NaviCustSection {
+    boards: Vec<Vec<String>>,
+    command_line: u8,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct StatusSection {
     hp_bug_periods: [u8; 8],
 }
@@ -246,6 +253,36 @@ fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definit
             "buster" => {
                 let s: BusterSection = r.read(spec, &at).map_err(e)?;
                 (rules.buster_recovery, rules.empty_hand) = (s.recovery, s.empty_hand);
+            }
+            "navicust" => {
+                let s: NaviCustSection = r.read(spec, &at).map_err(e)?;
+                use crate::navicust::SIZE;
+                let mut boards = Vec::with_capacity(s.boards.len());
+                for (i, rows) in s.boards.iter().enumerate() {
+                    let bad = || e(format!("{at}: board {} is {SIZE} rows of {SIZE} cells (`o` the board, `f` its frame, `.` none)", i + 1));
+                    if rows.len() != SIZE {
+                        return Err(bad());
+                    }
+                    let mut board = [[BoardCell::Off; SIZE]; SIZE];
+                    for (y, row) in rows.iter().enumerate() {
+                        if row.len() != SIZE {
+                            return Err(bad());
+                        }
+                        for (x, c) in row.bytes().enumerate() {
+                            board[y][x] = match c {
+                                b'o' => BoardCell::On,
+                                b'f' => BoardCell::Frame,
+                                b'.' => BoardCell::Off,
+                                _ => return Err(bad()),
+                            };
+                        }
+                    }
+                    boards.push(board);
+                }
+                if s.command_line as usize >= SIZE {
+                    return Err(e(format!("{at}: the command line is a row of the grid (0 to {})", SIZE - 1)));
+                }
+                rules.navicust = NaviCustRules { boards, command_line: s.command_line };
             }
             "banners" => rules.holding_banners = r.read::<BannersSection>(spec, &at).map_err(e)?.holding,
             "status" => rules.hp_bug_periods = r.read::<StatusSection>(spec, &at).map_err(e)?.hp_bug_periods,

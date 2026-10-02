@@ -252,6 +252,10 @@ impl Content {
         self.defs.patch_card(h)
     }
 
+    pub fn navicust_program(&self, h: nettai_content_api::NaviCustProgramHandle) -> &defs::NaviCustProgramDef {
+        self.defs.navicust_program(h)
+    }
+
     /// What a chip's record names, by handle.
     pub fn chip_links(&self, h: ChipHandle) -> &ChipLinks {
         &self.defs.chip(h).links

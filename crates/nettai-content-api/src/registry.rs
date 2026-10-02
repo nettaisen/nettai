@@ -53,12 +53,17 @@ pub enum Registry {
     /// (docs/engine/patch-cards.md); a player's installed cards are their
     /// setup's (`PlayerSetup::patch_cards`).
     PatchCard,
+    /// A NaviCust program (BN4's, BN5's and BN6's Navi Customizer parts):
+    /// its colors and shapes, which a player places on their NaviCust
+    /// (`PlayerSetup::navicust`), and what a game's rules read of it
+    /// (docs/design/navicust.md).
+    NaviCustProgram,
     /// Content state layouts: one per distinct `state` table (sorted last).
     Schema,
 }
 
 impl Registry {
-    pub const ALL: [Registry; 21] = [
+    pub const ALL: [Registry; 22] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -79,12 +84,13 @@ impl Registry {
         Registry::Ruleset,
         Registry::Record,
         Registry::PatchCard,
+        Registry::NaviCustProgram,
         Registry::Schema,
     ];
 
     /// The registries content defines with `define.<name>` (schemas come
     /// from the `state` tables of kinds, actions and modules).
-    pub const DEFINED: [Registry; 20] = [
+    pub const DEFINED: [Registry; 21] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -105,6 +111,7 @@ impl Registry {
         Registry::Ruleset,
         Registry::Record,
         Registry::PatchCard,
+        Registry::NaviCustProgram,
     ];
 
     /// The registry's name: its definer's (`define.chip`), and how messages
@@ -131,6 +138,7 @@ impl Registry {
             Registry::Ruleset => "ruleset",
             Registry::Record => "record",
             Registry::PatchCard => "patch_card",
+            Registry::NaviCustProgram => "navicust_program",
             Registry::Schema => "schema",
         }
     }
@@ -156,6 +164,7 @@ impl Registry {
                 | Registry::System
                 | Registry::Ruleset
                 | Registry::PatchCard
+                | Registry::NaviCustProgram
         )
     }
 }
@@ -233,6 +242,8 @@ handles! {
     RulesetHandle => Ruleset,
     /// A patch card.
     PatchCardHandle => PatchCard,
+    /// A NaviCust program.
+    NaviCustProgramHandle => NaviCustProgram,
 }
 
 #[cfg(test)]

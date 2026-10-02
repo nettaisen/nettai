@@ -1210,6 +1210,30 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         }
         Ok(list)
     });
+    // A side's NaviCust: { expansions, parts = { { program = <the
+    // definition>, color = <its name>, x, y, rotation, compressed } } }, or
+    // nil when the setup gives none.
+    lib_fn!(lua, t, "navicust", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let Some((expansions, parts)) = with(|api, _| Ok(api.navicust(side)))? else { return Ok(LuaValue::Nil) };
+        let out = lua.create_table()?;
+        out.raw_set("expansions", expansions)?;
+        let list = lua.create_table()?;
+        for (i, p) in parts.into_iter().enumerate() {
+            let entry = lua.create_table()?;
+            let program = bound(|b| b.def_value(Registry::NaviCustProgram, p.program))?;
+            let color: LuaValue = program.get::<mlua::Table>("colors")?.get(p.color as usize + 1)?;
+            entry.raw_set("program", program)?;
+            entry.raw_set("color", color)?;
+            entry.raw_set("x", p.x)?;
+            entry.raw_set("y", p.y)?;
+            entry.raw_set("rotation", p.rotation)?;
+            entry.raw_set("compressed", p.compressed)?;
+            list.raw_set(i + 1, entry)?;
+        }
+        out.raw_set("parts", list)?;
+        Ok(LuaValue::Table(out))
+    });
     lib_fn!(lua, t, "side_special", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.side_special(side).name()))

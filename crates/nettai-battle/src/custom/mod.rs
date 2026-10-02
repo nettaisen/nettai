@@ -183,6 +183,11 @@ pub struct PlayerSetup {
     /// The patch cards the player has installed (`crate::patch_cards`):
     /// their ruleset's rules apply them (BN6's patch-cards system).
     pub patch_cards: crate::patch_cards::PatchCards,
+    /// The player's NaviCust (`crate::navicust`), which their ruleset's
+    /// rules compile into the navi's stats as the round is set up (BN6's
+    /// navicust system); none: the stats are the setup's as they are (a
+    /// recording's, which the original's NaviCust has already made).
+    pub navicust: Option<crate::navicust::NaviCust>,
 }
 
 impl Default for PlayerSetup {
@@ -197,6 +202,7 @@ impl Default for PlayerSetup {
             ruleset: None,
             rules: Vec::new(),
             patch_cards: Default::default(),
+            navicust: None,
         }
     }
 }
