@@ -128,7 +128,7 @@ impl Side {
     /// A live player: the live navi (`live_navi`) of `game`, with this
     /// folder and Cross list, on the content's stock rules, no patch cards.
     pub fn live(content: &Content, folder: SavedFolder, crosses: CrossList, game: GameVersion) -> Side {
-        let stats = NaviStats { version: crate::version_byte(game), ..live_navi(content) };
+        let stats = crate::starting(content, live_navi(content), game);
         Side {
             ruleset: content.defs.stock_ruleset(),
             navi: stats.navi,

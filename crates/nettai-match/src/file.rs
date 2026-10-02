@@ -305,6 +305,7 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
     for p in stats::apply(content, &s.stats, &mut stats) {
         say(format!("stats: {p}"));
     }
+    let stats = crate::starting(content, stats, game);
     if problems.len() > start {
         return None;
     }
