@@ -1,8 +1,11 @@
 //! The content's display text (its strings): chip names and descriptions,
-//! navi names and no-running messages, form names and descriptions, weapon
-//! names, by the definitions' keys. A definition holds no display text; a content root's
+//! navi names and no-running messages, the Crosses' names and descriptions,
+//! by the definitions' keys. A definition holds no display text; a content root's
 //! `locales/<lang>.toml` does, one table a language (the loader, nettai-
-//! content `locale`, reads them).
+//! content `locale`, reads them). The game's marks are characters: Ⓐ and
+//! Ⓑ for its buttons, the Private Use Area's for the glyphs Unicode has
+//! none for (docs/design/text-rendering.md §10.5); a mark is one character
+//! as the battle counts them.
 //!
 //! The battle reads one thing of the content's own language's strings
 //! (`Content::strings`): their shape. A description's lines and a no-running
@@ -40,8 +43,9 @@ pub struct NaviStrings {
     pub run_message: Option<String>,
 }
 
-/// A form's strings: its name, and a Cross's description (R in the Cross
-/// window).
+/// A form's strings (a Cross's): its name (a frontend's own text: live
+/// play's Crosses, the plain-text screen's Cross window), and its
+/// description (R in the Cross window).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FormStrings {
@@ -49,14 +53,6 @@ pub struct FormStrings {
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-}
-
-/// A weapon's strings: its name.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct WeaponStrings {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
 }
 
 /// One language's strings, by definition key.
@@ -71,8 +67,6 @@ pub struct Strings {
     pub navis: BTreeMap<String, NaviStrings>,
     #[serde(default)]
     pub forms: BTreeMap<String, FormStrings>,
-    #[serde(default)]
-    pub weapons: BTreeMap<String, WeaponStrings>,
 }
 
 /// Presentation: the records hold what the battle reads of the strings (the
@@ -93,10 +87,6 @@ impl Strings {
     pub fn form(&self, key: &str) -> Option<&FormStrings> {
         self.forms.get(key)
     }
-
-    pub fn weapon(&self, key: &str) -> Option<&WeaponStrings> {
-        self.weapons.get(key)
-    }
 }
 
 /// The lines of a description (`\n` apart; one to three, as the box
@@ -110,42 +100,21 @@ pub fn three_lines() -> u8 {
     3
 }
 
-/// A line's glyphs: its characters, a bracketed name (`[B]`) as one.
-pub fn glyphs(line: &str) -> Vec<&str> {
-    let mut out = Vec::new();
-    let mut rest = line;
-    while let Some(c) = rest.chars().next() {
-        let n = match rest.find(']') {
-            Some(end) if c == '[' => end + 1,
-            _ => c.len_utf8(),
-        };
-        out.push(&rest[..n]);
-        rest = &rest[n..];
-    }
-    out
-}
-
 /// A no-running message's characters by line (up to three), which time
-/// its printing.
+/// its printing. A mark (Ⓑ) is one character, one glyph of the game's.
 pub fn message_counts(message: &str) -> Vec<u8> {
-    message.split('\n').take(3).map(|l| glyphs(l).len().min(0xFF) as u8).collect()
+    message.split('\n').take(3).map(|l| l.chars().count().min(0xFF) as u8).collect()
 }
 
 /// The characters that move the speaker's mouth, by line: bit k for the
 /// line's character k (`chatbox_8040C44`: the letters and digits, and four
 /// kana the Japanese charmap had beside them; a space, punctuation and the
-/// bracketed glyphs don't). A bracketed glyph name (`[B]`) is one
-/// character.
+/// marks don't).
 pub fn talking(message: &str) -> [u32; 3] {
     let mut out = [0; 3];
     for (line, words) in message.split('\n').take(3).enumerate() {
-        for (k, glyph) in glyphs(words).into_iter().take(32).enumerate() {
-            let mut chars = glyph.chars();
-            let talks = match (chars.next(), chars.next()) {
-                (Some(c), None) => c.is_ascii_alphanumeric() || "ネノヌナ".contains(c),
-                _ => false,
-            };
-            if talks {
+        for (k, c) in words.chars().take(32).enumerate() {
+            if c.is_ascii_alphanumeric() || "ネノヌナ".contains(c) {
                 out[line] |= 1 << k;
             }
         }
@@ -162,7 +131,9 @@ mod tests {
         assert_eq!(description_lines(None), 3);
         assert_eq!(description_lines(Some("Bounce \nthe puck")), 2);
         assert_eq!(message_counts("Lan,this is no time\nto run away!"), [19, 12]);
-        assert_eq!(message_counts("Press [B]!"), [8]);
-        assert_eq!(talking("ab c\n[B]1")[..2], [0b1011, 0b10]);
+        // A mark is one character, and no letter: it doesn't talk.
+        assert_eq!(message_counts("Press Ⓑ!"), [8]);
+        assert_eq!(message_counts("Count\u{E002}"), [6]);
+        assert_eq!(talking("ab c\nⒷ1")[..2], [0b1011, 0b10]);
     }
 }

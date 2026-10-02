@@ -54,8 +54,3 @@ language = "en"
 "megaman" = { name = "MegaMan", run_message = "Lan,this is no time\nto run away!" }
 "test/link-navi" = { name = "LinkNavi", run_message = "Lan,this is no time\nto run away!" }
 
-[forms]
-base = { name = "Base" }
-
-[weapons]
-"test/tick-shot" = { name = "Tick shot" }

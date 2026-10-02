@@ -4,7 +4,8 @@
 # time the custom screen's chatbox, and the define phase counts them into the records (which the content's
 # hash covers). gen-content checks them against the US ROMs (the chips', the Crosses' and the navis'); the
 # names of the chips the US release cut (Count, Django...), the three Giga chips' descriptions (a gift's
-# text the save keeps, which no ROM has) and the forms' and weapons' names are the content's own.
+# text the save keeps, which no ROM has) and the Crosses' names are the content's own. The game's marks
+# are characters (§10.5): Ⓐ and Ⓑ the buttons, \uE002 and \uE003 the stacked EX and SP.
 
 language = "en"
 
@@ -56,8 +57,8 @@ bgdththd = { name = "BgDthThd", description = "Use Bug\nFrag with\nDarkThnd!" }
 bigbomb = { name = "BigBomb", description = "Throw a 9\npanl bomb\n3panl fwd" }
 bighook = { name = "BigHook", description = "Hook\natk 2 sq\nwide" }
 blastman = { name = "BlastMan", description = "Head fwd\n& launch\nblst attk" }
-blastmn-ex = { name = "BlastMn[EX]", description = "Head fwd\n& launch\nblst attk" }
-blastmn-sp = { name = "BlastMn[SP]", description = "Head fwd\n& launch\nblst attk" }
+blastmn-ex = { name = "BlastMn\uE002", description = "Head fwd\n& launch\nblst attk" }
+blastmn-sp = { name = "BlastMn\uE003", description = "Head fwd\n& launch\nblst attk" }
 blkbomb = { name = "BlkBomb", description = "Thrw shel\n3sqr fwd.\nFire attk" }
 blzrdbal = { name = "BlzrdBal", description = "Launch a\ngiant \nsnowball" }
 bodygrd = { name = "BodyGrd", description = "Trap enmy\nthen thrw\nstar attk" }
@@ -66,20 +67,20 @@ boomrarm = { name = "BoomrArm", description = "\n\n" }
 bugbomb = { name = "BugBomb", description = "Throws a\nBugBomb\n3sq ahead" }
 bugfix = { name = "BugFix", description = "Repairs &\nremoves\nbugs" }
 bugrswrd = { name = "BugRSwrd", description = "Use Bug\nFrag with\nDrkSword!" }
-burnsqr1 = { name = "BurnSqr1", description = "Press [A]\nto burn a\n4pnl sqr!" }
-burnsqr2 = { name = "BurnSqr2", description = "Press [A]\nto burn a\n4pnl sqr!" }
-burnsqr3 = { name = "BurnSqr3", description = "Press [A]\nto burn a\n4pnl sqr!" }
+burnsqr1 = { name = "BurnSqr1", description = "Press Ⓐ\nto burn a\n4pnl sqr!" }
+burnsqr2 = { name = "BurnSqr2", description = "Press Ⓐ\nto burn a\n4pnl sqr!" }
+burnsqr3 = { name = "BurnSqr3", description = "Press Ⓐ\nto burn a\n4pnl sqr!" }
 busterup = { name = "BusterUp", description = "Power \ngoes up\nby 1" }
 cannon = { name = "Cannon", description = "Cannon to\nattack\n1 enemy" }
 chrgeman = { name = "ChrgeMan", description = "Rush fwd!\nOpen panl\nhit TrCar" }
-chrgemn-ex = { name = "ChrgeMn[EX]", description = "Rush fwd!\nOpen panl\nhit TrCar" }
-chrgemn-sp = { name = "ChrgeMn[SP]", description = "Rush fwd!\nOpen panl\nhit TrCar" }
+chrgemn-ex = { name = "ChrgeMn\uE002", description = "Rush fwd!\nOpen panl\nhit TrCar" }
+chrgemn-sp = { name = "ChrgeMn\uE003", description = "Rush fwd!\nOpen panl\nhit TrCar" }
 circgun = { name = "CircGun", description = "Stop sght\nw/Button\nand attck" }
 colarmy = { name = "ColArmy", description = "Launch an\nattk with\nCol. army" }
 colforce = { name = "ColForce", description = "Smmn Col.\narmy in\nopen pnls" }
 colonel = { name = "Colonel", description = "Cut enmy\nlines in\nZ shape" }
-colonel-ex = { name = "Colonel[EX]", description = "Cut enmy\nlines in\nZ shape" }
-colonel-sp = { name = "Colonel[SP]", description = "Cut enmy\nlines in\nZ shape" }
+colonel-ex = { name = "Colonel\uE002", description = "Cut enmy\nlines in\nZ shape" }
+colonel-sp = { name = "Colonel\uE003", description = "Cut enmy\nlines in\nZ shape" }
 colorpt = { name = "ColorPt", description = "+10 for\nnext chip\nattack" }
 comingrd = { name = "ComingRd", description = "Pull an\nenemy to\nthe front" }
 copydmg = { name = "CopyDmg", description = "Duplicate\ndamage to\n2nd enemy" }
@@ -88,12 +89,12 @@ cornsht1 = { name = "CornSht1", description = "Damages\nenemies\nw/corn." }
 cornsht2 = { name = "CornSht2", description = "Damages\nenemies\nw/corn." }
 cornsht3 = { name = "CornSht3", description = "Damages\nenemies\nw/corn." }
 count = { name = "Count", description = "Rain on\nenmy then\nlance atk" }
-count-ex = { name = "Count[EX]", description = "Rain on\nenmy then\nlance atk" }
-count-sp = { name = "Count[SP]", description = "Rain on\nenmy then\nlance atk" }
+count-ex = { name = "Count\uE002", description = "Rain on\nenmy then\nlance atk" }
+count-sp = { name = "Count\uE003", description = "Rain on\nenmy then\nlance atk" }
 crakshot = { name = "CrakShot", description = "Shoot a\npanel at\nan enemy!" }
 crcusman = { name = "CrcusMan", description = "Capture\nenmy in a\nash attck" }
-crcusmn-ex = { name = "CrcusMn[EX]", description = "Capture\nenmy in a\nash attck" }
-crcusmn-sp = { name = "CrcusMn[SP]", description = "Capture\nenmy in a\nash attck" }
+crcusmn-ex = { name = "CrcusMn\uE002", description = "Capture\nenmy in a\nash attck" }
+crcusmn-sp = { name = "CrcusMn\uE003", description = "Capture\nenmy in a\nash attck" }
 crosover = { name = "CrosOver", description = "Cllbrate!\nAttk w/MM\n+ Django!" }
 crossdiv = { name = "CrossDiv", description = "Cross-\nslice!" }
 crosswrd = { name = "CrosSwrd", description = "ミテイ" }
@@ -111,8 +112,8 @@ deltaray = { name = "DeltaRay", description = "A Button\npower up\nby 3 swrd" }
 destpuls = { name = "DestPuls", description = "Fire puls\nthat caus\nstrg bug!" }
 discord = { name = "Discord", description = "Confuses \nenemies\nw/music" }
 diveman = { name = "DiveMan", description = "Snd giant\nwave acrs\narea 2pnl" }
-diveman-ex = { name = "DiveMan[EX]", description = "Snd giant\nwave acrs\narea 2pnl" }
-diveman-sp = { name = "DiveMan[SP]", description = "Snd giant\nwave acrs\narea 2pnl" }
+diveman-ex = { name = "DiveMan\uE002", description = "Snd giant\nwave acrs\narea 2pnl" }
+diveman-sp = { name = "DiveMan\uE003", description = "Snd giant\nwave acrs\narea 2pnl" }
 django = { name = "Django", description = "Hit enmy\nwith bike\nrdng Djgo" }
 django2 = { name = "Django2", description = "Hit enmy\nwith bike\nrdng Djgo" }
 django3 = { name = "Django3", description = "Hit enmy\nwith bike\nrdng Djgo" }
@@ -126,26 +127,26 @@ drksword = { name = "DrkSword", description = "\n\n" }
 dublshot = { name = "DublShot", description = "Shoot 2\npanels at\nan enemy!" }
 dustbrk = { name = "DustBrk", description = "Draw enmy\nin, then\ncrsh attk" }
 dustman = { name = "DustMan", description = "Attk ahd.\nSuck in &\nshoot out" }
-dustman-ex = { name = "DustMan[EX]", description = "Attk ahd.\nSuck in &\nshoot out" }
-dustman-sp = { name = "DustMan[SP]", description = "Attk ahd.\nSuck in &\nshoot out" }
+dustman-ex = { name = "DustMan\uE002", description = "Attk ahd.\nSuck in &\nshoot out" }
+dustman-sp = { name = "DustMan\uE003", description = "Attk ahd.\nSuck in &\nshoot out" }
 edeletbm = { name = "EDeletBm", description = "Pierce\nfwd and\nfire beam" }
 elcpuls1 = { name = "ElcPuls1", description = "Sprd elec\npuls that\nparalyzes" }
 elcpuls2 = { name = "ElcPuls2", description = "Sprd elec\npulse.Pul\nenemy in." }
 elcpuls3 = { name = "ElcPuls3", description = "Sprd elec\npuls. Hit\nw/HP bug." }
 elecdrgn = { name = "ElecDrgn", description = "Drgn near\nclst enmy\nHit 2rows" }
 elecman = { name = "ElecMan", description = "Attk your\nsurrndngs\nwith thdr" }
-elecman-ex = { name = "ElecMan[EX]", description = "Attk your\nsurrndngs\nwith thdr" }
-elecman-sp = { name = "ElecMan[SP]", description = "Attk your\nsurrndngs\nwith thdr" }
+elecman-ex = { name = "ElecMan\uE002", description = "Attk your\nsurrndngs\nwith thdr" }
+elecman-sp = { name = "ElecMan\uE003", description = "Attk your\nsurrndngs\nwith thdr" }
 elecswrd = { name = "ElecSwrd", description = "Cut enmy\n3sq fwrd\nw/elec!" }
 elemswrd = { name = "ElemSwrd", description = "Cut enmy\non grass,\nice, fire" }
 elemtrap = { name = "ElemTrap", description = "Trap enmy\nand attk\nwith elem" }
-elmntman = { name = "ElmntMan", description = "Hit [A] whn\ncol chges\nelem attk" }
-elmntmn-ex = { name = "ElmntMn[EX]", description = "Hit [A] whn\ncol chges\nelem attk" }
-elmntmn-sp = { name = "ElmntMn[SP]", description = "Hit [A] whn\ncol chges\nelem attk" }
+elmntman = { name = "ElmntMan", description = "Hit Ⓐ whn\ncol chges\nelem attk" }
+elmntmn-ex = { name = "ElmntMn\uE002", description = "Hit Ⓐ whn\ncol chges\nelem attk" }
+elmntmn-sp = { name = "ElmntMn\uE003", description = "Hit Ⓐ whn\ncol chges\nelem attk" }
 energbom = { name = "EnergBom", description = "Throws a\nbomb 3sq\nahead" }
-eraseman = { name = "EraseMan", description = "Press [A]\nfor 3panl\nbeam attk" }
-erasemn-ex = { name = "EraseMn[EX]", description = "Press [A]\nfor 3panl\nbeam attk" }
-erasemn-sp = { name = "EraseMn[SP]", description = "Press [A]\nfor 3panl\nbeam attk" }
+eraseman = { name = "EraseMan", description = "Press Ⓐ\nfor 3panl\nbeam attk" }
+erasemn-ex = { name = "EraseMn\uE002", description = "Press Ⓐ\nfor 3panl\nbeam attk" }
+erasemn-sp = { name = "EraseMn\uE003", description = "Press Ⓐ\nfor 3panl\nbeam attk" }
 etomahwk = { name = "ETomahwk", description = "Unleash\na giant\naxe attck" }
 falzar = { name = "Falzar", description = "Falzar's\nruinous\ntornado!" }
 fan = { name = "Fan", description = "VacuumFn\npulls\nenemy in" }
@@ -182,8 +183,8 @@ grasseed = { name = "GrasSeed", description = "Makes 9sq\nmeadow\n3sq ahead" }
 greatyo = { name = "GreatYo", description = "Moves 3sq\nvertical" }
 gregar = { name = "Gregar", description = "Gregar's\nbreath\nattack!" }
 grndman = { name = "GrndMan", description = "Move fwrd\nthen attk\nw/drill" }
-grndman-ex = { name = "GrndMan[EX]", description = "Move fwrd\nthen attk\nw/drill" }
-grndman-sp = { name = "GrndMan[SP]", description = "Move fwrd\nthen attk\nw/drill" }
+grndman-ex = { name = "GrndMan\uE002", description = "Move fwrd\nthen attk\nw/drill" }
+grndman-sp = { name = "GrndMan\uE003", description = "Move fwrd\nthen attk\nw/drill" }
 guardian = { name = "Guardian", description = "Statue\npunishes\nwhen hit" }
 gundelex = { name = "GunDelEX", description = "Fires a\nspread\nsunbeam" }
 gundels1 = { name = "GunDelS1", description = "Hits row\n2pnl ahd\nw/sunshne" }
@@ -193,8 +194,8 @@ h-burst = { name = "H-Burst", description = "Secondary\nexplosion\nafter hit" }
 healball = { name = "HealBall", description = "ミテイ" }
 heatdrgn = { name = "HeatDrgn", description = "Drgn near\nclst enmy\nHit 2rows" }
 heatman = { name = "HeatMan", description = "Burn with\na radial\nfire attk" }
-heatman-ex = { name = "HeatMan[EX]", description = "Burn with\na radial\nfire attk" }
-heatman-sp = { name = "HeatMan[SP]", description = "Burn with\na radial\nfire attk" }
+heatman-ex = { name = "HeatMan\uE002", description = "Burn with\na radial\nfire attk" }
+heatman-sp = { name = "HeatMan\uE003", description = "Burn with\na radial\nfire attk" }
 heatpres = { name = "HeatPres", description = "Sprd fire\nattk with\nDpad.3pnl" }
 hiboomer = { name = "HiBoomer", description = "Boomerang\nthat circ\nbtl field" }
 hicannon = { name = "HiCannon", description = "Cannon to\nattack\n1 enemy" }
@@ -209,8 +210,8 @@ ironshl1 = { name = "IronShl1", description = "Fire off\npiercing\nshell." }
 ironshl2 = { name = "IronShl2", description = "Fire off\npiercing\nshell." }
 ironshl3 = { name = "IronShl3", description = "Fire off\npiercing\nshell." }
 judgeman = { name = "JudgeMan", description = "Whip 3\npanels\nforward" }
-judgemn-ex = { name = "JudgeMn[EX]", description = "Whip 3\npanels\nforward" }
-judgemn-sp = { name = "JudgeMn[SP]", description = "Whip 3\npanels\nforward" }
+judgemn-ex = { name = "JudgeMn\uE002", description = "Whip 3\npanels\nforward" }
+judgemn-sp = { name = "JudgeMn\uE003", description = "Whip 3\npanels\nforward" }
 justcone = { name = "JustcOne", description = "Fist Atk\non center\npanel" }
 lance = { name = "Lance", description = "Lance\nthrough\nback line" }
 lifeaur = { name = "LifeAur", description = "Repel all\nattacks\nunder200" }
@@ -253,8 +254,8 @@ pnlretrn = { name = "PnlRetrn", description = "Fix your\narea's\npanels" }
 poisphar = { name = "PoisPhar", description = "Places a\npoisoned\nPharaoh" }
 poisseed = { name = "PoisSeed", description = "Makes 9sq\npoisn swp\n3sq ahead" }
 protoman = { name = "ProtoMan", description = "Move in\nand slice\nthe enemy" }
-protomn-ex = { name = "ProtoMn[EX]", description = "Move in\nand slice\nthe enemy" }
-protomn-sp = { name = "ProtoMn[SP]", description = "Move in\nand slice\nthe enemy" }
+protomn-ex = { name = "ProtoMn\uE002", description = "Move in\nand slice\nthe enemy" }
+protomn-sp = { name = "ProtoMn\uE003", description = "Move in\nand slice\nthe enemy" }
 prpcapsl = { name = "PrpCapsl", description = "Add an\neffect:\nHP Bug" }
 puncharm = { name = "PunchArm", description = "\n\n" }
 punisher = { name = "Punisher", description = "ミテイ" }
@@ -294,15 +295,15 @@ sensor2 = { name = "Sensor2", description = "Hits enmy\nwith beam\nfrom snsr" }
 sensor3 = { name = "Sensor3", description = "Hits enmy\nwith beam\nfrom snsr" }
 silence = { name = "Silence", description = "Blinds\nenemies\nw/music" }
 slashman = { name = "SlashMan", description = "Slash an\nenmy w/\nflyn knfe" }
-slashmn-ex = { name = "SlashMn[EX]", description = "Slash an\nenmy w/\nflyn knfe" }
-slashmn-sp = { name = "SlashMn[SP]", description = "Slash an\nenmy w/\nflyn knfe" }
+slashmn-ex = { name = "SlashMn\uE002", description = "Slash an\nenmy w/\nflyn knfe" }
+slashmn-sp = { name = "SlashMn\uE003", description = "Slash an\nenmy w/\nflyn knfe" }
 slogauge = { name = "SloGauge", description = "CustGauge\nslow-down" }
 snake = { name = "Snake", description = "Call snke\nfrom hole\nin area." }
 snctuary = { name = "Snctuary", description = "Chng all\nown panel\nto holy" }
 sonicbom = { name = "SonicBom", description = "ミテイ" }
 spoutman = { name = "SpoutMan", description = "Watr atk!\nBhnd 2row\npowerーup" }
-spoutmn-ex = { name = "SpoutMn[EX]", description = "Watr atk!\nBhnd 2row\npowerーup" }
-spoutmn-sp = { name = "SpoutMn[SP]", description = "Watr atk!\nBhnd 2row\npowerーup" }
+spoutmn-ex = { name = "SpoutMn\uE002", description = "Watr atk!\nBhnd 2row\npowerーup" }
+spoutmn-sp = { name = "SpoutMn\uE003", description = "Watr atk!\nBhnd 2row\npowerーup" }
 spreadr1 = { name = "Spreadr1", description = "Spreads \ndamg to \nadj panls" }
 spreadr2 = { name = "Spreadr2", description = "Spreads \ndamg to \nadj panls" }
 spreadr3 = { name = "Spreadr3", description = "Spreads \ndamg to \nadj panls" }
@@ -324,8 +325,8 @@ tankcan1 = { name = "TankCan1", description = "3sqr blst\nif hits \nend row" }
 tankcan2 = { name = "TankCan2", description = "3sqr blst\nif hits \nend row" }
 tankcan3 = { name = "TankCan3", description = "3sqr blst\nif hits \nend row" }
 tenguman = { name = "TenguMan", description = "Attk 2row\nfrom air,\nthen side" }
-tengumn-ex = { name = "TenguMn[EX]", description = "Attk 2row\nfrom air,\nthen side" }
-tengumn-sp = { name = "TenguMn[SP]", description = "Attk 2row\nfrom air,\nthen side" }
+tengumn-ex = { name = "TenguMn\uE002", description = "Attk 2row\nfrom air,\nthen side" }
+tengumn-sp = { name = "TenguMn\uE003", description = "Attk 2row\nfrom air,\nthen side" }
 thunder = { name = "Thunder", description = "Pralyzing\nelectric\nattack!" }
 timebom = { name = "TimeBom+", description = "Set TmBm+\nin enemy\narea!" }
 timebom1 = { name = "TimeBom1", description = "Explodes\n3 seconds\nlater" }
@@ -333,8 +334,8 @@ timebom2 = { name = "TimeBom2", description = "Explodes\n3 seconds\nlater" }
 timebom3 = { name = "TimeBom3", description = "Explodes\n3 seconds\nlater" }
 timpani = { name = "Timpani", description = "Stop enmy\nfeet with\nmusic" }
 tmhkman = { name = "TmhkMan", description = "Slice 2sq\nside,3sq\nvertical" }
-tmhkman-ex = { name = "TmhkMan[EX]", description = "Slice 2sq\nside,3sq\nvertical" }
-tmhkman-sp = { name = "TmhkMan[SP]", description = "Slice 2sq\nside,3sq\nvertical" }
+tmhkman-ex = { name = "TmhkMan\uE002", description = "Slice 2sq\nside,3sq\nvertical" }
+tmhkman-sp = { name = "TmhkMan\uE003", description = "Slice 2sq\nside,3sq\nvertical" }
 tornado = { name = "Tornado", description = "8hit strm\n2 squares\nahead" }
 trnarrw1 = { name = "TrnArrw1", description = "Hits enmy\nw/arrow.\nUse dstnc" }
 trnarrw2 = { name = "TrnArrw2", description = "Hits enmy\nw/arrow.\nUse dstnc" }
@@ -380,99 +381,14 @@ tenguman = { name = "TenguMan", run_message = "Don't turn your\nback..." }
 tomahawkman = { name = "TmhkMan", run_message = "Strange to be\nrunning away now!" }
 
 [forms]
-base = { name = "Base" }
 chargecross = { name = "ChargeCross", description = "Chrg FireChip\nAtk Up!In turn\nslct more chip" }
-chargecross-beast = { name = "ChargeCross Beast" }
-dustcross = { name = "DustCross", description = "CustScrn:Dscrd\nChip.[B]+Left:\nSuckIn [B]:Fire!" }
-dustcross-beast = { name = "DustCross Beast" }
+dustcross = { name = "DustCross", description = "CustScrn:Dscrd\nChip.Ⓑ+Left:\nSuckIn Ⓑ:Fire!" }
 eleccross = { name = "ElecCross", description = "Elec Chip Attk\n+50! Chrg Elm-\nntless: Parlyz" }
-eleccross-beast = { name = "ElecCross Beast" }
 erasecross = { name = "EraseCross", description = "If 4 digit HP\nElemntless:Dth\nCursChipAtk+30" }
-erasecross-beast = { name = "EraseCross Beast" }
-falzar-beast = { name = "Falzar Beast" }
-falzar-beast-over = { name = "Falzar Beast Over" }
-gregar-beast = { name = "Gregar Beast" }
-gregar-beast-over = { name = "Gregar Beast Over" }
 groundcross = { name = "GroundCross", description = "BrkChip Atk+10\nChrg Brk:Fall\nRck!SuprArmrOn" }
-groundcross-beast = { name = "GroundCross Beast" }
 heatcross = { name = "HeatCross", description = "Fire Chip Attk\n+50! Buster \nAttk +1!" }
-heatcross-beast = { name = "HeatCross Beast" }
 slashcross = { name = "SlashCross", description = "Swrd Chip Attk\n+50! Chrg Swrd\nChip: WaveAttk" }
-slashcross-beast = { name = "SlashCross Beast" }
 spoutcross = { name = "SpoutCross", description = "Chrg WatrChip:\nAtk x2! Watr\nChip = HP Rcvr" }
-spoutcross-beast = { name = "SpoutCross Beast" }
-tengucross = { name = "TenguCross", description = "WindChip Atk\n+10!AirShsOn!\n[B]+Left:SuckIn" }
-tengucross-beast = { name = "TenguCross Beast" }
+tengucross = { name = "TenguCross", description = "WindChip Atk\n+10!AirShsOn!\nⒷ+Left:SuckIn" }
 tomahawkcross = { name = "TomahawkCross", description = "Chrg WoodChip:\nAtk x2! Status\nGuard:NoAbnorm" }
-tomahawkcross-beast = { name = "TomahawkCross Beast" }
 
-[weapons]
-"bgdththd/charge" = { name = "BgDthThd" }
-"boomrarm/charge" = { name = "BoomrArm" }
-"bugrswrd/charge" = { name = "BugRSwrd" }
-"chargecross-beast/wave" = { name = "ChargeCross Beast wave" }
-"chargecross/tackle" = { name = "ChargeCross tackle" }
-"chargeman/charge" = { name = "Charge" }
-"dustcross-beast/scatter" = { name = "DustCross Beast scatter" }
-"dustcross-beast/throw-absorbed" = { name = "Beast throw absorbed" }
-"dustcross/charge" = { name = "Dust charge" }
-"dustcross/throw-absorbed" = { name = "Throw absorbed" }
-"dustman/charge" = { name = "Charge" }
-"eleccross-beast/charge" = { name = "ElecCross Beast charge" }
-"eleccross/a-charge" = { name = "A charge" }
-"eleccross/charge" = { name = "Elec charge" }
-"elecman/charge" = { name = "Charge" }
-"erasecross-beast/drop" = { name = "EraseCross Beast drop" }
-"erasecross/charge" = { name = "Erase charge" }
-"eraseman/charge" = { name = "Charge" }
-"groundcross-beast/dash" = { name = "GroundCross Beast dash" }
-"groundcross/drill" = { name = "Ground drill" }
-"groundman/charge" = { name = "Charge" }
-"heatcross-beast/charge" = { name = "HeatCross Beast charge" }
-"heatcross/charge" = { name = "Heat charge" }
-"heatman/charge" = { name = "Charge" }
-"megaman/absorb" = { name = "Absorb" }
-"megaman/anti-damage" = { name = "AntiDmg" }
-"megaman/beast-claw" = { name = "Beast claw" }
-"megaman/blank-shot" = { name = "Blank shot" }
-"megaman/buster" = { name = "Buster" }
-"megaman/buster-2e" = { name = "Buster 2e" }
-"megaman/buster-3f" = { name = "Buster 3f" }
-"megaman/buster-6f" = { name = "Buster 6f" }
-"megaman/buster-70" = { name = "Buster 70" }
-"megaman/buster-79" = { name = "Buster 79" }
-"megaman/buster-7e" = { name = "Buster 7e" }
-"megaman/buster-82" = { name = "Buster 82" }
-"megaman/charged-chip-bonus" = { name = "Charged chip bonus" }
-"megaman/charged-chip-bonus-1f" = { name = "Charged chip bonus 1f" }
-"megaman/charged-chip-bonus-20" = { name = "Charged chip bonus 20" }
-"megaman/charged-chip-bonus-29" = { name = "Charged chip bonus 29" }
-"megaman/charged-shot" = { name = "Charged shot" }
-"megaman/falzar-beast-buster" = { name = "Falzar Beast buster" }
-"megaman/gregar-beast-buster" = { name = "Gregar Beast buster" }
-"megaman/reflect" = { name = "Reflect" }
-"megaman/reflect-2" = { name = "Reflect" }
-"megaman/rock-barrage" = { name = "Rock barrage" }
-"megaman/shield" = { name = "Shield" }
-"megaman/shield-2" = { name = "Shield" }
-"megaman/slash-a-charge" = { name = "Slash A-charge" }
-"megaman/tengu-wind" = { name = "Tengu wind" }
-"needlarm/charge" = { name = "NeedlArm" }
-"protoman/a-charge" = { name = "A charge" }
-"protoman/back-special" = { name = "Back special" }
-"protoman/back-special-2" = { name = "Back special 2" }
-"protoman/charge" = { name = "Charge" }
-"puncharm/charge" = { name = "PunchArm" }
-"puzzlarm/charge" = { name = "PuzzlArm" }
-"slashcross-beast/lunge" = { name = "SlashCross Beast lunge" }
-"slashcross/charge" = { name = "Slash charge" }
-"slashman/charge" = { name = "Charge" }
-"spoutcross-beast/charge" = { name = "SpoutCross Beast charge" }
-"spoutcross/charge" = { name = "Spout charge" }
-"spoutman/charge" = { name = "Charge" }
-"tengucross-beast/charge" = { name = "TenguCross Beast charge" }
-"tengucross/charge" = { name = "Tengu charge" }
-"tenguman/charge" = { name = "Charge" }
-"tomahawkcross-beast/throw" = { name = "Tomahawk throw" }
-"tomahawkcross/charge" = { name = "Tomahawk charge" }
-"tomahawkman/charge" = { name = "Charge" }

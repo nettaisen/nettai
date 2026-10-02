@@ -37,8 +37,19 @@ const WIDE_SQUEEZE: f32 = 0.7;
 fn wide(c: char) -> bool {
     matches!(c, '\u{3000}'..='\u{9FFF}' | '\u{F900}'..='\u{FAFF}' | '\u{FF00}'..='\u{FFEF}')
 }
-/// A mark's letters (`[EX]`, `[A]`) against the text's size.
-const MARK_SIZE: f32 = 0.68;
+/// A button's letter (Ⓐ drawn by the text layer) against the text's size,
+/// and its ring's diameter and stroke against the capitals' height.
+const BUTTON_LETTER: f32 = 0.68;
+const BUTTON_RING: f32 = 1.15;
+const BUTTON_STROKE: f32 = 0.1;
+/// A stacked mark's letters (EX): the gap between them against the
+/// capitals' height (each letter's capitals take half of the rest), how
+/// much wider than the font's they are drawn (the game's stacked letters
+/// are as wide as its others, half as high), and the weight added to the
+/// text's so their strokes hold at that size.
+const STACK_GAP: f32 = 0.14;
+const STACK_STRETCH: f32 = 1.3;
+const STACK_WEIGHT: f32 = 100.0;
 /// The shadow's offset, right and down, in frame pixels (the original's
 /// is one pixel).
 const SHADOW: f32 = 0.5;
@@ -141,68 +152,55 @@ impl VectorFont {
         FontRef { data: &self.data, offset: self.offset, key: self.key }
     }
 
-    /// Whether the font has every character of `text` (a mark's letters
-    /// for a mark; spaces always).
+    /// Whether the text layer can draw every character of `text`: the font
+    /// has it, or it is a mark the layer draws of letters the font has
+    /// ([`mark`]); spaces always.
     pub fn covers(&self, text: &str) -> bool {
         let cmap = self.font().charmap();
-        units(text).iter().all(|u| {
-            let s = if u.mark {
-                let inner = &text[u.start + 1..u.end - 1];
-                stand_in(inner).unwrap_or(inner)
-            } else {
-                &text[u.start..u.end]
-            };
-            s.chars().all(|c| c.is_whitespace() || cmap.map(c) != 0)
-        })
+        let has = |c: char| c.is_whitespace() || cmap.map(c) != 0;
+        text.chars().all(|c| has(c) || mark(c).is_some_and(|m| m.letters().into_iter().all(has)))
     }
 }
 
-/// The character a mark that is a symbol stands for, drawn as the
-/// character rather than its name's letters: the dialogue font's ○ and ×
-/// (`[circle]`, `[cross]`: the Japanese descriptions' "攻撃力[cross]2").
-fn stand_in(mark: &str) -> Option<&'static str> {
-    match mark {
-        "circle" => Some("○"),
-        "cross" => Some("×"),
-        _ => None,
-    }
-}
-
-/// A unit of a string: a character, or a bracketed mark (`[EX]`, `[A]`:
-/// one glyph of the original's fonts).
+/// A mark of the game's the text layer draws itself when the font has no
+/// glyph for it (docs/design/text-rendering.md §10.5: the game's marks are
+/// characters, those Unicode has none for in the Private Use Area).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct Unit {
-    start: usize,
-    end: usize,
-    mark: bool,
+enum Mark {
+    /// A button: its letter in a ring (Ⓐ, Ⓑ, Ⓛ, Ⓡ).
+    Button(char),
+    /// Two letters stacked in one cell, the first on top, as the game's
+    /// glyph has them (the 8x16 font's RV, BX, EX, SP and FZ, the dialogue
+    /// font's MB).
+    Stacked(char, char),
 }
 
-/// A string's units (byte ranges). A mark is `[`, one to eight letters,
-/// digits or dots, then `]`.
-fn units(text: &str) -> Vec<Unit> {
-    let mut out = Vec::new();
-    let mut i = 0;
-    while i < text.len() {
-        let rest = &text[i..];
-        if rest.starts_with('[')
-            && let Some(close) = rest.find(']')
-            && (2..=9).contains(&close)
-            && rest[1..close].chars().all(|c| c.is_ascii_alphanumeric() || c == '.')
-        {
-            out.push(Unit { start: i, end: i + close + 1, mark: true });
-            i += close + 1;
-            continue;
+impl Mark {
+    fn letters(self) -> Vec<char> {
+        match self {
+            Mark::Button(c) => vec![c],
+            Mark::Stacked(a, b) => vec![a, b],
         }
-        let n = rest.chars().next().map_or(1, char::len_utf8);
-        out.push(Unit { start: i, end: i + n, mark: false });
-        i += n;
     }
-    out
 }
 
-/// The number of units in a string (what the chatbox's printing counts).
-pub fn unit_count(text: &str) -> usize {
-    units(text).len()
+/// How a mark is drawn, if the text layer draws it (the bat, `End` and the
+/// rest have no drawing: a string with one the font lacks is drawn in the
+/// game's font).
+fn mark(c: char) -> Option<Mark> {
+    Some(match c {
+        'Ⓐ' => Mark::Button('A'),
+        'Ⓑ' => Mark::Button('B'),
+        'Ⓛ' => Mark::Button('L'),
+        'Ⓡ' => Mark::Button('R'),
+        '\u{E000}' => Mark::Stacked('R', 'V'),
+        '\u{E001}' => Mark::Stacked('B', 'X'),
+        '\u{E002}' => Mark::Stacked('E', 'X'),
+        '\u{E003}' => Mark::Stacked('S', 'P'),
+        '\u{E004}' => Mark::Stacked('F', 'Z'),
+        '\u{E005}' => Mark::Stacked('M', 'B'),
+        _ => return None,
+    })
 }
 
 /// A glyph laid out: frame pixels from the box's left and up from the
@@ -216,16 +214,20 @@ struct Placed {
     size: f32,
     width: Option<f32>,
     weight: Option<f32>,
+    /// Drawn this much wider (a stacked mark's letters).
+    stretch: f32,
+    /// The string's character it draws (what the chatbox's printing
+    /// counts).
     unit: usize,
 }
 
-/// A boxed mark's frame (a button: `[A]`), in frame pixels as `Placed`.
+/// A button mark's ring, in frame pixels as `Placed`: its centre and outer
+/// radius.
 #[derive(Clone, Copy, Debug)]
-struct MarkBox {
-    x0: f32,
-    x1: f32,
-    bottom: f32,
-    top: f32,
+struct Ring {
+    x: f32,
+    y: f32,
+    radius: f32,
     unit: usize,
 }
 
@@ -233,7 +235,7 @@ struct MarkBox {
 #[derive(Clone, Debug, Default)]
 struct Layout {
     glyphs: Vec<Placed>,
-    boxes: Vec<MarkBox>,
+    rings: Vec<Ring>,
     width: f32,
     /// How far the baseline moves down (a string made smaller stays
     /// centred on its capitals).
@@ -302,9 +304,8 @@ impl TextRenderer {
         let st = role.style();
         let size = st.cap / self.font.cap;
         let weight = self.font.weight.map(|a| st.weight.clamp(a.min, a.max));
-        let units = units(text);
         let mut width = self.font.width.map(|a| a.default.clamp(a.min, a.max));
-        let mut l = self.shape(text, &units, size, width, weight);
+        let mut l = self.shape(text, size, width, weight);
         if l.width <= room || l.width <= 0.0 {
             return l;
         }
@@ -312,7 +313,7 @@ impl TextRenderer {
             let narrowest = NARROWEST.clamp(a.min, a.default);
             for k in 1..=8 {
                 width = Some(a.default + (narrowest - a.default) * k as f32 / 8.0);
-                l = self.shape(text, &units, size, width, weight);
+                l = self.shape(text, size, width, weight);
                 if l.width <= room {
                     return l;
                 }
@@ -322,15 +323,14 @@ impl TextRenderer {
         let x = room / l.width;
         let (xscale, f) = if x >= least { (x, 1.0) } else { (least, x / least) };
         if f < 1.0 {
-            l = self.shape(text, &units, size * f, width, weight);
+            l = self.shape(text, size * f, width, weight);
             l.drop = st.cap * (1.0 - f) / 2.0;
         }
         for g in &mut l.glyphs {
             g.x *= xscale;
         }
-        for b in &mut l.boxes {
-            b.x0 *= xscale;
-            b.x1 *= xscale;
+        for r in &mut l.rings {
+            r.x *= xscale;
         }
         l.width = (l.width * xscale).min(room);
         l.xscale = xscale;
@@ -338,77 +338,82 @@ impl TextRenderer {
     }
 
     /// Shape `text` at `size` (frame pixels an em): runs of characters with
-    /// the font's kerning, each mark as its letters, smaller (a button's
-    /// in a frame).
-    fn shape(&mut self, text: &str, units: &[Unit], size: f32, width: Option<f32>, weight: Option<f32>) -> Layout {
+    /// the font's kerning; a mark the font has no glyph for as the layer
+    /// draws it ([`mark`]): a button's letter, smaller, in a ring centred on
+    /// the capitals, or a stacked mark's two letters, each half the
+    /// capitals' height less a gap, the first above the second, filling
+    /// one cell between the capitals' top and the baseline.
+    fn shape(&mut self, text: &str, size: f32, width: Option<f32>, weight: Option<f32>) -> Layout {
         let font = self.font.font();
+        let cmap = font.charmap();
         let cap = self.font.cap;
-        let mut settings: Vec<Setting<f32>> = Vec::new();
-        if let Some(w) = width {
-            settings.push(("wdth", w).into());
-        }
-        if let Some(w) = weight {
-            settings.push(("wght", w).into());
-        }
+        let heavier = self.font.weight.zip(weight).map(|(a, w)| (w + STACK_WEIGHT).min(a.max));
+        let settings = |weight: Option<f32>| {
+            let mut s: Vec<Setting<f32>> = Vec::new();
+            if let Some(w) = width {
+                s.push(("wdth", w).into());
+            }
+            if let Some(w) = weight {
+                s.push(("wght", w).into());
+            }
+            s
+        };
+        let chars: Vec<(usize, char)> = text.char_indices().collect();
+        let drawn: Vec<Option<Mark>> = chars.iter().map(|&(_, c)| if cmap.map(c) == 0 { mark(c) } else { None }).collect();
         let mut out = Layout { xscale: 1.0, ..Layout::default() };
         let mut pen = 0.0f32;
-        let run = |shaper: &mut ShapeContext, s: &str, first: usize, size: f32, y: f32, pen: &mut f32, out: &mut Layout| {
-            let mut builder = shaper.builder(font).size(size).variations(settings.iter().copied()).build();
-            builder.add_str(s);
-            let base = units[first].start;
-            builder.shape_with(|c| {
-                let at = base + c.source.start as usize;
-                let unit = units.partition_point(|u| u.end <= at);
-                for g in c.glyphs {
-                    out.glyphs.push(Placed { id: g.id, x: *pen + g.x, y: y + g.y, size, width, weight, unit });
-                    *pen += g.advance;
-                }
-            });
-        };
+        let gap = size * 0.05;
         let mut i = 0;
-        while i < units.len() {
-            if units[i].mark
-                && let Some(c) = stand_in(&text[units[i].start + 1..units[i].end - 1])
-            {
-                let mut b = self.shaper.builder(font).size(size).variations(settings.iter().copied()).build();
-                b.add_str(c);
-                b.shape_with(|c| {
-                    for g in c.glyphs {
-                        out.glyphs.push(Placed { id: g.id, x: pen + g.x, y: g.y, size, width, weight, unit: i });
-                        pen += g.advance;
+        while i < chars.len() {
+            match drawn[i] {
+                Some(Mark::Button(letter)) => {
+                    let ring = cap * size * BUTTON_RING;
+                    let small = size * BUTTON_LETTER;
+                    let (glyphs, advance) = letter_glyphs(&mut self.shaper, font, letter, small, &settings(weight));
+                    let (x, y) = (pen + gap + ring / 2.0, cap * size / 2.0);
+                    for (id, gx, gy) in glyphs {
+                        let (gx, gy) = (x - advance / 2.0 + gx, y - cap * small / 2.0 + gy);
+                        out.glyphs.push(Placed { id, x: gx, y: gy, size: small, width, weight, stretch: 1.0, unit: i });
                     }
-                });
-                i += 1;
-            } else if units[i].mark {
-                let inner = &text[units[i].start + 1..units[i].end - 1];
-                let small = size * MARK_SIZE;
-                let boxed = inner.chars().count() == 1;
-                let pad = if boxed { small * 0.2 } else { 0.0 };
-                let gap = size * 0.05;
-                // Letters with their tops at the capitals'; a button's
-                // centred on them.
-                let raise = if boxed { (cap * size - cap * small) / 2.0 } else { cap * size - cap * small };
-                let x0 = pen + gap;
-                let mut p = x0 + pad;
-                let mut b = self.shaper.builder(font).size(small).variations(settings.iter().copied()).build();
-                b.add_str(inner);
-                b.shape_with(|c| {
-                    for g in c.glyphs {
-                        out.glyphs.push(Placed { id: g.id, x: p + g.x, y: raise + g.y, size: small, width, weight, unit: i });
-                        p += g.advance;
-                    }
-                });
-                let x1 = p + pad;
-                if boxed {
-                    out.boxes.push(MarkBox { x0, x1, bottom: raise - pad, top: raise + cap * small + pad, unit: i });
+                    out.rings.push(Ring { x, y, radius: ring / 2.0, unit: i });
+                    pen += ring + 2.0 * gap;
+                    i += 1;
                 }
-                pen = x1 + gap;
-                i += 1;
-            } else {
-                let j = units[i..].iter().position(|u| u.mark).map_or(units.len(), |k| i + k);
-                let s = &text[units[i].start..units[j - 1].end];
-                run(&mut self.shaper, s, i, size, 0.0, &mut pen, &mut out);
-                i = j;
+                Some(Mark::Stacked(top, bottom)) => {
+                    let between = cap * size * STACK_GAP;
+                    let letter_cap = (cap * size - between) / 2.0;
+                    let small = letter_cap / cap;
+                    let s = settings(heavier);
+                    let (top, top_w) = letter_glyphs(&mut self.shaper, font, top, small, &s);
+                    let (bottom, bottom_w) = letter_glyphs(&mut self.shaper, font, bottom, small, &s);
+                    let (top_w, bottom_w) = (top_w * STACK_STRETCH, bottom_w * STACK_STRETCH);
+                    let cell = top_w.max(bottom_w);
+                    let x0 = pen + gap;
+                    for (glyphs, w, y) in [(top, top_w, letter_cap + between), (bottom, bottom_w, 0.0)] {
+                        for (id, gx, gy) in glyphs {
+                            let gx = x0 + (cell - w) / 2.0 + gx * STACK_STRETCH;
+                            out.glyphs.push(Placed { id, x: gx, y: y + gy, size: small, width, weight: heavier, stretch: STACK_STRETCH, unit: i });
+                        }
+                    }
+                    pen = x0 + cell + gap;
+                    i += 1;
+                }
+                None => {
+                    let j = (i + 1..chars.len()).find(|&k| drawn[k].is_some()).unwrap_or(chars.len());
+                    let (start, end) = (chars[i].0, chars.get(j).map_or(text.len(), |c| c.0));
+                    let s = settings(weight);
+                    let mut b = self.shaper.builder(font).size(size).variations(s.iter().copied()).build();
+                    b.add_str(&text[start..end]);
+                    b.shape_with(|c| {
+                        let at = start + c.source.start as usize;
+                        let unit = chars.partition_point(|&(k, _)| k <= at).saturating_sub(1);
+                        for g in c.glyphs {
+                            out.glyphs.push(Placed { id: g.id, x: pen + g.x, y: g.y, size, width, weight, stretch: 1.0, unit });
+                            pen += g.advance;
+                        }
+                    });
+                    i = j;
+                }
             }
         }
         out.width = pen;
@@ -493,7 +498,7 @@ impl TextRenderer {
                     size: (g.size * s * 64.0).round() as u32,
                     width: g.width.map_or(0, |w| (w * 16.0).round() as i32),
                     weight: g.weight.map_or(0, |w| (w * 16.0).round() as i32),
-                    xscale: (layout.xscale * 1024.0).round() as i32,
+                    xscale: (layout.xscale * g.stretch * 1024.0).round() as i32,
                     yscale: (k * 1024.0).round() as i32,
                     sub,
                 };
@@ -509,22 +514,43 @@ impl TextRenderer {
                     }
                 }
             }
-            // A button mark's frame.
-            for b in layout.boxes.iter().filter(|b| b.unit < shown) {
-                let t = (0.09 * st.cap * s).round().max(1.0) as i32;
-                let out_x = |x: f32| (place.x as f32 + (x0 + x) * s).round() as i32 + off;
-                let out_y = |y: f32| (place.y as f32 + (baseline - y * k) * s).round() as i32 + off;
-                let (left, right, top, bottom) = (out_x(b.x0), out_x(b.x1), out_y(b.top), out_y(b.bottom));
-                for y in top..bottom {
-                    for x in left..right {
-                        if y < top + t || y >= bottom - t || x < left + t || x >= right - t {
-                            target.blend(x, y, rgb, 255);
+            // A button mark's ring: antialiased, its stroke inside its
+            // outer edge, squeezed and squashed with the text.
+            for r in layout.rings.iter().filter(|r| r.unit < shown) {
+                let (rx, ry) = (r.radius * layout.xscale * s, r.radius * k * s);
+                let stroke = (BUTTON_STROKE * st.cap * s).max(1.0);
+                let cx = place.x as f32 + (x0 + r.x) * s + off as f32;
+                let cy = place.y as f32 + (baseline - r.y * k) * s + off as f32;
+                let mean = (rx + ry) / 2.0;
+                for y in (cy - ry - 1.0).floor() as i32..=(cy + ry + 1.0).ceil() as i32 {
+                    for x in (cx - rx - 1.0).floor() as i32..=(cx + rx + 1.0).ceil() as i32 {
+                        let (dx, dy) = ((x as f32 + 0.5 - cx) / rx, (y as f32 + 0.5 - cy) / ry);
+                        // Output pixels out from the outer edge (inside: below 0).
+                        let edge = ((dx * dx + dy * dy).sqrt() - 1.0) * mean;
+                        let a = (0.5 - edge).clamp(0.0, 1.0) * (0.5 + edge + stroke).clamp(0.0, 1.0);
+                        if a > 0.0 {
+                            target.blend(x, y, rgb, (a * 255.0).round() as u8);
                         }
                     }
                 }
             }
         }
     }
+}
+
+/// A letter's glyphs at `size` (frame pixels an em), each with its place
+/// from the pen, and its advance.
+fn letter_glyphs(shaper: &mut ShapeContext, font: FontRef, letter: char, size: f32, settings: &[Setting<f32>]) -> (Vec<(GlyphId, f32, f32)>, f32) {
+    let mut b = shaper.builder(font).size(size).variations(settings.iter().copied()).build();
+    b.add_str(letter.encode_utf8(&mut [0; 4]));
+    let (mut glyphs, mut pen) = (Vec::new(), 0.0);
+    b.shape_with(|c| {
+        for g in c.glyphs {
+            glyphs.push((g.id, pen + g.x, g.y));
+            pen += g.advance;
+        }
+    });
+    (glyphs, pen)
 }
 
 /// Where an item's pixels go: the output, through its clip and the frame's
@@ -567,14 +593,50 @@ mod tests {
         TextRenderer::new(std::sync::Arc::new(VectorFont::bundled()))
     }
 
+    /// A stacked mark (EX) is two letters of one size, one above the
+    /// other, in one cell between the capitals' top and the baseline; it is
+    /// one character of the string.
     #[test]
-    fn marks_are_one_unit() {
-        let u = units("ElecMan[EX]");
-        assert_eq!(u.len(), 8);
-        assert!(u[7].mark && !u[6].mark);
-        assert_eq!(unit_count("Press [A]\nfor"), 11);
-        // Not a mark: a lone bracket, or one with a space.
-        assert_eq!(units("a[b c]").len(), 6);
+    fn a_stacked_mark_is_two_letters_in_one_cell() {
+        let f = VectorFont::bundled();
+        assert!(f.covers("ElecMan\u{E002}") && f.covers("Count\u{E003}"));
+        let mut r = renderer();
+        let l = r.layout("Count\u{E002}", Role::Cell, 1000).clone();
+        let mark: Vec<&Placed> = l.glyphs.iter().filter(|g| g.unit == 5).collect();
+        assert_eq!(mark.len(), 2, "E and X");
+        let (top, bottom) = (mark[0], mark[1]);
+        assert_eq!(top.size, bottom.size);
+        assert_eq!(bottom.y, 0.0, "the X on the baseline");
+        let cap = Role::Cell.style().cap;
+        let letter = top.size * f.cap;
+        assert!(top.y > letter && top.y + letter <= cap + 0.01, "the E above, under the capitals' top: {} {letter}", top.y);
+        assert!(l.glyphs.iter().filter(|g| g.unit < 5).all(|g| g.size > top.size));
+        assert!(l.rings.is_empty());
+        // One cell: narrower than the two letters side by side would be.
+        let side_by_side = r.fitted_width("CountEX", Role::Cell, 1000) - r.fitted_width("Count", Role::Cell, 1000);
+        assert!(l.width - r.fitted_width("Count", Role::Cell, 1000) < side_by_side);
+    }
+
+    /// A button the font lacks (Ⓐ) is its letter in a ring the layer
+    /// draws; one the font has (Ⓡ) and the symbols (✕, ○) are the font's.
+    #[test]
+    fn a_button_is_its_letter_in_a_ring_and_a_symbol_the_fonts() {
+        let f = VectorFont::bundled();
+        assert!(f.covers("Press Ⓐ for 3panl") && f.covers("Ⓑ+Left") && f.covers("攻撃力✕2 ○"));
+        // A mark the layer has no drawing of, which the font lacks (the
+        // bat): drawn in the game's font.
+        assert!(!f.covers("\u{E006}"));
+        let mut r = renderer();
+        let a = r.layout("Ⓐ", Role::Dialogue, 192).clone();
+        assert_eq!((a.glyphs.len(), a.rings.len()), (1, 1));
+        let ring = a.rings[0];
+        let cap = Role::Dialogue.style().cap;
+        assert!((ring.y - cap / 2.0).abs() < 0.01 && ring.radius * 2.0 > cap, "around the capitals");
+        for c in ["Ⓡ", "✕", "○"] {
+            let l = r.layout(c, Role::Dialogue, 192).clone();
+            assert_eq!((l.glyphs.len(), l.rings.len()), (1, 0), "{c}");
+            assert!(l.glyphs[0].id != 0, "{c}");
+        }
     }
 
     #[test]
@@ -582,7 +644,6 @@ mod tests {
         let f = VectorFont::bundled();
         assert!(f.width.is_none() && f.weight.is_some());
         assert!(f.covers("GunDelS3 Cannon x2 TIME UP! COUNTER HIT!"));
-        assert!(f.covers("Press [A] for 3panl"));
         assert!(f.covers("ミテイ ガンデルソル3 熱斗 電脳獣 ロックマン"));
         // (Not every kanji: a string with one it lacks is drawn in the
         // game's font.)
@@ -592,7 +653,7 @@ mod tests {
     #[test]
     fn a_string_never_leaves_its_box() {
         let mut r = renderer();
-        for (text, room) in [("Cannon", 48), ("GunDelS3", 64), ("WWWWWWWW", 64), ("WWWWWWWWWWWWWWWW", 32), ("ElecMan[EX]", 64)] {
+        for (text, room) in [("Cannon", 48), ("GunDelS3", 64), ("WWWWWWWW", 64), ("WWWWWWWWWWWWWWWW", 32), ("ElecMan\u{E002}", 64), ("TmhkMan\u{E003}", 64)] {
             let w = r.fitted_width(text, Role::Cell, room);
             assert!(w <= room as f32 + 0.01, "{text:?} is {w} in {room}");
             assert!(w > 0.0);
@@ -648,19 +709,6 @@ mod tests {
         let l = r.layout("WWWWWWWW", Role::Cell, (wide * 0.3) as i32).clone();
         assert!(l.drop > 0.0);
         assert_eq!(l.xscale, SQUEEZE);
-    }
-
-    #[test]
-    fn a_symbol_mark_is_its_character() {
-        let f = VectorFont::bundled();
-        assert!(f.covers("攻撃力[cross]2 [circle]"));
-        let mut r = renderer();
-        // One glyph for the mark, the font's ×, at the text's size.
-        let mark = r.layout("[cross]", Role::Dialogue, 192).clone();
-        let times = r.layout("×", Role::Dialogue, 192).clone();
-        assert_eq!(mark.glyphs.len(), 1);
-        assert_eq!((mark.glyphs[0].id, mark.glyphs[0].size), (times.glyphs[0].id, times.glyphs[0].size));
-        assert_eq!(unit_count("力[cross]2"), 3);
     }
 
     #[test]
