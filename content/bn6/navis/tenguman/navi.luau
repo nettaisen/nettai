@@ -32,7 +32,7 @@ return define.navi {
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, back_special = tengu_wind.weapon },
-    fresh = { hp = 150, float_shoes = true, air_shoes = true, first_barrier = 0, mega_level = 5, giga_level = 1 },
+    fresh = { hp = 150, float_shoes = true, air_shoes = true, mega_level = 5, giga_level = 1 },
     cross_hp = { 100, 150 },
     identity = define.identity {
         class = "link_navi",
