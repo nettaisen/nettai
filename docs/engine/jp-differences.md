@@ -6,7 +6,8 @@ answers three questions:
 
 - What differs, and in which class?
 - Which JP-only objects exist, and what are they for?
-- What would the engine, which runs the US behaviour, get wrong in a netbattle between Japanese consoles?
+- What would the engine, which runs the US behaviour (but where the user chose the Japanese games'), get wrong in a
+  netbattle between Japanese consoles?
 
 **The short answer.** 153 US routines are not byte-for-byte the same in JP Falzar (§2):
 
@@ -16,8 +17,9 @@ answers three questions:
 - 2 hold the JP-only content's entry points.
 - 25 are US changes. A JP-console netbattle reaches 20 of them, which come to **15 behaviours**.
 
-With one JP data difference (Otenko's statue as DustMan's junk) and the patch cards' emotion-window hook, §8
-lists 17 variants with their sizes and how to switch them.
+With one JP data difference (Otenko's statue as DustMan's junk) and the patch cards' emotion-window hook, that is
+17 variants. §8 lists the 16 the engine runs as the US games do, with their sizes and how to switch them, and the
+one it runs as the Japanese games do on every console, by the user's choice: ElemTrap's counterattack (§8.2).
 
 The JP-only content is:
 
@@ -144,8 +146,8 @@ Each row is one routine. **Reach** says whether a netbattle between Japanese con
 | `sub_802CEF4` | the traps: see below | yes |
 | `sub_801B878` | US only: LilBolr's obstacle dispatcher (while it erupts, a crushing touch is as any hit) | yes |
 | `sub_80D774C` | LilBolr: JP calls the default dispatcher `sub_801B394` (a crushing touch drops the HP to 0), and doesn't set HP = MaxHP − (+0x2C & 0xFFF) while erupting | yes |
-| `sub_80033E4` | US only: a T4 spawn at the head of the update list. fmap.py pairs it with JP's tail spawn, its twin | yes |
-| `sub_80E360E` | ElemTrap's counterattack (T4 0x2B): the US spawns it at the head of the list, so it acts next tick; JP calls `object_spawnType4`, which links it right after the trap, so it acts in the same tick | yes |
+| `sub_80033E4` | US only: a T4 spawn at the head of the update list. fmap.py pairs it with JP's tail spawn, its twin. Its one caller is `sub_80E360E`, whose JP behaviour the engine has (§8.2), so the engine runs it nowhere (the content API keeps it as `battle.spawn_first`) | yes |
+| `sub_80E360E` | ElemTrap's counterattack (T4 0x2B): the US spawns it at the head of the list, so it acts next tick; JP calls `object_spawnType4`, which links it right after the trap, so it acts in the same tick. **The engine runs JP's on every console** (the user's decision, 2026-10-02; §8.2) | yes |
 | `sub_80BABAC` | ElmntMan: when the user doesn't pick an element in Param1·20 ticks, the US picks one (an RNG2 draw, `& 3`) and attacks; JP goes to action 0x18 and he leaves | yes |
 | `sub_80C9F98` | Tornado on a volcano, grass or ice panel: the US doubles the damage but keeps the flags 0xF800; JP doubles the whole halfword, so 0x8000 is lost and 0x4000 becomes 0x8000 | yes |
 | `sub_80D8C10` | AirSpin's top: the HP word in this routine's literal pool, which the top's init `sub_80D8908` reads, is 300 in JP (400) | yes |
@@ -481,7 +483,8 @@ tables. The rest:
 ## 8. What a JP-console netbattle reaches that the engine gets wrong
 
 What the switch looks like is §8.1. Each variant names where it lives and what a trace from a JP console would
-show against the engine.
+show against the engine. #7, ElemTrap's counterattack, has left this table: the engine runs the Japanese games'
+behaviour there, by the user's choice (§8.2).
 
 | # | Variant | Size | A JP trace shows | Where to switch |
 |---|---|---|---|---|
@@ -491,7 +494,6 @@ show against the engine.
 | 4 | The drag's recovery keeps RskyHny's heat trap (`sub_8017A38`) | US: +2 instructions | AIData status 0x200000 after the drag; later non-fire hits swallowed | crates/nettai-battle/src/kinds/player/reactions.rs (`recover_from_drag`) |
 | 5 | The traps' order and 0-damage hits (`sub_802CEF4`) | about 20 instructions moved, 2 branches | which trap answers (requests 0x200/0x8000/0x400 against the heat trap's marker and sound 0x6E); a 0-damage hit landing | crates/nettai-battle/src/kinds/player/intake.rs (`anti_damage_traps`) |
 | 6 | LilBolr (`sub_801B878` US only, `sub_80D774C`) | US: a 324-byte routine and +10 instructions | the boiler's HP and destruction on a crushing touch while it erupts | content/bn6/chips/lilbolr/boiler.luau (its `obstacle.react` crush, the HP reset) |
-| 7 | ElemTrap's counterattack's list position (`sub_80E360E`; `sub_80033E4` US only) | 1 call | T4 0x2B's place in the update list; its first update comes in the same tick, a tick before the US's | content/bn6/chips/elemtrap/trap.luau (spawn after the trap, not at the head) |
 | 8 | ElmntMan when nobody picks (`sub_80BABAC`) | US: 9 instructions, JP 1 | no RNG2 draw (so every later draw shifts), action 0x18, no attack | content/bn6/chips/elmntman/navi.luau (`cycle`) |
 | 9 | Tornado's doubling on a special panel (`sub_80C9F98`) | US: +5 instructions | the tornado's damage word | content/bn6/chips/tornado/tornado.luau (`init`) |
 | 10 | AirSpin's top's HP | 1 word: 300 against 400 | the top's HP and MaxHP, how many hits break it | content/bn6/chips/airspin/top.luau (`HP`) |
@@ -532,7 +534,8 @@ These sizes from bn6-lmao's regions are exact (§9):
 ### 8.1 The console-region switch
 
 **Decided (the user, 2026-10-02): no switch, "just these chips".** The engine runs the US behaviour for §8's variants
-and has none of this section's switch. The JP-content chips (GunDelEX, Otenko, Count's three, Django's three, Gregar,
+(but ElemTrap's counterattack, which the user moved to the Japanese games' later that day: §8.2) and has none of this
+section's switch. The JP-content chips (GunDelEX, Otenko, Count's three, Django's three, Gregar,
 Falzar) take the Japanese games' records and routines outright (`gen-content check` compares their records with a
 Japanese ROM's), and the content has the Japanese games' looks where the US games blanked them (CrosOver's Django
 gun, attachment row 0xB). A JP-console recording that reaches one of §8's variants differs from the engine there.
@@ -556,6 +559,25 @@ one ran. The region belongs in the setup:
   from a region-keyed table. JP's sprites are extracted from the JP ROM; an asset name says which.
 - **Compat:** bn6-compat reads the region from the ROM header (BR6J or BR5J is JP) for traces and sets the
   setup's field. compat/games.toml gets `[exe6f]` and `[exe6]` sections, as `[gregar]`, with §10's values.
+
+### 8.2 Chosen JP
+
+The variants the engine runs as the Japanese games do, on every console, by the user's choice. A US console's
+recording that reaches one differs from the engine there; bn6battle-verify records them on Japanese consoles, and
+keeps the US consoles' recordings as known deviations (its trace-tests' src/deviations.rs: each matches up to the
+variant's first frame and first differs on exactly that frame).
+
+| # | Variant | Size | A US trace shows | Where | Decided |
+|---|---|---|---|---|---|
+| 7 | ElemTrap's counterattack's list position (`sub_80E360E`; `sub_80033E4` US only) | 1 call | T4 0x2B's place in the update list: the US spawns it at the head, so its first update (the dimming) comes a tick after the engine's | content/bn6/chips/elemtrap/strike.luau (`strike.spawn`: `battle.spawn`, right after the trap, as JP's `object_spawnType4`) | the user, 2026-10-02: "you should use jp's elementtrap behavior instead of us's elementtrap behavior in bn6" |
+
+ElemTrap on Japanese consoles: the chip lab's jp/chips/0x0c5-elemtrap (21 scenarios on EXE6 Falzar and Gregar: every
+US ElemTrap scenario, and the trap sprung by fire, aqua, elec and wood, in a dimming, with the counterattack
+hitting) match the engine on every frame, sounds included. The US consoles' recordings that spring it, the known
+deviations: chips/0x0c5-elemtrap/sprung-fire, sprung-elec and sprung-dimmed, and nine of the 2022 replays' rounds.
+
+Otenko's statue as DustMan's junk (#16) is the Japanese games' on every console too (the user's call); its row in
+§8 says so.
 
 ## 9. bn6-lmao's regions
 
