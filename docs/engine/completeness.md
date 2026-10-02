@@ -931,6 +931,24 @@ below row 3 (1: the dip stays inside the bottom row), a swim's fifth past 4 (1: 
 pillar kinds 2 to 4 (7: the viruses'; a netbattle's pillars are HeatCross Beast's, ElecCross Beast's and
 Darkness's). The 9 recordings match the engine at main 91fc002f, every frame (15,759) and sound call (314).
 
+**Second pass, batch 9: AirSpin, SumnBlk, AquaNdl (30 branches):** 10 taken by 7 new recordings, 20
+unreachable:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x07e-airspin1/holes`, `gigacan3`, `airshot`, `tenguman`, `geddon` | the top set down on a hole, and stopping at once before side 1's hole; its 400 HP taken by GigaCan3; one more spin for a pushing hit (AirShot) and for a wind hit that isn't one (TenguMan); a panel broken under it (Geddon's quake breaks the panel it rolls toward inside the dimming, and it rolls on afterwards) |
+| `chips/0x087-sumnblk1/hole-ahead-adjacent` | the other side's navi one column ahead of the user: too near, no target |
+| `chips/0x03d-aquandl1/side1` | the volley's ordering for a left-facing user |
+
+The unreachable ones: the top's fourth panel (1: it starts one panel ahead of its navi), its own panel blocked (1:
+whatever blocks it touches it first, and it breaks), the panel under its coordinates not its own (1: the routine
+reads the object's own position), the gust without a slot (1), the SumnBlk navi's one-tick raise seen twice (1),
+its target search over no actor, two actors or a wide one (7: one navi a side), the needle off the field, its own
+dimmed test (an attack object, skipped while dimmed) and a needle that cracks its panel (3: the volley never asks
+for one), and the volley's two or more targets (5: all three needles fall on the one navi's panel; the two side-1
+comparisons the new recording reaches one way are noted the same). The 7 recordings match the engine (main d5a4c6f4
+with the dragons' fifth fix), every frame (5,692) and sound call (166).
+
 <!-- end: chip families, onesided -->
 
 ### 6.3 Custom screen keys
