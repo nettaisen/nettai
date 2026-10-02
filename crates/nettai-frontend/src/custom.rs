@@ -15,12 +15,12 @@ use crate::audit::Problems;
 use crate::compose::{Affine, Fade, Layer, SpritePart};
 use crate::fonts;
 use crate::objects::SpriteList;
-use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles};
+use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
 use nettai_battle::Battle;
 use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipClass, ChipFlags, DamageFormula};
-use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
-use nettai_battle::custom::{FolderChip, Phase, Screen, Side, SlotKind, SlotState};
+use nettai_battle::custom::screen::{CROSS_PUT_ON_TICK, HiddenStage, OK_SLOT, SPECIAL_SLOT};
+use nettai_battle::custom::{FolderChip, GameVersion, Phase, Screen, Side, SlotKind, SlotState};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
 const COLUMNS: usize = 15;
@@ -37,6 +37,21 @@ const DIGIT_TILE: u16 = 0xDB;
 const SLOT_TILE: u16 = 0xE1;
 const COLUMN_ICON_TILE: u16 = 0x125;
 const NAME_BAR_TILE: u16 = 0x1D6;
+/// The Crosses' names in the Cross window (9x2 each, `byte_8029DF8`).
+const CROSS_NAME_TILE: u16 = 0x139;
+const CROSS_NAME_TILES: usize = 18;
+/// The Cross window's maps: three opening steps, then the window with one
+/// to five Crosses.
+const CROSS_OPENING_MAPS: usize = 3;
+/// The Program Advance animation's names (`sub_802B80C`): 9 cells of the
+/// 8x16 font from tile 0xAB, 18 tiles a name; a pick's code in its last
+/// cell; a name every 3 rows from row 5, a column right of the layer's
+/// scroll; the recipe's in palette 10, the others' in 13.
+const ADVANCE_NAME_TILE: u16 = 0xAB;
+const ADVANCE_NAME_CELLS: usize = 9;
+const ADVANCE_FIRST_ROW: i32 = 5;
+/// The chips past the table's that the animation shows no code for.
+const ADVANCE_NO_CODE_FROM: u16 = 0x160;
 const LAYER_TILES: usize = 0x200;
 /// The window's background colours: what the original copies over cells
 /// the chip window leaves empty (`byte_802A6C0`, `byte_802A680`,
@@ -184,21 +199,62 @@ pub fn camera_y(b: &Battle) -> i32 {
     local(b).map_or(0, |(_, s)| -CAMERA_STEP * placement(s).slid)
 }
 
-/// The screen fade the local screen runs: Beast Out's darkens background
-/// palettes 0-13 (the stage and the HUD layer) and sprite palettes 0-10
-/// (the battle's objects), half way (`off_8006040`, modes 0x64 and 0x60).
+/// The screen fade the local screen runs on the stage and the battle's
+/// objects (`off_8006040`): Beast Out's darkens background palettes 0-13
+/// (the stage and the HUD layer) and sprite palettes 0-10 half way (modes
+/// 0x64 and 0x60); the Program Advance's and a dark chip's background
+/// palettes 0-8 and sprite palettes 0-9 (0x14 and 0x10, 0x54 and 0x50); a
+/// Cross's choice whitens every palette (4, and 0 back).
 pub fn fade(b: &Battle) -> Option<Fade> {
     let (_, s) = local(b)?;
     let f = s.look.fade;
-    let shown = match f.mode {
-        FadeMode::BeastOut | FadeMode::ProgramAdvance | FadeMode::DarkChip => true,
+    let (shown, white) = match f.mode {
+        FadeMode::BeastOut | FadeMode::ProgramAdvance | FadeMode::DarkChip => (true, false),
         // Back toward clear: once it gets there the original takes the
         // palettes' transform off.
-        FadeMode::BeastOutBack | FadeMode::ProgramAdvanceBack | FadeMode::DarkChipBack => f.active,
+        FadeMode::BeastOutBack | FadeMode::ProgramAdvanceBack | FadeMode::DarkChipBack => (f.active, false),
+        FadeMode::EndToWhite => (true, true),
+        FadeMode::IntroFromWhite => (f.active, true),
+        _ => (false, false),
+    };
+    let n = (f.level >> 4).min(16) as u8;
+    (shown && n > 0).then_some(if white { Fade::White(n) } else { Fade::Black(n) })
+}
+
+/// The battle's objects' share of the screen's fade (a white fade is every
+/// sprite's: `sprite_fade`).
+pub fn object_fade(b: &Battle) -> Option<Fade> {
+    fade(b).filter(|f| !matches!(f, Fade::White(_)))
+}
+
+/// The screen's fade of every sprite palette: a Cross's choice's white.
+pub fn sprite_fade(b: &Battle) -> Option<Fade> {
+    fade(b).filter(|f| matches!(f, Fade::White(_)))
+}
+
+/// The second fade record's, which only a dark chip's hover runs (modes
+/// 0x5C and 0x58): background palettes 9-13 (the window) and sprite
+/// palettes 10-13 (the screen's sprites).
+pub fn window_fade(b: &Battle) -> Option<Fade> {
+    let (_, s) = local(b)?;
+    let f = s.look.window_fade;
+    let shown = match f.mode {
+        FadeMode::DarkChipWindow => true,
+        FadeMode::DarkChipWindowBack => f.active,
         _ => false,
     };
     let n = (f.level >> 4).min(16) as u8;
     (shown && n > 0).then_some(Fade::Black(n))
+}
+
+/// The HUD layer's fade: Beast Out's and a Cross's (its palettes are among
+/// the first record's), else the second record's.
+pub fn hud_fade(b: &Battle) -> Option<Fade> {
+    let (_, s) = local(b)?;
+    match s.look.fade.mode {
+        FadeMode::BeastOut | FadeMode::BeastOutBack | FadeMode::EndToWhite | FadeMode::IntroFromWhite => fade(b),
+        _ => window_fade(b),
+    }
 }
 
 /// The custom screen's tiles of the HUD layer, by tile number.
@@ -243,6 +299,8 @@ struct View<'a> {
     side: u8,
     screen: &'a Screen,
     assets: &'a CustomScreen,
+    /// The pictures of the console's version.
+    own: &'a VersionPictures,
     hud: &'a Hud,
 }
 
@@ -263,10 +321,23 @@ impl View<'_> {
         navi_number(self.b, self.side)
     }
 
+    /// Sprite palette 11, as the second fade record leaves it.
     fn emblem_palette(&self) -> Palette {
         let a = self.assets;
         let i = a.emblem_palette_of.get(self.navi_number()).copied().unwrap_or(0) as usize;
-        a.emblem_palettes.get(i).copied().unwrap_or([0; 16])
+        let p = a.emblem_palettes.get(i).copied().unwrap_or([0; 16]);
+        match window_fade(self.b) {
+            Some(f) => p.map(|c| crate::compose::apply_fade(c, f)),
+            None => p,
+        }
+    }
+}
+
+/// The pack's name of a console's game version (`Versioned`).
+pub fn version_name(b: &Battle, side: u8) -> &'static str {
+    match b.custom.sides[side as usize & 1].unlocks.version {
+        GameVersion::Gregar => "gregar",
+        GameVersion::Falzar => "falzar",
     }
 }
 
@@ -292,19 +363,41 @@ fn state_number(s: SlotState) -> usize {
     }
 }
 
+/// The Cross window's map the screen shows, if it shows one: its opening
+/// steps every 3 ticks (`sub_8027834`), then the window with its Crosses,
+/// until it closes (`sub_802790C`, 5 ticks) or the Cross chosen is put on
+/// (`sub_8027AAE`).
+fn cross_map(s: &Screen) -> Option<usize> {
+    let full = CROSS_OPENING_MAPS + s.crosses.count.max(1) as usize - 1;
+    match s.phase {
+        Phase::CrossWindowOpening { tick } if tick >= 3 => Some(tick as usize / 3 - 1),
+        Phase::CrossWindow { .. } | Phase::Description { from_cross_window: true, .. } | Phase::CrossWindowClosing { .. } => {
+            Some(full)
+        }
+        Phase::CrossChosen { tick } if tick < CROSS_PUT_ON_TICK => Some(full),
+        _ => None,
+    }
+}
+
 impl Window {
     fn build(v: &View, problems: &mut Problems) -> Window {
         let a = v.assets;
         let mut w = Window { map: [MapEntry::default(); COLUMNS * ROWS], tiles: LayerTiles::new(), palettes: [[0; 16]; 16] };
-        // sub_8026840: the window's map, with the Cross tab or without.
-        if let Some(m) = a.window_maps.get(v.screen.look.cross_tab as usize) {
+        // sub_8026840: the window's map, with the Cross tab or without; or
+        // the Cross window's.
+        let cross = cross_map(v.screen);
+        let (map, patches) = match cross {
+            Some(i) => (a.cross_maps.get(i), &a.cross_patches),
+            None => (a.window_maps.get(v.screen.look.cross_tab as usize), &a.window_patches),
+        };
+        if let Some(m) = map {
             for (cell, e) in w.map.iter_mut().zip(m) {
                 *cell = *e;
             }
         }
         // Its patches, numbered on from their first tile.
-        let mut tile = a.window_patches.first_tile;
-        for p in &a.window_patches.patches {
+        let mut tile = patches.first_tile;
+        for p in &patches.patches {
             for j in 0..p.height as u16 {
                 for i in 0..p.width as u16 {
                     let n = if p.by_column { i * p.height as u16 + j } else { j * p.width as u16 + i };
@@ -327,11 +420,101 @@ impl Window {
         w.chip_window(v, problems);
         w.slots(v, problems);
         w.column(v, problems);
+        if cross.is_some_and(|i| i >= CROSS_OPENING_MAPS) {
+            w.cross_names(v);
+        }
         if v.screen.look.turn_limit {
             // sub_8029D34: "FINAL TURN", 7x2 at column 15, row 4 (past the
             // window's columns: drawn on the layer apart).
         }
         w
+    }
+
+    /// The Program Advance animation's names on the layer (`sub_802B80C`:
+    /// the picks', one every 8 ticks; `sub_802B8E0`: the recipe's taken
+    /// off; `sub_802B920`: the Program Advance's in their place at 16
+    /// ticks, all taken off at 96), as (name, row, palette) with each
+    /// name's tiles copied in, and palette 10's colours.
+    fn program_advance(&mut self, v: &View, problems: &mut Problems) -> Vec<(usize, i32, u8)> {
+        use nettai_battle::custom::screen::ProgramAdvanceStep as S;
+        let s = v.screen;
+        let (Phase::ProgramAdvance { anim }, Some(pa)) = (s.phase, s.program_advance) else { return Vec::new() };
+        if pa.len == 0 {
+            return Vec::new();
+        }
+        let side = &v.b.custom.sides[v.side as usize];
+        let picks: Vec<FolderChip> =
+            side.built.as_ref().and_then(|(h, _)| h.as_ref()).map(|h| h.selection.iter().flatten().copied().collect()).unwrap_or_default();
+        let in_recipe = |k: usize| (pa.start as usize..(pa.start + pa.len) as usize).contains(&k);
+        let row = |k: usize| ADVANCE_FIRST_ROW + 3 * k as i32;
+        let palette = |k: usize| if in_recipe(k) { 10 } else { 13 };
+        let shown: Vec<usize> = match anim.step {
+            S::Names => (0..picks.len().min((anim.timer as usize).div_ceil(8))).collect(),
+            S::Pause => (0..picks.len()).collect(),
+            S::Result => (0..picks.len()).filter(|&k| !in_recipe(k)).collect(),
+            _ => Vec::new(),
+        };
+        let mut out = Vec::new();
+        for k in shown {
+            self.put_advance_name(v, k, picks[k], problems);
+            out.push((k, row(k), palette(k)));
+        }
+        if matches!(anim.step, S::Result) && anim.timer >= 0x10 {
+            let k = pa.start as usize;
+            let name = &v.b.content.chip(pa.chip).name;
+            self.put_advance_text(v, k, name, None, problems);
+            out.push((k, row(k), 10));
+        }
+        if let Some(c) = v.assets.advance_name_colours.get(v.screen.look.pa_palette as usize) {
+            self.palettes[10][..4].copy_from_slice(c);
+        }
+        out
+    }
+
+    /// A pick's name and code into name `k`'s tiles.
+    fn put_advance_name(&mut self, v: &View, k: usize, c: FolderChip, problems: &mut Problems) {
+        let key = &v.b.content.defs.chip(c.id).key;
+        let number = bn6_compat::Compat::bn6().chips.get(key.as_str()).map_or(u16::MAX, |e| e.id);
+        let code = (number < ADVANCE_NO_CODE_FROM).then_some(c.code.0);
+        self.put_advance_text(v, k, &v.b.content.chip(c.id).name, code, problems);
+    }
+
+    fn put_advance_text(&mut self, v: &View, k: usize, name: &str, code: Option<u8>, problems: &mut Problems) {
+        let (mut glyphs, missing) = fonts::cell_glyphs(v.hud, name);
+        if !missing.is_empty() {
+            problems.note(format!("the Program Advance animation's {name:?}: the pack's font has no glyph for {missing:?}"));
+        }
+        glyphs.resize(ADVANCE_NAME_CELLS, 0);
+        if let Some(code) = code {
+            let letter = if code < 26 { char::from(b'A' + code).to_string() } else { "*".to_string() };
+            if let Some(&g) = fonts::cell_glyphs(v.hud, &letter).0.first() {
+                glyphs[ADVANCE_NAME_CELLS - 1] = g;
+            }
+        }
+        let at = ADVANCE_NAME_TILE + (2 * ADVANCE_NAME_CELLS * k) as u16;
+        self.tiles.put(at, &fonts::cell_text(v.hud, &glyphs, ADVANCE_NAME_CELLS, 0));
+    }
+
+    /// `sub_802794A`: the Crosses' names (`sub_8029D94`: the one under the
+    /// cursor in its own look) over the Cross window's map, and palette 10
+    /// the Cross under the cursor's (`sub_8029EAC`: a used one's darker).
+    fn cross_names(&mut self, v: &View) {
+        let w = &v.screen.crosses;
+        let own = v.own;
+        for slot in 0..w.count.min(5) as usize {
+            let name = w.offered[slot] as usize + if slot == w.cursor as usize { 0 } else { 5 };
+            let at = CROSS_NAME_TILE + (CROSS_NAME_TILES * slot) as u16;
+            self.tiles.put_part(at, &own.cross_names, CROSS_NAME_TILES * name, CROSS_NAME_TILES);
+            for i in 0..CROSS_NAME_TILES {
+                let (x, y) = (1 + i % 9, 1 + 2 * slot + i / 9);
+                self.map[y * COLUMNS + x] = MapEntry { tile: at + i as u16, hflip: false, vflip: false, palette: 10 };
+            }
+        }
+        let c = w.cursor as usize;
+        let index = w.offered[c] as usize + if w.marked[c] { 5 } else { 0 };
+        if let Some(p) = own.cross_palettes.get(index) {
+            self.palettes[10] = *p;
+        }
     }
 
     /// `sub_8028476`: the chip window shows what it was last drawn for: a
@@ -371,7 +554,8 @@ impl Window {
                 blank_details(self, p);
             }
             SlotKind::BeastOut => {
-                let p = Picture { palette: a.pictures.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..a.pictures.beast_out.clone() };
+                let own = v.own;
+                let p = Picture { palette: own.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..own.beast_out.clone() };
                 blank_details(self, &p);
             }
             SlotKind::Redeal { .. } => blank_details(self, &a.pictures.redeal),
@@ -401,13 +585,20 @@ impl Window {
             }
             None => problems.note(format!("chip {:?} ({}) has no picture in the pack", def.key, data.name)),
         }
+        // The frame's colours by class, a dark chip's (of the first
+        // three classes) dark.
         let class = match data.class {
-            ChipClass::Standard => 0,
-            ChipClass::Mega => 1,
-            ChipClass::Giga => 2,
-            _ => 0,
+            ChipClass::Standard => Some(0),
+            ChipClass::Mega => Some(1),
+            ChipClass::Giga => Some(2),
+            _ => None,
         };
-        self.palettes[9] = a.frame_palettes.get(class).copied().unwrap_or([0; 16]);
+        let frame = match class {
+            Some(_) if data.flags.has(ChipFlags::DARK) => 3,
+            Some(c) => c,
+            None => 0,
+        };
+        self.palettes[9] = a.frame_palettes.get(frame).copied().unwrap_or([0; 16]);
         let code = c.code.0.min(NO_CODE) as usize;
         self.tiles.put_part(CODE_TILE, &a.codes, 2 * code, 2);
         let family = data.family as usize;
@@ -456,7 +647,7 @@ impl Window {
                     at += 6;
                 }
                 SlotKind::Ok | SlotKind::Redeal { right_half: true } | SlotKind::Scrap { right_half: true } => {}
-                SlotKind::BeastOut => self.tiles.put_part(at, &a.beast_buttons, 8 * (state != 0) as usize, 8),
+                SlotKind::BeastOut => self.tiles.put_part(at, &v.own.beast_buttons, 8 * (state != 0) as usize, 8),
                 SlotKind::Redeal { right_half: false } => {
                     self.tiles.put_part(at, &a.redeal_buttons, 12 * state, 12);
                     at += 12;
@@ -470,7 +661,7 @@ impl Window {
                     self.tiles.put_part(at + 4, &a.slot_codes, 2 * EMPTY_SLOT_CODE as usize, 2);
                     at += 6;
                 }
-                SlotKind::Hidden if s as u8 == SPECIAL_SLOT => self.tiles.put_part(at, &a.beast_buttons, 24, 8),
+                SlotKind::Hidden if s as u8 == SPECIAL_SLOT => self.tiles.put_part(at, &v.own.beast_buttons, 24, 8),
                 SlotKind::Hidden => {
                     self.tiles.fill(at, 6, BLANK_1);
                     at += 6;
@@ -626,6 +817,35 @@ const BUTTON_CURSOR: CursorShape = CursorShape {
     ],
 };
 
+/// `sub_80289E4`: the Cross window's cursor, a box around the Cross under
+/// it: four corners, then seven edge pieces above and below (`byte_8028A30`:
+/// y, x, flips), in sprite palette 14.
+fn cross_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<'a>> {
+    let (x, y) = (5, 5 + 16 * v.screen.crosses.cursor as i32);
+    let corners = [(2, 3, false, false), (2, 0x43, true, false), (0xC, 0x43, true, true), (0xC, 3, false, true)];
+    let edges = (0..7).map(|i| (2, 0xB + 8 * i, false, false)).chain((0..7).map(|i| (0xC, 0xB + 8 * i, false, true)));
+    let pieces = corners.into_iter().map(|c| (c, 0)).chain(edges.map(|e| (e, 1)));
+    let palette = a.cross_cursor_palette;
+    pieces
+        .map(|((dy, dx, hflip, vflip), edge)| SpritePart {
+            x: ((x + dx) & 0x1FF) as u16,
+            y: (y + dy) as u8,
+            width: 8,
+            height: 8,
+            tiles: &a.cross_cursor,
+            first_tile: 2 * (frame as usize & 1) + edge,
+            hflip,
+            vflip,
+            palette,
+            priority: 1,
+            alpha: None,
+            mosaic: None,
+            vscale: None,
+            affine: None,
+        })
+        .collect()
+}
+
 fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<'a>> {
     let s = v.screen;
     let slot = s.cursor;
@@ -707,11 +927,11 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
 
 /// The emblem's 32x32 sprite: blank but for the navi's emblem in its
 /// middle 2x2 tiles (`off_802A744`, `sub_802812C`).
-pub fn emblem_tiles(a: &CustomScreen, navi_number: usize) -> Tiles {
+pub fn emblem_tiles(a: &CustomScreen, version: &str, navi_number: usize) -> Tiles {
     let e = a.emblem_of.get(navi_number).copied().unwrap_or(0) as usize;
     let mut t = Tiles { pixels: vec![0; 16 * Tiles::TILE] };
     for (k, place) in [5usize, 6, 9, 10].into_iter().enumerate() {
-        if let Some(src) = a.emblems.get(4 * e + k) {
+        if let Some(src) = a.versioned.get(version).emblems.get(4 * e + k) {
             t.pixels[place * Tiles::TILE..(place + 1) * Tiles::TILE].copy_from_slice(src);
         }
     }
@@ -757,10 +977,22 @@ pub fn draw<'a>(
         problems.note("the pack has no custom screen graphics (extract it again)".into());
         return;
     }
-    let v = View { b, side: b.setup.local_side & 1, screen, assets: a, hud: &assets.hud };
+    let side = b.setup.local_side & 1;
+    let v = View { b, side, screen, assets: a, own: a.versioned.get(version_name(b, side)), hud: &assets.hud };
     let place = placement(screen);
-    let w = Window::build(&v, problems);
+    let mut w = Window::build(&v, problems);
+    let advance_names = w.program_advance(&v, problems);
     w.draw(hud_layer, place);
+    // The Program Advance's names, a column right of the layer's scroll
+    // (`sub_802BA18`), each 9x2 cells column by column.
+    let col = (place.scroll >> 3) as i32 + 1;
+    for (k, row, palette) in advance_names {
+        let first = ADVANCE_NAME_TILE + (2 * ADVANCE_NAME_CELLS * k) as u16;
+        for i in 0..2 * ADVANCE_NAME_CELLS as u16 {
+            let e = MapEntry { tile: first + i, hflip: false, vflip: false, palette };
+            w.cell(hud_layer, e, col + (i / 2) as i32, row + (i % 2) as i32, place.scroll);
+        }
+    }
     if screen.look.turn_limit && place.to == COLUMNS {
         // sub_8029D34: 7x2 at column 15, row 4.
         for i in 0..14u16 {
@@ -783,6 +1015,9 @@ pub fn draw<'a>(
     }
     if drawn.regular {
         queue.push(regular_part(&v, a));
+    }
+    if let Some(frame) = drawn.cross_cursor {
+        queue.extend(cross_cursor_parts(&v, a, frame));
     }
     for part in queue {
         list.insert_at(SPRITE_LAYER, 0, vec![part]);

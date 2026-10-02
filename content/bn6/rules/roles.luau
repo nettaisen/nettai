@@ -216,8 +216,40 @@ return define.roles {
         beast_over_burst = asset.sound("beast-over-burst"),
         -- A Cross navi starting its special's chip.
         cross_special = asset.sound("elmnt-man-2"),
-        -- SELECT with too little gauge: its player hears that it can't.
+        -- SELECT with too little gauge: its player hears that it can't (and
+        -- what can't be picked or taken back on the custom screen).
         refused = asset.sound("cant-jack-in"),
+        -- The custom screen's, which its player hears: the window slides in;
+        -- the cursor moves; SELECT hides and shows the window; a pick, OK,
+        -- a pick taken back; the Cross window opens and closes, a Cross is
+        -- put on; L's no-running message; R's description opens and closes;
+        -- Beast Out chosen (two sounds, the first by the console's version:
+        -- Falzar's, Gregar's); a Beast Out or Cross taken back;
+        -- ChpShufl's re-deal and its shuffles; DustCross's scrap, a chip at a
+        -- time and when it is done; the Program Advance animation's chips of
+        -- the recipe and the Program Advance.
+        custom_open = asset.sound("select-79"),
+        custom_cursor = asset.sound("menu-cur-move"),
+        custom_hide = asset.sound("cur-move-80"),
+        custom_pick = asset.sound("menu-select"),
+        custom_ok = asset.sound("select-82"),
+        custom_back = asset.sound("exit-submenu"),
+        custom_cross_open = asset.sound("select-7a"),
+        custom_cross_close = asset.sound("cross-window-close"),
+        custom_cross_chosen = asset.sound("delta-ray-2"),
+        custom_run_message = asset.sound("unselect-7b"),
+        custom_description = asset.sound("description-open"),
+        custom_description_close = asset.sound("description-close"),
+        custom_beast_out_falzar = asset.sound("beast-out-chosen-falzar"),
+        custom_beast_out_gregar = asset.sound("beast-out-chosen-gregar"),
+        custom_beast_out_flash = asset.sound("blinding-flash"),
+        custom_cancel = asset.sound("custom-cancel"),
+        custom_redeal = asset.sound("elmnt-man-2"),
+        custom_redeal_shuffle = asset.sound("hop"),
+        custom_scrap = asset.sound("blizzard-grow"),
+        custom_scrap_done = asset.sound("elmnt-man-2"),
+        program_advance_part = asset.sound("err-select-91"),
+        program_advance = asset.sound("delta-ray-2"),
     },
     music = {
         -- A link battle's, whatever its stage's.

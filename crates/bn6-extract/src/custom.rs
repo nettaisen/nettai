@@ -5,7 +5,10 @@
 //! `off_802A744` its sprites).
 
 use crate::{Rom, u32at};
-use nettai_assets::{ChipArt, CustomScreen, MapEntry, MapPatch, PatchList, Palette, Picture, SlotPictures, Tiles, palettes_from_bytes};
+use nettai_assets::{
+    ChipArt, CustomScreen, MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles, VersionPictures, Versioned,
+    palettes_from_bytes,
+};
 use nettai_content::names::AssetNames;
 
 /// The window frame's tiles, loaded at tile 1 (0x87 tiles).
@@ -43,8 +46,6 @@ const OK_PICKED: (u32, u32) = (0x0872_25B4, 0x0872_57F4);
 const OTHER: (u32, u32) = (0x0872_25B4, 0x0872_57D4);
 const REDEAL: (u32, u32) = (0x0872_2AF4, 0x0872_5854);
 const SCRAP: (u32, u32) = (0x0873_3E74, 0x0873_43D4);
-const BEAST_OUT: u32 = 0x0872_3034;
-const BEAST_OUT_PALETTES: (u32, usize) = (0x0872_5814, 2);
 /// Chip codes (8x16, `dword_86E2E98`), element icons and their colours
 /// (`dword_86E3598`, `dword_86E3B18`: six colours each), damage digits
 /// (`dword_86E411C`).
@@ -53,22 +54,83 @@ const ELEMENTS: (u32, usize) = (0x086E_3598, 11);
 const ELEMENT_COLOURS: u32 = 0x086E_3B18;
 const DIGITS: (u32, usize) = (0x086E_411C, 11);
 /// The slots' codes (16x8, `dword_86E591C`), the empty slot's icon, and the
-/// buttons (`byte_86E79CC`, `dword_86E441C`, `dword_86E4D9C`).
+/// re-deal and scrap buttons (`dword_86E441C`, `dword_86E4D9C`; Beast
+/// Out's, `byte_86E79CC`, is the version's).
 const SLOT_CODES: (u32, usize) = (0x086E_591C, 28);
 const EMPTY_ICON: u32 = 0x086E_601C;
-const BEAST_BUTTONS: (u32, usize) = (0x086E_79CC, 0x400);
 const REDEAL_BUTTONS: (u32, usize) = (0x086E_441C, 0x480);
-const SCRAP_BUTTONS: (u32, usize) = (0x086E_4D9C, 0x480);
+/// DustCross's has a fourth state, pressed (`sub_8028340`: 0x180 bytes a
+/// state).
+const SCRAP_BUTTONS: (u32, usize) = (0x086E_4D9C, 0x600);
 /// Sprites: the cursor's corner (`off_802A744`), the navis' emblems and
 /// their palettes by navi (`sub_802812C`), the Regular chip's frame
 /// (`sub_802899C`).
 const CURSOR: (u32, usize) = (0x086E_55BC, 0x40);
-const EMBLEMS: (u32, usize) = (0x086F_5834, 7);
+/// The Cross window's cursor (`off_802A744`'s fourth block, to sprite tile
+/// 0x392).
+const CROSS_CURSOR: (u32, usize) = (0x086E_57FC, 0x80);
+/// Sprite palette 14, which the battle loads (`byte_86A5D40`).
+const CROSS_CURSOR_PALETTE: u32 = 0x086A_5D40;
 const EMBLEM_PALETTES: (u32, usize) = (0x086E_56FC, 7);
 const EMBLEM_OF: u32 = 0x0802_819C;
 const EMBLEM_PALETTE_OF: u32 = 0x0802_818C;
 const LINK_NAVIS: usize = 12;
 const REGULAR: (u32, usize) = (0x086E_1238, 0x400);
+/// The Program Advance animation's names' colours (`byte_802BA48`: three
+/// sets of four).
+const ADVANCE_NAME_COLOURS: (u32, u32) = (0x0802_BA48, 3);
+
+/// What a version's own custom screen shows (`VersionPictures`), at its
+/// ROM's addresses (the code is at the same places in both US ROMs; the
+/// data it points at moved).
+struct VersionAddresses {
+    beast_out: u32,
+    beast_out_palettes: u32,
+    beast_buttons: u32,
+    emblems: u32,
+    /// `sub_8029D94`'s `dword_86E7DCC`: ten names of 0x240 bytes.
+    cross_names: u32,
+    /// `sub_8029EAC`'s `dword_86E944C`: ten palettes.
+    cross_palettes: u32,
+}
+
+const FALZAR: VersionAddresses = VersionAddresses {
+    beast_out: 0x0872_3034,
+    beast_out_palettes: 0x0872_5814,
+    beast_buttons: 0x086E_79CC,
+    emblems: 0x086F_5834,
+    cross_names: 0x086E_7DCC,
+    cross_palettes: 0x086E_944C,
+};
+
+/// The US Gregar ROM's (`MEGAMAN6_GXXBR5E`), read off the same code's
+/// literal pools.
+const GREGAR: VersionAddresses = VersionAddresses {
+    beast_out: 0x0872_0F70,
+    beast_out_palettes: 0x0872_3750,
+    beast_buttons: 0x086E_5950,
+    emblems: 0x086F_3770,
+    cross_names: 0x086E_5D50,
+    cross_palettes: 0x086E_73D0,
+};
+
+const BEAST_OUT_PALETTE_COUNT: u32 = 2;
+const BEAST_BUTTON_BYTES: usize = 0x400;
+const EMBLEM_COUNT: usize = 7;
+const CROSS_NAMES: (usize, usize) = (10, 0x240);
+const CROSS_PALETTE_COUNT: u32 = 10;
+
+fn version_pictures(rom: &Rom, a: &VersionAddresses) -> VersionPictures {
+    let palettes = |at: u32, n: u32| (0..n).map(|i| palette(rom, at + 32 * i)).collect::<Vec<_>>();
+    VersionPictures {
+        beast_out: Picture { tiles: tiles(rom, (a.beast_out, PICTURE_BYTES)), palette: palette(rom, a.beast_out_palettes) },
+        beast_out_palettes: palettes(a.beast_out_palettes, BEAST_OUT_PALETTE_COUNT),
+        beast_buttons: tiles(rom, (a.beast_buttons, BEAST_BUTTON_BYTES)),
+        emblems: tiles(rom, (a.emblems, 0x80 * EMBLEM_COUNT)),
+        cross_names: tiles(rom, (a.cross_names, CROSS_NAMES.0 * CROSS_NAMES.1)),
+        cross_palettes: palettes(a.cross_palettes, CROSS_PALETTE_COUNT),
+    }
+}
 
 fn tiles(rom: &Rom, (a, len): (u32, usize)) -> Tiles {
     Tiles::from_4bpp(rom.bytes(a, len))
@@ -105,8 +167,16 @@ fn rom_pointer(p: u32) -> bool {
 }
 
 /// The custom screen's graphics; `names` gives the chips' pictures their
-/// chips' keys.
-pub fn custom(rom: &Rom, names: &AssetNames) -> CustomScreen {
+/// chips' keys. With the Gregar ROM, a Gregar console's own pictures too
+/// (where they differ).
+pub fn custom(rom: &Rom, gregar: Option<&Rom>, names: &AssetNames) -> CustomScreen {
+    let mut versioned = Versioned::new(version_pictures(rom, &FALZAR));
+    if let Some(g) = gregar {
+        let own = version_pictures(g, &GREGAR);
+        if own != versioned.base {
+            versioned.versions.push(("gregar".into(), own));
+        }
+    }
     let glyphs = |(a, n): (u32, usize)| tiles(rom, (a, 0x40 * n));
     let palettes = |(a, n): (u32, usize)| (0..n as u32).map(|i| palette(rom, a + 32 * i)).collect::<Vec<_>>();
     CustomScreen {
@@ -133,8 +203,6 @@ pub fn custom(rom: &Rom, names: &AssetNames) -> CustomScreen {
         pictures: SlotPictures {
             ok: picture(rom, OK),
             ok_picked: picture(rom, OK_PICKED),
-            beast_out: Picture { tiles: tiles(rom, (BEAST_OUT, PICTURE_BYTES)), palette: palette(rom, BEAST_OUT_PALETTES.0) },
-            beast_out_palettes: palettes(BEAST_OUT_PALETTES),
             redeal: picture(rom, REDEAL),
             scrap: picture(rom, SCRAP),
             other: picture(rom, OTHER),
@@ -147,14 +215,18 @@ pub fn custom(rom: &Rom, names: &AssetNames) -> CustomScreen {
         digits: glyphs(DIGITS),
         slot_codes: glyphs(SLOT_CODES),
         empty_icon: tiles(rom, (EMPTY_ICON, 0x80)),
-        beast_buttons: tiles(rom, BEAST_BUTTONS),
         redeal_buttons: tiles(rom, REDEAL_BUTTONS),
         scrap_buttons: tiles(rom, SCRAP_BUTTONS),
+        versioned,
         cursor: tiles(rom, CURSOR),
-        emblems: tiles(rom, (EMBLEMS.0, 0x80 * EMBLEMS.1)),
+        cross_cursor: tiles(rom, CROSS_CURSOR),
+        cross_cursor_palette: palette(rom, CROSS_CURSOR_PALETTE),
         emblem_palettes: palettes(EMBLEM_PALETTES),
         emblem_of: rom.bytes(EMBLEM_OF, LINK_NAVIS).to_vec(),
         emblem_palette_of: rom.bytes(EMBLEM_PALETTE_OF, LINK_NAVIS).to_vec(),
         regular: tiles(rom, REGULAR),
+        advance_name_colours: (0..ADVANCE_NAME_COLOURS.1)
+            .map(|i| std::array::from_fn(|k| rom.u16(ADVANCE_NAME_COLOURS.0 + 8 * i + 2 * k as u32) & 0x7FFF))
+            .collect(),
     }
 }
