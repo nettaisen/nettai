@@ -245,7 +245,13 @@ pub fn battle_content(content: &Path, assets: &Path) -> Result<(nettai_battle::C
     let Some(root) = crate::root::read(content, &mut report) else { return Err(report) };
     let Some(index) = crate::names::read_index(assets, &mut report) else { return Err(report) };
     let Some(animations) = load_animations(assets, &mut report) else { return Err(report) };
-    let c = nettai_battle::Content { assets: index, animations, scripts: nettai_battle::content::Scripts::new(root.modules), ..Default::default() };
+    let c = nettai_battle::Content {
+        assets: index,
+        animations,
+        scripts: nettai_battle::content::Scripts::new(root.modules),
+        strings: root.strings,
+        ..Default::default()
+    };
     Ok((c, report))
 }
 

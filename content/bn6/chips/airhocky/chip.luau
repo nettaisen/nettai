@@ -8,8 +8,6 @@ local lockon = require("../../rules/lockon")
 
 return define.chip {
     id = "airhocky",
-    name = "AirHocky",
-    description = "Bounce \nthe puck\noff walls",
     codes = { "L", "M", "N" },
     element = "null",
     family = "break",

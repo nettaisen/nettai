@@ -20,7 +20,7 @@ const HP_BOX: u32 = 0x0801_EDFC;
 const GAUGE_FRAME: u32 = 0x0801_ED6C;
 /// The 8x16 font (glyph k = 0x40 bytes).
 const FONT: u32 = 0x086B_7AE0;
-const FONT_GLYPHS: u32 = 0xE0;
+pub(crate) const FONT_GLYPHS: u32 = 0xE0;
 /// The HUD's text lines (`TextScript86F0374`): a table of 16-bit offsets,
 /// then each line's glyphs up to its end mark.
 const TEXTS: u32 = 0x086F_0374;
@@ -88,23 +88,23 @@ const WAITING: u32 = 0x086F_2040;
 const WARNING: u32 = 0x086E_55FC;
 const WARNING_PALETTE: u32 = 0x086E_56FC;
 
-fn tiles(rom: &Rom, a: u32, len: usize) -> Tiles {
+pub(crate) fn tiles(rom: &Rom, a: u32, len: usize) -> Tiles {
     Tiles::from_4bpp(rom.bytes(a, len))
 }
 
-/// The HUD's text lines: a line with anything but glyphs in it (a text
-/// command) is cut there.
-fn texts(rom: &Rom) -> Vec<Vec<u16>> {
-    let offset = |i: u32| rom.u16(TEXTS + 2 * i) as u32;
+/// The HUD's text lines at `at` (`TEXTS` in the US ROMs): a line with
+/// anything but glyphs in it (a text command) is cut there.
+pub(crate) fn texts(rom: &Rom, at: u32) -> Vec<Vec<u16>> {
+    let offset = |i: u32| rom.u16(at + 2 * i) as u32;
     (0..offset(0) / 2)
         .map(|i| {
-            let line = rom.bytes(TEXTS + offset(i), 0x40);
+            let line = rom.bytes(at + offset(i), 0x40);
             line.iter().take_while(|&&c| c != TEXT_END && (c as u32) < FONT_GLYPHS).map(|&c| c as u16).collect()
         })
         .collect()
 }
 
-fn palette(rom: &Rom, a: u32) -> Palette {
+pub(crate) fn palette(rom: &Rom, a: u32) -> Palette {
     palettes_from_bytes(rom.bytes(a, 32))[0]
 }
 
@@ -113,7 +113,13 @@ fn map(rom: &Rom, a: u32, n: u32) -> Vec<MapEntry> {
 }
 
 fn banner(rom: &Rom, id: u32) -> BannerLayout {
-    let p = u32at(rom, BANNERS + 4 * id);
+    banner_at(rom, (BANNERS, BANNER_FILLER), id)
+}
+
+/// Banner `id` of a banner table and its glyph filler (`BANNERS`,
+/// `BANNER_FILLER` in the US ROMs).
+pub(crate) fn banner_at(rom: &Rom, (table, filler): (u32, u32), id: u32) -> BannerLayout {
+    let p = u32at(rom, table + 4 * id);
     let head = u32at(rom, p);
     let (x, y, kind) = (head as u8, (head >> 8) as u8, (head >> 16) as u8);
     let mut glyphs = Tiles::default();
@@ -128,11 +134,11 @@ fn banner(rom: &Rom, id: u32) -> BannerLayout {
             let t = tiles(rom, g, 0x40);
             glyphs.push(t.get(0).unwrap());
             glyphs.push(t.get(1).unwrap());
-            if g != BANNER_FILLER {
+            if g != filler {
                 q += 4;
             }
         }
-        if u32at(rom, q) == BANNER_FILLER {
+        if u32at(rom, q) == filler {
             q += 4;
         }
         if kind == 1 {
@@ -218,17 +224,9 @@ pub fn hud(rom: &Rom, gregar: &Rom, names: &AssetNames) -> Hud {
             )
             .collect(),
         navi_box: tiles(rom, NAVI_BOX, 0x80),
-        dialogue_font: DialogueFont {
-            pixels: rom
-                .bytes(DIALOGUE_FONT, 0x60 * DIALOGUE_GLYPHS as usize)
-                .iter()
-                .flat_map(|&b| [b & 15, b >> 4])
-                .collect(),
-            advances: rom.bytes(DIALOGUE_ADVANCES, DIALOGUE_GLYPHS as usize).to_vec(),
-            chars: names.glyphs.iter().chain(&names.dialogue_glyphs).take(DIALOGUE_GLYPHS as usize).cloned().collect(),
-        },
+        dialogue_font: dialogue_font(rom, (DIALOGUE_FONT, DIALOGUE_ADVANCES), (&names.glyphs, &names.dialogue_glyphs)),
         pause,
-        texts: texts(rom),
+        texts: texts(rom, TEXTS),
         banners: (0..BANNER_COUNT).map(|id| banner(rom, id)).collect(),
         banner_digits,
         banner_palette: palette(rom, BANNER_PALETTE),
@@ -237,6 +235,19 @@ pub fn hud(rom: &Rom, gregar: &Rom, names: &AssetNames) -> Hud {
         warning: tiles(rom, WARNING, 0x100),
         warning_palette: palette(rom, WARNING_PALETTE),
         chatbox: chatbox(rom),
+        language: String::new(),
+        languages: Vec::new(),
+    }
+}
+
+/// The dialogue font at `font` with its advances at `advances`, its
+/// glyphs drawing `chars` (the 8x16 font's characters, then the dialogue
+/// font's past them).
+pub(crate) fn dialogue_font(rom: &Rom, (font, advances): (u32, u32), (cell, dialogue): (&[String], &[String])) -> DialogueFont {
+    DialogueFont {
+        pixels: rom.bytes(font, 0x60 * DIALOGUE_GLYPHS as usize).iter().flat_map(|&b| [b & 15, b >> 4]).collect(),
+        advances: rom.bytes(advances, DIALOGUE_GLYPHS as usize).to_vec(),
+        chars: cell.iter().chain(dialogue).take(DIALOGUE_GLYPHS as usize).cloned().collect(),
     }
 }
 

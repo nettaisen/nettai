@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 local protoman = define.chip {
     id = "protoman",
-    name = "ProtoMan",
-    description = "Move in\nand slice\nthe enemy",
     codes = { "B", "*" },
     element = "null",
     family = "sword",
@@ -25,8 +23,6 @@ local protoman = define.chip {
 
 local protomn_ex = define.chip {
     id = "protomn-ex",
-    name = "ProtoMn[EX]",
-    description = "Move in\nand slice\nthe enemy",
     codes = { "B" },
     element = "null",
     family = "sword",
@@ -44,8 +40,6 @@ local protomn_ex = define.chip {
 
 local protomn_sp = define.chip {
     id = "protomn-sp",
-    name = "ProtoMn[SP]",
-    description = "Move in\nand slice\nthe enemy",
     codes = { "B" },
     element = "null",
     family = "sword",

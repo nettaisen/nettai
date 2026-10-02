@@ -86,7 +86,6 @@ blank_shot.action = define.action { id = "megaman/blank-shot/action", state = { 
 
 blank_shot.weapon = define.weapon {
     id = "megaman/blank-shot",
-    name = "Blank shot",
     -- The charge table's row 2; Charge 5 reads on into row 3's first
     -- entry, as the original's table does.
     charge_ticks = { 180, 180, 180, 180, 180, 40 },

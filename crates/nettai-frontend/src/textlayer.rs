@@ -148,18 +148,27 @@ pub enum Plane {
     Sprite(u32),
 }
 
-/// Collects the frame's text items while it is drawn.
+/// Collects the frame's text items while it is drawn, and gives the
+/// display text for content in the player's language (`strings`).
 pub struct TextSink<'f> {
     pub mode: TextMode,
     font: Option<&'f VectorFont>,
     measure: Option<&'f std::cell::RefCell<crate::vfont::TextRenderer>>,
     items: Vec<(Plane, TextItem)>,
     next_tag: u32,
+    /// The display text the frame shows for content: the player's
+    /// language's strings, else the content's own.
+    pub strings: crate::strings::DisplayText<'f>,
 }
 
 impl<'f> TextSink<'f> {
     pub fn new(mode: TextMode, font: Option<&'f VectorFont>) -> TextSink<'f> {
-        TextSink { mode, font, measure: None, items: Vec::new(), next_tag: 0 }
+        TextSink { mode, font, measure: None, items: Vec::new(), next_tag: 0, strings: Default::default() }
+    }
+
+    /// With a language's strings table (none: the content's own strings).
+    pub fn with_language(self, strings: Option<&'f nettai_content::locale::Strings>) -> TextSink<'f> {
+        TextSink { strings: crate::strings::DisplayText::new(strings), ..self }
     }
 
     /// With the layouts the text layer will use, so `fitted_width` can say

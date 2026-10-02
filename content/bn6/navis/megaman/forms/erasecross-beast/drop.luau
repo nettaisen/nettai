@@ -146,7 +146,6 @@ drop_weapon.action = define.action {
 
 drop_weapon.weapon = define.weapon {
     id = "erasecross-beast/drop",
-    name = "EraseCross Beast drop",
     -- The charge table's row 0x15, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 120, 120, 120, 120, 120, 120, 110, 100 },

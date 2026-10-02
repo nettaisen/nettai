@@ -377,8 +377,14 @@ counts what is drawn with them as a known difference (the frontend's `known.tsv`
 **HUD.**
 
 - `sub_801C640` skips a redraw when its bytes +0x18 and +0x19 agree.
-- `sub_801CA34` and `sub_801E44C` copy their tiles at a coordinate one less in JP (7 for 8, 10 for 11).
-- The custom screen's close (`sub_8026DC4`) also starts HUD task 0x40 in JP (`sub_801E012`).
+- `sub_801CA34` and `sub_801E44C` copy their tiles at a coordinate one less in JP (7 for 8, 10 for 11): the width
+  of "Cstmzing...", whose Japanese picture (カスタム中…) is seven tiles wide where the US's is eight, and of the
+  block `sub_801E44C` clears. The frontend draws it as wide as the pack's picture in the language
+  (docs/design/text-rendering.md §10).
+- The custom screen's close (`sub_8026DC4`) also starts HUD task 0x40 in JP (`sub_801E012`): the next chip's name
+  shows from the close, through the turn's banner, until the fight's first decision sets the window; the US games
+  show it from that decision. The engine's `Battle::chip_hud` is the US games'; the frontend draws the Japanese
+  window on a Japanese console's screen (nettai-frontend `HudState`).
 - The HUD's graphics list (between `sub_801EC90` and `sub_801FE00`) has one transfer fewer in JP.
 
 **Text.**

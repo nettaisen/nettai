@@ -125,8 +125,6 @@ local PHASES: { [number]: (me: Object, s: State) -> () } = { [JUMP] = jump, [PRE
 
 return define.chip {
     id = "heatpres",
-    name = "HeatPres",
-    description = "Sprd fire\nattk with\nDpad.3pnl",
     codes = { "H" },
     element = "fire",
     family = "fire",

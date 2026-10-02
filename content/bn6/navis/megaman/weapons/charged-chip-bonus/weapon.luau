@@ -4,7 +4,6 @@
 
 return define.weapon {
     id = "megaman/charged-chip-bonus",
-    name = "Charged chip bonus",
     charge_ticks = { 20, 20, 20, 20, 20, 70, 60, 50 }, -- by Charge 0..7; past 4, the next routine's row
     -- As an A-charge: the charged chip is the chip itself, with the charge's
     -- bonus. (The original's routine is empty; nothing starts it.)

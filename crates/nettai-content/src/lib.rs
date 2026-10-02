@@ -15,6 +15,11 @@
 //!   ([`song`]), voicegroups, key maps and PSG waves as TOML, samples as
 //!   WAV ([`sound`]).
 //!
+//! - Display text: a content root's `locales/<language>.toml`, by
+//!   definition key; the own language's is the content's strings, which the
+//!   battle counts the chatbox's timing from, the others a frontend's alone
+//!   ([`locale`]).
+//!
 //! [`pack`] ties them together and loads each part straight from its
 //! files; [`timing`] reads the simulation's animation timing alone. Every import reports what
 //! it found in a [`report::Report`]; nothing is silently approximated.
@@ -28,6 +33,7 @@ pub mod custom;
 pub mod hud;
 pub mod image;
 pub mod lint;
+pub mod locale;
 pub mod midi;
 pub mod names;
 pub mod pack;

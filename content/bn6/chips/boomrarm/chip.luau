@@ -15,8 +15,6 @@ local PALETTE = 3
 -- chains it.)
 return define.chip {
     id = "boomrarm",
-    name = "BoomrArm",
-    description = "\n\n",
     codes = { "A", "B", "C", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 50, damage = 0, hit_param = 10, lockout = 20,

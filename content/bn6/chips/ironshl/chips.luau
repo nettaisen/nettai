@@ -11,8 +11,6 @@ local SPEEDS = { 0x6_0000, 0x7_0000, 0x8_0000 }
 
 local ironshl1 = define.chip {
     id = "ironshl1",
-    name = "IronShl1",
-    description = "Fire off\npiercing\nshell.",
     codes = { "J", "K", "L" },
     element = "null",
     family = "break",
@@ -31,8 +29,6 @@ local ironshl1 = define.chip {
 
 local ironshl2 = define.chip {
     id = "ironshl2",
-    name = "IronShl2",
-    description = "Fire off\npiercing\nshell.",
     codes = { "C", "D", "E" },
     element = "null",
     family = "break",
@@ -51,8 +47,6 @@ local ironshl2 = define.chip {
 
 local ironshl3 = define.chip {
     id = "ironshl3",
-    name = "IronShl3",
-    description = "Fire off\npiercing\nshell.",
     codes = { "L", "M", "N" },
     element = "null",
     family = "break",

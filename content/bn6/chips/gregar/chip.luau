@@ -26,8 +26,6 @@ local ART_PALETTE = {
 
 return define.chip {
     id = "gregar",
-    name = "Gregar",
-    description = "Gregar's\nbreath\nattack!",
     art_palette = ART_PALETTE,
     codes = { "X" },
     element = "null",
