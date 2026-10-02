@@ -91,6 +91,10 @@ pub struct ChipEntry {
     pub damage_formula: Option<u16>,
     #[serde(default)]
     pub colonel: Option<VersionRecord>,
+    /// An e-Reader card's chip (LeadRaid, ChaosLrd): the save slot its
+    /// name, description and picture palette are in (bn5-map.md §6.4).
+    #[serde(default)]
+    pub save_slot: Option<u8>,
 }
 
 /// A BN5 panel type: its name, the flag word the game gives it, and the
