@@ -899,9 +899,10 @@ fn icon_parts<'a>(
     }
     let hand = &b.hands[o.alliance as usize];
     let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten() else { return };
-    // A chip's icon is the pack's image under the chip's key.
+    // A chip's icon is the pack's image under the chip's key, as its root
+    // writes it (`cannon` of `bn6:cannon`).
     let def = b.content.defs.chip(chip);
-    let Some(tiles) = hud.chip_icon(&def.key) else {
+    let Some(tiles) = hud.chip_icon(nettai_content_api::keys::local(&def.key)) else {
         problems.note(format!("chip {:?} has no icon in the pack", def.key));
         return;
     };
