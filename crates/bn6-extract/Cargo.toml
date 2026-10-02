@@ -7,8 +7,8 @@ description = "Extracts a BN6 (US Falzar) ROM's battle assets (graphics, sound) 
 
 [dependencies]
 m4a.workspace = true
-bn6-assets = { path = "../bn6-assets" }
-bn6-content = { path = "../bn6-content" }
+nettai-assets = { path = "../nettai-assets" }
+nettai-content = { path = "../nettai-content" }
 # The assets' names (content/bn6/compat/assets.toml).
 bn6-compat.workspace = true
-bn6-content-api = { path = "../bn6-content-api" }
+nettai-content-api = { path = "../nettai-content-api" }
