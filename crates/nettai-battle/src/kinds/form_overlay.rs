@@ -138,7 +138,8 @@ fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
 fn init(b: &mut Battle, r: ObjectRef) {
     let v = vars(b, r).clone();
     let sprite = v.sprite.expect("form overlay has a sprite");
-    let anim = b.objects.get(owner(b, r)).anim.wrapping_add(v.anim_offset);
+    let sum = u16::from(b.objects.get(owner(b, r)).anim) + u16::from(v.anim_offset);
+    let anim = sum as u8;
     let palette = palette(b, r, &v);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
@@ -149,7 +150,11 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.anim = anim;
-    o.anim_loaded = anim;
+    // One halfword store sets both: the loaded animation gets the sum's
+    // carry, so unless the animation is 0 the first tick restarts it,
+    // undoing the step above (which keeps the overlay in step with its
+    // owner).
+    o.anim_loaded = (sum >> 8) as u8;
     set_progress(b, r, Progress::UPDATE);
     tick(b, r);
 }
