@@ -59,6 +59,11 @@ pub struct ScreenLook {
     pub face: Option<nettai_content_api::FormHandle>,
     /// The battle's last turns have come (`sub_800A97A`).
     pub late_turns: bool,
+    /// The Program Advance animation's counter (`word_2036660`+0xC: every
+    /// tick, from 0 when the names begin), and which of its three colour
+    /// sets background palette 10's first colours have (`byte_802BA48`).
+    pub pa_ticks: u32,
+    pub pa_palette: u8,
 }
 
 /// The cursor's dark-chip hover (`sub_802A2B0`, `+0x12`), with the step
@@ -264,6 +269,18 @@ impl ScreenLook {
             slot_chips: [None; 12],
             face: None,
             late_turns,
+            pa_ticks: 0,
+            pa_palette: 0,
+        }
+    }
+
+    /// `sub_802B9E4`: every 4 ticks of the names, the pause and the
+    /// result, the names' colours step through three sets, 16 ticks each
+    /// (the fourth is the second's).
+    pub(crate) fn blink_program_advance(&mut self) {
+        if self.pa_ticks & 3 == 0 {
+            let set = ((self.pa_ticks >> 4) & 3) as u8;
+            self.pa_palette = if set == 3 { 1 } else { set };
         }
     }
 

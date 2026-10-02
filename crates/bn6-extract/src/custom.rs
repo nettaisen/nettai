@@ -76,6 +76,9 @@ const EMBLEM_OF: u32 = 0x0802_819C;
 const EMBLEM_PALETTE_OF: u32 = 0x0802_818C;
 const LINK_NAVIS: usize = 12;
 const REGULAR: (u32, usize) = (0x086E_1238, 0x400);
+/// The Program Advance animation's names' colours (`byte_802BA48`: three
+/// sets of four).
+const ADVANCE_NAME_COLOURS: (u32, u32) = (0x0802_BA48, 3);
 
 /// What a version's own custom screen shows (`VersionPictures`), at its
 /// ROM's addresses (the code is at the same places in both US ROMs; the
@@ -222,5 +225,8 @@ pub fn custom(rom: &Rom, gregar: Option<&Rom>, names: &AssetNames) -> CustomScre
         emblem_of: rom.bytes(EMBLEM_OF, LINK_NAVIS).to_vec(),
         emblem_palette_of: rom.bytes(EMBLEM_PALETTE_OF, LINK_NAVIS).to_vec(),
         regular: tiles(rom, REGULAR),
+        advance_name_colours: (0..ADVANCE_NAME_COLOURS.1)
+            .map(|i| std::array::from_fn(|k| rom.u16(ADVANCE_NAME_COLOURS.0 + 8 * i + 2 * k as u32) & 0x7FFF))
+            .collect(),
     }
 }

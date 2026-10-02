@@ -43,6 +43,15 @@ const CROSS_NAME_TILES: usize = 18;
 /// The Cross window's maps: three opening steps, then the window with one
 /// to five Crosses.
 const CROSS_OPENING_MAPS: usize = 3;
+/// The Program Advance animation's names (`sub_802B80C`): 9 cells of the
+/// 8x16 font from tile 0xAB, 18 tiles a name; a pick's code in its last
+/// cell; a name every 3 rows from row 5, a column right of the layer's
+/// scroll; the recipe's in palette 10, the others' in 13.
+const ADVANCE_NAME_TILE: u16 = 0xAB;
+const ADVANCE_NAME_CELLS: usize = 9;
+const ADVANCE_FIRST_ROW: i32 = 5;
+/// The chips past the table's that the animation shows no code for.
+const ADVANCE_NO_CODE_FROM: u16 = 0x160;
 const LAYER_TILES: usize = 0x200;
 /// The window's background colours: what the original copies over cells
 /// the chip window leaves empty (`byte_802A6C0`, `byte_802A680`,
@@ -419,6 +428,71 @@ impl Window {
             // window's columns: drawn on the layer apart).
         }
         w
+    }
+
+    /// The Program Advance animation's names on the layer (`sub_802B80C`:
+    /// the picks', one every 8 ticks; `sub_802B8E0`: the recipe's taken
+    /// off; `sub_802B920`: the Program Advance's in their place at 16
+    /// ticks, all taken off at 96), as (name, row, palette) with each
+    /// name's tiles copied in, and palette 10's colours.
+    fn program_advance(&mut self, v: &View, problems: &mut Problems) -> Vec<(usize, i32, u8)> {
+        use nettai_battle::custom::screen::ProgramAdvanceStep as S;
+        let s = v.screen;
+        let (Phase::ProgramAdvance { anim }, Some(pa)) = (s.phase, s.program_advance) else { return Vec::new() };
+        if pa.len == 0 {
+            return Vec::new();
+        }
+        let side = &v.b.custom.sides[v.side as usize];
+        let picks: Vec<FolderChip> =
+            side.built.as_ref().and_then(|(h, _)| h.as_ref()).map(|h| h.selection.iter().flatten().copied().collect()).unwrap_or_default();
+        let in_recipe = |k: usize| (pa.start as usize..(pa.start + pa.len) as usize).contains(&k);
+        let row = |k: usize| ADVANCE_FIRST_ROW + 3 * k as i32;
+        let palette = |k: usize| if in_recipe(k) { 10 } else { 13 };
+        let shown: Vec<usize> = match anim.step {
+            S::Names => (0..picks.len().min((anim.timer as usize).div_ceil(8))).collect(),
+            S::Pause => (0..picks.len()).collect(),
+            S::Result => (0..picks.len()).filter(|&k| !in_recipe(k)).collect(),
+            _ => Vec::new(),
+        };
+        let mut out = Vec::new();
+        for k in shown {
+            self.put_advance_name(v, k, picks[k], problems);
+            out.push((k, row(k), palette(k)));
+        }
+        if matches!(anim.step, S::Result) && anim.timer >= 0x10 {
+            let k = pa.start as usize;
+            let name = &v.b.content.chip(pa.chip).name;
+            self.put_advance_text(v, k, name, None, problems);
+            out.push((k, row(k), 10));
+        }
+        if let Some(c) = v.assets.advance_name_colours.get(v.screen.look.pa_palette as usize) {
+            self.palettes[10][..4].copy_from_slice(c);
+        }
+        out
+    }
+
+    /// A pick's name and code into name `k`'s tiles.
+    fn put_advance_name(&mut self, v: &View, k: usize, c: FolderChip, problems: &mut Problems) {
+        let key = &v.b.content.defs.chip(c.id).key;
+        let number = bn6_compat::Compat::bn6().chips.get(key.as_str()).map_or(u16::MAX, |e| e.id);
+        let code = (number < ADVANCE_NO_CODE_FROM).then_some(c.code.0);
+        self.put_advance_text(v, k, &v.b.content.chip(c.id).name, code, problems);
+    }
+
+    fn put_advance_text(&mut self, v: &View, k: usize, name: &str, code: Option<u8>, problems: &mut Problems) {
+        let (mut glyphs, missing) = fonts::cell_glyphs(v.hud, name);
+        if !missing.is_empty() {
+            problems.note(format!("the Program Advance animation's {name:?}: the pack's font has no glyph for {missing:?}"));
+        }
+        glyphs.resize(ADVANCE_NAME_CELLS, 0);
+        if let Some(code) = code {
+            let letter = if code < 26 { char::from(b'A' + code).to_string() } else { "*".to_string() };
+            if let Some(&g) = fonts::cell_glyphs(v.hud, &letter).0.first() {
+                glyphs[ADVANCE_NAME_CELLS - 1] = g;
+            }
+        }
+        let at = ADVANCE_NAME_TILE + (2 * ADVANCE_NAME_CELLS * k) as u16;
+        self.tiles.put(at, &fonts::cell_text(v.hud, &glyphs, ADVANCE_NAME_CELLS, 0));
     }
 
     /// `sub_802794A`: the Crosses' names (`sub_8029D94`: the one under the
@@ -906,8 +980,19 @@ pub fn draw<'a>(
     let side = b.setup.local_side & 1;
     let v = View { b, side, screen, assets: a, own: a.versioned.get(version_name(b, side)), hud: &assets.hud };
     let place = placement(screen);
-    let w = Window::build(&v, problems);
+    let mut w = Window::build(&v, problems);
+    let advance_names = w.program_advance(&v, problems);
     w.draw(hud_layer, place);
+    // The Program Advance's names, a column right of the layer's scroll
+    // (`sub_802BA18`), each 9x2 cells column by column.
+    let col = (place.scroll >> 3) as i32 + 1;
+    for (k, row, palette) in advance_names {
+        let first = ADVANCE_NAME_TILE + (2 * ADVANCE_NAME_CELLS * k) as u16;
+        for i in 0..2 * ADVANCE_NAME_CELLS as u16 {
+            let e = MapEntry { tile: first + i, hflip: false, vflip: false, palette };
+            w.cell(hud_layer, e, col + (i / 2) as i32, row + (i % 2) as i32, place.scroll);
+        }
+    }
     if screen.look.turn_limit && place.to == COLUMNS {
         // sub_8029D34: 7x2 at column 15, row 4.
         for i in 0..14u16 {
