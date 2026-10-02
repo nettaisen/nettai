@@ -983,6 +983,17 @@ for one), and the volley's two or more targets (5: all three needles fall on the
 comparisons the new recording reaches one way are noted the same). The 7 recordings match the engine (main d5a4c6f4
 with the dragons' fifth fix), every frame (5,692) and sound call (166).
 
+**Second pass, batch 10: BugFix, LifeSync, FullCust (8 branches):** 2 taken by 2 new recordings, 6 unreachable:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0b0-bugfix/blind-viewer`, `beast-spent` | the glow hidden from a blind viewer (side 1's Silence on the recording console's player); BugFix with the Beast Out counter run out |
+
+The unreachable ones: BugFix's glow over a navi that isn't a player's (1: it copies its user's side's navi),
+LifeSync's sync (3: every netbattle is a link battle, where its effect skips to the end), FullCust's per-player
+gauge (1: battle flag 0x40) and the gauge set past full (1: its callers pass 0 or 0x4000, the limit). The 2
+recordings match the engine (this branch on main 2a35e451), every frame (4,797) and sound call (91).
+
 <!-- end: chip families, onesided -->
 
 ### 6.3 Custom screen keys
