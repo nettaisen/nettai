@@ -1,6 +1,8 @@
 --!strict
--- FstGauge (BN5 chip 0x079): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- FstGauge (BN5 chip 0x079): the user's custom gauge fills fast: BN6's (@bn6/lib/gauge-speed; BN5's the same code).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local gauge_speed = require("@bn6/lib/gauge-speed/controller")
 
 return define.chip {
     id = "fstgauge",
@@ -16,4 +18,5 @@ return define.chip {
     flags = { "dimming", "standard_library", "library" },
     extra_flags = { 128 },
     slot_in_limit = 1,
+    dimming = gauge_speed.fast,
 }
