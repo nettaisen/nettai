@@ -186,6 +186,12 @@ impl<G: Game, O: Observer<G>> BattleWorld<G, O> {
         &mut self.observer
     }
 
+    /// The observer, the world done with (a round's session over:
+    /// `Session::into_world`), to go on with the next round's world.
+    pub fn into_observer(self) -> O {
+        self.observer
+    }
+
     /// The state the world is parked at.
     pub fn state(&self) -> BattleState {
         BattleState { tick: self.tick, snapshot: self.game.battle().save_state() }
@@ -325,6 +331,10 @@ mod tests {
         assert_eq!(settled.len() as u32, s.settled_tick());
         assert!(seen.iter().any(|e| e.starts_with("back to")), "{seen:?}");
         assert!(settled.iter().any(|e| e.ends_with("with its state")), "{seen:?}");
+        // The round over, the observer goes on with the next round's world.
+        let seen = s.into_world().into_observer();
+        let next = BattleWorld::with_observer(standin(), 0, seen);
+        assert!(next.observer().0.len() > 12);
     }
 
     /// A tick that panics stops the battle (`RoundEnd::Error`) instead of
