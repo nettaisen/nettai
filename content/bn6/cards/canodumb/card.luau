@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Canodumb (1, キャノーダム in the Japanese games), 10 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "canodumb",
+return cards.card {
+    id = "patch-card/canodumb",
     name = "Canodumb",
     mb = 10,
     effects = {

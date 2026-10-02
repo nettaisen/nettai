@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Flashy (19, ピカラー in the Japanese games), 11 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "flashy",
+return cards.card {
+    id = "patch-card/flashy",
     name = "Flashy",
     mb = 11,
     effects = {

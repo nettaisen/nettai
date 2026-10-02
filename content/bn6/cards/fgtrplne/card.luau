@@ -1,10 +1,10 @@
 --!strict
 -- The patch card FgtrPlne (26, ゼロプレーン in the Japanese games), 20 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "fgtrplne",
+return cards.card {
+    id = "patch-card/fgtrplne",
     name = "FgtrPlne",
     mb = 20,
     effects = {

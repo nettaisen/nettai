@@ -1,11 +1,11 @@
 --!strict
 -- The patch card DiveMan (104, ダイブマン in the Japanese games), 42 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "diveman",
+return cards.card {
+    id = "patch-card/diveman",
     name = "DiveMan",
     mb = 42,
     effects = {

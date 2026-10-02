@@ -1,12 +1,12 @@
 --!strict
 -- The patch card Beetle (9, ボンビートル in the Japanese games), 11 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local b_button = require("./b-button")
 local chrgs = require("../../lib/patch-cards/chrgs")
 
-return define.patch_card {
-    id = "beetle",
+return cards.card {
+    id = "patch-card/beetle",
     name = "Beetle",
     mb = 11,
     effects = {

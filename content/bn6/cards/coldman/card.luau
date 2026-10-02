@@ -1,11 +1,11 @@
 --!strict
 -- The patch card ColdMan (98, コールドマン in the Japanese games), 34 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "coldman",
+return cards.card {
+    id = "patch-card/coldman",
     name = "ColdMan",
     mb = 34,
     effects = {

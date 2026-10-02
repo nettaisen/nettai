@@ -6,11 +6,14 @@
 //! corrected tick and the 10 speculated after it, saving each, then digest
 //! the settled state), against the 16.7 ms a frame has at 60 fps.
 //!
-//! cargo run --release -p nettai-netplay --example rollback_cost -- <trace.jsonl> <pack> [round]
+//! cargo run --release -p nettai-netplay --example rollback_cost -- <trace.jsonl> <pack> [round] [--frames A..B]
 //!
 //! (`<pack>`: the BN6 content pack whose assets the trace's battle names,
 //! from `bn6-extract content`; the battle content is this repository's
-//! content/bn6, or `$BN6_CONTENT`.)
+//! content/bn6, or `$BN6_CONTENT`. `--frames A..B`: those frames instead of
+//! the 2000 around the busiest; `--frames all`: the whole round. With the
+//! feature `luau-profile`, it also reports the calls into Luau per advance,
+//! by what is called: docs/design/rules-in-luau.md §6.5.)
 //!
 //! The content's modules (Luau) run what they define.
 
@@ -24,8 +27,13 @@ use nettai_netplay::{BattleState, BattleWorld};
 const DEPTH: usize = 10;
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    let usage = "usage: rollback_cost <trace.jsonl> <pack> [round]";
+    let mut args: Vec<String> = std::env::args().collect();
+    let usage = "usage: rollback_cost <trace.jsonl> <pack> [round] [--frames A..B | --frames all]";
+    let range: Option<String> = args.iter().position(|a| a == "--frames").map(|i| {
+        let v = args.get(i + 1).cloned().expect(usage);
+        args.drain(i..=i + 1);
+        v
+    });
     let path = args.get(1).expect(usage);
     let pack = args.get(2).expect(usage);
     let (content, _) =
@@ -62,7 +70,17 @@ fn main() {
     }
     let objects = |s: &BattleState| s.battle().objects.in_order().count();
     let busiest = (DEPTH..limit - 1).max_by_key(|&f| objects(&states[f])).unwrap();
-    let window = busiest.saturating_sub(1000).max(DEPTH)..(busiest + 1000).min(limit - 1);
+    let window = match range.as_deref() {
+        None => busiest.saturating_sub(1000).max(DEPTH)..(busiest + 1000).min(limit - 1),
+        Some("all") => DEPTH..limit - 1,
+        Some(range) => {
+            let (a, b) = range.split_once("..").expect(usage);
+            let (a, b): (usize, usize) = (a.parse().expect(usage), b.parse().expect(usage));
+            a.max(DEPTH)..b.min(limit - 1)
+        }
+    };
+    #[cfg(feature = "luau-profile")]
+    nettai_battle::behavior::profile::take();
     let (mut restore, mut advance, mut save_time, mut digest) =
         (Duration::ZERO, Duration::ZERO, Duration::ZERO, Duration::ZERO);
     let mut all = Vec::new();
@@ -89,6 +107,18 @@ fn main() {
         assert_eq!(world.game().digest(), states[f + 2].battle().digest(), "a re-simulated frame differs");
     }
     let count = all.len() as f64;
+    #[cfg(feature = "luau-profile")]
+    {
+        let steps = count * (DEPTH + 1) as f64;
+        for (called, (n, t)) in nettai_battle::behavior::profile::take().calls {
+            println!(
+                "  luau {called:?}: {:.2} calls/advance, {:.2} us/advance, {:.0} ns/call",
+                n as f64 / steps,
+                t.as_secs_f64() * 1e6 / steps,
+                t.as_secs_f64() * 1e9 / n.max(1) as f64
+            );
+        }
+    }
     let us = |d: Duration, k: f64| d.as_secs_f64() * 1e6 / k;
     all.sort();
     let total: Duration = all.iter().sum();

@@ -1,11 +1,11 @@
 --!strict
 -- The patch card NapalmMn (91, ナパームマン in the Japanese games), 39 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "napalmmn",
+return cards.card {
+    id = "patch-card/napalmmn",
     name = "NapalmMn",
     mb = 39,
     effects = {

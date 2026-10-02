@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Amonicul (2, アモナキュール in the Japanese games), 16 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local barriers = require("../../lib/barriers/barriers")
 
-return define.patch_card {
-    id = "amonicul",
+return cards.card {
+    id = "patch-card/amonicul",
     name = "Amonicul",
     mb = 16,
     effects = {

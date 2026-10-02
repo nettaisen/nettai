@@ -1,11 +1,11 @@
 --!strict
 -- The patch card BeastMan (40, ビーストマン in the Japanese games), 33 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "beastman",
+return cards.card {
+    id = "patch-card/beastman",
     name = "BeastMan",
     mb = 33,
     effects = {

@@ -1,12 +1,12 @@
 --!strict
 -- The patch card FreezeMn (89, フリーズマン in the Japanese games), 30 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local barriers = require("../../lib/barriers/barriers")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "freezemn",
+return cards.card {
+    id = "patch-card/freezemn",
     name = "FreezeMn",
     mb = 30,
     effects = {

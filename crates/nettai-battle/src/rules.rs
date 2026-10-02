@@ -1,0 +1,288 @@
+//! The players' rules (docs/design/rules-in-luau.md): each side plays by a
+//! ruleset, a list of systems written in Luau; the framework calls each
+//! side's systems at its points (a hook a system fills), and keeps each
+//! system's state of each side here, in the battle, where snapshots and the
+//! digest cover it.
+//!
+//! A system reaches only its own state of the side it was called for
+//! (`system.state()` in a hook): a side's rules see the other side through
+//! the engine alone.
+
+use nettai_content_api::{ContentState, HookCall, RulesetHandle, SystemHook, Value};
+
+use crate::battle::Battle;
+use crate::content::Content;
+use crate::custom::PlayerSetup;
+
+/// A side's rules in a battle: its ruleset, and each of the ruleset's
+/// systems' state of the side, in the ruleset's order.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct SideRules {
+    /// None: the content has no ruleset (a side with no systems).
+    pub ruleset: Option<RulesetHandle>,
+    pub states: Vec<ContentState>,
+}
+
+impl SideRules {
+    /// A player's rules at a round's start: the ruleset their setup names
+    /// (or the content's stock one), its systems' state zeroed. Their
+    /// setup's blocks are made zero for a setup that gives none, and must
+    /// otherwise be the ruleset's.
+    pub fn for_player(content: &Content, player: &mut PlayerSetup) -> SideRules {
+        let ruleset = player.ruleset.or_else(|| content.defs.stock_ruleset());
+        let Some(r) = ruleset else {
+            assert!(player.rules.is_empty(), "a player's setup gives system setups, and the content has no ruleset");
+            return SideRules::default();
+        };
+        let def = content.defs.ruleset(r);
+        let systems: Vec<_> = def.systems.iter().map(|&h| content.defs.system(h)).collect();
+        if player.rules.is_empty() {
+            player.rules = systems.iter().map(|s| ContentState::new(s.setup)).collect();
+        }
+        let fits = player.rules.len() == systems.len() && player.rules.iter().zip(&systems).all(|(b, s)| b.id() == s.setup);
+        assert!(fits, "a player's setup gives system setups that aren't ruleset {}'s", def.key);
+        SideRules { ruleset, states: systems.iter().map(|s| ContentState::new(s.state)).collect() }
+    }
+}
+
+impl PlayerSetup {
+    /// Set field `field` of system `system`'s setup (by key) to `v`, for
+    /// the player's ruleset (their setup's, or `content`'s stock one): how
+    /// tools write what a save says.
+    pub fn set_rule(&mut self, content: &Content, system: &str, field: &str, v: Value) -> Result<(), String> {
+        let (block, schema, i) = self.rule_field(content, system, field)?;
+        block.set(schema, i, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
+    }
+
+    /// Set element `k` (from 0) of array field `field` of system `system`'s
+    /// setup to `v`, as [`PlayerSetup::set_rule`] sets a field.
+    pub fn set_rule_elem(&mut self, content: &Content, system: &str, field: &str, k: usize, v: Value) -> Result<(), String> {
+        let (block, schema, i) = self.rule_field(content, system, field)?;
+        block.set_elem(schema, i, k, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
+    }
+
+    /// The setup block of system `system` (by key) of the player's ruleset,
+    /// its schema and the index of its field `field`; the blocks made zero
+    /// first if the setup gives none.
+    fn rule_field<'a>(
+        &'a mut self,
+        content: &'a Content,
+        system: &str,
+        field: &str,
+    ) -> Result<(&'a mut ContentState, &'a nettai_content_api::Schema, usize), String> {
+        let r = self.ruleset.or_else(|| content.defs.stock_ruleset()).ok_or("the content has no ruleset")?;
+        let def = content.defs.ruleset(r);
+        if self.rules.is_empty() {
+            self.rules = def.systems.iter().map(|&h| ContentState::new(content.defs.system(h).setup)).collect();
+        }
+        let slot = def
+            .systems
+            .iter()
+            .position(|&h| content.defs.system(h).key == system)
+            .ok_or_else(|| format!("ruleset {} has no system {system}", def.key))?;
+        let block = &mut self.rules[slot];
+        let schema = &content.defs.schemas[block.id().0 as usize].schema;
+        let i = schema.index_of(field).ok_or_else(|| format!("system {system}'s setup has no field `{field}`"))?;
+        Ok((block, schema, i))
+    }
+}
+
+impl Battle {
+    /// Side `side`'s rules.
+    pub fn side_rules(&self, side: u8) -> &SideRules {
+        &self.rules[side as usize]
+    }
+
+    /// Call `hook` of each system of side 0's ruleset that has one, in the
+    /// ruleset's order, then side 1's (the original's order wherever it
+    /// loops over the sides).
+    pub(crate) fn notify_systems(&mut self, hook: SystemHook) {
+        for side in 0..2u8 {
+            self.notify_side(side, hook);
+        }
+    }
+
+    /// Call `hook` of each system of side `side`'s ruleset that has one.
+    pub(crate) fn notify_side(&mut self, side: u8, hook: SystemHook) {
+        let Some(r) = self.rules[side as usize].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(hook) {
+                crate::behavior::call_hook(self, f, HookCall::System { side, slot: slot as u8, hook });
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::content::testing;
+    use crate::input::PlayerTick;
+    use crate::scenario;
+    use crate::setup::RoundSetup;
+    use nettai_content_api::FieldValue;
+
+    /// A battle from `setup`, run until its intro has spawned the navis.
+    fn started(setup: RoundSetup) -> Battle {
+        let mut b = Battle::new(setup, scenario::content());
+        for _ in 0..3 {
+            b.tick(&[PlayerTick::default(); 2], Default::default());
+        }
+        b
+    }
+
+    /// Field `field` of the state of the system in place `slot` of side
+    /// `side`.
+    fn field(b: &Battle, side: u8, slot: usize, field: &str) -> FieldValue {
+        let s = &b.side_rules(side).states[slot];
+        let schema = &b.content.defs.schemas[s.id().0 as usize].schema;
+        s.get(schema, schema.index_of(field).expect("a field"))
+    }
+
+    #[test]
+    fn each_side_runs_its_rulesets_systems_for_itself() {
+        let b = started(scenario::setup());
+        let content = &b.content;
+        let stock = content.defs.stock_ruleset().expect("the test content's stock rules");
+        assert_eq!(content.defs.ruleset(stock).key, "test");
+        for side in 0..2u8 {
+            assert_eq!(b.side_rules(side).ruleset, Some(stock));
+            assert_eq!(b.side_rules(side).states.len(), 1);
+            assert_eq!(field(&b, side, 0, "starts"), FieldValue::U8(1), "round_start ran once for side {side}");
+            assert_eq!(field(&b, side, 0, "side"), FieldValue::U8(side), "it ran for its own side");
+        }
+    }
+
+    #[test]
+    fn a_player_plays_by_the_ruleset_their_setup_names() {
+        let content = scenario::content();
+        let mut setup = scenario::setup();
+        setup.players[1].ruleset = content.defs.ruleset_by_key("test-other");
+        let b = started(setup);
+        assert_eq!(b.side_rules(0).states.len(), 1, "side 0 keeps the stock rules");
+        assert_eq!(b.side_rules(1).states.len(), 2, "side 1 plays by its own");
+        assert_eq!(field(&b, 1, 0, "mark"), FieldValue::U8(0x41));
+        assert_eq!(field(&b, 1, 1, "side"), FieldValue::U8(1));
+        assert_eq!(field(&b, 0, 0, "side"), FieldValue::U8(0));
+    }
+
+    #[test]
+    fn a_systems_player_setup_reaches_it_and_no_other() {
+        let content = scenario::content();
+        let mut setup = scenario::setup();
+        setup.players[0].set_rule(&content, "test/counter", "bonus", Value::Int(7)).unwrap();
+        assert!(setup.players[0].set_rule(&content, "test/marker", "mark", Value::Int(1)).is_err(), "not the stock rules'");
+        let b = started(setup);
+        assert_eq!(field(&b, 0, 0, "bonus"), FieldValue::U16(14));
+        assert_eq!(field(&b, 1, 0, "bonus"), FieldValue::U16(0), "the other player's setup is its own");
+    }
+
+    #[test]
+    fn the_rules_are_in_the_digest_and_the_snapshot() {
+        let b = started(scenario::setup());
+        let copy = b.clone();
+        assert_eq!(copy.digest(), b.digest());
+        let mut changed = b.clone();
+        let s = &mut changed.rules[1].states[0];
+        let schema = &b.content.defs.schemas[s.id().0 as usize].schema;
+        s.set(schema, schema.index_of("starts").unwrap(), Value::Int(9)).unwrap();
+        assert_ne!(changed.digest(), b.digest());
+        assert_eq!(testing::build().defs.rulesets.len(), 3);
+    }
+
+    /// BN6's patch-cards system (content/bn6/rules/patch-cards) with the
+    /// test content's made-up cards: its `round_setup` changes the stats
+    /// before anything reads them.
+    mod patch_cards {
+        use super::*;
+        use crate::setup::{GaugeSpeed, NaviStats, Supports};
+
+        /// A battle whose side 0 plays by the test-cards ruleset with
+        /// `cards` installed (key, switched on), its stats changed by
+        /// `tweak` first.
+        fn with_cards(cards: &[(&str, bool)], tweak: impl FnOnce(&mut NaviStats)) -> Battle {
+            let content = scenario::content();
+            let mut s = scenario::setup();
+            let p = &mut s.players[0];
+            p.ruleset = content.defs.ruleset_by_key("test-cards");
+            for (k, &(key, on)) in cards.iter().enumerate() {
+                let card = content.defs.record(&format!("patch-card/{key}")).unwrap_or_else(|| panic!("no card {key:?}"));
+                p.set_rule_elem(&content, "patch-cards", "cards", k, Value::Def(nettai_content_api::Registry::Record, card.0))
+                    .unwrap();
+                p.set_rule_elem(&content, "patch-cards", "off", k, Value::Bool(!on)).unwrap();
+            }
+            tweak(&mut s.navi_stats[0]);
+            Battle::new(s, content)
+        }
+
+        #[test]
+        fn a_card_changes_the_stats_by_its_kinds_order() {
+            let b = with_cards(&[("test-stats", true)], |_| {});
+            let s = &b.stats[0];
+            // HP 1000: +30 first, then +10% (the card lists them the other way).
+            assert_eq!((s.max_hp, s.hp), (1133, 1133));
+            assert_eq!((s.attack, s.element, s.bugs.hp_drain), (3, 2, 2));
+            assert_eq!(b.cross_stats[0], b.stats[0], "the battle-start copy is of the stats after the cards");
+            assert!(b.consoles[0].emotion_window_glitch, "the HP drain is a bug: flag 0x1723");
+            assert_eq!(b.stats[1], scenario::setup().navi_stats[1], "the other side has none");
+        }
+
+        #[test]
+        fn a_later_card_writes_over_an_earlier_one() {
+            let b = with_cards(&[("test-stats", true), ("test-later", true)], |_| {});
+            let s = &b.stats[0];
+            assert_eq!(s.attack, 2, "Attack 0 + 3 - 1");
+            assert_eq!(s.giga_level, 0xFF, "GigaFolder- doesn't clamp");
+        }
+
+        #[test]
+        fn abilities_choices_and_chip_shuffle() {
+            let b = with_cards(&[("test-abilities", true)], |s| {
+                s.support = Some(Supports::default());
+                s.float_shoes = true;
+                s.number_open = true;
+            });
+            let s = &b.stats[0];
+            let content = &b.content;
+            assert!(s.super_armor && !s.float_shoes);
+            assert_eq!(s.first_barrier, content.defs.record("barrier/200"));
+            assert_eq!(s.weapons.charge_shot_kind, content.defs.record("shot/charged-confusing"));
+            assert_eq!(s.support, Some(Supports { rush: true, ..Supports::default() }));
+            assert_eq!(s.gauge_speed, GaugeSpeed::Fast);
+            assert!(s.chip_shuffle && !s.number_open, "ChpShufl turns NumbrOpn off");
+            assert!(!b.consoles[0].emotion_window_glitch, "no bug");
+        }
+
+        #[test]
+        fn a_switched_off_card_does_nothing_but_the_glitch_follows_the_stats() {
+            let b = with_cards(&[("test-stats", false)], |s| s.support = Some(Supports::default()));
+            let mut want = scenario::setup().navi_stats[0];
+            want.support = Some(Supports::default());
+            // The HP is set to its maximum (the reload's, in the real world).
+            want.hp = want.max_hp;
+            assert_eq!(b.stats[0], want);
+            assert!(!b.consoles[0].emotion_window_glitch);
+            let bugged = with_cards(&[("test-stats", false)], |s| {
+                s.support = Some(Supports::default());
+                s.bugs.emotion = 1;
+            });
+            assert!(bugged.consoles[0].emotion_window_glitch, "a NaviCust bug counts with cards installed");
+        }
+
+        #[test]
+        fn without_cards_the_stats_and_the_glitch_are_the_setups() {
+            let b = with_cards(&[], |s| s.bugs.emotion = 1);
+            let mut want = scenario::setup().navi_stats[0];
+            want.bugs.emotion = 1;
+            assert_eq!(b.stats[0], want);
+            assert!(!b.consoles[0].emotion_window_glitch, "the console's own flag (0x1720), not the cards'");
+        }
+
+        #[test]
+        fn the_support_bug_keeps_supports_off() {
+            let b = with_cards(&[("test-abilities", true)], |s| s.support = None);
+            assert_eq!(b.stats[0].support, None, "the byte 0xFF stays 0xFF when a bit is set");
+        }
+    }
+}

@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Kilby (69, キルブー in the Japanese games), 24 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "kilby",
+return cards.card {
+    id = "patch-card/kilby",
     name = "Kilby",
     mb = 24,
     effects = {

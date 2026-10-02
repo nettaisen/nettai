@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Octon (61, タコバル in the Japanese games), 14 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "octon",
+return cards.card {
+    id = "patch-card/octon",
     name = "Octon",
     mb = 14,
     effects = {

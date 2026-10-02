@@ -1,11 +1,11 @@
 --!strict
 -- The patch card PharoMan (87, ファラオマン in the Japanese games), 35 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local chrgs = require("../../lib/patch-cards/chrgs")
 
-return define.patch_card {
-    id = "pharoman",
+return cards.card {
+    id = "patch-card/pharoman",
     name = "PharoMan",
     mb = 35,
     effects = {

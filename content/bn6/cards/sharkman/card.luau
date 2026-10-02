@@ -1,10 +1,10 @@
 --!strict
 -- The patch card SharkMan (86, シャークマン in the Japanese games), 35 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "sharkman",
+return cards.card {
+    id = "patch-card/sharkman",
     name = "SharkMan",
     mb = 35,
     effects = {

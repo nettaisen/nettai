@@ -1,10 +1,10 @@
 --!strict
 -- The patch card GridMan (101, フットマン in the Japanese games), 48 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "gridman",
+return cards.card {
+    id = "patch-card/gridman",
     name = "GridMan",
     mb = 48,
     effects = {

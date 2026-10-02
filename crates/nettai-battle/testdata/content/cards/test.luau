@@ -1,8 +1,8 @@
 --!strict
--- Made-up patch cards for the engine's tests (rules/patch-cards.luau's
--- effects; BN6's cards are content/bn6/cards).
+-- Made-up patch cards for the engine's tests of BN6's patch-cards system
+-- (rules/patch-cards; BN6's cards are content/bn6/cards).
 
-local cards = require("../rules/patch-cards")
+local cards = require("../rules/patch-cards/cards")
 local barriers = require("../lib/barriers/barriers")
 local variants = require("../objects/projectile/variants")
 
@@ -10,8 +10,8 @@ local test = {}
 
 -- Stats: HP up 10%, then 30 more (its kinds' order, not the card's);
 -- Attack +3; an Aqua body; a bug, the HP drain 2 levels up.
-test.stats = define.patch_card {
-    id = "test-stats",
+test.stats = cards.card {
+    id = "patch-card/test-stats",
     name = "Stats",
     mb = 20,
     effects = {
@@ -25,8 +25,8 @@ test.stats = define.patch_card {
 
 -- Abilities and choices: SuperArmor; no FloatShoes; Barr200; the confusing
 -- charged shot; Rush; the fast gauge; ChpShufl.
-test.abilities = define.patch_card {
-    id = "test-abilities",
+test.abilities = cards.card {
+    id = "patch-card/test-abilities",
     name = "Abilities",
     mb = 30,
     effects = {
@@ -41,8 +41,8 @@ test.abilities = define.patch_card {
 }
 
 -- A later card's write wins: Attack -1 from the first card's.
-test.later = define.patch_card {
-    id = "test-later",
+test.later = cards.card {
+    id = "patch-card/test-later",
     name = "Later",
     mb = 5,
     effects = { cards.attack(-1), cards.giga_folder(-2) },

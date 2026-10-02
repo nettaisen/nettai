@@ -1,12 +1,12 @@
 --!strict
 -- The patch card ElmntMan (106, エレメントマン in the Japanese games), 33 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local chrgs = require("../../lib/patch-cards/chrgs")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "elmntman",
+return cards.card {
+    id = "patch-card/elmntman",
     name = "ElmntMan",
     mb = 33,
     effects = {

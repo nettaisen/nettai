@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Sparky (60, ユラ in the Japanese games), 8 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "sparky",
+return cards.card {
+    id = "patch-card/sparky",
     name = "Sparky",
     mb = 8,
     effects = {

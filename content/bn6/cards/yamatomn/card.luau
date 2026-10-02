@@ -1,11 +1,11 @@
 --!strict
 -- The patch card YamatoMn (42, ヤマトマン in the Japanese games), 35 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local shield = require("../../navis/megaman/weapons/shield/weapon")
 
-return define.patch_card {
-    id = "yamatomn",
+return cards.card {
+    id = "patch-card/yamatomn",
     name = "YamatoMn",
     mb = 35,
     effects = {

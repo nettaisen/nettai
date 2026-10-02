@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Totem (70, トトポール in the Japanese games), 13 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "totem",
+return cards.card {
+    id = "patch-card/totem",
     name = "Totem",
     mb = 13,
     effects = {

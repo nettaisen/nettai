@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Django (112, ジャンゴ in the Japanese games), 52 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "django",
+return cards.card {
+    id = "patch-card/django",
     name = "Django",
     mb = 52,
     effects = {

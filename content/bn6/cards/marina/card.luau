@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Marina (74, マリーナ in the Japanese games), 14 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local barriers = require("../../lib/barriers/barriers")
 
-return define.patch_card {
-    id = "marina",
+return cards.card {
+    id = "patch-card/marina",
     name = "Marina",
     mb = 14,
     effects = {

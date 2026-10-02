@@ -332,7 +332,8 @@ pub(crate) fn finish(
         by_key.insert((m.registry, keys[i].as_str()), i);
     }
 
-    // Schemas: the `state` tables of kinds and actions.
+    // Schemas: the `state` tables of kinds, actions and systems, and the
+    // `setup` tables of systems.
     let mut schema_of: HashMap<Ptr, usize> = HashMap::new();
     let mut schemas: Vec<(String, String, Table)> = Vec::new();
     let mut claim = |t: Table, key: String, module: &str, schemas: &mut Vec<(String, String, Table)>| {
@@ -345,11 +346,15 @@ pub(crate) fn finish(
         });
     };
     for (&(registry, key), &i) in &by_key {
-        if !matches!(registry, Registry::Kind | Registry::Action) {
-            continue;
-        }
-        if let Ok(LuaValue::Table(state)) = made[i].table.raw_get::<LuaValue>("state") {
-            claim(state, format!("{}:{key}/state", registry.name()), &made[i].module, &mut schemas);
+        let tables: &[&str] = match registry {
+            Registry::Kind | Registry::Action => &["state"],
+            Registry::System => &["state", "setup"],
+            _ => continue,
+        };
+        for &field in tables {
+            if let Ok(LuaValue::Table(state)) = made[i].table.raw_get::<LuaValue>(field) {
+                claim(state, format!("{}:{key}/{field}", registry.name()), &made[i].module, &mut schemas);
+            }
         }
     }
     let schema_keys: HashMap<Ptr, String> =

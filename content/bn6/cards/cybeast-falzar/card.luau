@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Cybeast Falzar (116, 電脳獣ファルザー in the Japanese games), 70 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "cybeast-falzar",
+return cards.card {
+    id = "patch-card/cybeast-falzar",
     name = "Cybeast Falzar",
     mb = 70,
     effects = {

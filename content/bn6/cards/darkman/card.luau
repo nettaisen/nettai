@@ -1,11 +1,11 @@
 --!strict
 -- The patch card DarkMan (95, ダークマン in the Japanese games), 25 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "darkman",
+return cards.card {
+    id = "patch-card/darkman",
     name = "DarkMan",
     mb = 25,
     effects = {

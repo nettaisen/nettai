@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Puffy (55, プクール in the Japanese games), 12 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "puffball",
+return cards.card {
+    id = "patch-card/puffball",
     name = "Puffy",
     mb = 12,
     effects = {

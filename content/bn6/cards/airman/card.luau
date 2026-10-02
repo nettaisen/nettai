@@ -1,12 +1,12 @@
 --!strict
 -- The patch card AirMan (88, エアーマン in the Japanese games), 34 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "airman",
+return cards.card {
+    id = "patch-card/airman",
     name = "AirMan",
     mb = 34,
     effects = {

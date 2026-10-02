@@ -1,12 +1,12 @@
 --!strict
 -- The patch card ShadoMan (34, シャドーマン in the Japanese games), 38 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local anti_damage = require("../../navis/megaman/weapons/anti-damage/weapon")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "shadoman",
+return cards.card {
+    id = "patch-card/shadoman",
     name = "ShadoMan",
     mb = 38,
     effects = {

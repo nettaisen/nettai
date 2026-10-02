@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Walla (68, ウォーラ in the Japanese games), 12 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "walla",
+return cards.card {
+    id = "patch-card/walla",
     name = "Walla",
     mb = 12,
     effects = {

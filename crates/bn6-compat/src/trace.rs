@@ -382,13 +382,9 @@ impl Round {
     }
 
     /// A player's installed patch cards, as the trace has them.
-    fn patch_cards(&self, side: u8, ids: &Ids) -> nettai_battle::patch_cards::PatchCards {
-        let Some(lists) = &self.setup.patch_cards else { return Default::default() };
-        let cards: Vec<_> = lists[side as usize & 1]
-            .iter()
-            .map(|&b| nettai_battle::patch_cards::InstalledCard { card: ids.patch_card(b & 0x7F), enabled: b & 0x80 == 0 })
-            .collect();
-        nettai_battle::patch_cards::PatchCards::new(&cards)
+    fn patch_cards(&self, side: u8, ids: &Ids) -> Vec<(nettai_content_api::RecordHandle, bool)> {
+        let Some(lists) = &self.setup.patch_cards else { return Vec::new() };
+        codec::patch_card_list(&lists[side as usize & 1], ids)
     }
 
     /// For a player with patch cards: the stats the engine applies them to
@@ -480,7 +476,7 @@ impl Round {
             },
             None => self.sent_version(side),
         };
-        PlayerSetup {
+        let mut player = PlayerSetup {
             folder,
             unlocks: match &self.setup.unlock_flags {
                 Some(f) => unlocks_from_flags(version, &unhex(&f[side as usize])),
@@ -490,8 +486,15 @@ impl Round {
             bug_frags: self.setup.bug_frags.map_or(RECORDED_BUG_FRAGS, |f| f[side as usize]),
             navi_level: self.setup.navi_levels.map_or(0, |l| l[side as usize]),
             console: self.console_setup(side),
-            patch_cards: self.patch_cards(side, ids),
+            // BN6's stock rules; of its systems' setups, the patch cards.
+            ruleset: None,
+            rules: Vec::new(),
+        };
+        let cards = self.patch_cards(side, ids);
+        if !cards.is_empty() {
+            codec::install_patch_cards(ids.content, &mut player, &cards).unwrap_or_else(|e| panic!("the trace's patch cards: {e}"));
         }
+        player
     }
 
     /// A player's console: the recording console's RNG1 and tag pair

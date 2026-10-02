@@ -1,11 +1,11 @@
 --!strict
 -- The patch card TopMan (96, タップマン in the Japanese games), 28 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local chrgs = require("../../lib/patch-cards/chrgs")
 
-return define.patch_card {
-    id = "topman",
+return cards.card {
+    id = "patch-card/topman",
     name = "TopMan",
     mb = 28,
     effects = {

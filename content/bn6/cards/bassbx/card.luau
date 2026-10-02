@@ -1,12 +1,12 @@
 --!strict
 -- The patch card BassBX (111, フォルテBX in the Japanese games), 70 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 local triple_buster = require("../../lib/patch-cards/triple-buster")
 
-return define.patch_card {
-    id = "bassbx",
+return cards.card {
+    id = "patch-card/bassbx",
     name = "BassBX",
     mb = 70,
     effects = {

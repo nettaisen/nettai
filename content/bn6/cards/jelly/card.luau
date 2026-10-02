@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Jelly (56, ジェリー in the Japanese games), 13 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "jelly",
+return cards.card {
+    id = "patch-card/jelly",
     name = "Jelly",
     mb = 13,
     effects = {

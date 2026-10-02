@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Megalian (5, メガリア in the Japanese games), 20 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local barriers = require("../../lib/barriers/barriers")
 
-return define.patch_card {
-    id = "megalian",
+return cards.card {
+    id = "patch-card/megalian",
     name = "Megalian",
     mb = 20,
     effects = {

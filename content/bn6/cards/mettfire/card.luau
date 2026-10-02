@@ -1,11 +1,11 @@
 --!strict
 -- The patch card MettFire (6, メテファイア in the Japanese games), 20 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local b_button = require("./b-button")
 
-return define.patch_card {
-    id = "mettfire",
+return cards.card {
+    id = "patch-card/mettfire",
     name = "MettFire",
     mb = 20,
     effects = {

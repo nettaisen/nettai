@@ -1,11 +1,11 @@
 --!strict
 -- The patch card HonyBomr (80, ハニホー in the Japanese games), 12 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local back_special = require("./back-special")
 
-return define.patch_card {
-    id = "honybomr",
+return cards.card {
+    id = "patch-card/honybomr",
     name = "HonyBomr",
     mb = 12,
     effects = {

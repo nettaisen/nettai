@@ -511,22 +511,16 @@ pub enum HookRole {
     /// variant 3 in its registry class; or the bubble, attack #0xA3
     /// `sub_80D99EC`).
     Encased,
-    /// `(side) -> bugged`: apply the side's patch cards to its stats at the
-    /// round's start (the Japanese games' card routine, docs/design/
-    /// patch-cards.md); whether the stats after them have a NaviCust bug
-    /// (its event flag 0x1723).
-    PatchCards,
 }
 
 impl HookRole {
-    pub const ALL: [HookRole; 3] = [HookRole::FirstBarrier, HookRole::Encased, HookRole::PatchCards];
+    pub const ALL: [HookRole; 2] = [HookRole::FirstBarrier, HookRole::Encased];
 
     /// Its name in `rules/roles.luau`'s `hooks`.
     pub fn name(self) -> &'static str {
         match self {
             HookRole::FirstBarrier => "first_barrier",
             HookRole::Encased => "encased",
-            HookRole::PatchCards => "patch_cards",
         }
     }
 

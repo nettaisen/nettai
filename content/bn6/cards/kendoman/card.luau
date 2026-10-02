@@ -1,11 +1,11 @@
 --!strict
 -- The patch card KendoMan (97, ケンドーマン in the Japanese games), 38 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "kendoman",
+return cards.card {
+    id = "patch-card/kendoman",
     name = "KendoMan",
     mb = 38,
     effects = {

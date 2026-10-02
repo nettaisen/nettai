@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Heavy (10, ヘビーアレイ in the Japanese games), 15 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "heavy",
+return cards.card {
+    id = "patch-card/heavy",
     name = "Heavy",
     mb = 15,
     effects = {

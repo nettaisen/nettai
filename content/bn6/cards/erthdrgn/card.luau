@@ -1,11 +1,11 @@
 --!strict
 -- The patch card ErthDrgn (30, ツボリュウ in the Japanese games), 20 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local chrgs = require("../../lib/patch-cards/chrgs")
 
-return define.patch_card {
-    id = "erthdrgn",
+return cards.card {
+    id = "patch-card/erthdrgn",
     name = "ErthDrgn",
     mb = 20,
     effects = {

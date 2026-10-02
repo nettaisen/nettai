@@ -32,7 +32,6 @@ local sparks = require("../lib/sparks")
 local stun_strike = require("../lib/swords/stun_strike")
 local statuses = require("./status")
 local supports = require("../lib/supports/controller")
-local patch_cards = require("./patch-cards")
 
 return define.roles {
     actions = {
@@ -310,7 +309,5 @@ return define.roles {
         -- What an obstacle encased in ice or a bubble becomes
         -- (`sub_801813A`'s end).
         encased = encased_bubble.replace,
-        -- The round's start: the players' patch cards (rules/patch-cards).
-        patch_cards = patch_cards.apply,
     },
 }

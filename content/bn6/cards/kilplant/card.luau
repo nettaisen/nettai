@@ -1,11 +1,11 @@
 --!strict
 -- The patch card KilPlant (7, キルプラント in the Japanese games), 19 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "kilplant",
+return cards.card {
+    id = "patch-card/kilplant",
     name = "KilPlant",
     mb = 19,
     effects = {
