@@ -1,14 +1,15 @@
 //! Synthetic netbattles under rollback: two MegaMen with fixed folders
 //! and seeded random button mashing (which drives their custom screens
-//! too), played by two getgud sessions over simulated links with various
-//! latencies. At every advance, each peer's settled state must equal the
-//! other's and a plain lockstep run's, the battle must end, and each
-//! peer's sound must play every confirmed cue once.
+//! too), played by two getgud sessions over a simulated datagram network
+//! (latency, jitter that reorders, loss, duplication), their inputs
+//! carried by rennet. At every advance, each peer's settled state must
+//! equal the other's and a plain lockstep run's, the battle must end, and
+//! each peer's sound must play every confirmed cue once.
 
 use nettai_battle::cues::CueAction;
 use nettai_battle::{Battle, SoundCue, TickInput};
 use nettai_netplay::battle::{PlayerInput, CueFeed};
-use nettai_netplay::network::LinkConfig;
+use nettai_netplay::network::NetworkConfig;
 use nettai_netplay::sim::{Match, NetConfig, Report};
 use nettai_netplay::standin::{Masher, StandInBattle, folder, netbattle};
 use nettai_netplay::{Game, Observer};
@@ -92,14 +93,20 @@ fn check_cues(feed: &CueFeed) -> (usize, usize) {
 }
 
 fn run_latency(latency: u32, jitter: u32, present_delay: u32) {
+    let config = NetConfig { present_delay, ..NetConfig::latency(latency, jitter) };
+    run(&format!("latency {latency}+{jitter} present delay {present_delay}"), config, latency > present_delay);
+}
+
+/// The three seeds' battles under `config`, in sync and to the end, with
+/// rollbacks or without, and the peers' sound right.
+fn run(what: &str, config: NetConfig, rollbacks: bool) {
     for seed in [1u64, 2, 3] {
-        let config = NetConfig { present_delay, ..NetConfig::latency(latency, jitter) };
         let (report, feeds) = play(seed, config);
         let [a, b] = &report.peers;
         let cues: Vec<(usize, usize)> = feeds.iter().map(check_cues).collect();
         eprintln!(
-            "latency {latency}+{jitter} present delay {present_delay} seed {seed}: {} frames in {} wall frames, over {}; \
-             rollbacks {}/{} (max depth {}/{}, resimulated {}/{}, speculated up to {}/{}); stalls {}/{}; cues played/cancelled {:?}",
+            "{what} seed {seed}: {} frames in {} wall frames, over {}; \
+             rollbacks {}/{} (max depth {}/{}, resimulated {}/{}, speculated up to {}/{}); stalls {}/{}, parked {}/{}; cues played/cancelled {:?}",
             report.frames,
             report.wall_frames,
             report.over,
@@ -113,16 +120,52 @@ fn run_latency(latency: u32, jitter: u32, present_delay: u32) {
             b.max_speculation,
             a.stalls,
             b.stalls,
+            a.parked,
+            b.parked,
             cues,
         );
-        assert!(report.in_sync(), "seed {seed}: {:?} {:?}", report.divergence, report.panicked);
+        eprintln!("  {}", links(&report));
+        assert!(report.in_sync(), "seed {seed}: {:?} {:?} {:?}", report.divergence, report.panicked, report.torn_down);
         assert!(report.over, "seed {seed}: the battle didn't end in {} frames", report.frames);
-        if latency > present_delay {
+        if rollbacks {
             assert!(a.rollbacks > 0 && b.rollbacks > 0, "the latency should cause rollbacks");
         } else {
             assert_eq!((a.rollbacks, b.rollbacks), (0, 0), "no rollback without latency");
         }
     }
+}
+
+/// The links and the network, for the log.
+fn links(report: &Report) -> String {
+    let [a, b] = &report.links;
+    let [x, y] = &report.networks;
+    format!(
+        "datagrams {}/{} of {:.1}/{:.1} bytes (largest {}/{}), elements {:.1}/{:.1} a datagram; \
+         network lost {}/{} (longest burst {}/{}), duplicated {}/{}, reordered {}/{}; \
+         redundant elements received {}/{}; loss {:.1}%/{:.1}%, estimated by the receiver {:.1}%/{:.1}%",
+        a.sent,
+        b.sent,
+        a.mean_size(),
+        b.mean_size(),
+        a.largest,
+        b.largest,
+        a.sent_elements as f64 / a.sent.max(1) as f64,
+        b.sent_elements as f64 / b.sent.max(1) as f64,
+        x.lost,
+        y.lost,
+        x.longest_burst,
+        y.longest_burst,
+        x.duplicated,
+        y.duplicated,
+        x.reordered,
+        y.reordered,
+        a.redundant,
+        b.redundant,
+        x.lost as f64 * 100.0 / x.sent.max(1) as f64,
+        y.lost as f64 * 100.0 / y.sent.max(1) as f64,
+        b.loss() * 100.0,
+        a.loss() * 100.0,
+    )
 }
 
 #[test]
@@ -153,6 +196,160 @@ fn latency_10() {
 #[test]
 fn latency_10_with_present_delay() {
     run_latency(10, 2, 3);
+}
+
+// A lossy network: datagrams lost (alone or in bursts: once one is lost,
+// the next often is too), duplicated, and reordered by jitter. rennet's
+// redundancy window brings a lost datagram's inputs with the next one.
+
+#[test]
+fn loss_without_latency() {
+    run("loss 10% (bursts 30%), duplicates 5%, latency 0", NetConfig::lossy(0, 0, 100, 300, 50), true);
+}
+
+#[test]
+fn loss_and_reordering_at_latency_2() {
+    run("loss 10% (bursts 30%), duplicates 5%, latency 2+2", NetConfig::lossy(2, 2, 100, 300, 50), true);
+}
+
+#[test]
+fn loss_and_reordering_at_latency_5() {
+    run("loss 15% (bursts 40%), duplicates 5%, latency 5+3", NetConfig::lossy(5, 3, 150, 400, 50), true);
+}
+
+#[test]
+fn heavy_loss_at_latency_10() {
+    run("loss 25% (bursts 50%), duplicates 10%, latency 10+4", NetConfig::lossy(10, 4, 250, 500, 100), true);
+}
+
+/// Nothing gets through either way for two seconds: both peers' stall
+/// guards hold them, and the match goes on after it.
+#[test]
+fn an_outage_holds_both_peers_and_the_match_goes_on() {
+    let network = NetworkConfig { outage: Some((1000, 1120)), ..NetworkConfig::latency(3, 1) };
+    let (report, feeds) = play(1, NetConfig::over(network));
+    feeds.iter().for_each(|f| {
+        check_cues(f);
+    });
+    let [a, b] = &report.peers;
+    eprintln!("outage: {} frames, parked {}/{}, deepest rollback {}/{}; {}", report.frames, a.parked, b.parked, a.max_rollback, b.max_rollback, links(&report));
+    assert!(report.in_sync() && report.over, "{:?} {:?} {:?}", report.divergence, report.panicked, report.torn_down);
+    assert!(a.parked >= 100 && b.parked >= 100);
+}
+
+/// A gap in a player's stream past the horizon can't be recovered in time:
+/// the peer that sees it tears the match down, with the settled states in
+/// agreement up to there. Two peers that keep a stall guard that fits the
+/// horizon never open one (a gap reaches at most twice the stall guard),
+/// so this takes a horizon too small for it: one direction fails for five
+/// seconds, the peer that hears nothing waits at its stall guard, the
+/// other runs on to its own, and when the link comes back the gap is
+/// wider than the horizon. With the full horizon, the same match goes on.
+#[test]
+fn a_gap_past_the_horizon_tears_the_match_down() {
+    let mut config = NetConfig::latency(2, 0);
+    config.max_lead = 40;
+    config.networks[0].outage = Some((300, 600));
+    let full = Match::new(&start(1), config).run(mashers(1), &mut [(), ()], 3000);
+    assert!(full.in_sync() && full.frames == 3000, "{:?} {:?} {:?}", full.divergence, full.panicked, full.torn_down);
+    config.horizon = 32;
+    let report = Match::new(&start(1), config).run(mashers(1), &mut [(), ()], 3000);
+    let torn = report.torn_down.clone().expect("the match goes on past the gap");
+    eprintln!("torn down: {torn:?}; settled {} frames", report.frames);
+    assert_eq!(torn.peer, 1);
+    assert!(torn.reason.contains("horizon"), "{}", torn.reason);
+    assert!(report.divergence.is_none() && report.panicked.is_none());
+    assert!((290..310).contains(&torn.settled), "{torn:?}");
+}
+
+/// A set's rounds, played by two peers over the simulated network as a
+/// frontend does (`Peer`): each ends a round once its settled state is
+/// over and starts the next from the shared setup; the other player's
+/// inputs past their round's end are dropped, those of their next round
+/// wait for it. Both peers' settled states agree in every round, and when
+/// the set is over one player leaves and the other hears it.
+#[test]
+fn a_sets_rounds_follow_each_other_on_one_stream() {
+    use nettai_battle::setup::{RoundSetup, effects};
+    use nettai_battle::{BattleResult, RoundEnd, Stage};
+    use nettai_netplay::network::Network;
+    use nettai_netplay::{BattleWorld, Peer, PeerConfig};
+    let c = content();
+    let first = {
+        let mut s = netbattle(&c, testing::LINK_BATTLE, 40, 0x51, folders(&c));
+        s.settings.effects |= effects::SET;
+        s.later_stages = [Stage { stage: s.settings.stage, background: s.settings.background }; 2];
+        s
+    };
+    let world = |setup: RoundSetup, side: usize| BattleWorld::new(StandInBattle::new(Battle::new(setup, c.clone())), side);
+    let config = PeerConfig::new(0, 12);
+    let mut peers = [Peer::new(world(first.clone(), 0), config), Peer::new(world(first.clone(), 1), config)];
+    let mut networks = [0, 1].map(|p| Network::new(NetworkConfig::lossy(4, 2, 100, 300, 50), 77 + p));
+    let mut mash = mashers_with(9, true);
+    // Each peer's settled digests, by round: (tick, digest).
+    let mut settled: [Vec<Vec<(u32, u64)>>; 2] = [vec![Vec::new()], vec![Vec::new()]];
+    let mut results: [Option<BattleResult>; 2] = [None, None];
+    let mut now = 0u64;
+    while results.iter().any(Option::is_none) {
+        assert!(now < 60_000, "the set doesn't end: rounds {:?}", peers.each_ref().map(|p| p.round()));
+        for p in 0..2 {
+            for d in networks[1 - p].receive(now) {
+                peers[p].receive(&d, now).unwrap();
+            }
+        }
+        let mut deciding = [false; 2];
+        for p in 0..2 {
+            if results[p].is_none() && peers[p].wait().is_none() {
+                peers[p].decide(mash(p, 0));
+                deciding[p] = true;
+            }
+            networks[p].send(now, peers[p].datagram(now));
+        }
+        for p in (0..2).filter(|&p| deciding[p]) {
+            peers[p].advance(|_| ());
+            let state = peers[p].session().settled_state();
+            settled[p].last_mut().unwrap().push((state.tick(), state.battle().digest()));
+            match state.battle().round_end() {
+                None => {}
+                Some(RoundEnd::NextRound { settings, score }) => {
+                    let next = RoundSetup { settings: *settings, score: *score, ..first.clone() };
+                    peers[p].end_round(world(next, p));
+                    settled[p].push(Vec::new());
+                }
+                Some(RoundEnd::Over(result)) => results[p] = Some(*result),
+            }
+        }
+        now += 1;
+    }
+    let rounds = settled.each_ref().map(|r| r.len());
+    eprintln!(
+        "a set of {} rounds in {now} wall frames: {:?}; rollbacks {}/{}; {:?}",
+        rounds[0],
+        results,
+        peers[0].stats().rollbacks,
+        peers[1].stats().rollbacks,
+        settled[0].iter().map(|r| r.last().map_or(0, |s| s.0)).collect::<Vec<_>>(),
+    );
+    assert_eq!(rounds[0], rounds[1]);
+    assert!(rounds[0] >= 2, "one round only");
+    for (r, (a, b)) in settled[0].iter().zip(&settled[1]).enumerate() {
+        let b: std::collections::HashMap<u32, u64> = b.iter().copied().collect();
+        let common = a.iter().filter(|(t, d)| b.get(t).is_some_and(|e| {
+            assert_eq!(e, d, "round {} tick {t}: the peers' settled states differ", r + 1);
+            true
+        }));
+        assert!(common.count() > 100, "round {}", r + 1);
+    }
+    // (The result is the shared simulation's, side 0's.)
+    assert_eq!(results[0], results[1]);
+    peers[0].leave();
+    for t in now..now + 30 {
+        networks[0].send(t, peers[0].datagram(t));
+        for d in networks[0].receive(t) {
+            peers[1].receive(&d, t).unwrap();
+        }
+    }
+    assert!(peers[1].remote_left());
 }
 
 /// The engine's own input record, with the frame's events riding in
@@ -236,7 +433,7 @@ fn observers_see_every_simulated_and_settled_frame() {
     }
     let new = || Count { settled: Vec::new(), simulated: 0, resimulated: 0, reached: 0 };
     let mut counts = [new(), new()];
-    let config = NetConfig { link: LinkConfig { latency: 4, jitter: 4 }, present_delay: 1, ..NetConfig::latency(4, 4) };
+    let config = NetConfig { present_delay: 1, ..NetConfig::latency(4, 4) };
     let report = Match::new(&start(4), config).run(mashers(4), &mut counts, 3000);
     assert!(report.in_sync());
     assert_eq!(report.frames, 3000);
