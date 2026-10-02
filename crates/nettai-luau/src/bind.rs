@@ -558,6 +558,45 @@ impl UserData for Object {
         methods.add_method("start_stance_counter", |_, this, ()| with(|api, _| Ok(api.start_stance_counter(this.0))));
         methods.add_method("refresh_form_overlay", |_, this, ()| with(|api, _| Ok(api.refresh_form_overlay(this.0))));
         methods.add_method("exit_attack", |_, this, ()| with(|api, _| Ok(api.exit_attack(this.0))));
+        // What a game's rules do to a navi (docs/design/rules-in-luau.md §4.5).
+        methods.add_method("clear_invulnerable", |_, this, ()| with(|api, _| api.clear_invulnerable(this.0).map_err(api_error)));
+        methods.add_method("face_default", |_, this, ()| with(|api, _| api.face_default(this.0).map_err(api_error)));
+        methods.add_method("reset_charge", |_, this, ()| with(|api, _| api.reset_charge(this.0).map_err(api_error)));
+        methods.add_method("end_full_synchro_aura", |_, this, ()| {
+            with(|api, _| api.end_full_synchro_aura(this.0).map_err(api_error))
+        });
+        methods.add_method("drop_statuses", |_, this, ()| with(|api, _| api.drop_statuses(this.0).map_err(api_error)));
+        methods.add_method("end_statuses", |_, this, ()| with(|api, _| api.end_statuses(this.0).map_err(api_error)));
+        methods.add_method("overlay_stepping", |_, this, mode: mlua::LuaString| {
+            let keep = match &*mode.to_str()? {
+                "keep" => true,
+                "normal" => false,
+                other => return Err(mlua::Error::runtime(format!("overlay_stepping: {other:?} is neither \"keep\" nor \"normal\""))),
+            };
+            with(|api, _| Ok(api.overlay_stepping(this.0, keep)))
+        });
+        methods.add_method("take_off_form_overlay", |_, this, form: LuaValue| {
+            let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "take_off_form_overlay"))?);
+            with(|api, _| Ok(api.take_off_form_overlay(this.0, form)))
+        });
+        methods.add_method("put_on_form_overlay", |_, this, form: LuaValue| {
+            let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "put_on_form_overlay"))?);
+            with(|api, _| Ok(api.put_on_form_overlay(this.0, form)))
+        });
+        methods.add_method("load_form_sprite", |_, this, form: LuaValue| {
+            let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "load_form_sprite"))?);
+            with(|api, _| api.load_form_sprite(this.0, form).map_err(api_error))
+        });
+        methods.add_method("reset_status", |_, this, ()| with(|api, _| api.reset_status(this.0).map_err(api_error)));
+        methods.add_method("end_anger", |_, this, ()| with(|api, _| api.end_anger(this.0).map_err(api_error)));
+        methods.add_method("form_change_target", |_, this, ()| {
+            let form = with(|api, _| Ok(api.form_change_target(this.0)))?;
+            match form {
+                Some(h) => Ok(LuaValue::Table(bound(|b| b.def_value(Registry::Form, h.0))?)),
+                None => Ok(LuaValue::Nil),
+            }
+        });
+        methods.add_method("pin_overlay", |_, this, ()| with(|api, _| Ok(api.pin_overlay(this.0))));
         methods.add_method("end_attack", |_, this, ()| with(|api, _| Ok(api.end_attack(this.0))));
         methods.add_method("set_attack", |_, this, (action, kind): (LuaValue, LuaValue)| {
             let kind = u8_arg(kind, "attack kind")?;
@@ -1113,6 +1152,16 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             return Err(mlua::Error::runtime(format!("camera shake magnitude {magnitude} reads past byte_8030284")));
         }
         with(|api, _| Ok(api.shake_camera(magnitude, ticks)))
+    });
+    lib_fn!(lua, t, "shake_camera_secondary", |_, (magnitude, ticks): (LuaValue, LuaValue)| {
+        let (magnitude, ticks) = (u16_arg(magnitude, "magnitude")?, u16_arg(ticks, "ticks")?);
+        if magnitude > 3 {
+            return Err(mlua::Error::runtime(format!("camera shake magnitude {magnitude} reads past byte_8030284")));
+        }
+        with(|api, _| Ok(api.shake_camera_secondary(magnitude, ticks)))
+    });
+    lib_fn!(lua, t, "burst", |_, navi: mlua::UserDataRef<Object>| {
+        with(|api, _| Ok(api.spawn_burst(navi.0).map(Object)))
     });
     lib_fn!(lua, t, "show_hud", |_, (parts, shown): (mlua::Table, bool)| {
         let parts = parts

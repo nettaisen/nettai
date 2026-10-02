@@ -73,8 +73,9 @@ definitions, `compat/text.toml`), [rollback.md](rollback.md) §3 (presentation u
 | The banner letters | per banner, 20 pointers to 8x16 letter pictures that include the bar behind them (`pt_801EF84`) | 8x16, 20 cells a banner | the banner palette | (pictures) | as one picture a banner: `graphics/hud/banners/<name>.png` |
 
 The text encoding is one table, `compat/text.toml` (what each byte below 0xE0 draws, as UTF-8). Glyphs with no
-character of their own have bracketed names: `[EX]`, `[SP]`, `[RV]`, `[BX]`, `[FZ]`, the button marks `[A]`, `[B]`,
-`[L]`, `[R]`, `[bat]`, `[z]`. The extractor writes the same table into `hud.json` as `font_chars`.
+character of their own had bracketed names: `[EX]`, `[SP]`, `[RV]`, `[BX]`, `[FZ]`, the button marks `[A]`, `[B]`,
+`[L]`, `[R]`, `[bat]`, `[z]` (since 2026-10-02 each is a character: §10.5). The extractor writes the same table into
+`hud.json` as `font_chars`.
 
 ### 1.2 Every place text is drawn, or would be
 
@@ -283,6 +284,7 @@ numbers (120 pixels, half the screen), 8 and 17 for the HUD lines, and 192 pixel
   with "TIME UP!" beside them, which in `auto` means the extracted font.
 - **The bracketed marks** (`[EX]`, `[SP]`, `[A]`) have no Unicode character. In a font file's text they are
   inline icons: a `[name]` token draws the pack's glyph for it if the pack has one, else its letters in a box.
+  (As built they became characters, the Private Use Area's where Unicode has none: §10.5.)
 
 ### 2.5 Text beyond ASCII
 
@@ -588,7 +590,7 @@ Every string below comes from content or varies; each is drawn in the original's
 | The enemy names (round's first screen) | cell | their glyphs' cells on BG0, ending at column 30 | BG0's | BG0's (the HUD palettes') |
 | The HUD's lines: the turn timer's seconds, "TIME UP!", "COUNTER HIT!" | cell | the cells of the pack's line without its padding spaces | the HUD layer's | the HUD layer's |
 | "VS" between the judge's numbers | cell | 2 cells | the HUD layer's | the HUD layer's |
-| A description's and the run message's lines (the chatbox) | dialogue | the 192-pixel line, 12 rows, every 14 rows from (51, 108); cut where the line buffer's sprites end, plus 3 rows for a third line's descenders | its 18 sprite parts' (front layer, bucket 3: the key-wait arrow and the portrait are in front) | the sprites', the screen's |
+| A description's and the run message's lines (the chatbox) | dialogue | 12 rows, every 14 rows from (51, 108), as wide as the open box's inside (to a pixel short of its right frame: 160 pixels in the description box, 184 in the message box; the line buffer's 192 run past the description box); cut where the line buffer's sprites end, plus 3 rows for a third line's descenders | its 18 sprite parts' (front layer, bucket 3: the key-wait arrow and the portrait are in front) | the sprites', the screen's |
 
 Not text, so unchanged: the Crosses' names in the Cross window (the pack's pictures, by each Cross's game); the
 custom screen's slots and picked column, which show icons and the code strips' letters, no names; chip codes,
@@ -649,10 +651,16 @@ the frontend's own status text (`text.rs`).
   to 85%, or 70% for a string with kana or kanji (their glyphs are an em wide where the 8x16 font's cells are about
   half that); then made smaller, centred on its capitals. It never leaves its box. With the bundled font, 123 of
   the 342 chip names are squeezed in their own cells, and three (Magnum, TmhkMan[EX], TmhkMan[SP]) are also made
-  3% smaller.
+  3% smaller. A chatbox line's box is the open box's inside, which the frontend reads off the box's map
+  (`chatbox::text_room`: the right frame's inner edge on a text row), not the 192-pixel line buffer, which runs
+  past the description box's frame (until 2026-10-02 the Japanese Crosses' longest lines did too). Of the 2,064
+  description and message lines in en.toml and ja.toml, ten are wider than their box at the font's width, all
+  Japanese Crosses' descriptions in the description box, and are squeezed to 92-100%; the test
+  `every_chatbox_line_fits_its_box` measures them all.
 - **Alignment**: left, as the original's glyphs start their cells; a telop's name centred in its cells.
-- **Marks**: a bracketed mark (`[EX]`, `[SP]`) is one unit, drawn as its letters at 68% of the size with their
-  tops at the capitals'; a one-letter mark (`[A]`) in a frame, as a button.
+- **Marks**: a mark is one character (§10.5). One the font has is the font's (Ⓡ, ✕, ○); else the layer draws it:
+  a button (Ⓐ, Ⓑ) as its letter at 68% of the size in a ring centred on the capitals, a stacked mark (EX, SP) as
+  its two letters one above the other in one cell.
 - **Printing**: a chatbox line is laid out whole and drawn up to the units the chatbox has printed, so the line
   doesn't move as it grows.
 - **Nothing reaches the simulation**: the chatbox's timing stays the content's counts (the description's line
@@ -694,8 +702,8 @@ Murecho (Neil Summerour, Positype; SIL Open Font License 1.1, no Reserved Font N
 - **Tests** (`cargo test -p nettai-frontend`): the depth mask; text hidden where a sprite in front won and faded
   with its layer; a font-mode telop as an item over blank parts where the original's glyph parts were; a HUD line
   without its padding; layout that never leaves its box, isn't stretched, and squeezes before shrinking; kana and
-  kanji laid out; the placement policy; marks as units. The font tests check layout and metrics, not pixels: the
-  rasterizer's arithmetic is floating point (§2.2).
+  kanji laid out; the placement policy; marks (a stacked mark in one cell, a button in its ring: §10.5). The font
+  tests check layout and metrics, not pixels: the rasterizer's arithmetic is floating point (§2.2).
 - **Looked at**, headless at 4x: the hand, the chip window, telops through their squash and stretch, a hidden
   telop, the other player's chip, a description and the run message (printing too), the Program Advance's names,
   "COUNTER HIT!", the seconds, "TIME UP!" and "VS", Beast Out's darkening of the enemy name, a Cross's whitening,
@@ -733,7 +741,8 @@ string is a content root's `locales/<lang>.toml`.
 | A Cross's description | `en.toml` `[forms]` | `ja.toml` `[forms]` |
 | The no-running message (L) | `en.toml` `[navis]` `run_message` | `ja.toml` `[navis]` `run_message` |
 | The enemy names (a round's first custom screen) | `en.toml` `[navis]` `name`, the ROM's name for the navi's NameID (ChrgeMan, GrndMan, TmhkMan, ProtoMan) | `ja.toml` `[navis]` `name` (ロックマン, キラーマン, アクアマン, ブルース...) |
-| A form's or a weapon's name (the frontend's own text: live play's status line) | `en.toml` `[forms]`, `[weapons]` | (English) |
+| A Cross's name (the frontend's own text: live play's terminal summary, the plain-text screen's Cross window) | `en.toml` `[forms]` | (English) |
+| A patch card's name (gen-content checks them; no screen shows them yet) | `en.toml` `[records]`, the fan translation's | `ja.toml` `[records]`, the Japanese ROMs' card names |
 | The HUD's lines (the seconds, "TIME UP!", "COUNTER HIT!"), "VS", "????" | the pack's text script, in the US font's glyphs | the same words, in the Japanese font's glyphs (the pack's Japanese lettering) |
 | The 8x16 font and the dialogue font | the pack's | the pack's Japanese lettering: the Japanese ROMs' fonts, in their encoding |
 | Banners | the pack's | ten differ (the pack's `-ja` banners): ROCKMAN, KILLERMAN, AQUAMAN and BLUES where the US has MEGAMAN, ERASEMAN, SPOUTMAN and PROTOMAN, each starting where its longer or shorter name does; the Program Advance's プログラムアドバンス. The other 37 are the same pictures |
@@ -752,7 +761,8 @@ the US's (the user's choice).
 ### 10.2 Where the strings live
 
 - **Every display string is a content root's `locales/<lang>.toml`**, keyed by definition key: `[chips]` (name,
-  description), `[navis]` (name, run_message), `[forms]` (name, description), `[weapons]` (name). The engine's
+  description), `[navis]` (name, run_message), `[forms]` (a Cross's name and description), `[records]` (name: the
+  patch cards'). What reads each is §10.6. The engine's
   `content::strings::Strings` is one table; nettai-content's `locale` reads them. A definition holds none: the define
   phase refuses a `name`, `description` or `description_lines` field (core.d.luau's specs have none).
 - **The content's own language** (`locale::OWN`, English for BN6) is part of the content: the loader puts its table
@@ -766,7 +776,7 @@ the US's (the user's choice).
   lines than the own one; the battle keeps the own one's timing.
 - **`en.toml` is the US ROMs' strings** (written once from the definitions' former text, which was the US ROM's,
   but for what the content names itself: the chips the US release cut and named otherwise or not at all, Count's
-  and Django's; the forms' and weapons' names; the three Giga chips' descriptions, which no ROM has). **`ja.toml` is
+  and Django's; the Crosses' names; the patch cards' names; the three Giga chips' descriptions, which no ROM has). **`ja.toml` is
   the Japanese ROMs'**, written once by the verification workspace's `gen-content locale-draft ja`. Both are people's
   since, and `gen-content check` compares them with the ROMs (one check for both languages, `locale::check_table`):
   every chip's name and description, every Cross's description, every navi's name (by its NameID) and no-running
@@ -794,8 +804,8 @@ the US's (the user's choice).
   strings.
 - **`--text original --lang ja`** draws the Japanese text in the Japanese fonts as the Japanese games do: a string is
   encoded with the Japanese font's characters, as the English is with the US font's. **The font mode** draws it with
-  Murecho, which has the kana and kanji; a symbol mark of the dialogue font (`[cross]`, `[circle]`: the Japanese
-  descriptions' "攻撃力[cross]2") is drawn as its character (×, ○).
+  Murecho, which has the kana and kanji, and the dialogue font's symbols (✕, ○: the Japanese descriptions'
+  "攻撃力✕2"); the marks it lacks the text layer draws (§10.5).
 - **Timing stays the content's own.** A translated description shows its own lines, whole, in the proportion of the
   own description's lines printed (16 of the 410 Japanese chip descriptions, and HeatCross's and SpoutCross's, have
   two lines where the English has three); a translated no-running message prints in the proportion of the own
@@ -820,3 +830,84 @@ the US's (the user's choice).
   (verification workspace frontend-compare/console-lang.py: Japanese for a trace of a Japanese console).
 - Developer labels in code (the dimming controllers' `phases { name = ... }`, which name a controller in an error
   message) are not display text and stay in the code.
+
+### 10.5 The game's marks as characters
+
+The user's request (2026-10-02): "stuff like [B] and [cross] should really be unicode characters. also the letters
+in EX and SP should be stacked on top of each other for rendering rather than side by side."
+
+The game's fonts have glyphs no letter or kana is: buttons, a cross, two letters stacked in one cell. They were
+bracketed names (`[A]`, `[EX]`, `[cross]`) in compat/text.toml, the strings tables and the pack's charmaps, and the
+frontend parsed a bracketed name as one unit. Each is now one character: a real Unicode symbol where one fits, else
+one codepoint of the Private Use Area, the same in compat/text.toml's US and Japanese encodings (one glyph, one
+character, so a string encodes and decodes the same way and a mark is one character as the battle counts them).
+
+| Glyph (the old name) | In the fonts | Character | In the bundled font |
+|---|---|---|---|
+| The A, B, L and R buttons (`[A]`, `[B]`, `[L]`, `[R]`) | 8x16 0xB7, 0xB5, 0xB4, 0xB6 (US; the dialogue font draws them too) | Ⓐ U+24B6, Ⓑ U+24B7, Ⓛ U+24C1, Ⓡ U+24C7 | Ⓡ only: the others drawn as their letter in a ring |
+| The zenny sign (`[z]`) | 8x16 0xB3 (US), 0x99 (JP) | Ƶ U+01B5 | no |
+| A circle (`[circle]`) | dialogue E4 1F | ○ U+25CB | yes |
+| A cross (`[cross]`: "攻撃力✕2", attack ×2) | dialogue E4 20 | ✕ U+2715. Not ×: the 8x16 font's 0x99 is ×, a smaller glyph, and one character can't name two glyphs; not ✚, an upright cross, which this diagonal one isn't | yes |
+| Brackets (`[bracket1]`, `[bracket2]`) | dialogue E4 E6, E4 E7 (US) | `[` and `]` | yes |
+| A small full stop (`[.]`, one pixel where `.` is two by two) | dialogue E4 E8 (US) | ﹒ U+FE52 | no |
+| R over V (`[RV]`) | 8x16 0x40 (US), 0x84 (JP) | U+E000 | drawn stacked |
+| B over X (`[BX]`) | 0x41, 0x85 | U+E001 | drawn stacked |
+| E over X (`[EX]`: the EX navi chips) | 0x42, 0x94 | U+E002 | drawn stacked |
+| S over P (`[SP]`: the SP navi chips) | 0x43, 0x95 | U+E003 | drawn stacked |
+| F over Z (`[FZ]`) | 0x44, 0x96 | U+E004 | drawn stacked |
+| M over B (`[MB]`) | dialogue E4 1B | U+E005 | drawn stacked |
+| The bat (`[bat]`, a picture) | 8x16 0xA0 (US), 0x81 (JP) | U+E006 | no |
+| End (`[End]`) | dialogue 0xE0; 8x16 0xC6 (JP) | U+E007 | no |
+
+- **Where they are written**: compat/text.toml (`"\uE002"`, as TOML escapes: a Private Use Area character shows as
+  nothing in most editors), locales/{en,ja}.toml (`"Count\uE002"`, `"Press Ⓐ\nto burn a..."`), gen-content's
+  built-in charmap and the verification workspace's tools/jp/locale/textjp.py. The battle's strings use Ⓐ, Ⓑ, ✕,
+  U+E002 and U+E003; the others are in the encoding only.
+- **The original mode** draws the same pixels as before: the charmaps (`font_chars` and the dialogue font's `chars`
+  in `hud.json`, written from compat/text.toml by the extractor) map the characters to the same glyph numbers. A
+  pack written before (hud.json version 6) has the bracketed names, so the frontend asks for it to be extracted
+  again (version 7).
+- **The font mode**: a mark the font has is drawn by the font (Ⓡ, ✕, ○ with Murecho). One it lacks the text layer
+  draws (`vfont::mark`): a button as its letter at 68% of the size, centred in an antialiased ring 1.15 times the
+  capitals' height with a stroke a tenth of it; a stacked mark as its two letters in one cell, each as high as half
+  the capitals less a gap (10%), the first on top, so the pair spans the capitals' height as the game's glyph does,
+  drawn 1.55 times wider and a weight heavier than the text (the game's stacked letters are as wide as its others,
+  half as high) and hinted at their size, so they stay crisp at 3x and up. A mark with no drawing that the font
+  lacks (the bat, End, Ƶ, ﹒) sends its string to the game's font, as any character the font lacks does.
+- **The battle** counts characters (a description's lines; the run message's characters per line and which move
+  the mouth): a mark is one, as the bracketed name was, so no record and no hash changed.
+- **The hyphen of "power-up"** (the user's "fix character", 2026-10-02: SpoutMan's descriptions had read
+  "powerーup"). The US ROM's text has byte 0xA1 there, which the encodings name ー, the Japanese fonts' long vowel
+  mark; the US fonts draw 0xA1 as they draw 0x98, the hyphen (the same pictures in the 8x16 font and the dialogue
+  font, the same advance). So the US encoding reads 0xA1 as a hyphen too: two bytes draw one character, as 0x00
+  and 0xB1 both draw a space, and a string is encoded with the first (0x98), which draws the same pixels. The
+  Japanese encoding keeps ー: its fonts draw a long vowel mark. A sweep of the US ROM's battle text (chip names and
+  descriptions, the Crosses' descriptions, the names by NameID) found no other glyph the US fonts draw as an ASCII
+  one: the rest of its non-ASCII text is the marks, and ミテイ (未定, "not decided"), which the US ROM really has
+  as the description of 57 chips (0x15E-0x17B, 0x181-0x18F but 0x185, 0x19B-0x1A7), in katakana; en.toml keeps
+  it for the 17 of them the content defines.
+- **Checked**: `--text original` renders byte for byte the same PNGs as before (the frontend before the change with
+  its pack, against this one with a pack extracted again): 206 English scenarios and traces, 275,844 frames (the
+  sample, the custom-screen and chatbox lists, machgun, soundmod and the EX and SP navi chips), and the 142 Japanese
+  consoles' traces in Japanese, 171,684 frames. gen-content's check passes (the ROMs' names and descriptions decode
+  to the tables' characters). Looked at headless at 3x: Count's EX and SP in the chip window, the hand and the telop;
+  DustCross's description with its Ⓑ; ✕ in SpoutCross's Japanese one.
+
+### 10.6 What reads each table
+
+The user's question (2026-10-02): "are the forms/weapons sections even used in the locales?"
+
+- `[chips]`: names on the HUD, the telop, the custom screen and the Program Advance's names; descriptions in the
+  chatbox (R), whose lines time it.
+- `[navis]`: the enemy names on the round's first custom screen; the no-running message (L), whose characters time
+  the chatbox.
+- `[forms]`: only the Crosses'. A Cross's description is R in the Cross window, and its lines time that chatbox (the
+  define phase counts them into `FormData::description_lines`); its name is the frontend's own text, live play's
+  terminal summary of the Crosses drawn and the plain-text screen's Cross window (`strings::own_form_name`). The
+  other 15 forms' names (the base form, the Beasts, the Crosses' Beast forms, Beast Over) were read by nothing and
+  are gone; the check refuses a form that isn't a Cross, and the own language must name every Cross. R looks the hovered
+  Cross up by its form (`CrossWindow::hovered`; docs/engine/custom-screen.md §4.1).
+- `[weapons]` (124 names: 69 navi and form weapons', 55 patch card weapons') was read by nothing (no screen
+  shows a weapon's name; `Strings::weapon` had no caller): the table, `WeaponStrings` and its check are gone.
+- `[records]`: the patch cards' names, which gen-content checks (the English ones there, the Japanese ones the
+  ROM's); no screen of the frontend shows them yet.

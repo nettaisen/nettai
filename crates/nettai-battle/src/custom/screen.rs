@@ -112,6 +112,16 @@ pub struct CrossWindow {
     pub chosen: Option<u8>,
 }
 
+impl CrossWindow {
+    /// The Cross under the cursor, by its form: its place among the
+    /// player's Crosses (`Unlocks::cross_at`: the setup's Cross list's
+    /// entry, of either game, else the version's Cross with that number).
+    /// None when the content has no such Cross.
+    pub fn hovered(&self, unlocks: &Unlocks, library: &dyn Library, navi: nettai_content_api::NaviHandle) -> Option<nettai_content_api::FormHandle> {
+        unlocks.cross_at(library, navi, *self.offered.get(self.cursor as usize)?)
+    }
+}
+
 /// Where a player's screen is. Tick counts start at 1 on the tick after
 /// the one that entered the state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -1143,9 +1153,9 @@ impl Screen {
             self.phase = Phase::CrossWindowClosing { tick: 0 };
             self.look.play(ScreenSound::Cursor);
         } else if p & keys::R != 0 {
-            // The cursor's Cross's description.
-            let cross = self.crosses.offered[self.crosses.cursor as usize];
-            let form = view.library.cross_form(view.stats.navi, view.unlocks.version, cross);
+            // The cursor's Cross's description: that Cross's own (with a
+            // setup's Cross list, of whichever game it is).
+            let form = self.crosses.hovered(view.unlocks, view.library, view.stats.navi);
             let lines = form.map_or(3, |f| view.library.cross_description_lines(f));
             self.describe(joy, lines, true);
             self.look.play(ScreenSound::Description);

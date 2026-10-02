@@ -399,7 +399,8 @@ named_fields! {
         /// Fighting in the sun.
         Sun = "sun", Bool, ro;
         /// The form and the navi, as their definitions.
-        Form = "form", Ref(Registry::Form, None), ro;
+        /// Writable: a game's form change puts the navi in its form.
+        Form = "form", Ref(Registry::Form, None), rw;
         Navi = "navi", Ref(Registry::Navi, None), ro;
         NaviVariant = "navi_variant", U8, ro;
         /// The base form's element (patch cards write it).
@@ -1065,6 +1066,12 @@ pub trait CoreApi {
     /// `ticks` ticks at `magnitude` (0-3). Each shaking tick draws from
     /// the consoles' own RNGs, which ChpShufl's re-deal reads.
     fn shake_camera(&mut self, magnitude: u16, ticks: u16);
+    /// `sub_80302B6`: the cameras' second shake, `magnitude` (0-3) for
+    /// `ticks`.
+    fn shake_camera_secondary(&mut self, magnitude: u16, ticks: u16);
+    /// `sub_80EA438`: a burst around `navi`'s panel (effect object #0x90,
+    /// which runs while paused).
+    fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef>;
     /// `sub_801DA48` (`shown`) or `sub_801DACC` with a HUD part's draw
     /// task: every console shows or hides it (output only).
     fn show_hud(&mut self, part: HudPart, shown: bool);
@@ -1408,6 +1415,48 @@ pub trait CoreApi {
     fn refresh_form_overlay(&mut self, o: ObjectRef);
     /// `object_exitAttackState`: back to the idle action with animation 0.
     fn exit_attack(&mut self, o: ObjectRef);
+
+    // ---- What a game's rules do to a navi (docs/design/rules-in-luau.md §4.5) ----
+
+    /// The invulnerability ends: its timer and its flag.
+    fn clear_invulnerable(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_800F46C` + `sub_800F2C6`: face the default way under the
+    /// standard column patterns, and the sprite with it.
+    fn face_default(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// The charge drops: its counters and the hold requests.
+    fn reset_charge(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_80C4C3A` on the navi's aura: the Full Synchro aura goes.
+    fn end_full_synchro_aura(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_80158FA`: movement, reactions and the slower statuses end.
+    fn drop_statuses(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_801A264`: a navi's statuses end: their flags, requests and
+    /// timers (not the whole status word, as `clear_statuses`).
+    fn end_statuses(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// The navi's overlay (`related2`) keeps stepping through pauses and
+    /// dimming (`keep`: its Param3 1 and flags 0x14), or steps like any
+    /// object again (its Param3 0). Nothing without an overlay.
+    fn overlay_stepping(&mut self, o: ObjectRef, keep: bool);
+    /// `sub_8011384(form)`: take off what `form` wore (the base form: what
+    /// is there).
+    fn take_off_form_overlay(&mut self, o: ObjectRef, form: crate::FormHandle);
+    /// `sub_8011268(form)`: put on what `form` wears.
+    fn put_on_form_overlay(&mut self, o: ObjectRef, form: crate::FormHandle);
+    /// `sub_800FC9E` and a form change's load: the navi's sprite in `form`,
+    /// its animation 0 from the start, shadow on the ground, facing its
+    /// way, white.
+    fn load_form_sprite(&mut self, o: ObjectRef, form: crate::FormHandle) -> ApiResult<()>;
+    /// `sub_80144C0`: the full status reset (NaviCust state, hand bonuses,
+    /// hit modifier, region, charge, weapons, the form's flags, element,
+    /// body damage).
+    fn reset_status(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// Anger ends, and the mood is back to 0x80.
+    fn end_anger(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// The form the navi's side asked to change into at this turn's start
+    /// (none: none, or the base form).
+    fn form_change_target(&self, o: ObjectRef) -> Option<crate::FormHandle>;
+    /// `sub_80C4526(overlay, 1)`: an overlay on an image sits in front (an
+    /// idle overlay keeps its owner's height).
+    fn pin_overlay(&mut self, o: ObjectRef);
     /// `sub_801171C`: back to the idle action (the animation untouched).
     fn end_attack(&mut self, o: ObjectRef);
     /// `object_setAttack0..5`: start the content action `action` (a handle

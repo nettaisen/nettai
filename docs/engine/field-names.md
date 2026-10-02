@@ -226,5 +226,5 @@ what they start. "No setter found" is from the same heuristic scan as above.
 | `Battle::dimming` / `DimmingRecord` | `byte_203CF00` + 0x50·side | A side's dimming: owner +0, state +1, no_cut_in +2, initiator +3, controller +8, user +0xC (chips.md §3.6). |
 | `AttackVars::marker` | AIAttackVars+0x30 | Also the Cross change's white-flash count (0..6, `sub_8014B98`). |
 | `attachment::Params` | Param1..4 of T1#5 | Kind, animation, animate while dimmed, palette offset (`sub_80B8CF8`). |
-| `cross_merge::Vars` | +0x62, ExtraVars+4/+0xC/+0x10/+0x14, +0x68 of T1#0x1B | Swings left, swing step, lift, extra height, sound played, side of the next swing. |
+| `forms/cross-merge`'s state (content/bn6/rules/forms/merge.luau) | +0x62, ExtraVars+4/+0xC/+0x10/+0x14, +0x68 of T1#0x1B | Swings left, swing step, lift, extra height, sound played, side of the next swing. |
 | `body_overlay::Vars` | Param1..4 and ExtraVars[0] of T1#0x56 | Variant, own palette, always step, animation offset, forced in front. |
