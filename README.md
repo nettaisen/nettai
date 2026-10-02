@@ -25,17 +25,19 @@ netplay needs.
 - `m4a`: the GBA's M4A (Sappy) sound driver.
 - `nettai-netplay`: rollback netplay on [getgud](https://github.com/tangobattle/getgud), with a simulated network.
 - `nettai-frontend`: a desktop app that draws battles: it replays recorded matches or plays live.
-- `bn6-extract`: extracts BN6's graphics and sound from a ROM into a content pack.
+- `bn6-extract`: extracts BN6's graphics and sound from the four ROMs into a content pack.
 - `bn6-compat`: BN6's original numbers for the content (`content/bn6/compat`): the codecs of the game's setup
   records, and the trace harness. The engine never depends on it.
 
 ## Getting started
 
-You need Rust with edition 2024, and the two US Mega Man Battle Network 6 ROMs of your own: Cybeast Falzar
-(`MEGAMAN6_FXXBR6E`) and Cybeast Gregar (`MEGAMAN6_GXXBR5E`). Extract a content pack from them into
-`data/content/bn6`, where the tools look by default (the directory is gitignored):
+You need Rust with edition 2024, and four Mega Man Battle Network 6 ROMs of your own: the US Cybeast Falzar
+(`MEGAMAN6_FXXBR6E`) and Cybeast Gregar (`MEGAMAN6_GXXBR5E`), and the Japanese Rockman EXE 6 Dennoujuu Falzar
+(`ROCKEXE6_RXXBR6J`) and Dennoujuu Gregar (`ROCKEXE6_GXXBR5J`), which have what the US release cut. Extract a
+content pack from them, in that order, into `data/content/bn6`, where the tools look by default (the directory is
+gitignored):
 
-    cargo run --release -p bn6-extract -- content <falzar-rom> <gregar-rom> data/content/bn6
+    cargo run --release -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6
 
 Then run the frontend:
 

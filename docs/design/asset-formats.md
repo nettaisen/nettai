@@ -353,7 +353,7 @@ tile numbers the maps name from these blocks, as the original's VRAM holds
 them.
 
 **Two ROMs, and what differs by version.** A BN6 pack is made from both US
-ROMs (`bn6-extract content <falzar-rom> <gregar-rom> <pack>`): the Falzar
+ROMs (`bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>`): the Falzar
 ROM's data, with what only the Gregar ROM has right or of its own, read at
 the addresses the same code points at there (bn6-extract's `gregar`):
 
@@ -732,13 +732,13 @@ total ever pass about a second, the sound import is where to look first.
 `Content::animations` (see [content-pack.md](content-pack.md)); nothing is
 compiled into the engine.
 
-**From the ROMs.** `bn6-extract content <falzar-rom> <gregar-rom> <dir>` writes a pack in one
+**From the ROMs.** `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` writes a pack in one
 step (the battle data, the graphics extraction, the sound extraction, then
 the exporters), about 1 s. It is the only extraction.
 
 ## 10. Commands
 
-    cargo run -p bn6-extract -- content <falzar-rom> <gregar-rom> data/content/bn6    # ROMs -> pack
+    cargo run -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6    # ROMs -> pack
     cargo run -p nettai-frontend -- <trace.jsonl> --pack data/content/bn6
     cargo run -p nettai-content -- check data/content/bn6            # lint every file
     cargo run -p nettai-content -- verify data/content/bn6 <reference-pack> [--seconds N]

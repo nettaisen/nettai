@@ -21,7 +21,7 @@ sound, in open formats (indexed PNG, JSON, Tiled maps, MIDI, TOML, WAV; see
 `docs/design/content-pack.md` and `docs/design/asset-formats.md`), by the
 names the content gives them. Extract it once:
 
-    cargo run -p bn6-extract -- content <falzar-rom> <gregar-rom> data/content/bn6
+    cargo run -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6
 
 (`data/content/` is gitignored.) The frontend loads the pack at start-up
 from `--pack <dir>`, else `$BN6_PACK`, else `data/content/bn6`, straight

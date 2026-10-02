@@ -56,7 +56,7 @@ Running it:
 ```sh
 cargo test --workspace                                         # engine, runtime, rollback, the type check, the guards
 cargo run -p nettai-content-check -- content/bn6                  # type-check and lint the content root
-cargo run --release -p bn6-extract -- content <falzar-rom> <gregar-rom> <pack>     # a BN6 pack (assets), checked against content/bn6
+cargo run --release -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>     # a BN6 pack (assets), checked against content/bn6
 cargo run --release -p nettai-content -- check <pack>             # the define phase and its report
 cargo run --release -p nettai-netplay --example rollback_cost -- <trace.jsonl> <pack> 1
 cargo run --release -p nettai-battle --example luau_ops --features test-content
