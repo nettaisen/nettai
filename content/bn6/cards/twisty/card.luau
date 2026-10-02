@@ -4,8 +4,8 @@
 local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return cards.card {
-    id = "patch-card/twisty",
+return define.patch_card {
+    id = "twisty",
     mb = 9,
     effects = {
         cards.hp(80),
