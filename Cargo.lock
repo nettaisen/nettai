@@ -76,26 +76,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 
 [[package]]
-name = "bn6-assets"
+name = "nettai-assets"
 version = "0.1.0"
 
 [[package]]
-name = "bn6-audio"
+name = "nettai-audio"
 version = "0.1.0"
 dependencies = [
- "bn6-battle",
+ "nettai-battle",
  "bn6-compat",
- "bn6-content",
+ "nettai-content",
  "cpal",
  "m4a",
 ]
 
 [[package]]
-name = "bn6-battle"
+name = "nettai-battle"
 version = "0.1.0"
 dependencies = [
- "bn6-content-api",
- "bn6-luau",
+ "nettai-content-api",
+ "nettai-luau",
  "serde",
  "serde_json",
 ]
@@ -104,20 +104,20 @@ dependencies = [
 name = "bn6-compat"
 version = "0.1.0"
 dependencies = [
- "bn6-battle",
- "bn6-content-api",
+ "nettai-battle",
+ "nettai-content-api",
  "serde",
  "serde_json",
  "toml",
 ]
 
 [[package]]
-name = "bn6-content"
+name = "nettai-content"
 version = "0.1.0"
 dependencies = [
- "bn6-assets",
- "bn6-battle",
- "bn6-content-api",
+ "nettai-assets",
+ "nettai-battle",
+ "nettai-content-api",
  "m4a",
  "miniz_oxide 0.8.9",
  "png",
@@ -128,14 +128,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "bn6-content-api"
+name = "nettai-content-api"
 version = "0.1.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
-name = "bn6-content-check"
+name = "nettai-content-check"
 version = "0.1.0"
 dependencies = [
  "luau-analyze",
@@ -145,43 +145,43 @@ dependencies = [
 name = "bn6-extract"
 version = "0.1.0"
 dependencies = [
- "bn6-assets",
+ "nettai-assets",
  "bn6-compat",
- "bn6-content",
- "bn6-content-api",
+ "nettai-content",
+ "nettai-content-api",
  "m4a",
 ]
 
 [[package]]
-name = "bn6-frontend"
+name = "nettai-frontend"
 version = "0.1.0"
 dependencies = [
- "bn6-assets",
- "bn6-audio",
- "bn6-battle",
+ "nettai-assets",
+ "nettai-audio",
+ "nettai-battle",
  "bn6-compat",
- "bn6-content",
- "bn6-content-api",
+ "nettai-content",
+ "nettai-content-api",
  "m4a",
  "minifb",
  "png",
 ]
 
 [[package]]
-name = "bn6-luau"
+name = "nettai-luau"
 version = "0.1.0"
 dependencies = [
- "bn6-content-api",
+ "nettai-content-api",
  "mlua",
 ]
 
 [[package]]
-name = "bn6-netplay"
+name = "nettai-netplay"
 version = "0.1.0"
 dependencies = [
- "bn6-battle",
+ "nettai-battle",
  "bn6-compat",
- "bn6-content",
+ "nettai-content",
  "getgud",
 ]
 

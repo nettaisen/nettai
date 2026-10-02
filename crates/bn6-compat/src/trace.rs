@@ -172,16 +172,16 @@ fn navi_stats(hex: &str, ids: &Ids) -> NaviStats {
 
 use crate::Compat;
 use crate::codec::{self, Ids};
-use bn6_battle::battle::{Battle, CustomResult, TickEvents};
-use bn6_battle::content::Content;
-use bn6_battle::console::{Console, ConsoleSetup};
-use bn6_battle::custom::{Context, GameVersion, PlayerSetup, Recorded, Request, Side, Unlocks};
-use bn6_battle::hand::ChipHand;
-use bn6_battle::input::PlayerTick;
-use bn6_battle::kinds::player::Emotion;
-use bn6_battle::link::Link;
-use bn6_battle::rng::Rng;
-use bn6_battle::setup::{NaviStats, RoundSetup, SetScore};
+use nettai_battle::battle::{Battle, CustomResult, TickEvents};
+use nettai_battle::content::Content;
+use nettai_battle::console::{Console, ConsoleSetup};
+use nettai_battle::custom::{Context, GameVersion, PlayerSetup, Recorded, Request, Side, Unlocks};
+use nettai_battle::hand::ChipHand;
+use nettai_battle::input::PlayerTick;
+use nettai_battle::kinds::player::Emotion;
+use nettai_battle::link::Link;
+use nettai_battle::rng::Rng;
+use nettai_battle::setup::{NaviStats, RoundSetup, SetScore};
 
 /// A custom-screen exchange record from a trace.
 #[derive(Clone, Debug, Deserialize)]
@@ -425,10 +425,10 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
     // Objects whose X and Y the engine doesn't know, and hit sparks with
     // their hitter's garbage Z fraction, are compared without them, on
     // both sides (matched by list position).
-    let order: Vec<bn6_battle::object::ObjectRef> = b.objects.in_order().collect();
+    let order: Vec<nettai_battle::object::ObjectRef> = b.objects.in_order().collect();
     let unknown: Vec<Unknown> = order
         .iter()
-        .map(|&o| Unknown { xy: bn6_battle::kinds::effect::xy_unknown(b, o), z_fraction: spark_z_fraction_unknown(b, compat, o) })
+        .map(|&o| Unknown { xy: nettai_battle::kinds::effect::xy_unknown(b, o), z_fraction: spark_z_fraction_unknown(b, compat, o) })
         .collect();
     let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, compat, o, u)).collect();
     let theirs: Vec<String> =
@@ -473,8 +473,8 @@ struct Unknown {
 /// outlives a hitter that ends with the battle (the lab's
 /// chips/0x071-sensor1/ko): a freed slot keeps its object's kind until it
 /// is used again, as in the game, and that kind is asked.
-fn spark_z_fraction_unknown(b: &Battle, compat: &Compat, r: bn6_battle::object::ObjectRef) -> bool {
-    use bn6_battle::object::Pool;
+fn spark_z_fraction_unknown(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef) -> bool {
+    use nettai_battle::object::Pool;
     if compat.object_slot(b, r) != Ok((Pool::Effect, 4)) {
         return false;
     }
@@ -518,7 +518,7 @@ fn describe_fields(
 
 /// The kind in an object slot of the trace's numbering (type 1, 3, 4).
 fn slot_kind(compat: &Compat, kind: u8, index: u8) -> Option<&crate::KindEntry> {
-    use bn6_battle::object::Pool;
+    use nettai_battle::object::Pool;
     let pool = match kind {
         1 => Pool::Actor,
         3 => Pool::Attack,
@@ -543,7 +543,7 @@ fn slot_kind(compat: &Compat, kind: u8, index: u8) -> Option<&crate::KindEntry> 
 fn pos_is_garbage(compat: &Compat, kind: u8, index: u8, flags: u8) -> bool {
     slot_kind(compat, kind, index).is_some_and(|k| {
         k.scratch_position
-            || (k.scratch_position_without_sprite && flags & bn6_battle::object::flags::NO_SPRITE_UPDATE != 0)
+            || (k.scratch_position_without_sprite && flags & nettai_battle::object::flags::NO_SPRITE_UPDATE != 0)
     })
 }
 
@@ -554,7 +554,7 @@ fn z_fraction_is_garbage(compat: &Compat, kind: u8, index: u8) -> bool {
     slot_kind(compat, kind, index).is_some_and(|k| k.scratch_z_fraction)
 }
 
-fn describe(b: &Battle, compat: &Compat, r: bn6_battle::object::ObjectRef, unknown: Unknown) -> String {
+fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, unknown: Unknown) -> String {
     let o = b.objects.get(r);
     let status = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
     // The engine's identities as the original's numbers: the object's kind

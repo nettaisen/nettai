@@ -2,8 +2,8 @@
 //! the ROM; the HUD tasks (`sub_801BF64`) copy it to VRAM as needed.
 
 use crate::{Rom, u32at};
-use bn6_assets::{BannerLayout, ChipIcon, Hud, MapEntry, NaviMugshot, Palette, Tiles, palettes_from_bytes};
-use bn6_content::names::AssetNames;
+use nettai_assets::{BannerLayout, ChipIcon, Hud, MapEntry, NaviMugshot, Palette, Tiles, palettes_from_bytes};
+use nettai_content::names::AssetNames;
 
 /// HUD layer tiles 0x1A0..=0x1D1: HP digits and blank, the box border,
 /// damage digits, '+' (list `off_801ECB4`).

@@ -54,7 +54,7 @@ the original's numbers (§6). Routine names are the original's. "Dimming", "cut-
   freezing, the deterministic library) with definers available only while content loads; it produces a canonical
   tree the loader turns into the typed Rust `Content`, plus the function slots (updates, hooks) the runtime calls.
   Each thread's runtime VM re-runs the same define phase and checks it gets the same tree. A throwaway spike ran
-  this on bn6-luau's real sandbox (§7.3).
+  this on nettai-luau's real sandbox (§7.3).
 - **The Rust ruleset reaches content through roles, traits and registrations**, never numbers: `roles.kinds.
   absorbed_obstacle`, a form's `charged_chips` trait, a chip's `dimming` hook. Every numeric call site in the
   ruleset is listed in §7.5 with its replacement.
@@ -165,7 +165,7 @@ script only ever sees definitions that exist; it cannot make one (definers fail 
 
 The definers are fields of one global, `define`, and the asset resolvers of `asset`. Both work only while
 content loads: a module's top level, and functions it calls while loading (builders). Everything is typed in
-core.d.luau; `bn6-content-check` type-checks it (§7.7). Specs below show the fields; `?` marks optional ones.
+core.d.luau; `nettai-content-check` type-checks it (§7.7). Specs below show the fields; `?` marks optional ones.
 
 ### 3.1 Chips
 
@@ -480,7 +480,7 @@ registered by that number"). Chip use takes the handle from the chip's definitio
 `setup` returns, and dispatch runs `content_action` when it is set.
 
 A builder stores its parameters in `args` rather than only capturing them. The canonical tree then shows what
-each chip is made of (`bn6-content show minibomb`), and definitions nested in the arguments get derived keys.
+each chip is made of (`nettai-content show minibomb`), and definitions nested in the arguments get derived keys.
 
 ### 3.6 Effects, sparks, regions, collision types, statuses, lock-on modes
 
@@ -512,7 +512,7 @@ the one mode the ruleset names itself, the Beast claw's, is the role `lockon.bea
 chip names are `beast-claw` and `beast-lunge`. The rule section keeps what the modes share (the column shifts
 and the clear-path condition); the charged sword's table by variant went, since each charged slash names its
 mode. The numbers are compat's rules.toml, for `gen-content check` alone. The engine's test content defines
-its made-up modes under the same names (crates/bn6-battle/testdata/content/rules/lockon.luau).
+its made-up modes under the same names (crates/nettai-battle/testdata/content/rules/lockon.luau).
 
 **As built** (step 12, statuses). A status is `StatusEffect` by `StatusHandle` (`Content::status`,
 `Defs::statuses`), with no byte anywhere in the engine: a collision's `status_base` and `status_final`, a
@@ -526,7 +526,7 @@ when its status's timer is paralysis). rules/status.luau names each group's own 
 (`paralyze-90`, `confuse-480`, `freeze-150`) and the entries the original reads past a group's end for what
 they read (`confuse-480-past-paralyze`); the bytes are compat's rules.toml. A chip's legacy `sword` marker
 (v1 record data nothing reads) keeps its raw status byte. The engine's test content defines dummy statuses
-under the same names (crates/bn6-battle/testdata/content/rules/status.luau).
+under the same names (crates/nettai-battle/testdata/content/rules/status.luau).
 
 **As built** (step 12, effects, sparks, regions and collision types). They are definitions the engine holds by
 handle (`Defs::effects`, `sparks`, `regions`, `collisions`; `Content::effect`, `spark`, `region`,
@@ -540,7 +540,7 @@ and registers itself are roles (§7.4): `effects.*`, `sparks.*`, `regions.anchor
 type keeps `row_offset`, the bug code's garbage byte. rules/numbers.luau, which numbered the effects, sparks and
 regions for v1 modules and the ruleset, is gone (weapons by handle took its last table), and `data.regions` and
 `data.rules.field_regions` went with it. The engine's test content defines its own for the roles
-(crates/bn6-battle/testdata/content/rules/ruleset.luau: one made-up look for every effect, one for every spark,
+(crates/nettai-battle/testdata/content/rules/ruleset.luau: one made-up look for every effect, one for every spark,
 and collision types by what they are). Compat's rules.toml gives each role the original's number, for
 `gen-content check` alone (§9.3).
 
@@ -576,7 +576,7 @@ settings indices, its layout's number and its actor list's address (the 16-byte 
 by them), kinds.toml the actor-list entry type of a kind with a `place`, and records.toml the argument each rock
 variant goes by; `gen-content check` rebuilds every actor list and layout from the definitions through them
 and compares with the ROM. The engine's test content defines its four stages in
-crates/bn6-battle/testdata/content/stages/test.luau, and tests name stages by key.
+crates/nettai-battle/testdata/content/stages/test.luau, and tests name stages by key.
 
 ### 3.8 Rules
 
@@ -680,7 +680,7 @@ content/bn6/
 6. Folders and files are named by name: no index prefixes. A series folder is named by its plainest member
    (`chips/cannon/` for Cannon, HiCannon, M-Cannon; `chips/recov/` for Recov10 to Recov300).
 
-`bn6-content where <key>` prints the module that defines a key, and load errors name the module.
+`nettai-content where <key>` prints the module that defines a key, and load errors name the module.
 
 ### 4.2 Every current `objects/` entry
 
@@ -1821,10 +1821,10 @@ library slots 0xCB..0xDC and 0x160..0x170 and the nameless copies of the plus ch
 
 ### 6.2 Who reads it
 
-Compat is read by `bn6-compat`, a new crate that depends on `bn6-battle` (so the engine can't depend on it), and
+Compat is read by `bn6-compat`, a new crate that depends on `nettai-battle` (so the engine can't depend on it), and
 by the tools that interoperate with the real game:
 
-- **the golden-trace harness** (§10): `trace.rs` moves from `bn6-battle` into `bn6-compat` behind its `trace`
+- **the golden-trace harness** (§10): `trace.rs` moves from `nettai-battle` into `bn6-compat` behind its `trace`
   feature;
 - **the setup codecs**: `NaviStats`, `BattleFolder`, `ChipHand`, `TransformRequest`, battle settings and SP times
   from the game's bytes and back, for traces, real saves, folders, NaviCust setups and link navis;
@@ -1864,10 +1864,10 @@ name is a load error naming the module. The resolved value is a handle into the 
 
 - **Luau can't.** Compat is TOML. The loader discovers modules by `.luau`, `require` resolves modules only, and the
   define phase never exposes compat. No Luau API returns an original number (the numeric API is removed, §7.6).
-- **The engine can't.** `bn6-compat` depends on `bn6-battle`; a dependency the other way is a cycle. `Content`
+- **The engine can't.** `bn6-compat` depends on `nettai-battle`; a dependency the other way is a cycle. `Content`
   has no compat fields at any step: the validator maps the engine's handles to the original's numbers, and no
-  bridge carries them into the engine (§7.3, the user's decision). A test in `bn6-compat` asserts `bn6-battle`'s
-  dependency list doesn't contain it, and a source guard in `bn6-battle`'s tests fails on the word `compat`
+  bridge carries them into the engine (§7.3, the user's decision). A test in `bn6-compat` asserts `nettai-battle`'s
+  dependency list doesn't contain it, and a source guard in `nettai-battle`'s tests fails on the word `compat`
   outside comments in the engine and the crates it runs content through.
 - **The checker enforces the rest** (§7.7): no deprecated numeric API use, no `legacy { }` markers, no placeholder
   asset names, once the ratchet reaches zero.
@@ -1946,7 +1946,7 @@ resolved against `Content::names`; netplay peers exchange handles once their con
 
 ### 7.3 The define phase and the loader
 
-`bn6-luau` gets `define::run(pack, assets) -> Result<Defined, ContentError>`:
+`nettai-luau` gets `define::run(pack, assets) -> Result<Defined, ContentError>`:
 
 1. A fresh sandboxed VM (`sandbox::new_vm`), with `define`, `asset` and `require` installed before
    `lua.sandbox(true)`.
@@ -1962,7 +1962,7 @@ resolved against `Content::names`; netplay peers exchange handles once their con
    as slots `(registry, key, field path)`, integers checked exact, keys sorted. The tree and its hash are the
    `DefinitionTree`.
 
-`bn6-battle`'s `content::define` turns the tree into typed `Content`: serde deserializes each registry's entries
+`nettai-battle`'s `content::define` turns the tree into typed `Content`: serde deserializes each registry's entries
 from the tree (the data types already derive `Deserialize`), with references resolved to typed handles and a
 reference to the wrong registry reported with both keys. The asset side (names, animation timing) comes from the
 pack's assets or, for tests, a synthetic index (§7.8).
@@ -2036,10 +2036,10 @@ defines needs a handle there instead, which is §7.2's table brought forward:
   number for it and panics there. `Defs::number_chip` and `number_weapon` are gone.
 
 The trace comparison's hints (`scratch_position` and the rest) are compat's alone: kinds.toml has them, and the
-engine's kinds carry none. A source guard (`crates/bn6-battle/tests/no_compat.rs`) fails on the word `compat`
-outside comments in `bn6-battle`, `bn6-content-api` and `bn6-luau`.
+engine's kinds carry none. A source guard (`crates/nettai-battle/tests/no_compat.rs`) fails on the word `compat`
+outside comments in `nettai-battle`, `nettai-content-api` and `nettai-luau`.
 
-**The spike.** A throwaway crate (not committed) ran a define phase on bn6-luau's real sandbox with five modules
+**The spike.** A throwaway crate (not committed) ran a define phase on nettai-luau's real sandbox with five modules
 (a bombs library with a shared state table, a bomb kind with a module-level effect, MiniBomb and BigBomb
 modules, and a FlshBom series module with one shared action for three chips): the verifier accepted the
 modules; two VMs, loading the modules in opposite orders, produced identical canonical trees and handles; derived
@@ -2108,7 +2108,7 @@ pack replaces.
 
 ### 7.5 The ruleset's numeric call sites and their replacements
 
-Counted in `crates/bn6-battle/src` without tests; file names are the modules that hold them.
+Counted in `crates/nettai-battle/src` without tests; file names are the modules that hold them.
 
 **Kinds by pool and index.**
 - `kinds::update` and `Vars::for_kind` match `(Pool, index)` for the 20 engine kinds; 14 `INDEX` constants
@@ -2188,7 +2188,7 @@ gone. What replaced each number:
   as the machine sword the attack's chip is).
 - The numeric API's chip (a dimming spec's, a defensive-chip record's) is an opaque number, `DEFINED_CHIPS`
   plus the handle; the supports' controller holds its chips as references.
-The engine's test chips are definitions too (crates/bn6-battle/testdata/content/chips/test: made-up records
+The engine's test chips are definitions too (crates/nettai-battle/testdata/content/chips/test: made-up records
 composing BN6's builders), and tests name chips by key. compat's chips.toml has the original's numbers by key,
 for the trace harness and save import (`bn6_compat::codec::Ids`); `gen-content check` compares each definition
 with the ROM's chip of its number, including the traits, traps and HP bug its number gives it in the
@@ -2250,7 +2250,7 @@ effects, sparks, regions and collision types of §3.6. `SoundId` and `BannerId` 
 with no constants: the ruleset has none of either outside its tests. Two things are not roles. The sound a
 NaviCust panel trail makes turning a panel into a type (`byte_8013D44`, by panel type) is the panel type's
 `trail_sound` in rules/panels.luau. And the original's "no music" song, which the ruleset never plays (a stage
-without music has none), is the audio player's (`bn6_audio::NO_MUSIC`): there is no `music.none`.
+without music has none), is the audio player's (`nettai_audio::NO_MUSIC`): there is no `music.none`.
 
 **Stages and setup.**
 - `BattleSettings::netbattle_from_bytes`, `actor_list_at(address)`, `Stage { settings: u8 }`, `settings(index)`,
@@ -2332,7 +2332,7 @@ kind's own state-machine byte, which the traces compare.
   (`regions.anchor`).
 - **Roles.** `define.roles { actions = { ... } }`, once, keyed `roles`. The ruleset starts AntiDmg's, AntiSwrd's
   and BodyGrd's counters by role (`anti_damage_counter`, `anti_sword_counter`, `body_guard_counter`); an
-  unfilled role panics naming itself where it is needed and `bn6-content check` warns, until the BN6 content
+  unfilled role panics naming itself where it is needed and `nettai-content check` warns, until the BN6 content
   fills every role (then an unfilled one is a load error). Their compat keys are the role actions' ids, which
   the chips' conversion chooses (proposed: `antidmg/counter`, `antiswrd/counter`, `bodygrd/counter`, numbers
   0x47, 0x48, 0x4B in actions.toml).
@@ -2343,27 +2343,27 @@ kind's own state-machine byte, which the traces compare.
 
 ### 7.7 Checking
 
-- **`bn6-content-check`** (the in-process type check, its own binary because its Luau collides with mlua's)
+- **`nettai-content-check`** (the in-process type check, its own binary because its Luau collides with mlua's)
   checks every module against core.d.luau and types.d.luau as today. Library builders' spec types go in
   types.d.luau so chip modules' calls are checked (requires stay typed `any` per module, and a module casts what it
   requires, `require(...) :: BombsLib`). It adds static lints: no deprecated numeric API calls and no `legacy { }`
   markers beyond the ratchet's allowance (§12), no placeholder asset names, kind keys qualified by their owner
   folder, no module under `compat/`.
-- **`bn6-content check <content> [<assets>]`** (links the runtime) runs the define phase and reports: duplicate
+- **`nettai-content check <content> [<assets>]`** (links the runtime) runs the define phase and reports: duplicate
   keys, references to the wrong registry, unfilled roles, rule sections missing or defined twice, unknown asset
   names, chips with no usage or two, kinds in `objects/` used by one owner (colocation). Compat entries that
   don't resolve and definitions compat doesn't cover are `bn6-compat`'s check, not the engine's (§7.3).
   `cargo test --workspace` runs both on content/bn6.
 
 As built in step 4: the lints and the ratchet read the source through a small scanner (comments dropped, string
-contents masked), in `bn6-content-check`'s `lints` module. A deprecated use is a call that exists only in the
+contents masked), in `nettai-content-check`'s `lints` module. A deprecated use is a call that exists only in the
 numeric API (`battle.spawn_kind`, `me:param`, `data.`, ...), `battle.spawn` with a pool, or a call whose
 definition-taking argument is a number literal or a module-level numeric constant (`battle.play_sound(SOUND)`
 with `local SOUND = 0x1A6`); it is a count, so an approximate one serves. `tests/deprecated.txt` holds each
 module's allowance (1,263 uses in 221 modules at the start); the test fails on more, and on fewer until the
-allowance is lowered (`BN6_RATCHET_LOWER=1`); `bn6-content-check --deprecated [--list]` prints the counts.
-`bn6-content check` warns on unfilled roles and single-owner kinds (`bn6_content::lint`). The engine's test pack
-type-checks against content/bn6's core.d.luau in bn6-content-check's tests.
+allowance is lowered (`BN6_RATCHET_LOWER=1`); `nettai-content-check --deprecated [--list]` prints the counts.
+`nettai-content check` warns on unfilled roles and single-owner kinds (`nettai_content::lint`). The engine's test pack
+type-checks against content/bn6's core.d.luau in nettai-content-check's tests.
 
 ### 7.8 Tests in the repository
 
@@ -2377,7 +2377,7 @@ type-checks against content/bn6's core.d.luau in bn6-content-check's tests.
   synthetic timing.
 - A new test, `every_chip_runs`, plays short duels with each chip in turn and random buttons, under rollback: a
   content error anywhere fails it. It covers what no trace reaches yet, cheaply, on every `cargo test`.
-- A small test pack (crates/bn6-battle/testdata/pack, a few modules) tests the define phase itself: keys,
+- A small test pack (crates/nettai-battle/testdata/pack, a few modules) tests the define phase itself: keys,
   handles, references, errors.
 
 ## 8. Rollback, the digest and the content hash
@@ -2412,18 +2412,18 @@ type-checks against content/bn6's core.d.luau in bn6-content-check's tests.
 `animations.json`) under their names, the field, backgrounds, the HUD's graphics (with chip icons named by chip
 key, mugshots and banners by name) and the font with its charmap, songs, sound effects, voicegroups and samples.
 `battle.rs` (1,077 lines) and the HUD's chip-name decoding leave the crate; `check_timing` compares the
-graphics' animations with themselves no more (there is one copy). The overlay merge (`bn6_content::overlay`) is
+graphics' animations with themselves no more (there is one copy). The overlay merge (`nettai_content::overlay`) is
 deleted.
 
 ### 9.2 The pack: content and assets as two roots
 
 A battle loads from two roots: the **content** (content/bn6, the committed Luau, with compat) and the **assets**
-(the extractor's output). `bn6_content::pack::load(content, assets)` reads the modules and the asset index,
+(the extractor's output). `nettai_content::pack::load(content, assets)` reads the modules and the asset index,
 runs the define phase, and returns `Content` (plus `Compat` when asked, through `bn6-compat`). The frontend and
 the tools take `--content` and `--assets`; the verification workspace points `--content` at the engine
 checkout's content/bn6 and `--assets` at its extracted assets, so a content change needs no re-extraction.
 A distributable pack can be both in one folder (the same path twice). The pack's TOML battle data, `registries/`,
-`rules/*.toml`, `chip.toml`, `object.toml`, `weapon.toml` and `bn6_content::battle` (1,609 lines of TOML IO)
+`rules/*.toml`, `chip.toml`, `object.toml`, `weapon.toml` and `nettai_content::battle` (1,609 lines of TOML IO)
 are deleted.
 
 ### 9.3 The generator
@@ -2475,11 +2475,11 @@ engine does and compares every table the definitions make with the ROM's, field 
 
 ### 9.4 The frontend and the audio
 
-`bn6-assets` keys sprites, backgrounds, mugshots, banners and chip icons by name; `Hud::chip_names` (font codes
+`nettai-assets` keys sprites, backgrounds, mugshots, banners and chip icons by name; `Hud::chip_names` (font codes
 by chip id) and `chip_shows_damage` go, the HUD drawing a chip's name from its definition through the font's
 charmap and its damage from the `has_damage` flag. The frontend draws an object's sprite by its handle's name,
 recognizes the palette flash and the form overlay by `EngineKind`, reads attach points from the navi's identity,
-and plays trace files through `bn6-compat`. Its live-play driver picks its hand and navi by key. `bn6-audio`
+and plays trace files through `bn6-compat`. Its live-play driver picks its hand and navi by key. `nettai-audio`
 maps a cue's sound handle to the song of that name in the sound bank; the bank's internal numbering (voicegroups,
 samples, music players) stays the bank's.
 
@@ -2559,13 +2559,13 @@ content/bn6 has 656 files: 421 TOML, 235 Luau.
 
 ## 12. Migration plan
 
-Every step merges to main with `cargo test --workspace` and `bn6-content-check` green and every floor of §10.2
+Every step merges to main with `cargo test --workspace` and `nettai-content-check` green and every floor of §10.2
 held; a trace that runs further records its new floor. Sizes: S about half an agent-day, M one to two, L three
 to five.
 
 **The ratchet.** From step 3 to step 13 the old and the new coexist: the numeric API, the `legacy { }` marker,
 the v1 registration files and the `data` global keep v1 modules working while families convert. A test counts
-their uses per module against an allowlist in `bn6-content-check`'s tests that may only shrink; step 13 deletes
+their uses per module against an allowlist in `nettai-content-check`'s tests that may only shrink; step 13 deletes
 the allowlist with the last use. The engine never reads compat, at any step (§7.3): what content defines
 reaches the traces and the game's setups through `bn6-compat`, which maps the engine's handles.
 
@@ -2683,7 +2683,7 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
 2. **`bn6-compat` and the trace move.** The new crate; trace.rs and the setup codecs move into it; the harness,
    the frontend's trace playback, netplay's `rollback_cost` and the verification workspace switch to it. The
    codecs still produce today's numbers. **M.**
-3. **The define phase and handles.** `bn6_luau::define`, `bn6_battle::content::define`, `Content` with registries
+3. **The define phase and handles.** `nettai_luau::define`, `nettai_battle::content::define`, `Content` with registries
    and handles alongside today's fields; the runtime dispatch by handle; `define.kind`/`define.action`/
    `define.chip`/`define.weapon` accepted alongside v1 registration (a v1 file and a definition claiming the same
    thing is an error); the test pack. v1 registrations get transitional keys (a kind's folder name, an action's
@@ -2698,13 +2698,13 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    it, a defined chip or weapon can't be reached from a setup the original recorded. **M.**
 4. **The v2 API.** core.d.luau's definers, asset resolvers, definition types, reference state fields, the
    handle-based object and battle API; the numeric API kept, marked deprecated, and counted by the ratchet.
-   `bn6-content check` and the new lints. `define.roles` (§7.4) with the roles the ruleset starts content by
+   `nettai-content check` and the new lints. `define.roles` (§7.4) with the roles the ruleset starts content by
    already: the trap chips' counter actions (AntiDmg's, AntiSwrd's and BodyGrd's, 0x47, 0x48 and 0x4B, which no
    chip record names), with their keys in compat actions.toml. **M.**
 5. **Data to Luau.** gen-content writes every chip, navi, form, weapon, rule section, stage and registry entry
    as v2 definitions in the v2 folders (§4), with `legacy { action, subtype, params, script }` markers where a
    chip's behaviour is still a v1 module; the pack's TOML battle data and bn6-extract's battle.rs go;
-   `bn6_content::battle` goes; the loader takes the content and assets roots. Needs step 3b. Gate: the `Content`
+   `nettai_content::battle` goes; the loader takes the content and assets roots. Needs step 3b. Gate: the `Content`
    the definitions build equals the one v1 extracted (a one-off field-by-field check, as in the v1 move), `gen-content check`
    passes, the traces hold. Mostly generated. **L.**
 
@@ -2729,14 +2729,14 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    kind's objects/KIND/rows.luau while something still reads its table by number (`data.objects.<table>` in a
    module, or the engine: the body overlays' is the last; the attachments', the rocks', the absorbed obstacles',
    the sun beam's, the projectiles', the flying shots', the boomerangs' and the sword and shock waves' went with
-   their readers, and GunDelSol's data is its chips' own). bn6-battle's `content::legacy` builds the v1 tables from all of it. Weapons
+   their readers, and GunDelSol's data is its chips' own). nettai-battle's `content::legacy` builds the v1 tables from all of it. Weapons
    are a routine's numbers with the same address *and* charge times (alias routines whose rows differ are
    weapons of their own: `megaman/buster` is routine 0 alone, and `megaman/buster-2e` and five more take its
    `setup` with their own charge times), and every routine has its charge times (the TOML's
    rules/weapons.toml had 50 of the 148; a routine a navi's or form's stats name and nothing implements, like
    ProtoMan's 0x32, now charges as the game does). Content may not use a placeholder asset
    name, so compat names what the tables use for its first user (`effect-0e`, `held-28`, since curated as `hit-damage-judge`), for curation. The loader is
-   `bn6_content::pack::load_battle(content, assets)`; bn6-extract writes assets only. The check: `gen-content
+   `nettai_content::pack::load_battle(content, assets)`; bn6-extract writes assets only. The check: `gen-content
    check` defines the content root and compares every table with the ROM's (§3 of content-pack.md).
    A chip's `description` (what R shows on the custom screen: the battle reads its line count) and a navi's
    `run_message` (the no-running message's lines) are the definitions' alone since the extractor's battle data
@@ -2838,11 +2838,11 @@ disturbed. Each deletes registration by number's use for its category.
     gen-content's last writers (`write`, `luau`, `describe`), so that it is the check alone and compat is
     edited by hand (§9.3). A weapon without a `setup` or a `charged_chip` is a content error at load, not a
     panic when it is used.
-    New checks: `bn6-content-check` requires a type on a module-level table constant passed to a function (an
+    New checks: `nettai-content-check` requires a type on a module-level table constant passed to a function (an
     unsealed literal passes for any record, and a required module is `any`: the 64 it flagged are annotated,
-    with eight spec types moved to types.d.luau); `bn6-content check` refuses two collision types on one row
+    with eight spec types moved to types.d.luau); `nettai-content check` refuses two collision types on one row
     of the original's table (four rows were defined twice); reading compat refuses two keys with one number
-    (actions may share one). Guards (`bn6-content-check`'s `guards` test): no folder named with an original
+    (actions may share one). Guards (`nettai-content-check`'s `guards` test): no folder named with an original
     number; no `legacy` marker outside the listed modules. The navis' and forms' numbers and the body
     overlays' numbering (38 markers, all the ratchet counted) went with step 11's last batch, which emptied the
     ratchet and the guards' list; what is left for the second part is `legacy` itself, the ratchet's allowlist
@@ -2854,7 +2854,7 @@ disturbed. Each deletes registration by number's use for its category.
     became content/sections.rs and content/reader.rs (`SpecReader`: assets as the engine identifies them, a
     lock-on mode as its handle, a chip as its key; nothing reads as an original number). The ratchet is gone
     with its count at zero: `tests/ratchet.rs`, `tests/deprecated.txt`, the deprecated-use scanner and
-    `bn6-content-check --deprecated`. The guards have no exception lists: no folder under the content roots
+    `nettai-content-check --deprecated`. The guards have no exception lists: no folder under the content roots
     named with an original number, no `legacy` marker or field in any module (the `.d.luau` files included);
     the `no_compat` source guard needed none. Two last original numbers left the engine for the tools:
     `Pool::type_number` (the `T1`/`T3`/`T4` the traces print) is bn6-compat's `pool_type`, and
@@ -2902,8 +2902,8 @@ to 12 (by category). **Not mechanical**: steps 3, 4 and 7, and each family's dec
 content by its definitions and assets by name; the extractor yields only assets. The engine runs on handles: it
 has no chip, kind, action, weapon, navi, form, stage, identity, effect, spark, region, collision type, status or
 lock-on mode by one of the original's numbers, and nothing carries those numbers into it. The guards keep it
-so, with no exceptions: bn6-content-check's `guards` (no folder named with an original number, no `legacy`
-marker or field) and bn6-battle's `no_compat` (compat appears in the engine's code only in comments). The
+so, with no exceptions: nettai-content-check's `guards` (no folder named with an original number, no `legacy`
+marker or field) and nettai-battle's `no_compat` (compat appears in the engine's code only in comments). The
 golden traces, their sound calls and every recorded chip-lab scenario match every frame, as before the
 migration began.
 
@@ -2936,7 +2936,7 @@ Numbers that remain for other reasons, and are not names of content:
 **Left to others:**
 
 - The frontend's emotion window finds a face in hud.json by compat's form and navi numbers
-  (crates/bn6-frontend/src/hud.rs). Reading the definitions' `mugshot` instead is the presentation work's.
+  (crates/nettai-frontend/src/hud.rs). Reading the definitions' `mugshot` instead is the presentation work's.
 - Roles nothing fills: `actions.volley`, `kinds.mode9_attack` and `kinds.mode9_actor` (content-migration.md
   §6). No netbattle reaches them.
 
