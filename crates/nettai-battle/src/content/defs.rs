@@ -215,6 +215,8 @@ pub struct SystemDef {
     pub setup: StateId,
     /// Its hooks, in [`SystemHook::ALL`]'s order.
     hooks: Vec<Option<FnId>>,
+    /// Its own actions, which reach its state.
+    pub actions: Vec<ActionHandle>,
 }
 
 impl SystemDef {
@@ -318,6 +320,10 @@ pub struct Defs {
     /// The systems and rulesets (docs/design/rules-in-luau.md), by handle.
     pub systems: Vec<SystemDef>,
     pub rulesets: Vec<RulesetDef>,
+    /// Each action's system, if it is one's, by action handle.
+    action_owner: Vec<Option<SystemHandle>>,
+    /// Whether a form names the action as its change, by action handle.
+    change_actions: Vec<bool>,
     /// The Program Advances, in the order they are tried (each chip holds
     /// the recipes that make it; `sub_8029520`).
     pub program_advances: Vec<super::ProgramAdvance>,
@@ -341,6 +347,17 @@ pub struct Defs {
 impl Defs {
     pub fn system(&self, h: SystemHandle) -> &SystemDef {
         &self.systems[h.index()]
+    }
+
+    /// The system an action is one of, if any (its state is that system's).
+    pub fn action_owner(&self, h: ActionHandle) -> Option<SystemHandle> {
+        self.action_owner.get(h.index()).copied().flatten()
+    }
+
+    /// Whether a form names the action as the one that changes a navi into
+    /// it.
+    pub fn is_change_action(&self, h: ActionHandle) -> bool {
+        self.change_actions.get(h.index()).copied().unwrap_or(false)
     }
 
     pub fn ruleset(&self, h: RulesetHandle) -> &RulesetDef {
@@ -1241,6 +1258,16 @@ impl Defs {
             };
             record.beast = form_ref(d, d.spec.field("beast"), "beast")?;
             record.breaks_to = form_ref(d, d.spec.field("breaks_to"), "breaks_to")?;
+            record.change = match d.spec.field("change") {
+                Data::Nil => None,
+                Data::Ref(Registry::Action, key) => {
+                    Some(ActionHandle(actions.binary_search_by(|a| a.key.as_str().cmp(key)).expect("a defined action") as u16))
+                }
+                other => return Err(what(d, format!("`change` is {other:?}, not an action"))),
+            };
+            if record.kind != super::FormKind::Base && record.change.is_none() {
+                return Err(what(d, "a form other than the base form names the action that changes a navi into it (`change`)".into()));
+            }
             if record.kind.has_cross() != record.cross_of.is_some() {
                 return Err(what(d, "a Cross (and one in Beast Out) names the navi it is made with (`cross_of`), and no other form does".into()));
             }
@@ -1395,8 +1422,8 @@ impl Defs {
             let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks)")));
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks", "actions"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks, actions)")));
                     }
                 }
             }
@@ -1425,7 +1452,50 @@ impl Defs {
                 }
                 _ => return Err(what("`hooks` is a table of functions by hook name")),
             }
-            systems.push(SystemDef { key: d.key.clone(), state: layout("state")?, setup: layout("setup")?, hooks });
+            let own: &[Data] = match d.spec.field("actions") {
+                Data::Nil => &[],
+                Data::List(items) => items,
+                Data::Map(m) if m.is_empty() => &[],
+                _ => return Err(what("`actions` is a list of actions")),
+            };
+            let mut system_actions = Vec::new();
+            for v in own {
+                let Data::Ref(Registry::Action, key) = v else {
+                    return Err(what("`actions` lists action definitions (define.action { ... })"));
+                };
+                let h = actions.binary_search_by(|a| a.key.as_str().cmp(key)).expect("a defined action");
+                system_actions.push(ActionHandle(h as u16));
+            }
+            systems.push(SystemDef {
+                key: d.key.clone(),
+                state: layout("state")?,
+                setup: layout("setup")?,
+                hooks,
+                actions: system_actions,
+            });
+        }
+        // Each action's system, if it is one's.
+        let mut action_owner: Vec<Option<SystemHandle>> = vec![None; actions.len()];
+        for (i, s) in systems.iter().enumerate() {
+            for &a in &s.actions {
+                if let Some(other) = action_owner[a.index()] {
+                    return Err(ContentError::new(format!(
+                        "action {} is both system {}'s and system {}'s",
+                        actions[a.index()].key,
+                        systems[other.index()].key,
+                        s.key
+                    )));
+                }
+                action_owner[a.index()] = Some(SystemHandle(i as u16));
+            }
+        }
+        // The actions forms name as their change: unpaused, they are the
+        // instant chips' action (the original's CurAction 0x1C).
+        let mut change_actions = vec![false; actions.len()];
+        for f in &forms {
+            if let Some(a) = f.record.change {
+                change_actions[a.index()] = true;
+            }
         }
         let mut rulesets = Vec::new();
         for d in definitions.of(Registry::Ruleset) {
@@ -1558,6 +1628,8 @@ impl Defs {
             roles,
             systems,
             rulesets,
+            action_owner,
+            change_actions,
             program_advances,
             cross_special,
             schemas,

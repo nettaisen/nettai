@@ -8,10 +8,13 @@ local dustcross_beast = require("../dustcross-beast/form")
 local throw_absorbed = require("./throw_absorbed")
 local charge = require("./charge")
 local absorb = require("../../weapons/absorb/weapon")
+local forms = require("../../../../rules/forms/system")
 
 return define.form {
     id = "dustcross",
     kind = "cross",
+    -- What changes MegaMan into it (BN6's five sequences).
+    change = forms.action,
     game = "falzar",
     cross_of = dustman,
     beast = dustcross_beast,
