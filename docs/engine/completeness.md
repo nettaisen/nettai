@@ -1031,6 +1031,25 @@ LifeSync's sync (3: every netbattle is a link battle, where its effect skips to 
 gauge (1: battle flag 0x40) and the gauge set past full (1: its callers pass 0 or 0x4000, the limit). The 2
 recordings match the engine (this branch on main 2a35e451), every frame (4,797) and sound call (91).
 
+**Second pass, batch 11: the last five (the panel strike, the attachment, the boulder, the absorbed obstacle; 5
+branches):** 2 taken by 2 new recordings, 3 unreachable:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x13b-batcan1/beast-gregar` | the bat cannon (attachment row 0xF) held in Gregar Beast Out, at the offset that form's NameID gives, (11, -7) |
+| `stages/absorb-ko` | absorbed boulders seeing the battle over: side 1's Cannon deletes the DustCross navi (10 HP) while the boulders its B+Back pulled in fly to it, and they puff away |
+
+The unreachable ones: the panel strike's burst cracking its panel (1: its three spawners pass Param1 0, MachGun1-3's
+chip parameters and Bass's and AirRaid's constants), the dimmed panel strike's spawn failing (1: Bass's shots; the
+attack pool never fills), and the boulder's stage-slot pointer null (1: its only spawner, `sub_80D2430` from the
+actor list's entry type 3, stores the slot's address there). The 2 recordings match the engine at main 50b430c9,
+every frame (1,439) and sound call (45).
+
+With batch 11, at main 50b430c9 with the lab's 5,519 recordings with coverage, the chip families have 828 one-sided
+branches (in 621 routines): 258 guards, 480 other unreachable, 85 hard, and 5 not yet read (SlashMan's wave's
+steering scan, `sub_80D09BE`, 2; ElmntMan's meteor landing on a panel with no target, `sub_80D6C88`, 1; the
+gauge-speed controller's tests of battle flag 0x40, `sub_80E23E8`, 2).
+
 <!-- end: chip families, onesided -->
 
 ### 6.3 Custom screen keys
