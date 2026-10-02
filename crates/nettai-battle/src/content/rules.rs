@@ -4,6 +4,31 @@ use super::{BannerId, ChipFamily, CustomScreenLayout, PanelCondition, PanelOffse
 use crate::field::PanelType;
 use serde::{Deserialize, Serialize};
 
+/// The rule section `chip-use` (docs/design/bn5-map.md §15.3 items 10 and
+/// 11), read from the section of the chip's own root.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChipUseRules {
+    /// The dimming handler (action 0x15) and the instant chips' action
+    /// leave the action on the frame they run (BN5's 0x080EC318 and
+    /// 0x080EC6F6), not on the next update after the dimming (BN6's
+    /// `sub_80EBD9C`) nor, for a weapon's own effect, 8 ticks later
+    /// (`sub_80EC39C`).
+    #[serde(default)]
+    pub leave_on_use: bool,
+    /// Where AntiNavi's sparkle shows (`sub_800ABC6`), in pixels from the
+    /// navi chip's panel's center: down the field, and up.
+    pub anti_navi_sparkle: SparkleOffset,
+}
+
+/// A sparkle's place from a panel's center, in pixels.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SparkleOffset {
+    pub dy: i16,
+    pub z: i16,
+}
+
 /// How a navi's push (slide type 1) reads the hits it took.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -64,6 +89,10 @@ pub struct Rules {
     pub bubble_bob: [i8; 32],
     pub lockon: Lockon,
     pub berserk: BerserkRules,
+    /// How a chip's use runs, by the chip's game (rule section `chip-use`;
+    /// docs/design/rules-in-luau.md §7.5: a chip runs as its game wrote
+    /// it).
+    pub chip_use: ChipUseRules,
     /// The custom screen's slot layout.
     pub custom_screen: CustomScreenLayout,
     /// The object pools' sizes (rule section `pools`): a capacity-only

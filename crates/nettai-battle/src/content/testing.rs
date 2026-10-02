@@ -1479,6 +1479,10 @@ fn rules() -> Rules {
         empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         sp_deletion_times: vec![0x2000, 0x4000],
+        chip_use: crate::content::ChipUseRules {
+            leave_on_use: false,
+            anti_navi_sparkle: crate::content::SparkleOffset { dy: 16, z: 32 },
+        },
         // The SP navi chips BN6's modules bring: Count[SP].
         sp_slots: vec!["sp/count".into()],
         cross_special: Vec::new(),
