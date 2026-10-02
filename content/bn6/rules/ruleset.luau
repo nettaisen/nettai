@@ -5,6 +5,7 @@
 -- take them slice by slice (§8).
 
 local beast = require("./beast/system")
+local forms = require("./forms/system")
 local patch_cards = require("./patch-cards/system")
 
 return define.ruleset {
@@ -13,6 +14,8 @@ return define.ruleset {
     systems = {
         -- The Japanese games' patch cards (docs/engine/patch-cards.md).
         patch_cards,
+        -- The form changes: the Crosses', Beast Out's and Beast Over's.
+        forms.system,
         -- Beast Out's turns.
         beast,
     },

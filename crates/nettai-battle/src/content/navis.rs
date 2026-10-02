@@ -291,6 +291,11 @@ pub struct FormData {
     /// with the rest of the record.)
     #[serde(skip)]
     pub cross_of: Option<NaviHandle>,
+    /// The action that changes a navi into it (a game's form change: BN6's
+    /// forms', content/bn6/rules/forms), which the pause handler runs at a
+    /// turn's start.
+    #[serde(skip)]
+    pub change: Option<nettai_content_api::ActionHandle>,
     /// A Cross's form in Beast Out.
     #[serde(skip)]
     pub beast: Option<FormHandle>,
@@ -596,7 +601,7 @@ pub(crate) fn read_form(
 ) -> Result<FormData, nettai_content_api::ContentError> {
     use serde_json::Value as Json;
     // (`buster_arm` is the content's own: the arm a navi raises.)
-    let o = super::reader::fields(d, r, &["id", "identity", "cross_of", "beast", "breaks_to", "weapons", "buster_arm"])?;
+    let o = super::reader::fields(d, r, &["id", "identity", "cross_of", "beast", "breaks_to", "change", "weapons", "buster_arm"])?;
     let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
     if form.kind != FormKind::Base && form.game.is_none() {
         return Err(super::reader::err(d, "a form that is not the base form says whose `game` it is (gregar, falzar)"));
