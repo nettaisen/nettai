@@ -1,12 +1,12 @@
 --!strict
--- HackJack's lance (the original's attack object #0x0D; the Japanese
+-- Count's lance (the original's attack object #0x0D; the Japanese
 -- games' code, at 0x080C9498 in EXE6 Falzar, 0x080CACF8 in EXE6 Gregar:
 -- the US games point the slot at a placeholder). It waits 4096 pixels up
 -- over its panel, then drops on it and strikes: a thrown attack on its
--- panel, for 30 ticks or until it hits. HackJack's (chips/hackjack/navi)
+-- panel, for 30 ticks or until it hits. Count's (chips/count/navi)
 -- strike at once and while dimmed; the other kind of lance, which first
 -- highlights its panel and stands still while dimmed, is the Japanese
--- games' HackJack navi AI's (attack object #0x0C, out of a netbattle's
+-- games' Count navi AI's (attack object #0x0C, out of a netbattle's
 -- reach): ported, unverified. See docs/engine/chips.md §3.6.37.
 
 local collision = require("../../rules/collision")
@@ -15,7 +15,7 @@ local sparks = require("../../lib/sparks")
 
 local lance = {}
 
-type Spec = HackJackLance
+type Spec = CountLance
 
 export type State = {
     while_dimmed: boolean,
@@ -43,7 +43,7 @@ local function set_height(me: Object, pixels: number)
 end
 
 -- The init: on its panel, 4096 pixels up; collision on, region off; then
--- its first action: the strike for HackJack's, the warning for the
+-- its first action: the strike for Count's, the warning for the
 -- other's. Without a collision slot it is freed at once.
 local function init(me: Object)
     local s = me.state :: State
@@ -148,13 +148,13 @@ local function tick(me: Object)
     elseif a == STRIKE then
         strike(me)
     else
-        error(string.format("HackJack's lance: action %#x reads past its table", a))
+        error(string.format("Count's lance: action %#x reads past its table", a))
     end
     c:present()
 end
 
 lance.kind = define.kind {
-    id = "hackjack/lance",
+    id = "count/lance",
     pool = "attack",
     state = { while_dimmed = "bool", warn_ticks = "u8" },
     update = function(me: Object)

@@ -66,6 +66,8 @@ fn battles_run_the_content_scripts() {
             "chrgeman/navi",
             "colorpt/controller",
             "colorpt/point",
+            "count/lance",
+            "count/navi",
             "crakshot/shot",
             "django/navi",
             "dolthdr/doll",
@@ -122,8 +124,6 @@ fn battles_run_the_content_scripts() {
             "groundman/drill",
             "gundels/beam",
             "gust",
-            "hackjack/lance",
-            "hackjack/navi",
             "heatman/flame",
             "heatman/navi",
             "instrument",
@@ -440,7 +440,7 @@ fn scripted_chips_roll_back() {
         numbered(&[testing::HEAT, testing::ELEC, testing::SLASH, testing::CHARGE, testing::TOMAHAWK, testing::TENGU, testing::BLAST]),
         numbered(&[testing::BASS]),
         numbered(&[testing::SUN_MOON]),
-        numbered(&["hackjack", "django"]),
+        numbered(&["count", "django"]),
     ] {
         let chips = &chips[..];
         let setup = || scenario::setup_with_handles(chips);
@@ -1721,7 +1721,7 @@ fn the_support_dimming_chips_roll_back() {
     }
 }
 
-// ---- The Japanese games' HackJack and Django (chips/hackjack, chips/django) ----
+// ---- The Japanese games' Count and Django (chips/count, chips/django) ----
 
 /// A round where side 0's folder holds only `chip` and side 1's the
 /// duel's GunDelSols, the custom screens picking chips as the duel's do,
@@ -1767,12 +1767,12 @@ fn use_once(_b: &Battle, side: usize, n: u32) -> u16 {
 }
 
 #[test]
-fn hackjack_rains_on_the_other_side_then_drops_lances() {
+fn count_rains_on_the_other_side_then_drops_lances() {
     use crate::object::PanelPos;
     // Side 1 stands at (5,2), in the rain (each hit the chip's damage, SP
     // or not) and where the first lance falls (each chip's parameter
     // byte).
-    for (chip, rain, lance) in [("hackjack", Some(20), 50), ("hackjck-ex", Some(25), 70), ("hackjck-sp", None, 100)] {
+    for (chip, rain, lance) in [("count", Some(20), 50), ("count-ex", Some(25), 70), ("count-sp", None, 100)] {
         let mut t = 0u32;
         let mut navi: Vec<u32> = Vec::new();
         let mut storm: Vec<u32> = Vec::new();
@@ -1781,13 +1781,13 @@ fn hackjack_rains_on_the_other_side_then_drops_lances() {
         let mut hits: Vec<(u32, u16)> = Vec::new();
         drive(chip, 1500, use_once, |b| {
             t += 1;
-            if !all_of(b, "hackjack/navi").is_empty() {
+            if !all_of(b, "count/navi").is_empty() {
                 navi.push(t);
             }
             if !all_of(b, "dust-storm").is_empty() {
                 storm.push(t);
             }
-            for l in all_of(b, "hackjack/lance") {
+            for l in all_of(b, "count/lance") {
                 let o = b.objects.get(l);
                 // A new lance has run its init and not yet struck.
                 if o.state == crate::object::state::UPDATE && o.phase == 0 {
@@ -1800,11 +1800,11 @@ fn hackjack_rains_on_the_other_side_then_drops_lances() {
             }
             hp1 = h;
         });
-        assert!(!navi.is_empty(), "{chip}: HackJack never came");
+        assert!(!navi.is_empty(), "{chip}: Count never came");
         // He stays 188 ticks: 3 appearing, 30 standing, 20 raising his arms,
         // 70 raining, 10 before each of three lances, 23 lowering, 4 going.
         let s = navi[0];
-        assert_eq!(navi.len(), 188, "{chip}: HackJack's stay");
+        assert_eq!(navi.len(), 188, "{chip}: Count's stay");
         assert_eq!(*navi.last().unwrap(), s + 187);
         // The rain: from his 57th tick, 61 ticks.
         assert_eq!((storm.first().copied(), storm.len()), (Some(s + 57), 61), "{chip}: the rain");

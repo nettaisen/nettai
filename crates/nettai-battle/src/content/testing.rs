@@ -1182,9 +1182,9 @@ pub fn scripts() -> Scripts {
                 ("chips/sunmoon/sun", "chips/sunmoon/sun"),
                 ("chips/sunmoon/meteor", "chips/sunmoon/meteor"),
                 ("chips/sunmoon/moon_beam", "chips/sunmoon/moon_beam"),
-                // The Japanese games' HackJack and Django chips, with their
-                // navis, HackJack's lance and his rain (a dust storm).
-                ("chips/hackjack/chips", "chips/hackjack/chips"),
+                // The Japanese games' Count and Django chips, with their
+                // navis, Count's lance and his rain (a dust storm).
+                ("chips/count/chips", "chips/count/chips"),
                 ("chips/django/chips", "chips/django/chips"),
                 // The link navis' own chips (whose actions the test link
                 // chips run) and their kinds.
@@ -1381,8 +1381,8 @@ fn rules() -> Rules {
         empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         sp_deletion_times: vec![0x2000, 0x4000],
-        // The SP navi chips BN6's modules bring: HackJck[SP].
-        sp_slots: vec!["sp/hackjack".into()],
+        // The SP navi chips BN6's modules bring: Count[SP].
+        sp_slots: vec!["sp/count".into()],
         cross_special: Vec::new(),
         push_vectors: [
             SlideVector { dx: 1, dy: 0, tiles: 6 },
@@ -1518,15 +1518,14 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 8, index: 0x13 }, shooter);
     sprites.insert(SpriteId { category: 0x10, index: 0x26 }, vec![vec![f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x0C, index: 0x64 }, vec![vec![f(8, 0), f(8, LAST | LOOP)]; 5]);
-    // Count, HackJack's navi (appearing, standing, raising his arms,
-    // lowering them, leaving; his lance, animation 0xC) and the rain's
-    // motes; Django
+    // Count (appearing, standing, raising his arms, lowering them,
+    // leaving; his lance, animation 0xC) and the rain's motes; Django
     // (riding 6, his bike 7, appearing 1, slashing 5, leaving 2; his gun 8
     // and 9, CrosOver's).
-    let mut hackjack = vec![once(4); 0x0D];
-    hackjack[0] = vec![f(8, 0), f(8, LAST | LOOP)];
-    hackjack[0x0C] = vec![f(3, 0), f(3, LAST | LOOP)];
-    sprites.insert(SpriteId { category: 8, index: 0x16 }, hackjack);
+    let mut count = vec![once(4); 0x0D];
+    count[0] = vec![f(8, 0), f(8, LAST | LOOP)];
+    count[0x0C] = vec![f(3, 0), f(3, LAST | LOOP)];
+    sprites.insert(SpriteId { category: 8, index: 0x16 }, count);
     sprites.insert(SpriteId { category: 0x10, index: 0x10 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
     let mut django = vec![once(4); 10];
     django[0] = vec![f(8, 0), f(8, LAST | LOOP)];

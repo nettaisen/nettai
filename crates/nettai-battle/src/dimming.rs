@@ -268,8 +268,9 @@ fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
 }
 
 /// The navi chips AntiNavi turns back: the original's block of them in its
-/// chip table, which is every chip with the `navi` flag and Django's three
-/// (the `navi_slot` trait), which lack it.
+/// chip table, which is every chip with the `navi` flag, and the chips with
+/// the `navi_slot` trait (the US games' records of Django's three lack the
+/// flag; BN6's content has the Japanese games', which have it).
 fn is_navi_chip(b: &Battle, chip: Option<ChipHandle>) -> bool {
     chip.is_some_and(|h| {
         let c = b.content.chip(h);

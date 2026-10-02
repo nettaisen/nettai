@@ -2,6 +2,8 @@
 //! See docs/frontend.md.
 
 use nettai_frontend::driver::{LivePlayer, TracePlayer, bn6_live_setup};
+use nettai_frontend::textlayer::TextMode;
+use nettai_frontend::vfont::{TextRenderer, VectorFont};
 use nettai_frontend::{Renderer, Session, TickHook, app, headless, session};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -26,6 +28,8 @@ struct Args {
     out: PathBuf,
     png_scale: usize,
     quit_after: Option<u64>,
+    text: TextMode,
+    font: Option<PathBuf>,
 }
 
 /// Where `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` puts the BN6 pack by default.
@@ -65,6 +69,13 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    window, and list what they named that the pack doesn't
                    have (a sprite, an animation, a palette, a chip's icon or
                    name glyph, a banner, a song); exits 1 if there was any
+  --text MODE      how strings are drawn: font (default) draws the names, the
+                   telop, the chatbox and the HUD's lines with a vector font at
+                   the window's resolution, over the scaled frame; original
+                   draws them in the game's own fonts into the frame, as the
+                   original does (what the frame comparison uses)
+  --font PATH      the font mode's font (a TrueType or OpenType file) instead
+                   of the bundled one (Murecho)
   --quit-after N   close the window after N ticks";
 
 fn parse() -> Result<Args, String> {
@@ -87,6 +98,8 @@ fn parse() -> Result<Args, String> {
         out: PathBuf::from("."),
         png_scale: 1,
         quit_after: None,
+        text: TextMode::Font,
+        font: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
@@ -110,6 +123,8 @@ fn parse() -> Result<Args, String> {
             "--out" => a.out = value("--out")?.into(),
             "--png-scale" => a.png_scale = number(value("--png-scale")?, "--png-scale")? as usize,
             "--quit-after" => a.quit_after = Some(number(value("--quit-after")?, "--quit-after")?),
+            "--text" => a.text = value("--text")?.parse()?,
+            "--font" => a.font = Some(value("--font")?.into()),
             "-h" | "--help" => return Err(String::new()),
             s if s.starts_with('-') => return Err(format!("unknown option {s}")),
             s => a.trace = Some(s.into()),
@@ -185,6 +200,16 @@ fn main() {
     let assets = load(&pack, "graphics", nettai_content::pack::load_graphics);
     session::quiet_engine_panics();
     let mut renderer = Renderer::new(&assets);
+    // The font mode's font, shared by the renderer (which strings it has)
+    // and the text layer's drawing.
+    let font = (args.text == TextMode::Font).then(|| {
+        Arc::new(match &args.font {
+            Some(path) => VectorFont::load(path).unwrap_or_else(|e| fail(e)),
+            None => VectorFont::bundled(),
+        })
+    });
+    renderer.set_text(args.text, font.clone());
+    let mut text = font.map(TextRenderer::new);
 
     let mut sessions: Vec<Session> = Vec::new();
     if args.play {
@@ -228,7 +253,17 @@ fn main() {
         let keys = headless::KeyScript::parse(args.keys.as_deref().unwrap_or("")).unwrap_or_else(|e| fail(e));
         let mut log = |s: &str| eprintln!("{s}");
         let rendered =
-            headless::render_frames_with(&mut renderer, sessions, &wanted, &args.out, args.png_scale, args.objects, &keys, &mut log);
+            headless::render_frames_with(
+                &mut renderer,
+                sessions,
+                &wanted,
+                &args.out,
+                args.png_scale,
+                args.objects,
+                &keys,
+                text.as_mut(),
+                &mut log,
+            );
         match rendered {
             Ok(written) => {
                 eprintln!("wrote {} frames to {}", written.len(), args.out.display());
@@ -247,7 +282,7 @@ fn main() {
     }
     eprintln!("{}", app::HELP);
     let opts = app::Options { scale: args.scale, start_paused: args.paused, quit_after: args.quit_after };
-    if let Err(e) = app::run(&mut renderer, sessions, &mut hooks, &opts) {
+    if let Err(e) = app::run(&mut renderer, sessions, &mut hooks, &opts, text.as_mut()) {
         fail(format!("window: {e}"));
     }
 }

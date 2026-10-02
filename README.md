@@ -54,6 +54,12 @@ the speed, F5 restarts the round, H toggles the status line and Esc quits. `--he
 [docs/frontend.md](docs/frontend.md) has the rest. A trace is the recorded inputs of a real match; the traces
 live with the verification workspace (below).
 
+The window can be resized; the picture keeps whole pixels. Chip names, telops, the chatbox's descriptions and
+messages and the HUD's text lines are drawn with a vector font at the window's resolution, over the pixel art:
+Murecho (Latin and Japanese), bundled under the SIL Open Font License in `crates/nettai-frontend/fonts`.
+`--text original` draws them in the game's own fonts instead, exactly as the original does, and `--font <file>`
+uses another TrueType or OpenType font ([text-rendering.md](docs/design/text-rendering.md) §9).
+
 Netplay is a library for now, with no online play in the frontend. Its tests play netbattles between two rollback
 sessions over simulated links at several latencies, and check that both peers stay in step:
 
