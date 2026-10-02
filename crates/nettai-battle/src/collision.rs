@@ -608,17 +608,24 @@ impl Battle {
     }
 }
 
-/// `sub_800E994`: 0 none, 1 up, 2 down, 3 back, 4 forward, 5 other.
+/// `sub_800E994`: 0 none, 1 up, 2 down, 3 back, 4 forward, 5 other. Only
+/// a move of two panels or more to the right or down is "other" (the
+/// routine tests `>= 2` and nothing below -1): any move left or up along
+/// one axis counts by its sign, so a navi warped two panels back (side 0)
+/// or forward (side 1) has moved back or forward, and slides on ice.
 pub fn move_direction(old: PanelPos, new: PanelPos, alliance: u8) -> u8 {
     let dx = new.x as i8 - old.x as i8;
     let dy = new.y as i8 - old.y as i8;
-    let forward = if alliance == 0 { 1 } else { -1 };
-    match (dx, dy) {
+    if dx >= 2 || dy >= 2 {
+        return 5;
+    }
+    let (back, forward) = if alliance == 0 { (3, 4) } else { (4, 3) };
+    match (dx.signum(), dy.signum()) {
         (0, 0) => 0,
         (0, -1) => 1,
         (0, 1) => 2,
-        (d, 0) if d == -forward => 3,
-        (d, 0) if d == forward => 4,
+        (-1, 0) => back,
+        (1, 0) => forward,
         _ => 5,
     }
 }
