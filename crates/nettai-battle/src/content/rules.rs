@@ -4,6 +4,54 @@ use super::{BannerId, ChipFamily, CustomScreenLayout, PanelCondition, PanelOffse
 use crate::field::PanelType;
 use serde::{Deserialize, Serialize};
 
+/// The rule section `flow` (docs/design/bn5-map.md §15.3 items 7 and 13,
+/// §15.4): where the arena's game's battle flow differs from BN6's.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FlowRules {
+    /// The custom screen closes on the tick both results are in (BN5's
+    /// Team Battle screen, 0x08025EF2), not on the next (BN6's
+    /// `sub_8026A28`: `CustomScreens::committed`).
+    #[serde(default)]
+    pub custom_closes_with_results: bool,
+    /// Before the custom screen opens, the transformation sequencer runs
+    /// once more after the reversions (BN6's state 0x24, `sub_8008492`);
+    /// BN5 opens it straight after them.
+    #[serde(default = "yes")]
+    pub sequencer_before_custom: bool,
+    /// The fight checks for an escape (BN6's `sub_800AAD6`; BN5 has none).
+    #[serde(default = "yes")]
+    pub escape_check: bool,
+    /// Ticks the result's banner holds before the round ends, at least
+    /// (`sub_80081A4`, `sub_800825A`: BN6 102; 94 in a special battle,
+    /// effect 2, BN5 65).
+    pub result_wait: ResultWait,
+}
+
+fn yes() -> bool {
+    true
+}
+
+/// The result's wait, in ticks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResultWait {
+    pub normal: u16,
+    pub special: u16,
+}
+
+impl Default for FlowRules {
+    /// BN6's flow.
+    fn default() -> FlowRules {
+        FlowRules {
+            custom_closes_with_results: false,
+            sequencer_before_custom: true,
+            escape_check: true,
+            result_wait: ResultWait { normal: 0x66, special: 0x5E },
+        }
+    }
+}
+
 /// The rule section `chip-use` (docs/design/bn5-map.md §15.3 items 10 and
 /// 11), read from the section of the chip's own root.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
@@ -89,6 +137,9 @@ pub struct Rules {
     pub bubble_bob: [i8; 32],
     pub lockon: Lockon,
     pub berserk: BerserkRules,
+    /// The battle's flow where a game's differs (rule section `flow`, the
+    /// arena's game's).
+    pub flow: FlowRules,
     /// How a chip's use runs, by the chip's game (rule section `chip-use`;
     /// docs/design/rules-in-luau.md §7.5: a chip runs as its game wrote
     /// it).
