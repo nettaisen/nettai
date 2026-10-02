@@ -27,6 +27,8 @@ netplay needs.
 - `nettai-netplay`: rollback netplay on [getgud](https://github.com/tangobattle/getgud), its inputs carried by
   [rennet](https://github.com/tangobattle/rennet) over UDP (or any datagram channel), with a simulated lossy network.
 - `nettai-frontend`: a desktop app that draws battles: it replays recorded matches or plays live.
+- `nettai-match`: match files, everything a round needs by content key, checked; live play's random draw.
+- `nettai-editor`: a desktop app that edits match files and plays them with the frontend.
 - `bn6-extract`: extracts BN6's graphics and sound from the four ROMs into a content pack.
 - `bn6-compat`: BN6's original numbers for the content (`content/bn6/compat`): the codecs of the game's setup
   records, and the trace harness. The engine never depends on it.
@@ -84,6 +86,31 @@ These checks need no ROM:
     cargo test --workspace                             # the engine on its own test content
     cargo run -p nettai-content-check -- content/bn6   # every content module type-checks; the lints
 
+## The match editor
+
+A match file sets up a round: the arena (stage and background), and each side's ruleset, navi, game, folder,
+Crosses, patch cards, NaviCust and stats, by content key ([docs/frontend.md](docs/frontend.md) §6). The editor makes
+and edits them, checking them against the content as you go, and plays them:
+
+    cargo build --release -p nettai-frontend -p nettai-editor
+    cargo run --release -p nettai-editor -- [match.toml]
+    cargo run --release -p nettai-frontend -- --match match.toml     # what Play runs
+
+Its panes show only what the side's ruleset has (Crosses with the forms system, patch cards with the patch-cards
+system): the arena; each side's ruleset, navi and game, with the stats the round starts the navi with; the folder
+(the chip pack's chips with their pictures, searchable, a code puts a chip in the selected entry; the Regular and
+tag chips; the copies and the Mega, Giga, Regular and tag limits live); the Crosses; the patch cards (MB used of
+80); the NaviCust; every stat. The problems with the match show at the bottom as you edit. Play saves the match and
+runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). Random draws a match as
+live play does, and `nettai-frontend --play --save-match FILE` writes live play's draw out to edit. `--lang ja` (or
+the language list) names the chips, navis, Crosses and patch cards in Japanese; `--content` and `--pack` are the
+frontend's. The editor needs the content pack for the chips' pictures, as the frontend does.
+
+The editor is an [iced](https://iced.rs) app, drawn in software (tiny-skia), so it needs no GPU backend. On Linux it
+needs the usual windowing libraries (X11 or Wayland, and `libxkbcommon`), and its Open and Save As dialogs use
+[rfd](https://github.com/PolyMeilex/rfd), which there needs GTK 3 (`libgtk-3-dev` to build) or an XDG desktop portal.
+macOS and Windows need nothing more.
+
 ## Docs
 
 - [`docs/design`](docs/design): how the engine and its content are built: the content model
@@ -91,7 +118,7 @@ These checks need no ROM:
   ([content-migration.md](docs/design/content-migration.md)), scripting, the content pack, rollback, and what
   other games would need ([multi-game.md](docs/design/multi-game.md)).
 - [`docs/engine`](docs/engine): the original game's battle routines, specified from the disassembly.
-- [`docs/frontend.md`](docs/frontend.md): the frontend.
+- [`docs/frontend.md`](docs/frontend.md): the frontend, and match files (§6).
 
 ## Verification
 

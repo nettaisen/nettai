@@ -25,7 +25,7 @@ use crate::kinds::player::{
 use crate::object::ObjectRef;
 use crate::content::Content;
 use nettai_content_api::NaviHandle;
-use crate::setup::{NaviStats, NaviWeapons};
+use crate::setup::NaviStats;
 
 /// The action's own state.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -264,50 +264,10 @@ fn finish_change(b: &mut Battle, r: ObjectRef) {
     clear_invulnerable(b, r);
 }
 
-/// `init_8013B64`: `navi`'s stats, fresh: the defaults
-/// (`initNaviStats_WithDefaultStatsMaybe_8013438`) with what the navi comes
-/// with (`byte_80210DD`'s row: the navi's `fresh` and `weapons`).
+/// `init_8013B64`: `navi`'s stats, fresh ([`NaviStats::fresh`]).
 fn fresh_stats(navi: NaviHandle, content: &Content) -> NaviStats {
-    let data = content.navi(navi);
-    let Some(fresh) = data.fresh else {
-        panic!("navi {:?}'s fresh stats read past their table (init_8013B64)", content.defs.navi(navi).key);
-    };
-    let defaults = NaviStats::default();
-    let base = content.base_form();
-    NaviStats {
-        version: 1,
-        reg_up: 4,
-        custom_level: 5,
-        support: Some(Default::default()),
-        mood: 0x99,
-        beast_out_counter: 3,
-        form: base,
-        starting_form: base,
-        folder: 0,
-        folder_reg: [0xFF; 2],
-        folder_tags: [[0xFF; 2]; 2],
-        navi,
-        max_base_hp: fresh.hp,
-        hp: fresh.hp,
-        max_hp: fresh.hp,
-        super_armor: fresh.super_armor,
-        float_shoes: fresh.float_shoes,
-        air_shoes: fresh.air_shoes,
-        undershirt: fresh.undershirt,
-        first_barrier: fresh.first_barrier,
-        mega_level: fresh.mega_level,
-        giga_level: fresh.giga_level,
-        weapons: NaviWeapons {
-            buster: data.weapons.buster,
-            charge_shot: data.weapons.charge_shot,
-            back_special: data.weapons.back_special,
-            a_charge: data.weapons.a_charge,
-            back_special_damage: fresh.back_special_damage,
-            ..defaults.weapons
-        },
-        bugs: crate::setup::NaviCustBugs { panel_trail_kind: 0xFF, ..defaults.bugs },
-        ..defaults
-    }
+    NaviStats::fresh(navi, content)
+        .unwrap_or_else(|| panic!("navi {:?}'s fresh stats read past their table (init_8013B64)", content.defs.navi(navi).key))
 }
 
 /// `sub_802DD70(navi, side)`: a link navi's HP (and max) after a change

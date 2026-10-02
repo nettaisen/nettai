@@ -1,0 +1,26 @@
+[package]
+name = "nettai-match"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Match files: everything a round needs (the arena, each side's ruleset, navi, folder, Crosses, patch cards and NaviCust), by content key, checked against the content; and live play's random draw of one"
+
+[dependencies]
+nettai-battle.workspace = true
+nettai-content-api = { path = "../nettai-content-api" }
+# BN6's folder rules read which chips the chip pack lists (by the
+# original's number), and live play's navi is a NaviStats record.
+bn6-compat.workspace = true
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+# `testing`: BN6's content for other crates' tests (its strings).
+nettai-content = { path = "../nettai-content", optional = true }
+
+[features]
+# `testing::bn6_content`: content/bn6's definitions on a made-up asset index,
+# for this and other crates' tests (nothing from a ROM).
+testing = ["dep:nettai-content", "nettai-battle/test-content"]
+
+[dev-dependencies]
+nettai-battle = { workspace = true, features = ["test-content"] }
+nettai-content = { path = "../nettai-content" }
