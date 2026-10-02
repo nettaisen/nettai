@@ -5,8 +5,8 @@ local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 local triple_buster = require("../../lib/patch-cards/triple-buster")
 
-return cards.card {
-    id = "patch-card/bass-cross-megaman",
+return define.patch_card {
+    id = "bass-cross-megaman",
     mb = 70,
     effects = {
         cards.hp_percent(20),

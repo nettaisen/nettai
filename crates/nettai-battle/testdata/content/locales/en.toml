@@ -54,3 +54,8 @@ language = "en"
 "megaman" = { name = "MegaMan", run_message = "Lan,this is no time\nto run away!" }
 "test/link-navi" = { name = "LinkNavi", run_message = "Lan,this is no time\nto run away!" }
 
+
+[patch-cards]
+test-abilities = { name = "Abilities" }
+test-later = { name = "Later" }
+test-stats = { name = "Stats" }

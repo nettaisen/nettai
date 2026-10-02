@@ -10,6 +10,7 @@ use nettai_battle::custom::{
 };
 use nettai_battle::input::keys;
 use nettai_battle::link::Link;
+use nettai_battle::patch_cards::{InstalledCard, PatchCards};
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage, effects};
 use nettai_battle::{Battle, PlayerTick, Rng, TickEvents};
 use bn6_compat::trace::{self, Frame, Round};
@@ -322,18 +323,18 @@ pub fn bn6_live_setup(content: &Content, seed: u32, stage: Option<&str>) -> Resu
 pub fn install_patch_cards(content: &Content, player: &mut PlayerSetup, list: &str) -> Result<(), String> {
     let mut cards = Vec::new();
     for item in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
-        let (name, on) = match item.strip_prefix('-') {
-            Some(name) => (name, false),
+        let (key, enabled) = match item.strip_prefix('-') {
+            Some(key) => (key, false),
             None => (item, true),
         };
-        let card = content.defs.record(&format!("patch-card/{name}")).ok_or_else(|| {
-            let names: Vec<&str> =
-                content.defs.records.iter().filter_map(|r| r.key.strip_prefix("patch-card/")).collect();
-            format!("no patch card {name:?}; the content's are {}", names.join(", "))
+        let card = content.defs.patch_card_by_key(key).ok_or_else(|| {
+            let keys: Vec<&str> = content.defs.patch_cards.iter().map(|c| c.key.as_str()).collect();
+            format!("no patch card {key:?}; the content's are {}", keys.join(", "))
         })?;
-        cards.push((card, on));
+        cards.push(InstalledCard { card, enabled });
     }
-    codec::install_patch_cards(content, player, &cards)
+    player.patch_cards = PatchCards::new(&cards)?;
+    Ok(())
 }
 
 /// Five of the form-changing navi's Crosses of both games, drawn at
@@ -369,6 +370,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
             ruleset: None,
             rules: Vec::new(),
+            patch_cards: Default::default(),
         }
     };
     RoundSetup {
