@@ -148,7 +148,7 @@ fn unhex(s: &str) -> Vec<u8> {
 /// The live round on BN6's content: the netbattle of the recorded
 /// matches, both players with the live folder (`LIVE_FOLDER`).
 pub fn bn6_live_setup(content: &Content, seed: u32) -> RoundSetup {
-    let settings = codec::battle_settings(&unhex(LIVE_SETTINGS), &codec::Ids::new(content, Compat::bn6()), bn6_compat::Game::Falzar);
+    let settings = codec::battle_settings(&unhex(LIVE_SETTINGS), &codec::Ids::new(content, Compat::bn6()));
     live_setup(content, settings, &LIVE_FOLDER, seed)
 }
 
