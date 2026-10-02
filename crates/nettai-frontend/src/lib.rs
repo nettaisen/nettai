@@ -12,7 +12,6 @@ pub mod chatbox;
 pub mod compose;
 pub mod custom;
 pub mod driver;
-pub mod folders;
 pub mod fonts;
 pub mod headless;
 pub mod hud;

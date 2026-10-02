@@ -82,6 +82,8 @@ are the link navis' faces, with their Full Synchro palettes.
     cargo run -p nettai-frontend -- <trace.jsonl>              # watch a trace
     cargo run -p nettai-frontend -- --play                     # play live
     cargo run -p nettai-frontend -- --play --seed 42 --stage netbattle-43 --show-folders
+    cargo run -p nettai-frontend -- --match match.toml           # play a match file (§6)
+    cargo run -p nettai-frontend -- --play --seed 42 --save-match match.toml   # keep the draw
     cargo run -p nettai-frontend -- <trace.jsonl> --headless 150,300,600 --out <dir>
     cargo run -p nettai-frontend -- <trace.jsonl> --audit      # what is missing?
     cargo run -p nettai-frontend -- --play --pack <dir>        # another pack
@@ -108,6 +110,11 @@ prints it), `--stage NAME` forces a link battle stage by its key
 (the Japanese games', docs/engine/patch-cards.md: names comma-separated in
 the order they apply, `-name` switched off, e.g. `canodumb,-shadow`),
 and with `--headless`, `--keys` holds buttons on given ticks (below).
+`--match FILE` plays a match file instead of a random draw (§6: you are its
+left side; it names the stage and the patch cards, so `--stage` and
+`--cards` don't go with it; `--seed` overrides its seed), and
+`--save-match FILE` writes the match played, live play's draw or the one
+netplay agreed, with its seed, as a match file.
 
 Keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START,
 Backspace = SELECT; Space pauses, `.` steps one frame while paused, `-` and
@@ -122,8 +129,9 @@ the trace's recorded state is printed too. Frame numbers are the trace's.
 **Live play**: you are the left navi; the right one stands still. The round
 is a netbattle on the pack's BN6 content between two 1000-HP MegaMen with
 no NaviCust programs (so roads carry them and holes stop them;
-`driver::live_navi`), set up at random from the seed
-(`driver::bn6_live_setup`, which prints what it drew):
+`nettai_match::draw::live_navi`), set up at random from the seed
+(`nettai_match::draw::live`, which prints what it drew), unless a match file
+sets it up (`--match`, §6):
 
 - **The field**: one of the 96 link battle stages the content defines (the
   settings records a link battle draws from, `sub_81209DC`: the stages with
@@ -131,10 +139,10 @@ no NaviCust programs (so roads carry them and holes stop them;
   a link battle draws one (`byte_8120A20`). The set's later rounds get
   theirs the same way.
 - **A folder for each player**: 30 chips that keep BN6's folder rules
-  (`folders`: the folder editor's, `sub_8135080` with `sub_8135500`: copies
+  (`nettai_match::folders`: the folder editor's, `sub_8135080` with `sub_8135500`: copies
   of a chip by its MB, five up to 19 MB down to one from 50; Mega and Giga
   chips within the navi's levels, 5 and 1; a code each chip comes in; a
-  Regular chip within the navi's Regular memory, 50 MB; no tag chips), from
+  Regular chip within the navi's Regular memory, 50 MB; no tag chips in a draw), from
   the chips the chip pack lists (Standard, Mega and Giga, not the dark
   chips, and not the five the US game has no routine for). The codes lean to
   two the folder favours, and `*`. Each console shuffles its folder from
@@ -181,14 +189,15 @@ frontend's side is `netplay`):
   scripts and rule tables, and what the battle reads of the pack, the asset
   names and the animations' timing), and refuses a mismatch on both sides with what
   differs ("can't play: the other side plays other content (its hash ...,
-  this one's ...)"). Each player then brings their own setup: a folder, a game
-  and five Crosses drawn from their own `--seed` (as live play draws a
-  player's), and their patch cards (`--cards`); the other player's is
-  checked against the content (a legal folder, Crosses of MegaMan's, patch
-  cards of the content's). The language (`--lang`) is each player's own. The
-  field (stage, background, the set's later stages) and the battle's RNG
-  come from both players' halves of the seed; the host's `--stage` forces the
-  stage. Both print what was agreed.
+  this one's ...)"). Each player then brings their own side of the match: a
+  match file's left side (`--match`), or a folder, a game and five Crosses
+  drawn from their own `--seed` (as live play draws a player's) with their
+  patch cards (`--cards`); the other player's is checked against the content
+  as a match file's side is (`nettai_match::check_side`, §6). The language
+  (`--lang`) is each player's own. The field is the host's: its match file's
+  arena, else drawn from both players' halves of the seed (on the host's
+  `--stage`, if it names one); the battle's RNG comes from the halves of the
+  seed. Both print what was agreed, and `--save-match` writes it.
 - **Playing**: the match is a best-of-three set; its rounds follow one
   another (the folders shuffled again by each console's RNG). Every frame the
   frontend sends your buttons and shows the frame its rollback session
@@ -635,3 +644,94 @@ them).
   the original writes a garbled sprite.
 - The background scroll starts one frame earlier in the first round of a
   set than in later ones (measured).
+
+## 6. Match files
+
+A match file is everything a round needs, chosen before the battle: the
+arena, and each side's ruleset, navi, game, stats, folder, Crosses and patch
+cards, in TOML, by content key (a definition's key, as content names it;
+`bn6:cannon`, or unqualified when one root defines it). `--match FILE` plays
+one (you are its left side), `--save-match FILE` writes the match played,
+and nettai-editor makes and edits them (README.md, "The match editor").
+The crate `nettai-match` reads, checks and writes them, and builds the
+round (`Match::round`); live play's random draw is a match too
+(`nettai_match::draw::live`), so a drawn setup written out and played again is
+the same battle (the frontend's test `a_saved_match_plays_the_same_battle`
+compares the digest every tick).
+
+```toml
+seed = 42                                  # optional: the setup's and battle's seed
+
+[arena]                                    # the stage's game decides the battle's data
+stage = "bn6:netbattle-43"                 # a link battle stage
+background = "honeycomb"                   # optional: else the stage's own
+later = [                                  # optional: the set's later rounds (else the first's)
+    { stage = "bn6:netbattle-12", background = "code" },
+    { stage = "bn6:netbattle-7" },
+]
+
+[left]                                     # you (side 0); then [right]
+ruleset = "bn6:bn6"                        # optional: else the content's stock ruleset
+navi = "bn6:megaman"
+game = "gregar"                            # optional: falzar (default) or gregar
+crosses = ["bn6:heatcross", "bn6:spoutcross"]   # optional: else the game's own five
+cards = [{ card = "bn6:canodumb" }, { card = "bn6:shadow", on = false }]
+level = 0                                  # optional: a link navi's level
+bug_frags = 0                              # optional
+emotion_window_glitch = false              # optional: the save's NaviCust bug flag (0x1720)
+
+[left.folder]
+chips = ["bn6:cannon A", "bn6:cannon A", "bn6:airshot *"]   # 30 entries, "<key> <code>"
+regular = 4                                # optional: an entry, counting from 0
+tags = [5, 6]                              # optional: two entries
+
+[left.stats]                               # optional: what differs from the navi's fresh stats
+hp = 1000
+regular_memory = 50
+sun = true
+```
+
+**The stats block** (`nettai_match::stats`) sets the navi's stats by name
+over its fresh stats (`NaviStats::fresh`, `init_8013B64`: what a new save
+gives the navi), of the side's game: `hp` (the base HP, which also sets the
+maximum and the HP the round starts with; `max_hp` and `current_hp` set
+those apart), `attack`, `rapid`, `charge`, `custom_level`, `mega_level`,
+`giga_level`, `regular_memory`, `mood`, `element`, `beast_out_counter`,
+`sun`, the NaviCust's abilities (`super_armor`, `float_shoes`, `air_shoes`,
+`undershirt`, `status_guard`, `first_barrier`, `gauge`, `supports`,
+`chip_recovery`, `chip_shuffle`, `number_open`), the weapons (`buster`,
+`charged_shot`, `back_special`, `a_charge`, `mode9_a`) and shot programs
+(`buster_shot`, `charged_shot_program`) by key or `none`, the forms, and the
+NaviCust's bugs (`step_bug`, `panel_trail`, `panel_trail_level`,
+`buster_blanks`, `buster_charged`, `hit_status`, `hp_drain`,
+`custom_drain`, `battle_start_bug`, `emotion_bug`, `starting_damage`,
+`custom_damage`, `hand_shrink_turn`, ...): every stat a round starts from,
+so a written block gives back the same stats. Writing a match, only the
+fields that differ are written.
+
+**The checks** (`nettai_match::check`) run when a file loads, when a netplay
+offer arrives (the same `check_side`), and live in the editor; each problem
+is said with where it is:
+
+- every key names a definition of the content (a stage, a background of the
+  pack, a ruleset, a navi, a Cross, a patch card, a chip, a weapon, a record,
+  a form), and every stat is in range;
+- the arena's stages are link battle stages (`link_battle_stages`);
+- the folder keeps BN6's rules (`nettai_match::folders`: 30 entries, copies
+  by MB, each chip in one of its codes, at most three dark chips, chips the
+  chip pack lists; the tag chips two other entries of 60 MB together at most,
+  `sub_81349E8`), and its Mega, Giga and Regular limits are the navi's stats
+  as the round starts them (after the rules' `round_setup`: the patch cards'
+  folder limits, as the original's folder editor and link battle check read
+  the reloaded stats);
+- a Cross list only with a ruleset that has the forms system, of the navi's
+  Crosses (a navi that changes form), at most five, none twice;
+- patch cards only with a ruleset that has the patch-cards system, each
+  installed once, at most 32, their MB together at most 80 (BN6's menu adds
+  none past 80 MB, `0x08141868`);
+- the round starts (`Battle::new` doesn't stop).
+
+**Netplay with a match file** (`--play --host PORT --match FILE` or
+`--join`): the file's left side is what you bring, wherever netplay puts
+you, and the host's file's arena is the match's (the joiner's is not
+sent). The battle's RNG still comes from both players' halves of the seed.
