@@ -1,11 +1,14 @@
 //! The window: runs a session at the original's 59.73 frames a second and
-//! shows it scaled up by an integer factor.
+//! shows it scaled up by the largest whole factor the window has room for
+//! (`present`: resize it at will), with the font mode's text drawn at the
+//! window's resolution.
 
-use crate::compose::{HEIGHT, WIDTH, to_rgb};
+use crate::compose::{HEIGHT, WIDTH};
 use crate::render::Renderer;
 use crate::session::{Session, TickHook};
-use nettai_battle::input::keys;
+use crate::vfont::TextRenderer;
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
+use nettai_battle::input::keys;
 use std::time::{Duration, Instant};
 
 /// The original's frame rate.
@@ -41,20 +44,23 @@ keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START, Backspace = SELECT
 
 /// Show `sessions` one after another (a trace's rounds): a round that
 /// runs out of input moves on to the next; one the engine stopped stays.
-/// `hooks` see the battle after every tick (sound).
+/// `hooks` see the battle after every tick (sound); `text` draws the font
+/// mode's text items.
 pub fn run(
     renderer: &mut Renderer,
     mut sessions: Vec<Session>,
     hooks: &mut [Box<dyn TickHook>],
     opts: &Options,
+    mut text: Option<&mut TextRenderer>,
 ) -> Result<(), String> {
     if sessions.is_empty() {
         return Ok(());
     }
     let mut current = 0usize;
     let scale = opts.scale.max(1);
-    let (w, h) = (WIDTH * scale, HEIGHT * scale);
-    let mut window = Window::new("nettai-frontend", w, h, WindowOptions::default()).map_err(|e| e.to_string())?;
+    let (mut w, mut h) = (WIDTH * scale, HEIGHT * scale);
+    let options = WindowOptions { resize: true, ..WindowOptions::default() };
+    let mut window = Window::new("nettai-frontend", w, h, options).map_err(|e| e.to_string())?;
     window.set_target_fps(120);
     let mut buffer = vec![0u32; w * h];
     let mut paused = opts.start_paused;
@@ -146,14 +152,17 @@ pub fn run(
             lines.push(s.clone());
         }
         if !lines.is_empty() {
-            crate::text::draw(&mut frame, WIDTH, 0, 0, &lines.join("\n"), 0x7FFF);
+            // (The status text is in front of everything, the text layer's
+            // items too.)
+            let rows = crate::text::draw(&mut frame.pixels, WIDTH, 0, 0, &lines.join("\n"), 0x7FFF) * 6;
+            frame.depth[..(rows * WIDTH).min(WIDTH * HEIGHT)].fill(0);
         }
-        for y in 0..h {
-            let row = &frame[(y / scale) * WIDTH..][..WIDTH];
-            for x in 0..w {
-                buffer[y * w + x] = to_rgb(row[x / scale]);
-            }
+        let (ww, wh) = window.get_size();
+        if (ww, wh) != (w, h) && ww > 0 && wh > 0 {
+            (w, h) = (ww, wh);
+            buffer = vec![0u32; w * h];
         }
+        crate::present::present(&frame, text.as_deref_mut(), &mut buffer, w, h);
         if loops % 15 == 0 {
             let t = format!("nettai-frontend - {} - x{}{}", session.driver.position(), SPEEDS[speed], if paused { " (paused)" } else { "" });
             if t != title {
@@ -165,6 +174,11 @@ pub fn run(
         if opts.quit_after.is_some_and(|n| session.ticks >= n) {
             break;
         }
+    }
+    // What the window showed last, for a look without a screen grab.
+    if let Some(path) = std::env::var_os("NETTAI_WINDOW_SHOT") {
+        crate::headless::write_rgb_png(std::path::Path::new(&path), &buffer, w, h).map_err(|e| e.to_string())?;
+        eprintln!("the window's last picture ({w}x{h}) is in {}", path.to_string_lossy());
     }
     Ok(())
 }
