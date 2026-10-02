@@ -45,8 +45,12 @@ local SOUND_SHOT = asset.sound("buster-shot")
 local SOUND_GUN = asset.sound("gundels1")
 
 -- (MegaMan's arm for a user who isn't MegaMan and his muzzle flash are
--- lib/buster's, attachments 6 and 5; Django's gun is on the blades' sheet,
--- attachment 0xB, as the sword's.)
+-- lib/buster's, attachments 6 and 5.) Django's gun is his own sprite's
+-- animation 8: the Japanese games' attachment row 0xB, as the content has
+-- their looks where the US games blanked them (the US games' row shows the
+-- blades' sheet, as the sword's row 3).
+local DJANGO_GUN = attachment.look { sprite = DJANGO_SPRITE, palette = 0 }
+local DJANGO_GUN_ANIM = 8
 
 -- MegaMan's shots: the climbing projectile (the original's row 0x1D), 30
 -- damage with hit parameter 0x83, 16 pixels up; twelve, 10 ticks apart.
@@ -421,7 +425,7 @@ local function draw_gun(me: Object)
     if me.phase_init == 0 then
         me.anim = 3
         me.timer = 0xA
-        attachment.attach(me, parts.blades.sword, "held", { anim = 8, while_dimmed = true })
+        attachment.attach(me, DJANGO_GUN, "held", { anim = DJANGO_GUN_ANIM, while_dimmed = true })
         battle.play_sound(SOUND_GUN)
         me.phase_init = 4
     end

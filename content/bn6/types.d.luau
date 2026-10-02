@@ -893,14 +893,14 @@ export type EraseBeam = {
 
 -- How a dust storm blows (lib/instant/dust_storm, the original's Param2 and
 -- Param3): for `ticks` ticks, while its user runs `tied` (nil: untied, its
--- hits landing while dimmed; HackJack's rain).
+-- hits landing while dimmed; Count's rain).
 export type DustStorm = { ticks: number, tied: Action? }
 
--- How HackJack's lance strikes (chips/hackjack/lance, the original's
+-- How Count's lance strikes (chips/count/lance, the original's
 -- Param2 and Param3): at once and while dimmed (`while_dimmed`, his chip's:
 -- the game's Param3 2), or after `warn_ticks` ticks of its panel
 -- highlighted, standing still while dimmed.
-export type HackJackLance = {
+export type CountLance = {
     while_dimmed: boolean,
     warn_ticks: number,
 }
