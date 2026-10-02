@@ -387,8 +387,9 @@ export type PanelChange = {
 }
 
 -- A patch card (the Japanese games' Modification Card; a record of type
--- "patch-card", rules/patch-cards): its name, its MB and its effects
--- (rules/patch-cards/cards.luau's constructors).
+-- "patch-card", rules/patch-cards): its MB and its effects
+-- (rules/patch-cards/cards.luau's constructors). Its name is the locales'
+-- (locales/<lang>.toml's `records`, by its key).
 export type PatchCardEffect = {
     kind: string,
     amount: number?,
@@ -410,7 +411,6 @@ export type PatchCard = {
     -- Its key ("patch-card/<name>"): compat/records.toml's `patch_cards`
     -- give the original's numbers.
     id: string,
-    name: string,
     mb: number,
     effects: { PatchCardEffect },
 }

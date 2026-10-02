@@ -9,7 +9,6 @@ local chips = require("../../chips/crakshot/chips")
 
 return define.weapon {
     id = "patch-cards/planetmn/b-button",
-    name = "CrakShot",
     -- The charge table's row 0x81, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 60, 55, 50, 45, 40, 100, 90, 80 },

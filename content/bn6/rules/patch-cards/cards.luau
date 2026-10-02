@@ -278,8 +278,9 @@ end
 
 -- ---- The card ------------------------------------------------------------
 
--- A patch card: its key ("patch-card/<name>"), the name its menu shows, its
--- MB (the installed cards may take 80) and its effects.
+-- A patch card: its key ("patch-card/<name>"), its MB (the installed cards
+-- may take 80) and its effects. The name its menu shows is the locales'
+-- (locales/<lang>.toml's `records`).
 function patch_cards.card(spec: PatchCard): PatchCard
     if string.sub(spec.id, 1, #"patch-card/") ~= "patch-card/" then
         error(string.format("patch card %q: a card's key starts with patch-card/", spec.id))

@@ -9,7 +9,6 @@ local panlgrab = require("../../chips/panlgrab/chip")
 
 return define.weapon {
     id = "patch-cards/slimey/charge",
-    name = "PanlGrab",
     -- The charge table's row 0x57, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 180, 170, 160, 155, 150, 180, 170, 160 },

@@ -9,7 +9,6 @@ local blzrdbal = require("../../chips/blzrdbal/chip")
 
 return define.weapon {
     id = "patch-cards/blizman/charge",
-    name = "BlzrdBal",
     -- The charge table's row 0x5d, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 180, 170, 160, 155, 150, 150, 140, 130 },

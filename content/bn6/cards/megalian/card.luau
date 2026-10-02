@@ -6,7 +6,6 @@ local barriers = require("../../lib/barriers/barriers")
 
 return cards.card {
     id = "patch-card/megalian",
-    name = "Megalian",
     mb = 20,
     effects = {
         cards.bug(cards.hp(-80)),

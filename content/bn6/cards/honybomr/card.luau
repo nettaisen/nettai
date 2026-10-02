@@ -6,7 +6,6 @@ local back_special = require("./back-special")
 
 return cards.card {
     id = "patch-card/honybomr",
-    name = "HonyBomr",
     mb = 12,
     effects = {
         cards.bug(cards.hp_percent(-10)),

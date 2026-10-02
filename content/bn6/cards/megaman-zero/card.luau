@@ -7,7 +7,6 @@ local charge = require("./charge")
 
 return cards.card {
     id = "patch-card/megaman-zero",
-    name = "MegaMan-Zero",
     mb = 45,
     effects = {
         cards.b_button(b_sword),

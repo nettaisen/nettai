@@ -7,7 +7,6 @@ local triple_buster = require("../../lib/patch-cards/triple-buster")
 
 return cards.card {
     id = "patch-card/bass-cross-megaman",
-    name = "Bass-Cross MegaMan",
     mb = 70,
     effects = {
         cards.hp_percent(20),

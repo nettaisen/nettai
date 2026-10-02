@@ -6,7 +6,6 @@ local charge = require("./charge")
 
 return cards.card {
     id = "patch-card/kilby",
-    name = "Kilby",
     mb = 24,
     effects = {
         cards.bug(cards.hp_percent(-20)),

@@ -83,7 +83,6 @@ meteors.action = define.action {
 function meteors.weapon(spec: { id: string, drops: number, charge_ticks: { number } }): Weapon
     return define.weapon {
         id = spec.id,
-        name = "Meteor",
         charge_ticks = spec.charge_ticks,
         setup = function(navi: Object): Action
             navi.attack_damage = DAMAGE

@@ -6,7 +6,6 @@ local variants = require("../../objects/projectile/variants")
 
 return cards.card {
     id = "patch-card/videoman",
-    name = "VideoMan",
     mb = 32,
     effects = {
         cards.bug(cards.hp_percent(-10)),

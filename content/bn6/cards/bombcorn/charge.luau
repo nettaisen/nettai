@@ -9,7 +9,6 @@ local chips = require("../../chips/cornsht/chips")
 
 return define.weapon {
     id = "patch-cards/bombcorn/charge",
-    name = "CornSht1",
     -- The charge table's row 0x62, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 80, 70, 60, 55, 50, 130, 120, 110 },

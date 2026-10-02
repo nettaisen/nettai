@@ -6,7 +6,6 @@ local variants = require("../../objects/projectile/variants")
 
 return cards.card {
     id = "patch-card/armadill",
-    name = "Armadill",
     mb = 12,
     effects = {
         cards.hp_percent(5),

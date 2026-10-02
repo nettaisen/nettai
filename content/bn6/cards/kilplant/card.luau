@@ -6,7 +6,6 @@ local charge = require("./charge")
 
 return cards.card {
     id = "patch-card/kilplant",
-    name = "KilPlant",
     mb = 19,
     effects = {
         cards.body("wood"),

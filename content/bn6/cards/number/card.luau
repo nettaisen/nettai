@@ -6,7 +6,6 @@ local chrgs = require("../../lib/patch-cards/chrgs")
 
 return cards.card {
     id = "patch-card/number",
-    name = "Number",
     mb = 17,
     effects = {
         cards.bug(cards.charged_shot(chrgs)),

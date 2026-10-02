@@ -9,7 +9,6 @@ local sword = require("../../chips/sword/chip")
 
 return define.weapon {
     id = "patch-cards/b-sword",
-    name = "Sword",
     -- The charge table's row 0x8e, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 60, 55, 50, 45, 40, 0, 0, 0 },

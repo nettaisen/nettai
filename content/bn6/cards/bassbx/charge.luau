@@ -8,7 +8,6 @@ local rapid_buster = require("../../lib/rapid_buster")
 
 return define.weapon {
     id = "patch-cards/bassbx/charge",
-    name = "Sbustr",
     -- The charge table's row 0x92, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 110, 100, 90, 80, 70, 140, 130, 120 },

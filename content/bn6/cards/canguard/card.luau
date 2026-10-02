@@ -7,7 +7,6 @@ local shield = require("../../navis/megaman/weapons/shield/weapon")
 
 return cards.card {
     id = "patch-card/canguard",
-    name = "CanGuard",
     mb = 10,
     effects = {
         cards.bug(cards.float_shoes(false)),
