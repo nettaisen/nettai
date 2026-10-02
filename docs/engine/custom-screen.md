@@ -2,7 +2,7 @@
 
 Between turns each player deals chips from their folder, picks some with their joypad (and maybe Beast Out or a
 Cross), and presses OK. Their hand is built and sent over the link, and the fight resumes once both players'
-results are in. This document is the spec for the port's custom screen, `bn6-battle/src/custom` (ruleset layer),
+results are in. This document is the spec for the port's custom screen, `nettai-battle/src/custom` (ruleset layer),
 and says what is verified and how.
 
 - Chip data, the chip block (the hand) and how chips are used in the fight: [`chips.md`](chips.md) §1-§2. §5 below
@@ -490,7 +490,7 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
 ## 9. Presentation: what the screen shows
 
 The simulation above is all the battle needs. What each console draws of its own screen is presentation: the
-frontend draws the local player's (bn6-frontend `custom`, docs/frontend.md §3), from the `Screen` and from
+frontend draws the local player's (nettai-frontend `custom`, docs/frontend.md §3), from the `Screen` and from
 `Screen::look` (`custom/look.rs`), the part of the original's control block at `0x020364C0` and of its VRAM that
 the screen's drawing reads. The state digest leaves `look` out, like a sprite's `Look`; nothing the simulation
 reads depends on it.

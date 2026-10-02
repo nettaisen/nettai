@@ -3,7 +3,7 @@
 The engine supports rollback netplay: each peer runs the whole battle, predicts the other player's input,
 speculates ahead of the frames both players' inputs are known for, and when the real input arrives and differs,
 goes back to the last confirmed state and simulates again. The netcode core is getgud, Tango's rollback library;
-crates/bn6-netplay implements its `World` for the battle. This document describes the engine's side of that
+crates/nettai-netplay implements its `World` for the battle. This document describes the engine's side of that
 contract, how getgud's model maps onto the engine, the simulator that proves it, what the original's per-console
 ("local side") state means for it, how sound works under rollback, what it costs, the hazards found, and what the
 custom screen and scripting layers must guarantee to keep it working.
@@ -14,7 +14,7 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
 ## 0. Summary
 
 - **Netcode**: getgud (a workspace dependency from its repository, the revision pinned in Cargo.lock) keeps the
-  input queues, the settled state, the speculative tail, promotion and rollback, and the clock skew. bn6-netplay
+  input queues, the settled state, the speculative tail, promotion and rollback, and the clock skew. nettai-netplay
   supplies its `World`, `BattleWorld`: one peer's battle, its player's side, snapshots and prediction (§4).
 - **Snapshots**: `Battle` is plain data, `Clone` and `Send`; a snapshot (`save_state` / `load_state`) is a boxed
   copy, `Send` as getgud requires. About 22 KB (8.6 KB inline plus the
@@ -31,7 +31,7 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
   per-console detail with its decision.
 - **Sound**: `cues::CueTracker` turns every simulated tick's cues, tagged with their frame, into Play and Cancel
   actions, so a confirmed cue plays once and a mispredicted one is stopped or undone. The peer's world reports
-  every tick it simulates; bn6-audio takes the actions (`BattleAudio::handle_actions`).
+  every tick it simulates; nettai-audio takes the actions (`BattleAudio::handle_actions`).
 - **Results**: synthetic netbattles on the engine's test content (random button mashing, fixed hands) run to the KO
   without a single divergence at latencies of 0 to 10 frames with jitter and present delay, with hundreds to
   thousands of rollbacks each. The golden traces, replayed through two getgud sessions at latencies 0, 2, 5 and 10
@@ -56,7 +56,7 @@ Two battles started from the same `RoundSetup` and stepped with the same inputs 
 simulation keeps no state outside `Battle`, reads no clock, does no I/O, and uses no floats, statics, interior
 mutability, hash-map iteration or addresses (§7).
 
-Each player contributes their share. In bn6-netplay that is `Bn6Input { tick: PlayerTick, events: TickEvents }`;
+Each player contributes their share. In nettai-netplay that is `PlayerInput { tick: PlayerTick, events: TickEvents }`;
 the frame's record combines both shares (`bn6::tick_input`).
 
 **The custom screen is simulated.** Both players' custom screens run in the engine from their buttons
@@ -238,16 +238,16 @@ produced cues that didn't happen. `cues::CueTracker` handles that:
   most `tolerance` frames away (a corrected input often moves an event by a frame or two), and not played again;
 - a played cue that the re-simulation doesn't make again, within the tolerance, is cancelled.
 
-The result is a list of `CueAction::Play(cue)` / `Cancel(cue)`. bn6-audio's `BattleAudio::handle_actions`
+The result is a list of `CueAction::Play(cue)` / `Cancel(cue)`. nettai-audio's `BattleAudio::handle_actions`
 plays the plays like `handle` and takes back cancels: a sound effect stops if its player is still playing it
 (`m4aSongNumStop`), a music change goes back to the previous music (restarted), a pinch switch is switched back.
-`bn6_netplay::bn6::CueFeed` is the observer that connects a peer to a tracker for one viewer: the peer's world
+`nettai_netplay::battle::CueFeed` is the observer that connects a peer to a tracker for one viewer: the peer's world
 holds it and the host shares it (`BattleWorld::with_observer` with an `Rc<RefCell<CueFeed>>`, since getgud owns
 the world). It also keeps each unconfirmed frame's cues from its latest simulation, which are the confirmed
 frame's cues once it settles.
 
 The synthetic tests check, for each peer, that plays minus cancels equals the cues of the confirmed frames, cue
-by cue. The behaviour is the same as on the rollback peer bn6-netplay had before getgud: at 10 + 3 frames of
+by cue. The behaviour is the same as on the rollback peer nettai-netplay had before getgud: at 10 + 3 frames of
 latency, seed 1's battle (11,912 frames) played 588 and 607 cues on the two peers, of which 75 and 93 were
 cancelled predictions; the old peer played 587 and 608 and cancelled 74 and 94.
 
@@ -258,7 +258,7 @@ the local side's, which the golden sound recordings check. A peer feeds its trac
 
 ## 4. Netplay on getgud
 
-Each peer runs a getgud `Session` (Tango's rollback core) on a `World` that bn6-netplay implements for the battle.
+Each peer runs a getgud `Session` (Tango's rollback core) on a `World` that nettai-netplay implements for the battle.
 getgud keeps the input queues and matches them into confirmed rows, speculates, promotes or rolls back, keeps the
 settled state and computes the clock skew; it has no game logic and speaks of one local player and remote slots.
 
@@ -268,7 +268,7 @@ settled state and computes the clock skew; it has no game logic and speaks of on
 |---|---|
 | `World` | `BattleWorld<G, O>`: one peer's live battle (a `Game`), its player's side, the tick it is parked at, and an observer |
 | `World::step(local, remotes)` | `Game::step([side 0's input, side 1's input])`: `local` goes to the world's side, the one remote slot to the other |
-| `World::Input` | `Bn6Input` for `Battle` (buttons and the frame's events), the buttons for `StandInBattle`; `Default` is the input before any has arrived (`initial_remotes`) |
+| `World::Input` | `PlayerInput` for `Battle` (buttons and the frame's events), the buttons for `StandInBattle`; `Default` is the input before any has arrived (`initial_remotes`) |
 | `World::State`, `save`, `load` | `BattleState`: a `Snapshot` (§1.3) and its tick. `load` copies nothing and reports no rollback when the world is parked at that tick already: getgud loads the settled state before simulating confirmed rows even when nothing was speculated past it, and then the world is that state |
 | `World::predict` | `Game::predict`: buttons carry on, events happen once |
 | `World::recycle` | Not implemented: `Battle`'s `clone_from` is the derived one, which reuses no allocation, so pooling snapshots would save nothing |
@@ -278,13 +278,13 @@ settled state and computes the clock skew; it has no game logic and speaks of on
 | `skew`, `local_tick_advantage` | Clock sync: every input goes out with the sender's advantage (`add_remote_input(slot, input, advantage)`), and a peer that runs ahead stalls frames (§4.3) |
 | `matchable`, `local_queue_length` | The stall guard: a peer with `max_lead` unconfirmed local inputs waits, unless remote input it has can still be matched |
 
-### 4.2 What bn6-netplay implements
+### 4.2 What nettai-netplay implements
 
 - `world`: `Game` (a battle stepped on both players' inputs by side, and its prediction), `Observer`
   (`rolled_back`, `simulated`, `confirmed`, implemented for `&mut`, `&RefCell` and `Rc<RefCell>` of an observer
   so that the world and the host can share one), `BattleWorld` and `BattleState`. `BattleWorld::session` makes the
   session.
-- `bn6`: `Battle` as a `Game` on the engine's input record (`Bn6Input`, `tick_input`), and the sound feed
+- `bn6`: `Battle` as a `Game` on the engine's input record (`PlayerInput`, `tick_input`), and the sound feed
   (`CueFeed`).
 - `standin`: `StandInBattle` as a `Game` on the buttons alone; a MegaMan built in code, a netbattle setup on given
   content with given folders, and a seeded button masher.
@@ -328,7 +328,7 @@ its settled state still reaches it.
 
 ### 4.4 What was deleted
 
-bn6-netplay's own GGPO-style session: `Peer` (both players' inputs by frame, prediction, a snapshot of every
+nettai-netplay's own GGPO-style session: `Peer` (both players' inputs by frame, prediction, a snapshot of every
 unconfirmed frame, rollback to the first wrong frame and re-simulation, confirmation, statistics), the `Game`
 trait it drove (snapshots by `Clone`, `advance` on both inputs, `digest`, `is_over`, `blank_input`) and
 `HasBattle`. `Observer::confirmed` used to come once per frame with that frame's state; it now comes once per
@@ -355,7 +355,7 @@ guard's `max_lead`, and the simulated link no longer reorders packets.
 
 ### 5.1 Synthetic netbattles (in this repository)
 
-`crates/bn6-netplay/tests/rollback.rs`: two navis with 300 HP on the battle settings 0 of the engine's test content
+`crates/nettai-netplay/tests/rollback.rs`: two navis with 300 HP on the battle settings 0 of the engine's test content
 (`content::testing`, hand-authored, not BN6's data). Its chips are made up but run the engine's own actions: side
 0's folder holds a level-3 GunDelSol, an eraser navi chip, a level-1 GunDelSol, an invisibility dimming chip and a level-3
 GunDelSol over and over (GunDelSol is action 0x37; the invisibility freeze 0x15 with subtype 1, as Invisibl; the
@@ -373,7 +373,7 @@ mashing drives their custom screens too. Three seeds, each under every configura
 | 10 + 2 | 3 | same | ~1,270 | 9 | 8 | never |
 
 Every battle runs to the end with both peers' settled digests equal to each other and to the lockstep run at every
-advance, and ends the same way as without rollback. getgud rolls back less often than the peer bn6-netplay had
+advance, and ends the same way as without rollback. getgud rolls back less often than the peer nettai-netplay had
 before (seed 3 at 10 + 3: about 1,220 rollbacks per peer against 1,500, and 13,000 frames simulated again
 against 17,000): it checks predictions as rows settle, promotes the prefix that held, and catches up on a burst
 of arrivals in one rollback. The other tests: the engine's own input record with the recorded events riding in
@@ -430,7 +430,7 @@ digest the new settled state. On soundmod round 1 (the 2,000 frames around its b
 (The verification workspace's `soundmod_rollback_cost`, before and after the port, on a machine running other
 builds; its numbers moved by up to 60% with the load between runs. The last row runs the two paths side by side,
 alternating, and takes each frame's fastest of 7 runs, which leaves the scheduling noise out: the two are the
-same.) That is under 0.5% of the 16.7 ms a frame has at 60 fps. (Measure with `cargo run --release -p bn6-netplay
+same.) That is under 0.5% of the 16.7 ms a frame has at 60 fps. (Measure with `cargo run --release -p nettai-netplay
 --example rollback_cost -- <trace.jsonl> <pack> [round]`.) The digest dominates and is needed
 once per settle, not per re-simulated frame.
 
@@ -470,7 +470,7 @@ with getgud and 6.2 to 6.6 µs with the old peer, measured side by side.
 ### 7.3 Checked, not a problem
 
 - No floats, statics, thread-locals, `Rc`/`RefCell`/`Cell`, hash maps, clocks or I/O in the simulation (the
-  frontend's thread-local panic flag and bn6-audio's floats are presentation; the content's `Arc` points at
+  frontend's thread-local panic flag and nettai-audio's floats are presentation; the content's `Arc` points at
   immutable data, and the per-thread runtime cache holds code, not state).
 - No address-dependent behavior: the values the original takes from addresses and registers (list-node addresses
   as a deletion effect's position, register garbage in spawn positions and bug codes) are modeled as fixed values

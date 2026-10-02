@@ -3,7 +3,7 @@
 //!
 //!     bn6-extract content <rom> <pack-dir> [--content <dir>]
 //!
-//! The pack (see bn6-content and docs/design/content-pack.md) holds the
+//! The pack (see nettai-content and docs/design/content-pack.md) holds the
 //! graphics and the sound in open formats, by the names this repository's
 //! content/bn6 gives them (its compat/assets.toml); the battle content is
 //! content/bn6's definitions, which name them. Everything that plays BN6

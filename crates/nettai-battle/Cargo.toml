@@ -1,0 +1,33 @@
+[package]
+name = "nettai-battle"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "The Mega Man Battle Network 6 battle engine, reimplemented in Rust"
+
+[dependencies]
+nettai-content-api = { path = "../nettai-content-api" }
+# The content scripts' runtime (docs/design/scripting.md): a content pack's
+# Luau scripts implement its object kinds, actions and hooks.
+nettai-luau = { path = "../nettai-luau" }
+# Content types (de)serialize themselves; the loader (nettai-content) reads
+# content packs with them, and the scripts read them as data.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+# `content::testing`: a small hand-authored content set for other crates'
+# tests and examples (made up, not BN6's data).
+test-content = []
+# Luau's native code generator, selectable with `Behaviors::load`'s
+# options (deterministic, but not faster for this content:
+# docs/design/scripting.md §7).
+luau-jit = ["nettai-luau/jit"]
+
+[[example]]
+name = "content_bench"
+required-features = ["test-content"]
+
+[[example]]
+name = "luau_ops"
+required-features = ["test-content"]
