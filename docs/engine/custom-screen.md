@@ -220,14 +220,16 @@ The port runs what those scripts' commands do to the timing:
 - **The key wait** (`E7`): five ticks of delay, then A or B pressed (`E7 00`, the message) or any key (`E7 01`, the
   descriptions), or B held for an eleventh tick (the held ticks needn't be in a row).
 
-A chip's description is its record's `description` (its lines apart by `\n`; the engine reads how many); the
+A chip's description is its `description` in the content's strings (locales/en.toml; its lines apart by `\n`):
+the engine reads how many lines, which the define phase counts into the record (`description_lines`); the
 invalid chip's (one line) is shown for an invalid chip. A Cross's is its form's `description` (the Cross window's
 script, `TextScriptChipDesc86EF4D4`'s by the form's number less one); every one has three lines, and a form
-without one counts as three. The message is the operated navi's `run_message`: the characters in each line
-(`counts`, which time it: MegaMan's is 19 and 12), its words (`text`, which the chatbox shows, and which of its
-characters move the speaker's mouth) and the speaker's portrait (a sprite); each link navi has its own script
-(`TextScriptBattleRunDialog`'s script 3 sends it there). gen-content checks all three against the ROM, and that
-the counts are the words' lines.
+without one counts as three. The message is the operated navi's `run_message` in the strings: the define phase
+counts its characters in each line (`counts`, which time it: MegaMan's is 19 and 12) and which of them move the
+speaker's mouth (`talking`) into the record, whose `portrait` (a sprite) the definition gives; each link navi has
+its own script (`TextScriptBattleRunDialog`'s script 3 sends it there). gen-content checks the strings and the
+counted records against the ROM. (The text itself is presentation, out of the hash: docs/design/text-rendering.md
+§10.)
 
 **What the chatbox shows** is presentation, kept beside its timing in `ChatboxLook` (left out of the state digest,
 as `ScreenLook` is) and read through `Chatbox::box_step`, `shows_contents` and `look`, from which the frontend

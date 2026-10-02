@@ -47,7 +47,7 @@ pub struct Renderer<'a> {
     /// (a chip's damage after its name).
     measure: Option<std::cell::RefCell<crate::vfont::TextRenderer>>,
     /// The player's language's strings table (`--lang`), if not the
-    /// definitions' own words.
+    /// content's own.
     strings: Option<Arc<nettai_content::locale::Strings>>,
 }
 

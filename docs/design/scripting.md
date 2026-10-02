@@ -394,7 +394,6 @@ local navi = require("./navi")
 
 local eraseman = define.chip {
     id = "eraseman",
-    name = "EraseMan",
     codes = { "K", "*" },
     class = "mega",
     damage = 120,

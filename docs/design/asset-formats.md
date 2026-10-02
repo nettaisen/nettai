@@ -424,9 +424,9 @@ in Japanese) and the Cross window's names by version
 the Japanese ROMs (bn6-extract's `lettering`); the fonts' characters from
 compat/text.toml's `[jp]`, the Japanese ROMs' encoding. Everything else a
 battle shows is the same pictures in all four ROMs. A frontend in that
-language swaps them in (`Bundle::in_language`). Content's own words in other
-languages are no assets: they are the content root's (`locale/`,
-docs/design/text-rendering.md §10).
+language swaps them in (`Bundle::in_language`). The content's display text
+(names, descriptions, messages) is no asset: it is the content root's strings
+(`locales/<lang>.toml`, docs/design/text-rendering.md §10).
 
 Tiled was considered for the field's panel blocks too, but a panel tile is
 drawn in different palettes for each side, which a Tiled tileset can't show

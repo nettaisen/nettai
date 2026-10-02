@@ -77,10 +77,10 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    original does (what the frame comparison uses)
   --font PATH      the font mode's font (a TrueType or OpenType file) instead
                    of the bundled one (Murecho)
-  --lang LANG      the language of the battle's words: en (default, the
+  --lang LANG      the language of the battle's text: en (default, the
                    content's own) or ja (the Japanese games' names,
                    descriptions and messages, from the content's
-                   locale/ja.toml, and their fonts and pictures with words,
+                   locales/ja.toml, and their fonts and pictures with text,
                    from the pack); either text mode. Only what is shown
                    changes: the battle, and a netbattle with a player of
                    another language, are the same
@@ -181,7 +181,7 @@ fn load<T>(pack: &Path, what: &str, f: impl Fn(&Path) -> Result<(T, nettai_conte
 }
 
 /// The battle's display text in `lang`: the pack's lettering in it (fonts,
-/// HUD lines, pictures with words) and the content root's strings table, if
+/// HUD lines, pictures with text) and the content root's strings table, if
 /// the language isn't the content's own.
 fn language(assets: nettai_assets::Bundle, root: &Path, lang: &str) -> (nettai_assets::Bundle, Option<nettai_content::locale::Strings>) {
     let own = nettai_content::locale::OWN;
