@@ -15,6 +15,9 @@ struct Args {
     round: usize,
     play: bool,
     seed: Option<u32>,
+    stage: Option<String>,
+    show_folders: bool,
+    keys: Option<String>,
     scale: usize,
     paused: bool,
     headless: Option<String>,
@@ -42,7 +45,12 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    content/bn6)
   --mute           no sound (headless rendering never plays any)
   --round N        the trace round to start with (default 1; later rounds follow)
-  --seed N         the live battle's RNG seed
+  --seed N         live play's seed: the field, the folders, the Crosses
+                   offered and the battle's RNG are drawn from it (default:
+                   from the clock); each start prints it
+  --stage NAME     live play on this link battle stage (its key, e.g.
+                   netbattle-43) instead of a random one
+  --show-folders   print both players' live folders
   --scale N        window scale (default 4)
   --paused         start paused
   --headless F     render frames F (e.g. 150,300,600 or 100-120; trace frame
@@ -50,6 +58,9 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    in --out (default .), no window
   --objects        with --headless: list every rendered frame's objects (kind,
                    place, sprite, animation, look)
+  --keys K         with --headless --play: the buttons you hold, by tick (e.g.
+                   232-233:up,300:a+b; a b l r up down left right start
+                   select)
   --audit          draw every frame and play every sound cue into nothing, no
                    window, and list what they named that the pack doesn't
                    have (a sprite, an animation, a palette, a chip's icon or
@@ -65,6 +76,9 @@ fn parse() -> Result<Args, String> {
         round: 1,
         play: false,
         seed: None,
+        stage: None,
+        show_folders: false,
+        keys: None,
         scale: 4,
         paused: false,
         headless: None,
@@ -85,6 +99,9 @@ fn parse() -> Result<Args, String> {
             "--round" => a.round = number(value("--round")?, "--round")? as usize,
             "--play" => a.play = true,
             "--seed" => a.seed = Some(number(value("--seed")?, "--seed")? as u32),
+            "--stage" => a.stage = Some(value("--stage")?),
+            "--show-folders" => a.show_folders = true,
+            "--keys" => a.keys = Some(value("--keys")?),
             "--scale" => a.scale = number(value("--scale")?, "--scale")? as usize,
             "--paused" => a.paused = true,
             "--headless" => a.headless = Some(value("--headless")?),
@@ -174,7 +191,9 @@ fn main() {
         let seed = args.seed.unwrap_or_else(|| {
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(1)
         });
-        sessions.push(Session::new(Box::new(LivePlayer::new(bn6_live_setup(&content, seed), content.clone()))));
+        let (setup, choices) = bn6_live_setup(&content, seed, args.stage.as_deref()).unwrap_or_else(|e| fail(e));
+        eprintln!("{}", choices.describe(&content, args.show_folders));
+        sessions.push(Session::new(Box::new(LivePlayer::new(setup, content.clone()))));
     } else if let Some(path) = &args.trace {
         let rounds =
             TracePlayer::load(path, &content).unwrap_or_else(|e| fail(format!("can't read {}: {e}", path.display())));
@@ -206,9 +225,10 @@ fn main() {
     }
     if let Some(list) = &args.headless {
         let wanted = headless::parse_frames(list).unwrap_or_else(|e| fail(e));
+        let keys = headless::KeyScript::parse(args.keys.as_deref().unwrap_or("")).unwrap_or_else(|e| fail(e));
         let mut log = |s: &str| eprintln!("{s}");
         let rendered =
-            headless::render_frames_with(&mut renderer, sessions, &wanted, &args.out, args.png_scale, args.objects, &mut log);
+            headless::render_frames_with(&mut renderer, sessions, &wanted, &args.out, args.png_scale, args.objects, &keys, &mut log);
         match rendered {
             Ok(written) => {
                 eprintln!("wrote {} frames to {}", written.len(), args.out.display());
