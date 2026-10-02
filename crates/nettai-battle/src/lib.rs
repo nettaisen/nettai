@@ -1,7 +1,8 @@
-//! The Mega Man Battle Network 6 battle engine, reimplemented in Rust.
+//! nettai: a Battle Network battle engine in Rust.
 //!
-//! This is a from-scratch implementation of the game's battle rules with its
-//! own data model. Game content (chips, navis, the ruleset's tables,
+//! It reimplements Mega Man Battle Network 6's battle rules from scratch with
+//! its own data model; BN6 is the first game it plays (content/bn6), and the
+//! aim is to bring the other Battle Network games over as content too. Game content (chips, navis, the ruleset's tables,
 //! animation timing) comes in a [`Content`], which a loader outside the
 //! engine reads from a content pack (nettai-content); a battle shares it
 //! read-only. Behavior is verified tick by tick against traces recorded
