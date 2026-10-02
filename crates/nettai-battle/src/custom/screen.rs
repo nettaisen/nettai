@@ -757,11 +757,19 @@ impl Screen {
                 None
             }
             Phase::Scrapping { .. } => {
+                // sub_8027406: every tick also draws the emblem and the
+                // Regular chip's frame.
                 self.scrap(view, folder);
+                self.look.draw_emblem(0);
+                self.look.draw_regular(folder.regular_pending);
                 None
             }
             Phase::Redealing { .. } => {
+                // sub_80271F8: every tick also draws the emblem and the
+                // Regular chip's frame.
                 self.redeal(view, folder, console);
+                self.look.draw_emblem(0);
+                self.look.draw_regular(folder.regular_pending);
                 None
             }
             Phase::Closing { tick } => {
@@ -1038,6 +1046,7 @@ impl Screen {
     fn draw_slots(&mut self, folder: &BattleFolder, view: &PlayerView) {
         for s in 0..SLOTS as u8 {
             self.look.slot_chips[s as usize] = self.chip_in(s, folder).map(|c| checked(c, view));
+            self.look.slot_picked[s as usize] = self.slots[s as usize].state == SlotState::Selected;
         }
     }
 
@@ -1162,6 +1171,9 @@ impl Screen {
             return;
         }
         let tick = tick + 1;
+        // The window's frame counter is the scrap's timer, from 24
+        // (`sub_8027434`).
+        self.look.frame = if tick == 1 { SCRAP_TIMER_START } else { self.look.frame + 1 };
         if tick >= 2 && (tick - 2) % 25 == 0 {
             let last = self.selected.checked_sub(1).map(|i| self.selection[i as usize]);
             match last.map(|s| self.slots[s as usize].kind) {
@@ -1169,6 +1181,10 @@ impl Screen {
                     scrapped[count as usize] = folder.take(index as usize);
                     count += 1;
                     self.selected -= 1;
+                    // sub_80281D4, sub_8029CD4: the pick's icon and cell
+                    // go; the chip window is drawn again.
+                    self.look.column[self.selected as usize] = None;
+                    self.show_chip_window(folder, view);
                     self.look.play(ScreenSound::Scrap);
                 }
                 _ => {
@@ -1218,9 +1234,12 @@ impl Screen {
             self.slots[8].state = SlotState::Selected;
             self.update_availability(view, folder);
             self.phase = Phase::Redealing { started: true, elapsed: 0, deal };
+            // The window's frame counter is the re-deal's (`+0x40`).
+            self.look.frame = 0;
             return;
         }
         let elapsed = elapsed + 1;
+        self.look.frame = elapsed as u32;
         self.phase = Phase::Redealing { started, elapsed, deal };
         if elapsed % REDEAL_STEP != 0 {
             return;
@@ -1233,6 +1252,7 @@ impl Screen {
             button.uses_left = button.uses_left.wrapping_sub(1);
             button.state = if button.uses_left != 0 { SlotState::Selectable } else { SlotState::Unavailable };
             self.phase = Phase::Choosing;
+            self.show_chip_window(folder, view);
         } else {
             let mut shown: Vec<Option<FolderChip>> = places.iter().map(|&i| folder.chips[i]).collect();
             let n = shown.len();
@@ -1370,6 +1390,10 @@ impl<T: PartialEq + Copy> Common<T> {
         }
     }
 }
+
+/// The scrap's timer starts at 24, so that its first chip goes on its
+/// second tick (`sub_8027434`).
+const SCRAP_TIMER_START: u32 = 0x18;
 
 /// The tick of a Cross's choice the white fade is over and the Cross put
 /// on (`sub_8027AAE`: 16 ticks, then 8 steps of the fade, then one more).

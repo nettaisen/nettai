@@ -235,7 +235,9 @@ fn custom_open(b: &Battle) -> bool {
 /// the ticks "Cstmzing..." has been up (`sub_801E474` starts it).
 fn waiting_ticks(b: &Battle) -> Option<u32> {
     let sent = b.custom.sides[b.setup.local_side as usize].sent.as_ref()?;
-    (b.round.mode == mode::CUSTOM && !b.custom.committed).then(|| b.round.ticks.saturating_sub(sent.sent_at + 1))
+    // (On the tick the custom mode starts the screens haven't opened yet:
+    // what was sent is the last screen's.)
+    (crate::custom::screens_open(b) && !b.custom.committed).then(|| b.round.ticks.saturating_sub(sent.sent_at + 1))
 }
 
 /// Whether the custom gauge is drawn.
@@ -347,8 +349,10 @@ pub fn draw<'a>(
     // "????" beside the mugshot while the local side has a defensive chip
     // set (a trap, a barrier chip's record), and at the right edge while
     // the other side has (`sub_801C984`, `sub_801C9A4`: four '?' of the
-    // HUD layer's tiles).
-    if !open && !hide_boxes {
+    // HUD layer's tiles). The custom screen's opening takes them off
+    // (`sub_801DACC(0x400)`), and they are back with the gauge, once the
+    // local result is sent.
+    if !open && !hide_boxes && !crate::custom::gauge_held(b) {
         let pal = &hud.hp_palettes[colour.min(2)];
         for (side, column) in [(local, 6), (local ^ 1, 26)] {
             if b.linked[side as usize & 1].chip.is_none() {
@@ -743,6 +747,7 @@ fn mugshot_parts<'a>(
         let pal = palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default();
         out.push(block(tiles, 32, 16, pal, x, 18));
         out.push(block(&hud.navi_box, 16, 16, pal, x + 32, 18));
+        note_true_face(b, side, navi.mugshot, x, problems);
         return;
     }
     let mut face = state.mood.map(|m| m.shown()).unwrap_or_else(|| Face::of(b, r));
@@ -758,8 +763,48 @@ fn mugshot_parts<'a>(
     // (The white of a change to Full Synchro: `byte_801CD80`.)
     let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
     out.push(block(gfx, 32, 16, pal, x, 18));
-    let tiles = hud.counts.get(face.count as usize).unwrap_or(&hud.count_box);
-    out.push(block(tiles, 16, 16, pal, x + 32, 18));
+    let tiles = if beast_count_shown(b, side as u8) { hud.counts.get(face.count as usize) } else { None };
+    out.push(block(tiles.unwrap_or(&hud.count_box), 16, 16, pal, x + 32, 18));
+    note_true_face(b, side, face.picture, x, problems);
+}
+
+/// The faces Gregar has of its own (the pack's, from the Gregar ROM: its
+/// emotion-window pictures from 0x17, its link navis' after the Falzar
+/// ROM's six).
+fn gregar_face(picture: u8) -> bool {
+    (0x17..0x80).contains(&picture) || (nettai_assets::NAVI_MUGSHOTS + 6..nettai_assets::NAVI_MUGSHOTS + 11).contains(&picture)
+}
+
+/// A Falzar console shows every form's and navi's true face, where the
+/// original Falzar console has none for Gregar's and shows the Falzar
+/// counterpart's (deliberately: docs/frontend.md §5): the face and the box
+/// beside it, in the face's palette, are a known difference.
+fn note_true_face(b: &Battle, side: usize, picture: Option<u8>, x: i32, problems: &mut Problems) {
+    let falzar_console = b.custom.sides[b.setup.local_side as usize & 1].unlocks.version == nettai_battle::custom::GameVersion::Falzar;
+    if falzar_console && picture.is_some_and(gregar_face) && side == b.setup.local_side as usize & 1 {
+        problems.known(x, 18, 48, 16, "a Gregar face on a Falzar console (the true face)");
+    }
+}
+
+/// `sub_801D814`: whether the emotion window shows the Beast Out count
+/// (else its empty box): always in battle mode 5, never in mode 1, and
+/// otherwise while the console's save has Beast Out (event flag 0xE0) and
+/// hasn't sealed it (0x163), in a battle without a gauge for each player
+/// (battle flag 0x40) that isn't random (effects 0x200000).
+fn beast_count_shown(b: &Battle, side: u8) -> bool {
+    use nettai_battle::battle::battle_flags;
+    use nettai_battle::setup::effects;
+    match b.round.mode_copy {
+        5 => true,
+        1 => false,
+        _ => {
+            let u = b.custom.sides[side as usize & 1].unlocks;
+            u.beast_out
+                && !u.beast_out_sealed
+                && b.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
+                && b.setup.settings.effects & effects::RANDOM == 0
+        }
+    }
 }
 
 /// Whether an object's HUD pieces show (`sub_800362C`): its position
