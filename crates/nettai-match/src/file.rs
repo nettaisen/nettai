@@ -367,7 +367,7 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
             regular: s.folder.regular,
             tags: s.folder.tags.map(|(a, b)| [a, b]),
         },
-        stats: stats::diff(content, &Side::base_stats(content, s.navi, s.game), &s.round_stats()),
+        stats: s.stats_block(content),
         navicust: s.navicust.map(|n| NaviCustFile {
             expansions: Some(n.expansions),
             programs: n
