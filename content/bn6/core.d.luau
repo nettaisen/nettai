@@ -1267,6 +1267,30 @@ export type KindSpec = {
 }
 export type Kind = KindSpec
 
+-- One self-contained piece of a game's rules (docs/design/rules-in-luau.md
+-- §2.2): its state of each side and its player's setup (named fields, as a
+-- kind's state), and the hooks the framework calls, each for one side
+-- (§4.1). A system sees only its own state, of the side it is called for.
+export type SystemSpec = {
+    id: string,
+    state: StateSchema?,
+    setup: StateSchema?,
+    hooks: {
+        -- Once per side, after the navis spawn.
+        round_start: ((side: number) -> ())?,
+    }?,
+}
+export type System = SystemSpec
+
+-- A player's rules: a list of systems, which the framework calls in this
+-- order. A game's own is its `stock` ruleset (one per game).
+export type RulesetSpec = {
+    id: string,
+    stock: boolean?,
+    systems: { System },
+}
+export type Ruleset = RulesetSpec
+
 -- A navi action. Actions sharing a state table continue each other's
 -- attack state (the original's actions of one number do). An action a
 -- role or a weapon names needs an `id`; a chip's is derived.
@@ -1968,8 +1992,25 @@ declare define: {
     -- section name (`define.rules("elements", { ... })`).
     rules: <T>(section: string, spec: T) -> T,
     roles: (spec: RolesSpec) -> RolesSpec,
+    -- A system of a game's rules, and a player's ruleset
+    -- (docs/design/rules-in-luau.md §2.2).
+    system: (spec: SystemSpec) -> System,
+    ruleset: (spec: RulesetSpec) -> Ruleset,
     -- Luau-only data with a handle and a type name, which a reference field
     -- ("record:<type>") can hold.
     record: <T>(record_type: string, spec: T) -> T,
+}
+
+-- What a system's own calls reach (docs/design/rules-in-luau.md §4.5,
+-- §5.3): only in a hook the framework calls (from modules under rules/,
+-- which the content check holds to).
+declare system: {
+    -- The system's state of the side it was called for (cast it to its
+    -- declared type: `system.state() :: State`).
+    state: () -> any,
+    -- What the player of that side brought for the system: read-only.
+    setup: () -> any,
+    -- That side (0 or 1).
+    side: () -> number,
 }
 

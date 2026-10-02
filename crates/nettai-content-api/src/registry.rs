@@ -38,6 +38,13 @@ pub enum Registry {
     /// content-model-v2.md §7.4): one definition, `define.roles { ... }`,
     /// keyed `roles`.
     Roles,
+    /// One self-contained piece of a game's rules (docs/design/
+    /// rules-in-luau.md §2.2): its state per side, its player setup, its
+    /// hooks into the framework, `define.system { id = "beast", ... }`.
+    System,
+    /// A player's rules: a list of systems, `define.ruleset { id = "bn6",
+    /// stock = true, systems = { ... } }` (rules-in-luau.md §2.2).
+    Ruleset,
     /// Data only content reads (a bomb variant, a projectile variant): the
     /// engine keeps its handle and its type name.
     Record,
@@ -46,7 +53,7 @@ pub enum Registry {
 }
 
 impl Registry {
-    pub const ALL: [Registry; 18] = [
+    pub const ALL: [Registry; 20] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -63,13 +70,15 @@ impl Registry {
         Registry::Identity,
         Registry::Rules,
         Registry::Roles,
+        Registry::System,
+        Registry::Ruleset,
         Registry::Record,
         Registry::Schema,
     ];
 
     /// The registries content defines with `define.<name>` (schemas come
     /// from the `state` tables of kinds, actions and modules).
-    pub const DEFINED: [Registry; 17] = [
+    pub const DEFINED: [Registry; 19] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -86,6 +95,8 @@ impl Registry {
         Registry::Identity,
         Registry::Rules,
         Registry::Roles,
+        Registry::System,
+        Registry::Ruleset,
         Registry::Record,
     ];
 
@@ -109,6 +120,8 @@ impl Registry {
             Registry::Identity => "identity",
             Registry::Rules => "rules",
             Registry::Roles => "roles",
+            Registry::System => "system",
+            Registry::Ruleset => "ruleset",
             Registry::Record => "record",
             Registry::Schema => "schema",
         }
@@ -132,6 +145,8 @@ impl Registry {
                 | Registry::Collision
                 | Registry::Status
                 | Registry::Lockon
+                | Registry::System
+                | Registry::Ruleset
         )
     }
 }
@@ -203,6 +218,10 @@ handles! {
     IdentityHandle => Identity,
     /// A record only content reads.
     RecordHandle => Record,
+    /// A system of a game's rules.
+    SystemHandle => System,
+    /// A player's rules.
+    RulesetHandle => Ruleset,
 }
 
 #[cfg(test)]

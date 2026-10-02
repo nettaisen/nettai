@@ -980,6 +980,21 @@ impl CoreApi for Battle {
         }
     }
 
+    fn system_state_mut(&mut self, side: u8, slot: u8) -> ApiResult<&mut ContentState> {
+        self.rules
+            .get_mut(side as usize)
+            .and_then(|r| r.states.get_mut(slot as usize))
+            .ok_or_else(|| ApiError::Other(format!("side {side}'s ruleset has no system in place {slot}")))
+    }
+
+    fn system_setup(&self, side: u8, slot: u8) -> ApiResult<&ContentState> {
+        self.setup
+            .players
+            .get(side as usize)
+            .and_then(|p| p.rules.get(slot as usize))
+            .ok_or_else(|| ApiError::Other(format!("side {side}'s ruleset has no system in place {slot}")))
+    }
+
     fn spawn_effect(&mut self, pos: Vec3, look: EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
         kinds::effect::spawn(self, pos, look, flip, palette_add, priority)
     }

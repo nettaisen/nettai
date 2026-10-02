@@ -64,6 +64,8 @@ pub fn setup() -> RoundSetup {
         bug_frags: 0,
         navi_level: 0,
         console: Default::default(),
+        ruleset: None,
+        rules: Vec::new(),
     };
     RoundSetup {
         content: content.hash(),
@@ -75,7 +77,7 @@ pub fn setup() -> RoundSetup {
         later_stages: Default::default(),
         low_hp_music_latched: false,
         sp_times: Default::default(),
-        players: [player; 2],
+        players: [player.clone(), player],
         link_delay: 0,
     }
 }

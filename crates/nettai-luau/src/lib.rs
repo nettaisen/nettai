@@ -289,9 +289,10 @@ impl LuauContent {
         &self,
         f: FnId,
         api: &mut dyn CoreApi,
+        system: Option<bind::SystemCtx>,
         args: impl mlua::IntoLuaMulti,
     ) -> Result<R, ContentError> {
-        let _enter = bind::Enter::new(api, &self.bound);
+        let _enter = bind::Enter::new(api, &self.bound, system);
         BUDGET.with(|b| b.set(self.budget));
         let result = self.functions[f.0 as usize].call::<R>(args).map_err(|e| ContentError::new(e.to_string()));
         if self.collect_garbage {
@@ -312,7 +313,7 @@ impl ContentHost for LuauContent {
 
     fn update_object(&self, api: &mut dyn CoreApi, f: FnId, me: ObjectRef) -> Result<(), ContentError> {
         let o = bind::object(&self.lua, me).map_err(|e| ContentError::new(e.to_string()))?;
-        self.call(f, api, o)
+        self.call(f, api, None, o)
     }
 
     fn update_action(&self, api: &mut dyn CoreApi, f: FnId, me: ObjectRef, state: StateId) -> Result<(), ContentError> {
@@ -320,12 +321,16 @@ impl ContentHost for LuauContent {
         // The state of the action being run, even after the update leaves
         // it (the game's attack variables outlive the action).
         let s = bind::action_state(&self.lua, me, state).map_err(|e| ContentError::new(e.to_string()))?;
-        self.call(f, api, (o, s))
+        self.call(f, api, None, (o, s))
     }
 
     fn call_hook(&self, api: &mut dyn CoreApi, f: FnId, call: HookCall) -> Result<Value, ContentError> {
         let args = bind::hook_args(&self.lua, call, &self.bound).map_err(|e| ContentError::new(e.to_string()))?;
-        let v: LuaValue = self.call(f, api, args)?;
+        let system = match call {
+            HookCall::System { side, slot, .. } => Some(bind::SystemCtx { side, slot }),
+            _ => None,
+        };
+        let v: LuaValue = self.call(f, api, system, args)?;
         bind::hook_result(v, call, &self.bound).map_err(|e| ContentError::new(format!("{}: {e}", self.describe(f))))
     }
 }

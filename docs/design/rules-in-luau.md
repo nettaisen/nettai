@@ -54,8 +54,9 @@ cut-in", "telop" and "supports" are used as in the rest of the project.
   per-player gauges and SELECT special (the battle flag 0x40 mode, BN5's Team Battle), the lock-on marker,
   afterimage and Beast Over burst kinds, the custom screen's sacrifice and re-deal machinery are BN5's code too.
   They stay framework, under generic names. What moves into Luau is what only BN6 has.
-- **State is per side and per system**, engine-owned and typed: each system declares its fields; a side's arena
-  (1,024 bytes) holds its ruleset's systems' fields; a system sees only its own fields of the side it runs for. The
+- **State is per side and per system**, engine-owned and typed: each system declares its fields (up to 64 bytes,
+  as a kind's); a side keeps one block per system of its ruleset; a system sees only its own block of the side it
+  runs for. The
   VM still holds nothing between calls; `Battle: Clone` is still the snapshot and the digest still covers
   everything. **A side's rules read the other side only through the engine**: the navi, its form, HP and statuses,
   and the facts each side's rules push into the framework (its emotion, whether its mood is held).
@@ -172,7 +173,7 @@ export type State = { counter: number, used: boolean, spent: boolean, exhausted:
 
 return define.system {
     id = "beast",
-    -- Each side's fields (the side's arena holds them, §5).
+    -- Each side's fields (the side keeps them, §5).
     state = { counter = "u8", used = "bool", spent = "bool", exhausted = "bool", check_delay = "u8" },
     -- What the player brings (the save's unlock), read-only in battle.
     setup = { unlocked = "bool", sealed = "bool" },
@@ -419,7 +420,7 @@ shares, are framework fields the systems push and the framework's doubling and w
 ### 4.7 The other side, only through the engine
 
 A system's state is reachable only by that system for the side it was called for (§5.3); no API takes another
-side's arena. What a side's rules need of the other side, they read from the engine: its navi object (position,
+side's state. What a side's rules need of the other side, they read from the engine: its navi object (position,
 HP, statuses, form as a definition and its common record), its hand, its custom screen's status, and the facts its
 rules pushed (its emotion, Full Synchro, whether its mood is held). Where BN6's code reads BN6 state of the other
 side, that state becomes a pushed fact every game can fill. The first case: `sub_801A200` gives the counterer Full
@@ -442,10 +443,11 @@ as kinds and actions declare theirs, and the engine stores:
 - **Blocks**: a system's `state` (per side), `setup` (per player, read-only in battle) and `result` (the custom
   screen's result). Each is a schema with the content-state field types (`bool`, `u8` to `i32`, enums, `object`,
   `vec3`, references to definitions and assets) and fixed arrays of any of them.
-- **Arenas**: `Battle::rules: [RuleArena; 2]` and `PlayerSetup::rules: RuleArena`, 1,024 bytes each, laid out by
-  the side's ruleset: its systems' fields in system order, each system's at its offset. Plain `Copy` data, zeroed at
-  the round's start: `Battle: Clone` is still the snapshot, `#[derive(Hash)]` still the digest. A snapshot grows by
-  2 KB (to about 24 KB). The define phase refuses a ruleset whose systems' fields don't fit.
+- **Storage**: `Battle::rules: [SideRules; 2]`, each the side's ruleset and a `ContentState` (a schema's id and 64
+  bytes, as a kind's state) per system of it, in the ruleset's order; and `PlayerSetup::rules`, a block per system
+  for its `setup`. Plain data, zeroed at the round's start: `Battle: Clone` is still the snapshot, `#[derive(Hash)]`
+  still the digest. A ruleset lists at most 16 systems; BN6's stock ruleset about 7, so a snapshot grows by about
+  1 KB.
 - **No battle-wide ruleset state**: what the whole battle runs by is the framework's (§2.3).
 
 ### 5.2 What it replaces
@@ -463,7 +465,7 @@ as kinds and actions declare theirs, and the engine stores:
 
 `system.state()` is the calling system's fields of the context side. The engine sets the context when it calls
 into a system: a hook's side; for a system's own controller, wrapper, action or kind, the side of the navi or
-object it runs for. A system has no handle on its other side's arena or on another system's fields.
+object it runs for. A system has no handle on its other side's state or on another system's.
 
 ### 5.4 Rust doesn't read it
 
@@ -658,7 +660,7 @@ under each stock ruleset, a battle with a different ruleset on each side, and a 
 
 | # | Slice | Moves | New mechanism | Lab focus |
 |---|---|---|---|---|
-| S0 | **Groundwork** | none | `define.system`, `define.ruleset` (stock); per-side arenas and the player setup arena; `PlayerSetup::ruleset` (default the stage's game's stock); the `system` library and its call context; the hook lists with `round_start` wired; the lint; rollback_cost's `--frames` and `luau-profile`; tools/rollback-cost.sh | all (a no-op) |
+| S0 | **Groundwork** | none | `define.system`, `define.ruleset` (stock); per-side system state and player setups; `PlayerSetup::ruleset` (default the stage's game's stock); the `system` library and its call context; the hook lists with `round_start` wired; the lint; rollback_cost's `--frames` and `luau-profile`; tools/rollback-cost.sh | all (a no-op) |
 | S1 | **Turn starts** | Beast Out's end check, count-down and check delay into BN6's beast system; the transform record and sequencer framework with per-side hooks; the Cross change renamed the navi switch | `turn_check`, `turn_started`, `custom_requested` | forms/*, custom/take-back-*, flow/*; machgun 1 |
 | S2 | **Form changes** | the five sequences into BN6's cross and beast systems as actions the forms name; the Cross merge kind | forms' `change` actions; pause actions | forms/* |
 | R | **Roots** (after S2) | none | root manifests, qualified keys, content/nettai declarations, per-root compat and packs, roles and sections per ruleset, the battle's data from the stage's game, mixes (`base`, `add`, `remove`); a test root with its own stock ruleset; a battle with a ruleset per side | everything |
@@ -715,8 +717,8 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
    compose systems themselves, so every mix is checked when content loads (§2.2).
 3. **Systems combine by order**: notification hooks call every system; deciding hooks stop at the first that
    decides (§2.2).
-4. **State is a 1,024-byte arena per side**, laid out by the ruleset's systems, each seeing only its own fields; no
-   battle-wide ruleset state (§5).
+4. **State is a block per system per side** (64 bytes, as a kind's), each system seeing only its own; at most 16
+   systems a ruleset; no battle-wide ruleset state (§5).
 5. **The BN5 map moves into the framework** what BN5 has too (§3.2): the sequencer and transform record, the navi
    switch, the reversion, the Team Battle mode's gauges and SELECT special, the shared kinds, the sacrifice and
    re-deal machinery, under generic names.
@@ -728,4 +730,31 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
 
 ## As built
 
-(Each slice adds its note here.)
+### S0, groundwork (2026-10-02)
+
+- **Definitions.** `define.system { id, state?, setup?, hooks? }` and `define.ruleset { id, stock?, systems }` are
+  registries of their own (`Registry::System`, `Registry::Ruleset`, `SystemHandle`, `RulesetHandle`). A system's
+  `state` and `setup` tables are schemas like a kind's (keys `system:<key>/state`, `/setup`; 64 bytes each); its
+  `hooks` are function slots (`system <key>'s hooks.<name>`), checked against the hooks the framework has; a
+  ruleset lists at most 16 systems, each once; a content has at most one stock ruleset (until roots, slice R).
+  `content::defs::{SystemDef, RulesetDef}`, `Defs::{system, ruleset, stock_ruleset, ruleset_by_key}`.
+- **Per player.** `PlayerSetup::ruleset` (none: the stock ruleset) and `PlayerSetup::rules` (each system's setup
+  block, in the ruleset's order; empty: zero; `PlayerSetup::set_rule(content, system, field, value)` writes one by
+  name). `PlayerSetup` is `Clone`, no longer `Copy`.
+- **State.** `Battle::rules: [rules::SideRules; 2]`: each side's ruleset and a `ContentState` per system, zeroed at
+  `Battle::new`; in the digest (the destructuring guard) and the snapshot.
+- **Hooks.** The framework calls a hook with `Battle::notify_systems(hook)` (side 0's systems in order, then side
+  1's) or `notify_side(side, hook)`, through `HookCall::System { side, slot, hook }`. The first hook, `round_start`,
+  runs once per side after the navis spawn (mode_intro). BN6's stock ruleset (content/bn6/rules/ruleset.luau) lists
+  no systems yet, so nothing in a BN6 battle changes.
+- **The `system` library.** `system.state()`, `system.setup()` (read-only) and `system.side()` reach the system's
+  blocks of the side the running call is for: the binding keeps that context per call (`bind::SystemCtx`, set by a
+  system's hook call, cleared for every other call), so content's own calls and anything a system's hook leads to
+  can't reach a system's state (`behavior::tests::a_systems_state_is_out_of_reach_of_content`). nettai-content-check
+  refuses `system.*` calls outside modules under rules/.
+- **Tests.** The test content (testdata/content/rules/systems.luau) has two made-up systems and two rulesets;
+  `rules::tests` check each side runs its own ruleset's systems for itself, a player plays by the ruleset their
+  setup names, a system's setup reaches it alone, and the state is in the digest and the snapshot.
+- **Cost tools.** rollback_cost takes `--frames A..B` (or `all`), and with nettai-netplay's feature `luau-profile`
+  reports the calls into Luau per advance (`behavior::profile`). The verification workspace's
+  tools/rollback-cost.sh runs the basket of §6.1, best of N, alternating a checkout with a baseline.
