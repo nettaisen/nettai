@@ -6,7 +6,9 @@
 -- raises in a netbattle, by type: 1 the Barrier chip's and FirstBarrier's,
 -- 5 Barr100's and Tango's heal's, 7 Barr200's, 8 BblWrap's bubble, 9
 -- LifeAur's aura. (The other types, 0, 2-4, 6 and 10-15, are only a navi
--- AI's.)
+-- AI's.) Each has a key: a navi's stats name the one it enters with
+-- (NaviStats+0x06, compat/records.toml's `barriers`), as the NaviCust's
+-- FirstBarrier and the patch cards set it.
 
 local visual = require("./visual")
 
@@ -23,6 +25,7 @@ local NO_TIMER = 0xFFFF
 
 -- Type 1: 10 HP.
 barriers.barrier_10 = barriers.barrier {
+    id = "barrier/10",
     behavior = "plain",
     hp = 10,
     threshold = 0,
@@ -33,6 +36,7 @@ barriers.barrier_10 = barriers.barrier {
 
 -- Type 5: 100 HP.
 barriers.barrier_100 = barriers.barrier {
+    id = "barrier/100",
     behavior = "plain",
     hp = 100,
     threshold = 0,
@@ -43,6 +47,7 @@ barriers.barrier_100 = barriers.barrier {
 
 -- Type 7: 200 HP.
 barriers.barrier_200 = barriers.barrier {
+    id = "barrier/200",
     behavior = "plain",
     hp = 200,
     threshold = 0,
@@ -54,6 +59,7 @@ barriers.barrier_200 = barriers.barrier {
 -- Type 8: a bubble that takes one hit, grows back 240 ticks later, and
 -- breaks on elec.
 barriers.bubble = barriers.barrier {
+    id = "barrier/bubble",
     behavior = "bubble",
     hp = 1,
     threshold = 0,
@@ -65,6 +71,7 @@ barriers.bubble = barriers.barrier {
 
 -- Type 9: an aura that stops every hit of less than 200 for 3000 ticks.
 barriers.life_aura = barriers.barrier {
+    id = "barrier/life-aura",
     behavior = "plain",
     hp = 1,
     threshold = 200,
