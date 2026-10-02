@@ -2391,7 +2391,8 @@ type-checks against content/bn6's core.d.luau in nettai-content-check's tests.
   are buttons, as today. Setups written by name resolve to the same handles on both peers.
 - **The content hash** covers the canonical definition tree (every definition, reference and function slot),
   the module sources (the functions' code), the roles, and the assets the simulation reads (asset names and
-  every sprite's animation timing). Compat is not in it: it changes no simulation. Pixels, palettes and audio stay
+  every sprite's animation timing). Compat is not in it: it changes no simulation. Nor are the strings tables in
+  other languages (`locale/`, text-rendering.md §10), which only a frontend reads. Pixels, palettes and audio stay
   out, as today.
 - **The VM stays out of battles.** A runtime VM is a per-thread cache keyed by the content hash, rebuilt by the
   same define phase, and it checks it reads the content's definitions. `Battle` holds no handle to it, so a battle
