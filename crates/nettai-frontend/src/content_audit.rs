@@ -215,7 +215,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
         }
         lookups::banner(packs, c, id, p);
         if judges.contains(&id) && !lookups::is_judge(packs, c, id) {
-            p.note(format!("the judge's banner {} is no judge's in the pack: its numbers aren't drawn", Lookup::Banner(id).describe(c)));
+            p.note(format!("the judge's {} is no judge's in the pack: its numbers aren't drawn", Lookup::Banner(id).describe(c)));
         }
     }
     for h in handles(AssetKind::Background) {
