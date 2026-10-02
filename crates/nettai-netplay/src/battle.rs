@@ -6,7 +6,9 @@
 //! the link session closing at the end of a round, and, only when checking
 //! against a recording that lacks a player's folder, that player's
 //! recorded custom-screen results. Carrying the events in the inputs is
-//! what makes both peers step each frame with the same ones.
+//! what makes both peers step each frame with the same ones. On the wire
+//! (`WireInput`), the events are a tick's flags, and a recorded result the
+//! tick's payload.
 //!
 //! Both peers simulate from the same perspective (`RoundSetup::local_side`
 //! is part of the shared setup); each presents it for its own player
@@ -185,5 +187,53 @@ impl<G: Game> Observer<G> for CueFeed {
             let (frame, cues) = self.unconfirmed.pop_front().unwrap();
             self.confirmed.extend(cues.into_iter().map(|c| (frame, c)));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::link::{Delivery, InputLink};
+    use nettai_battle::content::testing;
+    use nettai_battle::input::keys;
+
+    /// A player's input with every kind of event goes through a link and
+    /// comes out the same: the buttons, the link closing, each side's
+    /// recorded screen status and a result (the tick's payload, in chunks).
+    #[test]
+    fn a_player_input_crosses_the_link() {
+        let result = CustomResult {
+            hand: Some(nettai_battle::hand::ChipHand::empty(&testing::content())),
+            navi_stats: testing::stats(500),
+            transform: Default::default(),
+        };
+        let inputs = [
+            PlayerInput { tick: PlayerTick { held: keys::A | keys::LEFT }, events: TickEvents::default() },
+            PlayerInput { tick: PlayerTick { held: 0 }, events: TickEvents { link_closed: true, ..TickEvents::default() } },
+            PlayerInput {
+                tick: PlayerTick { held: keys::L },
+                events: TickEvents {
+                    link_closed: false,
+                    recorded: [Some(Recorded { in_custom: true, result: None }), Some(Recorded { in_custom: false, result: Some(Box::new(result)) })],
+                },
+            },
+        ];
+        let (mut a, mut b) = (InputLink::<PlayerInput>::new(64), InputLink::<PlayerInput>::new(64));
+        for (i, input) in inputs.iter().enumerate() {
+            a.push(input, i as i16);
+        }
+        let datagram = a.datagram(0);
+        let mut delivered = Vec::new();
+        b.receive(&datagram, 0, &mut delivered).unwrap();
+        let got: Vec<PlayerInput> = delivered
+            .into_iter()
+            .map(|d| match d {
+                Delivery::Input { input, .. } => input,
+                d => panic!("{d:?}"),
+            })
+            .collect();
+        assert_eq!(got, inputs);
+        // The plain ticks are a byte each; the result is a few chunks.
+        assert!(datagram.len() < 200, "{} bytes", datagram.len());
     }
 }
