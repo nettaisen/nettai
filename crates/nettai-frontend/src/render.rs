@@ -36,9 +36,16 @@ pub struct Renderer<'a> {
     pub hud_state: HudState,
     /// What the frames drawn so far named that the pack doesn't have.
     pub problems: Problems,
+    /// The region of the console whose screen is drawn ("us", "jp"): an
+    /// asset of another region's ROMs (a sprite or a chip's picture the US
+    /// release cut) is a known difference there (`Problems::known`).
+    pub console_region: &'static str,
     /// How text is drawn, and the font of the font mode.
     text_mode: TextMode,
     font: Option<Arc<VectorFont>>,
+    /// The font mode's layouts, for what the frame places after a string
+    /// (a chip's damage after its name).
+    measure: Option<std::cell::RefCell<crate::vfont::TextRenderer>>,
 }
 
 impl<'a> Renderer<'a> {
@@ -53,8 +60,10 @@ impl<'a> Renderer<'a> {
             names: Layer { palettes: Palettes::Hud, ..Layer::new(0, 0) },
             hud_state: HudState::default(),
             problems: Problems::default(),
+            console_region: "us",
             text_mode: TextMode::Original,
             font: None,
+            measure: None,
         }
     }
 
@@ -62,6 +71,7 @@ impl<'a> Renderer<'a> {
     /// the text layer (without a font it draws as the original does).
     pub fn set_text(&mut self, mode: TextMode, font: Option<Arc<VectorFont>>) {
         self.text_mode = mode;
+        self.measure = font.clone().map(|f| std::cell::RefCell::new(crate::vfont::TextRenderer::new(f)));
         self.font = font;
     }
 
@@ -101,13 +111,23 @@ impl<'a> Renderer<'a> {
         stage.draw_field(b, &mut self.field, b.setup.local_side, &view);
         self.hud.clear();
         self.names.clear();
-        let mut text = TextSink::new(self.text_mode, self.font.as_deref());
+        let mut text = TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref());
         let navi = crate::custom::navi_number(b, b.setup.local_side);
         let emblem = crate::custom::emblem_tiles(&assets.custom, crate::custom::version_name(b, b.setup.local_side), navi);
         let chatbox = crate::chatbox::prepare(b, assets, &text, &mut self.problems);
         let mut list = SpriteList::default();
-        objects::queue_objects(b, assets, &view, &mut list, &mut self.problems);
-        crate::custom::draw(b, assets, &emblem, &mut self.hud, &mut self.names, &mut list, &mut text, &mut self.problems);
+        objects::queue_objects(b, assets, &view, self.console_region, &mut list, &mut self.problems);
+        crate::custom::draw(
+            b,
+            assets,
+            &emblem,
+            self.console_region,
+            &mut self.hud,
+            &mut self.names,
+            &mut list,
+            &mut text,
+            &mut self.problems,
+        );
         if let Some(c) = &chatbox {
             crate::chatbox::draw(c, assets, &mut self.names, &mut list, &mut text);
         }

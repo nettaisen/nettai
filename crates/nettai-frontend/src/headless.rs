@@ -125,6 +125,7 @@ pub fn render_frames_with(
     let last = wanted.iter().next_back().copied().unwrap_or(0);
     for mut s in sessions {
         renderer.reset();
+        renderer.console_region = s.driver.console_region();
         while s.step(keys.held(s.ticks as u32 + 1)) {
             renderer.observe(&s.battle);
             let Some(f) = s.frame else { continue };
@@ -193,6 +194,7 @@ pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<std:
     let mut samples = Vec::new();
     for mut s in sessions {
         renderer.reset();
+        renderer.console_region = s.driver.console_region();
         while s.step(0) {
             renderer.observe(&s.battle);
             renderer.problems.at(s.frame);
