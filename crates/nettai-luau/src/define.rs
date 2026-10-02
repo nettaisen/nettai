@@ -4,7 +4,8 @@
 //! kinds, actions and modules become schemas, and everything is read back as
 //! plain data (the canonical tree, [`Definitions`]).
 //!
-//! Keys (§2.2):
+//! Keys (§2.2), each qualified with the root of the module that made the
+//! definition (`bn6:minibomb`; docs/design/rules-in-luau.md §7.2):
 //!
 //! - an explicit `id` (required for the registries named from outside
 //!   content, [`Registry::keyed`]);
@@ -22,7 +23,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::c_void;
 use std::rc::Rc;
 
-use nettai_content_api::{AssetKind, AssetNames, Data, DataKey, Definition, Definitions, Registry, valid_key};
+use nettai_content_api::{AssetKind, AssetNames, Data, DataKey, Definition, Definitions, Registry, keys, valid_key};
 use mlua::{Lua, Table, Value as LuaValue};
 
 /// A definition as a definer recorded it.
@@ -246,11 +247,13 @@ pub(crate) fn finish(
     let index: HashMap<Ptr, usize> = made.iter().enumerate().map(|(i, m)| (m.table.to_pointer(), i)).collect();
     let mut keys: Vec<Option<String>> = vec![None; made.len()];
 
-    // Explicit ids (the roles are one definition, `roles`).
+    // Explicit ids (a root's roles are one definition, `roles`), in the
+    // module's root.
     for (i, m) in made.iter().enumerate() {
         let what = format!("{}: define.{}", m.module, m.registry.name());
+        let root = keys::root_of(&m.module).ok_or_else(|| format!("{what}: module {:?} names no root", m.module))?;
         if m.registry == Registry::Roles {
-            keys[i] = Some("roles".to_string());
+            keys[i] = Some(keys::qualify(root, "roles"));
             continue;
         }
         if m.registry == Registry::Rules {
@@ -258,7 +261,7 @@ pub(crate) fn finish(
             if !valid_key(&name) {
                 return Err(format!("{what}: {name:?} is not a valid section name (lowercase words in -)"));
             }
-            keys[i] = Some(name);
+            keys[i] = Some(keys::qualify(root, &name));
             continue;
         }
         match m.table.raw_get::<LuaValue>("id").map_err(|e| format!("{what}: {e}"))? {
@@ -271,7 +274,7 @@ pub(crate) fn finish(
                         "{what}: {id:?} is not a valid id (lowercase words in -, qualified with /: \"eraseman/mark\")"
                     ));
                 }
-                keys[i] = Some(id);
+                keys[i] = Some(keys::qualify(root, &id));
             }
             v => return Err(format!("{what}: `id` is a {}, not a string", v.type_name())),
         }

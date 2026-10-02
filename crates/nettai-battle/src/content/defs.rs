@@ -20,7 +20,7 @@ use std::collections::BTreeMap;
 use nettai_content_api::{
     ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, FnId, FnSource, FormHandle, KindHandle,
     NaviHandle, Pool, RecordHandle, Registry, RulesetHandle, Schema, StageHandle, StateId, SystemHandle, SystemHook,
-    WeaponHandle,
+    WeaponHandle, keys,
 };
 
 use super::{
@@ -316,6 +316,9 @@ pub struct Defs {
     /// Keys by registry, for the codecs.
     chip_keys: BTreeMap<String, ChipHandle>,
     weapon_keys: BTreeMap<String, WeaponHandle>,
+    /// The roots the content came from, by name, its own first
+    /// (`Scripts::roots`): what an unqualified key is looked up in.
+    pub roots: Vec<String>,
 }
 
 impl Defs {
@@ -338,20 +341,50 @@ impl Defs {
         &self.rulesets[h.index()]
     }
 
-    /// The game's own rules (docs/design/rules-in-luau.md §2.3): what a
-    /// player has unless their setup names another.
+    /// The game's own rules (docs/design/rules-in-luau.md §2.3) of the
+    /// content's own root: what a player has unless their setup names
+    /// another.
     pub fn stock_ruleset(&self) -> Option<RulesetHandle> {
-        self.rulesets.iter().position(|r| r.stock).map(|i| RulesetHandle(i as u16))
+        self.stock_ruleset_of(self.roots.first()?)
+    }
+
+    /// Root `root`'s stock ruleset, if it has one.
+    pub fn stock_ruleset_of(&self, root: &str) -> Option<RulesetHandle> {
+        self.rulesets
+            .iter()
+            .position(|r| r.stock && keys::root_of(&r.key) == Some(root))
+            .map(|i| RulesetHandle(i as u16))
+    }
+
+    /// Look `key` up with `exact`: as it is if it is qualified (or an
+    /// engine key); unqualified, in the one root that defines it (None if
+    /// none does, or several: a key two roots define must be qualified).
+    /// Lookups by key are for tools, tests and setups by name, never the
+    /// simulation's.
+    fn find<T>(&self, key: &str, exact: impl Fn(&str) -> Option<T>) -> Option<T> {
+        if keys::is_qualified(key) {
+            return exact(key);
+        }
+        let mut found = None;
+        for root in &self.roots {
+            if let Some(h) = exact(&keys::qualify(root, key)) {
+                if found.is_some() {
+                    return None;
+                }
+                found = Some(h);
+            }
+        }
+        found
     }
 
     /// The ruleset with this key.
     pub fn ruleset_by_key(&self, key: &str) -> Option<RulesetHandle> {
-        self.rulesets.iter().position(|r| r.key == key).map(|i| RulesetHandle(i as u16))
+        self.find(key, |k| self.rulesets.iter().position(|r| r.key == k).map(|i| RulesetHandle(i as u16)))
     }
 
     /// The kind with this key.
     pub fn kind_by_key(&self, key: &str) -> Option<KindHandle> {
-        self.kind_keys.get(key).copied()
+        self.find(key, |k| self.kind_keys.get(k).copied())
     }
 
     pub fn kind(&self, h: KindHandle) -> &KindDef {
@@ -378,12 +411,12 @@ impl Defs {
 
     /// The action with this key.
     pub fn action_by_key(&self, key: &str) -> Option<ActionHandle> {
-        self.actions.binary_search_by(|a| a.key.as_str().cmp(key)).ok().map(|i| ActionHandle(i as u16))
+        self.find(key, |k| self.actions.binary_search_by(|a| a.key.as_str().cmp(k)).ok().map(|i| ActionHandle(i as u16)))
     }
 
     /// The chip with this key.
     pub fn chip_by_key(&self, key: &str) -> Option<ChipHandle> {
-        self.chip_keys.get(key).copied()
+        self.find(key, |k| self.chip_keys.get(k).copied())
     }
 
     pub fn chip(&self, h: ChipHandle) -> &ChipDef {
@@ -396,7 +429,7 @@ impl Defs {
 
     /// The navi with this key.
     pub fn navi_by_key(&self, key: &str) -> Option<NaviHandle> {
-        self.navis.binary_search_by(|n| n.key.as_str().cmp(key)).ok().map(|i| NaviHandle(i as u16))
+        self.find(key, |k| self.navis.binary_search_by(|n| n.key.as_str().cmp(k)).ok().map(|i| NaviHandle(i as u16)))
     }
 
     pub fn form(&self, h: FormHandle) -> &FormDef {
@@ -405,7 +438,7 @@ impl Defs {
 
     /// The form with this key.
     pub fn form_by_key(&self, key: &str) -> Option<FormHandle> {
-        self.forms.binary_search_by(|f| f.key.as_str().cmp(key)).ok().map(|i| FormHandle(i as u16))
+        self.find(key, |k| self.forms.binary_search_by(|f| f.key.as_str().cmp(k)).ok().map(|i| FormHandle(i as u16)))
     }
 
     pub fn stage(&self, h: StageHandle) -> &StageDef {
@@ -414,22 +447,28 @@ impl Defs {
 
     /// The stage with this key.
     pub fn stage_by_key(&self, key: &str) -> Option<StageHandle> {
-        self.stages.binary_search_by(|s| s.key.as_str().cmp(key)).ok().map(|i| StageHandle(i as u16))
+        self.find(key, |k| self.stages.binary_search_by(|s| s.key.as_str().cmp(k)).ok().map(|i| StageHandle(i as u16)))
     }
 
     /// The status effect with this key.
     pub fn status_by_key(&self, key: &str) -> Option<nettai_content_api::StatusHandle> {
-        self.statuses.binary_search_by(|s| s.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::StatusHandle(i as u16))
+        self.find(key, |k| {
+            self.statuses.binary_search_by(|s| s.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::StatusHandle(i as u16))
+        })
     }
 
     /// The identity with this key.
     pub fn identity_by_key(&self, key: &str) -> Option<nettai_content_api::IdentityHandle> {
-        self.identities.binary_search_by(|i| i.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::IdentityHandle(i as u16))
+        self.find(key, |k| {
+            self.identities.binary_search_by(|i| i.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::IdentityHandle(i as u16))
+        })
     }
 
     /// The lock-on mode with this key.
     pub fn lockon_by_key(&self, key: &str) -> Option<nettai_content_api::LockonHandle> {
-        self.lockons.binary_search_by(|l| l.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::LockonHandle(i as u16))
+        self.find(key, |k| {
+            self.lockons.binary_search_by(|l| l.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::LockonHandle(i as u16))
+        })
     }
 
     pub fn weapon(&self, h: WeaponHandle) -> &WeaponDef {
@@ -438,13 +477,13 @@ impl Defs {
 
     /// The weapon with this key.
     pub fn weapon_by_key(&self, key: &str) -> Option<WeaponHandle> {
-        self.weapon_keys.get(key).copied()
+        self.find(key, |k| self.weapon_keys.get(k).copied())
     }
 
 
     /// A record's handle by key.
     pub fn record(&self, key: &str) -> Option<RecordHandle> {
-        self.records.binary_search_by(|r| r.key.as_str().cmp(key)).ok().map(|i| RecordHandle(i as u16))
+        self.find(key, |k| self.records.binary_search_by(|r| r.key.as_str().cmp(k)).ok().map(|i| RecordHandle(i as u16)))
     }
 
     /// The layout with this key.
@@ -1373,8 +1412,12 @@ impl Defs {
         }
 
         // The roles.
+        // (The content's own root's: the battle's, docs/design/
+        // rules-in-luau.md §2.3.)
+        let home = content.scripts.home();
+        let own_roles: Vec<&Definition> = definitions.of(Registry::Roles).iter().filter(|d| keys::root_of(&d.key) == home).collect();
         let mut roles = Roles::default();
-        if let [d] = definitions.of(Registry::Roles) {
+        if let [d] = own_roles[..] {
             roles = read_roles(d, &definitions, &content.assets, &actions, &kinds, &chips, &lockons, &statuses, &mut functions)?;
         }
 
@@ -1496,13 +1539,17 @@ impl Defs {
             }
             rulesets.push(RulesetDef { key: d.key.clone(), stock, systems: list });
         }
-        let stocks: Vec<&str> = rulesets.iter().filter(|r| r.stock).map(|r| r.key.as_str()).collect();
-        if stocks.len() > 1 {
-            return Err(ContentError::new(format!(
-                "the content has {} stock rulesets ({}); a game has one",
-                stocks.len(),
-                stocks.join(", ")
-            )));
+        for root in &content.scripts.roots {
+            let stocks: Vec<&str> =
+                rulesets.iter().filter(|r| r.stock && keys::root_of(&r.key) == Some(&root.name)).map(|r| r.key.as_str()).collect();
+            if stocks.len() > 1 {
+                return Err(ContentError::new(format!(
+                    "root {} has {} stock rulesets ({}); a game has one",
+                    root.name,
+                    stocks.len(),
+                    stocks.join(", ")
+                )));
+            }
         }
 
         let records: Vec<RecordDef> = definitions
@@ -1546,6 +1593,7 @@ impl Defs {
             base_form,
             chip_keys: BTreeMap::new(),
             weapon_keys: BTreeMap::new(),
+            roots: content.scripts.roots.iter().map(|r| r.name.clone()).collect(),
             kinds: Vec::new(),
             actions,
             weapons,
@@ -1594,7 +1642,7 @@ mod tests {
     fn every_bn6_module_loads_in_the_define_phase() {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
         let mut c = Content::default();
-        c.scripts.modules = crate::content::testing::modules_under(dir);
+        c.scripts = crate::content::Scripts::root(crate::content::RootManifest::named("bn6"), crate::content::testing::modules_under(dir));
         c.assets = crate::content::testing::asset_names_used(&c.scripts.modules);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));

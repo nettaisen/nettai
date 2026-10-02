@@ -183,6 +183,7 @@ impl Content {
             self.defs = Defs::build(self, definitions)?;
             return Ok(());
         }
+        self.scripts.check_roots().map_err(nettai_content_api::ContentError::new)?;
         let (definitions, compiled) = nettai_luau::define(&self.scripts.pack(), &self.assets, nettai_luau::Options::default())?;
         self.scripts.compiled = CompiledModules(compiled);
         // The rule sections into the ruleset's typed tables.

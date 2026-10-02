@@ -78,7 +78,7 @@ fn tick(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, held: u16) {
 }
 
 fn following(b: &Battle, r: ObjectRef) -> Vec<&str> {
-    b.objects.in_order().skip_while(|&o| o != r).skip(1).map(|o| b.kind_key(o)).collect()
+    b.objects.in_order().skip_while(|&o| o != r).skip(1).map(|o| b.local_kind_key(o)).collect()
 }
 
 fn f1_of(b: &Battle, r: ObjectRef) -> u32 {
@@ -151,7 +151,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     // Tick 7: the beam, two panels ahead.
     run_to(&mut b, p, &mut t, 7, 0);
     let beam = b.objects.get(p0).related[0].unwrap();
-    assert_eq!(b.kind_key(beam), "gundels/beam");
+    assert_eq!(b.local_kind_key(beam), "gundels/beam");
     assert_eq!(b.objects.get(beam).pos.x, 60 << 16);
     assert_eq!(b.objects.get(gun).anim, 1);
 
@@ -231,7 +231,7 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
 
     // Tick 2: the ball, in front of the navi.
     run_to(&mut b, p, &mut t, 2, 0);
-    let ball = b.objects.in_order().find(|&o| b.kind_key(o) == "dustcross/junk-ball");
+    let ball = b.objects.in_order().find(|&o| b.local_kind_key(o) == "dustcross/junk-ball");
     let ball = ball.expect("the ball");
     assert_eq!(b.objects.get(ball).panel, PanelPos { x: 3, y: 2 });
 
@@ -248,7 +248,7 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
 
 /// The kind named `name` somewhere on the field.
 fn find_kind(b: &Battle, name: &str) -> Option<ObjectRef> {
-    b.objects.in_order().find(|&o| b.kind_key(o) == name)
+    b.objects.in_order().find(|&o| b.local_kind_key(o) == name)
 }
 
 /// Give side `side` the chip `chip` as the next in its hand, with its
@@ -402,7 +402,7 @@ fn use_chip_handle(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: nettai_co
 
 /// Whether `r` is an attachment showing the sprite named `sprite`.
 fn shows(b: &Battle, r: ObjectRef, sprite: &str) -> bool {
-    b.kind_key(r) == "attachment" && b.objects.sprite(r).id == Some(b.content.assets.sprites[sprite])
+    b.local_kind_key(r) == "attachment" && b.objects.sprite(r).id == Some(b.content.assets.sprites[sprite])
 }
 
 /// What the one-shot effect `o` shows.
@@ -412,7 +412,7 @@ fn effect_look(b: &Battle, o: ObjectRef) -> crate::content::EffectSprite {
 
 /// The effect objects (effect #0) and afterimages (effect #0x28) there are.
 fn effects(b: &Battle, key: &str) -> Vec<ObjectRef> {
-    b.objects.in_order().filter(|&o| b.kind_key(o) == key).collect()
+    b.objects.in_order().filter(|&o| b.local_kind_key(o) == key).collect()
 }
 
 #[test]
@@ -439,7 +439,7 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     assert_eq!(b.objects.get(p0).anim, 5);
     // The sword's blade (lib/swords/parts: the sword sprite).
     let blade = b.objects.get(p0).related[0].expect("the blade");
-    assert_eq!(b.kind_key(blade), "attachment");
+    assert_eq!(b.local_kind_key(blade), "attachment");
     assert_eq!(b.objects.sprite(blade).id, Some(nettai_content_api::SpriteId { category: 0x0C, index: 0x00 }));
     // Tick 8: two more afterimages: the navi's and the blade's.
     run_to(&mut b, p, &mut t, 8, 0);
@@ -525,7 +525,7 @@ fn a_sword_without_a_target_ahead_swings_at_nothing() {
 
 /// The objects of content kind `name` on the field, in update order.
 fn of_kind(b: &Battle, name: &str) -> Vec<ObjectRef> {
-    b.objects.in_order().filter(|&o| b.kind_key(o) == name).collect()
+    b.objects.in_order().filter(|&o| b.local_kind_key(o) == name).collect()
 }
 
 #[test]
@@ -834,7 +834,7 @@ fn a_bursting_projectile_bursts_on_the_enemy_and_a_missed_one_off_the_field() {
     until_gone(&mut b, p, shot);
     tick(&mut b, p0, p1, 0);
     assert!(b.objects.get(p1).hp < 1000);
-    let effects = b.objects.in_order().filter(|&o| b.kind_key(o) == "engine/effect").count();
+    let effects = b.objects.in_order().filter(|&o| b.local_kind_key(o) == "engine/effect").count();
     assert!(effects > 0, "the burst's effects");
     // Missing (a row away), it bursts over the last two columns: effects
     // on the valid panels of the burst's region from (5,1).
@@ -847,7 +847,7 @@ fn a_bursting_projectile_bursts_on_the_enemy_and_a_missed_one_off_the_field() {
     assert_eq!(b.objects.get(shot).panel, PanelPos { x: 6, y: 1 });
     until_gone(&mut b, p, shot);
     assert_eq!(b.objects.get(p1).hp, 1000);
-    let effects = b.objects.in_order().filter(|&o| b.kind_key(o) == "engine/effect").count();
+    let effects = b.objects.in_order().filter(|&o| b.local_kind_key(o) == "engine/effect").count();
     assert_eq!(effects, 4, "the burst off the field");
 }
 
@@ -953,7 +953,7 @@ fn chargecross_beast_wave_rolls_through_the_enemy() {
     // 70 damage and 30 per buster Attack point; afterimages behind it.
     run_to(&mut b, p, &mut t, 45, 0);
     assert_eq!(b.objects.get(p1).hp, 900);
-    let afterimages = b.objects.in_order().filter(|&o| b.kind_key(o) == "engine/afterimage").count();
+    let afterimages = b.objects.in_order().filter(|&o| b.local_kind_key(o) == "engine/afterimage").count();
     assert_eq!(afterimages, 2);
     run_to(&mut b, p, &mut t, 82, 0);
     assert_eq!(act(&b, p0), IDLE);
@@ -1107,7 +1107,7 @@ fn start_weapon_as(b: &mut Battle, p0: ObjectRef, weapon: &str, kind: u8) -> Str
 /// The objects of content kind `name`, in update order.
 fn kind_objects(b: &Battle, name: &str) -> Vec<ObjectRef> {
     assert!(b.content.defs.kind_by_key(name).is_some(), "no kind {name}");
-    b.objects.in_order().filter(|&o| b.kind_key(o) == name).collect()
+    b.objects.in_order().filter(|&o| b.local_kind_key(o) == name).collect()
 }
 
 /// Put side 0's navi on (x, 2).
@@ -1369,7 +1369,7 @@ const FORM_CHANGE: NaviAction = NaviAction::Engine(EngineAction::FormChange);
 /// ruleset's own (`engine/instant-chip`).
 fn runs(b: &Battle, r: ObjectRef) -> String {
     match act(b, r) {
-        NaviAction::Content(h) => b.content.defs.action(h).key.clone(),
+        NaviAction::Content(h) => nettai_content_api::keys::local(&b.content.defs.action(h).key).to_string(),
         NaviAction::Engine(e) => e.key().to_string(),
         state => format!("{state:?}"),
     }
@@ -1618,7 +1618,7 @@ fn dustcross_back_special_pulls_the_rocks_in() {
     // Tick 10: the pull. The rocks go on their next update, each leaving
     // an absorbed obstacle that flies to the navi.
     run_to(&mut b, p, &mut t, 11, 0);
-    let flying = b.objects.in_order().filter(|&o| b.kind_key(o) == "absorbed-obstacle").count();
+    let flying = b.objects.in_order().filter(|&o| b.local_kind_key(o) == "absorbed-obstacle").count();
     assert_eq!(flying, 2);
 
     // They arrive 9 ticks later, while the navi still absorbs, and join
@@ -1730,7 +1730,7 @@ fn a_plus_chip_on_its_own_raises_a_sparkle() {
     use_instant_chip(&mut b, p0, p1, testing::PLUS);
     // 4 pixels toward the enemy from the navi's panel, 48 up, and rising
     // (its first rise at once).
-    let s = b.objects.in_order().find(|&o| b.kind_key(o) == "rising-bubble");
+    let s = b.objects.in_order().find(|&o| b.local_kind_key(o) == "rising-bubble");
     let s = s.expect("the sparkle");
     let (x, y) = crate::kinds::player::panel_coordinates(2, 2);
     let o = b.objects.get(s);
@@ -1739,7 +1739,7 @@ fn a_plus_chip_on_its_own_raises_a_sparkle() {
     for _ in 0..13 {
         tick(&mut b, p0, p1, 0);
     }
-    assert!(!b.objects.is_allocated(s) || b.kind_key(s) != "rising-bubble");
+    assert!(!b.objects.is_allocated(s) || b.local_kind_key(s) != "rising-bubble");
     // From a special source the damage goes into the side's Atk+ bonus
     // instead.
     let (mut b, p0, p1) = fight();
@@ -1760,7 +1760,7 @@ fn the_plus_chips_content_defines_raise_their_bonus() {
     let (mut b, p0, p1) = fight();
     let atk = b.content.defs.chip_by_key(testing::ATTACK_10).unwrap();
     use_instant_chip_handle(&mut b, p0, p1, atk);
-    assert!(b.objects.in_order().any(|o| b.kind_key(o) == "rising-bubble"), "the sparkle");
+    assert!(b.objects.in_order().any(|o| b.local_kind_key(o) == "rising-bubble"), "the sparkle");
     for (key, bonus) in [(testing::ATTACK_10, (10, 0)), (testing::NAVI_20, (0, 20))] {
         let (mut b, p0, p1) = fight();
         let chip = b.content.defs.chip_by_key(key).unwrap();
@@ -1801,7 +1801,7 @@ fn buster_up_and_sync_trigger_change_the_navi() {
 /// The objects of content kind `name` alive in `b`.
 fn count_kind(b: &Battle, name: &str) -> usize {
     assert!(b.content.defs.kind_by_key(name).is_some(), "no kind {name}");
-    b.objects.in_order().filter(|&o| b.kind_key(o) == name).count()
+    b.objects.in_order().filter(|&o| b.local_kind_key(o) == name).count()
 }
 
 #[test]
@@ -1856,7 +1856,7 @@ fn lances_thrust_from_the_far_column() {
     // step back already (the init runs the first tick).
 
     let lances: Vec<ObjectRef> =
-        b.objects.in_order().filter(|&o| b.kind_key(o) == "lance/lance").collect();
+        b.objects.in_order().filter(|&o| b.local_kind_key(o) == "lance/lance").collect();
     let mut rows: Vec<u8> = lances.iter().map(|&l| b.objects.get(l).panel.y).collect();
     rows.sort();
     assert_eq!(rows, [1, 2, 3]);
@@ -1873,7 +1873,7 @@ fn lances_thrust_from_the_far_column() {
 fn the_tomahawk_throw_sends_two_tomahawks() {
     // The boomerangs out, by their sprites and rows.
     let tomahawks = |b: &Battle| {
-        let t = b.objects.in_order().filter(|&o| b.kind_key(o) == "boomer/boomerang");
+        let t = b.objects.in_order().filter(|&o| b.local_kind_key(o) == "boomer/boomerang");
         t.map(|o| (b.objects.sprite(o).id, b.objects.get(o).panel.y)).collect::<Vec<_>>()
     };
     let start = || {
@@ -2108,7 +2108,7 @@ fn a_weapon_names_a_defined_action_which_runs_by_handle() {
     let shot = b.content.defs.weapon_by_key(testing::TICK_SHOT).unwrap();
     let action = super::super::idle::weapon_routine(&mut b, p0, shot);
     let super::super::NaviAction::Content(h) = action else { panic!("a defined action: {action:?}") };
-    assert_eq!(b.content.defs.action(h).key, "test/tick-shot/shot");
+    assert_eq!(nettai_content_api::keys::local(&b.content.defs.action(h).key), "test/tick-shot/shot");
     super::super::set_attack(&mut b, p0, action, 1);
     // The navi runs it by handle; its update runs: it stands for 12 ticks.
     assert_eq!(super::super::navi_action(&b, p0), action);
@@ -2200,7 +2200,7 @@ fn an_action_starts_the_next_by_definition() {
     let ticker3 = defs.chip_by_key(testing::TICKER_3).unwrap();
     let crate::content::ChipUsage::Action(first) = defs.chip(ticker3).usage else { panic!("an action") };
     let next = nettai_content_api::ActionHandle(
-        defs.actions.iter().position(|a| a.key == "test/ticker3/action/args/next").expect("a derived key") as u16,
+        defs.actions.iter().position(|a| nettai_content_api::keys::local(&a.key) == "test/ticker3/action/args/next").expect("a derived key") as u16,
     );
     use_chip_handle(&mut b, p0, p1, ticker3);
     assert_eq!(ticks_in(&mut b, p0, p1, first), 3);
@@ -2213,7 +2213,7 @@ fn the_ruleset_starts_a_role_action() {
     // A caught hit starts AntiDmg's counter: the role content fills.
     let (mut b, p0, p1) = fight_on_test_pack();
     let role = b.content.defs.roles.try_action(crate::content::ActionRole::AntiDamageCounter).expect("the test pack fills it");
-    assert_eq!(b.content.defs.action(role).key, "test/anti-damage-counter");
+    assert_eq!(nettai_content_api::keys::local(&b.content.defs.action(role).key), "test/anti-damage-counter");
     ai_mut(&mut b, p0).requests |= request::ANTI_DAMAGE_TRIGGERED;
     super::reactive::counter(&mut b, p0);
     assert_eq!(super::super::running_content_action(&b, p0), Some(role));

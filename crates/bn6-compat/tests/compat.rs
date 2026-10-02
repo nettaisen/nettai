@@ -28,7 +28,7 @@ fn compat_numbers_what_the_engine_runs_by_handle() {
     b.spawn_actors();
     let player = b.player(0).unwrap();
     let ticker = nettai_battle::behavior::spawn_kind(&mut b, "test/ticker", Default::default()).unwrap();
-    let shot = b.content.defs.actions.iter().position(|a| a.key == "test/tick-shot/shot").unwrap() as u16;
+    let shot = b.content.defs.actions.iter().position(|a| a.key == "test:test/tick-shot/shot").unwrap() as u16;
     b.set_content_attack(player, shot, 1).unwrap();
     assert_eq!(navi_action(&b, player), NaviAction::Content(nettai_content_api::ActionHandle(shot)));
 

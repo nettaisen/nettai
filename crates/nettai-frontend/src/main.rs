@@ -194,7 +194,7 @@ fn load<T>(pack: &Path, what: &str, f: impl Fn(&Path) -> Result<(T, nettai_conte
 /// the language isn't the content's own.
 fn language(assets: nettai_assets::Bundle, root: &Path, lang: &str) -> (nettai_assets::Bundle, Option<nettai_content::locale::Strings>) {
     let own = nettai_content::locale::OWN;
-    let strings = if lang == own { None } else { nettai_content::locale::load(root, lang).unwrap_or_else(|e| fail(e)) };
+    let strings = if lang == own { None } else { nettai_content::locale::load_all(root, lang).unwrap_or_else(|e| fail(e)) };
     if strings.is_none() && lang != own {
         let have = nettai_content::locale::languages(root).join(", ");
         fail(format!("the content ({}) has no strings in {lang:?} (it has {have})", root.display()));

@@ -78,7 +78,7 @@ impl PlayerSetup {
         let slot = def
             .systems
             .iter()
-            .position(|&h| content.defs.system(h).key == system)
+            .position(|&h| nettai_content_api::keys::names(&content.defs.system(h).key, system))
             .ok_or_else(|| format!("ruleset {} has no system {system}", def.key))?;
         let block = &mut self.rules[slot];
         let schema = &content.defs.schemas[block.id().0 as usize].schema;
@@ -153,7 +153,7 @@ mod tests {
         let b = started(scenario::setup());
         let content = &b.content;
         let stock = content.defs.stock_ruleset().expect("the test content's stock rules");
-        assert_eq!(content.defs.ruleset(stock).key, "test");
+        assert_eq!(content.defs.ruleset(stock).key, "test:test");
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).ruleset, Some(stock));
             // (BN6's beast system first, then the counter, then BN6's forms

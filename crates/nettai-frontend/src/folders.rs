@@ -78,7 +78,7 @@ pub fn folder_chips(content: &Content) -> Vec<ChipHandle> {
         .enumerate()
         .filter(|(_, d)| {
             let r = &d.record;
-            let listed = compat.chips.get(&d.key).is_some_and(|c| (1..=LAST_PACK_CHIP).contains(&c.id));
+            let listed = compat.compat_key(content, &d.key).and_then(|k| compat.chips.get(k)).is_some_and(|c| (1..=LAST_PACK_CHIP).contains(&c.id));
             matches!(r.class, ChipClass::Standard | ChipClass::Mega | ChipClass::Giga)
                 && !r.codes.is_empty()
                 && listed
@@ -243,9 +243,9 @@ pub(crate) fn bn6_test_content() -> std::sync::Arc<Content> {
     BN6.get_or_init(|| {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
         let mut c = Content::default();
-        c.scripts.modules = testing::modules_under(dir);
+        c.scripts = nettai_battle::content::Scripts::root(nettai_battle::content::RootManifest::named("bn6"), testing::modules_under(dir));
         c.assets = testing::asset_names_used(&c.scripts.modules);
-        c.strings = nettai_content::locale::load(std::path::Path::new(dir), nettai_content::locale::OWN)
+        c.strings = nettai_content::locale::load_all(std::path::Path::new(dir), nettai_content::locale::OWN)
             .and_then(|s| s.ok_or_else(|| "no locales/en.toml".into()))
             .unwrap_or_else(|e| panic!("content/bn6: {e}"));
         let mut navi = testing::content().animations.sprites[&testing::NAVI_SPRITE].clone();
@@ -277,7 +277,7 @@ mod tests {
         // past the pack's (the BeastOut chip). The JP-content chips are
         // folder chips in the Japanese games' records, which the content
         // has (GunDelEX and Django's aren't in the US games').
-        let keys: Vec<&str> = pool.iter().map(|&c| content.defs.chip(c).key.as_str()).collect();
+        let keys: Vec<&str> = pool.iter().map(|&c| nettai_content_api::keys::local(&content.defs.chip(c).key)).collect();
         assert!(keys.len() > 250, "{} chips", keys.len());
         for key in ["cannon", "roll", "bass", "gundels1", "gundelex", "areagrab", "otenko", "gregar", "falzar", "count", "django"] {
             assert!(keys.contains(&key), "{key}");
