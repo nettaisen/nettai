@@ -220,11 +220,23 @@ ruleset governs, and what is the battle's:
 | Whose | What |
 |---|---|
 | **The side's ruleset** | the side's systems' hooks, controllers and wrappers for its navi; its custom screen's extras (buttons, windows, keys, hand size, chip checks, its result); its transformations; its emotions; its player setup; the roles the framework uses for that side's navi and objects (the sounds its player hears for its hits, the actions its requests start); the rule sections about one navi (buster recovery, charge rules) and its screen's layout |
-| **The battle** (framework, with the stage's game's stock ruleset's data) | the flow (intro, banners, the gauge, turns, the turn-start sequencer, the reversion, judge, sets); the field (panel types, their flags and steps, volcano eruptions); the hit kernel's tables (element weakness); the object pools' sizes (BN5's actor pool has 16 slots, BN6's 32); the battle's music and the flow's banners |
+| **The battle** (framework, with the stage's game's stock ruleset's data) | the flow (intro, banners, the gauge, turns, the turn-start sequencer, the reversion, judge, sets); the field (panel types, their flags and steps, volcano eruptions); the hit kernel's tables (element weakness); the battle's music and the flow's banners |
+| **Both players' games, the larger** (the user's decision) | the capacity-only limits: the object pools' sizes (BN5's actor pool has 16 slots, BN6's 32; the attack and effect pools 32 in both) and any other cap that only bounds how many of something fit |
 
 The stage's game decides the battle's data because the stage is the arena: in a BN6 battle on a BN6 stage, every
 table is BN6's and the traces match; in a mixed battle the host picks the arena. Both players' rulesets must agree
 on nothing else.
+
+**Capacity takes the larger of the two players' games** (the user, 2026-10-02): a limit that only bounds how many
+of something fit, and changes nothing else, is each pool's or table's larger size of the two players' games, so a
+BN6 player's chips in a BN5 arena never fail to spawn on BN5's smaller actor pool. Everything else battle-wide
+stays the arena's. A same-game battle is unchanged: both sides have one game's sizes, so the traces and the lab are
+the same.
+
+**A player's game** is their ruleset's game: a stock ruleset's is its root (a game root: `bn6:bn6` is BN6's); a
+mix's is its `base`'s, followed to a stock ruleset; a mix without a base says its `game` (a root name). It is
+known when content loads (`RulesetDef::game`), so a setup's two rulesets give the battle's capacities before the
+battle starts.
 
 ### 2.4 Where it lives
 
@@ -282,7 +294,7 @@ Each moves when its BN5 counterpart is read, by rule 2 of §2.1. Known now:
 
 | Rule | Mechanism |
 |---|---|
-| The object pools' sizes (BN5's actor pool 16) | a rule section of the battle's (§2.3); the arrays stay 32 |
+| The object pools' sizes (BN5's actor pool 16) | a rule section of each game's; a battle takes the larger of the two players' games' (§2.3); the arrays stay 32 |
 | The custom gauge, banner lifetimes, the final-turn count, the judge | rule sections |
 | The fade table (`FadeMode`) | a `fades` rule section by name |
 | `NaviStats` (BN5's is 0x60 bytes, some fields moved) | the generic stats stay a Rust record; each game's own are its systems' setup and state; the bug-code writer (by NaviStats offset) becomes each game's table from code to stat; the codecs are each game's compat |
@@ -736,6 +748,11 @@ engine's (`define.patch_card`) and a player's installed cards a typed field of t
 (`PlayerSetup::patch_cards`), as in BN4, BN5 and BN6; what a card's effects do is a game's rules', a system of its
 stock ruleset (BN6's patch-cards system, which `round_setup` runs; docs/design/patch-cards.md §3).
 
+**The user** (2026-10-02, for R2): **capacity-only limits take the larger of the two players' games**; everything
+else battle-wide follows the arena's (the stage's) game (§2.3). The capacity-only limits are the object pools'
+sizes and any other pure capacity cap; a player's game is their ruleset's (a mix's, its base's). A same-game
+battle is unchanged.
+
 **The coordinator**: the budget as proposed (§6.3); content/<game>/rules/ with a folder per system (§2.4); roots
 right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only when the budget needs it (§6.4).
 
@@ -745,7 +762,8 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
 **Made here** (the user asked for sensible choices while away; each can be revisited):
 
 1. **The battle's data is the stage's game's** stock ruleset's: the field, the flow's timings and banners, the
-   music, the pools' sizes (§2.3). A same-game battle is then exactly that game; a mixed battle's host picks the arena.
+   music (§2.3). A same-game battle is then exactly that game; a mixed battle's host picks the arena. (The pools'
+   sizes were here; the user's R2 decision makes them the larger of the two players' games.)
 2. **Mixes are rulesets in content** (`base`, `add`, `remove`), and a setup picks a ruleset by key; setups don't
    compose systems themselves, so every mix is checked when content loads (§2.2).
 3. **Systems combine by order**: notification hooks call every system; deciding hooks stop at the first that
