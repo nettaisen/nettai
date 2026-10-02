@@ -3,8 +3,8 @@
 //! `content::strings`).
 //!
 //! A definition holds no display text. A chip's name and description, a
-//! navi's name and no-running message, a form's name and description and a
-//! weapon's name are its language's table's. The content's own language
+//! navi's name and no-running message, and a Cross's name and description
+//! are its language's table's. The content's own language
 //! (`OWN`, English for BN6) is part of the content: the loader puts its
 //! table in `Content::strings`, and the define phase counts what the battle
 //! reads of it (a description's lines, a message's characters per line).
@@ -23,17 +23,22 @@
 //!
 //! [forms]
 //! heatcross = { name = "...", description = "..." }
-//!
-//! [weapons]
-//! "megaman/buster" = { name = "..." }
 //! ```
 //!
 //! A line break in a description or a message is `\n`. A translated
 //! description may have another number of lines than the own language's:
-//! the battle keeps the own language's timing.
+//! the battle keeps the own language's timing. The game's marks are
+//! characters (Ⓐ, Ⓑ; the Private Use Area's for the stacked EX and SP,
+//! `""`: docs/design/text-rendering.md §10.5).
+//!
+//! What reads them: a chip's name and description, a navi's name and
+//! no-running message (the battle's screens); a Cross's description (R in
+//! the Cross window) and its name (a frontend's own text: live play's
+//! Crosses, the plain-text screen). Nothing shows another form's name or
+//! a weapon's, so a table has none.
 
-pub use nettai_battle::content::strings::{ChipStrings, FormStrings, NaviStrings, Strings, WeaponStrings};
-use nettai_battle::content::Defs;
+pub use nettai_battle::content::strings::{ChipStrings, FormStrings, NaviStrings, Strings};
+use nettai_battle::content::{Defs, FormKind};
 use std::path::{Path, PathBuf};
 
 /// The folder of a content root that holds the tables.
@@ -78,11 +83,12 @@ pub fn languages(root: &Path) -> Vec<String> {
 }
 
 /// What is wrong with a table against the definitions: a key no definition
-/// has, a string with a combining mark (write the composed character); and
-/// in the own language's (`own`), a chip, navi or form without a name,
-/// which a frontend would show by its key. (A string may be empty: the
-/// invalid chip's name is, and the Japanese games print no description for
-/// some chips.)
+/// has, a form's strings for a form that isn't a Cross (nothing shows
+/// them), a string with a combining mark (write the composed character);
+/// and in the own language's (`own`), a chip, navi or Cross without a
+/// name, which a frontend would show by its key. (A string may be empty:
+/// the invalid chip's name is, and the Japanese games print no description
+/// for some chips.)
 pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
     let mut out = Vec::new();
     let mut text = |what: String, v: &Option<String>| {
@@ -108,17 +114,15 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
         text(format!("navis.{key}.run_message"), &n.run_message);
     }
     for (key, f) in &s.forms {
-        if defs.form_by_key(key).is_none() {
-            unknown.push(format!("forms.{key}: no form has this key"));
+        match defs.form_by_key(key) {
+            None => unknown.push(format!("forms.{key}: no form has this key")),
+            Some(h) if defs.form(h).record.kind != FormKind::Cross => {
+                unknown.push(format!("forms.{key}: not a Cross (nothing shows another form's strings)"))
+            }
+            Some(_) => {}
         }
         text(format!("forms.{key}.name"), &f.name);
         text(format!("forms.{key}.description"), &f.description);
-    }
-    for (key, w) in &s.weapons {
-        if defs.weapon_by_key(key).is_none() {
-            unknown.push(format!("weapons.{key}: no weapon has this key"));
-        }
-        text(format!("weapons.{key}.name"), &w.name);
     }
     if own {
         let named = |n: Option<&Option<String>>| n.is_some_and(|n| n.is_some());
@@ -132,9 +136,9 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
                 unknown.push(format!("navis.{}: the content's own language names every navi", d.key));
             }
         }
-        for d in &defs.forms {
+        for d in defs.forms.iter().filter(|d| d.record.kind == FormKind::Cross) {
             if !named(s.form(&d.key).map(|f| &f.name)) {
-                unknown.push(format!("forms.{}: the content's own language names every form", d.key));
+                unknown.push(format!("forms.{}: the content's own language names every Cross", d.key));
             }
         }
     }
