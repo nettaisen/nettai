@@ -131,13 +131,13 @@ pub enum Fade {
 
 /// Screen-wide fades. The original fades palettes: `stage` is a fade of the
 /// background palettes the stage draws with (the background, the field and
-/// the backdrop), `hud` one of the HUD layer's, `screen` one of every
-/// palette, the sprites' too. Sprites keep their colours through the first
-/// two.
+/// the backdrop), `hud` one of the HUD layer's, `sprites` one of the
+/// sprites' palettes, `screen` one of every palette.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Fades {
     pub stage: Fade,
     pub hud: Fade,
+    pub sprites: Fade,
     pub screen: Fade,
 }
 
@@ -174,7 +174,7 @@ pub fn compose(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fa
             }
         };
         if obj[i] != CLEAR {
-            consider((obj_prio[i], 0), obj[i]);
+            consider((obj_prio[i], 0), apply_fade(obj[i], fades.sprites));
         }
         for l in layers {
             let c = l.pixels[i];

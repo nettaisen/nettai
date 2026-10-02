@@ -47,13 +47,15 @@ pub enum GameVersion {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Unlocks {
     pub version: GameVersion,
-    /// The Crosses owned (event flags 0xE7-0xEB), by Cross number.
+    /// The Crosses owned (Gregar's event flags 0xE2-0xE6, Falzar's
+    /// 0xE7-0xEB), by Cross number.
     pub crosses: [bool; screen::CROSSES],
     /// Beast Out is unlocked (event flag 0xE0).
     pub beast_out: bool,
-    /// Event flag 0x163 (its story meaning is unknown): no Beast Out
-    /// button, and the Cross window then needs the navi to be MegaMan
-    /// (instead of battle flag 0x40 clear).
+    /// Event flag 0x163, which marks a link navi operated (raised and
+    /// lowered with the navi): no Beast Out button, and the Cross window
+    /// then needs the navi to be MegaMan (instead of battle flag 0x40
+    /// clear).
     pub beast_out_sealed: bool,
 }
 
