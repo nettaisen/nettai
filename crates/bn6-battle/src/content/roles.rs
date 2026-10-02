@@ -416,8 +416,10 @@ definition_roles! {
         /// R: a description opens, and closes.
         CustomDescription = "custom_description",
         CustomDescriptionClose = "custom_description_close",
-        /// Beast Out chosen: its two sounds.
-        CustomBeastOut = "custom_beast_out",
+        /// Beast Out chosen: its two sounds, the first the console's
+        /// version's.
+        CustomBeastOutFalzar = "custom_beast_out_falzar",
+        CustomBeastOutGregar = "custom_beast_out_gregar",
         CustomBeastOutFlash = "custom_beast_out_flash",
         /// A Beast Out or a Cross taken back.
         CustomCancel = "custom_cancel",

@@ -142,6 +142,11 @@ impl SoundCalls {
                     out.push(Request::Volume { player, tracks: 0xFFFF, volume: 0x100 });
                 }
             }
+            // sub_802A30C, sub_802A362.
+            SoundCue::ScreenVolume { music, screen } => {
+                out.push(Request::Volume { player: MUSIC_PLAYER, tracks: 0xFFFF, volume: music });
+                out.push(Request::Volume { player: CUSTOM_SCREEN_PLAYER, tracks: 0xFFFF, volume: screen });
+            }
         }
     }
 }
@@ -159,7 +164,7 @@ impl SoundCalls {
             SoundCue::Pinch(on) => self.requests(SoundCue::Pinch(!on), out),
             // A later change replaced it already; the custom screen's
             // volume can't be taken back.
-            SoundCue::Music(_) | SoundCue::StopMusic | SoundCue::RestoreVolume => {}
+            SoundCue::Music(_) | SoundCue::StopMusic | SoundCue::RestoreVolume | SoundCue::ScreenVolume { .. } => {}
         }
     }
 

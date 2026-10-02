@@ -184,9 +184,11 @@ pub fn camera_y(b: &Battle) -> i32 {
     local(b).map_or(0, |(_, s)| -CAMERA_STEP * placement(s).slid)
 }
 
-/// The screen fade the local screen runs: Beast Out's darkens background
-/// palettes 0-13 (the stage and the HUD layer) and sprite palettes 0-10
-/// (the battle's objects), half way (`off_8006040`, modes 0x64 and 0x60).
+/// The screen fade the local screen runs on the stage and the battle's
+/// objects (`off_8006040`): Beast Out's darkens background palettes 0-13
+/// (the stage and the HUD layer) and sprite palettes 0-10 half way (modes
+/// 0x64 and 0x60); the Program Advance's and a dark chip's background
+/// palettes 0-8 and sprite palettes 0-9 (0x14 and 0x10, 0x54 and 0x50).
 pub fn fade(b: &Battle) -> Option<Fade> {
     let (_, s) = local(b)?;
     let f = s.look.fade;
@@ -199,6 +201,31 @@ pub fn fade(b: &Battle) -> Option<Fade> {
     };
     let n = (f.level >> 4).min(16) as u8;
     (shown && n > 0).then_some(Fade::Black(n))
+}
+
+/// The second fade record's, which only a dark chip's hover runs (modes
+/// 0x5C and 0x58): background palettes 9-13 (the window) and sprite
+/// palettes 10-13 (the screen's sprites).
+pub fn window_fade(b: &Battle) -> Option<Fade> {
+    let (_, s) = local(b)?;
+    let f = s.look.window_fade;
+    let shown = match f.mode {
+        FadeMode::DarkChipWindow => true,
+        FadeMode::DarkChipWindowBack => f.active,
+        _ => false,
+    };
+    let n = (f.level >> 4).min(16) as u8;
+    (shown && n > 0).then_some(Fade::Black(n))
+}
+
+/// The HUD layer's fade: Beast Out's (its palettes are among the first
+/// record's), else the second record's.
+pub fn hud_fade(b: &Battle) -> Option<Fade> {
+    let (_, s) = local(b)?;
+    match s.look.fade.mode {
+        FadeMode::BeastOut | FadeMode::BeastOutBack => fade(b),
+        _ => window_fade(b),
+    }
 }
 
 /// The custom screen's tiles of the HUD layer, by tile number.
@@ -263,10 +290,15 @@ impl View<'_> {
         navi_number(self.b, self.side)
     }
 
+    /// Sprite palette 11, as the second fade record leaves it.
     fn emblem_palette(&self) -> Palette {
         let a = self.assets;
         let i = a.emblem_palette_of.get(self.navi_number()).copied().unwrap_or(0) as usize;
-        a.emblem_palettes.get(i).copied().unwrap_or([0; 16])
+        let p = a.emblem_palettes.get(i).copied().unwrap_or([0; 16]);
+        match window_fade(self.b) {
+            Some(f) => p.map(|c| crate::compose::apply_fade(c, f)),
+            None => p,
+        }
     }
 }
 
@@ -401,13 +433,20 @@ impl Window {
             }
             None => problems.note(format!("chip {:?} ({}) has no picture in the pack", def.key, data.name)),
         }
+        // The frame's colours by class, a dark chip's (of the first
+        // three classes) dark.
         let class = match data.class {
-            ChipClass::Standard => 0,
-            ChipClass::Mega => 1,
-            ChipClass::Giga => 2,
-            _ => 0,
+            ChipClass::Standard => Some(0),
+            ChipClass::Mega => Some(1),
+            ChipClass::Giga => Some(2),
+            _ => None,
         };
-        self.palettes[9] = a.frame_palettes.get(class).copied().unwrap_or([0; 16]);
+        let frame = match class {
+            Some(_) if data.flags.has(ChipFlags::DARK) => 3,
+            Some(c) => c,
+            None => 0,
+        };
+        self.palettes[9] = a.frame_palettes.get(frame).copied().unwrap_or([0; 16]);
         let code = c.code.0.min(NO_CODE) as usize;
         self.tiles.put_part(CODE_TILE, &a.codes, 2 * code, 2);
         let family = data.family as usize;

@@ -93,6 +93,13 @@ fn pinch_and_volume_cues_are_player_controls() {
             Request::Volume { player: CUSTOM_SCREEN_PLAYER, tracks: 0xFFFF, volume: 0x100 }
         ]
     );
+    assert_eq!(
+        requests(&mut c, SoundCue::ScreenVolume { music: 0xE0, screen: 0x80 }),
+        [
+            Request::Volume { player: m, tracks: 0xFFFF, volume: 0xE0 },
+            Request::Volume { player: CUSTOM_SCREEN_PLAYER, tracks: 0xFFFF, volume: 0x80 }
+        ]
+    );
 }
 
 #[test]

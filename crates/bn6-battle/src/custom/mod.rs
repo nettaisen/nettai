@@ -19,7 +19,7 @@ pub mod screen;
 
 pub use folder::{BattleFolder, FolderChip, SavedFolder};
 pub use library::Library;
-pub use look::{Drawn, ScreenLook};
+pub use look::{DarkHover, Drawn, ScreenLook};
 pub use screen::{Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind, SlotState};
 
 use crate::battle::{Battle, CustomResult, battle_flags};
@@ -422,6 +422,9 @@ impl Battle {
             if let Some(screen) = &s.screen {
                 for sound in screen.look.drawn.sounds() {
                     self.sound_for(side, sound.role());
+                }
+                if let Some((music, screen)) = screen.look.drawn.volume {
+                    self.play_sound_for(side, crate::sound::SoundCue::ScreenVolume { music, screen });
                 }
             }
             self.custom.sides[side as usize] = s;

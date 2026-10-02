@@ -82,11 +82,12 @@ impl<'a> Renderer<'a> {
         let backdrop = stage.palettes[0][0];
         // The transformation's fade takes every background palette, a
         // dimming's the stage's; the custom screen's Beast Out the stage's
-        // and the HUD's.
+        // and the HUD's, its other fades the stage's (a dark chip's second
+        // the HUD's).
         let transform = layer_fade(b);
         let custom = crate::custom::fade(b).unwrap_or_default();
         let stage = if transform != Fade::None { transform } else if custom != Fade::None { custom } else { dim_fade(b) };
-        let hud = if transform != Fade::None { transform } else { custom };
+        let hud = if transform != Fade::None { transform } else { crate::custom::hud_fade(b).unwrap_or_default() };
         let fades = Fades { stage, hud, screen: screen_fade(b) };
         compose::compose(backdrop, &[&self.names, &self.hud, &self.field, &self.background], &parts, fades)
     }

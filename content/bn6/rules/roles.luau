@@ -223,7 +223,8 @@ return define.roles {
         -- the cursor moves; SELECT hides and shows the window; a pick, OK,
         -- a pick taken back; the Cross window opens and closes, a Cross is
         -- put on; L's no-running message; R's description opens and closes;
-        -- Beast Out chosen (two sounds); a Beast Out or Cross taken back;
+        -- Beast Out chosen (two sounds, the first by the console's version:
+        -- Falzar's, Gregar's); a Beast Out or Cross taken back;
         -- ChpShufl's re-deal and its shuffles; DustCross's scrap, a chip at a
         -- time and when it is done; the Program Advance animation's chips of
         -- the recipe and the Program Advance.
@@ -239,7 +240,8 @@ return define.roles {
         custom_run_message = asset.sound("unselect-7b"),
         custom_description = asset.sound("description-open"),
         custom_description_close = asset.sound("description-close"),
-        custom_beast_out = asset.sound("beast-out-chosen"),
+        custom_beast_out_falzar = asset.sound("beast-out-chosen-falzar"),
+        custom_beast_out_gregar = asset.sound("beast-out-chosen-gregar"),
         custom_beast_out_flash = asset.sound("blinding-flash"),
         custom_cancel = asset.sound("custom-cancel"),
         custom_redeal = asset.sound("elmnt-man-2"),
