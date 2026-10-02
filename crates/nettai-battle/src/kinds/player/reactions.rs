@@ -9,7 +9,7 @@ use super::{
 use crate::actor::{request, status as ai_status};
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
-use crate::content::SlideVector;
+use crate::content::{PushReading, SlideVector};
 use crate::field::{self, PanelType};
 use crate::object::{DragStep, ObjectRef, PanelPos, state};
 
@@ -479,14 +479,29 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
     let facing = |v: SlideVector| SlideVector { dx: v.dx * front, ..v };
     let v = match o.slide_type {
         0 => SlideVector::NONE,
-        1 => {
+        1 => match b.arena_rules().push_reading {
             // sub_800E548: from the hit modifier bits.
-            let hm = coll(b, r).hit_mod_final;
-            let off = if hm & 0x80 != 0 { 5 } else { 0 };
-            let bits = (hm & 0x7F) >> 2;
-            let i = (0..4).find(|&i| bits & (1 << i) != 0).unwrap_or(4);
-            facing(b.arena_rules().push_vectors[i + off])
-        }
+            PushReading::Bn6 => {
+                let hm = coll(b, r).hit_mod_final;
+                let off = if hm & 0x80 != 0 { 5 } else { 0 };
+                let bits = (hm & 0x7F) >> 2;
+                let i = (0..4).find(|&i| bits & (1 << i) != 0).unwrap_or(4);
+                facing(b.arena_rules().push_vectors[i + off])
+            }
+            // BN5's 0x0800C9D8: the first of bits 2 to 5 of the side-0
+            // hits' modifier, else of the side-1 hits' with the direction
+            // reversed; five rows (none past the fifth).
+            PushReading::Bn5 => {
+                let [from0, from1] = coll(b, r).hit_mod_by_side;
+                let first = |hm: u8| (0..4).find(|&i| (hm >> 2) & (1 << i) != 0).unwrap_or(4);
+                let (i, sign) = match first(from0) {
+                    4 => (first(from1), -1),
+                    i => (i, 1),
+                };
+                let v = b.arena_rules().push_vectors[i];
+                SlideVector { dx: v.dx * front * sign, ..v }
+            }
+        },
         2 => facing(*b.arena_rules().ice_vectors.get(coll(b, r).direction as usize).expect("ice slide direction")),
         3 => {
             b.arena_rules().panels.road_slide(panel_kind(b, o.panel)).unwrap_or(SlideVector::NONE)
@@ -506,4 +521,62 @@ pub(super) fn can_slide_to(b: &Battle, r: ObjectRef, p: PanelPos) -> bool {
     }
     let airshoes = flag1(b, r) & f1::AIRSHOE != 0;
     b.field.meets(p.x, p.y, b.arena_rules().panels.step.get(airshoes, b.objects.get(r).alliance))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::battle::battle_flags;
+    use crate::content::{Content, testing};
+    use std::sync::Arc;
+
+    /// A fight on the test content whose arena reads pushes `reading`:
+    /// the battle and its two navis (side 0 at (2, 2), side 1 at (5, 2)).
+    fn fight(reading: PushReading) -> (Battle, [ObjectRef; 2]) {
+        let mut c: Content = testing::build();
+        c.define().unwrap_or_else(|e| panic!("{e}"));
+        for rules in &mut c.rules {
+            rules.push_reading = reading;
+        }
+        let c = Arc::new(c);
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+        setup.content = c.hash();
+        let mut b = Battle::new(setup, c);
+        b.spawn_actors();
+        b.run_objects();
+        b.round.flags |= battle_flags::FIGHTING;
+        let players = [b.player(0).unwrap(), b.player(1).unwrap()];
+        (b, players)
+    }
+
+    /// The push of side 1's navi after hits from side 0 with modifier
+    /// `from0` and from side 1 with `from1` (BN6 reads them together).
+    fn push(reading: PushReading, from0: u8, from1: u8) -> SlideVector {
+        let (mut b, [_, r]) = fight(reading);
+        let c = coll_mut(&mut b, r);
+        c.hit_mod_final = from0 | from1;
+        c.hit_mod_by_side = [from0, from1];
+        b.objects.get_mut(r).slide_type = 1;
+        slide_vector(&b, r)
+    }
+
+    /// docs/design/bn5-map.md §15.3 item 2: BN5's push reads the side-0
+    /// hits' modifier toward the navi's front, else the side-1 hits' the
+    /// other way; BN6's reads them together, toward the front.
+    #[test]
+    fn bn5_pushes_by_the_hitters_side() {
+        // Bit 2: row 0, six panels along +x times the navi's front (side
+        // 1's is -1).
+        let left = SlideVector { dx: -1, dy: 0, tiles: 6 };
+        let right = SlideVector { dx: 1, dy: 0, tiles: 6 };
+        assert_eq!(push(PushReading::Bn6, 0x04, 0), left);
+        assert_eq!(push(PushReading::Bn6, 0, 0x04), left);
+        assert_eq!(push(PushReading::Bn5, 0x04, 0), left);
+        assert_eq!(push(PushReading::Bn5, 0, 0x04), right, "a hit from its own side pushes it the other way");
+        // The side-0 hits come first.
+        assert_eq!(push(PushReading::Bn5, 0x04, 0x08), left);
+        // BN6's 0x80 picks the vertical rows; BN5 has no such bit.
+        let v = push(PushReading::Bn6, 0x84, 0);
+        assert_eq!((v.dx, v.dy), (0, -1));
+    }
 }

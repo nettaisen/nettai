@@ -60,6 +60,8 @@ struct PanelsSection {
 #[serde(deny_unknown_fields)]
 struct ReactionsSection {
     push: [SlideVector; 10],
+    #[serde(default)]
+    push_reading: super::rules::PushReading,
     ice: [SlideVector; 6],
     bubble_bob: [i8; 32],
 }
@@ -175,7 +177,7 @@ fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definit
                         .ok_or_else(|| e(format!("{at}: weakness.{name} is not an element")))?;
                     weakness[i] = *row;
                 }
-                let mut families = [SecondaryElements::default(); 13];
+                let mut families = [SecondaryElements::default(); ChipFamily::ALL.len()];
                 for (name, bits) in &s.family_elements {
                     let f = ChipFamily::ALL
                         .iter()
@@ -213,6 +215,7 @@ fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definit
             "reactions" => {
                 let s: ReactionsSection = r.read(spec, &at).map_err(e)?;
                 (rules.push_vectors, rules.ice_vectors, rules.bubble_bob) = (s.push, s.ice, s.bubble_bob);
+                rules.push_reading = s.push_reading;
             }
             "berserk" => {
                 let s: BerserkSection = r.read(spec, &at).map_err(e)?;

@@ -71,6 +71,8 @@ fn absorb_hit(c: &mut CollisionData) {
     c.acc.counter = 0;
     c.acc.drain_hits = 0;
     c.hit_mod_final = 0;
+    // (BN5's by-side modifiers go with it: an absorbed hit pushes nothing.)
+    c.hit_mod_by_side = [0; 2];
     c.status_final = None;
     c.acc.inflicted_bugs = 0;
 }
