@@ -15,6 +15,8 @@ use crate::audit::Problems;
 use crate::compose::{Affine, Fade, Layer, SpritePart};
 use crate::fonts;
 use crate::objects::SpriteList;
+use crate::textlayer::{Align, Plane, Rect, TextItem, TextSink};
+use crate::vfont::Role;
 use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
 use nettai_battle::Battle;
 use nettai_battle::battle::{FadeMode, mode};
@@ -390,6 +392,12 @@ struct Window {
     map: [MapEntry; COLUMNS * ROWS],
     tiles: LayerTiles,
     palettes: [Palette; 16],
+    /// In the font text mode, the strings whose tiles were left blank for
+    /// the text layer: the chip window's name, and the Program Advance
+    /// animation's names by their place (each with the cells it has, and
+    /// the pick's code).
+    name: Option<(String, usize)>,
+    advance_names: Vec<Option<(String, usize, Option<String>)>>,
 }
 
 /// A slot's state as the original's byte holds it.
@@ -418,9 +426,15 @@ fn cross_map(s: &Screen) -> Option<usize> {
 }
 
 impl Window {
-    fn build(v: &View, problems: &mut Problems) -> Window {
+    fn build(v: &View, text: &TextSink, problems: &mut Problems) -> Window {
         let a = v.assets;
-        let mut w = Window { map: [MapEntry::default(); COLUMNS * ROWS], tiles: LayerTiles::new(), palettes: [[0; 16]; 16] };
+        let mut w = Window {
+            map: [MapEntry::default(); COLUMNS * ROWS],
+            tiles: LayerTiles::new(),
+            palettes: [[0; 16]; 16],
+            name: None,
+            advance_names: Vec::new(),
+        };
         // sub_8026840: the window's map, with the Cross tab or without; or
         // the Cross window's.
         let cross = cross_map(v.screen);
@@ -455,7 +469,7 @@ impl Window {
         w.palettes[12] = a.grey_palette;
         w.palettes[14] = a.other_palette;
         w.palettes[13] = v.hud.hp_palettes[0];
-        w.chip_window(v, problems);
+        w.chip_window(v, text, problems);
         w.slots(v, problems);
         w.column(v, problems);
         if cross.is_some_and(|i| i >= CROSS_OPENING_MAPS) {
@@ -473,7 +487,7 @@ impl Window {
     /// off; `sub_802B920`: the Program Advance's in their place at 16
     /// ticks, all taken off at 96), as (name, row, palette) with each
     /// name's tiles copied in, and palette 10's colours.
-    fn program_advance(&mut self, v: &View, problems: &mut Problems) -> Vec<(usize, i32, u8)> {
+    fn program_advance(&mut self, v: &View, text: &TextSink, problems: &mut Problems) -> Vec<(usize, i32, u8)> {
         use nettai_battle::custom::screen::ProgramAdvanceStep as S;
         let s = v.screen;
         let (Phase::ProgramAdvance { anim }, Some(pa)) = (s.phase, s.program_advance) else { return Vec::new() };
@@ -494,13 +508,13 @@ impl Window {
         };
         let mut out = Vec::new();
         for k in shown {
-            self.put_advance_name(v, k, picks[k], problems);
+            self.put_advance_name(v, k, picks[k], text, problems);
             out.push((k, row(k), palette(k)));
         }
         if matches!(anim.step, S::Result) && anim.timer >= 0x10 {
             let k = pa.start as usize;
             let name = &v.b.content.chip(pa.chip).name;
-            self.put_advance_text(v, k, name, None, problems);
+            self.put_advance_text(v, k, name, None, text, problems);
             out.push((k, row(k), 10));
         }
         if let Some(c) = v.assets.advance_name_colours.get(v.screen.look.pa_palette as usize) {
@@ -510,26 +524,39 @@ impl Window {
     }
 
     /// A pick's name and code into name `k`'s tiles.
-    fn put_advance_name(&mut self, v: &View, k: usize, c: FolderChip, problems: &mut Problems) {
+    fn put_advance_name(&mut self, v: &View, k: usize, c: FolderChip, text: &TextSink, problems: &mut Problems) {
         let key = &v.b.content.defs.chip(c.id).key;
         let number = bn6_compat::Compat::bn6().chips.get(key.as_str()).map_or(u16::MAX, |e| e.id);
         let code = (number < ADVANCE_NO_CODE_FROM).then_some(c.code.0);
-        self.put_advance_text(v, k, &v.b.content.chip(c.id).name, code, problems);
+        self.put_advance_text(v, k, &v.b.content.chip(c.id).name, code, text, problems);
     }
 
-    fn put_advance_text(&mut self, v: &View, k: usize, name: &str, code: Option<u8>, problems: &mut Problems) {
+    /// A name (and a pick's code in its last cell) into name `k`'s tiles;
+    /// in the font mode blank tiles, and the words for the text layer.
+    fn put_advance_text(&mut self, v: &View, k: usize, name: &str, code: Option<u8>, text: &TextSink, problems: &mut Problems) {
         let (mut glyphs, missing) = fonts::cell_glyphs(v.hud, name);
         if !missing.is_empty() {
             problems.note(format!("the Program Advance animation's {name:?}: the pack's font has no glyph for {missing:?}"));
         }
-        glyphs.resize(ADVANCE_NAME_CELLS, 0);
-        if let Some(code) = code {
-            let letter = if code < 26 { char::from(b'A' + code).to_string() } else { "*".to_string() };
-            if let Some(&g) = fonts::cell_glyphs(v.hud, &letter).0.first() {
-                glyphs[ADVANCE_NAME_CELLS - 1] = g;
-            }
-        }
+        let letter = code.map(|code| if code < 26 { char::from(b'A' + code).to_string() } else { "*".to_string() });
         let at = ADVANCE_NAME_TILE + (2 * ADVANCE_NAME_CELLS * k) as u16;
+        if text.takes(name) && letter.as_deref().is_none_or(|l| text.takes(l)) {
+            // (The name's box: the cells before the code's, which nothing
+            // else uses.)
+            let cells = ADVANCE_NAME_CELLS - 1;
+            self.tiles.put(at, &fonts::cell_text(v.hud, &[], ADVANCE_NAME_CELLS, 0));
+            if self.advance_names.len() <= k {
+                self.advance_names.resize(k + 1, None);
+            }
+            self.advance_names[k] = Some((name.to_string(), cells, letter));
+            return;
+        }
+        glyphs.resize(ADVANCE_NAME_CELLS, 0);
+        if let Some(letter) = letter
+            && let Some(&g) = fonts::cell_glyphs(v.hud, &letter).0.first()
+        {
+            glyphs[ADVANCE_NAME_CELLS - 1] = g;
+        }
         self.tiles.put(at, &fonts::cell_text(v.hud, &glyphs, ADVANCE_NAME_CELLS, 0));
     }
 
@@ -571,7 +598,7 @@ impl Window {
     /// a button's picture (`sub_80286D4`, `sub_802871C`, `sub_80287A4`,
     /// `sub_802877C`) with the window's colours where the chip's details
     /// go.
-    fn chip_window(&mut self, v: &View, problems: &mut Problems) {
+    fn chip_window(&mut self, v: &View, text: &TextSink, problems: &mut Problems) {
         let a = v.assets;
         let cw = v.screen.look.chip_window;
         // Palette 11's colours from 10 are the last chip's element's.
@@ -596,7 +623,7 @@ impl Window {
         match v.screen.slots[slot as usize].kind {
             SlotKind::Chip { .. } | SlotKind::NaviChip(_) => {
                 let Some(c) = cw.last_chip else { return };
-                self.chip_details(v, c, problems);
+                self.chip_details(v, c, text, problems);
             }
             SlotKind::Ok => {
                 let p = if cw.picks == 0 { &a.pictures.ok } else { &a.pictures.ok_picked };
@@ -618,7 +645,7 @@ impl Window {
     /// the chip's class, its code, its element's icon (and colours), and
     /// its damage if it shows (Muramasa's as "???"), right-aligned in three
     /// cells.
-    fn chip_details(&mut self, v: &View, c: FolderChip, problems: &mut Problems) {
+    fn chip_details(&mut self, v: &View, c: FolderChip, text: &TextSink, problems: &mut Problems) {
         let a = v.assets;
         let def = v.b.content.defs.chip(c.id);
         let data = v.b.content.chip(c.id);
@@ -626,7 +653,14 @@ impl Window {
         if !missing.is_empty() {
             problems.note(format!("chip {:?} is named {:?}, but the pack's font has no glyph for {missing:?}", def.key, data.name));
         }
-        self.tiles.put(NAME_TILE, &fonts::cell_text(v.hud, &glyphs, NAME_CELLS, NAME_SHIFT));
+        if text.takes(&data.name) {
+            // The name's cells in the window's colour, the words on the
+            // text layer in all eight of them (nothing follows the name).
+            self.tiles.put(NAME_TILE, &fonts::cell_text(v.hud, &[], NAME_CELLS, NAME_SHIFT));
+            self.name = Some((data.name.clone(), NAME_CELLS));
+        } else {
+            self.tiles.put(NAME_TILE, &fonts::cell_text(v.hud, &glyphs, NAME_CELLS, NAME_SHIFT));
+        }
         // (The Beast Out chip's picture is the Beast's the navi goes into.)
         let beast_out = Library::beast_out_chip(&*v.b.content) == Some(c.id);
         let art = if beast_out { Some(&v.beast.beast_out) } else { a.chip_art(&def.key) };
@@ -772,6 +806,37 @@ impl Window {
             layer.draw_tile(self.tiles.tile(e.tile), &self.palettes[e.palette as usize & 15], px, 8 * row, e.hflip, e.vflip);
         }
     }
+
+    /// The chip window's name on the text layer (the font mode): over the
+    /// name's cells where the window's map puts them, in their palette's
+    /// colours from 8 (`NAME_SHIFT`), cut to the window's columns on the
+    /// layer.
+    fn name_item(&self, text: &mut TextSink, place: Placement) {
+        let Some((name, cells)) = &self.name else { return };
+        let Some(i) = self.map.iter().position(|e| e.tile == NAME_TILE) else { return };
+        let (col, row) = (i % COLUMNS, i / COLUMNS);
+        let palette = &self.palettes[self.map[i].palette as usize & 15];
+        let shift = NAME_SHIFT as usize;
+        // The cells the window shows, and where: the string sits where its
+        // last shown cell puts it (sliding in, its first cells are still
+        // past the screen's left edge, which the layer wraps to its right).
+        let shown: Vec<(usize, i32)> =
+            (col..col + cells).filter(|c| (place.from..place.to).contains(c)).filter_map(|c| Some((c, screen_x(c as i32, place.scroll)?))).collect();
+        let Some(&(last, last_x)) = shown.last() else { return };
+        let x = last_x - 8 * (last - col) as i32;
+        let along: Vec<i32> = shown.iter().filter(|&&(c, px)| px == x + 8 * (c - col) as i32).map(|&(_, px)| px).collect();
+        let (Some(&x0), Some(&x1)) = (along.first(), along.last()) else { return };
+        let item = TextItem::new(name.as_str(), Role::Cell, Rect::new(x, 8 * row as i32, 8 * *cells as i32, 16), palette[1 + shift], Some(palette[2 + shift]));
+        let clip = Rect::new(x0, 0, x1 + 8 - x0, crate::compose::HEIGHT as i32);
+        text.push(Plane::Hud, TextItem { clip, ..item });
+    }
+}
+
+/// Where a column of the 256-pixel layer is on the screen, scrolled, as a
+/// signed place (past the left edge is negative).
+fn layer_x(col: i32, scroll: u32) -> i32 {
+    let px = (8 * col - scroll as i32).rem_euclid(256);
+    if px >= 240 { px - 256 } else { px }
 }
 
 /// Where a column of the 256-pixel layer shows, scrolled: what scrolls off
@@ -802,7 +867,7 @@ fn names_shown(b: &Battle, s: &Screen) -> bool {
         )
 }
 
-fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Layer, problems: &mut Problems) {
+fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Layer, text: &mut TextSink, problems: &mut Problems) {
     let other = v.side ^ 1;
     let name = &v.b.content.navi(v.b.stats[other as usize].navi).name;
     let (glyphs, missing) = fonts::cell_glyphs(v.hud, name);
@@ -811,7 +876,8 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
     }
     let len = glyphs.len().min(ENEMY_NAME_CELLS);
     let col = 0x1E - len as i32;
-    fonts::draw_cell_text(names_layer, v.hud, &glyphs, ENEMY_NAME_CELLS, &w.palettes[13], 8 * col, 0);
+    let palette = &w.palettes[13];
+    fonts::layer_text(text, Plane::Bg0, names_layer, v.hud, name, &glyphs, ENEMY_NAME_CELLS, palette, (8 * col, 0), Align::Left);
     // The bar: the slanted end, then one cell a glyph (eight at most; a
     // ninth glyph has bar cells from column 21 on, no end).
     let bar = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 13 };
@@ -1005,7 +1071,9 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
 
 /// Draw the local player's custom screen: the window on the HUD layer, the
 /// enemy names on `names_layer` (BG0), the sprites into `list`.
-/// `emblem` holds the emblem sprite's tiles (`emblem_tiles`).
+/// `emblem` holds the emblem sprite's tiles (`emblem_tiles`); the font
+/// mode's strings go to `text`.
+#[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &'a Battle,
     assets: &'a Bundle,
@@ -1013,6 +1081,7 @@ pub fn draw<'a>(
     hud_layer: &mut Layer,
     names_layer: &mut Layer,
     list: &mut SpriteList<'a>,
+    text: &mut TextSink,
     problems: &mut Problems,
 ) {
     let Some((_, screen)) = local(b) else { return };
@@ -1031,9 +1100,10 @@ pub fn draw<'a>(
         hud: &assets.hud,
     };
     let place = placement(screen);
-    let mut w = Window::build(&v, problems);
-    let advance_names = w.program_advance(&v, problems);
+    let mut w = Window::build(&v, text, problems);
+    let advance_names = w.program_advance(&v, text, problems);
     w.draw(hud_layer, place);
+    w.name_item(text, place);
     // The Program Advance's names, a column right of the layer's scroll
     // (`sub_802BA18`), each 9x2 cells column by column.
     let col = (place.scroll >> 3) as i32 + 1;
@@ -1042,6 +1112,16 @@ pub fn draw<'a>(
         for i in 0..2 * ADVANCE_NAME_CELLS as u16 {
             let e = MapEntry { tile: first + i, hflip: false, vflip: false, palette };
             w.cell(hud_layer, e, col + (i / 2) as i32, row + (i % 2) as i32, place.scroll);
+        }
+        // In the font mode, the name and the code on the text layer.
+        if let Some(Some((name, cells, code))) = w.advance_names.get(k) {
+            let colours = &w.palettes[palette as usize & 15];
+            let at = |c: i32, n: usize| Rect::new(layer_x(col + c, place.scroll), 8 * row, 8 * n as i32, 16);
+            text.push(Plane::Hud, TextItem::new(name.as_str(), Role::Cell, at(0, *cells), colours[1], Some(colours[2])));
+            if let Some(code) = code {
+                let last = ADVANCE_NAME_CELLS as i32 - 1;
+                text.push(Plane::Hud, TextItem::new(code.as_str(), Role::Cell, at(last, 1), colours[1], Some(colours[2])));
+            }
         }
     }
     if screen.look.turn_limit && place.to == COLUMNS {
@@ -1052,7 +1132,7 @@ pub fn draw<'a>(
         }
     }
     if names_shown(b, screen) {
-        draw_names(&v, &w, hud_layer, names_layer, problems);
+        draw_names(&v, &w, hud_layer, names_layer, text, problems);
     }
     // The sprites, as their routines queue them (each in front of the
     // one before).

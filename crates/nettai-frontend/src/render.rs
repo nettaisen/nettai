@@ -3,13 +3,26 @@
 
 use crate::audit::Problems;
 use crate::compose::{self, Fade, Fades, Layer, Palettes};
-use nettai_battle::transform::{SequencerState, TransformPhase};
 use crate::hud::HudState;
 use crate::objects::{self, SpriteList, View};
 use crate::stage::{Stage, StageClock};
+use crate::textlayer::{Plane, TextItem, TextMode, TextSink};
+use crate::vfont::VectorFont;
 use nettai_assets::Bundle;
 use nettai_battle::Battle;
 use nettai_battle::battle::{FadeMode, mode};
+use nettai_battle::transform::{SequencerState, TransformPhase};
+use std::sync::Arc;
+
+/// A drawn frame: the 240x160 picture (BGR555), per pixel the depth key
+/// of what won it (`compose::depth_key`), and the text items to draw over
+/// it at the output's resolution (none in the original text mode).
+#[derive(Clone, Debug, Default)]
+pub struct Frame {
+    pub pixels: Vec<u16>,
+    pub depth: Vec<u32>,
+    pub text: Vec<TextItem>,
+}
 
 /// Draws battles; keeps its layer buffers between frames.
 pub struct Renderer<'a> {
@@ -23,9 +36,13 @@ pub struct Renderer<'a> {
     pub hud_state: HudState,
     /// What the frames drawn so far named that the pack doesn't have.
     pub problems: Problems,
+    /// How text is drawn, and the font of the font mode.
+    text_mode: TextMode,
+    font: Option<Arc<VectorFont>>,
 }
 
 impl<'a> Renderer<'a> {
+    /// A renderer in the original text mode.
     pub fn new(assets: &'a Bundle) -> Renderer<'a> {
         Renderer {
             assets,
@@ -36,7 +53,20 @@ impl<'a> Renderer<'a> {
             names: Layer { palettes: Palettes::Hud, ..Layer::new(0, 0) },
             hud_state: HudState::default(),
             problems: Problems::default(),
+            text_mode: TextMode::Original,
+            font: None,
         }
+    }
+
+    /// Draw text in `mode`; the font mode hands the strings `font` has to
+    /// the text layer (without a font it draws as the original does).
+    pub fn set_text(&mut self, mode: TextMode, font: Option<Arc<VectorFont>>) {
+        self.text_mode = mode;
+        self.font = font;
+    }
+
+    pub fn text_mode(&self) -> TextMode {
+        self.text_mode
     }
 
     /// Follow a tick of the battle being shown (call after every tick).
@@ -59,8 +89,8 @@ impl<'a> Renderer<'a> {
         View { camera: (x, y + crate::custom::camera_y(b), 0), mirror: local & 1 == 1, fade }
     }
 
-    /// Draw a battle as a 240x160 BGR555 frame.
-    pub fn render(&mut self, b: &Battle) -> Vec<u16> {
+    /// Draw a battle as a 240x160 frame with its text items.
+    pub fn render(&mut self, b: &Battle) -> Frame {
         let assets = self.assets;
         self.problems.known.clear();
         let view = Self::view(b);
@@ -71,19 +101,20 @@ impl<'a> Renderer<'a> {
         stage.draw_field(b, &mut self.field, b.setup.local_side, &view);
         self.hud.clear();
         self.names.clear();
+        let mut text = TextSink::new(self.text_mode, self.font.as_deref());
         let navi = crate::custom::navi_number(b, b.setup.local_side);
         let emblem = crate::custom::emblem_tiles(&assets.custom, crate::custom::version_name(b, b.setup.local_side), navi);
-        let chatbox = crate::chatbox::prepare(b, assets, &mut self.problems);
+        let chatbox = crate::chatbox::prepare(b, assets, &text, &mut self.problems);
         let mut list = SpriteList::default();
         objects::queue_objects(b, assets, &view, &mut list, &mut self.problems);
-        crate::custom::draw(b, assets, &emblem, &mut self.hud, &mut self.names, &mut list, &mut self.problems);
+        crate::custom::draw(b, assets, &emblem, &mut self.hud, &mut self.names, &mut list, &mut text, &mut self.problems);
         if let Some(c) = &chatbox {
-            crate::chatbox::draw(c, assets, &mut self.names, &mut list);
+            crate::chatbox::draw(c, assets, &mut self.names, &mut list, &mut text);
         }
-        crate::hud::draw(b, assets, &self.hud_state, &mut self.hud, &mut list, &mut self.problems);
+        crate::hud::draw(b, assets, &self.hud_state, &mut self.hud, &mut list, &mut text, &mut self.problems);
         let (jx, jy) = crate::custom::hud_jitter(b);
         self.hud.shift(-jx, -jy);
-        let parts = list.into_parts();
+        let (parts, tags) = list.into_tagged_parts();
         let backdrop = stage.palettes[0][0];
         // The transformation's fade takes every background palette, a
         // dimming's the stage's; the custom screen's Beast Out the stage's
@@ -113,7 +144,33 @@ impl<'a> Renderer<'a> {
         };
         let sprites = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b).unwrap_or_default() };
         let fades = Fades { stage, hud, sprites, screen: screen_fade(b) };
-        compose::compose(backdrop, &[&self.names, &self.hud, &self.field, &self.background], &parts, fades)
+        let layers = [&self.names, &self.hud, &self.field, &self.background];
+        let (pixels, depth) = compose::compose_with_depth(backdrop, &layers, &parts, fades);
+        // Each item's depth and fades: its layer's (the HUD layer's moved
+        // with its shake), or its sprite parts' (an item whose parts the
+        // sprite limit dropped isn't drawn).
+        let text = text
+            .into_items()
+            .into_iter()
+            .filter_map(|(plane, mut item)| {
+                let (depth, fade) = match plane {
+                    Plane::Hud => {
+                        item.rect = item.rect.offset(-jx, -jy);
+                        item.clip = item.clip.offset(-jx, -jy);
+                        (compose::layer_depth(&self.hud), fades.hud)
+                    }
+                    Plane::Bg0 => (compose::layer_depth(&self.names), fades.hud),
+                    Plane::Sprite(tag) => {
+                        let i = tags.iter().position(|&t| t == Some(tag))?;
+                        (compose::sprite_depth(parts[i].priority, i), fades.sprites)
+                    }
+                };
+                item.depth = depth;
+                item.fades = [fade, fades.screen];
+                Some(item)
+            })
+            .collect();
+        Frame { pixels, depth, text }
     }
 }
 
