@@ -31,6 +31,7 @@ mod input;
 mod intake;
 mod reactions;
 mod status;
+pub(crate) use status::end_anger;
 
 pub(crate) use reactions::passed;
 
@@ -452,7 +453,7 @@ pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_8012EA8`: drop the buster charge and the hold flags.
-fn reset_charge(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn reset_charge(b: &mut Battle, r: ObjectRef) {
     reset_charge_counters(b, r);
     ai_mut(b, r).requests &= !request::HOLDS;
 }
@@ -491,7 +492,7 @@ pub(crate) fn clear_statuses(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_800EB08`: end invulnerability.
-fn clear_invulnerable(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn clear_invulnerable(b: &mut Battle, r: ObjectRef) {
     coll_mut(b, r).status_timers[timer::INVULNERABLE] = 0;
     clear_flag1(b, r, f1::INVULNERABLE);
 }
@@ -603,6 +604,13 @@ pub fn reverting_form(b: &Battle, r: ObjectRef) -> bool {
 /// handler, as action 0x1C).
 pub fn request_form_change(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).requests |= request::FORM_CHANGE;
+}
+
+/// The form `r`'s side asked to change into at this turn's start (none:
+/// none, or the base form).
+pub(crate) fn form_change_target(b: &Battle, r: ObjectRef) -> Option<nettai_content_api::FormHandle> {
+    let side = b.objects.get(r).alliance as usize;
+    b.turn_transforms[side].form.filter(|&f| b.content.form(f).kind != FormKind::Base)
 }
 
 /// `sub_801597C`: a form change is running.
@@ -846,7 +854,7 @@ fn update_element(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80144C0`: the full status reset (NaviCust state, hand bonuses,
 /// hit modifier, region, charge, weapon bytes, element, body damage).
-fn reset_status(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn reset_status(b: &mut Battle, r: ObjectRef) {
     reset_navicust_state(b, r);
     reset_status_tail(b, r, true);
 }

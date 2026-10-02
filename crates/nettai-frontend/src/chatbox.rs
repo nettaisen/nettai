@@ -14,12 +14,15 @@ use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
 use crate::objects::SpriteList;
+use crate::strings::{DisplayText, Said};
 use crate::textlayer::{Plane, Rect, TextItem, TextSink};
 use crate::vfont::Role;
 use nettai_assets::{Bundle, Chatbox as Graphics, Palette, SpriteSheet, Tiles};
-use nettai_battle::Battle;
 use nettai_battle::custom::chatbox::{Chatbox, PortraitLook, Script};
-use nettai_battle::custom::{GameVersion, Library, Phase};
+use nettai_battle::custom::screen::CrossWindow;
+use nettai_battle::custom::{GameVersion, Phase, Unlocks};
+use nettai_battle::{Battle, Content};
+use nettai_content_api::NaviHandle;
 
 /// The box's map on BG0 (`CurTileYBlockPos`): from row 12, 30 columns of
 /// 8 rows.
@@ -37,6 +40,8 @@ const TEXT_SPRITES: [(usize, usize); 3] = [(0, 16), (16, 16), (32, 8)];
 /// descenders in (a font's go lower than the dialogue font's, which the
 /// buffer's 40 rows hold; the box's frame is further down).
 const DESCENDER_ROWS: usize = 3;
+/// The pixels a line keeps clear of the box's right frame.
+const BORDER_GAP: i32 = 1;
 /// The key-wait arrow's place by the box (`byte_8045DCC`): the message
 /// box's (the default) and the description box's (`E8 06 01 01`).
 const ARROW_AT: [(i32, i32); 2] = [(0xE2, 0x8D), (0xCA, 0x8D)];
@@ -76,16 +81,14 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &m
         Phase::Description { from_cross_window: false, chatbox } => {
             // The chip under the cursor as the screen checked it (the chip
             // window's).
-            let said = screen.look.chip_window.last_chip.and_then(|c| strings.chip_description(b, c.id));
+            let said = screen.look.chip_window.last_chip.and_then(|c| strings.chip_description(&b.content, c.id));
             (chatbox, said, None)
         }
         Phase::Description { from_cross_window: true, chatbox } => {
-            let w = &screen.crosses;
-            let form = b.content.cross_form(navi, side.unlocks.version, w.offered[w.cursor as usize]);
-            (chatbox, form.and_then(|f| strings.form_description(b, f)), None)
+            (chatbox, cross_description(&b.content, strings, &side.unlocks, navi, &screen.crosses), None)
         }
         Phase::RunMessage { chatbox: Some(chatbox) } => {
-            (chatbox, strings.run_message(b, navi), b.content.navi(navi).run_message.portrait)
+            (chatbox, strings.run_message(&b.content, navi), b.content.navi(navi).run_message.portrait)
         }
         _ => return None,
     };
@@ -121,11 +124,24 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &m
     Some(Shown { chatbox, kind, text, lines, portrait })
 }
 
-/// The lines printed so far, each with the units of it shown (as
+/// The description R shows in the Cross window: the Cross under the
+/// cursor's own, by its form (`CrossWindow::hovered`: with a setup's Cross
+/// list, of whichever game the Cross is, in the list's order).
+pub fn cross_description<'a: 'b, 'b>(
+    content: &'b Content,
+    strings: &DisplayText<'a>,
+    unlocks: &Unlocks,
+    navi: NaviHandle,
+    window: &CrossWindow,
+) -> Option<Said<'b>> {
+    window.hovered(unlocks, content, navi).and_then(|f| strings.form_description(content, f))
+}
+
+/// The lines printed so far, each with the characters of it shown (as
 /// `text_tiles` composes them).
 fn printed(chatbox: &Chatbox, string: &str, translated: bool) -> Vec<(String, usize)> {
     let lines: Vec<&str> = string.split('\n').take(3).collect();
-    let units: Vec<usize> = lines.iter().map(|l| crate::vfont::unit_count(l)).collect();
+    let units: Vec<usize> = lines.iter().map(|l| l.chars().count()).collect();
     lines.into_iter().zip(shown(chatbox, &units, translated)).filter(|&(_, n)| n > 0).map(|(l, n)| (l.to_string(), n)).collect()
 }
 
@@ -255,8 +271,11 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
                 let tag = sink.tag();
                 list.insert_tagged(LAYER, TEXT_BUCKET, group, Some(tag));
                 let sprites = Rect::new(TEXT_X, TEXT_Y, TEXT_WIDTH as i32, (TEXT_ROWS + DESCENDER_ROWS) as i32);
+                // Each line fits the open box's inside (the line buffer
+                // runs past the description box's right edge).
+                let room = text_room(g, shown.kind);
                 for (k, (line, units)) in lines.iter().enumerate() {
-                    let rect = Rect::new(TEXT_X, TEXT_Y + (LINE_ROWS * k) as i32, TEXT_WIDTH as i32, 12);
+                    let rect = Rect::new(TEXT_X, TEXT_Y + (LINE_ROWS * k) as i32, room, 12);
                     let item = TextItem::new(line.as_str(), Role::Dialogue, rect, g.text_palette[1], None);
                     sink.push(Plane::Sprite(tag), TextItem { clip: sprites, shown: Some(*units), ..item });
                 }
@@ -272,6 +291,31 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
     if let Some((sheet, look)) = shown.portrait {
         list.insert_at(LAYER, FRONT_BUCKET, portrait_parts(sheet, look));
     }
+}
+
+/// The room a line of text has in an open box of `kind`, in pixels from
+/// the text's left: up to a pixel short of the inner edge of the box's
+/// right frame, on the map's row at the text's middle (the first pixel
+/// column, from the inside, of the rightmost tile drawn on that row that
+/// isn't the colour under the text's left). The description box ends 27
+/// tiles in, short of the line buffer's 192 pixels; the message box spans
+/// the screen. The line buffer's width when the map has no such frame.
+pub fn text_room(g: &Graphics, kind: usize) -> i32 {
+    let fallback = TEXT_WIDTH as i32;
+    let Some(map) = g.boxes.get(kind).map(|steps| &steps[3]) else { return fallback };
+    let y = TEXT_Y + TEXT_ROWS as i32 / 2 - 8 * BOX_ROW;
+    let Some(row) = map.chunks(Graphics::COLUMNS).nth((y / 8) as usize) else { return fallback };
+    // A map entry's pixel at (x, y % 8) in its tile.
+    let pixel = |e: &nettai_assets::MapEntry, x: usize| {
+        let t = g.tiles.get(e.tile as usize)?;
+        let (x, ty) = (if e.hflip { 7 - x } else { x }, if e.vflip { 7 - (y % 8) as usize } else { (y % 8) as usize });
+        Some(t[8 * ty + x])
+    };
+    let Some(fill) = row.get((TEXT_X / 8) as usize).and_then(|e| pixel(e, (TEXT_X % 8) as usize)) else { return fallback };
+    let drawn = |e: &&nettai_assets::MapEntry| g.tiles.get(e.tile as usize).is_some_and(|t| t.iter().any(|&p| p != 0));
+    let Some((col, frame)) = row.iter().enumerate().rev().find(|(_, e)| drawn(e)) else { return fallback };
+    let inner = (0..8).find(|&x| pixel(frame, x) != Some(fill)).unwrap_or(8);
+    (8 * col as i32 + inner as i32 - BORDER_GAP - TEXT_X).clamp(1, fallback)
 }
 
 /// The box's map at an opening step (`chatbox_CopyBackgroundTiles_8040344`).
@@ -421,6 +465,124 @@ mod tests {
             c.update(0, 0);
         }
         assert_eq!(shown(&c, &[5, 4, 6], false), vec![5, 4, 6]);
+    }
+
+    /// Box graphics shaped as BN6's: a frame tile (the pack's tile 8: a
+    /// clear column, the border's three, then the fill) on the left and,
+    /// flipped, on the right, the message box's at column 29, the
+    /// description box's at column 26, with columns 27 to 29 clear.
+    fn bn6_like_boxes() -> Graphics {
+        let frame_row = [0u8, 11, 10, 10, 1, 1, 1, 1];
+        let mut tiles = Tiles { pixels: vec![0; 64] };
+        tiles.pixels.extend([1; 64]);
+        tiles.pixels.extend(frame_row.repeat(8));
+        let entry = |tile, hflip| nettai_assets::MapEntry { tile, hflip, vflip: false, palette: 15 };
+        let open = |last: usize| -> Vec<nettai_assets::MapEntry> {
+            (0..Graphics::ROWS * Graphics::COLUMNS)
+                .map(|i| match i % Graphics::COLUMNS {
+                    0 => entry(2, false),
+                    c if c == last => entry(2, true),
+                    c if c < last => entry(1, false),
+                    _ => entry(0, false),
+                })
+                .collect()
+        };
+        let steps = |last| [Vec::new(), Vec::new(), Vec::new(), open(last)];
+        Graphics { tiles, boxes: vec![steps(29), steps(26)], ..Graphics::default() }
+    }
+
+    /// A line's room is the open box's inside: up to a pixel short of its
+    /// right frame's border (212 for the description box, 236 for the
+    /// message box), from the text's left at 51.
+    #[test]
+    fn a_line_has_the_room_of_its_boxs_inside() {
+        let g = bn6_like_boxes();
+        assert_eq!(text_room(&g, MESSAGE_BOX), 236 - 1 - TEXT_X);
+        assert_eq!(text_room(&g, DESCRIPTION_BOX), 212 - 1 - TEXT_X);
+        // No graphics: the line buffer.
+        assert_eq!(text_room(&Graphics::default(), DESCRIPTION_BOX), TEXT_WIDTH as i32);
+    }
+
+    /// Every line the chatbox shows, in both languages (the chips' and the
+    /// Crosses' descriptions in the description box, the no-running
+    /// messages in the message box), measured against its box: laid out by
+    /// the text layer, none leaves the box's inside. Those that need the
+    /// fit (wider than the box at the font's natural width) are listed
+    /// (`--nocapture`): before the fit was the box's, they ran past its
+    /// frame.
+    #[test]
+    fn every_chatbox_line_fits_its_box() {
+        let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6"));
+        let g = bn6_like_boxes();
+        let rooms = [text_room(&g, MESSAGE_BOX), text_room(&g, DESCRIPTION_BOX)];
+        let mut r = crate::vfont::TextRenderer::new(std::sync::Arc::new(crate::vfont::VectorFont::bundled()));
+        let (mut lines, mut fitted) = (0, Vec::new());
+        for lang in ["en", "ja"] {
+            let table = nettai_content::locale::load(dir, lang).unwrap().expect("a table");
+            let mut strings: Vec<(String, usize, &str)> = Vec::new();
+            for (key, c) in &table.chips {
+                strings.extend(c.description.as_deref().map(|d| (format!("chips.{key}"), DESCRIPTION_BOX, d)));
+            }
+            for (key, f) in &table.forms {
+                strings.extend(f.description.as_deref().map(|d| (format!("forms.{key}"), DESCRIPTION_BOX, d)));
+            }
+            for (key, n) in &table.navis {
+                strings.extend(n.run_message.as_deref().map(|m| (format!("navis.{key}"), MESSAGE_BOX, m)));
+            }
+            for (what, kind, text) in strings {
+                for line in text.split('\n').filter(|l| !l.is_empty()) {
+                    lines += 1;
+                    let room = rooms[kind];
+                    let natural = r.fitted_width(line, Role::Dialogue, 10_000);
+                    let width = r.fitted_width(line, Role::Dialogue, room);
+                    assert!(width <= room as f32 + 0.01, "{lang} {what} {line:?}: {width} in {room}");
+                    if natural > room as f32 {
+                        fitted.push(format!("{lang} {what} {line:?}: {natural:.1} in {room} ({:.0}%)", 100.0 * room as f32 / natural));
+                    }
+                }
+            }
+        }
+        eprintln!("{lines} lines; {} wider than their box at the font's width, fitted:\n{}", fitted.len(), fitted.join("\n"));
+        assert!(lines > 1000, "{lines} lines");
+    }
+
+    /// R in the Cross window shows the description of the Cross under the
+    /// cursor, by its form: with live play's Cross list mixing both games,
+    /// a Gregar Cross (HeatCross) in a Falzar player's window shows its own
+    /// description, in either language, not that of Falzar's Cross in its
+    /// place (SpoutCross); without a list, the version's Crosses in order.
+    #[test]
+    fn a_cross_of_a_mixed_list_shows_its_own_description() {
+        use nettai_battle::custom::CrossList;
+        let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6"));
+        let mut report = nettai_content::report::Report::default();
+        let root = nettai_content::root::read(dir, &mut report).expect("content/bn6 reads");
+        let mut c = Content::default();
+        c.scripts.modules = root.modules;
+        c.assets = nettai_battle::content::testing::asset_names_used(&c.scripts.modules);
+        c.strings = root.strings;
+        c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
+        let ja = nettai_content::locale::load(dir, "ja").unwrap().expect("ja.toml");
+        let form = |key: &str| c.defs.form_by_key(key).unwrap_or_else(|| panic!("no form {key}"));
+        let navi = c.defs.navi_by_key("megaman").expect("megaman");
+        let list = Unlocks {
+            cross_list: Some(CrossList::new(&[form("heatcross"), form("groundcross")])),
+            ..Unlocks::everything(GameVersion::Falzar)
+        };
+        let version = Unlocks::everything(GameVersion::Falzar);
+        let mut w = CrossWindow { count: 2, ..CrossWindow::default() };
+        w.offered[1] = 1;
+        for (language, table) in [(None, &c.strings), (Some(&ja), &ja)] {
+            let strings = DisplayText::new(language);
+            for (unlocks, cursor, key) in
+                [(&list, 0, "heatcross"), (&list, 1, "groundcross"), (&version, 0, "spoutcross"), (&version, 1, "tomahawkcross")]
+            {
+                w.cursor = cursor;
+                let said = cross_description(&c, &strings, unlocks, navi, &w).expect("a description");
+                let want = table.form(key).and_then(|f| f.description.as_deref());
+                assert_eq!(Some(said.text), want, "{key} in {:?}", table.language);
+            }
+        }
     }
 
     #[test]

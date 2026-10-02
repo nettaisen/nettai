@@ -180,8 +180,6 @@ impl Hash for Battle {
             turn_transforms,
             transform_seq,
             custom_reversion,
-            beast_out_used,
-            crossed,
             bug_frags,
             navi_levels,
             objects,
@@ -217,8 +215,6 @@ impl Hash for Battle {
         turn_transforms.hash(h);
         transform_seq.hash(h);
         custom_reversion.hash(h);
-        beast_out_used.hash(h);
-        crossed.hash(h);
         bug_frags.hash(h);
         navi_levels.hash(h);
         objects.hash(h);
