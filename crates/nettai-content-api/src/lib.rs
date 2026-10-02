@@ -54,7 +54,7 @@ pub use host::{
 };
 pub use registry::{
     ActionHandle, ChipHandle, CollisionHandle, EffectHandle, FormHandle, IdentityHandle, KindHandle, LockonHandle, NaviHandle,
-    RecordHandle, RegionHandle, Registry, SparkHandle, StageHandle, StatusHandle, WeaponHandle, valid_key,
+    PatchCardHandle, RecordHandle, RegionHandle, Registry, SparkHandle, StageHandle, StatusHandle, WeaponHandle, valid_key,
 };
 pub use state::{ContentState, FieldDef, FieldType, FieldValue, MAX_BYTES, Schema, StateId, Value};
 pub use types::{ObjectRef, PanelPos, Pool, SpriteId, Vec3};

@@ -393,6 +393,8 @@ export type PanelChange = {
 -- parts it hides; LifeAur's aura hides part 6 but for the local MegaMan),
 -- with its sounds as it rises (and grows back) and as it goes down.
 export type Barrier = {
+    -- The key a navi's stats name it by (its first barrier).
+    id: string?,
     behavior: BarrierBehavior,
     hp: number,
     threshold: number,

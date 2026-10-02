@@ -701,6 +701,9 @@ impl Battle {
             outcome: None,
             setup,
         };
+        // The players' patch cards change their stats before anything
+        // reads them.
+        crate::patch_cards::apply(&mut b);
         // Init's last steps: refresh every panel, then one unpaused panel
         // update.
         b.field.refresh_all(&b.content, &b.collision);

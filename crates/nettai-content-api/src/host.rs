@@ -157,6 +157,9 @@ pub enum HookCall {
     /// field-object registry class (none: it wasn't registered). Its result
     /// is unused.
     RoleEncased { obstacle: ObjectRef, ice: bool, class: Option<u8> },
+    /// `patch_cards(side)` (the round's start): apply the side's patch cards
+    /// to its stats; returns whether the stats then have a NaviCust bug.
+    RolePatchCards { side: u8 },
 }
 
 /// A content error: a bug in the content, or a script breaking the

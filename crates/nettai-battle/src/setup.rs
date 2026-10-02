@@ -130,8 +130,9 @@ pub struct NaviStats {
     pub rapid: u8,
     /// +0x03: buster charge level.
     pub charge: u8,
-    /// +0x06: the barrier the navi starts with (0 = none).
-    pub first_barrier: u8,
+    /// +0x06: the barrier the navi starts with (a `barrier` record of
+    /// lib/barriers; the byte 0: none).
+    pub first_barrier: Option<RecordHandle>,
     /// +0x08
     pub gauge_speed: GaugeSpeed,
     /// +0x09
@@ -162,6 +163,11 @@ pub struct NaviStats {
     pub beast_out_counter: u8,
     /// +0x22: fighting outdoors in the sun (some chips hit harder).
     pub sun: bool,
+    /// +0x26: what the NaviCust does to chip drops (1 its collector bug,
+    /// bit 2 Collect) and +0x28 to random encounters (1 its encounter
+    /// bug). No netbattle reads them; the patch cards' bug count does.
+    pub chip_drops: u8,
+    pub encounters: u8,
     /// +0x29
     pub navi: NaviHandle,
     /// +0x2B: a per-navi variant (selects its move lag).
@@ -218,6 +224,12 @@ impl NaviStats {
             }
             content.base_form()
         };
+        let barrier = |v: u8| -> Option<RecordHandle> {
+            if v != 0 {
+                panic!("bug code writes barrier type {v:#x} to NaviStats+{offset:#x}: a barrier by number is not supported");
+            }
+            None
+        };
         let flag = value != 0;
         let low = |w: &mut u16| *w = (*w & 0xFF00) | value as u16;
         let high = |w: &mut u16| *w = (*w & 0x00FF) | (value as u16) << 8;
@@ -229,7 +241,7 @@ impl NaviStats {
             0x03 => self.charge = value,
             0x04 => w.buster = weapon(value),
             0x05 => w.charge_shot = weapon(value),
-            0x06 => self.first_barrier = value,
+            0x06 => self.first_barrier = barrier(value),
             0x07 => w.back_special = weapon(value),
             0x08 => {
                 self.gauge_speed = match value {
@@ -270,6 +282,8 @@ impl NaviStats {
             0x22 => self.sun = flag,
             0x23 => self.super_armor = flag,
             0x24 => g.emotion = value,
+            0x26 => self.chip_drops = value,
+            0x28 => self.encounters = value,
             0x29 => panic!("bug code writes navi {value:#x} to NaviStats+0x29: a navi by number is not supported"),
             0x2B => self.navi_variant = value,
             0x2C => self.form = form(value),

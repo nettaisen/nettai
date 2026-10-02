@@ -64,6 +64,7 @@ pub fn setup() -> RoundSetup {
         bug_frags: 0,
         navi_level: 0,
         console: Default::default(),
+        patch_cards: Default::default(),
     };
     RoundSetup {
         content: content.hash(),

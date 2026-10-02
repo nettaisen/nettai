@@ -346,6 +346,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             bug_frags: 0,
             navi_level: 0,
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
+            patch_cards: Default::default(),
         }
     };
     RoundSetup {
