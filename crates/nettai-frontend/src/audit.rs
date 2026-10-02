@@ -13,14 +13,16 @@ use nettai_battle::{Battle, SoundCue};
 use std::collections::BTreeMap;
 
 /// Check that the pack's sound has the song a cue starts.
-pub fn check_cue(b: &Battle, bank: &m4a::SoundBank, cue: SoundCue, problems: &mut Problems) {
+pub fn check_cue(b: &Battle, banks: &[std::sync::Arc<m4a::SoundBank>], cue: SoundCue, problems: &mut Problems) {
     let id = match cue {
         SoundCue::Effect(id) => id,
         SoundCue::Music(id) if id != nettai_audio::NO_MUSIC => id,
         _ => return,
     };
-    // (The engine's sound is a handle; the bank's songs are its pack's.)
-    let song = b.content.assets.sound(id.0).map_or(id.0, |a| a.id);
+    // (The engine's sound is a handle; the song is its pack's, in that
+    // pack's bank: the first's for a frontend of one pack.)
+    let (pack, song) = b.content.assets.sound(id.0).map_or((0, id.0), |a| (a.pack.index(), a.id));
+    let bank = banks.get(pack).or(banks.first()).expect("a pack's sound");
     if bank.song(m4a::SongId(song)).is_some_and(|s| !s.tracks.is_empty()) {
         return;
     }
