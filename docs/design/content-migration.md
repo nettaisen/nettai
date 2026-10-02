@@ -62,7 +62,7 @@ roles (rules/roles.luau: what it starts, spawns and shows itself), never by numb
    (builders, shared kinds: lib/bombs, lib/swords, lib/grab); a kind several owners spawn in `objects/<kind>/`.
    A navi's own chip, weapons and kinds are in its folder; a form's in the form's. The shared definitions are
    rules/collision.luau, lib/effects.luau, lib/sparks.luau and lib/regions.luau: use the entry that is there
-   (one definition per collision type: `bn6-content check` refuses a second of the same row), or add the one
+   (one definition per collision type: `nettai-content check` refuses a second of the same row), or add the one
    you need, named by what it does.
 3. **Write the definitions.** `--!strict`; a header saying what it is, with the original's routine and object
    numbers; one local function per routine, commented with its name; the game's immediates as named constants.
@@ -96,14 +96,14 @@ roles (rules/roles.luau: what it starts, spawns and shows itself), never by numb
    Compat is edited by hand, as the modules are (nothing generates it any more); `gen-content check`
    compares every number in it with the ROM's (§5.2).
 5. **Roles.** When the ruleset must start, spawn or show the thing itself (a counter, a kind, the chip a
-   zeroed field reads), it is a role: the enum in crates/bn6-battle/src/content/roles.rs, its type in
+   zeroed field reads), it is a role: the enum in crates/nettai-battle/src/content/roles.rs, its type in
    core.d.luau's `RolesSpec`, and its entry in rules/roles.luau.
 6. **API.** When a script needs something the API lacks, add it: a `CoreApi` method
-   (crates/bn6-content-api/src/api.rs, documented with the routine it is), its implementation
-   (crates/bn6-battle/src/behavior/core_api.rs), its binding (crates/bn6-luau/src/bind.rs), and its declaration
+   (crates/nettai-content-api/src/api.rs, documented with the routine it is), its implementation
+   (crates/nettai-battle/src/behavior/core_api.rs), its binding (crates/nettai-luau/src/bind.rs), and its declaration
    with a comment in content/bn6/core.d.luau (types.d.luau for the families' types). It takes definitions and
    names, not numbers: a new set of flags or states is an enum with names in the API and a string-literal type
-   in core.d.luau, and gets a misuse case in bn6-content-check's type tests.
+   in core.d.luau, and gets a misuse case in nettai-content-check's type tests.
 7. **Test in the repository** (§5.1) and **against the traces and the chip lab** (§5.2).
 8. **Docs.** docs/engine describes the game; point its mentions of content at the module. How a family is
    composed goes in its module headers (`lib/<family>/`), and a pattern worth copying in §1's table.
@@ -156,7 +156,7 @@ The checker checks each module on its own, and `require` gives `any`. So:
   while_dimmed = true, ticks = 0x1E, is = collision.attack }`, `local PHASES: { [number]: (me: Object, s:
   State) -> () } = { [0] = call, [4] = recover }`. Without it the literal is unsealed and passes for any record
   whose required fields it has (a misspelled optional field isn't an error), and across a `require` nothing is
-  checked at all. `bn6-content-check` requires the annotation;
+  checked at all. `nettai-content-check` requires the annotation;
 - a literal written inline in a call to a definer or a typed function of the same module is checked there.
 
 ### 4.4 State and time
@@ -178,8 +178,8 @@ nothing sets), say what the original does and why the port differs.
 
 ### 5.1 In the repository
 
-In-repo tests never load game data. The test content (crates/bn6-battle/src/content/testing.rs) is its own
-modules (crates/bn6-battle/testdata/content: the test chips, navis, stages, statuses, lock-on modes and roles)
+In-repo tests never load game data. The test content (crates/nettai-battle/src/content/testing.rs) is its own
+modules (crates/nettai-battle/testdata/content: the test chips, navis, stages, statuses, lock-on modes and roles)
 plus content/bn6's modules, which it reads from the repository at test time, on made-up assets:
 
 - add the modules to `scripts()`'s list (what they `require` comes with them); the asset names they use
@@ -196,7 +196,7 @@ plus content/bn6's modules, which it reads from the repository at test time, on 
 Then:
 
 ```sh
-cargo run -p bn6-content-check -- content/bn6     # every module type-checks; the lints
+cargo run -p nettai-content-check -- content/bn6     # every module type-checks; the lints
 cargo build --workspace --all-targets             # no warnings
 cargo test --workspace                            # the engine, the rollback tests, the type check, the lints, the guards
 ```
