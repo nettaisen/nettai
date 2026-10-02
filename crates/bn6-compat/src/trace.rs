@@ -74,6 +74,18 @@ pub struct Setup {
     /// the frame number and 50 (machgun's two rounds), the same modulo 16.
     #[serde(default)]
     pub frame_counter: Option<u16>,
+    /// Both consoles' RNG1 on the setup's frame, by side (the recording
+    /// console's is also `rng1`), and their tag pairs (BattleState+0x44,
+    /// +0x45: the pair is in the folder, and where). Traces recorded
+    /// without them know the recording console's only.
+    #[serde(default)]
+    pub rng1s: Option<[u32; 2]>,
+    #[serde(default)]
+    pub tag_pairs: Option<[[u8; 2]; 2]>,
+    /// Both consoles' Regular-chip flags (BattleState+0x17: the folder's
+    /// Regular chip is still to come), by side.
+    #[serde(default)]
+    pub regular_flags: Option<[u8; 2]>,
     /// Both consoles' save event flag bytes that decide what the custom
     /// screen offers (`eEventFlags`+0x1C, +0x1D and +0x2C: flags 0xE0-0xEF
     /// and 0x160-0x167), hex, by side. Traces recorded without them read
@@ -326,8 +338,14 @@ impl Round {
         let local = bs[0x0D] == side;
         let stats = navi_stats(&self.setup.navi_stats[side as usize], ids);
         // BattleState+0x17 is the local console's Regular-chip flag; the
-        // other console's follows from its navi's folder (battle mode 0).
-        let regular = if local { bs[0x17] != 0 } else { stats.folder_reg[stats.folder as usize & 1] != 0xFF };
+        // other console's is in `regular_flags` when the trace has it, else
+        // it follows from its navi's folder (battle mode 0; a later round
+        // after the Regular chip's use reads it wrong).
+        let regular = match self.setup.regular_flags {
+            _ if local => bs[0x17] != 0,
+            Some(r) => r[side as usize & 1] != 0,
+            None => stats.folder_reg[stats.folder as usize & 1] != 0xFF,
+        };
         let folder = match &self.setup.folders {
             Some(f) => Some(codec::battle_folder(&unhex(&f[side as usize]), regular, ids)),
             None if local => Some(codec::battle_folder(&unhex(&self.setup.folder), regular, ids)),
@@ -356,8 +374,9 @@ impl Round {
 
     /// A player's console: the recording console's RNG1 and tag pair
     /// (BattleState+0x44/+0x45) as the setup has them. The other console's
-    /// aren't recorded: its RNG1 reads as 0 and it has no tag pair, which
-    /// only a re-deal on that player's screen would read. The save's
+    /// are in `rng1s` and `tag_pairs` when the trace has them; without
+    /// them its RNG1 reads as 0 and it has no tag pair, which only a
+    /// re-deal on that player's screen would read. The save's
     /// emotion window glitch (event flag 0x1720) is in the setups of
     /// traces recorded with it, for both consoles; without it, it reads as
     /// clear.
@@ -375,8 +394,12 @@ impl Round {
             Some(c) => (c as u32).wrapping_sub(1) & 0xFFFF,
             None => self.battle_frames().next().map_or(0, |f| f.frame + 1),
         };
+        // The other console's RNG1 and tag pair, when the trace has them.
         if bs[0x0D] != side {
-            return ConsoleSetup { emotion_window_glitch, frames, ..ConsoleSetup::default() };
+            let s = side as usize & 1;
+            let rng = self.setup.rng1s.map_or(0, |r| r[s]);
+            let tag_pair = self.setup.tag_pairs.and_then(|t| (t[s][0] != 0).then_some(t[s][1]));
+            return ConsoleSetup { rng, tag_pair, emotion_window_glitch, frames };
         }
         ConsoleSetup { rng: self.setup.rng1, tag_pair: (bs[0x44] != 0).then_some(bs[0x45]), emotion_window_glitch, frames }
     }
