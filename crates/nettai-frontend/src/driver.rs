@@ -43,6 +43,12 @@ pub trait Driver {
     fn prompt(&self, _b: &Battle) -> Option<String> {
         None
     }
+    /// The region of the console whose screen this is ("us" or "jp"): what
+    /// the original would show of the assets only one region's ROMs have
+    /// (`Renderer::console_region`).
+    fn console_region(&self) -> &'static str {
+        "us"
+    }
 }
 
 // ---- Trace playback ----------------------------------------------------------
@@ -127,6 +133,13 @@ impl Driver for TracePlayer {
 
     fn check(&self, b: &Battle) -> Vec<String> {
         self.current().map(|f| trace::compare(b, f, self.compat)).unwrap_or_default()
+    }
+
+    fn console_region(&self) -> &'static str {
+        match self.round.console_game() {
+            bn6_compat::Game::JpFalzar | bn6_compat::Game::JpGregar => "jp",
+            bn6_compat::Game::Falzar | bn6_compat::Game::Gregar => "us",
+        }
     }
 
     fn position(&self) -> String {

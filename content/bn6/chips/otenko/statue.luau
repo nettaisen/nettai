@@ -24,15 +24,24 @@ export type State = {
     count: number,
 }
 
--- (`sub_8011504`'s word: sprite 0C-00, with a shadow, animation 0.)
-local SPRITE = asset.sprite("sword")
--- Its identity: a field object with no look of its own.
+-- Its sprite (`sub_80DB108`'s, in `sub_80DB2C6`'s pool), with a shadow,
+-- animation 0: the Japanese ROMs' 0C-49, Otenko (animation 0 the puff he
+-- appears in, 1 Otenko). The US ROMs' 0C-49 is a placeholder, and their
+-- statue loads 0C-00, the swords' sheet, instead; the content shows the
+-- Japanese games' Otenko on every console (docs/engine/jp-differences.md
+-- §5).
+local SPRITE = asset.sprite("otenko")
+-- Its identity: a field object, which looks as Otenko when something takes
+-- its place (`byte_8021220`'s row for its NameID: DustMan's junk). That is
+-- the Japanese ROMs' row; the US ROMs' is the table's none, so DustMan
+-- throws no junk for it there (docs/engine/jp-differences.md §8, row 16).
+-- The content follows the Japanese games on every console.
 local IDENTITY = define.identity {
     id = "otenko",
     class = "field_object",
     version = 2,
     ai_index = 1,
-    look = { anim = 0, palette = 0, shadow = false },
+    look = { sprite = SPRITE, anim = 1, palette = 0, shadow = true },
 }
 local LIFETIME, HP = 0x708, 100
 -- It takes its panel after 5 ticks; it blesses every 5.
@@ -47,8 +56,9 @@ local SOUND_BREAK = asset.sound("panel-poison")
 -- What it is and reaches: another body of its side, hit modifier 3.
 local IS, HITS, HIT_MOD = collision.own_body, collision.hit_by_other_side, 3
 -- How it looks absorbed (the original's obstacle kind 0xE, a row of
--- `byte_80E98C0`: the AirSpin top's sprite, not its own).
-local ABSORBED = absorbed_obstacle.look { sprite = asset.sprite("air-spin") }
+-- `byte_80E98C0`): its own sprite, the Japanese ROMs' row. (The US ROMs'
+-- row is the AirSpin top's sprite, 0C-41.)
+local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 
 -- `sub_80DB198`: if its panel is solid without a body, it takes it after 5
 -- ticks; else it breaks.

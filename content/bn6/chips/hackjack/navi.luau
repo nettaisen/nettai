@@ -42,7 +42,7 @@ export type State = {
     next: number,
 }
 
-local SPRITE = asset.sprite("hackjack")
+local SPRITE = asset.sprite("count")
 local SOUND_APPEAR, SOUND_RAIN = asset.sound("appear"), asset.sound("drip-shower")
 
 -- The controller calls his spawner through r3, which his position takes
