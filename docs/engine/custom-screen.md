@@ -292,10 +292,14 @@ all twelve player-screens of the three scenarios match there too. Unit tests: cu
 **Who gets what** (per player; the original reads the local save):
 
 - The Beast Out button (slot 11) exists for MegaMan with Beast Out unlocked (event flag 0xE0) and event flag 0x163
-  clear. It is selectable unless the navi is worn out (emotion 5), already in a Beast form (form ≥ 0x0B), or tired
-  (emotion 1, the Beast Out counter spent) without having gone Beast Out this round.
-- The Cross window offers the version's five Crosses that the save owns (event flags 0xE7-0xEB), not used this
-  round, and not the navi's starting form; none when worn out.
+  clear (0x163 marks a link navi operated: it is raised and lowered with the navi, so MegaMan never has it). It is
+  selectable unless the navi is worn out (emotion 5), already in a Beast form (form ≥ 0x0B), or tired (emotion 1,
+  the Beast Out counter spent) without having gone Beast Out this round.
+- The Cross window offers the version's five Crosses that the save owns (Gregar's event flags 0xE2-0xE6, Falzar's
+  0xE7-0xEB), not used this round, and not the navi's starting form; none when worn out.
+- Recordings carry each console's flag bytes (the setup's `unlock_flags`); older ones, recorded with finished
+  saves, read as everything unlocked. The lab's `custom/one-cross-owned` and `custom/no-beast-out` are saves with
+  fewer.
 
 **Keys.** In the window: UP/DOWN (repeat) move with wrap-around, A chooses (once), B closes, START closes with the
 grid cursor on OK, R describes. With a Cross chosen, UP/DOWN/A are ignored; B on the grid with nothing picked
