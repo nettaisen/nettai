@@ -10,9 +10,10 @@
 //! it for viewing only.
 //!
 //! What a game version shows of its own (`VersionPictures`: its Beast's
-//! pictures, the emblems, its Crosses' names) is the base game's in the
-//! directory and another version's under its name (`gregar/`), listed in
-//! `versions`.
+//! pictures, the emblems, its Crosses' names) is an image a version, each
+//! named with its version (`cross-names-falzar.png`, `cross-names-gregar.png`;
+//! without another version's, `cross-names.png`): the base game's in `own`
+//! (its version `base_version`), the others' in `versions`.
 
 use crate::report::Report;
 use crate::sprite::read_json;
@@ -70,8 +71,10 @@ pub struct CustomDoc {
     pub empty_icon: TileImage,
     pub redeal_buttons: TileImage,
     pub scrap_buttons: TileImage,
-    /// The base game's own pictures, and other versions' (in a directory
-    /// under the version's name).
+    /// The base game's own pictures (its version, when another version has
+    /// its own), and the other versions'.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub base_version: String,
     pub own: VersionDoc,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub versions: Vec<VersionEntry>,
@@ -203,25 +206,22 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let redeal = picture("pictures/redeal.png", &p.redeal);
     let scrap = picture("pictures/scrap.png", &p.scrap);
     let other = picture("pictures/other.png", &p.other);
-    let mut version = |dir: &str, v: &VersionPictures, base: bool| {
-        let emblem_rows = if base { c.emblem_palettes.len() } else { 0 };
+    let vs = &c.versioned;
+    let mut version = |which: Option<&str>, v: &VersionPictures| {
+        let emblem_rows = if which.is_none() { c.emblem_palettes.len() } else { 0 };
         let names = v.cross_names.len() / CROSS_NAME_TILES;
+        let file = |name: &str| format!("{}.png", vs.name(name, which));
         VersionDoc {
-            beast_out: image(&format!("{dir}pictures/beast-out.png"), &v.beast_out.tiles, PICTURE, &v.beast_out_palettes, v.beast_out_palettes.len(), &none),
-            beast_buttons: image(&format!("{dir}beast-buttons.png"), &v.beast_buttons, Layout::Blocks { width: 4, height: 2, columns: 1 }, &[frame0], 0, &none),
-            emblems: image(&format!("{dir}emblems.png"), &v.emblems, ICONS(7), &c.emblem_palettes, emblem_rows, &|i| (i / 4) as u8),
-            cross_names: image(&format!("{dir}cross-names.png"), &v.cross_names, CROSS_NAME, &v.cross_palettes, v.cross_palettes.len(), &|i| {
+            beast_out: image(&file("pictures/beast-out"), &v.beast_out.tiles, PICTURE, &v.beast_out_palettes, v.beast_out_palettes.len(), &none),
+            beast_buttons: image(&file("beast-buttons"), &v.beast_buttons, Layout::Blocks { width: 4, height: 2, columns: 1 }, &[frame0], 0, &none),
+            emblems: image(&file("emblems"), &v.emblems, ICONS(7), &c.emblem_palettes, emblem_rows, &|i| (i / 4) as u8),
+            cross_names: image(&file("cross-names"), &v.cross_names, CROSS_NAME, &v.cross_palettes, v.cross_palettes.len(), &|i| {
                 ((i / CROSS_NAME_TILES).min(names.saturating_sub(1))) as u8
             }),
         }
     };
-    let own = version("", &c.versioned.base, true);
-    let versions = c
-        .versioned
-        .versions
-        .iter()
-        .map(|(name, v)| VersionEntry { version: name.clone(), own: version(&format!("{name}/"), v, false) })
-        .collect();
+    let own = version(None, &vs.base);
+    let versions = vs.versions.iter().map(|(name, v)| VersionEntry { version: name.clone(), own: version(Some(name), v) }).collect();
     let codes = image("codes.png", &c.codes, GLYPHS(28), &[frame0], 0, &none);
     let rows = element_rows(c);
     let elements = image("elements.png", &c.elements, ICONS(11), &rows, rows.len(), &|i| (i / 4) as u8);
@@ -259,6 +259,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         empty_icon,
         redeal_buttons,
         scrap_buttons,
+        base_version: if vs.versions.is_empty() { String::new() } else { vs.base_version.clone() },
         own,
         versions,
         cursor,
@@ -331,7 +332,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
     let (base, emblem_palettes) = version(&doc.own, report)?;
     let (cross_cursor, cross_cursor_palettes) = img(&doc.cross_cursor, report)?;
     let cross_cursor_palette = cross_cursor_palettes.first().copied().unwrap_or([0; 16]);
-    let mut versioned = Versioned::new(base);
+    let mut versioned = Versioned::new(&doc.base_version, base);
     for v in &doc.versions {
         versioned.versions.push((v.version.clone(), version(&v.own, report)?.0));
     }

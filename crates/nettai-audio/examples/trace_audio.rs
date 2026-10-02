@@ -11,7 +11,7 @@
 //! panics on something it doesn't implement yet).
 //!
 //! The content pack (the assets, among them the sound) comes from
-//! `bn6-extract content <rom> <pack>`; the battle content the engine runs
+//! `bn6-extract content <falzar-rom> <gregar-rom> <pack>`; the battle content the engine runs
 //! on is this repository's content/bn6 (or `$BN6_CONTENT`).
 
 use nettai_audio::{AudioOut, BattleAudio, FPS, SAMPLE_RATE, SoundCue, wav};
@@ -122,7 +122,7 @@ fn main() {
     let o = options();
     let fail = |r: nettai_content::report::Report| -> ! {
         eprintln!("{}: {r}
-(write a content pack with `bn6-extract content <rom> <pack>`)", o.pack);
+(write a content pack with `bn6-extract content <falzar-rom> <gregar-rom> <pack>`)", o.pack);
         std::process::exit(1);
     };
     let (bank, _) = nettai_content::pack::load_sound(Path::new(&o.pack)).unwrap_or_else(|r| fail(r));
