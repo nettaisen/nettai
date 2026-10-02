@@ -121,9 +121,23 @@ fn banner(rom: &Rom, id: u32) -> BannerLayout {
     BannerLayout { x, y, kind, glyphs, number_at }
 }
 
+/// An emotion-window face of a ROM, its mugshot palettes at `palettes`.
+fn mugshot(rom: &Rom, palettes: u32, e: u32) -> (Tiles, Palette) {
+    (tiles(rom, u32at(rom, MUGSHOTS + 4 * e), 0x100), palette(rom, palettes + 0x20 * e))
+}
+
+/// A link navi's face of a ROM's table.
+fn navi_mugshot(rom: &Rom, (faces, palettes): (u32, u32), n: u32) -> NaviMugshot {
+    NaviMugshot {
+        tiles: tiles(rom, faces + 0x100 * n, 0x100),
+        palettes: std::array::from_fn(|k| palette(rom, palettes + 0x40 * n + 0x20 * k as u32)),
+    }
+}
+
 /// The HUD's graphics; `names` gives the chip icons their chips' keys and
-/// the font its characters.
-pub fn hud(rom: &Rom, names: &AssetNames) -> Hud {
+/// the font its characters. Gregar's own faces and five chips' icons are
+/// the Gregar ROM's (`gregar`).
+pub fn hud(rom: &Rom, gregar: &Rom, names: &AssetNames) -> Hud {
     let mut hud_tiles = tiles(rom, HUD_TILES, 0x640);
     for g in [TIMES_GLYPH, TWO_GLYPH] {
         let t = tiles(rom, g, 0x40);
@@ -158,6 +172,7 @@ pub fn hud(rom: &Rom, names: &AssetNames) -> Hud {
         enemy_palette: palette(rom, ENEMY_PALETTE),
         chip_icons: (0..CHIP_COUNT)
             .map(|id| {
+                let rom = crate::gregar::chip_source(rom, gregar, id);
                 let p = u32at(rom, chip(id) + 0x20);
                 let icon = if (0x0800_0000..0x0A00_0000).contains(&p) { tiles(rom, p, 0x80) } else { Tiles::default() };
                 ChipIcon { key: names.chip_icon(id as u16), tiles: icon }
@@ -165,16 +180,20 @@ pub fn hud(rom: &Rom, names: &AssetNames) -> Hud {
             .collect(),
         hidden_icon: tiles(rom, HIDDEN_ICON, 0x80),
         icon_palette: palette(rom, ICON_PALETTE),
+        // The Falzar ROM's, then Gregar's own (`gregar::OWN_FACES`).
         mugshots: (0..MUGSHOT_COUNT)
-            .map(|e| (tiles(rom, u32at(rom, MUGSHOTS + 4 * e), 0x100), palette(rom, MUGSHOT_PALETTES + 0x20 * e)))
+            .map(|e| mugshot(rom, MUGSHOT_PALETTES, e))
+            .chain(crate::gregar::OWN_FACES.map(|e| mugshot(gregar, crate::gregar::MUGSHOT_PALETTES, e)))
             .collect(),
         counts: (0..=10u32).map(|n| tiles(rom, COUNTS + 0x80 * (10 - n), 0x80)).collect(),
         count_box: tiles(rom, COUNT_BOX, 0x80),
+        // The Falzar ROM's six, then Gregar's own five.
         navi_mugshots: (0..NAVI_MUGSHOT_COUNT)
-            .map(|n| NaviMugshot {
-                tiles: tiles(rom, NAVI_MUGSHOTS + 0x100 * n, 0x100),
-                palettes: std::array::from_fn(|k| palette(rom, NAVI_MUGSHOT_PALETTES + 0x40 * n + 0x20 * k as u32)),
-            })
+            .map(|n| navi_mugshot(rom, (NAVI_MUGSHOTS, NAVI_MUGSHOT_PALETTES), n))
+            .chain(
+                (0..crate::gregar::OWN_NAVI_FACES)
+                    .map(|n| navi_mugshot(gregar, (crate::gregar::NAVI_MUGSHOTS, crate::gregar::NAVI_MUGSHOT_PALETTES), n)),
+            )
             .collect(),
         navi_box: tiles(rom, NAVI_BOX, 0x80),
         pause,

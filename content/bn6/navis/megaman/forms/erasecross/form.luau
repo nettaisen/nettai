@@ -25,7 +25,7 @@ return define.form {
     palette = 13,
     -- Its faces in the emotion window, and once Beast Out is spent
     -- (`byte_801E700`): the Falzar ROM has no EraseCross face, and shows GroundCross's.
-    mugshot = { normal = asset.mugshot("groundcross"), tired = asset.mugshot("groundcross-tired") },
+    mugshot = { normal = asset.mugshot("erasecross"), tired = asset.mugshot("erasecross-tired") },
     -- The damage it adds to its family's damaging chips (dimming chips too).
     chip_bonus = { family = "cursor", damage = 30, dimming_chips = true },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.

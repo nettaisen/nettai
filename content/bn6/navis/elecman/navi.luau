@@ -15,7 +15,7 @@ return define.navi {
     banners = { win = asset.banner("elecman-win"), lose = asset.banner("elecman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`): the Falzar ROM has no
     -- ElecMan face, and shows TomahawkMan's.
-    mugshot = asset.mugshot("tomahawkman"),
+    mugshot = asset.mugshot("elecman"),
     merge_height = 0,
     run_message = { 20 },
     own_chip = { chip = elecman, code = "E" },

@@ -21,7 +21,7 @@ sound, in open formats (indexed PNG, JSON, Tiled maps, MIDI, TOML, WAV; see
 `docs/design/content-pack.md` and `docs/design/asset-formats.md`), by the
 names the content gives them. Extract it once:
 
-    cargo run -p bn6-extract -- content <rom> data/content/bn6
+    cargo run -p bn6-extract -- content <falzar-rom> <gregar-rom> data/content/bn6
 
 (`data/content/` is gitignored.) The frontend loads the pack at start-up
 from `--pack <dir>`, else `$BN6_PACK`, else `data/content/bn6`, straight
@@ -247,7 +247,9 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
 - the scrap and the re-deal: the column losing the scrapped picks, the
   slots dealt again, the emblem and the Regular chip's frame throughout;
 - a console's own pictures by its version (`Versioned`: a Gregar console's
-  Cross names, Beast and emblem, from the pack's `gregar/`);
+  Beast and emblem, the pack's `-gregar` assets); a Cross's name and
+  colours in the Cross window are its own game's (`custom::cross_picture`),
+  so a Gregar Cross shows Gregar's name in any window;
 - what the screen does to the rest: the HP box and the mugshot move right
   with the window and the field and the sprites 15 pixels down (the
   camera), the gauge and the HUD's "????" stay off until the local result
@@ -356,6 +358,18 @@ comparison leaves rows 152-159 out for those (no `vblank` file beside
 them).
 
 ## 5. Known gaps
+
+- **Deliberate: Gregar's true faces on a Falzar console.** The emotion
+  window shows every form's and link navi's own face, Gregar's from the
+  Gregar ROM, on either console (the user's choice). The original Falzar
+  console has no faces for Gregar's Crosses, Beast and link navis and shows
+  the Falzar counterpart's instead (HeatCross as SpoutCross); a frame that
+  shows a Gregar form or navi on a Falzar console differs there on purpose
+  (the sample's HeatMan, SlashMan and ChargeMan scenarios show one on every
+  frame). The headless frontend lists such places with each frame
+  (`known.tsv` beside the frames: frame, rectangle, why), and the
+  comparison leaves them out and counts those frames apart, not as
+  regressions.
 
 - The custom screen's chatbox (descriptions, the run message) isn't drawn
   yet; live play also shows the screen as text.
