@@ -149,6 +149,7 @@ impl Battle {
         Some(match end {
             RoundEnd::Over(r) => RoundEnd::Over(r.for_other_side()),
             RoundEnd::NextRound { settings, score } => RoundEnd::NextRound { settings, score: score.for_other_side() },
+            RoundEnd::Error(message) => RoundEnd::Error(message),
         })
     }
 }

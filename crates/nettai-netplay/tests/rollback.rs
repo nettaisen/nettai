@@ -25,9 +25,8 @@ fn content() -> Arc<nettai_battle::Content> {
 }
 
 /// Side 0's folder: GunDelSol chips, a navi chip (the eraser navi) and a
-/// dimming (the invisibility dimming chip). Side 1's: GunDelSols only, so
-/// that neither side can cut in on a dimming with one of its own (not
-/// implemented yet). The codes are the chips' own (A and *).
+/// dimming (the invisibility dimming chip). Side 1's: GunDelSols only. The
+/// codes are the chips' own (A and *).
 fn folders(c: &nettai_battle::Content) -> [nettai_battle::custom::BattleFolder; 2] {
     use testing::{ERASER, SUN_GUN_1, SUN_GUN_2, SUN_GUN_3, VEIL};
     [
@@ -115,7 +114,8 @@ fn run_latency(latency: u32, jitter: u32, present_delay: u32) {
             b.stalls,
             cues,
         );
-        assert!(report.in_sync(), "seed {seed}: {:?} {:?}", report.divergence, report.panicked);
+        assert!(report.in_sync(), "seed {seed}: {:?}", report.divergence);
+        assert!(matches!(report.end, Some(nettai_battle::RoundEnd::Over(_))), "seed {seed}: {:?}", report.end);
         assert!(report.over, "seed {seed}: the battle didn't end in {} frames", report.frames);
         if latency > present_delay {
             assert!(a.rollbacks > 0 && b.rollbacks > 0, "the latency should cause rollbacks");
@@ -176,7 +176,7 @@ fn recorded_events_ride_in_the_inputs() {
     let final_digest = g.battle.digest();
     for latency in [3, 8] {
         let report = Match::new(&start(7).battle, NetConfig::latency(latency, 2)).run(shares, &mut [(), ()], 30_000);
-        assert!(report.in_sync() && report.over, "latency {latency}: {:?} {:?}", report.divergence, report.panicked);
+        assert!(report.in_sync() && report.over, "latency {latency}: {:?} {:?}", report.divergence, report.end);
         assert!(report.frames as usize >= record.len());
         assert_eq!(report.lockstep[record.len()], final_digest);
         for settled in &report.settled {
@@ -208,16 +208,20 @@ fn the_local_side_is_part_of_the_shared_setup() {
 }
 
 /// Observers see every simulated frame once more per rollback, and the
-/// settled frames in order, each once.
+/// settled frames in order, each once, with the state after it where getgud
+/// kept one (the same states the simulator checks). The players' input
+/// ends at 3,000 frames: the peers settle all of them, and no peer
+/// simulates a frame past them.
 #[test]
 fn observers_see_every_simulated_and_settled_frame() {
     struct Count {
-        settled: Vec<u32>,
+        settled: u32,
+        with_state: Vec<u32>,
         simulated: u64,
         resimulated: u64,
         reached: u32,
     }
-    impl<G> Observer<G> for Count {
+    impl<G: Game> Observer<G> for Count {
         fn simulated(&mut self, frame: u32, _: &G) {
             if frame < self.reached {
                 self.resimulated += 1;
@@ -227,24 +231,108 @@ fn observers_see_every_simulated_and_settled_frame() {
                 self.simulated += 1;
             }
         }
-        fn confirmed(&mut self, frames: u32, settled: &Battle) {
-            assert!(self.settled.last().is_none_or(|&last| frames > last));
-            assert!(frames <= self.reached);
-            let _ = settled.digest();
-            self.settled.push(frames);
+        fn confirmed(&mut self, frame: u32, settled: Option<&Battle>) {
+            assert_eq!(frame, self.settled, "frames settle in order, each once");
+            assert!(frame < self.reached);
+            self.settled += 1;
+            if let Some(settled) = settled {
+                let _ = settled.digest();
+                self.with_state.push(frame + 1);
+            }
         }
     }
-    let new = || Count { settled: Vec::new(), simulated: 0, resimulated: 0, reached: 0 };
+    let new = || Count { settled: 0, with_state: Vec::new(), simulated: 0, resimulated: 0, reached: 0 };
     let mut counts = [new(), new()];
     let config = NetConfig { link: LinkConfig { latency: 4, jitter: 4 }, present_delay: 1, ..NetConfig::latency(4, 4) };
     let report = Match::new(&start(4), config).run(mashers(4), &mut counts, 3000);
     assert!(report.in_sync());
     assert_eq!(report.frames, 3000);
     for ((c, stats), settled) in counts.iter().zip(&report.peers).zip(&report.settled) {
-        assert_eq!(c.settled, settled.iter().map(|s| s.0).collect::<Vec<_>>());
+        assert_eq!(c.settled, 3000);
+        assert_eq!(c.reached, 3000, "nothing simulated past the end of the input");
+        assert_eq!(c.with_state, settled.iter().map(|s| s.0).collect::<Vec<_>>());
         assert_eq!((c.simulated, c.resimulated), (stats.simulated, stats.resimulated));
         assert!(stats.rollbacks > 0);
+        // Most rows' predictions held, and their states came along.
+        assert!(stats.promoted > 1500 && c.with_state.len() as u64 >= stats.promoted, "{stats:?}");
     }
+}
+
+/// An input the players never send: a tick that gets it panics.
+const POISON: u16 = 0x8000;
+
+/// The stand-in battle, but a tick on the poison input panics (as a
+/// content error or a state the original can't go on from would), and
+/// what it predicts after a player held L is the poison.
+#[derive(Clone)]
+struct Brittle(StandInBattle);
+
+impl Game for Brittle {
+    type Input = u16;
+    fn step(&mut self, inputs: [&u16; 2]) {
+        let clean = inputs.map(|i| i & !POISON);
+        self.0.step([&clean[0], &clean[1]]);
+        assert!(inputs.iter().all(|&&i| i & POISON == 0), "the poison input");
+    }
+    fn battle(&self) -> &Battle {
+        &self.0.battle
+    }
+    fn battle_mut(&mut self) -> &mut Battle {
+        &mut self.0.battle
+    }
+    fn predict(last: &u16) -> u16 {
+        if last & nettai_battle::input::keys::L != 0 { last | POISON } else { *last }
+    }
+}
+
+/// Counts the simulated frames on which the battle had stopped.
+#[derive(Default)]
+struct Stops(u64);
+
+impl Observer<Brittle> for Stops {
+    fn simulated(&mut self, _: u32, game: &Brittle) {
+        self.0 += game.0.battle.is_stopped() as u64;
+    }
+}
+
+/// A tick that panics on predicted input only (the poison a peer predicts
+/// after L) stops the speculated battle and nothing else: the real input
+/// rolls it back, and the match runs to the KO in sync, as without the
+/// poison.
+#[test]
+fn a_tick_that_panics_on_predicted_input_is_rolled_back() {
+    std::panic::set_hook(Box::new(|_| {}));
+    let brittle = Brittle(start(2));
+    let mut stops = [Stops::default(), Stops::default()];
+    let report = Match::new(&brittle, NetConfig::latency(5, 2)).run(mashers(2), &mut stops, 30_000);
+    let plain = Match::new(&start(2), NetConfig::latency(5, 2)).run(mashers(2), &mut [(), ()], 30_000);
+    eprintln!("predicted poison: {} and {} speculated ticks stopped; {} frames", stops[0].0, stops[1].0, report.frames);
+    assert!(report.in_sync(), "{:?}", report.divergence);
+    assert!(stops.iter().all(|s| s.0 > 0), "speculation reached the poison");
+    assert_eq!(report.end, plain.end);
+    assert!(matches!(report.end, Some(nettai_battle::RoundEnd::Over(_))));
+    assert_eq!(report.frames, plain.frames);
+}
+
+/// A tick that panics on confirmed input (player 1 sends the poison at
+/// frame 900) stops the battle on both peers alike, the lockstep run too:
+/// the match ends in sync, with the panic's message.
+#[test]
+fn a_tick_that_panics_on_confirmed_input_ends_the_match_on_both_peers() {
+    std::panic::set_hook(Box::new(|_| {}));
+    let mut mash = mashers(3);
+    let inputs = move |p: usize, f: u32| {
+        let b = mash(p, f) & !nettai_battle::input::keys::L;
+        if p == 1 && f == 900 { b | POISON } else { b }
+    };
+    let report = Match::new(&Brittle(start(3)), NetConfig::latency(4, 2)).run(inputs, &mut [(), ()], 30_000);
+    assert!(report.in_sync(), "{:?}", report.divergence);
+    assert!(report.over);
+    assert_eq!(report.end, Some(nettai_battle::RoundEnd::Error("the poison input".into())));
+    // Stopped at frame 900: the states after it are all the same.
+    let stopped = report.lockstep[901];
+    assert!(report.lockstep[901..].iter().all(|&d| d == stopped));
+    assert_ne!(report.lockstep[900], stopped);
 }
 
 /// Clock sync: a peer that starts ahead runs ahead of the other's input
