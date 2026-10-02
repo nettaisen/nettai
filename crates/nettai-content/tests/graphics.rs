@@ -98,7 +98,7 @@ fn bundle() -> Bundle {
         hp_box: (0..12).map(|i| entry(0x1A0 + i, 13, false, false)).collect(),
         gauge_frame: (0..36).map(|i| entry(0x222 + i % 3, 9, i % 2 == 0, false)).collect(),
         font: tiles(8, 9),
-        font_chars: [" ", "0", "A", "[EX]"].map(String::from).to_vec(),
+        font_chars: [" ", "0", "A", "\u{E002}"].map(String::from).to_vec(),
         enemy_digits: [tiles(20, 10), tiles(20, 11), tiles(20, 12)],
         enemy_palette: palette(43),
         chip_icons: vec![
@@ -152,7 +152,7 @@ fn bundle() -> Bundle {
             "ja".into(),
             HudLettering {
                 font: tiles(8, 34),
-                font_chars: [" ", "0", "ア", "[EX]"].map(String::from).to_vec(),
+                font_chars: [" ", "0", "ア", "\u{E002}"].map(String::from).to_vec(),
                 dialogue_font: DialogueFont {
                     pixels: (0..2 * 16 * 12).map(|i| (i % 3) as u8).collect(),
                     advances: vec![11, 11],

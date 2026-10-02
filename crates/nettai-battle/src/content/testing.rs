@@ -319,7 +319,7 @@ fn make() -> Content {
 }
 
 /// The test content's strings (testdata/content/locales/en.toml): its
-/// chips', navis' and forms' display text, whose shape the define phase
+/// chips' and navis' display text, whose shape the define phase
 /// counts (the navis' no-running message: 19 and 12 characters).
 pub fn strings() -> crate::content::strings::Strings {
     let file = format!("{TEST_CONTENT}/locales/en.toml");

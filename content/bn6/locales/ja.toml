@@ -54,8 +54,8 @@ bgdththd = { name = "バグデスサンダー", description = "Bためうちが�
 bigbomb = { name = "ビッグボム", description = "ばくふうが9マスに\nひろがるボムを\n3マス前になげる!" }
 bighook = { name = "ギガントフック", description = "よこ2マスぶんの\nコブシが2つ\nフックをはなつ!" }
 blastman = { name = "ブラストマン", description = "たて3れつにすすむ\nねっぷう攻撃!" }
-blastmn-ex = { name = "ブラストマン[EX]", description = "たて3れつにすすむ\nねっぷう攻撃!" }
-blastmn-sp = { name = "ブラストマン[SP]", description = "たて3れつにすすむ\nねっぷう攻撃!" }
+blastmn-ex = { name = "ブラストマン\uE002", description = "たて3れつにすすむ\nねっぷう攻撃!" }
+blastmn-sp = { name = "ブラストマン\uE003", description = "たて3れつにすすむ\nねっぷう攻撃!" }
 blkbomb = { name = "ブラックボム", description = "ふはつだんを\n3マス前になげる!\n炎攻撃でバクハツ!" }
 blzrdbal = { name = "ブリザードボール", description = "ものをまきこんで\n大きくなるユキダマ\nを前方へはっしゃ!" }
 bodygrd = { name = "ボディガード", description = "てきにワナをはる\n攻撃をうけると\nしゅりけん攻撃!" }
@@ -70,14 +70,14 @@ burnsqr3 = { name = "バーンスクエア3", description = "4マス四方の\n�
 busterup = { name = "バスターアップ", description = "そのバトル中\nバスターの攻撃力を\n1アップさせる!" }
 cannon = { name = "キャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 chrgeman = { name = "チャージマン", description = "前方へとっしん!\n後ろがあきマスだと\nかもつがついてくる" }
-chrgemn-ex = { name = "チャージマン[EX]", description = "前方へとっしん!\n後ろがあきマスだと\nかもつがついてくる" }
-chrgemn-sp = { name = "チャージマン[SP]", description = "前方へとっしん!\n後ろがあきマスだと\nかもつがついてくる" }
+chrgemn-ex = { name = "チャージマン\uE002", description = "前方へとっしん!\n後ろがあきマスだと\nかもつがついてくる" }
+chrgemn-sp = { name = "チャージマン\uE003", description = "前方へとっしん!\n後ろがあきマスだと\nかもつがついてくる" }
 circgun = { name = "サークルガン", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
 colarmy = { name = "カーネルアーミー", description = "しょうがいぶつから\nカーネルアーミーが\nあらわれて攻撃する" }
 colforce = { name = "カーネルフォース", description = "プレイヤーエリアの\nあいているマスから\nカーネルアーミー!" }
 colonel = { name = "カーネル", description = "てきエリアを\nZのかたちに\nきりつける!" }
-colonel-ex = { name = "カーネル[EX]", description = "てきエリアを\nZのかたちに\nきりつける!" }
-colonel-sp = { name = "カーネル[SP]", description = "てきエリアを\nZのかたちに\nきりつける!" }
+colonel-ex = { name = "カーネル\uE002", description = "てきエリアを\nZのかたちに\nきりつける!" }
+colonel-sp = { name = "カーネル\uE003", description = "てきエリアを\nZのかたちに\nきりつける!" }
 colorpt = { name = "カラーポイント", description = "自エリアをぎせいに\nしてつぎのチップの\n攻撃力を+10ずつ" }
 comingrd = { name = "カミングロード", description = "前方いちれつの\nてきエリアマスを\n左むきやじるしに" }
 copydmg = { name = "コピーダメージ", description = "カーソルのあいてに\nほかのてきがうけた\nダメージをコピー!" }
@@ -86,12 +86,12 @@ cornsht1 = { name = "コーンショット1", description = "ヒットしたと�
 cornsht2 = { name = "コーンショット2", description = "ヒットしたとき、\nおくにてきがいると\nゆうばくしていく!" }
 cornsht3 = { name = "コーンショット3", description = "ヒットしたとき、\nおくにてきがいると\nゆうばくしていく!" }
 count = { name = "ハクシャク", description = "てきエリアに\nちのあめをふらせ\nそのあとランス攻撃" }
-count-ex = { name = "ハクシャク[EX]", description = "てきエリアに\nちのあめをふらせ\nそのあとランス攻撃" }
-count-sp = { name = "ハクシャク[SP]", description = "てきエリアに\nちのあめをふらせ\nそのあとランス攻撃" }
+count-ex = { name = "ハクシャク\uE002", description = "てきエリアに\nちのあめをふらせ\nそのあとランス攻撃" }
+count-sp = { name = "ハクシャク\uE003", description = "てきエリアに\nちのあめをふらせ\nそのあとランス攻撃" }
 crakshot = { name = "クラックシュート", description = "目の前のパネルを\n前方へふっとばして\n攻撃する!" }
 crcusman = { name = "サーカスマン", description = "3マス前方のてきを\nオリで つかまえて\nみぐるみはいで攻撃" }
-crcusmn-ex = { name = "サーカスマン[EX]", description = "3マス前方のてきを\nオリで つかまえて\nみぐるみはいで攻撃" }
-crcusmn-sp = { name = "サーカスマン[SP]", description = "3マス前方のてきを\nオリで つかまえて\nみぐるみはいで攻撃" }
+crcusmn-ex = { name = "サーカスマン\uE002", description = "3マス前方のてきを\nオリで つかまえて\nみぐるみはいで攻撃" }
+crcusmn-sp = { name = "サーカスマン\uE003", description = "3マス前方のてきを\nオリで つかまえて\nみぐるみはいで攻撃" }
 crosover = { name = "クロスオーバー", description = "コラボレーション!\nロックマンとジャン\nゴのはさみうち攻撃" }
 crossdiv = { name = "クロスディバイド", description = "前方のてきを\nクロスにきりつける" }
 crosswrd = { name = "クロスソード", description = "ミテイ" }
@@ -111,8 +111,8 @@ deltaray = { name = "デルタレイエッジ", description = "きりつける�
 destpuls = { name = "デストロイパルス", description = "あいてにひどいバグ\nをひきおこすパルス\nをはなつ!" }
 discord = { name = "ディスコード", description = "ララチューバをおく\nえんそうちゅう\nあいてがこんらん!" }
 diveman = { name = "ダイブマン", description = "3れつぜんたいに\n2マス前まですすむ\nおおなみをおこす!" }
-diveman-ex = { name = "ダイブマン[EX]", description = "3れつぜんたいに\n2マス前まですすむ\nおおなみをおこす!" }
-diveman-sp = { name = "ダイブマン[SP]", description = "3れつぜんたいに\n2マス前まですすむ\nおおなみをおこす!" }
+diveman-ex = { name = "ダイブマン\uE002", description = "3れつぜんたいに\n2マス前まですすむ\nおおなみをおこす!" }
+diveman-sp = { name = "ダイブマン\uE003", description = "3れつぜんたいに\n2マス前まですすむ\nおおなみをおこす!" }
 django = { name = "ジャンゴ", description = "前方へ向かって\nバイクにのった\nジャンゴがとつげき" }
 django2 = { name = "ジャンゴV2", description = "前方へ向かって\nバイクにのった\nジャンゴがとつげき" }
 django3 = { name = "ジャンゴV3", description = "前方へ向かって\nバイクにのった\nジャンゴがとつげき" }
@@ -126,26 +126,26 @@ drksword = { name = "ダークソード", description = "\n\n" }
 dublshot = { name = "ダブルシュート", description = "目の前のよこ2マス\nのパネルを 前方へ\nふっとばして攻撃!" }
 dustbrk = { name = "ダストブレイク", description = "前方のてきを\nすいよせて目の前に\nプレス攻撃をする!" }
 dustman = { name = "ダストマン", description = "前方のてきを攻撃\nおきものがあると\nすいこんではっしゃ" }
-dustman-ex = { name = "ダストマン[EX]", description = "前方のてきを攻撃\nおきものがあると\nすいこんではっしゃ" }
-dustman-sp = { name = "ダストマン[SP]", description = "前方のてきを攻撃\nおきものがあると\nすいこんではっしゃ" }
+dustman-ex = { name = "ダストマン\uE002", description = "前方のてきを攻撃\nおきものがあると\nすいこんではっしゃ" }
+dustman-sp = { name = "ダストマン\uE003", description = "前方のてきを攻撃\nおきものがあると\nすいこんではっしゃ" }
 edeletbm = { name = "Kデスビーム", description = "前方へかんつうする\nビームをはなつ!" }
 elcpuls1 = { name = "エレキパルス1", description = "ほうしゃじょうに\nひろがるでんぱ攻撃\nあいてをマヒさせる" }
 elcpuls2 = { name = "エレキパルス2", description = "ほうしゃじょうに\nひろがるでんぱ攻撃\nあいてをひきよせる" }
 elcpuls3 = { name = "エレキパルス3", description = "ほうしゃじょうに\nひろがるでんぱ攻撃\nHPバグをあたえる" }
 elecdrgn = { name = "エレキドラゴン", description = "ちかいてきのいる\nれつからドラゴン!\nたて2れつを攻撃!" }
 elecman = { name = "エレキマン", description = "じぶんのしゅうい\n2マスはんいに\nらくらい攻撃!" }
-elecman-ex = { name = "エレキマン[EX]", description = "じぶんのしゅうい\n2マスはんいに\nらくらい攻撃!" }
-elecman-sp = { name = "エレキマン[SP]", description = "じぶんのしゅうい\n2マスはんいに\nらくらい攻撃!" }
+elecman-ex = { name = "エレキマン\uE002", description = "じぶんのしゅうい\n2マスはんいに\nらくらい攻撃!" }
+elecman-sp = { name = "エレキマン\uE003", description = "じぶんのしゅうい\n2マスはんいに\nらくらい攻撃!" }
 elecswrd = { name = "エレキソード", description = "目の前のたて3マス\nをきりつける\n電気のソード!" }
 elemswrd = { name = "エレメントソード", description = "くさむら、こおり、\n火口パネルのうえに\nいるてきをきる!" }
 elemtrap = { name = "エレメントラップ", description = "てきにワナをはる\nあいてが属性攻撃を\nつかうとはつどう!" }
 elmntman = { name = "エレメントマン", description = "いろがかわるのを\nAボタンでとめて\nその属性の攻撃!" }
-elmntmn-ex = { name = "エレメントマン[EX]", description = "いろがかわるのを\nAボタンでとめて\nその属性の攻撃!" }
-elmntmn-sp = { name = "エレメントマン[SP]", description = "いろがかわるのを\nAボタンでとめて\nその属性の攻撃!" }
+elmntmn-ex = { name = "エレメントマン\uE002", description = "いろがかわるのを\nAボタンでとめて\nその属性の攻撃!" }
+elmntmn-sp = { name = "エレメントマン\uE003", description = "いろがかわるのを\nAボタンでとめて\nその属性の攻撃!" }
 energbom = { name = "エナジーボム", description = "3マス前に\nれんぞくばくふうの\nボムをなげつける" }
 eraseman = { name = "キラーマン", description = "3方向にうごく\nサイトをAボタンで\nとめてビーム攻撃" }
-erasemn-ex = { name = "キラーマン[EX]", description = "3方向にうごく\nサイトをAボタンで\nとめてビーム攻撃" }
-erasemn-sp = { name = "キラーマン[SP]", description = "3方向にうごく\nサイトをAボタンで\nとめてビーム攻撃" }
+erasemn-ex = { name = "キラーマン\uE002", description = "3方向にうごく\nサイトをAボタンで\nとめてビーム攻撃" }
+erasemn-sp = { name = "キラーマン\uE003", description = "3方向にうごく\nサイトをAボタンで\nとめてビーム攻撃" }
 etomahwk = { name = "Eトマホーク", description = "前方1れつを\n攻撃する大オノを\nふりおろす!" }
 # (The ROMs print a gift's text here, kept in the save: an `FF 01 nn` script. This is the
 # text Tango's netplay saves for EXE6 hold: tango-gamesupport-bn6 saves/f_jp.raw, offset 0x83A.)
@@ -186,8 +186,8 @@ greatyo = { name = "ヨーヨーグレート", description = "たて3れつに\n
 # text Tango's netplay saves for EXE6 hold: tango-gamesupport-bn6 saves/g_jp.raw, offset 0x83A.)
 gregar = { name = "グレイガ", description = "電脳獣グレイガが\nブレス攻撃!\nすべてをやきつくす" }
 grndman = { name = "グランドマン", description = "前方へすすんでいき\n画面はしをドリルで\nほってらくせき攻撃" }
-grndman-ex = { name = "グランドマン[EX]", description = "前方へすすんでいき\n画面はしをドリルで\nほってらくせき攻撃" }
-grndman-sp = { name = "グランドマン[SP]", description = "前方へすすんでいき\n画面はしをドリルで\nほってらくせき攻撃" }
+grndman-ex = { name = "グランドマン\uE002", description = "前方へすすんでいき\n画面はしをドリルで\nほってらくせき攻撃" }
+grndman-sp = { name = "グランドマン\uE003", description = "前方へすすんでいき\n画面はしをドリルで\nほってらくせき攻撃" }
 guardian = { name = "オジゾウサン", description = "目の前のマスに\nこわしてはいけない\nオジゾウサンをおく" }
 gundelex = { name = "ガンデルソルEX", description = "さらにこうはんいに\nたいようこうせんを\nしょうしゃする!" }
 gundels1 = { name = "ガンデルソル1", description = "2マス前方の\nたて3マスに日の光\nをしょうしゃする!" }
@@ -197,8 +197,8 @@ h-burst = { name = "ハイパーバースト", description = "ヒットすると
 healball = { name = "ヒーリングボール", description = "ミテイ" }
 heatdrgn = { name = "ヒートドラゴン", description = "ちかいてきのいる\nれつからドラゴン!\nたて2れつを攻撃!" }
 heatman = { name = "ヒートマン", description = "前方たて3れつに\nほうしゃじょうに\nひろがる炎攻撃!" }
-heatman-ex = { name = "ヒートマン[EX]", description = "前方たて3れつに\nほうしゃじょうに\nひろがる炎攻撃!" }
-heatman-sp = { name = "ヒートマン[SP]", description = "前方たて3れつに\nほうしゃじょうに\nひろがる炎攻撃!" }
+heatman-ex = { name = "ヒートマン\uE002", description = "前方たて3れつに\nほうしゃじょうに\nひろがる炎攻撃!" }
+heatman-sp = { name = "ヒートマン\uE003", description = "前方たて3れつに\nほうしゃじょうに\nひろがる炎攻撃!" }
 heatpres = { name = "ヒートプレス", description = "3マス前方に\nとびこんで十字に\nひろがる炎攻撃!" }
 hiboomer = { name = "ハイブーメラン", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
 hicannon = { name = "ハイキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
@@ -213,8 +213,8 @@ ironshl1 = { name = "アイアンシェル1", description = "かんつうする�
 ironshl2 = { name = "アイアンシェル2", description = "かんつうするこうら\nを前方へはっしゃ!\n画面はしで2ヒット" }
 ironshl3 = { name = "アイアンシェル3", description = "かんつうするこうら\nを前方へはっしゃ!\n画面はしで2ヒット" }
 judgeman = { name = "ジャッジマン", description = "よこ3マスにムチ!\nさらにパネルをぬす\nんだあいてにさばき" }
-judgemn-ex = { name = "ジャッジマン[EX]", description = "よこ3マスにムチ!\nさらにパネルをぬす\nんだあいてにさばき" }
-judgemn-sp = { name = "ジャッジマン[SP]", description = "よこ3マスにムチ!\nさらにパネルをぬす\nんだあいてにさばき" }
+judgemn-ex = { name = "ジャッジマン\uE002", description = "よこ3マスにムチ!\nさらにパネルをぬす\nんだあいてにさばき" }
+judgemn-sp = { name = "ジャッジマン\uE003", description = "よこ3マスにムチ!\nさらにパネルをぬす\nんだあいてにさばき" }
 justcone = { name = "ジャスティスワン", description = "左から5れつめ\nまん中のマスに\nせいぎのコブシ!" }
 lance = { name = "バンブーランス", description = "てきエリアの右はし\nたてれつにとつぜん\nたけやりが発生!" }
 lifeaur = { name = "ドリームオーラ", description = "攻撃力が200より\nひくい攻撃を\nむこうかするオーラ" }
@@ -257,8 +257,8 @@ pnlretrn = { name = "パネルリターン", description = "自分のエリア�
 poisphar = { name = "ポイズンファラオ", description = "目の前にどくを\nはっせいさせる\nファラオぞうをおく" }
 poisseed = { name = "ポイズンシード", description = "3マス前にタネ!\n9マス分のパネルを\nどくぬまにする!" }
 protoman = { name = "ブルース", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
-protomn-ex = { name = "ブルース[EX]", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
-protomn-sp = { name = "ブルース[SP]", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+protomn-ex = { name = "ブルース\uE002", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+protomn-sp = { name = "ブルース\uE003", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
 prpcapsl = { name = "パープルカプセル", description = "1つ前にえらんだ\n攻撃チップに\nHPバグをつける" }
 puncharm = { name = "パンチアーム", description = "\n\n" }
 punisher = { name = "バチアタリ", description = "ミテイ" }
@@ -298,15 +298,15 @@ sensor2 = { name = "キラーセンサー2", description = "キラーズアイ�
 sensor3 = { name = "キラーセンサー3", description = "キラーズアイをおく\nセンサーにてきが\nかかるとビーム攻撃" }
 silence = { name = "サイレンス", description = "ララミュートをおく\nえんそうちゅう\nあいてはもうもくに" }
 slashman = { name = "スラッシュマン", description = "ナイフをなげつけ\nさらにちかくのてき\n1体をきりつける!" }
-slashmn-ex = { name = "スラッシュマン[EX]", description = "ナイフをなげつけ\nさらにちかくのてき\n1体をきりつける!" }
-slashmn-sp = { name = "スラッシュマン[SP]", description = "ナイフをなげつけ\nさらにちかくのてき\n1体をきりつける!" }
+slashmn-ex = { name = "スラッシュマン\uE002", description = "ナイフをなげつけ\nさらにちかくのてき\n1体をきりつける!" }
+slashmn-sp = { name = "スラッシュマン\uE003", description = "ナイフをなげつけ\nさらにちかくのてき\n1体をきりつける!" }
 slogauge = { name = "ヘビーゲージ", description = "カスタムゲージの\nスピードがおちる" }
 snake = { name = "カモンスネーク", description = "じぶんのエリアの\nあなマスから\nヘビがとんでいく!" }
 snctuary = { name = "サンクチュアリ", description = "自分のエリアの\nすべてのマスを\nホーリーパネルに!" }
 sonicbom = { name = "ソニックブーム", description = "ミテイ" }
 spoutman = { name = "アクアマン", description = "2マス前に水攻撃\nうしろのたて2れつ\nだとパワーアップ" }
-spoutmn-ex = { name = "アクアマン[EX]", description = "2マス前に水攻撃\nうしろのたて2れつ\nだとパワーアップ" }
-spoutmn-sp = { name = "アクアマン[SP]", description = "2マス前に水攻撃\nうしろのたて2れつ\nだとパワーアップ" }
+spoutmn-ex = { name = "アクアマン\uE002", description = "2マス前に水攻撃\nうしろのたて2れつ\nだとパワーアップ" }
+spoutmn-sp = { name = "アクアマン\uE003", description = "2マス前に水攻撃\nうしろのたて2れつ\nだとパワーアップ" }
 spreadr1 = { name = "スプレッドガン1", description = "ヒットすると\nまわりの1マスに\nゆうばく!" }
 spreadr2 = { name = "スプレッドガン2", description = "ヒットすると\nまわりの1マスに\nゆうばく!" }
 spreadr3 = { name = "スプレッドガン3", description = "ヒットすると\nまわりの1マスに\nゆうばく!" }
@@ -328,8 +328,8 @@ tankcan1 = { name = "センシャホウ1", description = "前方にほうげき!
 tankcan2 = { name = "センシャホウ2", description = "前方にほうげき!\n画面はしにとどくと\nたて3マスばくふう" }
 tankcan3 = { name = "センシャホウ3", description = "前方にほうげき!\n画面はしにとどくと\nたて3マスばくふう" }
 tenguman = { name = "テングマン", description = "手前のよこ2れつを\nひこう攻撃したあと\nななめにも攻撃する" }
-tengumn-ex = { name = "テングマン[EX]", description = "手前のよこ2れつを\nひこう攻撃したあと\nななめにも攻撃する" }
-tengumn-sp = { name = "テングマン[SP]", description = "手前のよこ2れつを\nひこう攻撃したあと\nななめにも攻撃する" }
+tengumn-ex = { name = "テングマン\uE002", description = "手前のよこ2れつを\nひこう攻撃したあと\nななめにも攻撃する" }
+tengumn-sp = { name = "テングマン\uE003", description = "手前のよこ2れつを\nひこう攻撃したあと\nななめにも攻撃する" }
 thunder = { name = "サンダーボール", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
 timebom = { name = "ギガカウントボム", description = "前方のてきエリアの\n左はしマスに\nギガカウントボム!" }
 timebom1 = { name = "カウントボム1", description = "3びょうごに\nばくはつするボムを\nてきエリアにおく!" }
@@ -337,8 +337,8 @@ timebom2 = { name = "カウントボム2", description = "3びょうごに\nば�
 timebom3 = { name = "カウントボム3", description = "3びょうごに\nばくはつするボムを\nてきエリアにおく!" }
 timpani = { name = "ティンパニー", description = "ララボーンをおく\nえんそうちゅう\nじしんであしどめ!" }
 tmhkman = { name = "トマホークマン", description = "よこ2、たて3の\nはんいをきりつける\nトマホークスイング" }
-tmhkman-ex = { name = "トマホークマン[EX]", description = "よこ2、たて3の\nはんいをきりつける\nトマホークスイング" }
-tmhkman-sp = { name = "トマホークマン[SP]", description = "よこ2、たて3の\nはんいをきりつける\nトマホークスイング" }
+tmhkman-ex = { name = "トマホークマン\uE002", description = "よこ2、たて3の\nはんいをきりつける\nトマホークスイング" }
+tmhkman-sp = { name = "トマホークマン\uE003", description = "よこ2、たて3の\nはんいをきりつける\nトマホークスイング" }
 tornado = { name = "トルネード", description = "2マス前方に\n8ヒットのたつまき\nを発生させる!" }
 trnarrw1 = { name = "トレインアロー1", description = "前方のてきにアロー\nてきとのキョリが\nはなれてるほどよい" }
 trnarrw2 = { name = "トレインアロー2", description = "前方のてきにアロー\nてきとのキョリが\nはなれてるほどよい" }
@@ -391,9 +391,9 @@ erasecross = { description = "HPに4のすうじがあると\n無属性チップ
 groundcross = { description = "ブレイクチップが攻撃力+10\nブレイクタメうちでらくせき!\nスーパーアーマーがON!" }
 heatcross = { description = "炎チップの攻撃力が+50!\nバスター攻撃力が+1!" }
 slashcross = { description = "ソードチップの攻撃力が+50\nソードチップをタメうちすると\nとんでいくようになる!" }
-spoutcross = { description = "水チップタメうちで攻撃力[cross]2\n水チップでHPかいふく" }
+spoutcross = { description = "水チップタメうちで攻撃力✕2\n水チップでHPかいふく" }
 tengucross = { description = "風チップの攻撃力が+10!\nエアシューズがON!\nB+左でスイコミ!" }
-tomahawkcross = { description = "木チップタメうちで攻撃力[cross]2\nマヒやこんらんなどにならない\nステータスガード!" }
+tomahawkcross = { description = "木チップタメうちで攻撃力✕2\nマヒやこんらんなどにならない\nステータスガード!" }
 
 [records]
 "patch-card/airman" = { name = "エアーマン" }
