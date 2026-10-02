@@ -10,7 +10,7 @@
 //! descriptions) aren't assets: their translations are the content root's
 //! (docs/design/text-rendering.md §10).
 
-use crate::{Bundle, CustomScreen, DialogueFont, Hud, Palette, SlotPictures, Tiles};
+use crate::{BannerLayout, Bundle, CustomScreen, DialogueFont, Hud, Palette, SlotPictures, Tiles};
 
 /// The language of a pack that doesn't say (one extracted from the US
 /// ROMs).
@@ -26,9 +26,10 @@ pub struct HudLettering {
     pub dialogue_font: DialogueFont,
     /// The HUD's text lines in this font's glyphs (`Hud::texts`).
     pub texts: Vec<Vec<u16>>,
-    /// The glyphs of the banners whose words differ, by banner id / 4
-    /// (none: the pack's own banner's), and the banners' palette.
-    pub banners: Vec<Option<Tiles>>,
+    /// The banners whose words differ, by banner id / 4 (none: the pack's
+    /// own banner), each with its place (a longer name starts further
+    /// left), and the banners' palette.
+    pub banners: Vec<Option<BannerLayout>>,
     pub banner_palette: Palette,
     /// "Cstmzing..." (two rows of tiles, as wide as its words) and its
     /// palette.
@@ -67,9 +68,9 @@ impl Hud {
         std::mem::swap(&mut self.font_chars, &mut l.font_chars);
         std::mem::swap(&mut self.dialogue_font, &mut l.dialogue_font);
         std::mem::swap(&mut self.texts, &mut l.texts);
-        for (b, glyphs) in self.banners.iter_mut().zip(l.banners.iter_mut()) {
-            if let Some(g) = glyphs {
-                std::mem::swap(&mut b.glyphs, g);
+        for (b, own) in self.banners.iter_mut().zip(l.banners.iter_mut()) {
+            if let Some(own) = own {
+                std::mem::swap(b, own);
             }
         }
         std::mem::swap(&mut self.banner_palette, &mut l.banner_palette);
@@ -134,7 +135,7 @@ impl Bundle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BannerLayout, Picture, VersionPictures, Versioned};
+    use crate::{Picture, VersionPictures, Versioned};
 
     fn tiles(v: u8, n: usize) -> Tiles {
         Tiles { pixels: vec![v; n * Tiles::TILE] }
@@ -155,7 +156,7 @@ mod tests {
                     font: tiles(2, 2),
                     font_chars: vec!["ア".into()],
                     texts: vec![vec![5]],
-                    banners: vec![None, Some(tiles(2, 2))],
+                    banners: vec![None, Some(BannerLayout { x: 4, glyphs: tiles(2, 2), ..Default::default() })],
                     banner_palette: [7; 16],
                     waiting: tiles(2, 14),
                     waiting_palette: [7; 16],
@@ -184,7 +185,7 @@ mod tests {
         let ja = en.clone().in_language("ja").unwrap();
         assert_eq!((ja.hud.language(), ja.hud.font_chars.as_slice()), ("ja", &["ア".to_string()][..]));
         assert_eq!(ja.hud.banners[0].glyphs, tiles(1, 2), "a banner the language doesn't change stays");
-        assert_eq!(ja.hud.banners[1].glyphs, tiles(2, 2));
+        assert_eq!((ja.hud.banners[1].x, &ja.hud.banners[1].glyphs), (4, &tiles(2, 2)));
         assert_eq!((ja.hud.waiting.len(), ja.hud.banner_palette), (14, [7; 16]));
         assert_eq!(ja.custom.pictures.ok.tiles, tiles(2, 42));
         assert_eq!(ja.custom.versioned.base.cross_names, tiles(2, 18));
