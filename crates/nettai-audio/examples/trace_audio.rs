@@ -133,10 +133,11 @@ fn main() {
         eprintln!("{}: {e}", o.trace);
         std::process::exit(1);
     });
+    let songs = nettai_audio::Songs::of(&content.assets);
     let mut sink = match &o.wav {
-        Some(_) => Sink::Offline { audio: BattleAudio::new(bank), samples: Vec::new() },
+        Some(_) => Sink::Offline { audio: BattleAudio::new(bank, songs), samples: Vec::new() },
         None => {
-            let out = AudioOut::new(bank).unwrap_or_else(|e| {
+            let out = AudioOut::new(bank, songs).unwrap_or_else(|e| {
                 eprintln!("{e} (use --wav to render to a file)");
                 std::process::exit(1);
             });

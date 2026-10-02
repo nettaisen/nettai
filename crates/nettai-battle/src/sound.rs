@@ -9,12 +9,14 @@
 //! a tick can run more than once: `cues` plays each cue once.
 //! See docs/engine/audio.md and docs/design/rollback.md.
 
-/// A sound asset as the pack identifies it (for BN6's pack, an entry of
-/// the game's song table, which music and sound effects share). The engine
-/// names none itself: content does (`asset.sound`), and what the ruleset
-/// plays it gets by role (`Roles::sound`, `Roles::music`) or from a
-/// definition (a stage's music, a panel type's trail sound).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// A sound asset: its handle over the loaded packs' sounds (`AssetNames`:
+/// what its pack numbers it, for BN6's pack an entry of the game's song
+/// table, is the audio's and compat's to look up). The engine names none
+/// itself: content does (`asset.sound`), and what the ruleset plays it gets
+/// by role (`Roles::sound`, `Roles::music`) or from a definition (a stage's
+/// music, a panel type's trail sound).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
 pub struct SoundId(pub u16);
 
 /// A sound call of the original, as the engine reports it.

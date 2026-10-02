@@ -108,7 +108,8 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
     let stages: Vec<Choice<_>> =
         nettai_match::link_battle_stages(c).into_iter().map(|s| Choice { label: c.defs.stage(s).key.clone(), value: s }).collect();
     let mut backgrounds: Vec<Choice<Option<String>>> = vec![Choice { label: "the stage's own".into(), value: None }];
-    backgrounds.extend(c.assets.backgrounds.keys().map(|b| Choice { label: b.clone(), value: Some(b.clone()) }));
+    // (By the name a match writes: the content's own pack's, unqualified.)
+    backgrounds.extend(c.assets.backgrounds.keys().map(|b| nettai_content_api::keys::local(b).to_string()).map(|b| Choice { label: b.clone(), value: Some(b) }));
     let place = |i: usize, p: &nettai_match::Place| -> Element<Msg> {
         let stage = Choice { label: c.defs.stage(p.stage).key.clone(), value: p.stage };
         let bg = Choice { label: p.background.clone().unwrap_or("the stage's own".into()), value: p.background.clone() };

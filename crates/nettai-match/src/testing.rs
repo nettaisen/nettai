@@ -13,14 +13,14 @@ pub fn bn6_content() -> Arc<Content> {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
         let mut c = Content::default();
         c.scripts = nettai_battle::content::Scripts::root(nettai_battle::content::RootManifest::named("bn6"), testing::modules_under(dir));
-        c.assets = testing::asset_names_used(&c.scripts.modules);
+        c.assets = testing::asset_names_for(&c.scripts);
         c.strings = nettai_content::locale::load_all(std::path::Path::new(dir), nettai_content::locale::OWN)
             .and_then(|s| s.ok_or_else(|| "no locales/en.toml".into()))
             .unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        let mut navi = testing::content().animations.sprites[&testing::NAVI_SPRITE].clone();
+        let mut navi = testing::content().animations.sprites[&testing::sprite(testing::NAVI_SPRITE)].clone();
         navi.resize(0x40, navi[1].clone());
-        for &id in c.assets.sprites.values() {
-            c.animations.sprites.insert(id, navi.clone());
+        for h in 0..c.assets.sprites.len() {
+            c.animations.sprites.insert(nettai_battle::content::SpriteId(h as u16), navi.clone());
         }
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
         Arc::new(c)

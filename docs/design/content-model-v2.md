@@ -2943,7 +2943,9 @@ Numbers that remain for other reasons, and are not names of content:
 
 - **The assets' own identities.** The pack identifies a sprite by its category and index and a sound by its
   song-table entry, as the extractor wrote them; content and the ruleset name assets by name or by role, and
-  the pack's asset index (assets.toml) maps the names.
+  the pack's asset index (assets.toml) maps the names. Since rules-in-luau.md's R3a the engine knows an asset by
+  its handle over the loaded packs' names alone (`SpriteId`, `SoundId`, ... are handles); a pack's own numbers are
+  read at the edges (the frontend, the audio, compat).
 - **The game's values**: tick counts, damage, a flags word compared whole, a chip's library number, a stage's
   battle number; a hit's bug code, which names a NaviStats byte by its offset as the game's does (bug codes have
   no definition); and the engine's own progress numbers (an object's state, action and phase, the navi

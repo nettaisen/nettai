@@ -131,10 +131,10 @@ fn record_arg(b: &Bound, v: &LuaValue, what: &str) -> mlua::Result<u16> {
     }
 }
 
-/// A sound asset: the pack's id for it.
+/// A sound asset: its handle.
 fn sound_arg(v: LuaValue) -> mlua::Result<u16> {
     bound(|b| match b.asset(&v) {
-        Some((AssetKind::Sound, h)) => b.with_names(|n| n.sound(h)).ok_or_else(|| mlua::Error::runtime("no such sound")),
+        Some((AssetKind::Sound, h)) => Ok(h),
         _ => Err(mlua::Error::runtime(format!("expected a sound (asset.sound), got {}", v.type_name()))),
     })
 }
@@ -270,7 +270,7 @@ fn object_arg(v: &LuaValue, what: &str) -> mlua::Result<Option<ObjectRef>> {
 /// A sprite: an asset (`asset.sprite("bomb")`).
 fn sprite_id(a: LuaValue) -> mlua::Result<SpriteId> {
     bound(|bd| match bd.asset(&a) {
-        Some((AssetKind::Sprite, h)) => bd.with_names(|n| n.sprite(h)).ok_or_else(|| mlua::Error::runtime("no such sprite")),
+        Some((AssetKind::Sprite, h)) => Ok(SpriteId(h)),
         _ => Err(mlua::Error::runtime(format!("expected a sprite (asset.sprite), got {}", a.type_name()))),
     })
 }

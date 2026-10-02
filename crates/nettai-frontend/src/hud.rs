@@ -83,7 +83,7 @@ impl Face {
         let emotion = emotion(b, side);
         let f = b.content.form(form);
         Face {
-            picture: f.mugshot.map(|faces| faces.of(emotion)),
+            picture: f.mugshot.and_then(|faces| crate::packs::mugshot(&b.content, faces.of(emotion))),
             own: f.kind == FormKind::Base,
             full_synchro: emotion == Emotion::FullSynchro,
             count: b.stats[side as usize].beast_out_counter,
@@ -549,9 +549,9 @@ pub fn draw<'a>(
     if let Some(id) = b.banner_for(local) {
         let mut group = Vec::new();
         let (bucket, name) = match b.telop_for(local) {
-            Some(telop) => (NAME_BUCKET, telop_parts(b, hud, id.0, telop, &mut group, text, problems)),
+            Some(telop) => (NAME_BUCKET, telop_parts(b, hud, banner_number(b, id), telop, &mut group, text, problems)),
             None => {
-                banner_parts(b, hud, id.0, &mut group, problems);
+                banner_parts(b, hud, banner_number(b, id), &mut group, problems);
                 (0, None)
             }
         };
@@ -792,7 +792,8 @@ fn mugshot_parts<'a>(
     // changes form, is his form's): in its second palette in Full Synchro.
     let navi = b.content.navi(stats.navi);
     if !navi.changes_form() {
-        let Some((tiles, palettes)) = navi.mugshot.and_then(|n| hud.mugshot(n)) else {
+        let picture = navi.mugshot.and_then(|m| crate::packs::mugshot(&b.content, m));
+        let Some((tiles, palettes)) = picture.and_then(|n| hud.mugshot(n)) else {
             problems.note(format!("navi {:?} has no mugshot in the pack", b.content.defs.navi(stats.navi).key));
             return;
         };
@@ -800,7 +801,7 @@ fn mugshot_parts<'a>(
         let pal = palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default();
         out.push(block(tiles, 32, 16, pal, x, 18));
         out.push(block(&hud.navi_box, 16, 16, pal, x + 32, 18));
-        note_true_face(b, side, navi.mugshot, x, problems);
+        note_true_face(b, side, picture, x, problems);
         return;
     }
     let mut face = state.mood.map(|m| m.shown()).unwrap_or_else(|| Face::of(b, r));
@@ -930,6 +931,12 @@ fn icon_parts<'a>(
 
 /// The banner's five 32x16 sprites (as 8x16 glyphs) with its vertical
 /// squash: grow over 5 frames, hold, shrink (`sub_801CE28`).
+/// A banner's number in its pack (0xFF, no banner of the HUD's, for one the
+/// asset names don't have).
+fn banner_number(b: &Battle, id: nettai_battle::content::BannerId) -> u8 {
+    crate::packs::banner(&b.content, id).unwrap_or(0xFF)
+}
+
 fn banner_parts<'a>(b: &Battle, hud: &'a Hud, id: u8, out: &mut Vec<SpritePart<'a>>, problems: &mut Problems) {
     let Some(layout) = hud.banners.get(id as usize / 4).filter(|l| !l.glyphs.is_empty()) else {
         problems.note(format!("banner {id:#04x} has no glyphs in the pack"));

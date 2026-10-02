@@ -103,7 +103,7 @@ pub fn main(args: &[String]) {
         bundle.backgrounds.iter().flatten().count(),
         bank.songs.iter().flatten().count() - left_out.len(),
         bank.samples.len(),
-        AssetKind::ALL.iter().map(|&k| index.names(k).iter().filter(|n| !AssetNames::is_placeholder(k, n)).count()).sum::<usize>(),
+        AssetKind::ALL.iter().map(|&k| content.assets.names(k).iter().filter(|n| !AssetNames::is_placeholder(k, n)).count()).sum::<usize>(),
         files.len(),
         bytes / 1024,
         t.elapsed(),

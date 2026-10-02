@@ -105,11 +105,58 @@ pub const LINK_BATTLE_SIDE0_FIRST: &str = "test/link-battle-side0-first";
 pub const ROCK_BATTLE: &str = "test/rock-battle";
 pub const BOULDER_BATTLE: &str = "test/boulder-battle";
 
-/// The test stages' music (the asset `test-stage-music`).
-pub const STAGE_MUSIC: crate::sound::SoundId = crate::sound::SoundId(0x16);
+/// The test stages' music's song (the asset `test-stage-music`).
+pub const STAGE_SONG: u16 = 0x16;
 
-/// The navi's sprite (base form).
-pub const NAVI_SPRITE: SpriteId = SpriteId { category: 0, index: 0 };
+/// The navi's sprite (base form), as the test pack holds it.
+pub const NAVI_SPRITE: PackSprite = PackSprite { category: 0, index: 0 };
+
+/// The test pack's sprite `id` as the test content names it (its handle).
+pub fn sprite(id: PackSprite) -> SpriteId {
+    let c = content();
+    let pack = c.assets.pack(ROOT).expect("the test pack");
+    SpriteId(c.assets.sprite_handle(pack, id).unwrap_or_else(|| panic!("the test pack has no sprite {id}")))
+}
+
+/// Sprite `id` as its pack holds it (one sprite may have several names, so
+/// several handles: tests compare what the pack holds).
+pub fn pack_sprite(c: &Content, id: SpriteId) -> PackSprite {
+    c.assets.sprite(id.0).unwrap_or_else(|| panic!("no sprite has handle {}", id.0)).id
+}
+
+/// Add pack `game`'s assets (`index`, its sprites' timing `sprites`) to the
+/// test content: its asset names over both packs, its animations (an
+/// undefined content: `Content::define` after).
+pub fn add_pack(c: &mut Content, game: &str, index: nettai_content_api::PackIndex, sprites: std::collections::BTreeMap<PackSprite, Vec<Vec<AnimFrame>>>) {
+    c.assets = nettai_content_api::AssetNames::of_packs(vec![(ROOT.to_string(), pack_index()), (game.to_string(), index)]);
+    c.animations = animations(&c.assets);
+    let pack = c.assets.pack(game).expect("the pack just added");
+    c.animations.add_pack(&c.assets, pack, &sprites, &Default::default());
+}
+
+/// The test pack's song `n` as the test content names it (its handle).
+pub fn sound(n: u16) -> crate::sound::SoundId {
+    let c = content();
+    let pack = c.assets.pack(ROOT).expect("the test pack");
+    crate::sound::SoundId(c.assets.sound_handle(pack, n).unwrap_or_else(|| panic!("the test pack has no song {n:#x}")))
+}
+
+/// The test content's asset `name` of `kind` (its own pack's unless
+/// qualified): its handle.
+pub fn asset_named(c: &Content, kind: nettai_content_api::AssetKind, name: &str) -> u16 {
+    let q = if nettai_content_api::keys::is_qualified(name) { name.to_string() } else { nettai_content_api::keys::qualify(ROOT, name) };
+    c.assets.handle(kind, &q).unwrap_or_else(|| panic!("the test content has no {kind} {q:?}"))
+}
+
+/// The test content's sprite `name` (its handle).
+pub fn sprite_named(c: &Content, name: &str) -> SpriteId {
+    SpriteId(asset_named(c, nettai_content_api::AssetKind::Sprite, name))
+}
+
+/// The test stages' music.
+pub fn stage_music() -> crate::sound::SoundId {
+    sound(STAGE_SONG)
+}
 /// Where the navi holds a gun.
 pub const GUN_POINT: AttachPoint = AttachPoint { x: 20, y: 16 };
 
@@ -311,14 +358,15 @@ pub fn build() -> Content {
 
 /// The content set, not yet defined.
 fn make() -> Content {
+    let assets = assets();
     Content {
         // (The navis and the base form are definitions:
         // testdata/content/navis/test.luau.)
         base_rules: rules(),
         rules: Vec::new(),
-        animations: animations(),
+        animations: animations(&assets),
         scripts: scripts(),
-        assets: assets(),
+        assets,
         defs: Default::default(),
         strings: strings(),
     }
@@ -338,9 +386,26 @@ pub fn strings() -> crate::content::strings::Strings {
 /// `asset.<kind>("...")` call, each a made-up asset of its own (nothing
 /// ROM-derived; for tests that load modules the test content doesn't
 /// list).
-pub fn asset_names_used(modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::AssetNames {
+pub fn asset_names_used(game: &str, modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::AssetNames {
+    nettai_content_api::AssetNames::of_pack(game, pack_index_used(modules))
+}
+
+/// [`asset_names_used`] for every root of `scripts`: each root's modules'
+/// names in its assets pack (a pack a game).
+pub fn asset_names_for(scripts: &Scripts) -> nettai_content_api::AssetNames {
+    let mut by_game: std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>> = Default::default();
+    for root in &scripts.roots {
+        let prefix = Scripts::name(&root.name, "");
+        let modules = scripts.modules.iter().filter(|(k, _)| k.starts_with(&prefix)).map(|(k, v)| (k.clone(), v.clone()));
+        by_game.entry(root.assets().to_string()).or_default().extend(modules);
+    }
+    nettai_content_api::AssetNames::of_packs(by_game.into_iter().map(|(g, m)| (g, pack_index_used(&m))).collect())
+}
+
+/// [`asset_names_used`]'s pack index (its own, unqualified names).
+pub fn pack_index_used(modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::PackIndex {
     use nettai_content_api::AssetKind;
-    let mut a = nettai_content_api::AssetNames::default();
+    let mut a = nettai_content_api::PackIndex::default();
     let mut n = 0u16;
     for source in modules.values() {
         for kind in AssetKind::ALL {
@@ -352,7 +417,7 @@ pub fn asset_names_used(modules: &std::collections::BTreeMap<String, String>) ->
                 let id = n;
                 match kind {
                     AssetKind::Sprite => {
-                        a.sprites.entry(name.into()).or_insert(SpriteId { category: 0x7F, index: id as u8 });
+                        a.sprites.entry(name.into()).or_insert(PackSprite { category: 0x7F, index: id as u8 });
                     }
                     AssetKind::Sound => {
                         a.sounds.entry(name.into()).or_insert(id);
@@ -377,8 +442,13 @@ pub fn asset_names_used(modules: &std::collections::BTreeMap<String, String>) ->
 /// (with BN6's numbers where its tests look at them, made-up assets for
 /// the rest), a few made-up ones for the test pack, and a placeholder.
 fn assets() -> nettai_content_api::AssetNames {
+    nettai_content_api::AssetNames::of_pack(ROOT, pack_index())
+}
+
+/// [`assets`]' pack index.
+fn pack_index() -> nettai_content_api::PackIndex {
     let mut a = numbered_assets();
-    let used = asset_names_used(&scripts().modules);
+    let used = pack_index_used(&scripts().modules);
     for (name, id) in used.sprites {
         a.sprites.entry(name).or_insert(id);
     }
@@ -492,8 +562,8 @@ const ROLE_BANNERS: &[(&str, u8)] = &[
 ];
 
 /// The test content's assets with BN6's numbers.
-fn numbered_assets() -> nettai_content_api::AssetNames {
-    let mut a = nettai_content_api::AssetNames::default();
+fn numbered_assets() -> nettai_content_api::PackIndex {
+    let mut a = nettai_content_api::PackIndex::default();
     for (role, id) in ROLE_SOUNDS {
         a.sounds.insert(format!("test-sound-{role}"), *id);
     }
@@ -501,20 +571,20 @@ fn numbered_assets() -> nettai_content_api::AssetNames {
         a.sounds.insert(format!("test-music-{role}"), *id);
     }
     for (role, (category, index)) in ROLE_SPRITES {
-        a.sprites.insert(format!("test-sprite-{role}"), SpriteId { category: *category, index: *index });
+        a.sprites.insert(format!("test-sprite-{role}"), PackSprite { category: *category, index: *index });
     }
     for (role, id) in ROLE_BANNERS {
         a.banners.insert(format!("test-banner-{role}"), *id);
     }
     // The test stages' (testdata/content/stages/test.luau).
-    a.sounds.insert("test-stage-music".into(), STAGE_MUSIC.0);
+    a.sounds.insert("test-stage-music".into(), STAGE_SONG);
     a.backgrounds.insert("test-background".into(), 0);
     // The test navis' (testdata/content/navis/test.luau).
-    a.sprites.insert("test-megaman".into(), SpriteId { category: 8, index: 0 });
+    a.sprites.insert("test-megaman".into(), PackSprite { category: 8, index: 0 });
     a.sprites.insert("test-navi".into(), NAVI_SPRITE);
     a.banners.insert("test-win".into(), 0x40);
     a.banners.insert("test-deleted".into(), 0x44);
-    let sprite = |c, i| SpriteId { category: c, index: i };
+    let sprite = |c, i| PackSprite { category: c, index: i };
     for (name, id) in [
         ("test-burst", sprite(0x14, 0)),
         ("test-spark", sprite(0x14, 1)),
@@ -732,8 +802,8 @@ fn numbered_assets() -> nettai_content_api::AssetNames {
 
 /// The asset names MegaMan's weapon definitions and the forms' kinds use
 /// (content model v2, step 8e), with BN6's numbers.
-fn form_weapon_assets(a: &mut nettai_content_api::AssetNames) {
-    let sprite = |c, i| SpriteId { category: c, index: i };
+fn form_weapon_assets(a: &mut nettai_content_api::PackIndex) {
+    let sprite = |c, i| PackSprite { category: c, index: i };
     for (name, id) in [
         ("aqua-surge", sprite(0x10, 0x2E)),
         ("whirlwind", sprite(0x10, 0x44)),
@@ -770,8 +840,8 @@ fn form_weapon_assets(a: &mut nettai_content_api::AssetNames) {
 
 /// The asset names the standard chip actions' modules use (content model
 /// v2, step 8g), with BN6's numbers.
-fn standard_chip_assets(a: &mut nettai_content_api::AssetNames) {
-    let sprite = |c, i| SpriteId { category: c, index: i };
+fn standard_chip_assets(a: &mut nettai_content_api::PackIndex) {
+    let sprite = |c, i| PackSprite { category: c, index: i };
     for (name, id) in [
         ("gust", sprite(0x0C, 0x2E)),
         ("wind-rack", sprite(0x0C, 0x27)),
@@ -798,8 +868,8 @@ fn standard_chip_assets(a: &mut nettai_content_api::AssetNames) {
 
 /// The asset names the navi chips' modules use (content model v2), with
 /// BN6's numbers.
-fn navi_chip_assets(a: &mut nettai_content_api::AssetNames) {
-    let sprite = |c, i| SpriteId { category: c, index: i };
+fn navi_chip_assets(a: &mut nettai_content_api::PackIndex) {
+    let sprite = |c, i| PackSprite { category: c, index: i };
     for (name, id) in [
         ("bass-anly", sprite(0x08, 0x13)),
         ("lightning", sprite(0x14, 0x14)),
@@ -1494,8 +1564,17 @@ pub fn custom_screen_layout() -> CustomScreenLayout {
     }
 }
 
-/// Animation timing for the sprites the tests' battles show.
-fn animations() -> Animations {
+/// Animation timing for the sprites the tests' battles show: the test
+/// pack's, keyed as `assets` names them.
+fn animations(assets: &nettai_content_api::AssetNames) -> Animations {
+    let mut out = Animations::default();
+    let pack = assets.pack(ROOT).expect("the test pack");
+    out.add_pack(assets, pack, &pack_animations(), &Default::default());
+    out
+}
+
+/// The test pack's sprites' timing, by the pack's own ids.
+fn pack_animations() -> std::collections::BTreeMap<PackSprite, Vec<Vec<AnimFrame>>> {
     const LAST: u8 = crate::object::sprite::FRAME_LAST;
     const LOOP: u8 = crate::object::sprite::FRAME_LOOP;
     let f = |duration, flags| AnimFrame { duration, flags };
@@ -1508,46 +1587,46 @@ fn animations() -> Animations {
     let mut sprites = std::collections::BTreeMap::new();
     sprites.insert(NAVI_SPRITE, navi);
     // The gun: out, firing, away; the sun beams.
-    sprites.insert(SpriteId { category: 0x0C, index: 0x3B }, vec![vec![f(3, 0), f(3, LAST)], vec![f(2, 0), f(2, LAST | LOOP)], once(4)]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x3B }, vec![vec![f(3, 0), f(3, LAST)], vec![f(2, 0), f(2, LAST | LOOP)], once(4)]);
     for index in [0x3C, 0x47] {
-        sprites.insert(SpriteId { category: 0x0C, index }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
+        sprites.insert(PackSprite { category: 0x0C, index }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     }
     // The first attachment rows' sprite (fillers).
-    sprites.insert(SpriteId { category: 0x0C, index: 0x01 }, vec![once(4)]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x01 }, vec![once(4)]);
     // Rocks: rising, then standing.
     sprites.insert(
-        SpriteId { category: 0x10, index: 0 },
+        PackSprite { category: 0x10, index: 0 },
         vec![vec![f(3, 0), f(3, 0), f(3, LAST)], vec![f(30, LAST | LOOP)], vec![f(30, LAST | LOOP)]],
     );
-    sprites.insert(SpriteId { category: 0x10, index: 1 }, vec![once(6), once(6), once(6), once(6)]);
+    sprites.insert(PackSprite { category: 0x10, index: 1 }, vec![once(6), once(6), once(6), once(6)]);
     // The stages' boulder.
-    sprites.insert(SpriteId { category: 0x10, index: 8 }, vec![vec![f(30, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x10, index: 8 }, vec![vec![f(30, LAST | LOOP)]]);
     // The eraser navi (standing, appearing, leaving, raising, slashing), its
     // marks and its slash.
     let mut eraser = vec![once(4); 0x13];
     eraser[0] = vec![f(8, 0), f(8, LAST | LOOP)];
     eraser[0x12] = vec![f(4, 0), f(40, LAST)];
-    sprites.insert(SpriteId { category: 8, index: 4 }, eraser);
-    sprites.insert(SpriteId { category: 0x10, index: 0x50 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
-    sprites.insert(SpriteId { category: 0x10, index: 0x51 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
+    sprites.insert(PackSprite { category: 8, index: 4 }, eraser);
+    sprites.insert(PackSprite { category: 0x10, index: 0x50 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x10, index: 0x51 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
     // The elements navi (appearing, leaving, winding up, attacking, a vine)
     // and its overlay; its meteor, ice and bolt.
     let mut elements = vec![once(4); 0x13];
     elements[0] = vec![f(8, 0), f(8, LAST | LOOP)];
-    sprites.insert(SpriteId { category: 8, index: 0x10 }, elements);
-    sprites.insert(SpriteId { category: 8, index: 0x11 }, vec![once(4); 0x20]);
-    sprites.insert(SpriteId { category: 0x0C, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
-    sprites.insert(SpriteId { category: 0x10, index: 0x0F }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
-    sprites.insert(SpriteId { category: 0x14, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 8, index: 0x10 }, elements);
+    sprites.insert(PackSprite { category: 8, index: 0x11 }, vec![once(4); 0x20]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x10, index: 0x0F }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x14, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
     // The shooting navi (rising, raising his arm, shooting) and his cape
     // (his animation + 0x14), his shots' bursts; the sun-and-moon navi
     // and its moonlight.
     let mut shooter = vec![once(4); 0x21];
     shooter[0] = vec![f(8, 0), f(8, LAST | LOOP)];
     shooter[0x0C] = vec![f(4, 0), f(4, LAST | LOOP)];
-    sprites.insert(SpriteId { category: 8, index: 0x13 }, shooter);
-    sprites.insert(SpriteId { category: 0x10, index: 0x26 }, vec![vec![f(3, 0), f(3, LAST)]]);
-    sprites.insert(SpriteId { category: 0x0C, index: 0x64 }, vec![vec![f(8, 0), f(8, LAST | LOOP)]; 5]);
+    sprites.insert(PackSprite { category: 8, index: 0x13 }, shooter);
+    sprites.insert(PackSprite { category: 0x10, index: 0x26 }, vec![vec![f(3, 0), f(3, LAST)]]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x64 }, vec![vec![f(8, 0), f(8, LAST | LOOP)]; 5]);
     // Count (appearing, standing, raising his arms, lowering them,
     // leaving; his lance, animation 0xC) and the rain's motes; Django
     // (riding 6, his bike 7, appearing 1, slashing 5, leaving 2; his gun 8
@@ -1555,78 +1634,78 @@ fn animations() -> Animations {
     let mut count = vec![once(4); 0x0D];
     count[0] = vec![f(8, 0), f(8, LAST | LOOP)];
     count[0x0C] = vec![f(3, 0), f(3, LAST | LOOP)];
-    sprites.insert(SpriteId { category: 8, index: 0x16 }, count);
-    sprites.insert(SpriteId { category: 0x10, index: 0x10 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 8, index: 0x16 }, count);
+    sprites.insert(PackSprite { category: 0x10, index: 0x10 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
     let mut django = vec![once(4); 10];
     django[0] = vec![f(8, 0), f(8, LAST | LOOP)];
     django[6] = vec![f(4, 0), f(4, LAST | LOOP)];
     django[7] = vec![f(4, 0), f(4, LAST | LOOP)];
-    sprites.insert(SpriteId { category: 0x0C, index: 0x0F }, django);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x0F }, django);
     // Otenko's statue: the puff it appears in, then Otenko.
     sprites.insert(
-        SpriteId { category: 0x0C, index: 0x49 },
+        PackSprite { category: 0x0C, index: 0x49 },
         vec![vec![f(2, 0), f(2, 0), f(2, LAST)], vec![f(8, 0), f(8, 0), f(8, 0), f(8, LAST | LOOP)]],
     );
     // The water navi, his ball, splash, pillar, geyser and marks, and his
     // layer.
     let mut spout = vec![once(4); 0x16];
     spout[0] = vec![f(8, 0), f(8, LAST | LOOP)];
-    sprites.insert(SpriteId { category: 8, index: 6 }, spout);
-    sprites.insert(SpriteId { category: 0x0C, index: 0x23 }, vec![once(4), vec![f(2, 0), f(2, LAST | LOOP)]]);
-    sprites.insert(SpriteId { category: 0x0C, index: 0x1A }, vec![vec![f(5, 0), f(5, LAST | LOOP)]]);
-    sprites.insert(SpriteId { category: 0x10, index: 0x1F }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 4]);
-    sprites.insert(SpriteId { category: 0x10, index: 0x20 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
-    sprites.insert(SpriteId { category: 0x10, index: 0x21 }, vec![vec![f(6, 0), f(6, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 8, index: 6 }, spout);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x23 }, vec![once(4), vec![f(2, 0), f(2, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x1A }, vec![vec![f(5, 0), f(5, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x10, index: 0x1F }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 4]);
+    sprites.insert(PackSprite { category: 0x10, index: 0x20 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
+    sprites.insert(PackSprite { category: 0x10, index: 0x21 }, vec![vec![f(6, 0), f(6, LAST | LOOP)]]);
     // The buster's muzzle flash, and its arm (by form).
-    sprites.insert(SpriteId { category: 0x0C, index: 0x06 }, vec![vec![f(2, 0), f(2, LAST)]]);
-    sprites.insert(SpriteId { category: 0x0C, index: 0x03 }, vec![vec![f(30, LAST | LOOP)]; 0x19]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x06 }, vec![vec![f(2, 0), f(2, LAST)]]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x03 }, vec![vec![f(30, LAST | LOOP)]; 0x19]);
     // The junk ball: rolling, bursting.
     let mut junk = vec![once(4); 0x1B];
     junk[0x19] = vec![f(4, 0), f(4, LAST | LOOP)];
     junk[0x1A] = vec![f(10, 0), f(20, LAST)];
-    sprites.insert(SpriteId { category: 8, index: 0x0A }, junk);
+    sprites.insert(PackSprite { category: 8, index: 0x0A }, junk);
     // The Reflector's shield (up, fading, by look) and its wave.
-    sprites.insert(SpriteId { category: 0x0C, index: 0x1B }, vec![vec![f(8, LAST | LOOP)], vec![f(7, 0), f(7, LAST)]]);
-    sprites.insert(SpriteId { category: 0x14, index: 0x04 }, vec![vec![f(2, 0), f(3, LAST)]]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x1B }, vec![vec![f(8, LAST | LOOP)], vec![f(7, 0), f(7, LAST)]]);
+    sprites.insert(PackSprite { category: 0x14, index: 0x04 }, vec![vec![f(2, 0), f(3, LAST)]]);
     // The swords' blade, swinging.
-    sprites.insert(SpriteId { category: 0x0C, index: 0x08 }, vec![vec![f(3, 0), f(3, 0), f(8, LAST)]]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x08 }, vec![vec![f(3, 0), f(3, 0), f(8, LAST)]]);
     // The arrow.
-    sprites.insert(SpriteId { category: 0x0C, index: 0x21 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x21 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     // The grab shot: falling, landing.
-    sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
     // GroundCross's falling rock (0) and its chunks (1).
-    sprites.insert(SpriteId { category: 0x10, index: 5 }, vec![vec![f(8, LAST | LOOP)], vec![f(4, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x10, index: 5 }, vec![vec![f(8, LAST | LOOP)], vec![f(4, LAST | LOOP)]]);
     // The Beast charged chips' pillars (flames, lightning: rising, dying
     // down), surge (rising, ebbing, falling) and whirlwind.
     for index in [0x1C] {
-        sprites.insert(SpriteId { category: 0x0C, index }, vec![vec![f(4, LAST | LOOP)], vec![f(2, 0), f(2, LAST)]]);
+        sprites.insert(PackSprite { category: 0x0C, index }, vec![vec![f(4, LAST | LOOP)], vec![f(2, 0), f(2, LAST)]]);
     }
-    sprites.insert(SpriteId { category: 0x10, index: 0x32 }, vec![vec![f(4, LAST | LOOP)], vec![f(2, 0), f(2, LAST)]]);
-    sprites.insert(SpriteId { category: 0x10, index: 0x2E }, vec![vec![f(6, LAST | LOOP)]; 3]);
-    sprites.insert(SpriteId { category: 0x10, index: 0x44 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x10, index: 0x32 }, vec![vec![f(4, LAST | LOOP)], vec![f(2, 0), f(2, LAST)]]);
+    sprites.insert(PackSprite { category: 0x10, index: 0x2E }, vec![vec![f(6, LAST | LOOP)]; 3]);
+    sprites.insert(PackSprite { category: 0x10, index: 0x44 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
     // The gust, the sword waves, EraseCross's beam (opening, beaming,
     // closing) and the drill arm (attachment 0x20).
-    sprites.insert(SpriteId { category: 0x0C, index: 0x2E }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
-    sprites.insert(SpriteId { category: 0x0C, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST)]]);
-    sprites.insert(SpriteId { category: 0x10, index: 0x4C }, vec![vec![f(3, 0), f(3, LAST)], vec![f(8, LAST | LOOP)], once(4)]);
-    sprites.insert(SpriteId { category: 0x0C, index: 0x20 }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x2E }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST)]]);
+    sprites.insert(PackSprite { category: 0x10, index: 0x4C }, vec![vec![f(3, 0), f(3, LAST)], vec![f(8, LAST | LOOP)], once(4)]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x20 }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
     // The hive (closed, open), a bee, and a dragon's animations.
-    sprites.insert(SpriteId { category: 0x0C, index: 0x5E }, vec![vec![f(30, LAST | LOOP)], vec![f(4, 0), f(30, LAST)]]);
-    sprites.insert(SpriteId { category: 0x10, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
-    sprites.insert(SpriteId { category: 0x04, index: 0x10 }, vec![vec![f(6, LAST | LOOP)]; 8]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x5E }, vec![vec![f(30, LAST | LOOP)], vec![f(4, 0), f(30, LAST)]]);
+    sprites.insert(PackSprite { category: 0x10, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x04, index: 0x10 }, vec![vec![f(6, LAST | LOOP)]; 8]);
     // The crack shot: flying.
-    sprites.insert(SpriteId { category: 0x0C, index: 0x33 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x33 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     // Effects and sparks.
-    sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
-    sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);
+    sprites.insert(PackSprite { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
+    sprites.insert(PackSprite { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);
     // The rising bubble.
-    sprites.insert(SpriteId { category: 0x14, index: 2 }, vec![once(4), vec![f(4, 0), f(4, 0), f(4, LAST)]]);
+    sprites.insert(PackSprite { category: 0x14, index: 2 }, vec![once(4), vec![f(4, 0), f(4, 0), f(4, LAST)]]);
     // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20): the countdown
     // bomb (rising, standing; twice), the mine, the guardian statue
     // (standing, striking).
     let rise_and_stand = vec![vec![f(3, 0), f(3, LAST)], vec![f(20, LAST | LOOP)]];
-    sprites.insert(SpriteId { category: 0x0C, index: 0x23 }, [rise_and_stand.clone(), rise_and_stand].concat());
-    sprites.insert(SpriteId { category: 0x0C, index: 0x22 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
-    sprites.insert(SpriteId { category: 0x0C, index: 0x35 }, vec![vec![f(20, LAST | LOOP)], vec![f(4, 0), f(8, LAST)]]);
-    Animations { sprites, ..Default::default() }
+    sprites.insert(PackSprite { category: 0x0C, index: 0x23 }, [rise_and_stand.clone(), rise_and_stand].concat());
+    sprites.insert(PackSprite { category: 0x0C, index: 0x22 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(PackSprite { category: 0x0C, index: 0x35 }, vec![vec![f(20, LAST | LOOP)], vec![f(4, 0), f(8, LAST)]]);
+    sprites
 }

@@ -234,11 +234,18 @@ pub fn import_sound_versions(root: &Path, report: &mut Report) -> Option<(SoundB
 // ---- Loading -------------------------------------------------------------------
 
 /// The battle content, for the engine: the definitions and modules of the
-/// content root `content` (`crate::root::bn6()` for BN6's), with the assets
-/// of the pack `assets` (its asset index, `Content::assets`, and its
-/// sprites' animation timing), defined (`Content::define`).
+/// content root `content` (`crate::root::bn6()` for BN6's) and the roots it
+/// requires, with the assets of the pack `assets` (its asset index,
+/// `Content::assets`, and its sprites' animation timing), defined
+/// (`Content::define`). [`load_battle_packs`] loads several packs.
 pub fn load_battle(content: &Path, assets: &Path) -> Result<(nettai_battle::Content, Report), Report> {
-    let (mut c, mut report) = battle_content(content, assets)?;
+    load_battle_packs(content, &[assets.to_path_buf()])
+}
+
+/// [`load_battle`] with the assets of several packs (docs/design/
+/// rules-in-luau.md §7.4): one a game, each root's `assets` among them.
+pub fn load_battle_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai_battle::Content, Report), Report> {
+    let (mut c, mut report) = battle_content_packs(content, packs)?;
     // The define phase: what the modules define, the tables registration
     // by number reads, and the registries.
     if let Err(e) = c.define() {
@@ -252,60 +259,91 @@ pub fn load_battle(content: &Path, assets: &Path) -> Result<(nettai_battle::Cont
 /// root in `content` and of the roots it requires, the asset index and the
 /// sprite timing.
 pub fn battle_content(content: &Path, assets: &Path) -> Result<(nettai_battle::Content, Report), Report> {
+    battle_content_packs(content, &[assets.to_path_buf()])
+}
+
+/// [`battle_content`] with several packs: each says its game (a pack that
+/// says none is taken as the content's own root's assets, with a warning);
+/// two packs of one game are refused, and every root's `assets` must be
+/// loaded. Asset names are qualified with their pack's game (`bn6:bomb`).
+pub fn battle_content_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai_battle::Content, Report), Report> {
     let mut report = Report::default();
-    let pack = read_manifest(assets, &mut report).ok_or_else(|| report.clone())?;
     let Some(roots) = crate::root::read_all(content, &mut report) else { return Err(report) };
-    // One pack loads: every root's assets must be its game's.
+    let home_assets = roots.first().map(|r| r.manifest.assets().to_string()).unwrap_or_default();
+    let mut games: Vec<(String, PathBuf)> = Vec::new();
+    for path in packs {
+        let m = read_manifest(path, &mut report).ok_or_else(|| report.clone())?;
+        let game = match m.game {
+            Some(g) => g,
+            None => {
+                report.warn(
+                    MANIFEST,
+                    format!("{}: the pack says no game; it is taken as {home_assets}'s (extract it again to record its game)", path.display()),
+                );
+                home_assets.clone()
+            }
+        };
+        if games.iter().any(|(g, _)| *g == game) {
+            report.error(MANIFEST, format!("two packs of {game} are loaded"));
+        }
+        games.push((game, path.clone()));
+    }
     for r in &roots {
-        match &pack.game {
-            Some(game) if game != r.manifest.assets() => report.error(
+        if !games.iter().any(|(g, _)| g == r.manifest.assets()) {
+            report.error(
                 crate::root::MANIFEST,
-                format!("root {}'s assets are {}'s; the pack is {game}'s", r.manifest.name, r.manifest.assets()),
-            ),
-            Some(_) => {}
-            None => report.warn(
-                MANIFEST,
-                format!("the pack says no game; it is taken as {}'s (extract it again to record its game)", r.manifest.assets()),
-            ),
+                format!("root {}'s assets are {}'s, and no pack of {} is loaded", r.manifest.name, r.manifest.assets(), r.manifest.assets()),
+            );
         }
     }
     if report.has_errors() {
         return Err(report);
     }
-    let Some(index) = crate::names::read_index(assets, &mut report) else { return Err(report) };
-    let Some(animations) = load_animations(assets, &mut report) else { return Err(report) };
+    let mut indices = Vec::new();
+    let mut timings = Vec::new();
+    for (game, path) in &games {
+        let Some(index) = crate::names::read_index(path, &mut report) else { return Err(report) };
+        let Some(timing) = crate::timing::load(path, &mut report) else { return Err(report) };
+        indices.push((game.clone(), index));
+        timings.push((game.clone(), timing));
+    }
+    let assets = nettai_content_api::AssetNames::of_packs(indices);
+    let animations = animations(&assets, timings);
     let mut scripts = nettai_battle::content::Scripts::default();
     let mut strings = crate::locale::Strings::default();
     for r in roots {
         strings.merge(r.strings.qualified(&r.manifest.name));
         scripts.add_root(r.manifest, r.modules);
     }
-    let c = nettai_battle::Content { assets: index, animations, scripts, strings, ..Default::default() };
+    let c = nettai_battle::Content { assets, animations, scripts, strings, ..Default::default() };
     Ok((c, report))
 }
 
-/// Every sprite's animation timing, from the pack's `animations.json`s,
-/// and its frames' part offsets, from its `sprite.json`s.
-fn load_animations(root: &Path, report: &mut Report) -> Option<nettai_battle::content::Animations> {
-    use nettai_battle::content::{AnimFrame, SpriteId, SpriteParts};
-    let t = crate::timing::load(root, report)?;
-    // (A sprite without its `sprite.json` has no parts.)
-    let mut parts = std::collections::BTreeMap::new();
-    for (&(category, index), anims) in &t.sprites {
-        let Some(layouts) = t.layouts.get(&(category, index)) else { continue };
-        let layouts = layouts.iter().map(|l| l.iter().map(|p| (p[0], p[1])).collect()).collect();
-        let frame_layouts = anims.iter().map(|a| a.iter().map(|f| f.layout).collect()).collect();
-        parts.insert(SpriteId { category, index }, SpriteParts { frame_layouts, layouts });
+/// Every sprite's animation timing, from its pack's `animations.json`s, and
+/// its frames' part offsets, from its `sprite.json`s: by sprite handle (each
+/// name a pack gives a sprite is a handle of it).
+fn animations(assets: &nettai_content_api::AssetNames, timings: Vec<(String, crate::timing::Timing)>) -> nettai_battle::content::Animations {
+    use nettai_battle::content::{AnimFrame, PackSprite, SpriteParts};
+    let mut out = nettai_battle::content::Animations::default();
+    for (game, t) in timings {
+        let Some(pack) = assets.pack(&game) else { continue };
+        let mut sprites = std::collections::BTreeMap::new();
+        let mut parts = std::collections::BTreeMap::new();
+        for (&(category, index), anims) in &t.sprites {
+            let id = PackSprite { category, index };
+            // (A sprite without its `sprite.json` has no parts.)
+            if let Some(layouts) = t.layouts.get(&(category, index)) {
+                let layouts = layouts.iter().map(|l| l.iter().map(|p| (p[0], p[1])).collect()).collect();
+                let frame_layouts = anims.iter().map(|a| a.iter().map(|f| f.layout).collect()).collect();
+                parts.insert(id, SpriteParts { frame_layouts, layouts });
+            }
+            let anims: Vec<Vec<AnimFrame>> =
+                anims.iter().map(|a| a.iter().map(|f| AnimFrame { duration: f.ticks, flags: f.flags }).collect()).collect();
+            sprites.insert(id, anims);
+        }
+        out.add_pack(assets, pack, &sprites, &parts);
     }
-    let sprites = t
-        .sprites
-        .into_iter()
-        .map(|((category, index), anims)| {
-            let anims = anims.into_iter().map(|a| a.into_iter().map(|f| AnimFrame { duration: f.ticks, flags: f.flags }).collect()).collect();
-            (SpriteId { category, index }, anims)
-        })
-        .collect();
-    Some(nettai_battle::content::Animations { sprites, parts })
+    out
 }
 
 /// A pack's graphics, for a frontend.

@@ -969,3 +969,40 @@ art if the user approves §7.4's proposal).
   tests, the content check (833 modules), gen-content check 0 errors, machgun 1074/1331 and soundmod
   21962/14933/20436 with 96 rollback rows and the 189 legacy rounds, the lab 6521/6521 (5,756,487 frames) with 0
   sound rounds differing: a battle of one game reads every table as before.
+
+### R3a, asset handles (2026-10-02)
+
+Option (b), the coordinator's decision: the engine's asset ids are handles over the loaded packs (content-model-v2
+§12 step 6's plan), not the original's numbers.
+
+- **Handles.** `SpriteId(u16)`, `SoundId(u16)`, `BannerId(u16)`, `BackgroundId(u16)`, `MugshotId(u16)` are each
+  a kind's handle: its name's place among the loaded packs' names of that kind in byte order. What a pack calls an
+  asset is its own: `PackSprite { category, index }` (the old `SpriteId`, "cc-ii"), a song-table number, a banner's,
+  background's, mugshot's number; `InPack<T> { pack: PackId, id }` pairs it with its pack.
+- **Asset names over several packs** (`AssetNames`): `packs` (games in byte order, by `PackId`), and each kind's
+  map from qualified name (`bn6:bomb`) to `InPack`; `of_packs`/`of_pack` build it from packs' own indices
+  (`PackIndex`, a pack's `assets.toml`, unqualified); `number(kind, h)`, `sprite(h)`, `sound(h)` give a handle's
+  pack and number, `sprite_handle`/`sound_handle`/`number_handle` the way back.
+- **Content names an asset in its root's pack**: `asset.sprite("bomb")` in a module of root R is
+  `<R.assets>:bomb`; a qualified name (`bn6:bomb`) only of its own pack or a pack of a root it requires
+  (`nettai_luau::Pack::asset_name`, `with_assets`). Definitions hold the qualified name; records the handle.
+- **Loading several packs**: `pack::load_battle_packs(content, packs)` (`load_battle` is one pack): each pack says
+  its game (one without is the content's own root's, with a warning), two of one game are refused, every root's
+  `assets` must be loaded. Animation timing is per pack, keyed by handle (`Animations::add_pack`: every name of a
+  sprite is a handle of it).
+- **The edges convert.** bn6-compat (`Ids::pack`, `asset`, `asset_number`, `background`, `sound_number`), the
+  audio (`nettai_audio::Songs`: a sound handle's song; `BattleAudio::new(bank, songs)`, `Songs::cue`), the frontend
+  (`nettai_frontend::packs`: a handle's sprite, banner, mugshot, background number in its pack; one pack's
+  graphics until R3b), verify's gen-content (`decode::numbered_sprite` and `defined::Numbered` compare by the pack's
+  numbers) and the sound tests. The engine itself did no arithmetic on a sprite's numbers but two afterimage
+  and form-overlay object parameters, which now carry the handle.
+- **Tests**: the test content is a synthetic pack (`testing::pack_index`, its timing by `PackSprite`), with
+  `testing::{sprite, sound, sprite_named, pack_sprite, add_pack}`; `twin` has its own pack (its pause sound, song
+  0x40, a sprite): a battle of the test and twin games plays two packs (`AssetNames::packs` `["test", "twin"]`),
+  each side hearing its game's pause; Luau names resolve per root and are refused outside a root's packs.
+- **The match crate** (merged from match-editor): a match's background is a name in the content's own pack unless
+  qualified (`nettai_match::background`); the editor lists them by that name.
+- **Gates** (on main 4d1890ee): the build without warnings, 450 tests, the content check (833 modules), gen-content
+  check 0 errors, machgun 1074/1331 and soundmod 21962/14933/20436 with 96 rollback rows and the 189 legacy
+  rounds, the lab 6521/6521 (5,756,487 frames) with 0 sound rounds differing. After main 1fd091c1 (match-editor: the
+  frontend and the new match and editor crates, no simulation): the build without warnings, 456 tests.
