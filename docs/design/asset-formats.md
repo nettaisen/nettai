@@ -94,6 +94,9 @@ graphics/
     regular.png  chip-art/CHIP.png  pictures/NAME.png
     beast-buttons-V.png  emblems-V.png  cross-names-V.png
     pictures/beast-out-V.png  (V: falzar, gregar)
+    (and another language's lettering, L: ja)
+    hud/font-L.png  dialogue-font-L.png  waiting-L.png  gauge-L.png  banners/NAME-L.png
+    custom/pictures/NAME-L.png  cross-names-V-L.png
 sound/
   sound.toml                         mixer, music players, song table size
   samples.toml                       per sample: file, exact rate, loop start, stamp
@@ -403,6 +406,27 @@ own, read at the addresses the same code points at there (bn6-extract's
   card's, is also orphaned in the Japanese ROMs, and the pack has it; the
   Gregar and Falzar chips' are in no ROM, and the pack's pictures have a
   black one, which their definitions' `art_palette` replaces when drawn.
+
+**Languages.** The words a battle's pictures and fonts show are the pack's
+own language's (`language` in `hud.json`, "en" for a pack from the US ROMs)
+and, for another language the pack has (nettai-assets `lettering`), that
+language's own files, named with it: `hud.json`'s `languages.ja` holds the
+Japanese 8x16 font (`font-ja.png`) and what each glyph draws, the dialogue
+font (`dialogue-font-ja.png`, its advances and characters), the HUD's text
+lines in its glyphs, the banners whose words differ (`banners/NAME-ja.png`,
+each with its place: a longer name starts further left; null for the
+others), "Cstmzing..." as wide as its words (`waiting-ja.png`: カスタム中…,
+seven tiles where the US's are eight) and the gauge (`gauge-ja.png`, its "L
+or R"); `custom.json`'s `languages.ja` the chip window's pictures for OK,
+the re-deal and scrap (`pictures/ok-ja.png`...: "chip data transmission"
+in Japanese) and the Cross window's names by version
+(`cross-names-falzar-ja.png`, `cross-names-gregar-ja.png`). They come from
+the Japanese ROMs (bn6-extract's `lettering`); the fonts' characters from
+compat/text.toml's `[jp]`, the Japanese ROMs' encoding. Everything else a
+battle shows is the same pictures in all four ROMs. A frontend in that
+language swaps them in (`Bundle::in_language`). Content's own words in other
+languages are no assets: they are the content root's (`locale/`,
+docs/design/text-rendering.md §10).
 
 Tiled was considered for the field's panel blocks too, but a panel tile is
 drawn in different palettes for each side, which a Tiled tileset can't show
