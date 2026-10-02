@@ -530,7 +530,9 @@ None of the one-sided branches read, in the sample or since, is missing from the
 The chip families' branches (`onesided_rank.py`'s area 7: routines cited by content/bn6, 1,066 branches in 720
 routines at main 29aac858) are read family by family, most-played chips first. The verdicts are in
 `onesided_notes.py`'s "chip families" section, and the scenarios in the chip lab library's
-`coverage_scenarios/m_onesided_chips.py`.
+`coverage_scenarios/m_onesided_chips.py`. At main ecdef997, with the lab's 5,279 recordings (batches 2 and 3's 39
+among them, all matching), 1,010 branches of the area still ran one way only: 258 guards, 365 unreachable in all,
+11 hard, 634 not yet read.
 
 **The guards (258):** a spawn or collision slot that never fails (255) and a panel pointer off the field (3).
 Each was checked against its instructions: the side never taken is the failure's, which a netbattle's pools
@@ -560,6 +562,81 @@ panels or more to the right or down as "other": the routine tests `>= 2` and not
 up along one axis counts by its sign. The port had made every multi-panel move "other". It no longer does, and
 the full lab matches (5,177 of 5,178 recordings; the other, `custom/no-beast-out`, is a new custom-screen
 recording whose own engine change is still on another branch).
+
+**Batch 2, the bombs, TankCan's shell, TimeBom and the projectile (59 branches):** 22 taken by 20 new
+recordings, 36 unreachable, 1 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x036-minibomb/off-field`, `0x044-grasseed/off-field`, `0x039-flshbom1/off-field` | a thrown bomb landing past the field's edge (AreaGrab, then the throw from the front of the taken column) |
+| `chips/0x036-minibomb/into-hole`, `0x044-grasseed/into-hole`, `0x039-flshbom1/into-hole`, `0x043-bugbomb/into-hole` | a thrown bomb landing in the holes stage's hole at (4,3) |
+| `chips/0x044-grasseed/battle-over`, `0x039-flshbom1/battle-over`, `0x043-bugbomb/battle-over`, `0x00c-tankcan1/battle-over` | the battle ending while a seed or TankCan's shell flies, or a FlshBom or BugBomb stands (the shell's case through SlashMan's dimming, which holds the shell until the battle is over) |
+| `chips/0x03c-blkbomb/fire-dimmed` | BlkBomb set off by HeatMan's flame inside his dimming: its leaving waits out the dimming |
+| `chips/0x043-bugbomb/dimmed`, `all-four-bugs` | a BugBomb that has set down running through a dimming; the fifth BugBomb on a navi with all four bugs picking among all four |
+| `chips/0x039-flshbom1/side-1`, `chips/0x00c-tankcan1/bottom-row` | FlshBom's own-body test for side 1; TankCan's explosion panel below row 3 |
+| `chips/0x090-timebom1/no-room`, `onto-reserved-panel`, `pa/0x14f-timebomplus/explodes` | TimeBom with no free enemy panel ahead; its bomb rising on a panel a set-down FlshBom reserved (the controller avoids only bodies); TimeBom+'s blast (the recipes end before it) |
+| `chips/0x001-cannon/target-over-hole` | a shot hitting side 0 over a hole (AirShoes): the panel isn't solid, so it is left as it is |
+
+The unreachable ones: the projectile's variants with a sprite, a status, a bug or a panel effect (9: only a
+navi's buster programs, NaviStats+0x4D and +0x4F, name them, and nothing sets those in a netbattle); the
+countdown bomb's table rows 2 to 7 (9: TimeBom1-3 set row 0, TimeBom+ row 1) and its blast after the battle's
+end (1: its tick breaks it first); BlkBomb's placed form (3: only `sub_80CD858` places one, and nothing calls
+it), a zero-tick throw, a flight timer that is the 6000-tick lifetime, and a break with HP left (3); a dimming
+while a bomb that doesn't run dimmed flies (3); bomb kind 1, which no chip throws (1); TankCan's shell
+constants (2: one tick a panel, always cracking); FlshBom's statuses and rows (2); BugBomb's arc, which ends 10
+pixels up (1); and two collision allocations (2). The hard one is a FlshBom landing on a navi of its own side:
+the only such body is the thrower, three panels back, and it can't get there in the 40 ticks of flight.
+
+All 20 recordings match the engine (14,759 frames); none of batch 2 changed it.
+
+**Batch 3, the navi chips.** SpoutMan (32 branches, with link navi SpoutMan's charged water ball, which is his
+ball): 13 taken by 8 new recordings, 17 unreachable, 2 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0f2-spoutman/corner-full-trail` | the geyser from (1,1): its row above off the field, its column the far edge's, a trail of four columns |
+| `chips/0x0f2-spoutman/side-1-front` | side 1's SpoutMan away from its back columns (the water ball) |
+| `navis/navi-06-dripshwr/charge-dimmed`, `charge-geddon` | the link navi's ball and splashes (which stand still while dimmed) in the opponent's dimming; a splash whose panel Geddon broke doesn't crack it |
+| `navis/navi-06-dripshwr/charge-into-hole`, `charge-next-hole` | the ball coming down in a hole; the panel beyond the splash a hole (one splash) |
+| `navis/navi-06-dripshwr/charge-ko`, `charge-battle-over` | a splash and the ball seeing the battle over (the ball's through TimeBom1's blast while it flies) |
+
+The unreachable ones: SpoutMan's own AI's geyser, pillar, mark and non-cracking splash (10: the navi chips spawn
+the chip's, Param1 4, and the link navi throws Param1 2); a second spout from one pillar, or its slot holding
+another (2: the navi chip's SpoutMan rises once a visit); his pillar slot empty when he signals it (2); the
+geyser's scan passing its target column (3: the target is the enemy's column or the edge, met first). The hard
+ones: his target scan reaching the field's edge (2), which needs the enemy navi's body off the panel flags while
+he stands in his back columns.
+
+All 8 recordings match the engine (6,463 frames).
+
+ElmntMan (16 branches, with the vines' battle-end test) and SlashMan (11, with link navi SlashMan's charged
+waves): 15 taken by 8 new recordings, 12 unreachable, 4 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x10d-elmntman/wood-from-back`, `wood-ko` | Wood from (1,2): five vines; a vine deleting the opponent, the others seeing the battle over |
+| `chips/0x10d-elmntman/aqua-by-hole`, `aqua-adjacent`, `aqua-ko` | Aqua with a hole in the column ahead; the ice hitting the opponent; the ice deleting it and seeing the battle over |
+| `chips/0x0e9-slashman/steered`, `landing-hole` | B held while the waves swing (each steers); the panel in front of the enemy a hole in his own column (no leap) |
+| `navis/navi-03-rslash/charge-dimmed` | the link navi's waves waiting out the opponent's dimming |
+
+The unreachable ones: ElmntMan's Fire with a second target (2: the enemy side's only body is its navi), his own
+AI's meteor and ice (5), the ice's action finding hit flags its tick has zeroed (1); SlashMan's column walks
+passing the field's edge (4: they meet his own column first). The hard ones: Fire with no enemy body and
+SlashMan's landing scan passing the edge (3, as SpoutMan's), and a meteor seeing the battle over (1: it falls
+inside ElmntMan's dimming, where only hits that run dimmed act, and its own hit ends it).
+
+All 8 recordings match the engine (6,525 frames).
+
+Roll, JudgeMan and BassAnly (9 branches each): 3 taken by 3 new recordings, 20 unreachable, 4 hard:
+`chips/0x0dd-roll/diagonal-target` (her landing panel in her user's column but another row, which must be
+free), `chips/0x10a-judgeman/book-panel-occupied` (a taken panel the opponent stands on gets no book) and
+`chips/0x132-bassanly/from-corner` (from (1,3) his dark balls fly long enough for their push to run out). The
+unreachable ones: parameters no chip has (Roll's three rounds, 2; BassAnly's levels below 3 and other homings,
+5; the navi AI's whip, 2), an enemy body behind Roll's user or more than one (4), a heart with no healing (1),
+spawns that never fail (3), a book heading from its own target (2: it ends there first), BassAnly off the field
+(1). The hard ones: Roll's and the books' searches finding no enemy body (3, as SpoutMan's), and a dark ball
+outliving BassAnly's dimming (1: none did, from his farthest panels). The 3 recordings match the engine (4,453
+frames).
 
 ### 6.3 Custom screen keys
 
