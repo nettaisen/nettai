@@ -411,25 +411,40 @@ fn state_outside_the_snapshot_is_caught() {
 }
 
 /// Counts the simulated frames on which the battle had stopped, and keeps
-/// the first stop's message.
+/// the first stop's message; and what the battles reached: frames with a
+/// navi in a Cross, in a Beast form, dimmed.
 #[derive(Default)]
-struct Failures(u64, Option<String>);
+struct Failures {
+    stopped: u64,
+    first: Option<String>,
+    cross: u64,
+    beast: u64,
+    dimmed: u64,
+}
 
 impl Observer<StandInBattle> for Failures {
     fn simulated(&mut self, frame: u32, game: &StandInBattle) {
-        if let Some(nettai_battle::RoundEnd::Error(message)) = game.battle.round_end() {
-            self.0 += 1;
-            self.1.get_or_insert_with(|| format!("frame {frame}: {message}"));
+        use nettai_battle::content::FormKind;
+        let b = &game.battle;
+        if let Some(nettai_battle::RoundEnd::Error(message)) = b.round_end() {
+            self.stopped += 1;
+            self.first.get_or_insert_with(|| format!("frame {frame}: {message}"));
         }
+        let kinds = [0, 1].map(|side| b.form(side).kind);
+        self.cross += kinds.iter().any(|&k| matches!(k, FormKind::Cross | FormKind::CrossBeast)) as u64;
+        self.beast += kinds.iter().any(|k| k.is_beast()) as u64;
+        self.dimmed += b.is_dimmed() as u64;
     }
 }
 
 /// Mashed battles with everything the test content has on both sides:
-/// Crosses and Beast Out unlocked, folders of dimming chips (so cut-ins and
-/// counter cut-ins), navi chips, giga chips, bombs, swords, traps and
-/// grabs, and 500 HP. No tick fails, settled or speculated: the engine has
-/// every path mashing reaches (a speculated tick is a tick on inputs a
-/// player could have pressed). (Slow in a debug build: `--ignored`.)
+/// folders of dimming chips (so cut-ins and counter cut-ins), navi chips,
+/// giga cut-in chips, bombs, swords, traps and grabs, Crosses and Beast Out
+/// unlocked (the custom screen's buttons; the test content's MegaMan has no
+/// Cross or Beast form, which the golden traces cover), and 500 HP. No tick
+/// fails, settled or speculated: the engine has every path mashing reaches
+/// (a speculated tick is a tick on inputs a player could have pressed).
+/// (Slow in a debug build: `--ignored`.)
 #[test]
 #[ignore]
 fn mashed_battles_with_everything_never_stop() {
@@ -446,7 +461,9 @@ fn mashed_battles_with_everything_never_stop() {
     };
     let a = codes(&[VEIL, FALZAR, SUN_GUN_3, BOMB, BLADE, ANTI_NAVI, ERASER, TRAP, AREA_GRAB, ELEM_TRAP, TOMAHAWK, HEAT]);
     let b = codes(&[GREGAR, VEIL, STEP_BLADE, FLASH, SEED, TIME_BOMB, DRAGON, BEES, PANEL_GRAB, SPOUT, ELEC, SLASH]);
-    let as_refs = |v: &Vec<(String, u8)>| v.iter().map(|(k, code)| (k.as_str(), *code)).collect::<Vec<_>>();
+    fn as_refs(v: &[(String, u8)]) -> Vec<(&str, u8)> {
+        v.iter().map(|(k, code)| (k.as_str(), *code)).collect()
+    }
     std::panic::set_hook(Box::new(|_| {}));
     for seed in [11u64, 12, 13] {
         let mut setup = netbattle(&c, LINK_BATTLE, 500, seed as u32, [folder(&c, &as_refs(&a)), folder(&c, &as_refs(&b))]);
@@ -456,13 +473,22 @@ fn mashed_battles_with_everything_never_stop() {
         let start = StandInBattle::new(Battle::new(setup, c.clone()));
         let mut failures = [Failures::default(), Failures::default()];
         let report = Match::new(&start, NetConfig::latency(5, 2)).run(mashers_with(seed, true), &mut failures, 40_000);
+        let [f, _] = &failures;
         eprintln!(
-            "everything, seed {seed}: {} frames, end {:?}, stopped speculations {}/{} ({:?})",
-            report.frames, report.end, failures[0].0, failures[1].0, failures.iter().find_map(|f| f.1.clone())
+            "everything, seed {seed}: {} frames, end {:?}; peer 0 simulated {} frames in a Cross, {} in a Beast form, {} dimmed; \
+             stopped ticks {}/{} ({:?})",
+            report.frames,
+            report.end,
+            f.cross,
+            f.beast,
+            f.dimmed,
+            failures[0].stopped,
+            failures[1].stopped,
+            failures.iter().find_map(|f| f.first.clone())
         );
         assert!(report.in_sync(), "seed {seed}: {:?}", report.divergence);
         assert!(!matches!(report.end, Some(nettai_battle::RoundEnd::Error(_))), "seed {seed}: {:?}", report.end);
-        assert!(failures.iter().all(|f| f.0 == 0), "seed {seed}: {:?}", failures.iter().find_map(|f| f.1.clone()));
+        assert!(failures.iter().all(|f| f.stopped == 0), "seed {seed}: {:?}", failures.iter().find_map(|f| f.first.clone()));
     }
 }
 
