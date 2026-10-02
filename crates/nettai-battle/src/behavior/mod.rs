@@ -186,8 +186,66 @@ fn content_error(runtime: &str, what: impl std::fmt::Display, r: impl std::fmt::
     panic!("{runtime} content error in {what} ({r:?}): {e}")
 }
 
+/// The engine's calls into Luau, counted and timed by what is called
+/// (feature `luau-profile`; docs/design/rules-in-luau.md §6.5): what
+/// decides the content's share of a tick is how many calls it makes.
+#[cfg(feature = "luau-profile")]
+pub mod profile {
+    use std::cell::RefCell;
+    use std::time::{Duration, Instant};
+
+    /// What was called.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    pub enum Called {
+        /// A kind's update.
+        Object,
+        /// An action's update.
+        Action,
+        /// A hook: a weapon's setup, a chip's use, a role's, a system's.
+        Hook,
+    }
+
+    /// Calls and the time they took, by what was called.
+    #[derive(Clone, Debug, Default)]
+    pub struct Profile {
+        pub calls: std::collections::BTreeMap<Called, (u64, Duration)>,
+    }
+
+    thread_local! {
+        static PROFILE: RefCell<Profile> = RefCell::new(Profile::default());
+    }
+
+    /// Times one call until dropped.
+    pub(crate) struct Timer(Called, Instant);
+
+    impl Timer {
+        pub(crate) fn start(c: Called) -> Timer {
+            Timer(c, Instant::now())
+        }
+    }
+
+    impl Drop for Timer {
+        fn drop(&mut self) {
+            let t = self.1.elapsed();
+            PROFILE.with(|p| {
+                let mut p = p.borrow_mut();
+                let e = p.calls.entry(self.0).or_default();
+                e.0 += 1;
+                e.1 += t;
+            });
+        }
+    }
+
+    /// This thread's profile since the last take, and start over.
+    pub fn take() -> Profile {
+        PROFILE.with(|p| std::mem::take(&mut *p.borrow_mut()))
+    }
+}
+
 /// Run content object kind `kind` (its update, `f`) for `r`.
 pub(crate) fn run_object(b: &mut Battle, kind: KindHandle, f: FnId, r: ObjectRef) {
+    #[cfg(feature = "luau-profile")]
+    let _t = profile::Timer::start(profile::Called::Object);
     let l = loaded(b);
     if let Err(e) = l.host.update_object(b as &mut dyn CoreApi, f, r) {
         let key = b.content.defs.kind(kind).key.clone();
@@ -198,6 +256,8 @@ pub(crate) fn run_object(b: &mut Battle, kind: KindHandle, f: FnId, r: ObjectRef
 
 /// Run content action `action` for the navi `r`.
 pub(crate) fn run_action(b: &mut Battle, action: ActionHandle, r: ObjectRef) {
+    #[cfg(feature = "luau-profile")]
+    let _t = profile::Timer::start(profile::Called::Action);
     let l = loaded(b);
     let a = b.content.defs.action(action);
     let (f, state) = (a.update, a.schema);
@@ -210,6 +270,8 @@ pub(crate) fn run_action(b: &mut Battle, action: ActionHandle, r: ObjectRef) {
 
 /// Call the content function `f` for a hook.
 pub(crate) fn call_hook(b: &mut Battle, f: FnId, call: HookCall) -> Value {
+    #[cfg(feature = "luau-profile")]
+    let _t = profile::Timer::start(profile::Called::Hook);
     let l = loaded(b);
     match l.host.call_hook(b as &mut dyn CoreApi, f, call) {
         Ok(v) => v,
