@@ -183,7 +183,6 @@ controller.kind = define.kind {
     -- 0x080EDE8C: the dimming's phases (0x080EDEAC, by action:
     -- 0x080EDED0, `object_drawChipName`, the effect, `sub_800BCF6`).
     update = dimming_chips.phases {
-        name = "Falzar",
         effect = effect,
         dim = dimming.fade_to_black,
         undim = dimming.fade_from_black,

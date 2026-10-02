@@ -45,8 +45,6 @@ end
 
 return define.chip {
     id = "otenko",
-    name = "Otenko",
-    description = "Put Otnko\nto raise\natk pwr",
     codes = { "O" },
     element = "null",
     family = "summon",

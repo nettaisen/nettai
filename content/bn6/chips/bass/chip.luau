@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 return define.chip {
     id = "bass",
-    name = "Bass",
-    description = "Buster\nrake wide\nenmy area",
     codes = { "F" },
     element = "null",
     family = "null",

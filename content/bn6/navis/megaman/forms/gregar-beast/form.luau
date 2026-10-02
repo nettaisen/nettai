@@ -7,7 +7,6 @@ local beast_claw = require("../../weapons/beast-claw/weapon")
 
 return define.form {
     id = "gregar-beast",
-    name = "Gregar Beast",
     kind = "beast",
     game = "gregar",
     sprite = asset.sprite("gregar-beast"),

@@ -6,8 +6,6 @@ local grab = require("../../lib/grab/controller")
 
 return define.chip {
     id = "areagrab",
-    name = "AreaGrab",
-    description = "Steals\nleft edge\nfrom enmy",
     codes = { "B", "F", "S", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 1, mb = 8, damage = 10, hit_param = 138, lockout = 0,

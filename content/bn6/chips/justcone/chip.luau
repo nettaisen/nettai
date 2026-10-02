@@ -6,8 +6,6 @@ local strike = require("./strike")
 
 return define.chip {
     id = "justcone",
-    name = "JustcOne",
-    description = "Fist Atk\non center\npanel",
     codes = { "J" },
     element = "null", family = "break", class = "standard",
     rarity = 4, mb = 90, damage = 220, hit_param = 178, lockout = 20,

@@ -957,7 +957,7 @@ impl Screen {
             // The chip as the screen checks it: an invalid chip shows the
             // invalid chip's description.
             if let Some(c) = self.chip_in(self.cursor, folder) {
-                let lines = view.library.chip(checked(c, view).id).description_lines();
+                let lines = view.library.chip(checked(c, view).id).description_lines;
                 self.describe(joy, lines, false);
                 self.look.play(ScreenSound::Description);
             }

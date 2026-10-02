@@ -9,8 +9,6 @@ local sun = require("./sun")
 
 return define.chip {
     id = "sunmoon",
-    name = "SunMoon",
-    description = "Attk 3pnl\nfwd w/BN4\nSunMn atk",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

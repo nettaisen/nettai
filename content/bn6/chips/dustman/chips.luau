@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 local dustman = define.chip {
     id = "dustman",
-    name = "DustMan",
-    description = "Attk ahd.\nSuck in &\nshoot out",
     codes = { "D", "*" },
     element = "null",
     family = "null",
@@ -25,8 +23,6 @@ local dustman = define.chip {
 
 local dustman_ex = define.chip {
     id = "dustman-ex",
-    name = "DustMan[EX]",
-    description = "Attk ahd.\nSuck in &\nshoot out",
     codes = { "D" },
     element = "null",
     family = "null",
@@ -44,8 +40,6 @@ local dustman_ex = define.chip {
 
 local dustman_sp = define.chip {
     id = "dustman-sp",
-    name = "DustMan[SP]",
-    description = "Attk ahd.\nSuck in &\nshoot out",
     codes = { "D" },
     element = "null",
     family = "null",

@@ -9,7 +9,6 @@ local wave = require("./wave")
 
 return define.form {
     id = "chargecross-beast",
-    name = "ChargeCross Beast",
     kind = "cross_beast",
     game = "gregar",
     cross_of = chargeman,

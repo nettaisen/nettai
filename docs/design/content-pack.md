@@ -54,6 +54,9 @@ lib/*.luau, lib/FAMILY/*.luau             helpers and builders families share; t
 core.d.luau, types.d.luau                 the API's declarations and the pack's shared types (for editors
                                           and the checker)
 compat/*.toml                             the original's numbers by key: tools' data, never the engine's
+locales/<lang>.toml                       the display text (names, descriptions, messages) by definition key; the own
+                                          language's (en.toml) is the content's, whose shape (lines, characters)
+                                          the battle counts, the others a frontend's alone
 ```
 
 No folder or file is named with a number of the original's (a test guards it): a chip's folder is its key

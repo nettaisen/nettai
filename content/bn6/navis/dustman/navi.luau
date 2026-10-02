@@ -7,7 +7,6 @@ local dustman = require("./chip")
 
 return define.navi {
     id = "dustman",
-    name = "DustMan",
     sprite = asset.sprite("dustman"),
     element = "null",
     weakness = { "cursor" },
@@ -17,11 +16,9 @@ return define.navi {
     -- Its face in the emotion window (`byte_801CDDC`).
     mugshot = asset.mugshot("dustman"),
     merge_height = 0,
-    -- The no-running message: its lines' characters (which time it), its
-    -- words, and the portrait beside it.
+    -- The no-running message's portrait: the speaker beside the box. Its
+    -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        counts = { 18, 16, 9 },
-        text = "Hahahah! You can't\nleave 'em in the\ndust now!",
         portrait = asset.sprite("dustman-portrait"),
     },
     own_chip = { chip = dustman, code = "D" },

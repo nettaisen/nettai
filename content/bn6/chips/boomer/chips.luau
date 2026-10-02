@@ -9,8 +9,6 @@ local boomerang = require("./boomerang")
 return {
     define.chip {
         id = "boomer",
-        name = "Boomer",
-        description = "Boomerang\nthat circ\nbtl field",
         codes = { "J", "K", "T" },
         element = "wood", family = "wood", class = "standard",
         rarity = 1, mb = 16, damage = 100, hit_param = 10, lockout = 20,
@@ -21,8 +19,6 @@ return {
     },
     define.chip {
         id = "hiboomer",
-        name = "HiBoomer",
-        description = "Boomerang\nthat circ\nbtl field",
         codes = { "B", "L", "V" },
         element = "wood", family = "wood", class = "standard",
         rarity = 2, mb = 26, damage = 140, hit_param = 10, lockout = 20,
@@ -33,8 +29,6 @@ return {
     },
     define.chip {
         id = "m-boomer",
-        name = "M-Boomer",
-        description = "Boomerang\nthat circ\nbtl field",
         codes = { "I", "M", "W" },
         element = "wood", family = "wood", class = "standard",
         rarity = 3, mb = 36, damage = 170, hit_param = 10, lockout = 20,

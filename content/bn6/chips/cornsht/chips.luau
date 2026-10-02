@@ -7,8 +7,6 @@ local cornsht = require("./action")
 
 local cornsht1 = define.chip {
     id = "cornsht1",
-    name = "CornSht1",
-    description = "Damages\nenemies\nw/corn.",
     codes = { "J", "K", "L" },
     element = "wood",
     family = "wood",
@@ -27,8 +25,6 @@ local cornsht1 = define.chip {
 
 local cornsht2 = define.chip {
     id = "cornsht2",
-    name = "CornSht2",
-    description = "Damages\nenemies\nw/corn.",
     codes = { "C", "D", "E" },
     element = "wood",
     family = "wood",
@@ -47,8 +43,6 @@ local cornsht2 = define.chip {
 
 local cornsht3 = define.chip {
     id = "cornsht3",
-    name = "CornSht3",
-    description = "Damages\nenemies\nw/corn.",
     codes = { "P", "Q", "R" },
     element = "wood",
     family = "wood",

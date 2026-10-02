@@ -10,8 +10,6 @@ local poisseed = require("../poisseed/chip")
 
 return define.chip {
     id = "poisphar",
-    name = "PoisPhar",
-    description = "Places a\npoisoned\nPharaoh",
     codes = {},
     element = "null",
     family = "program_advance",

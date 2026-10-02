@@ -87,8 +87,6 @@ end
 return {
     define.chip {
         id = "crakshot",
-        name = "CrakShot",
-        description = "Shoot a\npanel at\nan enemy!",
         codes = { "A", "G", "T", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 4, damage = 60, hit_param = 30, lockout = 0,
@@ -101,8 +99,6 @@ return {
     },
     define.chip {
         id = "dublshot",
-        name = "DublShot",
-        description = "Shoot 2\npanels at\nan enemy!",
         codes = { "C", "R", "U", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 8, damage = 60, hit_param = 30, lockout = 0,
@@ -115,8 +111,6 @@ return {
     },
     define.chip {
         id = "trplshot",
-        name = "TrplShot",
-        description = "Shoot 3\npanels at\nan enemy!",
         codes = { "J", "L", "V", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 12, damage = 100, hit_param = 30, lockout = 0,
