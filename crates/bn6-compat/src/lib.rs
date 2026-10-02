@@ -98,6 +98,45 @@ pub struct StageEntry {
     pub actor_list: u32,
 }
 
+/// The consoles' games (games.toml): what a console's traces and link
+/// records carry that is its game's own. Every other table numbers the
+/// Falzar ROM's.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Games {
+    #[serde(default)]
+    pub gregar: GameAddresses,
+}
+
+/// Where a game's ROM has what the Falzar ROM's compat numbers by address.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GameAddresses {
+    /// How far after Falzar's this game's stage actor lists are (a battle
+    /// settings record's bytes 12..16).
+    #[serde(default)]
+    pub actor_lists: u32,
+}
+
+/// A console's game: the US Falzar or the US Gregar.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Game {
+    #[default]
+    Falzar,
+    Gregar,
+}
+
+impl Games {
+    /// A stage's actor list as `game`'s ROM addresses it, by Falzar's
+    /// address (the one stages.toml has).
+    pub fn actor_list(&self, game: Game, falzar: u32) -> u32 {
+        match game {
+            Game::Falzar => falzar,
+            Game::Gregar => falzar + self.gregar.actor_lists,
+        }
+    }
+}
+
 /// Records a setup names by byte.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -203,12 +242,13 @@ pub struct Compat {
     pub rules: RuleNumbers,
     pub assets: Assets,
     pub text: Text,
+    pub games: Games,
     /// The kinds by the slot they fill.
     slots: BTreeMap<(Pool, u8), String>,
 }
 
 /// The files, in the order they are read.
-pub const FILES: [&str; 11] = [
+pub const FILES: [&str; 12] = [
     "chips.toml",
     "actions.toml",
     "navis.toml",
@@ -220,10 +260,11 @@ pub const FILES: [&str; 11] = [
     "rules.toml",
     "assets.toml",
     "text.toml",
+    "games.toml",
 ];
 
 /// This repository's compat (content/bn6/compat), built in.
-const BN6: [(&str, &str); 11] = [
+const BN6: [(&str, &str); 12] = [
     ("chips.toml", include_str!("../../../content/bn6/compat/chips.toml")),
     ("actions.toml", include_str!("../../../content/bn6/compat/actions.toml")),
     ("navis.toml", include_str!("../../../content/bn6/compat/navis.toml")),
@@ -235,6 +276,7 @@ const BN6: [(&str, &str); 11] = [
     ("rules.toml", include_str!("../../../content/bn6/compat/rules.toml")),
     ("assets.toml", include_str!("../../../content/bn6/compat/assets.toml")),
     ("text.toml", include_str!("../../../content/bn6/compat/text.toml")),
+    ("games.toml", include_str!("../../../content/bn6/compat/games.toml")),
 ];
 
 impl Compat {
@@ -272,6 +314,7 @@ impl Compat {
             rules: get(&text, "rules.toml")?,
             assets: get(&text, "assets.toml")?,
             text: get(&text, "text.toml")?,
+            games: get(&text, "games.toml")?,
             slots: BTreeMap::new(),
         };
         for (k, e) in &c.kinds {

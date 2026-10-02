@@ -170,7 +170,7 @@ fn navi_stats(hex: &str, ids: &Ids) -> NaviStats {
 
 // ---- Replaying a trace through the engine -----------------------------------
 
-use crate::Compat;
+use crate::{Compat, Game};
 use crate::codec::{self, Ids};
 use bn6_battle::battle::{Battle, CustomResult, TickEvents};
 use bn6_battle::content::Content;
@@ -227,6 +227,16 @@ pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> 
 }
 
 impl Round {
+    /// The traced console's game: its side's (BattleState+0x0D, the local
+    /// side) in `game_versions`; Falzar in traces recorded without them.
+    pub fn console_game(&self) -> Game {
+        let local = unhex(&self.setup.battle_state)[0x0D] as usize & 1;
+        match self.setup.game_versions.as_ref().map(|v| v[local].as_str()) {
+            Some("gregar") => Game::Gregar,
+            _ => Game::Falzar,
+        }
+    }
+
     /// The engine's starting point for this round, on `content` (whose
     /// numbers `compat` gives).
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> RoundSetup {
@@ -235,7 +245,7 @@ impl Round {
         let stats = |s: &str| navi_stats(s, &ids);
         RoundSetup {
             content: content.hash(),
-            settings: codec::battle_settings(&unhex(&self.setup.settings), &ids),
+            settings: codec::battle_settings(&unhex(&self.setup.settings), &ids, self.console_game()),
             navi_stats: [stats(&self.setup.navi_stats[0]), stats(&self.setup.navi_stats[1])],
             rng: self.setup.rng2,
             local_side: bs[0x0D],
