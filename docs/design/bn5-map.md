@@ -363,6 +363,43 @@ reach_bn5.py); a few chips hit nobody standing anywhere, and their code says wha
   side uses it (from side 1 most fall in its own area), and MetrKnuk's meteors on random panels too; the lab
   stands the opponent on a panel they hit with its RNG (recorded, not read).
 
+### 6.4 The e-Reader cards' chips: LeadRaid and ChaosLrd
+
+Two chips' text and colours are the save's, written when an e-Reader card is read: **LeadRaid (0x137)** and
+**ChaosLrd (0x138)**. Read in Team ProtoMan's code; the four ROMs and both versions are the same.
+
+- **What the ROM has:** their records (the chip table, as any chip): LeadRaid a Mega chip, code L, Null, 200 damage,
+  MB 99, flags dimming and damage; ChaosLrd a Giga chip, code X, Null, 500 damage, MB 99, the same flags. Both use
+  the navi chips' action (0x41, BN6's 0x1B, the same code) with subtypes 0x15 and 0x1D: the summon table
+  (`off_802CD5C`'s counterpart, 0x080298C4) spawns actor kinds 0x20 and 0x51. Their pictures (record +0x24: 0x0872F8E8,
+  0x0872FE28) and icons (+0x20) are in the ROM. ChaosLrd's summon has a name in the battle name list (entry 0xE6,
+  "Chaos Lord", JP ロードオブカオス); LeadRaid's none.
+- **What the save has:** their names (the ROM's name entries are the text command `FF 00 n`), their descriptions
+  (`FF 01 n`) and their pictures' palettes (record +0x28 points into EWRAM): slot n's name is a one-entry text archive
+  at save +0x1D14 + 0x18 n, its description one at +0x1374 + 0x64 n, its palette 16 colours at +0x1660 + 0x20 n (the
+  save is EWRAM from 0x02000000, so those are its addresses once loaded). LeadRaid is slot 0, ChaosLrd slot 1.
+- **How the game gets them:** an e-Reader card read over the link: the card dispatcher (0x0812F3BC) passes the card's
+  kind to 0x0812F8F0, which notes the card in the save's obfuscated bytes (BN6's `encryption_8007004`, index 0x1020
+  plus the slot; what reads that is not read), gives the chip once (`GetChipCountOfCode`, `GiveChips`: LeadRaid in L,
+  ChaosLrd in X) and decompresses the card's name and description into the slot and copies its palette. A new game
+  clears the slots (`sub_8021D36`, the same code as BN6's): the palettes zeroed (a black picture), the names and
+  descriptions "????". Owning the chip is the pack's count, as any chip's; its text and colours are the slot's.
+- **The saves:** Tango's eight raw netplay saves (both versions, light and dark, US and JP) hold both chips' slots,
+  the same in all (the US's "LeadRaid" "ProtoMan & Colonel together!" and "ChaosLrd" "Hatred formed into Bass", the
+  JP's リーダーズレイド and ロードオブカオス), and so do the four GBA saves in Tango's saves folder (masked). BN5 DS has
+  no such block: its save doesn't hold them, and its ROM (bn5.nds) has both palettes (0x00B7EF40, 0x00B7EF60) and
+  ChaosLrd's name, so the DS game's two chips are its own.
+- **BN6's card buffer is the same mechanism**, which BN6 inherited: the same slot sizes (a 0x18-byte name archive, a
+  0x64-byte description archive, a 0x20-byte palette), the same text commands, the same clearing routine; at other
+  addresses (BN6: names 0x02001180, descriptions 0x020007D0, palettes 0x02000AF0) and filled by a gift over the link
+  rather than an e-Reader card (docs/engine/jp-differences.md).
+- **In content/bn5** they are content-given chips as BN6's gift chips are: their records from the ROM, their strings
+  in the locales (English from Tango's US saves, Japanese from its JP saves), their palettes the definitions'
+  `art_palette`, their slot compat's `save_slot`; gen_content.py's check reads them from the raw saves.
+- **Recorded:** the chip lab's chips/0x137-leadraid and 0x138-chaoslrd (hit, adjacent, miss, side1). LeadRaid hits
+  twice for 200 wherever the opponent stands (its row or not); ChaosLrd once for 500 wherever it stands. Both are
+  either MegaMan's (+0x15 0).
+
 ## 7. Team ProtoMan and Team Colonel
 
 `versions.py` (fmap.py's method between the two BN5 ROMs): the battle code is the same, moved (mostly +0xE8,
