@@ -566,6 +566,7 @@ fn describe_fields(
     } else {
         format!("{},{},{}", pos[0], pos[1], pos[2])
     };
+    let flags = flags & !open_bus_flags(compat, kind, index);
     format!(
         "T{kind}#{index:#04x} f{flags:#04x} s{state:?} p{},{} a{alliance} hp{}/{} pos{pos} t{timer} an{anim} st{status:#x}",
         panel[0], panel[1], hp[0], hp[1]
@@ -601,6 +602,14 @@ fn pos_is_garbage(compat: &Compat, kind: u8, index: u8, flags: u8) -> bool {
         k.scratch_position
             || (k.scratch_position_without_sprite && flags & nettai_battle::object::flags::NO_SPRITE_UPDATE != 0)
     })
+}
+
+/// The header-flag bits a kind's spawner reads from the console's open bus
+/// (`open_bus_flags`): the boulder's, whose value depends on whether an
+/// interrupt came just before the read, so each console may hold another.
+/// Nothing the game does with them differs (objects-and-player.md §2).
+fn open_bus_flags(compat: &Compat, kind: u8, index: u8) -> u8 {
+    slot_kind(compat, kind, index).map_or(0, |k| k.open_bus_flags)
 }
 
 /// Kinds that keep the fraction of the Z their spawner left in a register
@@ -853,5 +862,19 @@ mod tests {
         assert!(u.beast_out && u.beast_out_sealed);
         // No Beast Out (custom/no-beast-out).
         assert!(!unlocks_from_flags(GameVersion::Falzar, &[0x01, 0xF3, 0x00]).beast_out);
+    }
+
+    #[test]
+    fn a_boulders_open_bus_flag_bits_are_skipped() {
+        let compat = Compat::bn6();
+        let flags = |kind, index, flags| {
+            describe_fields(compat, kind, index, flags, [4, 0, 0, 0], [5, 3], 1, [500, 500], [0; 3], 0, 0, 0, Unknown::default())
+        };
+        // The column-5 boulder of stage 0x18 as each console read it (side
+        // 0's after an interrupt): the same object to the comparison.
+        assert_eq!(flags(3, 0x6E, 0xD4), flags(3, 0x6E, 0x34));
+        // Only bits 0x20, 0x40 and 0x80, and only the boulder's.
+        assert_ne!(flags(3, 0x6E, 0x36), flags(3, 0x6E, 0x34));
+        assert_ne!(flags(3, 0x59, 0xD4), flags(3, 0x59, 0x34));
     }
 }
