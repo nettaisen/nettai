@@ -1098,4 +1098,9 @@ BN6 stays byte-identical; BN5's side is unit tests and asm citations, and the BN
   they run) and `anti_navi_sparkle` (BN6 16 down and 32 up, BN5 16 up; `SPARKLE_DY` and `SPARKLE_Z` were Rust).
 - **Not yet:** item 8 (a mix's own sections) and item 12 (a base form per game), after R4; BN5's navi intake as a
   whole (its order, its holy panel's light/dark rule at 0x08017136) is BN5's port.
+- **Gates** (on main d4d846cb): the build without warnings, 465 tests, the content check (837 modules),
+  gen-content check 0 errors (it decodes BN6's new rule fields), machgun 1074/1331 and soundmod 21962/14933/20436
+  with 96 rollback rows, the 189 legacy rounds (2,746,946 frames, 115,897 after known deviations), the lab 6542
+  (6539 matched, 3 to a known deviation; 5,773,035 frames) with 0 sound rounds differing, the audit 72 traces with
+  0 problems.
 
