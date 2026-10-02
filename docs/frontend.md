@@ -96,8 +96,9 @@ the trace's recorded state is printed too. Frame numbers are the trace's.
 
 **Live play**: you are the left navi; the right one stands still. The round
 is a netbattle on the pack's BN6 content between two 1000-HP MegaMen of
-Falzar, set up at random from the seed (`driver::bn6_live_setup`, which
-prints what it drew):
+Falzar with no NaviCust programs (so roads carry them and holes stop them;
+`driver::live_navi`), set up at random from the seed
+(`driver::bn6_live_setup`, which prints what it drew):
 
 - **The field**: one of the 96 link battle stages the content defines (the
   settings records a link battle draws from, `sub_81209DC`: the stages with
