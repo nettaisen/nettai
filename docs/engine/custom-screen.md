@@ -221,9 +221,31 @@ The port runs what those scripts' commands do to the timing:
   descriptions), or B held for an eleventh tick (the held ticks needn't be in a row).
 
 A chip's description is its record's `description` (its lines apart by `\n`; the engine reads how many); the
-invalid chip's (one line) is shown for an invalid chip. Every Cross's has three lines. The message is the operated
-navi's (`NaviData::run_message`, the characters in each line): MegaMan's is 19 and 12 characters, each link navi
-has its own script (`TextScriptBattleRunDialog`'s script 3 sends it there).
+invalid chip's (one line) is shown for an invalid chip. A Cross's is its form's `description` (the Cross window's
+script, `TextScriptChipDesc86EF4D4`'s by the form's number less one); every one has three lines, and a form
+without one counts as three. The message is the operated navi's `run_message`: the characters in each line
+(`counts`, which time it: MegaMan's is 19 and 12), its words (`text`, which the chatbox shows, and which of its
+characters move the speaker's mouth) and the speaker's portrait (a sprite); each link navi has its own script
+(`TextScriptBattleRunDialog`'s script 3 sends it there). gen-content checks all three against the ROM, and that
+the counts are the words' lines.
+
+**What the chatbox shows** is presentation, kept beside its timing in `ChatboxLook` (left out of the state digest,
+as `ScreenLook` is) and read through `Chatbox::box_step`, `shows_contents` and `look`, from which the frontend
+draws it (docs/frontend.md §3):
+
+- the box's map at its opening step, while it's drawn (`chatbox_CopyBackgroundTiles_8040344`); the text and the
+  portrait only while it's fully open (or not drawn at all);
+- the text's sprites hold the line buffer as last copied to them (`sub_30070B4`): every tick they're shown,
+  except that once the key wait has run they keep what they have until a tick prints all at once
+  (`+0x3D`). So the end, which clears the buffer, leaves the message's text up while the portrait fades out
+  after A, and blanks it at once after held B (the end then runs on a tick that prints all at once);
+- the portrait (`chatbox_8040B8C`): drawn with the tint before the tick's step of its fade, added to each
+  colour channel (`sub_3005F34`); its face (`+0x1F0`..`+0x1F3`): still as `F5` loads it, talking from a character
+  that talks (`chatbox_8040C44`: letters and digits), idle after one that doesn't and after every command or
+  character printed all at once (`chatbox_8040C9C`); the sprite takes the face when the talking changes, and its
+  animation steps once a tick it's drawn;
+- the key-wait arrow (`chatbox_804082C`), from the tick the wait first runs until the key: its frame by a step
+  counted only while it shows (`byte_80408A4`: six ticks each of three frames, then from the second step).
 
 **Verified** in the lab: `custom/description-arm-001-5..9` and `-09a-5..9` (Cannon, three lines, takes A from
 R+8; Recov10, two lines, from R+7), `description-invalid-4..6` (from R+6), `description-cross-7`, `-8` (a Cross's,
