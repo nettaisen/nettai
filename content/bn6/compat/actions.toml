@@ -113,6 +113,7 @@
 "spreadr2/action" = 0x25
 "spreadr3/action" = 0x25
 "spoutcross/charge/action" = 0x25
+"patch-cards/puffball/charge/action" = 0x25
 "airhocky/action" = 0x26
 "pithocky/action" = 0x26
 "firebrn1/action" = 0x27
@@ -172,9 +173,11 @@
 "airspin1/action" = 0x38
 "airspin2/action" = 0x38
 "airspin3/action" = 0x38
+"patch-cards/bass-cross-megaman/charge/action" = 0x38
 "rskyhny1/action" = 0x39
 "rskyhny2/action" = 0x39
 "rskyhny3/action" = 0x39
+"patch-cards/honybomr/back-special/action" = 0x39
 "spoutcross-beast/charge/action" = 0x3A
 "megaman/turn" = 0x3B
 "eleccross-beast/charge/action" = 0x3C
@@ -229,3 +232,6 @@
 "engine/cross-special" = 0x59
 "megaman/anti-damage/action" = 0x5A
 "z-saver/action" = 0x5B
+"patch-cards/meteors" = 0x5C
+"rapid-buster/action" = 0x5D
+"patch-cards/count/charge/action" = 0x5E

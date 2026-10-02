@@ -8,11 +8,14 @@
 
 local buster = require("../../navis/megaman/weapons/buster/weapon")
 
+-- The buster's shot (its action).
+local SHOT: Action = buster.shot :: any
+
 -- `sub_8012612`.
 local function setup(navi: Object): Action
-    local action = buster.setup(navi)
-    if action == buster.shot then
-        (navi:action_state(buster.shot) :: buster.State).mode = "spread"
+    local action: Action = buster.setup(navi)
+    if action == SHOT then
+        (navi:action_state(SHOT) :: { mode: string }).mode = "spread"
     end
     return action
 end
