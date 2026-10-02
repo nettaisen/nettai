@@ -461,7 +461,7 @@ pub fn patch_cards(content: &Content, list: &str) -> Result<Vec<InstalledCard>, 
             None => (item, true),
         };
         let card = content.defs.patch_card_by_key(key).ok_or_else(|| {
-            let keys: Vec<&str> = content.defs.patch_cards.iter().map(|c| c.key.as_str()).collect();
+            let keys: Vec<&str> = content.defs.patch_cards.iter().map(|c| nettai_content_api::keys::local(&c.key)).collect();
             format!("no patch card {key:?}; the content's are {}", keys.join(", "))
         })?;
         cards.push(InstalledCard { card, enabled });
@@ -781,7 +781,7 @@ mod tests {
         });
         assert!(mixed);
         let (forced, _) = bn6_live_setup(&content, 3, Some("netbattle-43")).unwrap();
-        assert_eq!(content.defs.stage(forced.settings.stage).key, "netbattle-43");
+        assert_eq!(content.defs.stage(forced.settings.stage).key, "bn6:netbattle-43");
         assert_eq!(forced.players, bn6_live_setup(&content, 3, None).unwrap().0.players);
         assert!(bn6_live_setup(&content, 3, Some("netbattle-100")).is_err());
     }

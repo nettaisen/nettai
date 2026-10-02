@@ -747,10 +747,16 @@ impl Battle {
         self.round.time_up != 0 && self.round.alive[0] != 0 && self.round.alive[1] != 0
     }
 
-    /// The key of `r`'s kind (`"bomb"`, `"engine/effect"`): how tests and
-    /// tools name what an object is.
+    /// The key of `r`'s kind (`"bn6:bomb"`, `"engine/effect"`): how tools
+    /// name what an object is.
     pub fn kind_key(&self, r: ObjectRef) -> &str {
         &self.content.defs.kind(self.objects.get(r).kind).key
+    }
+
+    /// The key of `r`'s kind in its root (`"bomb"`, `"engine/effect"`):
+    /// how tests on one root name what an object is.
+    pub fn local_kind_key(&self, r: ObjectRef) -> &str {
+        nettai_content_api::keys::local(self.kind_key(r))
     }
 
     /// The player navi of a side (`sub_80103BC`).

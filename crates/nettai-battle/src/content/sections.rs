@@ -5,7 +5,7 @@
 
 use std::collections::BTreeMap;
 
-use nettai_content_api::{ContentError, Definitions, Registry};
+use nettai_content_api::{ContentError, Definitions, Registry, keys};
 use serde::Deserialize;
 use serde_json::Value as Json;
 
@@ -155,14 +155,19 @@ fn serde_name<T: serde::Serialize>(v: &T) -> String {
 }
 
 /// The rule sections into `content.rules`: each only if the content
-/// defines it.
+/// defines it, the content's own root's (the battle's, docs/design/
+/// rules-in-luau.md §2.3).
 fn sections(content: &mut Content, r: &SpecReader, definitions: &Definitions) -> Result<(), ContentError> {
+    let home = content.scripts.home().map(str::to_string);
     for d in definitions.of(Registry::Rules) {
+        if keys::root_of(&d.key) != home.as_deref() {
+            continue;
+        }
         let at = format!("{}.luau: rules {}", d.module, d.key);
         let e = |m: String| ContentError::new(m);
         let spec = &d.spec;
         let rules = &mut content.rules;
-        match d.key.as_str() {
+        match keys::local(&d.key) {
             "elements" => {
                 let s: ElementsSection = r.read(spec, &at).map_err(e)?;
                 let mut weakness = [[0u8; 6]; 6];

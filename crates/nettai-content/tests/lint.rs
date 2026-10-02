@@ -1,25 +1,30 @@
 //! `nettai-content check`'s report on definitions, on the engine's test pack
 //! and on BN6's content.
 
-use nettai_battle::content::testing;
+use nettai_battle::content::{RootManifest, Scripts, testing};
 use nettai_content::report::{Level, Report};
+
+/// The test content's module `path`'s name.
+fn module(path: &str) -> String {
+    Scripts::name(testing::ROOT, path)
+}
 
 #[test]
 fn unfilled_roles_and_single_owner_kinds_are_reported() {
     let mut c = testing::with_test_pack();
     // A kind under objects/ that only one chip folder uses.
     c.scripts.modules.insert(
-        "objects/held/held".into(),
+        module("objects/held/held"),
         "return { kind = define.kind { id = 'held', pool = 'effect', update = function(me) end } }".into(),
     );
     c.scripts.modules.insert(
-        "chips/holder/chip".into(),
+        module("chips/holder/chip"),
         "local held = require('../../objects/held/held')\n\
          return define.record('holder', { kind = held.kind })"
             .into(),
     );
     // A role that names a definition, left out.
-    let roles = c.scripts.modules.get_mut("test/rules/roles").expect("the test pack's roles");
+    let roles = c.scripts.home_module_mut("test/rules/roles").expect("the test pack's roles");
     assert!(roles.contains("    sparks = ruleset.sparks,\n"));
     *roles = roles.replace("    sparks = ruleset.sparks,\n", "    sparks = { plain = ruleset.sparks.plain },\n");
     c.define().unwrap();
@@ -31,17 +36,17 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
     assert!(!warnings.iter().any(|w| w.contains("anti_damage_counter")), "the test pack fills it: {warnings:?}");
     assert!(warnings.iter().any(|w| w.contains("sparks.guard is not filled")), "{warnings:?}");
     assert!(!warnings.iter().any(|w| w.contains("sparks.plain") || w.contains("effects.") || w.contains("collision.")), "{warnings:?}");
-    assert!(warnings.iter().any(|w| w.starts_with("objects/held/held.luau: only chips/holder uses")), "{warnings:?}");
+    assert!(warnings.iter().any(|w| w.starts_with("test:objects/held/held.luau: only test:chips/holder uses")), "{warnings:?}");
 }
 
 #[test]
 fn a_collision_type_defined_twice_is_an_error() {
     let mut c = testing::with_test_pack();
-    for (module, key) in [("lib/one", "one"), ("lib/two", "two"), ("lib/other", "other")] {
+    for (path, key) in [("lib/one", "one"), ("lib/two", "two"), ("lib/other", "other")] {
         // (Rows no type of the test content is.)
         let row_offset = if key == "other" { 0x7F8 } else { 0x7F0 };
         c.scripts.modules.insert(
-            module.into(),
+            module(path),
             format!("return define.collision {{ id = '{key}', side0 = 0x80, side1 = 0x80, row_offset = {row_offset} }}"),
         );
     }
@@ -49,11 +54,11 @@ fn a_collision_type_defined_twice_is_an_error() {
     // (The test content's own types share rows with BN6's, whose module
     // it has too: only these are looked at.)
     let twins: Vec<_> = nettai_content::lint::duplicate_collision_types(&c).into_iter().filter(|(row, _)| *row >= 0xFE).collect();
-    assert_eq!(twins, [(0xFE, vec![("one".to_string(), "lib/one".to_string()), ("two".to_string(), "lib/two".to_string())])]);
+    assert_eq!(twins, [(0xFE, vec![("test:one".to_string(), "test:lib/one".to_string()), ("test:two".to_string(), "test:lib/two".to_string())])]);
     let mut r = Report::default();
     nettai_content::lint::definitions(&c, &mut r);
     let errors: Vec<&str> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| i.message.as_str()).collect();
-    assert!(errors.iter().any(|e| e.contains("collision type one is row 0xfe") && e.contains("two (lib/two.luau)")), "{errors:?}");
+    assert!(errors.iter().any(|e| e.contains("collision type test:one is row 0xfe") && e.contains("test:two (test:lib/two.luau)")), "{errors:?}");
 }
 
 /// BN6's content defines without an error in its definitions (each
@@ -62,7 +67,7 @@ fn a_collision_type_defined_twice_is_an_error() {
 fn bn6_content_has_no_definition_errors() {
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
     let mut c = nettai_battle::Content::default();
-    c.scripts.modules = testing::modules_under(dir);
+    c.scripts = Scripts::root(RootManifest::named("bn6"), testing::modules_under(dir));
     c.assets = testing::asset_names_used(&c.scripts.modules);
     c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
     let mut r = Report::default();
@@ -87,9 +92,9 @@ fn bn6_strings_name_bn6_definitions_and_only_their_shape_is_hashed() {
     assert!(root.modules.keys().all(|m| !m.starts_with("locales/")), "a strings table read as a module");
     let define = |strings: nettai_content::locale::Strings| {
         let mut c = nettai_battle::Content::default();
-        c.scripts.modules = root.modules.clone();
+        c.scripts = Scripts::root(root.manifest.clone(), root.modules.clone());
         c.assets = testing::asset_names_used(&c.scripts.modules);
-        c.strings = strings;
+        c.strings = strings.qualified("bn6");
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
         c
     };
@@ -110,4 +115,36 @@ fn bn6_strings_name_bn6_definitions_and_only_their_shape_is_hashed() {
     let mut reshaped = root.strings.clone();
     reshaped.chips.get_mut("magpanl").unwrap().description = Some("one\ntwo".into());
     assert_ne!(define(reshaped).hash(), c.hash());
+}
+
+/// docs/design/rules-in-luau.md §7.2: BN5's root (content/bn5) loads beside
+/// BN6's, each one's keys its own: `bn5:cannon` and `bn6:cannon` are two
+/// chips, and a key both roots define must be qualified to be looked up.
+/// (BN5's chips have no use yet, which the define phase refuses: until the
+/// BN5 port writes them, the refusal must be that, of a `bn5:` chip.)
+#[test]
+fn bn5_and_bn6_load_together_under_their_names() {
+    let repo = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
+    let mut r = Report::default();
+    let bn6 = nettai_content::root::read(&repo.join("content/bn6"), &mut r).expect("content/bn6 reads");
+    let bn5 = nettai_content::root::read(&repo.join("content/bn5"), &mut r).expect("content/bn5 reads");
+    let mut c = nettai_battle::Content::default();
+    c.strings = bn6.strings.qualified("bn6");
+    c.strings.merge(bn5.strings.qualified("bn5"));
+    c.scripts = Scripts::root(bn6.manifest, bn6.modules);
+    c.scripts.add_root(bn5.manifest, bn5.modules);
+    c.assets = testing::asset_names_used(&c.scripts.modules);
+    if let Err(e) = c.define() {
+        let e = e.message;
+        assert!(e.starts_with("bn5:chips/") && e.contains(": chip bn5:") && e.contains("needs exactly one of `action`"), "{e}");
+        return;
+    }
+    let d = &c.defs;
+    assert_eq!(d.roots, ["bn6", "bn5"]);
+    let (six, five) = (d.chip_by_key("bn6:cannon").expect("bn6:cannon"), d.chip_by_key("bn5:cannon").expect("bn5:cannon"));
+    assert_ne!(six, five);
+    assert_eq!(d.chip_by_key("cannon"), None, "both roots define it");
+    // The battle's rules are the content's own root's: BN6's.
+    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("bn6:bn6"));
+    assert_eq!(c.strings.chip("bn5:cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
 }

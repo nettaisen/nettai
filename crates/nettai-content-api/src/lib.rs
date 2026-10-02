@@ -30,6 +30,7 @@ pub mod assets;
 pub mod data;
 pub mod definitions;
 pub mod host;
+pub mod keys;
 pub mod registry;
 pub mod state;
 pub mod types;

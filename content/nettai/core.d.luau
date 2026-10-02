@@ -1,6 +1,10 @@
 -- The battle engine's content API, as Luau content sees it. A definitions
 -- file for editors and the type checker (luau-lsp:
--- `--definitions=content/bn6/core.d.luau`); the engine implements it in
+-- `--definitions=content/nettai/core.d.luau`, with a root's own, as
+-- `--definitions=content/bn6/types.d.luau`); every root checks against it
+-- (docs/design/rules-in-luau.md §7.2: content/nettai declares the engine's
+-- API and defines nothing; BN6's own parts move to content/bn6 in slice
+-- S8). The engine implements it in
 -- crates/nettai-luau/src/bind.rs over the Rust `CoreApi` trait
 -- (crates/nettai-content-api), and docs/design/scripting.md describes it.
 --

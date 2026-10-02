@@ -96,7 +96,10 @@ fn main() {
                         ),
                     );
                     nettai_content::lint::definitions(&c, &mut r);
-                    nettai_content::locale::check_root(&a.content, &c, &mut r);
+                    // Each root's tables, against its definitions.
+                    for dir in nettai_content::root::dirs(&a.content).unwrap_or_default() {
+                        nettai_content::locale::check_root(&dir, &c, &mut r);
+                    }
                 }
                 Err(failed) => r.issues.extend(failed.issues),
             }

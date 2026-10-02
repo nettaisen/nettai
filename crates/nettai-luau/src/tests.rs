@@ -4,15 +4,23 @@ use super::*;
 use nettai_content_api::Data;
 
 #[test]
-fn relative_paths_resolve_within_the_pack() {
-    assert_eq!(resolve("chips/gundels/chips", "../../objects/sun-beam/sun_beam").unwrap(), "objects/sun-beam/sun_beam");
-    assert_eq!(resolve("(pack)", "./lib/slot").unwrap(), "lib/slot");
-    assert!(resolve("lib/slot", "../../x").is_err());
-    assert!(resolve("lib/slot", "objects/x").is_err());
+fn relative_paths_resolve_within_the_root() {
+    let roots: BTreeMap<String, Vec<String>> =
+        [("bn6".to_string(), vec![]), ("mix".to_string(), vec!["bn6".to_string()])].into_iter().collect();
+    let r = |from: &str, path: &str| resolve(from, path, &roots);
+    assert_eq!(r("bn6:chips/gundels/chips", "../../objects/sun-beam/sun_beam").unwrap(), "bn6:objects/sun-beam/sun_beam");
+    assert_eq!(r("bn6:(pack)", "./lib/slot").unwrap(), "bn6:lib/slot");
+    assert!(r("bn6:lib/slot", "../../x").is_err());
+    assert!(r("bn6:lib/slot", "objects/x").is_err());
+    // A root's top: its own, or a root it requires.
+    assert_eq!(r("bn6:chips/x/chip", "@bn6/lib/slot").unwrap(), "bn6:lib/slot");
+    assert_eq!(r("mix:rules/ruleset", "@bn6/rules/beast/system").unwrap(), "bn6:rules/beast/system");
+    assert!(r("bn6:rules/ruleset", "@mix/rules/ruleset").is_err());
+    assert!(r("mix:rules/ruleset", "@bn6/../x").is_err());
 }
 
 fn pack(modules: &[(&str, &str)]) -> Pack {
-    Pack::new(modules.iter().map(|(p, s)| (p.to_string(), s.to_string())))
+    Pack::root("test", modules.iter().map(|(p, s)| (p.to_string(), s.to_string())))
 }
 
 fn define_pack(modules: &[(&str, &str)]) -> Result<Definitions, String> {
@@ -86,25 +94,26 @@ return {
 fn definitions_get_keys_from_ids_owners_and_modules() {
     let d = define_pack(BOMBS).unwrap();
     let keys = |r: Registry| d.of(r).iter().map(|d| d.key.as_str()).collect::<Vec<_>>();
-    assert_eq!(keys(Registry::Chip), ["flshbom1", "flshbom2", "minibomb"]);
-    assert_eq!(keys(Registry::Kind), ["bomb"]);
+    // Each qualified with the module's root.
+    assert_eq!(keys(Registry::Chip), ["test:flshbom1", "test:flshbom2", "test:minibomb"]);
+    assert_eq!(keys(Registry::Kind), ["test:bomb"]);
     // An action nested in a chip made while the chip's module loaded takes
     // its key; the series' shared action, its first chip's.
-    assert_eq!(keys(Registry::Action), ["flshbom1/action", "minibomb/action"]);
+    assert_eq!(keys(Registry::Action), ["test:flshbom1/action", "test:minibomb/action"]);
     // Nested deeper: the variant inside the action's arguments.
-    assert_eq!(keys(Registry::Record), ["flshbom1/action/args/thrower", "minibomb/action/args/thrower"]);
+    assert_eq!(keys(Registry::Record), ["test:flshbom1/action/args/thrower", "test:minibomb/action/args/thrower"]);
     // Not nested in a keyed definition: its module and place.
-    assert_eq!(keys(Registry::Effect), ["lib/bombs/bomb#1"]);
+    assert_eq!(keys(Registry::Effect), ["test:lib/bombs/bomb#1"]);
     // The throw's state table is one schema for both actions; the kind's
     // its own.
-    assert_eq!(keys(Registry::Schema), ["action:flshbom1/action/state", "kind:bomb/state"]);
-    let action = d.get(Registry::Action, "minibomb/action").unwrap();
-    assert_eq!(action.spec.field("state"), &Data::Ref(Registry::Schema, "action:flshbom1/action/state".into()));
+    assert_eq!(keys(Registry::Schema), ["action:test:flshbom1/action/state", "kind:test:bomb/state"]);
+    let action = d.get(Registry::Action, "test:minibomb/action").unwrap();
+    assert_eq!(action.spec.field("state"), &Data::Ref(Registry::Schema, "action:test:flshbom1/action/state".into()));
     assert_eq!(action.spec.field("update"), &Data::Function);
-    let chip = d.get(Registry::Chip, "minibomb").unwrap();
-    assert_eq!(chip.spec.field("action"), &Data::Ref(Registry::Action, "minibomb/action".into()));
-    assert_eq!(chip.module, "chips/minibomb/chip");
-    let record = d.get(Registry::Record, "minibomb/action/args/thrower").unwrap();
+    let chip = d.get(Registry::Chip, "test:minibomb").unwrap();
+    assert_eq!(chip.spec.field("action"), &Data::Ref(Registry::Action, "test:minibomb/action".into()));
+    assert_eq!(chip.module, "test:chips/minibomb/chip");
+    let record = d.get(Registry::Record, "test:minibomb/action/args/thrower").unwrap();
     assert_eq!(record.record_type.as_deref(), Some("bomb-variant"));
 }
 
@@ -136,7 +145,7 @@ fn definition_mistakes_are_load_errors() {
         assert!(e.contains(want), "{source}: {e}");
     }
     let e = define_pack(&[("a", "return define.chip { id = 'x' }"), ("b", "return define.chip { id = 'x' }")]).unwrap_err();
-    assert!(e.contains("chip \"x\" is defined twice: in a.luau and in b.luau"), "{e}");
+    assert!(e.contains("chip \"test:x\" is defined twice: in test:a.luau and in test:b.luau"), "{e}");
 }
 
 /// Asset names for these tests.
@@ -179,10 +188,10 @@ fn the_roles_are_one_definition() {
         ("rules/roles", "return define.roles { actions = { anti_damage_counter = require('../lib/counter') } }"),
     ])
     .unwrap();
-    let roles = d.get(Registry::Roles, "roles").expect("keyed roles");
-    assert_eq!(roles.spec.field("actions").field("anti_damage_counter"), &Data::Ref(Registry::Action, "counter".into()));
+    let roles = d.get(Registry::Roles, "test:roles").expect("keyed roles");
+    assert_eq!(roles.spec.field("actions").field("anti_damage_counter"), &Data::Ref(Registry::Action, "test:counter".into()));
     let e = define_named(&[("a", "return define.roles {}"), ("b", "return define.roles {}")]).unwrap_err();
-    assert!(e.contains("roles \"roles\" is defined twice"), "{e}");
+    assert!(e.contains("roles \"test:roles\" is defined twice"), "{e}");
 }
 
 #[test]
@@ -193,7 +202,7 @@ fn definitions_are_frozen_and_definers_close_after_loading() {
     )]);
     let (lua, defined, modules, _, _) = open(&p, &AssetNames::default(), Options::default()).unwrap();
     assert!(defined.tables.iter().all(|t| t.is_readonly()));
-    let LuaValue::Table(m) = &modules["m"] else { panic!("a table") };
+    let LuaValue::Table(m) = &modules["test:m"] else { panic!("a table") };
     let late: Function = m.get("late").unwrap();
     BUDGET.with(|b| b.set(1000));
     let e = late.call::<LuaValue>(()).unwrap_err().to_string();
@@ -211,8 +220,8 @@ fn a_plan_binds_definition_slots() {
     let handles = (0..definitions.defs.len() as u16).collect();
     let plan = BindPlan {
         functions: vec![
-            FnSource::slot(Registry::Kind, "bomb", "update"),
-            FnSource::slot(Registry::Action, "minibomb/action", "update"),
+            FnSource::slot(Registry::Kind, "test:bomb", "update"),
+            FnSource::slot(Registry::Action, "test:minibomb/action", "update"),
         ],
         schemas: Vec::new(),
         definitions,
@@ -229,7 +238,7 @@ fn a_plan_binds_definition_slots() {
     assert!(e.contains("define something other"), "{e}");
     // A slot that isn't a function is refused.
     let mut wrong = plan.clone();
-    wrong.functions.push(FnSource::slot(Registry::Chip, "minibomb", "name"));
+    wrong.functions.push(FnSource::slot(Registry::Chip, "test:minibomb", "name"));
     let e = LuauContent::load(&p, &wrong, Options::default()).err().expect("refused").message;
-    assert!(e.contains("chip minibomb: `name` is string, not a function"), "{e}");
+    assert!(e.contains("chip test:minibomb: `name` is string, not a function"), "{e}");
 }
