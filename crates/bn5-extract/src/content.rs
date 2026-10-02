@@ -5,7 +5,7 @@
 //! The graphics and the index are read back from the written pack and
 //! compared with what was extracted.
 
-use crate::rom::{self, Roms, Version};
+use crate::rom::{self, Version};
 use nettai_content::report::Report;
 use std::path::Path;
 
@@ -36,11 +36,13 @@ pub fn main(args: &[String]) {
     let names = nettai_content::names::AssetNames::default();
     let bundle = crate::graphics::bundle(&roms, &names);
     let versioned = crate::graphics::versioned_chips(&roms);
-    let (bank, failures) = m4a::rom::extract(&roms.protoman.0).unwrap_or_else(|e| panic!("reading the sound data: {e}"));
+    let (mut bank, failures) = m4a::rom::extract(&roms.protoman.0).unwrap_or_else(|e| panic!("reading the sound data: {e}"));
     for (song, e) in &failures {
         eprintln!("song {:#05x} left out (it uses a command the driver port doesn't play): {e}", song.0);
     }
-    check_versions(&roms, &bank);
+    // Team Colonel's own songs, with what they play with added to the bank.
+    let (colonel, _) = m4a::rom::extract(&roms.us(Version::Colonel).0).unwrap_or_else(|e| panic!("reading Team Colonel's sound: {e}"));
+    let versions = crate::sound::colonel_songs(&mut bank, &colonel);
     let jp = crate::graphics::japanese_differences(&roms);
     if !jp.is_empty() {
         let ids: Vec<String> = jp.iter().map(|(c, i)| format!("{c:02x}-{i:02x}")).collect();
@@ -49,7 +51,7 @@ pub fn main(args: &[String]) {
 
     let mut files = vec![manifest(&bundle)];
     files.extend(nettai_content::pack::export_graphics(&bundle, &names));
-    let (sound, left_out) = nettai_content::pack::export_sound(&bank, &names);
+    let (sound, left_out) = nettai_content::pack::export_sound_versions(&bank, &versions, &names);
     files.extend(sound);
     for (song, e) in &left_out {
         eprintln!("song {:#05x} left out (no MIDI mapping yet): {e}", song.0);
@@ -73,6 +75,22 @@ pub fn main(args: &[String]) {
         Some(back) => panic!("the pack's graphics read back differently: {}", difference(&bundle, &back)),
         None => panic!("the pack's graphics don't load:\n{report}"),
     }
+    // So must the sound's versions (the songs as the driver plays them: a MIDI
+    // round trip keeps the timing, not the command bytes).
+    let mut report = Report::default();
+    match nettai_content::pack::import_sound_versions(root, &mut report) {
+        Some((back, back_versions)) => {
+            let ids = |v: &nettai_content::sound::SongVersions| -> Vec<(String, Vec<u16>)> {
+                v.versions.iter().map(|(n, s)| (n.clone(), s.keys().copied().collect())).collect()
+            };
+            assert_eq!(ids(&back_versions), ids(&versions), "the pack's versions' songs read back differently");
+            assert_eq!(back_versions.base_version, versions.base_version);
+            assert_eq!(back.voicegroups.len(), bank.voicegroups.len(), "the pack's voicegroups read back differently");
+        }
+        None => panic!("the pack's sound doesn't load:\n{report}"),
+    }
+    let colonel_own: Vec<String> = versions.versions.iter().flat_map(|(_, s)| s.keys().map(|id| format!("{id:#05x}"))).collect();
+    eprintln!("Team Colonel's own songs: {}", colonel_own.join(", "));
     let bytes: usize = files.iter().map(|f| f.1.len()).sum();
     eprintln!(
         "wrote {out} (game {GAME}): {} sprites, {} backgrounds, {} songs, {} samples, {} chips' pictures ({} each version's own), {} files, {} KiB in {:.1?}",
@@ -106,28 +124,6 @@ fn manifest(bundle: &nettai_assets::Bundle) -> (String, Vec<u8>) {
     }
     assert!(placed, "the manifest has a name");
     (path, out.into_bytes())
-}
-
-/// What the US Team Colonel ROM plays otherwise than Team ProtoMan's: its
-/// own songs at the same numbers (11 of them), which the pack doesn't hold
-/// yet (a song's number is its identity; a version's own songs need a
-/// version-aware sound index first). Said by number.
-fn check_versions(roms: &Roms, bank: &m4a::SoundBank) {
-    match m4a::rom::extract(&roms.us(Version::Colonel).0) {
-        Ok((colonel, _)) if colonel.songs != bank.songs => {
-            let differ: Vec<String> = bank
-                .songs
-                .iter()
-                .zip(&colonel.songs)
-                .enumerate()
-                .filter(|(_, (a, b))| a != b)
-                .map(|(i, _)| format!("{i:#05x}"))
-                .collect();
-            eprintln!("note: the Team Colonel ROM's songs {} differ; the pack has Team ProtoMan's", differ.join(", "));
-        }
-        Ok(_) => {}
-        Err(e) => eprintln!("note: the Team Colonel ROM's sound doesn't read: {e}"),
-    }
 }
 
 /// Where two graphics bundles differ, roughly.
