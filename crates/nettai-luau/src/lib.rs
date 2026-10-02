@@ -1,4 +1,4 @@
-//! Luau content for the bn6 battle engine (docs/design/scripting.md,
+//! Luau content for the nettai battle engine (docs/design/scripting.md,
 //! docs/design/content-model-v2.md).
 //!
 //! A content pack's scripts are Luau modules. Loading runs every module of
