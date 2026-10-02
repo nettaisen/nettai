@@ -298,8 +298,8 @@ matching recordings, 7,546 of the ported routines' branches ran and **2,192 (in 
 only**. After the work below, at main 51eeb22f with 5,151 matching recordings, 7,591 ran and **2,123 (in 1,255
 routines)** did; 80 of the 2,192 are taken the other way by this section's 63 new recordings (the rest of the
 drop is other scenarios added since, and branches that first ran now count in the total). At main 29aac858 the
-list was 2,112; this section's batches 5 and 6 (22 more recordings) take 32 of them the other way, and with them
-in the lab it is **2,081 (in 1,252 routines)**.
+list was 2,112; this section's batches 5 and 6 (22 more recordings) take 33 of them the other way, and with them
+in the lab it is **2,080 (in 1,252 routines)**.
 
 **How they are read.** The verification workspace has three tools for this, beside the audit:
 `tools/audit/onesided_rank.py` files each branch under the engine area that cites its routine (collision and
@@ -313,8 +313,8 @@ recordings takes the other way. The scenarios are in the chip lab library's `cov
 each naming the branch it takes in its description.
 
 **What has been read**, in the order above: all of the collision and damage area, the statuses and hit
-reactions, and the custom screen and hand (163 branches), and the first of movement and chip use: 397
-branches. 111 are taken by a new recording, 253 can't be taken in a netbattle (the tables below), 33 can but
+reactions, and the custom screen and hand (164 branches), and the first of movement and chip use: 398
+branches. 112 are taken by a new recording, 253 can't be taken in a netbattle (the tables below), 33 can but
 have no scenario yet (the list after them). Movement (116 left), chip use and dimming (135) and the forms and
 flow (443) are still to be read; the chip families (1,066) are read in their own pass.
 
