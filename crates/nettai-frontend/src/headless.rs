@@ -22,6 +22,50 @@ pub fn parse_frames(s: &str) -> Result<BTreeSet<u32>, String> {
     Ok(set)
 }
 
+/// Buttons held on chosen ticks, for headless live play (`--keys`): a
+/// list like "232-233:up,300:a+b" (ticks, then buttons by name: a, b, l,
+/// r, up, down, left, right, start, select). Other ticks hold none.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct KeyScript(Vec<(u32, u32, u16)>);
+
+impl KeyScript {
+    pub fn parse(s: &str) -> Result<KeyScript, String> {
+        use nettai_battle::input::keys;
+        let mut out = Vec::new();
+        for part in s.split(',').map(str::trim).filter(|p| !p.is_empty()) {
+            let (ticks, buttons) = part.split_once(':').ok_or_else(|| format!("{part:?} is not TICKS:BUTTONS"))?;
+            let num = |v: &str| v.trim().parse::<u32>().map_err(|_| format!("bad tick {v:?}"));
+            let (from, to) = match ticks.split_once('-') {
+                Some((a, b)) => (num(a)?, num(b)?),
+                None => (num(ticks)?, num(ticks)?),
+            };
+            let mut held = 0;
+            for b in buttons.split('+') {
+                held |= match b.trim().to_ascii_lowercase().as_str() {
+                    "a" => keys::A,
+                    "b" => keys::B,
+                    "l" => keys::L,
+                    "r" => keys::R,
+                    "up" => keys::UP,
+                    "down" => keys::DOWN,
+                    "left" => keys::LEFT,
+                    "right" => keys::RIGHT,
+                    "start" => keys::START,
+                    "select" => keys::SELECT,
+                    other => return Err(format!("no button {other:?}")),
+                };
+            }
+            out.push((from, to, held));
+        }
+        Ok(KeyScript(out))
+    }
+
+    /// The buttons held on tick `tick`.
+    pub fn held(&self, tick: u32) -> u16 {
+        self.0.iter().filter(|(a, b, _)| (*a..=*b).contains(&tick)).fold(0, |k, (_, _, h)| k | h)
+    }
+}
+
 /// Write a BGR555 frame as an RGB PNG, scaled up by an integer factor.
 pub fn write_png(path: &Path, frame: &[u16], scale: usize) -> std::io::Result<()> {
     let scale = scale.max(1);
@@ -53,11 +97,13 @@ pub fn render_frames(
     scale: usize,
     log: &mut dyn FnMut(&str),
 ) -> std::io::Result<Vec<u32>> {
-    render_frames_with(renderer, sessions, wanted, out, scale, false, log)
+    render_frames_with(renderer, sessions, wanted, out, scale, false, &KeyScript::default(), log)
 }
 
 /// [`render_frames`], and with `objects` every written frame's objects
-/// go to the log as the renderer sees them (`objects::describe`).
+/// go to the log as the renderer sees them (`objects::describe`); `keys`
+/// are the local player's buttons, by tick (live play's).
+#[allow(clippy::too_many_arguments)]
 pub fn render_frames_with(
     renderer: &mut Renderer,
     sessions: Vec<Session>,
@@ -65,6 +111,7 @@ pub fn render_frames_with(
     out: &Path,
     scale: usize,
     objects: bool,
+    keys: &KeyScript,
     log: &mut dyn FnMut(&str),
 ) -> std::io::Result<Vec<u32>> {
     std::fs::create_dir_all(out)?;
@@ -73,7 +120,7 @@ pub fn render_frames_with(
     let last = wanted.iter().next_back().copied().unwrap_or(0);
     for mut s in sessions {
         renderer.reset();
-        while s.step(0) {
+        while s.step(keys.held(s.ticks as u32 + 1)) {
             renderer.observe(&s.battle);
             let Some(f) = s.frame else { continue };
             renderer.problems.at(Some(f));
@@ -170,5 +217,13 @@ mod tests {
         let s = super::parse_frames("3, 10-12,7").unwrap();
         assert_eq!(s.into_iter().collect::<Vec<_>>(), vec![3, 7, 10, 11, 12]);
         assert!(super::parse_frames("x").is_err());
+    }
+
+    #[test]
+    fn key_scripts() {
+        use nettai_battle::input::keys;
+        let k = super::KeyScript::parse("232-233:up, 300:a+b").unwrap();
+        assert_eq!((k.held(231), k.held(232), k.held(233), k.held(300)), (0, keys::UP, keys::UP, keys::A | keys::B));
+        assert!(super::KeyScript::parse("3:jump").is_err());
     }
 }
