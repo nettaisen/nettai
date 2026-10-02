@@ -90,6 +90,7 @@ dependencies = [
 name = "bn5-extract"
 version = "0.1.0"
 dependencies = [
+ "bn5-compat",
  "m4a",
  "nettai-assets",
  "nettai-content",
