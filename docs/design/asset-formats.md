@@ -89,8 +89,10 @@ graphics/
   custom/
     custom.json  window.png  column-cells.png  turn-limit.png  name-bar.png
     codes.png  elements.png  digits.png  slot-codes.png  empty-icon.png
-    beast-buttons.png  redeal-buttons.png  scrap-buttons.png  cursor.png
-    emblems.png  regular.png  chip-art/CHIP.png  pictures/NAME.png
+    redeal-buttons.png  scrap-buttons.png  cursor.png  cross-cursor.png
+    regular.png  chip-art/CHIP.png  pictures/NAME.png
+    beast-buttons.png  emblems.png  cross-names.png  pictures/beast-out.png
+    gregar/  (the same four, a Gregar console's own)
 sound/
   sound.toml                         mixer, music players, song table size
   samples.toml                       per sample: file, exact rate, loop start, stamp
@@ -313,17 +315,35 @@ navis' mugshots and which one a navi shows, the HUD's text lines as glyph
 numbers ("TIME UP!", the turn timer's seconds, "COUNTER HIT!"), banner
 layouts and the form emotions.
 
-**Custom screen** (`graphics/custom/`): the same scheme. `window.png` holds
-the window frame's tiles with the window's four palettes (by the chip under
-the cursor's class), each chip's picture (`chip-art/CHIP.png`, 7x6 tiles)
-its own palette, `elements.png` a palette row per element whose colours
-10-15 are the ones the element brings, `emblems.png` the emblems'
-palettes. `custom.json` holds the window's maps (15x20, without and with the
-Cross tab) and the Cross window's, their patch lists (a block of
-consecutive tile numbers at a cell, row or column first, in a palette), the
-three palettes no image owns as colour lists, and which emblem a navi shows.
-The frontend composes the tile numbers the maps name from these blocks, as
-the original's VRAM holds them.
+**Custom screen** (`graphics/custom/`, format version 2): the same scheme.
+`window.png` holds the window frame's tiles with the window's four palettes
+(by the chip under the cursor's class: standard, Mega, Giga, dark), each
+chip's picture (`chip-art/CHIP.png`, 7x6 tiles) its own palette,
+`elements.png` a palette row per element whose colours 10-15 are the ones
+the element brings, `emblems.png` the emblems' palettes, `cross-cursor.png`
+the Cross window's cursor (its corner and its edge, two frames) with sprite
+palette 14. `custom.json` holds the window's maps (15x20, without and with
+the Cross tab) and the Cross window's (three opening steps, then the window
+with one to five Crosses), their patch lists (a block of consecutive tile
+numbers at a cell, row or column first, in a palette), the three palettes
+no image owns as colour lists, which emblem a navi shows, and the Program
+Advance animation's three sets of name colours. The frontend composes the
+tile numbers the maps name from these blocks, as the original's VRAM holds
+them.
+
+What a game version shows of its own on the custom screen is versioned
+(nettai-assets `Versioned`): the base game's files in the directory, and
+another version's under its name (`gregar/`), listed in `custom.json`'s
+`versions` with the same entries. A version's own are its Beast's picture
+in the chip window with its palettes (`pictures/beast-out.png`), the Beast
+Out button (`beast-buttons.png`), the emblems (`emblems.png`: MegaMan's
+are the version's; the base's owns the emblems' palettes) and the Cross
+window's names, 9x2 tiles each, the five on the cursor's row then on the
+others', with background palette 10 for the Cross under the cursor
+(`cross-names.png`). A console shows its version's, else the base's.
+`bn6-extract content <rom> <pack> --gregar <rom>` writes Gregar's from the
+US Gregar ROM, at the addresses the same code points at there; without it
+the pack has Falzar's only, and a Gregar console shows those.
 
 Tiled was considered for the field's panel blocks too, but a panel tile is
 drawn in different palettes for each side, which a Tiled tileset can't show
