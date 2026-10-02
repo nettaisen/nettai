@@ -387,8 +387,10 @@ setup, and its few routines are version branches.
   the comm menu's Team Battle row (チームバトル), so every Tango BN5 match is a Team Battle (mode bytes 4–7), with
   Patch Cards on. **The user's decision (2026-10-02): Team Battle first**, as Tango plays it; a plain NetBattle
   later. The Team Battle is the Battle Chip Gate's mode (two consoles, each with a gate); Tango's runs the shared
-  custom screen with Soul Unison, and its navi switch (from a gate's navi chip) never happens (§5). A plain
-  NetBattle would add the comm menu's first row in the primer and the other link applet.
+  custom screen with Soul Unison, and its navi switch (from a gate's navi chip) never happens (§5). **A plain
+  NetBattle is recorded too** (the chip lab's `bn5-netbattle` base: Tango's primer, then the gate's flag lowered
+  and the comm menu's root cursor put on NetBattle; mode 2, a triple NetBattle). Its battle runs from the other
+  link applet (0x081359C4) with the same BattleState and settings records; its custom screen is the shared one too.
 - **Replays:** no BN5 replay in Tango's current format. Three of 2022 in the oldest format (0x10) and six in
   format 0x11 (made with the bn5_gate patch), the same kind of savestate-started rounds the 2022 BN6 replays are;
   two BN5 DS replays (another platform, out of scope).
