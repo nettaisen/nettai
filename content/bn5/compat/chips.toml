@@ -2,7 +2,7 @@
 # id: the chip table's number (both versions, both regions); action, subtype: its use by number (+0x0B,
 # +0x0C); damage_formula: a damage of 1000 and up (+0x1A) less 1000, the row of BN5's formula table;
 # colonel: what Team Colonel's record has where it differs from Team ProtoMan's (flags +0x09, extra_flags
-# +0x16).
+# +0x16); save_slot: an e-Reader card's chip, whose name, description and palette are the save's slot n.
 
 cannon = { id = 0x001, action = 0x14, subtype = 0 }
 hicannon = { id = 0x002, action = 0x14, subtype = 1 }
@@ -296,6 +296,8 @@ holydrem = { id = 0x133, action = 0x15, subtype = 35, colonel = { flags = ["dimm
 bighook = { id = 0x134, action = 0x41, subtype = 26, colonel = { flags = ["dimming", "has_damage"] } }
 crossdiv = { id = 0x135, action = 0x41, subtype = 10, colonel = { flags = ["dimming", "has_damage", "library"] } }
 bugcharg = { id = 0x136, action = 0x15, subtype = 54, colonel = { flags = ["dimming", "has_damage", "library"] } }
+leadraid = { id = 0x137, action = 0x41, subtype = 21, save_slot = 0 }
+chaoslrd = { id = 0x138, action = 0x41, subtype = 29, save_slot = 1 }
 phoenix = { id = 0x139, action = 0x15, subtype = 1, colonel = { flags = ["dimming", "has_damage", "navi", "library"] } }
 dethphnx = { id = 0x13a, action = 0x15, subtype = 2, colonel = { flags = ["dimming", "has_damage", "navi"] } }
 batcan1 = { id = 0x13b, action = 0x36, subtype = 0 }

@@ -12,11 +12,12 @@ use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
 use nettai_battle::custom::{BattleFolder, FolderChip};
 use nettai_battle::hand::ChipHand;
+use nettai_battle::patch_cards::{InstalledCard, PatchCards};
 use nettai_battle::setup::{
     BattleSettings, GaugeSpeed, NaviCustBugs, NaviStats, NaviWeapons, SpTimes, Stage, Supports,
 };
 use nettai_battle::transform::TransformRequest;
-use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, RecordHandle, Registry, StageHandle, Value, WeaponHandle};
+use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle, RecordHandle, StageHandle, WeaponHandle};
 
 // ---- Numbers and handles ----------------------------------------------------------
 
@@ -148,23 +149,22 @@ impl<'a> Ids<'a> {
     }
 
     /// The patch card a save's card list names by its number (compat
-    /// records.toml's `patch_cards`).
-    pub fn patch_card(&self, number: u8) -> RecordHandle {
+    /// patch-cards.toml).
+    pub fn patch_card(&self, number: u8) -> PatchCardHandle {
         let key = self
             .compat
-            .records
             .patch_cards
             .iter()
             .find(|(_, n)| **n == number)
             .map(|(k, _)| k.as_str())
-            .unwrap_or_else(|| panic!("records.toml has no patch card {number}"));
-        self.content.defs.record(key).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
+            .unwrap_or_else(|| panic!("patch-cards.toml has no patch card {number}"));
+        self.content.defs.patch_card_by_key(key).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
     }
 
     /// A patch card's number.
-    pub fn patch_card_number(&self, h: RecordHandle) -> u8 {
-        let key = &self.content.defs.records[h.index()].key;
-        *self.compat.records.patch_cards.get(key).unwrap_or_else(|| panic!("records.toml has no patch card {key:?}"))
+    pub fn patch_card_number(&self, h: PatchCardHandle) -> u8 {
+        let key = &self.content.defs.patch_card(h).key;
+        *self.compat.patch_cards.get(key).unwrap_or_else(|| panic!("patch-cards.toml has no patch card {key:?}"))
     }
 
     /// The barrier a first-barrier byte names (NaviStats+0x06, the
@@ -376,35 +376,11 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
 
 // ---- Patch cards -------------------------------------------------------------------
 
-/// BN6's patch-cards system (content/bn6/rules/patch-cards): its key, and
-/// how many cards its setup holds.
-pub const PATCH_CARDS: &str = "patch-cards";
-pub const MAX_PATCH_CARDS: usize = 16;
-
-/// Install `cards` (each a patch card record, switched on or not), in the
-/// order they apply, as the player's patch-cards setup: what a Japanese
-/// save's card list says (0x020065F0+0x30: the number, bit 7 when switched
-/// off). Fails past [`MAX_PATCH_CARDS`] cards or when the player's ruleset
-/// has no patch-cards system.
-pub fn install_patch_cards(
-    content: &Content,
-    player: &mut nettai_battle::custom::PlayerSetup,
-    cards: &[(RecordHandle, bool)],
-) -> Result<(), String> {
-    if cards.len() > MAX_PATCH_CARDS {
-        return Err(format!("{} patch cards: the 80 MB allow at most {MAX_PATCH_CARDS}", cards.len()));
-    }
-    for (k, &(card, on)) in cards.iter().enumerate() {
-        player.set_rule_elem(content, PATCH_CARDS, "cards", k, Value::Def(Registry::Record, card.0))?;
-        player.set_rule_elem(content, PATCH_CARDS, "off", k, Value::Bool(!on))?;
-    }
-    Ok(())
-}
-
-/// A save's card list (the bytes: the number, bit 7 when switched off) as
-/// patch card records.
-pub fn patch_card_list(list: &[u8], ids: &Ids) -> Vec<(RecordHandle, bool)> {
-    list.iter().map(|&b| (ids.patch_card(b & 0x7F), b & 0x80 == 0)).collect()
+/// A Japanese save's card list (its bytes: the number, bit 7 when switched
+/// off) as a player's installed patch cards.
+pub fn patch_cards(list: &[u8], ids: &Ids) -> Result<PatchCards, String> {
+    let cards: Vec<InstalledCard> = list.iter().map(|&b| InstalledCard { card: ids.patch_card(b & 0x7F), enabled: b & 0x80 == 0 }).collect();
+    PatchCards::new(&cards)
 }
 
 // ---- Folders, hands, transformations ---------------------------------------------
