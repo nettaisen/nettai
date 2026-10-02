@@ -318,7 +318,10 @@ camera shake and screen dim.
 **A second match**, three rounds traced on the right-hand player's console
 (so the field is drawn mirrored), with Crosses, rock cubes, ice and grass
 panels, traps and Invisibl: of the 6397 frames outside the custom screen
-that have screenshots, **all 6397 are pixel-exact**, every row of them.
+that have screenshots, **all 6397 are pixel-exact**, every row of them. Of
+its 13,278 custom-screen frames 13,266 are, with the Cross windows, the
+DustCross scrap and the screens' openings and closings; the 12 that aren't
+show a description's chatbox.
 
 **Chip-lab scenarios**: 132 scenarios, a few of every family
 (shot, sword, thrown, placed and dimming chips, navi chips, the link
@@ -326,12 +329,20 @@ navis, traps, supports, stages with their objects, forms, Beast Over, the
 flow: knockouts, the damage judge, pause, a counter hit, a lost Full
 Synchro), each recorded with a screenshot per battle frame. Of 123,433
 frames outside the custom screen, **all 123,433 are pixel-exact**, and so
-is every scenario on every frame: the telops of dimmings content starts
+is every scenario on every frame, its 21,900 custom-screen frames included
+(the Cross window, the Program Advance animation, Beast Out): the telops of dimmings content starts
 itself, LilBoiler's HP number, the warning arrows, the faces. No frame
 panics, and the audit names nothing missing.
 
+**The custom screen's own scenarios** (36: the re-deal, the scrap, the
+keys, the Cross window, Beast Out, invalid chips, modifiers and Program
+Advances, a link navi's own chip, the chatbox): all 32,434 frames outside
+the custom screen are pixel-exact, and 9,593 of its 9,977, all but the
+frames that show the chatbox (descriptions, the run message), which isn't
+drawn yet.
+
 The comparison needs the ROM, so it lives outside this repository, with the
-list of scenarios. The frontend's own tests (`cargo test -p nettai-frontend`)
+lists of scenarios. The frontend's own tests (`cargo test -p nettai-frontend`)
 use a small synthetic asset set and a live battle built in code.
 
 The recorders take each picture at the traced console's own VBlank, as
