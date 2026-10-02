@@ -353,6 +353,13 @@ impl Screen {
         }
         screen.hand_size = hand_size(view, turn, round.charge_cross_screens, false);
         screen.lay_out(view);
+        // sub_802806C: a cursor on the first slot goes to the first dark
+        // chip dealt (as the class limits count it).
+        if screen.cursor == 0 {
+            if let Some(s) = (0..OK_SLOT).find(|&s| screen.chip_in(s, folder).is_some_and(|c| is_dark(within_limit(c, view), view))) {
+                screen.cursor = s;
+            }
+        }
         // sub_8026840: the window with the Cross tab while MegaMan has a
         // Cross left this round; sub_8028476: the chip window shows the
         // first slot.
@@ -466,12 +473,22 @@ impl Screen {
     pub fn tick(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console) -> Option<Request> {
         self.look.drawn = Default::default();
         let request = self.step(joy, view, folder, console);
+        let on_dark = self.on_dark_chip(view, folder);
+        self.look.hover(on_dark);
         self.hud.tick();
         if let Phase::ProgramAdvance { anim } = &mut self.phase {
             anim.fade = anim.fade.saturating_sub(1);
         }
         self.look.fade.step();
+        self.look.window_fade.step();
         request
+    }
+
+    /// `sub_802A394`: choosing chips or reading a chip's description, the
+    /// cursor rests on a dark chip (as it counts in a selection).
+    fn on_dark_chip(&self, view: &PlayerView, folder: &BattleFolder) -> bool {
+        matches!(self.phase, Phase::Choosing | Phase::Description { from_cross_window: false, .. })
+            && self.chip_in(self.cursor, folder).is_some_and(|c| is_dark(checked(c, view), view))
     }
 
     fn step(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console) -> Option<Request> {
@@ -606,7 +623,7 @@ impl Screen {
                         console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
                         self.look.frame = 0;
                         self.look.fade.start(FadeMode::BeastOut, BEAST_OUT_FADE_SPEED);
-                        self.look.play(ScreenSound::BeastOut);
+                        self.look.play(ScreenSound::BeastOut(view.unlocks.version));
                         self.look.play(ScreenSound::Pick);
                         self.look.play(ScreenSound::BeastOutFlash);
                     }
@@ -650,7 +667,7 @@ impl Screen {
                         console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
                         self.look.frame = 0;
                         self.look.fade.start(FadeMode::BeastOut, BEAST_OUT_FADE_SPEED);
-                        self.look.play(ScreenSound::BeastOut);
+                        self.look.play(ScreenSound::BeastOut(view.unlocks.version));
                         self.look.play(ScreenSound::BeastOutFlash);
                     }
                     // sub_8027672
@@ -1322,7 +1339,22 @@ fn beast_out_icon(view: &PlayerView) -> Option<FolderChip> {
 /// invalid chip when it is a Mega or Giga chip past the navi's limit for
 /// the battle, or its code isn't one the chip comes in.
 pub fn checked(c: FolderChip, view: &PlayerView) -> FolderChip {
-    let invalid = || FolderChip { id: view.library.invalid_chip(), code: INVALID_CODE };
+    let limited = within_limit(c, view);
+    if limited != c {
+        return limited;
+    }
+    // (The original also skips the check for chips past its chip table,
+    // which no folder holds.)
+    if c.code != INVALID_CODE && !view.library.chip(c.id).codes.contains(&c.code) {
+        return FolderChip { id: view.library.invalid_chip(), code: INVALID_CODE };
+    }
+    c
+}
+
+/// `sub_802A53C`: a chip as the class limits count it, the invalid chip
+/// when it is a Mega or Giga chip past the navi's limit for the battle
+/// (`checked` without the code).
+fn within_limit(c: FolderChip, view: &PlayerView) -> FolderChip {
     let d = view.library.chip(c.id);
     if !SPECIAL_CODES.contains(&c.code) {
         let limit = match d.class {
@@ -1331,15 +1363,15 @@ pub fn checked(c: FolderChip, view: &PlayerView) -> FolderChip {
             _ => None,
         };
         if limit.is_some_and(|(used, max)| used > max) {
-            return invalid();
+            return FolderChip { id: view.library.invalid_chip(), code: INVALID_CODE };
         }
     }
-    // (The original also skips the check for chips past its chip table,
-    // which no folder holds.)
-    if c.code != INVALID_CODE && !d.codes.contains(&c.code) {
-        return invalid();
-    }
     c
+}
+
+/// A chip with the dark flag (its record's `0x20`).
+fn is_dark(c: FolderChip, view: &PlayerView) -> bool {
+    view.library.chip(c.id).flags.has(crate::content::ChipFlags::DARK)
 }
 
 /// `sub_80280A2`: a link navi's own chip (`word_802A828`), unless it was

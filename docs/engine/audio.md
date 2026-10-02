@@ -19,6 +19,7 @@ the start of every tick).
 | `StopMusic` | `musicGameState_8000784`: `m4aMPlayAllStop`, current music = 0xFF | fade-out done `sub_80094DA` |
 | `Pinch(true/false)` | `sub_8009158`: pitch control (all tracks, +0x100 or 0) and tempo control (0x11A or 0x100) on music player 31 | after the mode handler, link battles, when the local navi's HP crosses MaxHP/4 |
 | `RestoreVolume` | `sub_802A3CC`: volume control 0x100 on players 31 and 22 | custom screen closes (`sub_8026A6C`) |
+| `ScreenVolume { music, screen }` | `sub_802A30C`, `sub_802A362`: volume control on players 31 (`music`) and 22 (`screen`) | a step of the custom screen's dark-chip hover (custom-screen.md §9; no BN6 chip is dark), heard by the screen's player |
 
 Ids are song-table indices (`SoundId`): music is 0x00..=0x25, effects
 0x64 and up. The engine names none: the ruleset plays what content's roles
@@ -62,8 +63,9 @@ pick 0x81, OK 0x82, a take-back 0x83, what can't be picked or taken back
 0x69 (`sub_8028CCC`, `sub_8028D3A`, `sub_8028D6C`, `sub_8029032`); a Beast
 Out or Cross taken back 0x1D2; the Cross window opening 0x7A and closing
 0x7D, a Cross put on 0x92 (`sub_8027AAE`); L's message 0x7B; R's
-description 0x9C and its close 0x9E; Beast Out chosen 0x193, 0x81, 0xBC
-(`sub_802774C`; the BeastOut chip's 0x193, 0xBC); ChpShufl's re-deal 0x182
+description 0x9C and its close 0x9E; Beast Out chosen 0x193 (0x191 on a
+Gregar console), 0x81, 0xBC (`sub_802774C`; the BeastOut chip's 0x193 or
+0x191, 0xBC: `sub_8027624`); ChpShufl's re-deal 0x182
 and its shuffles 0x113 (`sub_802723A`); DustCross's scrap 0x196 a chip, 0x182
 when done; the Program Advance animation's chips of the recipe 0x91 and the
 Program Advance 0x92 (`sub_802B80C`, `sub_802B920`). The chatbox makes no
