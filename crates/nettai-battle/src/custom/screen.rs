@@ -756,7 +756,11 @@ impl Screen {
                 None
             }
             Phase::Scrapping { .. } => {
+                // sub_8027406: every tick also draws the emblem and the
+                // Regular chip's frame.
                 self.scrap(view, folder);
+                self.look.draw_emblem(0);
+                self.look.draw_regular(folder.regular_pending);
                 None
             }
             Phase::Redealing { .. } => {
@@ -1161,6 +1165,9 @@ impl Screen {
             return;
         }
         let tick = tick + 1;
+        // The window's frame counter is the scrap's timer, from 24
+        // (`sub_8027434`).
+        self.look.frame = if tick == 1 { SCRAP_TIMER_START } else { self.look.frame + 1 };
         if tick >= 2 && (tick - 2) % 25 == 0 {
             let last = self.selected.checked_sub(1).map(|i| self.selection[i as usize]);
             match last.map(|s| self.slots[s as usize].kind) {
@@ -1168,6 +1175,10 @@ impl Screen {
                     scrapped[count as usize] = folder.take(index as usize);
                     count += 1;
                     self.selected -= 1;
+                    // sub_80281D4, sub_8029CD4: the pick's icon and cell
+                    // go; the chip window is drawn again.
+                    self.look.column[self.selected as usize] = None;
+                    self.show_chip_window(folder, view);
                     self.look.play(ScreenSound::Scrap);
                 }
                 _ => {
@@ -1369,6 +1380,10 @@ impl<T: PartialEq + Copy> Common<T> {
         }
     }
 }
+
+/// The scrap's timer starts at 24, so that its first chip goes on its
+/// second tick (`sub_8027434`).
+const SCRAP_TIMER_START: u32 = 0x18;
 
 /// The tick of a Cross's choice the white fade is over and the Cross put
 /// on (`sub_8027AAE`: 16 ticks, then 8 steps of the fade, then one more).
