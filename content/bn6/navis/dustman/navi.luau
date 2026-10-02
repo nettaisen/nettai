@@ -18,6 +18,7 @@ return define.navi {
     mugshot = asset.mugshot("dustman"),
     merge_height = 0,
     run_message = { 18, 16, 9 },
+    run_message_text = "Hahahah! You can't\nleave 'em in the\ndust now!",
     own_chip = { chip = dustman, code = "D" },
     chip_bonus = {
         family = "break",
