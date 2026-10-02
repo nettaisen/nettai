@@ -227,7 +227,8 @@ export type NaviSpec = {
     banners: { win: Banner, lose: Banner },
     mugshots: { [Emotion]: Mugshot }?,
     merge_height: number?,                        -- in a Cross
-    run_message: { number }?,                     -- the no-running message's lines (characters in each)
+    run_message: { counts: { number }, text: string?, portrait: Sprite? }?,  -- the no-running message:
+                                                  -- its lines' characters (its timing), words, speaker
     own_chip: { chip: Chip, code: string }?,      -- a link navi's chip, once a round
     chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
     identity: Identity,                           -- the NameID record: attach points, actor type, parts

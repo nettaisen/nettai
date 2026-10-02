@@ -55,6 +55,10 @@ The graphics load into the types of the `nettai-assets` crate, decoded
   codes and buttons, the cursor, the navis' emblems, the Regular chip's
   frame. A pack extracted before it loads without them (with a warning),
   and the screen isn't drawn.
+- **The chatbox** (in `graphics/hud`, and its portraits as sprites): the
+  dialogue font with its advances, the box's tiles and maps, the key-wait
+  arrow, the text's palette; each run message's speaker's portrait, the
+  true face from whichever ROM has it.
 
 What the HUD shows of the content comes from the content: a chip's name is
 its definition's, spelled with the font's glyphs (`Hud::glyphs`); its icon
@@ -308,9 +312,25 @@ The screen's sounds are the engine's cues for its player
 (docs/engine/audio.md §1): they play through the audio crate like the
 battle's.
 
-The text it draws goes through `fonts.rs` (the cell-text helper for the
-8x16 font), so that a later font-rendering step can change what is behind
-it (docs/design/text-rendering.md).
+**The chatbox** (`chatbox.rs`) the custom screen runs (R: a chip's or a
+Cross's description; L: the no-running message), as the original's
+chatbox draws each tick: the box's map on BG0 at its opening step (row 12,
+the message box or the narrower description box); the text as the line
+buffer's three rows of six sprites at (51, 108), its lines 14 rows apart
+(the third row of sprites is 32x8: a third line's descenders are cut, as in
+the original); the speaker's portrait, a sprite whose animations are its
+faces, stepped by its updates and tinted while it fades; the key-wait
+arrow. The words are the content's (the chip's or the Cross's
+`description`, the navi's `run_message`), how far they have printed and
+the rest the engine's chatbox (docs/engine/custom-screen.md §3.5).
+
+Every string goes through `fonts.rs`: the 8x16 font's (`cell_glyphs`,
+`cell_text`, `draw_cell_text`, `cell_glyph`: the HUD's lines, chip names,
+telops, the enemy names, the Program Advance's names) and the dialogue
+font's (`dialogue_glyphs`, `dialogue_text`, which composes a line as the
+original's line buffer does: each glyph OR'd in at the pen, cut past its
+advance but never before eight pixels), so that a later font-rendering
+step can change what is behind them (docs/design/text-rendering.md).
 
 ### What the engine gives the frontend
 
@@ -379,12 +399,15 @@ is every scenario on every frame, its 21,900 custom-screen frames included
 itself, LilBoiler's HP number, the warning arrows, the faces. No frame
 panics, and the audit names nothing missing.
 
-**The custom screen's own scenarios** (36: the re-deal, the scrap, the
+**The custom screen's own scenarios** (42: the re-deal, the scrap, the
 keys, the Cross window, Beast Out, invalid chips, modifiers and Program
-Advances, a link navi's own chip, the chatbox): all 32,434 frames outside
-the custom screen are pixel-exact, and 9,593 of its 9,977, all but the
-frames that show the chatbox (descriptions, the run message), which isn't
-drawn yet.
+Advances, a link navi's own chip, the chatbox, six on a Gregar console):
+all 36,329 frames outside the custom screen are pixel-exact, and so are all
+11,167 of its own. **The chatbox's** (26 more: every link navi's run
+message, A tapped, B held, waited out; the Giga chips' descriptions, a
+Cross's, an invalid chip's; four on a Gregar console): all 8,567 frames
+outside the custom screen and 4,157 of its 4,177 are pixel-exact; the 20
+others are the Gregar chip's description on a Falzar console (§5).
 
 **Every link-battle stage** (96 scenarios: the 47 stages the content
 defines, each traced on the left-hand player's console and on the
@@ -432,8 +455,21 @@ them).
   comparison leaves them out and counts those frames apart, not as
   regressions.
 
-- The custom screen's chatbox (descriptions, the run message) isn't drawn
-  yet; live play also shows the screen as text.
+- **Deliberate: the other game's link navis' portraits.** The run
+  message's portrait is the speaker's true face on either console; each
+  US ROM has a black placeholder for the other game's link navis (a Falzar
+  console shows HeatMan's message beside a black box). Listed with each
+  frame as known, as the faces are; a Gregar console's Falzar faces in the
+  emotion window are known differences the same way.
+- **Deliberate: the Gregar and Falzar chips' descriptions.** Their scripts
+  copy the text from a buffer the console keeps (`FF 01 01`, the same
+  buffer for both), which holds the console's own Giga chip's: a Falzar
+  console shows "Falzar's ruinous tornado!" for the Gregar chip too. The
+  frontend shows each chip's own (its definition's, the user's text), so
+  the Gregar chip's description differs on a Falzar console (and the
+  Falzar chip's, presumably, on a Gregar console). Not listed as known: no
+  content says which chips copy that buffer.
+- Live play shows the custom screen as text.
 - Affine (rotated or scaled) object sprites (`sprite_makeScalable`: no kind
   in the engine or the content uses one yet; compose draws affine parts, the
   custom screen's emblem is one), the per-part palette override
