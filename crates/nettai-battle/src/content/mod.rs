@@ -232,6 +232,11 @@ impl Content {
         &self.defs.chip(h).record
     }
 
+    /// A patch card.
+    pub fn patch_card(&self, h: nettai_content_api::PatchCardHandle) -> &defs::PatchCardDef {
+        self.defs.patch_card(h)
+    }
+
     /// What a chip's record names, by handle.
     pub fn chip_links(&self, h: ChipHandle) -> &ChipLinks {
         &self.defs.chip(h).links

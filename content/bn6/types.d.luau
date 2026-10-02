@@ -386,10 +386,9 @@ export type PanelChange = {
     change_sound: Sound?,
 }
 
--- A patch card (the Japanese games' Modification Card; a record of type
--- "patch-card", rules/patch-cards): its MB and its effects
--- (rules/patch-cards/cards.luau's constructors). Its name is the locales'
--- (locales/<lang>.toml's `records`, by its key).
+-- A BN6 patch card's effect (rules/patch-cards/cards.luau's constructors
+-- make them; the patch-cards system applies them): its kind, and the kind's
+-- fields.
 export type PatchCardEffect = {
     kind: string,
     amount: number?,
@@ -407,14 +406,6 @@ export type PatchCardEffect = {
     -- The card shows it as a bug.
     bug: boolean?,
 }
-export type PatchCard = {
-    -- Its key ("patch-card/<name>"): compat/records.toml's `patch_cards`
-    -- give the original's numbers.
-    id: string,
-    mb: number,
-    effects: { PatchCardEffect },
-}
-
 -- A barrier (lib/barriers): `sub_801A7CC`'s row (how it behaves, its HP,
 -- the damage a hit must reach to wear it, its timer (0xFFFF: none), the
 -- element that breaks it), and its visual (`byte_80E0A14`'s look: sprite,

@@ -11,11 +11,12 @@ use nettai_battle::custom::{
 };
 use nettai_battle::input::keys;
 use nettai_battle::link::Link;
+use nettai_battle::patch_cards::{InstalledCard, PatchCards};
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage, effects};
 use nettai_battle::{Battle, PlayerTick, Rng, TickEvents};
 use bn6_compat::trace::{self, Frame, Round};
 use bn6_compat::{Compat, codec};
-use nettai_content_api::{FormHandle, RecordHandle, StageHandle};
+use nettai_content_api::{FormHandle, StageHandle};
 use std::sync::Arc;
 
 /// One tick's inputs.
@@ -255,7 +256,7 @@ pub struct Loadout {
     pub folder: SavedFolder,
     pub game: GameVersion,
     pub crosses: CrossList,
-    pub cards: Vec<(RecordHandle, bool)>,
+    pub cards: Vec<InstalledCard>,
 }
 
 impl Loadout {
@@ -399,7 +400,7 @@ pub fn live_round(content: &Content, seed: u32, field: &Field, players: &[Loadou
             GameVersion::Gregar => 0,
             GameVersion::Falzar => 1,
         };
-        codec::install_patch_cards(content, p, &player.cards)?;
+        p.patch_cards = PatchCards::new(&player.cards)?;
     }
     setup.later_stages = field.later.clone().map(|(s, b)| Stage { stage: s, background: background_id(s, &b) });
     let choices = LiveChoices {
@@ -442,28 +443,28 @@ pub fn next_round_setup(
     next
 }
 
-/// Install a player's patch cards (BN6's patch-cards system's setup) from
-/// a list of card names (`patch_cards`).
+/// Install a player's patch cards (`PlayerSetup::patch_cards`) from a list
+/// of card keys (`patch_cards`).
 pub fn install_patch_cards(content: &Content, player: &mut PlayerSetup, list: &str) -> Result<(), String> {
-    codec::install_patch_cards(content, player, &patch_cards(content, list)?)
+    player.patch_cards = PatchCards::new(&patch_cards(content, list)?)?;
+    Ok(())
 }
 
-/// Patch cards from a list of card names, comma-separated, in the order
-/// they apply (e.g. `canodumb,-shadow`): a name after `-` is installed but
+/// Patch cards from a list of card keys, comma-separated, in the order
+/// they apply (e.g. `canodumb,-shadow`): a key after `-` is installed but
 /// switched off (docs/engine/patch-cards.md).
-pub fn patch_cards(content: &Content, list: &str) -> Result<Vec<(RecordHandle, bool)>, String> {
+pub fn patch_cards(content: &Content, list: &str) -> Result<Vec<InstalledCard>, String> {
     let mut cards = Vec::new();
     for item in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
-        let (name, on) = match item.strip_prefix('-') {
-            Some(name) => (name, false),
+        let (key, enabled) = match item.strip_prefix('-') {
+            Some(key) => (key, false),
             None => (item, true),
         };
-        let card = content.defs.record(&format!("patch-card/{name}")).ok_or_else(|| {
-            let names: Vec<&str> =
-                content.defs.records.iter().filter_map(|r| nettai_content_api::keys::local(&r.key).strip_prefix("patch-card/")).collect();
-            format!("no patch card {name:?}; the content's are {}", names.join(", "))
+        let card = content.defs.patch_card_by_key(key).ok_or_else(|| {
+            let keys: Vec<&str> = content.defs.patch_cards.iter().map(|c| nettai_content_api::keys::local(&c.key)).collect();
+            format!("no patch card {key:?}; the content's are {}", keys.join(", "))
         })?;
-        cards.push((card, on));
+        cards.push(InstalledCard { card, enabled });
     }
     Ok(cards)
 }
@@ -511,6 +512,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
             ruleset: None,
             rules: Vec::new(),
+            patch_cards: Default::default(),
         }
     };
     RoundSetup {

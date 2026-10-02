@@ -277,10 +277,6 @@ pub struct Records {
     /// 0x06), by the type `sub_801A7CC` takes.
     #[serde(default)]
     pub barriers: BTreeMap<String, u8>,
-    /// The patch cards (the Japanese games', records of type "patch-card"),
-    /// by the number a save's card list holds.
-    #[serde(default)]
-    pub patch_cards: BTreeMap<String, u8>,
 }
 
 /// The original's numbers of rule definitions (rules.toml): only
@@ -391,6 +387,9 @@ pub struct Compat {
     pub assets: Assets,
     pub text: Text,
     pub games: Games,
+    /// The patch cards by the number a Japanese save's card list holds
+    /// (patch-cards.toml).
+    pub patch_cards: BTreeMap<String, u8>,
     /// The kinds by the slot they fill.
     slots: BTreeMap<(Pool, u8), String>,
     /// The root its keys are written in (`bn6`; docs/design/
@@ -400,7 +399,7 @@ pub struct Compat {
 }
 
 /// The files, in the order they are read.
-pub const FILES: [&str; 12] = [
+pub const FILES: [&str; 13] = [
     "chips.toml",
     "actions.toml",
     "navis.toml",
@@ -413,13 +412,14 @@ pub const FILES: [&str; 12] = [
     "assets.toml",
     "text.toml",
     "games.toml",
+    "patch-cards.toml",
 ];
 
 /// The root BN6's compat writes its keys in.
 pub const ROOT: &str = "bn6";
 
 /// This repository's compat (content/bn6/compat), built in.
-const BN6: [(&str, &str); 12] = [
+const BN6: [(&str, &str); 13] = [
     ("chips.toml", include_str!("../../../content/bn6/compat/chips.toml")),
     ("actions.toml", include_str!("../../../content/bn6/compat/actions.toml")),
     ("navis.toml", include_str!("../../../content/bn6/compat/navis.toml")),
@@ -432,6 +432,7 @@ const BN6: [(&str, &str); 12] = [
     ("assets.toml", include_str!("../../../content/bn6/compat/assets.toml")),
     ("text.toml", include_str!("../../../content/bn6/compat/text.toml")),
     ("games.toml", include_str!("../../../content/bn6/compat/games.toml")),
+    ("patch-cards.toml", include_str!("../../../content/bn6/compat/patch-cards.toml")),
 ];
 
 impl Compat {
@@ -470,6 +471,7 @@ impl Compat {
             assets: get(&text, "assets.toml")?,
             text: get(&text, "text.toml")?,
             games: get(&text, "games.toml")?,
+            patch_cards: get(&text, "patch-cards.toml")?,
             slots: BTreeMap::new(),
             root: ROOT.to_string(),
         };
@@ -511,7 +513,7 @@ impl Compat {
         unique("records.toml: rock_variants", self.records.rock_variants.iter().map(|(k, &n)| (k, n)))?;
         unique("records.toml: projectile_variants", self.records.projectile_variants.iter().map(|(k, &n)| (k, n)))?;
         unique("records.toml: barriers", self.records.barriers.iter().map(|(k, &n)| (k, n)))?;
-        unique("records.toml: patch_cards", self.records.patch_cards.iter().map(|(k, &n)| (k, n)))?;
+        unique("patch-cards.toml", self.patch_cards.iter().map(|(k, &n)| (k, n)))?;
         unique("rules.toml: lockon", self.rules.lockon.iter().map(|(k, &n)| (k, n)))?;
         unique("rules.toml: statuses", self.rules.statuses.iter().map(|(k, &n)| (k, n)))?;
         unique("assets.toml: sprites", self.assets.sprites.iter().map(|(k, n)| (k, n.clone())))?;
