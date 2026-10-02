@@ -1334,6 +1334,10 @@ export type ChipSpec = {
     -- What R shows on the custom screen, its lines apart by "\n": the box
     -- takes keys a tick later for each line. None counts as three lines.
     description: string?,
+    -- The palette of its picture on the custom screen, 16 BGR555 colours,
+    -- for a chip whose palette no ROM holds (the pack's picture is black
+    -- without it). Presentation only.
+    art_palette: { number }?,
     codes: { string }?,
     element: string?,
     family: string?,

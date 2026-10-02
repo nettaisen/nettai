@@ -155,6 +155,11 @@ pub struct SpriteSheet {
     pub palette_sets: Vec<Vec<Palette>>,
     pub part_lists: Vec<Vec<SpritePart>>,
     pub animations: Vec<Vec<SpriteFrame>>,
+    /// The region whose ROMs the sprite comes from, when not the pack's
+    /// own (BN6: `"jp"`, a sprite the US release cut and left a
+    /// placeholder in). A console of another region shows something else
+    /// there.
+    pub region: Option<String>,
 }
 
 /// One animation frame.
