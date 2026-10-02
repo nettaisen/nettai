@@ -638,37 +638,44 @@ fn draw_chip_name(
     let name = name_glyphs(b, hud, chip, problems);
     let words = &b.content.chip(chip).name;
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, name.len(), pal, (0, 18 * 8), Align::Left);
-    let mut col = name.len() as i32;
+    // The damage follows the name: after the cells its glyphs take, or in
+    // the font mode a pixel after the name as the text layer draws it.
+    let mut x = 8 * name.len() as i32;
+    if text.takes(words)
+        && let Some(w) = text.fitted_width(words, Role::Cell, 8 * name.len() as i32)
+    {
+        x = w.ceil() as i32 + 1;
+    }
     if !shows_damage(b, chip) {
         return;
     }
     let i = hand.cursor as usize;
-    let number = |layer: &mut Layer, v: u16, col: &mut i32| {
+    let number = |layer: &mut Layer, v: u16, x: &mut i32| {
         for c in v.to_string().bytes() {
             let d = (c - b'0') as u16;
             for half in 0..2u16 {
                 let e = MapEntry { tile: 0x1B8 + 2 * d + half, hflip: false, vflip: false, palette: 13 };
-                put(layer, hud, pal, e, *col, 18 + half as i32);
+                put_px(layer, hud, pal, e, *x, (18 + half as i32) * 8);
             }
-            *col += 1;
+            *x += 8;
         }
     };
     let damage = hand.damage.get(i).copied().unwrap_or(0);
-    number(layer, damage, &mut col);
+    number(layer, damage, &mut x);
     if bonus != 0 {
         for half in 0..2u16 {
             let e = MapEntry { tile: 0x1CE + half, hflip: false, vflip: false, palette: 13 };
-            put(layer, hud, pal, e, col, 18 + half as i32);
+            put_px(layer, hud, pal, e, x, (18 + half as i32) * 8);
         }
-        col += 1;
-        number(layer, bonus, &mut col);
+        x += 8;
+        number(layer, bonus, &mut x);
     }
     // "x2" while the use would double it (two glyphs: tiles 0x1D2..).
     if doubled {
         for k in 0..2u16 {
             for half in 0..2u16 {
                 let e = MapEntry { tile: 0x1D2 + 2 * k + half, hflip: false, vflip: false, palette: 13 };
-                put(layer, hud, pal, e, col + k as i32, 18 + half as i32);
+                put_px(layer, hud, pal, e, x + 8 * k as i32, (18 + half as i32) * 8);
             }
         }
     }
