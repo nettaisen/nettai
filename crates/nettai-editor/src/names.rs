@@ -78,6 +78,10 @@ impl Names {
         self.pick(content, &content.defs.navi(n).key, |s, k| s.navi(k).and_then(|c| c.name.clone()))
     }
 
+    pub fn navicust_program(&self, content: &Content, p: nettai_content_api::NaviCustProgramHandle) -> String {
+        self.pick(content, &content.defs.navicust_program(p).key, |s, k| s.navicust_program(k).and_then(|c| c.name.clone()))
+    }
+
     pub fn patch_card(&self, content: &Content, c: PatchCardHandle) -> String {
         self.pick(content, &content.defs.patch_card(c).key, |s, k| s.patch_card(k).and_then(|c| c.name.clone()))
     }

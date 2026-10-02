@@ -3,6 +3,7 @@
 
 mod app;
 mod names;
+mod navicust;
 mod pictures;
 mod view;
 
