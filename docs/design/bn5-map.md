@@ -276,6 +276,47 @@ Chaos Unison (the dark chip held by the soul, the charged shot's timing) and the
 expected in the navi's-actions and damage blocks; they are not read yet. The tables are
 `target/bn5/only-<CODE>.tsv` in the verification workspace, per routine with where it is reached from.
 
+### 6.1 Light and dark chips
+
+A chip record's byte +0x15 (BN6's library sub-index, read only by the menus) says which MegaMan may use it: 1 a light one (the navi chips and
+their SP ones, GunDelSol, the Barriers, HolyPanl, BugFix, Snctuary, Otenko, JustcOne, MetrKnuk, HolyDrem, BigHook),
+2 a dark one (the DS navi chips, Static, Muramasa, Anubis, BlakWing, BugCurse, BugCharg), 0 either. The dark chips
+(flag 0x20) need a dark MegaMan as well. The other MegaMan's use fizzles: the navi enters action 0x1A for a frame
+and a puff of smoke appears, nothing else. Observed too: **a dark MegaMan standing on a holy panel turns it Normal**
+(at the fight's start and after a step); the code that does it is not read yet.
+
+### 6.2 HolyDrem (0x133)
+
+A Giga chip of both versions (action 0x15, sub-type 0x23, 50 damage), for a light MegaMan only (§6.1). Read in Team
+ProtoMan's code and recorded both ways (the chip lab's `chips/0x133-holydrem/`):
+
+- **Its parts:** the dimming spawner (`off_802CCB4`'s counterpart at 0x080297B8, entry 0x23: 0x080E6E78) makes the
+  dimming controller (T4 kind 0x59, 0x080E6DFC: the dimming's start and end), whose attack phase (0x080E6E40)
+  makes HolyDrem's actor (T1 kind 0x1C, 0x080BD728) on the user's position, with the chip's damage plus the
+  modifiers' bonus.
+- **The scan:** the actor fires one shot at once. Then it looks for holy panels over **the whole field, both
+  areas**: from the column at the far end (x = 6 for side 0, x = 1 for side 1), rows 1 to 3, then the next column
+  toward the user, until it runs off the field (0x080BD96C). A panel counts when its type is BN5's holy (9). For
+  each one found, 10 ticks later it shows an effect on it, **sets it Normal** (the panel setter, which refuses only
+  a missing panel) and fires another shot. With none left it waits 60 ticks and ends.
+- **The shots** (T3 kind 0x83, 0x080D6A60): bullets from the actor along **the user's row**, each stopping on the
+  first thing it hits; 50 damage each (plus the modifiers). A target standing on a holy panel would halve it as any
+  hit; in these recordings each target's panel was Normal by the time the shots came.
+- **So:** the damage is 50 × (1 + the holy panels on the field), every holy panel ends Normal, and with no holy
+  panel it is one shot of 50. An opponent out of the user's row takes nothing, though the panels still go.
+- **Recorded** (Team ProtoMan's console, both sides): the default stage's holy middle row (side 0: 5 panels, as
+  the dark Team Colonel turned its own Normal, 6 shots, 300; side 1 on bn5-team-light: 6 panels, 7 shots, 350);
+  a stage without holy panels (one shot, 50); a HolyPanl first (it makes the panel ahead of the user holy: two
+  shots, 100); the opponent a row up (no damage, all the panels Normal).
+- **The first side-1 recording's no damage** was not the panels: it ran on bn5-team, where Team Colonel's MegaMan is
+  dark, and HolyDrem fizzled before any actor existed.
+- **In nettai:** the scan reads the panel type by what it is, the engine's `PanelType::Holy` (BN5's 9 and BN6's 5
+  are both that), and the absorbing writes `PanelType::Normal`. So in a mixed battle it counts every holy panel
+  whoever made it: a BN6 HolyPanl's, a BN6 holy stage's, its own side's and the opponent's. Nothing in it is BN5's
+  alone about the panels: no BN5-only panel state, no owner or timer read, only the type and the setter BN6 has
+  too. What a BN6 field wouldn't provide is the BN5 rules around it: the light MegaMan it needs (§6.1), and the
+  dark MegaMan turning holy panels Normal under him, which changes the count when a dark MegaMan stands on one.
+
 ## 7. Team ProtoMan and Team Colonel
 
 `versions.py` (fmap.py's method between the two BN5 ROMs): the battle code is the same, moved (mostly +0xE8,
