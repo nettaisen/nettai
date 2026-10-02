@@ -298,10 +298,7 @@ camera shake and screen dim.
 **A second match**, three rounds traced on the right-hand player's console
 (so the field is drawn mirrored), with Crosses, rock cubes, ice and grass
 panels, traps and Invisibl: of the 6397 frames outside the custom screen
-that have screenshots, **6395 are pixel-exact** (rows 152-159 left
-out, below). What differs: on two frames (7498, 25885) the whole
-background is the next frame's, which is how the screenshots were taken
-(below), not the game.
+that have screenshots, **all 6397 are pixel-exact**, every row of them.
 
 **Chip-lab scenarios**: 132 scenarios, a few of every family
 (shot, sword, thrown, placed and dimming chips, navi chips, the link
@@ -317,15 +314,15 @@ The comparison needs the ROM, so it lives outside this repository, with the
 list of scenarios. The frontend's own tests (`cargo test -p nettai-frontend`)
 use a small synthetic asset set and a live battle built in code.
 
-Screenshots of the right-hand player's console that the recorders took as
-the emulated pair's tick ended (the golden traces', and the chip lab's
-before its pictures were taken at the console's own VBlank) have the
-previous picture in their last rows: the tick ends at the first console's
-VBlank, when the second console's video is still some seven scanlines from
-the picture's end (152-159). The comparison leaves rows 152-159 out for
-those; the chip lab's pictures taken at the VBlank match on every row. The
-golden match's two whole-frame differences are most likely the same timing
-drifting by a frame (its screenshots are still taken at the tick's end).
+The recorders take each picture at the traced console's own VBlank, as
+its main loop leaves `main_awaitFrame`. Screenshots of the right-hand
+player's console taken as the emulated pair's tick ended instead (both
+recorders' before) have the previous picture in their last rows: the tick
+ends at the first console's VBlank, when the second console's video is
+still some seven scanlines from the picture's end (152-159), and on two
+frames of the second match (7498, 25885) a whole picture off. The
+comparison leaves rows 152-159 out for those (no `vblank` file beside
+them).
 
 ## 5. Known gaps
 
