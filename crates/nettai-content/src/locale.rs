@@ -175,6 +175,23 @@ impl Strings {
     }
 }
 
+/// Check every strings table of a content root against its definitions
+/// (`Strings::check`), into `r` as errors.
+pub fn check_root(root: &Path, c: &nettai_battle::Content, r: &mut crate::report::Report) {
+    for lang in Strings::languages(root) {
+        let file = format!("{DIR}/{lang}.toml");
+        match Strings::load(root, &lang) {
+            Ok(Some(s)) => {
+                for problem in s.check(&c.defs) {
+                    r.error(&file, problem);
+                }
+            }
+            Ok(None) => {}
+            Err(e) => r.error(&file, e),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

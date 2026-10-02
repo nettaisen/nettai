@@ -96,6 +96,7 @@ fn main() {
                         ),
                     );
                     nettai_content::lint::definitions(&c, &mut r);
+                    nettai_content::locale::check_root(&a.content, &c, &mut r);
                 }
                 Err(failed) => r.issues.extend(failed.issues),
             }
