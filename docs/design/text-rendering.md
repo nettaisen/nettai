@@ -2,7 +2,8 @@
 
 **Status (2026-10-02): built.** The user chose crisp text at the window's resolution (option B of §2.1, which §6
 had rejected as the default) with a bundled open-licence font, as the default; §9 "As built" says what was built
-and how, and records the decisions. §0 to §8 are the investigation as written before it, unchanged.
+and how, and records the decisions. §10 is the languages built on it (`--lang en|ja`). §0 to §8 are the
+investigation as written before it, unchanged.
 
 The question was: should the frontend draw its text (chip names, descriptions, telops and the rest) with a real
 font file rasterized at run time, instead of the pixel fonts extracted from the user's ROM? This document says what
@@ -570,7 +571,8 @@ The user's request: "implement native font rendering for places in the ui with d
 4. **Numbers, banners and other pictures stay pixel art** (§6.6 4 and 5).
 5. **The font lives with the frontend**: `crates/nettai-frontend/fonts/murecho/`, with `OFL.txt`. `--font PATH`
    puts another TrueType or OpenType file in its place.
-6. Translations (§4.3) and the HUD's lines as content strings (§4.2) were not part of it.
+6. Translations (§4.3) and the HUD's lines as content strings (§4.2) were not part of it. Translations came
+   next: §10.
 
 ### 9.2 What is text and what stays a picture
 
@@ -708,4 +710,88 @@ Murecho (Neil Summerour, Positype; SIL Open Font License 1.1, no Reserved Font N
   system scales it up.
 - `--audit` reports what the pack's fonts lack, in either mode; a string the vector font lacks (drawn in the
   game's font) isn't reported.
-- A translated string table (§4.3) and the HUD's lines as content strings (§4.2) would feed the same items.
+- The HUD's lines as content strings (§4.2): not done; they stay the pack's text script, per language (§10).
+  Translated strings tables (§4.3) are built: §10.
+
+## 10. Languages (as built, 2026-10-02)
+
+The user's request: "add localization support so you can play either with japanese or english text". The
+frontend's `--lang en|ja` (default `en`) shows a battle's words in English, as the US games do, or in
+Japanese, as the Japanese games (EXE6 Falzar and Gregar) do, in either text mode.
+
+### 10.1 What a battle shows in words, and where each comes from
+
+| What | English | Japanese |
+|---|---|---|
+| A chip's name (the hand window, a telop, the other player's chip, the chip window, the Program Advance's names) | the chip definition's `name` | `locale/ja.toml` `[chips]`, the Japanese ROMs' chip names (キャノン, ハクシャク for Count) |
+| A chip's description (R on the custom screen) | the definition's `description` | the table's, the Japanese ROMs' descriptions |
+| A Cross's description | the form definition's `description` | the table's `[forms]` |
+| The no-running message (L) | the navi definition's `run_message` | the table's `[navis]` `run_message` |
+| The enemy names (a round's first custom screen) | the navi definition's `name`, the ROM's name for its NameID (ChrgeMan, GrndMan, TmhkMan, ProtoMan) | the table's `[navis]` `name` (ロックマン, キラーマン, アクアマン, ブルース...) |
+| The HUD's lines (the seconds, "TIME UP!", "COUNTER HIT!"), "VS", "????" | the pack's text script, in the US font's glyphs | the same words, in the Japanese font's glyphs (the pack's Japanese lettering) |
+| The 8x16 font and the dialogue font | the pack's | the pack's Japanese lettering: the Japanese ROMs' fonts, in their encoding |
+| Banners | the pack's | ten differ (the pack's `-ja` banners): ROCKMAN, KILLERMAN, AQUAMAN and BLUES where the US has MEGAMAN, ERASEMAN, SPOUTMAN and PROTOMAN, each starting where its longer or shorter name does; the Program Advance's プログラムアドバンス. The other 37 are the same pictures |
+| "Cstmzing..." | the pack's, eight tiles | カスタム中…, seven tiles (the Japanese `sub_801CA34` copies one column fewer) |
+| The gauge's "L or R" | the pack's | the Japanese gauge's |
+| The chip window's pictures for OK (no data selected; chip data transmission), the re-deal and scrap (TRASH CHUTE) | the pack's | the Japanese pictures (DUST SHOOT) |
+| The Cross window's names | the pack's, by game | the Japanese ROMs' katakana (アクア, トマホーク...), by game |
+
+The same in all four ROMs, so in both languages: BATTLE START and the other banners, "PAUSE", the custom
+gauge's "CUSTOM", the window's frame, its turn-limit block, the chip codes, every number, the chatbox's box, the
+Beast Out buttons, every chip's picture and every sprite (verification workspace tools/jp/locale/pictures.py and
+banners.py compared each). The Gregar Beast Out picture's art and the Bass and BassAnly icons differ between the
+US and the Japanese ROMs as art, not words: a region's difference, left as the US's (the user's choice).
+
+### 10.2 Where the words live
+
+- **Content's words in other languages are committed strings tables**, `content/bn6/locale/<lang>.toml`, keyed by
+  definition key (§4.3): `[chips]` (name, description), `[navis]` (name, run_message), `[forms]` (description).
+  nettai-content's `locale` reads them. The content root reader leaves `locale/` out, as it does `compat/`: a table
+  is no module and no definition, so it reaches neither the battle nor `Content::hash()`, and two players can each
+  read their own language in one netbattle. The definitions stay the canonical (English) words and the battle's
+  source for its timing: a description's lines and the run message's characters per line.
+- **`locale/ja.toml` is the Japanese ROMs' words**, written once by the verification workspace's `gen-content
+  locale-draft ja` and owned by people since, like the definitions. `gen-content check` compares it with both
+  Japanese ROMs: every chip's name and description, every Cross's description, every navi's name (by its
+  NameID) and no-running message, and that the two ROMs agree. The three descriptions no ROM has (DblBeast's,
+  Gregar's and Falzar's: their scripts print a gift's text the save keeps, `FF 01 nn`) are the text Tango's
+  EXE6 netplay saves hold, with a comment saying so; the check only asks that the Japanese font can draw them.
+- **The Japanese ROMs' text encoding** is compat/text.toml's `[jp]`: what each byte of their 8x16 font and
+  dialogue font draws (written once from the fonts: each glyph whose bitmap is one of the US fonts' is that
+  glyph's character, the rest read off the fonts; the verification workspace's tools/jp/locale/textjp.py). The
+  extractor writes the Japanese fonts' charmaps with it; gen-content decodes the Japanese text with it and
+  checks that every Japanese chip name encodes back to the ROM's bytes.
+- **Pictures with words, and the fonts, are assets**: the pack's lettering in another language, extracted from the
+  Japanese ROMs as `-ja` files (asset-formats.md §4, "Languages"; bn6-extract `lettering`).
+- **The HUD's lines stay the pack's text script** (§4.2 is still open): the Japanese ROMs' are the same English
+  words, which the Japanese font draws with the same pictures.
+
+### 10.3 How the frontend uses them
+
+- `--lang ja` loads the pack's graphics, swaps the Japanese lettering into the HUD's and the custom screen's fields
+  (`Bundle::in_language`; nothing that draws them changed), and loads `locale/ja.toml`. A language the content
+  root has no table of, or the pack no lettering in, stops the frontend with what there is.
+- The places that draw content's words (hud.rs, custom.rs, chatbox.rs) ask the frame's `TextSink` for them
+  (`Words`): the table's word, else the definition's, which `--audit` lists as missing from the table.
+- **`--text original --lang ja`** draws the Japanese words in the Japanese fonts as the Japanese games do: a
+  string is encoded with the Japanese font's characters, as the English is with the US font's. **The font mode**
+  draws them with Murecho, which has the kana and kanji; a symbol mark of the dialogue font (`[cross]`,
+  `[circle]`: the Japanese descriptions' "攻撃力[cross]2") is drawn as its character (×, ○).
+- **Timing stays the content's.** A translated description shows its own lines, whole, in the proportion of the
+  content's lines printed (16 of the 410 Japanese chip descriptions, and HeatCross's and SpoutCross's, have two
+  lines where the English has three); a translated no-running message prints in the proportion of the content's
+  characters printed, so it ends when the content's would. A Japanese console times its chatbox by its own words,
+  so those boxes take keys a tick or more apart from the engine's; nothing else in the battle reads words.
+- **No key switches the language while the window runs** (the user's choice for now): the renderer borrows one
+  bundle in one language.
+
+### 10.4 Decisions made along the way
+
+- The navis' English names are the ROM's names for their NameIDs (what the original draws as the enemy names):
+  ChrgeMan, GrndMan, TmhkMan and ProtoMan, where the content had ChargeMan, GroundMan, TomahawkMan and "Navi 11"
+  (the user's choice). gen-content reads them from the ROM's `TextScriptNaviChipNames`.
+- Japanese descriptions of empty lines (the dark chips', the arm chips') are the table's as the ROM has them:
+  the box shows nothing, as it does on a Japanese console. A description may be empty; a name or a message may
+  not.
+- The language is the player's: the comparison with the original draws each console in its own language
+  (verification workspace frontend-compare/console-lang.py: Japanese for a trace of a Japanese console).

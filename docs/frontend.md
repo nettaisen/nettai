@@ -97,7 +97,8 @@ window after N ticks (with `NETTAI_WINDOW_SHOT=<file>` set, the window's
 last picture is written there as a PNG), `--text font|original` chooses
 how strings are drawn (default `font`; the frame comparison uses
 `original`), `--font <file>` puts another TrueType or OpenType font in the
-bundled one's place. For live play, `--seed N` gives the seed its
+bundled one's place, `--lang en|ja` the language of the battle's words
+(default `en`; §3, "Languages"). For live play, `--seed N` gives the seed its
 setup and battle are drawn from (default: from the clock; each start
 prints it), `--stage NAME` forces a link battle stage by its key
 (`netbattle-1` to `netbattle-96`), `--show-folders` prints both folders,
@@ -365,6 +366,22 @@ frame pixel under it: banners, the mugshot or the chatbox's arrow cover
 text as they do in the original, and a telop's squash is a transform of
 its text. A string the font lacks a character of is drawn in the game's
 font, whole.
+
+**Languages** (docs/design/text-rendering.md §10). `--lang ja` shows
+the battle's words as the Japanese games do, in either text mode: the
+pack's Japanese lettering (the Japanese ROMs' 8x16 and dialogue fonts in
+their encoding, the HUD's lines in their glyphs, the banners whose words
+differ, カスタム中…, the gauge's "L or R", the chip window's pictures for
+OK, the re-deal and scrap, the Cross window's names) swapped in for the
+English (`Bundle::in_language`), and content's words from the content
+root's `locale/ja.toml` (chip names and descriptions, the Crosses'
+descriptions, the navis' names and no-running messages; `words.rs`: a
+word the table lacks is the definition's, which `--audit` lists). Only
+what is shown changes: the battle reads the definitions' words, and a
+translation prints in step with them (a description's whole lines in the
+proportion of the content's lines printed, a message's characters in the
+proportion of the content's characters), so two players of different
+languages play one battle.
 
 The bundled font is Murecho (`crates/nettai-frontend/fonts/murecho`, SIL
 Open Font License 1.1, its licence beside it): Latin, kana and some 2,300
