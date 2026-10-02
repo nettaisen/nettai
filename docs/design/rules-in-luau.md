@@ -923,3 +923,10 @@ art if the user approves §7.4's proposal).
   locale tables are qualified per root, and compat's patch-cards.toml is read at its boundary.
   `PlayerSetup::set_rule_elem` is gone: no system's setup holds an array now (the cards are
   `PlayerSetup::patch_cards`).
+- **Verify**: gen-content and the trace tests read keys at the boundary as bn6-compat does;
+  tools/traces-against.sh and gen-content-against.sh build with the engine checkout's Cargo.lock (getgud moved
+  under a run once).
+- **Gates** (on main a2dbe624 merged, with patch-card-type and getgud-fixes): the build without warnings, 444
+  tests, the content check (832 modules), gen-content check 0 errors, machgun 1074/1331 and soundmod
+  21962/14933/20436 with 96 rollback rows (getgud's and rennet's) and the 189 legacy rounds, the lab 6521/6521
+  (5,756,487 frames) with 0 sound rounds differing.
