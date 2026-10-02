@@ -17,10 +17,13 @@ pub mod fonts;
 pub mod headless;
 pub mod hud;
 pub mod objects;
+pub mod present;
 pub mod render;
 pub mod session;
 pub mod stage;
 pub mod text;
+pub mod textlayer;
+pub mod vfont;
 
-pub use render::Renderer;
+pub use render::{Frame, Renderer};
 pub use session::{Session, TickHook};
