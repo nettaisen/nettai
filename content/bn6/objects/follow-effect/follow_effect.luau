@@ -180,7 +180,7 @@ local BEHAVIORS: { [Behavior]: (Object) -> () } = {
 -- `sub_80E3DE0`: what its look does, then shown as the owner is.
 local function tick(me: Object)
     BEHAVIORS[look_of(me).behavior](me)
-    me.visible = (me.related1 :: Object).visible
+    me:copy_visibility(me.related1 :: Object)
 end
 
 -- `sub_80E3D90`: its look, then its first update.

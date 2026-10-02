@@ -96,7 +96,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.load(sprite);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
-    o.flags = (o.flags | flags::VISIBLE) & !flags::NO_SPRITE_UPDATE;
+    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.set_visible(true);
     let flip = o.alliance ^ o.flip;
     b.objects.sprite_mut(r).look.set_flip(flip);
     let o = b.objects.get_mut(r);
@@ -115,13 +116,9 @@ fn follow(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let status = vars(b, r);
-    let alliance = b.objects.get(r).alliance;
-    let seen = b.viewer_sees(alliance);
+    b.objects.get_mut(r).set_visible(true);
+    b.hide_from_blind(r);
     let o = b.objects.get_mut(r);
-    o.flags |= flags::VISIBLE;
-    if !seen {
-        o.flags &= !flags::VISIBLE;
-    }
     if status == Status::Confusion {
         let t = o.timer as i32 - 1;
         o.timer = t as u16;
@@ -140,7 +137,7 @@ fn follow(b: &mut Battle, r: ObjectRef) {
     crate::kinds::common::set_panels_from_coordinates(b, r);
     let o = b.objects.get_mut(r);
     if !crate::field::is_valid(o.panel.x, o.panel.y) {
-        o.flags &= !flags::VISIBLE;
+        o.set_visible(false);
     }
     let (_, flag) = status.row();
     let c = b.objects.get(owner).collision.expect("a status on an object without collision data");

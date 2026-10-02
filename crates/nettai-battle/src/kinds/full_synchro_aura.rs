@@ -107,7 +107,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.update(&b.content);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
-    o.flags |= flags::VISIBLE;
+    o.set_visible(true);
     o.anim = anim;
     o.anim_loaded = anim;
     common::set_progress(b, r, Progress::UPDATE);
@@ -115,26 +115,23 @@ fn init(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80C4B84`: follow the navi (hidden when hidden, when the navi is
-/// submerged, or when the navi is the other side's and the local navi is
-/// blind); go when unlinked or no longer in Full Synchro.
+/// submerged, or from a viewer whose navi is blind when the navi is the
+/// other side's); go when unlinked or no longer in Full Synchro.
 fn tick(b: &mut Battle, r: ObjectRef) {
     let anim = animation(b, r);
     let navi = owner(b, r);
     b.objects.get_mut(r).anim = anim;
     let alliance = b.objects.get(r).alliance;
-    // sub_800EB6C: hidden from a blind local navi.
-    let viewer_blind = !b.viewer_sees(alliance);
-    let shown = !viewer_blind && vars(b, r).shown;
+    let shown = vars(b, r).shown;
     let submerged = b.objects.get(navi).collision.is_some_and(|c| b.collision.get(c).f1 & f1::SUBMERGED != 0);
     let (pos, flip) = {
         let n = b.objects.get(navi);
         (n.pos, n.flip)
     };
+    b.objects.get_mut(r).set_visible(shown && !submerged);
+    // sub_800EB6C: hidden from a blind viewer.
+    b.hide_from_blind(r);
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::VISIBLE;
-    if shown && !submerged {
-        o.flags |= flags::VISIBLE;
-    }
     o.pos = pos;
     o.flip = flip;
     let facing = o.alliance ^ flip;

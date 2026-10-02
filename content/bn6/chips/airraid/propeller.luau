@@ -34,7 +34,7 @@ local function follow(me: Object)
     local p = owner.pos
     local px, py = owner.sprite:part_offset(PART)
     me.pos = Vec3.new(int.i32(p.x + px * 0x1_0000 * dir), int.i32(p.y + DY + py * 0x1_0000), int.i32(p.z + DZ))
-    me.visible = owner.visible
+    me:copy_visibility(owner)
     local look, worn = me.sprite, owner.sprite
     look.color_shader = worn.color_shader
     look.white = worn.white

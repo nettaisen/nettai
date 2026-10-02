@@ -62,7 +62,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.set_animation(0, &b.content);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
-    o.flags = (o.flags | flags::VISIBLE) & !flags::NO_SPRITE_UPDATE;
+    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.set_visible(true);
     o.anim = anim;
     o.anim_loaded = anim;
     let flip = o.alliance ^ o.flip;
@@ -94,11 +95,9 @@ fn follow(b: &mut Battle, r: ObjectRef) {
     crate::kinds::common::set_panels_from_coordinates(b, r);
     let o = b.objects.get_mut(r);
     if !crate::field::is_valid(o.panel.x, o.panel.y) {
-        o.flags &= !flags::VISIBLE;
+        o.set_visible(false);
     }
-    let shown = b.objects.get(owner).flags & flags::VISIBLE;
-    let o = b.objects.get_mut(r);
-    o.flags = (o.flags & !flags::VISIBLE) | shown;
+    b.copy_visibility(owner, r);
     let c = b.objects.get(owner).collision.expect("an ice block on an object without collision data");
     if b.collision.get(c).links[link::FREEZE].is_some() && b.collision.get(c).f1 & f1::FROZEN != 0 {
         return;

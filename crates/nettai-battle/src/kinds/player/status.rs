@@ -14,7 +14,7 @@ use crate::actor::{ActorType, request, status as ai_status};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
 use crate::field::PanelType;
-use crate::object::{DragStep, ObjectRef, PanelPos, Vec3, flags};
+use crate::object::{DragStep, ObjectRef, PanelPos, Vec3};
 use crate::content::FormKind;
 
 /// `sub_801AF44`, including the action dispatch (`sub_801B9E6`).
@@ -839,29 +839,28 @@ fn counter_shader(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_8016934`: visible unless flashing (2 ticks off, 2 on) or the
-/// local navi is blind and this is the other side's.
+/// `sub_8016934`: visible unless flashing (2 ticks off, 2 on), and hidden
+/// from a viewer whose navi is blind if it is the other side's (each
+/// console's rule, decided for both viewers).
 fn update_visibility(b: &mut Battle, r: ObjectRef) {
     if !b.is_dimmed() {
-        b.objects.get_mut(r).flags |= flags::VISIBLE;
+        b.objects.get_mut(r).set_visible(true);
     }
     let f = flag1(b, r);
     if f & f1::DEAD != 0 {
         return;
     }
     if f & (f1::FLASHING | f1::INVISIBLE) != 0 && coll(b, r).status_timers[timer::FLASH] & 2 != 0 {
-        b.objects.get_mut(r).flags &= !flags::VISIBLE;
+        b.objects.get_mut(r).set_visible(false);
     }
+    // On its own side's console: HUD markers only. On the other's, hidden
+    // while that console's navi is blind.
     let alliance = b.objects.get(r).alliance;
-    if !b.is_remote(alliance) {
-        // The local navi: HUD markers only.
-        return;
-    }
-    let Some(viewer) = b.player(alliance ^ 1) else { return };
-    let viewer_blind = b.objects.get(viewer).collision.map(|c| b.collision.get(c).f1 & f1::BLIND != 0).unwrap_or(false);
-    if viewer_blind {
-        b.objects.get_mut(r).flags &= !flags::VISIBLE;
-    }
+    let hidden = [0u8, 1].map(|viewer| {
+        viewer != alliance & 1
+            && b.player(viewer).and_then(|p| b.objects.get(p).collision).is_some_and(|c| b.collision.get(c).f1 & f1::BLIND != 0)
+    });
+    b.hide_from(r, hidden);
 }
 
 /// `sub_8017BC0`: while paused, requests start the pause-time action 0x1C
