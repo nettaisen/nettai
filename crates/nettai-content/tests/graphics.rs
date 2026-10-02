@@ -302,7 +302,7 @@ fn named_assets_read_back_by_their_numbers() {
 /// (placeholders for the rest), and reads back.
 #[test]
 fn the_asset_index_lists_every_asset_by_name() {
-    use nettai_content_api::{AssetKind, AssetNames, SpriteId};
+    use nettai_content_api::{AssetKind, AssetNames};
     let dir = temp("index");
     let b = bundle();
     let mut names = nettai_content::names::AssetNames::default();
@@ -314,7 +314,7 @@ fn the_asset_index_lists_every_asset_by_name() {
     // A banner the HUD doesn't draw is named all the same.
     names.banners.insert(0xA0, "heatman-win".into());
     let index = names.index(&b, &[0, 1, 2].into());
-    assert_eq!(index.sprites["bomb"], SpriteId { category: first.category, index: first.index });
+    assert_eq!(index.sprites["bomb"], nettai_content_api::PackSprite { category: first.category, index: first.index });
     assert_eq!(index.sprites.len(), b.sprites.len());
     let sounds: Vec<(&str, u16)> = index.sounds.iter().map(|(k, &v)| (k.as_str(), v)).collect();
     assert_eq!(sounds, [("no-music", 0x63), ("sound-000", 0), ("sound-002", 2), ("throw", 1)]);
@@ -323,12 +323,13 @@ fn the_asset_index_lists_every_asset_by_name() {
     assert_eq!(index.banners.len(), b.hud.banners.len() + 1);
     assert_eq!(index.mugshots.len(), b.hud.mugshots.len() + b.hud.navi_mugshots.len());
     assert!(AssetNames::is_placeholder(AssetKind::Sound, "sound-002"));
+    assert!(AssetNames::is_placeholder(AssetKind::Sound, "bn6:sound-002"), "a qualified placeholder");
     pack::write_files(&dir, &vec![nettai_content::names::index_file(&index)]).unwrap();
     let mut r = Report::default();
     assert_eq!(nettai_content::names::read_index(&dir, &mut r), Some(index), "{r}");
     // Without an index a pack names no assets.
     let mut r = Report::default();
-    assert_eq!(nettai_content::names::read_index(&temp("no-index"), &mut r), Some(AssetNames::default()));
+    assert_eq!(nettai_content::names::read_index(&temp("no-index"), &mut r), Some(nettai_content_api::PackIndex::default()));
     assert_eq!(r.count(Level::Note), 1);
 }
 

@@ -17,6 +17,7 @@ pub mod headless;
 pub mod hud;
 pub mod netplay;
 pub mod objects;
+pub mod packs;
 pub mod present;
 pub mod render;
 pub mod session;

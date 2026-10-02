@@ -94,7 +94,7 @@ pub fn arena(content: &Content, draws: &mut Draws, stage: Option<StageHandle>) -
     if stages.is_empty() {
         return Err("the content has no link battle stage".into());
     }
-    let backgrounds: Vec<&str> = LINK_BACKGROUNDS.iter().copied().filter(|b| content.assets.backgrounds.contains_key(*b)).collect();
+    let backgrounds: Vec<&str> = LINK_BACKGROUNDS.iter().copied().filter(|b| crate::background(content, b).is_some()).collect();
     let place = |draws: &mut Draws| {
         let stage = stages[draws.below(stages.len())];
         let background = (!backgrounds.is_empty()).then(|| backgrounds[draws.below(backgrounds.len())].to_string());
