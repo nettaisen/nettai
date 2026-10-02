@@ -28,7 +28,7 @@ local PATTERN, FIRE, RECOVER = 0x0, 0x4, 0x8
 
 local ANIM_SHOOT = 0x0E
 local SHOTS, SHOT_TICK, SHOT_TICKS, RECOVER_TICKS = 9, 1, 5, 5
-local SHOT_SOUND, SHOT_Z = asset.sound("buster-6a"), 0x18_0000
+local SHOT_SOUND, SHOT_Z = asset.sound("buster-shot"), 0x18_0000
 -- The rows' orders (`byte_80F0138`): the six orders of -1, 0, +1.
 local PATTERNS: { [number]: { number } } = {
     [0] = { -1, 1, 0 },
@@ -45,7 +45,7 @@ local DAMAGE_PER_ATTACK, HIT_PARAM = 5, 0x85
 function rapid_buster.setup(navi: Object): Action
     navi.attack_damage = (battle.navi(navi.alliance).attack + 1) * DAMAGE_PER_ATTACK
     navi.hit_param = HIT_PARAM
-    navi.recovery = 0
+    navi.attack_count = 0
     return rapid_buster.action
 end
 
@@ -56,7 +56,7 @@ local function fire(me: Object, s: State)
     if me.step_init == 0 then
         me:set_animation(ANIM_SHOOT)
         me.anim_loaded = 0xFF
-        if me.recovery == 0 then
+        if me.attack_count == 0 then
             buster.raise_arm(me)
         else
             -- `sub_80B8E7C`, `sub_80C44D2`.
@@ -76,7 +76,7 @@ local function fire(me: Object, s: State)
     end
     if s.timer == SHOT_TICK then
         battle.play_sound(SHOT_SOUND)
-        local row = PATTERNS[s.pattern][me.recovery % 3 + 1]
+        local row = PATTERNS[s.pattern][me.attack_count % 3 + 1]
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000)
         projectile.spawn(me, me.panel_x + me.facing, me.panel_y + row, { variant = variants.charged, damage = damage, z = SHOT_Z })
         attachment.attach(me, buster.flash, "related")
@@ -86,8 +86,8 @@ local function fire(me: Object, s: State)
     if t <= SHOT_TICKS then
         return
     end
-    local shots = me.recovery + 1
-    me.recovery = shots
+    local shots = me.attack_count + 1
+    me.attack_count = shots
     if shots < SHOTS then
         me.step_init = 0
     else

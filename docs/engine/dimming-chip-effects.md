@@ -306,7 +306,8 @@ r3 = b2, Params = 1, damage 200.
 - 9, phase 0xC (`sub_80D4EE0`): region 0, VISIBLE off; once not dimmed, state destroy (word).
 
 **The strike's controller, T4#0x53 (`sub_80E680C`)**, spawned by `sub_80E6878`: PanelX/Y, Element,
-RelatedObject1 = the statue, the alliance byte, the damage word, +0x30 = 0x175 (the telop names chip 0x175;
+RelatedObject1 = the statue, the alliance byte, the damage word, +0x30 = 0x175 (the telop names chip 0x175,
+Punisher, which content passes to `dimming.start` as its telop;
 bonus 0), Params = the statue's. Standard phases; its effect (`sub_80E6850`): first tick, the statue's
 Param3 = 1; Timer = 0x3C; ends when Timer −= 1 reaches 0 (60 ticks).
 

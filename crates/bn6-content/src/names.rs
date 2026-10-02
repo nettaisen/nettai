@@ -30,7 +30,8 @@ pub struct AssetNames {
     /// Song-table entries.
     pub songs: BTreeMap<u16, String>,
     pub backgrounds: BTreeMap<u8, String>,
-    /// Mugshots by their index in the mugshot table.
+    /// Mugshots by their number: the emotion window's by their index in
+    /// its table, the link navis' faces from `bn6_assets::NAVI_MUGSHOTS`.
     pub mugshots: BTreeMap<u8, String>,
     /// Banners by banner id (a multiple of 4).
     pub banners: BTreeMap<u8, String>,
@@ -89,7 +90,8 @@ impl AssetNames {
         for id in self.banners.keys().copied().chain((0..graphics.hud.banners.len()).map(|i| 4 * i as u8)) {
             a.banners.insert(self.banner(id), id);
         }
-        for i in self.mugshots.keys().copied().chain(0..graphics.hud.mugshots.len() as u8) {
+        let faces = (0..graphics.hud.navi_mugshots.len() as u8).map(|i| bn6_assets::NAVI_MUGSHOTS + i);
+        for i in self.mugshots.keys().copied().chain(0..graphics.hud.mugshots.len() as u8).chain(faces) {
             a.mugshots.insert(self.mugshot(i), i);
         }
         a

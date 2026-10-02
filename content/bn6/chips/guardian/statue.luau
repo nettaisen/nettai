@@ -79,7 +79,7 @@ local STRIKE_REGION: { [number]: Region } = {
 }
 local STRIKE_IS = collision.thrown_piercing_break
 local STRIKE_HITS, STRIKE_HIT_MOD = collision.hits_navis, 3
-local STRIKE_BURST = define.effect { sprite = asset.sprite("beast-over-burst"), anim = 0, palette = 0 }
+local STRIKE_BURST = define.effect { sprite = asset.sprite("lightning"), anim = 0, palette = 0 }
 local STRIKE_ANIM = 1
 
 -- Its actions (`off_80D4D60`).
@@ -195,7 +195,7 @@ local function start_strike(me: Object)
     me.alliance = side
     -- (The HUD: sub_801DACC(0x40).)
     local controller = strike.spawn(me)
-    dimming.start(side, true, controller, me)
+    dimming.start(side, true, controller, me, strike.telop)
     me.phase = 4
 end
 

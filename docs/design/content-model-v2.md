@@ -810,7 +810,7 @@ GroundCross use), the falling meteor with its panel marker chips/meteors/falling
 (`meteors/falling-meteor`, `meteors/marker`; the instant chips' meteor shower, lib/instant/meteor_shower, uses
 them), the thunder column chips/dolthdr/column (`dolthdr/thunder-column`, which EraseCross's ray lays), and the
 rock with its debris chips/rockcube/rock and debris (`rockcube/rock`, `rockcube/debris`, its variants
-`rockcube/brittle` to `rockcube/ice`; the stages place it, the encasing makes ice blocks of it, and the boulder
+`rockcube/rock/brittle` to `rockcube/rock/ice`; the stages place it, the encasing makes ice blocks of it, and the boulder
 breaks into its debris). What stays in `objects/` is what no one chip owns: absorbed-obstacle, attachment,
 boulder, bullet, element-pillar, encased-bubble, falling-rock (with its chips), flying-shot, follow-effect, gust,
 panel-bursts, panel-changer, panel-strike, projectile and rising-bubble.
@@ -1707,7 +1707,7 @@ What it settled:
   its rows by number privately and exports the chips' by name (`puck.variants.airhocky`,
   `wave.variants.pwrwave`, `shield.looks.rflectr2`), and an action's form no chip has is a definition with
   its own compat key (`tornado/back-spread`, `recov/none`).
-- **Asset names**: the sprites `yoyo-arm`, `burner`, `burner-2`, `drill-arm`, `hand-fan` and `shock-wave`
+- **Asset names**: the sprites `yoyo-arm`, `burner`, `heatcross-burner`, `drill-arm`, `hand-fan` and `shock-wave`
   (compat/assets.toml and curation.toml).
 - **What stays numeric**: statuses and bug codes, elements (the attack's element byte), Beast forms by number
   (the Reflector's head animation), and in the shims the subtype or parameter that picks a record's action.
@@ -1794,7 +1794,7 @@ need.
 | weapons.toml | `"megaman/buster" = [0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, ...]`, one line per weapon: the numbers whose `off_80117D4` entries are one routine. `nullsub_44`'s numbers are split by what the ruleset does with them (`megaman/rock-barrage`, `megaman/charged-chip-bonus`, `megaman/stale-register`). Every number a form's row (`byte_8020354`), a navi's (`byte_80210DD`) or a known NaviStats (NaviCust programs) names |
 | kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rockcube/rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
 | stages.toml | `"netbattle-1" = { settings = [0x00], layout = 0x00, actor_list = 0x080B1989 }`: the settings indices that are the stage, its panel layout's number and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
-| records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rockcube/cube" = 1`); NaviCust buster shots when their producers are known |
+| records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rockcube/rock/cube" = 1`); NaviCust buster shots when their producers are known |
 | rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`), `[statuses] paralyze-90 = 0x10` (a hit's status byte, `off_80209EC`); and for the roles that name an effect, a spark, a region or a collision type (rules/roles.luau), the number the original's routines name each by, by role: `[effects] deletion = 0x03`, `[sparks] guard = 0x08`, `[regions] anchor = 0x01`, `[collision] navi = 0x01`; and likewise for the roles that name assets, `[sounds] hit = 0x06D`, `[music] link_battle = 0x015`, `[sprites] eruption = "10-24"`, `[banners] draw = 0x1C` |
 | assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
 | text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the EX and SP glyphs as `[EX]`, `[SP]`) |
@@ -1841,7 +1841,7 @@ name is a load error naming the module. The resolved value is a handle into the 
 
 - **Names** come from compat/assets.toml, which the generator writes: the disassembly's song and sound enum names
   where they exist (`SONG_VIRUS_BATTLE` is `virus-battle`, `SOUND_HIT_BOMB_1` is `hit-bomb-1`), else a name from
-  the asset's first user (`erase-mark`), else a numbered placeholder (`sprite-0c-01`, `sound-101`, `banner-54`). The
+  the asset's first user (`erase-mark`), else a numbered placeholder (`sprite-0c-26`, `sound-101`, `banner-NN`). The
   table lists every asset the ROM has, so a placeholder is an entry too. Content may not use a placeholder (the
   checker warns); naming one is part of using it.
 - **The extractor** reads compat/assets.toml and writes `graphics/sprites/<name>/`, `sound/songs/<name>.mid`,
@@ -2735,7 +2735,7 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    `setup` with their own charge times), and every routine has its charge times (the TOML's
    rules/weapons.toml had 50 of the 148; a routine a navi's or form's stats name and nothing implements, like
    ProtoMan's 0x32, now charges as the game does). Content may not use a placeholder asset
-   name, so compat names what the tables use for its first user (`effect-0e`, `held-28`), for curation. The loader is
+   name, so compat names what the tables use for its first user (`effect-0e`, `held-28`, since curated as `hit-damage-judge`), for curation. The loader is
    `bn6_content::pack::load_battle(content, assets)`; bn6-extract writes assets only. The check: `gen-content
    check` defines the content root and compares every table with the ROM's (§3 of content-pack.md).
    A chip's `description` (what R shows on the custom screen: the battle reads its line count) and a navi's

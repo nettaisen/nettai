@@ -5,7 +5,7 @@
 return define.rules("banners", {
     holding = {
         asset.banner("program-advance"),
-        asset.banner("held-28"),
+        asset.banner("hit-damage-judge"),
         asset.banner("program-advance-empty"),
     },
 })
