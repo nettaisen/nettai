@@ -8,7 +8,13 @@
 
 use crate::codec::{self, ChipHand, NAVI_STATS, NaviStats, Panel};
 use crate::{Compat, pool_of_type, pool_slots, qualify};
-use nettai_battle::{Battle, Content, PlayerTick, RoundSetup, TickEvents};
+use nettai_battle::content::ChipCode;
+use nettai_battle::custom::{BattleFolder, FolderChip, PlayerSetup, Unlocks};
+use nettai_battle::console::ConsoleSetup;
+use nettai_battle::custom::GameVersion;
+use nettai_battle::setup::NaviWeapons;
+use nettai_battle::{Battle, Content, NaviStats as EngineNaviStats, PlayerTick, RoundSetup, TickEvents};
+use nettai_content_api::{RecordHandle, WeaponHandle};
 use nettai_content_api::Pool;
 use serde::Deserialize;
 use std::io::BufRead;
@@ -416,24 +422,220 @@ impl Round {
             if s.form != 0 {
                 out.push(format!("side {side}'s soul {:#04x} (BN5's forms)", s.form));
             }
+            if s.raw[0x4C] != 0 {
+                out.push(format!("side {side}'s spread program (NaviStats +0x4C = {:#04x})", s.raw[0x4C]));
+            }
+            for (what, n) in [("buster", s.raw[0x04]), ("charged shot", s.raw[0x05]), ("B+Back", s.raw[0x07]), ("A charge", s.raw[0x39])] {
+                match compat.weapon(n) {
+                    Ok(Some(k)) if content.defs.weapon_by_key(&k).is_none() => out.push(format!("side {side}'s {what} weapon {k}")),
+                    Err(e) => out.push(format!("side {side}'s {what}: {e}")),
+                    _ => {}
+                }
+            }
+            for (what, n) in [("buster-shot program", s.raw[0x4D]), ("charged-shot program", s.raw[0x4F])] {
+                match compat.projectile_variant(n) {
+                    Ok(k) if content.defs.record(&k).is_none() => out.push(format!("side {side}'s {what} {k}")),
+                    Err(e) => out.push(format!("side {side}'s {what}: {e}")),
+                    _ => {}
+                }
+            }
+            match compat.barrier(s.first_barrier) {
+                Ok(Some(k)) if content.defs.record(&k).is_none() => out.push(format!("side {side}'s first barrier {k}")),
+                Err(e) => out.push(format!("side {side}'s first barrier: {e}")),
+                _ => {}
+            }
         }
-        out.push(format!("the stage (settings {}: BN5's stages)", stage_bytes(&d.settings)));
+        let st = &d.settings;
+        let actor_list = u32::from_le_bytes([st[12], st[13], st[14], st[15]]);
+        match compat.stage(st[0], actor_list) {
+            Some(k) if content.defs.stage_by_key(&k).is_some() => {}
+            Some(k) => out.push(format!("the stage {k} (settings {})", stage_bytes(st))),
+            None => out.push(format!("the stage (settings {}: no BN5 netbattle stage)", stage_bytes(st))),
+        }
+        if content.assets.pack(crate::ROOT).is_none() {
+            out.push("BN5's pack".into());
+        }
         out.dedup();
         Ok(out)
     }
 
     /// The engine's starting point for this round on `content`: what the
     /// round needs is defined ([`Round::needs`]), then BN5's records go
-    /// into the engine's (the NaviStats by BN5's navi definitions, which
-    /// content/bn5 doesn't have yet: the conversion comes with them).
+    /// into the engine's: the settings record's stage and background, both
+    /// NaviStats ([`navi_stats`]), the folders, the RNGs, the set's score,
+    /// both players on BN5's stock rules.
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> Result<RoundSetup, String> {
         let needs = self.needs(content, compat)?;
-        Err(if needs.is_empty() {
-            "BN5's NaviStats and settings into the engine's: written with BN5's navi and stage definitions".to_string()
-        } else {
-            format!("content lacks {}", needs.join(", "))
+        if !needs.is_empty() {
+            return Err(format!("content lacks {}", needs.join(", ")));
+        }
+        let d = decode_setup(&self.setup)?;
+        let bs = &d.battle_state;
+        let st = &d.settings;
+        let actor_list = u32::from_le_bytes([st[12], st[13], st[14], st[15]]);
+        let stage = compat.stage(st[0], actor_list).and_then(|k| content.defs.stage_by_key(&k)).expect("needs saw the stage");
+        let pack = content.assets.pack(crate::ROOT).expect("needs saw the pack");
+        let background = nettai_battle::content::BackgroundId(
+            content
+                .assets
+                .number_handle(nettai_content_api::AssetKind::Background, pack, st[4] as u16)
+                .ok_or_else(|| format!("BN5's pack has no background {:#04x}", st[4]))?,
+        );
+        let settings = nettai_battle::BattleSettings { stage, background, effects: u32::from_le_bytes([st[8], st[9], st[10], st[11]]) };
+        let ruleset = content.defs.stock_ruleset_of(crate::ROOT).ok_or("the content has no BN5 stock ruleset")?;
+        let local = bs[0x0D] & 1;
+        let players = [0u8, 1].map(|side| -> Result<PlayerSetup, String> {
+            let folder = match (&self.setup.folders, side == local) {
+                (Some(f), _) => Some(battle_folder(content, compat, &unhex(&f[side as usize])?, side == local && bs[0x17] != 0)?),
+                (None, true) => Some(battle_folder(content, compat, &unhex(&self.setup.folder)?, bs[0x17] != 0)?),
+                (None, false) => None,
+            };
+            let frames = match self.setup.frame_counter {
+                Some(c) => (c as u32).wrapping_sub(1) & 0xFFFF,
+                None => self.battle_frames().next().map_or(0, |f| f.frame + 1),
+            };
+            Ok(PlayerSetup {
+                folder,
+                // BN6's custom screen rules: no Cross, no Beast Out (BN5's
+                // soul screen comes with Soul Unison).
+                unlocks: Unlocks {
+                    version: GameVersion::Falzar,
+                    crosses: Default::default(),
+                    beast_out: false,
+                    beast_out_sealed: false,
+                    cross_list: None,
+                },
+                joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
+                bug_frags: 0,
+                navi_level: 0,
+                console: ConsoleSetup {
+                    rng: if side == local { self.setup.rng1 } else { 0 },
+                    tag_pair: None,
+                    emotion_window_glitch: false,
+                    frames,
+                },
+                ruleset: Some(ruleset),
+                rules: Vec::new(),
+                patch_cards: Default::default(),
+            })
+        });
+        let [p0, p1] = players;
+        Ok(RoundSetup {
+            content: content.hash(),
+            settings,
+            navi_stats: [navi_stats(content, compat, &d.navi_stats[0])?, navi_stats(content, compat, &d.navi_stats[1])?],
+            rng: self.setup.rng2,
+            local_side: bs[0x0D],
+            score: nettai_battle::SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
+            later_stages: [nettai_battle::Stage { stage, background }; 2],
+            low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
+            sp_times: Default::default(),
+            players: [p0?, p1?],
+            link_delay: self.link_delay(),
         })
     }
+
+    /// The round's battle at its start on `content`, with the counters its
+    /// init carried in (BattleState +0x60, +0x64).
+    pub fn start(&self, content: Arc<Content>, compat: &Compat) -> Result<Battle, String> {
+        let setup = self.round_setup(&content, compat)?;
+        let bs = decode_setup(&self.setup)?.battle_state;
+        let mut b = Battle::new(setup, content);
+        b.round.frames = u32::from_le_bytes(bs[0x60..0x64].try_into().unwrap());
+        b.round.ticks = u32::from_le_bytes(bs[0x64..0x68].try_into().unwrap());
+        Ok(b)
+    }
+}
+
+/// A battle folder (0x50 bytes: 30 chips, code << 9 | id, 0xFFFF none) by
+/// BN5's chips' handles.
+fn battle_folder(content: &Content, compat: &Compat, b: &[u8], regular_pending: bool) -> Result<BattleFolder, String> {
+    let mut chips = [None; nettai_battle::custom::folder::FOLDER_SIZE];
+    for (i, c) in chips.iter_mut().enumerate() {
+        let v = u16::from_le_bytes([b[2 * i], b[2 * i + 1]]);
+        if v == 0xFFFF {
+            continue;
+        }
+        let id = v & 0x1FF;
+        let key = compat.chip(id).ok_or_else(|| format!("chip {id:#05x} has no key"))?;
+        let h = content.defs.chip_by_key(&key).ok_or_else(|| format!("the content has no {key}"))?;
+        *c = Some(FolderChip::new(h, ChipCode((v >> 9) as u8)));
+    }
+    Ok(BattleFolder { chips, regular_pending })
+}
+
+/// A side's stats in the engine's terms: BN5's NaviStats fields where the
+/// engine has them (docs/design/bn5-map.md §3.3, §13), its navi, weapons,
+/// programs and first barrier by compat (records.toml); MegaMan in the base
+/// form (BN5's souls are its forms, to come); what BN5 has none of (BN6's
+/// Beast Out counter, the sun, the version, the NaviCust's bugs: BN5's
+/// bytes there aren't read) none.
+pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
+    let navi_key = navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
+    let navi = content.defs.navi_by_key(&navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
+    let weapon = |n: u8| -> Result<Option<WeaponHandle>, String> {
+        match compat.weapon(n)? {
+            None => Ok(None),
+            Some(k) => content.defs.weapon_by_key(&k).map(Some).ok_or_else(|| format!("the content has no weapon {k}")),
+        }
+    };
+    let variant = |n: u8| -> Result<Option<RecordHandle>, String> {
+        let k = compat.projectile_variant(n)?;
+        content.defs.record(&k).map(Some).ok_or_else(|| format!("the content has no projectile variant {k}"))
+    };
+    let first_barrier = match compat.barrier(s.first_barrier)? {
+        None => None,
+        Some(k) => Some(content.defs.record(&k).ok_or_else(|| format!("the content has no barrier {k}"))?),
+    };
+    let r = &s.raw;
+    let base = content.base_form();
+    Ok(EngineNaviStats {
+        attack: s.attack,
+        rapid: s.rapid,
+        charge: s.charge,
+        first_barrier,
+        gauge_speed: s.gauge_speed,
+        reg_up: s.reg_up,
+        custom_level: s.custom_level,
+        mega_level: s.mega_level,
+        giga_level: s.giga_level,
+        support: s.support,
+        mood: s.mood,
+        element: s.element,
+        starting_form: base,
+        float_shoes: s.float_shoes,
+        air_shoes: s.air_shoes,
+        undershirt: s.undershirt,
+        super_armor: s.super_armor,
+        version: 0,
+        beast_out_counter: 0,
+        sun: false,
+        chip_drops: 0,
+        encounters: 0,
+        navi,
+        navi_variant: s.navi_variant,
+        form: base,
+        folder: 0,
+        folder_reg: [0xFF, 0xFF],
+        max_base_hp: s.max_base_hp,
+        hp: s.hp,
+        max_hp: s.max_hp,
+        chip_recovery: 0,
+        folder_tags: [[0xFF, 0xFF], [0xFF, 0xFF]],
+        chip_shuffle: false,
+        number_open: false,
+        weapons: NaviWeapons {
+            buster: weapon(r[0x04])?,
+            charge_shot: weapon(r[0x05])?,
+            back_special: weapon(r[0x07])?,
+            a_charge: weapon(r[0x39])?,
+            mode9_a: None,
+            buster_shot: variant(r[0x4D])?,
+            charge_shot_kind: variant(r[0x4F])?,
+            back_special_damage: 0,
+        },
+        bugs: Default::default(),
+    })
 }
 
 /// BN5's navi numbers' keys in its root (NaviStats +0x29): MegaMan's.
@@ -479,26 +681,71 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
         Pool::Attack => 3,
         Pool::Effect => 4,
     };
+    // Each object as its pool and BN5's kind number (the engine's kinds by
+    // compat's kinds.toml), panel, side, HP and position: a position the
+    // kind leaves as register garbage is skipped on both sides, X and Y the
+    // engine doesn't know too (matched by list position).
+    let entries: Vec<Option<&crate::KindEntry>> =
+        b.objects.in_order().map(|o| compat.kinds.get(&b.content.defs.kind(b.objects.get(o).kind).key)).collect();
+    let skip = |i: usize, flags: u8| -> (bool, bool) {
+        let Some(Some(k)) = entries.get(i) else { return (false, false) };
+        let garbage = k.scratch_position || (k.scratch_position_without_sprite && flags & nettai_battle::object::flags::NO_SPRITE_UPDATE != 0);
+        (garbage, k.scratch_z_fraction)
+    };
+    let pos = |p: [i32; 3], garbage: bool, xy_unknown: bool, z_fraction: bool| {
+        if garbage {
+            "-".to_string()
+        } else if xy_unknown {
+            format!("-,-,{}", p[2])
+        } else if z_fraction {
+            format!("{},{},{}+?", p[0], p[1], p[2] >> 16)
+        } else {
+            format!("{},{},{}", p[0], p[1], p[2])
+        }
+    };
     let ours: Vec<String> = b
         .objects
         .in_order()
-        .map(|o| {
+        .enumerate()
+        .map(|(i, o)| {
             let x = b.objects.get(o);
+            let key = &b.content.defs.kind(x.kind).key;
+            let kind = match entries[i] {
+                Some(k) => format!("#{:#04x}", k.index),
+                None => format!("{key} (no BN5 number)"),
+            };
+            let (garbage, zf) = skip(i, x.flags);
+            let xy = nettai_battle::kinds::effect::xy_unknown(b, o);
             format!(
-                "type {} panel {:?} side {} hp {}/{} pos {:?}",
+                "type {} {kind} panel {:?} side {} hp {}/{} pos {}",
                 pool_type(o.pool),
                 [x.panel.x, x.panel.y],
                 x.alliance,
                 x.hp,
                 x.max_hp,
-                [x.pos.x, x.pos.y, x.pos.z]
+                pos([x.pos.x, x.pos.y, x.pos.z], garbage, xy, zf)
             )
         })
         .collect();
+    let order: Vec<_> = b.objects.in_order().collect();
     let theirs: Vec<String> = f
         .objects
         .iter()
-        .map(|o| format!("type {} panel {:?} side {} hp {}/{} pos {:?}", o.kind, o.panel, o.alliance, o.hp, o.max_hp, o.pos))
+        .enumerate()
+        .map(|(i, o)| {
+            let (garbage, zf) = skip(i, o.flags);
+            let xy = order.get(i).is_some_and(|&r| nettai_battle::kinds::effect::xy_unknown(b, r));
+            format!(
+                "type {} #{:#04x} panel {:?} side {} hp {}/{} pos {}",
+                o.kind,
+                o.index,
+                o.panel,
+                o.alliance,
+                o.hp,
+                o.max_hp,
+                pos(o.pos, garbage, xy, zf)
+            )
+        })
         .collect();
     if ours != theirs {
         check("objects", format!("\n    ours   {}", ours.join("\n           ")), format!("\n    theirs {}", theirs.join("\n           ")));
@@ -532,15 +779,12 @@ pub enum Stop {
 pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Replay {
     let frames: Vec<&Frame> = round.battle_frames().collect();
     let mut replay = Replay { frames: frames.len(), matched: 0, stopped: None };
-    let setup = match round.round_setup(content, compat) {
-        Ok(s) => s,
-        Err(e) => {
+    let mut b = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| round.start(content.clone(), compat))) {
+        Ok(Ok(b)) => b,
+        Ok(Err(e)) => {
             replay.stopped = Some(Stop::Setup(e));
             return replay;
         }
-    };
-    let mut b = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Battle::new(setup, content.clone()))) {
-        Ok(b) => b,
         Err(e) => {
             replay.stopped = Some(Stop::Panic { frame: round.setup.frame, message: panic_message(&*e) });
             return replay;
