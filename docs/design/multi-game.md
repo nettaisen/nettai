@@ -36,8 +36,10 @@ done".
   while BN6's gameplay work is open (the one-sided and unrun coverage, the Gregar console, the 2022 replays, and
   whatever they find). The other decisions in §5 wait with it.
 - **2026-10-02, "start abstracting more rules so bn5 support can be implemented"**, with BN5 "composable with bn6
-  content": the design is [rules-in-luau.md](rules-in-luau.md) (the ruleset as a Luau definition, its state, its
-  hooks, the cost budget, roots that load together, and the slices).
+  content": the design is [rules-in-luau.md](rules-in-luau.md), approved the same day with the user's decisions:
+  one ruleset per player, rulesets of mixable systems with a stock ruleset per game, the custom screen a Rust core
+  with Luau extras, and no shared content library (each game exports its own: `bn6:cannon`, `bn5:cannon`). It
+  replaces §3.5's recommendation and §4's plan.
 
 ## 0. Summary
 
