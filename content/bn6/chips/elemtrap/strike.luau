@@ -1,7 +1,8 @@
 --!strict
 -- ElemTrap's counterattack (the original's effect object #0x2B,
 -- `sub_80E35A4`): a dimming controller its trap (./trap) starts when it
--- springs, at the head of the update list. The usual dimming phases
+-- springs, right after the trap in the update list (the Japanese games'
+-- placement; see `strike.spawn`). The usual dimming phases
 -- (lib/dimming; its telop names the trap's chip, ElemTrap, with its bonus),
 -- with an effect that strikes every panel the enemy stands on in the
 -- element that sprang the trap (the damage plus the bonus; elec and wood
@@ -136,11 +137,16 @@ strike.kind = define.kind {
 }
 
 -- `sub_80E360E`: the counterattack for `user`, of `element`, with the
--- trap's damage word and bonus, at the head of the update list (it first
--- runs next tick). (Its position is the spawner's registers, which nothing
--- reads.)
+-- trap's damage word and bonus. It goes right after the trap in the update
+-- list, so it first runs later this tick: the Japanese games' routine (EXE6
+-- Falzar 0x080E81E6, EXE6 Gregar 0x080E9516) spawns it with
+-- `object_spawnType4`, as `battle.spawn` does. The US games' spawns it at
+-- the head of the list (`sub_80033E4`, US only), so it first runs next
+-- tick; the content follows the Japanese games on every console (the
+-- user's decision, 2026-10-02: docs/engine/jp-differences.md §8.1). (Its
+-- position is the spawner's registers, which nothing reads.)
 function strike.spawn(user: Object, element: number, damage: number, bonus: number): Object?
-    local o = battle.spawn_first(strike.kind, Vec3.new(0, element, 0))
+    local o = battle.spawn(strike.kind, Vec3.new(0, element, 0))
     if not o then
         return nil
     end

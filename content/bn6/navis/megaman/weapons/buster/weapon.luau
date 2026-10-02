@@ -64,8 +64,8 @@ local RARE: { [ProjectileVariant]: boolean } = {
 
 -- `sub_8013D5E`: what this shot is. Of 16 slots, the first `buster_blanks`
 -- are blanks and the next `buster_charged` charged shots; one draw picks a
--- slot.
-local function pick(navi: Object): "buster" | "blank" | "charged"
+-- slot. (BN5's buster picks the same way.)
+function buster.pick(navi: Object): "buster" | "blank" | "charged"
     local stats = battle.navi(navi.alliance)
     local blanks, charged = stats.buster_blanks, stats.buster_charged
     if blanks + charged > 16 then
@@ -88,7 +88,7 @@ end
 
 -- `sub_8011A26`.
 function buster.setup(navi: Object): Action
-    local shot = pick(navi)
+    local shot = buster.pick(navi)
     if shot == "blank" then
         return blank_shot.setup(navi)
     elseif shot == "charged" then

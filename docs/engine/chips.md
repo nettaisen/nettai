@@ -1503,13 +1503,23 @@ Unverified branches: IceCube and WhiCapsl (not folder chips: no lab scenario use
 and reads the per-element damage (CollisionData+0x84, fire to wood); the first element with damage springs it (its
 first update runs unarmed: a hit then just clears the record). Sprung, it waits until the battle isn't dimmed, puts
 sparkles (T4#0 look 0x46, SE 0xA5) on the enemy navi's panels, spawns the counterattack T4 0x2B (`sub_80E35A4`,
-`chips/elemtrap/strike`) at the **head** of the update list (`sub_80033E4`) and registers it with `sub_800BF16`
-(the other side can't cut in), clears its side's record and ends. The counterattack's effect (`sub_80E362C`) hits
-every panel with any of `byte_80E36E4[side]` (the enemy's bodies) in that element (`byte_80E36EC`, damage plus bonus,
-`sub_80C53A6`) and spawns the panel bursts T4 0x24 (`sub_80E2F56`, `objects/panel-bursts`: shared by seven callers,
-among them TimeBom's blast) over region 0x80. The spring, the sparkles, the counterattack and the bursts are
-**verified** by `chips/0x0c5-elemtrap/sprung-fire` and `sprung-elec` (and `null-hit`: a hit without an element
-leaves the trap).
+`chips/elemtrap/strike`; `sub_80E360E`) and registers it with `sub_800BF16` (the other side can't cut in), clears
+its side's record and ends. The counterattack's effect (`sub_80E362C`) hits every panel with any of
+`byte_80E36E4[side]` (the enemy's bodies) in that element (`byte_80E36EC`, damage plus bonus, `sub_80C53A6`) and
+spawns the panel bursts T4 0x24 (`sub_80E2F56`, `objects/panel-bursts`: shared by seven callers, among them TimeBom's
+blast) over region 0x80.
+
+**Where the counterattack goes: the Japanese games' (the user's decision, 2026-10-02).** The US games' `sub_80E360E`
+spawns it at the **head** of the update list (`sub_80033E4`, which only the US ROMs have), so it first runs in the
+next tick. The Japanese games' (EXE6 Falzar 0x080E81E6, EXE6 Gregar 0x080E9516) spawn it with `object_spawnType4`,
+right after the trap (`sub_8003400`), so it runs later in the tick the trap springs: the dimming, and all that
+follows, come a tick earlier. The engine runs the Japanese games' on every console
+(`battle.spawn`; jp-differences.md §8.1). The spring, the sparkles, the counterattack and the bursts are
+**verified** on Japanese consoles (EXE6 Falzar and Gregar; the chip lab's `jp/chips/0x0c5-elemtrap`: sprung by fire,
+aqua, elec and wood, `sprung-dimmed` (sprung inside the other side's dimming: it waits for the dimming to end), and
+every other ElemTrap scenario, `null-hit` among them: a hit without an element leaves the trap). The US consoles'
+recordings that spring it (`chips/0x0c5-elemtrap/sprung-fire`, `sprung-elec`, `sprung-dimmed`) match up to the
+counterattack's first tick and differ from there, as the user chose: bn6battle-verify lists them as known deviations.
 
 #### 3.6.10 TimeBom, Mine, Guardian (subtypes 10, 11, 14)
 
