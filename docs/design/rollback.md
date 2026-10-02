@@ -434,9 +434,11 @@ the mean frame per peer:
 | 15% lost, 5 + 3 | 13.1 | 18.0 | 47 |
 | 25% lost, 10 + 4 | 24.1 | 30.0 | 59 |
 
-At 60 frames a second each way, that is about 2 to 3.5 kB/s with the headers. (The tick flags of a golden-trace
-replay's player 0, whose recording lacks the other player's folder, make its ticks two bytes; the results add four
-to six chunks a custom screen.)
+At 60 frames a second each way, that is about 2 to 3.5 kB/s with the headers. The golden traces cost the same
+(§5.3: 5.9 to 28 bytes a frame). (A replay of a recording that lacks a player's folder would carry that player's
+recorded screen status as flags every tick, two bytes, and their results as four to six chunks a custom screen;
+the traces the suite replays under rollback all have both folders, so the payload path is checked by
+nettai-netplay's own tests.)
 
 **The horizon** (`protocol::HORIZON`, 240 elements: four seconds) is the widest gap the in-stream accepts: an element
 that many past the first missing one can't be recovered in time, and the link breaks (`LinkError::HorizonExceeded`).
@@ -581,23 +583,37 @@ would break it:
 ### 5.3 The golden traces under rollback (verification workspace)
 
 The golden-trace suite outside this repository replays each round's recorded inputs through two getgud sessions
-(both simulating the trace's side, the custom-screen events in player 0's input), up to the frames the plain
-replay matches. Every frame either peer confirms (its last simulation before it settles, which the world reports)
-and every settled state must match the trace exactly, and the peers must agree:
+(both simulating the trace's side, the custom-screen events in player 0's input), their inputs carried by rennet
+over the simulated datagram network, up to the frames the plain replay matches. Each round is played over eight
+networks: latencies 0, 2 + 1, 5 + 2 and 10 + 3 as they are, and lossy (10% of the datagrams lost, a lost one
+followed by another 30% of the time, 5% duplicated; at 10 + 3, 20%, 50% and 10%). Every frame either peer confirms
+(its last simulation before it settles, which the world reports) and every settled state must match the trace
+exactly, the peers must agree, and each peer's sound (its cue actions through BN6's sound calls and the driver) must
+be the plain replay's, later by at most the latency and the longest run of lost datagrams. All of them do:
 
-| Round | Frames | Latency 0 | 2 + 1 | 5 + 2 | 10 + 3 |
-|---|---|---|---|---|---|
-| machgun 1 | 1,074 | all match | all match (78 rollbacks) | all match (82) | all match (81, depth 12) |
-| machgun 2 | 1,331 | all match | all match (62) | all match (61) | all match (61) |
-| soundmod 1 | 6,728 | all match | all match (305) | all match (305) | all match (301, depth 13) |
-| soundmod 2 | 6,857 | all match | all match (337) | all match (340) | all match (337) |
-| soundmod 3 | 3,088 | all match | all match (306) | all match (306) | all match (305) |
+| Round | Frames | 0 | 2 + 1 | 5 + 2 | 10 + 3 | 0, lossy | 2 + 1, lossy | 5 + 2, lossy | 10 + 3, lossy |
+|---|---|---|---|---|---|---|---|---|---|
+| machgun 1 | 1,074 | match | 79 | 82 | 80 (12) | 2 | 81 | 82 (10) | 74 (16) |
+| machgun 2 | 1,331 | match | 62 | 61 | 61 (12) | 2 | 60 | 62 (8) | 57 (17) |
+| soundmod 1 | 21,962 | match | 1,104 | 1,101 | 1,101 (13) | 51 | 1,077 | 1,097 (10) | 1,070 (18) |
+| soundmod 2 | 14,933 | match | 879 | 881 | 878 (13) | 32 | 872 | 878 (10) | 846 (17) |
+| soundmod 3 | 20,436 | match | 1,440 | 1,436 | 1,429 (13) | 64 | 1,426 | 1,433 (9) | 1,376 (17) |
+| bn67-amogus 1 | 65,477 | match | 3,247 | 3,206 | 3,160 (13) | 121 | 3,169 | 3,171 (11) | 3,016 (18) |
+| lmao-chonked 1 | 23,825 | match | 1,565 | 1,557 | 1,543 (13) | 66 | 1,540 | 1,527 (10) | 1,457 (18) |
+| a 2022 round (legacy, the mixed one) | 34,707 | match | 2,297 | 2,273 | 2,250 (13) | 90 | 2,252 | 2,243 (11) | 2,152 (18) |
 
-(Rollbacks are counted on player 1's peer, which receives player 0's buttons and the custom-screen events; in
-the machgun rounds player 0's peer rolls back far less often, since player 1 changes buttons less.) An advance
-settles one frame at no latency and about two at 10 + 3, where late packets hold later ones up: soundmod round 1
-settled 3,748 times for its 6,728 frames. Clock sync stalled each peer 17 frames of that round's 6,758 wall
-frames.
+(Every frame of every round matches on both peers; the numbers are player 1's peer's rollbacks, which receives
+player 0's buttons and the custom-screen events, with the deepest in brackets. bn67-amogus2, bn67-lilguy,
+gregar-sitteruno and the 2022 guard-through-Cross round match likewise; the two longest 2022 rounds are run with
+`--ignored`.) Loss without latency costs a few dozen shallow rollbacks a round (a lost datagram's inputs come a
+frame late, with the next one); with latency it changes little, since the window resent every frame already covers
+a loss: what it adds is the run of datagrams lost in a row (up to 15 here), which deepens the deepest rollback
+(13 to 18 at 10 + 3) and makes clock sync stall more (soundmod round 1 at 10 + 3: 44 frames of 22,017 clean, about
+155 lossy). The sound: at most 9 frames late at 10 + 3 clean and 13 lossy; a sound played on a prediction and
+stopped again up to 53 times in a 65,000-frame round. A frame costs 5.9 to 6.9 bytes without latency, 9 to 10 at
+2 + 1, 16 to 17 at 5 + 2, 26 to 28 at 10 + 3.
+An advance settles one frame at no latency and about two at 10 + 3: soundmod round 1 settled about 12,200 times for
+its 21,962 frames.
 
 ## 6. Performance
 
