@@ -157,6 +157,30 @@ pub enum HookCall {
     /// field-object registry class (none: it wasn't registered). Its result
     /// is unused.
     RoleEncased { obstacle: ObjectRef, ice: bool, class: Option<u8> },
+    /// A hook of a system of side `side`'s ruleset (docs/design/
+    /// rules-in-luau.md §4.1), the system in place `slot` of the ruleset's
+    /// list: while it runs, `system.state()` is that system's state of that
+    /// side. Its result is the hook's.
+    System { side: u8, slot: u8, hook: SystemHook },
+}
+
+/// Which hook of a system is called (docs/design/rules-in-luau.md §4.1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum SystemHook {
+    /// `round_start(side)`: once per side, after the navis spawn. Its result
+    /// is unused.
+    RoundStart,
+}
+
+impl SystemHook {
+    /// The hook's name in a system's `hooks` table.
+    pub fn name(self) -> &'static str {
+        match self {
+            SystemHook::RoundStart => "round_start",
+        }
+    }
+
+    pub const ALL: [SystemHook; 1] = [SystemHook::RoundStart];
 }
 
 /// A content error: a bug in the content, or a script breaking the

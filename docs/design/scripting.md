@@ -147,6 +147,8 @@ A module makes definitions while it loads; each registry has a definer:
 | `define.effect`, `define.spark`, `define.region`, `define.collision`, `define.status`, `define.lockon`, `define.identity` | what the engine's primitives are told by | their records, by handle |
 | `define.rules(section, table)` | a rule section no entity owns | the ruleset's typed tables (elements, panels, the custom screen, ...) |
 | `define.roles { ... }` | what the ruleset needs from content, by role | the action a request starts, the kind it spawns, the chip a zeroed field reads, ... |
+| `define.system { id, state?, setup?, hooks? }` | a system of a game's rules (rules-in-luau.md) | its hooks, each called for one side; its state per side and its player setup |
+| `define.ruleset { id, stock?, systems }` | a player's rules: a list of systems | the systems of each side's ruleset, in order |
 | `define.record(type, table)` | data only content reads, with a handle | nothing: a state field or another definition holds it |
 
 A definition's key is its `id` (a chip's action derives one: `minibomb/action`); two of one key in a registry is

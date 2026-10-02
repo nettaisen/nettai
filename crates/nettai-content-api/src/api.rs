@@ -1242,6 +1242,12 @@ pub trait CoreApi {
     /// The object's content state (None for kinds the engine implements).
     fn state(&self, o: ObjectRef) -> Option<&ContentState>;
     fn state_mut(&mut self, o: ObjectRef) -> Option<&mut ContentState>;
+    /// The state of the system in place `slot` of side `side`'s ruleset
+    /// (docs/design/rules-in-luau.md §5).
+    fn system_state_mut(&mut self, side: u8, slot: u8) -> ApiResult<&mut ContentState>;
+    /// The player setup of that system: what the player brought, read-only
+    /// in battle.
+    fn system_setup(&self, side: u8, slot: u8) -> ApiResult<&ContentState>;
     /// `SpawnT4BattleObjectWithId0`: the one-shot effect `look`.
     fn spawn_effect(&mut self, pos: Vec3, look: crate::EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
     /// `sub_801BD3C`: the one-shot effect `look` on each field panel of
