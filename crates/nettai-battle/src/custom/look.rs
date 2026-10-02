@@ -53,6 +53,9 @@ pub struct ScreenLook {
     /// drew them (`sub_8028250`, on opening and after every pick or take
     /// back: the chips OK takes out of the folder stay drawn).
     pub slot_chips: [Option<super::FolderChip>; 12],
+    /// And which of them were picked then (their tiles show the empty
+    /// icon until the slots are drawn again).
+    pub slot_picked: [bool; 12],
     /// The form whose face the emotion window shows while the screen is up:
     /// the Beast Out or Cross chosen (`sub_802A040`, `sub_802A088`;
     /// `sub_802A0EC` takes it back).
@@ -267,6 +270,7 @@ impl ScreenLook {
             cross_tab,
             column: [None; 5],
             slot_chips: [None; 12],
+            slot_picked: [false; 12],
             face: None,
             late_turns,
             pa_ticks: 0,

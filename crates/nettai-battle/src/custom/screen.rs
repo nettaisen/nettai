@@ -764,7 +764,11 @@ impl Screen {
                 None
             }
             Phase::Redealing { .. } => {
+                // sub_80271F8: every tick also draws the emblem and the
+                // Regular chip's frame.
                 self.redeal(view, folder, console);
+                self.look.draw_emblem(0);
+                self.look.draw_regular(folder.regular_pending);
                 None
             }
             Phase::Closing { tick } => {
@@ -1041,6 +1045,7 @@ impl Screen {
     fn draw_slots(&mut self, folder: &BattleFolder, view: &PlayerView) {
         for s in 0..SLOTS as u8 {
             self.look.slot_chips[s as usize] = self.chip_in(s, folder).map(|c| checked(c, view));
+            self.look.slot_picked[s as usize] = self.slots[s as usize].state == SlotState::Selected;
         }
     }
 
@@ -1228,9 +1233,12 @@ impl Screen {
             self.slots[8].state = SlotState::Selected;
             self.update_availability(view, folder);
             self.phase = Phase::Redealing { started: true, elapsed: 0, deal };
+            // The window's frame counter is the re-deal's (`+0x40`).
+            self.look.frame = 0;
             return;
         }
         let elapsed = elapsed + 1;
+        self.look.frame = elapsed as u32;
         self.phase = Phase::Redealing { started, elapsed, deal };
         if elapsed % REDEAL_STEP != 0 {
             return;
@@ -1243,6 +1251,7 @@ impl Screen {
             button.uses_left = button.uses_left.wrapping_sub(1);
             button.state = if button.uses_left != 0 { SlotState::Selectable } else { SlotState::Unavailable };
             self.phase = Phase::Choosing;
+            self.show_chip_window(folder, view);
         } else {
             let mut shown: Vec<Option<FolderChip>> = places.iter().map(|&i| folder.chips[i]).collect();
             let n = shown.len();
