@@ -2524,6 +2524,132 @@ Lab: the official pa/0x159-darkness recipes end before (they match every frame);
 pa/0x159-darkness/long{,-miss} (Bass's recipe) and long-bassanly{,-miss} (BassAnly's) reach every branch but the
 failed spawns and a missing flag pointer (**unverified**), and match every frame.
 
+#### 3.6.37 HackJack (navi chip subtype 18, chips 0x113–0x115, T1 0x11; the Japanese games')
+
+HackJack H\* + HackJck[EX] H + HackJck[SP] H (Count in the Japanese games). **The US games have no routine**: their
+`off_802CD5C[18]` is null (the game jumps to address 0), T1 0x11 and T3 0x0D point at placeholder routines and
+sprite (8, 0x16) is a placeholder archive. The Japanese games (EXE6 Falzar BR6J, EXE6 Gregar BR5J) have them; the
+two are the same code at different addresses (EXE6 Falzar's below; EXE6 Gregar's +0x1860 for the navi, +0x1860 for
+the lance). There is no Japanese disassembly: the addresses are the ROMs', the routines they call the US games'
+(the verification workspace's `fmap.py --to` maps them). Content: chips/hackjack (navi, lance, chips).
+
+The records: as the US games' but for flags 0x47 (the US games' 0x07: the library bit) and the sort key. Damage
+20/25/SP formula 17 (the rain's hits); parameters 0x32/0x46/0x64 (the lances' damage, 50/70/100).
+
+**The spawner, 0x080BD236** (`off_802CD5C[18]` in the Japanese table at 0x0802D8B8): `object_spawnType1(0x11)` with
+r1..r3 the panel Y, element and the spawner's own address (the controller's r3) as its position and r4 the chip's
+parameters as Params; panel, element, RelatedObject1 the user, alliance and flip the user's, the damage word (+0x2C)
+r6, CollisionDataPtr the controller's flag pointer (r7), which it sets to 1.
+
+**The object, 0x080BCFCC**: `off`-table by state (init, update, `object_freeMemory`), then
+`object_updateSpriteTimestop`. Init (0x080BCFF0): `object_setCoordinatesFromPanels`, Z 0 (a word store),
+`sprite_decompress(8, 0x16)`, sprite (8, 0x16) with a ground shadow, animation 0, palette 0, flip, state update.
+Actions (0x080BD048), each entering on CurPhase 0 (setting it to 4); "n ticks" counts the halfword timer down to 0:
+- 0 (0x080BD064): anim 3, sound 0x94, VISIBLE, Timer and Timer2 3 and 0; 3 ticks; panel flags 0x10010 → 4, else 0x18.
+- 4 (0x080BD0B8): anim 0; 30 ticks.
+- 8 (0x080BD0E0): anim 5, Timer 20 (a halfword store); at 17 left anim 7; at 0 → 0xC.
+- 0xC (0x080BD114): the rain: `sub_80C6330` (the dust storm, attack 0x0E: lib/instant/dust_storm) on
+  `byte_80BD180[side]` (side 0 (5, 2), side 1 (2, 2): the middle of the other side's area), his element, r4 0x023C00
+  (Param2 60 ticks, Param3 2: untied, its hits landing while dimmed: region 0x0F, the whole area, every 12 ticks
+  from its first, five hits of his damage word; its own target type is row 0, so it learns nothing of them, but the
+  navis react to it), r6 his damage word, r3 0x20000 (its spawn Z, of which its init keeps the fraction); sound
+  0x128; Timer 70,
+  Timer2 16; each tick Timer2 down, at 0 sound 0x128 and 16 again; 70 ticks → 0x10.
+- 0x10 (0x080BD184): the targets (0x080BD2CC), their count in ExtraVars[0xC] (none: → 0x14), ExtraVars[0x10] 0,
+  Timer 10. Every 10 ticks a lance (0x080BD394) on the next target (packed x | y << 4 in ExtraVars[0..2]); after the
+  last → 0x14.
+- 0x14 (0x080BD1D8): anim 8, Timer and Timer2 23 and 0; at 20 left anim 0; at 0 → 0x18.
+- 0x18 (0x080BD20C): anim 4, Timer 3; at −1 the controller's flag cleared and state 8 (a word store).
+
+Timeline from his init tick S: visible S+1; standing S+5; arms up S+36; the rain S+57 (61 ticks on the field; its
+hits S+58, +70, +82, +94, +106, the damage taken a tick later); lances at S+138, S+148, S+158 (each striking the
+tick after, the damage a tick later); gone at S+187 (freed S+188).
+
+**The targets, 0x080BD2CC**: `object_getPanelRegion` (region 0x0F, the 3×3 around the anchor) around
+`byte_80BD390[side]` (the same middle), turned by the side (r6 = the alliance), with `dword_80BD368[side]`: side 0
+(0x04000030, 0x3F40), side 1 (0x08000010, 0x3F60) (an enemy's body on a solid panel of the other side's area). With
+fewer than three, a second call with `dword_80BD37C[side]`: side 0 (0x30, 0x04003F40), side 1 (0x10, 0x08003F60)
+(the area's other solid panels), appended. Then `sub_8000C72` (RNG2) shuffles: the second batch alone when there
+is one (as many swaps as its panels), else the first (as many swaps as its panels). The first three are the
+targets; none (both calls empty) returns 0. (0x080BD25C, the same with `object_getPanelsExceptCurrentFiltered`, has
+no caller.)
+
+**The lance (0x080BD394 → the spawner 0x080C9614)**: at the target, his element, r4 0x20000 (Param3 2), the damage
+word Param1 | (Damage & 0xF000) (the chip's parameter with his damage word's flag bits; hit parameter 0), and r3 =
+Damage & 0xF000 too (its spawn Z, whose fraction lasts). The spawner: `object_spawnType3(0x0D)`, panel, element,
+damage word, alliance and flip his, flags |= 0x10 (no RelatedObject1).
+
+**The lance, T3 0x0D (0x080C9498)**: by state (init, update, `object_genericDestroy`); then, Param3 2,
+`object_updateSpriteTimestop`, else `object_updateSpritePaused`.
+- Init (0x080C94C8): `object_setCoordinatesFromPanels`, Z's whole part 0x1000 (4096 pixels up, the fraction kept),
+  sprite (8, 0x16) without a shadow, VISIBLE, animation 0xC, palette 0, flip; no collision data: freed. Collision
+  self 0x0A (thrown), target 5, modifier 3, hit effect 0, region off, presented; state 4 (a byte store), phase 0,
+  action Param3 == 2 ? 4 : 0.
+- Update (0x080C9540): `object_removeCollisionData`, `object_spawnCollisionEffect`; battle over: region off, state
+  8; a hit (CollisionData+0x70) turns the region off; Param3 ≠ 2 while dimmed: nothing more; else the action
+  (0x080C9588), then `object_presentCollisionData`.
+- Action 0 (0x080C9590): Timer = Param2, Timer2 0; each tick Timer2 + 1, its panel highlighted while bit 2 is clear,
+  Timer − 1, at 0 → 4.
+- Action 4 (0x080C95CA): Z's whole part 0, anim 0xC (restarted), region 1, sound 0x181, Timer 30; a hit turns the
+  region off; at 0 region off, state 8.
+
+Every lance HackJack drops has Param3 2: it strikes at once, while dimmed. Action 0 and the Param3 ≠ 2 branches are
+the other user's: attack 0x0C (0x080C91E0), which drops lances with them, is spawned only by the Japanese games'
+HackJack navi AI (0x08107908, 0x0810DE6E; out of a netbattle's reach, as every navi AI). **Unverified**: those
+branches, a full pool (no navi, no lance, no collision data), and every timing above until JP-console traces exist.
+
+Not this chip's: attacks 0x13, 0x14 and 0x15 and effects 0x17 and 0x18, which use sprite (8, 0x16) too, are spawned
+only by that navi AI's code (0x0810xxxx).
+
+#### 3.6.38 Django (navi chip subtype 19, chips 0x116–0x118, T1 0x12; the Japanese games')
+
+Django D\* + Django2 D + Django3 D. **The US games have no routine**: `off_802CD5C[19]` is null, T1 0x12 a
+placeholder, sprite (0xC, 0xF) a placeholder archive, and attachment rows 0xB and 0xC show sprite (0xC, 0) (the
+Japanese games': (0xC, 0xF), Django's: the US games' CrosOver shows his gun from the blades' sheet). The Japanese
+games' code below (EXE6 Falzar; EXE6 Gregar +0x1860). Content: chips/django (navi, chips).
+
+The records differ: the US games' are class 3 (not a folder chip) with flags 0; the Japanese games' class 1 (Mega)
+with flags 0x47 (dimming, damage, navi, library). Damage 130/180/260 (the ride's); parameters 0x32/0x50/0x78 (the
+slash's damage, 50/80/120). The content keeps the US records (with the `navi_slot` trait for AntiNavi).
+
+**The spawner, 0x080BD6A2** (`off_802CD5C[19]`): as HackJack's with `object_spawnType1(0x12)`.
+
+**The object, 0x080BD3B8**: by state (init, update, `object_freeMemory`), then `object_updateSpriteTimestop`.
+Init (0x080BD3DC): PanelX 0 (side 0) or 7 (side 1: by the alliance), `object_setCoordinatesFromPanels`, Z's whole part
+60 (its fraction the spawner's address's low half, kept throughout), `sprite_decompress(0xC, 0xF)`, sprite (0xC,
+0xF) without a shadow, VISIBLE, animation 6, palette 0, flip; Param2 0, ExtraVars[0] and [1] 0, Param3 1; his bike
+(`sub_80B8E30`, r4 0x1070C: attachment row 0xC, animation 7, going on while dimmed) in RelatedObject2; state update.
+(It returns through action 0's epilogue, `pop {r4, r6, pc}` for its `push {r4, r7, lr}`: r6 and r7 come back wrong,
+which the object loop, keeping its own, doesn't mind.)
+Actions (0x080BD46C):
+- 0 (0x080BD484): the drop onto the column ahead (`object_getEnemyDirection`), his row: `sub_8001330` (10 ticks,
+  gravity 0xFFFFA000) gives the velocity, Timer 10; each tick (the entry's too) he moves (Z velocity + gravity),
+  `object_setPanelsFromCoordinates`; at 0, a solid panel: a camera shake (1, 20) → 4; else the controller's flag
+  cleared, the bike let go (`sub_80B8E58`, RelatedObject2 0), T4#0 effect 0x12 (smoke) 16 pixels above him, freed.
+- 4 (0x080BD520): first the command (0x080BD6C8); entering, sound 0x1CA, X velocity 5 pixels a tick toward the enemy,
+  Timer 48 (240 pixels); each tick X + velocity, his panel from it: solid and a new column: a hit on it (0x080BD724:
+  region 1, no spark, target 5, self 6, modifier 3, his element and damage word, Z 0, while dimmed); not solid but on
+  the field: smoke, the ride ends; off the field: on. At 0 the ride ends: the bike let go; Param2 set → 8; else the
+  flag cleared, freed.
+- The command (0x080BD6C8), while Param2 is 0: with a key in, ExtraVars[1] down, at 0 both cleared; the user's
+  pressed keys (AIData+0x24) against `word_80BD71C[ExtraVars[0]]` (L, L, L, A); a match moves ExtraVars[0] on: at 4
+  Param2 1 and sound 0x8B, at 1 ExtraVars[1] 60.
+- 8 (0x080BD5BA): the target (0x080BD782); none: Param3 0 and his user's panel; anim 1, a ground shadow, sound
+  0x94, Timer 3; 3 ticks → 0xC.
+- 0xC (0x080BD606): anim 0, Timer 20; at 0 → 0x10, or 0x14 with Param3 0.
+- 0x10 (0x080BD63E): anim 5, Timer 30 (a halfword store); at 20 left the slash (0x080BD744: the panel ahead, region
+  1, no spark, target 5, self 4, modifier 3, damage Param1 | (Damage & 0xF000), hit parameter 0, while dimmed) and
+  sound 0xB0; at 0 → 0x14.
+- 0x14 (0x080BD678): anim 2, Timer 3; at −1 the flag cleared, freed.
+
+**The target, 0x080BD782**: from his user's column forward (`object_getEnemyDirection`), columns 0 to 5 ahead, rows
+`byte_80BD810` (0, −1, +1, −2, +2) from the user's: the first panel with the enemy's body (`dword_80BD7F8[side]`)
+whose panel toward the user is solid with none of 0x03800000; that panel. A column off the field ends the search
+with none.
+
+Timeline from his init tick S: landed and riding S+10; the ride's end S+59 (freed then without the command).
+**Unverified**: all of it until JP-console traces exist; a full pool (no bike, no Django).
+
 ---
 
 ## 4. Worked example: GunDelS3 (chip 0x11) in the machgun trace

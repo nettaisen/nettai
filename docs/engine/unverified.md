@@ -214,6 +214,10 @@ standard chip action…), whichever section below the family belongs to:
 | CrosOver | a link navi user, no Django | a link navi can't hold the PA | unreachable | |
 | MstrCros | the Gregar tables (the beam, move 1) | the Falzar side always uses it | yes (the gregar base) | pa/0x15a-mstrcros/gregar: verified |
 | Bass, BigHook, Darkness | failed spawns, a missing flag pointer, the strike's MachGun branches | | unreachable | |
+| HackJack (§3.6.37, the Japanese games') | all of it: the rain, the targets (an enemy in the area, the rest shuffled), the lances, his leave, no footing | the US games' handler is null; no JP-console recording yet | yes (on a JP console) | |
+| HackJack | the lance's warning and stand-still-while-dimmed branches (Param3 not 2), the empty target list | only the JP navi AI's attack 0x0C drops such lances; the other side's area always has a solid panel | unreachable | |
+| Django (§3.6.38, the Japanese games') | all of it: the drop, the ride's hits, a crash into a hole, the L L L A command, the slash, no target | the US games' handler is null; no JP-console recording yet | yes (on a JP console) | |
+| HackJack, Django | a full pool (no navi, lance, bike or collision data) | pool full | unreachable | |
 
 ### Shot chips (shot-chips.md §16)
 

@@ -802,6 +802,9 @@ fn navi_chip_assets(a: &mut nettai_content_api::AssetNames) {
         ("spoutman", sprite(0x08, 0x06)),
         ("tenguman", sprite(0x08, 0x08)),
         ("tomahawkman", sprite(0x08, 0x07)),
+        ("hackjack", sprite(0x08, 0x16)),
+        ("django", sprite(0x0C, 0x0F)),
+        ("dust-storm-mote", sprite(0x10, 0x10)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -1174,6 +1177,10 @@ pub fn scripts() -> Scripts {
                 ("chips/sunmoon/sun", "chips/sunmoon/sun"),
                 ("chips/sunmoon/meteor", "chips/sunmoon/meteor"),
                 ("chips/sunmoon/moon_beam", "chips/sunmoon/moon_beam"),
+                // The Japanese games' HackJack and Django chips, with their
+                // navis, HackJack's lance and his rain (a dust storm).
+                ("chips/hackjack/chips", "chips/hackjack/chips"),
+                ("chips/django/chips", "chips/django/chips"),
                 // The link navis' own chips (whose actions the test link
                 // chips run) and their kinds.
                 ("lib/link_chips", "lib/link_chips"),
@@ -1366,7 +1373,8 @@ fn rules() -> Rules {
         empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         sp_deletion_times: vec![0x2000, 0x4000],
-        sp_slots: Vec::new(),
+        // The SP navi chips BN6's modules bring: HackJck[SP].
+        sp_slots: vec!["sp/hackjack".into()],
         cross_special: Vec::new(),
         push_vectors: [
             SlideVector { dx: 1, dy: 0, tiles: 6 },
@@ -1502,6 +1510,19 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 8, index: 0x13 }, shooter);
     sprites.insert(SpriteId { category: 0x10, index: 0x26 }, vec![vec![f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x0C, index: 0x64 }, vec![vec![f(8, 0), f(8, LAST | LOOP)]; 5]);
+    // HackJack (appearing, standing, raising his arms, lowering them,
+    // leaving; his lance, animation 0xC) and the rain's motes; Django
+    // (riding 6, his bike 7, appearing 1, slashing 5, leaving 2).
+    let mut hackjack = vec![once(4); 0x0D];
+    hackjack[0] = vec![f(8, 0), f(8, LAST | LOOP)];
+    hackjack[0x0C] = vec![f(3, 0), f(3, LAST | LOOP)];
+    sprites.insert(SpriteId { category: 8, index: 0x16 }, hackjack);
+    sprites.insert(SpriteId { category: 0x10, index: 0x10 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
+    let mut django = vec![once(4); 9];
+    django[0] = vec![f(8, 0), f(8, LAST | LOOP)];
+    django[6] = vec![f(4, 0), f(4, LAST | LOOP)];
+    django[7] = vec![f(4, 0), f(4, LAST | LOOP)];
+    sprites.insert(SpriteId { category: 0x0C, index: 0x0F }, django);
     // The water navi, his ball, splash, pillar, geyser and marks, and his
     // layer.
     let mut spout = vec![once(4); 0x16];
