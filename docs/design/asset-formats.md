@@ -193,6 +193,11 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
   16 rows because the game reads whatever follows a palette).
 - `extra_palette_sets`: palette sets after the first, as BGR555 hex (none in
   BN6).
+- `region`: the region whose ROMs the sprite comes from, when it isn't the
+  pack's base (BN6's US): `"jp"` for the six sprites the US release cut and
+  left a placeholder in. A console of another region draws something else
+  there, which the frame comparison counts as a known difference. Omitted
+  for the rest.
 
 **`animations.json`**: the simulation's data:
 
@@ -348,14 +353,19 @@ the Cross tab) and the Cross window's (three opening steps, then the window
 with one to five Crosses), their patch lists (a block of consecutive tile
 numbers at a cell, row or column first, in a palette), the three palettes
 no image owns as colour lists, which emblem a navi shows, and the Program
-Advance animation's three sets of name colours. The frontend composes the
-tile numbers the maps name from these blocks, as the original's VRAM holds
-them.
+Advance animation's three sets of name colours; and each chip's picture by
+its chip's key, with the `region` and `version` of a picture from another
+ROM (below). The frontend composes the tile numbers the maps name from
+these blocks, as the original's VRAM holds them.
 
-**Two ROMs, and what differs by version.** A BN6 pack is made from both US
-ROMs (`bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>`): the Falzar
-ROM's data, with what only the Gregar ROM has right or of its own, read at
-the addresses the same code points at there (bn6-extract's `gregar`):
+**Four ROMs, and what differs by version and region.** A BN6 pack is made
+from the two US ROMs and the two Japanese ones (`bn6-extract content
+<falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>`, all four, in that
+order, each checked by its header's game code: BR6E, BR5E, BR6J, BR5J): the
+US Falzar ROM's data, with what only the US Gregar ROM has right or of its
+own, read at the addresses the same code points at there (bn6-extract's
+`gregar`), and what the US release cut, from the Japanese ROMs
+(bn6-extract's `jp`):
 
 - **What differs by version** is two assets, each named with its version:
   `cross-names-falzar` and `cross-names-gregar` (nettai-assets
@@ -379,6 +389,20 @@ the addresses the same code points at there (bn6-extract's `gregar`):
 - **Five chips' pictures and icons** the Falzar ROM has wrong (Bass,
   BigHook, DeltaRay, ColForce, BugRSwrd: the other five Giga chips'
   copied in): the pack has the Gregar ROM's, on either console.
+- **What the US release cut** (docs/engine/jp-differences.md §4.4, §4.5):
+  six sprites the US ROMs fill with a placeholder archive (`count`,
+  `django`, `otenko`, `falzar-summon`, `gregar-summon`, `blocking-banner`),
+  from the Japanese Falzar ROM, and the pictures of eleven chips the US ROMs
+  give a placeholder picture (GunDelEX, Otenko, HackJack ×3, Django ×3,
+  DblBeast, Gregar, Falzar), from the Japanese Falzar ROM but Gregar's,
+  from the Japanese Gregar ROM. Each is marked with its `region` ("jp"), and
+  the Gregar and Falzar chips' pictures with their `version` too (a Japanese
+  console shows its own beast in both chips; the pack has each chip's own).
+  Three of the pictures' palettes are EWRAM in the original, which a link
+  gift (an e-Reader card's) fills and the save keeps: DblBeast's, the
+  card's, is also orphaned in the Japanese ROMs, and the pack has it; the
+  Gregar and Falzar chips' are in no ROM, and the pack's pictures have a
+  black one, which their definitions' `art_palette` replaces when drawn.
 
 Tiled was considered for the field's panel blocks too, but a panel tile is
 drawn in different palettes for each side, which a Tiled tileset can't show
@@ -732,9 +756,10 @@ total ever pass about a second, the sound import is where to look first.
 `Content::animations` (see [content-pack.md](content-pack.md)); nothing is
 compiled into the engine.
 
-**From the ROMs.** `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` writes a pack in one
-step (the battle data, the graphics extraction, the sound extraction, then
-the exporters), about 1 s. It is the only extraction.
+**From the ROMs.** `bn6-extract content <falzar-us> <gregar-us> <falzar-jp>
+<gregar-jp> <dir>` writes a pack in one step from the four ROMs (the graphics
+extraction, the sound extraction, the exporters, then reading it all back),
+a few seconds. It is the only extraction.
 
 ## 10. Commands
 

@@ -19,7 +19,8 @@ record, with the reasons and the as-built notes, in [content-model-v2.md](conten
 
 ## 0. Summary
 
-- **One extraction, of assets.** `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>` writes the graphics, the sound and the asset
+- **One extraction, of assets.** `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>` (the four ROMs:
+  US Falzar, US Gregar, JP Falzar, JP Gregar) writes the graphics, the sound and the asset
   index, reads the graphics and the index back to check them, and defines the content root against the pack to
   check its names resolve. The engine, the frontend, the audio, netplay and the verification workspace all load
   the content root with a pack.

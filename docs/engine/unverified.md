@@ -139,7 +139,7 @@ standard chip action…), whichever section below the family belongs to:
 | CircGun | a start column holding none of the enemy's home panels (the opponent's two AreaGrabs) | | yes | chips/0x08e-circgun/grabbed: verified |
 | CircGun | Param3 1, a non-player first actor | no chip | unreachable | |
 | Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken: verified. No push: the statue takes hits and is never pushed (`sub_801AD6A`); `chips/0x099-otenko/pushed` is side 0's own shot, which doesn't move it, and side 1's AirShot hits it (100 HP to 80) without a move |
-| Otenko | the statue removed, absorbed, blinking out | no remover | yes | chips/0x099-otenko/dustman, colarmy, absorbed: verified |
+| Otenko | the statue removed, absorbed, blinking out | no remover | yes | jp/chips/0x099-otenko/dustman (the Japanese games' junk, which the content follows), chips/0x099-otenko/colarmy, absorbed: verified |
 | Otenko | the lifetime (1800 ticks), a second statue, the blessing on two chips in turn | | yes | chips/0x099-otenko/lifetime, replaced, bonus-two-chips: verified |
 | BlzrdBal (subtype 21) | a non-solid thrower panel, the roller's battle-over end, three swallows | | yes | chips/0x0c7-blzrdbal/no-footing, ko, three-rocks: verified |
 | BlzrdBal | the excluded NameIDs, more than 4 hit objects | | hard | open |
@@ -208,7 +208,7 @@ standard chip action…), whichever section below the family belongs to:
 | Navi chips | the navi AI's variants (Param1 0 and the like): SpoutMan's, BlastMan's, ElecMan's, ChargeMan's, SlashMan's, DiveMan's, JudgeMan's whip | only the bosses' AI spawns them | unreachable | |
 | GroundMan | the rock's non-solid landing, the rocks and the drill at the battle's end | | yes | chips/0x0fb-grndman/rockfall-holes, rockfall-after-geddon, rockfall-ko: verified |
 | GroundMan | no rock candidate | the enemy's area always has a panel | unreachable | |
-| DustMan | the junk's looks by NameID (the instruments, the turret, the fans, the statues, the bombs, the boiler, the doll: a look without a shadow, the none look), the excluded NameIDs (the mine) | he only ever took RockCubes | yes | chips/…/dustman for Fanfare, Discord, Timpani, Silence, Sensor1, Wind, Fan, Anubis, Guardian, TimeBom1, Mine, BlkBomb, LilBolr1, VDoll, AirRaid1, Otenko: verified |
+| DustMan | the junk's looks by NameID (the instruments, the turret, the fans, the statues, the bombs, the boiler, the doll: a look without a shadow, the none look), the excluded NameIDs (the mine) | he only ever took RockCubes | yes | chips/…/dustman for Fanfare, Discord, Timpani, Silence, Sensor1, Wind, Fan, Anubis, Guardian, TimeBom1, Mine, BlkBomb, LilBolr1, VDoll, AirRaid1, and Otenko's on Japanese consoles (jp/chips/0x099-otenko/dustman): verified |
 | DustMan | NameIDs outside 0xCD..0xFF, the flag check after moving | no such object | unreachable | |
 | JudgeMan | a book arriving at its target, leaving solid ground, ending with the battle | the books always hit | yes | chips/0x10a-judgeman/books-invisible, books-holes, books-ko: verified |
 | JudgeMan | the heading's reversal, the target past the far edge (no enemy navi at all) | an invisible navi still has its body on its panel | unreachable | |
