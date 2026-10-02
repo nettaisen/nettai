@@ -88,15 +88,17 @@ fn renders_a_live_battle_to_png() {
     // Tick 1: the screen starts fully faded to white.
     assert_eq!(pixel(&out.join("frame_00001.png"), 120, 80), [255, 255, 255]);
 
-    // Tick 100: the intro is over. Panels: 40x24 blocks from (0, 72).
+    // Tick 100: the intro is over and the custom screen is up (nobody
+    // pressed OK), so the field and the navis are 15 pixels lower. Panels:
+    // 40x24 blocks from (0, 87).
     let f = out.join("frame_00100.png");
-    assert_eq!(pixel(&f, 20, 100), rgb(RED), "left panels are the left side's");
-    assert_eq!(pixel(&f, 220, 100), rgb(BLUE), "right panels are the right side's");
-    // The left navi stands on panel (2, 2): anchor (60, 108).
-    assert_eq!(pixel(&f, 60, 90), rgb(BODY), "body above the anchor");
-    assert_eq!(pixel(&f, 45, 102), rgb(SHADOW), "shadow on the ground");
-    // The right navi faces left on panel (5, 2): anchor (180, 108).
-    assert_eq!(pixel(&f, 180, 90), rgb(BODY));
+    assert_eq!(pixel(&f, 20, 115), rgb(RED), "left panels are the left side's");
+    assert_eq!(pixel(&f, 220, 115), rgb(BLUE), "right panels are the right side's");
+    // The left navi stands on panel (2, 2): anchor (60, 123).
+    assert_eq!(pixel(&f, 60, 105), rgb(BODY), "body above the anchor");
+    assert_eq!(pixel(&f, 45, 117), rgb(SHADOW), "shadow on the ground");
+    // The right navi faces left on panel (5, 2): anchor (180, 123).
+    assert_eq!(pixel(&f, 180, 105), rgb(BODY));
     // Above the field is the backdrop (no background in this asset set).
     assert_eq!(pixel(&f, 120, 40), [0, 0, 0]);
     std::fs::remove_dir_all(&out).ok();

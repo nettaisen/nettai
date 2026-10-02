@@ -10,14 +10,13 @@ local blade = require("./blade")
 local action = {}
 
 export type State = {
-    -- Ticks left in the swing (AIAttackVars+0x10).
+    -- Ticks left in the swing (AIAttackVars+0x10). (The swings left are
+    -- the navi's `attack_count`.)
     timer: number,
-    -- Swings left (AIAttackVars+0x12).
-    swings: number,
 }
 
 -- One state for every MoonBld action.
-action.STATE = { timer = "u16", swings = "u16" }
+action.STATE = { timer = "u16" }
 
 -- The phases, on the attack's step.
 local READY, SWING, DONE = 0x0, 0x4, 0x8
@@ -35,7 +34,7 @@ local SWING_ROUTINE_LOW = 0xCF
 function action.action(spec: { id: string?, charged: ChargedSlash? }): Action
     -- `sub_80EE2C0`: one swing; the marker cleared.
     local function ready(me: Object, s: State)
-        s.swings = SWINGS
+        me.attack_count = SWINGS
         me.marker = 0
         me.step = SWING
         me.step_init = 0
@@ -63,8 +62,8 @@ function action.action(spec: { id: string?, charged: ChargedSlash? }): Action
         if t >= 0 then
             return
         end
-        local left = s.swings - 1
-        s.swings = left
+        local left = me.attack_count - 1
+        me.attack_count = left
         if left > 0 then
             me.related1 = nil
             me.overlay = nil

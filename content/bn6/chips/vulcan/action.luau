@@ -10,7 +10,7 @@ local bullet = require("../../objects/bullet/bullet")
 local vulcan = {}
 
 -- (The bullets left are the attack's word at AIAttackVars+0x12, the
--- navi's `recovery`, which a later thrown obstacle waits out.)
+-- navi's `attack_count`, which a later thrown obstacle waits out.)
 export type State = {
     -- The phase's countdown (AIAttackVars+0x10).
     timer: number,
@@ -59,7 +59,7 @@ function vulcan.action(spec: VulcanSpec): Action
     -- height the RNG picks.
     local function fire(me: Object, s: State)
         if me.step_init == 0 then
-            me.recovery = spec.shots
+            me.attack_count = spec.shots
             local arm = me.overlay
             if arm then
                 arm.anim += 1
@@ -78,8 +78,8 @@ function vulcan.action(spec: VulcanSpec): Action
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
         bullet.fire(me, me.panel_x + me.facing, me.panel_y, z, spec.bullet, me.attack_element, damage)
         battle.play_sound(SOUND)
-        local left = me.recovery - 1
-        me.recovery = left
+        local left = me.attack_count - 1
+        me.attack_count = left
         if left <= 0 then
             me.step, me.step_init = LOWER, 0
         end

@@ -17,6 +17,8 @@ pub struct Renderer<'a> {
     background: Layer,
     field: Layer,
     hud: Layer,
+    /// BG0, in front of everything: the custom screen's enemy names.
+    names: Layer,
     /// Rolling HUD numbers; follow every tick with `observe`.
     pub hud_state: HudState,
     /// What the frames drawn so far named that the pack doesn't have.
@@ -31,6 +33,7 @@ impl<'a> Renderer<'a> {
             background: Layer::new(3, 1),
             field: Layer::new(2, 2),
             hud: Layer { palettes: Palettes::Hud, ..Layer::new(1, 3) },
+            names: Layer { palettes: Palettes::Hud, ..Layer::new(0, 0) },
             hud_state: HudState::default(),
             problems: Problems::default(),
         }
@@ -47,11 +50,13 @@ impl<'a> Renderer<'a> {
     }
 
     /// The view a battle is seen from: the local player's console's, whose
-    /// camera a shake moves this tick (`camera_doShakeEffect_80301e8`).
+    /// camera a shake moves this tick (`camera_doShakeEffect_80301e8`) and
+    /// the custom screen's window moves down while it is in.
     pub fn view(b: &Battle) -> View {
         let local = b.setup.local_side;
         let (x, y) = b.consoles[local as usize & 1].camera.jitter;
-        View { camera: (x, y, 0), mirror: local & 1 == 1 }
+        let fade = crate::custom::fade(b).unwrap_or_default();
+        View { camera: (x, y + crate::custom::camera_y(b), 0), mirror: local & 1 == 1, fade }
     }
 
     /// Draw a battle as a 240x160 BGR555 frame.
@@ -64,17 +69,26 @@ impl<'a> Renderer<'a> {
         self.field.clear();
         stage.draw_field(b, &mut self.field, b.setup.local_side, &view);
         self.hud.clear();
+        self.names.clear();
+        let navi = crate::custom::navi_number(b, b.setup.local_side);
+        let emblem = crate::custom::emblem_tiles(&assets.custom, navi);
         let mut list = SpriteList::default();
         objects::queue_objects(b, assets, &view, &mut list, &mut self.problems);
+        crate::custom::draw(b, assets, &emblem, &mut self.hud, &mut self.names, &mut list, &mut self.problems);
         crate::hud::draw(b, assets, &self.hud_state, &mut self.hud, &mut list, &mut self.problems);
+        let (jx, jy) = crate::custom::hud_jitter(b);
+        self.hud.shift(-jx, -jy);
         let parts = list.into_parts();
         let backdrop = stage.palettes[0][0];
         // The transformation's fade takes every background palette, a
-        // dimming's the stage's.
+        // dimming's the stage's; the custom screen's Beast Out the stage's
+        // and the HUD's.
         let transform = layer_fade(b);
-        let stage = if transform == Fade::None { dim_fade(b) } else { transform };
-        let fades = Fades { stage, hud: transform, screen: screen_fade(b) };
-        compose::compose(backdrop, &[&self.hud, &self.field, &self.background], &parts, fades)
+        let custom = crate::custom::fade(b).unwrap_or_default();
+        let stage = if transform != Fade::None { transform } else if custom != Fade::None { custom } else { dim_fade(b) };
+        let hud = if transform != Fade::None { transform } else { custom };
+        let fades = Fades { stage, hud, screen: screen_fade(b) };
+        compose::compose(backdrop, &[&self.names, &self.hud, &self.field, &self.background], &parts, fades)
     }
 }
 

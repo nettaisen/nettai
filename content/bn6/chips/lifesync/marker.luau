@@ -12,7 +12,7 @@ export type State = {
     ticks: number,
 }
 
-local SPRITE = asset.sprite("copy-mark")
+local SPRITE = asset.sprite("hit-sparks")
 local ANIM, PALETTE = 0xB, 2
 
 -- `sub_80E7756`: the lifetime on the first tick; freed at once when it

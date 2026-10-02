@@ -17,7 +17,7 @@ export type State = {
 -- The phases, on the attack's step.
 local SHOOT, RECOVER = 0x0, 0x4
 
-local SOUND = asset.sound("buster-6a")
+local SOUND = asset.sound("buster-shot")
 
 -- `sub_80ECA50`: the buster up; the mark flies on the second tick.
 local function shoot(me: Object, s: State)

@@ -13,10 +13,9 @@ local regions = require("../../../../lib/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
-    -- Ticks left (AIAttackVars+0x10).
+    -- Ticks left (AIAttackVars+0x10). (The ticks to the next crackle are
+    -- the navi's `attack_count`.)
     timer: number,
-    -- Ticks to the next crackle (AIAttackVars+0x12).
-    hum: number,
 }
 
 local elec_beast_charge = {}
@@ -60,17 +59,17 @@ local function wind_up(me: Object, s: State)
     me:set_animation(0x13)
     element_pillar.spawn_region(me, REGION, PILLARS)
     s.timer = TICKS
-    s.hum = 1
+    me.attack_count = 1
     me.step = STRIKE
     me.step_init = 0
 end
 
 -- `sub_80EDFC0`: crackle every 17 ticks; after 90, idle.
 local function strike(me: Object, s: State)
-    local h = s.hum - 1
-    s.hum = h
+    local h = me.attack_count - 1
+    me.attack_count = h
     if h < 0 then
-        s.hum = 0x10
+        me.attack_count = 0x10
         battle.play_sound(CRACKLE)
     end
     local t = s.timer - 1
@@ -83,7 +82,7 @@ end
 
 elec_beast_charge.action = define.action {
     id = "eleccross-beast/charge/action",
-    state = { timer = "u16", hum = "u16" },
+    state = { timer = "u16" },
     -- `sub_80EDF5C`.
     update = function(me: Object, s: State)
         local step = me.step
