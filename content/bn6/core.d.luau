@@ -572,6 +572,14 @@ declare class Object
     -- "freeze", "bubble", "idle", "move", "dimming_chip", "navi_chip",
     -- "instant_chip", "form_change", "cross_special").
     function navi_action(self): Action | string
+    -- `loc_80126EA`: `chip` as the navi's attack (its record's damage, hit
+    -- parameter, lockout and element; no bonus; not charged): a weapon
+    -- that fires a chip, whose setup then returns the chip.
+    function load_chip_attack(self, chip: Chip): ()
+    -- `sub_8010740`: in a link battle the opponent's support Rush takes
+    -- `chip` (one it cancels) from this navi: it comes, and is spent.
+    -- Whether it did.
+    function rush_cancels(self, chip: Chip): boolean
     function reset_attack_links(self): ()
     -- `sub_800FA54`: the held direction (1 up, 2 down, 3 back, 4 forward;
     -- 0 none).

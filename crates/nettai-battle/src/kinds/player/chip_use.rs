@@ -261,7 +261,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
 /// which a zeroed chip field reads): its own action, or the engine's action
 /// for its kind of use (which calls its hook); an instant chip's effect
 /// goes into the attack.
-pub(super) fn chip_action(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> super::NaviAction {
+pub(crate) fn chip_action(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> super::NaviAction {
     use crate::content::ChipUsage;
     use super::actions::instant::Effect;
     use super::{EngineAction as E, NaviAction as A};
@@ -372,7 +372,7 @@ fn pay_for_special_chip(b: &mut Battle, side: usize, chip: Option<ChipHandle>) {
 /// `sub_80126E4`: the attack variables from the chip data (its action is
 /// [`chip_action`]'s). (The game also counts the use per side, for a
 /// report only the battle-flag 0x40 mode reads.)
-fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
+pub(crate) fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let content = b.content.clone();
     let cd = entry_record(&content, chip);
     let side = b.objects.get(r).alliance;
