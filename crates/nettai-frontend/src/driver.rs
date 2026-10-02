@@ -528,4 +528,169 @@ mod tests {
             assert_eq!(b.hands[side].remaining(), 1, "side {side}");
         }
     }
+
+    /// Live play's setup from a seed: a link battle's stage (the 96 the
+    /// original draws from), legal folders, five Crosses of both games per
+    /// window; the same seed, the same setup; `--stage` forces the stage.
+    #[test]
+    fn the_live_setup_is_drawn_from_the_seed() {
+        let content = crate::folders::bn6_test_content();
+        let stages = link_battle_stages(&content);
+        assert_eq!(stages.len(), 96);
+        let mut seen = std::collections::BTreeSet::new();
+        let navi = content.form_changing_navi().unwrap();
+        for seed in 0..12 {
+            let (setup, choices) = bn6_live_setup(&content, seed, None).unwrap();
+            assert!(stages.contains(&setup.settings.stage));
+            assert_eq!(setup.settings.effects & effects::RANDOM, 0);
+            seen.insert(setup.settings.stage);
+            let limits = FolderLimits::of(&setup.navi_stats[0]);
+            for side in 0..2 {
+                assert!(folders::violations(&content, &choices.folders[side], limits).is_empty());
+                let list = setup.players[side].unlocks.cross_list.unwrap();
+                let games: Vec<_> = list.forms().map(|f| content.form(f).game.unwrap()).collect();
+                assert_eq!(games.len(), 5);
+                for f in list.forms() {
+                    let forms = content.navi(navi).forms.as_ref().unwrap();
+                    assert!(forms.gregar.crosses.contains(&f) || forms.falzar.crosses.contains(&f));
+                }
+            }
+            assert_eq!(format!("{:?}", bn6_live_setup(&content, seed, None).unwrap().0), format!("{setup:?}"));
+        }
+        assert!(seen.len() > 6, "{seen:?}");
+        // Some seed offers both games' Crosses.
+        let mixed = (0..12).any(|seed| {
+            let list = bn6_live_setup(&content, seed, None).unwrap().0.players[0].unlocks.cross_list.unwrap();
+            let gregar = list.forms().filter(|&f| content.form(f).game == Some(GameVersion::Gregar)).count();
+            gregar > 0 && gregar < 5
+        });
+        assert!(mixed);
+        let (forced, _) = bn6_live_setup(&content, 3, Some("netbattle-43")).unwrap();
+        assert_eq!(content.defs.stage(forced.settings.stage).key, "netbattle-43");
+        assert_eq!(forced.players, bn6_live_setup(&content, 3, None).unwrap().0.players);
+        assert!(bn6_live_setup(&content, 3, Some("netbattle-100")).is_err());
+    }
+
+    /// Run `live` until `done`, with the local player's buttons from
+    /// `keys` (tick, battle); panics past `limit` ticks.
+    fn play_until(
+        live: &mut LivePlayer,
+        b: &mut Battle,
+        limit: u32,
+        mut keys: impl FnMut(u32, &Battle) -> u16,
+        mut done: impl FnMut(&Battle) -> bool,
+    ) {
+        for tick in 0..limit {
+            if done(b) {
+                return;
+            }
+            let held = keys(tick, b);
+            let step = live.next(b, held).unwrap();
+            b.tick(&step.input, step.events);
+        }
+        panic!("not done in {limit} ticks: mode {:#x}, turn {}", b.round.mode, b.round.turn);
+    }
+
+    /// The local player's screen, while it takes keys.
+    fn choosing(b: &Battle) -> Option<&custom::Screen> {
+        let s = &b.custom.sides[0];
+        s.screen.as_ref().filter(|x| s.in_custom && b.round.mode == mode::CUSTOM && x.phase == Phase::Choosing)
+    }
+
+    /// nettai's Cross list on BN6's content: a Falzar player offered
+    /// HeatCross, Gregar's, chooses it on the custom screen and fights in
+    /// it (its form, element, buster and charged shot: HeatCross's flame);
+    /// on the next screen Beast Out from it is Falzar's Beast.
+    #[test]
+    fn a_falzar_player_plays_a_gregar_cross() {
+        use nettai_battle::battle::battle_flags;
+        use nettai_battle::content::Element;
+        use nettai_battle::kinds::player::{NaviAction, navi_action};
+        let content = crate::folders::bn6_test_content();
+        let heat = content.defs.form_by_key("heatcross").unwrap();
+        let falzar_beast = content.defs.form_by_key("falzar-beast").unwrap();
+        let stage = link_battle_stages(&content)[0];
+        let settings = BattleSettings { stage, background: 0, effects: content.stage(stage).effects | MATCH_EFFECTS };
+        let folder = folder_of(&content, &[("cannon", 0)]);
+        let mut setup = live_setup(&content, settings, [folder, folder], 5);
+        setup.players[0].unlocks.cross_list = Some(CrossList::new(&[heat]));
+        let mut live = LivePlayer::new(setup, content.clone());
+        let mut b = live.start();
+        // The first screen: UP opens the Cross window (a hold acts on its
+        // second tick), A chooses HeatCross, START and A press OK.
+        play_until(
+            &mut live,
+            &mut b,
+            3000,
+            |tick, b| {
+                let s = &b.custom.sides[0];
+                let Some(screen) = s.screen.as_ref().filter(|_| s.in_custom && b.round.mode == mode::CUSTOM) else { return 0 };
+                let w = &screen.crosses;
+                match screen.phase {
+                    Phase::Choosing if w.chosen.is_none() => [keys::UP, keys::UP, 0][tick as usize % 3],
+                    Phase::CrossWindow { entered: true } if w.chosen.is_none() => {
+                        assert_eq!((w.count, custom_screen_text(b, 0).unwrap().contains(">HEATCROSS")), (1, true));
+                        if tick % 2 == 1 { keys::A } else { 0 }
+                    }
+                    Phase::Choosing if tick % 2 == 1 => {
+                        if screen.cursor == custom::screen::OK_SLOT { keys::A } else { keys::START }
+                    }
+                    _ => 0,
+                }
+            },
+            |b| b.custom.sides[0].sent.is_some(),
+        );
+        assert_eq!(b.custom.sides[0].sent.as_ref().unwrap().result.transform.form, Some(heat));
+        // The fight resumes and the navi changes into HeatCross.
+        let p0 = b.player(0).unwrap();
+        play_until(&mut live, &mut b, 1000, |_, _| 0, |b| b.stats[0].form == heat && navi_action(b, p0) == NaviAction::Idle);
+        let actor = b.objects.get(p0).actor.unwrap();
+        let weapons = content.form(heat).weapons;
+        assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
+        assert_eq!(b.objects.get(p0).element & 0xF, Element::Fire as u8);
+        // B held charges the buster; let go, HeatCross's flame.
+        let flame = content.defs.action_by_key("heatcross/charge/action").unwrap();
+        let mut charged = false;
+        play_until(
+            &mut live,
+            &mut b,
+            600,
+            |tick, _| if tick < 200 { keys::B } else { 0 },
+            |b| {
+                charged |= navi_action(b, p0) == NaviAction::Content(flame);
+                charged
+            },
+        );
+        // The next screen, opened with L once the gauge is full: Beast Out
+        // (START, DOWN, A) from HeatCross is Falzar's Beast.
+        let mut beast = false;
+        play_until(
+            &mut live,
+            &mut b,
+            6000,
+            |tick, b| {
+                if b.round.mode == mode::FIGHTING {
+                    return if b.round.flags & battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 { keys::L } else { 0 };
+                }
+                let Some(screen) = choosing(b) else { return 0 };
+                if b.round.turn < 2 {
+                    return 0;
+                }
+                beast |= screen.beast_out;
+                // Each key held two ticks (a direction acts on a hold's
+                // second), then let go.
+                let key = match (beast, screen.cursor) {
+                    (false, custom::screen::OK_SLOT) => keys::DOWN,
+                    (false, custom::screen::SPECIAL_SLOT) => keys::A,
+                    (false, _) => keys::START,
+                    (true, custom::screen::SPECIAL_SLOT) => keys::UP,
+                    (true, _) => keys::A,
+                };
+                [key, key, 0][tick as usize % 3]
+            },
+            |b| b.round.turn >= 2 && b.custom.sides[0].sent.is_some(),
+        );
+        assert_eq!(b.custom.sides[0].sent.as_ref().unwrap().result.transform.form, Some(falzar_beast));
+        play_until(&mut live, &mut b, 1000, |_, _| 0, |b| b.stats[0].form == falzar_beast);
+    }
 }
