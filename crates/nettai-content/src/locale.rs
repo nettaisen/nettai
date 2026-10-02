@@ -123,14 +123,15 @@ impl Strings {
 
     /// What is wrong with the table against the definitions: a key no
     /// definition has, a field the definition has no words for in its own
-    /// language (a description of a chip without one), an empty string, a
-    /// string not in Unicode's composed form (NFC: no combining marks
-    /// after a letter they compose with).
+    /// language (a description of a chip without one), an empty name or
+    /// message (a description may be empty: the Japanese games print none
+    /// for some chips), a string not in Unicode's composed form (NFC: no
+    /// combining marks after a letter they compose with).
     pub fn check(&self, defs: &Defs) -> Vec<String> {
         let mut out = Vec::new();
         let mut text = |what: String, s: &Option<String>| {
             if let Some(s) = s {
-                if s.trim().is_empty() {
+                if s.is_empty() && !what.ends_with(".description") {
                     out.push(format!("{what} is empty"));
                 }
                 if let Some(c) = s.chars().find(|&c| matches!(c, '\u{0300}'..='\u{036F}' | '\u{3099}' | '\u{309A}')) {

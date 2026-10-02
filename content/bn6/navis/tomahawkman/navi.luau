@@ -8,7 +8,7 @@ local tomahawkman = require("./chip")
 
 return define.navi {
     id = "tomahawkman",
-    name = "TomahawkMan",
+    name = "TmhkMan",
     sprite = asset.sprite("tomahawkman"),
     element = "wood",
     buster_bonus = 1,
