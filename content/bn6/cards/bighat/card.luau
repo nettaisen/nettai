@@ -6,7 +6,6 @@ local charge = require("./charge")
 
 return cards.card {
     id = "patch-card/bighat",
-    name = "BigHat",
     mb = 8,
     effects = {
         cards.bug(cards.super_armor(false)),

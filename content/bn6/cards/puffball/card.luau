@@ -6,7 +6,6 @@ local charge = require("./charge")
 
 return cards.card {
     id = "patch-card/puffball",
-    name = "Puffy",
     mb = 12,
     effects = {
         cards.body("aqua"),

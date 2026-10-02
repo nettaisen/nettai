@@ -7,7 +7,6 @@ local invisible_charge = require("../../lib/patch-cards/invisible-charge")
 
 return cards.card {
     id = "patch-card/shadow",
-    name = "Shadow",
     mb = 6,
     effects = {
         cards.bug(cards.status_guard(false)),

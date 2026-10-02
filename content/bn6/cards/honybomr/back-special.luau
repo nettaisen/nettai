@@ -29,7 +29,6 @@ end
 
 return define.weapon {
     id = "patch-cards/honybomr/back-special",
-    name = "RskyH",
     -- The charge table's row 0x88, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },

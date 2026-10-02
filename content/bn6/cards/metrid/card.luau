@@ -6,7 +6,6 @@ local back_special = require("./back-special")
 
 return cards.card {
     id = "patch-card/metrid",
-    name = "Metrid",
     mb = 15,
     effects = {
         cards.hp_percent(5),

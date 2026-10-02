@@ -9,7 +9,6 @@ local yoyo = require("../../chips/yoyo/chip")
 
 return define.weapon {
     id = "patch-cards/cutman/charge",
-    name = "YoYo",
     -- The charge table's row 0x75, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 100, 90, 80, 75, 70, 0, 0, 0 },

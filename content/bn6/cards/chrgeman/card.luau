@@ -6,7 +6,6 @@ local chrgs = require("../../lib/patch-cards/chrgs")
 
 return cards.card {
     id = "patch-card/chrgeman",
-    name = "ChrgeMan",
     mb = 31,
     effects = {
         cards.attack(3),

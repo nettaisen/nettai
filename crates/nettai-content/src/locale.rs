@@ -4,7 +4,7 @@
 //!
 //! A definition holds no display text. A chip's name and description, a
 //! navi's name and no-running message, a form's name and description and a
-//! weapon's name are its language's table's. The content's own language
+//! weapon's name and a record's (a patch card's) are its language's table's. The content's own language
 //! (`OWN`, English for BN6) is part of the content: the loader puts its
 //! table in `Content::strings`, and the define phase counts what the battle
 //! reads of it (a description's lines, a message's characters per line).
@@ -26,13 +26,16 @@
 //!
 //! [weapons]
 //! "megaman/buster" = { name = "..." }
+//!
+//! [records]
+//! "patch-card/canodumb" = { name = "..." }
 //! ```
 //!
 //! A line break in a description or a message is `\n`. A translated
 //! description may have another number of lines than the own language's:
 //! the battle keeps the own language's timing.
 
-pub use nettai_battle::content::strings::{ChipStrings, FormStrings, NaviStrings, Strings, WeaponStrings};
+pub use nettai_battle::content::strings::{ChipStrings, FormStrings, NaviStrings, RecordStrings, Strings, WeaponStrings};
 use nettai_battle::content::Defs;
 use std::path::{Path, PathBuf};
 
@@ -119,6 +122,12 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
             unknown.push(format!("weapons.{key}: no weapon has this key"));
         }
         text(format!("weapons.{key}.name"), &w.name);
+    }
+    for (key, r) in &s.records {
+        if defs.record(key).is_none() {
+            unknown.push(format!("records.{key}: no record has this key"));
+        }
+        text(format!("records.{key}.name"), &r.name);
     }
     if own {
         let named = |n: Option<&Option<String>>| n.is_some_and(|n| n.is_some());

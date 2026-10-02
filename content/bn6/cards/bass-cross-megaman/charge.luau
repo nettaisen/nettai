@@ -28,7 +28,6 @@ end
 
 return define.weapon {
     id = "patch-cards/bass-cross-megaman/charge",
-    name = "HelzR",
     -- The charge table's row 0x93, by Charge 0 to 7: past 4 it reads on
     -- into the bytes after the table (Charge stays below 5 with the cards).
     charge_ticks = { 140, 130, 120, 110, 100, 2052, 4108, 6164 },

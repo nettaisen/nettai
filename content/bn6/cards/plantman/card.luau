@@ -6,7 +6,6 @@ local variants = require("../../objects/projectile/variants")
 
 return cards.card {
     id = "patch-card/plantman",
-    name = "PlantMan",
     mb = 42,
     effects = {
         cards.bug(cards.hp(-80)),

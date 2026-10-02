@@ -6,7 +6,6 @@ local b_button = require("./b-button")
 
 return cards.card {
     id = "patch-card/mettfire",
-    name = "MettFire",
     mb = 20,
     effects = {
         cards.body("fire"),

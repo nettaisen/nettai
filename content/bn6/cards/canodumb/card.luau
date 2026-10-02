@@ -6,7 +6,6 @@ local charge = require("./charge")
 
 return cards.card {
     id = "patch-card/canodumb",
-    name = "Canodumb",
     mb = 10,
     effects = {
         cards.bug(cards.hp(-40)),

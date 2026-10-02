@@ -9,7 +9,6 @@ local chips = require("../../chips/rflectr/chips")
 
 return define.weapon {
     id = "patch-cards/b-reflect",
-    name = "Rflectr1",
     -- The charge table's row 0x76, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 100, 90, 80 },

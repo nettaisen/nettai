@@ -6,7 +6,6 @@ local chrgs = require("../../lib/patch-cards/chrgs")
 
 return cards.card {
     id = "patch-card/pharoman",
-    name = "PharoMan",
     mb = 35,
     effects = {
         cards.hp_percent(5),

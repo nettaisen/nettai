@@ -20,7 +20,6 @@ end
 
 return define.weapon {
     id = "patch-cards/magntman/back-special",
-    name = "MagF",
     -- The charge table's row 0x83, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 180, 170, 160 },
