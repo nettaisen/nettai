@@ -475,7 +475,11 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
         .iter()
         .map(|&o| Unknown { xy: nettai_battle::kinds::effect::xy_unknown(b, o), z_fraction: spark_z_fraction_unknown(b, compat, o) })
         .collect();
-    let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, compat, o, u)).collect();
+    // The traced console's game: its own navi's (the local side's NaviStats
+    // version). A Gregar console's objects keep Gregar's spawner addresses
+    // where the content has Falzar's (games.toml).
+    let game = Game::of_navi_version(b.stats[b.round.local_side as usize & 1].version);
+    let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, compat, o, u, game)).collect();
     let theirs: Vec<String> =
         f.objects.iter().enumerate().map(|(i, o)| describe_trace(compat, o, unknown.get(i).copied().unwrap_or_default())).collect();
     if ours != theirs {
@@ -599,7 +603,7 @@ fn z_fraction_is_garbage(compat: &Compat, kind: u8, index: u8) -> bool {
     slot_kind(compat, kind, index).is_some_and(|k| k.scratch_z_fraction)
 }
 
-fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, unknown: Unknown) -> String {
+fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, unknown: Unknown, game: Game) -> String {
     let o = b.objects.get(r);
     let status = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
     // The engine's identities as the original's numbers: the object's kind
@@ -617,10 +621,10 @@ fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, un
         index,
         o.flags,
         [o.state, action, o.phase, o.phase_init],
-        [o.panel.x, o.panel.y],
+        [o.panel.x, compat.games.panel_y(game, &b.content.defs.kind(o.kind).key, o.panel.y)],
         o.alliance,
         [o.hp, o.max_hp],
-        [o.pos.x, o.pos.y, o.pos.z],
+        [o.pos.x, o.pos.y, compat.games.z(game, o.pos.z)],
         o.timer,
         o.anim,
         status,
