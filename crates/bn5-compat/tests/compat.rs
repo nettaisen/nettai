@@ -38,6 +38,14 @@ fn bn5_compat_reads() {
     assert_eq!(built_in.panel_type(5), Ok(None));
     assert_eq!(built_in.panel_type(10), Ok(None));
     assert!(built_in.panel_type(11).is_err());
+    // The assets' names: BN6's where the asset or its place is BN6's.
+    assert_eq!(built_in.assets.sounds.get("own-hit"), Some(&0x6B));
+    assert_eq!(built_in.assets.sounds.get("winner-1"), Some(&0x1F));
+    assert_eq!(built_in.assets.banners.get("program-advance"), Some(&0x24));
+    assert_eq!(built_in.sprite_names().get(&(0x0C, 0x02)).map(String::as_str), Some("bomb"));
+    // The statuses' bytes.
+    assert_eq!(built_in.status(0x10).as_deref(), Some("bn5:paralyze-90"));
+    assert_eq!(built_in.status(0x32).as_deref(), Some("bn5:blind-1200"));
 }
 
 /// Team ProtoMan's NaviStats block as the chip lab's team-plain recording

@@ -555,7 +555,7 @@ What BN5 verification and content need that doesn't depend on the roots (rules-i
 format.
 
 - **content/bn5** (written by the verification workspace's tools/bn5/gen_content.py from all four ROMs; its `check`
-  mode compares them again): `root.toml` (name "bn5", assets "bn5", no requires); `compat/chips.toml` (328 chips by
+  mode compares them again): `root.toml` (name "bn5", assets "bn5"; it requires BN6's root since the port, §15.1); `compat/chips.toml` (328 chips by
   key: id, action and subtype; `damage_formula` for the 46 whose damage is a formula, 1000 and up; `colonel` for the
   48 whose Team Colonel record differs: the version Gigas' library flag, the navi chips' +0x16);
   `compat/panels.toml` (BN5's 11 panel types, their flag words and the engine's type each is);
@@ -910,3 +910,137 @@ beyond the framework. A port writes ChaosLrd's module from the BN5 code.
 - **bn5-only and BN6 code, no chip:** new modules, from the BN5 code. For the latter BN6 keeps the code (Voltz, the
   mode chips, FinalGun, the Asteroid chips, DarkMetr, Boxer, Blinder), so the BN6 disassembly reads for BN5 there.
 - **built like:** the nearest BN6 module as a template only (a navi chip's template, not its moves).
+
+## 15. The BN5 port
+
+BN5 as a second game beside BN6 (rules-in-luau.md R2: the arena's game supplies the field, the hit tables and the
+flow's banners and music; each side's game its navi, sounds and custom screen). In order: BN5's battle data
+(§15.1 to §15.4), the replay harness in the verification workspace (§15.5), the chips (§15.6).
+
+### 15.1 BN5's battle data (as built)
+
+content/bn5/rules is written once by the verification workspace's `tools/bn5/gen_rules.py` (through
+`gen_content.py write`, which leaves a written rules file alone; `check` notes where one differs since), from Team
+ProtoMan's ROM; Team Colonel's tables are the same. Each file names its sources.
+
+| File | What | BN5's against BN6's |
+|---|---|---|
+| ruleset.luau | the stock ruleset `bn5:bn5` | no systems yet (Soul Unison, Chaos Unison, BN5's emotions, the Team Battle come as systems) |
+| roles.luau | roles naming BN5's assets, its collision types, the anchor region | the rest unfilled (below) |
+| pools.luau | 16 actors, 32 attacks, 32 effects | BN6's 32 each |
+| elements.luau | weakness (0x08016900) | BN6's; no family adds an element (BN5 stores a chip's element as its record has it) |
+| reactions.luau | push rows (0x0800CA24), ice slides (0x0800C988), the bubble's bob | five push rows read another way (§15.3); no bubble |
+| math.luau | sine (0x08005CD0) | BN6's |
+| buster.luau | recovery by Rapid and open panels (0x0801CEA4); the empty hand's chip | BN6's |
+| banners.luau | holding banners: program-advance, hit-damage-judge, program-advance-empty | BN6's three; the 49 records (0x0801B810) match BN6's first 0x5D |
+| custom-screen.luau | the slot grid and the neighbour fix-up's lists | BN6's |
+| status.luau | 64 statuses: paralysis, confusion, blindness, immobilization by level (0x0801CEC4); the HP bug's periods | no freeze, no bubble; the timers 2 bytes further in the collision record |
+| collision.luau | 77 of BN6's collision types by their rows (0x0801636C) | 80 rows to BN6's 89; no 0x80 self bit; row 0x3D gives its sides' bits |
+| panels.luau | the 11 panel types (unregistered data, §15.2) | metal and sea; no roads |
+
+content/bn5/compat gains `assets.toml` (§15.4) and `rules.toml` (the statuses' bytes, 0x10 to 0x4F); bn5-compat
+reads both (`Compat::assets`, `sprite_names`, `status`), and bn5-extract names the pack's assets from them. The
+root requires BN6's (`requires = ["bn6"]`): BN5's definitions use BN6's where BN5's code is BN6's
+(`require("@bn6/...")`). nettai-content's lint test `bn5s_rules_are_its_games` loads BN5's rules beside BN6's (its
+chips left out until they have uses) and checks they are BN5's game's: 16 actors, BN6's weakness.
+
+**Roles not filled** (a battle stops at the first it needs, naming it): every action, kind, chip, status,
+lock-on, effect, spark and hook role (the port's BN5 definitions); the sprites but the charge glow (BN5's status
+visuals are BN5's sprites, named when the port draws them); the freeze and bubble sounds and sprites (BN5 has
+neither status); the eruption's (BN5's lava doesn't erupt); BN6's own (the A charge's glow, Full Synchro's aura,
+the Cross and Beast Out sounds, the custom screen's Cross window, re-deal and scrap).
+
+### 15.2 The field
+
+BN5's 11 panel types (0x0800BCF0): missing, broken, normal, cracked, poison (BN6's flags), 5 (flag word 0x10210,
+BN6's road panels', a plate's look: compat calls it metal), grass, ice, lava (BN6's volcano flags), holy, sea
+(0x30010). The trail sounds (0x080113A0) are BN6's for the shared types, `immobilizer` for type 5, `sand-worm`'s
+song for sea. Start grid and front edges, step and dash-step rules are BN6's; BN5 has no either-side step rule.
+What the panels do (BN6's `sub_800C380`, BN5's 0x0800A998, and the routines named):
+
+- a broken panel mends after 600 ticks in every battle (BN6: 0x1E0 in battle mode 1), blinking its last 60;
+  cracked panels break as BN6's;
+- lava and sea panels turn normal after 960 ticks (their own timers, +0x10 and +0x14 of BN5's 0x24-byte panel
+  record), blinking their last 60; nothing erupts (no volcano counter);
+- lava (0x08016D80, 0x08016E18, BN5's own): a grounded body, not of fire, not floating and not flagged 0x88000206,
+  takes 50 (shifted by its weakness to fire) as a hit (flags 3 at +0x0F, +0x18, +0x19), unless flagged 9; the
+  panel turns normal and a burst shows; a navi whose soul byte (NaviStats +0x2C) is 4 standing on lava with a chip
+  whose +0x09 has bit 2 gains 10 on it, and the lava goes (0x08012602);
+- sea: drains a fire body as poison drains any (0x08016C7E, BN6's `sub_801A186`); at a move's end on sea, a body
+  not floating, not aqua and without bit 0x20 of its AI record's flags (+0x48, `sub_801032C`) stops for 20 ticks
+  (`sub_800EB18`'s timer, BN5's at +0x24 of the collision record) with a splash (effect 99) (0x0801715E); a body
+  on sea with that bit has its collision record's +0x2C set to 0xFFFF, else 0 (0x08017030);
+- type 5: at a move's end, a slide (type 3) unless the body has slid within the cooldown (+0x38) or is a navi
+  whose soul byte is 5 (0x08017216, BN6's road start `sub_801A400`); BN5's type-3 slide goes on in the move's
+  direction, trying the others in a fixed order (0x0800C8A8's branch, the table at 0x0800C920), not a road's
+  fixed direction;
+- conversions (0x08016D14, BN6's `sub_3007708` moved out of IWRAM): fire on grass, aqua on lava, element 4 on
+  type 5 turn the panel normal (BN6's roads take element 4 too);
+- battle effect 0x1000 (single player only) hands panel runs over (0x0800AE92, BN5's own).
+
+### 15.3 What the engine has no slot for (proposals)
+
+The smallest engine additions BN5's data and rules need, for the rules agent (none made here):
+
+1. **Panel types.** `PanelType` gains BN5's three: `Metal` (type 5), `Lava` (type 8: not BN6's volcano, whose
+   flags and sound it shares but not its behaviour) and `Sea` (type 10); the `panels` section names the types its
+   game has, not exactly all of the engine's (BN6's names its 13, BN5's its 11). Their behaviour as section data
+   where it is numbers: per type `expires` (ticks to normal: BN5's lava and sea 960; BN6's roads their road
+   timer) and the broken panel's mend time per game (BN5 600 always); the rest as code the types select (lava's
+   burn, sea's drain and stop, type 5's slide), keyed by the panel type, not the game. bn5-compat then maps 5, 8
+   and 10 to them (today: none, volcano, none).
+2. **Push.** BN5's push reads the first of bits 2 to 5 of the hit modifier's first byte (+0x18), else of its
+   second (+0x19) with the direction reversed (0x0800C9D8), five rows; BN6's reads bits 2 to 5 and adds 5 for 0x80
+   (`sub_800E548`). A choice in the `reactions` section (`push = { rows, reading = "bn5" }`), the engine reading
+   both ways.
+3. **Slide type 3** reads the panel's road direction in BN6 and the move direction with fallbacks in BN5 (§15.2):
+   the same choice, or type 5's code in item 1.
+4. **Statuses BN5 lacks.** The engine's aqua-on-ice freeze and the encased-obstacle hook ask the arena's roles
+   `statuses.ice_freeze` and `hooks.encased`: BN5's arena must answer "none" without a panic (optional roles, or
+   the reactions section saying the game has no freeze).
+5. **Chip families** recovery and invisible (§13): `ChipFamily` gains them; BN5's chips name them, and the
+   systems that count families (AntiRecv's) read them.
+6. **NaviStats +0x0E** (BN5's mood byte, §13): a recovery adds its +0x0A to it (0x08012802, cap 254, not from 0 or
+   0xFF); a navi chip's leaving subtracts its +0x2E (0x08012820, floor 1). A field of BN5's navi record and a
+   hook on recovery and on a navi chip's leaving (or the emotion system's, when BN5's comes).
+7. **The flow** (§15.4's table): a `flow` section for its numbers (the result waits), and the arena's game
+   choosing the flow's code where BN5's differs (the state machine's structure, below).
+8. **Mixes with their own sections** (rules-in-luau.md R2): Soul Unison's custom-screen layout (the shared custom
+   screen's soul row) is a mix's; needed when the Team Battle's custom screen is ported.
+9. **Collision words:** BN6's chips required from BN5 register BN6's collision types (with the 0x80 self bit,
+   rows past BN5's 0x50): fine while every target word lacks 0x80, which the port checks per row it uses.
+
+### 15.4 The flow and the assets' names
+
+**The flow.** Of the BN6 flow routines the engine cites (battle.rs, hud.rs, dimming.rs), 73 are BN5's the same
+code, 6 the same but for constants, 34 similar, 1 differs and 8 absent. What differs, by the BN6 routine:
+
+- `sub_800825A` (the result): a special battle's result wait 65 ticks (BN6 94); the normal win's 102 as BN6's;
+  `sub_80081A4` plays BN5's own winner songs at the same numbers (0x19 special, 0x1F).
+- `sub_80080D2` (fighting): no Cross-special check (BN6 +0x3A, `sub_800AAD6` absent) and no per-player gauge
+  decrement (0x2900) on a custom request; BN5 calls 0x08025ED0 there.
+- `sub_8008452`, `sub_8008492`: after the reversions BN5 opens the custom screen (result 6) directly: no
+  transformation sequencer re-run (BN6's state 0x24 is absent), and no mode-5 test.
+- `sub_800840C`, `sub_8009158`, `sub_8009338`, `sub_80102AC`, `sub_8013FD0`, `sub_8007EB8`: BN5 adds tests of
+  battle flag 0x40 (`sub_800A8F8`, set in link battles) around single-player steps; `sub_8009338` calls the
+  custom screen's 0x08022C5C/0x08022D70 there (BN6's `sub_8026840` is absent).
+- `sub_8007CA0` (round end): BN5 writes the light/dark value back (NaviStats +0x44, under battle effect 0x800)
+  and three BN5 counters (0x0801289C, 0x0801288E, 0x0801299E); constants not read yet at 0x080070CE (5, BN6 1)
+  and 0x080070EA (16 and 217, BN6 23 and 51).
+- `sub_8017AB4` (a side's dimming): 65 where BN6 tests 27, 120 for 128 (0x08014574, 0x080145CA), not read yet.
+- `sub_80107D4` (the navi's tick): BN5 counts down four timers at +0x3C and an invulnerability timer at +0x16,
+  and runs the lava-chip boost (0x08012602).
+- `sub_800A1D0`, `sub_800A244`, `sub_801C840`, `sub_802E112`, `sub_802F068`: BN6's Beast/Cross and battle-mode-6
+  tests BN5 hasn't; `sub_802E4E4` (SELECT's special) differs in its flags (BN5 0x200000, BN6 0x20000000).
+- `sub_800BA8A`, `sub_800BDD0`, `sub_800BE2C` (the telop and AntiNavi): AntiNavi is chip 144 (BN6 186): content's
+  keys cover it.
+- `sub_800B3D8`, `sub_802D7A0`, `sub_802D9B0`: record sizes (96 for 100, 129 for 161), not timings.
+
+**The assets' names** (content/bn5/compat/assets.toml, `gen_content.py`'s `asset_names`): BN6's name for what is
+BN6's. A song whose data is BN6's song of the same number (227 of BN5's, sound effects and jingles); BN5's own
+music by the place BN5's code starts it where BN6's same code starts a named one (virus-battle 0x15, loser 0x1A,
+game-over 0x1B, transmission 0x0F); a sound BN5's identical code plays where BN6's plays a named one; the songs
+read at their places (own-hit 0x6B and hit 0x6D in `applyDamageToPlayer_801ba12`'s counterpart, winner-0 0x19
+and winner-1 0x1F in `sub_80081A4`'s); a battle sprite whose archive is a BN6 sprite's, or that identical code
+loads where BN6's loads a named one (48); the banners whose records are BN6's (24 named). 149 sounds, 48
+sprites, 24 banners in all; the rest keep their placeholders, which content may not use.
