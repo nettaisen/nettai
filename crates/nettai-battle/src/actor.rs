@@ -226,13 +226,8 @@ pub struct ActorData {
     /// (`sub_8013DA0`): 0 normal (mood 0x99), 1 tired, 2 angry, 3 Full
     /// Synchro (mood 0xFF).
     pub swung_emotion: u8,
-    /// AIData+0x0F: the turn-start Beast Out check (`sub_80159C6`) runs
-    /// only while this is 0, and then sets it to 2. Closing the custom
-    /// screen sets it to 1 (`sub_8009338`); a mid-battle custom-screen
-    /// request counts it down (`sub_8015A16`, MegaMan only; 0xFF is left
-    /// alone). Intent uncertain: in netbattles the close always leaves 1
-    /// before the next check.
-    pub beast_out_check_delay: u8,
+    // (AIData+0x0F, the turn-start Beast Out check's delay, is BN6's beast
+    // system's state: content/bn6/rules/beast/system.luau.)
     /// AIData+0x10: drain hits this navi landed on the opponent, turned
     /// into healing (MaxHP/10 each) on its own next hit collection
     /// (`sub_801A308`, `sub_801A324`).
