@@ -494,7 +494,7 @@ impl Hud {
                 .enumerate()
                 .filter(|(_, g)| !g.is_empty() && rest.starts_with(g.as_str()))
                 // The first of equally long names: the encoding has two
-                // spaces.
+                // spaces and two hyphens, each pair drawn alike.
                 .min_by_key(|(k, g)| (std::cmp::Reverse(g.len()), *k));
             match best {
                 Some((k, g)) => {
