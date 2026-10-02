@@ -246,8 +246,17 @@ pub trait ContentHost {
     /// One tick of an action for the navi `me`: function `f` is the
     /// action's `update`, and its second argument is the attack state as a
     /// state of layout `state`.
-    fn update_action(&self, api: &mut dyn CoreApi, f: FnId, me: ObjectRef, state: StateId)
-    -> Result<(), ContentError>;
+    /// `system`: the side and place in its ruleset of the system the
+    /// action is one of (`define.system { actions = ... }`), whose state
+    /// the action reaches (docs/design/rules-in-luau.md §5.3).
+    fn update_action(
+        &self,
+        api: &mut dyn CoreApi,
+        f: FnId,
+        me: ObjectRef,
+        state: StateId,
+        system: Option<(u8, u8)>,
+    ) -> Result<(), ContentError>;
     /// Call function `f` for a hook.
     fn call_hook(&self, api: &mut dyn CoreApi, f: FnId, call: HookCall) -> Result<Value, ContentError>;
 }
