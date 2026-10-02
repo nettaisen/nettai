@@ -258,6 +258,10 @@ definition_roles! {
         /// One of the bursts around a navi going Beast Over
         /// (`sub_80E7D0C`).
         BeastOverBurst = "beast_over_burst",
+        /// The splash of a body held by a panel at a move's end (BN5's sea,
+        /// effect 0x63: 0x0801715E). Only a game whose panels hold needs
+        /// it.
+        PanelSplash = "panel_splash",
     }
 }
 
@@ -275,6 +279,9 @@ definition_roles! {
         ThrownObstacle = "thrown_obstacle",
         /// A navi's programs uninstalled (`sub_80140EE`).
         Uninstall = "uninstall",
+        /// A panel's burn (BN5's lava, the sparks' row 1: 0x08016D80). Only
+        /// a game whose panels burn needs it.
+        PanelBurn = "panel_burn",
     }
 }
 
@@ -605,18 +612,27 @@ impl Roles {
     /// The function of `role`; a role content hasn't filled is a panic
     /// naming it.
     pub fn hook(&self, role: HookRole) -> FnId {
-        *self
-            .hooks
-            .get(&role)
+        self.try_hook(role)
             .unwrap_or_else(|| panic!("the role hooks.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    /// The hook of `role`, if content filled it: an optional role's
+    /// absence says the game has no such thing (BN5's `hooks.encased`:
+    /// docs/design/bn5-map.md §15.3 item 4).
+    pub fn try_hook(&self, role: HookRole) -> Option<FnId> {
+        self.hooks.get(&role).copied()
+    }
+
+    /// The status of `role`, if content filled it (BN5 has no
+    /// `statuses.ice_freeze`: no freeze).
+    pub fn try_status(&self, role: StatusRole) -> Option<StatusHandle> {
+        self.statuses.get(&role).copied()
     }
 
     /// The status of `role`; a role content hasn't filled is a panic naming
     /// it.
     pub fn status(&self, role: StatusRole) -> StatusHandle {
-        *self
-            .statuses
-            .get(&role)
+        self.try_status(role)
             .unwrap_or_else(|| panic!("the role statuses.{} is not filled (define.roles in rules/roles.luau)", role.name()))
     }
 

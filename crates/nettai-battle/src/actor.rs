@@ -84,6 +84,10 @@ pub mod status {
     /// Direction bits of the last move (right, left, down, up).
     pub const MOVE_DIRECTIONS: u32 = 0xF;
     pub const CONTROLLABLE: u32 = 0x10;
+    /// It dives: a panel that submerges (BN5's sea) submerges it and
+    /// doesn't hold it at a move's end (`sub_801032C`'s 0x20: BN5's
+    /// 0x08017030, 0x0801715E).
+    pub const DIVES: u32 = 0x20;
     pub const CHIP_IN_PROGRESS: u32 = 0x40;
     /// Pause handler: form change in progress (`sub_8014A38`).
     pub const FORM_CHANGE: u32 = 0x80;

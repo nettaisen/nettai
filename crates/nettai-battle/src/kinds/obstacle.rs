@@ -316,6 +316,8 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     if b.is_battle_over() || f1_of(b, r) & f1::DEAD != 0 {
         return;
     }
+    // (BN5's lava burns first: 0x08017A18 and its variants.)
+    common::panel_burn(b, r);
     if push == Push::AnyHit {
         push_on_any_hit(b, c);
     }
@@ -757,8 +759,11 @@ fn encased(b: &mut Battle, r: ObjectRef) {
             unregister(b, r);
             clear_wind(b, r);
             let ice = f1_of(b, r) & obstacle_f1::ENCASED_ICE != 0;
-            let hook = b.arena_roles().hook(crate::content::HookRole::Encased);
-            crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleEncased { obstacle: r, ice, class });
+            // (A game without the role has nothing for it to do: BN5,
+            // docs/design/bn5-map.md §15.3 item 4.)
+            if let Some(hook) = b.arena_roles().try_hook(crate::content::HookRole::Encased) {
+                crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleEncased { obstacle: r, ice, class });
+            }
             common::set_progress(b, r, Progress::DESTROY);
         }
         step => panic!("sub_801813A: step {step:#x} reads past off_801814C"),

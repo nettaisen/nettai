@@ -86,7 +86,7 @@ impl Shadow {
 
 /// Panel types by name, in the engine's order (the type number is the
 /// index).
-pub const PANEL_TYPES: [&str; 13] = [
+pub const PANEL_TYPES: [&str; 16] = [
     "missing",
     "broken",
     "normal",
@@ -100,6 +100,9 @@ pub const PANEL_TYPES: [&str; 13] = [
     "road_down",
     "road_left",
     "road_right",
+    "metal",
+    "lava",
+    "sea",
 ];
 
 /// Actor types by name (an actor record's type).
@@ -1114,6 +1117,14 @@ pub trait CoreApi {
     fn emotion(&self, side: u8) -> Emotion;
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
     fn set_mood(&mut self, side: u8, mood: u8);
+    /// Raise a side's mood by `n`, capped at 254; a mood of 0 or 0xFF
+    /// stays (BN5's 0x08012802: its recovery chips, docs/design/bn5-map.md
+    /// §15.3 item 6).
+    fn gain_mood(&mut self, side: u8, n: u16);
+    /// Lower a side's mood by `n`, to 1 at least; a mood of 0 stays
+    /// (`sub_8015C12`, BN5's 0x08012820: the hits' loss, BN5's navi chips
+    /// leaving).
+    fn lose_mood(&mut self, side: u8, n: u16);
     /// Whether `side`'s console starts its emotion window glitching (the
     /// save's NaviCust bug flag; a ruleset's system decides it as the round
     /// is set up, as BN6's patch cards do).

@@ -523,6 +523,14 @@ impl CoreApi for Battle {
         kinds::player::set_mood(self, side & 1, mood);
     }
 
+    fn gain_mood(&mut self, side: u8, n: u16) {
+        kinds::player::gain_mood(self, side & 1, n);
+    }
+
+    fn lose_mood(&mut self, side: u8, n: u16) {
+        kinds::player::lose_mood(self, side & 1, n);
+    }
+
     fn set_emotion_window_glitch(&mut self, side: u8, on: bool) {
         self.consoles[side as usize & 1].emotion_window_glitch = on;
     }

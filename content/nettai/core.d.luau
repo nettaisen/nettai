@@ -72,6 +72,10 @@ export type PanelType =
     | "road_down"
     | "road_left"
     | "road_right"
+    -- BN5's (docs/design/bn5-map.md §15.2).
+    | "metal"
+    | "lava"
+    | "sea"
 -- Status flags of an object with collision data.
 export type StatusFlag =
     "guard"
@@ -972,6 +976,12 @@ declare battle: {
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
+    -- The mood rises by `n` to 254 at most; 0 and 0xFF stay (BN5's
+    -- 0x08012802: its recovery chips).
+    gain_mood: (side: number, n: number) -> (),
+    -- The mood falls by `n` to 1 at least; 0 stays (`sub_8015C12`, BN5's
+    -- 0x08012820: its navi chips leaving).
+    lose_mood: (side: number, n: number) -> (),
     -- Whether the side's console starts its emotion window glitching (the
     -- save's NaviCust bug flag): a system decides it in `round_setup` (BN6's
     -- patch cards do).
@@ -1577,6 +1587,8 @@ export type ChipFamily =
     | "null"
     | "program_advance"
     | "special"
+    | "recovery"
+    | "invisible"
 export type ElementName = "null" | "fire" | "aqua" | "elec" | "wood"
 -- The chips a navi's or a form's rule is about: an element's, or a
 -- family's.
@@ -1685,7 +1697,8 @@ export type FormEffect =
 --     spent in it, up to three (ChargeCross);
 --   scrap_button: the custom screen has the scrap button (DustCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
---     special is asked for (TenguCross and DustCross in Beast Out).
+--     special is asked for (TenguCross and DustCross in Beast Out);
+--   stands_on_metal: a metal panel doesn't slide the navi (BN5's soul 5).
 export type FormTrait =
     "status_immune"
     | "erases"
@@ -1693,6 +1706,7 @@ export type FormTrait =
     | "extra_chips"
     | "scrap_button"
     | "special_holds_buster"
+    | "stands_on_metal"
 -- One of MegaMan's forms (§3.2).
 export type FormDef = {
     id: string,
