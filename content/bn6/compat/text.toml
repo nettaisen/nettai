@@ -8,6 +8,11 @@
 # Area: U+E000-U+E004 the stacked RV, BX, EX, SP and FZ, U+E005 the stacked MB, U+E006
 # the bat, U+E007 End. The generator decodes the ROM's names with it; the extractor
 # writes the font's charmap with it.
+#
+# Two bytes draw one character where the US fonts draw them alike: 0x00 and 0xB1 a
+# space, 0x98 and 0xA1 a hyphen (0xA1 is the Japanese fonts' long vowel mark ー; the US
+# fonts draw it as 0x98's -, which SpoutMan's description, "power-up", has). A string
+# is encoded with the first.
 
 first_control = 0xE0
 glyphs = [
@@ -21,7 +26,7 @@ glyphs = [
     "ン", "熱", "斗", "ワ", "ヲ", "ギ", "ガ", "ゲ", "ゴ", "グ", "ゾ", "ジ", "ゼ", "ズ", "ザ", "デ", # 0x70
     "ド", "ヅ", "ダ", "ヂ", "ベ", "ビ", "ボ", "バ", "ブ", "ピ", "パ", "ペ", "プ", "ポ", "ゥ", "ァ", # 0x80
     "ィ", "ォ", "ェ", "ュ", "ヴ", "ッ", "ョ", "ャ", "-", "×", "=", ":", "%", "?", "+", "█", # 0x90
-    "\uE006", "ー", "!", "&", ",", "゜", ".", "・", ";", "'", "\"", "~", "/", "(", ")", "｢", # 0xA0
+    "\uE006", "-", "!", "&", ",", "゜", ".", "・", ";", "'", "\"", "~", "/", "(", ")", "｢", # 0xA0
     "｣", " ", "_", "Ƶ", "Ⓛ", "Ⓑ", "Ⓡ", "Ⓐ", "あ", "い", "け", "く", "き", "こ", "か", "せ", # 0xB0
     "そ", "す", "さ", "し", "つ", "と", "て", "た", "ち", "ね", "の", "な", "ぬ", "に", "へ", "ふ", # 0xC0
     "ほ", "は", "ひ", "め", "む", "み", "も", "ま", "ゆ", "よ", "や", "る", "ら", "り", "ろ", "れ", # 0xD0
