@@ -12,6 +12,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", optional = true }
 toml = "0.8"
 
+[dev-dependencies]
+# The engine's test content (a round's setup against content without BN5's).
+nettai-battle = { workspace = true, features = ["test-content"] }
+
 [features]
 # Recorded battles (the chip lab's BN5 traces): reading them and decoding them.
 trace = ["dep:serde_json"]

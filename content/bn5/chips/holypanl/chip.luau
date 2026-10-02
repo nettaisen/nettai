@@ -1,6 +1,10 @@
 --!strict
--- HolyPanl (BN5 chip 0x08b): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- HolyPanl (BN5 chip 0x08b): the panels in front of the user turn holy: BN6's panel changer
+-- (@bn6/objects/panel-changer, @bn6/lib/panel-chips; BN5's the same code).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local panel_changer = require("@bn6/objects/panel-changer/panel_changer")
+local panel_chips = require("@bn6/lib/panel-chips/controller")
 
 return define.chip {
     id = "holypanl",
@@ -17,4 +21,13 @@ return define.chip {
     extra_flags = { 128 },
     slot_in_limit = 1,
     megaman = "light",
+    dimming = panel_chips.hook(panel_changer.change {
+        panel = "holy",
+        panels = "front",
+        flicker = true,
+        ticks = 0x40,
+        sides = panel_chips.ANY,
+        tick_sound = panel_changer.TICK_SOUND,
+        change_sound = panel_changer.CHANGE_SOUND,
+    }),
 }

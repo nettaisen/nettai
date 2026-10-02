@@ -1,0 +1,27 @@
+--!strict
+-- The custom screen's slot grid (0x08025E04) and the lists its neighbour fix-up scans (0x08025E34,
+-- 0x08023E2C, 0x08023E84): BN6's values.
+-- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
+
+return define.rules("custom-screen", {
+    slots = {
+        { kind = "chip_position", vertical = 5, left = 10, right = 1 },
+        { kind = "chip_position", vertical = 6, left = 0, right = 2 },
+        { kind = "chip_position", vertical = 7, left = 1, right = 3 },
+        { kind = "chip_position", vertical = 8, left = 2, right = 4 },
+        { kind = "chip_position", vertical = 9, left = 3, right = 10 },
+        { kind = "chip_position", vertical = 0, left = 11, right = 6 },
+        { kind = "chip_position", vertical = 1, left = 5, right = 7 },
+        { kind = "chip_position", vertical = 2, left = 6, right = 8 },
+        { kind = "hidden", vertical = 3, left = 7, right = 9 },
+        { kind = "hidden", vertical = 4, left = 8, right = 11 },
+        { kind = "ok", vertical = 11, left = 4, right = 0 },
+        { kind = "hidden", vertical = 10, left = 9, right = 5 },
+    },
+    left_scan_top = { 4, 9, 3, 8, 2, 1, 0, 10 },
+    left_scan_bottom = { 9, 8, 7, 6, 5, 11, 10, 7, 6, 5, 2, 1, 0, 11, 10, 6, 5, 11, 10 },
+    right_scan_top = { 0, 1, 2, 3, 8, 4, 9, 10 },
+    right_scan_bottom = { 5, 6, 7, 8, 9, 11, 10 },
+    left_scan_start = { 7, 6, 5, 4, 2, 17, 16, 15, 7, 1, 0, 0 },
+    right_scan_start = { 1, 2, 3, 5, 7, 1, 2, 3, 4, 5, 0, 0 },
+})
