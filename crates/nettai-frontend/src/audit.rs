@@ -44,9 +44,28 @@ pub struct Seen {
 pub struct Problems {
     frame: Option<u32>,
     seen: BTreeMap<String, Seen>,
+    /// The last frame's places where the frontend draws something else
+    /// than the original on purpose (`Known`).
+    pub known: Vec<Known>,
+}
+
+/// A place of a frame where the frontend differs from the original on
+/// purpose: a rectangle and why. The frame comparison leaves it out.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Known {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+    pub why: &'static str,
 }
 
 impl Problems {
+    /// Note a place the frontend draws differently on purpose this frame.
+    pub fn known(&mut self, x: i32, y: i32, width: i32, height: i32, why: &'static str) {
+        self.known.push(Known { x, y, width, height, why });
+    }
+
     /// The frame the notes that follow belong to.
     pub fn at(&mut self, frame: Option<u32>) {
         self.frame = frame;

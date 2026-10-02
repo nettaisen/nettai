@@ -810,9 +810,35 @@ dustcross-beast = 0x13
 falzar-beast = 0x14
 falzar-beast-full-synchro = 0x15
 falzar-beast-over = 0x16
+# Gregar's own faces, from the Gregar ROM (bn6-extract --gregar): its
+# emotion-window pictures 5 to 0x16 numbered from 0x17.
+heatcross = 0x17
+eleccross = 0x18
+slashcross = 0x19
+erasecross = 0x1A
+chargecross = 0x1B
+heatcross-tired = 0x1C
+eleccross-tired = 0x1D
+slashcross-tired = 0x1E
+erasecross-tired = 0x1F
+chargecross-tired = 0x20
+heatcross-beast = 0x21
+eleccross-beast = 0x22
+slashcross-beast = 0x23
+erasecross-beast = 0x24
+chargecross-beast = 0x25
+gregar-beast = 0x26
+gregar-beast-full-synchro = 0x27
+gregar-beast-over = 0x28
 spoutman = 0x80
 tomahawkman = 0x81
 tenguman = 0x82
 groundman = 0x83
 dustman = 0x84
 protoman = 0x85
+# Gregar's link navis' own faces (the Gregar ROM's link-navi faces 0 to 4).
+heatman = 0x86
+elecman = 0x87
+slashman = 0x88
+eraseman = 0x89
+chargeman = 0x8A

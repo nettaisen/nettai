@@ -1,7 +1,7 @@
 //! The graphics a battle frontend draws with, in typed form: what a
 //! content pack's graphics (nettai-content) load into. Nothing ROM-derived is
-//! checked in; `bn6-extract content` writes the pack from the user's copy
-//! of the game.
+//! checked in; `bn6-extract content` writes the pack from the user's copies
+//! of the games (both US ROMs).
 //!
 //! Colours are the GBA's 15-bit BGR555. Tiles are 8x8 with one palette index
 //! per pixel, where index 0 is transparent.
@@ -9,18 +9,32 @@
 pub mod custom;
 pub use custom::{ChipArt, CustomScreen, MapPatch, PatchList, Picture, SlotPictures, VersionPictures};
 
-/// Assets a game version has its own of: the pack's base game's, and other
-/// versions' that differ, by version name (a BN6 pack: "gregar", from the
-/// second ROM). A console of a version shows its own, else the base's.
+/// Assets a game version has its own of: the base game's (`base_version`,
+/// a BN6 pack's "falzar"), and other versions' that differ, by version name
+/// ("gregar", from the second ROM). A console of a version shows its own,
+/// else the base's. In a pack each is its own asset, named with its
+/// version (`cross-names-falzar`, `cross-names-gregar`); one that no other
+/// version has its own of is named without.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Versioned<T> {
     pub base: T,
+    pub base_version: String,
     pub versions: Vec<(String, T)>,
 }
 
 impl<T> Versioned<T> {
-    pub fn new(base: T) -> Versioned<T> {
-        Versioned { base, versions: Vec::new() }
+    pub fn new(base_version: &str, base: T) -> Versioned<T> {
+        Versioned { base, base_version: base_version.into(), versions: Vec::new() }
+    }
+
+    /// A file or asset name with its version's suffix, when versions
+    /// differ (`name` alone otherwise): the base's for `None`.
+    pub fn name(&self, name: &str, version: Option<&str>) -> String {
+        if self.versions.is_empty() {
+            name.into()
+        } else {
+            format!("{name}-{}", version.unwrap_or(&self.base_version))
+        }
     }
 
     /// The version's own, else the base's.

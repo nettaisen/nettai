@@ -208,7 +208,7 @@ repository's crates by path. Extract a pack from your checkout and run the works
 checkout on it:
 
 ```sh
-cargo run --release -p bn6-extract -- content <rom> <pack>
+cargo run --release -p bn6-extract -- content <falzar-rom> <gregar-rom> <pack>
 <verification>/tools/gen-content-against.sh <checkout> check
 BN6_PACK=<pack> <verification>/tools/traces-against.sh <checkout> --release
 BN6_PACK=<pack> <verification>/tools/traces-against.sh <checkout> --release --test lab -- --ignored

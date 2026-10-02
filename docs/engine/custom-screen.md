@@ -529,6 +529,23 @@ reads depends on it.
   one fade record; the port keeps them per screen, apart from the battle's `Fade`.
 - **The window's map variant**: with the Cross tab while MegaMan has a Cross he owns and hasn't used this round
   (`sub_8029EC8`, at the opening).
+- **The sub-screens' counters and sprites.** The window's frame counter (`+0x40`) is the sub-screens' timer too, and
+  the look follows it through them: the Cross window's opening counts its ticks (its map steps every 3, the
+  frontend's), the window (`sub_802794A`) and its closing count from 0, a Cross's choice counts 16 ticks and holds
+  at 0 through its fades, the scrap counts from 24 (`sub_8027434`), the re-deal from 0. Each of these states draws
+  the emblem and the Regular chip's frame every tick (`sub_80279C8`, `sub_8027406`, `sub_80271F8`, `sub_8027A58`),
+  the Cross window its own cursor (`sub_80289E4`); closing the Cross window, putting a Cross on and the re-deal's
+  end draw the chip window again (`sub_8028476`). A Cross's choice whitens the screen on the screen's fade (mode 4
+  then 0, at 0x20 a frame) and, once white, shows the Cross's face (`sub_802A088`: its Beast form's in Beast Out).
+  The Cross window's names and palette 10 are the frontend's, from the screen's Cross window.
+- **The scrap**: each chip scrapped takes its icon off the picked column (`sub_80281D4`) and draws the chip window
+  again; the slots' tiles keep the look they were last drawn with (`look.slot_picked`: a picked chip's slot shows
+  the empty icon until the slots are drawn again, on the scrap's last tick).
+- **The Program Advance animation**: its own counter (`word_2036660`+0xC, every tick, from 0 when the names begin)
+  steps the names' colours through three sets every 16 ticks (`sub_802B9E4`: background palette 10's first four,
+  `byte_802BA48`), and the screen fades a quarter of the way for it (0x14, and 0x10 back, at 8 a frame). The names
+  themselves (the picks', the recipe's taken off, the Program Advance's in their place) are the frontend's, from the
+  animation's step and timer, the Program Advance formed and the hand built at OK.
 - **The sounds** a tick made (`Drawn::sounds`, `ScreenSound`), in the order its states call `PlaySoundEffect`;
   the battle plays each by its role for the screen's player only (docs/engine/audio.md §1 lists them). One is by
   the console's version: Beast Out's first sound (`sub_802774C`, the BeastOut chip's `sub_8027624`) is 0x193 on

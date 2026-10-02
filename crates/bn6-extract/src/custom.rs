@@ -167,15 +167,13 @@ fn rom_pointer(p: u32) -> bool {
 }
 
 /// The custom screen's graphics; `names` gives the chips' pictures their
-/// chips' keys. With the Gregar ROM, a Gregar console's own pictures too
-/// (where they differ).
-pub fn custom(rom: &Rom, gregar: Option<&Rom>, names: &AssetNames) -> CustomScreen {
-    let mut versioned = Versioned::new(version_pictures(rom, &FALZAR));
-    if let Some(g) = gregar {
-        let own = version_pictures(g, &GREGAR);
-        if own != versioned.base {
-            versioned.versions.push(("gregar".into(), own));
-        }
+/// chips' keys. A Gregar console's own pictures are the Gregar ROM's
+/// (`gregar`), where they differ.
+pub fn custom(rom: &Rom, gregar: &Rom, names: &AssetNames) -> CustomScreen {
+    let mut versioned = Versioned::new("falzar", version_pictures(rom, &FALZAR));
+    let own = version_pictures(gregar, &GREGAR);
+    if own != versioned.base {
+        versioned.versions.push(("gregar".into(), own));
     }
     let glyphs = |(a, n): (u32, usize)| tiles(rom, (a, 0x40 * n));
     let palettes = |(a, n): (u32, usize)| (0..n as u32).map(|i| palette(rom, a + 32 * i)).collect::<Vec<_>>();
@@ -194,6 +192,7 @@ pub fn custom(rom: &Rom, gregar: Option<&Rom>, names: &AssetNames) -> CustomScre
         other_palette: palette(rom, OTHER_PALETTE),
         chip_art: (0..CHIP_COUNT)
             .map(|id| {
+                let rom = crate::gregar::chip_source(rom, gregar, id);
                 let record = CHIP_DATA + 0x2C * id;
                 let (gfx, pal) = (u32at(rom, record + 0x24), u32at(rom, record + 0x28));
                 let picture = if rom_pointer(gfx) && rom_pointer(pal) { picture(rom, (gfx, pal)) } else { Picture::default() };
