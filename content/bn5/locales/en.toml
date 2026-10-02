@@ -68,6 +68,7 @@ cannball = { name = "CannBall", description = "Breaks\n3rd panel\nahead" }
 cannball-mode = { name = "CannBall", description = "ミテイ" }
 cannmode = { name = "CannMode", description = "ミテイ" }
 cannon = { name = "Cannon", description = "Cannon to\nattack\n1 enemy" }
+chaoslrd = { name = "ChaosLrd", description = "Hatred\nformed\ninto Bass" }
 circgun = { name = "CircGun", description = "Stop site\nw/ Button\nand attck" }
 cloudman = { name = "CloudMan", description = "Thndr atk\nbehind\nthe enmy" }
 cloudmn-ds = { name = "CloudMnDS", description = "Thndr atk\nbehind\nthe enmy" }
@@ -182,6 +183,7 @@ larkman-sp = { name = "LarkManSP", description = "Whirl\nforward\nand atk" }
 lavaseed = { name = "LavaSeed", description = "Makes 9sq\nlava zone\n3sq ahead" }
 lcounter = { name = "LCounter", description = "ミテイ" }
 lcrsshld = { name = "LCrsShld", description = "ミテイ" }
+leadraid = { name = "LeadRaid", description = "ProtoMan\n& Colonel\ntogether!" }
 lifeaur = { name = "LifeAur", description = "Repel all\nattacks\nunder200" }
 lifesrd = { name = "LifeSrd", description = "Slices\n2sq wide\n3sq vrtcl" }
 lifesync = { name = "LifeSync", description = "Makes HP\nsame as\nenemy" }
