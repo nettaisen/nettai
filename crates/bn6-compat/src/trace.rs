@@ -92,6 +92,9 @@ fn unlocks_from_flags(version: GameVersion, flags: &[u8]) -> Unlocks {
         crosses: std::array::from_fn(|i| flag(first + i as u16)),
         beast_out: flag(0xE0),
         beast_out_sealed: flag(0x163),
+        // (A save names no Crosses of its own: the window offers the
+        // version's.)
+        cross_list: None,
     }
 }
 
