@@ -472,6 +472,42 @@ The first sample, of 10 routines read before this list was worked through, as it
 
 None of the one-sided branches read, in the sample or since, is missing from the port.
 
+#### Chip families
+
+The chip families' branches (`onesided_rank.py`'s area 7: routines cited by content/bn6, 1,066 branches in 720
+routines at main 29aac858) are read family by family, most-played chips first. The verdicts are in
+`onesided_notes.py`'s "chip families" section, and the scenarios in the chip lab library's
+`coverage_scenarios/m_onesided_chips.py`.
+
+**The guards (258):** a spawn or collision slot that never fails (255) and a panel pointer off the field (3).
+Each was checked against its instructions: the side never taken is the failure's, which a netbattle's pools
+and field never produce.
+
+**Batch 1, the swords (33 branches):** 11 taken by 8 new recordings (and four more branches of the movement
+and chip-use areas with them), 22 unreachable:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `forms/gregar/beast-over-swords`, `beast-over-neovari` | a Sword's blade in Gregar Beast Over (form 0x17, `sub_80EBAE8`); VarSwrd's and NeoVari's random pick there (`sub_80EF6FC`, `sub_80EF87C`) |
+| `navis/navi-11-stepswrd/varswrd-released`, `varswrd-longswrd`, `neovari-released` | link navi ProtoMan waiting for a command where MegaMan takes the plain Sword, and keeping his own way after one |
+| `forms/gregar/cross-slash-beast-varswrd`, `cross-slash-beast-neovari` | SlashCross Beast (form 0xF) waiting for a command as SlashCross does |
+| `chips/0x0bc-antiswrd/sprung-ko` | sonic booms spawned with the battle over: the counter's first boom deletes the swordsman, and the two swings after it still throw theirs (`sub_80CF810` tests it once, at the spawn) |
+
+The unreachable ones: the slot-in chip's paths (battle flag 0x40's special source, 5), forms past 0x18 (4), an
+AI's actor or a link navi of AI index 0x13 (6), a step sword's step finding the navi moving or sliding (2:
+a chip's action starts from idle), the step sword's turn flag (2: cleared just before its test), a sword
+sub-type past 0xF (1), the command matcher completing a sequence in the call that matches its last direction
+(1: every sequence's terminator is followed by a direction or code, so the word it tests is never zero), and
+the sonic boom's spawn failing (1).
+
+**A difference found and fixed.** `forms/gregar/beast-over-swords` showed one: the Beast rush warps a navi back
+two panels, and on an ice panel the original then slides it back where the engine didn't. The move direction
+(`sub_800E994`, what `object_updateCollisionPanels` records and the ice slide reads) treats only a move of two
+panels or more to the right or down as "other": the routine tests `>= 2` and nothing below -1, so a move left or
+up along one axis counts by its sign. The port had made every multi-panel move "other". It no longer does, and
+the full lab matches (5,177 of 5,178 recordings; the other, `custom/no-beast-out`, is a new custom-screen
+recording whose own engine change is still on another branch).
+
 ### 6.3 Custom screen keys
 
 Four custom screen routines were verified only by the golden traces' dumps, with no lab recording: SELECT hiding
