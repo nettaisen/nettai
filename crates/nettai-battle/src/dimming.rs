@@ -703,7 +703,7 @@ mod tests {
         use crate::perspective::TelopName;
         // Side 0 has the veil and the trap; side 1 has no dimming chip.
         let mut setup = scenario::setup_with(&[testing::VEIL, testing::TRAP]);
-        setup.players[1] = scenario::setup().players[1];
+        setup.players[1] = scenario::setup().players[1].clone();
         let seen = telops(setup, 2400, 5);
         let names: Vec<_> = seen.iter().map(|[a, b]| (a.name, a.remote, b.name, b.remote)).collect();
         let chip = |id| TelopName::Chip(testing::chip_handle(id));

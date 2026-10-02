@@ -195,6 +195,7 @@ impl Hash for Battle {
             side_stats,
             linked,
             dimming,
+            rules,
             sound: _,
             outcome,
         } = self;
@@ -231,6 +232,7 @@ impl Hash for Battle {
         side_stats.hash(h);
         linked.hash(h);
         dimming.hash(h);
+        rules.hash(h);
         outcome.hash(h);
     }
 }
