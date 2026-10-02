@@ -148,3 +148,59 @@ fn bn5_and_bn6_load_together_under_their_names() {
     assert_eq!(d.stock_ruleset(), d.ruleset_by_key("bn6:bn6"));
     assert_eq!(c.strings.chip("bn5:cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
 }
+
+/// Whether a chip module names its use (`define.chip`'s `action`, `dimming`,
+/// `navi` or `instant`).
+fn names_a_use(module: &str) -> bool {
+    module.lines().any(|l| {
+        let l = l.strip_prefix("    ").unwrap_or("");
+        ["action", "dimming", "navi", "instant"].iter().any(|f| l.strip_prefix(f).is_some_and(|r| r.trim_start().starts_with('=')))
+    })
+}
+
+/// docs/design/rules-in-luau.md R2: BN5's stock ruleset and rule sections
+/// (content/bn5/rules) are its game's, beside BN6's: its pools (16 actors),
+/// its banners, its element tables. With them, the BN5 chips the port has
+/// given uses (docs/design/bn5-map.md §15.6), many of them BN6's code
+/// (`require("@bn6/...")`); the rest, without a use yet, are left out (with
+/// them the define phase stops at the first, above).
+#[test]
+fn bn5s_rules_are_its_games() {
+    let repo = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
+    let mut r = Report::default();
+    let bn6 = nettai_content::root::read(&repo.join("content/bn6"), &mut r).expect("content/bn6 reads");
+    let mut bn5 = nettai_content::root::read(&repo.join("content/bn5"), &mut r).expect("content/bn5 reads");
+    let unported: Vec<String> = bn5
+        .modules
+        .iter()
+        .filter_map(|(path, text)| Some(path.strip_prefix("chips/")?.strip_suffix("/chip")?).filter(|_| !names_a_use(text)))
+        .map(|k| format!("chips/{k}/"))
+        .collect();
+    bn5.modules.retain(|path, _| !unported.iter().any(|k| path.starts_with(k.as_str())));
+    let mut c = nettai_battle::Content {
+        strings: bn6.strings.qualified("bn6"),
+        scripts: Scripts::root(bn6.manifest, bn6.modules),
+        ..Default::default()
+    };
+    c.scripts.add_root(bn5.manifest, bn5.modules);
+    // Each root's names in its own assets pack (BN5's in bn5's).
+    c.assets = testing::asset_names_for(&c.scripts);
+    c.define().unwrap_or_else(|e| panic!("{e}"));
+    let d = &c.defs;
+    let five = d.root_id("bn5").expect("the bn5 root");
+    assert!(d.stock_ruleset_of("bn5").is_some(), "BN5's stock ruleset");
+    assert_eq!(d.stock_ruleset(), d.stock_ruleset_of("bn6"), "the content's own is BN6's");
+    let (six, five) = (c.home_rules(), c.rules_of(five));
+    assert_eq!(five.pools.slots(), [16, 32, 32]);
+    assert_eq!(six.pools.slots(), [32, 32, 32]);
+    // BN5's tables where they are BN6's, and where they aren't.
+    assert_eq!(five.element_weakness, six.element_weakness);
+    assert_eq!(five.sine, six.sine);
+    assert_eq!(five.holding_banners.len(), 3);
+    assert_eq!(five.hp_bug_periods, six.hp_bug_periods);
+    // The ported chips: BN5's own, apart from BN6's of the same key.
+    for key in ["cannon", "minibomb", "energbom", "panlgrab", "antiswrd", "holypanl", "fullcust"] {
+        let (six, five) = (d.chip_by_key(&format!("bn6:{key}")), d.chip_by_key(&format!("bn5:{key}")));
+        assert!(five.is_some() && six != five, "bn5:{key}");
+    }
+}
