@@ -344,10 +344,13 @@ pub fn draw<'a>(
 
     // "Cstmzing...": once the local player's result is sent, while waiting
     // for the opponent's; it blinks every 32 frames.
+    // (Two rows as wide as its words: eight tiles in English, seven in
+    // Japanese, where `sub_801CA34` copies one column fewer.)
     if waiting_ticks(b).is_some_and(|n| (n / 32) % 2 == 0) {
-        for i in 0..16usize {
+        let columns = (hud.waiting.len() / 2).max(1);
+        for i in 0..2 * columns {
             if let Some(t) = hud.waiting.get(i) {
-                layer.draw_tile(t, &hud.waiting_palette, (22 + (i % 8) as i32) * 8, (4 + (i / 8) as i32) * 8, false, false);
+                layer.draw_tile(t, &hud.waiting_palette, (22 + (i % columns) as i32) * 8, (4 + (i / columns) as i32) * 8, false, false);
             }
         }
     }
@@ -604,11 +607,11 @@ fn put_px(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, x: i32, y: i
     }
 }
 
-/// A chip's name in the font's glyphs: the content's name for it, written
-/// in the characters the pack's font has (`sub_8027D10`'s text for the
-/// chip, at most eight glyphs).
-fn name_glyphs(b: &Battle, hud: &Hud, chip: ChipHandle, problems: &mut Problems) -> Vec<u16> {
-    let name = &b.content.chip(chip).name;
+/// A chip's name in the font's glyphs: the words for it (the content's,
+/// or the player's language's: `Words::chip_name`), written in the
+/// characters the pack's font has (`sub_8027D10`'s text for the chip, at
+/// most eight glyphs).
+fn name_glyphs(b: &Battle, hud: &Hud, name: &str, chip: ChipHandle, problems: &mut Problems) -> Vec<u16> {
     let (mut glyphs, missing) = fonts::cell_glyphs(hud, name);
     if !missing.is_empty() {
         let key = &b.content.defs.chip(chip).key;
@@ -635,8 +638,8 @@ fn draw_chip_name(
     (bonus, doubled): (u16, bool),
     problems: &mut Problems,
 ) {
-    let name = name_glyphs(b, hud, chip, problems);
-    let words = &b.content.chip(chip).name;
+    let words = text.words.chip_name(b, chip);
+    let name = name_glyphs(b, hud, words, chip, problems);
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, name.len(), pal, (0, 18 * 8), Align::Left);
     // The damage follows the name: after the cells its glyphs take, or in
     // the font mode a pixel after the name as the text layer draws it.
@@ -942,7 +945,10 @@ fn telop_parts<'a>(
         return None;
     };
     let name = match telop.name {
-        TelopName::Chip(chip) => (b.content.chip(chip).name.as_str(), name_glyphs(b, hud, chip, problems)),
+        TelopName::Chip(chip) => {
+            let words = text.words.chip_name(b, chip);
+            (words, name_glyphs(b, hud, words, chip, problems))
+        }
         TelopName::Hidden => ("????", fonts::cell_glyphs(hud, "????").0),
         TelopName::Unknown => {
             problems.note("a telop names a chip the engine wasn't told (a dimming content starts itself)".into());
@@ -970,7 +976,8 @@ fn used_chip_parts<'a>(
         problems.note(format!("the telop's banner {remote_telop:#04x} is not in the pack"));
         return None;
     };
-    let name = (b.content.chip(used.chip).name.as_str(), name_glyphs(b, hud, used.chip, problems));
+    let words = text.words.chip_name(b, used.chip);
+    let name = (words, name_glyphs(b, hud, words, used.chip, problems));
     name_parts(hud, layout, name, (used.damage, used.bonus, used.doubled), true, None, out, text)
 }
 
@@ -1156,7 +1163,7 @@ mod tests {
         let mut hud = hud();
         hud.font_chars.retain(|c| c != "G");
         let mut problems = Problems::default();
-        assert_eq!(name_glyphs(&b, &hud, chip, &mut problems).len(), 6);
+        assert_eq!(name_glyphs(&b, &hud, &b.content.chip(chip).name, chip, &mut problems).len(), 6);
         assert_eq!(problems.len(), 1);
         assert!(problems.lines()[0].contains("no glyph for ['G']"), "{:?}", problems.lines());
     }

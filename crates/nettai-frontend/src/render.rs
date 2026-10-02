@@ -46,6 +46,9 @@ pub struct Renderer<'a> {
     /// The font mode's layouts, for what the frame places after a string
     /// (a chip's damage after its name).
     measure: Option<std::cell::RefCell<crate::vfont::TextRenderer>>,
+    /// The player's language's strings table (`--lang`), if not the
+    /// definitions' own words.
+    strings: Option<Arc<nettai_content::locale::Strings>>,
 }
 
 impl<'a> Renderer<'a> {
@@ -64,7 +67,14 @@ impl<'a> Renderer<'a> {
             text_mode: TextMode::Original,
             font: None,
             measure: None,
+            strings: None,
         }
+    }
+
+    /// Show content's words from a language's strings table (the
+    /// definitions' own where it has none); `None`, the definitions'.
+    pub fn set_strings(&mut self, strings: Option<Arc<nettai_content::locale::Strings>>) {
+        self.strings = strings;
     }
 
     /// Draw text in `mode`; the font mode hands the strings `font` has to
@@ -111,7 +121,8 @@ impl<'a> Renderer<'a> {
         stage.draw_field(b, &mut self.field, b.setup.local_side, &view);
         self.hud.clear();
         self.names.clear();
-        let mut text = TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref());
+        let mut text =
+            TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref()).with_words(self.strings.as_deref());
         let navi = crate::custom::navi_number(b, b.setup.local_side);
         let emblem = crate::custom::emblem_tiles(&assets.custom, crate::custom::version_name(b, b.setup.local_side), navi);
         let chatbox = crate::chatbox::prepare(b, assets, &text, &mut self.problems);
@@ -169,6 +180,12 @@ impl<'a> Renderer<'a> {
         // Each item's depth and fades: its layer's (the HUD layer's moved
         // with its shake), or its sprite parts' (an item whose parts the
         // sprite limit dropped isn't drawn).
+        if let Some(lang) = text.words.language() {
+            let lang = lang.to_string();
+            for what in text.words.take_missing() {
+                self.problems.note(format!("the {lang} strings table has no {what}: shown in the definition's words"));
+            }
+        }
         let text = text
             .into_items()
             .into_iter()
