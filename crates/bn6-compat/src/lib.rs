@@ -116,6 +116,14 @@ pub struct GameAddresses {
     /// settings record's bytes 12..16).
     #[serde(default)]
     pub actor_lists: u32,
+    /// Kinds whose Z fraction is their spawner's address: by kind key, the
+    /// Falzar ROM's address and this game's.
+    #[serde(default)]
+    pub spawner_z_fractions: BTreeMap<String, [u32; 2]>,
+    /// Kinds whose panel Y is the low byte of a routine's address: by kind
+    /// key, the Falzar ROM's and this game's.
+    #[serde(default)]
+    pub panel_ys: BTreeMap<String, [u8; 2]>,
 }
 
 /// A console's game: the US Falzar or the US Gregar.
@@ -134,6 +142,38 @@ impl Games {
             Game::Falzar => falzar,
             Game::Gregar => falzar + self.gregar.actor_lists,
         }
+    }
+
+    /// An object's Z as a `game` console has it: a Z whose fraction is the
+    /// low half of a spawner's Falzar address (the one the content keeps)
+    /// has that game's.
+    pub fn z(&self, game: Game, z: i32) -> i32 {
+        let Game::Gregar = game else { return z };
+        let addresses = || self.gregar.spawner_z_fractions.values();
+        if let Some([_, gregar]) = addresses().find(|[falzar, _]| *falzar == z as u32) {
+            return *gregar as i32;
+        }
+        let fraction = z as u32 & 0xFFFF;
+        match addresses().find(|[falzar, _]| falzar & 0xFFFF == fraction) {
+            Some([_, gregar]) => ((z as u32 & !0xFFFF) | (gregar & 0xFFFF)) as i32,
+            None => z,
+        }
+    }
+
+    /// An object's panel Y as a `game` console has it: a kind's whose is a
+    /// routine's address byte (`panel_ys`) is that game's.
+    pub fn panel_y(&self, game: Game, kind: &str, y: u8) -> u8 {
+        match (game, self.gregar.panel_ys.get(kind)) {
+            (Game::Gregar, Some(&[falzar, gregar])) if y == falzar => gregar,
+            _ => y,
+        }
+    }
+}
+
+impl Game {
+    /// A navi's game by its NaviStats+0x20 (0 Gregar, 1 Falzar).
+    pub fn of_navi_version(version: u8) -> Game {
+        if version == 0 { Game::Gregar } else { Game::Falzar }
     }
 }
 
