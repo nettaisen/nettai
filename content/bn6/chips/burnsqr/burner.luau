@@ -136,11 +136,11 @@ local function fire(me: Object, s: State)
         return
     end
     -- sub_80BB1FE: a flame on each solid panel of the square. Its height's
-    -- fraction is the register the highlight left (the top row); without
-    -- the highlight this tick, what the object loop left there
-    -- (unverified).
+    -- fraction is r3: the top row the highlight left there, or, without
+    -- the highlight this tick, what the object update loop left (nothing
+    -- on the way sets it).
     local d = me.facing
-    local z = if s.highlighted then s.y else 0
+    local z = if s.highlighted then s.y else battle.loop_register()
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
     for _, p in { { s.x, s.y }, { s.x + d, s.y }, { s.x + d, s.y + 1 }, { s.x, s.y + 1 } } do
         if bit32.btest(field.flags(p[1], p[2]), SOLID) then

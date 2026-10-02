@@ -242,7 +242,9 @@ MegaMan).
 ### 3.6 DustCross's scrap (`sub_8027406`)
 
 In DustCross (form 0x0A, or its Beast form 0x16) slots 8/9 are one scrap button, usable once a screen when the
-last pick is a chip. Every 25 ticks (from T+2) it takes the last picked chip out of the folder; when the last pick
+last pick is a chip. Every 25 ticks (from T+2) it takes the last picked chip out of the folder (the Regular chip's
+clears BattleState+0x17, as OK taking it does: the next screens deal no Regular chip, while this screen's front
+slot keeps its Regular bit); when the last pick
 isn't a chip (or none is left), the folder is compacted, the scrapped chips are put in its first holes (so at its
 end, in pick order), the dealt slots show the chips now at the front, and the button is used up. **[dumps]**
 
@@ -468,6 +470,11 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
   the other console's only has the draws the screens and the main loop make.
 - The recorded traces carry only the recording console's folder. `folders`, `joypad_phases` and `game_versions`
   in setup lines come from recording both consoles.
+- Matches recorded by Tango's first netplay engine (2022) ran each console alone, with no link cable: each tick
+  the console found both players' packets in its receive buffers a tick after they were built. Their traces have
+  the recording console only (no `folders`: the other player's screens come from the trace) and a `link_delay`
+  of 1 in the setup; every round of them matches at that delay (`RoundSetup::link_delay`), and none at the
+  cable's 4.
 
 ## 8. Not ported or not verified
 

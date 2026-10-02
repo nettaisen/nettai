@@ -515,7 +515,7 @@ Trace: +0x13 drops to 0 at 938 / 2346, the tick P1's HP reaches 0; +5 drops to 0
 
 **`battle_isBattleOver`** (0x0800A18E) returns r0=1 if +0x12==0, or +0x13==0, or +0x0B≠0; otherwise r0=0.
 
-**Flag quirk (must reproduce):** seven callers branch on the Z flag the function leaves instead of testing r0. They are `sub_800A6A6` (0x0800A466) and six object handlers in asm31, for example 0x080C7DF0 and 0x080D8D26.
+**Flag quirk (must reproduce):** seven callers branch on the Z flag the function leaves instead of testing r0. They are `sub_800A6A6` (0x0800A466) and six object handlers in asm31, for example 0x080C7DF0 and 0x080D8D26. Content reads the Z form as `battle.time_up()`: Anubis's statue (`sub_80CF2B4`), CopyDmg's mark (`sub_80C9074`), Tornado (`sub_80CA074`), SpoutCross Beast's surge (`sub_80D390A`) and the falling rock (`sub_80C7D98`); the sixth, `sub_80D8CF0`, is attack 0x9C's, which has no kind. A 2022 match has the surge going on after its KO.
 - On both KO paths the function returns right after a `tst` of a zero byte, so Z=1.
 - On the not-over path it returns after `movs r0,#0`, so Z=1.
 - Only the +0x0B path has Z=0.
