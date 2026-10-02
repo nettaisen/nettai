@@ -7,6 +7,7 @@
 # Sprites: "cc-ii", the category's byte offset in the sprite list (0x08032728) and the index.
 [sprites]
 instrument = "04-08"
+megaman-navi = "08-00"
 protoman = "08-01"
 sword = "0c-00"
 cannon = "0c-01"
@@ -237,3 +238,16 @@ telop-remote = 0x50
 time-up = 0x54
 liberate-success = 0x58
 liberate-failed = 0x5c
+
+# Backgrounds: battle background numbers (settings byte 4), named by their look.
+[backgrounds]
+soccer-balls = 0x02
+faces-and-crosses = 0x04
+goldfish = 0x05
+calendar-squares = 0x06
+calendar-blue = 0x08
+calendar-gold = 0x09
+swirls = 0x11
+numbers = 0x12
+numbers-2 = 0x14
+glyphs = 0x1a

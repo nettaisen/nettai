@@ -15,14 +15,21 @@
 -- window, re-deal and scrap (BN6's).
 
 local antidmg_counter = require("@bn6/chips/antidmg/counter")
+local barriers = require("@bn6/lib/barriers/barriers")
+local charged_shot = require("@bn6/navis/megaman/weapons/charged-shot/weapon")
 local anti_recovery = require("@bn6/chips/antirecv/controller")
 local antiswrd_counter = require("@bn6/chips/antiswrd/counter")
 local collision = require("./collision")
 local effects = require("@bn6/lib/effects")
 local regions = require("@bn6/lib/regions")
+local sparks = require("@bn6/lib/sparks")
+local statuses = require("./status")
 
 return define.roles {
     actions = {
+        -- The charged shot a navi's request starts from idle without its weapon's setup (BN6's action, BN5's
+        -- 0x1E: the same code but for the flash's attachment row).
+        forced_charged_shot = charged_shot.action,
         -- The trap chips' counters, which a trap that caught a hit starts (the original's actions 0x47 and
         -- 0x48: AntiDmg's and AntiSwrd's, BN6's code).
         anti_damage_counter = antidmg_counter.action,
@@ -32,7 +39,28 @@ return define.roles {
         -- AntiRecv's counterattack, which a heal meets when the other side has AntiRecv armed (BN6's code).
         anti_recovery = anti_recovery.kind,
     },
+    statuses = {
+        -- What a damage word's paralysis bit makes its hits carry, and what a counter hit lands instead of a
+        -- flinch (BN5's status bytes 0x10 and 0x12, BN6's numbers).
+        damage_word_paralysis = statuses.paralyze_90,
+        counter_paralysis = statuses.paralyze_150,
+        -- The NaviCust on-hit bug's, by its level (0x32, 0x22).
+        hit_bug_blind = statuses.blind_1200,
+        hit_bug_confuse = statuses.confuse_960,
+    },
+    sparks = {
+        -- BN5's hit sparks 0 to 0xD are BN6's (0x080E0814, BN6's `off_80E0804`: the same rows): a new
+        -- registration's, a blocked hit's, a thrown obstacle's landing's.
+        plain = sparks.plain,
+        guard = sparks.guard,
+        thrown_obstacle = sparks.charged,
+    },
     effects = {
+        -- A navi deleted, HP recovered, the flash where a side cut in: BN5's effects 3, 6 and 0x1E are BN6's
+        -- (0x080DFC94, BN6's `byte_80E0398`: the same rows).
+        deletion = effects.deletion,
+        recovery = effects.heal,
+        cut_in_flash = effects.cut_in_flash,
         -- The mark over a navi whose trap sprang (AntiNavi, AntiRecv): BN5's effect 43 is BN6's 0x46 (hit
         -- sparks, animation 7). (BN5 shows it on the panel's center, 16 pixels up; BN6 16 pixels down the
         -- field and 32 up: the engine's, §15.3.)
@@ -114,6 +142,16 @@ return define.roles {
     sprites = {
         -- The charge glow of a B charge.
         charge_glow = asset.sprite("charge-glow"),
+    },
+    hooks = {
+        -- The first barrier: the navi enters with the barrier its stats name (FstBarr's, BN6's code), and its
+        -- visual.
+        first_barrier = function(navi: Object)
+            local barrier = battle.navi(navi.alliance).first_barrier
+            if barrier then
+                barriers.raise(navi, barrier, true)
+            end
+        end,
     },
     banners = {
         -- A round's start (the battle's number), a turn's, the final turns'.
