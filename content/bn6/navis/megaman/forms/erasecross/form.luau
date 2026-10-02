@@ -7,10 +7,13 @@ local eraseman = require("../../../eraseman/navi")
 local erasecross_beast = require("../erasecross-beast/form")
 local buster = require("../../weapons/buster/weapon")
 local charge = require("./charge")
+local forms = require("../../../../rules/forms/system")
 
 return define.form {
     id = "erasecross",
     kind = "cross",
+    -- What changes MegaMan into it (BN6's five sequences).
+    change = forms.action,
     game = "gregar",
     cross_of = eraseman,
     beast = erasecross_beast,

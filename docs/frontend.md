@@ -393,7 +393,8 @@ chatbox draws each tick: the box's map on BG0 at its opening step (row 12,
 the message box or the narrower description box); the text as the line
 buffer's three rows of six sprites at (51, 108), its lines 14 rows apart
 (the third row of sprites is 32x8: a third line's descenders are cut, as in
-the original); the speaker's portrait, a sprite whose animations are its
+the original; in the font mode each line fits the open box's inside,
+`text_room`); the speaker's portrait, a sprite whose animations are its
 faces, stepped by its updates and tinted while it fades; the key-wait
 arrow. The text is the content's strings (the chip's or the Cross's
 `description`, the navi's `run_message`, in the player's language), how

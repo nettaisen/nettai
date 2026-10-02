@@ -417,12 +417,6 @@ pub struct Battle {
     pub transform_seq: TransformSequencer,
     /// What a mid-battle custom-screen request waits for first.
     pub custom_reversion: crate::transform::CustomReversion,
-    /// Per side: the navi went Beast Out this battle (`byte_203EAE0` +2,
-    /// read after the battle: a navi that did not gets a turn back).
-    pub beast_out_used: [bool; 2],
-    /// Per side: the navi crossed this battle (`byte_203EAE0` +0xB,
-    /// read after the battle for the busting level).
-    pub crossed: [bool; 2],
     /// Per side: the bug frags the player brought (`dword_203F7E0`, from
     /// the save through the init exchange); a dark chip spends one.
     pub bug_frags: [u32; 2],
@@ -685,8 +679,6 @@ impl Battle {
             turn_transforms: [TransformRequest::NONE; 2],
             transform_seq: TransformSequencer::default(),
             custom_reversion: Default::default(),
-            beast_out_used: [false; 2],
-            crossed: [false; 2],
             bug_frags: [setup.players[0].bug_frags, setup.players[1].bug_frags],
             navi_levels: [setup.players[0].navi_level, setup.players[1].navi_level],
             objects: Objects::new(),
