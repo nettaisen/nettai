@@ -38,3 +38,7 @@
 "holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 "holydrem/actor" = { pool = "actor", index = 0x1C }
 "holydrem/shot" = { pool = "attack", index = 0x83 }
+"bn6:invisibl/controller" = { pool = "effect", index = 0x5D, scratch_position = true }
+"bn6:mine/controller" = { pool = "effect", index = 0x29, scratch_position = true }
+"bn6:mine/land-mine" = { pool = "attack", index = 0x4C }
+"bn6:antidmg/shuriken" = { pool = "attack", index = 0xC2 }
