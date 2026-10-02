@@ -97,8 +97,9 @@ pub struct Slot {
     pub uses_left: u8,
 }
 
-/// The Crosses a screen offers (`+0x50`), by the version's Cross number
-/// (0-4).
+/// The Crosses a screen offers (`+0x50`), by their place among the
+/// player's Crosses (0-4: the version's Cross number, or the place in the
+/// setup's Cross list, `Unlocks::cross_at`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct CrossWindow {
     pub offered: [u8; CROSSES],
@@ -107,7 +108,7 @@ pub struct CrossWindow {
     pub marked: [bool; CROSSES],
     /// The entry under the window's cursor.
     pub cursor: u8,
-    /// The chosen Cross (its number), if any.
+    /// The chosen Cross (its place), if any.
     pub chosen: Option<u8>,
 }
 
@@ -300,7 +301,7 @@ pub struct PlayerView<'a> {
 /// cleared on the round's first screen).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RoundMemory {
-    /// Crosses used this round, by the version's Cross number.
+    /// Crosses used this round, by their place (`CrossWindow`).
     pub crosses_used: [bool; CROSSES],
     /// Beast Out was picked this round.
     pub beast_out_used: bool,
@@ -694,7 +695,7 @@ impl Screen {
                         console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
                         self.look.frame = 0;
                         self.look.fade.start(FadeMode::BeastOut, BEAST_OUT_FADE_SPEED);
-                        self.look.play(ScreenSound::BeastOut(view.unlocks.version));
+                        self.look.play(ScreenSound::BeastOut(view.beast_game()));
                         self.look.play(ScreenSound::Pick);
                         self.look.play(ScreenSound::BeastOutFlash);
                     }
@@ -738,7 +739,7 @@ impl Screen {
                         console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
                         self.look.frame = 0;
                         self.look.fade.start(FadeMode::BeastOut, BEAST_OUT_FADE_SPEED);
-                        self.look.play(ScreenSound::BeastOut(view.unlocks.version));
+                        self.look.play(ScreenSound::BeastOut(view.beast_game()));
                         self.look.play(ScreenSound::BeastOutFlash);
                     }
                     // sub_8027672
@@ -1181,7 +1182,12 @@ impl Screen {
         if tick >= 2 && (tick - 2) % 25 == 0 {
             let last = self.selected.checked_sub(1).map(|i| self.selection[i as usize]);
             match last.map(|s| self.slots[s as usize].kind) {
-                Some(SlotKind::Chip { index, .. }) => {
+                Some(SlotKind::Chip { index, regular }) => {
+                    // sub_8027458: scrapping the Regular chip ends it
+                    // (BattleState+0x17 = 0), as taking it at OK does.
+                    if regular {
+                        folder.regular_pending = false;
+                    }
                     scrapped[count as usize] = folder.take(index as usize);
                     count += 1;
                     self.selected -= 1;
@@ -1431,20 +1437,13 @@ fn scan(list: &[u8], start: u8, absent: impl Fn(u8) -> bool) -> u8 {
 /// `sub_802A040`: the face of the Beast form Beast Out takes the navi to
 /// (when `tired` counts, Beast Over's).
 fn beast_face(view: &PlayerView, tired: bool) -> Option<nettai_content_api::FormHandle> {
-    let (navi, form, version) = (view.stats.navi, view.stats.form, view.unlocks.version);
-    if tired {
-        view.library.beast_over_form(navi, version)
-    } else if view.library.form_kind(form) == crate::content::FormKind::Base {
-        view.library.beast_out_form(navi, version)
-    } else {
-        view.library.form_in_beast_out(form)
-    }
+    view.unlocks.beast_form(view.library, view.stats.navi, view.stats.form, tired)
 }
 
-/// `sub_802A088`: the face of the Cross chosen (by the version's number),
-/// its Beast form's while the navi is in Beast Out.
+/// `sub_802A088`: the face of the Cross chosen (by its place), its Beast
+/// form's while the navi is in Beast Out.
 fn cross_face(view: &PlayerView, cross: u8) -> Option<nettai_content_api::FormHandle> {
-    let form = view.library.cross_form(view.stats.navi, view.unlocks.version, cross)?;
+    let form = view.unlocks.cross_at(view.library, view.stats.navi, cross)?;
     match view.library.form_kind(view.stats.form) {
         crate::content::FormKind::Base | crate::content::FormKind::Cross => Some(form),
         _ => view.library.form_in_beast_out(form),
@@ -1552,7 +1551,7 @@ impl PlayerView<'_> {
     /// `sub_8029EC8`: how many Crosses the navi owns and hasn't used this
     /// round.
     fn crosses_left(&self) -> usize {
-        (0..CROSSES).filter(|&i| self.unlocks.crosses[i] && !self.round.crosses_used[i]).count()
+        (0..CROSSES as u8).filter(|&i| self.unlocks.owns_cross(i) && !self.round.crosses_used[i as usize]).count()
     }
 
     /// `sub_8029EF8`: the Crosses owned, not used this round, and not the
@@ -1561,14 +1560,34 @@ impl PlayerView<'_> {
         let mut w = CrossWindow::default();
         for i in 0..CROSSES as u8 {
             // (A Cross the content doesn't have isn't offered.)
-            let Some(form) = self.library.cross_form(self.stats.navi, self.unlocks.version, i) else { continue };
+            let Some(form) = self.unlocks.cross_at(self.library, self.stats.navi, i) else { continue };
             let starting = self.stats.starting_form;
-            if self.unlocks.crosses[i as usize] && !self.round.crosses_used[i as usize] && starting != form {
+            if self.unlocks.owns_cross(i) && !self.round.crosses_used[i as usize] && starting != form && self.listed_cross_fits(form) {
                 w.offered[w.count as usize] = i;
                 w.count += 1;
             }
         }
         w
+    }
+
+    /// What a setup's Cross list (`Unlocks::cross_list`, nettai's
+    /// extension) offers of its entries: Crosses only, and in a Beast
+    /// form only the Crosses whose Beast it is (that game's: their forms
+    /// in Beast Out are that Beast's). Everything else offers.
+    fn listed_cross_fits(&self, form: nettai_content_api::FormHandle) -> bool {
+        if self.unlocks.cross_list.is_none() {
+            return true;
+        }
+        let current = self.stats.form;
+        let in_beast = self.library.form_kind(current).is_beast();
+        self.library.form_kind(form) == crate::content::FormKind::Cross
+            && !(in_beast && self.library.form_game(form) != self.library.form_game(current))
+    }
+
+    /// The game of the Beast the navi goes into, or is in
+    /// (`Unlocks::beast_game`): the Beast Out roar's.
+    fn beast_game(&self) -> super::GameVersion {
+        self.unlocks.beast_game(self.library, self.stats.form)
     }
 
     /// `sub_8029FB4` (battle mode 0): the Beast Out button is on the

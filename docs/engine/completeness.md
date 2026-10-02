@@ -766,6 +766,40 @@ it on the panel flags until its deletion), and a hole whose navi is at 0 HP with
 starts the deletion, and the battle's end that destroys the holes, at once; tried MiniBomb, AirShot and HeatMan on
 a 10 HP user). The 4 recordings are in the lab and match the engine (6,879 frames).
 
+**Batch 12, RskyHny, GunDelSol and RlngLog (32 branches: 28, and 4 of the bee's vertical steering that `two-rows`
+first reached):** 16 taken by 11 new recordings, 14 unreachable, 2 hard. RskyHny1: `two-rows` (from row 1 at an
+opponent on row 3: the bee turns down and steers flying down), `same-column` (the opponent's PanlGrab puts it on
+(3,2), in P0's column: the bee's search ahead runs past column 6), `superarmor-moving` (an unflinched opponent
+leaves the panel before the bee looks for it, so it stings with no target), `target-steps-back` (the bee turns
+right on row 3 toward an opponent that stepped back) and `invisible-below` (the bee flies through an invisible
+opponent, turns back up in its column, and with its turns spent flies off the field). GunDelSol:
+`chips/0x00f-gundels1/indoors` (P0's save out of the sun, NaviStats +0x22 poked to 0: the shade's beam and 2
+damage), `opponent-areagrab` (the sun beam hidden through the dimming), `user-hit` (the opponent's Cannon ends the
+attack, and the beam finds its slot cleared), `antidmg-counter` (AntiDmg's counter takes over mid-attack) and
+`chips/0x012-gundelex/row-1` (the hits' panel reads above the field). RlngLog1: `geddon` (the logs land on holes
+above holes and burst). The unreachable ones: full pools (3), a bee off the field in its flight (its tick checks
+first), a second enemy body in a column, a RskyHny that drags, a sun beam with no slot or missing at the firing's
+end (2), and RlngLog's small, dropped or reporting logs (7: its logs are big and thrown, with no slot). The hard
+ones: a hit on the bee with neither an ending type nor a body (a guard's report comes with the guarding navi's
+body; tried Rflectr1), and the bee finding no enemy body. The 11 recordings are in the lab and match the engine
+(7,779 frames).
+
+**Batch 13, DolThdr, BlzrdBal, NumbrBl, MoonBld and Z-Saver (22 branches, and 3 that earlier scenarios of mine
+first reached):** 4 taken by 5 new recordings, 19 unreachable, 2 hard. This ends the second group.
+`chips/0x0c7-blzrdbal/three-cubes` (RockCubes on (3,2), (4,2) and (5,2): the ball swallows all three and stops
+growing at its third size), `chips/0x0c7-blzrdbal/viewer-blind` and `chips/0x08a-numbrbl/viewer-blind` (side 1's
+Silence blinds the recording's console, then BlzrdBal's thrower and NumberMan are hidden from it), and
+`chips/0x083-rflectr1/beast-over` and `beast-over-gregar` (Rflectr1 in the Beast Overs, forms 0x18 and 0x17, past
+the Cross Beasts: only the Falzar one's head follows the guard). The unreachable ones: a DolThdr doll that
+registers in a slot (3: no chip's spawner passes one), full pools (2), a thunder column off the field or with a
+status or a bug (3: the columns start ahead of their navi, and neither variant has either), a ball or roller on a
+solid panel off the field (2), a dimming stand-in for a user that isn't a player navi (3: only player navis use
+chips in a netbattle, link navis included), a plain moon blade or a second MoonBld swing (2), Z-Saver's command
+window past 12 ticks, its window flag at 0xFF and its sonic boom's spawn failing (3), and a guard counter of a kind
+past the Reflect program's. The hard ones: four objects hitting BlzrdBal's roller in one tick (the lab never has
+more than a navi's body and a field object on its panel), and a corn in the spread's column on another row at the
+spread's tick (not tried). The 5 recordings are in the lab and match the engine (11,318 frames).
+
 <!-- end: chip families, G4 -->
 
 ##### Chip families: onesided's share
@@ -912,6 +946,24 @@ them at the battle's end, like the Sensor turret's and Anubis's), Otenko's statu
 taken panel (2), the rock rows and entrances no spawner uses (2), and MagCoil's one-tick wait (1). The hard
 ones: the doll broken while carried, Tango's heal over a barrier, and the magnet seeing the battle over. The 5
 recordings match the engine at main bc71b739, every frame (4,862) and sound call (97).
+
+**Second pass, batch 8: the dragons and the element pillar (33 branches):** 14 taken by 9 new recordings, 19
+unreachable:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x030-aquadrgn/side1-column1`, `chips/0x02f-elecdrgn/hole-column`, `chips/0x031-wooddrgn/tackle-away` | side 1's dragon swimming out to column 0 and climbing there; a dragon passing a hole, which it leaves unmarked; a dragon with no enemy body on any panel (side 1's ChargeCross tackling off the field), rising in the column ahead |
+| `pa/0x159-darkness/top-row` | Dark MegaMan's flames above the top row, never placed |
+| `forms/gregar/cross-heat-beast-charged-aqua-break` | HeatCross Beast's flames dying down early once a WideSht breaks the Cross out of the burn |
+| `forms/gregar/cross-heat-beast-charged-off-field`, `-side1`, `forms/gregar/cross-elec-beast-charged-off-field`, `-side1` | HeatCross Beast's and ElecCross Beast's pillars past column 6, above row 1 and below row 3 (side 0 on a grabbed column 4), and past column 1 (Gregar on side 1 on a grabbed column 3) |
+
+The unreachable ones: the dragons' own dimmed tests (2: head and body are attack objects, which the update loop
+skips while dimmed; side 1's RockCube while HeatDrgn was out left it standing still), a second splash (2: the climb
+out's end ends the object in the same tick), a dragon that never crosses a panel, a splash on the way down and the
+climb out at a downward speed (6: every dragon swims 4 pixels a tick, and only the up leg climbs out), a panel left
+below row 3 (1: the dip stays inside the bottom row), a swim's fifth past 4 (1: a panel takes 10 ticks), and the
+pillar kinds 2 to 4 (7: the viruses'; a netbattle's pillars are HeatCross Beast's, ElecCross Beast's and
+Darkness's). The 9 recordings match the engine at main 91fc002f, every frame (15,759) and sound call (314).
 
 <!-- end: chip families, onesided -->
 

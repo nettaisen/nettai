@@ -300,6 +300,127 @@ fn a_cross_from_the_window() {
     assert!(p.side.round.crosses_used[1]);
 }
 
+/// Open the screen, open the Cross window, move DOWN `down` times and
+/// choose that Cross; the screen is back to choosing chips after.
+fn choose_cross(p: &mut Player, down: usize) {
+    p.open();
+    p.wait(10);
+    p.step(0);
+    p.press(keys::UP);
+    while p.phase() != (Phase::CrossWindow { entered: true }) && p.tick < 1000 {
+        p.step(0);
+    }
+    for _ in 0..down {
+        p.press(keys::DOWN);
+    }
+    p.step(keys::A);
+    while p.phase() != Phase::Choosing && p.tick < 1000 {
+        p.step(0);
+    }
+}
+
+/// OK, and what goes out.
+fn confirm(p: &mut Player) -> CustomResult {
+    p.press(keys::START);
+    p.press(keys::A);
+    p.wait(20);
+    p.side.sent.as_ref().unwrap().result.clone()
+}
+
+/// A setup's Cross list (nettai's extension): a Falzar player offered
+/// Gregar's first Cross (form 1) and Falzar's fourth (9) gets those two,
+/// in that order, and the one chosen is what goes out.
+#[test]
+fn a_setups_cross_list_offers_crosses_of_either_game() {
+    let mut p = Player::new(&[], GameVersion::Falzar);
+    p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
+    choose_cross(&mut p, 0);
+    let w = p.screen().crosses;
+    assert_eq!((w.count, &w.offered[..2], w.chosen), (2, &[0, 1][..], Some(0)));
+    // The emotion window shows the Cross's face.
+    assert_eq!(p.screen().look.face, Some(FormHandle(1)));
+    assert_eq!(confirm(&mut p).transform.form, Some(FormHandle(1)));
+    assert_eq!(p.side.round.crosses_used, [true, false, false, false, false]);
+    // On the round's next screen the Cross used isn't offered again.
+    p.side.screen = None;
+    let ctx = p.context();
+    let (mut side, mut console) = (p.side.clone(), p.console);
+    side.open(&Context { turn: 2, ..ctx }, &mut console);
+    let w = side.screen.unwrap().crosses;
+    assert_eq!((w.count, w.offered[0]), (1, 1));
+}
+
+/// Beast Out from a Cross of the other game is that Cross's form in Beast
+/// Out, of that game's Beast (a Falzar player in Gregar's first Cross goes
+/// to its Beast form, 0x0D), with that game's roar; tired, that game's
+/// Beast Over. Without a Cross list the Beast's game is the version's.
+#[test]
+fn beast_out_from_the_other_games_cross_is_its_beast_form() {
+    use super::look::ScreenSound;
+    for list in [true, false] {
+        let mut p = Player::new(&[], GameVersion::Falzar);
+        if list {
+            p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
+        }
+        // In Gregar's first Cross.
+        p.stats.form = FormHandle(1);
+        p.open();
+        p.wait(10);
+        p.step(0);
+        p.press(keys::START);
+        p.press(keys::DOWN);
+        p.step(keys::A);
+        let mut roars = Vec::new();
+        while p.phase() != Phase::Choosing && p.tick < 1000 {
+            p.step(0);
+            roars.extend(p.screen().look.drawn.sounds().filter(|s| matches!(s, ScreenSound::BeastOut(_))));
+        }
+        let game = if list { GameVersion::Gregar } else { GameVersion::Falzar };
+        assert_eq!(roars, [ScreenSound::BeastOut(game)], "list {list}");
+        assert_eq!(p.screen().look.face, Some(FormHandle(0x0D)), "list {list}");
+        p.press(keys::UP);
+        p.press(keys::A);
+        p.wait(20);
+        assert_eq!(p.side.sent.as_ref().unwrap().result.transform.form, Some(FormHandle(0x0D)), "list {list}");
+        // Tired: Beast Over of the Beast's game (Gregar's 0x17, Falzar's 0x18).
+        let over = p.side.unlocks.beast_form(&p.lib, p.stats.navi, FormHandle(1), true);
+        assert_eq!(over, Some(FormHandle(if list { 0x17 } else { 0x18 })), "list {list}");
+        // From the base form Beast Out is the version's.
+        let base = p.side.unlocks.beast_form(&p.lib, p.stats.navi, FormHandle(0), false);
+        assert_eq!(base, Some(library::testing::FALZAR_BEAST));
+        assert_eq!(p.side.unlocks.beast_game(&p.lib, FormHandle(0)), GameVersion::Falzar);
+    }
+}
+
+/// In a Beast form a Cross list offers the Crosses whose Beast it is: in
+/// Falzar's Beast Falzar's, in a Gregar Cross's Beast form Gregar's; each
+/// takes the navi to its form in Beast Out.
+#[test]
+fn in_a_beast_form_a_cross_list_offers_that_beasts_crosses() {
+    for (beast, place, form) in [(library::testing::FALZAR_BEAST, 1, 9), (FormHandle(0x0E), 0, 1)] {
+        let mut p = Player::new(&[], GameVersion::Falzar);
+        p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
+        p.stats.form = beast;
+        choose_cross(&mut p, 0);
+        let w = p.screen().crosses;
+        assert_eq!((w.count, w.offered[0], w.chosen), (1, place, Some(place)));
+        assert_eq!(confirm(&mut p).transform.form, Some(FormHandle(form + 0x0C)));
+    }
+}
+
+/// A Cross list names Crosses only, and leaves out the navi's starting
+/// form, as the original's window does.
+#[test]
+fn a_cross_list_offers_crosses_only() {
+    let mut p = Player::new(&[], GameVersion::Gregar);
+    let list = [FormHandle(6), library::testing::GREGAR_BEAST, FormHandle(2), FormHandle(7)];
+    p.side.unlocks.cross_list = Some(CrossList::new(&list));
+    p.stats.starting_form = FormHandle(2);
+    p.open();
+    let w = p.screen().crosses;
+    assert_eq!((w.count, &w.offered[..2]), (2, &[0, 3][..]));
+}
+
 #[test]
 fn dust_cross_scraps_the_picks() {
     let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)], GameVersion::Falzar);
@@ -331,6 +452,37 @@ fn dust_cross_scraps_the_picks() {
     let ids: Vec<(ChipId, u8)> = f.chips.iter().flatten().map(|c| (c.id.0, c.code.0)).collect();
     assert_eq!(ids[..5], [(WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)]);
     assert_eq!(ids[28..], [(SHOT, 0), (SHOT, 1)]);
+}
+
+#[test]
+fn dust_cross_scrapping_the_regular_chip_ends_it() {
+    // sub_8027458: the Regular chip scrapped clears BattleState+0x17, so
+    // the next screen deals no Regular chip. (This screen's front slot
+    // keeps its Regular bit: sub_802A61A, which shows the chips dealt
+    // again, only resets the slots' states.)
+    let chips = [(SHOT, 0), (SHOT, 1), (WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)];
+    let mut p = Player::new(&chips, GameVersion::Falzar);
+    let mut f = folder(&chips);
+    f.regular_pending = true;
+    p.side.folder = Some(f);
+    p.stats.form = library::testing::DUST_CROSS;
+    p.open();
+    assert!(matches!(p.screen().slots[0].kind, SlotKind::Chip { regular: true, .. }));
+    p.wait(10);
+    p.step(0);
+    p.press(keys::A);
+    // Down from the fourth chip to the scrap button.
+    for _ in 0..3 {
+        p.press(keys::RIGHT);
+    }
+    p.press(keys::DOWN);
+    assert_eq!(p.screen().cursor, 8);
+    p.step(keys::A);
+    while p.phase() != Phase::Choosing && p.tick < 1000 {
+        p.step(0);
+    }
+    assert!(!p.side.folder.unwrap().regular_pending);
+    assert!(matches!(p.screen().slots[0].kind, SlotKind::Chip { regular: true, .. }));
 }
 
 #[test]
