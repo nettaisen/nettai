@@ -100,7 +100,7 @@ impl Offer {
             return Err("the other player's Cross window offers a form that isn't a Cross".into());
         }
         let records = &content.defs.records;
-        if l.cards.iter().any(|(c, _)| records.get(c.index()).is_none_or(|r| !r.key.starts_with("patch-card/"))) {
+        if l.cards.iter().any(|(c, _)| records.get(c.index()).is_none_or(|r| !nettai_content_api::keys::local(&r.key).starts_with("patch-card/"))) {
             return Err("the other player's patch cards aren't the content's".into());
         }
         if self.stage.is_some_and(|s| !driver::link_battle_stages(content).contains(&s)) {

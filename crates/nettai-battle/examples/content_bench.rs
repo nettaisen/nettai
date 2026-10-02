@@ -82,7 +82,7 @@ fn attach(b: &mut Battle, n: usize) {
             let records = &b.content.defs.records;
             let look = records
                 .iter()
-                .position(|d| d.record_type == "attachment-look" && d.key.starts_with("gundels3/"))
+                .position(|d| d.record_type == "attachment-look" && nettai_content_api::keys::local(&d.key).starts_with("gundels3/"))
                 .expect("GunDelS3's gun");
             behavior::set_state_field(b, r, "look", Value::Def(Registry::Record, look as u16));
             behavior::set_state_variant(b, r, "slot", "overlay");
