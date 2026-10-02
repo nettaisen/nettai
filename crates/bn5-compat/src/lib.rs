@@ -123,10 +123,58 @@ pub struct RuleNumbers {
     pub statuses: BTreeMap<String, u8>,
 }
 
+/// An object kind (kinds.toml): BN5's pool and index of it, and the
+/// position bytes the comparison skips (as bn6-compat's).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KindEntry {
+    pub pool: String,
+    pub index: u8,
+    /// Its position is register garbage until its init places it.
+    #[serde(default)]
+    pub scratch_position: bool,
+    /// Its position is garbage while it has no sprite (the charge glow
+    /// before its first update).
+    #[serde(default)]
+    pub scratch_position_without_sprite: bool,
+    /// The fraction of its Z is register garbage.
+    #[serde(default)]
+    pub scratch_z_fraction: bool,
+}
+
+/// A netbattle stage (stages.toml): the settings records that are it, its
+/// panel layout's number and its actor list's address.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StageEntry {
+    pub settings: Vec<u8>,
+    pub layout: u8,
+    pub actor_list: u32,
+}
+
+/// What BN5's NaviStats name by number (records.toml): weapons by routine
+/// number, projectile variants by row, barriers by type. A key without a
+/// root is BN5's; a qualified one another root's (`bn6:barrier/10`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RecordNumbers {
+    #[serde(default)]
+    pub weapons: BTreeMap<String, Vec<u8>>,
+    #[serde(default)]
+    pub projectile_variants: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub barriers: BTreeMap<String, u8>,
+}
+
+/// A compat key qualified: its own root's if it names none.
+pub fn qualify_key(key: &str) -> String {
+    if key.contains(':') { key.to_string() } else { qualify(key) }
+}
+
 /// BN5's asset names (assets.toml): the names bn5-extract writes its
 /// assets under, by BN6's names for what is BN6's. Sprites as "cc-ii" (the
 /// category's byte offset in the sprite list and the index), sounds by the
-/// song table's numbers, banners by banner id.
+/// song table's numbers, banners by banner id, backgrounds by number.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AssetNames {
@@ -136,6 +184,8 @@ pub struct AssetNames {
     pub sounds: BTreeMap<String, u16>,
     #[serde(default)]
     pub banners: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub backgrounds: BTreeMap<String, u8>,
 }
 
 /// BN5's compat tables (content/bn5/compat).
@@ -151,13 +201,22 @@ pub struct Compat {
     pub assets: AssetNames,
     /// rules.toml: the rule definitions' numbers.
     pub rules: RuleNumbers,
+    /// stages.toml: the netbattle stages, by key.
+    pub stages: BTreeMap<String, StageEntry>,
+    /// records.toml: what NaviStats name by number.
+    pub records: RecordNumbers,
+    /// kinds.toml: the object kinds' numbers, by qualified key.
+    pub kinds: BTreeMap<String, KindEntry>,
 }
 
 /// The files of a compat folder.
-pub const FILES: [&str; 4] = ["chips.toml", "panels.toml", "assets.toml", "rules.toml"];
+pub const FILES: [&str; 7] = ["chips.toml", "panels.toml", "assets.toml", "rules.toml", "stages.toml", "records.toml", "kinds.toml"];
 
 /// This repository's compat (content/bn5/compat), built in.
-const BN5: [(&str, &str); 4] = [
+const BN5: [(&str, &str); 7] = [
+    ("kinds.toml", include_str!("../../../content/bn5/compat/kinds.toml")),
+    ("stages.toml", include_str!("../../../content/bn5/compat/stages.toml")),
+    ("records.toml", include_str!("../../../content/bn5/compat/records.toml")),
     ("chips.toml", include_str!("../../../content/bn5/compat/chips.toml")),
     ("panels.toml", include_str!("../../../content/bn5/compat/panels.toml")),
     ("assets.toml", include_str!("../../../content/bn5/compat/assets.toml")),
@@ -233,7 +292,11 @@ impl Compat {
                 return Err(format!("rules.toml: statuses {k} and {other} are both {n:#04x}"));
             }
         }
-        Ok(Compat { chips, panels: by_number, chip_keys, assets, rules })
+        let stages: BTreeMap<String, StageEntry> = toml::from_str(&text("stages.toml")?).map_err(|e| format!("stages.toml: {e}"))?;
+        let records: RecordNumbers = toml::from_str(&text("records.toml")?).map_err(|e| format!("records.toml: {e}"))?;
+        let kinds: BTreeMap<String, KindEntry> = toml::from_str(&text("kinds.toml")?).map_err(|e| format!("kinds.toml: {e}"))?;
+        let kinds = kinds.into_iter().map(|(k, v)| (if k.starts_with("engine/") { k } else { qualify_key(&k) }, v)).collect();
+        Ok(Compat { chips, panels: by_number, chip_keys, assets, rules, stages, records, kinds })
     }
 
     /// A chip's key by its id, as compat writes it (unqualified).
@@ -249,6 +312,39 @@ impl Compat {
     /// A chip's entry by its qualified key.
     pub fn chip_entry(&self, key: &str) -> Option<&ChipEntry> {
         strip(key).and_then(|k| self.chips.get(k))
+    }
+
+    /// The stage whose layout and actor list a settings record names: its
+    /// qualified key.
+    pub fn stage(&self, layout: u8, actor_list: u32) -> Option<String> {
+        self.stages.iter().find(|(_, e)| e.layout == layout && e.actor_list == actor_list).map(|(k, _)| qualify(k))
+    }
+
+    /// The weapon of a routine number: its qualified key (None: 0xFF, no
+    /// weapon; Err: a number records.toml lacks).
+    pub fn weapon(&self, n: u8) -> Result<Option<String>, String> {
+        if n == 0xFF {
+            return Ok(None);
+        }
+        self.records
+            .weapons
+            .iter()
+            .find(|(_, v)| v.contains(&n))
+            .map(|(k, _)| Some(qualify_key(k)))
+            .ok_or_else(|| format!("weapon routine {n:#04x}"))
+    }
+
+    /// The projectile variant of a row: its qualified key.
+    pub fn projectile_variant(&self, n: u8) -> Result<String, String> {
+        self.records.projectile_variants.iter().find(|&(_, &v)| v == n).map(|(k, _)| qualify_key(k)).ok_or_else(|| format!("projectile row {n:#04x}"))
+    }
+
+    /// The barrier of a type (None: 0, none).
+    pub fn barrier(&self, n: u8) -> Result<Option<String>, String> {
+        if n == 0 {
+            return Ok(None);
+        }
+        self.records.barriers.iter().find(|&(_, &v)| v == n).map(|(k, _)| Some(qualify_key(k))).ok_or_else(|| format!("barrier type {n}"))
     }
 
     /// A status's qualified key (`bn5:paralyze-90`) by a hit's status byte.

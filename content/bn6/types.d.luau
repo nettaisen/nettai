@@ -108,6 +108,27 @@ export type CannonSpec = {
     afterimages: boolean?,
 }
 
+-- A game's ProtoMan (chips/protoman/navi.luau, `protoman.look`): his
+-- sprite and palette, his sword's look and animation, his slash's effect,
+-- and his spawner's address (which his position takes).
+export type ProtoManLook = {
+    sprite: SpriteAsset,
+    palette: number,
+    sword: AttachmentLook,
+    sword_anim: number,
+    slash: Effect,
+    spawner_address: number,
+}
+
+-- An AirShot (lib/airshot.luau, the original's action 0x21): the shooter
+-- the navi holds and the projectile it fires.
+export type AirShotSpec = {
+    -- The action's key when no chip definition holds it.
+    id: string?,
+    shooter: AttachmentLook,
+    shot: ProjectileVariant,
+}
+
 -- A wide wave (chips/widesht/wave.luau, the original's attack #0x3B by
 -- kind): its speed (16.16 pixels a tick); whether it goes through what it
 -- hits (with the hit modifier it's fired with), holds its spawner's attack
@@ -435,7 +456,9 @@ export type Barrier = {
 -- An instrument (lib/instruments, a row of the original's `byte_80D4078`):
 -- its identity (what it is taken for) and palette,
 -- how long it plays and pauses, its tune, and the effect it has every
--- third tick of playing (`off_80D4298`).
+-- third tick of playing (`off_80D4298`). Its HP and sprite where a game's
+-- aren't the library's (60, `byte_80D4140`; BN6's `instrument`): BN5's
+-- 100 and its own pack's; `absorbed` is `instrument.instrument`'s.
 export type Instrument = {
     identity: Identity,
     palette: number,
@@ -443,6 +466,9 @@ export type Instrument = {
     pause_ticks: number,
     tune: Sound,
     effect: (me: Object) -> (),
+    hp: number?,
+    sprite: SpriteAsset?,
+    absorbed: AbsorbedLook?,
 }
 
 -- A sword wave (navis/megaman/forms/slashcross/sword_wave, a row of the
