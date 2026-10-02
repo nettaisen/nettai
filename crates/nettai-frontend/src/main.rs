@@ -28,7 +28,7 @@ struct Args {
     quit_after: Option<u64>,
 }
 
-/// Where `bn6-extract content <falzar-rom> <gregar-rom> <dir>` puts the BN6 pack by default.
+/// Where `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` puts the BN6 pack by default.
 const DEFAULT_PACK: &str = "data/content/bn6";
 
 const USAGE: &str = "\
@@ -38,7 +38,7 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-frontend [OPTIONS] TRACE.jsonl --audit
 
   --pack DIR       the content pack to play (graphics and sound), from
-                   `bn6-extract content <falzar-rom> <gregar-rom> <dir>` (default: $BN6_PACK, else
+                   `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` (default: $BN6_PACK, else
                    data/content/bn6)
   --content DIR    the battle content: the definitions that name the pack's
                    assets (default: $BN6_CONTENT, else this repository's
@@ -147,7 +147,7 @@ fn load<T>(pack: &Path, what: &str, f: impl Fn(&Path) -> Result<(T, nettai_conte
         Err(r) => {
             show(&r);
             fail(format!(
-                "can't load the {what} of the content pack {}\n(write it with `cargo run -p bn6-extract -- content <falzar-rom> <gregar-rom> {}`)",
+                "can't load the {what} of the content pack {}\n(write it with `cargo run -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> {}`)",
                 pack.display(),
                 pack.display()
             ))
