@@ -135,6 +135,21 @@ pub struct GameAddresses {
     /// key, the Falzar ROM's and this game's.
     #[serde(default)]
     pub panel_ys: BTreeMap<String, [u8; 2]>,
+    /// Kinds of `spawner_z_fractions` that drop from that Z to height 0
+    /// (`sub_8001330`'s velocity, then gravity each tick): while they drop,
+    /// this game's other address gives another velocity, so another Z (the
+    /// same again once they land: the velocity takes up the difference).
+    #[serde(default)]
+    pub spawner_z_drops: BTreeMap<String, SpawnerZDrop>,
+}
+
+/// How a `spawner_z_drops` kind drops: in `ticks` ticks (its timer counts
+/// them down), falling by `gravity` (16.16) a tick.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpawnerZDrop {
+    pub ticks: i32,
+    pub gravity: i32,
 }
 
 /// A console's game: the US Falzar or Gregar, or the Japanese ones (EXE6).
@@ -192,6 +207,31 @@ impl Games {
             Some([_, other]) => ((z as u32 & !0xFFFF) | (other & 0xFFFF)) as i32,
             None => z,
         }
+    }
+
+    /// What a `game` console adds to the Z of a `kind` object that drops
+    /// from its spawner's address (`spawner_z_drops`), at `z` with `timer`
+    /// ticks left to land: the content's drop starts from the content's
+    /// address, the console's from its own. (Its starting height's whole
+    /// part is the one whose drop reaches `z` after that many ticks.)
+    pub fn drop_z_offset(&self, game: Game, kind: &str, z: i32, timer: u16) -> i32 {
+        let Some(g) = self.of(game) else { return 0 };
+        let (Some(d), Some(&[ours, theirs])) = (g.spawner_z_drops.get(kind), g.spawner_z_fractions.get(kind)) else {
+            return 0;
+        };
+        let t = d.ticks - timer as i32;
+        if !(1..=d.ticks).contains(&t) {
+            return 0;
+        }
+        let drop = (d.ticks * d.ticks).wrapping_mul(d.gravity) >> 1;
+        let at = |start: i32| {
+            let v = start.wrapping_neg().wrapping_sub(drop) / d.ticks;
+            start.wrapping_add(t * v).wrapping_add(d.gravity.wrapping_mul(t * (t - 1) / 2))
+        };
+        let start = |whole: i32, address: u32| (whole << 16) | (address & 0xFFFF) as i32;
+        (-0x100..0x100)
+            .find(|&whole| at(start(whole, ours)) == z)
+            .map_or(0, |whole| at(start(whole, theirs)).wrapping_sub(z))
     }
 
     /// An object's panel Y as a `game` console has it: a kind's whose is a

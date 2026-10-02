@@ -1,7 +1,9 @@
 --!strict
 -- Otenko: a statue in front of the user that, for 1800 ticks, raises the
 -- Atk+ bonus of the user's next damaging chip by 1 every 5 ticks, up to 50
--- (docs/engine/dimming-chip-effects.md §9).
+-- (docs/engine/dimming-chip-effects.md §9). Its record is the Japanese
+-- games' (the content's JP-content chips take theirs): the US games' but
+-- for the library flag and the sort key.
 
 local dimming_chips = require("../../lib/dimming")
 local statue = require("./statue")
@@ -54,9 +56,9 @@ return define.chip {
     damage = 1,
     hit_param = 0,
     lockout = 0,
-    flags = { "dimming" },
+    flags = { "dimming", "library" },
     extra_flags = { 1 },
-    library = { number = 202, index = 2, sort = 324 },
+    library = { number = 202, index = 2, sort = 51 },
     slot_in_limit = 1,
     dimming = hook,
 }

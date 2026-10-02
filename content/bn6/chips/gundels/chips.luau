@@ -74,14 +74,18 @@ return {
         },
     },
     -- (The record's extra flag 0x01 has no battle reader, and no name.)
+    -- GunDelEX's record is the Japanese games' (the content's JP-content
+    -- chips take theirs): a Standard chip with the library flag; the US
+    -- games' is no folder chip, with no flags.
     define.chip {
         id = "gundelex",
         name = "GunDelEX",
         description = "Fires a\nspread\nsunbeam",
         codes = { "G" },
-        element = "null", family = "null", class = "special",
+        element = "null", family = "null", class = "standard",
         rarity = 4, mb = 80, damage = 0, hit_param = 0, lockout = 0,
-        library = { number = 201, index = 1, sort = 230 },
+        flags = { "library" },
+        library = { number = 201, index = 1, sort = 67 },
         slot_in_limit = 1,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.gundelex },

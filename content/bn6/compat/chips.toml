@@ -262,9 +262,9 @@ elmntmn-sp = { id = 0x10F, action = 0x1B, subtype = 16 }
 colonel = { id = 0x110, action = 0x1B, subtype = 17 }
 colonel-ex = { id = 0x111, action = 0x1B, subtype = 17 }
 colonel-sp = { id = 0x112, action = 0x1B, subtype = 17 }
-hackjack = { id = 0x113, action = 0x1B, subtype = 18 }
-hackjck-ex = { id = 0x114, action = 0x1B, subtype = 18 }
-hackjck-sp = { id = 0x115, action = 0x1B, subtype = 18 }
+count = { id = 0x113, action = 0x1B, subtype = 18 }
+count-ex = { id = 0x114, action = 0x1B, subtype = 18 }
+count-sp = { id = 0x115, action = 0x1B, subtype = 18 }
 django = { id = 0x116, action = 0x1B, subtype = 19 }
 django2 = { id = 0x117, action = 0x1B, subtype = 19 }
 django3 = { id = 0x118, action = 0x1B, subtype = 19 }
