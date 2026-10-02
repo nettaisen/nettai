@@ -1408,11 +1408,19 @@ export type SystemSpec = {
 export type System = SystemSpec
 
 -- A player's rules: a list of systems, which the framework calls in this
--- order. A game's own is its `stock` ruleset (one per game).
+-- order. A game's own is its `stock` ruleset (one per game). A ruleset made
+-- from another (`base`, a mix) has its base's systems less `remove`, with
+-- `add` after them. Its game, whose data (roles, rule sections) the side
+-- reads, is the root `game` names, else its base's, else its own root
+-- (docs/design/rules-in-luau.md §2.3).
 export type RulesetSpec = {
     id: string,
     stock: boolean?,
-    systems: { System },
+    systems: { System }?,
+    base: Ruleset?,
+    add: { System }?,
+    remove: { System }?,
+    game: string?,
 }
 export type Ruleset = RulesetSpec
 
