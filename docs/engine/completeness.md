@@ -750,6 +750,22 @@ ones: a layer's or propeller's owner held by a status, the plane seeing the batt
 Cannon, Thunder and Silence, and KOs), and a hit that doesn't lower the boiler's HP (tried Fan and MagCoil). The 4
 recordings are in the lab and match the engine (3,719 frames).
 
+**Batch 11, MetrKnuk and SandWrm (26 branches):** 6 taken by 4 new recordings, 17 unreachable, 3 hard.
+`chips/0x133-metrknuk/corner-target` (P1 on (6,3): the 3x3 around it runs past the far column and the bottom row),
+`side-1` (side 1's MetrKnuk at P0 on (1,2): past column 1), `chips/0x065-sandwrm1/user-flinched` (the opponent's
+AirShot hits the user as the worm emerges: the start hole's opening stalls while its navi flinches) and
+`heatman-dimming` (the opponent's HeatMan dims the screen as the worm emerges: the holes run through the dimming
+without opening further, while the worm and its sand wait). The unreachable ones: a slow fist (MetrKnuk's spawner
+sets the fast fall), full pools (2), no panel of the enemy's area or a second enemy body (3), no target around the
+enemy navi but the last one (3: panels are taken front first in each row and come back front first, and the back
+column is never taken, so the navi's 3x3 always holds another panel of its side), a hole's opening outlasting the
+worm's 20-tick timer, a hole seeing a pause (2: it has no run-while-paused flag), the worm and the sand seeing a
+dimming (2: no run-while-dimmed flag), the start hole's timer running out in the 16-tick arc, the worm changing
+row, and an arc's fifth quarter. The hard ones: MetrKnuk's first fist finding no enemy body (the enemy navi keeps
+it on the panel flags until its deletion), and a hole whose navi is at 0 HP with the battle not over (2: a KO
+starts the deletion, and the battle's end that destroys the holes, at once; tried MiniBomb, AirShot and HeatMan on
+a 10 HP user). The 4 recordings are in the lab and match the engine (6,879 frames).
+
 <!-- end: chip families, G4 -->
 
 ##### Chip families: onesided's share
