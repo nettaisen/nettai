@@ -129,13 +129,26 @@ pub enum Region {
     Field(PanelCondition),
 }
 
-/// A banner asset as the pack identifies it (for BN6's pack, the game's UI
-/// banner id). The engine names none itself: what the ruleset shows it
-/// gets by role (`Roles::banner`) or from a definition (a navi's win and
-/// lose banners, the banners that hold).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// A banner asset: its handle over the loaded packs' banners (`AssetNames`;
+/// what its pack numbers it is the frontend's to look up). The engine names
+/// none itself: what the ruleset shows it gets by role (`Roles::banner`) or
+/// from a definition (a navi's win and lose banners, the banners that
+/// hold).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct BannerId(pub u8);
+pub struct BannerId(pub u16);
+
+/// A background asset: its handle over the loaded packs' backgrounds (a
+/// stage's, a round's settings').
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct BackgroundId(pub u16);
+
+/// A mugshot asset: its handle over the loaded packs' mugshots (a link
+/// navi's face, a form's faces). Presentation only.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct MugshotId(pub u16);
 
 /// The identity of a content set: a stable hash of all of it. A round's
 /// setup carries it; two peers whose setups agree run the same content.

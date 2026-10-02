@@ -156,7 +156,7 @@ fn resolve_place(content: &Content, stage: &str, background: &Option<String>, at
         }
     };
     if let Some(b) = background
-        && !content.assets.backgrounds.contains_key(b)
+        && crate::background(content, b).is_none()
     {
         problems.push(format!("{at}: no background {b:?}"));
     }

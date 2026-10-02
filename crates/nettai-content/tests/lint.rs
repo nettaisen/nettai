@@ -68,7 +68,7 @@ fn bn6_content_has_no_definition_errors() {
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
     let mut c = nettai_battle::Content::default();
     c.scripts = Scripts::root(RootManifest::named("bn6"), testing::modules_under(dir));
-    c.assets = testing::asset_names_used(&c.scripts.modules);
+    c.assets = testing::asset_names_for(&c.scripts);
     c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
     let mut r = Report::default();
     nettai_content::lint::definitions(&c, &mut r);
@@ -93,7 +93,7 @@ fn bn6_strings_name_bn6_definitions_and_only_their_shape_is_hashed() {
     let define = |strings: nettai_content::locale::Strings| {
         let mut c = nettai_battle::Content::default();
         c.scripts = Scripts::root(root.manifest.clone(), root.modules.clone());
-        c.assets = testing::asset_names_used(&c.scripts.modules);
+        c.assets = testing::asset_names_for(&c.scripts);
         c.strings = strings.qualified("bn6");
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
         c
@@ -133,7 +133,7 @@ fn bn5_and_bn6_load_together_under_their_names() {
     c.strings.merge(bn5.strings.qualified("bn5"));
     c.scripts = Scripts::root(bn6.manifest, bn6.modules);
     c.scripts.add_root(bn5.manifest, bn5.modules);
-    c.assets = testing::asset_names_used(&c.scripts.modules);
+    c.assets = testing::asset_names_for(&c.scripts);
     if let Err(e) = c.define() {
         let e = e.message;
         assert!(e.starts_with("bn5:chips/") && e.contains(": chip bn5:") && e.contains("needs exactly one of `action`"), "{e}");

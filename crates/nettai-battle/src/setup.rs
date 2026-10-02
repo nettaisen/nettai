@@ -10,7 +10,7 @@ use nettai_content_api::{FormHandle, NaviHandle, RecordHandle, StageHandle, Weap
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BattleSettings {
     pub stage: StageHandle,
-    pub background: u8,
+    pub background: crate::content::BackgroundId,
     /// `effects` bits (see `effects`).
     pub effects: u32,
 }
@@ -383,7 +383,7 @@ pub struct SetScore {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Stage {
     pub stage: StageHandle,
-    pub background: u8,
+    pub background: crate::content::BackgroundId,
 }
 
 /// Everything a round starts from.
