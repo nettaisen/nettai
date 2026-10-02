@@ -1,5 +1,6 @@
 //! BN6's folder rules, as its folder editor enforces them, and a random
-//! folder that keeps them (live play's: docs/frontend.md §2).
+//! folder that keeps them (live play's: docs/frontend.md §2). A match file's
+//! folders are checked by them (`crate::check`).
 //!
 //! The editor's check on putting a chip in (`sub_8135080`, with
 //! `sub_8135500`), on 30 chips:
@@ -16,7 +17,8 @@
 //! counts any other as the invalid chip), and the Regular chip's MB is at
 //! most the navi's Regular memory (NaviStats+0x09: the editor drops a
 //! Regular chip past it, `sub_81352A0` and `sub_813CEA0`). The tag chips
-//! are left unset.
+//! are two other entries whose MB together are at most 60 (`sub_81349E8`:
+//! a chip can be tagged while the tag chips' MB leave room for it).
 //!
 //! What can be in a folder is what the chip pack lists (`sub_811FE7C`):
 //! chips 1 to 0x13A, without the extra flag 0x20 (the dark chips); of them
@@ -24,7 +26,9 @@
 //! them: content/bn6 has the Japanese games' records and routines for
 //! GunDelEX, Otenko, Count's, Django's, Gregar and Falzar (GunDelEX and
 //! Django's are folder chips only in the Japanese records; a US console has
-//! no routine for Count's, Django's, Gregar or Falzar).
+//! no routine for Count's, Django's, Gregar or Falzar). Another game's
+//! chips (a root that isn't BN6's) can be in a folder if they are Standard,
+//! Mega or Giga chips with a code, as no chip pack of theirs is known yet.
 
 use bn6_compat::Compat;
 use nettai_battle::content::{ChipClass, ChipCode, ChipFlags, Content};
@@ -32,6 +36,7 @@ use nettai_battle::custom::folder::FOLDER_SIZE;
 use nettai_battle::custom::{FolderChip, SavedFolder};
 use nettai_battle::setup::NaviStats;
 use nettai_content_api::ChipHandle;
+use crate::draw::Draws;
 
 /// The last chip the pack lists (`sub_811FE7C`).
 const LAST_PACK_CHIP: u16 = 0x13A;
@@ -39,6 +44,8 @@ const LAST_PACK_CHIP: u16 = 0x13A;
 const NOT_IN_PACK: u8 = 0x20;
 /// Chips with the dark flag a folder can hold (`sub_8135080`).
 const DARK_CHIPS: usize = 3;
+/// The tag chips' MB together at most (`sub_81349E8`).
+pub const TAG_MB: u32 = 60;
 
 /// What a navi's stats allow its folder.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -78,7 +85,12 @@ pub fn folder_chips(content: &Content) -> Vec<ChipHandle> {
         .enumerate()
         .filter(|(_, d)| {
             let r = &d.record;
-            let listed = compat.compat_key(content, &d.key).and_then(|k| compat.chips.get(k)).is_some_and(|c| (1..=LAST_PACK_CHIP).contains(&c.id));
+            // A BN6 chip is listed by its number; another game's by its
+            // class alone.
+            let listed = match compat.compat_key(content, &d.key) {
+                Some(k) => compat.chips.get(k).is_some_and(|c| (1..=LAST_PACK_CHIP).contains(&c.id)),
+                None => nettai_content_api::keys::root_of(&d.key) != Some("bn6"),
+            };
             matches!(r.class, ChipClass::Standard | ChipClass::Mega | ChipClass::Giga)
                 && !r.codes.is_empty()
                 && listed
@@ -92,7 +104,7 @@ pub fn folder_chips(content: &Content) -> Vec<ChipHandle> {
 pub fn violations(content: &Content, folder: &SavedFolder, limits: FolderLimits) -> Vec<String> {
     let pool = folder_chips(content);
     let mut out = Vec::new();
-    let name = |c: ChipHandle| crate::strings::own_chip_name(content, c).to_string();
+    let name = |c: ChipHandle| crate::names::chip(content, c).to_string();
     let mut copies: std::collections::BTreeMap<ChipHandle, usize> = Default::default();
     let (mut mega, mut giga, mut dark) = (0, 0, 0);
     for (i, c) in folder.chips.iter().enumerate() {
@@ -140,8 +152,20 @@ pub fn violations(content: &Content, folder: &SavedFolder, limits: FolderLimits)
             None => out.push(format!("the Regular chip is entry {r}, past the folder")),
         }
     }
-    if folder.tags.is_some() {
-        out.push("tag chips are set".into());
+    if let Some((a, b)) = folder.tags {
+        match (folder.chips.get(a as usize), folder.chips.get(b as usize)) {
+            _ if a == b => out.push(format!("the tag chips are both entry {a}")),
+            (Some(x), Some(y)) => {
+                let mb = content.chip(x.id).mb as u32 + content.chip(y.id).mb as u32;
+                if mb > TAG_MB {
+                    out.push(format!("the tag chips {} and {} are {mb} MB, past {TAG_MB}", name(x.id), name(y.id)));
+                }
+            }
+            _ => out.push(format!("the tag chips are entries {a} and {b}, past the folder")),
+        }
+        if folder.regular.is_some_and(|r| r == a || r == b) {
+            out.push("the Regular chip is a tag chip".into());
+        }
     }
     out
 }
@@ -188,37 +212,6 @@ pub fn random_folder(content: &Content, limits: FolderLimits, draws: &mut Draws)
     SavedFolder { chips: chips.try_into().expect("30 chips"), regular, tags: None }
 }
 
-/// The frontend's own random draws for a setup (splitmix64): not the
-/// game's RNG, which the battle keeps.
-#[derive(Clone, Debug)]
-pub struct Draws(u64);
-
-impl Draws {
-    pub fn new(seed: u32) -> Draws {
-        Draws(seed as u64 ^ 0x6E65_7474_6169_0000)
-    }
-
-    pub fn next(&mut self) -> u64 {
-        self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let mut z = self.0;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        z ^ (z >> 31)
-    }
-
-    /// A number below `n` (n > 0).
-    pub fn below(&mut self, n: usize) -> usize {
-        (self.next() % n as u64) as usize
-    }
-
-    /// `items` in a random order.
-    pub fn shuffle<T>(&mut self, items: &mut [T]) {
-        for i in (1..items.len()).rev() {
-            items.swap(i, self.below(i + 1));
-        }
-    }
-}
-
 /// A folder in a line: each chip's name and code, the Regular chip marked.
 pub fn describe(content: &Content, folder: &SavedFolder) -> String {
     folder
@@ -227,41 +220,16 @@ pub fn describe(content: &Content, folder: &SavedFolder) -> String {
         .enumerate()
         .map(|(i, c)| {
             let mark = if folder.regular == Some(i as u8) { " (Regular)" } else { "" };
-            format!("{} {}{mark}", crate::strings::own_chip_name(content, c.id), c.code.letter())
+            format!("{} {}{mark}", crate::names::chip(content, c.id), c.code.letter())
         })
         .collect::<Vec<_>>()
         .join(", ")
 }
 
-/// BN6's content for tests: content/bn6's definitions on a made-up asset
-/// index (`testing::asset_names_used`), every sprite timed as the test
-/// content's navi is (nothing from a ROM).
-#[cfg(test)]
-pub(crate) fn bn6_test_content() -> std::sync::Arc<Content> {
-    use nettai_battle::content::testing;
-    static BN6: std::sync::OnceLock<std::sync::Arc<Content>> = std::sync::OnceLock::new();
-    BN6.get_or_init(|| {
-        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
-        let mut c = Content::default();
-        c.scripts = nettai_battle::content::Scripts::root(nettai_battle::content::RootManifest::named("bn6"), testing::modules_under(dir));
-        c.assets = testing::asset_names_used(&c.scripts.modules);
-        c.strings = nettai_content::locale::load_all(std::path::Path::new(dir), nettai_content::locale::OWN)
-            .and_then(|s| s.ok_or_else(|| "no locales/en.toml".into()))
-            .unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        let mut navi = testing::content().animations.sprites[&testing::NAVI_SPRITE].clone();
-        navi.resize(0x40, navi[1].clone());
-        for &id in c.assets.sprites.values() {
-            c.animations.sprites.insert(id, navi.clone());
-        }
-        c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        std::sync::Arc::new(c)
-    })
-    .clone()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testing::bn6_content as bn6_test_content;
 
     fn limits() -> FolderLimits {
         FolderLimits { mega: 5, giga: 1, regular_mb: 50 }
