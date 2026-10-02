@@ -406,7 +406,11 @@ named_fields! {
         Rapid = "rapid", U8, rw;
         Charge = "charge", U8, rw;
         Mood = "mood", U8, ro;
-        BeastOutCounter = "beast_out_counter", U8, ro;
+        /// The Beast Out turns left (writable: BN6's beast system spends
+        /// them).
+        BeastOutCounter = "beast_out_counter", U8, rw;
+        /// The form the navi started the battle in.
+        StartingForm = "starting_form", Ref(Registry::Form, None), ro;
         /// The navi's game: 0 Gregar, 1 Falzar.
         Version = "version", U8, ro;
         MaxBaseHp = "max_base_hp", U16, ro;
