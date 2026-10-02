@@ -66,6 +66,7 @@ pub fn setup() -> RoundSetup {
         console: Default::default(),
         ruleset: None,
         rules: Vec::new(),
+        patch_cards: Default::default(),
     };
     RoundSetup {
         content: content.hash(),

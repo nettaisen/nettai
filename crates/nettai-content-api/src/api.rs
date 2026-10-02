@@ -1089,6 +1089,9 @@ pub trait CoreApi {
     /// save's NaviCust bug flag; a ruleset's system decides it as the round
     /// is set up, as BN6's patch cards do).
     fn set_emotion_window_glitch(&mut self, side: u8, on: bool);
+    /// A side's installed patch cards in their list's order (handles), and
+    /// whether each is switched on (the setup's: `PlayerSetup::patch_cards`).
+    fn patch_cards(&self, side: u8) -> Vec<(u16, bool)>;
     /// A side's bug frags in the battle (`sub_800F4A8`).
     fn bug_frags(&self, side: u8) -> u32;
     /// `sub_800F4B2`: a side spends `n` bug frags (the count wraps below

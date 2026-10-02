@@ -4,8 +4,8 @@
 local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return cards.card {
-    id = "patch-card/soul-battlrs-custom",
+return define.patch_card {
+    id = "soul-battlrs-custom",
     mb = 66,
     effects = {
         cards.super_armor(true),

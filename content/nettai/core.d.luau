@@ -964,6 +964,9 @@ declare battle: {
     -- save's NaviCust bug flag): a system decides it in `round_setup` (BN6's
     -- patch cards do).
     set_emotion_window_glitch: (side: number, on: boolean) -> (),
+    -- A side's installed patch cards in their list's order, each switched
+    -- on or not (the player's setup's; a game's rules apply them).
+    patch_cards: (side: number) -> { { card: PatchCard, enabled: boolean } },
     -- A side's bug frags, and spending some (its callers check there are
     -- enough: the count wraps below 0).
     bug_frags: (side: number) -> number,
@@ -1760,6 +1763,21 @@ export type Status = StatusDef
 -- farthest ahead), then with the rules' column shifts, with a clear path
 -- to the target if asked; afterwards the middle row of that column, if
 -- preferred and free.
+-- A patch card (BN4's, BN5's and BN6's Modification Cards, 改造カード;
+-- docs/engine/patch-cards.md): what every game's card is. Its key (compat's
+-- patch-cards.toml gives its number), its capacity cost (BN6's MB, which
+-- the installed cards' limit counts) and its effects in the card's order:
+-- each a table with its `kind` and whether the card shows it as a `bug`,
+-- with the kind's own fields. What an effect does is a game's rules' (BN6's
+-- patch-cards system, rules/patch-cards: `PatchCardEffect`). Its name is
+-- the locales' (locales/<lang>.toml's `patch-cards`).
+export type PatchCardSpec = {
+    id: string,
+    mb: number,
+    effects: { PatchCardEffect },
+}
+export type PatchCard = PatchCardSpec
+
 export type LockonDef = {
     id: string,
     rule: "stay" | "row" | "near",
@@ -2086,6 +2104,7 @@ declare define: {
     status: (spec: StatusDef) -> StatusDef,
     lockon: (spec: LockonDef) -> LockonDef,
     identity: (spec: IdentitySpec) -> Identity,
+    patch_card: (spec: PatchCardSpec) -> PatchCard,
     -- A rule section (§3.8): one table of rules no entity owns, by its
     -- section name (`define.rules("elements", { ... })`).
     rules: <T>(section: string, spec: T) -> T,

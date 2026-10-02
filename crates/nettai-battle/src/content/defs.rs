@@ -248,6 +248,30 @@ pub struct RecordDef {
     pub record_type: String,
 }
 
+/// A patch card (`define.patch_card`; BN4's, BN5's and BN6's Modification
+/// Cards, docs/engine/patch-cards.md): what every game's card is. A game's
+/// rules give its effects their meaning (BN6's patch-cards system applies a
+/// player's cards as the round is set up); the engine keeps the card's
+/// capacity cost and its effects' kinds, and the effects' own fields stay
+/// the definition's data, which the rules read. Its name is the locales'.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PatchCardDef {
+    pub key: String,
+    /// Its capacity cost (BN6's MB): what the installed cards' limit counts.
+    pub mb: u8,
+    /// Its effects in the card's order.
+    pub effects: Vec<PatchCardEffect>,
+}
+
+/// An effect of a patch card: its kind (a game's rules say what it does)
+/// and whether the card shows it as a bug (a menu's red text; no game's
+/// application reads it).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PatchCardEffect {
+    pub kind: String,
+    pub bug: bool,
+}
+
 /// A content state layout.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SchemaDef {
@@ -281,6 +305,8 @@ pub struct Defs {
     /// The status effects, by handle.
     pub statuses: Vec<StatusDef>,
     pub records: Vec<RecordDef>,
+    /// The patch cards, by handle.
+    pub patch_cards: Vec<PatchCardDef>,
     /// One-shot effects' and hit sparks' looks (`define.effect`,
     /// `define.spark`), by handle.
     pub effects: Vec<super::EffectSprite>,
@@ -480,6 +506,17 @@ impl Defs {
         self.find(key, |k| self.weapon_keys.get(k).copied())
     }
 
+
+    /// The patch card with this key.
+    pub fn patch_card_by_key(&self, key: &str) -> Option<nettai_content_api::PatchCardHandle> {
+        self.find(key, |k| {
+            self.patch_cards.binary_search_by(|c| c.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::PatchCardHandle(i as u16))
+        })
+    }
+
+    pub fn patch_card(&self, h: nettai_content_api::PatchCardHandle) -> &PatchCardDef {
+        &self.patch_cards[h.index()]
+    }
 
     /// A record's handle by key.
     pub fn record(&self, key: &str) -> Option<RecordHandle> {
@@ -1558,6 +1595,31 @@ impl Defs {
             .map(|d| RecordDef { key: d.key.clone(), record_type: d.record_type.clone().unwrap_or_default() })
             .collect();
 
+        // The patch cards: their capacity cost and their effects' kinds
+        // (what the effects do is a game's rules').
+        let mut patch_cards = Vec::new();
+        for d in definitions.of(Registry::PatchCard) {
+            let what = |e: &str| ContentError::new(format!("{}.luau: patch_card {}: {e}", d.module, d.key));
+            no_display_text(d)?;
+            let mb = d.spec.field("mb").int().filter(|mb| (0..=0xFF).contains(mb)).ok_or_else(|| what("needs `mb` (0-255)"))?;
+            let Data::List(list) = d.spec.field("effects") else {
+                return Err(what("needs `effects`, a list of effects (a table each, with its `kind`)"));
+            };
+            let mut effects = Vec::with_capacity(list.len());
+            for (i, e) in list.iter().enumerate() {
+                let Data::Str(kind) = e.field("kind") else {
+                    return Err(what(&format!("effect {} has no `kind` (a string)", i + 1)));
+                };
+                let bug = match e.field("bug") {
+                    Data::Nil => false,
+                    Data::Bool(b) => *b,
+                    _ => return Err(what(&format!("effect {}'s `bug` is not a boolean", i + 1))),
+                };
+                effects.push(PatchCardEffect { kind: kind.clone(), bug });
+            }
+            patch_cards.push(PatchCardDef { key: d.key.clone(), mb: mb as u8, effects });
+        }
+
         // Each definition's handle.
         fn position<'a>(mut keys: impl Iterator<Item = &'a String>, key: &str) -> u16 {
             keys.position(|k| k == key).expect("an entry") as u16
@@ -1605,6 +1667,7 @@ impl Defs {
             identities,
             statuses,
             records,
+            patch_cards,
             effects,
             sparks,
             regions,

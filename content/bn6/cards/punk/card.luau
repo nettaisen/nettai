@@ -5,8 +5,8 @@ local cards = require("../../rules/patch-cards/cards")
 local shield = require("../../navis/megaman/weapons/shield/weapon")
 local variants = require("../../objects/projectile/variants")
 
-return cards.card {
-    id = "patch-card/punk",
+return define.patch_card {
+    id = "punk",
     mb = 50,
     effects = {
         cards.hp(400),

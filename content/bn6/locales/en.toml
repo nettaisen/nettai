@@ -4,7 +4,7 @@
 # time the custom screen's chatbox, and the define phase counts them into the records (which the content's
 # hash covers). gen-content checks them against the US ROMs (the chips', the Crosses' and the navis'); the
 # names of the chips the US release cut (Count, Django...), the three Giga chips' descriptions (a gift's
-# text the save keeps, which no ROM has), the Crosses' names and the patch cards' ([records], the fan
+# text the save keeps, which no ROM has), the Crosses' names and the patch cards' ([patch-cards], the fan
 # translation's) are the content's own. The game's marks are characters (text-rendering.md §10.5): Ⓐ and Ⓑ
 # the buttons, \uE002 and \uE003 the stacked EX and SP.
 
@@ -393,121 +393,121 @@ spoutcross = { name = "SpoutCross", description = "Chrg WatrChip:\nAtk x2! Watr\
 tengucross = { name = "TenguCross", description = "WindChip Atk\n+10!AirShsOn!\nⒷ+Left:SuckIn" }
 tomahawkcross = { name = "TomahawkCross", description = "Chrg WoodChip:\nAtk x2! Status\nGuard:NoAbnorm" }
 
-[records]
-"patch-card/airman" = { name = "AirMan" }
-"patch-card/amonicul" = { name = "Amonicul" }
-"patch-card/armadill" = { name = "Armadill" }
-"patch-card/bass-cross-megaman" = { name = "Bass-Cross MegaMan" }
-"patch-card/bassbx" = { name = "BassBX" }
-"patch-card/beastman" = { name = "BeastMan" }
-"patch-card/beetle" = { name = "Beetle" }
-"patch-card/bighat" = { name = "BigHat" }
-"patch-card/blastman" = { name = "BlastMan" }
-"patch-card/blizman" = { name = "BlizMan" }
-"patch-card/bombcorn" = { name = "BombCorn" }
-"patch-card/bomboy" = { name = "BomBoy" }
-"patch-card/bowlman" = { name = "BowlMan" }
-"patch-card/burnrman" = { name = "BurnrMan" }
-"patch-card/canguard" = { name = "CanGuard" }
-"patch-card/canodumb" = { name = "Canodumb" }
-"patch-card/chrgeman" = { name = "ChrgeMan" }
-"patch-card/cloudman" = { name = "CloudMan" }
-"patch-card/coldbear" = { name = "ColdBear" }
-"patch-card/coldman" = { name = "ColdMan" }
-"patch-card/colorman" = { name = "ColorMan" }
-"patch-card/count" = { name = "Count" }
-"patch-card/cragger" = { name = "Cragger" }
-"patch-card/crcusman" = { name = "CrcusMan" }
-"patch-card/cutman" = { name = "CutMan" }
-"patch-card/cybeast-falzar" = { name = "Cybeast Falzar" }
-"patch-card/cybeast-gregar" = { name = "Cybeast Gregar" }
-"patch-card/dark-megaman" = { name = "Dark MegaMan" }
-"patch-card/darkman" = { name = "DarkMan" }
-"patch-card/darkmech" = { name = "DarkMech" }
-"patch-card/desertmn" = { name = "DesertMn" }
-"patch-card/diveman" = { name = "DiveMan" }
-"patch-card/django" = { name = "Django" }
-"patch-card/draggin" = { name = "Draggin" }
-"patch-card/dustman" = { name = "DustMan" }
-"patch-card/eleogre" = { name = "Eleogre" }
-"patch-card/elmntman" = { name = "ElmntMan" }
-"patch-card/eraseman" = { name = "EraseMan" }
-"patch-card/erthdrgn" = { name = "ErthDrgn" }
-"patch-card/famous-custom" = { name = "Famous' Custom" }
-"patch-card/fgtrplne" = { name = "FgtrPlne" }
-"patch-card/flashy" = { name = "Flashy" }
-"patch-card/freezemn" = { name = "FreezeMn" }
-"patch-card/gridman" = { name = "GridMan" }
-"patch-card/grndman" = { name = "GrndMan" }
-"patch-card/gunner" = { name = "Gunner" }
-"patch-card/handy" = { name = "Handy" }
-"patch-card/heavy" = { name = "Heavy" }
-"patch-card/hntdcndl" = { name = "HntdCndl" }
-"patch-card/honybomr" = { name = "HonyBomr" }
-"patch-card/iceman" = { name = "IceMan" }
-"patch-card/jelly" = { name = "Jelly" }
-"patch-card/judgeman" = { name = "JudgeMan" }
-"patch-card/kendoman" = { name = "KendoMan" }
-"patch-card/kettle" = { name = "Kettle" }
-"patch-card/kilby" = { name = "Kilby" }
-"patch-card/kilplant" = { name = "KilPlant" }
-"patch-card/knigtman" = { name = "KnigtMan" }
-"patch-card/larkman" = { name = "LarkMan" }
-"patch-card/magneakr" = { name = "Magneakr" }
-"patch-card/magntman" = { name = "MagntMan" }
-"patch-card/magtect" = { name = "MagTect" }
-"patch-card/marina" = { name = "Marina" }
-"patch-card/megalian" = { name = "Megalian" }
-"patch-card/megaman-zero" = { name = "MegaMan-Zero" }
-"patch-card/metrid" = { name = "Metrid" }
-"patch-card/mettfire" = { name = "MettFire" }
-"patch-card/miney" = { name = "Miney" }
-"patch-card/mistman" = { name = "MistMan" }
-"patch-card/momogra" = { name = "Momogra" }
-"patch-card/napalmmn" = { name = "NapalmMn" }
-"patch-card/needler" = { name = "Needler" }
-"patch-card/nghtmare" = { name = "NghtMare" }
-"patch-card/number" = { name = "Number" }
-"patch-card/numbrman" = { name = "NumbrMan" }
-"patch-card/octon" = { name = "Octon" }
-"patch-card/oldstov" = { name = "OldStov" }
-"patch-card/pharoman" = { name = "PharoMan" }
-"patch-card/planetmn" = { name = "PlanetMn" }
-"patch-card/plantman" = { name = "PlantMan" }
-"patch-card/poitton" = { name = "Poitton" }
-"patch-card/puffball" = { name = "Puffy" }
-"patch-card/puffy" = { name = "Puffy" }
-"patch-card/pulsbulb" = { name = "PulsBulb" }
-"patch-card/punk" = { name = "Punk" }
-"patch-card/satella" = { name = "Satella" }
-"patch-card/scarcrow" = { name = "ScarCrow" }
-"patch-card/searchmn" = { name = "SearchMn" }
-"patch-card/shadoman" = { name = "ShadoMan" }
-"patch-card/shadow" = { name = "Shadow" }
-"patch-card/sharkman" = { name = "SharkMan" }
-"patch-card/shelgeek" = { name = "ShelGeek" }
-"patch-card/shrubby" = { name = "Shrubby" }
-"patch-card/skarab" = { name = "Skarab" }
-"patch-card/skullman" = { name = "SkullMan" }
-"patch-card/slashman" = { name = "SlashMan" }
-"patch-card/slimey" = { name = "Slimey" }
-"patch-card/snakearm" = { name = "SnakeArm" }
-"patch-card/soul-battlrs-custom" = { name = "Soul Battlr's Custom" }
-"patch-card/sparky" = { name = "Sparky" }
-"patch-card/spidy" = { name = "Spidy" }
-"patch-card/starfish" = { name = "Starfish" }
-"patch-card/starman" = { name = "StarMan" }
-"patch-card/stoneman" = { name = "StoneMan" }
-"patch-card/tenguman" = { name = "TenguMan" }
-"patch-card/thunman" = { name = "ThunMan" }
-"patch-card/toadman" = { name = "ToadMan" }
-"patch-card/topman" = { name = "TopMan" }
-"patch-card/totem" = { name = "Totem" }
-"patch-card/twins" = { name = "Twins" }
-"patch-card/twisty" = { name = "Twisty" }
-"patch-card/videoman" = { name = "VideoMan" }
-"patch-card/viney" = { name = "Viney" }
-"patch-card/volcano" = { name = "Volcano" }
-"patch-card/walla" = { name = "Walla" }
-"patch-card/wunote" = { name = "WuNote" }
-"patch-card/yamatomn" = { name = "YamatoMn" }
+[patch-cards]
+airman = { name = "AirMan" }
+amonicul = { name = "Amonicul" }
+armadill = { name = "Armadill" }
+bass-cross-megaman = { name = "Bass-Cross MegaMan" }
+bassbx = { name = "BassBX" }
+beastman = { name = "BeastMan" }
+beetle = { name = "Beetle" }
+bighat = { name = "BigHat" }
+blastman = { name = "BlastMan" }
+blizman = { name = "BlizMan" }
+bombcorn = { name = "BombCorn" }
+bomboy = { name = "BomBoy" }
+bowlman = { name = "BowlMan" }
+burnrman = { name = "BurnrMan" }
+canguard = { name = "CanGuard" }
+canodumb = { name = "Canodumb" }
+chrgeman = { name = "ChrgeMan" }
+cloudman = { name = "CloudMan" }
+coldbear = { name = "ColdBear" }
+coldman = { name = "ColdMan" }
+colorman = { name = "ColorMan" }
+count = { name = "Count" }
+cragger = { name = "Cragger" }
+crcusman = { name = "CrcusMan" }
+cutman = { name = "CutMan" }
+cybeast-falzar = { name = "Cybeast Falzar" }
+cybeast-gregar = { name = "Cybeast Gregar" }
+dark-megaman = { name = "Dark MegaMan" }
+darkman = { name = "DarkMan" }
+darkmech = { name = "DarkMech" }
+desertmn = { name = "DesertMn" }
+diveman = { name = "DiveMan" }
+django = { name = "Django" }
+draggin = { name = "Draggin" }
+dustman = { name = "DustMan" }
+eleogre = { name = "Eleogre" }
+elmntman = { name = "ElmntMan" }
+eraseman = { name = "EraseMan" }
+erthdrgn = { name = "ErthDrgn" }
+famous-custom = { name = "Famous' Custom" }
+fgtrplne = { name = "FgtrPlne" }
+flashy = { name = "Flashy" }
+freezemn = { name = "FreezeMn" }
+gridman = { name = "GridMan" }
+grndman = { name = "GrndMan" }
+gunner = { name = "Gunner" }
+handy = { name = "Handy" }
+heavy = { name = "Heavy" }
+hntdcndl = { name = "HntdCndl" }
+honybomr = { name = "HonyBomr" }
+iceman = { name = "IceMan" }
+jelly = { name = "Jelly" }
+judgeman = { name = "JudgeMan" }
+kendoman = { name = "KendoMan" }
+kettle = { name = "Kettle" }
+kilby = { name = "Kilby" }
+kilplant = { name = "KilPlant" }
+knigtman = { name = "KnigtMan" }
+larkman = { name = "LarkMan" }
+magneakr = { name = "Magneakr" }
+magntman = { name = "MagntMan" }
+magtect = { name = "MagTect" }
+marina = { name = "Marina" }
+megalian = { name = "Megalian" }
+megaman-zero = { name = "MegaMan-Zero" }
+metrid = { name = "Metrid" }
+mettfire = { name = "MettFire" }
+miney = { name = "Miney" }
+mistman = { name = "MistMan" }
+momogra = { name = "Momogra" }
+napalmmn = { name = "NapalmMn" }
+needler = { name = "Needler" }
+nghtmare = { name = "NghtMare" }
+number = { name = "Number" }
+numbrman = { name = "NumbrMan" }
+octon = { name = "Octon" }
+oldstov = { name = "OldStov" }
+pharoman = { name = "PharoMan" }
+planetmn = { name = "PlanetMn" }
+plantman = { name = "PlantMan" }
+poitton = { name = "Poitton" }
+puffball = { name = "Puffy" }
+puffy = { name = "Puffy" }
+pulsbulb = { name = "PulsBulb" }
+punk = { name = "Punk" }
+satella = { name = "Satella" }
+scarcrow = { name = "ScarCrow" }
+searchmn = { name = "SearchMn" }
+shadoman = { name = "ShadoMan" }
+shadow = { name = "Shadow" }
+sharkman = { name = "SharkMan" }
+shelgeek = { name = "ShelGeek" }
+shrubby = { name = "Shrubby" }
+skarab = { name = "Skarab" }
+skullman = { name = "SkullMan" }
+slashman = { name = "SlashMan" }
+slimey = { name = "Slimey" }
+snakearm = { name = "SnakeArm" }
+soul-battlrs-custom = { name = "Soul Battlr's Custom" }
+sparky = { name = "Sparky" }
+spidy = { name = "Spidy" }
+starfish = { name = "Starfish" }
+starman = { name = "StarMan" }
+stoneman = { name = "StoneMan" }
+tenguman = { name = "TenguMan" }
+thunman = { name = "ThunMan" }
+toadman = { name = "ToadMan" }
+topman = { name = "TopMan" }
+totem = { name = "Totem" }
+twins = { name = "Twins" }
+twisty = { name = "Twisty" }
+videoman = { name = "VideoMan" }
+viney = { name = "Viney" }
+volcano = { name = "Volcano" }
+walla = { name = "Walla" }
+wunote = { name = "WuNote" }
+yamatomn = { name = "YamatoMn" }

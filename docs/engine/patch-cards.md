@@ -196,18 +196,23 @@ address as its Z (compared by whole pixels, kinds.toml `scratch_z_fraction`).
 
 ## 4. In nettai
 
-**BN6's patch-cards system.** The cards are a system of BN6's stock ruleset (docs/design/rules-in-luau.md):
-content/bn6/rules/patch-cards/system.luau, listed in content/bn6/rules/ruleset.luau. The engine has no code of its
-own for them.
+**The cards are the engine's; their effects are BN6's rules'.** Patch cards are in BN4, BN5 (JP) and BN6 (JP), so a
+card and a player's cards are engine concepts (the user's decision, 2026-10-02); what an effect does is each game's
+rule, BN6's patch-cards system (content/bn6/rules/patch-cards/system.luau, in content/bn6/rules/ruleset.luau).
 
-- **The cards** are records of type "patch-card" (rules/patch-cards/cards.luau's `card`): content/bn6/cards/<name>/
-  card.luau, keyed `patch-card/<name>`, with the MB and the effects (that module's constructors:
+- **The cards** are definitions of their own (`define.patch_card`, `Registry::PatchCard`, `PatchCardHandle`,
+  `Content::patch_card`): content/bn6/cards/<name>/card.luau, keyed by name (`canodumb`) as chips are, compat
+  patch-cards.toml giving each its number. **The engine's record of a card** (`PatchCardDef`) is what every game's
+  card is: its capacity cost (`mb`, BN6's MB, which the installed cards' limit counts) and its effects in the
+  card's order, each a `kind` and whether the card shows it as a `bug`. The kind's own fields stay the
+  definition's data, which the game's rules read (BN6's: rules/patch-cards/cards.luau's constructors,
   `cards.hp(-40)`, `cards.charged_shot(require("./charge"))`, `cards.bug(...)`, ...). Weapons, programs
-  (projectile variants), barriers and gauges are named by definition, never by number.
-- **A player's installed cards** are the system's player setup: `cards` (16 card records, in the list's order,
-  nil past the last) and `off` (16 booleans: switched off, the menu's toggle). Sixteen fit the 80 MB (each card
-  takes 5 or more); the save's list has room for 32. Tools write it with `PlayerSetup::set_rule_elem`
-  (bn6-compat's `codec::install_patch_cards` from a save's or trace's card list; the frontend's `--cards`).
+  (projectile variants), barriers and gauges are named by definition, never by number. The name is the locales'.
+- **A player's installed cards** are their setup's (`PlayerSetup::patch_cards`: card handles in the list's order,
+  each switched on or off, at most 32, BN6's save list's room; its 80 MB allow 16), which the setup exchange and
+  the digest cover as the rest of the setup. The BN6 system reads them with `battle.patch_cards(side)`
+  (`{ card, enabled }` each). bn6-compat's `codec::patch_cards` makes them from a save's or trace's card list,
+  the frontend from `--cards` and `--their-cards`.
 - **The application** is the system's `round_setup` hook: once per side as the round is set up (`Battle::new`),
   before anything reads the side's stats. It is §1.2 steps 2 to 7 over the side's stats (`battle.navi(side)`):
   the slots seeded from the stats, each switched-on card's effects in the kinds' order, the clamps, the copy
@@ -224,8 +229,8 @@ own for them.
 
 ## 5. Names
 
-The cards' names, like every display text, are the locales' (content/bn6/locales/<lang>.toml, `records` by the
-card's key). ja.toml has the Japanese games' card names, as the ROMs' name archive has them (a two-line name with
+The cards' names, like every display text, are the locales' (content/bn6/locales/<lang>.toml, `patch-cards` by
+the card's key). ja.toml has the Japanese games' card names, as the ROMs' name archive has them (a two-line name with
 its line break); gen-content checks them against the Japanese ROM. The card weapons have no names: nothing shows a
 weapon's name, so the locales have no `weapons` table (docs/design/text-rendering.md §10.2).
 
