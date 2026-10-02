@@ -125,5 +125,6 @@ fn asset_names(compat: &Path) -> nettai_content::names::AssetNames {
     names.banners = c.assets.banners.iter().map(|(k, &v)| (v, k.clone())).collect();
     names.chips = c.chips.iter().map(|(k, e)| (e.id, k.clone())).collect();
     names.glyphs = c.text.glyphs.clone();
+    names.dialogue_glyphs = c.text.dialogue_glyphs.clone();
     names
 }

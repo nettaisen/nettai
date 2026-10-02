@@ -356,6 +356,65 @@ impl Hud {
     }
 }
 
+/// The dialogue font (the chatbox's, `byte_86ACD60`): glyphs of 16x12
+/// pixels, each with its advance (`byte_8043CA4`), and what each draws:
+/// the game's text encoding's glyphs, then bytes 0xE0-0xE3 and the
+/// two-byte codes E4 00 on.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct DialogueFont {
+    /// A palette index a pixel, glyph after glyph, row by row (0 is
+    /// clear; the text's colour is added to the others).
+    pub pixels: Vec<u8>,
+    pub advances: Vec<u8>,
+    pub chars: Vec<String>,
+}
+
+impl DialogueFont {
+    pub const WIDTH: usize = 16;
+    pub const HEIGHT: usize = 12;
+
+    pub fn len(&self) -> usize {
+        self.advances.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.advances.is_empty()
+    }
+
+    /// Glyph `i`'s pixels (16x12).
+    pub fn glyph(&self, i: usize) -> Option<&[u8]> {
+        let n = Self::WIDTH * Self::HEIGHT;
+        self.pixels.get(n * i..n * (i + 1))
+    }
+
+    /// The glyphs of a string, each glyph's longest name first, and the
+    /// characters none draws.
+    pub fn glyphs(&self, text: &str) -> (Vec<u16>, Vec<char>) {
+        let mut out = Vec::new();
+        let mut missing = Vec::new();
+        let mut rest = text;
+        while let Some(c) = rest.chars().next() {
+            let best = self
+                .chars
+                .iter()
+                .enumerate()
+                .filter(|(_, g)| !g.is_empty() && rest.starts_with(g.as_str()))
+                .max_by_key(|(i, g)| (g.len(), std::cmp::Reverse(*i)));
+            match best {
+                Some((i, g)) => {
+                    out.push(i as u16);
+                    rest = &rest[g.len()..];
+                }
+                None => {
+                    missing.push(c);
+                    rest = &rest[c.len_utf8()..];
+                }
+            }
+        }
+        (out, missing)
+    }
+}
+
 /// A link navi's mugshot (4x2 tiles) with its palettes: normal, angry.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct NaviMugshot {
