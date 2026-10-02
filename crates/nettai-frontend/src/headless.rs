@@ -1,9 +1,10 @@
 //! Rendering chosen frames to PNG files without a window.
 
 use crate::audit::Problems;
-use crate::compose::{HEIGHT, WIDTH, to_rgb};
-use crate::render::Renderer;
+use crate::compose::{HEIGHT, WIDTH};
+use crate::render::{Frame, Renderer};
 use crate::session::Session;
+use crate::vfont::TextRenderer;
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -66,17 +67,19 @@ impl KeyScript {
     }
 }
 
-/// Write a BGR555 frame as an RGB PNG, scaled up by an integer factor.
-pub fn write_png(path: &Path, frame: &[u16], scale: usize) -> std::io::Result<()> {
+/// Write a frame as an RGB PNG, scaled up by an integer factor, with its
+/// text items drawn at that scale by `text` (`present`).
+pub fn write_png(path: &Path, frame: &Frame, scale: usize, text: Option<&mut TextRenderer>) -> std::io::Result<()> {
     let scale = scale.max(1);
     let (w, h) = (WIDTH * scale, HEIGHT * scale);
-    let mut rgb = Vec::with_capacity(w * h * 3);
-    for y in 0..h {
-        for x in 0..w {
-            let c = to_rgb(frame[(y / scale) * WIDTH + x / scale]);
-            rgb.extend_from_slice(&[(c >> 16) as u8, (c >> 8) as u8, c as u8]);
-        }
-    }
+    let mut out = vec![0u32; w * h];
+    crate::present::present(frame, text, &mut out, w, h);
+    write_rgb_png(path, &out, w, h)
+}
+
+/// Write 0RGB pixels, `w` by `h`, as an RGB PNG.
+pub fn write_rgb_png(path: &Path, out: &[u32], w: usize, h: usize) -> std::io::Result<()> {
+    let rgb: Vec<u8> = out.iter().flat_map(|&c| [(c >> 16) as u8, (c >> 8) as u8, c as u8]).collect();
     let file = std::io::BufWriter::new(std::fs::File::create(path)?);
     let mut enc = png::Encoder::new(file, w as u32, h as u32);
     enc.set_color(png::ColorType::Rgb);
@@ -97,12 +100,13 @@ pub fn render_frames(
     scale: usize,
     log: &mut dyn FnMut(&str),
 ) -> std::io::Result<Vec<u32>> {
-    render_frames_with(renderer, sessions, wanted, out, scale, false, &KeyScript::default(), log)
+    render_frames_with(renderer, sessions, wanted, out, scale, false, &KeyScript::default(), None, log)
 }
 
 /// [`render_frames`], and with `objects` every written frame's objects
-/// go to the log as the renderer sees them (`objects::describe`); `keys`
-/// are the local player's buttons, by tick (live play's).
+/// (`objects::describe`) and text items (`textlayer::describe`) go to the
+/// log as the renderer sees them; `keys` are the local player's buttons,
+/// by tick (live play's); `text` draws the font mode's text items.
 #[allow(clippy::too_many_arguments)]
 pub fn render_frames_with(
     renderer: &mut Renderer,
@@ -112,6 +116,7 @@ pub fn render_frames_with(
     scale: usize,
     objects: bool,
     keys: &KeyScript,
+    mut text: Option<&mut TextRenderer>,
     log: &mut dyn FnMut(&str),
 ) -> std::io::Result<Vec<u32>> {
     std::fs::create_dir_all(out)?;
@@ -126,7 +131,7 @@ pub fn render_frames_with(
             renderer.problems.at(Some(f));
             if wanted.contains(&f) {
                 let frame = renderer.render(&s.battle);
-                write_png(&out.join(format!("frame_{f:05}.png")), &frame, scale)?;
+                write_png(&out.join(format!("frame_{f:05}.png")), &frame, scale, text.as_deref_mut())?;
                 written.push(f);
                 // Where the frame differs from the original on purpose
                 // (`known.tsv`: frame, x, y, width, height, why), for the
@@ -140,6 +145,9 @@ pub fn render_frames_with(
                 }
                 if objects {
                     for line in crate::objects::describe(&s.battle, &Renderer::view(&s.battle)) {
+                        log(&format!("frame {f}: {line}"));
+                    }
+                    for line in crate::textlayer::describe(&frame) {
                         log(&format!("frame {f}: {line}"));
                     }
                 }

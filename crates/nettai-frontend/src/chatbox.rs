@@ -13,6 +13,8 @@ use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
 use crate::objects::SpriteList;
+use crate::textlayer::{Plane, Rect, TextItem, TextSink};
+use crate::vfont::Role;
 use nettai_assets::{Bundle, Chatbox as Graphics, Palette, SpriteSheet, Tiles};
 use nettai_battle::Battle;
 use nettai_battle::custom::chatbox::{Chatbox, PortraitLook, Script};
@@ -30,6 +32,10 @@ const TEXT_WIDTH: usize = 192;
 const TEXT_ROWS: usize = 40;
 const LINE_ROWS: usize = 14;
 const TEXT_SPRITES: [(usize, usize); 3] = [(0, 16), (16, 16), (32, 8)];
+/// The rows past the line buffer the text layer may draw a third line's
+/// descenders in (a font's go lower than the dialogue font's, which the
+/// buffer's 40 rows hold; the box's frame is further down).
+const DESCENDER_ROWS: usize = 3;
 /// The key-wait arrow's place by the box (`byte_8045DCC`): the message
 /// box's (the default) and the description box's (`E8 06 01 01`).
 const ARROW_AT: [(i32, i32); 2] = [(0xE2, 0x8D), (0xCA, 0x8D)];
@@ -50,11 +56,14 @@ pub struct Shown<'a> {
     chatbox: Chatbox,
     kind: usize,
     text: Tiles,
+    /// In the font text mode, the lines for the text layer (their sprites'
+    /// tiles are blank): each line's words and the units of it printed.
+    lines: Option<Vec<(String, usize)>>,
     portrait: Option<(&'a SpriteSheet, PortraitLook)>,
 }
 
 /// The local player's chatbox, if one is up, with its text composed.
-pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, problems: &mut Problems) -> Option<Shown<'a>> {
+pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &mut Problems) -> Option<Shown<'a>> {
     let (side, screen) = crate::custom::local(b)?;
     let navi = b.stats[b.setup.local_side as usize & 1].navi;
     let (chatbox, words, portrait) = match screen.phase {
@@ -84,7 +93,12 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, problems: &mut Problems) -> O
         Script::Description { .. } => DESCRIPTION_BOX,
         Script::RunMessage { .. } => MESSAGE_BOX,
     };
-    let text = text_tiles(b, assets, &chatbox, words.as_deref().unwrap_or(""), problems);
+    let words = words.as_deref().unwrap_or("");
+    let (text, lines) = if sink.takes(words) {
+        (Tiles { pixels: vec![0; TEXT_WIDTH * TEXT_ROWS] }, Some(printed(&chatbox, words)))
+    } else {
+        (text_tiles(b, assets, &chatbox, words, problems), None)
+    };
     let portrait = match (portrait, chatbox.look().portrait) {
         (Some(id), Some(look)) => match assets.sprite(id.category, id.index) {
             Some(sheet) => {
@@ -98,7 +112,27 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, problems: &mut Problems) -> O
         },
         _ => None,
     };
-    Some(Shown { chatbox, kind, text, portrait })
+    Some(Shown { chatbox, kind, text, lines, portrait })
+}
+
+/// The lines printed so far, each with the units of it shown (as
+/// `text_tiles` composes them: the lines before the one printing whole).
+fn printed(chatbox: &Chatbox, words: &str) -> Vec<(String, usize)> {
+    let Some((done, printing)) = chatbox.look().text else { return Vec::new() };
+    words
+        .split('\n')
+        .take(3)
+        .enumerate()
+        .filter_map(|(k, line)| {
+            let units = crate::vfont::unit_count(line);
+            let shown = match (k as u8).cmp(&done) {
+                std::cmp::Ordering::Less => units,
+                std::cmp::Ordering::Equal => (printing as usize).min(units),
+                std::cmp::Ordering::Greater => 0,
+            };
+            (shown > 0).then(|| (line.to_string(), shown))
+        })
+        .collect()
 }
 
 /// The text's sprite tiles: the lines printed so far composed into the
@@ -150,7 +184,7 @@ fn note_true_face(b: &Battle, navi: nettai_content_api::NaviHandle, console: Gam
 
 /// Draw the chatbox: the box on `names_layer` (BG0), the sprites into
 /// `list`, in front of the screen's.
-pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Layer, list: &mut SpriteList<'a>) {
+pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Layer, list: &mut SpriteList<'a>, sink: &mut TextSink) {
     let g = &assets.hud.chatbox;
     let c = &shown.chatbox;
     if let Some(step) = c.box_step() {
@@ -172,7 +206,23 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
             rows.push(row);
         }
         rows.reverse();
-        list.insert_at(LAYER, TEXT_BUCKET, rows.into_iter().flatten().collect());
+        let group = rows.into_iter().flatten().collect();
+        match &shown.lines {
+            // In the font mode the sprites are blank and the lines are text
+            // items as deep as them, cut where they end (the last row of
+            // sprites is 8 rows high).
+            Some(lines) => {
+                let tag = sink.tag();
+                list.insert_tagged(LAYER, TEXT_BUCKET, group, Some(tag));
+                let sprites = Rect::new(TEXT_X, TEXT_Y, TEXT_WIDTH as i32, (TEXT_ROWS + DESCENDER_ROWS) as i32);
+                for (k, (line, units)) in lines.iter().enumerate() {
+                    let rect = Rect::new(TEXT_X, TEXT_Y + (LINE_ROWS * k) as i32, TEXT_WIDTH as i32, 12);
+                    let item = TextItem::new(line.as_str(), Role::Dialogue, rect, g.text_palette[1], None);
+                    sink.push(Plane::Sprite(tag), TextItem { clip: sprites, shown: Some(*units), ..item });
+                }
+            }
+            None => list.insert_at(LAYER, TEXT_BUCKET, group),
+        }
     }
     // chatbox_804082C: the arrow; chatbox_8040B8C: the portrait in front.
     if let Some(frame) = c.look().arrow {
