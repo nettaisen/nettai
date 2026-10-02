@@ -810,16 +810,8 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
         problems.note(format!("the navi named {name:?}: the pack's font has no glyph for {missing:?}"));
     }
     let len = glyphs.len().min(ENEMY_NAME_CELLS);
-    let text = fonts::cell_text(v.hud, &glyphs, ENEMY_NAME_CELLS, 0);
-    let pal = &w.palettes[13];
     let col = 0x1E - len as i32;
-    for k in 0..ENEMY_NAME_CELLS {
-        for half in 0..2 {
-            if let Some(t) = text.get(2 * k + half) {
-                names_layer.draw_tile(t, pal, 8 * (col + k as i32), 8 * half as i32, false, false);
-            }
-        }
-    }
+    fonts::draw_cell_text(names_layer, v.hud, &glyphs, ENEMY_NAME_CELLS, &w.palettes[13], 8 * col, 0);
     // The bar: the slanted end, then one cell a glyph (eight at most; a
     // ninth glyph has bar cells from column 21 on, no end).
     let bar = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 13 };
