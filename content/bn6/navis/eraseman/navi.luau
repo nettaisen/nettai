@@ -16,7 +16,7 @@ return define.navi {
     banners = { win = asset.banner("eraseman-win"), lose = asset.banner("eraseman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`): the Falzar ROM has no
     -- EraseMan face, and shows GroundMan's.
-    mugshot = asset.mugshot("groundman"),
+    mugshot = asset.mugshot("eraseman"),
     merge_height = 0,
     run_message = { 19, 15, 19 },
     own_chip = { chip = eraseman, code = "K" },

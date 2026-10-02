@@ -21,7 +21,7 @@ sound, in open formats (indexed PNG, JSON, Tiled maps, MIDI, TOML, WAV; see
 `docs/design/content-pack.md` and `docs/design/asset-formats.md`), by the
 names the content gives them. Extract it once:
 
-    cargo run -p bn6-extract -- content <rom> data/content/bn6
+    cargo run -p bn6-extract -- content <falzar-rom> <gregar-rom> data/content/bn6
 
 (`data/content/` is gitignored.) The frontend loads the pack at start-up
 from `--pack <dir>`, else `$BN6_PACK`, else `data/content/bn6`, straight
@@ -236,9 +236,24 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   pick), the Regular chip's frame;
 - the enemy names on BG0 over their bar on the HUD layer, on a round's
   first screen;
+- the Cross window: its opening steps, its map with the Crosses' names (the
+  one under the cursor in its own look, palette 10 the Cross's), its
+  cursor; a Cross's choice whitens everything and puts the Cross's face in
+  the emotion window;
+- the Program Advance animation (the window out): the picks' names and
+  codes a column right of the layer's scroll, the recipe's in the blinking
+  palette 10 and taken off, the Program Advance's in their place; the
+  stage and the objects fade a quarter of the way;
+- the scrap and the re-deal: the column losing the scrapped picks, the
+  slots dealt again, the emblem and the Regular chip's frame throughout;
+- a console's own pictures by its version (`Versioned`: a Gregar console's
+  Beast and emblem, the pack's `-gregar` assets); a Cross's name and
+  colours in the Cross window are its own game's (`custom::cross_picture`),
+  so a Gregar Cross shows Gregar's name in any window;
 - what the screen does to the rest: the HP box and the mugshot move right
   with the window and the field and the sprites 15 pixels down (the
-  camera), the gauge stays off until the local result is sent, Beast Out's
+  camera), the gauge and the HUD's "????" stay off until the local result
+  is sent, Beast Out's
   fade darkens the stage, the HUD layer and the objects (sprite palettes
   0-10) half way, the camera's jitter moves the HUD layer in Beast Out's
   states, and the emotion window shows the Beast form chosen. A dark
@@ -305,7 +320,10 @@ camera shake and screen dim.
 **A second match**, three rounds traced on the right-hand player's console
 (so the field is drawn mirrored), with Crosses, rock cubes, ice and grass
 panels, traps and Invisibl: of the 6397 frames outside the custom screen
-that have screenshots, **all 6397 are pixel-exact**, every row of them.
+that have screenshots, **all 6397 are pixel-exact**, every row of them. Of
+its 13,278 custom-screen frames 13,266 are, with the Cross windows, the
+DustCross scrap and the screens' openings and closings; the 12 that aren't
+show a description's chatbox.
 
 **Chip-lab scenarios**: 132 scenarios, a few of every family
 (shot, sword, thrown, placed and dimming chips, navi chips, the link
@@ -313,12 +331,20 @@ navis, traps, supports, stages with their objects, forms, Beast Over, the
 flow: knockouts, the damage judge, pause, a counter hit, a lost Full
 Synchro), each recorded with a screenshot per battle frame. Of 123,433
 frames outside the custom screen, **all 123,433 are pixel-exact**, and so
-is every scenario on every frame: the telops of dimmings content starts
+is every scenario on every frame, its 21,900 custom-screen frames included
+(the Cross window, the Program Advance animation, Beast Out): the telops of dimmings content starts
 itself, LilBoiler's HP number, the warning arrows, the faces. No frame
 panics, and the audit names nothing missing.
 
+**The custom screen's own scenarios** (36: the re-deal, the scrap, the
+keys, the Cross window, Beast Out, invalid chips, modifiers and Program
+Advances, a link navi's own chip, the chatbox): all 32,434 frames outside
+the custom screen are pixel-exact, and 9,593 of its 9,977, all but the
+frames that show the chatbox (descriptions, the run message), which isn't
+drawn yet.
+
 The comparison needs the ROM, so it lives outside this repository, with the
-list of scenarios. The frontend's own tests (`cargo test -p nettai-frontend`)
+lists of scenarios. The frontend's own tests (`cargo test -p nettai-frontend`)
 use a small synthetic asset set and a live battle built in code.
 
 The recorders take each picture at the traced console's own VBlank, as
@@ -333,9 +359,20 @@ them).
 
 ## 5. Known gaps
 
-- The custom screen's Cross window, Program Advance animation, scrap,
-  re-deal and chatbox (descriptions, the run message) aren't drawn yet;
-  live play also shows it as text.
+- **Deliberate: Gregar's true faces on a Falzar console.** The emotion
+  window shows every form's and link navi's own face, Gregar's from the
+  Gregar ROM, on either console (the user's choice). The original Falzar
+  console has no faces for Gregar's Crosses, Beast and link navis and shows
+  the Falzar counterpart's instead (HeatCross as SpoutCross); a frame that
+  shows a Gregar form or navi on a Falzar console differs there on purpose
+  (the sample's HeatMan, SlashMan and ChargeMan scenarios show one on every
+  frame). The headless frontend lists such places with each frame
+  (`known.tsv` beside the frames: frame, rectangle, why), and the
+  comparison leaves them out and counts those frames apart, not as
+  regressions.
+
+- The custom screen's chatbox (descriptions, the run message) isn't drawn
+  yet; live play also shows the screen as text.
 - Affine (rotated or scaled) object sprites (`sprite_makeScalable`: no kind
   in the engine or the content uses one yet; compose draws affine parts, the
   custom screen's emblem is one), the per-part palette override

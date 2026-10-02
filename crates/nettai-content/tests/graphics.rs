@@ -176,7 +176,7 @@ fn custom() -> CustomScreen {
         empty_icon: tiles(4, 74),
         redeal_buttons: tiles(36, 76),
         scrap_buttons: tiles(48, 77),
-        versioned: Versioned { base: own(63), versions: vec![("gregar".into(), own(90))] },
+        versioned: Versioned { base: own(63), base_version: "falzar".into(), versions: vec![("gregar".into(), own(90))] },
         cursor: tiles(2, 78),
         cross_cursor: tiles(4, 84),
         cross_cursor_palette: palette(85),

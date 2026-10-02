@@ -20,7 +20,8 @@ use nettai_battle::Battle;
 use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipClass, ChipFlags, DamageFormula};
 use nettai_battle::custom::screen::{CROSS_PUT_ON_TICK, HiddenStage, OK_SLOT, SPECIAL_SLOT};
-use nettai_battle::custom::{FolderChip, GameVersion, Phase, Screen, Side, SlotKind, SlotState};
+use nettai_battle::custom::{FolderChip, GameVersion, Library, Phase, Screen, Side, SlotKind, SlotState};
+use nettai_content_api::{FormHandle, NaviHandle};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
 const COLUMNS: usize = 15;
@@ -83,8 +84,14 @@ const SPRITE_LAYER: usize = 1;
 
 /// The local player's custom screen while the battle is on the custom
 /// screen.
+/// Whether this custom mode's screens are open: on the mode's first tick
+/// they open (`sub_8026840`); until then a side's screen is the last one.
+pub(crate) fn screens_open(b: &Battle) -> bool {
+    b.round.mode == mode::CUSTOM && b.round.init != 0
+}
+
 pub fn local(b: &Battle) -> Option<(&Side, &Screen)> {
-    if b.round.mode != mode::CUSTOM {
+    if !screens_open(b) {
         return None;
     }
     let side = &b.custom.sides[b.setup.local_side as usize & 1];
@@ -155,7 +162,7 @@ pub fn hud_shift(b: &Battle) -> i32 {
 /// The form whose face the emotion window shows while `side`'s screen is
 /// up (the Beast Out or Cross chosen there).
 pub fn face(b: &Battle, side: usize) -> Option<nettai_content_api::FormHandle> {
-    if b.round.mode != mode::CUSTOM {
+    if !screens_open(b) {
         return None;
     }
     b.custom.sides[side & 1].screen.as_ref()?.look.face
@@ -333,12 +340,30 @@ impl View<'_> {
     }
 }
 
-/// The pack's name of a console's game version (`Versioned`).
-pub fn version_name(b: &Battle, side: u8) -> &'static str {
-    match b.custom.sides[side as usize & 1].unlocks.version {
+/// A Cross's name pictures and colours in the Cross window, by the Cross's
+/// own game (a Gregar Cross shows Gregar's name in any player's window):
+/// its game's custom-screen pictures and its number among that game's
+/// Crosses. Its name is `cross_names`' 18 tiles from `18 * number` on the
+/// cursor's row (`18 * (number + 5)` on the others'), its colours
+/// `cross_palettes[number]` (`[number + 5]` once used). `navi` is the
+/// navi whose Cross it is.
+pub fn cross_picture<'a>(b: &Battle, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
+    let game = b.content.form(form).game?;
+    let number = (0..5u8).find(|&i| b.content.cross_form(navi, game, i) == Some(form))?;
+    Some((a.versioned.get(game_name(game)), number as usize))
+}
+
+/// The pack's name of a game version (`Versioned`).
+pub fn game_name(version: GameVersion) -> &'static str {
+    match version {
         GameVersion::Gregar => "gregar",
         GameVersion::Falzar => "falzar",
     }
+}
+
+/// The pack's name of a console's game version (`Versioned`).
+pub fn version_name(b: &Battle, side: u8) -> &'static str {
+    game_name(b.custom.sides[side as usize & 1].unlocks.version)
 }
 
 /// A side's navi's number (see `View::navi_number`).
@@ -500,9 +525,16 @@ impl Window {
     /// the Cross under the cursor's (`sub_8029EAC`: a used one's darker).
     fn cross_names(&mut self, v: &View) {
         let w = &v.screen.crosses;
-        let own = v.own;
+        let side = &v.b.custom.sides[v.side as usize];
+        // Each Cross's name and colours are its own game's.
+        let navi = v.b.stats[v.side as usize].navi;
+        let picture = |slot: usize| {
+            let form = v.b.content.cross_form(navi, side.unlocks.version, w.offered[slot])?;
+            cross_picture(v.b, v.assets, navi, form)
+        };
         for slot in 0..w.count.min(5) as usize {
-            let name = w.offered[slot] as usize + if slot == w.cursor as usize { 0 } else { 5 };
+            let Some((own, number)) = picture(slot) else { continue };
+            let name = number + if slot == w.cursor as usize { 0 } else { 5 };
             let at = CROSS_NAME_TILE + (CROSS_NAME_TILES * slot) as u16;
             self.tiles.put_part(at, &own.cross_names, CROSS_NAME_TILES * name, CROSS_NAME_TILES);
             for i in 0..CROSS_NAME_TILES {
@@ -511,9 +543,11 @@ impl Window {
             }
         }
         let c = w.cursor as usize;
-        let index = w.offered[c] as usize + if w.marked[c] { 5 } else { 0 };
-        if let Some(p) = own.cross_palettes.get(index) {
-            self.palettes[10] = *p;
+        if let Some((own, number)) = picture(c) {
+            let index = number + if w.marked[c] { 5 } else { 0 };
+            if let Some(p) = own.cross_palettes.get(index) {
+                self.palettes[10] = *p;
+            }
         }
     }
 
@@ -578,7 +612,10 @@ impl Window {
             problems.note(format!("chip {:?} is named {:?}, but the pack's font has no glyph for {missing:?}", def.key, data.name));
         }
         self.tiles.put(NAME_TILE, &fonts::cell_text(v.hud, &glyphs, NAME_CELLS, NAME_SHIFT));
-        match a.chip_art(&def.key) {
+        // (The Beast Out chip's picture is the console's Beast's.)
+        let beast_out = Library::beast_out_chip(&*v.b.content) == Some(c.id);
+        let art = if beast_out { Some(&v.own.beast_out) } else { a.chip_art(&def.key) };
+        match art {
             Some(p) => {
                 self.tiles.put(ART_TILE, &p.tiles);
                 self.palettes[10] = p.palette;
@@ -633,7 +670,7 @@ impl Window {
             match slot.kind {
                 SlotKind::Chip { .. } | SlotKind::NaviChip(_) => {
                     let Some(c) = v.screen.look.slot_chips[s] else { continue };
-                    if slot.state == SlotState::Selected {
+                    if v.screen.look.slot_picked[s] {
                         self.tiles.put(at, &a.empty_icon);
                     } else if let Some(icon) = v.icon(c, problems) {
                         self.tiles.put(at, icon);
