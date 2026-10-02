@@ -460,7 +460,7 @@ pub fn patch_cards(content: &Content, list: &str) -> Result<Vec<(RecordHandle, b
         };
         let card = content.defs.record(&format!("patch-card/{name}")).ok_or_else(|| {
             let names: Vec<&str> =
-                content.defs.records.iter().filter_map(|r| r.key.strip_prefix("patch-card/")).collect();
+                content.defs.records.iter().filter_map(|r| nettai_content_api::keys::local(&r.key).strip_prefix("patch-card/")).collect();
             format!("no patch card {name:?}; the content's are {}", names.join(", "))
         })?;
         cards.push((card, on));
