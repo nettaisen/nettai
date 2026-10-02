@@ -19,6 +19,7 @@ return define.navi {
     mugshot = asset.mugshot("eraseman"),
     merge_height = 0,
     run_message = { 19, 15, 19 },
+    run_message_text = "Why are you running\naway!? I've got\nmore erasing to do!",
     own_chip = { chip = eraseman, code = "K" },
     chip_bonus = {
         family = "cursor",

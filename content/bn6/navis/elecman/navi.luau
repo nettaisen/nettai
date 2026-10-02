@@ -18,6 +18,7 @@ return define.navi {
     mugshot = asset.mugshot("elecman"),
     merge_height = 0,
     run_message = { 20 },
+    run_message_text = "Don't run away now!!",
     own_chip = { chip = elecman, code = "E" },
     chip_bonus = {
         family = "elec",

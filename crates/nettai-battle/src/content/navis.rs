@@ -47,6 +47,10 @@ pub struct NaviData {
     /// which set how long it prints (docs/engine/custom-screen.md §3.5).
     #[serde(default)]
     pub run_message: Vec<u8>,
+    /// Its words, the lines apart by `\n` (presentation: the chatbox's
+    /// text; the simulation reads only `run_message`).
+    #[serde(default)]
+    pub run_message_text: String,
     /// The chips it charges with A, from a navi level (`sub_800F49E`,
     /// `byte_8021369`).
     #[serde(default)]

@@ -28,6 +28,7 @@ return define.navi {
     banners = { win = asset.banner("megaman-win"), lose = asset.banner("megaman-deleted") },
     merge_height = 0,
     run_message = { 19, 12 },
+    run_message_text = "Lan,this is no time\nto run away!",
     -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
