@@ -31,12 +31,12 @@ fn bn5_compat_reads() {
     // The e-Reader cards' chips: their strings and palettes are the save's.
     assert_eq!((built_in.chips["leadraid"].id, built_in.chips["leadraid"].save_slot), (0x137, Some(0)));
     assert_eq!((built_in.chips["chaoslrd"].id, built_in.chips["chaoslrd"].save_slot), (0x138, Some(1)));
-    // BN5's holy panel is its type 9, the engine's Holy; metal and sea are
-    // the engine's none.
+    // BN5's holy panel is its type 9, the engine's Holy; metal, lava and
+    // sea are BN5's own types (docs/design/bn5-map.md §15.3 item 1).
     assert_eq!(built_in.panel_type(9), Ok(Some(PanelType::Holy)));
-    assert_eq!(built_in.panel_type(8), Ok(Some(PanelType::Volcano)));
-    assert_eq!(built_in.panel_type(5), Ok(None));
-    assert_eq!(built_in.panel_type(10), Ok(None));
+    assert_eq!(built_in.panel_type(8), Ok(Some(PanelType::Lava)));
+    assert_eq!(built_in.panel_type(5), Ok(Some(PanelType::Metal)));
+    assert_eq!(built_in.panel_type(10), Ok(Some(PanelType::Sea)));
     assert!(built_in.panel_type(11).is_err());
     // The assets' names: BN6's where the asset or its place is BN6's.
     assert_eq!(built_in.assets.sounds.get("own-hit"), Some(&0x6B));

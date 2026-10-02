@@ -73,10 +73,14 @@ pub enum ChipFamily {
     ProgramAdvance = 11,
     /// The cross and beast attacks (chips 0x160..0x171).
     Special = 12,
+    /// BN5's recovery chips (docs/design/bn5-map.md §13, §15.3 item 5).
+    Recovery = 13,
+    /// BN5's invisible family: Invisibl, AntiDmg, Mine.
+    Invisible = 14,
 }
 
 impl ChipFamily {
-    pub const ALL: [ChipFamily; 13] = [
+    pub const ALL: [ChipFamily; 15] = [
         ChipFamily::Fire,
         ChipFamily::Aqua,
         ChipFamily::Elec,
@@ -90,6 +94,8 @@ impl ChipFamily {
         ChipFamily::Null,
         ChipFamily::ProgramAdvance,
         ChipFamily::Special,
+        ChipFamily::Recovery,
+        ChipFamily::Invisible,
     ];
 }
 

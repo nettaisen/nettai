@@ -236,6 +236,9 @@ fn engine_panel(name: &str) -> Option<PanelType> {
         "grass" => PanelType::Grass,
         "ice" => PanelType::Ice,
         "volcano" => PanelType::Volcano,
+        "metal" => PanelType::Metal,
+        "lava" => PanelType::Lava,
+        "sea" => PanelType::Sea,
         _ => return None,
     })
 }
