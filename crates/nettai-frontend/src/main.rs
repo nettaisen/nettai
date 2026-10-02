@@ -122,7 +122,8 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    into nothing as well (slower)
   --jobs N         with --audit: traces at a time (default: one a core)
   --lookups FILE   with --audit: write each trace's lookups to FILE (a line
-                   each: the trace, a tab, the lookup), for the trace cover
+                   each: the trace, a tab, the lookup), for the trace cover;
+                   with --audit-content, its own (as the trace \"content\")
   --text MODE      how strings are drawn: font (default) draws the names, the
                    telop, the chatbox and the HUD's lines with a vector font at
                    the window's resolution, over the scaled frame; original
@@ -244,7 +245,7 @@ fn parse() -> Result<Args, String> {
     if a.traces.len() > 1 && !a.audit {
         return Err("one trace at a time (several with --audit)".into());
     }
-    if (a.draw || a.lookups.is_some() || a.jobs != 0) && !a.audit {
+    if (a.draw || a.lookups.is_some() || a.jobs != 0) && !a.audit && !a.audit_content {
         return Err("--draw, --jobs and --lookups go with --audit".into());
     }
     if a.audit && (a.play || a.headless.is_some()) {
@@ -430,6 +431,11 @@ fn audit_content(args: &Args, content: &nettai_battle::Content, by_pack: &[PathB
     if !found.untranslated.is_empty() {
         eprintln!("audit-content: shown in the content's own (a table lacks them): {}", found.untranslated.join(", "));
     }
+    // (As --audit lists a trace's, under the name "content".)
+    if let Some(path) = &args.lookups {
+        let text: String = found.made.iter().map(|l| format!("content\t{l}\n")).collect();
+        std::fs::write(path, text).unwrap_or_else(|e| fail(format!("can't write {}: {e}", path.display())));
+    }
     let assets: Vec<String> = found.assets.iter().map(|(k, n)| format!("{n} {k}s")).collect();
     eprintln!(
         "audit-content: {} chips, {} navis, {} forms; the packs' {}; {} lookups in {}{}; {} problems ({:.1?})",
@@ -437,7 +443,7 @@ fn audit_content(args: &Args, content: &nettai_battle::Content, by_pack: &[PathB
         found.navis,
         found.forms,
         assets.join(", "),
-        found.lookups,
+        found.made.len(),
         found.languages.join(" and "),
         if banks.is_none() { ", no sound (--mute)" } else { "" },
         found.problems.len(),

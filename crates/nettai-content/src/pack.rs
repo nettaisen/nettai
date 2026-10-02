@@ -394,9 +394,15 @@ pub fn discover(dir: &Path, report: &mut Report) -> Vec<Found> {
 /// still set it (deprecated: `--pack`, or `$NETTAI_PACKS` for the
 /// directory). None when an override isn't a pack.
 pub fn find(dir: &Path, overrides: &[PathBuf], report: &mut Report) -> Option<Vec<Found>> {
-    let mut found = discover(dir, report);
     let env = std::env::var_os("BN6_PACK").map(PathBuf::from);
-    for path in env.iter().chain(overrides) {
+    let overrides: Vec<PathBuf> = env.into_iter().chain(overrides.iter().cloned()).collect();
+    find_with(dir, &overrides, report)
+}
+
+/// [`find`] with these overrides alone.
+fn find_with(dir: &Path, overrides: &[PathBuf], report: &mut Report) -> Option<Vec<Found>> {
+    let mut found = discover(dir, report);
+    for path in overrides {
         let m = read_manifest(path, report)?;
         let game = m.game.unwrap_or_else(|| {
             let folder = path.file_name().map_or("bn6".into(), |f| f.to_string_lossy().into_owned());
@@ -586,5 +592,53 @@ pub fn load_sound(root: &Path) -> Result<(SoundBank, Report), Report> {
     match import_sound(root, &mut report) {
         Some(b) => Ok((b, report)),
         None => Err(report),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A packs directory under the system's temporary one, with a pack of
+    /// each `(folder, game)` (a manifest alone).
+    fn packs(test: &str, packs: &[(&str, Option<&str>)]) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("nettai-content-{test}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        for (folder, game) in packs {
+            let (name, text) = manifest_of(folder, *game, None, false);
+            std::fs::create_dir_all(dir.join(folder)).unwrap();
+            std::fs::write(dir.join(folder).join(name), text).unwrap();
+        }
+        // (A folder that is no pack is passed over.)
+        std::fs::create_dir_all(dir.join("notes")).unwrap();
+        dir
+    }
+
+    /// Every pack in the packs directory, by its game; a pack given by
+    /// directory stands in for the found one of its game.
+    #[test]
+    fn every_pack_is_found_by_its_game() {
+        let dir = packs("found", &[("bn6", Some("bn6")), ("five", Some("bn5")), ("old", None)]);
+        let mut r = Report::default();
+        let found = discover(&dir, &mut r);
+        let games: Vec<(&str, &str)> =
+            found.iter().map(|f| (f.game.as_str(), f.dir.file_name().unwrap().to_str().unwrap())).collect();
+        assert_eq!(games, [("bn6", "bn6"), ("bn5", "five"), ("old", "old")]);
+        assert!(!r.has_errors() && r.issues.len() == 1, "a pack that says no game is its folder's, with a warning: {:?}", r.issues);
+        let other = packs("override", &[("mine", Some("bn6"))]);
+        let found = find_with(&dir, &[other.join("mine")], &mut Report::default()).unwrap();
+        let bn6 = found.iter().find(|f| f.game == "bn6").unwrap();
+        assert_eq!(bn6.dir, other.join("mine"));
+        assert_eq!(found.len(), 3);
+        // None in a directory that isn't there.
+        assert!(discover(&dir.join("missing"), &mut Report::default()).is_empty());
+        // Two packs of one game: an error.
+        let two = packs("two", &[("a", Some("bn6")), ("b", Some("bn6"))]);
+        let mut r = Report::default();
+        assert_eq!(discover(&two, &mut r).len(), 1);
+        assert!(r.has_errors());
+        for d in [dir, other, two] {
+            let _ = std::fs::remove_dir_all(d);
+        }
     }
 }
