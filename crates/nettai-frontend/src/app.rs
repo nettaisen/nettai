@@ -39,8 +39,8 @@ const BUTTONS: [(Key, u16); 10] = [
 
 pub const HELP: &str = "\
 keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START, Backspace = SELECT
-      Space pause, . step one frame (paused), - / = slower / faster, F5 restart,
-      H toggle the status line, Esc quit";
+      Space pause, . step one frame (paused), - / = slower / faster, F5 restart
+      (not in netplay), H toggle the status line, Esc quit";
 
 /// Show `sessions` one after another (a trace's rounds): a round that
 /// runs out of input moves on to the next; one the engine stopped stays.
@@ -79,6 +79,9 @@ pub fn run(
             renderer.reset();
         }
         let session = &mut sessions[current];
+        // Netplay runs in real time with the other player: no pause, no
+        // other speed, no restart.
+        let real_time = session.driver.real_time();
         let mut buttons = 0u16;
         for (k, b) in BUTTONS {
             if window.is_key_down(k) {
@@ -88,6 +91,8 @@ pub fn run(
         let mut single_step = false;
         for k in window.get_keys_pressed(KeyRepeat::Yes) {
             match k {
+                Key::H => status = !status,
+                _ if real_time => {}
                 Key::Space => paused = !paused,
                 Key::Period => single_step = true,
                 Key::Minus => speed = speed.saturating_sub(1),
@@ -97,33 +102,41 @@ pub fn run(
                     renderer.reset();
                     reported = (false, false);
                 }
-                Key::H => status = !status,
                 _ => {}
             }
         }
         let now = Instant::now();
         let dt = now.duration_since(last).min(Duration::from_millis(250));
         last = now;
+        // Run a step: follow what it showed, and hand it to the hooks.
+        let mut step = |session: &mut Session| {
+            if !session.step(buttons) {
+                return false;
+            }
+            if session.new_round {
+                renderer.reset();
+            }
+            if session.fresh {
+                renderer.observe(&session.battle);
+            }
+            for h in hooks.iter_mut() {
+                h.after_tick(session);
+            }
+            true
+        };
         if !paused && session.stopped.is_none() {
             owed += dt.as_secs_f64() * FRAME_RATE * SPEEDS[speed];
             let n = owed.floor() as u32;
             owed -= n as f64;
             for _ in 0..n {
-                if !session.step(buttons) {
+                if !step(session) {
                     break;
-                }
-                renderer.observe(&session.battle);
-                for h in hooks.iter_mut() {
-                    h.after_tick(&session.battle);
                 }
             }
         } else {
             owed = 0.0;
-            if single_step && session.step(buttons) {
-                renderer.observe(&session.battle);
-                for h in hooks.iter_mut() {
-                    h.after_tick(&session.battle);
-                }
+            if single_step {
+                step(session);
             }
         }
         if let (Some(d), false) = (&session.diverged, reported.0) {
@@ -139,6 +152,9 @@ pub fn run(
         let mut lines = Vec::new();
         if let Some(p) = session.driver.prompt(&session.battle) {
             lines.push(p);
+        }
+        if let Some(s) = session.driver.status().filter(|_| status) {
+            lines.push(s);
         }
         if status && (paused || session.stopped.is_some()) {
             lines.push(format!(

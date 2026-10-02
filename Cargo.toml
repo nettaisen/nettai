@@ -13,6 +13,9 @@ bn6-compat = { path = "crates/bn6-compat" }
 cpal = "0.15"
 # Rollback netcode core (Tango's); Cargo.lock pins the revision.
 getgud = { git = "https://github.com/tangobattle/getgud" }
+# Netplay transport (Tango's): reliable, ordered delivery of the players'
+# inputs over unreliable datagrams; Cargo.lock pins the revision.
+rennet = { git = "https://github.com/tangobattle/rennet" }
 
 [profile.dev]
 opt-level = 1

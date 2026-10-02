@@ -3,10 +3,11 @@
 The engine supports rollback netplay: each peer runs the whole battle, predicts the other player's input,
 speculates ahead of the frames both players' inputs are known for, and when the real input arrives and differs,
 goes back to the last confirmed state and simulates again. The netcode core is getgud, Tango's rollback library;
-crates/nettai-netplay implements its `World` for the battle. This document describes the engine's side of that
-contract, how getgud's model maps onto the engine, the simulator that proves it, what the original's per-console
-("local side") state means for it, how sound works under rollback, what it costs, the hazards found, and what the
-custom screen and scripting layers must guarantee to keep it working.
+crates/nettai-netplay implements its `World` for the battle. The players' inputs travel on rennet, Tango's netplay
+transport, over UDP (or any datagram channel). This document describes the engine's side of that contract, how
+getgud's model maps onto the engine, the protocol and the transport, the simulator that proves them, what the
+original's per-console ("local side") state means for it, how sound works under rollback, what it costs, the hazards
+found, and what the custom screen and scripting layers must guarantee to keep it working.
 
 Frames are counted from the start of a round; "frame `f`" is the `f`-th tick, and "the state after frame `f`"
 is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after `t` ticks.
@@ -16,6 +17,15 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
 - **Netcode**: getgud (a workspace dependency from its repository, the revision pinned in Cargo.lock) keeps the
   input queues, the settled state, the speculative tail, promotion and rollback, and the clock skew. nettai-netplay
   supplies its `World`, `BattleWorld`: one peer's battle, its player's side, snapshots and prediction (§4).
+- **Protocol**: rennet (a workspace dependency likewise) carries each player's inputs to the other peer once and in
+  order over datagrams that are lost, reordered and duplicated, every frame resending what isn't acknowledged, so a
+  lost datagram's inputs come with the next one. nettai's protocol (`protocol`) names what a player's stream holds:
+  a tick's buttons and event flags (one byte for A, B and the directions), a payload for the rare event with data,
+  and the round and match markers; and the frame's meta, the sender's tick advantage. A frame costs 6 bytes at no
+  latency, 9 at 2 frames, 17 at 5 and 28 at 10 (the unacknowledged window grows with the round trip) (§4.6).
+- **Transport**: a `Datagram` trait (send, and take what arrived, never waiting); UDP for direct play
+  (`nettai-frontend --play --host PORT` / `--join ADDR:PORT`), a WebRTC data channel later. A handshake checks
+  the protocol, the engine and the content, swaps what each player brings and agrees the seed (§4.7).
 - **Snapshots**: `Battle` is plain data, `Clone` and `Send`; a snapshot (`save_state` / `load_state`) is a boxed
   copy, `Send` as getgud requires. About 22 KB (8.6 KB inline plus the
   object pools); saving takes about 2-3 µs, restoring 3-5 µs (release). The battle's content
@@ -33,9 +43,11 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
   actions, so a confirmed cue plays once and a mispredicted one is stopped or undone. The peer's world reports
   every tick it simulates; nettai-audio takes the actions (`BattleAudio::handle_actions`).
 - **Results**: synthetic netbattles on the engine's test content (random button mashing, fixed hands) run to the KO
-  without a single divergence at latencies of 0 to 10 frames with jitter and present delay, with hundreds to
-  thousands of rollbacks each. The golden traces, replayed through two getgud sessions at latencies 0, 2, 5 and 10
-  (plus jitter), match the trace on every confirmed frame, with the peers in agreement throughout.
+  without a single divergence at latencies of 0 to 10 frames with jitter and present delay, and with 10% to 25% of
+  the datagrams lost (in bursts) and 5% to 10% duplicated, with thousands of rollbacks each; through an outage of
+  two seconds; across a set's rounds; and over real UDP on loopback, in two threads and in two processes. The golden
+  traces, replayed through two getgud sessions at latencies 0, 2, 5 and 10 (plus jitter), clean and lossy, match the
+  trace on every confirmed frame, with the peers in agreement throughout (§5).
 - **Cost**: the worst case, a 10-frame rollback on every rendered frame, costs about 60-80 µs per frame in
   release, the same as before getgud (under 0.5% of the 16.7 ms budget).
 
@@ -79,8 +91,8 @@ The simulated link also delays the fight's view of the buttons by `RoundSetup::l
 recordings, as the original's link queue); the custom screens read them at once. This is part of the game, not
 of the netplay layer, whose own present delay and prediction come on top.
 
-For synthetic matches, `standin::StandInBattle` closes the link at once at the end of a round; everything else is
-the engine, so the players' buttons are the whole input.
+For live netplay and synthetic matches, `standin::StandInBattle` closes the link at once at the end of a round;
+everything else is the engine, so the players' buttons are the whole input.
 
 ### 1.2 Prediction
 
@@ -256,11 +268,12 @@ cancelled predictions; the old peer played 587 and 608 and cancelled 74 and 94.
 `Battle::sound_cues_for(side)` is what that side's player hears (the engine records both); `sound_cues()` stays
 the local side's, which the golden sound recordings check. A peer feeds its tracker with its own player's cues.
 
-## 4. Netplay on getgud
+## 4. Netplay on getgud and rennet
 
 Each peer runs a getgud `Session` (Tango's rollback core) on a `World` that nettai-netplay implements for the battle.
 getgud keeps the input queues and matches them into confirmed rows, speculates, promotes or rolls back, keeps the
 settled state and computes the clock skew; it has no game logic and speaks of one local player and remote slots.
+The inputs go between the peers on rennet (Tango's netplay transport, §4.6), over a datagram channel (§4.7).
 
 ### 4.1 getgud's model on the engine
 
@@ -275,7 +288,7 @@ settled state and computes the clock skew; it has no game logic and speaks of on
 | Present delay | `NetConfig::present_delay`, the input delay: a peer presents the frame that many ticks behind its newest local input, so that much of the lead needs no prediction |
 | Settled state, `Advance::confirmed` | The confirmed state and rows (§1.5): the digest checks, and the confirmation the sound feed and the trace checks need (`Observer::confirmed`) |
 | Speculative tail, promote or roll back | The frames a peer speculates to present. A prefix whose predictions held is promoted without simulating it again; from the first wrong prediction, getgud loads the settled state and simulates the rest again. `last_misprediction_depth` is the number of frames it threw away |
-| `skew`, `local_tick_advantage` | Clock sync: every input goes out with the sender's advantage (`add_remote_input(slot, input, advantage)`), and a peer that runs ahead stalls frames (§4.3) |
+| `skew`, `local_tick_advantage` | Clock sync: every frame carries the sender's advantage as of its newest input (the protocol's meta, §4.6); each input arrives with the freshest one seen (`add_remote_input(slot, input, advantage)`), and a peer that runs ahead stalls frames (§4.3) |
 | `matchable`, `local_queue_length` | The stall guard: a peer with `max_lead` unconfirmed local inputs waits, unless remote input it has can still be matched |
 
 ### 4.2 What nettai-netplay implements
@@ -286,23 +299,39 @@ settled state and computes the clock skew; it has no game logic and speaks of on
   session.
 - `bn6`: `Battle` as a `Game` on the engine's input record (`PlayerInput`, `tick_input`), and the sound feed
   (`CueFeed`).
-- `standin`: `StandInBattle` as a `Game` on the buttons alone; a MegaMan built in code, a netbattle setup on given
-  content with given folders, and a seeded button masher.
-- `network::Link`: a one-way link with latency and jitter that delivers in order, as the ordered channel netplay
-  runs on does (getgud takes each remote's inputs in tick order): a packet that would overtake the one before it
-  waits for it.
-- `sim::Match`: two sessions over two links plus a lockstep reference run (§4.3).
+- `standin`: `StandInBattle` as a `Game` on the buttons alone (what live netplay plays); a MegaMan built in code, a
+  netbattle setup on given content with given folders, and a seeded button masher.
+- `protocol`: nettai's rennet protocol: the elements, the meta, their codecs, the horizon, and `WireInput`, a
+  game input's wire form (buttons, flags, payload), for the buttons alone and for `PlayerInput` (§4.6).
+- `wire`: byte codecs for the engine types that travel: a recorded custom-screen result (a `PlayerInput`'s
+  payload), a folder, a Cross list, a game, the content's hash. Structs are written field by field, destructured
+  without `..`, so a new field doesn't compile until it is written.
+- `link`: `InputLink`, one peer's end of the exchange on rennet's `OutStream`/`InStream`: inputs pushed with the
+  tick advantage, the datagram to send, the datagrams received turned into inputs in order, and what went by (sizes,
+  copies, reordering, the round trip, the other's loss as the receiver sees it).
+- `peer`: `Peer`, a getgud session and its link, and the host's frame (below): clock sync, the stall guard, and a
+  set's rounds on one stream (§4.6).
+- `transport`: the `Datagram` trait, UDP, the handshake and the `Connection` it makes (§4.7), and an in-memory pair
+  for tests.
+- `network`: a seeded datagram network, one direction of it: latency, jitter (each datagram on its own, so jitter
+  reorders), loss alone or in bursts, duplication, outages.
+- `sim::Match`: two peers over two networks plus a lockstep reference run (§4.3).
 
-A host does each frame what the simulator does for a peer: add the packets that arrived, read `skew` and stall if
-running ahead, send its input with `local_tick_advantage()`, `advance`, tell its observer what settled, and draw
-`frame.state.battle()`.
+A host does each frame what the simulator does for a peer (`Peer`): take the datagrams that arrived
+(`Peer::receive`), hold the frame if running ahead or at the stall guard (`Peer::wait`), else decide its player's
+input (`Peer::decide`, which pushes it on the link with `local_tick_advantage()`); send the frame's datagram
+(`Peer::datagram`, every frame, held or not: it carries the acks and the window); if it decided, `advance`
+(`Peer::advance`), tell its observer what settled, and draw `frame.state.battle()`. The frontend's netplay driver
+does exactly this (docs/frontend.md §2).
 
 ### 4.3 The simulator
 
-`sim::Match` runs two peers in one process. Each wall-clock frame, every peer takes the packets that have
-arrived; every peer that doesn't wait (the stall guard, or a clock-sync stall) decides its player's input for its
-next tick and sends it with its advantage; then every peer that decided takes what arrived meanwhile (with no
-latency, the other's input of the same frame) and advances.
+`sim::Match` runs two `Peer`s in one process, over a simulated datagram network each way (`network::Network`,
+seeded: the same configuration and seed replay exactly). Each wall-clock frame, every peer takes the datagrams that
+have arrived; every peer that doesn't wait (the stall guard, or a clock-sync stall) decides its player's input for
+its next tick; every peer sends its datagram; then every peer that decided takes what arrived meanwhile (with no
+latency, the other's input of the same frame) and advances. A link that breaks (a gap past the horizon, §4.6) tears
+the match down, and the report says which peer, when and why.
 
 **Clock sync.** A peer adds its skew up every frame while its presented frame speculates
 (`speculation_balance() >= 0`; until then the present delay absorbs the lead) and stalls a frame for every 60 of
@@ -324,7 +353,8 @@ its settled state still reaches it.
 
 **Statistics**, per peer: rollbacks, the deepest, and the frames they threw away (getgud's
 `last_misprediction_depth`); frames simulated for the first time; the deepest and the mean speculation
-(`speculation_balance`); stalls and waits at the guard.
+(`speculation_balance`); stalls and waits at the guard. Per link: datagrams and bytes, elements a datagram, copies
+received, the loss the receiver estimates; per network: datagrams lost, the longest run lost, duplicated, reordered.
 
 ### 4.4 What was deleted
 
@@ -333,7 +363,12 @@ unconfirmed frame, rollback to the first wrong frame and re-simulation, confirma
 trait it drove (snapshots by `Clone`, `advance` on both inputs, `digest`, `is_over`, `blank_input`) and
 `HasBattle`. `Observer::confirmed` used to come once per frame with that frame's state; it now comes once per
 settle with the settled state. `NetConfig::input_delay` and `max_prediction` became `present_delay` and the stall
-guard's `max_lead`, and the simulated link no longer reorders packets.
+guard's `max_lead`.
+
+With rennet: `network::Link`, the simulated one-way link that delivered in order (a packet that would overtake the
+one before it waited for it, as an ordered channel would), and `NetConfig::link`. The inputs now travel as rennet
+frames over a datagram network that keeps no order, and the clock sync and stall guard moved from the simulator
+into `Peer`, which a real host drives the same way.
 
 ### 4.5 What doesn't fit getgud
 
@@ -351,6 +386,127 @@ guard's `max_lead`, and the simulated link no longer reorders packets.
 - **No end of input.** A session runs as long as it is advanced; to settle the last ticks without speculating
   past them, the simulator raises the present delay at the end.
 
+### 4.6 The protocol on rennet
+
+getgud needs each remote player's inputs in tick order, each once. The network delivers datagrams in any order,
+some twice, some never. rennet (Tango's netplay transport, a git dependency pinned in Cargo.lock like getgud) is the
+layer between: each peer has an `OutStream` for its player's inputs and an `InStream` for the other's, and every
+datagram is one rennet `Frame`: a base sequence number, the cumulative ack of the other stream (as a signed
+difference from the base), a meta, and a run of elements. The out-stream keeps every element the other peer hasn't
+acknowledged (at least the last two) and sends all of them in every frame; the in-stream puts what arrives back in
+order, drops copies and acknowledges the contiguous prefix. A lost datagram's elements come with the next one, so a
+single loss costs one frame, not a round trip. rennet is pure (no I/O, no clock) and generic over a `Protocol`,
+which says what an element and the meta are. nettai's (`protocol::Netplay`):
+
+| Element | What | Wire form (a LEB128 head; bit 0 tells a tick from the rest) |
+|---|---|---|
+| `Tick { held, flags }` | One tick of a player's input: the buttons (ten), and the game's flags for the tick's events | `(buttons << 1) | flags << 11`: buttons in the wire order A, B, right, left, up, down, SELECT, START, R, L, so that a tick with only A, B and directions is one byte, with any button two, with flags up to three |
+| `Payload(chunk)` | Up to 32 bytes that the next tick carries besides, in order before it | head `(len + 1) << 1 | 1`, then the bytes |
+| `RoundEnd` | The sender's round is over: what follows is the next round's | `0x01` |
+| `MatchEnd` | The sender left | `0x03` |
+
+The **meta** is the sender's tick advantage as of its newest input (getgud's `local_tick_advantage`, a signed
+LEB128: one byte), which the receiver hands getgud with each input it delivers (rennet keeps the freshest, so a
+reordered old frame can't set it back). An ack-only frame (nothing new to send while the peer waits) still carries
+the window, the ack and the meta.
+
+**A game's input on the wire** is `protocol::WireInput`: its buttons, flags and payload. The stand-in battle's input
+is the buttons, with no flags (live netplay's: the end of a round is derived in the game). `PlayerInput`'s events
+are flags: the link closing, and for each side whose recording lacks a folder, the recorded screen status and
+whether a result comes; a recorded result is the payload (a `CustomResult` in `wire`'s form, 130 to 170 bytes,
+four to six chunks), once a custom screen. Only the golden-trace replays have recorded events; they go through the same
+protocol as live play.
+
+**Byte cost.** A frame is the header (the base, two bytes from the 128th element to the 16,383rd, three after;
+the ack, one; the meta, one) and the window: one element a tick, a byte with A, B and the directions. The window is
+what the other peer hasn't acknowledged, so it grows with the round trip. Measured on the synthetic battles (§5.1),
+the mean frame per peer:
+
+| Network | Elements a frame | Bytes a frame | With the transport (1 + UDP/IPv4's 28) |
+|---|---|---|---|
+| no latency | 2.0 | 6.1 | 35 |
+| 1 + 1 | 3.0 | 7.2 | 36 |
+| 2 + 1 | 5.0 | 9.4 | 38 |
+| 5 + 2 | 11.8 | 16.6 | 46 |
+| 10 + 3 | 22.4 | 28.0 | 57 |
+| 10% lost, no latency | 2.4 | 6.6 | 36 |
+| 10% lost, 2 + 2 | 6.1 | 10.5 | 40 |
+| 15% lost, 5 + 3 | 13.1 | 18.0 | 47 |
+| 25% lost, 10 + 4 | 24.1 | 30.0 | 59 |
+
+At 60 frames a second each way, that is about 2 to 3.5 kB/s with the headers. The golden traces cost the same
+(§5.3: 5.9 to 28 bytes a frame). (A replay of a recording that lacks a player's folder would carry that player's
+recorded screen status as flags every tick, two bytes, and their results as four to six chunks a custom screen;
+the traces the suite replays under rollback all have both folders, so the payload path is checked by
+nettai-netplay's own tests.)
+
+**The horizon** (`protocol::HORIZON`, 240 elements: four seconds) is the widest gap the in-stream accepts: an element
+that many past the first missing one can't be recovered in time, and the link breaks (`LinkError::HorizonExceeded`).
+The out-stream keeps at most that many unacknowledged elements. getgud has no limit of its own: a peer's stall guard
+(`max_lead`) bounds how far its player's input runs ahead of the other's, and since each side may lead by that much
+a gap reaches at most twice the stall guard; `protocol::max_lead` keeps the stall guard under half the horizon,
+less a margin for payloads and markers (`PeerConfig::new` checks; the frontend's stall guard is 30). So two peers
+that keep it never open a gap past the horizon, and a gap past it means a peer that doesn't, which tears the match
+down. A link that just goes quiet doesn't break: both peers wait at their stall guard, sending their windows, and
+when the link comes back the match goes on (§5.1); the frontend gives up after 10 seconds of silence.
+
+**Rounds.** A set's rounds are one getgud session each (a session counts ticks from its start), on one rennet
+stream. When a peer's settled state is over, it ends the round (`Peer::end_round`): it pushes `RoundEnd` and starts
+the next round's session from the next round's setup, which both peers build from the settled end state and the
+shared setup (`nettai-frontend`'s `driver::next_round_setup`: the round's end hands over the settings and the score;
+each player's folder is shuffled again by their console's RNG where the round left it; the battle's RNG is drawn
+from the first round's and the round number). The other player's inputs past their round's end, which the peer
+predicted past the end before it noticed, are dropped (they come before their `RoundEnd`); their next round's
+inputs, if they started it first, wait for this peer's next round. The protocol's `MatchEnd` tells the other peer
+that a player left (`Peer::leave`).
+
+### 4.7 The transport and the handshake
+
+`transport::Datagram` is all a peer needs of a channel: send a datagram to the other peer, and take the next one
+that arrived, neither ever waiting; nothing is assumed of delivery. `transport::Udp` is direct play: a host binds a
+UDP port on every IPv4 interface and takes the first Hello's sender as the other peer (connecting the socket to it,
+so that nothing else is read); a joiner connects to the host's address. The "port unreachable" a UDP socket reports
+for a datagram the other end didn't take (the host isn't up yet) is not an error.
+
+Every datagram on the channel starts with a byte that says what it is (`transport::Kind`): a protocol frame, a
+Hello, or a refusal. A frame needs that byte because a handshake message can come late or twice, into the match,
+and must not be read as a frame. (A WebRTC peer could keep the handshake on a reliable channel of its own and do
+without the byte.)
+
+**The handshake** (`Connection::host`, `Connection::join`): the joiner sends its `Hello` every 100 ms until it has
+the host's; the host answers each Hello with its own. A Hello says:
+
+- the protocol's version (`protocol::VERSION`) and the engine's (the crate version: peers must run the same engine,
+  since the digest covers the state's layout and the simulation must be the same code);
+- the content's hash (`Content::hash`: the definitions, scripts and rule tables, and the asset names and animation
+  timing the battle reads from the pack);
+- the role (host or joiner) and the side's half of the seed (a nonce from the clock and the process);
+- what the player brings, as bytes the frontend encodes (its `Offer`: a folder, a game, the Crosses, the patch cards,
+  and from the host a forced stage; the language is each player's own and isn't sent).
+
+A side that gets a Hello it can't play with (another protocol or engine, other content, the same role) sends a
+refusal with the reason three times and stops; the other stops on reading it, so both say what differs. Once a
+side has the other's Hello the match is on: both have the seed (`Connection::seed`, mixed from both halves) and
+both players' setups, and build the same round. If the host's answer was lost, the joiner keeps sending its Hello,
+and the host, in the match, answers it again; the first frame from the other side is the sign it has ours. The
+frontend checks the other player's setup against the content (`netplay::Offer::check`: a legal folder of the
+content's chips, Crosses of MegaMan's, the content's patch cards, a link battle stage) before building the round.
+
+### 4.8 What WebRTC would need
+
+Tango plays its matches over a WebRTC data channel opened unordered and without retransmits, set up through a
+signalling server (matchmaking by a link code). To plug in here:
+
+- a `Datagram` on such a channel: `send` posts a message on the channel; `try_recv` takes one from a queue the
+  channel's message callback fills (the channel's library is asynchronous; the peer and its session stay on the
+  frontend's thread, which polls the queue every frame);
+- the signalling: an offer and an answer (SDP) and ICE candidates exchanged through a server, before the channel
+  opens; the host and joiner roles follow who made the link code;
+- the handshake as it is, over the channel (or on a second, reliable channel, without the kind byte on frames);
+- NAT traversal (STUN, and TURN when that fails) comes with WebRTC; UDP direct play needs a forwarded port instead.
+
+Nothing above the `Datagram` changes: the protocol, the peer and the frontend's driver are the same.
+
 ## 5. Results
 
 ### 5.1 Synthetic netbattles (in this repository)
@@ -361,25 +517,58 @@ guard's `max_lead`, and the simulated link no longer reorders packets.
 GunDelSol over and over (GunDelSol is action 0x37; the invisibility freeze 0x15 with subtype 1, as Invisibl; the
 eraser navi chip 0x1B with subtype 5, as EraseMan), side 1's GunDelSols only (no Crosses or Beast Out). Both players
 mash (held buttons change every four frames on average: a direction, A, B, L or R; START is never pressed), and the
-mashing drives their custom screens too. Three seeds, each under every configuration, over getgud sessions:
+mashing drives their custom screens too. Three seeds, each under every configuration, over getgud sessions whose
+inputs go on rennet over the simulated datagram network:
 
-| Latency + jitter | Present delay | Seed 1 / 2 / 3: frames to the KO | Rollbacks per peer (seed 3) | Deepest rollback | Clock-sync stalls per peer (seed 3) | Diverged |
+| Network | Present delay | Seed 1 / 2 / 3: frames to the KO | Rollbacks per peer (seed 3) | Deepest rollback | Clock-sync stalls per peer (seed 3) | Diverged |
 |---|---|---|---|---|---|---|
-| 0 | 0 | 11,912 / 16,821 / 5,786 | 0 | 0 | 0 | never |
-| 1 + 1 | 0 | same | ~725 | 2 | 4 | never |
-| 2 + 1 | 0 | same | ~1,320 | 3 | 2 | never |
-| 5 + 2 | 0 | same | ~1,270 | 7 | 5 | never |
-| 10 + 3 | 0 | same | ~1,220 | 13 | 15 | never |
-| 10 + 2 | 3 | same | ~1,270 | 9 | 8 | never |
+| no latency | 0 | 7,456 / 14,222 / 16,156 | 0 | 0 | 0 | never |
+| 1 + 1 | 0 | same | ~1,990 | 2 | 7 | never |
+| 2 + 1 | 0 | same | ~3,640 | 3 | 7 | never |
+| 5 + 2 | 0 | same | ~3,490 | 7 | 14 | never |
+| 10 + 3 | 0 | same | ~3,350 | 13 | 32 | never |
+| 10 + 2 | 3 | same | ~3,480 | 9 | 19 | never |
+| 10% lost (bursts 30%), 5% duplicated, no latency | 0 | same | ~135 | 6 | 12 | never |
+| 10% lost (bursts 30%), 5% duplicated, 2 + 2 | 0 | same | ~3,370 | 8 | 32 | never |
+| 15% lost (bursts 40%), 5% duplicated, 5 + 3 | 0 | same | ~3,165 | 12 | 56 | never |
+| 25% lost (bursts 50%), 10% duplicated, 10 + 4 | 0 | same | ~2,930 | 19 | 123 | never |
+
+("Bursts 30%": once a datagram is lost, the next is lost 30% of the time, so about 13% are lost in all, in runs of
+up to 8; at 25% and 50%, about 34%, in runs of up to 14. Jitter reorders the datagrams: about one in ten arrives
+after a later one at 5 + 2.)
 
 Every battle runs to the end with both peers' settled digests equal to each other and to the lockstep run at every
-advance, and ends the same way as without rollback. getgud rolls back less often than the peer nettai-netplay had
-before (seed 3 at 10 + 3: about 1,220 rollbacks per peer against 1,500, and 13,000 frames simulated again
-against 17,000): it checks predictions as rows settle, promotes the prefix that held, and catches up on a burst
-of arrivals in one rollback. The other tests: the engine's own input record with the recorded events riding in
-player 0's input (latencies 3 and 8, in sync), observers seeing every simulated and settled frame, clock sync (a
-peer that starts 6 or 20 frames ahead), and the two negative tests below. (With 500 HP a mashed battle can reach
-the 15th custom screen, whose turn timer ends in the damage judge, which the engine doesn't have yet.)
+advance, and ends the same way as without rollback; each peer's sound plays every confirmed cue once. Rollbacks come
+at about the same rate per frame as over the ordered link this replaced (a fifth of the frames at 10 + 3, the
+deepest 13), though the battles are longer now (the test content changed since). A lost datagram's inputs come with
+the next one, so loss costs a frame per datagram lost in a row: the deepest rollback grows by about the longest run,
+and the peers stall a little more for clock sync. getgud rolls back less often than the peer nettai-netplay had
+before it: it checks predictions as rows settle, promotes the prefix that held, and catches up on several arrivals in
+one rollback.
+
+The other tests: the engine's own input record with the recorded events riding in player 0's input (latencies 3 and
+8, in sync), observers seeing every simulated and settled frame, clock sync (a peer that starts 6 or 20 frames
+ahead), the two negative tests below, and:
+
+- **an outage**: nothing gets through either way for two seconds (120 frames, at 3 + 1): both peers wait at their
+  stall guard (114 frames each), the match goes on after it, in sync, to the KO;
+- **a gap past the horizon**: with a horizon of 32 under a stall guard of 40 (one that doesn't fit, §4.6), one
+  direction fails for five seconds; the peer that hears nothing waits at its guard while the other runs on to its
+  own, and when the link comes back the gap is wider than the horizon: that peer tears the match down at tick 300,
+  where both settled states agree. With the full horizon, the same match goes on;
+- **a set's rounds**: two `Peer`s over a lossy network (4 + 2, 10% lost, 5% duplicated) play a best-of-three set
+  as a frontend does, ending each round when their settled state is over and starting the next on the same stream:
+  the settled states agree in every round, and when the set is over one player leaves and the other hears it.
+
+(With 500 HP a mashed battle can reach the 15th custom screen, whose turn timer ends in the damage judge, which the
+engine doesn't have yet.)
+
+**Over real UDP** (`tests/udp.rs`): two peers on loopback, each with its own socket, shake hands and play 600 ticks of
+a mashed battle at their own pace (a frame each 4 to 5 ms), once in two threads and once in two processes (the test
+binary run again as each peer); their settled states agree at every tick both settled. The frontend's test plays two
+`NetPlayer`s on loopback on BN6's content (the handshake, each player's own loadout, 900 ticks of mashing), and they
+agree too. Two frontends in their windows, one hosting and one joining on loopback, play with a 18 ms round trip; the
+joiner sees the battle from its side, with its own custom screen.
 
 ### 5.2 How long before a divergence, and why
 
@@ -394,23 +583,37 @@ would break it:
 ### 5.3 The golden traces under rollback (verification workspace)
 
 The golden-trace suite outside this repository replays each round's recorded inputs through two getgud sessions
-(both simulating the trace's side, the custom-screen events in player 0's input), up to the frames the plain
-replay matches. Every frame either peer confirms (its last simulation before it settles, which the world reports)
-and every settled state must match the trace exactly, and the peers must agree:
+(both simulating the trace's side, the custom-screen events in player 0's input), their inputs carried by rennet
+over the simulated datagram network, up to the frames the plain replay matches. Each round is played over eight
+networks: latencies 0, 2 + 1, 5 + 2 and 10 + 3 as they are, and lossy (10% of the datagrams lost, a lost one
+followed by another 30% of the time, 5% duplicated; at 10 + 3, 20%, 50% and 10%). Every frame either peer confirms
+(its last simulation before it settles, which the world reports) and every settled state must match the trace
+exactly, the peers must agree, and each peer's sound (its cue actions through BN6's sound calls and the driver) must
+be the plain replay's, later by at most the latency and the longest run of lost datagrams. All of them do:
 
-| Round | Frames | Latency 0 | 2 + 1 | 5 + 2 | 10 + 3 |
-|---|---|---|---|---|---|
-| machgun 1 | 1,074 | all match | all match (78 rollbacks) | all match (82) | all match (81, depth 12) |
-| machgun 2 | 1,331 | all match | all match (62) | all match (61) | all match (61) |
-| soundmod 1 | 6,728 | all match | all match (305) | all match (305) | all match (301, depth 13) |
-| soundmod 2 | 6,857 | all match | all match (337) | all match (340) | all match (337) |
-| soundmod 3 | 3,088 | all match | all match (306) | all match (306) | all match (305) |
+| Round | Frames | 0 | 2 + 1 | 5 + 2 | 10 + 3 | 0, lossy | 2 + 1, lossy | 5 + 2, lossy | 10 + 3, lossy |
+|---|---|---|---|---|---|---|---|---|---|
+| machgun 1 | 1,074 | match | 79 | 82 | 80 (12) | 2 | 81 | 82 (10) | 74 (16) |
+| machgun 2 | 1,331 | match | 62 | 61 | 61 (12) | 2 | 60 | 62 (8) | 57 (17) |
+| soundmod 1 | 21,962 | match | 1,104 | 1,101 | 1,101 (13) | 51 | 1,077 | 1,097 (10) | 1,070 (18) |
+| soundmod 2 | 14,933 | match | 879 | 881 | 878 (13) | 32 | 872 | 878 (10) | 846 (17) |
+| soundmod 3 | 20,436 | match | 1,440 | 1,436 | 1,429 (13) | 64 | 1,426 | 1,433 (9) | 1,376 (17) |
+| bn67-amogus 1 | 65,477 | match | 3,247 | 3,206 | 3,160 (13) | 121 | 3,169 | 3,171 (11) | 3,016 (18) |
+| lmao-chonked 1 | 23,825 | match | 1,565 | 1,557 | 1,543 (13) | 66 | 1,540 | 1,527 (10) | 1,457 (18) |
+| a 2022 round (legacy, the mixed one) | 34,707 | match | 2,297 | 2,273 | 2,250 (13) | 90 | 2,252 | 2,243 (11) | 2,152 (18) |
 
-(Rollbacks are counted on player 1's peer, which receives player 0's buttons and the custom-screen events; in
-the machgun rounds player 0's peer rolls back far less often, since player 1 changes buttons less.) An advance
-settles one frame at no latency and about two at 10 + 3, where late packets hold later ones up: soundmod round 1
-settled 3,748 times for its 6,728 frames. Clock sync stalled each peer 17 frames of that round's 6,758 wall
-frames.
+(Every frame of every round matches on both peers; the numbers are player 1's peer's rollbacks, which receives
+player 0's buttons and the custom-screen events, with the deepest in brackets. bn67-amogus2, bn67-lilguy,
+gregar-sitteruno and the 2022 guard-through-Cross round match likewise; the two longest 2022 rounds are run with
+`--ignored`.) Loss without latency costs a few dozen shallow rollbacks a round (a lost datagram's inputs come a
+frame late, with the next one); with latency it changes little, since the window resent every frame already covers
+a loss: what it adds is the run of datagrams lost in a row (up to 15 here), which deepens the deepest rollback
+(13 to 18 at 10 + 3) and makes clock sync stall more (soundmod round 1 at 10 + 3: 44 frames of 22,017 clean, about
+155 lossy). The sound: at most 9 frames late at 10 + 3 clean and 13 lossy; a sound played on a prediction and
+stopped again up to 53 times in a 65,000-frame round. A frame costs 5.9 to 6.9 bytes without latency, 9 to 10 at
+2 + 1, 16 to 17 at 5 + 2, 26 to 28 at 10 + 3.
+An advance settles one frame at no latency and about two at 10 + 3: soundmod round 1 settled about 12,200 times for
+its 21,962 frames.
 
 ## 6. Performance
 
@@ -529,3 +732,10 @@ init's folder shuffle). A netplay session must derive them from shared data
 confirm it before starting the next round. A getgud session has no end of its own: a host ends the round's
 session once its settled state is over (`round_end`), and starts the next round's from that settled state and
 the shared data.
+
+Done that way (§4.6, "Rounds"): a peer confirms the boundary (its settled state is over) before it starts the
+next round, marks its stream, and builds the next round from the settled end state and the setup both peers
+agreed (the frontend's `driver::next_round_setup`: the settings and score the end hands over; the first round's
+navi stats; each player's folder shuffled again by their console's RNG where the round left it, and the console's
+frame counter carried on; the battle's RNG drawn from the first round's and the round number, since the
+original's init exchange has no counterpart here).
