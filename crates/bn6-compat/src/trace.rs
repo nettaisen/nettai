@@ -48,6 +48,10 @@ pub struct Setup {
     /// send, else Falzar.
     #[serde(default)]
     pub game_versions: Option<[String; 2]>,
+    /// Both consoles' regions ("us" or "jp"), by side; traces recorded
+    /// without them are the US's.
+    #[serde(default)]
+    pub game_regions: Option<[String; 2]>,
     /// Both players' bug frags (`dword_203F7E0`). Traces recorded without
     /// them read as `RECORDED_BUG_FRAGS`.
     #[serde(default)]
@@ -154,6 +158,9 @@ pub struct Object {
 /// One battle frame of the original game.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Frame {
+    /// The traced console's game (its round's setup's; not in the line).
+    #[serde(skip)]
+    pub console: Game,
     pub frame: u32,
     /// BattleState bytes 0-3: top state, mode sub-state, and two sub-sub-states.
     pub state: [u8; 4],
@@ -205,15 +212,21 @@ struct SetupLine {
     setup: Setup,
 }
 
-/// Read a trace file, one line at a time.
+/// Read a trace file, one line at a time (a frame's console is the last
+/// setup's).
 pub fn read(path: impl AsRef<std::path::Path>) -> std::io::Result<impl Iterator<Item = Line>> {
     let f = std::io::BufReader::new(std::fs::File::open(path)?);
-    Ok(f.lines().map(|l| {
+    let mut console = Game::Falzar;
+    Ok(f.lines().map(move |l| {
         let l = l.expect("reading trace");
         if l.starts_with("{\"setup\"") {
-            Line::Setup(serde_json::from_str::<SetupLine>(&l).expect("parsing setup").setup)
+            let setup = serde_json::from_str::<SetupLine>(&l).expect("parsing setup").setup;
+            console = setup.console_game();
+            Line::Setup(setup)
         } else {
-            Line::Frame(Box::new(serde_json::from_str(&l).expect("parsing frame")))
+            let mut frame: Box<Frame> = Box::new(serde_json::from_str(&l).expect("parsing frame"));
+            frame.console = console;
+            Line::Frame(frame)
         }
     }))
 }
@@ -280,21 +293,30 @@ pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> 
                 None => pending_exchanges.push(e),
             }
         } else if let Some(r) = rounds.last_mut() {
-            r.frames.push(serde_json::from_str(&l).expect("frame"));
+            let mut frame: Frame = serde_json::from_str(&l).expect("frame");
+            frame.console = r.console_game();
+            r.frames.push(frame);
         }
     }
     Ok(rounds)
 }
 
-impl Round {
+impl Setup {
     /// The traced console's game: its side's (BattleState+0x0D, the local
-    /// side) in `game_versions`; Falzar in traces recorded without them.
+    /// side) in `game_versions` and `game_regions`; the US Falzar in traces
+    /// recorded without them.
     pub fn console_game(&self) -> Game {
-        let local = unhex(&self.setup.battle_state)[0x0D] as usize & 1;
-        match self.setup.game_versions.as_ref().map(|v| v[local].as_str()) {
-            Some("gregar") => Game::Gregar,
-            _ => Game::Falzar,
-        }
+        let local = unhex(&self.battle_state)[0x0D] as usize & 1;
+        let version = self.game_versions.as_ref().map_or("falzar", |v| v[local].as_str());
+        let region = self.game_regions.as_ref().map_or("us", |r| r[local].as_str());
+        Game::of_names(version, region)
+    }
+}
+
+impl Round {
+    /// The traced console's game (the setup's).
+    pub fn console_game(&self) -> Game {
+        self.setup.console_game()
     }
 
     /// The engine's starting point for this round, on `content` (whose
@@ -525,14 +547,10 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
         .iter()
         .map(|&o| Unknown { xy: nettai_battle::kinds::effect::xy_unknown(b, o), z_fraction: spark_z_fraction_unknown(b, compat, o) })
         .collect();
-    // The traced console's game: its player's (the local side's; not its
-    // navi's NaviStats version, which a link navi has as Gregar's). A
-    // Gregar console's objects keep Gregar's spawner addresses where the
-    // content has Falzar's (games.toml).
-    let game = match b.setup.players[b.round.local_side as usize & 1].unlocks.version {
-        nettai_battle::custom::GameVersion::Gregar => Game::Gregar,
-        nettai_battle::custom::GameVersion::Falzar => Game::Falzar,
-    };
+    // The traced console's game (its round's setup's): a Gregar or a
+    // Japanese console's objects keep its own ROM's addresses where the
+    // content has the US Falzar's (games.toml).
+    let game = f.console;
     let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, compat, o, u, game)).collect();
     let theirs: Vec<String> =
         f.objects.iter().enumerate().map(|(i, o)| describe_trace(compat, o, unknown.get(i).copied().unwrap_or_default())).collect();
