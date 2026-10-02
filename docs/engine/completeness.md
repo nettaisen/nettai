@@ -534,6 +534,26 @@ the only such body is the thrower, three panels back, and it can't get there in 
 
 All 20 recordings match the engine at main af3e0c39 (14,759 frames); none of batch 2 changed it.
 
+**Batch 3, the navi chips.** SpoutMan (32 branches, with link navi SpoutMan's charged water ball, which is his
+ball): 13 taken by 8 new recordings, 17 unreachable, 2 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0f2-spoutman/corner-full-trail` | the geyser from (1,1): its row above off the field, its column the far edge's, a trail of four columns |
+| `chips/0x0f2-spoutman/side-1-front` | side 1's SpoutMan away from its back columns (the water ball) |
+| `navis/navi-06-dripshwr/charge-dimmed`, `charge-geddon` | the link navi's ball and splashes (which stand still while dimmed) in the opponent's dimming; a splash whose panel Geddon broke doesn't crack it |
+| `navis/navi-06-dripshwr/charge-into-hole`, `charge-next-hole` | the ball coming down in a hole; the panel beyond the splash a hole (one splash) |
+| `navis/navi-06-dripshwr/charge-ko`, `charge-battle-over` | a splash and the ball seeing the battle over (the ball's through TimeBom1's blast while it flies) |
+
+The unreachable ones: SpoutMan's own AI's geyser, pillar, mark and non-cracking splash (10: the navi chips spawn
+the chip's, Param1 4, and the link navi throws Param1 2); a second spout from one pillar, or its slot holding
+another (2: the navi chip's SpoutMan rises once a visit); his pillar slot empty when he signals it (2); the
+geyser's scan passing its target column (3: the target is the enemy's column or the edge, met first). The hard
+ones: his target scan reaching the field's edge (2), which needs the enemy navi's body off the panel flags while
+he stands in his back columns.
+
+All 8 recordings match the engine at main af3e0c39 (6,463 frames).
+
 ### 6.3 Custom screen keys
 
 Four custom screen routines were verified only by the golden traces' dumps, with no lab recording: SELECT hiding
