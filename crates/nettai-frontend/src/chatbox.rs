@@ -66,24 +66,28 @@ pub struct Shown<'a> {
 pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &mut Problems) -> Option<Shown<'a>> {
     let (side, screen) = crate::custom::local(b)?;
     let navi = b.stats[b.setup.local_side as usize & 1].navi;
-    let (chatbox, words, portrait) = match screen.phase {
+    // The words: the content's, or the player's language's (`Words`); a
+    // translation prints in step with the content's, whose lines and
+    // characters the chatbox's timing counts (`shown`).
+    let words = &sink.words;
+    let (chatbox, said, portrait) = match screen.phase {
         Phase::Description { from_cross_window: false, chatbox } => {
             // The chip under the cursor as the screen checked it (the chip
             // window's).
-            let chip = screen.look.chip_window.last_chip.map(|c| b.content.chip(c.id));
-            (chatbox, chip.and_then(|c| c.description.clone()), None)
+            let said = screen.look.chip_window.last_chip.and_then(|c| words.chip_description(b, c.id));
+            (chatbox, said, None)
         }
         Phase::Description { from_cross_window: true, chatbox } => {
             let w = &screen.crosses;
             let form = b.content.cross_form(navi, side.unlocks.version, w.offered[w.cursor as usize]);
-            (chatbox, form.and_then(|f| b.content.form(f).description.clone()), None)
+            (chatbox, form.and_then(|f| words.form_description(b, f)), None)
         }
         Phase::RunMessage { chatbox: Some(chatbox) } => {
-            let m = &b.content.navi(navi).run_message;
-            (chatbox, Some(m.text.clone()), m.portrait)
+            (chatbox, Some(words.run_message(b, navi)), b.content.navi(navi).run_message.portrait)
         }
         _ => return None,
     };
+    let translated = said.is_some_and(|s| s.translated);
     let graphics = &assets.hud.chatbox;
     if graphics.is_empty() || assets.hud.dialogue_font.is_empty() {
         problems.note("the pack has no chatbox graphics or dialogue font (extract it again)".into());
@@ -93,11 +97,11 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &m
         Script::Description { .. } => DESCRIPTION_BOX,
         Script::RunMessage { .. } => MESSAGE_BOX,
     };
-    let words = words.as_deref().unwrap_or("");
+    let words = said.map_or("", |s| s.text);
     let (text, lines) = if sink.takes(words) {
-        (Tiles { pixels: vec![0; TEXT_WIDTH * TEXT_ROWS] }, Some(printed(&chatbox, words)))
+        (Tiles { pixels: vec![0; TEXT_WIDTH * TEXT_ROWS] }, Some(printed(&chatbox, words, translated)))
     } else {
-        (text_tiles(b, assets, &chatbox, words, problems), None)
+        (text_tiles(assets, &chatbox, words, translated, problems), None)
     };
     let portrait = match (portrait, chatbox.look().portrait) {
         (Some(id), Some(look)) => match assets.sprite(id.category, id.index) {
@@ -116,46 +120,80 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &m
 }
 
 /// The lines printed so far, each with the units of it shown (as
-/// `text_tiles` composes them: the lines before the one printing whole).
-fn printed(chatbox: &Chatbox, words: &str) -> Vec<(String, usize)> {
-    let Some((done, printing)) = chatbox.look().text else { return Vec::new() };
-    words
-        .split('\n')
-        .take(3)
-        .enumerate()
-        .filter_map(|(k, line)| {
-            let units = crate::vfont::unit_count(line);
-            let shown = match (k as u8).cmp(&done) {
-                std::cmp::Ordering::Less => units,
-                std::cmp::Ordering::Equal => (printing as usize).min(units),
+/// `text_tiles` composes them).
+fn printed(chatbox: &Chatbox, words: &str, translated: bool) -> Vec<(String, usize)> {
+    let lines: Vec<&str> = words.split('\n').take(3).collect();
+    let units: Vec<usize> = lines.iter().map(|l| crate::vfont::unit_count(l)).collect();
+    lines.into_iter().zip(shown(chatbox, &units, translated)).filter(|&(_, n)| n > 0).map(|(l, n)| (l.to_string(), n)).collect()
+}
+
+/// How much of each line shows, its lines being `units` long: the lines
+/// done whole, the one printing up to the characters printed. A
+/// translation (whose lines and lengths aren't the content's, which the
+/// chatbox counts) shows as far through it as the chatbox is through the
+/// content's words: a description's whole lines in the proportion of the
+/// content's lines printed; a message's characters in the proportion of
+/// the content's characters printed, so it ends printing when the
+/// content's would.
+pub fn shown(chatbox: &Chatbox, units: &[usize], translated: bool) -> Vec<usize> {
+    let Some((done, printing)) = chatbox.look().text else { return vec![0; units.len()] };
+    if !translated {
+        return units
+            .iter()
+            .enumerate()
+            .map(|(k, &n)| match (k as u8).cmp(&done) {
+                std::cmp::Ordering::Less => n,
+                std::cmp::Ordering::Equal => (printing as usize).min(n),
                 std::cmp::Ordering::Greater => 0,
-            };
-            (shown > 0).then(|| (line.to_string(), shown))
-        })
-        .collect()
+            })
+            .collect();
+    }
+    match chatbox.script() {
+        Script::Description { breaks } => {
+            let (lines, printed) = (breaks as usize + 1, done as usize + (printing > 0) as usize);
+            let whole = (printed * units.len()).div_ceil(lines).min(units.len());
+            units.iter().enumerate().map(|(k, &n)| if k < whole { n } else { 0 }).collect()
+        }
+        Script::RunMessage { lines } => {
+            let total: usize = lines.iter().map(|&n| n as usize).sum();
+            let printed = lines.iter().take(done as usize).map(|&n| n as usize).sum::<usize>() + printing as usize;
+            let all: usize = units.iter().sum();
+            let mut left = (printed * all).div_ceil(total.max(1)).min(all);
+            units
+                .iter()
+                .map(|&n| {
+                    let s = n.min(left);
+                    left -= s;
+                    s
+                })
+                .collect()
+        }
+    }
 }
 
 /// The text's sprite tiles: the lines printed so far composed into the
 /// line buffer's image, cut into the eighteen sprites' tiles (each
 /// sprite's row by row).
-fn text_tiles(b: &Battle, assets: &Bundle, chatbox: &Chatbox, words: &str, problems: &mut Problems) -> Tiles {
+fn text_tiles(assets: &Bundle, chatbox: &Chatbox, words: &str, translated: bool, problems: &mut Problems) -> Tiles {
     let font = &assets.hud.dialogue_font;
     let mut image = vec![0u8; TEXT_WIDTH * TEXT_ROWS];
-    if let Some((done, printing)) = chatbox.look().text {
-        for (k, line) in words.split('\n').take(3).enumerate() {
-            let (glyphs, missing) = fonts::dialogue_glyphs(font, line);
-            if !missing.is_empty() {
-                problems.note(format!("the chatbox's {line:?}: the pack's dialogue font has no glyph for {missing:?}"));
-            }
-            let shown = match (k as u8).cmp(&done) {
-                std::cmp::Ordering::Less => glyphs.len(),
-                std::cmp::Ordering::Equal => (printing as usize).min(glyphs.len()),
-                std::cmp::Ordering::Greater => 0,
-            };
-            fonts::dialogue_text(font, &glyphs[..shown], &mut image, TEXT_WIDTH, LINE_ROWS * k);
+    if chatbox.look().text.is_some() {
+        let lines: Vec<Vec<u16>> = words
+            .split('\n')
+            .take(3)
+            .map(|line| {
+                let (glyphs, missing) = fonts::dialogue_glyphs(font, line);
+                if !missing.is_empty() {
+                    problems.note(format!("the chatbox's {line:?}: the pack's dialogue font has no glyph for {missing:?}"));
+                }
+                glyphs
+            })
+            .collect();
+        let units: Vec<usize> = lines.iter().map(Vec::len).collect();
+        for (k, (glyphs, n)) in lines.iter().zip(shown(chatbox, &units, translated)).enumerate() {
+            fonts::dialogue_text(font, &glyphs[..n], &mut image, TEXT_WIDTH, LINE_ROWS * k);
         }
     }
-    let _ = b;
     let mut tiles = Tiles { pixels: Vec::with_capacity(TEXT_WIDTH * TEXT_ROWS) };
     for (top, height) in TEXT_SPRITES {
         for column in 0..TEXT_WIDTH / 32 {
@@ -340,6 +378,47 @@ mod tests {
         assert_eq!((at(1), at(7), at(8), at(13), at(14)), (0, 0, 1, 1, 0));
         // A still face holds its one frame.
         assert_eq!(frame_after(&[(6, 0x80)], 100), 0);
+    }
+
+    /// The units of a translation shown tick by tick until the chatbox
+    /// waits for a key, while it shows text.
+    fn printing(mut c: Chatbox, units: &[usize]) -> Vec<Vec<usize>> {
+        let mut out = Vec::new();
+        for _ in 0..300 {
+            c.update(0, 0);
+            if c.look().text.is_some() {
+                out.push(shown(&c, units, true));
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn a_translated_message_prints_in_step_with_the_contents() {
+        // The content's message: lines of 4 and 2 characters; the
+        // translation's: three lines of 3.
+        let ticks = printing(Chatbox::new(Script::RunMessage { lines: [4, 2, 0] }), &[3, 3, 3]);
+        let totals: Vec<usize> = ticks.iter().map(|s| s.iter().sum()).collect();
+        assert!(totals.windows(2).all(|w| w[0] <= w[1]), "it only grows: {totals:?}");
+        assert!(totals.iter().any(|&n| n > 0 && n < 9), "it prints a part at a time: {totals:?}");
+        assert_eq!(ticks.last(), Some(&vec![3, 3, 3]), "all of it once the content's is printed");
+        // Lines fill in order.
+        assert!(ticks.iter().all(|s| s.windows(2).all(|w| w[1] == 0 || w[0] == 3)), "{ticks:?}");
+    }
+
+    #[test]
+    fn a_translated_description_shows_whole_lines_as_the_contents_do() {
+        // The content's description has three lines (two breaks), the
+        // translation two.
+        let ticks = printing(Chatbox::new(Script::Description { breaks: 2 }), &[5, 4]);
+        assert!(ticks.iter().all(|s| s.iter().zip([5, 4]).all(|(&n, whole)| n == 0 || n == whole)), "{ticks:?}");
+        assert_eq!(ticks.last(), Some(&vec![5, 4]));
+        // Not translated: the content's own lines, as the chatbox prints them.
+        let mut c = Chatbox::new(Script::Description { breaks: 2 });
+        for _ in 0..300 {
+            c.update(0, 0);
+        }
+        assert_eq!(shown(&c, &[5, 4, 6], false), vec![5, 4, 6]);
     }
 
     #[test]

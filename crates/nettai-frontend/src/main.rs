@@ -30,6 +30,7 @@ struct Args {
     quit_after: Option<u64>,
     text: TextMode,
     font: Option<PathBuf>,
+    lang: String,
 }
 
 /// Where `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` puts the BN6 pack by default.
@@ -76,6 +77,13 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    original does (what the frame comparison uses)
   --font PATH      the font mode's font (a TrueType or OpenType file) instead
                    of the bundled one (Murecho)
+  --lang LANG      the language of the battle's words: en (default, the
+                   content's own) or ja (the Japanese games' names,
+                   descriptions and messages, from the content's
+                   locale/ja.toml, and their fonts and pictures with words,
+                   from the pack); either text mode. Only what is shown
+                   changes: the battle, and a netbattle with a player of
+                   another language, are the same
   --quit-after N   close the window after N ticks";
 
 fn parse() -> Result<Args, String> {
@@ -100,6 +108,7 @@ fn parse() -> Result<Args, String> {
         quit_after: None,
         text: TextMode::Font,
         font: None,
+        lang: nettai_assets::BASE_LANGUAGE.into(),
     };
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
@@ -125,6 +134,7 @@ fn parse() -> Result<Args, String> {
             "--quit-after" => a.quit_after = Some(number(value("--quit-after")?, "--quit-after")?),
             "--text" => a.text = value("--text")?.parse()?,
             "--font" => a.font = Some(value("--font")?.into()),
+            "--lang" => a.lang = value("--lang")?,
             "-h" | "--help" => return Err(String::new()),
             s if s.starts_with('-') => return Err(format!("unknown option {s}")),
             s => a.trace = Some(s.into()),
@@ -170,6 +180,21 @@ fn load<T>(pack: &Path, what: &str, f: impl Fn(&Path) -> Result<(T, nettai_conte
     }
 }
 
+/// The battle's words in `lang`: the pack's lettering in it (fonts, HUD
+/// lines, pictures with words) and the content root's strings table, if
+/// the language isn't the content's own.
+fn language(assets: nettai_assets::Bundle, root: &Path, lang: &str) -> (nettai_assets::Bundle, Option<nettai_content::locale::Strings>) {
+    let own = assets.hud.language().to_string();
+    let strings = nettai_content::locale::Strings::load(root, lang).unwrap_or_else(|e| fail(e));
+    if strings.is_none() && lang != own {
+        let mut have = vec![own];
+        have.extend(nettai_content::locale::Strings::languages(root));
+        fail(format!("the content ({}) has no strings in {lang:?} (it has {})", root.display(), have.join(", ")));
+    }
+    let assets = assets.in_language(lang).unwrap_or_else(|e| fail(format!("{e} (extract the pack again with the Japanese ROMs)")));
+    (assets, strings)
+}
+
 /// Sound: hand each tick's cues to the audio output.
 fn audio_hook(bank: m4a::SoundBank) -> Box<dyn TickHook> {
     let mut out = nettai_audio::AudioOut::new(Arc::new(bank)).unwrap_or_else(|e| fail(format!("no audio output: {e}")));
@@ -198,8 +223,10 @@ fn main() {
     let root = args.content.clone().unwrap_or_else(nettai_content::root::bn6);
     let content = Arc::new(load(&pack, "battle content", |pack| nettai_content::pack::load_battle(&root, pack)));
     let assets = load(&pack, "graphics", nettai_content::pack::load_graphics);
+    let (assets, strings) = language(assets, &root, &args.lang);
     session::quiet_engine_panics();
     let mut renderer = Renderer::new(&assets);
+    renderer.set_strings(strings.map(Arc::new));
     // The font mode's font, shared by the renderer (which strings it has)
     // and the text layer's drawing.
     let font = (args.text == TextMode::Font).then(|| {
