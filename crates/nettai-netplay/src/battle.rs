@@ -2,7 +2,7 @@
 //!
 //! [`Battle`] steps on the engine's per-tick input record
 //! ([`TickInput`]). Each player contributes their share of it: their
-//! buttons, and the frame's events their console produced ([`Bn6Input`]):
+//! buttons, and the frame's events their console produced ([`PlayerInput`]):
 //! the link session closing at the end of a round, and, only when checking
 //! against a recording that lacks a player's folder, that player's
 //! recorded custom-screen results. Carrying the events in the inputs is
@@ -21,7 +21,7 @@ use nettai_battle::{Battle, PlayerTick, SoundCue, TickEvents, TickInput};
 
 /// One player's share of a tick's input.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Bn6Input {
+pub struct PlayerInput {
     pub tick: PlayerTick,
     /// Events this player's console contributes to the frame (see
     /// `nettai_battle::TickInput`); an input carries them on the frame they
@@ -31,7 +31,7 @@ pub struct Bn6Input {
 
 /// The engine's input record for a frame, from both players' shares by
 /// side: buttons by side, and both players' events together.
-pub fn tick_input(inputs: [&Bn6Input; 2]) -> TickInput {
+pub fn tick_input(inputs: [&PlayerInput; 2]) -> TickInput {
     let mut events = TickEvents::default();
     for i in inputs {
         events.link_closed |= i.events.link_closed;
@@ -45,9 +45,9 @@ pub fn tick_input(inputs: [&Bn6Input; 2]) -> TickInput {
 }
 
 impl Game for Battle {
-    type Input = Bn6Input;
+    type Input = PlayerInput;
 
-    fn step(&mut self, inputs: [&Bn6Input; 2]) {
+    fn step(&mut self, inputs: [&PlayerInput; 2]) {
         Battle::step(self, &tick_input(inputs));
     }
 
@@ -60,8 +60,8 @@ impl Game for Battle {
     }
 
     /// Buttons carry on; events happen once.
-    fn predict(last: &Bn6Input) -> Bn6Input {
-        Bn6Input { tick: last.tick, events: TickEvents::default() }
+    fn predict(last: &PlayerInput) -> PlayerInput {
+        PlayerInput { tick: last.tick, events: TickEvents::default() }
     }
 }
 

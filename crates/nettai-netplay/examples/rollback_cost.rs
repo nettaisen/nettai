@@ -17,7 +17,7 @@
 use std::time::{Duration, Instant};
 
 use bn6_compat::trace;
-use nettai_netplay::bn6::Bn6Input;
+use nettai_netplay::battle::PlayerInput;
 use nettai_netplay::getgud::World;
 use nettai_netplay::{BattleState, BattleWorld};
 
@@ -39,16 +39,16 @@ fn main() {
     let compat = bn6_compat::Compat::bn6();
     let (limit, _) = trace::run_round(round, &content, compat);
     let ids = bn6_compat::codec::Ids::new(&content, compat);
-    let inputs: Vec<[Bn6Input; 2]> = (0..limit)
+    let inputs: Vec<[PlayerInput; 2]> = (0..limit)
         .map(|i| {
             let (players, events) = round.tick_inputs(i, &frames, &ids);
-            [Bn6Input { tick: players[0], events }, Bn6Input { tick: players[1], events: Default::default() }]
+            [PlayerInput { tick: players[0], events }, PlayerInput { tick: players[1], events: Default::default() }]
         })
         .collect();
     // Side 0's world: its input is `local`, side 1's the remote.
     let mut world = BattleWorld::new(round.start(content.clone(), compat), 0);
     let runtime = nettai_battle::behavior::Behaviors::for_content(&world.game().content).unwrap().runtime().to_string();
-    let step = |w: &mut BattleWorld<_>, [a, b]: &[Bn6Input; 2]| {
+    let step = |w: &mut BattleWorld<_>, [a, b]: &[PlayerInput; 2]| {
         let Ok(()) = w.step(a, std::slice::from_ref(b));
     };
     let save = |w: &mut BattleWorld<_>| -> BattleState {
