@@ -313,10 +313,12 @@ recordings takes the other way. The scenarios are in the chip lab library's `cov
 each naming the branch it takes in its description.
 
 **What has been read**, in the order above: all of the collision and damage area, the statuses and hit
-reactions, and the custom screen and hand (164 branches), and the first of movement and chip use: 398
-branches. 112 are taken by a new recording, 253 can't be taken in a netbattle (the tables below), 33 can but
-have no scenario yet (the list after them). Movement (116 left), chip use and dimming (135) and the forms and
-flow (443) are still to be read; the chip families (1,066) are read in their own pass.
+reactions, the custom screen and hand (164 branches) and movement (116, with 13 the first batches' recordings
+made one-sided), and the first of chip use: 527 branches. 130 are taken by a new recording, 331 can't be taken
+in a netbattle (the tables below), 66 can but have no scenario yet (the list after them). Chip use and dimming
+(135) and the forms and flow (447) are still to be read; the chip families (1,066) are read in their own pass.
+Batch 7's 17 scenarios (movement) are recorded but not yet replayed against the engine or in the lab: the lab
+was being re-recorded when they were made.
 
 **One difference was found, in the recordings rather than the engine.** A trace's setup didn't carry the save's
 unlocks, so the replay read every save as a finished game's (`Unlocks::everything`); a save without Beast Out
@@ -358,12 +360,16 @@ finished saves, which they are). Every other new recording matched at once: batc
 | `forms/falzar/cross-dust-beast-hand`, `cross-dust-scrap-take-back` (`sub_802A40C`, `sub_8027F10`, `sub_8028F84`) | DustCross's Beast at the screen (no NumbrOpn hand, the scrap button); the scrap button with nothing picked |
 | `navis/navi-01-heatpres/own-chip-twice` (`sub_80280A2`) | a link navi's chip, used, not offered again in the round |
 | `forms/gregar/cross-charge-hand-size`, `-bug` (`sub_802A49C`, `sub_802A40C`) | ChargeCross's hands of 8 and past 8, with and without the custom bug: the Gregar side's screen, which the coverage (the Falzar console's own screen) can't credit; the engine matches every screen |
+| Batch 7: `navis/navi-05-volcchrg/charge-family-chip-level-1`, `navis/*/charge-other-chip`, `navi-05-volcchrg/charge-dimming-chip` (`sub_8013236`, `sub_80F0608`) | ChargeMan below his charge level (3) and at his level's cap of 0; ChargeMan, SpoutMan, TomahawkMan and ProtoMan holding A on a chip outside their family, and ChargeMan on a damaging dimming chip |
+| `forms/gregar/cross-elec-09a-held`, `-0dd-held`, `cross-charge-06e-held`, `cross-slash-131-held` (`sub_8013236`) | ElecCross holding A on Recov10 (no damage) and Roll (dims), ChargeCross on BurnSqr1 (dims), SlashCross on BugRSwrd (no damage) |
+| `forms/falzar/needlarm-then-beast`, `forms/gregar/needlarm-then-beast` (`sub_800FFAA`) | both Beasts' busters giving way to an arm chip's charged shot |
+| `navicust/bug-movement-airshoes`, `beat-standard-chip`, `rush-other-chip`, `antidmg-caught-side1`, `custom/invalid-chip-side1` (`sub_8010368`, `sub_80106C0`, `sub_8010740`, `sub_80105F2`, `sub_80F0354`) | the astray step's dash rule with AirShoes; Beat and Rush passing a chip they don't take; AntiDmg caught and the invalid chip used on the console's inverted side |
 
 Two more scenarios record a side the branch list can't credit: `chips/0x081-wind/twice` (a second fan evicting
 the first through the field-object registry; the earlier `then-fan` never placed its Fan, the panel being taken)
 and `flow/counter-ko` (a counter that deletes: it is booked before the deletion ends the battle).
 
-**Not reachable in a netbattle** (253 branches; `onesided_notes.py` has every address). First the collision,
+**Not reachable in a netbattle** (331 branches; `onesided_notes.py` has every address). First the collision,
 damage and status areas (and the first of the others), 135:
 
 | Routines | Branches | Why |
@@ -416,7 +422,22 @@ Then the 37 left reachable above, read again (6), and the custom screen and hand
 | `sub_802A49C`, `sub_802A40C` | 4 | ChargeCross's extra chips in the Falzar console's own screen (ChargeCross is Gregar's; the Gregar side is recorded and matches) |
 | the chatbox | 27 | commands and states the battle's scripts (descriptions and the twelve run messages, all recorded) don't use: portrait variants, F1 speeds other than 0, E4, a fourth line, the masked keys |
 
-**Reachable, no scenario yet** (33; the notes say what was tried): a status entered by its flag with no request
+And movement and the player's own routines (78):
+
+| Routines | Branches | Why |
+|---|---|---|
+| the player's init, its cross change, the step, the supports and the HUD | 10 | the battle effects, fixed in a netbattle (bit 8, the link battle's; bit 4) |
+| `sub_8010332`, `sub_800FEEC`, `sub_800FF5E`, `sub_80F0354`; `sub_800A8F8`, `sub_802DFC8`, `sub_802E4E4` | 7 | battle mode 9; battle flag 0x40 and its SELECT special |
+| the player's routines | 12 | the actor type is 2 for both navis and AIData+2 (an AI actor's) is 0; a null player object |
+| the step (`sub_80F02A2`), `sub_800FD0A`, `sub_801002C`, `sub_8012F3E` | 9 | state bits 0x200 (no charge) and 0x8000: `sub_8010312`'s callers pass neither |
+| `sub_80F0354`, `sub_80EA734`, `sub_80EB128`, `sub_80141F4` | 6 | requests with no setter (0x20, 0x80000), the crossed link navi's fall-back; turning (every stage has the standard column pattern) |
+| `sub_80EB088`, `sub_80EB1C4`, `sub_800F964` | 4 | the buffered step (mode 1) has no starter and no step a mode past 3; a step while sliding, which `object_canMove` refused first |
+| spawns, AIData and collision data | 6 | the pools never fill |
+| `sub_801BCF4`, `object_updateSprite`, `sub_801DB84` | 7 | a live navi's invariants (active, animating through dimmings, with collision data); objects without flag 0x10 don't run during a dimming; the HP-number registry never holds an object twice or seven at once |
+| `sub_8018810`, `sub_801A77A` | 4 | NameIDs: a navi's is past 0xFF, and none is in the story bosses' 0x173-0x17E |
+| the rest, one or two each | 13 | forms past 0x18; the panel bug's type (always 3, a crack); the buster's attack level (at most 7); the chip-enable bits, set before input; a palette index; a link navi's level (never 0xFF, and the floor is 0); every Fire chip damages; NaviStats+0x3D (no writer found); two dead tests |
+
+**Reachable, no scenario yet** (66; the notes say what was tried): a status entered by its flag with no request
 and nothing saved, or over a stale ice or bubble visual (`sub_800E730`, 5: paralysis then freeze and bubble,
 their reverse orders and a dimming during a paralysis don't reach them); the status visual hidden from a blind
 viewer or ended by its flag with its link left (`sub_80E0954`, 3: FlshBom3 then Discord, and Discord with
@@ -427,7 +448,12 @@ save without Beast Out's counter; a push onto a road whose next panel is blocked
 a paralyzed navi; the charge cut short mid-hold; on the custom screen, the slot link bytes (no writer found), a
 cursor move whose neighbour is its own slot, the scrap button in state 3, a scrap with fewer chips left than the
 hand, a sequence PA with two * chips, tired on a round without Beast Out, a save starting battles in a Cross, and
-two telop and HUD states; and a few single branches, listed in the notes.
+two telop and HUD states; in movement and the player's routines, the auto-step bug (stat 0x11), a battle started
+in a form, the panel bug over panel types 0 and 1, an astray step past a panel the dash rule refuses, the Beast
+form's throw (buster 0x2C) under an arm chip's charged shot, DestPuls on a navi whose bug levels are 6 or more,
+and a dozen single states (the sequencer's waits, idle states, a deletion's link); the emblem's form source; and
+a few single branches, listed in the notes. Two (`object_canMove`, `sub_80EB088`) are taken by another agent's
+`forms/gregar/beast-over-swords`, which matches only on a newer main.
 
 The first sample, of 10 routines read before this list was worked through, as it stands now:
 
