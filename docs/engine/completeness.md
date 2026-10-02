@@ -530,7 +530,9 @@ None of the one-sided branches read, in the sample or since, is missing from the
 The chip families' branches (`onesided_rank.py`'s area 7: routines cited by content/bn6, 1,066 branches in 720
 routines at main 29aac858) are read family by family, most-played chips first. The verdicts are in
 `onesided_notes.py`'s "chip families" section, and the scenarios in the chip lab library's
-`coverage_scenarios/m_onesided_chips.py`.
+`coverage_scenarios/m_onesided_chips.py`. At main ecdef997, with the lab's 5,279 recordings (batches 2 and 3's 39
+among them, all matching), 1,010 branches of the area still ran one way only: 258 guards, 365 unreachable in all,
+11 hard, 634 not yet read.
 
 **The guards (258):** a spawn or collision slot that never fails (255) and a panel pointer off the field (3).
 Each was checked against its instructions: the side never taken is the failure's, which a netbattle's pools
@@ -585,7 +587,7 @@ constants (2: one tick a panel, always cracking); FlshBom's statuses and rows (2
 pixels up (1); and two collision allocations (2). The hard one is a FlshBom landing on a navi of its own side:
 the only such body is the thrower, three panels back, and it can't get there in the 40 ticks of flight.
 
-All 20 recordings match the engine at main af3e0c39 (14,759 frames); none of batch 2 changed it.
+All 20 recordings match the engine (14,759 frames); none of batch 2 changed it.
 
 **Batch 3, the navi chips.** SpoutMan (32 branches, with link navi SpoutMan's charged water ball, which is his
 ball): 13 taken by 8 new recordings, 17 unreachable, 2 hard:
@@ -605,7 +607,7 @@ geyser's scan passing its target column (3: the target is the enemy's column or 
 ones: his target scan reaching the field's edge (2), which needs the enemy navi's body off the panel flags while
 he stands in his back columns.
 
-All 8 recordings match the engine at main af3e0c39 (6,463 frames).
+All 8 recordings match the engine (6,463 frames).
 
 ElmntMan (16 branches, with the vines' battle-end test) and SlashMan (11, with link navi SlashMan's charged
 waves): 15 taken by 8 new recordings, 12 unreachable, 4 hard:
@@ -623,7 +625,7 @@ passing the field's edge (4: they meet his own column first). The hard ones: Fir
 SlashMan's landing scan passing the edge (3, as SpoutMan's), and a meteor seeing the battle over (1: it falls
 inside ElmntMan's dimming, where only hits that run dimmed act, and its own hit ends it).
 
-All 8 recordings match the engine at main af3e0c39 (6,525 frames).
+All 8 recordings match the engine (6,525 frames).
 
 Roll, JudgeMan and BassAnly (9 branches each): 3 taken by 3 new recordings, 20 unreachable, 4 hard:
 `chips/0x0dd-roll/diagonal-target` (her landing panel in her user's column but another row, which must be
