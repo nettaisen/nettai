@@ -1797,7 +1797,7 @@ need.
 | records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rockcube/rock/cube" = 1`); NaviCust buster shots when their producers are known |
 | rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`), `[statuses] paralyze-90 = 0x10` (a hit's status byte, `off_80209EC`); and for the roles that name an effect, a spark, a region or a collision type (rules/roles.luau), the number the original's routines name each by, by role: `[effects] deletion = 0x03`, `[sparks] guard = 0x08`, `[regions] anchor = 0x01`, `[collision] navi = 0x01`; and likewise for the roles that name assets, `[sounds] hit = 0x06D`, `[music] link_battle = 0x015`, `[sprites] eruption = "10-24"`, `[banners] draw = 0x1C` |
 | assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
-| text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the EX and SP glyphs as `[EX]`, `[SP]`) |
+| text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the game's marks as characters: Ⓐ, the EX and SP glyphs U+E002 and U+E003; text-rendering.md §10.5) |
 | curation.toml | the names the generator made up, by file and key, with where each came from: the review list (§13) |
 
 A sample (kinds.toml):
@@ -1858,7 +1858,8 @@ name is a load error naming the module. The resolved value is a handle into the 
 - **Text.** Chip names and descriptions are UTF-8 in the definitions. The generator decodes the ROM's text with
   compat/text.toml; the extractor writes the font with the same table as `hud/font.json`, and the HUD draws names
   from the chip definitions. Glyphs with no character of their own (the EX and SP marks) are multi-character
-  entries of the table, written as v1's extractor already writes them (`EraseMn[EX]`).
+  entries of the table, written as v1's extractor already writes them (`EraseMn[EX]`). (Since 2026-10-02 every
+  mark is one character, the Private Use Area's where Unicode has none: text-rendering.md §10.5.)
 
 ### 6.4 How nothing else can read it
 
