@@ -726,6 +726,24 @@ the shield outliving its owner's vanishing for a navi chip (it fades long before
 dropped by a breaking hit, which only arrives with an ordinary hit the guard blocks on the same tick. The 14
 recordings are in the lab and match the engine at main 9ed59b90.
 
+**Second pass, batch 2: DblBeast, CrossDiv's Colonel, HubBatc** (30 branches): 15 taken by 9 new recordings,
+9 unreachable, 6 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x137-dblbeast/cubes-around-target`, `cubes-in-row` | the beasts' attack panels around the enemy all taken by RockCubes or off the field: the claw, the strike and the wing miss, each having tried all six panels |
+| `chips/0x137-dblbeast/user-column`, `user-column-falzar`, `user-two-ahead` | a taken attack panel in the user's column a row away (each beast's search); Falzar's breath falling back to the user's panel |
+| `chips/0x134-crossdiv/side1-miss` | side 1's Colonel finding no enemy navi in his row |
+| `chips/0x135-hubbatc/attackmax`, `custom-bug`, `shield` | HubBatc on a navi whose buster is at level 5 already, with the hand-shrink bug's turn set, and with a B+Back special |
+
+The unreachable ones: a second DblBeast target (4: the beasts list the panels with the enemy's navi body flag,
+which only its navi sets), Gregar's gun shot leaving the field (2: the gun stands in its target's row facing it),
+Colonel on the enemy's back column (2: he appears on his user's panel) and an attachment restarted that isn't
+there (1). The hard ones: no target for the beasts (3: the enemy navi's body off the panel flags), Gregar's gun
+missing (2: its panels three to five from the target, all taken but none its user's), and a new charged shot over
+DustCross Beast's throw (1). The 9 recordings match the engine at main 4f2ad68e, every frame (15,910) and sound
+call (409, the custom screen's now among them); batch 1's 10 too.
+
 ### 6.3 Custom screen keys
 
 Four custom screen routines were verified only by the golden traces' dumps, with no lab recording: SELECT hiding
