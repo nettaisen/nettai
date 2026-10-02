@@ -61,6 +61,13 @@ pub struct Setup {
     /// stats or not). Traces recorded without it read as clear.
     #[serde(default)]
     pub emotion_window_glitches: Option<[bool; 2]>,
+    /// The link's delay in ticks, from a packet's sending to its arrival.
+    /// Traces recorded without it are an emulated cable's,
+    /// `Link::RECORDED_DELAY`; matches recorded by Tango's first netplay
+    /// engine, which ran each console alone and gave it both players'
+    /// packets a tick after they were built, say 1.
+    #[serde(default)]
+    pub link_delay: Option<u8>,
 }
 
 /// The bug frags a trace without them reads as: the recording tool's
@@ -250,8 +257,13 @@ impl Round {
                 None => Default::default(),
             },
             players: std::array::from_fn(|p| self.player_setup(p as u8, &ids)),
-            link_delay: Link::RECORDED_DELAY,
+            link_delay: self.link_delay(),
         }
+    }
+
+    /// The link's delay in ticks (`Setup::link_delay`).
+    pub fn link_delay(&self) -> u8 {
+        self.setup.link_delay.unwrap_or(Link::RECORDED_DELAY)
     }
 
     /// The round's battle at its start on `content`, with the counters
@@ -353,10 +365,10 @@ impl Round {
     }
 
     /// A player's buttons on a frame. The trace records the input the
-    /// link delivered, which the players pressed `RECORDED_DELAY` frames
+    /// link delivered, which the players pressed `link_delay` frames
     /// earlier.
     pub fn joypad(&self, frame: u32, side: usize) -> u16 {
-        self.frame(frame + Link::RECORDED_DELAY as u32).map_or(0, |f| f.input[side][0] & 0x3FF)
+        self.frame(frame + self.link_delay() as u32).map_or(0, |f| f.input[side][0] & 0x3FF)
     }
 
     /// Inputs and events for a frame (the players' results decoded with
@@ -370,13 +382,13 @@ impl Round {
             events.link_closed = true;
         }
         // A player whose folder the trace lacks: their custom screen's
-        // status (as it arrives `RECORDED_DELAY` frames later) and, on
+        // status (as it arrives `link_delay` frames later) and, on
         // the tick before the mode leaves the custom screen, their result.
         for p in 0..2 {
             if self.folder_known(p as u8) {
                 continue;
             }
-            let arriving = self.frame(f.frame + Link::RECORDED_DELAY as u32).unwrap_or(f);
+            let arriving = self.frame(f.frame + self.link_delay() as u32).unwrap_or(f);
             let in_custom = unhex(&arriving.bs).get(0x14 + p).copied().unwrap_or(0) & 4 != 0;
             let mut result = None;
             if let Some(next) = frames.get(i + 1)
@@ -693,7 +705,7 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
                 random_battle: false,
                 late_turns: false,
                 now: f.frame,
-                link_delay: Link::RECORDED_DELAY,
+                link_delay: round.link_delay(),
             }
         };
         for (p, side) in sides.iter_mut().enumerate() {
@@ -762,12 +774,12 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
                     }
                 }
             }
-            // The status bit's clearing reaches both consoles 1 + 4 frames
+            // The status bit's clearing reaches both consoles 1 + link_delay frames
             // after it happens.
             let screen = frames[..=i].iter().filter(|g| g.frame > *opened);
             let set = |g: &&&Frame| unhex(&g.bs)[0x14 + p] & 4 != 0;
             let theirs_cleared = screen.skip_while(|g| !set(g)).find(|g| !set(g)).map(|g| g.frame);
-            let ours_cleared = cleared[p].map(|c| c + 1 + Link::RECORDED_DELAY as u32);
+            let ours_cleared = cleared[p].map(|c| c + 1 + round.link_delay() as u32);
             if ours_cleared != theirs_cleared {
                 d.push(format!("status bit arrives cleared: ours {ours_cleared:?} theirs {theirs_cleared:?}"));
             }
