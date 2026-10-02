@@ -433,9 +433,6 @@ impl Driver for LivePlayer {
         format!("live tick {}", self.ticks)
     }
 
-    fn prompt(&self, b: &Battle) -> Option<String> {
-        custom_screen_text(b, b.setup.local_side as usize)
-    }
 }
 
 /// A plain-text custom screen for a player: the dealt chips in the grid's
