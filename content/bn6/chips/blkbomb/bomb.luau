@@ -8,7 +8,9 @@
 -- some other way (`placed`) stays.
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
--- `obstacle` service) around its own actions.
+-- `obstacle` service) around its own actions. A game whose bomb leaves the
+-- field otherwise makes its kind with its own destroyed action
+-- (`black_bomb.make_kind`; BN5's).
 
 local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local attachment = require("../../objects/attachment/attachment")
@@ -69,7 +71,7 @@ black_bomb.held = attachment.look { sprite = asset.sprite("bomb"), palette = 4 }
 local DESTROYED, SET = 2, 9
 
 -- Gone from the field's bookkeeping, and freed at the next update.
-local function finish(me: Object)
+function black_bomb.finish(me: Object)
     obstacle.release_tracking(me)
     obstacle.unregister(me)
     me:unreserve_panel(me.future_panel_x, me.future_panel_y)
@@ -144,7 +146,7 @@ local function destroyed(me: Object)
                 battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), effects.puff)
             end
         end
-        finish(me)
+        black_bomb.finish(me)
         return
     end
     if me.phase_init == 0 then
@@ -154,7 +156,7 @@ local function destroyed(me: Object)
             battle.effect(me.pos, effects.explosion)
             if not (me.state :: State).set_off then
                 battle.play_sound(SOUND_HIT_BOMB)
-                finish(me)
+                black_bomb.finish(me)
                 return
             end
         end
@@ -162,26 +164,11 @@ local function destroyed(me: Object)
     if battle.dimmed() then
         return
     end
-    finish(me)
+    black_bomb.finish(me)
 end
 
 -- `sub_80CD6FC`: set down, nothing to do.
 local function idle(_me: Object) end
-
--- Its action table (`off_80CD62C`): its own actions and the framework's
--- shared ones.
-local ACTIONS: { [number]: (Object) -> () } = {
-    [0] = fly,
-    [1] = obstacle.return_to_idle,
-    [2] = destroyed,
-    [3] = obstacle.flinch,
-    [4] = obstacle.paralyzed,
-    [5] = obstacle.knocked_back,
-    [6] = obstacle.frozen,
-    [7] = obstacle.bubbled,
-    [8] = fly,
-    [9] = idle,
-}
 
 -- `sub_80CD7A0`: a fire hit sets it off.
 local function catch_fire(me: Object)
@@ -197,8 +184,8 @@ local function catch_fire(me: Object)
     me.phase, me.phase_init = 0, 0
 end
 
--- `sub_80CD5F8`.
-local function tick(me: Object)
+-- `sub_80CD5F8`, with the kind's action table (`off_80CD62C`).
+local function tick(me: Object, actions: { [number]: (Object) -> () })
     me.visible = true
     obstacle.take_hits(me, "keeps_damage")
     me:hit_spark()
@@ -208,7 +195,7 @@ local function tick(me: Object)
     end
     local a = obstacle.react(me, "breaks", "always")
     if a then
-        local action = ACTIONS[a]
+        local action = actions[a]
         if not action then
             error(string.format("BlkBomb action %d reads past off_80CD62C", a))
         end
@@ -252,7 +239,7 @@ local function burst(me: Object)
 end
 
 -- `sub_80CD50C`: aim at the target panel (a thrown one), with 100 HP.
-local function init(me: Object, s: State)
+local function init(me: Object, s: State, actions: { [number]: (Object) -> () })
     me.visible = true
     local sprite = me.sprite
     sprite:load(SPRITE)
@@ -294,38 +281,59 @@ local function init(me: Object, s: State)
     me.collision:set_hit_effect(HIT_SPARK)
     me.collision:present()
     me.lifecycle = "update"
-    tick(me)
+    tick(me, actions)
 end
 
-black_bomb.kind = define.kind {
-    id = "blkbomb/bomb",
-    pool = "attack",
-    state = { angle = "u8", set_off = "bool", placed = "bool", target_x = "u8", target_y = "u8" },
-    -- `sub_80CD4EC`.
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            init(me, me.state :: State)
-        elseif l == "update" then
-            tick(me)
-        else
-            -- `sub_80CD78E`.
-            burst(me)
-            me.collision:free()
-            me:free()
-        end
-    end,
-}
+-- A BlkBomb kind (`id`) whose destroyed action (2) is `destroyed_action`.
+function black_bomb.make_kind(id: string, destroyed_action: (Object) -> ()): Kind
+    -- Its action table (`off_80CD62C`): its own actions and the
+    -- framework's shared ones.
+    local actions: { [number]: (Object) -> () } = {
+        [0] = fly,
+        [1] = obstacle.return_to_idle,
+        [2] = destroyed_action,
+        [3] = obstacle.flinch,
+        [4] = obstacle.paralyzed,
+        [5] = obstacle.knocked_back,
+        [6] = obstacle.frozen,
+        [7] = obstacle.bubbled,
+        [8] = fly,
+        [9] = idle,
+    }
+    return define.kind {
+        id = id,
+        pool = "attack",
+        state = { angle = "u8", set_off = "bool", placed = "bool", target_x = "u8", target_y = "u8" },
+        -- `sub_80CD4EC`.
+        update = function(me: Object)
+            local l = me.lifecycle
+            if l == "init" then
+                init(me, me.state :: State, actions)
+            elseif l == "update" then
+                tick(me, actions)
+            else
+                -- `sub_80CD78E`.
+                burst(me)
+                me.collision:free()
+                me:free()
+            end
+        end,
+    }
+end
+
+black_bomb.kind = black_bomb.make_kind("blkbomb/bomb", destroyed)
 
 -- `sub_80CD886`: a thrower for `throw.action` that throws a BlkBomb at the
 -- panel three ahead of the user: one of the side's field objects. (The
 -- original keeps that panel as a halfword from the user's panel, and its
 -- thrower's X, which nothing reads.)
-function black_bomb.thrower(): Thrower
+-- (A game's own kind of it: `kind`.)
+function black_bomb.thrower(kind: Kind?): Thrower
+    local bomb_kind = kind or black_bomb.kind
     return {
         throw = function(user: Object, pos: Vec3, damage: number): Object?
             local xy = int.u16(user.panel_x + user.panel_y * 0x100 + 3 * user.facing)
-            local o = battle.spawn(black_bomb.kind, pos)
+            local o = battle.spawn(bomb_kind, pos)
             if o then
                 local s = o.state :: State
                 s.target_x = bit32.band(xy, 0xFF)
