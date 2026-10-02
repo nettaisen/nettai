@@ -854,6 +854,7 @@ dependencies = [
  "nettai-battle",
  "nettai-content",
  "nettai-content-api",
+ "nettai-netplay",
  "png",
  "swash",
 ]

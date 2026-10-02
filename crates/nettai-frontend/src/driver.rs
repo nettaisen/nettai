@@ -4,6 +4,7 @@
 use crate::folders::{self, Draws, FolderLimits};
 use nettai_battle::battle::{mode, top};
 use nettai_battle::console::ConsoleSetup;
+use nettai_battle::cues::CueAction;
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::{
     self, BattleFolder, CrossList, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState, Unlocks,
@@ -14,7 +15,7 @@ use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stag
 use nettai_battle::{Battle, PlayerTick, Rng, TickEvents};
 use bn6_compat::trace::{self, Frame, Round};
 use bn6_compat::{Compat, codec};
-use nettai_content_api::{FormHandle, StageHandle};
+use nettai_content_api::{FormHandle, RecordHandle, StageHandle};
 use std::sync::Arc;
 
 /// One tick's inputs.
@@ -49,6 +50,36 @@ pub trait Driver {
     fn console_region(&self) -> &'static str {
         "us"
     }
+    /// For a driver that runs the battle itself (netplay's rollback
+    /// session), one wall-clock frame with the local player's buttons:
+    /// put the frame to show in `shown` and say what happened. None: the
+    /// driver gives each tick's inputs instead (`next`).
+    fn run_frame(&mut self, _keys: u16, _shown: &mut Battle) -> Option<Result<Ran, String>> {
+        None
+    }
+    /// A line to show all the time (netplay's connection and rollbacks).
+    fn status(&self) -> Option<String> {
+        None
+    }
+    /// The battle runs in real time with another player: no pause, no
+    /// other speed, no restart.
+    fn real_time(&self) -> bool {
+        false
+    }
+}
+
+/// What a frame of a driver that runs the battle itself did
+/// (`Driver::run_frame`).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Ran {
+    /// A new frame is in `shown` (none: the frame waited, for clock sync or
+    /// the stall guard, and the last one stays).
+    pub advanced: bool,
+    /// A new round started (the presentation starts over).
+    pub new_round: bool,
+    /// The sound for this frame: cue actions (a cue played on a prediction
+    /// that turned out wrong is cancelled).
+    pub sound: Vec<CueAction>,
 }
 
 // ---- Trace playback ----------------------------------------------------------
@@ -213,6 +244,32 @@ pub fn link_battle_stages(content: &Content) -> Vec<StageHandle> {
         .collect()
 }
 
+/// What a player brings to a live round: their folder as a save holds it
+/// (the round's init shuffles it), their game (their Beast, Beast Out and
+/// Beast Over, and their console's own pictures and Beast Out roar), the
+/// Crosses their Cross window offers, and their patch cards (each
+/// switched on or not, in the order they apply). In netplay each player
+/// brings their own (`crate::netplay`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Loadout {
+    pub folder: SavedFolder,
+    pub game: GameVersion,
+    pub crosses: CrossList,
+    pub cards: Vec<(RecordHandle, bool)>,
+}
+
+impl Loadout {
+    /// A player's loadout drawn from `draws` as live play draws one: a
+    /// legal random folder, five Crosses of both games, a game; no patch
+    /// cards.
+    pub fn drawn(content: &Content, draws: &mut Draws) -> Result<Loadout, String> {
+        let folder = folders::random_folder(content, FolderLimits::of(&live_navi(content)), draws);
+        let crosses = random_crosses(content, draws)?;
+        let game = random_game(draws);
+        Ok(Loadout { folder, game, crosses, cards: Vec::new() })
+    }
+}
+
 /// What live play drew for a round (`bn6_live_setup`): the frontend's
 /// choice of setup, made from the seed before the battle. The battle is
 /// then a function of its setup and the players' buttons.
@@ -234,15 +291,19 @@ pub struct LiveChoices {
 
 impl LiveChoices {
     /// What was drawn, for the terminal: the seed, the field, the Crosses,
-    /// and with `folders` the folders.
-    pub fn describe(&self, content: &Content, folders: bool) -> String {
+    /// and with `folders` the folders; `you` is the side the player plays.
+    pub fn describe(&self, content: &Content, folders: bool, you: usize) -> String {
         let stage = &content.defs.stage(self.stage).key;
         let mut out = format!("live play: seed {}, stage {stage}", self.seed);
         if let Some(b) = &self.background {
             out.push_str(&format!(", background {b}"));
         }
         for side in 0..2 {
-            let who = if side == 0 { "you" } else { "the right navi" };
+            let who = match (side == you, side) {
+                (true, _) => "you",
+                (false, 0) => "the left navi",
+                (false, _) => "the right navi",
+            };
             let names: Vec<&str> = self.crosses[side].forms().map(|f| crate::strings::own_form_name(content, f)).collect();
             let game = match self.games[side] {
                 GameVersion::Gregar => "Gregar",
@@ -257,15 +318,28 @@ impl LiveChoices {
     }
 }
 
-/// The live round on BN6's content, drawn from `seed`: a link battle's
-/// stage (`stage`, a stage's key, forces one) and background, a legal
-/// random folder for each player (`crate::folders`), and five of MegaMan's
-/// ten Crosses, of both games, for each Cross window
-/// (`Unlocks::cross_list`, docs/engine/custom-screen.md §4.1). Both
-/// players are 1000-HP MegaMen (`live_navi`), each of a game drawn at
-/// random, Falzar or Gregar: their Beast Out is that game's Beast.
-pub fn bn6_live_setup(content: &Content, seed: u32, stage: Option<&str>) -> Result<(RoundSetup, LiveChoices), String> {
-    let mut draws = Draws::new(seed);
+/// A link battle's field: the round's stage and background (none: the
+/// stage's own), and the set's later rounds' (the original's init exchange
+/// carries those).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Field {
+    pub stage: StageHandle,
+    pub background: Option<String>,
+    pub later: [(StageHandle, Option<String>); 2],
+}
+
+/// The link battle stage with this key.
+pub fn link_stage(content: &Content, key: &str) -> Result<StageHandle, String> {
+    let stages = link_battle_stages(content);
+    content.defs.stage_by_key(key).filter(|s| stages.contains(s)).ok_or_else(|| {
+        let keys: Vec<&str> = stages.iter().map(|&s| content.defs.stage(s).key.as_str()).collect();
+        format!("no link battle stage {key:?}; the content's are {}", keys.join(", "))
+    })
+}
+
+/// A link battle's field drawn from `draws`: its stage and background, then
+/// the later rounds'; `stage` forces the round's stage.
+pub fn draw_field(content: &Content, draws: &mut Draws, stage: Option<StageHandle>) -> Result<Field, String> {
     let stages = link_battle_stages(content);
     if stages.is_empty() {
         return Err("the content has no link battle stage".into());
@@ -276,50 +350,108 @@ pub fn bn6_live_setup(content: &Content, seed: u32, stage: Option<&str>) -> Resu
         let background = (!backgrounds.is_empty()).then(|| backgrounds[draws.below(backgrounds.len())].to_string());
         (stage, background)
     };
-    // The round's field, then the set's later rounds' (the original's
-    // init exchange carries those).
-    let (mut first, background) = field(&mut draws);
-    let later = [field(&mut draws), field(&mut draws)];
-    if let Some(key) = stage {
-        first = content.defs.stage_by_key(key).filter(|s| stages.contains(s)).ok_or_else(|| {
-            let keys: Vec<&str> = stages.iter().map(|&s| content.defs.stage(s).key.as_str()).collect();
-            format!("no link battle stage {key:?}; the content's are {}", keys.join(", "))
-        })?;
-    }
-    let background_id =
-        |s: StageHandle, b: &Option<String>| b.as_ref().map_or(content.stage(s).background, |b| content.assets.backgrounds[b]);
-    let settings = BattleSettings {
-        stage: first,
-        background: background_id(first, &background),
-        effects: content.stage(first).effects | MATCH_EFFECTS,
-    };
+    let (first, background) = field(draws);
+    let later = [field(draws), field(draws)];
+    Ok(Field { stage: stage.unwrap_or(first), background, later })
+}
+
+/// The live round on BN6's content, drawn from `seed`: a link battle's
+/// stage (`stage`, a stage's key, forces one) and background, a legal
+/// random folder for each player (`crate::folders`), and five of MegaMan's
+/// ten Crosses, of both games, for each Cross window
+/// (`Unlocks::cross_list`, docs/engine/custom-screen.md §4.1). Both
+/// players are 1000-HP MegaMen (`live_navi`), each of a game drawn at
+/// random, Falzar or Gregar: their Beast Out is that game's Beast.
+pub fn bn6_live_setup(content: &Content, seed: u32, stage: Option<&str>) -> Result<(RoundSetup, LiveChoices), String> {
+    let stage = stage.map(|key| link_stage(content, key)).transpose()?;
+    let mut draws = Draws::new(seed);
+    let field = draw_field(content, &mut draws, stage)?;
     let limits = FolderLimits::of(&live_navi(content));
     let folders = [folders::random_folder(content, limits, &mut draws), folders::random_folder(content, limits, &mut draws)];
     let crosses = [random_crosses(content, &mut draws)?, random_crosses(content, &mut draws)?];
-    let game = |draws: &mut Draws| if draws.below(2) == 0 { GameVersion::Gregar } else { GameVersion::Falzar };
-    let games = [game(&mut draws), game(&mut draws)];
+    let games = [random_game(&mut draws), random_game(&mut draws)];
+    let players = [0, 1].map(|side| Loadout { folder: folders[side], game: games[side], crosses: crosses[side], cards: Vec::new() });
+    live_round(content, seed, &field, &players)
+}
+
+/// The live round of `players` (side 0's, then side 1's) on `field`: two
+/// 1000-HP MegaMen (`live_navi`) of the players' games, each folder
+/// shuffled by its console's RNG, the battle's RNG and the consoles' from
+/// `seed`.
+pub fn live_round(content: &Content, seed: u32, field: &Field, players: &[Loadout; 2]) -> Result<(RoundSetup, LiveChoices), String> {
+    let background_id =
+        |s: StageHandle, b: &Option<String>| b.as_ref().map_or(content.stage(s).background, |b| content.assets.backgrounds[b]);
+    let settings = BattleSettings {
+        stage: field.stage,
+        background: background_id(field.stage, &field.background),
+        effects: content.stage(field.stage).effects | MATCH_EFFECTS,
+    };
+    let folders = [players[0].folder, players[1].folder];
     let mut setup = live_setup(content, settings, folders, seed);
-    for side in 0..2 {
+    for (side, player) in players.iter().enumerate() {
         let p = &mut setup.players[side];
-        p.unlocks.cross_list = Some(crosses[side]);
+        p.unlocks.cross_list = Some(player.crosses);
         // The player's game: the save's (their Beast Out and Beast Over,
         // `Unlocks::version`) and the navi's (NaviStats+0x20, 0 Gregar, 1
         // Falzar, which MstrCros reads).
-        p.unlocks.version = games[side];
-        setup.navi_stats[side].version = match games[side] {
+        p.unlocks.version = player.game;
+        setup.navi_stats[side].version = match player.game {
             GameVersion::Gregar => 0,
             GameVersion::Falzar => 1,
         };
+        codec::install_patch_cards(content, p, &player.cards)?;
     }
-    setup.later_stages = later.map(|(s, b)| Stage { stage: s, background: background_id(s, &b) });
-    Ok((setup, LiveChoices { seed, stage: first, background, folders, crosses, games }))
+    setup.later_stages = field.later.clone().map(|(s, b)| Stage { stage: s, background: background_id(s, &b) });
+    let choices = LiveChoices {
+        seed,
+        stage: field.stage,
+        background: field.background.clone(),
+        folders,
+        crosses: [players[0].crosses, players[1].crosses],
+        games: [players[0].game, players[1].game],
+    };
+    Ok((setup, choices))
+}
+
+/// A set's next round after `ended`, a round of `first`'s set: the
+/// settings and score the round's end hands over, the players' folders
+/// shuffled again by their consoles' RNG where the round left it (the
+/// original's carries on through the next init's shuffle), the battle's
+/// RNG drawn from the first round's and the round's number. Both peers of
+/// a netplay match build the same from their settled states.
+pub fn next_round_setup(
+    content: &Content,
+    first: &RoundSetup,
+    players: &[Loadout; 2],
+    ended: &Battle,
+    settings: BattleSettings,
+    score: SetScore,
+) -> RoundSetup {
+    let mut next = first.clone();
+    next.settings = settings;
+    next.score = score;
+    next.rng = Draws::new(first.rng ^ (score.round as u32) << 24).next() as u32;
+    for (side, player) in players.iter().enumerate() {
+        let console = &ended.consoles[side];
+        let mut rng = console.rng;
+        let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&player.folder, 0, &mut rng, content);
+        let p = &mut next.players[side];
+        p.folder = Some(folder);
+        p.console = ConsoleSetup { rng: rng.state, tag_pair, frames: console.frames, ..ConsoleSetup::default() };
+    }
+    next
 }
 
 /// Install a player's patch cards (BN6's patch-cards system's setup) from
-/// a list of card names, comma-separated, in the order they apply (e.g.
-/// `canodumb,-shadow`): a name after `-` is installed but switched off
-/// (docs/engine/patch-cards.md).
+/// a list of card names (`patch_cards`).
 pub fn install_patch_cards(content: &Content, player: &mut PlayerSetup, list: &str) -> Result<(), String> {
+    codec::install_patch_cards(content, player, &patch_cards(content, list)?)
+}
+
+/// Patch cards from a list of card names, comma-separated, in the order
+/// they apply (e.g. `canodumb,-shadow`): a name after `-` is installed but
+/// switched off (docs/engine/patch-cards.md).
+pub fn patch_cards(content: &Content, list: &str) -> Result<Vec<(RecordHandle, bool)>, String> {
     let mut cards = Vec::new();
     for item in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
         let (name, on) = match item.strip_prefix('-') {
@@ -333,16 +465,26 @@ pub fn install_patch_cards(content: &Content, player: &mut PlayerSetup, list: &s
         })?;
         cards.push((card, on));
     }
-    codec::install_patch_cards(content, player, &cards)
+    Ok(cards)
+}
+
+/// A game drawn at random, Gregar or Falzar.
+fn random_game(draws: &mut Draws) -> GameVersion {
+    if draws.below(2) == 0 { GameVersion::Gregar } else { GameVersion::Falzar }
+}
+
+/// The form-changing navi's Crosses of both games, in the games' order
+/// (Gregar's, then Falzar's).
+pub fn all_crosses(content: &Content) -> Result<Vec<FormHandle>, String> {
+    let navi = content.form_changing_navi().ok_or("the content has no navi that changes form")?;
+    let forms = content.navi(navi).forms.as_ref().ok_or("the navi that changes form has no forms")?;
+    Ok([GameVersion::Gregar, GameVersion::Falzar].iter().flat_map(|&g| forms.of(g).crosses.iter().copied()).collect())
 }
 
 /// Five of the form-changing navi's Crosses of both games, drawn at
 /// random, listed in the games' order (Gregar's, then Falzar's).
 fn random_crosses(content: &Content, draws: &mut Draws) -> Result<CrossList, String> {
-    let navi = content.form_changing_navi().ok_or("the content has no navi that changes form")?;
-    let forms = content.navi(navi).forms.as_ref().ok_or("the navi that changes form has no forms")?;
-    let all: Vec<FormHandle> =
-        [GameVersion::Gregar, GameVersion::Falzar].iter().flat_map(|&g| forms.of(g).crosses.iter().copied()).collect();
+    let all = all_crosses(content)?;
     let mut picked: Vec<usize> = (0..all.len()).collect();
     draws.shuffle(&mut picked);
     picked.truncate(custom::screen::CROSSES);
