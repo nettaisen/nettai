@@ -744,6 +744,24 @@ missing (2: its panels three to five from the target, all taken but none its use
 DustCross Beast's throw (1). The 9 recordings match the engine at main 4f2ad68e, every frame (15,910) and sound
 call (409, the custom screen's now among them); batch 1's 10 too.
 
+**Second pass, batch 3: the Program Advances CrosOver and DblHero** (29 branches): 16 taken by 7 new
+recordings (and two of the forms' branches with them), 13 unreachable. A Program Advance needs its three chips
+in the first hand, and a side's first hand deals fixed folder slots (per side and stage seed), which a probe
+folder of thirty different chips shows; the scenarios place the chips there.
+
+| Scenarios | What they take the other way |
+|---|---|
+| `pa/0x15d-crosover/target-back` | the opponent on its back column: no panel for Django, so MegaMan waits for nobody and slashes alone |
+| `pa/0x15d-crosover/hole-in-front`, `django-blocked` | MegaMan's panel in front of the target a hole, Django's behind it a RockCube: each one's partner slashes alone |
+| `pa/0x15d-crosover/link-navi`, `in-cross` | a link navi's CrosOver (MegaMan in MegaMan's own image, raising his own arm); CrosOver in a Cross (MegaMan in the Cross's image) |
+| `pa/0x15d-crosover/side1`, `pa/0x158-dblhero/side1` | both on side 1: CrosOver's search and DblHero's shot rows going left |
+
+The unreachable ones: an image whose identity isn't a navi's (2: every user is a navi), MegaMan finding Django
+without his gun (1: Django, spawned by MegaMan's init, finishes the same 60-tick appearance first), one-tick
+phases (6), Django's sun beam or partner missing (2), DblHero's shot row leaving the field (1: the other side
+keeps its back column) and DblHero with no controller waiting (1). The 7 recordings match the engine, every frame
+(11,219) and sound call (408).
+
 ### 6.3 Custom screen keys
 
 Four custom screen routines were verified only by the golden traces' dumps, with no lab recording: SELECT hiding
