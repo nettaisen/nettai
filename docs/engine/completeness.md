@@ -744,6 +744,26 @@ missing (2: its panels three to five from the target, all taken but none its use
 DustCross Beast's throw (1). The 9 recordings match the engine at main 4f2ad68e, every frame (15,910) and sound
 call (409, the custom screen's now among them); batch 1's 10 too.
 
+**Batch 7, the traps (34 branches: CopyDmg, AntiDmg, ElemTrap, Mine, BodyGrd):** 12 taken by 9 new recordings,
+9 unreachable, 13 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0be-copydmg/side-1`, `twice` | side 1's damage-carry record; a second mark taking the record from the first |
+| `chips/0x0bb-antidmg/counter-after-ko` | AntiDmg's counter finding no living enemy: the catch lands four ticks before TimeBom1's blast deletes the thrower |
+| `chips/0x0c5-elemtrap/replaced`, `battle-over`, `hit-as-set`, `sprung-dimmed` | the trap's record moving on (AntiDmg after it), the battle's end, a hit in the tick it appears (FireBrn's flames), springing inside HeatMan's dimming |
+| `pa/0x157-bodygrd/all-ten`, `striker-replaced` | BodyGrd's striker running out its ten shurikens (an opponent of 1,500 HP); the striker evicted by Fan, a second field object |
+
+The unreachable ones: spawns that never fail (2), AntiDmg's counter variants its starters never set and shurikens
+off the field (3), the hidden mine's HP (1: no attack's target type reaches it), ElemTrap's counterattack in an
+element without a sound (1: only the four that spring it, all with one), and BodyGrd's striker while dimmed or
+choosing an offline target (2). The hard ones are mostly timings: a CopyDmg probe (about 5 ticks long) seeing the
+battle's end, which comes with the deletion some 50 ticks after the KO hit, after which no chip can be used; a
+shuriken of AntiDmg or BodyGrd starting with the battle over, or BodyGrd's striker meeting its target at 0 HP
+before the deletion; CopyDmg's search meeting anything but the navi it hit (4); the mine finding no free enemy
+panel (2); and ElemTrap's searches finding no enemy body (2, as SpoutMan's). The 9 recordings are in the lab and
+match the engine at main ca994e37 (9,340 frames).
+
 ### 6.3 Custom screen keys
 
 Four custom screen routines were verified only by the golden traces' dumps, with no lab recording: SELECT hiding
