@@ -1031,6 +1031,38 @@ LifeSync's sync (3: every netbattle is a link battle, where its effect skips to 
 gauge (1: battle flag 0x40) and the gauge set past full (1: its callers pass 0 or 0x4000, the limit). The 2
 recordings match the engine (this branch on main 2a35e451), every frame (4,797) and sound call (91).
 
+**Second pass, batch 11: the last five (the panel strike, the attachment, the boulder, the absorbed obstacle; 5
+branches):** 2 taken by 2 new recordings, 3 unreachable:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x13b-batcan1/beast-gregar` | the bat cannon (attachment row 0xF) held in Gregar Beast Out, at the offset that form's NameID gives, (11, -7) |
+| `stages/absorb-ko` | absorbed boulders seeing the battle over: side 1's Cannon deletes the DustCross navi (10 HP) while the boulders its B+Back pulled in fly to it, and they puff away |
+
+The unreachable ones: the panel strike's burst cracking its panel (1: its three spawners pass Param1 0, MachGun1-3's
+chip parameters and Bass's and AirRaid's constants), the dimmed panel strike's spawn failing (1: Bass's shots; the
+attack pool never fills), and the boulder's stage-slot pointer null (1: its only spawner, `sub_80D2430` from the
+actor list's entry type 3, stores the slot's address there). The 2 recordings match the engine at main 50b430c9,
+every frame (1,439) and sound call (45).
+
+**Second pass, batch 12: the area's last open ones (SlashMan's wave's steering, ElmntMan's meteor, the gauge-speed
+controller; 5 branches):** 2 taken by 2 new recordings, 3 unreachable:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0e9-slashman/steered-grabbed-column` | a steered wave finding no enemy navi ahead in any row: side 0's AreaGrab takes (4,1) and (4,3) around side 1 on (4,2), so SlashMan's first waves are level with it |
+| `chips/0x0e9-slashman/steered-side1` | side 1's steered waves, which find the opponent ahead to the left (a negative distance) |
+
+The unreachable ones: Fire's meteor landing on a panel with no target (1: it falls on the panel where Fire found the
+enemy navi's body, inside ElmntMan's dimming, where the navi can't leave or vanish and a deletion would end the
+battle first; the body's bit counts whether or not the panel is solid), and battle flag 0x40 in SloGauge's and
+FstGauge's controller (2). The 2 recordings match the engine at main fe99dba2, every frame (1,683) and sound call
+(69).
+
+With batch 12 every branch of the area is read: at main fe99dba2 with the lab's 5,521 recordings with coverage, the
+chip families have 826 one-sided branches (in 620 routines): 258 guards, 483 other unreachable, 85 hard, none
+open.
+
 <!-- end: chip families, onesided -->
 
 ### 6.3 Custom screen keys
