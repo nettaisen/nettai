@@ -844,9 +844,9 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
   #0x1B); the roles removed leave compat/rules.toml. Verify (branch rules-design): gen-content checks every form but
   the base form names `forms/change`.
 - **Gates** (on main f326c770 merged): the build without warnings, 399 tests, the content check (832 modules),
-  gen-content check (no errors of S2's: the three left are main's own, SpoutMan's descriptions since "fix
-  character", 78dcaf9d), machgun 1074/1331 and soundmod 21962/14933/20436 with 48 rollback rows and the 189 legacy
-  rounds, the lab 6521/6521 (5,756,487 frames) with 0 sound rounds differing.
+  machgun 1074/1331 and soundmod 21962/14933/20436 with 48 rollback rows and the 189 legacy rounds, the lab
+  6521/6521 (5,756,487 frames) with 0 sound rounds differing. After main 35fc0ca2 (locales, fonts): the build
+  without warnings, 402 tests, the content check, gen-content check 0 errors.
 - **Cost**: the basket under load 34 to 64 was noise either way (soundmod 1 read 119 against 345 µs in one pass, 236
   against 198 alternating); the user then dropped the measurement (§6.3). A change runs Luau only during its own
   frames (about 100 a change); a plain fight runs none of S2's.
