@@ -127,6 +127,18 @@ fn bundle() -> Bundle {
     Bundle { sprites: vec![sprite(0, 1), sprite(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud, custom: custom() }
 }
 
+/// A version's own pictures.
+fn own(seed: u8) -> VersionPictures {
+    VersionPictures {
+        beast_out: Picture { tiles: tiles(42, seed), palette: palette(seed as u16) },
+        beast_out_palettes: vec![palette(seed as u16), palette(seed as u16 + 1)],
+        beast_buttons: tiles(32, seed + 2),
+        emblems: tiles(8, seed + 3),
+        cross_names: tiles(36, seed + 4),
+        cross_palettes: vec![palette(seed as u16 + 5), palette(seed as u16 + 6)],
+    }
+}
+
 /// A custom screen's graphics: every block and table with some content.
 fn custom() -> CustomScreen {
     let map = |seed: u16| (0..300u16).map(|i| entry((i * 3 + seed) % 0x1A0, (i % 4) as u8 + 9, i % 7 == 0, i % 11 == 0)).collect();
@@ -152,8 +164,6 @@ fn custom() -> CustomScreen {
         pictures: SlotPictures {
             ok: picture(61),
             ok_picked: picture(62),
-            beast_out: picture(63),
-            beast_out_palettes: vec![palette(63), palette(64)],
             redeal: picture(65),
             scrap: picture(66),
             other: picture(67),
@@ -164,15 +174,17 @@ fn custom() -> CustomScreen {
         digits: tiles(22, 72),
         slot_codes: tiles(56, 73),
         empty_icon: tiles(4, 74),
-        beast_buttons: tiles(32, 75),
         redeal_buttons: tiles(36, 76),
-        scrap_buttons: tiles(36, 77),
+        scrap_buttons: tiles(48, 77),
+        versioned: Versioned { base: own(63), versions: vec![("gregar".into(), own(90))] },
         cursor: tiles(2, 78),
-        emblems: tiles(8, 79),
+        cross_cursor: tiles(4, 84),
+        cross_cursor_palette: palette(85),
         emblem_palettes: vec![palette(80), palette(81)],
         emblem_of: vec![0, 1, 1],
         emblem_palette_of: vec![1, 0, 0],
         regular: tiles(32, 82),
+        advance_name_colours: vec![[0, 0x7FFF, 0x14A5, 0], [0, 0x43F0, 0x14A5, 0]],
     }
 }
 
