@@ -18,7 +18,7 @@ local function setup(navi: Object): Action
     navi.extra = 0
     navi.hit_param = 0
     navi.attack_lockout = 0
-    local s = navi:action_state(charged_shot.action) :: charged_shot.State
+    local s = navi:action_state(charged_shot.action) :: { projectile: ProjectileVariant? }
     s.projectile = stats.charge_shot_kind or variants.charged
     return charged_shot.action
 end
