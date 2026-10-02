@@ -14,6 +14,8 @@ return define.navi {
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("dustman-win"), lose = asset.banner("dustman-deleted") },
+    -- Its face in the emotion window (`byte_801CDDC`).
+    mugshot = asset.mugshot("dustman"),
     merge_height = 0,
     run_message = { 18, 16, 9 },
     own_chip = { chip = dustman, code = "D" },

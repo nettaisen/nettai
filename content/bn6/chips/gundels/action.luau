@@ -81,6 +81,9 @@ function action.action(spec: GunDelSolSpec): Action
             return
         end
         s.timer = spec.firing_ticks
+        -- (It leaves the firing's ticks less 20 in the attack's count, for
+        -- a later action to read.)
+        me.attack_count = spec.firing_ticks - 0x14
         advance_gun(me)
         local look = if battle.navi(me.alliance).sun then spec.beam_in_sun else spec.beam
         me.related1 = beam.spawn(me, look, Vec3.px(me.facing * BEAM_AHEAD, 0, 0), "related")

@@ -24,7 +24,7 @@ local SOUND_RISE = asset.sound("appear")
 local SOUND_LEAP = asset.sound("aqua-needle-2")
 -- Its strike (`sub_80C53A6`, 0x04050501): an attack hitting navis on the
 -- target panel, 8 pixels up, with hit modifier 3, resolving while dimmed.
-local STRIKE_SPARK = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 0 }
+local STRIKE_SPARK = define.spark { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 }
 local STRIKE_Z, STRIKE_HIT_MOD = 0x8_0000, 3
 -- Rising two pixels a tick up to 10; then 20 ticks; then the leap, 16
 -- pixels a tick.

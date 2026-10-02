@@ -10,7 +10,7 @@
 -- appears. See docs/engine/chips.md §3.6.9.
 --
 -- The trap chips' controller (lib/traps/controller) sets it for ElemTrap:
--- `trap.set(controller, user, bonus)` (`sub_80E358C`).
+-- `trap.set(controller, user, chip, bonus)` (`sub_80E358C`).
 
 local collision = require("../../rules/collision")
 local panels = require("../../lib/panels")
@@ -18,7 +18,9 @@ local regions = require("../../lib/regions")
 local strike = require("./strike")
 
 export type State = {
-    -- The Atk+ / cross bonus (object +0x32), passed to the counterattack.
+    -- The chip and the Atk+ / cross bonus (object +0x30, +0x32), passed
+    -- to the counterattack, whose telop names them.
+    chip: Chip?,
     bonus: number,
     -- Hits spring it (not in the tick it appears).
     armed: boolean,
@@ -43,7 +45,7 @@ local WATCH, SPRING = 0, 4
 -- `sub_800ABC6`: the sparkle on each of the enemy navi's panels
 -- (`byte_80CE0DC`: the panels of the other side's player navi), 16 pixels
 -- down and 32 up from the panel's center, and its sound.
-local SPARKLE = define.effect { sprite = asset.sprite("copy-mark"), anim = 7, palette = 0 }
+local SPARKLE = define.effect { sprite = asset.sprite("hit-sparks"), anim = 7, palette = 0 }
 local SPARKLE_SOUND = asset.sound("dimming-sparkle")
 local SPARKLE_DY, SPARKLE_Z = 0x10_0000, 0x20_0000
 
@@ -75,7 +77,7 @@ local function spring(me: Object)
         end
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
         local counter = strike.spawn(user, s.sprung_by, damage, s.bonus)
-        dimming.start(user.alliance, true, counter, user)
+        dimming.start(user.alliance, true, counter, user, { chip = s.chip, bonus = s.bonus })
     end
     battle.clear_linked(me.alliance)
     me:set_lifecycle("destroy")
@@ -164,14 +166,14 @@ end
 trap.kind = define.kind {
     id = "elemtrap/trap",
     pool = "attack",
-    state = { bonus = "u16", armed = "bool", sprung_by = "u8" },
+    state = { chip = "chip", bonus = "u16", armed = "bool", sprung_by = "u8" },
     update = update,
 }
 
 -- `sub_80CE0EC`: the trap for `user`, on `controller`'s side, with the
--- controller's damage word and the bonus. (Its position is the spawner's
--- registers, which nothing reads.)
-function trap.set(controller: Object, user: Object, bonus: number): Object?
+-- controller's damage word, its chip and the bonus. (Its position is the
+-- spawner's registers, which nothing reads.)
+function trap.set(controller: Object, user: Object, chip: Chip?, bonus: number): Object?
     local o = battle.spawn(trap.kind, Vec3.new(0, controller.element, 0))
     if not o then
         return nil
@@ -181,7 +183,7 @@ function trap.set(controller: Object, user: Object, bonus: number): Object?
     o.damage, o.stamina = controller.damage, controller.stamina
     o.alliance = controller.alliance
     local s = o.state :: State
-    s.bonus = bonus
+    s.chip, s.bonus = chip, bonus
     o.run_while_dimmed = true
     return o
 end
