@@ -154,8 +154,21 @@ pub fn run(
         if !lines.is_empty() {
             // (The status text is in front of everything, the text layer's
             // items too.)
-            let rows = crate::text::draw(&mut frame.pixels, WIDTH, 0, 0, &lines.join("\n"), 0x7FFF) * 6;
-            frame.depth[..(rows * WIDTH).min(WIDTH * HEIGHT)].fill(0);
+            let text = lines.join("\n");
+            crate::text::draw(&mut frame.pixels, WIDTH, 0, 0, &text, 0x7FFF);
+            // Only the boxes the lines are drawn on (`text::draw`'s: four
+            // pixels a character and one more, six rows a line).
+            let cols = crate::text::columns(WIDTH).max(1);
+            let mut y = 0;
+            for line in text.lines() {
+                let chars = line.chars().count();
+                for n in (0..chars.max(1)).step_by(cols).map(|i| (chars - i.min(chars)).min(cols)) {
+                    for row in y..(y + 6).min(HEIGHT) {
+                        frame.depth[row * WIDTH..][..(n * 4 + 1).min(WIDTH)].fill(0);
+                    }
+                    y += 6;
+                }
+            }
         }
         let (ww, wh) = window.get_size();
         if (ww, wh) != (w, h) && ww > 0 && wh > 0 {

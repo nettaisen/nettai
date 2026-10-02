@@ -48,6 +48,8 @@ fn sprite(category: u8, index: u8) -> SpriteSheet {
                 SpriteFrame { tileset: 1, palette_set: 0, parts: 2, duration: 250, flags: 0xC0 },
             ],
         ],
+        // (One marked as another region's, which the pack keeps.)
+        region: (index == 0x3A).then(|| "jp".into()),
     }
 }
 
@@ -178,8 +180,9 @@ fn custom() -> CustomScreen {
         grey_palette: palette(56),
         other_palette: palette(57),
         chip_art: vec![
-            ChipArt { key: "cannon".into(), picture: picture(60) },
-            ChipArt { key: "no-picture".into(), picture: Picture::default() },
+            ChipArt { key: "cannon".into(), picture: picture(60), region: None, version: None },
+            ChipArt { key: "cut".into(), picture: picture(59), region: Some("jp".into()), version: Some("gregar".into()) },
+            ChipArt { key: "no-picture".into(), picture: Picture::default(), region: None, version: None },
         ],
         pictures: SlotPictures {
             ok: picture(61),

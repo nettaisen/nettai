@@ -46,6 +46,15 @@ pub struct Picture {
 pub struct ChipArt {
     pub key: String,
     pub picture: Picture,
+    /// The region whose ROMs the picture comes from, when not the pack's
+    /// own (BN6: `"jp"`, a chip the US release cut and left a placeholder
+    /// picture for). A console of another region shows something else.
+    pub region: Option<String>,
+    /// The game version whose ROM the picture is from, for a chip each
+    /// version's ROM has its own picture of (BN6's Gregar and Falzar chips:
+    /// a console shows its own beast in both). A console of the other
+    /// version shows its own.
+    pub version: Option<String>,
 }
 
 /// The chip window's pictures for the slots that aren't chips (Beast Out's
@@ -159,9 +168,9 @@ pub struct CustomScreen {
 }
 
 impl CustomScreen {
-    /// A chip's picture by its key.
-    pub fn chip_art(&self, key: &str) -> Option<&Picture> {
-        self.chip_art.iter().find(|a| a.key == key).map(|a| &a.picture).filter(|p| !p.tiles.is_empty())
+    /// A chip's picture by its key (with the region it comes from).
+    pub fn chip_art(&self, key: &str) -> Option<&ChipArt> {
+        self.chip_art.iter().find(|a| a.key == key).filter(|a| !a.picture.tiles.is_empty())
     }
 
     /// Whether the pack has the custom screen's graphics (an older pack

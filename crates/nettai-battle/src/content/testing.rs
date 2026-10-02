@@ -808,6 +808,7 @@ fn navi_chip_assets(a: &mut nettai_content_api::AssetNames) {
         ("tomahawkman", sprite(0x08, 0x07)),
         ("count", sprite(0x08, 0x16)),
         ("django", sprite(0x0C, 0x0F)),
+        ("otenko", sprite(0x0C, 0x49)),
         ("dust-storm-mote", sprite(0x10, 0x10)),
     ] {
         a.sprites.insert(name.into(), id);
@@ -1519,17 +1520,23 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x0C, index: 0x64 }, vec![vec![f(8, 0), f(8, LAST | LOOP)]; 5]);
     // Count (appearing, standing, raising his arms, lowering them,
     // leaving; his lance, animation 0xC) and the rain's motes; Django
-    // (riding 6, his bike 7, appearing 1, slashing 5, leaving 2).
+    // (riding 6, his bike 7, appearing 1, slashing 5, leaving 2; his gun 8
+    // and 9, CrosOver's).
     let mut count = vec![once(4); 0x0D];
     count[0] = vec![f(8, 0), f(8, LAST | LOOP)];
     count[0x0C] = vec![f(3, 0), f(3, LAST | LOOP)];
     sprites.insert(SpriteId { category: 8, index: 0x16 }, count);
     sprites.insert(SpriteId { category: 0x10, index: 0x10 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
-    let mut django = vec![once(4); 9];
+    let mut django = vec![once(4); 10];
     django[0] = vec![f(8, 0), f(8, LAST | LOOP)];
     django[6] = vec![f(4, 0), f(4, LAST | LOOP)];
     django[7] = vec![f(4, 0), f(4, LAST | LOOP)];
     sprites.insert(SpriteId { category: 0x0C, index: 0x0F }, django);
+    // Otenko's statue: the puff it appears in, then Otenko.
+    sprites.insert(
+        SpriteId { category: 0x0C, index: 0x49 },
+        vec![vec![f(2, 0), f(2, 0), f(2, LAST)], vec![f(8, 0), f(8, 0), f(8, 0), f(8, LAST | LOOP)]],
+    );
     // The water navi, his ball, splash, pillar, geyser and marks, and his
     // layer.
     let mut spout = vec![once(4); 0x16];
