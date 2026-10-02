@@ -267,7 +267,33 @@ setup, and its few routines are version branches.
 - **Saves:** both US ROMs have saves, and Tango carries light and dark templates for all four BN5 ROMs.
 - **The Japanese ROMs** (BRBJ, BRKJ) are not mapped yet (`bmap.py --to BRBJ` would).
 
-## 9. Reproducing
+## 9. Asset packs that load together (a proposal, for the rules design)
+
+The user wants BN5 composable with BN6 content, and the rules design (rules-in-luau.md §7) has one ruleset per
+player, content roots with qualified keys (`bn6:minibomb`), a shared root content/nettai, and each root's `asset.*`
+names resolving in its own pack (`assets = "bn6"` in its root.toml). For the packs:
+
+- **A pack says its game.** The manifest (content.toml) gains `game = "bn5"` (BN6's packs `game = "bn6"`), the
+  name a root's `assets` refers to. A loader given several packs keys them by it, and refuses two of one game.
+- **Names inside a pack stay unqualified**, as BN6's are now (`graphics/sprites/<name>`, assets.toml's names): a
+  pack is one game's, so its own names can't collide. BN5's names are BN5's own, curated like BN6's
+  (compat/assets.toml in content/bn5), with placeholders for the rest.
+- **Qualified when loaded together:** the engine's asset handles cover every loaded pack, keyed by
+  `<game>:<name>` (`bn5:bomb` and `bn6:bomb` are different sprites), interned like definition keys. Inside a root,
+  `asset.sprite("bomb")` means its own pack's; another game's asset is named qualified (`asset.sprite("bn6:bomb")`),
+  allowed for the roots in its `requires`. A sprite's identity gains its pack (`SpriteId`), as §7.4 says.
+- **Variants, as in BN6's packs:** what differs by version is named with the version
+  (`-protoman`/`-colonel`, as BN6's `-falzar`/`-gregar`), and what a console of each version shows of its own
+  goes in nettai-assets' `Versioned`; what comes from the Japanese ROMs carries the `region` field
+  (sprite.json, custom.json), as BN6's do.
+- **Sound** is per pack too: BN5's songs and sound effects are BN5's numbers in BN5's m4a bank; a cue names
+  `<game>:<song>` once qualified, and the audio loads each pack's bank. Two packs' banks never mix inside one
+  m4a player (a song plays with its own pack's instruments).
+- **Formats:** `nettai-content/hud` and `nettai-content/custom` are BN6's layouts (multi-game.md §1.6). BN5's
+  HUD and custom screen differ (souls, team navis); bn5-extract writes what is shared in those formats and leaves
+  the rest to formats the BN5 ruleset will need, rather than stretch BN6's.
+
+## 10. Reproducing
 
 In the verification workspace, with the ROMs in `$BN6_ROMS` and the BN6 disassembly's symbols in `$BN6F`:
 
