@@ -1089,6 +1089,17 @@ engine's custom screen (§15.3 item 13).
 What the setups need most: Recov10 (108: BN5's recovery family, §15.3 item 5), WideSht1 (18), BlkBomb and Thunder
 (15 each), HolyDrem (12), Sword (11), then the chips each scenario tests.
 
+With the chips of §15.6's third batch, BN5's metal, lava and sea stages and the rules work's P1a (its custom screen
+end, item 13; the families; the panel types), on 2026-10-02 (1,380 recordings: the lab's and four metal slides):
+252 replay, 1,128 stop at their setup; 24 match every frame and 79,701 of the 948,097 battle frames match. 191 of
+the 228 that differ stop at frame 426, the fight's first tick, on the panels: Team Colonel's MegaMan is dark (his
+save's light/dark value 0) and stands on the default stage's holy middle row, which BN5 turns Normal under him
+(§6.1, item 14). The rest: a spark a tick short (18, item 16), the camera shake's draws (7, item 15), a custom
+screen opened a tick late (12, item 18). With those four built in a scratch copy of the engine (not committed: the
+rules work's), 228 recordings match every frame and 115,999 frames match; the 24 that still differ are HolyDrem's
+(item 18), DrkRecov's (its dark chip cost, unread: §6), the souls' (not ported) and the metal slides' speed
+(item 17).
+
 ### 15.6 The chips (in progress)
 
 From the action map (§14.6), first the chips whose code is BN6's (identical, identical-run), then those that
@@ -1111,6 +1122,24 @@ AirShot (BN6's AirShot with BN5's shooter look and shot, row 4 without the wind 
 with BN5's sprite, sword animation, slash effect 0x33 and spawner); Boomer (BN6's boomerang with BN5's variant:
 half BN6's speeds, no grass, BN5's sprite).
 
+**Third batch** (2026-10-02): WideSht1 to WideSht3 (BN6's wide shot with BN5's shooter, the wave at the floor and
+BN5's wave sprite; WideSht2 and 3 fire wave kinds 4 and 5, their records' parameter), BlkBomb (BN6's bomb with
+BN5's leaving, 0x080CE594, its intake BN6's `sub_801ADFA`'s where BN6's is `sub_801AD12`, its spark and
+collision), Thunder (BN6's ball with BN5's look: sprites 10-11 and 0c-53, animation 0, collision row 0x0A, hit
+modifier 0, a 12-panel ball's row 0x2B, one sound), Sword, WideSwrd and LongSwrd (BN6's slash with BN5's parts,
+lib/swords: the blade, the effects 0x16 to 0x18 and BN5's slash type), Recov10 to Recov300 and DrkRecov (BN6's
+heal, the mood the record's parameter, only when no AntiRecv turned the heal), HolyDrem (its own: BN6's BurnSqr
+controller's code, a stand-in that fires a shot along the row and one more for each holy panel it turns Normal,
+and the shot, attack object 0x83), Invisibl, AntiDmg and Mine (BN6's, now the engine has the invisible family).
+Fixed: Boomer's variant is the record's row 5 (BN6's Boomer's speeds), not row 0. BN5's own hit sparks
+(lib/sparks: BN6's rows with BN5's sprites, whose animations are a frame longer) for its roles, shots and chips;
+the status visuals' sprites, a lava burn's spark and a sea splash (effect 0x63) in its roles; AntiSwrd's counter
+throws BN5's sonic boom (at the floor, palette 9 going through, else by the whole element byte, 0x080D0E64).
+Kinds.toml gives the BN5 numbers of every kind the ported chips spawn, BN6's included. bn5-extract writes BN5's
+banners (49, the same layout as BN6's: 0x0801B810), their digits and palette, and "Cstmzing..." (the audit's 24
+problems). Waiting in this batch: DrkRecov's dark chip cost (HP bug: BN5's own code, unread, §6), HolyDrem's light
+MegaMan (§6.1), the swing's call BN6 stubs out (0x080E9FD2, battle flag 0x40: never in a netbattle).
+
 **BN6's modules changed for BN5** (each the smallest change that lets BN5 reuse it; BN6's behaviour the same, its
 full set run on the batch):
 
@@ -1128,15 +1157,28 @@ full set run on the batch):
 - navis/megaman/weapons/buster/weapon.luau: `buster.pick` exported (was local). BN5's buster picks blank and
   charged shots by BN6's code but sets up its own shot.
 
+Third batch:
+
+- chips/widesht/action.luau and wave.luau (and `WaveVariant`): `widesht.action` exported (was local) with an
+  optional shooter and wave height; a wave variant's optional `sprite`. BN5's shooter is another attachment row,
+  its wave at the floor and its own sprite.
+- chips/blkbomb/bomb.luau: `black_bomb.make_kind(id, look)` (the destroyed action, the spark, its and its burst's
+  collision types, the push mode), `finish` exported, the thrower taking a kind. BN5's bomb leaves the field
+  otherwise, takes hits through another routine and has BN5's spark.
+- chips/thunder/ball.luau and shoot.luau (and `ThunderBallLook`): `ball.make_kind(id, look)` (sprites,
+  animations, collision types, hit modifier, spark, sounds), the spawn and the action taking a kind. BN5's ball
+  differs in each of those.
+- chips/boomer/boomerang.luau: a variant's optional collision type and spark. BN5's are its own.
+- lib/swords/sonic_boom.luau: `sonic_boom.make_kind(id, look)` (sprite, height, palettes, collision type), the
+  throw taking a kind; chips/antiswrd/counter.luau: `action_with` taking the booms' kind. BN5's AntiSwrd counter
+  throws BN5's boom.
+- chips/recov/heal.luau: the mood only when the heal's result says no AntiRecv turned it (BN5's 0x080EC484 tests
+  it; BN6 passes no mood).
+
 **Waiting:**
 
-- *On the families* (§15.3 item 5): Invisibl, AntiDmg and Mine are BN5's invisible family, which the engine
-  lacks; each is one line once it has it (Invisibl `dimming = invisible.hook(360)` from @bn6/chips/invisibl,
-  AntiDmg `trap = "anti_damage"`, Mine `dimming = controller.hook` from @bn6/chips/mine: its blast is BN5's
-  effect 0x2A, BN6's 0x47, the same).
-- *On the families* too: the Recov chips, RedFrut, Roll and DrkRecov are BN5's recovery family; Recov's use is
-  BN6's heal (`@bn6/chips/recov/heal`, the same table) once the family is there, its mood update with §15.3
-  item 6 (BN5's 0x080EC484 adds the use's +0x0A to NaviStats +0x0E after a heal).
+- *On BN5's dark chip costs* (§6): DrkRecov's use leaves its user losing 1 HP every 10 ticks (BN6's
+  `sub_800B79A`, the dark chips' HP bug, is absent in BN5; BN5's own is unread).
 - *On BN5's damage formulas* (§13): ProtoMn SP and DS (BN5's records name formula rows 2 and 24, which BN5's
   table, not BN6's SP times, gives); their use is ProtoMan's once it is.
 - *On the engine* (§15.3 items 10 and 11): every ported dimming chip and FullCust leave the action as BN6 does
@@ -1156,9 +1198,9 @@ full set run on the batch):
 - **Stages** (content/bn5/stages/netbattle.luau, compat stages.toml): a stage per distinct record of BN5's
   netbattle settings list (0x0811AF4C, 95 records), its layout (0x0800BD6C) and its actor list; the lab's
   settings (written to RAM by the Team Battle with its own background and effects) match the list's by layout,
-  actor list, music, mode and panel pattern. Those with metal, sea or lava panels (item 1) and those with
-  obstacles (actor types 3, 8, 9: BN5's boulder, rock and statue aren't ported) are listed as waiting. The
-  backgrounds are named by their look (no BN6 background has their tiles).
+  actor list, music, mode and panel pattern. Those with obstacles (actor types 3, 8, 9: BN5's boulder, rock and
+  statue aren't ported) are listed as waiting; those with metal, sea or lava panels are stages since the rules
+  work's P1a (68 stages). The backgrounds are named by their look (no BN6 background has their tiles).
 - **Panels** are a registered section now: BN5's types, BN6's roads and either-side step rule (BN5 has neither;
   the section must name the engine's 13 types; nothing of BN5's reaches them).
 - **Roles** BN5 shares with BN6: the sparks (BN5's 0 to 0xD are BN6's rows), the deletion, recovery and cut-in
@@ -1174,3 +1216,24 @@ More for §15.3:
 13. **The custom screen's end**: BN5's Team Battle custom screen (0x08025EF2) closes the screen on the tick both
    results are in, BN6's on the next, and BN5's sets no AIData +0x0F on the navis (BN6's `sub_8009338` does): a
    choice of the side's game's custom screen (`custom::GameLibrary`) or of the arena's flow.
+14. **A dark MegaMan clears the holy panel under him** (§6.1; 0x08017136, from all six intake updates, BN6's
+   `sub_801A9B8` to `sub_801AC6C`): every tick, an object on a holy panel whose side's light/dark value is 499 or
+   less turns it Normal. Team Colonel's MegaMan is dark in the lab (bn5-compat's `LightDark` reads it from the
+   setup's NaviStats +0x44), and stands on the default stage's holy row: every replay on it differs at the fight's
+   first tick until the engine has the side's value and the rule (a hook in the intake, or the light-and-dark
+   system's).
+15. **The camera shake draws from the battle's RNG** (0x08030D78, BN6's `camera_doShakeEffect_80301e8`): two
+   GetRNG2 draws each shaking tick where BN6 draws from GetRNG1, one channel (BN6's two), and no shake while the
+   time is stopped; BN5's shakes change the simulation's RNG (a BlkBomb's landing: 15 ticks of draws).
+16. **The hit spark's first tick** (0x080E0870, BN6's `sub_80E0864`): BN5's spark doesn't step its sprite at its
+   init, so it lasts a tick longer (spark.rs).
+17. **The metal slide's speed** (§15.2): a step up or down covers its 24 pixels in 3 ticks (8 a tick); the
+   engine's slide moves 6. Its order by the move's direction is the tables', as recorded.
+18. **A custom screen asked for in the fight** (L or R with a full gauge) opens a tick after BN5's does: the
+   recordings that dig for a chip over several turns (HolyDrem's, the chip lab's `dig`) press it twice and BN5
+   opens on the tick of the second release.
+19. **BN5's obstacle framework** (0x08018404, BN6's `sub_801B750`): outside the dimming, an obstacle not in its
+   first action on a solid panel tests a word (+0x5C of the toolkit's +0x18) against 0x20 or 0x10 by its panel's
+   side, then the panels beside it, and may spawn attack object 0x30 there (0x080CAB02, 0x080CAAE2: unread
+   further); BlkBomb's idle and return actions are 7 and 6 (BN6's 9 and 8), its table without frozen and bubbled.
+   Not met in the replays yet.
