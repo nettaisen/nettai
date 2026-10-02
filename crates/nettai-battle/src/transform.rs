@@ -133,23 +133,24 @@ impl Battle {
     }
 
     /// `sub_801486C`: a side asking for a Cross change gets it started; a
-    /// side without a transformation checks whether its Beast Out ran out.
+    /// side without a transformation has its rules check whether its form's
+    /// time ran out (BN6's beast system: Beast Out, `sub_80159C6`).
     fn sequencer_check(&mut self) {
         let mut transforming = false;
         for side in 0..2u8 {
             let req = self.transform_seq.requests[side as usize];
             let navi = self.player(side);
             if req.cross_change.is_some() {
-                // A Cross change is asked for, and the Beast Out check runs
-                // too (the form isn't looked at).
+                // A Cross change is asked for, and the check runs too (the
+                // form isn't looked at).
                 if let Some(p) = navi {
                     player::actions::cross_change::request_change(self, p);
-                    player::check_beast_out_end(self, p);
+                    self.notify_side(side, nettai_content_api::SystemHook::TurnCheck);
                 }
             } else if req.form.is_some() {
                 transforming = true;
-            } else if let Some(p) = navi {
-                player::check_beast_out_end(self, p);
+            } else if navi.is_some() {
+                self.notify_side(side, nettai_content_api::SystemHook::TurnCheck);
             }
         }
         self.transform_seq.state = if transforming {

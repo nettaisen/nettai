@@ -590,31 +590,9 @@ pub(crate) fn prepare_chip(b: &mut Battle, r: ObjectRef) {
 
 // ---- The transformation sequencer's checks -------------------------------------
 
-/// `sub_80159C6` + `sub_8015994`, once per turn start: the check runs
-/// only while `beast_out_check_delay` is 0 (and sets it to 2), and a
-/// Beast Out whose counter ran out asks to revert (request 0x40, handled
-/// while paused).
-pub fn check_beast_out_end(b: &mut Battle, r: ObjectRef) {
-    let s = *stats(b, r);
-    let beast = form_of(b, r).kind.is_beast();
-    let revert = if battle_mode(b) == 1 {
-        beast
-    } else {
-        let a = ai_mut(b, r);
-        if a.beast_out_check_delay != 0 {
-            return;
-        }
-        a.beast_out_check_delay = 2;
-        if s.beast_out_counter != 0 {
-            return;
-        }
-        a.beast_out_spent = true;
-        beast
-    };
-    if revert {
-        ai_mut(b, r).requests |= request::REVERT_FORM;
-    }
-}
+// (`sub_80159C6`, the turn-start check that a Beast Out whose counter ran
+// out reverts, is BN6's beast system's `turn_check`: content/bn6/rules/
+// beast/system.luau.)
 
 /// `sub_80159A2`: a form reversion is pending or running.
 pub fn reverting_form(b: &Battle, r: ObjectRef) -> bool {
