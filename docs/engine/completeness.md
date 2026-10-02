@@ -675,6 +675,48 @@ with no slot (2), ElcPuls's one-tick wait and its pulse's linked objects (2: not
 FireHit's search running off the field, which needs no enemy body ahead (as SpoutMan's scans). The 5 recordings
 are in the lab and match the engine at main f8764b51 (2,712 frames).
 
+**Batch 6, the barriers, the Reflectors and IronShl (26 branches: the barrier visual of `lib/barriers`, Rflectr and
+the NaviCust Reflect's guard, IronShl's shell):** 14 taken by 14 new recordings, 9 unreachable, 3 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0b2-barrier/paused`, `chips/0x0b6-lifeaur/link-navi` | a barrier's visual through a pause; LifeAur on a link navi, its aura's part 6 hidden |
+| `chips/0x0b3-barr100/deleted-under-it`, `chips/0x0b2-barrier/deleted-going-down`, `deleted-blown` | the navi deleted with its barrier up, going down, and blown away: the visual finds itself unlinked |
+| `chips/0x0b2-barrier/fan-pull` | a barrier popped by Fan's pull, blown forward |
+| `chips/0x083-rflectr1/cross-beast`, `blind-viewer`, `counter-ko` | Rflectr in a Falzar Cross Beast (the head animates); the shield hidden from a blind viewer; the counter wave's KO |
+| `navicust/reflect-counter` | the Reflect program's guard firing the buster shot back |
+| `chips/0x07b-ironshl1/hole-ahead`, `far-column`, `side-1`, `side-1-far-column` | a hole ahead; the shell on column 6 and on column 1; side 1's shell |
+
+The unreachable ones: a barrier on a navi that isn't a player or is off the field (3), a barrier other than the
+bubble growing back (1: a new barrier ends the old visual first), the visual's end called without one (1), the
+Shield program's guard countering (1: it heeds nothing), an iron shell off the field, with more than one bump or
+no collision slot (3). The hard ones: the bubble growing back while its navi is bubbled (its timer stops then),
+the shield outliving its owner's vanishing for a navi chip (it fades long before the cut-in ends), and a guard
+dropped by a breaking hit, which only arrives with an ordinary hit the guard blocks on the same tick. The 14
+recordings are in the lab and match the engine at main 9ed59b90.
+
+**Batch 7, the traps (34 branches: CopyDmg, AntiDmg, ElemTrap, Mine, BodyGrd):** 12 taken by 9 new recordings,
+9 unreachable, 13 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0be-copydmg/side-1`, `twice` | side 1's damage-carry record; a second mark taking the record from the first |
+| `chips/0x0bb-antidmg/counter-after-ko` | AntiDmg's counter finding no living enemy: the catch lands four ticks before TimeBom1's blast deletes the thrower |
+| `chips/0x0c5-elemtrap/replaced`, `battle-over`, `hit-as-set`, `sprung-dimmed` | the trap's record moving on (AntiDmg after it), the battle's end, a hit in the tick it appears (FireBrn's flames), springing inside HeatMan's dimming |
+| `pa/0x157-bodygrd/all-ten`, `striker-replaced` | BodyGrd's striker running out its ten shurikens (an opponent of 1,500 HP); the striker evicted by Fan, a second field object |
+
+The unreachable ones: spawns that never fail (2), AntiDmg's counter variants its starters never set and shurikens
+off the field (3), the hidden mine's HP (1: no attack's target type reaches it), ElemTrap's counterattack in an
+element without a sound (1: only the four that spring it, all with one), and BodyGrd's striker while dimmed or
+choosing an offline target (2). The hard ones are mostly timings: a CopyDmg probe (about 5 ticks long) seeing the
+battle's end, which comes with the deletion some 50 ticks after the KO hit, after which no chip can be used; a
+shuriken of AntiDmg or BodyGrd starting with the battle over, or BodyGrd's striker meeting its target at 0 HP
+before the deletion; CopyDmg's search meeting anything but the navi it hit (4); the mine finding no free enemy
+panel (2); and ElemTrap's searches finding no enemy body (2, as SpoutMan's). The 9 recordings are in the lab and
+match the engine at main ca994e37 (9,340 frames).
+
+##### Chip families: onesided's share
+
 The rest of the area is shared from here: the cannons, guns and shots, the arm chips, the traps and barriers
 and ColArmy stay with this pass; the remaining navi chips, the Program Advances, the panel and stage chips, the
 elemental and status chips and the recovery, support and field chips are read in a second one, whose verdicts
@@ -705,26 +747,6 @@ spawned with someone waiting (2). The hard one: link GroundMan's drill outliving
 interruption of his invulnerable dig would do.
 
 All 10 recordings match the engine, every frame (16,698) and every sound call (286).
-
-**Batch 6, the barriers, the Reflectors and IronShl (26 branches: the barrier visual of `lib/barriers`, Rflectr and
-the NaviCust Reflect's guard, IronShl's shell):** 14 taken by 14 new recordings, 9 unreachable, 3 hard:
-
-| Scenarios | What they take the other way |
-|---|---|
-| `chips/0x0b2-barrier/paused`, `chips/0x0b6-lifeaur/link-navi` | a barrier's visual through a pause; LifeAur on a link navi, its aura's part 6 hidden |
-| `chips/0x0b3-barr100/deleted-under-it`, `chips/0x0b2-barrier/deleted-going-down`, `deleted-blown` | the navi deleted with its barrier up, going down, and blown away: the visual finds itself unlinked |
-| `chips/0x0b2-barrier/fan-pull` | a barrier popped by Fan's pull, blown forward |
-| `chips/0x083-rflectr1/cross-beast`, `blind-viewer`, `counter-ko` | Rflectr in a Falzar Cross Beast (the head animates); the shield hidden from a blind viewer; the counter wave's KO |
-| `navicust/reflect-counter` | the Reflect program's guard firing the buster shot back |
-| `chips/0x07b-ironshl1/hole-ahead`, `far-column`, `side-1`, `side-1-far-column` | a hole ahead; the shell on column 6 and on column 1; side 1's shell |
-
-The unreachable ones: a barrier on a navi that isn't a player or is off the field (3), a barrier other than the
-bubble growing back (1: a new barrier ends the old visual first), the visual's end called without one (1), the
-Shield program's guard countering (1: it heeds nothing), an iron shell off the field, with more than one bump or
-no collision slot (3). The hard ones: the bubble growing back while its navi is bubbled (its timer stops then),
-the shield outliving its owner's vanishing for a navi chip (it fades long before the cut-in ends), and a guard
-dropped by a breaking hit, which only arrives with an ordinary hit the guard blocks on the same tick. The 14
-recordings are in the lab and match the engine at main 9ed59b90.
 
 **Second pass, batch 2: DblBeast, CrossDiv's Colonel, HubBatc** (30 branches): 15 taken by 9 new recordings,
 9 unreachable, 6 hard:
@@ -762,25 +784,7 @@ phases (6), Django's sun beam or partner missing (2), DblHero's shot row leaving
 keeps its back column) and DblHero with no controller waiting (1). The 7 recordings match the engine, every frame
 (11,219) and sound call (408).
 
-**Batch 7, the traps (34 branches: CopyDmg, AntiDmg, ElemTrap, Mine, BodyGrd):** 12 taken by 9 new recordings,
-9 unreachable, 13 hard:
-
-| Scenarios | What they take the other way |
-|---|---|
-| `chips/0x0be-copydmg/side-1`, `twice` | side 1's damage-carry record; a second mark taking the record from the first |
-| `chips/0x0bb-antidmg/counter-after-ko` | AntiDmg's counter finding no living enemy: the catch lands four ticks before TimeBom1's blast deletes the thrower |
-| `chips/0x0c5-elemtrap/replaced`, `battle-over`, `hit-as-set`, `sprung-dimmed` | the trap's record moving on (AntiDmg after it), the battle's end, a hit in the tick it appears (FireBrn's flames), springing inside HeatMan's dimming |
-| `pa/0x157-bodygrd/all-ten`, `striker-replaced` | BodyGrd's striker running out its ten shurikens (an opponent of 1,500 HP); the striker evicted by Fan, a second field object |
-
-The unreachable ones: spawns that never fail (2), AntiDmg's counter variants its starters never set and shurikens
-off the field (3), the hidden mine's HP (1: no attack's target type reaches it), ElemTrap's counterattack in an
-element without a sound (1: only the four that spring it, all with one), and BodyGrd's striker while dimmed or
-choosing an offline target (2). The hard ones are mostly timings: a CopyDmg probe (about 5 ticks long) seeing the
-battle's end, which comes with the deletion some 50 ticks after the KO hit, after which no chip can be used; a
-shuriken of AntiDmg or BodyGrd starting with the battle over, or BodyGrd's striker meeting its target at 0 HP
-before the deletion; CopyDmg's search meeting anything but the navi it hit (4); the mine finding no free enemy
-panel (2); and ElemTrap's searches finding no enemy body (2, as SpoutMan's). The 9 recordings are in the lab and
-match the engine at main ca994e37 (9,340 frames).
+<!-- end: chip families, onesided -->
 
 ### 6.3 Custom screen keys
 
