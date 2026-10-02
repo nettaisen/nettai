@@ -701,6 +701,19 @@ before the deletion; CopyDmg's search meeting anything but the navi it hit (4); 
 panel (2); and ElemTrap's searches finding no enemy body (2, as SpoutMan's). The 9 recordings are in the lab and
 match the engine at main ca994e37 (9,340 frames).
 
+**Batch 8, Thunder, AirHocky, Snake, YoYo (31 branches; BgDthThd's charged ball is Thunder's; GreatYo's own yoyo
+branches are left with the Program Advances):** 4 taken by 3 new recordings, 14 unreachable, 13 hard:
+`chips/0x01e-thunder/target-below` (the ball going down its target's column),
+`chips/0x136-bgdththd/charge-vertical` (the fast ball moving along a column) and `chips/0x032-airhocky/one-column`
+(two AreaGrabs leave the opponent one column, and the puck, across, can neither go on nor turn back). The
+unreachable ones: thunder-ball parameters no chip gives (4: a linked object, no status, a bug), puck rules no row
+has and steps the bounces rule out (7), a snake off the field or off its target's row (2), and the yoyo's
+collision slot (1). The hard ones: the thunder ball's searches failing (6: the enemy navi always on the field, and
+a search ahead failing only with the enemy behind the ball) or its panels running out before it reaches a moving
+opponent (1), Snake with no target or a second one (5: tried the opponent's RockCube after Geddon's holes), and a
+YoYo's slot taken while it is out (1: its navi waits for it). The 3 recordings are in the lab and match the engine
+(4,229 frames).
+
 <!-- end: chip families, G4 -->
 
 **Second pass, batch 1: the navi chips the first pass had started** (Bass, ChrgeMan, DustMan, ProtoMan, ElecMan,
