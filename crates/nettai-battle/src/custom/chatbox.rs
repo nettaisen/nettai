@@ -137,6 +137,17 @@ pub struct ChatboxLook {
     /// its animation's step (`+0x17`).
     pub arrow: Option<u8>,
     arrow_step: u8,
+    /// What the text's sprites hold: the lines done and the characters of
+    /// the one printing, as the line buffer was when last copied to them
+    /// (`sub_30070B4`); none, blank.
+    pub text: Option<(u8, u8)>,
+    /// The buffer was cleared (the end's `chatbox_8045F60`), the wait for
+    /// a key has run (flag 0x400), and the sprites keep their tiles (`+0x3D`
+    /// is 2: the copy that follows a wait's start sets it, a tick printing
+    /// all at once sets it back).
+    cleared: bool,
+    halted: bool,
+    kept: bool,
 }
 
 impl std::hash::Hash for ChatboxLook {
@@ -295,16 +306,12 @@ impl Chatbox {
         self.open && (self.hidden || self.steps == OPEN)
     }
 
-    /// The text printed so far: the lines done and the characters of the
-    /// one printing (a description's lines print whole); none once the
-    /// script has reached its end, which clears the text.
-    pub fn progress(&self) -> Option<(u8, u8)> {
-        if !self.open || self.script.op(self.at) == Op::End {
-            return None;
-        }
+    /// The text in the line buffer: the lines done and the characters of
+    /// the one printing (a description's lines print whole).
+    fn printed_text(&self) -> (u8, u8) {
         let done = (0..self.at).filter(|&i| matches!(self.script.op(i), Op::Text(_))).count() as u8;
         let printing = if matches!(self.script.op(self.at), Op::Text(_)) { self.printed } else { 0 };
-        Some((done, printing))
+        (done, printing)
     }
 
     /// What it shows besides (presentation).
@@ -327,14 +334,30 @@ impl Chatbox {
             }
         }
         if rush {
+            self.look.kept = false;
             self.print_all(held, pressed);
         } else {
             self.print(held, pressed);
         }
+        self.copy_text(rush);
         if self.open {
             self.fade_portrait();
         }
         self.draw_arrow();
+    }
+
+    /// `sub_30070B4`: while the text's sprites are drawn, the line buffer
+    /// goes to their tiles, on a tick printing all at once always, else
+    /// unless they keep what they have; after the wait for a key has run
+    /// they keep it from then on (until a tick prints all at once).
+    fn copy_text(&mut self, rush: bool) {
+        if !self.shows_contents() || !(rush || !self.look.kept) {
+            return;
+        }
+        self.look.text = (!self.look.cleared).then(|| self.printed_text());
+        if self.look.halted {
+            self.look.kept = true;
+        }
     }
 
     /// `chatbox_804082C`: the key-wait arrow, while the script waits for a
@@ -477,6 +500,7 @@ impl Chatbox {
             // chatbox_E7_buttonhalt
             Op::Halt { any } => {
                 self.waiting = true;
+                self.look.halted = true;
                 match self.halt {
                     0 => {
                         self.count = HALT_DELAY;
@@ -514,8 +538,9 @@ impl Chatbox {
             Op::End => {
                 self.waiting = true;
                 if !self.hidden {
-                    // chatbox_8041090: the portrait fades out, then the
-                    // box closes step by step.
+                    // chatbox_8041090: the text is cleared, the portrait
+                    // fades out, then the box closes step by step.
+                    self.look.cleared = true;
                     self.fading_out = true;
                     if self.portrait {
                         return false;
@@ -650,7 +675,7 @@ mod tests {
         let mut shown = Vec::new();
         for _ in 0..40 {
             c.update(0, 0);
-            shown.push((c.box_step(), c.progress(), c.look().portrait.map(|p| (p.anim, p.updates, p.tint)), c.look().arrow));
+            shown.push((c.box_step(), c.look().text, c.look().portrait.map(|p| (p.anim, p.updates, p.tint)), c.look().arrow));
         }
         // The box opens over ticks 0-3; the portrait shows from tick 3,
         // still and fading in by 0x421 a tick.
@@ -669,6 +694,34 @@ mod tests {
         let arrow = shown.iter().position(|s| s.3.is_some()).unwrap();
         assert_eq!(shown[arrow].1, Some((1, 0)));
         assert_eq!(shown[arrow..arrow + 7].iter().map(|s| s.3.unwrap()).collect::<Vec<_>>(), [0, 0, 0, 0, 0, 0, 1]);
+    }
+
+    #[test]
+    fn the_text_stays_through_the_portraits_fade_unless_printed_at_once() {
+        let megaman = Script::RunMessage { lines: [19, 12, 0] };
+        // A pressed: the end runs a tick later, and the sprites keep the
+        // text while the portrait fades out.
+        let mut c = Chatbox::new(megaman);
+        let texts: Vec<_> = (0..90u32)
+            .map(|t| {
+                let k = if t == 79 { keys::A } else { 0 };
+                c.update(k, k);
+                (c.look().text, c.box_step())
+            })
+            .collect();
+        assert_eq!(texts[80], (Some((2, 0)), Some(3)));
+        assert_eq!(texts[82], (Some((2, 0)), Some(3)));
+        // B held: the end runs on a tick that prints all at once, which
+        // copies the cleared buffer.
+        let mut c = Chatbox::new(megaman);
+        let mut ended = None;
+        for t in 0..90u32 {
+            c.update(keys::B, if t == 0 { keys::B } else { 0 });
+            if c.look().text.is_none() && t > 10 && ended.is_none() {
+                ended = Some((t, c.box_step()));
+            }
+        }
+        assert_eq!(ended.map(|e| e.1), Some(Some(3)));
     }
 
     #[test]

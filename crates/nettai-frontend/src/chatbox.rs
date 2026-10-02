@@ -107,7 +107,7 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, problems: &mut Problems) -> O
 fn text_tiles(b: &Battle, assets: &Bundle, chatbox: &Chatbox, words: &str, problems: &mut Problems) -> Tiles {
     let font = &assets.hud.dialogue_font;
     let mut image = vec![0u8; TEXT_WIDTH * TEXT_ROWS];
-    if let Some((done, printing)) = chatbox.progress() {
+    if let Some((done, printing)) = chatbox.look().text {
         for (k, line) in words.split('\n').take(3).enumerate() {
             let (glyphs, missing) = fonts::dialogue_glyphs(font, line);
             if !missing.is_empty() {
