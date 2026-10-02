@@ -525,7 +525,7 @@ The first sample, of 10 routines read before this list was worked through, as it
 
 None of the one-sided branches read, in the sample or since, is missing from the port.
 
-#### Chip families
+#### Chip families: G4
 
 The chip families' branches (`onesided_rank.py`'s area 7: routines cited by content/bn6, 1,066 branches in 720
 routines at main 29aac858) are read family by family, most-played chips first. The verdicts are in
@@ -681,6 +681,41 @@ elemental and status chips and the recovery, support and field chips are read in
 are in `onesided_notes.py`'s "chip families: onesided's share" section and whose scenarios are in
 `coverage_scenarios/n_onesided_chips.py`.
 
+**Batch 7, the traps (34 branches: CopyDmg, AntiDmg, ElemTrap, Mine, BodyGrd):** 12 taken by 9 new recordings,
+9 unreachable, 13 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0be-copydmg/side-1`, `twice` | side 1's damage-carry record; a second mark taking the record from the first |
+| `chips/0x0bb-antidmg/counter-after-ko` | AntiDmg's counter finding no living enemy: the catch lands four ticks before TimeBom1's blast deletes the thrower |
+| `chips/0x0c5-elemtrap/replaced`, `battle-over`, `hit-as-set`, `sprung-dimmed` | the trap's record moving on (AntiDmg after it), the battle's end, a hit in the tick it appears (FireBrn's flames), springing inside HeatMan's dimming |
+| `pa/0x157-bodygrd/all-ten`, `striker-replaced` | BodyGrd's striker running out its ten shurikens (an opponent of 1,500 HP); the striker evicted by Fan, a second field object |
+
+The unreachable ones: spawns that never fail (2), AntiDmg's counter variants its starters never set and shurikens
+off the field (3), the hidden mine's HP (1: no attack's target type reaches it), ElemTrap's counterattack in an
+element without a sound (1: only the four that spring it, all with one), and BodyGrd's striker while dimmed or
+choosing an offline target (2). The hard ones are mostly timings: a CopyDmg probe (about 5 ticks long) seeing the
+battle's end, which comes with the deletion some 50 ticks after the KO hit, after which no chip can be used; a
+shuriken of AntiDmg or BodyGrd starting with the battle over, or BodyGrd's striker meeting its target at 0 HP
+before the deletion; CopyDmg's search meeting anything but the navi it hit (4); the mine finding no free enemy
+panel (2); and ElemTrap's searches finding no enemy body (2, as SpoutMan's). The 9 recordings are in the lab and
+match the engine at main ca994e37 (9,340 frames).
+
+**Batch 8, Thunder, AirHocky, Snake, YoYo (31 branches; BgDthThd's charged ball is Thunder's; GreatYo's own yoyo
+branches are left with the Program Advances):** 4 taken by 3 new recordings, 14 unreachable, 13 hard:
+`chips/0x01e-thunder/target-below` (the ball going down its target's column),
+`chips/0x136-bgdththd/charge-vertical` (the fast ball moving along a column) and `chips/0x032-airhocky/one-column`
+(two AreaGrabs leave the opponent one column, and the puck, across, can neither go on nor turn back). The
+unreachable ones: thunder-ball parameters no chip gives (4: a linked object, no status, a bug), puck rules no row
+has and steps the bounces rule out (7), a snake off the field or off its target's row (2), and the yoyo's
+collision slot (1). The hard ones: the thunder ball's searches failing (6: the enemy navi always on the field, and
+a search ahead failing only with the enemy behind the ball) or its panels running out before it reaches a moving
+opponent (1), Snake with no target or a second one (5: tried the opponent's RockCube after Geddon's holes), and a
+YoYo's slot taken while it is out (1: its navi waits for it). The 3 recordings are in the lab and match the engine
+(4,229 frames).
+
+<!-- end: chip families, G4 -->
+
 **Second pass, batch 1: the navi chips the first pass had started** (Bass, ChrgeMan, DustMan, ProtoMan, ElecMan,
 DiveMan, GrndMan, BlastMan, HeatMan, EraseMan, and the Darkness PA; 35 branches): 13 taken by 10 new recordings,
 21 unreachable, 1 hard:
@@ -761,26 +796,6 @@ without his gun (1: Django, spawned by MegaMan's init, finishes the same 60-tick
 phases (6), Django's sun beam or partner missing (2), DblHero's shot row leaving the field (1: the other side
 keeps its back column) and DblHero with no controller waiting (1). The 7 recordings match the engine, every frame
 (11,219) and sound call (408).
-
-**Batch 7, the traps (34 branches: CopyDmg, AntiDmg, ElemTrap, Mine, BodyGrd):** 12 taken by 9 new recordings,
-9 unreachable, 13 hard:
-
-| Scenarios | What they take the other way |
-|---|---|
-| `chips/0x0be-copydmg/side-1`, `twice` | side 1's damage-carry record; a second mark taking the record from the first |
-| `chips/0x0bb-antidmg/counter-after-ko` | AntiDmg's counter finding no living enemy: the catch lands four ticks before TimeBom1's blast deletes the thrower |
-| `chips/0x0c5-elemtrap/replaced`, `battle-over`, `hit-as-set`, `sprung-dimmed` | the trap's record moving on (AntiDmg after it), the battle's end, a hit in the tick it appears (FireBrn's flames), springing inside HeatMan's dimming |
-| `pa/0x157-bodygrd/all-ten`, `striker-replaced` | BodyGrd's striker running out its ten shurikens (an opponent of 1,500 HP); the striker evicted by Fan, a second field object |
-
-The unreachable ones: spawns that never fail (2), AntiDmg's counter variants its starters never set and shurikens
-off the field (3), the hidden mine's HP (1: no attack's target type reaches it), ElemTrap's counterattack in an
-element without a sound (1: only the four that spring it, all with one), and BodyGrd's striker while dimmed or
-choosing an offline target (2). The hard ones are mostly timings: a CopyDmg probe (about 5 ticks long) seeing the
-battle's end, which comes with the deletion some 50 ticks after the KO hit, after which no chip can be used; a
-shuriken of AntiDmg or BodyGrd starting with the battle over, or BodyGrd's striker meeting its target at 0 HP
-before the deletion; CopyDmg's search meeting anything but the navi it hit (4); the mine finding no free enemy
-panel (2); and ElemTrap's searches finding no enemy body (2, as SpoutMan's). The 9 recordings are in the lab and
-match the engine at main ca994e37 (9,340 frames).
 
 ### 6.3 Custom screen keys
 
