@@ -638,10 +638,10 @@ be the plain replay's, later by at most the latency and the longest run of lost 
 
 | Round | Frames | 0 | 2 + 1 | 5 + 2 | 10 + 3 | 0, lossy | 2 + 1, lossy | 5 + 2, lossy | 10 + 3, lossy |
 |---|---|---|---|---|---|---|---|---|---|
-| machgun 1 | 1,074 | match | 79 | 82 | 80 (12) | 2 | 81 | 82 (10) | 74 (16) |
+| machgun 1 | 1,074 | match | 78 | 81 | 79 (12) | 2 | 80 | 81 (10) | 73 (16) |
 | machgun 2 | 1,331 | match | 62 | 61 | 61 (12) | 2 | 60 | 62 (8) | 57 (17) |
-| soundmod 1 | 21,962 | match | 1,104 | 1,101 | 1,101 (13) | 51 | 1,077 | 1,097 (10) | 1,070 (18) |
-| soundmod 2 | 14,933 | match | 879 | 881 | 878 (13) | 32 | 872 | 878 (10) | 846 (17) |
+| soundmod 1 | 21,962 | match | 1,103 | 1,100 | 1,100 (13) | 51 | 1,076 | 1,096 (10) | 1,069 (18) |
+| soundmod 2 | 14,933 | match | 878 | 880 | 877 (13) | 32 | 871 | 877 (10) | 845 (17) |
 | soundmod 3 | 20,436 | match | 1,440 | 1,436 | 1,429 (13) | 64 | 1,426 | 1,433 (9) | 1,376 (17) |
 | bn67-amogus 1 | 65,477 | match | 3,247 | 3,206 | 3,160 (13) | 121 | 3,169 | 3,171 (11) | 3,016 (18) |
 | lmao-chonked 1 | 23,825 | match | 1,565 | 1,557 | 1,543 (13) | 66 | 1,540 | 1,527 (10) | 1,457 (18) |
@@ -650,15 +650,16 @@ be the plain replay's, later by at most the latency and the longest run of lost 
 (Every frame of every round matches on both peers; the numbers are player 1's peer's rollbacks, which receives
 player 0's buttons and the custom-screen events, with the deepest in brackets. bn67-amogus2, bn67-lilguy,
 gregar-sitteruno and the 2022 guard-through-Cross round match likewise; the two longest 2022 rounds are run with
-`--ignored`.) Loss without latency costs a few dozen shallow rollbacks a round (a lost datagram's inputs come a
-frame late, with the next one); with latency it changes little, since the window resent every frame already covers
-a loss: what it adds is the run of datagrams lost in a row (up to 15 here), which deepens the deepest rollback
-(13 to 18 at 10 + 3) and makes clock sync stall more (soundmod round 1 at 10 + 3: 44 frames of 22,017 clean, about
-155 lossy). The sound: at most 9 frames late at 10 + 3 clean and 13 lossy; a sound played on a prediction and
-stopped again up to 53 times in a 65,000-frame round. A frame costs 5.9 to 6.9 bytes without latency, 9 to 10 at
-2 + 1, 16 to 17 at 5 + 2, 26 to 28 at 10 + 3.
-An advance settles one frame at no latency and about two at 10 + 3: soundmod round 1 settled about 12,200 times for
-its 21,962 frames.
+`--ignored`, and match too.) Loss without latency costs a few dozen shallow rollbacks a round (a lost datagram's
+inputs come a frame late, with the next one); with latency it changes little, since the window resent every frame
+already covers a loss: what it adds is the run of datagrams lost in a row (up to 15 here), which deepens the
+deepest rollback (13 to 18 at 10 + 3) and makes clock sync stall more (soundmod round 1 at 10 + 3: 44 frames of
+22,017 clean, about 155 of 22,166 lossy). The sound: at most 9 frames late at 10 + 3 clean and 13 lossy; a sound
+played on a prediction and stopped again up to 53 times in a 65,000-frame round. A frame costs 6.2 to 6.6 bytes
+without latency, 9 to 10 at 2 + 1, 16 at 5 + 2, 27 to 28 at 10 + 3. getgud returns a settled state with most
+frames, and each is compared with the trace: at 10 + 3, soundmod round 1's peers compared 21,391 and 21,269 of its
+21,962 frames' settled states (the rest were re-simulated without a save, and checked through their last
+simulation).
 
 ## 6. Performance
 
