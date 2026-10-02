@@ -105,6 +105,8 @@ pub enum Msg {
     StatText(usize, &'static str, String),
     StatValue(usize, &'static str, stats::Value),
     StatsReset(usize),
+    // The NaviCust.
+    NaviCust(usize, crate::navicust::Edit),
     // --screenshot.
     Frame,
     Shot(iced::window::Screenshot),
@@ -144,6 +146,8 @@ pub struct Editor {
     pub round: Result<[NaviStats; 2], String>,
     /// The chips each side's rules let a folder hold.
     pub pool: [Vec<ChipHandle>; 2],
+    /// Each side's NaviCust pane's own state.
+    pub navicust: [crate::navicust::State; 2],
     pub status: String,
     frames: u32,
 }
@@ -173,6 +177,7 @@ impl Editor {
             problems: Vec::new(),
             round: Err(String::new()),
             pool: Default::default(),
+            navicust: Default::default(),
             status: String::new(),
             frames: 0,
             content,
@@ -492,6 +497,11 @@ impl Editor {
                 side.stats = Side::base_stats(&content, side.navi, side.game);
                 self.typed.retain(|(x, _), _| *x != s);
                 self.edited();
+            }
+            Msg::NaviCust(s, edit) => {
+                if crate::navicust::update(&content, &mut self.m.sides[s], &mut self.navicust[s], edit) {
+                    self.edited();
+                }
             }
             Msg::Frame => {
                 self.frames += 1;
