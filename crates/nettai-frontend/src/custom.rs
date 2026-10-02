@@ -315,6 +315,8 @@ struct View<'a> {
     /// the other game's Cross.
     beast: &'a VersionPictures,
     hud: &'a Hud,
+    /// Every pack's graphics: a chip's icon and picture are its game's.
+    packs: crate::packs::Packs<'a>,
     /// The console's region ("us", "jp": `Renderer::console_region`).
     region: &'a str,
 }
@@ -322,9 +324,7 @@ struct View<'a> {
 impl View<'_> {
     fn icon(&self, c: FolderChip, problems: &mut Problems) -> Option<&Tiles> {
         let def = self.b.content.defs.chip(c.id);
-        // The pack names a chip's art by the key its root writes (`cannon`
-        // of `bn6:cannon`).
-        let icon = self.hud.chip_icon(nettai_content_api::keys::local(&def.key));
+        let icon = self.packs.chip_icon(&self.b.content, &def.key);
         if icon.is_none() {
             problems.note(format!("chip {:?} has no icon in the pack", def.key));
         }
@@ -390,7 +390,8 @@ pub fn version_name(b: &Battle, side: u8) -> &'static str {
 /// A side's navi's number (see `View::navi_number`).
 pub fn navi_number(b: &Battle, side: u8) -> usize {
     let key = &b.content.defs.navi(b.stats[side as usize & 1].navi).key;
-    bn6_compat::Compat::bn6().navis.get(key).map_or(0, |n| n.navi as usize)
+    let compat = bn6_compat::Compat::bn6();
+    compat.compat_key(&b.content, key).and_then(|k| compat.navis.get(k)).map_or(0, |n| n.navi as usize)
 }
 
 /// The window's map, the tiles and the palettes it draws with.
@@ -536,7 +537,8 @@ impl Window {
     /// A pick's name and code into name `k`'s tiles.
     fn put_advance_name(&mut self, v: &View, k: usize, c: FolderChip, text: &TextSink, problems: &mut Problems) {
         let key = &v.b.content.defs.chip(c.id).key;
-        let number = bn6_compat::Compat::bn6().chips.get(key.as_str()).map_or(u16::MAX, |e| e.id);
+        let compat = bn6_compat::Compat::bn6();
+        let number = compat.compat_key(&v.b.content, key).and_then(|k| compat.chips.get(k)).map_or(u16::MAX, |e| e.id);
         let code = (number < ADVANCE_NO_CODE_FROM).then_some(c.code.0);
         self.put_advance_text(v, k, text.strings.chip_name(&v.b.content, c.id), code, text, problems);
     }
@@ -682,7 +684,7 @@ impl Window {
         let art = if beast_out {
             Some((&v.beast.beast_out, None))
         } else {
-            a.chip_art(nettai_content_api::keys::local(&def.key)).map(|art| (&art.picture, Some(art)))
+            v.packs.chip_art(&v.b.content, &def.key).map(|art| (&art.picture, Some(art)))
         };
         match art {
             Some((p, art)) => {
@@ -1132,6 +1134,7 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
 pub fn draw<'a>(
     b: &'a Battle,
     assets: &'a Bundle,
+    packs: &crate::packs::Packs<'a>,
     emblem: &'a Tiles,
     region: &str,
     hud_layer: &mut Layer,
@@ -1154,6 +1157,7 @@ pub fn draw<'a>(
         assets: a,
         beast: beast_pictures(b, a, side),
         hud: &assets.hud,
+        packs: packs.clone(),
         region,
     };
     let place = placement(screen);

@@ -26,7 +26,12 @@ pub struct Frame {
 
 /// Draws battles; keeps its layer buffers between frames.
 pub struct Renderer<'a> {
+    /// The content's own pack's graphics (the HUD's and the custom
+    /// screen's frames).
     pub assets: &'a Bundle,
+    /// Every loaded pack's graphics, for the assets of each
+    /// (docs/design/rules-in-luau.md §7.4).
+    pub packs: crate::packs::Packs<'a>,
     background: Layer,
     field: Layer,
     hud: Layer,
@@ -54,8 +59,14 @@ pub struct Renderer<'a> {
 impl<'a> Renderer<'a> {
     /// A renderer in the original text mode.
     pub fn new(assets: &'a Bundle) -> Renderer<'a> {
+        Renderer::with_packs(crate::packs::Packs::one(assets))
+    }
+
+    /// A renderer of several packs' graphics.
+    pub fn with_packs(packs: crate::packs::Packs<'a>) -> Renderer<'a> {
         Renderer {
-            assets,
+            assets: packs.own(),
+            packs,
             // Background priority 3 (BG1), field 2 (BG2), HUD 1 (BG3).
             background: Layer::new(3, 1),
             field: Layer::new(2, 2),
@@ -115,7 +126,9 @@ impl<'a> Renderer<'a> {
         let assets = self.assets;
         self.problems.known.clear();
         let view = Self::view(b);
-        let background = crate::packs::background(&b.content, b.setup.settings.background).unwrap_or(0xFF);
+        // (The background is its own pack's; the field, the content's own
+        // pack's.)
+        let background = self.packs.background(&b.content, b.setup.settings.background).and_then(|(pack, n)| pack.background(n));
         let stage = Stage::new(assets, background, StageClock::of(b));
         self.background.clear();
         stage.draw_background(&mut self.background);
@@ -126,13 +139,17 @@ impl<'a> Renderer<'a> {
         let mut text =
             TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref()).with_language(self.strings.as_deref());
         let navi = crate::custom::navi_number(b, b.setup.local_side);
-        let emblem = crate::custom::emblem_tiles(&assets.custom, crate::custom::version_name(b, b.setup.local_side), navi);
-        let chatbox = crate::chatbox::prepare(b, assets, &text, &mut self.problems);
+        // (The local player's custom screen and chatbox: their game's
+        // pack's.)
+        let own_game = self.packs.of_root(&b.content, b.games.sides[b.setup.local_side as usize & 1]);
+        let emblem = crate::custom::emblem_tiles(&own_game.custom, crate::custom::version_name(b, b.setup.local_side), navi);
+        let chatbox = crate::chatbox::prepare(b, own_game, &self.packs, &text, &mut self.problems);
         let mut list = SpriteList::default();
-        objects::queue_objects(b, assets, &view, self.console_region, &mut list, &mut self.problems);
+        objects::queue_objects(b, &self.packs, &view, self.console_region, &mut list, &mut self.problems);
         crate::custom::draw(
             b,
-            assets,
+            own_game,
+            &self.packs,
             &emblem,
             self.console_region,
             &mut self.hud,
@@ -142,9 +159,9 @@ impl<'a> Renderer<'a> {
             &mut self.problems,
         );
         if let Some(c) = &chatbox {
-            crate::chatbox::draw(c, assets, &mut self.names, &mut list, &mut text);
+            crate::chatbox::draw(c, own_game, &mut self.names, &mut list, &mut text);
         }
-        crate::hud::draw(b, assets, &self.hud_state, &mut self.hud, &mut list, &mut text, &mut self.problems);
+        crate::hud::draw(b, assets, &self.packs, &self.hud_state, &mut self.hud, &mut list, &mut text, &mut self.problems);
         let (jx, jy) = crate::custom::hud_jitter(b);
         self.hud.shift(-jx, -jy);
         let (parts, tags) = list.into_tagged_parts();

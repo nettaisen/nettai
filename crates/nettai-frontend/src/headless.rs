@@ -184,14 +184,14 @@ pub struct Audit {
 }
 
 /// Run sessions to their end, drawing every frame and playing every
-/// tick's sound cues into nothing (with `sound`, the pack's): everything a
-/// battle shows and plays is asked of the pack once, and what it lacks is
-/// collected (see [`crate::audit`]).
-pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<std::sync::Arc<m4a::SoundBank>>) -> Audit {
+/// tick's sound cues into nothing (with `sound`, the packs' banks by
+/// `PackId`): everything a battle shows and plays is asked of the packs
+/// once, and what they lack is collected (see [`crate::audit`]).
+pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<Vec<std::sync::Arc<m4a::SoundBank>>>) -> Audit {
     let mut out = Audit::default();
     renderer.problems.clear();
     let songs = sessions.first().map(|s| nettai_audio::Songs::of(&s.battle.content.assets)).unwrap_or_default();
-    let mut audio = sound.clone().map(|bank| nettai_audio::BattleAudio::new(bank, songs));
+    let mut audio = sound.clone().map(|banks| nettai_audio::BattleAudio::with_banks(banks, songs));
     let mut samples = Vec::new();
     for mut s in sessions {
         renderer.reset();
@@ -203,9 +203,9 @@ pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<std:
             out.frames += 1;
             let cues = s.battle.sound_cues();
             out.cues += cues.len() as u32;
-            if let Some(bank) = &sound {
+            if let Some(banks) = &sound {
                 for &cue in cues {
-                    crate::audit::check_cue(&s.battle, bank, cue, &mut renderer.problems);
+                    crate::audit::check_cue(&s.battle, banks, cue, &mut renderer.problems);
                 }
             }
             if let Some(a) = &mut audio {
