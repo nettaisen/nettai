@@ -393,7 +393,7 @@ own, read at the addresses the same code points at there (bn6-extract's
   six sprites the US ROMs fill with a placeholder archive (`count`,
   `django`, `otenko`, `falzar-summon`, `gregar-summon`, `blocking-banner`),
   from the Japanese Falzar ROM, and the pictures of eleven chips the US ROMs
-  give a placeholder picture (GunDelEX, Otenko, HackJack ×3, Django ×3,
+  give a placeholder picture (GunDelEX, Otenko, Count (HackJack) ×3, Django ×3,
   DblBeast, Gregar, Falzar), from the Japanese Falzar ROM but Gregar's,
   from the Japanese Gregar ROM. Each is marked with its `region` ("jp"), and
   the Gregar and Falzar chips' pictures with their `version` too (a Japanese

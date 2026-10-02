@@ -22,7 +22,7 @@
 "sp/crcusman" = 13
 "sp/judgeman" = 14
 "sp/elmntman" = 15
-"sp/hackjack" = 16
+"sp/count" = 16
 "sp/colonel" = 17
 
 # The rocks a stage places, by the argument of the actor list's entry (the row of

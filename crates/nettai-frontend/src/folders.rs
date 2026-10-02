@@ -20,10 +20,11 @@
 //!
 //! What can be in a folder is what the chip pack lists (`sub_811FE7C`):
 //! chips 1 to 0x13A, without the extra flag 0x20 (the dark chips); of them
-//! the folder chips, Standard, Mega and Giga. Left out too are the chips
-//! the US game has a record of and no routine for (using one stops a US
-//! console; content/bn6 has the Japanese games' routines for HackJack's),
-//! which no US save holds.
+//! the folder chips, Standard, Mega and Giga. The JP-content chips are among
+//! them: content/bn6 has the Japanese games' records and routines for
+//! GunDelEX, Otenko, Count's, Django's, Gregar and Falzar (GunDelEX and
+//! Django's are folder chips only in the Japanese records; a US console has
+//! no routine for Count's, Django's, Gregar or Falzar).
 
 use bn6_compat::Compat;
 use nettai_battle::content::{ChipClass, ChipCode, ChipFlags, Content};
@@ -270,15 +271,15 @@ mod tests {
         let content = bn6_test_content();
         let pool = folder_chips(&content);
         // The pack's folder chips: no Program Advance, no dark chip, none
-        // past the pack's (the BeastOut chip). The Gregar, Falzar and
-        // HackJack chips have the Japanese games' routines; Django's chips
-        // are no folder chips in the US records.
+        // past the pack's (the BeastOut chip). The JP-content chips are
+        // folder chips in the Japanese games' records, which the content
+        // has (GunDelEX and Django's aren't in the US games').
         let keys: Vec<&str> = pool.iter().map(|&c| content.defs.chip(c).key.as_str()).collect();
         assert!(keys.len() > 250, "{} chips", keys.len());
-        for key in ["cannon", "roll", "bass", "gundels1", "areagrab", "gregar", "falzar", "hackjack"] {
+        for key in ["cannon", "roll", "bass", "gundels1", "gundelex", "areagrab", "otenko", "gregar", "falzar", "count", "django"] {
             assert!(keys.contains(&key), "{key}");
         }
-        for key in ["drksword", "beastout", "django", "gigacan1"] {
+        for key in ["drksword", "beastout", "gigacan1"] {
             assert!(!keys.contains(&key), "{key}");
         }
         for seed in 0..50 {
