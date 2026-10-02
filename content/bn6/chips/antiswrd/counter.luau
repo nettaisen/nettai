@@ -12,17 +12,17 @@ local sonic_boom = require("../../lib/swords/sonic_boom")
 local counter = {}
 
 export type State = {
-    -- Ticks left in the swing (AIAttackVars+0x10), and swings left (+0x12).
+    -- Ticks left in the swing (AIAttackVars+0x10). (The swings left are
+    -- the navi's `attack_count`.)
     timer: number,
-    swings: number,
 }
 
-local STATE = { timer = "u16", swings = "u16" }
+local STATE = { timer = "u16" }
 
 local SWINGS = 3
 local SWING_TICKS, WAVE_AT = 0x15, 0xC
 local SWING_ANIM = 5
-local SOUND_START = asset.sound("log-in-77")
+local SOUND_START = asset.sound("log-in")
 local SOUND_SWING = parts.sounds.swing
 -- The booms by the swings left (`dword_80EEB14`, their hit modifiers).
 local BOOMS: { [number]: SonicBoom } = {
@@ -38,7 +38,7 @@ end
 
 -- `sub_80EEA5C`: three swings, a counter window, invulnerable until done.
 local function start(me: Object, s: State)
-    s.swings = SWINGS
+    me.attack_count = SWINGS
     battle.play_sound(SOUND_START)
     me:open_counter_window()
     me:set_status_timer("invulnerable", 0xFFFF)
@@ -62,9 +62,9 @@ local function swing(me: Object, s: State, blade: AttachmentLook)
     end
     if s.timer == WAVE_AT then
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-        local boom = BOOMS[s.swings]
+        local boom = BOOMS[me.attack_count]
         if boom == nil then
-            error(string.format("AntiSwrd's counter: swing %d reads past dword_80EEB14", s.swings))
+            error(string.format("AntiSwrd's counter: swing %d reads past dword_80EEB14", me.attack_count))
         end
         sonic_boom.throw(me, me.panel_x + me.facing, me.panel_y, me.attack_element, damage, boom)
     end
@@ -73,8 +73,8 @@ local function swing(me: Object, s: State, blade: AttachmentLook)
     if t >= 0 then
         return
     end
-    local left = s.swings - 1
-    s.swings = int.u16(left)
+    local left = me.attack_count - 1
+    me.attack_count = int.u16(left)
     if left > 0 then
         parts.drop(me)
         me.step_init = 0

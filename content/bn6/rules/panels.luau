@@ -13,7 +13,7 @@ return define.rules("panels", {
         cracked = { flags = 0x00010050 },
         poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison") },
         holy = { flags = 0x00012010, trail_sound = asset.sound("panel-change") },
-        grass = { flags = 0x00010410, trail_sound = asset.sound("elmnt-man-3") },
+        grass = { flags = 0x00010410, trail_sound = asset.sound("grass") },
         ice = { flags = 0x00010810, trail_sound = asset.sound("freeze") },
         volcano = { flags = 0x00011010, trail_sound = asset.sound("panel-volcano") },
         road_up = {

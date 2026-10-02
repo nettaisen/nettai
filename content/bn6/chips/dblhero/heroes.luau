@@ -50,7 +50,7 @@ local SOUND_CHARGED = asset.sound("buster-charged")
 -- Ten volleys (or slashes), 15 ticks apart, flashing on their first,
 -- sixth and eleventh ticks; then 31 ticks.
 local VOLLEYS, VOLLEY_TICKS, FLASH_AT, FLASH_AT_2, AFTER = 10, 0xF, 0xA, 5, 0x1E
-local SOUND_VOLLEY = asset.sound("buster-6a")
+local SOUND_VOLLEY = asset.sound("buster-shot")
 local SOUND_SLASH = asset.sound("sword-swing")
 local SOUND_APPEAR = asset.sound("appear")
 -- MegaMan's flash, ProtoMan's (effects 0x21, 0x16).

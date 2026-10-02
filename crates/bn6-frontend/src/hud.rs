@@ -13,9 +13,12 @@ use bn6_battle::Battle;
 use bn6_battle::actor::status;
 use bn6_battle::transform::{SequencerState, TransformPhase};
 use bn6_battle::battle::{fight, mode, top};
-use bn6_battle::content::ChipFlags;
+use bn6_battle::content::{ChipFlags, FormKind};
+use bn6_battle::kinds::player::{Emotion, emotion};
+use bn6_content_api::FormHandle;
 use bn6_content_api::ChipHandle;
-use bn6_battle::object::{ObjectRef, flags};
+use bn6_battle::hud::HpNumber;
+use bn6_battle::object::ObjectRef;
 use bn6_battle::perspective::{ShownTelop, TelopName};
 
 /// The player navi's action while it stands waiting for input.
@@ -25,7 +28,8 @@ const FULL: u16 = bn6_battle::hud::CustomGauge::FULL;
 #[derive(Clone, Debug, Default)]
 pub struct HudState {
     hp: Option<RollingHp>,
-    enemies: Vec<EnemyHp>,
+    /// The local console's HP numbers under objects, by place.
+    hp_numbers: [Option<HpNumberShown>; HpNumber::PLACES],
     /// The HUD's animation counter (`eStruct2035280` +0): "Cstmzing..."
     /// counts it from 0 around 0x40 while it waits, and every draw of the
     /// full gauge counts it on, around 0x70 (`sub_801CA28`, `sub_801C4E4`).
@@ -42,69 +46,37 @@ pub struct HudState {
     gauge_is_on: bool,
 }
 
-/// The local navi's face in the emotion window (`sub_801E6A8`): its
-/// emotion's picture (`byte_801E6F4`: 0 normal, 1 angry, 2 Beast Out spent,
-/// 3 Full Synchro, 4 worn out), its form's number and the count beside it.
+/// The local navi's face in the emotion window (`sub_801E6A8`): what its
+/// form's definition shows for its emotion (`mugshot`), and the count
+/// beside it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Face {
-    emotion: u8,
-    form: u8,
+    /// The mugshot's number (none: the form names no face).
+    picture: Option<u8>,
+    /// One of MegaMan's own faces (the base form's: pictures 0..=4 in
+    /// BN6), which blink when they change.
+    own: bool,
+    full_synchro: bool,
     count: u8,
-}
-
-/// The pack's faces are in the original's order of forms and navis
-/// (hud.json), until the window reads a form's and a navi's mugshot from
-/// its definition: compat has the numbers of the content's keys. (A form
-/// compat doesn't know shows as the base form.)
-fn form_number(b: &Battle, form: bn6_content_api::FormHandle) -> u8 {
-    let key = &b.content.defs.form(form).key;
-    bn6_compat::Compat::bn6().forms.get(key).map_or(0, |f| f.form)
-}
-
-/// A link navi's number among the pack's faces (see [`form_number`]).
-fn navi_number(b: &Battle, navi: bn6_content_api::NaviHandle) -> Option<u8> {
-    let key = &b.content.defs.navi(navi).key;
-    bn6_compat::Compat::bn6().navis.get(key).map(|n| n.navi)
 }
 
 impl Face {
     fn of(b: &Battle, r: ObjectRef) -> Face {
-        let stats = &b.stats[b.objects.get(r).alliance as usize];
+        let side = b.objects.get(r).alliance;
+        Face::in_form(b, r, b.stats[side as usize].form)
+    }
+
+    /// The face `r`'s navi shows in `form`.
+    fn in_form(b: &Battle, r: ObjectRef, form: FormHandle) -> Face {
+        let side = b.objects.get(r).alliance;
+        let emotion = emotion(b, side);
+        let f = b.content.form(form);
         Face {
-            emotion: [0u8, 2, 3, 1, 5, 4][mood_index(b, r) as usize],
-            form: form_number(b, stats.form),
-            count: stats.beast_out_counter,
+            picture: f.mugshot.map(|faces| faces.of(emotion)),
+            own: f.kind == FormKind::Base,
+            full_synchro: emotion == Emotion::FullSynchro,
+            count: b.stats[side as usize].beast_out_counter,
         }
-    }
-
-    /// The pack's picture: the emotion's, or the form's (a Beast's has a
-    /// Full Synchro one, a Cross's a spent one).
-    fn picture(self, hud: &Hud) -> u8 {
-        if self.form == 0 {
-            return self.emotion;
-        }
-        let base = hud.form_emotions.get(self.form as usize).copied().unwrap_or(0);
-        match self.form {
-            11 | 12 if self.emotion == 3 => base + 1,
-            1..=10 if self.emotion == 2 => base + 5,
-            _ => base,
-        }
-    }
-
-    /// What tells two pictures apart without the pack.
-    fn key(self) -> (u8, u8) {
-        match self.form {
-            0 => (0, self.emotion),
-            11 | 12 => (self.form, (self.emotion == 3) as u8),
-            1..=10 => (self.form, (self.emotion == 2) as u8),
-            f => (f, 0),
-        }
-    }
-
-    /// Whether the picture is one of MegaMan's own emotions' (the forms'
-    /// come after them).
-    fn plain(self) -> bool {
-        self.form == 0 && self.emotion < 5
     }
 }
 
@@ -129,24 +101,6 @@ impl Mood {
     }
 }
 
-/// `sub_80139C8`'s emotion as the mugshot reads it.
-fn mood_index(b: &Battle, r: ObjectRef) -> u8 {
-    let o = b.objects.get(r);
-    let mood = b.stats[o.alliance as usize].mood;
-    let Some(a) = o.actor.map(|a| b.actors.get(a)) else { return 0 };
-    if a.beast_over_exhausted || mood == 0 {
-        5
-    } else if a.anger != 0 {
-        3
-    } else if a.beast_out_spent {
-        1
-    } else if mood == 0xFF {
-        2
-    } else {
-        0
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
 struct RollingHp {
     shown: u16,
@@ -155,9 +109,11 @@ struct RollingHp {
     hold: u8,
 }
 
+/// An HP number as it rolls (`sub_801C168`, an entry of `byte_203EB50`).
 #[derive(Clone, Copy, Debug)]
-struct EnemyHp {
-    object: ObjectRef,
+struct HpNumberShown {
+    /// What its place numbers (a new one starts over).
+    number: HpNumber,
     shown: u16,
     /// 0 normal, 1 dropping, 2 rising.
     colour: u8,
@@ -185,17 +141,17 @@ impl HudState {
         if let Some(r) = b.player(b.setup.local_side) {
             let now = Face::of(b, r);
             let m = self.mood.get_or_insert(Mood { now, before: now, blink: 0, flash: false, white: false });
-            if now.key() != m.now.key() {
+            if now.picture != m.now.picture {
                 *m = Mood { now, before: m.now, blink: 12, flash: false, white: false };
             } else if now.count != m.now.count {
                 m.before.count = m.now.count;
                 m.now = now;
             }
             (m.flash, m.white) = (false, false);
-            if m.now.plain() && m.blink > 0 {
+            if m.now.own && m.blink > 0 {
                 let on = m.blink & 2 != 0;
                 m.blink -= 1;
-                if m.now.emotion == 3 {
+                if m.now.full_synchro {
                     m.white = on;
                 } else {
                     m.flash = on;
@@ -226,25 +182,18 @@ impl HudState {
                 }
             }
         }
-        // Opponents' HP: shown once their entry is over, until deleted.
-        for side in 0..2u8 {
-            if side == local {
+        // The HP numbers under objects (the opponent's navi, LilBoiler):
+        // from the HP when asked for, rolling to it.
+        for (place, shown) in b.hp_numbers[local as usize & 1].iter().zip(&mut self.hp_numbers) {
+            let Some(number) = *place else {
+                *shown = None;
                 continue;
-            }
-            let Some(r) = b.player(side) else { continue };
-            let o = b.objects.get(r);
-            if bn6_battle::kinds::player::navi_action(b, r) != bn6_battle::kinds::player::NaviAction::Entry
-                && o.hp > 0
-                && !self.enemies.iter().any(|e| e.object == r)
-            {
-                self.enemies.push(EnemyHp { object: r, shown: o.hp, colour: 0, timer: 0 });
-            }
-        }
-        self.enemies.retain_mut(|e| {
-            let o = b.objects.get(e.object);
-            if o.flags & flags::ACTIVE == 0 || o.hp == 0 {
-                return false;
-            }
+            };
+            let e = match shown {
+                Some(e) if e.number == number => e,
+                _ => shown.insert(HpNumberShown { number, shown: number.hp, colour: 0, timer: 0 }),
+            };
+            let o = b.objects.get(number.object);
             let poisoned = o.collision.is_some_and(|c| b.collision.get(c).poison_timer != 0);
             if e.shown < o.hp {
                 e.colour = 2;
@@ -263,8 +212,7 @@ impl HudState {
                     e.colour = 0;
                 }
             }
-            true
-        });
+        }
     }
 }
 
@@ -292,7 +240,11 @@ fn waiting_ticks(b: &Battle) -> Option<u32> {
 
 /// Whether the custom gauge is drawn.
 fn gauge_shown(b: &Battle, state: &HudState) -> bool {
-    (b.gauge.enabled || state.gauge_was_on) && !state.was_over && !custom_open(b) && !transform_hides(b).1
+    (b.gauge.enabled || state.gauge_was_on)
+        && !state.was_over
+        && !custom_open(b)
+        && !crate::custom::gauge_held(b)
+        && !transform_hides(b).1
 }
 
 /// Whether the round has been decided (the HUD thins out).
@@ -339,18 +291,18 @@ pub fn draw<'a>(
     let colour = state.hp.map(|h| h.colour).unwrap_or(0) as usize;
 
     let (hide_mugshot, hide_boxes) = transform_hides(b);
-    // HP box, top left (x 120 while the custom screen is open).
+    // HP box, top left (moved right with the custom screen's window).
+    let shift = crate::custom::hud_shift(b);
     if let Some(r) = player.filter(|_| !hide_boxes) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
-        let x0 = if open { 15 } else { 0 };
         let pal = &hud.hp_palettes[colour.min(2)];
         for (i, &e) in hud.hp_box.iter().enumerate() {
-            put(layer, hud, pal, e, x0 + (i as i32 % 6), i as i32 / 6);
+            put_px(layer, hud, pal, e, shift + 8 * (i as i32 % 6), 8 * (i as i32 / 6));
         }
         for (k, d) in digits4(shown).into_iter().enumerate() {
             let top = MapEntry { tile: 0x1A0 + 2 * d as u16, hflip: false, vflip: false, palette: 13 };
-            put(layer, hud, pal, top, x0 + 1 + k as i32, 0);
-            put(layer, hud, pal, MapEntry { tile: top.tile + 1, ..top }, x0 + 1 + k as i32, 1);
+            put_px(layer, hud, pal, top, shift + 8 + 8 * k as i32, 0);
+            put_px(layer, hud, pal, MapEntry { tile: top.tile + 1, ..top }, shift + 8 + 8 * k as i32, 8);
         }
     }
 
@@ -500,26 +452,33 @@ pub fn draw<'a>(
             }
         }
     }
-    let mut group = Vec::new();
-    for e in &state.enemies {
-        // Under the navi wherever its position is on the screen, seen or
-        // not (`sub_801C202` asks `sub_800362C`): a navi that blinks after
-        // a hit or is invisible keeps its number.
-        let o = b.objects.get(e.object);
+    // The HP numbers, each place in turn (`sub_801C202`).
+    for e in state.hp_numbers.iter().flatten() {
+        // Under the object wherever its position is on the screen, seen or
+        // not (`sub_800362C`): a navi that blinks after a hit or is
+        // invisible keeps its number.
+        let number = e.number;
+        let o = b.objects.get(number.object);
         let p = project_hud((o.pos.x, o.pos.y, o.pos.z), &view);
         if !on_screen(p) {
             continue;
         }
-        let n = e.shown.to_string().len() as i32;
+        // The damage taken instead (`sub_801C296`'s flag 0x10), from the
+        // place without centring (flag 8).
+        let value = if number.damage { o.max_hp.wrapping_sub(e.shown) } else { e.shown };
+        let n = value.min(9999).to_string().len() as i32;
+        let x = p.x + number.dx as i32 + if number.damage { 0 } else { 4 * n - 32 };
+        let y = p.y + number.dy as i32;
         let digits = &hud.enemy_digits[e.colour.min(2) as usize];
-        for (k, d) in digits4(e.shown).into_iter().enumerate() {
+        let mut group = Vec::new();
+        for (k, d) in digits4(value).into_iter().enumerate() {
             if d == 10 {
                 continue;
             }
-            group.push(glyph(digits, d, hud.enemy_palette, p.x + 4 * n - 32 + 8 * k as i32, p.y, 2, None));
+            group.push(glyph(digits, d, hud.enemy_palette, x + 8 * k as i32, y, 2, None));
         }
+        list.insert_at(FIELD_LAYER, HP_BUCKET, group);
     }
-    list.insert_at(FIELD_LAYER, HP_BUCKET, group);
     // A flickering emotion window is black two ticks of every four
     // (`sub_801CC94`: its palette blanks), and isn't drawn on the middle
     // two of the flicker's twelve (`sub_801CDEC`).
@@ -530,7 +489,7 @@ pub fn draw<'a>(
     let over = state.was_over && !window.running;
     if let Some(r) = player.filter(|_| !over && !hide_mugshot && !matches!(flicker, 5 | 6)) {
         let mut group = Vec::new();
-        mugshot_parts(b, hud, state, r, if open { 120 } else { 0 }, &mut group, problems);
+        mugshot_parts(b, hud, state, r, shift, &mut group, problems);
         if window.flickers != 0 && (flicker + 1) & 2 != 0 {
             for part in &mut group {
                 part.palette = [0; 16];
@@ -564,6 +523,42 @@ pub fn draw<'a>(
         let group = (0..5).map(|k| glyph(&hud.pause, k, hud.enemy_palette, 100 + 8 * k as i32, 63, 0, None)).collect();
         list.insert_at(FRONT_LAYER, NAME_BUCKET, group);
     }
+    warning_parts(b, hud, &view, list, problems);
+}
+
+/// Where a warning marker over the custom gauge is.
+const GAUGE_WARNING: (i32, i32) = (0x78, 0x0C);
+
+/// The warning markers the console shows this tick (`sub_800AE90`), which
+/// the main loop queues after the HUD's sprites (`sub_8009FCC`): a 16x16
+/// arrow over the custom gauge or over a place on the field (projected as
+/// the HUD's pieces are), the second frame while bit 3 of the console's
+/// frame counter is set; none unless its place is within 16 pixels of the
+/// screen's top left and its bottom right below (x + 16, y + 16) < (0xFF,
+/// 0xB0). (A place left of or above the screen, within 16 pixels, makes
+/// the original write a garbled sprite: not drawn here, and no netbattle
+/// marker goes there.)
+fn warning_parts<'a>(b: &Battle, hud: &'a Hud, view: &View, list: &mut SpriteList<'a>, problems: &mut Problems) {
+    let console = b.setup.local_side as usize & 1;
+    for w in &b.warnings[console] {
+        let (x, y) = match w.at {
+            None => GAUGE_WARNING,
+            Some(at) => {
+                let p = project_hud((at.x, at.y, at.z), view);
+                (p.x, p.y)
+            }
+        };
+        if !(0..0xFF - 16).contains(&x) || !(0..0xB0 - 16).contains(&y) {
+            continue;
+        }
+        if hud.warning.is_empty() {
+            problems.note("the pack has no warning marker (extract it again)".into());
+            continue;
+        }
+        let frame = if b.consoles[console].frames & 8 != 0 { 4 } else { 0 };
+        let part = SpritePart { first_tile: frame, priority: 0, ..block(&hud.warning, 16, 16, hud.warning_palette, x, y) };
+        list.insert_at(FRONT_LAYER, 0, vec![part]);
+    }
 }
 
 /// The sprite layers the HUD's tasks insert into (`sub_802FE28`'s r2), and
@@ -578,13 +573,18 @@ const HP_BUCKET: usize = 0xDF;
 const ICON_BUCKET: usize = 0xD0;
 
 fn put(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, tx: i32, ty: i32) {
+    put_px(layer, hud, pal, e, tx * 8, ty * 8);
+}
+
+/// `put` at a pixel position.
+fn put_px(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, x: i32, y: i32) {
     let tile = if e.tile >= hud.gauge_first_tile {
         hud.gauge_tiles.get((e.tile - hud.gauge_first_tile) as usize)
     } else {
         e.tile.checked_sub(hud.first_tile).and_then(|i| hud.tiles.get(i as usize))
     };
     if let Some(t) = tile {
-        layer.draw_tile(t, pal, tx * 8, ty * 8, e.hflip, e.vflip);
+        layer.draw_tile(t, pal, x, y, e.hflip, e.vflip);
     }
 }
 
@@ -709,6 +709,7 @@ fn glyph(tiles: &Tiles, k: usize, palette: Palette, x: i32, y: i32, priority: u8
         alpha: None,
         mosaic: None,
         vscale,
+        affine: None,
     }
 }
 
@@ -730,32 +731,32 @@ fn mugshot_parts<'a>(
 ) {
     let side = b.objects.get(r).alliance as usize;
     let stats = &b.stats[side];
-    // A link navi's own face (MegaMan's, the navi that changes form, is
-    // his emotion's or his form's).
-    if !b.content.navi(stats.navi).changes_form() {
-        let face = navi_number(b, stats.navi)
-            .and_then(|navi| hud.navi_mugshot_of.get((navi as usize).checked_sub(1)?))
-            .and_then(|&i| hud.navi_mugshots.get(i as usize));
-        let Some(face) = face else {
+    // A link navi's own face, its definition's (MegaMan's, the navi that
+    // changes form, is his form's): in its second palette in Full Synchro.
+    let navi = b.content.navi(stats.navi);
+    if !navi.changes_form() {
+        let Some((tiles, palettes)) = navi.mugshot.and_then(|n| hud.mugshot(n)) else {
             problems.note(format!("navi {:?} has no mugshot in the pack", b.content.defs.navi(stats.navi).key));
             return;
         };
-        let full_synchro = Face::of(b, r).emotion == 3;
-        let pal = face.palettes[full_synchro as usize];
-        out.push(block(&face.tiles, 32, 16, pal, x, 18));
+        let full_synchro = emotion(b, side as u8) == Emotion::FullSynchro;
+        let pal = palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default();
+        out.push(block(tiles, 32, 16, pal, x, 18));
         out.push(block(&hud.navi_box, 16, 16, pal, x + 32, 18));
         return;
     }
     let mut face = state.mood.map(|m| m.shown()).unwrap_or_else(|| Face::of(b, r));
     // A form chosen on the custom screen shows in the window until the
     // screens close (`sub_802A040`, `sub_802A088`).
-    let chosen = (b.round.mode == mode::CUSTOM).then(|| b.custom.sides[side].sent.as_ref()).flatten();
-    if let Some(form) = chosen.and_then(|sent| sent.result.transform.form) {
-        face = Face { form: form_number(b, form), ..Face::of(b, r) };
+    if let Some(form) = crate::custom::face(b, side) {
+        face = Face::in_form(b, r, form);
     }
-    let Some((gfx, pal)) = hud.mugshots.get(face.picture(hud) as usize) else { return };
+    let Some((gfx, palettes)) = face.picture.and_then(|n| hud.mugshot(n)) else {
+        problems.note(format!("form {:?} has no mugshot in the pack", b.content.defs.form(b.stats[side].form).key));
+        return;
+    };
     // (The white of a change to Full Synchro: `byte_801CD80`.)
-    let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { *pal };
+    let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
     out.push(block(gfx, 32, 16, pal, x, 18));
     let tiles = hud.counts.get(face.count as usize).unwrap_or(&hud.count_box);
     out.push(block(tiles, 16, 16, pal, x + 32, 18));
@@ -953,21 +954,6 @@ mod tests {
     use super::*;
     use bn6_assets::BannerLayout;
 
-    #[test]
-    fn a_face_is_its_emotions_picture_or_its_forms() {
-        let hud = Hud { form_emotions: vec![0, 5, 6, 7, 8, 9, 5, 6, 7, 8, 9, 0x14, 0x14], ..Hud::default() };
-        let face = |emotion, form| Face { emotion, form, count: 3 };
-        // MegaMan's own emotions are pictures 0-4, and blink when they change.
-        assert_eq!(face(1, 0).picture(&hud), 1);
-        assert!(face(1, 0).plain());
-        // A Cross has its face and a spent one; a Beast its face and a Full Synchro one.
-        assert_eq!((face(0, 3).picture(&hud), face(2, 3).picture(&hud)), (7, 12));
-        assert_eq!((face(0, 11).picture(&hud), face(3, 11).picture(&hud)), (0x14, 0x15));
-        assert!(!face(0, 3).plain());
-        // Emotions a form has no picture for don't change its face.
-        assert_eq!(face(0, 3).key(), face(1, 3).key());
-        assert_ne!(face(0, 3).key(), face(2, 3).key());
-    }
     use bn6_battle::content::{BannerId, testing};
     use bn6_battle::hud::{Telop, TelopHidden};
 

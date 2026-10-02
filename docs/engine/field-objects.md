@@ -88,7 +88,7 @@ or "placed").
 **Variants (`byte_80CF934`, 8-byte rows):** anim, (unused 0xC8), HP/2,
 debris palette, break sound (u16), NameID (u16). Init makes HP/2 = 0 into
 1 HP and variant >= 3 aqua. In content they are `rock.variants` (brittle,
-cube, hard, ice; records `rockcube/brittle` to `rockcube/ice` with `anim`,
+cube, hard, ice; records `rockcube/rock/brittle` to `rockcube/rock/ice` with `anim`,
 `hp`, `element`, `debris_palette`, `break_sound`, `name`); a stage names
 the one its rocks are (the actor list's entry gives the row, which
 compat's records.toml keeps):

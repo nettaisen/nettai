@@ -32,7 +32,7 @@ local CLAW = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, pal
 -- The claw drawn upside down (flip bit 1) and in palette +6.
 local CLAW_FLIP, CLAW_PALETTE = 2, 6
 -- An actor whose look is this stands two panels wide.
-local WIDE_LOOK = asset.sprite("small-ring")
+local WIDE_LOOK = asset.sprite("wide-navi")
 -- Bodies (of either side) on a panel.
 local BODIES = 0x0F80_0000
 

@@ -1621,8 +1621,9 @@ Sub-phase 0, `sub_80EB450`:
       (`sub_80C6248`): the flying shot (T3 #0xB, §B8) of kind 6 from the center of the panel in front, 12 pixels
       up, with damage AV.u32[0x08] and the obstacle word AV+0x30 as its ExtraVars. It sets no recovery: sub-phase
       4 waits whatever AV.Unk_12 holds from the last action that wrote it. The port keeps AV.Unk_12 as the navi's
-      `recovery` word (`AttackVars::recovery`), which actions 0x11 and 0x16 write; a chip action that writes the
-      same word in the game but keeps its own state in the port would leave it unchanged (**unverified**). A lab
+      `attack_count` (`AttackVars::count`), which every action that has a count keeps it in, as the game's 44
+      ported routines that write it do (a throw after another action than a shot waits that action's count:
+      **unverified**). A lab
       scenario (the Falzar side of the gregar base in DustCross: a shot, a blank shot, B+Back, the throw)
       verified that the throw waits the first shot's recovery through the blank shot and the pull.
   - Then `sub_80B8E30` with r7 = &obj.RelatedObject1Ptr spawns a second T1#5 with r4 as its parameters: 5, the
