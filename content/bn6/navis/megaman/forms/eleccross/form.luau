@@ -25,7 +25,7 @@ return define.form {
     palette = 7,
     -- Its faces in the emotion window, and once Beast Out is spent
     -- (`byte_801E700`): the Falzar ROM has no ElecCross face, and shows TomahawkCross's.
-    mugshot = { normal = asset.mugshot("tomahawkcross"), tired = asset.mugshot("tomahawkcross-tired") },
+    mugshot = { normal = asset.mugshot("eleccross"), tired = asset.mugshot("eleccross-tired") },
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "elec", damage = 50 },
     -- The chips A charges.

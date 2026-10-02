@@ -31,11 +31,11 @@ netplay needs.
 
 ## Getting started
 
-You need Rust with edition 2024, and a Mega Man Battle Network 6: Cybeast Falzar ROM (US, `MEGAMAN6_FXXBR6E`) of
-your own. Extract a content pack from it into `data/content/bn6`, where the tools look by default (the directory
-is gitignored):
+You need Rust with edition 2024, and the two US Mega Man Battle Network 6 ROMs of your own: Cybeast Falzar
+(`MEGAMAN6_FXXBR6E`) and Cybeast Gregar (`MEGAMAN6_GXXBR5E`). Extract a content pack from them into
+`data/content/bn6`, where the tools look by default (the directory is gitignored):
 
-    cargo run --release -p bn6-extract -- content <rom> data/content/bn6
+    cargo run --release -p bn6-extract -- content <falzar-rom> <gregar-rom> data/content/bn6
 
 Then run the frontend:
 
