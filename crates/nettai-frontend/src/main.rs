@@ -300,7 +300,7 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, seed: u32) -> Ses
     let (offers, setup, choices) = agree(content, &conn, &offer).unwrap_or_else(|e| fail(format!("netplay: {e}")));
     let side = conn.side();
     eprintln!(
-        "netplay: playing {peer}; you are the {} navi (match seed {}, input delay {})",
+        "netplay: playing {peer}; you are the {} navi (your setup's seed {seed}, the match's {}, input delay {})",
         if side == 0 { "left" } else { "right" },
         conn.seed(),
         args.delay
