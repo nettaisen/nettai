@@ -8,8 +8,6 @@ local statue = require("./statue")
 
 return define.chip {
     id = "anubis",
-    name = "Anubis",
-    description = "Anubis\npoisons\nenemies",
     codes = { "P" },
     element = "null",
     family = "summon",

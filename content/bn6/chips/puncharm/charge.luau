@@ -25,7 +25,6 @@ end
 
 return define.weapon {
     id = "puncharm/charge",
-    name = "PunchArm",
     charge_ticks = { 80, 80, 80, 80, 80, 100, 100, 100 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
     instant = fist.instant(HIT_MOD),

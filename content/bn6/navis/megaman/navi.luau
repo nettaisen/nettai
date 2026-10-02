@@ -20,18 +20,15 @@ local charged_shot = require("./weapons/charged-shot/weapon")
 
 return define.navi {
     id = "megaman",
-    name = "MegaMan",
     sprite = asset.sprite("megaman-navi"),
     element = "null",
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("megaman-win"), lose = asset.banner("megaman-deleted") },
     merge_height = 0,
-    -- The no-running message: its lines' characters (which time it), its
-    -- words, and the portrait beside it.
+    -- The no-running message's portrait: the speaker beside the box. Its
+    -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        counts = { 19, 12 },
-        text = "Lan,this is no time\nto run away!",
         portrait = asset.sprite("megaman-portrait"),
     },
     -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,

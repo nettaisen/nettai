@@ -10,8 +10,6 @@ local plane = require("./plane")
 return {
     define.chip {
         id = "airraid1",
-        name = "AirRaid1",
-        description = "Attk enmy\nw/flying\nFgtrPlne.",
         codes = { "G", "K", "R" },
         element = "null", family = "summon", class = "standard",
         rarity = 0, mb = 26, damage = 10, hit_param = 158, lockout = 0,
@@ -23,8 +21,6 @@ return {
     },
     define.chip {
         id = "airraid2",
-        name = "AirRaid2",
-        description = "Attk enmy\nw/flying\nFgtrPlne.",
         codes = { "O", "T", "Y" },
         element = "null", family = "summon", class = "standard",
         rarity = 1, mb = 32, damage = 10, hit_param = 158, lockout = 0,
@@ -36,8 +32,6 @@ return {
     },
     define.chip {
         id = "airraid3",
-        name = "AirRaid3",
-        description = "Attk enmy\nw/flying\nFgtrPlne.",
         codes = { "N", "U", "Z" },
         element = "null", family = "summon", class = "standard",
         rarity = 2, mb = 39, damage = 10, hit_param = 158, lockout = 0,

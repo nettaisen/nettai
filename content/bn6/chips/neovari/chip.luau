@@ -12,8 +12,6 @@ local vari = require("../../lib/swords/vari")
 
 return define.chip {
     id = "neovari",
-    name = "NeoVari",
-    description = "A magical\nshifting\nsword.",
     codes = { "N" },
     element = "null",
     family = "sword",

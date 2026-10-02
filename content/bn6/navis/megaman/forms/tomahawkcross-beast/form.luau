@@ -9,7 +9,6 @@ local throw = require("./throw")
 
 return define.form {
     id = "tomahawkcross-beast",
-    name = "TomahawkCross Beast",
     kind = "cross_beast",
     game = "falzar",
     cross_of = tomahawkman,

@@ -71,8 +71,9 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    /// Show content's words from a language's strings table (the
-    /// definitions' own where it has none); `None`, the definitions'.
+    /// Show content's display text from a language's strings table (the
+    /// content's own strings where it has none); `None`, the content's
+    /// own.
     pub fn set_strings(&mut self, strings: Option<Arc<nettai_content::locale::Strings>>) {
         self.strings = strings;
     }
@@ -122,7 +123,7 @@ impl<'a> Renderer<'a> {
         self.hud.clear();
         self.names.clear();
         let mut text =
-            TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref()).with_words(self.strings.as_deref());
+            TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref()).with_language(self.strings.as_deref());
         let navi = crate::custom::navi_number(b, b.setup.local_side);
         let emblem = crate::custom::emblem_tiles(&assets.custom, crate::custom::version_name(b, b.setup.local_side), navi);
         let chatbox = crate::chatbox::prepare(b, assets, &text, &mut self.problems);
@@ -166,12 +167,13 @@ impl<'a> Renderer<'a> {
         };
         // (The flash takes the palette transform the transformation's fade
         // uses: on its frames the HUD's palettes are the flash's, which
-        // leaves them be in variant 0.)
+        // leaves them be in variant 0: as the transformation's fade left
+        // them, black through a form change. A Japanese console's chip
+        // window shows there, drawn black over the white stage.)
         let hud = match flash {
             Some(1) => Fade::White(16),
-            Some(_) => custom_hud,
-            None if transform != Fade::None => transform,
-            None => custom_hud,
+            _ if transform != Fade::None => transform,
+            _ => custom_hud,
         };
         let sprites = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b).unwrap_or_default() };
         let fades = Fades { stage, hud, sprites, screen: screen_fade(b) };
@@ -180,10 +182,10 @@ impl<'a> Renderer<'a> {
         // Each item's depth and fades: its layer's (the HUD layer's moved
         // with its shake), or its sprite parts' (an item whose parts the
         // sprite limit dropped isn't drawn).
-        if let Some(lang) = text.words.language() {
+        if let Some(lang) = text.strings.language() {
             let lang = lang.to_string();
-            for what in text.words.take_missing() {
-                self.problems.note(format!("the {lang} strings table has no {what}: shown in the definition's words"));
+            for what in text.strings.take_missing() {
+                self.problems.note(format!("the {lang} strings table has no {what}: shown in the content's own"));
             }
         }
         let text = text

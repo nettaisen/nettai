@@ -7,8 +7,6 @@ local controller = require("./controller")
 
 return define.chip {
     id = "magnum",
-    name = "Magnum",
-    description = "Cursor \ndestroys\npanels!",
     codes = { "F", "L", "W" },
     element = "null",
     family = "cursor",

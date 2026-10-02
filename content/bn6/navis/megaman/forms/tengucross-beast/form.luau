@@ -10,7 +10,6 @@ local charge = require("./charge")
 
 return define.form {
     id = "tengucross-beast",
-    name = "TenguCross Beast",
     kind = "cross_beast",
     game = "falzar",
     cross_of = tenguman,

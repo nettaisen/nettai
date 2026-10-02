@@ -8,7 +8,6 @@ local chargeman = require("./chip")
 
 return define.navi {
     id = "chargeman",
-    name = "ChrgeMan",
     sprite = asset.sprite("chargeman"),
     element = "fire",
     buster_bonus = 1,
@@ -18,11 +17,9 @@ return define.navi {
     -- ChargeMan face, and shows DustMan's.
     mugshot = asset.mugshot("chargeman"),
     merge_height = 0,
-    -- The no-running message: its lines' characters (which time it), its
-    -- words, and the portrait beside it.
+    -- The no-running message's portrait: the speaker beside the box. Its
+    -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        counts = { 15, 19, 11 },
-        text = "Chug-a-chug-a!!\nNo time to steam on\noutta here!",
         portrait = asset.sprite("chargeman-portrait"),
     },
     own_chip = { chip = chargeman, code = "C" },

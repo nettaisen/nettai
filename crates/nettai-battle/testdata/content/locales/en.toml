@@ -1,0 +1,61 @@
+# The test content's strings: its display text, by definition key (a definition holds none).
+
+language = "en"
+
+[chips]
+"test/anti-navi" = { name = "AntiNavi" }
+"test/blade" = { name = "Blade" }
+"test/blank" = { name = "Blank" }
+"test/blast" = { name = "Blast" }
+"test/bomb" = { name = "Bomb" }
+"test/bug" = { name = "Bug" }
+"test/charge" = { name = "Charge" }
+"test/delecswd" = { name = "DElecSwd" }
+"test/dripshwr" = { name = "DripShwr" }
+"test/dustbrk" = { name = "DustBrk" }
+"test/edeletbm" = { name = "EDeletBm" }
+"test/elec" = { name = "Elec" }
+"test/elem-trap" = { name = "ElemTrap" }
+"test/elements" = { name = "Elements" }
+"test/eraser" = { name = "Eraser" }
+"test/etomahwk" = { name = "ETomahwk" }
+"test/fist" = { name = "Fist" }
+"test/flame-hook" = { name = "FlmHook" }
+"test/flash" = { name = "Flash" }
+"test/ftornado" = { name = "FTornado" }
+"test/heat" = { name = "Heat" }
+"test/heatpres" = { name = "HeatPres" }
+"test/plus" = { name = "Plus" }
+"test/rc-brakr" = { name = "RCBrakr" }
+"test/rslash" = { name = "RSlash" }
+"test/seed" = { name = "Seed" }
+"test/shooter" = { name = "Shooter" }
+"test/slash" = { name = "Slash" }
+"test/spout" = { name = "Spout" }
+"test/step-blade" = { name = "StepBld" }
+"test/stun-blade" = { name = "StunBld" }
+"test/sun-gun-1" = { name = "SunGun1" }
+"test/sun-gun-2" = { name = "SunGun2" }
+"test/sun-gun-3" = { name = "SunGun3" }
+"test/sun-gun-ex" = { name = "SunGunX" }
+"test/sun-moon" = { name = "SunMoon" }
+"test/tengu" = { name = "Tengu" }
+"test/ticker1" = { name = "Ticker1" }
+"test/ticker2" = { name = "Ticker2" }
+"test/ticker3" = { name = "Ticker3" }
+"test/time-bomb" = { name = "TimeBomb" }
+"test/time-bomb-plus" = { name = "TimeBomb+" }
+"test/tomahawk" = { name = "Tomahawk" }
+"test/trap" = { name = "Trap" }
+"test/veil" = { name = "Veil" }
+"test/volcchrg" = { name = "VolcChrg" }
+
+[navis]
+"megaman" = { name = "MegaMan", run_message = "Lan,this is no time\nto run away!" }
+"test/link-navi" = { name = "LinkNavi", run_message = "Lan,this is no time\nto run away!" }
+
+[forms]
+base = { name = "Base" }
+
+[weapons]
+"test/tick-shot" = { name = "Tick shot" }

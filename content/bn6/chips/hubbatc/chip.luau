@@ -9,8 +9,6 @@ local navi_boost = require("../../lib/navi-boost/controller")
 -- name.)
 return define.chip {
     id = "hubbatc",
-    name = "HubBatc",
-    description = "Blend Hub\nDNA Data\nw/MegaMan",
     codes = { "J" },
     element = "null", family = "null", class = "giga",
     rarity = 4, mb = 99, damage = 0, hit_param = 148, lockout = 0,

@@ -9,8 +9,6 @@ local navi = require("./navi")
 
 return define.chip {
     id = "twinldrs",
-    name = "TwinLdrs",
-    description = "Dbl attk\nw/BN5 Col\nand ProtM",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

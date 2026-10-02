@@ -72,37 +72,42 @@ fn bn6_content_has_no_definition_errors() {
     assert!(errors.is_empty(), "{}", errors.join("\n"));
 }
 
-/// BN6's strings tables in other languages (content/bn6/locale) name only
-/// definitions BN6's content has, and stay out of the content: the content
-/// root reader leaves them out, so they reach neither the define phase nor
-/// `Content::hash()`.
+/// BN6's strings tables (content/bn6/locales) name only definitions BN6's
+/// content has, and every chip, navi and form has its name in the own
+/// language's. The root reader leaves them out of the modules; the own
+/// language's strings shape the records (a description's lines), and the
+/// hash covers that shape alone: text that keeps it changes nothing.
 #[test]
-fn bn6_locale_tables_name_bn6_definitions_and_stay_out_of_the_content() {
+fn bn6_strings_name_bn6_definitions_and_only_their_shape_is_hashed() {
     let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6"));
-    let langs = nettai_content::locale::Strings::languages(dir);
-    assert!(langs.contains(&"ja".to_string()), "{langs:?}");
+    let langs = nettai_content::locale::languages(dir);
+    assert!(langs.contains(&"en".to_string()) && langs.contains(&"ja".to_string()), "{langs:?}");
     let mut r = Report::default();
     let root = nettai_content::root::read(dir, &mut r).expect("content/bn6 reads");
-    assert!(root.modules.keys().all(|m| !m.starts_with("locale/")), "a strings table read as a module");
-    let mut c = nettai_battle::Content::default();
-    c.scripts.modules = root.modules;
-    c.assets = testing::asset_names_used(&c.scripts.modules);
-    c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-    let before = c.hash();
+    assert!(root.modules.keys().all(|m| !m.starts_with("locales/")), "a strings table read as a module");
+    let define = |strings: nettai_content::locale::Strings| {
+        let mut c = nettai_battle::Content::default();
+        c.scripts.modules = root.modules.clone();
+        c.assets = testing::asset_names_used(&c.scripts.modules);
+        c.strings = strings;
+        c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
+        c
+    };
+    let c = define(root.strings.clone());
     nettai_content::locale::check_root(dir, &c, &mut r);
     let errors: Vec<String> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| format!("{}: {}", i.file, i.message)).collect();
     assert!(errors.is_empty(), "{}", errors.join("\n"));
-    // A root with a table and one without define the same content.
-    let tmp = std::env::temp_dir().join(format!("nettai-locale-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&tmp);
-    std::fs::create_dir_all(tmp.join("locale")).unwrap();
-    std::fs::write(tmp.join("a.luau"), "return define.record('thing', { n = 1 })").unwrap();
-    let read = |r: &mut Report| nettai_content::root::read(&tmp, r).expect("the root reads").modules;
-    let without = read(&mut Report::default());
-    std::fs::write(tmp.join("locale/ja.toml"), "language = \"ja\"\n").unwrap();
-    let mut r2 = Report::default();
-    assert_eq!(read(&mut r2), without);
-    assert!(!r2.has_errors(), "{r2:?}");
-    let _ = std::fs::remove_dir_all(&tmp);
-    assert_eq!(c.hash(), before);
+    // The own strings' shape is in the records: MagPanel's one line.
+    let magpanl = c.defs.chip_by_key("magpanl").expect("magpanl");
+    assert_eq!(c.chip(magpanl).description_lines, 1);
+    // Other text of the same shape: the same content.
+    let mut renamed = root.strings.clone();
+    for s in renamed.chips.values_mut() {
+        s.name = Some("Renamed".into());
+    }
+    assert_eq!(define(renamed).hash(), c.hash());
+    // Another shape: another content.
+    let mut reshaped = root.strings.clone();
+    reshaped.chips.get_mut("magpanl").unwrap().description = Some("one\ntwo".into());
+    assert_ne!(define(reshaped).hash(), c.hash());
 }

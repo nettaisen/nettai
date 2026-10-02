@@ -76,8 +76,6 @@ local PHASES: { [number]: (me: Object, s: State) -> () } = { [RAISE] = raise, [S
 
 return define.chip {
     id = "edeletbm",
-    name = "EDeletBm",
-    description = "Pierce\nfwd and\nfire beam",
     codes = { "K" },
     element = "null",
     family = "cursor",

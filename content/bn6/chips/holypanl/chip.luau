@@ -7,8 +7,6 @@ local panel_chips = require("../../lib/panel-chips/controller")
 
 return define.chip {
     id = "holypanl",
-    name = "HolyPanl",
-    description = "Creates a\nHolyPanl\nin front",
     codes = { "A", "B", "S", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 1, mb = 24, damage = 0, hit_param = 0, lockout = 0,
