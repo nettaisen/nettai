@@ -23,7 +23,8 @@ netplay needs.
 - `nettai-assets`: the battle graphics in typed form, for drawing.
 - `nettai-audio`: plays the engine's sound cues through the M4A driver.
 - `m4a`: the GBA's M4A (Sappy) sound driver.
-- `nettai-netplay`: rollback netplay on [getgud](https://github.com/tangobattle/getgud), with a simulated network.
+- `nettai-netplay`: rollback netplay on [getgud](https://github.com/tangobattle/getgud), its inputs carried by
+  [rennet](https://github.com/tangobattle/rennet) over UDP (or any datagram channel), with a simulated lossy network.
 - `nettai-frontend`: a desktop app that draws battles: it replays recorded matches or plays live.
 - `bn6-extract`: extracts BN6's graphics and sound from the four ROMs into a content pack.
 - `bn6-compat`: BN6's original numbers for the content (`content/bn6/compat`): the codecs of the game's setup
@@ -45,7 +46,7 @@ Then run the frontend:
     cargo run --release -p nettai-frontend -- <trace.jsonl>                         # replay a recorded match
     cargo run --release -p nettai-frontend -- --play --headless 1-120 --out <dir>   # render frames to PNG
 
-In live play you are the left navi, and the right one stands still. Each start draws its setup from a seed, which
+In live play alone you are the left navi, and the right one is a stand-in that stands still. Each start draws its setup from a seed, which
 it prints: a link battle stage and background, each side's game (Falzar's or Gregar's Beast), a legal random folder
 for each side, and five Crosses of both games in each Cross window. `--seed N` replays a setup, `--stage NAME` forces the stage (`netbattle-1` to `netbattle-96`)
 and `--show-folders` prints the folders. Keys: the arrows move, Z is A, X is B, A is L,
@@ -60,8 +61,20 @@ Murecho (Latin and Japanese), bundled under the SIL Open Font License in `crates
 `--text original` draws them in the game's own fonts instead, exactly as the original does, and `--font <file>`
 uses another TrueType or OpenType font ([text-rendering.md](docs/design/text-rendering.md) §9).
 
-Netplay is a library for now, with no online play in the frontend. Its tests play netbattles between two rollback
-sessions over simulated links at several latencies, and check that both peers stay in step:
+To play another player, one hosts and the other joins, over a LAN, or over the Internet with the host's UDP port
+forwarded to the host's machine:
+
+    cargo run --release -p nettai-frontend -- --play --host 7777                    # host, the left navi
+    cargo run --release -p nettai-frontend -- --play --join 192.0.2.10:7777         # join, the right navi
+
+Both need the same engine and the same content pack (the handshake checks, and says what differs). Each brings their
+own folder, game and Crosses, drawn from their own `--seed`, and their patch cards (`--cards`); the host's `--stage`
+picks the stage. Both play with rollback: inputs go out every frame, the other player's are predicted until they
+arrive, and the battle is simulated again when a prediction was wrong. The status line shows the round trip, the
+loss, the input delay (`--delay N`, default 2), the rollbacks and the frames waited ([docs/frontend.md](docs/frontend.md)
+§2, [rollback.md](docs/design/rollback.md) §4). The netplay tests play netbattles between two rollback sessions over a
+simulated network at several latencies, with loss, duplication and reordering, and over UDP on loopback, and check that
+both peers stay in step:
 
     cargo test -p nettai-netplay
 

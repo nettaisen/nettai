@@ -1,7 +1,8 @@
-//! Synthetic matches: a battle whose buttons are the whole input (the
-//! engine simulates both custom screens), with the one event left from
-//! outside the simulation, the link session closing at the end of the
-//! round, derived inside the game; and a seeded button masher.
+//! A battle whose buttons are the whole input (the engine simulates both
+//! custom screens), with the one event left from outside the simulation,
+//! the link session closing at the end of the round, derived inside the
+//! game: what live netplay plays (a frontend's), and synthetic matches;
+//! and, for those, a seeded button masher and a netbattle setup.
 
 use crate::rng::SplitMix64;
 use crate::world::Game;
