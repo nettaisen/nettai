@@ -61,6 +61,38 @@ pub struct Setup {
     /// stats or not). Traces recorded without it read as clear.
     #[serde(default)]
     pub emotion_window_glitches: Option<[bool; 2]>,
+    /// Both consoles' save event flag bytes that decide what the custom
+    /// screen offers (`eEventFlags`+0x1C, +0x1D and +0x2C: flags 0xE0-0xEF
+    /// and 0x160-0x167), hex, by side. Traces recorded without them read
+    /// as a finished game's ([`Unlocks::everything`]).
+    #[serde(default)]
+    pub unlock_flags: Option<[String; 2]>,
+}
+
+/// What a save unlocks, from its event flag bytes as the setup records them
+/// (`Setup::unlock_flags`): Beast Out (flag 0xE0), the version's five
+/// Crosses (`sub_8029EF8`'s table: Gregar's flags 0xE2-0xE6, Falzar's
+/// 0xE7-0xEB, by Cross number) and flag 0x163 (operating a link navi).
+fn unlocks_from_flags(version: GameVersion, flags: &[u8]) -> Unlocks {
+    let flag = |f: u16| {
+        let byte = match f >> 3 {
+            0x1C => flags[0],
+            0x1D => flags[1],
+            0x2C => flags[2],
+            _ => unreachable!("flag {f:#x} isn't recorded"),
+        };
+        byte & (0x80 >> (f & 7)) != 0
+    };
+    let first = match version {
+        GameVersion::Gregar => 0xE2,
+        GameVersion::Falzar => 0xE7,
+    };
+    Unlocks {
+        version,
+        crosses: std::array::from_fn(|i| flag(first + i as u16)),
+        beast_out: flag(0xE0),
+        beast_out_sealed: flag(0x163),
+    }
 }
 
 /// The bug frags a trace without them reads as: the recording tool's
@@ -293,7 +325,10 @@ impl Round {
         };
         PlayerSetup {
             folder,
-            unlocks: Unlocks::everything(version),
+            unlocks: match &self.setup.unlock_flags {
+                Some(f) => unlocks_from_flags(version, &unhex(&f[side as usize])),
+                None => Unlocks::everything(version),
+            },
             joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
             bug_frags: self.setup.bug_frags.map_or(RECORDED_BUG_FRAGS, |f| f[side as usize]),
             navi_level: self.setup.navi_levels.map_or(0, |l| l[side as usize]),
@@ -779,4 +814,23 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
         open = None;
     }
     checks
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unlocks_from_event_flags() {
+        // The chip lab's Falzar save: Beast Out and every Cross.
+        assert_eq!(unlocks_from_flags(GameVersion::Falzar, &[0x81, 0xF3, 0x00]), Unlocks::everything(GameVersion::Falzar));
+        // Its Gregar save: Gregar's Crosses are flags 0xE2-0xE6.
+        assert_eq!(unlocks_from_flags(GameVersion::Gregar, &[0xBE, 0x03, 0x00]), Unlocks::everything(GameVersion::Gregar));
+        // TomahawkCross alone (custom/one-cross-owned), and flag 0x163.
+        let u = unlocks_from_flags(GameVersion::Falzar, &[0x80, 0x83, 0x10]);
+        assert_eq!(u.crosses, [false, true, false, false, false]);
+        assert!(u.beast_out && u.beast_out_sealed);
+        // No Beast Out (custom/no-beast-out).
+        assert!(!unlocks_from_flags(GameVersion::Falzar, &[0x01, 0xF3, 0x00]).beast_out);
+    }
 }
