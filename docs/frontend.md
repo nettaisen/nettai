@@ -1,12 +1,16 @@
 # The rendering frontend (`nettai-frontend`)
 
 A desktop app that runs a battle through the native engine and draws it the
-way the original does, in its 240x160 frame scaled up by an integer factor.
-It draws from engine state: the field's panels, each object's sprite,
-animation frame and look, HP, the custom gauge, banners and the flow's
-screen fades. Nothing emulates the GBA's video hardware; the frontend
-composes tile layers and sprite parts itself with the original's ordering
-and blending rules.
+way the original does, in its 240x160 frame scaled up by the largest whole
+factor the window has room for. It draws from engine state: the field's
+panels, each object's sprite, animation frame and look, HP, the custom
+gauge, banners and the flow's screen fades. Nothing emulates the GBA's
+video hardware; the frontend composes tile layers and sprite parts itself
+with the original's ordering and blending rules. The strings that come
+from content or vary (chip names, the telop, the chatbox, the HUD's lines)
+are drawn by default with a vector font at the window's resolution over
+the scaled frame (§3, "Text"); `--text original` draws them in the game's
+own fonts, exactly as the original does.
 
 It replays a golden trace (the recorded inputs of a real match) or is
 played live from the keyboard, and can render chosen frames to PNG.
@@ -61,7 +65,8 @@ The graphics load into the types of the `nettai-assets` crate, decoded
   true face from whichever ROM has it.
 
 What the HUD shows of the content comes from the content: a chip's name is
-its definition's, spelled with the font's glyphs (`Hud::glyphs`); its icon
+its definition's, spelled with the font's glyphs (`Hud::glyphs`), or in the
+font text mode drawn with the bundled font (§3, "Text"); its icon
 is the pack's image under the chip's key; whether its damage shows is its
 definition's flag. The emotion window shows the face the navi's form names
 for its emotion (`mugshot`, `FormData::mugshot`), or a link navi's own
@@ -80,9 +85,15 @@ are the link navis' faces, with their Full Synchro palettes.
 Options: `--pack <dir>` names the content pack and `--content <dir>` the
 battle content (see above), `--mute` turns the sound off, `--round N`
 starts a trace at round N (later rounds follow when a round's input runs
-out), `--scale N` sets the window scale (default 4), `--paused` starts
-paused, `--png-scale N` scales headless output, `--quit-after N` closes
-the window after N ticks. For live play, `--seed N` gives the seed its
+out), `--scale N` sets the window's first size (default 4 times 240x160;
+the window can be resized, and the picture keeps whole pixels, centred on
+black), `--paused` starts paused, `--png-scale N` scales headless output
+(the text layer is drawn at that scale too), `--quit-after N` closes the
+window after N ticks (with `NETTAI_WINDOW_SHOT=<file>` set, the window's
+last picture is written there as a PNG), `--text font|original` chooses
+how strings are drawn (default `font`; the frame comparison uses
+`original`), `--font <file>` puts another TrueType or OpenType font in the
+bundled one's place. For live play, `--seed N` gives the seed its
 setup and battle are drawn from (default: from the clock; each start
 prints it), `--stage NAME` forces a link battle stage by its key
 (`netbattle-1` to `netbattle-96`), `--show-folders` prints both folders,
@@ -146,7 +157,9 @@ non-zero if some frames couldn't be rendered (the engine stopped first).
 With `--objects` it also lists every rendered frame's objects as the
 renderer sees them: kind, screen position, sprite, animation and frame, and
 look (palette, shadow, flips, white, shader, hidden parts, whether it is
-drawn at all), and what its console shows of its chips. In live play
+drawn at all), and what its console shows of its chips; and its text items
+(the words, the role, the box, the depth key, how many of the box's pixels
+something in front covers, the squash, the fades). In live play
 `--keys` gives your buttons by tick (`headless::KeyScript`): for instance
 `--keys 160-161:up,215:a,260:start,266:a` opens the first screen's Cross
 window (a direction acts on a hold's second tick), chooses its first Cross
@@ -324,13 +337,37 @@ arrow. The words are the content's (the chip's or the Cross's
 `description`, the navi's `run_message`), how far they have printed and
 the rest the engine's chatbox (docs/engine/custom-screen.md §3.5).
 
-Every string goes through `fonts.rs`: the 8x16 font's (`cell_glyphs`,
-`cell_text`, `draw_cell_text`, `cell_glyph`: the HUD's lines, chip names,
-telops, the enemy names, the Program Advance's names) and the dialogue
-font's (`dialogue_glyphs`, `dialogue_text`, which composes a line as the
-original's line buffer does: each glyph OR'd in at the pen, cut past its
-advance but never before eight pixels), so that a later font-rendering
-step can change what is behind them (docs/design/text-rendering.md).
+**Text** (docs/design/text-rendering.md §9). Every string goes through
+`fonts.rs`: the 8x16 font's (`cell_glyphs`, `cell_text`, `draw_cell_text`,
+`cell_glyph`, `layer_text`, `layer_line`: the HUD's lines, chip names,
+telops, the enemy names, the Program Advance's names, "VS") and the
+dialogue font's (`dialogue_glyphs`, `dialogue_text`, which composes a line
+as the original's line buffer does: each glyph OR'd in at the pen, cut
+past its advance but never before eight pixels). In the original text
+mode that is all. In the font mode (the default) each of those strings
+that the font has every character of becomes a text item instead
+(`textlayer.rs`): the words, in the box the original's glyphs take, with
+the face and shadow colours of the palette the original draws them in;
+the glyphs are left out of the frame (a telop's glyph parts become blank
+parts, as many, so the sprite limit is unchanged). `Renderer::render`
+returns a `Frame`: the picture, per pixel the depth key of what won it
+(`compose_with_depth`: priority, sprite or layer, the sprite's place in
+the hardware order), and the items, each with its own key (its layer's,
+or its sprite parts') and its fades (its layer's or the sprites', then
+the screen's). `present.rs` scales the picture and draws the items over
+it at the output's resolution (`vfont.rs`: swash, the bundled font), each
+pixel only where nothing in front of the item's layer or sprite won the
+frame pixel under it: banners, the mugshot or the chatbox's arrow cover
+text as they do in the original, and a telop's squash is a transform of
+its text. A string the font lacks a character of is drawn in the game's
+font, whole.
+
+The bundled font is Murecho (`crates/nettai-frontend/fonts/murecho`, SIL
+Open Font License 1.1, its licence beside it): Latin, kana and some 2,300
+kanji, weight 700 for the 8x16 font's strings and 300 for the chatbox's.
+A string too wide for its box is squeezed (to 85%, 70% with kana or kanji)
+and then made smaller; it never leaves its box, and its layout never
+reaches the simulation.
 
 ### What the engine gives the frontend
 
@@ -370,7 +407,10 @@ it).
 
 Headless frames are compared pixel for pixel with screenshots of the
 original running under emulation, one per battle frame; the frames where
-the custom screen is up are counted apart.
+the custom screen is up are counted apart. The comparison runs the
+frontend with `--text original` (the verification workspace's scripts pass
+it): in that mode every frame of the comparison's scenarios is the same,
+byte for byte, as before the text layer existed.
 
 **The vanilla PvP test match** (round 1 frames 72..=1145, round 2 frames
 1224..=2554): **all 2404 frames the engine simulates are pixel-exact**, the
@@ -429,7 +469,9 @@ them.
 
 The comparison needs the ROM, so it lives outside this repository, with the
 lists of scenarios. The frontend's own tests (`cargo test -p nettai-frontend`)
-use a small synthetic asset set and a live battle built in code.
+use a small synthetic asset set and a live battle built in code, and the
+bundled font for the text layer (its layout and the depth test; not its
+pixels, which are floating-point arithmetic).
 
 The recorders take each picture at the traced console's own VBlank, as
 its main loop leaves `main_awaitFrame`. Screenshots of the right-hand
