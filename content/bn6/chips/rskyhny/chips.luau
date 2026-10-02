@@ -6,13 +6,7 @@
 local action = require("./action")
 local lockon = require("../../rules/lockon")
 
--- The bees by level (the chips' first parameter, `byte_80D3164`): the
--- palette, and the speeds across and along the field.
-local BEES: { HoneyBee } = {
-    { palette = 0, speed = 0x2_8000, turn_speed = 0x1_8000 },
-    { palette = 1, speed = 0x3_0000, turn_speed = 0x1_CCCC },
-    { palette = 2, speed = 0x3_8000, turn_speed = 0x2_1999 },
-}
+local BEES = action.bees
 
 return {
     define.chip {
