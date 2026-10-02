@@ -349,8 +349,10 @@ pub fn draw<'a>(
     // "????" beside the mugshot while the local side has a defensive chip
     // set (a trap, a barrier chip's record), and at the right edge while
     // the other side has (`sub_801C984`, `sub_801C9A4`: four '?' of the
-    // HUD layer's tiles).
-    if !open && !hide_boxes {
+    // HUD layer's tiles). The custom screen's opening takes them off
+    // (`sub_801DACC(0x400)`), and they are back with the gauge, once the
+    // local result is sent.
+    if !open && !hide_boxes && !crate::custom::gauge_held(b) {
         let pal = &hud.hp_palettes[colour.min(2)];
         for (side, column) in [(local, 6), (local ^ 1, 26)] {
             if b.linked[side as usize & 1].chip.is_none() {
@@ -760,8 +762,29 @@ fn mugshot_parts<'a>(
     // (The white of a change to Full Synchro: `byte_801CD80`.)
     let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
     out.push(block(gfx, 32, 16, pal, x, 18));
-    let tiles = hud.counts.get(face.count as usize).unwrap_or(&hud.count_box);
-    out.push(block(tiles, 16, 16, pal, x + 32, 18));
+    let tiles = if beast_count_shown(b, side as u8) { hud.counts.get(face.count as usize) } else { None };
+    out.push(block(tiles.unwrap_or(&hud.count_box), 16, 16, pal, x + 32, 18));
+}
+
+/// `sub_801D814`: whether the emotion window shows the Beast Out count
+/// (else its empty box): always in battle mode 5, never in mode 1, and
+/// otherwise while the console's save has Beast Out (event flag 0xE0) and
+/// hasn't sealed it (0x163), in a battle without a gauge for each player
+/// (battle flag 0x40) that isn't random (effects 0x200000).
+fn beast_count_shown(b: &Battle, side: u8) -> bool {
+    use nettai_battle::battle::battle_flags;
+    use nettai_battle::setup::effects;
+    match b.round.mode_copy {
+        5 => true,
+        1 => false,
+        _ => {
+            let u = b.custom.sides[side as usize & 1].unlocks;
+            u.beast_out
+                && !u.beast_out_sealed
+                && b.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
+                && b.setup.settings.effects & effects::RANDOM == 0
+        }
+    }
 }
 
 /// Whether an object's HUD pieces show (`sub_800362C`): its position

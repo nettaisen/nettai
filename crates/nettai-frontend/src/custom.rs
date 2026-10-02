@@ -639,7 +639,7 @@ impl Window {
             match slot.kind {
                 SlotKind::Chip { .. } | SlotKind::NaviChip(_) => {
                     let Some(c) = v.screen.look.slot_chips[s] else { continue };
-                    if slot.state == SlotState::Selected {
+                    if v.screen.look.slot_picked[s] {
                         self.tiles.put(at, &a.empty_icon);
                     } else if let Some(icon) = v.icon(c, problems) {
                         self.tiles.put(at, icon);
