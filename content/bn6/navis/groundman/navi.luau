@@ -7,7 +7,7 @@ local groundman = require("./chip")
 
 return define.navi {
     id = "groundman",
-    name = "GroundMan",
+    name = "GrndMan",
     sprite = asset.sprite("groundman"),
     element = "null",
     weakness = { "cursor" },
