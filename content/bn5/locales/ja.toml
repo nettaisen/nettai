@@ -68,6 +68,7 @@ cannball = { name = "ホウガン", description = "3マス前に\nホウガン�
 cannball-mode = { name = "ホウガンモード", description = "ミテイ" }
 cannmode = { name = "キャノンモード", description = "ミテイ" }
 cannon = { name = "キャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
+chaoslrd = { name = "ロードオブカオス", description = "にくしみのパワーが\nフォルテにへんしん\nカオスナイトメア!" }
 circgun = { name = "サークルガン", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
 cloudman = { name = "クラウドマン", description = "てきのはいごに\nクラウドをうみだし\nカミナリ攻撃!" }
 cloudmn-ds = { name = "クラウドマンDS", description = "てきのはいごに\nクラウドをうみだし\nカミナリ攻撃!" }
@@ -182,6 +183,7 @@ larkman-sp = { name = "スワローマンSP", description = "2マス前方をと
 lavaseed = { name = "マグマシード", description = "3マス前にタネ!\n9マス分のパネルを\nマグマにする!" }
 lcounter = { name = "Lカウンター", description = "ミテイ" }
 lcrsshld = { name = "Lカースシールド", description = "ミテイ" }
+leadraid = { name = "リーダーズレイド", description = "ブルースとカーネル\nリーダーどうしが\nゆめのきょうえん!" }
 lifeaur = { name = "ドリームオーラ", description = "攻撃力が200より\nひくい攻撃を\nむこうかするオーラ" }
 lifesrd = { name = "ドリームソード", description = "よこ2、たて3の\nはんいをきる\nきょだいソード!" }
 lifesync = { name = "ライフシンクロ", description = "2マス前のてきに\nカーソル!てきの\nHPをおなじにする" }
