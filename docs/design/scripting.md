@@ -282,7 +282,8 @@ the same data and code. Pixels, palettes and audio are presentation and are left
 
 ### 3.3 Typing and the checks
 
-`content/bn6/core.d.luau` declares the API; `types.d.luau` the types the pack's modules share. Scripts are
+`content/nettai/core.d.luau` declares the API (every root checks against it); a root's `types.d.luau` the types
+its modules share (content/bn6/types.d.luau). Scripts are
 `--!strict` and declare their state types (`export type State = { timer: number }`). `nettai-content-check`
 type-checks every module with Luau's own analysis (the `luau-analyze` crate, in process), and its tests also
 check that API misuse (a misspelled field, a lifecycle state or status flag or button that doesn't exist, `Vec3

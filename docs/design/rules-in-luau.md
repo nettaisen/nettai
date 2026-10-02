@@ -850,3 +850,48 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
 - **Cost**: the basket under load 34 to 64 was noise either way (soundmod 1 read 119 against 345 µs in one pass, 236
   against 198 alternating); the user then dropped the measurement (§6.3). A change runs Luau only during its own
   frames (about 100 a change); a plain fight runs none of S2's.
+
+### R1, roots and qualified keys (2026-10-02)
+
+Slice R is three parts, each landing on its own: R1 (this), R2 (rulesets per side: roles and sections per ruleset,
+the battle's data from the stage's game, mixes, a battle with a ruleset per side), R3 (several asset packs:
+`SpriteId` with its pack, assets qualified across packs, the frontend and audio over several packs, the field's
+art if the user approves §7.4's proposal).
+
+- **Roots.** A content root has a manifest, `root.toml` (`RootManifest`: `name`, `assets`, `requires`):
+  content/bn6/root.toml names `bn6`, content/bn5/root.toml (the BN5 work's) `bn5`, the engine's test content
+  (crates/nettai-battle/testdata/content/root.toml) `test`. `nettai_content::root::read_all` reads a root and the
+  roots it requires (each the sibling directory of its name), its own first; `pack::load_battle` loads them all.
+  `Scripts` holds the modules by name (`bn6:chips/minibomb/chip`) and the roots (`Scripts::roots`, the content's
+  own first: its home); `Content::define` checks them (a valid name, not `engine`; no root named twice; every root
+  required is loaded; every module in a loaded root).
+- **Qualified keys.** The define phase qualifies every definition's key with its module's root (`bn6:minibomb`,
+  `bn6:minibomb/action`, `bn6:chips/x#1`; a root's roles `bn6:roles`, its sections `bn6:elements`); modules,
+  compat and locale tables write keys unqualified, as before, so no content module changed. Engine entries keep
+  `engine/...`. `nettai_content_api::keys` has `qualify`, `local`, `root_of`, `names`. Records that hold a key
+  hold the qualified one.
+- **Lookups by key** (`Defs::*_by_key`, `Defs::record`): a qualified key as it is; an unqualified one in the one
+  root that defines it (none if two roots do). They are for tools, tests and setups by name, never the simulation.
+- **Requires across roots**: `require("@bn6/rules/beast/system")`, from the root itself or a root its manifest
+  `requires`; `./` and `../` stay within a root.
+- **The battle's data is the home root's** for now (R2 makes it the stage's game's): the rule sections, the roles
+  and the stock ruleset (`Defs::stock_ruleset`, with `stock_ruleset_of(root)`) are the content's own root's; each
+  root has at most one stock ruleset.
+- **content/nettai** holds the engine's API declarations: core.d.luau moved there whole; every root type-checks
+  against it and its own `*.d.luau` (`nettai-content-check`). BN6's parts of it (`NaviStats`' BN6 fields, the
+  types it borrows from content/bn6/types.d.luau) move to content/bn6 in S8; until then content/bn5 doesn't
+  type-check on its own.
+- **Packs say their game**: content.toml's `game` (bn6-extract writes `bn6`, bn5-extract `bn5`). One pack loads
+  until R3: every root's `assets` must be the pack's game; a pack without `game` loads with a warning.
+- **Locale tables**: a root's are unqualified; loaded, `Strings::qualified(root)` keys them as the definitions
+  and `merge` makes one table (`locale::load_all` for another language over a root and its requires);
+  `Strings::of_root` gives a root's own back. `locale::check` checks a root's table by its name.
+- **Compat at its boundary**: bn6-compat's `Compat::root` (`bn6`), `def_key` qualifies compat's keys for the
+  content, `compat_key` gives a definition's own key (None for another root's: it has no BN6 number); the
+  engine's test content, a root of its own, stands in for BN6's (`Compat::root_in`). bn5-compat qualifies with
+  `bn5` the same way. Verify: gen-content looks compat up by local keys and qualifies compat's where it compares
+  them with the definitions'.
+- **Tests**: two roots load together (`content::scripts` tests: keys per root, cross-root requires refused without
+  `requires`, a stock ruleset per root, ambiguous lookups); BN5's root loads beside BN6's (nettai-content's lint
+  tests), up to BN5's chips having no use yet, which the define phase refuses until the BN5 port writes them.
+  Tests on one root compare `Battle::local_kind_key` and `keys::local`.

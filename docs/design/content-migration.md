@@ -107,7 +107,7 @@ roles (rules/roles.luau: what it starts, spawns and shows itself), never by numb
 6. **API.** When a script needs something the API lacks, add it: a `CoreApi` method
    (crates/nettai-content-api/src/api.rs, documented with the routine it is), its implementation
    (crates/nettai-battle/src/behavior/core_api.rs), its binding (crates/nettai-luau/src/bind.rs), and its declaration
-   with a comment in content/bn6/core.d.luau (types.d.luau for the families' types). It takes definitions and
+   with a comment in content/nettai/core.d.luau (content/bn6/types.d.luau for the families' types). It takes definitions and
    names, not numbers: a new set of flags or states is an enum with names in the API and a string-literal type
    in core.d.luau, and gets a misuse case in nettai-content-check's type tests.
 7. **Test in the repository** (§5.1) and **against the traces and the chip lab** (§5.2).

@@ -51,8 +51,10 @@ rules/*.luau                              rule sections (`define.rules`), collis
                                           lock-on modes, and the roles (roles.luau)
 lib/*.luau, lib/FAMILY/*.luau             helpers and builders families share; the shared effects, sparks
                                           and regions
-core.d.luau, types.d.luau                 the API's declarations and the pack's shared types (for editors
-                                          and the checker)
+root.toml                                 the root's manifest: its name (`bn6`, which qualifies its keys:
+                                          `bn6:minibomb`), its assets' pack, the roots it requires
+types.d.luau                              the root's shared types (for editors and the checker; the
+                                          engine's API is content/nettai/core.d.luau)
 compat/*.toml                             the original's numbers by key: tools' data, never the engine's
 locales/<lang>.toml                       the display text (names, descriptions, messages) by definition key; the own
                                           language's (en.toml) is the content's, whose shape (lines, characters)

@@ -19,7 +19,8 @@ netplay needs.
 - `nettai-content-api`: the contract between the core and content: the API scripts call, definitions, handles.
 - `nettai-luau`: the Luau runtime for content (sandboxed scripts that keep no state of their own).
 - `nettai-content`: loads a content root and an asset pack into the engine; the pack's open formats.
-- `nettai-content-check`: type-checks content against `content/bn6/core.d.luau`, and lints it.
+- `nettai-content-check`: type-checks a content root against the engine's API (`content/nettai/core.d.luau`) and
+  the root's own declarations, and lints it.
 - `nettai-assets`: the battle graphics in typed form, for drawing.
 - `nettai-audio`: plays the engine's sound cues through the M4A driver.
 - `m4a`: the GBA's M4A (Sappy) sound driver.
