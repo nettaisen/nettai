@@ -191,7 +191,7 @@ with the command named.
 
 ## 4. Sound data
 
-`bn6-extract content <rom> <dir>` reads the ROM's M4A data
+`bn6-extract content <falzar-rom> <gregar-rom> <dir>` reads the Falzar ROM's M4A data
 (`m4a::rom::extract`) into a typed `m4a::SoundBank` (songs as command
 lists with running status resolved and jumps as command indices,
 voicegroups, drum kits, key splits, samples and PSG waves, the mixer
@@ -217,7 +217,7 @@ the path into a jump target is refused at extraction (none in BN6).
 
 ## 5. Hearing it
 
-    cargo run -p bn6-extract -- content <rom> data/content/bn6
+    cargo run -p bn6-extract -- content <falzar-rom> <gregar-rom> data/content/bn6
     cargo run -p nettai-audio --example trace_audio -- <trace.jsonl> data/content/bn6
     cargo run -p nettai-audio --example trace_audio -- <trace.jsonl> data/content/bn6 --wav out.wav --frames 600
     cargo run -p nettai-audio --example play_song -- data/content/bn6 0x15,0x94 --every 120

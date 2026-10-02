@@ -1,4 +1,4 @@
-//! `bn6-extract content <rom> <pack-dir> [--content <dir>]`: the game's
+//! `bn6-extract content <falzar-rom> <gregar-rom> <pack-dir> [--content <dir>]`: the game's
 //! assets as a content pack of open formats (see the nettai-content crate):
 //! the graphics (indexed PNG, JSON, Tiled maps, the sprites' animation
 //! timing) and all of the game's sound (MIDI, TOML, WAV), under the names
@@ -21,31 +21,28 @@ use nettai_content_api::{AssetKind, AssetNames};
 use std::path::Path;
 
 pub fn main(args: &[String]) {
-    let usage = "usage: bn6-extract content <rom> <pack-dir> [--gregar <rom>] [--content <dir>]";
-    let (Some(rom), Some(out)) = (args.first(), args.get(1)) else {
+    let usage = "usage: bn6-extract content <falzar-rom> <gregar-rom> <pack-dir> [--content <dir>]\n\
+                 (the US Falzar ROM, BR6E, and the US Gregar ROM, BR5E: the pack needs both)";
+    let (Some(falzar), Some(gregar), Some(out)) = (args.first(), args.get(1), args.get(2)) else {
         eprintln!("{usage}");
         std::process::exit(2);
     };
-    let mut content_dir = nettai_content::root::bn6();
-    let mut gregar = None;
-    let mut rest = args[2..].iter();
-    while let Some(flag) = rest.next() {
-        match (flag.as_str(), rest.next()) {
-            ("--content", Some(dir)) => content_dir = dir.into(),
-            ("--gregar", Some(path)) => gregar = Some(crate::load_gregar_rom(path)),
-            _ => {
-                eprintln!("{usage}");
-                std::process::exit(2);
-            }
+    let content_dir = match &args[3..] {
+        [] => nettai_content::root::bn6(),
+        [flag, dir] if flag == "--content" => dir.into(),
+        _ => {
+            eprintln!("{usage}");
+            std::process::exit(2);
         }
-    }
-    if gregar.is_none() {
-        eprintln!("no Gregar ROM (--gregar): a Gregar console's own pictures (its Crosses' names, its Beast) are Falzar's");
-    }
+    };
+    let roms = crate::load_roms(falzar, gregar).unwrap_or_else(|e| {
+        eprintln!("{e}\n{usage}");
+        std::process::exit(2);
+    });
     let names = asset_names(content_dir.join("compat").as_path());
-    let rom_bytes = crate::load_rom(rom);
+    let rom_bytes = &roms.falzar;
     let t = std::time::Instant::now();
-    let bundle = crate::graphics::bundle(&rom_bytes, gregar.as_ref(), &names);
+    let bundle = crate::graphics::bundle(rom_bytes, &roms.gregar, &names);
     let (bank, failures) = m4a::rom::extract(&rom_bytes.0).unwrap_or_else(|e| panic!("reading the sound data: {e}"));
     for (song, e) in &failures {
         eprintln!("song {:#05x} left out (it uses a command the driver port doesn't play): {e}", song.0);

@@ -19,7 +19,7 @@ return define.form {
     weapons = { buster = gregar_beast_buster.weapon, alt_a_charge = beast_claw.weapon },
     -- Its face in the emotion window (`byte_801E700`): the Falzar ROM has no
     -- Gregar Beast Over face, and shows Falzar Beast Over's.
-    mugshot = asset.mugshot("falzar-beast-over"),
+    mugshot = asset.mugshot("gregar-beast-over"),
     -- What its status reset gives the navi (`sub_8014536`).
     status_reset = { "super_armor", "lockon_marker", "invulnerable", "berserk" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
