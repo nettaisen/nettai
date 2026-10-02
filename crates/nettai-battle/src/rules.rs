@@ -93,6 +93,14 @@ impl Battle {
         &self.rules[side as usize]
     }
 
+    /// Where system `system` is in side `side`'s ruleset, as the binding
+    /// takes it (the side and the place), if the side plays by it.
+    pub(crate) fn system_slot(&self, side: u8, system: nettai_content_api::SystemHandle) -> Option<(u8, u8)> {
+        let r = self.rules.get(side as usize)?.ruleset?;
+        let slot = self.content.defs.ruleset(r).systems.iter().position(|&h| h == system)?;
+        Some((side, slot as u8))
+    }
+
     /// Call `hook` of each system of side 0's ruleset that has one, in the
     /// ruleset's order, then side 1's (the original's order wherever it
     /// loops over the sides).
@@ -148,8 +156,9 @@ mod tests {
         assert_eq!(content.defs.ruleset(stock).key, "test");
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).ruleset, Some(stock));
-            // (BN6's beast system first, then the counter.)
-            assert_eq!(b.side_rules(side).states.len(), 2);
+            // (BN6's beast system first, then the counter, then BN6's forms
+            // system.)
+            assert_eq!(b.side_rules(side).states.len(), 3);
             assert_eq!(field(&b, side, 1, "starts"), FieldValue::U8(1), "round_start ran once for side {side}");
             assert_eq!(field(&b, side, 1, "side"), FieldValue::U8(side), "it ran for its own side");
         }
@@ -161,7 +170,7 @@ mod tests {
         let mut setup = scenario::setup();
         setup.players[1].ruleset = content.defs.ruleset_by_key("test-other");
         let b = started(setup);
-        assert_eq!(b.side_rules(0).states.len(), 2, "side 0 keeps the stock rules");
+        assert_eq!(b.side_rules(0).states.len(), 3, "side 0 keeps the stock rules");
         assert_eq!(b.side_rules(1).states.len(), 2, "side 1 plays by its own");
         assert_eq!(field(&b, 1, 0, "mark"), FieldValue::U8(0x41));
         assert_eq!(field(&b, 1, 1, "side"), FieldValue::U8(1));
