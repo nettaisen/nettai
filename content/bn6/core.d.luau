@@ -644,7 +644,10 @@ declare class Navi
     rapid: number
     charge: number
     mood: number
+    -- Writable: the Beast Out turns left.
     beast_out_counter: number
+    -- The form the navi started the battle in.
+    starting_form: FormDef
     -- The navi's game: 0 Gregar, 1 Falzar.
     version: number
     max_base_hp: number
@@ -1278,6 +1281,17 @@ export type SystemSpec = {
     hooks: {
         -- Once per side, after the navis spawn.
         round_start: ((side: number) -> ())?,
+        -- The turn-start sequencer's check of a side that isn't changing
+        -- form or asks for a navi switch (`sub_801486C`): a form whose time
+        -- ran out asks to revert.
+        turn_check: ((side: number) -> ())?,
+        -- The turn starts, after the sequencer (`sub_800840C`): a turn in a
+        -- form is spent.
+        turn_started: ((side: number) -> ())?,
+        -- A custom screen was asked for mid-fight (`sub_8008452`).
+        custom_requested: ((side: number) -> ())?,
+        -- Both results are in and the fight resumes (`sub_8009338`).
+        custom_closed: ((side: number) -> ())?,
     }?,
 }
 export type System = SystemSpec

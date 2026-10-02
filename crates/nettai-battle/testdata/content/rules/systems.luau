@@ -35,11 +35,15 @@ local marker = define.system {
     },
 }
 
+-- BN6's own Beast Out turns (content/bn6/rules/beast), which the test
+-- navis' forms go by as BN6's do.
+local beast = require("./beast/system")
+
 return {
     counter = counter,
     marker = marker,
     -- The test content's own rules.
-    stock = define.ruleset { id = "test", stock = true, systems = { counter } },
+    stock = define.ruleset { id = "test", stock = true, systems = { beast, counter } },
     -- Another player's: the marker first, then the counter.
     other = define.ruleset { id = "test-other", systems = { marker, counter } },
 }

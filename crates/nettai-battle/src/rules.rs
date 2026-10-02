@@ -128,9 +128,10 @@ mod tests {
         assert_eq!(content.defs.ruleset(stock).key, "test");
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).ruleset, Some(stock));
-            assert_eq!(b.side_rules(side).states.len(), 1);
-            assert_eq!(field(&b, side, 0, "starts"), FieldValue::U8(1), "round_start ran once for side {side}");
-            assert_eq!(field(&b, side, 0, "side"), FieldValue::U8(side), "it ran for its own side");
+            // (BN6's beast system first, then the counter.)
+            assert_eq!(b.side_rules(side).states.len(), 2);
+            assert_eq!(field(&b, side, 1, "starts"), FieldValue::U8(1), "round_start ran once for side {side}");
+            assert_eq!(field(&b, side, 1, "side"), FieldValue::U8(side), "it ran for its own side");
         }
     }
 
@@ -140,11 +141,11 @@ mod tests {
         let mut setup = scenario::setup();
         setup.players[1].ruleset = content.defs.ruleset_by_key("test-other");
         let b = started(setup);
-        assert_eq!(b.side_rules(0).states.len(), 1, "side 0 keeps the stock rules");
+        assert_eq!(b.side_rules(0).states.len(), 2, "side 0 keeps the stock rules");
         assert_eq!(b.side_rules(1).states.len(), 2, "side 1 plays by its own");
         assert_eq!(field(&b, 1, 0, "mark"), FieldValue::U8(0x41));
         assert_eq!(field(&b, 1, 1, "side"), FieldValue::U8(1));
-        assert_eq!(field(&b, 0, 0, "side"), FieldValue::U8(0));
+        assert_eq!(field(&b, 0, 1, "side"), FieldValue::U8(0));
     }
 
     #[test]
@@ -154,8 +155,8 @@ mod tests {
         setup.players[0].set_rule(&content, "test/counter", "bonus", Value::Int(7)).unwrap();
         assert!(setup.players[0].set_rule(&content, "test/marker", "mark", Value::Int(1)).is_err(), "not the stock rules'");
         let b = started(setup);
-        assert_eq!(field(&b, 0, 0, "bonus"), FieldValue::U16(14));
-        assert_eq!(field(&b, 1, 0, "bonus"), FieldValue::U16(0), "the other player's setup is its own");
+        assert_eq!(field(&b, 0, 1, "bonus"), FieldValue::U16(14));
+        assert_eq!(field(&b, 1, 1, "bonus"), FieldValue::U16(0), "the other player's setup is its own");
     }
 
     #[test]
@@ -164,7 +165,7 @@ mod tests {
         let copy = b.clone();
         assert_eq!(copy.digest(), b.digest());
         let mut changed = b.clone();
-        let s = &mut changed.rules[1].states[0];
+        let s = &mut changed.rules[1].states[1];
         let schema = &b.content.defs.schemas[s.id().0 as usize].schema;
         s.set(schema, schema.index_of("starts").unwrap(), Value::Int(9)).unwrap();
         assert_ne!(changed.digest(), b.digest());

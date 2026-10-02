@@ -170,6 +170,19 @@ pub enum SystemHook {
     /// `round_start(side)`: once per side, after the navis spawn. Its result
     /// is unused.
     RoundStart,
+    /// `turn_check(side)`: the turn-start sequencer's check of a side that
+    /// isn't changing form (`sub_801486C`), or that asks for a navi switch:
+    /// a form whose time ran out asks to revert.
+    TurnCheck,
+    /// `turn_started(side)`: the turn starts, after the sequencer
+    /// (`sub_800840C`'s end): a turn in a form is spent.
+    TurnStarted,
+    /// `custom_requested(side)`: a custom screen was asked for in the
+    /// middle of the fight (`sub_8008452`), before the reversions.
+    CustomRequested,
+    /// `custom_closed(side)`: both results are in and the fight resumes
+    /// (`sub_8009338`).
+    CustomClosed,
 }
 
 impl SystemHook {
@@ -177,10 +190,20 @@ impl SystemHook {
     pub fn name(self) -> &'static str {
         match self {
             SystemHook::RoundStart => "round_start",
+            SystemHook::TurnCheck => "turn_check",
+            SystemHook::TurnStarted => "turn_started",
+            SystemHook::CustomRequested => "custom_requested",
+            SystemHook::CustomClosed => "custom_closed",
         }
     }
 
-    pub const ALL: [SystemHook; 1] = [SystemHook::RoundStart];
+    pub const ALL: [SystemHook; 5] = [
+        SystemHook::RoundStart,
+        SystemHook::TurnCheck,
+        SystemHook::TurnStarted,
+        SystemHook::CustomRequested,
+        SystemHook::CustomClosed,
+    ];
 }
 
 /// A content error: a bug in the content, or a script breaking the

@@ -771,7 +771,7 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usi
 /// mood 0, or past a Beast Over this round (AIData+0x36, which also keeps
 /// the mood from dropping to 0). Tired: its Beast Out turns are spent
 /// (NaviStats+0x21 is 0) and it is out of the Beast (the turn's check that
-/// raises AIData+0x32 has run: `check_beast_out_end`). Not seen: anger, and
+/// raises AIData+0x32 has run: BN6's beast system's `turn_check`). Not seen: anger, and
 /// the NaviCust emotion bug's swings to tired, which need the fight.
 fn screen_emotion(stats: &NaviStats, content: &Content, beast_over_before: bool) -> Emotion {
     let kind = content.form(stats.form).kind;
