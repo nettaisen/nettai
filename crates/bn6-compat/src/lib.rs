@@ -99,13 +99,17 @@ pub struct StageEntry {
 }
 
 /// The consoles' games (games.toml): what a console's traces and link
-/// records carry that is its game's own. Every other table numbers the
+/// records carry that is its game's own. Every other table numbers the US
 /// Falzar ROM's.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Games {
     #[serde(default)]
     pub gregar: GameAddresses,
+    #[serde(default, rename = "jp-falzar")]
+    pub jp_falzar: GameAddresses,
+    #[serde(default, rename = "jp-gregar")]
+    pub jp_gregar: GameAddresses,
 }
 
 /// Where a game's ROM has what the Falzar ROM's compat numbers by address.
@@ -126,36 +130,59 @@ pub struct GameAddresses {
     pub panel_ys: BTreeMap<String, [u8; 2]>,
 }
 
-/// A console's game: the US Falzar or the US Gregar.
+/// A console's game: the US Falzar or Gregar, or the Japanese ones (EXE6).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Game {
     #[default]
     Falzar,
     Gregar,
+    JpFalzar,
+    JpGregar,
+}
+
+impl Game {
+    /// A trace's names for it: the version ("falzar", "gregar") and the
+    /// region ("us", "jp").
+    pub fn of_names(version: &str, region: &str) -> Game {
+        match (version, region) {
+            ("gregar", "jp") => Game::JpGregar,
+            ("gregar", _) => Game::Gregar,
+            (_, "jp") => Game::JpFalzar,
+            _ => Game::Falzar,
+        }
+    }
 }
 
 impl Games {
-    /// A stage's actor list as `game`'s ROM addresses it, by Falzar's
-    /// address (the one stages.toml has).
-    pub fn actor_list(&self, game: Game, falzar: u32) -> u32 {
+    /// What `game`'s ROM has where the US Falzar's compat has its numbers
+    /// (None for the US Falzar itself).
+    fn of(&self, game: Game) -> Option<&GameAddresses> {
         match game {
-            Game::Falzar => falzar,
-            Game::Gregar => falzar + self.gregar.actor_lists,
+            Game::Falzar => None,
+            Game::Gregar => Some(&self.gregar),
+            Game::JpFalzar => Some(&self.jp_falzar),
+            Game::JpGregar => Some(&self.jp_gregar),
         }
     }
 
-    /// An object's Z as a `game` console has it: a Z whose fraction is the
-    /// low half of a spawner's Falzar address (the one the content keeps)
-    /// has that game's.
+    /// A stage's actor list as `game`'s ROM addresses it, by Falzar's
+    /// address (the one stages.toml has).
+    pub fn actor_list(&self, game: Game, falzar: u32) -> u32 {
+        falzar + self.of(game).map_or(0, |g| g.actor_lists)
+    }
+
+    /// An object's Z as a `game` console has it: a Z that is a spawner's
+    /// Falzar address, or whose fraction is that address's low half (the
+    /// content keeps the Falzar ROM's), has that game's.
     pub fn z(&self, game: Game, z: i32) -> i32 {
-        let Game::Gregar = game else { return z };
-        let addresses = || self.gregar.spawner_z_fractions.values();
-        if let Some([_, gregar]) = addresses().find(|[falzar, _]| *falzar == z as u32) {
-            return *gregar as i32;
+        let Some(g) = self.of(game) else { return z };
+        let addresses = || g.spawner_z_fractions.values();
+        if let Some([_, other]) = addresses().find(|[falzar, _]| *falzar == z as u32) {
+            return *other as i32;
         }
         let fraction = z as u32 & 0xFFFF;
         match addresses().find(|[falzar, _]| falzar & 0xFFFF == fraction) {
-            Some([_, gregar]) => ((z as u32 & !0xFFFF) | (gregar & 0xFFFF)) as i32,
+            Some([_, other]) => ((z as u32 & !0xFFFF) | (other & 0xFFFF)) as i32,
             None => z,
         }
     }
@@ -163,13 +190,12 @@ impl Games {
     /// An object's panel Y as a `game` console has it: a kind's whose is a
     /// routine's address byte (`panel_ys`) is that game's.
     pub fn panel_y(&self, game: Game, kind: &str, y: u8) -> u8 {
-        match (game, self.gregar.panel_ys.get(kind)) {
-            (Game::Gregar, Some(&[falzar, gregar])) if y == falzar => gregar,
+        match self.of(game).and_then(|g| g.panel_ys.get(kind)) {
+            Some(&[falzar, other]) if y == falzar => other,
             _ => y,
         }
     }
 }
-
 
 /// Records a setup names by byte.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
