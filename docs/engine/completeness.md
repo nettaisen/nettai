@@ -315,8 +315,8 @@ each naming the branch it takes in its description.
 **What has been read**, in the order above: every area but the chip families (read in their own pass, the
 subsection below) and a dozen presentation branches: the collision and damage area, the statuses and hit
 reactions, the custom screen and hand (164 branches), movement (116, with 13 the first batches' recordings made
-one-sided), chip use and dimming (135) and the forms and flow (447): 1,110 branches. 173 are taken by a new
-recording, 516 can't be taken in a netbattle (the tables below), 421 can but have no scenario yet (the list after
+one-sided), chip use and dimming (135) and the forms and flow (447): 1,110 branches. 174 are taken by a new
+recording, 515 can't be taken in a netbattle (the tables below), 421 can but have no scenario yet (the list after
 them). The forms and flow were filed by kind first: their guards (the battle mode and effects, flag 0x40, the
 pools, null players, NameID ranges) are in the tables, the reachable ones were filed by kind (an attack object
 alive when the battle ends, an object during a dimming or a pause, a refused move, an attack off the field), and
@@ -388,8 +388,8 @@ Two more scenarios record a side the branch list can't credit: `chips/0x081-wind
 the first through the field-object registry; the earlier `then-fan` never placed its Fan, the panel being taken)
 and `flow/counter-ko` (a counter that deletes: it is booked before the deletion ends the battle).
 
-**Not reachable in a netbattle** (516 branches; `onesided_notes.py` has every address). First the collision,
-damage and status areas (and the first of the others), 131:
+**Not reachable in a netbattle** (515 branches; `onesided_notes.py` has every address). First the collision,
+damage and status areas (and the first of the others), 130:
 
 | Routines | Branches | Why |
 |---|---|---|
@@ -399,7 +399,7 @@ damage and status areas (and the first of the others), 131:
 | `sub_8009338`, `sub_80102AC`, `sub_8015994`, `sub_80159C6`, `sub_8015A16`, `sub_8015BEC`, `sub_8016934` | 8 | a null player object: both navis exist all battle |
 | object spawns, `object_createCollisionData` and the collision region | 9 | the pools never fill |
 | the panel break, crack and reservation routines, `sub_801A36A` | 5 | a panel pointer off the field: every caller passes a panel on it |
-| `object_breakPanel` | 3 | its callers test the panel first (CrakShot breaks only a solid, empty panel in front of a navi on the field) |
+| `object_breakPanel` | 2 | its callers pass a panel on the field and never an occupied one (CrakShot breaks only an empty panel, SunMoon's meteor only one holding nothing); a panel that isn't solid it does meet, from SunMoon's meteor over a hole (the chip families' second pass, batch 4) |
 | `sub_801A802` | 5 | barrier type 0xA and the weak elements of types 0xB-0xE: only a navi AI raises them |
 | `sub_80139F6`, `sub_801A4A6`, `sub_8019F44` | 8 | bug codes 0x54, 0xF4, 0xF9-0xFF: no hit a netbattle has carries them; the damage word's bit 0x800, whose test branches to its own fall-through |
 | `sub_801A2CC`, `sub_801A324`, `sub_80C532E` | 3 | collision rows 3, 8 and 9 (a chip-erasing hit, drain hits) are used by no attack; the region's report pointer is zeroed at its spawn and set by no caller |
@@ -525,7 +525,7 @@ The first sample, of 10 routines read before this list was worked through, as it
 
 None of the one-sided branches read, in the sample or since, is missing from the port.
 
-#### Chip families
+#### Chip families: G4
 
 The chip families' branches (`onesided_rank.py`'s area 7: routines cited by content/bn6, 1,066 branches in 720
 routines at main 29aac858) are read family by family, most-played chips first. The verdicts are in
@@ -715,6 +715,21 @@ before the deletion; CopyDmg's search meeting anything but the navi it hit (4); 
 panel (2); and ElemTrap's searches finding no enemy body (2, as SpoutMan's). The 9 recordings are in the lab and
 match the engine at main ca994e37 (9,340 frames).
 
+**Batch 8, Thunder, AirHocky, Snake, YoYo (31 branches; BgDthThd's charged ball is Thunder's; GreatYo's own yoyo
+branches are left with the Program Advances):** 4 taken by 3 new recordings, 14 unreachable, 13 hard:
+`chips/0x01e-thunder/target-below` (the ball going down its target's column),
+`chips/0x136-bgdththd/charge-vertical` (the fast ball moving along a column) and `chips/0x032-airhocky/one-column`
+(two AreaGrabs leave the opponent one column, and the puck, across, can neither go on nor turn back). The
+unreachable ones: thunder-ball parameters no chip gives (4: a linked object, no status, a bug), puck rules no row
+has and steps the bounces rule out (7), a snake off the field or off its target's row (2), and the yoyo's
+collision slot (1). The hard ones: the thunder ball's searches failing (6: the enemy navi always on the field, and
+a search ahead failing only with the enemy behind the ball) or its panels running out before it reaches a moving
+opponent (1), Snake with no target or a second one (5: tried the opponent's RockCube after Geddon's holes), and a
+YoYo's slot taken while it is out (1: its navi waits for it). The 3 recordings are in the lab and match the engine
+(4,229 frames).
+
+<!-- end: chip families, G4 -->
+
 ##### Chip families: onesided's share
 
 The rest of the area is shared from here: the cannons, guns and shots, the arm chips, the traps and barriers
@@ -783,6 +798,28 @@ without his gun (1: Django, spawned by MegaMan's init, finishes the same 60-tick
 phases (6), Django's sun beam or partner missing (2), DblHero's shot row leaving the field (1: the other side
 keeps its back column) and DblHero with no controller waiting (1). The 7 recordings match the engine, every frame
 (11,219) and sound call (408).
+
+**Second pass, batch 4: the other Program Advances (MstrCros, SunMoon, CornFsta, TwinLdrs, H-Burst; 37
+branches):** 7 taken by 6 new recordings (and an earlier unreachable verdict of the collision area with them),
+29 unreachable, 1 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `pa/0x15a-mstrcros/user-column`, `pa/0x15c-twinldrs/user-column` | a Cross's and ProtoMan's landing panel in the user's column a row away |
+| `pa/0x15c-twinldrs/colonel-fallback-column` | Colonel with no enemy navi in his row, standing on his fallback column (two AreaGrabs put the user on column 5) |
+| `pa/0x15b-sunmoon/hole-ahead` | SunMoon's meteors over the holes stage's hole (`object_breakPanel` on a panel that isn't solid, which `completeness.md`'s collision table had as unreachable) and its dive ending in smoke |
+| `pa/0x14c-cornfsta/corner` | CornFsta's sower at the corner beside the enemy, its three free panels all among its last three bursts (AreaGrab a turn before, as the PA's codes take no other chip, and the user standing in the taken column so it isn't returned; seed 4 for the draws) |
+| `pa/0x152-h-burst/miss` | H-Burst's shot flying off the field |
+
+The unreachable ones: missing links (a controller, a leader, 5), one-tick phases (4), spawns (2), a second enemy
+navi panel and a second target for ProtoMan (2), MstrCros's fade below 0 and a finale Cross past the third (2),
+panel bursts around a panel or with a sound (2: every spawner passes a whole-field region, no row has a sound),
+SunMoon's dead blink test (2) and other meteors (2: it throws one kind), CornFsta's user not a navi, a sower that
+steps twice, finds no panel or outlives its farmer, or fails to spawn (5), ProtoMan's search off the field (1),
+ProtoMan back before Colonel's charge has run 40 ticks (1: his quickest way back, with no panel to land on,
+comes at its 42nd), and H-Burst seeing the fight stopped (1: battle flag 1 stays set for the battle). The hard one:
+no enemy navi on the field for MstrCros. The 6 recordings match the engine at main 9aedd5a4, every frame (15,413)
+and sound call (418).
 
 <!-- end: chip families, onesided -->
 
