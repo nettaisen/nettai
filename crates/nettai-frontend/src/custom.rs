@@ -333,9 +333,34 @@ impl View<'_> {
     }
 }
 
+impl<'a> View<'a> {
+    /// The pictures the Cross in `place` (`CrossWindow::offered`) is drawn
+    /// with, and its number among them: its own game's, by its number
+    /// there. The console's own are the version's Crosses; a setup's Cross
+    /// list can offer the other game's too (docs/engine/custom-screen.md
+    /// §4.1), whose names come from that game's pictures (a pack without
+    /// them has the base game's, and draws the wrong name).
+    fn cross_picture(&self, place: u8) -> (&'a VersionPictures, usize) {
+        let b = self.b;
+        let side = self.side as usize & 1;
+        let navi = b.stats[side].navi;
+        let found = b.custom.sides[side].unlocks.cross_at(&*b.content, navi, place).and_then(|form| {
+            let game = b.content.form(form).game?;
+            let number = b.content.navi(navi).forms.as_ref()?.of(game).crosses.iter().position(|&f| f == form)?;
+            Some((self.assets.versioned.get(game_name(game)), number))
+        });
+        found.unwrap_or((self.own, place as usize))
+    }
+}
+
 /// The pack's name of a console's game version (`Versioned`).
 pub fn version_name(b: &Battle, side: u8) -> &'static str {
-    match b.custom.sides[side as usize & 1].unlocks.version {
+    game_name(b.custom.sides[side as usize & 1].unlocks.version)
+}
+
+/// The pack's name of a game version.
+fn game_name(game: GameVersion) -> &'static str {
+    match game {
         GameVersion::Gregar => "gregar",
         GameVersion::Falzar => "falzar",
     }
@@ -498,21 +523,23 @@ impl Window {
     /// `sub_802794A`: the Crosses' names (`sub_8029D94`: the one under the
     /// cursor in its own look) over the Cross window's map, and palette 10
     /// the Cross under the cursor's (`sub_8029EAC`: a used one's darker).
+    /// Each Cross's are its own game's (`View::cross_picture`).
     fn cross_names(&mut self, v: &View) {
         let w = &v.screen.crosses;
-        let own = v.own;
         for slot in 0..w.count.min(5) as usize {
-            let name = w.offered[slot] as usize + if slot == w.cursor as usize { 0 } else { 5 };
+            let (pictures, number) = v.cross_picture(w.offered[slot]);
+            let name = number + if slot == w.cursor as usize { 0 } else { 5 };
             let at = CROSS_NAME_TILE + (CROSS_NAME_TILES * slot) as u16;
-            self.tiles.put_part(at, &own.cross_names, CROSS_NAME_TILES * name, CROSS_NAME_TILES);
+            self.tiles.put_part(at, &pictures.cross_names, CROSS_NAME_TILES * name, CROSS_NAME_TILES);
             for i in 0..CROSS_NAME_TILES {
                 let (x, y) = (1 + i % 9, 1 + 2 * slot + i / 9);
                 self.map[y * COLUMNS + x] = MapEntry { tile: at + i as u16, hflip: false, vflip: false, palette: 10 };
             }
         }
         let c = w.cursor as usize;
-        let index = w.offered[c] as usize + if w.marked[c] { 5 } else { 0 };
-        if let Some(p) = own.cross_palettes.get(index) {
+        let (pictures, number) = v.cross_picture(w.offered[c]);
+        let index = number + if w.marked[c] { 5 } else { 0 };
+        if let Some(p) = pictures.cross_palettes.get(index) {
             self.palettes[10] = *p;
         }
     }
