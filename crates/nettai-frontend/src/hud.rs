@@ -47,6 +47,14 @@ pub struct HudState {
     gauge_was_on: bool,
     is_over: bool,
     gauge_is_on: bool,
+    /// A Japanese console's chip window, from the custom screen's close
+    /// until the fight's decisions set it (`tick`), the fight's ticks it
+    /// has run through, and the battle's mode and the chip icons as of the
+    /// previous tick.
+    early_window: bool,
+    early_fight_ticks: u8,
+    mode_was: u8,
+    icons_were: bool,
 }
 
 /// The local navi's face in the emotion window (`sub_801E6A8`): what its
@@ -133,8 +141,40 @@ fn roll(shown: u16, target: u16, extra: u16) -> u16 {
 }
 
 impl HudState {
-    /// Follow one tick of the battle.
-    pub fn tick(&mut self, b: &Battle) {
+    /// Follow one tick of the battle, as the console of `region` ("us",
+    /// "jp") shows it.
+    pub fn tick(&mut self, b: &Battle, region: &str) {
+        // A Japanese console's custom screen, as it closes, starts the chip
+        // window's HUD task too (`sub_8026DC4` calls `sub_801E012`: task
+        // 0x40, besides the icons' task the US games' starts): the next
+        // chip's name shows with the icons through the turn's banner, where
+        // the US games' shows it from the navi's first decision in the
+        // fight (`Battle::chip_hud`). Presentation of the Japanese games'
+        // HUD code (docs/engine/jp-differences.md §5); once the fight runs
+        // its decisions set the window on either console.
+        // (The task starts as the screens' results are exchanged, on the
+        // tick the icons come back.)
+        let fighting = b.round.mode == mode::FIGHTING;
+        let icons = b.chip_hud_for(b.setup.local_side).icons;
+        if region == "jp" && icons && !self.icons_were && (b.round.mode == mode::CUSTOM || self.mode_was == mode::CUSTOM) {
+            (self.early_window, self.early_fight_ticks) = (true, 0);
+        }
+        if self.early_window {
+            // Through the screen's closing and the turn's banner, then the
+            // fight's first ticks until a decision shows the window (or
+            // four went by: one that keeps it off).
+            let closing = b.round.mode == mode::CUSTOM && icons;
+            let banner = fighting && matches!(b.fight.state, fight::CUSTOM_SEQUENCE | fight::SETUP | fight::START_BANNER);
+            let undecided = fighting
+                && b.fight.state == fight::FIGHTING
+                && !b.chip_hud_for(b.setup.local_side).window
+                && self.early_fight_ticks < 4;
+            self.early_window = closing || banner || undecided;
+            if undecided {
+                self.early_fight_ticks += 1;
+            }
+        }
+        (self.mode_was, self.icons_were) = (b.round.mode, icons);
         (self.was_over, self.gauge_was_on) = (self.is_over, self.gauge_is_on);
         if let Some(n) = waiting_ticks(b) {
             self.frame = (n & 0x3F) as u8;
@@ -434,7 +474,7 @@ pub fn draw<'a>(
     if let Some(r) = player {
         let o = b.objects.get(r);
         let hand = &b.hands[local as usize];
-        if b.chip_hud_for(local).window
+        if (b.chip_hud_for(local).window || state.early_window)
             && o.chips_held != 0
             && let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten()
         {
