@@ -68,6 +68,7 @@ pub fn render_frames_with(
     log: &mut dyn FnMut(&str),
 ) -> std::io::Result<Vec<u32>> {
     std::fs::create_dir_all(out)?;
+    let _ = std::fs::remove_file(out.join("known.tsv"));
     let mut written = Vec::new();
     let last = wanted.iter().next_back().copied().unwrap_or(0);
     for mut s in sessions {
@@ -80,6 +81,16 @@ pub fn render_frames_with(
                 let frame = renderer.render(&s.battle);
                 write_png(&out.join(format!("frame_{f:05}.png")), &frame, scale)?;
                 written.push(f);
+                // Where the frame differs from the original on purpose
+                // (`known.tsv`: frame, x, y, width, height, why), for the
+                // frame comparison to leave out.
+                if !renderer.problems.known.is_empty() {
+                    use std::io::Write;
+                    let mut file = std::fs::OpenOptions::new().create(true).append(true).open(out.join("known.tsv"))?;
+                    for k in &renderer.problems.known {
+                        writeln!(file, "{f}\t{}\t{}\t{}\t{}\t{}", k.x, k.y, k.width, k.height, k.why)?;
+                    }
+                }
                 if objects {
                     for line in crate::objects::describe(&s.battle, &Renderer::view(&s.battle)) {
                         log(&format!("frame {f}: {line}"));
