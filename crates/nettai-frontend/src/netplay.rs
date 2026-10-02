@@ -285,7 +285,7 @@ impl<D: Datagram> NetPlayer<D> {
             }
             if let Some(next) = next {
                 let battle = Battle::new(next, self.content.clone());
-                ran.sound.extend(self.sound.borrow_mut().pending.drain(..));
+                ran.sound.append(&mut self.sound.borrow_mut().pending);
                 *self.sound.borrow_mut() = Sound::new(side);
                 let world = BattleWorld::with_observer(StandInBattle::new(battle.clone()), self.side, self.sound.clone());
                 self.peer.end_round(world);
@@ -293,7 +293,7 @@ impl<D: Datagram> NetPlayer<D> {
                 ran.new_round = true;
             }
         }
-        ran.sound.extend(self.sound.borrow_mut().pending.drain(..));
+        ran.sound.append(&mut self.sound.borrow_mut().pending);
         Ok(ran)
     }
 }

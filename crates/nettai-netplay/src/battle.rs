@@ -77,10 +77,10 @@ impl WireInput for PlayerInput {
         }
         let mut bytes = wire::Reader::new(payload);
         let mut events = TickEvents { link_closed: f & flags::LINK_CLOSED != 0, ..TickEvents::default() };
-        for side in 0..2 {
+        for (side, recorded) in events.recorded.iter_mut().enumerate() {
             let result = if f & flags::RESULT[side] != 0 { Some(Box::new(bytes.get::<CustomResult>()?)) } else { None };
             if f & flags::RECORDED[side] != 0 {
-                events.recorded[side] = Some(Recorded { in_custom: f & flags::IN_CUSTOM[side] != 0, result });
+                *recorded = Some(Recorded { in_custom: f & flags::IN_CUSTOM[side] != 0, result });
             } else if result.is_some() || f & flags::IN_CUSTOM[side] != 0 {
                 return Err(crate::protocol::invalid("a recorded result without its record"));
             }
