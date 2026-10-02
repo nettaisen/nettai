@@ -269,8 +269,11 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
                 let tag = sink.tag();
                 list.insert_tagged(LAYER, TEXT_BUCKET, group, Some(tag));
                 let sprites = Rect::new(TEXT_X, TEXT_Y, TEXT_WIDTH as i32, (TEXT_ROWS + DESCENDER_ROWS) as i32);
+                // Each line fits the open box's inside (the line buffer
+                // runs past the description box's right edge).
+                let room = text_room(g, shown.kind);
                 for (k, (line, units)) in lines.iter().enumerate() {
-                    let rect = Rect::new(TEXT_X, TEXT_Y + (LINE_ROWS * k) as i32, TEXT_WIDTH as i32, 12);
+                    let rect = Rect::new(TEXT_X, TEXT_Y + (LINE_ROWS * k) as i32, room, 12);
                     let item = TextItem::new(line.as_str(), Role::Dialogue, rect, g.text_palette[1], None);
                     sink.push(Plane::Sprite(tag), TextItem { clip: sprites, shown: Some(*units), ..item });
                 }
@@ -286,6 +289,31 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
     if let Some((sheet, look)) = shown.portrait {
         list.insert_at(LAYER, FRONT_BUCKET, portrait_parts(sheet, look));
     }
+}
+
+/// The room a line of text has in an open box of `kind`, in pixels from
+/// the text's left: up to the inner edge of the box's right frame, on the
+/// map's row at the text's middle (the first pixel column, from the inside,
+/// of the rightmost tile drawn on that row that isn't the colour under the
+/// text's left). The description box ends 27 tiles in, short of the line
+/// buffer's 192 pixels; the message box spans the screen. The line
+/// buffer's width when the map has no such frame.
+pub fn text_room(g: &Graphics, kind: usize) -> i32 {
+    let fallback = TEXT_WIDTH as i32;
+    let Some(map) = g.boxes.get(kind).map(|steps| &steps[3]) else { return fallback };
+    let y = TEXT_Y + TEXT_ROWS as i32 / 2 - 8 * BOX_ROW;
+    let Some(row) = map.chunks(Graphics::COLUMNS).nth((y / 8) as usize) else { return fallback };
+    // A map entry's pixel at (x, y % 8) in its tile.
+    let pixel = |e: &nettai_assets::MapEntry, x: usize| {
+        let t = g.tiles.get(e.tile as usize)?;
+        let (x, ty) = (if e.hflip { 7 - x } else { x }, if e.vflip { 7 - (y % 8) as usize } else { (y % 8) as usize });
+        Some(t[8 * ty + x])
+    };
+    let Some(fill) = row.get((TEXT_X / 8) as usize).and_then(|e| pixel(e, (TEXT_X % 8) as usize)) else { return fallback };
+    let drawn = |e: &&nettai_assets::MapEntry| g.tiles.get(e.tile as usize).is_some_and(|t| t.iter().any(|&p| p != 0));
+    let Some((col, frame)) = row.iter().enumerate().rev().find(|(_, e)| drawn(e)) else { return fallback };
+    let inner = (0..8).find(|&x| pixel(frame, x) != Some(fill)).unwrap_or(8);
+    (8 * col as i32 + inner as i32 - TEXT_X).clamp(1, fallback)
 }
 
 /// The box's map at an opening step (`chatbox_CopyBackgroundTiles_8040344`).
@@ -435,6 +463,85 @@ mod tests {
             c.update(0, 0);
         }
         assert_eq!(shown(&c, &[5, 4, 6], false), vec![5, 4, 6]);
+    }
+
+    /// Box graphics shaped as BN6's: a frame tile (the pack's tile 8: a
+    /// clear column, the border's three, then the fill) on the left and,
+    /// flipped, on the right, the message box's at column 29, the
+    /// description box's at column 26, with columns 27 to 29 clear.
+    fn bn6_like_boxes() -> Graphics {
+        let frame_row = [0u8, 11, 10, 10, 1, 1, 1, 1];
+        let mut tiles = Tiles { pixels: vec![0; 64] };
+        tiles.pixels.extend([1; 64]);
+        tiles.pixels.extend(frame_row.repeat(8));
+        let entry = |tile, hflip| nettai_assets::MapEntry { tile, hflip, vflip: false, palette: 15 };
+        let open = |last: usize| -> Vec<nettai_assets::MapEntry> {
+            (0..Graphics::ROWS * Graphics::COLUMNS)
+                .map(|i| match i % Graphics::COLUMNS {
+                    0 => entry(2, false),
+                    c if c == last => entry(2, true),
+                    c if c < last => entry(1, false),
+                    _ => entry(0, false),
+                })
+                .collect()
+        };
+        let steps = |last| [Vec::new(), Vec::new(), Vec::new(), open(last)];
+        Graphics { tiles, boxes: vec![steps(29), steps(26)], ..Graphics::default() }
+    }
+
+    /// A line's room is the open box's inside: up to its right frame's
+    /// border, 212 for the description box and 236 for the message box,
+    /// from the text's left at 51.
+    #[test]
+    fn a_line_has_the_room_of_its_boxs_inside() {
+        let g = bn6_like_boxes();
+        assert_eq!(text_room(&g, MESSAGE_BOX), 236 - TEXT_X);
+        assert_eq!(text_room(&g, DESCRIPTION_BOX), 212 - TEXT_X);
+        // No graphics: the line buffer.
+        assert_eq!(text_room(&Graphics::default(), DESCRIPTION_BOX), TEXT_WIDTH as i32);
+    }
+
+    /// Every line the chatbox shows, in both languages (the chips' and the
+    /// Crosses' descriptions in the description box, the no-running
+    /// messages in the message box), measured against its box: laid out by
+    /// the text layer, none leaves the box's inside. Those that need the
+    /// fit (wider than the box at the font's natural width) are listed
+    /// (`--nocapture`): before the fit was the box's, they ran past its
+    /// frame.
+    #[test]
+    fn every_chatbox_line_fits_its_box() {
+        let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6"));
+        let g = bn6_like_boxes();
+        let rooms = [text_room(&g, MESSAGE_BOX), text_room(&g, DESCRIPTION_BOX)];
+        let mut r = crate::vfont::TextRenderer::new(std::sync::Arc::new(crate::vfont::VectorFont::bundled()));
+        let (mut lines, mut fitted) = (0, Vec::new());
+        for lang in ["en", "ja"] {
+            let table = nettai_content::locale::load(dir, lang).unwrap().expect("a table");
+            let mut strings: Vec<(String, usize, &str)> = Vec::new();
+            for (key, c) in &table.chips {
+                strings.extend(c.description.as_deref().map(|d| (format!("chips.{key}"), DESCRIPTION_BOX, d)));
+            }
+            for (key, f) in &table.forms {
+                strings.extend(f.description.as_deref().map(|d| (format!("forms.{key}"), DESCRIPTION_BOX, d)));
+            }
+            for (key, n) in &table.navis {
+                strings.extend(n.run_message.as_deref().map(|m| (format!("navis.{key}"), MESSAGE_BOX, m)));
+            }
+            for (what, kind, text) in strings {
+                for line in text.split('\n').filter(|l| !l.is_empty()) {
+                    lines += 1;
+                    let room = rooms[kind];
+                    let natural = r.fitted_width(line, Role::Dialogue, 10_000);
+                    let width = r.fitted_width(line, Role::Dialogue, room);
+                    assert!(width <= room as f32 + 0.01, "{lang} {what} {line:?}: {width} in {room}");
+                    if natural > room as f32 {
+                        fitted.push(format!("{lang} {what} {line:?}: {natural:.1} in {room} ({:.0}%)", 100.0 * room as f32 / natural));
+                    }
+                }
+            }
+        }
+        eprintln!("{lines} lines; {} wider than their box at the font's width, fitted:\n{}", fitted.len(), fitted.join("\n"));
+        assert!(lines > 1000, "{lines} lines");
     }
 
     /// R in the Cross window shows the description of the Cross under the
