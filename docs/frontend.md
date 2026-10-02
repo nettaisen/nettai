@@ -343,6 +343,24 @@ the custom screen are pixel-exact, and 9,593 of its 9,977, all but the
 frames that show the chatbox (descriptions, the run message), which isn't
 drawn yet.
 
+**Every link-battle stage** (96 scenarios: the 47 stages the content
+defines, each traced on the left-hand player's console and on the
+right-hand one's, where the field is drawn mirrored, plus the one
+background no other recording shows): both navis walk their panels
+without NaviCust programs, so the roads carry them each way, ice slides,
+cracked panels break and come back, volcanoes erupt, poison hurts; the
+road stages run until their roads blink out and turn normal. All 101,424
+frames outside the custom screen are pixel-exact, the road arrows'
+palette cycling, their direction on either console and their last-second
+blink included, and so are its 7,872 custom-screen frames and the 85
+other stage scenarios (boulders, statues, ice blocks, the panel-changing
+chips: 73,929 frames).
+
+Roads don't carry a navi with FloatShoe (or a submerged one): the
+original's `sub_801A400` tests its object flags 0x24 first. A navi set up
+with that program sees the roads drawn and animated, standing still on
+them.
+
 The comparison needs the ROM, so it lives outside this repository, with the
 lists of scenarios. The frontend's own tests (`cargo test -p nettai-frontend`)
 use a small synthetic asset set and a live battle built in code.
