@@ -116,9 +116,11 @@ impl<'a> Renderer<'a> {
 /// A dimming (`object_dimScreen`, `object_undimScreen`: fade modes 0x3C
 /// and 0x38) darkens the first nine background palettes, the stage's, by a
 /// sixteenth for every 0x10 of the fade's level: a quarter when dimmed.
-/// The HUD's palettes and the sprites keep their colours.
+/// The HUD's palettes and the sprites keep their colours. The Gregar and
+/// Falzar chips' black-out (modes 0x88 and 0x84) darkens the same palettes
+/// all the way.
 pub fn dim_fade(b: &Battle) -> Fade {
-    if !matches!(b.fade.mode, FadeMode::Dim | FadeMode::Undim) {
+    if !matches!(b.fade.mode, FadeMode::Dim | FadeMode::Undim | FadeMode::BlackOut | FadeMode::BlackOutBack) {
         return Fade::None;
     }
     Fade::Black((b.fade.level >> 4).min(16) as u8)

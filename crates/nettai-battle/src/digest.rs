@@ -19,7 +19,8 @@
 //!   what a telop says ([`Banner::telop`](crate::hud::Banner::telop), from
 //!   the controller's `Object::telop_chip`), and the chip a player just
 //!   used, which the other player's console names (`Battle::used_chips`);
-//! - what each console shows of its navi's chips (`Battle::chip_hud`), and
+//! - what each console shows of its navi's chips (`Battle::chip_hud`), the
+//!   HUD parts a chip hid (`Battle::hud_hidden`), and
 //!   the HUD's message (`Battle::message`), warning markers
 //!   (`Battle::warnings`) and HP numbers (`Battle::hp_numbers`);
 //! - the objects' `VISIBLE` header flag.
@@ -166,6 +167,7 @@ impl Hash for Battle {
             banner,
             used_chips: _,
             chip_hud: _,
+            hud_hidden: _,
             message: _,
             warnings: _,
             hp_numbers: _,

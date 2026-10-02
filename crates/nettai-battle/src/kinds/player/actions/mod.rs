@@ -17,6 +17,8 @@ pub mod reactive;
 pub mod dimming_chip;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod beast_chips_tests;
 
 pub mod transform;
 

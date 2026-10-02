@@ -20,14 +20,22 @@ export type Phases = {
     -- The telop is a hidden chip's (`sub_800BBA8`, the trap chips': the
     -- other player sees "????").
     hidden: boolean?,
+    -- The controller's first and last actions, when not the dim and the
+    -- undim (the Gregar and Falzar chips': `dimming.fade_to_black` and
+    -- `dimming.fade_from_black`).
+    dim: ((me: Object) -> ())?,
+    undim: ((me: Object) -> ())?,
 }
 
 -- A controller's update: `object_timefreezeBegin` at its init; by its
--- action `object_dimScreen`, `object_drawChipName` (the telop and the wait
--- for a cut-in; a hidden chip's is `sub_800BBA8`), the effect and
--- `object_undimScreen`; and `object_timefreezeEnd` when it is destroyed.
+-- action `object_dimScreen` (or the spec's `dim`), `object_drawChipName`
+-- (the telop and the wait for a cut-in; a hidden chip's is `sub_800BBA8`),
+-- the effect and `object_undimScreen` (or the spec's `undim`); and
+-- `object_timefreezeEnd` when it is destroyed.
 function dimming_chips.phases(spec: Phases): (me: Object) -> ()
     local hidden = spec.hidden == true
+    local dim = spec.dim or dimming.dim_screen
+    local undim = spec.undim or dimming.undim_screen
     return function(me: Object)
         local l = me.lifecycle
         if l == "init" then
@@ -35,7 +43,7 @@ function dimming_chips.phases(spec: Phases): (me: Object) -> ()
         elseif l == "update" then
             local a = me.action
             if a == DIM then
-                dimming.dim_screen(me)
+                dim(me)
             elseif a == TELOP then
                 if hidden then
                     dimming.show_hidden_telop(me)
@@ -45,7 +53,7 @@ function dimming_chips.phases(spec: Phases): (me: Object) -> ()
             elseif a == EFFECT then
                 spec.effect(me)
             elseif a == UNDIM then
-                dimming.undim_screen(me)
+                undim(me)
             else
                 error(string.format("%s's controller: action %#x reads past its table", spec.name, a))
             end

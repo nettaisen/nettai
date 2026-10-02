@@ -38,6 +38,8 @@ attachment = { pool = "actor", index = 0x05 }
 "darkness/navi" = { pool = "actor", index = 0x25 }
 "roll/navi" = { pool = "actor", index = 0x2C }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
+"gregar/summon" = { pool = "actor", index = 0x30 }
+"falzar/summon" = { pool = "actor", index = 0x31 }
 "sumnblk/navi" = { pool = "actor", index = 0x32 }
 "dblbeast/gregar" = { pool = "actor", index = 0x33 }
 "dblbeast/falzar" = { pool = "actor", index = 0x34 }
@@ -169,6 +171,7 @@ encased-bubble = { pool = "attack", index = 0xA3 }
 "blzrdbal/roller" = { pool = "attack", index = 0xB7, scratch_z_fraction = true }
 "elmntman/bolt" = { pool = "attack", index = 0xB8, scratch_z_fraction = true }
 "elmntman/vine" = { pool = "attack", index = 0xB9 }
+"falzar/feather" = { pool = "attack", index = 0xBC }
 "bassanly/shot" = { pool = "attack", index = 0xC1 }
 "antidmg/shuriken" = { pool = "attack", index = 0xC2 }
 "eraseman/beam" = { pool = "attack", index = 0xC3 }
@@ -181,6 +184,8 @@ dragon-head = { pool = "attack", index = 0xC9 }
 "flmhook/fire" = { pool = "attack", index = 0xCA }
 "sandwrm/worm" = { pool = "attack", index = 0xCB }
 "sandwrm/spray" = { pool = "attack", index = 0xCC }
+"gregar/flame" = { pool = "attack", index = 0xCD }
+"falzar/tornado" = { pool = "attack", index = 0xCE }
 "colforce/soldier" = { pool = "attack", index = 0xCF }
 "airspin/whirl" = { pool = "attack", index = 0xD4 }
 "engine/effect" = { pool = "effect", index = 0x00 }
@@ -259,7 +264,10 @@ meteor-shower = { pool = "effect", index = 0x46 }
 "slashcross-beast/hit-flash" = { pool = "effect", index = 0x73, scratch_position = true }
 "metrknuk/controller" = { pool = "effect", index = 0x76, scratch_position = true }
 "support/controller" = { pool = "effect", index = 0x79 }
+"gregar/controller" = { pool = "effect", index = 0x7A, scratch_position = true }
+"falzar/controller" = { pool = "effect", index = 0x7B, scratch_position = true }
 "sumnblk/controller" = { pool = "effect", index = 0x7C, scratch_position = true }
+"beast-chips/arrival" = { pool = "effect", index = 0x7D }
 "dblbeast/controller" = { pool = "effect", index = 0x7F, scratch_position = true }
 "colforce/force" = { pool = "effect", index = 0x80 }
 navi-boost = { pool = "effect", index = 0x84, scratch_position = true }
