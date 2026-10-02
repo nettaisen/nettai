@@ -139,9 +139,12 @@ impl Driver for TracePlayer {
 
 // ---- Live play -------------------------------------------------------------------
 
-/// A MegaMan with 1000 HP and no NaviCust programs of note (Mega level 5,
-/// Giga level 1, Regular memory 50).
-const LIVE_NAVI: &str = "08000000000100ff00320505010080000000ff00000000000000000101000001010301000000001f0000000a0000ffffff0000000000000000ff00000000e803e803e8030000010000000a0000000000000000000000ffffffffffff0000000000000000";
+/// The live navi's NaviStats record: a MegaMan of Falzar with 1000 HP,
+/// custom level 5, Mega level 5, Giga level 1, Regular memory 50, three
+/// Beast Outs, the sun out (+0x22, as in the recorded matches: the sun
+/// chips hit harder), and no NaviCust programs: no FloatShoe or AirShoe
+/// (+0x1B, +0x1C), so road panels carry him and holes stop him.
+const LIVE_NAVI: &str = "08000000000100ff00320505010080000000ff00000000000000000000000001010301000000001f0000000a0000ffffff0000000000000000ff00000000e803e803e8030000010000000a0000000000000000000000ffffffffffff0000000000000000";
 
 fn unhex(s: &str) -> Vec<u8> {
     (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
@@ -535,6 +538,10 @@ mod tests {
     #[test]
     fn the_live_setup_is_drawn_from_the_seed() {
         let content = crate::folders::bn6_test_content();
+        // The navi: no NaviCust programs (road panels carry him).
+        let s = live_navi(&content);
+        assert_eq!((s.hp, s.mega_level, s.giga_level, s.reg_up), (1000, 5, 1, 50));
+        assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
         let stages = link_battle_stages(&content);
         assert_eq!(stages.len(), 96);
         let mut seen = std::collections::BTreeSet::new();
