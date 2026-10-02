@@ -1058,20 +1058,29 @@ sprites, 24 banners in all; the rest keep their placeholders, which content may 
 bn5-compat's `trace` (feature `trace`) replays a BN5 recording as bn6-compat's does a BN6 one: `rounds` splits a
 recording at its setup lines; `Round::needs` lists what its setup needs that the content doesn't define (every
 chip of its folders and hands by compat key, each side's navi by BN5's number, a soul, the stage by its settings
-bytes); `Round::round_setup` builds the engine's `RoundSetup` once nothing is missing (the conversion of BN5's
-NaviStats and settings comes with BN5's navi and stage definitions: until then it says so); `run_round` ticks
-each battle frame with the recorded inputs and compares (`compare`: the state machine, ticks, the simulation RNG,
-pause, the gauge, the panels by BN5's numbers, the objects by pool, panel, side, HP and position: BN5's kinds
-have no numbers yet), stopping at the setup, a panic or the first difference.
+bytes, the weapons, programs and first barrier its NaviStats name); `Round::round_setup` builds the engine's
+`RoundSetup` once nothing is missing (§15.7: the stage and background by the settings record, both NaviStats,
+the folders, the RNGs, the set's score, both players on BN5's stock rules) and `Round::start` the battle;
+`run_round` ticks each battle frame with the recorded inputs and compares (`compare`: the state machine, ticks,
+the simulation RNG, pause, the gauge, the panels by BN5's numbers, the objects by pool, BN5's kind number
+(compat kinds.toml), panel, side, HP and position, a position the kind leaves as register garbage skipped as
+bn6-compat skips it), stopping at the setup, a panic or the first difference.
 
 The verification workspace's `trace-tests` runs it over the BN5 lab (`--test bn5_replay`, ignored: a report) on
-BN6's root and pack with BN5's root beside it, BN5's chips without a use left out (`trace_tests::bn5_content`;
-one pack until R3), and writes replay-summary.md beside the recordings: each recording's stage (read, decoded,
-setup, replay, matched), its frames matched, what stopped it, and what the recordings need most. First run
+BN5's root (which requires BN6's) and both games' packs (R3a), BN5's chips without a use left out
+(`trace_tests::bn5_content`), and writes replay-summary.md beside the recordings: each recording's stage (read,
+decoded, setup, replay, matched), its frames matched, what stopped it, and what the recordings need most. First run
 (2026-10-02, the 1,376 recordings, 946,555 battle frames): every one stops at its setup, needing BN5's MegaMan
 (`bn5:megaman`), a stage (the lab's is one settings record but for 64 recordings) and its chips (Boomer and Cannon
 are in every recording's folder or hand, the lab's filler). With the chips of §15.6, Boomer remains in every
 recording and Recov10 in 108.
+
+With BN5's MegaMan, its stages and Boomer (§15.7): 115 recordings replay, 1,261 stop at their setup; 25,170 of the
+946,555 battle frames match. Every replay matches its first 219 battle frames (the intro, the first custom
+screen, the first turn, the second custom screen) and differs at frame 361, where BN5's second custom screen has
+closed (mode 0xC) and the engine's hasn't (mode 8): BN5's custom screen (the Team Battle's) is the next step.
+What the setups need most: Recov10 (108: BN5's recovery family, §15.3 item 5), WideSht1 (18), BlkBomb and Thunder
+(15 each), HolyDrem (12), Sword (11), then the chips each scenario tests.
 
 ### 15.6 The chips (in progress)
 
@@ -1081,13 +1090,36 @@ differ in constants only. Each is BN5's chip file (its record, generated) with a
 holds BN5's projectile variants (BN6's rows with BN5's collision). Until R3, the modules draw and time from BN6's
 pack (the assets are BN6's where the names are BN6's, §15.4).
 
-**Ported** (20): Cannon, HiCannon, M-Cannon (BN6's cannon, BN5's shot variant: the variant rows are the same);
+**Ported** (26): Cannon, HiCannon, M-Cannon (BN6's cannon, BN5's shot variant: the variant rows are the same);
 MiniBomb, EnergBom, MegEnBom (BN6's throw and bomb, the energy burst BN6's object); PanlGrab, AreaGrab; GrabBnsh
 and GrabRvng (BN6's controller; GrabRvng's hand effect is BN5's 0x29, the same as BN6's 0x3B); SloGauge,
 FstGauge; PnlRetrn, HolyPanl, Snctuary; AntiNavi, AntiSwrd, AntiRecv (BN6's traps; the roles of their counters
 and mark are BN6's, §15.1); FullCust (its fill is BN5's: with each side's own gauge, the side's goes full where
 BN6 adds a third). The roles `actions.anti_damage_counter`, `anti_sword_counter`, `kinds.anti_recovery` and
-`effects.trap_mark` (BN5's effect 43 is BN6's 0x46) are filled for the traps.
+`effects.trap_mark` (BN5's effect 43 is BN6's 0x46) are filled for the traps. Then, with BN6's modules taking
+BN5's numbers (the user's decision, 2026-10-02: BN6's chip modules may change where BN5 can't reuse them as they
+are, the smallest change, BN6 staying the same): Silence, Discord and Timpani (BN6's instrument with BN5's 100 HP,
+play and pause ticks, sprite and actor records; the effects BN6's with BN5's statuses and collision types);
+AirShot (BN6's AirShot with BN5's shooter look and shot, row 4 without the wind element); ProtoMan (BN6's navi
+with BN5's sprite, sword animation, slash effect 0x33 and spawner); Boomer (BN6's boomerang with BN5's variant:
+half BN6's speeds, no grass, BN5's sprite).
+
+**BN6's modules changed for BN5** (each the smallest change that lets BN5 reuse it; BN6's behaviour the same, its
+full set run on the batch):
+
+- lib/instruments/instrument.luau (and types.d.luau's `Instrument`): optional `hp` and `sprite`. BN5's
+  instruments have 100 HP and their own sprite, where the library had 60 and BN6's sprite as constants.
+- lib/instruments/effects.luau, new: Discord's, Timpani's and Silence's effects, taking their status and
+  collision types. They were local functions of BN6's chip files, which BN5's chips can't reach, and BN5's give
+  BN5's statuses.
+- lib/airshot.luau, new (and `AirShotSpec`): AirShot's action, taking the shooter and the shot. It was the BN6
+  chip file's own; BN5's AirShot fires another variant.
+- chips/protoman/navi.luau (and `ProtoManLook`): his look (`protoman.look`, `summon_with`), BN6's as
+  `protoman.bn6`. BN5's ProtoMan has its own sprite, sword animation, slash effect and spawner address, which
+  were constants.
+- chips/boomer/boomerang.luau: a variant's optional `sprite`. BN5's boomerang is its own sprite.
+- navis/megaman/weapons/buster/weapon.luau: `buster.pick` exported (was local). BN5's buster picks blank and
+  charged shots by BN6's code but sets up its own shot.
 
 **Waiting:**
 
@@ -1095,13 +1127,41 @@ BN6 adds a third). The roles `actions.anti_damage_counter`, `anti_sword_counter`
   lacks; each is one line once it has it (Invisibl `dimming = invisible.hook(360)` from @bn6/chips/invisibl,
   AntiDmg `trap = "anti_damage"`, Mine `dimming = controller.hook` from @bn6/chips/mine: its blast is BN5's
   effect 0x2A, BN6's 0x47, the same).
-- *On BN6's modules taking BN5's constants* (BN6's content, which this step leaves alone): Silence, Discord and
-  Timpani (BN6's instrument with BN5's numbers: 100 HP where BN6's library has 60, `byte_80D4140`; the four
-  rows BN6 has of `byte_80D4078` play 0x55 × 2 ticks each in BN5, BN6's 0x55, 0x37, 0x3C and 0x78; the sprite
-  BN5's `instrument`); AirShot (BN6's use is the chip's own file; BN5's shooter is attachment row 8, BN6's 0x13, and
-  its shot variant row 4 has no wind element); ProtoMan, ProtoMn SP and DS (the slash effect BN5's 0x33, BN6's
-  0x27, the same row (12, 20) of another archive; the navi's sprite and `byte_80C29F0`'s rows BN5's).
+- *On the families* too: the Recov chips, RedFrut, Roll and DrkRecov are BN5's recovery family; Recov's use is
+  BN6's heal (`@bn6/chips/recov/heal`, the same table) once the family is there, its mood update with §15.3
+  item 6 (BN5's 0x080EC484 adds the use's +0x0A to NaviStats +0x0E after a heal).
+- *On BN5's damage formulas* (§13): ProtoMn SP and DS (BN5's records name formula rows 2 and 24, which BN5's
+  table, not BN6's SP times, gives); their use is ProtoMan's once it is.
 - *On the engine* (§15.3 items 10 and 11): every ported dimming chip and FullCust leave the action as BN6 does
   until the engine reads BN5's choice; AntiNavi's sparkle sits where BN6's does.
 - *Without a BN6 chip* (§14.4, `bn6 code, no chip`): Blinder, the mode chips, FinalGun: new modules from the
   shared code.
+
+### 15.7 BN5's MegaMan, stages and roles (as built)
+
+- **MegaMan** (content/bn5/navis/megaman, `bn5:megaman`): BN5's navi 0, NameID 0x180, from BN5's tables (his
+  sprite 08-00, element, buster bonus 1, move lag 4, banners, actor record, the 30 attach points of BN5's 0x3C-byte
+  rows), his buster and charged shot BN6's shot actions with BN5's setups (weapons/: the damage Attack plus the
+  navi's bonus, no worn-out rule or cap; a program drawn on every shot, on half the draws). He has no forms: the
+  engine allows one base form in a content (BN6's), which he takes; BN5's souls need a base form per game
+  (§15.3, item 12 below). The engine asks a player's identity for a Full Synchro aura animation, which BN5 has
+  differently (BN6's `sub_80C4C52` is absent): 0, BN6's rule, until BN5's emotions.
+- **Stages** (content/bn5/stages/netbattle.luau, compat stages.toml): a stage per distinct record of BN5's
+  netbattle settings list (0x0811AF4C, 95 records), its layout (0x0800BD6C) and its actor list; the lab's
+  settings (written to RAM by the Team Battle with its own background and effects) match the list's by layout,
+  actor list, music, mode and panel pattern. Those with metal, sea or lava panels (item 1) and those with
+  obstacles (actor types 3, 8, 9: BN5's boulder, rock and statue aren't ported) are listed as waiting. The
+  backgrounds are named by their look (no BN6 background has their tiles).
+- **Panels** are a registered section now: BN5's types, BN6's roads and either-side step rule (BN5 has neither;
+  the section must name the engine's 13 types; nothing of BN5's reaches them).
+- **Roles** BN5 shares with BN6: the sparks (BN5's 0 to 0xD are BN6's rows), the deletion, recovery and cut-in
+  effects (BN5's 3, 6 and 0x1E are BN6's), the statuses (by BN5's bytes), the forced charged shot, the first
+  barrier's hook.
+- **Compat** gains records.toml (weapons by routine number, projectile rows, barriers) and kinds.toml (BN5's
+  kind numbers, as the replays meet them).
+
+More for §15.3:
+
+12. **A base form per game**: the engine refuses two base forms in one content; BN5's MegaMan, whose souls are
+   forms, needs his own (or the base form to be a navi's).
+
