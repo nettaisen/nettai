@@ -498,3 +498,52 @@ In the verification workspace, with the ROMs in `$BN6_ROMS` and the BN6 disassem
 
 `target/audit/classes.tsv` (the audit, `tools/audit/audit.py`) gives the areas and classes; without it the map is
 the same, unclassified.
+
+## 13. BN5's root and compat (as built, before R)
+
+What BN5 verification and content need that doesn't depend on the roots (rules-in-luau.md R), shaped to R1's
+format.
+
+- **content/bn5** (written by the verification workspace's tools/bn5/gen_content.py from all four ROMs; its `check`
+  mode compares them again): `root.toml` (name "bn5", assets "bn5", no requires); `compat/chips.toml` (328 chips by
+  key: id, action and subtype; `damage_formula` for the 46 whose damage is a formula, 1000 and up; `colonel` for the
+  48 whose Team Colonel record differs: the version Gigas' library flag, the navi chips' +0x16);
+  `compat/panels.toml` (BN5's 11 panel types, their flag words and the engine's type each is);
+  `chips/<key>/chip.luau` (each chip's common record and its `megaman` extension, §6.1; no use yet); and
+  `locales/en.toml`, `ja.toml` (names and descriptions from the US and the Japanese ROMs). The records are Team
+  ProtoMan's: the Japanese ROMs' differ only in the library's sort keys (+0x18), Team Colonel's only where compat
+  says, and both versions' strings are the same. Keys follow BN6's: the US name in lower case, `+` and spaces as
+  `-`, a navi chip's SP or DS split off (`gyroman-sp`); the second CannBall (the mode chip, 0x11A) is
+  `cannball-mode`. Rewriting keeps a ported chip file's code: only the record's fields are rewritten.
+- **bn5-compat** (the engine never depends on it): `Compat::bn5()` (content/bn5/compat built in) and `read`; keys
+  unqualified inside, qualified `bn5:<key>` at its boundary (`qualify`, `strip`, `Compat::chip`); BN5's pool sizes;
+  the codec (the 0x60-byte NaviStats with the light/dark value and its two thresholds, the panels by compat's
+  table, the chip blocks); and, with the `trace` feature, the chip lab's recordings read and decoded. The
+  verification workspace's trace-tests `bn5_lab` decodes every recording in data/traces/lab-bn5 (1,371 of them,
+  1,134,927 frames).
+
+**Waiting on R** (and the port): the loader reading content/bn5 (its manifest, qualified keys, the locales by
+root); the chips' handles (the codec gives ids and qualified keys); a use for each chip (`define.chip` asks for
+one, so the generated records don't load until the port writes them, or the loader takes data-only chips); the
+`megaman` field as the light-and-dark system's extension (S7's `extends`); the type check of content/bn5 (BN6's
+core.d.luau has no `megaman`); BN5's kinds (no kinds.toml: objects decode to their pool and BN5's kind number);
+BN5's stages (the settings record stays raw).
+
+**What has no engine counterpart yet:**
+
+- *Chips:* `megaman` (+0x15); the families recovery and invisible (the engine's `ChipFamily` has neither; BN5's
+  obstacle family is BN6's summon); BN5's damage formulas (its own table: compat keeps the row); +0x16 (BN6's extra
+  flags byte: BN5's bits unread, written as numbers) and +0x17 (BN6's lock-on mode: BN5's byte, mostly 0x10,
+  unread); a version's own record (Team Colonel's differences).
+- *Panels:* metal (type 5: BN6's road flag, its look a plate, its behaviour unread) and sea (type 10, flag
+  0x20000); the panel record's 0x24 bytes (the lava and sea timers the panel setter starts, at +0x10 and +0x14).
+- *Pools:* the actors' 16 slots (the engine's `object::SLOTS` is one number, 32).
+- *NaviStats:* the light/dark value (+0x44); the weapon bytes' BN5 meaning (+0x04, +0x05, +0x07, +0x39: BN6's
+  buster and +0x39 swap places in the one call each that pairs them); and the bytes whose BN5 meaning isn't read:
+  +0x00, +0x0F, +0x11 to +0x1A and +0x24 (paired with BN6's NaviCust bug bytes at the same offsets, BN5's bugs not
+  checked), +0x1E to +0x22, +0x25 to +0x28, +0x2A, +0x2D to +0x38 (BN6's folder bytes; BN5's patch-card routine
+  writes there), +0x3A to +0x3D, +0x46 to +0x5F. BN6's fields BN5 has elsewhere or not at all: the starting form
+  (BN6 +0x17, BN5 +0x2C), the Tag chips, ChpShufl and NumbrOpn, the Beast Out counter, the version byte, the sun,
+  the hand-shrink bug.
+- *Setup:* the BattleSettings record (BN5's stages by their own numbers), BattleState (0xF0 bytes; the traces carry
+  it raw), the versions and regions (both decoded).
