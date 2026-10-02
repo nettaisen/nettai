@@ -44,6 +44,17 @@ How to read a pair: `bmap.py diff NAME` prints a BN6 routine beside its BN5 coun
 - **BN5 is traced** (§10): oracle-trace, the chip lab and difftest know BN5's two US ROMs, and a first Team Battle
   of the original is recorded. **bn5-extract** writes a BN5 pack (§11) that says its game, so it loads beside
   BN6's under its own names (§9).
+- **The action map** (§14). Of BN5's 330 chips:
+  - 122 descend from the same chip's BN6 code: 21 identical where the labs ran, 8 with constants only, 93 changed.
+  - 101 are built like another BN6 chip's code.
+  - 17 descend from code BN6 keeps but no BN6 chip uses.
+  - 90 are BN5's own, LeadRaid and ChaosLrd among them. LeadRaid is BN6's TwinLdrs's ancestor (the same actor
+    kind and handler), reworked.
+
+  Three shared routines differ for many chips:
+  - The dimming chips and action 0x1A leave the action on the use frame in BN5.
+  - The navi chips' framework is the same code with renumbered chips.
+  - The swords pick their slash by soul in BN5, by form in BN6.
 
 ## 1. Method
 
@@ -586,3 +597,316 @@ BN5's stages (the settings record stays raw).
   the hand-shrink bug.
 - *Setup:* the BattleSettings record (BN5's stages by their own numbers), BattleState (0xF0 bytes; the traces carry
   it raw), the versions and regions (both decoded).
+
+## 14. The action map: BN5's chips against BN6's code
+
+For each of BN5's 330 chips, the BN6 code its use descends from and how the two differ, from the disassembly: what
+a port can take from BN6's Luau (`require("@bn6/...")` with BN5's assets and records) and what it must write. Made
+by the verification workspace's `tools/bn5/actions.py`; the machine-readable map is its `tools/bn5/chip-actions.tsv`
+(a row per chip: the roots in both games, the BN6 chips and module, class, relation, every differing region and
+constant with its routine and offset, the data tables that differ, the kinds paired, the labs' verdicts),
+`chip-library.tsv` (the shared routines, §14.3) and `chip-systematic.tsv`. `actions.py --diff KEY` prints a chip's
+differing routines side by side, marked with what ran in the labs.
+
+### 14.1 Method
+
+- **Roots.** A chip's use runs its action's handler (BN5's action table 0x080EB42C, BN6's `JumpTable80EAC60`; the
+  games number actions apart: BN5's Thunder is 0x20, BN6's 0x1F) and, where the handler dispatches by the chip's
+  subtype, the subtype's routine: the dimming chips' spawners (BN6 `off_802CCB4`, BN5 0x080297B8), the navi chips'
+  summons (`off_802CD5C`, 0x080298C4), and any code-pointer table the handler, what it calls or its states index
+  with the attack's subtype byte.
+- **Candidates.** The BN6 handler likest BN5's and its table's likest entry, and the routine of the BN6 chip of the
+  same name, if there is one. Names only propose; code decides. "Likest" weighs the code's ratio (exact
+  instruction forms) together with the ratio of what it calls, loads (state tables) and spawns at the same places,
+  four levels down, each weighted by size, so a dispatcher or a spawner stub weighs little against the states and
+  objects it reaches. Object kinds pair where they are spawned (`movs r0, #kind` then a spawner), because the games
+  number kinds apart.
+- **The walk.** From a candidate's roots, both games' code in step. Each routine is decoded by flow. Each pair is
+  compared as §1 compares: same, consts, similar or differs. Coverage limits the walk:
+  - BN6's chip lab records block coverage of its chips' runs, and BN5's now does too, from a list of block leaders
+    (`actions.py --blocks`, chiplab's `CHIPLAB_COV_BN5`).
+  - The walk stops at a pair that neither lab ran.
+  - A table indexed by a parameter pairs the entry BN5's lab ran with the likest entry BN6's ran.
+  - The BN6 chips whose labs stand for BN6 are the chip's namesake in the family, else the family's chips whose
+    labs ran the most of the walk.
+- **The choice.** The candidate whose walk is likest where both labs ran wins. BN5 code that ran unpaired counts as
+  unlike. Under 0.6 (0.45 when the family has the chip's name) the chip is BN5's own.
+- **What differs, where it ran.** A pair's differences are regions (instructions inserted, removed or changed, and
+  constants). A region counts only where one of the labs ran it; `off_path` counts the rest.
+  - The library's routines are listed apart (§14.3): those that walks from two BN6 roots reach, and those BN6 calls
+    from eight places or more.
+  - Systematic constants are listed apart too: alike in three routines or more (collision data +0x70 is BN5's
+    +0x68 in 17 routines; a value 8 is 6 in 9).
+  - Relocated addresses aren't differences. Data tables the code reads (by address) are compared bytewise and
+    listed as `data`. They are often subtype-indexed, so the chip's own entry may still be the same (Cannon's
+    shot-parameter table differs only past BN5's three cannons).
+
+| class | meaning |
+|---|---|
+| identical | its own code is BN6's (calls, addresses and object kind numbers aside) |
+| identical-run | it differs only where neither lab ran (Cannon: GigaCannon's branch of the shot) |
+| constants | where it ran, only constants differ: sounds, sprites, a call's value, field offsets |
+| changed | where it ran, instructions differ (each region with what BN5 adds and drops) |
+| bn5-only | no BN6 code is as like as 0.6 |
+
+| relation | meaning |
+|---|---|
+| same chip | the BN6 ancestors include the chip's name |
+| built like | the nearest BN6 code is another chip's: a renamed one (WideSht1–3 and WideSht, AirHoc and AirHocky, Geddon1–3 and Geddon, DrilArm1–3 and DrilArm), a variant (DarkWide on WideSht, Guard on Reflector), or a navi chip on another navi's template |
+| BN6 code, no chip | it descends from code BN6 keeps but no BN6 chip uses (BN5 leftovers in BN6's tables) |
+
+- **The labs' timelines.** BN5's lab recordings are compared with the ancestor's BN6 recordings (hit, miss,
+  adjacent, side1) frame by frame, starting from the chip's use: the user's navi entering the action's state. Each
+  category is compared on its own:
+  - hits, by frame and side; their amounts are the records' damage, listed where they differ;
+  - actors and attacks spawning and going;
+  - the navis' states and the user's animations, with standing and the action renumbered;
+  - effects.
+
+  `lab`:
+  - **same**: every category matches.
+  - **effects**: only effects' frames differ.
+  - **navi**: hits and objects match; the navi states don't.
+  - **differs**
+  - **none**: no recording in one of the games.
+- **Checked.** The coverage traps don't change a run. All 1,253 chip recordings of the BN5 lab, recorded with the
+  traps and without, are byte-identical. One trap that did change them, on a byte table at an odd address the
+  discovery took for a routine, is why an odd literal is only followed to a `push`.
+
+### 14.2 Results
+
+| relation | identical | identical-run | constants | changed | bn5-only | chips |
+|---|---|---|---|---|---|---|
+| same chip | 14 | 7 | 8 | 93 | | 122 |
+| built like | | | 1 | 100 | | 101 |
+| BN6 code, no chip | 7 | | | 10 | | 17 |
+| bn5-only | | | | | 90 | 90 |
+
+Labs: 199 chips have recordings in both games. Of the 122 same chips, 20 match in every category, 28 in all but
+effects' frames, 38 in hits and objects (most of these are dimming chips, §14.3), and 28 differ.
+
+- **Reusable as they are (identical, identical-run):** MiniBomb, EnergBom, MegEnBom; Cannon, HiCannon, M-Cannon;
+  PanlGrab, AreaGrab; PnlRetrn, HolyPanl, Snctuary; Invisibl; AntiNavi, AntiDmg, AntiSwrd, AntiRecv; GrabBnsh;
+  SloGauge, FstGauge; FullCust; Meteors. For example, MiniBomb's hit is the same in both labs at every event: the
+  use, the throw at +1, the bomb at +10, the hit for 50 at +50, the explosion's effect from +49 to +72.
+- **Constants only:** AirShot (the arm's value 0x13 → 0x08), Silence, Discord, Timpani (a sprite 0xA → 0x8),
+  Mine and GrabRvng (an effect's number), ProtoMan and ProtomnSP (an effect and a sprite).
+- **Changed but the same in the labs (22, 16 of them same chips):**
+  - same chips: Recov10 to Recov300 and DrkRecov (BN5 also adds the use's +0x0A to NaviStats +0x0E), TankCan1–3,
+    Tornado, Static, BugBomb, Navi+20;
+  - built like: Guard1–3 (Reflector), Atk+10, Atk+30, DarkTorn.
+
+  The differences there are code the labs ran with no effect on what they record.
+- **Different in the labs (28 same chips).** Damage alone doesn't count: HiCannon's 100 is BN5's 80, from the
+  record. The causes:
+  - the code: Thunder's ball; the Vulcans' last bullets; GunDelSol's actor, which leaves at +19 in BN5 and +80
+    in BN6;
+  - the labs' set-ups: AirSpin's and AreaGrab's miss is a hit in BN5, and BN6's user loses 1 HP at a time with
+    the dark chips, Bass, DeltaRay and BigHook;
+  - chance: Meteors.
+- **BN5-only (90),** by content key:
+  - navi chips: napalmmn, magnetmn, meddy, shadoman, knightmn, larkman, gridman, django (with their -sp and -ds);
+  - the e-Reader chips (§14.5): leadraid, chaoslrd;
+  - chips BN6 dropped: mrkcan1–3, pulsar1–3, spshake1–3, quake1–3, cannball, slasher, moonbld1–3,
+    redfrut1–3, skully1–3, crakout, dublcrak, tripcrak, aqwhirl1–3, sidebub1–3, elcreel1–3, cusvolt1–3,
+    crsshld1–3, wavepit, redwave, mudwave, woodnos1–3, hotbody1–3, cacdanc1–3, phoenix, dethphnx;
+  - dark and bug chips: jealousy, poltrgst, bugcurse, bugcharg, holydrem, magnum, rainyday, elemrage, copydmg.
+
+### 14.3 What differs for many chips (the library)
+
+32 of the 90 shared routines differ where the labs ran (`chip-library.tsv`).
+
+- **The dimming handler** (action 0x15, BN6 `sub_80EBD9C`, BN5 0x080EC318, 68 chips): BN6 spawns the dimming
+  object, stays in the action state and leaves it (`object_exitAttackState`) on its next update, which is after the
+  dimming; BN5 spawns it and leaves on the same frame. So in BN5 the user stands during the dimming (the labs'
+  `navi`: BN6's user leaves the action at +129 to +164, BN5's at +1).
+- **The object handler of action 0x1A** (BN6 `sub_80EC39C`, BN5 0x080EC6F6: Boomer, Lance, FireHit, BusterUp, the
+  AtkPlus chips, FullCust, JustCone, the mode chips and others; 32 chips): BN6 calls the subtype's routine once,
+  keeps the action 8 more frames for subtype 20 and then leaves; BN5 calls it and leaves on the same frame.
+- **The navi chips' framework** (`sub_80E192C`, `sub_80E18F8`, `sub_80E1854`, 45 chips): the same code with the
+  games' numbers where it singles chips out: Roll's subtype (BN6 0, BN5 0x19), BigHook's (0x17, 0x1A), AntiRecv's
+  id (0xBD, 0x93). `sub_800BA8A` (the navi telop) checks AntiNavi by id (0xBA, 0x90). The navi attacks' helpers
+  `sub_80E292C`, `sub_80E28C8` single out navi subtypes BN5 numbers two higher (BN6 6, 7, 8, 10, 11, 12), and BN6's
+  `sub_80E28C8` adds, for side 1, a swap of subtypes 17 and 18. `sub_80E376C` (a navi chip's leaving, 4 chips)
+  takes the chip's HP cost as BN6 does and also subtracts its +0x2E from NaviStats +0x0E (to at least 1, when not 0)
+  through 0x08012820; Recov adds to the same byte through 0x08012802 (§14.2). BN6's counterpart of the subtracting
+  one is `sub_8015C12`.
+- **The swords** (`sub_80EBAE8`, `sub_80EBB34`, 14 chips): NaviStats +0x2C picks the slash and a count. In BN6 its
+  values 11 to 23 (its forms) give slashes 12 or 13, and the count comes from a subtype table. In BN5 souls 1, 7
+  and 8 give slashes 13, 14 and 15; the count is 3, or 10 with soul 1 and 50 with soul 7.
+- **The shot object** (BN6 attack kind 0, `sub_80C4E7C`, `sub_80C4F02`: Cannon, AirShot, GigaCannon; 7 chips): BN6's
+  has variants BN5's doesn't (12: its own handling when the shot leaves the field or hits; 34 and 36: they set the
+  panel's type), and the crack and break variants are BN5's 24 and 25 (BN6 21 and 22).
+- **The bombs' throw** (`sub_80EB644`, 14 chips): BN6 passes a subtype-dependent parameter in the thrown object's
+  top byte (3 for subtype 15, the use's +0x0C × 3 for subtype 14); BN5 passes none.
+- **The hit-effect spawner** (`sub_80E33FA`, 26 chips): BN6 sets bit 2 of the spawned effect's flags; BN5 doesn't.
+- **The Vulcans' bullet** (`sub_80C6964` to `sub_80C6AB8`, 8 chips): other animation numbers and collision values,
+  and BN6 sets a status effect (`object_setCollisionStatusEffect1`) that BN5's doesn't.
+- **Bass and BassAnly's shared actor helpers** (`sub_80C4550` to `sub_80C468C`): BN6 loads animations, palettes and
+  a check BN5's don't.
+
+### 14.4 The map
+
+One row per BN6 routine that BN5's chips descend from. The columns:
+
+- the BN6 chips and module (content/bn6);
+- the BN5 chips, marked `=` (the same chip) or `~` (built like it);
+- their classes, counted: I identical, Ir identical-run, C constants, X changed;
+- the labs' verdicts;
+- where the chips' own code differs, by BN6 routine.
+
+chip-actions.tsv has every region; `actions.py --markdown` writes this table.
+
+| BN6 routine (chips; module) | BN5 chips | code | lab | what differs where it ran |
+|---|---|---|---|---|
+| `sub_80EBC0E` (cannon, hicannon, m-cannon, gigacan1, gigacan2, gigacan3, …; chips/cannon, chips/gigacan) | =cannon, =hicannon, =m-cannon, =gigacan1, =gigacan2, =gigacan3 | Ir3 X3 | effects 3 none 3 | code: `sub_80EBC28`; constants: shift ×3, literal ×3; library: `sub_80C4E7C`, `sub_80C4F02`, `sub_80E33FA` |
+| `sub_80EC884` (airshot; chips/airshot) | =airshot | C1 | effects 1 | constants: value ×1; library: `sub_80C4E7C`, `sub_80C4F02` |
+| `sub_80ECCB0` (airhocky, pithocky; chips/airhocky) | ~airhoc, ~pithoky | X2 | effects 1 none 1 | code: `sub_80ECCCC`; constants: value ×2, offset ×2, sprite ×2, literal ×1; library: `sub_80E33FA`, `sub_80ECA0C` |
+| `sub_80CA4F6` (boomer, hiboomer, m-boomer; chips/boomer) | =boomer | X1 | differs 1 | code: `sub_80CA2D4`, `sub_80CA408`; constants: sprite ×1, value ×1; library: `sub_80EC39C` |
+| `sub_80E5EA8` (fanfare, discord, timpani, silence; chips/discord, chips/fanfare, chips/silence, chips/timpani) | =silence, =fanfare, =discord, =timpani, ~drksonic | C3 X2 | navi 5 | code: `sub_80D43E8`, `sub_80D435C`; constants: sprite ×5; library: `object_spawnCollisionRegion`, `sub_80EBD9C` |
+| `sub_80ED454` (tornado, static; chips/tornado) | =tornado, =static, ~darktorn | X3 | same 3 | code: `sub_80C9F98`; constants: value ×8 |
+| `sub_80ED55C` (widesht, suprspr; chips/widesht) | ~widesht1, ~widesht2, ~widesht3, ~darkwide, ~suprspr1, ~suprspr2, ~suprspr3 | X7 | differs 4 none 3 | code: `sub_80ED5BE`; constants: value ×14, sprite ×7, literal ×4; library: `sub_80E33FA` |
+| `sub_80EBF10` (vulcan1, vulcan2, vulcan3, suprvulc; chips/vulcan) | =vulcan1, =vulcan2, =vulcan3, =suprvulc, ~infvulc1, ~infvulc2, ~infvulc3 | X7 | effects 1 differs 3 none 3 | code: `sub_80EBF30`; constants: value ×7; library: `sub_80C6964`, `sub_80C69AC`, `sub_80C6A50` … |
+| `sub_80ECBB0` (spreadr1, spreadr2, spreadr3; chips/spreadr) | ~spreader | X1 | effects 1 | code: `sub_80ECBCC`; library: `sub_80C6964`, `sub_80C69AC`, `sub_80C6A50` … |
+| `sub_80EC7A6` (thunder, darkthnd; chips/darkthnd, chips/thunder) | =thunder, =darkthnd | X2 | differs 2 | code: `sub_80C940C`; constants: value ×6, sprite ×4, branch ×2 |
+| `sub_80CE44E` (grasseed, iceseed, poisseed; chips/grasseed, chips/iceseed, chips/poisseed) | =iceseed, =grasseed, ~lavaseed, ~seaseed | X4 | navi 3 differs 1 | code: `sub_80CE270`; constants: literal ×4, branch ×4, offset ×4; library: `sub_80EB644` |
+| `sub_80E7464` (lifesync; chips/lifesync) | =lifesync | X1 | navi 1 | code: `sub_80E72C8`; constants: branch ×1; library: `sub_80EBD9C` |
+| `sub_80C5DBC` (minibomb, energbom, megenbom, bigbomb; chips/energbom, chips/minibomb) | =minibomb, =energbom, =megenbom | I3 | same 3 | library: `sub_80EB644` |
+| `sub_80EDAE0` (gundels1, gundels2, gundels3, gundelex; chips/gundels) | =gundels1, =gundels2, =gundels3, =gundelex | X4 | differs 4 | code: `sub_80EDB14`; constants: literal ×4, value ×4, offset ×4 |
+| `sub_80D49F6` (vdoll; chips/vdoll) | ~crakbom, ~parabom, ~resetbom, =vdoll | X4 | differs 3 effects 1 | code: `sub_80D49F6`, `sub_80D4754`, `sub_80D4870`, `sub_80D4888`; constants: value ×4; library: `sub_80EB644` |
+| `sub_80D9FA8` (bugbomb; chips/bugbomb) | =bugbomb | X1 | same 1 | code: `sub_80D9FC2`; constants: value ×5, other ×2, sound ×1, branch ×1, literal ×1; library: `sub_80EB644` |
+| `sub_80CD886` (blkbomb; chips/blkbomb) | ~geyser, =blkbomb | X2 | differs 1 effects 1 | code: `sub_80CD50C`, `sub_80CD5F8`, `sub_80CD700`, `sub_80CD886` (+3 more); constants: value ×4, offset ×2, literal ×2, branch ×2; library: `sub_80EB644` |
+| `sub_80EB776` (sword, wideswrd, longswrd, wideblde, longblde, fireswrd, …; chips/drksword, chips/lifesrd, chips/longblde, chips/longswrd, chips/muramasa, chips/stepswrd, chips/sword, chips/wideblde, chips/wideswrd) | =sword, =wideswrd, =longswrd, =wideblde, =longblde, ~custswrd, ~katana1, ~katana2, ~katana3, =drksword, =muramasa, ~z-saver, =lifesrd | X13 | effects 6 differs 6 none 1 | code: `sub_80EB862`, `sub_80EB79C`, `sub_80EBB78`, `nullsub_12` (+3 more); constants: offset ×43, value ×18, shift ×12, branch ×6, sound ×1; library: `sub_80E33FA`, `sub_80EBAE8`, `sub_80EBB34` |
+| `sub_80EE192` (windrack; chips/windrack) | =windrack | X1 | differs 1 | code: `sub_80EE1AC`; constants: value ×2; library: `sub_80EBAE8` |
+| `sub_80EF62E` (varswrd; chips/varswrd) | =varswrd | X1 | effects 1 | code: `sub_80EF6FC`; constants: value ×6, branch ×5, sound ×1 |
+| `sub_80ECACA` (tankcan1, tankcan2, tankcan3; chips/tankcan) | =tankcan1, =tankcan2, =tankcan3 | X3 | same 3 | code: `sub_80CB7BC`, `sub_80CB71C`; constants: value ×6, literal ×3 |
+| `sub_80ED374` (drilarm; chips/drilarm) | ~drilarm1, ~drilarm2, ~drilarm3, ~darkdril | X4 | differs 4 | code: `sub_80ED3B6`, `sub_80D2B8E`, `sub_80D2AB4`, `sub_80D2B2C` (+1 more); constants: value ×4, branch ×4 |
+| `sub_80E3242` (timebom1, timebom2, timebom3, timebom; chips/timebom) | =timebom1, =timebom2, =timebom3, =timebom | X4 | navi 3 none 1 | code: `sub_80E3264`, `sub_80CDA1C`, `sub_80CDB2C`, `sub_80CD9CA` (+2 more); constants: branch ×10, offset ×10, literal ×6, value ×6, sound ×4; library: `sub_80EBD9C` |
+| `sub_802E1BE` (no BN6 chip) | voltz1, voltz2, voltz3, cannmode, cannball-mode, swrdmode, yoyomode, drilmode, finalgun | X3 I6 | none 9 | code: `sub_802E1BE`; library: `sub_80EC39C` |
+| `sub_80D2596` (lance; chips/lance) | =lance, ~drklance | X2 | differs 2 | code: `sub_80D2514`; constants: value ×2, sprite ×2; library: `sub_80EC39C` |
+| `sub_80EC02A` (yoyo, greatyo; chips/greatyo, chips/yoyo) | =yoyo, =greatyo | X2 | effects 1 none 1 | code: `sub_80CE932`, `sub_80E8612`, `sub_80CEA42`, `sub_80CE9A4` (+5 more); constants: value ×10, branch ×5, literal ×2 |
+| `sub_80E3128` (wind, fan; chips/wind) | =wind, =fan | X2 | navi 2 | code: `sub_80CD310`, `sub_80CD414`, `sub_80CD236`; constants: sprite ×2; library: `sub_80EBD9C` |
+| `sub_80E46B6` (rockcube, icecube; chips/rockcube) | ~boybomb1, ~boybomb2, ~boybomb3, =rockcube, ~omegarkt | X5 | differs 4 navi 1 | code: `sub_80E4678`, `sub_80CFB2C`; constants: value ×4, branch ×2, offset ×2, literal ×1, sprite ×1; library: `sub_80EBD9C` |
+| `sub_80ED13E` (rflectr1, rflectr2, rflectr3; chips/rflectr) | ~guard1, ~guard2, ~guard3 | X3 | same 3 | code: `sub_80ED154`; constants: branch ×3; library: `object_genericDestroy`, `sub_80C4FFE` |
+| `sub_80E64E8` (colorpt, dblpoint; chips/colorpt) | ~metagel, =colorpt, =dblpoint, ~blakwing | X4 | differs 2 navi 2 | code: `object_dimScreen`, `sub_80E667C`; constants: offset ×2; library: `sub_80EBD9C` |
+| `sub_80E59C6` (snake; chips/snake) | =snake | X1 | differs 1 | code: `sub_80D2C40`, `sub_80D3048`, `sub_80D2EDC`; constants: value ×4, branch ×2, offset ×1, literal ×1; library: `sub_80EBD9C` |
+| `sub_80E7600` (circgun; chips/circgun) | =circgun, ~darkcirc, ~piledrvr | X3 | differs 2 none 1 | code: `sub_80E75AC`, `sub_80D65FC`, `sub_80D6580`, `sub_80D677C` (+1 more); constants: sprite ×6, offset ×6, branch ×5, value ×4; library: `sub_80EBD9C` |
+| `sub_80E349E` (mine; chips/mine) | =mine, ~bodygrd | C1 X1 | navi 1 none 1 | code: `sub_80E3470`; constants: value ×2, offset ×1, branch ×1; library: `sub_80EBD9C` |
+| `sub_80E5A64` (no BN6 chip) | astroid1, astroid2, astroid3, darkmetr, boxer1, boxer2, boxer3 | X7 | none 7 | code: `sub_80E5A22`, `sub_80E5A08`, `sub_80E5A64`; constants: value ×15, offset ×8, branch ×3; library: `sub_80CF3DC`, `sub_80EC39C` |
+| `sub_80EC844` (recov10, recov30, recov50, recov80, recov120, recov150, …; chips/drkrecov, chips/recov) | =recov10, =recov30, =recov50, =recov80, =recov120, =recov150, =recov200, =recov300, =drkrecov | X9 | same 9 | code: `sub_80EC844`; constants: branch ×9 |
+| `sub_8010820` (busterup; chips/busterup) | =busterup | X1 | effects 1 | code: `sub_8010820`; constants: value ×1; library: `sub_80EC39C` |
+| `sub_80E07E0` (panlgrab, areagrab; chips/areagrab, chips/panlgrab) | =panlgrab, =areagrab | I2 | navi 1 differs 1 | library: `sub_80EBD9C` |
+| `sub_80E2D76` (grabbnsh, grabrvng; chips/grabbnsh) | =grabrvng, =grabbnsh | C1 Ir1 | navi 2 | constants: value ×1; library: `sub_80EBD9C` |
+| `sub_80E24B8` (slogauge, fstgauge; chips/fstgauge, chips/slogauge) | =slogauge, =fstgauge | Ir2 | navi 2 | library: `sub_80EBD9C` |
+| `sub_80E2B5A` (pnlretrn, holypanl, snctuary, comingrd, goingrd; chips/comingrd, chips/goingrd, chips/holypanl, chips/pnlretrn, chips/snctuary) | =pnlretrn, =holypanl, =snctuary, ~elempowr | I3 X1 | navi 4 | code: `sub_80E2B2C`, `sub_80E2B5A`; constants: value ×1, offset ×1, branch ×1; library: `sub_80E28C8`, `sub_80E292C`, `sub_80EBD9C` |
+| `sub_80E2566` (geddon, prpcapsl, pnkcapsl, healball, magpanl, beastout-dimming-1, …; chips/geddon) | ~geddon1, ~geddon2, ~geddon3 | X3 | navi 2 differs 1 | code: `sub_80E2528`; library: `sub_80EBD9C` |
+| `sub_80E2F24` (no BN6 chip) | blinder | I1 | none 1 | library: `sub_80EBD9C` |
+| `sub_80D8B96` (airspin1, airspin2, airspin3; chips/airspin) | =airspin1, =airspin2, =airspin3 | X3 | differs 3 | code: `sub_80D8ADC`, `sub_80D8908`, `sub_80D8988`, `sub_80D8BD4` (+2 more); constants: literal ×9, branch ×7, offset ×3 |
+| `sub_80E7546` (invisibl, whicapsl-invisible; chips/invisibl) | =invisibl, ~nrthwind | I1 X1 | navi 1 differs 1 | code: `sub_80E7518`, `sub_80E7546`; constants: branch ×1, value ×1; library: `sub_80EBD9C` |
+| `sub_80E3B50` (barrier, barr100, barr200, bblwrap, lifeaur; chips/barrier, chips/bblwrap, chips/lifeaur) | =bblwrap, =barrier, =barr100, =barr200, =lifeaur | X5 | navi 5 | code: `sub_80E0C74`, `sub_80E0B8C`; constants: offset ×5; library: `sub_80EBD9C` |
+| `sub_80E353E` (antinavi, antidmg, antiswrd, antirecv, elemtrap, bodygrd; chips/antidmg, chips/antinavi, chips/antirecv, chips/antiswrd, chips/elemtrap) | ~antifire, ~antiwatr, ~antielec, ~antiwood, =antinavi, =antidmg, =antiswrd, =antirecv | X4 I4 | navi 8 | code: `sub_80CE05E`, `sub_80CE034`, `sub_80CDFA4`; constants: offset ×4; library: `sub_80EBD9C` |
+| `sub_8010488` (megabstr, whicapsl, uninstll, atk-10, navi-20, atk-30, …; chips/atk-10, chips/atk-30, chips/darkplus, chips/navi-20, chips/uninstll, chips/whicapsl) | ~attck-10, =navi-20, =darkplus, ~attck-30 | X4 | same 3 differs 1 | code: `sub_8010488`; constants: offset ×4; library: `sub_80EC39C` |
+| `sub_80CFE08` (firehit1, firehit2, firehit3; chips/firehit) | =firehit1, =firehit2, =firehit3 | X3 | effects 3 | code: `sub_80CFD80`; library: `sub_80EC39C` |
+| `sub_80ED2F8` (bblstar1, bblstar2, bblstar3; chips/bblstar) | ~cactbal1, ~cactbal2, ~cactbal3 | X3 | differs 3 | code: `sub_80ED314`; constants: value ×12, sound ×3, offset ×3; library: `sub_80ECA0C` |
+| `sub_80E979C` (puncharm, needlarm, puzzlarm, boomrarm, darkinvs, bugrswrd, …; chips/darkinvs) | =darkinvs | X1 | differs 1 | code: `object_timefreezeBegin`, `sub_80E979C`; constants: offset ×1; library: `sub_80EBD9C` |
+| `sub_80E67E6` (guardian; chips/guardian) | =guardian | X1 | navi 1 | code: `sub_80D4EFC`; constants: branch ×6, value ×2, literal ×1; library: `sub_80EBD9C` |
+| `sub_80E4164` (anubis, poisphar; chips/anubis, chips/poisphar) | =anubis, =poisphar | X2 | navi 1 none 1 | code: `sub_80CF1DC`, `sub_80CF0F0`; constants: literal ×2, branch ×2; library: `sub_80EBD9C` |
+| `sub_80E49A2` (bugfix; chips/bugfix) | =bugfix, ~lcrsshld, ~lstepswd, ~lcounter | X4 | navi 1 differs 3 | code: `sub_80C4848`, `sub_80C4958`, `sub_80E4954`, `sub_80C49A4` (+2 more); constants: value ×17, offset ×6, branch ×3; library: `sub_80E13DC`, `sub_80EBD9C` |
+| `sub_800AF34` (fullcust; chips/fullcust) | =fullcust | Ir1 | same 1 | library: `sub_80EC39C` |
+| `sub_80E4288` (meteors; chips/meteors) | =meteors | I1 | differs 1 | library: `sub_80CF3DC`, `sub_80EBD9C` |
+| `sub_80E7FBA` (numbrbl; chips/numbrbl) | =numbrbl | X1 | differs 1 | code: `sub_800BDB2`; library: `sub_80EBD9C` |
+| `sub_80E76D4` (otenko; chips/otenko) | =otenko | X1 | navi 1 | code: `sub_80DB1E0`; constants: literal ×2, value ×1; library: `sub_80EBD9C` |
+| `sub_80DB4B4` (justcone; chips/justcone) | =justcone | X1 | effects 1 | code: `sub_80DB4CE`; constants: value ×1, literal ×1; library: `sub_80EC39C` |
+| `sub_80EF7E2` (neovari; chips/neovari) | =neovari | X1 | effects 1 | code: `sub_80EF87C`; constants: value ×6, branch ×5, sound ×1 |
+| `sub_80C0DD8` (roll, roll2, roll3; chips/roll) | =roll, ~roll-sp, ~roll-ds | X3 | effects 3 | code: `sub_80C0C9A`, `sub_80C0C48`, `sub_80C0A90`, `sub_80C0938` (+2 more); constants: offset ×15, value ×9, sprite ×6, branch ×6, other ×6, shift ×3; library: `sub_800BA8A`, `sub_80E1854`, `sub_80E18F8` … |
+| `sub_80BA920` (judgeman, judgemn-ex, judgemn-sp; chips/judgeman) | ~gyroman, ~gyroman-sp, ~gyroman-ds | X3 | differs 3 | code: `sub_80BA7A0`, `sub_80BA84C`, `sub_80BA8F6`, `sub_80E71B8` (+4 more); constants: value ×39, offset ×9, branch ×9, sound ×6, sprite ×3; library: `sub_800BA8A`, `sub_80E1854`, `sub_80E18F8` … |
+| `sub_80B84EC` (colonel, colonel-ex, colonel-sp, crossdiv; chips/colonel, chips/crossdiv) | ~serchman, ~serchmn-sp, ~serchmn-ds | X3 | differs 3 | code: `sub_80B83C0`, `sub_80B8230`, `sub_80B8406`, `sub_80B8338` (+1 more); constants: value ×33, offset ×18, branch ×12, sprite ×3; library: `sub_800BA8A`, `sub_80E1854`, `sub_80E18F8` … |
+| `sub_80C2A4C` (protoman, protomn-ex, protomn-sp; chips/protoman) | =protoman, =protomn-sp, ~protomn-ds | C3 | effects 3 | constants: value ×3, sprite ×3; library: `sub_800BA8A`, `sub_80E1854`, `sub_80E18F8` … |
+| `sub_80B9014` (blastman, blastmn-ex, blastmn-sp; chips/blastman) | ~numbrman, ~numbrmn-sp, ~numbrmn-ds, ~colonel, ~colonel-sp, ~colonel-ds, ~toadman, ~toadman-sp, ~toadman-ds, ~blizman, ~blizman-sp, ~blizman-ds, ~cloudman, ~cloudmn-sp, ~cloudmn-ds, ~cosmoman, ~cosmomn-sp, ~cosmomn-ds, ~crossdiv, ~wildbird, ~football, ~bignoise | X22 | differs 19 none 3 | code: `sub_80B8FEA`, `sub_80B8F8E`, `sub_80B8EC4`, `sub_80B8F30` (+4 more); constants: value ×138, offset ×32, sprite ×19, branch ×16; library: `sub_800BA8A`, `sub_80E1854`, `sub_80E18F8` … |
+| `sub_80B999A` (tmhkman, tmhkman-ex, tmhkman-sp; chips/tmhkman) | ~tmhwkman, ~tmhwkmn-sp, ~tmhwkmn-ds | X3 | differs 3 | code: `sub_80B98EC`, `sub_80B97E4`, `sub_80B9848`, `sub_80B999A` (+1 more); constants: value ×30, branch ×9, sprite ×3; library: `sub_800BA8A`, `sub_80E1854`, `sub_80E18F8` … |
+| `sub_80EA11C` (bighook, flmhook1, flmhook2, flmhook3; chips/bighook) | ~shademan, ~shademn-sp, ~shademn-ds, =bighook | X4 | differs 4 | code: `sub_80EA11C`, `sub_80DE818`, `sub_80EA0A0`, `sub_80EA05C` (+5 more); constants: offset ×9, value ×3, literal ×2; library: `sub_800BA8A`, `sub_80E1854`, `sub_80E18F8` … |
+| `sub_80C3B30` (bass; chips/bass) | =bass | X1 | differs 1 | code: `sub_80C5E00`, `sub_80C5E84`, `sub_80C39BA`, `sub_80C3B30` (+7 more); constants: value ×5, offset ×4, branch ×3, sprite ×2, literal ×1; library: `sub_80C4550`, `sub_80C458C`, `sub_80C461C` … |
+| `sub_80C2F96` (deltaray; chips/deltaray) | =deltaray | X1 | differs 1 | code: `sub_80C2D8C`, `sub_80C2CB4`, `sub_80C2C14`, `sub_80C2B8C`; constants: value ×4, branch ×2, literal ×1, sprite ×1; library: `sub_80E1854`, `sub_80E18F8`, `sub_80E192C` |
+| `sub_80E8BC0` (metrknuk; chips/metrknuk) | =metrknuk | X1 | differs 1 | code: `sub_80E8B70`, `sub_80E8BE2`, `sub_80DBDA0`, `sub_80DBD10` (+1 more); constants: sprite ×1, value ×1; library: `sub_80EBD9C` |
+| `sub_80C3E98` (bassanly; chips/bassanly) | =bassanly | X1 | differs 1 | code: `sub_80C3D32`, `sub_80C3E98`, `sub_80C3D0C`, `sub_80C3E46` (+2 more); constants: value ×4, sprite ×1, sound ×1, literal ×1; library: `sub_80C4550`, `sub_80C458C`, `sub_80C461C` … |
+| `sub_80EC0E6` (batcan1, batcan2, batcan3, batcan4; chips/batcan) | =batcan1, =batcan2, =batcan3, =batcan4 | X4 | effects 4 | code: `sub_80EC11C`; constants: value ×4, offset ×4 |
+| `sub_80EC44C` (synctrgr; chips/synctrgr) | ~shakpar1, ~shakpar2, ~shakpar3 | X3 | none 3 | code: `sub_80EC44C`; constants: sound ×3; library: `sub_80EC39C` |
+| `sub_80ED810` (h-burst; chips/h-burst) | =h-burst | X1 | none 1 | code: `sub_80D8FE4`; constants: value ×3 |
+| `sub_80BB7F6` (eraseman, erasemn-ex, erasemn-sp; chips/eraseman) | ~csmopris | X1 | none 1 | code: `sub_80BB710`, `sub_80BB772`, `sub_80BB62C`, `sub_80BB66A` (+4 more); constants: value ×10, offset ×4, branch ×3, sprite ×1; library: `sub_80E1854`, `sub_80E18F8`, `sub_80E192C` … |
+
+### 14.5 LeadRaid's and ChaosLrd's summoned actors
+
+Both summon through the navi chips' action (§6.4), the same handler and framework as BN6's navi chips
+(`sub_80EC350`, `sub_80E192C`; §14.3).
+
+**LeadRaid → BN6's TwinLdrs (0x15C).** LeadRaid (0x137, summon entry 0x15) spawns actor kind 0x20. BN6's TwinLdrs
+(summon entry 20, `sub_80BD9A2`) spawns kind 0x20 too, whose handler `sub_80BD388` is LeadRaid's kind 0x20 handler
+(0x080BE1C8) verbatim. The routine map pairs LeadRaid's other routines with TwinLdrs's (`sub_80BD3AC`,
+`sub_80BD478`, `sub_80BD644` and the rest). It is TwinLdrs's ancestor, reworked:
+
+- **BN5: two actors, one strike each.**
+  - Kind 0x20 is ProtoMan: sprite 0x1030801, offset (10, 6) pixels ahead of the user.
+  - It spawns its partner, kind 0x22, Colonel (0x080BED4C): sprite 0x1030807, offset (10, 6) pixels behind.
+  - Each appears with sound 0x94. ProtoMan spawns an effect (effect kind 0x85, 0x080EA198) at frame 10.
+  - At frame 55 each picks a target: the first panel ahead in its own row holding an opponent (0x080BE4F0); failing
+    that, the first column with one in any row (BN6's `sub_80BE434`'s counterpart).
+  - Each moves to the panel before its target and strikes once (0x080BE364):
+    - animation 5, the slash actor (kind 5), sound 0xB0;
+    - at frame 12, a hit region `0x0705FF04` on the panel ahead, the hit effect (variant 0x16), a shake (3, 10);
+    - the two hand over through +0x60 (`sub_80BE734`).
+  - The lab: two hits of 200 wherever the opponent stands.
+- **BN6: one kind for both.** Kind 0x20 serves both leaders, its +4 choosing ProtoMan (0) or Colonel (1) from a
+  table of sprites and offsets (0x080BD464). It appears with a white flash (`sub_80BD4DC`).
+  - ProtoMan slashes up to twelve times (counter +6). He searches every row for a target and moves to each in turn
+    (`sub_80BD5A8`). Each slash puts hit region `0x0405FF04` on the panel ahead, the hit effect (variant 0x27)
+    and a shake (1, 10).
+  - Colonel's finishing strike (`sub_80BD8BC`): two hit regions (`0x0405FF12`, `0x0405FF13`), effects 0x36 and
+    0x37, sound 0xC7, a shake (3, 35).
+  - A screen effect (`sub_80BDB04`: effects 0x4E and 0x4F, sounds 0x71 and 0x72).
+- **BN6 keeps BN5's Colonel actor** (kind 0x22, `sub_80BE4D8`) and its spawner (`sub_80BE6D8`), called only from
+  `sub_8114FB8`, outside the chips.
+
+So a port writes LeadRaid's own module. TwinLdrs (content/bn6/chips/twinldrs) shares the navi-chip framework, the
+target search's shape and the slash actor (kind 5, `sub_80B8E30`), not the behaviour. The map's walk finds TwinLdrs
+0.19 alike; there is no TwinLdrs lab to compare with.
+
+**ChaosLrd: BN5's own.** ChaosLrd (0x138, summon entry 0x1D) spawns actor kind 0x51. Its code is BN5's: the
+routine map pairs none of its states with BN6 code, and no BN6 summon is as like as 0.5. BN6's kind 0x51 is
+`sub_80B81EC`, shared with 0x52, not this.
+
+The actor (0x080C2EB8, states 0x080C2F02, 0x080C3014, 0x080C2EDC) runs as follows:
+
+- **Appearing.**
+  1. Sound 0x94.
+  2. It zeroes +0x24 of the eight objects listed at `[sl+0x18]+0xA0` (0x080C32A2).
+  3. It leaves on a non-zero `GetRandomRelativePanelFiltered` (its arguments from
+     `GetAllianceDependentPanelParamArgs`).
+  4. It spawns five aura effects (`sub_80E5B62`'s counterpart: effect kind 0x47).
+  5. It stands at the user's back column (1 or 6), row 2, eight pixels forward.
+- **The strike.**
+  1. After 142 frames, a burst of hit objects from a table of offsets (0x080C30C0, through `sub_80E5F78`'s
+     counterpart: effect kind 0x4B), then sound 0x107.
+  2. Sprite changes and a colour fade.
+  3. 20 frames into the last phase: animation 14, sound 0x141, and the strike (attack kind 0x82,
+     `sub_80D5890`'s counterpart).
+  4. 40 frames, then it leaves.
+- **The lab:** one hit of 500 wherever the opponent stands.
+
+The helpers are BN6's: the aura's spawner and the burst's are at the same places as BN6's leftover asteroid code
+(`sub_80E5A64`, BN5's Asteroid chips', §14.4). BN6's BassAnly (kind 0x50, the next kind) shares nothing with it
+beyond the framework. A port writes ChaosLrd's module from the BN5 code.
+
+### 14.6 For the port
+
+- **identical, identical-run:** BN6's module (`require("@bn6/chips/<module>")`) with BN5's record (content/bn5),
+  assets and sprites.
+- **constants:** the same, the listed constants as parameters (sprite numbers come with BN5's assets; effect numbers
+  map through BN5's kinds).
+- **changed:** start from BN6's module and apply the regions chip-actions.tsv lists. The labs say which matter: the
+  22 changed chips whose timelines match differ in code the labs didn't see change anything.
+- **The library's differences (§14.3)** are the engine's or a shared module's, once: the dimming handler's and
+  action 0x1A's leaving the action on the use frame, the navi chips' numbers, the swords' souls, the shot's and the
+  bombs' variants.
+- **bn5-only and BN6 code, no chip:** new modules, from the BN5 code. For the latter BN6 keeps the code (Voltz, the
+  mode chips, FinalGun, the Asteroid chips, DarkMetr, Boxer, Blinder), so the BN6 disassembly reads for BN5 there.
+- **built like:** the nearest BN6 module as a template only (a navi chip's template, not its moves).
