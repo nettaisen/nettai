@@ -162,11 +162,13 @@ pub struct AttackVars {
     /// the marker word). Kept until the next throw sets them.
     pub thrown_look: Option<RecordHandle>,
     pub thrown_anim: u8,
-    /// +0x12: the recovery a shot waits after firing (actions 0x11 and
-    /// 0x16 write it). The word outlives the action: a thrown obstacle
-    /// (action 0x11's variant 2) fires without writing it and waits
-    /// whatever the last shot left, whatever ran in between.
-    pub recovery: u16,
+    /// +0x12: the attack's count (its shots, swings, slashes, a hold's
+    /// ticks, the recovery after a shot: each action its own). Every
+    /// action shares the word and none clears it, so one that reads it
+    /// before writing it reads what an earlier one left: a thrown obstacle
+    /// waits it out as its recovery, a burner's roar counts on from it,
+    /// Beast Over's vanish compares it with its timer.
+    pub count: u16,
     /// The running action's own state (timers, destinations).
     pub action: crate::kinds::player::actions::ActionVars,
     /// The effect the instant chips' action runs (`off_80EC3F0[subtype]`):

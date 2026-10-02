@@ -1,7 +1,9 @@
 //! Actions 0 (battle entry: appear / fade in) and 1 (hand over to the
 //! idle controller). See objects-and-player.md §M4.
 
-use super::{NaviAction, ai, clear_invulnerable, coll_mut, navi_record, per_player_gauges, set_action, set_invulnerable};
+use super::{
+    NaviAction, ai, battle_mode, clear_invulnerable, coll_mut, navi_record, per_player_gauges, set_action, set_invulnerable,
+};
 use crate::actor::ActorType;
 use crate::battle::Battle;
 use crate::content::EffectRole;
@@ -65,8 +67,9 @@ fn appear(b: &mut Battle, r: ObjectRef) {
             o.phase = 8;
             o.phase_init = 0;
         }
-        // sub_801657E: (battle mode 6 or the remote navi: the HP HUD.)
+        // sub_801657E
         8 => {
+            show_hp_number(b, r);
             clear_invulnerable(b, r);
             let fp = b.objects.get(r).future_panel;
             b.unreserve_panel(r, fp.x, fp.y);
@@ -154,8 +157,17 @@ fn wait_for_intro(b: &mut Battle, r: ObjectRef) {
     if b.round.intro_bits & 0x02 == 0 {
         return;
     }
-    // Battle mode 6 or the remote navi: the HP HUD (sub_801DC7C).
+    show_hp_number(b, r);
     set_action(b, r, NaviAction::TakeControl);
+}
+
+/// `sub_801DC7C(0, 0)` where the navi's HP shows under it: on the other
+/// side's console, or on both in battle mode 6. (The original moves the
+/// number for NameIDs 0x49..=0x4E, viruses', which no player navi has.)
+fn show_hp_number(b: &mut Battle, r: ObjectRef) {
+    let side = b.objects.get(r).alliance;
+    let console = if battle_mode(b) == 6 { None } else { Some(side ^ 1) };
+    b.show_hp(r, 0, 0, false, console);
 }
 
 /// Action 1, `sub_8017888`: hand over to the idle controller (spawning

@@ -14,11 +14,11 @@ local weapon = require("../../../../lib/weapon")
 export type State = {
     -- Ticks left (AIAttackVars+0x10).
     timer: number,
-    -- Ticks to the next hum (AIAttackVars+0x12). The game never sets it
-    -- before counting it down: it starts from whatever the attack state
-    -- last held there, so the first hum's tick (a sound) can differ.
-    hum: number,
 }
+
+-- (The hum counts down the navi's `attack_count`, which the action never
+-- sets first: it starts from whatever an earlier action left there, so
+-- the first hum's tick depends on it.)
 
 local heat_beast_charge = {}
 
@@ -67,10 +67,10 @@ end
 
 -- `sub_80ED924`: hum every 17 ticks; after 90, idle.
 local function burn(me: Object, s: State)
-    local h = s.hum - 1
-    s.hum = h
+    local h = me.attack_count - 1
+    me.attack_count = h
     if h < 0 then
-        s.hum = 0x10
+        me.attack_count = 0x10
         battle.play_sound(HUM)
     end
     local t = s.timer - 1
@@ -83,7 +83,7 @@ end
 
 heat_beast_charge.action = define.action {
     id = "heatcross-beast/charge/action",
-    state = { timer = "u16", hum = "u16" },
+    state = { timer = "u16" },
     -- `sub_80ED8C4`.
     update = function(me: Object, s: State)
         local step = me.step

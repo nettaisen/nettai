@@ -24,7 +24,8 @@ return define.form {
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, back_special = tengu_wind.weapon },
     palette = 11,
-    mugshot = asset.mugshot("tengucross"),
+    -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
+    mugshot = { normal = asset.mugshot("tengucross"), tired = asset.mugshot("tengucross-tired") },
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "wind", damage = 10 },
     -- What its status reset gives the navi (`sub_8014536`).

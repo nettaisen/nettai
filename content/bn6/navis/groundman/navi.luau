@@ -14,6 +14,8 @@ return define.navi {
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("groundman-win"), lose = asset.banner("groundman-deleted") },
+    -- Its face in the emotion window (`byte_801CDDC`).
+    mugshot = asset.mugshot("groundman"),
     merge_height = 0,
     run_message = { 17, 20, 6 },
     own_chip = { chip = groundman, code = "G" },

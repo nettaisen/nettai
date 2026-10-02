@@ -22,7 +22,7 @@ local lib = require("../../../../lib/buster")
 local projectile = require("../../../../lib/projectile")
 local variants = require("../../../../objects/projectile/variants")
 
--- (The recovery after the shot is the navi's `recovery`, AIAttackVars+0x12:
+-- (The recovery after the shot is the navi's `attack_count`, AIAttackVars+0x12:
 -- a throw doesn't write it, so it waits the last shot's, whatever ran in
 -- between.)
 export type State = {
@@ -167,7 +167,7 @@ local function shoot(me: Object, s: State)
         else
             -- (Without a setup's projectile, the table's first row.)
             local variant, damage = s.projectile or variants.plain, damage_word(me)
-            me.recovery = projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z })
+            me.attack_count = projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z })
             if s.mode == "spread" then
                 projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z, row = 1 })
                 projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z, row = -1 })
@@ -185,7 +185,7 @@ end
 -- `sub_80EB502`: the recovery; a move may cut it short.
 local function recover(me: Object, s: State)
     if me.step_init == 0 then
-        s.timer = me.recovery
+        s.timer = me.attack_count
         me.step_init = 4
     end
     local left = s.timer - 1
