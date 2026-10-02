@@ -7,10 +7,12 @@
 local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
 local barriers = require("../lib/barriers/barriers")
 local beast_claw = require("../navis/megaman/weapons/beast-claw/weapon")
+local beast_out = require("../chips/beastout/chip")
 local charged_shot = require("../navis/megaman/weapons/charged-shot/weapon")
 local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatter")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
+local invalid = require("../chips/invalid/chip")
 local lockon = require("./lockon")
 local ruleset = require("./ruleset")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
@@ -52,6 +54,10 @@ return define.roles {
     chips = {
         -- What a zeroed chip field reads: the blank chip.
         zeroed = test_chips.blank,
+        -- The custom screen's Beast Out button, as a chip in the hand, and
+        -- what a selection the custom screen can't allow becomes: BN6's.
+        beast_out = beast_out,
+        invalid = invalid,
     },
     statuses = {
         damage_word_paralysis = statuses.paralyze_90,

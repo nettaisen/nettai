@@ -166,10 +166,11 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let v = vars(b, r).clone();
     let Vars { nudged, anim_offset, stepping, holds_while_stunned, .. } = v;
     let palette = palette(b, r, &v);
-    let (owner_anim, owner_pos, owner_flags, owner_flip) = {
+    let (owner_anim, owner_pos, owner_flip) = {
         let o = b.objects.get(owner);
-        (o.anim, o.pos, o.flags, o.flip)
+        (o.anim, o.pos, o.flip)
     };
+    let owner_shown = [0u8, 1].map(|v| b.visible_to(owner, v));
     let anim = owner_anim.wrapping_add(anim_offset);
     b.objects.get_mut(r).anim = anim;
     if anim != b.objects.get(r).anim_loaded {
@@ -177,9 +178,9 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         b.objects.sprite_mut(r).set_animation(anim, &b.content);
     }
     let nudge = if nudged { 0x1_0000 } else { 0 };
+    b.set_visible_by_viewer(r, owner_shown);
     let o = b.objects.get_mut(r);
     o.pos = Vec3 { x: owner_pos.x, y: owner_pos.y.wrapping_sub(nudge), z: owner_pos.z.wrapping_sub(nudge) };
-    o.flags = (o.flags & !flags::VISIBLE) | (owner_flags & flags::VISIBLE);
     o.flip = owner_flip;
     let alliance = o.alliance;
     // The owner's colour shader, white flash and mosaic, and its facing.

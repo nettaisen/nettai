@@ -48,7 +48,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
         state::INIT => {
             // sub_80EA384
-            b.objects.get_mut(r).flags &= !flags::VISIBLE;
+            b.objects.get_mut(r).set_visible(false);
             *vars(b, r) = Vars { timer: 0x1F, left: 4 };
             common::set_progress(b, r, Progress::UPDATE);
             tick(b, r);

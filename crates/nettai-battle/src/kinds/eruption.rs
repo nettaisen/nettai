@@ -38,7 +38,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.set_animation(0, &b.content);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
-    o.flags |= flags::VISIBLE;
+    o.set_visible(true);
     o.anim = 0;
     o.anim_loaded = 0;
     o.params[0] = o.params[0].wrapping_add(LIFETIME);
@@ -90,7 +90,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     if end {
         b.collision.get_mut(c).region = None;
         if b.field.flags(p.x, p.y) & 0x0380_0000 != 0 {
-            b.objects.get_mut(r).flags &= !flags::VISIBLE;
+            b.objects.get_mut(r).set_visible(false);
         }
     }
     let o = b.objects.get_mut(r);

@@ -191,7 +191,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     if is_plain(b, r) {
         return init_plain(b, r);
     }
-    b.objects.get_mut(r).flags |= flags::VISIBLE;
+    b.objects.get_mut(r).set_visible(true);
     let owner = b.objects.get(r).related[0].expect("afterimage has an owner");
     let identity = b.objects.get(owner).identity;
     b.objects.get_mut(r).identity = identity;
@@ -223,7 +223,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
 /// parameters), animation (the third) and flip (the fourth), and the look
 /// its spawner gave it.
 fn init_plain(b: &mut Battle, r: ObjectRef) {
-    b.objects.get_mut(r).flags |= flags::VISIBLE;
+    b.objects.get_mut(r).set_visible(true);
     let [category, index, anim, flip] = b.objects.get(r).params;
     let Vars { lifetime, plain, .. } = *vars(b, r);
     let s = b.objects.sprite_mut(r);
@@ -279,9 +279,9 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     b.objects.sprite_mut(r).update(&b.content);
     let steady = vars(b, r).plain.steady;
     let o = b.objects.get_mut(r);
-    o.flags |= flags::VISIBLE;
+    o.set_visible(true);
     if !steady && timer & 2 == 0 {
-        o.flags &= !flags::VISIBLE;
+        o.set_visible(false);
     }
 }
 

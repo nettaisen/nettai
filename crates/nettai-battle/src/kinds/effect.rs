@@ -126,7 +126,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.anim = anim;
     o.anim_loaded = anim;
-    o.flags |= flags::VISIBLE;
+    o.set_visible(true);
     o.state = state::UPDATE;
 }
 
@@ -138,9 +138,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         // Visibility follows the related object.
         let follow = matches!(&o.vars, crate::kinds::Vars::Effect(v) if v.follow_related);
         if let (true, Some(owner)) = (follow, o.related[0]) {
-            let visible = b.objects.get(owner).flags & flags::VISIBLE;
-            let o = b.objects.get_mut(r);
-            o.flags = (o.flags & !flags::VISIBLE) | visible;
+            b.copy_visibility(owner, r);
         }
         let finished = b.objects.sprite(r).frame_parameters() & crate::object::sprite::FRAME_LAST != 0;
         destroy = finished && (b.objects.get(r).timer as i16) <= 0;
@@ -148,7 +146,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     b.objects.sprite_mut(r).update(&b.content);
     if destroy {
         let o = b.objects.get_mut(r);
-        o.flags &= !flags::VISIBLE;
+        o.set_visible(false);
         o.state = state::DESTROY;
     }
 }

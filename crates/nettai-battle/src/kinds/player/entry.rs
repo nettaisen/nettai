@@ -30,7 +30,7 @@ fn appear(b: &mut Battle, r: ObjectRef) {
         // sub_80164C0
         0 => {
             let o = b.objects.get_mut(r);
-            o.flags &= !flags::VISIBLE;
+            o.set_visible(false);
             o.future_panel = o.panel;
             let p = o.panel;
             b.reserve_panel(r, p.x, p.y);
@@ -94,7 +94,7 @@ fn flash(b: &mut Battle, pos: crate::object::Vec3, look: EffectRole) {
 
 /// `loc_801655A`: the navi shows (in the fading colour shader).
 fn show(b: &mut Battle, r: ObjectRef) {
-    b.objects.get_mut(r).flags |= flags::VISIBLE;
+    b.objects.get_mut(r).set_visible(true);
 }
 
 /// `sub_80163B4`: the local navi shows at once; the other one queues for
@@ -104,7 +104,7 @@ fn wait_for_fade(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).phase_init == 0 {
         if !b.is_remote(alliance) {
             let o = b.objects.get_mut(r);
-            o.flags |= flags::VISIBLE;
+            o.set_visible(true);
             o.phase = 8;
             o.phase_init = 0;
             return;
@@ -121,7 +121,7 @@ fn wait_for_fade(b: &mut Battle, r: ObjectRef) {
         o.phase = 4;
         return;
     }
-    b.objects.get_mut(r).flags &= !flags::VISIBLE;
+    b.objects.get_mut(r).set_visible(false);
 }
 
 /// `sub_801641A`: fade in over 16 steps of 2 ticks, then leave the queue.
@@ -135,7 +135,7 @@ fn fade_in(b: &mut Battle, r: ObjectRef) {
     o.timer2 = o.timer2.wrapping_sub(1);
     if o.timer2 != 0 {
         // Mosaic and alpha follow timer2.
-        o.flags |= flags::VISIBLE;
+        o.set_visible(true);
         let t = o.timer2 as u8;
         let look = &mut b.objects.sprite_mut(r).look;
         look.mosaic = Some(t);
