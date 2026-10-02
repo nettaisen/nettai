@@ -217,9 +217,11 @@ standard chip action…), whichever section below the family belongs to:
 | CrosOver | a link navi user, no Django | a link navi can't hold the PA | unreachable | |
 | MstrCros | the Gregar tables (the beam, move 1) | the Falzar side always uses it | yes (the gregar base) | pa/0x15a-mstrcros/gregar: verified |
 | Bass, BigHook, Darkness | failed spawns, a missing flag pointer, the strike's MachGun branches | | unreachable | |
-| Count (§3.6.37, the Japanese games') | all of it: the rain, the targets (an enemy in the area, the rest shuffled), the lances, his leave, no footing | the US games' handler is null; no JP-console recording yet | yes (on a JP console) | |
-| Count | the lance's warning and stand-still-while-dimmed branches (Param3 not 2), the empty target list | only the JP navi AI's attack 0x0C drops such lances; the other side's area always has a solid panel | unreachable | |
-| Django (§3.6.38, the Japanese games') | all of it: the drop, the ride's hits, a crash into a hole, the L L L A command, the slash, no target | the US games' handler is null; no JP-console recording yet | yes (on a JP console) | |
+| Count (§3.6.37, the Japanese games') | all of it: the rain, the targets (an enemy in the area, the rest shuffled), the lances, his leave, no footing | the US games' handler is null | yes (on a JP console) | jp/chips/0x113-count/* (plain, row, back, corner, adjacent, invisible, no-footing, ko-rain, ko-lance, side1, the stages...), 0x114-count-ex, 0x115-count-sp, on EXE6 Falzar and Gregar: verified |
+| Count | the empty target list; the enemy's panel alone | the flags' "solid" is the plain panels' kind | yes | jp/chips/0x113-count/stage-grass, stage-ice (no lance), stage-poison (one): verified |
+| Count | the lance's warning and stand-still-while-dimmed branches (Param3 not 2); two or more enemy panels | only the JP navi AI's attack 0x0C drops such lances; one enemy navi, and a RockCube has no enemy's body | unreachable | |
+| Django (§3.6.38, the Japanese games') | all of it: the drop, the ride's hits, a crash into a hole, the L L L A command, the slash, no target | the US games' handler is null | yes (on a JP console) | jp/chips/0x116-django/* (ride, ride-miss, hole-ride, hole-landing, command, command-row, -far, -adjacent, -invisible, -rock-front, -late, -wrong-key, side1...), 0x117-django2, 0x118-django3, on EXE6 Falzar and Gregar: verified |
+| Django | the command's 60 ticks running out | only the ride (48 ticks) checks the command | unreachable | jp/chips/0x116-django/command-late: the keys after the ride go unread |
 | Count, Django | a full pool (no navi, lance, bike or collision data) | pool full | unreachable | |
 
 ### Shot chips (shot-chips.md §16)

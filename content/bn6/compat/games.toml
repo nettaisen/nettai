@@ -102,3 +102,9 @@ actor_lists = 0x3D90
 
 [jp-gregar.panel_ys]
 "moonbld/blade" = [0xCF, 0x9F]
+
+# Django drops from his spawner's Z onto the back column (chips/django/navi:
+# 10 ticks, gravity -0x6000, 0.375 pixels a tick): his and his bike's Z differ
+# until he lands.
+[jp-gregar.spawner_z_drops]
+"django/navi" = { ticks = 10, gravity = -24576 }
