@@ -1076,9 +1076,12 @@ are in every recording's folder or hand, the lab's filler). With the chips of §
 recording and Recov10 in 108.
 
 With BN5's MegaMan, its stages and Boomer (§15.7): 115 recordings replay, 1,261 stop at their setup; 25,170 of the
-946,555 battle frames match. Every replay matches its first 219 battle frames (the intro, the first custom
-screen, the first turn, the second custom screen) and differs at frame 361, where BN5's second custom screen has
-closed (mode 0xC) and the engine's hasn't (mode 8): BN5's custom screen (the Team Battle's) is the next step.
+946,555 battle frames match. Every replay matches its first 219 battle frames (the intro, the first turn, the
+custom screen until both results are in) and differs at frame 361, the tick both are in: BN5's custom screen mode
+(BN6's `sub_8009338`, BN5's 0x08007F50) runs the Team Battle's own routine (0x08025EF2, in place of BN6's
+`sub_8026A28`), which ends the screen on that tick (mode 0xC), where BN6's ends it on the next (the engine's
+`CustomScreens::committed`); BN5's also doesn't set the navis' AIData +0x0F as BN6's does. A choice per game in the
+engine's custom screen (§15.3 item 13).
 What the setups need most: Recov10 (108: BN5's recovery family, §15.3 item 5), WideSht1 (18), BlkBomb and Thunder
 (15 each), HolyDrem (12), Sword (11), then the chips each scenario tests.
 
@@ -1164,4 +1167,6 @@ More for §15.3:
 
 12. **A base form per game**: the engine refuses two base forms in one content; BN5's MegaMan, whose souls are
    forms, needs his own (or the base form to be a navi's).
-
+13. **The custom screen's end**: BN5's Team Battle custom screen (0x08025EF2) closes the screen on the tick both
+   results are in, BN6's on the next, and BN5's sets no AIData +0x0F on the navis (BN6's `sub_8009338` does): a
+   choice of the side's game's custom screen (`custom::GameLibrary`) or of the arena's flow.
