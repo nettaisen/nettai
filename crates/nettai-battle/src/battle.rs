@@ -466,6 +466,12 @@ pub enum RoundEnd {
     NextRound { settings: BattleSettings, score: SetScore },
     /// The battle is over.
     Over(BattleResult),
+    /// The engine stopped the battle: a tick failed (`Battle::fail`), on a
+    /// content error or a state the original can't go on from (it would read
+    /// past a table or through a null pointer). The message says what
+    /// happened. Two battles that step the same state on the same inputs
+    /// stop alike, so under netplay both peers end the match here.
+    Error(String),
 }
 
 /// The battle's result from the local side's perspective (BattleState
@@ -796,10 +802,15 @@ impl Battle {
         &self.sound[side as usize]
     }
 
-    /// One battle tick (one frame of the running battle).
+    /// One battle tick (one frame of the running battle). A battle the
+    /// engine stopped ([`RoundEnd::Error`]) doesn't tick: it stays as it is,
+    /// silent.
     pub fn tick(&mut self, input: &[PlayerTick; 2], events: TickEvents) {
         for heard in &mut self.sound {
             heard.clear();
+        }
+        if self.is_stopped() {
+            return;
         }
         for (shown, console) in self.warnings.iter_mut().zip(&mut self.consoles) {
             shown.clear();
@@ -913,6 +924,27 @@ impl Battle {
     /// How the round ended, once the end state is through.
     pub fn round_end(&self) -> Option<&RoundEnd> {
         self.outcome.as_ref()
+    }
+
+    /// Stop the battle on a failed tick: one that panicked, with `message`
+    /// (a content error, or a state the original can't go on from). The round
+    /// ends with [`RoundEnd::Error`]; the state stays as the failed tick left
+    /// it, the failed tick makes no sound, and the battle doesn't tick again.
+    /// The failed tick ran the same code on the same state up to the panic,
+    /// so two battles that fail on the same inputs are left in the same
+    /// state: under netplay, a tick that fails on confirmed inputs ends the
+    /// match on both peers, and one that fails on predicted inputs is rolled
+    /// back like any other.
+    pub fn fail(&mut self, message: impl Into<String>) {
+        for heard in &mut self.sound {
+            heard.clear();
+        }
+        self.outcome = Some(RoundEnd::Error(message.into()));
+    }
+
+    /// The engine stopped the battle ([`Battle::fail`]).
+    pub fn is_stopped(&self) -> bool {
+        matches!(self.outcome, Some(RoundEnd::Error(_)))
     }
 
     /// `sub_8007CA0`: chain the set's next round, or end the battle.

@@ -12,6 +12,14 @@
 //!
 //! The simulator (`sim`) and a frontend's host loop both drive a match
 //! this way. The peer is pure: datagrams in and out, the time passed in.
+//! Where the players' input ends at a tick both peers know (a replay's
+//! last, the simulator's `max_frames`), a peer [`Peer::drain`]s instead of
+//! deciding and advancing, until its settled state reaches the end.
+//!
+//! What the peer's world tells its observer (every tick simulated, every
+//! rewind, every tick settled) needs nothing from the host: the host reads
+//! the observer through [`Peer::session`] (`Session::world`). A peer is
+//! `Send` when its observer is, so it can run on a network thread.
 //!
 //! Rounds: a set's rounds are one session each, on one stream. When the
 //! host has finished a round (its settled state is over), it starts the
@@ -21,7 +29,7 @@
 
 use std::collections::VecDeque;
 
-use getgud::{Advance, Session};
+use getgud::{Advance, Confirmed, Session};
 
 use crate::link::{Delivery, InputLink, LinkError, LinkStats};
 use crate::protocol::{self, WireInput};
@@ -102,6 +110,9 @@ pub struct PeerStats {
     pub stalls: u64,
     /// Wall frames the stall guard held the peer.
     pub parked: u64,
+    /// Rows settled by promoting their speculation (the simulator counts
+    /// them; the rest were simulated as they settled).
+    pub promoted: u64,
 }
 
 impl PeerStats {
@@ -288,8 +299,31 @@ where
         r
     }
 
+    /// The player's input has ended (at a tick both peers know): settle
+    /// what the other player's last inputs confirm, without new input and
+    /// speculating nothing past the end (getgud's `drain`), and look at the
+    /// rows that settled. Call it each frame instead of deciding and
+    /// advancing, until `session().is_drained()`; present the settled state.
+    pub fn drain<R>(&mut self, look: impl FnOnce(Vec<Confirmed<'_, BattleWorld<G, O>>>) -> R) -> R {
+        assert!(self.decided.is_none(), "drain instead of deciding an input");
+        let r = match self.session.drain() {
+            Ok(rows) => look(rows),
+            Err(e) => match e {},
+        };
+        let depth = self.session.last_misprediction_depth();
+        self.stats.last_rollback = depth;
+        if depth > 0 {
+            self.stats.rollbacks += 1;
+            self.stats.resimulated += depth as u64;
+            self.stats.max_rollback = self.stats.max_rollback.max(depth);
+        }
+        r
+    }
+
     /// This peer's round is over (its settled state is): mark the stream and
-    /// play the next round on `next`, a world at its start.
+    /// play the next round on `next`, a world at its start. (An observer
+    /// that goes on from round to round, the sound, the host takes from this
+    /// round's world first: `session_mut().world_mut().observer_mut()`.)
     pub fn end_round(&mut self, next: BattleWorld<G, O>) {
         assert!(self.decided.is_none(), "a round ends between frames");
         self.link.push_round_end();

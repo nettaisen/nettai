@@ -375,7 +375,7 @@ pub fn tick_lifetime(b: &mut Battle, r: ObjectRef) {
         return;
     }
     if t <= 0xB4 && t & 2 != 0 {
-        o.flags &= !flags::VISIBLE;
+        o.set_visible(false);
     }
 }
 
@@ -484,21 +484,19 @@ pub fn shared_action(b: &mut Battle, r: ObjectRef, a: SharedAction) -> Result<()
 }
 
 /// `sub_80181F6`: visible unless while dimmed; hidden from a blinded
-/// local player when on the other side.
+/// player when on the other side (each console's rule, decided for both
+/// viewers).
 fn update_visibility(b: &mut Battle, r: ObjectRef) {
     if !b.is_dimmed() {
-        b.objects.get_mut(r).flags |= flags::VISIBLE;
+        b.objects.get_mut(r).set_visible(true);
     }
     let alliance = b.objects.get(r).alliance;
-    if b.round.local_side ^ alliance == 0 {
-        return;
-    }
-    let Some(p) = b.player(alliance ^ 1) else { return };
     // (Players always have collision data.)
-    let blind = b.objects.get(p).collision.is_some_and(|c| b.collision.get(c).f1 & f1::BLIND != 0);
-    if blind {
-        b.objects.get_mut(r).flags &= !flags::VISIBLE;
-    }
+    let hidden = [0u8, 1].map(|viewer| {
+        viewer != alliance & 1
+            && b.player(viewer).and_then(|p| b.objects.get(p).collision).is_some_and(|c| b.collision.get(c).f1 & f1::BLIND != 0)
+    });
+    b.hide_from(r, hidden);
 }
 
 /// `sub_801823C`: while dimmed, stand still, shaking for 30 ticks
@@ -741,9 +739,9 @@ fn encased(b: &mut Battle, r: ObjectRef) {
         // sub_8018186: flicker (hidden, with a new effect, two ticks of
         // every four); at the end, replaced.
         4 => {
-            b.objects.get_mut(r).flags |= flags::VISIBLE;
+            b.objects.get_mut(r).set_visible(true);
             if b.objects.get(r).shake_timer & 2 == 0 {
-                b.objects.get_mut(r).flags &= !flags::VISIBLE;
+                b.objects.get_mut(r).set_visible(false);
                 let pos = b.objects.get(r).pos;
                 let look = b.content.defs.roles.effect(EffectRole::Encased);
                 crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
@@ -1082,9 +1080,9 @@ pub fn blink_out(b: &mut Battle, r: ObjectRef) -> BlinkOut {
         o.phase_init = 1;
         o.timer = 0x14;
     }
-    o.flags |= flags::VISIBLE;
+    o.set_visible(true);
     if o.timer & 2 == 0 {
-        o.flags &= !flags::VISIBLE;
+        o.set_visible(false);
     }
     let t = o.timer as i32 - 1;
     o.timer = t as u16;
@@ -1123,6 +1121,6 @@ pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, look: RecordHandle) {
 
 /// Done: hidden, and destroyed at the next update.
 pub fn finish(b: &mut Battle, r: ObjectRef) {
-    b.objects.get_mut(r).flags &= !flags::VISIBLE;
+    b.objects.get_mut(r).set_visible(false);
     common::set_progress(b, r, Progress::DESTROY);
 }

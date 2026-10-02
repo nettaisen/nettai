@@ -126,8 +126,9 @@ impl Game for Battle {
 
 /// Feeds what a peer simulates to a [`CueTracker`] for one viewer: the
 /// sound a frontend on that peer plays. Give it to the peer's world
-/// ([`crate::world::BattleWorld::with_observer`], shared with the host)
-/// and tell it what settles after each advance.
+/// ([`crate::world::BattleWorld::with_observer`]), which tells it every
+/// tick simulated, every rewind and every tick settled; the host reads its
+/// actions through the session (`Session::world`).
 #[derive(Clone, Debug)]
 pub struct CueFeed {
     /// The side whose player listens.
@@ -179,11 +180,9 @@ impl<G: Game> Observer<G> for CueFeed {
         }
     }
 
-    fn confirmed(&mut self, frames: u32, _settled: &Battle) {
-        self.tracker.confirmed(frames);
-        while let Some((frame, _)) = self.unconfirmed.front()
-            && *frame < frames
-        {
+    fn confirmed(&mut self, frame: u32, _settled: Option<&Battle>) {
+        self.tracker.confirmed(frame + 1);
+        if self.unconfirmed.front().is_some_and(|&(f, _)| f == frame) {
             let (frame, cues) = self.unconfirmed.pop_front().unwrap();
             self.confirmed.extend(cues.into_iter().map(|c| (frame, c)));
         }
