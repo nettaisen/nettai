@@ -77,3 +77,13 @@
 "shot/charged-grass" = 37
 "shot/charged-freezing" = 38
 "shot/charged-ice" = 39
+
+# The barriers a navi's stats name as the one it enters with (NaviStats+0x06), by the
+# type `sub_801A7CC` takes (the byte 0 is none): the NaviCust's FirstBarrier sets 1, the
+# patch cards 1, 5, 7, 8 and 9.
+[barriers]
+"barrier/10" = 1
+"barrier/100" = 5
+"barrier/200" = 7
+"barrier/bubble" = 8
+"barrier/life-aura" = 9

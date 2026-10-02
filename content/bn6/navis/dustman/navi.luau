@@ -34,7 +34,7 @@ return define.navi {
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },
-    fresh = { hp = 250, super_armor = true, first_barrier = 0, mega_level = 5, giga_level = 1 },
+    fresh = { hp = 250, super_armor = true, mega_level = 5, giga_level = 1 },
     cross_hp = { 150, 150 },
     identity = define.identity {
         class = "link_navi",
