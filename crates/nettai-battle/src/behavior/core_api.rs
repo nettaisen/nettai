@@ -7,7 +7,7 @@ use nettai_content_api::api::ApiResult;
 use nettai_content_api::api::ObstacleFlag;
 use nettai_content_api::{
     ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep,
-    Emotion, FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
+    Emotion, FieldType, FieldValue, HitboxSpec, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
     ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
@@ -304,6 +304,16 @@ impl CoreApi for Battle {
 
     fn shake_camera(&mut self, magnitude: u16, ticks: u16) {
         Battle::shake_camera(self, magnitude, ticks);
+    }
+
+    fn show_hud(&mut self, part: HudPart, shown: bool) {
+        let h = &mut self.hud_hidden;
+        let hidden = match part {
+            HudPart::Gauge => &mut h.gauge,
+            HudPart::EmotionWindow => &mut h.emotion_window,
+            HudPart::LevelGauge => &mut h.level_gauge,
+        };
+        *hidden = !shown;
     }
 
     fn play_sound(&mut self, sound: u16) {
@@ -1687,6 +1697,8 @@ impl CoreApi for Battle {
             DimmingStep::CheckAntiNavi => d::check_anti_navi(self, o, chip),
             DimmingStep::ShowNaviTelop => d::show_navi_telop(self, o, chip),
             DimmingStep::UndimScreen => d::undim_screen(self, o),
+            DimmingStep::FadeToBlack => d::fade_to_black(self, o),
+            DimmingStep::FadeFromBlack => d::fade_from_black(self, o),
             DimmingStep::Finish => d::end(self, o),
         }
     }

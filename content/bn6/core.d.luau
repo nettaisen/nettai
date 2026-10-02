@@ -50,6 +50,10 @@ export type ActorType = "virus" | "navi" | "player"
 export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out"
 -- A side's SELECT or Cross special in progress (battle flag 0x40 mode).
 export type SideSpecial = "none" | "select" | "cross"
+-- A HUD part a chip's effect hides and shows: the custom gauge (draw task
+-- 4), the emotion window (14), the battle flag 0x40 mode's gauge drawn by
+-- its levels (17).
+export type HudPart = "gauge" | "emotion_window" | "level_gauge"
 export type PanelType =
     "missing"
     | "broken"
@@ -855,6 +859,9 @@ declare battle: {
     -- at `magnitude` (0-3). Drawn only, but each shaking tick draws from
     -- the consoles' own RNGs, which ChpShufl's re-deal reads.
     shake_camera: (magnitude: number, ticks: number) -> (),
+    -- `sub_801DA48` (`shown`) or `sub_801DACC` with the parts' HUD draw
+    -- tasks: every console shows or hides them (drawn only).
+    show_hud: (parts: { HudPart }, shown: boolean) -> (),
     navi: (side: number) -> Navi,
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
@@ -1038,6 +1045,13 @@ declare dimming: {
     show_navi_telop: (controller: Object, chip: Chip?) -> (),
     -- `object_undimScreen`.
     undim_screen: (controller: Object) -> (),
+    -- The Gregar and Falzar chips' controllers' first action in place of
+    -- the dim (the Japanese ROMs' 0x080EDD0C and 0x080EDED0): the field
+    -- darkens to black, then the next action.
+    fade_to_black: (controller: Object) -> (),
+    -- `sub_800BCF6`, their last in place of the undim: back from black (to
+    -- the dim at once while the other side's dimming runs), then end.
+    fade_from_black: (controller: Object) -> (),
     -- `sub_800BF16`: `side` starts a dimming with `controller` (nil if its
     -- spawn failed), used by `user`; `no_cut_in`: the other side can't cut
     -- in. For controllers no chip action registers (a trap springing).

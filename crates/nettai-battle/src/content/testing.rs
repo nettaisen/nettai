@@ -243,6 +243,10 @@ pub const MINE: &str = "mine";
 /// content defines, which send bees and an elec dragon.
 pub const BEES: &str = "rskyhny2";
 pub const DRAGON: &str = "elecdrgn";
+/// BN6's Gregar and Falzar (chips/gregar, chips/falzar: the Japanese ROMs'
+/// giga cut-in chips), which summon the cyber beasts.
+pub const GREGAR: &str = "gregar";
+pub const FALZAR: &str = "falzar";
 
 /// The content model v2 test pack (crates/nettai-battle/testdata/pack):
 /// definitions the engine's tests run.
@@ -1258,6 +1262,9 @@ pub fn scripts() -> Scripts {
                 ("chips/colorpt/chips", "chips/colorpt/chips"),
                 ("chips/colorpt/controller", "chips/colorpt/controller"),
                 ("chips/colorpt/point", "chips/colorpt/point"),
+                // The Gregar and Falzar chips (the Japanese ROMs' routines).
+                ("chips/gregar/chip", "chips/gregar/chip"),
+                ("chips/falzar/chip", "chips/falzar/chip"),
             ];
             let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string()));
             let own = modules_under(TEST_CONTENT);

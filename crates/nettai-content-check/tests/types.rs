@@ -116,6 +116,9 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local function f(me: Object) battle.set_wind(me, 0, \"chip\") end", "not a wind source"),
         // Dimming chip subtypes 2, 3, 5, 15 and 27.
         ("field.blink(1, 1, \"lava\", 0)", "a blink to not a panel type"),
+        // The Gregar and Falzar chips.
+        ("battle.show_hud({ \"chips\" }, false)", "not a HUD part"),
+        ("battle.show_hud(\"gauge\", false)", "a HUD part, not a list of them"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");

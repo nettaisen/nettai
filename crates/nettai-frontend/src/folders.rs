@@ -36,10 +36,6 @@ use nettai_content_api::ChipHandle;
 const LAST_PACK_CHIP: u16 = 0x13A;
 /// The extra flag of the chips the pack doesn't list (the dark chips).
 const NOT_IN_PACK: u8 = 0x20;
-/// The chips with no routine in the US game (the Gregar and Falzar chips'
-/// dimmings, lib/unusable.luau's; HackJack's navi, which content/bn6 has
-/// from the Japanese games; Django's chips are no folder chips there).
-const NO_ROUTINE: [&str; 5] = ["gregar", "falzar", "hackjack", "hackjck-ex", "hackjck-sp"];
 /// Chips with the dark flag a folder can hold (`sub_8135080`).
 const DARK_CHIPS: usize = 3;
 
@@ -86,7 +82,6 @@ pub fn folder_chips(content: &Content) -> Vec<ChipHandle> {
                 && !r.codes.is_empty()
                 && listed
                 && r.extra_flags.0 & NOT_IN_PACK == 0
-                && !NO_ROUTINE.contains(&d.key.as_str())
         })
         .map(|(i, _)| ChipHandle(i as u16))
         .collect()
@@ -275,13 +270,14 @@ mod tests {
         let content = bn6_test_content();
         let pool = folder_chips(&content);
         // The pack's folder chips: no Program Advance, no dark chip, none
-        // without a routine, none past the pack's (the BeastOut chip).
+        // without a routine, none past the pack's (the BeastOut chip). The
+        // Gregar and Falzar chips have the Japanese games' routines.
         let keys: Vec<&str> = pool.iter().map(|&c| content.defs.chip(c).key.as_str()).collect();
         assert!(keys.len() > 250, "{} chips", keys.len());
-        for key in ["cannon", "roll", "bass", "gundels1", "areagrab"] {
+        for key in ["cannon", "roll", "bass", "gundels1", "areagrab", "gregar", "falzar"] {
             assert!(keys.contains(&key), "{key}");
         }
-        for key in ["drksword", "hackjack", "gregar", "falzar", "beastout", "django", "gigacan1"] {
+        for key in ["drksword", "hackjack", "beastout", "django", "gigacan1"] {
             assert!(!keys.contains(&key), "{key}");
         }
         for seed in 0..50 {
