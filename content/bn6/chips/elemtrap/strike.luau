@@ -2,9 +2,10 @@
 -- ElemTrap's counterattack (the original's effect object #0x2B,
 -- `sub_80E35A4`): a dimming controller its trap (./trap) starts when it
 -- springs, at the head of the update list. The usual dimming phases
--- (lib/dimming), with an effect that strikes every panel the enemy stands
--- on in the element that sprang the trap (the damage plus the bonus; elec
--- and wood hits carry a status too), sets off bursts over the whole field
+-- (lib/dimming; its telop names the trap's chip, ElemTrap, with its bonus),
+-- with an effect that strikes every panel the enemy stands on in the
+-- element that sprang the trap (the damage plus the bonus; elec and wood
+-- hits carry a status too), sets off bursts over the whole field
 -- (objects/panel-bursts), and waits 61 ticks.
 
 local collision = require("../../rules/collision")

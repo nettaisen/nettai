@@ -29,7 +29,7 @@ use bn6_content_api::{
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
 use bn6_content_api::ObjectRef;
-use bn6_content_api::{CollisionHandle, EffectHandle, RegionHandle, SparkHandle};
+use bn6_content_api::{ChipHandle, CollisionHandle, EffectHandle, RegionHandle, SparkHandle};
 
 use crate::Bound;
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
@@ -1028,6 +1028,21 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = side.map(|s| u8_arg(s, "side")).transpose()?.map(|s| s & 1);
         with(|api, _| Ok(api.warn(id, at.map(|p| p.0), side)))
     });
+    lib_fn!(lua, t, "show_hp", |_, (o, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
+        let offset = |key: &str| -> mlua::Result<i8> {
+            match spec.get::<LuaValue>(key)? {
+                LuaValue::Nil => Ok(0),
+                v => {
+                    let n = int(&v, key)?;
+                    i8::try_from(n).map_err(|_| mlua::Error::runtime(format!("battle.show_hp: {key} {n} is past a signed byte")))
+                }
+            }
+        };
+        let (dx, dy) = (offset("dx")?, offset("dy")?);
+        let damage = spec.get::<Option<bool>>("damage")?.unwrap_or(false);
+        with(|api, _| Ok(api.show_hp(o.0, dx, dy, damage)))
+    });
+    lib_fn!(lua, t, "hide_hp", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_hp(o.0))));
     lib_fn!(lua, t, "shake_camera", |_, (magnitude, ticks): (LuaValue, LuaValue)| {
         let (magnitude, ticks) = (u16_arg(magnitude, "magnitude")?, u16_arg(ticks, "ticks")?);
         if magnitude > 3 {
@@ -1461,10 +1476,25 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         lua,
         t,
         "start",
-        |_, (side, no_cut_in, controller, user): (LuaValue, bool, LuaValue, mlua::UserDataRef<Object>)| {
+        |_, (side, no_cut_in, controller, user, telop): (LuaValue, bool, LuaValue, mlua::UserDataRef<Object>, Option<mlua::Table>)| {
             let side = u8_arg(side, "side")? & 1;
             let controller = object_arg(&controller, "controller")?;
-            with(|api, _| Ok(api.start_dimming(side, no_cut_in, controller, user.0)))
+            // What the telop names: `{ chip = <chip>?, bonus = n? }`.
+            let telop = match telop {
+                None => None,
+                Some(t) => {
+                    let chip = match t.get::<LuaValue>("chip")? {
+                        LuaValue::Nil => None,
+                        c => Some(ChipHandle(bound(|b| def_arg(b, &c, Registry::Chip, "dimming.start's telop chip"))?)),
+                    };
+                    let bonus = match t.get::<LuaValue>("bonus")? {
+                        LuaValue::Nil => 0,
+                        v => u16_arg(v, "dimming.start's telop bonus")?,
+                    };
+                    Some((chip, bonus))
+                }
+            };
+            with(|api, _| Ok(api.start_dimming(side, no_cut_in, controller, user.0, telop)))
         }
     );
     lib_fn!(lua, t, "hide_user", |_, user: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_user(user.0))));

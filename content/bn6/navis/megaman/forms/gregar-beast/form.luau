@@ -14,7 +14,9 @@ return define.form {
     element = "null",
     buster_bonus = 0,
     weapons = { buster = gregar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = beast_claw.weapon },
-    mugshot = asset.mugshot("falzar-beast"),
+    -- Its faces in the emotion window, and in Full Synchro (`byte_801E700`): the
+    -- Falzar ROM has no Gregar Beast face, and shows Falzar's.
+    mugshot = { normal = asset.mugshot("falzar-beast"), full_synchro = asset.mugshot("falzar-beast-full-synchro") },
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
     null_bonus = 30,
     -- The chips A charges.

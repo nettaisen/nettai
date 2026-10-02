@@ -11,7 +11,7 @@
 
 use std::fmt;
 
-use crate::registry::Registry;
+use crate::registry::{ChipHandle, Registry};
 use crate::state::{ContentState, FieldType, StateId, TypeError, Value};
 use crate::types::{ObjectRef, PanelPos, SpriteId, Vec3};
 
@@ -271,10 +271,12 @@ named_fields! {
         /// and animation.
         ThrownLook = "thrown_look", Ref(Registry::Record, Some("absorbed-look".into())), rw;
         ThrownAnim = "thrown_anim", U8, rw;
-        /// The recovery a shot waits after firing, a word of the attack
-        /// that outlives the action: an action that waits it without
-        /// writing it (a thrown obstacle) waits the last shot's.
-        Recovery = "recovery", U16, rw;
+        /// The attack's count (AIAttackVars+0x12): what an action counts
+        /// (its shots, swings, slashes, a hold's ticks, the recovery after
+        /// a shot), a word every action shares and none clears, so an
+        /// action that reads it before writing it reads what an earlier one
+        /// left.
+        AttackCount = "attack_count", U16, rw;
         ActorType = "actor_type", enum_type(&ACTOR_TYPES), ro;
         /// Form or AI variant.
         AiIndex = "ai_index", U8, ro;
@@ -985,6 +987,13 @@ pub trait CoreApi {
     /// `sound` on every 16th frame of a console's own frame counter; on
     /// `side`'s console only, or on both.
     fn warn(&mut self, sound: u16, at: Option<Vec3>, side: Option<u8>);
+    /// `sub_801DC7C(dx, dy)`: every console's HUD numbers `o`'s HP under
+    /// it (output only), `dx`, `dy` pixels from where it projects `o`'s
+    /// position; `damage`: the damage `o` took instead (its max HP less its
+    /// HP), uncentred.
+    fn show_hp(&mut self, o: ObjectRef, dx: i8, dy: i8, damage: bool);
+    /// `sub_801DD34`: `o`'s HP number goes.
+    fn hide_hp(&mut self, o: ObjectRef);
     /// `camera_initShakeEffect_80302a8`: both consoles' cameras shake for
     /// `ticks` ticks at `magnitude` (0-3). Each shaking tick draws from
     /// the consoles' own RNGs, which ChpShufl's re-deal reads.
@@ -1419,7 +1428,18 @@ pub trait CoreApi {
     /// `sub_800BF16`: `side` starts a dimming with `controller` (None: its
     /// spawn failed), used by `user`; `no_cut_in`: the other side can't cut
     /// in on it. For controllers that aren't a chip's (a trap springing).
-    fn start_dimming(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef);
+    /// `telop`: the chip its telop names (None: a zeroed chip field's, the
+    /// roles' `zeroed` chip) and the bonus shown with it (what the
+    /// controller's spawn stored at its +0x30 and +0x32; presentation
+    /// only).
+    fn start_dimming(
+        &mut self,
+        side: u8,
+        no_cut_in: bool,
+        controller: Option<ObjectRef>,
+        user: ObjectRef,
+        telop: Option<(Option<ChipHandle>, u16)>,
+    );
     /// `sub_80E1352`: a navi chip's user vanishes while its navi acts.
     fn hide_user(&mut self, user: ObjectRef);
     /// `sub_80E13DC`: and comes back.

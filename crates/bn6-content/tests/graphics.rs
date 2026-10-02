@@ -109,9 +109,7 @@ fn bundle() -> Bundle {
         mugshots: vec![(tiles(8, 16), palette(45)), (tiles(8, 17), palette(46))],
         counts: (0..11).map(|i| tiles(4, 18 + i)).collect(),
         count_box: tiles(4, 29),
-        form_emotions: vec![0, 3, 7],
         navi_mugshots: vec![NaviMugshot { tiles: tiles(8, 30), palettes: [palette(47), palette(48)] }],
-        navi_mugshot_of: vec![0, 0],
         navi_box: tiles(4, 31),
         pause: tiles(10, 32),
         texts: vec![vec![1, 2, 3], vec![]],
@@ -123,6 +121,8 @@ fn bundle() -> Bundle {
         banner_palette: palette(47),
         waiting: tiles(16, 32),
         waiting_palette: palette(47),
+        warning: tiles(8, 33),
+        warning_palette: palette(49),
     };
     Bundle { sprites: vec![sprite(0, 1), sprite(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud, custom: custom() }
 }
@@ -258,7 +258,7 @@ fn the_asset_index_lists_every_asset_by_name() {
     assert_eq!(index.banners.get("heatman-win"), Some(&0xA0));
     assert_eq!(index.backgrounds.get("clouds"), Some(&0));
     assert_eq!(index.banners.len(), b.hud.banners.len() + 1);
-    assert_eq!(index.mugshots.len(), b.hud.mugshots.len());
+    assert_eq!(index.mugshots.len(), b.hud.mugshots.len() + b.hud.navi_mugshots.len());
     assert!(AssetNames::is_placeholder(AssetKind::Sound, "sound-002"));
     pack::write_files(&dir, &vec![bn6_content::names::index_file(&index)]).unwrap();
     let mut r = Report::default();

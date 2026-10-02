@@ -195,7 +195,7 @@ local function start_strike(me: Object)
     me.alliance = side
     -- (The HUD: sub_801DACC(0x40).)
     local controller = strike.spawn(me)
-    dimming.start(side, true, controller, me)
+    dimming.start(side, true, controller, me, strike.telop)
     me.phase = 4
 end
 

@@ -318,6 +318,14 @@ impl CoreApi for Battle {
         Battle::warn(self, SoundId(sound), at, side);
     }
 
+    fn show_hp(&mut self, o: ObjectRef, dx: i8, dy: i8, damage: bool) {
+        Battle::show_hp(self, o, dx, dy, damage, None);
+    }
+
+    fn hide_hp(&mut self, o: ObjectRef) {
+        Battle::hide_hp(self, o);
+    }
+
     fn navi_stat(&self, side: u8, stat: NaviStat) -> Value {
         let s = &self.stats[side as usize & 1];
         let i = |v: i64| Value::Int(v);
@@ -1086,7 +1094,7 @@ impl CoreApi for Battle {
             ActorField::Marker => i(at.marker as i64),
             ActorField::ThrownLook => at.thrown_look.map_or(Value::Nil, |h| Value::Def(Registry::Record, h.0)),
             ActorField::ThrownAnim => i(at.thrown_anim as i64),
-            ActorField::Recovery => i(at.recovery as i64),
+            ActorField::AttackCount => i(at.count as i64),
             ActorField::ActorType => i(actor_type_index(a.actor_type)),
             ActorField::AiIndex => i(a.ai_index as i64),
             ActorField::LockonMarker => a.lockon_marker.into(),
@@ -1166,7 +1174,7 @@ impl CoreApi for Battle {
             (ActorField::Marker, FieldValue::U32(x)) => at.marker = x,
             (ActorField::ThrownLook, FieldValue::Ref(_)) => at.thrown_look = thrown_look,
             (ActorField::ThrownAnim, FieldValue::U8(x)) => at.thrown_anim = x,
-            (ActorField::Recovery, FieldValue::U16(x)) => at.recovery = x,
+            (ActorField::AttackCount, FieldValue::U16(x)) => at.count = x,
             (ActorField::LockonMarker, FieldValue::Object(r)) => a.lockon_marker = r,
             (ActorField::ChargeGlow, FieldValue::Object(r)) => a.charge_glow = r,
             (ActorField::FullSynchroAura, FieldValue::Object(r)) => a.full_synchro_aura = r,
@@ -1683,7 +1691,19 @@ impl CoreApi for Battle {
         }
     }
 
-    fn start_dimming(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef) {
+    fn start_dimming(
+        &mut self,
+        side: u8,
+        no_cut_in: bool,
+        controller: Option<ObjectRef>,
+        user: ObjectRef,
+        telop: Option<(Option<ChipHandle>, u16)>,
+    ) {
+        // What its telop shows (the controller's +0x30 and +0x32, which the
+        // controller's own spawn stored).
+        if let (Some(c), Some((chip, bonus))) = (controller, telop) {
+            self.objects.get_mut(c).telop_chip = Some(crate::hud::TelopChip { chip, bonus, damage: None });
+        }
         Battle::start_dimming(self, side & 1, no_cut_in, controller, user);
     }
 
