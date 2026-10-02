@@ -177,9 +177,9 @@ fn effects_play_over_the_music() {
 fn the_game_queue_holds_32_calls_a_frame() {
     let mut a = BattleAudio::new(bank(), Songs::numbers(0x200));
     a.handle(&[SoundCue::Effect(SoundId(0x94)); 40]);
-    assert_eq!(a.queue.len(), QUEUE_LIMIT);
+    assert_eq!(a.packs[0].queue.len(), QUEUE_LIMIT);
     a.tick(&mut Vec::new());
-    assert!(a.queue.is_empty());
+    assert!(a.packs[0].queue.is_empty());
 }
 
 #[test]
@@ -214,4 +214,28 @@ fn wav_files_are_16_bit_stereo() {
     assert_eq!(u16::from_le_bytes(b[22..24].try_into().unwrap()), 2);
     let s = |i: usize| i16::from_le_bytes(b[44 + 2 * i..46 + 2 * i].try_into().unwrap());
     assert_eq!((s(0), s(1), s(2), s(3)), (16384, -16384, 32767, 0));
+}
+
+/// docs/design/rules-in-luau.md §7.4: each pack's songs play on its own
+/// driver, with its own instruments; music of another pack stops the
+/// music that played, and the drivers' outputs are added.
+#[test]
+fn each_pack_plays_its_own_songs() {
+    use nettai_battle::content::{InPack, PackId};
+    let songs = Songs(vec![InPack { pack: PackId(0), id: VIRUS_BATTLE.0 }, InPack { pack: PackId(1), id: VIRUS_BATTLE.0 }]);
+    let mut a = BattleAudio::with_banks(vec![bank(), bank()], songs);
+    let mut out = Vec::new();
+    let playing = |a: &BattleAudio, p: u8| a.driver_of(PackId(p)).unwrap().player(MUSIC_PLAYER).is_some_and(|m| m.is_playing());
+    a.handle(&[SoundCue::Music(SoundId(0))]);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert!(playing(&a, 0) && !playing(&a, 1));
+    a.handle(&[SoundCue::Music(SoundId(1))]);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert!(!playing(&a, 0) && playing(&a, 1), "the music moved to the other pack's player");
+    // One frame's samples, however many packs.
+    out.clear();
+    a.tick(&mut out);
+    assert!((out.len() as i64 - 549).abs() <= 8, "{} samples for a frame", out.len());
 }

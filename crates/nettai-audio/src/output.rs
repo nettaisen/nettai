@@ -56,6 +56,12 @@ pub struct AudioOut {
 
 impl AudioOut {
     pub fn new(bank: Arc<SoundBank>, songs: crate::Songs) -> Result<AudioOut, OutputError> {
+        AudioOut::with_banks(vec![bank], songs)
+    }
+
+    /// The sound of several packs (`banks` by `PackId`) on the default
+    /// output device.
+    pub fn with_banks(banks: Vec<Arc<SoundBank>>, songs: crate::Songs) -> Result<AudioOut, OutputError> {
         let device = cpal::default_host().default_output_device().ok_or(OutputError::NoDevice)?;
         let config = device.default_output_config().map_err(|e| OutputError::Device(e.to_string()))?;
         let device_rate = config.sample_rate().0;
@@ -96,7 +102,7 @@ impl AudioOut {
         }
         .map_err(|e| OutputError::Device(e.to_string()))?;
         stream.play().map_err(|e| OutputError::Device(e.to_string()))?;
-        Ok(AudioOut { audio: BattleAudio::new(bank, songs), shared, frame: Vec::new(), device_rate, _stream: stream })
+        Ok(AudioOut { audio: BattleAudio::with_banks(banks, songs), shared, frame: Vec::new(), device_rate, _stream: stream })
     }
 
     /// Queue a tick's cues (see [`BattleAudio::handle`]).
