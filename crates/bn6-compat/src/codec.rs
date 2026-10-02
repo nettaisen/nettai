@@ -16,7 +16,7 @@ use nettai_battle::setup::{
     BattleSettings, GaugeSpeed, NaviCustBugs, NaviStats, NaviWeapons, SpTimes, Stage, Supports,
 };
 use nettai_battle::transform::TransformRequest;
-use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, RecordHandle, StageHandle, WeaponHandle};
+use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle, RecordHandle, StageHandle, WeaponHandle};
 
 // ---- Numbers and handles ----------------------------------------------------------
 
@@ -145,6 +145,25 @@ impl<'a> Ids<'a> {
             .record(key)
             .unwrap_or_else(|| panic!("the content has no projectile variant {key:?} (row {row:#x})"));
         Some(h)
+    }
+
+    /// The patch card a save's card list names by its number (compat
+    /// cards.toml).
+    pub fn patch_card(&self, number: u8) -> PatchCardHandle {
+        let key = self
+            .compat
+            .cards
+            .iter()
+            .find(|(_, n)| **n == number)
+            .map(|(k, _)| k.as_str())
+            .unwrap_or_else(|| panic!("cards.toml has no patch card {number}"));
+        self.content.defs.patch_card_by_key(key).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
+    }
+
+    /// A patch card's number.
+    pub fn patch_card_number(&self, h: PatchCardHandle) -> u8 {
+        let key = &self.content.defs.patch_card(h).key;
+        *self.compat.cards.get(key).unwrap_or_else(|| panic!("cards.toml has no patch card {key:?}"))
     }
 
     /// The barrier a first-barrier byte names (NaviStats+0x06, the

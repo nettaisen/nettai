@@ -812,6 +812,17 @@ impl CoreApi for Battle {
         Some(self.objects.get(o).kind.0)
     }
 
+    fn rush_cancels(&mut self, o: ObjectRef, chip: u16) -> ApiResult<bool> {
+        self.actor_of(o)?;
+        Ok(kinds::player::rush_cancels(self, o, nettai_content_api::ChipHandle(chip)))
+    }
+
+    fn load_chip_attack(&mut self, o: ObjectRef, chip: u16) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::load_chip_attack(self, o, nettai_content_api::ChipHandle(chip));
+        Ok(())
+    }
+
     fn navi_action(&self, o: ObjectRef) -> ApiResult<NaviAction> {
         use kinds::player::{EngineAction as E, NaviAction as A};
         Ok(match self.actor_of(o)?.navi_action {

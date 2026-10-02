@@ -1230,6 +1230,15 @@ pub trait CoreApi {
     /// What navi `o` runs: a content action (by handle), or one of the
     /// ruleset's own states and actions (by name).
     fn navi_action(&self, o: ObjectRef) -> ApiResult<NaviAction>;
+    /// `loc_80126EA`: chip `chip` (a handle) as the navi's attack: its
+    /// record's damage, hit parameter, lockout and element, no bonus, not
+    /// charged (the weapon routines that fire a chip; a use's
+    /// `sub_80126E4` without its count).
+    fn load_chip_attack(&mut self, o: ObjectRef, chip: u16) -> ApiResult<()>;
+    /// `sub_8010740`: in a link battle, the opponent's support Rush takes
+    /// `chip` from the navi `o` if the chip is one it cancels (flags2 bit
+    /// 2): the support comes and is spent. Whether it did.
+    fn rush_cancels(&mut self, o: ObjectRef, chip: u16) -> ApiResult<bool>;
     /// Free the slot now (the object stops running).
     fn free(&mut self, o: ObjectRef);
     /// `object_genericDestroy`: release panel reservations and collision,
