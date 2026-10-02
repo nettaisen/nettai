@@ -7,7 +7,7 @@
 //! numbers (chip ids, navi and form numbers, weapon routines, battle
 //! settings indices). [`Ids`] maps one to the other through compat's keys.
 
-use crate::Compat;
+use crate::{Compat, Game};
 use bn6_battle::content::{ChipCode, Content};
 use bn6_battle::custom::folder::FOLDER_SIZE;
 use bn6_battle::custom::{BattleFolder, FolderChip};
@@ -406,19 +406,20 @@ const NO_MUSIC: u8 = 0x63;
 /// Netbattle settings from the game's 16-byte BattleSettings record: the
 /// stage whose record it is, with the record's background and effects.
 /// Byte 0 names the panel layout by number and bytes 12..16 the actor list
-/// by its address, which compat's stages have; the stage is the first, by
-/// key, with that layout and actor list whose music, mode, battle number
-/// and panel pattern match. Byte 1 (read by `GetBattleSettingsUnk01`,
-/// outside the battle simulation) and byte 7 (no reader found) are not
-/// kept.
-pub fn battle_settings(b: &[u8], ids: &Ids) -> BattleSettings {
+/// by its address in `game`'s ROM (compat's stages have Falzar's;
+/// games.toml says where Gregar's are); the stage is the first, by key,
+/// with that layout and actor list whose music, mode, battle number and
+/// panel pattern match. Byte 1 (read by `GetBattleSettingsUnk01`, outside
+/// the battle simulation) and byte 7 (no reader found) are not kept.
+pub fn battle_settings(b: &[u8], ids: &Ids, game: Game) -> BattleSettings {
     let content = ids.content;
     let address = u32::from_le_bytes(b[12..16].try_into().unwrap());
+    let games = &ids.compat.games;
     let stage = ids
         .compat
         .stages
         .iter()
-        .filter(|(_, e)| e.layout == b[0] && e.actor_list == address)
+        .filter(|(_, e)| e.layout == b[0] && games.actor_list(game, e.actor_list) == address)
         .find_map(|(key, _)| {
             let h = content.defs.stage_by_key(key)?;
             let r = content.stage(h);
