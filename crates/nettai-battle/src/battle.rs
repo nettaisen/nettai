@@ -200,6 +200,11 @@ pub enum FadeMode {
     DarkChipBack = 0x50,
     /// 0x54: the cursor rests on a dark chip: five sixteenths of the way.
     DarkChip = 0x54,
+    /// 0x58: the second fade record's (`loc_8006274`): the custom screen's
+    /// window and sprites back in when the cursor leaves a dark chip.
+    DarkChipWindowBack = 0x58,
+    /// 0x5C: ... and darkened while it rests on one, three sixteenths.
+    DarkChipWindow = 0x5C,
     /// 0x60: the custom screen's Beast Out fades back in.
     BeastOutBack = 0x60,
     /// 0x64: ... and out, half the way.
@@ -221,7 +226,10 @@ impl FadeMode {
             FadeMode::Dim => (true, 0x40),
             FadeMode::TransformIn | FadeMode::Mode1TransformIn => (false, 0),
             FadeMode::TransformOut | FadeMode::Mode1TransformOut => (true, 0x100),
-            FadeMode::ProgramAdvanceBack | FadeMode::DarkChipBack | FadeMode::BeastOutBack => (false, 0),
+            FadeMode::ProgramAdvanceBack | FadeMode::DarkChipBack | FadeMode::DarkChipWindowBack | FadeMode::BeastOutBack => {
+                (false, 0)
+            }
+            FadeMode::DarkChipWindow => (true, 0x30),
             FadeMode::ProgramAdvance => (true, 0x40),
             FadeMode::DarkChip => (true, 0x50),
             FadeMode::BeastOut => (true, 0x80),
