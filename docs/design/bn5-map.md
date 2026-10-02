@@ -971,9 +971,13 @@ What the panels do (BN6's `sub_800C380`, BN5's 0x0800A998, and the routines name
   (`sub_800EB18`'s timer, BN5's at +0x24 of the collision record) with a splash (effect 99) (0x0801715E); a body
   on sea with that bit has its collision record's +0x2C set to 0xFFFF, else 0 (0x08017030);
 - type 5: at a move's end, a slide (type 3) unless the body has slid within the cooldown (+0x38) or is a navi
-  whose soul byte is 5 (0x08017216, BN6's road start `sub_801A400`); BN5's type-3 slide goes on in the move's
-  direction, trying the others in a fixed order (0x0800C8A8's branch, the table at 0x0800C920), not a road's
-  fixed direction;
+  whose soul byte is 5 (0x08017216, BN6's road start `sub_801A400`); BN5's type-3 slide tries four steps in an
+  order the move's direction picks (0x0800C8A8's branch, the tables at 0x0800C920 and 0x0800C9C0), not a road's
+  fixed direction: after a move forward, down first (then forward, up, back); after a move up, forward first;
+  after a move down, back first. Recorded (the chip lab's `stages/panel5-row/slide-*`, the middle row's inner
+  four metal): forward from (1,2) onto (2,2) slides down to (2,3); down from (2,1) onto (2,2) slides back to
+  (1,2); up from (2,3) onto (2,2) slides forward to (3,2), and from there (metal again) down to (3,3). A slide
+  step up or down covers the 24 pixels in 3 ticks (8 a tick);
 - conversions (0x08016D14, BN6's `sub_3007708` moved out of IWRAM): fire on grass, aqua on lava, element 4 on
   type 5 turn the panel normal (BN6's roads take element 4 too);
 - battle effect 0x1000 (single player only) hands panel runs over (0x0800AE92, BN5's own).
