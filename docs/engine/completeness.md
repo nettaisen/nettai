@@ -297,7 +297,9 @@ lists them (`onesided.tsv`, with the instructions before each). At engine main 5
 matching recordings, 7,546 of the ported routines' branches ran and **2,192 (in 1,269 routines) ran one way
 only**. After the work below, at main 51eeb22f with 5,151 matching recordings, 7,591 ran and **2,123 (in 1,255
 routines)** did; 80 of the 2,192 are taken the other way by this section's 63 new recordings (the rest of the
-drop is other scenarios added since, and branches that first ran now count in the total).
+drop is other scenarios added since, and branches that first ran now count in the total). At main 29aac858 the
+list was 2,112; this section's batches 5 and 6 (22 more recordings) take 32 of them the other way, and with them
+in the lab it is **2,081 (in 1,252 routines)**.
 
 **How they are read.** The verification workspace has three tools for this, beside the audit:
 `tools/audit/onesided_rank.py` files each branch under the engine area that cites its routine (collision and
@@ -310,13 +312,20 @@ with the lab's merged block and branch counts, and says which one-sided branches
 recordings takes the other way. The scenarios are in the chip lab library's `coverage_scenarios/l_onesided.py`,
 each naming the branch it takes in its description.
 
-**What has been read**, in the order above: 243 branches, all of the collision and damage area and of the
-statuses and hit reactions, and the first of the custom screen, movement and chip use. 71 are taken by a new
-recording, 135 can't be taken in a netbattle (the table below), 37 can but have no scenario yet (the list after
-it). The forms and flow (447) and the chip families (1,072) are still to be read.
+**What has been read**, in the order above: all of the collision and damage area, the statuses and hit
+reactions, and the custom screen and hand (163 branches), and the first of movement and chip use: 397
+branches. 111 are taken by a new recording, 253 can't be taken in a netbattle (the tables below), 33 can but
+have no scenario yet (the list after them). Movement (116 left), chip use and dimming (135) and the forms and
+flow (443) are still to be read; the chip families (1,066) are read in their own pass.
 
-**No difference was found.** Every one of the 63 new recordings matches the engine on every frame (66,460
-frames) and in its sound calls (but Beast Over's rumble, a known difference). Nothing in the engine changed.
+**One difference was found, in the recordings rather than the engine.** A trace's setup didn't carry the save's
+unlocks, so the replay read every save as a finished game's (`Unlocks::everything`); a save without Beast Out
+(`custom/no-beast-out`) laid out a Beast Out button the original didn't have, and the cursor went elsewhere. The
+recording tool now writes each console's event flag bytes (`unlock_flags`: flags 0xE0-0xEF and 0x160-0x167) and
+the compat layer reads Beast Out, the version's Crosses and flag 0x163 from them (older recordings still read as
+finished saves, which they are). Every other new recording matched at once: batches 1-4's 63 on every frame
+(66,460) and in their sound calls (but Beast Over's rumble, a known difference), batches 5 and 6's 22 likewise
+(31,000 frames).
 
 | Scenarios | What they take the other way |
 |---|---|
@@ -337,12 +346,25 @@ frames) and in its sound calls (but Beast Over's rumble, a known difference). No
 | `forms/gregar/cross-elec-001-charged`, `cross-slash-04c-charged`, `cross-charge-014-charged`, `cross-charge-beast-014-charged`, `forms/falzar/cross-tomahawk-001-charged`, `cross-ground-001-charged` (`sub_8013236`) | ElecCross charging a Null chip, SlashCross an element sword, ChargeCross and its Beast a Fire chip; TomahawkCross and GroundCross with chips that don't charge |
 | `navis/navi-05-volcchrg/charge-family-chip`, `navi-06-dripshwr/…`, `navi-07-etomahwk/…` (`sub_8013236`) | ChargeMan, SpoutMan and TomahawkMan charging their family's chips (`byte_8021369`) |
 | `navis/*/chip-001`, `chip-06e`, `chip-071`, `chip-0bc`, `chip-08d`, `chip-09a` (`sub_800F09E`) | the link navis with a chip outside their family, a dimming chip of it, and a chip without damage (their chip bonus) |
+| Batch 5: `flow/paralyzed-then-frozen`, `-bubbled` (`sub_800E730`) | a freeze and a bubble entered over the paralysis's saved state |
+| `chips/0x024-elcpuls3/bug-level-cap` (`sub_80139F6`) | ElcPuls3's bug code 0x18 capping a bug level at 7 |
+| `custom/no-cross-offered` (`sub_8028B74`) | UP on the grid with no Cross offered (worn out after Beast Over) |
+| `forms/falzar/cross-tengu-hole-knockout` (`sub_800E618`) | the base form, without shoes, stepping off the hole its TenguCross was knocked out over |
+| `forms/gregar/cross-slash-beast-sword-charged` (`sub_80EAF26`) | the Beast's rush with a charged sword (action 0x41) |
+| Batch 6: `custom/cross-window-keys`, `one-cross-owned`, `take-back-cross` (`sub_8028A78`, `sub_8029EF8`, `sub_8029032`) | UP and DOWN wrapping and moving in the Cross window, SELECT, START; a save owning one Cross (a window of one, no move sound); the window reopened with a Cross chosen, and B taking the Cross back |
+| `custom/take-back-beast-out`, `chips/0x13f-beastout/take-back`, `custom/beast-out-greyed` (`sub_8029032`, `sub_8028D6C`) | B taking back the Beast Out button and the BeastOut chip; A on a Beast Out button a chosen Cross greys |
+| `custom/invalid-after-pick`, `custom/hide-window-later`, `custom/no-beast-out` (`updateCustomScreen_WhenUnselectingChip_8028EC8`, `sub_8026D06`, `sub_8029FB4`) | invalid chips left selectable after a valid pick; SELECT on a screen after the round's first; a save without Beast Out |
+| `navicust/chpshufl-redeal-last-chips` (`sub_8029688`, `sub_8029788`, `sub_802983C`) | ChpShufl's re-deal with the folder's last five, its last three (fewer than the hand) and none |
+| `forms/falzar/cross-dust-beast-hand`, `cross-dust-scrap-take-back` (`sub_802A40C`, `sub_8027F10`, `sub_8028F84`) | DustCross's Beast at the screen (no NumbrOpn hand, the scrap button); the scrap button with nothing picked |
+| `navis/navi-01-heatpres/own-chip-twice` (`sub_80280A2`) | a link navi's chip, used, not offered again in the round |
+| `forms/gregar/cross-charge-hand-size`, `-bug` (`sub_802A49C`, `sub_802A40C`) | ChargeCross's hands of 8 and past 8, with and without the custom bug: the Gregar side's screen, which the coverage (the Falzar console's own screen) can't credit; the engine matches every screen |
 
 Two more scenarios record a side the branch list can't credit: `chips/0x081-wind/twice` (a second fan evicting
 the first through the field-object registry; the earlier `then-fan` never placed its Fan, the panel being taken)
 and `flow/counter-ko` (a counter that deletes: it is booked before the deletion ends the battle).
 
-**Not reachable in a netbattle** (135 branches; `onesided_notes.py` has every address):
+**Not reachable in a netbattle** (253 branches; `onesided_notes.py` has every address). First the collision,
+damage and status areas (and the first of the others), 135:
 
 | Routines | Branches | Why |
 |---|---|---|
@@ -369,16 +391,43 @@ and `flow/counter-ko` (a counter that deletes: it is booked before the deletion 
 | `sub_800E994`, `sub_8016852`, `sub_800E548`, `sub_8017BC0`, `sub_80178D4`, `sub_80159C6` | 7 | dead code: tests whose register the code before fixes (dx = 0; a slide that moves; a direction passed; a word just zeroed; a panel test repeated on the same tick; a stat byte just tested) |
 | the rest, one to five each | 26 | panel types past 0x0C and forms past 0x18; the field's init; the actor list's two boulder slots; statuses past 0x65; AFFECTED_BY_ICE set with the NaviCust flags; the hand cursor's slot after a chip is used; the Beast Out check's delay (1 or 2 at a request); anger with its timer at 0; a link battle's effects; a cut-in chip's action (0x15 or 0x1B) and a cut-in with no chip; the navi number; the players' spawn parameter; the charge glow, which lives all battle; the escape |
 
-**Reachable, no scenario yet** (37): a status entered while another's saved state or stale visual remains
-(`sub_800E730`, 7); the dimming's overlay hiding with flag bits 2 and 3 and the aura link (`sub_80E1352`,
-`sub_80E13DC`, 5); the status visual over a hidden or off-field navi (`sub_80E0954`, 3); a weakness hit with
-no damage (`sub_801A42E`, `sub_801A506`); R on slot kinds 6 and 7 (a link navi's own chip turned out to be kind
-0); UP with no Cross offered; a counter booked on a double KO; a bug level past 7 (four BugBomb hits of one
-kind); a navi without shoes over a hole (a TenguCross knocked out there); two reservations of one panel; a side's
-dimming registered by a statue or trap while the other's telop shows; a second cut-in press with a request
-pending; the alternative A-charge's request at the charge tests; a save without Beast Out; a push onto a road
-whose next panel is blocked; a counter-paralysis request on a paralyzed navi; the charge cut short mid-hold
-(the decode doesn't run while a flinch holds the navi); and six more single branches, listed in the notes.
+Then the 37 left reachable above, read again (6), and the custom screen and hand (112):
+
+| Routines | Branches | Why |
+|---|---|---|
+| `sub_80E1352`, `sub_80E13DC` | 3 | the dimming overlay's bits 4 and 5: every caller passes 0 or 0xF; a navi submerged when its dimming ends (no starter) |
+| `sub_8028B74` | 2 | R on slot kinds 6 and 7: nothing writes them (dealt chips, a link navi's own among them, are 0; the buttons 2, 4/5, 8/9) |
+| `sub_801390C` | 1 | AIData+0x50: no object links itself there |
+| the folder build, the screen's setup, the hand size, the Cross window's and the PA's | 22 | battle mode other than 0 |
+| the same and `sub_8026DC4`, `sub_8026E98`, `sub_8026EC8`, `sub_8029F70`, `sub_8029FB4` | 11 | the battle effects, fixed in a netbattle |
+| `sub_8027D78`, `sub_8029F70`, `sub_8029FB4` | 4 | battle flag 0x40 |
+| `sub_8026B04`, `sub_8026DC4`, `sub_8026EC8`, `sub_8028A78` | 5 | the tutorials (index 0xFF) |
+| `sub_8026CCC`, `sub_8026D06`, `sub_8026E4C`, `sub_8028D3A` | 4 | the Beast Link Gate accessory: `sub_802A220` answers 0xFF without it |
+| `sub_8029F70`, `sub_8029FB4`, `sub_8026840` | 3 | event flag 0x163 with MegaMan: the flag marks a link navi operated |
+| `sub_8027E2C`, `sub_802A49C`, `sub_80280A2` | 3 | the screen's +0x15 is the navi, written with +0x10 and nowhere else; navi numbers end at 0x0B |
+| `sub_8028E4C`, `updateCustomScreen_WhenUnselectingChip_8028EC8` | 5 | chip codes past 0x1C (0x1B is the invalid chip's, no chip has 0x1C), and tests after the codes past 0x1A are handled |
+| `sub_8029110`, `sub_80293F8` | 2 | a selection that is neither a chip nor the Beast Out button |
+| `sub_80280E0`, `sub_802723A`, `sub_802750C` | 3 | the re-deal and scrap buttons' second use: one a screen |
+| `sub_8029688`, `sub_8029788`, `sub_802983C` | 5 | a hand size of 0 (it is at least 2); the re-deal's split table (`byte_80298C8`) is all zeros |
+| `sub_800A3E4`, `sub_800A570` | 2 | the folder rules: one Giga a folder |
+| `sub_801FF18` | 3 | the link's plumbing: its mode argument, the remote input word's link bits, the communication error (top state 0x0C) |
+| `sub_802B7A0`… `sub_802B80C`, `sub_8029520` | 4 | the PA telop's dead test and its chips below 0x160; the PA veto (+0x1C) |
+| `sub_802A00C`, `sub_8027834`, `sub_8028A78`, `sub_80294E0`, `sub_80109A4` | 5 | the BeastOut chip named twice in the role table; the window's 20-tick fallback (it opens in 12); a marked Cross with none chosen; a scrapped chip always finds its gap; chip id 0xFFFF |
+| `sub_802A49C`, `sub_802A40C` | 4 | ChargeCross's extra chips in the Falzar console's own screen (ChargeCross is Gregar's; the Gregar side is recorded and matches) |
+| the chatbox | 27 | commands and states the battle's scripts (descriptions and the twelve run messages, all recorded) don't use: portrait variants, F1 speeds other than 0, E4, a fourth line, the masked keys |
+
+**Reachable, no scenario yet** (33; the notes say what was tried): a status entered by its flag with no request
+and nothing saved, or over a stale ice or bubble visual (`sub_800E730`, 5: paralysis then freeze and bubble,
+their reverse orders and a dimming during a paralysis don't reach them); the status visual hidden from a blind
+viewer or ended by its flag with its link left (`sub_80E0954`, 3: FlshBom3 then Discord, and Discord with
+FlshBom1, saw neither); a weakness hit with no damage (`sub_801A42E`, `sub_801A506`); a counter booked on a
+double KO; two reservations of one panel; a side's dimming registered by a statue or trap while the other's telop
+shows; a second cut-in press with a request pending; the alternative A-charge's request at the charge tests; a
+save without Beast Out's counter; a push onto a road whose next panel is blocked; a counter-paralysis request on
+a paralyzed navi; the charge cut short mid-hold; on the custom screen, the slot link bytes (no writer found), a
+cursor move whose neighbour is its own slot, the scrap button in state 3, a scrap with fewer chips left than the
+hand, a sequence PA with two * chips, tired on a round without Beast Out, a save starting battles in a Cross, and
+two telop and HUD states; and a few single branches, listed in the notes.
 
 The first sample, of 10 routines read before this list was worked through, as it stands now:
 
