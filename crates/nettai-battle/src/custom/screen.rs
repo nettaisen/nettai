@@ -1177,7 +1177,12 @@ impl Screen {
         if tick >= 2 && (tick - 2) % 25 == 0 {
             let last = self.selected.checked_sub(1).map(|i| self.selection[i as usize]);
             match last.map(|s| self.slots[s as usize].kind) {
-                Some(SlotKind::Chip { index, .. }) => {
+                Some(SlotKind::Chip { index, regular }) => {
+                    // sub_8027458: scrapping the Regular chip ends it
+                    // (BattleState+0x17 = 0), as taking it at OK does.
+                    if regular {
+                        folder.regular_pending = false;
+                    }
                     scrapped[count as usize] = folder.take(index as usize);
                     count += 1;
                     self.selected -= 1;
