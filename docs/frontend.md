@@ -225,7 +225,7 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   the layer's scroll, and SELECT takes it off;
 - the chip window: the chip's name (8 cells of the 8x16 font, in the
   window's colours), its picture and palette, the window's colours by its
-  class, its code, its element's icon and colours, its damage ("???" for
+  class (a dark chip's dark: no BN6 chip is one), its code, its element's icon and colours, its damage ("???" for
   Muramasa); for OK, Beast Out and the buttons their pictures;
 - the slots (each dealt chip's icon and code, greyed or picked by its
   palette; the empty slots; the Beast Out, re-deal and scrap buttons) and
@@ -241,7 +241,14 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   camera), the gauge stays off until the local result is sent, Beast Out's
   fade darkens the stage, the HUD layer and the objects (sprite palettes
   0-10) half way, the camera's jitter moves the HUD layer in Beast Out's
-  states, and the emotion window shows the Beast form chosen.
+  states, and the emotion window shows the Beast form chosen. A dark
+  chip's hover (never seen in BN6) darkens the stage and the objects on the
+  first fade record and the HUD layer and the screen's sprites on the
+  second.
+
+The screen's sounds are the engine's cues for its player
+(docs/engine/audio.md §1): they play through the audio crate like the
+battle's.
 
 The text it draws goes through `fonts.rs` (the cell-text helper for the
 8x16 font), so that a later font-rendering step can change what is behind
@@ -327,8 +334,8 @@ them).
 ## 5. Known gaps
 
 - The custom screen's Cross window, Program Advance animation, scrap,
-  re-deal and chatbox (descriptions, the run message) aren't drawn yet, and
-  its own sounds aren't cues; live play also shows it as text.
+  re-deal and chatbox (descriptions, the run message) aren't drawn yet;
+  live play also shows it as text.
 - Affine (rotated or scaled) object sprites (`sprite_makeScalable`: no kind
   in the engine or the content uses one yet; compose draws affine parts, the
   custom screen's emblem is one), the per-part palette override

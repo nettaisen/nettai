@@ -114,6 +114,7 @@ fn describe(c: &SoundCue) -> String {
         SoundCue::StopMusic => "stop music".into(),
         SoundCue::Pinch(on) => format!("pinch {}", if *on { "on" } else { "off" }),
         SoundCue::RestoreVolume => "restore volume".into(),
+        SoundCue::ScreenVolume { music, screen } => format!("volume: music {music:#x}, custom screen {screen:#x}"),
     }
 }
 

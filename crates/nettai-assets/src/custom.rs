@@ -9,7 +9,7 @@
 //! frontend's custom screen (nettai-frontend `custom`) composes those tile
 //! numbers itself, so the blocks here keep the tile numbers they load at.
 
-use crate::{MapEntry, Palette, Tiles};
+use crate::{MapEntry, Palette, Tiles, Versioned};
 
 /// One run of a window map's patch list (`sub_8027CCC`): a `width` x
 /// `height` block at column `x`, row `y` of the 15-column map takes
@@ -48,21 +48,39 @@ pub struct ChipArt {
     pub picture: Picture,
 }
 
-/// The chip window's pictures for the slots that aren't chips.
+/// The chip window's pictures for the slots that aren't chips (Beast Out's
+/// is the version's: `VersionPictures`).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SlotPictures {
     /// OK with nothing picked yet, and with chips picked ("sending").
     pub ok: Picture,
     pub ok_picked: Picture,
-    /// The Beast Out button's picture, with its palettes.
-    pub beast_out: Picture,
-    pub beast_out_palettes: Vec<Palette>,
     /// ChpShufl's re-deal button and DustCross's scrap button.
     pub redeal: Picture,
     pub scrap: Picture,
     /// The slot kind battle mode 1 has (a Beast Out without the button's
     /// art).
     pub other: Picture,
+}
+
+/// What a game version's custom screen shows of its own: its Beast and its
+/// Crosses.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct VersionPictures {
+    /// The Beast Out button's picture in the chip window, with its palettes.
+    pub beast_out: Picture,
+    pub beast_out_palettes: Vec<Palette>,
+    /// The Beast Out button (4x2 each): selectable, unavailable, battle
+    /// mode 1's, none.
+    pub beast_buttons: Tiles,
+    /// The navis' emblems (2x2 each; MegaMan's are the version's).
+    pub emblems: Tiles,
+    /// The Cross window's names (9x2 each): the version's five Crosses on
+    /// the cursor's row, then on the others' (`dword_86E7DCC`).
+    pub cross_names: Tiles,
+    /// Background palette 10 in the Cross window: the Cross under the
+    /// cursor's, then a used one's (`dword_86E944C`).
+    pub cross_palettes: Vec<Palette>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -112,22 +130,32 @@ pub struct CustomScreen {
     pub empty_icon: Tiles,
     /// The Beast Out button (4x2 each): selectable, unavailable, battle
     /// mode 1's, none.
-    pub beast_buttons: Tiles,
     /// ChpShufl's and DustCross's buttons over slots 8 and 9 (12 tiles
-    /// each: two slots' icon and code), by state.
+    /// each: two slots' icon and code), by state (the scrap button's
+    /// fourth is its pressed look).
     pub redeal_buttons: Tiles,
     pub scrap_buttons: Tiles,
+    /// The pictures by game version.
+    pub versioned: Versioned<VersionPictures>,
     // ---- Sprites.
     /// The cursor's corner (two frames, 8x8 each).
     pub cursor: Tiles,
-    /// The navis' emblems (2x2 each) and their palettes (the cursor's
-    /// too), and which a navi shows by its number.
-    pub emblems: Tiles,
+    /// The Cross window's cursor: its corner and its edge, in two frames
+    /// (8x8 each; `dword_86E57FC`, sprite tile 0x392), and its palette
+    /// (sprite palette 14, the battle's).
+    pub cross_cursor: Tiles,
+    pub cross_cursor_palette: Palette,
+    /// The emblems' palettes (the cursor's too), and which emblem and
+    /// palette a navi shows by its number.
     pub emblem_palettes: Vec<Palette>,
     pub emblem_of: Vec<u8>,
     pub emblem_palette_of: Vec<u8>,
     /// The Regular chip's frame (two frames of 4x4).
     pub regular: Tiles,
+    /// The Program Advance animation's names' first four colours
+    /// (background palette 10), three sets it steps through
+    /// (`byte_802BA48`).
+    pub advance_name_colours: Vec<[u16; 4]>,
 }
 
 impl CustomScreen {
