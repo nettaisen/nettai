@@ -843,6 +843,25 @@ comes at its 42nd), and H-Burst seeing the fight stopped (1: battle flag 1 stays
 no enemy navi on the field for MstrCros. The 6 recordings match the engine at main 9aedd5a4, every frame (15,413)
 and sound call (418).
 
+**Second pass, batch 5: GreatYo's yoyos, AreaGrab and PanlGrab, the panel changer, GrabBnsh's hands (36
+branches):** 8 taken by 6 new recordings, 27 unreachable, 1 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `pa/0x154-greatyo/adjacent` | GreatYo's middle yoyo hitting as it starts out: it spins at once and the others roll back no panels |
+| `chips/0x0a3-areagrab/third-grab`, `home-partly-stolen` | a third AreaGrab on the other side's last column, which can't be taken; AreaGrab from a column the other side's PanlGrab has partly taken, its home the column behind |
+| `chips/0x0a2-panlgrab/twice-then-areagrab` | the grab's "keeps a full column" test meeting a column PanlGrab has taken a panel of |
+| `chips/0x0a8-holypanl/hole-ahead`, `chips/0x0bd-antirecv/healer-over-hole` | the panel changer's panel a hole: HolyPanl's panel in front, AntiRecv's poison under a healer over a hole (AirShoes) |
+
+The unreachable ones: GreatYo's signal to an empty slot and a yoyo without its controller (2: the three go out
+together and the controller outlasts them), a grab with no column to take (2: a side keeps a full column), the
+grab searches' walks from the far edge (5: that panel is always the other side's), spawns (3), the panel
+changer's kinds 7, 8 and 0xA to 0xC (9: its spawners are the panel chips and AntiRecv), a change that doesn't
+flicker and one with no holder (2), GrabBnsh's later hands (2: one enemy navi panel, one hand a strike) and its
+region (1), and CornFsta's sower with no panel at all (1). The hard one: AreaGrab's home search running off the
+field, which needs every column from the user's back partly stolen. The 6 recordings match the engine at main
+1703b936, every frame (8,062) and sound call (177).
+
 <!-- end: chip families, onesided -->
 
 ### 6.3 Custom screen keys
