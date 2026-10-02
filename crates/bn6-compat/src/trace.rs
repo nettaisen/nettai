@@ -475,10 +475,14 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
         .iter()
         .map(|&o| Unknown { xy: nettai_battle::kinds::effect::xy_unknown(b, o), z_fraction: spark_z_fraction_unknown(b, compat, o) })
         .collect();
-    // The traced console's game: its own navi's (the local side's NaviStats
-    // version). A Gregar console's objects keep Gregar's spawner addresses
-    // where the content has Falzar's (games.toml).
-    let game = Game::of_navi_version(b.stats[b.round.local_side as usize & 1].version);
+    // The traced console's game: its player's (the local side's; not its
+    // navi's NaviStats version, which a link navi has as Gregar's). A
+    // Gregar console's objects keep Gregar's spawner addresses where the
+    // content has Falzar's (games.toml).
+    let game = match b.setup.players[b.round.local_side as usize & 1].unlocks.version {
+        nettai_battle::custom::GameVersion::Gregar => Game::Gregar,
+        nettai_battle::custom::GameVersion::Falzar => Game::Falzar,
+    };
     let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, compat, o, u, game)).collect();
     let theirs: Vec<String> =
         f.objects.iter().enumerate().map(|(i, o)| describe_trace(compat, o, unknown.get(i).copied().unwrap_or_default())).collect();
