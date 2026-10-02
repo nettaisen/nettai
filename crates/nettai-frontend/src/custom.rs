@@ -83,8 +83,14 @@ const SPRITE_LAYER: usize = 1;
 
 /// The local player's custom screen while the battle is on the custom
 /// screen.
+/// Whether this custom mode's screens are open: on the mode's first tick
+/// they open (`sub_8026840`); until then a side's screen is the last one.
+pub(crate) fn screens_open(b: &Battle) -> bool {
+    b.round.mode == mode::CUSTOM && b.round.init != 0
+}
+
 pub fn local(b: &Battle) -> Option<(&Side, &Screen)> {
-    if b.round.mode != mode::CUSTOM {
+    if !screens_open(b) {
         return None;
     }
     let side = &b.custom.sides[b.setup.local_side as usize & 1];
@@ -155,7 +161,7 @@ pub fn hud_shift(b: &Battle) -> i32 {
 /// The form whose face the emotion window shows while `side`'s screen is
 /// up (the Beast Out or Cross chosen there).
 pub fn face(b: &Battle, side: usize) -> Option<nettai_content_api::FormHandle> {
-    if b.round.mode != mode::CUSTOM {
+    if !screens_open(b) {
         return None;
     }
     b.custom.sides[side & 1].screen.as_ref()?.look.face
