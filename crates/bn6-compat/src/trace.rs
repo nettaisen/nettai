@@ -68,6 +68,11 @@ pub struct Setup {
     /// packets a tick after they were built, say 1.
     #[serde(default)]
     pub link_delay: Option<u8>,
+    /// The recording console's frame counter on the setup's frame (the
+    /// halfword its 16-frame sounds go by). Traces recorded without it read
+    /// it as the frame number and 2, which every cable recording shows.
+    #[serde(default)]
+    pub frame_counter: Option<u16>,
 }
 
 /// The bug frags a trace without them reads as: the recording tool's
@@ -323,11 +328,16 @@ impl Round {
     fn console_setup(&self, side: u8) -> ConsoleSetup {
         let bs = unhex(&self.setup.battle_state);
         let emotion_window_glitch = self.setup.emotion_window_glitches.is_some_and(|g| g[side as usize & 1]);
-        // The game's frame counter on a battle frame is the trace's frame
-        // number and 2 (measured on its 16-frame sounds, in every
-        // recording); the other console's isn't recorded, and reads the
-        // same.
-        let frames = self.battle_frames().next().map_or(0, |f| f.frame + 1);
+        // The console's counter before the round's first tick: one less
+        // than on the setup's frame, the round's first. The trace gives the
+        // recording console's; without it (and for the other console,
+        // which isn't recorded) it is the frame number and 2 on a battle
+        // frame (measured on its 16-frame sounds, in every cable
+        // recording).
+        let frames = match self.setup.frame_counter {
+            Some(c) => (c as u32).wrapping_sub(1) & 0xFFFF,
+            None => self.battle_frames().next().map_or(0, |f| f.frame + 1),
+        };
         if bs[0x0D] != side {
             return ConsoleSetup { emotion_window_glitch, frames, ..ConsoleSetup::default() };
         }
