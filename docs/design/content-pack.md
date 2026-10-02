@@ -54,6 +54,7 @@ lib/*.luau, lib/FAMILY/*.luau             helpers and builders families share; t
 core.d.luau, types.d.luau                 the API's declarations and the pack's shared types (for editors
                                           and the checker)
 compat/*.toml                             the original's numbers by key: tools' data, never the engine's
+locale/<lang>.toml                        content's words in another language, by key: a frontend's, never the engine's
 ```
 
 No folder or file is named with a number of the original's (a test guards it): a chip's folder is its key
