@@ -436,22 +436,32 @@ would break it:
 
 The golden-trace suite outside this repository replays each round's recorded inputs through two getgud sessions
 (both simulating the trace's side, the custom-screen events in player 0's input), up to the frames the plain
-replay matches. Every frame either peer confirms (its last simulation before it settles, which the world reports)
-and every settled state must match the trace exactly, and the peers must agree:
+replay matches, where the input ends and the peers drain their sessions. Every frame either peer confirms (its
+last simulation before it settles, which the world reports) and every settled state getgud returns with a frame
+must match the trace exactly, the peers must agree, and each peer's sound must be the plain replay's (the
+confirmed cues frame for frame, every cue played once, through BN6's sound calls and the driver):
 
 | Round | Frames | Latency 0 | 2 + 1 | 5 + 2 | 10 + 3 |
 |---|---|---|---|---|---|
-| machgun 1 | 1,074 | all match | all match (78 rollbacks) | all match (82) | all match (81, depth 12) |
+| machgun 1 | 1,074 | all match | all match (77 rollbacks) | all match (81) | all match (80, depth 12) |
 | machgun 2 | 1,331 | all match | all match (62) | all match (61) | all match (61) |
-| soundmod 1 | 6,728 | all match | all match (305) | all match (305) | all match (301, depth 13) |
-| soundmod 2 | 6,857 | all match | all match (337) | all match (340) | all match (337) |
-| soundmod 3 | 3,088 | all match | all match (306) | all match (306) | all match (305) |
+| soundmod 1 | 21,962 | all match | all match (1,099) | all match (1,100) | all match (1,092, depth 13) |
+| soundmod 2 | 14,933 | all match | all match (876) | all match (874) | all match (875) |
+| soundmod 3 | 20,436 | all match | all match (1,439) | all match (1,439) | all match (1,434) |
+| bn67-amogus | 65,477 | all match | all match (3,264) | all match (3,239) | all match (3,151) |
+| bn67-amogus2 | 25,583 | all match | all match (1,193) | all match (1,196) | all match (1,167) |
+| lmao-chonked | 23,825 | all match | all match (1,563) | all match (1,554) | all match (1,532) |
+| bn67-lilguy | 22,242 | all match | all match (2,600) | all match (2,487) | all match (2,405) |
+| gregar-sitteruno | 2,701 | all match | all match (36) | all match (36) | all match (36) |
+| 2022: alpha-rock-thunder round 2 | 34,707 | all match | all match (2,283) | all match (2,270) | all match (2,261) |
+| 2022: rad-lifeaura-mojo round 2 | 14,468 | all match | all match (1,197) | all match (1,197) | all match (1,185) |
 
 (Rollbacks are counted on player 1's peer, which receives player 0's buttons and the custom-screen events; in
-the machgun rounds player 0's peer rolls back far less often, since player 1 changes buttons less.) An advance
-settles one frame at no latency and about two at 10 + 3, where late packets hold later ones up: soundmod round 1
-settled 3,748 times for its 6,728 frames. Clock sync stalled each peer 17 frames of that round's 6,758 wall
-frames.
+the machgun rounds player 0's peer rolls back far less often, since player 1 changes buttons less. The two
+longest 2022 rounds run with `--ignored`.) getgud returns a settled state with most frames: at 10 + 3, soundmod
+round 1's peers compared 21,416 and 21,296 of its 21,962 frames' settled states with the trace (the rest were
+re-simulated without a save, and checked through their last simulation). Clock sync stalled each peer 46 and 45
+frames of that round's 22,019 wall frames.
 
 ## 6. Performance
 
