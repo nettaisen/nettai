@@ -1,87 +1,21 @@
-//! Action 0x1C as a form change (`sub_8014A38`): while the battle is paused
-//! at the start of a turn, the navi changes into the form its side asked
-//! for (`Battle::turn_transforms`). The transformation sequencer waits for
-//! it. The same action reverts a form (`sub_8015614`). See
+//! Action 0x1C as a form's revert (`sub_8015614`, the same code in BN5) and
+//! a Cross breaking (`sub_8015766`): the framework's. The change into a form
+//! (`sub_8014A38`, the original's action 0x1C too) is the action the form
+//! names (`FormData::change`): BN6's five sequences are BN6's forms system's,
+//! content/bn6/rules/forms (docs/design/rules-in-luau.md §3.1). See
 //! docs/engine/battle-flow.md §3.4.1 and objects-and-player.md §12.9-§12.10.
-//!
-//! Five sequences, each of four steps (the attack step 0, 4, 8, 0xC):
-//!
-//! | Target | From | Table | |
-//! |---|---|---|---|
-//! | a Cross | any | `off_8014AB4` | the navi's image merges with MegaMan |
-//! | Beast Out | any | `off_8014AC8` | |
-//! | a Cross in Beast Out | no Beast form | `off_8014ADC` | a Cross Beast, Beast Out's way |
-//! | a Cross in Beast Out | a Beast form | `off_8014B04` | a Beast's Cross: the Cross navi's image merges with the beast |
-//! | Beast Over | any | `off_8014AF0` | |
 
-use crate::actor::{request, status};
+use crate::actor::status;
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
 use crate::content::{EffectRole, FormKind, SoundRole};
-use crate::custom::GameVersion;
-use nettai_content_api::FormHandle;
 use super::ActionVars;
-use crate::kinds::common;
-use crate::kinds::player::status::end_anger;
 use crate::kinds::player::{
-    Emotion, ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, clear_statuses, coll_mut, emotion,
-    exit_attack_state, form, form_of, reset_charge, reset_status, set_coordinates_from_panel, set_mood,
-    snap_to_future_panel, stats, stats_mut,
+    ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, coll_mut, exit_attack_state, form, form_of,
+    reset_status, set_mood, snap_to_future_panel, stats, stats_mut,
 };
-use crate::kinds::{cross_merge, effect, full_synchro_aura, palette_flash};
+use crate::kinds::{effect, full_synchro_aura};
 use crate::object::{ObjectRef, Vec3, flags};
-
-/// The five form-change sequences (`sub_8014A38`'s tables).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Sequence {
-    /// `off_8014AB4`: a Cross.
-    Cross,
-    /// `off_8014AC8`: Beast Out.
-    BeastOut,
-    /// `off_8014ADC`: a Cross in Beast Out, from the base form or a Cross.
-    CrossBeast,
-    /// `off_8014B04`: a Cross in Beast Out, from a Beast form.
-    BeastCross,
-    /// `off_8014AF0`: Beast Over.
-    BeastOver,
-}
-
-impl Sequence {
-    fn of(target: FormKind, current: FormKind) -> Sequence {
-        match target {
-            FormKind::BeastOver => Sequence::BeastOver,
-            FormKind::CrossBeast if current.is_beast() => Sequence::BeastCross,
-            FormKind::CrossBeast => Sequence::CrossBeast,
-            FormKind::Beast => Sequence::BeastOut,
-            _ => Sequence::Cross,
-        }
-    }
-}
-
-/// The steps of every sequence, in the attack step.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Step {
-    /// Stop everything.
-    Prepare = 0,
-    /// The beast effect, or the Cross navi's image merging.
-    Vanish = 4,
-    /// Back in the new form.
-    Emerge = 8,
-    /// A short pause, then back to idle.
-    Settle = 0xC,
-}
-
-impl Step {
-    fn of(b: &Battle, r: ObjectRef) -> Step {
-        match ai(b, r).attack.step {
-            0 => Step::Prepare,
-            4 => Step::Vanish,
-            8 => Step::Emerge,
-            0xC => Step::Settle,
-            s => panic!("form change step {s:#x} runs off its table (sub_8014A38)"),
-        }
-    }
-}
 
 /// The form change's own state.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -101,52 +35,11 @@ fn set_timer(b: &mut Battle, r: ObjectRef, ticks: u16) {
     vars(b, r).timer = ticks;
 }
 
-fn set_step(b: &mut Battle, r: ObjectRef, step: Step) {
-    let a = &mut ai_mut(b, r).attack;
-    a.step = step as u8;
-    a.step_init = 0;
-}
-
-/// Count the timer down; true once it had run out (it wraps).
-fn timer_ran_out(b: &mut Battle, r: ObjectRef) -> bool {
-    let v = vars(b, r);
-    let old = v.timer;
-    v.timer = old.wrapping_sub(1);
-    old == 0
-}
-
 /// Count the timer down; true while it is still above 0.
 fn timer_running(b: &mut Battle, r: ObjectRef) -> bool {
     let v = vars(b, r);
     v.timer = v.timer.wrapping_sub(1);
     v.timer as i16 > 0
-}
-
-/// `sub_8014A38`: one tick of the form change.
-pub(in crate::kinds::player) fn form_change(b: &mut Battle, r: ObjectRef) {
-    let side = b.objects.get(r).alliance as usize;
-    // (A change to the base form is none.)
-    let target = b.turn_transforms[side].form.filter(|&f| b.content.form(f).kind != FormKind::Base);
-    let Some(target) = target else {
-        ai_mut(b, r).status &= !status::FORM_CHANGE;
-        return;
-    };
-    let seq = Sequence::of(b.content.form(target).kind, form_of(b, r).kind);
-    if ai(b, r).attack.step == Step::Prepare as u8 && !matches!(ai(b, r).attack.action, ActionVars::FormChange(_)) {
-        ai_mut(b, r).attack.action = ActionVars::FormChange(Vars::default());
-    }
-    match Step::of(b, r) {
-        Step::Prepare => prepare(b, r, seq),
-        Step::Vanish => match seq {
-            Sequence::Cross | Sequence::BeastCross => merge(b, r, seq, target),
-            _ => vanish(b, r, seq, target),
-        },
-        Step::Emerge => emerge(b, r, seq, target),
-        Step::Settle => settle(b, r, seq),
-    }
-    if ai(b, r).status & status::FORM_CHANGE_SPRITE_HELD == 0 {
-        common::step_sprite(b, r);
-    }
 }
 
 /// FuturePanel → panel, the reservation dropped, coordinates and
@@ -157,7 +50,7 @@ fn land(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_800F46C` + `sub_800F2C6`: face the default way under the standard
 /// column patterns, and the sprite with it.
-pub(in crate::kinds::player) fn face_default(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn face_default(b: &mut Battle, r: ObjectRef) {
     if matches!(b.panel_pattern(), 0x38 | 0x30 | 0x3C) {
         b.objects.get_mut(r).flip = 0;
     }
@@ -168,57 +61,10 @@ pub(in crate::kinds::player) fn face_default(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80C4C3A` on AIData+0x5C: the Full Synchro aura goes (with none,
 /// the game's stores land in BIOS memory).
-pub(in crate::kinds::player) fn end_full_synchro_aura(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn end_full_synchro_aura(b: &mut Battle, r: ObjectRef) {
     if let Some(aura) = ai(b, r).full_synchro_aura {
         full_synchro_aura::end(b, aura);
     }
-}
-
-/// Step 0: `sub_8014D08` (Beast Out), `sub_8014F40` (Cross Beast),
-/// `sub_801516C` (Beast Over): onto the destination panel, facing the
-/// default way, charge, aura and statuses dropped, links cut; the pose.
-/// `sub_8014B18` (Cross) and `sub_80153EC` (a Beast's Cross): the sprite
-/// holds still first, and the pose and links stay.
-fn prepare(b: &mut Battle, r: ObjectRef, seq: Sequence) {
-    let crossing = matches!(seq, Sequence::Cross | Sequence::BeastCross);
-    if crossing {
-        ai_mut(b, r).status |= status::FORM_CHANGE_SPRITE_HELD;
-    }
-    land(b, r);
-    clear_invulnerable(b, r);
-    face_default(b, r);
-    reset_charge(b, r);
-    end_full_synchro_aura(b, r);
-    if !crossing {
-        b.objects.get_mut(r).related[0] = None;
-        ai_mut(b, r).overlay = None;
-    }
-    drop_statuses(b, r);
-    match seq {
-        Sequence::Cross => {
-            set_timer(b, r, 6);
-            // A GroundCross in its animation 0x16 (the form's
-            // `cross_release_anim`) lets go of it.
-            if form_of(b, r).cross_release_anim == Some(b.objects.get(r).anim) {
-                b.objects.get_mut(r).anim = 0;
-                b.objects.get_mut(r).related[0] = None;
-                ai_mut(b, r).overlay = None;
-                ai_mut(b, r).status &= !status::FORM_CHANGE_SPRITE_HELD;
-                keep_overlay_stepping(b, r);
-            }
-        }
-        Sequence::BeastCross => {
-            keep_overlay_stepping(b, r);
-            set_timer(b, r, 6);
-        }
-        _ => {
-            b.objects.get_mut(r).anim = 0x11;
-            keep_overlay_stepping(b, r);
-            set_timer(b, r, 6);
-            // (sprite_decompress: graphics.)
-        }
-    }
-    set_step(b, r, Step::Vanish);
 }
 
 /// The overlay's Param3 = 1 and flags 0x14, if there is one.
@@ -229,7 +75,7 @@ fn keep_overlay_stepping(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80158FA`: movement, reactions and the slower statuses end.
-pub(in crate::kinds::player) fn drop_statuses(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn drop_statuses(b: &mut Battle, r: ObjectRef) {
     clear_flag1(
         b,
         r,
@@ -245,266 +91,6 @@ pub(in crate::kinds::player) fn drop_statuses(b: &mut Battle, r: ObjectRef) {
     c.status_timers[timer::BUBBLE] = 0;
     c.links[link::FREEZE] = None;
     c.links[link::BUBBLE] = None;
-}
-
-/// Step 4 of Beast Out (`sub_8014D70`), a Cross Beast (`sub_8014FA8`) and
-/// Beast Over (`sub_80151D4`): after 7 ticks the navi vanishes into the
-/// beast effect (moved far off the field), which lasts 54 ticks.
-fn vanish(b: &mut Battle, r: ObjectRef, seq: Sequence, target: FormHandle) {
-    if ai(b, r).attack.step_init == 0 {
-        if !timer_ran_out(b, r) {
-            return;
-        }
-        ai_mut(b, r).status |= status::FORM_CHANGE_SPRITE_HELD;
-        let (pos, alliance) = {
-            let o = b.objects.get(r);
-            (o.pos, o.alliance)
-        };
-        let spawned = if seq == Sequence::BeastOver {
-            beast_over_effects(b, r, pos, alliance, target)
-        } else {
-            b.sound(SoundRole::FormChange);
-            let look = b.content.defs.roles.effect(EffectRole::FormChange);
-            effect::spawn(b, pos, look, alliance, 0, 0).inspect(|&e| {
-                let o = b.objects.get_mut(e);
-                o.timer = 0x36;
-                o.flags |= flags::RUN_WHILE_PAUSED;
-            })
-        };
-        if spawned.is_some() {
-            let o = b.objects.get_mut(r);
-            o.pos.y = o.pos.y.wrapping_add(0xC0_0000);
-            // sub_800AB2E
-            b.beast_out_used[alliance as usize] = true;
-            // The roar is Gregar's for the Gregar beasts and Falzar's
-            // otherwise; the cameras shake at magnitude 2 (`sub_80302B6`),
-            // 60 ticks (75 for Beast Over).
-            let gregar = b.content.form(target).game == Some(GameVersion::Gregar);
-            b.sound(if gregar { SoundRole::GregarRoar } else { SoundRole::FalzarRoar });
-            b.shake_camera_secondary(2, if seq == Sequence::BeastOver { 0x4B } else { 0x3C });
-        }
-        set_timer(b, r, 0x36);
-        if seq == Sequence::BeastOver {
-            crate::kinds::beast_over_burst::spawn(b, r);
-        }
-        ai_mut(b, r).attack.step_init = 4;
-    }
-    // Beast Over's rumbles. (The game compares the timer as a word, whose
-    // upper half is the attack's count, which none of its steps writes:
-    // what an earlier action left there, 2 after a buster shot, keeps them
-    // quiet.)
-    let word = vars(b, r).timer as u32 | (ai(b, r).attack.count as u32) << 16;
-    if seq == Sequence::BeastOver && matches!(word, 0x35 | 0x25) {
-        b.sound(SoundRole::BeastOverRumble);
-    }
-    if !timer_ran_out(b, r) {
-        return;
-    }
-    set_step(b, r, Step::Emerge);
-}
-
-/// Beast Over's two effects (`sub_80151D4`): its beast's (the roles
-/// `effects.beast_over_gregar` and `effects.beast_over_falzar`) and the
-/// blast (`effects.beast_over_blast`, palette by the beast), 32 pixels up.
-/// The second only after the first, and the rest only after both.
-fn beast_over_effects(b: &mut Battle, _r: ObjectRef, pos: Vec3, alliance: u8, target: FormHandle) -> Option<ObjectRef> {
-    // The form's game: 0 Gregar's, 1 Falzar's.
-    let which = match b.content.form(target).game {
-        Some(GameVersion::Gregar) => 0,
-        Some(GameVersion::Falzar) => 1,
-        None => panic!("form {:?} has no Beast Over effect (sub_80151D4)", b.content.defs.form(target).key),
-    };
-    let pos = Vec3 { z: pos.z.wrapping_add(0x20_0000), ..pos };
-    let roles = &b.content.defs.roles;
-    let beast = roles.effect(if which == 0 { EffectRole::BeastOverGregar } else { EffectRole::BeastOverFalzar });
-    let blast = roles.effect(EffectRole::BeastOverBlast);
-    let first = effect::spawn(b, pos, beast, alliance, 0, 0)?;
-    let o = b.objects.get_mut(first);
-    o.timer = 0x36;
-    o.flags |= flags::RUN_WHILE_PAUSED;
-    b.sound(SoundRole::BeastOverRumble);
-    let second = effect::spawn(b, pos, blast, alliance, 2 * which, 0)?;
-    let o = b.objects.get_mut(second);
-    o.timer = 0x45;
-    o.flags |= flags::RUN_WHILE_PAUSED;
-    Some(second)
-}
-
-/// Step 4 of a Cross (`sub_8014B98`) and a Beast's Cross
-/// (`sub_801544C`): after 7 ticks the Cross navi's image appears above
-/// MegaMan (actor object #0x1B) and merges with him; 49 ticks later he
-/// changes. The attack marker counts the ticks MegaMan (and in a Beast's
-/// Cross, his overlay) flashes white.
-fn merge(b: &mut Battle, r: ObjectRef, seq: Sequence, target: FormHandle) {
-    if ai(b, r).attack.step_init == 0 {
-        if !timer_ran_out(b, r) {
-            return;
-        }
-        // The navi the Cross is made with (the original's by the form's
-        // number: a Cross's own, a Cross in Beast Out's less 0xC).
-        let Some(navi) = b.content.form(target).cross_of else {
-            panic!("form {:?} is a Cross of no navi (sub_8014B98)", b.content.defs.form(target).key);
-        };
-        cross_merge::spawn(b, r, navi, 0x14);
-        set_timer(b, r, 0x30);
-        let a = &mut ai_mut(b, r).attack;
-        a.marker = 0;
-        a.step_init = 4;
-    }
-    let next = ai(b, r).attack.marker.wrapping_add(1);
-    if next <= 6 {
-        ai_mut(b, r).attack.marker = next;
-        b.objects.sprite_mut(r).look.white = true;
-        if seq == Sequence::BeastCross
-            && let Some(o) = b.objects.get(r).related[1]
-        {
-            b.objects.sprite_mut(o).look.white = true;
-        }
-    }
-    if seq == Sequence::BeastCross
-        && next == 7
-        && let Some(o) = b.objects.get(r).related[1]
-    {
-        // sprite_clearFinalPalette
-        b.objects.sprite_mut(o).look.white = false;
-    }
-    if !timer_ran_out(b, r) {
-        return;
-    }
-    set_timer(b, r, 6);
-    set_step(b, r, Step::Emerge);
-    ai_mut(b, r).attack.marker = 0;
-}
-
-/// Step 8 (`sub_8014E08`, `sub_8015040`, `sub_80152C8`, `sub_8014BEE`,
-/// `sub_80154C8`): MegaMan in the new form (sprite, form, name, overlay);
-/// 10 ticks later the form's status set-up.
-fn emerge(b: &mut Battle, r: ObjectRef, seq: Sequence, target: FormHandle) {
-    // sprite_forceWhitePalette every tick.
-    b.objects.sprite_mut(r).look.white = true;
-    if ai(b, r).attack.step_init == 0 {
-        match seq {
-            Sequence::Cross => {
-                b.objects.get_mut(r).related[0] = None;
-                ai_mut(b, r).overlay = None;
-            }
-            Sequence::BeastCross => {
-                if let Some(o) = b.objects.get(r).related[1] {
-                    b.objects.get_mut(o).flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
-                }
-            }
-            _ => {}
-        }
-        let current = stats(b, r).form;
-        form::take_off_overlay(b, r, current);
-        if seq == Sequence::BeastCross {
-            b.objects.get_mut(r).related[0] = None;
-            ai_mut(b, r).overlay = None;
-        }
-        let navi = stats(b, r).navi;
-        let sprite = b.content.navi_sprite(navi, target);
-        let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
-        let s = b.objects.sprite_mut(r);
-        s.load(sprite);
-        // sprite_hasShadow, sprite_setFlip(object_getFlip()), white.
-        s.look.shadow = crate::object::sprite::Shadow::Ground;
-        s.look.set_flip(flip);
-        s.look.white = true;
-        let o = b.objects.get_mut(r);
-        o.flags &= !flags::NO_SPRITE_UPDATE;
-        // object_setAnimation(0), then the sprite restarts it directly.
-        o.anim = 0;
-        o.anim_loaded = 0xFF;
-        b.objects.sprite_mut(r).set_animation(0, &b.content);
-        set_coordinates_from_panel(b, r);
-        set_timer(b, r, 10);
-        if seq == Sequence::BeastOver {
-            clear_statuses(b, r);
-        }
-        stats_mut(b, r).form = target;
-        if matches!(seq, Sequence::BeastOut | Sequence::CrossBeast | Sequence::BeastOver) {
-            palette_flash::spawn(b, 14, true, true);
-            b.sound(SoundRole::BeastOut);
-        }
-        // sub_8015B22: the form's NameID.
-        b.objects.get_mut(r).identity = b.content.form_identity(navi, target);
-        form::put_on_overlay(b, r, target);
-        if let Some(o) = b.objects.get(r).related[1] {
-            match seq {
-                // Its Param3 = 0.
-                Sequence::BeastOut | Sequence::BeastOver => form::normal_overlay_stepping(b, o),
-                // Its animation 0 and Param3 0 (and in a Cross Beast,
-                // flags 0x14).
-                Sequence::CrossBeast | Sequence::BeastCross => {
-                    b.objects.get_mut(o).anim = 0;
-                    form::normal_overlay_stepping(b, o);
-                    if seq == Sequence::CrossBeast {
-                        b.objects.get_mut(o).flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
-                    }
-                }
-                Sequence::Cross => {}
-            }
-        }
-        if matches!(seq, Sequence::Cross | Sequence::BeastCross) {
-            b.sound(SoundRole::CrossChange);
-            b.sound(SoundRole::CrossChangeChime);
-        }
-        ai_mut(b, r).attack.step_init = 4;
-    }
-    if timer_running(b, r) {
-        return;
-    }
-    let side = b.objects.get(r).alliance;
-    let full_synchro = emotion(b, side) == Emotion::FullSynchro;
-    reset_status(b, r);
-    end_anger(b, r);
-    match seq {
-        Sequence::BeastOut => {
-            if full_synchro {
-                set_mood(b, side, 0xFF);
-            }
-        }
-        _ => set_mood(b, side, 0x80),
-    }
-    if seq != Sequence::BeastOver {
-        clear_invulnerable(b, r);
-    }
-    if matches!(seq, Sequence::BeastOut | Sequence::BeastOver | Sequence::BeastCross)
-        && let Some(o) = b.objects.get(r).related[1]
-    {
-        // sprite_clearFinalPalette
-        b.objects.sprite_mut(o).look.white = false;
-    }
-    set_step(b, r, Step::Settle);
-}
-
-/// Step 0xC (`sub_8014F04`, `sub_8015128`, `sub_80153B0`, `sub_8014CC0`,
-/// `sub_80155CC`): 21 ticks, then the change is done and the navi idles;
-/// the Crosses note the side crossed.
-fn settle(b: &mut Battle, r: ObjectRef, seq: Sequence) {
-    if ai(b, r).attack.step_init == 0 {
-        set_timer(b, r, 0x14);
-        ai_mut(b, r).attack.step_init = 4;
-    }
-    if !timer_ran_out(b, r) {
-        return;
-    }
-    if matches!(seq, Sequence::Cross | Sequence::CrossBeast | Sequence::BeastCross) {
-        // sub_800AB2E
-        let side = b.objects.get(r).alliance as usize;
-        b.crossed[side] = true;
-    }
-    finish(b, r);
-}
-
-/// The end of a form change: the flags come off (and battle flag 0x20,
-/// which nothing sets), the reactive-defense requests are dropped, and the
-/// navi idles.
-fn finish(b: &mut Battle, r: ObjectRef) {
-    ai_mut(b, r).status &= !(status::FORM_CHANGE | status::FORM_CHANGE_SPRITE_HELD);
-    ai_mut(b, r).requests &=
-        !(request::WEAKNESS_HIT | request::BODY_GUARD_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::ANTI_DAMAGE_TRIGGERED);
-    exit_attack_state(b, r);
 }
 
 // ---- Reverting ---------------------------------------------------------------

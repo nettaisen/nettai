@@ -5,10 +5,13 @@ local gregar_beast = require("../gregar-beast/form")
 local falzar_beast_buster = require("../../weapons/falzar-beast-buster/weapon")
 local charged_chip_bonus = require("../../weapons/charged-chip-bonus/weapon")
 local beast_claw = require("../../weapons/beast-claw/weapon")
+local forms = require("../../../../rules/forms/system")
 
 return define.form {
     id = "falzar-beast",
     kind = "beast",
+    -- What changes MegaMan into it (BN6's five sequences).
+    change = forms.action,
     game = "falzar",
     -- (A weakness hit breaks a Beast as a Cross: the original's routine, by the form's
     -- number, drops this one to the Gregar beast.)

@@ -112,6 +112,7 @@ fn battles_run_the_content_scripts() {
             "flshbom/bomb",
             "flying-shot",
             "follow-effect",
+            "forms/cross-merge",
             "gauge-speed",
             "golmhit/golem",
             "grab/controller",
