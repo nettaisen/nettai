@@ -399,7 +399,7 @@ tomahawkcross = { description = "木チップタメうちで攻撃力[cross]2\n�
 "patch-card/airman" = { name = "エアーマン" }
 "patch-card/amonicul" = { name = "アモナキュール" }
 "patch-card/armadill" = { name = "アルマン" }
-"patch-card/bass-cross-megaman" = { name = "フォルテクロス ロックマン" }
+"patch-card/bass-cross-megaman" = { name = "フォルテクロス\nロックマン" }
 "patch-card/bassbx" = { name = "フォルテBX" }
 "patch-card/beastman" = { name = "ビーストマン" }
 "patch-card/beetle" = { name = "ボンビートル" }
@@ -435,7 +435,7 @@ tomahawkcross = { description = "木チップタメうちで攻撃力[cross]2\n�
 "patch-card/elmntman" = { name = "エレメントマン" }
 "patch-card/eraseman" = { name = "キラーマン" }
 "patch-card/erthdrgn" = { name = "ツボリュウ" }
-"patch-card/famous-custom" = { name = "名人のちょうぜつ カスタマイズ" }
+"patch-card/famous-custom" = { name = "名人のちょうぜつ\nカスタマイズ" }
 "patch-card/fgtrplne" = { name = "ゼロプレーン" }
 "patch-card/flashy" = { name = "ピカラー" }
 "patch-card/freezemn" = { name = "フリーズマン" }
@@ -494,7 +494,7 @@ tomahawkcross = { description = "木チップタメうちで攻撃力[cross]2\n�
 "patch-card/slashman" = { name = "スラッシュマン" }
 "patch-card/slimey" = { name = "ジェライム" }
 "patch-card/snakearm" = { name = "スナーム" }
-"patch-card/soul-battlrs-custom" = { name = "ソウルバトラーの カスタマイズ" }
+"patch-card/soul-battlrs-custom" = { name = "ソウルバトラーの\nカスタマイズ" }
 "patch-card/sparky" = { name = "ユラ" }
 "patch-card/spidy" = { name = "クーモス" }
 "patch-card/starfish" = { name = "ヒトデスタ" }
@@ -506,7 +506,7 @@ tomahawkcross = { description = "木チップタメうちで攻撃力[cross]2\n�
 "patch-card/topman" = { name = "タップマン" }
 "patch-card/totem" = { name = "トトポール" }
 "patch-card/twins" = { name = "ツインズ" }
-"patch-card/twisty" = { name = "パララ& リモコゴロー" }
+"patch-card/twisty" = { name = "パララ&\nリモコゴロー" }
 "patch-card/videoman" = { name = "ビデオマン" }
 "patch-card/viney" = { name = "アゾマータ" }
 "patch-card/volcano" = { name = "ボルカノ" }

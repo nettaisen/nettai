@@ -64,9 +64,12 @@ All of it is content now (docs/engine/patch-cards.md §3).
 §2.2), content/bn6/rules/patch-cards/system.luau: the installed cards are the system's player setup, and the
 application is its `round_setup` hook. The engine knows nothing of cards.
 
-- **The cards are records** of type "patch-card" (`cards.card { id = "patch-card/canodumb", name, mb, effects }`
-  in rules/patch-cards/cards.luau), not a registry of their own: only BN6's rules read them, which is what
-  records are for. compat records.toml's `[patch_cards]` gives each its number.
+- **The cards are records** of type "patch-card" (`cards.card { id = "patch-card/canodumb", mb, effects }` in
+  rules/patch-cards/cards.luau), not a registry of their own: only BN6's rules read them, which is what records
+  are for. compat records.toml's `[patch_cards]` gives each its number.
+- **Their names are the locales'** (content/bn6/locales/en.toml and ja.toml), as every display text since the
+  locales landed: a `[records]` table by record key, a record's name, rather than a table of the cards' own, since
+  the engine knows no cards; the card weapons' names are in `[weapons]`.
 - **The setup** is `cards = "record:patch-card[16]"` and `off = "bool[16]"`: 48 of the setup block's 64 bytes.
   Sixteen cards is as many as the 80 MB allow (each card takes 5 or more); the save's list has room for 32, which
   the block couldn't hold, but no legal save has more than 16.
@@ -103,7 +106,8 @@ application is its `round_setup` hook. The engine knows nothing of cards.
    from the fan translation of EXE6: the MMEXE6F and MMEXE6G IPS patches over the Japanese ROMs, read with the
    idealexe English charset (the user gave the patches as MMEXE6F.ips and MMEXE6G.ips, and the charset as a
    manifest.toml). The translation's eight-character spellings stay (Amonicul, KnigtMan), as the chip names do.
-   Two cards share "Puffy" there: センボン (22) is `puffy`, プクール (55) `puffball`.
+   Two cards share "Puffy" there: センボン (22) is `puffy`, プクール (55) `puffball`. The Japanese names are the
+   ROMs' (ja.toml).
 2. **Applied by the simulation, from the setup** (§3), not by a setup builder outside it: the cards are part of
    the shared setup, and peers apply them alike.
 3. **A BN6 system in the stock ruleset** (the coordinator, after rules S0 landed), with the cards as records and
