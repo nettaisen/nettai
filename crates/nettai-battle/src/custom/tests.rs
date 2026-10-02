@@ -331,6 +331,37 @@ fn dust_cross_scraps_the_picks() {
 }
 
 #[test]
+fn dust_cross_scrapping_the_regular_chip_ends_it() {
+    // sub_8027458: the Regular chip scrapped clears BattleState+0x17, so
+    // the next screen deals no Regular chip. (This screen's front slot
+    // keeps its Regular bit: sub_802A61A, which shows the chips dealt
+    // again, only resets the slots' states.)
+    let chips = [(SHOT, 0), (SHOT, 1), (WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)];
+    let mut p = Player::new(&chips, GameVersion::Falzar);
+    let mut f = folder(&chips);
+    f.regular_pending = true;
+    p.side.folder = Some(f);
+    p.stats.form = library::testing::DUST_CROSS;
+    p.open();
+    assert!(matches!(p.screen().slots[0].kind, SlotKind::Chip { regular: true, .. }));
+    p.wait(10);
+    p.step(0);
+    p.press(keys::A);
+    // Down from the fourth chip to the scrap button.
+    for _ in 0..3 {
+        p.press(keys::RIGHT);
+    }
+    p.press(keys::DOWN);
+    assert_eq!(p.screen().cursor, 8);
+    p.step(keys::A);
+    while p.phase() != Phase::Choosing && p.tick < 1000 {
+        p.step(0);
+    }
+    assert!(!p.side.folder.unwrap().regular_pending);
+    assert!(matches!(p.screen().slots[0].kind, SlotKind::Chip { regular: true, .. }));
+}
+
+#[test]
 fn hand_size() {
     let size = |custom_level: u8, shrink: u8, turn: u8, number_open: bool| {
         let mut p = Player::new(&[], GameVersion::Falzar);
