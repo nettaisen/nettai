@@ -1,6 +1,9 @@
 --!strict
--- AntiRecv (BN5 chip 0x093): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- AntiRecv (BN5 chip 0x093): a trap that turns the other side's next recovery into damage: BN6's (@bn6/lib/traps,
+-- its counterattack the role kinds.anti_recovery; BN5's the same code).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local traps = require("@bn6/lib/traps/controller")
 
 return define.chip {
     id = "antirecv",
@@ -15,4 +18,6 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     slot_in_limit = 3,
+    trap = "anti_recovery",
+    dimming = traps.hook(),
 }

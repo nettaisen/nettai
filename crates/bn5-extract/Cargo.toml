@@ -6,6 +6,8 @@ license.workspace = true
 description = "Extracts the BN5 ROMs' battle assets (graphics, sound) into a content pack"
 
 [dependencies]
+# BN5's asset names (content/bn5/compat/assets.toml) and chip keys.
+bn5-compat = { path = "../bn5-compat" }
 m4a.workspace = true
 nettai-assets = { path = "../nettai-assets" }
 nettai-content = { path = "../nettai-content" }

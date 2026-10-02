@@ -14,10 +14,11 @@
 //! checked against the US ones: their battle graphics differ only where text
 //! is drawn, so the pack has none of theirs yet.
 //!
-//! Without a BN5 content root (none exists yet) every asset is written under
-//! its placeholder (`sprite-0c-2d`, `sound-10e`, `chip-12d`); BN5's content,
-//! when it comes, names them in its compat as BN6's does. The pack is the
-//! games' own data: write it outside version control.
+//! The assets are named as BN5's content names them (content/bn5/compat/
+//! assets.toml, through bn5-compat: BN6's names where the asset or its place
+//! in the code is BN6's; the chips' icons by chip key); the rest under their
+//! placeholders (`sprite-0c-2d`, `sound-10e`), which content may not use.
+//! The pack is the games' own data: write it outside version control.
 
 mod content;
 mod graphics;

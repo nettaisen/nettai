@@ -13,6 +13,20 @@ pub const USAGE: &str = "usage: bn5-extract content <protoman-us> <colonel-us> <
      (all four ROMs, in this order: the US Team ProtoMan ROM, BRBE; the US Team Colonel ROM, BRKE;\n\
      the Japanese Team of Blues ROM, BRBJ; the Japanese Team of Colonel ROM, BRKJ)";
 
+/// The names BN5's compat (content/bn5/compat, built into bn5-compat) gives
+/// the assets: sprites, songs and banners by BN6's names for what is BN6's,
+/// chip icons by the chips' keys.
+fn asset_names() -> nettai_content::names::AssetNames {
+    let c = bn5_compat::Compat::bn5();
+    nettai_content::names::AssetNames {
+        sprites: c.sprite_names(),
+        songs: c.assets.sounds.iter().map(|(k, &v)| (v, k.clone())).collect(),
+        banners: c.assets.banners.iter().map(|(k, &v)| (v, k.clone())).collect(),
+        chips: c.chip_keys.clone(),
+        ..Default::default()
+    }
+}
+
 /// The game a BN5 pack is (its manifest's `game`): the namespace its names
 /// take when it loads beside another game's pack.
 pub const GAME: &str = "bn5";
@@ -32,8 +46,9 @@ pub fn main(args: &[String]) {
         std::process::exit(2);
     });
     let t = std::time::Instant::now();
-    // No BN5 content root yet: every asset under its placeholder.
-    let names = nettai_content::names::AssetNames::default();
+    // The names content/bn5/compat gives the assets (BN6's for what is BN6's);
+    // the rest under their placeholders.
+    let names = asset_names();
     let bundle = crate::graphics::bundle(&roms, &names);
     let versioned = crate::graphics::versioned_chips(&roms);
     let (mut bank, failures) = m4a::rom::extract(&roms.protoman.0).unwrap_or_else(|e| panic!("reading the sound data: {e}"));
