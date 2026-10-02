@@ -575,6 +575,9 @@ Also for a JP trace:
 - Regions carry JP's +0x74 (§6).
 - The cosmetic rows marked *(trace)* in §5 apply.
 - The mode-1, mode-10 and mode-11 code never runs.
+- The JP-only navis' Z fractions are their spawners' addresses too: the content keeps EXE6 Falzar's (Count's
+  0x080BD237, Django's 0x080BD6A3), EXE6 Gregar has 0x080BEA97 and 0x080BEF03. Django drops from that Z, so on EXE6
+  Gregar his and his bike's Z differ until he lands (games.toml's `spawner_z_drops`).
 
 The kind and handler tables move too: JP Falzar's T1, T3 and T4 tables are at 0x08003C80, 0x08003EA8 and
 0x080042AC; the handler tables at 0x0802D810 and 0x0802D8B8.
