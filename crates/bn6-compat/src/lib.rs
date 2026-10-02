@@ -135,6 +135,11 @@ pub struct GameAddresses {
     /// key, the Falzar ROM's and this game's.
     #[serde(default)]
     pub panel_ys: BTreeMap<String, [u8; 2]>,
+    /// Kinds spawned with a routine's address as their X (a register their
+    /// spawner left): by kind key, the Falzar ROM's address and this
+    /// game's.
+    #[serde(default)]
+    pub spawner_xs: BTreeMap<String, [u32; 2]>,
     /// Kinds of `spawner_z_fractions` that drop from that Z to height 0
     /// (`sub_8001330`'s velocity, then gravity each tick): while they drop,
     /// this game's other address gives another velocity, so another Z (the
@@ -232,6 +237,15 @@ impl Games {
         (-0x100..0x100)
             .find(|&whole| at(start(whole, ours)) == z)
             .map_or(0, |whole| at(start(whole, theirs)).wrapping_sub(z))
+    }
+
+    /// An object's X as a `game` console has it: a kind's whose X is a
+    /// routine's Falzar address (`spawner_xs`) has that game's.
+    pub fn x(&self, game: Game, kind: &str, x: i32) -> i32 {
+        match self.of(game).and_then(|g| g.spawner_xs.get(kind)) {
+            Some(&[falzar, other]) if x as u32 == falzar => other as i32,
+            _ => x,
+        }
     }
 
     /// An object's panel Y as a `game` console has it: a kind's whose is a

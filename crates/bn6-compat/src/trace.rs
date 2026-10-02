@@ -813,7 +813,7 @@ fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, un
         [o.panel.x, compat.games.panel_y(game, &b.content.defs.kind(o.kind).key, o.panel.y)],
         o.alliance,
         [o.hp, o.max_hp],
-        [o.pos.x, o.pos.y, console_z(b, compat, r, game)],
+        [compat.games.x(game, &b.content.defs.kind(o.kind).key, o.pos.x), o.pos.y, console_z(b, compat, r, game)],
         o.timer,
         o.anim,
         status,
