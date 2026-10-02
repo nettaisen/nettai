@@ -9,6 +9,7 @@
 local collision = require("../../rules/collision")
 local ball = require("@bn6/chips/thunder/ball")
 local shoot = require("@bn6/chips/thunder/shoot")
+local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")
 
 local KIND = ball.make_kind("thunder/ball", {
@@ -19,6 +20,7 @@ local KIND = ball.make_kind("thunder/ball", {
     is = collision.thrown,
     dark_is = collision.collision_2b,
     hit_mod = 0,
+    spark = sparks.elec,
     sound = asset.sound("erase-man-2"),
 })
 

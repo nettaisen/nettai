@@ -568,8 +568,8 @@ export type ThunderBall = { fast: boolean?, panels: number, status: Status?, bug
 
 -- A game's thunder ball (chips/thunder/ball, `make_kind`): its sprite and
 -- animation small and big (fast, or DarkThnd's 12 panels), its collision
--- type (a 12-panel one's, if another) and hit modifier, its sound (a
--- 12-panel one's, if another).
+-- type (a 12-panel one's, if another), hit modifier and spark, its sound
+-- (a 12-panel one's, if another).
 export type ThunderBallLook = {
     sprite: SpriteAsset,
     small_anim: number,
@@ -578,6 +578,7 @@ export type ThunderBallLook = {
     is: CollisionType,
     dark_is: CollisionType?,
     hit_mod: number,
+    spark: Spark,
     sound: Sound,
     dark_sound: Sound?,
 }
