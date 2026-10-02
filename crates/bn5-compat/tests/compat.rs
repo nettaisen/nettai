@@ -136,7 +136,8 @@ fn a_rounds_setup_names_what_the_content_lacks() {
     let needs = round.needs(&content, Compat::bn5()).unwrap();
     assert_eq!(needs[0], "chip bn5:cannon (0x001)");
     assert!(needs.contains(&"side 1's navi bn5:megaman (0x00)".to_string()), "{needs:?}");
-    assert!(needs.last().unwrap().starts_with("the stage"), "{needs:?}");
+    assert!(needs.iter().any(|n| n.starts_with("the stage")), "{needs:?}");
+    assert_eq!(needs.last().map(String::as_str), Some("BN5's pack"));
     let replay = trace::run_round(&round, &content, Compat::bn5());
     assert!(matches!(replay.stopped, Some(Stop::Setup(ref e)) if e.contains("chip bn5:cannon")), "{:?}", replay.stopped);
 }
