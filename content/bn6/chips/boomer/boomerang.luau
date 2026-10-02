@@ -21,8 +21,9 @@ local boomerang = {}
 -- A boomerang's variant: 16.16 pixels a tick along a row and along the
 -- column, whether it turns the other side's panels it crosses to grass,
 -- and whether it is the tomahawk (its own sprite and shadow, and its
--- second animation off row 1).
-export type Variant = { speed: number, turn_speed: number, grass: boolean, tomahawk: boolean? }
+-- second animation off row 1); its sprite where a game's isn't BN6's
+-- (BN5's Boomer).
+export type Variant = { speed: number, turn_speed: number, grass: boolean, tomahawk: boolean?, sprite: SpriteAsset? }
 
 -- How a boomerang is thrown: its variant; the column (0 to 2) where it
 -- turns, or `turns = false` (the original's Param2 3: it flies straight
@@ -101,7 +102,7 @@ local function init(me: Object, s: State)
     local v = s.variant
     local tomahawk = v.tomahawk == true
     local sprite = me.sprite
-    sprite:load(if tomahawk then TOMAHAWK_SPRITE else SPRITE)
+    sprite:load(v.sprite or (if tomahawk then TOMAHAWK_SPRITE else SPRITE))
     sprite.shadow = if tomahawk then "with_sprite" else "ground"
     me.visible = true
     local anim = if tomahawk and me.panel_y ~= 1 then 1 else 0

@@ -3,33 +3,14 @@
 -- while it plays, the other side's navi is confused (lib/instruments).
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local effects = require("../../lib/instruments/effects")
 local instrument = require("../../lib/instruments/instrument")
 local instruments = require("../../lib/instruments/controller")
 local statuses = require("../../rules/status")
 
--- Confusion (status 0x23: 4 ticks), with the sixth element's damage 0.
-local CONFUSE, ELEMENT_NONE = statuses.confuse_4, 5
-
--- `sub_80D4392`: a one-tick hit on the other navi's panel that confuses
--- it, and learns nothing.
-local function confuse(me: Object)
-    battle.hitbox(me, {
-        panel_x = me.panel_x,
-        panel_y = me.panel_y,
-        element = ELEMENT_NONE,
-        z = 0,
-        region = regions.other_navi[me.alliance],
-        -- None.
-        hit_effect = nil,
-        target = collision.nothing,
-        self_type = collision.guard_breaking,
-        damage = 0,
-        stamina = 0,
-        hit_mod = 0,
-        status = CONFUSE,
-    })
-end
+-- Confusion (status 0x23: 4 ticks) on the other navi's panel, learning
+-- nothing (`sub_80D4392`).
+local confuse = effects.confuse(statuses.confuse_4, collision.guard_breaking, collision.nothing)
 
 return define.chip {
     id = "discord",
