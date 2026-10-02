@@ -1521,13 +1521,14 @@ fn animations() -> Animations {
     // Count, HackJack's navi (appearing, standing, raising his arms,
     // lowering them, leaving; his lance, animation 0xC) and the rain's
     // motes; Django
-    // (riding 6, his bike 7, appearing 1, slashing 5, leaving 2).
+    // (riding 6, his bike 7, appearing 1, slashing 5, leaving 2; his gun 8
+    // and 9, CrosOver's).
     let mut hackjack = vec![once(4); 0x0D];
     hackjack[0] = vec![f(8, 0), f(8, LAST | LOOP)];
     hackjack[0x0C] = vec![f(3, 0), f(3, LAST | LOOP)];
     sprites.insert(SpriteId { category: 8, index: 0x16 }, hackjack);
     sprites.insert(SpriteId { category: 0x10, index: 0x10 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
-    let mut django = vec![once(4); 9];
+    let mut django = vec![once(4); 10];
     django[0] = vec![f(8, 0), f(8, LAST | LOOP)];
     django[6] = vec![f(4, 0), f(4, LAST | LOOP)];
     django[7] = vec![f(4, 0), f(4, LAST | LOOP)];

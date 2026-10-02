@@ -383,20 +383,25 @@ pub fn queue_objects<'a>(
     }
 }
 
+/// How far around an object drawn with a sprite of another region's ROMs
+/// the known difference reaches: what the console draws there instead is
+/// its own (the US ROMs' placeholder archive, a dot at the anchor; or
+/// another sheet, 0C-00, for Otenko's statue and CrosOver's gun), which
+/// may reach past the sprite.
+const OTHER_REGION_MARGIN: i32 = 48;
+
 /// An object drawn with a sprite of another region's ROMs: where it is
-/// drawn, and a 16x16 square at its anchor, its sprite and its shadow's
-/// (where the US ROMs' placeholder archive draws its one dot) are a known
-/// difference. (A US console's Otenko statue is another sprite, 0C-00, not
-/// the placeholder: what of it falls outside isn't covered.)
+/// drawn, with `OTHER_REGION_MARGIN` around it, is a known difference.
 fn other_region(p: &Projected, group: &[(usize, i32, SpritePart)], problems: &mut Problems) {
-    let mut rect = [p.x - 8, p.y.min(p.ground) - 8, p.x + 8, p.y.max(p.ground) + 8];
+    let mut rect = [p.x, p.y.min(p.ground), p.x, p.y.max(p.ground)];
     for (_, _, s) in group {
         // (The hardware's coordinates wrap: X at 512, Y at 256.)
         let x = if s.x >= 0x100 { s.x as i32 - 0x200 } else { s.x as i32 };
         let y = if s.y >= 0xC0 { s.y as i32 - 0x100 } else { s.y as i32 };
         rect = [rect[0].min(x), rect[1].min(y), rect[2].max(x + s.width as i32), rect[3].max(y + s.height as i32)];
     }
-    let [x0, y0, x1, y1] = [rect[0].max(0), rect[1].max(0), rect[2].min(240), rect[3].min(160)];
+    let m = OTHER_REGION_MARGIN;
+    let [x0, y0, x1, y1] = [(rect[0] - m).max(0), (rect[1] - m).max(0), (rect[2] + m).min(240), (rect[3] + m).min(160)];
     if x0 < x1 && y0 < y1 {
         problems.known(x0, y0, x1 - x0, y1 - y0, "a sprite of the Japanese games' ROMs (a US console draws its placeholder)");
     }
