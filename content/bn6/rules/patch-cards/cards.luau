@@ -1,9 +1,9 @@
 --!strict
 -- Patch cards (the Japanese games' Modification Cards, 改造カード;
--- docs/engine/patch-cards.md): what a card is. A card is a record of type
--- "patch-card" (`patch_cards.card`), its effects values this module's
--- constructors make; the patch-cards system (./system.luau) applies a
--- player's installed cards to the navi's stats as the round is set up.
+-- docs/engine/patch-cards.md): BN6's effects. A card is the engine's
+-- (`define.patch_card`, content/bn6/cards/), its effects the values this
+-- module's constructors make; the patch-cards system (./system.luau) applies
+-- a player's installed cards to the navi's stats as the round is set up.
 
 local patch_cards = {}
 
@@ -274,24 +274,6 @@ end
 -- BugStop: at 1, none of the cards' bugs above is copied (no card has it).
 function patch_cards.bug_stopper(n: number): Effect
     return effect({ kind = "bug_stopper", amount = whole(n, "bug_stopper", 255) })
-end
-
--- ---- The card ------------------------------------------------------------
-
--- A patch card: its key ("patch-card/<name>"), its MB (the installed cards
--- may take 80) and its effects. The name its menu shows is the locales'
--- (locales/<lang>.toml's `records`).
-function patch_cards.card(spec: PatchCard): PatchCard
-    if string.sub(spec.id, 1, #"patch-card/") ~= "patch-card/" then
-        error(string.format("patch card %q: a card's key starts with patch-card/", spec.id))
-    end
-    whole(spec.mb, spec.id .. "'s mb", 80)
-    for _, e in spec.effects do
-        if patch_cards.RANK[e.kind] == nil then
-            error(string.format("patch card %s: effect %q is no kind of effect", spec.id, tostring(e.kind)))
-        end
-    end
-    return define.record("patch-card", spec)
 end
 
 return patch_cards

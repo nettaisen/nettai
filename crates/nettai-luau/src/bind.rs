@@ -1196,6 +1196,20 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.set_emotion_window_glitch(side, on)))
     });
+    // A side's installed patch cards: { card = <the definition>, enabled }
+    // each, in their list's order.
+    lib_fn!(lua, t, "patch_cards", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let cards = with(|api, _| Ok(api.patch_cards(side)))?;
+        let list = lua.create_table()?;
+        for (i, (h, enabled)) in cards.into_iter().enumerate() {
+            let entry = lua.create_table()?;
+            entry.raw_set("card", bound(|b| b.def_value(Registry::PatchCard, h))?)?;
+            entry.raw_set("enabled", enabled)?;
+            list.raw_set(i + 1, entry)?;
+        }
+        Ok(list)
+    });
     lib_fn!(lua, t, "side_special", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.side_special(side).name()))

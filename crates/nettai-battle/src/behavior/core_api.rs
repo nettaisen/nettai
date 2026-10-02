@@ -519,6 +519,10 @@ impl CoreApi for Battle {
         self.consoles[side as usize & 1].emotion_window_glitch = on;
     }
 
+    fn patch_cards(&self, side: u8) -> Vec<(u16, bool)> {
+        self.setup.players[side as usize & 1].patch_cards.iter().map(|c| (c.card.0, c.enabled)).collect()
+    }
+
     fn bug_frags(&self, side: u8) -> u32 {
         self.bug_frags[side as usize & 1]
     }

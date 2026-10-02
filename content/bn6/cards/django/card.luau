@@ -4,8 +4,8 @@
 local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return cards.card {
-    id = "patch-card/django",
+return define.patch_card {
+    id = "django",
     mb = 52,
     effects = {
         cards.hp(200),

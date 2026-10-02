@@ -138,6 +138,7 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
         console: ConsoleSetup { rng: seed.rotate_left(16) ^ side.wrapping_mul(0x9E37_79B9), ..ConsoleSetup::default() },
         ruleset: None,
         rules: Vec::new(),
+        patch_cards: Default::default(),
     };
     let [a, b] = folders;
     RoundSetup {

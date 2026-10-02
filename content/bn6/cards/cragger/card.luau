@@ -3,8 +3,8 @@
 
 local cards = require("../../rules/patch-cards/cards")
 
-return cards.card {
-    id = "patch-card/cragger",
+return define.patch_card {
+    id = "cragger",
     mb = 19,
     effects = {
         cards.hp(200),
