@@ -747,6 +747,7 @@ fn mugshot_parts<'a>(
         let pal = palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default();
         out.push(block(tiles, 32, 16, pal, x, 18));
         out.push(block(&hud.navi_box, 16, 16, pal, x + 32, 18));
+        note_true_face(b, side, navi.mugshot, x, problems);
         return;
     }
     let mut face = state.mood.map(|m| m.shown()).unwrap_or_else(|| Face::of(b, r));
@@ -764,6 +765,25 @@ fn mugshot_parts<'a>(
     out.push(block(gfx, 32, 16, pal, x, 18));
     let tiles = if beast_count_shown(b, side as u8) { hud.counts.get(face.count as usize) } else { None };
     out.push(block(tiles.unwrap_or(&hud.count_box), 16, 16, pal, x + 32, 18));
+    note_true_face(b, side, face.picture, x, problems);
+}
+
+/// The faces Gregar has of its own (the pack's, from the Gregar ROM: its
+/// emotion-window pictures from 0x17, its link navis' after the Falzar
+/// ROM's six).
+fn gregar_face(picture: u8) -> bool {
+    (0x17..0x80).contains(&picture) || (nettai_assets::NAVI_MUGSHOTS + 6..nettai_assets::NAVI_MUGSHOTS + 11).contains(&picture)
+}
+
+/// A Falzar console shows every form's and navi's true face, where the
+/// original Falzar console has none for Gregar's and shows the Falzar
+/// counterpart's (deliberately: docs/frontend.md §5): the face and the box
+/// beside it, in the face's palette, are a known difference.
+fn note_true_face(b: &Battle, side: usize, picture: Option<u8>, x: i32, problems: &mut Problems) {
+    let falzar_console = b.custom.sides[b.setup.local_side as usize & 1].unlocks.version == nettai_battle::custom::GameVersion::Falzar;
+    if falzar_console && picture.is_some_and(gregar_face) && side == b.setup.local_side as usize & 1 {
+        problems.known(x, 18, 48, 16, "a Gregar face on a Falzar console (the true face)");
+    }
 }
 
 /// `sub_801D814`: whether the emotion window shows the Beast Out count

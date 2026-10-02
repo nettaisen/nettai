@@ -16,7 +16,7 @@ return define.navi {
     banners = { win = asset.banner("chargeman-win"), lose = asset.banner("chargeman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`): the Falzar ROM has no
     -- ChargeMan face, and shows DustMan's.
-    mugshot = asset.mugshot("dustman"),
+    mugshot = asset.mugshot("chargeman"),
     merge_height = 0,
     run_message = { 15, 19, 11 },
     own_chip = { chip = chargeman, code = "C" },
