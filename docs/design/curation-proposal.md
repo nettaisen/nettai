@@ -49,7 +49,7 @@ reads an old field (comments, prose, the same word in another registry) for a pe
 Weapons, actions, kinds, chips, chip series and stages are only settled by it, never renamed: their keys
 name folders, Rust tests and the compat entries the traces read, and no rename is proposed for them.
 
-The gate after applying: `cargo build --workspace --all-targets`, `cargo test --workspace`, `bn6-content-check`,
+The gate after applying: `cargo build --workspace --all-targets`, `cargo test --workspace`, `nettai-content-check`,
 a fresh pack (asset renames rename the pack's files), `gen-content check` and its tests, both golden traces and
 the full chip lab.
 

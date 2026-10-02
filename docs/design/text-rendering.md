@@ -448,18 +448,18 @@ pixel-identical, and steps 1, 3 and 5 should each end with the frame comparison 
 
 ### 6.4 Crates and files
 
-- `crates/bn6-assets`: a `font` module with the bitmap font type; `Hud` gains the dialogue font (step 0) and, at
+- `crates/nettai-assets`: a `font` module with the bitmap font type; `Hud` gains the dialogue font (step 0) and, at
   step 5, loses `texts` as a source of words.
-- `crates/bn6-content`: `font.rs` (the pack's fonts to bitmap fonts, the BDF reader, the `fontdue` loader behind
+- `crates/nettai-content`: `font.rs` (the pack's fonts to bitmap fonts, the BDF reader, the `fontdue` loader behind
   a feature); `hud.rs` and `names.rs` for a `fonts` section of the asset index; a `hud.json` version bump when the
   dialogue font lands.
 - `crates/bn6-extract`: `hud.rs` for the dialogue font and its widths (step 0).
-- `crates/bn6-frontend`: `text.rs` becomes a `text/` module (layout, drawing, modes, the font stack; the 3x5
+- `crates/nettai-frontend`: `text.rs` becomes a `text/` module (layout, drawing, modes, the font stack; the 3x5
   status font moves beside it or is replaced by the bundled font); `hud.rs` and the custom screen's drawing call
   it; `main.rs` gets the options; `audit.rs` the fallback notes; `Cargo.toml` one dependency.
-- `crates/bn6-content-check`: the warnings of step 4.
+- `crates/nettai-content-check`: the warnings of step 4.
 - `content/bn6`: the strings of step 5; `run_message` as text.
-- `crates/bn6-battle`: only step 0's `run_message` reading (counts derived from text). Nothing else: the engine
+- `crates/nettai-battle`: only step 0's `run_message` reading (counts derived from text). Nothing else: the engine
   has no part in text.
 - A new `assets/fonts/<family>/` (or the frontend crate's own `assets/`) for the committed font and its licence.
 - `docs/frontend.md`, `docs/design/asset-formats.md` §4, and this document rewritten as built.
@@ -467,7 +467,7 @@ pixel-identical, and steps 1, 3 and 5 should each end with the frame comparison 
 
 ### 6.5 Sequencing with the frontend work in progress
 
-Another agent is fixing presentation differences in `crates/bn6-frontend` and is about to draw the custom
+Another agent is fixing presentation differences in `crates/nettai-frontend` and is about to draw the custom
 screen, which is where the chip window's name, the descriptions and the run message live. `hud.rs` is being
 edited now.
 
@@ -479,8 +479,8 @@ edited now.
   - put the run message's words in the navi definitions;
   - draw its new text through one helper for cell text and one for dialogue text, rather than new copies of the
     glyph loop. Then step 1 is a mechanical change of two helpers and the sites `hud.rs` has today.
-- **What can go ahead in parallel without touching the frontend**: step 2 (new files in `bn6-assets` and
-  `bn6-content`), the content check's warnings, and choosing the font.
+- **What can go ahead in parallel without touching the frontend**: step 2 (new files in `nettai-assets` and
+  `nettai-content`), the content check's warnings, and choosing the font.
 
 ### 6.6 What the user must decide
 

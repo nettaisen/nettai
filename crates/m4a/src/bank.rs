@@ -2,7 +2,7 @@
 //! typed command lists, and instruments (voicegroups, samples, PSG waves).
 //!
 //! A bank is read out of a ROM image ([`crate::rom::extract`]) or built
-//! from a content pack's sound files (bn6-content); nothing here refers to
+//! from a content pack's sound files (nettai-content); nothing here refers to
 //! ROM addresses. [`SoundBank::validate`] checks every reference in it.
 
 use std::fmt;
