@@ -17,6 +17,8 @@
 
 use std::collections::BTreeMap;
 
+use nettai_content_api::SpriteId;
+
 use nettai_content_api::{
     ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, FnId, FnSource, FormHandle, KindHandle,
     NaviHandle, Pool, RecordHandle, Registry, RulesetHandle, Schema, StageHandle, StateId, SystemHandle, SystemHook,
@@ -963,10 +965,9 @@ fn read_roles(
                     let role = definition_role(&group, &name, SpriteRole::named, SpriteRole::ALL.iter().map(|r| r.name())).map_err(&what)?;
                     let sprite = match v {
                         Data::Asset(nettai_content_api::AssetKind::Sprite, asset) => assets
-                            .sprites
-                            .get(asset)
-                            .copied()
-                            .ok_or_else(|| what(format!("sprites.{name}: the pack has no sprite {asset:?}")))?,
+                            .handle(nettai_content_api::AssetKind::Sprite, asset)
+                            .map(SpriteId)
+                            .ok_or_else(|| what(format!("sprites.{name}: the packs have no sprite {asset:?}")))?,
                         _ => return Err(what(format!("sprites.{name} is not a sprite asset (asset.sprite(...))"))),
                     };
                     roles.sprites.insert(role, sprite);
@@ -974,7 +975,7 @@ fn read_roles(
                 "banners" => {
                     let role = definition_role(&group, &name, BannerRole::named, BannerRole::ALL.iter().map(|r| r.name())).map_err(&what)?;
                     let id = role_asset(assets, nettai_content_api::AssetKind::Banner, &group, &name, v).map_err(&what)?;
-                    roles.banners.insert(role, super::BannerId(id as u8));
+                    roles.banners.insert(role, super::BannerId(id));
                 }
                 _ => {
                     return Err(what(format!(
@@ -1009,10 +1010,9 @@ fn role_asset(
     v: &Data,
 ) -> Result<u16, String> {
     match v {
-        Data::Asset(k, asset) if *k == kind => assets
-            .handle(kind, asset)
-            .and_then(|h| assets.number(kind, h))
-            .ok_or_else(|| format!("{group}.{name}: the pack has no {kind} {asset:?}")),
+        Data::Asset(k, asset) if *k == kind => {
+            assets.handle(kind, asset).ok_or_else(|| format!("{group}.{name}: the packs have no {kind} {asset:?}"))
+        }
         _ => Err(format!("{group}.{name} is not a {kind} asset (asset.{kind}(...))")),
     }
 }
@@ -1541,7 +1541,9 @@ impl Defs {
         let look = |d: &Definition| -> Result<super::EffectSprite, ContentError> {
             let what = |e: String| ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key));
             let sprite = match d.spec.field("sprite") {
-                Data::Asset(nettai_content_api::AssetKind::Sprite, name) => content.assets.sprites[name],
+                Data::Asset(nettai_content_api::AssetKind::Sprite, name) => {
+                    SpriteId(content.assets.handle(nettai_content_api::AssetKind::Sprite, name).ok_or_else(|| what(format!("the packs have no sprite {name:?}")))?)
+                }
                 _ => return Err(what("needs a `sprite` (asset.sprite(...))".into())),
             };
             Ok(super::EffectSprite { sprite, anim: byte(d, "anim")?, palette: byte(d, "palette")? })
@@ -1978,7 +1980,7 @@ mod tests {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
         let mut c = Content::default();
         c.scripts = crate::content::Scripts::root(crate::content::RootManifest::named("bn6"), crate::content::testing::modules_under(dir));
-        c.assets = crate::content::testing::asset_names_used(&c.scripts.modules);
+        c.assets = crate::content::testing::asset_names_for(&c.scripts);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
         // Every chip is a definition with its own use.

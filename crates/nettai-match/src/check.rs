@@ -35,7 +35,7 @@ fn check_place(content: &Content, p: &Place, at: &str, out: &mut Vec<String>) {
         out.push(format!("{at}: {} is no link battle stage", content.defs.stage(p.stage).key));
     }
     if let Some(b) = &p.background
-        && !content.assets.backgrounds.contains_key(b)
+        && crate::background(content, b).is_none()
     {
         out.push(format!("{at}: no background {b:?}"));
     }

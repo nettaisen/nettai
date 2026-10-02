@@ -2216,8 +2216,8 @@ mod tests {
         setup.settings.effects = 0xE8C;
         let content = testing::content();
         setup.later_stages = [
-            Stage { stage: content.stage_by_key(testing::ROCK_BATTLE), background: 3 },
-            Stage { stage: content.stage_by_key(testing::LINK_BATTLE_SIDE0_FIRST), background: 0x13 },
+            Stage { stage: content.stage_by_key(testing::ROCK_BATTLE), background: crate::content::BackgroundId(3) },
+            Stage { stage: content.stage_by_key(testing::LINK_BATTLE_SIDE0_FIRST), background: crate::content::BackgroundId(0x13) },
         ];
         let mut b = Battle::new(setup, testing::content());
         let r = &mut b.round;
@@ -2240,7 +2240,7 @@ mod tests {
         // The drawn table entry, with this round's effects and the drawn
         // background.
         let drawn = testing::content().stage_by_key(testing::ROCK_BATTLE);
-        assert_eq!(*settings, BattleSettings { stage: drawn, effects: 0xE8C, background: 3 });
+        assert_eq!(*settings, BattleSettings { stage: drawn, effects: 0xE8C, background: crate::content::BackgroundId(3) });
         assert_eq!(*score, SetScore { wins: 1, losses: 0, round: 1, max_combo: 1 });
         assert_eq!(b.round.top, top::INIT);
         assert_eq!(b.sound_cues(), [SoundCue::StopMusic]);
