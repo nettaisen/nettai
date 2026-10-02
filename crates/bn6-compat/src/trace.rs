@@ -65,6 +65,18 @@ pub struct Setup {
     /// stats or not). Traces recorded without it read as clear.
     #[serde(default)]
     pub emotion_window_glitches: Option<[bool; 2]>,
+    /// Both consoles' installed patch cards (the Japanese games'), each
+    /// its save's card list (the card's number, bit 7 set when switched
+    /// off). Traces recorded without them have none.
+    #[serde(default)]
+    pub patch_cards: Option<[Vec<u8>; 2]>,
+    /// For a console with patch cards: MegaMan's stats as the card routine
+    /// found them (its entry, the last call before the round), hex; none
+    /// where it didn't run. The round's setup takes the bytes the cards
+    /// write from them ([`CARD_BYTES`]), so that the engine applies the
+    /// cards itself.
+    #[serde(default)]
+    pub navi_stats_before_cards: Option<[Option<String>; 2]>,
     /// The link's delay in ticks, from a packet's sending to its arrival.
     /// Traces recorded without it are an emulated cable's,
     /// `Link::RECORDED_DELAY`; matches recorded by Tango's first netplay
@@ -236,6 +248,26 @@ pub fn unhex(s: &str) -> Vec<u8> {
     (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
 }
 
+/// The NaviStats bytes the patch cards' routine (and the reload's HP rule
+/// after it) writes: the stats, the abilities, the weapons, the first
+/// barrier, the gauge, the supports, the bugs, ChpShufl and NumbrOpn, the
+/// HP, BugStop's byte and +0x4C.
+pub const CARD_BYTES: &[usize] = &[
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x0A, 0x0B, 0x0C, 0x0D, 0x10, 0x12, 0x13, 0x14, 0x15, 0x16, 0x18,
+    0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1F, 0x23, 0x24, 0x31, 0x40, 0x41, 0x42, 0x43, 0x4C, 0x4D, 0x4F, 0x50, 0x51, 0x52,
+    0x54, 0x55, 0x60, 0x61,
+];
+
+/// The battle's stats block with the bytes the cards write as the card
+/// routine found them: the stats the engine applies the cards to.
+pub fn before_cards(recorded: &[u8; 0x64], before: &[u8; 0x64]) -> [u8; 0x64] {
+    let mut b = *recorded;
+    for &i in CARD_BYTES {
+        b[i] = before[i];
+    }
+    b
+}
+
 /// A navi stats block from a trace's hex.
 fn navi_stats(hex: &str, ids: &Ids) -> NaviStats {
     codec::navi_stats(&unhex(hex).try_into().expect("a 0x64-byte navi stats block"), ids)
@@ -324,11 +356,14 @@ impl Round {
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> RoundSetup {
         let ids = Ids::new(content, compat);
         let bs = unhex(&self.setup.battle_state);
-        let stats = |s: &str| navi_stats(s, &ids);
+        let stats = |p: usize| match self.stats_before_cards(p) {
+            Some(b) => codec::navi_stats(&b, &ids),
+            None => navi_stats(&self.setup.navi_stats[p], &ids),
+        };
         RoundSetup {
             content: content.hash(),
             settings: codec::battle_settings_of(self.console_game(), &unhex(&self.setup.settings), &ids),
-            navi_stats: [stats(&self.setup.navi_stats[0]), stats(&self.setup.navi_stats[1])],
+            navi_stats: [stats(0), stats(1)],
             rng: self.setup.rng2,
             local_side: bs[0x0D],
             score: SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
@@ -344,6 +379,53 @@ impl Round {
             players: std::array::from_fn(|p| self.player_setup(p as u8, &ids)),
             link_delay: self.link_delay(),
         }
+    }
+
+    /// A player's installed patch cards, as the trace has them.
+    fn patch_cards(&self, side: u8, ids: &Ids) -> Vec<(nettai_content_api::RecordHandle, bool)> {
+        let Some(lists) = &self.setup.patch_cards else { return Vec::new() };
+        codec::patch_card_list(&lists[side as usize & 1], ids)
+    }
+
+    /// For a player with patch cards: the stats the engine applies them to
+    /// (the recorded battle stats, with what the cards write as the card
+    /// routine found it).
+    pub fn stats_before_cards(&self, side: usize) -> Option<[u8; 0x64]> {
+        let cards = self.setup.patch_cards.as_ref()?;
+        if cards[side].is_empty() {
+            return None;
+        }
+        let before = self.setup.navi_stats_before_cards.as_ref()?[side].as_deref()?;
+        let recorded: [u8; 0x64] = unhex(&self.setup.navi_stats[side]).try_into().expect("a 0x64-byte navi stats block");
+        Some(before_cards(&recorded, &unhex(before).try_into().expect("a 0x64-byte navi stats block")))
+    }
+
+    /// The round's start against the trace: a player's stats after the
+    /// engine applied their patch cards are the recorded ones (the fields
+    /// the engine models).
+    pub fn setup_differences(&self, b: &Battle, compat: &Compat) -> Vec<String> {
+        let ids = Ids::new(&b.content, compat);
+        let mut d = Vec::new();
+        for side in 0..2 {
+            if self.stats_before_cards(side).is_none() {
+                continue;
+            }
+            let ours = codec::navi_stats_bytes(&b.stats[side], &ids);
+            let theirs = codec::navi_stats_bytes(&navi_stats(&self.setup.navi_stats[side], &ids), &ids);
+            for i in 0..0x64 {
+                if ours[i] != theirs[i] {
+                    d.push(format!("side {side}'s stats after its patch cards, +{i:#04x}: ours {:#04x} theirs {:#04x}", ours[i], theirs[i]));
+                }
+            }
+            let glitch = self.setup.emotion_window_glitches.is_some_and(|g| g[side]);
+            if b.consoles[side].emotion_window_glitch != glitch {
+                d.push(format!(
+                    "side {side}'s emotion window glitch after its patch cards: ours {} theirs {glitch}",
+                    b.consoles[side].emotion_window_glitch
+                ));
+            }
+        }
+        d
     }
 
     /// The link's delay in ticks (`Setup::link_delay`).
@@ -394,7 +476,7 @@ impl Round {
             },
             None => self.sent_version(side),
         };
-        PlayerSetup {
+        let mut player = PlayerSetup {
             folder,
             unlocks: match &self.setup.unlock_flags {
                 Some(f) => unlocks_from_flags(version, &unhex(&f[side as usize])),
@@ -404,10 +486,15 @@ impl Round {
             bug_frags: self.setup.bug_frags.map_or(RECORDED_BUG_FRAGS, |f| f[side as usize]),
             navi_level: self.setup.navi_levels.map_or(0, |l| l[side as usize]),
             console: self.console_setup(side),
-            // BN6's stock rules, with nothing its systems' setups say yet.
+            // BN6's stock rules; of its systems' setups, the patch cards.
             ruleset: None,
             rules: Vec::new(),
+        };
+        let cards = self.patch_cards(side, ids);
+        if !cards.is_empty() {
+            codec::install_patch_cards(ids.content, &mut player, &cards).unwrap_or_else(|e| panic!("the trace's patch cards: {e}"));
         }
+        player
     }
 
     /// A player's console: the recording console's RNG1 and tag pair
@@ -729,7 +816,7 @@ fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, un
         [o.panel.x, compat.games.panel_y(game, &b.content.defs.kind(o.kind).key, o.panel.y)],
         o.alliance,
         [o.hp, o.max_hp],
-        [o.pos.x, o.pos.y, console_z(b, compat, r, game)],
+        [compat.games.x(game, &b.content.defs.kind(o.kind).key, o.pos.x), o.pos.y, console_z(b, compat, r, game)],
         o.timer,
         o.anim,
         status,
@@ -747,6 +834,10 @@ fn describe_trace(compat: &Compat, o: &Object, unknown: Unknown) -> String {
 pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usize, Option<(u32, Vec<String>)>) {
     let frames: Vec<&Frame> = round.battle_frames().collect();
     let mut b = round.start(content.clone(), compat);
+    let setup = round.setup_differences(&b, compat);
+    if !setup.is_empty() {
+        return (0, Some((round.setup.frame, setup)));
+    }
     let ids = Ids::new(content, compat);
     for i in 0..frames.len() {
         let (input, events) = round.tick_inputs(i, &frames, &ids);

@@ -707,6 +707,11 @@ impl Battle {
             outcome: None,
             setup,
         };
+        // Each side's systems set the round up before anything reads the
+        // side's stats (BN6's patch cards change them); the battle-start
+        // copy of the stats (`cross_stats`) is of the stats after them.
+        b.notify_systems(nettai_content_api::SystemHook::RoundSetup);
+        b.cross_stats = b.stats;
         // Init's last steps: refresh every panel, then one unpaused panel
         // update.
         b.field.refresh_all(&b.content, &b.collision);

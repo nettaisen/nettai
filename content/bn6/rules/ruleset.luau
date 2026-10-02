@@ -5,9 +5,15 @@
 -- take them slice by slice (§8).
 
 local beast = require("./beast/system")
+local patch_cards = require("./patch-cards/system")
 
 return define.ruleset {
     id = "bn6",
     stock = true,
-    systems = { beast },
+    systems = {
+        -- The Japanese games' patch cards (docs/engine/patch-cards.md).
+        patch_cards,
+        -- Beast Out's turns.
+        beast,
+    },
 }

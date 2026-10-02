@@ -315,6 +315,27 @@ pub fn bn6_live_setup(content: &Content, seed: u32, stage: Option<&str>) -> Resu
     Ok((setup, LiveChoices { seed, stage: first, background, folders, crosses, games }))
 }
 
+/// Install a player's patch cards (BN6's patch-cards system's setup) from
+/// a list of card names, comma-separated, in the order they apply (e.g.
+/// `canodumb,-shadow`): a name after `-` is installed but switched off
+/// (docs/engine/patch-cards.md).
+pub fn install_patch_cards(content: &Content, player: &mut PlayerSetup, list: &str) -> Result<(), String> {
+    let mut cards = Vec::new();
+    for item in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        let (name, on) = match item.strip_prefix('-') {
+            Some(name) => (name, false),
+            None => (item, true),
+        };
+        let card = content.defs.record(&format!("patch-card/{name}")).ok_or_else(|| {
+            let names: Vec<&str> =
+                content.defs.records.iter().filter_map(|r| r.key.strip_prefix("patch-card/")).collect();
+            format!("no patch card {name:?}; the content's are {}", names.join(", "))
+        })?;
+        cards.push((card, on));
+    }
+    codec::install_patch_cards(content, player, &cards)
+}
+
 /// Five of the form-changing navi's Crosses of both games, drawn at
 /// random, listed in the games' order (Gregar's, then Falzar's).
 fn random_crosses(content: &Content, draws: &mut Draws) -> Result<CrossList, String> {
