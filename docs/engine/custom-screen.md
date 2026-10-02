@@ -319,6 +319,29 @@ here: the form changes at the turn's start (battle-flow.md §3.4.1). The transfo
 never read in battle and is not modeled; its +4 ("Cross change") is always 0xFF (its only writer is dead code).
 All 20 recorded transformations match **[dumps]** (Crosses 2, 5, 6, 7, 0x0A, Beast Out 0x0B, 0x0C, 0x11).
 
+### 4.1 nettai's extension: a setup's Cross list
+
+**Not the original's.** The original's window offers only its version's five Crosses that the save owns. A
+nettai setup can name the Crosses instead: `Unlocks::cross_list` (`custom::CrossList`), up to five forms, of
+either game, in the order the window lists them. nettai-frontend's live play uses it to offer five of all ten
+Crosses (docs/frontend.md §2). Without a list (every recording, the chip lab, the netplay stand-in) nothing below
+applies and the screen is the original's.
+
+- **Places.** The window's entries, the Cross chosen and the round's record of Crosses used go by a Cross's place
+  among the player's Crosses (`CrossWindow::offered`, `RoundMemory::crosses_used`): the version's Cross number
+  without a list, the place in the list with one (`Unlocks::cross_at`, `owns_cross`). Everything else is as above:
+  a Cross used this round and the navi's starting form aren't offered, A chooses, B takes it back, the face is the
+  Cross's, OK sends the Cross's form (its form in Beast Out when the navi is in a Beast form).
+- **What a list offers.** Its entries that are Crosses (a form of kind `cross`; anything else is never offered),
+  and, while the navi is in a Beast form, only the player's game's Crosses: the other game's have no Beast form of
+  the player's game.
+- **Beast Out from the other game's Cross** takes the navi to the player's own game's Beast Out form, as from the
+  base form (`Unlocks::beast_form`): a Falzar player in HeatCross goes to Falzar's Beast, not to HeatCross's form
+  in Beast Out (which is Gregar's Beast). Beast Over, the Beast Out button and its roar stay the player's game's.
+- **The Cross itself** is its form definition, whatever the player's game: its sprite and palette, element and
+  weakness, buster and charged shot, chip bonuses, face, and what a weakness hit breaks it to. A frontend draws its
+  name in the window from that Cross's own game's pictures (docs/frontend.md §3).
+
 ## 5. OK: the hand (`sub_8029110`)
 
 Built on the OK tick from the picks in order, with each chip as checked (§3.4):
@@ -421,7 +444,10 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
 - **Unit tests** (in this repository, with made-up chips): the shuffle on four recorded folders, the joypad's
   repeat, the builder (Program Advances, modifiers, class counts), and scripted screens (dealing and layout, the
   timeline from opening to sending, the selection rules, invalid chips, Beast Out and a Cross for both games,
-  DustCross's scrap, hand sizes, SELECT).
+  DustCross's scrap, hand sizes, SELECT), and a setup's Cross list (§4.1: either game's Crosses offered and
+  chosen, Beast Out from the other game's, the window in Beast Out, entries that aren't Crosses). nettai-frontend's
+  `a_falzar_player_plays_a_gregar_cross` plays one through on content/bn6: HeatCross chosen by a Falzar player, its
+  form, element, buster and charged flame, then Beast Out from it into Falzar's Beast.
 - **Golden traces** (`trace::run_round`, verification workspace): the traces' recorded buttons drive the
   engine; each player's custom screen runs when the trace has their folder (setup `folders`), otherwise that
   player's results come from the recording (`TickEvents::recorded`). Each frame compares, besides the rest of the
