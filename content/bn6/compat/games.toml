@@ -10,3 +10,36 @@
 # stages.toml numbers by Falzar's address): every one of them is this many
 # bytes later in the Gregar ROM.
 actor_lists = 0x1870
+
+# Objects spawned with a code or data address as their Z (a register their
+# spawner left: a navi chip's navi and FlmHook's hook their spawner's
+# address, the link TenguMan's tornadoes `byte_80F1B70`'s), whose whole part
+# they may clear: by kind, the Falzar ROM's address, which the content
+# keeps (one simulation for both consoles), and the Gregar ROM's. On a
+# Gregar console every object whose Z is that address, or whose Z fraction
+# is its low half (the navi, its body overlay), has Gregar's.
+[gregar.spawner_z_fractions]
+"colonel/navi" = [0x080B84ED, 0x080B9D5D]
+"heatman/navi" = [0x080B921B, 0x080BAA8B]
+"spoutman/navi" = [0x080B9751, 0x080BAFC1]
+"tmhkman/navi" = [0x080B999B, 0x080BB20B]
+"diveman/navi" = [0x080B9B6F, 0x080BB3DF]
+"tenguman/navi" = [0x080B9F0F, 0x080BB77F]
+"crcusman/navi" = [0x080BA661, 0x080BBED1]
+"judgeman/navi" = [0x080BA921, 0x080BC191]
+"dustman/navi" = [0x080BC0DB, 0x080BD94B]
+"twinldrs/navi" = [0x080BD9A3, 0x080BF213]
+"crosover/navi" = [0x080BE3E9, 0x080BFC59]
+"mstrcros/navi" = [0x080BF161, 0x080C09D1]
+"darkness/navi" = [0x080BFCD1, 0x080C1541]
+"roll/navi" = [0x080C0DD9, 0x080C2649]
+"protoman/navi" = [0x080C2A4D, 0x080C42BD]
+"flmhook/hook" = [0x080EA11D, 0x080EB45D]
+"tenguman/tornado" = [0x080F1B70, 0x080F2EB0]
+
+# Objects spawned with the low byte of a routine's address as their panel Y
+# (a register their spawner left): by kind, the Falzar ROM's (which the
+# content keeps) and the Gregar ROM's.
+[gregar.panel_ys]
+# MoonBld's blade: its swing routine's (`sub_80EE2CE`) with the Thumb bit.
+"moonbld/blade" = [0xCF, 0x0F]
