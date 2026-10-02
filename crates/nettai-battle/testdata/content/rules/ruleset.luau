@@ -54,6 +54,7 @@ return {
         trap_mark = effect(),
         encased = effect(),
         beast_over_burst = effect(),
+        panel_splash = effect(),
     },
     sparks = {
         plain = spark(),
@@ -61,6 +62,7 @@ return {
         eruption = spark(),
         thrown_obstacle = spark(),
         uninstall = spark(),
+        panel_burn = spark(),
     },
     regions = {
         anchor = define.region { panels = { { 0, 0 } } },

@@ -72,6 +72,10 @@ export type PanelType =
     | "road_down"
     | "road_left"
     | "road_right"
+    -- BN5's (docs/design/bn5-map.md §15.2).
+    | "metal"
+    | "lava"
+    | "sea"
 -- Status flags of an object with collision data.
 export type StatusFlag =
     "guard"
@@ -1665,7 +1669,8 @@ export type FormEffect =
 --     spent in it, up to three (ChargeCross);
 --   scrap_button: the custom screen has the scrap button (DustCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
---     special is asked for (TenguCross and DustCross in Beast Out).
+--     special is asked for (TenguCross and DustCross in Beast Out);
+--   stands_on_metal: a metal panel doesn't slide the navi (BN5's soul 5).
 export type FormTrait =
     "status_immune"
     | "erases"
@@ -1673,6 +1678,7 @@ export type FormTrait =
     | "extra_chips"
     | "scrap_button"
     | "special_holds_buster"
+    | "stands_on_metal"
 -- One of MegaMan's forms (§3.2).
 export type FormDef = {
     id: string,

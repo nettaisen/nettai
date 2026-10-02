@@ -24,11 +24,20 @@ pub enum PanelType {
     RoadDown = 10,
     RoadLeft = 11,
     RoadRight = 12,
+    /// BN5's type 5 (docs/design/bn5-map.md §15.2): BN6's road flags and
+    /// a plate's look; a move's end on it starts a slide.
+    Metal = 13,
+    /// BN5's type 8: the volcano's flags and sound, but it burns a body
+    /// that stands on it and turns normal, and it doesn't erupt.
+    Lava = 14,
+    /// BN5's type 10: drains fire bodies, holds a body that ends a move on
+    /// it, submerges what can dive.
+    Sea = 15,
 }
 
 impl PanelType {
     /// Every panel type, in order.
-    pub const ALL: [PanelType; 13] = [
+    pub const ALL: [PanelType; 16] = [
         PanelType::Missing,
         PanelType::Broken,
         PanelType::Normal,
@@ -42,6 +51,9 @@ impl PanelType {
         PanelType::RoadDown,
         PanelType::RoadLeft,
         PanelType::RoadRight,
+        PanelType::Metal,
+        PanelType::Lava,
+        PanelType::Sea,
     ];
 
     pub fn is_road(self) -> bool {
@@ -66,9 +78,6 @@ pub mod pflags {
     pub const BODY: u32 = 0x0F80_0000;
 }
 
-/// Ticks before a road panel reverts to normal.
-const ROAD_TICKS: u16 = 0x708;
-
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Panel {
     pub visible: bool,
@@ -90,8 +99,10 @@ pub struct Panel {
     /// Hole timer: counts down while broken.
     pub hole_timer: u16,
     pub return_blink: u16,
-    /// Road timer: counts down while a road.
-    pub road_timer: u16,
+    /// Counts down while the panel is a type that expires (BN6's roads,
+    /// BN5's lava and sea: `PanelTypeRule::expires`), set to the type's
+    /// ticks as the panel becomes it.
+    pub expire_timer: u16,
     /// Cached flags: type bits, owner, reservation and the collision types
     /// of everything registered on the panel.
     pub flags: u32,
@@ -251,7 +262,9 @@ impl Field {
     /// `rules` are the arena's game's panel rules (docs/design/
     /// rules-in-luau.md §2.3: the field is the battle's).
     pub fn new(rules: &crate::content::PanelRules, layout: &crate::content::PanelLayout, pattern: u8, battle_mode: u8) -> Field {
-        let hole_ticks = if battle_mode == 1 { 0x1E0 } else { 0x258 };
+        // (BN6: 0x258 ticks, 0x1E0 in battle mode 1; BN5 600 in every
+        // battle, 0x0800A998.)
+        let hole_ticks = if battle_mode == 1 { rules.mend_in_battle_mode_1 } else { rules.mend };
         let rows = layout.rows;
         let mut columns = [Column::default(); 8];
         for (x, c) in columns.iter_mut().enumerate() {
@@ -273,7 +286,7 @@ impl Field {
                     x,
                     y,
                     hole_timer: hole_ticks,
-                    road_timer: ROAD_TICKS,
+                    expire_timer: rules.types[t as usize].expires.unwrap_or(0),
                     ..Panel::default()
                 };
             }
@@ -405,15 +418,16 @@ impl Battle {
         }
     }
 
-    /// `sub_800C380`.
+    /// `sub_800C380` (BN5's 0x0800A998: its lava and sea expire as BN6's
+    /// roads do, each with its own timer, which a panel's new type sets).
     fn tick_panel(&mut self, x: u8, y: u8) {
         let h = self.field.hole_ticks;
         let p = self.field.panels[y as usize][x as usize];
+        let expires = self.content.rules_of(self.games.arena).panels.types[p.kind as usize].expires;
         match p.kind {
             PanelType::Missing => {}
             PanelType::Broken => {
                 let p = &mut self.field.panels[y as usize][x as usize];
-                p.road_timer = ROAD_TICKS;
                 p.hole_timer = p.hole_timer.wrapping_sub(1);
                 if p.hole_timer == 0 {
                     p.kind = PanelType::Normal;
@@ -428,7 +442,6 @@ impl Battle {
             PanelType::Cracked => {
                 let p = &mut self.field.panels[y as usize][x as usize];
                 p.hole_timer = h;
-                p.road_timer = ROAD_TICKS;
                 let latch = p.latch;
                 if latch & pflags::BODY != 0 && latch & pflags::FLOATING == 0 && p.flags & pflags::OCCUPIED == 0 {
                     p.kind = PanelType::Broken;
@@ -440,29 +453,29 @@ impl Battle {
             PanelType::Volcano => {
                 let p = &mut self.field.panels[y as usize][x as usize];
                 p.hole_timer = h;
-                p.road_timer = ROAD_TICKS;
                 let at = if p.x <= 3 { 0x8C } else { 0x46 };
                 if self.field.volcano_counter == at {
                     self.erupt(x, y);
                 }
             }
-            PanelType::RoadUp | PanelType::RoadDown | PanelType::RoadLeft | PanelType::RoadRight => {
+            // A type that expires (BN6's roads, BN5's lava and sea): normal
+            // when its ticks are up, blinking back in its last second.
+            kind if let Some(ticks) = expires => {
                 let p = &mut self.field.panels[y as usize][x as usize];
                 p.hole_timer = h;
-                p.road_timer = p.road_timer.wrapping_sub(1);
-                if p.road_timer == 0 {
+                p.expire_timer = p.expire_timer.wrapping_sub(1);
+                if p.expire_timer == 0 {
                     p.kind = PanelType::Normal;
                     self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
-                    self.field.panels[y as usize][x as usize].road_timer = ROAD_TICKS;
+                    self.field.panels[y as usize][x as usize].expire_timer = ticks;
                     return;
                 }
-                let blink = p.road_timer <= 60 && p.road_timer & 2 != 0;
-                p.display_kind = if blink { PanelType::Normal } else { p.kind };
+                let blink = p.expire_timer <= 60 && p.expire_timer & 2 != 0;
+                p.display_kind = if blink { PanelType::Normal } else { kind };
             }
             _ => {
                 let p = &mut self.field.panels[y as usize][x as usize];
                 p.hole_timer = h;
-                p.road_timer = ROAD_TICKS;
             }
         }
     }
@@ -596,8 +609,10 @@ impl Battle {
             return;
         }
         p.kind = t;
-        if t.is_road() {
-            p.road_timer = ROAD_TICKS;
+        // (A type that expires starts its count: BN6's roads,
+        // `_object_setPanelType`; BN5's lava and sea, 0x0800B2AE.)
+        if let Some(ticks) = self.content.rules_of(self.games.arena).panels.types[t as usize].expires {
+            p.expire_timer = ticks;
         }
         self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
     }

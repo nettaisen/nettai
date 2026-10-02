@@ -54,6 +54,11 @@ pub fn definitions(c: &Content, r: &mut Report) {
                 r.warn(&file, format!("the role {group}.{name} is not filled"));
             }
         };
+        // (The panels' burn and splash are needed only by a game whose own
+        // panels burn or hold: BN5's lava and sea.)
+        let own = c.rules.get(i).map(|rules| &rules.panels.types[..]).unwrap_or(&[]);
+        let needs_burn = own.iter().any(|t| t.named && t.burn.is_some());
+        let needs_splash = own.iter().any(|t| t.named && t.holds.is_some());
         for role in LockonRole::ALL {
             unfilled("lockon", role.name(), roles.lockons.contains_key(&role));
         }
@@ -61,10 +66,12 @@ pub fn definitions(c: &Content, r: &mut Report) {
             unfilled("statuses", role.name(), roles.statuses.contains_key(&role));
         }
         for &role in EffectRole::ALL {
-            unfilled("effects", role.name(), roles.effects.contains_key(&role));
+            let needed = role != EffectRole::PanelSplash || needs_splash;
+            unfilled("effects", role.name(), !needed || roles.effects.contains_key(&role));
         }
         for &role in SparkRole::ALL {
-            unfilled("sparks", role.name(), roles.sparks.contains_key(&role));
+            let needed = role != SparkRole::PanelBurn || needs_burn;
+            unfilled("sparks", role.name(), !needed || roles.sparks.contains_key(&role));
         }
         for &role in RegionRole::ALL {
             unfilled("regions", role.name(), roles.regions.contains_key(&role));

@@ -1427,10 +1427,36 @@ fn rules() -> Rules {
                 PanelType::RoadDown => (pflags::SOLID | 0x200, Some(SlideVector { dx: 0, dy: 1, tiles: 1 })),
                 PanelType::RoadLeft => (pflags::SOLID | 0x200, Some(SlideVector { dx: -1, dy: 0, tiles: 1 })),
                 PanelType::RoadRight => (pflags::SOLID | 0x200, Some(SlideVector { dx: 1, dy: 0, tiles: 1 })),
+                // BN5's three (docs/design/bn5-map.md §15.2).
+                PanelType::Metal => (pflags::SOLID | 0x200, None),
+                PanelType::Lava => (pflags::SOLID | 0x1000, None),
+                PanelType::Sea => (pflags::SOLID | 0x20000, None),
             };
             // Every panel type is on the field (the step sword looks for
-            // this bit).
-            PanelTypeRule { flags: flags | ON_FIELD, road_slide, trail_sound: None }
+            // this bit). The roads last 0x708 ticks, lava and sea 960 as
+            // BN5's do; lava burns for 50, sea drains fire bodies and
+            // holds a body that ends a move on it for 20 ticks, and metal
+            // slides it as BN5's does.
+            let road = t.is_road();
+            PanelTypeRule {
+                flags: flags | ON_FIELD,
+                road_slide,
+                trail_sound: None,
+                expires: if road { Some(0x708) } else if matches!(t, PanelType::Lava | PanelType::Sea) { Some(960) } else { None },
+                burn: (t == PanelType::Lava).then_some(50),
+                drains: (t == PanelType::Sea).then_some(1),
+                holds: (t == PanelType::Sea).then_some(20),
+                submerges: t == PanelType::Sea,
+                slide: (t == PanelType::Metal).then(metal_slide),
+                cleared_by: match t {
+                    PanelType::Grass => Some(1),
+                    PanelType::Volcano | PanelType::Lava => Some(2),
+                    PanelType::Metal => Some(4),
+                    t if t.is_road() => Some(4),
+                    _ => None,
+                },
+                named: true,
+            }
         })
         .collect();
     // Steps: onto a free panel of one's own side, solid unless floor-free.
@@ -1472,6 +1498,8 @@ fn rules() -> Rules {
             step,
             dash_step: step,
             any_side_step: StepRuleSet { grounded: [solid(any_side); 2], floor_free: [any_side; 2] },
+            mend: 0x258,
+            mend_in_battle_mode_1: 0x1E0,
         },
         holding_banners: vec![BannerId(0x24)],
         // (The statuses are testdata/content/rules/status.luau's.)
@@ -1533,6 +1561,14 @@ fn rules() -> Rules {
         custom_screen: custom_screen_layout(),
         pools: Default::default(),
     }
+}
+
+/// BN5's metal slide (0x0800C920, 0x0800C9C0): by the direction of the
+/// move, the steps tried in turn (forward, back, up, down: dx toward the
+/// front).
+pub fn metal_slide() -> crate::content::PanelSlide {
+    let (f, b, u, d) = (Some((1, 0)), Some((-1, 0)), Some((0, -1)), Some((0, 1)));
+    crate::content::PanelSlide { tries: [[None; 4], [f, u, b, d], [b, d, f, u], [u, b, d, f], [d, f, u, b], [d, f, u, b]] }
 }
 
 /// The custom screen's grid: five chip slots on top, five below, OK at
