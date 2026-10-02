@@ -80,11 +80,12 @@ roles (rules/roles.luau: what it starts, spawns and shows itself), never by numb
      beyond its record is a `trait` or a role, never the chip's key.
    - A weapon is `define.weapon { id, charge_ticks, setup }`: `setup(navi)` fills the attack (damage,
      hit parameter, element) and returns the action to start.
-   - No definition holds display text: a chip's, navi's, form's or weapon's name, a description and the
-     no-running message are the content root's `locales/en.toml`, by the definition's key (the define phase
+   - No definition holds display text: a chip's, navi's or Cross's name, a description, the no-running
+     message and a record's name are the content root's `locales/en.toml`, by the definition's key (the define phase
      refuses a `name` or `description` field, and counts what the battle reads of the strings, a description's
      lines and the message's characters, into the record). Add the new definition's strings there
-     (docs/design/text-rendering.md §10).
+     (docs/design/text-rendering.md §10). A weapon, a Beast form and the base form have none: nothing shows
+     them. The game's marks are characters (Ⓐ, Ⓑ; `\uE002` and `\uE003` the stacked EX and SP: §10.5).
    - Assets by name: `asset.sprite("bomb")`, `asset.sound("sword-swing")`. The names are compat/assets.toml's;
      a placeholder such as `sprite-14-1b` is named first, with an entry in compat/curation.toml.
    - The API takes definitions: `battle.spawn(kind, pos)`, `me:setup_collision(collision.thrown,

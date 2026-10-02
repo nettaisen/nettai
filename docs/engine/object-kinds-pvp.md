@@ -18,7 +18,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T1 0x10 | 0x080baa8c | 481 (ElmntMan: the pack's `chips/elmntman/navi`, chips.md §3.6.7) |
 | T1 0x15 | 0x080bb608 | 513 (EraseMan: the pack's `chips/eraseman/navi`, chips.md §3.6.7) |
 | T1 0x16 | 0x080bb914 | lab only (ChargeMan: the pack's `chips/chrgeman/navi`, chips.md §3.6.17) |
-| T1 0x1b | 0x080bc650 | 424 (Cross navi image: `kinds::cross_merge`, objects-and-player.md §12.10) |
+| T1 0x1b | 0x080bc650 | 424 (Cross navi image: BN6's forms system's `forms/cross-merge`, content/bn6/rules/forms/merge.luau; objects-and-player.md §12.10) |
 | T1 0x2d | 0x080c0e04 | 136 (navi warp: `kinds::navi_warp`, chips.md §3.6.7) |
 | T1 0x50 | 0x080c3ce8 | 454 |
 | T1 0x55 | 0x080c40d8 | 592 (SpoutMan's idle overlay: `kinds::idle_overlay`, put on by the navi hooks in `kinds::player::form`) |

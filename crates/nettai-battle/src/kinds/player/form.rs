@@ -163,7 +163,7 @@ pub(crate) fn navi_death_hook(b: &mut Battle, r: ObjectRef, identity: Option<Ide
 /// form that wears nothing leaves `related[1]` alone, `nullsub_43`). The
 /// base form, which has no identity of its own, takes off whatever is
 /// there (`sub_80111B8`).
-pub(super) fn take_off_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
+pub(crate) fn take_off_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
     let takes = match b.content.form(form).identity {
         None => true,
         identity => b.content.identity(identity).overlay_hooks.death,

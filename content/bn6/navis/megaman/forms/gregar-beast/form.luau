@@ -4,10 +4,13 @@
 local gregar_beast_buster = require("../../weapons/gregar-beast-buster/weapon")
 local charged_chip_bonus = require("../../weapons/charged-chip-bonus/weapon")
 local beast_claw = require("../../weapons/beast-claw/weapon")
+local forms = require("../../../../rules/forms/system")
 
 return define.form {
     id = "gregar-beast",
     kind = "beast",
+    -- What changes MegaMan into it (BN6's five sequences).
+    change = forms.action,
     game = "gregar",
     sprite = asset.sprite("gregar-beast"),
     element = "null",

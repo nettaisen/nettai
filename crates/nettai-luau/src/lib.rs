@@ -316,12 +316,20 @@ impl ContentHost for LuauContent {
         self.call(f, api, None, o)
     }
 
-    fn update_action(&self, api: &mut dyn CoreApi, f: FnId, me: ObjectRef, state: StateId) -> Result<(), ContentError> {
+    fn update_action(
+        &self,
+        api: &mut dyn CoreApi,
+        f: FnId,
+        me: ObjectRef,
+        state: StateId,
+        system: Option<(u8, u8)>,
+    ) -> Result<(), ContentError> {
         let o = bind::object(&self.lua, me).map_err(|e| ContentError::new(e.to_string()))?;
         // The state of the action being run, even after the update leaves
         // it (the game's attack variables outlive the action).
         let s = bind::action_state(&self.lua, me, state).map_err(|e| ContentError::new(e.to_string()))?;
-        self.call(f, api, None, (o, s))
+        let system = system.map(|(side, slot)| bind::SystemCtx { side, slot });
+        self.call(f, api, system, (o, s))
     }
 
     fn call_hook(&self, api: &mut dyn CoreApi, f: FnId, call: HookCall) -> Result<Value, ContentError> {
