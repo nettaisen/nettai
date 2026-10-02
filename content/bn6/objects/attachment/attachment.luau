@@ -45,7 +45,7 @@ local function follow(me: Object)
     local p = owner.pos
     local lift = s.lift * 0x10000
     me.pos = Vec3.new(p.x + s.offset_x, p.y - lift, p.z + s.offset_z - lift)
-    me.visible = owner.visible
+    me:copy_visibility(owner)
     -- It wears the owner's colour shader, white flash, alpha and flip.
     local look, worn = me.sprite, owner.sprite
     look.color_shader = worn.color_shader

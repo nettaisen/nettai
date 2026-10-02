@@ -65,9 +65,10 @@ function stand_in.init(me: Object): Object
     return user
 end
 
--- Shown, unless the local player is blind to its side (`sub_800EB6C`).
+-- Shown, unless the viewer is blind to its side (`sub_800EB6C`).
 function stand_in.show(me: Object)
-    me.visible = battle.viewer_sees(me.alliance)
+    me.visible = true
+    me:hide_from_blind()
 end
 
 -- Done (`sub_80BB10C` and its copies): its parts off, hidden, freed at its

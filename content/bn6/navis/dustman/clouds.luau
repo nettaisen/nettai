@@ -44,7 +44,7 @@ local function follow(me: Object)
     end
     local owner = me.related1 :: Object
     me.pos = owner.pos
-    me.visible = owner.visible
+    me:copy_visibility(owner)
     local look, worn = me.sprite, owner.sprite
     look.palette = worn.palette
     look.color_shader = worn.color_shader

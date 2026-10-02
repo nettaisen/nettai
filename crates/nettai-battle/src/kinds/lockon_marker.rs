@@ -84,7 +84,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             b.objects.sprite_mut(r).look.shadow = crate::object::sprite::Shadow::WithSprite;
             let o = b.objects.get_mut(r);
             o.flags &= !flags::NO_SPRITE_UPDATE;
-            o.flags |= flags::VISIBLE;
+            o.set_visible(true);
             set_progress(b, r, Progress::UPDATE);
             tick(b, r);
         }
@@ -107,12 +107,10 @@ fn link(b: &mut Battle, r: ObjectRef) -> &mut Option<ObjectRef> {
 fn tick(b: &mut Battle, r: ObjectRef) {
     let alliance = b.objects.get(r).alliance;
     let side = alliance as usize;
-    let shown = b.navi(side).changes_form() && b.form(side).kind.is_beast() && !b.is_remote(alliance);
-    let o = b.objects.get_mut(r);
-    o.flags &= !flags::VISIBLE;
-    if shown {
-        o.flags |= flags::VISIBLE;
-    }
+    // Shown on its owner's console only.
+    let beast = b.navi(side).changes_form() && b.form(side).kind.is_beast();
+    b.objects.get_mut(r).set_visible(beast);
+    b.hide_from_other_side(r);
     if b.is_dimmed() {
         return;
     }
@@ -128,7 +126,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     common::set_panels_from_coordinates(b, r);
     let p = b.objects.get(r).panel;
     if !crate::field::is_valid(p.x, p.y) {
-        b.objects.get_mut(r).flags &= !flags::VISIBLE;
+        b.objects.get_mut(r).set_visible(false);
     }
     if link(b, r).is_none() {
         b.objects.free(r);

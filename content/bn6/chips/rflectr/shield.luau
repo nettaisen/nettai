@@ -59,7 +59,7 @@ local UP, FADING = 0, 4
 local function follow(me: Object)
     local owner = me.related1 :: Object
     me.pos = owner.pos + me.vel
-    me.visible = owner.visible
+    me:copy_visibility(owner)
     if not slot.occupied(owner, (me.state :: State).slot) then
         me.action = FADING
         me.phase = 0
@@ -83,8 +83,8 @@ local function fade(me: Object)
     end
 end
 
--- `sub_80C9726`: the action, then shown unless the local player is blind
--- to it or its owner vanished for a navi chip.
+-- `sub_80C9726`: the action, then shown unless the viewer is blind to it
+-- or its owner vanished for a navi chip.
 local function tick(me: Object)
     local a = me.action
     if a == UP then
@@ -95,9 +95,7 @@ local function tick(me: Object)
         error(string.format("reflector shield action %#x reads past its table", a))
     end
     me.visible = true
-    if not battle.viewer_sees(me.alliance) then
-        me.visible = false
-    end
+    me:hide_from_blind()
     local owner = me.related1 :: Object
     if owner:navi_state("vanished") then
         me.visible = false

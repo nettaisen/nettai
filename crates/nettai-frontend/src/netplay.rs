@@ -18,9 +18,13 @@
 //! tracker makes of every tick simulated (a cue played on a wrong
 //! prediction is taken back). A set's rounds follow each other on the same
 //! stream ([`crate::driver::next_round_setup`]).
+//!
+//! The sound's tracker is the peer's world's observer, which the world tells
+//! everything (ticks simulated, rewinds, ticks settled); the player reads
+//! its actions through the session. A player is `Send` over a `Send`
+//! datagram channel (UDP), so the network side can run on a thread of its
+//! own.
 
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -139,11 +143,13 @@ impl Default for NetOptions {
 }
 
 /// What the player hears: every tick the peer simulates, through a cue
-/// tracker for their side.
+/// tracker for their side. The peer's world owns it.
 struct Sound {
     viewer: u8,
     tracker: CueTracker,
-    pending: Vec<CueAction>,
+    /// Every action of the round so far, in order: the player takes the
+    /// ones after those it took the frame before.
+    actions: Vec<CueAction>,
 }
 
 /// Frames a cue a re-simulation makes again may move and still be the one
@@ -152,7 +158,7 @@ const CUE_TOLERANCE: u32 = 3;
 
 impl Sound {
     fn new(viewer: u8) -> Sound {
-        Sound { viewer, tracker: CueTracker::new(CUE_TOLERANCE), pending: Vec::new() }
+        Sound { viewer, tracker: CueTracker::new(CUE_TOLERANCE), actions: Vec::new() }
     }
 }
 
@@ -163,15 +169,23 @@ impl<G: Game> Observer<G> for Sound {
 
     fn simulated(&mut self, frame: u32, game: &G) {
         self.tracker.simulated(frame, game.battle().sound_cues_for(self.viewer));
-        self.pending.extend(self.tracker.drain());
+        self.actions.extend(self.tracker.drain());
     }
 
-    fn confirmed(&mut self, frames: u32, _: &Battle) {
-        self.tracker.confirmed(frames);
+    fn confirmed(&mut self, frame: u32, _: Option<&Battle>) {
+        self.tracker.confirmed(frame + 1);
     }
 }
 
-type NetPeer = Peer<StandInBattle, Rc<RefCell<Sound>>>;
+type NetPeer = Peer<StandInBattle, Sound>;
+
+// A peer, its world and its sound go to another thread, and a player over
+// UDP with them.
+const _: () = {
+    const fn send<T: Send>() {}
+    send::<NetPeer>();
+    send::<NetPlayer<nettai_netplay::transport::Udp>>();
+};
 
 /// Plays a match against another player over `D` (UDP, `nettai_netplay::transport::Udp`).
 pub struct NetPlayer<D: Datagram> {
@@ -179,7 +193,8 @@ pub struct NetPlayer<D: Datagram> {
     conn: Connection<D>,
     side: usize,
     peer: NetPeer,
-    sound: Rc<RefCell<Sound>>,
+    /// The sound's actions of this round the player has taken.
+    heard: usize,
     /// The set's first round, and the players' loadouts by side.
     first: RoundSetup,
     loadouts: [Loadout; 2],
@@ -194,10 +209,9 @@ impl<D: Datagram> NetPlayer<D> {
     /// round, between these loadouts (by side).
     pub fn new(content: Arc<Content>, conn: Connection<D>, first: RoundSetup, loadouts: [Loadout; 2], options: NetOptions) -> NetPlayer<D> {
         let side = conn.side();
-        let sound = Rc::new(RefCell::new(Sound::new(side as u8)));
         let config = PeerConfig::new(options.delay, options.max_lead);
-        let world = BattleWorld::with_observer(StandInBattle::new(Battle::new(first.clone(), content.clone())), side, sound.clone());
-        NetPlayer { content, conn, side, peer: Peer::new(world, config), sound, first, loadouts, options, start: Instant::now(), over: None }
+        let world = BattleWorld::with_observer(StandInBattle::new(Battle::new(first.clone(), content.clone())), side, Sound::new(side as u8));
+        NetPlayer { content, conn, side, peer: Peer::new(world, config), heard: 0, first, loadouts, options, start: Instant::now(), over: None }
     }
 
     /// The side this player plays.
@@ -223,6 +237,13 @@ impl<D: Datagram> NetPlayer<D> {
 
     fn now(&self) -> u64 {
         self.start.elapsed().as_millis() as u64
+    }
+
+    /// The sound's actions since the player last took them.
+    fn take_sound(&mut self, into: &mut Vec<CueAction>) {
+        let actions = &self.peer.session().world().observer().actions;
+        into.extend_from_slice(&actions[self.heard..]);
+        self.heard = actions.len();
     }
 
     /// `battle` as this player sees it: the frontend draws the console of
@@ -266,10 +287,9 @@ impl<D: Datagram> NetPlayer<D> {
                 shown.setup.local_side = side;
             });
             ran.advanced = true;
-            // What settled: the sound's confirmation, and the round's end.
+            // What settled: the round's end. (The world has told the sound.)
             let (end, next) = {
                 let settled = self.peer.session().settled_state();
-                Observer::<StandInBattle>::confirmed(&mut *self.sound.borrow_mut(), settled.tick(), settled.battle());
                 // (The next round's setup is the shared simulation's, side
                 // 0's; the result is this player's.)
                 let next = match settled.battle().round_end() {
@@ -285,15 +305,16 @@ impl<D: Datagram> NetPlayer<D> {
             }
             if let Some(next) = next {
                 let battle = Battle::new(next, self.content.clone());
-                ran.sound.append(&mut self.sound.borrow_mut().pending);
-                *self.sound.borrow_mut() = Sound::new(side);
-                let world = BattleWorld::with_observer(StandInBattle::new(battle.clone()), self.side, self.sound.clone());
+                self.take_sound(&mut ran.sound);
+                // A new round, a new tracker.
+                let world = BattleWorld::with_observer(StandInBattle::new(battle.clone()), self.side, Sound::new(side));
                 self.peer.end_round(world);
+                self.heard = 0;
                 self.show(&battle, shown);
                 ran.new_round = true;
             }
         }
-        ran.sound.append(&mut self.sound.borrow_mut().pending);
+        self.take_sound(&mut ran.sound);
         Ok(ran)
     }
 }

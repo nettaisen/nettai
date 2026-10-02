@@ -31,7 +31,7 @@ local function init(me: Object)
     sprite:set_animation(0)
     sprite.palette = 0
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    me.visible = owner.visible
+    me:copy_visibility(owner)
     me:set_lifecycle("update")
 end
 
@@ -46,7 +46,7 @@ local function tick(me: Object)
     local owner = me.related1 :: Object
     local s = me.state :: State
     me.pos = owner.pos
-    me.visible = owner.visible
+    me:copy_visibility(owner)
     local sprite, look = me.sprite, owner.sprite
     sprite.palette = look.palette
     sprite.color_shader = look.color_shader

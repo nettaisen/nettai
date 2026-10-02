@@ -175,7 +175,8 @@ end
 -- `sub_80C48FC`: seen unless the viewer is blind to its side; its variant;
 -- the sprite, while dimmed too.
 local function tick(me: Object)
-    me.visible = battle.viewer_sees(me.alliance)
+    me.visible = true
+    me:hide_from_blind()
     act(me)
     me:update_sprite_while_dimmed()
 end

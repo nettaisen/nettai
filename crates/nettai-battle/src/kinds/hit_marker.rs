@@ -50,7 +50,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.set_animation(anim, &b.content);
     s.update(&b.content);
     let o = b.objects.get_mut(r);
-    o.flags |= flags::VISIBLE;
+    o.set_visible(true);
     o.vel = o.pos;
     o.state = state::UPDATE;
     o.action = 0;
@@ -73,7 +73,7 @@ fn follow(b: &mut Battle, r: ObjectRef) {
     o.pos.y = o.pos.y.wrapping_add(0x1_0000);
     if b.objects.sprite(r).frame_parameters() & FRAME_LAST != 0 {
         let o = b.objects.get_mut(r);
-        o.flags &= !flags::VISIBLE;
+        o.set_visible(false);
         o.state = state::DESTROY;
         o.action = 0;
         o.phase = 0;
