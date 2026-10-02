@@ -170,12 +170,6 @@ impl Games {
     }
 }
 
-impl Game {
-    /// A navi's game by its NaviStats+0x20 (0 Gregar, 1 Falzar).
-    pub fn of_navi_version(version: u8) -> Game {
-        if version == 0 { Game::Gregar } else { Game::Falzar }
-    }
-}
 
 /// Records a setup names by byte.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
