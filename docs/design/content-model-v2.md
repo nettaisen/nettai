@@ -935,7 +935,6 @@ local lockon = require("../../rules/lockon")
 
 return define.chip {
     id = "minibomb",
-    name = "MiniBomb",
     codes = { "B", "L", "R", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 0, mb = 6, damage = 50, hit_param = 30,
@@ -957,7 +956,7 @@ return define.chip {
 ```luau
 -- chips/bigbomb/chip.luau: the same throw, a bigger blast.
 return define.chip {
-    id = "bigbomb", name = "BigBomb", -- ... the record ...
+    id = "bigbomb", -- ... the record ...
     action = throw.action {
         held = bomb.held, held_palette = 3,
         thrower = bomb.thrower(bomb.variant {
@@ -1044,7 +1043,7 @@ function slash.action(spec: SlashSpec): Action ... end
 local swords = require("../../lib/swords")
 local SLASH = { is = collision.slash, hits = collision.hits_navis }
 return define.chip {
-    id = "sword", name = "Sword", damage = 80, -- ... the record ...
+    id = "sword", damage = 80, -- ... the record ...
     action = swords.slash.action {
         blade = swords.blades.sword,
         hit = { region = regions.single, collision = SLASH, hit_mod = 3 },
@@ -1055,7 +1054,7 @@ return define.chip {
 
 -- chips/wideswrd/chip.luau
 return define.chip {
-    id = "wideswrd", name = "WideSwrd", damage = 80, codes = { "H", "L", "S", "*" }, -- ... the record ...
+    id = "wideswrd", damage = 80, codes = { "H", "L", "S", "*" }, -- ... the record ...
     action = swords.slash.action {
         blade = swords.blades.sword,
         hit = { region = regions.wide, collision = SLASH, hit_mod = 3 },
@@ -1133,11 +1132,11 @@ function cannon.action(spec: { shot: projectile.Variant, look: CannonLook }): Ac
 local SHOT = projectile.variant { collision = { is = collision.shot, hits = collision.hits_navis },
     hit_mod = 0, element = "null", spark = sparks.cannon }
 return {
-    define.chip { id = "cannon", name = "Cannon", damage = 40, -- ...
+    define.chip { id = "cannon", damage = 40, -- ...
         action = cannon.action { shot = SHOT, look = LOOKS.cannon } },
-    define.chip { id = "hicannon", name = "HiCannon", damage = 100, -- ...
+    define.chip { id = "hicannon", damage = 100, -- ...
         action = cannon.action { shot = SHOT, look = LOOKS.hicannon } },
-    define.chip { id = "m-cannon", name = "M-Cannon", damage = 180, -- ...
+    define.chip { id = "m-cannon", damage = 180, -- ...
         action = cannon.action { shot = SHOT, look = LOOKS.m_cannon } },
 }
 ```
@@ -1188,7 +1187,7 @@ return { area = hook(true), panel = hook(false) }
 ```luau
 -- chips/areagrab/chip.luau
 local grab = require("../../lib/grab/controller")
-return define.chip { id = "areagrab", name = "AreaGrab", flags = { "dimming" }, -- ...
+return define.chip { id = "areagrab", flags = { "dimming" }, -- ...
     dimming = grab.area }
 ```
 
@@ -1303,11 +1302,11 @@ end
 -- chips/eraseman/chips.luau: the series (v1: action 0x1B, subtype 5, Param1 20, 16, 12).
 local sp = require("../../lib/navi-chips/sp")
 return {
-    define.chip { id = "eraseman", name = "EraseMan", damage = 120, hit_param = 138, -- ...
+    define.chip { id = "eraseman", damage = 120, hit_param = 138, -- ...
         navi = eraseman.summon { aim_ticks = 20 } },
-    define.chip { id = "erasemn-ex", name = "EraseMn[EX]", damage = 140, hit_param = 138, -- ...
+    define.chip { id = "erasemn-ex", damage = 140, hit_param = 138, -- ...
         navi = eraseman.summon { aim_ticks = 16 } },
-    define.chip { id = "erasemn-sp", name = "EraseMn[SP]", hit_param = 138, -- ...
+    define.chip { id = "erasemn-sp", hit_param = 138, -- ...
         damage = formula.sp_navi { slot = sp.eraseman, by_time = { --[[ eleven steps ]] } },
         navi = eraseman.summon { aim_ticks = 12 } },
 }
@@ -1392,7 +1391,7 @@ v1: action 0x1C calls `Hook::InstantChip(subtype)`; one module serves the 30 chi
 -- chips/busterup/chip.luau
 local SPARKLE = define.effect { sprite = asset.sprite("buster-up"), anim = 0 }
 local SOUND = asset.sound("buster-up")
-return define.chip { id = "busterup", name = "BusterUp", -- ...
+return define.chip { id = "busterup", -- ...
     instant = function(user: Object, spec: InstantChipSpec)   -- `sub_8010820`
         local stats = battle.navi(user.alliance)
         stats.attack = math.min(stats.attack + 1, 9)   -- 1: BusterUp's parameter, as data
@@ -1455,7 +1454,7 @@ FullCust, SyncTrgr, WhiCapsl (`plus.attack_with(plus.PARALYZE)`), FinalGun and N
 -- navis/megaman/weapons/buster/weapon.luau
 local SHOT = define.action { id = "megaman/buster/shot", state = STATE, update = shot }  -- action 0x11 in compat
 return define.weapon {
-    id = "megaman/buster", name = "Buster",
+    id = "megaman/buster",
     charge_ticks = { 0, 0, 0, 0, 0 },
     setup = function(navi: Object): Action                          -- `sub_8011A26`
         local pick = pick(navi)                                     -- the NaviCust blanks and charged slots
@@ -1478,7 +1477,7 @@ local body = require("../../overlays")          -- the Crosses' body overlays (r
 local FLAME = burner.action { id = "heatcross/charge/flame", flame = burner.flames.heat_charge }
 
 local CHARGE = define.weapon {                  -- the original's routine 0x06, `sub_8011BA2`
-    id = "heatcross/charge", name = "Heat charge",
+    id = "heatcross/charge",
     charge_ticks = { 100, 90, 80, 70, 60 },
     setup = function(navi: Object): Action
         -- ... as today: the attack's damage, element and bonus ...
@@ -1487,7 +1486,7 @@ local CHARGE = define.weapon {                  -- the original's routine 0x06, 
 }
 
 return define.form {
-    id = "heatcross", name = "HeatCross",
+    id = "heatcross",
     kind = "cross", cross_of = require("../../../heatman/navi"),
     sprite = asset.sprite("megaman"), element = "fire",
     buster_bonus = 1,
@@ -1592,11 +1591,11 @@ switch on spawn parameters (`me:param`).
 
 ```luau
 -- chips/gundels/chips.luau: a series; what the subtype and the pack's `[gun_del_sol]` data gave is each chip's.
-define.chip { id = "gundels3", name = "GunDelS3", -- ... the record ...
+define.chip { id = "gundels3", -- ... the record ...
     action = action.action { gun = action.gun(6), firing_ticks = 120, beam = BEAM, beam_in_sun = BEAM_IN_SUN } }
 
 -- chips/heatdrgn/chip.luau: a family's builder (lib/dragons) and its variant record.
-define.chip { id = "heatdrgn", name = "HeatDrgn", -- ...
+define.chip { id = "heatdrgn", -- ...
     action = action.action { dragon = dragon.variant { speed = 0x4_0000, palette = 0, hit_mod = 3,
         spark = sparks.fire, panel = false, delays = { 3, 6, 9, 12 } } } }
 ```
@@ -1907,8 +1906,8 @@ pub struct Content {
 ```
 
 - `ChipData` loses `id`, `action`, `subtype`, `params`, `script` and the per-family tables (`gun_del_sol`,
-  `sword`, `recovery`, `navi_damage`): those were the numbers and the builder arguments. It gains `name`,
-  `description`, `usage: ChipUsage` (`Action(ActionHandle)`, `Dimming`, `Navi`, `Instant`: the hooks are function
+  `sword`, `recovery`, `navi_damage`): those were the numbers and the builder arguments. It gains
+  `description_lines` (counted from the content's strings, below), `usage: ChipUsage` (`Action(ActionHandle)`, `Dimming`, `Navi`, `Instant`: the hooks are function
   slots), `damage: ChipDamage` (`Fixed(u16)` or a typed formula), `traits: ChipTraits`, `icon: AssetHandle`.
 - `NaviData`/`FormData` hold handles (`own_chip: Option<CodedChip>` with a `ChipHandle`, `weapons: FormWeapons` of
   `Option<WeaponHandle>`) and the traits of §7.5; `name_record` becomes `identity: IdentityHandle`.
@@ -2391,8 +2390,11 @@ type-checks against content/bn6's core.d.luau in nettai-content-check's tests.
   are buttons, as today. Setups written by name resolve to the same handles on both peers.
 - **The content hash** covers the canonical definition tree (every definition, reference and function slot),
   the module sources (the functions' code), the roles, and the assets the simulation reads (asset names and
-  every sprite's animation timing). Compat is not in it: it changes no simulation. Nor are the strings tables in
-  other languages (`locale/`, text-rendering.md §10), which only a frontend reads. Pixels, palettes and audio stay
+  every sprite's animation timing). Compat is not in it: it changes no simulation. Nor is display text: no
+  definition holds any; the content root's `locales/<lang>.toml` do (text-rendering.md §10). The own language's
+  (`en.toml`) shape what the battle reads (a description's lines, the no-running message's characters per line and
+  which move the speaker's mouth), which the define phase counts into the records the hash covers; the strings
+  themselves, and the other languages' tables, which only a frontend reads, are out. Pixels, palettes and audio stay
   out, as today.
 - **The VM stays out of battles.** A runtime VM is a per-thread cache keyed by the content hash, rebuilt by the
   same define phase, and it checks it reads the content's definitions. `Battle` holds no handle to it, so a battle
@@ -2741,9 +2743,11 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    `nettai_content::pack::load_battle(content, assets)`; bn6-extract writes assets only. The check: `gen-content
    check` defines the content root and compares every table with the ROM's (§3 of content-pack.md).
    A chip's `description` (what R shows on the custom screen: the battle reads its line count) and a navi's
-   `run_message` (the no-running message's lines) are the definitions' alone since the extractor's battle data
-   went: the generator writes them, and gave the chips people had defined without a description theirs
-   (`gen-content describe`, once).
+   `run_message` (the no-running message's lines) were the definitions' alone once the extractor's battle data
+   went (`gen-content describe` gave the chips people had defined without a description theirs, once). Since the
+   languages (2026-10-02, text-rendering.md §10) every name, description and message is the content root's
+   `locales/en.toml` instead, by key, and the define phase counts their shape into the records; gen-content checks
+   the strings against the ROM.
    Until step 12 the engine had a byte for an effect, spark, region or collision type content defines
    (`Defs::number`): the numbered table's entry that is the same thing, and only another got a number after
    the table's. Step 12 made them handles and removed the numbered tables.
