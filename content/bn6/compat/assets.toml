@@ -825,7 +825,7 @@ dustcross-beast = 0x13
 falzar-beast = 0x14
 falzar-beast-full-synchro = 0x15
 falzar-beast-over = 0x16
-# Gregar's own faces, from the Gregar ROM (bn6-extract --gregar): its
+# Gregar's own faces, from the US Gregar ROM (bn6-extract's second): its
 # emotion-window pictures 5 to 0x16 numbered from 0x17.
 heatcross = 0x17
 eleccross = 0x18
