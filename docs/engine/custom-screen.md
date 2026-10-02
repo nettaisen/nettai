@@ -444,7 +444,10 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
 - **Unit tests** (in this repository, with made-up chips): the shuffle on four recorded folders, the joypad's
   repeat, the builder (Program Advances, modifiers, class counts), and scripted screens (dealing and layout, the
   timeline from opening to sending, the selection rules, invalid chips, Beast Out and a Cross for both games,
-  DustCross's scrap, hand sizes, SELECT).
+  DustCross's scrap, hand sizes, SELECT), and a setup's Cross list (§4.1: either game's Crosses offered and
+  chosen, Beast Out from the other game's, the window in Beast Out, entries that aren't Crosses). nettai-frontend's
+  `a_falzar_player_plays_a_gregar_cross` plays one through on content/bn6: HeatCross chosen by a Falzar player, its
+  form, element, buster and charged flame, then Beast Out from it into Falzar's Beast.
 - **Golden traces** (`trace::run_round`, verification workspace): the traces' recorded buttons drive the
   engine; each player's custom screen runs when the trace has their folder (setup `folders`), otherwise that
   player's results come from the recording (`TickEvents::recorded`). Each frame compares, besides the rest of the
