@@ -1,45 +1,43 @@
-//! Two peers over simulated links, in one process: the rollback
-//! simulator the tests drive. Each peer is a getgud [`Session`] on a
-//! [`BattleWorld`] for its player's side.
+//! Two peers over a simulated datagram network, in one process: the
+//! rollback simulator the tests drive. Each peer is a [`Peer`]: a getgud
+//! session on a [`BattleWorld`] for its player's side, and its end of the
+//! rennet link. The network ([`Network`], one per direction) delays,
+//! reorders, loses and duplicates the peers' datagrams; rennet delivers
+//! each player's inputs to the other once, in order.
 //!
-//! Each wall-clock frame, every peer takes the packets that have arrived
-//! (a remote input with the sender's tick advantage) and reads its clock
-//! skew (getgud's `skew`). A peer that runs ahead of the other stalls a
-//! frame now and then (see [`SKEW_PER_STALL`]), and one whose unconfirmed
-//! inputs reach `max_lead` waits for remote input (the stall guard). Every
-//! other peer decides its player's input for its next tick and sends it;
-//! then, having taken what arrived meanwhile, advances. With no latency a
-//! packet arrived in the frame it was sent, so both peers confirm every
+//! Each wall-clock frame, every peer takes the datagrams that have arrived
+//! and decides whether to wait (clock sync's stall, or the stall guard:
+//! [`Peer::wait`]). Every other peer decides its player's input for its
+//! next tick; then every peer sends its datagram (input or not: the acks
+//! and the redundancy window go every frame); then every peer that decided,
+//! having taken what arrived meanwhile, advances. With no latency a
+//! datagram arrives in the frame it was sent, so both peers confirm every
 //! tick at once. A peer whose player's input has ended (at `max_frames`)
-//! drains its session instead: it settles the last ticks as the other's
-//! last inputs arrive, without speculating past them.
+//! drains its session instead ([`Peer::drain`]): it settles the last ticks
+//! as the other's last inputs arrive, without speculating past them.
 //!
 //! Checked on every advance: each row the peer confirmed (getgud's
 //! `Advance::confirmed`) is the inputs both players decided for its tick,
 //! and every settled state getgud returns with a row has the digest of the
-//! other peer's at that tick and of a plain lockstep run's.
+//! other peer's at that tick and of a plain lockstep run's. A link that
+//! breaks (a gap past the horizon) tears the match down: the report says
+//! where.
 
 use getgud::{Confirmed, Session, Settlement, World};
-
-use crate::network::{Link, LinkConfig};
-use crate::world::{BattleState, BattleWorld, Game, Observer, step_game};
 use nettai_battle::{Battle, RoundEnd};
 
-/// Clock sync: how much skew a peer that runs ahead adds up before it
-/// stalls a frame. It slows down by `skew / SKEW_PER_STALL` frames a
-/// frame, as a frame-rate adjustment would (a frame a second per tick of
-/// skew, at 60 fps). A peer one frame ahead of the other shows a skew of
-/// 2 (it leads by one more, the other by one less). Stalling on any
-/// positive skew at once over-corrects: a stall shows in the skew in full
-/// only a round trip later, and jitter makes the skew noisy, so the peers
-/// would take turns stalling.
-pub const SKEW_PER_STALL: i32 = 60;
+use crate::link::LinkStats;
+use crate::network::{Network, NetworkConfig, NetworkStats};
+use crate::peer::{Peer, PeerConfig};
+pub use crate::peer::{PeerStats, SKEW_PER_STALL};
+use crate::protocol::{self, WireInput};
+use crate::world::{BattleState, BattleWorld, Game, Observer, step_game};
 
 /// How the peers are connected.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NetConfig {
-    /// Both directions.
-    pub link: LinkConfig,
+    /// The network from each peer to the other.
+    pub networks: [NetworkConfig; 2],
     /// Ticks each peer presents behind its newest local input (getgud's
     /// present delay): input delay, which spares that much prediction.
     pub present_delay: u32,
@@ -47,22 +45,49 @@ pub struct NetConfig {
     /// input matches yet waits, unless remote input it has can be matched
     /// (getgud's `matchable`).
     pub max_lead: u32,
+    /// The links' rollback horizon ([`protocol::HORIZON`]).
+    pub horizon: u32,
     /// Wall frames peer 0 starts before peer 1, for clock sync to even out.
     pub head_start: u32,
-    /// Seeds the links' jitter.
+    /// Seeds the network.
     pub seed: u64,
 }
 
 impl NetConfig {
-    /// `latency` frames each way, up to `jitter` more, no present delay.
+    /// `latency` frames each way, up to `jitter` more (which reorders
+    /// datagrams), nothing lost, no present delay.
     pub fn latency(latency: u32, jitter: u32) -> NetConfig {
+        NetConfig::over(NetworkConfig::latency(latency, jitter))
+    }
+
+    /// The same, losing `loss` datagrams in a thousand (once one is lost,
+    /// the next with `burst` in a thousand) and duplicating `duplicate`.
+    pub fn lossy(latency: u32, jitter: u32, loss: u32, burst: u32, duplicate: u32) -> NetConfig {
+        NetConfig::over(NetworkConfig::lossy(latency, jitter, loss, burst, duplicate))
+    }
+
+    /// Both directions like `network`.
+    pub fn over(network: NetworkConfig) -> NetConfig {
+        let lossy = network.loss > 0 || network.outage.is_some();
         NetConfig {
-            link: LinkConfig { latency, jitter },
+            networks: [network; 2],
             present_delay: 0,
-            max_lead: (latency + jitter + 2).max(8),
+            // A lost datagram's input comes with the next one: a frame or
+            // more later.
+            max_lead: (network.max_delay() + 2 + if lossy { 4 } else { 0 }).max(8),
+            horizon: protocol::HORIZON,
             head_start: 0,
-            seed: 0x5EED ^ (latency as u64) << 8 ^ jitter as u64,
+            seed: 0x5EED
+                ^ (network.latency as u64) << 8
+                ^ network.jitter as u64
+                ^ (network.loss as u64) << 16
+                ^ (network.burst as u64) << 26
+                ^ (network.duplicate as u64) << 36,
         }
+    }
+
+    fn peer(&self) -> PeerConfig {
+        PeerConfig { present_delay: self.present_delay, max_lead: self.max_lead, horizon: self.horizon }
     }
 }
 
@@ -78,40 +103,15 @@ pub struct Divergence {
     pub lockstep: u64,
 }
 
-/// What a peer did.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct PeerStats {
-    /// Ticks simulated for the first time.
-    pub simulated: u64,
-    /// Rollbacks: advances that found a misprediction and threw the
-    /// speculative ticks from it away (getgud's `last_misprediction_depth`,
-    /// when it isn't 0).
-    pub rollbacks: u64,
-    /// The ticks those rollbacks threw away, which are simulated again.
-    pub resimulated: u64,
-    /// The deepest rollback, in ticks.
-    pub max_rollback: u32,
-    /// The furthest a presented frame ran past the confirmed input, in
-    /// ticks (getgud's `speculation_balance`).
-    pub max_speculation: u32,
-    /// The same, added up over every advance.
-    pub speculated: u64,
-    /// Advances (frames presented).
-    pub advances: u64,
-    /// Rows settled by promoting their speculation (the rest were simulated
-    /// as they settled).
-    pub promoted: u64,
-    /// Wall frames stalled for clock sync: the peer ran ahead.
-    pub stalls: u64,
-    /// Wall frames the stall guard held the peer.
-    pub parked: u64,
-}
-
-impl PeerStats {
-    /// How far a presented frame ran past the confirmed input, on average.
-    pub fn mean_speculation(&self) -> f64 {
-        self.speculated as f64 / self.advances.max(1) as f64
-    }
+/// A peer's link broke, which ends the match.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TornDown {
+    /// The peer whose link broke.
+    pub peer: usize,
+    pub wall_frame: u64,
+    /// Its settled ticks then.
+    pub settled: u32,
+    pub reason: String,
 }
 
 /// How a match went.
@@ -121,12 +121,17 @@ pub struct Report {
     pub frames: u32,
     pub wall_frames: u64,
     pub peers: [PeerStats; 2],
+    /// Each peer's link.
+    pub links: [LinkStats; 2],
+    /// The network from each peer to the other.
+    pub networks: [NetworkStats; 2],
     /// Both peers' settled states are over.
     pub over: bool,
     /// How the battle ended in both peers' settled states, if it did and
     /// they agree.
     pub end: Option<RoundEnd>,
     pub divergence: Option<Divergence>,
+    pub torn_down: Option<TornDown>,
     /// Each peer's settled states that getgud returned with a row:
     /// (tick, digest), in tick order.
     pub settled: [Vec<(u32, u64)>; 2],
@@ -138,7 +143,7 @@ pub struct Report {
 impl Report {
     /// Ran to the end (or to the frame limit) with the peers in sync.
     pub fn in_sync(&self) -> bool {
-        self.divergence.is_none()
+        self.divergence.is_none() && self.torn_down.is_none()
     }
 }
 
@@ -149,7 +154,10 @@ pub struct Match<G: Game> {
     lockstep: G,
 }
 
-impl<G: Game + Clone> Match<G> {
+impl<G: Game + Clone> Match<G>
+where
+    G::Input: WireInput,
+{
     /// Both peers start from `start`; peer `p` controls player `p`.
     pub fn new(start: &G, config: NetConfig) -> Match<G> {
         Match::from_starts([start.clone(), start.clone()], start.clone(), config)
@@ -162,12 +170,12 @@ impl<G: Game + Clone> Match<G> {
     }
 
     /// Play until both peers' settled states are over, both have settled
-    /// `max_frames` ticks, or the peers fall out of sync. `inputs(player,
-    /// tick)` decides a player's input; it is called once per tick and
-    /// player, in tick order, for the ticks before `max_frames`, where the
-    /// players' input ends: a peer drains its session from there, and no
-    /// peer simulates a tick past it. `observers[p]` sees what happens to
-    /// peer `p`'s simulation.
+    /// `max_frames` ticks, the peers fall out of sync or a link breaks.
+    /// `inputs(player, tick)` decides a player's input; it is called once
+    /// per tick and player, in tick order, for the ticks before
+    /// `max_frames`, where the players' input ends: a peer drains its
+    /// session from there, and no peer simulates a tick past it.
+    /// `observers[p]` sees what happens to peer `p`'s simulation.
     pub fn run<O: Observer<G>>(
         self,
         mut inputs: impl FnMut(usize, u32) -> G::Input,
@@ -176,20 +184,17 @@ impl<G: Game + Clone> Match<G> {
     ) -> Report {
         let Match { config, peers: [a, b], lockstep } = self;
         let [first, second] = observers;
-        let mut sessions = [
-            BattleWorld::with_observer(a, 0, Tally::new(first)).session(config.present_delay),
-            BattleWorld::with_observer(b, 1, Tally::new(second)).session(config.present_delay),
+        let mut peers = [
+            Peer::new(BattleWorld::with_observer(a, 0, Tally::new(first)), config.peer()),
+            Peer::new(BattleWorld::with_observer(b, 1, Tally::new(second)), config.peer()),
         ];
-        let link = |p: u64| Link::new(config.link, config.seed.wrapping_mul(0x9E37_79B9).wrapping_add(p));
-        // links[p]: from peer p to the other; an input and the sender's
-        // tick advantage.
-        let mut links: [Link<(G::Input, i16)>; 2] = [link(0), link(1)];
+        let network = |p: usize| Network::new(config.networks[p], config.seed.wrapping_mul(0x9E37_79B9).wrapping_add(p as u64));
+        // networks[p]: from peer p to the other.
+        let mut networks = [network(0), network(1)];
         let mut referee = Referee::new(lockstep);
-        let mut stats = [PeerStats::default(), PeerStats::default()];
-        // Clock sync: each peer's skew added up, and whether it stalled
-        // the last frame.
-        let mut drift = [0i32; 2];
-        let mut stalled = [false; 2];
+        let mut promoted = [0u64; 2];
+        let mut torn_down = None;
+        // A peer's settled tick, and how its settled state ended.
         let settled = |s: &Session<_>| -> (u32, Option<RoundEnd>) {
             let state: &BattleState = s.settled_state();
             (state.tick(), state.battle().round_end().cloned())
@@ -197,81 +202,48 @@ impl<G: Game + Clone> Match<G> {
         let wall_limit = max_frames as u64 * 4 + 1000;
         let mut now = 0;
         'wall: while now < wall_limit {
-            let ends = sessions.each_ref().map(settled);
+            let ends = peers.each_ref().map(|p| settled(p.session()));
             if ends.iter().all(|e| e.1.is_some()) || ends.iter().all(|e| e.0 >= max_frames) {
                 break;
             }
             let started = [true, now >= config.head_start as u64];
-            // What has arrived by now, before anyone sends this frame.
             for p in (0..2).filter(|&p| started[p]) {
-                for (remote, advantage) in links[1 - p].receive(now) {
-                    sessions[p].add_remote_input(0, remote, advantage);
+                if let Some(t) = take(p, now, &mut peers, &mut networks) {
+                    torn_down = Some(t);
+                    break 'wall;
                 }
             }
-            let mut deciding: [Option<G::Input>; 2] = [None, None];
+            let mut deciding = [false; 2];
             for p in (0..2).filter(|&p| started[p]) {
-                let s = &mut sessions[p];
-                if s.local_frontier() >= max_frames {
-                    // The input has ended: drain below.
-                    continue;
+                // (A peer whose input has ended drains below.)
+                if peers[p].session().local_frontier() < max_frames && peers[p].wait().is_none() {
+                    let input = inputs(p, peers[p].session().local_frontier());
+                    referee.decided[p].push(input.clone());
+                    peers[p].decide(input);
+                    deciding[p] = true;
                 }
-                if s.local_queue_length() >= config.max_lead as usize && s.matchable() == 0 {
-                    stats[p].parked += 1;
-                    continue;
-                }
-                // Running ahead: add up the skew and stall a frame for every
-                // SKEW_PER_STALL of it, but never two in a row, so that the
-                // peer keeps sending its advantage and the two can't wait
-                // on each other. Only while the presented frame speculates:
-                // until then the present delay absorbs the lead.
-                if s.speculation_balance() >= 0 {
-                    drift[p] = (drift[p] + s.skew()).max(0);
-                }
-                if drift[p] >= SKEW_PER_STALL && !stalled[p] {
-                    drift[p] -= SKEW_PER_STALL;
-                    stalled[p] = true;
-                    stats[p].stalls += 1;
-                    continue;
-                }
-                stalled[p] = false;
-                let input = inputs(p, s.local_frontier());
-                referee.decided[p].push(input.clone());
-                links[p].send(now, (input.clone(), s.local_tick_advantage()));
-                deciding[p] = Some(input);
+                networks[p].send(now, peers[p].datagram(now));
             }
-            for p in (0..2).filter(|&p| started[p]) {
-                let s = &mut sessions[p];
-                for (remote, advantage) in links[1 - p].receive(now) {
-                    s.add_remote_input(0, remote, advantage);
+            for p in 0..2 {
+                let draining = started[p] && peers[p].session().local_frontier() >= max_frames;
+                if !deciding[p] && !draining {
+                    continue;
                 }
-                let draining = s.local_frontier() >= max_frames;
-                let rows = match deciding[p].take() {
-                    Some(input) => {
-                        let Ok(advanced) = s.advance(input);
-                        advanced.confirmed
+                if let Some(t) = take(p, now, &mut peers, &mut networks) {
+                    torn_down = Some(t);
+                    break 'wall;
+                }
+                let (referee, promoted) = (&mut referee, &mut promoted[p]);
+                let mut check = |rows: &[Confirmed<'_, BattleWorld<G, Tally<'_, O>>>]| {
+                    for row in rows {
+                        referee.confirmed(p, row);
+                        *promoted += (row.settlement == Settlement::Promoted) as u64;
                     }
-                    None if draining => {
-                        let Ok(rows) = s.drain();
-                        rows
-                    }
-                    None => continue,
                 };
-                for row in &rows {
-                    referee.confirmed(p, row);
-                    stats[p].promoted += (row.settlement == Settlement::Promoted) as u64;
-                }
-                drop(rows);
-                let depth = s.last_misprediction_depth();
-                if depth > 0 {
-                    stats[p].rollbacks += 1;
-                    stats[p].resimulated += depth as u64;
-                    stats[p].max_rollback = stats[p].max_rollback.max(depth);
-                }
-                if !draining {
-                    let speculation = s.speculation_balance().max(0) as u32;
-                    stats[p].max_speculation = stats[p].max_speculation.max(speculation);
-                    stats[p].speculated += speculation as u64;
-                    stats[p].advances += 1;
+                if deciding[p] {
+                    peers[p].advance(|advanced| check(&advanced.confirmed));
+                } else {
+                    peers[p].drain(|rows| check(&rows));
                 }
                 if referee.divergence.is_some() {
                     break 'wall;
@@ -279,22 +251,42 @@ impl<G: Game + Clone> Match<G> {
             }
             now += 1;
         }
-        for (s, session) in stats.iter_mut().zip(&sessions) {
-            s.simulated = session.world().observer().simulated;
-        }
-        let ends = sessions.each_ref().map(settled);
+        let stats = [0, 1].map(|p| PeerStats {
+            simulated: peers[p].session().world().observer().simulated,
+            promoted: promoted[p],
+            ..peers[p].stats().clone()
+        });
+        let ends = peers.each_ref().map(|p| settled(p.session()));
         let [(_, a), (_, b)] = &ends;
         Report {
             frames: ends[0].0.min(ends[1].0),
             wall_frames: now,
             peers: stats,
+            links: peers.each_ref().map(|p| p.link_stats().clone()),
+            networks: networks.each_ref().map(|n| *n.stats()),
             over: ends.iter().all(|e| e.1.is_some()),
             end: a.clone().filter(|_| a == b),
             divergence: referee.divergence,
+            torn_down,
             settled: referee.settled,
             lockstep: referee.lockstep_digests,
         }
     }
+}
+
+/// Peer `p` takes the datagrams that have arrived by `now`; a link that
+/// breaks tears the match down.
+fn take<G: Game, O: Observer<G>>(p: usize, now: u64, peers: &mut [Peer<G, O>; 2], networks: &mut [Network; 2]) -> Option<TornDown>
+where
+    G::Input: WireInput,
+{
+    for datagram in networks[1 - p].receive(now) {
+        if let Err(e) = peers[p].receive(&datagram, now) {
+            let settled = peers[p].session().settled_state().tick();
+            return Some(TornDown { peer: p, wall_frame: now, settled, reason: e.to_string() });
+        }
+    }
+    None
 }
 
 /// Follows a peer's world for the simulator (what it simulated for the

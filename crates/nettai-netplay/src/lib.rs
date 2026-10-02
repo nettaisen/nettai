@@ -1,5 +1,5 @@
 //! Rollback netplay for the battle engine, on getgud (Tango's rollback
-//! core).
+//! core) and rennet (Tango's netplay transport).
 //!
 //! Each peer runs the whole battle in a getgud [`Session`]. It knows its
 //! own player's input at once and the other player's a few ticks late.
@@ -12,7 +12,12 @@
 //! players' inputs known), which getgud hands back as they settle; both
 //! peers' settled states must be identical, which the state digest checks.
 //!
-//! This crate provides what getgud leaves to the game:
+//! The players' inputs travel over a datagram channel that loses, reorders
+//! and duplicates (UDP, or WebRTC's unreliable data channel); rennet turns
+//! it into an ordered stream, each player's inputs delivered once, in
+//! order, with a lost datagram's inputs recovered from the next one.
+//!
+//! This crate provides what getgud and rennet leave to the game:
 //!
 //! - [`world`]: [`BattleWorld`], getgud's `World` for one peer's battle
 //!   (its player's side, snapshots, prediction, a tick that panics stopping
@@ -22,10 +27,21 @@
 //!   input record, and the sound cue feed;
 //! - [`standin`]: a battle stepped on the buttons alone, for synthetic
 //!   matches;
-//! - [`network`]: a simulated ordered link with latency and jitter;
-//! - [`sim`]: two sessions over simulated links with clock sync, checking
-//!   their settled digests against each other and against a plain
-//!   lockstep run.
+//! - [`protocol`]: nettai's rennet protocol: the elements a player's stream
+//!   carries (ticks, payloads, round and match markers), the per-frame
+//!   meta (the tick advantage), their byte-minimal codecs, the horizon;
+//! - [`wire`]: byte codecs for the engine types that travel (a recorded
+//!   custom-screen result, a player's folder and Crosses);
+//! - [`link`]: one peer's end of the input exchange on rennet's streams;
+//! - [`peer`]: a peer of a match, session and link, and what a host does
+//!   each frame (clock sync, the stall guard, rounds);
+//! - [`transport`]: the [`transport::Datagram`] channel a peer sends over,
+//!   with UDP, and the handshake that starts a match;
+//! - [`network`]: a simulated datagram network (latency, jitter, loss,
+//!   duplication), seeded;
+//! - [`sim`]: two peers over the simulated network with clock sync,
+//!   checking their settled digests against each other and against a
+//!   plain lockstep run.
 //!
 //! A session runs on any thread: a battle world, with its states, inputs
 //! and sound feed, is `Send` (checked below at compile time).
@@ -33,19 +49,26 @@
 //! See docs/design/rollback.md.
 
 pub mod battle;
+pub mod link;
 pub mod network;
+pub mod peer;
+pub mod protocol;
 pub mod rng;
 pub mod sim;
 pub mod standin;
+pub mod transport;
+pub mod wire;
 pub mod world;
 
 pub use getgud;
 pub use getgud::Session;
+pub use peer::{Peer, PeerConfig, Wait};
+pub use rennet;
 pub use world::{BattleState, BattleWorld, Game, Observer, step_game};
 
 // A session can run on a network thread: its world (the battle, its side
 // and its observer), the states it keeps and the inputs it queues are
-// `Send`, and the states and inputs `Sync` too.
+// `Send`, and the states and inputs `Sync` too. So can a whole peer.
 const _: () = {
     const fn send<T: Send>() {}
     const fn send_sync<T: Send + Sync>() {}
@@ -55,4 +78,5 @@ const _: () = {
     send::<BattleWorld<nettai_battle::Battle, battle::CueFeed>>();
     send::<Session<BattleWorld<nettai_battle::Battle, battle::CueFeed>>>();
     send::<Session<BattleWorld<standin::StandInBattle>>>();
+    send::<Peer<nettai_battle::Battle, battle::CueFeed>>();
 };
