@@ -183,7 +183,8 @@ fn bn5s_rules_are_its_games() {
         ..Default::default()
     };
     c.scripts.add_root(bn5.manifest, bn5.modules);
-    c.assets = testing::asset_names_used(&c.scripts.modules);
+    // Each root's names in its own assets pack (BN5's in bn5's).
+    c.assets = testing::asset_names_for(&c.scripts);
     c.define().unwrap_or_else(|e| panic!("{e}"));
     let d = &c.defs;
     let five = d.root_id("bn5").expect("the bn5 root");
