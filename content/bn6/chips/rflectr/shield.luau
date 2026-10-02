@@ -27,7 +27,7 @@ end
 -- `byte_80C9664`'s rows: Rflectr1's, the NaviCust Reflect's and Shield's,
 -- four no chip or program ported holds up, Rflectr2's and Rflectr3's, and
 -- one more nothing ported holds up.
-local REFLECTOR, NAVI, SHIELD = asset.sprite("reflector-shield"), asset.sprite("megaman-navi"), asset.sprite("reflector-shield-2")
+local REFLECTOR, NAVI, SHIELD = asset.sprite("reflector-shield"), asset.sprite("megaman-navi"), asset.sprite("dummy-shield")
 local ROWS: { [number]: Look } = {
     [0] = look { sprite = REFLECTOR, anim = 0, fade_anim = 1, fade_ticks = 0xE, palette = 0 },
     [1] = look { sprite = REFLECTOR, anim = 2, fade_anim = 3, fade_ticks = 0xE, palette = 0 },

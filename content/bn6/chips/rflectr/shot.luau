@@ -11,7 +11,7 @@ local regions = require("../../lib/regions")
 
 local shot = {}
 
-local SPRITE = asset.sprite("reflected-shot")
+local SPRITE = asset.sprite("pink-flash")
 -- Ticks before the next segment starts.
 local SPREAD_TICKS = 2
 

@@ -23,7 +23,7 @@ export type State = {
     spreads: boolean,
 }
 
-local SPRITE = asset.sprite("beast-over-burst")
+local SPRITE = asset.sprite("lightning")
 local SOUND_BEAST_OVER_BURST = asset.sound("beast-over-burst")
 -- The hit modifier of its own hit and of the hits around it, and their
 -- status.

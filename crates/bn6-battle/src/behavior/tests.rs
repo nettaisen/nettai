@@ -781,7 +781,7 @@ fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
     let rock = Place::Kind(b.content.defs.kind_by_key("rockcube/rock").expect("the rock"));
     assert_eq!(stage.actors.iter().map(|e| e.place).collect::<Vec<_>>(), [Place::Navi, Place::Navi, rock, rock]);
     // Each rock names its variant, a record of the rock's.
-    let cube = b.content.defs.record("rockcube/cube");
+    let cube = b.content.defs.record("rockcube/rock/cube");
     assert!(cube.is_some() && stage.actors[2..].iter().all(|e| e.variant == cube));
     b.spawn_actors();
     assert_eq!(b.round.alive, [1, 1]);

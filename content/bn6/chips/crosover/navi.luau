@@ -41,7 +41,7 @@ export type State = {
 
 local DJANGO_SPRITE = asset.sprite("django")
 local SOUND_APPEAR = asset.sound("appear")
-local SOUND_SHOT = asset.sound("buster-6a")
+local SOUND_SHOT = asset.sound("buster-shot")
 local SOUND_GUN = asset.sound("gundels1")
 
 -- (MegaMan's arm for a user who isn't MegaMan and his muzzle flash are
