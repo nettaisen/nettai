@@ -245,7 +245,7 @@ impl Round {
         let stats = |s: &str| navi_stats(s, &ids);
         RoundSetup {
             content: content.hash(),
-            settings: codec::battle_settings(&unhex(&self.setup.settings), &ids, self.console_game()),
+            settings: codec::battle_settings_of(self.console_game(), &unhex(&self.setup.settings), &ids),
             navi_stats: [stats(&self.setup.navi_stats[0]), stats(&self.setup.navi_stats[1])],
             rng: self.setup.rng2,
             local_side: bs[0x0D],

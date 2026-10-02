@@ -403,7 +403,13 @@ pub fn transform_request(b: &[u8], ids: &Ids) -> TransformRequest {
 /// it stops the music).
 const NO_MUSIC: u8 = 0x63;
 
-/// Netbattle settings from the game's 16-byte BattleSettings record: the
+/// Netbattle settings from the Falzar game's 16-byte BattleSettings record
+/// ([`battle_settings_of`] for another game's).
+pub fn battle_settings(b: &[u8], ids: &Ids) -> BattleSettings {
+    battle_settings_of(Game::Falzar, b, ids)
+}
+
+/// Netbattle settings from `game`'s 16-byte BattleSettings record: the
 /// stage whose record it is, with the record's background and effects.
 /// Byte 0 names the panel layout by number and bytes 12..16 the actor list
 /// by its address in `game`'s ROM (compat's stages have Falzar's;
@@ -411,7 +417,7 @@ const NO_MUSIC: u8 = 0x63;
 /// with that layout and actor list whose music, mode, battle number and
 /// panel pattern match. Byte 1 (read by `GetBattleSettingsUnk01`, outside
 /// the battle simulation) and byte 7 (no reader found) are not kept.
-pub fn battle_settings(b: &[u8], ids: &Ids, game: Game) -> BattleSettings {
+pub fn battle_settings_of(game: Game, b: &[u8], ids: &Ids) -> BattleSettings {
     let content = ids.content;
     let address = u32::from_le_bytes(b[12..16].try_into().unwrap());
     let games = &ids.compat.games;
