@@ -17,3 +17,21 @@
 "engine/afterimage" = { pool = "effect", index = 0x28 }
 "bn6:attachment" = { pool = "actor", index = 0x05 }
 "bn6:widesht/wave" = { pool = "attack", index = 0x3B }
+"bn6:boomer/boomerang" = { pool = "attack", index = 0x32 }
+"engine/navi-warp" = { pool = "actor", index = 0x2D }
+"engine/navi-chip" = { pool = "effect", index = 0x10, scratch_position = true }
+"bn6:projectile" = { pool = "attack", index = 0x00 }
+"bn6:bomb" = { pool = "attack", index = 0x08 }
+"bn6:grab/shot" = { pool = "attack", index = 0x0F }
+"bn6:energbom/burst" = { pool = "attack", index = 0x11 }
+"bn6:grabbnsh/hand" = { pool = "attack", index = 0x46 }
+"bn6:instrument" = { pool = "attack", index = 0x78 }
+"bn6:grab/controller" = { pool = "effect", index = 0x03, scratch_position = true }
+"bn6:gauge-speed" = { pool = "effect", index = 0x1C, scratch_position = true }
+"bn6:panel-changer" = { pool = "effect", index = 0x1F, scratch_position = true }
+"bn6:panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
+"bn6:grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
+"bn6:trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
+"bn6:instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
+"bn6:protoman/navi" = { pool = "actor", index = 0x3C }
+"sonic-boom" = { pool = "attack", index = 0x58 }
