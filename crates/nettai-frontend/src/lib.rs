@@ -1,4 +1,4 @@
-//! A native renderer for the BN6 battle engine.
+//! A native renderer for nettai's battles.
 //!
 //! Everything on screen is drawn from engine state (panels, objects with
 //! their sprite, animation frame and look, HP, the custom gauge) and a
