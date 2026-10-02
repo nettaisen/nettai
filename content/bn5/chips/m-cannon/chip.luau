@@ -1,6 +1,10 @@
 --!strict
--- M-Cannon (BN5 chip 0x003): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- M-Cannon (BN5 chip 0x003): BN6's cannon (@bn6/lib/cannon, the original's action 0x14; BN5's the same code),
+-- firing BN5's cannon shot.
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local shooter = require("@bn6/lib/cannon")
+local variants = require("../../objects/projectile/variants")
 
 return define.chip {
     id = "m-cannon",
@@ -15,4 +19,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
+    action = shooter.action { id = "m-cannon/action", arm = shooter.arms.m_cannon, shot = variants.cannon },
 }
