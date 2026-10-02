@@ -36,7 +36,7 @@ local WAIT, SHOOT, RECOVER = 0x0, 0x4, 0x8
 -- The wait before the buster comes up, in ticks.
 local WAIT_TICKS = 5
 -- The shot's sound and height (16.16).
-local SHOT_SOUND, SHOT_Z = asset.sound("buster-6a"), 0x18_0000
+local SHOT_SOUND, SHOT_Z = asset.sound("buster-shot"), 0x18_0000
 
 -- The charged-shot programs that come on 1 draw in 8 (the others on 1 in
 -- 2): the original's rows 9 and 0x23.

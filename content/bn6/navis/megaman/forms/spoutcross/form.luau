@@ -43,7 +43,7 @@ return define.form {
         aura_anim = 30,
         ice = "medium",
         -- What it wears over MegaMan's body.
-        parts = cross_overlay(asset.sprite("body-overlay-05")),
+        parts = cross_overlay(asset.sprite("spoutcross-overlay")),
         attach_points = {
             { 2, 0 },
             { 2, 0 },

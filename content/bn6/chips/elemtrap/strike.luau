@@ -34,8 +34,8 @@ local STRUCK: { [number]: number } = { [0] = 0x01A0_0000, [1] = 0x02C0_0000 }
 -- (the original's panel-burst rows 0, 2 and 4; fire and the null element
 -- take the shells' fiery burst, row 3).
 local SPLASH = define.effect { sprite = asset.sprite("spout-splash"), anim = 0, palette = 0 }
-local LIGHTNING = define.effect { sprite = asset.sprite("beast-over-burst"), anim = 0, palette = 0 }
-local LEAVES = define.effect { sprite = asset.sprite("copy-mark"), anim = 5, palette = 0 }
+local LIGHTNING = define.effect { sprite = asset.sprite("lightning"), anim = 0, palette = 0 }
+local LEAVES = define.effect { sprite = asset.sprite("hit-sparks"), anim = 5, palette = 0 }
 
 -- The strike by element (null, fire, aqua, elec, wood): its sound
 -- (`byte_80E3714`; none for the null element), its hit (`byte_80E36EC`:
