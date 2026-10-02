@@ -116,3 +116,35 @@ fn bn6_strings_name_bn6_definitions_and_only_their_shape_is_hashed() {
     reshaped.chips.get_mut("magpanl").unwrap().description = Some("one\ntwo".into());
     assert_ne!(define(reshaped).hash(), c.hash());
 }
+
+/// docs/design/rules-in-luau.md §7.2: BN5's root (content/bn5) loads beside
+/// BN6's, each one's keys its own: `bn5:cannon` and `bn6:cannon` are two
+/// chips, and a key both roots define must be qualified to be looked up.
+/// (BN5's chips have no use yet, which the define phase refuses: until the
+/// BN5 port writes them, the refusal must be that, of a `bn5:` chip.)
+#[test]
+fn bn5_and_bn6_load_together_under_their_names() {
+    let repo = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
+    let mut r = Report::default();
+    let bn6 = nettai_content::root::read(&repo.join("content/bn6"), &mut r).expect("content/bn6 reads");
+    let bn5 = nettai_content::root::read(&repo.join("content/bn5"), &mut r).expect("content/bn5 reads");
+    let mut c = nettai_battle::Content::default();
+    c.strings = bn6.strings.qualified("bn6");
+    c.strings.merge(bn5.strings.qualified("bn5"));
+    c.scripts = Scripts::root(bn6.manifest, bn6.modules);
+    c.scripts.add_root(bn5.manifest, bn5.modules);
+    c.assets = testing::asset_names_used(&c.scripts.modules);
+    if let Err(e) = c.define() {
+        let e = e.message;
+        assert!(e.starts_with("bn5:chips/") && e.contains(": chip bn5:") && e.contains("needs exactly one of `action`"), "{e}");
+        return;
+    }
+    let d = &c.defs;
+    assert_eq!(d.roots, ["bn6", "bn5"]);
+    let (six, five) = (d.chip_by_key("bn6:cannon").expect("bn6:cannon"), d.chip_by_key("bn5:cannon").expect("bn5:cannon"));
+    assert_ne!(six, five);
+    assert_eq!(d.chip_by_key("cannon"), None, "both roots define it");
+    // The battle's rules are the content's own root's: BN6's.
+    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("bn6:bn6"));
+    assert_eq!(c.strings.chip("bn5:cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
+}
