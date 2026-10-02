@@ -235,3 +235,110 @@ pub fn describe(content: &Content, folder: &SavedFolder) -> String {
         .collect::<Vec<_>>()
         .join(", ")
 }
+
+/// BN6's content for tests: content/bn6's definitions on a made-up asset
+/// index (`testing::asset_names_used`), every sprite timed as the test
+/// content's navi is (nothing from a ROM).
+#[cfg(test)]
+pub(crate) fn bn6_test_content() -> std::sync::Arc<Content> {
+    use nettai_battle::content::testing;
+    static BN6: std::sync::OnceLock<std::sync::Arc<Content>> = std::sync::OnceLock::new();
+    BN6.get_or_init(|| {
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
+        let mut c = Content::default();
+        c.scripts.modules = testing::modules_under(dir);
+        c.assets = testing::asset_names_used(&c.scripts.modules);
+        let mut navi = testing::content().animations.sprites[&testing::NAVI_SPRITE].clone();
+        navi.resize(0x40, navi[1].clone());
+        for &id in c.assets.sprites.values() {
+            c.animations.sprites.insert(id, navi.clone());
+        }
+        c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
+        std::sync::Arc::new(c)
+    })
+    .clone()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn limits() -> FolderLimits {
+        FolderLimits { mega: 5, giga: 1, regular_mb: 50 }
+    }
+
+    /// Random folders keep the folder editor's rules, with a Regular chip
+    /// that fits.
+    #[test]
+    fn random_folders_are_legal() {
+        let content = bn6_test_content();
+        let pool = folder_chips(&content);
+        // The pack's folder chips: no Program Advance, no dark chip, none
+        // without a routine, none past the pack's (the BeastOut chip).
+        let keys: Vec<&str> = pool.iter().map(|&c| content.defs.chip(c).key.as_str()).collect();
+        assert!(keys.len() > 250, "{} chips", keys.len());
+        for key in ["cannon", "roll", "bass", "gundels1", "areagrab"] {
+            assert!(keys.contains(&key), "{key}");
+        }
+        for key in ["drksword", "hackjack", "gregar", "falzar", "beastout", "django", "gigacan1"] {
+            assert!(!keys.contains(&key), "{key}");
+        }
+        for seed in 0..50 {
+            let f = random_folder(&content, limits(), &mut Draws::new(seed));
+            assert_eq!(violations(&content, &f, limits()), Vec::<String>::new(), "seed {seed}: {}", describe(&content, &f));
+            let r = f.regular.expect("a Regular chip");
+            assert!(content.chip(f.chips[r as usize].id).mb <= 50);
+        }
+        // Another seed, another folder; the same seed, the same.
+        let one = |seed| random_folder(&content, limits(), &mut Draws::new(seed));
+        assert_ne!(one(1).chips, one(2).chips);
+        assert_eq!(one(3).chips, one(3).chips);
+    }
+
+    /// What the rules refuse.
+    #[test]
+    fn the_rules_refuse() {
+        let content = bn6_test_content();
+        let chip = |key: &str| {
+            let id = content.defs.chip_by_key(key).unwrap();
+            FolderChip::new(id, content.chip(id).codes[0])
+        };
+        let base = |chips: [FolderChip; FOLDER_SIZE]| SavedFolder { chips, regular: None, tags: None };
+        // Five Recov10s (4 MB) and the rest plain chips is legal; a sixth
+        // isn't.
+        let mut chips = [chip("recov10"); FOLDER_SIZE];
+        let mut plain = ["cannon", "airshot", "vulcan1", "spreadr1", "minibomb", "sword"].iter().cycle();
+        for c in chips.iter_mut().skip(5) {
+            *c = chip(plain.next().unwrap());
+        }
+        assert_eq!(violations(&content, &base(chips), limits()), Vec::<String>::new());
+        let mut six = chips;
+        six[5] = chip("recov10");
+        assert!(violations(&content, &base(six), limits()).iter().any(|v| v.contains("6 copies of Recov10")));
+        // A code the chip doesn't come in.
+        let mut code = chips;
+        code[0].code = ChipCode(25);
+        assert!(violations(&content, &base(code), limits()).iter().any(|v| v.contains("code Z")));
+        // Six Mega chips; two Giga chips.
+        let mut megas = chips;
+        for (i, key) in ["roll", "roll2", "heatman", "elecman", "slashman", "eraseman"].iter().enumerate() {
+            megas[10 + i] = chip(key);
+        }
+        assert!(violations(&content, &base(megas), limits()).iter().any(|v| v.contains("6 Mega chips")));
+        let mut gigas = chips;
+        gigas[10] = chip("bass");
+        gigas[11] = chip("deltaray");
+        assert!(violations(&content, &base(gigas), limits()).iter().any(|v| v.contains("2 Giga chips")));
+        // A Regular chip past the Regular memory (Roll3 is 60 MB).
+        let mut regular = base(chips);
+        regular.chips[10] = chip("roll3");
+        regular.regular = Some(10);
+        assert!(violations(&content, &regular, limits()).iter().any(|v| v.contains("the Regular chip Roll3")));
+        // A chip the pack doesn't list.
+        let mut dark = chips;
+        dark[0] = chip("drksword");
+        assert!(violations(&content, &base(dark), limits()).iter().any(|v| v.contains("no chip a folder can hold")));
+        assert_eq!(copies_allowed(19), 5);
+        assert_eq!((copies_allowed(20), copies_allowed(39), copies_allowed(49), copies_allowed(50)), (4, 3, 2, 1));
+    }
+}
