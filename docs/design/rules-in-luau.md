@@ -1027,7 +1027,9 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
   is one pack's; `driver_of(PackId)` reads a pack's driver.
 - **Loading** (nettai-frontend): `--pack` repeats, one pack a game (`--pack <bn6> --pack <bn5>`); the content
   loads over all of them (`pack::load_battle_packs`), and `pack::pack_paths` puts the directories in the content's
-  pack order for the graphics and the sound. The player's language applies to the content's own pack. The audit
+  pack order for the graphics and the sound. (Since: the frontend and the editor load every pack in
+  `data/content` or `$NETTAI_PACKS`, `--pack` only overriding one, and the roots beside BN6's that load:
+  `pack::find`, `pack::load_found`, docs/frontend.md §1.) The player's language applies to the content's own pack. The audit
   checks a cue's song in its own pack's bank.
 - **Tests**: `packs::tests::each_asset_draws_from_its_own_pack` (a twin root and pack beside the test content,
   their navis' sprites the same pack number: each drawn from its own pack's sheet; a root's game; a chip's icon by
