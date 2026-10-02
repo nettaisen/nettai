@@ -1,6 +1,7 @@
 //! One player's custom screen driven by scripted buttons, with made-up
 //! chips.
 
+use super::chatbox::Script;
 use super::library::testing::{EVERY_CODE, TestLibrary, chip};
 use super::screen::{OK_SLOT, SPECIAL_SLOT};
 use super::*;
@@ -348,6 +349,37 @@ fn a_setups_cross_list_offers_crosses_of_either_game() {
     side.open(&Context { turn: 2, ..ctx }, &mut console);
     let w = side.screen.unwrap().crosses;
     assert_eq!((w.count, w.offered[0]), (1, 1));
+}
+
+/// R in the Cross window describes the Cross under the cursor, by its
+/// form: with a Cross list mixing both games, a Falzar player's window
+/// shows Gregar's first Cross (form 1) its own description, not the one of
+/// Falzar's Cross in that place (form 6; the test library's descriptions
+/// differ in their lines, which time the chatbox).
+#[test]
+fn r_describes_the_hovered_cross_of_a_cross_list() {
+    for (list, down, form) in [(true, 0, 1), (true, 1, 9), (false, 0, 6), (false, 1, 7)] {
+        let mut p = Player::new(&[], GameVersion::Falzar);
+        if list {
+            p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
+        }
+        p.open();
+        p.wait(10);
+        p.step(0);
+        p.press(keys::UP);
+        while p.phase() != (Phase::CrossWindow { entered: true }) && p.tick < 1000 {
+            p.step(0);
+        }
+        for _ in 0..down {
+            p.press(keys::DOWN);
+        }
+        let w = p.screen().crosses;
+        assert_eq!(w.hovered(&p.side.unlocks, &p.lib, p.stats.navi), Some(FormHandle(form)), "list {list}, down {down}");
+        p.step(keys::R);
+        let Phase::Description { from_cross_window: true, chatbox } = p.phase() else { panic!("no description: {:?}", p.phase()) };
+        let lines = p.lib.cross_description_lines(FormHandle(form));
+        assert_eq!(chatbox.script(), Script::Description { breaks: lines - 1 }, "list {list}, down {down}");
+    }
 }
 
 /// Beast Out from a Cross of the other game is that Cross's form in Beast
