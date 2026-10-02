@@ -121,13 +121,7 @@ return define.roles {
         trap_mark = effects.trap_mark,
         -- What an obstacle encased in ice or a bubble flickers with.
         encased = effects.explosion,
-        -- A Cross or Beast Out put on.
-        form_change = effects.form_change,
-        -- Beast Over: its beast (Gregar's, Falzar's), the blast after it,
-        -- and the bursts around the navi.
-        beast_over_gregar = effects.beast_over_gregar,
-        beast_over_falzar = effects.beast_over_falzar,
-        beast_over_blast = effects.beast_over_blast,
+        -- The bursts around a navi going Beast Over.
         beast_over_burst = effects.beast_over_burst,
     },
     sparks = {
@@ -205,14 +199,6 @@ return define.roles {
         -- A cross merging into MegaMan; a form change starting; a Cross
         -- put on (two sounds at once); a Beast Out put on; the beasts'
         -- roars; Beast Over's rumbles and bursts.
-        cross_merge = asset.sound("cross-merge"),
-        form_change = asset.sound("form-change"),
-        cross_change = asset.sound("cross-change"),
-        cross_change_chime = asset.sound("log-in"),
-        beast_out = asset.sound("beast-out"),
-        gregar_roar = asset.sound("gregar-roar"),
-        falzar_roar = asset.sound("falzar-roar"),
-        beast_over_rumble = asset.sound("beast-over"),
         beast_over_burst = asset.sound("beast-over-burst"),
         -- A Cross navi starting its special's chip.
         cross_special = asset.sound("elmnt-man-2"),
