@@ -267,21 +267,48 @@ original's behaviour (bn6-lmao "fixes" it, §9).
 - 278 chips' sort keys (+0x18) differ: JP's alphabetical order. Menus only.
 - Gregar, Falzar and DblBeast: the same record; only the art differs.
 
-The art (icon, image, palette) is `chips.py`'s list.
+The art (icon, image, palette) is `chips.py`'s list:
+
+- **Icons**: the same in all four ROMs, chip by chip; the pack has the US Falzar ROM's. (The Gregar ROMs' Falzar
+  chip icon, JP's and US's alike, is a placeholder that reads "13A".)
+- **Pictures**: the US ROMs have one placeholder picture (a purple block) for all eleven chips, the JP ROMs their
+  art. The Gregar and Falzar chips share one picture in each JP ROM, its own beast (JP Falzar 0x08745658, JP Gregar
+  0x0874358C), so a console shows its own beast in both.
+- **Palettes**: DblBeast's, Gregar's and Falzar's records point at EWRAM, 0x02000AF0 (DblBeast, slot 0) and
+  0x02000B10 (the console's beast, slot 1). A gift received over the link fills them: `0x0813006C` (JP Falzar)
+  decompresses the chip's name to 0x02001180 + 24 × slot and its description to 0x020007D0 + 100 × slot, copies
+  its 32-byte palette to 0x02000AF0 + 32 × slot and gives the chip; the dispatcher that calls it (0x0812FA84) sits
+  on the link mode at 0x080407C4, and Tango's save code calls these buffers the e-Reader's (Card e+). The area is
+  save data (the save is EWRAM 0x02000000..0x02006710, so save offsets 0xAF0 and 0xB10); a save that never took
+  the gift has zeros there (a black picture), and the US games clear it at a new game and write "~~~~" names.
+  DblBeast's card palette is also in both JP ROMs, orphaned among the chip palettes in DblBeast's place (JP Falzar
+  0x08749C78, JP Gregar 0x08747BAC). Gregar's and Falzar's are in no ROM: the chips' definitions give them
+  (`art_palette`, chips/gregar and chips/falzar), the colours Tango's netplay saves have at 0xB10
+  (tango-gamesupport-bn6, saves/g_jp.raw and f_jp.raw). Rendered with them, the pictures are the JP consoles'
+  exactly (bn6battle-verify's JP-console recordings of both chips).
+
+`bn6-extract` takes the eleven pictures from the JP ROMs (GunDelEX, Otenko, Count (HackJack) ×3, Django ×3, DblBeast and
+Falzar from JP Falzar, Gregar from JP Gregar), each chip's own on either console: a JP Falzar console's Gregar
+chip shows Falzar's beast in the original, and a known difference in the frame comparison.
 
 ### 4.5 Sprites
 
-The sprite list's slots that are a placeholder in the US and the JP ROM's own archive (`sprites.py`):
+The sprite list's slots that are a placeholder in the US and the JP ROM's own archive (`sprites.py`; the same
+archive in both JP ROMs). `bn6-extract` takes these from JP Falzar, under the names in brackets:
 
 | Slot | What it is |
 |---|---|
-| 08-16 | Count |
-| 0C-0F | Django: the Django chip's navi and CrosOver's partner |
-| 0C-49 | Otenko's statue; also the absorbed look of DustCross's sucked-in Otenko |
-| 0C-66 | Falzar's beast |
-| 0C-68 | Gregar's beast |
-| 14-17 | effect 0x1D, battle mode 1's |
-| 18-34, 18-35, 18-36 | not identified here |
+| 08-16 | Count, HackJack's navi, and his lances (`count`) |
+| 0C-0F | Django: the Django chip's navi and bike, CrosOver's partner and his gun (`django`) |
+| 0C-49 | Otenko's statue (animation 0 the puff he appears in, 1 Otenko); also how it looks absorbed by DustCross and thrown as DustMan's junk (`otenko`) |
+| 0C-66, 0C-68 | Falzar's and Gregar's beasts (`falzar-summon`, `gregar-summon`) |
+| 14-17 | the effect table's entry 0x1D in JP: battle mode 1's red "ブロッキング" (Blocking) label, which no netbattle shows (`blocking-banner`) |
+| 18-34, 18-35, 18-36 | not identified here (category 0x18 holds no battle sprites) |
+
+`sprites.py` also lists 0C-0E, 0C-47, 0C-67, 10-16, 10-17 and 10-19, uncompressed slots whose fixed 0x2000-byte
+window differs. Decoded as the extractor reads them, they are the same sprites: only the palette rows read past
+the archive's own (the extractor keeps 16 rows where the data goes on, as the game reads whatever follows)
+differ, because what follows moved. The pack keeps the US ROM's.
 
 ### 4.6 Where the JP-only code is
 
@@ -337,9 +364,15 @@ JP leaves these objects' header bit 0x02 alone *(trace: the object header's flag
 **Sprites.**
 
 - Otenko's statue loads 0C-49 in JP and 0C-00 in the US (`sub_80DB108`'s word, in `sub_80DB2C6`'s pool).
-- The absorbed obstacle's last look is 0C-49 in JP and 0C-41 in the US (`sub_80E9810`).
-- The stand-ins' look table: rows 12 and 13 are CrosOver's partner, 0C-0F (Django) in JP and 0C-00 in the US
-  (`sub_80B8BA0`).
+- The absorbed obstacle's last look (kind 0xE, Otenko's statue) is 0C-49 in JP and 0C-41 in the US
+  (`byte_80E98C0`, which `sub_80E9810` reads).
+- The attachments' look table (`byte_80B8BD4`, which `sub_80B8E30` reads): rows 0xB and 0xC, Django's gun
+  (CrosOver's partner) and his bike (the Django chip), are 0C-0F (Django) in JP and 0C-00 in the US (the table
+  follows `sub_80B8BA0`).
+
+The content shows the JP look of all three on every console (the user's call: Otenko and Django as the Japanese
+games draw them). The pack has 0C-49 and 0C-0F from the JP ROMs (§4.5); on a US console the frame comparison
+counts what is drawn with them as a known difference (the frontend's `known.tsv`).
 
 **HUD.**
 
@@ -459,7 +492,7 @@ show against the engine.
 | 13 | DustMan's pull's collision type (`sub_80F20A0`) | 1 byte | the pull regions' self type (row 0x04 against 0x1E): what they reach and how a hit counts | content/bn6/navis/dustman/chip.luau (`pull`: `self_type`) |
 | 14 | GroundCross's drill burrows while moving (`sub_80EF004`) | US: +3 instructions | the drill's timing | content/bn6/navis/megaman/forms/groundcross/drill.luau |
 | 15 | SpoutMan's DripShwr flags (`sub_80F1694`) | JP: +5 instructions | SpoutMan's ObjectFlags1 0x40 and 0x80000 during the spray (what reads them then is **unverified**) | content/bn6/navis/spoutman/chip.luau |
-| 16 | Otenko's statue as DustMan's junk (`byte_8021220`, NameID 0xCF) | 5 data bytes | US: no junk (look none, freed); JP: a junk with sprite 0C-49, animation 1, shadow, which flies and hits | content/bn6/chips/otenko/statue.luau (the identity's `look`) |
+| 16 | Otenko's statue as DustMan's junk (`byte_8021220`, NameID 0xCF) | 5 data bytes | US: no junk (look none, freed); JP: a junk with sprite 0C-49, animation 1, shadow, which flies and hits | content/bn6/chips/otenko/statue.luau (the identity's `look`): **the content has the JP row on every console** (the user's call), so a US console's trace of it differs; bn6battle-verify records it on JP consoles (jp/chips/0x099-otenko/dustman), and gen-content's check expects the JP row |
 | 17 | The emotion window's glitch from patch cards (`sub_813BF1C`) | JP: +3 instructions | the console's emotion-window flicker | the setup: `emotion_window_glitch` from a JP save includes the patch cards' byte (out of scope) |
 
 Not counted:
@@ -590,7 +623,7 @@ The kind and handler tables move too: JP Falzar's T1, T3 and T4 tables are at 0x
   weakness hit just before the change, with no recording of one. The difference is certain; how often a
   netbattle reaches it isn't.
 - **0x020065F0** as patch-card state (#17).
-- **Sprite slots** 18-34..36 and the 0C-0E, 0C-47, 0C-67, 10-16, 10-17, 10-19 and 14-17 data (`sprites.py`
-  compares a fixed 0x2000-byte window for uncompressed slots).
+- **Sprite slots** 18-34..36 (§4.5: the window differences of 0C-0E, 0C-47, 0C-67 and 10-16..19 are data read
+  past the archives; 14-17 is battle mode 1's label).
 - **The out-of-scope routines** (AI, viruses, the overworld) that differ were not classified one by one. 72 in
   JP Falzar outside the battle blocks: 50 `differs` and 22 `missing` in fmap.py's table.

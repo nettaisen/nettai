@@ -19,13 +19,15 @@ played live from the keyboard, and can render chosen frames to PNG.
 
 The battle content the engine runs on is this repository's content/bn6 (its
 definitions; `--content <dir>` or `$BN6_CONTENT` for another). What the
-frontend shows and plays comes from a content pack made from your own ROM
-(US Falzar, `MEGAMAN6_FXXBR6E`), never checked in: the graphics and the
+frontend shows and plays comes from a content pack made from your own ROMs
+(the US Falzar and Gregar, `MEGAMAN6_FXXBR6E` and `MEGAMAN6_GXXBR5E`, and the
+Japanese Falzar and Gregar, `ROCKEXE6_RXXBR6J` and `ROCKEXE6_GXXBR5J`, which
+have what the US release cut), never checked in: the graphics and the
 sound, in open formats (indexed PNG, JSON, Tiled maps, MIDI, TOML, WAV; see
 `docs/design/content-pack.md` and `docs/design/asset-formats.md`), by the
 names the content gives them. Extract it once:
 
-    cargo run -p bn6-extract -- content <falzar-rom> <gregar-rom> data/content/bn6
+    cargo run -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6
 
 (`data/content/` is gitignored.) The frontend loads the pack at start-up
 from `--pack <dir>`, else `$BN6_PACK`, else `data/content/bn6`, straight
@@ -54,7 +56,9 @@ The graphics load into the types of the `nettai-assets` crate, decoded
   faces (each mugshot under its name), the HUD's text lines, banner layouts
   and glyphs, "Cstmzing...", "PAUSE", the warning marker's arrow.
 - **The custom screen** (`graphics/custom`): the window's tiles, maps and
-  patches, each chip's picture (`chip-art/<chip>.png`) and the buttons',
+  patches, each chip's picture (`chip-art/<chip>.png`; for a chip whose
+  palette no ROM holds, the Gregar and Falzar chips, its definition's
+  `art_palette` colours it) and the buttons',
   chip codes, element icons and their colours, damage digits, the slots'
   codes and buttons, the cursor, the navis' emblems, the Regular chip's
   frame. A pack extracted before it loads without them (with a warning),
@@ -467,6 +471,17 @@ original's `sub_801A400` tests its object flags 0x24 first. A navi set up
 with that program sees the roads drawn and animated, standing still on
 them.
 
+**On Japanese consoles** (traced on two JP Falzar consoles, and a JP Gregar
+pair for the Gregar chip): Otenko placed, blessing, timing out, broken,
+absorbed and thrown by DustCross, taken and thrown as junk by DustMan;
+GunDelEX, HackJack's Count and his lances, Django and his bike, DblBeast,
+the Gregar and Falzar chips with their beasts, CrosOver's Django and his
+gun. Every frame is pixel-exact outside what a Japanese console writes in
+Japanese (chip names, telops, the gauge's message, the custom screen's
+labels) and a Japanese console's HUD timings (the next chip's name shown
+from the fight's first frame), the chips' pictures included; the Gregar
+chip's on a Falzar console is the known difference above.
+
 The comparison needs the ROM, so it lives outside this repository, with the
 lists of scenarios. The frontend's own tests (`cargo test -p nettai-frontend`)
 use a small synthetic asset set and a live battle built in code, and the
@@ -503,6 +518,22 @@ them).
   console shows HeatMan's message beside a black box). Listed with each
   frame as known, as the faces are; a Gregar console's Falzar faces in the
   emotion window are known differences the same way.
+- **Deliberate: what the US release cut, on a US console.** The pack has
+  the Japanese ROMs' art where the US ROMs have a placeholder (six sprites,
+  eleven chips' pictures: asset-formats.md §4), and the content draws Otenko's
+  statue and CrosOver's gun with the Japanese games' sprites (0C-49, 0C-0F)
+  where the US games draw others; a US console's original shows its
+  placeholder (a purple picture, a dot) or its other sprite. The headless
+  frontend lists such places as known (`known.tsv`): a chip's picture from
+  another region's ROMs, and around an object drawn with a sprite of another
+  region's ROMs, 48 pixels around it (`objects::OTHER_REGION_MARGIN`: the
+  US's sprite there may reach past the Japanese one). The console's region is
+  the trace's (`game_regions`; US without it).
+- **Deliberate: the Gregar and Falzar chips' pictures.** Each Japanese ROM
+  has one picture for both chips, its own beast; the pack has each chip's
+  own (Gregar's from the Japanese Gregar ROM, Falzar's from the Japanese
+  Falzar ROM), on either console. A Japanese Falzar console's Gregar chip
+  (and a Gregar console's Falzar chip) is a known difference.
 - **Deliberate: the Gregar and Falzar chips' descriptions.** Their scripts
   copy the text from a buffer the console keeps (`FF 01 01`, the same
   buffer for both), which holds the console's own Giga chip's: a Falzar

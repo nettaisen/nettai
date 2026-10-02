@@ -34,6 +34,8 @@ const COLUMN_CELL_TILE: u16 = 0x89;
 const TURN_LIMIT_TILE: u16 = 0x8D;
 const NAME_TILE: u16 = 0x9B;
 const ART_TILE: u16 = 0xAB;
+/// A chip picture's tiles (7x6).
+const PICTURE_TILES: u16 = 42;
 const CODE_TILE: u16 = 0xD5;
 const ELEMENT_TILE: u16 = 0xD7;
 const DIGIT_TILE: u16 = 0xDB;
@@ -313,6 +315,8 @@ struct View<'a> {
     /// the other game's Cross.
     beast: &'a VersionPictures,
     hud: &'a Hud,
+    /// The console's region ("us", "jp": `Renderer::console_region`).
+    region: &'a str,
 }
 
 impl View<'_> {
@@ -392,6 +396,9 @@ struct Window {
     map: [MapEntry; COLUMNS * ROWS],
     tiles: LayerTiles,
     palettes: [Palette; 16],
+    /// Why the chip window's picture isn't the one the console shows, if
+    /// it isn't: a known difference (`known_picture`).
+    picture_known: Option<&'static str>,
     /// In the font text mode, the strings whose tiles were left blank for
     /// the text layer: the chip window's name, and the Program Advance
     /// animation's names by their place (each with the cells it has, and
@@ -432,6 +439,7 @@ impl Window {
             map: [MapEntry::default(); COLUMNS * ROWS],
             tiles: LayerTiles::new(),
             palettes: [[0; 16]; 16],
+            picture_known: None,
             name: None,
             advance_names: Vec::new(),
         };
@@ -663,11 +671,30 @@ impl Window {
         }
         // (The Beast Out chip's picture is the Beast's the navi goes into.)
         let beast_out = Library::beast_out_chip(&*v.b.content) == Some(c.id);
-        let art = if beast_out { Some(&v.beast.beast_out) } else { a.chip_art(&def.key) };
+        // A chip whose palette no ROM holds has its definition's
+        // (`art_palette`). The picture of a chip the US release cut is the
+        // Japanese ROMs': a US console shows a placeholder there. The
+        // Gregar and Falzar chips' are each their own beast: a console
+        // shows its own in both.
+        let art = if beast_out {
+            Some((&v.beast.beast_out, None))
+        } else {
+            a.chip_art(&def.key).map(|art| (&art.picture, Some(art)))
+        };
         match art {
-            Some(p) => {
+            Some((p, art)) => {
                 self.tiles.put(ART_TILE, &p.tiles);
-                self.palettes[10] = p.palette;
+                self.palettes[10] = if beast_out { p.palette } else { data.art_palette.unwrap_or(p.palette) };
+                let console_version = version_name(v.b, v.side);
+                self.picture_known = match art {
+                    Some(a) if a.region.as_deref().is_some_and(|r| r != v.region) => {
+                        Some("the Japanese games' chip picture (a US console shows a placeholder)")
+                    }
+                    Some(a) if a.version.as_deref().is_some_and(|g| g != console_version) => {
+                        Some("the chip's own beast's picture (a console shows its own)")
+                    }
+                    _ => None,
+                };
             }
             None => problems.note(format!("chip {:?} ({}) has no picture in the pack", def.key, data.name)),
         }
@@ -796,6 +823,31 @@ impl Window {
                 let e = self.map[y * COLUMNS + x];
                 let Some(px) = screen_x(x as i32, place.scroll) else { continue };
                 layer.draw_tile(self.tiles.tile(e.tile), &self.palettes[e.palette as usize & 15], px, 8 * y as i32, e.hflip, e.vflip);
+            }
+        }
+    }
+
+    /// The chip window's picture, where it shows, as a known difference.
+    fn known_picture(&self, place: Placement, why: &'static str, problems: &mut Problems) {
+        let art = ART_TILE..ART_TILE + PICTURE_TILES;
+        let mut rect: Option<[i32; 4]> = None;
+        for y in 0..ROWS {
+            for x in place.from..place.to {
+                if !art.contains(&self.map[y * COLUMNS + x].tile) {
+                    continue;
+                }
+                let Some(px) = screen_x(x as i32, place.scroll) else { continue };
+                let py = 8 * y as i32;
+                rect = Some(match rect {
+                    None => [px, py, px + 8, py + 8],
+                    Some(r) => [r[0].min(px), r[1].min(py), r[2].max(px + 8), r[3].max(py + 8)],
+                });
+            }
+        }
+        if let Some([x0, y0, x1, y1]) = rect {
+            let (x0, x1) = (x0.max(0), x1.min(240));
+            if x0 < x1 {
+                problems.known(x0, y0, x1 - x0, y1 - y0, why);
             }
         }
     }
@@ -1078,6 +1130,7 @@ pub fn draw<'a>(
     b: &'a Battle,
     assets: &'a Bundle,
     emblem: &'a Tiles,
+    region: &str,
     hud_layer: &mut Layer,
     names_layer: &mut Layer,
     list: &mut SpriteList<'a>,
@@ -1098,11 +1151,15 @@ pub fn draw<'a>(
         assets: a,
         beast: beast_pictures(b, a, side),
         hud: &assets.hud,
+        region,
     };
     let place = placement(screen);
     let mut w = Window::build(&v, text, problems);
     let advance_names = w.program_advance(&v, text, problems);
     w.draw(hud_layer, place);
+    if let Some(why) = w.picture_known {
+        w.known_picture(place, why, problems);
+    }
     w.name_item(text, place);
     // The Program Advance's names, a column right of the layer's scroll
     // (`sub_802BA18`), each 9x2 cells column by column.

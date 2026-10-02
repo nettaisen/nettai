@@ -535,7 +535,9 @@ the damage word, the user's alliance/flip halfword, RelatedObject1 = the user; f
 sprite twice a tick).
 
 - Init: coordinates from the panel, Z = 0; `sub_8011504(0x01000C00, 0x13140300)`: `sprite_load(0x80, 0xC,
-  0)` (0C-00), load the animation data, shadow on (the top byte 1), CurAnim 0, CurAnimCopy 0xFF; collision,
+  0)` (0C-00; the Japanese ROMs' word is 0C-49, Otenko, whose slot the US ROMs fill with a placeholder: the
+  content loads the Japanese games' sprite on every console), load the animation data, shadow on (the top byte
+  1), CurAnim 0 (in 0C-49 the puff he appears in; 1, the blessing's, is Otenko), CurAnimCopy 0xFF; collision,
   self 0x13, target 0x14, hit modifier 3, flip. (No collision: the flip isn't set and the init goes on
   anyway, presenting through a null pointer: **unverified**.) Present; Timer (lifetime) 1800; NameID 0xCF;
   HP = MaxHP = 100; ExtraVars+0 (the last hand index) = 0xFF, ExtraVars+4 (the last turn) = 0,
@@ -555,16 +557,30 @@ sprite twice a tick).
   bonus (+0x1A + 2i, u16) += 1 and the count += 1. So the next damaging chip gains +1 every 5 ticks, up to
   +50 each.
 - 2 destroyed: region 0; drop the FuturePanel reservation; `sub_802EF5C`; unregister; f2 & 0x300000
-  (absorbed) → `sub_800F90E(0xE)`; else `sub_800F8CE`: blinking → return; done → on; not a blink-out → HP
+  (absorbed) → `sub_800F90E(0xE)` (absorbed obstacle kind 0xE, `byte_80E98C0`'s row: 0C-41, AirSpin's top's
+  sprite, in the US ROMs, its own 0C-49 in the Japanese ROMs, which the content shows); else `sub_800F8CE`:
+  blinking → return; done → on; not a blink-out → HP
   left (removed by a chip) T4#0 effect 0x14 at Z + 12, HP 0 effect 2 at Z + 16 and sound 0x90. Then VISIBLE
   off, state destroy (word).
 
 **Lab**: 19 scenarios; `adjacent` and `obstacle` place no statue; in the other 17 it stands and blesses, but
 the next chip is never a damaging one. `chips/0x099-otenko/bonus` (a Cannon next, 700 ticks on: the blessing up to
 its cap), `broken` (M-Cannons break it) and `pushed` (AirShot at it) match every frame, as do removal by a
-chip, blink-out and absorption (`dustman`, `colarmy`, `absorbed`), the lifetime (`lifetime`), a second statue
+chip, blink-out and absorption (`colarmy`, `absorbed`), the lifetime (`lifetime`), a second statue
 (`replaced`) and the blessing on two chips in turn (`bonus-two-chips`). **Unverified**: a new hand entry, the
 non-player user, the body check at appearing.
+
+**The Japanese games' Otenko.** The content follows the Japanese ROMs in three data words, on every console (the
+user's call; docs/engine/jp-differences.md §5, §8 row 16): the statue's sprite (0C-49, Otenko, not 0C-00), how it
+looks absorbed (kind 0xE: 0C-49, not AirSpin's top), and its NameID 0xCF's row of `byte_8021220`, which DustMan's
+junk wears (`sub_80DBB64`): sprite 0C-49, animation 1, palette 0, a shadow. The US ROMs' row is the table's none,
+so there DustMan takes the statue and throws nothing; in the Japanese games, and the content, the statue flies
+as Otenko and hits. The lab records these on two Japanese Falzar consoles: `jp/chips/0x099-otenko/dustman` (the
+junk hits; it replaces the US-console `dustman`, which recorded no junk), `hit`, `lifetime` and `broken`, every
+frame matched; `jp/.../absorbed` is recorded for the frames only (Absorb's vortex keeps a header flag there,
+§5 of jp-differences). Against the Japanese consoles' screenshots every frame of the statue, its blessing, its
+blink-out and break, its absorption, its throw by DustCross and its flight as junk is pixel-exact (only the
+Japanese text differs).
 
 ## 10. Subtype 21: BlzrdBal (T4#0x58, T1#4, T3#0xB2, T3#0xB7)
 

@@ -167,9 +167,11 @@ fn rom_pointer(p: u32) -> bool {
 }
 
 /// The custom screen's graphics; `names` gives the chips' pictures their
-/// chips' keys. A Gregar console's own pictures are the Gregar ROM's
-/// (`gregar`), where they differ.
-pub fn custom(rom: &Rom, gregar: &Rom, names: &AssetNames) -> CustomScreen {
+/// chips' keys. A Gregar console's own pictures are the US Gregar ROM's,
+/// where they differ; the pictures of the chips the US release cut are the
+/// Japanese ROMs' (`jp::CHIP_PICTURES`).
+pub fn custom(roms: &crate::Roms, names: &AssetNames) -> CustomScreen {
+    let (rom, gregar) = (&roms.falzar, &roms.gregar);
     let mut versioned = Versioned::new("falzar", version_pictures(rom, &FALZAR));
     let own = version_pictures(gregar, &GREGAR);
     if own != versioned.base {
@@ -190,15 +192,7 @@ pub fn custom(rom: &Rom, gregar: &Rom, names: &AssetNames) -> CustomScreen {
         icon_palette: palette(rom, ICON_PALETTE),
         grey_palette: palette(rom, GREY_PALETTE),
         other_palette: palette(rom, OTHER_PALETTE),
-        chip_art: (0..CHIP_COUNT)
-            .map(|id| {
-                let rom = crate::gregar::chip_source(rom, gregar, id);
-                let record = CHIP_DATA + 0x2C * id;
-                let (gfx, pal) = (u32at(rom, record + 0x24), u32at(rom, record + 0x28));
-                let picture = if rom_pointer(gfx) && rom_pointer(pal) { picture(rom, (gfx, pal)) } else { Picture::default() };
-                ChipArt { key: names.chip_icon(id as u16), picture }
-            })
-            .collect(),
+        chip_art: (0..CHIP_COUNT).map(|id| chip_art(roms, names, id)).collect(),
         pictures: SlotPictures {
             ok: picture(rom, OK),
             ok_picked: picture(rom, OK_PICKED),
@@ -228,4 +222,25 @@ pub fn custom(rom: &Rom, gregar: &Rom, names: &AssetNames) -> CustomScreen {
             .map(|i| std::array::from_fn(|k| rom.u16(ADVANCE_NAME_COLOURS.0 + 8 * i + 2 * k as u32) & 0x7FFF))
             .collect(),
     }
+}
+
+/// Chip `id`'s picture: the US Falzar ROM's, the US Gregar ROM's for the
+/// five it has right (`gregar::RIGHT_IN_GREGAR`), a Japanese ROM's for the
+/// chips the US release cut (`jp::CHIP_PICTURES`). A cut chip whose
+/// palette no ROM holds (the Gregar and Falzar chips': a Card e+ gift's,
+/// kept in the save) gets a black one; its definition gives the palette
+/// (`art_palette`).
+fn chip_art(roms: &crate::Roms, names: &AssetNames, id: u32) -> ChipArt {
+    let key = names.chip_icon(id as u16);
+    if let Some((rom, gfx, pal, version)) = crate::jp::chip_picture(roms, id) {
+        let tiles = tiles(rom, (gfx, PICTURE_BYTES));
+        let palette = pal.map_or([0; 16], |p| palette(rom, p));
+        let (region, version) = (Some(crate::jp::REGION.into()), version.map(String::from));
+        return ChipArt { key, picture: Picture { tiles, palette }, region, version };
+    }
+    let rom = crate::gregar::chip_source(&roms.falzar, &roms.gregar, id);
+    let record = CHIP_DATA + 0x2C * id;
+    let (gfx, pal) = (u32at(rom, record + 0x24), u32at(rom, record + 0x28));
+    let picture = if rom_pointer(gfx) && rom_pointer(pal) { picture(rom, (gfx, pal)) } else { Picture::default() };
+    ChipArt { key, picture, region: None, version: None }
 }
