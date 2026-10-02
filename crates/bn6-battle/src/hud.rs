@@ -121,6 +121,31 @@ impl MessageLine {
     pub const SHOWN_TICKS: u8 = 0x3C;
 }
 
+/// An HP number a console's HUD shows under an object (`sub_801DC7C`: one
+/// of the four places of `byte_203EB50`, HUD task bit 2): the opponent's
+/// navi's, LilBoiler's. Presentation only; the number rolls toward the
+/// object's HP as the frontend draws it (`sub_801C168`), and the place is
+/// free again once the object's HP is 0.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HpNumber {
+    pub object: crate::object::ObjectRef,
+    /// Pixels from where the HUD projects the object's position (+4, +5).
+    pub dx: i8,
+    pub dy: i8,
+    /// The object's HP when the number was asked for: where it starts
+    /// rolling (+2).
+    pub hp: u16,
+    /// It shows the damage taken (max HP less HP) instead, without
+    /// centring its digits (flags 0x18, which the original gives
+    /// LilBoiler's NameID and its training viruses').
+    pub damage: bool,
+}
+
+impl HpNumber {
+    /// How many objects a console's HUD numbers.
+    pub const PLACES: usize = 4;
+}
+
 /// A chip a player just used, as the other player's console names it for
 /// a second (`sub_801EB18`; HUD task bit 16): any chip but a cut-in chip,
 /// whose telop both see. Presentation only; what a player is shown is

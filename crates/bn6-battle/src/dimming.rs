@@ -478,10 +478,7 @@ pub fn show_user(b: &mut Battle, user: ObjectRef) {
     let o = b.objects.get(user);
     let f1 = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
     // sub_800EB6C: the other side's navi is hidden from a blind viewer.
-    let viewer_blind = b.is_remote(o.alliance)
-        && b.player(o.alliance ^ 1).and_then(|p| b.objects.get(p).collision).is_some_and(|c| {
-            b.collision.get(c).f1 & crate::collision::f1::BLIND != 0
-        });
+    let viewer_blind = !b.viewer_sees(o.alliance);
     if f1 & crate::collision::f1::SUBMERGED == 0 && !viewer_blind {
         b.objects.get_mut(user).flags |= crate::object::flags::VISIBLE;
     }

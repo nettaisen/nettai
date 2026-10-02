@@ -14,6 +14,8 @@ return define.navi {
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("groundman-win"), lose = asset.banner("groundman-deleted") },
+    -- Its face in the emotion window (`byte_801CDDC`).
+    mugshot = asset.mugshot("groundman"),
     merge_height = 0,
     run_message = { 17, 20, 6 },
     own_chip = { chip = groundman, code = "G" },
@@ -39,7 +41,7 @@ return define.navi {
         -- What he wears over his body.
         parts = {
             body = {
-                sprite = asset.sprite("body-overlay-0b"),
+                sprite = asset.sprite("groundman-overlay"),
                 anims = 60,
                 behind = { { 0x00, 0x27 }, { 0x3B, 0x3B } },
             },

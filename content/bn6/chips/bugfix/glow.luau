@@ -13,8 +13,6 @@
 --
 -- When it is done it clears its spawner's `busy` flag.
 
-local viewer = require("../../lib/viewer")
-
 local glow = {}
 
 -- Its variants (the original's first parameter, `off_80C4930`).
@@ -29,7 +27,7 @@ export type State = {
 
 -- Sounds: a flash, the log in, going under.
 local FLASH_SOUND = asset.sound("bugfix-flash")
-local LOG_IN_SOUND = asset.sound("log-in-77")
+local LOG_IN_SOUND = asset.sound("log-in")
 local SUBMERGE_SOUND = asset.sound("invisible")
 -- Variant bug_fix: the flashes' ticks, then the wait.
 local FLASH_TICKS, FIRST_FLASH, WAIT = 0x78, 2, 0x1E
@@ -177,7 +175,7 @@ end
 -- `sub_80C48FC`: seen unless the viewer is blind to its side; its variant;
 -- the sprite, while dimmed too.
 local function tick(me: Object)
-    me.visible = viewer.sees(me.alliance)
+    me.visible = battle.viewer_sees(me.alliance)
     act(me)
     me:update_sprite_while_dimmed()
 end

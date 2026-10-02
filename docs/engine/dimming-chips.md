@@ -172,7 +172,13 @@ when it is look[8..12] (0); `sub_8002EAC` (the parts keep their own facing); sou
 
 **The update `sub_80E0B8C`** (r4 = the owner):
 1. VISIBLE on; off if `sub_800EB6C(alliance)` (the viewer is blind and it's the other side's), or if Unk_0C is
-   0; off if the owner's panel isn't on the field.
+   0; off if the owner's panel isn't on the field. On a round's first tick the other side's navi can init
+   first, and its FirstBarrier's visual (`sub_8013892`) has its first update before the local navi's init: it
+   asks about a navi that has no collision data yet. `sub_800EB6C` reads its ObjectFlags1 through the null
+   pointer, from the BIOS, which returns the opcode it last fetched (after the spawn's `ZeroFillByWord`, an
+   SWI: 0xE3A02004), and that has the blind bit (0x2000): the visual is hidden on that tick, as a recorded
+   match shows. The engine's `Battle::viewer_sees` reads `f1::NULL_READ` there. An interrupt between the SWI
+   and the read would leave 0xE55EC002 (not blind); no recording shows that (unverified).
 2. Unless in action 8: position = the owner's X, Y, Z, then the whole-pixel halves of Y and Z − 2 (halfword
    stores). Then, in every action: + attach point look[4] of the sprite the owner's NameID names
    (`sub_800F26C` → `sub_8018842`: signed pixels x, y), X += x · the owner's facing, Z += y (whole pixels). In

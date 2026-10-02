@@ -17,7 +17,7 @@ local lib = require("../../../../lib/buster")
 local projectile = require("../../../../lib/projectile")
 local variants = require("../../../../objects/projectile/variants")
 
--- (The recovery after the shot is the navi's `recovery`, AIAttackVars+0x12,
+-- (The recovery after the shot is the navi's `attack_count`, AIAttackVars+0x12,
 -- which a thrown obstacle waits again.)
 export type State = {
     -- Ticks left of the wait, ticks into the shot, then ticks of recovery
@@ -36,7 +36,7 @@ local WAIT, SHOOT, RECOVER = 0x0, 0x4, 0x8
 -- The wait before the buster comes up, in ticks.
 local WAIT_TICKS = 5
 -- The shot's sound and height (16.16).
-local SHOT_SOUND, SHOT_Z = asset.sound("buster-6a"), 0x18_0000
+local SHOT_SOUND, SHOT_Z = asset.sound("buster-shot"), 0x18_0000
 
 -- The charged-shot programs that come on 1 draw in 8 (the others on 1 in
 -- 2): the original's rows 9 and 0x23.
@@ -91,7 +91,7 @@ local function shoot(me: Object, s: State)
     if s.timer == 1 then
         battle.play_sound(SHOT_SOUND)
         local variant = s.projectile or variants.plain
-        me.recovery = projectile.fire(me, { variant = variant, damage = me.attack_damage, z = SHOT_Z })
+        me.attack_count = projectile.fire(me, { variant = variant, damage = me.attack_damage, z = SHOT_Z })
         attachment.attach(me, lib.flash, "related")
     end
     s.timer += 1
@@ -121,7 +121,7 @@ end
 -- it ends (there is no return after the exit).
 local function recover(me: Object, s: State)
     if me.step_init == 0 then
-        s.timer = me.recovery
+        s.timer = me.attack_count
         me.step_init = 4
     end
     local left = s.timer - 1

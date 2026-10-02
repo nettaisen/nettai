@@ -20,7 +20,7 @@ export type State = {
     look: number,
 }
 
-local SPRITE = asset.sprite("immobilized")
+local SPRITE = asset.sprite("rock-cubes")
 local SPEED = 0xA_0000
 local FORMED = 2
 local SOUND_FORM = asset.sound("place")
