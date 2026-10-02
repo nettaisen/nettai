@@ -1,0 +1,115 @@
+//! Reading a definition's spec as typed data (serde's form): the record a
+//! chip, navi or form definition makes, and the rule sections
+//! (`sections`). Assets read as the engine identifies them, a lock-on mode
+//! by its handle, a chip by its key (the registry resolves it to a handle).
+
+use std::collections::HashMap;
+
+use nettai_content_api::{AssetKind, AssetNames, ContentError, Data, DataKey, Definition, Definitions, Registry};
+use serde::de::DeserializeOwned;
+use serde_json::{Map, Value as Json};
+
+use super::*;
+
+pub(crate) fn err(d: &Definition, e: impl std::fmt::Display) -> ContentError {
+    ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key))
+}
+
+/// How the definitions' values read as typed data: assets as the engine
+/// identifies them, a reference to a lock-on mode as its handle, a chip as
+/// its key.
+pub struct SpecReader<'a> {
+    assets: &'a AssetNames,
+    handles: HashMap<(Registry, String), u16>,
+}
+
+impl<'a> SpecReader<'a> {
+    /// A reader for the values of `definitions`: the lock-on modes' handles
+    /// are their places among the definitions, which are in key order.
+    pub fn new(assets: &'a AssetNames, definitions: &Definitions) -> SpecReader<'a> {
+        let handles = definitions
+            .of(Registry::Lockon)
+            .iter()
+            .enumerate()
+            .map(|(i, d)| ((d.registry, d.key.clone()), i as u16))
+            .collect();
+        SpecReader { assets, handles }
+    }
+
+    /// The handle of the definition `key` of `registry`, if a value can
+    /// hold one.
+    fn handle(&self, registry: Registry, key: &str) -> Option<u16> {
+        self.handles.get(&(registry, key.to_string())).copied()
+    }
+
+    /// A sprite asset's identity.
+    pub fn sprite(&self, name: &str) -> Option<SpriteId> {
+        self.assets.sprites.get(name).copied()
+    }
+
+    /// `d` as the data a record reads (serde's form).
+    pub fn json(&self, d: &Data, at: &str) -> Result<Json, String> {
+        Ok(match d {
+            Data::Nil => Json::Null,
+            Data::Bool(b) => Json::Bool(*b),
+            Data::Int(i) => Json::from(*i),
+            Data::Str(s) => Json::String(s.clone()),
+            Data::List(items) => {
+                let mut out = Vec::with_capacity(items.len());
+                for (i, x) in items.iter().enumerate() {
+                    out.push(self.json(x, &format!("{at}[{}]", i + 1))?);
+                }
+                Json::Array(out)
+            }
+            // An empty table is an empty list (Luau can't tell them apart).
+            Data::Map(entries) if entries.is_empty() => Json::Array(Vec::new()),
+            Data::Map(entries) => {
+                let mut out = Map::new();
+                for (k, v) in entries {
+                    out.insert(k.to_string(), self.json(v, &format!("{at}.{k}"))?);
+                }
+                Json::Object(out)
+            }
+            // A chip by its key: the registry resolves it to a handle
+            // (no chip has a number the tables hold).
+            Data::Ref(Registry::Chip, key) => Json::String(key.clone()),
+            Data::Ref(registry, key) => match self.handle(*registry, key) {
+                Some(h) => Json::from(h),
+                None => return Err(format!("{at}: a {registry} ({key:?}) is no value a record holds")),
+            },
+            Data::Asset(AssetKind::Sprite, name) => match self.sprite(name) {
+                Some(s) => Json::String(s.to_string()),
+                None => return Err(format!("{at}: the pack has no sprite {name:?}")),
+            },
+            Data::Asset(kind, name) => {
+                let h = self.assets.handle(*kind, name).ok_or_else(|| format!("{at}: the pack has no {kind} {name:?}"))?;
+                Json::from(self.assets.number(*kind, h).expect("a handle's asset"))
+            }
+            Data::Function => return Err(format!("{at}: a function isn't data")),
+        })
+    }
+
+    /// `d` read as `T`.
+    pub fn read<T: DeserializeOwned>(&self, d: &Data, at: &str) -> Result<T, String> {
+        let j = self.json(d, at)?;
+        serde_json::from_value(j).map_err(|e| format!("{at}: {e}"))
+    }
+}
+
+/// Remove fields from a table.
+fn strip(spec: &mut Data, fields: &[&str]) {
+    if let Data::Map(entries) = spec {
+        entries.retain(|(k, _)| !matches!(k, DataKey::Str(s) if fields.contains(&s.as_str())));
+    }
+}
+
+/// The fields of a spec, as a record's data: all but those named.
+pub(crate) fn fields(d: &Definition, r: &SpecReader, skip: &[&str]) -> Result<Map<String, Json>, ContentError> {
+    let mut spec = d.spec.clone();
+    strip(&mut spec, skip);
+    match r.json(&spec, &format!("{} {}", d.registry, d.key)).map_err(|m| err(d, m))? {
+        Json::Object(o) => Ok(o),
+        Json::Array(a) if a.is_empty() => Ok(Map::new()),
+        _ => Err(err(d, "is a table")),
+    }
+}

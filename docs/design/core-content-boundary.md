@@ -25,7 +25,7 @@ Routine names are the original's (`sub_80EDAE0`). "Tick" is one call of `Battle:
 - **Content**: Luau definitions. Chips and their uses, actions, weapons, object kinds, navis, forms, stages,
   rule sections, effects, sparks, regions, collision types, statuses, lock-on modes, identities.
 
-The core and the ruleset are one crate (bn6-battle) and are not separated by an interface: the first boundary
+The core and the ruleset are one crate (nettai-battle) and are not separated by an interface: the first boundary
 is a discipline (core modules take the rules they need as data: collision types, panel flags, animation
 timing). The second boundary is hard: content sees only the content API (`CoreApi`, declared in core.d.luau),
 and the engine sees content only as handles into registries and function slots it calls.
@@ -48,7 +48,7 @@ scripts are stateless functions over it. So a battle is a plain value: cheap to 
 
 ### 1.1 The engine, module by module
 
-crates/bn6-battle/src:
+crates/nettai-battle/src:
 
 | Module | Layer | What |
 |---|---|---|
@@ -65,10 +65,10 @@ crates/bn6-battle/src:
 | content/ | the content's typed form | `Content`: the registries the definitions build (`defs`), the roles, the typed records the ruleset reads (chips, navis, forms, stages, rules) |
 | behavior/ | the boundary | `impl CoreApi for Battle` and the dispatch of kinds, actions and hooks to the runtime |
 
-The other crates: bn6-content-api (the contract below both sides), bn6-luau (the runtime), bn6-content (reading
-a content root and a pack), bn6-content-check (the type check, lints and guards), bn6-compat (the original's
-numbers, the setup codecs, the trace harness), bn6-extract (the pack's assets from a ROM), bn6-assets,
-bn6-frontend, bn6-audio and m4a (presentation), bn6-netplay (rollback).
+The other crates: nettai-content-api (the contract below both sides), nettai-luau (the runtime), nettai-content (reading
+a content root and a pack), nettai-content-check (the type check, lints and guards), bn6-compat (the original's
+numbers, the setup codecs, the trace harness), bn6-extract (the pack's assets from a ROM), nettai-assets,
+nettai-frontend, nettai-audio and m4a (presentation), nettai-netplay (rollback).
 
 ## 2. How the two sides reach each other
 

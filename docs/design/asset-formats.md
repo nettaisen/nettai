@@ -8,8 +8,8 @@ what the engine runs on) is described in [content-pack.md](content-pack.md).
 A pack is the only form this data takes: `bn6-extract content` writes it
 from the user's ROM, and everything loads it straight from its files.
 
-The code is the `bn6-content` crate, `bn6-extract content`, and pack
-loading in `bn6-frontend` and the audio examples. Everything below was
+The code is the `nettai-content` crate, `bn6-extract content`, and pack
+loading in `nettai-frontend` and the audio examples. Everything below was
 checked on the game's full battle graphics and all of its songs; the in-repo
 tests use synthetic assets.
 
@@ -50,7 +50,7 @@ precisely what a format can't carry and how each case is handled.
 - **Exact by construction, then proved.** Export writes a file, and for songs
   immediately reads it back and compares, refusing anything that wouldn't
   return the same. `bn6-extract content` reads the battle data back before it
-  finishes, and `bn6-content verify` checks a whole pack against another.
+  finishes, and `nettai-content verify` checks a whole pack against another.
 - **Imports explain, never guess silently.** An import returns a report of
   errors (the pack can't be built as it is), warnings (it builds, but likely
   not as intended) and notes, each naming the file and what to do.
@@ -149,7 +149,7 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
 
 ```json
 {
-  "format": "bn6-content/sprite", "version": 1,
+  "format": "nettai-content/sprite", "version": 1,
   "sprite": [0, 0],
   "atlas": "atlas.png",
   "palette_rows": 16,
@@ -195,7 +195,7 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
 
 ```json
 {
-  "format": "bn6-content/animations", "version": 1,
+  "format": "nettai-content/animations", "version": 1,
   "sprite": [0, 0],
   "animations": [
     [ {"ticks": 2, "flags": ["last"], "tileset": 0, "layout": 0} ],
@@ -216,7 +216,7 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
   frame draws; the simulation ignores them.
 
 Effect lifetimes and chip timings end on these durations and flags, so timing
-is kept apart from pixels: `bn6_content::timing::load` reads every
+is kept apart from pixels: `nettai_content::timing::load` reads every
 `animations.json` without opening an image (298 files in 10-50 ms), and the
 battle data's loader puts it in the engine's `Content::animations`.
 
@@ -232,7 +232,7 @@ battle data's loader puts it in the engine's `Content::animations`.
 
 ### 3.5 The Aseprite view
 
-`bn6-content aseprite-export <pack> [NAME ...]` writes
+`nettai-content aseprite-export <pack> [NAME ...]` writes
 `graphics/sprites/NAME/sprite.aseprite`; `aseprite-import` reads it back. It
 exists because whole frames are what artists want to see, and Aseprite can
 show them without flattening:
@@ -598,7 +598,7 @@ None were hit by BN6's data. What the formats can't carry, precisely:
 ## 8. Tooling
 
 Tested on BN6's pack (each tool re-saved every file of its kind in a copy of
-the pack, then `bn6-content check` and `verify`):
+the pack, then `nettai-content check` and `verify`):
 
 | Tool | What it did | Result |
 |---|---|---|
@@ -654,11 +654,11 @@ What breaks with an ordinary tool, and what the importer says:
 | WAV stereo, float | format | error |
 | any file edited | stamps | note: "edited since export" |
 
-`bn6-content check <pack>` runs every import and prints the report.
+`nettai-content check <pack>` runs every import and prints the report.
 
 ## 9. Loading
 
-**Straight from the files.** `bn6_content::pack::load_battle(pack)`,
+**Straight from the files.** `nettai_content::pack::load_battle(pack)`,
 `load_graphics(pack)` and `load_sound(pack)` read a pack's battle data,
 graphics and sound through the importers, each with a report of what it
 found. Nothing derived is stored: an edit shows up the next time the pack
@@ -684,14 +684,14 @@ the exporters), about 1 s. It is the only extraction.
 ## 10. Commands
 
     cargo run -p bn6-extract -- content <rom> data/content/bn6    # ROM -> pack
-    cargo run -p bn6-frontend -- <trace.jsonl> --pack data/content/bn6
-    cargo run -p bn6-content -- check data/content/bn6            # lint every file
-    cargo run -p bn6-content -- verify data/content/bn6 <reference-pack> [--seconds N]
-    cargo run -p bn6-content -- aseprite-export data/content/bn6 [NAME ...]
-    cargo run -p bn6-content -- aseprite-import data/content/bn6 [NAME ...]
-    cargo run -p bn6-content --example midi_summary -- a.mid b.mid
-    cargo run -p bn6-content --example stats -- data/content/bn6
-    cargo run -p bn6-content --example audio_stats -- data/content/bn6
+    cargo run -p nettai-frontend -- <trace.jsonl> --pack data/content/bn6
+    cargo run -p nettai-content -- check data/content/bn6            # lint every file
+    cargo run -p nettai-content -- verify data/content/bn6 <reference-pack> [--seconds N]
+    cargo run -p nettai-content -- aseprite-export data/content/bn6 [NAME ...]
+    cargo run -p nettai-content -- aseprite-import data/content/bn6 [NAME ...]
+    cargo run -p nettai-content --example midi_summary -- a.mid b.mid
+    cargo run -p nettai-content --example stats -- data/content/bn6
+    cargo run -p nettai-content --example audio_stats -- data/content/bn6
 
 `verify` compares what two packs load: the battle data record by record,
 the graphics part by part, the sprite timing frame by frame, and the sound
