@@ -340,13 +340,15 @@ A host does each frame what the simulator does for a peer (`Peer`): take the dat
 (`Peer::receive`), hold the frame if running ahead or at the stall guard (`Peer::wait`), else decide its player's
 input (`Peer::decide`, which pushes it on the link with `local_tick_advantage()`); send the frame's datagram
 (`Peer::datagram`, every frame, held or not: it carries the acks and the window); if it decided, `advance`
-(`Peer::advance`) and draw `frame.state.battle()`, taking the sound actions from its world's observer
-(`peer.session().world().observer()`). The world has told the observer what settled: nothing is shared between the
-host and the world, and a peer (session, world, observer and link) is `Send`, so it can run on a thread of its
-own. A round's session ends once its settled state is over (`round_end`): `Peer::end_round` starts the next on a
-new world, the observer taken over from this round's (`session_mut().world_mut().observer_mut()`). Where the peers
-agree on a last tick (a replay, the simulator's `max_frames`), `Peer::drain` settles every local input
-(`is_drained`) without speculating past it. The frontend's netplay driver does exactly this (docs/frontend.md §2).
+(`Peer::advance`) and draw `frame.state.battle()`, taking the sound actions its world's observer collected since
+the last frame (`peer.session().world().observer()`: a read, so the session keeps track of where its world is
+parked; `world_mut` would cost it a restore). The world has told the observer what settled: nothing is shared
+between the host and the world, and a peer (session, world, observer and link) is `Send`, so it can run on a
+thread of its own. A round's session ends once its settled state is over (`round_end`): `Peer::end_round` starts
+the next on a new world with its own observer (the frontend starts a new sound tracker; an observer that goes on
+is taken from this round's world first, `session_mut().world_mut().observer_mut()`). Where the peers agree on a
+last tick (a replay, the simulator's `max_frames`), `Peer::drain` settles every local input (`is_drained`) without
+speculating past it. The frontend's netplay driver does exactly this (docs/frontend.md §2).
 
 ### 4.3 The simulator
 
