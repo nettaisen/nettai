@@ -67,12 +67,14 @@ impl Library for Content {
         Content::chip(self, id)
     }
 
+    // (Content read with no player, by tools: the first game that has
+    // what is asked; a player's screen reads its game's, `GameLibrary`.)
     fn beast_out_chip(&self) -> Option<ChipHandle> {
-        self.defs.home_roles().try_chip(ChipRole::BeastOut)
+        self.defs.roles.iter().find_map(|r| r.try_chip(ChipRole::BeastOut))
     }
 
     fn invalid_chip(&self) -> ChipHandle {
-        self.defs.home_roles().chip(ChipRole::Invalid)
+        self.defs.roles.iter().find_map(|r| r.try_chip(ChipRole::Invalid)).expect("no game fills the role chips.invalid")
     }
 
     fn advance_index(&self, result: ChipHandle) -> u8 {
@@ -138,23 +140,26 @@ impl Library for Content {
     }
 
     fn layout(&self) -> &CustomScreenLayout {
-        &self.home_rules().custom_screen
+        let game = self.rules.iter().position(|r| r.custom_screen != CustomScreenLayout::default()).unwrap_or(0);
+        &self.rules_of(crate::content::RootId(game as u8)).custom_screen
     }
 
     fn banner_holds(&self, id: BannerId) -> bool {
-        self.home_rules().banner_holds(id)
+        self.rules.iter().any(|r| r.banner_holds(id))
     }
 
     fn program_advance_banner(&self, made: bool) -> BannerId {
         use crate::content::BannerRole;
-        self.defs.home_roles().banner(if made { BannerRole::ProgramAdvance } else { BannerRole::ProgramAdvanceEmpty })
+        let role = if made { BannerRole::ProgramAdvance } else { BannerRole::ProgramAdvanceEmpty };
+        self.defs.roles.iter().find_map(|r| r.banners.get(&role).copied()).expect("no game fills the program advance banners")
     }
 }
 
 /// The content as a player's custom screen reads it: its game's data (its
 /// layout, its Beast Out and invalid chips, its banners; docs/design/
 /// rules-in-luau.md §2.3), the content's records for the rest.
-/// (`Library for Content` reads the content's own root's: tools and tests.)
+/// (`Library for Content`, tools' and tests' with no player, reads the first
+/// game that has it.)
 pub struct GameLibrary<'a> {
     pub content: &'a Content,
     pub game: crate::content::RootId,

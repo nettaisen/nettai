@@ -17,8 +17,8 @@ local chip = require("./chip")
 
 local falling_rock = {}
 
-local SPRITE = asset.sprite("falling-rock")
-local SOUND = asset.sound("falling-rock")
+local SPRITE = asset.sprite("bn6:falling-rock")
+local SOUND = asset.sound("bn6:falling-rock")
 
 -- Its starting height, and its fall's acceleration (16.16).
 local HEIGHT, GRAVITY = 0x68_0000, 0x2000
@@ -123,7 +123,7 @@ local function update(me: Object)
 end
 
 falling_rock.kind = define.kind {
-    id = "falling-rock",
+    id = "bn6:falling-rock",
     pool = "attack",
     -- `sub_80C7D78`.
     update = function(me: Object)

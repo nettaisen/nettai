@@ -37,7 +37,7 @@ fn check_place(content: &Content, p: &Place, at: &str, out: &mut Vec<String>) {
     if let Some(b) = &p.background
         && crate::background(content, b).is_none()
     {
-        out.push(format!("{at}: no background {b:?}"));
+        out.push(crate::no_background(at, b));
     }
 }
 

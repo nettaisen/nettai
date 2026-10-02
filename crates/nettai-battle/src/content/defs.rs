@@ -247,16 +247,14 @@ pub struct RulesetDef {
     pub game: RootId,
 }
 
-/// A content root, by its place among the loaded roots (`Defs::roots`):
-/// the content's own root is [`RootId::HOME`]. A game's data, its roles
-/// and rule sections, is its root's (docs/design/rules-in-luau.md §2.3).
+/// A game, by its place among the content's games (`Defs::roots`, by
+/// name: a definition's game is its id's prefix, docs/design/
+/// rules-in-luau.md, the flat namespace). A game's data, its roles and rule
+/// sections, is its own (§2.3).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RootId(pub u8);
 
 impl RootId {
-    /// The content's own root (the one it was loaded from).
-    pub const HOME: RootId = RootId(0);
-
     pub fn index(self) -> usize {
         self.0 as usize
     }
@@ -392,14 +390,9 @@ impl Defs {
         &self.rulesets[h.index()]
     }
 
-    /// The game's own rules (docs/design/rules-in-luau.md §2.3) of the
-    /// content's own root: what a player has unless their setup names
-    /// another.
-    pub fn stock_ruleset(&self) -> Option<RulesetHandle> {
-        self.stock_ruleset_of(self.roots.first()?)
-    }
-
-    /// Root `root`'s stock ruleset, if it has one.
+    /// Game `root`'s stock ruleset, if it has one (docs/design/
+    /// rules-in-luau.md §2.3: what a player has unless their setup names
+    /// another, the stage's game's).
     pub fn stock_ruleset_of(&self, root: &str) -> Option<RulesetHandle> {
         self.rulesets
             .iter()
@@ -412,48 +405,28 @@ impl Defs {
         self.roots.iter().position(|r| r == name).map(|i| RootId(i as u8))
     }
 
-    /// The root a definition's key is of: its qualifier's (an engine or
-    /// unqualified key, the content's own root's).
-    pub fn root_of(&self, key: &str) -> RootId {
-        keys::root_of(key).and_then(|r| self.root_id(r)).unwrap_or(RootId::HOME)
+    /// The game a definition's id is of: its prefix's (None for the
+    /// engine's own keys, `engine/...`).
+    pub fn root_of(&self, key: &str) -> Option<RootId> {
+        keys::root_of(key).and_then(|r| self.root_id(r))
     }
 
-    /// Root `root`'s game's roles.
+    /// Game `root`'s roles.
     pub fn roles(&self, root: RootId) -> &Roles {
         &self.roles[root.index()]
     }
 
-    /// The content's own root's roles: what tools and codecs read with no
-    /// battle (the zeroed chip).
-    pub fn home_roles(&self) -> &Roles {
-        &self.roles[RootId::HOME.index()]
+    /// The game of the ruleset a setup names, or else `default`'s (the
+    /// stage's game): whose data the side reads.
+    pub fn ruleset_game(&self, ruleset: Option<RulesetHandle>, default: RootId) -> RootId {
+        ruleset.map_or(default, |r| self.ruleset(r).game)
     }
 
-    /// The game of the ruleset a setup names (or the content's stock one):
-    /// whose data the side reads.
-    pub fn ruleset_game(&self, ruleset: Option<RulesetHandle>) -> RootId {
-        ruleset.or_else(|| self.stock_ruleset()).map_or(RootId::HOME, |r| self.ruleset(r).game)
-    }
-
-    /// Look `key` up with `exact`: as it is if it is qualified (or an
-    /// engine key); unqualified, in the one root that defines it (None if
-    /// none does, or several: a key two roots define must be qualified).
-    /// Lookups by key are for tools, tests and setups by name, never the
-    /// simulation's.
+    /// Look `key` up with `exact`, as it is: ids are written in full
+    /// (`bn6:cannon`; the engine's own `engine/...`). Lookups by key are
+    /// for tools, tests and setups by name, never the simulation's.
     fn find<T>(&self, key: &str, exact: impl Fn(&str) -> Option<T>) -> Option<T> {
-        if keys::is_qualified(key) {
-            return exact(key);
-        }
-        let mut found = None;
-        for root in &self.roots {
-            if let Some(h) = exact(&keys::qualify(root, key)) {
-                if found.is_some() {
-                    return None;
-                }
-                found = Some(h);
-            }
-        }
-        found
+        exact(key)
     }
 
     /// The ruleset with this key.
@@ -789,6 +762,10 @@ fn read_roles(
     let mut roles = Roles::default();
     for (group, entries) in groups {
         let group = group.to_string();
+        // (Its id names its game: `bn6:roles`.)
+        if group == "id" {
+            continue;
+        }
         let Data::Map(entries) = entries else { return Err(what(format!("`{group}` is a table"))) };
         for (name, v) in entries {
             let name = name.to_string();
@@ -966,9 +943,9 @@ impl Defs {
     /// `definitions` (what its modules define) make.
     pub fn build(content: &Content, definitions: Definitions) -> Result<Defs, ContentError> {
         let reader = super::reader::SpecReader::new(&content.assets, &definitions);
-        // The roots, the content's own first (content without scripts is
-        // one root of no name).
-        let root_names = content.scripts.root_names();
+        // The games, by name (content without scripts is one game of no
+        // name).
+        let root_names = Content::game_names(&content.scripts, &definitions);
         let root_of = |key: &str| -> RootId {
             let name = keys::root_of(key).unwrap_or("");
             RootId(root_names.iter().position(|r| r == name).unwrap_or(0) as u8)
@@ -1675,7 +1652,7 @@ impl Defs {
             base_form,
             chip_keys: BTreeMap::new(),
             weapon_keys: BTreeMap::new(),
-            roots: content.scripts.roots.iter().map(|r| r.name.clone()).collect(),
+            roots: root_names.clone(),
             kinds: Vec::new(),
             actions,
             weapons,

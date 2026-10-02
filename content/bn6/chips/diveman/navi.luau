@@ -15,19 +15,19 @@ export type State = {
     controller: Object?,
 }
 
-local SPRITE = asset.sprite("diveman")
-local SOUND_SURFACE = asset.sound("sand-worm")
+local SPRITE = asset.sprite("bn6:diveman")
+local SOUND_SURFACE = asset.sound("bn6:sand-worm")
 
 -- What he is taken for: his actor record, and what he wears (his overlay, `sub_8010F96`).
 local IDENTITY = define.identity {
-    id = "diveman",
+    id = "bn6:diveman",
     class = "navi",
     version = 0,
     ai_index = 0xD,
     ice = "large",
     parts = {
         body = {
-            sprite = asset.sprite("diveman"),
+            sprite = asset.sprite("bn6:diveman"),
             anims = 136,
             behind = { { 0x0A, 0x0B }, { 0x23, 0x37 }, { 0x4C, 0x73 }, { 0x87, 0x87 } },
             anim_offset = 0x0A,
@@ -146,7 +146,7 @@ end
 local ACTIONS = { [SURFACE] = surface, [WAIT] = wait, [DIVE] = dive, [WAVES] = waves, [RISE] = rise, [LEAVE] = leave }
 
 diveman.kind = define.kind {
-    id = "diveman/navi",
+    id = "bn6:diveman/navi",
     pool = "actor",
     state = { controller = "object" },
     -- `sub_80B99C0`.

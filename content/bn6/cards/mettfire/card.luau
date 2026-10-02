@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local b_button = require("./b-button")
 
 return define.patch_card {
-    id = "mettfire",
+    id = "bn6:mettfire",
     mb = 20,
     effects = {
         cards.body("fire"),

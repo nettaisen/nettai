@@ -36,7 +36,7 @@ local function effect(me: Object)
 end
 
 barrier_chips.kind = define.kind {
-    id = "barriers/controller",
+    id = "bn6:barriers/controller",
     pool = "effect",
     state = { barrier = "record:barrier" },
     update = dimming_chips.phases { name = "the barrier chips", effect = effect },

@@ -23,7 +23,7 @@ throw.STATE = { timer = "u16" }
 local THROW, RECOVER = 0x0, 0x4
 
 local ANIM_THROW = 6
-local SOUND = asset.sound("minibomb-throw")
+local SOUND = asset.sound("bn6:minibomb-throw")
 -- The throw leaves on this tick, and the phase ends on this one.
 local RELEASE_TICK, THROW_TICKS = 9, 0x15
 local RECOVER_TICKS = 5

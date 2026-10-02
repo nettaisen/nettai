@@ -17,9 +17,9 @@ local collision = require("../../rules/collision")
 
 local mark = {}
 
-local SPRITE = asset.sprite("hit-sparks")
+local SPRITE = asset.sprite("bn6:hit-sparks")
 local ANIM = 0x0B
-local SOUND = asset.sound("mark")
+local SOUND = asset.sound("bn6:mark")
 -- How long a navi stays marked.
 local MARK_TICKS = 0xB4
 -- The attach point the mark sits at, on the marked navi.
@@ -145,7 +145,7 @@ local function init(me: Object)
 end
 
 mark.kind = define.kind {
-    id = "copydmg/mark",
+    id = "bn6:copydmg/mark",
     pool = "attack",
     -- `sub_80C8FFC`.
     update = function(me: Object)

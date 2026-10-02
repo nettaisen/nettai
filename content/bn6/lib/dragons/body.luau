@@ -147,7 +147,7 @@ local function init(me: Object)
 end
 
 body.kind = define.kind {
-    id = "dragon-body",
+    id = "bn6:dragon-body",
     pool = "attack",
     state = {
         count = "u8",

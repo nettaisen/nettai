@@ -108,19 +108,19 @@ local SWORDS = {
 
 -- GroundCross's drill arm (attachment 0x20) and TenguCross's fan (0x2A:
 -- WindRack's rack) and its gust (effect 0x44).
-local DRILL_ARM = attachment.look { sprite = asset.sprite("drill-arm"), palette = 0, attach_point = 19 }
-local FAN = attachment.look { sprite = asset.sprite("wind-rack"), palette = 0 }
-local GUST = define.effect { sprite = asset.sprite("swirl"), anim = 0, palette = 0 }
+local DRILL_ARM = attachment.look { sprite = asset.sprite("bn6:drill-arm"), palette = 0, attach_point = 19 }
+local FAN = attachment.look { sprite = asset.sprite("bn6:wind-rack"), palette = 0 }
+local GUST = define.effect { sprite = asset.sprite("bn6:swirl"), anim = 0, palette = 0 }
 
 -- The finale's charge: the glow while it builds (effect 0x4E) and the
 -- flash when it is full (0x4F), at the Cross's attach point 0.
-local CHARGING = define.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
-local CHARGED = define.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
+local CHARGING = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 0, palette = 0 }
+local CHARGED = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 2, palette = 0 }
 
-local SOUND_APPEAR, SOUND_CIRCLE = asset.sound("appear"), asset.sound("sun-moon")
-local SOUND_BEAM, SOUND_DRILL, SOUND_FAN = asset.sound("erase-man-2"), asset.sound("drilarm"), asset.sound("windrack")
-local SOUND_CHARGE, SOUND_CHARGED = asset.sound("buster-charge"), asset.sound("buster-charged")
-local SOUND_FINALE = asset.sound("burst")
+local SOUND_APPEAR, SOUND_CIRCLE = asset.sound("bn6:appear"), asset.sound("bn6:sun-moon")
+local SOUND_BEAM, SOUND_DRILL, SOUND_FAN = asset.sound("bn6:erase-man-2"), asset.sound("bn6:drilarm"), asset.sound("bn6:windrack")
+local SOUND_CHARGE, SOUND_CHARGED = asset.sound("bn6:buster-charge"), asset.sound("bn6:buster-charged")
+local SOUND_FINALE = asset.sound("bn6:burst")
 
 -- Where each place in a wave starts its circle (`byte_80BEB20`,
 -- `byte_80BEC38`), 256 steps a turn.
@@ -784,7 +784,7 @@ local function init(me: Object)
 end
 
 mstrcros.kind = define.kind {
-    id = "mstrcros/navi",
+    id = "bn6:mstrcros/navi",
     pool = "actor",
     state = {
         form = "form",

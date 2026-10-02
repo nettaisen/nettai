@@ -89,10 +89,11 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
     let action = prepare(b, r, charge);
     set_attack(b, r, action, 2);
     let beast = form_of(b, r).kind.is_beast();
+    let arena = b.games.arena;
     let content = b.content.clone();
     let a = &mut ai_mut(b, r).attack;
     if a.special_source != 0 || beast {
-        a.beast_lockon = content.chip_field(a.chip).beast_lockon as u8;
+        a.beast_lockon = content.chip_field(arena, a.chip).beast_lockon as u8;
     }
     ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
     Some(ai(b, r).attack.chip)
@@ -162,7 +163,7 @@ pub fn next_chip_doubles(b: &Battle, r: ObjectRef) -> bool {
 /// The chip an object other than a player carries: its zeroed chip field,
 /// the zeroed chip (nothing else sets it).
 fn carried_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
-    b.objects.get(r).chip.or_else(|| b.content.zeroed_chip())
+    b.objects.get(r).chip.or_else(|| b.zeroed_chip())
 }
 
 /// The record of a hand entry's chip; the empty hand's (0xFFFF) is past
@@ -266,7 +267,7 @@ pub(crate) fn chip_action(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
     use super::actions::instant::Effect;
     use super::{EngineAction as E, NaviAction as A};
     let content = b.content.clone();
-    let chip = content.chip_or_zeroed(chip);
+    let chip = content.chip_or_zeroed(b.games.arena, chip);
     match content.defs.chip(chip).usage {
         ChipUsage::Action(h) => A::Content(h),
         ChipUsage::Dimming(_) => A::Engine(E::DimmingChip),
@@ -330,7 +331,7 @@ fn slot_in_entry(b: &mut Battle, r: ObjectRef) -> HandEntry {
         return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: 0 };
     }
     // The zeroed field is the zeroed chip.
-    let chip = b.sides[side].special_chip.or_else(|| b.content.zeroed_chip());
+    let chip = b.sides[side].special_chip.or_else(|| b.zeroed_chip());
     pay_for_special_chip(b, side, chip);
     let extra = chip_bonus(b, r, chip);
     let content = b.content.clone();

@@ -15,7 +15,7 @@ local immobilizer = {}
 local NO_SPARK: Spark? = nil
 local STATUS = statuses.immobilize_120
 
-local SOUND = asset.sound("immobilizer")
+local SOUND = asset.sound("bn6:immobilizer")
 
 -- `sub_80CC090`: 20 ticks, then gone.
 local function linger(me: Object)
@@ -55,7 +55,7 @@ local function init(me: Object)
 end
 
 immobilizer.kind = define.kind {
-    id = "immobilizer",
+    id = "bn6:immobilizer",
     pool = "attack",
     -- `sub_80CC044`.
     update = function(me: Object)

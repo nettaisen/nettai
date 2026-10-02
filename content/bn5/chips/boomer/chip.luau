@@ -7,10 +7,10 @@
 
 local boomerang = require("@bn6/chips/boomer/boomerang")
 
-local VARIANT = boomerang.variant { speed = 0x4_0000, turn_speed = 157286, grass = false, sprite = asset.sprite("boomerang") }
+local VARIANT = boomerang.variant { speed = 0x4_0000, turn_speed = 157286, grass = false, sprite = asset.sprite("bn5:boomerang") }
 
 return define.chip {
-    id = "boomer",
+    id = "bn5:boomer",
     codes = { "A", "L", "V", "*" },
     element = "wood",
     family = "wood",

@@ -17,7 +17,7 @@ export type State = {
 -- The phases, on the attack's step.
 local SHOOT, RECOVER = 0x0, 0x4
 
-local SOUND = asset.sound("buster-shot")
+local SOUND = asset.sound("bn6:buster-shot")
 
 -- `sub_80ECA50`: the buster up; the mark flies on the second tick.
 local function shoot(me: Object, s: State)
@@ -71,7 +71,7 @@ local function update(me: Object, s: State)
 end
 
 return define.chip {
-    id = "copydmg",
+    id = "bn6:copydmg",
     codes = { "*" },
     element = "null", family = "cursor", class = "standard",
     rarity = 1, mb = 12, damage = 0, hit_param = 0, lockout = 0,

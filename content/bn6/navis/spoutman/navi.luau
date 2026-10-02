@@ -7,19 +7,19 @@ local charge = require("./charge")
 local spoutman = require("./chip")
 
 return define.navi {
-    id = "spoutman",
-    sprite = asset.sprite("spoutman"),
+    id = "bn6:spoutman",
+    sprite = asset.sprite("bn6:spoutman"),
     element = "aqua",
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("spoutman-win"), lose = asset.banner("spoutman-deleted") },
+    banners = { win = asset.banner("bn6:spoutman-win"), lose = asset.banner("bn6:spoutman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`).
-    mugshot = asset.mugshot("spoutman"),
+    mugshot = asset.mugshot("bn6:spoutman"),
     merge_height = 0,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("spoutman-portrait"),
+        portrait = asset.sprite("bn6:spoutman-portrait"),
     },
     own_chip = { chip = spoutman, code = "A" },
     -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
@@ -40,7 +40,7 @@ return define.navi {
         aura_anim = 6,
         ice = "medium",
         -- What he wears while he stands.
-        parts = { idle = { sprite = asset.sprite("idle-overlay") } },
+        parts = { idle = { sprite = asset.sprite("bn6:idle-overlay") } },
         attach_points = {
             { 0, -4 },
             { 0, 0 },

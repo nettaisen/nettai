@@ -12,7 +12,7 @@ local striker = {}
 -- Its identity: a field object nothing swallows or leaves as junk, with
 -- no look.
 local IDENTITY = define.identity {
-    id = "bodygrd-striker",
+    id = "bn6:bodygrd-striker",
     class = "field_object",
     version = 0,
     ai_index = 1,
@@ -20,7 +20,7 @@ local IDENTITY = define.identity {
     look = { anim = 0, palette = 0, shadow = false },
 }
 local EVERY, STRIKES = 0x14, 0xB
-local SOUND_THROW = asset.sound("boomerang")
+local SOUND_THROW = asset.sound("bn6:boomerang")
 local HIT_MOD = 1
 
 -- Gone: out of the field-object registry, freed next update.
@@ -107,7 +107,7 @@ local function tick(me: Object)
 end
 
 striker.kind = define.kind {
-    id = "bodygrd/striker",
+    id = "bn6:bodygrd/striker",
     pool = "effect",
     -- `sub_80E8268`.
     update = function(me: Object)

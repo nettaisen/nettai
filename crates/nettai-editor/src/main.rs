@@ -14,8 +14,8 @@ use std::sync::Arc;
 const USAGE: &str = "\
 usage: nettai-editor [OPTIONS] [MATCH.toml]
 
-  --content DIR    the battle content (default: $BN6_CONTENT, else this
-                   repository's content/bn6)
+  --content DIR    the battle content directory (default: $NETTAI_CONTENT,
+                   else this repository's content/)
   --pack DIR       the content pack, for the chips' pictures (default:
                    $BN6_PACK, else data/content/bn6)
   --lang LANG      names in en (default) or ja
@@ -32,7 +32,7 @@ fn fail(msg: impl std::fmt::Display) -> ! {
 
 fn parse() -> Result<Options, String> {
     let mut o = Options {
-        content_root: std::env::var_os("BN6_CONTENT").map(PathBuf::from).unwrap_or_else(nettai_content::root::bn6),
+        content_root: nettai_content::root::content(),
         pack: std::env::var_os("BN6_PACK").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/content/bn6")),
         frontend: None,
         file: None,

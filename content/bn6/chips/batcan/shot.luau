@@ -73,7 +73,7 @@ local function init(me: Object)
 end
 
 shot.kind = define.kind {
-    id = "batcan/shot",
+    id = "bn6:batcan/shot",
     pool = "attack",
     state = { hit_mod = "u8" },
     -- `sub_80C50B8`.

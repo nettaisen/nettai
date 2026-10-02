@@ -31,11 +31,11 @@ export type State = {
     bug: number,
 }
 
-local SPRITE = asset.sprite("thunder-ball")
+local SPRITE = asset.sprite("bn6:thunder-ball")
 -- Its animations: small, big (fast, or DarkThnd's 12 panels); +1
 -- bursting.
 local SMALL, BIG = 0, 2
-local SOUND_THUNDER, SOUND_DARK = asset.sound("erase-man-2"), asset.sound("elec-man")
+local SOUND_THUNDER, SOUND_DARK = asset.sound("bn6:erase-man-2"), asset.sound("bn6:elec-man")
 -- The panel count that makes DarkThnd's.
 local DARK_PANELS = 0x0C
 -- Hits that end it: bodies, neutral objects, attacks.
@@ -198,7 +198,7 @@ local function burst(me: Object)
 end
 
 ball.kind = define.kind {
-    id = "thunder/ball",
+    id = "bn6:thunder/ball",
     pool = "attack",
     state = { fast = "bool", panels = "u8", status = "status", bug = "u8" },
     -- `sub_80C93CC`.

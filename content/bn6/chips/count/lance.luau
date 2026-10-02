@@ -22,8 +22,8 @@ export type State = {
     warn_ticks: number,
 }
 
-local SPRITE = asset.sprite("count")
-local SOUND_STRIKE = asset.sound("elmnt-vine")
+local SPRITE = asset.sprite("bn6:count")
+local SOUND_STRIKE = asset.sound("bn6:elmnt-vine")
 
 -- Its animation, and its height until it strikes (whole pixels).
 local ANIM = 0xC
@@ -154,7 +154,7 @@ local function tick(me: Object)
 end
 
 lance.kind = define.kind {
-    id = "count/lance",
+    id = "bn6:count/lance",
     pool = "attack",
     state = { while_dimmed = "bool", warn_ticks = "u8" },
     update = function(me: Object)

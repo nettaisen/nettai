@@ -17,7 +17,7 @@ export type State = {
     pierces: boolean,
 }
 
-local SPRITE = asset.sprite("sword-slash")
+local SPRITE = asset.sprite("bn6:sword-slash")
 local Z = 0x10_0000
 -- Its speed (16.16 pixels a tick) as its throwers set it.
 sonic_boom.SPEED = 0x8_0000
@@ -114,7 +114,7 @@ local function init(me: Object)
 end
 
 sonic_boom.kind = define.kind {
-    id = "sonic-boom",
+    id = "bn6:sonic-boom",
     pool = "attack",
     state = { hit_mod = "u8", pierces = "bool" },
     -- `sub_80CF7F0`.

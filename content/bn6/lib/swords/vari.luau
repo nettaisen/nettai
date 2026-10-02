@@ -35,7 +35,7 @@ vari.STATE = { flip = "u8", progress = "u8[5]" }
 local COUNTDOWN = 0x30
 -- The phases, on the attack's step.
 local START, PICK = 0, 4
-local SOUND = asset.sound("ok-8b")
+local SOUND = asset.sound("bn6:ok-8b")
 -- The forms that wait while A is up: SlashCross and its Beast (the Beast
 -- Overs pick at random, and the Beast forms give the pick's Beast
 -- lock-on).

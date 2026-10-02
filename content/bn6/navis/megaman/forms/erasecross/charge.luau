@@ -24,7 +24,7 @@ local FIRE, HOLD = 0x0, 0x4
 -- EraseCross's form; its hit parameter.
 local ERASE_CROSS, HIT_PARAM = "erasecross", 0x94
 
-local SOUND = asset.sound("moon-beam")
+local SOUND = asset.sound("bn6:moon-beam")
 
 -- How much lower the Beast form's beam is, 16.16.
 local BEAST_Z = -0x4_0000
@@ -79,7 +79,7 @@ local function hold(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "erasecross/charge/action",
+    id = "bn6:erasecross/charge/action",
     state = { timer = "u16", beast = "bool" },
     -- `sub_80EE7D0`.
     update = function(me: Object, s: State)
@@ -95,7 +95,7 @@ charge.action = define.action {
 }
 
 charge.weapon = define.weapon {
-    id = "erasecross/charge",
+    id = "bn6:erasecross/charge",
     -- The charge table's row 0x14, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 110, 100, 90, 85, 80, 120, 120, 120 },

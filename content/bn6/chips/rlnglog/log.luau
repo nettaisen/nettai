@@ -30,13 +30,13 @@ export type State = {
     thrown: boolean,
 }
 
-local SPRITE = asset.sprite("rolling-log")
+local SPRITE = asset.sprite("bn6:rolling-log")
 local HIT_MOD = 0x01
 -- Its arc (thrown): ticks, gravity (16.16 per tick); then its speed.
 local ARC_TICKS, GRAVITY, ARC_ROLL_SPEED = 0x0D, -0x8000, 0x3_0000
 -- Dropping in: its speed forward and down.
 local DROP_ROLL_SPEED, DROP_FALL = 0x1_C000, -0x2_0000
-local SOUND_HIT_BOMB = asset.sound("hit-bomb-1")
+local SOUND_HIT_BOMB = asset.sound("bn6:hit-bomb-1")
 local SOLID = 0x10
 -- Hits that make it burst: bodies and neutral objects.
 local BURSTING = 0x0F800000
@@ -247,7 +247,7 @@ local function init(me: Object, hp: number)
 end
 
 log.kind = define.kind {
-    id = "rlnglog/log",
+    id = "bn6:rlnglog/log",
     pool = "attack",
     state = { last_hp = "u16", big = "bool", stop_ticks = "u8", thrown = "bool" },
     -- `sub_80D1218`.

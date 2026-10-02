@@ -11,13 +11,13 @@ local instrument = require("@bn6/lib/instruments/instrument")
 local instruments = require("@bn6/lib/instruments/controller")
 local statuses = require("../../rules/status")
 
-local SPRITE = asset.sprite("instrument")
+local SPRITE = asset.sprite("bn5:instrument")
 
 -- Held in place (status 0x43: 4 ticks) over the solid panels, and a camera shake.
 local EFFECT = effects.drum(statuses.immobilize_4, collision.guard_breaking, collision.hits_navis)
 
 return define.chip {
-    id = "timpani",
+    id = "bn5:timpani",
     codes = { "A", "L", "V", "*" },
     element = "null",
     family = "summon",
@@ -32,7 +32,7 @@ return define.chip {
     -- BN5's row 2; its identity the actor record 0xDF (0x08014C94: version 0, AI index 0x21).
     dimming = instruments.hook(instrument.instrument {
         identity = define.identity {
-            id = "timpani",
+            id = "bn5:timpani",
             class = "field_object",
             version = 0,
             ai_index = 0x21,
@@ -41,7 +41,7 @@ return define.chip {
         palette = 4,
         play_ticks = 0x55 * 2,
         pause_ticks = 0x3C,
-        tune = asset.sound("timpani"),
+        tune = asset.sound("bn5:timpani"),
         effect = EFFECT,
         hp = 100,
         sprite = SPRITE,

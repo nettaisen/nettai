@@ -5,7 +5,7 @@
 local navi = require("./navi")
 
 local colonel = define.chip {
-    id = "colonel",
+    id = "bn6:colonel",
     codes = { "C", "*" },
     element = "null",
     family = "sword",
@@ -22,7 +22,7 @@ local colonel = define.chip {
 }
 
 local colonel_ex = define.chip {
-    id = "colonel-ex",
+    id = "bn6:colonel-ex",
     codes = { "C" },
     element = "null",
     family = "sword",
@@ -39,7 +39,7 @@ local colonel_ex = define.chip {
 }
 
 local colonel_sp = define.chip {
-    id = "colonel-sp",
+    id = "bn6:colonel-sp",
     codes = { "C" },
     element = "null",
     family = "sword",

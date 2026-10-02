@@ -15,8 +15,8 @@ local sparks = require("../../lib/sparks")
 
 local strike = {}
 
-local SPRITE = asset.sprite("justice-one")
-local FALL_SOUND, LAND_SOUND = asset.sound("justice-one"), asset.sound("hit-bomb-1")
+local SPRITE = asset.sprite("bn6:justice-one")
+local FALL_SOUND, LAND_SOUND = asset.sound("bn6:justice-one"), asset.sound("bn6:hit-bomb-1")
 -- Break (secondary element 0x10).
 local BREAK = 0x10
 -- Its own collision (`dword_80DB558`): a thrown breaking attack that hits
@@ -178,7 +178,7 @@ local function tick(me: Object)
 end
 
 strike.kind = define.kind {
-    id = "justcone/strike",
+    id = "bn6:justcone/strike",
     pool = "attack",
     -- `sub_80DB304`.
     update = function(me: Object)

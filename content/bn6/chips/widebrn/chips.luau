@@ -17,7 +17,7 @@ local function wide_burn(id: string): Action
 end
 
 local widebrn1 = define.chip {
-    id = "widebrn1",
+    id = "bn6:widebrn1",
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -32,11 +32,11 @@ local widebrn1 = define.chip {
     library = { number = 323, index = 4, sort = 0 },
     slot_in_limit = 1,
     program_advances = { { order = 17, code_run = { chip = firebrn.firebrn1, count = 3 } } },
-    action = wide_burn("widebrn1/action"),
+    action = wide_burn("bn6:widebrn1/action"),
 }
 
 local widebrn2 = define.chip {
-    id = "widebrn2",
+    id = "bn6:widebrn2",
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -51,11 +51,11 @@ local widebrn2 = define.chip {
     library = { number = 324, index = 5, sort = 0 },
     slot_in_limit = 1,
     program_advances = { { order = 18, code_run = { chip = firebrn.firebrn2, count = 3 } } },
-    action = wide_burn("widebrn2/action"),
+    action = wide_burn("bn6:widebrn2/action"),
 }
 
 local widebrn3 = define.chip {
-    id = "widebrn3",
+    id = "bn6:widebrn3",
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -70,7 +70,7 @@ local widebrn3 = define.chip {
     library = { number = 325, index = 6, sort = 0 },
     slot_in_limit = 1,
     program_advances = { { order = 19, code_run = { chip = firebrn.firebrn3, count = 3 } } },
-    action = wide_burn("widebrn3/action"),
+    action = wide_burn("bn6:widebrn3/action"),
 }
 
 return { widebrn1 = widebrn1, widebrn2 = widebrn2, widebrn3 = widebrn3 }

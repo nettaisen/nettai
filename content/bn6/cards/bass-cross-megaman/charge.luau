@@ -11,7 +11,7 @@ local whirl = require("../../chips/airspin/whirl")
 -- AirSpin's action sending the seeking whirlwind. (Its compat key maps it
 -- to 0x38.)
 local SPIN = airspin.action {
-    id = "patch-cards/bass-cross-megaman/charge/action",
+    id = "bn6:patch-cards/bass-cross-megaman/charge/action",
     whirlwind = whirl.sender,
 }
 
@@ -27,7 +27,7 @@ local function setup(navi: Object): Action
 end
 
 return define.weapon {
-    id = "patch-cards/bass-cross-megaman/charge",
+    id = "bn6:patch-cards/bass-cross-megaman/charge",
     -- The charge table's row 0x93, by Charge 0 to 7: past 4 it reads on
     -- into the bytes after the table (Charge stays below 5 with the cards).
     charge_ticks = { 140, 130, 120, 110, 100, 2052, 4108, 6164 },

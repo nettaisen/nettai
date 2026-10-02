@@ -23,8 +23,8 @@ fn megaman() -> NaviStats {
         max_base_hp: 1000,
         mood: 0x80,
         weapons: NaviWeapons {
-            buster: testing::weapon("megaman/buster"),
-            charge_shot: testing::weapon("megaman/charged-shot"),
+            buster: testing::weapon("test:megaman/buster"),
+            charge_shot: testing::weapon("test:megaman/charged-shot"),
             ..Default::default()
         },
         ..testing::megaman_on(&testing::content())
@@ -67,7 +67,7 @@ fn tick(b: &mut Battle, p: [ObjectRef; 2], held: u16) {
 /// until its controller has come: tick 0 is the controller's first.
 fn use_chip(b: &mut Battle, p: [ObjectRef; 2], chip: &str, controller: &str) -> ObjectRef {
     let chip = testing::chip_in(&b.content, chip);
-    let mut hand = ChipHand::empty(&b.content);
+    let mut hand = ChipHand::empty(&b.content, b.games.arena);
     hand.ids[0] = Some(chip);
     hand.damage[0] = b.content.chip(chip).damage;
     b.hands[0] = hand;

@@ -3,7 +3,7 @@
 -- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
 
 return define.chip {
-    id = "mudwave",
+    id = "bn5:mudwave",
     codes = { "D", "N", "W" },
     element = "wood",
     family = "wood",

@@ -3,7 +3,7 @@
 -- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
 
 return define.chip {
-    id = "windrack",
+    id = "bn5:windrack",
     codes = { "B", "F", "J", "*" },
     element = "null",
     family = "wind",

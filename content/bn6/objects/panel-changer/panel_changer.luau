@@ -32,9 +32,9 @@ function panel_changer.change(c: PanelChange): PanelChange
 end
 
 -- The sounds most changes make: a tick every fourth tick, and the change.
-panel_changer.TICK_SOUND = asset.sound("panel-change-tick")
-panel_changer.CHANGE_SOUND = asset.sound("panel-change")
-panel_changer.POISON_SOUND = asset.sound("panel-poison")
+panel_changer.TICK_SOUND = asset.sound("bn6:panel-change-tick")
+panel_changer.CHANGE_SOUND = asset.sound("bn6:panel-change")
+panel_changer.POISON_SOUND = asset.sound("bn6:panel-poison")
 
 -- `sub_80E2ACA`: a changer of `change` on panel (`x`, `y`), on `spawner`'s
 -- side and facing; `holder` (an object with a boolean `busy` its spawner
@@ -158,7 +158,7 @@ local function finish(me: Object)
 end
 
 panel_changer.kind = define.kind {
-    id = "panel-changer",
+    id = "bn6:panel-changer",
     pool = "effect",
     state = { change = "record:panel-change", list = "u8[18]", count = "u8", holder = "object" },
     -- `sub_80E28A8`.

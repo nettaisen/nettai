@@ -26,13 +26,13 @@ export type State = {
     while_dimmed: boolean,
 }
 
-local HUM = asset.sound("sun-beam")
+local HUM = asset.sound("bn6:sun-beam")
 local HUM_TICKS = 11
 
 -- The looks (`dword_80E5C28`): GunDelSol's, and GunDelEX's wider one.
 beam.sprites = {
-    plain = asset.sprite("sun-beam"),
-    wide = asset.sprite("sun-beam-ex"),
+    plain = asset.sprite("bn6:sun-beam"),
+    wide = asset.sprite("bn6:sun-beam-ex"),
 }
 
 -- `sub_80E5D3E`: end the beam (its next update frees it).
@@ -83,7 +83,7 @@ local function init(me: Object)
 end
 
 beam.kind = define.kind {
-    id = "gundels/beam",
+    id = "bn6:gundels/beam",
     pool = "effect",
     state = {
         slot = slot.TYPE,

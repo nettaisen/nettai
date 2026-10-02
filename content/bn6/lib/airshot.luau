@@ -22,14 +22,14 @@ local STATE = { timer = "u16" }
 local FIRE, RECOVER = 0x0, 0x4
 
 local ANIM = 9
-local SOUND = asset.sound("h-burst")
+local SOUND = asset.sound("bn6:h-burst")
 -- The shot leaves on this tick of the count, and the phase ends on this
 -- one; the recovery's ticks.
 local SHOT_TICK, FIRE_TICKS, RECOVER_TICKS = 5, 0xA, 0xA
 local SHOT_Z = 0x18_0000
 
 -- BN6's air shooter (the original's attachment row 0x13).
-airshot.shooter = attachment.look { sprite = asset.sprite("air-shooter"), palette = 0, attach_point = 10 }
+airshot.shooter = attachment.look { sprite = asset.sprite("bn6:air-shooter"), palette = 0, attach_point = 10 }
 
 -- `sub_80EC934`: the shooter's animation by the holder's AI index (the
 -- link navis HeatMan, GroundMan and DustMan, 1, 9 and 10: 1; the others

@@ -63,28 +63,29 @@ pub fn live_navi(content: &Content) -> NaviStats {
 
 /// The backgrounds a link battle draws from (`sub_81209DC`'s
 /// `byte_8120A20`, by name; some are there twice, so twice as likely).
+/// BN6's: a link battle is.
 const LINK_BACKGROUNDS: [&str; 21] = [
-    "honeycomb",
-    "statues",
-    "statues",
-    "seals",
-    "clouds",
-    "sprouts",
-    "calendar-checkers",
-    "calendar-mint",
-    "calendar-lavender",
-    "calendar-navy",
-    "calendar-blue",
-    "calendar-cyan",
-    "trees",
-    "calendar-green",
-    "calendar-bright-blue",
-    "code",
-    "globes",
-    "code-2",
-    "code-2",
-    "calendar-purple",
-    "calendar-purple",
+    "bn6:honeycomb",
+    "bn6:statues",
+    "bn6:statues",
+    "bn6:seals",
+    "bn6:clouds",
+    "bn6:sprouts",
+    "bn6:calendar-checkers",
+    "bn6:calendar-mint",
+    "bn6:calendar-lavender",
+    "bn6:calendar-navy",
+    "bn6:calendar-blue",
+    "bn6:calendar-cyan",
+    "bn6:trees",
+    "bn6:calendar-green",
+    "bn6:calendar-bright-blue",
+    "bn6:code",
+    "bn6:globes",
+    "bn6:code-2",
+    "bn6:code-2",
+    "bn6:calendar-purple",
+    "bn6:calendar-purple",
 ];
 
 /// A link battle's arena drawn from `draws`: its stage and background, then
@@ -130,7 +131,7 @@ impl Side {
     pub fn live(content: &Content, folder: SavedFolder, crosses: CrossList, game: GameVersion) -> Side {
         let stats = NaviStats { version: crate::version_byte(game), ..live_navi(content) };
         Side {
-            ruleset: content.defs.stock_ruleset(),
+            ruleset: content.defs.stock_ruleset_of(crate::DEFAULT_GAME),
             navi: stats.navi,
             game,
             stats,

@@ -30,22 +30,22 @@ export type State = {
     flying: boolean,
 }
 
-local SPRITE = asset.sprite("voodoo-doll")
+local SPRITE = asset.sprite("bn6:voodoo-doll")
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
 local IDENTITY = define.identity {
-    id = "vdoll",
+    id = "bn6:vdoll",
     class = "field_object",
     version = 3,
     ai_index = 1,
-    look = { sprite = asset.sprite("voodoo-doll"), anim = 1, palette = 0, shadow = true },
+    look = { sprite = asset.sprite("bn6:voodoo-doll"), anim = 1, palette = 0, shadow = true },
 }
 local HP, LIFETIME = 0x32, 0x1E0
 -- Its arc: 60 ticks to the target's center, falling 0x2000 a tick; it can
 -- hit in its last five.
 local FLIGHT_TICKS, GRAVITY, HITS_FROM = 0x3C, -0x2000, 5
 local HIT_MOD, SET_HIT_MOD = 1, 3
-local SOUND_POISON = asset.sound("panel-poison")
+local SOUND_POISON = asset.sound("bn6:panel-poison")
 -- The curse's damage word: the damage taken, hit parameter 0xB2.
 local CURSE_HIT_PARAM = 0xB2_0000
 -- A puff 16 pixels up; the curse's own puff 12 up.
@@ -277,7 +277,7 @@ local function init(me: Object)
 end
 
 doll.kind = define.kind {
-    id = "vdoll/doll",
+    id = "bn6:vdoll/doll",
     pool = "attack",
     state = {
         target_x = "u8",

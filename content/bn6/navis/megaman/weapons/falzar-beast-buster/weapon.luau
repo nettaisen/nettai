@@ -36,7 +36,7 @@ local SHOOT, RECOVER = 0x0, 0x4
 -- Falzar Beast Over.
 local BEAST_OVER = "falzar-beast-over"
 
-local SOUND = asset.sound("aqua-needle-2")
+local SOUND = asset.sound("bn6:aqua-needle-2")
 
 -- The first shot's height (`dword_80EC70C`'s first byte), pixels.
 local HEIGHT = 0x16
@@ -221,13 +221,13 @@ local function update(me: Object, s: State)
 end
 
 falzar_beast_buster.action = define.action {
-    id = "megaman/falzar-beast-buster/action",
+    id = "bn6:megaman/falzar-beast-buster/action",
     state = { timer = "u16", repeats = "u8", cycle = "u8" },
     update = update,
 }
 
 falzar_beast_buster.weapon = define.weapon {
-    id = "megaman/falzar-beast-buster",
+    id = "bn6:megaman/falzar-beast-buster",
     -- The charge table's row 3, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 40, 60, 90, 120, 150, 80, 75, 70 },

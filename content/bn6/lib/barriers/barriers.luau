@@ -19,13 +19,13 @@ function barriers.barrier(b: Barrier): Barrier
     return define.record("barrier", b)
 end
 
-local SPRITE, BUBBLE, AURA = asset.sprite("barrier"), asset.sprite("bubble"), asset.sprite("aura")
-local SOUND, BUBBLE_SOUND, BUBBLE_POP = asset.sound("barrier"), asset.sound("bubble"), asset.sound("bubble-pop")
+local SPRITE, BUBBLE, AURA = asset.sprite("bn6:barrier"), asset.sprite("bn6:bubble"), asset.sprite("bn6:aura")
+local SOUND, BUBBLE_SOUND, BUBBLE_POP = asset.sound("bn6:barrier"), asset.sound("bn6:bubble"), asset.sound("bn6:bubble-pop")
 local NO_TIMER = 0xFFFF
 
 -- Type 1: 10 HP.
 barriers.barrier_10 = barriers.barrier {
-    id = "barrier/10",
+    id = "bn6:barrier/10",
     behavior = "plain",
     hp = 10,
     threshold = 0,
@@ -36,7 +36,7 @@ barriers.barrier_10 = barriers.barrier {
 
 -- Type 5: 100 HP.
 barriers.barrier_100 = barriers.barrier {
-    id = "barrier/100",
+    id = "bn6:barrier/100",
     behavior = "plain",
     hp = 100,
     threshold = 0,
@@ -47,7 +47,7 @@ barriers.barrier_100 = barriers.barrier {
 
 -- Type 7: 200 HP.
 barriers.barrier_200 = barriers.barrier {
-    id = "barrier/200",
+    id = "bn6:barrier/200",
     behavior = "plain",
     hp = 200,
     threshold = 0,
@@ -59,7 +59,7 @@ barriers.barrier_200 = barriers.barrier {
 -- Type 8: a bubble that takes one hit, grows back 240 ticks later, and
 -- breaks on elec.
 barriers.bubble = barriers.barrier {
-    id = "barrier/bubble",
+    id = "bn6:barrier/bubble",
     behavior = "bubble",
     hp = 1,
     threshold = 0,
@@ -71,7 +71,7 @@ barriers.bubble = barriers.barrier {
 
 -- Type 9: an aura that stops every hit of less than 200 for 3000 ticks.
 barriers.life_aura = barriers.barrier {
-    id = "barrier/life-aura",
+    id = "bn6:barrier/life-aura",
     behavior = "plain",
     hp = 1,
     threshold = 200,

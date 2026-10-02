@@ -104,7 +104,7 @@ local function update(me: Object)
 end
 
 panel_bursts.kind = define.kind {
-    id = "panel-bursts",
+    id = "bn6:panel-bursts",
     pool = "effect",
     state = { targets = "u8[28]", count = "u8", effect = "effect", sound = "sound" },
     update = update,

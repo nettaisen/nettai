@@ -36,8 +36,8 @@ export type State = {
     turn: number,
 }
 
-local SPRITE = asset.sprite("bass-anly-shot")
-local SOUND_BASS_ANLY_SHOT = asset.sound("bass-anly-shot")
+local SPRITE = asset.sprite("bn6:bass-anly-shot")
+local SOUND_BASS_ANLY_SHOT = asset.sound("bn6:bass-anly-shot")
 
 -- Its first stretch: the kick back, and the push forward a tick while it
 -- lasts (16.16).
@@ -325,7 +325,7 @@ local function bursting(me: Object)
 end
 
 shot.kind = define.kind {
-    id = "bassanly/shot",
+    id = "bn6:bassanly/shot",
     pool = "attack",
     state = {
         hit_panel = "u32",

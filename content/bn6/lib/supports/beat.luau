@@ -10,9 +10,9 @@
 
 local beat = {}
 
-local SPRITE = asset.sprite("beat")
-local SWOOP_SOUND = asset.sound("set-down")
-local SNATCH_SOUND = asset.sound("snatch")
+local SPRITE = asset.sprite("bn6:beat")
+local SWOOP_SOUND = asset.sound("bn6:set-down")
+local SNATCH_SOUND = asset.sound("bn6:snatch")
 
 -- Where he starts: 240 pixels from the opponent's navi toward its own
 -- side's back and 112 above it; how fast he swoops (16.16 a tick).
@@ -150,7 +150,7 @@ local function update(me: Object)
 end
 
 beat.kind = define.kind {
-    id = "beat",
+    id = "bn6:beat",
     pool = "actor",
     update = update,
 }

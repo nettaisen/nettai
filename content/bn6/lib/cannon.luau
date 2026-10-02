@@ -27,7 +27,7 @@ cannon.STATE = { timer = "u16" }
 local FIRE, LOWER = 0x0, 0x4
 
 local ANIM_RAISE, ANIM_LOWER = 8, 7
-local SOUND = asset.sound("cannon")
+local SOUND = asset.sound("bn6:cannon")
 -- The shot leaves on this tick of the count, and the phase ends on this
 -- one; the afterimages come on this one.
 local SHOT_TICK, FIRE_TICKS, AFTERIMAGE_TICK = 0xF, 0x1D, 8
@@ -42,7 +42,7 @@ local CANNON_POINT, NAVI_ANIM = 7, 8
 
 -- The cannons' looks: the arm the navi holds (the original's attachment
 -- rows 0 to 2, by `byte_80EBD2C`), at its attach point 7.
-local CANNON = asset.sprite("cannon")
+local CANNON = asset.sprite("bn6:cannon")
 cannon.arms = {
     cannon = attachment.look { sprite = CANNON, palette = 0, attach_point = 7 },
     hicannon = attachment.look { sprite = CANNON, palette = 1, attach_point = 7 },

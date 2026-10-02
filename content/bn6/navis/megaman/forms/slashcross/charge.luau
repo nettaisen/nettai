@@ -210,7 +210,7 @@ local function finish(me: Object, s: State)
 end
 
 slash_charge.action = define.action {
-    id = "slashcross/charge/action",
+    id = "bn6:slashcross/charge/action",
     state = { timer = "u16", slash = "record:charged-slash", dash = "bool" },
     -- `sub_80EE34A`.
     update = function(me: Object, s: State)
@@ -232,7 +232,7 @@ slash_charge.action = define.action {
 }
 
 slash_charge.weapon = define.weapon {
-    id = "slashcross/charge",
+    id = "bn6:slashcross/charge",
     -- The charge table's row 0x12, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 80, 70, 60, 55, 50, 60, 60, 60 },

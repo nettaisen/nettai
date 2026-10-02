@@ -7,7 +7,7 @@ local panel_changer = require("@bn6/objects/panel-changer/panel_changer")
 local panel_chips = require("@bn6/lib/panel-chips/controller")
 
 return define.chip {
-    id = "pnlretrn",
+    id = "bn5:pnlretrn",
     codes = { "*" },
     element = "null",
     family = "null",
