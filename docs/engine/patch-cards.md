@@ -201,7 +201,7 @@ content/bn6/rules/patch-cards/system.luau, listed in content/bn6/rules/ruleset.l
 own for them.
 
 - **The cards** are records of type "patch-card" (rules/patch-cards/cards.luau's `card`): content/bn6/cards/<name>/
-  card.luau, keyed `patch-card/<name>`, with the name, the MB and the effects (that module's constructors:
+  card.luau, keyed `patch-card/<name>`, with the MB and the effects (that module's constructors:
   `cards.hp(-40)`, `cards.charged_shot(require("./charge"))`, `cards.bug(...)`, ...). Weapons, programs
   (projectile variants), barriers and gauges are named by definition, never by number.
 - **A player's installed cards** are the system's player setup: `cards` (16 card records, in the list's order,
@@ -224,9 +224,16 @@ own for them.
 
 ## 5. Names
 
+The cards' names, like every display text, are the locales' (content/bn6/locales/<lang>.toml, `records` by the
+card's key), and so are their weapons' (`weapons`). ja.toml has the Japanese games' card names, as the ROMs' name
+archive has them (a two-line name with its line break); gen-content checks them against the Japanese ROM. The
+card weapons' names are the content's own.
+
 The ROMs have Japanese names only. The cards' English names and keys come from the fan translation of EXE6 (the
 MMEXE6F and MMEXE6G IPS patches over the Japanese ROMs, with the idealexe English charset), which names every card
-in eight characters as the chip names are: Canodumb, Amonicul, KnigtMan, ... Cybeast Gregar, Bass Cross MegaMan.
+in eight characters as the chip names are: Canodumb, Amonicul, KnigtMan, ... Cybeast Gregar, Bass-Cross MegaMan.
+They are the content's own English names (as Count's and Django's chip names are), which gen-content checks are
+there.
 The verification workspace's tools/jp/patchcards.py reads them from a patched ROM in memory. Two cards share
 "Puffy" there: センボン (22) is `puffy`, プクール (55) `puffball`.
 
