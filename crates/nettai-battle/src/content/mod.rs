@@ -42,7 +42,7 @@ mod reader;
 mod roles;
 mod rules;
 mod scripts;
-mod sections;
+pub(crate) mod sections;
 mod sprites;
 mod stages;
 pub mod strings;

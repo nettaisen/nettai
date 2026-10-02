@@ -1,0 +1,13 @@
+--!strict
+-- BN6's battle flow where games differ (docs/design/bn5-map.md §15.3 items 7 and 13), the arena's: the custom
+-- screen closes on the tick after both results are in (`sub_8026A28`); before it opens, the transformation
+-- sequencer runs once more after the reversions (state 0x24, `sub_8008492`); the fight checks for an escape
+-- (`sub_800AAD6`); the result's banner holds at least 102 ticks, 94 in a special battle and for a win in battle
+-- modes 4, 5 and 8 (`sub_80081A4`, `sub_800825A`).
+
+return define.rules("flow", {
+    custom_closes_with_results = false,
+    sequencer_before_custom = true,
+    escape_check = true,
+    result_wait = { normal = 0x66, special = 0x5E },
+})

@@ -486,6 +486,9 @@ impl FormTraits {
     /// Its held buster doesn't fire while its B+Back special is asked for
     /// (TenguCross and DustCross in Beast Out).
     pub const SPECIAL_HOLDS_BUSTER: u8 = 0x20;
+    /// A metal panel doesn't slide the navi (BN5's soul 5, NaviStats
+    /// +0x2C: 0x08017216).
+    pub const STANDS_ON_METAL: u8 = 0x40;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "status_immune"),
         (0x02, "erases"),
@@ -493,6 +496,7 @@ impl FormTraits {
         (0x08, "extra_chips"),
         (0x10, "scrap_button"),
         (0x20, "special_holds_buster"),
+        (0x40, "stands_on_metal"),
     ];
 
     pub fn has(self, bit: u8) -> bool {
