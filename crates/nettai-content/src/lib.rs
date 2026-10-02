@@ -15,6 +15,10 @@
 //!   ([`song`]), voicegroups, key maps and PSG waves as TOML, samples as
 //!   WAV ([`sound`]).
 //!
+//! - Display text in other languages than the definitions' own: a content
+//!   root's `locale/<language>.toml`, read by the frontend only and left
+//!   out of the content (and so of its hash) ([`locale`]).
+//!
 //! [`pack`] ties them together and loads each part straight from its
 //! files; [`timing`] reads the simulation's animation timing alone. Every import reports what
 //! it found in a [`report::Report`]; nothing is silently approximated.
@@ -28,6 +32,7 @@ pub mod custom;
 pub mod hud;
 pub mod image;
 pub mod lint;
+pub mod locale;
 pub mod midi;
 pub mod names;
 pub mod pack;
