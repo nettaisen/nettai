@@ -270,14 +270,15 @@ mod tests {
         let content = bn6_test_content();
         let pool = folder_chips(&content);
         // The pack's folder chips: no Program Advance, no dark chip, none
-        // without a routine, none past the pack's (the BeastOut chip). The
-        // Gregar and Falzar chips have the Japanese games' routines.
+        // past the pack's (the BeastOut chip). The Gregar, Falzar and
+        // HackJack chips have the Japanese games' routines; Django's chips
+        // are no folder chips in the US records.
         let keys: Vec<&str> = pool.iter().map(|&c| content.defs.chip(c).key.as_str()).collect();
         assert!(keys.len() > 250, "{} chips", keys.len());
-        for key in ["cannon", "roll", "bass", "gundels1", "areagrab", "gregar", "falzar"] {
+        for key in ["cannon", "roll", "bass", "gundels1", "areagrab", "gregar", "falzar", "hackjack"] {
             assert!(keys.contains(&key), "{key}");
         }
-        for key in ["drksword", "hackjack", "beastout", "django", "gigacan1"] {
+        for key in ["drksword", "beastout", "django", "gigacan1"] {
             assert!(!keys.contains(&key), "{key}");
         }
         for seed in 0..50 {
