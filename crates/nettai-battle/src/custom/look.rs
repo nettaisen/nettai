@@ -101,6 +101,9 @@ pub struct ChipWindow {
 pub struct Drawn {
     /// The cursor (`sub_8028820`), in its first or second frame.
     pub cursor: Option<u8>,
+    /// The Cross window's cursor (`sub_80289E4`), in its first or second
+    /// frame.
+    pub cross_cursor: Option<u8>,
     /// The emblem (`sub_8029C08`): the window's offset it was drawn at, and
     /// the spin it was drawn with.
     pub emblem: Option<(u32, u8)>,
@@ -318,6 +321,11 @@ impl ScreenLook {
     /// `sub_8028820`: the cursor, in the frame the counter gives.
     pub(crate) fn draw_cursor(&mut self) {
         self.drawn.cursor = Some(((self.frame >> 3) & 1) as u8);
+    }
+
+    /// `sub_80289E4`: the Cross window's cursor, by the same counter.
+    pub(crate) fn draw_cross_cursor(&mut self) {
+        self.drawn.cross_cursor = Some(((self.frame >> 3) & 1) as u8);
     }
 
     /// `sub_802899C`: the Regular chip's frame while the folder still has

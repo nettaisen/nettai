@@ -229,7 +229,8 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let redeal_buttons = image("redeal-buttons.png", &c.redeal_buttons, buttons(6), &[frame0], 0, &none);
     let scrap_buttons = image("scrap-buttons.png", &c.scrap_buttons, buttons(8), &[frame0], 0, &none);
     let cursor = image("cursor.png", &c.cursor, Layout::Blocks { width: 1, height: 1, columns: 2 }, &[emblem0], 0, &none);
-    let cross_cursor = image("cross-cursor.png", &c.cross_cursor, Layout::Blocks { width: 1, height: 1, columns: 4 }, &[emblem0], 0, &none);
+    let cross_cursor =
+        image("cross-cursor.png", &c.cross_cursor, Layout::Blocks { width: 1, height: 1, columns: 4 }, &[c.cross_cursor_palette], 1, &none);
     let regular = image("regular.png", &c.regular, Layout::Blocks { width: 4, height: 4, columns: 2 }, &[emblem0], 0, &none);
     let maps = |m: &[Vec<MapEntry>]| m.iter().map(|m| m.iter().map(tiles::entry_text).collect()).collect();
     let doc = CustomDoc {
@@ -324,6 +325,8 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         Some((v, emblem_palettes))
     };
     let (base, emblem_palettes) = version(&doc.own, report)?;
+    let (cross_cursor, cross_cursor_palettes) = img(&doc.cross_cursor, report)?;
+    let cross_cursor_palette = cross_cursor_palettes.first().copied().unwrap_or([0; 16]);
     let mut versioned = Versioned::new(base);
     for v in &doc.versions {
         versioned.versions.push((v.version.clone(), version(&v.own, report)?.0));
@@ -354,7 +357,8 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         scrap_buttons: img(&doc.scrap_buttons, report)?.0,
         versioned,
         cursor: img(&doc.cursor, report)?.0,
-        cross_cursor: img(&doc.cross_cursor, report)?.0,
+        cross_cursor,
+        cross_cursor_palette,
         emblem_palettes,
         emblem_of: doc.emblem_of.clone(),
         emblem_palette_of: doc.emblem_palette_of.clone(),

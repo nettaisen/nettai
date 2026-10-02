@@ -484,6 +484,23 @@ impl Screen {
         request
     }
 
+    /// `sub_80279C8`: the emblem, the Regular chip's frame and the last
+    /// turns' block, drawn by the window's frame counter.
+    fn draw_window(&mut self, folder: &BattleFolder) {
+        self.look.draw_emblem(0);
+        self.look.draw_regular(folder.regular_pending);
+        self.look.draw_turn_limit();
+    }
+
+    /// `sub_802794A`'s drawing: the window's sprites, the Crosses' names
+    /// (the frontend's, from `crosses`) and the Cross window's cursor; the
+    /// frame counts on.
+    fn draw_cross_window(&mut self, folder: &BattleFolder) {
+        self.draw_window(folder);
+        self.look.draw_cross_cursor();
+        self.look.frame += 1;
+    }
+
     /// `sub_802A394`: choosing chips or reading a chip's description, the
     /// cursor rests on a dark chip (as it counts in a selection).
     fn on_dark_chip(&self, view: &PlayerView, folder: &BattleFolder) -> bool {
@@ -576,35 +593,85 @@ impl Screen {
                 None
             }
             Phase::CrossWindowOpening { tick } => {
+                // sub_8027834: the window's map changes every 3 ticks (the
+                // frontend's); on the 12th the Cross window is up, and its
+                // state runs at once.
                 let tick = tick + 1;
                 if tick == 1 {
                     self.look.play(ScreenSound::CrossWindowOpen);
                 }
-                self.phase = if tick >= 12 { Phase::CrossWindow { entered: true } } else { Phase::CrossWindowOpening { tick } };
+                if tick >= 12 {
+                    self.phase = Phase::CrossWindow { entered: true };
+                    self.look.frame = 0;
+                    self.draw_cross_window(folder);
+                } else {
+                    self.phase = Phase::CrossWindowOpening { tick };
+                    self.look.frame = tick as u32;
+                    self.draw_window(folder);
+                }
                 None
             }
-            Phase::CrossWindow { entered: false } => {
-                self.phase = Phase::CrossWindow { entered: true };
-                None
-            }
-            Phase::CrossWindow { entered: true } => {
-                self.cross_window(joy, view);
+            Phase::CrossWindow { entered } => {
+                // sub_802794A: its first tick reads no keys; every tick
+                // draws, after the keys.
+                if entered {
+                    self.cross_window(joy, view);
+                } else {
+                    self.phase = Phase::CrossWindow { entered: true };
+                    self.look.frame = 0;
+                }
+                self.draw_cross_window(folder);
                 None
             }
             Phase::CrossWindowClosing { tick } => {
+                // sub_802790C: after 5 ticks the window is the chips' again
+                // (`sub_80279FC`, `sub_80279C8`, `sub_8028476`).
                 let tick = tick + 1;
                 if tick == 1 {
                     self.look.play(ScreenSound::CrossWindowClose);
                 }
-                self.phase = if tick >= 6 { Phase::Choosing } else { Phase::CrossWindowClosing { tick } };
+                self.look.frame = tick as u32;
+                if tick >= 6 {
+                    self.phase = Phase::Choosing;
+                    self.draw_window(folder);
+                    self.show_chip_window(folder, view);
+                } else {
+                    self.phase = Phase::CrossWindowClosing { tick };
+                }
+                self.look.draw_emblem(0);
+                self.look.draw_regular(folder.regular_pending);
                 None
             }
             Phase::CrossChosen { tick } => {
+                // sub_8027A58: 16 ticks, then the screen fades to white and
+                // back; when it is white the Cross is put on (`sub_8027AAE`:
+                // the face, the window, the sound), and when it is clear
+                // again the chips are chosen (`sub_8027ADE`).
                 let tick = tick + 1;
-                // sub_8027AAE: the white fade is over.
-                if tick == CROSS_PUT_ON_TICK {
-                    self.look.play(ScreenSound::CrossChosen);
+                match tick {
+                    1 => self.look.frame = 0,
+                    2..=16 => self.look.frame += 1,
+                    17 => {
+                        self.look.frame = 0;
+                        self.look.fade.start(FadeMode::EndToWhite, CROSS_FADE_SPEED);
+                    }
+                    CROSS_PUT_ON_TICK => {
+                        self.look.fade.start(FadeMode::IntroFromWhite, CROSS_FADE_SPEED);
+                        if let Some(cross) = self.crosses.chosen {
+                            self.look.face = cross_face(view, cross);
+                        }
+                        self.draw_window(folder);
+                        self.show_chip_window(folder, view);
+                        self.look.play(ScreenSound::CrossChosen);
+                    }
+                    34 => {
+                        self.draw_window(folder);
+                        self.show_chip_window(folder, view);
+                    }
+                    _ => {}
                 }
+                self.look.draw_emblem(0);
+                self.look.draw_regular(folder.regular_pending);
                 self.phase = if tick >= 34 { Phase::Choosing } else { Phase::CrossChosen { tick } };
                 None
             }
@@ -1293,7 +1360,10 @@ impl<T: PartialEq + Copy> Common<T> {
 
 /// The tick of a Cross's choice the white fade is over and the Cross put
 /// on (`sub_8027AAE`: 16 ticks, then 8 steps of the fade, then one more).
-const CROSS_PUT_ON_TICK: u8 = 25;
+pub const CROSS_PUT_ON_TICK: u8 = 25;
+
+/// The speed of the white fade a Cross's choice runs.
+const CROSS_FADE_SPEED: u8 = 0x20;
 
 /// The window's offset off the screen, and its slide a tick.
 const SLIDE: u32 = 0x78;
@@ -1327,6 +1397,16 @@ fn beast_face(view: &PlayerView, tired: bool) -> Option<nettai_content_api::Form
         view.library.beast_out_form(navi, version)
     } else {
         view.library.form_in_beast_out(form)
+    }
+}
+
+/// `sub_802A088`: the face of the Cross chosen (by the version's number),
+/// its Beast form's while the navi is in Beast Out.
+fn cross_face(view: &PlayerView, cross: u8) -> Option<nettai_content_api::FormHandle> {
+    let form = view.library.cross_form(view.stats.navi, view.unlocks.version, cross)?;
+    match view.library.form_kind(view.stats.form) {
+        crate::content::FormKind::Base | crate::content::FormKind::Cross => Some(form),
+        _ => view.library.form_in_beast_out(form),
     }
 }
 
