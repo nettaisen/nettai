@@ -17,16 +17,29 @@ use crate::report::Report;
 /// Report on `c`'s definitions.
 pub fn definitions(c: &Content, r: &mut Report) {
     let defs = &c.defs;
-    if !defs.definitions.is_empty() {
+    // Each game's roles (a root with a stock ruleset; content with no
+    // rulesets, its own root's).
+    let games: Vec<usize> = (0..defs.roles.len())
+        .filter(|&i| i == 0 || defs.roots.get(i).is_some_and(|name| defs.stock_ruleset_of(name).is_some()))
+        .collect();
+    for i in games {
+        if defs.definitions.is_empty() {
+            break;
+        }
+        let file = match defs.roots.get(i) {
+            Some(name) if defs.roots.len() > 1 => format!("{name}:rules/roles.luau"),
+            _ => "rules/roles.luau".to_string(),
+        };
+        let roles = &defs.roles[i];
         use nettai_battle::content::{ActionRole, KindRole};
         for role in ActionRole::ALL {
-            if !defs.roles.actions.contains_key(&role) {
-                r.warn("rules/roles.luau", format!("the role actions.{} is not filled", role.name()));
+            if !roles.actions.contains_key(&role) {
+                r.warn(&file, format!("the role actions.{} is not filled", role.name()));
             }
         }
         for role in KindRole::ALL {
-            if !defs.roles.kinds.contains_key(&role) {
-                r.warn("rules/roles.luau", format!("the role kinds.{} is not filled", role.name()));
+            if !roles.kinds.contains_key(&role) {
+                r.warn(&file, format!("the role kinds.{} is not filled", role.name()));
             }
         }
         // The roles that name a definition of their registry, or an asset.
@@ -34,10 +47,9 @@ pub fn definitions(c: &Content, r: &mut Report) {
             BannerRole, CollisionRole, EffectRole, LockonRole, MusicRole, RegionRole, SoundRole, SparkRole, SpriteRole,
             StatusRole,
         };
-        let roles = &defs.roles;
         let mut unfilled = |group: &str, name: &str, filled: bool| {
             if !filled {
-                r.warn("rules/roles.luau", format!("the role {group}.{name} is not filled"));
+                r.warn(&file, format!("the role {group}.{name} is not filled"));
             }
         };
         for role in LockonRole::ALL {

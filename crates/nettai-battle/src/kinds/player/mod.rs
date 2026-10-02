@@ -216,9 +216,9 @@ fn body_hit_modifier(b: &Battle) -> u8 {
 
 /// A navi's body's collision types: what it is (floating or not) and what
 /// it reacts to.
-fn body_types(b: &Battle, floating: bool) -> (nettai_content_api::CollisionHandle, nettai_content_api::CollisionHandle) {
+fn body_types(b: &Battle, r: ObjectRef, floating: bool) -> (nettai_content_api::CollisionHandle, nettai_content_api::CollisionHandle) {
     use crate::content::CollisionRole;
-    let roles = &b.content.defs.roles;
+    let roles = b.roles_for(r);
     let body = if floating { CollisionRole::FloatingNavi } else { CollisionRole::Navi };
     (roles.collision(body), roles.collision(CollisionRole::NaviTarget))
 }
@@ -226,7 +226,7 @@ fn body_types(b: &Battle, floating: bool) -> (nettai_content_api::CollisionHandl
 /// `sub_801A082` for a navi's body: it becomes the floating body or the
 /// plain one again.
 fn reset_body_types(b: &mut Battle, r: ObjectRef, floating: bool, hit_mod: u8) {
-    let (body, target) = body_types(b, floating);
+    let (body, target) = body_types(b, r, floating);
     b.reset_collision_types(r, body, target, hit_mod);
 }
 
@@ -289,8 +289,8 @@ fn next_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
 /// Whether hand chip `id` is of the Null family. The game looks an empty
 /// hand's chip (0xFFFF) up in the chip table too, reading the record past
 /// its end (`Rules::empty_hand`).
-fn null_family(b: &Battle, id: Option<ChipHandle>) -> bool {
-    let Some(id) = id else { return b.content.rules.empty_hand.null_family };
+fn null_family(b: &Battle, r: ObjectRef, id: Option<ChipHandle>) -> bool {
+    let Some(id) = id else { return b.rules_for(r).empty_hand.null_family };
     b.content.chip(id).family == crate::content::ChipFamily::Null
 }
 
@@ -361,13 +361,13 @@ pub fn set_navi_action(b: &mut Battle, r: ObjectRef, action: NaviAction) {
 
 /// The action of `role` (a role content hasn't filled is a panic naming
 /// it).
-pub(crate) fn role_action(b: &Battle, role: crate::content::ActionRole) -> NaviAction {
-    NaviAction::Content(b.content.defs.roles.action(role))
+pub(crate) fn role_action(b: &Battle, r: ObjectRef, role: crate::content::ActionRole) -> NaviAction {
+    NaviAction::Content(b.roles_for(r).action(role))
 }
 
 /// Whether navi `r` runs the action of `role`.
 pub(crate) fn runs_role(b: &Battle, r: ObjectRef, role: crate::content::ActionRole) -> bool {
-    matches!(navi_action(b, r), NaviAction::Content(h) if b.content.defs.roles.is_action(role, h))
+    matches!(navi_action(b, r), NaviAction::Content(h) if b.roles_for(r).is_action(role, h))
 }
 
 /// `sub_802DD2A`: a Cross navi that falls back to base form instead of
@@ -640,7 +640,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let hm = body_hit_modifier(b);
-    let (body, target) = body_types(b, false);
+    let (body, target) = body_types(b, r, false);
     b.setup_collision(r, body, target, hm);
     init_hp(b, r);
     init_navicust(b, r);
@@ -699,7 +699,7 @@ fn post_init_hook(b: &mut Battle, r: ObjectRef) {
                 let o = b.objects.get(r);
                 (o.alliance, o.flip)
             };
-            let kind = b.content.defs.roles.kind(crate::content::KindRole::Mode9Attack);
+            let kind = b.roles_for(r).kind(crate::content::KindRole::Mode9Attack);
             let junk = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
             if let Some(j) = junk {
                 let o = b.objects.get_mut(j);
@@ -709,7 +709,7 @@ fn post_init_hook(b: &mut Battle, r: ObjectRef) {
                 o.element = 0;
                 o.flags |= flags::RUN_WHILE_DIMMED;
             }
-            let kind = b.content.defs.roles.kind(crate::content::KindRole::Mode9Actor);
+            let kind = b.roles_for(r).kind(crate::content::KindRole::Mode9Actor);
             let second = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
             if let Some(s) = second {
                 let o = b.objects.get_mut(s);
@@ -774,7 +774,7 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
         // barrier; the role raises that one. (The `pop {r4}` after it
         // clobbers the AIData pointer the charge glow's spawn uses: `init`
         // spawns the glow unlinked.)
-        let hook = b.content.defs.roles.hook(crate::content::HookRole::FirstBarrier);
+        let hook = b.roles_for(r).hook(crate::content::HookRole::FirstBarrier);
         crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleNavi { navi: r });
     }
     if stats(b, r).beast_out_counter == 0 {
@@ -1200,7 +1200,7 @@ fn charge_fire_chip(b: &mut Battle, r: ObjectRef, limit: u16) {
     // table (`Rules::empty_hand`).
     let (flags, fire) = match chip {
         None => {
-            let e = b.content.rules.empty_hand;
+            let e = b.rules_for(r).empty_hand;
             (e.flags, e.fire)
         }
         Some(chip) => {
