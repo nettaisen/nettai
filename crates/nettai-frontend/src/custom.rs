@@ -526,10 +526,12 @@ impl Window {
     fn cross_names(&mut self, v: &View) {
         let w = &v.screen.crosses;
         let side = &v.b.custom.sides[v.side as usize];
-        // Each Cross's name and colours are its own game's.
+        // Each Cross's name and colours are its own game's (a setup's Cross
+        // list can offer the other game's: docs/engine/custom-screen.md
+        // §4.1).
         let navi = v.b.stats[v.side as usize].navi;
         let picture = |slot: usize| {
-            let form = v.b.content.cross_form(navi, side.unlocks.version, w.offered[slot])?;
+            let form = side.unlocks.cross_at(&*v.b.content, navi, w.offered[slot])?;
             cross_picture(v.b, v.assets, navi, form)
         };
         for slot in 0..w.count.min(5) as usize {
