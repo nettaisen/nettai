@@ -8,7 +8,6 @@
 -- hides and shows it with itself (its `shown`).
 
 local element = require("../element")
-local viewer = require("../viewer")
 
 local visual = {}
 
@@ -51,7 +50,7 @@ local function visibility(me: Object, owner: Object, hide_only: boolean)
     if not hide_only then
         me.visible = true
     end
-    if not viewer.sees(me.alliance) or not (me.state :: State).shown then
+    if not battle.viewer_sees(me.alliance) or not (me.state :: State).shown then
         me.visible = false
     end
     if not field.valid(owner.panel_x, owner.panel_y) then
