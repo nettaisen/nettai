@@ -605,18 +605,27 @@ impl Roles {
     /// The function of `role`; a role content hasn't filled is a panic
     /// naming it.
     pub fn hook(&self, role: HookRole) -> FnId {
-        *self
-            .hooks
-            .get(&role)
+        self.try_hook(role)
             .unwrap_or_else(|| panic!("the role hooks.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    /// The hook of `role`, if content filled it: an optional role's
+    /// absence says the game has no such thing (BN5's `hooks.encased`:
+    /// docs/design/bn5-map.md §15.3 item 4).
+    pub fn try_hook(&self, role: HookRole) -> Option<FnId> {
+        self.hooks.get(&role).copied()
+    }
+
+    /// The status of `role`, if content filled it (BN5 has no
+    /// `statuses.ice_freeze`: no freeze).
+    pub fn try_status(&self, role: StatusRole) -> Option<StatusHandle> {
+        self.statuses.get(&role).copied()
     }
 
     /// The status of `role`; a role content hasn't filled is a panic naming
     /// it.
     pub fn status(&self, role: StatusRole) -> StatusHandle {
-        *self
-            .statuses
-            .get(&role)
+        self.try_status(role)
             .unwrap_or_else(|| panic!("the role statuses.{} is not filled (define.roles in rules/roles.luau)", role.name()))
     }
 

@@ -4,6 +4,19 @@ use super::{BannerId, ChipFamily, CustomScreenLayout, PanelCondition, PanelOffse
 use crate::field::PanelType;
 use serde::{Deserialize, Serialize};
 
+/// How a navi's push (slide type 1) reads the hits it took.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PushReading {
+    /// BN6's `sub_800E548`: the first of bits 2 to 5 of the hits' modifier,
+    /// toward the navi's front; the 0x80 bit picks the last five rows.
+    #[default]
+    Bn6,
+    /// BN5's 0x0800C9D8: the first of bits 2 to 5 of the side-0 hits'
+    /// modifier, else of the side-1 hits' with the direction reversed.
+    Bn5,
+}
+
 /// Global rules: element weakness, collision types, panels, banners,
 /// statuses and the Beast Out lock-on.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -14,7 +27,7 @@ pub struct Rules {
     pub element_weakness: [[u8; 6]; 6],
     /// The secondary elements each chip family adds to its attacks, by
     /// family.
-    pub family_elements: [SecondaryElements; 13],
+    pub family_elements: [SecondaryElements; 15],
     pub panels: PanelRules,
     /// Banners that stay up until removed.
     pub holding_banners: Vec<BannerId>,
@@ -42,6 +55,9 @@ pub struct Rules {
     pub sine: Vec<i16>,
     /// Pushes by hit-modifier bit (+5 with 0x80).
     pub push_vectors: [SlideVector; 10],
+    /// How a push reads the hit modifiers (docs/design/bn5-map.md §15.3
+    /// item 2).
+    pub push_reading: PushReading,
     /// Ice slides by the direction the navi last moved.
     pub ice_vectors: [SlideVector; 6],
     /// A bubbled navi's height, by bubble timer.
