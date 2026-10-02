@@ -175,8 +175,50 @@ not > 0 → destroy. Blow 0: dx 0 and 1 (region 1), dx 2 (region 4); blow 1: dx 
 - The Japanese ROMs' `object_spawnCollisionRegion` also zeroes its hitbox's ExtraVars+0x14, which the US one
   leaves; nothing the US hitbox does reads it (the JP audit, docs/engine/jp-differences.md, owns the rest).
 - The picker's unchecked second entry of the whole-area list (unreachable) is an error naming it.
-- **Unverified, all of it**: no Japanese console recording exists yet (bn6battle-verify's JP tracing is in
-  progress). The in-repo tests (crates/nettai-battle/src/kinds/player/actions/beast_chips_tests.rs) check the timings,
-  positions, damage and hits above on the port. Also unverified once tracing exists: a cut-in on either chip
-  (`object_drawChipName`'s window, and `sub_800BCF6`'s way back to the dim), the battle flag 0x40 HUD mask,
-  the feather's Param2 0 branches (no chip spawns one), a summon or flame spawn failing.
+- The in-repo tests (crates/nettai-battle/src/kinds/player/actions/beast_chips_tests.rs) check the timings,
+  positions, damage and hits above on the port.
+
+## 7. Verified on Japanese consoles
+
+bn6battle-verify's chip lab records both chips on two JP Falzar consoles (base `jp-falzar`) and two JP Gregar
+consoles (`jp-gregar`), side 0's console traced: library/jp/chips/0x138-gregar and 0x139-falzar, 50 scenarios
+each (`gen_jp_beast.py`, and `gen_jp.py`'s `hit`). The engine matches every one on every frame, sounds included.
+What they reach:
+
+- **Positions**: the opponent in the user's row, a row up, in its back column, adjacent (`hit`, `row`, `far`,
+  `adjacent`, `front-row`); side 1 the user (`side1`); the user in its back column, Gregar's summon then one
+  panel off the field (`back-column`, `back-column-side1`). The flames off the field's end are skipped (the
+  region's panels past column 6).
+- **The field cleaner**: the user's RockCube and the opponent's (`rockcube`, `rockcube-opponent`), the stages'
+  boulders and Guardian statues (`stage-rocks-front`, `stage-rocks-rows`, `stage-guardians`), the jp-gregar
+  base's ice blocks (every `gregar-*` scenario but `gregar-stage-grass`). They break at once, before the first
+  aim.
+- **The aim**: after the opponent's AreaGrab and PanlGrab and the user's AreaGrab (`areagrab`, `panlgrab`,
+  `areagrab-user`); on the cracked, holes, ice and volcano stages with no NaviCust programs on either side
+  (`stage-*`), the rocks cracking panels and breaking cracked ones; both odds of the enemy's list, its panel
+  giving way to the whole area's list when it was the last aim, and the whole area's second entry when its
+  first was.
+- **Defences**: a Reflector up as the chip comes (`guard`), Barrier, Barr200 and
+  LifeAur put up earlier (`barrier`, `barr200`, `aura`: LifeAur stops all of Falzar's hits; Gregar's flames
+  break it), Invisibl before the chip and on its telop (`invisible`, `invisible-cut-in`: nothing lands), Barrier
+  on its telop (`barrier-cut-in`).
+- **Timing**: during the opponent's MiniBomb wind-up (`counter`); the opponent answering on the telop with
+  AreaGrab (`telop-cut-in`) or with its own copy (`counter-cut-in`, `gregar-counter-cut-in`); the chip as a
+  counter cut-in on the opponent's AreaGrab (`as-counter`). The countering chip's effect runs first, so
+  `sub_800BCF6` takes both ways: back to clear when the other side's controller has ended, straight to the dim
+  when it is still waiting (the counter's own ending in `as-counter` and the copies' first).
+- **KO**: the opponent deleted by the flames, a rock, a feather and the whirlwind (`ko`, `ko-late`). After it
+  the rocks still drop and vanish at once (battle over), the feathers dive on (they act while dimmed), the
+  arrival goes at once.
+- **Bonuses and forms**: Atk+10, and Atk+10 twice with Atk+30 (`atk10`, `atk30`: the flames, rocks and
+  whirlwind take it, the feathers don't); Beast Out (`beast`, `gregar-beast`); the Crosses at the window's
+  positions 0 and 3 (Spout, Ground) and on JP Gregar 0 and 1 (Heat, Elec) (`cross*`). In Beast Out, A held and
+  released (`beast-charged`) gives the chip to the Beast's rush, which spends it without spawning its controller.
+- **Both ROMs**: the `gregar-*` scenarios repeat the positions, Beast Out, the Crosses, two stages and the counter
+  cut-in on JP Gregar consoles.
+
+Still unverified: the battle flag 0x40 HUD mask (no netbattle sets it); the aim's enemy list of more than one
+panel (only the navi has an enemy's body there in a netbattle: the field cleaner breaks every obstacle before
+the first aim); the whole area's list empty or of one panel (unreachable: a side keeps a whole column); the
+feather's Param2 0 (no caller); a summon, arrival or flame spawn failing, or a flame without a collision slot.
+The HUD's hiding and the fades are presentation, which the traces don't compare.
