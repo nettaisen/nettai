@@ -276,14 +276,33 @@ Chaos Unison (the dark chip held by the soul, the charged shot's timing) and the
 expected in the navi's-actions and damage blocks; they are not read yet. The tables are
 `target/bn5/only-<CODE>.tsv` in the verification workspace, per routine with where it is reached from.
 
-### 6.1 Light and dark chips
+### 6.1 Light and dark MegaMan
 
-A chip record's byte +0x15 (BN6's library sub-index, read only by the menus) says which MegaMan may use it: 1 a light one (the navi chips and
-their SP ones, GunDelSol, the Barriers, HolyPanl, BugFix, Snctuary, Otenko, JustcOne, MetrKnuk, HolyDrem, BigHook),
-2 a dark one (the DS navi chips, Static, Muramasa, Anubis, BlakWing, BugCurse, BugCharg), 0 either. The dark chips
-(flag 0x20) need a dark MegaMan as well. The other MegaMan's use fizzles: the navi enters action 0x1A for a frame
-and a puff of smoke appears, nothing else. Observed too: **a dark MegaMan standing on a holy panel turns it Normal**
-(at the fight's start and after a step); the code that does it is not read yet.
+BN5's light and dark MegaMan is one number, NaviStats +0x44 (a halfword, read through 0x08012882): the save's
+light/dark meter. Tango's finished Team ProtoMan save has 500, its finished Team Colonel save 0, Tango's light
+netplay templates 1000. Three rules read it, with two thresholds:
+
+- **The chips a MegaMan may use** (0x08010118, BN5's own; it passes any navi but MegaMan, NaviStats +0x29 ≠ 0). A
+  chip record's byte +0x15 (BN6's library sub-index, read only by the menus) is the chip's **`megaman`** field:
+  0 either, 1 light only (meter ≥ 470), 2 dark only (meter < 470). Light only: the navi chips and their SP ones,
+  GunDelSol, the Barriers, HolyPanl, BugFix, Snctuary, Otenko, JustcOne, MetrKnuk, HolyDrem, BigHook. Dark only:
+  the DS navi chips, Static, Muramasa, Anubis, BlakWing, BugCurse, BugCharg. The same in both versions. The dark
+  chips (flag 0x20) need a dark MegaMan as well, by their flag. A use the field refuses fizzles: the navi enters
+  action 0x1A for a frame and a puff of smoke appears, nothing else.
+- **A dark MegaMan on a holy panel turns it Normal** (0x08017136, BN5's own): when the panel under the object is
+  holy (BN5's type 9) and its side's meter is ≤ 499, the panel is set Normal (the panel setter). It runs **every
+  tick**, from the object's per-tick intake update (the counterpart of BN6's `sub_801AC6C`, 0x080178EC, and of its
+  five siblings for the other object kinds, `sub_801A9B8` to `sub_801ABB8`), so it takes the panel the first tick
+  of the fight a dark MegaMan stands on one, and any holy panel he steps onto; a light MegaMan's never. The
+  threshold is 500, not the chips' 470: a meter of 470 to 499 uses light chips and still clears holy panels.
+- **The Soul Unison button** is not on a dark MegaMan's screen (observed; the check is not read yet).
+
+**In nettai** this is a BN5 system ("light and dark"): the meter is the side's state (from the save, by the
+side's setup), the chips' rule is a hook on chip use, the holy panels' rule a per-tick hook on the side's navi, and
+the chip field is a BN5 extension on chip definitions, `extends = { chip = { megaman = "light"|"dark"|nil } }`
+(a system's extension, rules-in-luau.md §7.5), nil meaning either. A BN6 chip has none. A BN6 MegaMan in a mixed battle has no
+meter; what the system does with him is the rules work's to decide (the simplest: he is neither, and its rules
+leave him out).
 
 ### 6.2 HolyDrem (0x133)
 
@@ -315,7 +334,8 @@ ProtoMan's code and recorded both ways (the chip lab's `chips/0x133-holydrem/`):
   whoever made it: a BN6 HolyPanl's, a BN6 holy stage's, its own side's and the opponent's. Nothing in it is BN5's
   alone about the panels: no BN5-only panel state, no owner or timer read, only the type and the setter BN6 has
   too. What a BN6 field wouldn't provide is the BN5 rules around it: the light MegaMan it needs (§6.1), and the
-  dark MegaMan turning holy panels Normal under him, which changes the count when a dark MegaMan stands on one.
+  dark MegaMan turning holy panels Normal under him every tick (§6.1), which changes the count when a dark
+  MegaMan stands on one.
 
 ## 7. Team ProtoMan and Team Colonel
 
