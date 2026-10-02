@@ -963,3 +963,9 @@ art if the user approves §7.4's proposal).
   and a copy from tick 600 ends with the same digest.
 - **Tools**: `Content::home_rules`, `Defs::home_roles` for what has no battle (codecs' zeroed chip, `Library for
   Content`); nettai-content's roles lint checks each game root's roles.
+- **Verify**: gen-content, the stubs report, the data and music tests read the home root's roles and tables (one
+  game's); gen-content compares the pools section with the ROM's (32 each).
+- **Gates** (on main f0cb0d4d merged; later main merges were docs and BN5 tools): the build without warnings, 449
+  tests, the content check (833 modules), gen-content check 0 errors, machgun 1074/1331 and soundmod
+  21962/14933/20436 with 96 rollback rows and the 189 legacy rounds, the lab 6521/6521 (5,756,487 frames) with 0
+  sound rounds differing: a battle of one game reads every table as before.
