@@ -173,6 +173,10 @@ pub struct PlayerSetup {
     /// ChpShufl's re-deal draws from (`crate::console`). In netplay it is
     /// part of the setup the peers exchange.
     pub console: ConsoleSetup,
+    /// The patch cards the player has installed (the Japanese games'): the
+    /// round's start applies them to the navi's stats
+    /// (`crate::patch_cards`).
+    pub patch_cards: crate::patch_cards::PatchCards,
 }
 
 impl Default for PlayerSetup {
@@ -184,6 +188,7 @@ impl Default for PlayerSetup {
             bug_frags: 0,
             navi_level: 0,
             console: ConsoleSetup::default(),
+            patch_cards: Default::default(),
         }
     }
 }

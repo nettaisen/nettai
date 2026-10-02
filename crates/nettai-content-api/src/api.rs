@@ -108,6 +108,9 @@ pub const ACTOR_TYPES: [&str; 3] = ["virus", "navi", "player"];
 /// kind, its HP whatever it is), or popped (0x10: blown away by wind).
 pub const BARRIER_STATES: [&str; 3] = ["none", "up", "popped"];
 
+/// The custom gauge's speeds (NaviStats+0x08), by their byte.
+pub const GAUGE_SPEEDS: [&str; 3] = ["normal", "fast", "slow"];
+
 /// How a barrier behaves once raised (`sub_801A802` by the barrier byte):
 /// worn down and timed out (`plain`: Barrier, Barr100, Barr200, LifeAur,
 /// the auras), back with 1 HP 240 ticks after it is worn down and broken
@@ -399,8 +402,8 @@ named_fields! {
         Form = "form", Ref(Registry::Form, None), ro;
         Navi = "navi", Ref(Registry::Navi, None), ro;
         NaviVariant = "navi_variant", U8, ro;
-        /// The base form's element.
-        Element = "element", U8, ro;
+        /// The base form's element (patch cards write it).
+        Element = "element", U8, rw;
         /// The buster's levels (writable: chips raise them).
         Attack = "attack", U8, rw;
         Rapid = "rapid", U8, rw;
@@ -411,23 +414,23 @@ named_fields! {
         Version = "version", U8, ro;
         MaxBaseHp = "max_base_hp", U16, ro;
         /// The NaviCust's heal on chip use.
-        ChipRecovery = "chip_recovery", U16, ro;
+        ChipRecovery = "chip_recovery", U16, rw;
         /// NaviCust weapon stats: the buster shot's and the charged
         /// shot's programs, each the projectile variant a shot is on a
         /// lucky draw (none: no program).
-        BusterShot = "buster_shot", Ref(Registry::Record, Some("projectile-variant".into())), ro;
-        ChargeShotKind = "charge_shot_kind", Ref(Registry::Record, Some("projectile-variant".into())), ro;
+        BusterShot = "buster_shot", Ref(Registry::Record, Some("projectile-variant".into())), rw;
+        ChargeShotKind = "charge_shot_kind", Ref(Registry::Record, Some("projectile-variant".into())), rw;
         /// The damage a B+Back special takes from the navi's stats
         /// (NaviStats+0x48).
         BackSpecialDamage = "back_special_damage", U16, ro;
         /// NaviCust bugs: buster blanks and buster charged shots (of 16).
-        BusterBlanks = "buster_blanks", U8, ro;
-        BusterCharged = "buster_charged", U8, ro;
+        BusterBlanks = "buster_blanks", U8, rw;
+        BusterCharged = "buster_charged", U8, rw;
         /// NaviCust bugs: the HP drain in the fight and while the custom
         /// screen is open (levels), and what a step leaves behind.
-        HpDrain = "hp_drain", U8, ro;
-        CustomDrain = "custom_drain", U8, ro;
-        PanelTrail = "panel_trail", U8, ro;
+        HpDrain = "hp_drain", U8, rw;
+        CustomDrain = "custom_drain", U8, rw;
+        PanelTrail = "panel_trail", U8, rw;
         /// The form is a Beast form, Beast Over.
         Beast = "beast", Bool, ro;
         BeastOver = "beast_over", Bool, ro;
@@ -444,6 +447,48 @@ named_fields! {
         FloatShoes = "float_shoes", Bool, rw;
         AirShoes = "air_shoes", Bool, rw;
         Undershirt = "undershirt", Bool, rw;
+        // Written by the patch cards at the round's start (rules/
+        // patch-cards.luau), with the writable ones above.
+        /// HP when the round starts, and its maximum (+0x40, +0x42).
+        Hp = "hp", U16, rw;
+        MaxHp = "max_hp", U16, rw;
+        /// The folder's Mega and Giga chip limits (+0x0B, +0x0C).
+        MegaLevel = "mega_level", U8, rw;
+        GigaLevel = "giga_level", U8, rw;
+        /// NaviCust SuperArmor and StatusGuard (+0x23, +0x52).
+        SuperArmor = "super_armor", Bool, rw;
+        StatusGuard = "status_guard", Bool, rw;
+        /// The B button's weapon (+0x04; none: no weapon).
+        BusterWeapon = "buster_weapon", Ref(Registry::Weapon, None), rw;
+        /// The barrier the navi enters with (+0x06; none: no barrier).
+        FirstBarrier = "first_barrier", Ref(Registry::Record, Some("barrier".into())), rw;
+        /// The custom gauge's speed (+0x08, [`GAUGE_SPEEDS`]).
+        Gauge = "gauge", enum_type(&GAUGE_SPEEDS), rw;
+        /// The supports (+0x0D's bits). With the NaviCust's support bug
+        /// (the byte 0xFF) there are none, and setting one leaves it so.
+        Rush = "rush", Bool, rw;
+        Beat = "beat", Bool, rw;
+        Tango = "tango", Bool, rw;
+        SupportBug = "support_bug", Bool, ro;
+        /// NaviCust bugs: steps go astray (+0x31, 1), a step's panel trail
+        /// level (+0x13), the status a hit gives (+0x16), the custom
+        /// screen's damage (+0x54), the emotion swings (+0x24), the battle
+        /// start's (+0x1A).
+        StepBug = "step_bug", U8, rw;
+        PanelTrailLevel = "panel_trail_level", U8, rw;
+        HitStatus = "hit_status", U8, rw;
+        CustomDamage = "custom_damage", U16, rw;
+        EmotionBug = "emotion_bug", U8, rw;
+        BattleStartBug = "battle_start_bug", U8, rw;
+        /// NaviCust ChpShufl and NumbrOpn (+0x60, +0x61).
+        ChipShuffle = "chip_shuffle", Bool, rw;
+        NumberOpen = "number_open", Bool, rw;
+        /// What the NaviCust does to chip drops (+0x26: 1 its collector
+        /// bug, bit 2 Collect) and random encounters (+0x28: 1 its
+        /// encounter bug): no netbattle reads them; the patch cards' bug
+        /// count does.
+        ChipDrops = "chip_drops", U8, ro;
+        Encounters = "encounters", U8, ro;
         /// `sub_800FE52`: how many kinds of NaviCust bug the navi has
         /// (astray steps, a panel trail, buster blanks, a hit status,
         /// custom-screen damage, emotion swings, the two HP drains, a
@@ -1029,6 +1074,9 @@ pub trait CoreApi {
     fn emotion(&self, side: u8) -> Emotion;
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
     fn set_mood(&mut self, side: u8, mood: u8);
+    /// A side's installed patch cards in their list's order (handles), and
+    /// whether each is switched on (the setup's: `PlayerSetup::patch_cards`).
+    fn patch_cards(&self, side: u8) -> Vec<(u16, bool)>;
     /// A side's bug frags in the battle (`sub_800F4A8`).
     fn bug_frags(&self, side: u8) -> u32;
     /// `sub_800F4B2`: a side spends `n` bug frags (the count wraps below

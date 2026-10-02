@@ -212,6 +212,18 @@ pub struct RecordDef {
     pub record_type: String,
 }
 
+/// A patch card (`define.patch_card`, docs/design/patch-cards.md): what the
+/// engine keeps of it. Its effects stay the content's: the ruleset's Luau
+/// (rules/patch-cards.luau) reads them from the definition when it applies
+/// a player's cards at the round's start.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PatchCardDef {
+    pub key: String,
+    pub name: String,
+    /// Its MB: how much of the 80 a player's installed cards may take.
+    pub mb: u8,
+}
+
 /// A content state layout.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SchemaDef {
@@ -245,6 +257,8 @@ pub struct Defs {
     /// The status effects, by handle.
     pub statuses: Vec<StatusDef>,
     pub records: Vec<RecordDef>,
+    /// The patch cards, by handle.
+    pub patch_cards: Vec<PatchCardDef>,
     /// One-shot effects' and hit sparks' looks (`define.effect`,
     /// `define.spark`), by handle.
     pub effects: Vec<super::EffectSprite>,
@@ -368,6 +382,18 @@ impl Defs {
         self.weapon_keys.get(key).copied()
     }
 
+
+    /// The patch card with this key.
+    pub fn patch_card_by_key(&self, key: &str) -> Option<nettai_content_api::PatchCardHandle> {
+        self.patch_cards
+            .binary_search_by(|c| c.key.as_str().cmp(key))
+            .ok()
+            .map(|i| nettai_content_api::PatchCardHandle(i as u16))
+    }
+
+    pub fn patch_card(&self, h: nettai_content_api::PatchCardHandle) -> &PatchCardDef {
+        &self.patch_cards[h.index()]
+    }
 
     /// A record's handle by key.
     pub fn record(&self, key: &str) -> Option<RecordHandle> {
@@ -1080,7 +1106,9 @@ impl Defs {
         for d in definitions.of(Registry::Navi) {
             let mut record = super::navis::read_navi(d, &reader)?;
             record.weapons = read_weapons(d)?;
-            record.fresh = super::navis::read_fresh(d)?;
+            record.fresh = super::navis::read_fresh(d, |key| {
+                definitions.of(Registry::Record).iter().position(|r| r.key == key).map(|i| RecordHandle(i as u16))
+            })?;
             record.cross_hp = super::navis::read_cross_hp(d)?;
             record.identity = identity_of(d, &identities)?;
             record.forms = match d.spec.field("forms") {
@@ -1293,6 +1321,19 @@ impl Defs {
             .map(|d| RecordDef { key: d.key.clone(), record_type: d.record_type.clone().unwrap_or_default() })
             .collect();
 
+        // The patch cards: their names and MB (their effects are the
+        // ruleset's to read).
+        let mut patch_cards = Vec::new();
+        for d in definitions.of(Registry::PatchCard) {
+            let what = |e: &str| ContentError::new(format!("{}.luau: patch_card {}: {e}", d.module, d.key));
+            let Data::Str(name) = d.spec.field("name") else { return Err(what("needs a `name` (a string)")) };
+            let mb = d.spec.field("mb").int().filter(|mb| (0..=0xFF).contains(mb)).ok_or_else(|| what("needs `mb` (0-255)"))?;
+            if !matches!(d.spec.field("effects"), Data::List(_)) {
+                return Err(what("needs `effects` (a list of rules/patch-cards.luau's effects)"));
+            }
+            patch_cards.push(PatchCardDef { key: d.key.clone(), name: name.clone(), mb: mb as u8 });
+        }
+
         // Each definition's handle.
         fn position<'a>(mut keys: impl Iterator<Item = &'a String>, key: &str) -> u16 {
             keys.position(|k| k == key).expect("an entry") as u16
@@ -1339,6 +1380,7 @@ impl Defs {
             identities,
             statuses,
             records,
+            patch_cards,
             effects,
             sparks,
             regions,

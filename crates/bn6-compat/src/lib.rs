@@ -259,6 +259,10 @@ pub struct Records {
     /// (NaviStats+0x4D, +0x4F), by the row of `off_80C4C78`.
     #[serde(default)]
     pub projectile_variants: BTreeMap<String, u8>,
+    /// The barriers a navi's stats name as its first barrier (NaviStats+
+    /// 0x06), by the type `sub_801A7CC` takes.
+    #[serde(default)]
+    pub barriers: BTreeMap<String, u8>,
 }
 
 /// The original's numbers of rule definitions (rules.toml): only
@@ -465,6 +469,7 @@ impl Compat {
         unique("records.toml: sp_slots", self.records.sp_slots.iter().map(|(k, &n)| (k, n)))?;
         unique("records.toml: rock_variants", self.records.rock_variants.iter().map(|(k, &n)| (k, n)))?;
         unique("records.toml: projectile_variants", self.records.projectile_variants.iter().map(|(k, &n)| (k, n)))?;
+        unique("records.toml: barriers", self.records.barriers.iter().map(|(k, &n)| (k, n)))?;
         unique("rules.toml: lockon", self.rules.lockon.iter().map(|(k, &n)| (k, n)))?;
         unique("rules.toml: statuses", self.rules.statuses.iter().map(|(k, &n)| (k, n)))?;
         unique("assets.toml: sprites", self.assets.sprites.iter().map(|(k, n)| (k, n.clone())))?;

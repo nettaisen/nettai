@@ -629,7 +629,8 @@ declare class Object
 end
 
 -- A side's navi stats (read-only but the buster's levels, the custom
--- level, the hand-shrink bug's turn, the start weapons and the shoes).
+-- level, the hand-shrink bug's turn, the start weapons and the shoes; and
+-- what the patch cards change, which they write at the round's start).
 declare class Navi
     -- Fighting in the sun.
     sun: boolean
@@ -676,6 +677,41 @@ declare class Navi
     float_shoes: boolean
     air_shoes: boolean
     undershirt: boolean
+    -- HP when the round starts, and its maximum.
+    hp: number
+    max_hp: number
+    -- The folder's Mega and Giga chip limits.
+    mega_level: number
+    giga_level: number
+    super_armor: boolean
+    status_guard: boolean
+    -- The B button's weapon (nil: none).
+    buster_weapon: Weapon?
+    -- The barrier the navi enters with (nil: none).
+    first_barrier: Barrier?
+    gauge: "normal" | "fast" | "slow"
+    -- The supports; none with the NaviCust's support bug (setting one
+    -- then leaves it so).
+    rush: boolean
+    beat: boolean
+    tango: boolean
+    support_bug: boolean
+    -- NaviCust bugs: steps go astray (1), the panel trail's level, the
+    -- status a hit gives, the custom screen's damage, the emotion swings,
+    -- the battle start's.
+    step_bug: number
+    panel_trail_level: number
+    hit_status: number
+    custom_damage: number
+    emotion_bug: number
+    battle_start_bug: number
+    -- NaviCust ChpShufl and NumbrOpn.
+    chip_shuffle: boolean
+    number_open: boolean
+    -- What the NaviCust does to chip drops (1 its collector bug) and random
+    -- encounters (1 its encounter bug): no netbattle reads them.
+    chip_drops: number
+    encounters: number
     -- `sub_800FE52`: how many kinds of NaviCust bug the navi has.
     bug_kinds: number
 end
@@ -863,6 +899,9 @@ declare battle: {
     -- tasks: every console shows or hides them (drawn only).
     show_hud: (parts: { HudPart }, shown: boolean) -> (),
     navi: (side: number) -> Navi,
+    -- A side's installed patch cards in their list's order, each switched
+    -- on or not (the setup's).
+    patch_cards: (side: number) -> { { card: PatchCard, enabled: boolean } },
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
@@ -1463,7 +1502,8 @@ export type NaviDef = {
         float_shoes: boolean?,
         air_shoes: boolean?,
         undershirt: boolean?,
-        first_barrier: number,
+        -- The barrier it enters with (lib/barriers; nil: none).
+        first_barrier: Barrier?,
         mega_level: number,
         giga_level: number,
         back_special_damage: number?,
@@ -1638,6 +1678,33 @@ export type LockonDef = {
     prefers_middle_row: boolean?,
 }
 export type Lockon = LockonDef
+
+-- A patch card (the Japanese games' Modification Card, rules/patch-cards):
+-- its name, its MB and its effects (rules/patch-cards.luau's constructors).
+export type PatchCardEffect = {
+    kind: string,
+    amount: number?,
+    element: ElementName?,
+    weapon: Weapon?,
+    variant: ProjectileVariant?,
+    barrier: Barrier?,
+    gauge: string?,
+    on: boolean?,
+    trail: string?,
+    level: number?,
+    blanks: number?,
+    charged: number?,
+    status: string?,
+    -- The card shows it as a bug.
+    bug: boolean?,
+}
+export type PatchCardSpec = {
+    id: string,
+    name: string,
+    mb: number,
+    effects: { PatchCardEffect },
+}
+export type PatchCard = PatchCardSpec
 
 -- What an object is taken for (§3.2): the original's NameID record. A
 -- navi's and a form's is nested in its definition (`identity =
@@ -1944,6 +2011,9 @@ export type RolesSpec = {
         -- bubble becomes on its panel; its field-object registry class (nil:
         -- it wasn't registered).
         encased: ((obstacle: Object, ice: boolean, class: number?) -> ())?,
+        -- The round's start: apply `side`'s patch cards to its stats;
+        -- whether the stats then have a NaviCust bug (rules/patch-cards).
+        patch_cards: ((side: number) -> boolean)?,
     }?,
 }
 
@@ -1964,6 +2034,7 @@ declare define: {
     status: (spec: StatusDef) -> StatusDef,
     lockon: (spec: LockonDef) -> LockonDef,
     identity: (spec: IdentitySpec) -> Identity,
+    patch_card: (spec: PatchCardSpec) -> PatchCard,
     -- A rule section (§3.8): one table of rules no entity owns, by its
     -- section name (`define.rules("elements", { ... })`).
     rules: <T>(section: string, spec: T) -> T,

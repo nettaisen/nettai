@@ -12,6 +12,7 @@ local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatt
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
 local lockon = require("./lockon")
+local patch_cards = require("./patch-cards")
 local ruleset = require("./ruleset")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/megaman/forms/slashcross/charge")
@@ -72,10 +73,15 @@ return define.roles {
     sprites = ruleset.sprites,
     banners = ruleset.banners,
     hooks = {
-        -- The NaviCust FirstBarrier, as BN6's roles fill it: the Barrier
-        -- chip's barrier and its visual.
+        -- The first barrier, as BN6's roles fill it: the barrier the
+        -- navi's stats name, and its visual.
         first_barrier = function(navi: Object)
-            barriers.raise(navi, barriers.barrier_10, true)
+            local barrier = battle.navi(navi.alliance).first_barrier
+            if barrier then
+                barriers.raise(navi, barrier, true)
+            end
         end,
+        -- The players' patch cards, as BN6's roles fill it.
+        patch_cards = patch_cards.apply,
     },
 }

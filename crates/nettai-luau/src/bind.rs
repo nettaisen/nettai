@@ -1067,6 +1067,18 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.emotion(side).name()))
     });
+    lib_fn!(lua, t, "patch_cards", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let cards = with(|api, _| Ok(api.patch_cards(side)))?;
+        let list = lua.create_table()?;
+        for (i, (h, enabled)) in cards.into_iter().enumerate() {
+            let entry = lua.create_table()?;
+            entry.raw_set("card", with(|_, b| b.def_value(Registry::PatchCard, h))?)?;
+            entry.raw_set("enabled", enabled)?;
+            list.raw_set(i + 1, entry)?;
+        }
+        Ok(list)
+    });
     lib_fn!(lua, t, "bug_frags", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.bug_frags(side)))
@@ -1695,6 +1707,7 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(c as i64));
             vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
         }
+        HookCall::RolePatchCards { side } => vec![LuaValue::Integer(side as i64)],
     };
     Ok(mlua::MultiValue::from_iter(values))
 }
@@ -1717,5 +1730,12 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
         HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } | HookCall::RoleEncased { .. } => Ok(Value::Nil),
+        HookCall::RolePatchCards { .. } => match v {
+            LuaValue::Boolean(b) => Ok(Value::Bool(b)),
+            v => Err(mlua::Error::runtime(format!(
+                "hooks.patch_cards returns whether the stats have a bug (a boolean), not {}",
+                v.type_name()
+            ))),
+        },
     }
 }

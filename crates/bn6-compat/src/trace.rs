@@ -404,6 +404,7 @@ impl Round {
             bug_frags: self.setup.bug_frags.map_or(RECORDED_BUG_FRAGS, |f| f[side as usize]),
             navi_level: self.setup.navi_levels.map_or(0, |l| l[side as usize]),
             console: self.console_setup(side),
+            patch_cards: Default::default(),
         }
     }
 

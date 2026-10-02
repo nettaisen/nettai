@@ -660,7 +660,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // sub_801DB84, sub_8018856, sub_801DC06, sub_801DC36: the HP number
     // HUD table.
     enable_turning(b, r);
-    if stats(b, r).first_barrier != 0 {
+    if stats(b, r).first_barrier.is_some() {
         // sub_8013892's `pop {r4}` left the barrier type in r4, so the glow's
         // link slot (r4 + 0x58) is a BIOS address (docs/engine/dimming-
         // chips.md §3.4).
@@ -770,7 +770,7 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
         // sub_8015C2C: the starting mood.
         stats_mut(b, r).mood = 0x80;
     }
-    if stats(b, r).first_barrier != 0 {
+    if stats(b, r).first_barrier.is_some() {
         // sub_801A7CC(stat 6) and the barrier's visual (sub_80E0D98): the
         // content's FirstBarrier (the role hooks.first_barrier). The game's
         // FirstBarrier program sets the stat to 1, the Barrier chip's

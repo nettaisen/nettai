@@ -147,6 +147,30 @@ impl<'a> Ids<'a> {
         Some(h)
     }
 
+    /// The barrier a first-barrier byte names (NaviStats+0x06, the
+    /// barrier type `sub_801A7CC` takes); none for 0.
+    pub fn barrier(&self, ty: u8) -> Option<RecordHandle> {
+        if ty == 0 {
+            return None;
+        }
+        let key = self
+            .compat
+            .records
+            .barriers
+            .iter()
+            .find(|(_, n)| **n == ty)
+            .map(|(k, _)| k.as_str())
+            .unwrap_or_else(|| panic!("records.toml has no barrier type {ty:#x}"));
+        Some(self.content.defs.record(key).unwrap_or_else(|| panic!("the content has no barrier {key:?} (type {ty:#x})")))
+    }
+
+    /// A first-barrier byte; 0 for none.
+    pub fn barrier_type(&self, r: Option<RecordHandle>) -> u8 {
+        let Some(r) = r else { return 0 };
+        let key = &self.content.defs.records[r.index()].key;
+        *self.compat.records.barriers.get(key).unwrap_or_else(|| panic!("records.toml has no barrier {key:?}"))
+    }
+
     /// A shot program's byte; 0 for none.
     pub fn shot_program_number(&self, r: Option<RecordHandle>) -> u8 {
         let Some(r) = r else { return 0 };
@@ -186,7 +210,7 @@ pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
         attack: b[0x01],
         rapid: b[0x02],
         charge: b[0x03],
-        first_barrier: b[0x06],
+        first_barrier: ids.barrier(b[0x06]),
         gauge_speed: match b[0x08] {
             0 => GaugeSpeed::Normal,
             1 => GaugeSpeed::Fast,
@@ -212,6 +236,8 @@ pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
         version: b[0x20],
         beast_out_counter: b[0x21],
         sun: flag(0x22),
+        chip_drops: b[0x26],
+        encounters: b[0x28],
         navi: ids.navi(b[0x29]),
         navi_variant: b[0x2B],
         form: ids.form(b[0x2C]),
@@ -262,7 +288,7 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
     b[0x01] = s.attack;
     b[0x02] = s.rapid;
     b[0x03] = s.charge;
-    b[0x06] = s.first_barrier;
+    b[0x06] = ids.barrier_type(s.first_barrier);
     b[0x08] = s.gauge_speed as u8;
     b[0x09] = s.reg_up;
     b[0x0A] = s.custom_level;
@@ -282,6 +308,8 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
     b[0x20] = s.version;
     b[0x21] = s.beast_out_counter;
     b[0x22] = s.sun as u8;
+    b[0x26] = s.chip_drops;
+    b[0x28] = s.encounters;
     b[0x29] = ids.navi_number(s.navi);
     b[0x2B] = s.navi_variant;
     b[0x2C] = ids.form_number(s.form);

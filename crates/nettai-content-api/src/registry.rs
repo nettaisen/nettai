@@ -41,12 +41,16 @@ pub enum Registry {
     /// Data only content reads (a bomb variant, a projectile variant): the
     /// engine keeps its handle and its type name.
     Record,
-    /// Content state layouts: one per distinct `state` table.
+    /// A patch card (the Japanese games' Modification Card): what it
+    /// changes in the navi's stats (docs/design/patch-cards.md).
+    PatchCard,
+    /// Content state layouts: one per distinct `state` table (sorted
+    /// last).
     Schema,
 }
 
 impl Registry {
-    pub const ALL: [Registry; 18] = [
+    pub const ALL: [Registry; 19] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -64,12 +68,13 @@ impl Registry {
         Registry::Rules,
         Registry::Roles,
         Registry::Record,
+        Registry::PatchCard,
         Registry::Schema,
     ];
 
     /// The registries content defines with `define.<name>` (schemas come
     /// from the `state` tables of kinds, actions and modules).
-    pub const DEFINED: [Registry; 17] = [
+    pub const DEFINED: [Registry; 18] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -87,6 +92,7 @@ impl Registry {
         Registry::Rules,
         Registry::Roles,
         Registry::Record,
+        Registry::PatchCard,
     ];
 
     /// The registry's name: its definer's (`define.chip`), and how messages
@@ -111,6 +117,7 @@ impl Registry {
             Registry::Roles => "roles",
             Registry::Record => "record",
             Registry::Schema => "schema",
+            Registry::PatchCard => "patch_card",
         }
     }
 
@@ -132,6 +139,7 @@ impl Registry {
                 | Registry::Collision
                 | Registry::Status
                 | Registry::Lockon
+                | Registry::PatchCard
         )
     }
 }
@@ -203,6 +211,8 @@ handles! {
     IdentityHandle => Identity,
     /// A record only content reads.
     RecordHandle => Record,
+    /// A patch card.
+    PatchCardHandle => PatchCard,
 }
 
 #[cfg(test)]

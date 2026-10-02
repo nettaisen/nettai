@@ -77,7 +77,7 @@ pub fn megaman(content: &Content, hp: u16) -> NaviStats {
         attack: 0,
         rapid: 0,
         charge: 0,
-        first_barrier: 0,
+        first_barrier: None,
         gauge_speed: GaugeSpeed::Normal,
         reg_up: 50,
         custom_level: 5,
@@ -94,6 +94,8 @@ pub fn megaman(content: &Content, hp: u16) -> NaviStats {
         version: 0,
         beast_out_counter: 3,
         sun: false,
+        chip_drops: 0,
+        encounters: 0,
         navi: megaman,
         navi_variant: 10,
         form: base,
@@ -133,6 +135,7 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
         bug_frags: 0,
         navi_level: 0,
         console: ConsoleSetup { rng: seed.rotate_left(16) ^ side.wrapping_mul(0x9E37_79B9), ..ConsoleSetup::default() },
+        patch_cards: Default::default(),
     };
     let [a, b] = folders;
     RoundSetup {
