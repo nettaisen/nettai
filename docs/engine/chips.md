@@ -2281,7 +2281,8 @@ MegaMan's actions (`off_80BDD24`):
 Django's actions (`off_80BDD34`):
 - 0 (`sub_80BE144`): sound 0x94, Timer 60, anim 1; 60 ticks → 4.
 - 4 (`sub_80BE174`): 0 (`sub_80BE190`): anim 3, Timer 10, his gun (`sub_80B8E30`, r4 0x1080B: attachment 0xB,
-  animation 8, in ExtraVars[2]), sound 0xF8; 10 ticks (the entry's included): the sun beam (`sub_80E5D12`: effect
+  animation 8, in ExtraVars[2]; row 0xB is the blades' sheet (0xC, 0) in the US games, Django's sprite (0xC, 0xF) in
+  the Japanese games, whose look the content has), sound 0xF8; 10 ticks (the entry's included): the sun beam (`sub_80E5D12`: effect
   #0x48, chips/gundels/beam, offset (80 · front, 0, 0) pixels from him in its velocity, r4 0x10000: look 0, palette
   0, Param3 1: it goes on while dimmed; r7 = &ExtraVars[3], where it is kept) → 4. 4 (`sub_80BE1DC`): anim 4, the
   gun's animation 9 (`sub_80B8E70`), Timer 120; every tick, the entry's too, a hit on the panel two ahead (element 5,
@@ -2532,8 +2533,9 @@ two are the same code at different addresses (EXE6 Falzar's below; EXE6 Gregar's
 the lance). There is no Japanese disassembly: the addresses are the ROMs', the routines they call the US games'
 (the verification workspace's `fmap.py --to` maps them). Content: chips/hackjack (navi, lance, chips).
 
-The records: as the US games' but for flags 0x47 (the US games' 0x07: the library bit) and the sort key. Damage
-20/25/SP formula 17 (the rain's hits); parameters 0x32/0x46/0x64 (the lances' damage, 50/70/100).
+The records: as the US games' but for flags 0x47 (the US games' 0x07: the library bit) and the sort key; the content
+has the Japanese records. Damage 20/25/SP formula 17 (the rain's hits); parameters 0x32/0x46/0x64 (the lances'
+damage, 50/70/100).
 
 **The spawner, 0x080BD236** (`off_802CD5C[18]` in the Japanese table at 0x0802D8B8): `object_spawnType1(0x11)` with
 r1..r3 the panel Y, element and the spawner's own address (the controller's r3) as its position and r4 the chip's
@@ -2608,8 +2610,12 @@ Japanese games': (0xC, 0xF), Django's: the US games' CrosOver shows his gun from
 games' code below (EXE6 Falzar; EXE6 Gregar +0x1860). Content: chips/django (navi, chips).
 
 The records differ: the US games' are class 3 (not a folder chip) with flags 0; the Japanese games' class 1 (Mega)
-with flags 0x47 (dimming, damage, navi, library). Damage 130/180/260 (the ride's); parameters 0x32/0x50/0x78 (the
-slash's damage, 50/80/120). The content keeps the US records (with the `navi_slot` trait for AntiNavi).
+with flags 0x47 (dimming, damage, navi, library), and their sort keys are the Japanese order. Damage 130/180/260 (the
+ride's); parameters 0x32/0x50/0x78 (the slash's damage, 50/80/120). The content has the Japanese records (as for
+every JP-content chip; `gen-content check` compares them with a Japanese ROM's): a folder chip that cuts in (a
+counter cut-in during the other side's dimming), shows its damage on the telop, takes Atk+ and Navi+, which Beat turns
+back as a Mega chip and AntiNavi by the `navi` flag. (The US records would need the `navi_slot` trait for AntiNavi,
+which turns back the chip table's block 0xDD..0x118 by number.)
 
 **The spawner, 0x080BD6A2** (`off_802CD5C[19]`): as HackJack's with `object_spawnType1(0x12)`.
 
