@@ -865,6 +865,7 @@ dependencies = [
  "nettai-battle",
  "nettai-content",
  "nettai-content-api",
+ "nettai-match",
  "nettai-netplay",
  "png",
  "swash",
@@ -876,6 +877,18 @@ version = "0.1.0"
 dependencies = [
  "mlua",
  "nettai-content-api",
+]
+
+[[package]]
+name = "nettai-match"
+version = "0.1.0"
+dependencies = [
+ "bn6-compat",
+ "nettai-battle",
+ "nettai-content",
+ "nettai-content-api",
+ "serde",
+ "toml",
 ]
 
 [[package]]
