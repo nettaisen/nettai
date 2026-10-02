@@ -10,10 +10,25 @@
 
 local controller = require("./controller")
 
+-- The palette of its picture on the custom screen, which no ROM holds:
+-- the Japanese record points at EWRAM 0x02000B10, where a gift received
+-- over the link (an e-Reader card's, Card e+) puts it (`0x0813006C` in
+-- the Japanese ROMs copies the card's palette to 0x02000AF0 + 32 * slot;
+-- slot 1 is the console's own beast), and the save keeps it there (save
+-- offset 0xB10). These are the card's colours
+-- as Tango's netplay save for EXE6 Gregar has them (tango-gamesupport-bn6,
+-- saves/g_jp.raw, offset 0xB10). The picture is the Japanese Gregar ROM's
+-- (docs/engine/jp-differences.md §4.4).
+local ART_PALETTE = {
+    0x0000, 0x77FF, 0x479E, 0x1F3F, 0x0A7D, 0x0D77, 0x04F4, 0x0051,
+    0x1089, 0x18A3, 0x4D5F, 0x3787, 0x7F90, 0x5ACC, 0x3609, 0x2126,
+}
+
 return define.chip {
     id = "gregar",
     name = "Gregar",
     description = "Gregar's\nbreath\nattack!",
+    art_palette = ART_PALETTE,
     codes = { "X" },
     element = "null",
     family = "null",

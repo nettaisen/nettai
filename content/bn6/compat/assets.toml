@@ -150,7 +150,7 @@ flame-hook-fire = "0c-45"
 sprite-0c-46 = "0c-46"
 sun-beam-ex = "0c-47"
 rush = "0c-48"
-sprite-0c-49 = "0c-49"
+otenko = "0c-49"
 sprite-0c-4a = "0c-4a"
 beat = "0c-4b"
 tango = "0c-4c"
@@ -297,7 +297,7 @@ blast = "14-13"
 lightning = "14-14"
 charge-glow-a = "14-15"
 full-synchro-aura = "14-16"
-sprite-14-17 = "14-17"
+blocking-banner = "14-17"
 spark-0e = "14-18"
 sprite-14-19 = "14-19"
 fire-hit = "14-1a"
@@ -825,7 +825,7 @@ dustcross-beast = 0x13
 falzar-beast = 0x14
 falzar-beast-full-synchro = 0x15
 falzar-beast-over = 0x16
-# Gregar's own faces, from the Gregar ROM (bn6-extract --gregar): its
+# Gregar's own faces, from the US Gregar ROM (bn6-extract's second): its
 # emotion-window pictures 5 to 0x16 numbered from 0x17.
 heatcross = 0x17
 eleccross = 0x18

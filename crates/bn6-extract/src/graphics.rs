@@ -6,16 +6,18 @@ use crate::{Rom, lz77, u32at};
 use nettai_assets::*;
 use std::collections::HashMap;
 
-/// The battle graphics of the Falzar ROM, with what the Gregar ROM
-/// (`gregar`) has of its own or right; `names` gives the chip icons their
-/// keys and the font its characters.
-pub fn bundle(rom: &Rom, gregar: &Rom, names: &nettai_content::names::AssetNames) -> Bundle {
+/// The battle graphics of the US Falzar ROM, with what the US Gregar ROM
+/// has of its own or right (`gregar`) and what the Japanese ROMs have that
+/// the US release cut (`jp`); `names` gives the chip icons their keys and
+/// the font its characters.
+pub fn bundle(roms: &crate::Roms, names: &nettai_content::names::AssetNames) -> Bundle {
+    let (rom, gregar) = (&roms.falzar, &roms.gregar);
     Bundle {
-        sprites: sprites(rom, gregar, names),
+        sprites: sprites(roms, names),
         field: field(rom),
         backgrounds: backgrounds(rom),
         hud: crate::hud::hud(rom, gregar, names),
-        custom: crate::custom::custom(rom, gregar, names),
+        custom: crate::custom::custom(roms, names),
     }
 }
 
@@ -43,32 +45,53 @@ const BATTLE_CATEGORIES: u32 = 6;
 const PORTRAITS: u8 = 0x20;
 const BLACK_PORTRAIT: u32 = 7;
 
-fn sprites(rom: &Rom, gregar: &Rom, names: &nettai_content::names::AssetNames) -> Vec<SpriteSheet> {
+fn sprites(roms: &crate::Roms, names: &nettai_content::names::AssetNames) -> Vec<SpriteSheet> {
+    let rom = &roms.falzar;
     let cats: Vec<u32> = (0..10).map(|i| u32at(rom, SPRITE_LIST + 4 * i)).collect();
-    let mut out = portraits(rom, gregar, names);
+    let mut out = portraits(rom, &roms.gregar, names);
     for (ci, &c) in cats.iter().enumerate().take(BATTLE_CATEGORIES as usize) {
         let next = cats.iter().copied().filter(|&s| s > c).min().unwrap_or(c + 0x400);
         for idx in 0..((next - c) / 4).min(256) {
-            let p = u32at(rom, c + 4 * idx);
-            let data = if p & 0x8000_0000 != 0 {
-                // A compressed archive starts with its own size word
-                // (`sprite_decompress` hands out the data after it).
-                match lz77(rom, p & 0x7FFF_FFFF) {
-                    Some(d) if d.len() > 4 => d[4..].to_vec(),
-                    _ => continue,
-                }
-            } else if (0x0800_0000..0x0900_0000).contains(&p) {
-                rom_from(rom, p, 0x8_0000)
+            let (category, index) = ((ci * 4) as u8, idx as u8);
+            // The slots the US release left a placeholder in are the
+            // Japanese Falzar ROM's (`jp::SPRITES`).
+            let jp = crate::jp::SPRITES.contains(&(category, index));
+            let (source, p) = if jp {
+                let rom = &roms.falzar_jp;
+                (rom, u32at(rom, u32at(rom, crate::jp::SPRITE_LIST + category as u32) + 4 * idx))
             } else {
-                continue;
+                (rom, u32at(rom, c + 4 * idx))
             };
-            if let Some(s) = sprite_sheet(&data, (ci * 4) as u8, idx as u8) {
-                out.push(s);
+            let Some(data) = archive(source, p) else { continue };
+            match sprite_sheet(&data, category, index) {
+                Some(mut s) => {
+                    s.region = jp.then(|| crate::jp::REGION.to_string());
+                    out.push(s);
+                }
+                None if jp => panic!("the Japanese Falzar ROM's sprite {category:02x}-{index:02x} doesn't decode"),
+                None => {}
             }
         }
     }
     out.sort_by_key(|s| (s.category, s.index));
     out
+}
+
+/// A battle sprite's archive at `p` in its sprite list (bit 31: LZ77
+/// compressed): the data `sprite_loadAnimationData` reads.
+fn archive(rom: &Rom, p: u32) -> Option<Vec<u8>> {
+    if p & 0x8000_0000 != 0 {
+        // A compressed archive starts with its own size word
+        // (`sprite_decompress` hands out the data after it).
+        match lz77(rom, p & 0x7FFF_FFFF) {
+            Some(d) if d.len() > 4 => Some(d[4..].to_vec()),
+            _ => None,
+        }
+    } else if (0x0800_0000..0x0900_0000).contains(&p) {
+        Some(rom_from(rom, p, 0x8_0000))
+    } else {
+        None
+    }
 }
 
 /// The portraits content names (the chatbox's speakers), each from the
