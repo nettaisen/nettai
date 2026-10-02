@@ -213,6 +213,11 @@ pub enum FadeMode {
     Mode1TransformIn = 0x6C,
     /// 0x70: battle mode 1's fade out for a transformation.
     Mode1TransformOut = 0x70,
+    /// 0x84: back from 0x88 (`sub_800BCF6`).
+    BlackOutBack = 0x84,
+    /// 0x88: the Gregar and Falzar chips' controllers darken what a dimming
+    /// darkens all the way, to black.
+    BlackOut = 0x88,
 }
 
 impl FadeMode {
@@ -233,6 +238,8 @@ impl FadeMode {
             FadeMode::ProgramAdvance => (true, 0x40),
             FadeMode::DarkChip => (true, 0x50),
             FadeMode::BeastOut => (true, 0x80),
+            FadeMode::BlackOutBack => (false, 0),
+            FadeMode::BlackOut => (true, 0x100),
         }
     }
 }
@@ -385,6 +392,9 @@ pub struct Battle {
     /// What each side's console shows of its own navi's chips
     /// (presentation only; left out of the digest).
     pub chip_hud: [crate::hud::ChipHud; 2],
+    /// The HUD parts a chip's effect hid (presentation only; left out of the
+    /// digest).
+    pub hud_hidden: crate::hud::HudHidden,
     /// The message the HUD shows (presentation only; left out of the
     /// digest).
     pub message: Option<crate::hud::MessageLine>,
@@ -659,6 +669,7 @@ impl Battle {
             banner: Banner::default(),
             used_chips: [None; 2],
             chip_hud: Default::default(),
+            hud_hidden: Default::default(),
             message: None,
             warnings: Default::default(),
             hp_numbers: [[None; crate::hud::HpNumber::PLACES]; 2],

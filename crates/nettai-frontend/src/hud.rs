@@ -240,9 +240,11 @@ fn waiting_ticks(b: &Battle) -> Option<u32> {
     (crate::custom::screens_open(b) && !b.custom.committed).then(|| b.round.ticks.saturating_sub(sent.sent_at + 1))
 }
 
-/// Whether the custom gauge is drawn.
+/// Whether the custom gauge is drawn (a chip's effect may hide it:
+/// `Battle::hud_hidden`).
 fn gauge_shown(b: &Battle, state: &HudState) -> bool {
     (b.gauge.enabled || state.gauge_was_on)
+        && !b.hud_hidden.gauge
         && !state.was_over
         && !custom_open(b)
         && !crate::custom::gauge_held(b)
@@ -491,7 +493,8 @@ pub fn draw<'a>(
     // (The window stays through the damage judge, under its banner: its
     // task stops with the round's result.)
     let over = state.was_over && !window.running;
-    if let Some(r) = player.filter(|_| !over && !hide_mugshot && !matches!(flicker, 5 | 6)) {
+    let hidden = b.hud_hidden.emotion_window;
+    if let Some(r) = player.filter(|_| !over && !hidden && !hide_mugshot && !matches!(flicker, 5 | 6)) {
         let mut group = Vec::new();
         mugshot_parts(b, hud, state, r, shift, &mut group, problems);
         if window.flickers != 0 && (flicker + 1) & 2 != 0 {

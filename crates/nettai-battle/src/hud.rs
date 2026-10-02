@@ -91,6 +91,22 @@ pub struct ChipHud {
     pub window: bool,
 }
 
+/// The HUD parts a chip's effect hides while it plays (`sub_801DACC`, and
+/// `sub_801DA48` showing them again): the Gregar and Falzar chips' hide the
+/// custom gauge and the emotion window (draw tasks 4 and 14; with each side's
+/// own gauge, battle flag 0x40, 17 and 14). Presentation only: each console
+/// runs the same calls.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct HudHidden {
+    /// The custom gauge (draw task 4, `sub_801C4E4`).
+    pub gauge: bool,
+    /// The emotion window (draw task 14, `sub_801CDEC`).
+    pub emotion_window: bool,
+    /// The battle flag 0x40 mode's gauge, drawn by its levels (draw task
+    /// 17, `sub_801C640`).
+    pub level_gauge: bool,
+}
+
 /// A warning marker on a console's HUD for one tick (`sub_800AE90`: a
 /// blinking arrow): over the custom gauge (`at` none), or over a place on
 /// the field, which the console projects. Presentation only.
