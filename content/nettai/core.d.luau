@@ -971,6 +971,12 @@ declare battle: {
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
+    -- The mood rises by `n` to 254 at most; 0 and 0xFF stay (BN5's
+    -- 0x08012802: its recovery chips).
+    gain_mood: (side: number, n: number) -> (),
+    -- The mood falls by `n` to 1 at least; 0 stays (`sub_8015C12`, BN5's
+    -- 0x08012820: its navi chips leaving).
+    lose_mood: (side: number, n: number) -> (),
     -- Whether the side's console starts its emotion window glitching (the
     -- save's NaviCust bug flag): a system decides it in `round_setup` (BN6's
     -- patch cards do).

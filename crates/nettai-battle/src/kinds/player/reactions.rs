@@ -591,4 +591,63 @@ mod tests {
         let v = push(PushReading::Bn6, 0x84, 0);
         assert_eq!((v.dx, v.dy), (0, -1));
     }
+
+    /// docs/design/bn5-map.md §15.2: lava (the test content's burns for 50,
+    /// as BN5's does) burns a grounded navi not of fire in fire, turning
+    /// normal, with its burn's spark; a navi of fire it leaves be.
+    #[test]
+    fn lava_burns_a_grounded_navi() {
+        let (mut b, [_, r]) = fight(PushReading::Bn6);
+        b.set_panel_type(5, 2, PanelType::Lava);
+        let sparks = |b: &Battle| b.objects.in_order().filter(|&o| b.local_kind_key(o).contains("spark")).count();
+        let before = sparks(&b);
+        crate::kinds::common::panel_burn(&mut b, r);
+        assert_eq!(coll(&b, r).acc.element_damage[1], 50);
+        assert_eq!(coll(&b, r).hit_mod_final & 3, 3, "a hit");
+        assert_eq!(b.field.panels[2][5].kind, PanelType::Normal);
+        assert_eq!(sparks(&b), before + 1, "its burn shows");
+        // A navi of fire stands on it.
+        b.set_panel_type(5, 2, PanelType::Lava);
+        coll_mut(&mut b, r).element = 1;
+        crate::kinds::common::panel_burn(&mut b, r);
+        assert_eq!(b.field.panels[2][5].kind, PanelType::Lava);
+    }
+
+    /// BN5's metal (0x0800C8A8, the tables at 0x0800C920 and 0x0800C9C0):
+    /// its slide tries steps by the direction of the move, the first the
+    /// navi can slide to: after a move up, forward (side 1's front is -x),
+    /// then up; after a move forward, down first.
+    #[test]
+    fn metal_slides_by_the_direction_of_the_move() {
+        let (mut b, [_, r]) = fight(PushReading::Bn6);
+        b.set_panel_type(5, 2, PanelType::Metal);
+        b.objects.get_mut(r).slide_type = 3;
+        coll_mut(&mut b, r).direction = 1;
+        assert_eq!(slide_vector(&b, r), SlideVector { dx: -1, dy: 0, tiles: 1 });
+        // Forward is the other side's: up is next.
+        b.set_panel_alliance(4, 2, 0);
+        assert_eq!(slide_vector(&b, r), SlideVector { dx: 0, dy: -1, tiles: 1 });
+        coll_mut(&mut b, r).direction = 4;
+        assert_eq!(slide_vector(&b, r), SlideVector { dx: 0, dy: 1, tiles: 1 });
+    }
+
+    /// docs/design/bn5-map.md §15.3 item 6: the mood rises to 254 at most,
+    /// falls to 1 at least, and 0 (and, rising, 0xFF) stays.
+    #[test]
+    fn the_mood_rises_and_falls_within_its_bounds() {
+        let (mut b, _) = fight(PushReading::Bn6);
+        let mood = |b: &Battle| b.stats[0].mood;
+        b.stats[0].mood = 250;
+        super::super::gain_mood(&mut b, 0, 10);
+        assert_eq!(mood(&b), 254);
+        super::super::lose_mood(&mut b, 0, 300);
+        assert_eq!(mood(&b), 1);
+        b.stats[0].mood = 0xFF;
+        super::super::gain_mood(&mut b, 0, 1);
+        assert_eq!(mood(&b), 0xFF);
+        b.stats[0].mood = 0;
+        super::super::gain_mood(&mut b, 0, 1);
+        super::super::lose_mood(&mut b, 0, 1);
+        assert_eq!(mood(&b), 0);
+    }
 }
