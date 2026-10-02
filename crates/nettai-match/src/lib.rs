@@ -93,17 +93,42 @@ pub struct Side {
 
 impl Side {
     /// `navi`'s stats as a fresh save gives them ([`NaviStats::fresh`]),
-    /// of `game`: what a side's stats block is written over.
+    /// of `game`, as a battle starts them (`starting`): what a side's stats
+    /// block is written over.
     pub fn base_stats(content: &Content, navi: NaviHandle, game: GameVersion) -> NaviStats {
-        let mut s = NaviStats::fresh(navi, content).unwrap_or(NaviStats { navi, ..NaviStats::default() });
-        s.version = version_byte(game);
-        s
+        let s = NaviStats::fresh(navi, content).unwrap_or(NaviStats { navi, ..NaviStats::default() });
+        starting(content, s, game)
     }
 
-    /// The side's stats, with the version its game says.
-    pub fn round_stats(&self) -> NaviStats {
-        NaviStats { version: version_byte(self.game), ..self.stats }
+    /// The side's stats as the battle starts them (`starting`).
+    pub fn round_stats(&self, content: &Content) -> NaviStats {
+        starting(content, self.stats, self.game)
     }
+
+    /// The side's stats block: what differs from the navi's fresh stats,
+    /// but what the battle's start sets (MegaMan's variant).
+    pub fn stats_block(&self, content: &Content) -> std::collections::BTreeMap<String, toml::Value> {
+        let mut block = stats::diff(content, &Side::base_stats(content, self.navi, self.game), &self.round_stats(content));
+        if content.navi(self.navi).forms.is_some() {
+            block.remove("navi_variant");
+        }
+        block
+    }
+}
+
+/// What the console sets in the stats as a battle starts, whatever the
+/// save says: the navi's game (NaviStats+0x20) is the player's, and
+/// MegaMan's variant (+0x2B, which picks his move lag) is his base HP in
+/// hundreds (`sub_800A2F8`).
+pub fn starting(content: &Content, mut s: NaviStats, game: GameVersion) -> NaviStats {
+    s.version = version_byte(game);
+    if content.navi(s.navi).forms.is_some() {
+        s.navi_variant = (s.max_base_hp / 100) as u8;
+    }
+    s
+}
+
+impl Side {
 
     /// The ruleset the side plays by: its own, else the content's stock.
     pub fn ruleset_or_stock(&self, content: &Content) -> Option<RulesetHandle> {
@@ -216,7 +241,7 @@ impl Match {
         RoundSetup {
             content: content.hash(),
             settings,
-            navi_stats: [self.sides[0].round_stats(), self.sides[1].round_stats()],
+            navi_stats: [self.sides[0].round_stats(content), self.sides[1].round_stats(content)],
             rng: seed,
             local_side: 0,
             score: SetScore::default(),

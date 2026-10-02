@@ -12,12 +12,13 @@ use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
 use nettai_battle::custom::{BattleFolder, FolderChip};
 use nettai_battle::hand::ChipHand;
+use nettai_battle::navicust::{NaviCust, PlacedProgram};
 use nettai_battle::patch_cards::{InstalledCard, PatchCards};
 use nettai_battle::setup::{
     BattleSettings, GaugeSpeed, NaviCustBugs, NaviStats, NaviWeapons, SpTimes, Stage, Supports,
 };
 use nettai_battle::transform::TransformRequest;
-use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle, RecordHandle, StageHandle, WeaponHandle};
+use nettai_content_api::{ChipHandle, FormHandle, NaviCustProgramHandle, NaviHandle, PatchCardHandle, RecordHandle, StageHandle, WeaponHandle};
 
 // ---- Numbers and handles ----------------------------------------------------------
 
@@ -205,6 +206,33 @@ impl<'a> Ids<'a> {
             .map(|(k, _)| k.as_str())
             .unwrap_or_else(|| panic!("patch-cards.toml has no patch card {number}"));
         self.content.defs.patch_card_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
+    }
+
+    /// The NaviCust program a part id names (its number, `id >> 2`) and its
+    /// colour (the variant, `id & 3`, the definition's colour in that
+    /// place); none for 0, no part.
+    pub fn navicust_part(&self, id: u8) -> Option<(NaviCustProgramHandle, u8)> {
+        if id == 0 {
+            return None;
+        }
+        let number = id >> 2;
+        let key = self
+            .compat
+            .navicust
+            .programs
+            .iter()
+            .find(|(_, n)| **n == number)
+            .map(|(k, _)| k.as_str())
+            .unwrap_or_else(|| panic!("navicust.toml has no program {number} (part id {id:#x})"));
+        let h = self.content.defs.navicust_program_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content has no NaviCust program {key:?}"));
+        Some((h, id & 3))
+    }
+
+    /// A placed program's part id.
+    pub fn navicust_part_id(&self, program: NaviCustProgramHandle, color: u8) -> u8 {
+        let key = self.key(&self.content.defs.navicust_program(program).key);
+        let n = self.compat.navicust.programs.get(key).unwrap_or_else(|| panic!("navicust.toml has no {key:?}"));
+        n * 4 + color
     }
 
     /// A patch card's number.
@@ -427,6 +455,23 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
 pub fn patch_cards(list: &[u8], ids: &Ids) -> Result<PatchCards, String> {
     let cards: Vec<InstalledCard> = list.iter().map(|&b| InstalledCard { card: ids.patch_card(b & 0x7F), enabled: b & 0x80 == 0 }).collect();
     PatchCards::new(&cards)
+}
+
+// ---- The NaviCust -------------------------------------------------------------------
+
+/// A save's NaviCust (BN6: the list at 0x02004190, 0x31 parts of 8 bytes:
+/// +0 the part id, +3 the centre's column, +4 its row, +5 the quarter turns
+/// clockwise), on a board with `expansions` (key item 0x71's count); a part
+/// is compressed when `compressed` says so of its part id (event flag 0x2660
+/// + the id, which `sub_813B7A0` reads). The list's empty entries (id 0)
+/// are left out, the others kept in order.
+pub fn navicust(list: &[u8], expansions: u8, compressed: impl Fn(u8) -> bool, ids: &Ids) -> Result<NaviCust, String> {
+    let mut parts = Vec::new();
+    for e in list.chunks_exact(8) {
+        let Some((program, color)) = ids.navicust_part(e[0]) else { continue };
+        parts.push(PlacedProgram { program, color, x: e[3], y: e[4], rotation: e[5], compressed: compressed(e[0]) });
+    }
+    NaviCust::new(&parts, expansions)
 }
 
 // ---- Folders, hands, transformations ---------------------------------------------
