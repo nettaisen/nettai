@@ -1037,3 +1037,15 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
   with two packs are byte for byte the same.
 - **Not done**: the editor's chip pictures (`nettai-editor` `pictures.rs`) still load one pack (nettai-assets'
   API did not change); a BN5 pack's own HUD and custom screen formats come with BN5's extraction.
+- **The frontend audit is a gate** (verify's `tools/audit-against.sh`, in `checks-against.sh` and the brief's full
+  set): every golden trace and the custom screen's lab scenarios drawn and played, 0 problems. Nothing else in the
+  full set draws a frame, which is how the chip art lookup broke unseen.
+- **Gates** (R3b on main 1c0a3634): the build without warnings, 458 tests, the content check (833 modules),
+  gen-content check 0 errors, machgun 1074/1331 and soundmod 21962/14933/20436 with 96 rollback rows and the 189
+  legacy rounds, the lab 6521/6521 (5,756,487 frames) with 0 sound rounds differing; the audit 72 traces (635,424
+  frames), 0 problems. After main 42560ed5 (BN5's port, and main's own chip art fix, whose lines R3b's replace):
+  the build without warnings, 459 tests, the audit again 0 problems. Frames against main's frontend (`--text
+  original`, verify's `identity.sh`, the sample and custom-screen lists with machgun and crossdivide): 154
+  scenarios identical (183,877 frames), 22 differ, each by one of two more R1 regressions this fixes, both compat
+  lookups by the qualified key: a Program Advance pick's code beside its name (`Cannon A`), and a link navi's
+  emblem on the custom screen (MegaMan's before).
