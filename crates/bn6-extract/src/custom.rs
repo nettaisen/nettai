@@ -69,6 +69,8 @@ const CURSOR: (u32, usize) = (0x086E_55BC, 0x40);
 /// The Cross window's cursor (`off_802A744`'s fourth block, to sprite tile
 /// 0x392).
 const CROSS_CURSOR: (u32, usize) = (0x086E_57FC, 0x80);
+/// Sprite palette 14, which the battle loads (`byte_86A5D40`).
+const CROSS_CURSOR_PALETTE: u32 = 0x086A_5D40;
 const EMBLEM_PALETTES: (u32, usize) = (0x086E_56FC, 7);
 const EMBLEM_OF: u32 = 0x0802_819C;
 const EMBLEM_PALETTE_OF: u32 = 0x0802_818C;
@@ -215,6 +217,7 @@ pub fn custom(rom: &Rom, gregar: Option<&Rom>, names: &AssetNames) -> CustomScre
         versioned,
         cursor: tiles(rom, CURSOR),
         cross_cursor: tiles(rom, CROSS_CURSOR),
+        cross_cursor_palette: palette(rom, CROSS_CURSOR_PALETTE),
         emblem_palettes: palettes(EMBLEM_PALETTES),
         emblem_of: rom.bytes(EMBLEM_OF, LINK_NAVIS).to_vec(),
         emblem_palette_of: rom.bytes(EMBLEM_PALETTE_OF, LINK_NAVIS).to_vec(),

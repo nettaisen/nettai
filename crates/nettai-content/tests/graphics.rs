@@ -179,6 +179,7 @@ fn custom() -> CustomScreen {
         versioned: Versioned { base: own(63), versions: vec![("gregar".into(), own(90))] },
         cursor: tiles(2, 78),
         cross_cursor: tiles(4, 84),
+        cross_cursor_palette: palette(85),
         emblem_palettes: vec![palette(80), palette(81)],
         emblem_of: vec![0, 1, 1],
         emblem_palette_of: vec![1, 0, 0],
