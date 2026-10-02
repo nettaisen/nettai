@@ -55,7 +55,7 @@ impl<'a> Renderer<'a> {
     pub fn view(b: &Battle) -> View {
         let local = b.setup.local_side;
         let (x, y) = b.consoles[local as usize & 1].camera.jitter;
-        let fade = crate::custom::fade(b).unwrap_or_default();
+        let fade = crate::custom::object_fade(b).unwrap_or_default();
         View { camera: (x, y + crate::custom::camera_y(b), 0), mirror: local & 1 == 1, fade }
     }
 
@@ -106,7 +106,7 @@ impl<'a> Renderer<'a> {
             None if transform != Fade::None => transform,
             None => custom_hud,
         };
-        let sprites = if flash == Some(1) { Fade::White(16) } else { Fade::None };
+        let sprites = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b).unwrap_or_default() };
         let fades = Fades { stage, hud, sprites, screen: screen_fade(b) };
         compose::compose(backdrop, &[&self.names, &self.hud, &self.field, &self.background], &parts, fades)
     }

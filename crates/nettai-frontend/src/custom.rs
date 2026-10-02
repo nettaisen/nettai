@@ -19,7 +19,7 @@ use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles
 use nettai_battle::Battle;
 use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipClass, ChipFlags, DamageFormula};
-use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
+use nettai_battle::custom::screen::{CROSS_PUT_ON_TICK, HiddenStage, OK_SLOT, SPECIAL_SLOT};
 use nettai_battle::custom::{FolderChip, GameVersion, Phase, Screen, Side, SlotKind, SlotState};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
@@ -37,6 +37,12 @@ const DIGIT_TILE: u16 = 0xDB;
 const SLOT_TILE: u16 = 0xE1;
 const COLUMN_ICON_TILE: u16 = 0x125;
 const NAME_BAR_TILE: u16 = 0x1D6;
+/// The Crosses' names in the Cross window (9x2 each, `byte_8029DF8`).
+const CROSS_NAME_TILE: u16 = 0x139;
+const CROSS_NAME_TILES: usize = 18;
+/// The Cross window's maps: three opening steps, then the window with one
+/// to five Crosses.
+const CROSS_OPENING_MAPS: usize = 3;
 const LAYER_TILES: usize = 0x200;
 /// The window's background colours: what the original copies over cells
 /// the chip window leaves empty (`byte_802A6C0`, `byte_802A680`,
@@ -188,19 +194,33 @@ pub fn camera_y(b: &Battle) -> i32 {
 /// objects (`off_8006040`): Beast Out's darkens background palettes 0-13
 /// (the stage and the HUD layer) and sprite palettes 0-10 half way (modes
 /// 0x64 and 0x60); the Program Advance's and a dark chip's background
-/// palettes 0-8 and sprite palettes 0-9 (0x14 and 0x10, 0x54 and 0x50).
+/// palettes 0-8 and sprite palettes 0-9 (0x14 and 0x10, 0x54 and 0x50); a
+/// Cross's choice whitens every palette (4, and 0 back).
 pub fn fade(b: &Battle) -> Option<Fade> {
     let (_, s) = local(b)?;
     let f = s.look.fade;
-    let shown = match f.mode {
-        FadeMode::BeastOut | FadeMode::ProgramAdvance | FadeMode::DarkChip => true,
+    let (shown, white) = match f.mode {
+        FadeMode::BeastOut | FadeMode::ProgramAdvance | FadeMode::DarkChip => (true, false),
         // Back toward clear: once it gets there the original takes the
         // palettes' transform off.
-        FadeMode::BeastOutBack | FadeMode::ProgramAdvanceBack | FadeMode::DarkChipBack => f.active,
-        _ => false,
+        FadeMode::BeastOutBack | FadeMode::ProgramAdvanceBack | FadeMode::DarkChipBack => (f.active, false),
+        FadeMode::EndToWhite => (true, true),
+        FadeMode::IntroFromWhite => (f.active, true),
+        _ => (false, false),
     };
     let n = (f.level >> 4).min(16) as u8;
-    (shown && n > 0).then_some(Fade::Black(n))
+    (shown && n > 0).then_some(if white { Fade::White(n) } else { Fade::Black(n) })
+}
+
+/// The battle's objects' share of the screen's fade (a white fade is every
+/// sprite's: `sprite_fade`).
+pub fn object_fade(b: &Battle) -> Option<Fade> {
+    fade(b).filter(|f| !matches!(f, Fade::White(_)))
+}
+
+/// The screen's fade of every sprite palette: a Cross's choice's white.
+pub fn sprite_fade(b: &Battle) -> Option<Fade> {
+    fade(b).filter(|f| matches!(f, Fade::White(_)))
 }
 
 /// The second fade record's, which only a dark chip's hover runs (modes
@@ -218,12 +238,12 @@ pub fn window_fade(b: &Battle) -> Option<Fade> {
     (shown && n > 0).then_some(Fade::Black(n))
 }
 
-/// The HUD layer's fade: Beast Out's (its palettes are among the first
-/// record's), else the second record's.
+/// The HUD layer's fade: Beast Out's and a Cross's (its palettes are among
+/// the first record's), else the second record's.
 pub fn hud_fade(b: &Battle) -> Option<Fade> {
     let (_, s) = local(b)?;
     match s.look.fade.mode {
-        FadeMode::BeastOut | FadeMode::BeastOutBack => fade(b),
+        FadeMode::BeastOut | FadeMode::BeastOutBack | FadeMode::EndToWhite | FadeMode::IntroFromWhite => fade(b),
         _ => window_fade(b),
     }
 }
@@ -334,19 +354,41 @@ fn state_number(s: SlotState) -> usize {
     }
 }
 
+/// The Cross window's map the screen shows, if it shows one: its opening
+/// steps every 3 ticks (`sub_8027834`), then the window with its Crosses,
+/// until it closes (`sub_802790C`, 5 ticks) or the Cross chosen is put on
+/// (`sub_8027AAE`).
+fn cross_map(s: &Screen) -> Option<usize> {
+    let full = CROSS_OPENING_MAPS + s.crosses.count.max(1) as usize - 1;
+    match s.phase {
+        Phase::CrossWindowOpening { tick } if tick >= 3 => Some(tick as usize / 3 - 1),
+        Phase::CrossWindow { .. } | Phase::Description { from_cross_window: true, .. } | Phase::CrossWindowClosing { .. } => {
+            Some(full)
+        }
+        Phase::CrossChosen { tick } if tick < CROSS_PUT_ON_TICK => Some(full),
+        _ => None,
+    }
+}
+
 impl Window {
     fn build(v: &View, problems: &mut Problems) -> Window {
         let a = v.assets;
         let mut w = Window { map: [MapEntry::default(); COLUMNS * ROWS], tiles: LayerTiles::new(), palettes: [[0; 16]; 16] };
-        // sub_8026840: the window's map, with the Cross tab or without.
-        if let Some(m) = a.window_maps.get(v.screen.look.cross_tab as usize) {
+        // sub_8026840: the window's map, with the Cross tab or without; or
+        // the Cross window's.
+        let cross = cross_map(v.screen);
+        let (map, patches) = match cross {
+            Some(i) => (a.cross_maps.get(i), &a.cross_patches),
+            None => (a.window_maps.get(v.screen.look.cross_tab as usize), &a.window_patches),
+        };
+        if let Some(m) = map {
             for (cell, e) in w.map.iter_mut().zip(m) {
                 *cell = *e;
             }
         }
         // Its patches, numbered on from their first tile.
-        let mut tile = a.window_patches.first_tile;
-        for p in &a.window_patches.patches {
+        let mut tile = patches.first_tile;
+        for p in &patches.patches {
             for j in 0..p.height as u16 {
                 for i in 0..p.width as u16 {
                     let n = if p.by_column { i * p.height as u16 + j } else { j * p.width as u16 + i };
@@ -369,11 +411,36 @@ impl Window {
         w.chip_window(v, problems);
         w.slots(v, problems);
         w.column(v, problems);
+        if cross.is_some_and(|i| i >= CROSS_OPENING_MAPS) {
+            w.cross_names(v);
+        }
         if v.screen.look.turn_limit {
             // sub_8029D34: "FINAL TURN", 7x2 at column 15, row 4 (past the
             // window's columns: drawn on the layer apart).
         }
         w
+    }
+
+    /// `sub_802794A`: the Crosses' names (`sub_8029D94`: the one under the
+    /// cursor in its own look) over the Cross window's map, and palette 10
+    /// the Cross under the cursor's (`sub_8029EAC`: a used one's darker).
+    fn cross_names(&mut self, v: &View) {
+        let w = &v.screen.crosses;
+        let own = v.own;
+        for slot in 0..w.count.min(5) as usize {
+            let name = w.offered[slot] as usize + if slot == w.cursor as usize { 0 } else { 5 };
+            let at = CROSS_NAME_TILE + (CROSS_NAME_TILES * slot) as u16;
+            self.tiles.put_part(at, &own.cross_names, CROSS_NAME_TILES * name, CROSS_NAME_TILES);
+            for i in 0..CROSS_NAME_TILES {
+                let (x, y) = (1 + i % 9, 1 + 2 * slot + i / 9);
+                self.map[y * COLUMNS + x] = MapEntry { tile: at + i as u16, hflip: false, vflip: false, palette: 10 };
+            }
+        }
+        let c = w.cursor as usize;
+        let index = w.offered[c] as usize + if w.marked[c] { 5 } else { 0 };
+        if let Some(p) = own.cross_palettes.get(index) {
+            self.palettes[10] = *p;
+        }
     }
 
     /// `sub_8028476`: the chip window shows what it was last drawn for: a
@@ -676,6 +743,35 @@ const BUTTON_CURSOR: CursorShape = CursorShape {
     ],
 };
 
+/// `sub_80289E4`: the Cross window's cursor, a box around the Cross under
+/// it: four corners, then seven edge pieces above and below (`byte_8028A30`:
+/// y, x, flips), in sprite palette 14.
+fn cross_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<'a>> {
+    let (x, y) = (5, 5 + 16 * v.screen.crosses.cursor as i32);
+    let corners = [(2, 3, false, false), (2, 0x43, true, false), (0xC, 0x43, true, true), (0xC, 3, false, true)];
+    let edges = (0..7).map(|i| (2, 0xB + 8 * i, false, false)).chain((0..7).map(|i| (0xC, 0xB + 8 * i, false, true)));
+    let pieces = corners.into_iter().map(|c| (c, 0)).chain(edges.map(|e| (e, 1)));
+    let palette = a.cross_cursor_palette;
+    pieces
+        .map(|((dy, dx, hflip, vflip), edge)| SpritePart {
+            x: ((x + dx) & 0x1FF) as u16,
+            y: (y + dy) as u8,
+            width: 8,
+            height: 8,
+            tiles: &a.cross_cursor,
+            first_tile: 2 * (frame as usize & 1) + edge,
+            hflip,
+            vflip,
+            palette,
+            priority: 1,
+            alpha: None,
+            mosaic: None,
+            vscale: None,
+            affine: None,
+        })
+        .collect()
+}
+
 fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<'a>> {
     let s = v.screen;
     let slot = s.cursor;
@@ -834,6 +930,9 @@ pub fn draw<'a>(
     }
     if drawn.regular {
         queue.push(regular_part(&v, a));
+    }
+    if let Some(frame) = drawn.cross_cursor {
+        queue.extend(cross_cursor_parts(&v, a, frame));
     }
     for part in queue {
         list.insert_at(SPRITE_LAYER, 0, vec![part]);

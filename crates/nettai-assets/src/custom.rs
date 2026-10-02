@@ -141,8 +141,10 @@ pub struct CustomScreen {
     /// The cursor's corner (two frames, 8x8 each).
     pub cursor: Tiles,
     /// The Cross window's cursor: its corner and its edge, in two frames
-    /// (8x8 each; `dword_86E57FC`, sprite tile 0x392).
+    /// (8x8 each; `dword_86E57FC`, sprite tile 0x392), and its palette
+    /// (sprite palette 14, the battle's).
     pub cross_cursor: Tiles,
+    pub cross_cursor_palette: Palette,
     /// The emblems' palettes (the cursor's too), and which emblem and
     /// palette a navi shows by its number.
     pub emblem_palettes: Vec<Palette>,
