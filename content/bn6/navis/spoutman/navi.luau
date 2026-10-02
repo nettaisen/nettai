@@ -18,6 +18,7 @@ return define.navi {
     mugshot = asset.mugshot("spoutman"),
     merge_height = 0,
     run_message = { 19, 5 },
+    run_message_text = "Don't run away now,\ndrip!",
     own_chip = { chip = spoutman, code = "A" },
     -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side

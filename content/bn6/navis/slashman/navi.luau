@@ -19,6 +19,7 @@ return define.navi {
     mugshot = asset.mugshot("slashman"),
     merge_height = 4,
     run_message = { 18, 15, 15 },
+    run_message_text = "Now's not the time\nto cut and run!\nKeep slashing!!",
     own_chip = { chip = slashman, code = "S" },
     chip_bonus = {
         family = "sword",

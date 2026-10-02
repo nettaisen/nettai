@@ -1414,8 +1414,11 @@ export type NaviDef = {
     mugshot: Mugshot?,
     -- Extra height of its image as it merges with MegaMan in a Cross.
     merge_height: number?,
-    -- The no-running message's lines (the characters in each).
+    -- The no-running message's lines (the characters in each, which time
+    -- its printing), and its words (presentation: what the chatbox shows,
+    -- a line break between lines; nothing the simulation reads).
     run_message: { number }?,
+    run_message_text: string?,
     -- A link navi's own chip, offered once a round.
     own_chip: { chip: Chip, code: string }?,
     -- Its damage bonus on its family's damaging chips, by its level.

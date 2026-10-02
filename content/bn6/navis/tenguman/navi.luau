@@ -19,6 +19,7 @@ return define.navi {
     mugshot = asset.mugshot("tenguman"),
     merge_height = -8,
     run_message = { 15, 7 },
+    run_message_text = "Don't turn your\nback...",
     own_chip = { chip = tenguman, code = "T" },
     chip_bonus = {
         family = "wind",

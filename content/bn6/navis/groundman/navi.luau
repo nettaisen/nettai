@@ -18,6 +18,7 @@ return define.navi {
     mugshot = asset.mugshot("groundman"),
     merge_height = 0,
     run_message = { 17, 20, 6 },
+    run_message_text = "Don't be a fool!!\nYou can't be runnin'\naway!!",
     own_chip = { chip = groundman, code = "G" },
     chip_bonus = {
         family = "break",
