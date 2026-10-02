@@ -192,6 +192,18 @@ pub enum FadeMode {
     TransformIn = 0x40,
     /// 0x44: the transformation sequencer's fade out.
     TransformOut = 0x44,
+    /// 0x10: the custom screen's Program Advance animation fades back in.
+    ProgramAdvanceBack = 0x10,
+    /// 0x14: ... and out, a quarter of the way.
+    ProgramAdvance = 0x14,
+    /// 0x50: the custom screen's cursor leaves a dark chip.
+    DarkChipBack = 0x50,
+    /// 0x54: the cursor rests on a dark chip: five sixteenths of the way.
+    DarkChip = 0x54,
+    /// 0x60: the custom screen's Beast Out fades back in.
+    BeastOutBack = 0x60,
+    /// 0x64: ... and out, half the way.
+    BeastOut = 0x64,
     /// 0x6C: battle mode 1's fade back in after a transformation.
     Mode1TransformIn = 0x6C,
     /// 0x70: battle mode 1's fade out for a transformation.
@@ -209,6 +221,10 @@ impl FadeMode {
             FadeMode::Dim => (true, 0x40),
             FadeMode::TransformIn | FadeMode::Mode1TransformIn => (false, 0),
             FadeMode::TransformOut | FadeMode::Mode1TransformOut => (true, 0x100),
+            FadeMode::ProgramAdvanceBack | FadeMode::DarkChipBack | FadeMode::BeastOutBack => (false, 0),
+            FadeMode::ProgramAdvance => (true, 0x40),
+            FadeMode::DarkChip => (true, 0x50),
+            FadeMode::BeastOut => (true, 0x80),
         }
     }
 }
@@ -219,7 +235,7 @@ impl FadeMode {
 /// (`subsystem_triggerTransition_800630A`). The level outlives a fade: the
 /// next one starts wherever the last one left it (a counter cut-in's dim
 /// starts from the dimmed screen and is done after one step).
-#[derive(Clone, Copy, Debug, Hash)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct Fade {
     /// +1: the running (or last) fade.
     pub mode: FadeMode,
@@ -367,6 +383,9 @@ pub struct Battle {
     /// The warning markers each console's HUD shows this tick
     /// (presentation only; left out of the digest).
     pub warnings: [Vec<crate::hud::Warning>; 2],
+    /// The HP numbers each console's HUD shows under objects, by place
+    /// (presentation only; left out of the digest).
+    pub hp_numbers: [[Option<crate::hud::HpNumber>; crate::hud::HpNumber::PLACES]; 2],
     pub paused: bool,
     pub inputs: [InputRecord; 2],
     pub hands: [ChipHand; 2],
@@ -634,6 +653,7 @@ impl Battle {
             chip_hud: Default::default(),
             message: None,
             warnings: Default::default(),
+            hp_numbers: [[None; crate::hud::HpNumber::PLACES]; 2],
             paused: false,
             inputs: [InputRecord::default(); 2],
             hands,
@@ -1791,6 +1811,42 @@ impl Battle {
         }
     }
 
+    /// `sub_801DC7C(dx, dy)`: `console`'s HUD (or both) numbers `r`'s HP
+    /// under it, `dx`, `dy` pixels from where it projects its position;
+    /// `damage`: the damage it took instead, uncentred (see
+    /// [`HpNumber`](crate::hud::HpNumber)). It takes the first free place;
+    /// it gets none when one before the first free place has it already or
+    /// when all four are taken. (A place freed before the one that has it
+    /// is taken anew: the original stops at the first free place.)
+    pub fn show_hp(&mut self, r: ObjectRef, dx: i8, dy: i8, damage: bool, console: Option<u8>) {
+        let hp = self.objects.get(r).hp;
+        for side in 0..2u8 {
+            if console.is_some_and(|c| c & 1 != side) {
+                continue;
+            }
+            for place in &mut self.hp_numbers[side as usize] {
+                match place {
+                    Some(n) if n.object == r => break,
+                    Some(_) => {}
+                    None => {
+                        *place = Some(crate::hud::HpNumber { object: r, dx, dy, hp, damage });
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    /// `sub_801DD34`: no more HP number for `r` (the first place that has
+    /// it, on each console).
+    pub fn hide_hp(&mut self, r: ObjectRef) {
+        for places in &mut self.hp_numbers {
+            if let Some(place) = places.iter_mut().find(|p| p.is_some_and(|n| n.object == r)) {
+                *place = None;
+            }
+        }
+    }
+
     /// `sub_801E270`: the HUD says `message` for a second.
     pub(crate) fn show_message(&mut self, message: crate::hud::Message) {
         self.message = Some(crate::hud::MessageLine { message, ticks: crate::hud::MessageLine::SHOWN_TICKS });
@@ -1813,6 +1869,21 @@ impl Battle {
     }
 
     fn run_hud_tasks(&mut self) {
+        // sub_801C168: an HP number whose object's HP is 0 frees its place.
+        // (An object freed with HP left would keep its place in the
+        // original, which goes on reading the freed slot; here the place
+        // goes with it. No netbattle object leaves so: LilBoiler takes its
+        // number away as it goes.)
+        for places in &mut self.hp_numbers {
+            for place in places.iter_mut() {
+                if place.is_some_and(|n| {
+                    let o = self.objects.get(n.object);
+                    o.hp == 0 || o.flags & crate::object::flags::ACTIVE == 0
+                }) {
+                    *place = None;
+                }
+            }
+        }
         if self.gauge.enabled {
             self.fill_gauge();
         }

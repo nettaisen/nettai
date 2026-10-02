@@ -116,7 +116,7 @@ fn follow(b: &mut Battle, r: ObjectRef) {
     }
     let status = vars(b, r);
     let alliance = b.objects.get(r).alliance;
-    let seen = crate::kinds::charge_glow::viewer_sees(b, alliance);
+    let seen = b.viewer_sees(alliance);
     let o = b.objects.get_mut(r);
     o.flags |= flags::VISIBLE;
     if !seen {

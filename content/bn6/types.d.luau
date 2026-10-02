@@ -149,8 +149,6 @@ export type ProjectileShot = {
 
 -- The state of VarSwrd's and NeoVari's actions (lib/swords/vari.luau).
 export type VariSwordState = {
-    -- Ticks left to enter a sequence (AIAttackVars+0x12).
-    countdown: number,
     -- The sequences as the navi faces: its direction flip.
     flip: number,
     -- How far into each sequence the navi is, in bytes (two per step).
@@ -309,7 +307,7 @@ export type FlashBombVariant = {
 -- debris it breaks into, the sound it breaks with, and its identity (what
 -- it is taken for: a rock, an ice block).
 export type RockVariant = {
-    -- Its key (`rockcube/cube`): stages name their rocks' variants.
+    -- Its key (`rockcube/rock/cube`): stages name their rocks' variants.
     id: string?,
     anim: number,
     hp: number,

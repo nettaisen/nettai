@@ -26,6 +26,12 @@ pub struct NaviData {
     /// The netbattle result banners.
     pub win_banner: BannerId,
     pub lose_banner: BannerId,
+    /// A link navi's face in the emotion window (`sub_801CC34`: a picture
+    /// of the link navis' own table, which the window shows in its second
+    /// palette in Full Synchro), the mugshot's number; none for MegaMan,
+    /// whose face is his form's. Presentation only.
+    #[serde(default)]
+    pub mugshot: Option<u8>,
     /// Extra height, in whole pixels, of the navi's image as it merges
     /// with MegaMan in a Cross.
     #[serde(default)]
@@ -229,6 +235,10 @@ pub struct FormData {
     /// and Beast Out's follow the mood).
     #[serde(default)]
     pub palette: u8,
+    /// Its faces in the emotion window (`sub_801E6A8`), by emotion.
+    /// Presentation only.
+    #[serde(default, deserialize_with = "faces")]
+    pub mugshot: Option<Faces>,
     /// The damage it adds to a family's damaging chips (`sub_800EF34`).
     #[serde(default)]
     pub chip_bonus: Option<FormChipBonus>,
@@ -289,6 +299,54 @@ pub struct FormData {
     /// Its identity (the base form has none of its own: the navi's).
     #[serde(skip)]
     pub identity: Option<IdentityHandle>,
+}
+
+/// A form's faces in the emotion window, by its navi's emotion
+/// (`sub_8015B54`): the mugshots' numbers. An emotion without a face of
+/// its own shows the normal one. (In BN6 the base form has MegaMan's five,
+/// a Cross a tired one besides, a Beast a Full Synchro one: `sub_801E6A8`
+/// adds 5 or 1 to `byte_801E700`'s picture.)
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Faces {
+    pub normal: u8,
+    #[serde(default)]
+    pub angry: Option<u8>,
+    #[serde(default)]
+    pub tired: Option<u8>,
+    #[serde(default)]
+    pub full_synchro: Option<u8>,
+    #[serde(default)]
+    pub worn_out: Option<u8>,
+}
+
+impl Faces {
+    /// The face for `emotion`.
+    pub fn of(&self, emotion: crate::kinds::player::Emotion) -> u8 {
+        use crate::kinds::player::Emotion;
+        let face = match emotion {
+            Emotion::Normal => None,
+            Emotion::Angry => self.angry,
+            Emotion::Tired => self.tired,
+            Emotion::FullSynchro => self.full_synchro,
+            Emotion::WornOut => self.worn_out,
+        };
+        face.unwrap_or(self.normal)
+    }
+}
+
+/// A form definition's `mugshot`: one face, or faces by emotion.
+fn faces<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Faces>, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Spec {
+        One(u8),
+        ByEmotion(Faces),
+    }
+    Ok(Option::<Spec>::deserialize(d)?.map(|s| match s {
+        Spec::One(normal) => Faces { normal, ..Faces::default() },
+        Spec::ByEmotion(f) => f,
+    }))
 }
 
 impl FormData {
@@ -490,11 +548,11 @@ pub(crate) fn read_navi(
 ) -> Result<NaviData, bn6_content_api::ContentError> {
     use serde_json::Value as Json;
     let err = |m: String| super::reader::err(d, m);
-    // (`mugshots` and `actions` are the frontend's and the content's own.)
+    // (`actions` are the content's own.)
     let mut o = super::reader::fields(
         d,
         r,
-        &["id", "identity", "banners", "own_chip", "actions", "mugshots", "weapons", "fresh", "cross_hp", "forms"],
+        &["id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "cross_hp", "forms"],
     )?;
     let banners = d.spec.field("banners");
     for (field, which) in [("win_banner", "win"), ("lose_banner", "lose")] {
@@ -514,13 +572,8 @@ pub(crate) fn read_form(
     r: &super::reader::SpecReader,
 ) -> Result<FormData, bn6_content_api::ContentError> {
     use serde_json::Value as Json;
-    // (`mugshot` is the frontend's; `buster_arm` the content's own: the
-    // arm a navi raises.)
-    let o = super::reader::fields(
-        d,
-        r,
-        &["id", "identity", "cross_of", "beast", "breaks_to", "mugshot", "weapons", "buster_arm"],
-    )?;
+    // (`buster_arm` is the content's own: the arm a navi raises.)
+    let o = super::reader::fields(d, r, &["id", "identity", "cross_of", "beast", "breaks_to", "weapons", "buster_arm"])?;
     let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
     if form.kind != FormKind::Base && form.game.is_none() {
         return Err(super::reader::err(d, "a form that is not the base form says whose `game` it is (gregar, falzar)"));
@@ -577,5 +630,28 @@ pub(crate) fn read_cross_hp(d: &bn6_content_api::Definition) -> Result<Option<[u
             _ => Err(what()),
         },
         _ => Err(what()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::kinds::player::Emotion;
+
+    #[test]
+    fn a_form_shows_its_face_for_an_emotion_or_its_normal_one() {
+        #[derive(Deserialize)]
+        struct Form {
+            #[serde(default, deserialize_with = "faces")]
+            mugshot: Option<Faces>,
+        }
+        let read = |json: &str| serde_json::from_str::<Form>(json).unwrap().mugshot;
+        // One face, whatever the emotion.
+        let one = read(r#"{ "mugshot": 15 }"#).unwrap();
+        assert_eq!([Emotion::Normal, Emotion::Tired, Emotion::FullSynchro].map(|e| one.of(e)), [15; 3]);
+        // A Cross's: its own, and a tired one.
+        let cross = read(r#"{ "mugshot": { "normal": 5, "tired": 10 } }"#).unwrap();
+        assert_eq!([Emotion::Normal, Emotion::Angry, Emotion::Tired].map(|e| cross.of(e)), [5, 5, 10]);
+        assert_eq!(read("{}"), None);
     }
 }

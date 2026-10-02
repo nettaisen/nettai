@@ -30,7 +30,7 @@ local BURST, WAIT = 0, 4
 local STATUS = statuses.paralyze_90
 local HIT = { is = collision.attack, hits = collision.hits_navis }
 -- The explosions (effect 0x3D), and how high.
-local EXPLOSION = define.effect { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
+local EXPLOSION = define.effect { sprite = asset.sprite("pink-flash"), anim = 0, palette = 2 }
 local EXPLOSION_Z = 0xA_0000
 -- Ticks between bursts, less one.
 local GAP = 8

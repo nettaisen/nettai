@@ -78,8 +78,10 @@ local ERUPTING_OR_DESTROYED, SET = 2, 9
 -- The eruption's phases.
 local STEAM, RISE, BURST, DONE = 0x0, 0x4, 0x8, 0xC
 
--- (The HP display it shows while set down, `sub_801DC7C(-16, 3)`, and
--- turns off as it goes, `sub_801DD34`, is drawn only.)
+-- Its HP number on the HUD (`sub_801DC7C(-16, 3)`): the damage it took,
+-- which it erupts with. Drawn only; it goes as LilBoiler does
+-- (`sub_801DD34`).
+local HP_NUMBER: HpNumberSpec = { dx = -16, dy = 3, damage = true }
 
 -- Gone from the field's bookkeeping, and freed at the next update.
 local function finish(me: Object)
@@ -87,6 +89,7 @@ local function finish(me: Object)
     obstacle.unregister(me)
     me:unreserve_panel(me.future_panel_x, me.future_panel_y)
     me:set_lifecycle("destroy")
+    battle.hide_hp(me)
 end
 
 -- `sub_80D77D4` (actions 0 and 8): fly to the target panel; land on it,
@@ -123,6 +126,7 @@ local function fly(me: Object)
     me:set_coordinates_from_panel()
     local p = me.pos
     rising_bubble.spawn(Vec3.new(p.x, p.y, 0), 0)
+    battle.hide_hp(me)
     me.collision:set_region(nil)
     obstacle.unregister(me)
     obstacle.release_tracking(me)
@@ -250,6 +254,7 @@ local function erupt(me: Object)
             me:unreserve_panel(me.future_panel_x, me.future_panel_y)
             me.visible = false
             me:set_lifecycle("destroy")
+            battle.hide_hp(me)
         else
             error(string.format("LilBoiler eruption phase %#x reads past off_80D794C", phase))
         end
@@ -257,8 +262,10 @@ local function erupt(me: Object)
     me.timer = bit32.bor(me.timer, 0x20)
 end
 
--- `sub_80D787C`: erupting, or (the battle over, or not erupting) leaving.
+-- `sub_80D787C`: its HP number goes; erupting, or (the battle over, or
+-- not erupting) leaving.
 local function erupting_or_destroyed(me: Object)
+    battle.hide_hp(me)
     if battle.over() or not (me.state :: State).erupting then
         destroyed(me)
     else
@@ -395,6 +402,7 @@ local function init(me: Object)
     me.collision:set_region(nil)
     me.collision:set_hit_effect(sparks.breaking)
     me.collision:present()
+    battle.show_hp(me, HP_NUMBER)
     me.lifecycle = "update"
     tick(me)
 end

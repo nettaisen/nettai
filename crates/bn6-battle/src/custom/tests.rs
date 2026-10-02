@@ -66,6 +66,7 @@ impl Player {
             turn: 1,
             per_player_gauges: false,
             random_battle: false,
+            late_turns: false,
             now: self.tick,
             link_delay: 4,
         }

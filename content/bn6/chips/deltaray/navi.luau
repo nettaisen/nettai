@@ -49,14 +49,14 @@ local deltaray = {}
 
 local SPRITE = asset.sprite("protoman")
 local SOUND_APPEAR = asset.sound("appear")
-local SOUND_COPY_MARK = asset.sound("copy-mark")
+local SOUND_COPY_MARK = asset.sound("mark")
 local SOUND_DELTA_RAY_2 = asset.sound("delta-ray-2")
-local SOUND_LOG_IN_77 = asset.sound("log-in-77")
+local SOUND_LOG_IN_77 = asset.sound("log-in")
 
 -- The flash above him as he arrives (effect 0x03), and the mark on his
 -- target (effect 0x28).
 local FLASH = define.effect { sprite = asset.sprite("deletion"), anim = 0, palette = 0 }
-local MARK = define.effect { sprite = asset.sprite("copy-mark"), anim = 11, palette = 1 }
+local MARK = define.effect { sprite = asset.sprite("hit-sparks"), anim = 11, palette = 1 }
 
 -- What he looks for (by side, `off_80C2F2C`: an enemy navi's body), and a
 -- panel he can stand on: solid, and none of these (by side).

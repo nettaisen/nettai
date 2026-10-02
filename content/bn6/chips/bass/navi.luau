@@ -44,7 +44,7 @@ local ANY_PANEL = 0x1_0000
 local SHOT: PanelStrike = { warning = 0x14, hit_mod = 3, solid_only = true }
 local SHOT_COOLDOWN = 0x16
 -- A shot's flash at his hand (effect 0x57).
-local FLASH = define.effect { sprite = asset.sprite("copy-mark"), anim = 8, palette = 0 }
+local FLASH = define.effect { sprite = asset.sprite("hit-sparks"), anim = 8, palette = 0 }
 
 local function damage_word(me: Object): number
     return bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
