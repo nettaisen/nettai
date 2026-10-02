@@ -83,6 +83,9 @@ pub struct CustomDoc {
     pub emblem_of: Vec<u8>,
     pub emblem_palette_of: Vec<u8>,
     pub regular: TileImage,
+    /// The Program Advance animation's names' first four colours, the sets
+    /// it steps through.
+    pub advance_name_colours: Vec<Vec<String>>,
 }
 
 /// A version's own pictures: Beast Out's picture with its palettes, the
@@ -263,6 +266,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         emblem_of: c.emblem_of.clone(),
         emblem_palette_of: c.emblem_palette_of.clone(),
         regular,
+        advance_name_colours: c.advance_name_colours.iter().map(|s| s.iter().map(|&c| tiles::colour_text(c)).collect()).collect(),
     };
     files.push(("custom.json".into(), json_lines(&doc)));
     files
@@ -363,5 +367,15 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         emblem_of: doc.emblem_of.clone(),
         emblem_palette_of: doc.emblem_palette_of.clone(),
         regular: img(&doc.regular, report)?.0,
+        advance_name_colours: doc
+            .advance_name_colours
+            .iter()
+            .map(|set| {
+                if set.len() != 4 {
+                    report.error(&name, format!("a set of the Program Advance names' colours has 4 colours, not {}", set.len()));
+                }
+                std::array::from_fn(|k| set.get(k).and_then(|c| tiles::parse_colour(c).ok()).map_or(0, |(c, _)| c))
+            })
+            .collect(),
     })
 }
