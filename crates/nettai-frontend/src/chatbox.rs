@@ -5,8 +5,9 @@
 //!
 //! How far the chatbox has got is the engine's (`custom::chatbox`: the
 //! box's opening step, the characters printed, the portrait's face and
-//! tint, the arrow); the words are the content's (a chip's or a Cross's
-//! `description`, a navi's `run_message`), drawn in the dialogue font.
+//! tint, the arrow); the text is the content's strings (a chip's or a
+//! Cross's `description`, a navi's `run_message`, in the player's
+//! language), drawn in the dialogue font.
 //! docs/frontend.md §3.
 
 use crate::audit::Problems;
@@ -57,7 +58,7 @@ pub struct Shown<'a> {
     kind: usize,
     text: Tiles,
     /// In the font text mode, the lines for the text layer (their sprites'
-    /// tiles are blank): each line's words and the units of it printed.
+    /// tiles are blank): each line's text and the units of it printed.
     lines: Option<Vec<(String, usize)>>,
     portrait: Option<(&'a SpriteSheet, PortraitLook)>,
 }
@@ -70,21 +71,21 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &m
     // (`DisplayText`); a translation prints in step with the content's
     // own, whose lines and characters the chatbox's timing counts
     // (`shown`).
-    let words = &sink.strings;
+    let strings = &sink.strings;
     let (chatbox, said, portrait) = match screen.phase {
         Phase::Description { from_cross_window: false, chatbox } => {
             // The chip under the cursor as the screen checked it (the chip
             // window's).
-            let said = screen.look.chip_window.last_chip.and_then(|c| words.chip_description(b, c.id));
+            let said = screen.look.chip_window.last_chip.and_then(|c| strings.chip_description(b, c.id));
             (chatbox, said, None)
         }
         Phase::Description { from_cross_window: true, chatbox } => {
             let w = &screen.crosses;
             let form = b.content.cross_form(navi, side.unlocks.version, w.offered[w.cursor as usize]);
-            (chatbox, form.and_then(|f| words.form_description(b, f)), None)
+            (chatbox, form.and_then(|f| strings.form_description(b, f)), None)
         }
         Phase::RunMessage { chatbox: Some(chatbox) } => {
-            (chatbox, words.run_message(b, navi), b.content.navi(navi).run_message.portrait)
+            (chatbox, strings.run_message(b, navi), b.content.navi(navi).run_message.portrait)
         }
         _ => return None,
     };
@@ -98,11 +99,11 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &m
         Script::Description { .. } => DESCRIPTION_BOX,
         Script::RunMessage { .. } => MESSAGE_BOX,
     };
-    let words = said.map_or("", |s| s.text);
-    let (text, lines) = if sink.takes(words) {
-        (Tiles { pixels: vec![0; TEXT_WIDTH * TEXT_ROWS] }, Some(printed(&chatbox, words, translated)))
+    let string = said.map_or("", |s| s.text);
+    let (text, lines) = if sink.takes(string) {
+        (Tiles { pixels: vec![0; TEXT_WIDTH * TEXT_ROWS] }, Some(printed(&chatbox, string, translated)))
     } else {
-        (text_tiles(assets, &chatbox, words, translated, problems), None)
+        (text_tiles(assets, &chatbox, string, translated, problems), None)
     };
     let portrait = match (portrait, chatbox.look().portrait) {
         (Some(id), Some(look)) => match assets.sprite(id.category, id.index) {
@@ -122,8 +123,8 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &m
 
 /// The lines printed so far, each with the units of it shown (as
 /// `text_tiles` composes them).
-fn printed(chatbox: &Chatbox, words: &str, translated: bool) -> Vec<(String, usize)> {
-    let lines: Vec<&str> = words.split('\n').take(3).collect();
+fn printed(chatbox: &Chatbox, string: &str, translated: bool) -> Vec<(String, usize)> {
+    let lines: Vec<&str> = string.split('\n').take(3).collect();
     let units: Vec<usize> = lines.iter().map(|l| crate::vfont::unit_count(l)).collect();
     lines.into_iter().zip(shown(chatbox, &units, translated)).filter(|&(_, n)| n > 0).map(|(l, n)| (l.to_string(), n)).collect()
 }
@@ -132,7 +133,7 @@ fn printed(chatbox: &Chatbox, words: &str, translated: bool) -> Vec<(String, usi
 /// done whole, the one printing up to the characters printed. A
 /// translation (whose lines and lengths aren't the content's, which the
 /// chatbox counts) shows as far through it as the chatbox is through the
-/// content's words: a description's whole lines in the proportion of the
+/// content's own string: a description's whole lines in the proportion of the
 /// content's lines printed; a message's characters in the proportion of
 /// the content's characters printed, so it ends printing when the
 /// content's would.
@@ -175,11 +176,11 @@ pub fn shown(chatbox: &Chatbox, units: &[usize], translated: bool) -> Vec<usize>
 /// The text's sprite tiles: the lines printed so far composed into the
 /// line buffer's image, cut into the eighteen sprites' tiles (each
 /// sprite's row by row).
-fn text_tiles(assets: &Bundle, chatbox: &Chatbox, words: &str, translated: bool, problems: &mut Problems) -> Tiles {
+fn text_tiles(assets: &Bundle, chatbox: &Chatbox, string: &str, translated: bool, problems: &mut Problems) -> Tiles {
     let font = &assets.hud.dialogue_font;
     let mut image = vec![0u8; TEXT_WIDTH * TEXT_ROWS];
     if chatbox.look().text.is_some() {
-        let lines: Vec<Vec<u16>> = words
+        let lines: Vec<Vec<u16>> = string
             .split('\n')
             .take(3)
             .map(|line| {

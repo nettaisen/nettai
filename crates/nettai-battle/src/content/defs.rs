@@ -475,10 +475,10 @@ fn slot(d: &Definition, path: &str) -> Result<FnSource, ContentError> {
     }
 }
 
-/// A definition holds no display text: its words (a name, a description,
+/// A definition holds no display text: its strings (a name, a description,
 /// a message) are the content root's `locales/<lang>.toml`, by its key
-/// (`words`), and a field that gives them is refused.
-pub(crate) fn no_words(d: &Definition) -> Result<(), ContentError> {
+/// (`strings`), and a field that gives them is refused.
+pub(crate) fn no_display_text(d: &Definition) -> Result<(), ContentError> {
     for field in ["name", "description", "description_lines"] {
         if !d.spec.field(field).is_nil() {
             return Err(ContentError::new(format!(
@@ -501,7 +501,7 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
     let spec = &d.spec;
     let json = |field: &str| -> Result<Json, ContentError> { r.json(spec.field(field), &format!("chip {}.{field}", d.key)).map_err(what) };
     let mut o = Map::new();
-    no_words(d)?;
+    no_display_text(d)?;
     // (The custom screen draws the chip's picture with it.)
     match json("art_palette")? {
         Json::Null => {}
@@ -848,7 +848,7 @@ impl Defs {
         let mut weapons = Vec::with_capacity(weapon_defs.len());
         for d in &weapon_defs {
             let what = |e: String| ContentError::new(format!("{}.luau: weapon {}: {e}", d.module, d.key));
-            no_words(d)?;
+            no_display_text(d)?;
             let charge_ticks: Vec<u16> = match d.spec.field("charge_ticks") {
                 Data::List(items) => items
                     .iter()

@@ -1,6 +1,6 @@
-# English: the content's own words, by definition key (docs/design/text-rendering.md §10). A definition
-# holds no display text; its words are here, and another language's in that language's table. These are
-# also the words the battle counts: a description's lines and a no-running message's characters per line
+# English: the content's own strings, by definition key (docs/design/text-rendering.md §10). A definition
+# holds no display text; its strings are here, and another language's in that language's table. These are
+# also the strings the battle counts: a description's lines and a no-running message's characters per line
 # time the custom screen's chatbox, and the define phase counts them into the records (which the content's
 # hash covers). gen-content checks them against the US ROMs (the chips', the Crosses' and the navis'); the
 # names of the chips the US release cut (Count, Django...), the three Giga chips' descriptions (a gift's
