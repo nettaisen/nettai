@@ -1,0 +1,16 @@
+[package]
+name = "nettai-netplay"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Rollback netplay for the battle engine on getgud, with a simulated network for testing"
+
+[dependencies]
+nettai-battle.workspace = true
+getgud.workspace = true
+
+[dev-dependencies]
+nettai-battle = { workspace = true, features = ["test-content"] }
+# rollback_cost loads the BN6 content pack and replays a golden trace.
+nettai-content = { path = "../nettai-content" }
+bn6-compat = { workspace = true, features = ["trace"] }

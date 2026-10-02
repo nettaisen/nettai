@@ -1,0 +1,22 @@
+[package]
+name = "nettai-frontend"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Draws battles of the native BN6 engine: replays golden traces or plays live"
+
+[dependencies]
+nettai-battle = { path = "../nettai-battle" }
+# Trace playback, and the live driver's setup records.
+bn6-compat = { workspace = true, features = ["trace"] }
+nettai-assets = { path = "../nettai-assets" }
+nettai-audio = { path = "../nettai-audio" }
+nettai-content = { path = "../nettai-content" }
+# The handles the engine names content by (a chip in a hand).
+nettai-content-api = { path = "../nettai-content-api" }
+m4a.workspace = true
+minifb = "0.28"
+png = "0.17"
+
+[dev-dependencies]
+nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
