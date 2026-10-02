@@ -311,6 +311,7 @@ by the binding.
 
 | Hook | Called | BN6 does |
 |---|---|---|
+| `round_setup(side)` | once per side as the round is set up (`Battle::new`), before anything reads the side's stats, which it may change | the patch cards (rules/patch-cards: added with them, docs/design/patch-cards.md §3) |
 | `round_start(side)` | once per side, after the navis spawn | reads its setup into state (the Beast Out counter, the Crosses owned) |
 | `turn_check(side, request) -> busy?` | at the sequencer's check (`sub_801486C`), per side | Beast Out runs out (`sub_80159C6`) |
 | `turn_started(side)` | after the sequencer, at the turn's start (`sub_800840C`'s end) | a turn in Beast Out spends one (`sub_8015A38`) |

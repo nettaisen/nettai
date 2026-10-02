@@ -16,7 +16,7 @@ use nettai_battle::setup::{
     BattleSettings, GaugeSpeed, NaviCustBugs, NaviStats, NaviWeapons, SpTimes, Stage, Supports,
 };
 use nettai_battle::transform::TransformRequest;
-use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, RecordHandle, StageHandle, WeaponHandle};
+use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, RecordHandle, Registry, StageHandle, Value, WeaponHandle};
 
 // ---- Numbers and handles ----------------------------------------------------------
 
@@ -147,6 +147,50 @@ impl<'a> Ids<'a> {
         Some(h)
     }
 
+    /// The patch card a save's card list names by its number (compat
+    /// records.toml's `patch_cards`).
+    pub fn patch_card(&self, number: u8) -> RecordHandle {
+        let key = self
+            .compat
+            .records
+            .patch_cards
+            .iter()
+            .find(|(_, n)| **n == number)
+            .map(|(k, _)| k.as_str())
+            .unwrap_or_else(|| panic!("records.toml has no patch card {number}"));
+        self.content.defs.record(key).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
+    }
+
+    /// A patch card's number.
+    pub fn patch_card_number(&self, h: RecordHandle) -> u8 {
+        let key = &self.content.defs.records[h.index()].key;
+        *self.compat.records.patch_cards.get(key).unwrap_or_else(|| panic!("records.toml has no patch card {key:?}"))
+    }
+
+    /// The barrier a first-barrier byte names (NaviStats+0x06, the
+    /// barrier type `sub_801A7CC` takes); none for 0.
+    pub fn barrier(&self, ty: u8) -> Option<RecordHandle> {
+        if ty == 0 {
+            return None;
+        }
+        let key = self
+            .compat
+            .records
+            .barriers
+            .iter()
+            .find(|(_, n)| **n == ty)
+            .map(|(k, _)| k.as_str())
+            .unwrap_or_else(|| panic!("records.toml has no barrier type {ty:#x}"));
+        Some(self.content.defs.record(key).unwrap_or_else(|| panic!("the content has no barrier {key:?} (type {ty:#x})")))
+    }
+
+    /// A first-barrier byte; 0 for none.
+    pub fn barrier_type(&self, r: Option<RecordHandle>) -> u8 {
+        let Some(r) = r else { return 0 };
+        let key = &self.content.defs.records[r.index()].key;
+        *self.compat.records.barriers.get(key).unwrap_or_else(|| panic!("records.toml has no barrier {key:?}"))
+    }
+
     /// A shot program's byte; 0 for none.
     pub fn shot_program_number(&self, r: Option<RecordHandle>) -> u8 {
         let Some(r) = r else { return 0 };
@@ -186,7 +230,7 @@ pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
         attack: b[0x01],
         rapid: b[0x02],
         charge: b[0x03],
-        first_barrier: b[0x06],
+        first_barrier: ids.barrier(b[0x06]),
         gauge_speed: match b[0x08] {
             0 => GaugeSpeed::Normal,
             1 => GaugeSpeed::Fast,
@@ -212,6 +256,8 @@ pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
         version: b[0x20],
         beast_out_counter: b[0x21],
         sun: flag(0x22),
+        chip_drops: b[0x26],
+        encounters: b[0x28],
         navi: ids.navi(b[0x29]),
         navi_variant: b[0x2B],
         form: ids.form(b[0x2C]),
@@ -262,7 +308,7 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
     b[0x01] = s.attack;
     b[0x02] = s.rapid;
     b[0x03] = s.charge;
-    b[0x06] = s.first_barrier;
+    b[0x06] = ids.barrier_type(s.first_barrier);
     b[0x08] = s.gauge_speed as u8;
     b[0x09] = s.reg_up;
     b[0x0A] = s.custom_level;
@@ -282,6 +328,8 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
     b[0x20] = s.version;
     b[0x21] = s.beast_out_counter;
     b[0x22] = s.sun as u8;
+    b[0x26] = s.chip_drops;
+    b[0x28] = s.encounters;
     b[0x29] = ids.navi_number(s.navi);
     b[0x2B] = s.navi_variant;
     b[0x2C] = ids.form_number(s.form);
@@ -324,6 +372,39 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
     put16(&mut b, 0x54, g.custom_damage);
     b[0x63] = g.hand_shrink_turn;
     b
+}
+
+// ---- Patch cards -------------------------------------------------------------------
+
+/// BN6's patch-cards system (content/bn6/rules/patch-cards): its key, and
+/// how many cards its setup holds.
+pub const PATCH_CARDS: &str = "patch-cards";
+pub const MAX_PATCH_CARDS: usize = 16;
+
+/// Install `cards` (each a patch card record, switched on or not), in the
+/// order they apply, as the player's patch-cards setup: what a Japanese
+/// save's card list says (0x020065F0+0x30: the number, bit 7 when switched
+/// off). Fails past [`MAX_PATCH_CARDS`] cards or when the player's ruleset
+/// has no patch-cards system.
+pub fn install_patch_cards(
+    content: &Content,
+    player: &mut nettai_battle::custom::PlayerSetup,
+    cards: &[(RecordHandle, bool)],
+) -> Result<(), String> {
+    if cards.len() > MAX_PATCH_CARDS {
+        return Err(format!("{} patch cards: the 80 MB allow at most {MAX_PATCH_CARDS}", cards.len()));
+    }
+    for (k, &(card, on)) in cards.iter().enumerate() {
+        player.set_rule_elem(content, PATCH_CARDS, "cards", k, Value::Def(Registry::Record, card.0))?;
+        player.set_rule_elem(content, PATCH_CARDS, "off", k, Value::Bool(!on))?;
+    }
+    Ok(())
+}
+
+/// A save's card list (the bytes: the number, bit 7 when switched off) as
+/// patch card records.
+pub fn patch_card_list(list: &[u8], ids: &Ids) -> Vec<(RecordHandle, bool)> {
+    list.iter().map(|&b| (ids.patch_card(b & 0x7F), b & 0x80 == 0)).collect()
 }
 
 // ---- Folders, hands, transformations ---------------------------------------------
@@ -537,12 +618,12 @@ mod tests {
             // (A value that doesn't decode is read as naming content: the
             // byte is modeled.)
             let modeled = values.iter().any(|&v| decoded(v).is_none_or(|d| d != base));
-            // The engine has no numbers for weapons, shot programs, forms
-            // or navis: a bug code can only clear those bytes (a form's
-            // to the base form), and can't write a navi's.
+            // The engine has no numbers for weapons, shot programs, first
+            // barriers, forms or navis: a bug code can only clear those
+            // bytes (a form's to the base form), and can't write a navi's.
             let by_handle = |v: u8| match offset {
                 0x04 | 0x05 | 0x07 | 0x39 | 0x44 => v != 0xFF,
-                0x4D | 0x4F | 0x17 | 0x2C => v != 0,
+                0x06 | 0x4D | 0x4F | 0x17 | 0x2C => v != 0,
                 0x29 => true,
                 _ => false,
             };

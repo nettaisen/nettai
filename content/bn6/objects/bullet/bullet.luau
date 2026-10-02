@@ -185,6 +185,9 @@ bullet.variants = {
     spreader = ROWS[0x03],
     -- SpoutCross's charged shot (row 0xD).
     spout = ROWS[0x0D],
+    -- The patch card puffball's bubble spread (row 7): the 3x3 around the
+    -- panel found, with hit modifier 3.
+    bubble = ROWS[0x07],
     -- ColArmy's soldiers' (row 0x11) and ColForce's (0x12): staggering,
     -- with their statuses.
     col_army = ROWS[0x11],

@@ -13,6 +13,17 @@ pub(crate) mod berserk;
 mod navi_action;
 mod chip_use;
 pub use chip_use::{next_chip_bonus, next_chip_doubles};
+
+/// `sub_8010740`: the opponent's Rush takes `chip` (a weapon's).
+pub(crate) fn rush_cancels(b: &mut Battle, r: ObjectRef, chip: nettai_content_api::ChipHandle) -> bool {
+    idle::rush_intercepts(b, r, Some(chip))
+}
+
+/// `loc_80126EA`: `chip` as the navi's attack (a weapon that fires a
+/// chip).
+pub(crate) fn load_chip_attack(b: &mut Battle, r: ObjectRef, chip: nettai_content_api::ChipHandle) {
+    chip_use::load_attack(b, r, Some(chip));
+}
 mod entry;
 pub(crate) mod form;
 pub(crate) mod idle;
@@ -638,7 +649,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // sub_801DB84, sub_8018856, sub_801DC06, sub_801DC36: the HP number
     // HUD table.
     enable_turning(b, r);
-    if stats(b, r).first_barrier != 0 {
+    if stats(b, r).first_barrier.is_some() {
         // sub_8013892's `pop {r4}` left the barrier type in r4, so the glow's
         // link slot (r4 + 0x58) is a BIOS address (docs/engine/dimming-
         // chips.md §3.4).
@@ -748,7 +759,7 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
         // sub_8015C2C: the starting mood.
         stats_mut(b, r).mood = 0x80;
     }
-    if stats(b, r).first_barrier != 0 {
+    if stats(b, r).first_barrier.is_some() {
         // sub_801A7CC(stat 6) and the barrier's visual (sub_80E0D98): the
         // content's FirstBarrier (the role hooks.first_barrier). The game's
         // FirstBarrier program sets the stat to 1, the Barrier chip's

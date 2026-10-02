@@ -35,7 +35,7 @@ return define.navi {
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
-    fresh = { hp = 100, first_barrier = 0, mega_level = 5, giga_level = 1 },
+    fresh = { hp = 100, mega_level = 5, giga_level = 1 },
     cross_hp = { 999, 999 },
     -- His forms, by game: the Crosses by their number on the custom screen, Beast Out and
     -- Beast Over.
