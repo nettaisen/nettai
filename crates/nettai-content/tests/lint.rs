@@ -71,3 +71,38 @@ fn bn6_content_has_no_definition_errors() {
         r.issues.iter().filter(|i| i.level == Level::Error).map(|i| format!("{}: {}", i.file, i.message)).collect();
     assert!(errors.is_empty(), "{}", errors.join("\n"));
 }
+
+/// BN6's strings tables in other languages (content/bn6/locale) name only
+/// definitions BN6's content has, and stay out of the content: the content
+/// root reader leaves them out, so they reach neither the define phase nor
+/// `Content::hash()`.
+#[test]
+fn bn6_locale_tables_name_bn6_definitions_and_stay_out_of_the_content() {
+    let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6"));
+    let langs = nettai_content::locale::Strings::languages(dir);
+    assert!(langs.contains(&"ja".to_string()), "{langs:?}");
+    let mut r = Report::default();
+    let root = nettai_content::root::read(dir, &mut r).expect("content/bn6 reads");
+    assert!(root.modules.keys().all(|m| !m.starts_with("locale/")), "a strings table read as a module");
+    let mut c = nettai_battle::Content::default();
+    c.scripts.modules = root.modules;
+    c.assets = testing::asset_names_used(&c.scripts.modules);
+    c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
+    let before = c.hash();
+    nettai_content::locale::check_root(dir, &c, &mut r);
+    let errors: Vec<String> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| format!("{}: {}", i.file, i.message)).collect();
+    assert!(errors.is_empty(), "{}", errors.join("\n"));
+    // A root with a table and one without define the same content.
+    let tmp = std::env::temp_dir().join(format!("nettai-locale-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    std::fs::create_dir_all(tmp.join("locale")).unwrap();
+    std::fs::write(tmp.join("a.luau"), "return define.record('thing', { n = 1 })").unwrap();
+    let read = |r: &mut Report| nettai_content::root::read(&tmp, r).expect("the root reads").modules;
+    let without = read(&mut Report::default());
+    std::fs::write(tmp.join("locale/ja.toml"), "language = \"ja\"\n").unwrap();
+    let mut r2 = Report::default();
+    assert_eq!(read(&mut r2), without);
+    assert!(!r2.has_errors(), "{r2:?}");
+    let _ = std::fs::remove_dir_all(&tmp);
+    assert_eq!(c.hash(), before);
+}
