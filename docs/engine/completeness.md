@@ -714,6 +714,16 @@ opponent (1), Snake with no target or a second one (5: tried the opponent's Rock
 YoYo's slot taken while it is out (1: its navi waits for it). The 3 recordings are in the lab and match the engine
 (4,229 frames).
 
+**Batch 9, Tornado, Meteors, Lance, GolmHit, SonicBom and GroundCross's falling rocks (25 branches):** 1 taken by 1
+new recording, 22 unreachable, 2 hard. `chips/0x034-tornado/off-the-field`: after two AreaGrabs, from (5,2), the
+tornado's panel two ahead is off the field. The unreachable ones are parameters and rows no chip sets (a tornado's
+status, the action's third form, other meteor rows, a lance's second palette, GolmHit's own-panel and cracking
+fist, more than one SonicBom swing, a rock counter: 13), positions the field rules out (a far column or a row
+without the other side's panels, a column walk past the field, markers and rocks off the field: 5), markers ticking
+outside Meteors' dimming (1: the instant meteor shower has no user) and slots that never fail (3). The hard ones: a
+tornado and a falling rock seeing the battle over, which comes with a deletion some 50 ticks after a knockback KO,
+while neither lasts or starts that late. The recording is in the lab and matches the engine (1,034 frames).
+
 <!-- end: chip families, G4 -->
 
 **Second pass, batch 1: the navi chips the first pass had started** (Bass, ChrgeMan, DustMan, ProtoMan, ElecMan,
