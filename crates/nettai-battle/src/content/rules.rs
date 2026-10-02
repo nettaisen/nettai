@@ -50,6 +50,34 @@ pub struct Rules {
     pub berserk: BerserkRules,
     /// The custom screen's slot layout.
     pub custom_screen: CustomScreenLayout,
+    /// The object pools' sizes (rule section `pools`): a capacity-only
+    /// limit, which a battle takes as the larger of its two players' games'
+    /// (docs/design/rules-in-luau.md §2.3).
+    pub pools: PoolSizes,
+}
+
+/// How many objects each pool holds (BN6's are 32 each; BN5's actor pool
+/// 16). At most `object::SLOTS`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PoolSizes {
+    pub actor: u8,
+    pub attack: u8,
+    pub effect: u8,
+}
+
+impl Default for PoolSizes {
+    fn default() -> PoolSizes {
+        let n = crate::object::SLOTS as u8;
+        PoolSizes { actor: n, attack: n, effect: n }
+    }
+}
+
+impl PoolSizes {
+    /// The sizes in pool order (actor, attack, effect).
+    pub fn slots(&self) -> [u8; 3] {
+        [self.actor, self.attack, self.effect]
+    }
 }
 
 /// One of the Cross special's chips (`sub_802D4F0`): the chip its

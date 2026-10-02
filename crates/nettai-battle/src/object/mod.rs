@@ -272,6 +272,10 @@ pub struct Objects {
     /// object's update (see `loop_register`).
     loop_passed: [u8; 3],
     loop_register: u32,
+    /// How many slots of each pool a battle may use (at most `SLOTS`): the
+    /// larger of the two players' games' (docs/design/rules-in-luau.md
+    /// §2.3). BN6's are 32 each; BN5's actor pool has 16.
+    capacity: [u8; 3],
 }
 
 impl Default for Objects {
@@ -282,6 +286,13 @@ impl Default for Objects {
 
 impl Objects {
     pub fn new() -> Objects {
+        Objects::with_capacity([SLOTS as u8; 3])
+    }
+
+    /// Pools of `capacity` slots each (actor, attack, effect; each at most
+    /// `SLOTS`).
+    pub fn with_capacity(capacity: [u8; 3]) -> Objects {
+        assert!(capacity.iter().all(|&c| c as usize <= SLOTS), "a pool has at most {SLOTS} slots");
         let mut o = Objects {
             slots: vec![Object::default(); 3 * SLOTS],
             sprites: vec![Sprite::default(); 3 * SLOTS],
@@ -290,9 +301,15 @@ impl Objects {
             current: None,
             loop_passed: [0; 3],
             loop_register: 0,
+            capacity,
         };
         o.reset_list();
         o
+    }
+
+    /// How many slots `pool` has in this battle.
+    pub fn capacity(&self, pool: Pool) -> u8 {
+        self.capacity[pool as usize]
     }
 
     /// Empty the update list (the pools are left as they are).
@@ -304,7 +321,7 @@ impl Objects {
 
     /// Clear every pool and the list, as at the start of a battle.
     pub fn reset(&mut self) {
-        *self = Objects::new();
+        *self = Objects::with_capacity(self.capacity);
     }
 
     pub fn get(&self, r: ObjectRef) -> &Object {
@@ -325,7 +342,7 @@ impl Objects {
 
     /// Whether `pool` has a free slot.
     pub fn has_room(&self, pool: Pool) -> bool {
-        self.in_use[pool as usize].count_ones() < SLOTS as u32
+        self.in_use[pool as usize].count_ones() < self.capacity[pool as usize] as u32
     }
 
     pub fn is_allocated(&self, r: ObjectRef) -> bool {
@@ -337,7 +354,7 @@ impl Objects {
     fn allocate(&mut self, new: New) -> Option<ObjectRef> {
         let New { pool, kind, vars, pos, params } = new;
         let bits = &mut self.in_use[pool as usize];
-        let slot = (0..SLOTS as u8).find(|&i| *bits & (0x8000_0000 >> i) == 0)?;
+        let slot = (0..self.capacity[pool as usize]).find(|&i| *bits & (0x8000_0000 >> i) == 0)?;
         *bits |= 0x8000_0000 >> slot;
         let r = ObjectRef { pool, slot };
         *self.get_mut(r) = Object {

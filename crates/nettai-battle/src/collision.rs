@@ -282,7 +282,7 @@ impl Battle {
     pub fn create_collision(&mut self, obj: ObjectRef) -> Option<CollisionId> {
         let id = self.collision.allocate();
         if let Some(id) = id {
-            self.collision.get_mut(id).hit_effect = Some(self.content.defs.roles.spark(SparkRole::Plain));
+            self.collision.get_mut(id).hit_effect = Some(self.arena_roles().spark(SparkRole::Plain));
         }
         self.objects.get_mut(obj).collision = id;
         id
@@ -291,7 +291,7 @@ impl Battle {
     /// The registration's own panel as a region (`object_setCollisionRegion`
     /// with 1, what a setup gives every registration).
     pub fn anchor_region(&self) -> Option<RegionHandle> {
-        Some(self.content.defs.roles.region(RegionRole::Anchor))
+        Some(self.arena_roles().region(RegionRole::Anchor))
     }
 
     /// `object_setupCollisionData`.
@@ -299,6 +299,7 @@ impl Battle {
         let o = self.objects.get(obj).clone();
         let Some(id) = o.collision else { return };
         let dimmed = self.is_dimmed();
+        let anchor = self.arena_roles().region(RegionRole::Anchor);
         let s = self.collision.get_mut(id);
         s.parent = Some(obj);
         s.hit_mod_base = hit_mod;
@@ -307,7 +308,7 @@ impl Battle {
         s.alliance = o.alliance;
         s.flip = o.flip;
         s.panel = o.panel;
-        s.region = Some(self.content.defs.roles.region(RegionRole::Anchor));
+        s.region = Some(anchor);
         s.counter_byte = o.stamina as u8;
         s.self_damage = o.damage;
         s.self_flags = self.content.collision_type(self_type, o.alliance).0 | if dimmed { 0x1_0000 } else { 0 };
@@ -316,7 +317,7 @@ impl Battle {
         // The garbage high byte of any bug code: the table offset the
         // target lookup left in r1.
         let r1 = row_offset + o.alliance as u16 * 4;
-        decode_damage_word(s, r1, &self.content);
+        decode_damage_word(s, r1, self.content.defs.roles(self.games.arena));
     }
 
     /// `sub_801A082`: redo the damage and collision-type part of the setup
@@ -334,7 +335,7 @@ impl Battle {
         // A bug code's garbage high byte is what `battle_isTimeStop` left in
         // r1 (4, or 0x10000 while dimmed).
         let r1 = if dimmed { 0 } else { 4 };
-        decode_damage_word(s, r1, &self.content);
+        decode_damage_word(s, r1, self.content.defs.roles(self.games.arena));
     }
 
     /// `object_presentCollisionData`: clear the accumulators and register.
@@ -353,7 +354,7 @@ impl Battle {
             self.collision.masks[(y * 8 + x) as usize] |= bit;
             // Whole-field registrations refresh the wrong panel (a no-op).
             if !whole_field {
-                self.field.refresh(&self.content, &self.collision, x, y);
+                self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
             }
         }
     }
@@ -380,7 +381,7 @@ impl Battle {
             if whole_field && !was {
                 continue;
             }
-            self.field.refresh(&self.content, &self.collision, x, y);
+            self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
             self.pair_test(x, y, id);
             self.convert_panel(x, y, id);
         }
@@ -487,7 +488,7 @@ impl Battle {
             && self.field.panel(hd.panel.x, hd.panel.y).map(|p| p.kind) == Some(PanelType::Ice)
         {
             self.set_panel_type(hd.panel.x, hd.panel.y, PanelType::Normal);
-            self.collision.get_mut(h).status_final = Some(self.content.defs.roles.status(StatusRole::IceFreeze));
+            self.collision.get_mut(h).status_final = Some(self.arena_roles().status(StatusRole::IceFreeze));
         }
         let c = hd.counter_byte;
         let rm = self.collision.get_mut(r);
@@ -515,9 +516,10 @@ impl Battle {
             rm.acc.inflicted_bugs = hd.bugs;
         }
         // Multiplier.
+        // (The hit kernel's table: the arena's game's.)
         let w1 = self
             .content
-            .rules
+            .rules_of(self.games.arena)
             .element_weakness
             .get(rd.element as usize)
             .and_then(|row| row.get(hd.element as usize))
@@ -631,14 +633,14 @@ pub fn move_direction(old: PanelPos, new: PanelPos, alliance: u8) -> u8 {
 }
 
 /// `sub_8019F44`: decode the flag bits of a damage word.
-fn decode_damage_word(s: &mut CollisionData, r1: u16, content: &Content) {
+fn decode_damage_word(s: &mut CollisionData, r1: u16, roles: &crate::content::Roles) {
     let d = s.self_damage;
     s.self_damage = d & 0x7FF;
     if d & 0x8000 != 0 {
         s.self_damage = s.self_damage.wrapping_mul(2);
     }
     if d & 0x4000 != 0 {
-        s.status_base = Some(content.defs.roles.status(StatusRole::DamageWordParalysis));
+        s.status_base = Some(roles.status(StatusRole::DamageWordParalysis));
         s.hit_mod_base = 1;
     }
     if d & 0x2000 != 0 {

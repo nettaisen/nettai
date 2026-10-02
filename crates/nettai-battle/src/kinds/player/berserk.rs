@@ -124,7 +124,7 @@ fn buster(b: &mut Battle, r: ObjectRef) -> Outcome {
 /// `sub_802D3CA`: step to a panel near an opponent (`sub_802D430`); a
 /// chip is next.
 fn step_toward_opponent(b: &mut Battle, r: ObjectRef) -> Outcome {
-    let rules = b.content.rules.berserk;
+    let rules = b.rules_for(r).berserk;
     let floor_free = flag1(b, r) & f1::AIRSHOE != 0;
     let cond = rules.step.get(floor_free, b.objects.get(r).alliance);
     let target = choose_panel(b, r, cond);
@@ -207,8 +207,10 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
 /// the chip whose damage it strikes with, if another's.
 fn pick_special_chip(b: &mut Battle, r: ObjectRef) -> (ChipHandle, Option<ChipHandle>) {
     let hundreds = super::stats(b, r).max_base_hp / 100;
+    // (The navi's game's rows.)
     let content = b.content.clone();
-    let rows = &content.defs.cross_special;
+    let side = b.objects.get(r).alliance & 1;
+    let rows = &content.defs.cross_special[b.games.sides[side as usize].index()];
     let row = (hundreds.saturating_sub(1) as usize).min(rows.len().saturating_sub(1));
     let chips = rows
         .get(row)
@@ -237,7 +239,7 @@ fn volley(b: &mut Battle, r: ObjectRef) -> Outcome {
 /// the other side's player flag and an alive actor's collision sits
 /// there).
 fn opponent_on(b: &Battle, p: PanelPos, alliance: u8) -> Option<ObjectRef> {
-    let flag = b.content.rules.berserk.opposing_player[alliance as usize & 1];
+    let flag = b.side_game_rules(alliance).berserk.opposing_player[alliance as usize & 1];
     if b.field.flags(p.x, p.y) & flag == 0 {
         return None;
     }
@@ -249,7 +251,7 @@ fn opponent_on(b: &Battle, p: PanelPos, alliance: u8) -> Option<ObjectRef> {
 /// `sub_810971A`: an opponent's panel in row `y`, picked at random
 /// among them (one RNG draw when there is one).
 fn opponent_in_row(b: &mut Battle, r: ObjectRef, y: u8) -> Option<PanelPos> {
-    let cond = b.content.rules.berserk.opponent[b.objects.get(r).alliance as usize & 1];
+    let cond = b.rules_for(r).berserk.opponent[b.objects.get(r).alliance as usize & 1];
     let panels = panels_in_row(b, y, cond);
     pick(b, &panels)
 }
@@ -327,7 +329,7 @@ fn choose_panel(b: &mut Battle, r: ObjectRef, cond: PanelCondition) -> PanelPos 
 fn behind(b: &mut Battle, r: ObjectRef, from: PanelPos, cond: PanelCondition) -> u8 {
     let alliance = b.objects.get(r).alliance as usize & 1;
     let dir: i32 = if alliance == 0 { -1 } else { 1 };
-    let blocking = b.content.rules.berserk.blocking[alliance];
+    let blocking = b.rules_for(r).berserk.blocking[alliance];
     let mut found = Vec::new();
     let mut x = from.x as i32 + dir;
     let y = from.y;

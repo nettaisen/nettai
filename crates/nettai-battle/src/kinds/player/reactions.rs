@@ -97,7 +97,7 @@ fn explode(b: &mut Battle, r: ObjectRef) {
     // The second call reuses whatever registers the first left: Z, but
     // list-node addresses from the allocator for X and Y
     // (objects-and-player.md §A.3).
-    let look = b.content.defs.roles.effect(crate::content::EffectRole::Deletion);
+    let look = b.roles_for(r).effect(crate::content::EffectRole::Deletion);
     crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
     crate::kinds::effect::spawn_after_spawn(b, pos.z, look, 0, 0, 0);
     let o = b.objects.get_mut(r);
@@ -319,7 +319,7 @@ pub(super) fn bubble(b: &mut Battle, r: ObjectRef) {
     }
     let popped = mash(b, r, timer::BUBBLE, f1::BUBBLED);
     let t = coll(b, r).status_timers[timer::BUBBLE] as i16 as i32;
-    b.objects.get_mut(r).pos.z = (b.content.rules.bubble_bob[((t >> 2) & 0x1F) as usize] as i32) << 16;
+    b.objects.get_mut(r).pos.z = (b.arena_rules().bubble_bob[((t >> 2) & 0x1F) as usize] as i32) << 16;
     if popped {
         b.objects.get_mut(r).pos.z = 0;
         b.sound(crate::content::SoundRole::BubblePop);
@@ -485,11 +485,11 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
             let off = if hm & 0x80 != 0 { 5 } else { 0 };
             let bits = (hm & 0x7F) >> 2;
             let i = (0..4).find(|&i| bits & (1 << i) != 0).unwrap_or(4);
-            facing(b.content.rules.push_vectors[i + off])
+            facing(b.arena_rules().push_vectors[i + off])
         }
-        2 => facing(*b.content.rules.ice_vectors.get(coll(b, r).direction as usize).expect("ice slide direction")),
+        2 => facing(*b.arena_rules().ice_vectors.get(coll(b, r).direction as usize).expect("ice slide direction")),
         3 => {
-            b.content.rules.panels.road_slide(panel_kind(b, o.panel)).unwrap_or(SlideVector::NONE)
+            b.arena_rules().panels.road_slide(panel_kind(b, o.panel)).unwrap_or(SlideVector::NONE)
         }
         t => panic!("slide type {t} reads past its table"),
     };
@@ -505,5 +505,5 @@ pub(super) fn can_slide_to(b: &Battle, r: ObjectRef, p: PanelPos) -> bool {
         return false;
     }
     let airshoes = flag1(b, r) & f1::AIRSHOE != 0;
-    b.field.meets(p.x, p.y, b.content.rules.panels.step.get(airshoes, b.objects.get(r).alliance))
+    b.field.meets(p.x, p.y, b.arena_rules().panels.step.get(airshoes, b.objects.get(r).alliance))
 }

@@ -18,7 +18,7 @@ pub mod look;
 pub mod screen;
 
 pub use folder::{BattleFolder, FolderChip, SavedFolder};
-pub use library::Library;
+pub use library::{GameLibrary, Library};
 pub use look::{DarkHover, Drawn, ScreenLook};
 pub use screen::{Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind, SlotState};
 
@@ -481,7 +481,8 @@ impl Battle {
         self.custom.committed = false;
         let content = self.content.clone();
         for side in 0..2u8 {
-            let ctx = self.custom_context(side, &*content);
+            let library = library::GameLibrary { content: &content, game: self.games.sides[side as usize] };
+            let ctx = self.custom_context(side, &library);
             self.custom.sides[side as usize].open(&ctx, &mut self.consoles[side as usize]);
         }
     }
@@ -507,7 +508,8 @@ impl Battle {
                 continue;
             }
             let content = self.content.clone();
-            let ctx = self.custom_context(side, &*content);
+            let library = library::GameLibrary { content: &content, game: self.games.sides[side as usize] };
+            let ctx = self.custom_context(side, &library);
             let mut s = self.custom.sides[side as usize].clone();
             let mut console = self.consoles[side as usize];
             let request = s.tick(&ctx, &mut console, |id| crate::hand::chip_damage(self, Some(id), side));

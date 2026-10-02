@@ -3,7 +3,7 @@
 
 use crate::battle::Battle;
 use crate::collision::Collision;
-use crate::content::{Content, PanelCondition, SoundRole};
+use crate::content::{PanelCondition, SoundRole};
 use crate::object::{ObjectRef, PanelPos, Vec3};
 
 /// Panel types. The type is also the low nibble of a panel's flags word.
@@ -248,10 +248,11 @@ pub fn is_valid(x: u8, y: u8) -> bool {
 
 impl Field {
     /// The field at the start of a round (`sub_800C4BC`).
-    pub fn new(content: &Content, layout: &crate::content::PanelLayout, pattern: u8, battle_mode: u8) -> Field {
+    /// `rules` are the arena's game's panel rules (docs/design/
+    /// rules-in-luau.md §2.3: the field is the battle's).
+    pub fn new(rules: &crate::content::PanelRules, layout: &crate::content::PanelLayout, pattern: u8, battle_mode: u8) -> Field {
         let hole_ticks = if battle_mode == 1 { 0x1E0 } else { 0x258 };
         let rows = layout.rows;
-        let rules = &content.rules.panels;
         let mut columns = [Column::default(); 8];
         for (x, c) in columns.iter_mut().enumerate() {
             c.home = if (1..=6).contains(&x) { (pattern >> (x - 1)) & 1 } else { 0xFF };
@@ -362,7 +363,7 @@ impl Field {
     }
 
     /// `_object_updatePanelParameters`: recompute a panel's flags.
-    pub fn refresh(&mut self, content: &Content, collision: &Collision, x: u8, y: u8) {
+    pub fn refresh(&mut self, rules: &crate::content::PanelRules, collision: &Collision, x: u8, y: u8) {
         if !is_valid(x, y) {
             return;
         }
@@ -370,17 +371,17 @@ impl Field {
         let p = &mut self.panels[y as usize][x as usize];
         p.display_kind = p.kind;
         p.display_alliance = p.alliance;
-        p.flags = content.rules.panels.type_flags(p.kind)
+        p.flags = rules.type_flags(p.kind)
             | ((p.alliance as u32) << 5)
             | if p.reserver.is_some() { pflags::RESERVED } else { 0 }
             | occupants;
     }
 
     /// Refresh every panel (`sub_800C8F0`).
-    pub fn refresh_all(&mut self, content: &Content, collision: &Collision) {
+    pub fn refresh_all(&mut self, rules: &crate::content::PanelRules, collision: &Collision) {
         for y in (1..=4).rev() {
             for x in (1..=7).rev() {
-                self.refresh(content, collision, x, y);
+                self.refresh(rules, collision, x, y);
             }
         }
     }
@@ -416,7 +417,7 @@ impl Battle {
                 p.hole_timer = p.hole_timer.wrapping_sub(1);
                 if p.hole_timer == 0 {
                     p.kind = PanelType::Normal;
-                    self.field.refresh(&self.content, &self.collision, x, y);
+                    self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
                     self.field.panels[y as usize][x as usize].hole_timer = h;
                     return;
                 }
@@ -431,7 +432,7 @@ impl Battle {
                 let latch = p.latch;
                 if latch & pflags::BODY != 0 && latch & pflags::FLOATING == 0 && p.flags & pflags::OCCUPIED == 0 {
                     p.kind = PanelType::Broken;
-                    self.field.refresh(&self.content, &self.collision, x, y);
+                    self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
                     self.field.panels[y as usize][x as usize].hole_timer = h;
                     self.sound(SoundRole::PanelCrack);
                 }
@@ -451,7 +452,7 @@ impl Battle {
                 p.road_timer = p.road_timer.wrapping_sub(1);
                 if p.road_timer == 0 {
                     p.kind = PanelType::Normal;
-                    self.field.refresh(&self.content, &self.collision, x, y);
+                    self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
                     self.field.panels[y as usize][x as usize].road_timer = ROAD_TICKS;
                     return;
                 }
@@ -535,7 +536,7 @@ impl Battle {
                             let p = &mut self.field.panels[y as usize][c as usize];
                             p.alliance = run.owner;
                             p.return_blink = (p.return_blink & 0xFF00) | 0x5A;
-                            self.field.refresh(&self.content, &self.collision, c, y);
+                            self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, c, y);
                         }
                     }
                 }
@@ -598,7 +599,7 @@ impl Battle {
         if t.is_road() {
             p.road_timer = ROAD_TICKS;
         }
-        self.field.refresh(&self.content, &self.collision, x, y);
+        self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
     }
 
     /// `object_setPanelAlliance`.
@@ -609,7 +610,7 @@ impl Battle {
         }
         p.alliance = alliance;
         p.return_blink = 0;
-        self.field.refresh(&self.content, &self.collision, x, y);
+        self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
     }
 
     /// `object_crackPanel`: crack a solid panel, or break an already
@@ -725,7 +726,7 @@ impl Battle {
         let o = self.objects.get(obj);
         let airshoes = o.collision.map(|c| self.collision.get(c).f1 & crate::collision::f1::AIRSHOE != 0).unwrap_or(false);
         let floor_free = airshoes || !self.field.is_solid(o.panel.x, o.panel.y);
-        self.field.meets(x, y, self.content.rules.panels.step.get(floor_free, o.alliance))
+        self.field.meets(x, y, self.content.rules_of(self.games.arena).panels.step.get(floor_free, o.alliance))
     }
 }
 

@@ -314,5 +314,5 @@ fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
 /// check tests flags a `ldr` doesn't set (never equal), so an empty hand
 /// reads chip 0xFFFF's record, past the table (`Rules::empty_hand`).
 fn uses_alt_a_charge(b: &Battle, r: ObjectRef) -> bool {
-    super::null_family(b, next_chip(b, r))
+    super::null_family(b, r, next_chip(b, r))
 }

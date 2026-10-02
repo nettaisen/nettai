@@ -42,7 +42,7 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
         // The form's A-charge routine decides what the charged chip does;
         // for the Null family the attack's chip id is cleared.
         let chip = hand_entry(b, r).chip;
-        let null = super::null_family(b, chip);
+        let null = super::null_family(b, r, chip);
         let routine = if null {
             ai_mut(b, r).attack.chip = None;
             ai(b, r).alt_a_charge
@@ -77,7 +77,7 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
                 // rush.
                 use crate::content::{ActionRole, FormTraits};
                 let sword_rush = form_of(b, r).traits.has(FormTraits::CHARGED_SWORD_RUSH);
-                let runs = |role| matches!(action, super::NaviAction::Content(h) if b.content.defs.roles.is_action(role, h));
+                let runs = |role| matches!(action, super::NaviAction::Content(h) if b.roles_for(r).is_action(role, h));
                 if runs(ActionRole::BeastClaw) || (runs(ActionRole::ChargedSword) && sword_rush) {
                     ai_mut(b, r).attack.beast_lockon = 1;
                 }
@@ -377,6 +377,9 @@ pub(crate) fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
     let cd = entry_record(&content, chip);
     let side = b.objects.get(r).alliance;
     let damage = crate::hand::chip_damage(b, chip, side);
+    // (The elements of a chip's family: the hit kernel's table, the
+    // arena's game's.)
+    let family = content.rules_of(b.games.arena).family_elements(cd.family).0;
     let a = &mut ai_mut(b, r).attack;
     a.chip = chip;
     // (The original copies the record's subtype and parameter bytes too:
@@ -385,7 +388,7 @@ pub(crate) fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
     a.hit_param = cd.hit_param as u16;
     a.lockout = cd.lockout;
     a.extra = 0;
-    a.element = cd.element as u8 | content.rules.family_elements(cd.family).0;
+    a.element = cd.element as u8 | family;
     a.charged = 0;
 }
 
@@ -534,7 +537,7 @@ fn heal_on_use(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     }
     super::intake::add_hp(b, r, total);
     let pos = b.objects.get(r).pos;
-    let look = b.content.defs.roles.effect(crate::content::EffectRole::Recovery);
+    let look = b.roles_for(r).effect(crate::content::EffectRole::Recovery);
     crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
     b.sound(crate::content::SoundRole::Recovery);
 }
@@ -584,7 +587,7 @@ fn rock_barrage(b: &mut Battle, r: ObjectRef) -> u8 {
     for (n, p) in panels.iter().enumerate() {
         // sub_80C7F20: Param1 counts down 3, 2, 1.
         let params = [3 - n as u8, 0, 0, 0];
-        let kind = b.content.defs.roles.kind(crate::content::KindRole::FallingRock);
+        let kind = b.roles_for(r).kind(crate::content::KindRole::FallingRock);
         if let Some(rock) = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), params) {
             let o = b.objects.get_mut(rock);
             o.panel = *p;
