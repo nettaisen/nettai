@@ -1457,6 +1457,7 @@ fn rules() -> Rules {
         },
         custom_screen: custom_screen_layout(),
         pools: Default::default(),
+        navicust: Default::default(),
     }
 }
 

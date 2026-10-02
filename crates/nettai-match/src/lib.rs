@@ -22,6 +22,7 @@ use nettai_battle::console::ConsoleSetup;
 use nettai_battle::content::Content;
 use nettai_battle::custom::{BattleFolder, CrossList, GameVersion, PlayerSetup, SavedFolder, Unlocks};
 use nettai_battle::link::Link;
+use nettai_battle::navicust::NaviCust;
 use nettai_battle::patch_cards::{InstalledCard, PatchCards};
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage, effects};
 use nettai_battle::{Battle, Rng};
@@ -83,6 +84,11 @@ pub struct Side {
     /// dark chip or a chip weapon spends them).
     pub navi_level: u8,
     pub bug_frags: u32,
+    /// The NaviCust, which the side's rules compile into the stats as the
+    /// round is set up (none: the stats are what the NaviCust gives, set
+    /// directly). With one, the stats are the navi's fresh stats with what
+    /// the save keeps (`stats::SAVE_FIELDS`).
+    pub navicust: Option<NaviCust>,
 }
 
 impl Side {
@@ -130,6 +136,14 @@ pub fn ruleset_has_system(content: &Content, ruleset: Option<RulesetHandle>, sys
 pub const FORMS_SYSTEM: &str = "forms";
 /// The system that applies patch cards (BN6's).
 pub const PATCH_CARDS_SYSTEM: &str = "patch-cards";
+/// The system that compiles the NaviCust (BN6's).
+pub const NAVICUST_SYSTEM: &str = "navicust";
+
+/// The NaviCust board of the side's game (its ruleset's game's rule
+/// section `navicust`).
+pub fn navicust_rules<'c>(content: &'c Content, s: &Side) -> &'c nettai_battle::content::NaviCustRules {
+    &content.rules_of(content.defs.ruleset_game(s.ruleset)).navicust
+}
 
 /// A whole match: the arena and both sides (the left, side 0, then the
 /// right), and the seed its setup and battle are drawn from, if it names
@@ -186,6 +200,7 @@ impl Match {
                 ruleset: s.ruleset,
                 rules: Vec::new(),
                 patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
+                navicust: s.navicust,
             }
         };
         RoundSetup {

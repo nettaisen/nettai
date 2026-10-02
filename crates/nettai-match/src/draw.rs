@@ -140,6 +140,7 @@ impl Side {
             cards: Vec::new(),
             navi_level: 0,
             bug_frags: 0,
+            navicust: None,
         }
     }
 

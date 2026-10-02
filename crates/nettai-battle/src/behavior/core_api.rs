@@ -495,6 +495,13 @@ impl CoreApi for Battle {
             (NaviStat::FloatShoes, FieldValue::Bool(x)) => s.float_shoes = x,
             (NaviStat::AirShoes, FieldValue::Bool(x)) => s.air_shoes = x,
             (NaviStat::Undershirt, FieldValue::Bool(x)) => s.undershirt = x,
+            // The support bug: none (the byte 0xFF); cleared, none set.
+            (NaviStat::SupportBug, FieldValue::Bool(true)) => s.support = None,
+            (NaviStat::SupportBug, FieldValue::Bool(false)) => {
+                s.support.get_or_insert_with(crate::setup::Supports::default);
+            }
+            (NaviStat::ChipDrops, FieldValue::U8(x)) => s.chip_drops = x,
+            (NaviStat::Encounters, FieldValue::U8(x)) => s.encounters = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -521,6 +528,22 @@ impl CoreApi for Battle {
 
     fn patch_cards(&self, side: u8) -> Vec<(u16, bool)> {
         self.setup.players[side as usize & 1].patch_cards.iter().map(|c| (c.card.0, c.enabled)).collect()
+    }
+
+    fn navicust(&self, side: u8) -> Option<(u8, Vec<nettai_content_api::api::PlacedProgram>)> {
+        let n = self.setup.players[side as usize & 1].navicust.as_ref()?;
+        let parts = n
+            .iter()
+            .map(|p| nettai_content_api::api::PlacedProgram {
+                program: p.program.0,
+                color: p.color,
+                x: p.x,
+                y: p.y,
+                rotation: p.rotation,
+                compressed: p.compressed,
+            })
+            .collect();
+        Some((n.expansions, parts))
     }
 
     fn bug_frags(&self, side: u8) -> u32 {
