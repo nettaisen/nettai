@@ -191,7 +191,141 @@ mod tests {
         let schema = &b.content.defs.schemas[s.id().0 as usize].schema;
         s.set(schema, schema.index_of("starts").unwrap(), Value::Int(9)).unwrap();
         assert_ne!(changed.digest(), b.digest());
-        assert_eq!(testing::build().defs.rulesets.len(), 3);
+        assert_eq!(testing::build().defs.rulesets.len(), 4);
+    }
+
+    /// A mix (testdata's rules/mix.luau): the stock rules less BN6's forms
+    /// system, the marker after them; the stock rules' game.
+    #[test]
+    fn a_mix_is_its_bases_systems_changed() {
+        let content = scenario::content();
+        let defs = &content.defs;
+        let mix = defs.ruleset_by_key("test-mix").expect("the mix");
+        let names: Vec<&str> = defs.ruleset(mix).systems.iter().map(|&h| defs.system(h).key.as_str()).collect();
+        assert_eq!(names, ["test:beast", "test:test/counter", "test:test/marker"]);
+        assert_eq!(defs.ruleset(mix).base, defs.stock_ruleset());
+        assert_eq!(defs.ruleset(mix).game, crate::content::RootId::HOME);
+        let mut setup = scenario::setup();
+        setup.players[1].ruleset = Some(mix);
+        let b = started(setup);
+        assert_eq!(b.side_rules(1).states.len(), 3);
+        assert_eq!(field(&b, 1, 2, "mark"), FieldValue::U8(0x41), "the marker ran for its side");
+        assert_eq!(field(&b, 1, 1, "starts"), FieldValue::U8(1));
+    }
+
+    /// docs/design/rules-in-luau.md §2.3, with a second game, `twin`: its
+    /// own stock rules (the test counter), roles (the test content's, with
+    /// another pause sound) and pools (16 actors).
+    mod two_games {
+        use super::*;
+        use crate::content::{Content, RootId, RootManifest, SoundRole};
+        use crate::object::Pool;
+        use std::sync::Arc;
+
+        const TWIN: &[(&str, &str)] = &[
+            (
+                "rules/ruleset",
+                "local systems = require('@test/rules/systems')\n\
+                 return define.ruleset { id = 'twin', stock = true, systems = { systems.counter } }",
+            ),
+            (
+                "rules/roles",
+                "local test = require('@test/rules/roles')\n\
+                 local spec = {}\n\
+                 for k, v in test do spec[k] = v end\n\
+                 local sounds = {}\n\
+                 for k, v in test.sounds do sounds[k] = v end\n\
+                 sounds.pause = asset.sound('test-sound-hit')\n\
+                 spec.sounds = sounds\n\
+                 return define.roles(spec)",
+            ),
+            ("rules/pools", "return define.rules('pools', { actor = 16, attack = 32, effect = 32 })"),
+        ];
+
+        /// The test content with the `twin` root beside it.
+        fn content() -> Arc<Content> {
+            static C: std::sync::OnceLock<Arc<Content>> = std::sync::OnceLock::new();
+            C.get_or_init(|| {
+                let mut c = testing::build();
+                let manifest = RootManifest { name: "twin".into(), assets: None, requires: vec!["test".into()] };
+                c.scripts.add_root(manifest, TWIN.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
+                c.define().unwrap_or_else(|e| panic!("{e}"));
+                Arc::new(c)
+            })
+            .clone()
+        }
+
+        /// A battle on the twin content, its sides playing by `rulesets`.
+        fn battle(rulesets: [&str; 2]) -> Battle {
+            let c = content();
+            let mut setup = scenario::setup();
+            setup.content = c.hash();
+            for (p, key) in setup.players.iter_mut().zip(rulesets) {
+                p.ruleset = Some(c.defs.ruleset_by_key(key).unwrap_or_else(|| panic!("no ruleset {key}")));
+            }
+            let mut b = Battle::new(setup, c);
+            for _ in 0..3 {
+                b.tick(&[PlayerTick::default(); 2], Default::default());
+            }
+            b
+        }
+
+        #[test]
+        fn each_side_reads_its_games_data_and_the_battle_its_arenas() {
+            let b = battle(["test", "twin"]);
+            let twin = b.content.defs.root_id("twin").expect("the twin root");
+            // The stage is the test content's: the arena's game is.
+            assert_eq!(b.games.arena, RootId::HOME);
+            assert_eq!(b.games.sides, [RootId::HOME, twin]);
+            let pause = |side| b.side_roles(side).sound(SoundRole::Pause);
+            assert_ne!(pause(0), pause(1), "each side's sounds are its game's");
+            assert_eq!(b.arena_roles().sound(SoundRole::Pause), pause(0));
+            assert_eq!(b.side_roles(1).sound(SoundRole::Hit), pause(1), "twin's pause is the test hit sound");
+            // The twin side runs its own systems.
+            assert_eq!(b.side_rules(1).states.len(), 1);
+            assert_eq!(field(&b, 1, 0, "starts"), FieldValue::U8(1));
+            // Capacity: the larger of the two games' pools.
+            assert_eq!(b.objects.capacity(Pool::Actor), 32);
+        }
+
+        #[test]
+        fn a_capacity_is_the_larger_of_the_two_games() {
+            let both = battle(["twin", "twin"]);
+            assert_eq!([Pool::Actor, Pool::Attack, Pool::Effect].map(|p| both.objects.capacity(p)), [16, 32, 32]);
+            assert_eq!(battle(["twin", "test"]).objects.capacity(Pool::Actor), 32);
+            // A battle of one game is that game's (the test content's: 32).
+            assert_eq!(battle(["test", "test"]).objects.capacity(Pool::Actor), 32);
+        }
+
+        /// A duel with a different game on each side plays and rolls back:
+        /// a copy taken mid-round goes the same way as the whole.
+        #[test]
+        fn a_battle_of_two_games_plays_and_rolls_back() {
+            for rulesets in [["test", "twin"], ["twin", "twin"], ["test-mix", "twin"]] {
+                let c = content();
+                let mut setup = scenario::setup();
+                setup.content = c.hash();
+                for (p, key) in setup.players.iter_mut().zip(rulesets) {
+                    p.ruleset = c.defs.ruleset_by_key(key);
+                }
+                let tape = scenario::record_on_content(setup.clone(), c.clone(), 1200, 7);
+                let mut b = Battle::new(setup, c);
+                let mut copy = None;
+                for (i, t) in tape.iter().enumerate() {
+                    if i == 600 {
+                        copy = Some(b.clone());
+                    }
+                    b.tick(&t.input, t.events.clone());
+                }
+                let mut copy = copy.expect("a copy");
+                for t in &tape[600..] {
+                    copy.tick(&t.input, t.events.clone());
+                }
+                assert_eq!(copy.digest(), b.digest(), "{rulesets:?}");
+                assert!(!matches!(b.round_end(), Some(crate::battle::RoundEnd::Error(_))), "{rulesets:?}: {:?}", b.round_end());
+                assert!(b.round.frames > 1000, "{rulesets:?}: the round ran ({} frames)", b.round.frames);
+            }
+        }
     }
 
     /// BN6's patch-cards system (content/bn6/rules/patch-cards) with the

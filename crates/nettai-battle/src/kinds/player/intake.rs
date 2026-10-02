@@ -288,7 +288,7 @@ fn hp_bug_drain(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let level = stats(b, r).bugs.hp_drain as usize;
-    let period = *b.content.rules.hp_bug_periods.get(level).expect("HP bug level");
+    let period = *b.rules_for(r).hp_bug_periods.get(level).expect("HP bug level");
     let a = ai_mut(b, r);
     if period != 0 {
         a.hp_drain_counter = a.hp_drain_counter.wrapping_add(1);
@@ -491,7 +491,7 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
             }
             let pos = b.objects.get(r).pos;
             let at = crate::object::Vec3 { z: pos.z.wrapping_add(0x10_0000), ..pos };
-            let spark = b.content.defs.roles.spark(SparkRole::Uninstall);
+            let spark = b.roles_for(r).spark(SparkRole::Uninstall);
             crate::kinds::spark::spawn(b, r, at, spark);
             b.sound(crate::content::SoundRole::Fade);
         }
@@ -540,7 +540,7 @@ fn counter_paralysis(b: &mut Battle, r: ObjectRef) {
     if c.acc.hit_flags & 0x40 == 0 || c.status_final.is_some_and(|s| b.content.status(s).survives_counter) {
         return;
     }
-    coll_mut(b, r).status_final = Some(b.content.defs.roles.status(StatusRole::CounterParalysis));
+    coll_mut(b, r).status_final = Some(b.roles_for(r).status(StatusRole::CounterParalysis));
     set_flag2(b, r, 0x4000);
     clear_flag2(b, r, 0x6);
 }
@@ -574,8 +574,8 @@ fn navicust_hit_bug(b: &mut Battle, r: ObjectRef) {
     }
     match stats(b, r).bugs.hit_status {
         0 => {}
-        1 => coll_mut(b, r).status_final = Some(b.content.defs.roles.status(StatusRole::HitBugBlind)),
-        2 => coll_mut(b, r).status_final = Some(b.content.defs.roles.status(StatusRole::HitBugConfuse)),
+        1 => coll_mut(b, r).status_final = Some(b.roles_for(r).status(StatusRole::HitBugBlind)),
+        2 => coll_mut(b, r).status_final = Some(b.roles_for(r).status(StatusRole::HitBugConfuse)),
         3 => {
             let bugs = &mut stats_mut(b, r).bugs;
             if bugs.hp_drain < 7 {
@@ -654,7 +654,7 @@ fn drain_heal(b: &mut Battle, r: ObjectRef) {
     }
     add_hp(b, r, heal);
     let pos = b.objects.get(r).pos;
-    let look = b.content.defs.roles.effect(EffectRole::Recovery);
+    let look = b.roles_for(r).effect(EffectRole::Recovery);
     crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
     b.sound(crate::content::SoundRole::Recovery);
 }
@@ -746,6 +746,6 @@ fn guard_spark(b: &mut Battle, r: ObjectRef) {
     b.sound(crate::content::SoundRole::Guard);
     let p = b.objects.get(r).pos;
     let pos = crate::kinds::spark::jitter(b, 0xF, Vec3 { z: p.z.wrapping_add(0x10_0000), ..p });
-    let spark = b.content.defs.roles.spark(SparkRole::Guard);
+    let spark = b.roles_for(r).spark(SparkRole::Guard);
     crate::kinds::spark::spawn(b, r, pos, spark);
 }

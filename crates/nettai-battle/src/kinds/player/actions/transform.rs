@@ -117,7 +117,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         land(b, r);
         face_default(b, r);
         let pos = b.objects.get(r).pos;
-        let look = b.content.defs.roles.effect(EffectRole::Deletion);
+        let look = b.roles_for(r).effect(EffectRole::Deletion);
         if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, look, 0, 0, 0) {
             b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
         }
@@ -228,7 +228,7 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
         crate::kinds::player::refresh_form_overlay(b, r);
         face_default(b, r);
         let pos = b.objects.get(r).pos;
-        let look = b.content.defs.roles.effect(EffectRole::Deletion);
+        let look = b.roles_for(r).effect(EffectRole::Deletion);
         if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, look, 0, 0, 0) {
             b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
         }

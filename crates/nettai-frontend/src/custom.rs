@@ -671,7 +671,7 @@ impl Window {
             self.tiles.put(NAME_TILE, &fonts::cell_text(v.hud, &glyphs, NAME_CELLS, NAME_SHIFT));
         }
         // (The Beast Out chip's picture is the Beast's the navi goes into.)
-        let beast_out = Library::beast_out_chip(&*v.b.content) == Some(c.id);
+        let beast_out = v.b.side_roles(v.b.setup.local_side).try_chip(nettai_battle::content::ChipRole::BeastOut) == Some(c.id);
         // A chip whose palette no ROM holds has its definition's
         // (`art_palette`). The picture of a chip the US release cut is the
         // Japanese ROMs': a US console shows a placeholder there. The
@@ -1063,7 +1063,7 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
         x -= 1;
     }
     let (angle, scale) = v.screen.look.emblem_matrix;
-    let sine = &v.b.content.rules.sine;
+    let sine = &v.b.arena_rules().sine;
     let at = |i: usize| sine.get(i % 256).copied().unwrap_or(0) as i32;
     let (sin, cos) = (at(angle as usize), at(angle as usize + 64));
     // sub_802FE7A: the angle's sine and cosine times a quarter of the

@@ -154,19 +154,16 @@ fn serde_name<T: serde::Serialize>(v: &T) -> String {
     }
 }
 
-/// The rule sections into `content.rules`: each only if the content
-/// defines it, the content's own root's (the battle's, docs/design/
-/// rules-in-luau.md §2.3).
-fn sections(content: &mut Content, r: &SpecReader, definitions: &Definitions) -> Result<(), ContentError> {
-    let home = content.scripts.home().map(str::to_string);
+/// Root `root`'s rule sections into `rules` (which starts as the base):
+/// each only if the root defines it.
+fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definitions) -> Result<(), ContentError> {
     for d in definitions.of(Registry::Rules) {
-        if keys::root_of(&d.key) != home.as_deref() {
+        if keys::root_of(&d.key).unwrap_or("") != root {
             continue;
         }
         let at = format!("{}.luau: rules {}", d.module, d.key);
         let e = |m: String| ContentError::new(m);
         let spec = &d.spec;
-        let rules = &mut content.rules;
         match keys::local(&d.key) {
             "elements" => {
                 let s: ElementsSection = r.read(spec, &at).map_err(e)?;
@@ -227,6 +224,13 @@ fn sections(content: &mut Content, r: &SpecReader, definitions: &Definitions) ->
                 };
             }
             "math" => rules.sine = r.read::<MathSection>(spec, &at).map_err(e)?.sine,
+            "pools" => {
+                let s: PoolSizes = r.read(spec, &at).map_err(e)?;
+                if s.slots().iter().any(|&n| n == 0 || n as usize > crate::object::SLOTS) {
+                    return Err(e(format!("{at}: a pool holds 1 to {} objects", crate::object::SLOTS)));
+                }
+                rules.pools = s;
+            }
             "custom-screen" => {
                 let s: CustomScreenSection = r.read(spec, &at).map_err(e)?;
                 rules.custom_screen = CustomScreenLayout {
@@ -277,7 +281,13 @@ fn sections(content: &mut Content, r: &SpecReader, definitions: &Definitions) ->
 
 /// The rule sections the content defines, into `content.rules`.
 pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), ContentError> {
-    let assets = content.assets.clone();
-    let r = SpecReader::new(&assets, definitions);
-    sections(content, &r, definitions)
+    let r = SpecReader::new(&content.assets, definitions);
+    let mut all = Vec::new();
+    for root in content.scripts.root_names() {
+        let mut rules = content.base_rules.clone();
+        sections(&mut rules, &root, &r, definitions)?;
+        all.push(rules);
+    }
+    content.rules = all;
+    Ok(())
 }

@@ -954,7 +954,7 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
     let h = b.objects.get(hit);
     assert_eq!((h.panel, h.damage), (PanelPos { x: 5, y: 2 }, 60));
     // Its own panel, with the thrown obstacle's spark and collision types.
-    let roles = &b.content.defs.roles;
+    let roles = b.arena_roles();
     let crate::kinds::Vars::Hitbox(v) = &h.vars else { panic!("a hitbox's state") };
     assert_eq!(
         (v.region, v.hit_effect, v.target, v.self_type),
@@ -1366,7 +1366,7 @@ fn gc_timing_does_not_reach_the_battle() {
 fn panels_break_poison_and_blink() {
     use crate::field::{PanelType, pflags};
     let mut b = rock_battle();
-    b.field.refresh_all(&b.content, &b.collision);
+    b.field.refresh_all(&b.content.rules_of(b.games.arena).panels, &b.collision);
     let (empty, occupied) = ((2, 1), (2, 2));
     b.field.panels[occupied.1][occupied.0].flags |= pflags::BODY_SIDE0;
     let kind = |b: &Battle, (x, y): (usize, usize)| b.field.panel(x as u8, y as u8).unwrap().kind;

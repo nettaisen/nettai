@@ -206,7 +206,7 @@ fn a_blank_shot_raises_the_arm_and_recovers_from_its_own_panel() {
     // Five ticks up, then the recovery by the open panels from its own
     // (its body is off the field while it updates) to the enemy's:
     // rules.buster_recovery[Rapid 0][3].
-    let recovery = b.content.rules.buster_recovery(0, 3) as u32;
+    let recovery = b.arena_rules().buster_recovery(0, 3) as u32;
     run_to(&mut b, p, &mut t, 5 + recovery, 0);
     assert_eq!(runs(&b, p0), "megaman/blank-shot/action");
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
@@ -568,7 +568,7 @@ fn a_buster_shot_flies_a_panel_every_two_ticks_and_hits() {
 
     // Five ticks up, then the recovery by the open panels from the one in
     // front (3,2) to the enemy's: rules.buster_recovery[Rapid 0][2].
-    let recovery = b.content.rules.buster_recovery(0, 2) as u32;
+    let recovery = b.arena_rules().buster_recovery(0, 2) as u32;
     run_to(&mut b, p, &mut t, 5 + recovery, 0);
     assert_eq!(runs(&b, p0), "megaman/buster/shot");
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
@@ -642,7 +642,7 @@ fn a_charged_shot_waits_then_fires_the_charged_kind() {
     // (Attack + 1) * 10 damage, four ticks later.
     run_to(&mut b, p, &mut t, 10, 0);
     assert_eq!(b.objects.get(p1).hp, 990);
-    let recovery = b.content.rules.buster_recovery(0, 2) as u32;
+    let recovery = b.arena_rules().buster_recovery(0, 2) as u32;
     run_to(&mut b, p, &mut t, 9 + recovery, 0);
     assert_eq!(runs(&b, p0), "megaman/charged-shot/action");
     run_to(&mut b, p, &mut t, 10 + recovery, 0);
@@ -739,7 +739,7 @@ fn a_throw_waits_the_last_shots_recovery() {
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
-    let recovery = b.content.rules.buster_recovery(0, 2) as u32;
+    let recovery = b.arena_rules().buster_recovery(0, 2) as u32;
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
     assert_eq!(act(&b, p0), IDLE);
     // Something else runs (a step), then the throw: it doesn't write the
@@ -2212,7 +2212,7 @@ fn an_action_starts_the_next_by_definition() {
 fn the_ruleset_starts_a_role_action() {
     // A caught hit starts AntiDmg's counter: the role content fills.
     let (mut b, p0, p1) = fight_on_test_pack();
-    let role = b.content.defs.roles.try_action(crate::content::ActionRole::AntiDamageCounter).expect("the test pack fills it");
+    let role = b.arena_roles().try_action(crate::content::ActionRole::AntiDamageCounter).expect("the test pack fills it");
     assert_eq!(nettai_content_api::keys::local(&b.content.defs.action(role).key), "test/anti-damage-counter");
     ai_mut(&mut b, p0).requests |= request::ANTI_DAMAGE_TRIGGERED;
     super::reactive::counter(&mut b, p0);
@@ -2228,7 +2228,7 @@ fn a_forced_charged_shot_starts_its_role() {
     // The request that starts the charged shot from idle without its
     // weapon's setup starts the role's action.
     let (mut b, p0, p1) = fight_on_test_pack();
-    let role = b.content.defs.roles.try_action(crate::content::ActionRole::ForcedChargedShot).expect("the test pack fills it");
+    let role = b.arena_roles().try_action(crate::content::ActionRole::ForcedChargedShot).expect("the test pack fills it");
     ai_mut(&mut b, p0).requests |= request::FORCED_CHARGED_SHOT;
     tick(&mut b, p0, p1, 0);
     assert_eq!(super::super::running_content_action(&b, p0), Some(role));

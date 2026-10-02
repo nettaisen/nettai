@@ -930,3 +930,42 @@ art if the user approves §7.4's proposal).
   tests, the content check (832 modules), gen-content check 0 errors, machgun 1074/1331 and soundmod
   21962/14933/20436 with 96 rollback rows (getgud's and rennet's) and the 189 legacy rounds, the lab 6521/6521
   (5,756,487 frames) with 0 sound rounds differing.
+
+### R2, each side's game (2026-10-02)
+
+- **A game's data is its root's.** Each root's roles (`define.roles`, `<root>:roles`) and rule sections
+  (`define.rules`) are its game's: `Defs::roles[RootId]`, `Content::rules[RootId]` (each root's sections over
+  `Content::base_rules`, the engine's defaults or the test content's made-up tables). `RootId` is a root's place
+  among the loaded roots, the content's own first (`RootId::HOME`). A ruleset's roles and sections are its game's;
+  a mix's own `roles`/`sections` come when a mix needs them (BN5's Soul Unison layout).
+- **Whose data a battle reads** (`BattleGames`, made from the setup): the arena is the stage's root; each side's
+  game is its ruleset's (`RulesetDef::game`). `Battle::{arena_rules, arena_roles}` are the battle's,
+  `side_game_rules(side)`, `side_roles(side)` a side's, `rules_for(r)`, `roles_for(r)` those of the side object `r`
+  is on (the arena's for an object of neither). How each read was sorted (§2.3):
+
+  | Whose | Reads |
+  |---|---|
+  | the arena's | the field (panel types, steps, slides, the trail sound, the field's eruption, panel physics: push, ice, bubble bob), the hit kernel (element weakness and the family elements, the plain spark, the anchor region, collision types and the damage word's statuses, ice freeze), obstacles (thrown, encased, absorbed), the flow's banners and music, the telop banner, AntiRecv's counterattack kind, the entry flash, the sine table |
+  | the side's (its object's) | the actions its requests start (counters, the strike, the turn, the Cross's knock-out and protection, the forced charged shot, the volley), its navi's body collision types, effects and sprites (deletion, recovery, trap mark, charge glow, status visuals, aura, lockon and hit markers, burst), its supports, Mode 9's kinds, the first barrier hook, NaviCust bug statuses and sparks, the guard spark, the Beast rush's lock-on and the berserk rules, the empty hand, the HP bug, the Cross special's chips, the sounds its player hears (`sound_for`), its victory and defeat music, its custom screen (`custom::GameLibrary`: layout, Beast Out and invalid chips, the Program Advance banners) |
+  | the chip's own game's | an SP chip's slot and its deletion-time steps |
+
+  In a battle of one game every column is that game's: the traces and the lab are unchanged.
+- **Capacity** (the user's decision): the `pools` section (BN6's content/bn6/rules/pools.luau: 32 each);
+  `Objects::with_capacity` takes each pool's larger size of the two sides' games (`BattleGames::pool_capacity`).
+- **Mixes**: `define.ruleset { base, add, remove, game }` (`read_rulesets`): a stock ruleset has no base; a mix
+  lists `add`/`remove`, not `systems`; `add` of a system it has, `remove` of one it hasn't, a base that leads back
+  to itself, a game that isn't a loaded root with a stock ruleset, and a ruleset in a root of no game with neither
+  base nor game are refused. testdata's rules/mix.luau is one (the stock rules less the forms system, plus the
+  marker).
+- **Tests**: a mix runs its systems; a second game root (`twin`, requiring `test`: its stock ruleset, the test
+  roles with another pause sound, 16 actors) beside the test content: each side reads its game's data and the
+  battle the arena's; capacities are the larger game's; duels of test/twin, twin/twin and mix/twin run 1,200 ticks
+  and a copy from tick 600 ends with the same digest.
+- **Tools**: `Content::home_rules`, `Defs::home_roles` for what has no battle (codecs' zeroed chip, `Library for
+  Content`); nettai-content's roles lint checks each game root's roles.
+- **Verify**: gen-content, the stubs report, the data and music tests read the home root's roles and tables (one
+  game's); gen-content compares the pools section with the ROM's (32 each).
+- **Gates** (on main f0cb0d4d merged; later main merges were docs and BN5 tools): the build without warnings, 449
+  tests, the content check (833 modules), gen-content check 0 errors, machgun 1074/1331 and soundmod
+  21962/14933/20436 with 96 rollback rows and the 189 legacy rounds, the lab 6521/6521 (5,756,487 frames) with 0
+  sound rounds differing: a battle of one game reads every table as before.

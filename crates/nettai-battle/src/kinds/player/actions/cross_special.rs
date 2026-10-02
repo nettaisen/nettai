@@ -41,7 +41,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         super::transform::face_default(b, r);
         let pos = b.objects.get(r).pos;
         let at = Vec3 { z: pos.z.wrapping_add(LOOK_Z), ..pos };
-        let look = b.content.defs.roles.effect(crate::content::EffectRole::Deletion);
+        let look = b.roles_for(r).effect(crate::content::EffectRole::Deletion);
         if let Some(e) = crate::kinds::effect::spawn(b, at, look, 0, 0, 0) {
             b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
         }
