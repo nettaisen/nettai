@@ -361,6 +361,11 @@ as bn6-extract takes BN6's) writes a pack whose manifest says `game = "bn5"`:
   - The Japanese ROMs' one different sprite (14-17, which has text on it): the US release localized it rather than
     cut it, so the pack keeps the US's, as BN6's does.
   - BN5's HUD and custom-screen layouts (§9).
+  - **Languages** (BN6's shape, text-rendering.md §10): with a BN5 content root, its strings go in
+    `content/bn5/locales/en.toml` (from the US ROMs) and `ja.toml` (from the Japanese ROMs), keyed by definition
+    key; and bn5-extract writes the Japanese ROMs' lettering beside the US's as nettai-assets' `HudLettering` and
+    `CustomLettering` (the fonts in the Japanese encoding, the HUD's lines, the banners and pictures with words in
+    them), as bn6-extract's `lettering` does. Neither exists yet: the pack is the US ROMs' lettering alone.
 - **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until a BN5 content
   root names them in its compat, as BN6's does.
 - **Shared decoding:** the sprite archive and GFX-animation decoders are BN6's format and code; bn5-extract has its
