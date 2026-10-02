@@ -363,6 +363,43 @@ reach_bn5.py); a few chips hit nobody standing anywhere, and their code says wha
   side uses it (from side 1 most fall in its own area), and MetrKnuk's meteors on random panels too; the lab
   stands the opponent on a panel they hit with its RNG (recorded, not read).
 
+### 6.4 The e-Reader cards' chips: LeadRaid and ChaosLrd
+
+Two chips' text and colours are the save's, written when an e-Reader card is read: **LeadRaid (0x137)** and
+**ChaosLrd (0x138)**. Read in Team ProtoMan's code; the four ROMs and both versions are the same.
+
+- **What the ROM has:** their records (the chip table, as any chip): LeadRaid a Mega chip, code L, Null, 200 damage,
+  MB 99, flags dimming and damage; ChaosLrd a Giga chip, code X, Null, 500 damage, MB 99, the same flags. Both use
+  the navi chips' action (0x41, BN6's 0x1B, the same code) with subtypes 0x15 and 0x1D: the summon table
+  (`off_802CD5C`'s counterpart, 0x080298C4) spawns actor kinds 0x20 and 0x51. Their pictures (record +0x24: 0x0872F8E8,
+  0x0872FE28) and icons (+0x20) are in the ROM. ChaosLrd's summon has a name in the battle name list (entry 0xE6,
+  "Chaos Lord", JP ロードオブカオス); LeadRaid's none.
+- **What the save has:** their names (the ROM's name entries are the text command `FF 00 n`), their descriptions
+  (`FF 01 n`) and their pictures' palettes (record +0x28 points into EWRAM): slot n's name is a one-entry text archive
+  at save +0x1D14 + 0x18 n, its description one at +0x1374 + 0x64 n, its palette 16 colours at +0x1660 + 0x20 n (the
+  save is EWRAM from 0x02000000, so those are its addresses once loaded). LeadRaid is slot 0, ChaosLrd slot 1.
+- **How the game gets them:** an e-Reader card read over the link: the card dispatcher (0x0812F3BC) passes the card's
+  kind to 0x0812F8F0, which notes the card in the save's obfuscated bytes (BN6's `encryption_8007004`, index 0x1020
+  plus the slot; what reads that is not read), gives the chip once (`GetChipCountOfCode`, `GiveChips`: LeadRaid in L,
+  ChaosLrd in X) and decompresses the card's name and description into the slot and copies its palette. A new game
+  clears the slots (`sub_8021D36`, the same code as BN6's): the palettes zeroed (a black picture), the names and
+  descriptions "????". Owning the chip is the pack's count, as any chip's; its text and colours are the slot's.
+- **The saves:** Tango's eight raw netplay saves (both versions, light and dark, US and JP) hold both chips' slots,
+  the same in all (the US's "LeadRaid" "ProtoMan & Colonel together!" and "ChaosLrd" "Hatred formed into Bass", the
+  JP's リーダーズレイド and ロードオブカオス), and so do the four GBA saves in Tango's saves folder (masked). BN5 DS has
+  no such block: its save doesn't hold them, and its ROM (bn5.nds) has both palettes (0x00B7EF40, 0x00B7EF60) and
+  ChaosLrd's name, so the DS game's two chips are its own.
+- **BN6's card buffer is the same mechanism**, which BN6 inherited: the same slot sizes (a 0x18-byte name archive, a
+  0x64-byte description archive, a 0x20-byte palette), the same text commands, the same clearing routine; at other
+  addresses (BN6: names 0x02001180, descriptions 0x020007D0, palettes 0x02000AF0) and filled by a gift over the link
+  rather than an e-Reader card (docs/engine/jp-differences.md).
+- **In content/bn5** they are content-given chips as BN6's gift chips are: their records from the ROM, their strings
+  in the locales (English from Tango's US saves, Japanese from its JP saves), their palettes the definitions'
+  `art_palette`, their slot compat's `save_slot`; gen_content.py's check reads them from the raw saves.
+- **Recorded:** the chip lab's chips/0x137-leadraid and 0x138-chaoslrd (hit, adjacent, miss, side1). LeadRaid hits
+  twice for 200 wherever the opponent stands (its row or not); ChaosLrd once for 500 wherever it stands. Both are
+  either MegaMan's (+0x15 0).
+
 ## 7. Team ProtoMan and Team Colonel
 
 `versions.py` (fmap.py's method between the two BN5 ROMs): the battle code is the same, moved (mostly +0xE8,
@@ -387,8 +424,10 @@ setup, and its few routines are version branches.
   the comm menu's Team Battle row (チームバトル), so every Tango BN5 match is a Team Battle (mode bytes 4–7), with
   Patch Cards on. **The user's decision (2026-10-02): Team Battle first**, as Tango plays it; a plain NetBattle
   later. The Team Battle is the Battle Chip Gate's mode (two consoles, each with a gate); Tango's runs the shared
-  custom screen with Soul Unison, and its navi switch (from a gate's navi chip) never happens (§5). A plain
-  NetBattle would add the comm menu's first row in the primer and the other link applet.
+  custom screen with Soul Unison, and its navi switch (from a gate's navi chip) never happens (§5). **A plain
+  NetBattle is recorded too** (the chip lab's `bn5-netbattle` base: Tango's primer, then the gate's flag lowered
+  and the comm menu's root cursor put on NetBattle; mode 2, a triple NetBattle). Its battle runs from the other
+  link applet (0x081359C4) with the same BattleState and settings records; its custom screen is the shared one too.
 - **Replays:** no BN5 replay in Tango's current format. Three of 2022 in the oldest format (0x10) and six in
   format 0x11 (made with the bn5_gate patch), the same kind of savestate-started rounds the 2022 BN6 replays are;
   two BN5 DS replays (another platform, out of scope).
@@ -498,3 +537,52 @@ In the verification workspace, with the ROMs in `$BN6_ROMS` and the BN6 disassem
 
 `target/audit/classes.tsv` (the audit, `tools/audit/audit.py`) gives the areas and classes; without it the map is
 the same, unclassified.
+
+## 13. BN5's root and compat (as built, before R)
+
+What BN5 verification and content need that doesn't depend on the roots (rules-in-luau.md R), shaped to R1's
+format.
+
+- **content/bn5** (written by the verification workspace's tools/bn5/gen_content.py from all four ROMs; its `check`
+  mode compares them again): `root.toml` (name "bn5", assets "bn5", no requires); `compat/chips.toml` (328 chips by
+  key: id, action and subtype; `damage_formula` for the 46 whose damage is a formula, 1000 and up; `colonel` for the
+  48 whose Team Colonel record differs: the version Gigas' library flag, the navi chips' +0x16);
+  `compat/panels.toml` (BN5's 11 panel types, their flag words and the engine's type each is);
+  `chips/<key>/chip.luau` (each chip's common record and its `megaman` extension, §6.1; no use yet); and
+  `locales/en.toml`, `ja.toml` (names and descriptions from the US and the Japanese ROMs). The records are Team
+  ProtoMan's: the Japanese ROMs' differ only in the library's sort keys (+0x18), Team Colonel's only where compat
+  says, and both versions' strings are the same. Keys follow BN6's: the US name in lower case, `+` and spaces as
+  `-`, a navi chip's SP or DS split off (`gyroman-sp`); the second CannBall (the mode chip, 0x11A) is
+  `cannball-mode`. Rewriting keeps a ported chip file's code: only the record's fields are rewritten.
+- **bn5-compat** (the engine never depends on it): `Compat::bn5()` (content/bn5/compat built in) and `read`; keys
+  unqualified inside, qualified `bn5:<key>` at its boundary (`qualify`, `strip`, `Compat::chip`); BN5's pool sizes;
+  the codec (the 0x60-byte NaviStats with the light/dark value and its two thresholds, the panels by compat's
+  table, the chip blocks); and, with the `trace` feature, the chip lab's recordings read and decoded. The
+  verification workspace's trace-tests `bn5_lab` decodes every recording in data/traces/lab-bn5 (1,371 of them,
+  1,134,927 frames).
+
+**Waiting on R** (and the port): the loader reading content/bn5 (its manifest, qualified keys, the locales by
+root); the chips' handles (the codec gives ids and qualified keys); a use for each chip (`define.chip` asks for
+one, so the generated records don't load until the port writes them, or the loader takes data-only chips); the
+`megaman` field as the light-and-dark system's extension (S7's `extends`); the type check of content/bn5 (BN6's
+core.d.luau has no `megaman`); BN5's kinds (no kinds.toml: objects decode to their pool and BN5's kind number);
+BN5's stages (the settings record stays raw).
+
+**What has no engine counterpart yet:**
+
+- *Chips:* `megaman` (+0x15); the families recovery and invisible (the engine's `ChipFamily` has neither; BN5's
+  obstacle family is BN6's summon); BN5's damage formulas (its own table: compat keeps the row); +0x16 (BN6's extra
+  flags byte: BN5's bits unread, written as numbers) and +0x17 (BN6's lock-on mode: BN5's byte, mostly 0x10,
+  unread); a version's own record (Team Colonel's differences).
+- *Panels:* metal (type 5: BN6's road flag, its look a plate, its behaviour unread) and sea (type 10, flag
+  0x20000); the panel record's 0x24 bytes (the lava and sea timers the panel setter starts, at +0x10 and +0x14).
+- *Pools:* the actors' 16 slots (the engine's `object::SLOTS` is one number, 32).
+- *NaviStats:* the light/dark value (+0x44); the weapon bytes' BN5 meaning (+0x04, +0x05, +0x07, +0x39: BN6's
+  buster and +0x39 swap places in the one call each that pairs them); and the bytes whose BN5 meaning isn't read:
+  +0x00, +0x0F, +0x11 to +0x1A and +0x24 (paired with BN6's NaviCust bug bytes at the same offsets, BN5's bugs not
+  checked), +0x1E to +0x22, +0x25 to +0x28, +0x2A, +0x2D to +0x38 (BN6's folder bytes; BN5's patch-card routine
+  writes there), +0x3A to +0x3D, +0x46 to +0x5F. BN6's fields BN5 has elsewhere or not at all: the starting form
+  (BN6 +0x17, BN5 +0x2C), the Tag chips, ChpShufl and NumbrOpn, the Beast Out counter, the version byte, the sun,
+  the hand-shrink bug.
+- *Setup:* the BattleSettings record (BN5's stages by their own numbers), BattleState (0xF0 bytes; the traces carry
+  it raw), the versions and regions (both decoded).
