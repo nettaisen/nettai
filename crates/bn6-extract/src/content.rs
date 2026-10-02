@@ -1,4 +1,4 @@
-//! `bn6-extract content <falzar-rom> <gregar-rom> <pack-dir> [--content <dir>]`: the game's
+//! `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack-dir> [--content <dir>]`: the game's
 //! assets as a content pack of open formats (see the nettai-content crate):
 //! the graphics (indexed PNG, JSON, Tiled maps, the sprites' animation
 //! timing) and all of the game's sound (MIDI, TOML, WAV), under the names
@@ -20,29 +20,39 @@ use nettai_content::report::{Level, Report};
 use nettai_content_api::{AssetKind, AssetNames};
 use std::path::Path;
 
+pub const USAGE: &str = "usage: bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack-dir> [--content <dir>]\n\
+     (all four ROMs, in this order: the US Falzar ROM, BR6E; the US Gregar ROM, BR5E;\n\
+     the Japanese Falzar ROM, BR6J; the Japanese Gregar ROM, BR5J)";
+
 pub fn main(args: &[String]) {
-    let usage = "usage: bn6-extract content <falzar-rom> <gregar-rom> <pack-dir> [--content <dir>]\n\
-                 (the US Falzar ROM, BR6E, and the US Gregar ROM, BR5E: the pack needs both)";
-    let (Some(falzar), Some(gregar), Some(out)) = (args.first(), args.get(1), args.get(2)) else {
-        eprintln!("{usage}");
+    let usage = USAGE;
+    let n = args.iter().position(|a| a == "--content").unwrap_or(args.len());
+    let [falzar, gregar, falzar_jp, gregar_jp, out] = &args[..n] else {
+        let given = n.min(5);
+        let missing = ["the US Falzar ROM", "the US Gregar ROM", "the Japanese Falzar ROM", "the Japanese Gregar ROM", "the pack's directory"];
+        if n < 5 {
+            eprintln!("missing: {} (given {given} of the five)\n{usage}", missing[n..].join(", "));
+        } else {
+            eprintln!("too many arguments ({n}; the four ROMs, then the pack's directory)\n{usage}");
+        }
         std::process::exit(2);
     };
-    let content_dir = match &args[3..] {
+    let content_dir = match &args[n..] {
         [] => nettai_content::root::bn6(),
-        [flag, dir] if flag == "--content" => dir.into(),
+        [_, dir] => dir.into(),
         _ => {
             eprintln!("{usage}");
             std::process::exit(2);
         }
     };
-    let roms = crate::load_roms(falzar, gregar).unwrap_or_else(|e| {
+    let roms = crate::load_roms([falzar.as_str(), gregar.as_str(), falzar_jp.as_str(), gregar_jp.as_str()]).unwrap_or_else(|e| {
         eprintln!("{e}\n{usage}");
         std::process::exit(2);
     });
     let names = asset_names(content_dir.join("compat").as_path());
     let rom_bytes = &roms.falzar;
     let t = std::time::Instant::now();
-    let bundle = crate::graphics::bundle(rom_bytes, &roms.gregar, &names);
+    let bundle = crate::graphics::bundle(&roms, &names);
     let (bank, failures) = m4a::rom::extract(&rom_bytes.0).unwrap_or_else(|e| panic!("reading the sound data: {e}"));
     for (song, e) in &failures {
         eprintln!("song {:#05x} left out (it uses a command the driver port doesn't play): {e}", song.0);
@@ -73,7 +83,7 @@ pub fn main(args: &[String]) {
     let mut report = Report::default();
     match nettai_content::pack::import_graphics(root, &mut report) {
         Some(back) if back == bundle => {}
-        Some(_) => panic!("the pack's graphics read back differently"),
+        Some(back) => panic!("the pack's graphics read back differently: {}", difference(&bundle, &back)),
         None => panic!("the pack's graphics don't load:\n{report}"),
     }
     // And the content's definitions must define against it.
@@ -101,6 +111,32 @@ pub fn main(args: &[String]) {
         content.defs.chips.len(),
         content.hash()
     );
+}
+
+/// Where two graphics bundles differ, roughly: which part, which sprite
+/// or which chip picture.
+fn difference(a: &nettai_assets::Bundle, b: &nettai_assets::Bundle) -> String {
+    if a.sprites.len() != b.sprites.len() {
+        return format!("{} sprites written, {} read", a.sprites.len(), b.sprites.len());
+    }
+    for (x, y) in a.sprites.iter().zip(&b.sprites) {
+        if x != y {
+            let what = if x.region != y.region { "its region" } else { "its data" };
+            return format!("sprite {:02x}-{:02x} ({what})", x.category, x.index);
+        }
+    }
+    if a.custom != b.custom {
+        for (x, y) in a.custom.chip_art.iter().zip(&b.custom.chip_art) {
+            if x != y {
+                return format!("chip {}'s picture", x.key);
+            }
+        }
+        return "the custom screen's".into();
+    }
+    if a.hud != b.hud {
+        return "the HUD's".into();
+    }
+    "the field's or the backgrounds'".into()
 }
 
 /// The names compat gives the assets (placeholders for all of them

@@ -2529,7 +2529,8 @@ failed spawns and a missing flag pointer (**unverified**), and match every frame
 Count H\* + Count[EX] H + Count[SP] H: the Japanese games' names, which the content uses; the US release calls them
 HackJack, HackJck[EX] and HackJck[SP]. **The US games have no routine**: their
 `off_802CD5C[18]` is null (the game jumps to address 0), T1 0x11 and T3 0x0D point at placeholder routines and
-sprite (8, 0x16) is a placeholder archive. The Japanese games (EXE6 Falzar BR6J, EXE6 Gregar BR5J) have them; the
+sprite (8, 0x16) is a placeholder archive (the pack has the Japanese ROMs' sprite, `count`). The Japanese games
+(EXE6 Falzar BR6J, EXE6 Gregar BR5J) have them; the
 two are the same code at different addresses (EXE6 Falzar's below; EXE6 Gregar's +0x1860 for the navi, +0x1860 for
 the lance). There is no Japanese disassembly: the addresses are the ROMs', the routines they call the US games'
 (the verification workspace's `fmap.py --to` maps them). Content: chips/count (navi, lance, chips).
@@ -2615,8 +2616,9 @@ only by that navi AI's code (0x0810xxxx).
 #### 3.6.38 Django (navi chip subtype 19, chips 0x116–0x118, T1 0x12; the Japanese games')
 
 Django D\* + Django2 D + Django3 D. **The US games have no routine**: `off_802CD5C[19]` is null, T1 0x12 a
-placeholder, sprite (0xC, 0xF) a placeholder archive, and attachment rows 0xB and 0xC show sprite (0xC, 0) (the
-Japanese games': (0xC, 0xF), Django's: the US games' CrosOver shows his gun from the blades' sheet). The Japanese
+placeholder, sprite (0xC, 0xF) a placeholder archive (the pack has the Japanese ROMs' sprite, `django`), and
+attachment rows 0xB and 0xC show sprite (0xC, 0) (the Japanese games': (0xC, 0xF), Django's: the US games' CrosOver
+shows his gun from the blades' sheet; the content shows the Japanese games' on every console). The Japanese
 games' code below (EXE6 Falzar; EXE6 Gregar +0x1860). Content: chips/django (navi, chips).
 
 The records differ: the US games' are class 3 (not a folder chip) with flags 0; the Japanese games' class 1 (Mega)

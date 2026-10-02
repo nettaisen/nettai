@@ -170,6 +170,7 @@ pub(crate) mod testing {
             family: ChipFamily::Fire,
             class,
             description: None,
+            art_palette: None,
             mb: 0,
             flags: ChipFlags(flags),
             hit_param: 0,

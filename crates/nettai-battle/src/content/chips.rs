@@ -267,6 +267,11 @@ pub struct ChipData {
     /// (`description_lines`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// The palette of the chip's picture on the custom screen, 16 BGR555
+    /// colours, for a chip whose palette no ROM holds (the pack's picture
+    /// has a black one): presentation only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub art_palette: Option<[u16; 16]>,
     /// Codes the chip comes in (up to four).
     #[serde(default)]
     pub codes: Vec<ChipCode>,

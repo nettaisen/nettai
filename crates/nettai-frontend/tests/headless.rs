@@ -34,6 +34,7 @@ fn assets() -> Bundle {
         palette_sets: vec![vec![palette]],
         part_lists: vec![vec![part(0, -16, -8, 32, 16), part(8, -8, -32, 16, 32)]],
         animations: vec![vec![frame]; 32],
+        region: None,
     };
     // Panels: one solid tile, palette 1 for the left side's, 5 for the
     // right side's.
