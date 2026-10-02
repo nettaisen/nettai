@@ -8,8 +8,8 @@
 //!   repository's, built in.
 //! - [`codec`]: BN5's records in the engine's terms: the 0x60-byte
 //!   NaviStats with BN5's light/dark value, the panels, the chip blocks.
-//! - `trace` (feature `trace`): the chip lab's BN5 recordings, read and
-//!   decoded.
+//! - `trace` (feature `trace`): the chip lab's BN5 recordings, read,
+//!   decoded and replayed (docs/design/bn5-map.md §15.5).
 //!
 //! Keys: content/bn5 writes them unqualified, as its root's loader reads
 //! them (rules-in-luau.md R: content/bn5/root.toml names the root `bn5`);
@@ -114,6 +114,30 @@ struct PanelsFile {
     types: BTreeMap<String, PanelEntry>,
 }
 
+/// The original's numbers of BN5's rule definitions (rules.toml).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RuleNumbers {
+    /// Statuses (0x0801CEC4): a hit's status byte, by key.
+    #[serde(default)]
+    pub statuses: BTreeMap<String, u8>,
+}
+
+/// BN5's asset names (assets.toml): the names bn5-extract writes its
+/// assets under, by BN6's names for what is BN6's. Sprites as "cc-ii" (the
+/// category's byte offset in the sprite list and the index), sounds by the
+/// song table's numbers, banners by banner id.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AssetNames {
+    #[serde(default)]
+    pub sprites: BTreeMap<String, String>,
+    #[serde(default)]
+    pub sounds: BTreeMap<String, u16>,
+    #[serde(default)]
+    pub banners: BTreeMap<String, u8>,
+}
+
 /// BN5's compat tables (content/bn5/compat).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Compat {
@@ -123,15 +147,21 @@ pub struct Compat {
     pub panels: BTreeMap<u8, PanelEntry>,
     /// The chips' keys by id.
     pub chip_keys: BTreeMap<u16, String>,
+    /// assets.toml: the assets' names.
+    pub assets: AssetNames,
+    /// rules.toml: the rule definitions' numbers.
+    pub rules: RuleNumbers,
 }
 
 /// The files of a compat folder.
-pub const FILES: [&str; 2] = ["chips.toml", "panels.toml"];
+pub const FILES: [&str; 4] = ["chips.toml", "panels.toml", "assets.toml", "rules.toml"];
 
 /// This repository's compat (content/bn5/compat), built in.
-const BN5: [(&str, &str); 2] = [
+const BN5: [(&str, &str); 4] = [
     ("chips.toml", include_str!("../../../content/bn5/compat/chips.toml")),
     ("panels.toml", include_str!("../../../content/bn5/compat/panels.toml")),
+    ("assets.toml", include_str!("../../../content/bn5/compat/assets.toml")),
+    ("rules.toml", include_str!("../../../content/bn5/compat/rules.toml")),
 ];
 
 /// The engine's panel type of an engine panel name as panels.toml writes
@@ -149,6 +179,12 @@ fn engine_panel(name: &str) -> Option<PanelType> {
         "volcano" => PanelType::Volcano,
         _ => return None,
     })
+}
+
+/// A sprite's "cc-ii".
+fn parse_sprite(id: &str) -> Option<(u8, u8)> {
+    let (c, i) = id.split_once('-')?;
+    Some((u8::from_str_radix(c, 16).ok()?, u8::from_str_radix(i, 16).ok()?))
 }
 
 impl Compat {
@@ -186,7 +222,18 @@ impl Compat {
             }
             by_number.insert(n, p);
         }
-        Ok(Compat { chips, panels: by_number, chip_keys })
+        let assets: AssetNames = toml::from_str(&text("assets.toml")?).map_err(|e| format!("assets.toml: {e}"))?;
+        for (name, id) in &assets.sprites {
+            parse_sprite(id).ok_or_else(|| format!("assets.toml: sprite {name} is {id:?}, not \"cc-ii\""))?;
+        }
+        let rules: RuleNumbers = toml::from_str(&text("rules.toml")?).map_err(|e| format!("rules.toml: {e}"))?;
+        let mut statuses = BTreeMap::new();
+        for (k, &n) in &rules.statuses {
+            if let Some(other) = statuses.insert(n, k) {
+                return Err(format!("rules.toml: statuses {k} and {other} are both {n:#04x}"));
+            }
+        }
+        Ok(Compat { chips, panels: by_number, chip_keys, assets, rules })
     }
 
     /// A chip's key by its id, as compat writes it (unqualified).
@@ -202,6 +249,16 @@ impl Compat {
     /// A chip's entry by its qualified key.
     pub fn chip_entry(&self, key: &str) -> Option<&ChipEntry> {
         strip(key).and_then(|k| self.chips.get(k))
+    }
+
+    /// A status's qualified key (`bn5:paralyze-90`) by a hit's status byte.
+    pub fn status(&self, byte: u8) -> Option<String> {
+        self.rules.statuses.iter().find(|&(_, &n)| n == byte).map(|(k, _)| qualify(k))
+    }
+
+    /// The sprites' names by (category, index).
+    pub fn sprite_names(&self) -> BTreeMap<(u8, u8), String> {
+        self.assets.sprites.iter().filter_map(|(name, id)| Some((parse_sprite(id)?, name.clone()))).collect()
     }
 
     /// The engine's panel type of BN5's panel type `n`: `Ok(None)` for a
