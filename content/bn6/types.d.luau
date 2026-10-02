@@ -891,6 +891,20 @@ export type EraseBeam = {
     navis: boolean,
 }
 
+-- How a dust storm blows (lib/instant/dust_storm, the original's Param2 and
+-- Param3): for `ticks` ticks, while its user runs `tied` (nil: untied, its
+-- hits landing while dimmed; HackJack's rain).
+export type DustStorm = { ticks: number, tied: Action? }
+
+-- How HackJack's lance strikes (chips/hackjack/lance, the original's
+-- Param2 and Param3): at once and while dimmed (`while_dimmed`, his chip's:
+-- the game's Param3 2), or after `warn_ticks` ticks of its panel
+-- highlighted, standing still while dimmed.
+export type HackJackLance = {
+    while_dimmed: boolean,
+    warn_ticks: number,
+}
+
 -- What a whirlwind is spawned with (TenguCross Beast's, its form's
 -- whirlwind module): whether its hits come all at once, how long it stands
 -- and its animation.
