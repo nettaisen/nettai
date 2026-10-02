@@ -231,8 +231,9 @@ writes the transform record (`sub_8015952`: the soul, Chaos or not, the turns: 3
 (3), 11 break (11), 12 aqua (1) (by the lab's pictures: 1 is ProtoSoul, 10 TomahawkSoul).
 
 **Light and dark MegaMan** (observed in the lab): a dark MegaMan has no Soul Unison button (slot 11 isn't kind 2)
-and can't use the SP navi chips; a light MegaMan can't use the dark chips or the DS navi chips (each fizzles: the
-navi enters action 0x1A for a frame and a puff of smoke appears). Which branch decides is not read yet.
+and can't use the navi chips (0xDD–0x118) but the DS ones; a light MegaMan can't use the dark chips or the DS navi
+chips. Each such chip fizzles: the navi enters action 0x1A for a frame and a puff of smoke appears. Which branch
+decides is not read yet.
 
 ## 5. Transformations: Soul Unison, the navi switch
 
