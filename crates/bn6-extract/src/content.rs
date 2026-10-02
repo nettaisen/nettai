@@ -1,5 +1,5 @@
 //! `bn6-extract content <rom> <pack-dir> [--content <dir>]`: the game's
-//! assets as a content pack of open formats (see the bn6-content crate):
+//! assets as a content pack of open formats (see the nettai-content crate):
 //! the graphics (indexed PNG, JSON, Tiled maps, the sprites' animation
 //! timing) and all of the game's sound (MIDI, TOML, WAV), under the names
 //! the content's compat/assets.toml (and chips.toml, for the HUD's chip
@@ -16,8 +16,8 @@
 //! The pack holds the game's own data: write it outside version control
 //! (data/content/ is ignored).
 
-use bn6_content::report::{Level, Report};
-use bn6_content_api::{AssetKind, AssetNames};
+use nettai_content::report::{Level, Report};
+use nettai_content_api::{AssetKind, AssetNames};
 use std::path::Path;
 
 pub fn main(args: &[String]) {
@@ -27,7 +27,7 @@ pub fn main(args: &[String]) {
         std::process::exit(2);
     };
     let content_dir = match &args[2..] {
-        [] => bn6_content::root::bn6(),
+        [] => nettai_content::root::bn6(),
         [flag, dir] if flag == "--content" => dir.into(),
         _ => {
             eprintln!("{usage}");
@@ -42,37 +42,37 @@ pub fn main(args: &[String]) {
     for (song, e) in &failures {
         eprintln!("song {:#05x} left out (it uses a command the driver port doesn't play): {e}", song.0);
     }
-    let mut files = vec![bn6_content::pack::manifest("BN6 (US Falzar) battle assets", Some(&bundle), true)];
-    files.extend(bn6_content::pack::export_graphics(&bundle, &names));
-    let (sound, left_out) = bn6_content::pack::export_sound(&bank, &names);
+    let mut files = vec![nettai_content::pack::manifest("BN6 (US Falzar) battle assets", Some(&bundle), true)];
+    files.extend(nettai_content::pack::export_graphics(&bundle, &names));
+    let (sound, left_out) = nettai_content::pack::export_sound(&bank, &names);
     files.extend(sound);
     // The song-table entries: the songs the bank plays and those it left
     // out.
     let songs = bank.songs.iter().enumerate().filter(|(_, s)| s.is_some()).map(|(i, _)| i as u16);
     let songs = songs.chain(failures.iter().map(|(id, _)| id.0)).collect();
     let index = names.index(&bundle, &songs);
-    files.push(bn6_content::names::index_file(&index));
+    files.push(nettai_content::names::index_file(&index));
     for (song, e) in &left_out {
         eprintln!("song {:#05x} left out (no MIDI mapping yet): {e}", song.0);
     }
     let root = Path::new(out);
-    bn6_content::pack::write_files(root, &files).unwrap_or_else(|e| panic!("writing {out}: {e}"));
+    nettai_content::pack::write_files(root, &files).unwrap_or_else(|e| panic!("writing {out}: {e}"));
     // The asset index must read back exactly.
     let mut report = Report::default();
-    match bn6_content::names::read_index(root, &mut report) {
+    match nettai_content::names::read_index(root, &mut report) {
         Some(back) if back == index => {}
         Some(_) => panic!("the pack's asset index reads back differently"),
         None => panic!("the pack's asset index doesn't load:\n{report}"),
     }
     // So must the graphics, under whatever names they were written.
     let mut report = Report::default();
-    match bn6_content::pack::import_graphics(root, &mut report) {
+    match nettai_content::pack::import_graphics(root, &mut report) {
         Some(back) if back == bundle => {}
         Some(_) => panic!("the pack's graphics read back differently"),
         None => panic!("the pack's graphics don't load:\n{report}"),
     }
     // And the content's definitions must define against it.
-    let content = match bn6_content::pack::load_battle(&content_dir, root) {
+    let content = match nettai_content::pack::load_battle(&content_dir, root) {
         Ok((c, r)) => {
             for i in r.issues.iter().filter(|i| i.level != Level::Note) {
                 eprintln!("{i}");
@@ -100,8 +100,8 @@ pub fn main(args: &[String]) {
 
 /// The names compat gives the assets (placeholders for all of them
 /// without one).
-fn asset_names(compat: &Path) -> bn6_content::names::AssetNames {
-    let mut names = bn6_content::names::AssetNames::default();
+fn asset_names(compat: &Path) -> nettai_content::names::AssetNames {
+    let mut names = nettai_content::names::AssetNames::default();
     if !compat.is_dir() {
         eprintln!("no compat at {}: every asset is written under its placeholder", compat.display());
         return names;

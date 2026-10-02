@@ -1,8 +1,8 @@
 -- The battle engine's content API, as Luau content sees it. A definitions
 -- file for editors and the type checker (luau-lsp:
 -- `--definitions=content/bn6/core.d.luau`); the engine implements it in
--- crates/bn6-luau/src/bind.rs over the Rust `CoreApi` trait
--- (crates/bn6-content-api), and docs/design/scripting.md describes it.
+-- crates/nettai-luau/src/bind.rs over the Rust `CoreApi` trait
+-- (crates/nettai-content-api), and docs/design/scripting.md describes it.
 --
 -- How content runs (content model v2, docs/design/content-model-v2.md).
 -- Every module of a pack loads once, and while it loads it makes

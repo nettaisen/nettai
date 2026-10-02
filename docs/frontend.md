@@ -1,4 +1,4 @@
-# The rendering frontend (`bn6-frontend`)
+# The rendering frontend (`nettai-frontend`)
 
 A desktop app that runs a battle through the native engine and draws it the
 way the original does, in its 240x160 frame scaled up by an integer factor.
@@ -26,10 +26,10 @@ names the content gives them. Extract it once:
 (`data/content/` is gitignored.) The frontend loads the pack at start-up
 from `--pack <dir>`, else `$BN6_PACK`, else `data/content/bn6`, straight
 from its files: the content with the pack's asset index into the engine's
-`Content`, the graphics through bn6-content's importer, and, when a window
-opens, the sound. `BN6_LOAD_TIMES=1` prints how long each part took.
+`Content`, the graphics through nettai-content's importer, and, when a window
+opens, the sound. `NETTAI_LOAD_TIMES=1` prints how long each part took.
 
-The graphics load into the types of the `bn6-assets` crate, decoded
+The graphics load into the types of the `nettai-assets` crate, decoded
 (tiles as palette indices, colours as BGR555):
 
 - **Sprites**: every battle sprite (categories 0x00..=0x14 of
@@ -61,16 +61,16 @@ its definition's, spelled with the font's glyphs (`Hud::glyphs`); its icon
 is the pack's image under the chip's key; whether its damage shows is its
 definition's flag. The emotion window shows the face the navi's form names
 for its emotion (`mugshot`, `FormData::mugshot`), or a link navi's own
-(`NaviData::mugshot`); mugshot numbers from `bn6_assets::NAVI_MUGSHOTS`
+(`NaviData::mugshot`); mugshot numbers from `nettai_assets::NAVI_MUGSHOTS`
 are the link navis' faces, with their Full Synchro palettes.
 
 ## 2. Running
 
-    cargo run -p bn6-frontend -- <trace.jsonl>              # watch a trace
-    cargo run -p bn6-frontend -- --play                     # play live
-    cargo run -p bn6-frontend -- <trace.jsonl> --headless 150,300,600 --out <dir>
-    cargo run -p bn6-frontend -- <trace.jsonl> --audit      # what is missing?
-    cargo run -p bn6-frontend -- --play --pack <dir>        # another pack
+    cargo run -p nettai-frontend -- <trace.jsonl>              # watch a trace
+    cargo run -p nettai-frontend -- --play                     # play live
+    cargo run -p nettai-frontend -- <trace.jsonl> --headless 150,300,600 --out <dir>
+    cargo run -p nettai-frontend -- <trace.jsonl> --audit      # what is missing?
+    cargo run -p nettai-frontend -- --play --pack <dir>        # another pack
 
 Options: `--pack <dir>` names the content pack and `--content <dir>` the
 battle content (see above), `--mute` turns the sound off, `--round N`
@@ -118,10 +118,10 @@ have, a chip without an icon or with a name the font can't spell, a banner
 without glyphs, a text line, a song. It exits 1 if there was any. It is the
 quick check after a content or loader change: nothing is silently skipped.
 
-**Sound**: the window plays each tick's sound cues through bn6-audio, with
+**Sound**: the window plays each tick's sound cues through nettai-audio, with
 the pack's sound, unless `--mute`; headless rendering never plays sound.
 Other per-tick consumers can plug in the same way, as a `TickHook`
-(`bn6_frontend::session`), which the window runs after every tick.
+(`nettai_frontend::session`), which the window runs after every tick.
 
 ## 3. What is drawn, and how
 
@@ -314,7 +314,7 @@ itself, LilBoiler's HP number, the warning arrows, the faces. No frame
 panics, and the audit names nothing missing.
 
 The comparison needs the ROM, so it lives outside this repository, with the
-list of scenarios. The frontend's own tests (`cargo test -p bn6-frontend`)
+list of scenarios. The frontend's own tests (`cargo test -p nettai-frontend`)
 use a small synthetic asset set and a live battle built in code.
 
 Screenshots of the right-hand player's console that the recorders took as

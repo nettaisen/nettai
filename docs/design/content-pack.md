@@ -3,7 +3,7 @@
 A battle runs on **content**: chips, navis and their forms, weapons, stages, the ruleset's tables, object kinds,
 actions, effects, sparks, regions, collision types, statuses, lock-on modes and identities, every sprite's
 animation timing, and the Luau code that runs them. The engine holds it as one typed value,
-`bn6_battle::Content`, and reads it from nowhere else: no ROM, no tables or scripts compiled into the engine. It
+`nettai_battle::Content`, and reads it from nowhere else: no ROM, no tables or scripts compiled into the engine. It
 comes from two places:
 
 - the **content root**, a checkout's folder of Luau modules that *define* the content. BN6's is content/bn6 in
@@ -62,8 +62,8 @@ A module is `--!strict` Luau that returns a table. While it loads it makes defin
 returns is what other modules get from `require("../../lib/bombs/bomb")` (a path relative to the requiring
 file). Nothing registers a module: the engine runs what the definitions hold.
 
-`bn6_content::root::read(dir)` reads a content root: every module, by its path without `.luau`.
-`bn6_content::root::bn6()` is BN6's: `$BN6_CONTENT`, else this repository's content/bn6.
+`nettai_content::root::read(dir)` reads a content root: every module, by its path without `.luau`.
+`nettai_content::root::bn6()` is BN6's: `$BN6_CONTENT`, else this repository's content/bn6.
 
 ## 2. The pack
 
@@ -76,12 +76,12 @@ graphics/...  sound/...                   see asset-formats.md
 
 The index lists every sprite, sound, banner, background and mugshot by name, with the engine's identity for it:
 every name compat/assets.toml gives, and the pack's other assets under their placeholders (`sprite-0c-2d`),
-which content may not use (`bn6-content-check` flags one: name the asset in compat/assets.toml first). The pack
+which content may not use (`nettai-content-check` flags one: name the asset in compat/assets.toml first). The pack
 holds the game's own data: it is written outside version control (data/content/ is ignored).
 
 ## 3. Loading
 
-`bn6_content::pack::load_battle(content, pack)` reads the content root and, from the pack, the asset index
+`nettai_content::pack::load_battle(content, pack)` reads the content root and, from the pack, the asset index
 (`Content::assets`) and the sprites' timing (`Content::animations`), then runs the define phase
 (`Content::define`):
 
@@ -97,11 +97,11 @@ holds the game's own data: it is written outside version control (data/content/ 
 
 A definition that doesn't read is a content error naming its module: a missing field, a reference to the wrong
 registry, two definitions with one key, a chip without exactly one use, an asset name the pack's index doesn't
-have. `bn6_content::pack::battle_content` is the same before the define phase.
+have. `nettai_content::pack::battle_content` is the same before the define phase.
 
-`bn6-content check <pack> [--content DIR]` runs every import and the define phase, and reports on the
+`nettai-content check <pack> [--content DIR]` runs every import and the define phase, and reports on the
 definitions: roles the content hasn't filled, kinds under `objects/` that one owner alone uses, collision types
-defined twice. `bn6-content-check <content>` type-checks every module against core.d.luau and lints the source
+defined twice. `nettai-content-check <content>` type-checks every module against core.d.luau and lints the source
 (scripting.md §3.3).
 
 The verification workspace's `gen-content check <rom> <content>` defines the content root with compat's asset
@@ -114,11 +114,11 @@ rendering, `--mute`) skips the sound.
 
 ## 4. The `Content` API
 
-`Content` (crates/bn6-battle/src/content) is plain data: `Clone`, `PartialEq`, `Hash`. Engine code reads it
+`Content` (crates/nettai-battle/src/content) is plain data: `Clone`, `PartialEq`, `Hash`. Engine code reads it
 through the battle, by handle:
 
 ```rust
-let content: Arc<Content> = Arc::new(bn6_content::pack::load_battle(&bn6_content::root::bn6(), pack)?.0);
+let content: Arc<Content> = Arc::new(nettai_content::pack::load_battle(&nettai_content::root::bn6(), pack)?.0);
 let setup = RoundSetup { content: content.hash(), settings, navi_stats, ... };
 let mut b = Battle::new(setup, content.clone());
 
@@ -167,11 +167,11 @@ let pas = b.content.program_advances();            // in the order they are trie
 
 ## 6. Tests and other content
 
-In-repo tests never load game data. `bn6_battle::content::testing` (the `test-content` feature, and the
-engine's own tests) is a small content set: its own modules (crates/bn6-battle/testdata/content: made-up chips,
+In-repo tests never load game data. `nettai_battle::content::testing` (the `test-content` feature, and the
+engine's own tests) is a small content set: its own modules (crates/nettai-battle/testdata/content: made-up chips,
 navis, stages, statuses and lock-on modes, and its roles), some of content/bn6's modules read from the
 repository with whatever they `require`, and made-up assets for the names they use. So the tests run the real
-scripts on made-up data. A second set, the test pack (crates/bn6-battle/testdata/pack), is definitions written
+scripts on made-up data. A second set, the test pack (crates/nettai-battle/testdata/pack), is definitions written
 for the tests alone. The engine, netplay, audio and frontend tests run on them; one test defines all of
 content/bn6 with made-up assets.
 

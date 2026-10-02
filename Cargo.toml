@@ -8,7 +8,7 @@ license = "MIT"
 
 [workspace.dependencies]
 m4a = { path = "crates/m4a" }
-bn6-battle = { path = "crates/bn6-battle" }
+nettai-battle = { path = "crates/nettai-battle" }
 bn6-compat = { path = "crates/bn6-compat" }
 cpal = "0.15"
 # Rollback netcode core (Tango's); Cargo.lock pins the revision.
