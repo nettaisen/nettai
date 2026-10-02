@@ -535,8 +535,9 @@ Rules 4 to 6 of §2.1 exist to avoid this.
 1. **A plain fight stays free.** No slice adds a per-tick Luau call to a navi in a plain state (no controller,
    wrapper, window or special): soundmod 1–3 and machgun 2 stay within the noise (±10 %).
 2. **The ceiling**: every basket row under **500 µs per rendered frame** (3 % of a frame), best of five.
-3. **Every slice reports** its basket before and after, with its Luau calls per advance; a row that grows by more
-   than 25 % is explained.
+3. **No per-slice measurement** after S2 (the user, 2026-10-02: "don't bother doing all this costing, it's
+   fine"). Through S2 every slice reported its basket before and after; the tools stay for when a slice adds
+   per-tick Luau to a plain fight, or someone asks.
 
 The estimate at the end of the BN6-only slices: plain fights unchanged; machgun 1 about unchanged (the marker stays
 Rust, the rush only during rushes); beast-over plus berserk (about 5 µs an advance) near 190 µs. Two rulesets in one
@@ -677,7 +678,8 @@ under each stock ruleset, a battle with a different ruleset on each side, and a 
 - Ports from the Rust as it stands; every branch kept; anything the move shows wrong is fixed and listed.
 - Gates once at the end (phase-b-brief): the build without warnings, `cargo test --workspace`, the content check,
   `gen-content check` when compat or definitions changed, both golden traces with rollback at every latency and the
-  sound calls, the full lab with the sound gate, and **the rollback cost basket before and after** (§6.5).
+  sound calls, and the full lab with the sound gate. (The rollback cost basket before and after was a gate through
+  S2; the user dropped it, §6.3.)
 - Verify-side changes on a verify branch of the same name.
 - Docs: this document's "As built" notes; core-content-boundary.md and content-migration.md where the line or the
   patterns move; docs/engine where it names moved code.
@@ -838,3 +840,13 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
 - **Roles** only the change used are gone (the sounds of a form change, a Cross, Beast Out, the roars, Beast Over's
   rumble, the Cross merge; the effects of a form change and Beast Over's beast and blast): the Luau names the assets.
 - `kinds::cross_merge` and `EngineKind::CrossMerge` are gone; the engine has 21 kinds of its own.
+- **Compat**: compat/actions.toml gains `"forms/change" = 0x1C`, compat/kinds.toml `"forms/cross-merge"` (actor
+  #0x1B); the roles removed leave compat/rules.toml. Verify (branch rules-design): gen-content checks every form but
+  the base form names `forms/change`.
+- **Gates** (on main 356f5971 merged): the build without warnings, 399 tests, the content check (832 modules),
+  gen-content check (no errors of S2's: the three left are main's own, SpoutMan's descriptions since "fix
+  character", f4adebdc), machgun 1074/1331 and soundmod 21962/14933/20436 with 48 rollback rows and the 189 legacy
+  rounds, the lab 6521/6521 (5,756,487 frames) with 0 sound rounds differing.
+- **Cost**: the basket under load 34 to 64 was noise either way (soundmod 1 read 119 against 345 µs in one pass, 236
+  against 198 alternating); the user then dropped the measurement (§6.3). A change runs Luau only during its own
+  frames (about 100 a change); a plain fight runs none of S2's.
