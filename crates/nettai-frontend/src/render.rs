@@ -71,7 +71,7 @@ impl<'a> Renderer<'a> {
         self.hud.clear();
         self.names.clear();
         let navi = crate::custom::navi_number(b, b.setup.local_side);
-        let emblem = crate::custom::emblem_tiles(&assets.custom, navi);
+        let emblem = crate::custom::emblem_tiles(&assets.custom, crate::custom::version_name(b, b.setup.local_side), navi);
         let mut list = SpriteList::default();
         objects::queue_objects(b, assets, &view, &mut list, &mut self.problems);
         crate::custom::draw(b, assets, &emblem, &mut self.hud, &mut self.names, &mut list, &mut self.problems);

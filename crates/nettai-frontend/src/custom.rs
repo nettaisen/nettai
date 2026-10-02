@@ -15,12 +15,12 @@ use crate::audit::Problems;
 use crate::compose::{Affine, Fade, Layer, SpritePart};
 use crate::fonts;
 use crate::objects::SpriteList;
-use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles};
+use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
 use nettai_battle::Battle;
 use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipClass, ChipFlags, DamageFormula};
 use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
-use nettai_battle::custom::{FolderChip, Phase, Screen, Side, SlotKind, SlotState};
+use nettai_battle::custom::{FolderChip, GameVersion, Phase, Screen, Side, SlotKind, SlotState};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
 const COLUMNS: usize = 15;
@@ -270,6 +270,8 @@ struct View<'a> {
     side: u8,
     screen: &'a Screen,
     assets: &'a CustomScreen,
+    /// The pictures of the console's version.
+    own: &'a VersionPictures,
     hud: &'a Hud,
 }
 
@@ -299,6 +301,14 @@ impl View<'_> {
             Some(f) => p.map(|c| crate::compose::apply_fade(c, f)),
             None => p,
         }
+    }
+}
+
+/// The pack's name of a console's game version (`Versioned`).
+pub fn version_name(b: &Battle, side: u8) -> &'static str {
+    match b.custom.sides[side as usize & 1].unlocks.version {
+        GameVersion::Gregar => "gregar",
+        GameVersion::Falzar => "falzar",
     }
 }
 
@@ -403,7 +413,8 @@ impl Window {
                 blank_details(self, p);
             }
             SlotKind::BeastOut => {
-                let p = Picture { palette: a.pictures.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..a.pictures.beast_out.clone() };
+                let own = v.own;
+                let p = Picture { palette: own.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..own.beast_out.clone() };
                 blank_details(self, &p);
             }
             SlotKind::Redeal { .. } => blank_details(self, &a.pictures.redeal),
@@ -495,7 +506,7 @@ impl Window {
                     at += 6;
                 }
                 SlotKind::Ok | SlotKind::Redeal { right_half: true } | SlotKind::Scrap { right_half: true } => {}
-                SlotKind::BeastOut => self.tiles.put_part(at, &a.beast_buttons, 8 * (state != 0) as usize, 8),
+                SlotKind::BeastOut => self.tiles.put_part(at, &v.own.beast_buttons, 8 * (state != 0) as usize, 8),
                 SlotKind::Redeal { right_half: false } => {
                     self.tiles.put_part(at, &a.redeal_buttons, 12 * state, 12);
                     at += 12;
@@ -509,7 +520,7 @@ impl Window {
                     self.tiles.put_part(at + 4, &a.slot_codes, 2 * EMPTY_SLOT_CODE as usize, 2);
                     at += 6;
                 }
-                SlotKind::Hidden if s as u8 == SPECIAL_SLOT => self.tiles.put_part(at, &a.beast_buttons, 24, 8),
+                SlotKind::Hidden if s as u8 == SPECIAL_SLOT => self.tiles.put_part(at, &v.own.beast_buttons, 24, 8),
                 SlotKind::Hidden => {
                     self.tiles.fill(at, 6, BLANK_1);
                     at += 6;
@@ -746,11 +757,11 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
 
 /// The emblem's 32x32 sprite: blank but for the navi's emblem in its
 /// middle 2x2 tiles (`off_802A744`, `sub_802812C`).
-pub fn emblem_tiles(a: &CustomScreen, navi_number: usize) -> Tiles {
+pub fn emblem_tiles(a: &CustomScreen, version: &str, navi_number: usize) -> Tiles {
     let e = a.emblem_of.get(navi_number).copied().unwrap_or(0) as usize;
     let mut t = Tiles { pixels: vec![0; 16 * Tiles::TILE] };
     for (k, place) in [5usize, 6, 9, 10].into_iter().enumerate() {
-        if let Some(src) = a.emblems.get(4 * e + k) {
+        if let Some(src) = a.versioned.get(version).emblems.get(4 * e + k) {
             t.pixels[place * Tiles::TILE..(place + 1) * Tiles::TILE].copy_from_slice(src);
         }
     }
@@ -796,7 +807,8 @@ pub fn draw<'a>(
         problems.note("the pack has no custom screen graphics (extract it again)".into());
         return;
     }
-    let v = View { b, side: b.setup.local_side & 1, screen, assets: a, hud: &assets.hud };
+    let side = b.setup.local_side & 1;
+    let v = View { b, side, screen, assets: a, own: a.versioned.get(version_name(b, side)), hud: &assets.hud };
     let place = placement(screen);
     let w = Window::build(&v, problems);
     w.draw(hud_layer, place);
