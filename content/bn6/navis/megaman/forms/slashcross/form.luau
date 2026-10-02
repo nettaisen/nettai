@@ -8,10 +8,13 @@ local slashcross_beast = require("../slashcross-beast/form")
 local buster = require("../../weapons/buster/weapon")
 local charge = require("./charge")
 local slash_a_charge = require("../../weapons/slash-a-charge/weapon")
+local forms = require("../../../../rules/forms/system")
 
 return define.form {
     id = "slashcross",
     kind = "cross",
+    -- What changes MegaMan into it (BN6's five sequences).
+    change = forms.action,
     game = "gregar",
     cross_of = slashman,
     beast = slashcross_beast,
