@@ -39,6 +39,9 @@ struct Args {
     wait: u64,
 }
 
+/// The most input delay netplay takes (a quarter of a second).
+const MAX_DELAY: u32 = 15;
+
 /// Where `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` puts the BN6 pack by default.
 const DEFAULT_PACK: &str = "data/content/bn6";
 
@@ -195,9 +198,8 @@ fn parse() -> Result<Args, String> {
         if a.headless.is_some() || a.audit {
             return Err("netplay plays in a window".into());
         }
-        let max = nettai_netplay::protocol::max_lead(nettai_netplay::protocol::HORIZON);
-        if a.delay > max / 2 {
-            return Err(format!("--delay {} is more than netplay allows ({})", a.delay, max / 2));
+        if a.delay > MAX_DELAY {
+            return Err(format!("--delay {} is more than {MAX_DELAY} frames", a.delay));
         }
     }
     Ok(a)
