@@ -19,12 +19,14 @@ pub fn check_cue(b: &Battle, bank: &m4a::SoundBank, cue: SoundCue, problems: &mu
         SoundCue::Music(id) if id != nettai_audio::NO_MUSIC => id,
         _ => return,
     };
-    if bank.song(m4a::SongId(id.0)).is_some_and(|s| !s.tracks.is_empty()) {
+    // (The engine's sound is a handle; the bank's songs are its pack's.)
+    let song = b.content.assets.sound(id.0).map_or(id.0, |a| a.id);
+    if bank.song(m4a::SongId(song)).is_some_and(|s| !s.tracks.is_empty()) {
         return;
     }
-    let name = match b.content.assets.sounds.iter().find(|(_, n)| **n == id.0) {
-        Some((name, _)) => format!("sound {name:?} ({:#05x})", id.0),
-        None => format!("sound {:#05x}", id.0),
+    let name = match crate::packs::name(&b.content, nettai_content_api::AssetKind::Sound, id.0) {
+        Some(name) => format!("sound {name:?} ({song:#05x})"),
+        None => format!("sound {song:#05x}"),
     };
     problems.note(format!("{name} has no song in the pack's sound"));
 }

@@ -3,9 +3,12 @@
 //! nettai-content loads into an `m4a::SoundBank`; `bn6-extract content` writes
 //! the pack from the user's ROM).
 //!
+//! - [`Songs`]: what each of the engine's sounds (a handle over the loaded
+//!   packs' sounds) is in its pack's song table; [`Songs::cue`] turns a
+//!   cue's sounds into songs.
 //! - [`SoundCalls`]: what the game's sound functions ask of the driver for
-//!   each cue (BN6's wrappers: `PlayMusic`'s current-music check, the pinch
-//!   effect's pitch and tempo, ...), as [`Request`]s.
+//!   each cue in songs (BN6's wrappers: `PlayMusic`'s current-music check,
+//!   the pinch effect's pitch and tempo, ...), as [`Request`]s.
 //! - [`BattleAudio`]: cues in, samples out, a frame at a time, with the
 //!   game's timing (calls queue up and run on the next frame).
 //! - [`AudioOut`] (feature `playback`): the same on the default output device.
@@ -31,8 +34,42 @@ pub use nettai_battle::cues::CueAction;
 pub use nettai_battle::sound::{SoundCue, SoundId};
 
 /// The game's "no music" song: `PlayMusic` of it stops the music (its
-/// battle settings name it for a battle without music).
+/// battle settings name it for a battle without music). A song, not a
+/// sound handle: a cue's sounds are songs once [`Songs::cue`] has them.
 pub const NO_MUSIC: SoundId = SoundId(0x63);
+
+/// What the engine's sounds are in their packs' song tables (docs/design/
+/// rules-in-luau.md §7.4: the engine knows a sound by its handle), by
+/// handle.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Songs(pub Vec<nettai_battle::content::InPack<u16>>);
+
+impl Songs {
+    /// The loaded packs' sounds' songs.
+    pub fn of(assets: &nettai_battle::content::AssetNames) -> Songs {
+        Songs(assets.sounds.values().copied().collect())
+    }
+
+    /// Songs by their own numbers (sound `n` is song `n` of the one pack):
+    /// for tools that play a bank's songs, not the engine's sounds.
+    pub fn numbers(count: usize) -> Songs {
+        Songs((0..count).map(|n| nettai_battle::content::InPack { pack: Default::default(), id: n as u16 }).collect())
+    }
+
+    /// Sound `id`'s song.
+    pub fn song(&self, id: SoundId) -> SoundId {
+        SoundId(self.0.get(id.0 as usize).unwrap_or_else(|| panic!("no sound has handle {}", id.0)).id)
+    }
+
+    /// `cue` with its sounds as songs: what [`SoundCalls`] takes.
+    pub fn cue(&self, cue: SoundCue) -> SoundCue {
+        match cue {
+            SoundCue::Effect(id) => SoundCue::Effect(self.song(id)),
+            SoundCue::Music(id) => SoundCue::Music(self.song(id)),
+            other => other,
+        }
+    }
+}
 pub use m4a;
 
 #[cfg(feature = "playback")]
@@ -110,7 +147,8 @@ impl SoundCalls {
         SoundCalls::default()
     }
 
-    /// The driver calls for a cue, appended to `out`.
+    /// The driver calls for a cue (its sounds as songs: [`Songs::cue`]),
+    /// appended to `out`.
     pub fn requests(&mut self, cue: SoundCue, out: &mut Vec<Request>) {
         match cue {
             // PlaySoundEffect: m4aSongNumStart through the queue.
@@ -184,11 +222,13 @@ pub struct BattleAudio {
     driver: Driver,
     calls: SoundCalls,
     queue: Vec<Request>,
+    songs: Songs,
 }
 
 impl BattleAudio {
-    pub fn new(bank: Arc<SoundBank>) -> BattleAudio {
-        BattleAudio { driver: Driver::new(bank), calls: SoundCalls::new(), queue: Vec::new() }
+    /// The sound of `bank`, playing the engine's sounds as `songs` says.
+    pub fn new(bank: Arc<SoundBank>, songs: Songs) -> BattleAudio {
+        BattleAudio { driver: Driver::new(bank), calls: SoundCalls::new(), queue: Vec::new(), songs }
     }
 
     /// Queue a tick's cues; they run at the start of the next frame, as
@@ -196,7 +236,7 @@ impl BattleAudio {
     pub fn handle(&mut self, cues: &[SoundCue]) {
         let mut requests = Vec::new();
         for &cue in cues {
-            self.calls.requests(cue, &mut requests);
+            self.calls.requests(self.songs.cue(cue), &mut requests);
         }
         for r in requests {
             if self.queue.len() < QUEUE_LIMIT {
@@ -212,8 +252,8 @@ impl BattleAudio {
         let mut requests = Vec::new();
         for action in actions {
             match action {
-                CueAction::Play(cue) => self.calls.requests(cue, &mut requests),
-                CueAction::Cancel(cue) => self.calls.cancel(cue, &mut requests),
+                CueAction::Play(cue) => self.calls.requests(self.songs.cue(cue), &mut requests),
+                CueAction::Cancel(cue) => self.calls.cancel(self.songs.cue(cue), &mut requests),
             }
         }
         for r in requests {

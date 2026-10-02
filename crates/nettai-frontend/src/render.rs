@@ -115,7 +115,8 @@ impl<'a> Renderer<'a> {
         let assets = self.assets;
         self.problems.known.clear();
         let view = Self::view(b);
-        let stage = Stage::new(assets, b.setup.settings.background, StageClock::of(b));
+        let background = crate::packs::background(&b.content, b.setup.settings.background).unwrap_or(0xFF);
+        let stage = Stage::new(assets, background, StageClock::of(b));
         self.background.clear();
         stage.draw_background(&mut self.background);
         self.field.clear();

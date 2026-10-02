@@ -1,14 +1,18 @@
-//! Assets by name (docs/design/content-model-v2.md §6.3): content names a
-//! sprite, a sound, a banner, a background or a mugshot
-//! (`asset.sprite("bomb")`), and the name resolves while content loads to
-//! an asset handle, its place among its kind's names in byte-wise order.
-//! The engine keeps each name's asset as it identifies it today (a sprite's
-//! category and index, a sound's number); that becomes an asset handle of
-//! its own when the pack stores assets by name (§12, step 6).
+//! Assets by name (docs/design/content-model-v2.md §6.3, rules-in-luau.md
+//! §7.4): content names a sprite, a sound, a banner, a background or a
+//! mugshot (`asset.sprite("bomb")`), and the name resolves while content
+//! loads to an asset handle, its place among its kind's names in byte-wise
+//! order. Content loads from several packs at once (one a game): every name
+//! is qualified with its pack's game (`bn6:bomb`), as the loader qualifies
+//! definitions' keys, so the handles cover every loaded pack. The engine
+//! knows an asset by its handle alone; what the pack calls it (a sprite's
+//! category and index, a sound's song-table entry) is here, for loaders,
+//! frontends, the audio and compat.
 
 use std::collections::BTreeMap;
 
-use crate::types::SpriteId;
+use crate::keys;
+use crate::types::{InPack, PackId, PackSprite};
 
 /// A kind of asset.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -47,11 +51,25 @@ impl std::fmt::Display for AssetKind {
     }
 }
 
-/// The assets content can name, by kind and name, with the engine's
-/// identity for each.
+/// The assets content can name, by kind and qualified name (`bn6:bomb`),
+/// each with its pack and the pack's own number for it. A kind's handles
+/// are its names' places in byte order.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct AssetNames {
-    pub sprites: BTreeMap<String, SpriteId>,
+    /// The loaded packs' games, by [`PackId`] (in byte order).
+    pub packs: Vec<String>,
+    pub sprites: BTreeMap<String, InPack<PackSprite>>,
+    pub sounds: BTreeMap<String, InPack<u16>>,
+    pub banners: BTreeMap<String, InPack<u8>>,
+    pub backgrounds: BTreeMap<String, InPack<u8>>,
+    pub mugshots: BTreeMap<String, InPack<u8>>,
+}
+
+/// One pack's own index: its assets by unqualified name (as its
+/// `assets.toml` holds them).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PackIndex {
+    pub sprites: BTreeMap<String, PackSprite>,
     pub sounds: BTreeMap<String, u16>,
     pub banners: BTreeMap<String, u8>,
     pub backgrounds: BTreeMap<String, u8>,
@@ -59,6 +77,38 @@ pub struct AssetNames {
 }
 
 impl AssetNames {
+    /// The assets of `packs` (each its game and its index), their names
+    /// qualified with the game.
+    pub fn of_packs(packs: Vec<(String, PackIndex)>) -> AssetNames {
+        let mut packs = packs;
+        packs.sort_by(|a, b| a.0.cmp(&b.0));
+        let mut a = AssetNames { packs: packs.iter().map(|(g, _)| g.clone()).collect(), ..Default::default() };
+        for (i, (game, index)) in packs.into_iter().enumerate() {
+            let pack = PackId(i as u8);
+            fn add<T>(game: &str, pack: PackId, from: BTreeMap<String, T>, to: &mut BTreeMap<String, InPack<T>>) {
+                for (name, id) in from {
+                    to.insert(keys::qualify(game, &name), InPack { pack, id });
+                }
+            }
+            add(&game, pack, index.sprites, &mut a.sprites);
+            add(&game, pack, index.sounds, &mut a.sounds);
+            add(&game, pack, index.banners, &mut a.banners);
+            add(&game, pack, index.backgrounds, &mut a.backgrounds);
+            add(&game, pack, index.mugshots, &mut a.mugshots);
+        }
+        a
+    }
+
+    /// One pack's assets (a game's alone).
+    pub fn of_pack(game: &str, index: PackIndex) -> AssetNames {
+        AssetNames::of_packs(vec![(game.to_string(), index)])
+    }
+
+    /// The pack whose game is `game`.
+    pub fn pack(&self, game: &str) -> Option<PackId> {
+        self.packs.iter().position(|g| g == game).map(|i| PackId(i as u8))
+    }
+
     /// The names of `kind`, in handle order.
     pub fn names(&self, kind: AssetKind) -> Vec<&str> {
         fn keys<V>(m: &BTreeMap<String, V>) -> Vec<&str> {
@@ -87,33 +137,56 @@ impl AssetNames {
         }
     }
 
-    /// Sprite handle `h`'s sprite.
-    pub fn sprite(&self, h: u16) -> Option<SpriteId> {
+    /// Sprite handle `h`'s pack and sprite there.
+    pub fn sprite(&self, h: u16) -> Option<InPack<PackSprite>> {
         self.sprites.values().nth(h as usize).copied()
     }
 
-    /// Sound handle `h`'s sound number.
-    pub fn sound(&self, h: u16) -> Option<u16> {
+    /// Sound handle `h`'s pack and song-table entry there.
+    pub fn sound(&self, h: u16) -> Option<InPack<u16>> {
         self.sounds.values().nth(h as usize).copied()
     }
 
-    /// Banner, background or mugshot handle `h`'s number.
-    pub fn number(&self, kind: AssetKind, h: u16) -> Option<u16> {
-        let m = match kind {
-            AssetKind::Sprite => return self.sprite(h).map(|s| u16::from_be_bytes([s.category, s.index])),
-            AssetKind::Sound => return self.sound(h),
-            AssetKind::Banner => &self.banners,
-            AssetKind::Background => &self.backgrounds,
-            AssetKind::Mugshot => &self.mugshots,
-        };
-        m.values().nth(h as usize).map(|&n| n as u16)
+    /// Banner, background or mugshot handle `h`'s pack and number there.
+    pub fn number(&self, kind: AssetKind, h: u16) -> Option<InPack<u16>> {
+        let wide = |a: &InPack<u8>| InPack { pack: a.pack, id: a.id as u16 };
+        match kind {
+            AssetKind::Sprite => self.sprite(h).map(|s| InPack { pack: s.pack, id: u16::from_be_bytes([s.id.category, s.id.index]) }),
+            AssetKind::Sound => self.sound(h),
+            AssetKind::Banner => self.banners.values().nth(h as usize).map(wide),
+            AssetKind::Background => self.backgrounds.values().nth(h as usize).map(wide),
+            AssetKind::Mugshot => self.mugshots.values().nth(h as usize).map(wide),
+        }
+    }
+
+    /// The handle of pack `pack`'s sprite `id` (the first name it has).
+    pub fn sprite_handle(&self, pack: PackId, id: PackSprite) -> Option<u16> {
+        self.sprites.values().position(|a| a.pack == pack && a.id == id).map(|i| i as u16)
+    }
+
+    /// The handle of pack `pack`'s sound `number`.
+    pub fn sound_handle(&self, pack: PackId, number: u16) -> Option<u16> {
+        self.sounds.values().position(|a| a.pack == pack && a.id == number).map(|i| i as u16)
+    }
+
+    /// The handle of pack `pack`'s banner, background or mugshot `number`.
+    pub fn number_handle(&self, kind: AssetKind, pack: PackId, number: u16) -> Option<u16> {
+        let find = |m: &BTreeMap<String, InPack<u8>>| m.values().position(|a| a.pack == pack && a.id as u16 == number).map(|i| i as u16);
+        match kind {
+            AssetKind::Sprite => self.sprite_handle(pack, PackSprite { category: (number >> 8) as u8, index: number as u8 }),
+            AssetKind::Sound => self.sound_handle(pack, number),
+            AssetKind::Banner => find(&self.banners),
+            AssetKind::Background => find(&self.backgrounds),
+            AssetKind::Mugshot => find(&self.mugshots),
+        }
     }
 
     /// Whether `name` is a numbered placeholder (`sprite-0c-01`,
     /// `sound-101`): an asset nobody has named yet, which content may not
     /// use (§6.3).
     pub fn is_placeholder(kind: AssetKind, name: &str) -> bool {
-        name.strip_prefix(kind.name())
+        keys::local(name)
+            .strip_prefix(kind.name())
             .and_then(|rest| rest.strip_prefix('-'))
             .is_some_and(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_hexdigit() || b == b'-'))
     }

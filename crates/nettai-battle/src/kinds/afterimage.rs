@@ -149,7 +149,9 @@ pub fn spawn_plain(
     look: PlainLook,
 ) -> Option<ObjectRef> {
     let alliance = b.objects.get(owner).alliance;
-    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Afterimage, pos, [sprite.category, sprite.index, anim, flip])?;
+    // (The sprite's handle in the first two parameters.)
+    let [hi, lo] = sprite.0.to_be_bytes();
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Afterimage, pos, [hi, lo, anim, flip])?;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;
@@ -220,14 +222,14 @@ fn init(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80E32D8` for a plain afterimage: its own sprite (the first two
-/// parameters), animation (the third) and flip (the fourth), and the look
-/// its spawner gave it.
+/// parameters, its handle), animation (the third) and flip (the fourth),
+/// and the look its spawner gave it.
 fn init_plain(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).set_visible(true);
-    let [category, index, anim, flip] = b.objects.get(r).params;
+    let [hi, lo, anim, flip] = b.objects.get(r).params;
     let Vars { lifetime, plain, .. } = *vars(b, r);
     let s = b.objects.sprite_mut(r);
-    s.load(SpriteId { category, index });
+    s.load(SpriteId(u16::from_be_bytes([hi, lo])));
     s.set_animation(anim, &b.content);
     s.update(&b.content);
     s.look.shadow = plain.shadow.shadow();

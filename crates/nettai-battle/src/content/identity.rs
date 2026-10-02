@@ -275,7 +275,7 @@ pub(crate) fn read(
             sprite: match l.field("sprite") {
                 Data::Nil => None,
                 Data::Asset(AssetKind::Sprite, name) => {
-                    Some(*assets.sprites.get(name).ok_or_else(|| what(format!("the pack has no sprite {name:?}")))?)
+                    Some(SpriteId(assets.handle(AssetKind::Sprite, name).ok_or_else(|| what(format!("the packs have no sprite {name:?}")))?))
                 }
                 other => return Err(what(format!("look.sprite is {other:?}, not a sprite"))),
             },
@@ -292,7 +292,7 @@ pub(crate) fn read(
     let sprite = |v: &Data, field: &str| -> Result<SpriteId, ContentError> {
         match v {
             Data::Asset(AssetKind::Sprite, name) => {
-                assets.sprites.get(name).copied().ok_or_else(|| what(format!("{field}: the pack has no sprite {name:?}")))
+                assets.handle(AssetKind::Sprite, name).map(SpriteId).ok_or_else(|| what(format!("{field}: the packs have no sprite {name:?}")))
             }
             other => Err(what(format!("{field} is {other:?}, not a sprite"))),
         }

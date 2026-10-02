@@ -56,6 +56,9 @@ pub struct Pack {
     /// Each root's `requires`: the roots its modules may `require` from
     /// (`require("@bn6/rules/beast/system")`).
     roots: BTreeMap<String, Vec<String>>,
+    /// Each root's assets pack (its game; by default the root's name): what
+    /// an unqualified asset name of its modules is.
+    assets: BTreeMap<String, String>,
     compiled: Compiled,
 }
 
@@ -97,7 +100,7 @@ impl Pack {
             let root = keys::root_of(name).unwrap_or_else(|| panic!("module {name:?} names no root (`<root>:<path>`)"));
             roots.entry(root.to_string()).or_insert_with(Vec::new);
         }
-        Pack { modules, roots, compiled: Compiled::default() }
+        Pack { modules, roots, assets: BTreeMap::new(), compiled: Compiled::default() }
     }
 
     /// One root's modules, by path in the root (`chips/minibomb/chip`).
@@ -111,6 +114,37 @@ impl Pack {
     pub fn with_requires(mut self, root: &str, requires: Vec<String>) -> Pack {
         self.roots.insert(root.to_string(), requires);
         self
+    }
+
+    /// Root `root`'s asset names resolve in pack `game` (its manifest's
+    /// `assets`).
+    pub fn with_assets(mut self, root: &str, game: &str) -> Pack {
+        self.assets.insert(root.to_string(), game.to_string());
+        self
+    }
+
+    /// The pack an asset name of root `root`'s modules resolves in.
+    fn assets_of(&self, root: &str) -> String {
+        self.assets.get(root).cloned().unwrap_or_else(|| root.to_string())
+    }
+
+    /// Asset name `name` as a module of root `root` means it: an
+    /// unqualified name its own pack's; a qualified one (`bn6:bomb`) only of
+    /// its own pack or a pack of a root it requires.
+    pub fn asset_name(&self, root: &str, name: &str) -> Result<String, String> {
+        let own = self.assets_of(root);
+        match keys::root_of(name) {
+            None => Ok(keys::qualify(&own, name)),
+            Some(game) => {
+                let allowed = game == own
+                    || self.roots.get(root).is_some_and(|r| r.iter().any(|q| self.assets_of(q) == game));
+                if allowed {
+                    Ok(name.to_string())
+                } else {
+                    Err(format!("{name:?}: root {root} names only its own pack's assets ({own}) and those of the roots it requires"))
+                }
+            }
+        }
     }
 
     /// The same pack, with bytecode compiled before (see [`Compiled`]).
@@ -228,11 +262,6 @@ impl Bound {
     /// Asset `h` of `kind` as a script value.
     pub fn asset_value(&self, lua: &Lua, kind: AssetKind, h: u16) -> mlua::Result<Table> {
         self.assets.borrow_mut().value(lua, kind, h)
-    }
-
-    /// The names content can use.
-    pub fn with_names<R>(&self, f: impl FnOnce(&AssetNames) -> R) -> R {
-        f(&self.assets.borrow().names)
     }
 }
 
@@ -508,7 +537,7 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
     };
     define::install(&lua, &collector, module.clone()).map_err(err)?;
     let assets = Rc::new(RefCell::new(define::AssetTables::new(&lua, assets.clone()).map_err(err)?));
-    define::install_assets(&lua, &assets, module).map_err(err)?;
+    define::install_assets(&lua, &assets, module, Rc::new(pack.clone())).map_err(err)?;
     let require = {
         let loader = Rc::downgrade(&loader);
         lua.create_function(move |lua, path: String| {
