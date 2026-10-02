@@ -36,11 +36,16 @@ pub const MAX_PARTS: usize = 128;
 /// Bucket counts per layer (`byte_802FD90`, the battle's sprite layers).
 const BUCKETS: [usize; 4] = [8, 4, 0xE0, 4];
 
-/// Where parts are ordered: four layers of depth buckets.
+/// Where parts are ordered: four layers of depth buckets. A part may carry
+/// a tag (the text layer's: `TextSink::tag`), so that what it stands for
+/// can be found in the hardware order afterwards.
 pub struct SpriteList<'a> {
-    layers: [Vec<Vec<SpritePart<'a>>>; 4],
+    layers: [Vec<Bucket<'a>>; 4],
     count: usize,
 }
+
+/// A depth bucket's parts, each with its tag.
+type Bucket<'a> = Vec<(SpritePart<'a>, Option<u32>)>;
 
 impl Default for SpriteList<'_> {
     fn default() -> Self {
@@ -61,7 +66,7 @@ impl<'a> SpriteList<'a> {
             if bucket < 0 || bucket as usize >= self.layers[layer].len() {
                 return;
             }
-            self.layers[layer][bucket as usize].push(part);
+            self.layers[layer][bucket as usize].push((part, None));
             self.count += 1;
         }
     }
@@ -70,25 +75,39 @@ impl<'a> SpriteList<'a> {
     /// inserts do (`sub_30068E8`), in front of what the bucket holds; the
     /// first part ends up frontmost.
     pub fn insert_at(&mut self, layer: usize, bucket: usize, group: Vec<SpritePart<'a>>) {
+        self.insert_tagged(layer, bucket, group, None);
+    }
+
+    /// [`insert_at`](Self::insert_at), every part tagged `tag`.
+    pub fn insert_tagged(&mut self, layer: usize, bucket: usize, group: Vec<SpritePart<'a>>, tag: Option<u32>) {
         for part in group.into_iter().rev() {
             if self.count >= MAX_PARTS {
                 return;
             }
             let Some(b) = self.layers[layer].get_mut(bucket) else { return };
-            b.push(part);
+            b.push((part, tag));
             self.count += 1;
         }
     }
 
     /// Parts in hardware order (front first).
     pub fn into_parts(self) -> Vec<SpritePart<'a>> {
+        self.into_tagged_parts().0
+    }
+
+    /// Parts in hardware order (front first), and each part's tag.
+    pub fn into_tagged_parts(self) -> (Vec<SpritePart<'a>>, Vec<Option<u32>>) {
         let mut out = Vec::with_capacity(self.count);
+        let mut tags = Vec::with_capacity(self.count);
         for layer in self.layers {
             for bucket in layer.into_iter().rev() {
-                out.extend(bucket.into_iter().rev());
+                for (part, tag) in bucket.into_iter().rev() {
+                    out.push(part);
+                    tags.push(tag);
+                }
             }
         }
-        out
+        (out, tags)
     }
 }
 

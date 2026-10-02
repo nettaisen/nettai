@@ -178,7 +178,9 @@ impl ChipTraits {
     /// the elemental swords).
     pub const ELEMENT_SWORD: u8 = 0x08;
     /// AntiNavi turns it back though it has no `navi` flag (the navi
-    /// chips' block of the chip table: Django's chips).
+    /// chips' block of the chip table, `sub_800BDB2`: the US games' records
+    /// of Django's chips, which lack it; BN6's content takes the Japanese
+    /// games', which have it, so no BN6 chip has this).
     pub const NAVI_SLOT: u8 = 0x10;
     /// Its navi heals: the other side's armed AntiRecv springs instead of
     /// it coming (`sub_80E192C`: Roll's chips).

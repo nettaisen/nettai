@@ -684,6 +684,27 @@ fn z_fraction_is_garbage(compat: &Compat, kind: u8, index: u8) -> bool {
     slot_kind(compat, kind, index).is_some_and(|k| k.scratch_z_fraction)
 }
 
+/// An object's Z as the `game` console has it (`Games::z`): a Z that is the
+/// spawner's address, or keeps its low half, that game's; and while a kind
+/// drops from such a Z (`Games::drop_z_offset`), it and what follows it (an
+/// attachment, whose first related object it is) that game's drop.
+fn console_z(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, game: Game) -> i32 {
+    let o = b.objects.get(r);
+    let mapped = compat.games.z(game, o.pos.z);
+    if mapped != o.pos.z {
+        return mapped;
+    }
+    let drop = |d: nettai_battle::object::ObjectRef| {
+        let d = b.objects.get(d);
+        compat.games.drop_z_offset(game, &b.content.defs.kind(d.kind).key, d.pos.z, d.timer)
+    };
+    let offset = match drop(r) {
+        0 => o.related[0].map_or(0, drop),
+        own => own,
+    };
+    o.pos.z.wrapping_add(offset)
+}
+
 fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, unknown: Unknown, game: Game) -> String {
     let o = b.objects.get(r);
     let status = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
@@ -705,7 +726,7 @@ fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, un
         [o.panel.x, compat.games.panel_y(game, &b.content.defs.kind(o.kind).key, o.panel.y)],
         o.alliance,
         [o.hp, o.max_hp],
-        [o.pos.x, o.pos.y, compat.games.z(game, o.pos.z)],
+        [o.pos.x, o.pos.y, console_z(b, compat, r, game)],
         o.timer,
         o.anim,
         status,
@@ -941,5 +962,27 @@ mod tests {
         // Only bits 0x20, 0x40 and 0x80, and only the boulder's.
         assert_ne!(flags(3, 0x6E, 0x36), flags(3, 0x6E, 0x34));
         assert_ne!(flags(3, 0x59, 0xD4), flags(3, 0x59, 0x34));
+    }
+
+    /// Django's drop on an EXE6 Gregar console (jp/chips/0x116-django/
+    /// gregar-ride): from 60 pixels up with its own spawner's address as
+    /// the fraction, a tick into the drop it is 5616 (16.16) above the
+    /// content's, and level with it once it lands.
+    #[test]
+    fn django_drops_from_each_consoles_spawner_address() {
+        let games = &Compat::bn6().games;
+        let drop = |z0: i32, t: i32| {
+            let v = (-z0 + 0x12_C000) / 10;
+            z0 + t * v - 0x6000 * (t * (t - 1) / 2)
+        };
+        let (ours, theirs) = ((60 << 16) | 0xD6A3, (60 << 16) | 0xEF03);
+        for t in 1..=10 {
+            let z = drop(ours, t);
+            let timer = (10 - t) as u16;
+            assert_eq!(z + games.drop_z_offset(Game::JpGregar, "django/navi", z, timer), drop(theirs, t), "tick {t}");
+            assert_eq!(games.drop_z_offset(Game::JpFalzar, "django/navi", z, timer), 0);
+        }
+        assert_eq!(games.drop_z_offset(Game::JpGregar, "django/navi", drop(ours, 1), 9), 5616);
+        assert_eq!(drop(ours, 10), drop(theirs, 10));
     }
 }

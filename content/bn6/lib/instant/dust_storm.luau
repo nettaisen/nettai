@@ -11,8 +11,8 @@
 --
 -- No chip or weapon of MegaMan's names effect 17; link navis' actions
 -- spawn the storm themselves, with `dust_storm.instant { ... }` when they
--- are ported (unverified: no scenario reaches it). HackJack's rain
--- (chips/hackjack/navi, the Japanese games') is an untied storm over the
+-- are ported (unverified: no scenario reaches it). Count's rain
+-- (chips/count/navi, the Japanese games') is an untied storm over the
 -- middle of the other side's area, `dust_storm.spawn`.
 
 local collision = require("../../rules/collision")
