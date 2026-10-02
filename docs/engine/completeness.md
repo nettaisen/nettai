@@ -895,6 +895,24 @@ tick, the turret pushed while it fires (its target is paralyzed for the whole fi
 didn't push it), and the statue broken by both sides' hits at once or by a hit with neither side's bits (3). The 5
 recordings match the engine at main eda65622, every frame (6,173) and sound call (189).
 
+**Second pass, batch 7: VDoll, the supports, the instruments, Otenko, RockCube, MagCoil (35 branches):** 6
+taken by 5 new recordings, 26 unreachable, 3 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x096-vdoll/dimmed-flight`, `hole-landing`, `heatman-burns` | the doll in the air under the other side's dimming; landing on a hole and breaking; burned inside its own side's HeatMan dimming, its end waiting the dimming out and then finding the battle over |
+| `chips/0x099-otenko/next-turn` | Otenko's blessing meeting the same hand position in the next turn (another turn's chip) |
+| `chips/0x0b7-magcoil/side1` | side 1's magnet pull |
+
+The unreachable ones: the doll's hit without its record (1), the sparkles' slot, length and silence (4: the curse
+is a netbattle's only spawner), the curse without one combatant on the other side (4), the supports without a
+navi, Rush's spared chip (no folder holds it), his controller and his fallback panel (8), the instruments' own
+dimmed and battle-over tests (4: the obstacles' shared update runs their actions only outside a dimming and ends
+them at the battle's end, like the Sensor turret's and Anubis's), Otenko's statue without collision or on a
+taken panel (2), the rock rows and entrances no spawner uses (2), and MagCoil's one-tick wait (1). The hard
+ones: the doll broken while carried, Tango's heal over a barrier, and the magnet seeing the battle over. The 5
+recordings match the engine at main bc71b739, every frame (4,862) and sound call (97).
+
 <!-- end: chip families, onesided -->
 
 ### 6.3 Custom screen keys
