@@ -4,7 +4,7 @@
 
 use nettai_assets::{Bundle, Field, MapEntry, SpriteFrame, SpritePart, SpriteSheet, Tiles};
 use nettai_battle::content::testing;
-use nettai_frontend::driver::{LivePlayer, live_setup};
+use nettai_frontend::driver::{LivePlayer, folder_of, live_setup};
 use nettai_frontend::{Renderer, Session, headless};
 use std::collections::BTreeSet;
 
@@ -77,7 +77,8 @@ fn renders_a_live_battle_to_png() {
     let content = testing::content();
     let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
     // (Folders of GunDelS3 N: the test content has it.)
-    let setup = live_setup(&content, settings, &[("gundels3", 13)], 1);
+    let folder = folder_of(&content, &[("gundels3", 13)]);
+    let setup = live_setup(&content, settings, [folder, folder], 1);
     let session = Session::new(Box::new(LivePlayer::new(setup, content.clone())));
     let out = std::env::temp_dir().join(format!("bn6-frontend-test-{}", std::process::id()));
     let wanted: BTreeSet<u32> = [1, 100].into_iter().collect();

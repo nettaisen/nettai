@@ -68,6 +68,7 @@ are the link navis' faces, with their Full Synchro palettes.
 
     cargo run -p nettai-frontend -- <trace.jsonl>              # watch a trace
     cargo run -p nettai-frontend -- --play                     # play live
+    cargo run -p nettai-frontend -- --play --seed 42 --stage netbattle-43 --show-folders
     cargo run -p nettai-frontend -- <trace.jsonl> --headless 150,300,600 --out <dir>
     cargo run -p nettai-frontend -- <trace.jsonl> --audit      # what is missing?
     cargo run -p nettai-frontend -- --play --pack <dir>        # another pack
@@ -76,8 +77,12 @@ Options: `--pack <dir>` names the content pack and `--content <dir>` the
 battle content (see above), `--mute` turns the sound off, `--round N`
 starts a trace at round N (later rounds follow when a round's input runs
 out), `--scale N` sets the window scale (default 4), `--paused` starts
-paused, `--seed N` fixes a live battle's RNG seed, `--png-scale N` scales
-headless output, `--quit-after N` closes the window after N ticks.
+paused, `--png-scale N` scales headless output, `--quit-after N` closes
+the window after N ticks. For live play, `--seed N` gives the seed its
+setup and battle are drawn from (default: from the clock; each start
+prints it), `--stage NAME` forces a link battle stage by its key
+(`netbattle-1` to `netbattle-96`), `--show-folders` prints both folders,
+and with `--headless`, `--keys` holds buttons on given ticks (below).
 
 Keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START,
 Backspace = SELECT; Space pauses, `.` steps one frame while paused, `-` and
@@ -90,17 +95,43 @@ stops, shows the reason on screen and prints it; the first difference from
 the trace's recorded state is printed too. Frame numbers are the trace's.
 
 **Live play**: you are the left navi; the right one stands still. The round
-is the recorded matches' netbattle on the pack's BN6 content
-(`driver::bn6_live_setup`: their field and a
-1000-HP MegaMan per side, each with a folder of GunDelSols, Geddon,
-Invisibl and EraseMan, shuffled from the seed). The custom screen is the
-engine's (docs/engine/custom-screen.md), shown as text for now: the dealt
-chips in the grid's order (`>` the cursor, `+` picked, `-` greyed), OK and
-Beast Out, the picks and the Cross window. The keys are the game's (A
-picks, B takes back, START goes to OK, UP from the top row opens the Cross
-window, R describes, SELECT hides). The right navi's screen picks its first
-chip and presses OK. As in the original's netbattles, the fight gets your
-buttons 4 ticks late (the link). F5 starts over.
+is a netbattle on the pack's BN6 content between two 1000-HP MegaMen of
+Falzar with no NaviCust programs (so roads carry them and holes stop them;
+`driver::live_navi`), set up at random from the seed
+(`driver::bn6_live_setup`, which prints what it drew):
+
+- **The field**: one of the 96 link battle stages the content defines (the
+  settings records a link battle draws from, `sub_81209DC`: the stages with
+  the link effect and not the random battle's), with a background drawn as
+  a link battle draws one (`byte_8120A20`). The set's later rounds get
+  theirs the same way.
+- **A folder for each player**: 30 chips that keep BN6's folder rules
+  (`folders`: the folder editor's, `sub_8135080` with `sub_8135500`: copies
+  of a chip by its MB, five up to 19 MB down to one from 50; Mega and Giga
+  chips within the navi's levels, 5 and 1; a code each chip comes in; a
+  Regular chip within the navi's Regular memory, 50 MB; no tag chips), from
+  the chips the chip pack lists (Standard, Mega and Giga, not the dark
+  chips, and not the five the US game has no routine for). The codes lean to
+  two the folder favours, and `*`. Each console shuffles its folder from
+  the seed at the round's init, as before.
+- **Five Crosses for each Cross window**, drawn from MegaMan's ten, both
+  games' (the setup's Cross list, nettai's extension:
+  docs/engine/custom-screen.md §4.1). A Cross of the other game is its own
+  form, buster, charged shot, element and face; Beast Out from it is
+  Falzar's Beast.
+
+The draw is the frontend's, made before the battle; the battle is then a
+function of its setup and the buttons, as rollback needs. The same seed
+gives the same setup.
+
+The custom screen is the engine's (docs/engine/custom-screen.md), drawn, and
+also shown as text: the dealt chips in the grid's order (`>` the cursor,
+`+` picked, `-` greyed), OK and Beast Out, the picks and the Cross window's
+Crosses by name. The keys are the game's (A picks, B takes back, START goes
+to OK, UP from the top row opens the Cross window, R describes, SELECT
+hides). The right navi's screen picks its first chip and presses OK. As in
+the original's netbattles, the fight gets your buttons 4 ticks late (the
+link). F5 starts over with the same setup.
 
 **Headless mode** renders the listed frames (`a,b,c-d`; trace frame
 numbers, or tick numbers in live play) to `frame_NNNNN.png`. It exits
@@ -108,7 +139,11 @@ non-zero if some frames couldn't be rendered (the engine stopped first).
 With `--objects` it also lists every rendered frame's objects as the
 renderer sees them: kind, screen position, sprite, animation and frame, and
 look (palette, shadow, flips, white, shader, hidden parts, whether it is
-drawn at all), and what its console shows of its chips.
+drawn at all), and what its console shows of its chips. In live play
+`--keys` gives your buttons by tick (`headless::KeyScript`): for instance
+`--keys 160-161:up,215:a,260:start,266:a` opens the first screen's Cross
+window (a direction acts on a hold's second tick), chooses its first Cross
+and presses OK.
 
 **Audit mode** (`--audit`) draws every frame of the trace and plays every
 sound cue into nothing, without a window, and lists what they named that
@@ -248,8 +283,10 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   slots dealt again, the emblem and the Regular chip's frame throughout;
 - a console's own pictures by its version (`Versioned`: a Gregar console's
   Beast and emblem, the pack's `-gregar` assets); a Cross's name and
-  colours in the Cross window are its own game's (`custom::cross_picture`),
-  so a Gregar Cross shows Gregar's name in any window;
+  colours in the Cross window are its own game's (`custom::cross_picture`,
+  for the form in the entry's place, `Unlocks::cross_at`), so a Gregar
+  Cross shows Gregar's name in any window, and a window a setup's Cross
+  list mixes shows each game's own;
 - what the screen does to the rest: the HP box and the mugshot move right
   with the window and the field and the sprites 15 pixels down (the
   camera), the gauge and the HUD's "????" stay off until the local result
