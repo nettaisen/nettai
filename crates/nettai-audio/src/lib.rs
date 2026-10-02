@@ -217,31 +217,94 @@ impl SoundCalls {
     }
 }
 
-/// The game's sound, fed with cues and rendered a frame at a time.
+/// The game's sound, fed with cues and rendered a frame at a time: a
+/// driver for each loaded pack's sound (docs/design/rules-in-luau.md §7.4:
+/// a song plays with its own pack's instruments; two packs' banks never
+/// mix inside one player), their outputs added.
 pub struct BattleAudio {
+    packs: Vec<PackSound>,
+    songs: Songs,
+    /// The pack whose music player plays the battle's music, once some
+    /// music has started.
+    music: Option<usize>,
+    mix: Vec<[f32; 2]>,
+}
+
+/// One pack's driver and the calls queued for it.
+struct PackSound {
     driver: Driver,
     calls: SoundCalls,
     queue: Vec<Request>,
-    songs: Songs,
 }
 
 impl BattleAudio {
-    /// The sound of `bank`, playing the engine's sounds as `songs` says.
+    /// The sound of `bank`, playing the engine's sounds as `songs` says
+    /// (one pack's).
     pub fn new(bank: Arc<SoundBank>, songs: Songs) -> BattleAudio {
-        BattleAudio { driver: Driver::new(bank), calls: SoundCalls::new(), queue: Vec::new(), songs }
+        BattleAudio::with_banks(vec![bank], songs)
+    }
+
+    /// The sound of several packs, `banks` by `PackId`.
+    pub fn with_banks(banks: Vec<Arc<SoundBank>>, songs: Songs) -> BattleAudio {
+        assert!(!banks.is_empty(), "a pack's sound");
+        let packs = banks.into_iter().map(|b| PackSound { driver: Driver::new(b), calls: SoundCalls::new(), queue: Vec::new() }).collect();
+        BattleAudio { packs, songs, music: None, mix: Vec::new() }
+    }
+
+    /// The pack a cue plays on, and the cue in its songs: a sound's own
+    /// pack; what changes the music, the music's pack (the first's before
+    /// any).
+    fn route(&self, cue: SoundCue) -> (usize, SoundCue) {
+        let pack_of = |id: SoundId| {
+            let a = self.songs.0.get(id.0 as usize).unwrap_or_else(|| panic!("no sound has handle {}", id.0));
+            a.pack.index().min(self.packs.len() - 1)
+        };
+        match cue {
+            SoundCue::Effect(id) | SoundCue::Music(id) => (pack_of(id), self.songs.cue(cue)),
+            other => (self.music.unwrap_or(0), other),
+        }
+    }
+
+    /// Queue `requests` for pack `pack`'s driver.
+    fn queue(&mut self, pack: usize, requests: Vec<Request>) {
+        let q = &mut self.packs[pack].queue;
+        for r in requests {
+            if q.len() < QUEUE_LIMIT {
+                q.push(r);
+            }
+        }
+    }
+
+    /// Play `cue`: a music change on another pack's player than the music's
+    /// stops that one first; stopping the music stops every pack's.
+    fn play(&mut self, cue: SoundCue) {
+        if let SoundCue::StopMusic = cue {
+            for p in 0..self.packs.len() {
+                let mut r = Vec::new();
+                self.packs[p].calls.requests(SoundCue::StopMusic, &mut r);
+                self.queue(p, r);
+            }
+            return;
+        }
+        let (pack, cue) = self.route(cue);
+        if let SoundCue::Music(_) = cue {
+            if let Some(old) = self.music.filter(|&m| m != pack) {
+                let mut r = Vec::new();
+                self.packs[old].calls.requests(SoundCue::StopMusic, &mut r);
+                self.queue(old, r);
+            }
+            self.music = Some(pack);
+        }
+        let mut r = Vec::new();
+        self.packs[pack].calls.requests(cue, &mut r);
+        self.queue(pack, r);
     }
 
     /// Queue a tick's cues; they run at the start of the next frame, as
     /// the game's queued sound calls do.
     pub fn handle(&mut self, cues: &[SoundCue]) {
-        let mut requests = Vec::new();
         for &cue in cues {
-            self.calls.requests(self.songs.cue(cue), &mut requests);
-        }
-        for r in requests {
-            if self.queue.len() < QUEUE_LIMIT {
-                self.queue.push(r);
-            }
+            self.play(cue);
         }
     }
 
@@ -249,37 +312,55 @@ impl BattleAudio {
     /// [`handle`](Self::handle) does, and cancels of cues played on a
     /// wrong prediction.
     pub fn handle_actions(&mut self, actions: impl IntoIterator<Item = CueAction>) {
-        let mut requests = Vec::new();
         for action in actions {
             match action {
-                CueAction::Play(cue) => self.calls.requests(self.songs.cue(cue), &mut requests),
-                CueAction::Cancel(cue) => self.calls.cancel(self.songs.cue(cue), &mut requests),
-            }
-        }
-        for r in requests {
-            if self.queue.len() < QUEUE_LIMIT {
-                self.queue.push(r);
+                CueAction::Play(cue) => self.play(cue),
+                CueAction::Cancel(cue) => {
+                    let (pack, cue) = self.route(cue);
+                    let mut r = Vec::new();
+                    self.packs[pack].calls.cancel(cue, &mut r);
+                    self.queue(pack, r);
+                }
             }
         }
     }
 
-    /// One frame: the driver's VBlank (sequencers and mix), then the
+    /// One frame: each driver's VBlank (sequencers and mix), then its
     /// queued calls (the game's main loop runs them next). Appends the
-    /// frame's samples (about 549 at 32768 Hz, stereo, +-1.0) to `out`.
+    /// frame's samples (about 549 at 32768 Hz, stereo, +-1.0; every
+    /// pack's added) to `out`.
     pub fn tick(&mut self, out: &mut Vec<[f32; 2]>) {
-        self.driver.step_frame();
-        for r in std::mem::take(&mut self.queue) {
-            r.apply(&mut self.driver);
+        let start = out.len();
+        for (i, p) in self.packs.iter_mut().enumerate() {
+            p.driver.step_frame();
+            for r in std::mem::take(&mut p.queue) {
+                r.apply(&mut p.driver);
+            }
+            if i == 0 {
+                p.driver.take_output(out);
+            } else {
+                self.mix.clear();
+                p.driver.take_output(&mut self.mix);
+                for (o, m) in out[start..].iter_mut().zip(&self.mix) {
+                    o[0] += m[0];
+                    o[1] += m[1];
+                }
+            }
         }
-        self.driver.take_output(out);
     }
 
+    /// The first pack's driver.
     pub fn driver(&self) -> &Driver {
-        &self.driver
+        &self.packs[0].driver
     }
 
     pub fn driver_mut(&mut self) -> &mut Driver {
-        &mut self.driver
+        &mut self.packs[0].driver
+    }
+
+    /// Pack `pack`'s driver.
+    pub fn driver_of(&self, pack: nettai_battle::content::PackId) -> Option<&Driver> {
+        self.packs.get(pack.index()).map(|p| &p.driver)
     }
 }
 
