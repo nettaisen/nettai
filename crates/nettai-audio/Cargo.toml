@@ -1,0 +1,31 @@
+[package]
+name = "nettai-audio"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Plays the battle engine's sound cues through the M4A sound driver"
+
+[dependencies]
+m4a.workspace = true
+nettai-battle.workspace = true
+cpal = { workspace = true, optional = true }
+
+[features]
+default = ["playback"]
+# Real-time output through the default audio device (AudioOut).
+playback = ["dep:cpal"]
+
+[dev-dependencies]
+nettai-battle = { workspace = true, features = ["test-content"] }
+# trace_audio plays a golden trace.
+bn6-compat = { workspace = true, features = ["trace"] }
+# The examples load a content pack.
+nettai-content = { path = "../nettai-content" }
+
+[[example]]
+name = "trace_audio"
+required-features = ["playback"]
+
+[[example]]
+name = "play_song"
+required-features = ["playback"]
