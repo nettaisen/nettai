@@ -710,6 +710,11 @@ one agent for S0 to S8 and R. P is sized as BN5's port reads its routines.
 - rulesets mix and match systems, with a stock ruleset per game (§2.2);
 - no shared library: each game exports its own, even where they overlap (§7.3).
 
+**The user**, later the same day: **patch cards are an engine concept.** A patch card is a definition kind of the
+engine's (`define.patch_card`) and a player's installed cards a typed field of their setup
+(`PlayerSetup::patch_cards`), as in BN4, BN5 and BN6; what a card's effects do is a game's rules', a system of its
+stock ruleset (BN6's patch-cards system, which `round_setup` runs; docs/design/patch-cards.md §3).
+
 **The coordinator**: the budget as proposed (§6.3); content/<game>/rules/ with a folder per system (§2.4); roots
 right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only when the budget needs it (§6.4).
 
