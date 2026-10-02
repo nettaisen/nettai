@@ -164,7 +164,10 @@ each.
 - `sub_80BB1FE`: on (column, row), (column + d, row), (column + d, row + 1), (column, row + 1), each whose
   flags have 0x10 (solid): `sub_80C8DE0(x, y, element 1, r4 = 0x1E04, r6 = the damage word)`, a flame
   (T3#0x26, `chips/heatman/flame`: Param1 4, so it acts and animates while dimmed; Param2 30; fire; the
-  burner's alliance and flip).
+  burner's alliance and flip). Its Z is r3, which nothing on the way sets: the top row that `sub_8109660`
+  left when the square was highlighted this tick, else what the object update loop left (`object_800372A`:
+  4 × the previous object's place among its pool's objects this tick; `battle.loop_register`). A 2022 match
+  fires without the highlight, after the third effect of the tick (Z 8).
 - Phase 0xC (`sub_80BB10C`): Timer −= 1 (u16); negative (61 ticks) → `sub_8011044(the user's actor record,
   1)` (its navi parts off), VISIBLE off, state destroy (word), `sub_80E13DC(user)` (the user back: VISIBLE
   unless submerged or hidden from a blind viewer, the vanished bit cleared, the barrier, confusion and

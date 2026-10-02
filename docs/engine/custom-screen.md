@@ -233,8 +233,10 @@ from R+8, back to the Cross window), `description-b-held-12`, `-30`, `descriptio
 
 Three chips' descriptions aren't in their scripts: DblBeast's, Gregar's and Falzar's scripts copy their text from
 the console's memory (`FF 01 nn`, `chatbox_FF_copytext`: 0x40 bytes of a buffer the game keeps, run as script and
-returned from at its end), so the pack has no `description` for them and they count as three lines. That is what
-the game shows for them (DblBeast's reads "Ferocious / beast / power!"): `description-arm-137-5..9` and
+returned from at its end), so gen-content finds no text for them in the ROM. Their definitions carry the text the
+game shows from that buffer, as the user gave it (2026-10-01): DblBeast "Ferocious / beast / power!", Gregar
+"Gregar's / breath / attack!", Falzar "Falzar's / ruinous / tornado!". Each is three lines, which is what the battle
+reads of a description, so the timing is unchanged: `description-arm-137-5..9` and
 `description-arm-139-7`, `-8` (the Falzar chip, dug out over two turns) and `description-arm-138-7`, `-8` (the
 Gregar chip, which copies the same buffer) take A from R+8. Not reached: what `sub_802A220` closes a description for (it answers 0xFF in a netbattle with
 MegaMan).
@@ -242,7 +244,9 @@ MegaMan).
 ### 3.6 DustCross's scrap (`sub_8027406`)
 
 In DustCross (form 0x0A, or its Beast form 0x16) slots 8/9 are one scrap button, usable once a screen when the
-last pick is a chip. Every 25 ticks (from T+2) it takes the last picked chip out of the folder; when the last pick
+last pick is a chip. Every 25 ticks (from T+2) it takes the last picked chip out of the folder (the Regular chip's
+clears BattleState+0x17, as OK taking it does: the next screens deal no Regular chip, while this screen's front
+slot keeps its Regular bit); when the last pick
 isn't a chip (or none is left), the folder is compacted, the scrapped chips are put in its first holes (so at its
 end, in pick order), the dealt slots show the chips now at the front, and the button is used up. **[dumps]**
 
@@ -333,11 +337,16 @@ applies and the screen is the original's.
   a Cross used this round and the navi's starting form aren't offered, A chooses, B takes it back, the face is the
   Cross's, OK sends the Cross's form (its form in Beast Out when the navi is in a Beast form).
 - **What a list offers.** Its entries that are Crosses (a form of kind `cross`; anything else is never offered),
-  and, while the navi is in a Beast form, only the player's game's Crosses: the other game's have no Beast form of
-  the player's game.
-- **Beast Out from the other game's Cross** takes the navi to the player's own game's Beast Out form, as from the
-  base form (`Unlocks::beast_form`): a Falzar player in HeatCross goes to Falzar's Beast, not to HeatCross's form
-  in Beast Out (which is Gregar's Beast). Beast Over, the Beast Out button and its roar stay the player's game's.
+  and, while the navi is in a Beast form, only the Crosses whose Beast it is (that Beast's game's: their forms in
+  Beast Out are of that Beast).
+- **Beast Out from a Cross** takes the navi to that Cross's form in Beast Out, whichever game the Cross is from
+  (`Unlocks::beast_form`): a Falzar player in HeatCross becomes HeatCross Beast, of Gregar's Beast. Beast Out from
+  the base form is the player's own game's Beast.
+- **The Beast's game** (`Unlocks::beast_game`) is the game of the Beast the navi goes into or is in: the player's
+  game, but a form of the other game's (one of its Crosses, or one of its Beast forms) is that game's. Beast Over
+  (Beast Out when tired) is that game's, and so is the screen's Beast Out roar (§9); a frontend draws the Beast Out
+  button, its picture in the chip window and the BeastOut chip's picture of that game. The Beast form itself
+  brings its own buster, charged shot, Beast rush and face.
 - **The Cross itself** is its form definition, whatever the player's game: its sprite and palette, element and
   weakness, buster and charged shot, chip bonuses, face, and what a weakness hit breaks it to. A frontend draws its
   name in the window from that Cross's own game's pictures (docs/frontend.md §3).
@@ -445,9 +454,10 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
   repeat, the builder (Program Advances, modifiers, class counts), and scripted screens (dealing and layout, the
   timeline from opening to sending, the selection rules, invalid chips, Beast Out and a Cross for both games,
   DustCross's scrap, hand sizes, SELECT), and a setup's Cross list (§4.1: either game's Crosses offered and
-  chosen, Beast Out from the other game's, the window in Beast Out, entries that aren't Crosses). nettai-frontend's
-  `a_falzar_player_plays_a_gregar_cross` plays one through on content/bn6: HeatCross chosen by a Falzar player, its
-  form, element, buster and charged flame, then Beast Out from it into Falzar's Beast.
+  chosen, Beast Out from the other game's Cross with its roar and Beast Over, the window in a Beast form, entries
+  that aren't Crosses). nettai-frontend's `a_falzar_player_plays_a_gregar_cross` plays one through on content/bn6:
+  HeatCross chosen by a Falzar player, its form, element, buster and charged flame, then Beast Out from it into
+  HeatCross Beast with that form's weapons.
 - **Golden traces** (`trace::run_round`, verification workspace): the traces' recorded buttons drive the
   engine; each player's custom screen runs when the trace has their folder (setup `folders`), otherwise that
   player's results come from the recording (`TickEvents::recorded`). Each frame compares, besides the rest of the
@@ -462,6 +472,11 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
   the other console's only has the draws the screens and the main loop make.
 - The recorded traces carry only the recording console's folder. `folders`, `joypad_phases` and `game_versions`
   in setup lines come from recording both consoles.
+- Matches recorded by Tango's first netplay engine (2022) ran each console alone, with no link cable: each tick
+  the console found both players' packets in its receive buffers a tick after they were built. Their traces have
+  the recording console only (no `folders`: the other player's screens come from the trace) and a `link_delay`
+  of 1 in the setup; every round of them matches at that delay (`RoundSetup::link_delay`), and none at the
+  cable's 4.
 
 ## 8. Not ported or not verified
 
@@ -568,7 +583,8 @@ reads depends on it.
 - **The sounds** a tick made (`Drawn::sounds`, `ScreenSound`), in the order its states call `PlaySoundEffect`;
   the battle plays each by its role for the screen's player only (docs/engine/audio.md §1 lists them). One is by
   the console's version: Beast Out's first sound (`sub_802774C`, the BeastOut chip's `sub_8027624`) is 0x193 on
-  Falzar and 0x191 on Gregar (`custom_beast_out_falzar`, `_gregar`).
+  Falzar and 0x191 on Gregar (`custom_beast_out_falzar`, `_gregar`). With a setup's Cross list it is by the Beast's
+  game (§4.1: a Falzar player in HeatCross roars Gregar's).
 
 What isn't in the look derives from the screen: the window's place (the phase's ticks), the slots' kinds and
 states, the cursor, the picks, and from the battle the camera's jitter, which in Beast Out's states, the Cross

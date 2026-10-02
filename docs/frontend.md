@@ -95,8 +95,8 @@ stops, shows the reason on screen and prints it; the first difference from
 the trace's recorded state is printed too. Frame numbers are the trace's.
 
 **Live play**: you are the left navi; the right one stands still. The round
-is a netbattle on the pack's BN6 content between two 1000-HP MegaMen of
-Falzar with no NaviCust programs (so roads carry them and holes stop them;
+is a netbattle on the pack's BN6 content between two 1000-HP MegaMen with
+no NaviCust programs (so roads carry them and holes stop them;
 `driver::live_navi`), set up at random from the seed
 (`driver::bn6_live_setup`, which prints what it drew):
 
@@ -117,8 +117,11 @@ Falzar with no NaviCust programs (so roads carry them and holes stop them;
 - **Five Crosses for each Cross window**, drawn from MegaMan's ten, both
   games' (the setup's Cross list, nettai's extension:
   docs/engine/custom-screen.md §4.1). A Cross of the other game is its own
-  form, buster, charged shot, element and face; Beast Out from it is
-  Falzar's Beast.
+  form, buster, charged shot, element and face; Beast Out from it is its
+  own Beast form (HeatCross Beast, of Gregar's Beast, for a Falzar player).
+- **Each player's game**, Falzar or Gregar: their Beast (Beast Out from
+  the base form, Beast Over), their console's own pictures and Beast Out
+  roar, and the navi's game (NaviStats+0x20, which MstrCros reads).
 
 The draw is the frontend's, made before the battle; the battle is then a
 function of its setup and the buttons, as rollback needs. The same seed
@@ -286,7 +289,10 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   colours in the Cross window are its own game's (`custom::cross_picture`,
   for the form in the entry's place, `Unlocks::cross_at`), so a Gregar
   Cross shows Gregar's name in any window, and a window a setup's Cross
-  list mixes shows each game's own;
+  list mixes shows each game's own; the Beast Out button, its picture in
+  the chip window and the BeastOut chip's picture are of the Beast the
+  navi goes into (`custom::beast_pictures`, `Unlocks::beast_game`), so a
+  Falzar player in HeatCross sees Gregar's;
 - what the screen does to the rest: the HP box and the mugshot move right
   with the window and the field and the sprites 15 pixels down (the
   camera), the gauge and the HUD's "????" stay off until the local result

@@ -792,7 +792,9 @@ fn reset_navicust_state(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     a.charge_shot = w.charge_shot;
     a.back_special = w.back_special;
-    clear_flag1(b, r, f1::UNTOUCHABLE);
+    // off_8013CA8 is 0x08000001: a guard left up (an action the custom
+    // screen's form change cut short) comes down with it.
+    clear_flag1(b, r, f1::UNTOUCHABLE | f1::GUARD);
     clear_invulnerable(b, r);
     // sub_80E5410: the linked object's state word becomes 8 (it frees
     // itself at its next update) and its first extra variable 0, and the
