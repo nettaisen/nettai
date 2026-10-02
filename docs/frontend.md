@@ -383,10 +383,10 @@ camera shake and screen dim.
 **A second match**, three rounds traced on the right-hand player's console
 (so the field is drawn mirrored), with Crosses, rock cubes, ice and grass
 panels, traps and Invisibl: of the 6397 frames outside the custom screen
-that have screenshots, **all 6397 are pixel-exact**, every row of them. Of
-its 13,278 custom-screen frames 13,266 are, with the Cross windows, the
-DustCross scrap and the screens' openings and closings; the 12 that aren't
-show a description's chatbox.
+that have screenshots, **all 6397 are pixel-exact**, every row of them, and
+so are all 13,278 of its custom-screen frames, with the Cross windows, the
+DustCross scrap, a description's chatbox and the screens' openings and
+closings.
 
 **Chip-lab scenarios**: 132 scenarios, a few of every family
 (shot, sword, thrown, placed and dimming chips, navi chips, the link
