@@ -1,6 +1,9 @@
 --!strict
--- PanlGrab (BN5 chip 0x074): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- PanlGrab (BN5 chip 0x074): a dimming that drops a grab shot on the first panel past the user's side's front in
+-- its row: BN6's (@bn6/lib/grab; BN5's the same code).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local grab = require("@bn6/lib/grab/controller")
 
 return define.chip {
     id = "panlgrab",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     slot_in_limit = 1,
+    dimming = grab.panel,
 }

@@ -1008,7 +1008,15 @@ The smallest engine additions BN5's data and rules need, for the rules agent (no
 8. **Mixes with their own sections** (rules-in-luau.md R2): Soul Unison's custom-screen layout (the shared custom
    screen's soul row) is a mix's; needed when the Team Battle's custom screen is ported.
 9. **Collision words:** BN6's chips required from BN5 register BN6's collision types (with the 0x80 self bit,
-   rows past BN5's 0x50): fine while every target word lacks 0x80, which the port checks per row it uses.
+   rows past BN5's 0x50): fine while every target word lacks 0x80, which the port checks per row it uses (BN6's
+   `pull` and `probe` rows test it; BN5's chips pass BN5's types where BN6's modules take them).
+10. **Leaving the action on the use frame** (§14.3): BN5's dimming handler (action 0x15) and action 0x1A's object
+   handler leave the action on the frame they run; BN6's on the next update after the dimming, and 8 frames
+   later for subtype 20. A choice per game in the engine's chip use (a rules section's flag), read by every
+   dimming and instant chip.
+11. **AntiNavi's sparkle** (`sub_800ABC6`, BN5's 0x080093A2, dimming.rs's `SPARKLE_DY`, `SPARKLE_Z`): BN5's sits
+   on the panel's center 16 pixels up, BN6's 16 pixels down the field and 32 up. Numbers for a rules section (or
+   the trap mark role's offset).
 
 ### 15.4 The flow and the assets' names
 
@@ -1062,4 +1070,38 @@ one pack until R3), and writes replay-summary.md beside the recordings: each rec
 setup, replay, matched), its frames matched, what stopped it, and what the recordings need most. First run
 (2026-10-02, the 1,376 recordings, 946,555 battle frames): every one stops at its setup, needing BN5's MegaMan
 (`bn5:megaman`), a stage (the lab's is one settings record but for 64 recordings) and its chips (Boomer and Cannon
-are in every recording's folder or hand, the lab's filler).
+are in every recording's folder or hand, the lab's filler). With the chips of §15.6, Boomer remains in every
+recording and Recov10 in 108.
+
+### 15.6 The chips (in progress)
+
+From the action map (§14.6), first the chips whose code is BN6's (identical, identical-run), then those that
+differ in constants only. Each is BN5's chip file (its record, generated) with a use from BN6's modules
+(`require("@bn6/...")`), BN5's collision types where BN6's modules take them; content/bn5/objects/projectile
+holds BN5's projectile variants (BN6's rows with BN5's collision). Until R3, the modules draw and time from BN6's
+pack (the assets are BN6's where the names are BN6's, §15.4).
+
+**Ported** (20): Cannon, HiCannon, M-Cannon (BN6's cannon, BN5's shot variant: the variant rows are the same);
+MiniBomb, EnergBom, MegEnBom (BN6's throw and bomb, the energy burst BN6's object); PanlGrab, AreaGrab; GrabBnsh
+and GrabRvng (BN6's controller; GrabRvng's hand effect is BN5's 0x29, the same as BN6's 0x3B); SloGauge,
+FstGauge; PnlRetrn, HolyPanl, Snctuary; AntiNavi, AntiSwrd, AntiRecv (BN6's traps; the roles of their counters
+and mark are BN6's, §15.1); FullCust (its fill is BN5's: with each side's own gauge, the side's goes full where
+BN6 adds a third). The roles `actions.anti_damage_counter`, `anti_sword_counter`, `kinds.anti_recovery` and
+`effects.trap_mark` (BN5's effect 43 is BN6's 0x46) are filled for the traps.
+
+**Waiting:**
+
+- *On the families* (§15.3 item 5): Invisibl, AntiDmg and Mine are BN5's invisible family, which the engine
+  lacks; each is one line once it has it (Invisibl `dimming = invisible.hook(360)` from @bn6/chips/invisibl,
+  AntiDmg `trap = "anti_damage"`, Mine `dimming = controller.hook` from @bn6/chips/mine: its blast is BN5's
+  effect 0x2A, BN6's 0x47, the same).
+- *On BN6's modules taking BN5's constants* (BN6's content, which this step leaves alone): Silence, Discord and
+  Timpani (BN6's instrument with BN5's numbers: 100 HP where BN6's library has 60, `byte_80D4140`; the four
+  rows BN6 has of `byte_80D4078` play 0x55 × 2 ticks each in BN5, BN6's 0x55, 0x37, 0x3C and 0x78; the sprite
+  BN5's `instrument`); AirShot (BN6's use is the chip's own file; BN5's shooter is attachment row 8, BN6's 0x13, and
+  its shot variant row 4 has no wind element); ProtoMan, ProtoMn SP and DS (the slash effect BN5's 0x33, BN6's
+  0x27, the same row (12, 20) of another archive; the navi's sprite and `byte_80C29F0`'s rows BN5's).
+- *On the engine* (§15.3 items 10 and 11): every ported dimming chip and FullCust leave the action as BN6 does
+  until the engine reads BN5's choice; AntiNavi's sparkle sits where BN6's does.
+- *Without a BN6 chip* (§14.4, `bn6 code, no chip`): Blinder, the mode chips, FinalGun: new modules from the
+  shared code.

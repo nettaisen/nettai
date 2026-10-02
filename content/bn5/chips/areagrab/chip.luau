@@ -1,6 +1,9 @@
 --!strict
--- AreaGrab (BN5 chip 0x075): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- AreaGrab (BN5 chip 0x075): a dimming that drops grab shots on the first column in front not wholly the user's
+-- side's: BN6's (@bn6/lib/grab; BN5's the same code).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local grab = require("@bn6/lib/grab/controller")
 
 return define.chip {
     id = "areagrab",
@@ -16,4 +19,5 @@ return define.chip {
     flags = { "dimming", "standard_library", "library" },
     extra_flags = { 128 },
     slot_in_limit = 1,
+    dimming = grab.area,
 }

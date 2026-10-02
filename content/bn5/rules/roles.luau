@@ -2,10 +2,11 @@
 -- What BN5's rules start, spawn, show and play by role (docs/design/content-model-v2.md §7.4,
 -- docs/design/rules-in-luau.md R2: a game's roles are its root's). So far the roles that name only
 -- assets and data BN5 has: the sounds, music, banners and sprites its pack names (content/bn5/compat/
--- assets.toml: BN6's names where the asset or its place in the code is BN6's), its collision types, and
--- the anchor region (BN6's, as BN5's region 0x01 is). The roles that name actions, kinds, chips, statuses,
--- effects and sparks wait for the port's BN5 definitions (docs/design/bn5-map.md §15); the content check
--- lists them as unfilled, and a battle stops at the first it needs.
+-- assets.toml: BN6's names where the asset or its place in the code is BN6's), its collision types, the
+-- anchor region (BN6's, as BN5's region 0x01 is), and the traps' counters and mark (BN6's, as BN5's trap
+-- chips are BN6's code). The other roles that name actions, kinds, chips, statuses, effects and sparks wait
+-- for the port's BN5 definitions (docs/design/bn5-map.md §15); the content check lists them as unfilled,
+-- and a battle stops at the first it needs.
 --
 -- Not filled for want of a BN5 counterpart: the status visuals' sprites (BN5's sprites differ from
 -- BN6's; named once the port draws them), the A charge's glow and Full Synchro's aura (BN6's), the
@@ -13,10 +14,30 @@
 -- don't erupt: they burn and go, §15), the Cross and Beast Out sounds and the custom screen's Cross
 -- window, re-deal and scrap (BN6's).
 
+local antidmg_counter = require("@bn6/chips/antidmg/counter")
+local anti_recovery = require("@bn6/chips/antirecv/controller")
+local antiswrd_counter = require("@bn6/chips/antiswrd/counter")
 local collision = require("./collision")
+local effects = require("@bn6/lib/effects")
 local regions = require("@bn6/lib/regions")
 
 return define.roles {
+    actions = {
+        -- The trap chips' counters, which a trap that caught a hit starts (the original's actions 0x47 and
+        -- 0x48: AntiDmg's and AntiSwrd's, BN6's code).
+        anti_damage_counter = antidmg_counter.action,
+        anti_sword_counter = antiswrd_counter.action,
+    },
+    kinds = {
+        -- AntiRecv's counterattack, which a heal meets when the other side has AntiRecv armed (BN6's code).
+        anti_recovery = anti_recovery.kind,
+    },
+    effects = {
+        -- The mark over a navi whose trap sprang (AntiNavi, AntiRecv): BN5's effect 43 is BN6's 0x46 (hit
+        -- sparks, animation 7). (BN5 shows it on the panel's center, 16 pixels up; BN6 16 pixels down the
+        -- field and 32 up: the engine's, §15.3.)
+        trap_mark = effects.trap_mark,
+    },
     collision = {
         -- A navi's body, its body when it floats, and what it reacts to.
         navi = collision.navi,
