@@ -1,6 +1,9 @@
 --!strict
--- AntiSwrd (BN5 chip 0x092): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- AntiSwrd (BN5 chip 0x092): a trap that answers the next sword with a slash: BN6's (@bn6/lib/traps, its counter
+-- the role actions.anti_sword_counter; BN5's the same code).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local traps = require("@bn6/lib/traps/controller")
 
 return define.chip {
     id = "antiswrd",
@@ -15,4 +18,6 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
+    trap = "anti_sword",
+    dimming = traps.hook(),
 }
