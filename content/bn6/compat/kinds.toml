@@ -3,7 +3,9 @@
 #
 # Object kinds: the original's pool and index (the traces compare them), and the
 # positions the comparison skips (register garbage the spawner leaves until the
-# kind's init places it). The engine's own kinds are `engine/...`.
+# kind's init places it), and the header-flag bits it skips (`open_bus_flags`: bits
+# the spawner reads from the console's open bus, on which the two consoles can
+# disagree). The engine's own kinds are `engine/...`.
 
 "engine/player" = { pool = "actor", index = 0x00 }
 "colonel/navi" = { pool = "actor", index = 0x01 }
@@ -116,7 +118,7 @@ element-pillar = { pool = "attack", index = 0x61 }
 "rlnglog/log" = { pool = "attack", index = 0x66 }
 "slashman/riding-hit" = { pool = "attack", index = 0x69 }
 "tomahawkman/strike" = { pool = "attack", index = 0x6A }
-boulder = { pool = "attack", index = 0x6E, actor_list_entry = 3 }
+boulder = { pool = "attack", index = 0x6E, actor_list_entry = 3, open_bus_flags = 0xE0 }
 "lance/lance" = { pool = "attack", index = 0x6F }
 "drilarm/drill" = { pool = "attack", index = 0x71 }
 "snake/nest" = { pool = "attack", index = 0x72 }
