@@ -87,6 +87,10 @@ actor_lists = 0x3D90
 "crcusman/navi" = [0x080BA661, 0x080BDF51]
 "judgeman/navi" = [0x080BA921, 0x080BE211]
 "dustman/navi" = [0x080BC0DB, 0x080C020B]
+# (The Japanese games' own navis, which the US ROMs lack: the content keeps
+# EXE6 Falzar's spawners' addresses.)
+"count/navi" = [0x080BD237, 0x080BEA97]
+"django/navi" = [0x080BD6A3, 0x080BEF03]
 "twinldrs/navi" = [0x080BD9A3, 0x080C1ABF]
 "crosover/navi" = [0x080BE3E9, 0x080C2505]
 "mstrcros/navi" = [0x080BF161, 0x080C3269]

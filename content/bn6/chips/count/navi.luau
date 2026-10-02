@@ -1,19 +1,19 @@
 --!strict
--- HackJack, the navi of the HackJack chips (Count in the Japanese games;
--- the original's actor object #0x11). The US games have no routine for
--- him: their navi chip table's entry 18 (`off_802CD5C[18]`) is null and
--- the actor slot a placeholder. This is the Japanese games' code (EXE6
+-- Count, the navi of the Count chips (the Japanese games' name; the US
+-- release calls him HackJack; the original's actor object #0x11). The US
+-- games have no routine for him: their navi chip table's entry 18
+-- (`off_802CD5C[18]`) is null and the actor slot a placeholder. This is the Japanese games' code (EXE6
 -- Falzar 0x080BCFCC, EXE6 Gregar 0x080BE82C; the two are the same but for
 -- where things are), brought by the navi chip controller. He appears and
 -- casts a rain over the middle of the other side's area (a dust storm,
 -- lib/instant/dust_storm: the 3x3 around it, the whole area, hit every 12
 -- ticks, five times, for the chip's damage), then drops up to three lances
--- (chips/hackjack/lance), 10 ticks apart: first where an enemy stands in
+-- (chips/count/lance), 10 ticks apart: first where an enemy stands in
 -- that area, then on panels of it at random. Then he goes. The lances'
 -- damage is the chip's parameter byte (50, 70, 100). See
 -- docs/engine/chips.md §3.6.37.
 --
--- Each chip's `navi` hook is `hackjack.summon { lance_damage = n }`
+-- Each chip's `navi` hook is `count.summon { lance_damage = n }`
 -- (EXE6 Falzar 0x080BD236).
 
 local dust_storm = require("../../lib/instant/dust_storm")
@@ -22,7 +22,7 @@ local panels = require("../../lib/panels")
 local regions = require("../../lib/regions")
 local lance = require("./lance")
 
-local hackjack = {}
+local count = {}
 
 -- What a chip summons him with.
 export type Summon = {
@@ -42,7 +42,7 @@ export type State = {
     next: number,
 }
 
-local SPRITE = asset.sprite("hackjack")
+local SPRITE = asset.sprite("count")
 local SOUND_APPEAR, SOUND_RAIN = asset.sound("appear"), asset.sound("drip-shower")
 
 -- The controller calls his spawner through r3, which his position takes
@@ -63,7 +63,7 @@ local RAIN_Z = 0x2_0000
 
 -- The lances, as he drops them: at once, while dimmed (Param3 2). Their
 -- spawn Z is the chip's damage flags (the register his spawner leaves).
-local LANCE: HackJackLance = { while_dimmed = true, warn_ticks = 0 }
+local LANCE: CountLance = { while_dimmed = true, warn_ticks = 0 }
 
 -- The lances' search, by side, in the 3x3 around the middle (region
 -- 0x0F): an enemy's body on a solid panel of the other side's area, then
@@ -274,8 +274,8 @@ local ACTIONS: { [number]: (me: Object) -> () } = {
     [LEAVE] = leave,
 }
 
-hackjack.kind = define.kind {
-    id = "hackjack/navi",
+count.kind = define.kind {
+    id = "count/navi",
     pool = "actor",
     state = { controller = "object", lance_damage = "u8", targets = "u8[3]", count = "u8", next = "u8" },
     update = function(me: Object)
@@ -285,7 +285,7 @@ hackjack.kind = define.kind {
         elseif l == "update" then
             local action = ACTIONS[me.action]
             if not action then
-                error(string.format("HackJack: action %#x reads past his table", me.action))
+                error(string.format("Count: action %#x reads past his table", me.action))
             end
             action(me)
         else
@@ -295,11 +295,11 @@ hackjack.kind = define.kind {
     end,
 }
 
--- A chip's `navi` hook: HackJack for the user, on the panel the
+-- A chip's `navi` hook: Count for the user, on the panel the
 -- controller picked, reporting to `controller`.
-function hackjack.summon(args: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+function count.summon(args: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
-        local o = navi_chips.spawn(hackjack.kind, user, spec, SPAWNER_ADDRESS)
+        local o = navi_chips.spawn(count.kind, user, spec, SPAWNER_ADDRESS)
         if not o then
             return nil
         end
@@ -310,4 +310,4 @@ function hackjack.summon(args: Summon): (user: Object, controller: Object, spec:
     end
 end
 
-return hackjack
+return count

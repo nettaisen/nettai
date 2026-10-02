@@ -202,8 +202,8 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
    - **0x15** `sub_80EBD9C` (0x080EBD9C), dimming chips. It calls **`off_802CCB4[av[3]]`** (0x0802CCB4, 42
      entries; slots 34, 35, 39, 40 are NULL). Chips 0x138 Gregar and 0x139 Falzar point at NULL slots 34/35. In the
      US ROM using them crashes the game; the Japanese ROMs fill the slots, and the port's chips are theirs
-     (docs/engine/beast-chips.md; chips/gregar, chips/falzar). The same holds for HackJack's and Django's navis,
-     `off_802CD5C`'s null entries 18 and 19 (chips/hackjack, chips/django; jp-differences.md §4).
+     (docs/engine/beast-chips.md; chips/gregar, chips/falzar). The same holds for Count's and Django's navis,
+     `off_802CD5C`'s null entries 18 and 19 (chips/count, chips/django; jp-differences.md §4).
    - **0x1B** `sub_80EC350` (0x080EC350), navi chips. It spawns T4 object 0x10 via `sub_80E192C`. That controller
      later calls **`off_802CD5C[subtype]`** (0x0802CD5C, 29 entries).
 4. Action **0x1C** `sub_80EC39C` (0x080EC39C) is the "instant" handler. It calls `off_80EC3F0[av[3]]` once and exits
@@ -2524,14 +2524,15 @@ Lab: the official pa/0x159-darkness recipes end before (they match every frame);
 pa/0x159-darkness/long{,-miss} (Bass's recipe) and long-bassanly{,-miss} (BassAnly's) reach every branch but the
 failed spawns and a missing flag pointer (**unverified**), and match every frame.
 
-#### 3.6.37 HackJack (navi chip subtype 18, chips 0x113–0x115, T1 0x11; the Japanese games')
+#### 3.6.37 Count (navi chip subtype 18, chips 0x113–0x115, T1 0x11; the Japanese games')
 
-HackJack H\* + HackJck[EX] H + HackJck[SP] H (Count in the Japanese games). **The US games have no routine**: their
+Count H\* + Count[EX] H + Count[SP] H: the Japanese games' names, which the content uses; the US release calls them
+HackJack, HackJck[EX] and HackJck[SP]. **The US games have no routine**: their
 `off_802CD5C[18]` is null (the game jumps to address 0), T1 0x11 and T3 0x0D point at placeholder routines and
 sprite (8, 0x16) is a placeholder archive. The Japanese games (EXE6 Falzar BR6J, EXE6 Gregar BR5J) have them; the
 two are the same code at different addresses (EXE6 Falzar's below; EXE6 Gregar's +0x1860 for the navi, +0x1860 for
 the lance). There is no Japanese disassembly: the addresses are the ROMs', the routines they call the US games'
-(the verification workspace's `fmap.py --to` maps them). Content: chips/hackjack (navi, lance, chips).
+(the verification workspace's `fmap.py --to` maps them). Content: chips/count (navi, lance, chips).
 
 The records: as the US games' but for flags 0x47 (the US games' 0x07: the library bit) and the sort key; the content
 has the Japanese records. Damage 20/25/SP formula 17 (the rain's hits); parameters 0x32/0x46/0x64 (the lances'
@@ -2594,9 +2595,9 @@ damage word, alliance and flip his, flags |= 0x10 (no RelatedObject1).
 - Action 4 (0x080C95CA): Z's whole part 0, anim 0xC (restarted), region 1, sound 0x181, Timer 30; a hit turns the
   region off; at 0 region off, state 8.
 
-Every lance HackJack drops has Param3 2: it strikes at once, while dimmed. Action 0 and the Param3 ≠ 2 branches are
+Every lance Count drops has Param3 2: it strikes at once, while dimmed. Action 0 and the Param3 ≠ 2 branches are
 the other user's: attack 0x0C (0x080C91E0), which drops lances with them, is spawned only by the Japanese games'
-HackJack navi AI (0x08107908, 0x0810DE6E; out of a netbattle's reach, as every navi AI). **Unverified**: those
+Count navi AI (0x08107908, 0x0810DE6E; out of a netbattle's reach, as every navi AI). **Unverified**: those
 branches, a full pool (no navi, no lance, no collision data), and every timing above until JP-console traces exist.
 
 Not this chip's: attacks 0x13, 0x14 and 0x15 and effects 0x17 and 0x18, which use sprite (8, 0x16) too, are spawned
@@ -2617,7 +2618,7 @@ counter cut-in during the other side's dimming), shows its damage on the telop, 
 back as a Mega chip and AntiNavi by the `navi` flag. (The US records would need the `navi_slot` trait for AntiNavi,
 which turns back the chip table's block 0xDD..0x118 by number.)
 
-**The spawner, 0x080BD6A2** (`off_802CD5C[19]`): as HackJack's with `object_spawnType1(0x12)`.
+**The spawner, 0x080BD6A2** (`off_802CD5C[19]`): as Count's with `object_spawnType1(0x12)`.
 
 **The object, 0x080BD3B8**: by state (init, update, `object_freeMemory`), then `object_updateSpriteTimestop`.
 Init (0x080BD3DC): PanelX 0 (side 0) or 7 (side 1: by the alliance), `object_setCoordinatesFromPanels`, Z's whole part
