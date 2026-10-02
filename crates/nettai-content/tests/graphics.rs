@@ -184,6 +184,7 @@ fn custom() -> CustomScreen {
         emblem_of: vec![0, 1, 1],
         emblem_palette_of: vec![1, 0, 0],
         regular: tiles(32, 82),
+        advance_name_colours: vec![[0, 0x7FFF, 0x14A5, 0], [0, 0x43F0, 0x14A5, 0]],
     }
 }
 

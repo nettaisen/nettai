@@ -152,6 +152,10 @@ pub struct CustomScreen {
     pub emblem_palette_of: Vec<u8>,
     /// The Regular chip's frame (two frames of 4x4).
     pub regular: Tiles,
+    /// The Program Advance animation's names' first four colours
+    /// (background palette 10), three sets it steps through
+    /// (`byte_802BA48`).
+    pub advance_name_colours: Vec<[u16; 4]>,
 }
 
 impl CustomScreen {

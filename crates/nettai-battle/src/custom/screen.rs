@@ -225,6 +225,8 @@ pub enum ProgramAdvanceStep {
 /// at 0, where every fade before the custom screen left it; a fade in
 /// holds its first frame).
 const FADE_OUT_FRAMES: u8 = 0x40 / 8;
+/// The Program Advance's fade's speed (`SetScreenFade(0x14, 8)`).
+const PROGRAM_ADVANCE_FADE_SPEED: u8 = 8;
 const FADE_IN_FRAMES: u8 = 1 + 0x40 / 8;
 
 /// The SELECT sub-screen's steps.
@@ -779,6 +781,8 @@ impl Screen {
             }
             Phase::ProgramAdvance { mut anim } => {
                 let pa = self.program_advance.expect("a Program Advance formed");
+                // sub_802B734: the animation's own counter, every tick.
+                self.look.pa_ticks = self.look.pa_ticks.wrapping_add(1);
                 self.phase = match anim.state {
                     // sub_802B75C
                     AnimationState::Starting => {
@@ -810,11 +814,17 @@ impl Screen {
             anim.started = false;
             anim.timer = 0;
         };
+        if matches!(anim.step, S::Names | S::Pause | S::Result) {
+            self.look.blink_program_advance();
+        }
         match anim.step {
             S::FadeOut => {
                 if !anim.started {
                     anim.started = true;
                     anim.fade = FADE_OUT_FRAMES;
+                    // sub_802B9FE(0); the screen fades a quarter of the way.
+                    self.look.pa_palette = 0;
+                    self.look.fade.start(FadeMode::ProgramAdvance, PROGRAM_ADVANCE_FADE_SPEED);
                     return;
                 }
                 if anim.fade != 0 {
@@ -834,6 +844,7 @@ impl Screen {
                 anim.timer += 1;
                 if anim.timer >= 0x14 {
                     next(anim, S::Names);
+                    self.look.pa_ticks = 0;
                 }
             }
             S::Names => {
@@ -874,6 +885,7 @@ impl Screen {
                 if self.hud.status() == BannerStatus::Done {
                     next(anim, S::FadeIn);
                     anim.fade = FADE_IN_FRAMES;
+                    self.look.fade.start(FadeMode::ProgramAdvanceBack, PROGRAM_ADVANCE_FADE_SPEED);
                 }
             }
             S::FadeIn => {
