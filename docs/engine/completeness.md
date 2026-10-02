@@ -738,6 +738,18 @@ outside Meteors' dimming (1: the instant meteor shower has no user) and slots th
 tornado and a falling rock seeing the battle over, which comes with a deletion some 50 ticks after a knockback KO,
 while neither lasts or starts that late. The recording is in the lab and matches the engine (1,034 frames).
 
+**Batch 10, LilBolr and AirRaid (27 branches, with the layer object both use):** 6 taken by 4 new recordings, 17
+unreachable, 4 hard. `chips/0x062-lilbolr1/erupt-dimmed` (P0's HeatMan dims the screen as the boiler erupts: the
+steam layer runs dimmed, and the flames' KO ends the battle with the boiler erupting), `erupt-paused` (a pause
+during the eruption), `full-synchro` (LilBolr1 thrown in Full Synchro: the doubled damage word) and
+`chips/0x068-airraid1/side-1-far-column` (side 1's plane on column 1, with no column ahead). The unreachable ones:
+the layer's own-palette and the viruses' settings no chip's layer uses (8), the boiler's zero-tick throw, its
+flight timer (the lifetime), a break with HP left and an eruption while dimmed (5: the obstacle framework holds its
+actions then), the plane's actions while dimmed, its propeller's own flip and a stop with nothing (4). The hard
+ones: a layer's or propeller's owner held by a status, the plane seeing the battle over (tried the opponent's
+Cannon, Thunder and Silence, and KOs), and a hit that doesn't lower the boiler's HP (tried Fan and MagCoil). The 4
+recordings are in the lab and match the engine (3,719 frames).
+
 <!-- end: chip families, G4 -->
 
 ##### Chip families: onesided's share
