@@ -508,6 +508,32 @@ up along one axis counts by its sign. The port had made every multi-panel move "
 the full lab matches (5,177 of 5,178 recordings; the other, `custom/no-beast-out`, is a new custom-screen
 recording whose own engine change is still on another branch).
 
+**Batch 2, the bombs, TankCan's shell, TimeBom and the projectile (59 branches):** 22 taken by 20 new
+recordings, 36 unreachable, 1 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x036-minibomb/off-field`, `0x044-grasseed/off-field`, `0x039-flshbom1/off-field` | a thrown bomb landing past the field's edge (AreaGrab, then the throw from the front of the taken column) |
+| `chips/0x036-minibomb/into-hole`, `0x044-grasseed/into-hole`, `0x039-flshbom1/into-hole`, `0x043-bugbomb/into-hole` | a thrown bomb landing in the holes stage's hole at (4,3) |
+| `chips/0x044-grasseed/battle-over`, `0x039-flshbom1/battle-over`, `0x043-bugbomb/battle-over`, `0x00c-tankcan1/battle-over` | the battle ending while a seed or TankCan's shell flies, or a FlshBom or BugBomb stands (the shell's case through SlashMan's dimming, which holds the shell until the battle is over) |
+| `chips/0x03c-blkbomb/fire-dimmed` | BlkBomb set off by HeatMan's flame inside his dimming: its leaving waits out the dimming |
+| `chips/0x043-bugbomb/dimmed`, `all-four-bugs` | a BugBomb that has set down running through a dimming; the fifth BugBomb on a navi with all four bugs picking among all four |
+| `chips/0x039-flshbom1/side-1`, `chips/0x00c-tankcan1/bottom-row` | FlshBom's own-body test for side 1; TankCan's explosion panel below row 3 |
+| `chips/0x090-timebom1/no-room`, `onto-reserved-panel`, `pa/0x14f-timebomplus/explodes` | TimeBom with no free enemy panel ahead; its bomb rising on a panel a set-down FlshBom reserved (the controller avoids only bodies); TimeBom+'s blast (the recipes end before it) |
+| `chips/0x001-cannon/target-over-hole` | a shot hitting side 0 over a hole (AirShoes): the panel isn't solid, so it is left as it is |
+
+The unreachable ones: the projectile's variants with a sprite, a status, a bug or a panel effect (9: only a
+navi's buster programs, NaviStats+0x4D and +0x4F, name them, and nothing sets those in a netbattle); the
+countdown bomb's table rows 2 to 7 (9: TimeBom1-3 set row 0, TimeBom+ row 1) and its blast after the battle's
+end (1: its tick breaks it first); BlkBomb's placed form (3: only `sub_80CD858` places one, and nothing calls
+it), a zero-tick throw, a flight timer that is the 6000-tick lifetime, and a break with HP left (3); a dimming
+while a bomb that doesn't run dimmed flies (3); bomb kind 1, which no chip throws (1); TankCan's shell
+constants (2: one tick a panel, always cracking); FlshBom's statuses and rows (2); BugBomb's arc, which ends 10
+pixels up (1); and two collision allocations (2). The hard one is a FlshBom landing on a navi of its own side:
+the only such body is the thrower, three panels back, and it can't get there in the 40 ticks of flight.
+
+All 20 recordings match the engine at main af3e0c39 (14,759 frames); none of batch 2 changed it.
+
 ### 6.3 Custom screen keys
 
 Four custom screen routines were verified only by the golden traces' dumps, with no lab recording: SELECT hiding
