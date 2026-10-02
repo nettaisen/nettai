@@ -45,6 +45,13 @@ actor_lists = 0x1870
 # MoonBld's blade: its swing routine's (`sub_80EE2CE`) with the Thumb bit.
 "moonbld/blade" = [0xCF, 0x0F]
 
+# Objects spawned with a routine's address as their X (a register their spawner
+# left): by kind, the Falzar ROM's (which the content keeps) and this game's. The
+# patch cards' meteors (lib/patch-cards/meteors) spawn the shower with
+# `sub_80F00B0`'s.
+[gregar.spawner_xs]
+"meteor-shower" = [0x080F00B1, 0x080F13F1]
+
 # The Japanese Falzar (EXE6, BR6J): as for the US Gregar, its own ROM's
 # addresses.
 [jp-falzar]
@@ -71,6 +78,9 @@ actor_lists = 0x2530
 
 [jp-falzar.panel_ys]
 "moonbld/blade" = [0xCF, 0x6F]
+
+[jp-falzar.spawner_xs]
+"meteor-shower" = [0x080F00B1, 0x080F5A49]
 
 # The Japanese Gregar (EXE6, BR5J): as for the US Gregar, its own ROM's
 # addresses.
@@ -102,6 +112,9 @@ actor_lists = 0x3D90
 
 [jp-gregar.panel_ys]
 "moonbld/blade" = [0xCF, 0x9F]
+
+[jp-gregar.spawner_xs]
+"meteor-shower" = [0x080F00B1, 0x080F6D79]
 
 # Django drops from his spawner's Z onto the back column (chips/django/navi:
 # 10 ticks, gravity -0x6000, 0.375 pixels a tick): his and his bike's Z differ

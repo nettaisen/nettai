@@ -296,11 +296,15 @@ return define.roles {
         program_advance_empty = asset.banner("program-advance-empty"),
     },
     hooks = {
-        -- The NaviCust FirstBarrier (`sub_8013892`): the navi enters with
-        -- the barrier its stat names, which the game's program sets to type
-        -- 1 (the Barrier chip's), and its visual.
+        -- The first barrier (`sub_8013892`): the navi enters with the
+        -- barrier its stat names (the NaviCust's FirstBarrier sets the
+        -- Barrier chip's; the patch cards Barr100's, Barr200's, BblWrap's
+        -- bubble or LifeAur's aura), and its visual.
         first_barrier = function(navi: Object)
-            barriers.raise(navi, barriers.barrier_10, true)
+            local barrier = battle.navi(navi.alliance).first_barrier
+            if barrier then
+                barriers.raise(navi, barrier, true)
+            end
         end,
         -- What an obstacle encased in ice or a bubble becomes
         -- (`sub_801813A`'s end).

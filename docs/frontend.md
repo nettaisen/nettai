@@ -102,6 +102,9 @@ bundled one's place, `--lang en|ja` the language of the battle's words
 setup and battle are drawn from (default: from the clock; each start
 prints it), `--stage NAME` forces a link battle stage by its key
 (`netbattle-1` to `netbattle-96`), `--show-folders` prints both folders,
+`--cards` and `--their-cards` install your and the right navi's patch cards
+(the Japanese games', docs/engine/patch-cards.md: names comma-separated in
+the order they apply, `-name` switched off, e.g. `canodumb,-shadow`),
 and with `--headless`, `--keys` holds buttons on given ticks (below).
 
 Keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START,

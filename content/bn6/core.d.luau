@@ -572,6 +572,14 @@ declare class Object
     -- "freeze", "bubble", "idle", "move", "dimming_chip", "navi_chip",
     -- "instant_chip", "form_change", "cross_special").
     function navi_action(self): Action | string
+    -- `loc_80126EA`: `chip` as the navi's attack (its record's damage, hit
+    -- parameter, lockout and element; no bonus; not charged): a weapon
+    -- that fires a chip, whose setup then returns the chip.
+    function load_chip_attack(self, chip: Chip): ()
+    -- `sub_8010740`: in a link battle the opponent's support Rush takes
+    -- `chip` (one it cancels) from this navi: it comes, and is spent.
+    -- Whether it did.
+    function rush_cancels(self, chip: Chip): boolean
     function reset_attack_links(self): ()
     -- `sub_800FA54`: the held direction (1 up, 2 down, 3 back, 4 forward;
     -- 0 none).
@@ -629,7 +637,8 @@ declare class Object
 end
 
 -- A side's navi stats (read-only but the buster's levels, the custom
--- level, the hand-shrink bug's turn, the start weapons and the shoes).
+-- level, the hand-shrink bug's turn, the start weapons and the shoes; and
+-- what the patch cards change, which they write at the round's start).
 declare class Navi
     -- Fighting in the sun.
     sun: boolean
@@ -676,6 +685,41 @@ declare class Navi
     float_shoes: boolean
     air_shoes: boolean
     undershirt: boolean
+    -- HP when the round starts, and its maximum.
+    hp: number
+    max_hp: number
+    -- The folder's Mega and Giga chip limits.
+    mega_level: number
+    giga_level: number
+    super_armor: boolean
+    status_guard: boolean
+    -- The B button's weapon (nil: none).
+    buster_weapon: Weapon?
+    -- The barrier the navi enters with (nil: none).
+    first_barrier: Barrier?
+    gauge: "normal" | "fast" | "slow"
+    -- The supports; none with the NaviCust's support bug (setting one
+    -- then leaves it so).
+    rush: boolean
+    beat: boolean
+    tango: boolean
+    support_bug: boolean
+    -- NaviCust bugs: steps go astray (1), the panel trail's level, the
+    -- status a hit gives, the custom screen's damage, the emotion swings,
+    -- the battle start's.
+    step_bug: number
+    panel_trail_level: number
+    hit_status: number
+    custom_damage: number
+    emotion_bug: number
+    battle_start_bug: number
+    -- NaviCust ChpShufl and NumbrOpn.
+    chip_shuffle: boolean
+    number_open: boolean
+    -- What the NaviCust does to chip drops (1 its collector bug) and random
+    -- encounters (1 its encounter bug): no netbattle reads them.
+    chip_drops: number
+    encounters: number
     -- `sub_800FE52`: how many kinds of NaviCust bug the navi has.
     bug_kinds: number
 end
@@ -866,6 +910,10 @@ declare battle: {
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
+    -- Whether the side's console starts its emotion window glitching (the
+    -- save's NaviCust bug flag): a system decides it in `round_setup` (BN6's
+    -- patch cards do).
+    set_emotion_window_glitch: (side: number, on: boolean) -> (),
     -- A side's bug frags, and spending some (its callers check there are
     -- enough: the count wraps below 0).
     bug_frags: (side: number) -> number,
@@ -1276,6 +1324,9 @@ export type SystemSpec = {
     state: StateSchema?,
     setup: StateSchema?,
     hooks: {
+        -- Once per side as the round is set up, before anything reads the
+        -- side's navi stats (`battle.navi(side)`), which it may change.
+        round_setup: ((side: number) -> ())?,
         -- Once per side, after the navis spawn.
         round_start: ((side: number) -> ())?,
     }?,
@@ -1485,7 +1536,8 @@ export type NaviDef = {
         float_shoes: boolean?,
         air_shoes: boolean?,
         undershirt: boolean?,
-        first_barrier: number,
+        -- The barrier it enters with (lib/barriers; nil: none).
+        first_barrier: Barrier?,
         mega_level: number,
         giga_level: number,
         back_special_damage: number?,

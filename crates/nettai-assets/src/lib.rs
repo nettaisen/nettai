@@ -530,14 +530,18 @@ pub struct BannerLayout {
 mod tests {
     use super::*;
 
+    /// A glyph name may be several characters (bn5-extract names a glyph
+    /// its content has no character for by its number, `[0a3]`); BN6's
+    /// are one each, its marks too (U+E002 the stacked EX).
     #[test]
     fn text_takes_the_longest_glyph_names() {
         let hud = Hud {
-            font_chars: [" ", "A", "[", "[EX]", "n", " "].map(String::from).to_vec(),
+            font_chars: [" ", "A", "[", "[0a3]", "n", " ", "\u{E002}"].map(String::from).to_vec(),
             ..Hud::default()
         };
-        assert_eq!(hud.glyphs("An [EX]"), (vec![1, 4, 0, 3], vec![]));
-        assert_eq!(hud.glyphs("A?[E"), (vec![1, 2], vec!['?', 'E']));
+        assert_eq!(hud.glyphs("An [0a3]"), (vec![1, 4, 0, 3], vec![]));
+        assert_eq!(hud.glyphs("A?[0"), (vec![1, 2], vec!['?', '0']));
+        assert_eq!(hud.glyphs("An\u{E002}"), (vec![1, 4, 6], vec![]));
     }
 
     #[test]
