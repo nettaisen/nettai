@@ -693,7 +693,7 @@ impl Screen {
                         console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
                         self.look.frame = 0;
                         self.look.fade.start(FadeMode::BeastOut, BEAST_OUT_FADE_SPEED);
-                        self.look.play(ScreenSound::BeastOut(view.unlocks.version));
+                        self.look.play(ScreenSound::BeastOut(view.beast_game()));
                         self.look.play(ScreenSound::Pick);
                         self.look.play(ScreenSound::BeastOutFlash);
                     }
@@ -737,7 +737,7 @@ impl Screen {
                         console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
                         self.look.frame = 0;
                         self.look.fade.start(FadeMode::BeastOut, BEAST_OUT_FADE_SPEED);
-                        self.look.play(ScreenSound::BeastOut(view.unlocks.version));
+                        self.look.play(ScreenSound::BeastOut(view.beast_game()));
                         self.look.play(ScreenSound::BeastOutFlash);
                     }
                     // sub_8027672
@@ -1177,7 +1177,12 @@ impl Screen {
         if tick >= 2 && (tick - 2) % 25 == 0 {
             let last = self.selected.checked_sub(1).map(|i| self.selection[i as usize]);
             match last.map(|s| self.slots[s as usize].kind) {
-                Some(SlotKind::Chip { index, .. }) => {
+                Some(SlotKind::Chip { index, regular }) => {
+                    // sub_8027458: scrapping the Regular chip ends it
+                    // (BattleState+0x17 = 0), as taking it at OK does.
+                    if regular {
+                        folder.regular_pending = false;
+                    }
                     scrapped[count as usize] = folder.take(index as usize);
                     count += 1;
                     self.selected -= 1;
@@ -1562,14 +1567,22 @@ impl PlayerView<'_> {
 
     /// What a setup's Cross list (`Unlocks::cross_list`, nettai's
     /// extension) offers of its entries: Crosses only, and in a Beast
-    /// form only the player's game's (a Cross of the other game has no
-    /// Beast form of the player's). Everything else offers.
+    /// form only the Crosses whose Beast it is (that game's: their forms
+    /// in Beast Out are that Beast's). Everything else offers.
     fn listed_cross_fits(&self, form: nettai_content_api::FormHandle) -> bool {
         if self.unlocks.cross_list.is_none() {
             return true;
         }
-        let in_beast = self.library.form_kind(self.stats.form).is_beast();
-        self.library.form_kind(form) == crate::content::FormKind::Cross && !(in_beast && self.unlocks.other_games_cross(self.library, form))
+        let current = self.stats.form;
+        let in_beast = self.library.form_kind(current).is_beast();
+        self.library.form_kind(form) == crate::content::FormKind::Cross
+            && !(in_beast && self.library.form_game(form) != self.library.form_game(current))
+    }
+
+    /// The game of the Beast the navi goes into, or is in
+    /// (`Unlocks::beast_game`): the Beast Out roar's.
+    fn beast_game(&self) -> super::GameVersion {
+        self.unlocks.beast_game(self.library, self.stats.form)
     }
 
     /// `sub_8029FB4` (battle mode 0): the Beast Out button is on the

@@ -16,7 +16,7 @@
 use std::collections::VecDeque;
 
 use crate::world::{Game, Observer};
-use nettai_battle::cues::{CueAction, CueTracker};
+use nettai_battle::cues::{CueAction, CueId, CueTracker};
 use nettai_battle::{Battle, PlayerTick, SoundCue, TickEvents, TickInput};
 
 /// One player's share of a tick's input.
@@ -77,6 +77,9 @@ pub struct CueFeed {
     /// Every action so far, with the frame being simulated when it was
     /// decided.
     pub log: Vec<(u32, CueAction)>,
+    /// The play each `log` entry concerns (`log[i]`'s is `cue_ids[i]`): a
+    /// play's own identity, or the one a cancel takes back.
+    pub cue_ids: Vec<CueId>,
     /// The cues of every confirmed frame, in order.
     pub confirmed: Vec<(u32, SoundCue)>,
     /// The cues of each simulated frame that isn't confirmed yet, from its
@@ -90,6 +93,7 @@ impl CueFeed {
             viewer,
             tracker: CueTracker::new(tolerance),
             log: Vec::new(),
+            cue_ids: Vec::new(),
             confirmed: Vec::new(),
             unconfirmed: VecDeque::new(),
         }
@@ -107,7 +111,10 @@ impl<G: Game> Observer<G> for CueFeed {
     fn simulated(&mut self, frame: u32, game: &G) {
         let cues = game.battle().sound_cues_for(self.viewer);
         self.tracker.simulated(frame, cues);
-        self.log.extend(self.tracker.drain().map(|a| (frame, a)));
+        for (id, a) in self.tracker.drain_identified() {
+            self.log.push((frame, a));
+            self.cue_ids.push(id);
+        }
         if !cues.is_empty() {
             self.unconfirmed.push_back((frame, cues.to_vec()));
         }
