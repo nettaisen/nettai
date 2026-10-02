@@ -26,7 +26,9 @@ local SOUND = asset.sound("drip-shower")
 -- parameter word's second byte, 0x3C).
 local DAMAGE, HIT_PARAM, TICKS = 0x14, 0x8A, 0x3C
 -- The storm's Z: the register the counter window's setup leaves, the
--- navi's collision data's address, of which its init keeps the fraction.
+-- navi's collision data's address, whose fraction the storm's init keeps
+-- (compat compares the storm's Z by whole pixels: kinds.toml's
+-- `scratch_z_fraction`).
 local STORM_Z = 0
 
 -- `sub_80F0228`: the storm on the middle panel of the other side's area,
