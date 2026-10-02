@@ -8,8 +8,7 @@
 -- for the port's BN5 definitions (docs/design/bn5-map.md §15); the content check lists them as unfilled,
 -- and a battle stops at the first it needs.
 --
--- Not filled for want of a BN5 counterpart: the status visuals' sprites (BN5's sprites differ from
--- BN6's; named once the port draws them), the A charge's glow and Full Synchro's aura (BN6's), the
+-- Not filled for want of a BN5 counterpart: the A charge's glow and Full Synchro's aura (BN6's), the
 -- freeze and bubble sounds and sprites (BN5 has neither status), the eruption's (BN5's lava panels
 -- don't erupt: they burn and go, §15), the Cross and Beast Out sounds and the custom screen's Cross
 -- window, re-deal and scrap (BN6's).
@@ -24,6 +23,7 @@ local effects = require("@bn6/lib/effects")
 local regions = require("@bn6/lib/regions")
 local sparks = require("../lib/sparks")
 local statuses = require("./status")
+local swords = require("../lib/swords")
 
 return define.roles {
     actions = {
@@ -31,9 +31,10 @@ return define.roles {
         -- 0x1E: the same code but for the flash's attachment row).
         forced_charged_shot = charged_shot.action,
         -- The trap chips' counters, which a trap that caught a hit starts (the original's actions 0x47 and
-        -- 0x48: AntiDmg's and AntiSwrd's, BN6's code).
+        -- 0x48: AntiDmg's and AntiSwrd's, BN6's code; AntiSwrd's swinging BN5's blade and throwing BN5's sonic
+        -- booms, lib/swords).
         anti_damage_counter = antidmg_counter.action,
-        anti_sword_counter = antiswrd_counter.action,
+        anti_sword_counter = antiswrd_counter.action_with("antiswrd/counter", swords.blade, swords.sonic_boom),
     },
     kinds = {
         -- AntiRecv's counterattack, which a heal meets when the other side has AntiRecv armed (BN6's code).
@@ -54,6 +55,8 @@ return define.roles {
         plain = sparks.plain,
         guard = sparks.guard,
         thrown_obstacle = sparks.charged,
+        -- A lava panel's burn (the sparks' row 1, the fire spark: 0x08016D80).
+        panel_burn = sparks.fire,
     },
     effects = {
         -- A navi deleted, HP recovered, the flash where a side cut in: BN5's effects 3, 6 and 0x1E are BN6's
@@ -65,6 +68,8 @@ return define.roles {
         -- sparks, animation 7). (BN5 shows it on the panel's center, 16 pixels up; BN6 16 pixels down the
         -- field and 32 up: the engine's, §15.3.)
         trap_mark = effects.trap_mark,
+        -- The splash of a body a sea panel holds at a move's end (effect 0x63: 0x0801715E).
+        panel_splash = define.effect { sprite = asset.sprite("splash"), anim = 0, palette = 0 },
     },
     collision = {
         -- A navi's body, its body when it floats, and what it reacts to.
@@ -142,6 +147,11 @@ return define.roles {
     sprites = {
         -- The charge glow of a B charge.
         charge_glow = asset.sprite("charge-glow"),
+        -- The status visuals over a navi (0x080E08EC, BN6's `byte_80E08E4`): confusion's stars and blindness (BN6's
+        -- numbers) and the immobilized one (10-2d, BN6's 10-00).
+        confusion = asset.sprite("confusion"),
+        blindness = asset.sprite("blindness"),
+        immobilized = asset.sprite("immobilized"),
     },
     hooks = {
         -- The first barrier: the navi enters with the barrier its stats name (FstBarr's, BN6's code), and its
