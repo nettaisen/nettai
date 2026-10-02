@@ -91,28 +91,32 @@ impl Unlocks {
     }
 
     /// The Beast form Beast Out takes a navi in `form` to (`sub_802937A`,
-    /// `sub_802A040`): when `tired`, the version's Beast Over; from the
-    /// base form the version's Beast Out; from a Cross that Cross's form
-    /// in Beast Out. With a setup's Cross list a Cross of the other game
-    /// has no Beast form of the player's game, and Beast Out from it is
-    /// the version's own, as from the base form (nettai's extension, §4.1).
+    /// `sub_802A040`): when `tired`, Beast Over (of `beast_game`'s game);
+    /// from the base form the version's Beast Out; from a Cross that
+    /// Cross's form in Beast Out (with a setup's Cross list, whichever
+    /// game the Cross is from: HeatCross's Beast for a Falzar player in
+    /// HeatCross, §4.1).
     pub fn beast_form(&self, library: &dyn Library, navi: NaviHandle, form: FormHandle, tired: bool) -> Option<FormHandle> {
-        let kind = library.form_kind(form);
         if tired {
-            library.beast_over_form(navi, self.version)
-        } else if kind == FormKind::Base || self.other_games_cross(library, form) {
+            library.beast_over_form(navi, self.beast_game(library, form))
+        } else if library.form_kind(form) == FormKind::Base {
             library.beast_out_form(navi, self.version)
         } else {
             library.form_in_beast_out(form)
         }
     }
 
-    /// A Cross of the game the player doesn't play, which only a setup's
-    /// Cross list offers.
-    pub(crate) fn other_games_cross(&self, library: &dyn Library, form: FormHandle) -> bool {
-        self.cross_list.is_some()
-            && library.form_kind(form) == FormKind::Cross
-            && library.form_game(form).is_some_and(|g| g != self.version)
+    /// The game of the Beast a navi in `form` goes into, or is in: the
+    /// player's version, except that with a setup's Cross list a form of
+    /// the other game (one of its Crosses, or a Beast form of one) is that
+    /// game's (§4.1). Beast Over and the custom screen's Beast Out roar
+    /// follow it, and a frontend draws the Beast Out button and pictures
+    /// of its game.
+    pub fn beast_game(&self, library: &dyn Library, form: FormHandle) -> GameVersion {
+        match library.form_game(form) {
+            Some(game) if self.cross_list.is_some() && library.form_kind(form) != FormKind::Base => game,
+            _ => self.version,
+        }
     }
 }
 
