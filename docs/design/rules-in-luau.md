@@ -1000,3 +1000,9 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
   `testing::{sprite, sound, sprite_named, pack_sprite, add_pack}`; `twin` has its own pack (its pause sound, song
   0x40, a sprite): a battle of the test and twin games plays two packs (`AssetNames::packs` `["test", "twin"]`),
   each side hearing its game's pause; Luau names resolve per root and are refused outside a root's packs.
+- **The match crate** (merged from match-editor): a match's background is a name in the content's own pack unless
+  qualified (`nettai_match::background`); the editor lists them by that name.
+- **Gates** (on main 4d1890ee): the build without warnings, 450 tests, the content check (833 modules), gen-content
+  check 0 errors, machgun 1074/1331 and soundmod 21962/14933/20436 with 96 rollback rows and the 189 legacy
+  rounds, the lab 6521/6521 (5,756,487 frames) with 0 sound rounds differing. After main 1fd091c1 (match-editor: the
+  frontend and the new match and editor crates, no simulation): the build without warnings, 456 tests.
