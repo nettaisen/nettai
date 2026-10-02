@@ -7,6 +7,8 @@
 //! per pixel, where index 0 is transparent.
 
 pub mod custom;
+pub mod lettering;
+pub use lettering::{BASE_LANGUAGE, CustomLettering, HudLettering};
 pub use custom::{ChipArt, CustomScreen, MapPatch, PatchList, Picture, SlotPictures, VersionPictures};
 
 /// Assets a game version has its own of: the base game's (`base_version`,
@@ -350,6 +352,11 @@ pub struct Hud {
     /// The chatbox's box and key-wait arrow. Empty in a pack extracted
     /// before it was.
     pub chatbox: Chatbox,
+    /// The language the lettering above is in (the fonts, the text lines,
+    /// the banners' and "Cstmzing..."'s words; empty: `BASE_LANGUAGE`),
+    /// and the other languages' the pack has (`lettering`).
+    pub language: String,
+    pub languages: Vec<(String, HudLettering)>,
 }
 
 /// The chatbox's graphics (`chatbox_runScript`'s transfers): the box's

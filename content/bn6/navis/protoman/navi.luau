@@ -9,7 +9,6 @@ local protoman = require("./chip")
 
 return define.navi {
     id = "protoman",
-    name = "Navi 11",
     sprite = asset.sprite("protoman"),
     element = "null",
     buster_bonus = 1,
@@ -18,11 +17,9 @@ return define.navi {
     -- Its face in the emotion window (`byte_801CDDC`).
     mugshot = asset.mugshot("protoman"),
     merge_height = 0,
-    -- The no-running message: its lines' characters (which time it), its
-    -- words, and the portrait beside it.
+    -- The no-running message's portrait: the speaker beside the box. Its
+    -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        counts = { 19 },
-        text = "Don't run away now!",
         portrait = asset.sprite("protoman-portrait"),
     },
     own_chip = { chip = protoman, code = "B" },

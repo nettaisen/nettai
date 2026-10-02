@@ -9,8 +9,6 @@ local fan = require("./fan")
 
 local wind = define.chip {
     id = "wind",
-    name = "Wind",
-    description = "WindBox \nblows at\nenmy area",
     codes = { "*" },
     element = "null",
     family = "wind",
@@ -42,8 +40,6 @@ local wind = define.chip {
 
 local fan_chip = define.chip {
     id = "fan",
-    name = "Fan",
-    description = "VacuumFn\npulls\nenemy in",
     codes = { "*" },
     element = "null",
     family = "wind",

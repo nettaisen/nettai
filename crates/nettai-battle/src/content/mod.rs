@@ -45,6 +45,7 @@ mod scripts;
 mod sections;
 mod sprites;
 mod stages;
+pub mod strings;
 #[cfg(any(test, feature = "test-content"))]
 pub mod testing;
 
@@ -165,6 +166,10 @@ pub struct Content {
     /// functions the scripts implement (see `defs`). Made from the rest by
     /// [`Content::define`].
     pub defs: Defs,
+    /// The content's own language's strings (`strings`: a content root's
+    /// `locales/`), which the define phase counts the chatbox's timing
+    /// from; presentation besides, left out of the hash.
+    pub strings: strings::Strings,
 }
 
 impl Content {
@@ -183,7 +188,29 @@ impl Content {
         // The rule sections into the ruleset's typed tables.
         sections::build(self, &definitions)?;
         self.defs = Defs::build(self, definitions)?;
+        self.count_strings();
         Ok(())
+    }
+
+    /// What the battle reads of the content's own strings, into the
+    /// records: the descriptions' lines, the no-running messages'
+    /// characters per line and which of them move the speaker's mouth
+    /// (`strings`).
+    fn count_strings(&mut self) {
+        let w = &self.strings;
+        for d in &mut self.defs.chips {
+            let description = w.chip(&d.key).and_then(|c| c.description.as_deref());
+            d.record.description_lines = strings::description_lines(description);
+        }
+        for d in &mut self.defs.forms {
+            let description = w.form(&d.key).and_then(|f| f.description.as_deref());
+            d.record.description_lines = strings::description_lines(description);
+        }
+        for d in &mut self.defs.navis {
+            let message = w.navi(&d.key).and_then(|n| n.run_message.as_deref()).unwrap_or("");
+            let m = &mut d.record.run_message;
+            (m.counts, m.talking) = if message.is_empty() { (Vec::new(), [0; 3]) } else { (strings::message_counts(message), strings::talking(message)) };
+        }
     }
 
     /// The content, defined (see [`Content::define`]); panics on a content

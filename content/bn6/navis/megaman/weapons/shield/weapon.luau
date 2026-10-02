@@ -64,25 +64,21 @@ end
 -- does.)
 shield.shield = define.weapon {
     id = "megaman/shield",
-    name = "Shield",
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },
     setup = setup,
 }
 shield.shield_2 = define.weapon {
     id = "megaman/shield-2",
-    name = "Shield",
     charge_ticks = { 0, 0, 0, 0, 0, 100, 90, 80 },
     setup = setup,
 }
 shield.reflect = define.weapon {
     id = "megaman/reflect",
-    name = "Reflect",
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },
     setup = setup_counter,
 }
 shield.reflect_2 = define.weapon {
     id = "megaman/reflect-2",
-    name = "Reflect",
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },
     setup = setup_counter,
 }

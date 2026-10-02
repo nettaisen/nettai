@@ -22,17 +22,16 @@ local WEAPONS: FormWeapons = { buster = buster.weapon, charge_shot = charged_sho
 
 -- `megaman`: the navi that changes form (it has forms, though this content
 -- defines none but the base form).
-local function navi(id: string, name: string, sprite: string, class: IdentityClass, ai_index: number, megaman: boolean): NaviDef
+local function navi(id: string, sprite: string, class: IdentityClass, ai_index: number, megaman: boolean): NaviDef
     return define.navi {
         id = id,
-        name = name,
         sprite = asset.sprite(sprite),
         element = "null",
         buster_bonus = 1,
         move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
         banners = { win = asset.banner("test-win"), lose = asset.banner("test-deleted") },
         merge_height = 0,
-        run_message = { counts = { 19, 12 } },
+        run_message = {},
         weapons = WEAPONS,
         -- What a Cross change brings it with.
         fresh = { hp = 100, mega_level = 5, giga_level = 1 },
@@ -52,11 +51,10 @@ local function navi(id: string, name: string, sprite: string, class: IdentityCla
 end
 
 return {
-    megaman = navi("megaman", "MegaMan", "test-megaman", "megaman", 0, true),
-    link_navi = navi("test/link-navi", "LinkNavi", "test-navi", "link_navi", 4, false),
+    megaman = navi("megaman", "test-megaman", "megaman", 0, true),
+    link_navi = navi("test/link-navi", "test-navi", "link_navi", 4, false),
     base = define.form {
         id = "base",
-        name = "Base",
         kind = "base",
         sprite = asset.sprite("test-navi"),
         element = "null",

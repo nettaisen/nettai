@@ -48,8 +48,6 @@ local BIG_BOMB = countdown.variant {
 
 local timebom1 = define.chip {
     id = "timebom1",
-    name = "TimeBom1",
-    description = "Explodes\n3 seconds\nlater",
     codes = { "F", "G", "H" },
     element = "null",
     family = "summon",
@@ -67,8 +65,6 @@ local timebom1 = define.chip {
 
 local timebom2 = define.chip {
     id = "timebom2",
-    name = "TimeBom2",
-    description = "Explodes\n3 seconds\nlater",
     codes = { "C", "D", "E" },
     element = "null",
     family = "summon",
@@ -86,8 +82,6 @@ local timebom2 = define.chip {
 
 local timebom3 = define.chip {
     id = "timebom3",
-    name = "TimeBom3",
-    description = "Explodes\n3 seconds\nlater",
     codes = { "L", "M", "N" },
     element = "null",
     family = "summon",
@@ -105,8 +99,6 @@ local timebom3 = define.chip {
 
 local timebom = define.chip {
     id = "timebom",
-    name = "TimeBom+",
-    description = "Set TmBm+\nin enemy\narea!",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

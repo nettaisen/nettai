@@ -69,7 +69,6 @@ pub struct ActionDef {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct WeaponDef {
     pub key: String,
-    pub name: String,
     /// `setup(navi) -> action` (`off_80117D4`'s routine); none for an
     /// A-charge that is its chip (`charged_chip`), which nothing starts as
     /// a weapon.
@@ -533,6 +532,21 @@ fn slot(d: &Definition, path: &str) -> Result<FnSource, ContentError> {
     }
 }
 
+/// A definition holds no display text: its strings (a name, a description,
+/// a message) are the content root's `locales/<lang>.toml`, by its key
+/// (`strings`), and a field that gives them is refused.
+pub(crate) fn no_display_text(d: &Definition) -> Result<(), ContentError> {
+    for field in ["name", "description", "description_lines"] {
+        if !d.spec.field(field).is_nil() {
+            return Err(ContentError::new(format!(
+                "{}.luau: {} {}'s `{field}`: a definition holds no display text (nor counts of it): it is the content root's locales/<lang>.toml, by the key {:?}",
+                d.module, d.registry, d.key, d.key
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// A chip definition's record (docs/design/content-model-v2.md §3.1): the
 /// fields the engine reads, with the lock-on mode by the handle `r` gives
 /// it, and the chips it names (its Program Advance recipes' ingredients, a
@@ -544,15 +558,7 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
     let spec = &d.spec;
     let json = |field: &str| -> Result<Json, ContentError> { r.json(spec.field(field), &format!("chip {}.{field}", d.key)).map_err(what) };
     let mut o = Map::new();
-    o.insert("name".into(), Json::String(spec.field("name").str().unwrap_or(&d.key).to_string()));
-    // (The custom screen reads its lines: none given counts as three.)
-    match json("description")? {
-        Json::Null => {}
-        text @ Json::String(_) => {
-            o.insert("description".into(), text);
-        }
-        other => return Err(what(format!("`description` is {other}, not text"))),
-    }
+    no_display_text(d)?;
     // (The custom screen draws the chip's picture with it.)
     match json("art_palette")? {
         Json::Null => {}
@@ -899,7 +905,7 @@ impl Defs {
         let mut weapons = Vec::with_capacity(weapon_defs.len());
         for d in &weapon_defs {
             let what = |e: String| ContentError::new(format!("{}.luau: weapon {}: {e}", d.module, d.key));
-            let name = d.spec.field("name").str().unwrap_or(&d.key).to_string();
+            no_display_text(d)?;
             let charge_ticks: Vec<u16> = match d.spec.field("charge_ticks") {
                 Data::List(items) => items
                     .iter()
@@ -948,7 +954,6 @@ impl Defs {
             }
             weapons.push(WeaponDef {
                 key: d.key.clone(),
-                name,
                 setup,
                 charge_ticks,
                 instant,

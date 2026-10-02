@@ -8,7 +8,6 @@ local spoutman = require("./chip")
 
 return define.navi {
     id = "spoutman",
-    name = "SpoutMan",
     sprite = asset.sprite("spoutman"),
     element = "aqua",
     buster_bonus = 1,
@@ -17,11 +16,9 @@ return define.navi {
     -- Its face in the emotion window (`byte_801CDDC`).
     mugshot = asset.mugshot("spoutman"),
     merge_height = 0,
-    -- The no-running message: its lines' characters (which time it), its
-    -- words, and the portrait beside it.
+    -- The no-running message's portrait: the speaker beside the box. Its
+    -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        counts = { 19, 5 },
-        text = "Don't run away now,\ndrip!",
         portrait = asset.sprite("spoutman-portrait"),
     },
     own_chip = { chip = spoutman, code = "A" },

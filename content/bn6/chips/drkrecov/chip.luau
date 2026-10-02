@@ -6,8 +6,6 @@ local recov = require("../recov/chips")
 
 return define.chip {
     id = "drkrecov",
-    name = "DrkRecov",
-    description = "\n\n",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",

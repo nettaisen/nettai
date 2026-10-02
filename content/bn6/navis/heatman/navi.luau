@@ -7,7 +7,6 @@ local heatman = require("./chip")
 
 return define.navi {
     id = "heatman",
-    name = "HeatMan",
     sprite = asset.sprite("heatman"),
     element = "fire",
     buster_bonus = 1,
@@ -17,11 +16,9 @@ return define.navi {
     -- HeatMan face, and shows SpoutMan's.
     mugshot = asset.mugshot("heatman"),
     merge_height = 8,
-    -- The no-running message: its lines' characters (which time it), its
-    -- words, and the portrait beside it.
+    -- The no-running message's portrait: the speaker beside the box. Its
+    -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        counts = { 18, 17 },
-        text = "This is no time to\nrun out of here!!",
         portrait = asset.sprite("heatman-portrait"),
     },
     own_chip = { chip = heatman, code = "H" },

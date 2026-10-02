@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 local spoutman = define.chip {
     id = "spoutman",
-    name = "SpoutMan",
-    description = "Watr atk!\nBhnd 2row\npowerーup",
     codes = { "A", "*" },
     element = "aqua",
     family = "aqua",
@@ -25,8 +23,6 @@ local spoutman = define.chip {
 
 local spoutmn_ex = define.chip {
     id = "spoutmn-ex",
-    name = "SpoutMn[EX]",
-    description = "Watr atk!\nBhnd 2row\npowerーup",
     codes = { "A" },
     element = "aqua",
     family = "aqua",
@@ -44,8 +40,6 @@ local spoutmn_ex = define.chip {
 
 local spoutmn_sp = define.chip {
     id = "spoutmn-sp",
-    name = "SpoutMn[SP]",
-    description = "Watr atk!\nBhnd 2row\npowerーup",
     codes = { "A" },
     element = "aqua",
     family = "aqua",

@@ -15,8 +15,6 @@ local wideswrd = require("../wideswrd/chip")
 
 return define.chip {
     id = "lifesrd",
-    name = "LifeSrd",
-    description = "Slices\n2sq wide\n3sq vrtcl",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

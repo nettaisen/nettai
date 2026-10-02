@@ -6,8 +6,6 @@ local plus = require("../../lib/instant/plus")
 
 return define.chip {
     id = "finalgun",
-    name = "FinalGun",
-    description = "ミテイ",
     element = "null", family = "null", class = "special",
     rarity = 0, mb = 99, damage = 10, hit_param = 0, lockout = 0,
     library = { number = 387, index = 0, sort = 7 },

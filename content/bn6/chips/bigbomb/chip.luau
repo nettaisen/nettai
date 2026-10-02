@@ -10,8 +10,6 @@ local throw = require("../../lib/bombs/throw")
 
 return define.chip {
     id = "bigbomb",
-    name = "BigBomb",
-    description = "Throw a 9\npanl bomb\n3panl fwd",
     codes = { "O", "P", "V" },
     element = "null", family = "null", class = "standard",
     rarity = 3, mb = 32, damage = 140, hit_param = 30, lockout = 0,

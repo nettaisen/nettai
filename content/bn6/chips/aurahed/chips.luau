@@ -10,8 +10,6 @@ local SPEED = 0xC_0000
 
 local aurahed1 = define.chip {
     id = "aurahed1",
-    name = "AuraHed1",
-    description = "A flying\nhead with\n2spc tail",
     codes = { "B", "C", "D" },
     element = "null",
     family = "break",
@@ -34,8 +32,6 @@ local aurahed1 = define.chip {
 
 local aurahed2 = define.chip {
     id = "aurahed2",
-    name = "AuraHed2",
-    description = "A flying\nhead with\n2spc tail",
     codes = { "D", "E", "F" },
     element = "null",
     family = "break",
@@ -58,8 +54,6 @@ local aurahed2 = define.chip {
 
 local aurahed3 = define.chip {
     id = "aurahed3",
-    name = "AuraHed3",
-    description = "A flying\nhead with\n2spc tail",
     codes = { "F", "G", "H" },
     element = "null",
     family = "break",
@@ -82,8 +76,6 @@ local aurahed3 = define.chip {
 
 local streamhd = define.chip {
     id = "streamhd",
-    name = "StreamHd",
-    description = "Fire a\nstrm of 5\nAuraHeds",
     codes = {},
     element = "null",
     family = "program_advance",

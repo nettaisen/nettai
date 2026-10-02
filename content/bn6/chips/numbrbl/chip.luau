@@ -7,8 +7,6 @@ local controller = require("./controller")
 
 return define.chip {
     id = "numbrbl",
-    name = "NumbrBl",
-    description = "Last 2\nHP digits\n= atk pwr",
     codes = { "N" },
     element = "null",
     family = "null",

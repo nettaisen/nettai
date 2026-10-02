@@ -99,8 +99,6 @@ local PHASES: { [number]: (me: Object, s: State) -> () } = { [ERUPT] = blow, [RE
 
 return define.chip {
     id = "volcchrg",
-    name = "VolcChrg",
-    description = "Snd coal\nup chimny\n& hit emy",
     codes = { "C" },
     element = "fire",
     family = "fire",

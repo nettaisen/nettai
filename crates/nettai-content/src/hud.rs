@@ -14,7 +14,8 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
-use nettai_assets::{BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, MapEntry, NaviMugshot, Palette, Tiles};
+use nettai_assets::{BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, HudLettering, MapEntry, NaviMugshot, Palette, Tiles};
+use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -76,6 +77,31 @@ pub struct HudDoc {
     /// The chatbox (none in a pack extracted before it was).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chatbox: Option<ChatboxDoc>,
+    /// The language the fonts, the text lines and the pictures with words
+    /// are in (none: `nettai_assets::BASE_LANGUAGE`), and the other
+    /// languages' lettering, by language.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub language: String,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub languages: BTreeMap<String, HudLanguageDoc>,
+}
+
+/// Another language's lettering of the HUD: its own files, named with the
+/// language (`font-ja.png`, `banners/megaman-deleted-ja.png`).
+#[derive(Serialize, Deserialize, Debug)]
+pub struct HudLanguageDoc {
+    pub font: TileImage,
+    pub font_chars: Vec<String>,
+    pub dialogue_font: DialogueFontDoc,
+    /// The HUD's text lines, each as this font's glyph numbers.
+    pub texts: Vec<Vec<u16>>,
+    /// The banners whose words this language has its own of, by banner id
+    /// / 4 (null: the pack's own), with this language's banner palette.
+    pub banners: Vec<Option<BannerDoc>>,
+    /// "Cstmzing..." (two rows, as wide as its words), with the banner
+    /// palette.
+    pub waiting: TileImage,
+    pub gauge: TileImage,
 }
 
 /// The chatbox: the box's tiles with its palette, its maps (30x8 entries a
@@ -234,6 +260,43 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
             arrow: image("chatbox-arrow.png", &c.arrow, Layout::Blocks { width: 2, height: 2, columns: 3 }, &[c.text_palette], 1),
         }
     });
+    let mut dialogue_pngs = Vec::new();
+    let mut languages = BTreeMap::new();
+    for (lang, l) in &h.languages {
+        let file = |name: &str| format!("{name}-{lang}.png");
+        let font = image(&file("font"), &l.font, GLYPHS(16), &[h.hp_palettes[0]], 0);
+        let banners = l
+            .banners
+            .iter()
+            .enumerate()
+            .map(|(i, b)| {
+                b.as_ref().map(|b| BannerDoc {
+                    at: [b.x, b.y],
+                    kind: b.kind,
+                    glyphs: b.glyphs.len() / 2,
+                    number_at: b.number_at.map(|(x, y)| [x, y]),
+                    image: (!b.glyphs.is_empty())
+                        .then(|| image(&file(&format!("banners/{}", names.banner(4 * i as u8))), &b.glyphs, GLYPHS(20), &[l.banner_palette], 1)),
+                })
+            })
+            .collect();
+        let columns = (l.waiting.len() / 2).max(1) as u32;
+        let waiting = image(&file("waiting"), &l.waiting, Layout::Grid { columns }, &[l.waiting_palette], 1);
+        let gauge = image(&file("gauge"), &l.gauge_tiles, grid, &[h.gauge_palette], 0);
+        let dialogue_file = file("dialogue-font");
+        dialogue_pngs.push((dialogue_file.clone(), dialogue_image(&l.dialogue_font).to_png()));
+        let dialogue_font = DialogueFontDoc {
+            file: dialogue_file,
+            cell: [DialogueFont::WIDTH, DialogueFont::HEIGHT],
+            columns: DIALOGUE_COLUMNS,
+            advances: l.dialogue_font.advances.clone(),
+            chars: l.dialogue_font.chars.clone(),
+        };
+        languages.insert(
+            lang.clone(),
+            HudLanguageDoc { font, font_chars: l.font_chars.clone(), dialogue_font, texts: l.texts.clone(), banners, waiting, gauge },
+        );
+    }
     let dialogue_font = (!h.dialogue_font.is_empty()).then(|| {
         let file = "dialogue-font.png".to_string();
         files.push((file.clone(), dialogue_image(&h.dialogue_font).to_png()));
@@ -272,7 +335,10 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         warning,
         dialogue_font,
         chatbox,
+        language: h.language.clone(),
+        languages,
     };
+    files.extend(dialogue_pngs);
     files.push(("hud.json".into(), json_lines(&doc)));
     files
 }
@@ -418,7 +484,56 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         warning_palette: warning_pal[0],
         dialogue_font,
         chatbox,
+        language: doc.language.clone(),
+        languages: import_languages(dir, prefix, &doc, report)?,
     })
+}
+
+/// The other languages' lettering (`HudLanguageDoc`).
+fn import_languages(dir: &Path, prefix: &str, doc: &HudDoc, report: &mut Report) -> Option<Vec<(String, HudLettering)>> {
+    let mut out = Vec::new();
+    for (lang, d) in &doc.languages {
+        let img = |d: &TileImage, report: &mut Report| tiles::import_image(dir, prefix, d, report);
+        if d.banners.len() != doc.banners.len() {
+            report.error(format!("{prefix}/hud.json"), format!("{lang}'s banners are {}, the pack's {}", d.banners.len(), doc.banners.len()));
+            return None;
+        }
+        let (waiting, waiting_palette) = img(&d.waiting, report)?;
+        let mut banner_palette = None;
+        let mut banners = Vec::new();
+        for b in &d.banners {
+            banners.push(match b {
+                Some(b) => {
+                    let glyphs = match &b.image {
+                        Some(i) => {
+                            let (t, p) = img(i, report)?;
+                            banner_palette.get_or_insert(p[0]);
+                            Tiles { pixels: t.pixels[..(2 * b.glyphs * Tiles::TILE).min(t.pixels.len())].to_vec() }
+                        }
+                        None => Tiles::default(),
+                    };
+                    Some(BannerLayout { x: b.at[0], y: b.at[1], kind: b.kind, glyphs, number_at: b.number_at.map(|[x, y]| (x, y)) })
+                }
+                None => None,
+            });
+        }
+        out.push((
+            lang.clone(),
+            HudLettering {
+                font: img(&d.font, report)?.0,
+                font_chars: d.font_chars.clone(),
+                dialogue_font: import_dialogue_font(dir, prefix, &d.dialogue_font, report)?,
+                texts: d.texts.clone(),
+                banners,
+                // (The banners' palette is "Cstmzing..."'s too.)
+                banner_palette: banner_palette.unwrap_or(waiting_palette[0]),
+                waiting,
+                waiting_palette: waiting_palette[0],
+                gauge_tiles: img(&d.gauge, report)?.0,
+            },
+        ));
+    }
+    Some(out)
 }
 
 /// The dialogue font from its image (`DialogueFontDoc`).

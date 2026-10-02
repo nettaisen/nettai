@@ -11,7 +11,6 @@ local charged_chip_bonus_1f = require("../../weapons/charged-chip-bonus-1f/weapo
 
 return define.form {
     id = "spoutcross",
-    name = "SpoutCross",
     kind = "cross",
     game = "falzar",
     cross_of = spoutman,
@@ -26,7 +25,6 @@ return define.form {
     -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
     mugshot = { normal = asset.mugshot("spoutcross"), tired = asset.mugshot("spoutcross-tired") },
     -- What R shows in the Cross window.
-    description = "Chrg WatrChip:\nAtk x2! Watr\nChip = HP Rcvr",
     -- The chips A charges.
     charged_chips = { { family = "aqua" } },
     -- A charged Aqua chip hits twice as hard, and an Aqua chip's use heals.

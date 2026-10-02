@@ -11,7 +11,6 @@ local a_charge = require("./a-charge")
 
 return define.form {
     id = "eleccross",
-    name = "ElecCross",
     kind = "cross",
     game = "gregar",
     cross_of = elecman,
@@ -27,7 +26,6 @@ return define.form {
     -- (`byte_801E700`): the Falzar ROM has no ElecCross face, and shows TomahawkCross's.
     mugshot = { normal = asset.mugshot("eleccross"), tired = asset.mugshot("eleccross-tired") },
     -- What R shows in the Cross window.
-    description = "Elec Chip Attk\n+50! Chrg Elm-\nntless: Parlyz",
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "elec", damage = 50 },
     -- The chips A charges.

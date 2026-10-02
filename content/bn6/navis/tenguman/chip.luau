@@ -97,8 +97,6 @@ local PHASES: { [number]: (me: Object, s: State) -> () } = { [BLOW] = blow, [REC
 
 return define.chip {
     id = "ftornado",
-    name = "FTornado",
-    description = "Attk enmy\nw/spnning\ntwister!",
     codes = { "T" },
     element = "null",
     family = "wind",
