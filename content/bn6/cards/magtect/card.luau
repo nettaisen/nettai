@@ -1,11 +1,11 @@
 --!strict
 -- The patch card MagTect (15, マグテクト in the Japanese games), 15 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "magtect",
+return cards.card {
+    id = "patch-card/magtect",
     name = "MagTect",
     mb = 15,
     effects = {

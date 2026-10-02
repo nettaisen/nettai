@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Spidy (16, クーモス in the Japanese games), 8 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "spidy",
+return cards.card {
+    id = "patch-card/spidy",
     name = "Spidy",
     mb = 8,
     effects = {

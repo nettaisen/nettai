@@ -50,11 +50,12 @@ pub use data::{Data, Key as DataKey};
 pub use definitions::{Definition, Definitions};
 pub use host::{
     BindPlan, ContentError, ContentHost, DimmingChipSpec, FnId, FnSource, HookCall,
-    InstantChipSpec, Manifest, NaviChipSpec, PlaceSpec,
+    InstantChipSpec, Manifest, NaviChipSpec, PlaceSpec, SystemHook,
 };
 pub use registry::{
     ActionHandle, ChipHandle, CollisionHandle, EffectHandle, FormHandle, IdentityHandle, KindHandle, LockonHandle, NaviHandle,
-    PatchCardHandle, RecordHandle, RegionHandle, Registry, SparkHandle, StageHandle, StatusHandle, WeaponHandle, valid_key,
+    RecordHandle, RegionHandle, Registry, RulesetHandle, SparkHandle, StageHandle, StatusHandle, SystemHandle, WeaponHandle,
+    valid_key,
 };
 pub use state::{ContentState, FieldDef, FieldType, FieldValue, MAX_BYTES, Schema, StateId, Value};
 pub use types::{ObjectRef, PanelPos, Pool, SpriteId, Vec3};

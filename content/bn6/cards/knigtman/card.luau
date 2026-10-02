@@ -1,10 +1,10 @@
 --!strict
 -- The patch card KnigtMan (36, ナイトマン in the Japanese games), 45 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "knigtman",
+return cards.card {
+    id = "patch-card/knigtman",
     name = "KnigtMan",
     mb = 45,
     effects = {

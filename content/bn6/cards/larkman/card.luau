@@ -1,11 +1,11 @@
 --!strict
 -- The patch card LarkMan (47, スワローマン in the Japanese games), 36 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "larkman",
+return cards.card {
+    id = "patch-card/larkman",
     name = "LarkMan",
     mb = 36,
     effects = {

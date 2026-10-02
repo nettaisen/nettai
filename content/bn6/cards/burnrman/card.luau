@@ -1,10 +1,10 @@
 --!strict
 -- The patch card BurnrMan (44, バーナーマン in the Japanese games), 29 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "burnrman",
+return cards.card {
+    id = "patch-card/burnrman",
     name = "BurnrMan",
     mb = 29,
     effects = {

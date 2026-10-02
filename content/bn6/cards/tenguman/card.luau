@@ -1,11 +1,11 @@
 --!strict
 -- The patch card TenguMan (103, テングマン in the Japanese games), 34 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "tenguman",
+return cards.card {
+    id = "patch-card/tenguman",
     name = "TenguMan",
     mb = 34,
     effects = {

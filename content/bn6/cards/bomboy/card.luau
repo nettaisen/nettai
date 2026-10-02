@@ -1,11 +1,11 @@
 --!strict
 -- The patch card BomBoy (17, ボムボーイ in the Japanese games), 14 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "bomboy",
+return cards.card {
+    id = "patch-card/bomboy",
     name = "BomBoy",
     mb = 14,
     effects = {

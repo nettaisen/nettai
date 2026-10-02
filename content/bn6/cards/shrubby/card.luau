@@ -1,12 +1,12 @@
 --!strict
 -- The patch card Shrubby (79, モリキュー in the Japanese games), 6 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local chrgs = require("../../lib/patch-cards/chrgs")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "shrubby",
+return cards.card {
+    id = "patch-card/shrubby",
     name = "Shrubby",
     mb = 6,
     effects = {

@@ -1,11 +1,11 @@
 --!strict
 -- The patch card DarkMech (83, アサシンメカ in the Japanese games), 22 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local back_special = require("./back-special")
 
-return define.patch_card {
-    id = "darkmech",
+return cards.card {
+    id = "patch-card/darkmech",
     name = "DarkMech",
     mb = 22,
     effects = {

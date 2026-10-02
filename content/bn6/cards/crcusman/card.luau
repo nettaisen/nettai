@@ -1,10 +1,10 @@
 --!strict
 -- The patch card CrcusMan (53, サーカスマン in the Japanese games), 43 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "crcusman",
+return cards.card {
+    id = "patch-card/crcusman",
     name = "CrcusMan",
     mb = 43,
     effects = {

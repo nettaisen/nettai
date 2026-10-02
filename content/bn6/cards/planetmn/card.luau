@@ -1,11 +1,11 @@
 --!strict
 -- The patch card PlanetMn (39, プラネットマン in the Japanese games), 40 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local b_button = require("./b-button")
 
-return define.patch_card {
-    id = "planetmn",
+return cards.card {
+    id = "patch-card/planetmn",
     name = "PlanetMn",
     mb = 40,
     effects = {

@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Metrid (64, メテマージ in the Japanese games), 15 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local back_special = require("./back-special")
 
-return define.patch_card {
-    id = "metrid",
+return cards.card {
+    id = "patch-card/metrid",
     name = "Metrid",
     mb = 15,
     effects = {

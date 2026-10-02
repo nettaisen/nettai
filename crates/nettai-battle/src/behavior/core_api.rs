@@ -507,8 +507,8 @@ impl CoreApi for Battle {
         kinds::player::set_mood(self, side & 1, mood);
     }
 
-    fn patch_cards(&self, side: u8) -> Vec<(u16, bool)> {
-        self.setup.players[side as usize & 1].patch_cards.iter().map(|c| (c.card.0, c.enabled)).collect()
+    fn set_emotion_window_glitch(&mut self, side: u8, on: bool) {
+        self.consoles[side as usize & 1].emotion_window_glitch = on;
     }
 
     fn bug_frags(&self, side: u8) -> u32 {
@@ -1071,6 +1071,21 @@ impl CoreApi for Battle {
             Vars::Content(s) => Some(s),
             _ => None,
         }
+    }
+
+    fn system_state_mut(&mut self, side: u8, slot: u8) -> ApiResult<&mut ContentState> {
+        self.rules
+            .get_mut(side as usize)
+            .and_then(|r| r.states.get_mut(slot as usize))
+            .ok_or_else(|| ApiError::Other(format!("side {side}'s ruleset has no system in place {slot}")))
+    }
+
+    fn system_setup(&self, side: u8, slot: u8) -> ApiResult<&ContentState> {
+        self.setup
+            .players
+            .get(side as usize)
+            .and_then(|p| p.rules.get(slot as usize))
+            .ok_or_else(|| ApiError::Other(format!("side {side}'s ruleset has no system in place {slot}")))
     }
 
     fn spawn_effect(&mut self, pos: Vec3, look: EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {

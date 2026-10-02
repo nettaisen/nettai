@@ -1,11 +1,11 @@
 --!strict
 -- The patch card BowlMan (94, ボウルマン in the Japanese games), 30 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "bowlman",
+return cards.card {
+    id = "patch-card/bowlman",
     name = "BowlMan",
     mb = 30,
     effects = {

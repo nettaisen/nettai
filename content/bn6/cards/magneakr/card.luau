@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Magneakr (63, マグニッカー in the Japanese games), 7 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "magneakr",
+return cards.card {
+    id = "patch-card/magneakr",
     name = "Magneakr",
     mb = 7,
     effects = {

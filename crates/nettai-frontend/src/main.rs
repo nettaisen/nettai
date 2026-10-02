@@ -1,7 +1,7 @@
 //! nettai-frontend: watch a golden trace replayed through the engine, or play.
 //! See docs/frontend.md.
 
-use nettai_frontend::driver::{LivePlayer, TracePlayer, bn6_live_setup, patch_cards};
+use nettai_frontend::driver::{LivePlayer, TracePlayer, bn6_live_setup, install_patch_cards};
 use nettai_frontend::textlayer::TextMode;
 use nettai_frontend::vfont::{TextRenderer, VectorFont};
 use nettai_frontend::{Renderer, Session, TickHook, app, headless, session};
@@ -229,7 +229,7 @@ fn main() {
         eprintln!("{}", choices.describe(&content, args.show_folders));
         for (side, list) in args.cards.iter().enumerate() {
             if let Some(list) = list {
-                setup.players[side].patch_cards = patch_cards(&content, list).unwrap_or_else(|e| fail(e));
+                install_patch_cards(&content, &mut setup.players[side], list).unwrap_or_else(|e| fail(e));
             }
         }
         sessions.push(Session::new(Box::new(LivePlayer::new(setup, content.clone()))));

@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Handy (54, ハンディース in the Japanese games), 16 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "handy",
+return cards.card {
+    id = "patch-card/handy",
     name = "Handy",
     mb = 16,
     effects = {

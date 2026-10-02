@@ -1,11 +1,11 @@
 --!strict
 -- The patch card ToadMan (37, トードマン in the Japanese games), 34 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "toadman",
+return cards.card {
+    id = "patch-card/toadman",
     name = "ToadMan",
     mb = 34,
     effects = {

@@ -1,12 +1,12 @@
 --!strict
 -- The patch card MegaMan-Zero (114, ロックマンゼロ in the Japanese games), 45 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local b_sword = require("../../lib/patch-cards/b-sword")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "megaman-zero",
+return cards.card {
+    id = "patch-card/megaman-zero",
     name = "MegaMan-Zero",
     mb = 45,
     effects = {

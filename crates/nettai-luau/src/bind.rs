@@ -38,34 +38,58 @@ use mlua::{AnyUserData, Lua, MetaMethod, UserData, UserDataFields, UserDataMetho
 
 type Ctx = (NonNull<dyn CoreApi>, NonNull<Bound>);
 
+/// The system a call runs for: its side and its place in the side's
+/// ruleset (docs/design/rules-in-luau.md §5.3).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SystemCtx {
+    pub side: u8,
+    pub slot: u8,
+}
+
 thread_local! {
     /// The engine, and what the binding reads, of the call running on this
     /// thread.
     static CTX: Cell<Option<Ctx>> = const { Cell::new(None) };
+    /// The system the running call is for, if it is a system's: what
+    /// `system.state()` reaches. Every call sets it (to none for content's
+    /// own calls), so a system's state is out of reach of anything a
+    /// system's hook leads to.
+    static SYSTEM: Cell<Option<SystemCtx>> = const { Cell::new(None) };
 }
 
 /// Makes the engine reachable from script callbacks for one call.
 pub struct Enter<'a> {
     prev: Option<Ctx>,
+    prev_system: Option<SystemCtx>,
     _borrow: PhantomData<&'a mut ()>,
 }
 
 impl<'a> Enter<'a> {
-    pub fn new(api: &'a mut dyn CoreApi, bound: &'a Bound) -> Enter<'a> {
+    /// For a call of `system`'s, or of content's own (none).
+    pub fn new(api: &'a mut dyn CoreApi, bound: &'a Bound, system: Option<SystemCtx>) -> Enter<'a> {
         let api: NonNull<dyn CoreApi + 'a> = NonNull::from(api);
         // SAFETY: only the lifetime is erased. The pointer is reachable
         // (through CTX) only while this guard lives, and the guard borrows
         // `api` exclusively for its whole life.
         let api: NonNull<dyn CoreApi + 'static> = unsafe { std::mem::transmute(api) };
         let prev = CTX.with(|c| c.replace(Some((api, NonNull::from(bound)))));
-        Enter { prev, _borrow: PhantomData }
+        let prev_system = SYSTEM.with(|c| c.replace(system));
+        Enter { prev, prev_system, _borrow: PhantomData }
     }
 }
 
 impl Drop for Enter<'_> {
     fn drop(&mut self) {
         CTX.with(|c| c.set(self.prev));
+        SYSTEM.with(|c| c.set(self.prev_system));
     }
+}
+
+/// The system the running call is for.
+fn system_ctx(what: &str) -> mlua::Result<SystemCtx> {
+    SYSTEM.with(|c| c.get()).ok_or_else(|| {
+        mlua::Error::runtime(format!("{what}: only a system's own calls reach its state (a hook the framework calls)"))
+    })
 }
 
 /// Run `f` against the engine of the running call.
@@ -325,10 +349,8 @@ impl UserData for Object {
         fields.add_field_method_get("facing", |_, this| with(|api, _| Ok(api.facing(this.0))));
         fields.add_field_method_get("sprite", |_, this| Ok(Sprite(this.0)));
         fields.add_field_method_get("collision", |_, this| Ok(Collision(this.0)));
-        fields.add_field_method_get("state", |_, this| Ok(State { owner: this.0, action: false, of_action: None }));
-        fields.add_field_method_get("attack_state", |_, this| {
-            Ok(State { owner: this.0, action: true, of_action: None })
-        });
+        fields.add_field_method_get("state", |_, this| Ok(State(StateOf::Object(this.0))));
+        fields.add_field_method_get("attack_state", |_, this| Ok(State(StateOf::Action(this.0))));
     }
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
@@ -649,7 +671,7 @@ impl UserData for Object {
                 };
                 api.action_schema(action).map_err(api_error)
             })?;
-            Ok(State { owner: this.0, action: true, of_action: Some(id) })
+            Ok(State(StateOf::ActionAs(this.0, id)))
         });
         methods.add_method("pop_absorbed", |_, this, ()| {
             let popped = with(|api, _| api.pop_absorbed(this.0).map_err(api_error))?;
@@ -787,27 +809,49 @@ impl UserData for Collision {
 /// it runs (the second argument of an action's `update`). Fields are the
 /// ones the kind's `state` table declares, typed as declared.
 #[derive(Clone, Copy)]
-pub struct State {
-    pub owner: ObjectRef,
-    pub action: bool,
+pub struct State(pub StateOf);
+
+/// Whose content state a [`State`] is.
+#[derive(Clone, Copy, Debug)]
+pub enum StateOf {
+    /// An object's (`me.state`).
+    Object(ObjectRef),
+    /// The running action's (`me.attack_state`, an action update's second
+    /// argument).
+    Action(ObjectRef),
     /// The attack state as a state of this layout (an action's update's
     /// own, `navi:action_state(action)`), rather than the running action's.
-    pub of_action: Option<StateId>,
+    ActionAs(ObjectRef, StateId),
+    /// A system's state of a side (`system.state()`).
+    System(SystemCtx),
+    /// A system's player setup of a side (`system.setup()`): read-only.
+    Setup(SystemCtx),
 }
 
 impl State {
     fn with_state<R>(
         self,
         key: &str,
+        write: bool,
         f: impl FnOnce(&mut ContentState, &nettai_content_api::Schema, usize) -> mlua::Result<R>,
     ) -> mlua::Result<R> {
         with(|api, bound| {
-            let s = if let Some(id) = self.of_action {
-                api.attack_state_for(self.owner, id).map_err(api_error)?
-            } else if self.action {
-                api.action_state_mut(self.owner).map_err(api_error)?
-            } else {
-                api.state_mut(self.owner).ok_or_else(|| api_error(ApiError::NoState(self.owner)))?
+            // (A setup is read through a copy: it can't be written.)
+            let mut setup;
+            let s = match self.0 {
+                StateOf::Object(o) => api.state_mut(o).ok_or_else(|| api_error(ApiError::NoState(o)))?,
+                StateOf::Action(o) => api.action_state_mut(o).map_err(api_error)?,
+                StateOf::ActionAs(o, id) => api.attack_state_for(o, id).map_err(api_error)?,
+                StateOf::System(c) => api.system_state_mut(c.side, c.slot).map_err(api_error)?,
+                StateOf::Setup(_) if write => {
+                    return Err(mlua::Error::runtime(format!(
+                        "setup field `{key}`: a player's setup is read-only in battle"
+                    )));
+                }
+                StateOf::Setup(c) => {
+                    setup = *api.system_setup(c.side, c.slot).map_err(api_error)?;
+                    &mut setup
+                }
             };
             let schema = bound.manifest.schema(s.id());
             let i = schema.index_of(key).ok_or_else(|| {
@@ -823,7 +867,7 @@ impl UserData for State {
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_meta_method(MetaMethod::Index, |lua, this, key: mlua::LuaString| {
             let key = key.to_str()?;
-            let got = this.with_state(&key, |s, schema, i| {
+            let got = this.with_state(&key, false, |s, schema, i| {
                 let ty = schema.field(i).ty.clone();
                 Ok(match ty {
                     FieldType::Array(..) => None,
@@ -832,12 +876,12 @@ impl UserData for State {
             })?;
             match got {
                 Some((v, ty)) => from_api(lua, v, &ty),
-                None => Ok(LuaValue::UserData(lua.create_userdata(StateArray { state: *this, field: key.to_string() })?)),
+                None => Ok(LuaValue::UserData(lua.create_userdata(StateArray { state: State(this.0), field: key.to_string() })?)),
             }
         });
         methods.add_meta_method(MetaMethod::NewIndex, |_, this, (key, v): (mlua::LuaString, LuaValue)| {
             let key = key.to_str()?;
-            this.with_state(&key, |s, schema, i| {
+            this.with_state(&key, true, |s, schema, i| {
                 let v = to_api(v, &schema.field(i).ty, &key)?;
                 s.set(schema, i, v).map_err(|e| mlua::Error::runtime(format!("state field `{}`: {e}", &*key)))
             })
@@ -856,7 +900,7 @@ impl UserData for StateArray {
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_meta_method(MetaMethod::Index, |lua, this, i: LuaValue| {
             let k = int(&i, &this.field)?;
-            let (v, ty) = this.state.with_state(&this.field, |s, schema, f| {
+            let (v, ty) = this.state.with_state(&this.field, false, |s, schema, f| {
                 let FieldType::Array(elem, _) = &schema.field(f).ty else { unreachable!("an array field") };
                 let v = (k >= 1).then(|| s.get_elem(schema, f, k as usize - 1)).flatten();
                 Ok((v, (**elem).clone()))
@@ -868,7 +912,7 @@ impl UserData for StateArray {
         });
         methods.add_meta_method(MetaMethod::NewIndex, |_, this, (i, v): (LuaValue, LuaValue)| {
             let k = int(&i, &this.field)?;
-            this.state.with_state(&this.field, |s, schema, f| {
+            this.state.with_state(&this.field, true, |s, schema, f| {
                 let FieldType::Array(elem, _) = &schema.field(f).ty else { unreachable!("an array field") };
                 let v = to_api(v, elem, &this.field)?;
                 if k < 1 {
@@ -878,7 +922,7 @@ impl UserData for StateArray {
             })
         });
         methods.add_meta_method(MetaMethod::Len, |_, this, ()| {
-            this.state.with_state(&this.field, |_, schema, f| match &schema.field(f).ty {
+            this.state.with_state(&this.field, false, |_, schema, f| match &schema.field(f).ty {
                 FieldType::Array(_, n) => Ok(*n as i64),
                 _ => unreachable!("an array field"),
             })
@@ -998,7 +1042,19 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     g.set("Vec3", vec3)?;
 
     g.set("int", int_lib(lua)?)?;
+    g.set("system", system_lib(lua)?)?;
     Ok(())
+}
+
+/// `system`: what a system's own calls reach (docs/design/rules-in-luau.md
+/// §4.5, §5.3): its state and its player's setup, of the side it was called
+/// for, and that side.
+fn system_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
+    let t = lua.create_table()?;
+    lib_fn!(lua, t, "state", |_, ()| Ok(State(StateOf::System(system_ctx("system.state")?))));
+    lib_fn!(lua, t, "setup", |_, ()| Ok(State(StateOf::Setup(system_ctx("system.setup")?))));
+    lib_fn!(lua, t, "side", |_, ()| Ok(system_ctx("system.side")?.side));
+    Ok(t)
 }
 
 fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
@@ -1075,18 +1131,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.emotion(side).name()))
     });
-    lib_fn!(lua, t, "patch_cards", |lua, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        let cards = with(|api, _| Ok(api.patch_cards(side)))?;
-        let list = lua.create_table()?;
-        for (i, (h, enabled)) in cards.into_iter().enumerate() {
-            let entry = lua.create_table()?;
-            entry.raw_set("card", with(|_, b| b.def_value(Registry::PatchCard, h))?)?;
-            entry.raw_set("enabled", enabled)?;
-            list.raw_set(i + 1, entry)?;
-        }
-        Ok(list)
-    });
     lib_fn!(lua, t, "bug_frags", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.bug_frags(side)))
@@ -1098,6 +1142,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "set_mood", |_, (side, mood): (LuaValue, LuaValue)| {
         let (side, mood) = (u8_arg(side, "side")? & 1, u8_arg(mood, "mood")?);
         with(|api, _| Ok(api.set_mood(side, mood)))
+    });
+    lib_fn!(lua, t, "set_emotion_window_glitch", |_, (side, on): (LuaValue, bool)| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.set_emotion_window_glitch(side, on)))
     });
     lib_fn!(lua, t, "side_special", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -1666,7 +1714,7 @@ pub fn object(lua: &Lua, o: ObjectRef) -> mlua::Result<AnyUserData> {
 /// Wrap the attack state of `o`, as a state of layout `state` (the action
 /// it runs), as a script value.
 pub fn action_state(lua: &Lua, o: ObjectRef, state: StateId) -> mlua::Result<AnyUserData> {
-    lua.create_userdata(State { owner: o, action: true, of_action: Some(state) })
+    lua.create_userdata(State(StateOf::ActionAs(o, state)))
 }
 
 /// A hook call's arguments.
@@ -1715,7 +1763,11 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(c as i64));
             vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
         }
-        HookCall::RolePatchCards { side } => vec![LuaValue::Integer(side as i64)],
+        HookCall::System { side, hook, .. } => match hook {
+            nettai_content_api::SystemHook::RoundSetup | nettai_content_api::SystemHook::RoundStart => {
+                vec![LuaValue::Integer(side as i64)]
+            }
+        },
     };
     Ok(mlua::MultiValue::from_iter(values))
 }
@@ -1742,12 +1794,8 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
         HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } | HookCall::RoleEncased { .. } => Ok(Value::Nil),
-        HookCall::RolePatchCards { .. } => match v {
-            LuaValue::Boolean(b) => Ok(Value::Bool(b)),
-            v => Err(mlua::Error::runtime(format!(
-                "hooks.patch_cards returns whether the stats have a bug (a boolean), not {}",
-                v.type_name()
-            ))),
-        },
+        HookCall::System {
+            hook: nettai_content_api::SystemHook::RoundSetup | nettai_content_api::SystemHook::RoundStart, ..
+        } => Ok(Value::Nil),
     }
 }

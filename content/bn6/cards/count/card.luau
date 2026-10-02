@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Count (113, ハクシャク in the Japanese games), 60 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "count",
+return cards.card {
+    id = "patch-card/count",
     name = "Count",
     mb = 60,
     effects = {

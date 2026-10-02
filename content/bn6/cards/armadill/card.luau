@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Armadill (28, アルマン in the Japanese games), 12 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "armadill",
+return cards.card {
+    id = "patch-card/armadill",
     name = "Armadill",
     mb = 12,
     effects = {

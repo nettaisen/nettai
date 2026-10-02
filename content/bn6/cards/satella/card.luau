@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Satella (58, サテラ in the Japanese games), 8 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "satella",
+return cards.card {
+    id = "patch-card/satella",
     name = "Satella",
     mb = 8,
     effects = {

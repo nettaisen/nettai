@@ -1,11 +1,11 @@
 --!strict
 -- The patch card SnakeArm (82, スナーム in the Japanese games), 11 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "snakearm",
+return cards.card {
+    id = "patch-card/snakearm",
     name = "SnakeArm",
     mb = 11,
     effects = {

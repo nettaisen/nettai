@@ -907,12 +907,13 @@ declare battle: {
     -- tasks: every console shows or hides them (drawn only).
     show_hud: (parts: { HudPart }, shown: boolean) -> (),
     navi: (side: number) -> Navi,
-    -- A side's installed patch cards in their list's order, each switched
-    -- on or not (the setup's).
-    patch_cards: (side: number) -> { { card: PatchCard, enabled: boolean } },
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
+    -- Whether the side's console starts its emotion window glitching (the
+    -- save's NaviCust bug flag): a system decides it in `round_setup` (BN6's
+    -- patch cards do).
+    set_emotion_window_glitch: (side: number, on: boolean) -> (),
     -- A side's bug frags, and spending some (its callers check there are
     -- enough: the count wraps below 0).
     bug_frags: (side: number) -> number,
@@ -1314,6 +1315,33 @@ export type KindSpec = {
 }
 export type Kind = KindSpec
 
+-- One self-contained piece of a game's rules (docs/design/rules-in-luau.md
+-- §2.2): its state of each side and its player's setup (named fields, as a
+-- kind's state), and the hooks the framework calls, each for one side
+-- (§4.1). A system sees only its own state, of the side it is called for.
+export type SystemSpec = {
+    id: string,
+    state: StateSchema?,
+    setup: StateSchema?,
+    hooks: {
+        -- Once per side as the round is set up, before anything reads the
+        -- side's navi stats (`battle.navi(side)`), which it may change.
+        round_setup: ((side: number) -> ())?,
+        -- Once per side, after the navis spawn.
+        round_start: ((side: number) -> ())?,
+    }?,
+}
+export type System = SystemSpec
+
+-- A player's rules: a list of systems, which the framework calls in this
+-- order. A game's own is its `stock` ruleset (one per game).
+export type RulesetSpec = {
+    id: string,
+    stock: boolean?,
+    systems: { System },
+}
+export type Ruleset = RulesetSpec
+
 -- A navi action. Actions sharing a state table continue each other's
 -- attack state (the original's actions of one number do). An action a
 -- role or a weapon names needs an `id`; a chip's is derived.
@@ -1687,33 +1715,6 @@ export type LockonDef = {
 }
 export type Lockon = LockonDef
 
--- A patch card (the Japanese games' Modification Card, rules/patch-cards):
--- its name, its MB and its effects (rules/patch-cards.luau's constructors).
-export type PatchCardEffect = {
-    kind: string,
-    amount: number?,
-    element: ElementName?,
-    weapon: Weapon?,
-    variant: ProjectileVariant?,
-    barrier: Barrier?,
-    gauge: string?,
-    on: boolean?,
-    trail: string?,
-    level: number?,
-    blanks: number?,
-    charged: number?,
-    status: string?,
-    -- The card shows it as a bug.
-    bug: boolean?,
-}
-export type PatchCardSpec = {
-    id: string,
-    name: string,
-    mb: number,
-    effects: { PatchCardEffect },
-}
-export type PatchCard = PatchCardSpec
-
 -- What an object is taken for (§3.2): the original's NameID record. A
 -- navi's and a form's is nested in its definition (`identity =
 -- define.identity { ... }`); a field object's is its kind's.
@@ -2019,9 +2020,6 @@ export type RolesSpec = {
         -- bubble becomes on its panel; its field-object registry class (nil:
         -- it wasn't registered).
         encased: ((obstacle: Object, ice: boolean, class: number?) -> ())?,
-        -- The round's start: apply `side`'s patch cards to its stats;
-        -- whether the stats then have a NaviCust bug (rules/patch-cards).
-        patch_cards: ((side: number) -> boolean)?,
     }?,
 }
 
@@ -2042,13 +2040,29 @@ declare define: {
     status: (spec: StatusDef) -> StatusDef,
     lockon: (spec: LockonDef) -> LockonDef,
     identity: (spec: IdentitySpec) -> Identity,
-    patch_card: (spec: PatchCardSpec) -> PatchCard,
     -- A rule section (§3.8): one table of rules no entity owns, by its
     -- section name (`define.rules("elements", { ... })`).
     rules: <T>(section: string, spec: T) -> T,
     roles: (spec: RolesSpec) -> RolesSpec,
+    -- A system of a game's rules, and a player's ruleset
+    -- (docs/design/rules-in-luau.md §2.2).
+    system: (spec: SystemSpec) -> System,
+    ruleset: (spec: RulesetSpec) -> Ruleset,
     -- Luau-only data with a handle and a type name, which a reference field
     -- ("record:<type>") can hold.
     record: <T>(record_type: string, spec: T) -> T,
+}
+
+-- What a system's own calls reach (docs/design/rules-in-luau.md §4.5,
+-- §5.3): only in a hook the framework calls (from modules under rules/,
+-- which the content check holds to).
+declare system: {
+    -- The system's state of the side it was called for (cast it to its
+    -- declared type: `system.state() :: State`).
+    state: () -> any,
+    -- What the player of that side brought for the system: read-only.
+    setup: () -> any,
+    -- That side (0 or 1).
+    side: () -> number,
 }
 

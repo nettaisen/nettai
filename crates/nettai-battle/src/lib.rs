@@ -24,10 +24,10 @@ pub mod input;
 pub mod kinds;
 pub mod link;
 pub mod object;
-pub mod patch_cards;
 pub mod perspective;
 pub mod rng;
 pub mod rollback;
+pub mod rules;
 #[cfg(any(test, feature = "test-content"))]
 pub mod scenario;
 pub mod setup;

@@ -1,10 +1,10 @@
 --!strict
 -- The patch card Cybeast Gregar (115, 電脳獣グレイガ in the Japanese games), 70 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "cybeast-gregar",
+return cards.card {
+    id = "patch-card/cybeast-gregar",
     name = "Cybeast Gregar",
     mb = 70,
     effects = {

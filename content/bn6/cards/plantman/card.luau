@@ -1,11 +1,11 @@
 --!strict
 -- The patch card PlantMan (92, プラントマン in the Japanese games), 42 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
-return define.patch_card {
-    id = "plantman",
+return cards.card {
+    id = "patch-card/plantman",
     name = "PlantMan",
     mb = 42,
     effects = {

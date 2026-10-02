@@ -1,11 +1,11 @@
 --!strict
 -- The patch card CutMan (35, カットマン in the Japanese games), 32 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
-return define.patch_card {
-    id = "cutman",
+return cards.card {
+    id = "patch-card/cutman",
     name = "CutMan",
     mb = 32,
     effects = {

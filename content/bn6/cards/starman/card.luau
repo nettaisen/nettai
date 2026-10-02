@@ -1,10 +1,10 @@
 --!strict
 -- The patch card StarMan (45, スターマン in the Japanese games), 32 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 
-return define.patch_card {
-    id = "starman",
+return cards.card {
+    id = "patch-card/starman",
     name = "StarMan",
     mb = 32,
     effects = {

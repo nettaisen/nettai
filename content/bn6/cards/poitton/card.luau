@@ -1,11 +1,11 @@
 --!strict
 -- The patch card Poitton (57, ポイットン in the Japanese games), 13 MB.
 
-local cards = require("../../rules/patch-cards")
+local cards = require("../../rules/patch-cards/cards")
 local barriers = require("../../lib/barriers/barriers")
 
-return define.patch_card {
-    id = "poitton",
+return cards.card {
+    id = "patch-card/poitton",
     name = "Poitton",
     mb = 13,
     effects = {

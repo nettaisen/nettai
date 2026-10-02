@@ -10,7 +10,6 @@ use nettai_battle::custom::{
 };
 use nettai_battle::input::keys;
 use nettai_battle::link::Link;
-use nettai_battle::patch_cards::{InstalledCard, MAX_CARDS, PatchCards};
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage, effects};
 use nettai_battle::{Battle, PlayerTick, Rng, TickEvents};
 use bn6_compat::trace::{self, Frame, Round};
@@ -316,26 +315,25 @@ pub fn bn6_live_setup(content: &Content, seed: u32, stage: Option<&str>) -> Resu
     Ok((setup, LiveChoices { seed, stage: first, background, folders, crosses, games }))
 }
 
-/// A player's patch cards from a list of card keys, comma-separated, in
-/// the order they apply (e.g. `canodumb,-shadow`): a key after `-` is
-/// installed but switched off (docs/design/patch-cards.md).
-pub fn patch_cards(content: &Content, list: &str) -> Result<PatchCards, String> {
+/// Install a player's patch cards (BN6's patch-cards system's setup) from
+/// a list of card names, comma-separated, in the order they apply (e.g.
+/// `canodumb,-shadow`): a name after `-` is installed but switched off
+/// (docs/engine/patch-cards.md).
+pub fn install_patch_cards(content: &Content, player: &mut PlayerSetup, list: &str) -> Result<(), String> {
     let mut cards = Vec::new();
     for item in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
-        let (key, enabled) = match item.strip_prefix('-') {
-            Some(key) => (key, false),
+        let (name, on) = match item.strip_prefix('-') {
+            Some(name) => (name, false),
             None => (item, true),
         };
-        let card = content.defs.patch_card_by_key(key).ok_or_else(|| {
-            let keys: Vec<&str> = content.defs.patch_cards.iter().map(|c| c.key.as_str()).collect();
-            format!("no patch card {key:?}; the content's are {}", keys.join(", "))
+        let card = content.defs.record(&format!("patch-card/{name}")).ok_or_else(|| {
+            let names: Vec<&str> =
+                content.defs.records.iter().filter_map(|r| r.key.strip_prefix("patch-card/")).collect();
+            format!("no patch card {name:?}; the content's are {}", names.join(", "))
         })?;
-        cards.push(InstalledCard { card, enabled });
+        cards.push((card, on));
     }
-    if cards.len() > MAX_CARDS {
-        return Err(format!("{} patch cards: at most {MAX_CARDS} fit in the MB limit", cards.len()));
-    }
-    Ok(PatchCards::new(&cards))
+    codec::install_patch_cards(content, player, &cards)
 }
 
 /// Five of the form-changing navi's Crosses of both games, drawn at
@@ -369,7 +367,8 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             bug_frags: 0,
             navi_level: 0,
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
-            patch_cards: Default::default(),
+            ruleset: None,
+            rules: Vec::new(),
         }
     };
     RoundSetup {
