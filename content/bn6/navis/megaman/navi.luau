@@ -27,7 +27,13 @@ return define.navi {
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("megaman-win"), lose = asset.banner("megaman-deleted") },
     merge_height = 0,
-    run_message = { 19, 12 },
+    -- The no-running message: its lines' characters (which time it), its
+    -- words, and the portrait beside it.
+    run_message = {
+        counts = { 19, 12 },
+        text = "Lan,this is no time\nto run away!",
+        portrait = asset.sprite("megaman-portrait"),
+    },
     -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).

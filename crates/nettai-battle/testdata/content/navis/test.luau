@@ -32,7 +32,7 @@ local function navi(id: string, name: string, sprite: string, class: IdentityCla
         move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
         banners = { win = asset.banner("test-win"), lose = asset.banner("test-deleted") },
         merge_height = 0,
-        run_message = { 19, 12 },
+        run_message = { counts = { 19, 12 } },
         weapons = WEAPONS,
         -- What a Cross change brings it with.
         fresh = { hp = 100, first_barrier = 0, mega_level = 5, giga_level = 1 },

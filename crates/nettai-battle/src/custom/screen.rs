@@ -583,7 +583,9 @@ impl Screen {
                     None => {
                         // sub_8026EC8
                         self.look.play(ScreenSound::RunMessage);
-                        Chatbox::new(Script::RunMessage { lines: view.library.run_message(view.stats.navi) })
+                        let navi = view.stats.navi;
+                        Chatbox::new(Script::RunMessage { lines: view.library.run_message(navi) })
+                            .talking(view.library.run_message_talking(navi))
                     }
                     Some(c) if !c.is_open() => {
                         self.phase = Phase::Choosing;
@@ -1141,8 +1143,11 @@ impl Screen {
             self.phase = Phase::CrossWindowClosing { tick: 0 };
             self.look.play(ScreenSound::Cursor);
         } else if p & keys::R != 0 {
-            // Every Cross's description has three lines.
-            self.describe(joy, 3, true);
+            // The cursor's Cross's description.
+            let cross = self.crosses.offered[self.crosses.cursor as usize];
+            let form = view.library.cross_form(view.stats.navi, view.unlocks.version, cross);
+            let lines = form.map_or(3, |f| view.library.cross_description_lines(f));
+            self.describe(joy, lines, true);
             self.look.play(ScreenSound::Description);
         }
     }

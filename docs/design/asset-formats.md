@@ -84,8 +84,9 @@ graphics/
     tiles.png  map.tmj  background.json  anim-K.png
   hud/
     hud.json  layer.png  gauge.png  font.png  enemy-digits.png  counts.png
-    banner-digits.png  waiting.png  pause.png  navi-box.png
+    banner-digits.png  waiting.png  pause.png  navi-box.png  warning.png
     hidden-icon.png  chip-icons/CHIP.png  mugshots/NAME.png  banners/NAME.png
+    dialogue-font.png  chatbox.png  chatbox-arrow.png
   custom/
     custom.json  window.png  column-cells.png  turn-limit.png  name-bar.png
     codes.png  elements.png  digits.png  slot-codes.png  empty-icon.png
@@ -314,6 +315,26 @@ gives, with them), each chip icon's chip (its key in the content), the link
 navis' mugshots and which one a navi shows, the HUD's text lines as glyph
 numbers ("TIME UP!", the turn timer's seconds, "COUNTER HIT!"), banner
 layouts and the form emotions.
+
+The HUD's format version 6 adds the chatbox's graphics. `dialogue-font.png`
+is the dialogue font: 16x12 cells, 32 a row, palette index 0 clear (its
+palette only colours it for viewing: the chatbox draws it with the text's);
+`hud.json`'s `dialogue_font` gives each glyph's advance and what it draws
+(the 8x16 font's characters for the one-byte glyphs, then the two-byte
+codes' kana and kanji, `compat/text.toml`'s `dialogue_glyphs`), so a string
+is spelled as the font's. `chatbox.png` is the box's tiles with its
+palette, `chatbox-arrow.png` the key-wait arrow's three 16x16 frames with
+the palette the text draws with; `hud.json`'s `chatbox` holds the box's
+maps (30x8 entries, a row of text each, the tiles counted from the image's
+first) by kind (the message box, the description box) and opening step (0
+to 3, open).
+
+The chatbox's portraits are sprites (`graphics/sprites/NAME/`, category
+0x20, `mugshotSpritePtrs`): their animations are the speaker's faces (still,
+idle with its blinks, talking), the original's mini-animations of the
+portrait's one frame. Each US ROM has a black placeholder in place of the
+other game's link navis' portraits; the extractor takes each from the ROM
+that has it.
 
 **Custom screen** (`graphics/custom/`, format version 2): the same scheme.
 `window.png` holds the window frame's tiles with the window's four palettes

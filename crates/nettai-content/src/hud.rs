@@ -14,12 +14,12 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
-use nettai_assets::{BannerLayout, ChipIcon, Hud, MapEntry, NaviMugshot, Palette, Tiles};
+use nettai_assets::{BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, MapEntry, NaviMugshot, Palette, Tiles};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/hud";
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 
@@ -70,8 +70,61 @@ pub struct HudDoc {
     /// (none in a pack extracted before it was).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub warning: Option<TileImage>,
+    /// The dialogue font (none in a pack extracted before it was).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dialogue_font: Option<DialogueFontDoc>,
+    /// The chatbox (none in a pack extracted before it was).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chatbox: Option<ChatboxDoc>,
 }
 
+/// The chatbox: the box's tiles with its palette, its maps (30x8 entries a
+/// row of text each, the tiles counted from the image's first) by kind (the
+/// message box, the description box) and opening step (0 to 3, open), and
+/// the key-wait arrow's three frames with the palette the text draws with.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ChatboxDoc {
+    pub tiles: TileImage,
+    pub boxes: Vec<Vec<Vec<String>>>,
+    pub arrow: TileImage,
+}
+
+/// The dialogue font: an indexed image of its glyphs (16x12 cells, 32 a
+/// row, palette index 0 clear; the palette only colours it for viewing),
+/// each glyph's advance, and what each draws (as `font_chars`: the shared
+/// glyphs, then bytes 0xE0-0xE3 and the two-byte codes E4 00 on).
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DialogueFontDoc {
+    pub file: String,
+    pub cell: [usize; 2],
+    pub columns: usize,
+    pub advances: Vec<u8>,
+    pub chars: Vec<String>,
+}
+
+const DIALOGUE_COLUMNS: usize = 32;
+
+/// The dialogue font's image.
+fn dialogue_image(f: &DialogueFont) -> crate::image::Indexed {
+    let (w, h) = (DialogueFont::WIDTH, DialogueFont::HEIGHT);
+    let rows = f.len().div_ceil(DIALOGUE_COLUMNS);
+    // Clear, the face, the shade, then greys.
+    let palette = (0..16u8).map(|i| match i {
+        0 => [255, 255, 255],
+        1 => [0, 0, 0],
+        2 => [96, 96, 96],
+        3 => [160, 160, 160],
+        i => [i * 12, i * 12, 255 - i * 8],
+    });
+    let mut img = crate::image::Indexed::new((w * DIALOGUE_COLUMNS) as u32, (h * rows) as u32, palette.collect());
+    for g in 0..f.len() {
+        let (gx, gy) = ((g % DIALOGUE_COLUMNS) * w, (g / DIALOGUE_COLUMNS) * h);
+        for (k, &v) in f.glyph(g).unwrap_or(&[]).iter().enumerate() {
+            img.set((gx + k % w) as u32, (gy + k / w) as u32, v);
+        }
+    }
+    img
+}
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ChipIconDoc {
     /// The chip's key.
@@ -172,6 +225,26 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
     let waiting = image("waiting.png", &h.waiting, Layout::Grid { columns: 8 }, &[h.waiting_palette], 1);
     let warning = (!h.warning.is_empty())
         .then(|| image("warning.png", &h.warning, Layout::Blocks { width: 2, height: 2, columns: 2 }, &[h.warning_palette], 1));
+    let chatbox = (!h.chatbox.is_empty()).then(|| {
+        let c = &h.chatbox;
+        let rows = |m: &[MapEntry]| m.chunks(Chatbox::COLUMNS).map(|r| r.iter().map(tiles::entry_text).collect::<Vec<_>>().join(" ")).collect();
+        ChatboxDoc {
+            tiles: image("chatbox.png", &c.tiles, grid, &[c.palette], 1),
+            boxes: c.boxes.iter().map(|steps| steps.iter().map(|m| rows(m)).collect()).collect(),
+            arrow: image("chatbox-arrow.png", &c.arrow, Layout::Blocks { width: 2, height: 2, columns: 3 }, &[c.text_palette], 1),
+        }
+    });
+    let dialogue_font = (!h.dialogue_font.is_empty()).then(|| {
+        let file = "dialogue-font.png".to_string();
+        files.push((file.clone(), dialogue_image(&h.dialogue_font).to_png()));
+        DialogueFontDoc {
+            file,
+            cell: [DialogueFont::WIDTH, DialogueFont::HEIGHT],
+            columns: DIALOGUE_COLUMNS,
+            advances: h.dialogue_font.advances.clone(),
+            chars: h.dialogue_font.chars.clone(),
+        }
+    });
     let texts = |m: &[MapEntry]| m.iter().map(tiles::entry_text).collect();
     let doc = HudDoc {
         format: FORMAT.into(),
@@ -197,6 +270,8 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         banner_digits,
         waiting,
         warning,
+        dialogue_font,
+        chatbox,
     };
     files.push(("hud.json".into(), json_lines(&doc)));
     files
@@ -282,6 +357,34 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
             number_at: b.number_at.map(|[x, y]| (x, y)),
         })
         .collect();
+    let dialogue_font = match &doc.dialogue_font {
+        Some(d) => import_dialogue_font(dir, prefix, d, report)?,
+        None => DialogueFont::default(),
+    };
+    let chatbox = match &doc.chatbox {
+        Some(c) => {
+            let (tiles, palette) = img(&c.tiles, report)?;
+            let (arrow, text_palette) = img(&c.arrow, report)?;
+            let mut boxes = Vec::new();
+            for steps in &c.boxes {
+                let maps: Vec<Vec<MapEntry>> = steps
+                    .iter()
+                    .map(|rows| map(&rows.iter().flat_map(|r| r.split(' ').map(str::to_string)).collect::<Vec<_>>(), report))
+                    .collect();
+                let Ok(maps) = <[Vec<MapEntry>; 4]>::try_from(maps) else {
+                    report.error(&name, "a chatbox box needs its four opening steps");
+                    return None;
+                };
+                if maps.iter().any(|m| m.len() != Chatbox::COLUMNS * Chatbox::ROWS) {
+                    report.error(&name, format!("a chatbox box's map is {}x{} entries", Chatbox::COLUMNS, Chatbox::ROWS));
+                    return None;
+                }
+                boxes.push(maps);
+            }
+            Chatbox { tiles, palette: palette[0], boxes, arrow, text_palette: text_palette[0] }
+        }
+        None => Chatbox::default(),
+    };
     Some(Hud {
         tiles,
         first_tile: doc.first_tile,
@@ -312,5 +415,36 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         waiting_palette: waiting_pal[0],
         warning,
         warning_palette: warning_pal[0],
+        dialogue_font,
+        chatbox,
     })
+}
+
+/// The dialogue font from its image (`DialogueFontDoc`).
+fn import_dialogue_font(dir: &Path, prefix: &str, d: &DialogueFontDoc, report: &mut Report) -> Option<DialogueFont> {
+    let name = format!("{prefix}/{}", d.file);
+    let img = match crate::image::Indexed::load(&dir.join(&d.file)) {
+        Ok(i) => i,
+        Err(e) => {
+            report.error(&name, e);
+            return None;
+        }
+    };
+    let (w, h) = (DialogueFont::WIDTH, DialogueFont::HEIGHT);
+    if d.cell != [w, h] || d.columns == 0 || d.chars.len() != d.advances.len() {
+        report.error(&name, format!("a dialogue font of {w}x{h} cells, with a character and an advance for each glyph"));
+        return None;
+    }
+    let mut pixels = Vec::with_capacity(w * h * d.advances.len());
+    for g in 0..d.advances.len() {
+        let (gx, gy) = ((g % d.columns) * w, (g / d.columns) * h);
+        if (gx + w) as u32 > img.width || (gy + h) as u32 > img.height {
+            report.error(&name, format!("too small for {} glyphs", d.advances.len()));
+            return None;
+        }
+        for k in 0..w * h {
+            pixels.push(img.get((gx + k % w) as u32, (gy + k / w) as u32));
+        }
+    }
+    Some(DialogueFont { pixels, advances: d.advances.clone(), chars: d.chars.clone() })
 }
