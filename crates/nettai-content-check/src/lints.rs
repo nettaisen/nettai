@@ -218,6 +218,20 @@ pub fn lints(path: &str, source: &str) -> Vec<Problem> {
              annotate it (`local {name}: <its type> = {{ ... }}`) so the checker checks its shape"
         ));
     }
+    // A system's state is its own (docs/design/rules-in-luau.md §4.5): only
+    // a game's rules (modules under rules/) reach it.
+    if !path.starts_with("rules/") {
+        for call in ["system.state(", "system.setup(", "system.side("] {
+            for at in s.find(call) {
+                out.push(format!(
+                    "{path}:{}: `{}` is a system's own: only modules under rules/ call it; content reaches a game's rules \
+                     through its API module",
+                    s.line(at),
+                    &call[..call.len() - 1]
+                ));
+            }
+        }
+    }
     // A kind in an owner's folder is keyed under its owner.
     if let Some(owner) = owner(path) {
         for at in s.find("define.kind") {
@@ -291,6 +305,10 @@ mod tests {
         assert_eq!(lints("navis/megaman/forms/heatcross/sword_wave.luau", wave).len(), 1);
         assert_eq!(lints("navis/megaman/sword_wave.luau", wave).len(), 1);
         assert_eq!(lints("compat/x.luau", "").len(), 1);
+        // A system's state, outside the rules.
+        let l = lints("chips/x/chip.luau", "local s = system.state()\n");
+        assert!(l.len() == 1 && l[0].contains("`system.state` is a system's own"), "{l:?}");
+        assert!(lints("rules/beast/system.luau", "local s = system.state()\nlocal u = system.setup()\n").is_empty());
         // A form's kinds are keyed under the form, and a navi's under its
         // name, whatever number its folder still carries.
         let surge = "local K = define.kind { id = 'spoutcross-beast/surge', pool = 'attack' }";
