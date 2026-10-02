@@ -10,7 +10,8 @@ use std::sync::Arc;
 use std::time::Instant;
 
 struct Args {
-    pack: Option<PathBuf>,
+    /// The packs (one a game: docs/design/rules-in-luau.md §7.4).
+    packs: Vec<PathBuf>,
     content: Option<PathBuf>,
     mute: bool,
     trace: Option<PathBuf>,
@@ -59,7 +60,8 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
 
   --pack DIR       the content pack to play (graphics and sound), from
                    `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` (default: $BN6_PACK, else
-                   data/content/bn6)
+                   data/content/bn6); again for another game's pack, loaded
+                   beside it: each asset draws and sounds from its own pack
   --content DIR    the battle content: the definitions that name the pack's
                    assets (default: $BN6_CONTENT, else this repository's
                    content/bn6)
@@ -131,7 +133,7 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
 
 fn parse() -> Result<Args, String> {
     let mut a = Args {
-        pack: None,
+        packs: Vec::new(),
         content: None,
         mute: false,
         trace: None,
@@ -165,7 +167,7 @@ fn parse() -> Result<Args, String> {
         let mut value = |name: &str| it.next().ok_or_else(|| format!("{name} needs a value"));
         let number = |v: String, name: &str| v.parse::<u64>().map_err(|_| format!("bad {name} {v:?}"));
         match arg.as_str() {
-            "--pack" => a.pack = Some(value("--pack")?.into()),
+            "--pack" => a.packs.push(value("--pack")?.into()),
             "--content" => a.content = Some(value("--content")?.into()),
             "--mute" => a.mute = true,
             "--round" => a.round = number(value("--round")?, "--round")? as usize,
@@ -284,8 +286,8 @@ fn language(assets: nettai_assets::Bundle, root: &Path, lang: &str) -> (nettai_a
 }
 
 /// Sound: hand each tick's cues to the audio output.
-fn audio_hook(bank: m4a::SoundBank, songs: nettai_audio::Songs) -> Box<dyn TickHook> {
-    let mut out = nettai_audio::AudioOut::new(Arc::new(bank), songs).unwrap_or_else(|e| fail(format!("no audio output: {e}")));
+fn audio_hook(banks: Vec<Arc<m4a::SoundBank>>, songs: nettai_audio::Songs) -> Box<dyn TickHook> {
+    let mut out = nettai_audio::AudioOut::with_banks(banks, songs).unwrap_or_else(|e| fail(format!("no audio output: {e}")));
     Box::new(move |s: &Session| {
         match &s.sound {
             // Netplay: what the player's tracker made of the frame (plays,
@@ -378,17 +380,31 @@ fn main() {
             std::process::exit(2);
         }
     };
-    let pack = args
-        .pack
-        .clone()
-        .or_else(|| std::env::var_os("BN6_PACK").map(PathBuf::from))
-        .unwrap_or_else(|| PathBuf::from(DEFAULT_PACK));
+    let all_packs = match args.packs.is_empty() {
+        true => vec![std::env::var_os("BN6_PACK").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(DEFAULT_PACK))],
+        false => args.packs.clone(),
+    };
     let root = args.content.clone().unwrap_or_else(nettai_content::root::bn6);
-    let content = Arc::new(load(&pack, "battle content", |pack| nettai_content::pack::load_battle(&root, pack)));
-    let assets = load(&pack, "graphics", nettai_content::pack::load_graphics);
-    let (assets, strings) = language(assets, &root, &args.lang);
+    let content = Arc::new(load(&all_packs[0], "battle content", |_| nettai_content::pack::load_battle_packs(&root, &all_packs)));
+    // Each pack's graphics, by the content's pack order (`PackId`); the
+    // content's own pack's in the player's language.
+    let by_pack = nettai_content::pack::pack_paths(&content, &all_packs);
+    let home = content.scripts.roots.first().map(|r| r.assets()).and_then(|g| content.assets.pack(g));
+    let own = home.unwrap_or_else(|| fail("the content's own pack is not loaded"));
+    let mut bundles: Vec<nettai_assets::Bundle> = Vec::new();
+    let mut strings = None;
+    for (i, path) in by_pack.iter().enumerate() {
+        let b = load(path, "graphics", nettai_content::pack::load_graphics);
+        if i == own.index() {
+            let (b, s) = language(b, &root, &args.lang);
+            strings = s;
+            bundles.push(b);
+        } else {
+            bundles.push(b);
+        }
+    }
     session::quiet_engine_panics();
-    let mut renderer = Renderer::new(&assets);
+    let mut renderer = Renderer::with_packs(nettai_frontend::packs::Packs::new(bundles.iter().collect(), own));
     renderer.set_strings(strings.map(Arc::new));
     // The font mode's font, shared by the renderer (which strings it has)
     // and the text layer's drawing.
@@ -448,7 +464,7 @@ fn main() {
     }
 
     if args.audit {
-        let sound = (!args.mute).then(|| Arc::new(load(&pack, "sound", nettai_content::pack::load_sound)));
+        let sound = (!args.mute).then(|| by_pack.iter().map(|p| Arc::new(load(p, "sound", nettai_content::pack::load_sound))).collect());
         let found = headless::audit(&mut renderer, sessions, sound);
         for s in &found.stopped {
             eprintln!("{s}");
@@ -492,7 +508,8 @@ fn main() {
 
     let mut hooks: Vec<Box<dyn TickHook>> = Vec::new();
     if !args.mute {
-        hooks.push(audio_hook(load(&pack, "sound", nettai_content::pack::load_sound), nettai_audio::Songs::of(&content.assets)));
+        let banks = by_pack.iter().map(|p| Arc::new(load(p, "sound", nettai_content::pack::load_sound))).collect();
+        hooks.push(audio_hook(banks, nettai_audio::Songs::of(&content.assets)));
     }
     eprintln!("{}", app::HELP);
     let opts = app::Options { scale: args.scale, start_paused: args.paused, quit_after: args.quit_after };

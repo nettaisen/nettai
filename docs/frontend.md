@@ -34,6 +34,10 @@ from `--pack <dir>`, else `$BN6_PACK`, else `data/content/bn6`, straight
 from its files: the content with the pack's asset index into the engine's
 `Content`, the graphics through nettai-content's importer, and, when a window
 opens, the sound. `NETTAI_LOAD_TIMES=1` prints how long each part took.
+`--pack` again loads another game's pack beside it (one pack a game): each
+sprite, banner, mugshot, background and sound comes from its own pack, a
+chip's icon and picture from its game's, the custom screen from the local
+player's game's (docs/design/rules-in-luau.md, As built R3b).
 
 The graphics load into the types of the `nettai-assets` crate, decoded
 (tiles as palette indices, colours as BGR555):
