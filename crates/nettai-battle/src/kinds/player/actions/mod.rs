@@ -45,6 +45,9 @@ pub enum ActionVars {
 pub fn dispatch(b: &mut Battle, r: ObjectRef, action: super::NaviAction) {
     use super::{EngineAction as E, NaviAction as A};
     match action {
+        // (Unpaused, a form change's CurAction is the instant chips': a
+        // form's change action runs only from the pause handler.)
+        A::Content(h) if b.content.defs.is_change_action(h) => instant::update(b, r),
         A::Content(h) => crate::behavior::run_action(b, h, r),
         A::Engine(E::Move) => movement::update(b, r),
         A::Engine(E::DimmingChip) => dimming_chip::update(b, r),

@@ -306,6 +306,14 @@ impl CoreApi for Battle {
         Battle::shake_camera(self, magnitude, ticks);
     }
 
+    fn shake_camera_secondary(&mut self, magnitude: u16, ticks: u16) {
+        Battle::shake_camera_secondary(self, magnitude, ticks);
+    }
+
+    fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef> {
+        kinds::beast_over_burst::spawn(self, navi)
+    }
+
     fn show_hud(&mut self, part: HudPart, shown: bool) {
         let h = &mut self.hud_hidden;
         let hidden = match part {
@@ -483,6 +491,8 @@ impl CoreApi for Battle {
             (NaviStat::Charge, FieldValue::U8(x)) => s.charge = x,
             (NaviStat::CustomLevel, FieldValue::U8(x)) => s.custom_level = x,
             (NaviStat::BeastOutCounter, FieldValue::U8(x)) => s.beast_out_counter = x,
+            (NaviStat::Form, FieldValue::Ref(Some((Registry::Form, h)))) => s.form = nettai_content_api::FormHandle(h),
+            (NaviStat::Form, v) => return Err(ApiError::Other(format!("form: {v:?} is not a form"))),
             (NaviStat::HandShrinkTurn, FieldValue::U8(x)) => s.bugs.hand_shrink_turn = x,
             (NaviStat::ChargeShotWeapon, FieldValue::Ref(_)) => s.weapons.charge_shot = weapon,
             (NaviStat::BackSpecialWeapon, FieldValue::Ref(_)) => s.weapons.back_special = weapon,
@@ -1423,6 +1433,101 @@ impl CoreApi for Battle {
 
     fn exit_attack(&mut self, o: ObjectRef) {
         kinds::player::exit_attack_state(self, o);
+    }
+
+    fn clear_invulnerable(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::clear_invulnerable(self, o);
+        Ok(())
+    }
+
+    fn face_default(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::actions::transform::face_default(self, o);
+        Ok(())
+    }
+
+    fn reset_charge(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::reset_charge(self, o);
+        Ok(())
+    }
+
+    fn end_full_synchro_aura(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::actions::transform::end_full_synchro_aura(self, o);
+        Ok(())
+    }
+
+    fn drop_statuses(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::actions::transform::drop_statuses(self, o);
+        Ok(())
+    }
+
+    fn end_statuses(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::clear_statuses(self, o);
+        Ok(())
+    }
+
+    fn overlay_stepping(&mut self, o: ObjectRef, keep: bool) {
+        if let Some(overlay) = self.objects.get(o).related[1] {
+            if keep {
+                kinds::player::form::keep_overlay_stepping(self, overlay);
+            } else {
+                kinds::player::form::normal_overlay_stepping(self, overlay);
+            }
+        }
+    }
+
+    fn take_off_form_overlay(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) {
+        kinds::player::form::take_off_overlay(self, o, form);
+    }
+
+    fn put_on_form_overlay(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) {
+        kinds::player::form::put_on_overlay(self, o, form);
+    }
+
+    fn load_form_sprite(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) -> ApiResult<()> {
+        self.actor_of(o)?;
+        let side = self.objects.get(o).alliance as usize & 1;
+        let sprite = self.content.navi_sprite(self.stats[side].navi, form);
+        let flip = self.objects.get(o).alliance ^ self.objects.get(o).flip;
+        let s = self.objects.sprite_mut(o);
+        s.load(sprite);
+        // sprite_hasShadow, sprite_setFlip(object_getFlip()), white.
+        s.look.shadow = crate::object::sprite::Shadow::Ground;
+        s.look.set_flip(flip);
+        s.look.white = true;
+        let ob = self.objects.get_mut(o);
+        ob.flags &= !crate::object::flags::NO_SPRITE_UPDATE;
+        // object_setAnimation(0), then the sprite restarts it directly.
+        ob.anim = 0;
+        ob.anim_loaded = 0xFF;
+        let content = self.content.clone();
+        self.objects.sprite_mut(o).set_animation(0, &content);
+        Ok(())
+    }
+
+    fn reset_status(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::reset_status(self, o);
+        Ok(())
+    }
+
+    fn end_anger(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::end_anger(self, o);
+        Ok(())
+    }
+
+    fn form_change_target(&self, o: ObjectRef) -> Option<nettai_content_api::FormHandle> {
+        kinds::player::form_change_target(self, o)
+    }
+
+    fn pin_overlay(&mut self, o: ObjectRef) {
+        kinds::player::form::pin_overlay(self, o);
     }
 
     fn end_attack(&mut self, o: ObjectRef) {
