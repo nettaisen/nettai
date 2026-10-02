@@ -1006,3 +1006,34 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
   check 0 errors, machgun 1074/1331 and soundmod 21962/14933/20436 with 96 rollback rows and the 189 legacy
   rounds, the lab 6521/6521 (5,756,487 frames) with 0 sound rounds differing. After main 1fd091c1 (match-editor: the
   frontend and the new match and editor crates, no simulation): the build without warnings, 456 tests.
+
+### R3b, the frontend and the audio per pack (2026-10-02)
+
+- **Graphics per pack** (`nettai_frontend::packs::Packs`): every loaded pack's `Bundle` by `PackId`, and the
+  content's own (its home root's `assets` pack). An asset draws from its own pack: a sprite's sheet, a banner's
+  glyphs (its pack's HUD), a mugshot (its pack's HUD), a background. A chip's icon and picture are its game's pack's
+  (the chip's root's `assets`), under its key there (`gundels3`, not `bn6:gundels3`): the frontend had looked them up
+  by the qualified key since R1 and drew none, which the audit now shows (`--audit` on machgun: 5 problems before,
+  0 after); the compat numbers the custom screen reads (the navi's, a Program Advance pick's) go by
+  `Compat::compat_key` for the same reason. The custom screen and the chatbox are the local side's game's pack's
+  (its ruleset's game); the HUD's frame and the field are the content's own pack's. The field's art in a mixed
+  battle stays as it was (the proposal in §7.4 is still the user's to decide): `Stage::new` takes the field's
+  bundle and the background, which may be another pack's. A frontend of one pack (`Renderer::new`) draws every
+  asset from it.
+- **Sound per pack** (`BattleAudio::with_banks`, `AudioOut::with_banks`): a driver per pack, each with its own
+  bank, sound calls and queue; a cue plays on its sound's pack's driver (`Songs` holds each handle's
+  `InPack`); stopping the music stops every driver's, and music of another pack stops the player that played the
+  last; the drivers' outputs are added, one frame's samples whatever the number of packs. `BattleAudio::new`
+  is one pack's; `driver_of(PackId)` reads a pack's driver.
+- **Loading** (nettai-frontend): `--pack` repeats, one pack a game (`--pack <bn6> --pack <bn5>`); the content
+  loads over all of them (`pack::load_battle_packs`), and `pack::pack_paths` puts the directories in the content's
+  pack order for the graphics and the sound. The player's language applies to the content's own pack. The audit
+  checks a cue's song in its own pack's bank.
+- **Tests**: `packs::tests::each_asset_draws_from_its_own_pack` (a twin root and pack beside the test content,
+  their navis' sprites the same pack number: each drawn from its own pack's sheet; a root's game; a chip's icon by
+  its local key; a mugshot's pack); `each_pack_plays_its_own_songs` (two banks: music moves from one pack's player
+  to the other's; one frame's samples). By hand: the scratch BN6 pack with a copy of it as game `aaa` (sorting
+  first, so BN6 is `PackId(1)`): machgun's audit 0 problems with both, and frames 150 to 2000 rendered with one and
+  with two packs are byte for byte the same.
+- **Not done**: the editor's chip pictures (`nettai-editor` `pictures.rs`) still load one pack (nettai-assets'
+  API did not change); a BN5 pack's own HUD and custom screen formats come with BN5's extraction.
