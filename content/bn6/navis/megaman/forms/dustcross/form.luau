@@ -24,7 +24,8 @@ return define.form {
     buster_bonus = 0,
     weapons = { buster = throw_absorbed.weapon, charge_shot = charge.weapon, back_special = absorb.weapon },
     palette = 21,
-    mugshot = asset.mugshot("dustcross"),
+    -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
+    mugshot = { normal = asset.mugshot("dustcross"), tired = asset.mugshot("dustcross-tired") },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 10,
     traits = { "scrap_button" },
@@ -39,7 +40,7 @@ return define.form {
         aura_anim = 34,
         ice = "medium",
         -- What it wears over MegaMan's body.
-        parts = cross_overlay(asset.sprite("body-overlay-12")),
+        parts = cross_overlay(asset.sprite("dustcross-overlay")),
         attach_points = {
             { 2, 0 },
             { 2, 0 },

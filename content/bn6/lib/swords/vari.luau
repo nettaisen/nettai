@@ -11,11 +11,12 @@
 -- chip composes its own (`vari.action { ... }`, a `VariSwordSpec`): its
 -- sequences, and the actions they give.
 
--- The state (`VariSwordState`, types.d.luau): the ticks left to enter a
--- sequence (AIAttackVars+0x12), the navi's direction flip (which set of
--- sequences: AIAttackVars+0x28), and how far into each sequence the navi
--- is, in bytes (AIAttackVars+0x30 up; the game keeps the first four in the
--- attack's marker word, which every later reader sets before reading).
+-- The state (`VariSwordState`, types.d.luau): the navi's direction flip
+-- (which set of sequences: AIAttackVars+0x28), and how far into each
+-- sequence the navi is, in bytes (AIAttackVars+0x30 up; the game keeps the
+-- first four in the attack's marker word, which every later reader sets
+-- before reading). The ticks left to enter a sequence are the navi's
+-- `attack_count` (AIAttackVars+0x12).
 type State = VariSwordState
 type Spec = VariSwordSpec
 
@@ -28,7 +29,7 @@ local vari = {}
 
 -- One state for both actions (the original's two handlers share the
 -- attack variables' layout).
-vari.STATE = { countdown = "u16", flip = "u8", progress = "u8[5]" }
+vari.STATE = { flip = "u8", progress = "u8[5]" }
 
 -- Ticks to enter a sequence.
 local COUNTDOWN = 0x30
@@ -130,8 +131,8 @@ local function pick(me: Object, s: State, spec: Spec)
         -- (Past the picks, the random draw is a Sword.)
         return become(me, spec, if spec.picks[r + 1] then r + 1 else 0)
     end
-    local left = s.countdown - 1
-    s.countdown = left
+    local left = me.attack_count - 1
+    me.attack_count = left
     if left == 0 then
         return become(me, spec, 0)
     end
@@ -153,7 +154,7 @@ end
 -- `sub_80EF648` / `sub_80EF7FC`: 48 ticks, the sequences for the navi's
 -- facing, none begun; then the first pick.
 local function start(me: Object, s: State, spec: Spec)
-    s.countdown = COUNTDOWN
+    me.attack_count = COUNTDOWN
     local flip = me.flip
     if spec.sequences[flip] == nil then
         error(string.format("direction flip %d reads past the sequence tables", flip))

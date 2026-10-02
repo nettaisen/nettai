@@ -29,8 +29,9 @@ local function effect(me: Object)
             error("BugFix's controller has no user (sub_80E49C4 reads through a null pointer)")
         end
         battle.clear_navicust_bugs(user.alliance)
-        -- sub_801E658: the emotion portrait's bug face goes (the HUD,
-        -- which the engine doesn't draw).
+        -- sub_801E658: the emotion portrait's bug face goes, on every
+        -- console (its flicker draws the console's RNG1).
+        battle.clear_emotion_window_glitch()
         -- sub_8014446 / sub_801443C: the Beast Out counter is spent
         -- again unless the navi has one.
         user.beast_out_spent = battle.navi(user.alliance).beast_out_counter == 0

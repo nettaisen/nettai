@@ -9,13 +9,12 @@ local attachment = require("../../objects/attachment/attachment")
 local magnet = require("./magnet")
 
 export type State = {
-    -- Ticks left in the current phase (AIAttackVars+0x10), and the hold
-    -- (AIAttackVars+0x12).
+    -- Ticks left in the current phase (AIAttackVars+0x10). (The hold is
+    -- the navi's `attack_count`.)
     timer: number,
-    hold: number,
 }
 
-local STATE = { timer = "u16", hold = "u16" }
+local STATE = { timer = "u16" }
 
 -- The phases, on the attack's step.
 local RAISE, SET, LOWER = 0x0, 0x4, 0x8
@@ -58,13 +57,13 @@ local function mag_coil(spec: MagCoilSpec): Action
                 return
             end
             step_coil(me, 1)
-            s.hold = HOLD
+            me.attack_count = HOLD
             me.step_init = 4
             magnet.spawn(me, me.panel_x + me.facing, me.panel_y, me.attack_element, spec.ticks)
             battle.play_sound(SOUND)
         end
-        local h = s.hold - 1
-        s.hold = h
+        local h = me.attack_count - 1
+        me.attack_count = h
         if h > 0 then
             return
         end

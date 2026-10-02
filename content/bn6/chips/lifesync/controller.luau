@@ -25,7 +25,7 @@ export type State = {
 -- and after the sync.
 local MARKER_TICKS = 0x50
 local AIM, WARNING, AFTER = 0x14, 0x3C, 0x1E
-local SOUND_AIM = asset.sound("copy-mark")
+local SOUND_AIM = asset.sound("mark")
 local SOUND_WARNING = asset.sound("err-select-91")
 -- The sync's sound: the combatant's HP went up, or not.
 local SOUND_UP = asset.sound("hub")

@@ -7,6 +7,7 @@
 -- ticks later the dimming ends. See docs/engine/shot-chips.md §14.2.
 
 local collision = require("../../rules/collision")
+local curse_chip = require("../curse/chip")
 local dimming_chips = require("../../lib/dimming")
 local regions = require("../../lib/regions")
 local sparkles = require("./sparkles")
@@ -151,10 +152,13 @@ curse.kind = define.kind {
     update = dimming_chips.phases { name = "the curse", effect = effect },
 }
 
+-- What its telop names (the doll spawns it with Curse, bonus 0).
+curse.telop = { chip = curse_chip } :: DimmingTelop
+
 -- `sub_80E61D2`: the curse of `doll`, on its panel and side, with the
 -- damage word (the damage the doll took, hit parameter 0xB2). (Its
--- position is the spawner's registers, which nothing reads; the telop's
--- chip, Curse, is drawn only.)
+-- position is the spawner's registers, which nothing reads; its telop's
+-- chip is `curse.telop`.)
 function curse.spawn(doll: Object, damage: number): Object?
     local o = battle.spawn(curse.kind, Vec3.new(doll.panel_y, 0, 0))
     if o then
