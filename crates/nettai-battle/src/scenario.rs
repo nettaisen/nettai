@@ -114,7 +114,7 @@ pub fn setup_with_handles(chips: &[ChipHandle]) -> RoundSetup {
 /// A player's buttons on the custom screen: A on the chip under the
 /// cursor, RIGHT to the next one, until four are picked; then START and A
 /// on OK. A and START are released between presses.
-fn custom_buttons(b: &Battle, side: usize, last: u16) -> u16 {
+pub fn custom_buttons(b: &Battle, side: usize, last: u16) -> u16 {
     let Some(screen) = b.custom.sides[side].screen.as_ref().filter(|s| s.phase == Phase::Choosing) else { return 0 };
     let here = &screen.slots[screen.cursor as usize];
     let press = |k: u16| if last & (keys::A | keys::START) != 0 { 0 } else { k };

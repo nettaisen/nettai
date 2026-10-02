@@ -11,7 +11,9 @@
 --
 -- No chip or weapon of MegaMan's names effect 17; link navis' actions
 -- spawn the storm themselves, with `dust_storm.instant { ... }` when they
--- are ported (unverified: no scenario reaches it).
+-- are ported (unverified: no scenario reaches it). HackJack's rain
+-- (chips/hackjack/navi, the Japanese games') is an untied storm over the
+-- middle of the other side's area, `dust_storm.spawn`.
 
 local collision = require("../../rules/collision")
 local regions = require("../regions")
@@ -21,7 +23,7 @@ local dust_storm = {}
 
 -- How a storm blows: for `ticks` ticks, while the user runs `tied` (nil:
 -- untied).
-export type Storm = { ticks: number, tied: Action? }
+export type Storm = DustStorm
 
 export type State = {
     ticks: number,
@@ -31,7 +33,8 @@ export type State = {
 -- The motes' panels (`byte_80C639C`).
 local AROUND = { { 0, 0 }, { -1, -1 }, { 0, -1 }, { 1, -1 }, { -1, 0 }, { 1, 0 }, { -1, 1 }, { 0, 1 }, { 1, 1 } }
 -- The hit (`dword_80C6410`): the 3x3 around it, no spark, an attack whose
--- target reaches nothing, hit modifier 1; every 12 ticks.
+-- target reaches nothing (it learns nothing of its hits; the navis there
+-- react to it and take them), hit modifier 1; every 12 ticks.
 local NO_SPARK: Spark?, HIT_MOD = nil, 1
 local HIT_TICKS = 0xC
 
@@ -133,23 +136,30 @@ dust_storm.kind = define.kind {
     end,
 }
 
--- `sub_80C6330`, instant chip effect 17: an `instant` hook that raises a
--- storm of the user's on its panel, blowing as `storm` says; it runs while
--- dimmed. (It spawns at the registers' values, which its init replaces but
--- for Z's fraction.)
+-- `sub_80C6330`: a storm of `user`'s on (x, y) with the damage word
+-- `damage`, blowing as `storm` says; it runs while dimmed. (It spawns at
+-- the registers' values, the row, the element and `z`, which its init
+-- replaces but for Z's fraction.)
+function dust_storm.spawn(user: Object, x: number, y: number, z: number, element: number, damage: number, storm_: Storm): Object?
+    local o = battle.spawn(dust_storm.kind, Vec3.new(y, element, z))
+    if o then
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o.related1 = user
+        o:set_damage_word(damage)
+        o.alliance, o.flip = user.alliance, user.flip
+        o.run_while_dimmed = true
+        local s = o.state :: State
+        s.ticks, s.tied = storm_.ticks, storm_.tied
+    end
+    return o
+end
+
+-- Instant chip effect 17: an `instant` hook that raises a storm of the
+-- user's on its panel (`sub_80C6330`).
 function dust_storm.instant(storm_: Storm): (user: Object, spec: InstantChipSpec) -> ()
     return function(user: Object, spec: InstantChipSpec)
-        local o = battle.spawn(dust_storm.kind, Vec3.new(spec.panel_y, spec.element, spec.z))
-        if o then
-            o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-            o.element = spec.element
-            o.related1 = user
-            o:set_damage_word(spec.damage)
-            o.alliance, o.flip = user.alliance, user.flip
-            o.run_while_dimmed = true
-            local s = o.state :: State
-            s.ticks, s.tied = storm_.ticks, storm_.tied
-        end
+        dust_storm.spawn(user, spec.panel_x, spec.panel_y, spec.z, spec.element, spec.damage, storm_)
     end
 end
 

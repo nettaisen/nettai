@@ -66,11 +66,14 @@ fn battles_run_the_content_scripts() {
             "colorpt/controller",
             "colorpt/point",
             "crakshot/shot",
+            "django/navi",
             "dolthdr/doll",
             "dolthdr/thunder-column",
             "dragon-body",
             "dragon-head",
             "drilarm/drill",
+            "dust-storm",
+            "dust-storm-mote",
             "dustcross-beast/junk-shot",
             "dustcross/junk-ball",
             "dustman/cloud",
@@ -111,6 +114,8 @@ fn battles_run_the_content_scripts() {
             "groundman/drill",
             "gundels/beam",
             "gust",
+            "hackjack/lance",
+            "hackjack/navi",
             "heatman/flame",
             "heatman/navi",
             "instrument",
@@ -427,6 +432,7 @@ fn scripted_chips_roll_back() {
         numbered(&[testing::HEAT, testing::ELEC, testing::SLASH, testing::CHARGE, testing::TOMAHAWK, testing::TENGU, testing::BLAST]),
         numbered(&[testing::BASS]),
         numbered(&[testing::SUN_MOON]),
+        numbered(&["hackjack", "django"]),
     ] {
         let chips = &chips[..];
         let setup = || scenario::setup_with_handles(chips);
@@ -1705,4 +1711,182 @@ fn the_support_dimming_chips_roll_back() {
             b.tick(&t.input, t.events.clone());
         }
     }
+}
+
+// ---- The Japanese games' HackJack and Django (chips/hackjack, chips/django) ----
+
+/// A round where side 0's folder holds only `chip` and side 1's the
+/// duel's GunDelSols, the custom screens picking chips as the duel's do,
+/// and in the fight each side holding `fight(b, side, n)` (`n` the ticks
+/// fought so far); `each` sees the battle after every tick.
+fn drive(chip: &str, ticks: usize, fight: impl Fn(&Battle, usize, u32) -> u16, mut each: impl FnMut(&Battle)) -> Battle {
+    use crate::battle::{TickEvents, battle_flags, mode};
+    use crate::input::PlayerTick;
+    let mut setup = scenario::setup_with_handles(&[testing::chip_handle(chip)]);
+    setup.players[1] = scenario::setup().players[1];
+    let mut b = Battle::new(setup, scenario::content());
+    let mut last = [0u16; 2];
+    let mut n = 0;
+    for _ in 0..ticks {
+        let fighting = b.round.mode == mode::FIGHTING && b.round.flags & battle_flags::FIGHTING != 0;
+        let mut input = [PlayerTick::default(); 2];
+        for side in 0..2 {
+            let held = if b.round.mode == mode::CUSTOM {
+                scenario::custom_buttons(&b, side, last[side])
+            } else if fighting {
+                fight(&b, side, n)
+            } else {
+                0
+            };
+            input[side] = PlayerTick { held };
+            last[side] = held;
+        }
+        n += fighting as u32;
+        b.tick(&input, TickEvents::default());
+        each(&b);
+    }
+    b
+}
+
+/// The objects of kind `key` there are.
+fn all_of(b: &Battle, key: &str) -> Vec<crate::object::ObjectRef> {
+    b.objects.in_order().filter(|&o| b.kind_key(o) == key).collect()
+}
+
+/// Side 0 uses its first chip a while into the fight (A held for a tick).
+fn use_once(_b: &Battle, side: usize, n: u32) -> u16 {
+    if side == 0 && n == 20 { crate::input::keys::A } else { 0 }
+}
+
+#[test]
+fn hackjack_rains_on_the_other_side_then_drops_lances() {
+    use crate::object::PanelPos;
+    // Side 1 stands at (5,2), in the rain (each hit the chip's damage, SP
+    // or not) and where the first lance falls (each chip's parameter
+    // byte).
+    for (chip, rain, lance) in [("hackjack", Some(20), 50), ("hackjck-ex", Some(25), 70), ("hackjck-sp", None, 100)] {
+        let mut t = 0u32;
+        let mut navi: Vec<u32> = Vec::new();
+        let mut storm: Vec<u32> = Vec::new();
+        let mut lances: Vec<(u32, PanelPos)> = Vec::new();
+        let mut hp1 = 1000;
+        let mut hits: Vec<(u32, u16)> = Vec::new();
+        drive(chip, 1500, use_once, |b| {
+            t += 1;
+            if !all_of(b, "hackjack/navi").is_empty() {
+                navi.push(t);
+            }
+            if !all_of(b, "dust-storm").is_empty() {
+                storm.push(t);
+            }
+            for l in all_of(b, "hackjack/lance") {
+                let o = b.objects.get(l);
+                // A new lance has run its init and not yet struck.
+                if o.state == crate::object::state::UPDATE && o.phase == 0 {
+                    lances.push((t, o.panel));
+                }
+            }
+            let h = b.objects.get(b.player(1).unwrap()).hp;
+            if h != hp1 {
+                hits.push((t, hp1 - h));
+            }
+            hp1 = h;
+        });
+        assert!(!navi.is_empty(), "{chip}: HackJack never came");
+        // He stays 188 ticks: 3 appearing, 30 standing, 20 raising his arms,
+        // 70 raining, 10 before each of three lances, 23 lowering, 4 going.
+        let s = navi[0];
+        assert_eq!(navi.len(), 188, "{chip}: HackJack's stay");
+        assert_eq!(*navi.last().unwrap(), s + 187);
+        // The rain: from his 57th tick, 61 ticks.
+        assert_eq!((storm.first().copied(), storm.len()), (Some(s + 57), 61), "{chip}: the rain");
+        // Three lances, 10 ticks apart, from his 138th tick; the first where
+        // side 1 stands, the others elsewhere in its area.
+        let ticks: Vec<u32> = lances.iter().map(|l| l.0).collect();
+        assert_eq!(ticks, [s + 138, s + 148, s + 158], "{chip}: the lances");
+        assert_eq!(lances[0].1, PanelPos { x: 5, y: 2 }, "{chip}: the first lance");
+        assert!(lances[1..].iter().all(|l| l.1.x >= 4 && l.1 != PanelPos { x: 5, y: 2 }), "{chip}: {lances:?}");
+        // The rain hits every 12 ticks, five times; then the first lance.
+        let r = rain.unwrap_or(hits[0].1);
+        let rain_hits: Vec<(u32, u16)> = (0..5).map(|i| (s + 59 + 12 * i, r)).collect();
+        assert_eq!(hits[..5], rain_hits[..], "{chip}: the rain's hits");
+        assert_eq!(hits[5..], [(s + 140, lance)], "{chip}: the lance's hit");
+    }
+}
+
+/// Django's action, timer and panel, if he is there.
+fn django_at(b: &Battle) -> Option<(u8, u16, crate::object::PanelPos)> {
+    all_of(b, "django/navi").first().map(|&d| {
+        let o = b.objects.get(d);
+        (o.action, o.timer, o.panel)
+    })
+}
+
+#[test]
+fn django_drops_in_and_rides_across_his_row() {
+    use crate::object::PanelPos;
+    // Side 0 at (2,2) uses Django: he lands on (1,2), rides along row 2 and
+    // runs into side 1 at (5,2) for the chip's damage.
+    let mut t = 0u32;
+    let mut there: Vec<(u32, u8, PanelPos)> = Vec::new();
+    let mut bike = 0;
+    let b = drive("django", 1200, use_once, |b| {
+        t += 1;
+        if let Some((action, _, panel)) = django_at(b) {
+            there.push((t, action, panel));
+        }
+        bike += all_of(b, "attachment").len();
+    });
+    assert!(!there.is_empty(), "Django never came");
+    let s = there[0].0;
+    // 10 ticks dropping in, 48 riding: he is freed on his 59th tick.
+    assert_eq!(there.len(), 59, "{there:?}");
+    assert!(there.iter().all(|x| x.1 == 0 || x.1 == 4), "{there:?}");
+    let landed = there.iter().find(|x| x.1 == 4).unwrap();
+    assert_eq!((landed.0, landed.2), (s + 10, PanelPos { x: 1, y: 2 }));
+    assert!(bike > 0, "his bike");
+    assert_eq!(b.objects.get(b.player(1).unwrap()).hp, 1000 - 130);
+    assert_eq!(b.objects.get(b.player(0).unwrap()).hp, 1000);
+}
+
+#[test]
+fn django_comes_back_to_slash_after_l_l_l_a() {
+    use crate::input::keys;
+    use crate::object::PanelPos;
+    // Side 1 steps up to (5,1), out of the ride's row; side 0 puts in L, L,
+    // L, A while Django rides: he comes back in front of side 1 and slashes
+    // it for Django2's 80.
+    let fight = |b: &Battle, side: usize, n: u32| -> u16 {
+        if side == 1 {
+            return if n == 2 { keys::UP } else { 0 };
+        }
+        if n == 40 {
+            return keys::A;
+        }
+        match django_at(b) {
+            // The ride's ticks: 48 down to 0.
+            Some((4, timer, _)) if timer <= 46 => match 46 - timer {
+                0 | 2 | 4 => keys::L,
+                6 => keys::A,
+                _ => 0,
+            },
+            _ => 0,
+        }
+    };
+    let mut actions = Vec::new();
+    let mut slash_at = None;
+    let b = drive("django2", 1400, fight, |b| {
+        if let Some((action, _, panel)) = django_at(b) {
+            if actions.last() != Some(&action) {
+                actions.push(action);
+            }
+            if action == 0x10 {
+                slash_at = Some(panel);
+            }
+        }
+    });
+    assert_eq!(b.objects.get(b.player(1).unwrap()).panel, PanelPos { x: 5, y: 1 });
+    assert_eq!(actions, [0, 4, 8, 0xC, 0x10, 0x14], "Django's actions");
+    assert_eq!(slash_at, Some(PanelPos { x: 4, y: 1 }));
+    assert_eq!(b.objects.get(b.player(1).unwrap()).hp, 1000 - 80);
 }
