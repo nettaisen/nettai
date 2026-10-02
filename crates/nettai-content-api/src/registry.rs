@@ -48,12 +48,17 @@ pub enum Registry {
     /// Data only content reads (a bomb variant, a projectile variant): the
     /// engine keeps its handle and its type name.
     Record,
-    /// Content state layouts: one per distinct `state` table.
+    /// A patch card (BN4's, BN5's and BN6's Modification Cards, 改造カード):
+    /// its capacity cost and its effects, which a game's rules apply
+    /// (docs/engine/patch-cards.md); a player's installed cards are their
+    /// setup's (`PlayerSetup::patch_cards`).
+    PatchCard,
+    /// Content state layouts: one per distinct `state` table (sorted last).
     Schema,
 }
 
 impl Registry {
-    pub const ALL: [Registry; 20] = [
+    pub const ALL: [Registry; 21] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -73,12 +78,13 @@ impl Registry {
         Registry::System,
         Registry::Ruleset,
         Registry::Record,
+        Registry::PatchCard,
         Registry::Schema,
     ];
 
     /// The registries content defines with `define.<name>` (schemas come
     /// from the `state` tables of kinds, actions and modules).
-    pub const DEFINED: [Registry; 19] = [
+    pub const DEFINED: [Registry; 20] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -98,6 +104,7 @@ impl Registry {
         Registry::System,
         Registry::Ruleset,
         Registry::Record,
+        Registry::PatchCard,
     ];
 
     /// The registry's name: its definer's (`define.chip`), and how messages
@@ -123,6 +130,7 @@ impl Registry {
             Registry::System => "system",
             Registry::Ruleset => "ruleset",
             Registry::Record => "record",
+            Registry::PatchCard => "patch_card",
             Registry::Schema => "schema",
         }
     }
@@ -147,6 +155,7 @@ impl Registry {
                 | Registry::Lockon
                 | Registry::System
                 | Registry::Ruleset
+                | Registry::PatchCard
         )
     }
 }
@@ -222,6 +231,8 @@ handles! {
     SystemHandle => System,
     /// A player's rules.
     RulesetHandle => Ruleset,
+    /// A patch card.
+    PatchCardHandle => PatchCard,
 }
 
 #[cfg(test)]
