@@ -53,12 +53,9 @@ pub struct HudDoc {
     pub mugshots: Vec<TileImage>,
     /// The count box showing 0..=10, then without a number.
     pub counts: TileImage,
-    pub form_emotions: Vec<u8>,
-    /// The link navis' mugshots, each with its two palettes (normal, Full
-    /// Synchro); which a navi shows, by the navi's number less one; and the
-    /// box beside them.
+    /// The link navis' faces, each with its two palettes (normal, Full
+    /// Synchro), and the box beside them.
     pub navi_mugshots: Vec<TileImage>,
-    pub navi_mugshot_of: Vec<u8>,
     pub navi_box: TileImage,
     /// "PAUSE": five glyphs (shown with the opponents' HP digits' palette).
     pub pause: TileImage,
@@ -69,6 +66,10 @@ pub struct HudDoc {
     pub banner_digits: TileImage,
     /// "Cstmzing..." and its palette.
     pub waiting: TileImage,
+    /// The warning marker's two frames (2x2 tiles each) and its palette
+    /// (none in a pack extracted before it was).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warning: Option<TileImage>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -137,7 +138,10 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         .navi_mugshots
         .iter()
         .enumerate()
-        .map(|(i, m)| image(&format!("mugshots/link-navi-{i}.png"), &m.tiles, face, &m.palettes, 2))
+        .map(|(i, m)| {
+            let file = format!("mugshots/{}.png", names.mugshot(bn6_assets::NAVI_MUGSHOTS + i as u8));
+            image(&file, &m.tiles, face, &m.palettes, 2)
+        })
         .collect();
     let navi0 = h.navi_mugshots.first().map(|m| m.palettes[0]).unwrap_or([0; 16]);
     let navi_box = image("navi-box.png", &h.navi_box, icon, &[navi0], 0);
@@ -166,6 +170,8 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         .collect();
     let banner_digits = image("banner-digits.png", &h.banner_digits, GLYPHS(11), &[h.banner_palette], 0);
     let waiting = image("waiting.png", &h.waiting, Layout::Grid { columns: 8 }, &[h.waiting_palette], 1);
+    let warning = (!h.warning.is_empty())
+        .then(|| image("warning.png", &h.warning, Layout::Blocks { width: 2, height: 2, columns: 2 }, &[h.warning_palette], 1));
     let texts = |m: &[MapEntry]| m.iter().map(tiles::entry_text).collect();
     let doc = HudDoc {
         format: FORMAT.into(),
@@ -183,15 +189,14 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         hidden_icon,
         mugshots,
         counts,
-        form_emotions: h.form_emotions.clone(),
         navi_mugshots,
-        navi_mugshot_of: h.navi_mugshot_of.clone(),
         navi_box,
         pause,
         texts: h.texts.clone(),
         banners,
         banner_digits,
         waiting,
+        warning,
     };
     files.push(("hud.json".into(), json_lines(&doc)));
     files
@@ -233,6 +238,10 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
     }
     let (banner_digits, _) = img(&doc.banner_digits, report)?;
     let (waiting, waiting_pal) = img(&doc.waiting, report)?;
+    let (warning, warning_pal) = match &doc.warning {
+        Some(i) => img(i, report)?,
+        None => (Tiles::default(), vec![Palette::default()]),
+    };
     let mut mugshots = Vec::new();
     for m in &doc.mugshots {
         let (t, p) = img(m, report)?;
@@ -292,9 +301,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         mugshots,
         counts: (0..counts.len() / 4 - 1).map(|i| slice(&counts, 4 * i, 4)).collect(),
         count_box: slice(&counts, counts.len() - 4, 4),
-        form_emotions: doc.form_emotions.clone(),
         navi_mugshots,
-        navi_mugshot_of: doc.navi_mugshot_of.clone(),
         navi_box,
         pause,
         texts: doc.texts.clone(),
@@ -303,5 +310,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         banner_palette: banner_pal[0],
         waiting,
         waiting_palette: waiting_pal[0],
+        warning,
+        warning_palette: warning_pal[0],
     })
 }
