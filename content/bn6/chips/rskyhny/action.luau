@@ -30,13 +30,22 @@ local HIVE = attachment.look { sprite = asset.sprite("hive"), palette = 0, attac
 local BUZZ = asset.sound("buzz")
 local WINDOW_TICKS, WINDOW_COUNT = 10, 3
 
+-- The bees by level (the chips' first parameter, `byte_80D3164`): the
+-- palette, and the speeds across and along the field.
+action.bees = {
+    { palette = 0, speed = 0x2_8000, turn_speed = 0x1_8000 },
+    { palette = 1, speed = 0x3_0000, turn_speed = 0x1_CCCC },
+    { palette = 2, speed = 0x3_8000, turn_speed = 0x2_1999 },
+} :: { HoneyBee }
+
 local function set_phase(me: Object, step: number)
     me.step = step
     me.step_init = 0
 end
 
 -- A chip's RskyHny: its bees, and whether it drags rather than sends the
--- first (no chip does: the original's second parameter).
+-- first (no chip does: the original's second parameter; the patch card
+-- honybomr's B+Back does).
 function action.action(spec: HoneySpec): Action
     -- `sub_80EDE4A`: a bee on the panel ahead, with the attack's damage
     -- word (bonus included); the hive opens.
