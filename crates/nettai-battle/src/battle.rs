@@ -452,6 +452,9 @@ pub struct Battle {
     pub linked: [LinkedRecord; 2],
     /// Per side: its dimming (`byte_203CF00`).
     pub dimming: [crate::dimming::DimmingRecord; 2],
+    /// Per side: the player's rules, its ruleset and its systems' state
+    /// (docs/design/rules-in-luau.md).
+    pub rules: [crate::rules::SideRules; 2],
     /// Sound calls made this tick, as each side's player hears them
     /// (output only; see `sound`).
     pub(crate) sound: [Vec<SoundCue>; 2],
@@ -636,7 +639,7 @@ impl Battle {
     /// (`RoundSetup::content`), if the content isn't defined
     /// (`Content::define`), or if its scripts don't load (a content error,
     /// the same on every machine).
-    pub fn new(setup: RoundSetup, content: Arc<Content>) -> Battle {
+    pub fn new(mut setup: RoundSetup, content: Arc<Content>) -> Battle {
         let hash = content.hash();
         assert_eq!(setup.content, hash, "the round's setup names content {} but runs on content {hash}", setup.content);
         assert!(content.defs.defined, "a battle runs on defined content (Content::define)");
@@ -645,6 +648,7 @@ impl Battle {
         let stage = content.stage(setup.settings.stage);
         let (field, mode) = (Field::new(&content, &stage.layout, stage.panel_pattern, stage.mode), stage.mode);
         let hands = [ChipHand::empty(&content), ChipHand::empty(&content)];
+        let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p]));
         let mut b = Battle {
             content,
             stats: setup.navi_stats,
@@ -697,6 +701,7 @@ impl Battle {
             side_stats: [[0; 16]; 2],
             linked: [LinkedRecord::default(); 2],
             dimming: Default::default(),
+            rules,
             sound: [Vec::new(), Vec::new()],
             outcome: None,
             setup,
@@ -1031,6 +1036,7 @@ impl Battle {
             }
             crate::kinds::intro::spawn(self);
             self.spawn_actors();
+            self.notify_systems(nettai_content_api::SystemHook::RoundStart);
             // Reward-chip pick: draws once; netbattle navis have no rewards.
             self.rng.next_positive();
             self.paused = true;

@@ -154,7 +154,7 @@ impl CrossList {
 /// What a player brings to a round that only their own console knows in
 /// the original: the battle folder (shuffled at the round's init) and
 /// what their save unlocks.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PlayerSetup {
     /// The shuffled battle folder. None only when checking against a
     /// recording that lacks this player's folder: their screen is then
@@ -173,6 +173,13 @@ pub struct PlayerSetup {
     /// ChpShufl's re-deal draws from (`crate::console`). In netplay it is
     /// part of the setup the peers exchange.
     pub console: ConsoleSetup,
+    /// The rules the player plays by (docs/design/rules-in-luau.md §2.3);
+    /// none: the content's stock ruleset.
+    pub ruleset: Option<nettai_content_api::RulesetHandle>,
+    /// What the player brings for each system of their ruleset (its
+    /// `setup` fields), in the ruleset's order; none given: all zero
+    /// (`PlayerSetup::set_rule` writes one by name).
+    pub rules: Vec<nettai_content_api::ContentState>,
 }
 
 impl Default for PlayerSetup {
@@ -184,6 +191,8 @@ impl Default for PlayerSetup {
             bug_frags: 0,
             navi_level: 0,
             console: ConsoleSetup::default(),
+            ruleset: None,
+            rules: Vec::new(),
         }
     }
 }

@@ -27,6 +27,7 @@ pub mod object;
 pub mod perspective;
 pub mod rng;
 pub mod rollback;
+pub mod rules;
 #[cfg(any(test, feature = "test-content"))]
 pub mod scenario;
 pub mod setup;
