@@ -338,9 +338,14 @@ window's `update(side, pad)`, `custom.keys(side, pad) -> handled`, `custom.hand_
 **Per tick, only while set** (§4.3): a navi's controller, its wrapper, a form's `tick`, a custom-screen window.
 
 What BN5 is expected to use (bn5-map.md §4–§5): `turn_check` where a soul's turns run out, forms' change actions
-for Soul Unison, custom-screen extras for choosing a soul by a sacrificed chip (on the shared sacrifice machinery),
-`chip_used` for Chaos Unison's held dark chip, the navi switch and the Team Battle mode for Team Battle. None of it
-needs Rust per game once these exist, which is the test of the seam.
+for Soul Unison, a custom-screen button for choosing a soul (the button under OK, where BN6 has Beast Out, gives up the
+last chip picked for its family's soul; a dark chip makes it Chaos Unison; twelve souls, six per version) on the shared
+sacrifice machinery, `custom.chip_check` and the buttons' `available` for light and dark MegaMan (a light MegaMan
+can't use dark chips or DS navi chips; a dark one can't use other navi chips and has no Soul Unison button), and
+`chip_used` for Chaos Unison's held dark chip. None of it needs Rust per game once these exist, which is the test of
+the seam. (Tango's BN5 matches are Team Battles that leave battle flag 0x40 off, use the normal custom screen and never
+switch navis, since the switch needs a navi chip from the Battle Chip Gate: the flag-0x40 mode and the navi switch stay
+shared framework code, but don't drive the BN5 plan.)
 
 ### 4.2 Frequency and cost
 
@@ -768,3 +773,25 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
   rendered frame (main 96.5 / 114.0 / 77.9), machgun 1–2 137.9 / 86.9 (161.3 / 86.2), the lab basket within 3 %:
   no change beyond the noise, as expected of a slice that adds no per-tick call. (Best of 5 at a load of 100 was not
   enough: rows moved by ±60 %. Use 15 on a busy machine.)
+
+### S1, turn starts (2026-10-02)
+
+- **Hooks.** `turn_check(side)` (the sequencer's check, `sub_801486C`: for a side that isn't changing form, and
+  for one that asks for a Cross change), `turn_started(side)` (after the sequencer, `sub_800840C`'s end),
+  `custom_requested(side)` (`sub_8008452`, before the reversions) and `custom_closed(side)` (`sub_8009338`, the
+  fight resumes). The flow calls each for a side whose navi is there, side 0 first. The sequencer and the transform
+  record stay the framework's; BN5 has them too.
+- **BN6's beast system** (content/bn6/rules/beast/system.luau, in the stock ruleset after the patch cards) fills
+  them with what was Rust: Beast Out running out (`sub_80159C6`: the navi's Beast Out is spent, a Beast form asks
+  to revert), a turn in Beast Out spent (`sub_8015A38`), and the check's delay (AIData+0x0F), now the system's
+  state: `ActorData::beast_out_check_delay`, `check_beast_out_end` and `count_down_beast_out` are gone.
+- **API.** The navi stats' `beast_out_counter` is writable and `starting_form` readable.
+- **Hook set**, with the patch cards' `round_setup(side)` (`Battle::new`, before anything reads the stats, which it
+  may change), which fits the design: every hook is a side's, the flow calls each side's systems in turn.
+- **Gates** on main 26d7d912 (localization and the patch cards merged, the second with conflicts in the hook list
+  and the binding, where `round_setup` met these hooks) with a pack from all four ROMs: the build without warnings,
+  399 tests, the content check (829 modules), `gen-content check` (0 errors), both golden traces in full with rollback
+  at every latency and their sound calls, the 189 replay rounds, the full lab 6521/6521 scenarios, 5,756,487 frames,
+  with the sound gate. (Before the patch cards, on ca90a72e: the same, the lab 6299/6299.)
+- **Cost**, best of 15 against main: +1.0 % to +3.8 % on every row (soundmod 1–3 83.4 / 107.6 / 74.0 µs, machgun
+  1–2 105.1 / 84.8, beast-over 119.9): the four hooks' calls at turn starts and custom-screen requests, all paused.
