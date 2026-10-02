@@ -159,8 +159,7 @@ pub fn check_navicust(content: &Content, s: &Side, n: &nettai_battle::navicust::
     if content.navi(s.navi).forms.is_none() {
         out.push(format!("a NaviCust, but {}'s stats aren't a NaviCust's (only MegaMan's compiles)", crate::names::navi(content, s.navi)));
     }
-    let base = crate::Side::base_stats(content, s.navi, s.game);
-    for name in crate::stats::diff(content, &base, &s.round_stats()).keys() {
+    for name in s.stats_block(content).keys() {
         if !crate::stats::SAVE_FIELDS.contains(&name.as_str()) {
             out.push(format!("stats: {name} is the NaviCust's (with a NaviCust the stats set only {})", crate::stats::SAVE_FIELDS.join(", ")));
         }
