@@ -250,8 +250,10 @@ Some state depends on which console the engine plays: the local navi appears at 
 queues for a fade-in, a blinded viewer doesn't see the other side's objects, a hit sounds differently for the
 local player. Both netplay peers simulate from one perspective (`RoundSetup::local_side`, part of the shared
 setup), so the state is the same on both, and each presents it for its own player (perspective.rs: the cues
-each side hears, the telops and banners per viewer). `battle.local_side()` and `battle.viewer_sees(side)` are
-for presentation and for these known differences only; nothing feeds them back into decisions.
+each side hears, the telops and banners per viewer, what each player sees of the objects). `battle.local_side()`
+is for presentation and for these known differences only; nothing feeds it back into decisions. What a
+console's rule hides (a blind player doesn't see the other side's objects) content decides per viewer with
+`me:hide_from_blind()`, and an attachment follows its owner's visibility with `me:copy_visibility(owner)`.
 
 ## 5. Determinism and snapshots
 

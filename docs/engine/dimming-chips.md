@@ -177,7 +177,7 @@ when it is look[8..12] (0); `sub_8002EAC` (the parts keep their own facing); sou
    asks about a navi that has no collision data yet. `sub_800EB6C` reads its ObjectFlags1 through the null
    pointer, from the BIOS, which returns the opcode it last fetched (after the spawn's `ZeroFillByWord`, an
    SWI: 0xE3A02004), and that has the blind bit (0x2000): the visual is hidden on that tick, as a recorded
-   match shows. The engine's `Battle::viewer_sees` reads `f1::NULL_READ` there. An interrupt between the SWI
+   match shows. The engine's `Battle::sees` reads `f1::NULL_READ` there. An interrupt between the SWI
    and the read would leave 0xE55EC002 (not blind); no recording shows that (unverified).
 2. Unless in action 8: position = the owner's X, Y, Z, then the whole-pixel halves of Y and Z − 2 (halfword
    stores). Then, in every action: + attach point look[4] of the sprite the owner's NameID names
