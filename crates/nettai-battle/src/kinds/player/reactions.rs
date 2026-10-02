@@ -11,7 +11,7 @@ use crate::battle::Battle;
 use crate::collision::{f1, timer};
 use crate::content::SlideVector;
 use crate::field::{self, PanelType};
-use crate::object::{DragStep, ObjectRef, PanelPos, flags, state};
+use crate::object::{DragStep, ObjectRef, PanelPos, state};
 
 // ---- Deletion (action 2) -------------------------------------------------------
 
@@ -122,7 +122,7 @@ fn fade_out(b: &mut Battle, r: ObjectRef) {
     look.mosaic = None;
     look.alpha = None;
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::VISIBLE;
+    o.set_visible(false);
     // sub_802CDD0: the side's damage-carry record forgets this navi.
     let side = o.alliance as usize;
     if b.damage_carry[side].target == Some(r) {

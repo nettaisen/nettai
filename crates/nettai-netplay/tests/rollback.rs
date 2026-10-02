@@ -410,6 +410,62 @@ fn state_outside_the_snapshot_is_caught() {
     assert!(report.in_sync());
 }
 
+/// Counts the simulated frames on which the battle had stopped, and keeps
+/// the first stop's message.
+#[derive(Default)]
+struct Failures(u64, Option<String>);
+
+impl Observer<StandInBattle> for Failures {
+    fn simulated(&mut self, frame: u32, game: &StandInBattle) {
+        if let Some(nettai_battle::RoundEnd::Error(message)) = game.battle.round_end() {
+            self.0 += 1;
+            self.1.get_or_insert_with(|| format!("frame {frame}: {message}"));
+        }
+    }
+}
+
+/// Mashed battles with everything the test content has on both sides:
+/// Crosses and Beast Out unlocked, folders of dimming chips (so cut-ins and
+/// counter cut-ins), navi chips, giga chips, bombs, swords, traps and
+/// grabs, and 500 HP. No tick fails, settled or speculated: the engine has
+/// every path mashing reaches (a speculated tick is a tick on inputs a
+/// player could have pressed). (Slow in a debug build: `--ignored`.)
+#[test]
+#[ignore]
+fn mashed_battles_with_everything_never_stop() {
+    use nettai_battle::custom::{GameVersion, Unlocks};
+    use testing::*;
+    let c = content();
+    let codes = |keys: &[&str]| -> Vec<(String, u8)> {
+        keys.iter()
+            .map(|&k| {
+                let h = c.defs.chip_by_key(k).unwrap_or_else(|| panic!("no chip {k}"));
+                (k.to_string(), c.chip(h).codes.first().map_or(0, |code| code.0))
+            })
+            .collect()
+    };
+    let a = codes(&[VEIL, FALZAR, SUN_GUN_3, BOMB, BLADE, ANTI_NAVI, ERASER, TRAP, AREA_GRAB, ELEM_TRAP, TOMAHAWK, HEAT]);
+    let b = codes(&[GREGAR, VEIL, STEP_BLADE, FLASH, SEED, TIME_BOMB, DRAGON, BEES, PANEL_GRAB, SPOUT, ELEC, SLASH]);
+    let as_refs = |v: &Vec<(String, u8)>| v.iter().map(|(k, code)| (k.as_str(), *code)).collect::<Vec<_>>();
+    std::panic::set_hook(Box::new(|_| {}));
+    for seed in [11u64, 12, 13] {
+        let mut setup = netbattle(&c, LINK_BATTLE, 500, seed as u32, [folder(&c, &as_refs(&a)), folder(&c, &as_refs(&b))]);
+        for (p, version) in setup.players.iter_mut().zip([GameVersion::Falzar, GameVersion::Gregar]) {
+            p.unlocks = Unlocks::everything(version);
+        }
+        let start = StandInBattle::new(Battle::new(setup, c.clone()));
+        let mut failures = [Failures::default(), Failures::default()];
+        let report = Match::new(&start, NetConfig::latency(5, 2)).run(mashers_with(seed, true), &mut failures, 40_000);
+        eprintln!(
+            "everything, seed {seed}: {} frames, end {:?}, stopped speculations {}/{} ({:?})",
+            report.frames, report.end, failures[0].0, failures[1].0, failures.iter().find_map(|f| f.1.clone())
+        );
+        assert!(report.in_sync(), "seed {seed}: {:?}", report.divergence);
+        assert!(!matches!(report.end, Some(nettai_battle::RoundEnd::Error(_))), "seed {seed}: {:?}", report.end);
+        assert!(failures.iter().all(|f| f.0 == 0), "seed {seed}: {:?}", failures.iter().find_map(|f| f.1.clone()));
+    }
+}
+
 /// Every battle above runs the test content's scripts (GunDelSol, the
 /// eraser navi chip, the buster: docs/design/scripting.md), so these tests
 /// are also the scripted content under rollback.

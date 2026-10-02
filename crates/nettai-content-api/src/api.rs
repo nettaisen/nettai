@@ -1039,9 +1039,6 @@ pub trait CoreApi {
     /// `battle_isBattleOver` as the routines that read its Z flag see it:
     /// over only once time is up (a KO reads as not over).
     fn is_time_up(&self) -> bool;
-    /// `sub_800EB6C`: the local player sees `side`'s objects (unless they
-    /// are the other side's and the local navi is blind).
-    fn viewer_sees(&self, side: u8) -> bool;
     /// `sub_800ED90` and the chip record's flags (bit 1): the chip `user`
     /// would use next deals damage (a player's at its hand's cursor, whose
     /// empty hand reads `Rules::empty_hand`; another object's own chip).
@@ -1293,11 +1290,19 @@ pub trait CoreApi {
     fn set_panel_from_coordinates(&mut self, o: ObjectRef);
     /// `object_updateCollisionPanels`.
     fn update_collision_panels(&mut self, o: ObjectRef);
-    /// `sub_80169BE`: show `o` unless the battle is dimmed, then hide it if
-    /// it is the remote side's and the local player is blind (the
-    /// original's perspective, as `sub_800EB6C`; the HUD flash it also
-    /// drives for a player in an action is presentation).
+    /// `sub_80169BE`: show `o` unless the battle is dimmed, then hide it
+    /// from a viewer whose navi is blind if it is the other side's (each
+    /// console's rule, `sub_800EB6C`, decided for both viewers; the HUD
+    /// flash it also drives for a player in an action is presentation).
     fn update_visibility(&mut self, o: ObjectRef);
+    /// `sub_800EB6C` on each console: `o` hidden from a viewer whose navi
+    /// is blind, if it is the other side's (on top of what each viewer sees
+    /// of it now). Presentation: where the original clears an object's
+    /// visibility for the local console, the engine decides it per viewer.
+    fn hide_from_blind(&mut self, o: ObjectRef);
+    /// `to` seen by whoever sees `from` (each viewer's view of it): an
+    /// attachment that follows its owner's visibility.
+    fn copy_visibility(&mut self, from: ObjectRef, to: ObjectRef);
     /// Onto the destination panel of a move: the panel, the reservation,
     /// the coordinates and the collision.
     fn snap_to_future_panel(&mut self, o: ObjectRef);

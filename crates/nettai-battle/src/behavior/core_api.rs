@@ -263,10 +263,6 @@ impl CoreApi for Battle {
         self.is_battle_over_flag_quirk()
     }
 
-    fn viewer_sees(&self, side: u8) -> bool {
-        Battle::viewer_sees(self, side & 1)
-    }
-
     fn next_chip_damages(&self, user: ObjectRef) -> bool {
         use crate::content::ChipFlags;
         let o = self.objects.get(user);
@@ -753,7 +749,13 @@ impl CoreApi for Battle {
     }
 
     fn set_header_flags(&mut self, o: ObjectRef, flags: u8) {
-        self.objects.get_mut(o).flags = flags;
+        // A write that leaves VISIBLE as it was leaves who sees it as it was.
+        let ob = self.objects.get_mut(o);
+        let visible = flags & crate::object::flags::VISIBLE != 0;
+        if visible != (ob.flags & crate::object::flags::VISIBLE != 0) {
+            ob.set_visible(visible);
+        }
+        ob.flags = flags;
     }
 
     fn reserve_panel(&mut self, o: ObjectRef, p: PanelPos) -> bool {
@@ -955,7 +957,13 @@ impl CoreApi for Battle {
         let ob = self.objects.get_mut(o);
         if let Some(bit) = flag_bit(f) {
             let FieldValue::Bool(on) = v else { unreachable!() };
-            ob.flags = if on { ob.flags | bit } else { ob.flags & !bit };
+            if f == ObjectField::Visible {
+                // For every viewer (`hide_from_blind` and `copy_visibility`
+                // decide it per viewer).
+                ob.set_visible(on);
+            } else {
+                ob.flags = if on { ob.flags | bit } else { ob.flags & !bit };
+            }
             return Ok(());
         }
         match (f, v) {
@@ -1042,15 +1050,24 @@ impl CoreApi for Battle {
 
     fn update_visibility(&mut self, o: ObjectRef) {
         if !self.is_dimmed() {
-            self.objects.get_mut(o).flags |= flags::VISIBLE;
+            self.objects.get_mut(o).set_visible(true);
         }
+        // Hidden from a blind viewer when the other side's (each console's
+        // rule, decided for both viewers).
         let alliance = self.objects.get(o).alliance;
-        if self.is_remote(alliance) {
-            let blind = self.player(alliance ^ 1).and_then(|p| self.objects.get(p).collision).is_some_and(|c| self.collision.get(c).f1 & f1::BLIND != 0);
-            if blind {
-                self.objects.get_mut(o).flags &= !flags::VISIBLE;
-            }
-        }
+        let hidden = [0u8, 1].map(|viewer| {
+            viewer != alliance & 1
+                && self.player(viewer).and_then(|p| self.objects.get(p).collision).is_some_and(|c| self.collision.get(c).f1 & f1::BLIND != 0)
+        });
+        self.hide_from(o, hidden);
+    }
+
+    fn hide_from_blind(&mut self, o: ObjectRef) {
+        Battle::hide_from_blind(self, o);
+    }
+
+    fn copy_visibility(&mut self, from: ObjectRef, to: ObjectRef) {
+        Battle::copy_visibility(self, from, to);
     }
 
     fn update_collision_panels(&mut self, o: ObjectRef) {
@@ -2100,7 +2117,7 @@ impl CoreApi for Battle {
         self.sprite_load(o, id);
         let alliance = {
             let obj = self.objects.get_mut(o);
-            obj.flags |= flags::VISIBLE;
+            obj.set_visible(true);
             obj.anim = l.anim;
             obj.anim_loaded = l.anim;
             obj.alliance

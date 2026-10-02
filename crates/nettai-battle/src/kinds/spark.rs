@@ -65,7 +65,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             o.flags &= !flags::NO_SPRITE_UPDATE;
             o.anim = anim;
             o.anim_loaded = anim;
-            o.flags |= flags::VISIBLE;
+            o.set_visible(true);
             o.state = state::UPDATE;
             o.action = 0;
             o.phase = 0;
@@ -74,7 +74,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         state::UPDATE => {
             if b.objects.sprite(r).frame_parameters() & FRAME_LAST != 0 {
                 let o = b.objects.get_mut(r);
-                o.flags &= !flags::VISIBLE;
+                o.set_visible(false);
                 o.state = state::DESTROY;
                 o.action = 0;
                 o.phase = 0;
