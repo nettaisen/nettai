@@ -97,7 +97,7 @@ pub struct HudLanguageDoc {
     pub texts: Vec<Vec<u16>>,
     /// The banners whose words this language has its own of, by banner id
     /// / 4 (null: the pack's own), with this language's banner palette.
-    pub banners: Vec<Option<TileImage>>,
+    pub banners: Vec<Option<BannerDoc>>,
     /// "Cstmzing..." (two rows, as wide as its words), with the banner
     /// palette.
     pub waiting: TileImage,
@@ -269,7 +269,16 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
             .banners
             .iter()
             .enumerate()
-            .map(|(i, g)| g.as_ref().map(|g| image(&file(&format!("banners/{}", names.banner(4 * i as u8))), g, GLYPHS(20), &[l.banner_palette], 1)))
+            .map(|(i, b)| {
+                b.as_ref().map(|b| BannerDoc {
+                    at: [b.x, b.y],
+                    kind: b.kind,
+                    glyphs: b.glyphs.len() / 2,
+                    number_at: b.number_at.map(|(x, y)| [x, y]),
+                    image: (!b.glyphs.is_empty())
+                        .then(|| image(&file(&format!("banners/{}", names.banner(4 * i as u8))), &b.glyphs, GLYPHS(20), &[l.banner_palette], 1)),
+                })
+            })
             .collect();
         let columns = (l.waiting.len() / 2).max(1) as u32;
         let waiting = image(&file("waiting"), &l.waiting, Layout::Grid { columns }, &[l.waiting_palette], 1);
@@ -491,12 +500,18 @@ fn import_languages(dir: &Path, prefix: &str, doc: &HudDoc, report: &mut Report)
         let (waiting, waiting_palette) = img(&d.waiting, report)?;
         let mut banner_palette = None;
         let mut banners = Vec::new();
-        for (b, own) in d.banners.iter().zip(&doc.banners) {
+        for b in &d.banners {
             banners.push(match b {
-                Some(i) => {
-                    let (t, p) = img(i, report)?;
-                    banner_palette.get_or_insert(p[0]);
-                    Some(Tiles { pixels: t.pixels[..(2 * own.glyphs * Tiles::TILE).min(t.pixels.len())].to_vec() })
+                Some(b) => {
+                    let glyphs = match &b.image {
+                        Some(i) => {
+                            let (t, p) = img(i, report)?;
+                            banner_palette.get_or_insert(p[0]);
+                            Tiles { pixels: t.pixels[..(2 * b.glyphs * Tiles::TILE).min(t.pixels.len())].to_vec() }
+                        }
+                        None => Tiles::default(),
+                    };
+                    Some(BannerLayout { x: b.at[0], y: b.at[1], kind: b.kind, glyphs, number_at: b.number_at.map(|[x, y]| (x, y)) })
                 }
                 None => None,
             });
