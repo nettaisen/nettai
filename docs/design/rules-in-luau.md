@@ -900,3 +900,8 @@ art if the user approves §7.4's proposal).
   `requires`, a stock ruleset per root, ambiguous lookups); BN5's root loads beside BN6's (nettai-content's lint
   tests), up to BN5's chips having no use yet, which the define phase refuses until the BN5 port writes them.
   Tests on one root compare `Battle::local_kind_key` and `keys::local`.
+- **Patch cards** (merged from patch-card-type): `define.patch_card` keys are qualified like every other
+  (`bn6:skarab`), `Defs::patch_card_by_key` looks up as the others do, the `[patch-cards]`
+  locale tables are qualified per root, and compat's patch-cards.toml is read at its boundary.
+  `PlayerSetup::set_rule_elem` is gone: no system's setup holds an array now (the cards are
+  `PlayerSetup::patch_cards`).
