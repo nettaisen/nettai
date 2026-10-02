@@ -82,7 +82,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.look.set_flip(flip);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
-    o.flags |= flags::VISIBLE;
+    o.set_visible(true);
     o.anim = 0;
     o.anim_loaded = 0;
     common::set_progress(b, r, Progress::UPDATE);
@@ -92,14 +92,15 @@ fn init(b: &mut Battle, r: ObjectRef) {
 /// out of sight otherwise; step the sprite unless dimmed or paused.
 fn tick(b: &mut Battle, r: ObjectRef) {
     let owner = owner(b, r);
-    let (pos, owner_flags, owner_flip, owner_anim) = {
+    let (pos, owner_flip, owner_anim) = {
         let o = b.objects.get(owner);
-        (o.pos, o.flags, o.flip, o.anim)
+        (o.pos, o.flip, o.anim)
     };
+    let owner_shown = [0u8, 1].map(|v| b.visible_to(owner, v));
     let pinned = vars(b, r).pinned;
+    b.set_visible_by_viewer(r, owner_shown);
     let o = b.objects.get_mut(r);
     o.pos = pos;
-    o.flags = (o.flags & !flags::VISIBLE) | (owner_flags & flags::VISIBLE);
     o.flip = owner_flip;
     if !pinned {
         // The whole-pixel half of Z (a halfword store).

@@ -23,7 +23,8 @@
 //!   HUD parts a chip hid (`Battle::hud_hidden`), and
 //!   the HUD's message (`Battle::message`), warning markers
 //!   (`Battle::warnings`) and HP numbers (`Battle::hp_numbers`);
-//! - the objects' `VISIBLE` header flag;
+//! - the objects' `VISIBLE` header flag and who else sees them
+//!   (`Object::sight`);
 //! - the message of an engine error that stopped the battle
 //!   (`RoundEnd::Error`; that it stopped is hashed).
 //!
@@ -291,6 +292,7 @@ impl Hash for Object {
             saved_state,
             vars,
             telop_chip: _,
+            sight: _,
         } = self;
         (header & !flags::VISIBLE).hash(h);
         kind.hash(h);

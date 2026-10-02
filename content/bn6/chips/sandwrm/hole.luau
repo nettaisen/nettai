@@ -101,7 +101,7 @@ local function tick(me: Object)
         error(string.format("sand hole action %#x reads past its table", a))
     end
     local navi = me.related1 :: Object
-    me.visible = navi.visible
+    me:copy_visibility(navi)
 end
 
 -- `sub_80BC8A8`.

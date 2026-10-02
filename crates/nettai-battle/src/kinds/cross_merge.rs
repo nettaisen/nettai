@@ -92,7 +92,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.look.white = true;
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
-    o.flags |= flags::VISIBLE;
+    o.set_visible(true);
     o.anim = 0;
     o.anim_loaded = 0;
     let (panel_y, facing) = (o.panel.y, common::facing(o.alliance, o.flip));

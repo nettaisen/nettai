@@ -95,7 +95,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.look.set_flip(flip);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
-    o.flags |= flags::VISIBLE;
+    o.set_visible(true);
     o.pos = pos;
     // sub_8011420(navi, form, 1): the form's overlay (whose Param3 is
     // lost on the way), or a link navi's own; then, in a form, the
@@ -131,7 +131,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let left = o.timer as i32 - 1;
     o.timer = left as u16;
     if left <= 0 {
-        o.flags &= !flags::VISIBLE;
+        o.set_visible(false);
         let navi = owner(b, r);
         let identity = b.objects.get(navi).identity;
         form::navi_death_hook(b, r, identity);
