@@ -1044,3 +1044,22 @@ read at their places (own-hit 0x6B and hit 0x6D in `applyDamageToPlayer_801ba12`
 and winner-1 0x1F in `sub_80081A4`'s); a battle sprite whose archive is a BN6 sprite's, or that identical code
 loads where BN6's loads a named one (48); the banners whose records are BN6's (24 named). 149 sounds, 48
 sprites, 24 banners in all; the rest keep their placeholders, which content may not use.
+
+### 15.5 The replay harness (as built)
+
+bn5-compat's `trace` (feature `trace`) replays a BN5 recording as bn6-compat's does a BN6 one: `rounds` splits a
+recording at its setup lines; `Round::needs` lists what its setup needs that the content doesn't define (every
+chip of its folders and hands by compat key, each side's navi by BN5's number, a soul, the stage by its settings
+bytes); `Round::round_setup` builds the engine's `RoundSetup` once nothing is missing (the conversion of BN5's
+NaviStats and settings comes with BN5's navi and stage definitions: until then it says so); `run_round` ticks
+each battle frame with the recorded inputs and compares (`compare`: the state machine, ticks, the simulation RNG,
+pause, the gauge, the panels by BN5's numbers, the objects by pool, panel, side, HP and position: BN5's kinds
+have no numbers yet), stopping at the setup, a panic or the first difference.
+
+The verification workspace's `trace-tests` runs it over the BN5 lab (`--test bn5_replay`, ignored: a report) on
+BN6's root and pack with BN5's root beside it, BN5's chips without a use left out (`trace_tests::bn5_content`;
+one pack until R3), and writes replay-summary.md beside the recordings: each recording's stage (read, decoded,
+setup, replay, matched), its frames matched, what stopped it, and what the recordings need most. First run
+(2026-10-02, the 1,376 recordings, 946,555 battle frames): every one stops at its setup, needing BN5's MegaMan
+(`bn5:megaman`), a stage (the lab's is one settings record but for 64 recordings) and its chips (Boomer and Cannon
+are in every recording's folder or hand, the lab's filler).
