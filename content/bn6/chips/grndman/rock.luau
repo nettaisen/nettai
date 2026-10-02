@@ -1,7 +1,8 @@
 --!strict
 -- A rock falling on a panel (the original's attack object #0x80,
--- `sub_80D535C`): GroundMan's rockfall, and his link navi's RC Brakr
--- (navis/groundman). Its panel blinks for a while, then the rock drops
+-- `sub_80D535C`): GroundMan's rockfall, his link navi's RC Brakr
+-- (navis/groundman), and the Gregar chip's summon's rocks (chips/gregar,
+-- the Japanese ROMs'). Its panel blinks for a while, then the rock drops
 -- from 160 pixels in 25 ticks and hits the panel it lands on; on a solid
 -- panel it breaks into two chips (objects/falling-rock/chip), cracking the
 -- panel if it cracks. A hit on the way throws chips off too, but it falls

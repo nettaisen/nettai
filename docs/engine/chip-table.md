@@ -575,8 +575,8 @@ r6 = AIAttackVars+0x08 (damage word), r7 = (AIAttackVars+0x06 << 16) | chip id.
 | 31 | `sub_80E81B4` (080E81B4) |  |
 | 32 | `sub_80E8BC0` (080E8BC0) | 133 MetrKnuk |
 | 33 | `sub_80E8ADC` (080E8ADC) |  |
-| 34 | NULL | 138 Gregar |
-| 35 | NULL | 139 Falzar |
+| 34 | NULL (the Japanese ROMs' 0x080EDE3C: beast-chips.md) | 138 Gregar |
+| 35 | NULL (the Japanese ROMs' 0x080EE086: beast-chips.md) | 139 Falzar |
 | 36 | `sub_80E91B8` (080E91B8) | 087 SumnBlk1, 088 SumnBlk2, 089 SumnBlk3 |
 | 37 | `sub_80E943E` (080E943E) | 137 DblBeast |
 | 38 | `sub_80E979C` (080E979C) | 119 PunchArm, 11A NeedlArm, 11B PuzzlArm, 11C BoomrArm, 121 DarkInvs, 131 BugRSwrd, 135 HubBatc, 136 BgDthThd |
