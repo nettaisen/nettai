@@ -255,7 +255,7 @@ In slice order (§8). "Per tick" is what each costs in Luau while its state last
 
 | System | Moves | Hooks and points | Per-tick Luau |
 |---|---|---|---|
-| **beast** (turn-start part, S1) | Beast Out's end check and count-down; `beast_out_used`, the check delay | `turn_check`, `turn_started`, `custom_requested`, `round_start` | none |
+| **beast** (turn-start part, S1) | Beast Out's end check and count-down, the check delay | `turn_check`, `turn_started`, `custom_requested`, `custom_closed` | none |
 | **cross**, **beast** (form changes, S2) | the five sequences of `sub_8014A38` as actions forms name; the Cross merge kind | forms' `change` actions | per tick of a change, paused |
 | **beast** (S3) | the rush (a wrapper), berserk (a controller), Beast Over's drain and exhaustion; `beast_lockon`, `beast_out_spent`, `beast_over_exhausted`; the glow as form data | `chip_used`, `form_changed`; `navi:set_wrapper`, `navi:set_controller`, `navi:hold_input`, `battle.forces_custom` | during a rush; in Beast Over |
 | **cross-special**, **cross** (S4) | the Cross special; the Cross bonuses and charged chips by form (`sub_800EF34`, `sub_8013236`, `sub_8012AFA`); the fire charge as form data | `chip_used`, a controller, the charge hook | while a special runs |
@@ -315,6 +315,7 @@ by the binding.
 | `turn_check(side, request) -> busy?` | at the sequencer's check (`sub_801486C`), per side | Beast Out runs out (`sub_80159C6`) |
 | `turn_started(side)` | after the sequencer, at the turn's start (`sub_800840C`'s end) | a turn in Beast Out spends one (`sub_8015A38`) |
 | `custom_requested(side)` | when the custom screen is asked for (`sub_8008452`) | the Beast Out check comes due (`sub_8015A16`) |
+| `custom_closed(side)` | when both results are in and the fight resumes (`sub_8009338`) | the Beast Out check's delay is set to 1 |
 | `custom_result(side, result)` | when both results are in (`sub_800B3D8`) | |
 | `round_end(side)` | once per side as the round finishes | Beast Out used and crossed, read after the battle |
 
@@ -661,11 +662,11 @@ under each stock ruleset, a battle with a different ruleset on each side, and a 
 | # | Slice | Moves | New mechanism | Lab focus |
 |---|---|---|---|---|
 | S0 | **Groundwork** | none | `define.system`, `define.ruleset` (stock); per-side system state and player setups; `PlayerSetup::ruleset` (default the stage's game's stock); the `system` library and its call context; the hook lists with `round_start` wired; the lint; rollback_cost's `--frames` and `luau-profile`; tools/rollback-cost.sh | all (a no-op) |
-| S1 | **Turn starts** | Beast Out's end check, count-down and check delay into BN6's beast system; the transform record and sequencer framework with per-side hooks; the Cross change renamed the navi switch | `turn_check`, `turn_started`, `custom_requested` | forms/*, custom/take-back-*, flow/*; machgun 1 |
+| S1 | **Turn starts** | Beast Out's end check, count-down and check delay into BN6's beast system; the sequencer framework with per-side hooks | `turn_check`, `turn_started`, `custom_requested`, `custom_closed` | forms/*, custom/take-back-*, flow/*; machgun 1 |
 | S2 | **Form changes** | the five sequences into BN6's cross and beast systems as actions the forms name; the Cross merge kind | forms' `change` actions; pause actions | forms/* |
 | R | **Roots** (after S2) | none | root manifests, qualified keys, content/nettai declarations, per-root compat and packs, roles and sections per ruleset, the battle's data from the stage's game, mixes (`base`, `add`, `remove`); a test root with its own stock ruleset; a battle with a ruleset per side | everything |
 | S3 | **Beast Out and Beast Over** | the rush, berserk, Beast Over's drain and exhaustion, the marker's targeting and freeze; the kinds renamed shared | wrappers, controllers, `chip_used`, `navi:hold_input`, `battle.forces_custom` | forms/*/beast-*, machgun 1 |
-| S4 | **The Cross special and the Cross bonuses** | berserk.rs's special, cross_special.rs, `sub_800EF34`, `sub_8013236`, `sub_8012AFA`, the fire charge as data | controllers, the charge hook | forms/*/cross-*, the specials' scenarios |
+| S4 | **The Cross special and the Cross bonuses** (with the "Cross change" renamed the navi switch, §3.2) | berserk.rs's special, cross_special.rs, `sub_800EF34`, `sub_8013236`, `sub_8012AFA`, the fire charge as data | controllers, the charge hook | forms/*/cross-*, the specials' scenarios |
 | S5 | **Emotions** | BN6's emotion rules, anger, the swing bug; the mood framework | `navi_hit`, `countered`, pushed emotion, Full Synchro, `mood_held` | flow/anger-*, flow/synchro-*, flow/counter-* |
 | S6 | **Custom-screen extras** (a: buttons, hand size, setup; b: the Cross window) | the Beast Out button and chip, ChpShufl's and DustCross's buttons, the hand size, the Cross window; `Unlocks`, `GameVersion`, `CrossList` | `SlotKind::Button`, `Phase::Window`, `custom.*`; the frontend's module per game | custom/*, forms/* |
 | S7 | **BN6's data** | `FormKind` and the forms' BN6 fields, `ChipData`'s BN6 fields, `Registry::Lockon` | systems' `extends` with defaults | everything |
