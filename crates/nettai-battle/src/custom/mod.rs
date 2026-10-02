@@ -19,7 +19,7 @@ pub mod screen;
 
 pub use folder::{BattleFolder, FolderChip, SavedFolder};
 pub use library::Library;
-pub use look::{Drawn, ScreenLook};
+pub use look::{DarkHover, Drawn, ScreenLook};
 pub use screen::{Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind, SlotState};
 
 use crate::battle::{Battle, CustomResult, battle_flags};
@@ -420,6 +420,15 @@ impl Battle {
             let mut s = self.custom.sides[side as usize].clone();
             let mut console = self.consoles[side as usize];
             let request = s.tick(&ctx, &mut console, |id| crate::hand::chip_damage(self, Some(id), side));
+            // The screen's sounds, which only its player hears.
+            if let Some(screen) = &s.screen {
+                for sound in screen.look.drawn.sounds() {
+                    self.sound_for(side, sound.role());
+                }
+                if let Some((music, screen)) = screen.look.drawn.volume {
+                    self.play_sound_for(side, crate::sound::SoundCue::ScreenVolume { music, screen });
+                }
+            }
             self.custom.sides[side as usize] = s;
             self.consoles[side as usize] = console;
             if request == Some(Request::Send) {

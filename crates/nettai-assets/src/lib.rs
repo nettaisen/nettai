@@ -7,7 +7,32 @@
 //! per pixel, where index 0 is transparent.
 
 pub mod custom;
-pub use custom::{ChipArt, CustomScreen, MapPatch, PatchList, Picture, SlotPictures};
+pub use custom::{ChipArt, CustomScreen, MapPatch, PatchList, Picture, SlotPictures, VersionPictures};
+
+/// Assets a game version has its own of: the pack's base game's, and other
+/// versions' that differ, by version name (a BN6 pack: "gregar", from the
+/// second ROM). A console of a version shows its own, else the base's.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Versioned<T> {
+    pub base: T,
+    pub versions: Vec<(String, T)>,
+}
+
+impl<T> Versioned<T> {
+    pub fn new(base: T) -> Versioned<T> {
+        Versioned { base, versions: Vec::new() }
+    }
+
+    /// The version's own, else the base's.
+    pub fn get(&self, version: &str) -> &T {
+        self.version(version).unwrap_or(&self.base)
+    }
+
+    /// The version's own, if it has its own.
+    pub fn version(&self, version: &str) -> Option<&T> {
+        self.versions.iter().find(|(v, _)| v == version).map(|(_, t)| t)
+    }
+}
 
 /// Everything the frontend draws with.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

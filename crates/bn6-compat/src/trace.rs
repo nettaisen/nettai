@@ -227,7 +227,7 @@ fn navi_stats(hex: &str, ids: &Ids) -> NaviStats {
 
 // ---- Replaying a trace through the engine -----------------------------------
 
-use crate::Compat;
+use crate::{Compat, Game};
 use crate::codec::{self, Ids};
 use nettai_battle::battle::{Battle, CustomResult, TickEvents};
 use nettai_battle::content::Content;
@@ -284,6 +284,16 @@ pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> 
 }
 
 impl Round {
+    /// The traced console's game: its side's (BattleState+0x0D, the local
+    /// side) in `game_versions`; Falzar in traces recorded without them.
+    pub fn console_game(&self) -> Game {
+        let local = unhex(&self.setup.battle_state)[0x0D] as usize & 1;
+        match self.setup.game_versions.as_ref().map(|v| v[local].as_str()) {
+            Some("gregar") => Game::Gregar,
+            _ => Game::Falzar,
+        }
+    }
+
     /// The engine's starting point for this round, on `content` (whose
     /// numbers `compat` gives).
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> RoundSetup {
@@ -292,7 +302,7 @@ impl Round {
         let stats = |s: &str| navi_stats(s, &ids);
         RoundSetup {
             content: content.hash(),
-            settings: codec::battle_settings(&unhex(&self.setup.settings), &ids),
+            settings: codec::battle_settings_of(self.console_game(), &unhex(&self.setup.settings), &ids),
             navi_stats: [stats(&self.setup.navi_stats[0]), stats(&self.setup.navi_stats[1])],
             rng: self.setup.rng2,
             local_side: bs[0x0D],
@@ -512,7 +522,15 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
         .iter()
         .map(|&o| Unknown { xy: nettai_battle::kinds::effect::xy_unknown(b, o), z_fraction: spark_z_fraction_unknown(b, compat, o) })
         .collect();
-    let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, compat, o, u)).collect();
+    // The traced console's game: its player's (the local side's; not its
+    // navi's NaviStats version, which a link navi has as Gregar's). A
+    // Gregar console's objects keep Gregar's spawner addresses where the
+    // content has Falzar's (games.toml).
+    let game = match b.setup.players[b.round.local_side as usize & 1].unlocks.version {
+        nettai_battle::custom::GameVersion::Gregar => Game::Gregar,
+        nettai_battle::custom::GameVersion::Falzar => Game::Falzar,
+    };
+    let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, compat, o, u, game)).collect();
     let theirs: Vec<String> =
         f.objects.iter().enumerate().map(|(i, o)| describe_trace(compat, o, unknown.get(i).copied().unwrap_or_default())).collect();
     if ours != theirs {
@@ -636,7 +654,7 @@ fn z_fraction_is_garbage(compat: &Compat, kind: u8, index: u8) -> bool {
     slot_kind(compat, kind, index).is_some_and(|k| k.scratch_z_fraction)
 }
 
-fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, unknown: Unknown) -> String {
+fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, unknown: Unknown, game: Game) -> String {
     let o = b.objects.get(r);
     let status = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
     // The engine's identities as the original's numbers: the object's kind
@@ -654,10 +672,10 @@ fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, un
         index,
         o.flags,
         [o.state, action, o.phase, o.phase_init],
-        [o.panel.x, o.panel.y],
+        [o.panel.x, compat.games.panel_y(game, &b.content.defs.kind(o.kind).key, o.panel.y)],
         o.alliance,
         [o.hp, o.max_hp],
-        [o.pos.x, o.pos.y, o.pos.z],
+        [o.pos.x, o.pos.y, compat.games.z(game, o.pos.z)],
         o.timer,
         o.anim,
         status,
