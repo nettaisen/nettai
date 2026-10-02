@@ -23,6 +23,19 @@ Related: [core-content-boundary.md](core-content-boundary.md) (the core, ruleset
 (the Luau runtime's cost), [rollback.md](rollback.md) (snapshots, digest, perspective),
 [content-pack.md](content-pack.md) and [asset-formats.md](asset-formats.md) (packs).
 
+## Decided (2026-10-01)
+
+The user, on this document: "push more rules into luau. also don't do this until all the gameplay stuff in bn6 is
+done".
+
+- **Option (b), not the recommended hybrid:** more of the rules move into Luau, so that a game is mostly content.
+  §3.3 is the direction; §3.5's recommendation and its Rust-ruleset-per-game line are not taken. What §3.1 says
+  about rollback cost (Luau-side rules estimated at five to ten times today's 124 µs worst case per rendered frame)
+  and about global script state are the problems that work will have to solve, not reasons to stop.
+- **Not started until BN6's gameplay is done:** nothing in §4 begins, including the move-only `bn6` boundary,
+  while BN6's gameplay work is open (the one-sided and unrun coverage, the Gregar console, the 2022 replays, and
+  whatever they find). The other decisions in §5 wait with it.
+
 ## 0. Summary
 
 - **nettai-battle is about a sixth generic, two thirds BN-series rules written with BN6's numbers, and a sixth
