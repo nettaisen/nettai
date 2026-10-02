@@ -83,6 +83,13 @@ pub struct KindEntry {
     /// The fraction of its Z is register garbage.
     #[serde(default)]
     pub scratch_z_fraction: bool,
+    /// Header-flag bits its spawner loads from the console's open bus (the
+    /// boulder's `sub_80D2430` reads the byte from an address in the BIOS):
+    /// the last BIOS opcode fetched, which an interrupt landing just before
+    /// the read changes, so the two consoles of a battle can disagree on
+    /// them. The engine keeps one value; the comparison skips these bits.
+    #[serde(default)]
+    pub open_bus_flags: u8,
     /// The actor-list entry type that places it (`off_80073A0`).
     #[serde(default)]
     pub actor_list_entry: Option<u8>,
