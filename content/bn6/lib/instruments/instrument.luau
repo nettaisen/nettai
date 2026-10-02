@@ -7,7 +7,8 @@
 -- playing time, then a pause; and again. What differs between the four is
 -- the instrument record (`instrument.instrument { ... }`, a row of
 -- `byte_80D4078` with the effect `off_80D4298` names), which each chip
--- defines.
+-- defines; a game whose instruments have other HP or another sprite gives
+-- them there (`hp`, `sprite`).
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
@@ -43,8 +44,11 @@ local EFFECT_PERIOD, TUNE_PERIOD = 3, 0x40
 -- The actions (the object's action byte).
 local APPEAR, DESTROYED, REST, PLAY = 0, 2, 8, 9
 
--- An instrument.
+-- An instrument; with its own sprite, its absorbed look is that sprite's.
 function instrument.instrument(i: Instrument): Instrument
+    if i.sprite then
+        i.absorbed = absorbed_obstacle.look { sprite = i.sprite }
+    end
     return define.record("instrument", i)
 end
 
@@ -148,7 +152,7 @@ local function destroyed(me: Object)
         local p = me.pos
         battle.effect(Vec3.new(p.x, p.y, p.z + 0x14_0000), effects.explosion)
     elseif how == "absorbed" then
-        obstacle.fly_to_absorber(me, ABSORBED)
+        obstacle.fly_to_absorber(me, (me.state :: State).instrument.absorbed or ABSORBED)
     else
         local blink = obstacle.blink_out(me)
         if blink == "blinking" then
@@ -194,12 +198,12 @@ local function tick(me: Object)
     me.collision:present()
 end
 
--- `sub_80D40A8`: on its panel, with its look, 60 HP and its lifetime.
+-- `sub_80D40A8`: on its panel, with its look, its HP (60) and its lifetime.
 local function init(me: Object)
     local i = (me.state :: State).instrument
     me.visible = true
     local sprite = me.sprite
-    sprite:load(SPRITE)
+    sprite:load(i.sprite or SPRITE)
     sprite.shadow = "ground"
     me.anim, me.anim_loaded = 0, 0
     sprite:set_animation(0)
@@ -209,7 +213,8 @@ local function init(me: Object)
     me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
     me.identity = i.identity
-    me.hp, me.max_hp = HP, HP
+    local hp = i.hp or HP
+    me.hp, me.max_hp = hp, hp
     me.timer = LIFETIME
     sprite.palette = i.palette
     if not me:create_collision() then

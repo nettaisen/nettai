@@ -7,11 +7,15 @@
 # Sprites: "cc-ii", the category's byte offset in the sprite list (0x08032728) and the index.
 [sprites]
 instrument = "04-08"
+protoman = "08-01"
+sword = "0c-00"
+cannon = "0c-01"
 bomb = "0c-02"
 tank-cannon = "0c-08"
 yoyo = "0c-0b"
 heal = "0c-12"
 grab-shot = "0c-13"
+sword-slash = "0c-14"
 hand-fan = "0c-16"
 tornado = "0c-17"
 air-shooter = "0c-18"
