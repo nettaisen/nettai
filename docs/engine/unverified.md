@@ -190,6 +190,7 @@ standard chip action…), whichever section below the family belongs to:
 | RskyHny (§3.7) | the bee's end by battle over; a sting with no navi on the panel; steering in a column, reversing in a row; the destination fallbacks | the lab's bees always reach a standing target | yes | chips/0x025-rskyhny1/ko, invisible, moving-target, bee-shot: verified |
 | RskyHny | params byte 1, the fade (action 8), the bee without a collision slot | no chip, no setter, pool full | unreachable | |
 | Dragons (§3.8) | no enemy body ahead, either part's end at the battle's end, a blocked hit | | yes | chips/0x02e-heatdrgn/ko, invisible, barrier: verified |
+| Dragons | the head's swim animation for a fifth of 5 or more (`sub_810FA4C` turns a 5 into 4 and leaves anything larger) | every BN6 dragon swims a panel in 10 ticks, so the quotient stays below 5; a 6 needs a panel's ticks 5n + r with n < r <= 4 | unreachable with BN6's dragons | |
 | Bombs and seeds (§3.9) | a bomb ending at the battle's end | | yes | chips/0x036-minibomb/ko: verified |
 | BlkBomb | set off by fire (its own side's, the other's), pushed, broken without fire, its lifetime, thrown at a hole | | yes | chips/0x03c-blkbomb/fire, enemy-fire, pushed, shot, lifetime, holes: verified |
 | BugBomb | its other bug choices; landed and broken | one RNG seed | yes | chips/0x043-bugbomb/seed-1 … seed-4, landed: verified |
