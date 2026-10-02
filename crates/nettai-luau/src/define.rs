@@ -120,11 +120,13 @@ pub(crate) fn install_assets(
     lua: &Lua,
     tables: &Rc<RefCell<AssetTables>>,
     module: Rc<dyn Fn() -> Option<String>>,
+    pack: Rc<crate::Pack>,
 ) -> mlua::Result<()> {
     let asset = lua.create_table()?;
     for kind in AssetKind::ALL {
         let tables = Rc::downgrade(tables);
         let module = module.clone();
+        let pack = pack.clone();
         let f = lua.create_function(move |lua, name: LuaValue| {
             let what = format!("asset.{kind}");
             let at = module().ok_or_else(|| mlua::Error::runtime(format!("{what}: assets are named while content loads")))?;
@@ -133,8 +135,11 @@ pub(crate) fn install_assets(
                 return Err(mlua::Error::runtime(format!("{at}: {what} takes a name, not {}", name.type_name())));
             };
             let name = name.to_str()?.to_string();
-            let h = tables.borrow().names.handle(kind, &name).ok_or_else(|| {
-                mlua::Error::runtime(format!("{at}: no {kind} is named {name:?}"))
+            // (Qualified with the module's root's pack: `bn6:bomb`.)
+            let root = keys::root_of(&at).unwrap_or("");
+            let qualified = pack.asset_name(root, &name).map_err(|e| mlua::Error::runtime(format!("{at}: {what}: {e}")))?;
+            let h = tables.borrow().names.handle(kind, &qualified).ok_or_else(|| {
+                mlua::Error::runtime(format!("{at}: no {kind} is named {name:?} (the pack {})", keys::root_of(&qualified).unwrap_or("")))
             })?;
             tables.borrow_mut().value(lua, kind, h)
         })?;

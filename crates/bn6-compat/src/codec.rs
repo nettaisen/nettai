@@ -49,6 +49,41 @@ impl<'a> Ids<'a> {
         self.compat.def_key(self.content, key)
     }
 
+    /// The pack BN6's numbers are of: compat's root's assets pack in the
+    /// content (docs/design/rules-in-luau.md §7.4: the engine knows assets
+    /// by handle; the original's numbers are its pack's).
+    pub fn pack(&self) -> nettai_content_api::PackId {
+        let root = self.compat.root_in(self.content);
+        self.content.assets.pack(root).unwrap_or_else(|| panic!("the content loads no pack of {root}"))
+    }
+
+    /// The original's number for asset `h` of `kind` (BN6's pack's).
+    pub fn asset_number(&self, kind: nettai_content_api::AssetKind, h: u16) -> u16 {
+        let a = self.content.assets.number(kind, h).unwrap_or_else(|| panic!("no {kind} has handle {h}"));
+        assert_eq!(a.pack, self.pack(), "{kind} {h} is no asset of BN6's pack");
+        a.id
+    }
+
+    /// The handle of BN6's `kind` asset numbered `n`.
+    pub fn asset(&self, kind: nettai_content_api::AssetKind, n: u16) -> u16 {
+        self.content.assets.number_handle(kind, self.pack(), n).unwrap_or_else(|| panic!("the pack has no {kind} {n:#x}"))
+    }
+
+    /// The background numbered `n` (a settings record's byte).
+    pub fn background(&self, n: u8) -> nettai_battle::content::BackgroundId {
+        nettai_battle::content::BackgroundId(self.asset(nettai_content_api::AssetKind::Background, n as u16))
+    }
+
+    /// A background's number.
+    pub fn background_number(&self, b: nettai_battle::content::BackgroundId) -> u8 {
+        self.asset_number(nettai_content_api::AssetKind::Background, b.0) as u8
+    }
+
+    /// A sound's song-table number.
+    pub fn sound_number(&self, s: nettai_battle::sound::SoundId) -> u16 {
+        self.asset_number(nettai_content_api::AssetKind::Sound, s.0)
+    }
+
     /// A definition's key as compat writes it; a definition of another
     /// root has no BN6 number.
     fn key<'k>(&self, key: &'k str) -> &'k str {
@@ -497,13 +532,13 @@ pub fn battle_settings_of(game: Game, b: &[u8], ids: &Ids) -> BattleSettings {
         .find_map(|(key, _)| {
             let h = content.defs.stage_by_key(&ids.compat.def_key(content, key))?;
             let r = content.stage(h);
-            let music = r.music.map_or(NO_MUSIC as u16, |m| m.0);
+            let music = r.music.map_or(NO_MUSIC as u16, |m| ids.sound_number(m));
             ((music, r.mode, r.battle_number, r.panel_pattern) == (b[2] as u16, b[3], b[5], b[6])).then_some(h)
         })
         .unwrap_or_else(|| panic!("no stage has the battle settings {b:02x?}"));
     BattleSettings {
         stage,
-        background: b[4],
+        background: ids.background(b[4]),
         effects: u32::from_le_bytes(b[8..12].try_into().unwrap()),
     }
 }
@@ -511,7 +546,7 @@ pub fn battle_settings_of(game: Game, b: &[u8], ids: &Ids) -> BattleSettings {
 /// The init exchange's two stage pairs (`byte_203CA50`: settings index,
 /// then background, per round).
 pub fn later_stages(b: &[u8], ids: &Ids) -> [Stage; 2] {
-    [Stage { stage: ids.stage(b[0]), background: b[1] }, Stage { stage: ids.stage(b[2]), background: b[3] }]
+    [Stage { stage: ids.stage(b[0]), background: ids.background(b[1]) }, Stage { stage: ids.stage(b[2]), background: ids.background(b[3]) }]
 }
 
 /// A player's SP navi deletion times (`byte_203EB00`, 0x28 bytes).

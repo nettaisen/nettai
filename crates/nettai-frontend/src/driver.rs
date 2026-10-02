@@ -380,8 +380,16 @@ pub fn bn6_live_setup(content: &Content, seed: u32, stage: Option<&str>) -> Resu
 /// shuffled by its console's RNG, the battle's RNG and the consoles' from
 /// `seed`.
 pub fn live_round(content: &Content, seed: u32, field: &Field, players: &[Loadout; 2]) -> Result<(RoundSetup, LiveChoices), String> {
-    let background_id =
-        |s: StageHandle, b: &Option<String>| b.as_ref().map_or(content.stage(s).background, |b| content.assets.backgrounds[b]);
+    // (A background a match names: the content's own pack's, unless
+    // qualified.)
+    let background_id = |s: StageHandle, b: &Option<String>| -> nettai_battle::content::BackgroundId {
+        b.as_ref().map_or(content.stage(s).background, |b| {
+            let home = content.scripts.roots.first().map_or("", |r| r.assets());
+            let name = if nettai_content_api::keys::is_qualified(b) { b.clone() } else { nettai_content_api::keys::qualify(home, b) };
+            let h = content.assets.handle(nettai_content_api::AssetKind::Background, &name);
+            nettai_battle::content::BackgroundId(h.unwrap_or_else(|| panic!("the packs have no background {name:?}")))
+        })
+    };
     let settings = BattleSettings {
         stage: field.stage,
         background: background_id(field.stage, &field.background),
@@ -826,7 +834,7 @@ mod tests {
         let heat = content.defs.form_by_key("heatcross").unwrap();
         let heat_beast = content.defs.form_by_key("heatcross-beast").unwrap();
         let stage = link_battle_stages(&content)[0];
-        let settings = BattleSettings { stage, background: 0, effects: content.stage(stage).effects | MATCH_EFFECTS };
+        let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], 5);
         setup.players[0].unlocks.cross_list = Some(CrossList::new(&[heat]));

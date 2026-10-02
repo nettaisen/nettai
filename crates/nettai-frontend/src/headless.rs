@@ -190,7 +190,8 @@ pub struct Audit {
 pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<std::sync::Arc<m4a::SoundBank>>) -> Audit {
     let mut out = Audit::default();
     renderer.problems.clear();
-    let mut audio = sound.clone().map(nettai_audio::BattleAudio::new);
+    let songs = sessions.first().map(|s| nettai_audio::Songs::of(&s.battle.content.assets)).unwrap_or_default();
+    let mut audio = sound.clone().map(|bank| nettai_audio::BattleAudio::new(bank, songs));
     let mut samples = Vec::new();
     for mut s in sessions {
         renderer.reset();

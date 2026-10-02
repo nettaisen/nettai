@@ -15,7 +15,6 @@
 
 use crate::report::Report;
 use nettai_assets::Bundle;
-use nettai_content_api::SpriteId;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::Path;
@@ -78,11 +77,11 @@ impl AssetNames {
     /// its image or song: a banner the HUD doesn't draw is still the
     /// engine's banner), and the pack's other sprites, backgrounds,
     /// banners, mugshots and songs under their placeholders.
-    pub fn index(&self, graphics: &Bundle, songs: &std::collections::BTreeSet<u16>) -> nettai_content_api::AssetNames {
-        let mut a = nettai_content_api::AssetNames::default();
+    pub fn index(&self, graphics: &Bundle, songs: &std::collections::BTreeSet<u16>) -> nettai_content_api::PackIndex {
+        let mut a = nettai_content_api::PackIndex::default();
         let sprites = self.sprites.keys().copied().chain(graphics.sprites.iter().map(|s| (s.category, s.index)));
         for (category, index) in sprites {
-            a.sprites.insert(self.sprite(category, index), SpriteId { category, index });
+            a.sprites.insert(self.sprite(category, index), nettai_content_api::PackSprite { category, index });
         }
         for &id in self.songs.keys().chain(songs) {
             a.sounds.insert(self.song(id), id);
@@ -105,7 +104,7 @@ impl AssetNames {
 }
 
 /// The asset index's file.
-pub fn index_file(index: &nettai_content_api::AssetNames) -> (String, Vec<u8>) {
+pub fn index_file(index: &nettai_content_api::PackIndex) -> (String, Vec<u8>) {
     let mut s = String::from(
         "# The pack's assets by name (docs/design/content-model-v2.md §6.3): what content\n\
          # names (asset.sprite(\"bomb\")) and what the engine knows it as. Sprites are\n\
@@ -147,9 +146,9 @@ struct IndexFile {
     mugshots: BTreeMap<String, u8>,
 }
 
-/// A pack's asset index; empty (with a note) for a pack without one, whose
-/// content can name no asset.
-pub fn read_index(root: &Path, report: &mut Report) -> Option<nettai_content_api::AssetNames> {
+/// A pack's asset index (its own names, unqualified); empty (with a note)
+/// for a pack without one, whose content can name no asset.
+pub fn read_index(root: &Path, report: &mut Report) -> Option<nettai_content_api::PackIndex> {
     let path = root.join(INDEX);
     if !path.is_file() {
         report.note(INDEX, "the pack has no asset index: content can name no asset");
@@ -169,19 +168,19 @@ pub fn read_index(root: &Path, report: &mut Report) -> Option<nettai_content_api
             return None;
         }
     };
-    let mut a = nettai_content_api::AssetNames {
+    let mut a = nettai_content_api::PackIndex {
         sounds: f.sounds,
         banners: f.banners,
         backgrounds: f.backgrounds,
         mugshots: f.mugshots,
-        ..Default::default()
+        sprites: Default::default(),
     };
     let mut ok = true;
     for (name, id) in f.sprites {
         let parse = |s: &str| u8::from_str_radix(s, 16).ok();
         match id.split_once('-').and_then(|(c, i)| Some((parse(c)?, parse(i)?))) {
             Some((category, index)) => {
-                a.sprites.insert(name, SpriteId { category, index });
+                a.sprites.insert(name, nettai_content_api::PackSprite { category, index });
             }
             None => {
                 report.error(INDEX, format!("sprite {name} is {id:?}, not \"category-index\" in hex"));
