@@ -521,7 +521,7 @@ impl Window {
         }
         if matches!(anim.step, S::Result) && anim.timer >= 0x10 {
             let k = pa.start as usize;
-            let name = &v.b.content.chip(pa.chip).name;
+            let name = text.words.chip_name(v.b, pa.chip);
             self.put_advance_text(v, k, name, None, text, problems);
             out.push((k, row(k), 10));
         }
@@ -536,7 +536,7 @@ impl Window {
         let key = &v.b.content.defs.chip(c.id).key;
         let number = bn6_compat::Compat::bn6().chips.get(key.as_str()).map_or(u16::MAX, |e| e.id);
         let code = (number < ADVANCE_NO_CODE_FROM).then_some(c.code.0);
-        self.put_advance_text(v, k, &v.b.content.chip(c.id).name, code, text, problems);
+        self.put_advance_text(v, k, text.words.chip_name(v.b, c.id), code, text, problems);
     }
 
     /// A name (and a pick's code in its last cell) into name `k`'s tiles;
@@ -657,15 +657,16 @@ impl Window {
         let a = v.assets;
         let def = v.b.content.defs.chip(c.id);
         let data = v.b.content.chip(c.id);
-        let (glyphs, missing) = fonts::cell_glyphs(v.hud, &data.name);
+        let name = text.words.chip_name(v.b, c.id);
+        let (glyphs, missing) = fonts::cell_glyphs(v.hud, name);
         if !missing.is_empty() {
-            problems.note(format!("chip {:?} is named {:?}, but the pack's font has no glyph for {missing:?}", def.key, data.name));
+            problems.note(format!("chip {:?} is named {name:?}, but the pack's font has no glyph for {missing:?}", def.key));
         }
-        if text.takes(&data.name) {
+        if text.takes(name) {
             // The name's cells in the window's colour, the words on the
             // text layer in all eight of them (nothing follows the name).
             self.tiles.put(NAME_TILE, &fonts::cell_text(v.hud, &[], NAME_CELLS, NAME_SHIFT));
-            self.name = Some((data.name.clone(), NAME_CELLS));
+            self.name = Some((name.to_string(), NAME_CELLS));
         } else {
             self.tiles.put(NAME_TILE, &fonts::cell_text(v.hud, &glyphs, NAME_CELLS, NAME_SHIFT));
         }
@@ -921,7 +922,7 @@ fn names_shown(b: &Battle, s: &Screen) -> bool {
 
 fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Layer, text: &mut TextSink, problems: &mut Problems) {
     let other = v.side ^ 1;
-    let name = &v.b.content.navi(v.b.stats[other as usize].navi).name;
+    let name = text.words.navi_name(v.b, v.b.stats[other as usize].navi);
     let (glyphs, missing) = fonts::cell_glyphs(v.hud, name);
     if !missing.is_empty() {
         problems.note(format!("the navi named {name:?}: the pack's font has no glyph for {missing:?}"));
