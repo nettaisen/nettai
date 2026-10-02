@@ -108,6 +108,7 @@ Every definition belongs to one registry. The engine knows the registries and th
 | status | `define.status` | required `id` (shared vocabulary) | requests, duration, timer | (none) |
 | lockon | `define.lockon` | required `id` (shared vocabulary) | the Beast Out lock-on search | (none) |
 | record | `define.record(type, spec)` | derived, or `id` | only its type name (Luau reads the fields) | (none, unless a setup names it) |
+| patch_card | `define.patch_card` | required `id` | its MB and its effects' kinds and bug flags (a game's rules read the rest; §3.11) | the card's number, in compat/patch-cards.toml |
 | sprite, sound, banner, background, mugshot, chip icon | `asset.*` (§6.3) | the asset's name | names; sprites' animation timing | the ROM's numbers, in compat/assets.toml |
 
 Singletons, defined once per pack: `define.rules(section, spec)` for each rule table (§3.8) and `define.roles`
@@ -648,6 +649,14 @@ gets it as `WeaponDef::instant`; a kind's `place` is `KindDef::place` (v1's `act
 went with the stages' definitions, step 12). The instant chips' action runs the attack's `instant` effect, which chip use and such
 a weapon set; the dimming and navi chip actions read the chip's usage. Content's function roles
 (`hooks.first_barrier`) are in §7.4.
+
+### 3.11 Patch cards
+
+`define.patch_card { id, mb, effects }` (content/bn6/cards/<name>/card.luau) is a patch card, BN4's, BN5's and BN6's
+Modification Card (docs/engine/patch-cards.md): the engine keeps its capacity cost and its effects' kinds and bug
+flags (`PatchCardDef`), and a player's installed cards are their setup's (`PlayerSetup::patch_cards`). What an
+effect does is a game's rules' (BN6's patch-cards system, rules/patch-cards), which read the effects' own fields
+from the definition. Its name is the locales' (`[patch-cards]`).
 
 ## 4. Folder layout
 

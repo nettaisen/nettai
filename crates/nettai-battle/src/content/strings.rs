@@ -1,6 +1,6 @@
 //! The content's display text (its strings): chip names and descriptions,
 //! navi names and no-running messages, the Crosses' names and descriptions,
-//! records' names (BN6's patch cards), by the definitions' keys. A
+//! patch cards' names, by the definitions' keys. A
 //! definition holds no display text; a content root's
 //! `locales/<lang>.toml` does, one table a language (the loader, nettai-
 //! content `locale`, reads them). The game's marks are characters: Ⓐ and
@@ -56,10 +56,10 @@ pub struct FormStrings {
     pub description: Option<String>,
 }
 
-/// A record's strings: its name (a patch card's, which its menu shows).
+/// A patch card's strings: its name, which its menu shows.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct RecordStrings {
+pub struct PatchCardStrings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 }
@@ -76,8 +76,8 @@ pub struct Strings {
     pub navis: BTreeMap<String, NaviStrings>,
     #[serde(default)]
     pub forms: BTreeMap<String, FormStrings>,
-    #[serde(default)]
-    pub records: BTreeMap<String, RecordStrings>,
+    #[serde(default, rename = "patch-cards")]
+    pub patch_cards: BTreeMap<String, PatchCardStrings>,
 }
 
 /// Presentation: the records hold what the battle reads of the strings (the
@@ -100,7 +100,7 @@ impl Strings {
             chips: q(root, self.chips),
             navis: q(root, self.navis),
             forms: q(root, self.forms),
-            records: q(root, self.records),
+            patch_cards: q(root, self.patch_cards),
         }
     }
 
@@ -116,7 +116,7 @@ impl Strings {
             chips: of(root, &self.chips),
             navis: of(root, &self.navis),
             forms: of(root, &self.forms),
-            records: of(root, &self.records),
+            patch_cards: of(root, &self.patch_cards),
         }
     }
 
@@ -128,7 +128,7 @@ impl Strings {
         self.chips.extend(other.chips);
         self.navis.extend(other.navis);
         self.forms.extend(other.forms);
-        self.records.extend(other.records);
+        self.patch_cards.extend(other.patch_cards);
     }
 
     pub fn chip(&self, key: &str) -> Option<&ChipStrings> {
@@ -143,8 +143,8 @@ impl Strings {
         self.forms.get(key)
     }
 
-    pub fn record(&self, key: &str) -> Option<&RecordStrings> {
-        self.records.get(key)
+    pub fn patch_card(&self, key: &str) -> Option<&PatchCardStrings> {
+        self.patch_cards.get(key)
     }
 }
 

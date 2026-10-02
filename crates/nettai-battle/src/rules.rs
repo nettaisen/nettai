@@ -54,13 +54,6 @@ impl PlayerSetup {
         block.set(schema, i, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
     }
 
-    /// Set element `k` (from 0) of array field `field` of system `system`'s
-    /// setup to `v`, as [`PlayerSetup::set_rule`] sets a field.
-    pub fn set_rule_elem(&mut self, content: &Content, system: &str, field: &str, k: usize, v: Value) -> Result<(), String> {
-        let (block, schema, i) = self.rule_field(content, system, field)?;
-        block.set_elem(schema, i, k, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
-    }
-
     /// The setup block of system `system` (by key) of the player's ruleset,
     /// its schema and the index of its field `field`; the blocks made zero
     /// first if the setup gives none.
@@ -206,6 +199,7 @@ mod tests {
     /// before anything reads them.
     mod patch_cards {
         use super::*;
+        use crate::patch_cards::{InstalledCard, PatchCards};
         use crate::setup::{GaugeSpeed, NaviStats, Supports};
 
         /// A battle whose side 0 plays by the test-cards ruleset with
@@ -216,14 +210,31 @@ mod tests {
             let mut s = scenario::setup();
             let p = &mut s.players[0];
             p.ruleset = content.defs.ruleset_by_key("test-cards");
-            for (k, &(key, on)) in cards.iter().enumerate() {
-                let card = content.defs.record(&format!("patch-card/{key}")).unwrap_or_else(|| panic!("no card {key:?}"));
-                p.set_rule_elem(&content, "patch-cards", "cards", k, Value::Def(nettai_content_api::Registry::Record, card.0))
-                    .unwrap();
-                p.set_rule_elem(&content, "patch-cards", "off", k, Value::Bool(!on)).unwrap();
-            }
+            let list: Vec<InstalledCard> = cards
+                .iter()
+                .map(|&(key, enabled)| InstalledCard {
+                    card: content.defs.patch_card_by_key(key).unwrap_or_else(|| panic!("no card {key:?}")),
+                    enabled,
+                })
+                .collect();
+            p.patch_cards = PatchCards::new(&list).unwrap();
             tweak(&mut s.navi_stats[0]);
             Battle::new(s, content)
+        }
+
+        #[test]
+        fn the_cards_are_definitions_and_the_setups_part() {
+            let content = scenario::content();
+            let h = content.defs.patch_card_by_key("test-stats").expect("the test card");
+            let card = content.patch_card(h);
+            assert_eq!(card.mb, 20);
+            let kinds: Vec<(&str, bool)> = card.effects.iter().map(|e| (e.kind.as_str(), e.bug)).collect();
+            assert_eq!(kinds, [("hp_add", false), ("hp_percent_add", false), ("attack_add", false), ("body", false), ("hp_drain", true)]);
+            // The cards are in the setup, which the digest covers.
+            let a = with_cards(&[("test-stats", true)], |_| {});
+            let b = with_cards(&[("test-stats", false)], |_| {});
+            assert_ne!(a.setup.players[0].patch_cards, b.setup.players[0].patch_cards);
+            assert_ne!(a.digest(), b.digest());
         }
 
         #[test]

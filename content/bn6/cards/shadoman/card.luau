@@ -5,8 +5,8 @@ local cards = require("../../rules/patch-cards/cards")
 local anti_damage = require("../../navis/megaman/weapons/anti-damage/weapon")
 local charge = require("./charge")
 
-return cards.card {
-    id = "patch-card/shadoman",
+return define.patch_card {
+    id = "shadoman",
     mb = 38,
     effects = {
         cards.bug(cards.hp(-50)),

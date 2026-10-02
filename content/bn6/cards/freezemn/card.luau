@@ -5,8 +5,8 @@ local cards = require("../../rules/patch-cards/cards")
 local barriers = require("../../lib/barriers/barriers")
 local variants = require("../../objects/projectile/variants")
 
-return cards.card {
-    id = "patch-card/freezemn",
+return define.patch_card {
+    id = "freezemn",
     mb = 30,
     effects = {
         cards.bug(cards.hp_percent(-5)),
