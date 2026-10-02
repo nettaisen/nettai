@@ -8,7 +8,8 @@
 //! the same content, and swaps what each player brings (an [`Offer`]: their
 //! folder, game, Crosses and patch cards; the language is each player's
 //! own) and their halves of the seed. Both then build the same round
-//! ([`netplay_setup`]): the field from the seed, each player's loadout on
+//! ([`netplay_setup`]): the host's arena (a match file's, else drawn from
+//! the seed on the host's stage, if it names one), each player's side on
 //! their side (the host's is side 0, the left navi).
 //!
 //! Every frame the driver takes what arrived, decides the player's buttons
@@ -17,7 +18,7 @@
 //! frame, drawn from the player's side, and the sound is the cue actions a
 //! tracker makes of every tick simulated (a cue played on a wrong
 //! prediction is taken back). A set's rounds follow each other on the same
-//! stream ([`crate::driver::next_round_setup`]).
+//! stream ([`nettai_match::next_round`]).
 //!
 //! The sound's tracker is the peer's world's observer, which the world tells
 //! everything (ticks simulated, rewinds, ticks settled); the player reads
@@ -33,23 +34,26 @@ use nettai_battle::cues::{CueAction, CueTracker};
 use nettai_battle::custom::{CrossList, SavedFolder};
 use nettai_battle::setup::RoundSetup;
 use nettai_battle::{Battle, BattleResult, RoundEnd};
-use nettai_battle::patch_cards::{InstalledCard, MAX_CARDS};
+use nettai_battle::patch_cards::InstalledCard;
 use nettai_content_api::StageHandle;
+use nettai_match::{Arena, Draws, Match, Place, Side};
 use nettai_netplay::protocol::BUTTONS;
 use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::transport::{Connection, Datagram, Hello, Role};
 use nettai_netplay::wire::{Reader, Writer};
 use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
 
-use crate::driver::{self, Driver, Field, LiveChoices, Loadout, Ran, Step};
-use crate::folders::{self, Draws, FolderLimits};
+use crate::driver::{Driver, Ran, Step};
 
-/// What a player brings to a netbattle: their loadout, and from the host a
-/// stage the round must be fought on (`--stage`).
+/// What a player brings to a netbattle: their side of the match (a match
+/// file's left side, or one drawn from their seed), and from the host the
+/// arena (a match file's) or a stage the round must be fought on
+/// (`--stage`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Offer {
-    pub loadout: Loadout,
+    pub side: Side,
     pub stage: Option<StageHandle>,
+    pub arena: Option<Arena>,
 }
 
 impl Offer {
@@ -57,27 +61,57 @@ impl Offer {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();
         let mut w = Writer(&mut out);
-        let Offer { loadout: Loadout { folder, game, crosses, cards }, stage } = self;
-        w.put(folder);
+        let Offer { side, stage, arena } = self;
+        let Side { ruleset, navi, game, stats, emotion_window_glitch, folder, crosses, cards, navi_level, bug_frags } = side;
+        w.put(ruleset);
+        w.put(navi);
         w.put(game);
+        w.put(stats);
+        w.put(emotion_window_glitch);
+        w.put(folder);
         w.put(crosses);
         w.put(cards);
+        w.put(navi_level);
+        w.put(bug_frags);
         w.put(stage);
+        w.put(&arena.is_some());
+        if let Some(a) = arena {
+            for p in std::iter::once(&a.first).chain(&a.later) {
+                w.put(&p.stage);
+                w.put(&p.background);
+            }
+        }
         out
     }
 
-    /// An offer from the other side, checked against `content`: a legal
-    /// folder of the content's chips, Crosses of its form-changing navi,
-    /// its patch cards, a link battle stage.
-    pub fn from_bytes(content: &Content, bytes: &[u8]) -> Result<Offer, String> {
+    /// An offer from the other side, checked against `content` as a match
+    /// file's side is (`nettai_match::check_side`), its arena or stage a
+    /// link battle's.
+    pub fn from_bytes(content: &Arc<Content>, bytes: &[u8]) -> Result<Offer, String> {
         let mut r = Reader::new(bytes);
         let decoded = (|| -> std::io::Result<Offer> {
-            let folder: SavedFolder = r.get()?;
-            let game = r.get()?;
-            let crosses: CrossList = r.get()?;
-            let cards: Vec<InstalledCard> = r.get()?;
+            let side = Side {
+                ruleset: r.get()?,
+                navi: r.get()?,
+                game: r.get()?,
+                stats: r.get()?,
+                emotion_window_glitch: r.get()?,
+                folder: r.get::<SavedFolder>()?,
+                crosses: r.get::<Option<CrossList>>()?,
+                cards: r.get::<Vec<InstalledCard>>()?,
+                navi_level: r.get()?,
+                bug_frags: r.get()?,
+            };
             let stage: Option<StageHandle> = r.get()?;
-            Ok(Offer { loadout: Loadout { folder, game, crosses, cards }, stage })
+            let arena = if r.get::<bool>()? {
+                let mut place = || -> std::io::Result<Place> { Ok(Place { stage: r.get()?, background: r.get()? }) };
+                let first = place()?;
+                let later = [place()?, place()?];
+                Some(Arena { first, later })
+            } else {
+                None
+            };
+            Ok(Offer { side, stage, arena })
         })();
         let offer = decoded.map_err(|e| format!("the other player's setup doesn't decode ({e})"))?;
         r.finish().map_err(|e| format!("the other player's setup doesn't decode ({e})"))?;
@@ -86,41 +120,35 @@ impl Offer {
     }
 
     /// The offer is one this content can play.
-    pub fn check(&self, content: &Content) -> Result<(), String> {
-        let l = &self.loadout;
-        let chips = content.defs.chips.len();
-        if let Some(c) = l.folder.chips.iter().find(|c| c.id.index() >= chips) {
-            return Err(format!("the other player's folder has a chip the content hasn't ({})", c.id.0));
-        }
-        let in_folder = |i: u8| (i as usize) < l.folder.chips.len();
-        if !l.folder.regular.is_none_or(in_folder) || !l.folder.tags.is_none_or(|(a, b)| in_folder(a) && in_folder(b)) {
-            return Err("the other player's Regular or tag chips aren't in their folder".into());
-        }
-        let broken = folders::violations(content, &l.folder, FolderLimits::of(&driver::live_navi(content)));
+    pub fn check(&self, content: &Arc<Content>) -> Result<(), String> {
+        let broken = nettai_match::check_side(content, &self.side);
         if !broken.is_empty() {
-            return Err(format!("the other player's folder breaks the rules: {}", broken.join("; ")));
+            return Err(format!("the other player's setup breaks the rules: {}", broken.join("; ")));
         }
-        let crosses = driver::all_crosses(content)?;
-        if l.crosses.forms().any(|f| !crosses.contains(&f)) {
-            return Err("the other player's Cross window offers a form that isn't a Cross".into());
+        if let Some(a) = &self.arena {
+            let broken = nettai_match::check::check_arena(content, a);
+            if !broken.is_empty() {
+                return Err(format!("the other player's arena breaks the rules: {}", broken.join("; ")));
+            }
         }
-        if l.cards.len() > MAX_CARDS || l.cards.iter().any(|c| c.card.index() >= content.defs.patch_cards.len()) {
-            return Err("the other player's patch cards aren't the content's".into());
-        }
-        if self.stage.is_some_and(|s| !driver::link_battle_stages(content).contains(&s)) {
+        if self.stage.is_some_and(|s| !nettai_match::link_battle_stages(content).contains(&s)) {
             return Err("the other player's stage isn't a link battle stage".into());
         }
         Ok(())
     }
 }
 
-/// The round both players of a match play: the field drawn from the
-/// match's seed (on the host's stage, if it names one), each player's
-/// loadout on their side (`offers` by side: the host's, then the joiner's).
-pub fn netplay_setup(content: &Content, seed: u32, offers: &[Offer; 2]) -> Result<(RoundSetup, LiveChoices), String> {
-    let mut draws = Draws::new(seed);
-    let field: Field = driver::draw_field(content, &mut draws, offers[0].stage)?;
-    driver::live_round(content, seed, &field, &[offers[0].loadout.clone(), offers[1].loadout.clone()])
+/// The round both players of a match play, and the match: the host's arena
+/// (else one drawn from the match's seed, on the host's stage if it names
+/// one), each player's side on their side (`offers` by side: the host's,
+/// then the joiner's).
+pub fn netplay_setup(content: &Content, seed: u32, offers: &[Offer; 2]) -> Result<(RoundSetup, Match), String> {
+    let arena = match &offers[0].arena {
+        Some(a) => a.clone(),
+        None => nettai_match::draw::arena(content, &mut Draws::new(seed), offers[0].stage)?,
+    };
+    let m = Match { seed: Some(seed), arena, sides: [offers[0].side.clone(), offers[1].side.clone()] };
+    Ok((m.round(content, seed), m))
 }
 
 /// How a netplay match plays.
@@ -195,9 +223,9 @@ pub struct NetPlayer<D: Datagram> {
     peer: NetPeer,
     /// The sound's actions of this round the player has taken.
     heard: usize,
-    /// The set's first round, and the players' loadouts by side.
+    /// The set's first round, and the players' folders by side.
     first: RoundSetup,
-    loadouts: [Loadout; 2],
+    folders: [SavedFolder; 2],
     options: NetOptions,
     start: Instant,
     /// The set's result for this player, once it is over.
@@ -206,12 +234,12 @@ pub struct NetPlayer<D: Datagram> {
 
 impl<D: Datagram> NetPlayer<D> {
     /// The match on `conn` (after the handshake), from `first`, its first
-    /// round, between these loadouts (by side).
-    pub fn new(content: Arc<Content>, conn: Connection<D>, first: RoundSetup, loadouts: [Loadout; 2], options: NetOptions) -> NetPlayer<D> {
+    /// round, between these players' folders (by side).
+    pub fn new(content: Arc<Content>, conn: Connection<D>, first: RoundSetup, folders: [SavedFolder; 2], options: NetOptions) -> NetPlayer<D> {
         let side = conn.side();
         let config = PeerConfig::new(options.delay, options.max_lead);
         let world = BattleWorld::with_observer(StandInBattle::new(Battle::new(first.clone(), content.clone())), side, Sound::new(side as u8));
-        NetPlayer { content, conn, side, peer: Peer::new(world, config), heard: 0, first, loadouts, options, start: Instant::now(), over: None }
+        NetPlayer { content, conn, side, peer: Peer::new(world, config), heard: 0, first, folders, options, start: Instant::now(), over: None }
     }
 
     /// The side this player plays.
@@ -294,7 +322,7 @@ impl<D: Datagram> NetPlayer<D> {
                 // 0's; the result is this player's.)
                 let next = match settled.battle().round_end() {
                     Some(&RoundEnd::NextRound { settings, score }) => {
-                        Some(driver::next_round_setup(&self.content, &self.first, &self.loadouts, settled.battle(), settings, score))
+                        Some(nettai_match::next_round(&self.content, &self.first, &self.folders, settled.battle(), settings, score))
                     }
                     _ => None,
                 };
@@ -394,22 +422,22 @@ pub fn hello(role: Role, content: &Content, offer: &Offer) -> Hello {
 
 /// After the handshake: both offers by side (the other's checked), and the
 /// round they play.
-pub fn agree<D: Datagram>(content: &Content, conn: &Connection<D>, mine: &Offer) -> Result<([Offer; 2], RoundSetup, LiveChoices), String> {
+pub fn agree<D: Datagram>(content: &Arc<Content>, conn: &Connection<D>, mine: &Offer) -> Result<([Offer; 2], RoundSetup, Match), String> {
     let theirs = Offer::from_bytes(content, &conn.theirs().setup)?;
     let offers = if conn.side() == 0 { [mine.clone(), theirs] } else { [theirs, mine.clone()] };
-    let (setup, choices) = netplay_setup(content, conn.seed(), &offers)?;
-    Ok((offers, setup, choices))
+    let (setup, m) = netplay_setup(content, conn.seed(), &offers)?;
+    Ok((offers, setup, m))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::folders::bn6_test_content;
+    use nettai_match::testing::bn6_content as bn6_test_content;
     use nettai_netplay::standin::Masher;
     use nettai_netplay::transport::Udp;
 
     fn offer(content: &Content, seed: u32) -> Offer {
-        Offer { loadout: Loadout::drawn(content, &mut Draws::new(seed)).unwrap(), stage: None }
+        Offer { side: Side::drawn(content, &mut Draws::new(seed)).unwrap(), stage: None, arena: None }
     }
 
     /// An offer goes over the wire as it is; one the content can't play is
@@ -418,42 +446,50 @@ mod tests {
     fn offers_roundtrip_and_bad_ones_are_refused() {
         let content = bn6_test_content();
         let mut o = offer(&content, 5);
-        o.stage = Some(driver::link_battle_stages(&content)[3]);
-        o.loadout.cards = driver::patch_cards(&content, "canodumb,-shadow").unwrap_or_default();
+        o.stage = Some(nettai_match::link_battle_stages(&content)[3]);
+        o.side.cards = nettai_match::patch_cards(&content, "canodumb,-shadow").unwrap_or_default();
         assert_eq!(Offer::from_bytes(&content, &o.to_bytes()).unwrap(), o);
+        // A match file's arena goes too.
+        let mut a = o.clone();
+        a.arena = Some(nettai_match::draw::live(&content, 9, None).unwrap().arena);
+        assert_eq!(Offer::from_bytes(&content, &a.to_bytes()).unwrap(), a);
         let mut bad = o.clone();
-        bad.loadout.folder.chips = [bad.loadout.folder.chips[0]; 30];
+        bad.side.folder.chips = [bad.side.folder.chips[0]; 30];
+        bad.side.folder.regular = None;
         assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("breaks the rules"));
         let mut bad = o.clone();
-        bad.loadout.folder.chips[0].id = nettai_content_api::ChipHandle(60_000);
+        bad.side.folder.chips[0].id = nettai_content_api::ChipHandle(60_000);
         assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("hasn't"));
         assert!(Offer::from_bytes(&content, &o.to_bytes()[..10]).is_err());
     }
 
+    /// What one player of [`pair`] saw: the round, the match, the settled
+    /// ticks' digests, how many sounds played, a report, and why it stopped
+    /// (none: it settled them all first).
+    type Played = (String, Match, Vec<(u32, u64)>, usize, String, Option<String>);
+
     /// Two players on loopback UDP, each in a thread with its own
-    /// `NetPlayer` on BN6's content: the handshake, the same round on both
-    /// (the field from the shared seed, each player's own loadout), then
-    /// mashing with rollback until one has settled 900 ticks and leaves (the
-    /// other hears it); the settled states agree, and each player hears the
-    /// battle.
-    #[test]
-    fn two_players_over_loopback() {
-        const TICKS: u32 = 900;
+    /// `NetPlayer` on BN6's content, offering what `offers` makes of the
+    /// content (the host's, then the joiner's), mashing with rollback until
+    /// one has settled `ticks` and leaves; what each saw, by side. The
+    /// settled states must agree, and the other must hear it leave.
+    fn pair(ticks: u32, offers: fn(&Arc<Content>, usize) -> Offer) -> [Played; 2] {
         let host = Udp::host_on("127.0.0.1:0").unwrap();
         let addr = host.local_addr().unwrap();
-        let play = |udp: Udp, role: Role, seed: u32| {
+        let play = move |udp: Udp, role: Role| -> Played {
             let content = bn6_test_content();
-            let mine = offer(&content, seed);
+            let mine = offers(&content, role as usize);
+            let seed = 11 + 11 * role as u32;
             let timeout = Duration::from_secs(20);
             let conn = match role {
                 Role::Host => Connection::host(udp, hello(role, &content, &mine), timeout),
                 Role::Join => Connection::join(udp, hello(role, &content, &mine), timeout),
             }
             .unwrap();
-            let (offers, setup, choices) = agree(&content, &conn, &mine).unwrap();
+            let (offers, setup, m) = agree(&content, &conn, &mine).unwrap();
             let side = conn.side();
             assert_eq!(offers[side], mine);
-            let mut player = NetPlayer::new(content.clone(), conn, setup.clone(), offers.map(|o| o.loadout), NetOptions::default());
+            let mut player = NetPlayer::new(content.clone(), conn, setup.clone(), offers.map(|o| o.side.folder), NetOptions::default());
             let mut shown = player.start();
             assert_eq!(shown.setup.local_side as usize, side);
             let mut masher = Masher::new(seed as u64);
@@ -461,7 +497,7 @@ mod tests {
             let (mut settled, mut plays) = (Vec::new(), 0);
             let mut left = None;
             for frame in 1.. {
-                assert!(frame < 10 * TICKS, "side {side}: stuck at {:?}", player.settled());
+                assert!(frame < 10 * ticks, "side {side}: stuck at {:?}", player.settled());
                 let ran = match player.run_frame(masher.buttons(), &mut shown).unwrap() {
                     Ok(ran) => ran,
                     Err(why) => {
@@ -473,7 +509,7 @@ mod tests {
                 if ran.advanced {
                     settled.push(player.settled());
                 }
-                if player.settled().0 >= TICKS {
+                if player.settled().0 >= ticks {
                     break;
                 }
                 let next = start + Duration::from_millis(3) * frame;
@@ -491,10 +527,10 @@ mod tests {
                 l.mean_size(),
                 left.as_deref().unwrap_or("left first"),
             );
-            (format!("{setup:?}"), choices.seed, settled, plays, report, left)
+            (format!("{setup:?}"), m, settled, plays, report, left)
         };
-        let host = std::thread::spawn(move || play(host, Role::Host, 11));
-        let joined = play(Udp::join(addr).unwrap(), Role::Join, 22);
+        let host = std::thread::spawn(move || play(host, Role::Host));
+        let joined = play(Udp::join(addr).unwrap(), Role::Join);
         let hosted = host.join().unwrap();
         eprintln!("{}\n{}", hosted.4, joined.4);
         assert_eq!(hosted.0, joined.0, "the two sides play different rounds");
@@ -507,11 +543,42 @@ mod tests {
                 common += 1;
             }
         }
-        assert!(common > 400, "{common} ticks compared");
+        assert!(common > ticks / 2, "{common} ticks compared");
         assert!(hosted.3 > 0 && joined.3 > 0, "no sound");
         // The one that didn't settle all of them first heard the other leave.
         for left in [&hosted.5, &joined.5].into_iter().flatten() {
             assert_eq!(left, "the other player left the match");
         }
+        [hosted, joined]
+    }
+
+    /// Two players on loopback UDP, each bringing a side drawn from their
+    /// seed: the handshake, the same round on both (the field from the
+    /// shared seed, each player's own side), the settled states agree, and
+    /// each player hears the battle.
+    #[test]
+    fn two_players_over_loopback() {
+        pair(900, |content, role| offer(content, 11 + 11 * role as u32));
+    }
+
+    /// Netplay from match files (`--match`): each player brings their
+    /// file's left side, and the host its arena; both play that match.
+    #[test]
+    fn two_players_over_loopback_with_match_files() {
+        // Each player's file, as the editor or --save-match writes one.
+        fn file(content: &Arc<Content>, seed: u32) -> Match {
+            let text = nettai_match::write(content, &nettai_match::draw::live(content, seed, None).unwrap());
+            nettai_match::parse(content, &text).unwrap()
+        }
+        let offers = |content: &Arc<Content>, role: usize| {
+            let [side, _] = file(content, 40 + role as u32).sides;
+            Offer { side, stage: None, arena: (role == 0).then(|| file(content, 40).arena) }
+        };
+        let [hosted, _] = pair(600, offers);
+        let content = bn6_test_content();
+        let m = &hosted.1;
+        assert_eq!(m.arena, file(&content, 40).arena, "the host's arena");
+        assert_eq!(m.sides[0], file(&content, 40).sides[0]);
+        assert_eq!(m.sides[1], file(&content, 41).sides[0], "the joiner's left side, on the right");
     }
 }

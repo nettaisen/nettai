@@ -15,6 +15,9 @@ nettai-audio = { path = "../nettai-audio" }
 # protocol, on UDP.
 nettai-netplay = { path = "../nettai-netplay" }
 nettai-content = { path = "../nettai-content" }
+# Match files (--match): the setup a round is played from, checked; live
+# play's random draw of one.
+nettai-match = { path = "../nettai-match" }
 # The handles the engine names content by (a chip in a hand).
 nettai-content-api = { path = "../nettai-content-api" }
 m4a.workspace = true
@@ -26,3 +29,4 @@ swash = "0.2"
 
 [dev-dependencies]
 nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
+nettai-match = { path = "../nettai-match", features = ["testing"] }

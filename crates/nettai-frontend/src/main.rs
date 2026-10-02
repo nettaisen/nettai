@@ -1,7 +1,7 @@
 //! nettai-frontend: watch a golden trace replayed through the engine, or play.
 //! See docs/frontend.md.
 
-use nettai_frontend::driver::{LivePlayer, TracePlayer, bn6_live_setup, install_patch_cards};
+use nettai_frontend::driver::{LivePlayer, TracePlayer};
 use nettai_frontend::textlayer::TextMode;
 use nettai_frontend::vfont::{TextRenderer, VectorFont};
 use nettai_frontend::{Renderer, Session, TickHook, app, headless, session};
@@ -19,6 +19,9 @@ struct Args {
     seed: Option<u32>,
     stage: Option<String>,
     cards: [Option<String>; 2],
+    /// Play this match file; write the match played to that one.
+    match_file: Option<PathBuf>,
+    save_match: Option<PathBuf>,
     show_folders: bool,
     keys: Option<String>,
     scale: usize,
@@ -48,6 +51,7 @@ const DEFAULT_PACK: &str = "data/content/bn6";
 const USAGE: &str = "\
 usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-frontend [OPTIONS] --play          play live (you are the left navi)
+       nettai-frontend [OPTIONS] --match FILE    play a match file (you are its left side)
        nettai-frontend [OPTIONS] --play --host PORT        play another player over the
        nettai-frontend [OPTIONS] --play --join ADDR:PORT   network: host, or join the host
        nettai-frontend [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
@@ -71,6 +75,15 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    order they apply; -KEY installs one switched off (e.g.
                    canodumb,-shadow)
   --their-cards KEYS  the right navi's patch cards, likewise
+  --match FILE     play the match this file sets up (docs/frontend.md §6: the
+                   arena, each side's ruleset, navi, game, folder, Crosses,
+                   patch cards and stats, by content key; nettai-editor makes
+                   them), instead of a random one; you are its left side. With
+                   --host or --join the left side is what you bring, and the
+                   host's arena is the match's
+  --save-match FILE  write the match played (live play's random draw, or the
+                   one netplay agreed) to FILE as a match file, to play again
+                   or edit
   --show-folders   print both players' live folders
   --scale N        window scale (default 4)
   --paused         start paused
@@ -127,6 +140,8 @@ fn parse() -> Result<Args, String> {
         seed: None,
         stage: None,
         cards: [None, None],
+        match_file: None,
+        save_match: None,
         show_folders: false,
         keys: None,
         scale: 4,
@@ -159,6 +174,8 @@ fn parse() -> Result<Args, String> {
             "--stage" => a.stage = Some(value("--stage")?),
             "--cards" => a.cards[0] = Some(value("--cards")?),
             "--their-cards" => a.cards[1] = Some(value("--their-cards")?),
+            "--match" => a.match_file = Some(value("--match")?.into()),
+            "--save-match" => a.save_match = Some(value("--save-match")?.into()),
             "--show-folders" => a.show_folders = true,
             "--keys" => a.keys = Some(value("--keys")?),
             "--scale" => a.scale = number(value("--scale")?, "--scale")? as usize,
@@ -181,8 +198,21 @@ fn parse() -> Result<Args, String> {
             s => a.trace = Some(s.into()),
         }
     }
+    // A match file is played live.
+    a.play |= a.match_file.is_some();
     if a.trace.is_none() && !a.play {
-        return Err("give a trace file or --play".into());
+        return Err("give a trace file, --play or --match FILE".into());
+    }
+    if a.match_file.is_some() {
+        if a.trace.is_some() {
+            return Err("--match plays a match file, not a trace".into());
+        }
+        if a.stage.is_some() || a.cards.iter().any(Option::is_some) {
+            return Err("the match file names the stage and the patch cards (edit it, or leave out --match)".into());
+        }
+    }
+    if a.save_match.is_some() && !a.play {
+        return Err("--save-match writes the match played live".into());
     }
     let netplay = a.host.is_some() || a.join.is_some();
     if netplay {
@@ -267,20 +297,43 @@ fn audio_hook(bank: m4a::SoundBank, songs: nettai_audio::Songs) -> Box<dyn TickH
     })
 }
 
+/// A match file, read and checked against the content.
+fn read_match(content: &Arc<nettai_battle::Content>, path: &Path) -> nettai_match::Match {
+    let text = std::fs::read_to_string(path).unwrap_or_else(|e| fail(format!("can't read {}: {e}", path.display())));
+    nettai_match::parse(content, &text).unwrap_or_else(|problems| {
+        fail(format!("{} can't be played:\n  {}", path.display(), problems.join("\n  ")))
+    })
+}
+
+/// Write the match played, with the seed it was played from.
+fn save_match(content: &nettai_battle::Content, m: &nettai_match::Match, seed: u32, path: &Path) {
+    let m = nettai_match::Match { seed: Some(seed), ..m.clone() };
+    std::fs::write(path, nettai_match::write(content, &m)).unwrap_or_else(|e| fail(format!("can't write {}: {e}", path.display())));
+    eprintln!("wrote the match to {}", path.display());
+}
+
 /// A netplay match: connect (host or join), shake hands, and agree the
-/// round; each player brings a loadout drawn from their own `seed` and
-/// their patch cards.
-fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, seed: u32) -> Session {
-    use nettai_frontend::driver::{Loadout, link_stage, patch_cards};
-    use nettai_frontend::folders::Draws;
+/// round; each player brings their side, a match file's left side or one
+/// drawn from their own `seed` with their patch cards, and the host its
+/// arena or stage.
+fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, seed: u32, file: Option<nettai_match::Match>) -> Session {
     use nettai_frontend::netplay::{NetOptions, NetPlayer, Offer, agree, hello};
+    use nettai_match::{Draws, Side, link_stage, patch_cards};
     use nettai_netplay::transport::{Connection, Role, Udp};
-    let mut loadout = Loadout::drawn(content, &mut Draws::new(seed)).unwrap_or_else(|e| fail(e));
-    if let Some(list) = &args.cards[0] {
-        loadout.cards = patch_cards(content, list).unwrap_or_else(|e| fail(e));
-    }
-    let stage = args.stage.as_deref().map(|key| link_stage(content, key).unwrap_or_else(|e| fail(e)));
-    let offer = Offer { loadout, stage };
+    let offer = match file {
+        Some(m) => {
+            let [side, _] = m.sides;
+            Offer { side, stage: None, arena: args.host.is_some().then_some(m.arena) }
+        }
+        None => {
+            let mut side = Side::drawn(content, &mut Draws::new(seed)).unwrap_or_else(|e| fail(e));
+            if let Some(list) = &args.cards[0] {
+                side.cards = patch_cards(content, list).unwrap_or_else(|e| fail(e));
+            }
+            let stage = args.stage.as_deref().map(|key| link_stage(content, key).unwrap_or_else(|e| fail(e)));
+            Offer { side, stage, arena: None }
+        }
+    };
     let wait = |default: u64| std::time::Duration::from_secs(if args.wait > 0 { args.wait } else { default });
     let conn = if let Some(port) = args.host {
         let udp = Udp::host(port).unwrap_or_else(|e| fail(format!("can't host on UDP port {port}: {e}")));
@@ -297,7 +350,7 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, seed: u32) -> Ses
     }
     .unwrap_or_else(|e| fail(format!("netplay: {e}")));
     let peer = conn.datagram().peer().map_or("the other player".to_string(), |a| a.to_string());
-    let (offers, setup, choices) = agree(content, &conn, &offer).unwrap_or_else(|e| fail(format!("netplay: {e}")));
+    let (offers, setup, m) = agree(content, &conn, &offer).unwrap_or_else(|e| fail(format!("netplay: {e}")));
     let side = conn.side();
     eprintln!(
         "netplay: playing {peer}; you are the {} navi (your setup's seed {seed}, the match's {}, input delay {})",
@@ -305,10 +358,13 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, seed: u32) -> Ses
         conn.seed(),
         args.delay
     );
-    eprintln!("{}", choices.describe(content, args.show_folders, side));
+    eprintln!("{}", nettai_match::describe(content, &m, conn.seed(), args.show_folders, side));
+    if let Some(path) = &args.save_match {
+        save_match(content, &m, conn.seed(), path);
+    }
     let options = NetOptions { delay: args.delay, ..NetOptions::default() };
-    let loadouts = offers.map(|o| o.loadout);
-    Session::new(Box::new(NetPlayer::new(content.clone(), conn, setup, loadouts, options)))
+    let folders = offers.map(|o| o.side.folder);
+    Session::new(Box::new(NetPlayer::new(content.clone(), conn, setup, folders, options)))
 }
 
 fn main() {
@@ -347,20 +403,35 @@ fn main() {
 
     let mut sessions: Vec<Session> = Vec::new();
     if args.play {
-        let seed = args.seed.unwrap_or_else(|| {
+        let file = args.match_file.as_deref().map(|path| read_match(&content, path));
+        let seed = args.seed.or(file.as_ref().and_then(|m| m.seed)).unwrap_or_else(|| {
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(1)
         });
         if args.host.is_some() || args.join.is_some() {
-            sessions.push(netplay(&args, &content, seed));
+            sessions.push(netplay(&args, &content, seed, file));
         } else {
-            let (mut setup, choices) = bn6_live_setup(&content, seed, args.stage.as_deref()).unwrap_or_else(|e| fail(e));
-            eprintln!("{}", choices.describe(&content, args.show_folders, 0));
-            for (side, list) in args.cards.iter().enumerate() {
-                if let Some(list) = list {
-                    install_patch_cards(&content, &mut setup.players[side], list).unwrap_or_else(|e| fail(e));
+            let m = match file {
+                Some(m) => m,
+                None => {
+                    let stage = args.stage.as_deref().map(|key| nettai_match::link_stage(&content, key).unwrap_or_else(|e| fail(e)));
+                    let mut m = nettai_match::draw::live(&content, seed, stage).unwrap_or_else(|e| fail(e));
+                    for (side, list) in args.cards.iter().enumerate() {
+                        if let Some(list) = list {
+                            m.sides[side].cards = nettai_match::patch_cards(&content, list).unwrap_or_else(|e| fail(e));
+                        }
+                    }
+                    let problems = nettai_match::check_match(&content, &m);
+                    if !problems.is_empty() {
+                        fail(format!("the match can't be played:\n  {}", problems.join("\n  ")));
+                    }
+                    m
                 }
+            };
+            eprintln!("{}", nettai_match::describe(&content, &m, seed, args.show_folders, 0));
+            if let Some(path) = &args.save_match {
+                save_match(&content, &m, seed, path);
             }
-            sessions.push(Session::new(Box::new(LivePlayer::new(setup, content.clone()))));
+            sessions.push(Session::new(Box::new(LivePlayer::new(m.round(&content, seed), content.clone()))));
         }
     } else if let Some(path) = &args.trace {
         let rounds =
