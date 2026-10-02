@@ -148,13 +148,13 @@ fn definition_mistakes_are_load_errors() {
     assert!(e.contains("chip \"test:x\" is defined twice: in test:a.luau and in test:b.luau"), "{e}");
 }
 
-/// Asset names for these tests.
+/// Asset names for these tests: the `test` pack's.
 fn names() -> AssetNames {
-    let mut a = AssetNames::default();
-    a.sprites.insert("bomb".into(), nettai_content_api::SpriteId { category: 0x0C, index: 2 });
-    a.sprites.insert("explosion".into(), nettai_content_api::SpriteId { category: 0x0C, index: 1 });
+    let mut a = nettai_content_api::PackIndex::default();
+    a.sprites.insert("bomb".into(), nettai_content_api::PackSprite { category: 0x0C, index: 2 });
+    a.sprites.insert("explosion".into(), nettai_content_api::PackSprite { category: 0x0C, index: 1 });
     a.sounds.insert("throw".into(), 0x1A6);
-    a
+    AssetNames::of_pack("test", a)
 }
 
 fn define_named(modules: &[(&str, &str)]) -> Result<Definitions, String> {
@@ -171,8 +171,9 @@ fn assets_resolve_by_name_while_content_loads() {
     )])
     .unwrap();
     let e = &d.of(Registry::Effect)[0];
-    assert_eq!(e.spec.field("sprite"), &Data::Asset(nettai_content_api::AssetKind::Sprite, "explosion".into()));
-    assert_eq!(e.spec.field("sound"), &Data::Asset(nettai_content_api::AssetKind::Sound, "throw".into()));
+    // (Qualified with the module's root's pack.)
+    assert_eq!(e.spec.field("sprite"), &Data::Asset(nettai_content_api::AssetKind::Sprite, "test:explosion".into()));
+    assert_eq!(e.spec.field("sound"), &Data::Asset(nettai_content_api::AssetKind::Sound, "test:throw".into()));
     // An unknown name is an error naming the module; so is a resolver
     // called after loading.
     let e = define_named(&[("chips/x/chip", "return { s = asset.sprite('bom') }")]).unwrap_err();
@@ -241,4 +242,38 @@ fn a_plan_binds_definition_slots() {
     wrong.functions.push(FnSource::slot(Registry::Chip, "test:minibomb", "name"));
     let e = LuauContent::load(&p, &wrong, Options::default()).err().expect("refused").message;
     assert!(e.contains("chip test:minibomb: `name` is string, not a function"), "{e}");
+}
+
+/// docs/design/rules-in-luau.md §7.4: assets of several packs load
+/// together, each name qualified with its pack's game; a root names its own
+/// pack's unqualified, and another pack's qualified only if it requires a
+/// root of that pack.
+#[test]
+fn assets_of_several_packs_resolve_by_root() {
+    let mut other = nettai_content_api::PackIndex::default();
+    other.sprites.insert("bomb".into(), nettai_content_api::PackSprite { category: 0x01, index: 2 });
+    let mut test = nettai_content_api::PackIndex::default();
+    test.sprites.insert("bomb".into(), nettai_content_api::PackSprite { category: 0x0C, index: 2 });
+    let names = AssetNames::of_packs(vec![("test".into(), test), ("other".into(), other)]);
+    assert_eq!(names.packs, ["other", "test"], "packs in their games' order");
+    assert_eq!(names.names(nettai_content_api::AssetKind::Sprite), ["other:bomb", "test:bomb"]);
+    let sprite = |root: &str, requires: &[&str], source: &str| -> Result<Data, String> {
+        let p = Pack::root(root, [("m".to_string(), source.to_string())])
+            .with_requires(root, requires.iter().map(|r| r.to_string()).collect());
+        let mut p = p;
+        if root == "mix" {
+            p = p.with_assets("mix", "other");
+        }
+        define(&p, &names, Options::default())
+            .map(|(d, _)| d.of(Registry::Effect)[0].spec.field("sprite").clone())
+            .map_err(|e| e.message)
+    };
+    let effect = |name: &str| format!("return define.effect {{ sprite = asset.sprite('{name}'), anim = 0 }}");
+    let asset = |n: &str| Data::Asset(nettai_content_api::AssetKind::Sprite, n.into());
+    assert_eq!(sprite("test", &[], &effect("bomb")), Ok(asset("test:bomb")));
+    assert_eq!(sprite("test", &[], &effect("test:bomb")), Ok(asset("test:bomb")));
+    // A root whose assets are another pack's (a mod's `assets`).
+    assert_eq!(sprite("mix", &[], &effect("bomb")), Ok(asset("other:bomb")));
+    let e = sprite("test", &[], &effect("other:bomb")).unwrap_err();
+    assert!(e.contains("names only its own pack's assets"), "{e}");
 }

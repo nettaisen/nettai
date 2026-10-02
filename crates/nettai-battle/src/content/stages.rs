@@ -25,7 +25,7 @@ pub struct StageData {
     pub music: Option<SoundId>,
     /// The background a round on it shows unless its settings say
     /// otherwise.
-    pub background: u8,
+    pub background: super::BackgroundId,
     /// Battle mode (0 = netbattle).
     pub mode: u8,
     pub battle_number: u8,
@@ -106,15 +106,15 @@ pub(crate) fn read(
 
     let music = match spec.field("music") {
         Data::Nil => None,
-        Data::Asset(AssetKind::Sound, name) => {
-            Some(SoundId(*assets.sounds.get(name).ok_or_else(|| what(format!("the pack has no sound {name:?}")))?))
-        }
+        Data::Asset(AssetKind::Sound, name) => Some(SoundId(
+            assets.handle(AssetKind::Sound, name).ok_or_else(|| what(format!("the packs have no sound {name:?}")))?,
+        )),
         _ => return Err(what("`music` is a sound (asset.sound(...)), or nothing".into())),
     };
     let background = match spec.field("background") {
-        Data::Asset(AssetKind::Background, name) => {
-            *assets.backgrounds.get(name).ok_or_else(|| what(format!("the pack has no background {name:?}")))?
-        }
+        Data::Asset(AssetKind::Background, name) => super::BackgroundId(
+            assets.handle(AssetKind::Background, name).ok_or_else(|| what(format!("the packs have no background {name:?}")))?,
+        ),
         _ => return Err(what("needs a `background` (asset.background(...))".into())),
     };
     let effects = match spec.field("effects") {

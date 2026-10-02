@@ -235,18 +235,25 @@ mod tests {
                  for k, v in test do spec[k] = v end\n\
                  local sounds = {}\n\
                  for k, v in test.sounds do sounds[k] = v end\n\
-                 sounds.pause = asset.sound('test-sound-hit')\n\
+                 sounds.pause = asset.sound('pause')\n\
                  spec.sounds = sounds\n\
                  return define.roles(spec)",
             ),
             ("rules/pools", "return define.rules('pools', { actor = 16, attack = 32, effect = 32 })"),
         ];
 
-        /// The test content with the `twin` root beside it.
+        /// The test content with the `twin` root beside it, and twin's own
+        /// pack: a pause sound of its own (the song table's 0x40) and a sprite.
         fn content() -> Arc<Content> {
             static C: std::sync::OnceLock<Arc<Content>> = std::sync::OnceLock::new();
             C.get_or_init(|| {
                 let mut c = testing::build();
+                let mut index = nettai_content_api::PackIndex::default();
+                index.sounds.insert("pause".into(), 0x40);
+                let navi = nettai_content_api::PackSprite { category: 0, index: 0 };
+                index.sprites.insert("navi".into(), navi);
+                let frame = crate::content::AnimFrame { duration: 4, flags: crate::object::sprite::FRAME_LAST };
+                testing::add_pack(&mut c, "twin", index, [(navi, vec![vec![frame]])].into_iter().collect());
                 let manifest = RootManifest { name: "twin".into(), assets: None, requires: vec!["test".into()] };
                 c.scripts.add_root(manifest, TWIN.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
                 c.define().unwrap_or_else(|e| panic!("{e}"));
@@ -280,7 +287,13 @@ mod tests {
             let pause = |side| b.side_roles(side).sound(SoundRole::Pause);
             assert_ne!(pause(0), pause(1), "each side's sounds are its game's");
             assert_eq!(b.arena_roles().sound(SoundRole::Pause), pause(0));
-            assert_eq!(b.side_roles(1).sound(SoundRole::Hit), pause(1), "twin's pause is the test hit sound");
+            // Twin's pause is its own pack's song; its other sounds the test
+            // pack's, as its roles take them.
+            let assets = &b.content.assets;
+            let twin_pack = assets.pack("twin").expect("twin's pack");
+            assert_eq!(assets.sound(pause(1).0).map(|a| (a.pack, a.id)), Some((twin_pack, 0x40)));
+            assert_eq!(assets.packs, ["test", "twin"]);
+            assert_eq!(b.side_roles(1).sound(SoundRole::Hit), b.side_roles(0).sound(SoundRole::Hit));
             // The twin side runs its own systems.
             assert_eq!(b.side_rules(1).states.len(), 1);
             assert_eq!(field(&b, 1, 0, "starts"), FieldValue::U8(1));

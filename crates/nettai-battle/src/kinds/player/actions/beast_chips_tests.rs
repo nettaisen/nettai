@@ -101,7 +101,7 @@ fn one(b: &Battle, key: &str) -> Option<ObjectRef> {
 
 /// Whether the tick's sounds include the one named `name`.
 fn heard(b: &Battle, name: &str) -> bool {
-    let id = SoundId(b.content.assets.sounds[name]);
+    let id = SoundId(crate::content::testing::asset_named(&b.content, nettai_content_api::AssetKind::Sound, name));
     b.sound_cues().contains(&SoundCue::Effect(id))
 }
 

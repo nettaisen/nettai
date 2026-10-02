@@ -488,7 +488,7 @@ mod tests {
         let heat = content.defs.form_by_key("heatcross").unwrap();
         let heat_beast = content.defs.form_by_key("heatcross-beast").unwrap();
         let stage = nettai_match::link_battle_stages(&content)[0];
-        let settings = BattleSettings { stage, background: 0, effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
+        let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], 5);
         setup.players[0].unlocks.cross_list = Some(nettai_battle::custom::CrossList::new(&[heat]));

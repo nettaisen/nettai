@@ -284,8 +284,8 @@ fn language(assets: nettai_assets::Bundle, root: &Path, lang: &str) -> (nettai_a
 }
 
 /// Sound: hand each tick's cues to the audio output.
-fn audio_hook(bank: m4a::SoundBank) -> Box<dyn TickHook> {
-    let mut out = nettai_audio::AudioOut::new(Arc::new(bank)).unwrap_or_else(|e| fail(format!("no audio output: {e}")));
+fn audio_hook(bank: m4a::SoundBank, songs: nettai_audio::Songs) -> Box<dyn TickHook> {
+    let mut out = nettai_audio::AudioOut::new(Arc::new(bank), songs).unwrap_or_else(|e| fail(format!("no audio output: {e}")));
     Box::new(move |s: &Session| {
         match &s.sound {
             // Netplay: what the player's tracker made of the frame (plays,
@@ -492,7 +492,7 @@ fn main() {
 
     let mut hooks: Vec<Box<dyn TickHook>> = Vec::new();
     if !args.mute {
-        hooks.push(audio_hook(load(&pack, "sound", nettai_content::pack::load_sound)));
+        hooks.push(audio_hook(load(&pack, "sound", nettai_content::pack::load_sound), nettai_audio::Songs::of(&content.assets)));
     }
     eprintln!("{}", app::HELP);
     let opts = app::Options { scale: args.scale, start_paused: args.paused, quit_after: args.quit_after };
