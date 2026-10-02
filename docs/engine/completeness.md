@@ -675,6 +675,37 @@ with no slot (2), ElcPuls's one-tick wait and its pulse's linked objects (2: not
 FireHit's search running off the field, which needs no enemy body ahead (as SpoutMan's scans). The 5 recordings
 are in the lab and match the engine at main f8764b51 (2,712 frames).
 
+The rest of the area is shared from here: the cannons, guns and shots, the arm chips, the traps and barriers
+and ColArmy stay with this pass; the remaining navi chips, the Program Advances, the panel and stage chips, the
+elemental and status chips and the recovery, support and field chips are read in a second one, whose verdicts
+are in `onesided_notes.py`'s "chip families: onesided's share" section and whose scenarios are in
+`coverage_scenarios/n_onesided_chips.py`.
+
+**Second pass, batch 1: the navi chips the first pass had started** (Bass, ChrgeMan, DustMan, ProtoMan, ElecMan,
+DiveMan, GrndMan, BlastMan, HeatMan, EraseMan, and the Darkness PA; 35 branches): 13 taken by 10 new recordings,
+21 unreachable, 1 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x12d-bass/areagrab-twice`, `side1-forward` | two AreaGrabs leave Bass a column with no enemy panel and every panel left cooling down; side 1's Bass from column 4 counting columns from his own |
+| `chips/0x0ef-chrgeman/holes-row-1` | ChrgeMan and his cars reaching a hole (from (2,1) on the holes stage) |
+| `navis/navi-05-volcchrg/charge-cars-dimmed`, `navis/navi-02-delecswd/charge-bolts-dimmed` | link ChargeMan's cars and link ElecMan's bolts, which wait out a dimming, under the opponent's RockCube |
+| `chips/0x0fe-dustman/takes-timebom-plus`, `junk-ko` | DustMan throwing TimeBom+'s big bomb (its own look, identity `timebomb-big`); his junk deleting the opponent and seeing the battle over |
+| `chips/0x0e0-protoman/user-beside-landing` | ProtoMan's landing panel in his user's column, a row away |
+| `chips/0x104-diveman/areagrab-twice` | DiveMan's waves rising in column 5, their far hit and splash off the field |
+| `chips/0x0ec-eraseman/mark-ko` | the slash deleting the opponent while EraseMan's marks still show (A pressed just after a set is laid) |
+
+The unreachable ones: parameters only the navi AIs' spawners pass (DiveMan's wave and BlastMan's blast, 4),
+or that no spawner passes (a car tied to an action, a flame of collision type 0xA, a silent rock, which only an
+effect no netbattle spawns drops; 3); Bass's and ProtoMan's searches starting or standing off the field (2), a
+forbid mask Bass's searches never pass (1), a side with no column or row of its own left (AreaGrab and PanlGrab
+never take a side's last full column; 3); a fifth ChargeMan car, which needs column 6 behind him (1); the junk's
+hit record set by its move (1); spawns that never fail (2); Darkness's one-tick landing (2) and his parts always
+spawned with someone waiting (2). The hard one: link GroundMan's drill outliving his action, which only an
+interruption of his invulnerable dig would do.
+
+All 10 recordings match the engine, every frame (16,698) and every sound call (286).
+
 ### 6.3 Custom screen keys
 
 Four custom screen routines were verified only by the golden traces' dumps, with no lab recording: SELECT hiding
