@@ -196,10 +196,7 @@ fn is(b: &Battle, o: &Object, kind: EngineKind) -> bool {
 /// A sprite as content names it (the pack's asset index), for a problem's
 /// text.
 pub fn sprite_name(b: &Battle, id: nettai_battle::content::SpriteId) -> String {
-    match crate::packs::name(&b.content, nettai_content_api::AssetKind::Sprite, id.0) {
-        Some(name) => format!("sprite {name:?}"),
-        None => format!("sprite handle {}", id.0),
-    }
+    crate::lookups::sprite_name(&b.content, id)
 }
 
 /// Every object as the renderer sees it, a line each: its kind, where it
@@ -264,7 +261,8 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
 }
 
 /// Queue every visible object's sprite. What an object names that the
-/// pack's graphics don't have goes to `problems`.
+/// pack's graphics don't have goes to `problems` (`crate::lookups`); with
+/// `lookups_only` nothing is queued.
 ///
 /// An object drawn with a sprite of another region's ROMs than the
 /// console's (`SpriteSheet::region`: one the US release cut and left a
@@ -277,6 +275,7 @@ pub fn queue_objects<'a>(
     console_region: &str,
     list: &mut SpriteList<'a>,
     problems: &mut Problems,
+    lookups_only: bool,
 ) {
     for pool in Pool::ALL {
         for r in b.objects.in_order().filter(|r| r.pool == pool) {
@@ -294,27 +293,11 @@ pub fn queue_objects<'a>(
             }
             let s = b.objects.sprite(r);
             let Some(id) = s.id else { continue };
-            let kind = || &b.content.defs.kind(o.kind).key;
-            let Some(sheet) = packs.sprite(&b.content, id) else {
-                problems.note(format!("{} of kind {:?} is not in the pack's graphics", sprite_name(b, id), kind()));
-                continue;
-            };
-            let Some(frames) = sheet.animations.get(s.anim as usize) else {
-                problems.note(format!(
-                    "{} has no animation {} (kind {:?}; it has {})",
-                    sprite_name(b, id),
-                    s.anim,
-                    kind(),
-                    sheet.animations.len()
-                ));
-                continue;
-            };
-            let Some(frame) = frames.get(s.frame as usize).or(frames.last()) else {
-                problems.note(format!("{} animation {} has no frames (kind {:?})", sprite_name(b, id), s.anim, kind()));
-                continue;
-            };
-            let parts = &sheet.part_lists[frame.parts as usize];
-            let tiles = &sheet.tilesets[frame.tileset as usize];
+            let kind = || format!("of kind {:?}", b.content.defs.kind(o.kind).key);
+            let Some(sheet) = crate::lookups::sprite(packs, &b.content, id, &kind, problems) else { continue };
+            let Some(frames) = crate::lookups::animation(sheet, &b.content, id, s.anim, &kind, problems) else { continue };
+            let Some(frame) = frames.get(s.frame as usize).or(frames.last()) else { continue };
+            let Some((parts, tiles, set)) = crate::lookups::frame_parts(sheet, frame) else { continue };
             let look = s.look;
             let p = project((o.pos.x, o.pos.y, o.pos.z), view);
             let hflip = look.hflip ^ view.mirror;
@@ -343,21 +326,14 @@ pub fn queue_objects<'a>(
             let palette = if look.white {
                 WHITE
             } else {
-                let set = &sheet.palette_sets[frame.palette_set as usize];
                 let index = look.palette.wrapping_add(first_palette) as usize;
-                let p = set.get(index).copied().unwrap_or_else(|| {
-                    problems.note(format!(
-                        "{} has no palette {index} (kind {:?} asks for {} on animation {}; the set has {})",
-                        sprite_name(b, id),
-                        kind(),
-                        look.palette,
-                        s.anim,
-                        set.len()
-                    ));
-                    [0; 16]
-                });
+                let what = || format!("{} asks for {} on animation {}", kind(), look.palette, s.anim);
+                let p = crate::lookups::palette(set, &b.content, id, frame, index, &what, problems).unwrap_or([0; 16]);
                 shade(p, look.color_shader)
             };
+            if lookups_only {
+                continue;
+            }
             let palette = palette.map(|c| crate::compose::apply_fade(c, view.fade));
 
             let mut group = Vec::new();
