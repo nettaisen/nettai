@@ -246,7 +246,19 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
 
 /// Queue every visible object's sprite. What an object names that the
 /// pack's graphics don't have goes to `problems`.
-pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut SpriteList<'a>, problems: &mut Problems) {
+///
+/// An object drawn with a sprite of another region's ROMs than the
+/// console's (`SpriteSheet::region`: one the US release cut and left a
+/// placeholder in) is a known difference where it is drawn
+/// (`other_region`).
+pub fn queue_objects<'a>(
+    b: &Battle,
+    assets: &'a Bundle,
+    view: &View,
+    console_region: &str,
+    list: &mut SpriteList<'a>,
+    problems: &mut Problems,
+) {
     for pool in Pool::ALL {
         for r in b.objects.in_order().filter(|r| r.pool == pool) {
             let o = b.objects.get(r);
@@ -363,8 +375,30 @@ pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut
                 let (layer, bucket) = if on_ground { (3, 0) } else { (2, p.ground + 0x40) };
                 group.push((layer, bucket, sprite));
             }
+            if sheet.region.as_deref().is_some_and(|r| r != console_region) {
+                other_region(&p, &group, problems);
+            }
             list.insert_group(group);
         }
+    }
+}
+
+/// An object drawn with a sprite of another region's ROMs: where it is
+/// drawn, and a 16x16 square at its anchor, its sprite and its shadow's
+/// (where the US ROMs' placeholder archive draws its one dot) are a known
+/// difference. (A US console's Otenko statue is another sprite, 0C-00, not
+/// the placeholder: what of it falls outside isn't covered.)
+fn other_region(p: &Projected, group: &[(usize, i32, SpritePart)], problems: &mut Problems) {
+    let mut rect = [p.x - 8, p.y.min(p.ground) - 8, p.x + 8, p.y.max(p.ground) + 8];
+    for (_, _, s) in group {
+        // (The hardware's coordinates wrap: X at 512, Y at 256.)
+        let x = if s.x >= 0x100 { s.x as i32 - 0x200 } else { s.x as i32 };
+        let y = if s.y >= 0xC0 { s.y as i32 - 0x100 } else { s.y as i32 };
+        rect = [rect[0].min(x), rect[1].min(y), rect[2].max(x + s.width as i32), rect[3].max(y + s.height as i32)];
+    }
+    let [x0, y0, x1, y1] = [rect[0].max(0), rect[1].max(0), rect[2].min(240), rect[3].min(160)];
+    if x0 < x1 && y0 < y1 {
+        problems.known(x0, y0, x1 - x0, y1 - y0, "a sprite of the Japanese games' ROMs (a US console draws its placeholder)");
     }
 }
 
