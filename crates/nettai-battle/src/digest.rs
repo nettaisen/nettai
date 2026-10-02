@@ -23,12 +23,13 @@
 //!   HUD parts a chip hid (`Battle::hud_hidden`), and
 //!   the HUD's message (`Battle::message`), warning markers
 //!   (`Battle::warnings`) and HP numbers (`Battle::hp_numbers`);
-//! - the objects' `VISIBLE` header flag.
+//! - the objects' `VISIBLE` header flag;
+//! - the message of an engine error that stopped the battle
+//!   (`RoundEnd::Error`; that it stopped is hashed).
 //!
-//! Also left out: the behaviors handle (`Battle::behaviors`), which is
-//! code (behaviors kinds' state is hashed with the objects and actors that
-//! hold it), and the content (`Battle::content`), which never changes and
-//! whose hash the round's setup carries (`RoundSetup::content`).
+//! Also left out: the content (`Battle::content`), which never changes and
+//! whose hash the round's setup carries (`RoundSetup::content`). (The
+//! content's runtime is no part of a battle: `behavior`.)
 //!
 //! The impls below destructure their structs without `..`, so adding a
 //! field to one of them fails to compile until the field is either hashed
@@ -233,7 +234,12 @@ impl Hash for Battle {
         linked.hash(h);
         dimming.hash(h);
         rules.hash(h);
-        outcome.hash(h);
+        // An engine error's message is left out: it is for people, and a
+        // content runtime's can quote addresses.
+        match outcome {
+            Some(crate::battle::RoundEnd::Error(_)) => "stopped".hash(h),
+            outcome => outcome.hash(h),
+        }
     }
 }
 
