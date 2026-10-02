@@ -27,7 +27,7 @@ return define.navi {
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, back_special = back_special.weapon, a_charge = a_charge },
-    fresh = { hp = 250, first_barrier = 0, mega_level = 5, giga_level = 1, back_special_damage = 50 },
+    fresh = { hp = 250, mega_level = 5, giga_level = 1, back_special_damage = 50 },
     cross_hp = { 200, 200 },
     -- The chips A charges, from a navi level on, and those a charge doubles.
     charged_chips = { family = "sword", from_level = 11 },

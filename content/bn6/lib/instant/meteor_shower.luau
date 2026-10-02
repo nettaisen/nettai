@@ -8,9 +8,9 @@
 -- (The game drops the meteor's look 2 for three drops, else 0: the rows
 -- are the same.)
 --
--- No chip or weapon of MegaMan's names effect 16; link navis' actions
--- spawn the shower themselves, with `meteor_shower.instant(drops)` when
--- they are ported (unverified: no scenario reaches it).
+-- No chip names effect 16. The patch cards' meteors (lib/patch-cards/
+-- meteors, MettFire's B button and Metrid's B+Back) spawn the shower from
+-- an action of their own; link navis' actions would too.
 
 local falling_meteor = require("../../chips/meteors/falling_meteor")
 
@@ -123,21 +123,27 @@ meteor_shower.kind = define.kind {
     end,
 }
 
--- `sub_80E5A64`, instant chip effect 16: an `instant` hook that starts a
--- shower of the user's of `drops` meteors, Fire. (It spawns at the
--- registers' values; it has no position of its own. It doesn't run while
--- dimmed.)
+-- `sub_80E5A64`: a shower of `user`'s of `drops` meteors, Fire, with the
+-- damage word `damage`, at `pos` (the registers' values: it has no
+-- position of its own). It doesn't run while dimmed.
+function meteor_shower.spawn(user: Object, pos: Vec3, drops: number, damage: number): Object?
+    local o = battle.spawn(meteor_shower.kind, pos)
+    if o then
+        o.alliance, o.flip = user.alliance, user.flip
+        o.related1 = user
+        o:set_damage_word(damage)
+        o.element = FIRE
+        o.run_while_dimmed = false;
+        (o.state :: State).drops = drops
+    end
+    return o
+end
+
+-- Instant chip effect 16: an `instant` hook that starts a shower of the
+-- user's of `drops` meteors (at the instant chips' action's registers).
 function meteor_shower.instant(drops: number): (user: Object, spec: InstantChipSpec) -> ()
     return function(user: Object, spec: InstantChipSpec)
-        local o = battle.spawn(meteor_shower.kind, Vec3.new(spec.panel_y, spec.element, spec.z))
-        if o then
-            o.alliance, o.flip = user.alliance, user.flip
-            o.related1 = user
-            o:set_damage_word(spec.damage)
-            o.element = FIRE
-            o.run_while_dimmed = false;
-            (o.state :: State).drops = drops
-        end
+        meteor_shower.spawn(user, Vec3.new(spec.panel_y, spec.element, spec.z), drops, spec.damage)
     end
 end
 

@@ -1,7 +1,10 @@
 --!strict
 -- The test content's rules (docs/design/rules-in-luau.md): two made-up
 -- systems and two rulesets, for the framework's tests of per-side state,
--- player setups and hooks. Neither changes how a battle plays.
+-- player setups and hooks. Neither changes how a battle plays. A third
+-- ruleset plays by BN6's patch-cards system, for its tests.
+
+local patch_cards = require("./patch-cards/system")
 
 export type CounterState = { starts: number, side: number, bonus: number }
 
@@ -42,4 +45,6 @@ return {
     stock = define.ruleset { id = "test", stock = true, systems = { counter } },
     -- Another player's: the marker first, then the counter.
     other = define.ruleset { id = "test-other", systems = { marker, counter } },
+    -- BN6's patch cards, then the counter.
+    cards = define.ruleset { id = "test-cards", systems = { patch_cards, counter } },
 }

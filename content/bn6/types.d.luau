@@ -386,6 +386,35 @@ export type PanelChange = {
     change_sound: Sound?,
 }
 
+-- A patch card (the Japanese games' Modification Card; a record of type
+-- "patch-card", rules/patch-cards): its MB and its effects
+-- (rules/patch-cards/cards.luau's constructors). Its name is the locales'
+-- (locales/<lang>.toml's `records`, by its key).
+export type PatchCardEffect = {
+    kind: string,
+    amount: number?,
+    element: ElementName?,
+    weapon: Weapon?,
+    variant: ProjectileVariant?,
+    barrier: Barrier?,
+    gauge: string?,
+    on: boolean?,
+    trail: string?,
+    level: number?,
+    blanks: number?,
+    charged: number?,
+    status: string?,
+    -- The card shows it as a bug.
+    bug: boolean?,
+}
+export type PatchCard = {
+    -- Its key ("patch-card/<name>"): compat/records.toml's `patch_cards`
+    -- give the original's numbers.
+    id: string,
+    mb: number,
+    effects: { PatchCardEffect },
+}
+
 -- A barrier (lib/barriers): `sub_801A7CC`'s row (how it behaves, its HP,
 -- the damage a hit must reach to wear it, its timer (0xFFFF: none), the
 -- element that breaks it), and its visual (`byte_80E0A14`'s look: sprite,
@@ -393,6 +422,8 @@ export type PanelChange = {
 -- parts it hides; LifeAur's aura hides part 6 but for the local MegaMan),
 -- with its sounds as it rises (and grows back) and as it goes down.
 export type Barrier = {
+    -- The key a navi's stats name it by (its first barrier).
+    id: string?,
     behavior: BarrierBehavior,
     hp: number,
     threshold: number,

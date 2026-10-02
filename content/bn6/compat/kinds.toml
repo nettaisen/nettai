@@ -71,7 +71,7 @@ panel-strike = { pool = "attack", index = 0x09 }
 bomb-slash = { pool = "attack", index = 0x0A }
 flying-shot = { pool = "attack", index = 0x0B }
 "count/lance" = { pool = "attack", index = 0x0D }
-dust-storm = { pool = "attack", index = 0x0E }
+dust-storm = { pool = "attack", index = 0x0E, scratch_z_fraction = true }
 "grab/shot" = { pool = "attack", index = 0x0F }
 "cornsht/corn" = { pool = "attack", index = 0x10 }
 "energbom/burst" = { pool = "attack", index = 0x11 }

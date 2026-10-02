@@ -50,6 +50,26 @@ impl PlayerSetup {
     /// the player's ruleset (their setup's, or `content`'s stock one): how
     /// tools write what a save says.
     pub fn set_rule(&mut self, content: &Content, system: &str, field: &str, v: Value) -> Result<(), String> {
+        let (block, schema, i) = self.rule_field(content, system, field)?;
+        block.set(schema, i, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
+    }
+
+    /// Set element `k` (from 0) of array field `field` of system `system`'s
+    /// setup to `v`, as [`PlayerSetup::set_rule`] sets a field.
+    pub fn set_rule_elem(&mut self, content: &Content, system: &str, field: &str, k: usize, v: Value) -> Result<(), String> {
+        let (block, schema, i) = self.rule_field(content, system, field)?;
+        block.set_elem(schema, i, k, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
+    }
+
+    /// The setup block of system `system` (by key) of the player's ruleset,
+    /// its schema and the index of its field `field`; the blocks made zero
+    /// first if the setup gives none.
+    fn rule_field<'a>(
+        &'a mut self,
+        content: &'a Content,
+        system: &str,
+        field: &str,
+    ) -> Result<(&'a mut ContentState, &'a nettai_content_api::Schema, usize), String> {
         let r = self.ruleset.or_else(|| content.defs.stock_ruleset()).ok_or("the content has no ruleset")?;
         let def = content.defs.ruleset(r);
         if self.rules.is_empty() {
@@ -63,7 +83,7 @@ impl PlayerSetup {
         let block = &mut self.rules[slot];
         let schema = &content.defs.schemas[block.id().0 as usize].schema;
         let i = schema.index_of(field).ok_or_else(|| format!("system {system}'s setup has no field `{field}`"))?;
-        block.set(schema, i, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
+        Ok((block, schema, i))
     }
 }
 
@@ -168,6 +188,101 @@ mod tests {
         let schema = &b.content.defs.schemas[s.id().0 as usize].schema;
         s.set(schema, schema.index_of("starts").unwrap(), Value::Int(9)).unwrap();
         assert_ne!(changed.digest(), b.digest());
-        assert_eq!(testing::build().defs.rulesets.len(), 2);
+        assert_eq!(testing::build().defs.rulesets.len(), 3);
+    }
+
+    /// BN6's patch-cards system (content/bn6/rules/patch-cards) with the
+    /// test content's made-up cards: its `round_setup` changes the stats
+    /// before anything reads them.
+    mod patch_cards {
+        use super::*;
+        use crate::setup::{GaugeSpeed, NaviStats, Supports};
+
+        /// A battle whose side 0 plays by the test-cards ruleset with
+        /// `cards` installed (key, switched on), its stats changed by
+        /// `tweak` first.
+        fn with_cards(cards: &[(&str, bool)], tweak: impl FnOnce(&mut NaviStats)) -> Battle {
+            let content = scenario::content();
+            let mut s = scenario::setup();
+            let p = &mut s.players[0];
+            p.ruleset = content.defs.ruleset_by_key("test-cards");
+            for (k, &(key, on)) in cards.iter().enumerate() {
+                let card = content.defs.record(&format!("patch-card/{key}")).unwrap_or_else(|| panic!("no card {key:?}"));
+                p.set_rule_elem(&content, "patch-cards", "cards", k, Value::Def(nettai_content_api::Registry::Record, card.0))
+                    .unwrap();
+                p.set_rule_elem(&content, "patch-cards", "off", k, Value::Bool(!on)).unwrap();
+            }
+            tweak(&mut s.navi_stats[0]);
+            Battle::new(s, content)
+        }
+
+        #[test]
+        fn a_card_changes_the_stats_by_its_kinds_order() {
+            let b = with_cards(&[("test-stats", true)], |_| {});
+            let s = &b.stats[0];
+            // HP 1000: +30 first, then +10% (the card lists them the other way).
+            assert_eq!((s.max_hp, s.hp), (1133, 1133));
+            assert_eq!((s.attack, s.element, s.bugs.hp_drain), (3, 2, 2));
+            assert_eq!(b.cross_stats[0], b.stats[0], "the battle-start copy is of the stats after the cards");
+            assert!(b.consoles[0].emotion_window_glitch, "the HP drain is a bug: flag 0x1723");
+            assert_eq!(b.stats[1], scenario::setup().navi_stats[1], "the other side has none");
+        }
+
+        #[test]
+        fn a_later_card_writes_over_an_earlier_one() {
+            let b = with_cards(&[("test-stats", true), ("test-later", true)], |_| {});
+            let s = &b.stats[0];
+            assert_eq!(s.attack, 2, "Attack 0 + 3 - 1");
+            assert_eq!(s.giga_level, 0xFF, "GigaFolder- doesn't clamp");
+        }
+
+        #[test]
+        fn abilities_choices_and_chip_shuffle() {
+            let b = with_cards(&[("test-abilities", true)], |s| {
+                s.support = Some(Supports::default());
+                s.float_shoes = true;
+                s.number_open = true;
+            });
+            let s = &b.stats[0];
+            let content = &b.content;
+            assert!(s.super_armor && !s.float_shoes);
+            assert_eq!(s.first_barrier, content.defs.record("barrier/200"));
+            assert_eq!(s.weapons.charge_shot_kind, content.defs.record("shot/charged-confusing"));
+            assert_eq!(s.support, Some(Supports { rush: true, ..Supports::default() }));
+            assert_eq!(s.gauge_speed, GaugeSpeed::Fast);
+            assert!(s.chip_shuffle && !s.number_open, "ChpShufl turns NumbrOpn off");
+            assert!(!b.consoles[0].emotion_window_glitch, "no bug");
+        }
+
+        #[test]
+        fn a_switched_off_card_does_nothing_but_the_glitch_follows_the_stats() {
+            let b = with_cards(&[("test-stats", false)], |s| s.support = Some(Supports::default()));
+            let mut want = scenario::setup().navi_stats[0];
+            want.support = Some(Supports::default());
+            // The HP is set to its maximum (the reload's, in the real world).
+            want.hp = want.max_hp;
+            assert_eq!(b.stats[0], want);
+            assert!(!b.consoles[0].emotion_window_glitch);
+            let bugged = with_cards(&[("test-stats", false)], |s| {
+                s.support = Some(Supports::default());
+                s.bugs.emotion = 1;
+            });
+            assert!(bugged.consoles[0].emotion_window_glitch, "a NaviCust bug counts with cards installed");
+        }
+
+        #[test]
+        fn without_cards_the_stats_and_the_glitch_are_the_setups() {
+            let b = with_cards(&[], |s| s.bugs.emotion = 1);
+            let mut want = scenario::setup().navi_stats[0];
+            want.bugs.emotion = 1;
+            assert_eq!(b.stats[0], want);
+            assert!(!b.consoles[0].emotion_window_glitch, "the console's own flag (0x1720), not the cards'");
+        }
+
+        #[test]
+        fn the_support_bug_keeps_supports_off() {
+            let b = with_cards(&[("test-abilities", true)], |s| s.support = None);
+            assert_eq!(b.stats[0].support, None, "the byte 0xFF stays 0xFF when a bit is set");
+        }
     }
 }
