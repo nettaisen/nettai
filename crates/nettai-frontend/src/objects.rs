@@ -12,7 +12,7 @@
 
 use crate::audit::Problems;
 use crate::compose::SpritePart;
-use nettai_assets::{Bundle, Palette};
+use nettai_assets::Palette;
 use nettai_battle::Battle;
 use nettai_battle::object::sprite::Shadow;
 use nettai_battle::kinds::EngineKind;
@@ -272,7 +272,7 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
 /// (`other_region`).
 pub fn queue_objects<'a>(
     b: &Battle,
-    assets: &'a Bundle,
+    packs: &crate::packs::Packs<'a>,
     view: &View,
     console_region: &str,
     list: &mut SpriteList<'a>,
@@ -295,7 +295,7 @@ pub fn queue_objects<'a>(
             let s = b.objects.sprite(r);
             let Some(id) = s.id else { continue };
             let kind = || &b.content.defs.kind(o.kind).key;
-            let Some(sheet) = crate::packs::sprite(&b.content, id).and_then(|p| assets.sprite(p.category, p.index)) else {
+            let Some(sheet) = packs.sprite(&b.content, id) else {
                 problems.note(format!("{} of kind {:?} is not in the pack's graphics", sprite_name(b, id), kind()));
                 continue;
             };
