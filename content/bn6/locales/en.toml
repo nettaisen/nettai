@@ -302,9 +302,9 @@ slogauge = { name = "SloGauge", description = "CustGauge\nslow-down" }
 snake = { name = "Snake", description = "Call snke\nfrom hole\nin area." }
 snctuary = { name = "Snctuary", description = "Chng all\nown panel\nto holy" }
 sonicbom = { name = "SonicBom", description = "ミテイ" }
-spoutman = { name = "SpoutMan", description = "Watr atk!\nBhnd 2row\npowerーup" }
-spoutmn-ex = { name = "SpoutMn\uE002", description = "Watr atk!\nBhnd 2row\npowerーup" }
-spoutmn-sp = { name = "SpoutMn\uE003", description = "Watr atk!\nBhnd 2row\npowerーup" }
+spoutman = { name = "SpoutMan", description = "Watr atk!\nBhnd 2row\npower-up" }
+spoutmn-ex = { name = "SpoutMn\uE002", description = "Watr atk!\nBhnd 2row\npower-up" }
+spoutmn-sp = { name = "SpoutMn\uE003", description = "Watr atk!\nBhnd 2row\npower-up" }
 spreadr1 = { name = "Spreadr1", description = "Spreads \ndamg to \nadj panls" }
 spreadr2 = { name = "Spreadr2", description = "Spreads \ndamg to \nadj panls" }
 spreadr3 = { name = "Spreadr3", description = "Spreads \ndamg to \nadj panls" }

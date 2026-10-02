@@ -2,6 +2,7 @@
 //! state machines (intro, banner, custom screen, fighting, results, end).
 //! See docs/engine/battle-flow.md.
 
+use nettai_content_api::SystemHook;
 use crate::actor::{ActorId, Actors};
 use crate::collision::Collision;
 use crate::behavior::Behaviors;
@@ -14,7 +15,7 @@ use crate::link::{Link, Packet};
 use crate::object::{ObjectRef, Objects};
 use crate::console::Console;
 use crate::rng::Rng;
-use crate::content::{BannerId, BannerRole, Content, FormData, FormKind, MusicRole, NaviData, SoundRole};
+use crate::content::{BannerId, BannerRole, Content, FormData, MusicRole, NaviData, SoundRole};
 use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, effects};
 use crate::transform::{TransformRequest, TransformSequencer};
 use crate::sound::SoundCue;
@@ -1169,9 +1170,10 @@ impl Battle {
         if self.custom.committed {
             self.restart_gauge();
             self.play_sound(SoundCue::RestoreVolume);
+            // `sub_8009338`: each side's rules, for a side with its navi.
             for side in 0..2 {
-                if let Some(a) = self.player_actor(side) {
-                    self.actors.get_mut(a).beast_out_check_delay = 1;
+                if self.player_actor(side).is_some() {
+                    self.notify_side(side, SystemHook::CustomClosed);
                 }
             }
             self.custom.committed = false;
@@ -1452,26 +1454,16 @@ impl Battle {
             self.fight.sub = 4;
             return;
         }
+        // The turn starts: each side's rules (BN6's beast system spends a
+        // turn in Beast Out, `sub_8015A38`).
         for side in 0..2u8 {
             if self.player(side).is_some() {
-                self.count_down_beast_out(side);
+                self.notify_side(side, SystemHook::TurnStarted);
             }
         }
         self.fight.state = fight::START_BANNER;
         self.fight.sub = 0;
         self.fight.init = 0;
-    }
-
-    /// `sub_8015A38`: a turn in Beast Out uses up one of MegaMan's turns,
-    /// unless he started the battle in Beast Out.
-    fn count_down_beast_out(&mut self, side: u8) {
-        let started_beast = self.content.form(self.stats[side as usize].starting_form).kind == FormKind::Beast;
-        let beast = self.form(side as usize).kind.is_beast();
-        let megaman = self.navi(side as usize).changes_form();
-        let s = &mut self.stats[side as usize];
-        if megaman && !started_beast && beast && s.beast_out_counter != 0 {
-            s.beast_out_counter -= 1;
-        }
     }
 
     fn apply_actor_inputs(&mut self) {
@@ -1617,15 +1609,11 @@ impl Battle {
         if self.custom_request_transforms() {
             if self.fight.init == 0 {
                 self.start_custom_reversion();
-                // sub_8015A16: a Beast Out check comes due.
+                // Each side's rules, for a side with its navi (BN6's beast
+                // system: a Beast Out check comes due, `sub_8015A16`).
                 for side in 0..2u8 {
-                    if let Some(a) = self.player_actor(side)
-                        && self.navi(side as usize).changes_form()
-                    {
-                        let d = &mut self.actors.get_mut(a).beast_out_check_delay;
-                        if *d != 0 && *d != 0xFF {
-                            *d -= 1;
-                        }
+                    if self.player_actor(side).is_some() {
+                        self.notify_side(side, SystemHook::CustomRequested);
                     }
                 }
                 self.fight.init = 4;

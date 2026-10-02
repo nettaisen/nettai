@@ -1763,11 +1763,8 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(c as i64));
             vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
         }
-        HookCall::System { side, hook, .. } => match hook {
-            nettai_content_api::SystemHook::RoundSetup | nettai_content_api::SystemHook::RoundStart => {
-                vec![LuaValue::Integer(side as i64)]
-            }
-        },
+        // Every hook so far is called with the side.
+        HookCall::System { side, .. } => vec![LuaValue::Integer(side as i64)],
     };
     Ok(mlua::MultiValue::from_iter(values))
 }
@@ -1794,8 +1791,7 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
         HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } | HookCall::RoleEncased { .. } => Ok(Value::Nil),
-        HookCall::System {
-            hook: nettai_content_api::SystemHook::RoundSetup | nettai_content_api::SystemHook::RoundStart, ..
-        } => Ok(Value::Nil),
+        // (No hook so far returns anything.)
+        HookCall::System { .. } => Ok(Value::Nil),
     }
 }
