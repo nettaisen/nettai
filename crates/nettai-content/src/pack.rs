@@ -36,6 +36,11 @@ pub struct Manifest {
     pub format: String,
     pub version: u32,
     pub name: String,
+    /// The game whose assets it holds (`bn6`): the name a content root's
+    /// `assets` gives it (docs/design/rules-in-luau.md §7.2). A pack
+    /// written before packs said their game has none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub game: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub graphics: Option<GraphicsManifest>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -68,10 +73,16 @@ pub fn write_files(root: &Path, files: &Files) -> std::io::Result<()> {
 }
 
 pub fn manifest(name: &str, graphics: Option<&Bundle>, sound: bool) -> (String, Vec<u8>) {
+    manifest_of(name, None, graphics, sound)
+}
+
+/// A pack's manifest that says its game.
+pub fn manifest_of(name: &str, game: Option<&str>, graphics: Option<&Bundle>, sound: bool) -> (String, Vec<u8>) {
     let m = Manifest {
         format: FORMAT.into(),
         version: VERSION,
         name: name.into(),
+        game: game.map(str::to_string),
         graphics: graphics.map(|b| GraphicsManifest { background_slots: b.backgrounds.len() }),
         sound: sound.then_some(SoundManifest {}),
     };
@@ -237,21 +248,39 @@ pub fn load_battle(content: &Path, assets: &Path) -> Result<(nettai_battle::Cont
     Ok((c, report))
 }
 
-/// [`load_battle`]'s content before the define phase: the modules, the
-/// asset index and the sprite timing.
+/// [`load_battle`]'s content before the define phase: the modules of the
+/// root in `content` and of the roots it requires, the asset index and the
+/// sprite timing.
 pub fn battle_content(content: &Path, assets: &Path) -> Result<(nettai_battle::Content, Report), Report> {
     let mut report = Report::default();
-    read_manifest(assets, &mut report).ok_or_else(|| report.clone())?;
-    let Some(root) = crate::root::read(content, &mut report) else { return Err(report) };
+    let pack = read_manifest(assets, &mut report).ok_or_else(|| report.clone())?;
+    let Some(roots) = crate::root::read_all(content, &mut report) else { return Err(report) };
+    // One pack loads: every root's assets must be its game's.
+    for r in &roots {
+        match &pack.game {
+            Some(game) if game != r.manifest.assets() => report.error(
+                crate::root::MANIFEST,
+                format!("root {}'s assets are {}'s; the pack is {game}'s", r.manifest.name, r.manifest.assets()),
+            ),
+            Some(_) => {}
+            None => report.warn(
+                MANIFEST,
+                format!("the pack says no game; it is taken as {}'s (extract it again to record its game)", r.manifest.assets()),
+            ),
+        }
+    }
+    if report.has_errors() {
+        return Err(report);
+    }
     let Some(index) = crate::names::read_index(assets, &mut report) else { return Err(report) };
     let Some(animations) = load_animations(assets, &mut report) else { return Err(report) };
-    let c = nettai_battle::Content {
-        assets: index,
-        animations,
-        scripts: nettai_battle::content::Scripts::new(root.modules),
-        strings: root.strings,
-        ..Default::default()
-    };
+    let mut scripts = nettai_battle::content::Scripts::default();
+    let mut strings = crate::locale::Strings::default();
+    for r in roots {
+        strings.merge(r.strings.qualified(&r.manifest.name));
+        scripts.add_root(r.manifest, r.modules);
+    }
+    let c = nettai_battle::Content { assets: index, animations, scripts, strings, ..Default::default() };
     Ok((c, report))
 }
 

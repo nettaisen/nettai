@@ -248,6 +248,11 @@ pub const DRAGON: &str = "elecdrgn";
 pub const GREGAR: &str = "gregar";
 pub const FALZAR: &str = "falzar";
 
+/// The test content's root: its own modules and the BN6 modules it
+/// borrows are one root, so its keys are `test:...`
+/// (docs/design/rules-in-luau.md §7.2).
+pub const ROOT: &str = "test";
+
 /// The content model v2 test pack (crates/nettai-battle/testdata/pack):
 /// definitions the engine's tests run.
 const TEST_PACK: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/pack");
@@ -282,9 +287,9 @@ pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
 pub fn with_test_pack() -> Content {
     let mut c = make();
     // The test pack brings its own roles.
-    c.scripts.modules.remove("rules/roles");
+    c.scripts.modules.remove(&Scripts::name(ROOT, "rules/roles"));
     for (path, source) in modules_under(TEST_PACK) {
-        c.scripts.modules.insert(format!("test/{path}"), source);
+        c.scripts.modules.insert(Scripts::name(ROOT, &format!("test/{path}")), source);
     }
     c.define().unwrap_or_else(|e| panic!("content error: {e}"));
     c
@@ -324,7 +329,8 @@ fn make() -> Content {
 pub fn strings() -> crate::content::strings::Strings {
     let file = format!("{TEST_CONTENT}/locales/en.toml");
     let text = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}"));
-    toml::from_str(&text).unwrap_or_else(|e| panic!("{file}: {e}"))
+    let s: crate::content::strings::Strings = toml::from_str(&text).unwrap_or_else(|e| panic!("{file}: {e}"));
+    s.qualified(ROOT)
 }
 
 /// A synthetic asset index for `modules`: every name they give an
@@ -1297,7 +1303,12 @@ pub fn scripts() -> Scripts {
                     }
                 }
             }
-            Scripts::new(all)
+            // (testdata/content/root.toml names the root.)
+            let file = format!("{TEST_CONTENT}/root.toml");
+            let text = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}"));
+            let manifest: RootManifest = toml::from_str(&text).unwrap_or_else(|e| panic!("{file}: {e}"));
+            assert_eq!(manifest.name, ROOT, "{file}");
+            Scripts::root(manifest, all)
         })
         .clone()
 }

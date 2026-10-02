@@ -40,17 +40,22 @@ use std::sync::Arc;
 
 use nettai_content_api::{
     AssetKind, AssetNames, BindPlan, ContentError, ContentHost, CoreApi, Definitions, FnId, FnSource, HookCall, Manifest,
-    ObjectRef, Registry, StateId, Value,
+    ObjectRef, Registry, StateId, Value, keys,
 };
 use mlua::chunk::ChunkMode;
 use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
 
-/// A content pack's scripts: module path (relative to the pack root,
-/// without `.luau`) to source text, and bytecode already compiled from
-/// them.
+/// Content's scripts: module name to source text, and bytecode already
+/// compiled from them. A module's name is its root's and its path in the
+/// root without `.luau` (`bn6:chips/minibomb/chip`, docs/design/
+/// rules-in-luau.md §7.2); the definitions a module makes are its root's
+/// (`bn6:minibomb`).
 #[derive(Clone, Debug, Default)]
 pub struct Pack {
     modules: BTreeMap<String, String>,
+    /// Each root's `requires`: the roots its modules may `require` from
+    /// (`require("@bn6/rules/beast/system")`).
+    roots: BTreeMap<String, Vec<String>>,
     compiled: Compiled,
 }
 
@@ -82,8 +87,30 @@ impl Compiled {
 }
 
 impl Pack {
+    /// Modules by name (`bn6:chips/minibomb/chip`). Each module's root is
+    /// one of the pack's, which requires no other until
+    /// [`Pack::with_requires`] says so.
     pub fn new(modules: impl IntoIterator<Item = (String, String)>) -> Pack {
-        Pack { modules: modules.into_iter().collect(), compiled: Compiled::default() }
+        let modules: BTreeMap<String, String> = modules.into_iter().collect();
+        let mut roots = BTreeMap::new();
+        for name in modules.keys() {
+            let root = keys::root_of(name).unwrap_or_else(|| panic!("module {name:?} names no root (`<root>:<path>`)"));
+            roots.entry(root.to_string()).or_insert_with(Vec::new);
+        }
+        Pack { modules, roots, compiled: Compiled::default() }
+    }
+
+    /// One root's modules, by path in the root (`chips/minibomb/chip`).
+    pub fn root(name: &str, modules: impl IntoIterator<Item = (String, String)>) -> Pack {
+        let mut p = Pack::new(modules.into_iter().map(|(path, source)| (format!("{name}{}{path}", keys::SEPARATOR), source)));
+        p.roots.entry(name.to_string()).or_default();
+        p
+    }
+
+    /// Root `root` may require from `requires` (its manifest's).
+    pub fn with_requires(mut self, root: &str, requires: Vec<String>) -> Pack {
+        self.roots.insert(root.to_string(), requires);
+        self
     }
 
     /// The same pack, with bytecode compiled before (see [`Compiled`]).
@@ -93,8 +120,8 @@ impl Pack {
     }
 
     /// Every `.luau` file under `dir` (definition files, `.d.luau`,
-    /// excluded).
-    pub fn from_dir(dir: &Path) -> std::io::Result<Pack> {
+    /// excluded), as root `name`.
+    pub fn from_dir(name: &str, dir: &Path) -> std::io::Result<Pack> {
         fn walk(root: &Path, dir: &Path, out: &mut BTreeMap<String, String>) -> std::io::Result<()> {
             for entry in std::fs::read_dir(dir)? {
                 let path = entry?.path();
@@ -114,7 +141,7 @@ impl Pack {
         }
         let mut modules = BTreeMap::new();
         walk(dir, dir, &mut modules)?;
-        Ok(Pack::new(modules))
+        Ok(Pack::root(name, modules))
     }
 
     pub fn modules(&self) -> impl Iterator<Item = (&str, &str)> {
@@ -385,23 +412,40 @@ struct Loader {
     stack: Vec<String>,
 }
 
-/// Resolve a `require` path against the requiring module's directory.
-fn resolve(from: &str, path: &str) -> Result<String, String> {
-    if !(path.starts_with("./") || path.starts_with("../")) {
-        return Err(format!("require({path:?}): content paths start with ./ or ../"));
+/// Resolve a `require` path from module `from` (`bn6:rules/beast/system`):
+/// relative to its directory within its root (`./rush`, `../lib/slot`), or
+/// in a root it requires, or its own, from that root's top
+/// (`@bn6/rules/cross/system`). `roots` gives each root's `requires`.
+fn resolve(from: &str, path: &str, roots: &BTreeMap<String, Vec<String>>) -> Result<String, String> {
+    let (root, from_path) = from.split_once(keys::SEPARATOR).ok_or_else(|| format!("module {from:?} names no root"))?;
+    if let Some(rest) = path.strip_prefix('@') {
+        let (target, p) = rest.split_once('/').ok_or_else(|| format!("require({path:?}): a root's module is `@<root>/<path>`"))?;
+        let p = p.trim_end_matches(".luau");
+        if p.split('/').any(|s| s.is_empty() || s == "." || s == "..") {
+            return Err(format!("require({path:?}): a path from a root's top names its directories"));
+        }
+        if target != root && !roots.get(root).is_some_and(|r| r.iter().any(|x| x == target)) {
+            return Err(format!(
+                "require({path:?}) from {from}: root {root} doesn't require root {target} (its manifest's `requires`)"
+            ));
+        }
+        return Ok(format!("{target}{}{p}", keys::SEPARATOR));
     }
-    let mut parts: Vec<&str> = from.split('/').collect();
+    if !(path.starts_with("./") || path.starts_with("../")) {
+        return Err(format!("require({path:?}): content paths start with ./, ../ or @<root>/"));
+    }
+    let mut parts: Vec<&str> = from_path.split('/').collect();
     parts.pop();
     for seg in path.trim_end_matches(".luau").split('/') {
         match seg {
             "." | "" => {}
             ".." => {
-                parts.pop().ok_or_else(|| format!("require({path:?}) from {from} leaves the pack"))?;
+                parts.pop().ok_or_else(|| format!("require({path:?}) from {from} leaves root {root}"))?;
             }
             s => parts.push(s),
         }
     }
-    Ok(parts.join("/"))
+    Ok(format!("{root}{}{}", keys::SEPARATOR, parts.join("/")))
 }
 
 fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Result<LuaValue> {
@@ -417,7 +461,7 @@ fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Res
             .modules
             .get(path)
             .cloned()
-            .ok_or_else(|| mlua::Error::runtime(format!("no module {path}.luau in the pack")))?
+            .ok_or_else(|| mlua::Error::runtime(format!("no module {path}.luau in the content")))?
     };
     let cached = loader.borrow().pack.compiled.get(path, &source);
     let bytecode: Arc<[u8]> = match cached {
@@ -473,7 +517,7 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
                 .ok_or_else(|| mlua::Error::runtime("require is only available while content loads"))?;
             let from = loader.borrow().stack.last().cloned();
             let from = from.ok_or_else(|| mlua::Error::runtime("require is only available at the top of a module"))?;
-            let target = resolve(&from, &path).map_err(mlua::Error::runtime)?;
+            let target = resolve(&from, &path, &loader.borrow().pack.roots).map_err(mlua::Error::runtime)?;
             load_module(lua, &loader, &target)
         })
         .map_err(err)?
