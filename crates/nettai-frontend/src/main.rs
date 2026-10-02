@@ -32,6 +32,11 @@ struct Args {
     text: TextMode,
     font: Option<PathBuf>,
     lang: String,
+    /// Netplay: host on this UDP port, or join this host.
+    host: Option<u16>,
+    join: Option<String>,
+    delay: u32,
+    wait: u64,
 }
 
 /// Where `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` puts the BN6 pack by default.
@@ -40,6 +45,8 @@ const DEFAULT_PACK: &str = "data/content/bn6";
 const USAGE: &str = "\
 usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-frontend [OPTIONS] --play          play live (you are the left navi)
+       nettai-frontend [OPTIONS] --play --host PORT        play another player over the
+       nettai-frontend [OPTIONS] --play --join ADDR:PORT   network: host, or join the host
        nettai-frontend [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
        nettai-frontend [OPTIONS] TRACE.jsonl --audit
 
@@ -90,7 +97,21 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    from the pack); either text mode. Only what is shown
                    changes: the battle, and a netbattle with a player of
                    another language, are the same
-  --quit-after N   close the window after N ticks";
+  --quit-after N   close the window after N ticks
+  --host PORT      netplay: host a match on this UDP port (forward it on
+                   your router to play over the Internet) and wait for a
+                   player to join; you are the left navi
+  --join ADDR:PORT netplay: join the match hosted there; you are the right
+                   navi, seen from your side. Both players need the same
+                   engine and content (the handshake checks); each brings
+                   their own folder, game and Crosses (drawn from their
+                   --seed) and patch cards (--cards); the host's --stage
+                   picks the stage; the field and the battle's RNG come
+                   from both players' seeds
+  --delay N        netplay's input delay in frames (default 2): more delay,
+                   fewer rollbacks
+  --wait SECONDS   how long the host waits for a player, or the joiner for
+                   the host (default 300 and 30)";
 
 fn parse() -> Result<Args, String> {
     let mut a = Args {
@@ -116,6 +137,10 @@ fn parse() -> Result<Args, String> {
         text: TextMode::Font,
         font: None,
         lang: nettai_assets::BASE_LANGUAGE.into(),
+        host: None,
+        join: None,
+        delay: nettai_frontend::netplay::NetOptions::default().delay,
+        wait: 0,
     };
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
@@ -144,6 +169,10 @@ fn parse() -> Result<Args, String> {
             "--text" => a.text = value("--text")?.parse()?,
             "--font" => a.font = Some(value("--font")?.into()),
             "--lang" => a.lang = value("--lang")?,
+            "--host" => a.host = Some(number(value("--host")?, "--host")?.try_into().map_err(|_| "bad --host port".to_string())?),
+            "--join" => a.join = Some(value("--join")?),
+            "--delay" => a.delay = number(value("--delay")?, "--delay")? as u32,
+            "--wait" => a.wait = number(value("--wait")?, "--wait")?,
             "-h" | "--help" => return Err(String::new()),
             s if s.starts_with('-') => return Err(format!("unknown option {s}")),
             s => a.trace = Some(s.into()),
@@ -151,6 +180,25 @@ fn parse() -> Result<Args, String> {
     }
     if a.trace.is_none() && !a.play {
         return Err("give a trace file or --play".into());
+    }
+    let netplay = a.host.is_some() || a.join.is_some();
+    if netplay {
+        if !a.play || a.host.is_some() == a.join.is_some() {
+            return Err("netplay is --play with either --host PORT or --join ADDR:PORT".into());
+        }
+        if a.cards[1].is_some() {
+            return Err("in netplay the other player brings their own patch cards (--their-cards is for playing alone)".into());
+        }
+        if a.join.is_some() && a.stage.is_some() {
+            return Err("in netplay the host picks the stage".into());
+        }
+        if a.headless.is_some() || a.audit {
+            return Err("netplay plays in a window".into());
+        }
+        let max = nettai_netplay::protocol::max_lead(nettai_netplay::protocol::HORIZON);
+        if a.delay > max / 2 {
+            return Err(format!("--delay {} is more than netplay allows ({})", a.delay, max / 2));
+        }
     }
     Ok(a)
 }
@@ -206,10 +254,59 @@ fn language(assets: nettai_assets::Bundle, root: &Path, lang: &str) -> (nettai_a
 /// Sound: hand each tick's cues to the audio output.
 fn audio_hook(bank: m4a::SoundBank) -> Box<dyn TickHook> {
     let mut out = nettai_audio::AudioOut::new(Arc::new(bank)).unwrap_or_else(|e| fail(format!("no audio output: {e}")));
-    Box::new(move |b: &nettai_battle::Battle| {
-        out.handle(b.sound_cues());
+    Box::new(move |s: &Session| {
+        match &s.sound {
+            // Netplay: what the player's tracker made of the frame (plays,
+            // and cancels of cues played on a wrong prediction).
+            Some(actions) => out.handle_actions(actions.iter().copied()),
+            None => out.handle(s.battle.sound_cues()),
+        }
         out.tick();
     })
+}
+
+/// A netplay match: connect (host or join), shake hands, and agree the
+/// round; each player brings a loadout drawn from their own `seed` and
+/// their patch cards.
+fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, seed: u32) -> Session {
+    use nettai_frontend::driver::{Loadout, link_stage, patch_cards};
+    use nettai_frontend::folders::Draws;
+    use nettai_frontend::netplay::{NetOptions, NetPlayer, Offer, agree, hello};
+    use nettai_netplay::transport::{Connection, Role, Udp};
+    let mut loadout = Loadout::drawn(content, &mut Draws::new(seed)).unwrap_or_else(|e| fail(e));
+    if let Some(list) = &args.cards[0] {
+        loadout.cards = patch_cards(content, list).unwrap_or_else(|e| fail(e));
+    }
+    let stage = args.stage.as_deref().map(|key| link_stage(content, key).unwrap_or_else(|e| fail(e)));
+    let offer = Offer { loadout, stage };
+    let wait = |default: u64| std::time::Duration::from_secs(if args.wait > 0 { args.wait } else { default });
+    let conn = if let Some(port) = args.host {
+        let udp = Udp::host(port).unwrap_or_else(|e| fail(format!("can't host on UDP port {port}: {e}")));
+        eprintln!(
+            "netplay: hosting on UDP port {port}, waiting for a player (they run --play --join <this machine's address>:{port}; \
+             over the Internet, forward the port to this machine)"
+        );
+        Connection::host(udp, hello(Role::Host, content, &offer), wait(300))
+    } else {
+        let addr = args.join.as_deref().unwrap();
+        let udp = Udp::join(addr).unwrap_or_else(|e| fail(format!("can't reach {addr}: {e}")));
+        eprintln!("netplay: joining {addr}");
+        Connection::join(udp, hello(Role::Join, content, &offer), wait(30))
+    }
+    .unwrap_or_else(|e| fail(format!("netplay: {e}")));
+    let peer = conn.datagram().peer().map_or("the other player".to_string(), |a| a.to_string());
+    let (offers, setup, choices) = agree(content, &conn, &offer).unwrap_or_else(|e| fail(format!("netplay: {e}")));
+    let side = conn.side();
+    eprintln!(
+        "netplay: playing {peer}; you are the {} navi (match seed {}, input delay {})",
+        if side == 0 { "left" } else { "right" },
+        conn.seed(),
+        args.delay
+    );
+    eprintln!("{}", choices.describe(content, args.show_folders, side));
+    let options = NetOptions { delay: args.delay, ..NetOptions::default() };
+    let loadouts = offers.map(|o| o.loadout);
+    Session::new(Box::new(NetPlayer::new(content.clone(), conn, setup, loadouts, options)))
 }
 
 fn main() {
@@ -251,14 +348,18 @@ fn main() {
         let seed = args.seed.unwrap_or_else(|| {
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(1)
         });
-        let (mut setup, choices) = bn6_live_setup(&content, seed, args.stage.as_deref()).unwrap_or_else(|e| fail(e));
-        eprintln!("{}", choices.describe(&content, args.show_folders));
-        for (side, list) in args.cards.iter().enumerate() {
-            if let Some(list) = list {
-                install_patch_cards(&content, &mut setup.players[side], list).unwrap_or_else(|e| fail(e));
+        if args.host.is_some() || args.join.is_some() {
+            sessions.push(netplay(&args, &content, seed));
+        } else {
+            let (mut setup, choices) = bn6_live_setup(&content, seed, args.stage.as_deref()).unwrap_or_else(|e| fail(e));
+            eprintln!("{}", choices.describe(&content, args.show_folders, 0));
+            for (side, list) in args.cards.iter().enumerate() {
+                if let Some(list) = list {
+                    install_patch_cards(&content, &mut setup.players[side], list).unwrap_or_else(|e| fail(e));
+                }
             }
+            sessions.push(Session::new(Box::new(LivePlayer::new(setup, content.clone()))));
         }
-        sessions.push(Session::new(Box::new(LivePlayer::new(setup, content.clone()))));
     } else if let Some(path) = &args.trace {
         let rounds =
             TracePlayer::load(path, &content).unwrap_or_else(|e| fail(format!("can't read {}: {e}", path.display())));
