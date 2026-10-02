@@ -270,24 +270,7 @@ pub fn battle_content_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai
     let mut report = Report::default();
     let Some(roots) = crate::root::read_all(content, &mut report) else { return Err(report) };
     let home_assets = roots.first().map(|r| r.manifest.assets().to_string()).unwrap_or_default();
-    let mut games: Vec<(String, PathBuf)> = Vec::new();
-    for path in packs {
-        let m = read_manifest(path, &mut report).ok_or_else(|| report.clone())?;
-        let game = match m.game {
-            Some(g) => g,
-            None => {
-                report.warn(
-                    MANIFEST,
-                    format!("{}: the pack says no game; it is taken as {home_assets}'s (extract it again to record its game)", path.display()),
-                );
-                home_assets.clone()
-            }
-        };
-        if games.iter().any(|(g, _)| *g == game) {
-            report.error(MANIFEST, format!("two packs of {game} are loaded"));
-        }
-        games.push((game, path.clone()));
-    }
+    let Some(games) = pack_games(packs, &home_assets, &mut report) else { return Err(report) };
     for r in &roots {
         if !games.iter().any(|(g, _)| g == r.manifest.assets()) {
             report.error(
@@ -317,6 +300,40 @@ pub fn battle_content_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai
     }
     let c = nettai_battle::Content { assets, animations, scripts, strings, ..Default::default() };
     Ok((c, report))
+}
+
+/// Each pack's game (a pack that says none is taken as `home_assets`, with
+/// a warning), refusing two packs of one game; none when a manifest can't
+/// be read.
+fn pack_games(packs: &[PathBuf], home_assets: &str, report: &mut Report) -> Option<Vec<(String, PathBuf)>> {
+    let mut games: Vec<(String, PathBuf)> = Vec::new();
+    for path in packs {
+        let m = read_manifest(path, report)?;
+        let game = match m.game {
+            Some(g) => g,
+            None => {
+                report.warn(
+                    MANIFEST,
+                    format!("{}: the pack says no game; it is taken as {home_assets}'s (extract it again to record its game)", path.display()),
+                );
+                home_assets.to_string()
+            }
+        };
+        if games.iter().any(|(g, _)| *g == game) {
+            report.error(MANIFEST, format!("two packs of {game} are loaded"));
+        }
+        games.push((game, path.clone()));
+    }
+    Some(games)
+}
+
+/// The directories of the packs `c` was loaded from (`packs`, as given to
+/// [`load_battle_packs`]) in its pack order, by `PackId`: the frontend's
+/// graphics and sound of each.
+pub fn pack_paths(c: &nettai_battle::Content, packs: &[PathBuf]) -> Vec<PathBuf> {
+    let home_assets = c.scripts.roots.first().map(|r| r.assets().to_string()).unwrap_or_default();
+    let games = pack_games(packs, &home_assets, &mut Report::default()).unwrap_or_default();
+    c.assets.packs.iter().filter_map(|g| games.iter().find(|(game, _)| game == g).map(|(_, p)| p.clone())).collect()
 }
 
 /// Every sprite's animation timing, from its pack's `animations.json`s, and
