@@ -7,6 +7,7 @@ local unusable = require("../../lib/unusable")
 return define.chip {
     id = "falzar",
     name = "Falzar",
+    description = "Falzar's\nruinous\ntornado!",
     codes = { "X" },
     element = "null",
     family = "null",

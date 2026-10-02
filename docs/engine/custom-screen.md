@@ -233,8 +233,10 @@ from R+8, back to the Cross window), `description-b-held-12`, `-30`, `descriptio
 
 Three chips' descriptions aren't in their scripts: DblBeast's, Gregar's and Falzar's scripts copy their text from
 the console's memory (`FF 01 nn`, `chatbox_FF_copytext`: 0x40 bytes of a buffer the game keeps, run as script and
-returned from at its end), so the pack has no `description` for them and they count as three lines. That is what
-the game shows for them (DblBeast's reads "Ferocious / beast / power!"): `description-arm-137-5..9` and
+returned from at its end), so gen-content finds no text for them in the ROM. Their definitions carry the text the
+game shows from that buffer, as the user gave it (2026-10-01): DblBeast "Ferocious / beast / power!", Gregar
+"Gregar's / breath / attack!", Falzar "Falzar's / ruinous / tornado!". Each is three lines, which is what the battle
+reads of a description, so the timing is unchanged: `description-arm-137-5..9` and
 `description-arm-139-7`, `-8` (the Falzar chip, dug out over two turns) and `description-arm-138-7`, `-8` (the
 Gregar chip, which copies the same buffer) take A from R+8. Not reached: what `sub_802A220` closes a description for (it answers 0xFF in a netbattle with
 MegaMan).
