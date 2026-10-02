@@ -159,6 +159,9 @@ standard chip action…), whichever section below the family belongs to:
 | MetrKnuk | no enemy body (the fallback lists), no candidate, Param2 0 | the enemy always stands; no caller | unreachable | |
 | DblBeast (subtype 37) | the user's-panel fallback; the patterns' first panels taken | a free panel always turns up | yes | chips/0x137-dblbeast/user-panel, rock-front: verified |
 | DblBeast | no target at all, a failed spawn | an invisible navi still has its body on its panel (chips/0x137-dblbeast/invisible: verified, the usual attacks) | unreachable | |
+| Gregar, Falzar (subtypes 34, 35; the Japanese ROMs: beast-chips.md) | every branch | no Japanese console recording yet (the US ROMs' slots are null) | yes, on a Japanese ROM | open: in-repo timelines only |
+| Gregar, Falzar | the aim's whole-area list of one panel (its unchecked second byte), a failed spawn | a side keeps a whole column | unreachable | |
+| Falzar's feather | Param2 0 (stops at the battle's end, holds while dimmed) | no caller spawns one | unreachable | |
 
 ### Traps, bombs and navi chips (chips.md §3.6-§3.9)
 
