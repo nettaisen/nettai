@@ -6,11 +6,13 @@
 //! same seed gives the same match, which can be written out as a match file
 //! (`crate::file`) and played again or edited.
 
-use crate::folders::{self, FolderLimits};
+use crate::folders;
 use crate::{Arena, Match, Place, Side};
+use nettai_battle::Battle;
+use std::sync::Arc;
 use bn6_compat::{Compat, codec};
 use nettai_battle::content::Content;
-use nettai_battle::custom::{self, CrossList, GameVersion, SavedFolder};
+use nettai_battle::custom::{self, CrossList, FolderChip, GameVersion, SavedFolder};
 use nettai_battle::setup::NaviStats;
 use nettai_content_api::StageHandle;
 
@@ -144,27 +146,37 @@ impl Side {
         }
     }
 
-    /// A player drawn from `draws` as netplay draws one: a legal random
-    /// folder, five Crosses of both games, a game; no patch cards.
-    pub fn drawn(content: &Content, draws: &mut Draws) -> Result<Side, String> {
-        let folder = folders::random_folder(content, FolderLimits::of(&live_navi(content)), draws);
+    /// A player drawn from `draws` as netplay draws one: a random folder
+    /// the rules accept, five Crosses of both games, a game; no patch cards.
+    pub fn drawn(content: &Arc<Content>, draws: &mut Draws) -> Result<Side, String> {
+        let stage = *crate::link_battle_stages(content).first().ok_or("the content has no link battle stage")?;
+        let mut rules = rules_battle(content, &Arena::on(Place { stage, background: None }))?;
+        let folder = folders::random_folder(content, &mut rules, 0, draws);
         let crosses = crosses(content, draws)?;
         let game = game(draws);
         Ok(Side::live(content, folder, crosses, game))
     }
 }
 
+/// The battle a live player's folder is drawn against: two live navis on
+/// `arena` (their folders anything: the rules read the stats).
+fn rules_battle(content: &Arc<Content>, arena: &Arena) -> Result<Battle, String> {
+    let anything = SavedFolder { chips: [FolderChip::new(Default::default(), nettai_battle::content::ChipCode(0)); 30], regular: None, tags: None };
+    let side = Side::live(content, anything, CrossList::default(), GameVersion::Falzar);
+    crate::check::start(content, &Match { seed: None, arena: arena.clone(), sides: [side.clone(), side] })
+}
+
 /// Live play's match on BN6's content, drawn from `seed`: a link battle's
-/// stage (`stage` forces one) and background, a legal random folder for
-/// each player (`crate::folders`), five of MegaMan's ten Crosses, of both
-/// games, for each Cross window (`Unlocks::cross_list`,
+/// stage (`stage` forces one) and background, a random folder each
+/// player's rules accept (`crate::folders`), five of MegaMan's ten
+/// Crosses, of both games, for each Cross window (`Unlocks::cross_list`,
 /// docs/engine/custom-screen.md §4.1), and each player's game, Falzar or
 /// Gregar. Both players are 1000-HP MegaMen (`live_navi`).
-pub fn live(content: &Content, seed: u32, stage: Option<StageHandle>) -> Result<Match, String> {
+pub fn live(content: &Arc<Content>, seed: u32, stage: Option<StageHandle>) -> Result<Match, String> {
     let mut draws = Draws::new(seed);
     let arena = arena(content, &mut draws, stage)?;
-    let limits = FolderLimits::of(&live_navi(content));
-    let folders = [folders::random_folder(content, limits, &mut draws), folders::random_folder(content, limits, &mut draws)];
+    let mut rules = rules_battle(content, &arena)?;
+    let folders = [folders::random_folder(content, &mut rules, 0, &mut draws), folders::random_folder(content, &mut rules, 1, &mut draws)];
     let crosses = [crosses(content, &mut draws)?, crosses(content, &mut draws)?];
     let games = [game(&mut draws), game(&mut draws)];
     let sides = [0, 1].map(|side| Side::live(content, folders[side], crosses[side], games[side]));
@@ -196,9 +208,9 @@ mod tests {
             assert!(stages.contains(&setup.settings.stage));
             assert_eq!(setup.settings.effects & effects::RANDOM, 0);
             seen.insert(setup.settings.stage);
-            let limits = FolderLimits::of(&setup.navi_stats[0]);
+            let mut b = crate::check::start(&content, &m).unwrap();
             for side in 0..2 {
-                assert!(folders::violations(&content, &m.sides[side].folder, limits).is_empty());
+                assert!(folders::problems(&mut b, side as u8, &m.sides[side].folder).is_empty());
                 let list = setup.players[side].unlocks.cross_list.unwrap();
                 assert_eq!(list.forms().count(), 5);
                 for f in list.forms() {

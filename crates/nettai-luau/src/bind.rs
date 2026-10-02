@@ -1234,6 +1234,34 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         out.raw_set("parts", list)?;
         Ok(LuaValue::Table(out))
     });
+    // The folder a tool asks the rules to check (`folder_check`): { side,
+    // chips = { { chip = <the definition>, code = "A" } }, regular = n?,
+    // tags = { a, b }?, complete } (entries counting from 1), or nil.
+    lib_fn!(lua, t, "checked_folder", |lua, ()| {
+        let Some(f) = with(|api, _| Ok(api.checked_folder()))? else { return Ok(LuaValue::Nil) };
+        let out = lua.create_table()?;
+        out.raw_set("side", f.side)?;
+        let chips = lua.create_table()?;
+        for (i, (chip, code)) in f.chips.iter().enumerate() {
+            let entry = lua.create_table()?;
+            entry.raw_set("chip", bound(|b| b.def_value(Registry::Chip, *chip))?)?;
+            let letter = if *code == 26 { "*".to_string() } else { ((b'A' + code) as char).to_string() };
+            entry.raw_set("code", letter)?;
+            chips.raw_set(i + 1, entry)?;
+        }
+        out.raw_set("chips", chips)?;
+        if let Some(r) = f.regular {
+            out.raw_set("regular", r as i64 + 1)?;
+        }
+        if let Some((a, b)) = f.tags {
+            out.raw_set("tags", lua.create_sequence_from([a as i64 + 1, b as i64 + 1])?)?;
+        }
+        out.raw_set("complete", f.complete)?;
+        Ok(LuaValue::Table(out))
+    });
+    lib_fn!(lua, t, "folder_problem", |_, (rule, text): (String, String)| {
+        with(|api, _| Ok(api.folder_problem(&rule, &text)))
+    });
     lib_fn!(lua, t, "side_special", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.side_special(side).name()))

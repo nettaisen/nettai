@@ -9,13 +9,15 @@
 //!   each a Cross of the navi's, at most five, none twice; patch cards only
 //!   with a ruleset that has the patch-cards system, each installed once, at
 //!   most [`MAX_CARDS`], their MB together at most [`CARD_MB`] (BN6's menu
-//!   adds no card past 80 MB, `0x08141868`); the folder by BN6's rules
-//!   (`crate::folders`), its Mega, Giga and Regular limits the navi's
-//!   stats once the round has set them up (the NaviCust's and the patch
-//!   cards' work: the original's folder editor and its link battle check
-//!   read the stats the reload made).
+//!   adds no card past 80 MB, `0x08141868`); a NaviCust only for MegaMan
+//!   under rules with the navicust system, on its board (`check_navicust`);
+//!   the folder by its own game's rules (the side's ruleset's
+//!   `folder_check`, `crate::folders`: BN6's folder editor's), on the stats
+//!   the round set up (the NaviCust's and the patch cards' folder limits:
+//!   the original's folder editor and its link battle check read the stats
+//!   the reload made).
 
-use crate::folders::{self, FolderLimits};
+use crate::folders;
 use crate::{Arena, Match, Place, Side};
 use nettai_battle::Battle;
 use nettai_battle::content::Content;
@@ -132,10 +134,10 @@ pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
     if let Some(n) = &s.navicust {
         out.extend(check_navicust(content, s, n));
     }
-    // The folder's own rules (the limits wait for the round's stats).
-    let unlimited = FolderLimits { mega: u8::MAX, giga: u8::MAX, regular_mb: u8::MAX };
-    for v in folders::violations(content, &s.folder, unlimited) {
-        out.push(format!("folder: {v}"));
+    // The folder's chips are the content's (its rules wait for the round).
+    let in_folder = |i: u8| (i as usize) < s.folder.chips.len();
+    if !s.folder.regular.is_none_or(in_folder) || !s.folder.tags.is_none_or(|(a, b)| in_folder(a) && in_folder(b)) {
+        out.push("folder: the Regular or tag chips aren't in the folder".into());
     }
     out
 }
@@ -209,26 +211,30 @@ pub fn check_navicust(content: &Content, s: &Side, n: &nettai_battle::navicust::
     out
 }
 
-/// What the stats a side's round starts with allow its folder.
-fn check_limits(content: &Content, s: &Side, stats: &NaviStats) -> Vec<String> {
-    let limits = FolderLimits::of(stats);
-    let unlimited = FolderLimits { mega: u8::MAX, giga: u8::MAX, regular_mb: u8::MAX };
-    let own: Vec<String> = folders::violations(content, &s.folder, unlimited);
-    folders::violations(content, &s.folder, limits).into_iter().filter(|v| !own.contains(v)).map(|v| format!("folder: {v}")).collect()
+/// The round `m` starts, set up (each side's rules have set its stats:
+/// the NaviCust, the patch cards), or why it doesn't start.
+pub fn start(content: &Arc<Content>, m: &Match) -> Result<Battle, String> {
+    let setup = m.round(content, m.seed.unwrap_or(0));
+    let started = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Battle::new(setup, content.clone())));
+    started.map_err(|e| {
+        let why = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()));
+        format!("the round doesn't start: {}", why.unwrap_or_else(|| "the engine stopped".into()))
+    })
 }
 
 /// The stats each side's round starts with: the setup's, after the rules
 /// have set the round up (each side's NaviCust and patch cards), or why the
 /// round doesn't start.
 pub fn round_stats(content: &Arc<Content>, m: &Match) -> Result<[NaviStats; 2], String> {
-    let setup = m.round(content, m.seed.unwrap_or(0));
-    let started = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Battle::new(setup, content.clone())));
-    match started {
-        Ok(b) => Ok(b.stats),
-        Err(e) => {
-            let why = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()));
-            Err(format!("the round doesn't start: {}", why.unwrap_or_else(|| "the engine stopped".into())))
-        }
+    start(content, m).map(|b| b.stats)
+}
+
+/// What side `side`'s rules say of its folder in `b`, the round's battle.
+fn folder_problems(b: &mut Battle, side: usize, s: &Side) -> Vec<String> {
+    let checked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| folders::problems(b, side as u8, &s.folder)));
+    match checked {
+        Ok(problems) => problems.into_iter().map(|p| format!("folder: {}", p.text)).collect(),
+        Err(_) => vec!["folder: the rules stopped checking it".into()],
     }
 }
 
@@ -245,8 +251,8 @@ pub fn check_side(content: &Arc<Content>, s: &Side) -> Vec<String> {
         return vec!["the content has no link battle stage".into()];
     };
     let m = Match { seed: None, arena: Arena::on(Place { stage, background: None }), sides: [s.clone(), s.clone()] };
-    match round_stats(content, &m) {
-        Ok(stats) => out.extend(check_limits(content, s, &stats[0])),
+    match start(content, &m) {
+        Ok(mut b) => out.extend(folder_problems(&mut b, 0, s)),
         Err(e) => out.push(e),
     }
     out
@@ -262,10 +268,10 @@ pub fn check_match(content: &Arc<Content>, m: &Match) -> Vec<String> {
     if !out.is_empty() {
         return out;
     }
-    match round_stats(content, m) {
-        Ok(stats) => {
-            for ((s, at), st) in m.sides.iter().zip(sides).zip(&stats) {
-                out.extend(check_limits(content, s, st).into_iter().map(|p| format!("{at}: {p}")));
+    match start(content, m) {
+        Ok(mut b) => {
+            for (side, (s, at)) in m.sides.iter().zip(sides).enumerate() {
+                out.extend(folder_problems(&mut b, side, s).into_iter().map(|p| format!("{at}: {p}")));
             }
         }
         Err(e) => out.push(e),
