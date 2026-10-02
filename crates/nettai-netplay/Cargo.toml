@@ -9,6 +9,11 @@ description = "Rollback netplay for the battle engine on getgud, with a simulate
 nettai-battle.workspace = true
 getgud.workspace = true
 
+[features]
+# rollback_cost reports the calls into Luau per advance
+# (docs/design/rules-in-luau.md §6.5).
+luau-profile = ["nettai-battle/luau-profile"]
+
 [dev-dependencies]
 nettai-battle = { workspace = true, features = ["test-content"] }
 # rollback_cost loads the BN6 content pack and replays a golden trace.
