@@ -214,6 +214,9 @@ pub struct LiveChoices {
     pub folders: [SavedFolder; 2],
     /// The Crosses each player's Cross window offers.
     pub crosses: [CrossList; 2],
+    /// Each player's game: their Beast (Beast Out and Beast Over), and
+    /// their console's own pictures and Beast Out roar.
+    pub games: [GameVersion; 2],
 }
 
 impl LiveChoices {
@@ -228,7 +231,11 @@ impl LiveChoices {
         for side in 0..2 {
             let who = if side == 0 { "you" } else { "the right navi" };
             let names: Vec<&str> = self.crosses[side].forms().map(|f| content.form(f).name.as_str()).collect();
-            out.push_str(&format!("\n  Crosses ({who}): {}", names.join(", ")));
+            let game = match self.games[side] {
+                GameVersion::Gregar => "Gregar",
+                GameVersion::Falzar => "Falzar",
+            };
+            out.push_str(&format!("\n  {game} ({who}), Crosses: {}", names.join(", ")));
             if folders {
                 out.push_str(&format!("\n  folder ({who}): {}", folders::describe(content, &self.folders[side])));
             }
@@ -242,7 +249,8 @@ impl LiveChoices {
 /// random folder for each player (`crate::folders`), and five of MegaMan's
 /// ten Crosses, of both games, for each Cross window
 /// (`Unlocks::cross_list`, docs/engine/custom-screen.md §4.1). Both
-/// players are 1000-HP MegaMen of Falzar.
+/// players are 1000-HP MegaMen (`live_navi`), each of a game drawn at
+/// random, Falzar or Gregar: their Beast Out is that game's Beast.
 pub fn bn6_live_setup(content: &Content, seed: u32, stage: Option<&str>) -> Result<(RoundSetup, LiveChoices), String> {
     let mut draws = Draws::new(seed);
     let stages = link_battle_stages(content);
@@ -275,12 +283,23 @@ pub fn bn6_live_setup(content: &Content, seed: u32, stage: Option<&str>) -> Resu
     let limits = FolderLimits::of(&live_navi(content));
     let folders = [folders::random_folder(content, limits, &mut draws), folders::random_folder(content, limits, &mut draws)];
     let crosses = [random_crosses(content, &mut draws)?, random_crosses(content, &mut draws)?];
+    let game = |draws: &mut Draws| if draws.below(2) == 0 { GameVersion::Gregar } else { GameVersion::Falzar };
+    let games = [game(&mut draws), game(&mut draws)];
     let mut setup = live_setup(content, settings, folders, seed);
-    for (p, list) in setup.players.iter_mut().zip(crosses) {
-        p.unlocks.cross_list = Some(list);
+    for side in 0..2 {
+        let p = &mut setup.players[side];
+        p.unlocks.cross_list = Some(crosses[side]);
+        // The player's game: the save's (their Beast Out and Beast Over,
+        // `Unlocks::version`) and the navi's (NaviStats+0x20, 0 Gregar, 1
+        // Falzar, which MstrCros reads).
+        p.unlocks.version = games[side];
+        setup.navi_stats[side].version = match games[side] {
+            GameVersion::Gregar => 0,
+            GameVersion::Falzar => 1,
+        };
     }
     setup.later_stages = later.map(|(s, b)| Stage { stage: s, background: background_id(s, &b) });
-    Ok((setup, LiveChoices { seed, stage: first, background, folders, crosses }))
+    Ok((setup, LiveChoices { seed, stage: first, background, folders, crosses, games }))
 }
 
 /// Five of the form-changing navi's Crosses of both games, drawn at
@@ -565,6 +584,18 @@ mod tests {
             assert_eq!(format!("{:?}", bn6_live_setup(&content, seed, None).unwrap().0), format!("{setup:?}"));
         }
         assert!(seen.len() > 6, "{seen:?}");
+        // Each player's game is drawn too: both games come up, and the
+        // navi's game is the save's.
+        let mut games = std::collections::BTreeSet::new();
+        for seed in 0..12 {
+            let (setup, choices) = bn6_live_setup(&content, seed, None).unwrap();
+            for side in 0..2 {
+                assert_eq!(setup.players[side].unlocks.version, choices.games[side]);
+                assert_eq!(setup.navi_stats[side].version, (choices.games[side] == GameVersion::Falzar) as u8);
+                games.insert(format!("{:?}", choices.games[side]));
+            }
+        }
+        assert_eq!(games.len(), 2);
         // Some seed offers both games' Crosses.
         let mixed = (0..12).any(|seed| {
             let list = bn6_live_setup(&content, seed, None).unwrap().0.players[0].unlocks.cross_list.unwrap();
@@ -607,7 +638,8 @@ mod tests {
     /// nettai's Cross list on BN6's content: a Falzar player offered
     /// HeatCross, Gregar's, chooses it on the custom screen and fights in
     /// it (its form, element, buster and charged shot: HeatCross's flame);
-    /// on the next screen Beast Out from it is Falzar's Beast.
+    /// on the next screen Beast Out from it is HeatCross's Beast form, a
+    /// Gregar Beast, with its weapons.
     #[test]
     fn a_falzar_player_plays_a_gregar_cross() {
         use nettai_battle::battle::battle_flags;
@@ -615,7 +647,7 @@ mod tests {
         use nettai_battle::kinds::player::{NaviAction, navi_action};
         let content = crate::folders::bn6_test_content();
         let heat = content.defs.form_by_key("heatcross").unwrap();
-        let falzar_beast = content.defs.form_by_key("falzar-beast").unwrap();
+        let heat_beast = content.defs.form_by_key("heatcross-beast").unwrap();
         let stage = link_battle_stages(&content)[0];
         let settings = BattleSettings { stage, background: 0, effects: content.stage(stage).effects | MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
@@ -669,7 +701,9 @@ mod tests {
             },
         );
         // The next screen, opened with L once the gauge is full: Beast Out
-        // (START, DOWN, A) from HeatCross is Falzar's Beast.
+        // (START, DOWN, A) from HeatCross is HeatCross's Beast form, of
+        // Gregar's Beast: the Beast Out button and pictures are Gregar's.
+        assert_eq!(b.custom.sides[0].unlocks.beast_game(&*content, heat), GameVersion::Gregar);
         let mut beast = false;
         play_until(
             &mut live,
@@ -697,7 +731,10 @@ mod tests {
             },
             |b| b.round.turn >= 2 && b.custom.sides[0].sent.is_some(),
         );
-        assert_eq!(b.custom.sides[0].sent.as_ref().unwrap().result.transform.form, Some(falzar_beast));
-        play_until(&mut live, &mut b, 1000, |_, _| 0, |b| b.stats[0].form == falzar_beast);
+        assert_eq!(b.custom.sides[0].sent.as_ref().unwrap().result.transform.form, Some(heat_beast));
+        play_until(&mut live, &mut b, 1000, |_, _| 0, |b| b.stats[0].form == heat_beast && navi_action(b, p0) == NaviAction::Idle);
+        let weapons = content.form(heat_beast).weapons;
+        assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
+        assert_eq!(content.form(heat_beast).game, Some(GameVersion::Gregar));
     }
 }
