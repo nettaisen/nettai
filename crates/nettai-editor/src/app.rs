@@ -115,7 +115,9 @@ pub enum Msg {
 /// How the editor was started.
 pub struct Options {
     pub content_root: PathBuf,
-    pub pack: PathBuf,
+    /// The packs the content loads with (each game's), which Play hands
+    /// the frontend too.
+    pub packs: Vec<PathBuf>,
     pub frontend: Option<PathBuf>,
     pub file: Option<PathBuf>,
     pub lang: Lang,
@@ -154,15 +156,23 @@ pub struct Editor {
 
 impl Editor {
     pub fn new(content: Arc<Content>, pictures: Pictures, options: Options) -> Editor {
+        // A new match: live play's draw, else a plain one (content live play
+        // can't draw from).
+        let new = |content: &Arc<Content>| {
+            nettai_match::draw::live(content, 1, None).or_else(|_| nettai_match::draw::plain(content, 1)).unwrap_or_else(|e| {
+                eprintln!("the content makes no match: {e}");
+                std::process::exit(1)
+            })
+        };
         let m = match &options.file {
             Some(path) => match std::fs::read_to_string(path).map_err(|e| vec![e.to_string()]).and_then(|t| read(&content, &t)) {
                 Ok(m) => m,
                 Err(problems) => {
                     eprintln!("{}: {}", path.display(), problems.join("; "));
-                    nettai_match::draw::live(&content, 1, None).expect("a random match")
+                    new(&content)
                 }
             },
-            None => nettai_match::draw::live(&content, 1, None).expect("a random match"),
+            None => new(&content),
         };
         let mut e = Editor {
             names: Names::default(),
@@ -277,16 +287,12 @@ impl Editor {
             }
         };
         let program = self.frontend();
-        let started = std::process::Command::new(&program)
-            .arg("--match")
-            .arg(&path)
-            .arg("--content")
-            .arg(&self.options.content_root)
-            .arg("--pack")
-            .arg(&self.options.pack)
-            .arg("--lang")
-            .arg(self.lang.code())
-            .spawn();
+        let mut command = std::process::Command::new(&program);
+        command.arg("--match").arg(&path).arg("--content").arg(&self.options.content_root);
+        for pack in &self.options.packs {
+            command.arg("--pack").arg(pack);
+        }
+        let started = command.arg("--lang").arg(self.lang.code()).spawn();
         self.status = match started {
             Ok(_) => format!("playing {} with {}", path.display(), program.display()),
             Err(e) => format!("can't start {} ({e}): give its path with --frontend", program.display()),
@@ -323,7 +329,7 @@ impl Editor {
             }
             Msg::Draw => {
                 let seed = self.m.seed.unwrap_or(1).wrapping_mul(0x2545_F491).wrapping_add(7);
-                if let Ok(m) = nettai_match::draw::live(&content, seed, None) {
+                if let Ok(m) = nettai_match::draw::live(&content, seed, None).or_else(|_| nettai_match::draw::plain(&content, seed)) {
                     self.m = m;
                     self.typed.clear();
                     self.edited();
