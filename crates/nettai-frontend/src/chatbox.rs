@@ -14,12 +14,15 @@ use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
 use crate::objects::SpriteList;
+use crate::strings::{DisplayText, Said};
 use crate::textlayer::{Plane, Rect, TextItem, TextSink};
 use crate::vfont::Role;
 use nettai_assets::{Bundle, Chatbox as Graphics, Palette, SpriteSheet, Tiles};
-use nettai_battle::Battle;
 use nettai_battle::custom::chatbox::{Chatbox, PortraitLook, Script};
-use nettai_battle::custom::{GameVersion, Library, Phase};
+use nettai_battle::custom::screen::CrossWindow;
+use nettai_battle::custom::{GameVersion, Phase, Unlocks};
+use nettai_battle::{Battle, Content};
+use nettai_content_api::NaviHandle;
 
 /// The box's map on BG0 (`CurTileYBlockPos`): from row 12, 30 columns of
 /// 8 rows.
@@ -76,16 +79,14 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &m
         Phase::Description { from_cross_window: false, chatbox } => {
             // The chip under the cursor as the screen checked it (the chip
             // window's).
-            let said = screen.look.chip_window.last_chip.and_then(|c| strings.chip_description(b, c.id));
+            let said = screen.look.chip_window.last_chip.and_then(|c| strings.chip_description(&b.content, c.id));
             (chatbox, said, None)
         }
         Phase::Description { from_cross_window: true, chatbox } => {
-            let w = &screen.crosses;
-            let form = b.content.cross_form(navi, side.unlocks.version, w.offered[w.cursor as usize]);
-            (chatbox, form.and_then(|f| strings.form_description(b, f)), None)
+            (chatbox, cross_description(&b.content, strings, &side.unlocks, navi, &screen.crosses), None)
         }
         Phase::RunMessage { chatbox: Some(chatbox) } => {
-            (chatbox, strings.run_message(b, navi), b.content.navi(navi).run_message.portrait)
+            (chatbox, strings.run_message(&b.content, navi), b.content.navi(navi).run_message.portrait)
         }
         _ => return None,
     };
@@ -121,11 +122,24 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, sink: &TextSink, problems: &m
     Some(Shown { chatbox, kind, text, lines, portrait })
 }
 
-/// The lines printed so far, each with the units of it shown (as
+/// The description R shows in the Cross window: the Cross under the
+/// cursor's own, by its form (`CrossWindow::hovered`: with a setup's Cross
+/// list, of whichever game the Cross is, in the list's order).
+pub fn cross_description<'a: 'b, 'b>(
+    content: &'b Content,
+    strings: &DisplayText<'a>,
+    unlocks: &Unlocks,
+    navi: NaviHandle,
+    window: &CrossWindow,
+) -> Option<Said<'b>> {
+    window.hovered(unlocks, content, navi).and_then(|f| strings.form_description(content, f))
+}
+
+/// The lines printed so far, each with the characters of it shown (as
 /// `text_tiles` composes them).
 fn printed(chatbox: &Chatbox, string: &str, translated: bool) -> Vec<(String, usize)> {
     let lines: Vec<&str> = string.split('\n').take(3).collect();
-    let units: Vec<usize> = lines.iter().map(|l| crate::vfont::unit_count(l)).collect();
+    let units: Vec<usize> = lines.iter().map(|l| l.chars().count()).collect();
     lines.into_iter().zip(shown(chatbox, &units, translated)).filter(|&(_, n)| n > 0).map(|(l, n)| (l.to_string(), n)).collect()
 }
 
@@ -421,6 +435,45 @@ mod tests {
             c.update(0, 0);
         }
         assert_eq!(shown(&c, &[5, 4, 6], false), vec![5, 4, 6]);
+    }
+
+    /// R in the Cross window shows the description of the Cross under the
+    /// cursor, by its form: with live play's Cross list mixing both games,
+    /// a Gregar Cross (HeatCross) in a Falzar player's window shows its own
+    /// description, in either language, not that of Falzar's Cross in its
+    /// place (SpoutCross); without a list, the version's Crosses in order.
+    #[test]
+    fn a_cross_of_a_mixed_list_shows_its_own_description() {
+        use nettai_battle::custom::CrossList;
+        let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6"));
+        let mut report = nettai_content::report::Report::default();
+        let root = nettai_content::root::read(dir, &mut report).expect("content/bn6 reads");
+        let mut c = Content::default();
+        c.scripts.modules = root.modules;
+        c.assets = nettai_battle::content::testing::asset_names_used(&c.scripts.modules);
+        c.strings = root.strings;
+        c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
+        let ja = nettai_content::locale::load(dir, "ja").unwrap().expect("ja.toml");
+        let form = |key: &str| c.defs.form_by_key(key).unwrap_or_else(|| panic!("no form {key}"));
+        let navi = c.defs.navi_by_key("megaman").expect("megaman");
+        let list = Unlocks {
+            cross_list: Some(CrossList::new(&[form("heatcross"), form("groundcross")])),
+            ..Unlocks::everything(GameVersion::Falzar)
+        };
+        let version = Unlocks::everything(GameVersion::Falzar);
+        let mut w = CrossWindow { count: 2, ..CrossWindow::default() };
+        w.offered[1] = 1;
+        for (language, table) in [(None, &c.strings), (Some(&ja), &ja)] {
+            let strings = DisplayText::new(language);
+            for (unlocks, cursor, key) in
+                [(&list, 0, "heatcross"), (&list, 1, "groundcross"), (&version, 0, "spoutcross"), (&version, 1, "tomahawkcross")]
+            {
+                w.cursor = cursor;
+                let said = cross_description(&c, &strings, unlocks, navi, &w).expect("a description");
+                let want = table.form(key).and_then(|f| f.description.as_deref());
+                assert_eq!(Some(said.text), want, "{key} in {:?}", table.language);
+            }
+        }
     }
 
     #[test]

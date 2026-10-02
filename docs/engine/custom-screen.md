@@ -374,6 +374,10 @@ applies and the screen is the original's.
 - **The Cross itself** is its form definition, whatever the player's game: its sprite and palette, element and
   weakness, buster and charged shot, chip bonuses, face, and what a weakness hit breaks it to. A frontend draws its
   name in the window from that Cross's own game's pictures (docs/frontend.md §3).
+- **R** describes the Cross under the cursor by its form (`CrossWindow::hovered`, through `Unlocks::cross_at`):
+  the chatbox's lines (the form's `description_lines`) and the text a frontend shows are that Cross's own. (Until
+  2026-10-02 both took the version's Cross in the hovered place, so a list mixing both games showed the
+  descriptions of the player's own game's Crosses in order.)
 
 ## 5. OK: the hand (`sub_8029110`)
 

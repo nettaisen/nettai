@@ -521,7 +521,7 @@ impl Window {
         }
         if matches!(anim.step, S::Result) && anim.timer >= 0x10 {
             let k = pa.start as usize;
-            let name = text.strings.chip_name(v.b, pa.chip);
+            let name = text.strings.chip_name(&v.b.content, pa.chip);
             self.put_advance_text(v, k, name, None, text, problems);
             out.push((k, row(k), 10));
         }
@@ -536,7 +536,7 @@ impl Window {
         let key = &v.b.content.defs.chip(c.id).key;
         let number = bn6_compat::Compat::bn6().chips.get(key.as_str()).map_or(u16::MAX, |e| e.id);
         let code = (number < ADVANCE_NO_CODE_FROM).then_some(c.code.0);
-        self.put_advance_text(v, k, text.strings.chip_name(v.b, c.id), code, text, problems);
+        self.put_advance_text(v, k, text.strings.chip_name(&v.b.content, c.id), code, text, problems);
     }
 
     /// A name (and a pick's code in its last cell) into name `k`'s tiles;
@@ -657,7 +657,7 @@ impl Window {
         let a = v.assets;
         let def = v.b.content.defs.chip(c.id);
         let data = v.b.content.chip(c.id);
-        let name = text.strings.chip_name(v.b, c.id);
+        let name = text.strings.chip_name(&v.b.content, c.id);
         let (glyphs, missing) = fonts::cell_glyphs(v.hud, name);
         if !missing.is_empty() {
             problems.note(format!("chip {:?} is named {name:?}, but the pack's font has no glyph for {missing:?}", def.key));
@@ -922,7 +922,7 @@ fn names_shown(b: &Battle, s: &Screen) -> bool {
 
 fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Layer, text: &mut TextSink, problems: &mut Problems) {
     let other = v.side ^ 1;
-    let name = text.strings.navi_name(v.b, v.b.stats[other as usize].navi);
+    let name = text.strings.navi_name(&v.b.content, v.b.stats[other as usize].navi);
     let (glyphs, missing) = fonts::cell_glyphs(v.hud, name);
     if !missing.is_empty() {
         problems.note(format!("the navi named {name:?}: the pack's font has no glyph for {missing:?}"));
