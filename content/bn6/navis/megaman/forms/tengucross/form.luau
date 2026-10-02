@@ -8,10 +8,13 @@ local tengucross_beast = require("../tengucross-beast/form")
 local buster = require("../../weapons/buster/weapon")
 local charge = require("./charge")
 local tengu_wind = require("../../weapons/tengu-wind/weapon")
+local forms = require("../../../../rules/forms/system")
 
 return define.form {
     id = "tengucross",
     kind = "cross",
+    -- What changes MegaMan into it (BN6's five sequences).
+    change = forms.action,
     game = "falzar",
     cross_of = tenguman,
     beast = tengucross_beast,

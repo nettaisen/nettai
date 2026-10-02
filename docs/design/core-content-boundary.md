@@ -210,7 +210,9 @@ the comparison skips it. Garbage the ruleset produces (a decoded bug's high byte
 
 While the battle is paused, a navi's action dispatch is replaced by the pause handler: it runs a pause-time
 action by state bit (the form change, the revert, the Cross change, the Cross knock-out) or starts one from a
-request. These are the ruleset's own (kinds/player/actions/transform.rs, cross_change.rs), with the effects
+request. The revert, the Cross change and the knock-out are the framework's (kinds/player/actions/transform.rs,
+cross_change.rs); the change into a form is the action the form names (`FormData::change`: BN6's forms system's,
+content/bn6/rules/forms, docs/design/rules-in-luau.md), with the effects
 they show by role. Only objects that run while paused run, so what a pause-time action spawns sets that flag.
 
 ### 4.8 Counters
