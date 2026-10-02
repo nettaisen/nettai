@@ -7,8 +7,6 @@ local strike = require("../../lib/swords/strike")
 
 return define.chip {
     id = "assnswrd",
-    name = "AssnSwrd",
-    description = "When plyz\ncut enemy\nspec panl",
     codes = { "N", "R", "Y" },
     element = "null", family = "null", class = "standard",
     rarity = 2, mb = 50, damage = 240, hit_param = 30, lockout = 0,

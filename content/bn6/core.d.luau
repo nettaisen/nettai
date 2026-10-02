@@ -1317,9 +1317,12 @@ export type ActionSpec = {
 }
 export type Action = ActionSpec
 
+-- (A definition holds no display text: names, descriptions and messages
+-- are the content root's locales/<lang>.toml, by the definition's key. The
+-- content's own language's words (en) time the chatbox: a description's
+-- lines, a message's characters per line.)
 export type WeaponSpec = {
     id: string,
-    name: string,
     -- Ticks to a full charge, by Charge stat 0 to 7 (past 4, what the
     -- original reads on into: the next routine's row).
     charge_ticks: { number },
@@ -1368,10 +1371,6 @@ export type DamageFormula =
 
 export type ChipSpec = {
     id: string,
-    name: string,
-    -- What R shows on the custom screen, its lines apart by "\n": the box
-    -- takes keys a tick later for each line. None counts as three lines.
-    description: string?,
     -- The palette of its picture on the custom screen, 16 BGR555 colours,
     -- for a chip whose palette no ROM holds (the pack's picture is black
     -- without it). Presentation only.
@@ -1456,7 +1455,6 @@ export type MugshotFaces = {
 -- side's stats.)
 export type NaviDef = {
     id: string,
-    name: string,
     -- The battle sprite (a navi that changes form draws its form's).
     sprite: SpriteAsset,
     element: ElementName,
@@ -1508,14 +1506,10 @@ export type NaviDef = {
     }?,
     cross_hp: { number }?,
 }
--- A navi's no-running message.
+-- A navi's no-running message. Its words are locales/<lang>.toml's; the
+-- content's own language's (en) time it: the characters in each line, and
+-- which of them move the speaker's mouth.
 export type RunMessage = {
-    -- The characters in each of its lines (up to three), which time its
-    -- printing.
-    counts: { number },
-    -- Its words, a line break between lines (presentation: what the
-    -- chatbox shows; gen-content checks they agree with the counts).
-    text: string?,
     -- Who says it: the portrait beside the box (presentation).
     portrait: SpriteAsset?,
 }
@@ -1560,7 +1554,6 @@ export type FormTrait =
 -- One of MegaMan's forms (§3.2).
 export type FormDef = {
     id: string,
-    name: string,
     sprite: SpriteAsset,
     element: ElementName,
     weakness: { string }?,
@@ -1578,9 +1571,6 @@ export type FormDef = {
     palette: number?,
     -- Its face in the emotion window, or its faces by its navi's emotion.
     mugshot: (Mugshot | MugshotFaces)?,
-    -- A Cross's description, which R shows in the Cross window, its lines
-    -- apart by "\n" (the box takes keys a tick later for each).
-    description: string?,
     weapons: FormWeapons?,
     identity: Identity?,
     -- The damage it adds to a family's damaging chips, and to damaging

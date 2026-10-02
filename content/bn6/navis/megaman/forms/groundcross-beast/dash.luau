@@ -165,7 +165,6 @@ dash_weapon.action = define.action {
 
 dash_weapon.weapon = define.weapon {
     id = "groundcross-beast/dash",
-    name = "GroundCross Beast dash",
     -- The charge table's row 0x17; Charge 5 reads on into row 0x18's first
     -- entry, as the original's table does.
     charge_ticks = { 50, 50, 50, 50, 50, 60 },

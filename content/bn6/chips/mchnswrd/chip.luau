@@ -6,8 +6,6 @@ local strike = require("../../lib/swords/strike")
 
 return define.chip {
     id = "mchnswrd",
-    name = "MchnSwrd",
-    description = "Search &\nhit stund\nenemies.",
     codes = { "H", "L", "Q" },
     element = "null", family = "null", class = "standard",
     rarity = 0, mb = 37, damage = 200, hit_param = 30, lockout = 0,

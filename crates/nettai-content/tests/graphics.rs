@@ -145,6 +145,27 @@ fn bundle() -> Bundle {
             arrow: tiles(12, 53),
             text_palette: palette(54),
         },
+        language: "en".into(),
+        // Another language's lettering: its fonts and lines, one banner of
+        // its own (placed elsewhere), a narrower "Cstmzing...".
+        languages: vec![(
+            "ja".into(),
+            HudLettering {
+                font: tiles(8, 34),
+                font_chars: [" ", "0", "ア", "[EX]"].map(String::from).to_vec(),
+                dialogue_font: DialogueFont {
+                    pixels: (0..2 * 16 * 12).map(|i| (i % 3) as u8).collect(),
+                    advances: vec![11, 11],
+                    chars: vec!["ア".into(), "研".into()],
+                },
+                texts: vec![vec![3, 2, 1]],
+                banners: vec![Some(BannerLayout { x: 44, y: 64, kind: 1, glyphs: tiles(40, 35), number_at: Some((104, 64)) }), None],
+                banner_palette: palette(57),
+                waiting: tiles(14, 36),
+                waiting_palette: palette(57),
+                gauge_tiles: tiles(3, 37),
+            },
+        )],
     };
     Bundle { sprites: vec![sprite(0, 1), sprite(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud, custom: custom() }
 }
@@ -208,6 +229,13 @@ fn custom() -> CustomScreen {
         emblem_palette_of: vec![1, 0, 0],
         regular: tiles(32, 82),
         advance_name_colours: vec![[0, 0x7FFF, 0x14A5, 0], [0, 0x43F0, 0x14A5, 0]],
+        languages: vec![(
+            "ja".into(),
+            CustomLettering {
+                pictures: SlotPictures { ok: picture(91), ok_picked: picture(92), redeal: picture(93), scrap: picture(94), other: picture(95) },
+                cross_names: vec![("falzar".into(), tiles(36, 96)), ("gregar".into(), tiles(36, 97))],
+            },
+        )],
     }
 }
 

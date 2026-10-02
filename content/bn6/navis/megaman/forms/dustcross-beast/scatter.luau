@@ -196,7 +196,6 @@ scatter.action = define.action {
 
 scatter.weapon = define.weapon {
     id = "dustcross-beast/scatter",
-    name = "DustCross Beast scatter",
     -- The charge table's row 0x1D, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 40, 40, 40, 40, 40, 20, 20, 20 },

@@ -36,7 +36,6 @@ end
 
 charge.weapon = define.weapon {
     id = "spoutcross/charge",
-    name = "Spout charge",
     -- The charge table's row 0xC, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 60, 50, 40, 30, 20, 60, 60, 60 },

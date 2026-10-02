@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 local crcusman = define.chip {
     id = "crcusman",
-    name = "CrcusMan",
-    description = "Capture\nenmy in a\nash attck",
     codes = { "C", "*" },
     element = "null",
     family = "null",
@@ -25,8 +23,6 @@ local crcusman = define.chip {
 
 local crcusmn_ex = define.chip {
     id = "crcusmn-ex",
-    name = "CrcusMn[EX]",
-    description = "Capture\nenmy in a\nash attck",
     codes = { "C" },
     element = "null",
     family = "null",
@@ -44,8 +40,6 @@ local crcusmn_ex = define.chip {
 
 local crcusmn_sp = define.chip {
     id = "crcusmn-sp",
-    name = "CrcusMn[SP]",
-    description = "Capture\nenmy in a\nash attck",
     codes = { "C" },
     element = "null",
     family = "null",

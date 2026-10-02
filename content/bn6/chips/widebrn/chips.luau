@@ -18,8 +18,6 @@ end
 
 local widebrn1 = define.chip {
     id = "widebrn1",
-    name = "WideBrn1",
-    description = "An expnd\n3 row \nfire attk",
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -39,8 +37,6 @@ local widebrn1 = define.chip {
 
 local widebrn2 = define.chip {
     id = "widebrn2",
-    name = "WideBrn2",
-    description = "An expnd\n3 row \nfire attk",
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -60,8 +56,6 @@ local widebrn2 = define.chip {
 
 local widebrn3 = define.chip {
     id = "widebrn3",
-    name = "WideBrn3",
-    description = "An expnd\n3 row \nfire attk",
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",

@@ -8,8 +8,6 @@ local sparks = require("../../lib/sparks")
 
 local flmhook1 = define.chip {
     id = "flmhook1",
-    name = "FlmHook1",
-    description = "Launch 2\nflaming\nhooks!",
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -28,8 +26,6 @@ local flmhook1 = define.chip {
 
 local flmhook2 = define.chip {
     id = "flmhook2",
-    name = "FlmHook2",
-    description = "Launch 2\nflaming\nhooks!",
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -48,8 +44,6 @@ local flmhook2 = define.chip {
 
 local flmhook3 = define.chip {
     id = "flmhook3",
-    name = "FlmHook3",
-    description = "Launch 2\nflaming\nhooks!",
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",

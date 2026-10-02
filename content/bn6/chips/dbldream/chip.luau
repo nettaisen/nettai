@@ -9,8 +9,6 @@ local slashes = require("../../navis/megaman/forms/slashcross/slashes")
 
 return define.chip {
     id = "dbldream",
-    name = "DblDream",
-    description = "ミテイ",
     codes = { "E", "L", "S", "*" },
     element = "null", family = "sword", class = "special",
     rarity = 0, mb = 8, damage = 80, hit_param = 30, lockout = 0,

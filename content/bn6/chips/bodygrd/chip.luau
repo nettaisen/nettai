@@ -12,8 +12,6 @@ local antiswrd = require("../antiswrd/chip")
 
 return define.chip {
     id = "bodygrd",
-    name = "BodyGrd",
-    description = "Trap enmy\nthen thrw\nstar attk",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

@@ -7,8 +7,6 @@ local barriers = require("../../lib/barriers/barriers")
 
 return define.chip {
     id = "lifeaur",
-    name = "LifeAur",
-    description = "Repel all\nattacks\nunder200",
     codes = { "U" },
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 70, damage = 0, hit_param = 0, lockout = 0,
