@@ -35,6 +35,9 @@ done".
 - **Not started until BN6's gameplay is done:** nothing in §4 begins, including the move-only `bn6` boundary,
   while BN6's gameplay work is open (the one-sided and unrun coverage, the Gregar console, the 2022 replays, and
   whatever they find). The other decisions in §5 wait with it.
+- **2026-10-02, "start abstracting more rules so bn5 support can be implemented"**, with BN5 "composable with bn6
+  content": the design is [rules-in-luau.md](rules-in-luau.md) (the ruleset as a Luau definition, its state, its
+  hooks, the cost budget, roots that load together, and the slices).
 
 ## 0. Summary
 
