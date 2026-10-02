@@ -8,15 +8,15 @@
 //! settings indices). [`Ids`] maps one to the other through compat's keys.
 
 use crate::{Compat, Game};
-use bn6_battle::content::{ChipCode, Content};
-use bn6_battle::custom::folder::FOLDER_SIZE;
-use bn6_battle::custom::{BattleFolder, FolderChip};
-use bn6_battle::hand::ChipHand;
-use bn6_battle::setup::{
+use nettai_battle::content::{ChipCode, Content};
+use nettai_battle::custom::folder::FOLDER_SIZE;
+use nettai_battle::custom::{BattleFolder, FolderChip};
+use nettai_battle::hand::ChipHand;
+use nettai_battle::setup::{
     BattleSettings, GaugeSpeed, NaviCustBugs, NaviStats, NaviWeapons, SpTimes, Stage, Supports,
 };
-use bn6_battle::transform::TransformRequest;
-use bn6_content_api::{ChipHandle, FormHandle, NaviHandle, RecordHandle, StageHandle, WeaponHandle};
+use nettai_battle::transform::TransformRequest;
+use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, RecordHandle, StageHandle, WeaponHandle};
 
 // ---- Numbers and handles ----------------------------------------------------------
 
@@ -454,7 +454,7 @@ pub fn sp_times(b: &[u8]) -> SpTimes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bn6_battle::content::testing;
+    use nettai_battle::content::testing;
 
     /// The left navi's stats at the start of the machgun replay.
     const MACHGUN_P0: &str = "08000000000100ff00320505010080000000ff00000000000000000101000001010301000000001f0000000a0000ffffff0000000000000000ff00000000e803e803e8030000010000000a0000000000000000000000ffffffffffff0000000000000000";
