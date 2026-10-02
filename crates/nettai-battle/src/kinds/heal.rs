@@ -30,7 +30,7 @@ pub fn heal(b: &mut Battle, r: ObjectRef, amount: u16, anti_recovery: bool) -> b
     }
     add_hp(b, r, amount);
     let pos = b.objects.get(r).pos;
-    let look = b.content.defs.roles.effect(EffectRole::Recovery);
+    let look = b.roles_for(r).effect(EffectRole::Recovery);
     effect::spawn(b, pos, look, 0, 0, 0);
     b.sound(SoundRole::Recovery);
     false
@@ -72,7 +72,7 @@ pub(crate) fn spawn_counterattack(b: &mut Battle, healer: ObjectRef, damage: u32
         (o.panel, o.alliance)
     };
     let pos = Vec3 { x: panel.y as i32, y: 0, z };
-    let kind = b.content.defs.roles.kind(crate::content::KindRole::AntiRecovery);
+    let kind = b.arena_roles().kind(crate::content::KindRole::AntiRecovery);
     let c = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, pos, [0; 4])?;
     let o = b.objects.get_mut(c);
     o.panel = panel;
@@ -94,7 +94,7 @@ pub(crate) fn trap_mark(b: &mut Battle, r: ObjectRef) {
     let panel = b.objects.get(r).panel;
     let (x, y) = crate::kinds::player::panel_coordinates(panel.x, panel.y);
     let local = b.round.local_side;
-    let look = b.content.defs.roles.effect(EffectRole::TrapMark);
+    let look = b.roles_for(r).effect(EffectRole::TrapMark);
     effect::spawn(b, Vec3 { x, y: y.wrapping_add(0x10_0000), z: TRAP_MARK_Z }, look, local, 0, 0);
     b.sound(SoundRole::CutIn);
 }
