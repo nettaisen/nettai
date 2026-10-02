@@ -10,6 +10,7 @@ use nettai_battle::custom::{
 };
 use nettai_battle::input::keys;
 use nettai_battle::link::Link;
+use nettai_battle::patch_cards::{InstalledCard, MAX_CARDS, PatchCards};
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage, effects};
 use nettai_battle::{Battle, PlayerTick, Rng, TickEvents};
 use bn6_compat::trace::{self, Frame, Round};
@@ -313,6 +314,28 @@ pub fn bn6_live_setup(content: &Content, seed: u32, stage: Option<&str>) -> Resu
     }
     setup.later_stages = later.map(|(s, b)| Stage { stage: s, background: background_id(s, &b) });
     Ok((setup, LiveChoices { seed, stage: first, background, folders, crosses, games }))
+}
+
+/// A player's patch cards from a list of card keys, comma-separated, in
+/// the order they apply (e.g. `canodumb,-shadow`): a key after `-` is
+/// installed but switched off (docs/design/patch-cards.md).
+pub fn patch_cards(content: &Content, list: &str) -> Result<PatchCards, String> {
+    let mut cards = Vec::new();
+    for item in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        let (key, enabled) = match item.strip_prefix('-') {
+            Some(key) => (key, false),
+            None => (item, true),
+        };
+        let card = content.defs.patch_card_by_key(key).ok_or_else(|| {
+            let keys: Vec<&str> = content.defs.patch_cards.iter().map(|c| c.key.as_str()).collect();
+            format!("no patch card {key:?}; the content's are {}", keys.join(", "))
+        })?;
+        cards.push(InstalledCard { card, enabled });
+    }
+    if cards.len() > MAX_CARDS {
+        return Err(format!("{} patch cards: at most {MAX_CARDS} fit in the MB limit", cards.len()));
+    }
+    Ok(PatchCards::new(&cards))
 }
 
 /// Five of the form-changing navi's Crosses of both games, drawn at

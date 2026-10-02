@@ -1,7 +1,7 @@
 //! nettai-frontend: watch a golden trace replayed through the engine, or play.
 //! See docs/frontend.md.
 
-use nettai_frontend::driver::{LivePlayer, TracePlayer, bn6_live_setup};
+use nettai_frontend::driver::{LivePlayer, TracePlayer, bn6_live_setup, patch_cards};
 use nettai_frontend::textlayer::TextMode;
 use nettai_frontend::vfont::{TextRenderer, VectorFont};
 use nettai_frontend::{Renderer, Session, TickHook, app, headless, session};
@@ -18,6 +18,7 @@ struct Args {
     play: bool,
     seed: Option<u32>,
     stage: Option<String>,
+    cards: [Option<String>; 2],
     show_folders: bool,
     keys: Option<String>,
     scale: usize,
@@ -54,6 +55,11 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    from the clock); each start prints it
   --stage NAME     live play on this link battle stage (its key, e.g.
                    netbattle-43) instead of a random one
+  --cards KEYS     live play: your patch cards (the Japanese games'
+                   Modification Cards), their keys comma-separated in the
+                   order they apply; -KEY installs one switched off (e.g.
+                   canodumb,-shadow)
+  --their-cards KEYS  the right navi's patch cards, likewise
   --show-folders   print both players' live folders
   --scale N        window scale (default 4)
   --paused         start paused
@@ -88,6 +94,7 @@ fn parse() -> Result<Args, String> {
         play: false,
         seed: None,
         stage: None,
+        cards: [None, None],
         show_folders: false,
         keys: None,
         scale: 4,
@@ -113,6 +120,8 @@ fn parse() -> Result<Args, String> {
             "--play" => a.play = true,
             "--seed" => a.seed = Some(number(value("--seed")?, "--seed")? as u32),
             "--stage" => a.stage = Some(value("--stage")?),
+            "--cards" => a.cards[0] = Some(value("--cards")?),
+            "--their-cards" => a.cards[1] = Some(value("--their-cards")?),
             "--show-folders" => a.show_folders = true,
             "--keys" => a.keys = Some(value("--keys")?),
             "--scale" => a.scale = number(value("--scale")?, "--scale")? as usize,
@@ -216,8 +225,13 @@ fn main() {
         let seed = args.seed.unwrap_or_else(|| {
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(1)
         });
-        let (setup, choices) = bn6_live_setup(&content, seed, args.stage.as_deref()).unwrap_or_else(|e| fail(e));
+        let (mut setup, choices) = bn6_live_setup(&content, seed, args.stage.as_deref()).unwrap_or_else(|e| fail(e));
         eprintln!("{}", choices.describe(&content, args.show_folders));
+        for (side, list) in args.cards.iter().enumerate() {
+            if let Some(list) = list {
+                setup.players[side].patch_cards = patch_cards(&content, list).unwrap_or_else(|e| fail(e));
+            }
+        }
         sessions.push(Session::new(Box::new(LivePlayer::new(setup, content.clone()))));
     } else if let Some(path) = &args.trace {
         let rounds =
