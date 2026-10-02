@@ -1192,6 +1192,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, mood) = (u8_arg(side, "side")? & 1, u8_arg(mood, "mood")?);
         with(|api, _| Ok(api.set_mood(side, mood)))
     });
+    lib_fn!(lua, t, "gain_mood", |_, (side, n): (LuaValue, LuaValue)| {
+        let (side, n) = (u8_arg(side, "side")? & 1, int(&n, "amount")? as u16);
+        with(|api, _| Ok(api.gain_mood(side, n)))
+    });
+    lib_fn!(lua, t, "lose_mood", |_, (side, n): (LuaValue, LuaValue)| {
+        let (side, n) = (u8_arg(side, "side")? & 1, int(&n, "amount")? as u16);
+        with(|api, _| Ok(api.lose_mood(side, n)))
+    });
     lib_fn!(lua, t, "set_emotion_window_glitch", |_, (side, on): (LuaValue, bool)| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.set_emotion_window_glitch(side, on)))
