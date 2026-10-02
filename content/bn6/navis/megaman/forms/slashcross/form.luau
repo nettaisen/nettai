@@ -26,7 +26,7 @@ return define.form {
     palette = 9,
     -- Its faces in the emotion window, and once Beast Out is spent
     -- (`byte_801E700`): the Falzar ROM has no SlashCross face, and shows TenguCross's.
-    mugshot = { normal = asset.mugshot("tengucross"), tired = asset.mugshot("tengucross-tired") },
+    mugshot = { normal = asset.mugshot("slashcross"), tired = asset.mugshot("slashcross-tired") },
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "sword", damage = 50 },
     -- The chips A charges.

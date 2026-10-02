@@ -738,6 +738,34 @@ outside Meteors' dimming (1: the instant meteor shower has no user) and slots th
 tornado and a falling rock seeing the battle over, which comes with a deletion some 50 ticks after a knockback KO,
 while neither lasts or starts that late. The recording is in the lab and matches the engine (1,034 frames).
 
+**Batch 10, LilBolr and AirRaid (27 branches, with the layer object both use):** 6 taken by 4 new recordings, 17
+unreachable, 4 hard. `chips/0x062-lilbolr1/erupt-dimmed` (P0's HeatMan dims the screen as the boiler erupts: the
+steam layer runs dimmed, and the flames' KO ends the battle with the boiler erupting), `erupt-paused` (a pause
+during the eruption), `full-synchro` (LilBolr1 thrown in Full Synchro: the doubled damage word) and
+`chips/0x068-airraid1/side-1-far-column` (side 1's plane on column 1, with no column ahead). The unreachable ones:
+the layer's own-palette and the viruses' settings no chip's layer uses (8), the boiler's zero-tick throw, its
+flight timer (the lifetime), a break with HP left and an eruption while dimmed (5: the obstacle framework holds its
+actions then), the plane's actions while dimmed, its propeller's own flip and a stop with nothing (4). The hard
+ones: a layer's or propeller's owner held by a status, the plane seeing the battle over (tried the opponent's
+Cannon, Thunder and Silence, and KOs), and a hit that doesn't lower the boiler's HP (tried Fan and MagCoil). The 4
+recordings are in the lab and match the engine (3,719 frames).
+
+**Batch 11, MetrKnuk and SandWrm (26 branches):** 6 taken by 4 new recordings, 17 unreachable, 3 hard.
+`chips/0x133-metrknuk/corner-target` (P1 on (6,3): the 3x3 around it runs past the far column and the bottom row),
+`side-1` (side 1's MetrKnuk at P0 on (1,2): past column 1), `chips/0x065-sandwrm1/user-flinched` (the opponent's
+AirShot hits the user as the worm emerges: the start hole's opening stalls while its navi flinches) and
+`heatman-dimming` (the opponent's HeatMan dims the screen as the worm emerges: the holes run through the dimming
+without opening further, while the worm and its sand wait). The unreachable ones: a slow fist (MetrKnuk's spawner
+sets the fast fall), full pools (2), no panel of the enemy's area or a second enemy body (3), no target around the
+enemy navi but the last one (3: panels are taken front first in each row and come back front first, and the back
+column is never taken, so the navi's 3x3 always holds another panel of its side), a hole's opening outlasting the
+worm's 20-tick timer, a hole seeing a pause (2: it has no run-while-paused flag), the worm and the sand seeing a
+dimming (2: no run-while-dimmed flag), the start hole's timer running out in the 16-tick arc, the worm changing
+row, and an arc's fifth quarter. The hard ones: MetrKnuk's first fist finding no enemy body (the enemy navi keeps
+it on the panel flags until its deletion), and a hole whose navi is at 0 HP with the battle not over (2: a KO
+starts the deletion, and the battle's end that destroys the holes, at once; tried MiniBomb, AirShot and HeatMan on
+a 10 HP user). The 4 recordings are in the lab and match the engine (6,879 frames).
+
 <!-- end: chip families, G4 -->
 
 ##### Chip families: onesided's share
@@ -830,6 +858,60 @@ ProtoMan back before Colonel's charge has run 40 ticks (1: his quickest way back
 comes at its 42nd), and H-Burst seeing the fight stopped (1: battle flag 1 stays set for the battle). The hard one:
 no enemy navi on the field for MstrCros. The 6 recordings match the engine at main 9aedd5a4, every frame (15,413)
 and sound call (418).
+
+**Second pass, batch 5: GreatYo's yoyos, AreaGrab and PanlGrab, the panel changer, GrabBnsh's hands (36
+branches):** 8 taken by 6 new recordings, 27 unreachable, 1 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `pa/0x154-greatyo/adjacent` | GreatYo's middle yoyo hitting as it starts out: it spins at once and the others roll back no panels |
+| `chips/0x0a3-areagrab/third-grab`, `home-partly-stolen` | a third AreaGrab on the other side's last column, which can't be taken; AreaGrab from a column the other side's PanlGrab has partly taken, its home the column behind |
+| `chips/0x0a2-panlgrab/twice-then-areagrab` | the grab's "keeps a full column" test meeting a column PanlGrab has taken a panel of |
+| `chips/0x0a8-holypanl/hole-ahead`, `chips/0x0bd-antirecv/healer-over-hole` | the panel changer's panel a hole: HolyPanl's panel in front, AntiRecv's poison under a healer over a hole (AirShoes) |
+
+The unreachable ones: GreatYo's signal to an empty slot and a yoyo without its controller (2: the three go out
+together and the controller outlasts them), a grab with no column to take (2: a side keeps a full column), the
+grab searches' walks from the far edge (5: that panel is always the other side's), spawns (3), the panel
+changer's kinds 7, 8 and 0xA to 0xC (9: its spawners are the panel chips and AntiRecv), a change that doesn't
+flicker and one with no holder (2), GrabBnsh's later hands (2: one enemy navi panel, one hand a strike) and its
+region (1), and CornFsta's sower with no panel at all (1). The hard one: AreaGrab's home search running off the
+field, which needs every column from the user's back partly stolen. The 6 recordings match the engine at main
+1703b936, every frame (8,062) and sound call (177).
+
+**Second pass, batch 6: Sensor, Guardian, Anubis (28 branches):** 6 taken by 5 new recordings, 17
+unreachable, 5 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x071-sensor1/side1`, `dimmed`, `ko-scanning` | side 1's Sensor (its scanner's test and its line leaving at column 0); the scanner under the other side's dimming; the scanner, sent up the diagonal past the opponent, seeing the battle over |
+| `chips/0x097-guardian/broken-in-dimming`, `broken-and-ko` | the statue broken inside HeatMan's dimming: the strike back waits the dimming out, and finds the battle over when HeatMan also deletes its owner |
+
+The unreachable ones: the turret's own dimmed tests (2: the obstacles' shared update runs its actions only
+outside a dimming), spawns (2), links (2), a scanner that passes objects (2) and the laser's delay (1); the
+statue appearing on a taken panel, broken with HP left, quiet, or striking back with no side, and a repeated test
+(5); Anubis's drain seeing the battle over (1: the statue's shared update ends it first, at a KO or at the 15th
+turn's time-up alike) and its bubbles finding no panel (2). The hard ones: a laser hit on its turret's last
+tick, the turret pushed while it fires (its target is paralyzed for the whole fire; with a Barrier, AirShot still
+didn't push it), and the statue broken by both sides' hits at once or by a hit with neither side's bits (3). The 5
+recordings match the engine at main eda65622, every frame (6,173) and sound call (189).
+
+**Second pass, batch 7: VDoll, the supports, the instruments, Otenko, RockCube, MagCoil (35 branches):** 6
+taken by 5 new recordings, 26 unreachable, 3 hard:
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x096-vdoll/dimmed-flight`, `hole-landing`, `heatman-burns` | the doll in the air under the other side's dimming; landing on a hole and breaking; burned inside its own side's HeatMan dimming, its end waiting the dimming out and then finding the battle over |
+| `chips/0x099-otenko/next-turn` | Otenko's blessing meeting the same hand position in the next turn (another turn's chip) |
+| `chips/0x0b7-magcoil/side1` | side 1's magnet pull |
+
+The unreachable ones: the doll's hit without its record (1), the sparkles' slot, length and silence (4: the curse
+is a netbattle's only spawner), the curse without one combatant on the other side (4), the supports without a
+navi, Rush's spared chip (no folder holds it), his controller and his fallback panel (8), the instruments' own
+dimmed and battle-over tests (4: the obstacles' shared update runs their actions only outside a dimming and ends
+them at the battle's end, like the Sensor turret's and Anubis's), Otenko's statue without collision or on a
+taken panel (2), the rock rows and entrances no spawner uses (2), and MagCoil's one-tick wait (1). The hard
+ones: the doll broken while carried, Tango's heal over a barrier, and the magnet seeing the battle over. The 5
+recordings match the engine at main bc71b739, every frame (4,862) and sound call (97).
 
 <!-- end: chip families, onesided -->
 

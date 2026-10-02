@@ -62,6 +62,7 @@ impl<'a> Renderer<'a> {
     /// Draw a battle as a 240x160 BGR555 frame.
     pub fn render(&mut self, b: &Battle) -> Vec<u16> {
         let assets = self.assets;
+        self.problems.known.clear();
         let view = Self::view(b);
         let stage = Stage::new(assets, b.setup.settings.background, StageClock::of(b));
         self.background.clear();

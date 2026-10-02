@@ -1,12 +1,13 @@
-//! Extract the game's battle assets from the original ROM (US Falzar,
-//! `MEGAMAN6_FXXBR6E`) into a content pack:
+//! Extract the game's battle assets from the original ROMs, the US Falzar
+//! (`MEGAMAN6_FXXBR6E`) and the US Gregar (`MEGAMAN6_GXXBR5E`), into a
+//! content pack:
 //!
-//!     bn6-extract content <rom> <pack-dir> [--gregar <rom>] [--content <dir>]
+//!     bn6-extract content <falzar-rom> <gregar-rom> <pack-dir> [--content <dir>]
 //!
-//! With the US Gregar ROM (`MEGAMAN6_GXXBR5E`), the pack also has what a
-//! Gregar console shows of its own (its Crosses' names on the custom screen,
-//! its Beast's pictures; nettai-assets `Versioned`); without it, a Gregar
-//! console shows Falzar's.
+//! Most of the pack is the Falzar ROM's. The Gregar ROM gives what only it
+//! has right (Gregar's own faces, five chips' pictures and icons) and what a
+//! Gregar console shows of its own (its Crosses' names on the custom
+//! screen, its Beast; nettai-assets `Versioned`): see `gregar`.
 //!
 //! The pack (see nettai-content and docs/design/content-pack.md) holds the
 //! graphics and the sound in open formats, by the names this repository's
@@ -18,6 +19,7 @@
 mod content;
 mod custom;
 mod graphics;
+mod gregar;
 mod hud;
 
 pub(crate) struct Rom(Vec<u8>);
@@ -73,17 +75,38 @@ pub(crate) fn lz77(rom: &Rom, src: u32) -> Option<Vec<u8>> {
     Some(out)
 }
 
-pub(crate) fn load_rom(path: &str) -> Rom {
-    let rom = Rom(std::fs::read(path).expect("reading ROM"));
-    assert_eq!(&rom.0[0xA0..0xB0], b"MEGAMAN6_FXXBR6E", "expected the US Falzar ROM (MEGAMAN6_FXXBR6E)");
-    rom
+/// The two ROMs the pack is made from, each checked by its header (its
+/// game code at 0xAC: `BR6E` the US Falzar, `BR5E` the US Gregar).
+pub(crate) struct Roms {
+    pub falzar: Rom,
+    pub gregar: Rom,
 }
 
-/// The US Gregar ROM, for what a Gregar console shows of its own.
-pub(crate) fn load_gregar_rom(path: &str) -> Rom {
-    let rom = Rom(std::fs::read(path).expect("reading the Gregar ROM"));
-    assert_eq!(&rom.0[0xA0..0xB0], b"MEGAMAN6_GXXBR5E", "expected the US Gregar ROM (MEGAMAN6_GXXBR5E)");
-    rom
+/// What a ROM file is, by its header: the US Falzar or the US Gregar, or
+/// what it is instead.
+fn identify(path: &str) -> Result<(bool, Rom), String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("{path}: {e}"))?;
+    let code = bytes.get(0xAC..0xB0).map(|c| String::from_utf8_lossy(c).into_owned()).unwrap_or_default();
+    let title = bytes.get(0xA0..0xAC).map(|c| String::from_utf8_lossy(c).into_owned()).unwrap_or_default();
+    match code.as_str() {
+        "BR6E" => Ok((true, Rom(bytes))),
+        "BR5E" => Ok((false, Rom(bytes))),
+        "BR6J" | "BR5J" => Err(format!("{path}: the Japanese {title} ({code}); the pack is made from the US ROMs (BR6E, BR5E)")),
+        _ => Err(format!("{path}: not a BN6 US ROM (its header says {title:?}, game code {code:?}; expected BR6E or BR5E)")),
+    }
+}
+
+/// The US Falzar and US Gregar ROMs, given in that order; either order is
+/// taken, but not two of one version.
+pub(crate) fn load_roms(first: &str, second: &str) -> Result<Roms, String> {
+    let (a_falzar, a) = identify(first)?;
+    let (b_falzar, b) = identify(second)?;
+    match (a_falzar, b_falzar) {
+        (true, false) => Ok(Roms { falzar: a, gregar: b }),
+        (false, true) => Ok(Roms { falzar: b, gregar: a }),
+        (true, true) => Err(format!("{first} and {second} are both the US Falzar ROM (BR6E); give the US Gregar ROM (BR5E) too")),
+        (false, false) => Err(format!("{first} and {second} are both the US Gregar ROM (BR5E); give the US Falzar ROM (BR6E) too")),
+    }
 }
 
 fn main() {
@@ -91,7 +114,7 @@ fn main() {
     match args.first().map(String::as_str) {
         Some("content") => content::main(&args[1..]),
         _ => {
-            eprintln!("usage: bn6-extract content <rom> <pack-dir> [--content <dir>]");
+            eprintln!("usage: bn6-extract content <falzar-rom> <gregar-rom> <pack-dir> [--content <dir>]");
             std::process::exit(2);
         }
     }

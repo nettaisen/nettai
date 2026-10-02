@@ -6,15 +6,15 @@ use crate::{Rom, lz77, u32at};
 use nettai_assets::*;
 use std::collections::HashMap;
 
-/// The battle graphics of a ROM, with what the Gregar ROM (`gregar`, if
-/// given) has of its own; `names` gives the chip icons their keys and the
-/// font its characters.
-pub fn bundle(rom: &Rom, gregar: Option<&Rom>, names: &nettai_content::names::AssetNames) -> Bundle {
+/// The battle graphics of the Falzar ROM, with what the Gregar ROM
+/// (`gregar`) has of its own or right; `names` gives the chip icons their
+/// keys and the font its characters.
+pub fn bundle(rom: &Rom, gregar: &Rom, names: &nettai_content::names::AssetNames) -> Bundle {
     Bundle {
         sprites: sprites(rom),
         field: field(rom),
         backgrounds: backgrounds(rom),
-        hud: crate::hud::hud(rom, names),
+        hud: crate::hud::hud(rom, gregar, names),
         custom: crate::custom::custom(rom, gregar, names),
     }
 }
