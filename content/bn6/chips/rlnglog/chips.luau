@@ -12,8 +12,6 @@ local LOG: RollingLog = { big = true, stop_ticks = 60, hp = 20, thrown = true }
 return {
     define.chip {
         id = "rlnglog1",
-        name = "RlngLog1",
-        description = "Send out\n2 logs\n2panl fwd",
         codes = { "I", "K", "P" },
         element = "wood", family = "wood", class = "standard",
         rarity = 0, mb = 14, damage = 50, hit_param = 30, lockout = 0,
@@ -26,8 +24,6 @@ return {
     },
     define.chip {
         id = "rlnglog2",
-        name = "RlngLog2",
-        description = "Send out\n2 logs\n2panl fwd",
         codes = { "E", "Q", "Z" },
         element = "wood", family = "wood", class = "standard",
         rarity = 1, mb = 26, damage = 70, hit_param = 30, lockout = 0,
@@ -40,8 +36,6 @@ return {
     },
     define.chip {
         id = "rlnglog3",
-        name = "RlngLog3",
-        description = "Send out\n2 logs\n2panl fwd",
         codes = { "F", "N", "W" },
         element = "wood", family = "wood", class = "standard",
         rarity = 2, mb = 38, damage = 90, hit_param = 30, lockout = 0,

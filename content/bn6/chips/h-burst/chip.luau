@@ -8,8 +8,6 @@ local spreadr = require("../spreadr/chips")
 
 return define.chip {
     id = "h-burst",
-    name = "H-Burst",
-    description = "Secondary\nexplosion\nafter hit",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

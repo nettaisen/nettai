@@ -117,7 +117,7 @@ const GREGAR: VersionAddresses = VersionAddresses {
 const BEAST_OUT_PALETTE_COUNT: u32 = 2;
 const BEAST_BUTTON_BYTES: usize = 0x400;
 const EMBLEM_COUNT: usize = 7;
-const CROSS_NAMES: (usize, usize) = (10, 0x240);
+pub(crate) const CROSS_NAMES: (usize, usize) = (10, 0x240);
 const CROSS_PALETTE_COUNT: u32 = 10;
 
 fn version_pictures(rom: &Rom, a: &VersionAddresses) -> VersionPictures {
@@ -142,7 +142,7 @@ fn palette(rom: &Rom, a: u32) -> Palette {
     palettes_from_bytes(rom.bytes(a, 32))[0].map(|c| c & 0x7FFF)
 }
 
-fn picture(rom: &Rom, (gfx, pal): (u32, u32)) -> Picture {
+pub(crate) fn picture(rom: &Rom, (gfx, pal): (u32, u32)) -> Picture {
     Picture { tiles: tiles(rom, (gfx, PICTURE_BYTES)), palette: palette(rom, pal) }
 }
 
@@ -221,6 +221,7 @@ pub fn custom(roms: &crate::Roms, names: &AssetNames) -> CustomScreen {
         advance_name_colours: (0..ADVANCE_NAME_COLOURS.1)
             .map(|i| std::array::from_fn(|k| rom.u16(ADVANCE_NAME_COLOURS.0 + 8 * i + 2 * k as u32) & 0x7FFF))
             .collect(),
+        languages: Vec::new(),
     }
 }
 

@@ -11,8 +11,6 @@ local wideblde = require("../wideblde/chip")
 
 return define.chip {
     id = "dblhero",
-    name = "DblHero",
-    description = "Attk with\nBtlNwk1's\nProtoMan",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

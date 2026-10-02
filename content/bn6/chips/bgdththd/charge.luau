@@ -38,7 +38,6 @@ end
 
 bgdththd.weapon = define.weapon {
     id = "bgdththd/charge",
-    name = "BgDthThd",
     charge_ticks = { 200, 200, 200, 200, 200, 80, 80, 80 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
     sticky = true,

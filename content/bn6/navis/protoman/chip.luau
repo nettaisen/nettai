@@ -8,8 +8,6 @@ local slash = require("../../lib/swords/slash")
 
 return define.chip {
     id = "stepswrd-protoman",
-    name = "StepSwrd",
-    description = "Use\nWideSwrd\n2sq ahead",
     codes = { "B" },
     element = "null",
     family = "sword",

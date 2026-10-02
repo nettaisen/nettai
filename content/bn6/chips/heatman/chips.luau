@@ -6,8 +6,6 @@ local navi = require("./navi")
 
 local heatman = define.chip {
     id = "heatman",
-    name = "HeatMan",
-    description = "Burn with\na radial\nfire attk",
     codes = { "H", "*" },
     element = "fire",
     family = "fire",
@@ -26,8 +24,6 @@ local heatman = define.chip {
 
 local heatman_ex = define.chip {
     id = "heatman-ex",
-    name = "HeatMan[EX]",
-    description = "Burn with\na radial\nfire attk",
     codes = { "H" },
     element = "fire",
     family = "fire",
@@ -46,8 +42,6 @@ local heatman_ex = define.chip {
 
 local heatman_sp = define.chip {
     id = "heatman-sp",
-    name = "HeatMan[SP]",
-    description = "Burn with\na radial\nfire attk",
     codes = { "H" },
     element = "fire",
     family = "fire",

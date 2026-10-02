@@ -6,7 +6,6 @@ local charged_shot = require("../../weapons/charged-shot/weapon")
 
 return define.form {
     id = "base",
-    name = "Base",
     kind = "base",
     sprite = asset.sprite("megaman"),
     element = "null",

@@ -49,7 +49,6 @@ end
 
 back_special.weapon = define.weapon {
     id = "protoman/back-special",
-    name = "Back special",
     -- The charge table's row 0x34, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 70, 70, 70, 70, 70, 90, 80, 70 },
@@ -58,7 +57,6 @@ back_special.weapon = define.weapon {
 
 back_special.weapon_2 = define.weapon {
     id = "protoman/back-special-2",
-    name = "Back special 2",
     -- The charge table's row 0x30, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },

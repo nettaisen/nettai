@@ -6,8 +6,6 @@ local lance = require("./lance")
 
 return define.chip {
     id = "lance",
-    name = "Lance",
-    description = "Lance\nthrough\nback line",
     codes = { "A", "R", "W", "*" },
     element = "wood", family = "wood", class = "standard",
     rarity = 3, mb = 42, damage = 150, hit_param = 30, lockout = 10,

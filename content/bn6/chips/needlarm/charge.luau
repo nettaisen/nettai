@@ -21,7 +21,6 @@ end
 
 return define.weapon {
     id = "needlarm/charge",
-    name = "NeedlArm",
     charge_ticks = { 100, 100, 100, 100, 100, 120, 120, 120 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
     sticky = true,

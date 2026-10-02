@@ -11,8 +11,6 @@ local SPEED = 0x8_0000
 
 return define.chip {
     id = "parashl",
-    name = "ParaShl",
-    description = "Shell atk\non 5 rght\ngrid rows",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

@@ -6,8 +6,6 @@ local plus = require("../../lib/instant/plus")
 
 return define.chip {
     id = "megabstr",
-    name = "MegaBstr",
-    description = "",
     codes = {},
     element = "null",
     family = "null",

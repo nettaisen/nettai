@@ -8,8 +8,6 @@ local traps = require("../../lib/traps/controller")
 
 return define.chip {
     id = "antiswrd",
-    name = "AntiSwrd",
-    description = "Retaliate\nfor sword\ndamage",
     codes = { "A", "R", "Z", "*" },
     element = "null",
     family = "sword",

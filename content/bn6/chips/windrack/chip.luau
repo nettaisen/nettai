@@ -7,8 +7,6 @@ local lockon = require("../../rules/lockon")
 
 return define.chip {
     id = "windrack",
-    name = "WindRack",
-    description = "Blow enmy\nin front!\nRange: 3",
     codes = { "F", "J", "R", "*" },
     element = "null", family = "wind", class = "standard",
     rarity = 2, mb = 19, damage = 140, hit_param = 30, lockout = 0,

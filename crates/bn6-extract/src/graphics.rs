@@ -12,13 +12,15 @@ use std::collections::HashMap;
 /// the font its characters.
 pub fn bundle(roms: &crate::Roms, names: &nettai_content::names::AssetNames) -> Bundle {
     let (rom, gregar) = (&roms.falzar, &roms.gregar);
-    Bundle {
-        sprites: sprites(roms, names),
-        field: field(rom),
-        backgrounds: backgrounds(rom),
-        hud: crate::hud::hud(rom, gregar, names),
-        custom: crate::custom::custom(roms, names),
-    }
+    let mut hud = crate::hud::hud(rom, gregar, names);
+    let mut custom = crate::custom::custom(roms, names);
+    // The US ROMs' words are English; the Japanese ROMs' lettering is the
+    // pack's Japanese (`lettering`).
+    let ja = crate::lettering::LANGUAGE.to_string();
+    hud.languages.push((ja.clone(), crate::lettering::hud(&roms.falzar_jp, &hud, names)));
+    hud.language = nettai_assets::BASE_LANGUAGE.into();
+    custom.languages.push((ja, crate::lettering::custom(&roms.falzar_jp, &roms.gregar_jp)));
+    Bundle { sprites: sprites(roms, names), field: field(rom), backgrounds: backgrounds(rom), hud, custom }
 }
 
 /// Bytes starting at a ROM address.
