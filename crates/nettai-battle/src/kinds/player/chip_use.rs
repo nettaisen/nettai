@@ -19,7 +19,8 @@ mod damage_flags {
     pub const PARALYZE: u16 = 0x4000;
     /// Uninstalls (a folded Uninstll).
     pub const UNINSTALL: u16 = 0x2000;
-    /// Erases a cross (EraseCross family chips).
+    /// EraseCross's damaging Null-family chips: bug code 0xF7, which
+    /// raises the HP bug of a navi with a 4 in its HP.
     pub const ERASE_CROSS: u16 = 0x1000;
 }
 
