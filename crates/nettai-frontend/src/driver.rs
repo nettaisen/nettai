@@ -1,16 +1,20 @@
 //! What drives the battle each tick: a golden trace's recorded inputs, or
 //! live input from the keyboard.
 
+use crate::folders::{self, Draws, FolderLimits};
 use nettai_battle::battle::{mode, top};
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::content::{ChipCode, Content};
-use nettai_battle::custom::{self, BattleFolder, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState, Unlocks};
+use nettai_battle::custom::{
+    self, BattleFolder, CrossList, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState, Unlocks,
+};
 use nettai_battle::input::keys;
 use nettai_battle::link::Link;
-use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
+use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage, effects};
 use nettai_battle::{Battle, PlayerTick, Rng, TickEvents};
 use bn6_compat::trace::{self, Frame, Round};
 use bn6_compat::{Compat, codec};
+use nettai_content_api::{FormHandle, StageHandle};
 use std::sync::Arc;
 
 /// One tick's inputs.
@@ -135,43 +139,193 @@ impl Driver for TracePlayer {
 
 // ---- Live play -------------------------------------------------------------------
 
-/// The battle settings live play uses: the netbattle of the recorded
-/// matches (field layout 0xE3, background 0x0B, one MegaMan per side).
-const LIVE_SETTINGS: &str = "e36415000b0038008c0e000092190b08";
-/// A MegaMan with 1000 HP and no NaviCust programs of note.
-const LIVE_NAVI: &str = "08000000000100ff00320505010080000000ff00000000000000000101000001010301000000001f0000000a0000ffffff0000000000000000ff00000000e803e803e8030000010000000a0000000000000000000000ffffffffffff0000000000000000";
+/// The live navi's NaviStats record: a MegaMan of Falzar with 1000 HP,
+/// custom level 5, Mega level 5, Giga level 1, Regular memory 50, three
+/// Beast Outs, the sun out (+0x22, as in the recorded matches: the sun
+/// chips hit harder), and no NaviCust programs: no FloatShoe or AirShoe
+/// (+0x1B, +0x1C), so road panels carry him and holes stop him.
+const LIVE_NAVI: &str = "08000000000100ff00320505010080000000ff00000000000000000000000001010301000000001f0000000a0000ffffff0000000000000000ff00000000e803e803e8030000010000000a0000000000000000000000ffffffffffff0000000000000000";
 
 fn unhex(s: &str) -> Vec<u8> {
     (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
 }
 
-/// The live round on BN6's content: the netbattle of the recorded
-/// matches, both players with the live folder (`LIVE_FOLDER`).
-pub fn bn6_live_setup(content: &Content, seed: u32) -> RoundSetup {
-    let settings = codec::battle_settings(&unhex(LIVE_SETTINGS), &codec::Ids::new(content, Compat::bn6()));
-    live_setup(content, settings, &LIVE_FOLDER, seed)
+/// The live navi's stats on `content`.
+pub fn live_navi(content: &Content) -> NaviStats {
+    codec::navi_stats(&unhex(LIVE_NAVI).try_into().unwrap(), &codec::Ids::new(content, Compat::bn6()))
+}
+
+/// The effects a link battle's match type adds to its stage's
+/// (`sub_812B768`, from `off_812B7AC`: the match type the recorded matches
+/// were, 0x600).
+const MATCH_EFFECTS: u32 = 0x600;
+
+/// The backgrounds a link battle draws from (`sub_81209DC`'s
+/// `byte_8120A20`, by name; some are there twice, so twice as likely).
+const LINK_BACKGROUNDS: [&str; 21] = [
+    "honeycomb",
+    "statues",
+    "statues",
+    "seals",
+    "clouds",
+    "sprouts",
+    "calendar-checkers",
+    "calendar-mint",
+    "calendar-lavender",
+    "calendar-navy",
+    "calendar-blue",
+    "calendar-cyan",
+    "trees",
+    "calendar-green",
+    "calendar-bright-blue",
+    "code",
+    "globes",
+    "code-2",
+    "code-2",
+    "calendar-purple",
+    "calendar-purple",
+];
+
+/// The stages a link battle draws from: the content's link battle stages
+/// that aren't the random battle's (`sub_81209DC` draws a link battle's
+/// from the settings records 0 to 0x5F; those from 0x60 on are the random
+/// battle's, `effects::RANDOM`).
+pub fn link_battle_stages(content: &Content) -> Vec<StageHandle> {
+    (0..content.defs.stages.len() as u16)
+        .map(StageHandle)
+        .filter(|&s| {
+            let e = content.stage(s).effects;
+            e & effects::LINK != 0 && e & effects::RANDOM == 0
+        })
+        .collect()
+}
+
+/// What live play drew for a round (`bn6_live_setup`): the frontend's
+/// choice of setup, made from the seed before the battle. The battle is
+/// then a function of its setup and the players' buttons.
+#[derive(Clone, Debug)]
+pub struct LiveChoices {
+    pub seed: u32,
+    pub stage: StageHandle,
+    /// The background's name (none: the stage's own).
+    pub background: Option<String>,
+    /// Each player's folder as a save holds it (the round's init shuffles
+    /// it).
+    pub folders: [SavedFolder; 2],
+    /// The Crosses each player's Cross window offers.
+    pub crosses: [CrossList; 2],
+    /// Each player's game: their Beast (Beast Out and Beast Over), and
+    /// their console's own pictures and Beast Out roar.
+    pub games: [GameVersion; 2],
+}
+
+impl LiveChoices {
+    /// What was drawn, for the terminal: the seed, the field, the Crosses,
+    /// and with `folders` the folders.
+    pub fn describe(&self, content: &Content, folders: bool) -> String {
+        let stage = &content.defs.stage(self.stage).key;
+        let mut out = format!("live play: seed {}, stage {stage}", self.seed);
+        if let Some(b) = &self.background {
+            out.push_str(&format!(", background {b}"));
+        }
+        for side in 0..2 {
+            let who = if side == 0 { "you" } else { "the right navi" };
+            let names: Vec<&str> = self.crosses[side].forms().map(|f| content.form(f).name.as_str()).collect();
+            let game = match self.games[side] {
+                GameVersion::Gregar => "Gregar",
+                GameVersion::Falzar => "Falzar",
+            };
+            out.push_str(&format!("\n  {game} ({who}), Crosses: {}", names.join(", ")));
+            if folders {
+                out.push_str(&format!("\n  folder ({who}): {}", folders::describe(content, &self.folders[side])));
+            }
+        }
+        out
+    }
+}
+
+/// The live round on BN6's content, drawn from `seed`: a link battle's
+/// stage (`stage`, a stage's key, forces one) and background, a legal
+/// random folder for each player (`crate::folders`), and five of MegaMan's
+/// ten Crosses, of both games, for each Cross window
+/// (`Unlocks::cross_list`, docs/engine/custom-screen.md §4.1). Both
+/// players are 1000-HP MegaMen (`live_navi`), each of a game drawn at
+/// random, Falzar or Gregar: their Beast Out is that game's Beast.
+pub fn bn6_live_setup(content: &Content, seed: u32, stage: Option<&str>) -> Result<(RoundSetup, LiveChoices), String> {
+    let mut draws = Draws::new(seed);
+    let stages = link_battle_stages(content);
+    if stages.is_empty() {
+        return Err("the content has no link battle stage".into());
+    }
+    let backgrounds: Vec<&str> = LINK_BACKGROUNDS.iter().copied().filter(|b| content.assets.backgrounds.contains_key(*b)).collect();
+    let field = |draws: &mut Draws| {
+        let stage = stages[draws.below(stages.len())];
+        let background = (!backgrounds.is_empty()).then(|| backgrounds[draws.below(backgrounds.len())].to_string());
+        (stage, background)
+    };
+    // The round's field, then the set's later rounds' (the original's
+    // init exchange carries those).
+    let (mut first, background) = field(&mut draws);
+    let later = [field(&mut draws), field(&mut draws)];
+    if let Some(key) = stage {
+        first = content.defs.stage_by_key(key).filter(|s| stages.contains(s)).ok_or_else(|| {
+            let keys: Vec<&str> = stages.iter().map(|&s| content.defs.stage(s).key.as_str()).collect();
+            format!("no link battle stage {key:?}; the content's are {}", keys.join(", "))
+        })?;
+    }
+    let background_id =
+        |s: StageHandle, b: &Option<String>| b.as_ref().map_or(content.stage(s).background, |b| content.assets.backgrounds[b]);
+    let settings = BattleSettings {
+        stage: first,
+        background: background_id(first, &background),
+        effects: content.stage(first).effects | MATCH_EFFECTS,
+    };
+    let limits = FolderLimits::of(&live_navi(content));
+    let folders = [folders::random_folder(content, limits, &mut draws), folders::random_folder(content, limits, &mut draws)];
+    let crosses = [random_crosses(content, &mut draws)?, random_crosses(content, &mut draws)?];
+    let game = |draws: &mut Draws| if draws.below(2) == 0 { GameVersion::Gregar } else { GameVersion::Falzar };
+    let games = [game(&mut draws), game(&mut draws)];
+    let mut setup = live_setup(content, settings, folders, seed);
+    for side in 0..2 {
+        let p = &mut setup.players[side];
+        p.unlocks.cross_list = Some(crosses[side]);
+        // The player's game: the save's (their Beast Out and Beast Over,
+        // `Unlocks::version`) and the navi's (NaviStats+0x20, 0 Gregar, 1
+        // Falzar, which MstrCros reads).
+        p.unlocks.version = games[side];
+        setup.navi_stats[side].version = match games[side] {
+            GameVersion::Gregar => 0,
+            GameVersion::Falzar => 1,
+        };
+    }
+    setup.later_stages = later.map(|(s, b)| Stage { stage: s, background: background_id(s, &b) });
+    Ok((setup, LiveChoices { seed, stage: first, background, folders, crosses, games }))
+}
+
+/// Five of the form-changing navi's Crosses of both games, drawn at
+/// random, listed in the games' order (Gregar's, then Falzar's).
+fn random_crosses(content: &Content, draws: &mut Draws) -> Result<CrossList, String> {
+    let navi = content.form_changing_navi().ok_or("the content has no navi that changes form")?;
+    let forms = content.navi(navi).forms.as_ref().ok_or("the navi that changes form has no forms")?;
+    let all: Vec<FormHandle> =
+        [GameVersion::Gregar, GameVersion::Falzar].iter().flat_map(|&g| forms.of(g).crosses.iter().copied()).collect();
+    let mut picked: Vec<usize> = (0..all.len()).collect();
+    draws.shuffle(&mut picked);
+    picked.truncate(custom::screen::CROSSES);
+    picked.sort();
+    Ok(CrossList::new(&picked.iter().map(|&i| all[i]).collect::<Vec<_>>()))
 }
 
 /// A round to play live on `content` with these battle settings: two
-/// MegaMen with 1000 HP who both bring `folder` (the content's chips by
-/// key, with codes, repeated to 30 chips), each shuffled from the seed.
-pub fn live_setup(content: &Content, settings: BattleSettings, folder: &[(&str, u8)], seed: u32) -> RoundSetup {
-    let ids = codec::Ids::new(content, Compat::bn6());
-    let chip = |key: &str| content.defs.chip_by_key(key).unwrap_or_else(|| panic!("the content defines no chip {key:?}"));
-    let stats = codec::navi_stats(&unhex(LIVE_NAVI).try_into().unwrap(), &ids);
+/// MegaMen with 1000 HP (`live_navi`), each bringing their folder,
+/// shuffled from the seed, with every Cross and Beast Out of Falzar.
+pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFolder; 2], seed: u32) -> RoundSetup {
+    let stats = live_navi(content);
     let player = |side: u32| {
-        let saved = SavedFolder {
-            chips: std::array::from_fn(|i| {
-                let (key, code) = folder[i % folder.len()];
-                FolderChip::new(chip(key), ChipCode(code))
-            }),
-            regular: None,
-            tags: None,
-        };
         // Each console shuffles its folder with its own RNG (RNG1), which
         // goes on from there.
         let mut rng = Rng::new(seed ^ side.wrapping_mul(0x9E37_79B9));
-        let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, content);
+        let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&folders[side as usize], 0, &mut rng, content);
         PlayerSetup {
             folder: Some(folder),
             unlocks: Unlocks::everything(GameVersion::Falzar),
@@ -188,7 +342,6 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folder: &[(&str, 
         rng: seed,
         local_side: 0,
         score: SetScore::default(),
-        // A single round: the stages are never used.
         later_stages: Default::default(),
         low_hp_music_latched: false,
         sp_times: Default::default(),
@@ -197,10 +350,20 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folder: &[(&str, 
     }
 }
 
-/// The live folder on BN6's content (chips with their codes), repeated to
-/// 30: GunDelSols, Geddon, Invisibl and EraseMan.
-const LIVE_FOLDER: [(&str, u8); 6] =
-    [("gundels3", 13), ("gundels1", 2), ("geddon", 26), ("gundels3", 16), ("invisibl", 26), ("eraseman", 10)];
+/// A folder of these chips (the content's, by key, with codes) repeated to
+/// 30, with no Regular or tag chips.
+pub fn folder_of(content: &Content, chips: &[(&str, u8)]) -> SavedFolder {
+    let chip = |key: &str| content.defs.chip_by_key(key).unwrap_or_else(|| panic!("the content defines no chip {key:?}"));
+    SavedFolder {
+        chips: std::array::from_fn(|i| {
+            let (key, code) = chips[i % chips.len()];
+            FolderChip::new(chip(key), ChipCode(code))
+        }),
+        regular: None,
+        tags: None,
+    }
+}
+
 
 /// Plays a round from the keyboard: the local player is the left navi,
 /// with their own custom screen; the right navi stands still, and its
@@ -327,14 +490,21 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         out.push_str(&format!("\nPICKED: {}", picks.join(", ")));
     }
     let w = &screen.crosses;
+    let cross_name = |place: u8| match s.unlocks.cross_at(&*b.content, b.stats[side].navi, place) {
+        Some(f) => b.content.form(f).name.to_uppercase(),
+        None => format!("CROSS {}", place + 1),
+    };
     if matches!(screen.phase, Phase::CrossWindow { .. }) {
         let entries: Vec<String> = (0..w.count)
-            .map(|i| format!("{}{}CROSS {}", if w.cursor == i { ">" } else { " " }, if w.marked[i as usize] { "+" } else { "" }, w.offered[i as usize] + 1))
+            .map(|i| {
+                let (cursor, marked) = (if w.cursor == i { ">" } else { " " }, if w.marked[i as usize] { "+" } else { "" });
+                format!("{cursor}{marked}{}", cross_name(w.offered[i as usize]))
+            })
             .collect();
         out.push_str(&format!("\n{}", entries.join(" ")));
     }
     if let Some(c) = w.chosen {
-        out.push_str(&format!("\nCROSS {} CHOSEN", c + 1));
+        out.push_str(&format!("\n{} CHOSEN", cross_name(c)));
     }
     Some(out)
 }
@@ -352,8 +522,8 @@ mod tests {
         let stage = content.stage_by_key(nettai_battle::content::testing::LINK_BATTLE);
         let settings = BattleSettings::on(&content, stage);
         // GunDelS3 N, which the test content has.
-        let folder = [("gundels3", 13)];
-        let mut live = LivePlayer::new(live_setup(&content, settings, &folder, 7), content.clone());
+        let folder = folder_of(&content, &[("gundels3", 13)]);
+        let mut live = LivePlayer::new(live_setup(&content, settings, [folder, folder], 7), content.clone());
         let mut b = live.start();
         let mut shown = false;
         for tick in 0..3000u32 {
@@ -379,5 +549,192 @@ mod tests {
         for side in 0..2 {
             assert_eq!(b.hands[side].remaining(), 1, "side {side}");
         }
+    }
+
+    /// Live play's setup from a seed: a link battle's stage (the 96 the
+    /// original draws from), legal folders, five Crosses of both games per
+    /// window; the same seed, the same setup; `--stage` forces the stage.
+    #[test]
+    fn the_live_setup_is_drawn_from_the_seed() {
+        let content = crate::folders::bn6_test_content();
+        // The navi: no NaviCust programs (road panels carry him).
+        let s = live_navi(&content);
+        assert_eq!((s.hp, s.mega_level, s.giga_level, s.reg_up), (1000, 5, 1, 50));
+        assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
+        let stages = link_battle_stages(&content);
+        assert_eq!(stages.len(), 96);
+        let mut seen = std::collections::BTreeSet::new();
+        let navi = content.form_changing_navi().unwrap();
+        for seed in 0..12 {
+            let (setup, choices) = bn6_live_setup(&content, seed, None).unwrap();
+            assert!(stages.contains(&setup.settings.stage));
+            assert_eq!(setup.settings.effects & effects::RANDOM, 0);
+            seen.insert(setup.settings.stage);
+            let limits = FolderLimits::of(&setup.navi_stats[0]);
+            for side in 0..2 {
+                assert!(folders::violations(&content, &choices.folders[side], limits).is_empty());
+                let list = setup.players[side].unlocks.cross_list.unwrap();
+                let games: Vec<_> = list.forms().map(|f| content.form(f).game.unwrap()).collect();
+                assert_eq!(games.len(), 5);
+                for f in list.forms() {
+                    let forms = content.navi(navi).forms.as_ref().unwrap();
+                    assert!(forms.gregar.crosses.contains(&f) || forms.falzar.crosses.contains(&f));
+                }
+            }
+            assert_eq!(format!("{:?}", bn6_live_setup(&content, seed, None).unwrap().0), format!("{setup:?}"));
+        }
+        assert!(seen.len() > 6, "{seen:?}");
+        // Each player's game is drawn too: both games come up, and the
+        // navi's game is the save's.
+        let mut games = std::collections::BTreeSet::new();
+        for seed in 0..12 {
+            let (setup, choices) = bn6_live_setup(&content, seed, None).unwrap();
+            for side in 0..2 {
+                assert_eq!(setup.players[side].unlocks.version, choices.games[side]);
+                assert_eq!(setup.navi_stats[side].version, (choices.games[side] == GameVersion::Falzar) as u8);
+                games.insert(format!("{:?}", choices.games[side]));
+            }
+        }
+        assert_eq!(games.len(), 2);
+        // Some seed offers both games' Crosses.
+        let mixed = (0..12).any(|seed| {
+            let list = bn6_live_setup(&content, seed, None).unwrap().0.players[0].unlocks.cross_list.unwrap();
+            let gregar = list.forms().filter(|&f| content.form(f).game == Some(GameVersion::Gregar)).count();
+            gregar > 0 && gregar < 5
+        });
+        assert!(mixed);
+        let (forced, _) = bn6_live_setup(&content, 3, Some("netbattle-43")).unwrap();
+        assert_eq!(content.defs.stage(forced.settings.stage).key, "netbattle-43");
+        assert_eq!(forced.players, bn6_live_setup(&content, 3, None).unwrap().0.players);
+        assert!(bn6_live_setup(&content, 3, Some("netbattle-100")).is_err());
+    }
+
+    /// Run `live` until `done`, with the local player's buttons from
+    /// `keys` (tick, battle); panics past `limit` ticks.
+    fn play_until(
+        live: &mut LivePlayer,
+        b: &mut Battle,
+        limit: u32,
+        mut keys: impl FnMut(u32, &Battle) -> u16,
+        mut done: impl FnMut(&Battle) -> bool,
+    ) {
+        for tick in 0..limit {
+            if done(b) {
+                return;
+            }
+            let held = keys(tick, b);
+            let step = live.next(b, held).unwrap();
+            b.tick(&step.input, step.events);
+        }
+        panic!("not done in {limit} ticks: mode {:#x}, turn {}", b.round.mode, b.round.turn);
+    }
+
+    /// The local player's screen, while it takes keys.
+    fn choosing(b: &Battle) -> Option<&custom::Screen> {
+        let s = &b.custom.sides[0];
+        s.screen.as_ref().filter(|x| s.in_custom && b.round.mode == mode::CUSTOM && x.phase == Phase::Choosing)
+    }
+
+    /// nettai's Cross list on BN6's content: a Falzar player offered
+    /// HeatCross, Gregar's, chooses it on the custom screen and fights in
+    /// it (its form, element, buster and charged shot: HeatCross's flame);
+    /// on the next screen Beast Out from it is HeatCross's Beast form, a
+    /// Gregar Beast, with its weapons.
+    #[test]
+    fn a_falzar_player_plays_a_gregar_cross() {
+        use nettai_battle::battle::battle_flags;
+        use nettai_battle::content::Element;
+        use nettai_battle::kinds::player::{NaviAction, navi_action};
+        let content = crate::folders::bn6_test_content();
+        let heat = content.defs.form_by_key("heatcross").unwrap();
+        let heat_beast = content.defs.form_by_key("heatcross-beast").unwrap();
+        let stage = link_battle_stages(&content)[0];
+        let settings = BattleSettings { stage, background: 0, effects: content.stage(stage).effects | MATCH_EFFECTS };
+        let folder = folder_of(&content, &[("cannon", 0)]);
+        let mut setup = live_setup(&content, settings, [folder, folder], 5);
+        setup.players[0].unlocks.cross_list = Some(CrossList::new(&[heat]));
+        let mut live = LivePlayer::new(setup, content.clone());
+        let mut b = live.start();
+        // The first screen: UP opens the Cross window (a hold acts on its
+        // second tick), A chooses HeatCross, START and A press OK.
+        play_until(
+            &mut live,
+            &mut b,
+            3000,
+            |tick, b| {
+                let s = &b.custom.sides[0];
+                let Some(screen) = s.screen.as_ref().filter(|_| s.in_custom && b.round.mode == mode::CUSTOM) else { return 0 };
+                let w = &screen.crosses;
+                match screen.phase {
+                    Phase::Choosing if w.chosen.is_none() => [keys::UP, keys::UP, 0][tick as usize % 3],
+                    Phase::CrossWindow { entered: true } if w.chosen.is_none() => {
+                        assert_eq!((w.count, custom_screen_text(b, 0).unwrap().contains(">HEATCROSS")), (1, true));
+                        if tick % 2 == 1 { keys::A } else { 0 }
+                    }
+                    Phase::Choosing if tick % 2 == 1 => {
+                        if screen.cursor == custom::screen::OK_SLOT { keys::A } else { keys::START }
+                    }
+                    _ => 0,
+                }
+            },
+            |b| b.custom.sides[0].sent.is_some(),
+        );
+        assert_eq!(b.custom.sides[0].sent.as_ref().unwrap().result.transform.form, Some(heat));
+        // The fight resumes and the navi changes into HeatCross.
+        let p0 = b.player(0).unwrap();
+        play_until(&mut live, &mut b, 1000, |_, _| 0, |b| b.stats[0].form == heat && navi_action(b, p0) == NaviAction::Idle);
+        let actor = b.objects.get(p0).actor.unwrap();
+        let weapons = content.form(heat).weapons;
+        assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
+        assert_eq!(b.objects.get(p0).element & 0xF, Element::Fire as u8);
+        // B held charges the buster; let go, HeatCross's flame.
+        let flame = content.defs.action_by_key("heatcross/charge/action").unwrap();
+        let mut charged = false;
+        play_until(
+            &mut live,
+            &mut b,
+            600,
+            |tick, _| if tick < 200 { keys::B } else { 0 },
+            |b| {
+                charged |= navi_action(b, p0) == NaviAction::Content(flame);
+                charged
+            },
+        );
+        // The next screen, opened with L once the gauge is full: Beast Out
+        // (START, DOWN, A) from HeatCross is HeatCross's Beast form, of
+        // Gregar's Beast: the Beast Out button and pictures are Gregar's.
+        assert_eq!(b.custom.sides[0].unlocks.beast_game(&*content, heat), GameVersion::Gregar);
+        let mut beast = false;
+        play_until(
+            &mut live,
+            &mut b,
+            6000,
+            |tick, b| {
+                if b.round.mode == mode::FIGHTING {
+                    return if b.round.flags & battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 { keys::L } else { 0 };
+                }
+                let Some(screen) = choosing(b) else { return 0 };
+                if b.round.turn < 2 {
+                    return 0;
+                }
+                beast |= screen.beast_out;
+                // Each key held two ticks (a direction acts on a hold's
+                // second), then let go.
+                let key = match (beast, screen.cursor) {
+                    (false, custom::screen::OK_SLOT) => keys::DOWN,
+                    (false, custom::screen::SPECIAL_SLOT) => keys::A,
+                    (false, _) => keys::START,
+                    (true, custom::screen::SPECIAL_SLOT) => keys::UP,
+                    (true, _) => keys::A,
+                };
+                [key, key, 0][tick as usize % 3]
+            },
+            |b| b.round.turn >= 2 && b.custom.sides[0].sent.is_some(),
+        );
+        assert_eq!(b.custom.sides[0].sent.as_ref().unwrap().result.transform.form, Some(heat_beast));
+        play_until(&mut live, &mut b, 1000, |_, _| 0, |b| b.stats[0].form == heat_beast && navi_action(b, p0) == NaviAction::Idle);
+        let weapons = content.form(heat_beast).weapons;
+        assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
+        assert_eq!(content.form(heat_beast).game, Some(GameVersion::Gregar));
     }
 }

@@ -306,8 +306,10 @@ struct View<'a> {
     side: u8,
     screen: &'a Screen,
     assets: &'a CustomScreen,
-    /// The pictures of the console's version.
-    own: &'a VersionPictures,
+    /// The pictures of the Beast the navi goes into (`beast_pictures`):
+    /// the console's version's, unless a setup's Cross list put the navi in
+    /// the other game's Cross.
+    beast: &'a VersionPictures,
     hud: &'a Hud,
 }
 
@@ -359,6 +361,17 @@ pub fn game_name(version: GameVersion) -> &'static str {
         GameVersion::Gregar => "gregar",
         GameVersion::Falzar => "falzar",
     }
+}
+
+/// The pictures of the Beast a side's navi goes into, or is in: the
+/// Beast Out button, its picture in the chip window and the BeastOut
+/// chip's. They are its game's (`Unlocks::beast_game`): the console's
+/// version's, but with a setup's Cross list a Cross of the other game
+/// goes into that game's Beast (docs/engine/custom-screen.md §4.1).
+pub fn beast_pictures<'a>(b: &Battle, a: &'a CustomScreen, side: u8) -> &'a VersionPictures {
+    let side = side as usize & 1;
+    let game = b.custom.sides[side].unlocks.beast_game(&*b.content, b.stats[side].form);
+    a.versioned.get(game_name(game))
 }
 
 /// The pack's name of a console's game version (`Versioned`).
@@ -526,10 +539,12 @@ impl Window {
     fn cross_names(&mut self, v: &View) {
         let w = &v.screen.crosses;
         let side = &v.b.custom.sides[v.side as usize];
-        // Each Cross's name and colours are its own game's.
+        // Each Cross's name and colours are its own game's (a setup's Cross
+        // list can offer the other game's: docs/engine/custom-screen.md
+        // §4.1).
         let navi = v.b.stats[v.side as usize].navi;
         let picture = |slot: usize| {
-            let form = v.b.content.cross_form(navi, side.unlocks.version, w.offered[slot])?;
+            let form = side.unlocks.cross_at(&*v.b.content, navi, w.offered[slot])?;
             cross_picture(v.b, v.assets, navi, form)
         };
         for slot in 0..w.count.min(5) as usize {
@@ -588,8 +603,8 @@ impl Window {
                 blank_details(self, p);
             }
             SlotKind::BeastOut => {
-                let own = v.own;
-                let p = Picture { palette: own.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..own.beast_out.clone() };
+                let beast = v.beast;
+                let p = Picture { palette: beast.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..beast.beast_out.clone() };
                 blank_details(self, &p);
             }
             SlotKind::Redeal { .. } => blank_details(self, &a.pictures.redeal),
@@ -612,9 +627,9 @@ impl Window {
             problems.note(format!("chip {:?} is named {:?}, but the pack's font has no glyph for {missing:?}", def.key, data.name));
         }
         self.tiles.put(NAME_TILE, &fonts::cell_text(v.hud, &glyphs, NAME_CELLS, NAME_SHIFT));
-        // (The Beast Out chip's picture is the console's Beast's.)
+        // (The Beast Out chip's picture is the Beast's the navi goes into.)
         let beast_out = Library::beast_out_chip(&*v.b.content) == Some(c.id);
-        let art = if beast_out { Some(&v.own.beast_out) } else { a.chip_art(&def.key) };
+        let art = if beast_out { Some(&v.beast.beast_out) } else { a.chip_art(&def.key) };
         match art {
             Some(p) => {
                 self.tiles.put(ART_TILE, &p.tiles);
@@ -684,7 +699,7 @@ impl Window {
                     at += 6;
                 }
                 SlotKind::Ok | SlotKind::Redeal { right_half: true } | SlotKind::Scrap { right_half: true } => {}
-                SlotKind::BeastOut => self.tiles.put_part(at, &v.own.beast_buttons, 8 * (state != 0) as usize, 8),
+                SlotKind::BeastOut => self.tiles.put_part(at, &v.beast.beast_buttons, 8 * (state != 0) as usize, 8),
                 SlotKind::Redeal { right_half: false } => {
                     self.tiles.put_part(at, &a.redeal_buttons, 12 * state, 12);
                     at += 12;
@@ -698,7 +713,7 @@ impl Window {
                     self.tiles.put_part(at + 4, &a.slot_codes, 2 * EMPTY_SLOT_CODE as usize, 2);
                     at += 6;
                 }
-                SlotKind::Hidden if s as u8 == SPECIAL_SLOT => self.tiles.put_part(at, &v.own.beast_buttons, 24, 8),
+                SlotKind::Hidden if s as u8 == SPECIAL_SLOT => self.tiles.put_part(at, &v.beast.beast_buttons, 24, 8),
                 SlotKind::Hidden => {
                     self.tiles.fill(at, 6, BLANK_1);
                     at += 6;
@@ -1015,7 +1030,14 @@ pub fn draw<'a>(
         return;
     }
     let side = b.setup.local_side & 1;
-    let v = View { b, side, screen, assets: a, own: a.versioned.get(version_name(b, side)), hud: &assets.hud };
+    let v = View {
+        b,
+        side,
+        screen,
+        assets: a,
+        beast: beast_pictures(b, a, side),
+        hud: &assets.hud,
+    };
     let place = placement(screen);
     let mut w = Window::build(&v, problems);
     let advance_names = w.program_advance(&v, problems);

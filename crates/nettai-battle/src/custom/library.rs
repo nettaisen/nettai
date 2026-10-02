@@ -33,6 +33,8 @@ pub trait Library {
     /// What kind of form one is, what the screen asks of it, and a Cross's
     /// form in Beast Out.
     fn form_kind(&self, form: FormHandle) -> FormKind;
+    /// Whose game's form it is (none: the base form).
+    fn form_game(&self, form: FormHandle) -> Option<GameVersion>;
     fn form_traits(&self, form: FormHandle) -> FormTraits;
     fn form_in_beast_out(&self, form: FormHandle) -> Option<FormHandle>;
     /// The Program Advances, in the order they are tried.
@@ -99,6 +101,10 @@ impl Library for Content {
 
     fn form_kind(&self, form: FormHandle) -> FormKind {
         self.form(form).kind
+    }
+
+    fn form_game(&self, form: FormHandle) -> Option<GameVersion> {
+        self.form(form).game
     }
 
     fn form_traits(&self, form: FormHandle) -> FormTraits {
@@ -267,6 +273,15 @@ pub(crate) mod testing {
                 0x0B | 0x0C => FormKind::Beast,
                 0x0D..=0x16 => FormKind::CrossBeast,
                 _ => FormKind::BeastOver,
+            }
+        }
+        fn form_game(&self, form: FormHandle) -> Option<GameVersion> {
+            // Gregar's Crosses 1-5, Beast 0x0B, Crosses in Beast Out
+            // 0x0D-0x11 and Beast Over 0x17; Falzar's the others.
+            match form.0 {
+                0 => None,
+                1..=5 | 0x0B | 0x0D..=0x11 | 0x17 => Some(GameVersion::Gregar),
+                _ => Some(GameVersion::Falzar),
             }
         }
         fn form_traits(&self, form: FormHandle) -> FormTraits {
