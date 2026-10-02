@@ -86,8 +86,9 @@ pub enum Align {
 /// of the frame, and how the frame's composition treats it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextItem {
-    /// The words, as the content writes them: a bracketed mark (`[EX]`,
-    /// `[A]`) is one unit, drawn as a mark.
+    /// The string, as the content writes it: the game's marks are
+    /// characters (Ⓐ, the stacked EX U+E002), which the font draws or the
+    /// layer does (`vfont`'s marks).
     pub text: String,
     pub role: Role,
     /// The original's box for the string (its cells), in frame pixels: the
@@ -113,8 +114,8 @@ pub struct TextItem {
     /// by `n / 256` a screen row about the box's middle, and the box's rows
     /// cut it.
     pub vscale: Option<i32>,
-    /// How many units show (the chatbox printing): the string is laid out
-    /// whole, so what shows doesn't move as it grows.
+    /// How many characters show (the chatbox printing): the string is laid
+    /// out whole, so what shows doesn't move as it grows.
     pub shown: Option<usize>,
 }
 
@@ -264,6 +265,6 @@ mod tests {
         let font = VectorFont::bundled();
         assert!(!TextSink::original().takes("Cannon"));
         assert!(TextSink::new(TextMode::Font, Some(&font)).takes("Cannon"));
-        assert!(TextSink::new(TextMode::Font, Some(&font)).takes("ElecMan[EX]"));
+        assert!(TextSink::new(TextMode::Font, Some(&font)).takes("ElecMan\u{E002}"));
     }
 }
