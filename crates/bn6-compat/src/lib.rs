@@ -135,6 +135,11 @@ pub struct GameAddresses {
     /// key, the Falzar ROM's and this game's.
     #[serde(default)]
     pub panel_ys: BTreeMap<String, [u8; 2]>,
+    /// Kinds spawned with a routine's address as their X (a register their
+    /// spawner left): by kind key, the Falzar ROM's address and this
+    /// game's.
+    #[serde(default)]
+    pub spawner_xs: BTreeMap<String, [u32; 2]>,
     /// Kinds of `spawner_z_fractions` that drop from that Z to height 0
     /// (`sub_8001330`'s velocity, then gravity each tick): while they drop,
     /// this game's other address gives another velocity, so another Z (the
@@ -234,6 +239,15 @@ impl Games {
             .map_or(0, |whole| at(start(whole, theirs)).wrapping_sub(z))
     }
 
+    /// An object's X as a `game` console has it: a kind's whose X is a
+    /// routine's Falzar address (`spawner_xs`) has that game's.
+    pub fn x(&self, game: Game, kind: &str, x: i32) -> i32 {
+        match self.of(game).and_then(|g| g.spawner_xs.get(kind)) {
+            Some(&[falzar, other]) if x as u32 == falzar => other as i32,
+            _ => x,
+        }
+    }
+
     /// An object's panel Y as a `game` console has it: a kind's whose is a
     /// routine's address byte (`panel_ys`) is that game's.
     pub fn panel_y(&self, game: Game, kind: &str, y: u8) -> u8 {
@@ -259,6 +273,14 @@ pub struct Records {
     /// (NaviStats+0x4D, +0x4F), by the row of `off_80C4C78`.
     #[serde(default)]
     pub projectile_variants: BTreeMap<String, u8>,
+    /// The barriers a navi's stats name as its first barrier (NaviStats+
+    /// 0x06), by the type `sub_801A7CC` takes.
+    #[serde(default)]
+    pub barriers: BTreeMap<String, u8>,
+    /// The patch cards (the Japanese games', records of type "patch-card"),
+    /// by the number a save's card list holds.
+    #[serde(default)]
+    pub patch_cards: BTreeMap<String, u8>,
 }
 
 /// The original's numbers of rule definitions (rules.toml): only
@@ -480,6 +502,8 @@ impl Compat {
         unique("records.toml: sp_slots", self.records.sp_slots.iter().map(|(k, &n)| (k, n)))?;
         unique("records.toml: rock_variants", self.records.rock_variants.iter().map(|(k, &n)| (k, n)))?;
         unique("records.toml: projectile_variants", self.records.projectile_variants.iter().map(|(k, &n)| (k, n)))?;
+        unique("records.toml: barriers", self.records.barriers.iter().map(|(k, &n)| (k, n)))?;
+        unique("records.toml: patch_cards", self.records.patch_cards.iter().map(|(k, &n)| (k, n)))?;
         unique("rules.toml: lockon", self.rules.lockon.iter().map(|(k, &n)| (k, n)))?;
         unique("rules.toml: statuses", self.rules.statuses.iter().map(|(k, &n)| (k, n)))?;
         unique("assets.toml: sprites", self.assets.sprites.iter().map(|(k, n)| (k, n.clone())))?;

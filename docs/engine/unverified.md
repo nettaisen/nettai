@@ -390,6 +390,35 @@ first only, and the second takes what the spawner leaves in that register, the e
   Cross and Beast scenarios never show side 0 flinching: the same blind spot as the falzar base's shoes, not
   surveyed yet.
 
+## Patch cards (patch-cards.md)
+
+The Japanese games' patch cards are BN6's patch-cards system. Scenarios are the chip lab's `jp/cards/`, on
+Japanese consoles; each also checks the stats after the cards and the emotion window's glitch at the round's start.
+
+### Covered
+
+| Branch | Scenarios | Result |
+|---|---|---|
+| Each of the 117 cards' application (every effect id the cards have, 134 of the 170) | `jp/cards/NNN-<card>/applied` | match |
+| Each card weapon: 44 charged shots, 5 B buttons, 5 B+Back specials (actions 0x5C, 0x5D, 0x5E; the fan's instant effect 0x14 for B+Back) | `jp/cards/NNN-<card>/charge`, `b-button`, `back-special` | match |
+| A later card's choice over an earlier one's; the clamps after each card (Attack at 9, Rapid and Charge at 0 and at 4); HP percentages rounded toward zero, one after another | `jp/cards/combos/later-charged-shot-wins`, `attack-clamps-at-9`, `rapid-and-charge-clamp-at-4`, `hp-percentages-stack` | match |
+| Fixes over the NaviCust's bugs (panel, emotion); a switched-off card; every card switched off over a NaviCust bug (the glitch from flag 0x1723) | `jp/cards/combos/fixes-panel-bug`, `fixes-emotion-bug`, `switched-off-card`, `all-off-glitch` | match |
+| A link navi with cards (the routine doesn't run) | `jp/cards/combos/link-navi` | match |
+| First barriers of types 7, 8, 9 under hits; Aqua and Fire bodies against their weakness; MegaMan's charged shot with each of the 13 programs the cards give; the custom screen's damage (NaviStats+0x54) | `jp/cards/combos/first-barrier-*`, `aqua-body-thunder`, `fire-body-wideshot`, `charged-program-*`, `custom-damage` | match |
+| The invisibility taken by the opponent's Rush (its weapon routine ends the attack: the navi idles a tick sooner than the original's attack, which no frame shows) | `jp/cards/combos/invisible-charge-rush` | match |
+| EXE6 Gregar: its own ROM's addresses (the meteor shower's X) | `jp/cards/combos/gregar-*` | match |
+
+### Not reached (no card has it; ported)
+
+| Branch | Why |
+|---|---|
+| BugStop (effect 0x99): the bug slots not copied | No card has it. |
+| The charged shots' blanks (effect 0x8F) | No card has it. |
+| GigaFolder− (effect 0x15) and its missing clamp | No card has it. |
+| The B button's MegaMan shield (0x1B), RflectR (0x1F) and plain buster (0x22); the charged shot "none" (0x56) | No card has them. |
+| The charged shot's programs 0x14 to 0x1A (effects 0x5B to 0x61), Blind as the hit status (0x90), the water, magnet, holy, poison and normal panel trails (0x86, 0x89 to 0x8C), ChipRecovery's second id (0x7C) | No card has them; the code is the cards' other values'. |
+| A link navi's glitch when the save's flag 0x1723 is set (the last application with MegaMan left it) | The system counts the link navi's stats' bugs; a save with the flag set and a link navi operated would differ. |
+
 ## Ruleset
 
 Scenarios named here are in the verification workspace's chiplab library; `flow/` and `custom/` are new folders
@@ -472,8 +501,8 @@ alone, which no recording showed, since every earlier Falzar Beast Over navi had
 | AntiDmg's counter aimed at the nearest enemy ahead (`sub_8016218`, the counter's variant 1) | The variant is the counter's caller's: every trap's (`sub_801056A`, six callers) passes 0, and the AntiDmg program's stance passes its own, which its weapon routine (0x3D, `sub_80121BC`) sets to 0. |
 | A navi appearing mid-battle (`sub_80164A0`) | Only for actors whose AIData+2 is set, which a netbattle's players' isn't. |
 | The Beast Out lock-on's tie-break between several targets | Its candidates are a side's alive-actor slots, and a netbattle fills one a side. |
-| Bug code 0xFB (the body programs go, UnderShirt too), and the charged shot's and the buster's other projectile kinds | Only projectile kind 0x1A carries the code, and a player's shots take their kind from NaviStats+0x4F (the charged shot) and +0x4D (the buster), which nothing writes: not the stats' init (`initNaviStats_WithDefaultStatsMaybe_8013438`, `init_8013B64`), not a NaviCust program's or bug's routine, and no attack a netbattle has carries bug code 0x4D or 0x4F (a code below 0x64 stores to the stat of that number). Both are 0 in all 8,798 navi stat blocks of the lab's 4,399 setups (every program, bug, navi and form). |
-| A hit's bug code that sets a weapon byte, a shot program, a form or the navi of the navi's stats to a number (NaviStats+0x04, +0x05, +0x07, +0x39, +0x44 other than 0xFF; +0x4D, +0x4F, and the forms +0x17 and +0x2C, other than 0; the navi, +0x29) | No hit of the game's carries such a code (the codes hits give are 0x18 with a level, and the special ones from 0xF4 up); the engine holds weapons, projectile variants, forms and navis by handle and has no number for them, so it refuses the write. Clearing one (0xFF, 0; a form byte's 0 is the base form) works. |
+| Bug code 0xFB (the body programs go, UnderShirt too), and the charged shot's and the buster's other projectile kinds | Only projectile kind 0x1A carries the code, and a player's shots take their kind from NaviStats+0x4F (the charged shot) and +0x4D (the buster), which on a US console nothing writes (on a Japanese one the patch cards write both, but no card gives kind 0x1A: patch-cards.md §7): not the stats' init (`initNaviStats_WithDefaultStatsMaybe_8013438`, `init_8013B64`), not a NaviCust program's or bug's routine, and no attack a netbattle has carries bug code 0x4D or 0x4F (a code below 0x64 stores to the stat of that number). Both are 0 in all 8,798 navi stat blocks of the lab's 4,399 setups (every program, bug, navi and form). |
+| A hit's bug code that sets a weapon byte, a shot program, the first barrier, a form or the navi of the navi's stats to a number (NaviStats+0x04, +0x05, +0x07, +0x39, +0x44 other than 0xFF; +0x06, +0x4D, +0x4F, and the forms +0x17 and +0x2C, other than 0; the navi, +0x29) | No hit of the game's carries such a code (the codes hits give are 0x18 with a level, and the special ones from 0xF4 up); the engine holds weapons, projectile variants, barriers, forms and navis by handle and has no number for them, so it refuses the write. Clearing one (0xFF, 0; a form byte's 0 is the base form) works. |
 | A weakness hit on a plain Beast Out (`sub_8015766` on forms 0xB and 0xC: by the form's number the Falzar beast drops to the Gregar one, which stays; content-model-v2.md §3.2, `breaks_to`) | The request needs a damaging hit with a weakness multiplier (`sub_801A506`), and the Beasts are Null with no secondary weakness. |
-| HP lost when the custom screen opens (NaviStats+0x54, `sub_8013FD0`), bug code 0x54, the tornado's variant 3 and the Tornado action's subtype 3 (`sub_80CA19E`) | The stat's one setter, `sub_813CF2C`, is unreferenced (no pointer word or call in the ROM reaches it or the stat setters around it). Bug code 0x54 is carried only by the tornado's variant 3, which only action 0x2F's subtype 3 spawns; no chip record has that subtype and no weapon routine starts the action. The stat is 0 in all 9,994 stat blocks of the lab's setups. |
+| Bug code 0x54, the tornado's variant 3 and the Tornado action's subtype 3 (`sub_80CA19E`); on a US console, HP lost when the custom screen opens (NaviStats+0x54, `sub_8013FD0`: on a Japanese one the patch cards set it, patch-cards.md, and `jp/cards/combos/custom-damage` matches) | The stat's one US setter, `sub_813CF2C`, is unreferenced (no pointer word or call in the ROM reaches it or the stat setters around it). Bug code 0x54 is carried only by the tornado's variant 3, which only action 0x2F's subtype 3 spawns; no chip record has that subtype and no weapon routine starts the action. The stat is 0 in all 9,994 stat blocks of the lab's setups. |
 

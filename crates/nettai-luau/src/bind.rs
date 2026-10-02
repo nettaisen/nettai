@@ -575,6 +575,14 @@ impl UserData for Object {
                 nettai_content_api::NaviAction::Engine(name) => Ok(LuaValue::String(lua.create_string(name)?)),
             }
         });
+        methods.add_method("rush_cancels", |_, this, chip: LuaValue| {
+            let chip = bound(|b| def_arg(b, &chip, Registry::Chip, "rush_cancels"))?;
+            with(|api, _| api.rush_cancels(this.0, chip).map_err(api_error))
+        });
+        methods.add_method("load_chip_attack", |_, this, chip: LuaValue| {
+            let chip = bound(|b| def_arg(b, &chip, Registry::Chip, "load_chip_attack"))?;
+            with(|api, _| api.load_chip_attack(this.0, chip).map_err(api_error))
+        });
         methods.add_method("set_damage_word", |_, this, word: LuaValue| {
             // The damage (with its flag bits) and, above it, the counter
             // byte a hit carries: the object's damage and stamina.
@@ -1134,6 +1142,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "set_mood", |_, (side, mood): (LuaValue, LuaValue)| {
         let (side, mood) = (u8_arg(side, "side")? & 1, u8_arg(mood, "mood")?);
         with(|api, _| Ok(api.set_mood(side, mood)))
+    });
+    lib_fn!(lua, t, "set_emotion_window_glitch", |_, (side, on): (LuaValue, bool)| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.set_emotion_window_glitch(side, on)))
     });
     lib_fn!(lua, t, "side_special", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -1763,8 +1775,12 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         // An action definition; nothing for a weapon whose own instant
         // effect the engine runs.
         HookCall::Weapon { .. } if v.is_nil() => Ok(Value::Nil),
+        // The routine ended the attack itself: the navi stays idle.
+        HookCall::Weapon { .. } if v == LuaValue::Boolean(false) => Ok(Value::Bool(false)),
         HookCall::Weapon { .. } => match bound.def(&v) {
             Some((Registry::Action, h)) => Ok(Value::Def(Registry::Action, h)),
+            // A chip: what its use starts (the weapon fires the chip).
+            Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),
             Some((r, _)) => Err(mlua::Error::runtime(format!("a weapon routine returns an action, not a {r}"))),
             None => Err(mlua::Error::runtime(format!(
                 "a weapon routine returns an action definition, not a {}",

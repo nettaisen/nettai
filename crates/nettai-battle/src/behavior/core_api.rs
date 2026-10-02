@@ -373,6 +373,29 @@ impl CoreApi for Battle {
             NaviStat::FloatShoes => Value::Bool(s.float_shoes),
             NaviStat::AirShoes => Value::Bool(s.air_shoes),
             NaviStat::Undershirt => Value::Bool(s.undershirt),
+            NaviStat::Hp => i(s.hp as i64),
+            NaviStat::MaxHp => i(s.max_hp as i64),
+            NaviStat::MegaLevel => i(s.mega_level as i64),
+            NaviStat::GigaLevel => i(s.giga_level as i64),
+            NaviStat::SuperArmor => Value::Bool(s.super_armor),
+            NaviStat::StatusGuard => Value::Bool(s.bugs.status_immunity),
+            NaviStat::BusterWeapon => weapon(s.weapons.buster),
+            NaviStat::FirstBarrier => record(s.first_barrier),
+            NaviStat::Gauge => i(s.gauge_speed as i64),
+            NaviStat::Rush => Value::Bool(s.support.is_some_and(|n| n.rush)),
+            NaviStat::Beat => Value::Bool(s.support.is_some_and(|n| n.beat)),
+            NaviStat::Tango => Value::Bool(s.support.is_some_and(|n| n.tango)),
+            NaviStat::SupportBug => Value::Bool(s.support.is_none()),
+            NaviStat::StepBug => i(s.bugs.processing as i64),
+            NaviStat::PanelTrailLevel => i(s.bugs.panel_trail_level as i64),
+            NaviStat::HitStatus => i(s.bugs.hit_status as i64),
+            NaviStat::CustomDamage => i(s.bugs.custom_damage as i64),
+            NaviStat::EmotionBug => i(s.bugs.emotion as i64),
+            NaviStat::BattleStartBug => i(s.bugs.battle_start as i64),
+            NaviStat::ChipShuffle => Value::Bool(s.chip_shuffle),
+            NaviStat::NumberOpen => Value::Bool(s.number_open),
+            NaviStat::ChipDrops => i(s.chip_drops as i64),
+            NaviStat::Encounters => i(s.encounters as i64),
             NaviStat::BugKinds => {
                 let b = &s.bugs;
                 let kinds = [
@@ -395,11 +418,66 @@ impl CoreApi for Battle {
     fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()> {
         let v = store(stat.name(), stat.writable(), stat.ty(), v)?;
         let weapon = match stat {
-            NaviStat::ChargeShotWeapon | NaviStat::BackSpecialWeapon => self.weapon_from_api(stat.name(), v)?,
+            NaviStat::ChargeShotWeapon | NaviStat::BackSpecialWeapon | NaviStat::BusterWeapon => {
+                self.weapon_from_api(stat.name(), v)?
+            }
+            _ => None,
+        };
+        // A record field's value: a shot program or a barrier.
+        let record = match v {
+            FieldValue::Ref(Some((Registry::Record, h))) => Some(nettai_content_api::RecordHandle(h)),
             _ => None,
         };
         let s = &mut self.stats[side as usize & 1];
+        // A support bit as the original sets it in the byte: none (0xFF,
+        // the support bug) stays none when one is set.
+        let support = |s: &mut crate::setup::NaviStats, f: fn(&mut crate::setup::Supports) -> &mut bool, on: bool| {
+            match &mut s.support {
+                Some(n) => *f(n) = on,
+                None if on => {}
+                None => {
+                    let mut n = crate::setup::Supports { rush: true, beat: true, tango: true };
+                    *f(&mut n) = false;
+                    s.support = Some(n);
+                }
+            }
+        };
         match (stat, v) {
+            (NaviStat::Element, FieldValue::U8(x)) => s.element = x,
+            (NaviStat::ChipRecovery, FieldValue::U16(x)) => s.chip_recovery = x,
+            (NaviStat::BusterShot, FieldValue::Ref(_)) => s.weapons.buster_shot = record,
+            (NaviStat::ChargeShotKind, FieldValue::Ref(_)) => s.weapons.charge_shot_kind = record,
+            (NaviStat::BusterBlanks, FieldValue::U8(x)) => s.bugs.buster_blanks = x,
+            (NaviStat::BusterCharged, FieldValue::U8(x)) => s.bugs.buster_charged = x,
+            (NaviStat::HpDrain, FieldValue::U8(x)) => s.bugs.hp_drain = x,
+            (NaviStat::CustomDrain, FieldValue::U8(x)) => s.bugs.custom_drain = x,
+            (NaviStat::PanelTrail, FieldValue::U8(x)) => s.bugs.panel_trail_kind = x,
+            (NaviStat::Hp, FieldValue::U16(x)) => s.hp = x,
+            (NaviStat::MaxHp, FieldValue::U16(x)) => s.max_hp = x,
+            (NaviStat::MegaLevel, FieldValue::U8(x)) => s.mega_level = x,
+            (NaviStat::GigaLevel, FieldValue::U8(x)) => s.giga_level = x,
+            (NaviStat::SuperArmor, FieldValue::Bool(x)) => s.super_armor = x,
+            (NaviStat::StatusGuard, FieldValue::Bool(x)) => s.bugs.status_immunity = x,
+            (NaviStat::BusterWeapon, FieldValue::Ref(_)) => s.weapons.buster = weapon,
+            (NaviStat::FirstBarrier, FieldValue::Ref(_)) => s.first_barrier = record,
+            (NaviStat::Gauge, FieldValue::Enum(x)) => {
+                s.gauge_speed = match x {
+                    0 => crate::setup::GaugeSpeed::Normal,
+                    1 => crate::setup::GaugeSpeed::Fast,
+                    _ => crate::setup::GaugeSpeed::Slow,
+                }
+            }
+            (NaviStat::Rush, FieldValue::Bool(x)) => support(s, |n| &mut n.rush, x),
+            (NaviStat::Beat, FieldValue::Bool(x)) => support(s, |n| &mut n.beat, x),
+            (NaviStat::Tango, FieldValue::Bool(x)) => support(s, |n| &mut n.tango, x),
+            (NaviStat::StepBug, FieldValue::U8(x)) => s.bugs.processing = x,
+            (NaviStat::PanelTrailLevel, FieldValue::U8(x)) => s.bugs.panel_trail_level = x,
+            (NaviStat::HitStatus, FieldValue::U8(x)) => s.bugs.hit_status = x,
+            (NaviStat::CustomDamage, FieldValue::U16(x)) => s.bugs.custom_damage = x,
+            (NaviStat::EmotionBug, FieldValue::U8(x)) => s.bugs.emotion = x,
+            (NaviStat::BattleStartBug, FieldValue::U8(x)) => s.bugs.battle_start = x,
+            (NaviStat::ChipShuffle, FieldValue::Bool(x)) => s.chip_shuffle = x,
+            (NaviStat::NumberOpen, FieldValue::Bool(x)) => s.number_open = x,
             (NaviStat::Attack, FieldValue::U8(x)) => s.attack = x,
             (NaviStat::Rapid, FieldValue::U8(x)) => s.rapid = x,
             (NaviStat::Charge, FieldValue::U8(x)) => s.charge = x,
@@ -429,6 +507,10 @@ impl CoreApi for Battle {
 
     fn set_mood(&mut self, side: u8, mood: u8) {
         kinds::player::set_mood(self, side & 1, mood);
+    }
+
+    fn set_emotion_window_glitch(&mut self, side: u8, on: bool) {
+        self.consoles[side as usize & 1].emotion_window_glitch = on;
     }
 
     fn bug_frags(&self, side: u8) -> u32 {
@@ -730,6 +812,17 @@ impl CoreApi for Battle {
 
     fn object_kind(&self, o: ObjectRef) -> Option<u16> {
         Some(self.objects.get(o).kind.0)
+    }
+
+    fn rush_cancels(&mut self, o: ObjectRef, chip: u16) -> ApiResult<bool> {
+        self.actor_of(o)?;
+        Ok(kinds::player::rush_cancels(self, o, nettai_content_api::ChipHandle(chip)))
+    }
+
+    fn load_chip_attack(&mut self, o: ObjectRef, chip: u16) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::load_chip_attack(self, o, nettai_content_api::ChipHandle(chip));
+        Ok(())
     }
 
     fn navi_action(&self, o: ObjectRef) -> ApiResult<NaviAction> {
