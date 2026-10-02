@@ -2,7 +2,9 @@
 //! phase has run (docs/design/content-model-v2.md §7.7): the roles content
 //! hasn't filled, kinds under `objects/` that one owner alone uses
 //! (colocation, §4), and collision types defined twice (two definitions of
-//! one row of the original's table). Duplicate keys, references to the
+//! one row of the original's table), and the collision types that test
+//! BN6's 0x80 self bit which a module using another root's modules names.
+//! Duplicate keys, references to the
 //! wrong registry, unknown asset names and chips without exactly one use
 //! are the define phase's own errors; two keys with one of the original's
 //! numbers is compat's (`bn6_compat::Compat` refuses to read it).
@@ -95,6 +97,14 @@ pub fn definitions(c: &Content, r: &mut Report) {
             ),
         );
     }
+    for (key, module, required) in self_bit_targets(c) {
+        r.warn(
+            format!("{module}.luau"),
+            format!(
+                "collision type {key} tests 0x80, the self bit {required}'s objects carry: one of {required}'s modules handed it as a target would reach objects its own game's word doesn't (docs/design/bn5-map.md §15.3 item 9)"
+            ),
+        );
+    }
     for (kind, owners) in single_owner_kinds(c) {
         r.warn(
             format!("{kind}"),
@@ -114,6 +124,39 @@ pub fn duplicate_collision_types(c: &Content) -> Vec<(u8, Vec<(String, String)>)
         }
     }
     rows.into_iter().filter(|(_, twins)| twins.len() > 1).map(|(offset, twins)| ((offset / 8) as u8, twins)).collect()
+}
+
+/// Collision types of a root that requires another (BN5's, which uses BN6's
+/// modules) whose words test 0x80, named by a module of that root which
+/// uses the other's modules: BN6 adds that bit to the self type of every
+/// attack and object and BN5 has none, so a BN5 target type BN6's modules
+/// take must not test it (docs/design/bn5-map.md §15.3 item 9; BN5's own
+/// row 0x3D does, which is fine while only BN5's code uses it). Each with
+/// the module that names it and the root it requires. (A module names a
+/// type as `collision.<id with underscores>`, the way rules/collision
+/// exports it.)
+pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
+    let mut out = Vec::new();
+    for d in c.defs.definitions.of(Registry::Collision) {
+        let root = nettai_content_api::keys::root_of(&d.key).unwrap_or_default();
+        let Some(manifest) = c.scripts.roots.iter().find(|m| m.name == root) else { continue };
+        let tests = ["side0", "side1"].iter().any(|k| d.spec.field(k).int().is_some_and(|w| w & 0x80 != 0));
+        if !tests {
+            continue;
+        }
+        let field = format!("collision.{}", nettai_content_api::keys::local(&d.key).replace('-', "_"));
+        for required in &manifest.requires {
+            let uses = format!("@{required}/");
+            let prefix = format!("{root}{}", nettai_content_api::keys::SEPARATOR);
+            for (name, text) in &c.scripts.modules {
+                let names = text.lines().any(|l| l.contains(&field) && !l.contains("define.collision"));
+                if name.starts_with(&prefix) && text.contains(&uses) && names {
+                    out.push((d.key.clone(), name.clone(), required.clone()));
+                }
+            }
+        }
+    }
+    out
 }
 
 /// Kinds defined under `objects/` whose every referring definition lives in

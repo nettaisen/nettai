@@ -257,6 +257,7 @@ fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definit
                 rules.lockon.column_shifts = s.column_shifts;
                 rules.lockon.clear_path = s.clear_path;
             }
+            "chip-use" => rules.chip_use = r.read::<super::rules::ChipUseRules>(spec, &at).map_err(e)?,
             "sp-chips" => {
                 let s: SpChipsSection = r.read(spec, &at).map_err(e)?;
                 (rules.sp_deletion_times, rules.sp_slots) = (s.deletion_times, s.slots);
