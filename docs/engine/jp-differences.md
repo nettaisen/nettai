@@ -283,6 +283,33 @@ The sprite list's slots that are a placeholder in the US and the JP ROM's own ar
 | 14-17 | effect 0x1D, battle mode 1's |
 | 18-34, 18-35, 18-36 | not identified here |
 
+### 4.6 Where the JP-only code is
+
+JP Falzar's JP-only stretches, by the blocks' and gaps' extents. JP Gregar's are at its own addresses: the kind
+tables give their starts.
+
+| JP Falzar | Bytes | Follows (US) | What it is |
+|---|---|---|---|
+| 0x080084F0..0x080086C4 | 420 | `sub_80084C0` | battle mode 1: its turn code |
+| 0x080097EC..0x08009C04 | 1048 | `sub_80095C8` | battle mode 1: its handler |
+| 0x0800BA6C..0x0800BA90 | 36 | `sub_800B46C` | battle mode 1: two link routines |
+| 0x0802CF48..0x0802D694 | 1868 | `sub_802CAA6` | battle mode 1 |
+| 0x0802DD90..0x0802E1E8 | 1112 | `sub_802D1EC` | battle mode 1: helpers, 0x0802E01A, its per-frame code 0x0802E092 |
+| 0x080407C4..0x080409F4 | 560 | `sub_803F740`'s string | a link mode (game code BR5J) |
+| 0x080BCFCC..0x080BD820 | 2132 | `sub_80BAF06` | **Count** (T1 0x11) and **Django** (T1 0x12) |
+| 0x080C3E0C..0x080C44B0 | 1700 | `sub_80C1538` | **Gregar's and Falzar's beasts** (T1 0x30, 0x31) |
+| 0x080C91E0..0x080C9640 | 1120 | `sub_80C6264` | the Count boss's lance rain (T3 0x0C) and **Count's lance** (T3 0x0D) |
+| 0x080C9EBC..0x080CA440 | 1412 | `sub_80C6ADA` | the Count boss's attacks (T3 0x13..0x15) |
+| 0x080E3E7C..0x080E45CC | 1872 | `sub_80E0602` | T4 0x01 (dead) and its helpers |
+| 0x080E5190..0x080E56D0 | 1344 | `sub_80E11E0` | battle mode 1: T4 0x0B |
+| 0x080E59F0..0x080E5F60 | 1392 | `sub_80E1502` | battle mode 1: T4 0x0D, 0x0E |
+| 0x080E6AC0..0x080E6C58 | 408 | `sub_80E2068` | the Count boss's effects (T4 0x17, 0x18) |
+| 0x080EDCC8..0x080EE23C | 1396 | `sub_80E90FE` | **the Gregar and Falzar chips' controllers** (T4 0x7A, 0x7B) |
+| 0x080EE300..0x080EE3C8 | 200 | `sub_80E91B8` | **the beasts' overlay** (T4 0x7D) |
+| 0x080EE9CC..0x080EF180 | 1972 | `sub_80E97BE` | battle modes 10 and 11: T4 0x85, 0x86 |
+| 0x080F8268.. | | in the enemy navis' update | battle mode 1's hook |
+| 0x08106CC8.., 0x0810D584.. | | the enemy navis' AI | the Count boss (rows 17 and 22) |
+
 ## 5. Cosmetic differences
 
 None of these touches the simulation. A trace that compares memory would still see some of them, marked
