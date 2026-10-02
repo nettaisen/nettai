@@ -1,7 +1,7 @@
 //! The game's two fonts, as the frontend draws strings with them. Every
-//! string the custom screen draws goes through these helpers (the HUD's
-//! older sites join them later), so that a later step can change what is
-//! behind them without touching the places that draw text
+//! string the frontend draws (the HUD's, the custom screen's, the
+//! chatbox's) goes through these helpers, so that a later step can change
+//! what is behind them without touching the places that draw text
 //! (docs/design/text-rendering.md).
 //!
 //! - The 8x16 font ([`cell_text`]): one glyph a cell of 8x16 pixels,
@@ -9,7 +9,8 @@
 //! - The dialogue font ([`dialogue_text`]): proportional 16x12 glyphs,
 //!   the chatbox's descriptions and messages.
 
-use nettai_assets::{DialogueFont, Hud, Tiles};
+use crate::compose::Layer;
+use nettai_assets::{DialogueFont, Hud, Palette, Tiles};
 
 /// A string in the 8x16 font, laid into tiles as `renderTextGfx_8045F8C`
 /// does: `cells` glyph cells of two tiles each (top, then bottom), the
@@ -35,6 +36,26 @@ pub fn cell_text(hud: &Hud, glyphs: &[u16], cells: usize, shift: u8) -> Tiles {
 /// it has none for.
 pub fn cell_glyphs(hud: &Hud, text: &str) -> (Vec<u16>, Vec<char>) {
     hud.glyphs(text)
+}
+
+/// Glyphs of the 8x16 font on a tile layer, as `cell_text` lays them
+/// (`cells` cells, spaces after the glyphs), the first cell's top left at
+/// (x, y).
+pub fn draw_cell_text(layer: &mut Layer, hud: &Hud, glyphs: &[u16], cells: usize, palette: &Palette, x: i32, y: i32) {
+    let text = cell_text(hud, glyphs, cells, 0);
+    for k in 0..cells {
+        for half in 0..2 {
+            if let Some(t) = text.get(2 * k + half) {
+                layer.draw_tile(t, palette, x + 8 * k as i32, y + 8 * half as i32, false, false);
+            }
+        }
+    }
+}
+
+/// Where a glyph of the 8x16 font is drawn from as a sprite: its two
+/// tiles (top, then bottom) from this one of these.
+pub fn cell_glyph(hud: &Hud, glyph: u16) -> (&Tiles, usize) {
+    (&hud.font, 2 * glyph as usize)
 }
 
 /// A line in the dialogue font, composed as the chatbox composes its line

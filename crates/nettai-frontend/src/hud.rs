@@ -7,6 +7,7 @@
 
 use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
+use crate::fonts;
 use crate::objects::{SpriteList, View, project_hud};
 use nettai_assets::{Bundle, Hud, MapEntry, Palette, Tiles};
 use nettai_battle::Battle;
@@ -391,13 +392,8 @@ pub fn draw<'a>(
         for (i, d) in left.bytes().enumerate() {
             digit(layer, d, 13 - left.len() as i32 + i as i32);
         }
-        for (i, c) in hud.glyphs("VS").0.into_iter().enumerate() {
-            for half in 0..2 {
-                if let Some(t) = hud.font.get(2 * c as usize + half) {
-                    layer.draw_tile(t, pal, (14 + i as i32) * 8, (5 + half as i32) * 8, false, false);
-                }
-            }
-        }
+        let (vs, _) = fonts::cell_glyphs(hud, "VS");
+        fonts::draw_cell_text(layer, hud, &vs, vs.len(), pal, 14 * 8, 5 * 8);
         for (i, d) in right.min(9999).to_string().bytes().enumerate() {
             digit(layer, d, 17 + i as i32);
         }
@@ -597,7 +593,7 @@ fn put_px(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, x: i32, y: i
 /// chip, at most eight glyphs).
 fn name_glyphs(b: &Battle, hud: &Hud, chip: ChipHandle, problems: &mut Problems) -> Vec<u16> {
     let name = &b.content.chip(chip).name;
-    let (mut glyphs, missing) = hud.glyphs(name);
+    let (mut glyphs, missing) = fonts::cell_glyphs(hud, name);
     if !missing.is_empty() {
         let key = &b.content.defs.chip(chip).key;
         problems.note(format!("chip {key:?} is named {name:?}, but the pack's font has no glyph for {missing:?}"));
@@ -621,15 +617,9 @@ fn draw_chip_name(
     (bonus, doubled): (u16, bool),
     problems: &mut Problems,
 ) {
-    let mut col = 0;
-    for c in name_glyphs(b, hud, chip, problems) {
-        for half in 0..2 {
-            if let Some(t) = hud.font.get(2 * c as usize + half) {
-                layer.draw_tile(t, pal, col * 8, (18 + half as i32) * 8, false, false);
-            }
-        }
-        col += 1;
-    }
+    let name = name_glyphs(b, hud, chip, problems);
+    fonts::draw_cell_text(layer, hud, &name, name.len(), pal, 0, 18 * 8);
+    let mut col = name.len() as i32;
     if !shows_damage(b, chip) {
         return;
     }
@@ -688,13 +678,8 @@ fn draw_text(
         problems.note(format!("the pack has no HUD text line {text}"));
         return;
     };
-    for (i, &g) in glyphs.iter().take(width).enumerate() {
-        for half in 0..2 {
-            if let Some(t) = hud.font.get(2 * g as usize + half) {
-                layer.draw_tile(t, pal, (col + i as i32) * 8, (row + half as i32) * 8, false, false);
-            }
-        }
-    }
+    let shown = &glyphs[..glyphs.len().min(width)];
+    fonts::draw_cell_text(layer, hud, shown, shown.len(), pal, col * 8, row * 8);
 }
 
 /// An 8x16 glyph (tiles 2k and 2k + 1 of `tiles`) as a sprite.
@@ -775,14 +760,27 @@ fn gregar_face(picture: u8) -> bool {
     (0x17..0x80).contains(&picture) || (nettai_assets::NAVI_MUGSHOTS + 6..nettai_assets::NAVI_MUGSHOTS + 11).contains(&picture)
 }
 
-/// A Falzar console shows every form's and navi's true face, where the
-/// original Falzar console has none for Gregar's and shows the Falzar
-/// counterpart's (deliberately: docs/frontend.md §5): the face and the box
-/// beside it, in the face's palette, are a known difference.
+/// The faces Falzar has of its own, which the Gregar ROM's tables have
+/// Gregar's in place of: its emotion-window pictures 5 to 0x16 (its
+/// Crosses, tired, in Beast Out, its Beast, Full Synchro, Beast Over) and
+/// its link navis' (the first five of its six; the sixth is ProtoMan's).
+fn falzar_face(picture: u8) -> bool {
+    (5..=0x16).contains(&picture) || (nettai_assets::NAVI_MUGSHOTS..nettai_assets::NAVI_MUGSHOTS + 5).contains(&picture)
+}
+
+/// A console shows every form's and navi's true face, where the original
+/// has none for the other game's and shows its own counterpart's
+/// (deliberately: docs/frontend.md §5): the face and the box beside it, in
+/// the face's palette, are a known difference.
 fn note_true_face(b: &Battle, side: usize, picture: Option<u8>, x: i32, problems: &mut Problems) {
-    let falzar_console = b.custom.sides[b.setup.local_side as usize & 1].unlocks.version == nettai_battle::custom::GameVersion::Falzar;
-    if falzar_console && picture.is_some_and(gregar_face) && side == b.setup.local_side as usize & 1 {
-        problems.known(x, 18, 48, 16, "a Gregar face on a Falzar console (the true face)");
+    use nettai_battle::custom::GameVersion;
+    let console = b.custom.sides[b.setup.local_side as usize & 1].unlocks.version;
+    let others = match console {
+        GameVersion::Falzar => picture.is_some_and(gregar_face),
+        GameVersion::Gregar => picture.is_some_and(falzar_face),
+    };
+    if others && side == b.setup.local_side as usize & 1 {
+        problems.known(x, 18, 48, 16, "the other game's face on this console (the true face)");
     }
 }
 
@@ -918,7 +916,7 @@ fn telop_parts<'a>(
     };
     let name = match telop.name {
         TelopName::Chip(chip) => name_glyphs(b, hud, chip, problems),
-        TelopName::Hidden => hud.glyphs("????").0,
+        TelopName::Hidden => fonts::cell_glyphs(hud, "????").0,
         TelopName::Unknown => {
             problems.note("a telop names a chip the engine wasn't told (a dimming content starts itself)".into());
             Vec::new()
@@ -974,7 +972,8 @@ fn name_parts<'a>(
     let y = layout.y as i32;
     let pal = hud.hp_palettes[0];
     for c in name {
-        out.push(glyph(&hud.font, c as usize, pal, x, y, 0, vscale));
+        let (tiles, first) = fonts::cell_glyph(hud, c);
+        out.push(SpritePart { first_tile: first, ..glyph(tiles, 0, pal, x, y, 0, vscale) });
         x += 8;
     }
     for g in damage.into_iter().chain(bonus) {
