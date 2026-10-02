@@ -1,12 +1,17 @@
 --!strict
 -- BlkBomb (BN5 chip 0x02e): a black bomb lobbed three panels ahead that sits there until a fire hit sets it off
 -- over the other side's area: BN6's BlkBomb (@bn6/chips/blkbomb, BN5's attack object #0x47, BN6's #0x4A; the same
--- code but for how it leaves, BN5's 0x080CE594, BN6's `sub_80CD700`), thrown by BN6's throw (the same held look,
--- BN5's attachment row 0x1A, BN6's 0x2D).
+-- code but for how it leaves, BN5's 0x080CE594, BN6's `sub_80CD700`, and its hit intake, BN5's that of BN6's
+-- `sub_801ADFA` where BN6's is `sub_801AD12`, which BN5 hasn't) with BN5's look (its spark, BN5's 0x0A, and
+-- collision types), thrown by BN6's throw (the same held look, BN5's attachment row 0x1A, BN6's 0x2D). (BN5's
+-- action table has 8 rows to BN6's 10, no frozen or bubbled: its idle and its return are 7 and 6 where BN6's are 9
+-- and 8, the same actions.)
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local black_bomb = require("@bn6/chips/blkbomb/bomb")
+local collision = require("../../rules/collision")
 local effects = require("@bn6/lib/effects")
+local sparks = require("../../lib/sparks")
 local throw = require("@bn6/lib/bombs/throw")
 
 local SOUND_HIT_BOMB = asset.sound("hit-bomb-1")
@@ -40,7 +45,14 @@ local function destroyed(me: Object)
     black_bomb.finish(me)
 end
 
-local KIND = black_bomb.make_kind("blkbomb/bomb", destroyed)
+local KIND = black_bomb.make_kind("blkbomb/bomb", {
+    destroyed = destroyed,
+    spark = sparks.breaking,
+    is = collision.neutral_object,
+    burst_is = collision.attack,
+    -- 0x08017984: any hit from the other side pushes it.
+    push = "any_hit",
+})
 
 return define.chip {
     id = "blkbomb",

@@ -8,9 +8,10 @@
 -- some other way (`placed`) stays.
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
--- `obstacle` service) around its own actions. A game whose bomb leaves the
--- field otherwise makes its kind with its own destroyed action
--- (`black_bomb.make_kind`; BN5's).
+-- `obstacle` service) around its own actions. Another game's bomb is a
+-- kind of its look (`black_bomb.make_kind`; BN5's): how it leaves the
+-- field, its hit spark, its and its burst's collision types and how a
+-- pushing hit treats it.
 
 local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local attachment = require("../../objects/attachment/attachment")
@@ -22,6 +23,19 @@ local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local trajectory = require("../../lib/trajectory")
 
 local black_bomb = {}
+
+-- A game's BlkBomb: its destroyed action (2), hit spark, collision type
+-- and its burst's, and what a pushing hit does to it.
+export type Look = {
+    destroyed: (Object) -> (),
+    spark: Spark,
+    is: CollisionType,
+    burst_is: CollisionType,
+    push: ObstaclePush,
+}
+
+-- A kind's look and its action table.
+type Kinded = Look & { actions: { [number]: (Object) -> () } }
 
 export type State = {
     -- The angle it was thrown at (BattleObject+0x0C).
@@ -185,9 +199,9 @@ local function catch_fire(me: Object)
 end
 
 -- `sub_80CD5F8`, with the kind's action table (`off_80CD62C`).
-local function tick(me: Object, actions: { [number]: (Object) -> () })
+local function tick(me: Object, k: Kinded)
     me.visible = true
-    obstacle.take_hits(me, "keeps_damage")
+    obstacle.take_hits(me, k.push)
     me:hit_spark()
     catch_fire(me)
     if not (me.state :: State).placed then
@@ -195,7 +209,7 @@ local function tick(me: Object, actions: { [number]: (Object) -> () })
     end
     local a = obstacle.react(me, "breaks", "always")
     if a then
-        local action = actions[a]
+        local action = k.actions[a]
         if not action then
             error(string.format("BlkBomb action %d reads past off_80CD62C", a))
         end
@@ -207,7 +221,7 @@ end
 
 -- `sub_80CD7D0`: set off, it bursts over the side opposite its panel's
 -- owner.
-local function burst(me: Object)
+local function burst(me: Object, k: Kinded)
     if not (me.state :: State).set_off then
         return
     end
@@ -228,7 +242,7 @@ local function burst(me: Object)
         -- None.
         hit_effect = nil,
         target = collision.hits_navis,
-        self_type = collision.attack,
+        self_type = k.burst_is,
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = BURST_HIT_MOD,
@@ -239,7 +253,7 @@ local function burst(me: Object)
 end
 
 -- `sub_80CD50C`: aim at the target panel (a thrown one), with 100 HP.
-local function init(me: Object, s: State, actions: { [number]: (Object) -> () })
+local function init(me: Object, s: State, k: Kinded)
     me.visible = true
     local sprite = me.sprite
     sprite:load(SPRITE)
@@ -274,24 +288,24 @@ local function init(me: Object, s: State, actions: { [number]: (Object) -> () })
         me:free()
         return
     end
-    me:setup_collision(collision.neutral_object, collision.everything, HIT_MOD)
+    me:setup_collision(k.is, collision.everything, HIT_MOD)
     me.collision.self_damage = SELF_DAMAGE
     me.collision.counter_byte = COUNTER
     me.collision:set_region(nil)
-    me.collision:set_hit_effect(HIT_SPARK)
+    me.collision:set_hit_effect(k.spark)
     me.collision:present()
     me.lifecycle = "update"
-    tick(me, actions)
+    tick(me, k)
 end
 
--- A BlkBomb kind (`id`) whose destroyed action (2) is `destroyed_action`.
-function black_bomb.make_kind(id: string, destroyed_action: (Object) -> ()): Kind
+-- A BlkBomb kind (`id`) of `look`.
+function black_bomb.make_kind(id: string, look: Look): Kind
     -- Its action table (`off_80CD62C`): its own actions and the
     -- framework's shared ones.
     local actions: { [number]: (Object) -> () } = {
         [0] = fly,
         [1] = obstacle.return_to_idle,
-        [2] = destroyed_action,
+        [2] = look.destroyed,
         [3] = obstacle.flinch,
         [4] = obstacle.paralyzed,
         [5] = obstacle.knocked_back,
@@ -299,6 +313,14 @@ function black_bomb.make_kind(id: string, destroyed_action: (Object) -> ()): Kin
         [7] = obstacle.bubbled,
         [8] = fly,
         [9] = idle,
+    }
+    local k: Kinded = {
+        destroyed = look.destroyed,
+        spark = look.spark,
+        is = look.is,
+        burst_is = look.burst_is,
+        push = look.push,
+        actions = actions,
     }
     return define.kind {
         id = id,
@@ -308,12 +330,12 @@ function black_bomb.make_kind(id: string, destroyed_action: (Object) -> ()): Kin
         update = function(me: Object)
             local l = me.lifecycle
             if l == "init" then
-                init(me, me.state :: State, actions)
+                init(me, me.state :: State, k)
             elseif l == "update" then
-                tick(me, actions)
+                tick(me, k)
             else
                 -- `sub_80CD78E`.
-                burst(me)
+                burst(me, k)
                 me.collision:free()
                 me:free()
             end
@@ -321,7 +343,15 @@ function black_bomb.make_kind(id: string, destroyed_action: (Object) -> ()): Kin
     }
 end
 
-black_bomb.kind = black_bomb.make_kind("blkbomb/bomb", destroyed)
+-- BN6's: a neutral object whose burst is an attack, pushed by a pushing
+-- hit with its damage kept.
+black_bomb.kind = black_bomb.make_kind("blkbomb/bomb", {
+    destroyed = destroyed,
+    spark = HIT_SPARK,
+    is = collision.neutral_object,
+    burst_is = collision.attack,
+    push = "keeps_damage",
+})
 
 -- `sub_80CD886`: a thrower for `throw.action` that throws a BlkBomb at the
 -- panel three ahead of the user: one of the side's field objects. (The

@@ -5,7 +5,7 @@
 
 local collision = require("../../rules/collision")
 local projectile = require("@bn6/objects/projectile/projectile")
-local sparks = require("@bn6/lib/sparks")
+local sparks = require("../../lib/sparks")
 
 local variants = {}
 

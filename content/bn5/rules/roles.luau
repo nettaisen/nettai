@@ -22,7 +22,7 @@ local antiswrd_counter = require("@bn6/chips/antiswrd/counter")
 local collision = require("./collision")
 local effects = require("@bn6/lib/effects")
 local regions = require("@bn6/lib/regions")
-local sparks = require("@bn6/lib/sparks")
+local sparks = require("../lib/sparks")
 local statuses = require("./status")
 
 return define.roles {
@@ -49,8 +49,8 @@ return define.roles {
         hit_bug_confuse = statuses.confuse_960,
     },
     sparks = {
-        -- BN5's hit sparks 0 to 0xD are BN6's (0x080E0814, BN6's `off_80E0804`: the same rows): a new
-        -- registration's, a blocked hit's, a thrown obstacle's landing's.
+        -- BN5's hit sparks (lib/sparks: BN6's rows with BN5's sprites): a new registration's, a blocked hit's,
+        -- a thrown obstacle's landing's.
         plain = sparks.plain,
         guard = sparks.guard,
         thrown_obstacle = sparks.charged,

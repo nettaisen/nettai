@@ -12,7 +12,7 @@
 -- Its first related slot can hold an object whose header it sets (to 1
 -- when it comes, 0 when it goes); Thunder gives none.
 --
--- Its look (sprites, animations, collision type, hit modifier, sounds) is a
+-- Its look (sprites, animations, collision type, hit modifier, spark, sounds) is a
 -- game's: BN6's below (`ball.kind`); another game's kind of it is
 -- `ball.make_kind(id, look)` (BN5's).
 
@@ -36,8 +36,8 @@ export type State = {
 }
 
 -- BN6's look: one sprite, its animations small and big (fast, or
--- DarkThnd's 12 panels; +1 bursting); an attack hitting with modifier 1;
--- its sound, DarkThnd's own.
+-- DarkThnd's 12 panels; +1 bursting); an attack hitting with modifier 1
+-- and the elec spark; its sound, DarkThnd's own.
 local SPRITE = asset.sprite("thunder-ball")
 local BN6: ThunderBallLook = {
     sprite = SPRITE,
@@ -46,6 +46,7 @@ local BN6: ThunderBallLook = {
     big_anim = 2,
     is = collision.attack,
     hit_mod = 1,
+    spark = sparks.elec,
     sound = asset.sound("erase-man-2"),
     dark_sound = asset.sound("elec-man"),
 }
@@ -189,7 +190,7 @@ local function init(me: Object, look: ThunderBallLook)
     me:setup_collision(if dark then look.dark_is or look.is else look.is, collision.hits_navis, look.hit_mod)
     local c = me.collision
     c:set_region(regions.single)
-    c:set_hit_effect(sparks.elec)
+    c:set_hit_effect(look.spark)
     if s.status then
         c.status_base = s.status
     end
