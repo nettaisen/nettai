@@ -887,6 +887,10 @@ declare battle: {
     -- status, the custom damage, the emotion, the drains, the battle-start
     -- bug and the hand-shrink turn zeroed).
     clear_navicust_bugs: (side: number) -> (),
+    -- `sub_801E658` (BugFix): the save's emotion window glitch is gone from
+    -- every console's emotion window, which then flickers (and draws its
+    -- console's RNG1) for NaviCust bugs only.
+    clear_emotion_window_glitch: () -> (),
     fill_custom_gauge: () -> (),
     -- `sub_801DF8C`: the custom gauge fills `rate` a tick (full at 0x4000).
     set_gauge_rate: (rate: number) -> (),
