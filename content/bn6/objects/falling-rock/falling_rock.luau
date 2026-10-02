@@ -49,10 +49,11 @@ local function shatter(me: Object)
 end
 
 -- `sub_80C7D98`: over its panel, falling from 104 pixels, with its hit
--- registered (region closed until low enough). Not when the battle is over
--- or its panel is off the field: it is freed.
+-- registered (region closed until low enough). Not once time is up (the
+-- routine reads battle_isBattleOver's Z flag, which a KO leaves clear) or
+-- when its panel is off the field: it is freed.
 local function init(me: Object): boolean
-    if battle.over() or not field.valid(me.panel_x, me.panel_y) then
+    if battle.time_up() or not field.valid(me.panel_x, me.panel_y) then
         me:free()
         return false
     end
