@@ -559,7 +559,7 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
 ## 9. Presentation: what the screen shows
 
 The simulation above is all the battle needs. What each console draws of its own screen is presentation: the
-frontend draws the local player's (nettai-frontend `custom`, docs/frontend.md §3), from the `Screen` and from
+frontend draws the local player's (nettai-render `custom`, docs/frontend.md §3), from the `Screen` and from
 `Screen::look` (`custom/look.rs`), the part of the original's control block at `0x020364C0` and of its VRAM that
 the screen's drawing reads. The state digest leaves `look` out, like a sprite's `Look`; nothing the simulation
 reads depends on it.

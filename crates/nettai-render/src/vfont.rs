@@ -22,8 +22,9 @@ use swash::shape::ShapeContext;
 use swash::zeno::{Format, Transform, Vector};
 use swash::{CacheKey, FontRef, GlyphId, Setting};
 
-/// Murecho, its variable cut (weights 100 to 900; 1.4 MB).
-const BUNDLED: &[u8] = include_bytes!("../fonts/murecho/Murecho-VariableFont_wght.ttf");
+/// Murecho, its variable cut (weights 100 to 900; 1.4 MB): the font file,
+/// for a program that draws with it otherwise (the editor's window).
+pub const BUNDLED: &[u8] = include_bytes!("../fonts/murecho/Murecho-VariableFont_wght.ttf");
 
 /// The narrowest width a font with a width axis condenses a name to
 /// before it squeezes it (the axis's "condensed").
