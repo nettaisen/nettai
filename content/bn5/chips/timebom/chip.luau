@@ -4,9 +4,9 @@
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local timebom = require("../../objects/timebom/timebom")
-local timebom1 = require("../timebom1/chip")
-local timebom2 = require("../timebom2/chip")
-local timebom3 = require("../timebom3/chip")
+local recipe_timebom1 = require("../timebom1/chip")
+local recipe_timebom2 = require("../timebom2/chip")
+local recipe_timebom3 = require("../timebom3/chip")
 
 return define.chip {
     id = "bn5:timebom",
@@ -21,9 +21,11 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     slot_in_limit = 1,
-    -- BN5's recipes are in the order of its full table (0x08027FC8; the netbattles' 0x0802801C is that table but
-    -- for its first 21, which only a battle with each side keeping its own gauge tries): its 24th, the
-    -- netbattles' third.
-    program_advances = { { order = 23, sequence = { timebom1, timebom2, timebom3 } } },
+    -- BN5's recipes (written by tools/bn5/recipes.py): in the order of its full table (0x08027FC8); the netbattles'
+    -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
+    -- gauge tries.
+    program_advances = {
+        { order = 23, sequence = { recipe_timebom1, recipe_timebom2, recipe_timebom3 } },
+    },
     dimming = timebom.controller.hook(timebom.variants.big),
 }

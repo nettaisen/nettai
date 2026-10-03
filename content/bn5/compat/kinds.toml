@@ -6,7 +6,6 @@
 
 "engine/player" = { pool = "actor", index = 0x00 }
 "engine/intro" = { pool = "effect", index = 0x02, scratch_position = true }
-"bn6:barrier-visual" = { pool = "effect", index = 0x07 }
 "engine/charge-glow" = { pool = "effect", index = 0x08, scratch_position_without_sprite = true }
 "bn5:blkbomb/bomb" = { pool = "attack", index = 0x47 }
 "bn5:thunder/ball" = { pool = "attack", index = 0x2A }
