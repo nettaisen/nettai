@@ -67,3 +67,4 @@
 "bn5:airhoc/puck" = { pool = "attack", index = 0x2E }
 "bn5:gundels/beam" = { pool = "effect", index = 0x48 }
 "bn5:bugbomb/bomb" = { pool = "attack", index = 0x77 }
+"bn5:mrkcan/sight" = { pool = "effect", index = 0x44 }
