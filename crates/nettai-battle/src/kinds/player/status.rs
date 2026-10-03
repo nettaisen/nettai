@@ -774,7 +774,10 @@ fn tick_anger(b: &mut Battle, r: ObjectRef) {
 /// `sub_80143A6`: calm down.
 pub(crate) fn end_anger(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
-    b.stats[side].mood = 0x80;
+    // (BN5's, 0x08011A94, through its setter: a mood of 0 stays.)
+    if b.rules_for(r).emotions == crate::content::Emotions::Bn6 || b.stats[side].mood != 0 {
+        b.stats[side].mood = 0x80;
+    }
     clear_flag1(b, r, f1::ANGER);
     clear_flag2(b, r, 0x200);
     let a = ai_mut(b, r);
