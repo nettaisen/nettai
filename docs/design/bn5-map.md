@@ -1524,8 +1524,13 @@ which the engine runs for a side whose rules say so (the status section's `emoti
   (0x08011A94), then the emotion swings to one of 0x0801147C's sixteen (seven normal, seven worried, one angry, one
   Full Synchro) but the one it last swung to (every entry of it taken out), drawn from RNG2: angry asks for anger (the
   request, no mood test), any other sets 0x0801148C's mood (0x99, 0x3F, 0, 0xFF) through the setter. It runs from the
-  tick of every navi of the player's kind (a Dark MegaMan's too, by his side's stats), each with its own counters
-  (AIData +0x3A, +0x0B), and a curse (BugCurse) can set the bug mid-round, so every player's navi is ticked.
+  tick of every navi of the player's kind (0x080EAD6A; a computer navi's, 0x080F224C, has none), each with its own
+  counters (AIData +0x3A, +0x0B), and a curse (BugCurse) can set the bug mid-round, so every player's navi is ticked.
+- **The face in Chaos Unison** (0x08019704): while the chaos charge is armed (0x080125F6, AIData +0x12) the window's
+  picture is drawn in its palette 11 on, the pack's *soul*-chaos faces (the soul form's `mugshot.variant`); the
+  palette is read as the window draws, so a blink back to the soul's face after the failure's revert shows it plain.
+- **Dark MegaMan's appearance** (BN6's `sub_80164A0`, the shared mid-battle appearance): white, fading over its 30
+  ticks (the color shader gray at the second timer's level), which the engine now draws.
   BugCurse's four recordings match through it.
 - **The soul break** (0x080122C8, BN6's `sub_8015766`; the status section's `form_break = "bn5"`): a dark chip used in
   a soul (0x08010070) sets the weakness request, which breaks any form (BN6's only a Cross or a Beast) to the base
