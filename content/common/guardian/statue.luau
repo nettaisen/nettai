@@ -53,6 +53,8 @@ export type Look = {
     strike_is: CollisionType,
     strike_hits: CollisionType,
     strike: Strike,
+    -- The damage word a stage's statues strike with (BN6's 200; BN5's 200 with the counter byte 0xA8: 0x0800694A).
+    stage_damage: number?,
     -- How it looks absorbed (BN6's: absorbed, it flies to the absorber, and a removal may blink it out); none
     -- (BN5's): a removal leaves a puff.
     absorbed: AbsorbedLook?,
@@ -391,7 +393,7 @@ function statue.make(look: Look): Statue
             if not panel then
                 error(string.format("a stage places a Guardian statue off the field at (%d, %d)", x, y))
             end
-            return spawn(nil, x, y, STAGE_DAMAGE, Vec3.new(y, panel.alliance, spec.argument))
+            return spawn(nil, x, y, look.stage_damage or STAGE_DAMAGE, Vec3.new(y, panel.alliance, spec.argument))
         end,
     }
 

@@ -348,6 +348,7 @@ window's `update(side, pad)`, `custom.keys(side, pad) -> handled`, `custom.hand_
 | `navi_hit(navi, hit)` | once per tick the navi took hits, after the damage (where `sub_801A200` runs), on the hit side's systems | mood loss, anger, the weakness break by form |
 | `countered(navi, target)` | when the side's navi's counter landed (`sub_801A200`), on the countering side's systems, before the hit side's `navi_hit` | Full Synchro by its own form, unless the target's mood is held |
 | `starting_mood(side) -> mood` | where `sub_8013892` sets the starting mood (`sub_8015C2C`'s 0x80); the first answer | (BN5's light and dark system: by the light/dark value, 0x0801283A) |
+| `navi_bug(side, navi) -> skip` | before the navi takes its hit's NaviCust bug (`sub_80139F6`); it may change the collision's `inflicted_bugs`; true skips the bug and the weapons' reload | (BN5's light and dark system: codes 0xFD, 0xFC; hit flag 0x400 from a value of 1000) |
 | `navi_palette(side, navi) -> palette` | each tick, the palette of a navi of the player's kind (presentation, `sub_801002C`); the first answer, else the framework's | (BN5's light and dark system: 0x0800DD94) |
 | `navi_deleted(navi) -> keep` | where the framework would delete the navi (deciding) | |
 | `chip_used(navi, chip) -> Use` | once per chip use, after the common path | the rush (a wrapper), the Cross bonuses, EraseCross's flag |
@@ -1711,3 +1712,66 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
     the take-back, one Cross owned and none offered;
   - the audit 0 problems; us-spelling 0;
   - BN5's replays as main's: 402 match, 18 replay, 223,414 of 948,097 frames.
+
+### S6c, the player's BN6 setup (2026-10-03)
+
+- **BN6's save facts are its systems' setup.** The cross system's setup is `version` (`falzar`, `gregar`), `crosses`
+  (owned, bool[5]) and `cross_list` (form[5]). The beast system's setup is `version`, `beast_out` and `cross_list`
+  (with a list, a Cross of the other game's Beast is that game's). window.luau and the beast's custom.luau read
+  `system.setup()`; `custom.player` keeps only the emotion and a random battle.
+- **Facts by name.** `PlayerSetup::set_fact(content, game, field, values)` writes a field into every system of the
+  player's ruleset that declares it (an enum by name, an array by element), so a tool states `version` once and both
+  systems get it. Making the blocks, it names the ruleset in the setup (a setup without one would play by its
+  arena's game's stock rules). `Battle::system_setup(side, key)` reads a block back.
+- **`Unlocks` and `CrossList` moved to bn6-compat** (`unlocks.rs`): `Unlocks::write` writes the facts,
+  `Unlocks::of`/`of_side` reads them back for the renderer's pictures, names and Beast count, and `cross_at`,
+  `beast_form`, `beast_game` stay as the BN6 look's helpers. `PlayerSetup` and the custom screen's `Side` keep
+  BN5's `souls` alone (until BN5's soul button is a system's). netplay's codecs know no game: the offer carries a
+  Cross list as its forms.
+- **The version can't be NaviStats'**: its +0x20 byte differs from the console's version in 2,883 of the 17,942
+  recorded sides, so the version stays setup.
+- **Event flag 0x163 is the navi code's level.** `PlayerSetup::navi_level` is an option (none: no code, 0xFF in the
+  battle; `MAX_NAVI_LEVEL` 14, asserted at `Battle::new`), and BN6's rules read the seal on Beast Out and the Cross
+  window from `battle.navi_level(side)`. The 4,688 recorded sides with both agree (the init exchange sends a level
+  only with the flag set, `sub_800B144`). The 176 sides with a level and no recorded flags are link navis, which the
+  seal changes nothing for. bn6-compat: a trace without levels reads as a link navi's 0 and MegaMan's none.
+- **Decisions** (the user's, through the coordinator):
+  - a link navi always has a level, 0 when a file says none, since it exists only through its code;
+  - none is MegaMan without a code;
+  - the checks refuse a link navi without a level and a level past 14;
+  - MegaMan with a level gets the level's gains after his NaviCust (the navicust system's `round_setup`,
+    `reloadCurNaviStatBoosts`).
+- **SP deletion times** are a player's (`PlayerSetup::sp_times`; `RoundSetup::sp_times` gone). The SP formula still
+  reads them in Rust (BN6's chip data is S7's).
+  - Match files: `[left.sp_times]` by the rules' slot names, `mm:ss.cc`, a slot left out the fastest; a written time
+    is the fewest frames that show as it (nettai-match's `sp_times`).
+  - The editor has a field per SP navi (by its chip's name), and the netplay offer carries them.
+- **The save import** (narrow, the coordinator's): bn6-compat's `save` reads a BN6 .sav (the image at 0x100, the
+  mask, the shift word, the game's name, the checksum, as Tango's save support has them).
+  - It reads the version, the event flags (Beast Out, the version's Crosses, 0x163), the navi operated, the navi
+    code's level (`0x141 + 15·navi + level`) and the SP times (image 0x18C0, which `sub_800B144` sends at +0x70).
+  - `Side::import_save` gives a side the game, Beast Out, the Crosses owned (as a Cross list unless all five) and
+    the level (a link navi keeps its own without a code), and the SP times. The editor's "Import from save…" runs it.
+- **Match files**: no key renamed, so old files load; the new keys are `beast_out` and `[left.sp_times]`.
+  docs/frontend.md says the level's default.
+- **`protocol::VERSION` 4**: the offer's level is an option and it gains Beast Out and the SP times, and the battle's
+  digest differs. (bn5-port-6 landed first with 3, its tactics in the offer; the offer carries both.)
+- **Tests**:
+  - bn6-compat: the save reader (a written save reads back; damaged, foreign and other-navi codes refused);
+  - nettai-match: SP times, Beast Out and levels write and read back, the level checks, the import, MegaMan's
+    level gains at levels 0, 7 and 14;
+  - the frontend: a navi code seals Beast Out and keeps the Cross window.
+  - The offsets were also read on Tango's four raw BN6 templates by a script (version names, flags, navi, codes, SP
+    times as expected). Their checksum word is zero (memory images Tango checksums when it writes them), so the
+    checksum path is the tests'.
+- **Gates**:
+  - on the final merge (main 6d4d0ec5, then main 87f4cf65's bn5-layout and navi chips, which S6c doesn't touch): the
+    build without warnings (every feature), 511 tests, the content check (1,422 modules), gen-content check 0 errors,
+    the audit 0 problems, us-spelling 0 on both repositories, BN5's replays 1,145 matched (973,226 frames, 760,918
+    matching);
+  - the full gate, unmodified, on main 6d4d0ec5 merged: the 189 legacy rounds, 96 rollback rows matching, and the
+    lab 6548 (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
+  - identity.sh against main 24565c25's frontend on its content: the custom-screen and sample lists identical in
+    both text modes (174 scenarios, 200,712 frames each); main's later merges were BN5's;
+  - BN5's replays matched main's exactly, recording for recording count and frames, at main 851e3392, de4672cc and
+    24565c25 (1,107 matched there).

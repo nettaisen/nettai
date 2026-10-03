@@ -75,6 +75,16 @@ return define.system {
         controller_started = "bool",
         beast_out_used = "bool",
     },
+    -- What the player's save brings (bn6-compat writes it, nettai-match
+    -- from a match's side): the game's version (its Beast), Beast Out
+    -- unlocked (event flag 0xE0), and nettai's Cross list (the cross
+    -- system's too: with one, a Cross of the other game's Beast is that
+    -- game's).
+    setup = {
+        version = { "falzar", "gregar" },
+        beast_out = "bool",
+        cross_list = "form[5]",
+    },
     actions = { rush.action, cross_special.action },
     -- Beast Out on the custom screen (custom.luau).
     buttons = { beast_out = custom_beast.button },

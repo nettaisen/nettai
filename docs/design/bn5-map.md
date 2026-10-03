@@ -1259,7 +1259,7 @@ chips/gundels/gundels); BugBomb (the shared BugBomb, content/common/bugbomb, wit
 the emotion swings); Katana1 to 3 (chips/katana/katana); MrkCan1 to 3 (chips/mrkcan/mrkcan: the sweeping sight, effect
 0x44, and the cannon at its panel); Pulsar1 to 3 and SpShake1 to 3 (lib/armshot, and lib/arm: BN5's buster arm,
 0x080EBABE; the pulse, attack 0x6A, and the shake wave, 0x68); Skully1 to 3 (chips/skully/skully, attack 0x88);
-Astroid1 to 3 (objects/meteors: instant effect 17, 6, 8 and 10 meteors); Snake (the shared snake and holes' scan,
+Astroid1 to 3 (chips/meteors: instant effect 17, 6, 8 and 10 meteors); Snake (the shared snake and holes' scan,
 content/common/snake: BN5's nest sends three snakes at a time with a flag each, its snakes wait 48 ticks and
 strike as wood); YoYo (the shared throw, content/common/yoyo; BN5's yoyo, chips/yoyo/yoyo, attack 0x52, GreatYo's
 modes too); Slasher (BN5's own action 0x29: while A is held, the wide slash at an enemy navi's column); CircGun
@@ -1360,9 +1360,9 @@ them.
    first. The recordings that dig for a chip over several turns (HolyDrem's, the chip lab's `dig`) met it.
 19. **BN5's obstacle framework** (0x08018404, BN6's `sub_801B750`): outside the dimming, an obstacle not in its
    first action on a solid panel tests a word (+0x5C of the toolkit's +0x18) against 0x20 or 0x10 by its panel's
-   side, then the panels beside it, and may spawn attack object 0x30 there (0x080CAB02, 0x080CAAE2: unread
-   further); BlkBomb's idle and return actions are 7 and 6 (BN6's 9 and 8), its table without frozen and bubbled.
-   Not met in the replays yet.
+   side, then the panels beside it, and may spawn attack object 0x30 there (0x080CAB02, 0x080CAAE2: ColonelSoul's
+   army, read in §15.11); BlkBomb's idle and return actions are 7 and 6 (BN6's 9 and 8), its table without frozen
+   and bubbled. Not met in the replays yet.
 
 ### 15.8 Soul Unison (as built, in progress)
 
@@ -1559,6 +1559,11 @@ which the engine runs for a side whose rules say so (the status section's `emoti
   region's removal and return, and the flags 0x80110000 and statuses 0x200800 it clears. (In a netbattle a light
   MegaMan's dark chip fizzles first and a dark one has no Soul Unison: no recording reaches it.)
 
+- **The light/dark bug codes** (0x0801103E, the navi's hit NaviCust bug; the hook `navi_bug`, the light and dark
+  system's): a hit with hit flag 0x400 brings nothing to a value of 1000 or more (not even the weapons' reload); code
+  0xFD is an HP drain of level 1 (code 0x18, argument 1, through the drain's flags rule) on a dark MegaMan (the value's
+  tier 2), code 0xFC the same from 500; else neither is anything. Django's hits bring both: his recordings match.
+
 **ProtoSoul's B+Back** (weapon routine 4, 0x0800F634; navis/megaman/forms/protosoul/back): BN5's guard (action 0x1F,
 lib/guard) as the NaviCust Reflect program's (subtype 4): 20 ticks (the params word 0x114's first byte), the Reflect
 program's look (its second byte: row 1), row 9's (a look of its own) with the Chaos Unison charge armed (0x914), 50
@@ -1569,6 +1574,98 @@ Seen against mGBA (tools/frontend-compare, unmasked): chips/0x0bc-drksword/hit 1
 souls/01-sword/unison 19 → 598 of 704 (the dark opponent's palette and face). What still differs there: the emotion
 window blinking out after a dark chip (456-537, two frames in four), the custom screen's face box, and the hit
 navi left undrawn after Cannon's hit (452-553; before this work too).
+
+### 15.11 bn5-chips-b: chips 0x070–0x0DC, 0x119–0x12C, 0x137–0x138, 0x13B–0x15D, Guard1–3 (as built)
+
+**Program Advances.** A player's formed Program Advances are a `u64` (`ProgramAdvancesUsed`; content may define 64
+Program Advances: BN6's 30 and BN5's 30 load together). BN5's full table (0x08027FC8) is 21 recipes and then the
+netbattles' table (0x0802801C); only a battle with each side keeping its own gauge (battle flag 0x40, a Liberation
+Mission's) tries those 21: a recipe's `per_player_gauges_only = true`, which `find_program_advance` skips unless
+the battle's `per_player_gauges` is set. A recipe's `order` is its index in the full table. bn6battle-verify's
+tools/bn5/recipes.py writes BN5's recipes (and the flag) into the Program Advances' chip files, naming only chips
+that have a use; rerun it as chips get theirs.
+
+**Rules.** The `effects` section's `retype = "bn5"`: BN5's retype (0x08016B9E, BN6's `sub_801A9E8`'s counterpart)
+sets the self type only (no dimmed bit), leaves the target type and writes the target's `row_offset` plus four
+times the side into the next word. A hit's modifier goes into its side's slot by its flip (`hit_mod_by_side`).
+
+**Obstacles and stages.** The rock and its debris (content/common/rock), the boulder (content/common/boulder) are
+makers BN6's chips/rockcube and objects/boulder wrap (same APIs). BN5's rock (attack object 0x59, rows by
+variant), its debris (effect 0x38) and boulder (attack 0x6E) are in content/bn5/objects; the stage statue (the
+Guardian's, @common/guardian/statue) takes its stage damage word. The 25 netbattle stages that waited on them are
+in content/bn5/stages/netbattle.luau and compat/stages.toml (64 stage recordings match). The engine's obstacle
+service gains `obstacle.throw` (`sub_800F6AC`: the request `sub_8018002` serves; nothing in BN6 makes it) and
+`obstacle.throwable` (an identity's `throwable`, default true; BN5's mine sets false: Poltergeist's 0x080E8CA0
+skips BN5's NameIDs 0xDA, 0xD3, 0xD2, 0xE5, 0xE4 and 0xE7). A thrown obstacle's landing (`sub_80180EC`, BN5's
+0x08014AB4: r4 = 0x06050001, Param2 0) shows the plain spark: the role `sparks.thrown_obstacle` is `plain` in both
+games (BN6's said `charged`, read from the wrong byte; BN6 never throws one).
+
+Item 19 (§15.7), read: it is ColonelSoul's army. All four of BN5's obstacle reactions (0x08018000, 0x08018168,
+0x080182D4 and 0x08018404, BN6's `sub_801B394`, `sub_801B4D4`, `sub_801B610` and `sub_801B750`) add one step after
+the damage and the crushing hits (an obstacle they leave standing): outside the dimming and past its first action,
+0x080CAB02 asks whether an obstacle on a solid panel (flags 0x10) of side A stands where the other side's
+ColonelSoul can use it: BattleState+0x5C bit 0x20 (A = 0) or 0x10 (A = 1), which ColonelSoul's start (0x08011C44,
+the souls' table 0x08011BB0 entry 6) sets by its navi's side (0x080CAC1E; 0x080CAC30 clears it, from 0x08011918 and
+0x08011B3C). Then for that side S: a body of S's enemy (panel flags 0x04000000 for S = 0, 0x08000000 for S = 1) on
+one of the two panels on S's side of the obstacle (toward S's back, 0x080CAB5A, stopping off the field) gives 1;
+else one anywhere on S's front of it in the row (0x080CABB0, `object_getFirstPanelInDirectionFiltered`) gives 2.
+Either way 0x080CAAE2 spawns attack object 0x30 on the obstacle's panel (alliance S, Param1 the answer less 1,
+flipped when Param1 is 0: it faces back toward S's side) and the obstacle's HP and max HP go to 0 (a word store), so
+it breaks as any other. Attack 0x30 (0x080CA834) is the soldier: Param1 0 a cannon soldier (anim 1 for 15 ticks,
+sound 0xB0, 0x080E9FD2 on the panel ahead; then anim 2 for 24, and 6 ticks in a hit region 0x0705FF02 on the panel
+ahead, r6 ColonelSoul's first damage word, r7 3, and effect 23), Param1 1 a machine gunner (anim 4 for 15 ticks;
+then anim 5 and three shots 10 ticks apart, 0x080C6D26 with one of four values from 0x080CAA84 by RNG2, sound 0xB9,
+the second word); both then blink out over 30 ticks (action 8). The damage words (0x02034000 + 8 × side, 0x080CABF8)
+are ColonelSoul's start's: 40 + 10 a buster attack level (`sub_800FE5E`) and 10 + 2 a level, each | 0x00944000.
+0x080F8418 (an entry of 0x080F24A0, a computer navi's) sets the bit and the words too. BN5's obstacle flag word
+moves bits too (removed 0x10000, encased 0x6000; BN6's 0x8000 and 0x3000): the engine's names keep BN6's, which
+nothing outside reads. Nothing ports it yet: ColonelSoul isn't in the content, and no recording has an obstacle
+while it is active.
+
+**Shared modules moved to content/common** (makers taking a game's look; BN6's modules wrap them with the same
+APIs): anubis, guardian, otenko, justcone, batcan, colorpt, geddon (controller, quake), barriers (visual,
+controller), rflectr, rock (rock, debris), boulder, bugfix (glow, controller), h-burst (action, burst), bodygrd
+(striker, shuriken).
+
+**Engine.** The damage formula `gauge_level` (BN5's 73 to 75, CusVolt's: `base` plus 100 by the custom gauge's level,
+none when full); `battle.gauge_full` (battle flag 2) and `battle.drain_custom_gauge` (`sub_801DFD0`, CusVolt's drain
+outside link battles).
+
+**Chips.** In the range, 135 chips match all their recordings (484 of its 543 recordings; the 59 left belong to
+chips with no use yet). The last ones: BugFix; LCrsShld, LStepSwd, LCounter (the Liberation chips: BN5's
+controller, effect 0x8A, gives the side five uses of the ability, which only a Liberation Mission's specials read,
+nothing a netbattle reads); Poltrgst (BN5's own: controller effect 0x72, stand-in actor 0x58, poltergeist effect
+0x73); Navi+20; GunDelEX; InfVulc1–3, LifeSrd, PoisPhar, TimeBom+; GreatYo (controller effect 0x70: the leader and
+two followers); PitHoky (the puck's row 3, chips/airhoc/puck); SuprSpr1–3 (wave kinds 6 to 8, chips/widesht/variants);
+GigaCan1–3 (projectile row 0x0C: hit modifier 0x49, the blast spark; BN5's projectile has none of BN6's row-0x0C
+bursts; the third afterimage on NaviStats +0x4C reads 0, as lib/arm's); H-Burst (BN5's shot: a probe of row 0, its
+explosions effect row 0x3C; its bursts are 8, the shot's table 0x080DA514 read at the record's word 0x103, past its
+four bytes); the instant Program Advances Boxer1–3 (effect 21: a boxer, effect 0x64, punching FireHit's fists down
+the rows), ShakPar1–3 (effect 22: a shaker, effect 0x66, sending paralyzing SpShake waves from the back column) and
+CacDanc1–3 (effect 23: a dancer, effect 0x65, a field object dropping cactuses, attack 0xB1); HotBody1–3 (action
+0x58: a fire, effect 0x57, spreading flames, attack 0x9D, to the enemies around the last ones; its position stays
+the spawner's registers, as its copy of the navi's is stored at address 0x34); CusVolt1–3 (action 0x27: a beam,
+attack 0xB8, following the navi); BodyGrd (BN5's sends the striker out at once from its controller, effect 0x6D,
+where BN6's is a trap); ElemPowr (its controller, effect 0x7F: 10 Atk+ a panel of the type the user stands on,
+those panels back to normal through the panel changer's rows 15 to 19); RainyDay (its controller, effect 0x75, and
+cloud, attack 0x97: a hit over the first enemy navi ahead for each sea panel of the user's side, which turns
+normal); ElemRage (action 0x56 and flame, attack 0x98: flames sent on ahead, of the element of the panel the user
+stands on, spreading and paralyzing; the attach point read unflipped, `sub_8018842`); WildBird (LarkMan with Param4 1,
+the summon table's entry 23: no command, his swoop's variant 6 with row 6's speed and turn, 25 more turn ticks and
+its eleven turn animations by side, 0x080DDC44); BlakWing (its controller, effect 0x54, flock, attack 0x7E, perches,
+effect 0x55, and wings, attack 0x7F: BN6's leftover code); the navi Program Advances CsmoPris (BN5's own CosmoMan,
+actor 0x26, and comets, attack 0x74), Football (GridMan, actor 0x25, and balls, attack 0x95, BN6's leftover code)
+and BigNoise (ShadeMan, actor 0x1B, and his noise, attack 0x04: BN5's own, not BN6's flame), each in its chip's
+folder with the kinds it owns.
+
+**Waiting** (since 2026-10-03 bn5-navichips', what is found of them so far given with them). AirSpin1–3 (BN6's AirSpin top with BN5's changes: random targets, its own panel setting, its hit's
+self type 4) and AqWhirl1–3 (BN5's own, attack object 0x5D), both on BN6's AirSpin action, to move to
+content/common; PileDrvr (its controller, effect 0x6F, piles, attack 0x99, and their charge, attack 0x9A: AirSpin's
+top reworked, so with AirSpin); CopyDmg (BN5's action 0x24, the buster arm and a spawn by subtype, with BN6's mark,
+attack 0x28: to share); NumbrBl (BN5's own NumberMan stand-in with BN6's balls), NeoVari, Z-Saver (BN6 has them: to
+share, with BN5's changes); DarkInvs (BN5's own: the user's navi on the computer-navi AI for 600 ticks, bn5-port-6's
+system); Jealousy (BN6's leftover code, BG transfers; it counts the other side's hand, which the engine has no call
+for yet); LeadRaid and ChaosLrd (actors 0x20 and 0x22, and 0x51: §14.5).
 
 ### 15.12 The content's layout (as built)
 
