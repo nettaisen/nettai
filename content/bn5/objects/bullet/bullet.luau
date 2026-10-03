@@ -19,6 +19,8 @@ bullet.kind = bn6_bullet.make_kind("bn5:bullet", {
 bullet.variants = {
     -- The Vulcans' (row 0xC: BN6's): the panel found and the one behind it, staggering.
     vulcan = bn6_bullet.variants.vulcan,
+    -- SuprVulc's (row 0x10: BN6's, its effect BN5's 0x3D, BN6's 0x6A: the same row of the effect table).
+    super_vulcan = bn6_bullet.variants.super_vulcan,
 }
 
 return bullet
