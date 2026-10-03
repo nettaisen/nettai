@@ -1802,6 +1802,8 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "hide_user_sparing", |_, user: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.hide_user_sparing(user.0)))
     });
+    lib_fn!(lua, t, "hide_actor", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_actor(o.0))));
+    lib_fn!(lua, t, "show_actor", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.show_actor(o.0))));
     Ok(t)
 }
 
