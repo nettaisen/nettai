@@ -1,6 +1,6 @@
 //! The static content audit (`--audit-content`): every lookup the drawing
 //! code and the audio make, through the same functions
-//! ([`crate::lookups`]), for everything the content defines, in every
+//! ([`nettai_render::lookups`]), for everything the content defines, in every
 //! language the content has strings in:
 //!
 //! - every chip's icon, picture, name glyphs, its name and code in the
@@ -22,10 +22,6 @@
 //! can't say beforehand (the animation and the palette an object picks)
 //! is the trace audit's (`--audit`).
 
-use crate::audit::{Lookup, Problems};
-use crate::lookups;
-use crate::packs::Packs;
-use crate::strings::DisplayText;
 use nettai_assets::Bundle;
 use nettai_battle::Content;
 use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackId, SpriteId};
@@ -33,6 +29,10 @@ use nettai_battle::custom::GameVersion;
 use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::Emotion;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
+use nettai_render::audit::{Lookup, Problems};
+use nettai_render::packs::Packs;
+use nettai_render::strings::DisplayText;
+use nettai_render::{hud, lookups};
 use std::collections::{BTreeSet, HashSet};
 use std::sync::Arc;
 
@@ -117,7 +117,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     lookups::chatbox_graphics(hud, p);
     lookups::custom_graphics(a, p);
     lookups::warning(hud, p);
-    for line in (crate::hud::TEXT_TIME_UP..=crate::hud::TEXT_TIME_UP + 10).chain([crate::hud::TEXT_COUNTER_HIT]) {
+    for line in (hud::TEXT_TIME_UP..=hud::TEXT_TIME_UP + 10).chain([hud::TEXT_COUNTER_HIT]) {
         lookups::text_line(hud, line, p);
     }
     for kind in PanelType::ALL {
@@ -205,7 +205,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     if let Some(banks) = banks {
         for h in handles(AssetKind::Sound) {
             // (The no-music song stops the music: it has none.)
-            lookups::sound(c, banks, h, true, p);
+            crate::sound_lookups::sound(c, banks, h, true, p);
         }
     }
     for id in handles(AssetKind::Banner).map(BannerId) {

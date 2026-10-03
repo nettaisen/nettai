@@ -179,6 +179,10 @@ BN6's, about 2,250:
 
 The frontend depends on bn6-compat.
 
+(Since the survey the drawing is a crate of its own, nettai-render: the compositor, objects, the stage, rendering,
+hud.rs and custom.rs. nettai-frontend keeps the window, the drivers and headless output; both depend on
+bn6-compat.)
+
 **nettai-audio** (430) plays cues with m4a: G, but `SoundCalls` encodes BN6's sound wrappers (PlayMusic's
 current-music check, the pinch effect's pitch and tempo): P. **m4a** (3,920): G for the GBA games; BN1 to BN6
 all use the m4a driver, as far as I know.
@@ -502,7 +506,7 @@ the full set once: build, tests, content check, both golden traces with rollback
    digest's value changes with the field order, not its determinism (peers run one build).
 3. custom/screen.rs: the Cross window, Beast Out, scrap and re-deal phases into the `bn6` module; the screen calls
    them as before.
-4. nettai-frontend: hud.rs's emotion window and custom.rs into `src/bn6/`.
+4. nettai-render: hud.rs's emotion window and custom.rs into `src/bn6/`.
 5. core.d.luau: BN6's declarations gathered in one marked section (the type check is the gate).
 6. Optionally, the pack formats `nettai-content/hud` and `nettai-content/custom` renamed BN6's (a re-extract).
 
