@@ -830,7 +830,7 @@ fn mugshot_parts<'a>(
         // (The mugshot's own pack's HUD holds its picture.)
         let Some((tiles, palettes, picture)) = crate::lookups::navi_face(packs, &b.content, stats.navi, problems) else { return };
         let full_synchro = emotion(b, side as u8) == Emotion::FullSynchro;
-        let pal = palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default();
+        let pal = window_faded(b, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
         out.push(block(tiles, 32, 16, pal, x, 18));
         out.push(block(&hud.navi_box, 16, 16, pal, x + 32, 18));
         note_true_face(b, side, Some(picture), x, problems);
@@ -852,6 +852,7 @@ fn mugshot_parts<'a>(
     ) else { return };
     // (The white of a change to Full Synchro: `byte_801CD80`.)
     let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
+    let pal = window_faded(b, pal);
     out.push(block(gfx, 32, 16, pal, x, 18));
     // The box beside it: the face's own (BN5's), a count, or the box
     // without one. A game whose faces bring their boxes has no box
@@ -868,6 +869,17 @@ fn mugshot_parts<'a>(
         out.push(block(tiles, 16, 16, pal, x + 32, 18));
     }
     note_true_face(b, side, face.picture.map(|p| p.id), x, problems);
+}
+
+/// The emotion window's palette (sprite palette 12: `byte_30016D0`) as
+/// the custom screen's second fade record leaves it: a dark chip's hover
+/// darkens sprite palettes 10-13 (`custom::window_fade`), the window's face
+/// among them.
+fn window_faded(b: &Battle, palette: Palette) -> Palette {
+    match crate::custom::window_fade(b) {
+        Some(f) => palette.map(|c| crate::compose::apply_fade(c, f)),
+        None => palette,
+    }
 }
 
 /// The count a side's emotion window shows beside a face that brings no
