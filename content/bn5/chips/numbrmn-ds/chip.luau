@@ -1,6 +1,6 @@
 --!strict
--- NumbrMnDS (BN5 chip 0x0f4): NumberMan, dark, cuts in and throws a die three columns ahead, its face times his damage when it bursts (../numbrman/navi); its damage by its user's side's
--- statistic 3 (formula 32, its table's row 9).
+-- NumbrMnDS (BN5 chip 0x0f4): NumberMan, dark, cuts in and throws a die three columns ahead, its face times his damage
+-- when it bursts (../numbrman/navi); its damage by its user's side's statistic 3 (formula 32, its table's row 9).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local navi = require("../numbrman/navi")

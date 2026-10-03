@@ -1,6 +1,7 @@
 --!strict
--- NumbrMnSP (BN5 chip 0x0f3): NumberMan cuts in and throws a die three columns ahead, its face times his damage when it bursts (../numbrman/navi); its damage by how fast its user deleted
--- NumberMan SP (rules/sp-chips: formula 10, its table's row 9).
+-- NumbrMnSP (BN5 chip 0x0f3): NumberMan cuts in and throws a die three columns ahead, its face times his damage when it
+-- bursts (../numbrman/navi); its damage by how fast its user deleted NumberMan SP (rules/sp-chips: formula 10, its
+-- table's row 9).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local navi = require("../numbrman/navi")
