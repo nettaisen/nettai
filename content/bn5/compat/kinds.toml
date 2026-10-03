@@ -130,3 +130,4 @@
 "bn5:bodygrd/striker" = { pool = "effect", index = 0x6E, scratch_position = true }
 "bn5:bodygrd/shuriken" = { pool = "attack", index = 0x5C }
 "bn5:cusvolt/beam" = { pool = "attack", index = 0xB8 }
+"bn5:elempowr/controller" = { pool = "effect", index = 0x7F, scratch_position = true }
