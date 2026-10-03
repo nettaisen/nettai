@@ -173,8 +173,8 @@ fn show_hp_number(b: &mut Battle, r: ObjectRef) {
 /// Action 1, `sub_8017888`: hand over to the idle controller (spawning
 /// the Beast Out lock-on marker in the battle flag 0x40 mode).
 pub(super) fn take_control(b: &mut Battle, r: ObjectRef) {
-    if per_player_gauges(b) && navi_record(b, r).actor_type == ActorType::Player && ai(b, r).lockon_marker.is_none() {
-        crate::kinds::lockon_marker::spawn(b, r);
+    if per_player_gauges(b) && navi_record(b, r).actor_type == ActorType::Player && ai(b, r).target_marker.is_none() {
+        crate::kinds::target_marker::spawn(b, r);
     }
     set_action(b, r, NaviAction::Idle);
 }

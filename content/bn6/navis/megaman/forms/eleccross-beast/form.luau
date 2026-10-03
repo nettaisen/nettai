@@ -33,7 +33,7 @@ return define.form {
     -- A charged chip paralyzes.
     charged_bonus = { paralyzes = true },
     -- What its status reset gives the navi (`sub_8014536`).
-    status_reset = { "super_armor", "lockon_marker", "invulnerable", "berserk" },
+    status_reset = { "super_armor", "target_marker", "invulnerable", "berserk" },
     -- After a NaviCust change only the SuperArmor comes back (`sub_801469C`).
     navicust_refresh = { "super_armor" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.

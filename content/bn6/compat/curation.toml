@@ -9,7 +9,7 @@
 ["actions.toml"]
 "bn6:bgdththd/charge/action" = "0x1F: Thunder's action with a fast ball of 12 panels, which BgDthThd's charged shot (weapon 0x22) starts with a bug frag"
 "bn6:eleccross/charge/thunder" = "0x3E: DolThdr's action with the buster arm held up, which ElecCross's charged shot (weapon 0x0B) starts"
-"engine/cross-special" = "0x59: the Cross special's controller (the ruleset's cross_special)"
+"bn6:beast/cross-special-end" = "0x59: the Cross special's end (the beast system's)"
 "bn6:heatcross/charge/action" = "0x27: HeatCross's charged shot, FireBrn's burn (navis/megaman/forms/heatcross/charge.luau)"
 "bn6:megaman/reflect/action" = "0x2B: the NaviCust Reflect's guard, weapons 0x3C and 0x8B (navis/megaman/weapons/shield)"
 "bn6:megaman/shield/action" = "0x2B: the NaviCust Shield's guard, weapons 0x3B and 0x8C (navis/megaman/weapons/shield)"

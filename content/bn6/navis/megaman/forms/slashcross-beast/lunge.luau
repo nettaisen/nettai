@@ -5,7 +5,7 @@
 -- reserved), appears by its lock-on target (`ho_8026554`: mode 2 in the
 -- target's row, else mode 0xB in its own), slashes the panel in front (a
 -- hit, and ./lunge_slash), and comes back. The ruleset runs the same
--- action for a Cross navi's knock-out (the role `cross_death`).
+-- action for a switched-in navi's knock-out (the role `switch_knockout`).
 
 local collision = require("../../../../rules/collision")
 local lockon = require("../../../../rules/lockon")
@@ -51,7 +51,7 @@ end
 -- `sub_80EEFBC`: where to strike from, by the lock-on marker's panel
 -- (`sub_80E164A`).
 local function target(me: Object): (number, number)
-    local marker = me.lockon_marker
+    local marker = me.target_marker
     if marker == nil then
         error("SlashCross Beast's lunge reads the lock-on marker the navi doesn't have (sub_80E164A)")
     end

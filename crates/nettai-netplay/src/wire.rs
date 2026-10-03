@@ -262,7 +262,7 @@ macro_rules! wire_struct {
 wire_struct! {
     FolderChip { id, code }
     SavedFolder { chips, regular, tags }
-    TransformRequest { form, cross_change, turns, chaos }
+    TransformRequest { form, navi_switch, turns, chaos }
     Supports { rush, beat, tango }
     NaviWeapons { buster, charge_shot, back_special, a_charge, mode9_a, buster_shot, charge_shot_kind, back_special_damage }
     NaviCustBugs {

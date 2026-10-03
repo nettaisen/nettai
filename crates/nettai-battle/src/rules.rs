@@ -8,7 +8,7 @@
 //! (`system.state()` in a hook): a side's rules see the other side through
 //! the engine alone.
 
-use nettai_content_api::{ChipHandle, ContentState, HookCall, ObjectRef, RulesetHandle, SystemHook, Value};
+use nettai_content_api::{ChipHandle, ContentState, HookCall, ObjectRef, RulesetHandle, SystemHook, Value, WeaponHandle};
 
 use crate::battle::Battle;
 use crate::content::Content;
@@ -141,7 +141,7 @@ impl Battle {
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(hook) {
-                let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: None };
+                let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: None, weapon: None };
                 crate::behavior::call_hook(self, f, call);
             }
         }
@@ -155,7 +155,108 @@ impl Battle {
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::NaviIntake) {
-                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::NaviIntake, navi: Some(navi), chip: None };
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::NaviIntake, navi: Some(navi), chip: None, weapon: None };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
+    /// Side `side`'s systems' `chip_used(side, navi, chip, weapon)` once a
+    /// chip's use has started its action.
+    pub(crate) fn systems_chip_used(&mut self, side: u8, navi: ObjectRef, chip: ChipHandle, weapon: Option<WeaponHandle>) {
+        let Some(r) = self.rules[side as usize].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::ChipUsed) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipUsed, navi: Some(navi), chip: Some(chip), weapon };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
+    /// Side `side`'s systems' `controller(side, navi)`: the outcome (the
+    /// original's number: 0 nothing, 1 a chip, 2 the buster, 3 a step) the
+    /// first system that answers gives; none answering is nothing.
+    pub(crate) fn systems_controller(&mut self, side: u8, navi: ObjectRef) -> u8 {
+        let Some(r) = self.rules[side as usize].ruleset else { return 0 };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::Controller) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::Controller, navi: Some(navi), chip: None, weapon: None };
+                if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
+                    return n as u8;
+                }
+            }
+        }
+        0
+    }
+
+    /// Side `side`'s systems' `takeover_requested(side, navi)`.
+    pub(crate) fn systems_takeover_requested(&mut self, side: u8, navi: ObjectRef) {
+        let Some(r) = self.rules[side as usize].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::TakeoverRequested) {
+                let call = HookCall::System {
+                    side,
+                    slot: slot as u8,
+                    hook: SystemHook::TakeoverRequested,
+                    navi: Some(navi),
+                    chip: None,
+                    weapon: None,
+                };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
+    /// Side `side`'s systems' `takeover(side, navi)`: the outcome the
+    /// first system that answers gives (as `systems_controller`'s, or 4:
+    /// an attack of its own); none answering is nothing.
+    pub(crate) fn systems_takeover(&mut self, side: u8, navi: ObjectRef) -> u8 {
+        let Some(r) = self.rules[side as usize].ruleset else { return 0 };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::Takeover) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::Takeover, navi: Some(navi), chip: None, weapon: None };
+                if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
+                    return n as u8;
+                }
+            }
+        }
+        0
+    }
+
+    /// Side `side`'s systems' `countered(side, victim)`.
+    pub(crate) fn systems_countered(&mut self, side: u8, victim: ObjectRef) {
+        self.systems_call(side, SystemHook::Countered, victim);
+    }
+
+    /// Side `side`'s systems' `navi_tick(side, navi)`.
+    pub(crate) fn systems_navi_tick(&mut self, side: u8, navi: ObjectRef) {
+        self.systems_call(side, SystemHook::NaviTick, navi);
+    }
+
+    /// Side `side`'s systems' `hook(side, navi)`, each in order; the
+    /// results unused.
+    fn systems_call(&mut self, side: u8, hook: SystemHook, navi: ObjectRef) {
+        let Some(r) = self.rules[side as usize & 1].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(hook) {
+                let call = HookCall::System { side, slot: slot as u8, hook, navi: Some(navi), chip: None, weapon: None };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
+    /// Side `side`'s systems' `form_reverted(side, navi)`.
+    pub(crate) fn systems_form_reverted(&mut self, side: u8, navi: ObjectRef) {
+        let Some(r) = self.rules[side as usize].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::FormReverted) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::FormReverted, navi: Some(navi), chip: None, weapon: None };
                 crate::behavior::call_hook(self, f, call);
             }
         }
@@ -169,7 +270,7 @@ impl Battle {
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::ChipCheck) {
-                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipCheck, navi: Some(navi), chip };
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipCheck, navi: Some(navi), chip, weapon: None };
                 if let Value::Def(nettai_content_api::Registry::Chip, c) = crate::behavior::call_hook(self, f, call) {
                     return Some(ChipHandle(c));
                 }
@@ -230,8 +331,8 @@ mod tests {
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).ruleset, Some(stock));
             // (BN6's beast system first, then the counter, then BN6's forms
-            // system.)
-            assert_eq!(b.side_rules(side).states.len(), 3);
+            // and emotion systems.)
+            assert_eq!(b.side_rules(side).states.len(), 4);
             assert_eq!(field(&b, side, 1, "starts"), FieldValue::U8(1), "round_start ran once for side {side}");
             assert_eq!(field(&b, side, 1, "side"), FieldValue::U8(side), "it ran for its own side");
         }
@@ -243,7 +344,7 @@ mod tests {
         let mut setup = scenario::setup();
         setup.players[1].ruleset = content.defs.ruleset_by_key("test:test-other");
         let b = started(setup);
-        assert_eq!(b.side_rules(0).states.len(), 3, "side 0 keeps the stock rules");
+        assert_eq!(b.side_rules(0).states.len(), 4, "side 0 keeps the stock rules");
         assert_eq!(b.side_rules(1).states.len(), 2, "side 1 plays by its own");
         assert_eq!(field(&b, 1, 0, "mark"), FieldValue::U8(0x41));
         assert_eq!(field(&b, 1, 1, "side"), FieldValue::U8(1));
@@ -342,14 +443,14 @@ mod tests {
         let defs = &content.defs;
         let mix = defs.ruleset_by_key("test:test-mix").expect("the mix");
         let names: Vec<&str> = defs.ruleset(mix).systems.iter().map(|&h| defs.system(h).key.as_str()).collect();
-        assert_eq!(names, ["test:beast", "test:test/counter", "test:test/marker"]);
+        assert_eq!(names, ["test:beast", "test:test/counter", "test:emotion", "test:test/marker"]);
         assert_eq!(defs.ruleset(mix).base, defs.stock_ruleset_of(testing::ROOT));
         assert_eq!(Some(defs.ruleset(mix).game), defs.root_id(testing::ROOT));
         let mut setup = scenario::setup();
         setup.players[1].ruleset = Some(mix);
         let b = started(setup);
-        assert_eq!(b.side_rules(1).states.len(), 3);
-        assert_eq!(field(&b, 1, 2, "mark"), FieldValue::U8(0x41), "the marker ran for its side");
+        assert_eq!(b.side_rules(1).states.len(), 4);
+        assert_eq!(field(&b, 1, 3, "mark"), FieldValue::U8(0x41), "the marker ran for its side");
         assert_eq!(field(&b, 1, 1, "starts"), FieldValue::U8(1));
     }
 
@@ -567,7 +668,7 @@ mod tests {
             // HP 1000: +30 first, then +10% (the card lists them the other way).
             assert_eq!((s.max_hp, s.hp), (1133, 1133));
             assert_eq!((s.attack, s.element, s.bugs.hp_drain), (3, 2, 2));
-            assert_eq!(b.cross_stats[0], b.stats[0], "the battle-start copy is of the stats after the cards");
+            assert_eq!(b.reserves[0], b.stats[0], "the battle-start copy is of the stats after the cards");
             assert!(b.consoles[0].emotion_window_glitch, "the HP drain is a bug: flag 0x1723");
             assert_eq!(b.stats[1], scenario::setup().navi_stats[1], "the other side has none");
         }
