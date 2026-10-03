@@ -26,8 +26,9 @@ pub struct SideRules {
 impl SideRules {
     /// A player's rules at a round's start: the ruleset their setup names
     /// (or game `arena`'s stock one, the stage's game's), its systems'
-    /// state zeroed. Their setup's blocks are made zero for a setup that
-    /// gives none, and must otherwise be the ruleset's.
+    /// state zeroed. Their setup's blocks are made the systems' defaults
+    /// (`setup_defaults`, the rest zero) for a setup that gives none, and
+    /// must otherwise be the ruleset's.
     pub fn for_player(content: &Content, player: &mut PlayerSetup, arena: crate::content::RootId) -> SideRules {
         let ruleset = player.ruleset.or_else(|| content.defs.stock_ruleset_of(&content.defs.roots[arena.index()]));
         let Some(r) = ruleset else {
@@ -37,10 +38,11 @@ impl SideRules {
         let def = content.defs.ruleset(r);
         let systems: Vec<_> = def.systems.iter().map(|&h| content.defs.system(h)).collect();
         if player.rules.is_empty() {
-            player.rules = systems.iter().map(|s| ContentState::new(s.setup)).collect();
+            player.rules = systems.iter().map(|s| s.setup_block()).collect();
         }
         let fits = player.rules.len() == systems.len() && player.rules.iter().zip(&systems).all(|(b, s)| b.id() == s.setup);
         assert!(fits, "a player's setup gives system setups that aren't ruleset {}'s", def.key);
+        player.souls_from_setup(content);
         SideRules { ruleset, states: systems.iter().map(|s| ContentState::new(s.state)).collect() }
     }
 }
@@ -52,6 +54,50 @@ impl PlayerSetup {
     pub fn set_rule(&mut self, content: &Content, system: &str, field: &str, v: Value) -> Result<(), String> {
         let (block, schema, i) = self.rule_field(content, system, field)?;
         block.set(schema, i, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
+    }
+
+    /// The souls the player has, as the soul button checks them (the save's
+    /// soul flags, 0x08024BF0, by each soul's number): the forms a system
+    /// of their ruleset declares in its setup's `souls` (BN5's souls
+    /// system), when one does; else the setup's own.
+    fn souls_from_setup(&mut self, content: &Content) {
+        let mut found = false;
+        let mut owned = 0u16;
+        for block in &self.rules {
+            let schema = content.defs.schema(block.id());
+            let Some(i) = schema.index_of("souls") else { continue };
+            let FieldType::Array(_, n) = schema.field(i).ty else { continue };
+            found = true;
+            for k in 0..n as usize {
+                if let Some(nettai_content_api::FieldValue::Ref(Some((nettai_content_api::Registry::Form, h)))) = block.get_elem(schema, i, k)
+                    && let Some(soul) = &content.form(nettai_content_api::FormHandle(h)).soul
+                {
+                    owned |= 1 << (soul.number & 15);
+                }
+            }
+        }
+        if found {
+            self.souls.owned = owned;
+        }
+    }
+
+    /// [`PlayerSetup::set_rule`] for an array field: element `k` of it.
+    pub fn set_rule_elem(&mut self, content: &Content, system: &str, field: &str, k: usize, v: Value) -> Result<(), String> {
+        let (block, schema, i) = self.rule_field(content, system, field)?;
+        block.set_elem(schema, i, k, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
+    }
+
+    /// The setup block of system `system` (by key) of the player's ruleset
+    /// and its layout, as the round will start with it (the systems'
+    /// defaults where the setup gives none): what a tool shows of it.
+    pub fn rule_block<'a>(&self, content: &'a Content, system: &str) -> Option<(&'a nettai_content_api::Schema, ContentState)> {
+        let game = nettai_content_api::keys::root_of(system)?;
+        let r = self.ruleset.or_else(|| content.defs.stock_ruleset_of(game))?;
+        let systems = &content.defs.ruleset(r).systems;
+        let slot = systems.iter().position(|&h| content.defs.system(h).key == system)?;
+        let def = content.defs.system(systems[slot]);
+        let block = self.rules.get(slot).copied().unwrap_or_else(|| def.setup_block());
+        Some((content.defs.schema(def.setup), block))
     }
 
     /// Write a fact of what the player brings into each system of their
@@ -69,7 +115,7 @@ impl PlayerSetup {
         let Some(r) = self.ruleset.or_else(|| content.defs.stock_ruleset_of(game)) else { return Ok(0) };
         let def = content.defs.ruleset(r);
         if self.rules.is_empty() {
-            self.rules = def.systems.iter().map(|&h| ContentState::new(content.defs.system(h).setup)).collect();
+            self.rules = def.systems.iter().map(|&h| content.defs.system(h).setup_block()).collect();
             self.ruleset = Some(r);
         }
         let mut took = 0;
@@ -112,8 +158,8 @@ impl PlayerSetup {
     }
 
     /// The setup block of system `system` (by key) of the player's ruleset,
-    /// its schema and the index of its field `field`; the blocks made zero
-    /// first if the setup gives none.
+    /// its schema and the index of its field `field`; the blocks made the
+    /// systems' defaults first if the setup gives none.
     fn rule_field<'a>(
         &'a mut self,
         content: &'a Content,
@@ -125,7 +171,7 @@ impl PlayerSetup {
         let r = self.ruleset.or_else(|| content.defs.stock_ruleset_of(game)).ok_or("the content has no ruleset")?;
         let def = content.defs.ruleset(r);
         if self.rules.is_empty() {
-            self.rules = def.systems.iter().map(|&h| ContentState::new(content.defs.system(h).setup)).collect();
+            self.rules = def.systems.iter().map(|&h| content.defs.system(h).setup_block()).collect();
         }
         let slot = def
             .systems

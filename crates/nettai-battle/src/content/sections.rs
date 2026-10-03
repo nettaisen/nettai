@@ -159,6 +159,8 @@ struct StatusSection {
     #[serde(default = "yes")]
     form_tick: bool,
     #[serde(default)]
+    flash_hides_on_clear: bool,
+    #[serde(default)]
     bugs_before_drain: bool,
     #[serde(default)]
     drain_bug_flags: bool,
@@ -430,6 +432,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
             "status" => {
                 let s: StatusSection = r.read(spec, &at).map_err(e)?;
                 (rules.hp_bug_periods, rules.form_tick) = (s.hp_bug_periods, s.form_tick);
+                rules.flash_hides_on_clear = s.flash_hides_on_clear;
                 rules.emotions = match s.emotions.as_deref() {
                     None | Some("bn6") => super::Emotions::Bn6,
                     Some("bn5") => super::Emotions::Bn5,
