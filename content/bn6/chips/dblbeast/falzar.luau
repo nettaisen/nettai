@@ -16,7 +16,7 @@ local parts = require("../../lib/swords/parts")
 
 local falzar = {}
 
-local SPRITE = asset.sprite("falzar-beast")
+local SPRITE = asset.sprite("bn6:falzar-beast")
 -- Its identity: Falzar Beast Out's (its parts and the attach points its
 -- attachments take).
 local IDENTITY = falzar_beast.identity
@@ -35,12 +35,12 @@ local HITS: { [string]: DblBeastHit } = {
 
 -- The breath's maw (attachment row 0x21, the fan Tornado holds) and its
 -- gust two panels ahead (effect 0x59, 30 ticks).
-local MAW = attachment.look { sprite = asset.sprite("hand-fan"), palette = 0, attach_point = 9 }
-local GUST = define.effect { sprite = asset.sprite("tornado"), anim = 0, palette = 0 }
+local MAW = attachment.look { sprite = asset.sprite("bn6:hand-fan"), palette = 0, attach_point = 9 }
+local GUST = define.effect { sprite = asset.sprite("bn6:tornado"), anim = 0, palette = 0 }
 local GUST_TICKS = 0x1E
 
-local SOUND_BREATH = asset.sound("aqua-surge")
-local SOUND_WING = asset.sound("sword-swing")
+local SOUND_BREATH = asset.sound("bn6:aqua-surge")
+local SOUND_WING = asset.sound("bn6:sword-swing")
 
 local ANIM_IDLE, ANIM_WING, ANIM_BREATH, ANIM_LEAVE = 0, 5, 0xA, 4
 local BREATH_EVERY, WING_AT = 4, 0x12
@@ -215,7 +215,7 @@ local function tick(me: Object)
 end
 
 falzar.kind = define.kind {
-    id = "dblbeast/falzar",
+    id = "bn6:dblbeast/falzar",
     pool = "actor",
     state = beast.STATE,
     -- `sub_80C2138`: by state, then the sprite (stepping while dimmed).

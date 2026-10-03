@@ -20,9 +20,9 @@ export type State = {
     controller: Object?,
 }
 
-local SPRITE = asset.sprite("elecman")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_ELEC_MAN = asset.sound("elec-man")
+local SPRITE = asset.sprite("bn6:elecman")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_ELEC_MAN = asset.sound("bn6:elec-man")
 -- Where he looks (a panel region around him, dx along his side's
 -- direction), and what for, by strike and side (`byte_80B94AC`).
 local REGION = regions.big_square
@@ -156,7 +156,7 @@ end
 local ACTIONS = { [APPEAR] = appear, [STAND] = stand, [RAISE] = raise, [THUNDER] = call_thunder, [LEAVE] = leave }
 
 elecman.kind = define.kind {
-    id = "elecman/navi",
+    id = "bn6:elecman/navi",
     pool = "actor",
     state = { controller = "object" },
     -- `sub_80B92B8`.

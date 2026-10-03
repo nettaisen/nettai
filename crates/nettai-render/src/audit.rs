@@ -54,7 +54,7 @@ pub enum Lookup {
     /// A chip's name in the 8x16 font (the next chip, the chip window, a
     /// telop).
     ChipName(ChipHandle),
-    /// The chip window's colours and pictures of a chip's class, element
+    /// The chip window's colors and pictures of a chip's class, element
     /// and code.
     ChipWindow(ChipHandle),
     /// A chip's name and code in the Program Advance animation.
@@ -75,7 +75,7 @@ pub enum Lookup {
     Emblem(NaviHandle, GameVersion),
     /// A navi's no-running message in the dialogue font, with its portrait.
     RunMessage(NaviHandle),
-    /// A Cross's name and colours in the Cross window.
+    /// A Cross's name and colors in the Cross window.
     CrossName(FormHandle),
     /// A Cross's description in the dialogue font.
     CrossDescription(FormHandle),

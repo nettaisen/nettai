@@ -9,7 +9,7 @@ local lockon = require("../../rules/lockon")
 local statuses = require("../../rules/status")
 
 return define.chip {
-    id = "elecswrd",
+    id = "bn6:elecswrd",
     codes = { "E", "K", "N" },
     element = "elec",
     family = "elec",
@@ -25,7 +25,7 @@ return define.chip {
     slot_in_limit = 3,
     traits = { "element_sword" },
     action = slash.action {
-        id = "elecswrd/action",
+        id = "bn6:elecswrd/action",
         blade = parts.blades.elec,
         hit = { region = regions.wide, collision = parts.slashes_navis, hit_mod = 1, status = statuses.paralyze_90 },
         effect = parts.effects.wide,

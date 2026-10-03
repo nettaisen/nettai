@@ -500,9 +500,9 @@ mod tests {
         testing::add_pack(&mut c, "twin", Default::default(), Default::default());
         c.scripts.add_root(RootManifest::named("twin"), Default::default());
         c.define().unwrap_or_else(|e| panic!("{e}"));
-        let twin = c.defs.root_id("twin").expect("twin");
+        let (home, twin) = (c.defs.root_id(testing::ROOT).expect("the test game"), c.defs.root_id("twin").expect("twin"));
         for t in PanelType::ALL {
-            c.rules[RootId::HOME.index()].panels.types[t as usize].named = t != PanelType::Sea;
+            c.rules[home.index()].panels.types[t as usize].named = t != PanelType::Sea;
             c.rules[twin.index()].panels.types[t as usize].named = t == PanelType::Sea;
         }
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(100));

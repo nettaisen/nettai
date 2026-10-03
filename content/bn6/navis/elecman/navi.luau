@@ -6,20 +6,20 @@ local charge = require("./charge")
 local elecman = require("./chip")
 
 return define.navi {
-    id = "elecman",
-    sprite = asset.sprite("elecman"),
+    id = "bn6:elecman",
+    sprite = asset.sprite("bn6:elecman"),
     element = "elec",
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("elecman-win"), lose = asset.banner("elecman-deleted") },
+    banners = { win = asset.banner("bn6:elecman-win"), lose = asset.banner("bn6:elecman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`): the Falzar ROM has no
     -- ElecMan face, and shows TomahawkMan's.
-    mugshot = asset.mugshot("elecman"),
+    mugshot = asset.mugshot("bn6:elecman"),
     merge_height = 0,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("elecman-portrait"),
+        portrait = asset.sprite("bn6:elecman-portrait"),
     },
     own_chip = { chip = elecman, code = "E" },
     chip_bonus = {
@@ -27,7 +27,7 @@ return define.navi {
         dimming_chips = false,
         by_level = { 0, 0, 0, 0, 0, 0, 0, 30, 30, 30, 30, 40, 40, 40, 50 },
     },
-    -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
+    -- What a navi switch brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },

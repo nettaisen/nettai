@@ -17,8 +17,8 @@ export type State = {
     target: number,
 }
 
-local SPRITE = asset.sprite("junk-shot")
-local SOUND_THROW, SOUND_BURST = asset.sound("junk-shot"), asset.sound("hit-bomb-1")
+local SPRITE = asset.sprite("bn6:junk-shot")
+local SOUND_THROW, SOUND_BURST = asset.sound("bn6:junk-shot"), asset.sound("bn6:hit-bomb-1")
 
 -- How far in front of and above the navi it starts, 16.16.
 local AHEAD, UP = 0x8_0000, 0x8_0000
@@ -133,7 +133,7 @@ local function init(me: Object)
 end
 
 junk_shot.kind = define.kind {
-    id = "dustcross-beast/junk-shot",
+    id = "bn6:dustcross-beast/junk-shot",
     pool = "attack",
     state = { target = "u8" },
     -- `sub_80DDC10`.

@@ -17,8 +17,8 @@ export type State = {
     fast: boolean,
 }
 
-local SPRITE = asset.sprite("justice-one")
-local SOUND = asset.sound("justice-one")
+local SPRITE = asset.sprite("bn6:justice-one")
+local SOUND = asset.sound("bn6:justice-one")
 -- Where it starts: 134 pixels behind its panel's center, 16 down, at the
 -- spawner's height.
 local BEHIND, DOWN = 0x86_0000, 0x10_0000
@@ -123,7 +123,7 @@ local function init(me: Object)
 end
 
 fist.kind = define.kind {
-    id = "metrknuk/fist",
+    id = "bn6:metrknuk/fist",
     pool = "attack",
     state = { fast = "bool" },
     -- `sub_80DBCEC`.

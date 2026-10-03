@@ -7,7 +7,7 @@ local shooter = require("@bn6/lib/cannon")
 local variants = require("../../objects/projectile/variants")
 
 return define.chip {
-    id = "cannon",
+    id = "bn5:cannon",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -19,5 +19,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = shooter.action { id = "cannon/action", arm = shooter.arms.cannon, shot = variants.cannon },
+    action = shooter.action { id = "bn5:cannon/action", arm = shooter.arms.cannon, shot = variants.cannon },
 }

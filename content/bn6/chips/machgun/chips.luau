@@ -37,13 +37,13 @@ local STRIKES, INTERVAL, START_ROW = 9, 8, 3
 local PANEL_STRIKE: PanelStrike = { warning = 6, hit_mod = 1 }
 -- The reticle (effect 0x2F) over the target, for 6 ticks (the chips'
 -- second parameter).
-local RETICLE = define.effect { sprite = asset.sprite("reticle"), anim = 0, palette = 0 }
+local RETICLE = define.effect { sprite = asset.sprite("bn6:reticle"), anim = 0, palette = 0 }
 local RETICLE_TICKS = 6
 -- The gun's animation as it fires.
 local GUN_FIRE = 1
 
 -- The machine gun (the original's attachment row 0x1D).
-local GUN = attachment.look { sprite = asset.sprite("machine-gun"), palette = 0, attach_point = 26 }
+local GUN = attachment.look { sprite = asset.sprite("bn6:machine-gun"), palette = 0, attach_point = 26 }
 
 -- `sub_80ED040` (lib/panels, the dragons' too): from the column ahead
 -- forward, the first with an enemy in some row; none, the last column
@@ -142,7 +142,7 @@ end
 
 return {
     define.chip {
-        id = "machgun1",
+        id = "bn6:machgun1",
         codes = { "A", "R", "T", "*" },
         element = "null", family = "cursor", class = "standard",
         rarity = 0, mb = 12, damage = 30, hit_param = 30, lockout = 0,
@@ -152,7 +152,7 @@ return {
         action = mach_gun(),
     },
     define.chip {
-        id = "machgun2",
+        id = "bn6:machgun2",
         codes = { "E", "G", "S" },
         element = "null", family = "cursor", class = "standard",
         rarity = 1, mb = 24, damage = 50, hit_param = 30, lockout = 0,
@@ -162,7 +162,7 @@ return {
         action = mach_gun(),
     },
     define.chip {
-        id = "machgun3",
+        id = "bn6:machgun3",
         codes = { "B", "F", "M" },
         element = "null", family = "cursor", class = "standard",
         rarity = 2, mb = 36, damage = 70, hit_param = 30, lockout = 0,

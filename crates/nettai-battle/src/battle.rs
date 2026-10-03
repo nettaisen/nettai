@@ -174,7 +174,7 @@ pub struct Judge {
 }
 
 /// The screen fades a battle starts (`SetScreenFade`'s modes): which
-/// colours, which way the level steps (`off_8005FB4`) and where it stops
+/// colors, which way the level steps (`off_8005FB4`) and where it stops
 /// (`off_8006040`'s last byte, times 16).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FadeMode {
@@ -194,6 +194,11 @@ pub enum FadeMode {
     TransformIn = 0x40,
     /// 0x44: the transformation sequencer's fade out.
     TransformOut = 0x44,
+    /// 0x30: BN5's soul button's flash fades back (its custom screen's
+    /// state 9).
+    SoulFlashBack = 0x30,
+    /// 0x34: ... and its flash, to full.
+    SoulFlash = 0x34,
     /// 0x10: the custom screen's Program Advance animation fades back in.
     ProgramAdvanceBack = 0x10,
     /// 0x14: ... and out, a quarter of the way.
@@ -236,6 +241,8 @@ impl FadeMode {
             FadeMode::ProgramAdvanceBack | FadeMode::DarkChipBack | FadeMode::DarkChipWindowBack | FadeMode::BeastOutBack => {
                 (false, 0)
             }
+            FadeMode::SoulFlashBack => (false, 0),
+            FadeMode::SoulFlash => (true, 0x100),
             FadeMode::DarkChipWindow => (true, 0x30),
             FadeMode::ProgramAdvance => (true, 0x40),
             FadeMode::DarkChip => (true, 0x50),
@@ -376,12 +383,12 @@ pub struct Battle {
     pub games: BattleGames,
     pub setup: RoundSetup,
     pub stats: [NaviStats; 2],
-    /// Each side's other navi's stats for a Cross change
+    /// Each side's other navi's stats for a navi switch
     /// (`eBattleNaviStats2034A60`): a copy of the side's stats at the
     /// battle's start; a change keeps the navi it leaves here when it is
     /// this one, and takes the navi it goes to from here when it is that
-    /// one (`sub_802D7A0`); a Cross knockout takes it back (`sub_802D9B0`).
-    pub cross_stats: [NaviStats; 2],
+    /// one (`sub_802D7A0`); a switch knockout takes it back (`sub_802D9B0`).
+    pub reserves: [NaviStats; 2],
     pub rng: Rng,
     /// Each player's console: its own RNG (RNG1), which ChpShufl's re-deal
     /// draws from, and what advances it (`console`).
@@ -516,14 +523,16 @@ pub struct SideState {
     pub gauge: u16,
     /// +0x50: the SELECT special runs (`sub_802E4E4`).
     pub select_special: u8,
-    /// +0x54: the Cross special (DarkInvs' auto-battle) runs.
-    pub cross_special: u8,
+    /// +0x54: a system's takeover of the side's navi runs (BN6's Cross
+    /// special, DarkInvs' auto-battle): idle asks the side's systems
+    /// (`takeover`) instead of reading the buttons.
+    pub takeover: u8,
     /// +2: ticks the SELECT special holds the navi (0xB4 when reset,
     /// `sub_802E07C`; `sub_802F068`).
     pub select_ticks: u8,
-    /// +0x30: ticks left of the Cross special (0x1E0 at its start), counted
-    /// down in the navi's stage B (`sub_802E1D8`).
-    pub cross_special_ticks: u16,
+    /// +0x30: ticks left of the takeover (BN6's Cross special starts it at
+    /// 0x1E0), counted down in the navi's stage B (`sub_802E1D8`).
+    pub takeover_ticks: u16,
     /// +0x3C / +0x3A: ticks the side's gauge stays slow / fast (SloGauge,
     /// FstGauge), counted down by `sub_80107D4`.
     pub slow_gauge_ticks: u16,
@@ -648,16 +657,20 @@ pub struct DamageCarry {
 pub struct BattleGames {
     pub arena: RootId,
     pub sides: [RootId; 2],
+    /// Each side's ruleset (none: the stage's game's stock rules), whose own
+    /// sections, a mix's, the side reads over its game's.
+    pub rulesets: [Option<nettai_content_api::RulesetHandle>; 2],
 }
 
 impl BattleGames {
-    /// A round's: its stage's root and its players' rulesets' games.
+    /// A round's: its stage's game and its players' rulesets' games (a
+    /// player with none plays the stage's game's stock rules).
     pub fn of(content: &Content, setup: &RoundSetup) -> BattleGames {
         let defs = &content.defs;
-        BattleGames {
-            arena: defs.root_of(&defs.stage(setup.settings.stage).key),
-            sides: [0, 1].map(|p| defs.ruleset_game(setup.players[p].ruleset)),
-        }
+        let stage = &defs.stage(setup.settings.stage).key;
+        let arena = defs.root_of(stage).unwrap_or_else(|| panic!("stage {stage}'s id names no game"));
+        let rulesets = [0, 1].map(|p| setup.players[p].ruleset);
+        BattleGames { arena, sides: rulesets.map(|r| defs.ruleset_game(r, arena)), rulesets }
     }
 
     /// The pools' capacities: each the larger of the two players' games'
@@ -687,13 +700,13 @@ impl Battle {
         let panels = &content.rules_of(games.arena).panels;
         let (field, mode) = (Field::new(panels, &stage.layout, stage.panel_pattern, stage.mode), stage.mode);
         let objects = Objects::with_capacity(games.pool_capacity(&content));
-        let hands = [ChipHand::empty(&content), ChipHand::empty(&content)];
-        let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p]));
+        let hands = [ChipHand::empty(&content, games.arena), ChipHand::empty(&content, games.arena)];
+        let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p], games.arena));
         let mut b = Battle {
             content,
             games,
             stats: setup.navi_stats,
-            cross_stats: setup.navi_stats,
+            reserves: setup.navi_stats,
             rng: Rng::new(setup.rng),
             consoles: [Console::new(&setup.players[0].console), Console::new(&setup.players[1].console)],
             round: RoundState {
@@ -748,9 +761,9 @@ impl Battle {
         };
         // Each side's systems set the round up before anything reads the
         // side's stats (BN6's patch cards change them); the battle-start
-        // copy of the stats (`cross_stats`) is of the stats after them.
+        // copy of the stats (`reserves`) is of the stats after them.
         b.notify_systems(nettai_content_api::SystemHook::RoundSetup);
-        b.cross_stats = b.stats;
+        b.reserves = b.stats;
         // Init's last steps: refresh every panel, then one unpaused panel
         // update.
         b.field.refresh_all(&b.content.rules_of(b.games.arena).panels, &b.collision);
@@ -770,9 +783,11 @@ impl Battle {
         self.content.defs.roles(self.games.arena)
     }
 
-    /// Side `side`'s game's tables (the rule sections about one navi).
+    /// Side `side`'s tables (the rule sections about one navi): its
+    /// ruleset's own, a mix's, else its game's.
     pub fn side_game_rules(&self, side: u8) -> &crate::content::Rules {
-        self.content.rules_of(self.games.sides[side as usize & 1])
+        let s = side as usize & 1;
+        self.content.side_rules(self.games.rulesets[s], self.games.sides[s])
     }
 
     /// Side `side`'s game's roles (what the framework uses for the side's
@@ -804,11 +819,34 @@ impl Battle {
         }
     }
 
+    /// The game of the definition with id `key`: its prefix's (the engine's
+    /// own `engine/...`, the arena's).
+    pub fn game_of(&self, key: &str) -> crate::content::RootId {
+        self.content.defs.root_of(key).unwrap_or(self.games.arena)
+    }
+
+    /// The chip a zeroed chip field reads: the arena's game's zeroed chip
+    /// (`Content::chip_or_zeroed`).
+    pub fn chip_or_zeroed(&self, h: Option<nettai_content_api::ChipHandle>) -> nettai_content_api::ChipHandle {
+        self.content.chip_or_zeroed(self.games.arena, h)
+    }
+
+    /// The record a chip field names, a zeroed one the arena's game's
+    /// zeroed chip's.
+    pub fn chip_field(&self, h: Option<nettai_content_api::ChipHandle>) -> &crate::content::ChipData {
+        self.content.chip_field(self.games.arena, h)
+    }
+
+    /// The arena's game's zeroed chip.
+    pub fn zeroed_chip(&self) -> Option<nettai_content_api::ChipHandle> {
+        self.content.zeroed_chip(self.games.arena)
+    }
+
     /// The rules of chip `chip`'s own game (docs/design/rules-in-luau.md
     /// §7.5: a chip runs as its game wrote it); no chip, the arena's.
     pub fn chip_rules(&self, chip: Option<nettai_content_api::ChipHandle>) -> &crate::content::Rules {
         match chip {
-            Some(h) => self.content.rules_of(self.content.defs.root_of(&self.content.defs.chip(h).key)),
+            Some(h) => self.content.rules_of(self.game_of(&self.content.defs.chip(h).key)),
             None => self.arena_rules(),
         }
     }
@@ -1605,7 +1643,8 @@ impl Battle {
         for side in 0..2u8 {
             let Some(a) = self.player_actor(side) else { continue };
             let over = self.is_battle_over();
-            let berserk = self.form(side as usize).kind.is_beast_over();
+            // (A controlled form, BN6's Beast Over: the controller decides.)
+            let berserk = self.form(side as usize).traits.has(crate::content::FormTraits::CONTROLLED);
             let held = self.inputs[side as usize].held;
             let dimmed = self.is_dimmed();
             let ad = self.actors.get_mut(a);
@@ -1733,13 +1772,18 @@ impl Battle {
     }
 
     /// Whether a custom-screen request goes through the reversions and the
-    /// sequencer (battle mode 5, or not the battle flag 0x40 mode).
+    /// sequencer (battle mode 5, or not the battle flag 0x40 mode; BN5's
+    /// 0x08007774 tests the flag alone).
     fn custom_request_transforms(&self) -> bool {
-        self.round.mode_copy == 5 || self.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
+        let mode_5 = self.round.mode_copy == 5 && self.arena_rules().flow.sequencer_before_custom;
+        mode_5 || self.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
     }
 
     /// Fighting state 0x20 (`sub_8008452`): a custom screen was asked for:
-    /// wait for the navis' reversions, then state 0x24.
+    /// wait for the navis' reversions, then state 0x24. BN5's (0x08007774,
+    /// the flow without `sequencer_before_custom`) opens the screen from
+    /// this state, on the tick the reversions are done, as state 0x24 does
+    /// a tick later.
     fn fight_custom_revert(&mut self) {
         if self.custom_request_transforms() {
             if self.fight.init == 0 {
@@ -1756,6 +1800,10 @@ impl Battle {
             if self.step_custom_reversion() {
                 return;
             }
+        }
+        if !self.arena_rules().flow.sequencer_before_custom {
+            self.fight.result = 6;
+            return;
         }
         self.fight.state = fight::CUSTOM_SEQUENCE;
         self.fight.sub = 0;
@@ -1811,7 +1859,9 @@ impl Battle {
         if self.is_dimmed() || self.is_battle_over() {
             return false;
         }
-        let berserk = |side: usize| self.form(side).kind.is_beast_over();
+        // (A controlled navi, BN6's Beast Over, can't ask for it: a full
+        // gauge opens it.)
+        let berserk = |side: usize| self.form(side).traits.has(crate::content::FormTraits::CONTROLLED);
         ((berserk(0) || berserk(1)) && self.round.flags & battle_flags::GAUGE_FULL != 0)
             || self.round.flags & battle_flags::CUSTOM_REQUESTED != 0
     }
@@ -1973,7 +2023,7 @@ impl Battle {
 
     /// `sub_801DC7C(dx, dy)`: `console`'s HUD (or both) numbers `r`'s HP
     /// under it, `dx`, `dy` pixels from where it projects its position;
-    /// `damage`: the damage it took instead, uncentred (see
+    /// `damage`: the damage it took instead, uncentered (see
     /// [`HpNumber`](crate::hud::HpNumber)). It takes the first free place;
     /// it gets none when one before the first free place has it already or
     /// when all four are taken. (A place freed before the one that has it
@@ -2215,6 +2265,44 @@ mod tests {
         assert_eq!(b.fight.judge.outcome, 3);
         b.start_judge(20, 10);
         assert_eq!(b.fight.judge.outcome, 1);
+    }
+
+    /// docs/design/bn5-map.md §15.3 item 18: a custom screen asked for in
+    /// the fight opens a tick sooner in BN5's flow (0x08007774 sets the
+    /// result itself once the reversions are done) than in BN6's, which
+    /// goes through state 0x24 first.
+    #[test]
+    fn bn5s_custom_request_opens_from_its_own_state() {
+        let ticks = |sequencer_before_custom: bool| {
+            let mut c: crate::content::Content = testing::build();
+            c.define().unwrap_or_else(|e| panic!("{e}"));
+            for rules in &mut c.rules {
+                rules.flow.sequencer_before_custom = sequencer_before_custom;
+            }
+            let c = std::sync::Arc::new(c);
+            let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+            setup.content = c.hash();
+            let mut b = Battle::new(setup, c);
+            b.spawn_actors();
+            b.run_objects();
+            b.fight.state = fight::CUSTOM_REVERT;
+            b.fight.init = 0;
+            let mut n = 0;
+            while b.fight.result != 6 {
+                n += 1;
+                assert!(n < 100, "the screen never opens");
+                match b.fight.state {
+                    fight::CUSTOM_REVERT => b.fight_custom_revert(),
+                    fight::CUSTOM_SEQUENCE => b.fight_custom_sequence(),
+                    s => panic!("state {s:#x}"),
+                }
+            }
+            (n, b.fight.state)
+        };
+        let (bn6, bn6_state) = ticks(true);
+        let (bn5, bn5_state) = ticks(false);
+        assert_eq!((bn5_state, bn6_state), (fight::CUSTOM_REVERT, fight::CUSTOM_SEQUENCE));
+        assert!(bn5 < bn6, "BN5 {bn5} ticks, BN6 {bn6}");
     }
 
     #[test]

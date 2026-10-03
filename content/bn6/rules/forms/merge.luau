@@ -1,6 +1,6 @@
 --!strict
 -- A Cross navi's image merging with MegaMan (actor object #0x1B,
--- `sub_80BC650`), spawned by a Cross change: it appears above and in front
+-- `sub_80BC650`), spawned by a change into a Cross: it appears above and in front
 -- of MegaMan, then swings from one side of him to the other, each swing
 -- narrower, and when it reaches him it bursts into an effect and is gone.
 -- Purely visual, but it holds an actor slot and a place in the update
@@ -29,7 +29,7 @@ export type State = {
     sounded: boolean,
 }
 
-local CROSS_MERGE = asset.sound("cross-merge")
+local CROSS_MERGE = asset.sound("bn6:cross-merge")
 
 -- `object_getFlipDirection`: +1 when facing right, -1 when facing left.
 local function facing(o: Object): number
@@ -133,7 +133,7 @@ local function tick(me: Object, s: State)
 end
 
 merge.kind = define.kind {
-    id = "forms/cross-merge",
+    id = "bn6:forms/cross-merge",
     pool = "actor",
     state = {
         navi = "navi",

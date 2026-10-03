@@ -39,10 +39,10 @@ export type State = {
 local WAIT = 0x3C
 -- The effects around the navi (the original's effects 0x5A to 0x5C), and
 -- the sounds.
-local HUB_EFFECT = define.effect { sprite = asset.sprite("hub"), anim = 0, palette = 0 }
-local BUG_EFFECT = define.effect { sprite = asset.sprite("bug"), anim = 0, palette = 0 }
-local ARM_EFFECT = define.effect { sprite = asset.sprite("charge-glow-a"), anim = 3, palette = 1 }
-local HUB_SOUND, BUG_SOUND, LOG_IN_SOUND = asset.sound("hub"), asset.sound("bug"), asset.sound("log-in")
+local HUB_EFFECT = define.effect { sprite = asset.sprite("bn6:hub"), anim = 0, palette = 0 }
+local BUG_EFFECT = define.effect { sprite = asset.sprite("bn6:bug"), anim = 0, palette = 0 }
+local ARM_EFFECT = define.effect { sprite = asset.sprite("bn6:charge-glow-a"), anim = 3, palette = 1 }
+local HUB_SOUND, BUG_SOUND, LOG_IN_SOUND = asset.sound("bn6:hub"), asset.sound("bn6:bug"), asset.sound("bn6:log-in")
 -- When the log-in sound plays, by timer.
 local HUB_LOG_IN_AT, ARM_LOG_IN_AT = 0x1C, 0x28
 -- HubBatc's buster, custom screen and B+Back special (the NaviCust
@@ -161,7 +161,9 @@ end
 
 -- `sub_80E9784`: DarkInvs.
 local function dark_invis(me: Object)
-    user_of(me):set_request("cross_special", true)
+    -- (BN6's beast system starts its Cross special: rules/beast/
+    -- cross-special.luau.)
+    user_of(me):set_request("takeover", true)
     dimming_chips.done(me)
 end
 
@@ -180,7 +182,7 @@ local function effect(me: Object)
 end
 
 navi_boost.kind = define.kind {
-    id = "navi-boost",
+    id = "bn6:navi-boost",
     pool = "effect",
     state = { change = { "hub", "bug", "arm", "dark" }, weapon = "weapon", palette = "u8" },
     -- `sub_80E9570`.

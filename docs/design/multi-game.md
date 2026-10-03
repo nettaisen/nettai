@@ -7,7 +7,7 @@ of what is in them is BN6's rules written in Rust. This document is for deciding
 BN4 and the others. It covers:
 
 - §1, an inventory: every module of the engine, the content API, the Luau runtime, the pack formats, the frontend
-  and netplay, classed as generic, BN-series but parameterised, or BN6-only, with the evidence;
+  and netplay, classed as generic, BN-series but parameterized, or BN6-only, with the evidence;
 - §2, what differs in BN4 and BN5, and what is the same;
 - §3, the architecture options and a recommendation;
 - §4, a staged plan with rough sizes;
@@ -55,7 +55,7 @@ done".
   same size (0xD8 bytes) with the fields it reads at the same offsets (the panel at +0x12, the owner at +0x16, HP
   at +0x24, max HP at +0x26), the same 0x50-byte per-player chip hand, and the same 0x2C-byte chip record with its
   fields in the same order. So most of
-  the "parameterised" two thirds will carry over to BN5 and BN4 with different numbers, and some of it with
+  the "parameterized" two thirds will carry over to BN5 and BN4 with different numbers, and some of it with
   different branches. BN1 to BN3 are an earlier lineage and would need more than a ruleset.
 - **What BN5 and BN4 add is mostly at the custom screen and in transformations**: Soul Unison (both), Chaos
   Unison (BN5), dark chips offered in battle (BN4) or carried in the folder (BN5), and different emotions. A soul
@@ -66,7 +66,7 @@ done".
   roughly five to ten times today's 124 µs worst case per rendered frame, need a new kind of global script state,
   and re-port verified rules for no gain to BN6.
 - **Now, cheaply:** names, and moving BN6-only code behind a `bn6` boundary inside the crates without changing
-  behaviour (about one to two agent-days, then one full check). **Later:** a BN5-to-BN6 routine map, the ruleset
+  behavior (about one to two agent-days, then one full check). **Later:** a BN5-to-BN6 routine map, the ruleset
   seam, then the BN5 port (oracle, compat, extractor, rules, content), roughly half to two thirds of the BN6
   effort.
 - The decisions for the user are in §6.
@@ -78,7 +78,7 @@ done".
 | Class | Meaning | Test |
 |---|---|---|
 | **G**, generic | Would serve any Battle Network game as it is | Proven only for the BN4–BN6 lineage (§2.2); for BN1–BN3, probably with parameters |
-| **P**, BN-series, parameterised | Every game in the series has it, but the code holds BN6's numbers, tables, record layout or branches | BN4 and BN5 have the same thing with other values or a few other branches |
+| **P**, BN-series, parameterized | Every game in the series has it, but the code holds BN6's numbers, tables, record layout or branches | BN4 and BN5 have the same thing with other values or a few other branches |
 | **6**, BN6-only | No other game has it | Cross, Beast Out, Beast Over, BN6's custom-screen layout and buttons, the link navis' own chips, SP deletion times, Falzar and Gregar |
 
 Most modules mix classes; the tables give the split and what makes a module BN6's.
@@ -494,7 +494,7 @@ Cheap things that don't disturb the verified engine.
 - a `game = "bn6"` line in the pack manifest (content.toml) and in a content root manifest, read and checked by the
   loader, so a frontend can tell which ruleset a pack wants (a re-extract, or a reader that defaults it).
 
-**Stage 1: move BN6-only code behind a `bn6` boundary, without changing behaviour** (one to two agent-days, then
+**Stage 1: move BN6-only code behind a `bn6` boundary, without changing behavior** (one to two agent-days, then
 the full set once: build, tests, content check, both golden traces with rollback, the full lab):
 
 1. A `bn6` module in nettai-battle: `GameVersion`, `Unlocks`, berserk.rs, beast_rush.rs, cross_change.rs,
@@ -512,7 +512,7 @@ the full set once: build, tests, content check, both golden traces with rollback
 
 The risk is low (moves only) but the diff is wide, so it conflicts with branches in flight: do it in a quiet
 moment, with a script other branches can run, as for the rename. **Don't do yet:** the `Ruleset` trait, the crate
-split, generalising NaviStats or the navi framework's branches. Their shape should come from BN5's routines.
+split, generalizing NaviStats or the navi framework's branches. Their shape should come from BN5's routines.
 
 ### 4.2 When a second game is chosen, before writing its rules
 
@@ -545,7 +545,7 @@ split, generalising NaviStats or the navi framework's branches. Their shape shou
   framework routines the map shows differ. Perhaps 4,000 to 8,000 lines.
 - **content/bn5**: the chips, Program Advances, the twelve souls (forms with weapons and charged chips), navi
   chips, team navis, stages, rule sections, roles. BN6's is 82,000 lines; BN5's might be 50,000 to 70,000, much of
-  it adapted from BN6's modules where traces show the same behaviour.
+  it adapted from BN6's modules where traces show the same behavior.
 
 All told, roughly half to two thirds of the BN6 effort: the framework, the formats, the tools and the process
 exist.
@@ -565,20 +565,20 @@ NaviStats-like layout), so BN5's seams should fit it with less new work. The sam
 | `NaviStats::version` ("0 Gregar, 1 Falzar") | setup.rs | BN6's field of BN6's NaviStats. |
 | `NaviForms { gregar, falzar }`, `FormData::game` | content/navis.rs | Forms by version, keyed by the game's versions. |
 | `Unlocks { crosses, beast_out, beast_out_sealed }`, `screen::CROSSES` | custom/mod.rs, custom/screen.rs | BN6's. |
-| `GREGAR_OVER_GLOW`, `FALZAR_OVER_GLOW` | kinds/player/mod.rs | BN6 data in Rust; content (the Beast Over form's glow). |
+| `GREGAR_OVER_GLOW`, `FALZAR_OVER_GLOW` | kinds/player/mod.rs | BN6 data in Rust; content (the Beast Over form's glow). Done: the forms' `glow` (rules-in-Luau S3). |
 | `Supports`, `SpTimes` | setup.rs | BN6's (supports perhaps BN5's too, §2.3). |
 | `FadeMode::{BeastOut, BeastOutBack, Mode1Transform*}` | battle.rs | BN6's fade table values; the fade table is per game. |
 | `actor::request::{CROSS_*, SELECT_SPECIAL, MODE9_A}` | actor.rs | BN6's request bits. |
 | `ChipFamily`, `ChipTraits`, `ExtraChipFlags::{RUSH_CANCELS, FREE_SLOT_IN}` | content/chips.rs | BN6's families and special cases. |
 | `Registry::Lockon`, `Rules::lockon`, `Rules::berserk`, `Rules::cross_special`, `Rules::sp_*` | nettai-content-api, content/rules.rs | BN6's. |
 | Roles such as `gregar_roar`, `falzar_roar`, `beast_over_*`, `cross_death`, `beast_claw` | content/roles.rs, rules/roles.luau | BN6's role set; roles become per game. |
-| `ActorField::{BeastLockon, BeastOutSpent}`, `NaviState::Cross*`, `SideSpecial`, `Emotion` | nettai-content-api api.rs, core.d.luau | BN6's API extension (§3.6). |
-| The engine kinds' keys `engine/lockon-marker`, `engine/cross-merge`, `engine/beast-over-burst`, `engine/afterimage` | kinds/mod.rs | BN6's kinds; their keys could say so (`engine/bn6/...`), which compat's kinds.toml would follow. |
+| `ActorField::{BeastLockon, BeastOutSpent}` (`BeastLockon` the framework's `Wrapped` since rules-in-Luau S3), `NaviState::Cross*`, `SideSpecial`, `Emotion` | nettai-content-api api.rs, core.d.luau | BN6's API extension (§3.6). |
+| The engine kinds' keys `engine/lockon-marker`, `engine/cross-merge`, `engine/beast-over-burst`, `engine/afterimage` | kinds/mod.rs | BN6's kinds; their keys could say so (`engine/bn6/...`), which compat's kinds.toml would follow. The marker, the burst and the afterimage are BN5's too: since rules-in-Luau S3, `engine/target-marker`, `engine/burst`, `engine/afterimage`. |
 | core.d.luau, types.d.luau | content/bn6 | The generic declarations belong to the engine (or a shared root); BN6's part stays in content/bn6. |
 | Pack formats `nettai-content/hud`, `nettai-content/custom` | nettai-content hud.rs, custom.rs | BN6's layouts under generic names. |
 | `BN6_LOAD_TIMES` | nettai-frontend main.rs | Not BN6's: already `NETTAI_LOAD_TIMES` since the rename. |
 | `BN6_RATCHET_LOWER` | content-model-v2.md (history) | Dead since the ratchet was deleted; leave the history. |
-| The default pack path `data/content/bn6`, `root::bn6()` as the frontend's default | nettai-frontend, nettai-content | BN6's defaults; fine while BN6 is the only game. A `--game` choice later. |
+| The default pack path `data/content/bn6`, BN6 as the frontend's default game (`nettai_match::DEFAULT_GAME`) | nettai-frontend, nettai-content | BN6's defaults; fine while BN6 is the only game. A `--game` choice later. |
 | docs/engine | docs | BN6's reverse-engineering record (275 files cite it). Keep it in place and say so, or move it to docs/bn6 when a second game's docs arrive (one mechanical commit). |
 
 ### 5.2 What stays BN6's
@@ -589,8 +589,9 @@ NaviStats-like layout), so BN5's seams should fit it with less new work. The sam
 - **netplay's `bn6` module** and `Bn6Input`, by the user's decision. Note: in substance it is the engine's input
   adapter (buttons plus `TickEvents`), with nothing of BN6's in it; worth renaming when the ruleset seam lands, if
   a second game's input record is the same.
-- **BN6_PACK** (deprecated: the frontend finds every pack in `NETTAI_PACKS`), **BN6_CONTENT, BN6_COMPAT** and the
-  **BN6_LAB_*** variables: they select BN6's pack, content root, compat and lab.
+- **BN6_PACK** (deprecated: the frontend finds every pack in `NETTAI_PACKS`), **BN6_COMPAT** and the **BN6_LAB_***
+  variables: they select BN6's pack, compat and lab (the content directory, every game's, is `$NETTAI_CONTENT` since
+  rules-in-luau.md's R4).
 - **The bn6battle-verify workspace**: BN6's oracle, traces and chip lab.
 - **docs/engine**'s content (wherever it ends up), and the BN6-only modules once they are behind the `bn6`
   boundary.

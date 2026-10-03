@@ -26,6 +26,7 @@ local statuses = require("./status")
 local swords = require("../lib/swords")
 
 return define.roles {
+    id = "bn5:roles",
     actions = {
         -- The charged shot a navi's request starts from idle without its weapon's setup (BN6's action, BN5's
         -- 0x1E: the same code but for the flash's attachment row).
@@ -34,7 +35,7 @@ return define.roles {
         -- 0x48: AntiDmg's and AntiSwrd's, BN6's code; AntiSwrd's swinging BN5's blade and throwing BN5's sonic
         -- booms, lib/swords).
         anti_damage_counter = antidmg_counter.action,
-        anti_sword_counter = antiswrd_counter.action_with("antiswrd/counter", swords.blade, swords.sonic_boom),
+        anti_sword_counter = antiswrd_counter.action_with("bn5:antiswrd/counter", swords.blade, swords.sonic_boom),
     },
     kinds = {
         -- AntiRecv's counterattack, which a heal meets when the other side has AntiRecv armed (BN6's code).
@@ -69,7 +70,7 @@ return define.roles {
         -- field and 32 up: the engine's, §15.3.)
         trap_mark = effects.trap_mark,
         -- The splash of a body a sea panel holds at a move's end (effect 0x63: 0x0801715E).
-        panel_splash = define.effect { sprite = asset.sprite("splash"), anim = 0, palette = 0 },
+        panel_splash = define.effect { sprite = asset.sprite("bn5:splash"), anim = 0, palette = 0 },
     },
     collision = {
         -- A navi's body, its body when it floats, and what it reacts to.
@@ -86,72 +87,72 @@ return define.roles {
     },
     sounds = {
         -- A panel cracks or breaks; a panel turns to poison.
-        panel_crack = asset.sound("panel-crack"),
-        panel_poison = asset.sound("panel-poison"),
+        panel_crack = asset.sound("bn5:panel-crack"),
+        panel_poison = asset.sound("bn5:panel-poison"),
         -- A navi hit, as its own player hears it and as the other does; an object taking damage; a
         -- blocked hit; a counter hit; a navi deleted.
-        own_hit = asset.sound("own-hit"),
-        hit = asset.sound("hit"),
-        damage = asset.sound("damage"),
-        guard = asset.sound("guard-hit"),
-        counter_hit = asset.sound("counter-hit"),
-        deleted = asset.sound("deleted"),
+        own_hit = asset.sound("bn5:own-hit"),
+        hit = asset.sound("bn5:hit"),
+        damage = asset.sound("bn5:damage"),
+        guard = asset.sound("bn5:guard-hit"),
+        counter_hit = asset.sound("bn5:counter-hit"),
+        deleted = asset.sound("bn5:deleted"),
         -- HP recovered; a chip's damage bonus as it is used.
-        recovery = asset.sound("heal"),
-        damage_bonus = asset.sound("damage-bonus"),
+        recovery = asset.sound("bn5:heal"),
+        damage_bonus = asset.sound("bn5:damage-bonus"),
         -- The battle pauses and resumes; the custom gauge fills; the low-HP alarm.
-        pause = asset.sound("pause"),
-        gauge_full = asset.sound("gauge-full"),
-        low_hp = asset.sound("low-hp"),
+        pause = asset.sound("bn5:pause"),
+        gauge_full = asset.sound("bn5:gauge-full"),
+        low_hp = asset.sound("bn5:low-hp"),
         -- A side cuts in, a trap springs; a telop shows.
-        cut_in = asset.sound("dimming-sparkle"),
-        telop = asset.sound("telop"),
+        cut_in = asset.sound("bn5:dimming-sparkle"),
+        telop = asset.sound("bn5:telop"),
         -- The buster starts charging, and is charged.
-        buster_charge = asset.sound("buster-charge"),
-        buster_charged = asset.sound("buster-charged"),
+        buster_charge = asset.sound("bn5:buster-charge"),
+        buster_charged = asset.sound("bn5:buster-charged"),
         -- Confusion's stars.
-        confusion = asset.sound("confusion"),
+        confusion = asset.sound("bn5:confusion"),
         -- A navi turns invisible, shows again (or enters), arrives mid-battle; something goes.
-        invisible = asset.sound("invisible"),
-        appear = asset.sound("appear"),
-        arrive = asset.sound("point-appear"),
-        fade = asset.sound("fade"),
+        invisible = asset.sound("bn5:invisible"),
+        appear = asset.sound("bn5:appear"),
+        arrive = asset.sound("bn5:point-appear"),
+        fade = asset.sound("bn5:fade"),
         -- A thrown obstacle lifted, and flying.
-        obstacle_lift = asset.sound("point-rise"),
-        obstacle_throw = asset.sound("etomahwk"),
+        obstacle_lift = asset.sound("bn5:point-rise"),
+        obstacle_throw = asset.sound("bn5:etomahwk"),
         -- SELECT with too little gauge, and what can't be picked or taken back on the custom screen.
-        refused = asset.sound("cant-jack-in"),
+        refused = asset.sound("bn5:cant-jack-in"),
         -- The custom screen's: the window slides in; the cursor moves; SELECT hides and shows the window; a
         -- pick, OK, a pick taken back; L's no-running message; R's description opens and closes; the
         -- Program Advance animation's chips of the recipe and the Program Advance.
-        custom_open = asset.sound("select-79"),
-        custom_cursor = asset.sound("menu-cur-move"),
-        custom_hide = asset.sound("cur-move-80"),
-        custom_pick = asset.sound("menu-select"),
-        custom_ok = asset.sound("select-82"),
-        custom_back = asset.sound("exit-submenu"),
-        custom_run_message = asset.sound("unselect-7b"),
-        custom_description = asset.sound("description-open"),
-        custom_description_close = asset.sound("description-close"),
-        program_advance_part = asset.sound("err-select-91"),
-        program_advance = asset.sound("delta-ray-2"),
+        custom_open = asset.sound("bn5:select-79"),
+        custom_cursor = asset.sound("bn5:menu-cur-move"),
+        custom_hide = asset.sound("bn5:cur-move-80"),
+        custom_pick = asset.sound("bn5:menu-select"),
+        custom_ok = asset.sound("bn5:select-82"),
+        custom_back = asset.sound("bn5:exit-submenu"),
+        custom_run_message = asset.sound("bn5:unselect-7b"),
+        custom_description = asset.sound("bn5:description-open"),
+        custom_description_close = asset.sound("bn5:description-close"),
+        program_advance_part = asset.sound("bn5:err-select-91"),
+        program_advance = asset.sound("bn5:delta-ray-2"),
     },
     music = {
         -- A link battle's, whatever its stage's.
-        link_battle = asset.sound("virus-battle"),
+        link_battle = asset.sound("bn5:virus-battle"),
         -- The winner's (in special battles, and otherwise) and the loser's.
-        winner_special = asset.sound("winner-0"),
-        winner = asset.sound("winner-1"),
-        loser = asset.sound("loser"),
+        winner_special = asset.sound("bn5:winner-0"),
+        winner = asset.sound("bn5:winner-1"),
+        loser = asset.sound("bn5:loser"),
     },
     sprites = {
         -- The charge glow of a B charge.
-        charge_glow = asset.sprite("charge-glow"),
+        charge_glow = asset.sprite("bn5:charge-glow"),
         -- The status visuals over a navi (0x080E08EC, BN6's `byte_80E08E4`): confusion's stars and blindness (BN6's
         -- numbers) and the immobilized one (10-2d, BN6's 10-00).
-        confusion = asset.sprite("confusion"),
-        blindness = asset.sprite("blindness"),
-        immobilized = asset.sprite("immobilized"),
+        confusion = asset.sprite("bn5:confusion"),
+        blindness = asset.sprite("bn5:blindness"),
+        immobilized = asset.sprite("bn5:immobilized"),
     },
     hooks = {
         -- The first barrier: the navi enters with the barrier its stats name (FstBarr's, BN6's code), and its
@@ -165,17 +166,17 @@ return define.roles {
     },
     banners = {
         -- A round's start (the battle's number), a turn's, the final turns'.
-        round_start = asset.banner("battle-number-start"),
-        turn_start = asset.banner("turn-start"),
-        final_turn = asset.banner("final-turn"),
+        round_start = asset.banner("bn5:battle-number-start"),
+        turn_start = asset.banner("bn5:turn-start"),
+        final_turn = asset.banner("bn5:final-turn"),
         -- A draw; the damage judge's.
-        draw = asset.banner("draw"),
-        judge = asset.banner("hit-damage-judge"),
+        draw = asset.banner("bn5:draw"),
+        judge = asset.banner("bn5:hit-damage-judge"),
         -- A telop on the local player's side, and on the other's.
-        telop = asset.banner("telop"),
-        telop_remote = asset.banner("telop-remote"),
+        telop = asset.banner("bn5:telop"),
+        telop_remote = asset.banner("bn5:telop-remote"),
         -- A Program Advance, and a selection that makes none.
-        program_advance = asset.banner("program-advance"),
-        program_advance_empty = asset.banner("program-advance-empty"),
+        program_advance = asset.banner("bn5:program-advance"),
+        program_advance_empty = asset.banner("bn5:program-advance-empty"),
     },
 }

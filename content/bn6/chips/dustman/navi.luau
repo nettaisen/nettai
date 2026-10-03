@@ -22,10 +22,10 @@ export type State = {
     controller: Object?,
 }
 
-local SPRITE = asset.sprite("dustman")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_TAKE = asset.sound("dustbrk")
-local SOUND_THROW = asset.sound("junk-shot")
+local SPRITE = asset.sprite("bn6:dustman")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_TAKE = asset.sound("bn6:dustbrk")
+local SOUND_THROW = asset.sound("bn6:junk-shot")
 
 -- The controller calls his spawner through r3, which his position takes:
 -- its address with the Thumb bit, whose fraction his Z keeps.
@@ -163,7 +163,7 @@ end
 local ACTIONS = { [APPEAR] = appear, [TAKE] = suck, [WIND_UP] = wind_up, [THROW] = throw, [LEAVE] = leave }
 
 dustman.kind = define.kind {
-    id = "dustman/navi",
+    id = "bn6:dustman/navi",
     pool = "actor",
     state = { taken = "identity[8]", count = "u8", thrown = "u8", controller = "object" },
     -- `sub_80BBF0C`.

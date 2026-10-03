@@ -5,7 +5,7 @@ use super::chatbox::Script;
 use super::library::testing::{EVERY_CODE, TestLibrary, chip};
 use super::screen::{OK_SLOT, SPECIAL_SLOT};
 use super::*;
-use crate::content::{ChipClass, ChipCode, ChipFlags};
+use crate::content::{ButtonHandle, ChipClass, ChipCode, ChipFlags};
 use crate::custom::library::testing::ChipId;
 use crate::input::keys;
 use nettai_content_api::{ChipHandle, FormHandle};
@@ -47,6 +47,46 @@ fn folder(chips: &[(ChipId, u8)]) -> BattleFolder {
     f
 }
 
+/// BN6's scrap and re-deal buttons (its cross and navicust systems', in
+/// Luau), in Rust for the screen's own tests: button 0 the scrap, 1 the
+/// re-deal, two wide on slots 8 and 9.
+struct TestButtons {
+    scrap: bool,
+    redeal: bool,
+}
+
+impl Extras for TestButtons {
+    fn hand_size(&mut self) -> Option<u8> {
+        None
+    }
+
+    fn buttons(&mut self, _: &Screen) -> Vec<ButtonPlace> {
+        let place = |b| ButtonPlace { button: ButtonHandle(b), slot: 8, cells: 2, uses: 1, right: Some(11), left: Some(7) };
+        if self.scrap {
+            vec![place(0)]
+        } else if self.redeal {
+            vec![place(1)]
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn button_state(&mut self, screen: &Screen, b: ButtonHandle) -> Option<SlotState> {
+        (b.0 == 0).then(|| if screen.last_pick_is_chip() { SlotState::Selectable } else { SlotState::Unavailable })
+    }
+
+    fn button_pressed(&mut self, screen: &mut Screen, _: &mut BattleFolder, b: ButtonHandle) {
+        let slot = screen.cursor_button_slot().expect("a button under the cursor");
+        if screen.slots[slot as usize].state != SlotState::Selectable {
+            screen.refuse();
+        } else if b.0 == 0 {
+            screen.start_sacrifice(slot);
+        } else {
+            screen.start_redeal(slot);
+        }
+    }
+}
+
 /// A player's side with this folder, and what their screen reads.
 struct Player {
     side: Side,
@@ -76,11 +116,20 @@ impl Player {
         }
     }
 
+    /// BN6's buttons as its systems would show them.
+    fn buttons(&self) -> TestButtons {
+        let megaman = self.lib.changes_form(self.stats.navi);
+        TestButtons {
+            scrap: megaman && self.lib.form_traits(self.stats.form).has(crate::content::FormTraits::SCRAP_BUTTON),
+            redeal: megaman && self.stats.chip_shuffle,
+        }
+    }
+
     fn open(&mut self) {
         let ctx = self.context();
         let mut side = self.side.clone();
         let mut console = self.console;
-        side.open(&ctx, &mut console);
+        side.open_with(&ctx, &mut console, &mut self.buttons());
         self.side = side;
         self.console = console;
     }
@@ -92,7 +141,7 @@ impl Player {
         let ctx = self.context();
         let mut side = self.side.clone();
         let mut console = self.console;
-        let r = side.tick(&ctx, &mut console, |id| self.lib.chip(id).damage);
+        let r = side.tick_with(&ctx, &mut console, |id| self.lib.chip(id).damage, &mut self.buttons());
         self.side = side;
         self.console = console;
         r
@@ -209,7 +258,7 @@ fn picks_share_a_code_or_a_chip() {
     p.press(keys::RIGHT);
     p.press(keys::A);
     assert_eq!(states(&p), [Selected, Unavailable, Selectable, Selected, Unavailable]);
-    // A on a greyed chip does nothing; B takes back the last pick.
+    // A on a grayed chip does nothing; B takes back the last pick.
     p.press(keys::RIGHT);
     p.press(keys::A);
     assert_eq!(p.screen().selection(), [0, 3]);
@@ -291,7 +340,7 @@ fn a_cross_from_the_window() {
     }
     assert_eq!(p.tick, a + 34);
     assert_eq!(p.screen().crosses.chosen, Some(1));
-    // A chosen Cross greys out Beast Out.
+    // A chosen Cross grays out Beast Out.
     assert_eq!(p.screen().slots[SPECIAL_SLOT as usize].state, SlotState::Unavailable);
     p.press(keys::START);
     p.press(keys::A);
@@ -458,7 +507,7 @@ fn dust_cross_scraps_the_picks() {
     let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)], GameVersion::Falzar);
     p.stats.form = library::testing::DUST_CROSS;
     p.open();
-    assert!(matches!(p.screen().slots[8].kind, SlotKind::Scrap { right_half: false }));
+    assert!(matches!(p.screen().slots[8].kind, SlotKind::Button { button: ButtonHandle(0), cell: ButtonCell::Left }));
     p.wait(10);
     p.step(0);
     p.press(keys::A);
@@ -562,7 +611,7 @@ fn chip_shuffle_redeals_what_is_not_picked() {
     p.stats.chip_shuffle = true;
     p.console = Console::new(&ConsoleSetup { rng: 0x1234_5678, ..ConsoleSetup::default() });
     p.open();
-    assert!(matches!(p.screen().slots[8].kind, SlotKind::Redeal { right_half: false }));
+    assert!(matches!(p.screen().slots[8].kind, SlotKind::Button { button: ButtonHandle(1), cell: ButtonCell::Left }));
     p.wait(10);
     p.step(0);
     p.press(keys::A);

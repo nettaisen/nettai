@@ -7,7 +7,7 @@
 -- flies straight ahead, turning (its homing: "diagonal" toward the enemy
 -- navi on a diagonal, "seeking" toward an enemy navi one or two panels up
 -- or down the slant ahead, picked at random) to run diagonally, a panel
--- every few ticks, after crossing its panel's centre. It bursts where the
+-- every few ticks, after crossing its panel's center. It bursts where the
 -- floor ends or it leaves the field. A seeking one leaves an afterimage
 -- every 6 ticks. It runs while dimmed. What it is spawned with is a
 -- `DarkBall` (types.d.luau; the original's Param1 to Param3). See
@@ -36,8 +36,8 @@ export type State = {
     turn: number,
 }
 
-local SPRITE = asset.sprite("bass-anly-shot")
-local SOUND_BASS_ANLY_SHOT = asset.sound("bass-anly-shot")
+local SPRITE = asset.sprite("bn6:bass-anly-shot")
+local SOUND_BASS_ANLY_SHOT = asset.sound("bn6:bass-anly-shot")
 
 -- Its first stretch: the kick back, and the push forward a tick while it
 -- lasts (16.16).
@@ -162,7 +162,7 @@ local function speed(t: { [number]: number }, level: number, name: string): numb
 end
 
 -- The turn: up or down the slant at `vy` and forward, a panel every few
--- ticks after the next centre (5 to the first).
+-- ticks after the next center (5 to the first).
 local function turn(me: Object, vy: number)
     local s = me.state :: State
     me.vel = Vec3.new(int.mul32(me.facing, speed(TURN_X, s.level, "byte_80DD6D0")), vy, me.vel.z)
@@ -246,7 +246,7 @@ local function start(me: Object)
     check_floor(me)
 end
 
--- `sub_80DD4E8`: straight ahead; after a panel's centre with a turn
+-- `sub_80DD4E8`: straight ahead; after a panel's center with a turn
 -- pending, the diagonal run; else the floor and its homing.
 local function ahead(me: Object)
     trail(me)
@@ -325,7 +325,7 @@ local function bursting(me: Object)
 end
 
 shot.kind = define.kind {
-    id = "bassanly/shot",
+    id = "bn6:bassanly/shot",
     pool = "attack",
     state = {
         hit_panel = "u32",

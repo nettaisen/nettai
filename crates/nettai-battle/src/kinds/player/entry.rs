@@ -40,7 +40,7 @@ fn appear(b: &mut Battle, r: ObjectRef) {
             let o = b.objects.get_mut(r);
             o.timer = 0x14;
             o.timer2 = 0x1E;
-            // (A white colour shader: presentation.)
+            // (A white color shader: presentation.)
             set_invulnerable(b, r, 0xFFFF);
             let pos = b.objects.get(r).pos;
             flash(b, pos, APPEAR_LOOK);
@@ -63,7 +63,7 @@ fn appear(b: &mut Battle, r: ObjectRef) {
             if o.timer2 != 0 {
                 return show(b, r);
             }
-            // (The colour shader goes.)
+            // (The color shader goes.)
             o.phase = 8;
             o.phase_init = 0;
         }
@@ -92,7 +92,7 @@ fn flash(b: &mut Battle, pos: crate::object::Vec3, look: EffectRole) {
     }
 }
 
-/// `loc_801655A`: the navi shows (in the fading colour shader).
+/// `loc_801655A`: the navi shows (in the fading color shader).
 fn show(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).set_visible(true);
 }
@@ -173,8 +173,8 @@ fn show_hp_number(b: &mut Battle, r: ObjectRef) {
 /// Action 1, `sub_8017888`: hand over to the idle controller (spawning
 /// the Beast Out lock-on marker in the battle flag 0x40 mode).
 pub(super) fn take_control(b: &mut Battle, r: ObjectRef) {
-    if per_player_gauges(b) && navi_record(b, r).actor_type == ActorType::Player && ai(b, r).lockon_marker.is_none() {
-        crate::kinds::lockon_marker::spawn(b, r);
+    if per_player_gauges(b) && navi_record(b, r).actor_type == ActorType::Player && ai(b, r).target_marker.is_none() {
+        crate::kinds::target_marker::spawn(b, r);
     }
     set_action(b, r, NaviAction::Idle);
 }

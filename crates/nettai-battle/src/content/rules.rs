@@ -69,6 +69,61 @@ pub struct ChipUseRules {
     pub anti_navi_sparkle: SparkleOffset,
 }
 
+/// The rule section `effects` (docs/design/bn5-map.md §15.3 items 15 and
+/// 16), the arena's: the battle's shared effects where a game's touch the
+/// simulation otherwise than BN6's.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EffectsRules {
+    /// What the camera shake draws its jitter from.
+    #[serde(default)]
+    pub shake: ShakeRule,
+    /// A hit spark steps its sprite once as it starts (BN6's
+    /// `sub_80E0864`); BN5's (0x080E0870) doesn't, so it lasts a tick
+    /// longer.
+    #[serde(default = "yes")]
+    pub spark_steps_at_start: bool,
+}
+
+impl Default for EffectsRules {
+    /// BN6's.
+    fn default() -> EffectsRules {
+        EffectsRules { shake: ShakeRule::default(), spark_steps_at_start: true }
+    }
+}
+
+/// How the camera shakes (`camera_doShakeEffect_80301e8`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ShakeRule {
+    /// BN6's: each console's camera draws from its own RNG1, on two
+    /// channels (the primary and the secondary, `sub_80302B6`).
+    #[default]
+    Console,
+    /// BN5's (0x08030D78): one channel, its jitter two draws from the
+    /// battle's RNG2 each shaking tick, the shake held (and nothing drawn)
+    /// while the battle is paused without dimming.
+    Battle,
+}
+
+/// The speed of a navi's slides (ice, roads, BN5's metal: `sub_8016730`)
+/// and drags (a push: `sub_80178D4`), 16.16 pixels a tick across and in
+/// depth.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SlideSpeed {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl Default for SlideSpeed {
+    /// BN6's: 10 pixels across, 6 in depth (BN5's 8: 0x0801361E and
+    /// 0x080143A8).
+    fn default() -> SlideSpeed {
+        SlideSpeed { x: 0xA_0000, y: 0x6_0000 }
+    }
+}
+
 /// A sparkle's place from a panel's center, in pixels.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -106,6 +161,10 @@ pub struct Rules {
     pub holding_banners: Vec<BannerId>,
     /// The HP bug's drain period by bug level.
     pub hp_bug_periods: [u8; 8],
+    /// BN6's per-form tick runs (`off_80EA93C`: `sub_80F0608`, MegaMan's
+    /// and ChargeMan's: the Fire chips' charge, a form's height); BN5's
+    /// table (0x080EB1E8) has none of it (rule section `status`).
+    pub form_tick: bool,
     /// What the charge rules read for an empty hand's chip.
     pub empty_hand: EmptyHandChip,
     /// Ticks of recovery after a buster shot, by Rapid stat, then by open
@@ -133,6 +192,8 @@ pub struct Rules {
     pub push_reading: PushReading,
     /// Ice slides by the direction the navi last moved.
     pub ice_vectors: [SlideVector; 6],
+    /// How fast a navi slides and is dragged (the reactions section's).
+    pub slide_speed: SlideSpeed,
     /// A bubbled navi's height, by bubble timer.
     pub bubble_bob: [i8; 32],
     pub lockon: Lockon,
@@ -140,6 +201,9 @@ pub struct Rules {
     /// The battle's flow where a game's differs (rule section `flow`, the
     /// arena's game's).
     pub flow: FlowRules,
+    /// The battle's shared effects where a game's differ (rule section
+    /// `effects`, the arena's game's).
+    pub effects: EffectsRules,
     /// How a chip's use runs, by the chip's game (rule section `chip-use`;
     /// docs/design/rules-in-luau.md §7.5: a chip runs as its game wrote
     /// it).
@@ -186,7 +250,7 @@ impl NaviCustRules {
         self.boards.get(expansions as usize)
     }
 
-    /// Whether a program of `shape` can be placed with its centre at
+    /// Whether a program of `shape` can be placed with its center at
     /// `(x, y)` on `board` (BN6's `sub_813BB00`): every cell it covers is a
     /// cell of the board or its frame, and not all of them the frame.
     pub fn fits(board: &Board, shape: &crate::navicust::Shape, x: u8, y: u8) -> bool {
@@ -295,7 +359,7 @@ impl PanelRules {
 }
 
 /// What one panel type is, and what it does (docs/design/bn5-map.md
-/// §15.2; the behaviours are the engine's, keyed by the panel type, their
+/// §15.2; the behaviors are the engine's, keyed by the panel type, their
 /// numbers the game's).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PanelTypeRule {

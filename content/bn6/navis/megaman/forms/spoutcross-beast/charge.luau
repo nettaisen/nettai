@@ -21,7 +21,7 @@ local WIND_UP, HOLD = 0x0, 0x4
 -- Aqua (the attack's element) and the hits' counter byte.
 local AQUA, HIT_PARAM = 2, 0x86
 
-local SOUND_SURGE, SOUND_WATER = asset.sound("spout-beast-charge"), asset.sound("aqua-surge")
+local SOUND_SURGE, SOUND_WATER = asset.sound("bn6:spout-beast-charge"), asset.sound("bn6:aqua-surge")
 
 -- The surge: 60 ticks, its region back every 12.
 local SURGE: AquaSurge = { ticks = 0x3C, beat = 0x0C }
@@ -71,7 +71,7 @@ local function hold(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "spoutcross-beast/charge/action",
+    id = "bn6:spoutcross-beast/charge/action",
     state = { timer = "u16" },
     -- `sub_80EDE7E`.
     update = function(me: Object, s: State)
@@ -87,7 +87,7 @@ charge.action = define.action {
 }
 
 charge.weapon = define.weapon {
-    id = "spoutcross-beast/charge",
+    id = "bn6:spoutcross-beast/charge",
     -- The charge table's row 8, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 20, 20, 20, 20, 20, 110, 110, 110 },

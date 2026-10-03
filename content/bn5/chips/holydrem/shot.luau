@@ -8,8 +8,8 @@ local sparks = require("../../lib/sparks")
 
 local shot = {}
 
-local SPRITE = asset.sprite("holy-dream-shot")
-local SOUND = asset.sound("energy-burst")
+local SPRITE = asset.sprite("bn5:holy-dream-shot")
+local SOUND = asset.sound("bn5:energy-burst")
 -- 16.16 pixels a tick; the wait before it moves.
 local SPEED, WAIT = 0x5_0000, 10
 local HIT_MOD = 3
@@ -92,7 +92,7 @@ local function init(me: Object)
 end
 
 shot.kind = define.kind {
-    id = "holydrem/shot",
+    id = "bn5:holydrem/shot",
     pool = "attack",
     -- 0x080D6A60.
     update = function(me: Object)

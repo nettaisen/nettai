@@ -37,7 +37,7 @@ recordings ended that way (completeness.md §10 has the list by template):
 - seven Program Advance recordings and a few hand-written scenarios that end on a cut-in chip.
 
 The engine matched all 670, and 362 of them were `ok` in the lab's index. That match covered the chip's use and
-the telop's first frames. It did not cover the chip's attack, its hits, its panels, its behaviour on a stage,
+the telop's first frames. It did not cover the chip's attack, its hits, its panels, its behavior on a stage,
 against an obstacle, in Beast Out or in a Cross, or its damage with Atk+10 and Navi+20. Before the fix those were
 verified only where a scenario waited on its own: this survey's scenarios (the tables below name them) and the
 templates in which the other side acts (`counter`, `guard`, `barrier`, `invisible`).
@@ -431,7 +431,7 @@ recording's setup.
 | Branch | Scenarios | Result |
 |---|---|---|
 | Each of the 46 programs' effects, on the command line or as a plus part (`navicust_jt_NCPs`), and the clamps after them | `navicust/*`, `navicust-compile/gigfldr1`, `collect-millions`, `battery-jungle` and the chip and form scenarios with NaviCusts (1,274 sides, 167 with programs) | match |
-| The bugs counted: plus parts and programs on and off the command line, same-coloured neighbours (the neighbour's group), five and six colours, the frame | the same, 112 with the bug flag; `navicust-compile/bug-result`, `bug-encounter` | match |
+| The bugs counted: plus parts and programs on and off the command line, same-colored neighbors (the neighbor's group), five and six colors, the frame | the same, 112 with the bug flag; `navicust-compile/bug-result`, `bug-encounter` | match |
 | Every bug group a program brings, at each level the lab reaches; BugStop clearing them | the same | match |
 | One exclusive group twice on the command line (the rightmost works) | `navicust-compile/exclusive-guard`, `battery-jungle` | match |
 | Compressed shapes (the save's flag 0x2660 + part id) | every scenario above (the base saves set every flag) | match |
@@ -442,11 +442,11 @@ recording's setup.
 | Branch | Why |
 |---|---|
 | A program that works anywhere (the part table's +1 = 2) | No BN6 part is one. |
-| Bug group 10 (`unread`, NaviStats+0x62) | No part has the group and no colour count brings it; nothing reads the stat. |
+| Bug group 10 (`unread`, NaviStats+0x62) | No part has the group and no color count brings it; nothing reads the stat. |
 | Bug groups 13 to 15 | No part has one; the original's bug table would read past its end. |
 | The smaller boards (4x4 and 5x4, key item 0x71 below 2), and a program on the frame of one | Every save the lab has is fully expanded; a match file can name a smaller board (`expansions`). |
 | Overlapping programs (a later program's cell over an earlier one's) | The game's own placing refuses them, and so do a match's checks and the editor. |
-| An uncompressed program on a save whose flag compresses it | The engine compiles a placed program as the setup says. A save keeps one flag for each program and colour, and the original reads that flag. A match file keeps the copies of a program in one colour the same. |
+| An uncompressed program on a save whose flag compresses it | The engine compiles a placed program as the setup says. A save keeps one flag for each program and color, and the original reads that flag. A match file keeps the copies of a program in one color the same. |
 
 ## Ruleset
 
@@ -508,7 +508,7 @@ alone, which no recording showed, since every earlier Falzar Beast Over navi had
 | The Gregar forms' own busters and charge shots, and their weakness knock-outs with the flinch (re-recorded without the save's programs); the Gregar Giga chips' users hit back by a Reflector or a MiniBomb | `forms/gregar/base`, `beast`, `beast-over`, `cross-*`, `cross-*-beast`, `cross-*-weakness`; `chips/0x12d-bass`, `0x12e-bighook`, `0x12f-deltaray`, `0x130-colforce`, `0x131-bugrswrd` `/guard`, `/counter` | match |
 | Custom screen keys the lab had no recording of (the golden traces' dumps had them): SELECT hiding the window and a key bringing it back, B taking back picks, the Cross window closed with B, DustCross's scrap (two and three picked chips scrapped, the hand refilled) | `custom/hide-window`, `take-back`, `cross-window-close`, `dust-scrap` | match |
 | Uninstll after a damaging chip that dims (Roll): the builder's second flag test, so two chips | `custom/modifier-uninstll-dimming` | matches |
-| The worse status bug (six colours) and the emotion bug in Beast Out (no swings in a form) | `navicust/bug-status-6`, `bug-emotion-beast` | match |
+| The worse status bug (six colors) and the emotion bug in Beast Out (no swings in a form) | `navicust/bug-status-6`, `bug-emotion-beast` | match |
 | The chatbox the custom screen waits on (custom-screen.md §3.5): the tick a description takes keys from, by its text's lines (Cannon R+8, Recov10 R+7, the invalid chip R+6, a Cross R+8); B held; the L message's printing, rushed by A or held B, for MegaMan and all eleven link navis | `custom/description-arm-*`, `description-invalid-*`, `description-cross-*`, `description-b-held-12`, `-30`, `description-keys`, `run-message`, `-b`, `-wait`, `-taps-0`, `-taps-1`, `-b-held`, `run-message-navi-1` to `-11` and their `-wait` | match, since the chatbox's port (the engine took a description's key from R+6 whatever its lines, had no held B, and estimated the message at 72 ticks) |
 | The link navis' charged attacks (their action table's entry 9, weapon routines 0x40 to 0x45 and 0x47 to 0x4A; standard-chips.md, "Action 9") and ProtoMan's (0x32, WideSwrd's slash) and his B+Back Reflect (0x30): each twice, from the start panel and a row up, the opponent standing still | `navis/navi-01-heatpres` to `navi-11-stepswrd` | match |
 | BugRSwrd's and BgDthThd's charged shots (weapon routines 0x21 and 0x22, chips.md §3 subtype 38): with bug frags to spare (DrkSword's slash, the fast thunder ball: 200), with none (Sword's slash, Thunder's ball: 80, 40), with one for two shots (the frag spent, then the plain shot), hitting, out of reach, against the user's own RockCube, the turn after the chip, through a Cross change (the chip's weapon stays), and in Beast Out (the Beast buster gives way to the plain buster) | `chips/0x131-bugrswrd/charge-{hit,miss,obstacle,no-frags-hit,no-frags-miss,last-frag,next-turn,cross,beast}`, `chips/0x136-bgdththd/charge-{hit,moving,obstacle,no-frags-hit,last-frag,next-turn,beast}` | match |

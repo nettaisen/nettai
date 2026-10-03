@@ -117,7 +117,7 @@ pub struct ChatboxDoc {
 }
 
 /// The dialogue font: an indexed image of its glyphs (16x12 cells, 32 a
-/// row, palette index 0 clear; the palette only colours it for viewing),
+/// row, palette index 0 clear; the palette only colors it for viewing),
 /// each glyph's advance, and what each draws (as `font_chars`: the shared
 /// glyphs, then bytes 0xE0-0xE3 and the two-byte codes E4 00 on).
 #[derive(Serialize, Deserialize, Debug)]
@@ -135,7 +135,7 @@ const DIALOGUE_COLUMNS: usize = 32;
 fn dialogue_image(f: &DialogueFont) -> crate::image::Indexed {
     let (w, h) = (DialogueFont::WIDTH, DialogueFont::HEIGHT);
     let rows = f.len().div_ceil(DIALOGUE_COLUMNS);
-    // Clear, the face, the shade, then greys.
+    // Clear, the face, the shade, then grays.
     let palette = (0..16u8).map(|i| match i {
         0 => [255, 255, 255],
         1 => [0, 0, 0],

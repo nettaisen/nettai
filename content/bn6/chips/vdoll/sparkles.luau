@@ -24,7 +24,7 @@ local LENGTHS: { [number]: number } = { [0] = 0x20, [1] = 0x5A, [2] = 0x20, [3] 
 -- means a mask of 3 for length 0, but its test reads stale flags), jittered
 -- by up to 15 pixels and 16 pixels up.
 local MASK, JITTER, LIFT = 0xF, 0x1F, 0x10_0000
-local SOUND = asset.sound("hit-bomb-0")
+local SOUND = asset.sound("bn6:hit-bomb-0")
 
 -- `sub_80E1A0C`: count down; on the ticks the mask matches, the effect
 -- over the object.
@@ -49,7 +49,7 @@ local function sparkle(me: Object)
 end
 
 sparkles.kind = define.kind {
-    id = "vdoll/sparkles",
+    id = "bn6:vdoll/sparkles",
     pool = "effect",
     state = { length = "u8", effect = "effect", silent = "bool" },
     -- `sub_80E19BC`.

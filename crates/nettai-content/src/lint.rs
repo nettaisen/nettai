@@ -46,7 +46,7 @@ pub fn definitions(c: &Content, r: &mut Report) {
         }
         // The roles that name a definition of their registry, or an asset.
         use nettai_battle::content::{
-            BannerRole, CollisionRole, EffectRole, LockonRole, MusicRole, RegionRole, SoundRole, SparkRole, SpriteRole,
+            BannerRole, CollisionRole, EffectRole, MusicRole, RegionRole, SoundRole, SparkRole, SpriteRole,
             StatusRole,
         };
         let mut unfilled = |group: &str, name: &str, filled: bool| {
@@ -59,9 +59,6 @@ pub fn definitions(c: &Content, r: &mut Report) {
         let own = c.rules.get(i).map(|rules| &rules.panels.types[..]).unwrap_or(&[]);
         let needs_burn = own.iter().any(|t| t.named && t.burn.is_some());
         let needs_splash = own.iter().any(|t| t.named && t.holds.is_some());
-        for role in LockonRole::ALL {
-            unfilled("lockon", role.name(), roles.lockons.contains_key(&role));
-        }
         for role in StatusRole::ALL {
             unfilled("statuses", role.name(), roles.statuses.contains_key(&role));
         }
@@ -146,13 +143,15 @@ pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
     let mut out = Vec::new();
     for d in c.defs.definitions.of(Registry::Collision) {
         let root = nettai_content_api::keys::root_of(&d.key).unwrap_or_default();
-        let Some(manifest) = c.scripts.roots.iter().find(|m| m.name == root) else { continue };
         let tests = ["side0", "side1"].iter().any(|k| d.spec.field(k).int().is_some_and(|w| w & 0x80 != 0));
         if !tests {
             continue;
         }
         let field = format!("collision.{}", nettai_content_api::keys::local(&d.key).replace('-', "_"));
-        for required in &manifest.requires {
+        // (The other folders whose modules a module of the type's folder
+        // uses.)
+        for required in c.scripts.roots.iter().map(|r| r.name.clone()).filter(|n| n != root) {
+            let required = &required;
             let uses = format!("@{required}/");
             let prefix = format!("{root}{}", nettai_content_api::keys::SEPARATOR);
             for (name, text) in &c.scripts.modules {

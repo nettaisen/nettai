@@ -6,7 +6,7 @@
 local controller = require("@bn6/chips/grabbnsh/controller")
 
 return define.chip {
-    id = "grabbnsh",
+    id = "bn5:grabbnsh",
     codes = { "D", "L", "R" },
     element = "null",
     family = "null",

@@ -23,7 +23,7 @@ throw.STATE = { timer = "u16" }
 local THROW, PUT_AWAY = 0x0, 0x4
 -- The yoyo arm (the original's attachment row 0x0E), and how high the yoyo
 -- flies.
-local ARM = attachment.look { sprite = asset.sprite("yoyo-arm"), palette = 0, attach_point = 0x0F }
+local ARM = attachment.look { sprite = asset.sprite("bn6:yoyo-arm"), palette = 0, attach_point = 0x0F }
 local HEIGHT = 0x1B_0000
 
 -- A chip's throw: how its yoyos fly (a GreatYo's throws the controller);

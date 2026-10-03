@@ -4,333 +4,334 @@
 # colonel: what Team Colonel's record has where it differs from Team ProtoMan's (flags +0x09, extra_flags
 # +0x16); save_slot: an e-Reader card's chip, whose name, description and palette are the save's slot n.
 
-cannon = { id = 0x001, action = 0x14, subtype = 0 }
-hicannon = { id = 0x002, action = 0x14, subtype = 1 }
-m-cannon = { id = 0x003, action = 0x14, subtype = 2 }
-airshot = { id = 0x004, action = 0x1d, subtype = 0 }
-airhoc = { id = 0x005, action = 0x21, subtype = 0 }
-boomer = { id = 0x006, action = 0x1a, subtype = 1 }
-silence = { id = 0x007, action = 0x15, subtype = 27 }
-tornado = { id = 0x008, action = 0x22, subtype = 1 }
-widesht1 = { id = 0x009, action = 0x25, subtype = 0 }
-widesht2 = { id = 0x00a, action = 0x25, subtype = 0 }
-widesht3 = { id = 0x00b, action = 0x25, subtype = 0 }
-mrkcan1 = { id = 0x00c, action = 0x4e, subtype = 0 }
-mrkcan2 = { id = 0x00d, action = 0x4e, subtype = 1 }
-mrkcan3 = { id = 0x00e, action = 0x4e, subtype = 2 }
-vulcan1 = { id = 0x00f, action = 0x19, subtype = 0 }
-vulcan2 = { id = 0x010, action = 0x19, subtype = 1 }
-vulcan3 = { id = 0x011, action = 0x19, subtype = 2 }
-spreader = { id = 0x012, action = 0x18, subtype = 0 }
-thunder = { id = 0x013, action = 0x20, subtype = 0 }
-iceseed = { id = 0x014, action = 0x12, subtype = 9 }
-pulsar1 = { id = 0x015, action = 0x52, subtype = 0 }
-pulsar2 = { id = 0x016, action = 0x52, subtype = 0 }
-pulsar3 = { id = 0x017, action = 0x52, subtype = 0 }
-spshake1 = { id = 0x018, action = 0x51, subtype = 0 }
-spshake2 = { id = 0x019, action = 0x51, subtype = 0 }
-spshake3 = { id = 0x01a, action = 0x51, subtype = 0 }
-static = { id = 0x01b, action = 0x22, subtype = 2 }
-lifesync = { id = 0x01c, action = 0x15, subtype = 39 }
-minibomb = { id = 0x01d, action = 0x12, subtype = 0 }
-energbom = { id = 0x01e, action = 0x12, subtype = 1 }
-megenbom = { id = 0x01f, action = 0x12, subtype = 1 }
-gundels1 = { id = 0x020, action = 0x2f, subtype = 0 }
-gundels2 = { id = 0x021, action = 0x2f, subtype = 1 }
-gundels3 = { id = 0x022, action = 0x2f, subtype = 2 }
-quake1 = { id = 0x023, action = 0x12, subtype = 11 }
-quake2 = { id = 0x024, action = 0x12, subtype = 11 }
-quake3 = { id = 0x025, action = 0x12, subtype = 11 }
-crakbom = { id = 0x026, action = 0x12, subtype = 10 }
-parabom = { id = 0x027, action = 0x12, subtype = 10 }
-resetbom = { id = 0x028, action = 0x12, subtype = 10 }
-bugbomb = { id = 0x029, action = 0x12, subtype = 7 }
-grasseed = { id = 0x02a, action = 0x12, subtype = 13 }
-lavaseed = { id = 0x02b, action = 0x12, subtype = 14 }
-cannball = { id = 0x02c, action = 0x12, subtype = 4 }
-geyser = { id = 0x02d, action = 0x12, subtype = 5 }
-blkbomb = { id = 0x02e, action = 0x12, subtype = 6 }
-seaseed = { id = 0x02f, action = 0x12, subtype = 12 }
-sword = { id = 0x030, action = 0x13, subtype = 0 }
-wideswrd = { id = 0x031, action = 0x13, subtype = 1 }
-longswrd = { id = 0x032, action = 0x13, subtype = 2 }
-wideblde = { id = 0x033, action = 0x13, subtype = 3 }
-longblde = { id = 0x034, action = 0x13, subtype = 4 }
-windrack = { id = 0x035, action = 0x26, subtype = 0 }
-custswrd = { id = 0x036, action = 0x13, subtype = 7, damage_formula = 45 }
-varswrd = { id = 0x037, action = 0x2a, subtype = 0 }
-slasher = { id = 0x038, action = 0x29, subtype = 0 }
-moonbld1 = { id = 0x039, action = 0x53, subtype = 0 }
-moonbld2 = { id = 0x03a, action = 0x53, subtype = 0 }
-moonbld3 = { id = 0x03b, action = 0x53, subtype = 0 }
-katana1 = { id = 0x03c, action = 0x54, subtype = 0 }
-katana2 = { id = 0x03d, action = 0x54, subtype = 0 }
-katana3 = { id = 0x03e, action = 0x54, subtype = 0 }
-tankcan1 = { id = 0x03f, action = 0x46, subtype = 0 }
-tankcan2 = { id = 0x040, action = 0x46, subtype = 0 }
-tankcan3 = { id = 0x041, action = 0x46, subtype = 0 }
-redfrut1 = { id = 0x042, action = 0x1a, subtype = 15 }
-redfrut2 = { id = 0x043, action = 0x1a, subtype = 15 }
-redfrut3 = { id = 0x044, action = 0x1a, subtype = 15 }
-skully1 = { id = 0x045, action = 0x55, subtype = 0 }
-skully2 = { id = 0x046, action = 0x55, subtype = 0 }
-skully3 = { id = 0x047, action = 0x55, subtype = 0 }
-drilarm1 = { id = 0x048, action = 0x4f, subtype = 0 }
-drilarm2 = { id = 0x049, action = 0x4f, subtype = 0 }
-drilarm3 = { id = 0x04a, action = 0x4f, subtype = 0 }
-timebom1 = { id = 0x04b, action = 0x15, subtype = 10 }
-timebom2 = { id = 0x04c, action = 0x15, subtype = 10 }
-timebom3 = { id = 0x04d, action = 0x15, subtype = 10 }
-voltz1 = { id = 0x04e, action = 0x1a, subtype = 16 }
-voltz2 = { id = 0x04f, action = 0x1a, subtype = 16 }
-voltz3 = { id = 0x050, action = 0x1a, subtype = 16 }
-lance = { id = 0x051, action = 0x1a, subtype = 4 }
-yoyo = { id = 0x052, action = 0x4a, subtype = 0 }
-wind = { id = 0x053, action = 0x15, subtype = 9 }
-fan = { id = 0x054, action = 0x15, subtype = 9 }
-boybomb1 = { id = 0x055, action = 0x15, subtype = 58 }
-boybomb2 = { id = 0x056, action = 0x15, subtype = 58 }
-boybomb3 = { id = 0x057, action = 0x15, subtype = 58 }
-guard1 = { id = 0x058, action = 0x1f, subtype = 0 }
-guard2 = { id = 0x059, action = 0x1f, subtype = 1 }
-guard3 = { id = 0x05a, action = 0x1f, subtype = 2 }
-crakout = { id = 0x05b, action = 0x1b, subtype = 0 }
-dublcrak = { id = 0x05c, action = 0x1b, subtype = 1 }
-tripcrak = { id = 0x05d, action = 0x1b, subtype = 2 }
-magnum = { id = 0x05e, action = 0x15, subtype = 15 }
-metagel = { id = 0x05f, action = 0x15, subtype = 6 }
-snake = { id = 0x060, action = 0x15, subtype = 16 }
-circgun = { id = 0x061, action = 0x15, subtype = 42 }
-mine = { id = 0x062, action = 0x15, subtype = 11 }
-rockcube = { id = 0x063, action = 0x15, subtype = 20 }
-fanfare = { id = 0x064, action = 0x15, subtype = 27 }
-discord = { id = 0x065, action = 0x15, subtype = 27 }
-timpani = { id = 0x066, action = 0x15, subtype = 27 }
-vdoll = { id = 0x067, action = 0x12, subtype = 8 }
-astroid1 = { id = 0x068, action = 0x1a, subtype = 17 }
-astroid2 = { id = 0x069, action = 0x1a, subtype = 17 }
-astroid3 = { id = 0x06a, action = 0x1a, subtype = 17 }
-recov10 = { id = 0x06b, action = 0x17, subtype = 0 }
-recov30 = { id = 0x06c, action = 0x17, subtype = 1 }
-recov50 = { id = 0x06d, action = 0x17, subtype = 2 }
-recov80 = { id = 0x06e, action = 0x17, subtype = 3 }
-recov120 = { id = 0x06f, action = 0x17, subtype = 4 }
-recov150 = { id = 0x070, action = 0x17, subtype = 5 }
-recov200 = { id = 0x071, action = 0x17, subtype = 6 }
-recov300 = { id = 0x072, action = 0x17, subtype = 7 }
-busterup = { id = 0x073, action = 0x1a, subtype = 11 }
-panlgrab = { id = 0x074, action = 0x15, subtype = 0 }
-areagrab = { id = 0x075, action = 0x15, subtype = 0 }
-grabrvng = { id = 0x076, action = 0x15, subtype = 7 }
-grabbnsh = { id = 0x077, action = 0x15, subtype = 7 }
-slogauge = { id = 0x078, action = 0x15, subtype = 3 }
-fstgauge = { id = 0x079, action = 0x15, subtype = 3 }
-pnlretrn = { id = 0x07a, action = 0x15, subtype = 5 }
-geddon1 = { id = 0x07b, action = 0x15, subtype = 4 }
-geddon2 = { id = 0x07c, action = 0x15, subtype = 4 }
-geddon3 = { id = 0x07d, action = 0x15, subtype = 4 }
-rainyday = { id = 0x07e, action = 0x15, subtype = 61 }
-colorpt = { id = 0x07f, action = 0x15, subtype = 30 }
-elemrage = { id = 0x080, action = 0x56, subtype = 0 }
-blinder = { id = 0x081, action = 0x15, subtype = 8 }
-airspin1 = { id = 0x082, action = 0x47, subtype = 1 }
-airspin2 = { id = 0x083, action = 0x47, subtype = 1 }
-airspin3 = { id = 0x084, action = 0x47, subtype = 1 }
-invisibl = { id = 0x085, action = 0x15, subtype = 40 }
-bblwrap = { id = 0x086, action = 0x15, subtype = 14 }
-barrier = { id = 0x087, action = 0x15, subtype = 14 }
-barr100 = { id = 0x088, action = 0x15, subtype = 14 }
-barr200 = { id = 0x089, action = 0x15, subtype = 14 }
-nrthwind = { id = 0x08a, action = 0x15, subtype = 21 }
-holypanl = { id = 0x08b, action = 0x15, subtype = 5 }
-antifire = { id = 0x08c, action = 0x15, subtype = 12 }
-antiwatr = { id = 0x08d, action = 0x15, subtype = 12 }
-antielec = { id = 0x08e, action = 0x15, subtype = 12 }
-antiwood = { id = 0x08f, action = 0x15, subtype = 12 }
-antinavi = { id = 0x090, action = 0x15, subtype = 12 }
-antidmg = { id = 0x091, action = 0x15, subtype = 12 }
-antiswrd = { id = 0x092, action = 0x15, subtype = 12 }
-antirecv = { id = 0x093, action = 0x15, subtype = 12 }
-copydmg = { id = 0x094, action = 0x24, subtype = 0 }
-attck-10 = { id = 0x095, action = 0x1a, subtype = 3 }
-navi-20 = { id = 0x096, action = 0x1a, subtype = 3 }
-firehit1 = { id = 0x097, action = 0x1a, subtype = 9 }
-firehit2 = { id = 0x098, action = 0x1a, subtype = 9 }
-firehit3 = { id = 0x099, action = 0x1a, subtype = 9 }
-hotbody1 = { id = 0x09a, action = 0x58, subtype = 0 }
-hotbody2 = { id = 0x09b, action = 0x58, subtype = 0 }
-hotbody3 = { id = 0x09c, action = 0x58, subtype = 0 }
-aqwhirl1 = { id = 0x09d, action = 0x47, subtype = 0 }
-aqwhirl2 = { id = 0x09e, action = 0x47, subtype = 0 }
-aqwhirl3 = { id = 0x09f, action = 0x47, subtype = 0 }
-sidebub1 = { id = 0x0a0, action = 0x1c, subtype = 0 }
-sidebub2 = { id = 0x0a1, action = 0x1c, subtype = 0 }
-sidebub3 = { id = 0x0a2, action = 0x1c, subtype = 0 }
-elcreel1 = { id = 0x0a3, action = 0x23, subtype = 0 }
-elcreel2 = { id = 0x0a4, action = 0x23, subtype = 0 }
-elcreel3 = { id = 0x0a5, action = 0x23, subtype = 0 }
-cusvolt1 = { id = 0x0a6, action = 0x27, subtype = 0, damage_formula = 73 }
-cusvolt2 = { id = 0x0a7, action = 0x27, subtype = 0, damage_formula = 74 }
-cusvolt3 = { id = 0x0a8, action = 0x27, subtype = 0, damage_formula = 75 }
-crsshld1 = { id = 0x0a9, action = 0x1f, subtype = 5 }
-crsshld2 = { id = 0x0aa, action = 0x1f, subtype = 6 }
-crsshld3 = { id = 0x0ab, action = 0x1f, subtype = 7 }
-wavepit = { id = 0x0ac, action = 0x1a, subtype = 19 }
-redwave = { id = 0x0ad, action = 0x1a, subtype = 19 }
-mudwave = { id = 0x0ae, action = 0x1a, subtype = 19 }
-cactbal1 = { id = 0x0af, action = 0x48, subtype = 0 }
-cactbal2 = { id = 0x0b0, action = 0x48, subtype = 0 }
-cactbal3 = { id = 0x0b1, action = 0x48, subtype = 0 }
-woodnos1 = { id = 0x0b2, action = 0x28, subtype = 0 }
-woodnos2 = { id = 0x0b3, action = 0x28, subtype = 0 }
-woodnos3 = { id = 0x0b4, action = 0x28, subtype = 0 }
-darkcirc = { id = 0x0bb, action = 0x15, subtype = 42 }
-drksword = { id = 0x0bc, action = 0x13, subtype = 6 }
-darkinvs = { id = 0x0bd, action = 0x15, subtype = 59 }
-darkplus = { id = 0x0be, action = 0x1a, subtype = 3 }
-drklance = { id = 0x0bf, action = 0x1a, subtype = 4 }
-darkwide = { id = 0x0c0, action = 0x25, subtype = 2 }
-darkthnd = { id = 0x0c1, action = 0x20, subtype = 0 }
-drkrecov = { id = 0x0c2, action = 0x17, subtype = 8 }
-darkmetr = { id = 0x0c3, action = 0x1a, subtype = 17 }
-darkdril = { id = 0x0c4, action = 0x4f, subtype = 1 }
-darktorn = { id = 0x0c5, action = 0x22, subtype = 3 }
-drksonic = { id = 0x0c6, action = 0x15, subtype = 27 }
-lifeaur = { id = 0x0c9, action = 0x15, subtype = 14 }
-muramasa = { id = 0x0ca, action = 0x13, subtype = 8, damage_formula = 46 }
-guardian = { id = 0x0cb, action = 0x15, subtype = 31 }
-anubis = { id = 0x0cc, action = 0x15, subtype = 17 }
-attck-30 = { id = 0x0cd, action = 0x1a, subtype = 3 }
-bugfix = { id = 0x0ce, action = 0x15, subtype = 22 }
-dblpoint = { id = 0x0cf, action = 0x15, subtype = 30 }
-snctuary = { id = 0x0d0, action = 0x15, subtype = 5 }
-fullcust = { id = 0x0d1, action = 0x1a, subtype = 5 }
-meteors = { id = 0x0d2, action = 0x15, subtype = 18 }
-numbrbl = { id = 0x0d3, action = 0x15, subtype = 43, damage_formula = 47 }
-jealousy = { id = 0x0d4, action = 0x15, subtype = 19 }
-poltrgst = { id = 0x0d5, action = 0x15, subtype = 49 }
-blakwing = { id = 0x0d6, action = 0x15, subtype = 32 }
-otenko = { id = 0x0d7, action = 0x15, subtype = 60 }
-justcone = { id = 0x0d8, action = 0x1a, subtype = 20 }
-neovari = { id = 0x0d9, action = 0x31, subtype = 0 }
-z-saver = { id = 0x0da, action = 0x34, subtype = 0 }
-gundelex = { id = 0x0db, action = 0x2f, subtype = 3 }
-suprvulc = { id = 0x0dc, action = 0x19, subtype = 3 }
-roll = { id = 0x0dd, action = 0x41, subtype = 25 }
-roll-sp = { id = 0x0de, action = 0x41, subtype = 25, damage_formula = 1 }
-roll-ds = { id = 0x0df, action = 0x41, subtype = 25, damage_formula = 23 }
-gyroman = { id = 0x0e0, action = 0x41, subtype = 6, colonel = { extra_flags = [1] } }
-gyroman-sp = { id = 0x0e1, action = 0x41, subtype = 6, damage_formula = 3, colonel = { extra_flags = [1] } }
-gyroman-ds = { id = 0x0e2, action = 0x41, subtype = 6, damage_formula = 25, colonel = { extra_flags = [1] } }
-napalmmn = { id = 0x0e3, action = 0x41, subtype = 7, colonel = { extra_flags = [1] } }
-naplmmn-sp = { id = 0x0e4, action = 0x41, subtype = 7, damage_formula = 5, colonel = { extra_flags = [1] } }
-naplmmn-ds = { id = 0x0e5, action = 0x41, subtype = 7, damage_formula = 27, colonel = { extra_flags = [1] } }
-serchman = { id = 0x0e6, action = 0x41, subtype = 2, colonel = { extra_flags = [1] } }
-serchmn-sp = { id = 0x0e7, action = 0x41, subtype = 2, damage_formula = 4, colonel = { extra_flags = [1] } }
-serchmn-ds = { id = 0x0e8, action = 0x41, subtype = 2, damage_formula = 26, colonel = { extra_flags = [1] } }
-magnetmn = { id = 0x0e9, action = 0x41, subtype = 8, colonel = { extra_flags = [1] } }
-magntmn-sp = { id = 0x0ea, action = 0x41, subtype = 8, damage_formula = 6, colonel = { extra_flags = [1] } }
-magntmn-ds = { id = 0x0eb, action = 0x41, subtype = 8, damage_formula = 28, colonel = { extra_flags = [1] } }
-meddy = { id = 0x0ec, action = 0x41, subtype = 9, colonel = { extra_flags = [1] } }
-meddy-sp = { id = 0x0ed, action = 0x41, subtype = 9, damage_formula = 7, colonel = { extra_flags = [1] } }
-meddy-ds = { id = 0x0ee, action = 0x41, subtype = 9, damage_formula = 29, colonel = { extra_flags = [1] } }
-protoman = { id = 0x0ef, action = 0x41, subtype = 3, colonel = { extra_flags = [1] } }
-protomn-sp = { id = 0x0f0, action = 0x41, subtype = 3, damage_formula = 2, colonel = { extra_flags = [1] } }
-protomn-ds = { id = 0x0f1, action = 0x41, subtype = 3, damage_formula = 24, colonel = { extra_flags = [1] } }
-numbrman = { id = 0x0f2, action = 0x41, subtype = 0, colonel = { extra_flags = [] } }
-numbrmn-sp = { id = 0x0f3, action = 0x41, subtype = 0, damage_formula = 10, colonel = { extra_flags = [] } }
-numbrmn-ds = { id = 0x0f4, action = 0x41, subtype = 0, damage_formula = 32, colonel = { extra_flags = [] } }
-colonel = { id = 0x0f5, action = 0x41, subtype = 10, colonel = { extra_flags = [] } }
-colonel-sp = { id = 0x0f6, action = 0x41, subtype = 10, damage_formula = 8, colonel = { extra_flags = [] } }
-colonel-ds = { id = 0x0f7, action = 0x41, subtype = 10, damage_formula = 30, colonel = { extra_flags = [] } }
-shadoman = { id = 0x0f8, action = 0x41, subtype = 11, colonel = { extra_flags = [] } }
-shadomn-sp = { id = 0x0f9, action = 0x41, subtype = 11, damage_formula = 9, colonel = { extra_flags = [] } }
-shadomn-ds = { id = 0x0fa, action = 0x41, subtype = 11, damage_formula = 31, colonel = { extra_flags = [] } }
-tmhwkman = { id = 0x0fb, action = 0x41, subtype = 12, colonel = { extra_flags = [] } }
-tmhwkmn-sp = { id = 0x0fc, action = 0x41, subtype = 12, damage_formula = 11, colonel = { extra_flags = [] } }
-tmhwkmn-ds = { id = 0x0fd, action = 0x41, subtype = 12, damage_formula = 33, colonel = { extra_flags = [] } }
-knightmn = { id = 0x0fe, action = 0x41, subtype = 5, colonel = { extra_flags = [] } }
-knigtmn-sp = { id = 0x0ff, action = 0x41, subtype = 5, damage_formula = 12, colonel = { extra_flags = [] } }
-knigtmn-ds = { id = 0x100, action = 0x41, subtype = 5, damage_formula = 34, colonel = { extra_flags = [] } }
-toadman = { id = 0x101, action = 0x41, subtype = 13, colonel = { extra_flags = [] } }
-toadman-sp = { id = 0x102, action = 0x41, subtype = 13, damage_formula = 13, colonel = { extra_flags = [] } }
-toadman-ds = { id = 0x103, action = 0x41, subtype = 13, damage_formula = 35, colonel = { extra_flags = [] } }
-shademan = { id = 0x104, action = 0x41, subtype = 1 }
-shademn-sp = { id = 0x105, action = 0x41, subtype = 1, damage_formula = 14 }
-shademn-ds = { id = 0x106, action = 0x41, subtype = 1, damage_formula = 36 }
-blizman = { id = 0x107, action = 0x41, subtype = 14 }
-blizman-sp = { id = 0x108, action = 0x41, subtype = 14, damage_formula = 15 }
-blizman-ds = { id = 0x109, action = 0x41, subtype = 14, damage_formula = 37 }
-cloudman = { id = 0x10a, action = 0x41, subtype = 15 }
-cloudmn-sp = { id = 0x10b, action = 0x41, subtype = 15, damage_formula = 16 }
-cloudmn-ds = { id = 0x10c, action = 0x41, subtype = 15, damage_formula = 38 }
-cosmoman = { id = 0x10d, action = 0x41, subtype = 16 }
-cosmomn-sp = { id = 0x10e, action = 0x41, subtype = 16, damage_formula = 17 }
-cosmomn-ds = { id = 0x10f, action = 0x41, subtype = 16, damage_formula = 39 }
-larkman = { id = 0x110, action = 0x41, subtype = 17 }
-larkman-sp = { id = 0x111, action = 0x41, subtype = 17, damage_formula = 18 }
-larkman-ds = { id = 0x112, action = 0x41, subtype = 17, damage_formula = 40 }
-gridman = { id = 0x113, action = 0x41, subtype = 18 }
-gridman-sp = { id = 0x114, action = 0x41, subtype = 18, damage_formula = 19 }
-gridman-ds = { id = 0x115, action = 0x41, subtype = 18, damage_formula = 41 }
-django = { id = 0x116, action = 0x41, subtype = 19 }
-django-sp = { id = 0x117, action = 0x41, subtype = 19, damage_formula = 22 }
-django-ds = { id = 0x118, action = 0x41, subtype = 19, damage_formula = 44 }
-cannmode = { id = 0x119, action = 0x1a, subtype = 12 }
-cannball-mode = { id = 0x11a, action = 0x1a, subtype = 12 }
-swrdmode = { id = 0x11b, action = 0x1a, subtype = 12 }
-yoyomode = { id = 0x11c, action = 0x1a, subtype = 12 }
-drilmode = { id = 0x11d, action = 0x1a, subtype = 12 }
-lcrsshld = { id = 0x11e, action = 0x15, subtype = 66 }
-lstepswd = { id = 0x11f, action = 0x15, subtype = 66 }
-lcounter = { id = 0x120, action = 0x15, subtype = 66 }
-elempowr = { id = 0x121, action = 0x15, subtype = 56 }
-finalgun = { id = 0x122, action = 0x1a, subtype = 12 }
-bass = { id = 0x12d, action = 0x41, subtype = 27, colonel = { flags = ["dimming", "has_damage", "navi"] } }
-deltaray = { id = 0x12e, action = 0x41, subtype = 4, colonel = { flags = ["dimming", "has_damage"] } }
-bugcurse = { id = 0x12f, action = 0x15, subtype = 33, colonel = { flags = ["dimming"] } }
-metrknuk = { id = 0x130, action = 0x15, subtype = 51, colonel = { flags = ["dimming", "has_damage", "library"] } }
-omegarkt = { id = 0x131, action = 0x15, subtype = 62, colonel = { flags = ["dimming", "has_damage", "library"] } }
-bassanly = { id = 0x132, action = 0x41, subtype = 28, colonel = { flags = ["dimming", "has_damage", "navi", "library"] } }
-holydrem = { id = 0x133, action = 0x15, subtype = 35, colonel = { flags = ["dimming", "has_damage"] } }
-bighook = { id = 0x134, action = 0x41, subtype = 26, colonel = { flags = ["dimming", "has_damage"] } }
-crossdiv = { id = 0x135, action = 0x41, subtype = 10, colonel = { flags = ["dimming", "has_damage", "library"] } }
-bugcharg = { id = 0x136, action = 0x15, subtype = 54, colonel = { flags = ["dimming", "has_damage", "library"] } }
-leadraid = { id = 0x137, action = 0x41, subtype = 21, save_slot = 0 }
-chaoslrd = { id = 0x138, action = 0x41, subtype = 29, save_slot = 1 }
-phoenix = { id = 0x139, action = 0x15, subtype = 1, colonel = { flags = ["dimming", "has_damage", "navi", "library"] } }
-dethphnx = { id = 0x13a, action = 0x15, subtype = 2, colonel = { flags = ["dimming", "has_damage", "navi"] } }
-batcan1 = { id = 0x13b, action = 0x36, subtype = 0 }
-batcan2 = { id = 0x13c, action = 0x36, subtype = 1 }
-batcan3 = { id = 0x13d, action = 0x36, subtype = 2 }
-batcan4 = { id = 0x13e, action = 0x36, subtype = 3 }
-gigacan1 = { id = 0x140, action = 0x14, subtype = 4 }
-gigacan2 = { id = 0x141, action = 0x14, subtype = 5 }
-gigacan3 = { id = 0x142, action = 0x14, subtype = 6 }
-infvulc1 = { id = 0x143, action = 0x19, subtype = 4 }
-infvulc2 = { id = 0x144, action = 0x19, subtype = 5 }
-infvulc3 = { id = 0x145, action = 0x19, subtype = 6 }
-boxer1 = { id = 0x146, action = 0x1a, subtype = 21 }
-boxer2 = { id = 0x147, action = 0x1a, subtype = 21 }
-boxer3 = { id = 0x148, action = 0x1a, subtype = 21 }
-suprspr1 = { id = 0x149, action = 0x25, subtype = 1 }
-suprspr2 = { id = 0x14a, action = 0x25, subtype = 1 }
-suprspr3 = { id = 0x14b, action = 0x25, subtype = 1 }
-shakpar1 = { id = 0x14c, action = 0x1a, subtype = 22 }
-shakpar2 = { id = 0x14d, action = 0x1a, subtype = 22 }
-shakpar3 = { id = 0x14e, action = 0x1a, subtype = 22 }
-cacdanc1 = { id = 0x14f, action = 0x1a, subtype = 23 }
-cacdanc2 = { id = 0x150, action = 0x1a, subtype = 23 }
-cacdanc3 = { id = 0x151, action = 0x1a, subtype = 23 }
-h-burst = { id = 0x152, action = 0x35, subtype = 10 }
-lifesrd = { id = 0x153, action = 0x13, subtype = 5 }
-greatyo = { id = 0x154, action = 0x4a, subtype = 1 }
-pithoky = { id = 0x155, action = 0x21, subtype = 0 }
-poisphar = { id = 0x156, action = 0x15, subtype = 17 }
-csmopris = { id = 0x157, action = 0x41, subtype = 22 }
-wildbird = { id = 0x158, action = 0x41, subtype = 23 }
-football = { id = 0x159, action = 0x41, subtype = 24 }
-bignoise = { id = 0x15a, action = 0x41, subtype = 20 }
-timebom = { id = 0x15b, action = 0x15, subtype = 10 }
-bodygrd = { id = 0x15c, action = 0x15, subtype = 46 }
-piledrvr = { id = 0x15d, action = 0x15, subtype = 47 }
+"bn5:cannon" = { id = 0x001, action = 0x14, subtype = 0 }
+"bn5:hicannon" = { id = 0x002, action = 0x14, subtype = 1 }
+"bn5:m-cannon" = { id = 0x003, action = 0x14, subtype = 2 }
+"bn5:airshot" = { id = 0x004, action = 0x1d, subtype = 0 }
+"bn5:airhoc" = { id = 0x005, action = 0x21, subtype = 0 }
+"bn5:boomer" = { id = 0x006, action = 0x1a, subtype = 1 }
+"bn5:silence" = { id = 0x007, action = 0x15, subtype = 27 }
+"bn5:tornado" = { id = 0x008, action = 0x22, subtype = 1 }
+"bn5:widesht1" = { id = 0x009, action = 0x25, subtype = 0 }
+"bn5:widesht2" = { id = 0x00a, action = 0x25, subtype = 0 }
+"bn5:widesht3" = { id = 0x00b, action = 0x25, subtype = 0 }
+"bn5:mrkcan1" = { id = 0x00c, action = 0x4e, subtype = 0 }
+"bn5:mrkcan2" = { id = 0x00d, action = 0x4e, subtype = 1 }
+"bn5:mrkcan3" = { id = 0x00e, action = 0x4e, subtype = 2 }
+"bn5:vulcan1" = { id = 0x00f, action = 0x19, subtype = 0 }
+"bn5:vulcan2" = { id = 0x010, action = 0x19, subtype = 1 }
+"bn5:vulcan3" = { id = 0x011, action = 0x19, subtype = 2 }
+"bn5:spreader" = { id = 0x012, action = 0x18, subtype = 0 }
+"bn5:thunder" = { id = 0x013, action = 0x20, subtype = 0 }
+"bn5:iceseed" = { id = 0x014, action = 0x12, subtype = 9 }
+"bn5:pulsar1" = { id = 0x015, action = 0x52, subtype = 0 }
+"bn5:pulsar2" = { id = 0x016, action = 0x52, subtype = 0 }
+"bn5:pulsar3" = { id = 0x017, action = 0x52, subtype = 0 }
+"bn5:spshake1" = { id = 0x018, action = 0x51, subtype = 0 }
+"bn5:spshake2" = { id = 0x019, action = 0x51, subtype = 0 }
+"bn5:spshake3" = { id = 0x01a, action = 0x51, subtype = 0 }
+"bn5:static" = { id = 0x01b, action = 0x22, subtype = 2 }
+"bn5:lifesync" = { id = 0x01c, action = 0x15, subtype = 39 }
+"bn5:minibomb" = { id = 0x01d, action = 0x12, subtype = 0 }
+"bn5:energbom" = { id = 0x01e, action = 0x12, subtype = 1 }
+"bn5:megenbom" = { id = 0x01f, action = 0x12, subtype = 1 }
+"bn5:gundels1" = { id = 0x020, action = 0x2f, subtype = 0 }
+"bn5:gundels2" = { id = 0x021, action = 0x2f, subtype = 1 }
+"bn5:gundels3" = { id = 0x022, action = 0x2f, subtype = 2 }
+"bn5:quake1" = { id = 0x023, action = 0x12, subtype = 11 }
+"bn5:quake2" = { id = 0x024, action = 0x12, subtype = 11 }
+"bn5:quake3" = { id = 0x025, action = 0x12, subtype = 11 }
+"bn5:crakbom" = { id = 0x026, action = 0x12, subtype = 10 }
+"bn5:parabom" = { id = 0x027, action = 0x12, subtype = 10 }
+"bn5:resetbom" = { id = 0x028, action = 0x12, subtype = 10 }
+"bn5:bugbomb" = { id = 0x029, action = 0x12, subtype = 7 }
+"bn5:grasseed" = { id = 0x02a, action = 0x12, subtype = 13 }
+"bn5:lavaseed" = { id = 0x02b, action = 0x12, subtype = 14 }
+"bn5:cannball" = { id = 0x02c, action = 0x12, subtype = 4 }
+"bn5:geyser" = { id = 0x02d, action = 0x12, subtype = 5 }
+"bn5:blkbomb" = { id = 0x02e, action = 0x12, subtype = 6 }
+"bn5:seaseed" = { id = 0x02f, action = 0x12, subtype = 12 }
+"bn5:sword" = { id = 0x030, action = 0x13, subtype = 0 }
+"bn5:wideswrd" = { id = 0x031, action = 0x13, subtype = 1 }
+"bn5:longswrd" = { id = 0x032, action = 0x13, subtype = 2 }
+"bn5:wideblde" = { id = 0x033, action = 0x13, subtype = 3 }
+"bn5:longblde" = { id = 0x034, action = 0x13, subtype = 4 }
+"bn5:windrack" = { id = 0x035, action = 0x26, subtype = 0 }
+"bn5:custswrd" = { id = 0x036, action = 0x13, subtype = 7, damage_formula = 45 }
+"bn5:varswrd" = { id = 0x037, action = 0x2a, subtype = 0 }
+"bn5:slasher" = { id = 0x038, action = 0x29, subtype = 0 }
+"bn5:moonbld1" = { id = 0x039, action = 0x53, subtype = 0 }
+"bn5:moonbld2" = { id = 0x03a, action = 0x53, subtype = 0 }
+"bn5:moonbld3" = { id = 0x03b, action = 0x53, subtype = 0 }
+"bn5:katana1" = { id = 0x03c, action = 0x54, subtype = 0 }
+"bn5:katana2" = { id = 0x03d, action = 0x54, subtype = 0 }
+"bn5:katana3" = { id = 0x03e, action = 0x54, subtype = 0 }
+"bn5:tankcan1" = { id = 0x03f, action = 0x46, subtype = 0 }
+"bn5:tankcan2" = { id = 0x040, action = 0x46, subtype = 0 }
+"bn5:tankcan3" = { id = 0x041, action = 0x46, subtype = 0 }
+"bn5:redfrut1" = { id = 0x042, action = 0x1a, subtype = 15 }
+"bn5:redfrut2" = { id = 0x043, action = 0x1a, subtype = 15 }
+"bn5:redfrut3" = { id = 0x044, action = 0x1a, subtype = 15 }
+"bn5:skully1" = { id = 0x045, action = 0x55, subtype = 0 }
+"bn5:skully2" = { id = 0x046, action = 0x55, subtype = 0 }
+"bn5:skully3" = { id = 0x047, action = 0x55, subtype = 0 }
+"bn5:drilarm1" = { id = 0x048, action = 0x4f, subtype = 0 }
+"bn5:drilarm2" = { id = 0x049, action = 0x4f, subtype = 0 }
+"bn5:drilarm3" = { id = 0x04a, action = 0x4f, subtype = 0 }
+"bn5:timebom1" = { id = 0x04b, action = 0x15, subtype = 10 }
+"bn5:timebom2" = { id = 0x04c, action = 0x15, subtype = 10 }
+"bn5:timebom3" = { id = 0x04d, action = 0x15, subtype = 10 }
+"bn5:voltz1" = { id = 0x04e, action = 0x1a, subtype = 16 }
+"bn5:voltz2" = { id = 0x04f, action = 0x1a, subtype = 16 }
+"bn5:voltz3" = { id = 0x050, action = 0x1a, subtype = 16 }
+"bn5:lance" = { id = 0x051, action = 0x1a, subtype = 4 }
+"bn5:yoyo" = { id = 0x052, action = 0x4a, subtype = 0 }
+"bn5:wind" = { id = 0x053, action = 0x15, subtype = 9 }
+"bn5:fan" = { id = 0x054, action = 0x15, subtype = 9 }
+"bn5:boybomb1" = { id = 0x055, action = 0x15, subtype = 58 }
+"bn5:boybomb2" = { id = 0x056, action = 0x15, subtype = 58 }
+"bn5:boybomb3" = { id = 0x057, action = 0x15, subtype = 58 }
+"bn5:guard1" = { id = 0x058, action = 0x1f, subtype = 0 }
+"bn5:guard2" = { id = 0x059, action = 0x1f, subtype = 1 }
+"bn5:guard3" = { id = 0x05a, action = 0x1f, subtype = 2 }
+"bn5:crakout" = { id = 0x05b, action = 0x1b, subtype = 0 }
+"bn5:dublcrak" = { id = 0x05c, action = 0x1b, subtype = 1 }
+"bn5:tripcrak" = { id = 0x05d, action = 0x1b, subtype = 2 }
+"bn5:magnum" = { id = 0x05e, action = 0x15, subtype = 15 }
+"bn5:metagel" = { id = 0x05f, action = 0x15, subtype = 6 }
+"bn5:snake" = { id = 0x060, action = 0x15, subtype = 16 }
+"bn5:circgun" = { id = 0x061, action = 0x15, subtype = 42 }
+"bn5:mine" = { id = 0x062, action = 0x15, subtype = 11 }
+"bn5:rockcube" = { id = 0x063, action = 0x15, subtype = 20 }
+"bn5:fanfare" = { id = 0x064, action = 0x15, subtype = 27 }
+"bn5:discord" = { id = 0x065, action = 0x15, subtype = 27 }
+"bn5:timpani" = { id = 0x066, action = 0x15, subtype = 27 }
+"bn5:vdoll" = { id = 0x067, action = 0x12, subtype = 8 }
+"bn5:astroid1" = { id = 0x068, action = 0x1a, subtype = 17 }
+"bn5:astroid2" = { id = 0x069, action = 0x1a, subtype = 17 }
+"bn5:astroid3" = { id = 0x06a, action = 0x1a, subtype = 17 }
+"bn5:recov10" = { id = 0x06b, action = 0x17, subtype = 0 }
+"bn5:recov30" = { id = 0x06c, action = 0x17, subtype = 1 }
+"bn5:recov50" = { id = 0x06d, action = 0x17, subtype = 2 }
+"bn5:recov80" = { id = 0x06e, action = 0x17, subtype = 3 }
+"bn5:recov120" = { id = 0x06f, action = 0x17, subtype = 4 }
+"bn5:recov150" = { id = 0x070, action = 0x17, subtype = 5 }
+"bn5:recov200" = { id = 0x071, action = 0x17, subtype = 6 }
+"bn5:recov300" = { id = 0x072, action = 0x17, subtype = 7 }
+"bn5:busterup" = { id = 0x073, action = 0x1a, subtype = 11 }
+"bn5:panlgrab" = { id = 0x074, action = 0x15, subtype = 0 }
+"bn5:areagrab" = { id = 0x075, action = 0x15, subtype = 0 }
+"bn5:grabrvng" = { id = 0x076, action = 0x15, subtype = 7 }
+"bn5:grabbnsh" = { id = 0x077, action = 0x15, subtype = 7 }
+"bn5:slogauge" = { id = 0x078, action = 0x15, subtype = 3 }
+"bn5:fstgauge" = { id = 0x079, action = 0x15, subtype = 3 }
+"bn5:pnlretrn" = { id = 0x07a, action = 0x15, subtype = 5 }
+"bn5:geddon1" = { id = 0x07b, action = 0x15, subtype = 4 }
+"bn5:geddon2" = { id = 0x07c, action = 0x15, subtype = 4 }
+"bn5:geddon3" = { id = 0x07d, action = 0x15, subtype = 4 }
+"bn5:rainyday" = { id = 0x07e, action = 0x15, subtype = 61 }
+"bn5:colorpt" = { id = 0x07f, action = 0x15, subtype = 30 }
+"bn5:elemrage" = { id = 0x080, action = 0x56, subtype = 0 }
+"bn5:blinder" = { id = 0x081, action = 0x15, subtype = 8 }
+"bn5:airspin1" = { id = 0x082, action = 0x47, subtype = 1 }
+"bn5:airspin2" = { id = 0x083, action = 0x47, subtype = 1 }
+"bn5:airspin3" = { id = 0x084, action = 0x47, subtype = 1 }
+"bn5:invisibl" = { id = 0x085, action = 0x15, subtype = 40 }
+"bn5:bblwrap" = { id = 0x086, action = 0x15, subtype = 14 }
+"bn5:barrier" = { id = 0x087, action = 0x15, subtype = 14 }
+"bn5:barr100" = { id = 0x088, action = 0x15, subtype = 14 }
+"bn5:barr200" = { id = 0x089, action = 0x15, subtype = 14 }
+"bn5:nrthwind" = { id = 0x08a, action = 0x15, subtype = 21 }
+"bn5:holypanl" = { id = 0x08b, action = 0x15, subtype = 5 }
+"bn5:antifire" = { id = 0x08c, action = 0x15, subtype = 12 }
+"bn5:antiwatr" = { id = 0x08d, action = 0x15, subtype = 12 }
+"bn5:antielec" = { id = 0x08e, action = 0x15, subtype = 12 }
+"bn5:antiwood" = { id = 0x08f, action = 0x15, subtype = 12 }
+"bn5:antinavi" = { id = 0x090, action = 0x15, subtype = 12 }
+"bn5:antidmg" = { id = 0x091, action = 0x15, subtype = 12 }
+"bn5:antiswrd" = { id = 0x092, action = 0x15, subtype = 12 }
+"bn5:antirecv" = { id = 0x093, action = 0x15, subtype = 12 }
+"bn5:copydmg" = { id = 0x094, action = 0x24, subtype = 0 }
+"bn5:attck-10" = { id = 0x095, action = 0x1a, subtype = 3 }
+"bn5:navi-20" = { id = 0x096, action = 0x1a, subtype = 3 }
+"bn5:firehit1" = { id = 0x097, action = 0x1a, subtype = 9 }
+"bn5:firehit2" = { id = 0x098, action = 0x1a, subtype = 9 }
+"bn5:firehit3" = { id = 0x099, action = 0x1a, subtype = 9 }
+"bn5:hotbody1" = { id = 0x09a, action = 0x58, subtype = 0 }
+"bn5:hotbody2" = { id = 0x09b, action = 0x58, subtype = 0 }
+"bn5:hotbody3" = { id = 0x09c, action = 0x58, subtype = 0 }
+"bn5:aqwhirl1" = { id = 0x09d, action = 0x47, subtype = 0 }
+"bn5:aqwhirl2" = { id = 0x09e, action = 0x47, subtype = 0 }
+"bn5:aqwhirl3" = { id = 0x09f, action = 0x47, subtype = 0 }
+"bn5:sidebub1" = { id = 0x0a0, action = 0x1c, subtype = 0 }
+"bn5:sidebub2" = { id = 0x0a1, action = 0x1c, subtype = 0 }
+"bn5:sidebub3" = { id = 0x0a2, action = 0x1c, subtype = 0 }
+"bn5:elcreel1" = { id = 0x0a3, action = 0x23, subtype = 0 }
+"bn5:elcreel2" = { id = 0x0a4, action = 0x23, subtype = 0 }
+"bn5:elcreel3" = { id = 0x0a5, action = 0x23, subtype = 0 }
+"bn5:cusvolt1" = { id = 0x0a6, action = 0x27, subtype = 0, damage_formula = 73 }
+"bn5:cusvolt2" = { id = 0x0a7, action = 0x27, subtype = 0, damage_formula = 74 }
+"bn5:cusvolt3" = { id = 0x0a8, action = 0x27, subtype = 0, damage_formula = 75 }
+"bn5:crsshld1" = { id = 0x0a9, action = 0x1f, subtype = 5 }
+"bn5:crsshld2" = { id = 0x0aa, action = 0x1f, subtype = 6 }
+"bn5:crsshld3" = { id = 0x0ab, action = 0x1f, subtype = 7 }
+"bn5:wavepit" = { id = 0x0ac, action = 0x1a, subtype = 19 }
+"bn5:redwave" = { id = 0x0ad, action = 0x1a, subtype = 19 }
+"bn5:mudwave" = { id = 0x0ae, action = 0x1a, subtype = 19 }
+"bn5:cactbal1" = { id = 0x0af, action = 0x48, subtype = 0 }
+"bn5:cactbal2" = { id = 0x0b0, action = 0x48, subtype = 0 }
+"bn5:cactbal3" = { id = 0x0b1, action = 0x48, subtype = 0 }
+"bn5:woodnos1" = { id = 0x0b2, action = 0x28, subtype = 0 }
+"bn5:woodnos2" = { id = 0x0b3, action = 0x28, subtype = 0 }
+"bn5:woodnos3" = { id = 0x0b4, action = 0x28, subtype = 0 }
+"bn5:darkcirc" = { id = 0x0bb, action = 0x15, subtype = 42 }
+"bn5:drksword" = { id = 0x0bc, action = 0x13, subtype = 6 }
+"bn5:darkinvs" = { id = 0x0bd, action = 0x15, subtype = 59 }
+"bn5:darkplus" = { id = 0x0be, action = 0x1a, subtype = 3 }
+"bn5:drklance" = { id = 0x0bf, action = 0x1a, subtype = 4 }
+"bn5:darkwide" = { id = 0x0c0, action = 0x25, subtype = 2 }
+"bn5:darkthnd" = { id = 0x0c1, action = 0x20, subtype = 0 }
+"bn5:drkrecov" = { id = 0x0c2, action = 0x17, subtype = 8 }
+"bn5:darkmetr" = { id = 0x0c3, action = 0x1a, subtype = 17 }
+"bn5:darkdril" = { id = 0x0c4, action = 0x4f, subtype = 1 }
+"bn5:darktorn" = { id = 0x0c5, action = 0x22, subtype = 3 }
+"bn5:drksonic" = { id = 0x0c6, action = 0x15, subtype = 27 }
+"bn5:lifeaur" = { id = 0x0c9, action = 0x15, subtype = 14 }
+"bn5:muramasa" = { id = 0x0ca, action = 0x13, subtype = 8, damage_formula = 46 }
+"bn5:guardian" = { id = 0x0cb, action = 0x15, subtype = 31 }
+"bn5:anubis" = { id = 0x0cc, action = 0x15, subtype = 17 }
+"bn5:attck-30" = { id = 0x0cd, action = 0x1a, subtype = 3 }
+"bn5:bugfix" = { id = 0x0ce, action = 0x15, subtype = 22 }
+"bn5:dblpoint" = { id = 0x0cf, action = 0x15, subtype = 30 }
+"bn5:snctuary" = { id = 0x0d0, action = 0x15, subtype = 5 }
+"bn5:fullcust" = { id = 0x0d1, action = 0x1a, subtype = 5 }
+"bn5:meteors" = { id = 0x0d2, action = 0x15, subtype = 18 }
+"bn5:numbrbl" = { id = 0x0d3, action = 0x15, subtype = 43, damage_formula = 47 }
+"bn5:jealousy" = { id = 0x0d4, action = 0x15, subtype = 19 }
+"bn5:poltrgst" = { id = 0x0d5, action = 0x15, subtype = 49 }
+"bn5:blakwing" = { id = 0x0d6, action = 0x15, subtype = 32 }
+"bn5:otenko" = { id = 0x0d7, action = 0x15, subtype = 60 }
+"bn5:justcone" = { id = 0x0d8, action = 0x1a, subtype = 20 }
+"bn5:neovari" = { id = 0x0d9, action = 0x31, subtype = 0 }
+"bn5:z-saver" = { id = 0x0da, action = 0x34, subtype = 0 }
+"bn5:gundelex" = { id = 0x0db, action = 0x2f, subtype = 3 }
+"bn5:suprvulc" = { id = 0x0dc, action = 0x19, subtype = 3 }
+"bn5:roll" = { id = 0x0dd, action = 0x41, subtype = 25 }
+"bn5:roll-sp" = { id = 0x0de, action = 0x41, subtype = 25, damage_formula = 1 }
+"bn5:roll-ds" = { id = 0x0df, action = 0x41, subtype = 25, damage_formula = 23 }
+"bn5:gyroman" = { id = 0x0e0, action = 0x41, subtype = 6, colonel = { extra_flags = [1] } }
+"bn5:gyroman-sp" = { id = 0x0e1, action = 0x41, subtype = 6, damage_formula = 3, colonel = { extra_flags = [1] } }
+"bn5:gyroman-ds" = { id = 0x0e2, action = 0x41, subtype = 6, damage_formula = 25, colonel = { extra_flags = [1] } }
+"bn5:napalmmn" = { id = 0x0e3, action = 0x41, subtype = 7, colonel = { extra_flags = [1] } }
+"bn5:naplmmn-sp" = { id = 0x0e4, action = 0x41, subtype = 7, damage_formula = 5, colonel = { extra_flags = [1] } }
+"bn5:naplmmn-ds" = { id = 0x0e5, action = 0x41, subtype = 7, damage_formula = 27, colonel = { extra_flags = [1] } }
+"bn5:serchman" = { id = 0x0e6, action = 0x41, subtype = 2, colonel = { extra_flags = [1] } }
+"bn5:serchmn-sp" = { id = 0x0e7, action = 0x41, subtype = 2, damage_formula = 4, colonel = { extra_flags = [1] } }
+"bn5:serchmn-ds" = { id = 0x0e8, action = 0x41, subtype = 2, damage_formula = 26, colonel = { extra_flags = [1] } }
+"bn5:magnetmn" = { id = 0x0e9, action = 0x41, subtype = 8, colonel = { extra_flags = [1] } }
+"bn5:magntmn-sp" = { id = 0x0ea, action = 0x41, subtype = 8, damage_formula = 6, colonel = { extra_flags = [1] } }
+"bn5:magntmn-ds" = { id = 0x0eb, action = 0x41, subtype = 8, damage_formula = 28, colonel = { extra_flags = [1] } }
+"bn5:meddy" = { id = 0x0ec, action = 0x41, subtype = 9, colonel = { extra_flags = [1] } }
+"bn5:meddy-sp" = { id = 0x0ed, action = 0x41, subtype = 9, damage_formula = 7, colonel = { extra_flags = [1] } }
+"bn5:meddy-ds" = { id = 0x0ee, action = 0x41, subtype = 9, damage_formula = 29, colonel = { extra_flags = [1] } }
+"bn5:protoman" = { id = 0x0ef, action = 0x41, subtype = 3, colonel = { extra_flags = [1] } }
+"bn5:protomn-sp" = { id = 0x0f0, action = 0x41, subtype = 3, damage_formula = 2, colonel = { extra_flags = [1] } }
+"bn5:protomn-ds" = { id = 0x0f1, action = 0x41, subtype = 3, damage_formula = 24, colonel = { extra_flags = [1] } }
+"bn5:numbrman" = { id = 0x0f2, action = 0x41, subtype = 0, colonel = { extra_flags = [] } }
+"bn5:numbrmn-sp" = { id = 0x0f3, action = 0x41, subtype = 0, damage_formula = 10, colonel = { extra_flags = [] } }
+"bn5:numbrmn-ds" = { id = 0x0f4, action = 0x41, subtype = 0, damage_formula = 32, colonel = { extra_flags = [] } }
+"bn5:colonel" = { id = 0x0f5, action = 0x41, subtype = 10, colonel = { extra_flags = [] } }
+"bn5:colonel-sp" = { id = 0x0f6, action = 0x41, subtype = 10, damage_formula = 8, colonel = { extra_flags = [] } }
+"bn5:colonel-ds" = { id = 0x0f7, action = 0x41, subtype = 10, damage_formula = 30, colonel = { extra_flags = [] } }
+"bn5:shadoman" = { id = 0x0f8, action = 0x41, subtype = 11, colonel = { extra_flags = [] } }
+"bn5:shadomn-sp" = { id = 0x0f9, action = 0x41, subtype = 11, damage_formula = 9, colonel = { extra_flags = [] } }
+"bn5:shadomn-ds" = { id = 0x0fa, action = 0x41, subtype = 11, damage_formula = 31, colonel = { extra_flags = [] } }
+"bn5:tmhwkman" = { id = 0x0fb, action = 0x41, subtype = 12, colonel = { extra_flags = [] } }
+"bn5:tmhwkmn-sp" = { id = 0x0fc, action = 0x41, subtype = 12, damage_formula = 11, colonel = { extra_flags = [] } }
+"bn5:tmhwkmn-ds" = { id = 0x0fd, action = 0x41, subtype = 12, damage_formula = 33, colonel = { extra_flags = [] } }
+"bn5:knightmn" = { id = 0x0fe, action = 0x41, subtype = 5, colonel = { extra_flags = [] } }
+"bn5:knigtmn-sp" = { id = 0x0ff, action = 0x41, subtype = 5, damage_formula = 12, colonel = { extra_flags = [] } }
+"bn5:knigtmn-ds" = { id = 0x100, action = 0x41, subtype = 5, damage_formula = 34, colonel = { extra_flags = [] } }
+"bn5:toadman" = { id = 0x101, action = 0x41, subtype = 13, colonel = { extra_flags = [] } }
+"bn5:toadman-sp" = { id = 0x102, action = 0x41, subtype = 13, damage_formula = 13, colonel = { extra_flags = [] } }
+"bn5:toadman-ds" = { id = 0x103, action = 0x41, subtype = 13, damage_formula = 35, colonel = { extra_flags = [] } }
+"bn5:shademan" = { id = 0x104, action = 0x41, subtype = 1 }
+"bn5:shademn-sp" = { id = 0x105, action = 0x41, subtype = 1, damage_formula = 14 }
+"bn5:shademn-ds" = { id = 0x106, action = 0x41, subtype = 1, damage_formula = 36 }
+"bn5:blizman" = { id = 0x107, action = 0x41, subtype = 14 }
+"bn5:blizman-sp" = { id = 0x108, action = 0x41, subtype = 14, damage_formula = 15 }
+"bn5:blizman-ds" = { id = 0x109, action = 0x41, subtype = 14, damage_formula = 37 }
+"bn5:cloudman" = { id = 0x10a, action = 0x41, subtype = 15 }
+"bn5:cloudmn-sp" = { id = 0x10b, action = 0x41, subtype = 15, damage_formula = 16 }
+"bn5:cloudmn-ds" = { id = 0x10c, action = 0x41, subtype = 15, damage_formula = 38 }
+"bn5:cosmoman" = { id = 0x10d, action = 0x41, subtype = 16 }
+"bn5:cosmomn-sp" = { id = 0x10e, action = 0x41, subtype = 16, damage_formula = 17 }
+"bn5:cosmomn-ds" = { id = 0x10f, action = 0x41, subtype = 16, damage_formula = 39 }
+"bn5:larkman" = { id = 0x110, action = 0x41, subtype = 17 }
+"bn5:larkman-sp" = { id = 0x111, action = 0x41, subtype = 17, damage_formula = 18 }
+"bn5:larkman-ds" = { id = 0x112, action = 0x41, subtype = 17, damage_formula = 40 }
+"bn5:gridman" = { id = 0x113, action = 0x41, subtype = 18 }
+"bn5:gridman-sp" = { id = 0x114, action = 0x41, subtype = 18, damage_formula = 19 }
+"bn5:gridman-ds" = { id = 0x115, action = 0x41, subtype = 18, damage_formula = 41 }
+"bn5:django" = { id = 0x116, action = 0x41, subtype = 19 }
+"bn5:django-sp" = { id = 0x117, action = 0x41, subtype = 19, damage_formula = 22 }
+"bn5:django-ds" = { id = 0x118, action = 0x41, subtype = 19, damage_formula = 44 }
+"bn5:cannmode" = { id = 0x119, action = 0x1a, subtype = 12 }
+"bn5:cannball-mode" = { id = 0x11a, action = 0x1a, subtype = 12 }
+"bn5:swrdmode" = { id = 0x11b, action = 0x1a, subtype = 12 }
+"bn5:yoyomode" = { id = 0x11c, action = 0x1a, subtype = 12 }
+"bn5:drilmode" = { id = 0x11d, action = 0x1a, subtype = 12 }
+"bn5:lcrsshld" = { id = 0x11e, action = 0x15, subtype = 66 }
+"bn5:lstepswd" = { id = 0x11f, action = 0x15, subtype = 66 }
+"bn5:lcounter" = { id = 0x120, action = 0x15, subtype = 66 }
+"bn5:elempowr" = { id = 0x121, action = 0x15, subtype = 56 }
+"bn5:finalgun" = { id = 0x122, action = 0x1a, subtype = 12 }
+"bn5:bass" = { id = 0x12d, action = 0x41, subtype = 27, colonel = { flags = ["dimming", "has_damage", "navi"] } }
+"bn5:deltaray" = { id = 0x12e, action = 0x41, subtype = 4, colonel = { flags = ["dimming", "has_damage"] } }
+"bn5:bugcurse" = { id = 0x12f, action = 0x15, subtype = 33, colonel = { flags = ["dimming"] } }
+"bn5:metrknuk" = { id = 0x130, action = 0x15, subtype = 51, colonel = { flags = ["dimming", "has_damage", "library"] } }
+"bn5:omegarkt" = { id = 0x131, action = 0x15, subtype = 62, colonel = { flags = ["dimming", "has_damage", "library"] } }
+"bn5:bassanly" = { id = 0x132, action = 0x41, subtype = 28, colonel = { flags = ["dimming", "has_damage", "navi", "library"] } }
+"bn5:holydrem" = { id = 0x133, action = 0x15, subtype = 35, colonel = { flags = ["dimming", "has_damage"] } }
+"bn5:bighook" = { id = 0x134, action = 0x41, subtype = 26, colonel = { flags = ["dimming", "has_damage"] } }
+"bn5:crossdiv" = { id = 0x135, action = 0x41, subtype = 10, colonel = { flags = ["dimming", "has_damage", "library"] } }
+"bn5:bugcharg" = { id = 0x136, action = 0x15, subtype = 54, colonel = { flags = ["dimming", "has_damage", "library"] } }
+"bn5:leadraid" = { id = 0x137, action = 0x41, subtype = 21, save_slot = 0 }
+"bn5:chaoslrd" = { id = 0x138, action = 0x41, subtype = 29, save_slot = 1 }
+"bn5:phoenix" = { id = 0x139, action = 0x15, subtype = 1, colonel = { flags = ["dimming", "has_damage", "navi", "library"] } }
+"bn5:dethphnx" = { id = 0x13a, action = 0x15, subtype = 2, colonel = { flags = ["dimming", "has_damage", "navi"] } }
+"bn5:batcan1" = { id = 0x13b, action = 0x36, subtype = 0 }
+"bn5:batcan2" = { id = 0x13c, action = 0x36, subtype = 1 }
+"bn5:batcan3" = { id = 0x13d, action = 0x36, subtype = 2 }
+"bn5:batcan4" = { id = 0x13e, action = 0x36, subtype = 3 }
+"bn5:gigacan1" = { id = 0x140, action = 0x14, subtype = 4 }
+"bn5:gigacan2" = { id = 0x141, action = 0x14, subtype = 5 }
+"bn5:gigacan3" = { id = 0x142, action = 0x14, subtype = 6 }
+"bn5:infvulc1" = { id = 0x143, action = 0x19, subtype = 4 }
+"bn5:infvulc2" = { id = 0x144, action = 0x19, subtype = 5 }
+"bn5:infvulc3" = { id = 0x145, action = 0x19, subtype = 6 }
+"bn5:boxer1" = { id = 0x146, action = 0x1a, subtype = 21 }
+"bn5:boxer2" = { id = 0x147, action = 0x1a, subtype = 21 }
+"bn5:boxer3" = { id = 0x148, action = 0x1a, subtype = 21 }
+"bn5:suprspr1" = { id = 0x149, action = 0x25, subtype = 1 }
+"bn5:suprspr2" = { id = 0x14a, action = 0x25, subtype = 1 }
+"bn5:suprspr3" = { id = 0x14b, action = 0x25, subtype = 1 }
+"bn5:shakpar1" = { id = 0x14c, action = 0x1a, subtype = 22 }
+"bn5:shakpar2" = { id = 0x14d, action = 0x1a, subtype = 22 }
+"bn5:shakpar3" = { id = 0x14e, action = 0x1a, subtype = 22 }
+"bn5:cacdanc1" = { id = 0x14f, action = 0x1a, subtype = 23 }
+"bn5:cacdanc2" = { id = 0x150, action = 0x1a, subtype = 23 }
+"bn5:cacdanc3" = { id = 0x151, action = 0x1a, subtype = 23 }
+"bn5:h-burst" = { id = 0x152, action = 0x35, subtype = 10 }
+"bn5:lifesrd" = { id = 0x153, action = 0x13, subtype = 5 }
+"bn5:greatyo" = { id = 0x154, action = 0x4a, subtype = 1 }
+"bn5:pithoky" = { id = 0x155, action = 0x21, subtype = 0 }
+"bn5:poisphar" = { id = 0x156, action = 0x15, subtype = 17 }
+"bn5:csmopris" = { id = 0x157, action = 0x41, subtype = 22 }
+"bn5:wildbird" = { id = 0x158, action = 0x41, subtype = 23 }
+"bn5:football" = { id = 0x159, action = 0x41, subtype = 24 }
+"bn5:bignoise" = { id = 0x15a, action = 0x41, subtype = 20 }
+"bn5:timebom" = { id = 0x15b, action = 0x15, subtype = 10 }
+"bn5:bodygrd" = { id = 0x15c, action = 0x15, subtype = 46 }
+"bn5:piledrvr" = { id = 0x15d, action = 0x15, subtype = 47 }
+"bn5:invalid" = { id = 0x185, action = 0x1a, subtype = 26 }

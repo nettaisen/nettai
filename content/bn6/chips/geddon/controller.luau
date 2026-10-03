@@ -45,7 +45,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "geddon/controller",
+    id = "bn6:geddon/controller",
     pool = "effect",
     state = { change = { "crack", "break", "poison" }, busy = "bool" },
     -- `sub_80E24E4`.

@@ -12,7 +12,7 @@
 local navi = require("./navi")
 
 local django = define.chip {
-    id = "django",
+    id = "bn6:django",
     codes = { "D", "*" },
     element = "null",
     family = "null",
@@ -29,7 +29,7 @@ local django = define.chip {
 }
 
 local django2 = define.chip {
-    id = "django2",
+    id = "bn6:django2",
     codes = { "D" },
     element = "null",
     family = "null",
@@ -46,7 +46,7 @@ local django2 = define.chip {
 }
 
 local django3 = define.chip {
-    id = "django3",
+    id = "bn6:django3",
     codes = { "D" },
     element = "null",
     family = "null",

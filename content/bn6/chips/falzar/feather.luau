@@ -21,8 +21,8 @@ export type State = {
     while_dimmed: boolean,
 }
 
-local SPRITE = asset.sprite("falzar-feather")
-local SOUND = asset.sound("justice-one")
+local SPRITE = asset.sprite("bn6:falzar-feather")
+local SOUND = asset.sound("bn6:justice-one")
 
 -- Where it starts: 192 pixels back and up (16.16).
 local START = 0xC0_0000
@@ -125,7 +125,7 @@ local function init(me: Object)
 end
 
 feather.kind = define.kind {
-    id = "falzar/feather",
+    id = "bn6:falzar/feather",
     pool = "attack",
     state = { while_dimmed = "bool" },
     -- `sub_80DCB1C`: by state (its end `object_genericDestroy`), then the

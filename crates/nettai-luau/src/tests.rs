@@ -4,19 +4,17 @@ use super::*;
 use nettai_content_api::Data;
 
 #[test]
-fn relative_paths_resolve_within_the_root() {
-    let roots: BTreeMap<String, Vec<String>> =
-        [("bn6".to_string(), vec![]), ("mix".to_string(), vec!["bn6".to_string()])].into_iter().collect();
-    let r = |from: &str, path: &str| resolve(from, path, &roots);
+fn relative_paths_resolve_within_the_folder() {
+    let r = resolve;
     assert_eq!(r("bn6:chips/gundels/chips", "../../objects/sun-beam/sun_beam").unwrap(), "bn6:objects/sun-beam/sun_beam");
     assert_eq!(r("bn6:(pack)", "./lib/slot").unwrap(), "bn6:lib/slot");
     assert!(r("bn6:lib/slot", "../../x").is_err());
     assert!(r("bn6:lib/slot", "objects/x").is_err());
-    // A root's top: its own, or a root it requires.
+    // A folder's top: its own, or any other (one namespace).
     assert_eq!(r("bn6:chips/x/chip", "@bn6/lib/slot").unwrap(), "bn6:lib/slot");
-    assert_eq!(r("mix:rules/ruleset", "@bn6/rules/beast/system").unwrap(), "bn6:rules/beast/system");
-    assert!(r("bn6:rules/ruleset", "@mix/rules/ruleset").is_err());
-    assert!(r("mix:rules/ruleset", "@bn6/../x").is_err());
+    assert_eq!(r("bn5:rules/ruleset", "@bn6/rules/beast/system").unwrap(), "bn6:rules/beast/system");
+    assert_eq!(r("bn6:rules/ruleset", "@bn5/rules/ruleset").unwrap(), "bn5:rules/ruleset");
+    assert!(r("bn5:rules/ruleset", "@bn6/../x").is_err());
 }
 
 fn pack(modules: &[(&str, &str)]) -> Pack {
@@ -52,7 +50,7 @@ return throw
 local bomb = {}
 local EXPLOSION = define.effect { anim = 0 }
 bomb.kind = define.kind {
-    id = "bomb",
+    id = "test:bomb",
     pool = "attack",
     state = { variant = "u16" },
     update = function(me: any) return EXPLOSION end,
@@ -69,7 +67,7 @@ return bomb
 local throw = require("../../lib/bombs/throw")
 local bomb = require("../../lib/bombs/bomb")
 return define.chip {
-    id = "minibomb",
+    id = "test:minibomb",
     name = "MiniBomb",
     codes = { "B", "L", "R", "*" },
     action = throw.action { held = 4, thrower = bomb.variant { palette = 0 } },
@@ -83,8 +81,8 @@ local throw = require("../../lib/bombs/throw")
 local bomb = require("../../lib/bombs/bomb")
 local THROW = throw.action { held = 0x2E, thrower = bomb.variant { palette = 1 } }
 return {
-    define.chip { id = "flshbom1", name = "FlshBom1", action = THROW },
-    define.chip { id = "flshbom2", name = "FlshBom2", action = THROW },
+    define.chip { id = "test:flshbom1", name = "FlshBom1", action = THROW },
+    define.chip { id = "test:flshbom2", name = "FlshBom2", action = THROW },
 }
 "#,
     ),
@@ -130,21 +128,21 @@ fn the_define_phase_reads_the_same_whatever_the_order() {
 fn definition_mistakes_are_load_errors() {
     let cases: &[(&str, &str)] = &[
         ("return define.chip { name = 'x' }", "needs an `id`"),
-        ("return define.kind { id = 'Bomb', pool = 'attack' }", "not a valid id"),
-        ("return define.chip { id = 'x', damage = 1.5 }", "1.5 is not an integer"),
-        ("local t = {}\nt.me = t\nreturn define.chip { id = 'x', loop = t }", "contains itself"),
+        ("return define.kind { id = 'test:Bomb', pool = 'attack' }", "not a valid id"),
+        ("return define.chip { id = 'test:x', damage = 1.5 }", "1.5 is not an integer"),
+        ("local t = {}\nt.me = t\nreturn define.chip { id = 'test:x', loop = t }", "contains itself"),
         ("return define.chip(3)", "takes a table"),
-        ("local s = define.chip { id = 'x' }\nreturn define.chip(s)", "defined twice"),
+        ("local s = define.chip { id = 'test:x' }\nreturn define.chip(s)", "defined twice"),
         // The migration's markers are gone: neither the global nor the
         // field.
-        ("return define.navi { id = 'x', legacy = { number = 1 } }", "takes no `legacy` field"),
-        ("return define.navi { id = 'x', marker = legacy { number = 1 } }", "attempt to call a nil value"),
+        ("return define.navi { id = 'test:x', legacy = { number = 1 } }", "takes no `legacy` field"),
+        ("return define.navi { id = 'test:x', marker = legacy { number = 1 } }", "attempt to call a nil value"),
     ];
     for (source, want) in cases {
         let e = define_pack(&[("chips/x/chip", source)]).unwrap_err();
         assert!(e.contains(want), "{source}: {e}");
     }
-    let e = define_pack(&[("a", "return define.chip { id = 'x' }"), ("b", "return define.chip { id = 'x' }")]).unwrap_err();
+    let e = define_pack(&[("a", "return define.chip { id = 'test:x' }"), ("b", "return define.chip { id = 'test:x' }")]).unwrap_err();
     assert!(e.contains("chip \"test:x\" is defined twice: in test:a.luau and in test:b.luau"), "{e}");
 }
 
@@ -165,33 +163,32 @@ fn define_named(modules: &[(&str, &str)]) -> Result<Definitions, String> {
 fn assets_resolve_by_name_while_content_loads() {
     let d = define_named(&[(
         "lib/effects",
-        "local SOUND = asset.sound('throw')\n\
-         if asset.sprite('bomb') ~= asset.sprite('bomb') then error('one value per asset') end\n\
-         return { explosion = define.effect { sprite = asset.sprite('explosion'), anim = 3, sound = SOUND } }",
+        "local SOUND = asset.sound('test:throw')\n\
+         if asset.sprite('test:bomb') ~= asset.sprite('test:bomb') then error('one value per asset') end\n\
+         return { explosion = define.effect { sprite = asset.sprite('test:explosion'), anim = 3, sound = SOUND } }",
     )])
     .unwrap();
     let e = &d.of(Registry::Effect)[0];
-    // (Qualified with the module's root's pack.)
     assert_eq!(e.spec.field("sprite"), &Data::Asset(nettai_content_api::AssetKind::Sprite, "test:explosion".into()));
     assert_eq!(e.spec.field("sound"), &Data::Asset(nettai_content_api::AssetKind::Sound, "test:throw".into()));
     // An unknown name is an error naming the module; so is a resolver
     // called after loading.
-    let e = define_named(&[("chips/x/chip", "return { s = asset.sprite('bom') }")]).unwrap_err();
-    assert!(e.contains("chips/x/chip: no sprite is named \"bom\""), "{e}");
-    let e = define_named(&[("m", "return { f = function() return asset.sound('throw') end }")]);
+    let e = define_named(&[("chips/x/chip", "return { s = asset.sprite('test:bom') }")]).unwrap_err();
+    assert!(e.contains("chips/x/chip: no sprite is named \"test:bom\""), "{e}");
+    let e = define_named(&[("m", "return { f = function() return asset.sound('test:throw') end }")]);
     assert!(e.is_ok(), "calling it later is the runtime's error, not the define phase's");
 }
 
 #[test]
 fn the_roles_are_one_definition() {
     let d = define_named(&[
-        ("lib/counter", "return define.action { id = 'counter', state = {}, update = function(me, s) end }"),
-        ("rules/roles", "return define.roles { actions = { anti_damage_counter = require('../lib/counter') } }"),
+        ("lib/counter", "return define.action { id = 'test:counter', state = {}, update = function(me, s) end }"),
+        ("rules/roles", "return define.roles { id = 'test:roles', actions = { anti_damage_counter = require('../lib/counter') } }"),
     ])
     .unwrap();
     let roles = d.get(Registry::Roles, "test:roles").expect("keyed roles");
     assert_eq!(roles.spec.field("actions").field("anti_damage_counter"), &Data::Ref(Registry::Action, "test:counter".into()));
-    let e = define_named(&[("a", "return define.roles {}"), ("b", "return define.roles {}")]).unwrap_err();
+    let e = define_named(&[("a", "return define.roles { id = 'test:roles' }"), ("b", "return define.roles { id = 'test:roles' }")]).unwrap_err();
     assert!(e.contains("roles \"test:roles\" is defined twice"), "{e}");
 }
 
@@ -208,6 +205,31 @@ fn definitions_are_frozen_and_definers_close_after_loading() {
     BUDGET.with(|b| b.set(1000));
     let e = late.call::<LuaValue>(()).unwrap_err().to_string();
     assert!(e.contains("definitions are made while content loads"), "{e}");
+    drop(lua);
+}
+
+/// Coverage (src/coverage.rs): the modules whose code ran while recording,
+/// on this thread; nothing when not recording.
+#[test]
+fn coverage_records_the_modules_that_ran() {
+    let p = pack(&[
+        ("lib/twice", "return { twice = function(n) return n * 2 end, unused = function() return 0 end }"),
+        ("m", "local lib = require('./lib/twice')\nreturn { f = function(n) for i = 1, 2 do n = lib.twice(n) end return n end }"),
+        ("other", "return { g = function() return 1 end }"),
+    ]);
+    let (lua, _, modules, _, _) = open(&p, &AssetNames::default(), Options::default()).unwrap();
+    let LuaValue::Table(m) = &modules["test:m"] else { panic!("a table") };
+    let f: Function = m.get("f").unwrap();
+    BUDGET.with(|b| b.set(1000));
+    assert_eq!(f.call::<i64>(3).unwrap(), 12);
+    assert_eq!(coverage::take(), coverage::Ran::default(), "nothing recorded unless started");
+    coverage::start();
+    assert_eq!(f.call::<i64>(3).unwrap(), 12);
+    let ran = coverage::take();
+    assert_eq!(ran.modules.into_iter().collect::<Vec<_>>(), ["test:lib/twice", "test:m"]);
+    // Stopped: the next call isn't recorded.
+    assert_eq!(f.call::<i64>(3).unwrap(), 12);
+    assert_eq!(coverage::take(), coverage::Ran::default());
     drop(lua);
 }
 
@@ -244,12 +266,12 @@ fn a_plan_binds_definition_slots() {
     assert!(e.contains("chip test:minibomb: `name` is string, not a function"), "{e}");
 }
 
-/// docs/design/rules-in-luau.md §7.4: assets of several packs load
-/// together, each name qualified with its pack's game; a root names its own
-/// pack's unqualified, and another pack's qualified only if it requires a
-/// root of that pack.
+/// docs/design/rules-in-luau.md, the flat namespace: assets of several
+/// packs load together, each name its pack's game first; content writes
+/// every asset name in full, any loaded pack's, and an unqualified one is
+/// refused.
 #[test]
-fn assets_of_several_packs_resolve_by_root() {
+fn assets_are_named_in_full() {
     let mut other = nettai_content_api::PackIndex::default();
     other.sprites.insert("bomb".into(), nettai_content_api::PackSprite { category: 0x01, index: 2 });
     let mut test = nettai_content_api::PackIndex::default();
@@ -257,23 +279,16 @@ fn assets_of_several_packs_resolve_by_root() {
     let names = AssetNames::of_packs(vec![("test".into(), test), ("other".into(), other)]);
     assert_eq!(names.packs, ["other", "test"], "packs in their games' order");
     assert_eq!(names.names(nettai_content_api::AssetKind::Sprite), ["other:bomb", "test:bomb"]);
-    let sprite = |root: &str, requires: &[&str], source: &str| -> Result<Data, String> {
-        let p = Pack::root(root, [("m".to_string(), source.to_string())])
-            .with_requires(root, requires.iter().map(|r| r.to_string()).collect());
-        let mut p = p;
-        if root == "mix" {
-            p = p.with_assets("mix", "other");
-        }
+    let sprite = |source: &str| -> Result<Data, String> {
+        let p = Pack::root("test", [("m".to_string(), source.to_string())]);
         define(&p, &names, Options::default())
             .map(|(d, _)| d.of(Registry::Effect)[0].spec.field("sprite").clone())
             .map_err(|e| e.message)
     };
     let effect = |name: &str| format!("return define.effect {{ sprite = asset.sprite('{name}'), anim = 0 }}");
     let asset = |n: &str| Data::Asset(nettai_content_api::AssetKind::Sprite, n.into());
-    assert_eq!(sprite("test", &[], &effect("bomb")), Ok(asset("test:bomb")));
-    assert_eq!(sprite("test", &[], &effect("test:bomb")), Ok(asset("test:bomb")));
-    // A root whose assets are another pack's (a mod's `assets`).
-    assert_eq!(sprite("mix", &[], &effect("bomb")), Ok(asset("other:bomb")));
-    let e = sprite("test", &[], &effect("other:bomb")).unwrap_err();
-    assert!(e.contains("names only its own pack's assets"), "{e}");
+    assert_eq!(sprite(&effect("test:bomb")), Ok(asset("test:bomb")));
+    assert_eq!(sprite(&effect("other:bomb")), Ok(asset("other:bomb")), "any loaded pack's");
+    let e = sprite(&effect("bomb")).unwrap_err();
+    assert!(e.contains("write an asset's name in full"), "{e}");
 }

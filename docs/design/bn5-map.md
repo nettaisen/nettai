@@ -82,12 +82,12 @@ between builds) or a constant.
 **Finding counterparts,** in order (the `via` column of the table):
 
 1. `exact`: BN6's bytes, with BL pairs and address literals masked, at exactly one place of the BN5 ROM (or its
-   IWRAM code); `exact?` when several, the one nearest its neighbours' move.
+   IWRAM code); `exact?` when several, the one nearest its neighbors' move.
 2. `shape`: the same shapes at exactly one discovered BN5 routine.
 3. `call`: a BL (or a code pointer) at the same place of a matched pair (strong when the pair is the same code).
 4. `table`: the same index of a table of code pointers both load (object kinds, state machines, handler tables,
    tables of tables).
-5. `order`: between two matched neighbours, the unmatched routines of both gaps paired in order by similarity.
+5. `order`: between two matched neighbors, the unmatched routines of both gaps paired in order by similarity.
 
 Each BN5 routine is the counterpart of at most one BN6 routine (the strongest claim keeps it). Weak claims (a
 table entry, an order pairing) need a ratio of 0.35. Steps 3 to 5 repeat to a fixed point.
@@ -131,7 +131,7 @@ similar.
 at the same place of a BN6 routine and its counterpart, the offset each uses. Of 11,209 such accesses 97.4% use
 the same offset, and every field from +0x00 to +0x7C is mostly at its BN6 offset. The one pattern among the
 rest: the navi chips' summoned navis (BN6's routines from `sub_80B8F30` to `sub_80BA0D8`, BlastMan's, TenguMan's
-and their neighbours') step their state machine in +0x0B where BN6 uses +0x0A (63 places, 8 of them in
+and their neighbors') step their state machine in +0x0B where BN6 uses +0x0A (63 places, 8 of them in
 otherwise identical code). The record sizes are BN6's: 0xD8 for actors and attacks, 0xC8 for effects (the pool
 table of `InitializeStructsOfObjectType`, the same code in both).
 
@@ -152,7 +152,7 @@ class, MB, flags at +0x09, the counter, family and subfamily at +0x07/+0x08, the
 0x60 bytes a side in BN5 (the two blocks at 0x0203C880 and 0x0203C8E0; BN6 0x64 at 0x0203CE00 and 0x0203CE64).
 `fields.py navistats` pairs the field each call to a NaviStats accessor names. +0x01 to +0x3E (the buster, the
 NaviCust programs' bytes, the custom level +0x0A, the folders +0x0B/+0x0C, the supports' +0x0D, the mood +0x0E,
-the shoes and armours +0x1B to +0x23, the form +0x29, HP +0x40/+0x42) are the same offsets. Seen moved, one call
+the shoes and armors +0x1B to +0x23, the form +0x29, HP +0x40/+0x42) are the same offsets. Seen moved, one call
 each (to be confirmed): +0x04 → +0x39 and +0x39 → +0x04 (a swap), +0x17 → +0x2C, +0x21 → +0x44, the patch-card
 block +0x56 to +0x5B → +0x2D to +0x30 and +0x40, +0x5F → +0x34, +0x63 → +0x54. Four of 46 calls reading the form
 +0x29 read +0x2C in BN5 (`sub_800F09E`, the charged chip by form: BN6's forms 1–4 and 8 are BN5's souls there).
@@ -205,7 +205,7 @@ the transform records hold the requesting navi at +8. Three layouts differ besid
 **Shared** (BN6 routine: BN5 status):
 
 - the per-console screen and its state machine, `sub_8026A28`: same (state block 0x02036B10, BN6 0x020364C0);
-- the slot layout's neighbour fill `sub_8027F42`, the deal's compaction `sub_802945A`: same;
+- the slot layout's neighbor fill `sub_8027F42`, the deal's compaction `sub_802945A`: same;
 - the keys `sub_8028B74`: similar 0.89; what can be picked `sub_8028E32`: 0.94; OK builds the hand
   `sub_8029110`: 0.99 (127 instructions each); the opening's slide `sub_8026B04`: 0.95; the sub-screens
   `sub_8029688`, `sub_8029788`, `sub_802983C`: 0.72–0.84;
@@ -376,7 +376,7 @@ reach_bn5.py); a few chips hit nobody standing anywhere, and their code says wha
 
 ### 6.4 The e-Reader cards' chips: LeadRaid and ChaosLrd
 
-Two chips' text and colours are the save's, written when an e-Reader card is read: **LeadRaid (0x137)** and
+Two chips' text and colors are the save's, written when an e-Reader card is read: **LeadRaid (0x137)** and
 **ChaosLrd (0x138)**. Read in Team ProtoMan's code; the four ROMs and both versions are the same.
 
 - **What the ROM has:** their records (the chip table, as any chip): LeadRaid a Mega chip, code L, Null, 200 damage,
@@ -387,14 +387,14 @@ Two chips' text and colours are the save's, written when an e-Reader card is rea
   "Chaos Lord", JP ロードオブカオス); LeadRaid's none.
 - **What the save has:** their names (the ROM's name entries are the text command `FF 00 n`), their descriptions
   (`FF 01 n`) and their pictures' palettes (record +0x28 points into EWRAM): slot n's name is a one-entry text archive
-  at save +0x1D14 + 0x18 n, its description one at +0x1374 + 0x64 n, its palette 16 colours at +0x1660 + 0x20 n (the
+  at save +0x1D14 + 0x18 n, its description one at +0x1374 + 0x64 n, its palette 16 colors at +0x1660 + 0x20 n (the
   save is EWRAM from 0x02000000, so those are its addresses once loaded). LeadRaid is slot 0, ChaosLrd slot 1.
 - **How the game gets them:** an e-Reader card read over the link: the card dispatcher (0x0812F3BC) passes the card's
   kind to 0x0812F8F0, which notes the card in the save's obfuscated bytes (BN6's `encryption_8007004`, index 0x1020
   plus the slot; what reads that is not read), gives the chip once (`GetChipCountOfCode`, `GiveChips`: LeadRaid in L,
   ChaosLrd in X) and decompresses the card's name and description into the slot and copies its palette. A new game
   clears the slots (`sub_8021D36`, the same code as BN6's): the palettes zeroed (a black picture), the names and
-  descriptions "????". Owning the chip is the pack's count, as any chip's; its text and colours are the slot's.
+  descriptions "????". Owning the chip is the pack's count, as any chip's; its text and colors are the slot's.
 - **The saves:** Tango's eight raw netplay saves (both versions, light and dark, US and JP) hold both chips' slots,
   the same in all (the US's "LeadRaid" "ProtoMan & Colonel together!" and "ChaosLrd" "Hatred formed into Bass", the
   JP's リーダーズレイド and ロードオブカオス), and so do the four GBA saves in Tango's saves folder (masked). BN5 DS has
@@ -585,7 +585,7 @@ BN5's stages (the settings record stays raw).
   obstacle family is BN6's summon); BN5's damage formulas (its own table: compat keeps the row); +0x16 (BN6's extra
   flags byte: BN5's bits unread, written as numbers) and +0x17 (BN6's lock-on mode: BN5's byte, mostly 0x10,
   unread); a version's own record (Team Colonel's differences).
-- *Panels:* metal (type 5: BN6's road flag, its look a plate, its behaviour unread) and sea (type 10, flag
+- *Panels:* metal (type 5: BN6's road flag, its look a plate, its behavior unread) and sea (type 10, flag
   0x20000); the panel record's 0x24 bytes (the lava and sea timers the panel setter starts, at +0x10 and +0x14).
 - *Pools:* the actors' 16 slots (the engine's `object::SLOTS` is one number, 32).
 - *NaviStats:* the light/dark value (+0x44); the weapon bytes' BN5 meaning (+0x04, +0x05, +0x07, +0x39: BN6's
@@ -867,7 +867,7 @@ Both summon through the navi chips' action (§6.4), the same handler and framewo
   `sub_8114FB8`, outside the chips.
 
 So a port writes LeadRaid's own module. TwinLdrs (content/bn6/chips/twinldrs) shares the navi-chip framework, the
-target search's shape and the slash actor (kind 5, `sub_80B8E30`), not the behaviour. The map's walk finds TwinLdrs
+target search's shape and the slash actor (kind 5, `sub_80B8E30`), not the behavior. The map's walk finds TwinLdrs
 0.19 alike; there is no TwinLdrs lab to compare with.
 
 **ChaosLrd: BN5's own.** ChaosLrd (0x138, summon entry 0x1D) spawns actor kind 0x51. Its code is BN5's: the
@@ -886,7 +886,7 @@ The actor (0x080C2EB8, states 0x080C2F02, 0x080C3014, 0x080C2EDC) runs as follow
 - **The strike.**
   1. After 142 frames, a burst of hit objects from a table of offsets (0x080C30C0, through `sub_80E5F78`'s
      counterpart: effect kind 0x4B), then sound 0x107.
-  2. Sprite changes and a colour fade.
+  2. Sprite changes and a color fade.
   3. 20 frames into the last phase: animation 14, sound 0x141, and the strike (attack kind 0x82,
      `sub_80D5890`'s counterpart).
   4. 40 frames, then it leaves.
@@ -933,7 +933,7 @@ ProtoMan's ROM; Team Colonel's tables are the same. Each file names its sources.
 | math.luau | sine (0x08005CD0) | BN6's |
 | buster.luau | recovery by Rapid and open panels (0x0801CEA4); the empty hand's chip | BN6's |
 | banners.luau | holding banners: program-advance, hit-damage-judge, program-advance-empty | BN6's three; the 49 records (0x0801B810) match BN6's first 0x5D |
-| custom-screen.luau | the slot grid and the neighbour fix-up's lists | BN6's |
+| custom-screen.luau | the slot grid and the neighbor fix-up's lists | BN6's |
 | status.luau | 64 statuses: paralysis, confusion, blindness, immobilization by level (0x0801CEC4); the HP bug's periods | no freeze, no bubble; the timers 2 bytes further in the collision record |
 | collision.luau | 77 of BN6's collision types by their rows (0x0801636C) | 80 rows to BN6's 89; no 0x80 self bit; row 0x3D gives its sides' bits |
 | panels.luau | the 11 panel types (unregistered data, §15.2) | metal and sea; no roads |
@@ -987,8 +987,8 @@ What the panels do (BN6's `sub_800C380`, BN5's 0x0800A998, and the routines name
 The smallest engine additions BN5's data and rules need, for the rules agent (none made here):
 
 1. **Panel types.** `PanelType` gains BN5's three: `Metal` (type 5), `Lava` (type 8: not BN6's volcano, whose
-   flags and sound it shares but not its behaviour) and `Sea` (type 10); the `panels` section names the types its
-   game has, not exactly all of the engine's (BN6's names its 13, BN5's its 11). Their behaviour as section data
+   flags and sound it shares but not its behavior) and `Sea` (type 10); the `panels` section names the types its
+   game has, not exactly all of the engine's (BN6's names its 13, BN5's its 11). Their behavior as section data
    where it is numbers: per type `expires` (ticks to normal: BN5's lava and sea 960; BN6's roads their road
    timer) and the broken panel's mend time per game (BN5 600 always); the rest as code the types select (lava's
    burn, sea's drain and stop, type 5's slide), keyed by the panel type, not the game. bn5-compat then maps 5, 8
@@ -1140,7 +1140,7 @@ banners (49, the same layout as BN6's: 0x0801B810), their digits and palette, an
 problems). Waiting in this batch: DrkRecov's dark chip cost (HP bug: BN5's own code, unread, §6), HolyDrem's light
 MegaMan (§6.1), the swing's call BN6 stubs out (0x080E9FD2, battle flag 0x40: never in a netbattle).
 
-**BN6's modules changed for BN5** (each the smallest change that lets BN5 reuse it; BN6's behaviour the same, its
+**BN6's modules changed for BN5** (each the smallest change that lets BN5 reuse it; BN6's behavior the same, its
 full set run on the batch):
 
 - lib/instruments/instrument.luau (and types.d.luau's `Instrument`): optional `hp` and `sprite`. BN5's
@@ -1186,15 +1186,43 @@ Third batch:
 - *Without a BN6 chip* (§14.4, `bn6 code, no chip`): Blinder, the mode chips, FinalGun: new modules from the
   shared code.
 
+**Fifth batch** (2026-10-02, bn5-port-5): BusterUp, Attck+10 and +30 (lib/plus), FireHit1 to 3, Vulcan1 to 3,
+Tornado, AntiFire/Aqua/Elec/Wood, CrakOut and its family, the dark chips DarkThnd, DrkSword, DarkTorn, DarkWide,
+DarkCirc (CircGun's kinds of BN5's look, its variant period 2, 7 shots, look 1), DrkLance (with Lance: BN6's
+lance of BN5's look, hit modifier 0x10, Param1 1's row 0x25 and bug 0x16), DarkMetr (with Meteors: the falling
+meteor's rows, 2's hit modifier 0, 3 cracking, 4 DarkMetr's breaking with bug 0x19; BN5's shower with its dark
+parameter), DarkDril (with DrilArm1 to 3: BN6's drills of BN5's look, no wait outside flag 0x40, DarkDril's 60
+ticks and bug 0xFA), DrkSonic (with Fanfare and BN5's own instruments: row 4, its effect paralyzing each enemy
+where it stands), DarkPlus (its damage the next damaging chip's Atk+ bonus, the dark tint AIData+0x3C); the dark
+chips' rule and costs (rules/light-dark: `battle.set_side_stat`, the mood, `battle.no_dark_chips`); TimeBom1 to 3
+and TimeBom+'s use (BN6's TimeBom with BN5's placement: a random row's frontmost enemy panel, 0x080E3420; the
+bombs' identities of AI index 0x21, BN5's field objects' index: actor records 0xD8 to 0xE1 all have it, and nothing
+of BN5's reads it but the record).
+
+BN6's modules changed for BN5 in the fifth batch, each a kind of its look (BN6 the same): chips/firehit/fist,
+objects/bullet, chips/vulcan/action, chips/tornado, chips/elemtrap (trap and strike), chips/widesht/wave (its
+trail), chips/timebom (countdown.make_kind, controller.make), chips/circgun (shot, gun, controller), chips/lance
+(make_kind, instant_of), chips/meteors (falling_meteor.make_kind with its rows by Param1; the controller moved to
+controller.luau), lib/instant/meteor_shower (`pick`, `aim` exported; BN6's three-drop row 2), chips/drilarm/drill
+(make_kind returning its spawner), lib/instruments (instrument.make_kind, instruments.make, `effect_period`),
+lib/swords (a slash's `blade_anim`; parts.hold's anim).
+
+**Waiting:** LarkMan, GridMan and their SP and DS (BN5's own navis, §14.4: the action map's `bn5-only`), DarkInvs
+(BN5's own, 0x080E2338), the mode chips, Program Advances' recipes (TimeBom+'s among them), the flag-0x40 mode's
+effect 0x83 (FireHit's warning, the swords' swing, the meteors, DrilArm's start: never in a netbattle).
+
 ### 15.7 BN5's MegaMan, stages and roles (as built)
 
 - **MegaMan** (content/bn5/navis/megaman, `bn5:megaman`): BN5's navi 0, NameID 0x180, from BN5's tables (his
-  sprite 08-00, element, buster bonus 1, move lag 4, banners, actor record, the 30 attach points of BN5's 0x3C-byte
-  rows), his buster and charged shot BN6's shot actions with BN5's setups (weapons/: the damage Attack plus the
-  navi's bonus, no worn-out rule or cap; a program drawn on every shot, on half the draws). He has no forms: the
-  engine allows one base form in a content (BN6's), which he takes; BN5's souls need a base form per game
-  (§15.3, item 12 below). The engine asks a player's identity for a Full Synchro aura animation, which BN5 has
-  differently (BN6's `sub_80C4C52` is absent): 0, BN6's rule, until BN5's emotions.
+  element, buster bonus 1, move lag 4, banners, actor record, the 30 attach points of BN5's 0x3C-byte rows), his
+  buster and charged shot BN6's shot actions with BN5's setups (weapons/: the damage Attack plus the navi's bonus,
+  no worn-out rule or cap; a program drawn on every shot, on half the draws). His forms are his souls (§15.8),
+  with his own base form `bn5:base` (P1c): his battle sprite is the form's, 00-00 by soul (0x0800DA3A: category 0
+  by the soul where NaviStats +0x29 is 0; 08-00, his navi sprite, has 31 one-frame animations). Changing form, he
+  takes BN6's MegaMan branches (NaviStats +0x29 0 in BN5's code too: the anger, the bugs' stripped programs, the
+  move lag), but for BN6's per-form tick (`sub_80F0608`), which BN5's table (0x080EB1E8) hasn't: the status
+  section's `form_tick` (BN5 false). The engine asks a player's identity for a Full Synchro aura animation, which
+  BN5 has differently (BN6's `sub_80C4C52` is absent): 0, BN6's rule, until BN5's emotions.
 - **Stages** (content/bn5/stages/netbattle.luau, compat stages.toml): a stage per distinct record of BN5's
   netbattle settings list (0x0811AF4C, 95 records), its layout (0x0800BD6C) and its actor list; the lab's
   settings (written to RAM by the Team Battle with its own background and effects) match the list's by layout,
@@ -1216,6 +1244,9 @@ More for §15.3:
 13. **The custom screen's end**: BN5's Team Battle custom screen (0x08025EF2) closes the screen on the tick both
    results are in, BN6's on the next, and BN5's sets no AIData +0x0F on the navis (BN6's `sub_8009338` does): a
    choice of the side's game's custom screen (`custom::GameLibrary`) or of the arena's flow.
+Items 14 to 18 are built (rules-in-luau.md, "P1b"); 19 and the dark chips' costs wait for a replay that needs
+them.
+
 14. **A dark MegaMan clears the holy panel under him** (§6.1; 0x08017136, from all six intake updates, BN6's
    `sub_801A9B8` to `sub_801AC6C`): every tick, an object on a holy panel whose side's light/dark value is 499 or
    less turns it Normal. Team Colonel's MegaMan is dark in the lab (bn5-compat's `LightDark` reads it from the
@@ -1228,12 +1259,52 @@ More for §15.3:
 16. **The hit spark's first tick** (0x080E0870, BN6's `sub_80E0864`): BN5's spark doesn't step its sprite at its
    init, so it lasts a tick longer (spark.rs).
 17. **The metal slide's speed** (§15.2): a step up or down covers its 24 pixels in 3 ticks (8 a tick); the
-   engine's slide moves 6. Its order by the move's direction is the tables', as recorded.
-18. **A custom screen asked for in the fight** (L or R with a full gauge) opens a tick after BN5's does: the
-   recordings that dig for a chip over several turns (HolyDrem's, the chip lab's `dig`) press it twice and BN5
-   opens on the tick of the second release.
+   engine's slide moves 6. Its order by the move's direction is the tables', as recorded. A navi's slide and drag
+   both go 8 a tick in depth in BN5 (0x0801361E, 0x080143A8). A slide arriving on metal goes on as on BN6's roads
+   (0x08013564), and one arriving on sea ends.
+18. **A custom screen asked for in the fight** (L or R with a full gauge) opens a tick after BN5's does: BN5's
+   state 0x20 (0x08007774) opens the screen itself once the reversions are done, where BN6 goes through state 0x24
+   first. The recordings that dig for a chip over several turns (HolyDrem's, the chip lab's `dig`) met it.
 19. **BN5's obstacle framework** (0x08018404, BN6's `sub_801B750`): outside the dimming, an obstacle not in its
    first action on a solid panel tests a word (+0x5C of the toolkit's +0x18) against 0x20 or 0x10 by its panel's
    side, then the panels beside it, and may spawn attack object 0x30 there (0x080CAB02, 0x080CAAE2: unread
    further); BlkBomb's idle and return actions are 7 and 6 (BN6's 9 and 8), its table without frozen and bubbled.
    Not met in the replays yet.
+
+### 15.8 Soul Unison (as built, in progress)
+
+- **The soul button** (the engine's custom screen, BN5's layout: slot 11, `SlotKind::Soul`, 0x08023C54,
+  0x08024B28, 0x08024972): lit for the last pick's family when the navi has a soul of it (a form of
+  `kind = "soul"` naming its `soul = { number, family }`), the save has the soul (`SoulUnlocks`: bn5-compat gives
+  a finished save's six of the version and Chaos Unison) and it isn't used this round (Soul Unison and Chaos Unison
+  apart; a dark chip's is Chaos Unison). Pressed: BN5's state 9 (`Phase::SoulChosen`: fades 0x34 and 0x30), the
+  soul first in the selection in place of the chip given up. At OK the transform record asks for the soul's form,
+  3 turns and the NaviCust's bonus (NaviStats +0x32, at most 9) or Chaos Unison's 1 (0x08024FF6;
+  `TransformRequest::turns`, `chaos`; the netplay protocol's version 2); the chip given up leaves the folder.
+- **The change** (rules/souls/change.luau, the souls' `change`, BN5's 0x08011F74, run by the shared turn-start
+  sequencer): onto the future panel, a flash, his moves stopped (`stop_moving`); the soul's image (objects/
+  soul-image, actor 0x2A, its navi's sprite 08-xx) spirals in, blinks and fades; MegaMan emerges in the soul (the
+  old form's end hook and the new one's start hook, `put_on/take_off_form_overlay`; TomahawkSoul's shake), the
+  status reset; Chaos Unison's 11 ticks arm the chaos charge (AIData +0x12, not yet modeled). The souls system
+  (rules/souls/system.luau) keeps the soul's turns (AIData +0x0F), counts them down at a turn's start (0x0801248C)
+  and asks for the revert when they run out (0x0801246C); the revert is the souls' own (`FormData::revert`, the
+  pause handler's: rules/souls/revert.luau, 0x080121D8: back to `bn5:base` with no state saved).
+- **ProtoSoul** (soul 1, sword): sprite 00-01, weapons from 0x0801CA1C's row 1: the buster, the charged slash
+  (routine 3: WideSwrd's slash, 80 + 10 × (Attack + 1), counter byte 0x94), Sword chips charged with A (routine
+  5: any Sword chip but a dimming or dark one, `charged_chips`' `plain`, 0x0801090A; doubled, 0x080103D0). BN5's
+  blade animation goes by the soul (0x080EC038: ProtoSoul 13, ColonelSoul 14, ShadowSoul 15; `blade_anim`).
+  souls/01-sword/unison matches every frame. Not yet: its B+Back shield (routine 4, BN5's guard action 0x1F, the
+  Guard chips' too).
+- **The other eleven** follow the pattern: a form file each (sprite 00-0n, image sprite 08-0n, family, weapons
+  from 0x0801CA1C), with their start hooks' parts (GyroSoul's propeller, NumberSoul's layer: identities' parts;
+  the image's for souls 2, 4, 7, 9 and 11, 0x0800EDBC), their charged shots (routines 7 to 0x2D: actions 0x3A to
+  0x45, Colonel's the chip AIData +0x32 names), their B+Back (Magnet's 0x25, Shadow's 0x45) and their chip-use
+  effects in BN5's chip use (0x0801026C: GyroSoul's next-chip doubling after a Wind chip, AIData +0x0D;
+  TomahawkSoul's doubled Wood chips on grass; KnightSoul's 50 invulnerable ticks; ShadowSoul's move lag 0, the
+  form's `move_lag`).
+- **Chaos Unison** waits on the engine: its charge (AIData +0x11's weapon, the routine's charge row by the chaos
+  level AIData +0x6C, the cycle 0x080105F8 of 0x08010650's rows, the release's requests 0x8000 and 0x10000, the
+  idle's start of the chaos weapon or of action 0x39) and, on a failed release, action 0x39 spawns the Dark MegaMan
+  (actor record 0x18D: a navi of AI index 0x16, 500 HP, on a random panel for the other side) that runs BN5's
+  computer navi AI (0x0802B4AC, AIData +0xF0): a second navi on a side, driven by an AI, which the engine hasn't.
+  Eleven of the twelve chaos recordings fail the charge.

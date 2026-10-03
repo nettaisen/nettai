@@ -51,8 +51,8 @@ export type State = {
     hit_panel: number,
 }
 
-local SPRITE, TOMAHAWK_SPRITE = asset.sprite("boomerang"), asset.sprite("boomerang-tomahawk")
-local SOUND = asset.sound("boomerang")
+local SPRITE, TOMAHAWK_SPRITE = asset.sprite("bn6:boomerang"), asset.sprite("bn6:boomerang-tomahawk")
+local SOUND = asset.sound("bn6:boomerang")
 
 -- Where a leg along a row ends, by the column it turns at (`byte_80CA4B4`
 -- flying left, `byte_80CA4C4` flying right), 16.16.
@@ -230,7 +230,7 @@ local function tick(me: Object, s: State)
 end
 
 boomerang.kind = define.kind {
-    id = "boomer/boomerang",
+    id = "bn6:boomer/boomerang",
     pool = "attack",
     state = {
         variant = "record:boomerang-variant",

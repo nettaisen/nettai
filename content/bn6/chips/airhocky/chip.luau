@@ -7,7 +7,7 @@ local puck = require("./puck")
 local lockon = require("../../rules/lockon")
 
 return define.chip {
-    id = "airhocky",
+    id = "bn6:airhocky",
     codes = { "L", "M", "N" },
     element = "null",
     family = "break",
@@ -21,5 +21,5 @@ return define.chip {
     beast = { lockon = lockon.thunder },
     library = { number = 51, index = 51, sort = 1 },
     slot_in_limit = 3,
-    action = flick.action { id = "airhocky/action", puck = puck.variants.airhocky, down = true },
+    action = flick.action { id = "bn6:airhocky/action", puck = puck.variants.airhocky, down = true },
 }

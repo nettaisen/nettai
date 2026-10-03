@@ -9,7 +9,7 @@ Evidence is cited by routine name (`sub_801A36A`) and struct offset (`AIData+0x3
 the disassembly found no symbolic reference and no raw access through a register holding the struct pointer. That
 scan is heuristic, not a proof.
 
-Behaviour is unchanged: the golden-trace replays match the same number of frames before and after the pass
+Behavior is unchanged: the golden-trace replays match the same number of frames before and after the pass
 (machgun 1074/552, soundmod 2933/3462/1947, with main's movement and chip-use work merged in).
 
 For fields likely to come back with a later port, the evidence column suggests a name ("re-add as ...").
@@ -34,11 +34,11 @@ Most renames are mechanical. These changed type, so their uses change too:
 
 | Old use | New use |
 |---|---|
-| `ai.unk_32 != 0` / `ai.unk_32 = 0xFFFF` | `ai.beast_out_spent` / `ai.beast_out_spent = true` |
-| `ai.unk_36 != 0` | `ai.beast_over_exhausted` (writing 0x3C0 becomes `= true`) |
+| `ai.unk_32 != 0` / `ai.unk_32 = 0xFFFF` | `ai.tired` / `ai.tired = true` (`beast_out_spent` until rules-in-Luau S5) |
+| `ai.unk_36 != 0` | `ai.exhausted` (writing 0x3C0 becomes `= true`; `beast_over_exhausted` until rules-in-Luau S3) |
 | `ai.unk_1c != 0` / `= 0` / `= 1` | `ai.hit_bug_latched` / `= false` / `= true` |
 | `ai.unk_3c` (u16) | `ai.bubble_base_z` (i16; `(z as i32) << 16` gives the same bits) |
-| `ai.unk_40` (already `Option<ObjectRef>`) | `ai.lockon_marker` |
+| `ai.unk_40` (already `Option<ObjectRef>`) | `ai.target_marker` (`lockon_marker` until rules-in-Luau S3) |
 | `ai.unk_50 != 0` (u32) | `ai.reset_linked_object.is_some()` (`Option<ObjectRef>`) |
 | `ai.unk_5c == 0` / `= 0` (u32) | `ai.full_synchro_aura.is_none()` / `= None` (`Option<ObjectRef>`) |
 | `obj.unk_0d` (0 / 4 / 8) | `obj.drag_step` (`DragStep::Start` / `Slide` / `Recover`; `object::DragStep`) |
@@ -58,7 +58,7 @@ Fields that already had names are unchanged. `drain_counter` (+0x0A) kept its na
 |---|---|---|---|
 | `unk_03` | deleted | u8 | AIData+0x03: byte 2 of the actor's enemy record (`enemy_getStruct1`), copied at spawn (`sub_800753C`); 1 for player navis. Read by `sub_800F334` and `sub_81095D0` (virus code). The port wrote it at spawn but never read it. |
 | `unk_09` | `hp_drain_counter` | u8 | AIData+0x09: ticks toward the next HP lost to the fight-time HP bug. Players: `sub_8010230` (level from NaviStats+0x18). Actors without navi stats: `sub_801026A` (level from AIData+0x12). |
-| `unk_0b` | `swung_emotion` | u8 | AIData+0x0B: the emotion last picked by the NaviCust emotion-swing bug (`sub_8013DA0`). Deleted by the pass, and back with the bug's port. |
+| `unk_0b` | `swung_emotion` | u8 | AIData+0x0B: the emotion last picked by the NaviCust emotion-swing bug (`sub_8013DA0`). Deleted by the pass, and back with the bug's port; since rules-in-Luau S5 BN6's emotion system's state (`swung`, content/bn6/rules/emotion). |
 | `unk_0c` | deleted | u8 | AIData+0x0C: written by virus/navi init `sub_8016F56` (the opponent's max base HP / 100, clamped to 1..10). Read by `sub_800FE12` and `sub_800FE36`, which multiply a table value by it for actors of version 4. |
 | `unk_0d` | deleted | u8 | AIData+0x0D: count of absorbed obstacles (`sub_80E991C`, `sub_8011F8C`, `sub_8011FCE`). Already modeled as `absorbed.len()`. |
 | `unk_0e` | deleted | u8 | AIData+0x0E: set to 0xFF at spawn (`sub_800753C`) and at deletion (`sub_8016C4E`). Its only reader, `sub_800A86E`, has no effect. The port wrote it at spawn and in `destroy`; both writes are gone. |
@@ -73,13 +73,13 @@ Fields that already had names are unchanged. `drain_counter` (+0x0A) kept its na
 | `unk_18` | deleted | u8 | AIData+0x18: counted down by `sub_802DD62` (Cross code); no other access found. |
 | `unk_1c` | `hit_bug_latched` | bool | AIData+0x1C: the NaviCust on-hit bug (NaviStats+0x16) already fired during this hit sequence. `sub_8013F1E` clears it when it runs with `prevent_anim` 0. The game stores 0/1. |
 | `unk_1f` | deleted | u8 | AIData+0x1F: no reader found. |
-| `unk_32` | `beast_out_spent` | bool | AIData+0x32 (the game stores 0xFFFF or 0). Set by `sub_801443C`, which is called: at init with a zero Beast Out counter (`sub_8013892`); by the turn-start check (`sub_80159C6`); when a Beast Out (not Over) reverts (`sub_80158CC`); by the emotion-swing bug (`sub_8013DA0`); and by `sub_80E4954` when the counter is 0. Cleared by `sub_8014446` (from the emotion-swing bug, and from `sub_80E4954` when the counter is not 0). Effects: emotion 1 (`sub_8015B64`), mood changes blocked (`sub_8015BEC`), anger blocked (`sub_80143CE`), counter-hit Full Synchro blocked (`sub_801A200`). |
-| `unk_36` | `beast_over_exhausted` | bool | AIData+0x36: set when a Beast Over form reverts (`sub_80158CC` → `sub_8014466`, which also sets mood 0). The game stores 0x3C0, but nothing counts it down, so it is a flag. Effects: emotion 5 (`sub_8015B64`), mood changes and anger blocked, and 1 HP lost per tick, never the last one (`sub_8014498`). |
+| `unk_32` | `tired` | bool | AIData+0x32 (the game stores 0xFFFF or 0). Set by `sub_801443C`, which is called: at init with a zero Beast Out counter (`sub_8013892`); by the turn-start check (`sub_80159C6`); when a Beast Out (not Over) reverts (`sub_80158CC`); by the emotion-swing bug (`sub_8013DA0`); and by `sub_80E4954` when the counter is 0. Cleared by `sub_8014446` (from the emotion-swing bug, and from `sub_80E4954` when the counter is not 0). Effects: emotion 1 (`sub_8015B64`), mood changes blocked (`sub_8015BEC`), anger blocked (`sub_80143CE`), counter-hit Full Synchro blocked (`sub_801A200`). Named `beast_out_spent` until rules-in-Luau S5, which made it the framework's held state (its writers are BN6's systems'). |
+| `unk_36` | `exhausted` | bool | AIData+0x36: set when a Beast Over form reverts (`sub_80158CC` → `sub_8014466`, which also sets mood 0). The game stores 0x3C0, but nothing counts it down, so it is a flag. Effects: emotion 5 (`sub_8015B64`), mood changes and anger blocked, and 1 HP lost per tick, never the last one (`sub_8014498`). Named `beast_over_exhausted` until rules-in-Luau S3, which made it the framework's and gave the setting to BN6's beast system (`form_reverted`). |
 | `unk_38` | `road_cooldown` | u16 | AIData+0x38: ticks before a road panel can start another slide. Set to 5 after a road slide (`sub_80166D0`, `sub_8016730`) and to 1 by `sub_80F650A`. Counted down and tested by `sub_801A36A`; tested by `sub_801A400`. |
-| `unk_3a` | deleted | u16 | AIData+0x3A: the emotion-swing bug's 60-tick counter (`sub_8013DA0`). Re-add as `swing_timer`. |
+| `unk_3a` | deleted | u16 | AIData+0x3A: the emotion-swing bug's 60-tick counter (`sub_8013DA0`). Back with the bug's port; since rules-in-Luau S5 BN6's emotion system's state (`swing_ticks`). |
 | `unk_3c` | `bubble_base_z` | i16 (was u16) | AIData+0x3C: the height (Z16, whole pixels) a bubble bobs around and restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses record it every tick when not bubbled (`sub_8108F74`); nothing sets it for players. |
 | `unk_3e` | deleted | u16 | AIData+0x3E: no reader found. |
-| `unk_40` | `lockon_marker` | `Option<ObjectRef>` | AIData+0x40: the Beast Out lock-on marker (effect #0xF, spawned by `sub_80E1620`). `sub_80E164A` reads its panel; `sub_80E1654`/`sub_80E1662` freeze and unfreeze it; `sub_801562C` clears the pointer. |
+| `unk_40` | `target_marker` | `Option<ObjectRef>` | AIData+0x40: the Beast Out lock-on marker (effect #0xF, spawned by `sub_80E1620`), the shared kind `engine/target-marker` since rules-in-Luau S3 (`lockon_marker` before). `sub_80E164A` reads its panel; `sub_80E1654`/`sub_80E1662` freeze and unfreeze it; `sub_801562C` clears the pointer. |
 | `unk_4c` | `stun_ticks` | u32 | AIData+0x4C: consecutive ticks spent flinching or paralyzed (`sub_80143FC` via `sub_8014432`/`sub_8014424`). At 120, base MegaMan gets angry (`sub_80142DC`). Cleared when anger ends (`sub_80143A6`/`sub_80143B4`). |
 | `unk_50` | `reset_linked_object` | `Option<ObjectRef>` (was u32) | AIData+0x50: an object tied to the navi. The full status reset ends it (`sub_80144C0` → `sub_801390C` → `sub_80E5410`: state 8, first extra var cleared) and clears the pointer. **Uncertain:** no routine that stores an object here was found. |
 | `unk_54` | deleted | u32 | AIData+0x54: read by `sub_801B9BC`. |
@@ -99,7 +99,7 @@ Fields that already had names are unchanged. `drain_counter` (+0x0A) kept its na
 | `unk_17` | deleted | u8 | AIAttackVars+0x17: the step's destination y, as above. |
 | `unk_18` | deleted | u16 | AIAttackVars+0x18: a step's end lag in ticks, set when a step starts (`sub_80116AE`, `sub_80116D8`); the step copies it into its timer (+0x10) on arrival (`sub_80EB194`). The ported step keeps it as `movement::Vars::end_lag`. (Before the merge this pass had renamed it `move_lag`.) Navi AI uses the halfword too (about 120 routines). |
 | `unk_1a` | deleted | u8 | AIAttackVars+0x1A: navi AI scratch. Written by about 76 AI routines; read by `sub_80F59E8`, `sub_8101E24`...`sub_8101EE2`, `sub_810A080`, `sub_811239A`. |
-| `unk_1e` | `rush` | u16 | AIAttackVars+0x1E: the Beast Out attack wrapper's step. `sub_80EAD9C` dispatches on the byte at +0x1E; `sub_801011A` (`reset_attack_links`, from every `set_attack`) clears the halfword. Deleted by the pass; back as `attack.rush` (`beast_rush::Vars`: its phase and the bytes after it, +0x1E..+0x27) with the wrapper's port, the Beast Out rush. |
+| `unk_1e` | `rush` | u16 | AIAttackVars+0x1E: the Beast Out attack wrapper's step. `sub_80EAD9C` dispatches on the byte at +0x1E; `sub_801011A` (`reset_attack_links`, from every `set_attack`) clears the halfword. Deleted by the pass; back as `attack.rush` (`beast_rush::Vars`: its phase and the bytes after it, +0x1E..+0x27) with the wrapper's port, the Beast Out rush. Since rules-in-Luau S3 the rush is BN6's beast system's (content/bn6/rules/beast/rush.luau, the role `actions.wrapper`) and these bytes are the system's state (`rush_*`); the byte at +0x1D, `beast_lockon` then, is the framework's `attack.wrapped`. |
 | `move_arg` | deleted | u32 | AIAttackVars+0x2C: the absolute step's panel-trail argument (`sub_80116AE`/`sub_80116D8` store 0). After the merge nothing writes or reads it. |
 
 ## Object (`object/mod.rs`; the game's BattleObject)
@@ -190,7 +190,7 @@ These are not fields, but they were `UNK_*` names or were named after the `UNK_4
 
 These are named after a bit value or an object index, not a struct offset or address, so this pass left them alone.
 They are candidates for a later naming pass: `request::PAUSE_40` (now `REVERT_FORM`), `request::PAUSE_4000000` (now
-`CROSS_CHANGE`), `request::TRAP_200` (now `ANTI_DAMAGE_TRIGGERED`), `request::TRAP_400` (now `ANTI_SWORD_TRIGGERED`),
+`NAVI_SWITCH`, `CROSS_CHANGE` until rules-in-Luau S4), `request::TRAP_200` (now `ANTI_DAMAGE_TRIGGERED`), `request::TRAP_400` (now `ANTI_SWORD_TRIGGERED`),
 `request::TRAP_8000` (now `BODY_GUARD_TRIGGERED`), `request::ACTION_30` (now `VOLLEY`), `request::ACTION_49` (now
 `STUN_STRIKE`), `status::CROSS_2000` ... `CROSS_40000` (see below), `battle_flags::MODE_40` (now `PER_PLAYER_GAUGES`)
 (and `is_mode_40`), and `setup::ActorKind::Object6E` / `Object7D`.
@@ -204,10 +204,10 @@ what they start. "No setter found" is from the same heuristic scan as above.
 |---|---|---|
 | `request::PAUSE_40` | `request::REVERT_FORM` | 0x40: `sub_8015994` (turn-start check, Beast Out used up). The pause handler `sub_8017BC0` turns it into action 0x1C with state 0x100. |
 | state literal `0x100` | `status::REVERTING_FORM` | `sub_8015614` runs as the pause-time action; `sub_80159A2` waits on it. |
-| `request::PAUSE_4000000` | `request::CROSS_CHANGE` | 0x4000000: `sub_802DCDE`, from the transformation sequencer when a transform record's +4 is set. Becomes action 0x1C with state 0x1000. |
-| state literal `0x1000` | `status::CHANGING_CROSS` | `sub_802D714` runs as the pause-time action; `sub_802DCEC` waits on it. |
-| `status::CROSS_2000` | `status::CROSS_KNOCKOUT` | 0x2000: set with action 0x4C from request 0x8000000 (`sub_801AF44`), or with the pause-time `sub_802D926`. Takes over the dispatch. |
-| `status::CROSS_4000` | `status::CROSSED` | 0x4000: set when the Cross change ends (`sub_802D8F0`); read by `sub_802DD2A` (a crossed link navi falls back instead of being deleted). |
+| `request::PAUSE_4000000` | `request::NAVI_SWITCH` (`CROSS_CHANGE` until rules-in-Luau S4) | 0x4000000: `sub_802DCDE`, from the transformation sequencer when a transform record's +4 is set. Becomes action 0x1C with state 0x1000. |
+| state literal `0x1000` | `status::SWITCHING_NAVI` (`CHANGING_CROSS` until S4) | `sub_802D714` runs as the pause-time action; `sub_802DCEC` waits on it. |
+| `status::CROSS_2000` | `status::SWITCH_KNOCKOUT` (`CROSS_KNOCKOUT` until S4; its request 0x8000000 is `request::SWITCH_KNOCKOUT`, `CROSS_DEATH` before) | 0x2000: set with action 0x4C from request 0x8000000 (`sub_801AF44`), or with the pause-time `sub_802D926`. Takes over the dispatch. |
+| `status::CROSS_4000` | `status::SWITCHED` (`CROSSED` until S4) | 0x4000: set when the navi switch (the Cross change) ends (`sub_802D8F0`); read by `sub_802DD2A` (a crossed link navi falls back instead of being deleted). |
 | `status::CROSS_10000` | `status::VOLLEY` | 0x10000: set with action 0x30 (`sub_80ED55C`, a volley of shots). Takes over the dispatch. |
 | `status::CROSS_20000` | `status::UNINTERRUPTIBLE` | 0x20000: takes over the dispatch like the two above; no setter found. |
 | `status::CROSS_40000` | `status::CROSS_BREAKING` | 0x40000: set on a weakness hit to a Cross form (NameID 0x1AC..0x1C1); `sub_8015766` ends the Cross over 30 ticks. |

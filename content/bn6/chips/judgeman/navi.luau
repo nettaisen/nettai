@@ -1,7 +1,7 @@
 --!strict
 -- JudgeMan (the original's actor object #0xF, `sub_80BA708`), the navi of
 -- the JudgeMan chips, brought by the navi chip controller. He appears,
--- raises his whip (./whip) and lashes the three panels ahead (paralysing);
+-- raises his whip (./whip) and lashes the three panels ahead (paralyzing);
 -- then, on each panel of his side's that the other side holds and that
 -- stands free, a book (./book) flies at the enemy; once every book is done,
 -- his columns start coming back. See docs/engine/chips.md §3.6.29.
@@ -38,9 +38,9 @@ export type State = {
     controller: Object?,
 }
 
-local SPRITE = asset.sprite("judgeman")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_LASH = asset.sound("erase-man-2")
+local SPRITE = asset.sprite("bn6:judgeman")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_LASH = asset.sound("bn6:erase-man-2")
 
 -- The controller calls his spawner through r3, which his position takes:
 -- its address with the Thumb bit, whose fraction his Z keeps.
@@ -52,7 +52,7 @@ local COLUMNS = { [0] = { 5, 4, 3, 2 }, [1] = { 2, 3, 4, 5 } }
 -- A panel for a book: solid, nothing on it, not reserved.
 local BOOK_FLOOR, BOOK_FORBID = 0x10, 0x0F88_0080
 
--- The lash: paralysing (status 0x11).
+-- The lash: paralyzing (status 0x11).
 local LASH_STATUS = statuses.paralyze_120
 
 -- His actions.
@@ -243,7 +243,7 @@ local ACTIONS =
     { [APPEAR] = appear, [STAND] = stand, [RAISE] = raise, [LASH] = lash, [BOOKS] = books, [WAIT_BOOKS] = wait_books, [LEAVE] = leave }
 
 judgeman.kind = define.kind {
-    id = "judgeman/navi",
+    id = "bn6:judgeman/navi",
     pool = "actor",
     state = {
         whip = "object",

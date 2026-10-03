@@ -9,7 +9,7 @@ local dash = require("./dash")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "groundcross-beast",
+    id = "bn6:groundcross-beast",
     kind = "cross_beast",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -17,12 +17,12 @@ return define.form {
     cross_of = groundman,
     -- A weakness hit breaks the Cross: back to the Beast.
     breaks_to = falzar_beast,
-    sprite = asset.sprite("groundcross-beast"),
+    sprite = asset.sprite("bn6:groundcross-beast"),
     element = "null",
     weakness = { "cursor" },
     buster_bonus = 0,
     weapons = { buster = falzar_beast_buster.weapon, a_charge = rock_barrage, alt_a_charge = dash.weapon },
-    mugshot = asset.mugshot("groundcross-beast"),
+    mugshot = asset.mugshot("bn6:groundcross-beast"),
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "break", damage = 10 },
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
@@ -30,7 +30,7 @@ return define.form {
     -- The chips A charges.
     charged_chips = { { family = "break" }, { family = "null", damaging = false } },
     -- What its status reset gives the navi (`sub_8014536`).
-    status_reset = { "super_armor", "air_shoes", "float_shoes", "floating_body", "lockon_marker" },
+    status_reset = { "super_armor", "air_shoes", "float_shoes", "floating_body", "target_marker" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 21,
     -- The buster arm it raises (lib/buster).
@@ -44,7 +44,7 @@ return define.form {
         aura_anim = 13,
         ice = "medium",
         -- The beast's head, in the Cross's palette.
-        parts = { beast_head = { sprite = asset.sprite("beast-head"), palette = 8 } },
+        parts = { beast_head = { sprite = asset.sprite("bn6:beast-head"), palette = 8 } },
         attach_points = {
             { 4, 16 },
             { 4, 24 },

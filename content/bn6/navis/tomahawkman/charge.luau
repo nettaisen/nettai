@@ -30,7 +30,7 @@ local SLASH_AT = 0x14
 -- The waits routine 0x45 gives.
 local RAISE_TICKS, RECOVER_TICKS = 0x1E, 0x1E
 
-local SOUND = asset.sound("tomahawk-man")
+local SOUND = asset.sound("bn6:tomahawk-man")
 
 -- The hits' counter byte, and the slash's element: Wood (the attack's
 -- element byte).
@@ -39,7 +39,7 @@ local WOOD = 4
 
 -- The slash's hit modifier, and its effect 16 pixels up.
 local HIT_MOD = 1
-local SLASH = define.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
+local SLASH = define.effect { sprite = asset.sprite("bn6:big-slash"), anim = 1, palette = 0 }
 local SLASH_Z = 0x10_0000
 
 -- `sub_8012258`: 100 damage and 20 more per point of buster Attack (up to
@@ -118,7 +118,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [RAISE] = raise, [SWING] = swing, [RECOVER] = recover }
 
 charge.action = define.action {
-    id = "tomahawkman/charge/action",
+    id = "bn6:tomahawkman/charge/action",
     state = { timer = "u16", raise = "u8", recover = "u8" },
     -- `sub_80F17C4` (`off_80F17D8`).
     update = function(me: Object, s: State)
@@ -127,7 +127,7 @@ charge.action = define.action {
 }
 
 charge.weapon = define.weapon {
-    id = "tomahawkman/charge",
+    id = "bn6:tomahawkman/charge",
     -- The charge table's row 0x45, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 140, 130, 120, 115, 110, 0, 0, 0 },

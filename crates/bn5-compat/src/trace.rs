@@ -7,7 +7,7 @@
 //! §15.5: the setup stops at what BN5's content doesn't define yet).
 
 use crate::codec::{self, ChipHand, NAVI_STATS, NaviStats, Panel};
-use crate::{Compat, pool_of_type, pool_slots, qualify};
+use crate::{Compat, pool_of_type, pool_slots};
 use nettai_battle::content::ChipCode;
 use nettai_battle::custom::{BattleFolder, FolderChip, PlayerSetup, Unlocks};
 use nettai_battle::console::ConsoleSetup;
@@ -465,6 +465,8 @@ impl Round {
     /// NaviStats ([`navi_stats`]), the folders, the RNGs, the set's score,
     /// both players on BN5's stock rules.
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> Result<RoundSetup, String> {
+        // BN5's light and dark system (content/bn5/rules/light-dark).
+        const LIGHT_DARK: &str = "bn5:light-dark";
         let needs = self.needs(content, compat)?;
         if !needs.is_empty() {
             return Err(format!("content lacks {}", needs.join(", ")));
@@ -496,14 +498,23 @@ impl Round {
             };
             Ok(PlayerSetup {
                 folder,
-                // BN6's custom screen rules: no Cross, no Beast Out (BN5's
-                // soul screen comes with Soul Unison).
+                // No Cross, no Beast Out; BN5's Soul Unison as a finished
+                // save has it (the save's event flags aren't in a
+                // recording): the soul button, the version's six souls
+                // (Team ProtoMan's 1 to 6, Team Colonel's 7 to 12:
+                // 0x08024BF0's flags) and Chaos Unison.
                 unlocks: Unlocks {
                     version: GameVersion::Falzar,
                     crosses: Default::default(),
                     beast_out: false,
                     beast_out_sealed: false,
                     cross_list: None,
+                    souls: nettai_battle::custom::SoulUnlocks {
+                        button: true,
+                        owned: if d.versions[side as usize] == Version::Colonel { 0b1_1111_1000_0000 } else { 0b111_1110 },
+                        chaos: true,
+                        turn_bonus: d.navi_stats[side as usize].raw[0x32] as i8,
+                    },
                 },
                 joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
                 bug_frags: 0,
@@ -521,7 +532,14 @@ impl Round {
                 navicust: None,
             })
         });
-        let [p0, p1] = players;
+        let [mut p0, mut p1] = players;
+        // Each side's light and dark MegaMan: his save's value (NaviStats
+        // +0x44), BN5's light and dark system's setup.
+        for (p, stats) in [(&mut p0, &d.navi_stats[0]), (&mut p1, &d.navi_stats[1])] {
+            if let Ok(p) = p {
+                p.set_rule(content, LIGHT_DARK, "value", nettai_content_api::Value::Int(stats.light_dark.0 as i64))?;
+            }
+        }
         Ok(RoundSetup {
             content: content.hash(),
             settings,
@@ -590,7 +608,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         Some(k) => Some(content.defs.record(&k).ok_or_else(|| format!("the content has no barrier {k}"))?),
     };
     let r = &s.raw;
-    let base = content.base_form();
+    let base = content.base_form_for(navi);
     Ok(EngineNaviStats {
         attack: s.attack,
         rapid: s.rapid,
@@ -643,7 +661,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
 /// BN5's navi numbers' keys in its root (NaviStats +0x29): MegaMan's.
 /// (The Team Battle's navis come with their content.)
 pub fn navi_key(n: u8) -> Option<String> {
-    (n == 0).then(|| qualify("megaman"))
+    (n == 0).then(|| format!("{}:megaman", crate::ROOT))
 }
 
 /// Differences between the engine and a BN5 frame: the state machine and

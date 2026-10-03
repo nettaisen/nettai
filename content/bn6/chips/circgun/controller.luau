@@ -4,7 +4,7 @@
 -- phases (lib/dimming), with an effect that puts the gun (./gun) on the
 -- far column's top panel, with the damage plus the bonus, and lasts until
 -- it is done; with none of the other side's panels in that column, it ends
--- at once.
+-- at once. Another game's controller puts its own gun (`make`).
 
 local dimming_chips = require("../../lib/dimming")
 local gun = require("./gun")
@@ -33,48 +33,56 @@ local function foreign(x: number, side: number): boolean
     return false
 end
 
--- `sub_80E75AC`: the gun on the first tick; the effect ends once it is
--- done (at once if it couldn't be spawned).
-local function effect(me: Object)
-    local s = me.state :: State
-    if me.phase_init == 0 then
-        local start = START[bit32.bxor(me.alliance, me.flip)]
-        if not foreign(start[1], me.alliance) then
+-- A game's controller (kind `id`) putting guns of `gun_kind`: its chips'
+-- hook of a gun variant.
+local function make(id: string, gun_kind: Kind): { hook: (CircGunVariant) -> (user: Object, spec: DimmingChipSpec) -> Object? }
+    -- `sub_80E75AC`: the gun on the first tick; the effect ends once it is
+    -- done (at once if it couldn't be spawned).
+    local function effect(me: Object)
+        local s = me.state :: State
+        if me.phase_init == 0 then
+            local start = START[bit32.bxor(me.alliance, me.flip)]
+            if not foreign(start[1], me.alliance) then
+                dimming_chips.done(me)
+                return
+            end
+            gun.spawn_kind(gun_kind, me, s.variant, start[1], start[2], me.element, dimming_chips.damage_plus(me, s.bonus))
+            me.phase_init = 4
+        end
+        if not s.busy then
             dimming_chips.done(me)
-            return
         end
-        gun.spawn(me, s.variant, start[1], start[2], me.element, dimming_chips.damage_plus(me, s.bonus))
-        me.phase_init = 4
     end
-    if not s.busy then
-        dimming_chips.done(me)
+
+    local kind = define.kind {
+        id = id,
+        pool = "effect",
+        state = { variant = "record:circgun-variant", bonus = "u16", busy = "bool" },
+        -- `sub_80E7568`.
+        update = dimming_chips.phases { name = "CircGun", effect = effect },
+    }
+
+    -- A chip's `dimming` hook (`sub_80E7600`): the controller with a gun of
+    -- `variant`.
+    local function hook(variant: CircGunVariant): (user: Object, spec: DimmingChipSpec) -> Object?
+        return function(user: Object, spec: DimmingChipSpec): Object?
+            local o = dimming_chips.spawn(kind, user, spec)
+            if o then
+                local s = o.state :: State
+                s.variant, s.bonus = variant, spec.bonus
+            end
+            return o
+        end
     end
+
+    return { hook = hook }
 end
 
-local kind = define.kind {
-    id = "circgun/controller",
-    pool = "effect",
-    state = { variant = "record:circgun-variant", bonus = "u16", busy = "bool" },
-    -- `sub_80E7568`.
-    update = dimming_chips.phases { name = "CircGun", effect = effect },
-}
-
--- A chip's `dimming` hook (`sub_80E7600`): the controller with a gun of
--- `variant`.
-local function hook(variant: CircGunVariant): (user: Object, spec: DimmingChipSpec) -> Object?
-    return function(user: Object, spec: DimmingChipSpec): Object?
-        local o = dimming_chips.spawn(kind, user, spec)
-        if o then
-            local s = o.state :: State
-            s.variant, s.bonus = variant, spec.bonus
-        end
-        return o
-    end
-end
+local bn6 = make("bn6:circgun/controller", gun.kind)
 
 -- A gun's variant.
 local function variant(v: CircGunVariant): CircGunVariant
     return define.record("circgun-variant", v)
 end
 
-return { hook = hook, variant = variant }
+return { hook = bn6.hook, variant = variant, make = make }

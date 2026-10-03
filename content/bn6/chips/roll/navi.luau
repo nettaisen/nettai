@@ -33,8 +33,8 @@ export type State = {
     -- her heart falls.
     home_x: number,
     home_y: number,
-    -- The grey of her colour shader, fading in (object +0x19).
-    grey: number,
+    -- The gray of her color shader, fading in (object +0x19).
+    gray: number,
     -- Whip rounds left (ExtraVars[0]), and her whip's sound counter
     -- (ExtraVars[2]).
     rounds: number,
@@ -47,17 +47,17 @@ export type State = {
 
 local roll = {}
 
-local SPRITE = asset.sprite("roll-heart")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_ROLL = asset.sound("roll")
-local SOUND_ROLL_2 = asset.sound("roll-2")
+local SPRITE = asset.sprite("bn6:roll-heart")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_ROLL = asset.sound("bn6:roll")
+local SOUND_ROLL_2 = asset.sound("bn6:roll-2")
 
 -- The controller calls her spawner through r3, which her position takes
 -- (her init sets it all).
 local SPAWNER_ADDRESS = 0x080C0DD9
 
--- Her fade-in's starting grey, and her warp's sparkle.
-local FADE_GREY = 0x1F
+-- Her fade-in's starting gray, and her warp's sparkle.
+local FADE_GRAY = 0x1F
 local SPARKLE = heart.sparkle
 
 -- What she looks for (`off_80C0D90`: an enemy navi's body), and what a
@@ -71,7 +71,7 @@ local WARP_SPEED = 0xF_0000
 
 -- Her ribbon (the original's attachment row 0x12), its animation 5,
 -- animating while dimmed.
-local RIBBON = attachment.look { sprite = asset.sprite("roll-heart"), palette = 0 }
+local RIBBON = attachment.look { sprite = asset.sprite("bn6:roll-heart"), palette = 0 }
 local RIBBON_ANIM = 5
 
 -- A sparkle 20 pixels above her.
@@ -163,13 +163,13 @@ local function countdown(me: Object, ticks: number): boolean
 end
 
 -- Action 0 (`sub_80C0870`): appear.
--- `sub_80C088C`: a sparkle; she fades in from grey 31, 2 a tick,
+-- `sub_80C088C`: a sparkle; she fades in from gray 31, 2 a tick,
 -- flickering.
 local function fade_in(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
         sparkle_above(me)
-        s.grey = FADE_GREY
+        s.gray = FADE_GRAY
         battle.play_sound(SOUND_APPEAR)
         me.timer = 0
         me.phase_init = 4
@@ -181,13 +181,13 @@ local function fade_in(me: Object)
     if bit32.band(t, 1) ~= 0 then
         me.visible = false
     end
-    local grey = s.grey - 2
-    s.grey = grey
-    if grey > 0 then
+    local gray = s.gray - 2
+    s.gray = gray
+    if gray > 0 then
         return
     end
     me.visible = true
-    s.grey = 0
+    s.gray = 0
     me.phase, me.phase_init = 4, 0
 end
 
@@ -427,8 +427,8 @@ local PHASES = {
     [0x10] = { [0] = recall, [4] = drop_heart },
 }
 
--- `sub_80C0840`: the action's phase; her sprite; her colour shader from
--- the grey (`sub_80C0DB0`).
+-- `sub_80C0840`: the action's phase; her sprite; her color shader from
+-- the gray (`sub_80C0DB0`).
 local function update_state(me: Object)
     local phases = PHASES[me.action]
     if not phases then
@@ -440,11 +440,11 @@ local function update_state(me: Object)
     end
     f(me)
     me:update_sprite()
-    local grey = (me.state :: State).grey
-    me.sprite.color_shader = grey * 0x421
+    local gray = (me.state :: State).gray
+    me.sprite.color_shader = gray * 0x421
 end
 
--- `sub_80C07DC`: over her user's panel, faded out (grey), in her chip's
+-- `sub_80C07DC`: over her user's panel, faded out (gray), in her chip's
 -- palette; then her first update at once.
 local function init(me: Object)
     me.visible = true
@@ -474,12 +474,12 @@ local function finish(me: Object)
 end
 
 roll.kind = define.kind {
-    id = "roll/navi",
+    id = "bn6:roll/navi",
     pool = "actor",
     state = {
         home_x = "u8",
         home_y = "u8",
-        grey = "u8",
+        gray = "u8",
         rounds = "u8",
         swish = "u8",
         controller = "object",

@@ -30,6 +30,15 @@ pub trait Library {
     fn cross_form(&self, navi: NaviHandle, version: GameVersion, cross: u8) -> Option<FormHandle>;
     fn beast_out_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle>;
     fn beast_over_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle>;
+    /// BN5's Soul Unison: the navi has souls (the custom screen's soul
+    /// button), and the soul a chip of `family` given up gives (its number
+    /// and form).
+    fn has_souls(&self, _navi: NaviHandle) -> bool {
+        false
+    }
+    fn soul_for_family(&self, _navi: NaviHandle, _family: crate::content::ChipFamily) -> Option<(u8, FormHandle)> {
+        None
+    }
     /// What kind of form one is, what the screen asks of it, and a Cross's
     /// form in Beast Out.
     fn form_kind(&self, form: FormHandle) -> FormKind;
@@ -53,7 +62,7 @@ pub trait Library {
     fn cross_description_lines(&self, _form: FormHandle) -> u8 {
         3
     }
-    /// The screen's slot grid and neighbour scans.
+    /// The screen's slot grid and neighbor scans.
     fn layout(&self) -> &CustomScreenLayout;
     /// Whether a banner stays up until let go (the Program Advance's).
     fn banner_holds(&self, id: BannerId) -> bool;
@@ -67,12 +76,14 @@ impl Library for Content {
         Content::chip(self, id)
     }
 
+    // (Content read with no player, by tools: the first game that has
+    // what is asked; a player's screen reads its game's, `GameLibrary`.)
     fn beast_out_chip(&self) -> Option<ChipHandle> {
-        self.defs.home_roles().try_chip(ChipRole::BeastOut)
+        self.defs.roles.iter().find_map(|r| r.try_chip(ChipRole::BeastOut))
     }
 
     fn invalid_chip(&self) -> ChipHandle {
-        self.defs.home_roles().chip(ChipRole::Invalid)
+        self.defs.roles.iter().find_map(|r| r.try_chip(ChipRole::Invalid)).expect("no game fills the role chips.invalid")
     }
 
     fn advance_index(&self, result: ChipHandle) -> u8 {
@@ -97,6 +108,15 @@ impl Library for Content {
 
     fn beast_over_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle> {
         self.navi(navi).forms.as_ref()?.of(version).beast_over
+    }
+
+    fn has_souls(&self, navi: NaviHandle) -> bool {
+        self.navi(navi).forms.as_ref().is_some_and(|f| !f.souls.is_empty())
+    }
+
+    fn soul_for_family(&self, navi: NaviHandle, family: crate::content::ChipFamily) -> Option<(u8, FormHandle)> {
+        let forms = self.navi(navi).forms.as_ref()?;
+        forms.souls.iter().find_map(|&f| self.form(f).soul.filter(|s| s.family == family).map(|s| (s.number, f)))
     }
 
     fn form_kind(&self, form: FormHandle) -> FormKind {
@@ -138,26 +158,32 @@ impl Library for Content {
     }
 
     fn layout(&self) -> &CustomScreenLayout {
-        &self.home_rules().custom_screen
+        let game = self.rules.iter().position(|r| r.custom_screen != CustomScreenLayout::default()).unwrap_or(0);
+        &self.rules_of(crate::content::RootId(game as u8)).custom_screen
     }
 
     fn banner_holds(&self, id: BannerId) -> bool {
-        self.home_rules().banner_holds(id)
+        self.rules.iter().any(|r| r.banner_holds(id))
     }
 
     fn program_advance_banner(&self, made: bool) -> BannerId {
         use crate::content::BannerRole;
-        self.defs.home_roles().banner(if made { BannerRole::ProgramAdvance } else { BannerRole::ProgramAdvanceEmpty })
+        let role = if made { BannerRole::ProgramAdvance } else { BannerRole::ProgramAdvanceEmpty };
+        self.defs.roles.iter().find_map(|r| r.banners.get(&role).copied()).expect("no game fills the program advance banners")
     }
 }
 
 /// The content as a player's custom screen reads it: its game's data (its
 /// layout, its Beast Out and invalid chips, its banners; docs/design/
 /// rules-in-luau.md §2.3), the content's records for the rest.
-/// (`Library for Content` reads the content's own root's: tools and tests.)
+/// (`Library for Content`, tools' and tests' with no player, reads the first
+/// game that has it.)
 pub struct GameLibrary<'a> {
     pub content: &'a Content,
     pub game: crate::content::RootId,
+    /// The side's ruleset, whose own sections (a mix's) the screen reads
+    /// over its game's.
+    pub ruleset: Option<nettai_content_api::RulesetHandle>,
 }
 
 impl Library for GameLibrary<'_> {
@@ -197,6 +223,14 @@ impl Library for GameLibrary<'_> {
         self.content.beast_over_form(navi, version)
     }
 
+    fn has_souls(&self, navi: NaviHandle) -> bool {
+        Library::has_souls(self.content, navi)
+    }
+
+    fn soul_for_family(&self, navi: NaviHandle, family: crate::content::ChipFamily) -> Option<(u8, FormHandle)> {
+        Library::soul_for_family(self.content, navi, family)
+    }
+
     fn form_kind(&self, form: FormHandle) -> FormKind {
         self.content.form_kind(form)
     }
@@ -234,11 +268,11 @@ impl Library for GameLibrary<'_> {
     }
 
     fn layout(&self) -> &CustomScreenLayout {
-        &self.content.rules_of(self.game).custom_screen
+        &self.content.side_rules(self.ruleset, self.game).custom_screen
     }
 
     fn banner_holds(&self, id: BannerId) -> bool {
-        self.content.rules_of(self.game).banner_holds(id)
+        self.content.side_rules(self.ruleset, self.game).banner_holds(id)
     }
 
     fn program_advance_banner(&self, made: bool) -> BannerId {

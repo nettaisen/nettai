@@ -15,8 +15,8 @@ export type State = {
     first: boolean,
 }
 
-local SPRITE = asset.sprite("grab-shot")
-local SOUND_FALL, SOUND_LAND = asset.sound("grab-shot-2"), asset.sound("grab-shot")
+local SPRITE = asset.sprite("bn6:grab-shot")
+local SOUND_FALL, SOUND_LAND = asset.sound("bn6:grab-shot-2"), asset.sound("bn6:grab-shot")
 local HEIGHT, FALL_SPEED = 0xC0_0000, 0x8_0000
 -- Its hit (`dword_80CCD20`): an attack that pierces invisibility (row
 -- 0x19), hitting navis, hit modifier 0x4B, no spark, element 0.
@@ -103,7 +103,7 @@ local function init(me: Object)
 end
 
 hand.kind = define.kind {
-    id = "grabbnsh/hand",
+    id = "bn6:grabbnsh/hand",
     pool = "attack",
     state = { first = "bool" },
     -- `sub_80CCC48`.

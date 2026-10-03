@@ -30,7 +30,7 @@ use super::{
     FormData, NaviData,
 };
 use super::roles::{
-    ActionRole, BannerRole, ChipRole, CollisionRole, EffectRole, HookRole, KindRole, LockonRole, MusicRole, RegionRole,
+    ActionRole, BannerRole, ChipRole, CollisionRole, EffectRole, HookRole, KindRole, MusicRole, RegionRole,
     Roles, SoundRole, SparkRole, SpriteRole, StatusRole,
 };
 use crate::kinds::{ENGINE_KINDS, EngineKind};
@@ -219,6 +219,8 @@ pub struct SystemDef {
     hooks: Vec<Option<FnId>>,
     /// Its own actions, which reach its state.
     pub actions: Vec<ActionHandle>,
+    /// Its custom-screen buttons.
+    pub buttons: Vec<ButtonHandle>,
 }
 
 impl SystemDef {
@@ -228,6 +230,31 @@ impl SystemDef {
         self.hooks[i]
     }
 }
+
+/// A custom-screen button of a system's (docs/design/rules-in-luau.md
+/// §4.4): where it sits, and its functions, which run as its system's.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ButtonDef {
+    pub system: SystemHandle,
+    /// Its name in the system's `buttons` (what the frontend draws it by).
+    pub name: String,
+    /// Its first slot, and how many it takes (1 or 2).
+    pub slot: u8,
+    pub cells: u8,
+    /// Uses it has on a screen (the machinery it starts counts them).
+    pub uses: u8,
+    /// Its first cell's right neighbor and its last cell's left one, if
+    /// not the layout's.
+    pub right: Option<u8>,
+    pub left: Option<u8>,
+    pub shown: FnId,
+    pub state: Option<FnId>,
+    pub pressed: FnId,
+}
+
+/// A button, by its place in [`Defs::buttons`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ButtonHandle(pub u16);
 
 /// A player's rules (docs/design/rules-in-luau.md §2.2): its systems, in
 /// the order the framework calls them, and its game, whose data (roles,
@@ -245,18 +272,19 @@ pub struct RulesetDef {
     /// else its own root (which must then be a game's: one with a stock
     /// ruleset).
     pub game: RootId,
+    /// Its own rule sections (P1 item 8: a mix's, over its game's for the
+    /// sides that play by it; only the sections about a side), by id.
+    pub sections: Vec<String>,
 }
 
-/// A content root, by its place among the loaded roots (`Defs::roots`):
-/// the content's own root is [`RootId::HOME`]. A game's data, its roles
-/// and rule sections, is its root's (docs/design/rules-in-luau.md §2.3).
+/// A game, by its place among the content's games (`Defs::roots`, by
+/// name: a definition's game is its id's prefix, docs/design/
+/// rules-in-luau.md, the flat namespace). A game's data, its roles and rule
+/// sections, is its own (§2.3).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RootId(pub u8);
 
 impl RootId {
-    /// The content's own root (the one it was loaded from).
-    pub const HOME: RootId = RootId(0);
-
     pub fn index(self) -> usize {
         self.0 as usize
     }
@@ -312,7 +340,7 @@ pub struct NaviCustProgramDef {
     pub colors: Vec<String>,
     /// A plus part (BN6: one that belongs off the command line).
     pub plus: bool,
-    /// Its shape, centred on the grid's middle cell, and compressed (none:
+    /// Its shape, centered on the grid's middle cell, and compressed (none:
     /// it doesn't compress).
     pub shape: crate::navicust::Shape,
     pub compressed: Option<crate::navicust::Shape>,
@@ -373,6 +401,9 @@ pub struct Defs {
     pub actions: Vec<ActionDef>,
     pub weapons: Vec<WeaponDef>,
     pub chips: Vec<ChipDef>,
+    /// The chips whose damage is a formula (read from the battle), in
+    /// handle order.
+    pub formula_chips: Vec<ChipHandle>,
     pub navis: Vec<NaviDef>,
     pub forms: Vec<FormDef>,
     pub stages: Vec<StageDef>,
@@ -400,6 +431,8 @@ pub struct Defs {
     pub roles: Vec<Roles>,
     /// The systems and rulesets (docs/design/rules-in-luau.md), by handle.
     pub systems: Vec<SystemDef>,
+    /// The systems' custom-screen buttons.
+    pub buttons: Vec<ButtonDef>,
     pub rulesets: Vec<RulesetDef>,
     /// Each action's system, if it is one's, by action handle.
     action_owner: Vec<Option<SystemHandle>>,
@@ -408,9 +441,6 @@ pub struct Defs {
     /// The Program Advances, in the order they are tried (each chip holds
     /// the recipes that make it; `sub_8029520`).
     pub program_advances: Vec<super::ProgramAdvance>,
-    /// The Cross special's chips by row (`Rules::cross_special`), each with
-    /// the chip whose damage it strikes with, if another's; by [`RootId`].
-    pub cross_special: Vec<Vec<Vec<(ChipHandle, Option<ChipHandle>)>>>,
     /// State layouts by [`StateId`].
     pub schemas: Vec<SchemaDef>,
     /// The functions the runtime binds, by [`FnId`].
@@ -418,8 +448,10 @@ pub struct Defs {
     kind_keys: BTreeMap<String, KindHandle>,
     /// The engine's kinds, in [`ENGINE_KINDS`]' order.
     engine: Vec<KindHandle>,
-    /// The base form: what a navi that has not changed form is in.
-    pub base_form: Option<FormHandle>,
+    /// Each game's base form, by `RootId`: what its navis are in before
+    /// they change form (rules-in-luau.md P1 item 12: BN5's MegaMan's is
+    /// BN5's own); None for a game that defines none.
+    pub base_forms: Vec<Option<FormHandle>>,
     /// Keys by registry, for the codecs.
     chip_keys: BTreeMap<String, ChipHandle>,
     weapon_keys: BTreeMap<String, WeaponHandle>,
@@ -431,6 +463,10 @@ pub struct Defs {
 impl Defs {
     pub fn system(&self, h: SystemHandle) -> &SystemDef {
         &self.systems[h.index()]
+    }
+
+    pub fn button(&self, h: ButtonHandle) -> &ButtonDef {
+        &self.buttons[h.0 as usize]
     }
 
     /// The system an action is one of, if any (its state is that system's).
@@ -448,14 +484,9 @@ impl Defs {
         &self.rulesets[h.index()]
     }
 
-    /// The game's own rules (docs/design/rules-in-luau.md §2.3) of the
-    /// content's own root: what a player has unless their setup names
-    /// another.
-    pub fn stock_ruleset(&self) -> Option<RulesetHandle> {
-        self.stock_ruleset_of(self.roots.first()?)
-    }
-
-    /// Root `root`'s stock ruleset, if it has one.
+    /// Game `root`'s stock ruleset, if it has one (docs/design/
+    /// rules-in-luau.md §2.3: what a player has unless their setup names
+    /// another, the stage's game's).
     pub fn stock_ruleset_of(&self, root: &str) -> Option<RulesetHandle> {
         self.rulesets
             .iter()
@@ -468,58 +499,31 @@ impl Defs {
         self.roots.iter().position(|r| r == name).map(|i| RootId(i as u8))
     }
 
-    /// The root a definition's key is of: its qualifier's (an engine or
-    /// unqualified key, the content's own root's).
-    pub fn root_of(&self, key: &str) -> RootId {
-        keys::root_of(key).and_then(|r| self.root_id(r)).unwrap_or(RootId::HOME)
+    /// The game a definition's id is of: its prefix's (None for the
+    /// engine's own keys, `engine/...`).
+    pub fn root_of(&self, key: &str) -> Option<RootId> {
+        keys::root_of(key).and_then(|r| self.root_id(r))
     }
 
-    /// Root `root`'s game's roles.
+    /// Game `root`'s roles.
     pub fn roles(&self, root: RootId) -> &Roles {
         &self.roles[root.index()]
     }
 
-    /// The content's own root's roles: what tools and codecs read with no
-    /// battle (the zeroed chip).
-    pub fn home_roles(&self) -> &Roles {
-        &self.roles[RootId::HOME.index()]
-    }
-
-    /// The game of the ruleset a setup names (or the content's stock one):
-    /// whose data the side reads.
-    pub fn ruleset_game(&self, ruleset: Option<RulesetHandle>) -> RootId {
-        ruleset.or_else(|| self.stock_ruleset()).map_or(RootId::HOME, |r| self.ruleset(r).game)
-    }
-
-    /// Look `key` up with `exact`: as it is if it is qualified (or an
-    /// engine key); unqualified, in the one root that defines it (None if
-    /// none does, or several: a key two roots define must be qualified).
-    /// Lookups by key are for tools, tests and setups by name, never the
-    /// simulation's.
-    fn find<T>(&self, key: &str, exact: impl Fn(&str) -> Option<T>) -> Option<T> {
-        if keys::is_qualified(key) {
-            return exact(key);
-        }
-        let mut found = None;
-        for root in &self.roots {
-            if let Some(h) = exact(&keys::qualify(root, key)) {
-                if found.is_some() {
-                    return None;
-                }
-                found = Some(h);
-            }
-        }
-        found
+    /// The game of the ruleset a setup names, or else `default`'s (the
+    /// stage's game): whose data the side reads.
+    pub fn ruleset_game(&self, ruleset: Option<RulesetHandle>, default: RootId) -> RootId {
+        ruleset.map_or(default, |r| self.ruleset(r).game)
     }
 
     /// The ruleset with this key.
     pub fn ruleset_by_key(&self, key: &str) -> Option<RulesetHandle> {
-        self.find(key, |k| self.rulesets.iter().position(|r| r.key == k).map(|i| RulesetHandle(i as u16)))
+        self.rulesets.iter().position(|r| r.key == key).map(|i| RulesetHandle(i as u16))
     }
 
     /// The kind with this key.
     pub fn kind_by_key(&self, key: &str) -> Option<KindHandle> {
-        self.find(key, |k| self.kind_keys.get(k).copied())
+        self.kind_keys.get(key).copied()
     }
 
     pub fn kind(&self, h: KindHandle) -> &KindDef {
@@ -546,12 +550,12 @@ impl Defs {
 
     /// The action with this key.
     pub fn action_by_key(&self, key: &str) -> Option<ActionHandle> {
-        self.find(key, |k| self.actions.binary_search_by(|a| a.key.as_str().cmp(k)).ok().map(|i| ActionHandle(i as u16)))
+        self.actions.binary_search_by(|a| a.key.as_str().cmp(key)).ok().map(|i| ActionHandle(i as u16))
     }
 
     /// The chip with this key.
     pub fn chip_by_key(&self, key: &str) -> Option<ChipHandle> {
-        self.find(key, |k| self.chip_keys.get(k).copied())
+        self.chip_keys.get(key).copied()
     }
 
     pub fn chip(&self, h: ChipHandle) -> &ChipDef {
@@ -564,7 +568,7 @@ impl Defs {
 
     /// The navi with this key.
     pub fn navi_by_key(&self, key: &str) -> Option<NaviHandle> {
-        self.find(key, |k| self.navis.binary_search_by(|n| n.key.as_str().cmp(k)).ok().map(|i| NaviHandle(i as u16)))
+        self.navis.binary_search_by(|n| n.key.as_str().cmp(key)).ok().map(|i| NaviHandle(i as u16))
     }
 
     pub fn form(&self, h: FormHandle) -> &FormDef {
@@ -573,7 +577,7 @@ impl Defs {
 
     /// The form with this key.
     pub fn form_by_key(&self, key: &str) -> Option<FormHandle> {
-        self.find(key, |k| self.forms.binary_search_by(|f| f.key.as_str().cmp(k)).ok().map(|i| FormHandle(i as u16)))
+        self.forms.binary_search_by(|f| f.key.as_str().cmp(key)).ok().map(|i| FormHandle(i as u16))
     }
 
     pub fn stage(&self, h: StageHandle) -> &StageDef {
@@ -582,28 +586,22 @@ impl Defs {
 
     /// The stage with this key.
     pub fn stage_by_key(&self, key: &str) -> Option<StageHandle> {
-        self.find(key, |k| self.stages.binary_search_by(|s| s.key.as_str().cmp(k)).ok().map(|i| StageHandle(i as u16)))
+        self.stages.binary_search_by(|s| s.key.as_str().cmp(key)).ok().map(|i| StageHandle(i as u16))
     }
 
     /// The status effect with this key.
     pub fn status_by_key(&self, key: &str) -> Option<nettai_content_api::StatusHandle> {
-        self.find(key, |k| {
-            self.statuses.binary_search_by(|s| s.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::StatusHandle(i as u16))
-        })
+        self.statuses.binary_search_by(|s| s.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::StatusHandle(i as u16))
     }
 
     /// The identity with this key.
     pub fn identity_by_key(&self, key: &str) -> Option<nettai_content_api::IdentityHandle> {
-        self.find(key, |k| {
-            self.identities.binary_search_by(|i| i.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::IdentityHandle(i as u16))
-        })
+        self.identities.binary_search_by(|i| i.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::IdentityHandle(i as u16))
     }
 
     /// The lock-on mode with this key.
     pub fn lockon_by_key(&self, key: &str) -> Option<nettai_content_api::LockonHandle> {
-        self.find(key, |k| {
-            self.lockons.binary_search_by(|l| l.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::LockonHandle(i as u16))
-        })
+        self.lockons.binary_search_by(|l| l.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::LockonHandle(i as u16))
     }
 
     pub fn weapon(&self, h: WeaponHandle) -> &WeaponDef {
@@ -612,15 +610,12 @@ impl Defs {
 
     /// The weapon with this key.
     pub fn weapon_by_key(&self, key: &str) -> Option<WeaponHandle> {
-        self.find(key, |k| self.weapon_keys.get(k).copied())
+        self.weapon_keys.get(key).copied()
     }
-
 
     /// The patch card with this key.
     pub fn patch_card_by_key(&self, key: &str) -> Option<nettai_content_api::PatchCardHandle> {
-        self.find(key, |k| {
-            self.patch_cards.binary_search_by(|c| c.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::PatchCardHandle(i as u16))
-        })
+        self.patch_cards.binary_search_by(|c| c.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::PatchCardHandle(i as u16))
     }
 
     pub fn patch_card(&self, h: nettai_content_api::PatchCardHandle) -> &PatchCardDef {
@@ -629,9 +624,7 @@ impl Defs {
 
     /// The NaviCust program with this key.
     pub fn navicust_program_by_key(&self, key: &str) -> Option<nettai_content_api::NaviCustProgramHandle> {
-        self.find(key, |k| {
-            self.navicust_programs.binary_search_by(|p| p.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::NaviCustProgramHandle(i as u16))
-        })
+        self.navicust_programs.binary_search_by(|p| p.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::NaviCustProgramHandle(i as u16))
     }
 
     pub fn navicust_program(&self, h: nettai_content_api::NaviCustProgramHandle) -> &NaviCustProgramDef {
@@ -640,7 +633,7 @@ impl Defs {
 
     /// A record's handle by key.
     pub fn record(&self, key: &str) -> Option<RecordHandle> {
-        self.find(key, |k| self.records.binary_search_by(|r| r.key.as_str().cmp(k)).ok().map(|i| RecordHandle(i as u16)))
+        self.records.binary_search_by(|r| r.key.as_str().cmp(key)).ok().map(|i| RecordHandle(i as u16))
     }
 
     /// The layout with this key.
@@ -775,10 +768,10 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
     // (The custom screen draws the chip's picture with it.)
     match json("art_palette")? {
         Json::Null => {}
-        Json::Array(colours) if colours.len() == 16 && colours.iter().all(|c| c.as_u64().is_some_and(|c| c < 0x8000)) => {
-            o.insert("art_palette".into(), Json::Array(colours));
+        Json::Array(colors) if colors.len() == 16 && colors.iter().all(|c| c.as_u64().is_some_and(|c| c < 0x8000)) => {
+            o.insert("art_palette".into(), Json::Array(colors));
         }
-        other => return Err(what(format!("`art_palette` is {other}: 16 BGR555 colours (below 0x8000)"))),
+        other => return Err(what(format!("`art_palette` is {other}: 16 BGR555 colors (below 0x8000)"))),
     }
     let defaults: [(&str, Json); 13] = [
         ("codes", Json::Array(Vec::new())),
@@ -847,7 +840,6 @@ fn read_roles(
     actions: &[ActionDef],
     kinds: &[KindDef],
     chips: &[ChipDef],
-    lockons: &[LockonDef],
     statuses: &[StatusDef],
     functions: &mut Functions,
 ) -> Result<Roles, ContentError> {
@@ -856,6 +848,10 @@ fn read_roles(
     let mut roles = Roles::default();
     for (group, entries) in groups {
         let group = group.to_string();
+        // (Its id names its game: `bn6:roles`.)
+        if group == "id" {
+            continue;
+        }
         let Data::Map(entries) = entries else { return Err(what(format!("`{group}` is a table"))) };
         for (name, v) in entries {
             let name = name.to_string();
@@ -907,17 +903,6 @@ fn read_roles(
                         .binary_search_by(|c| c.key.as_str().cmp(&key))
                         .map_err(|_| what(format!("{full} names the chip {key:?}, which the content doesn't have")))?;
                     roles.chips.insert(role, ChipHandle(i as u16));
-                }
-                "lockon" => {
-                    let names: Vec<&str> = LockonRole::ALL.iter().map(|r| r.name()).collect();
-                    let role = LockonRole::named(&name).ok_or_else(|| {
-                        what(format!("the ruleset has no role lockon.{name} (it has {})", names.join(", ")))
-                    })?;
-                    let Data::Ref(Registry::Lockon, key) = v else {
-                        return Err(what(format!("lockon.{name} is not a lock-on mode")));
-                    };
-                    let h = lockons.iter().position(|l| &l.key == key).expect("a defined lock-on mode");
-                    roles.lockons.insert(role, nettai_content_api::LockonHandle(h as u16));
                 }
                 "statuses" => {
                     let names: Vec<&str> = StatusRole::ALL.iter().map(|r| r.name()).collect();
@@ -1033,9 +1018,9 @@ impl Defs {
     /// `definitions` (what its modules define) make.
     pub fn build(content: &Content, definitions: Definitions) -> Result<Defs, ContentError> {
         let reader = super::reader::SpecReader::new(&content.assets, &definitions);
-        // The roots, the content's own first (content without scripts is
-        // one root of no name).
-        let root_names = content.scripts.root_names();
+        // The games, by name (content without scripts is one game of no
+        // name).
+        let root_names = Content::game_names(&content.scripts, &definitions);
         let root_of = |key: &str| -> RootId {
             let name = keys::root_of(key).unwrap_or("");
             RootId(root_names.iter().position(|r| r == name).unwrap_or(0) as u8)
@@ -1301,24 +1286,6 @@ impl Defs {
                 .map(|i| ChipHandle(i as u16))
                 .map_err(|_| ContentError::new(format!("{whose} names the chip {key:?}, which the content doesn't have")))
         };
-        let mut cross_special = Vec::with_capacity(root_names.len());
-        for root in 0..root_names.len() {
-            let rows = &content.rules_of(RootId(root as u8)).cross_special;
-            let mut of_root = Vec::with_capacity(rows.len());
-            for row in rows {
-                let at = "the Cross special's chips (rules cross-special)";
-                let mut out = Vec::with_capacity(row.len());
-                for c in row {
-                    let damage_of = match &c.damage_of {
-                        Some(k) => Some(chip_handle(k, at)?),
-                        None => None,
-                    };
-                    out.push((chip_handle(&c.chip, at)?, damage_of));
-                }
-                of_root.push(out);
-            }
-            cross_special.push(of_root);
-        }
 
         // Navis, forms and identities: the definitions, in key order (a
         // definition's handle is its place among its registry's).
@@ -1377,6 +1344,9 @@ impl Defs {
                 forms @ Data::Map(_) => {
                     let set = |game: &str| -> Result<super::FormSet, ContentError> {
                         let g = forms.field(game);
+                        if matches!(g, Data::Nil) {
+                            return Ok(super::FormSet::default());
+                        }
                         let crosses = match g.field("crosses") {
                             Data::Nil => Vec::new(),
                             Data::List(items) => items
@@ -1392,7 +1362,16 @@ impl Defs {
                             beast_over: form_ref(d, g.field("beast_over"), &format!("forms.{game}.beast_over"))?,
                         })
                     };
-                    Some(super::NaviForms { gregar: set("gregar")?, falzar: set("falzar")? })
+                    let souls = match forms.field("souls") {
+                        Data::Nil => Vec::new(),
+                        Data::List(items) => items
+                            .iter()
+                            .map(|v| form_ref(d, v, "forms.souls").map(|f| f.expect("a form")))
+                            .collect::<Result<_, _>>()?,
+                        Data::Map(m) if m.is_empty() => Vec::new(),
+                        other => return Err(what(d, format!("forms.souls is {other:?}, not a list of forms"))),
+                    };
+                    Some(super::NaviForms { gregar: set("gregar")?, falzar: set("falzar")?, souls })
                 }
                 other => return Err(what(d, format!("`forms` is {other:?}, not the forms by game"))),
             };
@@ -1435,6 +1414,16 @@ impl Defs {
                 }
                 other => return Err(what(d, format!("`change` is {other:?}, not an action"))),
             };
+            record.revert = match d.spec.field("revert") {
+                Data::Nil => None,
+                Data::Ref(Registry::Action, key) => {
+                    Some(ActionHandle(actions.binary_search_by(|a| a.key.as_str().cmp(key)).expect("a defined action") as u16))
+                }
+                other => return Err(what(d, format!("`revert` is {other:?}, not an action"))),
+            };
+            if record.kind == super::FormKind::Base && record.revert.is_some() {
+                return Err(what(d, "a base form names no action that reverts a navi out of it (`revert`)".into()));
+            }
             if record.kind != super::FormKind::Base && record.change.is_none() {
                 return Err(what(d, "a form other than the base form names the action that changes a navi into it (`change`)".into()));
             }
@@ -1451,11 +1440,23 @@ impl Defs {
                 claim_identity(&mut identities, h, super::IdentityOwner::Form(FormHandle(i as u16)), &f.key)?;
             }
         }
-        // The base form: what a navi that has not changed form is in.
-        let mut bases = forms.iter().enumerate().filter(|(_, f)| f.record.kind == super::FormKind::Base);
-        let base_form = bases.next().map(|(i, _)| FormHandle(i as u16));
-        if let Some((_, other)) = bases.next() {
-            return Err(ContentError::new(format!("two forms are base forms ({} is another)", other.key)));
+        // Each game's base form: what its navis are in before they change
+        // form; one a game.
+        let game_of = |key: &str| keys::root_of(key).and_then(|g| root_names.iter().position(|r| r == g));
+        let mut base_forms: Vec<Option<FormHandle>> = vec![None; root_names.len()];
+        for (i, f) in forms.iter().enumerate().filter(|(_, f)| f.record.kind == super::FormKind::Base) {
+            let Some(game) = game_of(&f.key) else {
+                return Err(ContentError::new(format!("base form {}'s id names no loaded game", f.key)));
+            };
+            if let Some(other) = base_forms[game] {
+                return Err(ContentError::new(format!(
+                    "two forms of {} are base forms ({} and {})",
+                    root_names[game],
+                    forms[other.index()].key,
+                    f.key
+                )));
+            }
+            base_forms[game] = Some(FormHandle(i as u16));
         }
         // What the forms and the navis' sets name is the kind of form they
         // say.
@@ -1463,6 +1464,9 @@ impl Defs {
         for f in &forms {
             if f.record.beast.is_some_and(|b| kind_of(b) != super::FormKind::CrossBeast) {
                 return Err(ContentError::new(format!("form {}'s `beast` is not a Cross in Beast Out", f.key)));
+            }
+            if f.record.glow.as_ref().is_some_and(|g| g.is_empty()) {
+                return Err(ContentError::new(format!("form {}'s `glow` has no shaders", f.key)));
             }
         }
         for n in &navis {
@@ -1478,8 +1482,8 @@ impl Defs {
                     )));
                 }
             }
-            if base_form.is_none() {
-                return Err(ContentError::new(format!("navi {} changes form, and no form is the base form", n.key)));
+            if game_of(&n.key).and_then(|g| base_forms[g]).is_none() {
+                return Err(ContentError::new(format!("navi {} changes form, and no form of its game is the base form", n.key)));
             }
         }
         // Stages: what they place names kinds and their variant records.
@@ -1588,19 +1592,20 @@ impl Defs {
             let own: Vec<&Definition> =
                 definitions.of(Registry::Roles).iter().filter(|d| keys::root_of(&d.key).unwrap_or("") == name.as_str()).collect();
             roles.push(match own[..] {
-                [d] => read_roles(d, &definitions, &content.assets, &actions, &kinds, &chips, &lockons, &statuses, &mut functions)?,
+                [d] => read_roles(d, &definitions, &content.assets, &actions, &kinds, &chips, &statuses, &mut functions)?,
                 _ => Roles::default(),
             });
         }
 
         // The systems and the rulesets.
         let mut systems = Vec::new();
+        let mut buttons: Vec<ButtonDef> = Vec::new();
         for d in definitions.of(Registry::System) {
             let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks", "actions"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks, actions)")));
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks", "custom", "buttons", "actions"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks, custom, buttons, actions)")));
                     }
                 }
             }
@@ -1617,8 +1622,8 @@ impl Defs {
                 Data::Map(entries) => {
                     for (k, v) in entries {
                         let name = k.to_string();
-                        let Some(i) = SystemHook::ALL.iter().position(|h| h.name() == name) else {
-                            let known: Vec<&str> = SystemHook::ALL.iter().map(|h| h.name()).collect();
+                        let Some(i) = SystemHook::ALL.iter().position(|h| h.name() == name && !name.contains('.')) else {
+                            let known: Vec<&str> = SystemHook::ALL.iter().map(|h| h.name()).filter(|n| !n.contains('.')).collect();
                             return Err(what(&format!("no hook is named `{name}` (the hooks: {})", known.join(", "))));
                         };
                         if !matches!(v, Data::Function) {
@@ -1628,6 +1633,26 @@ impl Defs {
                     }
                 }
                 _ => return Err(what("`hooks` is a table of functions by hook name")),
+            }
+            // Its custom screen's (docs/design/rules-in-luau.md §4.4): the
+            // hooks named `custom.<name>`.
+            match d.spec.field("custom") {
+                Data::Nil => {}
+                Data::Map(entries) => {
+                    for (k, v) in entries {
+                        let name = format!("custom.{k}");
+                        let Some(i) = SystemHook::ALL.iter().position(|h| h.name() == name) else {
+                            let known: Vec<&str> =
+                                SystemHook::ALL.iter().filter_map(|h| h.name().strip_prefix("custom.")).collect();
+                            return Err(what(&format!("no custom-screen hook is named `{k}` (the hooks: {})", known.join(", "))));
+                        };
+                        if !matches!(v, Data::Function) {
+                            return Err(what(&format!("custom-screen hook `{k}` is not a function")));
+                        }
+                        hooks[i] = Some(functions.id(FnSource::slot(Registry::System, &d.key, &name)));
+                    }
+                }
+                _ => return Err(what("`custom` is a table of functions by custom-screen hook name")),
             }
             let own: &[Data] = match d.spec.field("actions") {
                 Data::Nil => &[],
@@ -1643,12 +1668,57 @@ impl Defs {
                 let h = actions.binary_search_by(|a| a.key.as_str().cmp(key)).expect("a defined action");
                 system_actions.push(ActionHandle(h as u16));
             }
+            // Its custom-screen buttons, by name.
+            let system = SystemHandle(systems.len() as u16);
+            let mut own_buttons = Vec::new();
+            match d.spec.field("buttons") {
+                Data::Nil => {}
+                Data::Map(entries) => {
+                    for (k, spec) in entries {
+                        let name = k.to_string();
+                        let at = |e: &str| what(&format!("button `{name}`: {e}"));
+                        let Data::Map(fields) = spec else { return Err(at("a table of its place and functions")) };
+                        for (f, _) in fields {
+                            let f = f.to_string();
+                            if !["slot", "cells", "uses", "right", "left", "shown", "state", "pressed"].contains(&f.as_str()) {
+                                return Err(at(&format!("`{f}` is no field of a button (slot, cells, uses, right, left, shown, state, pressed)")));
+                            }
+                        }
+                        let byte = |f: &str| -> Result<Option<u8>, ContentError> {
+                            match spec.field(f) {
+                                Data::Nil => Ok(None),
+                                v => v.int().filter(|n| (0..=255).contains(n)).map(|n| Some(n as u8)).ok_or_else(|| at(&format!("`{f}` is a number"))),
+                            }
+                        };
+                        let mut func = |f: &str, needed: bool| -> Result<Option<FnId>, ContentError> {
+                            match spec.field(f) {
+                                Data::Function => Ok(Some(functions.id(FnSource::slot(Registry::System, &d.key, &format!("buttons.{name}.{f}"))))),
+                                Data::Nil if !needed => Ok(None),
+                                _ => Err(at(&format!("`{f}` is a function"))),
+                            }
+                        };
+                        let shown = func("shown", true)?.expect("needed");
+                        let state = func("state", false)?;
+                        let pressed = func("pressed", true)?.expect("needed");
+                        let slot = byte("slot")?.ok_or_else(|| at("`slot` is missing"))?;
+                        let cells = byte("cells")?.unwrap_or(1);
+                        if !(1..=2).contains(&cells) {
+                            return Err(at("`cells` is 1 or 2"));
+                        }
+                        let (uses, right, left) = (byte("uses")?.unwrap_or(0), byte("right")?, byte("left")?);
+                        own_buttons.push(ButtonHandle((buttons.len()) as u16));
+                        buttons.push(ButtonDef { system, name: name.clone(), slot, cells, uses, right, left, shown, state, pressed });
+                    }
+                }
+                _ => return Err(what("`buttons` is a table of buttons by name")),
+            }
             systems.push(SystemDef {
                 key: d.key.clone(),
                 state: layout("state")?,
                 setup: layout("setup")?,
                 hooks,
                 actions: system_actions,
+                buttons: own_buttons,
             });
         }
         // Each action's system, if it is one's.
@@ -1666,11 +1736,12 @@ impl Defs {
                 action_owner[a.index()] = Some(SystemHandle(i as u16));
             }
         }
-        // The actions forms name as their change: unpaused, they are the
-        // instant chips' action (the original's CurAction 0x1C).
+        // The actions forms name as their change (and their revert):
+        // unpaused, they are the instant chips' action (the original's
+        // CurAction 0x1C, BN5's 0x1A).
         let mut change_actions = vec![false; actions.len()];
         for f in &forms {
-            if let Some(a) = f.record.change {
+            for a in [f.record.change, f.record.revert].into_iter().flatten() {
                 change_actions[a.index()] = true;
             }
         }
@@ -1759,16 +1830,19 @@ impl Defs {
         let kind_keys: BTreeMap<String, KindHandle> =
             kinds.iter().enumerate().map(|(i, k)| (k.key.clone(), KindHandle(i as u16))).collect();
         let engine = ENGINE_KINDS.iter().map(|e| kind_keys[e.1]).collect();
+        let formula_chips =
+            chips.iter().enumerate().filter(|(_, c)| c.record.formula.is_some()).map(|(i, _)| ChipHandle(i as u16)).collect();
         let mut defs = Defs {
             defined: true,
+            formula_chips,
             definitions,
             handles,
             kind_keys,
             engine,
-            base_form,
+            base_forms,
             chip_keys: BTreeMap::new(),
             weapon_keys: BTreeMap::new(),
-            roots: content.scripts.roots.iter().map(|r| r.name.clone()).collect(),
+            roots: root_names.clone(),
             kinds: Vec::new(),
             actions,
             weapons,
@@ -1788,11 +1862,11 @@ impl Defs {
             collisions,
             roles,
             systems,
+            buttons,
             rulesets,
             action_owner,
             change_actions,
             program_advances,
-            cross_special,
             schemas,
             functions: Vec::new(),
         };
@@ -1824,11 +1898,12 @@ fn read_rulesets(definitions: &Definitions, root_names: &[String]) -> Result<Vec
         add: Vec<SystemHandle>,
         remove: Vec<SystemHandle>,
         game: Option<RootId>,
+        sections: Vec<String>,
     }
     let mut read = Vec::with_capacity(defs.len());
     for d in defs {
         let what = |e: &str| ContentError::new(format!("{}.luau: ruleset {}: {e}", d.module, d.key));
-        const FIELDS: [&str; 7] = ["id", "stock", "systems", "base", "add", "remove", "game"];
+        const FIELDS: [&str; 8] = ["id", "stock", "systems", "base", "add", "remove", "game", "sections"];
         if let Data::Map(entries) = &d.spec {
             for (k, _) in entries {
                 if !matches!(k, nettai_content_api::DataKey::Str(f) if FIELDS.contains(&f.as_str())) {
@@ -1873,7 +1948,30 @@ fn read_rulesets(definitions: &Definitions, root_names: &[String]) -> Result<Vec
             )),
             _ => return Err(what("`game` is a root's name (\"bn6\")")),
         };
-        let r = Read { stock, systems: list("systems")?, base, add: list("add")?.unwrap_or_default(), remove: list("remove")?.unwrap_or_default(), game };
+        let sections: Vec<String> = match d.spec.field("sections") {
+            Data::Nil => Vec::new(),
+            Data::List(items) => items
+                .iter()
+                .map(|v| match v {
+                    Data::Ref(Registry::Rules, key) => Ok(key.clone()),
+                    _ => Err(what("`sections` lists rule sections (define.rules(...))")),
+                })
+                .collect::<Result<_, _>>()?,
+            Data::Map(m) if m.is_empty() => Vec::new(),
+            _ => return Err(what("`sections` is a list of rule sections (define.rules(...))")),
+        };
+        if stock && !sections.is_empty() {
+            return Err(what("a stock ruleset's sections are its game's (define.rules in its folder), not its own"));
+        }
+        let r = Read {
+            stock,
+            systems: list("systems")?,
+            base,
+            add: list("add")?.unwrap_or_default(),
+            remove: list("remove")?.unwrap_or_default(),
+            game,
+            sections,
+        };
         match (r.stock, r.base, &r.systems) {
             (true, Some(_), _) => return Err(what("a stock ruleset is a game's own: it has no `base`")),
             (_, Some(_), Some(_)) => return Err(what("a ruleset made from a `base` lists what it changes (`add`, `remove`), not `systems`")),
@@ -1940,7 +2038,7 @@ fn read_rulesets(definitions: &Definitions, root_names: &[String]) -> Result<Vec
             }
         };
         visiting.pop();
-        out[i] = Some(RulesetDef { key: d.key.clone(), stock: r.stock, systems, base: r.base, game });
+        out[i] = Some(RulesetDef { key: d.key.clone(), stock: r.stock, systems, base: r.base, game, sections: r.sections.clone() });
         Ok(())
     }
     let mut out: Vec<Option<RulesetDef>> = vec![None; defs.len()];

@@ -17,7 +17,7 @@ export type State = {
 
 local STATE = { timer = "u16" }
 
-local SOUND_VANISH = asset.sound("trap-vanish")
+local SOUND_VANISH = asset.sound("bn6:trap-vanish")
 local VANISH_ANIM = 4
 
 local function set_step(me: Object, step: number)
@@ -85,7 +85,7 @@ local function back(me: Object, s: State)
 end
 
 counter.action = define.action {
-    id = "bodygrd/counter",
+    id = "bn6:bodygrd/counter",
     state = STATE,
     -- `sub_80EED56`, by phase.
     update = function(me: Object, s: State)

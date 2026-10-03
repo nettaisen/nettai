@@ -7,22 +7,22 @@ local charge = require("./charge")
 local tomahawkman = require("./chip")
 
 return define.navi {
-    id = "tomahawkman",
-    sprite = asset.sprite("tomahawkman"),
+    id = "bn6:tomahawkman",
+    sprite = asset.sprite("bn6:tomahawkman"),
     element = "wood",
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("tomahawkman-win"), lose = asset.banner("tomahawkman-deleted") },
+    banners = { win = asset.banner("bn6:tomahawkman-win"), lose = asset.banner("bn6:tomahawkman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`).
-    mugshot = asset.mugshot("tomahawkman"),
+    mugshot = asset.mugshot("bn6:tomahawkman"),
     merge_height = 0,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("tomahawkman-portrait"),
+        portrait = asset.sprite("bn6:tomahawkman-portrait"),
     },
     own_chip = { chip = tomahawkman, code = "T" },
-    -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
+    -- What a navi switch brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = a_charge },

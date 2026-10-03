@@ -2,7 +2,7 @@
 -- JudgeMan's book (the original's attack object #0x94, `sub_80D7ACC`): it
 -- appears on a panel the other side took from his (his sprite), waits its
 -- turn (12 ticks apart), then flies at an enemy navi, 2.25 pixels a tick
--- along one axis at a time, turning at panel centres; it hits what it meets
+-- along one axis at a time, turning at panel centers; it hits what it meets
 -- and ends on the other side's body or object, at its target's panel, or
 -- off solid ground. Going (or failing to start), it counts itself done in
 -- JudgeMan's state. It acts while dimmed. See docs/engine/chips.md §3.6.29.
@@ -27,8 +27,8 @@ export type State = {
 -- What a book's judge keeps.
 type Judge = { books_done: number }
 
-local SPRITE = asset.sprite("judgeman")
-local SOUND_APPEAR = asset.sound("appear")
+local SPRITE = asset.sprite("bn6:judgeman")
+local SOUND_APPEAR = asset.sound("bn6:appear")
 local ANIM_WAIT, ANIM_FLY = 0xA, 0xB
 
 -- Its speed (16.16).
@@ -122,7 +122,7 @@ local function face(me: Object)
 end
 
 -- `sub_80D7D4C`: its heading toward the target, back on its panel's
--- centre: along the axis other than the one it flew if the target is off
+-- center: along the axis other than the one it flew if the target is off
 -- along it, else the same; after two tries, turn back.
 local function head(me: Object)
     local s = me.state :: State
@@ -193,7 +193,7 @@ local function wait(me: Object)
     end
 end
 
--- `sub_80D7BE0`: fly; at each panel centre on its axis it has arrived (its
+-- `sub_80D7BE0`: fly; at each panel center on its axis it has arrived (its
 -- target's panel: it goes) or heads again; off solid ground it goes.
 local function fly(me: Object)
     local s = me.state :: State
@@ -205,7 +205,7 @@ local function fly(me: Object)
     end
     local cx, cy = field.center(me.panel_x, me.panel_y)
     local along_x = s.axis == 0
-    local centre = if along_x then cx else cy
+    local center = if along_x then cx else cy
     local p, v = me.pos, me.vel
     local nx, ny = int.i32(p.x + v.x), int.i32(p.y + v.y)
     me.pos = Vec3.new(nx, ny, p.z)
@@ -213,7 +213,7 @@ local function fly(me: Object)
     if along_x then
         old, new = p.x, nx
     end
-    if centre ~= old and between(new, old, centre) then
+    if center ~= old and between(new, old, center) then
         local px, py = panel_at(nx, ny)
         if px == s.target_x and py == s.target_y then
             return finish(me)
@@ -248,7 +248,7 @@ local function tick(me: Object)
 end
 
 book.kind = define.kind {
-    id = "judgeman/book",
+    id = "bn6:judgeman/book",
     pool = "attack",
     state = { turn = "u8", axis = "u8", judge = "object", target_x = "u32", target_y = "u32" },
     -- `sub_80D7ACC`.

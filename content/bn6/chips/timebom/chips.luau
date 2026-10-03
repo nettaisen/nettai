@@ -21,11 +21,11 @@ local BOMB = countdown.variant {
     idle_anim = 1,
     hp = 50,
     identity = define.identity {
-        id = "timebomb",
+        id = "bn6:timebomb",
         class = "field_object",
         version = 5,
         ai_index = 1,
-        look = { sprite = asset.sprite("countdown-bomb"), anim = 1, palette = 0, shadow = true, keeps_flip = true },
+        look = { sprite = asset.sprite("bn6:countdown-bomb"), anim = 1, palette = 0, shadow = true, keeps_flip = true },
     },
     class = 1,
     collision = BODY,
@@ -35,11 +35,11 @@ local BIG_BOMB = countdown.variant {
     idle_anim = 3,
     hp = 200,
     identity = define.identity {
-        id = "timebomb-big",
+        id = "bn6:timebomb-big",
         class = "field_object",
         version = 0,
         ai_index = 1,
-        look = { sprite = asset.sprite("countdown-bomb"), anim = 3, palette = 0, shadow = true, keeps_flip = true },
+        look = { sprite = asset.sprite("bn6:countdown-bomb"), anim = 3, palette = 0, shadow = true, keeps_flip = true },
     },
     class = 1,
     collision = BODY,
@@ -47,7 +47,7 @@ local BIG_BOMB = countdown.variant {
 }
 
 local timebom1 = define.chip {
-    id = "timebom1",
+    id = "bn6:timebom1",
     codes = { "F", "G", "H" },
     element = "null",
     family = "summon",
@@ -64,7 +64,7 @@ local timebom1 = define.chip {
 }
 
 local timebom2 = define.chip {
-    id = "timebom2",
+    id = "bn6:timebom2",
     codes = { "C", "D", "E" },
     element = "null",
     family = "summon",
@@ -81,7 +81,7 @@ local timebom2 = define.chip {
 }
 
 local timebom3 = define.chip {
-    id = "timebom3",
+    id = "bn6:timebom3",
     codes = { "L", "M", "N" },
     element = "null",
     family = "summon",
@@ -98,7 +98,7 @@ local timebom3 = define.chip {
 }
 
 local timebom = define.chip {
-    id = "timebom",
+    id = "bn6:timebom",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

@@ -5,7 +5,7 @@ local seed = require("../../lib/bombs/seed")
 local throw = require("../../lib/bombs/throw")
 
 return define.chip {
-    id = "iceseed",
+    id = "bn6:iceseed",
     codes = { "A", "L", "R", "*" },
     element = "aqua", family = "aqua", class = "standard",
     rarity = 1, mb = 31, damage = 10, hit_param = 10, lockout = 10,
@@ -20,7 +20,7 @@ return define.chip {
             palette = 1,
             panel = "ice",
             effect = seed.sprout,
-            sound = asset.sound("freeze"),
+            sound = asset.sound("bn6:freeze"),
         }),
     },
 }

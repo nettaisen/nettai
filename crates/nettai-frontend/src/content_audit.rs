@@ -8,7 +8,7 @@
 //!   its description in the dialogue font;
 //! - every navi's face and emblem (on either game's console), its name and
 //!   no-running message with its portrait; every form's face for each
-//!   emotion; every Cross's name and colours and description;
+//!   emotion; every Cross's name and colors and description;
 //! - every asset of the loaded packs, by its qualified name (a superset of
 //!   what the content names): each sprite with every animation and its
 //!   frames, each sound's song, each banner's glyphs (a telop's banner its
@@ -336,7 +336,8 @@ mod tests {
         };
         assert_eq!(missing(&c), PanelType::ALL.len());
         for t in [PanelType::Metal, PanelType::Lava, PanelType::Sea] {
-            c.rules[RootId::HOME.index()].panels.types[t as usize].named = false;
+            let test = c.defs.root_id(testing::ROOT).expect("the test game");
+            c.rules[test.index()].panels.types[t as usize].named = false;
         }
         assert_eq!(missing(&c), PanelType::ALL.len() - 3);
     }

@@ -43,7 +43,7 @@ function bn5.setup(navi: Object): Action
 end
 
 bn5.weapon = define.weapon {
-    id = "megaman/buster",
+    id = "bn5:megaman/buster",
     -- The buster isn't charged (the charge table's row 0).
     charge_ticks = { 0, 0, 0, 0, 0 },
     setup = bn5.setup,

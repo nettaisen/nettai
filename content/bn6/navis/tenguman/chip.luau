@@ -17,10 +17,10 @@ local STATE = { timer = "u16" }
 
 local BLOW, RECOVER = 0x0, 0x4
 local ANIM_BLOW, ANIM_RECOVER = 0x10, 7
-local SOUND = asset.sound("aqua-surge")
+local SOUND = asset.sound("bn6:aqua-surge")
 
 -- The gust on him (32 pixels up).
-local GUST = define.effect { sprite = asset.sprite("swirl"), anim = 1, palette = 1 }
+local GUST = define.effect { sprite = asset.sprite("bn6:swirl"), anim = 1, palette = 1 }
 local GUST_Z = 0x20_0000
 
 local BLOW_TICKS, RECOVER_TICKS = 0x1E, 0x14
@@ -96,7 +96,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [BLOW] = blow, [RECOVER] = recover }
 
 return define.chip {
-    id = "ftornado",
+    id = "bn6:ftornado",
     codes = { "T" },
     element = "null",
     family = "wind",
@@ -111,7 +111,7 @@ return define.chip {
     slot_in_limit = 1,
     -- `sub_80F1A46` (`off_80F1A58`).
     action = define.action {
-        id = "ftornado/action",
+        id = "bn6:ftornado/action",
         state = STATE,
         update = function(me: Object, s: State)
             link.run(me, s, PHASES, "FTornado (sub_80F1A46)")

@@ -16,7 +16,7 @@ local function spreadr(id: string): Action
 end
 
 local spreadr1 = define.chip {
-    id = "spreadr1",
+    id = "bn6:spreadr1",
     codes = { "L", "M", "N", "*" },
     element = "null",
     family = "null",
@@ -30,11 +30,11 @@ local spreadr1 = define.chip {
     beast = { lockon = lockon.cannon },
     library = { number = 9, index = 9, sort = 417 },
     slot_in_limit = 3,
-    action = spreadr("spreadr1/action"),
+    action = spreadr("bn6:spreadr1/action"),
 }
 
 local spreadr2 = define.chip {
-    id = "spreadr2",
+    id = "bn6:spreadr2",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -48,11 +48,11 @@ local spreadr2 = define.chip {
     beast = { lockon = lockon.cannon },
     library = { number = 10, index = 10, sort = 418 },
     slot_in_limit = 3,
-    action = spreadr("spreadr2/action"),
+    action = spreadr("bn6:spreadr2/action"),
 }
 
 local spreadr3 = define.chip {
-    id = "spreadr3",
+    id = "bn6:spreadr3",
     codes = { "Q", "R", "S", "*" },
     element = "null",
     family = "null",
@@ -66,7 +66,7 @@ local spreadr3 = define.chip {
     beast = { lockon = lockon.cannon },
     library = { number = 11, index = 11, sort = 419 },
     slot_in_limit = 3,
-    action = spreadr("spreadr3/action"),
+    action = spreadr("bn6:spreadr3/action"),
 }
 
 return { spreadr1 = spreadr1, spreadr2 = spreadr2, spreadr3 = spreadr3 }
