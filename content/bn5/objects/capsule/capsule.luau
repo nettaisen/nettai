@@ -11,7 +11,7 @@
 -- of variant 1 and up hits half as hard. Its target is marked in the battle flag 0x40 mode (objects/dice's marker).
 
 local collision = require("../../rules/collision")
-local marker = require("../dice/marker")
+local marker = require("../../lib/navi-chips/marker")
 local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")

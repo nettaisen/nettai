@@ -3,7 +3,7 @@
 -- without the wait, the fall, the palette, the thrown obstacle and the end effect. It flies forward at its row's
 -- speed until it has passed its range in panel centers, and ends on the first thing it hits or when it leaves the
 -- field. Its row (its first parameter; the 16-byte rows at 0x080C5D0C) gives its collision, element, spark, status,
--- look, speed and range, and whether it lights its panel. SideBub's bubbles burst into row 7's (objects/sidebub).
+-- look, speed and range, and whether it lights its panel. SideBub's bubbles burst into row 7's (chips/sidebub/sidebub).
 
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
