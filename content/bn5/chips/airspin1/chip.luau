@@ -3,7 +3,7 @@
 -- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
 
 return define.chip {
-    id = "airspin1",
+    id = "bn5:airspin1",
     codes = { "C", "E", "O" },
     element = "null",
     family = "wind",

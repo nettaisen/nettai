@@ -14,7 +14,7 @@ local effects = require("@bn6/lib/effects")
 local sparks = require("../../lib/sparks")
 local throw = require("@bn6/lib/bombs/throw")
 
-local SOUND_HIT_BOMB = asset.sound("hit-bomb-1")
+local SOUND_HIT_BOMB = asset.sound("bn5:hit-bomb-1")
 
 -- 0x080CE594: leaving. Hidden at once; a chip's removal (BN5 has no absorbing and no blinking out: only the
 -- removal) leaves a puff, and then, as when broken, an explosion if its HP is 0, with the bomb's sound unless a
@@ -45,7 +45,7 @@ local function destroyed(me: Object)
     black_bomb.finish(me)
 end
 
-local KIND = black_bomb.make_kind("blkbomb/bomb", {
+local KIND = black_bomb.make_kind("bn5:blkbomb/bomb", {
     destroyed = destroyed,
     spark = sparks.breaking,
     is = collision.neutral_object,
@@ -55,7 +55,7 @@ local KIND = black_bomb.make_kind("blkbomb/bomb", {
 })
 
 return define.chip {
-    id = "blkbomb",
+    id = "bn5:blkbomb",
     codes = { "L", "R", "Z" },
     element = "fire",
     family = "fire",

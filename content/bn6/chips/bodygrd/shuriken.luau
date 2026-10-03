@@ -15,11 +15,11 @@ export type State = {
     hit_mod: number,
 }
 
-local SPRITE = asset.sprite("shuriken")
+local SPRITE = asset.sprite("bn6:shuriken")
 local START, STEP = 0xB4_0000, 0xC_0000
 local DIVE, SHOWS_AT = 0xF, 7
 local LIE, BLINK = 0x1E, 0x14
-local SOUND_LAND = asset.sound("panel-crack")
+local SOUND_LAND = asset.sound("bn6:panel-crack")
 local LANDED_ANIM = 1
 -- What it is (row 0x1C: a thrown slash) and hits.
 local IS = collision.thrown_slash
@@ -132,7 +132,7 @@ local function init(me: Object)
 end
 
 shuriken.kind = define.kind {
-    id = "bodygrd/shuriken",
+    id = "bn6:bodygrd/shuriken",
     pool = "attack",
     state = { hit_mod = "u8" },
     -- `sub_80CFEC4`.

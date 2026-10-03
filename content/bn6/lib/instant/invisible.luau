@@ -11,7 +11,7 @@
 
 local invisible = {}
 
-local SOUND = asset.sound("invisible")
+local SOUND = asset.sound("bn6:invisible")
 
 -- `sub_8010474`: an `instant` hook that hides the user for `ticks` ticks.
 function invisible.instant(ticks: number): (user: Object, spec: InstantChipSpec) -> ()

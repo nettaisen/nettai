@@ -9,7 +9,7 @@
 local plus = require("@bn6/lib/instant/plus")
 
 return define.chip {
-    id = "invalid",
+    id = "bn5:invalid",
     codes = {},
     element = "null",
     family = "null",

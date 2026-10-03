@@ -7,7 +7,7 @@
 local light_dark = require("./light-dark/system")
 
 return define.ruleset {
-    id = "bn5",
+    id = "bn5:stock",
     stock = true,
     systems = {
         -- Light and dark MegaMan: the holy panels a dark one clears, the chips each may use.

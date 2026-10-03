@@ -26,7 +26,7 @@ Max in release builds, on a machine shared with other work, so single runs vary 
   hash covers the scripts.
 - **Definitions and assets cross the API, not numbers.** `battle.spawn(bomb.kind, pos)`,
   `me:set_attack(action, 2)`, `me:setup_collision(collision.thrown, collision.hits_navis, 0)`,
-  `battle.play_sound(asset.sound("throw"))`. The engine keeps a handle for each.
+  `battle.play_sound(asset.sound("bn6:throw"))`. The engine keeps a handle for each.
 - **Fidelity.** Every golden trace matches every frame, also under rollback at every tested latency; the sound
   calls match; the chip lab's scenarios match every frame (§5).
 - **Rollback.** Content declares its state; the engine stores it inside `Battle` (64 bytes per object or
@@ -55,7 +55,7 @@ Running it:
 
 ```sh
 cargo test --workspace                                         # engine, runtime, rollback, the type check, the guards
-cargo run -p nettai-content-check -- content/bn6                  # type-check and lint the content root
+cargo run -p nettai-content-check                                # type-check and lint content/, every folder
 cargo run --release -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>     # a BN6 pack (assets), checked against content/bn6
 cargo run --release -p nettai-content -- check <pack>             # the define phase and its report
 cargo run --release -p nettai-netplay --example rollback_cost -- <trace.jsonl> <pack> 1

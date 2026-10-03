@@ -123,7 +123,7 @@ local function init(me: Object)
 end
 
 layer.kind = define.kind {
-    id = "lilbolr/layer",
+    id = "bn6:lilbolr/layer",
     pool = "actor",
     state = {
         sprite = "sprite",

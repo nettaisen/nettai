@@ -19,17 +19,17 @@ local effects = require("../../lib/effects")
 
 local boulder = {}
 
-local SPRITE = asset.sprite("boulder")
+local SPRITE = asset.sprite("bn6:boulder")
 -- How it looks absorbed (the original's obstacle kind 5: its own sprite).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
 local IDENTITY = define.identity {
-    id = "boulder",
+    id = "bn6:boulder",
     class = "field_object",
     version = 1,
     ai_index = 1,
-    look = { sprite = asset.sprite("boulder"), anim = 0, palette = 0, shadow = false },
+    look = { sprite = asset.sprite("bn6:boulder"), anim = 0, palette = 0, shadow = false },
 }
 local HP = 500
 -- What its timer starts at (nothing counts it down).
@@ -161,7 +161,7 @@ end
 -- The kind (its `place` spawns one).
 local KIND: Kind
 KIND = define.kind {
-    id = "boulder",
+    id = "bn6:boulder",
     pool = "attack",
     -- `sub_80D2290`.
     update = function(me: Object)

@@ -12,7 +12,7 @@ local trajectory = require("../trajectory")
 
 local dragon = {}
 
-local SPRITE = asset.sprite("dragon")
+local SPRITE = asset.sprite("bn6:dragon")
 -- A panel's width, 16.16.
 local PANEL_WIDTH = 0x28_0000
 -- How far it climbs past the top row before it is gone, by leg

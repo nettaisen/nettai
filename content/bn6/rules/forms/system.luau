@@ -23,13 +23,13 @@ export type State = {
 
 -- The change, as the pause handler runs it.
 forms.action = define.action {
-    id = "forms/change",
+    id = "bn6:forms/change",
     state = { timer = "u16" },
     update = change.update,
 }
 
 forms.system = define.system {
-    id = "forms",
+    id = "bn6:forms",
     state = { beast_out_used = "bool", crossed = "bool" },
     actions = { forms.action },
 }

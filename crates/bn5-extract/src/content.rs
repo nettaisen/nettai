@@ -15,7 +15,7 @@ pub const USAGE: &str = "usage: bn5-extract content <protoman-us> <colonel-us> <
 
 /// The names BN5's compat (content/bn5/compat, built into bn5-compat) gives
 /// the assets: sprites, songs and banners by BN6's names for what is BN6's,
-/// chip icons by the chips' keys.
+/// chip icons by the chips' ids' own part (`cannon` for `bn5:cannon`).
 fn asset_names() -> nettai_content::names::AssetNames {
     let c = bn5_compat::Compat::bn5();
     nettai_content::names::AssetNames {
@@ -23,7 +23,7 @@ fn asset_names() -> nettai_content::names::AssetNames {
         songs: c.assets.sounds.iter().map(|(k, &v)| (v, k.clone())).collect(),
         banners: c.assets.banners.iter().map(|(k, &v)| (v, k.clone())).collect(),
         backgrounds: c.assets.backgrounds.iter().map(|(k, &v)| (v, k.clone())).collect(),
-        chips: c.chip_keys.clone(),
+        chips: c.chip_keys.iter().map(|(&id, k)| (id, nettai_content_api::keys::local(k).to_string())).collect(),
         ..Default::default()
     }
 }

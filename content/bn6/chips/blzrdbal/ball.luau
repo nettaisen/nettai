@@ -24,9 +24,9 @@ export type State = {
 -- What the roller tells it.
 type RollerState = { swallowed: boolean }
 
-local SPRITE = asset.sprite("blizzard-ball")
+local SPRITE = asset.sprite("bn6:blizzard-ball")
 local SPEED = 0x3_0000
-local SOUND_GROW = asset.sound("blizzard-grow")
+local SOUND_GROW = asset.sound("bn6:blizzard-grow")
 -- What it is and reaches: an attack hitting navis, hit modifier 3, no
 -- spark.
 local IS, HITS, HIT_MOD = collision.attack, collision.hits_navis, 3
@@ -111,7 +111,7 @@ local function init(me: Object)
 end
 
 ball.kind = define.kind {
-    id = "blzrdbal/ball",
+    id = "bn6:blzrdbal/ball",
     pool = "attack",
     state = { roller = "object", growth = "u16", size = "u8" },
     -- `sub_80DB994`.

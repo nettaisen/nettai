@@ -30,7 +30,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "magnum/controller",
+    id = "bn6:magnum/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool" },
     -- `sub_80E71C4`.

@@ -384,6 +384,6 @@ local function compile(side: number)
 end
 
 return define.system {
-    id = "navicust",
+    id = "bn6:navicust",
     hooks = { round_setup = compile },
 }

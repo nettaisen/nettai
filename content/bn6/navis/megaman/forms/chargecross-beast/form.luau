@@ -9,7 +9,7 @@ local wave = require("./wave")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "chargecross-beast",
+    id = "bn6:chargecross-beast",
     kind = "cross_beast",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -17,13 +17,13 @@ return define.form {
     cross_of = chargeman,
     -- A weakness hit breaks the Cross: back to the Beast.
     breaks_to = gregar_beast,
-    sprite = asset.sprite("chargecross-beast"),
+    sprite = asset.sprite("bn6:chargecross-beast"),
     element = "fire",
     buster_bonus = 0,
     weapons = { buster = gregar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = wave.weapon },
     -- Its face in the emotion window (`byte_801E700`): the Falzar ROM has no
     -- ChargeCross Beast face, and shows DustCross Beast's.
-    mugshot = asset.mugshot("chargecross-beast"),
+    mugshot = asset.mugshot("bn6:chargecross-beast"),
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
     null_bonus = 30,
     -- The chips A charges.

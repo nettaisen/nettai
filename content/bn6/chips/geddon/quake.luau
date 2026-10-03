@@ -38,10 +38,10 @@ local SOLID = 0x10
 local PERIOD = 8
 -- Over a broken or cracked panel, a puff (effect 0x02); over a poisoned
 -- one a bubble rising (effect object #0x14, palette 1).
-local PUFF = define.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 }
+local PUFF = define.effect { sprite = asset.sprite("bn6:small-puff"), anim = 1, palette = 0 }
 local BUBBLE_PALETTE = 1
-local SOUND_PUFF = asset.sound("panel-crack")
-local SOUND_BUBBLE = asset.sound("panel-poison")
+local SOUND_PUFF = asset.sound("bn6:panel-crack")
+local SOUND_BUBBLE = asset.sound("bn6:panel-poison")
 
 -- The panel routine (`byte_80E2588` +0x14): whether the panel changed.
 -- Each plays its own sound when it does.
@@ -105,7 +105,7 @@ local function init(me: Object)
 end
 
 quake.kind = define.kind {
-    id = "geddon/quake",
+    id = "bn6:geddon/quake",
     pool = "effect",
     state = { change = { "crack", "break", "poison" }, list = "u8[18]", count = "i32", holder = "object" },
     -- `sub_80E25D0`.

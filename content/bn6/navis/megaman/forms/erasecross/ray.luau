@@ -42,7 +42,7 @@ export type State = {
     action: Action?,
 }
 
-local SPRITE = asset.sprite("erase-ray")
+local SPRITE = asset.sprite("bn6:erase-ray")
 
 -- The phases, on its phase byte.
 local OPENING, BEAMING, CLOSING = 0x0, 0x4, 0x8
@@ -144,7 +144,7 @@ local function init(me: Object)
 end
 
 erase_ray.kind = define.kind {
-    id = "erasecross/ray",
+    id = "bn6:erasecross/ray",
     pool = "attack",
     state = {
         columns = "object[5]",

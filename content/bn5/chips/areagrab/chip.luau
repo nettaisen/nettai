@@ -6,7 +6,7 @@
 local grab = require("@bn6/lib/grab/controller")
 
 return define.chip {
-    id = "areagrab",
+    id = "bn5:areagrab",
     codes = { "A", "L", "S", "*" },
     element = "null",
     family = "null",

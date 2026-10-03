@@ -11,13 +11,13 @@ local instrument = require("@bn6/lib/instruments/instrument")
 local instruments = require("@bn6/lib/instruments/controller")
 local statuses = require("../../rules/status")
 
-local SPRITE = asset.sprite("instrument")
+local SPRITE = asset.sprite("bn5:instrument")
 
 -- Blinded (status 0x33: 4 ticks) over the whole field.
 local EFFECT = effects.hush(statuses.blind_4, collision.guard_breaking, collision.hits_navis)
 
 return define.chip {
-    id = "silence",
+    id = "bn5:silence",
     codes = { "C", "J", "N", "*" },
     element = "null",
     family = "summon",
@@ -32,7 +32,7 @@ return define.chip {
     -- BN5's row 3; its identity the actor record 0xE0 (0x08014C94: version 1, AI index 0x21).
     dimming = instruments.hook(instrument.instrument {
         identity = define.identity {
-            id = "silence",
+            id = "bn5:silence",
             class = "field_object",
             version = 1,
             ai_index = 0x21,
@@ -41,7 +41,7 @@ return define.chip {
         palette = 6,
         play_ticks = 0x55 * 2,
         pause_ticks = 0x3C,
-        tune = asset.sound("silence"),
+        tune = asset.sound("bn5:silence"),
         effect = EFFECT,
         hp = 100,
         sprite = SPRITE,

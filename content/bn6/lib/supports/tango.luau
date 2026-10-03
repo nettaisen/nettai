@@ -17,12 +17,12 @@ export type State = {
 
 local tango = {}
 
-local SPRITE = asset.sprite("tango")
-local ARRIVE_SOUND = asset.sound("arrive")
-local LAND_SOUND = asset.sound("tango-land")
-local THROW_SOUND = asset.sound("minibomb-throw")
+local SPRITE = asset.sprite("bn6:tango")
+local ARRIVE_SOUND = asset.sound("bn6:arrive")
+local LAND_SOUND = asset.sound("bn6:tango-land")
+local THROW_SOUND = asset.sound("bn6:minibomb-throw")
 -- Her arrival sparkle (the original's effect 0x15); she leaves in a puff.
-local ARRIVE = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 }
+local ARRIVE = define.effect { sprite = asset.sprite("bn6:puff"), anim = 3, palette = 0 }
 
 -- Where she drops from: 33 pixels in front of her navi, 60 up; how fast
 -- she drops and rises (Z, 16.16 a tick), and where she lands.
@@ -184,7 +184,7 @@ local function update(me: Object)
 end
 
 tango.kind = define.kind {
-    id = "tango",
+    id = "bn6:tango",
     pool = "actor",
     state = { healing = "bool" },
     update = update,

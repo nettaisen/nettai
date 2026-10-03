@@ -18,9 +18,9 @@ local sonic_boom = require("@bn6/lib/swords/sonic_boom")
 
 local swords = {}
 
-local SLASH = asset.sprite("sword-slash")
+local SLASH = asset.sprite("bn5:sword-slash")
 
-swords.blade = attachment.look { sprite = asset.sprite("sword"), palette = 0 }
+swords.blade = attachment.look { sprite = asset.sprite("bn5:sword"), palette = 0 }
 swords.slashes_navis = { is = collision.slash, hits = collision.hits_navis }
 swords.effects = {
     -- Sword's, over the panel ahead (effect 0x18).
@@ -30,8 +30,8 @@ swords.effects = {
     -- Over two panels: LongSwrd's (0x17).
     long = define.effect { sprite = SLASH, anim = 1, palette = 0 },
 }
-swords.swing = asset.sound("sword-swing")
-swords.sonic_boom = sonic_boom.make_kind("sonic-boom", {
+swords.swing = asset.sound("bn5:sword-swing")
+swords.sonic_boom = sonic_boom.make_kind("bn5:sonic-boom", {
     sprite = SLASH,
     z = 0,
     piercing_palette = 9,

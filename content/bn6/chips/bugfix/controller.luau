@@ -44,7 +44,7 @@ local function effect(me: Object)
 end
 
 bugfix.kind = define.kind {
-    id = "bugfix/controller",
+    id = "bn6:bugfix/controller",
     pool = "effect",
     state = { busy = "bool" },
     update = dimming_chips.phases { name = "BugFix", effect = effect },

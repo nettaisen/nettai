@@ -10,7 +10,7 @@ local ironshl = require("../ironshl/chips")
 local SPEED = 0x8_0000
 
 return define.chip {
-    id = "parashl",
+    id = "bn6:parashl",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -28,5 +28,5 @@ return define.chip {
         { order = 38, code_run = { chip = ironshl.ironshl2, count = 3 } },
         { order = 39, code_run = { chip = ironshl.ironshl3, count = 3 } },
     },
-    action = throw.action { id = "parashl/action", shell = { palette = 0, speed = SPEED, bumps = 1, para = true } },
+    action = throw.action { id = "bn6:parashl/action", shell = { palette = 0, speed = SPEED, bumps = 1, para = true } },
 }

@@ -5,7 +5,7 @@
 -- (`sub_800AAD6`); the result's banner holds at least 102 ticks, 94 in a special battle and for a win in battle
 -- modes 4, 5 and 8 (`sub_80081A4`, `sub_800825A`).
 
-return define.rules("flow", {
+return define.rules("bn6:flow", {
     custom_closes_with_results = false,
     sequencer_before_custom = true,
     escape_check = true,

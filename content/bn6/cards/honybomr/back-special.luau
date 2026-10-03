@@ -13,7 +13,7 @@ local rskyhny_chips = require("../../chips/rskyhny/chips")
 -- RskyHny's action with the level-1 bees, dragging. (Its compat key maps
 -- it to 0x39.)
 local HONEY = rskyhny.action {
-    id = "patch-cards/honybomr/back-special/action",
+    id = "bn6:patch-cards/honybomr/back-special/action",
     bee = rskyhny.bees[1],
     drags = true,
 }
@@ -28,7 +28,7 @@ local function setup(navi: Object): Action
 end
 
 return define.weapon {
-    id = "patch-cards/honybomr/back-special",
+    id = "bn6:patch-cards/honybomr/back-special",
     -- The charge table's row 0x88, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },

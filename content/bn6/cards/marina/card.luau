@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local barriers = require("../../lib/barriers/barriers")
 
 return define.patch_card {
-    id = "marina",
+    id = "bn6:marina",
     mb = 14,
     effects = {
         cards.hp(90),

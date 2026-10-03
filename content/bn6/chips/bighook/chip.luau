@@ -6,7 +6,7 @@ local hook = require("../flmhook/hook")
 local sparks = require("../../lib/sparks")
 
 return define.chip {
-    id = "bighook",
+    id = "bn6:bighook",
     codes = { "H" },
     element = "null",
     family = "break",

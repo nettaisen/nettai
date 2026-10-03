@@ -6,7 +6,7 @@ local lockon = require("../../rules/lockon")
 local sonic = require("../sonicbom/action")
 
 return define.chip {
-    id = "sprsonic",
+    id = "bn6:sprsonic",
     codes = { "E", "L", "S", "*" },
     element = "null",
     family = "sword",

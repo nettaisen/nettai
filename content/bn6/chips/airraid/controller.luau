@@ -40,7 +40,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "airraid/controller",
+    id = "bn6:airraid/controller",
     pool = "effect",
     state = { plane = "record:airraid-plane", bonus = "u16" },
     update = dimming_chips.phases { name = "AirRaid", effect = effect },

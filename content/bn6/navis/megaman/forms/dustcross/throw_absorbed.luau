@@ -40,7 +40,7 @@ local function setup(navi: Object): Action
 end
 
 throw_absorbed.weapon = define.weapon {
-    id = "dustcross/throw-absorbed",
+    id = "bn6:dustcross/throw-absorbed",
     -- The charge table's row 0x2B, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },
