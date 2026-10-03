@@ -328,3 +328,48 @@ fn karma_and_souls_reach_the_round() {
     // A BN6 side has no souls.
     assert_eq!(b.setup.players[1].souls, nettai_battle::custom::SoulUnlocks::default());
 }
+
+/// What a side's rules and navi take decides its own fields: a BN6 side
+/// (a mixed one too: BN6's rules, BN5 chips) takes its game, a navi code's
+/// level and BN6's SP times; a BN5 side takes no game and no level, and
+/// BN5's own SP times (its SP navi chips', not BN6's).
+#[test]
+fn a_sides_fields_are_its_rules() {
+    let content = every_game();
+    let mixed: Vec<String> = TANGO_BN5.iter().take(15).map(|s| s.to_string()).chain(BN6[15..].iter().map(|s| s.to_string())).collect();
+    let m = parse(&content, &side("bn6:stock", "bn6:megaman", &refs(&mixed), ""), &bn5(&TANGO_BN5, "")).unwrap();
+    let (six, five) = (&m.sides[0], &m.sides[1]);
+    assert!(six.takes_game(&content) && six.takes_level(&content) && six.takes_sp_times(&content));
+    assert!(!five.takes_game(&content) && !five.takes_level(&content) && five.takes_sp_times(&content));
+    // Each slot's chip is of the side's rules' game.
+    let chip = |s: &crate::Side, slot| crate::facts::sp_chip(&content, s, slot).map(|h| content.defs.chip(h).key.clone());
+    assert!(chip(six, 0).is_some_and(|k| k.starts_with("bn6:")), "{:?}", chip(six, 0));
+    assert!(chip(five, 1).is_some_and(|k| k.starts_with("bn5:")), "{:?}", chip(five, 1));
+}
+
+/// A ruleset change drops what the new rules don't take: BN6's game
+/// (back to Falzar), Crosses, patch cards and NaviCust going to BN5's
+/// rules, the SP times (another game's SP navis); BN5's karma and souls
+/// going to BN6's. A BN6 side that stays on BN6's rules keeps them.
+#[test]
+fn a_ruleset_change_drops_what_the_rules_dont_take() {
+    let content = every_game();
+    let bn6 = content.defs.ruleset_by_key("bn6:stock");
+    let bn5 = content.defs.ruleset_by_key("bn5:stock");
+    let mut m = crate::draw::live(&content, 3, None).unwrap();
+    let s = &mut m.sides[0];
+    s.ruleset = bn6;
+    s.game = nettai_battle::custom::GameVersion::Gregar;
+    s.crosses = crate::navi_crosses(&content, s.navi).map(|c| crate::CrossList::new(&c[..2]));
+    assert!(s.crosses.is_some(), "live play's navi changes form");
+    s.sp_times.0[0] = 600;
+    let kept = s.clone();
+    s.set_ruleset(&content, bn6);
+    assert_eq!(*s, kept, "the same rules keep everything");
+    s.set_ruleset(&content, bn5);
+    assert_eq!((s.game, s.crosses, s.navicust, s.cards.len(), s.sp_times.0[0]), (nettai_battle::custom::GameVersion::Falzar, None, None, 0, 0));
+    s.karma = 100;
+    s.souls = Some(Vec::new());
+    s.set_ruleset(&content, bn6);
+    assert_eq!((s.karma, s.souls.clone()), (crate::facts::DEFAULT_KARMA, None));
+}

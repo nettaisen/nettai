@@ -256,6 +256,9 @@ fn finish_change(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).status &= !0x20;
     let side = b.objects.get(r).alliance as usize & 1;
     b.hands[side].charge_bonus = [0; 6];
+    // BN5's (0x08011918) disarms the side's ColonelSoul army
+    // (`obstacle::Soldiers`): BN6 has none to disarm.
+    b.obstacle_soldiers[side].armed = false;
     // `off_801426C`, by the navi: MegaMan's (the navi that changes form)
     // is his status reset; the link navis' are nothing.
     if is_megaman(b, r) {
