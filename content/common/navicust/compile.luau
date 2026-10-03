@@ -150,15 +150,15 @@ local function apply(stats: Navi, e: NaviCustEffect, work: Work)
 end
 
 -- `round_setup`: `side`'s NaviCust compiled into its stats by `game`'s rules, if the setup gives one and the navi is
--- MegaMan (the navi that changes form: the original compiles the PET's own navi's, navi 0's).
-function compile.run(side: number, game: NaviCustGame)
+-- MegaMan (the navi that changes form: the original compiles the PET's own navi's, navi 0's). Whether it was.
+function compile.run(side: number, game: NaviCustGame): boolean
     local nc = battle.navicust(side)
     if nc == nil then
-        return
+        return false
     end
     local stats = battle.navi(side)
     if stats.navi.forms == nil then
-        return
+        return false
     end
     local board = game.board
     local size = board.SIZE
@@ -336,6 +336,7 @@ function compile.run(side: number, game: NaviCustGame)
     -- 5. The HP (`sub_803CE44`): the round starts with the maximum.
     stats.max_hp = stats.max_base_hp + work.hp
     stats.hp = stats.max_hp
+    return true
 end
 
 return compile

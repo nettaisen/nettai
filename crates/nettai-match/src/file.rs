@@ -16,13 +16,18 @@
 //! ruleset = "bn6:stock"              # optional: else BN6's (crate::DEFAULT_GAME)
 //! navi = "bn6:megaman"
 //! game = "falzar"                    # or "gregar"
+//! level = 7                          # optional: the navi code's level, 0-14 (else a link navi's 0, MegaMan none)
 //! crosses = ["bn6:heatcross", "bn6:spoutcross"]   # optional: else the game's own five
+//! beast_out = false                  # optional: else Beast Out is unlocked
 //! cards = [{ card = "bn6:canodumb" }, { card = "bn6:shadow", on = false }]
 //!
 //! [left.folder]
 //! chips = ["bn6:cannon A", "bn6:cannon A", ...]   # 30, each "key code" ("" empty, while it's being made)
 //! regular = 4                        # optional: an entry, counting from 0
 //! tags = [5, 6]                      # optional
+//!
+//! [left.sp_times]                    # optional: SP navi deletion times, mm:ss.cc (else the fastest)
+//! "sp/heatman" = "00:12.34"
 //!
 //! [left.stats]                       # optional: over the navi's fresh stats, a link navi's at its level (crate::stats)
 //! hp = 1000
@@ -42,9 +47,11 @@
 use crate::{Arena, Folder, Match, Place, Side, stats};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
-use nettai_battle::custom::{CrossList, FolderChip, GameVersion};
+use crate::CrossList;
+use nettai_battle::custom::{FolderChip, GameVersion};
 use nettai_battle::navicust::{NaviCust, PlacedProgram};
 use nettai_battle::patch_cards::InstalledCard;
+use nettai_battle::setup::SpTimes;
 use nettai_battle::tactics::{Tactic, TacticPattern, Tactics};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -93,6 +100,10 @@ pub struct SideFile {
     pub emotion_window_glitch: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub crosses: Option<Vec<String>>,
+    #[serde(default = "yes", skip_serializing_if = "is_yes")]
+    pub beast_out: bool,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub sp_times: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cards: Vec<CardFile>,
     pub folder: FolderFile,
@@ -284,8 +295,8 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
                 f
             })
             .collect();
-        if forms.len() > nettai_battle::custom::screen::CROSSES {
-            say(format!("{} Crosses: a Cross window offers {}", forms.len(), nettai_battle::custom::screen::CROSSES));
+        if forms.len() > bn6_compat::unlocks::CROSSES {
+            say(format!("{} Crosses: a Cross window offers {}", forms.len(), bn6_compat::unlocks::CROSSES));
             CrossList::default()
         } else {
             CrossList::new(&forms)
@@ -328,9 +339,24 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
             }
         }
     };
+    // The SP navis' deletion times, by the rules' slot names.
+    let slots = crate::sp_slots(content, ruleset);
+    let mut sp_times = SpTimes::default();
+    for (name, time) in &s.sp_times {
+        let Some(i) = slots.iter().position(|x| x == name) else {
+            say(format!("sp_times: no SP navi slot {name:?} (the rules' are {})", slots.join(", ")));
+            continue;
+        };
+        match crate::sp_times::parse(time) {
+            Ok(frames) => sp_times.0[i] = frames,
+            Err(e) => say(format!("sp_times: {name}: {e}")),
+        }
+    }
     let tactics = s.tactics.as_ref().map(|t| resolve_tactics(content, t, &mut say)).unwrap_or_default();
     let navi = navi?;
-    let mut stats = Side::save_base(content, navi, game, s.level.unwrap_or(0));
+    // (No level: a link navi's 0, MegaMan's none; the checks hold it.)
+    let navi_level = s.level.or_else(|| crate::default_navi_level(content, navi));
+    let mut stats = Side::save_base(content, navi, game, navi_level);
     for p in stats::apply(content, &s.stats, &mut stats) {
         say(format!("stats: {p}"));
     }
@@ -346,9 +372,11 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
         emotion_window_glitch: s.emotion_window_glitch,
         folder: folder?,
         crosses,
+        beast_out: s.beast_out,
         cards,
-        navi_level: s.level.unwrap_or(0),
+        navi_level,
         bug_frags: s.bug_frags.unwrap_or(0),
+        sp_times,
         navicust,
         tactics,
     })
@@ -433,10 +461,16 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
         ruleset: s.ruleset.map(|r| content.defs.ruleset(r).key.clone()),
         navi: content.defs.navi(s.navi).key.clone(),
         game: game_name(s.game).into(),
-        level: (s.navi_level != 0).then_some(s.navi_level),
+        // (The navi's default level is left out.)
+        level: s.navi_level.filter(|_| s.navi_level != crate::default_navi_level(content, s.navi)),
         bug_frags: (s.bug_frags != 0).then_some(s.bug_frags),
         emotion_window_glitch: s.emotion_window_glitch,
         crosses: s.crosses.map(|l| l.forms().map(|f| content.defs.form(f).key.clone()).collect()),
+        beast_out: s.beast_out,
+        sp_times: crate::sp_times::named(crate::sp_slots(content, s.ruleset), &s.sp_times)
+            .into_iter()
+            .map(|(name, frames)| (name, crate::sp_times::format(frames)))
+            .collect(),
         cards: s.cards.iter().map(|c| CardFile { card: content.defs.patch_card(c.card).key.clone(), on: c.enabled }).collect(),
         folder: FolderFile {
             // An empty entry is "", and those after the last chip are left off.
@@ -606,5 +640,59 @@ mod tests {
         let stock = content.defs.stock_ruleset_of("test");
         assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM));
         assert!(!crate::ruleset_has_system(&content, Some(mix), crate::FORMS_SYSTEM));
+    }
+
+    /// The SP deletion times, Beast Out locked and a level write and read
+    /// back; a navi's own default level (a link navi's 0, MegaMan's none) is
+    /// left out, and a file without one reads as it.
+    #[test]
+    fn sp_times_beast_out_and_levels_write_and_read_back() {
+        let content = bn6_content();
+        let mut m = crate::draw::live(&content, 2, None).unwrap();
+        m.sides[0].beast_out = false;
+        m.sides[0].navi_level = Some(3);
+        m.sides[0].sp_times.0[0] = 721;
+        m.sides[0].sp_times.0[11] = 1500;
+        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
+        m.sides[1].navi = protoman;
+        m.sides[1].crosses = None;
+        m.sides[1].navi_level = Some(0);
+        m.sides[1].stats = crate::Side::save_base(&content, protoman, m.sides[1].game, Some(0));
+        m.sides[1].folder.regular = None;
+        let text = write(&content, &m);
+        for line in ["beast_out = false", "level = 3", "[left.sp_times]", "\"sp/heatman\" = \"00:12.01\"", "\"sp/blastman\" = \"00:25.00\""] {
+            assert!(text.contains(line), "{line}:\n{text}");
+        }
+        let right = &text[text.find("[right]").unwrap()..];
+        assert!(!right.contains("level ="), "ProtoMan's level 0 is his default:\n{right}");
+        assert_eq!(parse(&content, &text).unwrap(), m, "{text}");
+        // No level: ProtoMan's 0, MegaMan's none.
+        let no_level = text.replacen("level = 3\n", "", 1);
+        let back = parse(&content, &no_level).unwrap();
+        assert_eq!((back.sides[0].navi_level, back.sides[1].navi_level), (None, Some(0)));
+        // A time that isn't one, a slot the rules lack.
+        let bad = parse(&content, &text.replacen("\"00:12.01\"", "\"12:60.00\"", 1)).unwrap_err();
+        assert!(bad.iter().any(|p| p.contains("sp_times: sp/heatman")), "{bad:?}");
+        let bad = parse(&content, &text.replacen("\"sp/heatman\"", "\"sp/nobody\"", 1)).unwrap_err();
+        assert!(bad.iter().any(|p| p.contains("no SP navi slot \"sp/nobody\"")), "{bad:?}");
+    }
+
+    /// A navi code's level is 0 to 14, and a link navi has one.
+    #[test]
+    fn the_level_is_checked() {
+        let content = bn6_content();
+        let mut m = crate::draw::live(&content, 2, None).unwrap();
+        m.sides[0].navi_level = Some(15);
+        let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
+        has(crate::check_match(&content, &m), "left: level 15: a navi code's level is 0 to 14");
+        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
+        m.sides[0].navi_level = None;
+        m.sides[1].navi = protoman;
+        m.sides[1].crosses = None;
+        m.sides[1].navi_level = None;
+        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].game);
+        let problems = crate::check_match(&content, &m);
+        has(problems.clone(), "right: ProtoMan has no level: a link navi exists only through its navi code");
+        assert!(!problems.iter().any(|p| p.starts_with("left")), "MegaMan without a code is fine: {problems:?}");
     }
 }
