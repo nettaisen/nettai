@@ -385,7 +385,8 @@ first only, and the second takes what the spawner leaves in that register, the e
   (`navis/navi-05-volcchrg/charge-hole-ahead`, `-far`, `-next`, on the holes stage), and ProtoMan's other B+Back
   special, weapon routine 0x34 (`navis/navi-11-stepswrd/level-5`: the game gives him that shield below level 10
   and the reflecting one, 0x30, from level 10; the lab's link navis are level 14, as Tango's save editor makes
-  them, so the scenario pokes the save's level index and the stats that level gives).
+  them, so the scenario pokes the save's level index and the stats that level gives, which are the reload's:
+  link-navis.md).
 - The gregar base's side 0 has SuprArmr, UnderSht, AttckMAX, ChargMAX and HP+1200 in its NaviCust, so Gregar's
   Cross and Beast scenarios never show side 0 flinching: the same blind spot as the falzar base's shoes, not
   surveyed yet.
@@ -447,6 +448,31 @@ recording's setup.
 | The smaller boards (4x4 and 5x4, key item 0x71 below 2), and a program on the frame of one | Every save the lab has is fully expanded; a match file can name a smaller board (`expansions`). |
 | Overlapping programs (a later program's cell over an earlier one's) | The game's own placing refuses them, and so do a match's checks and the editor. |
 | An uncompressed program on a save whose flag compresses it | The engine compiles a placed program as the setup says. A save keeps one flag for each program and color, and the original reads that flag. A match file keeps the copies of a program in one color the same. |
+
+## A link navi's stats at its level (link-navis.md)
+
+The PET's reload (`reloadCurNaviBaseStats_8120df0`) gives a link navi its stats from its level; nettai-match's
+`link_navis` is it, and fills a match side's stats. The verification workspace's `trace-tests --test link_navis`
+compares the reload with every chip lab side that has a link navi; gen-content compares the tables with the ROM.
+
+### Covered
+
+| Branch | Scenarios | Result |
+|---|---|---|
+| The reload with event 0x163 set, the game cleared, in the real world: fresh stats, what the save keeps, the base HP, the level's script and its clamps, the HP at its maximum | every recorded link navi side (210: each navi at level 14, Tango's editor's saves; ProtoMan at level 5) | match, every modeled byte |
+| ProtoMan's B+Back special by level (0x34 to level 9, 0x30 from 10) | `navis/navi-11-stepswrd/level-5` and his level 14 sides | match |
+| Every level's script and every base HP | gen-content, against `pt_8121200` and `off_8120F44` | match |
+
+### Not reached (ported, or documented)
+
+| Branch | Why |
+|---|---|
+| The story before the game is cleared (progress 0 to 5: base HP 300 to 600) | Every base save is a cleared game; a match assumes one. |
+| The reload in the internet (the HP kept, up to the maximum) | The reload runs where the navi code is taken; the lab's saves are made by Tango's editor. A match assumes the real world. |
+| A link navi operated with event 0x163 clear (no level script; the save's Mega, Giga and custom levels kept) | The game operates MegaMan again on such a save (`navi_80340F6`); Tango's editor sets the flag with the navi. |
+| MegaMan with a level (a navi code of his: his NaviCust's stats and his level's gains) | No scenario received one; nettai doesn't model it (link-navis.md §5). |
+| MegaMan with event 0x163 clear (the reload writes the kept bytes back), and a scene's switch to MegaMan with a code of his received (base HP 0) | Not modeled: MegaMan's stats are his NaviCust's. |
+| `charge-family-chip-level-1` (ChargeMan's level poked to 1, the stats left at 14's) | A save the game doesn't make; the test lists it apart. |
 
 ## Ruleset
 
