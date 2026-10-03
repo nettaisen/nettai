@@ -10,7 +10,7 @@
 -- §3.6.18.
 
 local collision = require("../../rules/collision")
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("@common/navi-chips/navi")
 local panels = require("../../lib/panels")
 local regions = require("../../lib/regions")
 local wave = require("./wave")

@@ -10,7 +10,7 @@
 local heatman_navi = require("../../navis/heatman/navi")
 local collision = require("../../rules/collision")
 local flame = require("./flame")
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("@common/navi-chips/navi")
 
 local heatman = {}
 
