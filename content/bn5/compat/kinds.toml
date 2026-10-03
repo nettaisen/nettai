@@ -15,6 +15,7 @@
 "engine/spark" = { pool = "effect", index = 0x04 }
 "engine/status-visual" = { pool = "effect", index = 0x06 }
 "engine/afterimage" = { pool = "effect", index = 0x28 }
+"engine/form-overlay" = { pool = "actor", index = 0x57 }
 "bn6:attachment" = { pool = "actor", index = 0x05 }
 "bn6:widesht/wave" = { pool = "attack", index = 0x3B }
 "bn6:boomer/boomerang" = { pool = "attack", index = 0x32 }
@@ -52,6 +53,8 @@
 "bn5:serchman/navi" = { pool = "actor", index = 0x31 }
 "bn5:serchman/scope" = { pool = "effect", index = 0x43 }
 "bn5:serchman/shot" = { pool = "attack", index = 0x57 }
+"bn5:bass/navi" = { pool = "actor", index = 0x4F }
+"bn5:bass/strike" = { pool = "attack", index = 0x72 }
 "bn5:sonic-boom" = { pool = "attack", index = 0x58 }
 "bn5:holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 "bn5:holydrem/actor" = { pool = "actor", index = 0x1C }

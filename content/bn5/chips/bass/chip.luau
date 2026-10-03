@@ -1,6 +1,8 @@
 --!strict
--- Bass (BN5 chip 0x12d): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- Bass (BN5 chip 0x12d): Bass cuts in and fires 24 volleys of two shots at the enemy area (./navi).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local navi = require("./navi")
 
 return define.chip {
     id = "bn5:bass",
@@ -16,4 +18,5 @@ return define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 4, 16 },
     slot_in_limit = 1,
+    navi = navi.summon,
 }
