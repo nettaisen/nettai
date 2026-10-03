@@ -9,7 +9,7 @@
 -- HolyPanl, Snctuary, ComingRd, GoingRd) and AntiRecv's counterattack
 -- (chips/antirecv/controller).
 
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 
 local panel_changer = {}
 

@@ -9,7 +9,7 @@
 -- ./summon, one panel behind the user), waits for it to be done, and
 -- brings the user and the HUD back.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local summon = require("./summon")
 
 local controller = {}

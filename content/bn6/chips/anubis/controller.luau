@@ -5,7 +5,7 @@
 -- statue (./statue) on the panel in front of the user, whatever is there,
 -- and waits 120 ticks.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local statue = require("./statue")
 
 export type State = { variant: AnubisVariant }

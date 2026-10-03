@@ -19,7 +19,7 @@
 -- palette)` or `navi_boost.dark`.
 
 local collision = require("../../rules/collision")
-local dimming_chips = require("../dimming")
+local dimming_chips = require("@common/dimming")
 local shield = require("../../navis/megaman/weapons/shield/weapon")
 
 local navi_boost = {}

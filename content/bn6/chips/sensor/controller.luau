@@ -5,7 +5,7 @@
 -- turret (turret.luau) on the panel in front of the user if it is free,
 -- with the chip's damage and its Atk+ bonus, then waits 60 ticks.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local turret = require("./turret")
 
 local controller = {}

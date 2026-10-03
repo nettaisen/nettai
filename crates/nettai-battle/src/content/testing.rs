@@ -1015,7 +1015,6 @@ pub fn scripts() -> Scripts {
                 ("navis/megaman/weapons/buster-82/weapon", "navis/megaman/weapons/buster-82/weapon"),
                 ("navis/megaman/forms/heatcross/charge", "navis/megaman/forms/heatcross/charge"),
                 ("lib/weapon", "lib/weapon"),
-                ("lib/order", "lib/order"),
                 ("objects/element-pillar/element_pillar", "objects/element-pillar/element_pillar"),
                 // The form weapons content defines, with the kinds only they
                 // spawn.

@@ -8,7 +8,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local panel_strike = require("../../objects/panel-strike/panel_strike")
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 
 export type State = {
     -- The countdown to the next strike (AIAttackVars+0x10).

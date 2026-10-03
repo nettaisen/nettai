@@ -7,7 +7,7 @@
 -- hitting each panel once. See docs/engine/shot-chips.md §10.1.
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local wave = {}
 

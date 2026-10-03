@@ -5,7 +5,7 @@
 -- and lasts until it is done.
 
 local actor = require("./actor")
-local dimming_chips = require("@bn6/lib/dimming")
+local dimming_chips = require("@common/dimming")
 
 export type State = {
     -- The Atk+ / cross bonus the telop shows (+0x32), which the shots' damage adds.

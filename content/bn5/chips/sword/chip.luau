@@ -3,7 +3,7 @@
 -- (lib/swords).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local regions = require("@bn6/lib/regions")
+local regions = require("@common/regions")
 local slash = require("@bn6/lib/swords/slash")
 local swords = require("../../lib/swords")
 

@@ -11,10 +11,10 @@
 -- otherwise makes its kind with `strike.make_kind(id, look)` (BN5's).
 
 local collision = require("../../rules/collision")
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local effects = require("../../lib/effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")
 

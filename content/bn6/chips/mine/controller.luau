@@ -7,7 +7,7 @@
 -- The chip's `dimming` hook (`sub_80E349E`, `off_802CCB4[11]`) is
 -- `controller.hook`.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local land_mine = require("./land_mine")
 
 export type State = {

@@ -11,7 +11,7 @@
 -- (`controller.make`; BN5's).
 
 local countdown = require("./countdown")
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 
 export type State = {
     -- The Atk+ / cross bonus the telop shows (object +0x32), which adds to

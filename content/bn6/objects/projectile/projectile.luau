@@ -13,9 +13,9 @@
 -- Callers fire it with lib/projectile.luau. See
 -- docs/engine/objects-and-player.md §B8.
 
-local element = require("../../lib/element")
+local element = require("@common/element")
 local effects = require("../../lib/effects")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local collision = require("../../rules/collision")
 
 local projectile = {}

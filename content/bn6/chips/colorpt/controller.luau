@@ -6,8 +6,8 @@
 -- that is solid, free and may go to the other side (`sub_80E650A`), then
 -- waits until they are all gone.
 
-local dimming_chips = require("../../lib/dimming")
-local panels = require("../../lib/panels")
+local dimming_chips = require("@common/dimming")
+local panels = require("@common/panels")
 local point = require("./point")
 
 local controller = {}

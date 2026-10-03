@@ -9,7 +9,7 @@
 -- A chip's `dimming` hook is `instruments.hook(instrument)`; another
 -- game's controller sets its own instruments (`instruments.make`).
 
-local dimming_chips = require("../dimming")
+local dimming_chips = require("@common/dimming")
 local instrument = require("./instrument")
 
 local instruments = {}

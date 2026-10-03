@@ -10,7 +10,7 @@
 -- `gauge_speed.slow` and `gauge_speed.fast`: what the original's first
 -- chip parameter told apart (0 SloGauge, 1 FstGauge).
 
-local dimming_chips = require("../dimming")
+local dimming_chips = require("@common/dimming")
 
 local gauge_speed = {}
 
