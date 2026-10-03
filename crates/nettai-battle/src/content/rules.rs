@@ -103,12 +103,25 @@ pub struct EffectsRules {
     /// How an object's collision types are set again (`sub_801A082`).
     #[serde(default)]
     pub retype: RetypeRule,
+    /// An obstacle's reaction has BN5's step for ColonelSoul's army
+    /// (0x080CAB02 from its four reactions, docs/design/bn5-map.md §15.11:
+    /// `kinds::obstacle::Soldiers`): one standing where an armed side can
+    /// use it turns into that side's soldier (the role
+    /// `kinds.obstacle_soldier`). Read of the obstacle's own game's rules
+    /// (its kind's), not the arena's.
+    #[serde(default)]
+    pub obstacle_soldiers: bool,
 }
 
 impl Default for EffectsRules {
     /// BN6's.
     fn default() -> EffectsRules {
-        EffectsRules { shake: ShakeRule::default(), spark_steps_at_start: true, retype: RetypeRule::default() }
+        EffectsRules {
+            shake: ShakeRule::default(),
+            spark_steps_at_start: true,
+            retype: RetypeRule::default(),
+            obstacle_soldiers: false,
+        }
     }
 }
 
