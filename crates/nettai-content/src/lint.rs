@@ -138,8 +138,40 @@ pub fn duplicate_collision_types(c: &Content) -> Vec<(u8, Vec<(String, String)>)
 /// row 0x3D does, which is fine while only BN5's code uses it). Each with
 /// the module that names it and the root it requires. (A module names a
 /// type as `collision.<id with underscores>`, the way rules/collision
-/// exports it.)
+/// exports it.) A module uses the games' folders it requires
+/// (`@<folder>/`) and the ones their modules use in turn: BN6's modules
+/// that require the shared ones (content/common, a folder of behavior
+/// only), which require BN6's, use only their own game's; BN5's use BN6's
+/// through them.
 pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
+    let roots: Vec<&str> = c.scripts.roots.iter().map(|r| r.name.as_str()).collect();
+    let direct = |text: &str| -> BTreeSet<&str> { roots.iter().copied().filter(|r| text.contains(&format!("@{r}/"))).collect() };
+    // The folders each folder's modules use, then with the ones those use.
+    let mut by_folder: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+    for (name, text) in &c.scripts.modules {
+        let folder = nettai_content_api::keys::root_of(name).unwrap_or_default();
+        by_folder.entry(folder).or_default().extend(direct(text));
+    }
+    loop {
+        let mut grown = false;
+        for f in by_folder.keys().copied().collect::<Vec<_>>() {
+            let more: BTreeSet<&str> = by_folder[f].iter().flat_map(|g| by_folder.get(g).into_iter().flatten().copied()).collect();
+            let set = by_folder.get_mut(f).expect("a folder");
+            let before = set.len();
+            set.extend(more);
+            grown |= set.len() != before;
+        }
+        if !grown {
+            break;
+        }
+    }
+    let uses = |text: &str, own: &str| -> BTreeSet<&str> {
+        let direct = direct(text);
+        let through = direct.iter().flat_map(|g| by_folder.get(g).into_iter().flatten().copied()).collect::<Vec<_>>();
+        // (Games' folders: one of behavior only runs as the game's that
+        // requires it.)
+        direct.into_iter().chain(through).filter(|r| *r != own && c.defs.stock_ruleset_of(r).is_some()).collect()
+    };
     let mut out = Vec::new();
     for d in c.defs.definitions.of(Registry::Collision) {
         let root = nettai_content_api::keys::root_of(&d.key).unwrap_or_default();
@@ -148,16 +180,14 @@ pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
             continue;
         }
         let field = format!("collision.{}", nettai_content_api::keys::local(&d.key).replace('-', "_"));
+        let prefix = format!("{root}{}", nettai_content_api::keys::SEPARATOR);
         // (The other folders whose modules a module of the type's folder
         // uses.)
-        for required in c.scripts.roots.iter().map(|r| r.name.clone()).filter(|n| n != root) {
-            let required = &required;
-            let uses = format!("@{required}/");
-            let prefix = format!("{root}{}", nettai_content_api::keys::SEPARATOR);
-            for (name, text) in &c.scripts.modules {
-                let names = text.lines().any(|l| l.contains(&field) && !l.contains("define.collision"));
-                if name.starts_with(&prefix) && text.contains(&uses) && names {
-                    out.push((d.key.clone(), name.clone(), required.clone()));
+        for (name, text) in &c.scripts.modules {
+            let names = text.lines().any(|l| l.contains(&field) && !l.contains("define.collision"));
+            if name.starts_with(&prefix) && names {
+                for required in uses(text, root) {
+                    out.push((d.key.clone(), name.clone(), required.to_string()));
                 }
             }
         }
