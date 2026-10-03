@@ -1,7 +1,7 @@
 //! Byte codecs for the engine's types that travel between peers: a recorded
 //! custom-screen result in a tick's payload (`battle::PlayerInput`), and what
-//! a player brings to a match in the handshake (a folder, the Crosses, the
-//! game).
+//! a player brings to a match in the handshake (a folder, the game, the SP
+//! deletion times).
 //!
 //! Integers above a byte are LEB128 (rennet's varints), handles by their
 //! index in the content: the handshake has checked that both peers run the
@@ -11,7 +11,8 @@
 
 use std::io;
 
-use nettai_battle::custom::{CrossList, FolderChip, GameVersion, Recorded, SavedFolder};
+use nettai_battle::custom::{FolderChip, GameVersion, Recorded, SavedFolder};
+use nettai_battle::setup::SpTimes;
 use nettai_battle::hand::ChipHand;
 use nettai_battle::setup::{GaugeSpeed, NaviCustBugs, NaviWeapons, Supports};
 use nettai_battle::tactics::{MAX_ENTRIES, MAX_PATTERN_CHIPS, MAX_PATTERNS, Tactic, TacticPattern, Tactics};
@@ -311,7 +312,6 @@ impl Wire for GameVersion {
     }
 }
 
-/// The Crosses in order (the list holds at most the window's five).
 impl Wire for InstalledCard {
     fn write(&self, w: &mut Writer) {
         self.card.write(w);
@@ -385,17 +385,20 @@ impl Wire for Tactics {
     }
 }
 
-impl Wire for CrossList {
+/// The SP deletion times, a halfword each.
+impl Wire for SpTimes {
     fn write(&self, w: &mut Writer) {
-        let forms: Vec<FormHandle> = self.forms().collect();
-        forms.write(w);
-    }
-    fn read(r: &mut Reader) -> io::Result<CrossList> {
-        let forms: Vec<FormHandle> = r.get()?;
-        if forms.len() > nettai_battle::custom::screen::CROSSES {
-            return Err(invalid("too many Crosses"));
+        let SpTimes(frames) = self;
+        for f in frames {
+            f.write(w);
         }
-        Ok(CrossList::new(&forms))
+    }
+    fn read(r: &mut Reader) -> io::Result<SpTimes> {
+        let mut frames = [0u16; 20];
+        for f in &mut frames {
+            *f = r.get()?;
+        }
+        Ok(SpTimes(frames))
     }
 }
 
@@ -452,7 +455,8 @@ mod tests {
     fn setup_parts_roundtrip() {
         let chips = std::array::from_fn(|i| FolderChip::new(ChipHandle(i as u16 * 7), ChipCode(i as u8 % 27)));
         roundtrip(&SavedFolder { chips, regular: Some(4), tags: Some((1, 2)) });
-        roundtrip(&CrossList::new(&[FormHandle(1), FormHandle(7)]));
+        roundtrip(&vec![FormHandle(1), FormHandle(7)]);
+        roundtrip(&SpTimes(std::array::from_fn(|i| i as u16 * 600)));
         roundtrip(&GameVersion::Gregar);
         roundtrip(&ContentHash(0x0123_4567_89AB_CDEF));
         roundtrip(&vec![(RecordHandle(3), true), (RecordHandle(300), false)]);

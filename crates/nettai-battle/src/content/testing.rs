@@ -198,7 +198,6 @@ pub fn round_setup(stage: &str, stats: crate::setup::NaviStats) -> crate::setup:
         score: Default::default(),
         later_stages: Default::default(),
         low_hp_music_latched: false,
-        sp_times: Default::default(),
         players: Default::default(),
         link_delay: 0,
     }
@@ -1601,6 +1600,7 @@ fn rules() -> Rules {
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
         push_reading: Default::default(),
         slide_speed: Default::default(),
+        overlay_restart: Default::default(),
         // A triangle wave: 256 at a quarter turn, -256 at three quarters,
         // over a turn and a half.
         sine: (0..384)
