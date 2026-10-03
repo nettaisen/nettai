@@ -21,7 +21,7 @@ export type State = {
 -- 0x080CE04C: sprite 0c-26, no shadow, animation 0.
 local SPRITE = asset.sprite("bn5:meta-gel")
 local DROP, START_Z = 0x80000, 0x100_0000
-local SOUND_DROP, SOUND_LAND = asset.sound("bn5:gel-drop"), asset.sound("bn5:gel-land")
+local SOUND_DROP, SOUND_LAND = asset.sound("bn5:drop"), asset.sound("bn5:gel-land")
 local HIT_MOD = 3
 -- Where it stays (0x080CE1AC, by side): a solid panel of the other side's, with nothing on it.
 local STAYS = {
