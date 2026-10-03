@@ -200,6 +200,8 @@ fn mark(c: char) -> Option<Mark> {
         '\u{E003}' => Mark::Stacked('S', 'P'),
         '\u{E004}' => Mark::Stacked('F', 'Z'),
         '\u{E005}' => Mark::Stacked('M', 'B'),
+        // (BN5's: its DS navi chips.)
+        '\u{E008}' => Mark::Stacked('D', 'S'),
         _ => return None,
     })
 }

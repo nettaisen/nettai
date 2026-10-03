@@ -26,6 +26,21 @@ pub struct FlowRules {
     /// (`sub_80081A4`, `sub_800825A`: BN6 102; 94 in a special battle,
     /// effect 2, BN5 65).
     pub result_wait: ResultWait,
+    /// Presentation, read of a console's own game (the frontend's; the
+    /// simulation reads neither): the custom screen's close starts the
+    /// HUD's chip window too, so the next chip's name shows through the
+    /// turn's banner (BN5's 0x080230CC calls `sub_801E012`'s counterpart,
+    /// as a Japanese BN6 console's `sub_8026DC4` does; a US BN6 console's
+    /// waits for the navi's first decision).
+    #[serde(default)]
+    pub chip_window_at_close: bool,
+    /// Presentation, as above: the intro fades in from black on a set's
+    /// first battle too (BN5's `sub_80E0684` counterpart, 0x080E0698, reads
+    /// the byte it tests through a flags value rather than the battle
+    /// state: one the open bus gives, never 1 or less; BN6's first battle
+    /// fades in from white).
+    #[serde(default)]
+    pub intro_from_black: bool,
 }
 
 fn yes() -> bool {
@@ -48,6 +63,8 @@ impl Default for FlowRules {
             sequencer_before_custom: true,
             escape_check: true,
             result_wait: ResultWait { normal: 0x66, special: 0x5E },
+            chip_window_at_close: false,
+            intro_from_black: false,
         }
     }
 }
@@ -140,8 +157,9 @@ pub enum PushReading {
     /// toward the navi's front; the 0x80 bit picks the last five rows.
     #[default]
     Bn6,
-    /// BN5's 0x0800C9D8: the first of bits 2 to 5 of the side-0 hits'
-    /// modifier, else of the side-1 hits' with the direction reversed.
+    /// BN5's 0x0800C9D8: the first of bits 2 to 5 of the unflipped
+    /// hitters' modifier, else of the flipped ones' with the direction
+    /// reversed.
     Bn5,
 }
 

@@ -151,6 +151,7 @@ mod tests {
     fn a_terminal_gets_a_stacked_mark_spelled() {
         assert_eq!(spelled("Count\u{E002}"), "CountEX");
         assert_eq!(spelled("TmhkMan\u{E003}"), "TmhkManSP");
+        assert_eq!(spelled("BlizMan\u{E008}"), "BlizManDS");
         assert!(matches!(spelled("Press Ⓐ"), Cow::Borrowed("Press Ⓐ")));
     }
 }

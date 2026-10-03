@@ -1,7 +1,7 @@
 //! nettai-frontend: watch a golden trace replayed through the engine, or play.
 //! See docs/frontend.md.
 
-use nettai_frontend::driver::{LivePlayer, TracePlayer};
+use nettai_frontend::driver::{LivePlayer, trace_rounds};
 use nettai_frontend::{Renderer, Session, TickHook, app, headless, session};
 use nettai_render::packs::Packs;
 use nettai_render::textlayer::TextMode;
@@ -640,13 +640,12 @@ fn main() {
             sessions.push(Session::new(Box::new(LivePlayer::new(m.round(&content, seed), content.clone()))));
         }
     } else if let Some(path) = args.traces.first() {
-        let rounds =
-            TracePlayer::load(path, &content).unwrap_or_else(|e| fail(format!("can't read {}: {e}", path.display())));
-        for r in rounds.into_iter().skip(args.round.saturating_sub(1)) {
+        let rounds = trace_rounds(path, &content).unwrap_or_else(|e| fail(format!("can't play {}: {e}", path.display())));
+        for (number, r) in rounds.into_iter().skip(args.round.saturating_sub(1)) {
             if let Some((a, b)) = r.frame_range() {
-                eprintln!("round {}: frames {a}..={b}", r.round_number);
+                eprintln!("round {number}: frames {a}..={b}");
             }
-            sessions.push(Session::new(Box::new(r)));
+            sessions.push(Session::new(r));
         }
     }
     if sessions.is_empty() {
