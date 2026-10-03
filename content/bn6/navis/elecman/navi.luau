@@ -33,6 +33,30 @@ return define.navi {
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },
     fresh = { hp = 200, float_shoes = true, mega_level = 5, giga_level = 1 },
     cross_hp = { 130, 130 },
+    -- What the save's reload gives it at its link navi level
+    -- (`reloadCurNaviBaseStats_8120df0`, docs/engine/link-navis.md): its base
+    -- and maximum HP by the story's progress (`off_8120F44`), and what each
+    -- level, 0 to 14, adds over its fresh stats (`pt_8121200`'s scripts).
+    levels = {
+        base_hp = { 300, 300, 300, 400, 500, 600, 800 },
+        by_level = {
+            { hp = 100, float_shoes = true },
+            { hp = 150, float_shoes = true },
+            { hp = 200, rapid = 1, mega_level = 1, float_shoes = true },
+            { hp = 250, rapid = 1, mega_level = 1, float_shoes = true },
+            { hp = 300, attack = 1, rapid = 1, mega_level = 1, float_shoes = true },
+            { hp = 350, attack = 1, rapid = 1, mega_level = 1, float_shoes = true },
+            { hp = 400, attack = 1, rapid = 1, mega_level = 1, float_shoes = true },
+            { hp = 450, attack = 1, rapid = 1, mega_level = 1, float_shoes = true },
+            { hp = 500, attack = 1, rapid = 1, mega_level = 1, float_shoes = true },
+            { hp = 550, attack = 2, rapid = 1, charge = 1, mega_level = 1, float_shoes = true },
+            { hp = 600, attack = 2, rapid = 1, charge = 1, mega_level = 1, float_shoes = true },
+            { hp = 700, attack = 2, rapid = 1, charge = 1, custom_level = 1, mega_level = 2, float_shoes = true },
+            { hp = 800, attack = 2, rapid = 1, charge = 1, custom_level = 1, mega_level = 2, float_shoes = true },
+            { hp = 900, attack = 2, rapid = 2, charge = 2, custom_level = 1, mega_level = 2, float_shoes = true },
+            { hp = 1100, attack = 3, rapid = 2, charge = 2, custom_level = 1, mega_level = 2, float_shoes = true },
+        },
+    },
     identity = define.identity {
         class = "link_navi",
         version = 0,
