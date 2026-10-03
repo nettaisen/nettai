@@ -465,6 +465,8 @@ impl Round {
     /// NaviStats ([`navi_stats`]), the folders, the RNGs, the set's score,
     /// both players on BN5's stock rules.
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> Result<RoundSetup, String> {
+        // BN5's light and dark system (content/bn5/rules/light-dark).
+        const LIGHT_DARK: &str = "bn5:light-dark";
         let needs = self.needs(content, compat)?;
         if !needs.is_empty() {
             return Err(format!("content lacks {}", needs.join(", ")));
@@ -521,7 +523,14 @@ impl Round {
                 navicust: None,
             })
         });
-        let [p0, p1] = players;
+        let [mut p0, mut p1] = players;
+        // Each side's light and dark MegaMan: his save's value (NaviStats
+        // +0x44), BN5's light and dark system's setup.
+        for (p, stats) in [(&mut p0, &d.navi_stats[0]), (&mut p1, &d.navi_stats[1])] {
+            if let Ok(p) = p {
+                p.set_rule(content, LIGHT_DARK, "value", nettai_content_api::Value::Int(stats.light_dark.0 as i64))?;
+            }
+        }
         Ok(RoundSetup {
             content: content.hash(),
             settings,
