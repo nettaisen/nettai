@@ -6,7 +6,6 @@
 
 local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
 local barriers = require("../lib/barriers/barriers")
-local beast_claw = require("../navis/megaman/weapons/beast-claw/weapon")
 local beast_rush = require("./beast/rush")
 local beast_out = require("../chips/beastout/chip")
 local charged_shot = require("../navis/megaman/weapons/charged-shot/weapon")
@@ -14,10 +13,8 @@ local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatt
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
 local invalid = require("../chips/invalid/chip")
-local lockon = require("./lockon")
 local ruleset = require("./ruleset")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
-local slash_charge = require("../navis/megaman/forms/slashcross/charge")
 local stun_strike = require("../lib/swords/stun_strike")
 local statuses = require("./status")
 local supports = require("../lib/supports/controller")
@@ -39,12 +36,8 @@ return define.roles {
         -- A Cross navi's knock-out (SlashCross Beast's lunge).
         cross_death = slash_beast_lunge.action,
         -- (The volley's role isn't filled, as in BN6.)
-        -- SlashCross's charged slash, which the Beast rush recognizes.
-        charged_sword = slash_charge.action,
-        -- The Beast forms' charged claw.
-        beast_claw = beast_claw.action,
         -- BN6's Beast Out rush.
-        beast_rush = beast_rush.action,
+        wrapper = beast_rush.action,
         -- DustCross Beast's scatter, during which the navi isn't grounded.
         dust_beast_scatter = dust_beast_scatter.action,
     },
@@ -69,9 +62,6 @@ return define.roles {
         ice_freeze = statuses.freeze_150,
         hit_bug_blind = statuses.blind_1200,
         hit_bug_confuse = statuses.confuse_960,
-    },
-    lockon = {
-        beast_claw = lockon.beast_claw,
     },
     effects = ruleset.effects,
     sparks = ruleset.sparks,

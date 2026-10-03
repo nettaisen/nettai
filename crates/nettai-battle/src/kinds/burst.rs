@@ -1,6 +1,7 @@
-//! Beast Over's burst (effect object #0x90, `sub_80EA364`): spawned as the
-//! navi vanishes into Beast Over (`sub_80EA438`), it waits 31 ticks, then
-//! every 8 ticks sets off an effect (#0x68) on a panel diagonal to the
+//! The burst (effect object #0x90, `sub_80EA364`; BN5 has the same):
+//! spawned around a navi (`sub_80EA438`; BN6's as the navi vanishes into
+//! Beast Over, `battle.burst`), it waits 31 ticks, then every 8 ticks sets
+//! off the role effect `burst` (BN6's #0x68) on a panel diagonal to the
 //! navi's, four in all. Invisible itself.
 
 use crate::battle::Battle;
@@ -23,14 +24,14 @@ pub struct Vars {
 
 fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
     match &mut b.objects.get_mut(r).vars {
-        crate::kinds::Vars::BeastOverBurst(v) => v,
-        v => panic!("Beast Over burst with {v:?}"),
+        crate::kinds::Vars::Burst(v) => v,
+        v => panic!("burst with {v:?}"),
     }
 }
 
 /// `sub_80EA438`: a burst around `navi`'s panel. It runs while paused.
 pub fn spawn(b: &mut Battle, navi: ObjectRef) -> Option<ObjectRef> {
-    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::BeastOverBurst, Vec3::default(), [0; 4])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Burst, Vec3::default(), [0; 4])?;
     let (alliance, flip, panel) = {
         let n = b.objects.get(navi);
         (n.alliance, n.flip, n.panel)
@@ -82,9 +83,9 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         y => y,
     };
     let (px, py) = crate::kinds::player::panel_coordinates(x as u8, y as u8);
-    let look = b.roles_for(r).effect(crate::content::EffectRole::BeastOverBurst);
+    let look = b.roles_for(r).effect(crate::content::EffectRole::Burst);
     if let Some(e) = effect::spawn(b, Vec3 { x: px, y: py, z: 0 }, look, 0, 0, 0) {
         b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
-        b.sound(crate::content::SoundRole::BeastOverBurst);
+        b.sound(crate::content::SoundRole::Burst);
     }
 }

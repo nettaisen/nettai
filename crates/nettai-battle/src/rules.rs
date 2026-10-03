@@ -8,7 +8,7 @@
 //! (`system.state()` in a hook): a side's rules see the other side through
 //! the engine alone.
 
-use nettai_content_api::{ChipHandle, ContentState, HookCall, ObjectRef, RulesetHandle, SystemHook, Value};
+use nettai_content_api::{ChipHandle, ContentState, HookCall, ObjectRef, RulesetHandle, SystemHook, Value, WeaponHandle};
 
 use crate::battle::Battle;
 use crate::content::Content;
@@ -141,7 +141,7 @@ impl Battle {
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(hook) {
-                let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: None };
+                let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: None, weapon: None };
                 crate::behavior::call_hook(self, f, call);
             }
         }
@@ -155,7 +155,20 @@ impl Battle {
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::NaviIntake) {
-                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::NaviIntake, navi: Some(navi), chip: None };
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::NaviIntake, navi: Some(navi), chip: None, weapon: None };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
+    /// Side `side`'s systems' `chip_used(side, navi, chip, weapon)` once a
+    /// chip's use has started its action.
+    pub(crate) fn systems_chip_used(&mut self, side: u8, navi: ObjectRef, chip: ChipHandle, weapon: Option<WeaponHandle>) {
+        let Some(r) = self.rules[side as usize].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::ChipUsed) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipUsed, navi: Some(navi), chip: Some(chip), weapon };
                 crate::behavior::call_hook(self, f, call);
             }
         }
@@ -169,7 +182,7 @@ impl Battle {
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::Controller) {
-                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::Controller, navi: Some(navi), chip: None };
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::Controller, navi: Some(navi), chip: None, weapon: None };
                 if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
                     return n as u8;
                 }
@@ -184,7 +197,7 @@ impl Battle {
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::FormReverted) {
-                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::FormReverted, navi: Some(navi), chip: None };
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::FormReverted, navi: Some(navi), chip: None, weapon: None };
                 crate::behavior::call_hook(self, f, call);
             }
         }
@@ -198,7 +211,7 @@ impl Battle {
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::ChipCheck) {
-                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipCheck, navi: Some(navi), chip };
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipCheck, navi: Some(navi), chip, weapon: None };
                 if let Value::Def(nettai_content_api::Registry::Chip, c) = crate::behavior::call_hook(self, f, call) {
                     return Some(ChipHandle(c));
                 }

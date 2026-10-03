@@ -29,7 +29,7 @@ return define.form {
     -- A charged Wood chip hits twice as hard.
     charge_doubles = { element = "wood" },
     -- What its status reset gives the navi (`sub_8014536`).
-    status_reset = { "clear_statuses", "air_shoes", "float_shoes", "floating_body", "lockon_marker" },
+    status_reset = { "clear_statuses", "air_shoes", "float_shoes", "floating_body", "target_marker" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 19,
     traits = { "status_immune" },

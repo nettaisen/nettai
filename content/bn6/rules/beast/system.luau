@@ -1,15 +1,28 @@
 --!strict
 -- BN6's Beast Out (docs/design/rules-in-luau.md §3.1): a navi's turns in
 -- Beast Out and when they run out; the rush (rush.luau, the game's wrapper:
--- the role `actions.beast_rush`); Beast Over's berserk (berserk.luau, the
+-- the role `actions.wrapper`); Beast Over's berserk (berserk.luau, the
 -- controller of its `controlled` forms) and its exhaustion. Their state is
 -- the system's. The turn-start sequencer is the framework's (BN5 has it
 -- too); it asks each side's systems at its check and when the turn starts.
 --
 -- (Still the framework's until later slices: the Beast Out button.)
 
+local beast_claw = require("../../navis/megaman/weapons/beast-claw/weapon")
 local berserk = require("./berserk")
 local rush = require("./rush")
+local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
+
+-- The side's form runs its charged sword inside the rush (SlashCross
+-- Beast's `charged_sword_rush`).
+local function sword_rush(side: number): boolean
+    for _, t in battle.navi(side).form.traits or {} do
+        if t == "charged_sword_rush" then
+            return true
+        end
+    end
+    return false
+end
 
 export type State = {
     -- The rush's (rush.luau).
@@ -55,6 +68,24 @@ return define.system {
     },
     actions = { rush.action },
     hooks = {
+        -- `sub_800FB54`: what runs inside the rush. In a Beast form (or
+        -- from the Cross special), a chip with the lock-on flag (its
+        -- `beast`, unless `rush = false`); of the forms' charged weapons,
+        -- the Beast forms' claw and SlashCross Beast's charged sword (the
+        -- form's `charged_sword_rush`).
+        chip_used = function(side: number, navi: Object, chip: Chip, weapon: Weapon?)
+            if weapon ~= nil then
+                local action = navi:navi_action()
+                if action == beast_claw.action or (action == slash_charge.action and sword_rush(side)) then
+                    navi.wrapped = 1
+                end
+                return
+            end
+            if navi.special_source ~= 0 or battle.navi(side).beast then
+                local beast = chip.beast
+                navi.wrapped = if beast ~= nil and beast.rush ~= false then 1 else 0
+            end
+        end,
         -- `sub_802D322`: Beast Over's berserk decides a controlled navi's
         -- idle.
         controller = berserk.control,
