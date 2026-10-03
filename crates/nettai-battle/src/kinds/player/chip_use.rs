@@ -99,10 +99,10 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
     Some(ai(b, r).attack.chip)
 }
 
-/// `sub_800FC30`: the Beast Out rush chains the next chip, starting its
-/// action (inside the rush again). Not the chips with the `no_chain` trait
+/// `sub_800FC30`: the wrapper (BN6's Beast Out rush) chains the next chip,
+/// starting its action (inside the wrapper again). Not the chips with the `no_chain` trait
 /// (the variable swords), dimming chips, or an empty hand. True if it did.
-pub(super) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
+pub(crate) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
     let Some(chip) = hand_entry(b, r).chip else { return false };
     if b.content.chip(chip).traits.has(ChipTraits::NO_CHAIN) {
         return false;

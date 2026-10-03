@@ -54,10 +54,14 @@ pub enum ActionRole {
     /// ChargeCross's tackle (0x56), during which an invulnerable navi
     /// doesn't glow (`sub_8016860`).
     ChargeTackle,
+    /// The wrapper an attack runs inside while its `beast_lockon` is 1
+    /// (`sub_801B9E6`): BN6's Beast Out rush (`sub_80EAD9C`). Unfilled, the
+    /// attack runs as it is.
+    BeastRush,
 }
 
 impl ActionRole {
-    pub const ALL: [ActionRole; 13] = [
+    pub const ALL: [ActionRole; 14] = [
         ActionRole::AntiDamageCounter,
         ActionRole::AntiSwordCounter,
         ActionRole::BodyGuardCounter,
@@ -71,6 +75,7 @@ impl ActionRole {
         ActionRole::BeastClaw,
         ActionRole::DustBeastScatter,
         ActionRole::ChargeTackle,
+        ActionRole::BeastRush,
     ];
 
     /// Its name in `rules/roles.luau`'s `actions`.
@@ -89,6 +94,7 @@ impl ActionRole {
             ActionRole::BeastClaw => "beast_claw",
             ActionRole::DustBeastScatter => "dust_beast_scatter",
             ActionRole::ChargeTackle => "charge_tackle",
+            ActionRole::BeastRush => "beast_rush",
         }
     }
 

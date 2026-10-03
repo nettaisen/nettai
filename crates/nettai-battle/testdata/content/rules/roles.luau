@@ -7,6 +7,7 @@
 local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
 local barriers = require("../lib/barriers/barriers")
 local beast_claw = require("../navis/megaman/weapons/beast-claw/weapon")
+local beast_rush = require("./beast/rush")
 local beast_out = require("../chips/beastout/chip")
 local charged_shot = require("../navis/megaman/weapons/charged-shot/weapon")
 local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatter")
@@ -42,6 +43,8 @@ return define.roles {
         charged_sword = slash_charge.action,
         -- The Beast forms' charged claw.
         beast_claw = beast_claw.action,
+        -- BN6's Beast Out rush.
+        beast_rush = beast_rush.action,
         -- DustCross Beast's scatter, during which the navi isn't grounded.
         dust_beast_scatter = dust_beast_scatter.action,
     },

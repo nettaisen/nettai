@@ -10,6 +10,7 @@ local barriers = require("../lib/barriers/barriers")
 local beast_out = require("../chips/beastout/chip")
 local beat = require("../chips/beat/chip")
 local beast_claw = require("../navis/megaman/weapons/beast-claw/weapon")
+local beast_rush = require("./beast/rush")
 local bodygrd_counter = require("../chips/bodygrd/counter")
 local charge_tackle = require("../navis/megaman/forms/chargecross/tackle")
 local charged_shot = require("../navis/megaman/weapons/charged-shot/weapon")
@@ -62,6 +63,9 @@ return define.roles {
         charged_sword = slash_charge.action,
         -- The Beast forms' charged claw.
         beast_claw = beast_claw.action,
+        -- The wrapper an attack runs inside while its `beast_lockon` is 1:
+        -- the Beast Out rush (`sub_80EAD9C`).
+        beast_rush = beast_rush.action,
         -- DustCross Beast's scatter, during which the navi isn't grounded.
         dust_beast_scatter = dust_beast_scatter.action,
         -- ChargeCross's tackle, during which an invulnerable navi doesn't

@@ -7,10 +7,10 @@
 //! (which `set_attack` resets); what an action keeps besides that lives
 //! in its own state struct in `AttackVars::action`.
 
-pub mod beast_rush;
 pub mod cross_change;
 pub mod cross_special;
 pub mod instant;
+pub mod lockon;
 pub mod movement;
 pub mod navi_chip;
 pub mod reactive;
