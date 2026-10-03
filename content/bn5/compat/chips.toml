@@ -334,3 +334,4 @@
 "bn5:timebom" = { id = 0x15b, action = 0x15, subtype = 10 }
 "bn5:bodygrd" = { id = 0x15c, action = 0x15, subtype = 46 }
 "bn5:piledrvr" = { id = 0x15d, action = 0x15, subtype = 47 }
+"bn5:invalid" = { id = 0x185, action = 0x1a, subtype = 26 }

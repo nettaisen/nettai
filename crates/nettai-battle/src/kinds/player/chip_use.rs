@@ -255,6 +255,14 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         b.bump_side_stat(side, 6, 1);
     }
     dark_chip_side_effect(b, r, e.chip);
+    // BN5's 0x080100E6: the side's rules may refuse the chip (its light and
+    // dark system, 0x08010118). The navi then uses the chip they give
+    // instead (BN5's 0x185, its variant 3 and no parameters, the rest of
+    // the attack as prepared: its lockout is still the refused chip's).
+    if let Some(instead) = b.systems_chip_check(side, r, e.chip) {
+        ai_mut(b, r).attack.chip = Some(instead);
+        return chip_action(b, r, Some(instead));
+    }
     chip_action(b, r, e.chip)
 }
 

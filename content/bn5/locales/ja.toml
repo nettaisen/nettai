@@ -167,6 +167,7 @@ language = "ja"
 "bn5:infvulc1" = { name = "ムゲンバルカン1", description = "前方のてきに\n20れんしゃの\nひっさつバルカン!" }
 "bn5:infvulc2" = { name = "ムゲンバルカン2", description = "前方のてきに\n24れんしゃの\nひっさつバルカン!" }
 "bn5:infvulc3" = { name = "ムゲンバルカン3", description = "前方のてきに\n28れんしゃの\nひっさつバルカン!" }
+"bn5:invalid" = { name = "", description = "" }
 "bn5:invisibl" = { name = "インビジブル", description = "少しの間とうめいに\nなって ほとんどの\n攻撃にあたらない" }
 "bn5:jealousy" = { name = "ジェラシー", description = "チップをもつてきに\n枚数におうじた\nダメージをあたえる" }
 "bn5:justcone" = { name = "ジャスティスワン", description = "左から5れつめ\nまん中のマスに\nせいぎのコブシ!" }
