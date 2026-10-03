@@ -1685,6 +1685,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, pick) = (u8_arg(side, "side")? & 1, u8_arg(pick, "sword pick")?);
         with(|api, _| Ok(api.set_sword_pick(side, pick)))
     });
+    lib_fn!(lua, t, "set_face_variant", |_, (side, variant): (LuaValue, bool)| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.set_face_variant(side, variant)))
+    });
     lib_fn!(lua, t, "bump_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
         with(|api, _| Ok(api.bump_side_stat(side, i, n)))
@@ -2321,6 +2325,13 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 ))),
             },
             _ => Err(mlua::Error::runtime(format!("a button's state is its name, not a {}", v.type_name()))),
+        },
+        // A mood or a palette.
+        HookCall::System { hook: hook @ (SystemHook::StartingMood | SystemHook::NaviPalette), .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::Integer(n) if (0..=255).contains(n) => Ok(Value::Int(*n)),
+            LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=255.0).contains(n) => Ok(Value::Int(*n as i64)),
+            _ => Err(mlua::Error::runtime(format!("{} returns a byte or nil, not {v:?}", hook.name()))),
         },
         // A hand size.
         HookCall::System { hook: SystemHook::CustomHandSize, .. } => match &v {

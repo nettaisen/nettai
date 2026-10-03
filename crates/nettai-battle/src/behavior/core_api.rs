@@ -354,6 +354,9 @@ impl CoreApi for Battle {
             BattleInfo::NoDarkChips => {
                 Value::Bool(self.setup.settings.effects & crate::setup::effects::NO_DARK_CHIPS != 0)
             }
+            BattleInfo::LightDarkHeld => {
+                Value::Bool(self.setup.settings.effects & crate::setup::effects::LIGHT_DARK_HELD != 0)
+            }
             BattleInfo::Mode => Value::Int(self.round.mode_copy as i64),
             BattleInfo::PanelPattern => Value::Int(self.content.stage(self.setup.settings.stage).panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
@@ -585,6 +588,7 @@ impl CoreApi for Battle {
             E::FullSynchro => Emotion::FullSynchro,
             E::Angry => Emotion::Angry,
             E::WornOut => Emotion::WornOut,
+            E::Worried => Emotion::Worried,
         }
     }
 
@@ -878,6 +882,7 @@ impl CoreApi for Battle {
                 E::FullSynchro => Emotion::FullSynchro,
                 E::Angry => Emotion::Angry,
                 E::WornOut => Emotion::WornOut,
+                E::Worried => Emotion::Worried,
             },
             version: match s.unlocks.version {
                 crate::custom::GameVersion::Gregar => "gregar",
@@ -1044,6 +1049,10 @@ impl CoreApi for Battle {
 
     fn set_sword_pick(&mut self, side: u8, pick: u8) {
         self.sides[side as usize & 1].sword_pick = pick;
+    }
+
+    fn set_face_variant(&mut self, side: u8, variant: bool) {
+        self.sides[side as usize & 1].face_variant = variant;
     }
 
     fn add_side_gauge(&mut self, side: u8, n: u16) {

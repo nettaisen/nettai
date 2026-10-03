@@ -686,4 +686,41 @@ mod tests {
         super::super::lose_mood(&mut b, 0, 1);
         assert_eq!(mood(&b), 0);
     }
+
+    /// docs/design/bn5-map.md §15.10: BN5's emotions go by its order (a mood
+    /// under 65 worried, anger before a mood of 0), and its setter leaves a
+    /// mood of 0; BN6's by its own.
+    #[test]
+    fn each_games_emotions_go_by_its_rules() {
+        use super::super::{Emotion, emotion, set_mood};
+        let emotions = |which: crate::content::Emotions| {
+            let mut c: Content = testing::build();
+            c.define().unwrap_or_else(|e| panic!("{e}"));
+            for rules in &mut c.rules {
+                rules.emotions = which;
+            }
+            let c = Arc::new(c);
+            let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+            setup.content = c.hash();
+            let mut b = Battle::new(setup, c);
+            b.spawn_actors();
+            b.run_objects();
+            let r = b.player(0).unwrap();
+            let mut seen = Vec::new();
+            for mood in [0x80, 40, 0xFF, 0] {
+                b.stats[0].mood = mood;
+                seen.push(emotion(&b, 0));
+            }
+            // Angry with a mood of 0.
+            ai_mut(&mut b, r).anger = 600;
+            seen.push(emotion(&b, 0));
+            ai_mut(&mut b, r).anger = 0;
+            // The setter, from a mood of 0.
+            set_mood(&mut b, 0, 0xFF);
+            (seen, b.stats[0].mood)
+        };
+        use Emotion::*;
+        assert_eq!(emotions(crate::content::Emotions::Bn6), (vec![Normal, Normal, FullSynchro, WornOut, WornOut], 0xFF));
+        assert_eq!(emotions(crate::content::Emotions::Bn5), (vec![Normal, Worried, FullSynchro, WornOut, Angry], 0));
+    }
 }
