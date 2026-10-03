@@ -50,13 +50,13 @@ return throw
 local bomb = {}
 local EXPLOSION = define.effect { anim = 0 }
 bomb.kind = define.kind {
-    id = "bomb",
+    id = "test:bomb",
     pool = "attack",
     state = { variant = "u16" },
     update = function(me: any) return EXPLOSION end,
 }
 function bomb.variant(v: any): any
-    return define.record("test:bomb-variant", v)
+    return define.record("bomb-variant", v)
 end
 return bomb
 "#,
@@ -67,7 +67,7 @@ return bomb
 local throw = require("../../lib/bombs/throw")
 local bomb = require("../../lib/bombs/bomb")
 return define.chip {
-    id = "minibomb",
+    id = "test:minibomb",
     name = "MiniBomb",
     codes = { "B", "L", "R", "*" },
     action = throw.action { held = 4, thrower = bomb.variant { palette = 0 } },
@@ -81,8 +81,8 @@ local throw = require("../../lib/bombs/throw")
 local bomb = require("../../lib/bombs/bomb")
 local THROW = throw.action { held = 0x2E, thrower = bomb.variant { palette = 1 } }
 return {
-    define.chip { id = "flshbom1", name = "FlshBom1", action = THROW },
-    define.chip { id = "flshbom2", name = "FlshBom2", action = THROW },
+    define.chip { id = "test:flshbom1", name = "FlshBom1", action = THROW },
+    define.chip { id = "test:flshbom2", name = "FlshBom2", action = THROW },
 }
 "#,
     ),
@@ -169,13 +169,12 @@ fn assets_resolve_by_name_while_content_loads() {
     )])
     .unwrap();
     let e = &d.of(Registry::Effect)[0];
-    // (Qualified with the module's root's pack.)
     assert_eq!(e.spec.field("sprite"), &Data::Asset(nettai_content_api::AssetKind::Sprite, "test:explosion".into()));
     assert_eq!(e.spec.field("sound"), &Data::Asset(nettai_content_api::AssetKind::Sound, "test:throw".into()));
     // An unknown name is an error naming the module; so is a resolver
     // called after loading.
     let e = define_named(&[("chips/x/chip", "return { s = asset.sprite('test:bom') }")]).unwrap_err();
-    assert!(e.contains("chips/x/chip: no sprite is named \"bom\""), "{e}");
+    assert!(e.contains("chips/x/chip: no sprite is named \"test:bom\""), "{e}");
     let e = define_named(&[("m", "return { f = function() return asset.sound('test:throw') end }")]);
     assert!(e.is_ok(), "calling it later is the runtime's error, not the define phase's");
 }
@@ -184,12 +183,12 @@ fn assets_resolve_by_name_while_content_loads() {
 fn the_roles_are_one_definition() {
     let d = define_named(&[
         ("lib/counter", "return define.action { id = 'test:counter', state = {}, update = function(me, s) end }"),
-        ("rules/roles", "return define.roles { actions = { anti_damage_counter = require('../lib/counter') } }"),
+        ("rules/roles", "return define.roles { id = 'test:roles', actions = { anti_damage_counter = require('../lib/counter') } }"),
     ])
     .unwrap();
     let roles = d.get(Registry::Roles, "test:roles").expect("keyed roles");
     assert_eq!(roles.spec.field("actions").field("anti_damage_counter"), &Data::Ref(Registry::Action, "test:counter".into()));
-    let e = define_named(&[("a", "return define.roles {}"), ("b", "return define.roles {}")]).unwrap_err();
+    let e = define_named(&[("a", "return define.roles { id = 'test:roles' }"), ("b", "return define.roles { id = 'test:roles' }")]).unwrap_err();
     assert!(e.contains("roles \"test:roles\" is defined twice"), "{e}");
 }
 
@@ -261,7 +260,7 @@ fn assets_are_named_in_full() {
             .map(|(d, _)| d.of(Registry::Effect)[0].spec.field("sprite").clone())
             .map_err(|e| e.message)
     };
-    let effect = |name: &str| format!("return define.effect {{ sprite = asset.sprite('test:{name}'), anim = 0 }}");
+    let effect = |name: &str| format!("return define.effect {{ sprite = asset.sprite('{name}'), anim = 0 }}");
     let asset = |n: &str| Data::Asset(nettai_content_api::AssetKind::Sprite, n.into());
     assert_eq!(sprite(&effect("test:bomb")), Ok(asset("test:bomb")));
     assert_eq!(sprite(&effect("other:bomb")), Ok(asset("other:bomb")), "any loaded pack's");

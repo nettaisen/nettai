@@ -271,7 +271,7 @@ pub fn link_stage(content: &Content, key: &str) -> Result<StageHandle, String> {
 }
 
 /// Patch cards from a list of card keys, comma-separated, in the order
-/// they apply (e.g. `canodumb,-shadow`): a key after `-` is installed but
+/// they apply (e.g. `bn6:canodumb,-bn6:shadow`): a key after `-` is installed but
 /// switched off (docs/engine/patch-cards.md).
 pub fn patch_cards(content: &Content, list: &str) -> Result<Vec<InstalledCard>, String> {
     let mut cards = Vec::new();

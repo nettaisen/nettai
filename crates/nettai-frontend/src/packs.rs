@@ -177,7 +177,7 @@ mod tests {
         by_pack[twin.index()] = &b;
         let packs = Packs::new(by_pack, test);
         let tiles = |s: Option<&SpriteSheet>| s.expect("a sheet").tilesets[0].pixels.len() / Tiles::TILE;
-        assert_eq!(tiles(packs.sprite(&c, testing::sprite_named(&c, "test-navi"))), 1);
+        assert_eq!(tiles(packs.sprite(&c, testing::sprite_named(&c, "test:test-navi"))), 1);
         assert_eq!(tiles(packs.sprite(&c, testing::sprite_named(&c, "twin:navi"))), 2, "twin's sprite is twin's pack's");
         let root = |name: &str| c.defs.root_id(name).expect("a root");
         assert!(std::ptr::eq(packs.of_root(&c, root("twin")), &b));

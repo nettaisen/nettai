@@ -15,7 +15,7 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
     // A kind under objects/ that only one chip folder uses.
     c.scripts.modules.insert(
         module("objects/held/held"),
-        "return { kind = define.kind { id = 'held', pool = 'effect', update = function(me) end } }".into(),
+        "return { kind = define.kind { id = 'test:held', pool = 'effect', update = function(me) end } }".into(),
     );
     c.scripts.modules.insert(
         module("chips/holder/chip"),
@@ -24,7 +24,7 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
             .into(),
     );
     // A role that names a definition, left out.
-    let roles = c.scripts.home_module_mut("test/rules/roles").expect("the test pack's roles");
+    let roles = c.scripts.module_mut(testing::ROOT, "test/rules/roles").expect("the test pack's roles");
     assert!(roles.contains("    sparks = ruleset.sparks,\n"));
     *roles = roles.replace("    sparks = ruleset.sparks,\n", "    sparks = { plain = ruleset.sparks.plain },\n");
     c.define().unwrap();
@@ -47,7 +47,7 @@ fn a_collision_type_defined_twice_is_an_error() {
         let row_offset = if key == "other" { 0x7F8 } else { 0x7F0 };
         c.scripts.modules.insert(
             module(path),
-            format!("return define.collision {{ id = '{key}', side0 = 0x80, side1 = 0x80, row_offset = {row_offset} }}"),
+            format!("return define.collision {{ id = 'test:{key}', side0 = 0x80, side1 = 0x80, row_offset = {row_offset} }}"),
         );
     }
     c.define().unwrap();

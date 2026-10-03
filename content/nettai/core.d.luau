@@ -1915,9 +1915,11 @@ export type Region = RegionSpec
 export type CollisionTypeSpec = { id: string, side0: number, side1: number, row_offset: number? }
 export type CollisionType = CollisionTypeSpec
 
--- What the ruleset needs from content by role (rules/roles.luau, once):
--- each role names the definition that fills it.
+-- What the ruleset needs from content by role (rules/roles.luau, once per
+-- game): each role names the definition that fills it. `id` names the game
+-- whose roles they are (`bn6:roles`).
 export type RolesSpec = {
+    id: string,
     actions: {
         anti_damage_counter: Action?,
         anti_sword_counter: Action?,

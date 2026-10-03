@@ -441,7 +441,7 @@ fn scripted_chips_roll_back() {
         numbered(&[testing::HEAT, testing::ELEC, testing::SLASH, testing::CHARGE, testing::TOMAHAWK, testing::TENGU, testing::BLAST]),
         numbered(&[testing::BASS]),
         numbered(&[testing::SUN_MOON]),
-        numbered(&["count", "django"]),
+        numbered(&["test:count", "test:django"]),
     ] {
         let chips = &chips[..];
         let setup = || scenario::setup_with_handles(chips);
@@ -617,7 +617,7 @@ fn registrations_follow_the_content_data() {
     assert!(d.weapon(c.weapon_by_key("test:megaman/tengu-wind")).instant.is_some());
     // A chip's action may be another chip's (the test link chips run
     // BN6's link navis' chips' actions).
-    for (key, bn6) in testing::LINK_CHIPS.iter().zip(["heatpres", "delecswd", "rslash"]) {
+    for (key, bn6) in testing::LINK_CHIPS.iter().zip(["test:heatpres", "test:delecswd", "test:rslash"]) {
         let (chip, other) = (d.chip(testing::chip_in(&c, key)), d.chip(testing::chip_in(&c, bn6)));
         assert!(matches!(chip.usage, crate::content::ChipUsage::Action(_)), "{key}: {:?}", chip.usage);
         assert_eq!(chip.usage, other.usage, "{key}");
@@ -1167,7 +1167,7 @@ fn tango_heals_her_navi_at_a_quarter_of_its_hp() {
 /// once).
 fn patched(module: &str, edits: &[(&str, &str)]) -> Content {
     let mut c = testing::build();
-    let src = c.scripts.home_module_mut(module).unwrap_or_else(|| panic!("no module {module}"));
+    let src = c.scripts.module_mut(testing::ROOT, module).unwrap_or_else(|| panic!("no module {module}"));
     for (from, to) in edits {
         assert!(src.contains(from), "{module}.luau has no {from:?}");
         *src = src.replacen(from, to, 1);
@@ -1487,21 +1487,21 @@ fn trap_bomb_and_mine_chips_roll_back() {
 // ---- Dimming chips of subtypes 4, 5, 9, 13, 26, 27, 28 and 36 ------------------------------
 
 /// The barriers (subtype 4), as content defines them.
-const BARRIER_CHIPS: &[&str] = &["barrier", "barr100", "barr200", "bblwrap", "lifeaur"];
+const BARRIER_CHIPS: &[&str] = &["test:barrier", "test:barr100", "test:barr200", "test:bblwrap", "test:lifeaur"];
 /// BugFix (subtype 26).
-const BUGFIX_CHIPS: &[&str] = &["bugfix"];
+const BUGFIX_CHIPS: &[&str] = &["test:bugfix"];
 /// The panel chips (subtype 5).
-const PANEL_CHIPS: &[&str] = &["pnlretrn", "holypanl", "snctuary", "comingrd", "goingrd"];
+const PANEL_CHIPS: &[&str] = &["test:pnlretrn", "test:holypanl", "test:snctuary", "test:comingrd", "test:goingrd"];
 /// The instruments (subtype 9).
-const INSTRUMENT_CHIPS: &[&str] = &["fanfare", "discord", "timpani", "silence"];
+const INSTRUMENT_CHIPS: &[&str] = &["test:fanfare", "test:discord", "test:timpani", "test:silence"];
 /// AirRaid (subtype 13).
-const AIR_RAID_CHIPS: &[&str] = &["airraid1", "airraid2", "airraid3"];
+const AIR_RAID_CHIPS: &[&str] = &["test:airraid1", "test:airraid2", "test:airraid3"];
 /// ColorPt and DblPoint (subtype 27).
-const POINT_CHIPS: &[&str] = &["colorpt", "dblpoint"];
+const POINT_CHIPS: &[&str] = &["test:colorpt", "test:dblpoint"];
 /// Sensor (subtype 28).
-const SENSOR_CHIPS: &[&str] = &["sensor1", "sensor2", "sensor3"];
+const SENSOR_CHIPS: &[&str] = &["test:sensor1", "test:sensor2", "test:sensor3"];
 /// SumnBlk (subtype 36).
-const SUMMON_CHIPS: &[&str] = &["sumnblk1", "sumnblk2", "sumnblk3"];
+const SUMMON_CHIPS: &[&str] = &["test:sumnblk1", "test:sumnblk2", "test:sumnblk3"];
 
 fn defined(keys: &[&str]) -> Vec<nettai_content_api::ChipHandle> {
     keys.iter().map(|k| testing::chip_handle(k)).collect()
@@ -1787,7 +1787,7 @@ fn count_rains_on_the_other_side_then_drops_lances() {
     // Side 1 stands at (5,2), in the rain (each hit the chip's damage, SP
     // or not) and where the first lance falls (each chip's parameter
     // byte).
-    for (chip, rain, lance) in [("count", Some(20), 50), ("count-ex", Some(25), 70), ("count-sp", None, 100)] {
+    for (chip, rain, lance) in [("test:count", Some(20), 50), ("test:count-ex", Some(25), 70), ("test:count-sp", None, 100)] {
         let mut t = 0u32;
         let mut navi: Vec<u32> = Vec::new();
         let mut storm: Vec<u32> = Vec::new();
@@ -1853,7 +1853,7 @@ fn django_drops_in_and_rides_across_his_row() {
     let mut t = 0u32;
     let mut there: Vec<(u32, u8, PanelPos)> = Vec::new();
     let mut bike = 0;
-    let b = drive("django", 1200, use_once, |b| {
+    let b = drive("test:django", 1200, use_once, |b| {
         t += 1;
         if let Some((action, _, panel)) = django_at(b) {
             there.push((t, action, panel));
@@ -1898,7 +1898,7 @@ fn django_comes_back_to_slash_after_l_l_l_a() {
     };
     let mut actions = Vec::new();
     let mut slash_at = None;
-    let b = drive("django2", 1400, fight, |b| {
+    let b = drive("test:django2", 1400, fight, |b| {
         if let Some((action, _, panel)) = django_at(b) {
             if actions.last() != Some(&action) {
                 actions.push(action);
