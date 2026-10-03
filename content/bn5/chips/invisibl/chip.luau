@@ -1,5 +1,5 @@
 --!strict
--- Invisibl (BN5 chip 0x085): its user turns invisible for six seconds: BN6's Invisibl (@bn6/chips/invisibl, the
+-- Invisibl (BN5 chip 0x085): its user turns invisible for six seconds: BN6's Invisibl (@common/invisibl, the
 -- dimming spawner's entry 40; BN5's the same code), 360 ticks (the record's parameter).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 

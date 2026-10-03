@@ -314,6 +314,12 @@ const TEST_PACK: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/pack");
 /// The test content's own modules (its roles).
 const TEST_CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/content");
 
+/// The shared folder (content/common) as a root of `scripts`: what BN6's
+/// modules require by `@common/...`, for content that loads them.
+pub fn add_shared(scripts: &mut Scripts) {
+    scripts.add_root(RootManifest::named(nettai_content_api::keys::SHARED), modules_under(COMMON));
+}
+
 /// Every `.luau` module under `dir`, by path without `.luau`.
 pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
     fn walk(root: &std::path::Path, dir: &std::path::Path, out: &mut std::collections::BTreeMap<String, String>) {
@@ -1427,7 +1433,7 @@ pub fn scripts() -> Scripts {
                 }
             }
             let mut scripts = Scripts::root(RootManifest::named(ROOT), all);
-            scripts.add_root(RootManifest::named("common"), modules_under(COMMON));
+            add_shared(&mut scripts);
             scripts
         })
         .clone()

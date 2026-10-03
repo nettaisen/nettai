@@ -1,6 +1,6 @@
 --!strict
 -- EnergBom (BN5 chip 0x01e): a bomb that leaves an energy burst where it lands (three hits on that panel): BN6's
--- throw, bomb and burst (@bn6/lib/bombs, @bn6/chips/energbom/burst; BN5's the same code), with BN5's collision
+-- throw, bomb and burst (@common/bombs, @common/energbom/burst; BN5's the same code), with BN5's collision
 -- types.
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
