@@ -286,7 +286,8 @@ fn needs_pack(r: &crate::root::Root) -> bool {
 /// The battle content of the folders `roots` with the packs `games` (each
 /// pack's game and directory), before the define phase: a folder whose
 /// game's pack isn't among them ([`needs_pack`]) is left out, with a
-/// warning.
+/// warning; so are a folder's chips that have no use yet
+/// ([`left_out_unported`]).
 fn battle_content_of(
     mut roots: Vec<crate::root::Root>,
     games: &[(String, PathBuf)],
@@ -303,6 +304,9 @@ fn battle_content_of(
         );
         false
     });
+    for r in &mut roots {
+        left_out_unported(r, &mut report);
+    }
     if report.has_errors() {
         return Err(report);
     }
@@ -324,6 +328,27 @@ fn battle_content_of(
     }
     let c = nettai_battle::Content { assets, animations, scripts, strings, ..Default::default() };
     Ok((c, report))
+}
+
+/// Leave out folder `r`'s chips that have no use yet, and the chips that
+/// need theirs (`Root::leave_out_unported`: an unported chip is skipped,
+/// so a game being ported plays with what is ported), with one warning
+/// listing them; their keys.
+pub fn left_out_unported(r: &mut crate::root::Root, report: &mut Report) -> Vec<String> {
+    let left = r.leave_out_unported();
+    if !left.is_empty() {
+        let game = &r.manifest.name;
+        let keys: Vec<String> = left.iter().map(|k| format!("{game}{}{k}", nettai_content_api::keys::SEPARATOR)).collect();
+        report.warn(
+            r.dir.display().to_string(),
+            format!(
+                "{} of {game}'s chips have no use yet (or need one's module) and are left out: {}",
+                keys.len(),
+                keys.join(", ")
+            ),
+        );
+    }
+    left
 }
 
 /// The game of a pack whose manifest says none: BN6's (packs extracted
@@ -483,19 +508,13 @@ pub fn load_found(content: Option<&Path>, found: &[Found]) -> Result<Loaded, Rep
     let games: Vec<(String, PathBuf)> = found.iter().map(|f| (f.game.clone(), f.dir.clone())).collect();
     let mut left_out: Vec<(String, String)> = Vec::new();
     let mut loadable: Vec<crate::root::Root> = Vec::new();
-    for mut f in folders {
+    for f in folders {
         let game = f.manifest.name.clone();
         if needs_pack(&f) && !games.iter().any(|(g, _)| *g == game) {
             left_out.push((game.clone(), no_pack(&game, found)));
         } else {
-            // (A port's chips it hasn't written a use for yet play as absent.)
-            let unported = f.leave_out_unported();
-            if !unported.is_empty() {
-                report.warn(
-                    f.dir.display().to_string(),
-                    format!("{} of {game}'s chips have no use yet and are left out ({}{})", unported.len(), unported[..unported.len().min(5)].join(", "), if unported.len() > 5 { ", ..." } else { "" }),
-                );
-            }
+            // (A port's chips it hasn't written a use for yet play as
+            // absent: `battle_content_of`.)
             loadable.push(f);
         }
     }
@@ -542,7 +561,9 @@ pub fn load_found(content: Option<&Path>, found: &[Found]) -> Result<Loaded, Rep
             }
         }
     };
-    let (content, report, packs, roots) = loaded;
+    let (content, loaded_report, packs, roots) = loaded;
+    // (What reading the folders said, then loading them.)
+    report.issues.extend(loaded_report.issues);
     Ok(Loaded { content, packs, roots, left_out, report })
 }
 
