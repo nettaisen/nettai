@@ -1,6 +1,9 @@
 --!strict
--- HotBody3 (BN5 chip 0x09c): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- HotBody3 (BN5 chip 0x09c): the navi bursts into flames that spread to the enemies around it, two rounds 30 ticks
+-- apart (objects/hotbody, action 0x58; the record's second parameter, 2).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local hotbody = require("../../objects/hotbody/hotbody")
 
 return define.chip {
     id = "bn5:hotbody3",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
+    action = hotbody.action("bn5:hotbody3/action", 2),
 }

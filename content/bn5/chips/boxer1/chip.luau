@@ -6,6 +6,7 @@
 
 local boxer = require("../../objects/boxer/boxer")
 local recipe_firehit1 = require("../firehit1/chip")
+local recipe_hotbody1 = require("../hotbody1/chip")
 
 return define.chip {
     id = "bn5:boxer1",
@@ -24,6 +25,7 @@ return define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
+        { order = 9, sequence = { recipe_hotbody1, recipe_hotbody1, recipe_firehit1 }, per_player_gauges_only = true },
         { order = 45, code_run = { chip = recipe_firehit1, count = 3 } },
     },
     instant = boxer.instant(1),
