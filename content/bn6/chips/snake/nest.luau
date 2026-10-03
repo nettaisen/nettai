@@ -4,7 +4,10 @@
 -- holes from the far column back, sending a snake (./snake) out of each
 -- at the nearest enemy, 8 ticks apart in a column and 24 between columns;
 -- once the snakes are gone, it lets its holder go on. It has no sprite.
+-- (The holes' scan and the snakes' targets are the shared snake's,
+-- @common/snake/snake.)
 
+local common = require("@common/snake/snake")
 local snake = require("./snake")
 
 local nest = {}
@@ -24,102 +27,8 @@ export type State = {
 -- Its states (PhaseInitialized): starting, scanning, waiting for the
 -- snakes.
 local START, SCANNING, WAITING = 0, 1, 2
--- A hole on each side's area (`byte_80D2D30`): the side's own panel, not
--- solid, with nothing on it or reserved.
-local HOLE = { [0] = { require = 0x00, forbid = 0x0F8800B0 }, [1] = { require = 0x20, forbid = 0x0F880090 } }
--- The panels a snake aims at (`byte_80D2E28`, any of them): the other
--- side's bodies and other bodies, or a neutral object.
-local TARGET = { [0] = 0x05800000, [1] = 0x0A800000 }
 -- The ticks to the next snake: in the same column, else.
 local SAME_COLUMN, NEXT_COLUMN = 8, 0x18
-
--- `sub_80D2D40`: the panel a snake from (hx, hy) aims at: of the panels
--- from the column in front of the hole forward (rows 1 to 3, until the
--- column leaves the field) that hold a target, the first in that order,
--- replaced by one in a nearer row, then by one in a nearer column, then
--- (a slip: the candidate's column against the best's row) by one whose
--- column isn't past the best's row. 0xFF when none.
-local function target(me: Object, hx: number, hy: number): (number, number)
-    local mask = TARGET[me.alliance]
-    local candidates: { { number } } = {}
-    local x = hx + me.facing
-    while true do
-        local stop = false
-        for y = 1, 3 do
-            if not field.valid(x, y) then
-                stop = true
-                break
-            end
-            if bit32.btest(field.flags(x, y), mask) then
-                table.insert(candidates, { x, y })
-            end
-        end
-        if stop then
-            break
-        end
-        x += me.facing
-    end
-    if #candidates == 0 then
-        return 0xFF, 0
-    end
-    local bx, by = 0, 0
-    for _, c in candidates do
-        local cx, cy = c[1], c[2]
-        local take = true
-        if bx ~= 0 then
-            local d, bd = math.abs(cy - hy), math.abs(by - hy)
-            if d > bd then
-                take = false
-            elseif d == bd then
-                local e, be = math.abs(cx - hx), math.abs(bx - hx)
-                if e > be then
-                    take = false
-                elseif e == be then
-                    take = cx <= by
-                end
-            end
-        end
-        if take then
-            bx, by = cx, cy
-        end
-    end
-    return bx, by
-end
-
--- `sub_80D2CBE`: from the scan's place on (rows 1 to 3, then the next
--- column back), the first hole; the scan resumes past it. The scan gives
--- up once its column, plus one, passes 7 (a side 0 nest scans columns 6 to
--- 1, then 0 and 0xFF off the field; side 1's, 1 to 6). nil when none, else
--- the hole and its target.
-local function next_hole(me: Object): (number?, number, number, number)
-    local s = me.state :: State
-    local cond = HOLE[me.alliance]
-    local step = -me.facing
-    local found = false
-    local hx, hy = 0, 0
-    while true do
-        if found then
-            break
-        end
-        if field.check(s.scan_x, s.scan_y, cond.require, cond.forbid) then
-            found, hx, hy = true, s.scan_x, s.scan_y
-        end
-        s.scan_y += 1
-        if s.scan_y > 3 then
-            s.scan_y = 1
-            local x = s.scan_x + step
-            s.scan_x = x
-            if x + 1 > 7 or x + 1 < 0 then
-                break
-            end
-        end
-    end
-    if not found then
-        return nil, 0, 0, 0
-    end
-    local tx, ty = target(me, hx, hy)
-    return hx, hy, tx, ty
-end
 
 -- `sub_80D2C40`: the scan's start (the far column, the top row); a snake
 -- out of each hole, and a peek at the next for the wait; once the holes
@@ -140,7 +49,7 @@ local function tick(me: Object)
         end
         local hx, hy, tx, ty
         if field.valid(s.scan_x, s.scan_y) then
-            hx, hy, tx, ty = next_hole(me)
+            hx, hy, tx, ty = common.next_hole(me, s)
         end
         if hx then
             local o = snake.spawn(me, hx, hy, tx, ty)
@@ -150,7 +59,7 @@ local function tick(me: Object)
             -- The next hole's column decides the wait; the scan's place is
             -- kept.
             local x, y = s.scan_x, s.scan_y
-            local next_x = next_hole(me)
+            local next_x = common.next_hole(me, s)
             s.scan_x, s.scan_y = x, y
             me.timer = if next_x == hx then SAME_COLUMN else NEXT_COLUMN
             return
