@@ -110,6 +110,7 @@ dust = "14-0e"
 shell-burst = "14-11"
 energy-burst = "14-12"
 blast = "14-13"
+bomb-burst = "14-18"
 fire-hit = "14-1a"
 splash = "14-1f"
 
