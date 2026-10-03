@@ -264,6 +264,10 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     if cd.flags.has(ChipFlags::NAVI) {
         b.bump_side_stat(side, 6, 1);
     }
+    // sub_800B79A: the side's systems' (BN6's dark chips worsen the HP
+    // bug).
+    let used = b.content.chip_or_zeroed(b.games.arena, e.chip);
+    b.systems_chip_prepared(side, r, used);
     // BN5's 0x080100E6: the side's rules may refuse the chip (its light and
     // dark system, 0x08010118). The navi then uses the chip they give
     // instead (BN5's 0x185, its variant 3 and no parameters, the rest of
