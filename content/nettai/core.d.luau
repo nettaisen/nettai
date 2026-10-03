@@ -1505,6 +1505,13 @@ export type ButtonSpec = {
     state: ((side: number) -> ("selectable" | "unavailable"))?,
     -- A on it.
     pressed: (side: number) -> (),
+    -- B took its pick back.
+    taken_back: ((side: number) -> ())?,
+}
+-- A system's custom-screen window (§4.4): its update, each tick it is up
+-- (`custom.window_tick` counts them from 1): whether it stays up.
+export type WindowSpec = {
+    update: (side: number) -> boolean,
 }
 export type SystemSpec = {
     id: string,
@@ -1518,11 +1525,20 @@ export type SystemSpec = {
     -- Its custom-screen buttons, by name (what the frontend draws them by):
     -- where each sits and its functions, which run as the system's.
     buttons: { [string]: ButtonSpec }?,
+    -- Its custom-screen windows, by name (`custom.open_window`).
+    windows: { [string]: WindowSpec }?,
     custom: {
         -- As the screen opens: how many chips it deals (`sub_802A40C`).
         -- None answering: the custom level (8 at most), NumbrOpn's 10, and
         -- the hand-shrink bug.
         hand_size: ((side: number) -> number?)?,
+        -- The screen opens, before its hand size and layout.
+        open: ((side: number) -> ())?,
+        -- OK built the hand.
+        confirmed: ((side: number) -> ())?,
+        -- A chip of the hand picked, or its pick taken back.
+        chip_picked: ((side: number, chip: Chip) -> ())?,
+        chip_taken_back: ((side: number, chip: Chip) -> ())?,
     }?,
     hooks: {
         -- Once per side as the round is set up, before anything reads the
@@ -1704,7 +1720,9 @@ export type ChipSpec = {
     -- counts it), "navi_slot" (AntiNavi turns it back though it lacks the
     -- `navi` flag), "heals" (AntiRecv springs on it), "user_stays" (a navi
     -- chip whose user isn't warped off the field), "navi_returns_user" (a
-    -- navi chip whose navi brings the user back itself).
+    -- navi chip whose navi brings the user back itself), "goes_with_any"
+    -- (it goes with any selection on the custom screen, and leaves the
+    -- selection's rules alone: BN6's BeastOut chip).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
@@ -2390,6 +2408,46 @@ declare custom: {
     redeal: (side: number) -> (),
     last_pick_is_chip: (side: number) -> boolean,
     cursor_state: (side: number) -> "selectable" | "unavailable" | "selected",
+    -- For a system's buttons and windows: the slot under the cursor picked;
+    -- a screen sound ("pick", "refused", "back", "cancel",
+    -- "beast_out_gregar", "beast_out_falzar", "beast_out_flash"); the last
+    -- pick's column cell; one of the system's windows opened, and its ticks
+    -- so far; this console's camera shake; the window's frame counter; the
+    -- emblem's spin; a screen fade ("beast_out", "beast_out_back",
+    -- "end_to_white", "intro_from_white"); the emotion window's face; the
+    -- last pick moved first (its column icon `icon`, else its chip's); one
+    -- of the system's buttons' state; the availability redone; the emblem
+    -- drawn; the form the system's pick holds for the turn's start, and
+    -- whether another system's holds it; whether the picks are full;
+    -- whether one of the system's buttons is picked; what the screen reads
+    -- of its player from the setup.
+    pick: (side: number) -> (),
+    play: (side: number, sound: string) -> (),
+    set_column_icon: (side: number, chip: Chip?) -> (),
+    open_window: (side: number, window: string) -> (),
+    window_tick: (side: number) -> number,
+    shake: (side: number, magnitude: number, ticks: number) -> (),
+    frame: (side: number) -> number,
+    set_frame: (side: number, frame: number) -> (),
+    spin: (side: number) -> (),
+    fade: (side: number, mode: string, speed: number) -> (),
+    set_face: (side: number, form: FormDef?) -> (),
+    pick_first: (side: number, icon: Chip?) -> (),
+    set_button_state: (side: number, button: string, state: "selectable" | "unavailable" | "selected") -> (),
+    update_availability: (side: number) -> (),
+    draw_emblem: (side: number, x: number) -> (),
+    set_form: (side: number, form: FormDef?) -> (),
+    form_taken: (side: number) -> boolean,
+    full: (side: number) -> boolean,
+    button_picked: (side: number, button: string) -> boolean,
+    player: (side: number) -> {
+        emotion: Emotion,
+        version: "gregar" | "falzar",
+        cross_list: boolean,
+        beast_out: boolean,
+        beast_out_sealed: boolean,
+        random_battle: boolean,
+    },
 }
 
 declare system: {

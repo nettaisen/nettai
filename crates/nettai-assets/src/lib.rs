@@ -9,7 +9,7 @@
 pub mod custom;
 pub mod lettering;
 pub use lettering::{BASE_LANGUAGE, CustomLettering, HudLettering};
-pub use custom::{ButtonPictures, ChipArt, CustomLayout, CustomScreen, MapPatch, PatchList, Picture, SlotPictures, VersionPictures};
+pub use custom::{ButtonPictures, ChipArt, CursorPlace, CustomLayout, CustomScreen, MapPatch, PatchList, Picture, SlotPictures, VersionPictures};
 
 /// Assets a game version has its own of: the base game's (`base_version`,
 /// a BN6 pack's "falzar"), and other versions' that differ, by version name
@@ -210,13 +210,35 @@ pub struct Field {
     pub first_palette: u8,
     /// Panel palettes that cycle.
     pub palette_anims: Vec<PaletteAnim>,
-    /// A panel's 5x3 block by `6 * type + 3 * owner + row - 1`, where
-    /// `type` is the panel type (0..=12) and `row` the field row (1..=3).
+    /// The panel types the field draws, by the engine's number for each
+    /// (`PanelType as u8`), in the order of their blocks in `panels`: BN6's
+    /// 13 in the engine's order, BN5's 11 in BN5's (its metal, lava and sea
+    /// among them). docs/design/rules-in-luau.md §7.4.
+    pub panel_types: Vec<u8>,
+    /// A panel's 5x3 block by `6 * k + 3 * owner + row - 1`, where `k` is
+    /// the type's place in `panel_types` and `row` the field row (1..=3).
     pub panels: Vec<[MapEntry; 15]>,
     /// The 5x1 edge under a front-row panel, by owner.
     pub front_edges: [[MapEntry; 5]; 2],
-    /// Highlighted panel blocks (a chip's target), by highlight - 1.
-    pub highlights: [[MapEntry; 15]; 2],
+    /// Highlighted panel blocks (a chip's target), by highlight - 1: BN6
+    /// has two; a field may have one (a highlight it lacks is another
+    /// pack's, or drawn as a fallback).
+    pub highlights: Vec<[MapEntry; 15]>,
+}
+
+impl Field {
+    /// Whether the field draws panel type `kind` (the engine's number).
+    pub fn draws(&self, kind: u8) -> bool {
+        self.panel_types.contains(&kind)
+    }
+
+    /// The 5x3 block of panel type `kind` (the engine's number) for an
+    /// owner (0 the viewer's) and a row (1..=3), if the field draws the
+    /// type and has the block.
+    pub fn panel(&self, kind: u8, owner: usize, row: u8) -> Option<&[MapEntry; 15]> {
+        let k = self.panel_types.iter().position(|&t| t == kind)?;
+        self.panels.get(6 * k + 3 * owner + (row as usize).checked_sub(1)?)
+    }
 }
 
 /// A palette that cycles through frames.

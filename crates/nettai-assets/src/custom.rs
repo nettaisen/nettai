@@ -117,10 +117,28 @@ pub struct CustomLayout {
     /// The enemy names' bar, and the Cross window's names.
     pub name_bar: u16,
     pub cross_names: u16,
+    /// The color a hidden slot's tiles and a slot's blank code are filled
+    /// with (BN6's `byte_802A700`: 1).
+    pub slot_blank: u8,
+    /// The cursor over OK and over the special slot under it.
+    pub ok_cursor: CursorPlace,
+    pub special_cursor: CursorPlace,
+}
+
+/// Where the cursor's corners go over a slot (`sub_8028820`): the slot's
+/// place (`jt_802886C`'s routines) and the four 8x8 corners of each of its
+/// two frames, each (y, x, hflip, vflip) from the place less 3.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CursorPlace {
+    pub x: i16,
+    pub y: i16,
+    pub corners: [[(i8, i8, bool, bool); 4]; 2],
 }
 
 impl CustomLayout {
-    /// BN6's (`sub_8026840`, `sub_8028250`, `byte_8029DF8`).
+    /// BN6's (`sub_8026840`, `sub_8028250`, `byte_8029DF8`; the cursor over
+    /// OK `sub_80288D0` and `byte_80288E4`, over Beast Out `sub_8028904`
+    /// and `byte_8028918`).
     pub const BN6: CustomLayout = CustomLayout {
         column_cells: 0x89,
         turn_limit: 0x8D,
@@ -133,6 +151,23 @@ impl CustomLayout {
         column_icons: 0x125,
         name_bar: 0x1D6,
         cross_names: 0x139,
+        slot_blank: 1,
+        ok_cursor: CursorPlace {
+            x: 0x58 + 3,
+            y: 0x70 - 2,
+            corners: [
+                [(2, 1, false, false), (2, 0x16, true, false), (0x14, 0x16, true, true), (0x14, 1, false, true)],
+                [(4, 3, false, false), (4, 0x14, true, false), (0x12, 0x14, true, true), (0x12, 3, false, true)],
+            ],
+        },
+        special_cursor: CursorPlace {
+            x: 0x58 + 3,
+            y: 0x88 - 1,
+            corners: [
+                [(2, 1, false, false), (2, 0x16, true, false), (0xE, 0x16, true, true), (0xE, 1, false, true)],
+                [(3, 2, false, false), (3, 0x15, true, false), (0xD, 0x15, true, true), (0xD, 2, false, true)],
+            ],
+        },
     };
 }
 
