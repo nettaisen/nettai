@@ -32,20 +32,35 @@ local function beast_kind(kind: string): boolean
     return kind == "beast" or kind == "cross_beast" or kind == "beast_over"
 end
 
--- `Unlocks::beast_game`: the game of the Beast the navi goes into, or is
--- in: the player's version, except that with a setup's Cross list a form
--- of the other game (one of its Crosses, or a Beast form of one) is that
--- game's.
-local function beast_game(side: number): "gregar" | "falzar"
-    local player = custom.player(side)
-    local form = battle.navi(side).form
-    if form.game ~= nil and player.cross_list and form.kind ~= "base" then
-        return form.game :: "gregar" | "falzar"
-    end
-    return player.version :: "gregar" | "falzar"
+-- The beast system's setup (rules/beast/system.luau declares it): the
+-- player's game, Beast Out unlocked (event flag 0xE0), and nettai's Cross
+-- list (the cross system's too), whose Crosses can be the other game's.
+type Setup = {
+    version: "falzar" | "gregar",
+    beast_out: boolean,
+    cross_list: { FormDef? },
+}
+
+-- Event flag 0x163, a navi code received (`sub_800B144` sends its level
+-- only then): no Beast Out button.
+local function sealed(side: number): boolean
+    return battle.navi_level(side) ~= nil
 end
 
--- `Unlocks::beast_form`: the form Beast Out takes the navi to: when
+-- The game of the Beast the navi goes into, or is in: the player's
+-- version, except that with a setup's Cross list a form of the other game
+-- (one of its Crosses, or a Beast form of one) is that game's
+-- (docs/engine/custom-screen.md §4.1).
+local function beast_game(side: number): "gregar" | "falzar"
+    local setup = system.setup() :: Setup
+    local form = battle.navi(side).form
+    if form.game ~= nil and setup.cross_list[1] ~= nil and form.kind ~= "base" then
+        return form.game :: "gregar" | "falzar"
+    end
+    return setup.version
+end
+
+-- The form Beast Out takes the navi to (`sub_802937A`, `sub_802A040`): when
 -- `tired`, Beast Over (of `beast_game`'s game); from the base form the
 -- version's Beast Out; from a Cross that Cross's form in Beast Out.
 local function beast_form(side: number, tired: boolean): FormDef?
@@ -61,7 +76,7 @@ local function beast_form(side: number, tired: boolean): FormDef?
         local set = of(beast_game(side))
         return if set ~= nil then set.beast_over else nil
     elseif stats.form.kind == "base" then
-        local set = of(custom.player(side).version)
+        local set = of((system.setup() :: Setup).version)
         return if set ~= nil then set.beast_out else nil
     end
     return stats.form.beast
@@ -79,12 +94,11 @@ end
 custom_beast.button = {
     slot = 11,
     shown = function(side: number): boolean
-        local player = custom.player(side)
         return megaman(side)
-            and not player.beast_out_sealed
+            and not sealed(side)
             and not battle.per_player_gauges()
-            and not player.random_battle
-            and player.beast_out
+            and not custom.player(side).random_battle
+            and (system.setup() :: Setup).beast_out
     end,
     -- `sub_8028F48`: with room left, no Cross chosen, and the navi able to.
     state = function(side: number): "selectable" | "unavailable"
