@@ -9,7 +9,7 @@ local lockon = require("../../rules/lockon")
 
 return {
     define.chip {
-        id = "sumnblk1",
+        id = "bn6:sumnblk1",
         codes = { "E", "I", "P" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 30, damage = 160, hit_param = 158, lockout = 0,
@@ -20,7 +20,7 @@ return {
         dimming = controller.hook(0),
     },
     define.chip {
-        id = "sumnblk2",
+        id = "bn6:sumnblk2",
         codes = { "H", "O", "V" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 40, damage = 200, hit_param = 158, lockout = 0,
@@ -31,7 +31,7 @@ return {
         dimming = controller.hook(1),
     },
     define.chip {
-        id = "sumnblk3",
+        id = "bn6:sumnblk3",
         codes = { "W", "Y", "Z" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 46, damage = 260, hit_param = 158, lockout = 0,

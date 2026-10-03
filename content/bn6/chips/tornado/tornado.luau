@@ -5,7 +5,10 @@
 -- there again and again. A plain tornado on a volcano, grass or ice panel
 -- takes the panel's variant instead, turns the panel normal and doubles
 -- its damage. It may inflict a status; the HP-bug variant carries the HP
--- bug. It ends when time is up in the battle.
+-- bug. It ends when time is up in the battle. A game whose tornado takes
+-- other panels' variants, hits with its own collision types and sparks or
+-- doesn't double its damage makes its kind with `tornado.make_kind(id,
+-- look)` (BN5's) and its variants with `tornado.variant`.
 
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
@@ -31,9 +34,11 @@ export type State = {
 -- parameter) and its ticks (the third and fourth).
 export type Spec = TornadoSpec
 
-local function variant(v: Variant): Variant
+-- A tornado variant.
+function tornado.variant(v: Variant): Variant
     return define.record("tornado-variant", v)
 end
+local variant = tornado.variant
 
 -- The variants (`byte_80CA064`'s rows 0 to 7): the plain one (1), the ones
 -- it takes on grass (0), volcano (4) and ice (6), Static's (2), the one
@@ -50,8 +55,8 @@ tornado.variants = {
     row7 = variant { palette = 0, rearm = 0 },
 }
 
-local SPRITE = asset.sprite("tornado")
-local SOUND = asset.sound("aqua-surge")
+local SPRITE = asset.sprite("bn6:tornado")
+local SOUND = asset.sound("bn6:aqua-surge")
 -- What a plain tornado becomes on a panel of these types
 -- (`byte_80CA25C`).
 local PANEL_VARIANTS: { [PanelType]: Variant } = {
@@ -61,6 +66,16 @@ local PANEL_VARIANTS: { [PanelType]: Variant } = {
 }
 -- The damage bits that are flags, kept when the damage doubles.
 local DAMAGE_FLAGS = 0xF800
+
+-- BN6's look: the panels' variants, the doubling, what it is (row 0x12,
+-- whatever its variant) and reaches, and the element's spark.
+local BN6: TornadoLook = {
+    panel_variants = PANEL_VARIANTS,
+    doubles_on_panel = true,
+    is = collision.pushing,
+    target = collision.hits_navis,
+    spark = sparks.of_element,
+}
 
 -- The destroy state, hidden and harmless.
 local function finish(me: Object)
@@ -108,23 +123,25 @@ end
 
 -- `sub_80CA234`: the variant a plain tornado takes from its panel (none
 -- when it stays plain).
-local function panel_variant(me: Object): Variant?
+local function panel_variant(me: Object, look: TornadoLook): Variant?
     local p = field.panel(me.panel_x, me.panel_y)
     -- (Off the field the game reads a type from address 0 and the tornado
     -- frees itself right after, whatever it found.)
-    return p and PANEL_VARIANTS[p.kind]
+    return p and look.panel_variants[p.kind]
 end
 
 -- `sub_80C9F98`: take the panel's variant, then spin on it.
-local function init(me: Object)
+local function init(me: Object, look: TornadoLook)
     local s = me.state :: State
     if s.variant.plain then
-        local v = panel_variant(me)
+        local v = panel_variant(me, look)
         if v then
             s.variant = v
             field.set_type(me.panel_x, me.panel_y, "normal")
-            local d = me.damage
-            me.damage = bit32.bor(bit32.band(d, DAMAGE_FLAGS), bit32.band(d, bit32.bnot(DAMAGE_FLAGS)) * 2)
+            if look.doubles_on_panel then
+                local d = me.damage
+                me.damage = bit32.bor(bit32.band(d, DAMAGE_FLAGS), bit32.band(d, bit32.bnot(DAMAGE_FLAGS)) * 2)
+            end
         end
     end
     if not field.valid(me.panel_x, me.panel_y) then
@@ -151,9 +168,9 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(collision.pushing, collision.hits_navis, 1)
+    me:setup_collision(if v.bug and look.bug_is then look.bug_is else look.is, look.target, 1)
     local c = me.collision
-    c:set_hit_effect(sparks.of_element(me.element))
+    c:set_hit_effect(look.spark(me.element))
     local status = s.status
     if status then
         c.status_base = status
@@ -167,28 +184,34 @@ local function init(me: Object)
     tick(me)
 end
 
-tornado.kind = define.kind {
-    id = "tornado/tornado",
-    pool = "attack",
-    state = { variant = "record:tornado-variant", status = "status", rearm_step = "u32", rearm_ticks = "u32" },
-    -- `sub_80C9F78`.
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            init(me)
-        elseif l == "update" then
-            tick(me)
-        else
-            me:destroy()
-        end
-    end,
-}
+-- A tornado kind (`id`) of `look`.
+function tornado.make_kind(id: string, look: TornadoLook): Kind
+    return define.kind {
+        id = id,
+        pool = "attack",
+        state = { variant = "record:tornado-variant", status = "status", rearm_step = "u32", rearm_ticks = "u32" },
+        -- `sub_80C9F78`.
+        update = function(me: Object)
+            local l = me.lifecycle
+            if l == "init" then
+                init(me, look)
+            elseif l == "update" then
+                tick(me)
+            else
+                me:destroy()
+            end
+        end,
+    }
+end
+
+tornado.kind = tornado.make_kind("bn6:tornado/tornado", BN6)
 
 -- `sub_80CA0E2`: a tornado for `owner`'s side on (x, y) with the damage
--- word `damage`. Its position is the spawner's registers (the panel Y, the
--- element and 0) until its init places it.
-function tornado.spawn(owner: Object, x: number, y: number, element: number, damage: number, spec: Spec): Object?
-    local o = battle.spawn(tornado.kind, Vec3.new(y, element, 0))
+-- word `damage`, of `kind` (BN6's by default). Its position is the
+-- spawner's registers (the panel Y, the element and 0) until its init
+-- places it.
+function tornado.spawn(owner: Object, x: number, y: number, element: number, damage: number, spec: Spec, kind: Kind?): Object?
+    local o = battle.spawn(kind or tornado.kind, Vec3.new(y, element, 0))
     if o then
         local s = o.state :: State
         s.variant, s.status = spec.variant, spec.status

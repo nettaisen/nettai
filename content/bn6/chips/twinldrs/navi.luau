@@ -31,8 +31,8 @@ export type State = {
     fresh: boolean,
     -- Colonel: his charge's glow (ExtraVars[5]).
     glow: Object?,
-    -- ProtoMan: the grey of his colour shader, fading in (Param4).
-    grey: number,
+    -- ProtoMan: the gray of his color shader, fading in (Param4).
+    gray: number,
     -- ProtoMan: how many he has found to slash; Colonel: his charge's step
     -- (Param3).
     count: number,
@@ -45,14 +45,14 @@ export type State = {
 -- What Colonel is taken for: his actor record, and what he wears (his
 -- cape, `sub_8010FAC`).
 local COLONEL_IDENTITY = define.identity {
-    id = "colonel",
+    id = "bn6:colonel",
     class = "navi",
     version = 0,
     ai_index = 0x12,
     ice = "large",
     parts = {
         body = {
-            sprite = asset.sprite("colonel"),
+            sprite = asset.sprite("bn6:colonel"),
             anims = 192,
             behind = { { 0x0D, 0x0F }, { 0x35, 0x37 }, { 0x42, 0x43 }, { 0x5B, 0x6F }, { 0x84, 0xAB }, { 0xBF, 0xBF } },
             anim_offset = 0x0D,
@@ -64,29 +64,29 @@ local COLONEL_IDENTITY = define.identity {
 -- wears (his actor record's: ProtoMan's wears nothing), and where beside
 -- his user he comes in, in pixels (forward, down).
 type Look = { sprite: SpriteAsset, identity: Identity?, dx: number, dy: number }
-local PROTOMAN: Look = { sprite = asset.sprite("protoman"), dx = 10, dy = 10 }
-local COLONEL: Look = { sprite = asset.sprite("colonel"), identity = COLONEL_IDENTITY, dx = -10, dy = -10 }
+local PROTOMAN: Look = { sprite = asset.sprite("bn6:protoman"), dx = 10, dy = 10 }
+local COLONEL: Look = { sprite = asset.sprite("bn6:colonel"), identity = COLONEL_IDENTITY, dx = -10, dy = -10 }
 
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_STRIKE = asset.sound("spin")
-local SOUND_CHARGE, SOUND_CHARGED = asset.sound("buster-charge"), asset.sound("buster-charged")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_STRIKE = asset.sound("bn6:spin")
+local SOUND_CHARGE, SOUND_CHARGED = asset.sound("bn6:buster-charge"), asset.sound("bn6:buster-charged")
 
 -- Colonel's sword (attachment 0x1F) and his X's two halves (effects 0x36
 -- and 0x37).
-local COLONEL_SWORD = attachment.look { sprite = asset.sprite("colonel-sword"), palette = 0 }
+local COLONEL_SWORD = attachment.look { sprite = asset.sprite("bn6:colonel-sword"), palette = 0 }
 local CROSS = {
-    define.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
-    define.effect { sprite = asset.sprite("colonel-effect"), anim = 2, palette = 0 },
+    define.effect { sprite = asset.sprite("bn6:colonel-effect"), anim = 1, palette = 0 },
+    define.effect { sprite = asset.sprite("bn6:colonel-effect"), anim = 2, palette = 0 },
 }
 
 -- Colonel's charge: the glow while it builds (effect 0x4E) and the flash
 -- when it is full (0x4F), at his sprite's attach point 0 (`sub_8018810` by
 -- his NameID: his sprite's table row, whose point 0 is (0, 0)).
-local CHARGING = define.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
-local CHARGED = define.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
+local CHARGING = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 0, palette = 0 }
+local CHARGED = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 2, palette = 0 }
 local GLOW_X, GLOW_Z = 0, 0
 
--- The afterimages ProtoMan leaves (`sub_80BDA7C`): their colour shader and
+-- The afterimages ProtoMan leaves (`sub_80BDA7C`): their color shader and
 -- lifetime.
 local AFTERIMAGE_SHADER, AFTERIMAGE_TICKS = 0x8318, 0x1E
 
@@ -175,12 +175,12 @@ end
 
 -- ---- ProtoMan -----------------------------------------------------------
 
--- `sub_80BD4DC`: he fades in from grey 31, 2 a tick, flickering.
+-- `sub_80BD4DC`: he fades in from gray 31, 2 a tick, flickering.
 local function fade_in(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
         me.sprite.color_shader = 0x7FFF
-        s.grey = 0x1F
+        s.gray = 0x1F
         battle.play_sound(SOUND_APPEAR)
         me.timer = 0
         me.phase_init = 4
@@ -192,13 +192,13 @@ local function fade_in(me: Object)
     if bit32.btest(t, 1) then
         me.visible = false
     end
-    local grey = s.grey - 2
-    if grey > 0 then
-        s.grey = grey
+    local gray = s.gray - 2
+    if gray > 0 then
+        s.gray = gray
         return
     end
     me.visible = true
-    s.grey = 0
+    s.gray = 0
     me.phase, me.phase_init = 4, 0
 end
 
@@ -225,7 +225,7 @@ local function ready(me: Object)
     me:set_action(SLASHES)
 end
 
--- `sub_80BD4BC`: his appearing, his colour shader following his grey.
+-- `sub_80BD4BC`: his appearing, his color shader following his gray.
 local function appear(me: Object)
     local phase = me.phase
     if phase == 0 then
@@ -235,7 +235,7 @@ local function appear(me: Object)
     else
         error(string.format("TwinLdrs ProtoMan's appearing phase %#x reads past its table (off_80BD4D4)", phase))
     end
-    me.sprite.color_shader = (me.state :: State).grey * 0x421
+    me.sprite.color_shader = (me.state :: State).gray * 0x421
 end
 
 -- The panel in front of an enemy navi at (x, y) will hold him: his
@@ -670,7 +670,7 @@ local function destroy(me: Object)
 end
 
 twinldrs.kind = define.kind {
-    id = "twinldrs/navi",
+    id = "bn6:twinldrs/navi",
     pool = "actor",
     state = {
         colonel = "bool",
@@ -679,7 +679,7 @@ twinldrs.kind = define.kind {
         held = "object",
         fresh = "bool",
         glow = "object",
-        grey = "u8",
+        gray = "u8",
         count = "u8",
         home_x = "i32",
         home_y = "i32",

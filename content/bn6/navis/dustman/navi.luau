@@ -6,20 +6,20 @@ local charge = require("./charge")
 local dustman = require("./chip")
 
 return define.navi {
-    id = "dustman",
-    sprite = asset.sprite("dustman"),
+    id = "bn6:dustman",
+    sprite = asset.sprite("bn6:dustman"),
     element = "null",
     weakness = { "cursor" },
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("dustman-win"), lose = asset.banner("dustman-deleted") },
+    banners = { win = asset.banner("bn6:dustman-win"), lose = asset.banner("bn6:dustman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`).
-    mugshot = asset.mugshot("dustman"),
+    mugshot = asset.mugshot("bn6:dustman"),
     merge_height = 0,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("dustman-portrait"),
+        portrait = asset.sprite("bn6:dustman-portrait"),
     },
     own_chip = { chip = dustman, code = "D" },
     chip_bonus = {
@@ -27,7 +27,7 @@ return define.navi {
         dimming_chips = false,
         by_level = { 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 },
     },
-    -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
+    -- What a navi switch brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },

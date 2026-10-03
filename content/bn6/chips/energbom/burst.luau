@@ -9,8 +9,8 @@ local regions = require("../../lib/regions")
 
 local burst = {}
 
-local SPRITE = asset.sprite("energy-burst")
-local SOUND = asset.sound("energy-burst")
+local SPRITE = asset.sprite("bn6:energy-burst")
+local SOUND = asset.sound("bn6:energy-burst")
 local HIT_INTERVAL, HITS, LINGER = 7, 3, 0x14
 -- The hits' hit modifiers, by hit (`dword_80C68AC`).
 local HIT_MODS = { [0] = 1, [1] = 1, [2] = 3 }
@@ -75,7 +75,7 @@ local function init(me: Object)
 end
 
 burst.kind = define.kind {
-    id = "energbom/burst",
+    id = "bn6:energbom/burst",
     pool = "attack",
     -- `sub_80C67F8`.
     update = function(me: Object)

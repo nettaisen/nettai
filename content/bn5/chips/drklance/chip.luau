@@ -1,9 +1,13 @@
 --!strict
--- DrkLance (BN5 chip 0x0bf): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- DrkLance (BN5 chip 0x0bf): a dark chip: Lance's three lances (instant chip effect 4) with its Param1 1, in their
+-- second palette with the bug 0x16 (objects/lance). Its use costs a hit status (rules/light-dark).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local bn5_lance = require("../../objects/lance/lance")
+local lance = require("@bn6/chips/lance/lance")
 
 return define.chip {
-    id = "drklance",
+    id = "bn5:drklance",
     codes = { "W" },
     element = "wood",
     family = "wood",
@@ -15,4 +19,5 @@ return define.chip {
     lockout = 20,
     flags = { "has_damage", "dark", "variable_damage" },
     slot_in_limit = 1,
+    instant = lance.instant_of(bn5_lance.kind, 1),
 }

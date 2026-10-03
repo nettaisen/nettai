@@ -22,7 +22,7 @@ local STATE = { timer = "u16" }
 -- The phases, on the attack's step.
 local DIG, RECOVER = 0x0, 0x4
 
-local SOUND = asset.sound("bblstar1")
+local SOUND = asset.sound("bn6:bblstar1")
 -- The tick (timer value) the shots fly.
 local THROW_AT = 0x0D
 -- Each shot's crossing budget: it flies across at most 5 panel centers.
@@ -86,7 +86,7 @@ end
 
 return {
     define.chip {
-        id = "crakshot",
+        id = "bn6:crakshot",
         codes = { "A", "G", "T", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 4, damage = 60, hit_param = 30, lockout = 0,
@@ -98,7 +98,7 @@ return {
         action = dig(regions.single),
     },
     define.chip {
-        id = "dublshot",
+        id = "bn6:dublshot",
         codes = { "C", "R", "U", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 8, damage = 60, hit_param = 30, lockout = 0,
@@ -110,7 +110,7 @@ return {
         action = dig(regions.long),
     },
     define.chip {
-        id = "trplshot",
+        id = "bn6:trplshot",
         codes = { "J", "L", "V", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 12, damage = 100, hit_param = 30, lockout = 0,

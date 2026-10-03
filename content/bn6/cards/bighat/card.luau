@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local charge = require("./charge")
 
 return define.patch_card {
-    id = "bighat",
+    id = "bn6:bighat",
     mb = 8,
     effects = {
         cards.bug(cards.super_armor(false)),

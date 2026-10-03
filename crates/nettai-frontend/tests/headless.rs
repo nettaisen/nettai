@@ -79,7 +79,7 @@ fn renders_a_live_battle_to_png() {
     let content = testing::content();
     let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
     // (Folders of GunDelS3 N: the test content has it.)
-    let folder = folder_of(&content, &[("gundels3", 13)]);
+    let folder = folder_of(&content, &[("test:gundels3", 13)]);
     let setup = live_setup(&content, settings, [folder, folder], 1);
     let session = Session::new(Box::new(LivePlayer::new(setup, content.clone())));
     let out = std::env::temp_dir().join(format!("bn6-frontend-test-{}", std::process::id()));

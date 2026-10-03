@@ -7,24 +7,24 @@ local beast_claw = require("../../weapons/beast-claw/weapon")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "gregar-beast",
+    id = "bn6:gregar-beast",
     kind = "beast",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
     game = "gregar",
-    sprite = asset.sprite("gregar-beast"),
+    sprite = asset.sprite("bn6:gregar-beast"),
     element = "null",
     buster_bonus = 0,
     weapons = { buster = gregar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = beast_claw.weapon },
     -- Its faces in the emotion window, and in Full Synchro (`byte_801E700`): the
     -- Falzar ROM has no Gregar Beast face, and shows Falzar's.
-    mugshot = { normal = asset.mugshot("gregar-beast"), full_synchro = asset.mugshot("gregar-beast-full-synchro") },
+    mugshot = { normal = asset.mugshot("bn6:gregar-beast"), full_synchro = asset.mugshot("bn6:gregar-beast-full-synchro") },
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
     null_bonus = 30,
     -- The chips A charges.
     charged_chips = { { family = "null", damaging = false } },
     -- What its status reset gives the navi (`sub_8014536`).
-    status_reset = { "super_armor", "lockon_marker" },
+    status_reset = { "super_armor", "target_marker" },
     -- The Cross special's buster volley (`sub_802D4F0`).
     special_volley = 2,
     -- The buster arm it raises (lib/buster).

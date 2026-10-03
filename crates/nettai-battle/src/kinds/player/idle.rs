@@ -7,7 +7,7 @@
 
 use super::actions::movement::{self, MoveKind};
 use super::{
-    Emotion, ai, ai_mut, cross_protected, emotion, exit_attack_state, flag1, form_of,
+    Emotion, ai, ai_mut, switch_protected, emotion, exit_attack_state, flag1, form_of,
     is_link, reset_charge, set_attack, stats, stats_mut,
 };
 use crate::actor::{request, status};
@@ -42,10 +42,10 @@ fn battle_over(b: &mut Battle, r: ObjectRef) {
     // sub_801DACC(0x42): the console's chip icons and window go, whichever
     // navi this is.
     b.chip_hud = Default::default();
-    if cross_protected(b, r) {
+    if switch_protected(b, r) {
         // (The original stores 1 in the attack's variant byte first; the
         // action it starts doesn't use it.)
-        let protect = super::role_action(b, r, crate::content::ActionRole::CrossProtect);
+        let protect = super::role_action(b, r, crate::content::ActionRole::SwitchProtect);
         return set_attack(b, r, protect, 0);
     }
     b.objects.get_mut(r).anim = 0;
@@ -62,20 +62,27 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
     b.chip_hud[side].window = super::input::chips_enabled(b, r);
     phase_timer(b, r);
-    // Beast Over: the berserk controller decides.
-    if form_of(b, r).kind.is_beast_over() {
-        use super::berserk::Outcome;
-        match super::berserk::control(b, r) {
-            Outcome::Nothing | Outcome::Moved => {}
-            Outcome::Chip => {
+    // A controlled form (BN6's Beast Over): the side's systems' controller
+    // decides (`sub_802D322`, the berserk).
+    if form_of(b, r).traits.has(crate::content::FormTraits::CONTROLLED) {
+        match b.systems_controller(side as u8, r) {
+            // A chip's use started: the hand's (1), or the attack's own (4).
+            1 => {
                 let chip = super::next_chip(b, r);
                 after_chip(b, r, chip);
             }
-            Outcome::Buster => {
+            4 => {
+                let chip = ai(b, r).attack.chip;
+                after_chip(b, r, chip);
+            }
+            // The buster.
+            2 => {
                 leave_idle(b, r);
                 let action = buster_routine(b, r);
                 set_attack(b, r, action, 1);
             }
+            // Nothing, or a step started.
+            _ => {}
         }
         return;
     }
@@ -85,23 +92,27 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     if b.sides[side].select_special != 0 {
         return select_special(b, r);
     }
-    if b.sides[side].cross_special != 0 {
-        if b.sides[side].cross_special_ticks == 0 {
-            b.sides[side].cross_special = 0;
-            return set_attack(b, r, super::EngineAction::CrossSpecial, 0);
-        }
-        use super::berserk::Outcome;
-        match super::berserk::cross_special(b, r) {
-            Outcome::Nothing | Outcome::Moved => {}
-            Outcome::Chip => {
+    // A system's takeover (BN6's Cross special, `sub_802D4C6`): the side's
+    // systems' `takeover` decides, and ends it.
+    if b.sides[side].takeover != 0 {
+        match b.systems_takeover(side as u8, r) {
+            // A chip's use started: the hand's (1), or the attack's own (4).
+            1 => {
+                let chip = super::next_chip(b, r);
+                after_chip(b, r, chip);
+            }
+            4 => {
                 let chip = ai(b, r).attack.chip;
                 after_chip(b, r, chip);
             }
-            Outcome::Buster => {
+            // The buster.
+            2 => {
                 leave_idle(b, r);
                 let action = buster_routine(b, r);
                 set_attack(b, r, action, 1);
             }
+            // Nothing, or a step started.
+            _ => {}
         }
         return;
     }
@@ -204,13 +215,12 @@ fn start_specials(b: &mut Battle, r: ObjectRef) {
         b.sides[side].select_special = 1;
         clear_special_selection(b, r);
     }
-    if ai(b, r).requests & request::CROSS_SPECIAL != 0 {
-        ai_mut(b, r).requests &= !request::CROSS_SPECIAL;
-        b.sides[side].cross_special = 1;
+    // A takeover asked for (BN6's Cross special): the side's systems start
+    // it (`takeover_requested`).
+    if ai(b, r).requests & request::TAKEOVER != 0 {
+        ai_mut(b, r).requests &= !request::TAKEOVER;
         clear_special_selection(b, r);
-        b.sides[side].cross_special_ticks = 0x1E0;
-        super::set_invulnerable(b, r, 0xFFFF);
-        super::berserk::reset(b, r);
+        b.systems_takeover_requested(side as u8, r);
     }
 }
 
@@ -381,7 +391,7 @@ fn intercepted_by(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>, beat: 
         return false;
     }
     // The attack's chip; none reads as the pack's chip 0.
-    let record = b.content.chip_field(chip).clone();
+    let record = b.chip_field(chip).clone();
     let other = b.objects.get(r).alliance ^ 1;
     let support = match b.stats[other as usize].support {
         Some(opp) if beat && opp.beat && matches!(record.class, ChipClass::Mega | ChipClass::Giga) => {
@@ -500,14 +510,15 @@ pub(crate) fn start_move(b: &mut Battle, r: ObjectRef, dir: u8) {
     movement::start(b, r, dir, lag, kind);
 }
 
-/// `sub_8010332`: ticks of lag at the end of a move (4 for MegaMan).
+/// `sub_8010332`: ticks of lag at the end of a move (4 for MegaMan, but
+/// in a form with its own: BN5's ShadowSoul's 0, 0x0800E0D2).
 fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
     if super::battle_mode(b) == 9 {
         return 1;
     }
     let s = stats(b, r);
     if super::is_megaman(b, r) {
-        return 4;
+        return super::form_of(b, r).move_lag.unwrap_or(4) as u16;
     }
     b.content.navi(s.navi).move_lag[s.navi_variant as usize] as u16
 }

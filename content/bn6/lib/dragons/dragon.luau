@@ -12,7 +12,7 @@ local trajectory = require("../trajectory")
 
 local dragon = {}
 
-local SPRITE = asset.sprite("dragon")
+local SPRITE = asset.sprite("bn6:dragon")
 -- A panel's width, 16.16.
 local PANEL_WIDTH = 0x28_0000
 -- How far it climbs past the top row before it is gone, by leg
@@ -34,7 +34,7 @@ function dragon.variant(v: DragonVariant): DragonVariant
 end
 
 -- Its look: the dragon sprite at animation `anim` in the variant's
--- colours, on its panel, 36 pixels lower (the game subtracts from Z's
+-- colors, on its panel, 36 pixels lower (the game subtracts from Z's
 -- whole part with a halfword store, which keeps the fraction).
 function dragon.place(me: Object, v: DragonVariant, anim: number)
     local sprite = me.sprite

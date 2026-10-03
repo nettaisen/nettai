@@ -6,20 +6,20 @@ local charge = require("./charge")
 local groundman = require("./chip")
 
 return define.navi {
-    id = "groundman",
-    sprite = asset.sprite("groundman"),
+    id = "bn6:groundman",
+    sprite = asset.sprite("bn6:groundman"),
     element = "null",
     weakness = { "cursor" },
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("groundman-win"), lose = asset.banner("groundman-deleted") },
+    banners = { win = asset.banner("bn6:groundman-win"), lose = asset.banner("bn6:groundman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`).
-    mugshot = asset.mugshot("groundman"),
+    mugshot = asset.mugshot("bn6:groundman"),
     merge_height = 0,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("groundman-portrait"),
+        portrait = asset.sprite("bn6:groundman-portrait"),
     },
     own_chip = { chip = groundman, code = "G" },
     chip_bonus = {
@@ -27,7 +27,7 @@ return define.navi {
         dimming_chips = false,
         by_level = { 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 },
     },
-    -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
+    -- What a navi switch brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },
@@ -44,7 +44,7 @@ return define.navi {
         -- What he wears over his body.
         parts = {
             body = {
-                sprite = asset.sprite("groundman-overlay"),
+                sprite = asset.sprite("bn6:groundman-overlay"),
                 anims = 60,
                 behind = { { 0x00, 0x27 }, { 0x3B, 0x3B } },
             },

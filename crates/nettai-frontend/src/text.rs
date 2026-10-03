@@ -83,7 +83,7 @@ pub fn columns(width: usize) -> usize {
 
 /// Draw `text` at (x, y) into a BGR555 frame of the given width, over a
 /// dark box. Lines wrap at the frame edge.
-pub fn draw(frame: &mut [u16], width: usize, x: usize, y: usize, text: &str, colour: u16) -> usize {
+pub fn draw(frame: &mut [u16], width: usize, x: usize, y: usize, text: &str, color: u16) -> usize {
     let height = frame.len() / width;
     let cols = columns(width.saturating_sub(x)).max(1);
     let mut lines = 0;
@@ -110,7 +110,7 @@ pub fn draw(frame: &mut [u16], width: usize, x: usize, y: usize, text: &str, col
                         if bits & (4 >> col) != 0 {
                             let px = x + 1 + i * 4 + col;
                             if px < width {
-                                frame[(ly + 1 + row) * width + px] = colour;
+                                frame[(ly + 1 + row) * width + px] = color;
                             }
                         }
                     }

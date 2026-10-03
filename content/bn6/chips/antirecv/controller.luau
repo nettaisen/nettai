@@ -67,7 +67,7 @@ end
 
 -- `sub_80E3728` (states) and `sub_80E3748` (`off_80E375C`, by action).
 controller.kind = define.kind {
-    id = "antirecv/controller",
+    id = "bn6:antirecv/controller",
     pool = "effect",
     state = { busy = "bool" },
     update = dimming_chips.phases { name = "AntiRecv's counterattack", effect = effect },

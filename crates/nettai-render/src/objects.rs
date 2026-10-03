@@ -147,8 +147,8 @@ pub fn project_hud(pos: (i32, i32, i32), view: &View) -> Projected {
     Projected { x: if view.mirror { p.x + 2 * cx } else { p.x }, ..p }
 }
 
-/// A colour shader (`sprite_setColorShader`, applied by `sub_3005EF0`):
-/// bit 15 clear adds the colour to every palette entry, set subtracts it,
+/// A color shader (`sprite_setColorShader`, applied by `sub_3005EF0`):
+/// bit 15 clear adds the color to every palette entry, set subtracts it,
 /// per channel and saturating.
 pub fn shade(mut p: Palette, shader: u16) -> Palette {
     if shader == 0 {

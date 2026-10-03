@@ -36,7 +36,7 @@ local WAIT, SHOOT, RECOVER = 0x0, 0x4, 0x8
 -- The wait before the buster comes up, in ticks.
 local WAIT_TICKS = 5
 -- The shot's sound and height (16.16).
-local SHOT_SOUND, SHOT_Z = asset.sound("buster-shot"), 0x18_0000
+local SHOT_SOUND, SHOT_Z = asset.sound("bn6:buster-shot"), 0x18_0000
 
 -- The charged-shot programs that come on 1 draw in 8 (the others on 1 in
 -- 2): the original's rows 9 and 0x23.
@@ -149,13 +149,13 @@ local function update(me: Object, s: State)
 end
 
 charged_shot.action = define.action {
-    id = "megaman/charged-shot/action",
+    id = "bn6:megaman/charged-shot/action",
     state = { timer = "u16", projectile = "record:projectile-variant" },
     update = update,
 }
 
 charged_shot.weapon = define.weapon {
-    id = "megaman/charged-shot",
+    id = "bn6:megaman/charged-shot",
     -- The charge table's row 1; Charge 5 reads on into row 2's first
     -- entry, as the original's table does.
     charge_ticks = { 100, 90, 80, 70, 60, 180 },

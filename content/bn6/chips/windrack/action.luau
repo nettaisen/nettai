@@ -27,17 +27,17 @@ action.STATE = { timer = "u16" }
 -- What the navi swings: WindRack's rack (the original's attachment row
 -- 0x2A, variant 0) and TenguCross's fan (row 0x33, the other variants).
 action.racks = {
-    wind_rack = attachment.look { sprite = asset.sprite("wind-rack"), palette = 0 },
-    tengu_fan = attachment.look { sprite = asset.sprite("tengu-fan"), palette = 0 },
+    wind_rack = attachment.look { sprite = asset.sprite("bn6:wind-rack"), palette = 0 },
+    tengu_fan = attachment.look { sprite = asset.sprite("bn6:tengu-fan"), palette = 0 },
 }
 
 -- The phases, on the attack's step.
 local SWING, RECOVER = 0x0, 0x4
 
 local ANIM_SWING = 5
-local SOUND = asset.sound("windrack")
+local SOUND = asset.sound("bn6:windrack")
 -- The swirl around the navi (effect 0x44), 16 pixels up on its panel.
-local SWIRL = define.effect { sprite = asset.sprite("swirl"), anim = 0, palette = 0 }
+local SWIRL = define.effect { sprite = asset.sprite("bn6:swirl"), anim = 0, palette = 0 }
 local HEIGHT = 0x10_0000
 -- The phase's ticks, and the tick (timer value) the swing lands.
 local SWING_TICKS, HIT_AT = 0x15, 0x0C

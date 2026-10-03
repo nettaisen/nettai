@@ -10,7 +10,7 @@ local charge = require("./charge")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "tengucross-beast",
+    id = "bn6:tengucross-beast",
     kind = "cross_beast",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -18,7 +18,7 @@ return define.form {
     cross_of = tenguman,
     -- A weakness hit breaks the Cross: back to the Beast.
     breaks_to = falzar_beast,
-    sprite = asset.sprite("tengucross-beast"),
+    sprite = asset.sprite("bn6:tengucross-beast"),
     element = "null",
     weakness = { "sword" },
     buster_bonus = 0,
@@ -28,7 +28,7 @@ return define.form {
         a_charge = charged_chip_bonus,
         alt_a_charge = charge.weapon,
     },
-    mugshot = asset.mugshot("tengucross-beast"),
+    mugshot = asset.mugshot("bn6:tengucross-beast"),
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "wind", damage = 10 },
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
@@ -36,7 +36,7 @@ return define.form {
     -- The chips A charges.
     charged_chips = { { family = "null", damaging = false } },
     -- What its status reset gives the navi (`sub_8014536`).
-    status_reset = { "air_shoes", "float_shoes", "floating_body", "lockon_marker" },
+    status_reset = { "air_shoes", "float_shoes", "floating_body", "target_marker" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 20,
     traits = { "special_holds_buster" },
@@ -51,7 +51,7 @@ return define.form {
         aura_anim = 13,
         ice = "medium",
         -- The beast's head, in the Cross's palette.
-        parts = { beast_head = { sprite = asset.sprite("beast-head"), palette = 6 } },
+        parts = { beast_head = { sprite = asset.sprite("bn6:beast-head"), palette = 6 } },
         attach_points = {
             { 4, 16 },
             { 4, 24 },

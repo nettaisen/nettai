@@ -9,7 +9,7 @@ local charge = require("./charge")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "spoutcross-beast",
+    id = "bn6:spoutcross-beast",
     kind = "cross_beast",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -17,11 +17,11 @@ return define.form {
     cross_of = spoutman,
     -- A weakness hit breaks the Cross: back to the Beast.
     breaks_to = falzar_beast,
-    sprite = asset.sprite("spoutcross-beast"),
+    sprite = asset.sprite("bn6:spoutcross-beast"),
     element = "aqua",
     buster_bonus = 0,
     weapons = { buster = falzar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = charge.weapon },
-    mugshot = asset.mugshot("spoutcross-beast"),
+    mugshot = asset.mugshot("bn6:spoutcross-beast"),
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
     null_bonus = 30,
     -- The chips A charges.
@@ -30,7 +30,7 @@ return define.form {
     charge_doubles = { element = "aqua" },
     chip_heals = { element = "aqua" },
     -- What its status reset gives the navi (`sub_8014536`).
-    status_reset = { "air_shoes", "float_shoes", "floating_body", "lockon_marker" },
+    status_reset = { "air_shoes", "float_shoes", "floating_body", "target_marker" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 18,
     -- The buster arm it raises (lib/buster).
@@ -44,7 +44,7 @@ return define.form {
         aura_anim = 13,
         ice = "medium",
         -- The beast's head, in the Cross's palette.
-        parts = { beast_head = { sprite = asset.sprite("beast-head"), palette = 2 } },
+        parts = { beast_head = { sprite = asset.sprite("bn6:beast-head"), palette = 2 } },
         attach_points = {
             { 4, 16 },
             { 4, 24 },

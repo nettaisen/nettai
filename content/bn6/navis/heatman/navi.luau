@@ -6,20 +6,20 @@ local charge = require("./charge")
 local heatman = require("./chip")
 
 return define.navi {
-    id = "heatman",
-    sprite = asset.sprite("heatman"),
+    id = "bn6:heatman",
+    sprite = asset.sprite("bn6:heatman"),
     element = "fire",
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("heatman-win"), lose = asset.banner("heatman-deleted") },
+    banners = { win = asset.banner("bn6:heatman-win"), lose = asset.banner("bn6:heatman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`): the Falzar ROM has no
     -- HeatMan face, and shows SpoutMan's.
-    mugshot = asset.mugshot("heatman"),
+    mugshot = asset.mugshot("bn6:heatman"),
     merge_height = 8,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("heatman-portrait"),
+        portrait = asset.sprite("bn6:heatman-portrait"),
     },
     own_chip = { chip = heatman, code = "H" },
     chip_bonus = {
@@ -27,7 +27,7 @@ return define.navi {
         dimming_chips = false,
         by_level = { 0, 0, 0, 0, 0, 0, 0, 30, 30, 30, 30, 40, 40, 40, 50 },
     },
-    -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
+    -- What a navi switch brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },
@@ -44,7 +44,7 @@ return define.navi {
         -- What he wears over his body; a flinch restarts it too.
         parts = {
             body = {
-                sprite = asset.sprite("heatman-overlay"),
+                sprite = asset.sprite("bn6:heatman-overlay"),
                 anims = 160,
                 behind = { { 0x15, 0x17 }, { 0x22, 0x23 }, { 0x3B, 0x4F }, { 0x64, 0x8B }, { 0x9F, 0x9F } },
             },

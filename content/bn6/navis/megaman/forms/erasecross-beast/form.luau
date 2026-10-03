@@ -9,7 +9,7 @@ local drop = require("./drop")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "erasecross-beast",
+    id = "bn6:erasecross-beast",
     kind = "cross_beast",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -17,14 +17,14 @@ return define.form {
     cross_of = eraseman,
     -- A weakness hit breaks the Cross: back to the Beast.
     breaks_to = gregar_beast,
-    sprite = asset.sprite("erasecross-beast"),
+    sprite = asset.sprite("bn6:erasecross-beast"),
     element = "null",
     weakness = { "wind" },
     buster_bonus = 0,
     weapons = { buster = gregar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = drop.weapon },
     -- Its face in the emotion window (`byte_801E700`): the Falzar ROM has no
     -- EraseCross Beast face, and shows GroundCross Beast's.
-    mugshot = asset.mugshot("erasecross-beast"),
+    mugshot = asset.mugshot("bn6:erasecross-beast"),
     -- The damage it adds to its family's damaging chips (dimming chips too).
     chip_bonus = { family = "cursor", damage = 30, dimming_chips = true },
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
@@ -32,7 +32,7 @@ return define.form {
     -- The chips A charges.
     charged_chips = { { family = "null", damaging = false } },
     -- What its status reset gives the navi (`sub_8014536`).
-    status_reset = { "super_armor", "lockon_marker", "invulnerable", "berserk" },
+    status_reset = { "super_armor", "target_marker", "invulnerable", "berserk" },
     -- After a NaviCust change only the SuperArmor comes back (`sub_801469C`).
     navicust_refresh = { "super_armor" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.

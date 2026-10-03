@@ -136,6 +136,7 @@ fn unlocks_from_flags(version: GameVersion, flags: &[u8]) -> Unlocks {
         // (A save names no Crosses of its own: the window offers the
         // version's.)
         cross_list: None,
+        souls: Default::default(),
     }
 }
 
@@ -784,7 +785,7 @@ fn console_z(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, g
     }
     let drop = |d: nettai_battle::object::ObjectRef| {
         let d = b.objects.get(d);
-        compat.games.drop_z_offset(game, nettai_content_api::keys::local(&b.content.defs.kind(d.kind).key), d.pos.z, d.timer)
+        compat.games.drop_z_offset(game, &b.content.defs.kind(d.kind).key, d.pos.z, d.timer)
     };
     let offset = match drop(r) {
         0 => o.related[0].map_or(0, drop),
@@ -811,10 +812,10 @@ fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, un
         index,
         o.flags,
         [o.state, action, o.phase, o.phase_init],
-        [o.panel.x, compat.games.panel_y(game, nettai_content_api::keys::local(&b.content.defs.kind(o.kind).key), o.panel.y)],
+        [o.panel.x, compat.games.panel_y(game, &b.content.defs.kind(o.kind).key, o.panel.y)],
         o.alliance,
         [o.hp, o.max_hp],
-        [compat.games.x(game, nettai_content_api::keys::local(&b.content.defs.kind(o.kind).key), o.pos.x), o.pos.y, console_z(b, compat, r, game)],
+        [compat.games.x(game, &b.content.defs.kind(o.kind).key, o.pos.x), o.pos.y, console_z(b, compat, r, game)],
         o.timer,
         o.anim,
         status,
@@ -892,10 +893,14 @@ pub struct ScreenCheck {
 /// simulated: each screen reads its navi's stats from the trace, and the
 /// emotions the screen asks about from them (`screen_emotion`). Damage
 /// from a formula is not checked (it needs the battle).
-pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -> Vec<ScreenCheck> {
+pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Compat) -> Vec<ScreenCheck> {
     let ids = Ids::new(content, compat);
     let frames: Vec<&Frame> = round.battle_frames().collect();
     let setup = round.round_setup(content, compat);
+    // A battle for the screens' extras (the sides' systems' `custom`
+    // hooks): their state through the round, and the stats and turn each
+    // screen reads, set from the trace as it opens.
+    let mut battle = Battle::new(setup.clone(), content.clone());
     let mut sides: [Option<Side>; 2] =
         std::array::from_fn(|p| round.folder_known(p as u8).then(|| Side::new(&setup.players[p])));
     // Each console's RNG as far as the screens alone go: its draws outside
@@ -928,7 +933,7 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
                 .any(|e| content.form(navi_stats(&e.navi_stats[p], &ids).form).kind.is_beast_over());
             let emotion = screen_emotion(&stats, content, beast_over_before);
             Context {
-                library: content,
+                library: &**content,
                 stats,
                 emotion,
                 turn: unhex(&f.bs)[7],
@@ -949,7 +954,10 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
         if custom && f.state[3] == 1 && prev_init == Some(0) {
             for (p, side) in sides.iter_mut().enumerate() {
                 if let Some(side) = side {
-                    side.open(&context(p), &mut consoles[p]);
+                    let ctx = context(p);
+                    battle.stats[p] = ctx.stats;
+                    battle.round.turn = ctx.turn;
+                    side.open_with(&ctx, &mut consoles[p], &mut battle.custom_extras(p as u8));
                 }
             }
             open = Some((f.frame, [None; 2], [None; 2]));
@@ -960,10 +968,14 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
             for (p, side) in sides.iter_mut().enumerate() {
                 let Some(side) = side else { continue };
                 let was_open = side.in_custom;
-                let request = side.tick(&context(p), &mut consoles[p], |id| {
+                let ctx = context(p);
+                battle.stats[p] = ctx.stats;
+                battle.round.turn = ctx.turn;
+                let damage = |id| {
                     let d = content.chip(id).damage;
                     if d < 1000 { d } else { 0 }
-                });
+                };
+                let request = side.tick_with(&ctx, &mut consoles[p], damage, &mut battle.custom_extras(p as u8));
                 if request == Some(Request::Confirm) {
                     confirmed[p] = Some(f.frame);
                 }
@@ -1071,10 +1083,10 @@ mod tests {
         for t in 1..=10 {
             let z = drop(ours, t);
             let timer = (10 - t) as u16;
-            assert_eq!(z + games.drop_z_offset(Game::JpGregar, "django/navi", z, timer), drop(theirs, t), "tick {t}");
-            assert_eq!(games.drop_z_offset(Game::JpFalzar, "django/navi", z, timer), 0);
+            assert_eq!(z + games.drop_z_offset(Game::JpGregar, "bn6:django/navi", z, timer), drop(theirs, t), "tick {t}");
+            assert_eq!(games.drop_z_offset(Game::JpFalzar, "bn6:django/navi", z, timer), 0);
         }
-        assert_eq!(games.drop_z_offset(Game::JpGregar, "django/navi", drop(ours, 1), 9), 5616);
+        assert_eq!(games.drop_z_offset(Game::JpGregar, "bn6:django/navi", drop(ours, 1), 9), 5616);
         assert_eq!(drop(ours, 10), drop(theirs, 10));
     }
 }

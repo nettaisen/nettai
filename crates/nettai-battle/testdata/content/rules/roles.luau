@@ -6,17 +6,15 @@
 
 local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
 local barriers = require("../lib/barriers/barriers")
-local beast_claw = require("../navis/megaman/weapons/beast-claw/weapon")
+local beast_rush = require("./beast/rush")
 local beast_out = require("../chips/beastout/chip")
 local charged_shot = require("../navis/megaman/weapons/charged-shot/weapon")
 local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatter")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
 local invalid = require("../chips/invalid/chip")
-local lockon = require("./lockon")
 local ruleset = require("./ruleset")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
-local slash_charge = require("../navis/megaman/forms/slashcross/charge")
 local stun_strike = require("../lib/swords/stun_strike")
 local statuses = require("./status")
 local supports = require("../lib/supports/controller")
@@ -24,23 +22,22 @@ local test_chips = require("../chips/test/chips")
 local turn = require("../navis/megaman/turn")
 
 return define.roles {
+    id = "test:roles",
     actions = {
         forced_charged_shot = charged_shot.action,
         -- The strike the navi's request 0x80000 starts from idle (a
         -- machine sword's).
         stun_strike = stun_strike.action,
-        -- What a Cross navi protected at the battle's end runs
+        -- What a switched-in navi protected at the battle's end runs
         -- (GroundCross's drill).
-        cross_protect = ground_drill.action,
+        switch_protect = ground_drill.action,
         -- The turn L or R starts where turning is enabled.
         turn = turn.action,
-        -- A Cross navi's knock-out (SlashCross Beast's lunge).
-        cross_death = slash_beast_lunge.action,
+        -- A switched-in navi's knock-out (SlashCross Beast's lunge).
+        switch_knockout = slash_beast_lunge.action,
         -- (The volley's role isn't filled, as in BN6.)
-        -- SlashCross's charged slash, which the Beast rush recognizes.
-        charged_sword = slash_charge.action,
-        -- The Beast forms' charged claw.
-        beast_claw = beast_claw.action,
+        -- BN6's Beast Out rush.
+        wrapper = beast_rush.action,
         -- DustCross Beast's scatter, during which the navi isn't grounded.
         dust_beast_scatter = dust_beast_scatter.action,
     },
@@ -65,9 +62,6 @@ return define.roles {
         ice_freeze = statuses.freeze_150,
         hit_bug_blind = statuses.blind_1200,
         hit_bug_confuse = statuses.confuse_960,
-    },
-    lockon = {
-        beast_claw = lockon.beast_claw,
     },
     effects = ruleset.effects,
     sparks = ruleset.sparks,

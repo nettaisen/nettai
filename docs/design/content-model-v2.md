@@ -38,7 +38,7 @@ the original's numbers (§6). Routine names are the original's. "Dimming", "cut-
   table row appears in logic.
 - **Composition replaces the subtype tables.** The original's "one handler plus a table indexed by subtype"
   becomes a library builder each chip calls with its own parameters: MiniBomb's module composes the throw action
-  with the bomb it holds and the bomb it throws. Object kinds stay one per behaviour; builders parameterize them
+  with the bomb it holds and the bomb it throws. Object kinds stay one per behavior; builders parameterize them
   through the kind's typed state (§5).
 - **Colocation.** A kind used by one chip, navi or form lives in its folder; kinds a family shares live in the
   family's `lib/` folder; `objects/` keeps only the 13 kinds that several families share. Folders are named by
@@ -83,7 +83,7 @@ the original's numbers (§6). Routine names are the original's. "Dimming", "cut-
 
 What does not change: the core and the ruleset stay Rust; Luau stays the only content runtime, stateless over
 engine-owned typed state; the sandbox, the verifier and freezing; `Battle: Clone`, snapshots and the digest;
-the frame-exact behaviour of everything already ported.
+the frame-exact behavior of everything already ported.
 
 ## 2. Identity: keys, registries and handles
 
@@ -120,24 +120,32 @@ the content state store is keyed by.
 
 ### 2.2 Keys
 
-A key is a string unique within its registry.
+A key is a string unique within its registry. The content is one namespace (rules-in-luau.md §7.2, the user,
+2026-10-02: "maybe you should just have it all in a flat namespace and then in the chip ids directly have
+bn6:cannon or whatever"): every key is written in full, its game first and then its own part, `bn6:minibomb`,
+wherever it is written (modules, compat, locale tables, setups, match files, tests). The loader refuses an id
+without its game. The rules below are for the part after the game.
 
-- **Required keys** (`id = "..."`) for what is named from outside content: setups, folders, compat, tools, the
-  frontend. Lowercase ASCII letters and digits in `-`-separated words, optionally qualified with `/` by an owner:
-  `minibomb`, `atk-10`, `erasemn-ex`, `heatcross-beast`, `megaman/buster`, `eraseman/mark`. The generator (§9)
-  makes chip keys from the in-game name (`M-Cannon` is `m-cannon`, `GrndMan[EX]` is `grndman-ex`, `Atk+10` is
-  `atk-10`); where two records share a name (StepSwrd, WhiCapsl, BeastOut) or have none, it picks a
-  key from the record's use and lists them in compat/curation.toml for review (§13).
+- **Required keys** (`id = "bn6:..."`) for what is named from outside content: setups, folders, compat, tools,
+  the frontend. Lowercase ASCII letters and digits in `-`-separated words, optionally qualified with `/` by an
+  owner: `bn6:minibomb`, `bn6:atk-10`, `bn6:erasemn-ex`, `bn6:heatcross-beast`, `bn6:megaman/buster`,
+  `bn6:eraseman/mark`. The generator (§9) makes chip keys from the in-game name (`M-Cannon` is `m-cannon`,
+  `GrndMan[EX]` is `grndman-ex`, `Atk+10` is `atk-10`); where two records share a name (StepSwrd, WhiCapsl,
+  BeastOut) or have none, it picks a key from the record's use and lists them in compat/curation.toml for review
+  (§13).
 - **Derived keys** for definitions made inside another definition's module and nested in it: `<owner key>/<field
-  path>`. MiniBomb's action is `minibomb/action`; the bomb variant it throws is `minibomb/action/args/thrown`.
-  A definition made while module `M` loads and not nested in a keyed definition of `M` is `M#n`, its place among
-  `M`'s definitions (`lib/bombs/throw#1`). Owner-derived keys are stable under edits elsewhere and readable in
+  path>`. MiniBomb's action is `bn6:minibomb/action`; the bomb variant it throws is
+  `bn6:minibomb/action/args/thrown`. A definition made while module `M` loads and not nested in a keyed definition
+  of `M` is `M#n`, its place among `M`'s definitions (`bn6:lib/bombs/throw#1`, the module named by its folder). Owner-derived keys are stable under edits elsewhere and readable in
   messages and trace diffs; `M#n` keys shift when `M` gains a definition, which matters only to compat (an
   action compat maps takes an explicit `id`, §3.5). Nothing else stores a derived key.
 - Kind keys follow a convention the checker warns about: a kind colocated with an owner is qualified by it
-  (`eraseman/mark`, `grab/shot`); a kind in `objects/` or a family library is plain (`projectile`, `bomb`).
+  (`bn6:eraseman/mark`, `bn6:grab/shot`); a kind in `objects/` or a family library is plain (`bn6:projectile`,
+  `bn6:bomb`).
 - The engine's own kinds and navi actions have keys in the `engine/` namespace (`engine/hitbox`, `engine/effect`,
-  `engine/player`, `engine/move`, `engine/dimming-chip`), registered by the ruleset, not by content.
+  `engine/player`, `engine/move`, `engine/dimming-chip`), registered by the ruleset, not by content: of no game.
+- **Asset names are written in full too** (the user: "so loading assets must also be fully qualified as well"):
+  `asset.sprite("bn6:bomb")`, the pack's game and the pack's own name for the asset.
 
 ### 2.3 Handles and the intern order
 
@@ -384,7 +392,7 @@ A weapon's `setup` returns an action definition, which may be its own (the buste
 
 Charge times past a weapon's own row are materialized. The original reads a Charge stat above 4 from the next
 routine's row; the generator writes those values into the weapon's own list, so no definition depends on its
-neighbour. The same rule applies wherever the original reads past a table into the next entry: the value is
+neighbor. The same rule applies wherever the original reads past a table into the next entry: the value is
 written where it is used, with a comment naming the quirk.
 
 **As built** (step 11, weapons). A weapon is its definition and nothing else: no routine number reaches the
@@ -440,13 +448,13 @@ export type KindSpec<S> = {
 }
 ```
 
-A kind is one behaviour, one per original object routine. What differs between its uses goes into its state
+A kind is one behavior, one per original object routine. What differs between its uses goes into its state
 when it is spawned. State fields gain reference types that hold handles: `"chip"`, `"kind"`, `"action"`,
 `"effect"`, `"spark"`, `"region"`, `"sound"`, `"sprite"`, `"record"` (any record), `"record:<type>"` (records of one
 type). A field of a reference type reads back as the definition (a frozen table) or nil. So `me:param(1)` goes:
 the spawner writes `s.variant = variant`, and the kind reads `s.variant.palette`.
 
-The pool is part of the kind's definition because it is behaviour: it decides the update order and which slot
+The pool is part of the kind's definition because it is behavior: it decides the update order and which slot
 limit a spawn hits. The index within the pool is compat.
 
 ### 3.5 Actions
@@ -607,7 +615,7 @@ return define.rules("elements", {
 | `lockon` | rules/lockon.luau | column shifts, the clear path, the charged sword's modes; modes are `define.lockon` (rules/lockon.toml) |
 | `berserk` | rules/berserk.luau | Beast Over's berserk panel rules (rules/berserk.toml) |
 | `math` | rules/math.luau | the sine table (rules/math.toml) |
-| `custom_screen` | rules/custom-screen.luau | the slot grid and neighbour scans (rules/custom-screen.toml) |
+| `custom_screen` | rules/custom-screen.luau | the slot grid and neighbor scans (rules/custom-screen.toml) |
 | `buster` | rules/buster.luau | recovery by Rapid and open panels; the empty hand's chip (rules/weapons.toml) |
 | `banners` | rules/banners.luau | which banners hold until removed, by banner asset (rules/banners.toml) |
 
@@ -664,7 +672,7 @@ from the definition. Its name is the locales' (`[patch-cards]`).
 
 ```text
 content/bn6/
-  root.toml  types.d.luau            the root's manifest and shared types (the API: content/nettai/core.d.luau)
+  types.d.luau                        the game's shared types (the API: content/nettai/core.d.luau)
   chips/<id>/                         one chip: chip.luau, and kinds only it uses
   chips/<series>/                     a series (X1-X3, Hi-/M-, EX/SP, Recov*, the upgrades of one chip): all of them
   navis/megaman/                      navi.luau; kinds and weapons several forms share
@@ -835,7 +843,7 @@ several forms do), with the 17 `NN-buster` alias folders gone (compat names the 
 
 Each pattern below replaces a table indexed by subtype or by a spawn parameter. A builder is a function in a
 `lib/` module that returns a definition (an action, a hook, a record) made from its arguments; the chip module
-calls it with the chip's own parameters. Builders share one state table per behaviour (§3.5) and one kind per
+calls it with the chip's own parameters. Builders share one state table per behavior (§3.5) and one kind per
 original object (§3.4).
 
 ### 5.1 Bombs: an action, a thrown kind, variants
@@ -1083,7 +1091,7 @@ chips (as built since step 10: `picks` and `sword` are the chips, and the attack
 the family shares, and the blade's animation and palette by the navi's arm; `slash`: action 0x13's builder;
 `strike`: action 0x49's; `vari`: the variable swords' library, moved from lib/vari_sword), and a folder per
 chip. `SlashSpec` and `StrikeSpec` are in types.d.luau; DblDream's two swings, CrosSwrd's second hit,
-StepSwrd's step and the elemental swords' colours are arguments (`swings`, `second_hit`, `step`,
+StepSwrd's step and the elemental swords' colors are arguments (`swings`, `second_hit`, `step`,
 `effect_palette`), and each chip's blade is an attachment look. What it settled:
 
 - **Which chips are definitions.** StepSwrd, FtrSword, CrosSwrd, DblDream, MchnSwrd, ElemSwrd and AssnSwrd.
@@ -1411,7 +1419,7 @@ return define.chip { id = "busterup", -- ...
 ```
 
 The plus chips (subtype 3, `sub_8010488`) compose `lib/instant/plus.luau`: `instant = plus.attack(10)` for
-Atk+10, `plus.navi(20)` for Navi+20; their custom-screen behaviour is the chip's `modifier`, as today. A weapon
+Atk+10, `plus.navi(20)` for Navi+20; their custom-screen behavior is the chip's `modifier`, as today. A weapon
 that names an instant effect no chip has (TenguCross's wind, subtype 0x14) calls the effect from its `setup`
 like any other function; there is no instant-effect table any more.
 
@@ -1843,9 +1851,11 @@ by the tools that interoperate with the real game:
 
 ### 6.3 Assets and their names
 
-Content refers to an asset by name, resolved while loading: `asset.sprite("bomb")`, `asset.sound("bomb-hit")`,
-`asset.banner("program-advance")`, `asset.background("netbattle-blue")`, `asset.mugshot("heatcross")`. An unknown
-name is a load error naming the module. The resolved value is a handle into the asset registry; state holds it
+Content refers to an asset by name, written in full (its pack's game first, rules-in-luau.md §7.2), resolved
+while loading: `asset.sprite("bn6:bomb")`, `asset.sound("bn6:bomb-hit")`, `asset.banner("bn6:program-advance")`,
+`asset.background("bn6:netbattle-blue")`, `asset.mugshot("bn6:heatcross")`. An unknown name, or one without its
+game, is a load error naming the module. (The examples elsewhere in this document predate the flat namespace and
+write ids and names without their game.) The resolved value is a handle into the asset registry; state holds it
 (`sprite:load(BOMB)`), and a cue carries it (`battle.play_sound(SOUND)`).
 
 - **Names** come from compat/assets.toml, which the generator writes: the disassembly's song and sound enum names
@@ -2516,7 +2526,7 @@ collision status flags), the panels (type and alliance) and both hands (0x50-byt
 
 Fields that stop existing in the engine, and how the harness treats them:
 
-- **Spawn parameters** (`params` in the trace's objects): not compared today, not modelled in v2. Ignored.
+- **Spawn parameters** (`params` in the trace's objects): not compared today, not modeled in v2. Ignored.
 - **The attack's variant and parameters, the chip's subtype**: in actor data, which the trace doesn't compare.
   Gone; nothing to map.
 - **NameIDs**: not compared. Compat keeps them for the codecs and for tools.
@@ -2596,7 +2606,7 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   Counted by the ratchet (the lint matches `legacy = {` and `legacy {`). StepSwrd, FtrSword, CrosSwrd and
   DblDream carried it for SlashCross's charged slash, which read a chip's subtype and first parameter; since
   step 8e the sword chips' slashes say what the charge needs in a spec field (`charged`, §5.7) and no BN6 chip
-  carries the marker (the test pack's tickers do). The marker's `action` and `script` (a behaviour still a v1
+  carries the marker (the test pack's tickers do). The marker's `action` and `script` (a behavior still a v1
   module) are step 5's; the reader refuses them until then.
 - **The weapon legacy marker.** A weapon definition carried `legacy = { routines = { ... } }`, the routine
   numbers the pack's forms, the navis' rows and the ruleset named it by. *Gone with step 11*: forms and navis
@@ -2674,7 +2684,7 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   action's module), numbered by their legacy marker: `program_advances` names its ingredients by value, and
   the marker carries the number with what the ruleset still reads by it (a damage formula as `damage = 1000 +
   n` with its `sp_damage` or `navi_damage` table, `dark_substitute`, the subtype and parameters). Such a
-  definition's behaviour is the v1 module its marker names (`script`: the shim, which runs the chip's action
+  definition's behavior is the v1 module its marker names (`script`: the shim, which runs the chip's action
   by subtype) or, once its module is folded into it, its own: a numbered definition may carry its own
   `action`, `dimming`, `navi` or `instant` (then without `script`), and what names the chip by number
   (recipes, the Cross special, a navi's own chip) reaches that definition. So a record chip converts by moving
@@ -2717,7 +2727,7 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    chip record names), with their keys in compat actions.toml. **M.**
 5. **Data to Luau.** gen-content writes every chip, navi, form, weapon, rule section, stage and registry entry
    as v2 definitions in the v2 folders (§4), with `legacy { action, subtype, params, script }` markers where a
-   chip's behaviour is still a v1 module; the pack's TOML battle data and bn6-extract's battle.rs go;
+   chip's behavior is still a v1 module; the pack's TOML battle data and bn6-extract's battle.rs go;
    `nettai_content::battle` goes; the loader takes the content and assets roots. Needs step 3b. Gate: the `Content`
    the definitions build equals the one v1 extracted (a one-off field-by-field check, as in the v1 move), `gen-content check`
    passes, the traces hold. Mostly generated. **L.**

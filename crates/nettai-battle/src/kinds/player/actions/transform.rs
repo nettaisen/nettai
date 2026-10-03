@@ -8,10 +8,10 @@
 use crate::actor::status;
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
-use crate::content::{EffectRole, FormKind, SoundRole};
+use crate::content::{EffectRole, SoundRole};
 use super::ActionVars;
 use crate::kinds::player::{
-    ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, coll_mut, exit_attack_state, form, form_of,
+    ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, coll_mut, exit_attack_state, form,
     reset_status, set_mood, snap_to_future_panel, stats, stats_mut,
 };
 use crate::kinds::{effect, full_synchro_aura};
@@ -93,6 +93,15 @@ pub(crate) fn drop_statuses(b: &mut Battle, r: ObjectRef) {
     c.links[link::BUBBLE] = None;
 }
 
+/// BN5's soul change's first step (0x08011FAC): the part of
+/// `sub_80158FA` it does itself (flags 0x1C40, the slide request, the
+/// slide's step).
+pub(crate) fn stop_moving(b: &mut Battle, r: ObjectRef) {
+    clear_flag1(b, r, f1::SLIDING | f1::PARALYZED | f1::FLINCHING | f1::MOVING);
+    clear_flag2(b, r, 0x10);
+    b.objects.get_mut(r).slide_state = 0;
+}
+
 // ---- Reverting ---------------------------------------------------------------
 
 /// `sub_8015614` / `sub_801562C`: back to base MegaMan (the Beast Out ran
@@ -126,7 +135,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).slide_state = 0;
         let current = stats(b, r).form;
         form::take_off_overlay(b, r, current);
-        let base = b.content.base_form();
+        let base = b.content.base_form_for(stats(b, r).navi);
         let sprite = b.content.form(base).sprite;
         let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
         let s = b.objects.sprite_mut(r);
@@ -158,7 +167,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         let a = ai_mut(b, r);
         a.overlay = None;
         // The lock-on marker frees itself once unlinked.
-        a.lockon_marker = None;
+        a.target_marker = None;
         set_timer(b, r, 0x1E);
     }
     if timer_running(b, r) {
@@ -178,24 +187,13 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
     o.phase_init = s.phase_init;
 }
 
-/// `sub_80158CC`: mood 0x80 (stored directly); outside battle mode 1, a
-/// Beast Out is used up, and Beast Over exhausts the navi.
+/// `sub_80158CC`: mood 0x80 (stored directly); then the side's systems'
+/// `form_reverted` (BN6's: outside battle mode 1, a Beast Out is used up,
+/// and Beast Over exhausts the navi).
 fn spend_form(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
     b.stats[side].mood = 0x80;
-    if crate::kinds::player::battle_mode(b) == 1 {
-        return;
-    }
-    match form_of(b, r).kind {
-        FormKind::Beast | FormKind::CrossBeast => ai_mut(b, r).beast_out_spent = true,
-        FormKind::BeastOver => {
-            // sub_8014466: exhausted, then the mood 0 that exhaustion
-            // itself blocks.
-            ai_mut(b, r).beast_over_exhausted = true;
-            set_mood(b, side as u8, 0);
-        }
-        _ => {}
-    }
+    b.systems_form_reverted(side as u8, r);
 }
 
 /// `sub_80143B4`: anger ends, without touching the mood.

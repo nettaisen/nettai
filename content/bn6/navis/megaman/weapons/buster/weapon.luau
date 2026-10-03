@@ -43,7 +43,7 @@ local buster = {}
 local SHOOT, RECOVER = 0x0, 0x4
 
 -- The sounds: the shot, and a throw's besides (the junk shot's).
-local SHOT_SOUND, THROW_SOUND = asset.sound("buster-shot"), asset.sound("junk-shot")
+local SHOT_SOUND, THROW_SOUND = asset.sound("bn6:buster-shot"), asset.sound("bn6:junk-shot")
 -- The heights the shot and a thrown obstacle fly at, 16.16.
 local SHOT_Z, THROW_Z = 0x18_0000, 0x0C_0000
 
@@ -213,13 +213,13 @@ end
 
 -- The shot; a thrown obstacle (`throw_absorbed`'s) is one too.
 buster.shot = define.action {
-    id = "megaman/buster/shot",
+    id = "bn6:megaman/buster/shot",
     state = { timer = "u16", mode = { "shot", "spread", "throw" }, projectile = "record:projectile-variant" },
     update = update,
 }
 
 buster.weapon = define.weapon {
-    id = "megaman/buster",
+    id = "bn6:megaman/buster",
     -- The buster isn't charged (the charge table's row 0).
     charge_ticks = { 0, 0, 0, 0, 0 },
     setup = buster.setup,

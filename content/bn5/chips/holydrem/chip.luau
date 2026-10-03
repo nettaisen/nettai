@@ -9,7 +9,7 @@
 local controller = require("./controller")
 
 return define.chip {
-    id = "holydrem",
+    id = "bn5:holydrem",
     codes = { "H" },
     element = "null",
     family = "null",

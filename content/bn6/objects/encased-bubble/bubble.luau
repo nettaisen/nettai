@@ -20,11 +20,11 @@ export type State = {
     look: number,
 }
 
-local SPRITE = asset.sprite("rock-cubes")
+local SPRITE = asset.sprite("bn6:rock-cubes")
 local SPEED = 0xA_0000
 local FORMED = 2
-local SOUND_FORM = asset.sound("place")
-local SOUND_BURST = asset.sound("falling-rock")
+local SOUND_FORM = asset.sound("bn6:place")
+local SOUND_BURST = asset.sound("bn6:falling-rock")
 -- What bursts it: bodies and neutral objects.
 local BURSTS_ON = 0x0C80_0000
 -- A push hit (hit modifier bits 0x3C).
@@ -130,7 +130,7 @@ local function init(me: Object)
 end
 
 bubble.kind = define.kind {
-    id = "encased-bubble",
+    id = "bn6:encased-bubble",
     pool = "attack",
     state = { look = "u8" },
     -- `sub_80D984C`.

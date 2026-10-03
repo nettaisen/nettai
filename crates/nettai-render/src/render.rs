@@ -264,7 +264,7 @@ fn note_missing_strings(text: &mut TextSink, problems: &mut Problems) {
 /// A dimming (`object_dimScreen`, `object_undimScreen`: fade modes 0x3C
 /// and 0x38) darkens the first nine background palettes, the stage's, by a
 /// sixteenth for every 0x10 of the fade's level: a quarter when dimmed.
-/// The HUD's palettes and the sprites keep their colours. The Gregar and
+/// The HUD's palettes and the sprites keep their colors. The Gregar and
 /// Falzar chips' black-out (modes 0x88 and 0x84) darkens the same palettes
 /// all the way.
 pub fn dim_fade(b: &Battle) -> Fade {

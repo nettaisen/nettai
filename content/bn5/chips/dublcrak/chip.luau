@@ -1,9 +1,11 @@
 --!strict
--- DublCrak (BN5 chip 0x05c): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- DublCrak (BN5 chip 0x05c): action 0x1B, cracks on the panel ahead and the one behind it (objects/crack).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local crack = require("../../objects/crack/crack")
 
 return define.chip {
-    id = "dublcrak",
+    id = "bn5:dublcrak",
     codes = { "*" },
     element = "null",
     family = "null",
@@ -16,4 +18,5 @@ return define.chip {
     flags = { "standard_library", "library" },
     extra_flags = { 128 },
     slot_in_limit = 3,
+    action = crack.action(1),
 }

@@ -29,11 +29,11 @@ local function navi(id: string, sprite: string, class: IdentityClass, ai_index: 
         element = "null",
         buster_bonus = 1,
         move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-        banners = { win = asset.banner("test-win"), lose = asset.banner("test-deleted") },
+        banners = { win = asset.banner("test:test-win"), lose = asset.banner("test:test-deleted") },
         merge_height = 0,
         run_message = {},
         weapons = WEAPONS,
-        -- What a Cross change brings it with.
+        -- What a navi switch brings it with.
         fresh = { hp = 100, mega_level = 5, giga_level = 1 },
         cross_hp = { 100, 150 },
         forms = if megaman then { gregar = { crosses = {} }, falzar = { crosses = {} } } else nil,
@@ -51,12 +51,12 @@ local function navi(id: string, sprite: string, class: IdentityClass, ai_index: 
 end
 
 return {
-    megaman = navi("megaman", "test-megaman", "megaman", 0, true),
-    link_navi = navi("test/link-navi", "test-navi", "link_navi", 4, false),
+    megaman = navi("test:megaman", "test:test-megaman", "megaman", 0, true),
+    link_navi = navi("test:test/link-navi", "test:test-navi", "link_navi", 4, false),
     base = define.form {
-        id = "base",
+        id = "test:base",
         kind = "base",
-        sprite = asset.sprite("test-navi"),
+        sprite = asset.sprite("test:test-navi"),
         element = "null",
         buster_bonus = 0,
         weapons = WEAPONS,

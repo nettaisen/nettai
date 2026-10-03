@@ -5,7 +5,7 @@
 -- reserved), appears by its lock-on target (`ho_8026554`: mode 2 in the
 -- target's row, else mode 0xB in its own), slashes the panel in front (a
 -- hit, and ./lunge_slash), and comes back. The ruleset runs the same
--- action for a Cross navi's knock-out (the role `cross_death`).
+-- action for a switched-in navi's knock-out (the role `switch_knockout`).
 
 local collision = require("../../../../rules/collision")
 local lockon = require("../../../../rules/lockon")
@@ -30,10 +30,10 @@ local SWORD, HIT_PARAM = 0x80, 0x9E
 -- navi's row otherwise.
 local SAME_ROW, OWN_ROW = lockon.thunder, lockon.beast_lunge
 
-local SOUND = asset.sound("flame-hook-fire")
+local SOUND = asset.sound("bn6:flame-hook-fire")
 
 -- The slash's effect and its height, 16.16.
-local SLASH_EFFECT = define.effect { sprite = asset.sprite("cross-slash"), anim = 0, palette = 0 }
+local SLASH_EFFECT = define.effect { sprite = asset.sprite("bn6:cross-slash"), anim = 0, palette = 0 }
 local SLASH_Z = 0x10_0000
 
 -- `sub_8011D9C`: 50 damage and 30 more per point of buster Attack (up to
@@ -51,7 +51,7 @@ end
 -- `sub_80EEFBC`: where to strike from, by the lock-on marker's panel
 -- (`sub_80E164A`).
 local function target(me: Object): (number, number)
-    local marker = me.lockon_marker
+    local marker = me.target_marker
     if marker == nil then
         error("SlashCross Beast's lunge reads the lock-on marker the navi doesn't have (sub_80E164A)")
     end
@@ -169,7 +169,7 @@ local function recover(me: Object, s: State)
 end
 
 lunge.action = define.action {
-    id = "slashcross-beast/lunge/action",
+    id = "bn6:slashcross-beast/lunge/action",
     state = { timer = "u16" },
     -- `sub_80EEE60`.
     update = function(me: Object, s: State)
@@ -191,7 +191,7 @@ lunge.action = define.action {
 }
 
 lunge.weapon = define.weapon {
-    id = "slashcross-beast/lunge",
+    id = "bn6:slashcross-beast/lunge",
     -- The charge table's row 0x1A, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 50, 50, 50, 50, 50, 40, 40, 40 },

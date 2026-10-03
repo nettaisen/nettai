@@ -107,7 +107,7 @@ local function init(me: Object)
 end
 
 dash_hit.kind = define.kind {
-    id = "megaman/dash-hit",
+    id = "bn6:megaman/dash-hit",
     pool = "attack",
     state = { hit_panel = "u16", reach = "u8", tackle = "bool", action = "action" },
     -- `sub_80DB570`.

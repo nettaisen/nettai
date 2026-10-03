@@ -14,20 +14,20 @@ parts.slashes_navis = { is = collision.slash, hits = collision.hits_navis }
 
 -- The blades (the original's attachment rows 3, 0x19 to 0x1C).
 parts.blades = {
-    sword = attachment.look { sprite = asset.sprite("sword"), palette = 0 },
-    fire = attachment.look { sprite = asset.sprite("fire-sword"), palette = 0 },
-    aqua = attachment.look { sprite = asset.sprite("aqua-sword"), palette = 0 },
-    elec = attachment.look { sprite = asset.sprite("elec-sword"), palette = 0 },
-    bamboo = attachment.look { sprite = asset.sprite("sword"), palette = 2 },
+    sword = attachment.look { sprite = asset.sprite("bn6:sword"), palette = 0 },
+    fire = attachment.look { sprite = asset.sprite("bn6:fire-sword"), palette = 0 },
+    aqua = attachment.look { sprite = asset.sprite("bn6:aqua-sword"), palette = 0 },
+    elec = attachment.look { sprite = asset.sprite("bn6:elec-sword"), palette = 0 },
+    bamboo = attachment.look { sprite = asset.sprite("bn6:sword"), palette = 2 },
 }
 
 -- The slashes (effects 0x16 to 0x1C, 0x25, 0x2D, 0x5F).
-local SLASH, BIG = asset.sprite("sword-slash"), asset.sprite("big-slash")
+local SLASH, BIG = asset.sprite("bn6:sword-slash"), asset.sprite("bn6:big-slash")
 parts.effects = {
     -- Sword's, over the panel ahead.
     slash = define.effect { sprite = SLASH, anim = 2, palette = 0 },
     -- Over a column: WideSwrd's, StepSwrd's, the elemental and machine
-    -- swords' (in their colours).
+    -- swords' (in their colors).
     wide = define.effect { sprite = SLASH, anim = 0, palette = 0 },
     -- Over two panels: LongSwrd's.
     long = define.effect { sprite = SLASH, anim = 1, palette = 0 },
@@ -40,14 +40,14 @@ parts.effects = {
     big = define.effect { sprite = BIG, anim = 0, palette = 0 },
     dark = define.effect { sprite = BIG, anim = 0, palette = 2 },
     -- CrosSwrd's X.
-    cross = define.effect { sprite = asset.sprite("cross-slash"), anim = 0, palette = 0 },
+    cross = define.effect { sprite = asset.sprite("bn6:cross-slash"), anim = 0, palette = 0 },
 }
 
 -- The swings: most swords', and the big swords' (LifeSrd, DrkSword,
 -- DblDream).
 parts.sounds = {
-    swing = asset.sound("sword-swing"),
-    big_swing = asset.sound("big-sword-swing"),
+    swing = asset.sound("bn6:sword-swing"),
+    big_swing = asset.sound("bn6:big-sword-swing"),
 }
 
 -- `sub_80EBAE8`: the blade's animation, which matches the user's arm: a
@@ -84,15 +84,15 @@ function parts.blade_palette(me: Object): number
     if me.actor_type == "navi" and me.ai_index == 0x12 then
         -- The game compares AIData+0x16, a navi AI's version, which this
         -- engine's actors (players) don't have.
-        error("sub_80EBB78: navi AI 0x12's version (AIData+0x16) is not modelled")
+        error("sub_80EBB78: navi AI 0x12's version (AIData+0x16) is not modeled")
     end
     return 0
 end
 
 -- `sub_80B8E30` with a blade: hold it (in the first related slot), its
--- palette plus `palette_add`.
-function parts.hold(me: Object, blade: AttachmentLook, palette_add: number): Object?
-    return attachment.attach(me, blade, "related", { anim = parts.blade_anim(me), palette_add = palette_add })
+-- palette plus `palette_add`, in animation `anim` (none: `blade_anim`'s).
+function parts.hold(me: Object, blade: AttachmentLook, palette_add: number, anim: number?): Object?
+    return attachment.attach(me, blade, "related", { anim = anim or parts.blade_anim(me), palette_add = palette_add })
 end
 
 -- Let go of the blade (and anything in the overlay slot): what is attached

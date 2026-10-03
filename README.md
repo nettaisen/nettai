@@ -90,7 +90,7 @@ both peers stay in step:
 These checks need no ROM:
 
     cargo test --workspace                             # the engine on its own test content
-    cargo run -p nettai-content-check -- content/bn6   # every content module type-checks; the lints
+    cargo run -p nettai-content-check                  # every content module type-checks; the lints
 
 ## The match editor
 
@@ -108,12 +108,14 @@ round starts the navi with; the folder (the chips the side's folder rules allow,
 code puts a chip in the selected entry; the Regular and tag chips; the copies and the Mega, Giga, Regular and tag
 limits live, as the game's folder rules count them); the Crosses; the patch cards (MB used of 80); the NaviCust (the
 board as the side's game draws it, with its frame and command line, edited with the mouse as Tango's is: drag a
-program's colour swatch onto the grid, or press a placed program to pick it up and drag it; while held it shows
+program's color swatch onto the grid, or press a placed program to pick it up and drag it; while held it shows
 where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click, Delete
 or a drag off the grid takes it off, Esc puts it back; right-clicking a placed program turns it; the stats it
 compiles to show beside it, and the stats-and-bugs block set directly is the pane's other view); every stat. The problems with the match show at the bottom as you edit. Play saves the match and
-runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). Random draws a match as
-live play does, and `nettai-frontend --play --save-match FILE` writes live play's draw out to edit. `--lang ja` (or
+runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). A new match (the editor
+started without a file, or New) is empty: the first link battle stage, and on each side the stock rules' MegaMan at
+his fresh stats with an empty folder, the game's own Crosses, no patch cards and no NaviCust programs (the problems
+list says the folders aren't whole until they are). Random draws a match as live play does, and `nettai-frontend --play --save-match FILE` writes live play's draw out to edit. `--lang ja` (or
 the language list) names the chips, navis, Crosses and patch cards in Japanese. The editor loads the content and
 every pack in `data/content` as the frontend does (each chip's pictures from its own game's pack), and Play hands
 the frontend the same: `--content` and `--pack` are the frontend's, and only what you give is passed on.

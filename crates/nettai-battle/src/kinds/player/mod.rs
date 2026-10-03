@@ -9,9 +9,8 @@
 //! (0, 1), `reactions` (2..7) and `idle` (8); 0x10 and up in `actions`.
 
 pub mod actions;
-pub(crate) mod berserk;
 mod navi_action;
-mod chip_use;
+pub(crate) mod chip_use;
 pub use chip_use::{next_chip_bonus, next_chip_doubles};
 
 /// `sub_8010740`: the opponent's Rush takes `chip` (a weapon's).
@@ -48,7 +47,6 @@ pub use navi_action::{EngineAction, NaviAction, NaviWord};
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
 use crate::content::ActorEntry;
 use crate::content::{FormData, FormKind, NaviData};
-use crate::custom::GameVersion;
 use crate::setup::{NaviStats, effects};
 
 /// Panel center coordinates (`object_getCoordinatesForPanels`, which
@@ -281,7 +279,7 @@ fn panel_kind(b: &Battle, p: PanelPos) -> PanelType {
 
 /// `sub_8010004`: the next chip in the side's hand (none: the game's
 /// 0xFFFF).
-fn next_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
+pub(crate) fn next_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
     let hand = &b.hands[b.objects.get(r).alliance as usize];
     hand.ids.get(hand.cursor as usize).copied().flatten()
 }
@@ -315,11 +313,11 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
     let mood = b.stats[side as usize].mood;
     let p = b.player(side).expect("side has a player");
     let a = ai(b, p);
-    if a.beast_over_exhausted || mood == 0 {
+    if a.exhausted || mood == 0 {
         Emotion::WornOut
     } else if a.anger != 0 {
         Emotion::Angry
-    } else if a.beast_out_spent {
+    } else if a.tired {
         Emotion::Tired
     } else if mood == 0xFF {
         Emotion::FullSynchro
@@ -328,12 +326,17 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
     }
 }
 
-/// `sub_8015BEC`: set a side's mood, unless its navi is in a special
-/// emotion state.
+/// Whether a navi's mood is held (`sub_8015BEC`'s test): held tired or
+/// exhausted. Another side's rules read it (`sub_801A200`'s counter).
+pub(crate) fn mood_held(b: &Battle, r: ObjectRef) -> bool {
+    let a = ai(b, r);
+    a.tired || a.exhausted
+}
+
+/// `sub_8015BEC`: set a side's mood, unless its navi's mood is held.
 pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
     let Some(p) = b.player(side) else { return };
-    let a = ai(b, p);
-    if a.beast_out_spent || a.beast_over_exhausted {
+    if mood_held(b, p) {
         return;
     }
     b.stats[side as usize].mood = mood;
@@ -388,10 +391,10 @@ pub(crate) fn runs_role(b: &Battle, r: ObjectRef, role: crate::content::ActionRo
     matches!(navi_action(b, r), NaviAction::Content(h) if b.roles_for(r).is_action(role, h))
 }
 
-/// `sub_802DD2A`: a Cross navi that falls back to base form instead of
-/// dying.
-fn cross_protected(b: &Battle, r: ObjectRef) -> bool {
-    !is_megaman(b, r) && ai(b, r).status & crate::actor::status::CROSSED != 0
+/// `sub_802DD2A`: a switched-in navi (the navi switch) that falls back
+/// instead of dying.
+fn switch_protected(b: &Battle, r: ObjectRef) -> bool {
+    !is_megaman(b, r) && ai(b, r).status & crate::actor::status::SWITCHED != 0
 }
 
 /// Switch to `action` at phase 0 (the game's direct CurAction stores).
@@ -434,10 +437,10 @@ impl From<EngineAction> for NaviAction {
 /// Out lock-on marker (`sub_80E1662`; a no-op without one).
 pub(crate) fn reset_attack_links(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
-    a.attack.beast_lockon = 0;
-    a.attack.rush.restart();
-    if let Some(marker) = a.lockon_marker {
-        crate::kinds::lockon_marker::unfreeze(b, marker);
+    a.attack.wrapped = 0;
+    a.attack.wrapper_fresh = true;
+    if let Some(marker) = a.target_marker {
+        crate::kinds::target_marker::unfreeze(b, marker);
     }
 }
 
@@ -636,9 +639,9 @@ pub fn changing_form(b: &Battle, r: ObjectRef) -> bool {
     ai(b, r).status & crate::actor::status::FORM_CHANGE != 0
 }
 
-/// `sub_802DCEC`: a Cross change is pending or running.
+/// `sub_802DCEC`: a navi switch is pending or running.
 pub fn changing_cross(b: &Battle, r: ObjectRef) -> bool {
-    ai(b, r).status & crate::actor::status::CHANGING_CROSS != 0 || ai(b, r).requests & request::CROSS_CHANGE != 0
+    ai(b, r).status & crate::actor::status::SWITCHING_NAVI != 0 || ai(b, r).requests & request::NAVI_SWITCH != 0
 }
 
 // ---- Init --------------------------------------------------------------------
@@ -795,9 +798,8 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
         let hook = b.roles_for(r).hook(crate::content::HookRole::FirstBarrier);
         crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleNavi { navi: r });
     }
-    if stats(b, r).beast_out_counter == 0 {
-        ai_mut(b, r).beast_out_spent = true;
-    }
+    // (BN6's emotion system holds a navi whose Beast Out counter is spent
+    // tired from the round's start.)
     reset_navicust_state(b, r);
 }
 
@@ -1036,7 +1038,12 @@ fn apply_starting_hp_bug(b: &mut Battle, r: ObjectRef) {
 /// `sub_80EA484`: the per-tick pipeline (§12.M M1).
 fn tick(b: &mut Battle, r: ObjectRef) {
     input::update(b, r);
-    emotion_timer(b, r);
+    // The side's systems' tick for the navi, if one asked (BN6's NaviCust
+    // emotion-swing bug, `sub_8013DA0`), not while paused.
+    if !b.paused && ai(b, r).ticked {
+        let side = b.objects.get(r).alliance;
+        b.systems_navi_tick(side, r);
+    }
     intake::collect_hits(b, r);
     status::update(b, r);
     per_form_tick(b, r);
@@ -1048,20 +1055,9 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// Beast Over's glow by the battle time, over 26 ticks (`byte_8016A68`,
-/// Gregar's; `byte_8016A9C`, Falzar's): colour shaders.
-const GREGAR_OVER_GLOW: [u16; 26] = [
-    0x0000, 0x0000, 0x0041, 0x0461, 0x0881, 0x0CC2, 0x10E2, 0x1102, 0x1543, 0x1983, 0x1DC3, 0x21E4, 0x2204, 0x2204,
-    0x21E4, 0x1DC3, 0x1983, 0x1543, 0x1102, 0x10E2, 0x0CC2, 0x0CA2, 0x0881, 0x0861, 0x0441, 0x0421,
-];
-const FALZAR_OVER_GLOW: [u16; 26] = [
-    0x0000, 0x0000, 0x0402, 0x0423, 0x0444, 0x0866, 0x0887, 0x0888, 0x0CAA, 0x0CCC, 0x0CEE, 0x110F, 0x1110, 0x1110,
-    0x110F, 0x0CEE, 0x0CCC, 0x0CAA, 0x0888, 0x0887, 0x0866, 0x0865, 0x0444, 0x0443, 0x0422, 0x0421,
-];
-
-/// `sub_80100EC` (presentation only): a Beast Over navi glows
-/// (`sub_8016A38`, a colour shader by the battle time); any other takes
-/// its sprite palette (`sub_801002C`):
+/// `sub_80100EC` (presentation only): a navi in a form with a glow
+/// glows (`sub_8016A38`, Beast Over's: a color shader by the battle time);
+/// any other takes its sprite palette (`sub_801002C`):
 ///
 /// - MegaMan while he can't charge (status 0x200): 1, plus the element
 ///   style's;
@@ -1074,15 +1070,15 @@ const FALZAR_OVER_GLOW: [u16; 26] = [
 ///   navi's multiplier in `byte_80212BB` is 1).
 fn navi_palette(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
-    let (kind, game, form_palette) = {
-        let form = form_of(b, r);
-        (form.kind, form.game, form.palette)
-    };
-    if kind.is_beast_over() {
-        let glow = if game == Some(GameVersion::Falzar) { &FALZAR_OVER_GLOW } else { &GREGAR_OVER_GLOW };
-        b.objects.sprite_mut(r).look.color_shader = glow[(b.round.battle_time % 26) as usize];
+    if let Some(glow) = &form_of(b, r).glow {
+        let shader = glow[(b.round.battle_time % glow.len() as u32) as usize];
+        b.objects.sprite_mut(r).look.color_shader = shader;
         return;
     }
+    let (kind, form_palette) = {
+        let form = form_of(b, r);
+        (form.kind, form.palette)
+    };
     let no_charge = ai(b, r).status & crate::actor::status::NO_CHARGE != 0;
     let full_synchro = emotion(b, b.objects.get(r).alliance) == Emotion::FullSynchro;
     let style = if s.element != 0 { s.element.wrapping_mul(5).wrapping_add(0x12) } else { 0 };
@@ -1112,68 +1108,16 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
     b.objects.sprite_mut(r).look.palette = palette;
 }
 
-/// `byte_8013E44`: the emotions the swing rolls from (six normal, eight
-/// tired, one angry, one Full Synchro), before the current one is
-/// swapped out.
-const EMOTION_SWINGS: [u8; 16] = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3];
-/// `dword_8013E54`: the mood a normal (0) or Full Synchro (3) swing sets.
-const SWING_MOODS: [u8; 4] = [0x99, 0x3C, 0x00, 0xFF];
-
-/// `sub_8013DA0`: the NaviCust emotion-swing bug (stat 0x24), while the
-/// Beast Out counter (stat 0x21) lasts: in a form it only keeps the navi
-/// calm and untired; in base form, every 60 ticks the emotion swings to a
-/// random other one (a roll of 16 from `EMOTION_SWINGS`, where the current
-/// emotion counts as normal, or as tired when it is normal).
-fn emotion_timer(b: &mut Battle, r: ObjectRef) {
-    if b.paused {
-        return;
-    }
-    let s = *stats(b, r);
-    if s.bugs.emotion == 0 || s.beast_out_counter == 0 {
-        return;
-    }
-    if !in_base_form(b, r) {
-        status::end_anger(b, r);
-        ai_mut(b, r).beast_out_spent = false;
-        return;
-    }
-    let a = ai_mut(b, r);
-    a.emotion_swing_ticks = a.emotion_swing_ticks.wrapping_add(1);
-    if a.emotion_swing_ticks < 0x3C {
-        return;
-    }
-    a.emotion_swing_ticks = 0;
-    status::end_anger(b, r);
-    // sub_8014446
-    ai_mut(b, r).beast_out_spent = false;
-    let current = ai(b, r).swung_emotion;
-    let choices = EMOTION_SWINGS.map(|e| if e != current { e } else { u8::from(current == 0) });
-    let roll = b.rng.next_positive() % choices.len() as u32;
-    let swung = choices[roll as usize];
-    ai_mut(b, r).swung_emotion = swung;
-    match swung {
-        // sub_80143CE: anger, unless tired or exhausted.
-        2 => {
-            let a = ai(b, r);
-            if !a.beast_out_spent && !a.beast_over_exhausted {
-                set_flag2(b, r, 0x200);
-            }
-        }
-        // sub_801443C
-        1 => ai_mut(b, r).beast_out_spent = true,
-        _ => {
-            let side = b.objects.get(r).alliance;
-            set_mood(b, side, SWING_MOODS[swung as usize]);
-        }
-    }
-}
-
 /// `off_80EA93C[AIIndex]`: the per-form tick hook, which only MegaMan's
 /// and ChargeMan's actor records have (`sub_80F0608`): the Fire chip's
 /// charge for a navi or a form that has one (ChargeMan's limit by his
 /// level, `byte_802136D`: the navi's `fire_charge`; ChargeCross's 100:
 /// the form's), and the height clamp of a navi that changes form.
 fn per_form_tick(b: &mut Battle, r: ObjectRef) {
+    // (BN5's table runs none of it: the status rules' `form_tick`.)
+    if !b.rules_for(r).form_tick {
+        return;
+    }
     let content = b.content.clone();
     let s = stats(b, r);
     let (navi, form) = (content.navi(s.navi), content.form(s.form));

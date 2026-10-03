@@ -459,7 +459,7 @@ fn cgb_mod_volume(ch: &mut CgbChannel) {
             ch.envelope_goal = ((r + l) >> 4).min(15) as u8;
         }
         None => {
-            // (Centred notes aren't capped at 15.)
+            // (Centered notes aren't capped at 15.)
             ch.pan = 0xFF;
             ch.envelope_goal = ((r + l) >> 4) as u8;
         }
@@ -701,7 +701,7 @@ fn write_registers(ch: &mut CgbChannel, apu: &mut Apu, n: usize, regs: (Reg, Reg
         let nr51 = (apu.read(Reg::Nr51) & !ch.pan_mask) | ch.pan;
         apu.write(Reg::Nr51, nr51);
         if n == 3 {
-            // (Levels past 15, which a centred note can reach, read the
+            // (Levels past 15, which a centered note can reach, read the
             // table after gCgb3Vol: the clock table.)
             let v = ch.note.envelope_volume as usize;
             let level = if v < 16 { tables::WAVE_VOLUME[v] } else { tables::CLOCK[v - 16] };

@@ -6,7 +6,7 @@ local strike = require("./strike")
 local wave = require("./wave")
 
 local wavearm1 = define.chip {
-    id = "wavearm1",
+    id = "bn6:wavearm1",
     codes = { "E", "F", "G" },
     element = "null",
     family = "null",
@@ -19,11 +19,11 @@ local wavearm1 = define.chip {
     flags = { "has_damage", "standard_library", "library" },
     library = { number = 94, index = 94, sort = 503 },
     slot_in_limit = 3,
-    action = strike.action { id = "wavearm1/action", wave = wave.variants.wavearm1 },
+    action = strike.action { id = "bn6:wavearm1/action", wave = wave.variants.wavearm1 },
 }
 
 local wavearm2 = define.chip {
-    id = "wavearm2",
+    id = "bn6:wavearm2",
     codes = { "L", "M", "N" },
     element = "null",
     family = "null",
@@ -36,11 +36,11 @@ local wavearm2 = define.chip {
     flags = { "has_damage", "standard_library", "library" },
     library = { number = 95, index = 95, sort = 504 },
     slot_in_limit = 3,
-    action = strike.action { id = "wavearm2/action", wave = wave.variants.wavearm2 },
+    action = strike.action { id = "bn6:wavearm2/action", wave = wave.variants.wavearm2 },
 }
 
 local wavearm3 = define.chip {
-    id = "wavearm3",
+    id = "bn6:wavearm3",
     codes = { "R", "S", "T" },
     element = "null",
     family = "null",
@@ -53,7 +53,7 @@ local wavearm3 = define.chip {
     flags = { "has_damage", "standard_library", "library" },
     library = { number = 96, index = 96, sort = 505 },
     slot_in_limit = 3,
-    action = strike.action { id = "wavearm3/action", wave = wave.variants.wavearm3 },
+    action = strike.action { id = "bn6:wavearm3/action", wave = wave.variants.wavearm3 },
 }
 
 return { wavearm1 = wavearm1, wavearm2 = wavearm2, wavearm3 = wavearm3 }

@@ -96,7 +96,7 @@ local FINALE: { [string]: { Entry } } = {
 -- The sword's looks (`byte_80BEDC6`: attachments 3, 3, 0x19 to 0x1C): its
 -- blade; its hit's region (`byte_80BEDA8`: the plain sword's one panel,
 -- else a column); its slash (`byte_80BEDC0`: effect 0x18, else 0x16 in the
--- look's colour, the look's palette less one from look 2).
+-- look's color, the look's palette less one from look 2).
 local SWORDS = {
     [0] = { blade = parts.blades.sword, region = regions.single, slash = parts.effects.slash, palette = 0 },
     [1] = { blade = parts.blades.sword, region = regions.wide, slash = parts.effects.wide, palette = 0 },
@@ -108,19 +108,19 @@ local SWORDS = {
 
 -- GroundCross's drill arm (attachment 0x20) and TenguCross's fan (0x2A:
 -- WindRack's rack) and its gust (effect 0x44).
-local DRILL_ARM = attachment.look { sprite = asset.sprite("drill-arm"), palette = 0, attach_point = 19 }
-local FAN = attachment.look { sprite = asset.sprite("wind-rack"), palette = 0 }
-local GUST = define.effect { sprite = asset.sprite("swirl"), anim = 0, palette = 0 }
+local DRILL_ARM = attachment.look { sprite = asset.sprite("bn6:drill-arm"), palette = 0, attach_point = 19 }
+local FAN = attachment.look { sprite = asset.sprite("bn6:wind-rack"), palette = 0 }
+local GUST = define.effect { sprite = asset.sprite("bn6:swirl"), anim = 0, palette = 0 }
 
 -- The finale's charge: the glow while it builds (effect 0x4E) and the
 -- flash when it is full (0x4F), at the Cross's attach point 0.
-local CHARGING = define.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
-local CHARGED = define.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
+local CHARGING = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 0, palette = 0 }
+local CHARGED = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 2, palette = 0 }
 
-local SOUND_APPEAR, SOUND_CIRCLE = asset.sound("appear"), asset.sound("sun-moon")
-local SOUND_BEAM, SOUND_DRILL, SOUND_FAN = asset.sound("erase-man-2"), asset.sound("drilarm"), asset.sound("windrack")
-local SOUND_CHARGE, SOUND_CHARGED = asset.sound("buster-charge"), asset.sound("buster-charged")
-local SOUND_FINALE = asset.sound("burst")
+local SOUND_APPEAR, SOUND_CIRCLE = asset.sound("bn6:appear"), asset.sound("bn6:sun-moon")
+local SOUND_BEAM, SOUND_DRILL, SOUND_FAN = asset.sound("bn6:erase-man-2"), asset.sound("bn6:drilarm"), asset.sound("bn6:windrack")
+local SOUND_CHARGE, SOUND_CHARGED = asset.sound("bn6:buster-charge"), asset.sound("bn6:buster-charged")
+local SOUND_FINALE = asset.sound("bn6:burst")
 
 -- Where each place in a wave starts its circle (`byte_80BEB20`,
 -- `byte_80BEC38`), 256 steps a turn.
@@ -195,7 +195,7 @@ local function done(me: Object)
     end
 end
 
--- His place on the circle around his panel's centre (`sub_80E58D2`):
+-- His place on the circle around his panel's center (`sub_80E58D2`):
 -- `radius` pixels out at `angle` (forward by his facing, down the field).
 local function circle(me: Object, radius: number, angle: number)
     local cx, cy = field.center(me.panel_x, me.panel_y)
@@ -360,7 +360,7 @@ local function fade_in(me: Object)
     me.sprite.color_shader = me.timer2 * 0x421
 end
 
--- `sub_80BEACE`: 21 ticks circling out from his panel's centre, a pixel
+-- `sub_80BEACE`: 21 ticks circling out from his panel's center, a pixel
 -- further and a step further round each tick.
 local function circle_out(me: Object)
     if me.phase_init == 0 then
@@ -784,7 +784,7 @@ local function init(me: Object)
 end
 
 mstrcros.kind = define.kind {
-    id = "mstrcros/navi",
+    id = "bn6:mstrcros/navi",
     pool = "actor",
     state = {
         form = "form",

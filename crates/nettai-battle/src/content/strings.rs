@@ -89,30 +89,12 @@ impl std::hash::Hash for Strings {
 }
 
 impl Strings {
-    /// The table as loaded content keys it: a root's table writes its keys
-    /// unqualified (`cannon`), the content's are qualified with the root
-    /// (`bn6:cannon`; docs/design/rules-in-luau.md §7.2).
-    pub fn qualified(self, root: &str) -> Strings {
-        use nettai_content_api::keys::qualify;
-        fn q<V>(root: &str, m: BTreeMap<String, V>) -> BTreeMap<String, V> {
-            m.into_iter().map(|(k, v)| (qualify(root, &k), v)).collect()
-        }
-        Strings {
-            language: self.language,
-            chips: q(root, self.chips),
-            navis: q(root, self.navis),
-            forms: q(root, self.forms),
-            patch_cards: q(root, self.patch_cards),
-            navicust_programs: q(root, self.navicust_programs),
-        }
-    }
-
-    /// Root `root`'s table as the root writes it (its keys unqualified),
-    /// from loaded content's.
+    /// Game `root`'s strings (its definitions', ids in full), from loaded
+    /// content's.
     pub fn of_root(&self, root: &str) -> Strings {
-        use nettai_content_api::keys::{local, root_of};
+        use nettai_content_api::keys::root_of;
         fn of<V: Clone>(root: &str, m: &BTreeMap<String, V>) -> BTreeMap<String, V> {
-            m.iter().filter(|(k, _)| root_of(k) == Some(root)).map(|(k, v)| (local(k).to_string(), v.clone())).collect()
+            m.iter().filter(|(k, _)| root_of(k) == Some(root)).map(|(k, v)| (k.clone(), v.clone())).collect()
         }
         Strings {
             language: self.language.clone(),

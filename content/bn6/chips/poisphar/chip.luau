@@ -9,7 +9,7 @@ local anubis = require("../anubis/chip")
 local poisseed = require("../poisseed/chip")
 
 return define.chip {
-    id = "poisphar",
+    id = "bn6:poisphar",
     codes = {},
     element = "null",
     family = "program_advance",

@@ -21,7 +21,7 @@ local BUG_DAMAGE, PLAIN_DAMAGE = 0xC8, 0x28
 -- The shot with a bug frag (the original's parameter bytes 2, 12, 0x10): a
 -- fast ball of 12 panels that paralyzes.
 bgdththd.action = shoot.action {
-    id = "bgdththd/charge/action",
+    id = "bn6:bgdththd/charge/action",
     ball = { fast = true, panels = 0x0C, status = statuses.paralyze_90 },
 }
 
@@ -37,7 +37,7 @@ local function setup(navi: Object): Action
 end
 
 bgdththd.weapon = define.weapon {
-    id = "bgdththd/charge",
+    id = "bn6:bgdththd/charge",
     charge_ticks = { 200, 200, 200, 200, 200, 80, 80, 80 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
     sticky = true,

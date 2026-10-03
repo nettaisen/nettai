@@ -97,6 +97,10 @@ export type BulletVariant = {
     sound: Sound?,
 }
 
+-- How a bullet (objects/bullet) probes and hits: its self type while it
+-- looks, its burst's, and what both reach.
+export type BulletLook = { probe: CollisionType, attack: CollisionType, target: CollisionType }
+
 -- A cannon (lib/cannon.luau, the original's action 0x14): the arm the navi
 -- holds, the projectile it fires, and whether it leaves afterimages as it
 -- charges (the GigaCans).
@@ -142,8 +146,10 @@ export type WaveVariant = {
     collision: CollisionType,
     bug: number?,
     palette: number?,
-    -- Its sprite where a game's isn't BN6's wide wave (BN5's).
+    -- Its sprite where a game's isn't BN6's wide wave (BN5's), and its
+    -- trail's where that isn't BN6's rock cubes (BN5's is its wave's).
     sprite: SpriteAsset?,
+    trail_sprite: SpriteAsset?,
 }
 
 -- A sonic boom (lib/swords/sonic_boom.luau): its hit modifier, whether it
@@ -273,6 +279,9 @@ export type SlashSpec = {
     -- The action's key when no chip definition holds it (its compat key).
     id: string?,
     blade: AttachmentLook,
+    -- The blade's animation, by its holder (none: `sub_80EBAE8`'s,
+    -- lib/swords/parts).
+    blade_anim: ((Object) -> number)?,
     hit: SwordHit,
     effect: Effect,
     effect_palette: number?,
@@ -481,6 +490,8 @@ export type Instrument = {
     hp: number?,
     sprite: SpriteAsset?,
     absorbed: AbsorbedLook?,
+    -- Ticks between its effects (the row's byte 1; none: 3).
+    effect_period: number?,
 }
 
 -- A sword wave (navis/megaman/forms/slashcross/sword_wave, a row of the
@@ -567,6 +578,19 @@ export type ShockWaveVariant = { anim: number, ticks: number, panel: PanelType?,
 -- its hits carry (nil: none); `plain`: it takes its panel's variant.
 export type TornadoVariant = { palette: number, rearm: number, bug: number?, plain: boolean? }
 
+-- A game's tornado (chips/tornado/tornado, `make_kind`): the variant a
+-- plain one takes on a panel type, whether that doubles its damage, its
+-- self type (and the HP-bug variant's, when another), what it reaches and
+-- the spark of its element.
+export type TornadoLook = {
+    panel_variants: { [PanelType]: TornadoVariant },
+    doubles_on_panel: boolean,
+    is: CollisionType,
+    bug_is: CollisionType?,
+    target: CollisionType,
+    spark: (element: number) -> Spark,
+}
+
 -- What a tornado is spawned with: its variant, the status its hits
 -- inflict (0: none) and its ticks.
 export type TornadoSpec = { variant: TornadoVariant, status: Status?, ticks: number }
@@ -592,6 +616,29 @@ export type ThunderBallLook = {
     sound: Sound,
     dark_sound: Sound?,
 }
+
+-- ElemTrap's counterattack by element (chips/elemtrap/strike): its sound,
+-- its hits' spark, hit modifier and status, and the bursts' look.
+export type ElemTrapStrike = { sound: Sound?, spark: Spark, hit_mod: number, status: Status?, burst: Effect }
+-- A game's counterattack (`strike.make_kind`): its strikes by element
+-- (null to wood), and what its hits are and reach.
+export type ElemTrapStrikeLook = { strikes: { [number]: ElemTrapStrike }, self_type: CollisionType, target: CollisionType }
+-- A game's trap (chips/elemtrap/trap, `trap.make_kind`): what springs it
+-- (fire to wood's first hit, or one element's: the one it is set with),
+-- what it is and reaches, where its sparkles show (16.16, from the
+-- panel's center: down the field, up), and its counterattack's kind.
+export type ElemTrapLook = {
+    watches: "fire_to_wood" | "one",
+    self_type: CollisionType,
+    target: CollisionType,
+    sparkle_dy: number,
+    sparkle_z: number,
+    strike_kind: Kind,
+}
+
+-- How FireHit's fist strikes (chips/firehit/fist): the spark its hit shows
+-- and its collision types.
+export type FireHitFistLook = { spark: Spark, target: CollisionType, self_type: CollisionType }
 
 -- How a yoyo flies (chips/yoyo/yoyo): GreatYo's (three that move
 -- together), the panels it rolls out and its spinning rounds.
@@ -1001,3 +1048,93 @@ export type DripShower = { turns: number, quarter_ticks: number, follows_action:
 -- blinks first, whether it acts while dimmed, whether it cracks the panel
 -- it lands on, and silently.
 export type GroundRockDrop = { warning: number, while_dimmed: boolean, cracks: boolean, silent: boolean }
+
+-- The looks of the BN6 modules other games reuse (each module's `make_kind`).
+
+-- How a game's gun and shots look and sound: their sprite, the sounds of a
+-- step, a mark and a hit, the shots' hit by the look (`dword_80D690C`:
+-- look 0 a thrown attack, look 1 another attacker's), and where the gun
+-- and a shot sit (`on_floor`: BN5's, on the panel's center at height 0).
+export type CircGunLook = {
+    sprite: SpriteAsset,
+    sounds: { step: Sound, mark: Sound, hit: Sound },
+    hits: { [number]: CollisionType },
+    -- The hit's spark (element 0's).
+    spark: Spark,
+    on_floor: boolean?,
+}
+
+-- How a game's bomb looks and sounds, and how it leaves.
+export type CountdownLook = {
+    sprite: SpriteAsset,
+    sounds: { place: Sound, tick: Sound, last: Sound, blast: Sound, puff: Sound },
+    -- The blast's collision: what it is and what it hits.
+    blast: { is: CollisionType, hits: CollisionType },
+    -- How it looks absorbed (nil: nothing absorbs it).
+    absorbed: AbsorbedLook?,
+    -- Any removal leaves a puff (BN5's): no absorbing, no blinking out.
+    removal_puffs: boolean?,
+}
+
+-- A lance's hit: what it is and hits, its spark, hit modifier and bug.
+export type LanceHit = {
+    is: CollisionType,
+    hits: CollisionType,
+    spark: Spark,
+    hit_mod: number,
+    bug: number?,
+    bug_arg: number?,
+}
+
+-- How a game's lance looks and hits: its sprite, its sound, and its hit by
+-- its palette (Param1).
+export type LanceLook = { sprite: SpriteAsset, sound: Sound, hits: { [number]: LanceHit } }
+
+-- A row (`byte_80CF3AC`): what it is and reaches and its hit modifier; the
+-- camera shake it lands with (0 none, else the magnitude, 15 ticks); what
+-- it does to its panel (none, cracks it, cracks it on half the draws, or
+-- breaks it); and the bug its hit carries (BN5's DarkMetr's).
+export type MeteorRow = {
+    is: CollisionType,
+    hits: CollisionType,
+    hit_mod: number,
+    shake: number,
+    panel: "none" | "crack" | "crack_half" | "break",
+    bug: number?,
+    bug_arg: number?,
+}
+
+-- How a game's meteor looks and sounds, its rows, and its spark by element.
+export type MeteorLook = {
+    sprite: SpriteAsset,
+    sounds: { fall: Sound, land: Sound },
+    rows: { [number]: MeteorRow },
+    spark: (element: number) -> Spark,
+}
+
+-- How a game's drill is: its hit's spark, what the first and second are
+-- and hit, what Param3 means ("light", BN6's; or the bug a dark one's hit
+-- carries, BN5's), and whether its spawn keeps the user's element and the
+-- second takes the first's running while dimmed (BN6's do; BN5's
+-- 0x080D41C8 and 0x080D4100 don't).
+export type DrillLook = {
+    spark: Spark,
+    first: CollisionType,
+    second: CollisionType,
+    hits: CollisionType,
+    param3: "light" | { bug: number, bug_arg: number },
+    keeps_element: boolean,
+}
+
+-- How a game's instruments are: their sprite and HP (an instrument's own
+-- first), sounds, what they are and what reaches them, how they look
+-- absorbed (nil: nothing absorbs them), and whether any removal just puffs
+-- (no absorbing, no blinking out).
+export type InstrumentLook = {
+    sprite: SpriteAsset,
+    hp: number,
+    sounds: { appear: Sound, broken: Sound },
+    body: { is: CollisionType, hits: CollisionType },
+    absorbed: AbsorbedLook?,
+    removal_puffs: boolean?,
+}

@@ -1,9 +1,12 @@
 --!strict
--- DarkTorn (BN5 chip 0x0c5): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- DarkTorn (BN5 chip 0x0c5): a dark chip: action 0x22's third form, HP-bug tornadoes spreading back by the side's
+-- statistic 3 (objects/tornado). Its use costs custom-screen damage (rules/light-dark).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local tornado = require("../../objects/tornado/tornado")
 
 return define.chip {
-    id = "darktorn",
+    id = "bn5:darktorn",
     codes = { "T" },
     element = "null",
     family = "wind",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
+    action = tornado.back_spread,
 }

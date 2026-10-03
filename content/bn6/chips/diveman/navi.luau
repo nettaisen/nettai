@@ -15,19 +15,19 @@ export type State = {
     controller: Object?,
 }
 
-local SPRITE = asset.sprite("diveman")
-local SOUND_SURFACE = asset.sound("sand-worm")
+local SPRITE = asset.sprite("bn6:diveman")
+local SOUND_SURFACE = asset.sound("bn6:sand-worm")
 
 -- What he is taken for: his actor record, and what he wears (his overlay, `sub_8010F96`).
 local IDENTITY = define.identity {
-    id = "diveman",
+    id = "bn6:diveman",
     class = "navi",
     version = 0,
     ai_index = 0xD,
     ice = "large",
     parts = {
         body = {
-            sprite = asset.sprite("diveman"),
+            sprite = asset.sprite("bn6:diveman"),
             anims = 136,
             behind = { { 0x0A, 0x0B }, { 0x23, 0x37 }, { 0x4C, 0x73 }, { 0x87, 0x87 } },
             anim_offset = 0x0A,
@@ -40,9 +40,9 @@ local IDENTITY = define.identity {
 local SPAWNER_ADDRESS = 0x080B9B6F
 
 -- The waves: in each row, from the far column toward him, the first
--- panel of his side's colour (`byte_80B9BF0`, { require, forbid }), if it
+-- panel of his side's color (`byte_80B9BF0`, { require, forbid }), if it
 -- is solid with no non-navi body or neutral object (`byte_80B9C04`).
-local HIS_COLOUR = { [0] = { 0, 0x20 }, [1] = { 0x20, 0 } }
+local HIS_COLOR = { [0] = { 0, 0x20 }, [1] = { 0x20, 0 } }
 local WAVE_FLOOR, WAVE_FORBID = 0x10, 0x0380_0000
 
 -- His actions.
@@ -90,13 +90,13 @@ end
 -- row - 1 (what the last panel check leaves in r3). (The game also
 -- compares the column with his side's back column, to no effect.)
 local function raise_waves(me: Object)
-    local colour = HIS_COLOUR[me.alliance]
+    local color = HIS_COLOR[me.alliance]
     local start = if me.alliance == 0 then 6 else 1
     local step = if me.alliance == 0 then -1 else 1
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
     for row = 1, 3 do
         local x = start
-        while field.valid(x, row) and not field.check(x, row, colour[1], colour[2]) do
+        while field.valid(x, row) and not field.check(x, row, color[1], color[2]) do
             x += step
         end
         if field.valid(x, row) and field.check(x, row, WAVE_FLOOR, WAVE_FORBID) then
@@ -146,7 +146,7 @@ end
 local ACTIONS = { [SURFACE] = surface, [WAIT] = wait, [DIVE] = dive, [WAVES] = waves, [RISE] = rise, [LEAVE] = leave }
 
 diveman.kind = define.kind {
-    id = "diveman/navi",
+    id = "bn6:diveman/navi",
     pool = "actor",
     state = { controller = "object" },
     -- `sub_80B99C0`.

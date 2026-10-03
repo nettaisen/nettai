@@ -46,7 +46,7 @@ local function follow(me: Object)
     local lift = s.lift * 0x10000
     me.pos = Vec3.new(p.x + s.offset_x, p.y - lift, p.z + s.offset_z - lift)
     me:copy_visibility(owner)
-    -- It wears the owner's colour shader, white flash, alpha and flip.
+    -- It wears the owner's color shader, white flash, alpha and flip.
     local look, worn = me.sprite, owner.sprite
     look.color_shader = worn.color_shader
     look.white = worn.white
@@ -108,7 +108,7 @@ local function init(me: Object)
 end
 
 attachment.kind = define.kind {
-    id = "attachment",
+    id = "bn6:attachment",
     pool = "actor",
     state = {
         slot = slot.TYPE,

@@ -6,7 +6,7 @@ local lockon = require("../../rules/lockon")
 local fist = require("./fist")
 
 local firehit1 = define.chip {
-    id = "firehit1",
+    id = "bn6:firehit1",
     codes = { "D", "E", "F" },
     element = "fire",
     family = "fire",
@@ -24,7 +24,7 @@ local firehit1 = define.chip {
 }
 
 local firehit2 = define.chip {
-    id = "firehit2",
+    id = "bn6:firehit2",
     codes = { "R", "S", "T" },
     element = "fire",
     family = "fire",
@@ -42,7 +42,7 @@ local firehit2 = define.chip {
 }
 
 local firehit3 = define.chip {
-    id = "firehit3",
+    id = "bn6:firehit3",
     codes = { "A", "B", "C" },
     element = "fire",
     family = "fire",

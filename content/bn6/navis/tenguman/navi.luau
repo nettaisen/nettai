@@ -7,20 +7,20 @@ local charge = require("./charge")
 local tenguman = require("./chip")
 
 return define.navi {
-    id = "tenguman",
-    sprite = asset.sprite("tenguman"),
+    id = "bn6:tenguman",
+    sprite = asset.sprite("bn6:tenguman"),
     element = "null",
     weakness = { "sword" },
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("tenguman-win"), lose = asset.banner("tenguman-deleted") },
+    banners = { win = asset.banner("bn6:tenguman-win"), lose = asset.banner("bn6:tenguman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`).
-    mugshot = asset.mugshot("tenguman"),
+    mugshot = asset.mugshot("bn6:tenguman"),
     merge_height = -8,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("tenguman-portrait"),
+        portrait = asset.sprite("bn6:tenguman-portrait"),
     },
     own_chip = { chip = tenguman, code = "T" },
     chip_bonus = {
@@ -28,7 +28,7 @@ return define.navi {
         dimming_chips = false,
         by_level = { 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 },
     },
-    -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
+    -- What a navi switch brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, back_special = tengu_wind.weapon },

@@ -110,7 +110,7 @@ fn tiles(rom: &Rom, a: u32, len: usize) -> Tiles {
     Tiles::from_4bpp(rom.bytes(a, len))
 }
 
-/// A palette (the hardware ignores bit 15 of a colour; chip 0's placeholder
+/// A palette (the hardware ignores bit 15 of a color; chip 0's placeholder
 /// palette has it set, which an image can't hold).
 fn palette(rom: &Rom, a: u32) -> Palette {
     palettes_from_bytes(rom.bytes(a, 32))[0].map(|c| c & 0x7FFF)

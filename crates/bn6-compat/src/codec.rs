@@ -45,16 +45,11 @@ impl<'a> Ids<'a> {
         Ids { content, compat }
     }
 
-    /// Compat's key as the content keys it (`bn6:cannon`).
-    fn def_key(&self, key: &str) -> String {
-        self.compat.def_key(self.content, key)
-    }
-
-    /// The pack BN6's numbers are of: compat's root's assets pack in the
+    /// The pack BN6's numbers are of: compat's game's pack in the
     /// content (docs/design/rules-in-luau.md §7.4: the engine knows assets
     /// by handle; the original's numbers are its pack's).
     pub fn pack(&self) -> nettai_content_api::PackId {
-        let root = self.compat.root_in(self.content);
+        let root = &self.compat.root;
         self.content.assets.pack(root).unwrap_or_else(|| panic!("the content loads no pack of {root}"))
     }
 
@@ -94,7 +89,7 @@ impl<'a> Ids<'a> {
     /// The chip with this id.
     pub fn chip(&self, id: ChipId) -> ChipHandle {
         let key = self.compat.chip_key(id).unwrap_or_else(|| panic!("chips.toml has no chip {id:#x}"));
-        self.content.defs.chip_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content defines no chip {key:?} (chip {id:#x})"))
+        self.content.defs.chip_by_key(key).unwrap_or_else(|| panic!("the content defines no chip {key:?} (chip {id:#x})"))
     }
 
     /// A chip's id.
@@ -126,7 +121,7 @@ impl<'a> Ids<'a> {
     /// The navi with this number.
     pub fn navi(&self, navi: u8) -> NaviHandle {
         let key = self.compat.navi_key(navi).unwrap_or_else(|| panic!("navis.toml has no navi {navi:#x}"));
-        self.content.defs.navi_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content defines no navi {key:?} (navi {navi:#x})"))
+        self.content.defs.navi_by_key(key).unwrap_or_else(|| panic!("the content defines no navi {key:?} (navi {navi:#x})"))
     }
 
     /// A navi's number.
@@ -138,7 +133,7 @@ impl<'a> Ids<'a> {
     /// MegaMan's form with this number.
     pub fn form(&self, form: u8) -> FormHandle {
         let key = self.compat.form_key(form).unwrap_or_else(|| panic!("forms.toml has no form {form:#x}"));
-        self.content.defs.form_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content defines no form {key:?} (form {form:#x})"))
+        self.content.defs.form_by_key(key).unwrap_or_else(|| panic!("the content defines no form {key:?} (form {form:#x})"))
     }
 
     /// A form's number.
@@ -159,7 +154,7 @@ impl<'a> Ids<'a> {
         let h = self
             .content
             .defs
-            .weapon_by_key(&self.def_key(key))
+            .weapon_by_key(key)
             .unwrap_or_else(|| panic!("the content has no weapon {key:?} (weapon routine {routine:#x})"));
         Some(h)
     }
@@ -190,7 +185,7 @@ impl<'a> Ids<'a> {
         let h = self
             .content
             .defs
-            .record(&self.def_key(key))
+            .record(key)
             .unwrap_or_else(|| panic!("the content has no projectile variant {key:?} (row {row:#x})"));
         Some(h)
     }
@@ -205,11 +200,11 @@ impl<'a> Ids<'a> {
             .find(|(_, n)| **n == number)
             .map(|(k, _)| k.as_str())
             .unwrap_or_else(|| panic!("patch-cards.toml has no patch card {number}"));
-        self.content.defs.patch_card_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
+        self.content.defs.patch_card_by_key(key).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
     }
 
     /// The NaviCust program a part id names (its number, `id >> 2`) and its
-    /// colour (the variant, `id & 3`, the definition's colour in that
+    /// color (the variant, `id & 3`, the definition's color in that
     /// place); none for 0, no part.
     pub fn navicust_part(&self, id: u8) -> Option<(NaviCustProgramHandle, u8)> {
         if id == 0 {
@@ -224,7 +219,7 @@ impl<'a> Ids<'a> {
             .find(|(_, n)| **n == number)
             .map(|(k, _)| k.as_str())
             .unwrap_or_else(|| panic!("navicust.toml has no program {number} (part id {id:#x})"));
-        let h = self.content.defs.navicust_program_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content has no NaviCust program {key:?}"));
+        let h = self.content.defs.navicust_program_by_key(key).unwrap_or_else(|| panic!("the content has no NaviCust program {key:?}"));
         Some((h, id & 3))
     }
 
@@ -255,7 +250,7 @@ impl<'a> Ids<'a> {
             .find(|(_, n)| **n == ty)
             .map(|(k, _)| k.as_str())
             .unwrap_or_else(|| panic!("records.toml has no barrier type {ty:#x}"));
-        Some(self.content.defs.record(&self.def_key(key)).unwrap_or_else(|| panic!("the content has no barrier {key:?} (type {ty:#x})")))
+        Some(self.content.defs.record(key).unwrap_or_else(|| panic!("the content has no barrier {key:?} (type {ty:#x})")))
     }
 
     /// A first-barrier byte; 0 for none.
@@ -282,7 +277,7 @@ impl<'a> Ids<'a> {
         let key = self.compat.stage_key(settings).unwrap_or_else(|| panic!("stages.toml has no battle settings {settings:#x}"));
         self.content
             .defs
-            .stage_by_key(&self.def_key(key))
+            .stage_by_key(key)
             .unwrap_or_else(|| panic!("the content has no stage {key:?} (battle settings {settings:#x})"))
     }
 
@@ -460,7 +455,7 @@ pub fn patch_cards(list: &[u8], ids: &Ids) -> Result<PatchCards, String> {
 // ---- The NaviCust -------------------------------------------------------------------
 
 /// A save's NaviCust (BN6: the list at 0x02004190, 0x31 parts of 8 bytes:
-/// +0 the part id, +3 the centre's column, +4 its row, +5 the quarter turns
+/// +0 the part id, +3 the center's column, +4 its row, +5 the quarter turns
 /// clockwise), on a board with `expansions` (key item 0x71's count); a part
 /// is compressed when `compressed` says so of its part id (event flag 0x2660
 /// + the id, which `sub_813B7A0` reads). The list's empty entries (id 0)
@@ -537,12 +532,16 @@ pub fn chip_hand_bytes(h: &ChipHand, ids: &Ids) -> [u8; 0x50] {
 }
 
 /// A transformation request from the game's 0x10-byte record: +0 the
-/// form, +4 the Cross change (0xFF = none for both). +1 and +3 are
+/// form, +4 the navi switch (0xFF = none for both). +1 and +3 are
 /// custom-screen bookkeeping nothing in battle reads, and +8 names the
 /// requesting navi object, which is always the side's player.
 pub fn transform_request(b: &[u8], ids: &Ids) -> TransformRequest {
     let opt = |v: u8| (v != 0xFF).then_some(v);
-    TransformRequest { form: opt(b[0]).map(|f| ids.form(f)), cross_change: opt(b[4]).map(|n| ids.navi(n)) }
+    TransformRequest {
+        form: opt(b[0]).map(|f| ids.form(f)),
+        navi_switch: opt(b[4]).map(|n| ids.navi(n)),
+        ..TransformRequest::NONE
+    }
 }
 
 // ---- Battle settings, stages, SP times ---------------------------------------------
@@ -575,7 +574,7 @@ pub fn battle_settings_of(game: Game, b: &[u8], ids: &Ids) -> BattleSettings {
         .iter()
         .filter(|(_, e)| e.layout == b[0] && games.actor_list(game, e.actor_list) == address)
         .find_map(|(key, _)| {
-            let h = content.defs.stage_by_key(&ids.compat.def_key(content, key))?;
+            let h = content.defs.stage_by_key(key)?;
             let r = content.stage(h);
             let music = r.music.map_or(NO_MUSIC as u16, |m| ids.sound_number(m));
             ((music, r.mode, r.battle_number, r.panel_pattern) == (b[2] as u16, b[3], b[5], b[6])).then_some(h)
@@ -623,9 +622,9 @@ mod tests {
     fn ids() -> Ids<'static> {
         static COMPAT: std::sync::OnceLock<Compat> = std::sync::OnceLock::new();
         let compat = COMPAT.get_or_init(|| {
-            let mut compat = Compat::bn6().clone();
+            let mut compat = Compat::bn6_for(content()).clone();
             compat.chips = [
-                (0x00, "test/blank"),
+                (0x00, "test:test/blank"),
                 (0x03, testing::SUN_GUN_3),
                 (0x05, testing::VEIL),
                 (0x41, testing::PLUS),
@@ -645,7 +644,7 @@ mod tests {
         let s = navi_stats(&bytes(MACHGUN_P0), &ids);
         assert_eq!((s.hp, s.max_hp, s.max_base_hp), (1000, 1000, 1000));
         assert_eq!(nettai_content_api::keys::local(&ids.content.defs.navi(s.navi).key), "megaman");
-        assert_eq!(s.form, ids.content.base_form());
+        assert_eq!(s.form, ids.content.base_form_for(s.navi));
         assert!(s.float_shoes && s.air_shoes && !s.undershirt && !s.super_armor);
         assert_eq!(s.mood, 0x80);
         assert_eq!(s.support, Some(Supports::default()));
@@ -678,7 +677,7 @@ mod tests {
                 std::panic::catch_unwind(|| {
                     let mut raw = bytes(MACHGUN_P0);
                     raw[offset as usize] = v;
-                    navi_stats(&raw, &Ids::new(content(), Compat::bn6()))
+                    navi_stats(&raw, &Ids::new(content(), Compat::bn6_for(content())))
                 })
                 .ok()
             };
@@ -743,14 +742,14 @@ mod tests {
     #[test]
     fn numbers_reach_definitions_by_key() {
         let c = testing::with_test_pack();
-        let mut compat = Compat::default();
-        compat.chips.insert("test/ticker1".into(), crate::ChipEntry { id: 0x36, ..Default::default() });
-        compat.weapons.insert("test/tick-shot".into(), vec![0x2E, 0x2F]);
+        let mut compat = Compat { root: "test".into(), ..Compat::default() };
+        compat.chips.insert("test:test/ticker1".into(), crate::ChipEntry { id: 0x36, ..Default::default() });
+        compat.weapons.insert("test:test/tick-shot".into(), vec![0x2E, 0x2F]);
         let ids = Ids::new(&c, &compat);
-        let ticker = c.defs.chip_by_key("test/ticker1").unwrap();
+        let ticker = c.defs.chip_by_key("test:test/ticker1").unwrap();
         assert_eq!(ids.chip(0x36), ticker);
         assert_eq!(ids.chip_id(ticker), 0x36);
-        let shot = c.defs.weapon_by_key("test/tick-shot").unwrap();
+        let shot = c.defs.weapon_by_key("test:test/tick-shot").unwrap();
         assert_eq!((ids.weapon(0x2E), ids.weapon(0x2F)), (Some(shot), Some(shot)));
         assert_eq!(ids.weapon_number(Some(shot)), 0x2E);
         let mut raw = [0xFF; 2 * FOLDER_SIZE];

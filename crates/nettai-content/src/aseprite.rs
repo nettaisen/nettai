@@ -3,7 +3,7 @@
 //! `sprite.aseprite` shows every animation frame as it is drawn: one
 //! layer per hardware part (part 0, the shadow, at the bottom), one tag per
 //! animation, frame durations in milliseconds that convert back to the
-//! exact tick counts, indexed colour with the sprite's 16 palette rows.
+//! exact tick counts, indexed color with the sprite's 16 palette rows.
 //! Parts that show the same tiles at the same place are linked cels, so an
 //! edit reaches every frame that shares them, as on the hardware.
 //!
@@ -41,7 +41,7 @@ pub fn ticks_from_ms(ms: u16) -> (u8, bool) {
 pub struct AseFile {
     pub width: u16,
     pub height: u16,
-    /// Bits per pixel: 8 indexed, 16 grey, 32 RGBA.
+    /// Bits per pixel: 8 indexed, 16 gray, 32 RGBA.
     pub depth: u16,
     pub transparent: u8,
     /// RGBA.
@@ -472,7 +472,7 @@ pub fn import(bytes: &[u8], base: &SpriteSheet, file: &str, report: &mut Report)
         }
     };
     if ase.depth != 8 {
-        report.error(file, "the sprite isn't in indexed colour mode any more; convert it back (Sprite > Color Mode > Indexed) with the original palette");
+        report.error(file, "the sprite isn't in indexed color mode any more; convert it back (Sprite > Color Mode > Indexed) with the original palette");
         return None;
     }
     let (ax, ay, _, _) = canvas(base);
@@ -507,7 +507,7 @@ pub fn import(bytes: &[u8], base: &SpriteSheet, file: &str, report: &mut Report)
     }
     let (new_rows, off_grid) = crate::image::palette_rows(&rgb, rows);
     if !off_grid.is_empty() {
-        report.warn(file, format!("{} palette colours aren't GBA colours and were rounded", off_grid.len()));
+        report.warn(file, format!("{} palette colors aren't GBA colors and were rounded", off_grid.len()));
     }
     if let Some(set) = out.palette_sets.first_mut() {
         for (r, row) in set.iter_mut().enumerate().take(rows) {

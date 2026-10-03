@@ -19,18 +19,17 @@ fn bn5_compat_reads() {
     let built_in = Compat::bn5();
     let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn5/compat"));
     assert_eq!(&Compat::read(dir).unwrap(), built_in);
-    assert_eq!(built_in.chips["cannon"].id, 0x001);
-    assert_eq!(built_in.chip_key(0x133), Some("holydrem"));
-    // Qualified at the boundary.
+    assert_eq!(built_in.chips["bn5:cannon"].id, 0x001);
+    assert_eq!(built_in.chip_key(0x133), Some("bn5:holydrem"));
     assert_eq!(built_in.chip(0x133).as_deref(), Some("bn5:holydrem"));
     assert_eq!(built_in.chip_entry("bn5:holydrem").map(|c| c.id), Some(0x133));
     assert_eq!(built_in.chip_entry("bn6:holydrem"), None);
-    let phoenix = &built_in.chips["phoenix"];
+    let phoenix = &built_in.chips["bn5:phoenix"];
     assert_eq!(phoenix.colonel.as_ref().and_then(|c| c.flags.as_deref()).map(|f| f.contains(&"library".to_string())), Some(true));
-    assert_eq!(built_in.chips["custswrd"].damage_formula, Some(45));
+    assert_eq!(built_in.chips["bn5:custswrd"].damage_formula, Some(45));
     // The e-Reader cards' chips: their strings and palettes are the save's.
-    assert_eq!((built_in.chips["leadraid"].id, built_in.chips["leadraid"].save_slot), (0x137, Some(0)));
-    assert_eq!((built_in.chips["chaoslrd"].id, built_in.chips["chaoslrd"].save_slot), (0x138, Some(1)));
+    assert_eq!((built_in.chips["bn5:leadraid"].id, built_in.chips["bn5:leadraid"].save_slot), (0x137, Some(0)));
+    assert_eq!((built_in.chips["bn5:chaoslrd"].id, built_in.chips["bn5:chaoslrd"].save_slot), (0x138, Some(1)));
     // BN5's holy panel is its type 9, the engine's Holy; metal, lava and
     // sea are BN5's own types (docs/design/bn5-map.md §15.3 item 1).
     assert_eq!(built_in.panel_type(9), Ok(Some(PanelType::Holy)));

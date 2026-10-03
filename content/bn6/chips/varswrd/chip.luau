@@ -15,7 +15,7 @@ local vari = require("../../lib/swords/vari")
 local wideswrd = require("../wideswrd/chip")
 
 return define.chip {
-    id = "varswrd",
+    id = "bn6:varswrd",
     codes = { "K", "V", "W" },
     element = "null",
     family = "sword",
@@ -30,7 +30,7 @@ return define.chip {
     slot_in_limit = 3,
     traits = { "no_chain" },
     action = vari.action {
-        id = "varswrd/action",
+        id = "bn6:varswrd/action",
         -- The sequences (`off_80EF670`), facing right (flip 0) and
         -- mirrored, as joypad words with A held: 0x81 A+down, 0x91
         -- A+down+right, 0x11 A+right, 0xA1 A+down+left, 0x21 A+left, 0x41

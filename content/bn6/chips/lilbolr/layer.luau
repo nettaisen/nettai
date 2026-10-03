@@ -2,7 +2,7 @@
 -- A layer (the original's actor object #0x54, `sub_80C3EE0`): a second
 -- sprite drawn with its owner, a pixel in front of it (or behind), that
 -- follows it every tick: its position (and a Z offset), its visibility,
--- palette, colour shader, flip and blending. The erupting LilBoiler shows
+-- palette, color shader, flip and blending. The erupting LilBoiler shows
 -- its steam with one, AirRaid's plane its jet flame (chips/airraid); the
 -- viruses use it too. See docs/engine/shot-chips.md §14.1.
 
@@ -22,7 +22,7 @@ export type State = {
     behind: boolean,
     -- Its own flip rather than its owner's (ExtraVars); a row offset
     -- (ExtraVars+0x10), its sprite held while its owner has no HP
-    -- (+0x14), its own visibility and colour shader (+0x18): the viruses'
+    -- (+0x14), its own visibility and color shader (+0x18): the viruses'
     -- settings (`sub_80C407C`, `sub_80C4086`, `sub_80C4090`).
     own_flip: boolean,
     row_offset: boolean,
@@ -123,7 +123,7 @@ local function init(me: Object)
 end
 
 layer.kind = define.kind {
-    id = "lilbolr/layer",
+    id = "bn6:lilbolr/layer",
     pool = "actor",
     state = {
         sprite = "sprite",

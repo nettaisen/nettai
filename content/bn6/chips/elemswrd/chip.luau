@@ -5,7 +5,7 @@ local parts = require("../../lib/swords/parts")
 local strike = require("../../lib/swords/strike")
 
 return define.chip {
-    id = "elemswrd",
+    id = "bn6:elemswrd",
     codes = { "J", "M", "U" },
     element = "null", family = "null", class = "standard",
     rarity = 1, mb = 43, damage = 220, hit_param = 30, lockout = 0,

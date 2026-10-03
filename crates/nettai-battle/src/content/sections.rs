@@ -96,6 +96,8 @@ struct ReactionsSection {
     push_reading: super::rules::PushReading,
     ice: [SlideVector; 6],
     bubble_bob: [i8; 32],
+    #[serde(default)]
+    slide_speed: super::rules::SlideSpeed,
 }
 
 #[derive(Deserialize)]
@@ -150,6 +152,12 @@ struct NaviCustSection {
 #[serde(deny_unknown_fields)]
 struct StatusSection {
     hp_bug_periods: [u8; 8],
+    #[serde(default = "yes")]
+    form_tick: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 #[derive(Deserialize)]
@@ -195,17 +203,56 @@ fn serde_name<T: serde::Serialize>(v: &T) -> String {
     }
 }
 
+/// A section's kind: its id's last part (`custom-screen` of
+/// `bn6:custom-screen` and of a mix's `mix:souls/custom-screen`).
+pub(crate) fn kind(key: &str) -> &str {
+    keys::local(key).rsplit('/').next().unwrap_or("")
+}
+
+/// Whose a section's tables are (docs/design/rules-in-luau.md §2.3, P1
+/// item 8): a side's (what one navi's rules read: a mix may bring its own),
+/// or the battle's or a chip's game's (the arena's, a chip's own: a mix
+/// can't change them).
+pub(crate) fn about_a_side(kind: &str) -> bool {
+    matches!(kind, "custom-screen" | "berserk" | "navicust" | "status" | "lockon" | "cross-special")
+}
+
+/// The rule sections rulesets list as their own (`sections`): theirs, not
+/// their folder's game's.
+fn owned_by_rulesets(definitions: &Definitions) -> std::collections::BTreeSet<String> {
+    let mut out = std::collections::BTreeSet::new();
+    for d in definitions.of(Registry::Ruleset) {
+        if let nettai_content_api::Data::List(items) = d.spec.field("sections") {
+            for v in items {
+                if let nettai_content_api::Data::Ref(Registry::Rules, key) = v {
+                    out.insert(key.clone());
+                }
+            }
+        }
+    }
+    out
+}
+
 /// Root `root`'s rule sections into `rules` (which starts as the base):
-/// each only if the root defines it.
+/// each only if the root defines it (and no ruleset lists it as its own).
 fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definitions) -> Result<(), ContentError> {
+    let owned = owned_by_rulesets(definitions);
     for d in definitions.of(Registry::Rules) {
-        if keys::root_of(&d.key).unwrap_or("") != root {
+        if keys::root_of(&d.key).unwrap_or("") != root || owned.contains(&d.key) {
             continue;
         }
+        section(rules, d, r)?;
+    }
+    Ok(())
+}
+
+/// Section `d` into `rules`.
+fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader) -> Result<(), ContentError> {
+    {
         let at = format!("{}.luau: rules {}", d.module, d.key);
         let e = |m: String| ContentError::new(m);
         let spec = &d.spec;
-        match keys::local(&d.key) {
+        match kind(&d.key) {
             "elements" => {
                 let s: ElementsSection = r.read(spec, &at).map_err(e)?;
                 let mut weakness = [[0u8; 6]; 6];
@@ -299,6 +346,7 @@ fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definit
                 let s: ReactionsSection = r.read(spec, &at).map_err(e)?;
                 (rules.push_vectors, rules.ice_vectors, rules.bubble_bob) = (s.push, s.ice, s.bubble_bob);
                 rules.push_reading = s.push_reading;
+                rules.slide_speed = s.slide_speed;
             }
             "berserk" => {
                 let s: BerserkSection = r.read(spec, &at).map_err(e)?;
@@ -364,7 +412,10 @@ fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definit
                 rules.navicust = NaviCustRules { boards, command_line: s.command_line };
             }
             "banners" => rules.holding_banners = r.read::<BannersSection>(spec, &at).map_err(e)?.holding,
-            "status" => rules.hp_bug_periods = r.read::<StatusSection>(spec, &at).map_err(e)?.hp_bug_periods,
+            "status" => {
+                let s: StatusSection = r.read(spec, &at).map_err(e)?;
+                (rules.hp_bug_periods, rules.form_tick) = (s.hp_bug_periods, s.form_tick);
+            }
             "lockon" => {
                 let s: LockonSection = r.read(spec, &at).map_err(e)?;
                 rules.lockon.column_shifts = s.column_shifts;
@@ -372,6 +423,7 @@ fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definit
             }
             "chip-use" => rules.chip_use = r.read::<super::rules::ChipUseRules>(spec, &at).map_err(e)?,
             "flow" => rules.flow = r.read::<super::rules::FlowRules>(spec, &at).map_err(e)?,
+            "effects" => rules.effects = r.read::<super::rules::EffectsRules>(spec, &at).map_err(e)?,
             "sp-chips" => {
                 let s: SpChipsSection = r.read(spec, &at).map_err(e)?;
                 (rules.sp_deletion_times, rules.sp_slots) = (s.deletion_times, s.slots);
@@ -397,11 +449,44 @@ fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definit
     Ok(())
 }
 
+/// Each ruleset's own rules (P1 item 8), by `RulesetHandle`: for a ruleset
+/// that lists sections of its own (a mix's), its game's tables with them;
+/// None for the others. A section about the battle or a chip's game is
+/// refused: a mix changes only what its sides read.
+pub fn build_rulesets(content: &mut Content) -> Result<(), ContentError> {
+    let mut out: Vec<Option<Rules>> = Vec::with_capacity(content.defs.rulesets.len());
+    {
+        let r = SpecReader::new(&content.assets, &content.defs.definitions);
+        for rs in &content.defs.rulesets {
+            if rs.sections.is_empty() {
+                out.push(None);
+                continue;
+            }
+            let mut rules = content.rules[rs.game.index()].clone();
+            for key in &rs.sections {
+                let d = content.defs.definitions.get(Registry::Rules, key).expect("a listed section is defined");
+                let k = kind(key);
+                if !about_a_side(k) {
+                    return Err(ContentError::new(format!(
+                        "{}.luau: ruleset {}: section {key} (`{k}`) is the battle's or a chip's game's: a ruleset's own sections are its sides' \
+                         (custom-screen, berserk, navicust, status, lockon, cross-special)",
+                        d.module, rs.key
+                    )));
+                }
+                section(&mut rules, d, &r)?;
+            }
+            out.push(Some(rules));
+        }
+    }
+    content.ruleset_rules = out;
+    Ok(())
+}
+
 /// The rule sections the content defines, into `content.rules`.
 pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), ContentError> {
     let r = SpecReader::new(&content.assets, definitions);
     let mut all = Vec::new();
-    for root in content.scripts.root_names() {
+    for root in Content::game_names(&content.scripts, definitions) {
         let mut rules = content.base_rules.clone();
         sections(&mut rules, &root, &r, definitions)?;
         all.push(rules);

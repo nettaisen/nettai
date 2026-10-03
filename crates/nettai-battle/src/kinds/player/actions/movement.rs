@@ -101,7 +101,7 @@ pub(in crate::kinds::player) fn start(b: &mut Battle, r: ObjectRef, dir: u8, end
 /// `sub_80116AE(5, end_lag, 2)` after setting AIAttackVars+0x16/+0x17:
 /// a step straight to `target` (the berserk controller's). A target in
 /// column 0 means no step.
-pub(in crate::kinds::player) fn start_absolute(b: &mut Battle, r: ObjectRef, target: PanelPos, end_lag: u16, kind: MoveKind) {
+pub(crate) fn start_absolute(b: &mut Battle, r: ObjectRef, target: PanelPos, end_lag: u16, kind: MoveKind) {
     ai_mut(b, r).attack.action = ActionVars::Move(Vars { target, ..Vars::default() });
     start(b, r, ABSOLUTE_DIRECTION, end_lag, kind);
 }
@@ -318,7 +318,7 @@ fn depart(b: &mut Battle, r: ObjectRef) {
 /// it is missing or broken) breaks (kind 1), cracks (3) or turns to the
 /// kind's panel type, with the type's trail sound (`byte_8013D44`, the
 /// panel rules' `trail_sound`) when the type changes.
-pub(super) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
+pub(crate) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
     if ai(b, r).actor_type != ActorType::Player {
         return;
     }

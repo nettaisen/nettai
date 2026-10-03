@@ -232,7 +232,7 @@ the content the round runs on, so peers whose setups agree run the same data.
 | `battle.rs` `finish_round` | `exit_hp`: the local navi's HP after the round | Shared; per-viewer is the viewer's navi's HP (read it from `stats`/the object) | Documented |
 | `player/entry.rs` | Which navi appears at once and which fades in | Shared: it is object state (phase, timers) and gates the intro; the non-local viewer sees the mirror image of the original (its own navi fades in) | Accepted, cosmetic |
 | `perspective.rs` `sees` (`sub_800EB6C`), `player/status.rs` and `obstacle.rs` `update_visibility`, `dimming.rs` `show_user`, the charge glow, the Full Synchro aura, status visuals; content's barrier visual, Reflector shield, BugFix glow and dimming stand-in | A blinded player doesn't see the other side's navi, effects and obstacles (`VISIBLE`) | Presentation, per viewer: each site decides the object's visibility for both viewers (`Battle::hide_from_blind`, `hide_from`; content's `me:hide_from_blind()`), recorded in `Object::sight`; `Battle::visible_to(r, viewer)` reads it. The `VISIBLE` flag stays the local side's, which the recordings check | Done |
-| `lockon_marker.rs`, `charge_glow.rs` | The Beast Out lock-on marker and the A-charge glow show only on the owner's console | Presentation, per viewer: `Battle::hide_from_other_side` | Done |
+| `target_marker.rs`, `charge_glow.rs` | The Beast Out lock-on marker and the A-charge glow show only on the owner's console | Presentation, per viewer: `Battle::hide_from_other_side` | Done |
 | The overlays and attachments that take their owner's `VISIBLE` (form, body and idle overlays, ice and bubble visuals, effects that follow; content's attachments, drills, axes, clouds...) | They follow the local side's view of their owner | Presentation, per viewer: `Battle::copy_visibility` (content's `me:copy_visibility(owner)`) copies each viewer's view | Done |
 | `player/status.rs` `counter_shader` | The other side's navi blinks blue while it can be countered, to a local player in Full Synchro | Should be a per-viewer look: the shader is the sprite's `Look`, one per object | Open (cosmetic: the other viewer sees its own navi blink when the local player could counter it) |
 | content's barrier visual (`hidden_unless_local_megaman`), `heal.rs` and `dimming.rs` trap mark | A barrier's parts hidden unless its navi is the local MegaMan; the trap mark faces the local side's way | Same as above (looks) | Open (cosmetic) |
@@ -261,9 +261,9 @@ produced cues that didn't happen. `cues::CueTracker` handles that:
   it each row that settles (`World::settled`);
 - a cue plays as soon as a tick first makes it, predicted or not (waiting for confirmation would delay every
   sound by the latency);
-- a cue a re-simulated tick makes again is recognised as the one already played if it was played for a frame at
+- a cue a re-simulated tick makes again is recognized as the one already played if it was played for a frame at
   most `tolerance` frames away (a corrected input often moves an event by a frame or two), and not played again;
-- a played cue that the re-simulation doesn't make again, within the tolerance, is cancelled.
+- a played cue that the re-simulation doesn't make again, within the tolerance, is canceled.
 
 The result is a list of `CueAction::Play(cue)` / `Cancel(cue)`. nettai-audio's `BattleAudio::handle_actions`
 plays the plays like `handle` and takes back cancels: a sound effect stops if its player is still playing it
@@ -275,7 +275,7 @@ frame's cues from its latest simulation, which are the confirmed frame's cues on
 
 The synthetic tests check, for each peer, that plays minus cancels equals the cues of the confirmed frames, cue
 by cue. At 10 + 3 frames of latency, seed 1's battle (7,456 frames) plays 653 and 691 cues on the two peers, of
-which 53 and 65 are cancelled predictions. (When nettai-netplay moved onto getgud, the numbers on the engine of
+which 53 and 65 are canceled predictions. (When nettai-netplay moved onto getgud, the numbers on the engine of
 the time were within one or two of the rollback peer it had before.)
 
 ### 3.3 Per viewer
@@ -536,12 +536,12 @@ content's chips, Crosses of MegaMan's, the content's patch cards, a link battle 
 ### 4.8 What WebRTC would need
 
 Tango plays its matches over a WebRTC data channel opened unordered and without retransmits, set up through a
-signalling server (matchmaking by a link code). To plug in here:
+signaling server (matchmaking by a link code). To plug in here:
 
 - a `Datagram` on such a channel: `send` posts a message on the channel; `try_recv` takes one from a queue the
   channel's message callback fills (the channel's library is asynchronous; the peer and its session stay on the
   frontend's thread, which polls the queue every frame);
-- the signalling: an offer and an answer (SDP) and ICE candidates exchanged through a server, before the channel
+- the signaling: an offer and an answer (SDP) and ICE candidates exchanged through a server, before the channel
   opens; the host and joiner roles follow who made the link code;
 - the handshake as it is, over the channel (or on a second, reliable channel, without the kind byte on frames);
 - NAT traversal (STUN, and TURN when that fails) comes with WebRTC; UDP direct play needs a forwarded port instead.

@@ -1,6 +1,6 @@
 --!strict
 -- BN5's panels (docs/design/bn5-map.md §15.2): its 11 panel types (0x0800BCF0) are BN6's but for metal (type 5,
--- BN6's road flags, a plate's look), lava (type 8, the volcano's flags and sound but its own behaviour) and sea
+-- BN6's road flags, a plate's look), lava (type 8, the volcano's flags and sound but its own behavior) and sea
 -- (type 10, flag 0x20000); it has no roads. Each type's flag bits; the sound a panel trail makes turning a panel
 -- into it (0x080113A0); which panels start visible and the front edges (0x0800ABAC, 0x0800ABD4); the step rules
 -- (0x0800CAE8, dashes 0x0800E114: BN6's values). BN5 has no any-side step rule (BN6's `sub_800E680` is absent):
@@ -19,33 +19,33 @@
 -- The steps a metal slide tries: forward, back, up, down.
 local F, B, U, D = { dx = 1, dy = 0 }, { dx = -1, dy = 0 }, { dx = 0, dy = -1 }, { dx = 0, dy = 1 }
 
-return define.rules("panels", {
+return define.rules("bn5:panels", {
     types = {
         missing = { flags = 0x00018000 },
         broken = { flags = 0x00014000 },
         normal = { flags = 0x00010010 },
         cracked = { flags = 0x00010050 },
-        poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison") },
+        poison = { flags = 0x00010110, trail_sound = asset.sound("bn5:panel-poison") },
         metal = {
             flags = 0x00010210,
-            trail_sound = asset.sound("immobilizer"),
+            trail_sound = asset.sound("bn5:immobilizer"),
             cleared_by = "wood",
             -- By the direction of the move: none, up, down, back, forward, other.
             slide = { {}, { F, U, B, D }, { B, D, F, U }, { U, B, D, F }, { D, F, U, B }, { D, F, U, B } },
         },
-        grass = { flags = 0x00010410, trail_sound = asset.sound("grass"), cleared_by = "fire" },
-        ice = { flags = 0x00010810, trail_sound = asset.sound("freeze") },
+        grass = { flags = 0x00010410, trail_sound = asset.sound("bn5:grass"), cleared_by = "fire" },
+        ice = { flags = 0x00010810, trail_sound = asset.sound("bn5:freeze") },
         lava = {
             flags = 0x00011010,
-            trail_sound = asset.sound("panel-volcano"),
+            trail_sound = asset.sound("bn5:panel-volcano"),
             expires = 960,
             burn = 50,
             cleared_by = "aqua",
         },
-        holy = { flags = 0x00012010, trail_sound = asset.sound("panel-change") },
+        holy = { flags = 0x00012010, trail_sound = asset.sound("bn5:panel-change") },
         sea = {
             flags = 0x00030010,
-            trail_sound = asset.sound("sand-worm"),
+            trail_sound = asset.sound("bn5:sand-worm"),
             expires = 960,
             drains = "fire",
             holds = 20,

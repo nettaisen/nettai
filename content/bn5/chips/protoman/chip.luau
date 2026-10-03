@@ -9,16 +9,16 @@ local attachment = require("@bn6/objects/attachment/attachment")
 local navi = require("@bn6/chips/protoman/navi")
 
 local LOOK = navi.look {
-    sprite = asset.sprite("protoman"),
+    sprite = asset.sprite("bn5:protoman"),
     palette = 0,
-    sword = attachment.look { sprite = asset.sprite("sword"), palette = 0 },
+    sword = attachment.look { sprite = asset.sprite("bn5:sword"), palette = 0 },
     sword_anim = 1,
-    slash = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 },
+    slash = define.effect { sprite = asset.sprite("bn5:sword-slash"), anim = 0, palette = 0 },
     spawner_address = 0x080C1A01,
 }
 
 return define.chip {
-    id = "protoman",
+    id = "bn5:protoman",
     codes = { "B" },
     element = "null",
     family = "sword",

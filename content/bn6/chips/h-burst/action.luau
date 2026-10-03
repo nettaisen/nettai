@@ -23,9 +23,9 @@ local AIM, RECOVER = 0x0, 0x4
 
 local ANIM_AIM = 0x0B
 local RECOVER_TICKS = 0x14
-local SOUND = asset.sound("h-burst")
+local SOUND = asset.sound("bn6:h-burst")
 -- The spreader the navi holds (the original's attachment row 0x15).
-local SPREADER = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 0x0B }
+local SPREADER = attachment.look { sprite = asset.sprite("bn6:spreader"), palette = 0, attach_point = 0x0B }
 
 -- An H-Burst whose shot bursts `spec.bursts` times.
 function action.action(spec: HyperBurstSpec): Action

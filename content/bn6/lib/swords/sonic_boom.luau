@@ -35,7 +35,7 @@ export type Look = {
 -- BN6's: 16 pixels up; its primary element's palette (`byte_80CF8A8`); a
 -- slash.
 local BN6: Look = {
-    sprite = asset.sprite("sword-slash"),
+    sprite = asset.sprite("bn6:sword-slash"),
     z = 0x10_0000,
     piercing_palette = 0xB,
     palettes = { [0] = 0, 1, 2, 3, 4, 0, 0, 0 },
@@ -153,7 +153,7 @@ function sonic_boom.make_kind(id: string, look: Look): Kind
     }
 end
 
-sonic_boom.kind = sonic_boom.make_kind("sonic-boom", BN6)
+sonic_boom.kind = sonic_boom.make_kind("bn6:sonic-boom", BN6)
 
 -- `sub_80CF91E` and its throwers' speed: a sonic boom from `owner` on
 -- panel (x, y), with `element`, the damage word and what it is, flying at

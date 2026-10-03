@@ -1,7 +1,7 @@
 --!strict
 -- GunDelS1-3 and GunDelEX: a sun beam that drains the column two panels
 -- ahead, more in the sun (./action, ./beam). Each level fires longer and
--- holds its gun in its own colours; GunDelEX's beam is wider and covers
+-- holds its gun in its own colors; GunDelEX's beam is wider and covers
 -- the column past it too.
 
 local action = require("./action")
@@ -17,7 +17,7 @@ local WIDE_BEAM_IN_SUN: SunBeam = { sprite = beam.sprites.wide, palette = 3 }
 
 return {
     define.chip {
-        id = "gundels1",
+        id = "bn6:gundels1",
         codes = { "C", "M", "T", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 15, damage = 0, hit_param = 0, lockout = 0,
@@ -34,7 +34,7 @@ return {
         },
     },
     define.chip {
-        id = "gundels2",
+        id = "bn6:gundels2",
         codes = { "B", "E", "R" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 30, damage = 0, hit_param = 0, lockout = 0,
@@ -51,7 +51,7 @@ return {
         },
     },
     define.chip {
-        id = "gundels3",
+        id = "bn6:gundels3",
         codes = { "N", "Q", "W" },
         element = "null", family = "null", class = "standard",
         rarity = 3, mb = 38, damage = 0, hit_param = 0, lockout = 0,
@@ -72,7 +72,7 @@ return {
     -- chips take theirs): a Standard chip with the library flag; the US
     -- games' is no folder chip, with no flags.
     define.chip {
-        id = "gundelex",
+        id = "bn6:gundelex",
         codes = { "G" },
         element = "null", family = "null", class = "standard",
         rarity = 4, mb = 80, damage = 0, hit_param = 0, lockout = 0,

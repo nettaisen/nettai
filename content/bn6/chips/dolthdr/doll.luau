@@ -23,7 +23,7 @@ export type State = {
     ticks: number,
 }
 
-local SPRITE = asset.sprite("thunder-doll")
+local SPRITE = asset.sprite("bn6:thunder-doll")
 -- The user's hand (attach point 0x1D), and a panel's width in pixels.
 local HAND, PANEL = 0x1D, 0x28
 
@@ -138,7 +138,7 @@ local function init(me: Object)
 end
 
 doll.kind = define.kind {
-    id = "dolthdr/doll",
+    id = "bn6:dolthdr/doll",
     pool = "attack",
     state = { columns = "object[6]", slot = slot.TYPE, registers = "bool", ticks = "u8" },
     -- `sub_80D5740`.

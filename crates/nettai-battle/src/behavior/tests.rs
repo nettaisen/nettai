@@ -441,7 +441,7 @@ fn scripted_chips_roll_back() {
         numbered(&[testing::HEAT, testing::ELEC, testing::SLASH, testing::CHARGE, testing::TOMAHAWK, testing::TENGU, testing::BLAST]),
         numbered(&[testing::BASS]),
         numbered(&[testing::SUN_MOON]),
-        numbered(&["count", "django"]),
+        numbered(&["test:count", "test:django"]),
     ] {
         let chips = &chips[..];
         let setup = || scenario::setup_with_handles(chips);
@@ -614,10 +614,10 @@ fn registrations_follow_the_content_data() {
     // effect no chip has (TenguCross's wind) has its own.
     let plus = d.chip(testing::chip_in(&c, testing::PLUS));
     assert!(matches!(plus.usage, crate::content::ChipUsage::Instant(_)), "{:?}", plus.usage);
-    assert!(d.weapon(c.weapon_by_key("megaman/tengu-wind")).instant.is_some());
+    assert!(d.weapon(c.weapon_by_key("test:megaman/tengu-wind")).instant.is_some());
     // A chip's action may be another chip's (the test link chips run
     // BN6's link navis' chips' actions).
-    for (key, bn6) in testing::LINK_CHIPS.iter().zip(["heatpres", "delecswd", "rslash"]) {
+    for (key, bn6) in testing::LINK_CHIPS.iter().zip(["test:heatpres", "test:delecswd", "test:rslash"]) {
         let (chip, other) = (d.chip(testing::chip_in(&c, key)), d.chip(testing::chip_in(&c, bn6)));
         assert!(matches!(chip.usage, crate::content::ChipUsage::Action(_)), "{key}: {:?}", chip.usage);
         assert_eq!(chip.usage, other.usage, "{key}");
@@ -793,10 +793,10 @@ fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
     use crate::object::Pool;
     let mut b = rock_battle();
     let stage = b.content.stage(b.content.stage_by_key(testing::ROCK_BATTLE)).clone();
-    let rock = Place::Kind(b.content.defs.kind_by_key("rockcube/rock").expect("the rock"));
+    let rock = Place::Kind(b.content.defs.kind_by_key("test:rockcube/rock").expect("the rock"));
     assert_eq!(stage.actors.iter().map(|e| e.place).collect::<Vec<_>>(), [Place::Navi, Place::Navi, rock, rock]);
     // Each rock names its variant, a record of the rock's.
-    let cube = b.content.defs.record("rockcube/rock/cube");
+    let cube = b.content.defs.record("test:rockcube/rock/cube");
     assert!(cube.is_some() && stage.actors[2..].iter().all(|e| e.variant == cube));
     b.spawn_actors();
     assert_eq!(b.round.alive, [1, 1]);
@@ -1018,7 +1018,7 @@ fn an_obstacle_encased_in_ice_becomes_an_ice_block() {
     assert_eq!(b.field.objects.class_of(block), Some(0));
     run_only(&mut b, &["rockcube/rock", "encased-bubble"]);
     let o = b.objects.get(block);
-    let ice = b.content.identity_by_key("ice-block");
+    let ice = b.content.identity_by_key("test:ice-block");
     assert_eq!((o.panel, o.identity, o.element, o.hp), (panel, Some(ice), 2, 200));
 }
 
@@ -1041,7 +1041,7 @@ fn the_navi_changing_chips_change_the_navi() {
         use crate::content::ChipCode;
         use crate::custom::{BattleFolder, FolderChip};
         let mut s = scenario::setup();
-        let chips = [(testing::chip_handle("hubbatc"), ChipCode(9)), (testing::chip_handle("puncharm"), ChipCode::ASTERISK)];
+        let chips = [(testing::chip_handle("test:hubbatc"), ChipCode(9)), (testing::chip_handle("test:puncharm"), ChipCode::ASTERISK)];
         let mut folder = BattleFolder::empty();
         for (slot, &(chip, code)) in folder.chips.iter_mut().zip(chips.iter().cycle()) {
             assert!(testing::content().chip(chip).codes.contains(&code));
@@ -1062,7 +1062,7 @@ fn the_navi_changing_chips_change_the_navi() {
     let after = &b.stats[0];
     assert_eq!((after.rapid, after.charge, after.custom_level), (4, 4, 8), "{before:?}");
     assert!(after.float_shoes && after.air_shoes && after.undershirt);
-    assert_eq!(after.weapons.charge_shot, testing::weapon("puncharm/charge"), "the arm's charged shot");
+    assert_eq!(after.weapons.charge_shot, testing::weapon("test:puncharm/charge"), "the arm's charged shot");
     let copy = digests(&tape, Battle::new(setup(), scenario::content()));
     let mut b = Battle::new(setup(), scenario::content());
     for (i, t) in tape.iter().enumerate() {
@@ -1167,7 +1167,7 @@ fn tango_heals_her_navi_at_a_quarter_of_its_hp() {
 /// once).
 fn patched(module: &str, edits: &[(&str, &str)]) -> Content {
     let mut c = testing::build();
-    let src = c.scripts.home_module_mut(module).unwrap_or_else(|| panic!("no module {module}"));
+    let src = c.scripts.module_mut(testing::ROOT, module).unwrap_or_else(|| panic!("no module {module}"));
     for (from, to) in edits {
         assert!(src.contains(from), "{module}.luau has no {from:?}");
         *src = src.replacen(from, to, 1);
@@ -1355,6 +1355,25 @@ fn gc_timing_does_not_reach_the_battle() {
     assert_eq!(have, want);
 }
 
+/// BN5's dark chips' writes (content/bn5/rules/light-dark): `sub_800AB2E`
+/// sets a side's statistic (where `sub_800AB46` adds), the mood is
+/// writable, and battle effect 0x100000 reads as `no_dark_chips`.
+#[test]
+fn a_side_stat_and_the_mood_are_set() {
+    use nettai_content_api::api::{BattleInfo, CoreApi, NaviStat};
+    use nettai_content_api::Value;
+    let mut b = rock_battle();
+    b.bump_side_stat(1, 2, 5);
+    CoreApi::set_side_stat(&mut b, 1, 2, 1);
+    assert_eq!(CoreApi::side_stat(&b, 1, 2), 1);
+    assert_eq!(CoreApi::side_stat(&b, 0, 2), 0);
+    CoreApi::set_navi_stat(&mut b, 0, NaviStat::Mood, Value::Int(0)).unwrap();
+    assert_eq!(b.stats[0].mood, 0);
+    assert_eq!(CoreApi::battle_info(&b, BattleInfo::NoDarkChips), Value::Bool(false));
+    b.setup.settings.effects |= crate::setup::effects::NO_DARK_CHIPS;
+    assert_eq!(CoreApi::battle_info(&b, BattleInfo::NoDarkChips), Value::Bool(true));
+}
+
 // ---- Dimming chip subtypes 2, 3, 5, 15 and 27 (the panel changes) ---------------------------
 
 /// The field operations their scripts call: `object_breakPanel_dup2`
@@ -1487,21 +1506,21 @@ fn trap_bomb_and_mine_chips_roll_back() {
 // ---- Dimming chips of subtypes 4, 5, 9, 13, 26, 27, 28 and 36 ------------------------------
 
 /// The barriers (subtype 4), as content defines them.
-const BARRIER_CHIPS: &[&str] = &["barrier", "barr100", "barr200", "bblwrap", "lifeaur"];
+const BARRIER_CHIPS: &[&str] = &["test:barrier", "test:barr100", "test:barr200", "test:bblwrap", "test:lifeaur"];
 /// BugFix (subtype 26).
-const BUGFIX_CHIPS: &[&str] = &["bugfix"];
+const BUGFIX_CHIPS: &[&str] = &["test:bugfix"];
 /// The panel chips (subtype 5).
-const PANEL_CHIPS: &[&str] = &["pnlretrn", "holypanl", "snctuary", "comingrd", "goingrd"];
+const PANEL_CHIPS: &[&str] = &["test:pnlretrn", "test:holypanl", "test:snctuary", "test:comingrd", "test:goingrd"];
 /// The instruments (subtype 9).
-const INSTRUMENT_CHIPS: &[&str] = &["fanfare", "discord", "timpani", "silence"];
+const INSTRUMENT_CHIPS: &[&str] = &["test:fanfare", "test:discord", "test:timpani", "test:silence"];
 /// AirRaid (subtype 13).
-const AIR_RAID_CHIPS: &[&str] = &["airraid1", "airraid2", "airraid3"];
+const AIR_RAID_CHIPS: &[&str] = &["test:airraid1", "test:airraid2", "test:airraid3"];
 /// ColorPt and DblPoint (subtype 27).
-const POINT_CHIPS: &[&str] = &["colorpt", "dblpoint"];
+const POINT_CHIPS: &[&str] = &["test:colorpt", "test:dblpoint"];
 /// Sensor (subtype 28).
-const SENSOR_CHIPS: &[&str] = &["sensor1", "sensor2", "sensor3"];
+const SENSOR_CHIPS: &[&str] = &["test:sensor1", "test:sensor2", "test:sensor3"];
 /// SumnBlk (subtype 36).
-const SUMMON_CHIPS: &[&str] = &["sumnblk1", "sumnblk2", "sumnblk3"];
+const SUMMON_CHIPS: &[&str] = &["test:sumnblk1", "test:sumnblk2", "test:sumnblk3"];
 
 fn defined(keys: &[&str]) -> Vec<nettai_content_api::ChipHandle> {
     keys.iter().map(|k| testing::chip_handle(k)).collect()
@@ -1663,7 +1682,7 @@ fn first_barrier_raises_a_barrier() {
     // barrier, with its visual, as the navi comes in.
     let mut s = scenario::setup();
     let content = scenario::content();
-    s.navi_stats[0].first_barrier = Some(content.defs.record("barrier/10").expect("the Barrier chip's barrier"));
+    s.navi_stats[0].first_barrier = Some(content.defs.record("test:barrier/10").expect("the Barrier chip's barrier"));
     let mut b = Battle::new(s, content);
     for _ in 0..300 {
         b.tick(&Default::default(), Default::default());
@@ -1685,7 +1704,7 @@ fn the_other_sides_first_barrier_is_hidden_until_the_local_navi_is_in() {
     // blind bit, so the visual is hidden on that tick only.
     let mut s = scenario::setup();
     let content = scenario::content();
-    s.navi_stats[1].first_barrier = Some(content.defs.record("barrier/10").expect("the Barrier chip's barrier"));
+    s.navi_stats[1].first_barrier = Some(content.defs.record("test:barrier/10").expect("the Barrier chip's barrier"));
     let mut b = Battle::new(s, content);
     let visual = |b: &Battle| b.player(1).and_then(|p| b.objects.get(p).actor).and_then(|a| b.actors.get(a).barrier_visual);
     let mut ticks = 0;
@@ -1787,7 +1806,7 @@ fn count_rains_on_the_other_side_then_drops_lances() {
     // Side 1 stands at (5,2), in the rain (each hit the chip's damage, SP
     // or not) and where the first lance falls (each chip's parameter
     // byte).
-    for (chip, rain, lance) in [("count", Some(20), 50), ("count-ex", Some(25), 70), ("count-sp", None, 100)] {
+    for (chip, rain, lance) in [("test:count", Some(20), 50), ("test:count-ex", Some(25), 70), ("test:count-sp", None, 100)] {
         let mut t = 0u32;
         let mut navi: Vec<u32> = Vec::new();
         let mut storm: Vec<u32> = Vec::new();
@@ -1853,7 +1872,7 @@ fn django_drops_in_and_rides_across_his_row() {
     let mut t = 0u32;
     let mut there: Vec<(u32, u8, PanelPos)> = Vec::new();
     let mut bike = 0;
-    let b = drive("django", 1200, use_once, |b| {
+    let b = drive("test:django", 1200, use_once, |b| {
         t += 1;
         if let Some((action, _, panel)) = django_at(b) {
             there.push((t, action, panel));
@@ -1898,7 +1917,7 @@ fn django_comes_back_to_slash_after_l_l_l_a() {
     };
     let mut actions = Vec::new();
     let mut slash_at = None;
-    let b = drive("django2", 1400, fight, |b| {
+    let b = drive("test:django2", 1400, fight, |b| {
         if let Some((action, _, panel)) = django_at(b) {
             if actions.last() != Some(&action) {
                 actions.push(action);
