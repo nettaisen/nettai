@@ -17,6 +17,7 @@ local antidmg_counter = require("../chips/antidmg/counter")
 local barriers = require("../lib/barriers")
 local charged_shot = require("../navis/megaman/weapons/charged-shot")
 local anti_recovery = require("../chips/antirecv/controller")
+local soldier = require("../objects/soldier/soldier")
 local chaos = require("./souls/chaos")
 local invalid = require("../chips/invalid/chip")
 local collision = require("./collision")
@@ -48,6 +49,9 @@ return define.roles {
     kinds = {
         -- AntiRecv's counterattack, which a heal meets when the other side has AntiRecv armed (BN6's code).
         anti_recovery = anti_recovery.kind,
+        -- What an obstacle turns into where an armed side's ColonelSoul can use it (attack object 0x30: BN5's own,
+        -- objects/soldier).
+        obstacle_soldier = soldier.kind,
     },
     statuses = {
         -- What a damage word's paralysis bit makes its hits carry, and what a counter hit lands instead of a
