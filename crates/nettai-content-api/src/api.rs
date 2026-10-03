@@ -1208,6 +1208,9 @@ pub trait CoreApi {
     fn player(&self, side: u8) -> Option<ObjectRef>;
     /// A side's combatants still in, in slot order.
     fn alive_actors(&self, side: u8) -> Vec<ObjectRef>;
+    /// `sub_802EFEE`: the actor `side` tracks in the battle flag 0x40
+    /// mode (its side state's +0x44), if any.
+    fn tracked(&self, side: u8) -> Option<ObjectRef>;
     /// The objects of content kind `kind` (a kind handle) in the update
     /// list, in update order, whatever their lifecycle state (the game's
     /// walks of the list, such as `sub_80C67A4`).

@@ -229,7 +229,7 @@ end
 local function init(me: Object)
     local sprite = me.sprite
     sprite:load(SPRITE)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0xFF
     local facing = bit32.bxor(me.alliance, me.flip)
     sprite:set_flip(facing)
