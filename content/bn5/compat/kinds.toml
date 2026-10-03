@@ -93,6 +93,8 @@
 "bn5:metrknuk/fist" = { pool = "attack", index = 0x76 }
 "bn5:bugcurse/controller" = { pool = "effect", index = 0x56, scratch_position = true }
 "bn5:bugcurse/curse" = { pool = "attack", index = 0x80 }
+"bn5:omegarkt/controller" = { pool = "effect", index = 0x79, scratch_position = true }
+"bn5:omegarkt/rocket" = { pool = "attack", index = 0xB9 }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
 "bn5:capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "bn5:napalm-bomb" = { pool = "attack", index = 0x3A }
