@@ -1064,6 +1064,9 @@ export type CircGunLook = {
     sprite: SpriteAsset,
     sounds: { step: Sound, mark: Sound, hit: Sound },
     hits: { [number]: CollisionType },
+    -- What the hit reaches, and the flash it shows.
+    target: CollisionType,
+    flash: Effect,
     -- The hit's spark (element 0's).
     spark: Spark,
     on_floor: boolean?,
