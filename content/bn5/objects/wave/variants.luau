@@ -29,4 +29,19 @@ variants.wide = wide(0x6_0000)
 variants.wide2 = wide(0x6_8000)
 variants.wide3 = wide(0x7_0000)
 
+-- DarkWide's (kind 9, which BN6's table has and no BN6 chip fires): it goes through, trails afterimages of its
+-- own sprite (animation 1: 0x080CC9A6's word 0x11D10, BN6's rock cubes 0x10010) and carries bug 0x14 with
+-- argument 2, as BN5's row 0x25 in palette 1 (0x080CC82E).
+variants.dark = wave.variant {
+    speed = 0x7_0000,
+    pierces = true,
+    holds = false,
+    trails = true,
+    collision = collision.attack_480,
+    bug = 0x214,
+    palette = 1,
+    sprite = SPRITE,
+    trail_sprite = SPRITE,
+}
+
 return variants

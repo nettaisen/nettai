@@ -1114,6 +1114,10 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
 /// level, `byte_802136D`: the navi's `fire_charge`; ChargeCross's 100:
 /// the form's), and the height clamp of a navi that changes form.
 fn per_form_tick(b: &mut Battle, r: ObjectRef) {
+    // (BN5's table runs none of it: the status rules' `form_tick`.)
+    if !b.rules_for(r).form_tick {
+        return;
+    }
     let content = b.content.clone();
     let s = stats(b, r);
     let (navi, form) = (content.navi(s.navi), content.form(s.form));

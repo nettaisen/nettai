@@ -333,6 +333,9 @@ named_fields! {
         Tired = "tired", Bool, rw;
         /// AIData+0x60: the barrier's visual (effect #7).
         BarrierVisual = "barrier_visual", Object, rw;
+        /// BN5's AIData+0x3C: DarkPlus's tint (0 none), which picks the
+        /// navi's status shader.
+        PlusTint = "plus_tint", U16, rw;
     }
 }
 
@@ -432,7 +435,8 @@ named_fields! {
         Attack = "attack", U8, rw;
         Rapid = "rapid", U8, rw;
         Charge = "charge", U8, rw;
-        Mood = "mood", U8, ro;
+        /// Writable: BN5's dark chips set it (0x080127D6).
+        Mood = "mood", U8, rw;
         /// The Beast Out turns left (writable: BN6's beast system spends
         /// them).
         BeastOutCounter = "beast_out_counter", U8, rw;
@@ -537,6 +541,9 @@ named_fields! {
         /// A battle against a ranked boss (battle effect 1: LifeSync does
         /// nothing in one, `sub_80E72C8`).
         BossRank = "boss_rank", Bool, ro;
+        /// A battle whose dark chips fizzle (battle effect 0x100000: BN5's
+        /// dark chip rule, 0x0801003C).
+        NoDarkChips = "no_dark_chips", Bool, ro;
         Mode = "mode", U8, ro;
         PanelPattern = "panel_pattern", U8, ro;
         /// Every navi is in (the intro's bit 2).
@@ -1212,6 +1219,9 @@ pub trait CoreApi {
     /// Add to the Atk+ bonus of the chip at `i` of a side's hand
     /// (wrapping).
     fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
+    /// BN5's DarkPlus (0x0800E1D6): the Atk+ bonus of a hand's chip at `i`
+    /// becomes `n`.
+    fn set_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
     /// A side's hand has a chip at `i` and it does damage (its record's
     /// flag 0x02, "has_damage").
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool;
@@ -1237,6 +1247,8 @@ pub trait CoreApi {
     fn add_special_bonus(&mut self, side: u8, index: u8, n: u16) -> ApiResult<()>;
     /// `sub_800AB46`: bump a side's statistics counter.
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
+    /// `sub_800AB2E`: set a side's statistics counter.
+    fn set_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// `sub_800AB3A`: a side's statistics counter.
     fn side_stat(&self, side: u8, index: u8) -> u8;
     // Subtype 8 (Wind and Fan):
@@ -1547,6 +1559,13 @@ pub trait CoreApi {
     /// The form the navi's side asked to change into at this turn's start
     /// (none: none, or the base form).
     fn form_change_target(&self, o: ObjectRef) -> Option<crate::FormHandle>;
+    /// BN5's Soul Unison: the turns the soul the side asked for lasts, and
+    /// whether it is Chaos Unison (the turn's transform record's +3, +1).
+    fn form_change_soul(&self, o: ObjectRef) -> (u8, bool);
+    /// BN5's soul change's first step (0x08011FAC): the navi stops moving,
+    /// flinching, being paralyzed and sliding, and forgets a slide request
+    /// and its slide's step (a part of BN6's `sub_80158FA`).
+    fn stop_moving(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// `sub_80C4526(overlay, 1)`: an overlay on an image sits in front (an
     /// idle overlay keeps its owner's height).
     fn pin_overlay(&mut self, o: ObjectRef);

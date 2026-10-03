@@ -69,6 +69,9 @@ end
 
 -- A chip's slash.
 function slash.action(spec: SlashSpec): Action
+    -- The blade's animation (`sub_80EBAE8`, or the spec's game's own).
+    local blade_anim = spec.blade_anim or parts.blade_anim
+
     -- `sub_80EB79C`: straight to the swing, or for a step sword, the step.
     local function start(me: Object, s: State)
         set_step(me, SET_UP)
@@ -166,7 +169,7 @@ function slash.action(spec: SlashSpec): Action
             me:refresh_form_overlay()
             me:open_counter_window()
             battle.play_sound(spec.sound)
-            parts.hold(me, spec.blade, parts.blade_palette(me))
+            parts.hold(me, spec.blade, parts.blade_palette(me), blade_anim(me))
             me:set_status("using_action", true)
             s.timer = 0x15
             -- (nullsub_12 is passed the panel ahead and the hit region.)
@@ -182,7 +185,7 @@ function slash.action(spec: SlashSpec): Action
             })
             battle.afterimage(me, me.pos, {
                 sprite = spec.blade.sprite,
-                anim = parts.blade_anim(me),
+                anim = blade_anim(me),
                 flip = flip(me),
                 color_shader = AFTERIMAGE_SHADER,
                 lifetime = 0x1E,

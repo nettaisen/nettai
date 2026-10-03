@@ -302,6 +302,9 @@ impl CoreApi for Battle {
         match f {
             BattleInfo::Link => Value::Bool(self.setup.settings.effects & crate::setup::effects::LINK != 0),
             BattleInfo::BossRank => Value::Bool(self.setup.settings.effects & crate::setup::effects::BOSS_RANK != 0),
+            BattleInfo::NoDarkChips => {
+                Value::Bool(self.setup.settings.effects & crate::setup::effects::NO_DARK_CHIPS != 0)
+            }
             BattleInfo::Mode => Value::Int(self.round.mode_copy as i64),
             BattleInfo::PanelPattern => Value::Int(self.content.stage(self.setup.settings.stage).panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
@@ -465,6 +468,7 @@ impl CoreApi for Battle {
         };
         match (stat, v) {
             (NaviStat::Element, FieldValue::U8(x)) => s.element = x,
+            (NaviStat::Mood, FieldValue::U8(x)) => s.mood = x,
             (NaviStat::ChipRecovery, FieldValue::U16(x)) => s.chip_recovery = x,
             (NaviStat::BusterShot, FieldValue::Ref(_)) => s.weapons.buster_shot = record,
             (NaviStat::ChargeShotKind, FieldValue::Ref(_)) => s.weapons.charge_shot_kind = record,
@@ -660,6 +664,12 @@ impl CoreApi for Battle {
         }
     }
 
+    fn set_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16) {
+        if let Some(b) = self.hands[side as usize & 1].attack_bonus.get_mut(i as usize) {
+            *b = n;
+        }
+    }
+
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool {
         let chip = self.hands[side as usize & 1].ids.get(i as usize).copied().flatten();
         chip.is_some_and(|h| self.content.chip(h).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0)
@@ -719,6 +729,10 @@ impl CoreApi for Battle {
 
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8) {
         Battle::bump_side_stat(self, side & 1, index as usize & 0xF, n);
+    }
+
+    fn set_side_stat(&mut self, side: u8, index: u8, n: u8) {
+        self.side_stats[side as usize & 1][index as usize & 0xF] = n;
     }
 
     // Subtype 8 (Wind and Fan).
@@ -1339,6 +1353,7 @@ impl CoreApi for Battle {
             ActorField::BackSpecialWeapon => weapon(a.back_special),
             ActorField::Tired => Value::Bool(a.tired),
             ActorField::BarrierVisual => a.barrier_visual.into(),
+            ActorField::PlusTint => i(a.plus_tint as i64),
         })
     }
 
@@ -1417,6 +1432,7 @@ impl CoreApi for Battle {
             (ActorField::ChargeShotWeapon, FieldValue::Ref(_)) => a.charge_shot = weapon,
             (ActorField::Tired, FieldValue::Bool(x)) => a.tired = x,
             (ActorField::BarrierVisual, FieldValue::Object(r)) => a.barrier_visual = r,
+            (ActorField::PlusTint, FieldValue::U16(x)) => a.plus_tint = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1634,6 +1650,17 @@ impl CoreApi for Battle {
 
     fn form_change_target(&self, o: ObjectRef) -> Option<nettai_content_api::FormHandle> {
         kinds::player::form_change_target(self, o)
+    }
+
+    fn stop_moving(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::actions::transform::stop_moving(self, o);
+        Ok(())
+    }
+
+    fn form_change_soul(&self, o: ObjectRef) -> (u8, bool) {
+        let t = &self.turn_transforms[self.objects.get(o).alliance as usize & 1];
+        (t.turns, t.chaos)
     }
 
     fn pin_overlay(&mut self, o: ObjectRef) {

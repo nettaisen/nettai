@@ -647,7 +647,8 @@ impl Window {
             }
             SlotKind::Redeal { .. } => blank_details(self, &a.pictures.redeal),
             SlotKind::Scrap { .. } => blank_details(self, &a.pictures.scrap),
-            SlotKind::Empty | SlotKind::Hidden => {}
+            // (BN5's soul button: its pictures aren't in the packs yet.)
+            SlotKind::Soul | SlotKind::Empty | SlotKind::Hidden => {}
         }
     }
 
@@ -746,7 +747,8 @@ impl Window {
                     }
                     at += 6;
                 }
-                SlotKind::Ok | SlotKind::Redeal { right_half: true } | SlotKind::Scrap { right_half: true } => {}
+                // (BN5's soul button: its tiles aren't in the packs yet.)
+                SlotKind::Ok | SlotKind::Soul | SlotKind::Redeal { right_half: true } | SlotKind::Scrap { right_half: true } => {}
                 SlotKind::BeastOut => self.tiles.put_part(at, &v.beast.beast_buttons, 8 * (state != 0) as usize, 8),
                 SlotKind::Redeal { right_half: false } => {
                     self.tiles.put_part(at, &a.redeal_buttons, 12 * state, 12);
@@ -1001,7 +1003,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             (16 * col + 8, 0x68 + 0x18 * row, &CHIP_CURSOR)
         }
         SlotKind::Ok => (0x58 + 3, 0x70 - 2, &OK_CURSOR),
-        SlotKind::BeastOut => (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR),
+        SlotKind::BeastOut | SlotKind::Soul => (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR),
         SlotKind::Redeal { .. } | SlotKind::Scrap { .. } => (0x38, 0x80, &BUTTON_CURSOR),
     };
     let palette = v.emblem_palette();

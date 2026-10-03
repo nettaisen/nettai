@@ -93,6 +93,15 @@ pub(crate) fn drop_statuses(b: &mut Battle, r: ObjectRef) {
     c.links[link::BUBBLE] = None;
 }
 
+/// BN5's soul change's first step (0x08011FAC): the part of
+/// `sub_80158FA` it does itself (flags 0x1C40, the slide request, the
+/// slide's step).
+pub(crate) fn stop_moving(b: &mut Battle, r: ObjectRef) {
+    clear_flag1(b, r, f1::SLIDING | f1::PARALYZED | f1::FLINCHING | f1::MOVING);
+    clear_flag2(b, r, 0x10);
+    b.objects.get_mut(r).slide_state = 0;
+}
+
 // ---- Reverting ---------------------------------------------------------------
 
 /// `sub_8015614` / `sub_801562C`: back to base MegaMan (the Beast Out ran
