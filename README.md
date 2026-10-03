@@ -104,9 +104,11 @@ system, the NaviCust with the navicust system): the arena; each side's ruleset, 
 round starts the navi with; the folder (the chips the side's folder rules allow, with their pictures, searchable, a
 code puts a chip in the selected entry; the Regular and tag chips; the copies and the Mega, Giga, Regular and tag
 limits live, as the game's folder rules count them); the Crosses; the patch cards (MB used of 80); the NaviCust (the
-board as the side's game draws it, with its frame and command line: a program's colour swatch adds it where it
-fits, a click picks a placed program or moves the picked one to the cell, and the picked one can be moved, turned,
-recoloured, compressed or removed; the stats it compiles to show beside it); every stat. The problems with the match show at the bottom as you edit. Play saves the match and
+board as the side's game draws it, with its frame and command line, edited with the mouse as Tango's is: drag a
+program's colour swatch onto the grid, or press a placed program to pick it up and drag it; while held it shows
+where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click, Delete
+or a drag off the grid takes it off, Esc puts it back; right-clicking a placed program turns it; the stats it
+compiles to show beside it, and the stats-and-bugs block set directly is the pane's other view); every stat. The problems with the match show at the bottom as you edit. Play saves the match and
 runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). Random draws a match as
 live play does, and `nettai-frontend --play --save-match FILE` writes live play's draw out to edit. `--lang ja` (or
 the language list) names the chips, navis, Crosses and patch cards in Japanese. The editor loads the content and

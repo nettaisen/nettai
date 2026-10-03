@@ -33,14 +33,18 @@ local HIT_MODS = { [0] = 0, [1] = 3, [2] = 1, [3] = 1 }
 -- The wide shooter (the original's attachment row 0x23).
 local SHOOTER = attachment.look { sprite = asset.sprite("bn6:wide-shooter"), palette = 0, attach_point = 12 }
 
-export type WideShotSpec = { id: string, wave: WaveVariant, waves: number }
+-- A wide shot: its waves (`shooter` and `z`, where a game's aren't BN6's
+-- wide shooter and 16 pixels: BN5's).
+export type WideShotSpec = { id: string?, wave: WaveVariant, waves: number, shooter: AttachmentLook?, z: number? }
 
-local function action(spec: WideShotSpec): Action
+function widesht.action(spec: WideShotSpec): Action
+    local shooter_look = spec.shooter or SHOOTER
+    local z = spec.z or WAVE_Z
     -- `sub_80ED57C`: raise the shooter; the first wave in 5 ticks.
     local function raise(me: Object, s: State)
         me:set_animation(ANIM_HOLD)
         me:open_counter_window()
-        attachment.attach(me, SHOOTER, "overlay")
+        attachment.attach(me, shooter_look, "overlay")
         me:set_status("using_action", true)
         me.step, me.step_init = FIRE, 0
         me.attack_count = spec.waves
@@ -67,7 +71,7 @@ local function action(spec: WideShotSpec): Action
         -- wave reads among its parameters.)
         local hit_mod = HIT_MODS[me.attack_count]
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-        wave.fire(me, me.panel_x + me.facing, me.panel_y, WAVE_Z, spec.wave, me.attack_element, damage, hit_mod)
+        wave.fire(me, me.panel_x + me.facing, me.panel_y, z, spec.wave, me.attack_element, damage, hit_mod)
         local left = me.attack_count - 1
         me.attack_count = left
         if left <= 0 then
@@ -116,8 +120,8 @@ local function action(spec: WideShotSpec): Action
 end
 
 widesht.actions = {
-    widesht = action { id = "bn6:widesht/action", wave = wave.variants.wide, waves = 1 },
-    suprspr = action { id = "bn6:suprspr/action", wave = wave.variants.super, waves = 3 },
+    widesht = widesht.action { id = "bn6:widesht/action", wave = wave.variants.wide, waves = 1 },
+    suprspr = widesht.action { id = "bn6:suprspr/action", wave = wave.variants.super, waves = 3 },
 }
 
 return widesht
