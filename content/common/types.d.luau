@@ -130,6 +130,49 @@ export type MeteorMarkerLook = {
     shrink: number,
 }
 
+-- A game's boomerang (@common/boomer/boomerang): its kind's key, its sprites (the tomahawk's too) and sound, what it
+-- is (where a variant doesn't say) and hits, and its spark (where a variant doesn't say).
+export type BoomerangLook = {
+    id: string,
+    sprite: SpriteAsset,
+    tomahawk_sprite: SpriteAsset,
+    sound: Sound,
+    is: CollisionType,
+    hits: CollisionType,
+    spark: Spark,
+}
+
+-- A boomerang's variant: 16.16 pixels a tick along a row and along the
+-- column, whether it turns the other side's panels it crosses to grass,
+-- and whether it is the tomahawk (its own sprite and shadow, and its
+-- second animation off row 1); its sprite, collision type and spark where
+-- a game's kind's aren't its (BN5's Boomer).
+export type BoomerangVariant = {
+    speed: number,
+    turn_speed: number,
+    grass: boolean,
+    tomahawk: boolean?,
+    sprite: SpriteAsset?,
+    is: CollisionType?,
+    spark: Spark?,
+}
+
+-- How a boomerang is thrown: its variant; the column (0 to 2) where it
+-- turns, or `turns = false` (the original's Param2 3: it flies straight
+-- along its row); a stronger hit (hit modifier 3, else 1).
+export type BoomerangThrow = { variant: BoomerangVariant, turns: boolean?, column: number?, strong: boolean? }
+
+-- A game's ProtoMan (@common/protoman/navi): his kind's key, the sounds of his coming and his swing, his attachment
+-- kind (his sword's), and his slash's collision types (what it hits, and what it is).
+export type ProtoManKind = {
+    id: string,
+    appear_sound: Sound,
+    swing_sound: Sound,
+    attachment: Kind,
+    target: CollisionType,
+    self_type: CollisionType,
+}
+
 -- A trap chip's object (a "trap" record, @common/traps/controller): `set` spawns it for the controller and its user,
 -- with the chip and bonus the controller keeps.
 export type Trap = {
