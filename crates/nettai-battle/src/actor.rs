@@ -295,6 +295,10 @@ pub struct ActorData {
     /// restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses
     /// record it every tick (`sub_8108F74`); nothing sets it for players.
     pub bubble_base_z: i16,
+    /// BN5's AIData+0x3C: DarkPlus's tint (0x0800E1DC sets 24; nothing
+    /// counts it down), which picks the navi's status shader after the
+    /// invulnerable glow (0x080136B8). BN6 has none.
+    pub plus_tint: u16,
     /// AIData+0x40: the target marker (effect #0xF, BN6's Beast Out lock-on marker:
     /// `sub_80E1620`), which `sub_80E1662` unfreezes.
     pub target_marker: Option<ObjectRef>,

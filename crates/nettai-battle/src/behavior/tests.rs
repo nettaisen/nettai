@@ -1355,6 +1355,25 @@ fn gc_timing_does_not_reach_the_battle() {
     assert_eq!(have, want);
 }
 
+/// BN5's dark chips' writes (content/bn5/rules/light-dark): `sub_800AB2E`
+/// sets a side's statistic (where `sub_800AB46` adds), the mood is
+/// writable, and battle effect 0x100000 reads as `no_dark_chips`.
+#[test]
+fn a_side_stat_and_the_mood_are_set() {
+    use nettai_content_api::api::{BattleInfo, CoreApi, NaviStat};
+    use nettai_content_api::Value;
+    let mut b = rock_battle();
+    b.bump_side_stat(1, 2, 5);
+    CoreApi::set_side_stat(&mut b, 1, 2, 1);
+    assert_eq!(CoreApi::side_stat(&b, 1, 2), 1);
+    assert_eq!(CoreApi::side_stat(&b, 0, 2), 0);
+    CoreApi::set_navi_stat(&mut b, 0, NaviStat::Mood, Value::Int(0)).unwrap();
+    assert_eq!(b.stats[0].mood, 0);
+    assert_eq!(CoreApi::battle_info(&b, BattleInfo::NoDarkChips), Value::Bool(false));
+    b.setup.settings.effects |= crate::setup::effects::NO_DARK_CHIPS;
+    assert_eq!(CoreApi::battle_info(&b, BattleInfo::NoDarkChips), Value::Bool(true));
+}
+
 // ---- Dimming chip subtypes 2, 3, 5, 15 and 27 (the panel changes) ---------------------------
 
 /// The field operations their scripts call: `object_breakPanel_dup2`
