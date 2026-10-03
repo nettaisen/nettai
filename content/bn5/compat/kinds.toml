@@ -65,3 +65,4 @@
 "bn5:instrument" = { pool = "attack", index = 0x78 }
 "bn5:instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
 "bn5:airhoc/puck" = { pool = "attack", index = 0x2E }
+"bn5:gundels/beam" = { pool = "effect", index = 0x48 }
