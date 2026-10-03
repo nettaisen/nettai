@@ -167,6 +167,7 @@ iceseed = { name = "アイスシード", description = "3マス前にタネ!\n9�
 infvulc1 = { name = "ムゲンバルカン1", description = "前方のてきに\n20れんしゃの\nひっさつバルカン!" }
 infvulc2 = { name = "ムゲンバルカン2", description = "前方のてきに\n24れんしゃの\nひっさつバルカン!" }
 infvulc3 = { name = "ムゲンバルカン3", description = "前方のてきに\n28れんしゃの\nひっさつバルカン!" }
+invalid = { name = "", description = "" }
 invisibl = { name = "インビジブル", description = "少しの間とうめいに\nなって ほとんどの\n攻撃にあたらない" }
 jealousy = { name = "ジェラシー", description = "チップをもつてきに\n枚数におうじた\nダメージをあたえる" }
 justcone = { name = "ジャスティスワン", description = "左から5れつめ\nまん中のマスに\nせいぎのコブシ!" }

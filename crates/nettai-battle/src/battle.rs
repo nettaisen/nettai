@@ -1733,13 +1733,18 @@ impl Battle {
     }
 
     /// Whether a custom-screen request goes through the reversions and the
-    /// sequencer (battle mode 5, or not the battle flag 0x40 mode).
+    /// sequencer (battle mode 5, or not the battle flag 0x40 mode; BN5's
+    /// 0x08007774 tests the flag alone).
     fn custom_request_transforms(&self) -> bool {
-        self.round.mode_copy == 5 || self.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
+        let mode_5 = self.round.mode_copy == 5 && self.arena_rules().flow.sequencer_before_custom;
+        mode_5 || self.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
     }
 
     /// Fighting state 0x20 (`sub_8008452`): a custom screen was asked for:
-    /// wait for the navis' reversions, then state 0x24.
+    /// wait for the navis' reversions, then state 0x24. BN5's (0x08007774,
+    /// the flow without `sequencer_before_custom`) opens the screen from
+    /// this state, on the tick the reversions are done, as state 0x24 does
+    /// a tick later.
     fn fight_custom_revert(&mut self) {
         if self.custom_request_transforms() {
             if self.fight.init == 0 {
@@ -1756,6 +1761,10 @@ impl Battle {
             if self.step_custom_reversion() {
                 return;
             }
+        }
+        if !self.arena_rules().flow.sequencer_before_custom {
+            self.fight.result = 6;
+            return;
         }
         self.fight.state = fight::CUSTOM_SEQUENCE;
         self.fight.sub = 0;
@@ -2215,6 +2224,44 @@ mod tests {
         assert_eq!(b.fight.judge.outcome, 3);
         b.start_judge(20, 10);
         assert_eq!(b.fight.judge.outcome, 1);
+    }
+
+    /// docs/design/bn5-map.md §15.3 item 18: a custom screen asked for in
+    /// the fight opens a tick sooner in BN5's flow (0x08007774 sets the
+    /// result itself once the reversions are done) than in BN6's, which
+    /// goes through state 0x24 first.
+    #[test]
+    fn bn5s_custom_request_opens_from_its_own_state() {
+        let ticks = |sequencer_before_custom: bool| {
+            let mut c: crate::content::Content = testing::build();
+            c.define().unwrap_or_else(|e| panic!("{e}"));
+            for rules in &mut c.rules {
+                rules.flow.sequencer_before_custom = sequencer_before_custom;
+            }
+            let c = std::sync::Arc::new(c);
+            let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+            setup.content = c.hash();
+            let mut b = Battle::new(setup, c);
+            b.spawn_actors();
+            b.run_objects();
+            b.fight.state = fight::CUSTOM_REVERT;
+            b.fight.init = 0;
+            let mut n = 0;
+            while b.fight.result != 6 {
+                n += 1;
+                assert!(n < 100, "the screen never opens");
+                match b.fight.state {
+                    fight::CUSTOM_REVERT => b.fight_custom_revert(),
+                    fight::CUSTOM_SEQUENCE => b.fight_custom_sequence(),
+                    s => panic!("state {s:#x}"),
+                }
+            }
+            (n, b.fight.state)
+        };
+        let (bn6, bn6_state) = ticks(true);
+        let (bn5, bn5_state) = ticks(false);
+        assert_eq!((bn5_state, bn6_state), (fight::CUSTOM_REVERT, fight::CUSTOM_SEQUENCE));
+        assert!(bn5 < bn6, "BN5 {bn5} ticks, BN6 {bn6}");
     }
 
     #[test]

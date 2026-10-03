@@ -334,3 +334,4 @@ bignoise = { id = 0x15a, action = 0x41, subtype = 20 }
 timebom = { id = 0x15b, action = 0x15, subtype = 10 }
 bodygrd = { id = 0x15c, action = 0x15, subtype = 46 }
 piledrvr = { id = 0x15d, action = 0x15, subtype = 47 }
+invalid = { id = 0x185, action = 0x1a, subtype = 26 }
