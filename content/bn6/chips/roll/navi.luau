@@ -12,9 +12,9 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local heart = require("./heart")
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 
 -- What a chip summons her with (the chips' first parameter picks them):

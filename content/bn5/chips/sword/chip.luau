@@ -1,10 +1,9 @@
 --!strict
--- Sword (BN5 chip 0x030): a slash on the panel ahead: BN6's slash (@bn6/lib/swords/slash) with BN5's parts
+-- Sword (BN5 chip 0x030): a slash on the panel ahead: the shared slash (@common/swords/slash) with BN5's parts
 -- (lib/swords).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local regions = require("@bn6/lib/regions")
-local slash = require("@bn6/lib/swords/slash")
+local regions = require("@common/regions")
 local swords = require("../../lib/swords")
 
 return define.chip {
@@ -20,7 +19,7 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = slash.action {
+    action = swords.slash {
         blade = swords.blade,
         blade_anim = swords.blade_anim,
         hit = { region = regions.single, collision = swords.slashes_navis, hit_mod = 3 },

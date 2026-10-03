@@ -1,27 +1,14 @@
 --!strict
 -- The TimeBom chips' dimming controller (the original's effect object
--- #0x27, `sub_80E31D8`): the usual dimming phases (lib/dimming), with an
--- effect that sets the chip's countdown bomb (./countdown) on the first
--- free enemy panel in front of the user, and waits 31 ticks.
---
--- A chip's `dimming` hook (`sub_80E3242`, `off_802CCB4[10]`) is
--- `controller.hook(variant)`: the bomb the original's first chip
--- parameter picked (0 TimeBom1-3's, 1 TimeBom+'s) is the hook's argument.
--- Another game's controller places its bomb its own way
--- (`controller.make`; BN5's).
+-- #0x27, `sub_80E31D8`): the shared controller (@common/timebom/controller)
+-- placing BN6's bomb (./countdown) on the first free enemy panel in front of
+-- the user. A chip's `dimming` hook is `controller.hook(variant)`.
 
+local common = require("@common/timebom/controller")
 local countdown = require("./countdown")
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 
-export type State = {
-    -- The Atk+ / cross bonus the telop shows (object +0x32), which adds to
-    -- the bomb's damage.
-    bonus: number,
-    -- The bomb the chip sets.
-    variant: CountdownVariant,
-}
-
-local WAIT = 0x1E
+export type State = { bonus: number, variant: CountdownVariant }
 
 -- `off_80E3280`: where the bomb goes, by side: a solid enemy panel without
 -- a body on it (side 0: flags 0x30, not 0x0F800000; side 1: 0x10, not
@@ -59,48 +46,6 @@ local function place(me: Object)
     end
 end
 
--- A game's controller (kind `id`) that sets its bomb with `place`: its
--- kind, and the chips' hook of a bomb variant.
-local function make(id: string, place: (me: Object) -> ())
-    -- `sub_80E321C`: the bomb, then 31 ticks.
-    local function effect(me: Object)
-        if me.phase_init == 0 then
-            me.timer = WAIT
-            place(me)
-            me.phase_init = 4
-        end
-        local t = me.timer - 1
-        me.timer = t
-        if t < 0 then
-            dimming_chips.done(me)
-        end
-    end
+local bn6 = common.make("bn6:timebom/controller", place)
 
-    local kind = define.kind {
-        id = id,
-        pool = "effect",
-        state = { bonus = "u16", variant = "record:countdown-variant" },
-        -- `sub_80E31D8`.
-        update = dimming_chips.phases { name = "TimeBom", effect = effect },
-    }
-
-    -- A chip's `dimming` hook (`sub_80E3242`): the controller for `user`,
-    -- setting a bomb of `variant`.
-    local function hook(variant: CountdownVariant): (user: Object, spec: DimmingChipSpec) -> Object?
-        return function(user: Object, spec: DimmingChipSpec): Object?
-            local o = dimming_chips.spawn(kind, user, spec)
-            if o then
-                local s = o.state :: State
-                s.bonus = spec.bonus
-                s.variant = variant
-            end
-            return o
-        end
-    end
-
-    return { kind = kind, hook = hook }
-end
-
-local bn6 = make("bn6:timebom/controller", place)
-
-return { kind = bn6.kind, hook = bn6.hook, make = make }
+return { kind = bn6.kind, hook = bn6.hook, make = common.make }

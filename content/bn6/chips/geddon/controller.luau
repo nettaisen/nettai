@@ -1,7 +1,7 @@
 --!strict
 -- Geddon's and the capsules' dimming controller (the original's effect
 -- object #0x1D, `sub_80E24E4`; docs/engine/dimming-chip-effects.md §12):
--- the usual dimming phases (lib/dimming), with an effect that holds the
+-- the usual dimming phases (@common/dimming), with an effect that holds the
 -- user's panel and sets off a quake (./quake) over the field, and waits
 -- until it is done.
 --
@@ -9,7 +9,7 @@
 -- the panels, PrpCapsl's, HealBall's, MagPanl's and the BeastOut records'
 -- crack them (the chips' first parameter, 1 or 0, picked the quake's row).
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local quake = require("./quake")
 
 local controller = {}
