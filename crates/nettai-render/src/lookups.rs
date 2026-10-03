@@ -1,7 +1,8 @@
-//! The lookups the drawing code and the audio make of the packs and the
-//! content, each a function that notes its [`Lookup`] and, the first time
-//! a run makes it, what is missing (`crate::audit`). A frame draws through
-//! these, and the static audit (`crate::content_audit`) makes the same
+//! The lookups the drawing code makes of the packs and the content, each a
+//! function that notes its [`Lookup`] and, the first time a run makes it,
+//! what is missing (`crate::audit`; the audio's, a cue's song, is
+//! nettai-frontend's `sound_lookups`). A frame draws through these, and the
+//! static audit (nettai-frontend's `content_audit`) makes the same
 //! lookups for everything the content defines, so a lookup by the wrong
 //! key (a chip's icon by its qualified key, a banner by its handle) fails
 //! both the same way.

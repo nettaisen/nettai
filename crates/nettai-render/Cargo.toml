@@ -17,6 +17,8 @@ nettai-content-api = { path = "../nettai-content-api" }
 # BN6's numbers the custom screen draws by (a navi's emblem, whether the
 # Program Advance animation shows a chip's code).
 bn6-compat = { workspace = true }
+# A frame as a PNG file (`present::write_png`).
+png = "0.17"
 # The text layer's vector font: shaping with kerning, outlines rasterized with
 # antialiasing (docs/design/text-rendering.md).
 swash = "0.2"

@@ -6,7 +6,8 @@
 //! original's hardware. The frame is the original's 240x160, composed with
 //! its layer and sprite ordering rules ([`Renderer::render`]), with the
 //! font mode's text items to draw over it at the output's resolution
-//! ([`present`]). docs/frontend.md §3.
+//! ([`present`], which also writes a frame as a PNG). A chip's pictures
+//! on their own are [`pictures`]. docs/frontend.md §3.
 //!
 //! Drawing only: the window, the input, the sound and the sessions that
 //! run a battle are the app's (nettai-frontend).
@@ -20,6 +21,7 @@ pub mod hud;
 pub mod lookups;
 pub mod objects;
 pub mod packs;
+pub mod pictures;
 pub mod present;
 pub mod render;
 pub mod stage;
