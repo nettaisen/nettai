@@ -1,10 +1,11 @@
-//! Rendering chosen frames to PNG files without a window.
+//! Without a window: chosen frames of a session written to PNG files
+//! (`nettai_render::present::write_png`), and the trace audits.
 
-use crate::audit::Problems;
-use crate::compose::{HEIGHT, WIDTH};
-use crate::render::{Frame, Renderer};
 use crate::session::Session;
-use crate::vfont::TextRenderer;
+use nettai_render::Renderer;
+use nettai_render::audit::Problems;
+use nettai_render::present::write_png;
+use nettai_render::vfont::TextRenderer;
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -67,28 +68,6 @@ impl KeyScript {
     }
 }
 
-/// Write a frame as an RGB PNG, scaled up by an integer factor, with its
-/// text items drawn at that scale by `text` (`present`).
-pub fn write_png(path: &Path, frame: &Frame, scale: usize, text: Option<&mut TextRenderer>) -> std::io::Result<()> {
-    let scale = scale.max(1);
-    let (w, h) = (WIDTH * scale, HEIGHT * scale);
-    let mut out = vec![0u32; w * h];
-    crate::present::present(frame, text, &mut out, w, h);
-    write_rgb_png(path, &out, w, h)
-}
-
-/// Write 0RGB pixels, `w` by `h`, as an RGB PNG.
-pub fn write_rgb_png(path: &Path, out: &[u32], w: usize, h: usize) -> std::io::Result<()> {
-    let rgb: Vec<u8> = out.iter().flat_map(|&c| [(c >> 16) as u8, (c >> 8) as u8, c as u8]).collect();
-    let file = std::io::BufWriter::new(std::fs::File::create(path)?);
-    let mut enc = png::Encoder::new(file, w as u32, h as u32);
-    enc.set_color(png::ColorType::Rgb);
-    enc.set_depth(png::BitDepth::Eight);
-    let mut writer = enc.write_header().map_err(std::io::Error::other)?;
-    writer.write_image_data(&rgb).map_err(std::io::Error::other)?;
-    Ok(())
-}
-
 /// Run sessions in order and write `frame_NNNNN.png` for each wanted
 /// trace frame. Returns the frames written; a session that stops early
 /// (engine panic, end of trace) moves on to the next.
@@ -145,10 +124,10 @@ pub fn render_frames_with(
                     }
                 }
                 if objects {
-                    for line in crate::objects::describe(&s.battle, &Renderer::view(&s.battle)) {
+                    for line in nettai_render::objects::describe(&s.battle, &Renderer::view(&s.battle)) {
                         log(&format!("frame {f}: {line}"));
                     }
-                    for line in crate::textlayer::describe(&frame) {
+                    for line in nettai_render::textlayer::describe(&frame) {
                         log(&format!("frame {f}: {line}"));
                     }
                 }
@@ -186,7 +165,7 @@ pub struct Audit {
 /// Run sessions to their end, making every frame's lookups and checking
 /// every tick's sound cues (with `sound`, the packs' banks by `PackId`):
 /// everything a battle shows and plays is asked of the packs, and what
-/// they lack is collected (see [`crate::audit`]). With `draw` every frame
+/// they lack is collected (see [`nettai_render::audit`]). With `draw` every frame
 /// is drawn and every cue played into nothing besides (the thorough audit,
 /// `--audit --draw`); else only the lookups are made, which is what the
 /// audit checks.
@@ -235,10 +214,10 @@ pub struct TraceAudit {
 
 /// What a renderer of [`audit_traces`] is made with.
 pub struct AuditSetup<'a> {
-    pub packs: crate::packs::Packs<'a>,
+    pub packs: nettai_render::packs::Packs<'a>,
     pub strings: Option<std::sync::Arc<nettai_content::locale::Strings>>,
-    pub text: crate::textlayer::TextMode,
-    pub font: Option<std::sync::Arc<crate::vfont::VectorFont>>,
+    pub text: nettai_render::textlayer::TextMode,
+    pub font: Option<std::sync::Arc<nettai_render::vfont::VectorFont>>,
     /// The packs' sound, by `PackId` (none: cues aren't checked).
     pub sound: Option<Vec<std::sync::Arc<m4a::SoundBank>>>,
     /// Draw every frame and play every cue too (`--draw`).
