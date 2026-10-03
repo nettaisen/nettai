@@ -1574,6 +1574,9 @@ impl Screen {
             _ => (sub, counter),
         };
         self.phase = Phase::SoulChosen { sub, counter };
+        // (The count is the screen's frame counter, +0x40: the cursor
+        // blinks on from where it leaves it.)
+        self.look.frame = counter as u32;
     }
 
 }

@@ -63,6 +63,13 @@ const SCROLLERS: [(u32, (i32, i32)); 5] = [
 /// picture, +0x28 its palette. Team Colonel's table is 4 bytes lower.
 const CHIP_DATA: [u32; 2] = [0x0801_E214, 0x0801_E210];
 pub const CHIP_COUNT: u32 = 368;
+
+/// The chips with art in the pack: the named ones' table, and past it the
+/// ones the content names (the invalid chip, 0x185: its record's art is
+/// the blank icon and picture the unused records have, what BN5 draws).
+fn chip_ids(names: &AssetNames) -> impl Iterator<Item = u32> + '_ {
+    (0..CHIP_COUNT).chain(names.chips.keys().map(|&id| id as u32).filter(|&id| id >= CHIP_COUNT))
+}
 const PICTURE_BYTES: usize = 0x540;
 
 /// Everything the pack draws with: `names` gives the chips their keys, the
@@ -357,7 +364,7 @@ fn chip_key(names: &AssetNames, id: u32, version: Option<Version>) -> String {
 fn chip_art(roms: &Roms, names: &AssetNames) -> Vec<ChipArt> {
     let versioned = versioned_chips(roms);
     let mut out = Vec::new();
-    for id in 0..CHIP_COUNT {
+    for id in chip_ids(names) {
         if versioned.contains(&id) {
             for v in [Version::ProtoMan, Version::Colonel] {
                 let (picture, _) = chip_media(roms, v, id);
@@ -376,7 +383,7 @@ fn chip_art(roms: &Roms, names: &AssetNames) -> Vec<ChipArt> {
 fn chip_icons(roms: &Roms, names: &AssetNames) -> Vec<ChipIcon> {
     let versioned = versioned_chips(roms);
     let mut out = Vec::new();
-    for id in 0..CHIP_COUNT {
+    for id in chip_ids(names) {
         let versions: &[Option<Version>] = if versioned.contains(&id) { &[Some(Version::ProtoMan), Some(Version::Colonel)] } else { &[None] };
         for &v in versions {
             let (_, icon) = chip_media(roms, v.unwrap_or(Version::ProtoMan), id);

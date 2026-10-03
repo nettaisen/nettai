@@ -142,6 +142,7 @@ impl<'a> Renderer<'a> {
     /// Draw a battle as a 240x160 frame with its text items.
     pub fn render(&mut self, b: &Battle) -> Frame {
         self.problems.known.clear();
+        self.packs.set_version(self.console_version);
         let view = Self::view(b);
         // (The background is its own pack's; the field, the arena's game's
         // pack's, a panel type it doesn't draw another's: `FieldArt`.)
@@ -302,14 +303,16 @@ pub fn screen_fade(b: &Battle) -> Fade {
     let left = (b.fade.remaining() as u32 + 1).min(total);
     if b.round.intro_bits & 0x01 == 0 {
         // The first battle of a set fades in from white, later ones from
-        // black (`sub_80E0684`).
+        // black (`sub_80E0684`); a console whose game's flow says
+        // `intro_from_black` (BN5's), every battle from black.
         let s = &b.setup.settings;
         let later = if s.effects & nettai_battle::setup::effects::SET != 0 {
             b.round.round > 1
         } else {
             b.content.stage(s.stage).battle_number >= 2
         };
-        let fade = if later { Fade::Black } else { Fade::White };
+        let own_game = b.content.rules_of(b.games.sides[b.setup.local_side as usize & 1]);
+        let fade = if later || own_game.flow.intro_from_black { Fade::Black } else { Fade::White };
         // Before the intro fade starts the screen is fully faded.
         if b.round.intro_bits & 0x10 == 0 {
             return fade(16);

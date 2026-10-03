@@ -38,8 +38,9 @@ const FONT_GLYPHS: usize = 0xE0;
 /// 0x0801A1A4) and their sprite palette (the load list's first).
 const ENEMY_DIGITS: [u32; 3] = [0x086F_6B30, 0x086F_6DB0, 0x086F_7030];
 const ENEMY_PALETTE: u32 = 0x086C_BA48;
-/// The chip icons' palette and the hidden chip's icon.
-const ICON_PALETTE: u32 = 0x0874_AAB8;
+/// The chip icons' palette (sprite palette 4: the HUD's load list's to
+/// 0x03003690) and the hidden chip's icon.
+const ICON_PALETTE: u32 = 0x0874_AAF8;
 const HIDDEN_ICON: u32 = 0x0874_A9B8;
 /// The emotion window's faces (0x0801968E): pictures 0-4 at FACES and 11-15
 /// at FACES_DARK, 0x180 bytes each (the 32x16 face, then its 16x16 box);

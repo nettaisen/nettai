@@ -14,7 +14,9 @@
 //!   frames, each sound's song, each banner's glyphs (a telop's banner its
 //!   place, the judge's its numbers), each background and mugshot;
 //! - the HUD's text lines, the custom screen, the chatbox and the warning
-//!   marker;
+//!   marker, of each loaded game's pack (a console draws its own game's:
+//!   another pack's for its game's chips' names, windows and descriptions,
+//!   and its navis' emblems in each of its versions);
 //! - the field (docs/design/rules-in-luau.md §7.4): each loaded game's
 //!   pack's blocks for the panel types its game names, and in an arena of
 //!   each, every panel type a loaded game names and both highlights, as
@@ -97,6 +99,12 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
         let text = DisplayText::new(strings.as_deref());
         let mut problems = Problems::default();
         check(c, &packs, &text, if k == 0 { banks } else { None }, &mut problems);
+        for (game, lines, made) in other_packs(c, &packs, lang, &text) {
+            for what in lines {
+                problems.note(format!("({game}'s pack) {what}"));
+            }
+            out.made.extend(made);
+        }
         // (A string a language's table lacks shows in the content's own,
         // by design: not a lookup that fails.)
         out.untranslated.extend(text.take_missing().into_iter().map(|what| format!("{lang}: {what}")));
@@ -105,6 +113,16 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
             out.notes = problems.said_lines();
         }
         out.languages.push(lang.clone());
+        // (Another game's pack without this language's lettering draws its
+        // console's names in its own: said.)
+        for (i, game) in c.assets.packs.iter().enumerate() {
+            let pack = PackId(i as u8);
+            if pack != own && is_loaded(&packs, pack) && !packs.bundle(pack).hud.languages().contains(&lang.as_str()) {
+                out.notes.push(format!(
+                    "{game}'s pack has no {lang} lettering: a {game} console draws {lang} names and descriptions in its own (not checked)"
+                ));
+            }
+        }
         // (A language's problems that the content's own has too are told
         // once.)
         for (what, _) in problems.iter() {
@@ -115,6 +133,68 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
                 out.problems.push(format!("({lang}) {what}"));
             }
         }
+    }
+    out
+}
+
+/// Whether pack `pack` is loaded (the own pack stands in for one that
+/// isn't).
+fn is_loaded(packs: &Packs, pack: PackId) -> bool {
+    pack == packs.own_pack() || !std::ptr::eq(packs.bundle(pack), packs.own())
+}
+
+/// Each other loaded game's pack: what a console of its game draws from it
+/// (the local side's game's HUD, custom screen and chatbox), as `check`
+/// does the own pack's: its graphics, its game's chips' names (in its font,
+/// in a language it has lettering in), windows and descriptions, and its
+/// game's navis' emblems in each of its versions. Its problems, by game,
+/// and the lookups made.
+fn other_packs(c: &Content, packs: &Packs, lang: &str, text: &DisplayText) -> Vec<(String, Vec<String>, Vec<String>)> {
+    let mut out = Vec::new();
+    for (i, game) in c.assets.packs.iter().enumerate() {
+        let pack = PackId(i as u8);
+        if pack == packs.own_pack() || !is_loaded(packs, pack) {
+            continue;
+        }
+        let bundle = packs.bundle(pack);
+        let (hud, a) = (&bundle.hud, &bundle.custom);
+        let mut p = Problems::default();
+        lookups::chatbox_graphics(hud, &mut p);
+        lookups::custom_graphics(a, &mut p);
+        lookups::warning(hud, &mut p);
+        for line in (hud::TEXT_TIME_UP..=hud::TEXT_TIME_UP + 10).chain([hud::TEXT_COUNTER_HIT]) {
+            lookups::text_line(hud, line, &mut p);
+        }
+        let lettered = hud.languages().contains(&lang);
+        let root = c.defs.roots.iter().position(|g| g == game).map(|r| RootId(r as u8));
+        let of_game = |key: &str| root.is_some() && c.defs.root_of(key) == root;
+        for (k, d) in c.defs.chips.iter().enumerate().filter(|(_, d)| of_game(&d.key)) {
+            let chip = ChipHandle(k as u16);
+            if lettered {
+                lookups::chip_name(hud, c, chip, text.chip_name(c, chip), &mut p);
+                if let Some(said) = text.chip_description(c, chip) {
+                    lookups::dialogue(&hud.dialogue_font, Lookup::ChipDescription(chip), said.text, &mut p);
+                }
+            }
+            let code = d.record.codes.iter().map(|c| c.0).max().unwrap_or(ChipCode::ASTERISK.0);
+            lookups::chip_window(a, c, chip, code, &mut p);
+        }
+        let versions: Vec<&str> =
+            std::iter::once(a.versioned.base_version.as_str()).chain(a.versioned.versions.iter().map(|(v, _)| v.as_str())).collect();
+        for k in (0..c.defs.navis.len()).filter(|&k| of_game(&c.defs.navi(NaviHandle(k as u16)).key)) {
+            let navi = NaviHandle(k as u16);
+            for &version in &versions {
+                // (Each version's own run: the lookup is by the engine's
+                // version, which tells BN5's apart by none.)
+                let mut q = Problems::default();
+                lookups::emblem(a, c, navi, GameVersion::Falzar, Some(version), &mut q);
+                for (what, _) in q.iter() {
+                    p.note(format!("{what} (on a {version} console)"));
+                }
+            }
+        }
+        let made = p.lookups().map(|l| l.describe(c)).collect();
+        out.push((game.clone(), p.iter().map(|(what, _)| what.to_string()).collect(), made));
     }
     out
 }
@@ -214,8 +294,11 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
             crate::sound_lookups::sound(c, banks, h, true, p);
         }
     }
+    // (A banner no loaded game's roles name is checked as its pack lays it
+    // out: a telop's layout, which has no glyphs of its own, as a telop.)
+    let named: HashSet<BannerId> = c.defs.roles.iter().flat_map(|r| r.banners.values().copied()).collect();
     for id in handles(AssetKind::Banner).map(BannerId) {
-        if telops.contains(&id) {
+        if telops.contains(&id) || (!named.contains(&id) && lookups::is_telop(packs, c, id)) {
             lookups::telop(packs, c, id, p);
             continue;
         }
@@ -340,6 +423,24 @@ mod tests {
             c.rules[test.index()].panels.types[t as usize].named = false;
         }
         assert_eq!(missing(&c), PanelType::ALL.len() - 3);
+    }
+
+    /// Another loaded game's pack is audited as its console draws it (its
+    /// HUD's, custom screen's and chatbox's graphics), named by its game;
+    /// one that isn't loaded is not.
+    #[test]
+    fn another_games_pack_is_audited_as_its_console_draws_it() {
+        let mut c = (*testing::content()).clone();
+        let own = c.assets.pack(testing::ROOT).expect("the test pack");
+        c.assets.packs.push("other".into());
+        let others = |bundles: Vec<Bundle>| {
+            let found = audit(&c, bundles, own, None, &[("en".into(), None)]);
+            found.problems.into_iter().filter(|p| p.starts_with("(other's pack)")).collect::<Vec<_>>()
+        };
+        let found = others(vec![Bundle::default(), Bundle::default()]);
+        assert!(found.iter().any(|p| p.contains("no chatbox graphics")), "{found:?}");
+        assert!(found.iter().any(|p| p.contains("no custom screen graphics")), "{found:?}");
+        assert!(others(vec![Bundle::default()]).is_empty());
     }
 
     /// A lookup by the wrong key fails for every chip (R1's: a chip's icon
