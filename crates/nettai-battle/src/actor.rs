@@ -60,14 +60,17 @@ pub mod request {
     pub const STUN_STRIKE: u32 = 0x80000;
     pub const SELECT_SPECIAL: u32 = 0x0200_0000;
     /// Change Cross while paused (`sub_802DCDE`, from the transformation
-    /// sequencer): pause-time action 0x1C with `status::CHANGING_CROSS`.
-    pub const CROSS_CHANGE: u32 = 0x0400_0000;
+    /// sequencer): pause-time action 0x1C with `status::SWITCHING_NAVI`.
+    pub const NAVI_SWITCH: u32 = 0x0400_0000;
     /// Cross death (action 0x4C) outside the pause; pause-time request for
-    /// action 0x1C inside it. Both set `status::CROSS_KNOCKOUT`.
-    pub const CROSS_DEATH: u32 = 0x0800_0000;
+    /// action 0x1C inside it. Both set `status::SWITCH_KNOCKOUT`.
+    pub const SWITCH_KNOCKOUT: u32 = 0x0800_0000;
     /// Battle mode 9 A press.
     pub const MODE9_A: u32 = 0x1000_0000;
-    pub const CROSS_SPECIAL: u32 = 0x2000_0000;
+    /// A system's takeover of the side's navi is asked for (BN6's Cross
+    /// special, which DarkInvs asks for): idle's `sub_802E4E4` hands it to
+    /// the side's systems (`takeover_requested`).
+    pub const TAKEOVER: u32 = 0x2000_0000;
     /// Starts action 0x30 (`sub_80ED55C`, with `status::VOLLEY`): a
     /// volley of shots, the count per variant. No setter was found.
     pub const VOLLEY: u32 = 0x4000_0000;
@@ -98,13 +101,13 @@ pub mod status {
     /// Anti-damage trap armed (acts like chip 0xBB).
     pub const TRAP_ARMED: u32 = 0x800;
     /// Pause handler: changing Cross (`sub_802D714`).
-    pub const CHANGING_CROSS: u32 = 0x1000;
+    pub const SWITCHING_NAVI: u32 = 0x1000;
     /// Knocked out of a Cross instead of deleted (action 0x4C, or the
     /// pause handler's `sub_802D926`). Takes over the action dispatch.
-    pub const CROSS_KNOCKOUT: u32 = 0x2000;
-    /// A Cross change took effect (set when `sub_802D714` ends). A link
+    pub const SWITCH_KNOCKOUT: u32 = 0x2000;
+    /// A navi switch took effect (set when `sub_802D714` ends). A link
     /// navi with it falls back instead of being deleted (`sub_802DD2A`).
-    pub const CROSSED: u32 = 0x4000;
+    pub const SWITCHED: u32 = 0x4000;
     /// The volley (action 0x30) runs. Takes over the action dispatch.
     pub const VOLLEY: u32 = 0x1_0000;
     /// Takes over the action dispatch like the two above; no setter was
@@ -331,9 +334,6 @@ pub struct ActorData {
     /// Its saved lifecycle position (`obj+0x5C`), which a status action
     /// and a form change return to.
     pub saved_word: Option<crate::kinds::player::NaviWord>,
-    /// AIData+0xF0: the Beast Over berserk controller's state
-    /// (`sub_802D322`), in the 0x10 bytes allocation leaves alone.
-    pub berserk: crate::kinds::player::berserk::State,
     /// Obstacles the obstacle-absorbing chip pulled in, in arrival order
     /// (at most eight; the game keeps them at +0x6C with the count at
     /// +0x0D).
@@ -366,13 +366,13 @@ impl Actors {
         &mut self.slots[id.0 as usize]
     }
 
-    /// Allocate the lowest free slot, cleared, except for its last 0x10
-    /// bytes, which the game leaves alone (the berserk controller's).
+    /// Allocate the lowest free slot, cleared. (The game leaves the last
+    /// 0x10 bytes alone: the controllers' state, Beast Over's berserk and
+    /// the Cross special's, which are BN6's systems' now, by side.)
     pub fn allocate(&mut self) -> Option<ActorId> {
         let slot = (0..SLOTS as u8).find(|&i| self.in_use & (1 << i) == 0)?;
         self.in_use |= 1 << slot;
-        let berserk = self.slots[slot as usize].berserk;
-        self.slots[slot as usize] = ActorData { berserk, ..ActorData::default() };
+        self.slots[slot as usize] = ActorData::default();
         Some(ActorId(slot))
     }
 

@@ -2,14 +2,17 @@
 -- BN6's Beast Out (docs/design/rules-in-luau.md §3.1): a navi's turns in
 -- Beast Out and when they run out; the rush (rush.luau, the game's wrapper:
 -- the role `actions.wrapper`); Beast Over's berserk (berserk.luau, the
--- controller of its `controlled` forms) and its exhaustion. Their state is
--- the system's. The turn-start sequencer is the framework's (BN5 has it
+-- controller of its `controlled` forms) and its exhaustion; and the Cross
+-- special (cross-special.luau, DarkInvs' takeover), whose controller shares
+-- the berserk's state, as the original's share their 0x10 bytes. Their
+-- state is the system's. The turn-start sequencer is the framework's (BN5 has it
 -- too); it asks each side's systems at its check and when the turn starts.
 --
 -- (Still the framework's until later slices: the Beast Out button.)
 
 local beast_claw = require("../../navis/megaman/weapons/beast-claw/weapon")
 local berserk = require("./berserk")
+local cross_special = require("./cross-special")
 local rush = require("./rush")
 local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
 
@@ -33,10 +36,11 @@ export type State = {
     rush_chain: boolean,
     rush_chain_block: number,
     rush_countdown: number,
-    -- The berserk's (berserk.luau).
-    berserk_step: number,
-    berserk_moves: number,
-    berserk_started: boolean,
+    -- The controllers' (berserk.luau, cross-special.luau).
+    controller_step: number,
+    controller_moves: number,
+    controller_volley: number,
+    controller_started: boolean,
     -- AIData+0x0F: the turn-start check (`sub_80159C6`) runs only while
     -- this is 0, and then sets it to 2. Closing the custom screen sets it to
     -- 1 (`sub_8009338`); a mid-battle custom-screen request counts it down
@@ -62,11 +66,12 @@ return define.system {
         rush_chain = "bool",
         rush_chain_block = "u8",
         rush_countdown = "u16",
-        berserk_step = "u8",
-        berserk_moves = "u16",
-        berserk_started = "bool",
+        controller_step = "u8",
+        controller_moves = "u16",
+        controller_volley = "u16",
+        controller_started = "bool",
     },
-    actions = { rush.action },
+    actions = { rush.action, cross_special.action },
     hooks = {
         -- `sub_800FB54`: what runs inside the rush. In a Beast form (or
         -- from the Cross special), a chip with the lock-on flag (its
@@ -89,6 +94,9 @@ return define.system {
         -- `sub_802D322`: Beast Over's berserk decides a controlled navi's
         -- idle.
         controller = berserk.control,
+        -- `sub_802E4E4`, `sub_802D4C6`: the Cross special.
+        takeover_requested = cross_special.requested,
+        takeover = cross_special.takeover,
         -- `sub_80158CC`: outside battle mode 1, reverting spends a Beast Out
         -- and exhausts a Beast Over.
         form_reverted = function(side: number, navi: Object)

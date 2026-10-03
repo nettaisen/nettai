@@ -221,6 +221,18 @@ pub enum SystemHook {
     /// framework carries it out as idle does. The first system that
     /// answers decides.
     Controller,
+    /// `takeover_requested(side, navi)`: idle finds the navi's takeover
+    /// request (`sub_802E4E4`; BN6's DarkInvs asks for its Cross
+    /// special): a system starts it (`battle.take_over`). Its result is
+    /// unused.
+    TakeoverRequested,
+    /// `takeover(side, navi)`: each tick of the idle action of a navi whose
+    /// side's takeover runs (`sub_802D4C6`, the Cross special), in place
+    /// of the player's decisions: what it did, as `controller` answers,
+    /// or "own_chip" (an attack of its own started: the attack's chip). The
+    /// system ends it (`battle.end_takeover`). The first system that
+    /// answers decides.
+    Takeover,
     /// `form_reverted(side, navi)`: the framework reverts the navi to its
     /// base form, its form not yet changed (`sub_80158CC`): BN6's spends a
     /// Beast Out and exhausts a Beast Over. Its result is unused.
@@ -248,10 +260,12 @@ impl SystemHook {
             SystemHook::ChipUsed => "chip_used",
             SystemHook::Controller => "controller",
             SystemHook::FormReverted => "form_reverted",
+            SystemHook::TakeoverRequested => "takeover_requested",
+            SystemHook::Takeover => "takeover",
         }
     }
 
-    pub const ALL: [SystemHook; 12] = [
+    pub const ALL: [SystemHook; 14] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -264,6 +278,8 @@ impl SystemHook {
         SystemHook::ChipUsed,
         SystemHook::Controller,
         SystemHook::FormReverted,
+        SystemHook::TakeoverRequested,
+        SystemHook::Takeover,
     ];
 }
 

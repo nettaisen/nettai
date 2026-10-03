@@ -162,7 +162,7 @@ impl Hash for Battle {
             games: _,
             setup,
             stats,
-            cross_stats,
+            reserves,
             rng,
             consoles,
             round,
@@ -204,7 +204,7 @@ impl Hash for Battle {
         } = self;
         setup.hash(h);
         stats.hash(h);
-        cross_stats.hash(h);
+        reserves.hash(h);
         rng.hash(h);
         consoles.hash(h);
         round.hash(h);
