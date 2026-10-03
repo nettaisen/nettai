@@ -1753,12 +1753,15 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   - The offsets were also read on Tango's four raw BN6 templates by a script (version names, flags, navi, codes, SP
     times as expected). Their checksum word is zero (memory images Tango checksums when it writes them), so the
     checksum path is the tests'.
-- **Gates** (on main 01529fe8, common-shared merged):
-  - the build without warnings (every feature), 499 tests, the content check (1,363 modules), gen-content check 0
+- **Gates** (on main 851e3392, with bn5-presentation and both bn5-chips checkpoints merged):
+  - the build without warnings (every feature), 502 tests, the content check (1,424 modules), gen-content check 0
     errors;
-  - the full gate (the selected gate ran everything): the 189 legacy rounds, 96 rollback rows matching, and the lab
-    6548 (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
-  - identity.sh against the S6 base frontend: the custom-screen and sample lists identical in both text modes (174
-    scenarios, 200,712 frames each);
+  - the gate's steps in full: the 189 legacy rounds, 96 rollback rows matching, and the lab 6548 (6545 matched, 3 to
+    a known deviation) with 0 sound rounds differing. They ran by hand with the gate's environment, skipping
+    `every_bn5_lab_recording_decodes`: seven chaos-ai BN5 recordings that another agent left untracked in the
+    shared data carry an `ai_lists` setup field main's bn5-compat doesn't know, so that test fails on main too;
+  - identity.sh against main 851e3392's frontend on its content: the custom-screen and sample lists identical in
+    both text modes (174 scenarios, 200,712 frames each);
   - the audit 0 problems; us-spelling 0 on both repositories;
-  - BN5's replays as main's: 402 match, 18 replay, 223,414 of 948,097 frames.
+  - BN5's replays as main's on the same recordings and a fresh BN5 pack: 820 match, 25 replay, 540 setup, 7
+    unread, 437,837 of 950,536 frames.
