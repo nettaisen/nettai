@@ -59,6 +59,8 @@ swords.effects = {
     big = define.effect { sprite = asset.sprite("bn5:big-slash"), anim = 0, palette = 0 },
     -- DrkSword's dark big slash (0x1C).
     dark = define.effect { sprite = asset.sprite("bn5:big-slash"), anim = 0, palette = 2 },
+    -- Over three panels: FtrSword's (0x2E).
+    line = define.effect { sprite = SLASH, anim = 3, palette = 0 },
 }
 swords.swing = asset.sound("bn5:sword-swing")
 swords.big_swing = asset.sound("bn5:big-sword-swing")

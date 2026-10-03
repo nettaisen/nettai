@@ -52,9 +52,6 @@
 "bn5:chaos-shade" = { pool = "actor", index = 0x2B }
 "bn5:timebom/countdown" = { pool = "attack", index = 0x4B }
 "bn5:timebom/controller" = { pool = "effect", index = 0x27, scratch_position = true }
-"bn5:darkcirc/gun" = { pool = "attack", index = 0x89 }
-"bn5:darkcirc/shot" = { pool = "attack", index = 0x8A }
-"bn5:darkcirc/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "bn5:lance" = { pool = "attack", index = 0x4F }
 "bn5:meteor" = { pool = "attack", index = 0x56 }
 "bn5:meteor-shower" = { pool = "effect", index = 0x46 }
@@ -78,6 +75,10 @@
 "bn5:circgun/shot" = { pool = "attack", index = 0x8A }
 "bn5:circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "bn5:tankcan/shell" = { pool = "attack", index = 0x3C }
+"bn5:lifesync/controller" = { pool = "effect", index = 0x5C, scratch_position = true }
+"bn5:lifesync/marker" = { pool = "effect", index = 0x60 }
+"bn5:moonbld/blade" = { pool = "attack", index = 0x69, scratch_position = true }
+"bn5:crakbom/bomb" = { pool = "attack", index = 0x24 }
 "bn5:geddon/controller" = { pool = "effect", index = 0x1D, scratch_position = true }
 "bn5:geddon/quake" = { pool = "effect", index = 0x1E, scratch_position = true }
 "bn5:anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
@@ -108,3 +109,12 @@
 "bn5:woodnos/geyser" = { pool = "attack", index = 0xA7 }
 "bn5:sidebub/bubble" = { pool = "attack", index = 0x8F }
 "bn5:flying-shot" = { pool = "attack", index = 0x0B }
+"bn5:quake/bomb" = { pool = "attack", index = 0x51 }
+"bn5:seed" = { pool = "attack", index = 0x4A }
+"bn5:cannball/ball" = { pool = "attack", index = 0x35 }
+"bn5:geyser/bomb" = { pool = "attack", index = 0x42 }
+"bn5:geyser/water" = { pool = "attack", index = 0x43, scratch_position = true }
+"bn5:metagel/controller" = { pool = "effect", index = 0x21, scratch_position = true }
+"bn5:metagel/gel" = { pool = "attack", index = 0x45, scratch_position = true }
+"bn5:magnum/controller" = { pool = "effect", index = 0x30, scratch_position = true }
+"bn5:magnum/gunner" = { pool = "actor", index = 0x02 }

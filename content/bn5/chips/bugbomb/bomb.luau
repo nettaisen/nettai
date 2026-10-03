@@ -5,8 +5,8 @@
 -- Its bugs (0x080D50CA, BN6's `sub_80D9FC2`): of HP drain, custom-screen HP drain and emotion swings (NaviStats
 -- +0x18, +0x19, +0x24; BN6 has a panel trail and buster blanks for the last), one its target's side lacks, at
 -- random, or any of the three; with battle flag 0x40, always HP drain. Its codes (0x080D5148) add 2 to either drain,
--- to at most 7 (BN5's intake, 0x0801103E: an argument's bit 4 adds, where BN6's always adds the argument, so the
--- engine's codes here add 2), or set the emotion swings to 1.
+-- to at most 7 (argument 0x12: BN5's intake, 0x0801103E, adds with bit 4, rules/status's `drain_bug_flags`), or set
+-- the emotion swings to 1.
 
 local collision = require("../../rules/collision")
 local common = require("@common/bugbomb/bomb")
@@ -18,10 +18,10 @@ local bug_bomb = {}
 
 local EXPLOSION = define.effect { sprite = asset.sprite("bn5:explosion"), anim = 0, palette = 2 }
 
--- The bugs (0x080D5148) in the engine's codes: HP drain +2, custom-screen HP drain +2, emotion swings 1.
+-- The bugs (0x080D5148): HP drain +2, custom-screen HP drain +2, emotion swings 1.
 local BUGS = {
-    [0] = { bug = 0x18, arg = 2 },
-    [1] = { bug = 0x19, arg = 2 },
+    [0] = { bug = 0x18, arg = 0x12 },
+    [1] = { bug = 0x19, arg = 0x12 },
     [2] = { bug = 0x24, arg = 1 },
 }
 
