@@ -66,7 +66,7 @@ fn pixel(png: &std::path::Path, x: usize, y: usize) -> [u8; 3] {
 }
 
 fn rgb(c: u16) -> [u8; 3] {
-    let v = nettai_frontend::compose::to_rgb(c);
+    let v = nettai_render::compose::to_rgb(c);
     [(v >> 16) as u8, (v >> 8) as u8, v as u8]
 }
 
