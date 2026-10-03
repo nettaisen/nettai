@@ -34,7 +34,7 @@ Most renames are mechanical. These changed type, so their uses change too:
 
 | Old use | New use |
 |---|---|
-| `ai.unk_32 != 0` / `ai.unk_32 = 0xFFFF` | `ai.beast_out_spent` / `ai.beast_out_spent = true` |
+| `ai.unk_32 != 0` / `ai.unk_32 = 0xFFFF` | `ai.tired` / `ai.tired = true` (`beast_out_spent` until rules-in-Luau S5) |
 | `ai.unk_36 != 0` | `ai.exhausted` (writing 0x3C0 becomes `= true`; `beast_over_exhausted` until rules-in-Luau S3) |
 | `ai.unk_1c != 0` / `= 0` / `= 1` | `ai.hit_bug_latched` / `= false` / `= true` |
 | `ai.unk_3c` (u16) | `ai.bubble_base_z` (i16; `(z as i32) << 16` gives the same bits) |
@@ -58,7 +58,7 @@ Fields that already had names are unchanged. `drain_counter` (+0x0A) kept its na
 |---|---|---|---|
 | `unk_03` | deleted | u8 | AIData+0x03: byte 2 of the actor's enemy record (`enemy_getStruct1`), copied at spawn (`sub_800753C`); 1 for player navis. Read by `sub_800F334` and `sub_81095D0` (virus code). The port wrote it at spawn but never read it. |
 | `unk_09` | `hp_drain_counter` | u8 | AIData+0x09: ticks toward the next HP lost to the fight-time HP bug. Players: `sub_8010230` (level from NaviStats+0x18). Actors without navi stats: `sub_801026A` (level from AIData+0x12). |
-| `unk_0b` | `swung_emotion` | u8 | AIData+0x0B: the emotion last picked by the NaviCust emotion-swing bug (`sub_8013DA0`). Deleted by the pass, and back with the bug's port. |
+| `unk_0b` | `swung_emotion` | u8 | AIData+0x0B: the emotion last picked by the NaviCust emotion-swing bug (`sub_8013DA0`). Deleted by the pass, and back with the bug's port; since rules-in-Luau S5 BN6's emotion system's state (`swung`, content/bn6/rules/emotion). |
 | `unk_0c` | deleted | u8 | AIData+0x0C: written by virus/navi init `sub_8016F56` (the opponent's max base HP / 100, clamped to 1..10). Read by `sub_800FE12` and `sub_800FE36`, which multiply a table value by it for actors of version 4. |
 | `unk_0d` | deleted | u8 | AIData+0x0D: count of absorbed obstacles (`sub_80E991C`, `sub_8011F8C`, `sub_8011FCE`). Already modeled as `absorbed.len()`. |
 | `unk_0e` | deleted | u8 | AIData+0x0E: set to 0xFF at spawn (`sub_800753C`) and at deletion (`sub_8016C4E`). Its only reader, `sub_800A86E`, has no effect. The port wrote it at spawn and in `destroy`; both writes are gone. |
@@ -73,10 +73,10 @@ Fields that already had names are unchanged. `drain_counter` (+0x0A) kept its na
 | `unk_18` | deleted | u8 | AIData+0x18: counted down by `sub_802DD62` (Cross code); no other access found. |
 | `unk_1c` | `hit_bug_latched` | bool | AIData+0x1C: the NaviCust on-hit bug (NaviStats+0x16) already fired during this hit sequence. `sub_8013F1E` clears it when it runs with `prevent_anim` 0. The game stores 0/1. |
 | `unk_1f` | deleted | u8 | AIData+0x1F: no reader found. |
-| `unk_32` | `beast_out_spent` | bool | AIData+0x32 (the game stores 0xFFFF or 0). Set by `sub_801443C`, which is called: at init with a zero Beast Out counter (`sub_8013892`); by the turn-start check (`sub_80159C6`); when a Beast Out (not Over) reverts (`sub_80158CC`); by the emotion-swing bug (`sub_8013DA0`); and by `sub_80E4954` when the counter is 0. Cleared by `sub_8014446` (from the emotion-swing bug, and from `sub_80E4954` when the counter is not 0). Effects: emotion 1 (`sub_8015B64`), mood changes blocked (`sub_8015BEC`), anger blocked (`sub_80143CE`), counter-hit Full Synchro blocked (`sub_801A200`). |
+| `unk_32` | `tired` | bool | AIData+0x32 (the game stores 0xFFFF or 0). Set by `sub_801443C`, which is called: at init with a zero Beast Out counter (`sub_8013892`); by the turn-start check (`sub_80159C6`); when a Beast Out (not Over) reverts (`sub_80158CC`); by the emotion-swing bug (`sub_8013DA0`); and by `sub_80E4954` when the counter is 0. Cleared by `sub_8014446` (from the emotion-swing bug, and from `sub_80E4954` when the counter is not 0). Effects: emotion 1 (`sub_8015B64`), mood changes blocked (`sub_8015BEC`), anger blocked (`sub_80143CE`), counter-hit Full Synchro blocked (`sub_801A200`). Named `beast_out_spent` until rules-in-Luau S5, which made it the framework's held state (its writers are BN6's systems'). |
 | `unk_36` | `exhausted` | bool | AIData+0x36: set when a Beast Over form reverts (`sub_80158CC` → `sub_8014466`, which also sets mood 0). The game stores 0x3C0, but nothing counts it down, so it is a flag. Effects: emotion 5 (`sub_8015B64`), mood changes and anger blocked, and 1 HP lost per tick, never the last one (`sub_8014498`). Named `beast_over_exhausted` until rules-in-Luau S3, which made it the framework's and gave the setting to BN6's beast system (`form_reverted`). |
 | `unk_38` | `road_cooldown` | u16 | AIData+0x38: ticks before a road panel can start another slide. Set to 5 after a road slide (`sub_80166D0`, `sub_8016730`) and to 1 by `sub_80F650A`. Counted down and tested by `sub_801A36A`; tested by `sub_801A400`. |
-| `unk_3a` | deleted | u16 | AIData+0x3A: the emotion-swing bug's 60-tick counter (`sub_8013DA0`). Re-add as `swing_timer`. |
+| `unk_3a` | deleted | u16 | AIData+0x3A: the emotion-swing bug's 60-tick counter (`sub_8013DA0`). Back with the bug's port; since rules-in-Luau S5 BN6's emotion system's state (`swing_ticks`). |
 | `unk_3c` | `bubble_base_z` | i16 (was u16) | AIData+0x3C: the height (Z16, whole pixels) a bubble bobs around and restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses record it every tick when not bubbled (`sub_8108F74`); nothing sets it for players. |
 | `unk_3e` | deleted | u16 | AIData+0x3E: no reader found. |
 | `unk_40` | `target_marker` | `Option<ObjectRef>` | AIData+0x40: the Beast Out lock-on marker (effect #0xF, spawned by `sub_80E1620`), the shared kind `engine/target-marker` since rules-in-Luau S3 (`lockon_marker` before). `sub_80E164A` reads its panel; `sub_80E1654`/`sub_80E1662` freeze and unfreeze it; `sub_801562C` clears the pointer. |
