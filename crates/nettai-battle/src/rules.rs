@@ -161,6 +161,35 @@ impl Battle {
         }
     }
 
+    /// Side `side`'s systems' `controller(side, navi)`: the outcome (the
+    /// original's number: 0 nothing, 1 a chip, 2 the buster, 3 a step) the
+    /// first system that answers gives; none answering is nothing.
+    pub(crate) fn systems_controller(&mut self, side: u8, navi: ObjectRef) -> u8 {
+        let Some(r) = self.rules[side as usize].ruleset else { return 0 };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::Controller) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::Controller, navi: Some(navi), chip: None };
+                if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
+                    return n as u8;
+                }
+            }
+        }
+        0
+    }
+
+    /// Side `side`'s systems' `form_reverted(side, navi)`.
+    pub(crate) fn systems_form_reverted(&mut self, side: u8, navi: ObjectRef) {
+        let Some(r) = self.rules[side as usize].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::FormReverted) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::FormReverted, navi: Some(navi), chip: None };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
     /// Side `side`'s systems' `chip_check(side, navi, chip)` as a chip's
     /// use is prepared: the chip the first system that answers puts in its
     /// place, or none (the use goes ahead).

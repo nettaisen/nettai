@@ -261,7 +261,7 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
     let opp_form = b.form(opp as usize).kind;
     if coll(b, r).acc.counter & 0x8000 != 0 && matches!(opp_form, FormKind::Base | FormKind::Beast) {
         let a = ai(b, r);
-        if !a.beast_out_spent && !a.beast_over_exhausted {
+        if !a.beast_out_spent && !a.exhausted {
             set_mood(b, opp, 0xFF);
         }
     }
@@ -782,7 +782,7 @@ pub(crate) fn end_anger(b: &mut Battle, r: ObjectRef) {
 /// `sub_8014498`: exhausted after Beast Over, lose 1 HP per tick (never
 /// to 0).
 fn drain_hp(b: &mut Battle, r: ObjectRef) {
-    if b.is_battle_over() || !ai(b, r).beast_over_exhausted {
+    if b.is_battle_over() || !ai(b, r).exhausted {
         return;
     }
     let o = b.objects.get_mut(r);
