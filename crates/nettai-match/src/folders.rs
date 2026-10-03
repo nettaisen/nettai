@@ -8,6 +8,11 @@
 //! What a folder can be made of is what the rules accept a chip of alone
 //! (`pool`), and live play's random folder (`random_folder`) is drawn one
 //! chip at a time, each kept if the rules still accept the chips so far.
+//!
+//! A match keeps a folder as it is being made ([`Folder`]): entries may be
+//! empty (a new match's all are). The rules see the chips there, and say
+//! that a folder of fewer than 30 is no folder (BN6's `size`); a round is
+//! played only with a whole one ([`Folder::saved`]).
 
 use crate::draw::Draws;
 use nettai_battle::Battle;
@@ -17,10 +22,60 @@ use nettai_battle::custom::{FolderChip, SavedFolder};
 use nettai_battle::rules::FolderProblem;
 use nettai_content_api::ChipHandle;
 
+/// A side's folder as a match keeps it: its 30 entries, each a chip in one
+/// of its codes or empty (a folder being made), and its Regular and tag
+/// chips (entries).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Folder {
+    pub chips: [Option<FolderChip>; FOLDER_SIZE],
+    pub regular: Option<u8>,
+    pub tags: Option<(u8, u8)>,
+}
+
+impl Folder {
+    /// No chips: a new match's folder.
+    pub const EMPTY: Folder = Folder { chips: [None; FOLDER_SIZE], regular: None, tags: None };
+
+    /// The folder a save holds, when every entry has a chip.
+    pub fn saved(&self) -> Option<SavedFolder> {
+        let chips: Vec<FolderChip> = self.chips.iter().copied().collect::<Option<_>>()?;
+        Some(SavedFolder { chips: chips.try_into().ok()?, regular: self.regular, tags: self.tags })
+    }
+
+    /// The chips there, in order.
+    pub fn chips(&self) -> impl Iterator<Item = FolderChip> + '_ {
+        self.chips.iter().flatten().copied()
+    }
+
+    /// Whether entry `i` has a chip.
+    pub fn has(&self, i: u8) -> bool {
+        self.chips.get(i as usize).is_some_and(|c| c.is_some())
+    }
+
+    /// The folder with each empty entry holding `filler`: a whole folder
+    /// for a round its checks set up (the folder's own problems are its
+    /// own entries').
+    pub fn filled_with(&self, filler: FolderChip) -> SavedFolder {
+        SavedFolder { chips: self.chips.map(|c| c.unwrap_or(filler)), regular: self.regular, tags: self.tags }
+    }
+}
+
+impl From<SavedFolder> for Folder {
+    fn from(f: SavedFolder) -> Folder {
+        Folder { chips: f.chips.map(Some), regular: f.regular, tags: f.tags }
+    }
+}
+
 /// What side `side`'s rules say of `folder`, each rule it breaks named and
-/// said (none: it keeps them).
-pub fn problems(b: &mut Battle, side: u8, folder: &SavedFolder) -> Vec<FolderProblem> {
-    b.check_folder(side, &folder.chips, folder.regular, folder.tags, true)
+/// said (none: it keeps them). The rules see the chips there, in order, and
+/// the Regular and tag chips by their place among them (one on an empty
+/// entry is left out: the match's own checks say so).
+pub fn problems(b: &mut Battle, side: u8, folder: &Folder) -> Vec<FolderProblem> {
+    let chips: Vec<FolderChip> = folder.chips().collect();
+    let place = |i: u8| folder.has(i).then(|| folder.chips[..i as usize].iter().flatten().count() as u8);
+    let regular = folder.regular.and_then(place);
+    let tags = folder.tags.and_then(|(a, b)| Some((place(a)?, place(b)?)));
+    b.check_folder(side, &chips, regular, tags, true)
 }
 
 /// The rule a folder rule's problem names when a chip is none a folder can
@@ -74,15 +129,19 @@ pub fn random_folder(content: &Content, b: &mut Battle, side: u8, draws: &mut Dr
     SavedFolder { chips: chips.try_into().expect("30 chips"), regular, tags: None }
 }
 
-/// A folder in a line: each chip's name and code, the Regular chip marked.
-pub fn describe(content: &Content, folder: &SavedFolder) -> String {
+/// A folder in a line: each chip's name and code, the Regular chip marked,
+/// an empty entry a dash.
+pub fn describe(content: &Content, folder: &Folder) -> String {
     folder
         .chips
         .iter()
         .enumerate()
-        .map(|(i, c)| {
-            let mark = if folder.regular == Some(i as u8) { " (Regular)" } else { "" };
-            format!("{} {}{mark}", crate::names::chip(content, c.id), c.code.letter())
+        .map(|(i, c)| match c {
+            Some(c) => {
+                let mark = if folder.regular == Some(i as u8) { " (Regular)" } else { "" };
+                format!("{} {}{mark}", crate::names::chip(content, c.id), c.code.letter())
+            }
+            None => "-".into(),
         })
         .collect::<Vec<_>>()
         .join(", ")
@@ -119,7 +178,7 @@ mod tests {
         }
         for seed in 0..20 {
             let f = random_folder(&content, &mut b, 0, &mut Draws::new(seed));
-            assert_eq!(problems(&mut b, 0, &f), Vec::new(), "seed {seed}: {}", describe(&content, &f));
+            assert_eq!(problems(&mut b, 0, &f.into()), Vec::new(), "seed {seed}: {}", describe(&content, &f.into()));
             let r = f.regular.expect("a Regular chip");
             assert!(content.chip(f.chips[r as usize].id).mb <= 50);
         }
@@ -139,7 +198,7 @@ mod tests {
             FolderChip::new(id, content.chip(id).codes[0])
         };
         let base = |chips: [FolderChip; FOLDER_SIZE]| SavedFolder { chips, regular: None, tags: None };
-        let mut said = |f: &SavedFolder| -> Vec<String> { problems(&mut b, 0, f).into_iter().map(|p| format!("{}: {}", p.rule, p.text)).collect() };
+        let mut said = |f: &SavedFolder| -> Vec<String> { problems(&mut b, 0, &(*f).into()).into_iter().map(|p| format!("{}: {}", p.rule, p.text)).collect() };
         // Five Recov10s (4 MB) and the rest plain chips is legal; a sixth
         // isn't.
         let mut chips = [chip("bn6:recov10"); FOLDER_SIZE];

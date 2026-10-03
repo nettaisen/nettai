@@ -68,7 +68,9 @@ impl Offer {
         w.put(game);
         w.put(stats);
         w.put(emotion_window_glitch);
-        w.put(folder);
+        // An offer's side is one the match's checks accepted, whose folder
+        // is whole.
+        w.put(&folder.saved().expect("an offer's folder is whole (the checks refuse one being made)"));
         w.put(crosses);
         w.put(cards);
         w.put(navi_level);
@@ -106,7 +108,7 @@ impl Offer {
                 game: r.get()?,
                 stats: r.get()?,
                 emotion_window_glitch: r.get()?,
-                folder: r.get::<SavedFolder>()?,
+                folder: r.get::<SavedFolder>()?.into(),
                 crosses: r.get::<Option<CrossList>>()?,
                 cards: r.get::<Vec<InstalledCard>>()?,
                 navi_level: r.get()?,
@@ -482,7 +484,9 @@ mod tests {
         bad.side.folder.regular = None;
         assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("breaks the rules"));
         let mut bad = o.clone();
-        bad.side.folder.chips[0].id = nettai_content_api::ChipHandle(60_000);
+        if let Some(c) = &mut bad.side.folder.chips[0] {
+            c.id = nettai_content_api::ChipHandle(60_000);
+        }
         assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("hasn't"));
         assert!(Offer::from_bytes(&content, &o.to_bytes()[..10]).is_err());
     }
@@ -513,7 +517,8 @@ mod tests {
             let (offers, setup, m) = agree(&content, &conn, &mine).unwrap();
             let side = conn.side();
             assert_eq!(offers[side], mine);
-            let mut player = NetPlayer::new(content.clone(), conn, setup.clone(), offers.map(|o| o.side.folder), NetOptions::default());
+            let folders = offers.map(|o| o.side.folder.saved().expect("checked offers' folders are whole"));
+            let mut player = NetPlayer::new(content.clone(), conn, setup.clone(), folders, NetOptions::default());
             let mut shown = player.start();
             assert_eq!(shown.setup.local_side as usize, side);
             let mut masher = Masher::new(seed as u64);

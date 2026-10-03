@@ -80,7 +80,7 @@ pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
         out.push("the stats name a record the content hasn't".into());
     }
     // The folder's chips, before its rules.
-    if let Some((i, _)) = s.folder.chips.iter().enumerate().find(|(_, c)| c.id.index() >= defs.chips.len()) {
+    if let Some((i, _)) = s.folder.chips.iter().enumerate().find(|(_, c)| c.is_some_and(|c| c.id.index() >= defs.chips.len())) {
         out.push(format!("folder entry {i}: a chip the content hasn't"));
         return out;
     }
@@ -135,9 +135,9 @@ pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
         out.extend(check_navicust(content, s, n));
     }
     // The folder's chips are the content's (its rules wait for the round).
-    let in_folder = |i: u8| (i as usize) < s.folder.chips.len();
+    let in_folder = |i: u8| s.folder.has(i);
     if !s.folder.regular.is_none_or(in_folder) || !s.folder.tags.is_none_or(|(a, b)| in_folder(a) && in_folder(b)) {
-        out.push("folder: the Regular or tag chips aren't in the folder".into());
+        out.push("folder: the Regular or tag chips aren't chips of the folder".into());
     }
     out
 }
@@ -214,6 +214,20 @@ pub fn check_navicust(content: &Content, s: &Side, n: &nettai_battle::navicust::
 /// The round `m` starts, set up (each side's rules have set its stats:
 /// the NaviCust, the patch cards), or why it doesn't start.
 pub fn start(content: &Arc<Content>, m: &Match) -> Result<Battle, String> {
+    // A folder being made has empty entries, and a round is set up with
+    // whole ones: here they hold a stand-in (the folder's first chip, else
+    // the content's first with a code). Its rules see its own entries
+    // (`folder_problems`), and say it isn't whole.
+    let mut m = m.clone();
+    for s in &mut m.sides {
+        if s.folder.saved().is_none() {
+            let any = (0..content.defs.chips.len() as u16)
+                .map(nettai_content_api::ChipHandle)
+                .find_map(|id| content.chip(id).codes.first().map(|&code| nettai_battle::custom::FolderChip::new(id, code)));
+            let filler = s.folder.chips().next().or(any).ok_or("the content has no chip with a code")?;
+            s.folder = s.folder.filled_with(filler).into();
+        }
+    }
     let setup = m.round(content, m.seed.unwrap_or(0));
     let started = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Battle::new(setup, content.clone())));
     started.map_err(|e| {

@@ -138,7 +138,7 @@ impl Side {
             game,
             stats,
             emotion_window_glitch: false,
-            folder,
+            folder: folder.into(),
             crosses: Some(crosses),
             cards: Vec::new(),
             navi_level: 0,
@@ -185,7 +185,7 @@ pub fn plain(content: &Arc<Content>, seed: u32) -> Result<Match, String> {
         game,
         stats: Side::base_stats(content, navi, game),
         emotion_window_glitch: false,
-        folder,
+        folder: folder.into(),
         crosses: None,
         cards: Vec::new(),
         navi_level: 0,
@@ -197,7 +197,7 @@ pub fn plain(content: &Arc<Content>, seed: u32) -> Result<Match, String> {
         let mut draws = Draws::new(seed);
         for s in 0..2u8 {
             if !folders::pool(content, &mut b, s).is_empty() {
-                m.sides[s as usize].folder = folders::random_folder(content, &mut b, s, &mut draws);
+                m.sides[s as usize].folder = folders::random_folder(content, &mut b, s, &mut draws).into();
             }
         }
     }

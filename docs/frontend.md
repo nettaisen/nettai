@@ -761,7 +761,7 @@ bug_frags = 0                              # optional
 emotion_window_glitch = false              # optional: the save's NaviCust bug flag (0x1720)
 
 [left.folder]
-chips = ["bn6:cannon A", "bn6:cannon A", "bn6:airshot *"]   # 30 entries, "<key> <code>"
+chips = ["bn6:cannon A", "bn6:cannon A", "bn6:airshot *"]   # 30 entries, "<key> <code>" ("" empty: a folder being made)
 regular = 4                                # optional: an entry, counting from 0
 tags = [5, 6]                              # optional: two entries
 
@@ -817,7 +817,8 @@ is said with where it is:
 - the arena's stages are link battle stages (`link_battle_stages`);
 - the folder keeps its game's rules, which each side's ruleset checks: the
   ruleset's systems' `folder_check` hooks (BN6's are rules/folder/system.luau:
-  30 entries, copies by MB, each chip in one of its codes, at most three dark
+  30 chips, so a folder being made, with empty entries, is no folder yet;
+  copies by MB, each chip in one of its codes, at most three dark
   chips, chips the chip pack lists, the Regular chip within the Regular
   memory, the tag chips two other entries of 60 MB together at most). The
   Mega, Giga and Regular limits are the navi's stats as the round starts them
