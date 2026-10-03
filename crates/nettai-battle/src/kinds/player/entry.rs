@@ -40,7 +40,7 @@ fn appear(b: &mut Battle, r: ObjectRef) {
             let o = b.objects.get_mut(r);
             o.timer = 0x14;
             o.timer2 = 0x1E;
-            // (A white colour shader: presentation.)
+            // (A white color shader: presentation.)
             set_invulnerable(b, r, 0xFFFF);
             let pos = b.objects.get(r).pos;
             flash(b, pos, APPEAR_LOOK);
@@ -63,7 +63,7 @@ fn appear(b: &mut Battle, r: ObjectRef) {
             if o.timer2 != 0 {
                 return show(b, r);
             }
-            // (The colour shader goes.)
+            // (The color shader goes.)
             o.phase = 8;
             o.phase_init = 0;
         }
@@ -92,7 +92,7 @@ fn flash(b: &mut Battle, pos: crate::object::Vec3, look: EffectRole) {
     }
 }
 
-/// `loc_801655A`: the navi shows (in the fading colour shader).
+/// `loc_801655A`: the navi shows (in the fading color shader).
 fn show(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).set_visible(true);
 }

@@ -18,7 +18,7 @@ pub enum TemplateSlot {
     Hidden,
 }
 
-/// A slot of the starting grid and its neighbours (slot numbers).
+/// A slot of the starting grid and its neighbors (slot numbers).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SlotLayout {
@@ -30,7 +30,7 @@ pub struct SlotLayout {
 }
 
 /// The custom screen's slot grid (`dword_802A7CC`) and the lists its
-/// neighbour fix-up scans (`sub_8027F42`): slots 0-4 are the top row,
+/// neighbor fix-up scans (`sub_8027F42`): slots 0-4 are the top row,
 /// 5-9 the bottom row, 10 OK and 11 the special button under it.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CustomScreenLayout {

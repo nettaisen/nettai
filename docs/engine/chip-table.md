@@ -22,7 +22,7 @@ Columns:
 - **sub** (+0x0C): variant/sub-type → AIAttackVars+0x03. **BO** (+0x0F): Beast-Out auto-lock flag → AIAttackVars+0x1D.
 - **p10** (+0x10..+0x13, u32): per-action parameters → AIAttackVars+0x0C (passed as r4 to spawners).
 - **lock** (+0x14): post-chip input lockout frames → AIData+0x19 at `object_exitAttackState`.
-- **f16** (+0x16): 0x80 no slot-in gauge cost, 0x02 cancelled by Rush support (sub_8010740), 0x01/0x10/0x20/0x40 menu-only.
+- **f16** (+0x16): 0x80 no slot-in gauge cost, 0x02 canceled by Rush support (sub_8010740), 0x01/0x10/0x20/0x40 menu-only.
 - **LO** (+0x17): Beast-Out lock-on panel selector (index into `jt_8026584`).
 - **dmg** (+0x1A, u16): base damage; values >= 1000 are `var[n]` = formula index n into `off_80109DC` (see below).
   **lib#** (+0x1C, u16) library number. **max** (+0x1E): per-battle slot-in use limit (`sub_802E830`).
@@ -675,4 +675,4 @@ that object's phase `sub_80E1880` calls `off_802CD5C[Unk_19]`.
 | 1044 | `sub_8010C50` (08010C50) | 19A StepSwrd |
 
 Note: chips 0x138 Gregar and 0x139 Falzar have action 0x15 with +0x0C = 34/35, whose `off_802CCB4` slots are NULL;
-in the US ROM using them crashes the game. The JP ROMs have the behaviour (jp-differences.md §4).
+in the US ROM using them crashes the game. The JP ROMs have the behavior (jp-differences.md §4).

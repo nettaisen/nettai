@@ -2,9 +2,10 @@
 //! See docs/frontend.md.
 
 use nettai_frontend::driver::{LivePlayer, TracePlayer};
-use nettai_frontend::textlayer::TextMode;
-use nettai_frontend::vfont::{TextRenderer, VectorFont};
 use nettai_frontend::{Renderer, Session, TickHook, app, headless, session};
+use nettai_render::packs::Packs;
+use nettai_render::textlayer::TextMode;
+use nettai_render::vfont::{TextRenderer, VectorFont};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -407,7 +408,8 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, seed: u32, file: 
         save_match(content, &m, conn.seed(), path);
     }
     let options = NetOptions { delay: args.delay, ..NetOptions::default() };
-    let folders = offers.map(|o| o.side.folder);
+    // The offers were checked as they came (`Offer::from_bytes`): whole folders.
+    let folders = offers.map(|o| o.side.folder.saved().expect("checked offers' folders are whole"));
     Session::new(Box::new(NetPlayer::new(content.clone(), conn, setup, folders, options)))
 }
 
@@ -568,7 +570,7 @@ fn main() {
             bundles.push(b);
         }
     }
-    let mut renderer = Renderer::with_packs(nettai_frontend::packs::Packs::new(bundles.iter().collect(), own));
+    let mut renderer = Renderer::with_packs(Packs::new(bundles.iter().collect(), own));
     let strings = strings.map(Arc::new);
     renderer.set_strings(strings.clone());
     // The font mode's font, shared by the renderer (which strings it has)

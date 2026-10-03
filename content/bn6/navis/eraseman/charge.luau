@@ -28,7 +28,7 @@ local HIT_PARAM = 0x8A
 local NULL = 0
 
 -- The slash: how far ahead, its hit's modifier, and its effect (the
--- swords' wide slash in his colour) 24 pixels up.
+-- swords' wide slash in his color) 24 pixels up.
 local AHEAD = 2
 local HIT_MOD = 3
 local SLASH = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 6 }

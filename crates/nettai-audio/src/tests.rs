@@ -103,7 +103,7 @@ fn pinch_and_volume_cues_are_player_controls() {
 }
 
 #[test]
-fn cancelling_a_cue_takes_it_back() {
+fn canceling_a_cue_takes_it_back() {
     let mut c = SoundCalls::new();
     let music = |id| SoundCue::Music(SoundId(id));
     requests(&mut c, music(0x15));
@@ -131,7 +131,7 @@ fn cancelling_a_cue_takes_it_back() {
 }
 
 #[test]
-fn a_cancelled_effect_stops() {
+fn a_canceled_effect_stops() {
     let mut a = BattleAudio::new(bank(), Songs::numbers(0x200));
     let mut out = Vec::new();
     a.handle_actions([CueAction::Play(SoundCue::Effect(SoundId(0x94)))]);

@@ -20,7 +20,7 @@
 //! cards = [{ card = "bn6:canodumb" }, { card = "bn6:shadow", on = false }]
 //!
 //! [left.folder]
-//! chips = ["bn6:cannon A", "bn6:cannon A", ...]   # 30, each "key code"
+//! chips = ["bn6:cannon A", "bn6:cannon A", ...]   # 30, each "key code" ("" empty, while it's being made)
 //! regular = 4                        # optional: an entry, counting from 0
 //! tags = [5, 6]                      # optional
 //!
@@ -30,15 +30,15 @@
 //!
 //! [left.navicust]                    # optional: the NaviCust, which the rules compile
 //! expansions = 2                     # optional: the board's (else the largest)
-//! programs = [                       # in the list's order; x, y the centre on the 7x7 grid
+//! programs = [                       # in the list's order; x, y the center on the 7x7 grid
 //!     { program = "bn6:suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
 //! ]
 //! ```
 
-use crate::{Arena, Match, Place, Side, stats};
+use crate::{Arena, Folder, Match, Place, Side, stats};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
-use nettai_battle::custom::{CrossList, FolderChip, GameVersion, SavedFolder};
+use nettai_battle::custom::{CrossList, FolderChip, GameVersion};
 use nettai_battle::navicust::{NaviCust, PlacedProgram};
 use nettai_battle::patch_cards::InstalledCard;
 use serde::{Deserialize, Serialize};
@@ -324,29 +324,38 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
     })
 }
 
-fn resolve_folder(content: &Content, f: &FolderFile, say: &mut impl FnMut(String)) -> Option<SavedFolder> {
-    if f.chips.len() != FOLDER_SIZE {
-        say(format!("the folder has {} chips; a folder is {FOLDER_SIZE}", f.chips.len()));
+/// A file's folder: up to 30 entries, an empty one `""` and those past the
+/// last given empty (a folder being made; the checks say it isn't whole).
+fn resolve_folder(content: &Content, f: &FolderFile, say: &mut impl FnMut(String)) -> Option<Folder> {
+    if f.chips.len() > FOLDER_SIZE {
+        say(format!("the folder has {} entries; a folder is {FOLDER_SIZE}", f.chips.len()));
         return None;
     }
-    let mut chips = Vec::with_capacity(FOLDER_SIZE);
+    let mut folder = Folder { regular: f.regular, tags: f.tags.map(|[a, b]| (a, b)), ..Folder::EMPTY };
+    let mut ok = true;
     for (i, entry) in f.chips.iter().enumerate() {
+        if entry.trim().is_empty() {
+            continue;
+        }
         let parsed = entry.rsplit_once(' ').and_then(|(key, code)| {
             let mut letters = code.chars();
             let code = letters.next().and_then(ChipCode::from_letter).filter(|_| letters.next().is_none())?;
             Some((key.trim(), code))
         });
         let Some((key, code)) = parsed else {
-            say(format!("folder entry {i}: {entry:?} is not \"<chip> <code>\" (a code is A-Z or *)"));
+            say(format!("folder entry {i}: {entry:?} is not \"<chip> <code>\" (a code is A-Z or *; \"\" an empty entry)"));
+            ok = false;
             continue;
         };
         match content.defs.chip_by_key(key) {
-            Some(id) => chips.push(FolderChip::new(id, code)),
-            None => say(format!("folder entry {i}: no chip {key:?}")),
+            Some(id) => folder.chips[i] = Some(FolderChip::new(id, code)),
+            None => {
+                say(format!("folder entry {i}: no chip {key:?}"));
+                ok = false;
+            }
         }
     }
-    let chips: [FolderChip; FOLDER_SIZE] = chips.try_into().ok()?;
-    Some(SavedFolder { chips, regular: f.regular, tags: f.tags.map(|[a, b]| (a, b)) })
+    ok.then_some(folder)
 }
 
 /// A match as a file.
@@ -364,7 +373,11 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
         crosses: s.crosses.map(|l| l.forms().map(|f| content.defs.form(f).key.clone()).collect()),
         cards: s.cards.iter().map(|c| CardFile { card: content.defs.patch_card(c.card).key.clone(), on: c.enabled }).collect(),
         folder: FolderFile {
-            chips: s.folder.chips.iter().map(|&c| chip_entry(content, c)).collect(),
+            // An empty entry is "", and those after the last chip are left off.
+            chips: {
+                let last = s.folder.chips.iter().rposition(|c| c.is_some()).map_or(0, |i| i + 1);
+                s.folder.chips[..last].iter().map(|c| c.map_or(String::new(), |c| chip_entry(content, c))).collect()
+            },
             regular: s.folder.regular,
             tags: s.folder.tags.map(|(a, b)| [a, b]),
         },
@@ -457,7 +470,7 @@ mod tests {
         // A Mega chip past the navi's Mega level.
         let mut m = drawn.clone();
         m.sides[1].stats.mega_level = 0;
-        let megas = m.sides[1].folder.chips.iter().filter(|c| content.chip(c.id).class == nettai_battle::content::ChipClass::Mega).count();
+        let megas = m.sides[1].folder.chips().filter(|c| content.chip(c.id).class == nettai_battle::content::ChipClass::Mega).count();
         if megas > 0 {
             has(crate::check_match(&content, &m), "Mega chips, past the navi's 0");
         }
