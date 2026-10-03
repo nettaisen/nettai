@@ -227,6 +227,21 @@ impl Battle {
         0
     }
 
+    /// Side `side`'s systems' `custom.hand_size(side)`: the first answer.
+    pub(crate) fn systems_custom_hand_size(&mut self, side: u8) -> Option<u8> {
+        let r = self.rules[side as usize & 1].ruleset?;
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::CustomHandSize) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::CustomHandSize, navi: None, chip: None, weapon: None };
+                if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
+                    return Some(n as u8);
+                }
+            }
+        }
+        None
+    }
+
     /// Side `side`'s systems' `countered(side, victim)`.
     pub(crate) fn systems_countered(&mut self, side: u8, victim: ObjectRef) {
         self.systems_call(side, SystemHook::Countered, victim);
