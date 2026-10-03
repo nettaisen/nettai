@@ -4,6 +4,7 @@
 -- (docs/design/bn5-map.md §15).
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
+local folder = require("./folder/system")
 local light_dark = require("./light-dark/system")
 local souls = require("./souls/system")
 
@@ -15,5 +16,7 @@ return define.ruleset {
         light_dark,
         -- Soul Unison: the soul's turns, the revert when they run out (the change is its souls' own action).
         souls.system,
+        -- The folder rules: what BN5's folder editor allows (a tool's question, never the simulation's).
+        folder,
     },
 }
