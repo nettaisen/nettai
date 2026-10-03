@@ -202,12 +202,7 @@ fn navi_stats_hex(s: &str) -> Result<NaviStats, String> {
     codec::navi_stats(&b)
 }
 
-/// A side's version.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Version {
-    Protoman,
-    Colonel,
-}
+pub use crate::Version;
 
 /// A round's setup, decoded.
 #[derive(Clone, Debug)]
@@ -557,13 +552,13 @@ impl Round {
             Ok(PlayerSetup {
                 folder,
                 // BN5's Soul Unison as a finished save has it (the save's
-                // event flags aren't in a recording): the soul button, the
-                // version's six souls (Team ProtoMan's 1 to 6, Team
-                // Colonel's 7 to 12: 0x08024BF0's flags) and Chaos Unison.
-                // (No Cross, no Beast Out: BN5's rules have neither.)
+                // event flags aren't in a recording): the soul button and
+                // Chaos Unison; the souls, the version's six (below, the
+                // souls system's setup). (No Cross, no Beast Out: BN5's
+                // rules have neither.)
                 souls: nettai_battle::custom::SoulUnlocks {
                     button: true,
-                    owned: if d.versions[side as usize] == Version::Colonel { 0b1_1111_1000_0000 } else { 0b111_1110 },
+                    owned: 0,
                     chaos: true,
                     turn_bonus: d.navi_stats[side as usize].raw[0x32] as i8,
                 },
@@ -590,11 +585,26 @@ impl Round {
         });
         let [mut p0, mut p1] = players;
         // Each side's light and dark MegaMan: his save's value (NaviStats
-        // +0x44) and Hub Style (+0x4C), BN5's light and dark system's setup.
+        // +0x44), BN5's light and dark system's setup. (Hub Style, +0x4C,
+        // is the stats': `navi_stats`.)
         for (p, stats) in [(&mut p0, &d.navi_stats[0]), (&mut p1, &d.navi_stats[1])] {
             if let Ok(p) = p {
-                p.set_rule(content, LIGHT_DARK, "value", nettai_content_api::Value::Int(stats.light_dark.0 as i64))?;
-                p.set_rule(content, LIGHT_DARK, "hub_style", nettai_content_api::Value::Int(stats.hub_style as i64))?;
+                p.set_rule(content, LIGHT_DARK, "karma", nettai_content_api::Value::Int(stats.light_dark.0 as i64))?;
+            }
+        }
+        // Each side's souls: its version's six (Team ProtoMan's 1 to 6,
+        // Team Colonel's 7 to 12: 0x08024BF0's flags), those the content
+        // has, into the souls system's setup.
+        for (side, p) in [&mut p0, &mut p1].into_iter().enumerate() {
+            if let Ok(p) = p {
+                let version = d.versions[side];
+                let souls: Vec<nettai_battle::rules::Fact> = (0..content.defs.forms.len() as u16)
+                    .map(nettai_content_api::FormHandle)
+                    .filter(|&f| nettai_content_api::keys::root_of(&content.defs.form(f).key) == Some(crate::ROOT))
+                    .filter(|&f| content.form(f).soul.as_ref().is_some_and(|s| version.soul_flag(s.number).is_some()))
+                    .map(|f| nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, f.0)))
+                    .collect();
+                p.set_fact(content, crate::ROOT, "souls", &souls)?;
             }
         }
         Ok(RoundSetup {
@@ -729,6 +739,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         folder_tags: [[0xFF, 0xFF], [0xFF, 0xFF]],
         chip_shuffle: false,
         number_open: false,
+        hub_style: s.hub_style != 0,
         weapons: NaviWeapons {
             buster: weapon(r[0x04])?,
             charge_shot: weapon(r[0x05])?,
