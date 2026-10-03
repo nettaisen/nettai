@@ -1562,6 +1562,7 @@ fn rules() -> Rules {
         // (The statuses are testdata/content/rules/status.luau's.)
         hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
         form_tick: true,
+        flash_hides_on_clear: false,
         emotions: Default::default(),
         form_break: Default::default(),
         intake: Default::default(),
