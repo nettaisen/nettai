@@ -24,7 +24,7 @@
 //! regular = 4                        # optional: an entry, counting from 0
 //! tags = [5, 6]                      # optional
 //!
-//! [left.stats]                       # optional: over the navi's fresh stats (crate::stats)
+//! [left.stats]                       # optional: over the navi's fresh stats, a link navi's at its level (crate::stats)
 //! hp = 1000
 //! regular_memory = 50
 //!
@@ -301,7 +301,7 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
         }
     };
     let navi = navi?;
-    let mut stats = Side::base_stats(content, navi, game);
+    let mut stats = Side::save_base(content, navi, game, s.level.unwrap_or(0));
     for p in stats::apply(content, &s.stats, &mut stats) {
         say(format!("stats: {p}"));
     }
