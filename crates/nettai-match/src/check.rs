@@ -90,6 +90,35 @@ pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
         }
         _ => {}
     }
+    // The tactics: as many entries, patterns and pattern chips as the
+    // block holds, a pattern entry one of its patterns, chips the
+    // content's.
+    let t = &s.tactics;
+    if t.entries.len() > nettai_battle::tactics::MAX_ENTRIES {
+        out.push(format!("the tactics have {} entries; the block holds {}", t.entries.len(), nettai_battle::tactics::MAX_ENTRIES));
+    }
+    if t.patterns.len() > nettai_battle::tactics::MAX_PATTERNS {
+        out.push(format!("the tactics have {} patterns; the block holds {}", t.patterns.len(), nettai_battle::tactics::MAX_PATTERNS));
+    }
+    for (i, p) in t.patterns.iter().enumerate() {
+        if p.chips.len() > nettai_battle::tactics::MAX_PATTERN_CHIPS {
+            out.push(format!("tactics pattern {}: {} chips; a pattern runs {}", i + 1, p.chips.len(), nettai_battle::tactics::MAX_PATTERN_CHIPS));
+        }
+    }
+    let chips = t.entries.iter().filter_map(|e| match e {
+        nettai_battle::tactics::Tactic::Chip(c) => Some(*c),
+        _ => None,
+    });
+    if chips.chain(t.patterns.iter().flat_map(|p| p.chips.iter().copied())).any(|c| c.index() >= defs.chips.len()) {
+        out.push("the tactics name a chip the content hasn't".into());
+    }
+    for e in &t.entries {
+        if let nettai_battle::tactics::Tactic::Pattern(i) = e
+            && *i as usize >= t.patterns.len()
+        {
+            out.push(format!("the tactics name pattern {}, which they haven't", *i as u16 + 1));
+        }
+    }
     // The folder's chips, before its rules.
     if let Some((i, _)) = s.folder.chips.iter().enumerate().find(|(_, c)| c.is_some_and(|c| c.id.index() >= defs.chips.len())) {
         out.push(format!("folder entry {i}: a chip the content hasn't"));

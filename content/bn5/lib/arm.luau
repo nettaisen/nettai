@@ -12,7 +12,7 @@
 --   arm (palette 14 with the charge disabled, else 0x1B plus his element); 1, the arm in animation 13; more, row
 --   0x33 in animation 13 (palette 1 with the charge disabled).
 --
--- (NaviStats +0x4C and AIData+0x12 aren't modeled: no setup or rule of the engine's sets them, so they read 0.)
+-- (NaviStats +0x4C isn't modeled: no setup or rule of the engine's sets it, so it reads 0.)
 
 local attachment = require("../objects/attachment/attachment")
 
@@ -27,16 +27,17 @@ arm.looks = {
     chaos = attachment.look { sprite = ARM, palette = 14 },
 }
 
--- NaviStats +0x4C and AIData+0x12 (not modeled: 0).
+-- NaviStats +0x4C (not modeled: 0), and AIData+0x12, the Chaos Unison charge armed.
 local function dark_arm(_navi: Object): number
     return 0
 end
-local function chaos_charge(_navi: Object): number
-    return 0
+local function chaos_charge(navi: Object): number
+    return if navi.chaos_armed then 1 else 0
 end
 
--- 0x080EBABE: the arm `navi` calls for, held in `which` (its r9, Param3, by 16: the arm animates while dimmed).
-function arm.raise_for(navi: Object, which: Slot, while_dimmed: boolean)
+-- 0x080EBABE: the arm `navi` calls for, held in `which` (its r9, Param3, by 16: the arm animates while dimmed) of
+-- `holder` (its r8, a slot's address: `navi`'s own unless said).
+function arm.raise_for(navi: Object, which: Slot, while_dimmed: boolean, holder: Object?)
     local look, anim, palette = arm.looks.buster, 0, 0
     local kind = navi.actor_type
     if kind == "navi" then
@@ -89,7 +90,7 @@ function arm.raise_for(navi: Object, which: Slot, while_dimmed: boolean)
     -- (The spawn word: the row, the animation by 8, Param3 by 16 and the palette by 24: a negative animation
     -- borrows from the bytes above it.)
     local word = int.u32(int.shl(anim, 8) + int.shl(if while_dimmed then 1 else 0, 16) + int.shl(palette, 24))
-    attachment.attach(navi, look, which, {
+    attachment.attach(holder or navi, look, which, {
         anim = bit32.band(bit32.rshift(word, 8), 0xFF),
         while_dimmed = bit32.band(bit32.rshift(word, 16), 0xFF) ~= 0,
         palette_add = bit32.rshift(word, 24),

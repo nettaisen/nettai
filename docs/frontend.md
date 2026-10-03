@@ -76,7 +76,11 @@ every other root beside it (content/bn5, ...), each when its game's pack is
 found and the content loads with it. A root that doesn't is left out, and
 the frontend says why at start-up ("the content root bn5 is left out: ...":
 no pack of its game, with the command that writes one, or the define
-phase's error), so BN6's play never fails for another game's root. A root
+phase's error), so BN6's play never fails for another game's root. A
+root's chips whose module names no use yet (a port's unwritten chips: BN5's)
+are left out of it first, with a warning counting them, so the rest of the
+root loads (`Root::leave_out_unported`; the static audit covers what is
+left, the BN5 replays do the same). A root
 the content must load whose game's pack isn't found is an error naming the
 extract command. (Netplay's handshake compares the content, the packs'
 asset names among it: two players play with the same packs, or give
@@ -862,6 +866,10 @@ programs = [                               # in the save's order; x, y the cente
     { program = "bn6:undersht", color = "white", x = 5, y = 3, rotation = 1 },   # quarter turns
     { program = "bn6:hp-100", color = "pink", x = 3, y = 1, compressed = true },
 ]
+
+[left.tactics]                             # optional: BN5's computer-navi data (none: empty)
+entries = ["bn5:cannon", "pattern 1", "nothing", "empty"]   # up to 42, in the save's places
+patterns = [{ dx = 1, dy = 0, chips = ["bn5:sword", "bn5:wideswrd"] }]   # up to 8, each up to 6 chips
 ```
 
 **The stats block** (`nettai_match::stats`) sets the navi's stats by name
@@ -921,6 +929,19 @@ ruleset's `navicust` system makes the rest (the abilities, levels, weapons and
 bugs) from the programs as the round is set up. Without one, the stats block
 is the stats as they are, NaviCust included, as a recording's are. The
 editor's NaviCust pane places the programs on the board as the game does.
+
+**The tactics** (`[left.tactics]`, nettai_battle::tactics, docs/design/bn5-map.md
+§15.9) are BN5's computer-navi data, the block a BN5 save keeps for its
+player: what a computer navi across from them plays, BN5's Dark MegaMan,
+whom a failed Chaos Unison brings. The entries are in the save's places,
+each a chip's key, `pattern N` (one of the patterns, from 1), `nothing` (a
+save's 0) or `empty` (an empty place); a pattern is a place by the target
+(`dx` columns toward the computer navi's enemies, `dy` rows) and the chips
+used there. As the round is set up each side's are sent as the console sends
+them (0x0802C7BE: the first three places and the next 39 shuffled, packed to
+the front), from a stream of the side's own from the seed. With none, Dark
+MegaMan only steps into an enemy's row and fires his buster (three shots)
+between rests. A netplay offer carries them (protocol version 3).
 
 **The checks** (`nettai_match::check`) run when a file loads, when a netplay
 offer arrives (the same `check_side`), and live in the editor; each problem

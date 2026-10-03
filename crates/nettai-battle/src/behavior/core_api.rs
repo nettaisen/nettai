@@ -293,6 +293,25 @@ impl Battle {
 impl CoreApi for Battle {
     // ---- The battle ------------------------------------------------------
 
+    fn set_dimmed(&mut self, on: bool) {
+        if on {
+            self.set_flags(crate::battle::battle_flags::DIMMED);
+        } else {
+            self.clear_flags(crate::battle::battle_flags::DIMMED);
+        }
+    }
+
+    fn spawn_navi(
+        &mut self,
+        identity: nettai_content_api::IdentityHandle,
+        panel: PanelPos,
+        side: u8,
+        summoner: Option<ObjectRef>,
+        system: nettai_content_api::SystemHandle,
+    ) -> ApiResult<Option<ObjectRef>> {
+        kinds::player::spawn_ai_navi(self, identity, panel, side & 1, summoner, system).map_err(ApiError::Other)
+    }
+
     fn is_dimmed(&self) -> bool {
         Battle::is_dimmed(self)
     }
@@ -897,12 +916,46 @@ impl CoreApi for Battle {
         Battle::player(self, side & 1)
     }
 
+    fn alive_actor_slot(&self, side: u8, i: u8) -> Option<ObjectRef> {
+        self.round.alive_actors[side as usize & 1].get(i as usize).copied().flatten()
+    }
+
     fn alive_actors(&self, side: u8) -> Vec<ObjectRef> {
         self.round.alive_actors[side as usize & 1].iter().flatten().copied().collect()
     }
 
     fn tracked(&self, side: u8) -> Option<ObjectRef> {
         self.sides[side as usize & 1].tracked
+    }
+
+    fn tactic_count(&self, side: u8) -> usize {
+        self.tactics[side as usize & 1].entries.len()
+    }
+
+    fn tactic(&self, side: u8, i: usize) -> nettai_content_api::TacticEntry {
+        use crate::tactics::Tactic;
+        match self.tactics[side as usize & 1].get(i) {
+            Tactic::Chip(c) => nettai_content_api::TacticEntry::Chip(c),
+            Tactic::Pattern(p) => nettai_content_api::TacticEntry::Pattern(p),
+            Tactic::Nothing => nettai_content_api::TacticEntry::Nothing,
+            Tactic::Empty => nettai_content_api::TacticEntry::Empty,
+        }
+    }
+
+    fn tactic_pattern(&self, side: u8, i: usize) -> ApiResult<(i8, i8, Vec<nettai_content_api::ChipHandle>)> {
+        let p = self.tactics[side as usize & 1]
+            .patterns
+            .get(i)
+            .ok_or_else(|| ApiError::Other(format!("side {side}'s tactics have no pattern {i}")))?;
+        Ok((p.dx, p.dy, p.chips.clone()))
+    }
+
+    fn swap_tactics(&mut self, side: u8, i: usize) {
+        self.tactics[side as usize & 1].swap_first(i);
+    }
+
+    fn turn_tactics(&mut self, side: u8) -> ApiResult<()> {
+        self.tactics[side as usize & 1].turn().map_err(ApiError::Other)
     }
 
     fn objects_of_kind(&self, kind: u16) -> Vec<ObjectRef> {
@@ -983,6 +1036,18 @@ impl CoreApi for Battle {
         let s = &mut self.sides[side as usize & 1];
         s.slow_gauge_ticks = slow;
         s.fast_gauge_ticks = fast;
+    }
+
+    fn gauge_damage(&self, side: u8) -> u16 {
+        kinds::gauge_damage(self, side)
+    }
+
+    fn sword_pick(&self, side: u8) -> u8 {
+        self.sides[side as usize & 1].sword_pick
+    }
+
+    fn set_sword_pick(&mut self, side: u8, pick: u8) {
+        self.sides[side as usize & 1].sword_pick = pick;
     }
 
     fn add_side_gauge(&mut self, side: u8, n: u16) {
@@ -1071,6 +1136,17 @@ impl CoreApi for Battle {
         self.field.objects.slots.iter().flatten().copied().collect()
     }
 
+    fn field_object_slot(&self, side: u8, i: u8) -> Option<ObjectRef> {
+        if i >= 3 {
+            return None;
+        }
+        self.field.objects.slots[(side as usize & 1) * 3 + i as usize]
+    }
+
+    fn battle_time(&self) -> u32 {
+        self.round.battle_time
+    }
+
     fn side_field_objects(&self, side: u8) -> Vec<ObjectRef> {
         let first = (side as usize & 1) * 3;
         self.field.objects.slots[first..first + 3].iter().flatten().copied().collect()
@@ -1153,6 +1229,28 @@ impl CoreApi for Battle {
 
     fn can_step(&self, o: ObjectRef, p: PanelPos) -> bool {
         Battle::can_step(self, o, p.x, p.y)
+    }
+
+    fn chips_enabled(&self, o: ObjectRef) -> ApiResult<bool> {
+        self.actor_of(o)?;
+        Ok(kinds::player::chips_enabled(self, o))
+    }
+
+    fn move_lag(&self, o: ObjectRef) -> ApiResult<u16> {
+        self.actor_of(o)?;
+        Ok(kinds::player::move_lag(self, o))
+    }
+
+    fn drop_links(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::drop_links(self, o);
+        Ok(())
+    }
+
+    fn leave(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::leave(self, o);
+        Ok(())
     }
 
     fn can_stand_any_side(&self, o: ObjectRef, p: PanelPos) -> bool {
@@ -1635,6 +1733,8 @@ impl CoreApi for Battle {
             ActorField::Tired => Value::Bool(a.tired),
             ActorField::BarrierVisual => a.barrier_visual.into(),
             ActorField::PlusTint => i(a.plus_tint as i64),
+            ActorField::ChaosArmed => Value::Bool(a.chaos.armed),
+            ActorField::ChaosLevel => i(a.chaos.level as i64),
         })
     }
 
@@ -1714,6 +1814,8 @@ impl CoreApi for Battle {
             (ActorField::Tired, FieldValue::Bool(x)) => a.tired = x,
             (ActorField::BarrierVisual, FieldValue::Object(r)) => a.barrier_visual = r,
             (ActorField::PlusTint, FieldValue::U16(x)) => a.plus_tint = x,
+            (ActorField::ChaosArmed, FieldValue::Bool(x)) => a.chaos.armed = x,
+            (ActorField::ChaosLevel, FieldValue::U8(x)) => a.chaos.level = x.min(4),
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1997,10 +2099,16 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn start_move_to(&mut self, o: ObjectRef, target: PanelPos, end_lag: u16) -> ApiResult<()> {
+    fn start_move_to(&mut self, o: ObjectRef, target: PanelPos, end_lag: u16, face: Option<ObjectRef>) -> ApiResult<()> {
         self.actor_of(o)?;
         use kinds::player::actions::movement::{self, MoveKind};
-        movement::start_absolute(self, o, target, end_lag, MoveKind::Absolute);
+        movement::start_absolute_facing(self, o, target, end_lag, MoveKind::Absolute, face);
+        Ok(())
+    }
+
+    fn start_weapon(&mut self, o: ObjectRef, weapon: nettai_content_api::WeaponHandle, kind: u8) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::start_weapon(self, o, weapon, kind);
         Ok(())
     }
 
@@ -2233,6 +2341,7 @@ impl CoreApi for Battle {
             CollisionField::HitModBase => c.hit_mod_base as i64,
             CollisionField::SelfDamage => c.self_damage as i64,
             CollisionField::CounterByte => c.counter_byte as i64,
+            CollisionField::CounterTimer => c.counter_timer as i64,
             CollisionField::HitFlags => c.acc.hit_flags as i64,
             CollisionField::FinalDamage => c.acc.final_damage as i64,
             CollisionField::Direction => c.direction as i64,
@@ -2302,6 +2411,7 @@ impl CoreApi for Battle {
             CollisionField::CounterByte => c.counter_byte = x as u8,
             CollisionField::HitFlags => c.acc.hit_flags = x as u32,
             CollisionField::FinalDamage
+            | CollisionField::CounterTimer
             | CollisionField::GuardDirs
             | CollisionField::DamageElements
             | CollisionField::HitModFinal

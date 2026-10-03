@@ -271,6 +271,9 @@ declare class Collision
     -- The counter byte (bits 0-6 counter strength, bit 7 can't counter),
     -- which setup takes from the damage word's high half.
     counter_byte: number
+    -- The ticks left of its counter window (+0x0D; read-only): a hit with a
+    -- counter byte counters it while they run.
+    counter_timer: number
     -- What the last resolution hit (some kinds clear it).
     hit_flags: number
     -- The damage taken this window (read-only).
@@ -467,6 +470,11 @@ declare class Object
     -- Writable: BN5's DarkPlus tint (AIData+0x3C; 0 none), which picks the
     -- navi's status shader.
     plus_tint: number
+    -- Writable: BN5's Chaos Unison charge, armed (AIData+0x12; the chaos
+    -- change arms it, a weapons' load and the failure's end disarm it), and
+    -- its level (AIData+0x6C: releases that succeeded, at most 4).
+    chaos_armed: boolean
+    chaos_level: number
 
     -- `sub_800F26C`: the look its NameID gives is `sprite` (an object's
     -- NameID look; a navi's or form's NameID gives its sprite). An error
@@ -550,6 +558,17 @@ declare class Object
     function release_reservations(self): ()
     -- `sub_800E618`: could it step onto (x, y)?
     function can_step(self, x: number, y: number): boolean
+    -- `sub_800A772`: its side's chips are enabled and its chip lockout over.
+    function chips_enabled(self): boolean
+    -- `sub_8010332`: the ticks a step of its ends with.
+    function move_lag(self): number
+    -- As a navi leaves (BN5's 0x081042E6): its status visuals forgotten and
+    -- its chips off the HUD.
+    function drop_links(self): ()
+    -- A navi no player controls leaves (BN5's 0x08104306): no HP, the
+    -- damage-carry record forgets it, its reservation goes, it leaves its
+    -- side's lists and is destroyed.
+    function leave(self): ()
     -- `sub_800E680`: could it stand on (x, y), whichever side owns it?
     function can_stand_any_side(self, x: number, y: number): boolean
 
@@ -698,8 +717,12 @@ declare class Object
     -- dimming, navi or instant chip's), in `set_attack` slot `kind`.
     function start_chip_attack(self, chip: Chip, kind: number): ()
     -- `sub_80116AE(5, end_lag, 2)`: a step straight to (x, y) (column 0: no
-    -- step), then `end_lag` ticks.
-    function start_move_to(self, x: number, y: number, end_lag: number): ()
+    -- step), then `end_lag` ticks; with `face`, BN5's `sub_80116F6`'s (what
+    -- the step turns to face in the panel patterns 0x23, 0x31 and 0x33).
+    function start_move_to(self, x: number, y: number, end_lag: number, face: Object?): ()
+    -- `sub_80117BA`: `weapon`'s setup, and the action it names started in
+    -- `set_attack` slot `kind`.
+    function start_weapon(self, weapon: Weapon, kind: number): ()
     -- The wrapper's (the role `actions.wrapper`): run the action the
     -- navi runs (`sub_801B9E6`'s attack).
     function run_wrapped(self): ()
@@ -987,6 +1010,34 @@ declare battle: {
     -- The battle is dimmed (battle flag 4): objects that don't run while
     -- dimmed stand still.
     dimmed: () -> boolean,
+    -- Battle flag 4 alone, with none of a dimming's machinery (BN5's chaos
+    -- failure).
+    set_dimmed: (on: boolean) -> (),
+    -- BattleState+0x40, `sub_800A704`: the fight's ticks so far (capped).
+    battle_time: () -> number,
+    -- Player `side`'s tactics (BN5's computer-navi data, which a computer
+    -- navi on the other side plays): how many entries they count; the entry
+    -- in place `i` (from 1; past the count, an empty place): a chip, a
+    -- pattern's number (from 1), false (nothing: chip 0, a block no save
+    -- filled) or nil (an empty place); and
+    -- pattern `i` (from 1): its place from the target (`dx` columns toward
+    -- the navi's enemies, `dy` rows) and its chips.
+    tactic_count: (side: number) -> number,
+    -- Slot `i` (1 to 4) of a side's list of alive actors, filled or not.
+    alive_actor_slot: (side: number, i: number) -> Object?,
+    tactic: (side: number, i: number) -> (Chip | number | false)?,
+    tactic_pattern: (side: number, i: number) -> (number, number, { Chip }),
+    -- The first entry and the entry in place `i` (from 1) change places
+    -- (0x0802C0DC); the first entry goes last of the count, the rest move
+    -- up (0x0802BF1C).
+    swap_tactics: (side: number, i: number) -> (),
+    turn_tactics: (side: number) -> (),
+    -- BN5's 0x08006AAE: the navi `identity` (actor type navi, with a
+    -- `body`) comes onto (x, y) for `side`, brought by `summoner`, driven by
+    -- `system` (its `controller`, with the navi's state its `navi_state`;
+    -- of the summoner's side's ruleset): on the side's list of alive
+    -- actors, not counted. Nil when a pool or the side's list is full.
+    spawn_navi: (identity: Identity, x: number, y: number, side: number, summoner: Object?, system: System) -> Object?,
     paused: () -> boolean,
     -- `battle_isBattleOver`: a side has no navi left, or time is up.
     over: () -> boolean,
@@ -1125,6 +1176,13 @@ declare battle: {
     set_gauge_rate: (rate: number) -> (),
     -- A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
     set_gauge_speed_ticks: (side: number, slow: number, fast: number) -> (),
+    -- `sub_8010B78`: the damage a side's custom gauge gives (its own gauge
+    -- in the battle flag 0x40 mode, else the shared one).
+    gauge_damage: (side: number) -> number,
+    -- A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
+    -- makes for a navi no buttons drive (BN5's computer navi draws it).
+    sword_pick: (side: number) -> number,
+    set_sword_pick: (side: number, pick: number) -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
     add_side_gauge: (side: number, n: number) -> (),
     -- `sub_8010488`'s special-source branch: add to a bonus a side stores
@@ -1206,6 +1264,8 @@ declare field: {
     -- A side's registered field objects (the obstacles it owns), in the
     -- registry's slot order.
     objects: (side: number) -> { Object },
+    -- A side's registry slot `i` (1 to 3), filled or not.
+    object_slot: (side: number, i: number) -> Object?,
     -- Every registered field object (the registry's eight slots: each
     -- side's three, then the stage's two), in slot order.
     all_objects: () -> { Object },
@@ -1920,6 +1980,9 @@ export type FormWeapons = {
     a_charge: Weapon?,
     alt_a_charge: Weapon?,
     mode9_a: Weapon?,
+    -- A BN5 soul's Chaos Unison weapon: what an armed full B charge
+    -- released in the chaos cycle's window fires.
+    chaos: Weapon?,
 }
 -- What a form's status reset gives the navi (`sub_8014536`).
 export type FormEffect =
@@ -2021,9 +2084,11 @@ export type FormDef = {
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
     buster_arm: { anim: number, palette_add: number? }?,
-    -- A soul (`kind = "soul"`, BN5's Soul Unison): its number, and the
-    -- chip family the custom screen's soul button gives up for it.
-    soul: { number: number, family: ChipFamily }?,
+    -- A soul (`kind = "soul"`, BN5's Soul Unison): its number, the chip
+    -- family the custom screen's soul button gives up for it, and the
+    -- chaos cycle's row its Chaos Unison charge keeps whatever the chaos
+    -- level (MeddySoul's; none: the level's, at most 2).
+    soul: { number: number, family: ChipFamily, chaos_cycle: number? }?,
 }
 -- Something a stage places when the round starts: a navi of `side`, or a
 -- field object by its kind (which needs a `place`), with one of the kind's
@@ -2201,6 +2266,28 @@ export type IdentitySpec = {
     aura_anim: number?,
     -- The ice block that fits it (none: small).
     ice: ("small" | "medium" | "large")?,
+    -- What it is as a navi no player controls (actor type navi, which a
+    -- battle brings: `battle.spawn_navi`), from the original's enemy structs
+    -- by NameID and its AI index's post-init hook.
+    body: NaviBody?,
+}
+-- A navi no player controls: its sprite (with a shadow on the ground or
+-- drawn with the sprite), the multiplier of its palette by version and its
+-- palette once in (none: by version); its HP, element and what its body
+-- deals; its body's collision (what it is, what it reacts to, its hit
+-- modifier); the status flags it starts with; and whether its HP number
+-- never shows.
+export type NaviBody = {
+    sprite: SpriteAsset,
+    shadow: boolean?,
+    palette_scale: number,
+    palette: number?,
+    hp: number,
+    element: ElementName,
+    body_damage: number,
+    collision: { body: CollisionType, target: CollisionType, hit_modifier: number },
+    flags: { "superarmor" | "airshoe" | "floatshoe" | "affected_by_ice" | "untouchable" }?,
+    hides_hp: boolean?,
 }
 -- A body overlay (actor object #0x56): a second sprite over a navi's body,
 -- drawn in front of it but in the animations of `behind` (ranges `{ first,
@@ -2259,6 +2346,7 @@ export type RolesSpec = {
         dust_beast_scatter: Action?,
         charge_tackle: Action?,
         wrapper: Action?,
+        chaos_failure: Action?,
     }?,
     kinds: {
         absorbed_obstacle: Kind?,
@@ -2401,6 +2489,7 @@ export type RolesSpec = {
     sprites: {
         charge_glow: SpriteAsset?,
         charge_glow_a: SpriteAsset?,
+        charge_glow_chaos: SpriteAsset?,
         full_synchro_aura: SpriteAsset?,
         confusion: SpriteAsset?,
         blindness: SpriteAsset?,
@@ -2434,6 +2523,10 @@ export type RolesSpec = {
         -- bubble becomes on its panel; its field-object registry class (nil:
         -- it wasn't registered).
         encased: ((obstacle: Object, ice: boolean, class: number?) -> ())?,
+        -- A navi no player controls is being deleted (BN5's 0x08013DA0):
+        -- what sparkles over it while it flashes, which its deletion's end
+        -- ends.
+        navi_deleted: ((navi: Object) -> Object?)?,
     }?,
 }
 

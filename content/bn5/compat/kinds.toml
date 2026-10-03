@@ -107,6 +107,7 @@
 "bn5:panel-bursts" = { pool = "effect", index = 0x24, scratch_position = true }
 "bn5:crack" = { pool = "attack", index = 0x18 }
 "bn5:soul-image" = { pool = "actor", index = 0x2A }
+"bn5:chaos-shade" = { pool = "actor", index = 0x2B }
 "bn5:timebom/countdown" = { pool = "attack", index = 0x4B }
 "bn5:timebom/controller" = { pool = "effect", index = 0x27, scratch_position = true }
 "bn5:lance" = { pool = "attack", index = 0x4F }

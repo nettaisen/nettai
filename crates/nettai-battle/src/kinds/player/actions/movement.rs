@@ -98,12 +98,16 @@ pub(in crate::kinds::player) fn start(b: &mut Battle, r: ObjectRef, dir: u8, end
     update(b, r);
 }
 
-/// `sub_80116AE(5, end_lag, 2)` after setting AIAttackVars+0x16/+0x17:
-/// a step straight to `target` (the berserk controller's). A target in
-/// column 0 means no step.
-pub(crate) fn start_absolute(b: &mut Battle, r: ObjectRef, target: PanelPos, end_lag: u16, kind: MoveKind) {
-    ai_mut(b, r).attack.action = ActionVars::Move(Vars { target, ..Vars::default() });
-    start(b, r, ABSOLUTE_DIRECTION, end_lag, kind);
+/// `sub_80116AE(5, end_lag, 2)` after setting AIAttackVars+0x16/+0x17: a
+/// step straight to `target` (the berserk controller's), facing nothing;
+/// with `face`, BN5's `sub_80116F6` (the computer navis' AI's), which keeps
+/// the object to face. A target in column 0 means no step.
+pub(crate) fn start_absolute_facing(b: &mut Battle, r: ObjectRef, target: PanelPos, end_lag: u16, kind: MoveKind, face: Option<ObjectRef>) {
+    let vars = Vars { dir: ABSOLUTE_DIRECTION, kind, end_lag, target, ..Vars::default() };
+    ai_mut(b, r).attack.action = ActionVars::Move(vars);
+    ai_mut(b, r).attack.face_target = face;
+    set_attack(b, r, crate::kinds::player::EngineAction::Move, 4);
+    update(b, r);
 }
 
 /// The direction code an absolute step carries (none of the four).
