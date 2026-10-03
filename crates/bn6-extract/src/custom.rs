@@ -180,6 +180,8 @@ pub fn custom(roms: &crate::Roms, names: &AssetNames) -> CustomScreen {
     let glyphs = |(a, n): (u32, usize)| tiles(rom, (a, 0x40 * n));
     let palettes = |(a, n): (u32, usize)| (0..n as u32).map(|i| palette(rom, a + 32 * i)).collect::<Vec<_>>();
     CustomScreen {
+        layout: nettai_assets::CustomLayout::BN6,
+        buttons: Vec::new(),
         window_tiles: tiles(rom, WINDOW_TILES),
         column_cells: tiles(rom, COLUMN_CELLS),
         turn_limit: tiles(rom, TURN_LIMIT),

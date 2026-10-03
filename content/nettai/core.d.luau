@@ -1706,16 +1706,16 @@ export type Weapon = WeaponSpec
 -- A chip's damage by formula: the opponent's HP; an SP navi chip's, by its
 -- navi's deletion time (its slot of the rules' `sp-chips`, and the damage
 -- for each of that section's time steps); the custom gauge's; the HP the
--- user has lost; the last two digits of the user's HP; half the opponent's
--- max HP; a link navi's own chip's, by its level; by a count of the user's
--- side (BN5's DS navi chips, Roll SP's, Django SP's: `by_count[n]`, the
--- last for more). BN5's SP and count formulas give `per_player_gauges` in
--- the battle flag 0x40 mode.
+-- user has lost (at most `cap`: BN6's 500 when none); the last two digits
+-- of the user's HP; half the opponent's max HP; a link navi's own chip's,
+-- by its level; by a count of the user's side (BN5's DS navi chips, Roll
+-- SP's, Django SP's: `by_count[n]`, the last for more). BN5's SP and count
+-- formulas give `per_player_gauges` in the battle flag 0x40 mode.
 export type DamageFormula =
     { formula: "opponent_hp" }
     | { formula: "sp_navi", slot: string, by_time: { number }, per_player_gauges: number? }
     | { formula: "gauge" }
-    | { formula: "hp_lost" }
+    | { formula: "hp_lost", cap: number? }
     | { formula: "hp_last_digits" }
     | { formula: "half_opponent_max_hp" }
     | { formula: "navi_level", base: number, per_level: number }

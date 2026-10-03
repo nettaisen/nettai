@@ -1,6 +1,11 @@
 --!strict
--- PoisPhar (BN5 chip 0x156): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- PoisPhar (BN5 chip 0x156): the Program Advance of BugBomb, Geddon3 and Anubis in that order: a statue in front of
+-- the user that drains every enemy navi 1 HP each tick for 3000 ticks, with bubbles over the enemy's area: Anubis's
+-- statue (objects/anubis, the dimming handler's subtype 17) in its second variant (the chip's first parameter, 1),
+-- with 300 HP.
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local anubis = require("../../objects/anubis/anubis")
 
 return define.chip {
     id = "bn5:poisphar",
@@ -15,4 +20,5 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "library" },
     slot_in_limit = 1,
+    dimming = anubis.controller.hook(anubis.variants.poisphar),
 }
