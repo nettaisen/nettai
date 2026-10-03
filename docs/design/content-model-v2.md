@@ -120,24 +120,32 @@ the content state store is keyed by.
 
 ### 2.2 Keys
 
-A key is a string unique within its registry.
+A key is a string unique within its registry. The content is one namespace (rules-in-luau.md §7.2, the user,
+2026-10-02: "maybe you should just have it all in a flat namespace and then in the chip ids directly have
+bn6:cannon or whatever"): every key is written in full, its game first and then its own part, `bn6:minibomb`,
+wherever it is written (modules, compat, locale tables, setups, match files, tests). The loader refuses an id
+without its game. The rules below are for the part after the game.
 
-- **Required keys** (`id = "..."`) for what is named from outside content: setups, folders, compat, tools, the
-  frontend. Lowercase ASCII letters and digits in `-`-separated words, optionally qualified with `/` by an owner:
-  `minibomb`, `atk-10`, `erasemn-ex`, `heatcross-beast`, `megaman/buster`, `eraseman/mark`. The generator (§9)
-  makes chip keys from the in-game name (`M-Cannon` is `m-cannon`, `GrndMan[EX]` is `grndman-ex`, `Atk+10` is
-  `atk-10`); where two records share a name (StepSwrd, WhiCapsl, BeastOut) or have none, it picks a
-  key from the record's use and lists them in compat/curation.toml for review (§13).
+- **Required keys** (`id = "bn6:..."`) for what is named from outside content: setups, folders, compat, tools,
+  the frontend. Lowercase ASCII letters and digits in `-`-separated words, optionally qualified with `/` by an
+  owner: `bn6:minibomb`, `bn6:atk-10`, `bn6:erasemn-ex`, `bn6:heatcross-beast`, `bn6:megaman/buster`,
+  `bn6:eraseman/mark`. The generator (§9) makes chip keys from the in-game name (`M-Cannon` is `m-cannon`,
+  `GrndMan[EX]` is `grndman-ex`, `Atk+10` is `atk-10`); where two records share a name (StepSwrd, WhiCapsl,
+  BeastOut) or have none, it picks a key from the record's use and lists them in compat/curation.toml for review
+  (§13).
 - **Derived keys** for definitions made inside another definition's module and nested in it: `<owner key>/<field
-  path>`. MiniBomb's action is `minibomb/action`; the bomb variant it throws is `minibomb/action/args/thrown`.
-  A definition made while module `M` loads and not nested in a keyed definition of `M` is `M#n`, its place among
-  `M`'s definitions (`lib/bombs/throw#1`). Owner-derived keys are stable under edits elsewhere and readable in
+  path>`. MiniBomb's action is `bn6:minibomb/action`; the bomb variant it throws is
+  `bn6:minibomb/action/args/thrown`. A definition made while module `M` loads and not nested in a keyed definition
+  of `M` is `M#n`, its place among `M`'s definitions (`bn6:lib/bombs/throw#1`, the module named by its folder). Owner-derived keys are stable under edits elsewhere and readable in
   messages and trace diffs; `M#n` keys shift when `M` gains a definition, which matters only to compat (an
   action compat maps takes an explicit `id`, §3.5). Nothing else stores a derived key.
 - Kind keys follow a convention the checker warns about: a kind colocated with an owner is qualified by it
-  (`eraseman/mark`, `grab/shot`); a kind in `objects/` or a family library is plain (`projectile`, `bomb`).
+  (`bn6:eraseman/mark`, `bn6:grab/shot`); a kind in `objects/` or a family library is plain (`bn6:projectile`,
+  `bn6:bomb`).
 - The engine's own kinds and navi actions have keys in the `engine/` namespace (`engine/hitbox`, `engine/effect`,
-  `engine/player`, `engine/move`, `engine/dimming-chip`), registered by the ruleset, not by content.
+  `engine/player`, `engine/move`, `engine/dimming-chip`), registered by the ruleset, not by content: of no game.
+- **Asset names are written in full too** (the user: "so loading assets must also be fully qualified as well"):
+  `asset.sprite("bn6:bomb")`, the pack's game and the pack's own name for the asset.
 
 ### 2.3 Handles and the intern order
 
@@ -664,7 +672,7 @@ from the definition. Its name is the locales' (`[patch-cards]`).
 
 ```text
 content/bn6/
-  root.toml  types.d.luau            the root's manifest and shared types (the API: content/nettai/core.d.luau)
+  types.d.luau                        the game's shared types (the API: content/nettai/core.d.luau)
   chips/<id>/                         one chip: chip.luau, and kinds only it uses
   chips/<series>/                     a series (X1-X3, Hi-/M-, EX/SP, Recov*, the upgrades of one chip): all of them
   navis/megaman/                      navi.luau; kinds and weapons several forms share
