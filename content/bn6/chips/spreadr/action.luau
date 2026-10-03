@@ -28,8 +28,16 @@ local FIRE_AFTER, RECOVER_TICKS = 1, 0x14
 
 -- What a spreader fires: its gun (the original's attachment rows 0x15 and
 -- 0x2F, by `dword_80ECC54`), the bullet's height (16.16, by
--- `dword_80ECC5C`), and the bullet.
-export type SpreaderSpec = { id: string?, gun: AttachmentLook, z: number, bullet: BulletVariant }
+-- `dword_80ECC5C`), and the bullet; another game's bullet kind and shot
+-- sound (BN5's Spreader's: BN6's by default).
+export type SpreaderSpec = {
+    id: string?,
+    gun: AttachmentLook,
+    z: number,
+    bullet: BulletVariant,
+    bullet_kind: Kind?,
+    sound: Sound?,
+}
 
 spreader.guns = {
     spreader = attachment.look { sprite = asset.sprite("bn6:spreader"), palette = 0, attach_point = 11 },
@@ -70,9 +78,9 @@ function spreader.action(spec: SpreaderSpec): Action
         if gun then
             gun.anim += 1
         end
-        battle.play_sound(SOUND)
+        battle.play_sound(spec.sound or SOUND)
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-        bullet.fire(me, me.panel_x + me.facing, me.panel_y, spec.z, spec.bullet, me.attack_element, damage)
+        bullet.fire(me, me.panel_x + me.facing, me.panel_y, spec.z, spec.bullet, me.attack_element, damage, spec.bullet_kind)
         me.step, me.step_init = RECOVER, 0
     end
 
