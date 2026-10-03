@@ -1851,9 +1851,11 @@ by the tools that interoperate with the real game:
 
 ### 6.3 Assets and their names
 
-Content refers to an asset by name, resolved while loading: `asset.sprite("bomb")`, `asset.sound("bomb-hit")`,
-`asset.banner("program-advance")`, `asset.background("netbattle-blue")`, `asset.mugshot("heatcross")`. An unknown
-name is a load error naming the module. The resolved value is a handle into the asset registry; state holds it
+Content refers to an asset by name, written in full (its pack's game first, rules-in-luau.md §7.2), resolved
+while loading: `asset.sprite("bn6:bomb")`, `asset.sound("bn6:bomb-hit")`, `asset.banner("bn6:program-advance")`,
+`asset.background("bn6:netbattle-blue")`, `asset.mugshot("bn6:heatcross")`. An unknown name, or one without its
+game, is a load error naming the module. (The examples elsewhere in this document predate the flat namespace and
+write ids and names without their game.) The resolved value is a handle into the asset registry; state holds it
 (`sprite:load(BOMB)`), and a cue carries it (`battle.play_sound(SOUND)`).
 
 - **Names** come from compat/assets.toml, which the generator writes: the disassembly's song and sound enum names

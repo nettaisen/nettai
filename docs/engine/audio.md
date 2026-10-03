@@ -24,8 +24,8 @@ the start of every tick).
 Ids are song-table indices (`SoundId`): music is 0x00..=0x25, effects
 0x64 and up. The engine names none: the ruleset plays what content's roles
 name (`sounds` and `music` in rules/roles.luau).
-Content names its sounds: `asset.sound("cannon")` is the song the
-pack's asset index (`assets.toml`) lists under that name, resolved when the
+Content names its sounds: `asset.sound("bn6:cannon")` is the song the
+BN6 pack's asset index (`assets.toml`) lists under `cannon`, resolved when the
 content loads (a name the pack doesn't list is a load error), so a content
 sound is a song of whatever pack is loaded.
 
