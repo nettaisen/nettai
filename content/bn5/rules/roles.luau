@@ -17,6 +17,7 @@ local antidmg_counter = require("../chips/antidmg/counter")
 local barriers = require("@bn6/lib/barriers/barriers")
 local charged_shot = require("../navis/megaman/weapons/charged-shot")
 local anti_recovery = require("../chips/antirecv/controller")
+local chaos = require("./souls/chaos")
 local collision = require("./collision")
 local effects = require("@bn6/lib/effects")
 local regions = require("@common/regions")
@@ -35,6 +36,8 @@ return define.roles {
         -- booms, lib/swords).
         anti_damage_counter = antidmg_counter.action,
         anti_sword_counter = swords.anti_sword_counter,
+        -- A Chaos Unison charge released out of its window (BN5's action 0x39: ./souls/chaos): Dark MegaMan comes.
+        chaos_failure = chaos.failure,
     },
     kinds = {
         -- AntiRecv's counterattack, which a heal meets when the other side has AntiRecv armed (BN6's code).

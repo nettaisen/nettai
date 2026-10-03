@@ -2226,6 +2226,28 @@ export type IdentitySpec = {
     aura_anim: number?,
     -- The ice block that fits it (none: small).
     ice: ("small" | "medium" | "large")?,
+    -- What it is as a navi no player controls (actor type navi, which a
+    -- battle brings: `battle.spawn_navi`), from the original's enemy structs
+    -- by NameID and its AI index's post-init hook.
+    body: NaviBody?,
+}
+-- A navi no player controls: its sprite (with a shadow on the ground or
+-- drawn with the sprite), the multiplier of its palette by version and its
+-- palette once in (none: by version); its HP, element and what its body
+-- deals; its body's collision (what it is, what it reacts to, its hit
+-- modifier); the status flags it starts with; and whether its HP number
+-- never shows.
+export type NaviBody = {
+    sprite: SpriteAsset,
+    shadow: boolean?,
+    palette_scale: number,
+    palette: number?,
+    hp: number,
+    element: ElementName,
+    body_damage: number,
+    collision: { body: CollisionType, target: CollisionType, hit_modifier: number },
+    flags: { "superarmor" | "airshoe" | "floatshoe" | "affected_by_ice" | "untouchable" }?,
+    hides_hp: boolean?,
 }
 -- A body overlay (actor object #0x56): a second sprite over a navi's body,
 -- drawn in front of it but in the animations of `behind` (ranges `{ first,

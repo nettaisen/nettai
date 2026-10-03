@@ -72,7 +72,7 @@ pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, Vec<(u8, i8, i8, Vec<u16>
         return Err(format!("a computer-navi data block counts {count} entries, more than {}", nettai_battle::tactics::MAX_ENTRIES));
     }
     let entries: Vec<u16> = (0..count).map(|i| half(i * 2)).collect();
-    let mut patterns = Vec::new();
+    let mut patterns: Vec<(u8, i8, i8, Vec<u16>)> = Vec::new();
     for &e in &entries {
         if e & 0x8000 == 0 || e == 0xFFFF {
             continue;
