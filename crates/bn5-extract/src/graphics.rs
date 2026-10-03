@@ -5,10 +5,10 @@
 //! literals point in this ROM.
 //!
 //! What a BN5 pack has: the battle sprites, the field (panels, edges,
-//! cycling palettes), the battle backgrounds, the chips' pictures and icons,
-//! the HUD's 8x16 font and the dialogue font. BN5's HUD and custom screen
-//! layouts differ from BN6's (souls, team navis), so the rest of the HUD
-//! and custom-screen formats stays empty.
+//! cycling palettes), the battle backgrounds, the chips' pictures and icons;
+//! the HUD (hud.rs: its fonts, banners, faces and the chatbox) and the
+//! custom screen (custom.rs), in BN6's formats with what BN5 lays out
+//! otherwise said (`CustomLayout`, the faces' own boxes, the soul button).
 
 use crate::rom::{Rom, Roms, Version};
 use nettai_assets::*;
@@ -63,57 +63,21 @@ const SCROLLERS: [(u32, (i32, i32)); 5] = [
 const CHIP_DATA: [u32; 2] = [0x0801_E214, 0x0801_E210];
 pub const CHIP_COUNT: u32 = 368;
 const PICTURE_BYTES: usize = 0x540;
-/// The chip icons' palette and the hidden chip's icon.
-const ICON_PALETTE: u32 = 0x0874_AAB8;
-const HIDDEN_ICON: u32 = 0x0874_A9B8;
 
-/// The 8x16 HUD font (glyph k = 0x40 bytes; BN6 `dword_86B7AE0`), drawn with
-/// the HP box's first palette.
-const FONT: u32 = 0x086C_BA68;
-const FONT_GLYPHS: usize = 0xE0;
-const HUD_PALETTES: u32 = 0x086F_7CF0;
-/// The dialogue font (16x12 glyphs of 0x60 bytes, up to the HUD font) and
-/// its advances: a word a glyph in BN5 (a byte in BN6).
-const DIALOGUE_FONT: u32 = 0x086C_14C8;
-const DIALOGUE_ADVANCES: u32 = 0x0804_26B4;
-
-/// The banners (BN6 `pt_801EF84`: 49 records to BN6's 47, the same layout:
-/// a head word, then 20 glyph pointers that repeat the filler once it shows
-/// up, then a kind-1 banner's number place), their glyph filler (BN6
-/// `byte_801FDC0`), the banner font's digits (ten glyphs from here; BN6
-/// `dword_86F1DC0`, by `off_801FD64`'s counterpart at 0x0801C698) and the
-/// banners' palette (BN6 `byte_86F2900`).
-const BANNERS: u32 = 0x0801_B810;
-const BANNER_COUNT: u32 = 49;
-const BANNER_FILLER: u32 = 0x0801_C6F4;
-const BANNER_DIGITS: u32 = 0x0873_C6B8;
-const BANNER_PALETTE: u32 = 0x0873_D1F8;
-/// "Cstmzing..." (8x2 tiles), the first of the three transfers before the
-/// banners (BN6 `off_801EF30`'s one, 0x200 bytes with the banners'
-/// palette); the other two (0x240 and 0x2C0 bytes) are BN5's own.
-const WAITING: u32 = 0x0873_C938;
-
-/// Everything the pack draws with: `names` gives the chips their keys.
+/// Everything the pack draws with: `names` gives the chips their keys, the
+/// fonts their characters and the faces their names.
 pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     let rom = &roms.protoman;
     Bundle {
         sprites: sprites(rom),
         field: field(rom),
         backgrounds: backgrounds(rom),
-        hud: hud(roms, names),
-        custom: CustomScreen { chip_art: chip_art(roms, names), ..Default::default() },
+        hud: crate::hud::hud(roms, names, chip_icons(roms, names)),
+        custom: crate::custom::custom(roms, chip_art(roms, names)),
     }
 }
 
-fn tiles(rom: &Rom, a: u32, len: usize) -> Tiles {
-    Tiles::from_4bpp(rom.bytes(a, len))
-}
-
-/// A palette (the hardware ignores bit 15 of a color; chip 0's placeholder
-/// palette has it set, which an image can't hold).
-fn palette(rom: &Rom, a: u32) -> Palette {
-    palettes_from_bytes(rom.bytes(a, 32))[0].map(|c| c & 0x7FFF)
-}
+use crate::hud::{palette, tiles};
 
 fn map_entries(rom: &Rom, a: u32, n: usize) -> Vec<MapEntry> {
     (0..n as u32).map(|i| MapEntry::from_gba(rom.u16(a + 2 * i))).collect()
@@ -398,84 +362,17 @@ fn chip_art(roms: &Roms, names: &AssetNames) -> Vec<ChipArt> {
     out
 }
 
-// ---- The HUD: the chips' icons and the fonts -----------------------------------
-
-/// What glyph `k` draws: the content's name for it (BN5's text encoding,
-/// which a BN5 content root's compat will give), else its number in
-/// brackets.
-fn glyph_name(names: &AssetNames, k: usize) -> String {
-    names.glyphs.iter().chain(&names.dialogue_glyphs).nth(k).cloned().unwrap_or_else(|| format!("[{k:03x}]"))
-}
-
-fn hud(roms: &Roms, names: &AssetNames) -> Hud {
-    let rom = &roms.protoman;
+/// The chips' icons, each under its chip's key (a version's own under its
+/// key with the version's suffix).
+fn chip_icons(roms: &Roms, names: &AssetNames) -> Vec<ChipIcon> {
     let versioned = versioned_chips(roms);
-    let mut chip_icons = Vec::new();
+    let mut out = Vec::new();
     for id in 0..CHIP_COUNT {
-        let versions: &[Option<Version>] =
-            if versioned.contains(&id) { &[Some(Version::ProtoMan), Some(Version::Colonel)] } else { &[None] };
+        let versions: &[Option<Version>] = if versioned.contains(&id) { &[Some(Version::ProtoMan), Some(Version::Colonel)] } else { &[None] };
         for &v in versions {
             let (_, icon) = chip_media(roms, v.unwrap_or(Version::ProtoMan), id);
-            chip_icons.push(ChipIcon { key: chip_key(names, id, v), tiles: icon });
+            out.push(ChipIcon { key: chip_key(names, id, v), tiles: icon });
         }
     }
-    // The dialogue font runs up to the HUD font.
-    let dialogue_glyphs = ((FONT - DIALOGUE_FONT) / 0x60) as usize;
-    // The banner digits, and the filler as glyph 10 (blank).
-    let mut banner_digits = tiles(rom, BANNER_DIGITS, 0x40 * 10);
-    let blank = tiles(rom, BANNER_FILLER, 0x40);
-    banner_digits.push(blank.get(0).unwrap());
-    banner_digits.push(blank.get(1).unwrap());
-    Hud {
-        hp_palettes: std::array::from_fn(|i| palette(rom, HUD_PALETTES + 0x20 * i as u32)),
-        font: tiles(rom, FONT, 0x40 * FONT_GLYPHS),
-        font_chars: (0..FONT_GLYPHS).map(|k| glyph_name(names, k)).collect(),
-        chip_icons,
-        hidden_icon: tiles(rom, HIDDEN_ICON, 0x80),
-        icon_palette: palette(rom, ICON_PALETTE),
-        dialogue_font: DialogueFont {
-            pixels: rom.bytes(DIALOGUE_FONT, 0x60 * dialogue_glyphs).iter().flat_map(|&b| [b & 15, b >> 4]).collect(),
-            advances: (0..dialogue_glyphs as u32).map(|i| rom.u32(DIALOGUE_ADVANCES + 4 * i) as u8).collect(),
-            chars: (0..dialogue_glyphs).map(|k| glyph_name(names, k)).collect(),
-        },
-        banners: (0..BANNER_COUNT).map(|id| banner(rom, id)).collect(),
-        banner_digits,
-        banner_palette: palette(rom, BANNER_PALETTE),
-        waiting: tiles(rom, WAITING, 0x200),
-        waiting_palette: palette(rom, BANNER_PALETTE),
-        ..Default::default()
-    }
-}
-
-/// Banner `id` (BN6's `pt_801EF84` layout, read as bn6-extract's
-/// `banner_at` reads BN6's).
-fn banner(rom: &Rom, id: u32) -> BannerLayout {
-    let p = rom.u32(BANNERS + 4 * id);
-    let head = rom.u32(p);
-    let (x, y, kind) = (head as u8, (head >> 8) as u8, (head >> 16) as u8);
-    let mut glyphs = Tiles::default();
-    let mut number_at = None;
-    // Kind 3 (the telops) has no glyphs; kind 4 (the judge's) has them
-    // like the plain ones.
-    if kind <= 2 || kind == 4 {
-        // 20 glyph pointers; once the filler shows up it repeats.
-        let mut q = p + 4;
-        for _ in 0..20 {
-            let g = rom.u32(q);
-            let t = tiles(rom, g, 0x40);
-            glyphs.push(t.get(0).unwrap());
-            glyphs.push(t.get(1).unwrap());
-            if g != BANNER_FILLER {
-                q += 4;
-            }
-        }
-        if rom.u32(q) == BANNER_FILLER {
-            q += 4;
-        }
-        if kind == 1 {
-            let n = rom.u32(q);
-            number_at = Some((n as u8, (n >> 8) as u8));
-        }
-    }
-    BannerLayout { x, y, kind, glyphs, number_at }
+    out
 }

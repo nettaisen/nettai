@@ -163,7 +163,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
             lookups::navi_face(packs, c, navi, p);
         }
         for version in [GameVersion::Falzar, GameVersion::Gregar] {
-            lookups::emblem(a, c, navi, version, p);
+            lookups::emblem(a, c, navi, version, None, p);
         }
         lookups::navi_name(hud, navi, text.navi_name(c, navi), p);
         if let Some(said) = text.run_message(c, navi) {

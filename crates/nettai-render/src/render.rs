@@ -45,6 +45,12 @@ pub struct Renderer<'a> {
     /// asset of another region's ROMs (a sprite or a chip's picture the US
     /// release cut) is a known difference there (`Problems::known`).
     pub console_region: &'static str,
+    /// The version of the console whose screen is drawn, as its game's
+    /// pack names its versions (BN5's "protoman", "colonel"), for a game
+    /// whose versions the engine doesn't tell apart: what the console shows
+    /// of its own (BN5's navi chips' pictures and icons). None: the
+    /// engine's (BN6's `Unlocks::version`), or the pack's base version.
+    pub console_version: Option<&'static str>,
     /// How text is drawn, and the font of the font mode.
     text_mode: TextMode,
     font: Option<Arc<VectorFont>>,
@@ -78,6 +84,7 @@ impl<'a> Renderer<'a> {
             hud_state: HudState::default(),
             problems: Problems::default(),
             console_region: "us",
+            console_version: None,
             text_mode: TextMode::Original,
             font: None,
             measure: None,
@@ -162,7 +169,7 @@ impl<'a> Renderer<'a> {
         let local = b.setup.local_side as usize & 1;
         let own_game = self.packs.of_root(&b.content, b.games.sides[local]);
         let version = b.custom.sides[local].unlocks.version;
-        let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, version, &mut self.problems);
+        let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, version, self.console_version, &mut self.problems);
         let chatbox = crate::chatbox::prepare(b, own_game, &self.packs, &text, &mut self.problems);
         let mut list = SpriteList::default();
         objects::queue_objects(b, &self.packs, &view, self.console_region, &mut list, &mut self.problems, !draw);
@@ -181,7 +188,7 @@ impl<'a> Renderer<'a> {
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
             crate::chatbox::draw(c, own_game, &mut self.names, &mut list, &mut text);
         }
-        crate::hud::draw(b, assets, &self.packs, &self.hud_state, &mut self.hud, &mut list, &mut text, &mut self.problems);
+        crate::hud::draw(b, own_game, &self.packs, &self.hud_state, &mut self.hud, &mut list, &mut text, &mut self.problems);
         let Some(stage) = stage else {
             note_missing_strings(&mut text, &mut self.problems);
             return Frame::default();

@@ -354,7 +354,7 @@ pub fn draw<'a>(
             put_px(layer, hud, pal, e, shift + 8 * (i as i32 % 6), 8 * (i as i32 / 6));
         }
         for (k, d) in digits4(shown).into_iter().enumerate() {
-            let top = MapEntry { tile: 0x1A0 + 2 * d as u16, hflip: false, vflip: false, palette: 13 };
+            let top = MapEntry { tile: hud.first_tile + 2 * d as u16, hflip: false, vflip: false, palette: 13 };
             put_px(layer, hud, pal, top, shift + 8 + 8 * k as i32, 0);
             put_px(layer, hud, pal, MapEntry { tile: top.tile + 1, ..top }, shift + 8 + 8 * k as i32, 8);
         }
@@ -367,21 +367,22 @@ pub fn draw<'a>(
             put(layer, hud, pal, e, 6 + (i as i32 % 18), i as i32 / 18);
         }
         let g = b.gauge.value;
+        let g0 = hud.gauge_first_tile;
         let cell = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 9 };
         for i in 0..16u16 {
             let tile = if g >= FULL {
-                0x232 + ((state.frame as u16 / 7) & 3)
+                g0 + GAUGE_FULL + ((state.frame as u16 / 7) & 3)
             } else if i < g >> 10 {
-                0x22A
+                g0 + GAUGE_FILLED
             } else if i == g >> 10 {
-                0x222 + ((g >> 7) & 7)
+                g0 + ((g >> 7) & 7)
             } else {
-                0x222
+                g0
             };
             put(layer, hud, pal, cell(tile), 7 + i as i32, 1);
         }
         if g >= FULL {
-            let first = if state.frame & 8 == 0 { 0x236 } else { 0x23A };
+            let first = if state.frame & 8 == 0 { g0 + GAUGE_L_OR_R } else { g0 + GAUGE_L_OR_R + 4 };
             for i in 0..4 {
                 put(layer, hud, pal, cell(first + i), 13 + i as i32, 1);
             }
@@ -414,7 +415,7 @@ pub fn draw<'a>(
                 continue;
             }
             for i in 0..8i32 {
-                let e = MapEntry { tile: 0x1CC + (i / 4) as u16, hflip: false, vflip: false, palette: 13 };
+                let e = MapEntry { tile: hud.first_tile + 2 * HIDDEN_GLYPH as u16 + (i / 4) as u16, hflip: false, vflip: false, palette: 13 };
                 put(layer, hud, pal, e, column + i % 4, 2 + i / 4);
             }
         }
@@ -438,7 +439,7 @@ pub fn draw<'a>(
         let (left, right) = if rolling { (j.rolled[0], j.rolled[1]) } else { (taken(local ^ 1), taken(local)) };
         let digit = |layer: &mut Layer, d: u8, col: i32| {
             for half in 0..2u16 {
-                let e = MapEntry { tile: 0x1B8 + 2 * (d - b'0') as u16 + half, hflip: false, vflip: false, palette: 13 };
+                let e = MapEntry { tile: hud.first_tile + 2 * (DAMAGE_DIGIT as u16 + (d - b'0') as u16) + half, hflip: false, vflip: false, palette: 13 };
                 put(layer, hud, pal, e, col, 5 + half as i32);
             }
         };
@@ -708,7 +709,7 @@ fn draw_chip_name(
         for c in v.to_string().bytes() {
             let d = (c - b'0') as u16;
             for half in 0..2u16 {
-                let e = MapEntry { tile: 0x1B8 + 2 * d + half, hflip: false, vflip: false, palette: 13 };
+                let e = MapEntry { tile: hud.first_tile + 2 * (DAMAGE_DIGIT as u16 + d) + half, hflip: false, vflip: false, palette: 13 };
                 put_px(layer, hud, pal, e, *x, (18 + half as i32) * 8);
             }
             *x += 8;
@@ -718,17 +719,17 @@ fn draw_chip_name(
     number(layer, damage, &mut x);
     if bonus != 0 {
         for half in 0..2u16 {
-            let e = MapEntry { tile: 0x1CE + half, hflip: false, vflip: false, palette: 13 };
+            let e = MapEntry { tile: hud.first_tile + 2 * PLUS_GLYPH as u16 + half, hflip: false, vflip: false, palette: 13 };
             put_px(layer, hud, pal, e, x, (18 + half as i32) * 8);
         }
         x += 8;
         number(layer, bonus, &mut x);
     }
-    // "x2" while the use would double it (two glyphs: tiles 0x1D2..).
+    // "x2" while the use would double it (two glyphs: `TIMES_GLYPH`).
     if doubled {
         for k in 0..2u16 {
             for half in 0..2u16 {
-                let e = MapEntry { tile: 0x1D2 + 2 * k + half, hflip: false, vflip: false, palette: 13 };
+                let e = MapEntry { tile: hud.first_tile + 2 * (TIMES_GLYPH as u16 + k) + half, hflip: false, vflip: false, palette: 13 };
                 put_px(layer, hud, pal, e, x + 8 * k as i32, (18 + half as i32) * 8);
             }
         }
@@ -816,13 +817,40 @@ fn mugshot_parts<'a>(
     if let Some(form) = crate::custom::face(b, side) {
         face = Face::in_form(b, r, form);
     }
-    let (_, Some((gfx, palettes))) = crate::lookups::form_face(packs, &b.content, face.form, face.emotion, problems) else { return };
+    let (picture, Some((gfx, palettes))) = crate::lookups::form_face(packs, &b.content, face.form, face.emotion, problems) else { return };
     // (The white of a change to Full Synchro: `byte_801CD80`.)
     let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
     out.push(block(gfx, 32, 16, pal, x, 18));
-    let tiles = if beast_count_shown(b, side as u8) { hud.counts.get(face.count as usize) } else { None };
-    out.push(block(tiles.unwrap_or(&hud.count_box), 16, 16, pal, x + 32, 18));
+    // The box beside it: the face's own (BN5's), a count, or the box
+    // without one. A game whose faces bring their boxes has no box
+    // without a count: a face that brings none (BN5's souls') shows its
+    // side's count (`window_count`).
+    let face_hud = picture.map_or(hud, |m| packs.mugshot(m).0);
+    let tiles = match picture.and_then(|m| face_hud.mugshot_box(m.id)) {
+        Some(own) => Some(own),
+        None if face_hud.count_box.is_empty() => window_count(b, side as u8).and_then(|n| face_hud.counts.get(n as usize)),
+        None if beast_count_shown(b, side as u8) => hud.counts.get(face.count as usize).or(Some(&hud.count_box)),
+        None => Some(&hud.count_box),
+    };
+    if let Some(tiles) = tiles {
+        out.push(block(tiles, 16, 16, pal, x + 32, 18));
+    }
     note_true_face(b, side, face.picture.map(|p| p.id), x, problems);
+}
+
+/// The count a side's emotion window shows beside a face that brings no
+/// box, in a game whose faces bring their own (BN5's souls': the turns
+/// left, AIData +0x0F, its souls system's `turns`): the side's rules'
+/// `turns`, if a system of theirs keeps one.
+fn window_count(b: &Battle, side: u8) -> Option<u8> {
+    let defs = &b.content.defs;
+    b.side_rules(side).states.iter().find_map(|state| {
+        let schema = &defs.schemas.get(state.id().0 as usize)?.schema;
+        match state.get(schema, schema.index_of("turns")?) {
+            nettai_content_api::FieldValue::U8(n) => Some(n),
+            _ => None,
+        }
+    })
 }
 
 /// The faces Gregar has of its own (the pack's, from the Gregar ROM: its
@@ -1069,12 +1097,21 @@ fn name_parts<'a>(
     item
 }
 
-/// Glyphs of the HUD layer's tiles (tile `first_tile + 2k`): the damage
-/// digits (tiles 0x1B8..), '+' (0x1CE), and the 'x' and '2' of a doubled
-/// chip (0x1D2, 0x1D4).
+/// Glyphs of the HUD layer's tiles (tile `first_tile + 2k`; BN6's from
+/// 0x1A0, BN5's from 0x180): the HP digits (from the first), the damage
+/// digits (BN6's tiles 0x1B8..), the '?' of a defensive chip's "????"
+/// (0x1CC), '+' (0x1CE), and the 'x' and '2' of a doubled chip (0x1D2,
+/// 0x1D4).
 const DAMAGE_DIGIT: usize = (0x1B8 - 0x1A0) / 2;
+const HIDDEN_GLYPH: usize = (0x1CC - 0x1A0) / 2;
 const PLUS_GLYPH: usize = (0x1CE - 0x1A0) / 2;
 const TIMES_GLYPH: usize = (0x1D2 - 0x1A0) / 2;
+/// The custom gauge's tiles (from `gauge_first_tile`: BN6's 0x222, BN5's
+/// 0x202): its cell filling by eighths (from the first), filled, full (four
+/// frames), and its "L or R" (two frames of four).
+const GAUGE_FILLED: u16 = 0x22A - 0x222;
+const GAUGE_FULL: u16 = 0x232 - 0x222;
+const GAUGE_L_OR_R: u16 = 0x236 - 0x222;
 
 #[cfg(test)]
 mod tests {

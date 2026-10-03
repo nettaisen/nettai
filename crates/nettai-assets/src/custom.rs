@@ -92,8 +92,77 @@ pub struct VersionPictures {
     pub cross_palettes: Vec<Palette>,
 }
 
+/// Where the screen's blocks go among the HUD layer's tile numbers, which
+/// its window map and patch list count with: BN6's (the default, a pack
+/// that says none), or a game's whose window is laid out otherwise (BN5's
+/// smaller frame puts everything after it lower).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CustomLayout {
+    /// The picked-chip column's cells and the late turns' block.
+    pub column_cells: u16,
+    pub turn_limit: u16,
+    /// The chip window's name (8 cells of 2 tiles), picture (7x6), code
+    /// (1x2), element icon (2x2) and damage (3 cells): the patch list's
+    /// first runs.
+    pub name: u16,
+    pub art: u16,
+    pub code: u16,
+    pub element: u16,
+    pub digits: u16,
+    /// The slots (6 tiles each, as their kinds take them) and the special
+    /// button after them (slot 11's: Beast Out's 4x2 in BN6, the soul
+    /// button's 3x2 in BN5), then the picked column's icons.
+    pub slots: u16,
+    pub column_icons: u16,
+    /// The enemy names' bar, and the Cross window's names.
+    pub name_bar: u16,
+    pub cross_names: u16,
+}
+
+impl CustomLayout {
+    /// BN6's (`sub_8026840`, `sub_8028250`, `byte_8029DF8`).
+    pub const BN6: CustomLayout = CustomLayout {
+        column_cells: 0x89,
+        turn_limit: 0x8D,
+        name: 0x9B,
+        art: 0xAB,
+        code: 0xD5,
+        element: 0xD7,
+        digits: 0xDB,
+        slots: 0xE1,
+        column_icons: 0x125,
+        name_bar: 0x1D6,
+        cross_names: 0x139,
+    };
+}
+
+impl Default for CustomLayout {
+    fn default() -> CustomLayout {
+        CustomLayout::BN6
+    }
+}
+
+/// A button the screen draws by its name (a system's button,
+/// docs/design/rules-in-luau.md §4.8, or BN5's soul button): its tiles in
+/// the slots' row (`width` x `height` tiles a state, row by row: selectable,
+/// unavailable, then the game's others) and its picture in the chip window
+/// with that picture's palettes by state.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ButtonPictures {
+    pub width: u8,
+    pub height: u8,
+    pub tiles: Tiles,
+    pub picture: Picture,
+    pub palettes: Vec<Palette>,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CustomScreen {
+    /// Where the blocks below go among the layer's tile numbers.
+    pub layout: CustomLayout,
+    /// The buttons drawn by name that the fields below don't hold (BN5's
+    /// "soul"), by name.
+    pub buttons: Vec<(String, ButtonPictures)>,
     // ---- The HUD layer's tiles, by the tile number they load at.
     /// The window frame, from tile 1.
     pub window_tiles: Tiles,
@@ -179,5 +248,10 @@ impl CustomScreen {
     /// doesn't).
     pub fn is_empty(&self) -> bool {
         self.window_tiles.is_empty()
+    }
+
+    /// The button named `name` (`buttons`).
+    pub fn button(&self, name: &str) -> Option<&ButtonPictures> {
+        self.buttons.iter().find(|(n, _)| n == name).map(|(_, b)| b)
     }
 }

@@ -42,8 +42,8 @@ language = "ja"
 "bn5:blakwing" = { name = "ブラックウイング", description = "てきエリアはしに\nどうくつがあらわれ\nくろいツバサ攻撃!" }
 "bn5:blinder" = { name = "ブラインド", description = "きょうりょくな光で\nあいてをもうもく\nじょうたいにする!" }
 "bn5:blizman" = { name = "ブリザードマン", description = "前方にゆきだま!\nものにあたると\nまきこんで大きく!" }
-"bn5:blizman-ds" = { name = "ブリザードマンDS", description = "前方にゆきだま!\nものにあたると\nまきこんで大きく!" }
-"bn5:blizman-sp" = { name = "ブリザードマンSP", description = "前方にゆきだま!\nものにあたると\nまきこんで大きく!" }
+"bn5:blizman-ds" = { name = "ブリザードマン\uE008", description = "前方にゆきだま!\nものにあたると\nまきこんで大きく!" }
+"bn5:blizman-sp" = { name = "ブリザードマン\uE003", description = "前方にゆきだま!\nものにあたると\nまきこんで大きく!" }
 "bn5:blkbomb" = { name = "ブラックボム", description = "ふはつだんを\n3マス前になげる!\n炎攻撃でバクハツ!" }
 "bn5:bodygrd" = { name = "ボディガード", description = "ようじんぼうが\nしゅりけんをなげ\n攻撃してくれる!" }
 "bn5:boomer" = { name = "ブーメラン", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
@@ -71,16 +71,16 @@ language = "ja"
 "bn5:chaoslrd" = { name = "ロードオブカオス", description = "にくしみのパワーが\nフォルテにへんしん\nカオスナイトメア!" }
 "bn5:circgun" = { name = "サークルガン", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
 "bn5:cloudman" = { name = "クラウドマン", description = "てきのはいごに\nクラウドをうみだし\nカミナリ攻撃!" }
-"bn5:cloudmn-ds" = { name = "クラウドマンDS", description = "てきのはいごに\nクラウドをうみだし\nカミナリ攻撃!" }
-"bn5:cloudmn-sp" = { name = "クラウドマンSP", description = "てきのはいごに\nクラウドをうみだし\nカミナリ攻撃!" }
+"bn5:cloudmn-ds" = { name = "クラウドマン\uE008", description = "てきのはいごに\nクラウドをうみだし\nカミナリ攻撃!" }
+"bn5:cloudmn-sp" = { name = "クラウドマン\uE003", description = "てきのはいごに\nクラウドをうみだし\nカミナリ攻撃!" }
 "bn5:colonel" = { name = "カーネル", description = "おなじれつ前方の\nてきを 右あがりの\nななめにきりつける" }
-"bn5:colonel-ds" = { name = "カーネルDS", description = "おなじれつ前方の\nてきを 右あがりの\nななめにきりつける" }
-"bn5:colonel-sp" = { name = "カーネルSP", description = "おなじれつ前方の\nてきを 右あがりの\nななめにきりつける" }
+"bn5:colonel-ds" = { name = "カーネル\uE008", description = "おなじれつ前方の\nてきを 右あがりの\nななめにきりつける" }
+"bn5:colonel-sp" = { name = "カーネル\uE003", description = "おなじれつ前方の\nてきを 右あがりの\nななめにきりつける" }
 "bn5:colorpt" = { name = "カラーポイント", description = "自エリアをぎせいに\nしてつぎのチップの\n攻撃力を+10ずつ" }
 "bn5:copydmg" = { name = "コピーダメージ", description = "カーソルのあいてに\nほかのてきがうけた\nダメージをコピー!" }
 "bn5:cosmoman" = { name = "コスモマン", description = "そらにあなをあけて\nいんせきをふらせる" }
-"bn5:cosmomn-ds" = { name = "コスモマンDS", description = "そらにあなをあけて\nいんせきをふらせる" }
-"bn5:cosmomn-sp" = { name = "コスモマンSP", description = "そらにあなをあけて\nいんせきをふらせる" }
+"bn5:cosmomn-ds" = { name = "コスモマン\uE008", description = "そらにあなをあけて\nいんせきをふらせる" }
+"bn5:cosmomn-sp" = { name = "コスモマン\uE003", description = "そらにあなをあけて\nいんせきをふらせる" }
 "bn5:crakbom" = { name = "クラックボム", description = "3マス前方にボム!\nたて3マス攻撃で\nじめんをヒビに!" }
 "bn5:crakout" = { name = "クラックアウト", description = "パネルはかい攻撃!\n目の前の1マスを\nけしさってしまう" }
 "bn5:crossdiv" = { name = "クロスディバイド", description = "前方のてきを\nクロスにきりつける" }
@@ -105,8 +105,8 @@ language = "ja"
 "bn5:dethphnx" = { name = "デスフェニックス", description = "フィールド中に\nヤミの炎、さらに\nナビをリサイクル!" }
 "bn5:discord" = { name = "ディスコード", description = "ララチューバをおく\nえんそうちゅう\nあいてがこんらん!" }
 "bn5:django" = { name = "ジャンゴ", description = "前方のてきを\nかんおけにとじこめ\nたいよう光で攻撃!" }
-"bn5:django-ds" = { name = "ジャンゴDS", description = "前方のてきを\nかんおけにとじこめ\nたいよう光で攻撃!" }
-"bn5:django-sp" = { name = "ジャンゴSP", description = "前方のてきを\nかんおけにとじこめ\nたいよう光で攻撃!" }
+"bn5:django-ds" = { name = "ジャンゴ\uE008", description = "前方のてきを\nかんおけにとじこめ\nたいよう光で攻撃!" }
+"bn5:django-sp" = { name = "ジャンゴ\uE003", description = "前方のてきを\nかんおけにとじこめ\nたいよう光で攻撃!" }
 "bn5:drilarm1" = { name = "ドリルアーム1", description = "前方2マスはんいを\nドリル攻撃!\nてきをおしやる!" }
 "bn5:drilarm2" = { name = "ドリルアーム2", description = "前方2マスはんいを\nドリル攻撃!\nてきをおしやる!" }
 "bn5:drilarm3" = { name = "ドリルアーム3", description = "前方2マスはんいを\nドリル攻撃!\nてきをおしやる!" }
@@ -143,8 +143,8 @@ language = "ja"
 "bn5:grasseed" = { name = "クサムラシード", description = "3マス前にタネ!\n9マス分のパネルを\nクサムラにする!" }
 "bn5:greatyo" = { name = "ヨーヨーグレート", description = "たて3れつに\nすすむヨーヨー!" }
 "bn5:gridman" = { name = "フットマン", description = "ななめ上へかけだし\nゴールにたっすると\n大ばくはつをおこす" }
-"bn5:gridman-ds" = { name = "フットマンDS", description = "ななめ上へかけだし\nゴールにたっすると\n大ばくはつをおこす" }
-"bn5:gridman-sp" = { name = "フットマンSP", description = "ななめ上へかけだし\nゴールにたっすると\n大ばくはつをおこす" }
+"bn5:gridman-ds" = { name = "フットマン\uE008", description = "ななめ上へかけだし\nゴールにたっすると\n大ばくはつをおこす" }
+"bn5:gridman-sp" = { name = "フットマン\uE003", description = "ななめ上へかけだし\nゴールにたっすると\n大ばくはつをおこす" }
 "bn5:guard1" = { name = "メットガード1", description = "タイミングガードし\n攻撃をしょうげきは\nにしてはねかえす!" }
 "bn5:guard2" = { name = "メットガード2", description = "タイミングガードし\n攻撃をしょうげきは\nにしてはねかえす!" }
 "bn5:guard3" = { name = "メットガード3", description = "タイミングガードし\n攻撃をしょうげきは\nにしてはねかえす!" }
@@ -154,8 +154,8 @@ language = "ja"
 "bn5:gundels2" = { name = "ガンデルソル2", description = "ボタンをおしつづけ\nると2マス前方の\nたて3マスに日の光" }
 "bn5:gundels3" = { name = "ガンデルソル3", description = "ボタンをおしつづけ\nると2マス前方の\nたて3マスに日の光" }
 "bn5:gyroman" = { name = "ジャイロマン", description = "ヘリけいたいになり\nおなじれつの前方に\nばくげき!!" }
-"bn5:gyroman-ds" = { name = "ジャイロマンDS", description = "ヘリけいたいになり\nおなじれつの前方に\nばくげき!!" }
-"bn5:gyroman-sp" = { name = "ジャイロマンSP", description = "ヘリけいたいになり\nおなじれつの前方に\nばくげき!!" }
+"bn5:gyroman-ds" = { name = "ジャイロマン\uE008", description = "ヘリけいたいになり\nおなじれつの前方に\nばくげき!!" }
+"bn5:gyroman-sp" = { name = "ジャイロマン\uE003", description = "ヘリけいたいになり\nおなじれつの前方に\nばくげき!!" }
 "bn5:h-burst" = { name = "ハイパーバースト", description = "ヒットすると\nまわりにひろがる\nれんぞくはれつ攻撃" }
 "bn5:hicannon" = { name = "ハイキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "bn5:holydrem" = { name = "ホーリードリーム", description = "ホーリーパネルを\nすいこんで前方へ\nホーリーショット!" }
@@ -175,12 +175,12 @@ language = "ja"
 "bn5:katana2" = { name = "サムライソード2", description = "ワイドとロングに\n2回れんぞくで\nきりつける!" }
 "bn5:katana3" = { name = "サムライソード3", description = "ワイドとロングに\n2回れんぞくで\nきりつける!" }
 "bn5:knightmn" = { name = "ナイトマン", description = "じぶんのしゅういを\nかいてんする\nてっきゅう攻撃!" }
-"bn5:knigtmn-ds" = { name = "ナイトマンDS", description = "じぶんのしゅういを\nかいてんする\nてっきゅう攻撃!" }
-"bn5:knigtmn-sp" = { name = "ナイトマンSP", description = "じぶんのしゅういを\nかいてんする\nてっきゅう攻撃!" }
+"bn5:knigtmn-ds" = { name = "ナイトマン\uE008", description = "じぶんのしゅういを\nかいてんする\nてっきゅう攻撃!" }
+"bn5:knigtmn-sp" = { name = "ナイトマン\uE003", description = "じぶんのしゅういを\nかいてんする\nてっきゅう攻撃!" }
 "bn5:lance" = { name = "バンブーランス", description = "てきエリアの右はし\nたてれつにとつぜん\nたけやりが発生!" }
 "bn5:larkman" = { name = "スワローマン", description = "2マス前方をとおる\nルートでせんかいし\nてきを攻撃!" }
-"bn5:larkman-ds" = { name = "スワローマンDS", description = "2マス前方をとおる\nルートでせんかいし\nてきを攻撃!" }
-"bn5:larkman-sp" = { name = "スワローマンSP", description = "2マス前方をとおる\nルートでせんかいし\nてきを攻撃!" }
+"bn5:larkman-ds" = { name = "スワローマン\uE008", description = "2マス前方をとおる\nルートでせんかいし\nてきを攻撃!" }
+"bn5:larkman-sp" = { name = "スワローマン\uE003", description = "2マス前方をとおる\nルートでせんかいし\nてきを攻撃!" }
 "bn5:lavaseed" = { name = "マグマシード", description = "3マス前にタネ!\n9マス分のパネルを\nマグマにする!" }
 "bn5:lcounter" = { name = "Lカウンター", description = "ミテイ" }
 "bn5:lcrsshld" = { name = "Lカースシールド", description = "ミテイ" }
@@ -193,12 +193,12 @@ language = "ja"
 "bn5:lstepswd" = { name = "Lフミコミザン", description = "ミテイ" }
 "bn5:m-cannon" = { name = "メガキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
 "bn5:magnetmn" = { name = "マグネットマン", description = "前方へNSタックル\nでとっしんする!" }
-"bn5:magntmn-ds" = { name = "マグネットマンDS", description = "前方へNSタックル\nでとっしんする!" }
-"bn5:magntmn-sp" = { name = "マグネットマンSP", description = "前方へNSタックル\nでとっしんする!" }
+"bn5:magntmn-ds" = { name = "マグネットマン\uE008", description = "前方へNSタックル\nでとっしんする!" }
+"bn5:magntmn-sp" = { name = "マグネットマン\uE003", description = "前方へNSタックル\nでとっしんする!" }
 "bn5:magnum" = { name = "マグナム", description = "カーソルをとめて\nパネルをはかいする\nマグナムをハッシャ" }
 "bn5:meddy" = { name = "メディ", description = "カプセルボムを2コ\nてきのエリアに\nなげこむ!" }
-"bn5:meddy-ds" = { name = "メディDS", description = "カプセルボムを2コ\nてきのエリアに\nなげこむ!" }
-"bn5:meddy-sp" = { name = "メディSP", description = "カプセルボムを2コ\nてきのエリアに\nなげこむ!" }
+"bn5:meddy-ds" = { name = "メディ\uE008", description = "カプセルボムを2コ\nてきのエリアに\nなげこむ!" }
+"bn5:meddy-sp" = { name = "メディ\uE003", description = "カプセルボムを2コ\nてきのエリアに\nなげこむ!" }
 "bn5:megenbom" = { name = "メガエナジーボム", description = "3マス前に\nれんぞくばくふうの\nボムをなげつける" }
 "bn5:metagel" = { name = "スチールゼリー", description = "てきエリア左はしに\nパネルをぬりかえる\nゼリー攻撃!" }
 "bn5:meteors" = { name = "リュウセイグン", description = "あいてエリアに\nむすうのリュウセイ\nがふりそそぐ!" }
@@ -214,15 +214,15 @@ language = "ja"
 "bn5:mudwave" = { name = "ドロツナミホール", description = "あなパネルから\nドロツナミはっせい" }
 "bn5:muramasa" = { name = "ムラマサブレード", description = "へっているHP分が\n攻撃力になる\nのろいのカタナ!" }
 "bn5:napalmmn" = { name = "ナパームマン", description = "4マス前方に\n9マス分にひろがる\nナパームボム!" }
-"bn5:naplmmn-ds" = { name = "ナパームマンDS", description = "4マス前方に\n9マス分にひろがる\nナパームボム!" }
-"bn5:naplmmn-sp" = { name = "ナパームマンSP", description = "4マス前方に\n9マス分にひろがる\nナパームボム!" }
+"bn5:naplmmn-ds" = { name = "ナパームマン\uE008", description = "4マス前方に\n9マス分にひろがる\nナパームボム!" }
+"bn5:naplmmn-sp" = { name = "ナパームマン\uE003", description = "4マス前方に\n9マス分にひろがる\nナパームボム!" }
 "bn5:navi-20" = { name = "ナビ+20", description = "ナビチップの\nあとにえらぶと\n攻撃力を+20!" }
 "bn5:neovari" = { name = "ネオバリアブル", description = "へんげんじざいの\nテクニカルソード\nじょうきゅうへん" }
 "bn5:nrthwind" = { name = "スーパーキタカゼ", description = "すさまじいキタカゼ\nがバリアやオーラを\nふきとばしてしまう" }
 "bn5:numbrbl" = { name = "ナンバーボール", description = "HPの下2ケタが\n攻撃力になるボール\nを前方にハッシャ!" }
 "bn5:numbrman" = { name = "ナンバーマン", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
-"bn5:numbrmn-ds" = { name = "ナンバーマンDS", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
-"bn5:numbrmn-sp" = { name = "ナンバーマンSP", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
+"bn5:numbrmn-ds" = { name = "ナンバーマン\uE008", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
+"bn5:numbrmn-sp" = { name = "ナンバーマン\uE003", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
 "bn5:omegarkt" = { name = "オメガロケット", description = "まん中のれつを\nまっすぐすすむ\nきょだいロケット!" }
 "bn5:otenko" = { name = "オテンコサマ", description = "目の前に攻撃力を\nじょうしょうさせる\nオテンコサマをおく" }
 "bn5:panlgrab" = { name = "パネルスチール", description = "前方のてきエリアの\n1マスを 自分の\nエリアにぬりかえる" }
@@ -234,8 +234,8 @@ language = "ja"
 "bn5:poisphar" = { name = "ポイズンファラオ", description = "目の前にどくを\nはっせいさせる\nファラオぞうをおく" }
 "bn5:poltrgst" = { name = "ポルターガイスト", description = "フィールド上にある\nぶったいをとばして\nあいてにぶつける!" }
 "bn5:protoman" = { name = "ブルース", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
-"bn5:protomn-ds" = { name = "ブルースDS", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
-"bn5:protomn-sp" = { name = "ブルースSP", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+"bn5:protomn-ds" = { name = "ブルース\uE008", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+"bn5:protomn-sp" = { name = "ブルース\uE003", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
 "bn5:pulsar1" = { name = "パルスビーム1", description = "前方におんぱ攻撃!\nものにあたると\nまわりにひろがる!" }
 "bn5:pulsar2" = { name = "パルスビーム2", description = "前方におんぱ攻撃!\nものにあたると\nまわりにひろがる!" }
 "bn5:pulsar3" = { name = "パルスビーム3", description = "前方におんぱ攻撃!\nものにあたると\nまわりにひろがる!" }
@@ -258,18 +258,18 @@ language = "ja"
 "bn5:resetbom" = { name = "リセットボム", description = "3マス前方にボム!\nたて3マス攻撃で\nパワーダウンこうか" }
 "bn5:rockcube" = { name = "ストーンキューブ", description = "目の前のマスに\nストーンキューブを\n発生させる" }
 "bn5:roll" = { name = "ロール", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
-"bn5:roll-ds" = { name = "ロールDS", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
-"bn5:roll-sp" = { name = "ロールSP", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
+"bn5:roll-ds" = { name = "ロール\uE008", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
+"bn5:roll-sp" = { name = "ロール\uE003", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
 "bn5:seaseed" = { name = "オーシャンシード", description = "3マス前にタネ!\n9マス分のパネルを\n水パネルにする!" }
 "bn5:serchman" = { name = "サーチマン", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
-"bn5:serchmn-ds" = { name = "サーチマンDS", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
-"bn5:serchmn-sp" = { name = "サーチマンSP", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
+"bn5:serchmn-ds" = { name = "サーチマン\uE008", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
+"bn5:serchmn-sp" = { name = "サーチマン\uE003", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
 "bn5:shademan" = { name = "シェードマン", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
-"bn5:shademn-ds" = { name = "シェードマンDS", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
-"bn5:shademn-sp" = { name = "シェードマンSP", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
+"bn5:shademn-ds" = { name = "シェードマン\uE008", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
+"bn5:shademn-sp" = { name = "シェードマン\uE003", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
 "bn5:shadoman" = { name = "シャドーマン", description = "てきのいるマスに\n3まいのしゅりけん\nをなげつける!" }
-"bn5:shadomn-ds" = { name = "シャドーマンDS", description = "てきのいるマスに\n3まいのしゅりけん\nをなげつける!" }
-"bn5:shadomn-sp" = { name = "シャドーマンSP", description = "てきのいるマスに\n3まいのしゅりけん\nをなげつける!" }
+"bn5:shadomn-ds" = { name = "シャドーマン\uE008", description = "てきのいるマスに\n3まいのしゅりけん\nをなげつける!" }
+"bn5:shadomn-sp" = { name = "シャドーマン\uE003", description = "てきのいるマスに\n3まいのしゅりけん\nをなげつける!" }
 "bn5:shakpar1" = { name = "ユラパレード1", description = "ゆれながらすすむ\nユラのパレード!\nあいてをマヒに!" }
 "bn5:shakpar2" = { name = "ユラパレード2", description = "ゆれながらすすむ\nユラのパレード!\nあいてをマヒに!" }
 "bn5:shakpar3" = { name = "ユラパレード3", description = "ゆれながらすすむ\nユラのパレード!\nあいてをマヒに!" }
@@ -305,11 +305,11 @@ language = "ja"
 "bn5:timebom3" = { name = "カウントボム3", description = "3びょうごに\nばくはつするボムを\nてきエリアにおく!" }
 "bn5:timpani" = { name = "ティンパニー", description = "ララボーンをおく\nえんそうちゅう\nじしんであしどめ!" }
 "bn5:tmhwkman" = { name = "トマホークマン", description = "よこ2、たて3マス\nをきりつける\nトマホークスイング" }
-"bn5:tmhwkmn-ds" = { name = "トマホークマンDS", description = "よこ2、たて3マス\nをきりつける\nトマホークスイング" }
-"bn5:tmhwkmn-sp" = { name = "トマホークマンSP", description = "よこ2、たて3マス\nをきりつける\nトマホークスイング" }
+"bn5:tmhwkmn-ds" = { name = "トマホークマン\uE008", description = "よこ2、たて3マス\nをきりつける\nトマホークスイング" }
+"bn5:tmhwkmn-sp" = { name = "トマホークマン\uE003", description = "よこ2、たて3マス\nをきりつける\nトマホークスイング" }
 "bn5:toadman" = { name = "トードマン", description = "マヒこうかのある\nうたをはなつ\nついびしてすすむ" }
-"bn5:toadman-ds" = { name = "トードマンDS", description = "マヒこうかのある\nうたをはなつ\nついびしてすすむ" }
-"bn5:toadman-sp" = { name = "トードマンSP", description = "マヒこうかのある\nうたをはなつ\nついびしてすすむ" }
+"bn5:toadman-ds" = { name = "トードマン\uE008", description = "マヒこうかのある\nうたをはなつ\nついびしてすすむ" }
+"bn5:toadman-sp" = { name = "トードマン\uE003", description = "マヒこうかのある\nうたをはなつ\nついびしてすすむ" }
 "bn5:tornado" = { name = "トルネード", description = "2マス前方に\n8ヒットのたつまき\nを発生させる!" }
 "bn5:tripcrak" = { name = "トリプルクラック", description = "パネルはかい攻撃!\n前のたて3マスを\nけしさってしまう" }
 "bn5:varswrd" = { name = "バリアブルソード", description = "へんげんじざいの\nテクニカルソード" }
