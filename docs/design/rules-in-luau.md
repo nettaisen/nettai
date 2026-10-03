@@ -1760,16 +1760,14 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   - The offsets were also read on Tango's four raw BN6 templates by a script (version names, flags, navi, codes, SP
     times as expected). Their checksum word is zero (memory images Tango checksums when it writes them), so the
     checksum path is the tests'.
-- **Gates** (on main de4672cc: bn5-presentation, bn5-chips-a's third and bn5-chips-b's checkpoints, bn5-navichips):
-  - the build without warnings (every feature), 502 tests, the content check (1,498 modules), gen-content check 0
-    errors;
-  - the gate's steps in full: the 189 legacy rounds, 96 rollback rows matching, and the lab 6548 (6545 matched, 3 to
-    a known deviation) with 0 sound rounds differing. They ran by hand with the gate's environment, skipping
-    `every_bn5_lab_recording_decodes`: seven chaos-ai BN5 recordings carry an `ai_lists` setup field whose engine
-    side (bn5-port-6) isn't on main yet, so that test fails on main too;
-  - identity.sh against main 851e3392's frontend on its content: the custom-screen and sample lists identical in
-    both text modes (174 scenarios, 200,712 frames each); not run again after main's BN5 merges, which S6c's diff
-    doesn't touch (the audit draws 49 traces: 0 problems);
-  - us-spelling 0 on both repositories;
-  - BN5's replays as main's on the same recordings and a BN5 pack extracted from the merge: 1,099 match, 31 replay,
-    256 setup, 7 unread, 677,486 of 951,046 frames.
+- **Gates**:
+  - on the final merge (main 6d4d0ec5, then main 87f4cf65's bn5-layout and navi chips, which S6c doesn't touch): the
+    build without warnings (every feature), 511 tests, the content check (1,422 modules), gen-content check 0 errors,
+    the audit 0 problems, us-spelling 0 on both repositories, BN5's replays 1,145 matched (973,226 frames, 760,918
+    matching);
+  - the full gate, unmodified, on main 6d4d0ec5 merged: the 189 legacy rounds, 96 rollback rows matching, and the
+    lab 6548 (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
+  - identity.sh against main 24565c25's frontend on its content: the custom-screen and sample lists identical in
+    both text modes (174 scenarios, 200,712 frames each); main's later merges were BN5's;
+  - BN5's replays matched main's exactly, recording for recording count and frames, at main 851e3392, de4672cc and
+    24565c25 (1,107 matched there).
