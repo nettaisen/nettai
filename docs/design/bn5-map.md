@@ -1609,6 +1609,6 @@ main only repointed `require` lines you also changed, keep yours. Commit the mer
 its series file, moves your new chips and objects to their places, and repoints your requires of old paths (a
 chip's by its id, another module's by git's renames). Then build and test as usual. A series' new kinds are keyed
 under its folder (`bn5:<series>/...`), and a chip gets its series file's place by gaining a use. (Tried on
-bn5-chips-b at 3c524c21: the merge stopped at four chip files and one block of requires, as above; the run then took
+bn5-chips-b at da9035a3: the merge stopped at four chip files and one block of requires, as above; the run then took
 26 chips into 10 series files, moved 7 new kinds and repointed 22 old requires, and the branch's §15.5 report
 stayed the same, recording by recording: 1,250 matching, 871,358 frames.)
