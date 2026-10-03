@@ -156,7 +156,7 @@ local function init(me: Object)
 end
 
 bomb.kind = define.kind {
-    id = "bn5:gyro-bomb",
+    id = "bn5:gyroman/bomb",
     pool = "attack",
     state = { variant = "u8" },
     -- 0x080C7C6C.

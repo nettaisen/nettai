@@ -5,13 +5,18 @@
 -- weapons (weapons/: the buster and the charged shot, BN6's actions with BN5's setups), and his identity: his
 -- actor record (0x08014C94: version 0, a player, AI index 0) and his sprite's 30 attach points (./attach_points). BN5 has no weakness table (BN6's `byte_80108D1`).
 --
--- Not yet (docs/design/bn5-map.md §15.7): his souls but ProtoSoul (forms, with Soul Unison), his move lag in soul 8
--- (0), the held offset and the custom screen's no-running message.
+-- Not yet (docs/design/bn5-map.md §15.7, §15.8): his souls 6 and 8 to 12 (forms, with Soul Unison), the held offset
+-- and the custom screen's no-running message.
 
 local attach_points = require("./attach_points")
 local buster = require("./weapons/buster")
 local charged_shot = require("./weapons/charged-shot")
+local colonelsoul = require("./forms/colonelsoul/form")
+local gyrosoul = require("./forms/gyrosoul/form")
+local magnetsoul = require("./forms/magnetsoul/form")
+local napalmsoul = require("./forms/napalmsoul/form")
 local protosoul = require("./forms/protosoul/form")
+local searchsoul = require("./forms/searchsoul/form")
 
 return define.navi {
     id = "bn5:megaman",
@@ -25,7 +30,7 @@ return define.navi {
     -- the stats a match's side starts him at.
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
     -- His souls, which the custom screen's soul button offers (rules/souls).
-    forms = { souls = { protosoul } },
+    forms = { souls = { protosoul, gyrosoul, searchsoul, napalmsoul, magnetsoul, colonelsoul } },
     identity = define.identity {
         class = "megaman",
         version = 0,
@@ -34,6 +39,9 @@ return define.navi {
         -- The Full Synchro aura's animation: BN6's rule (`sub_80C4C52`: the AI index), which BN5 hasn't (its aura
         -- is its own, to come with BN5's emotions); the engine asks every player for one.
         aura_anim = 0,
+        -- He wears what his soul does: his death hook takes it off (0x0800EFCC, his record's category 2), and an
+        -- animation change (0x0800F11C by AI index 0), a flinch and a drag (0x080F0500) restart it.
+        overlay_hooks = { "death", "refresh", "flinch", "drag" },
         attach_points = attach_points[0],
     },
 }

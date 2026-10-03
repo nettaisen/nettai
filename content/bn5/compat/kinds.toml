@@ -97,11 +97,11 @@
 "bn5:bugcharg/controller" = { pool = "effect", index = 0x7C, scratch_position = true }
 "bn5:bugcharg/actor" = { pool = "actor", index = 0x59 }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
-"bn5:capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
-"bn5:napalm-bomb" = { pool = "attack", index = 0x3A }
-"bn5:gyro-bomb" = { pool = "attack", index = 0x1B, scratch_position = true }
+"bn5:meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
+"bn5:napalmmn/bomb" = { pool = "attack", index = 0x3A }
+"bn5:gyroman/bomb" = { pool = "attack", index = 0x1B, scratch_position = true }
 "bn5:shuriken" = { pool = "attack", index = 0x5C }
-"bn5:dice" = { pool = "attack", index = 0x05 }
+"bn5:numbrman/dice" = { pool = "attack", index = 0x05 }
 "bn5:dice-marker" = { pool = "effect", index = 0x83, scratch_position = true }
 "bn5:sonic-boom" = { pool = "attack", index = 0x58 }
 "bn5:holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
@@ -118,14 +118,18 @@
 "bn5:anti-trap/trap" = { pool = "attack", index = 0x4D, scratch_position = true }
 "bn5:anti-trap/strike" = { pool = "effect", index = 0x2B, scratch_position = true }
 "bn5:panel-bursts" = { pool = "effect", index = 0x24, scratch_position = true }
-"bn5:crack" = { pool = "attack", index = 0x18 }
+"bn5:crakout/crack" = { pool = "attack", index = 0x18 }
 "bn5:soul-image" = { pool = "actor", index = 0x2A }
 "bn5:chaos-shade" = { pool = "actor", index = 0x2B }
+"bn5:gyrosoul/tornado" = { pool = "attack", index = 0x1E }
+"bn5:searchsoul/reveal" = { pool = "effect", index = 0x8F, scratch_position = true }
+"bn5:napalmsoul/flash" = { pool = "effect", index = 0x26 }
+"bn5:magnetsoul/magnet" = { pool = "attack", index = 0x75 }
 "bn5:timebom/countdown" = { pool = "attack", index = 0x4B }
 "bn5:timebom/controller" = { pool = "effect", index = 0x27, scratch_position = true }
 "bn5:lance" = { pool = "attack", index = 0x4F }
 "bn5:meteor" = { pool = "attack", index = 0x56 }
-"bn5:meteor-shower" = { pool = "effect", index = 0x46 }
+"bn5:meteors/shower" = { pool = "effect", index = 0x46 }
 "bn5:meteors/controller" = { pool = "effect", index = 0x34, scratch_position = true }
 "bn5:meteors/marker" = { pool = "effect", index = 0x35, scratch_position = true }
 "bn5:drill" = { pool = "attack", index = 0x71 }

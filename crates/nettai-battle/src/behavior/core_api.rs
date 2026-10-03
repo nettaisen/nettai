@@ -885,16 +885,12 @@ impl CoreApi for Battle {
                 E::WornOut => Emotion::WornOut,
                 E::Worried => Emotion::Worried,
             },
-            version: match s.unlocks.version {
-                crate::custom::GameVersion::Gregar => "gregar",
-                crate::custom::GameVersion::Falzar => "falzar",
-            },
-            crosses: s.unlocks.crosses,
-            cross_list: s.unlocks.cross_list.map(|l| l.forms().collect()),
-            beast_out: s.unlocks.beast_out,
-            beast_out_sealed: s.unlocks.beast_out_sealed,
             random_battle: self.setup.settings.effects & crate::setup::effects::RANDOM != 0,
         })
+    }
+
+    fn navi_level(&self, side: u8) -> Option<u8> {
+        self.setup.players[side as usize & 1].navi_level
     }
 
     fn take_over(&mut self, side: u8, ticks: u16) {
@@ -2356,6 +2352,7 @@ impl CoreApi for Battle {
             CollisionField::Element => c.element as i64,
             CollisionField::SecondaryElement => c.secondary_element as i64,
             CollisionField::Bugs => c.bugs as i64,
+            CollisionField::InflictedBugs => c.acc.inflicted_bugs as i64,
             CollisionField::HitModBase => c.hit_mod_base as i64,
             CollisionField::SelfDamage => c.self_damage as i64,
             CollisionField::CounterByte => c.counter_byte as i64,
@@ -2424,6 +2421,7 @@ impl CoreApi for Battle {
             CollisionField::Element => c.element = x as u8,
             CollisionField::SecondaryElement => c.secondary_element = x as u8,
             CollisionField::Bugs => c.bugs = x as u16,
+            CollisionField::InflictedBugs => c.acc.inflicted_bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
             CollisionField::CounterByte => c.counter_byte = x as u8,

@@ -1315,14 +1315,6 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let p = with(|api, _| api.custom_player(side).map_err(api_error))?;
         let t = lua.create_table()?;
         t.raw_set("emotion", p.emotion.name())?;
-        t.raw_set("version", p.version)?;
-        t.raw_set("crosses", lua.create_sequence_from(p.crosses)?)?;
-        if let Some(list) = &p.cross_list {
-            let forms = list.iter().map(|f| bound(|b| b.def_value(Registry::Form, f.0))).collect::<mlua::Result<Vec<_>>>()?;
-            t.raw_set("cross_list", lua.create_sequence_from(forms)?)?;
-        }
-        t.raw_set("beast_out", p.beast_out)?;
-        t.raw_set("beast_out_sealed", p.beast_out_sealed)?;
         t.raw_set("random_battle", p.random_battle)?;
         Ok(t)
     });
@@ -1441,6 +1433,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "bug_frags", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.bug_frags(side)))
+    });
+    lib_fn!(lua, t, "navi_level", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.navi_level(side)))
     });
     lib_fn!(lua, t, "spend_bug_frags", |_, (side, n): (LuaValue, LuaValue)| {
         let (side, n) = (u8_arg(side, "side")? & 1, int(&n, "count")? as u32);
@@ -2278,7 +2274,7 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             t.raw_set("argument", spec.argument)?;
             vec![LuaValue::Table(t)]
         }
-        HookCall::RoleNavi { navi } => vec![obj(navi)?],
+        HookCall::RoleNavi { navi } | HookCall::FormNavi { navi } => vec![obj(navi)?],
         HookCall::NaviLeft { controller } => vec![obj(controller)?],
         HookCall::RoleEncased { obstacle, ice, class } => {
             let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(c as i64));
@@ -2330,7 +2326,9 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         }
         // A navi's role hook may hand back an object (`navi_deleted`'s).
         HookCall::RoleNavi { .. } => Ok(object_arg(&v, "the object a role hook returns")?.map_or(Value::Nil, Value::Object)),
-        HookCall::InstantChip { .. } | HookCall::RoleEncased { .. } | HookCall::NaviLeft { .. } => Ok(Value::Nil),
+        HookCall::InstantChip { .. } | HookCall::RoleEncased { .. } | HookCall::NaviLeft { .. } | HookCall::FormNavi { .. } => {
+            Ok(Value::Nil)
+        }
         // A chip check's substitute; no other system hook returns anything.
         HookCall::System { hook: SystemHook::ChipCheck, .. } if !v.is_nil() => match bound.def(&v) {
             Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),
@@ -2358,7 +2356,12 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         // A button's `shown` and `state`, a window's `update`, and whether a
         // system took the keys or took something back.
         HookCall::System {
-            hook: SystemHook::ButtonShown | SystemHook::WindowUpdate | SystemHook::CustomKeys | SystemHook::CustomTakeBack,
+            hook:
+                SystemHook::ButtonShown
+                | SystemHook::WindowUpdate
+                | SystemHook::CustomKeys
+                | SystemHook::CustomTakeBack
+                | SystemHook::NaviBug,
             ..
         } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
         HookCall::System { hook: SystemHook::ButtonState, .. } => match &v {

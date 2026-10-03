@@ -8,7 +8,7 @@
 //! (`system.state()` in a hook): a side's rules see the other side through
 //! the engine alone.
 
-use nettai_content_api::{ChipHandle, ContentState, HookCall, ObjectRef, RulesetHandle, SystemHook, Value, WeaponHandle};
+use nettai_content_api::{ChipHandle, ContentState, FieldType, HookCall, ObjectRef, RulesetHandle, SystemHook, Value, WeaponHandle};
 
 use crate::battle::Battle;
 use crate::content::Content;
@@ -54,6 +54,63 @@ impl PlayerSetup {
         block.set(schema, i, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
     }
 
+    /// Write a fact of what the player brings into each system of their
+    /// ruleset (their setup's, or game `game`'s stock one) whose setup has
+    /// a field `field`: one value for a field, an element each for an
+    /// array (the rest zero), an enum's by its name (`Fact::Name`). How a
+    /// tool writes what several systems read (BN6's game version, which
+    /// its cross and beast systems both take). The number of systems that
+    /// took it: none on a content without the ruleset.
+    ///
+    /// Making the blocks, it names the ruleset they are for in the setup
+    /// (a setup without one would play by its arena's game's stock rules,
+    /// whose blocks these may not be).
+    pub fn set_fact(&mut self, content: &Content, game: &str, field: &str, values: &[Fact]) -> Result<usize, String> {
+        let Some(r) = self.ruleset.or_else(|| content.defs.stock_ruleset_of(game)) else { return Ok(0) };
+        let def = content.defs.ruleset(r);
+        if self.rules.is_empty() {
+            self.rules = def.systems.iter().map(|&h| ContentState::new(content.defs.system(h).setup)).collect();
+            self.ruleset = Some(r);
+        }
+        let mut took = 0;
+        for block in &mut self.rules {
+            let schema = &content.defs.schemas[block.id().0 as usize].schema;
+            let Some(i) = schema.index_of(field) else { continue };
+            let ty = &schema.field(i).ty;
+            let value = |f: &Fact| -> Result<Value, String> {
+                match (f, ty) {
+                    (Fact::Value(v), _) => Ok(*v),
+                    (Fact::Name(n), FieldType::Enum(names)) => names
+                        .iter()
+                        .position(|x| x == n)
+                        .map(|i| Value::Int(i as i64))
+                        .ok_or_else(|| format!("setup field `{field}` has no variant {n:?}")),
+                    (Fact::Name(n), _) => Err(format!("setup field `{field}` isn't an enum, for {n:?}")),
+                }
+            };
+            if let FieldType::Array(elem, n) = ty {
+                if values.len() > *n as usize {
+                    return Err(format!("setup field `{field}` holds {n}, not {}", values.len()));
+                }
+                // (Past the values given, zero: false, 0, none.)
+                let zero = match **elem {
+                    FieldType::Bool => Value::Bool(false),
+                    FieldType::Ref(..) | FieldType::Asset(_) | FieldType::Object => Value::Nil,
+                    _ => Value::Int(0),
+                };
+                for k in 0..*n as usize {
+                    let v = values.get(k).map(value).transpose()?.unwrap_or(zero);
+                    block.set_elem(schema, i, k, v).map_err(|e| format!("setup field `{field}`: {e}"))?;
+                }
+            } else {
+                let [f] = values else { return Err(format!("setup field `{field}` takes one value, not {}", values.len())) };
+                block.set(schema, i, value(f)?).map_err(|e| format!("setup field `{field}`: {e}"))?;
+            }
+            took += 1;
+        }
+        Ok(took)
+    }
+
     /// The setup block of system `system` (by key) of the player's ruleset,
     /// its schema and the index of its field `field`; the blocks made zero
     /// first if the setup gives none.
@@ -82,7 +139,27 @@ impl PlayerSetup {
     }
 }
 
+/// A value [`PlayerSetup::set_fact`] writes: a field's value, or an enum
+/// variant by its name.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Fact<'a> {
+    Value(Value),
+    Name(&'a str),
+}
+
 impl Battle {
+    /// Side `side`'s system `key`'s setup block (the player's, as the round
+    /// started with it) and its layout, when the side's ruleset has that
+    /// system: for a reader of what a player brought (the frontend's BN6
+    /// look reads the cross system's version and Cross list).
+    pub fn system_setup(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &ContentState)> {
+        let r = self.rules[side as usize & 1].ruleset?;
+        let systems = &self.content.defs.ruleset(r).systems;
+        let slot = systems.iter().position(|&h| self.content.defs.system(h).key == key)?;
+        let def = self.content.defs.system(systems[slot]);
+        Some((self.content.defs.schema(def.setup), self.setup.players[side as usize & 1].rules.get(slot)?))
+    }
+
     /// Side `side`'s rules.
     pub fn side_rules(&self, side: u8) -> &SideRules {
         &self.rules[side as usize]
@@ -346,6 +423,22 @@ impl Battle {
     /// Side `side`'s systems' `navi_palette(side, navi)`: the first answer.
     pub(crate) fn systems_navi_palette(&mut self, side: u8, navi: ObjectRef) -> Option<u8> {
         self.systems_ask(side, SystemHook::NaviPalette, Some(navi))
+    }
+
+    /// Side `side`'s systems' `navi_bug(side, navi)`: whether one answered
+    /// true (the bug and the weapons' reload skipped).
+    pub(crate) fn systems_navi_bug(&mut self, side: u8, navi: ObjectRef) -> bool {
+        let Some(r) = self.rules[side as usize & 1].ruleset else { return false };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::NaviBug) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::NaviBug, navi: Some(navi), chip: None, weapon: None };
+                if let Value::Bool(true) = crate::behavior::call_hook(self, f, call) {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     /// Side `side`'s systems' `hook`, in order, until one answers a number.
