@@ -5,9 +5,10 @@
 -- ./charge), routine 1 on A (the charged shot's: no chip charges in ColonelSoul, 0x0801090A), Chaos Unison's (0x3A:
 -- DrkSonic); no B+Back (0xFF). His sword's arm is the blade's animation 14 (0x080EC038).
 --
--- Not yet: its status reset's routine (0x08011C44), which arms its side's obstacles (the battle state's +0x5C bit
--- by side, two damage words at 0x02034000 by side: 40 and 10 more per Attack point plus one, 10 and 2 more,
--- paralyzing, counter byte 0x94) for the obstacles' soldiers (0x080CA952): it comes with BN5's obstacles.
+-- Its status reset's routine (0x08011C44) arms its side's obstacles (the battle state's +0x5C bit by side, and two
+-- damage words at 0x02034000 by side: 40 and 10 more per Attack point plus one, 10 and 2 more, paralyzing, counter
+-- byte 0x94) for the obstacles' soldiers (0x080CA952); every status reset disarms them first (0x080CAC30). That
+-- state is the obstacles' (BN5's obstacle framework's per-side state): `arm_obstacles` is a stub until it lands.
 
 local attach_points = require("../../attach_points")
 local buster = require("../../weapons/buster")
@@ -16,6 +17,9 @@ local charge = require("./charge")
 local charged_shot = require("../../weapons/charged-shot")
 local drksonic = require("../../../../chips/drksonic/chip")
 local souls = require("../../../../rules/souls/system")
+
+-- STUB (waits for BN5's obstacle framework's per-side arming slot): 0x08011C50's damage words and 0x080CAC1E's bit.
+local function arm_obstacles(navi: Object) end
 
 return define.form {
     id = "bn5:colonelsoul",
@@ -33,6 +37,7 @@ return define.form {
         -- Routine 0x3A (0x0800FA98): DrkSonic (chip 0xC6), the charge table's row 0x3A.
         chaos = chaos.weapon("bn5:colonelsoul/chaos", drksonic, { 40, 60, 90, 120, 150, 60 }),
     },
+    reset = arm_obstacles,
     palette = 0,
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 0x16-0x1B, Team Colonel's
     -- souls'); in its Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).

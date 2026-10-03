@@ -782,7 +782,21 @@ pub(crate) fn read_form(
     let o = super::reader::fields(
         d,
         r,
-        &["id", "identity", "cross_of", "beast", "breaks_to", "change", "revert", "charged_action", "weapons", "buster_arm", "reset"],
+        &[
+            "id",
+            "identity",
+            "cross_of",
+            "beast",
+            "breaks_to",
+            "change",
+            "revert",
+            "charged_action",
+            "weapons",
+            "buster_arm",
+            "reset",
+            "put_on",
+            "take_off",
+        ],
     )?;
     let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
     // (BN5's souls are of no BN6 version.)

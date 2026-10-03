@@ -319,15 +319,18 @@ export type Throw = {
     target_y: number,
     -- The damage word.
     damage: number,
+    -- Its third parameter (2, the default: it runs while dimmed, as a navi chip's; MeddySoul's 0).
+    mode: number?,
 }
 
--- 0x080C62D8: a capsule of `thrower`'s side and facing from its panel, with `element`, running while dimmed (its
--- third parameter 2). (Its position is the spawner's registers, which its init overwrites.)
+-- 0x080C62D8: a capsule of `thrower`'s side and facing from its panel, with `element`, its flags running it while
+-- dimmed (its third parameter says whether it does: 2 by default). (Its position is the spawner's registers, which
+-- its init overwrites.)
 function capsule.throw(thrower: Object, element: number, throw: Throw): Object?
     local o = battle.spawn(capsule.kind, Vec3.zero)
     if o then
         local s = o.state :: State
-        s.variant, s.line, s.mode = throw.variant, throw.line, 2
+        s.variant, s.line, s.mode = throw.variant, throw.line, throw.mode or 2
         o.future_panel_x, o.future_panel_y = throw.target_x, throw.target_y
         o.panel_x, o.panel_y = thrower.panel_x, thrower.panel_y
         o.element = element

@@ -705,6 +705,10 @@ named_flags! {
         /// Gone from the field while its navi chip's navi acts
         /// (`sub_80E1352` sets it, `sub_80E13DC` clears it).
         Vanished = "vanished",
+        /// It dives: a panel that submerges (BN5's sea) submerges it and
+        /// doesn't hold it at a move's end (BN5's ToadSoul, 0x08011CB2).
+        /// The status reset ends it.
+        Dives = "dives",
     }
 }
 
@@ -1198,6 +1202,10 @@ pub trait CoreApi {
     /// `sub_80302B6`: the cameras' second shake, `magnitude` (0-3) for
     /// `ticks`.
     fn shake_camera_secondary(&mut self, magnitude: u16, ticks: u16);
+    /// `battle_setFlags(0x20)` / `battle_clearFlags(0x20)`: the cameras
+    /// shake even while the battle is paused (BN5's TomahawkSoul's change,
+    /// 0x08012138; the change's end clears it, 0x080121B6).
+    fn set_shake_through_pause(&mut self, on: bool);
     /// `sub_80EA438`: a burst around `navi`'s panel (effect object #0x90,
     /// which runs while paused).
     fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef>;
