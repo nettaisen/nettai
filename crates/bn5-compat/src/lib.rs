@@ -182,6 +182,18 @@ pub struct RecordNumbers {
     pub barriers: BTreeMap<String, u8>,
 }
 
+/// BN5's NaviCust programs (navicust.toml): each program's number (a part
+/// id's high bits) and its colored variants (a part id's low bits) in the
+/// order of its definition's colors.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NaviCustNumbers {
+    #[serde(default)]
+    pub programs: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub variants: BTreeMap<String, Vec<u8>>,
+}
+
 /// BN5's asset names (assets.toml): the names bn5-extract writes its
 /// assets under, by BN6's names for what is BN6's. Sprites as "cc-ii" (the
 /// category's byte offset in the sprite list and the index), sounds by the
@@ -246,14 +258,26 @@ pub struct Compat {
     pub kinds: BTreeMap<String, KindEntry>,
     /// text.toml: the text encodings.
     pub text: Text,
+    /// navicust.toml: the NaviCust programs' numbers.
+    pub navicust: NaviCustNumbers,
 }
 
 /// The files of a compat folder.
-pub const FILES: [&str; 8] =
-    ["chips.toml", "panels.toml", "assets.toml", "rules.toml", "stages.toml", "records.toml", "kinds.toml", "text.toml"];
+pub const FILES: [&str; 9] = [
+    "chips.toml",
+    "panels.toml",
+    "assets.toml",
+    "rules.toml",
+    "stages.toml",
+    "records.toml",
+    "kinds.toml",
+    "text.toml",
+    "navicust.toml",
+];
 
 /// This repository's compat (content/bn5/compat), built in.
-const BN5: [(&str, &str); 8] = [
+const BN5: [(&str, &str); 9] = [
+    ("navicust.toml", include_str!("../../../content/bn5/compat/navicust.toml")),
     ("text.toml", include_str!("../../../content/bn5/compat/text.toml")),
     ("kinds.toml", include_str!("../../../content/bn5/compat/kinds.toml")),
     ("stages.toml", include_str!("../../../content/bn5/compat/stages.toml")),
@@ -339,10 +363,38 @@ impl Compat {
         let stages: BTreeMap<String, StageEntry> = toml::from_str(&text("stages.toml")?).map_err(|e| format!("stages.toml: {e}"))?;
         let records: RecordNumbers = toml::from_str(&text("records.toml")?).map_err(|e| format!("records.toml: {e}"))?;
         let kinds: BTreeMap<String, KindEntry> = toml::from_str(&text("kinds.toml")?).map_err(|e| format!("kinds.toml: {e}"))?;
+        let navicust: NaviCustNumbers = toml::from_str(&text("navicust.toml")?).map_err(|e| format!("navicust.toml: {e}"))?;
+        for (k, n) in &navicust.programs {
+            if !navicust.variants.contains_key(k) {
+                return Err(format!("navicust.toml: program {k} ({n}) has no variants"));
+            }
+        }
         // (A compat folder from before the encodings has none.)
         let text_file = text("text.toml").unwrap_or_default();
         let text: Text = if text_file.is_empty() { Text::default() } else { toml::from_str(&text_file).map_err(|e| format!("text.toml: {e}"))? };
-        Ok(Compat { chips, panels: by_number, chip_keys, assets, rules, stages, records, kinds, text })
+        Ok(Compat { chips, panels: by_number, chip_keys, assets, rules, stages, records, kinds, text, navicust })
+    }
+
+    /// The NaviCust program a part id names (its number, `id >> 2`) and its
+    /// color (the variant, `id & 3`, as its place among the program's
+    /// colored variants: its definition's color there); none for 0, no part.
+    pub fn navicust_part(&self, id: u8) -> Result<Option<(&str, u8)>, String> {
+        if id == 0 {
+            return Ok(None);
+        }
+        let number = id >> 2;
+        let key = self
+            .navicust
+            .programs
+            .iter()
+            .find(|(_, n)| **n == number)
+            .map(|(k, _)| k.as_str())
+            .ok_or_else(|| format!("navicust.toml has no program {number} (part id {id:#04x})"))?;
+        let color = self.navicust.variants[key]
+            .iter()
+            .position(|&v| v == id & 3)
+            .ok_or_else(|| format!("{key} has no color in variant {} (part id {id:#04x})", id & 3))?;
+        Ok(Some((key, color as u8)))
     }
 
     /// A chip's id (`bn5:cannon`) by its number.
