@@ -37,6 +37,12 @@ pub mod request {
     /// check found the Beast Out used up; the mid-battle custom screen
     /// asks too): pause-time action 0x1C with `status::REVERTING_FORM`.
     pub const REVERT_FORM: u32 = 0x40;
+    /// BN5's Chaos Unison: a full B charge released in the cycle's window
+    /// (BN5's request 0x8000): the soul's chaos weapon. BN6 has none.
+    pub const CHAOS_SUCCESS: u32 = 0x80;
+    /// Released out of the window (BN5's 0x10000): the chaos failure
+    /// (BN5's action 0x39, the role `chaos_failure`).
+    pub const CHAOS_FAILURE: u32 = 0x100;
     /// AntiDmg (chip 0xBB) caught a hit: its counterattack runs next.
     pub const ANTI_DAMAGE_TRIGGERED: u32 = 0x200;
     /// AntiSwrd (chip 0xBC) caught a sword hit.
@@ -78,6 +84,9 @@ pub mod request {
     pub const WEAKNESS_HIT: u32 = 0x8000_0000;
     /// Every attack request.
     pub const ATTACKS: u32 = 0x3F;
+    /// The chaos charge's releases (BN5's attack's end clears them with
+    /// the attacks: 0x1803F).
+    pub const CHAOS: u32 = CHAOS_SUCCESS | CHAOS_FAILURE;
     /// The charge holds.
     pub const HOLDS: u32 = A_HELD | B_HELD;
 }
@@ -339,6 +348,40 @@ pub struct ActorData {
     /// (at most eight; the game keeps them at +0x6C with the count at
     /// +0x0D).
     pub absorbed: Vec<AbsorbedObstacle>,
+    /// BN5's Chaos Unison charge. BN6 never arms it.
+    pub chaos: ChaosCharge,
+    /// A navi no player controls (actor type navi): who brought it
+    /// (AIData+0x54, `sub_80076A0`'s caller), its target (AIData+0x78: the
+    /// other side's player, `sub_800F318`), and the system that drives it.
+    pub summoner: Option<ObjectRef>,
+    pub target: Option<ObjectRef>,
+    pub controller: Option<crate::kinds::player::Controller>,
+    /// AIData+0x74: what sparkles over it while its deletion runs.
+    pub deletion_sparkles: Option<ObjectRef>,
+}
+
+/// BN5's Chaos Unison charge: armed by the chaos change (0x0801216C), a
+/// full B charge cycles through a window (0x080105F8, by the rules'
+/// `chaos_cycle`); released in it, the soul's chaos weapon (AIData +0x11,
+/// its form's `chaos` slot) with its own charge time by `level`, else the
+/// chaos failure.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ChaosCharge {
+    /// AIData+0x11: the soul's chaos weapon (none in base form).
+    pub weapon: Option<WeaponHandle>,
+    /// AIData+0x12: armed. The weapons' load (0x0800DCA0) and the end of an
+    /// attack of kind 6 (the failure's) disarm it.
+    pub armed: bool,
+    /// AIData+0x6C: the releases that succeeded, at most 4 (the change
+    /// zeroes it): the chaos weapon's charge time column and, up to 2, the
+    /// cycle's row.
+    pub level: u8,
+    /// AIData+0x1C: ticks into the cycle while the B charge is full.
+    pub counter: u8,
+    /// AIData+0x1F: where in the cycle the charge is: 2 a release now
+    /// succeeds; 0 (or 1) it fails. The glow shows it (its animation 2 +
+    /// this).
+    pub window: u8,
 }
 
 /// An obstacle the obstacle-absorbing chip pulled in.

@@ -132,6 +132,8 @@ struct CustomScreenSection {
 struct BusterSection {
     recovery: Vec<[u8; 6]>,
     empty_hand: EmptyHandChip,
+    #[serde(default)]
+    chaos_cycle: Vec<[u8; 4]>,
 }
 
 #[derive(Deserialize)]
@@ -379,7 +381,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
             }
             "buster" => {
                 let s: BusterSection = r.read(spec, &at).map_err(e)?;
-                (rules.buster_recovery, rules.empty_hand) = (s.recovery, s.empty_hand);
+                (rules.buster_recovery, rules.empty_hand, rules.chaos_cycle) = (s.recovery, s.empty_hand, s.chaos_cycle);
             }
             "navicust" => {
                 let s: NaviCustSection = r.read(spec, &at).map_err(e)?;

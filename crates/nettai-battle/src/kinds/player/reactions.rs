@@ -15,8 +15,12 @@ use crate::object::{DragStep, ObjectRef, PanelPos, state};
 
 // ---- Deletion (action 2) -------------------------------------------------------
 
-/// Action 2, `sub_80173F4`: deletion (§H6).
+/// Action 2, `sub_80173F4`: deletion (§H6). (A navi no player controls
+/// is deleted its own way: `ai_navi::deletion`.)
 pub(super) fn deletion(b: &mut Battle, r: ObjectRef) {
+    if super::ai_navi::is_ai_navi(b, r) {
+        return super::ai_navi::deletion(b, r);
+    }
     // sprite_forceWhitePalette every tick.
     b.objects.sprite_mut(r).look.white = true;
     match b.objects.get(r).phase {
@@ -70,7 +74,7 @@ fn begin_deletion(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_800A11C`: one fewer alive navi on the side, and out of the alive
 /// actor lists.
-fn remove_from_alive(b: &mut Battle, r: ObjectRef) {
+pub(super) fn remove_from_alive(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
     b.round.alive[side] = b.round.alive[side].wrapping_sub(1);
     for slot in b.round.alive_actors.iter_mut().flatten() {
@@ -190,12 +194,13 @@ fn reset_form_overlay(b: &mut Battle, r: ObjectRef) {
 /// The hooks a player's actor record has for what it wears (the player
 /// rows of the flinch and drag hook tables, `off_80EAB94` and
 /// `off_80EABF8`: its identity's `overlay_hooks`), and whether it wears
-/// parts of its own; the other actor types' rows (`off_81094D0`,
-/// `off_80F27F8`, ...) belong to the virus and navi AI.
+/// parts of its own; a navi no player controls has its identity's too
+/// (BN5's navi rows, 0x080F256C and 0x080F25C8: Dark MegaMan's are empty);
+/// the virus rows (`off_81094D0`, ...) belong to the virus AI.
 fn player_hooks(b: &Battle, r: ObjectRef, table: &str) -> (crate::content::OverlayHooks, bool) {
     let a = ai(b, r);
-    if a.actor_type != crate::actor::ActorType::Player {
-        panic!("the {table} of {:?} actors belongs to the virus and navi AI", a.actor_type);
+    if a.actor_type == crate::actor::ActorType::Virus {
+        panic!("the {table} of {:?} actors belongs to the virus AI", a.actor_type);
     }
     let identity = b.content.identity(a.identity);
     (identity.overlay_hooks, identity.parts.is_some())

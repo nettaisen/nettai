@@ -336,6 +336,12 @@ named_fields! {
         /// BN5's AIData+0x3C: DarkPlus's tint (0 none), which picks the
         /// navi's status shader.
         PlusTint = "plus_tint", U16, rw;
+        /// BN5's Chaos Unison charge: armed (AIData+0x12; the chaos
+        /// change arms it, a weapons' load and the failure's end disarm
+        /// it) and its level (AIData+0x6C: releases that succeeded, at
+        /// most 4).
+        ChaosArmed = "chaos_armed", Bool, rw;
+        ChaosLevel = "chaos_level", U8, rw;
     }
 }
 
@@ -1031,6 +1037,16 @@ pub struct ColumnInfo {
     pub timer: u16,
 }
 
+/// An entry of a player's tactics (BN5's computer-navi data) as content
+/// reads it: a chip, a pattern (its place among the patterns, from 0), or
+/// nothing (the halfword 0 or an empty place, 0xFFFF).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TacticEntry {
+    Chip(crate::ChipHandle),
+    Pattern(u8),
+    Nothing,
+}
+
 /// A side's defensive-chip record (the linked registry).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LinkedChip {
@@ -1105,6 +1121,22 @@ pub trait CoreApi {
     /// Battle flag 4: the screen is dimmed and only objects that run while
     /// dimmed update.
     fn is_dimmed(&self) -> bool;
+    /// Battle flag 4 alone (BN5's chaos failure dims the battle so with
+    /// none of a dimming's machinery: 0x080EE66A, 0x080EE76A).
+    fn set_dimmed(&mut self, on: bool);
+    /// BN5's 0x08006AAE: the navi `identity` (actor type navi, with a
+    /// `body`) comes onto `panel` for `side`, brought by `summoner`, driven
+    /// by `system` (its `controller` and `navi_state`; of the summoner's
+    /// side's ruleset). None when a pool or the side's list of alive actors
+    /// is full.
+    fn spawn_navi(
+        &mut self,
+        identity: crate::IdentityHandle,
+        panel: PanelPos,
+        side: u8,
+        summoner: Option<ObjectRef>,
+        system: crate::SystemHandle,
+    ) -> ApiResult<Option<ObjectRef>>;
     fn is_paused(&self) -> bool;
     /// `battle_isBattleOver`: a side has no navi left, or time is up.
     fn is_battle_over(&self) -> bool;
@@ -1208,6 +1240,19 @@ pub trait CoreApi {
     fn player(&self, side: u8) -> Option<ObjectRef>;
     /// A side's combatants still in, in slot order.
     fn alive_actors(&self, side: u8) -> Vec<ObjectRef>;
+    /// Player `side`'s tactics (BN5's computer-navi data): how many entries
+    /// they count, their entry in place `i` (from 0; past the count, an
+    /// empty place), and their pattern `i` (from 0): its place from the
+    /// target and its chips.
+    fn tactic_count(&self, side: u8) -> usize;
+    fn tactic(&self, side: u8, i: usize) -> TacticEntry;
+    fn tactic_pattern(&self, side: u8, i: usize) -> ApiResult<(i8, i8, Vec<crate::ChipHandle>)>;
+    /// The first entry and the entry in place `i` (from 0) change places
+    /// (0x0802C0DC's swap).
+    fn swap_tactics(&mut self, side: u8, i: usize);
+    /// The first entry goes last of the count, the rest move up
+    /// (0x0802BF1C).
+    fn turn_tactics(&mut self, side: u8) -> ApiResult<()>;
     /// The objects of content kind `kind` (a kind handle) in the update
     /// list, in update order, whatever their lifecycle state (the game's
     /// walks of the list, such as `sub_80C67A4`).
@@ -1291,6 +1336,10 @@ pub trait CoreApi {
     /// registry's three slots at BattleState+0xA0 + side * 0xC), in slot
     /// order, empty slots left out.
     fn side_field_objects(&self, side: u8) -> Vec<ObjectRef>;
+    /// A side's field-object registry slot `i` (from 0, of its three).
+    fn field_object_slot(&self, side: u8, i: u8) -> Option<ObjectRef>;
+    /// BattleState+0x40: the fight's ticks (capped), `sub_800A704`.
+    fn battle_time(&self) -> u32;
     /// Every registered field object (the registry's eight slots at
     /// BattleState+0xA0: each side's three, then the stage's two), in slot
     /// order, empty slots left out.
@@ -1329,6 +1378,18 @@ pub trait CoreApi {
     fn release_reservations(&mut self, o: ObjectRef);
     /// `sub_800E618`: may `o` step onto `p`?
     fn can_step(&self, o: ObjectRef, p: PanelPos) -> bool;
+    /// `sub_800A772`: its side's chips are enabled and its chip lockout
+    /// is over.
+    fn chips_enabled(&self, o: ObjectRef) -> ApiResult<bool>;
+    /// `sub_8010332`: the ticks a step of its ends with.
+    fn move_lag(&self, o: ObjectRef) -> ApiResult<u16>;
+    /// A navi's links let go as it leaves (BN5's 0x081042E6): its status
+    /// visuals (`sub_801A5E2`) and its chips on the HUD (`sub_801DC36`).
+    fn drop_links(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// A navi no player controls leaves (BN5's 0x08104306): no HP, the
+    /// damage-carry record forgets it, its reservation goes, it leaves its
+    /// side's lists and is destroyed.
+    fn leave(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// `sub_800E680`: could `o` stand on `p`, whichever side owns it?
     fn can_stand_any_side(&self, o: ObjectRef, p: PanelPos) -> bool;
     // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
@@ -1606,8 +1667,13 @@ pub trait CoreApi {
     /// the dimming, navi or instant chip's), in `set_attack` slot `kind`.
     fn start_chip_attack(&mut self, o: ObjectRef, chip: crate::ChipHandle, kind: u8) -> ApiResult<()>;
     /// `sub_80116AE(5, end_lag, 2)`: a step straight to `target` (column 0:
-    /// no step), then `end_lag` ticks.
-    fn start_move_to(&mut self, o: ObjectRef, target: PanelPos, end_lag: u16) -> ApiResult<()>;
+    /// no step), then `end_lag` ticks; with `face`, BN5's `sub_80116F6`'s
+    /// (the object a step turns to face in the panel patterns 0x23, 0x31
+    /// and 0x33).
+    fn start_move_to(&mut self, o: ObjectRef, target: PanelPos, end_lag: u16, face: Option<ObjectRef>) -> ApiResult<()>;
+    /// `sub_80117BA`: weapon `weapon`'s setup, and the action it names
+    /// started in `set_attack` slot `kind`.
+    fn start_weapon(&mut self, o: ObjectRef, weapon: crate::WeaponHandle, kind: u8) -> ApiResult<()>;
     /// `sub_801B9E6`'s attack, from inside the wrapper (the role
     /// `actions.wrapper`): run the action the navi runs.
     fn run_wrapped(&mut self, o: ObjectRef) -> ApiResult<()>;
