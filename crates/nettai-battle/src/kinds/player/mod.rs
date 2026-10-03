@@ -416,6 +416,30 @@ fn bn5_emotion(b: &Battle, p: ObjectRef, mood: u8) -> Emotion {
     }
 }
 
+/// Presentation: whether side `side`'s emotion window shows its form's
+/// second set of faces: while its navi's Chaos Unison charge is armed
+/// (`face_chaos`), or by the side's rules (`face_hub`).
+pub fn shows_face_variant(b: &Battle, side: u8) -> bool {
+    face_chaos(b, side) || face_hub(b, side)
+}
+
+/// Presentation: the second set for the side's base form when its rules
+/// ask (`SideState::face_variant`: BN5's Hub Style, 0x0801AF8E's picture 11
+/// on, which a soul's face doesn't take). Part of the picture as it is
+/// picked.
+pub fn face_hub(b: &Battle, side: u8) -> bool {
+    let Some(p) = b.player(side) else { return false };
+    b.sides[side as usize & 1].face_variant && form_of(b, p).kind == FormKind::Base
+}
+
+/// Presentation: the second set while the side's navi's Chaos Unison charge
+/// is armed (BN5's 0x080125F6, AIData +0x12: the face's palette 11 on, a
+/// soul's Chaos Unison look), whichever picture the window shows: the
+/// original reads it as it draws (0x08019704).
+pub fn face_chaos(b: &Battle, side: u8) -> bool {
+    b.player(side).is_some_and(|p| ai(b, p).chaos.armed)
+}
+
 /// Whether a navi's mood is held (`sub_8015BEC`'s test): held tired or
 /// exhausted. Another side's rules read it (`sub_801A200`'s counter).
 pub(crate) fn mood_held(b: &Battle, r: ObjectRef) -> bool {
