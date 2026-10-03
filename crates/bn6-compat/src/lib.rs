@@ -398,7 +398,7 @@ pub struct Compat {
     /// (patch-cards.toml).
     pub patch_cards: BTreeMap<String, u8>,
     /// The NaviCust programs by their number (navicust.toml): a part id
-    /// is 4 x the number + its colour variant.
+    /// is 4 x the number + its color variant.
     pub navicust: NaviCustNumbers,
     /// The kinds by the slot they fill.
     slots: BTreeMap<(Pool, u8), String>,

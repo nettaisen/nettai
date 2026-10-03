@@ -1,6 +1,6 @@
 # Field, collision and damage — engine spec (BN6 US Falzar, BR6E, link PvP)
 
-This document specifies the **panel field**, the **collision pipeline** and the **damage/status pipeline** of the BN6 battle engine precisely enough to reimplement them in Rust without reading the assembly. The target is bit-exact behaviour: same observable state every tick and the same RNG call sequence.
+This document specifies the **panel field**, the **collision pipeline** and the **damage/status pipeline** of the BN6 battle engine precisely enough to reimplement them in Rust without reading the assembly. The target is bit-exact behavior: same observable state every tick and the same RNG call sequence.
 
 Companion documents in this directory:
 - `battle-flow.md`: tick anatomy, battle flags, RNG roles, BattleState.
@@ -37,7 +37,7 @@ How claims were verified:
 
 | Address | Name | Size | Meaning |
 |---|---|---|---|
-| 0x02039AE0 | `ePanelData` | 40 × 0x20 | 8 columns × 5 rows, index `y*8+x`. Valid area is x 1..6, y 1..3; the border ring is initialised but never ticked. |
+| 0x02039AE0 | `ePanelData` | 40 × 0x20 | 8 columns × 5 rows, index `y*8+x`. Valid area is x 1..6, y 1..3; the border ring is initialized but never ticked. |
 | 0x02034F60 | `unk_2034F60` | 40 × u32 | Per-panel collision registration mask, index `y*8+x`. Bit `0x80000000>>k` means collision slot k is registered there. |
 | 0x020384F0 | `eCollisionData` | 32 × 0xA8 | Collision slots (also `Toolkit+0x30`). |
 | 0x02035310 | `eActiveCollisionDataBitfield` | u32 | Allocated slots (bit `0x80000000>>k`). |
@@ -129,7 +129,7 @@ Transient hitboxes (T3/3) are inserted after their spawner **[verified]**.
 
 ### 2.3 Panel types
 
-| Id | Table word | Name | Behaviour (details below) |
+| Id | Table word | Name | Behavior (details below) |
 |---|---|---|---|
 | 0 | 0x18000 | Missing / void | Not standable; AirShoes can stand on it and nothing happens (there is no falling logic). `_object_setPanelType` and `object_setPanelAlliance` refuse to change it. Never ticks. |
 | 1 | 0x14000 | Broken (hole) | Timer +0x0E counts down to 0, then it becomes 2; blinks during the last 60 ticks. |
@@ -426,7 +426,7 @@ Both are run by the collision kernels (§3).
 - A navi re-registers every tick at its CollisionData panel. During its own update its own bit is absent between its `remove` and its `present`.
 - **Reservation**:
 
-| Function | Addr | Behaviour |
+| Function | Addr | Behavior |
 |---|---|---|
 | `object_reservePanel(x,y)` | 0x0801BB1C | If valid and `p.Reserver == 0`: `p.Reserver = obj`, `F |= 0x80`, `obj.header |= 0x20`, return 1. Otherwise return 0, including when obj already holds it. |
 | `object_removePanelReserve(x,y)` | 0x0801BB46 | If valid and `p.Reserver == obj`: clear it, `F &= ~0x80`, return 1; else 0. |
@@ -1087,7 +1087,7 @@ Consequences:
 - Barriers are fed by the **raw** channel, so they lose HP to hits the filters rejected (flashing, guard, invulnerable).
 - A popped barrier (state 0x10) absorbs everything until its visual object clears it.
 - Barrier timers and regeneration pause while dimmed.
-- All barrier behaviour is code only (not in machgun).
+- All barrier behavior is code only (not in machgun).
 
 ### 4.3 Anti-damage traps (`sub_802CEF4`)
 
@@ -1362,7 +1362,7 @@ So it works both ways. Attacks whose collision type carries 0x8 or 0x1000 still 
 (GunDelSol's hitbox, Self 0x8000408C). Body contact and types without those bits pass through. Of the 89
 collision types, 30 carry one of the bits: 0x0A, 0x15, 0x17, 0x19, 0x1A, 0x1C, 0x1D, 0x20–0x22, 0x24, 0x26, 0x2B–0x2D,
 0x2F–0x33 (0x31, 0x32 by bit 0x1000), 0x37, 0x3A, 0x3C, 0x3F, 0x45, 0x4B, 0x4E, 0x4F, 0x52 (bit 0x1000) and 0x55.
-Which attacks use which types is catalogued per chip as the chips are ported.
+Which attacks use which types is cataloged per chip as the chips are ported.
 
 **The timed form** (`cd+0x26`, the engine's `timer::SUBMERGED`), run by the navi's status stage each tick
 (`sub_8010162`):
@@ -1529,7 +1529,7 @@ In tick 647 the navi's stage A computes FinalDamage 0 (the +0x8C slot is exclude
 ## 8. Uncertainties
 
 1. **Names inferred, not proven:**
-   - Volcano (type 8). Its behaviour is exact: periodic T3/7 eruptions, 50 damage.
+   - Volcano (type 8). Its behavior is exact: periodic T3/7 eruptions, 50 damage.
    - Upper collision bits 0x02000000/0x01000000 ("other bodies"), 0x00080000 ("blocker") and 0x00008000 ("ground-only").
    - Low Self bits 0x1008 / 0x3000 and the ObjectFlags1 bits they gate (0x4, 0x00800000, 0x01000000, 0x08000000). The header names 0x08000000 UNAFFECTED_BY_POISON; the code treats it as "fully intangible".
    - Barrier type names, the Anti-chip ids (0xBB / 0xBC / 0x157), and NaviStats bytes 0x11–0x19, 0x21, 0x24, 0x29, 0x31, 0x52, 0x54.

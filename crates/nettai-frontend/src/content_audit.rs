@@ -8,7 +8,7 @@
 //!   its description in the dialogue font;
 //! - every navi's face and emblem (on either game's console), its name and
 //!   no-running message with its portrait; every form's face for each
-//!   emotion; every Cross's name and colours and description;
+//!   emotion; every Cross's name and colors and description;
 //! - every asset of the loaded packs, by its qualified name (a superset of
 //!   what the content names): each sprite with every animation and its
 //!   frames, each sound's song, each banner's glyphs (a telop's banner its

@@ -42,8 +42,8 @@ fn after(tiles: Tiles, first: u16, report: &mut Report, file: &str) -> Tiles {
     Tiles { pixels: tiles.pixels[skip.min(tiles.pixels.len())..].to_vec() }
 }
 
-/// A grey ramp for images without a palette of their own.
-fn grey() -> Palette {
+/// A gray ramp for images without a palette of their own.
+fn gray() -> Palette {
     std::array::from_fn(|i| {
         let v = (i as u16 * 2).min(31);
         v | v << 5 | v << 10
@@ -93,12 +93,12 @@ pub struct PaletteAnimDoc {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PaletteFrameDoc {
     pub ticks: u8,
-    pub colours: Vec<String>,
+    pub colors: Vec<String>,
 }
 
 pub fn export_field(f: &Field) -> Vec<(String, Vec<u8>)> {
     let all = from_zero(&f.tiles, f.first_tile);
-    let mut rows = vec![grey(); 16];
+    let mut rows = vec![gray(); 16];
     for (i, p) in f.palettes.iter().enumerate() {
         rows[f.first_palette as usize + i] = *p;
     }
@@ -125,7 +125,7 @@ pub fn export_field(f: &Field) -> Vec<(String, Vec<u8>)> {
             .map(|a| PaletteAnimDoc {
                 slot: a.slot,
                 initial_timer: a.initial_timer,
-                frames: a.frames.iter().map(|(p, t)| PaletteFrameDoc { ticks: *t, colours: tiles::palette_text(p) }).collect(),
+                frames: a.frames.iter().map(|(p, t)| PaletteFrameDoc { ticks: *t, colors: tiles::palette_text(p) }).collect(),
             })
             .collect(),
         panels: f.panels.iter().map(|b| texts(b)).collect(),
@@ -175,7 +175,7 @@ pub fn import_field(dir: &Path, prefix: &str, report: &mut Report) -> Option<Fie
         .map(|a| PaletteAnim {
             slot: a.slot,
             initial_timer: a.initial_timer,
-            frames: a.frames.iter().map(|f| (tiles::parse_palette(&f.colours, report, &name), f.ticks)).collect(),
+            frames: a.frames.iter().map(|f| (tiles::parse_palette(&f.colors, report, &name), f.ticks)).collect(),
         })
         .collect();
     Some(Field {
@@ -281,7 +281,7 @@ pub struct AnimFrameDoc {
 
 pub fn export_background(bg: &Background, id: u8) -> Vec<(String, Vec<u8>)> {
     let all = from_zero(&bg.tiles, bg.first_tile);
-    let rows = vec![bg.palette.unwrap_or_else(grey)];
+    let rows = vec![bg.palette.unwrap_or_else(gray)];
     let row_of = first_rows(all.len(), bg.map.iter().copied(), 0);
     let (png, image) = tiles::export_image(
         "tiles.png",

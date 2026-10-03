@@ -66,7 +66,7 @@ are garbage. Their renames are worth taking even where the proposed name is only
 | sprite | `immobilized` | `rock-cubes` *applied* | medium | Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (chips/rockcube/rock.luau), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it. |
 | sprite | `reflected-shot` | `pink-flash` *applied* | medium | Shows a pink starburst. The effect `flash` (0x21), CrcusMan's sparkle, H-Burst's explosion and DblBeast's spark use it. |
 | sprite | `reflector-shield-2` | `dummy-shield` *applied* | low | The ROM's dummy sprite (a 16x16 dot). Rflectr's rows 4-6 name it, which nothing ported holds up. |
-| sprite | `rising-bubble` | `small-puff` *applied* | medium | Shows small grey puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble. |
+| sprite | `rising-bubble` | `small-puff` *applied* | medium | Shows small gray puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble. |
 | sprite | `small-ring` | `wide-navi` *applied* | medium | The ROM's dummy sprite (a 16x16 dot, like 40 unused slots): it shows no ring. SumnBlk asks whether an actor wears it to know it stands two panels wide. |
 | sound | `copy-mark` | `mark` *applied* | medium | A mark set: BurnSqr's fire, CircGun's and CopyDmg's marks. CopyDmg is one user of three. |
 | effect | `bat_impact` | `cut_in_flash` *applied* | high | The role effects.cut_in_flash: the flash where a side cut in (effect 0x1E). |
@@ -184,7 +184,7 @@ Named from several uses that agree, from the look (the effects named for sprite,
 | `hit` | `guard-ripple` | Shows cyan ripples. Its one spark (0x08) is the role sparks.guard, a blocked hit. |
 | `immobilized` | `rock-cubes` (wrong now) *applied* | Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (chips/rockcube/rock.luau), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it. |
 | `reflected-shot` | `pink-flash` (wrong now) *applied* | Shows a pink starburst. The effect `flash` (0x21), CrcusMan's sparkle, H-Burst's explosion and DblBeast's spark use it. |
-| `rising-bubble` | `small-puff` (wrong now) *applied* | Shows small grey puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble. |
+| `rising-bubble` | `small-puff` (wrong now) *applied* | Shows small gray puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble. |
 | `slash-man-effect` | `claw-slash` | Shows cyan claw slashes: SlashMan's slash and DblBeast's Gregar claw and slam. |
 | `small-ring` | `wide-navi` (wrong now) *applied* | The ROM's dummy sprite (a 16x16 dot, like 40 unused slots): it shows no ring. SumnBlk asks whether an actor wears it to know it stands two panels wide. |
 | `spark-0e` | `uninstall-spark` | Its spark (0x0E) is the role sparks.uninstall: a navi's programs uninstalled. |
@@ -382,7 +382,7 @@ The evidence is thin: a sound with mixed users, a look with no user. A proposal 
 | current | proposed | evidence |
 |---|---|---|
 | `dust-2` | `dust-spray` | Shows white and blue sprays: GolmHit's golem landing and TomahawkMan's strike (effect 0x34). |
-| `effect-61` | `grey-shards` | Shows grey shard shapes; only effect 0x61 uses it. |
+| `effect-61` | `gray-shards` | Shows gray shard shapes; only effect 0x61 uses it. |
 | `reflector-shield-2` | `dummy-shield` (wrong now) *applied* | The ROM's dummy sprite (a 16x16 dot). Rflectr's rows 4-6 name it, which nothing ported holds up. |
 | `spout-man-effect` | `water-ring` | Shows a splash of water rings: SpoutMan's throw and charge (effect 0x2A). |
 
@@ -406,7 +406,7 @@ The evidence is thin: a sound with mixed users, a look with no user. A proposal 
 | `copy_mark_1_53` | `breaking_spark_p6` | Effect 0x53: hit-sparks animation 1, palette 6. Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 | `copy_mark_9` | `hit_sparks_9` | Effect 0x0D: hit-sparks animation 9. Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 | `dust_2_2` | `dust_spray` | Effect 0x34: the dust-spray sprite (GolmHit's landing). |
-| `effect_61` | `grey_shards` | Effect 0x61: the grey-shards sprite. Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
+| `effect_61` | `gray_shards` | Effect 0x61: the gray-shards sprite. Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 | `reflected_shot_1` | `pink_flash_1` | Effect 0x10: pink-flash animation 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 | `small_ring_82` | `dummy_look` (wrong now) *applied* | Effect 0x4B reads animation 82, palette 16 of the dummy sprite: a row of the original's table that names no real look. |
 | `spout_man_effect` | `water_ring` | Effect 0x2A: the water-ring sprite (SpoutMan's throw). Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |

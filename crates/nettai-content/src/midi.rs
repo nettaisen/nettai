@@ -9,7 +9,7 @@ pub enum Message {
     NoteOff { channel: u8, key: u8, velocity: u8 },
     Control { channel: u8, controller: u8, value: u8 },
     Program { channel: u8, program: u8 },
-    /// 14-bit, 0x2000 = centre.
+    /// 14-bit, 0x2000 = center.
     PitchBend { channel: u8, value: u16 },
     /// Microseconds per quarter note.
     Tempo(u32),

@@ -18,7 +18,7 @@ use crate::kinds::common::{Progress, set_progress};
 use crate::kinds::player::form;
 use crate::object::{ObjectRef, Vec3, flags, state};
 
-/// The colour shader `sub_80EAFC2` gives its afterimages.
+/// The color shader `sub_80EAFC2` gives its afterimages.
 const COLOR_SHADER: u16 = 0x83E0;
 
 /// What ends an afterimage before its time is up.
@@ -49,7 +49,7 @@ pub struct Vars {
 /// variables (`sub_80E33FA`'s callers).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PlainLook {
-    /// ExtraVars+0: the colour shader.
+    /// ExtraVars+0: the color shader.
     pub color_shader: u16,
     /// ExtraVars+6 and +7: a shadow at its height (neither set), on the
     /// ground (both), or none (only the first).
@@ -207,7 +207,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let s = b.objects.sprite_mut(r);
     s.set_animation(anim, &b.content);
     s.update(&b.content);
-    // The spawner's shadow and colour shader (the Beast rush's: a ground
+    // The spawner's shadow and color shader (the Beast rush's: a ground
     // shadow, 0x83E0 less green), and the fourth parameter's flip.
     s.look.shadow = look.shadow.shadow();
     s.look.set_flip(flip);

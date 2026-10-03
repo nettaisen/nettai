@@ -26,7 +26,7 @@ pub struct Pictures {
     chips: HashMap<String, ChipPictures>,
 }
 
-/// A BGR555 colour as RGBA (index 0 of a palette is see-through).
+/// A BGR555 color as RGBA (index 0 of a palette is see-through).
 fn rgba(c: u16) -> [u8; 4] {
     let five = |v: u16| ((v & 31) << 3 | (v & 31) >> 2) as u8;
     [five(c), five(c >> 5), five(c >> 10), 0xFF]

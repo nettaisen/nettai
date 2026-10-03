@@ -34,7 +34,7 @@ function dragon.variant(v: DragonVariant): DragonVariant
 end
 
 -- Its look: the dragon sprite at animation `anim` in the variant's
--- colours, on its panel, 36 pixels lower (the game subtracts from Z's
+-- colors, on its panel, 36 pixels lower (the game subtracts from Z's
 -- whole part with a halfword store, which keeps the fraction).
 function dragon.place(me: Object, v: DragonVariant, anim: number)
     local sprite = me.sprite
