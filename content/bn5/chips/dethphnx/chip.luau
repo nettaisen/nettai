@@ -1,6 +1,9 @@
 --!strict
--- DethPhnx (BN5 chip 0x13a): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- DethPhnx (BN5 chip 0x13a): DeathPhoenix sets 12 fires over the enemy area, then brings the last navi chip's navi again (./controller,
+-- ./phoenix). Past the navi chips' block: AntiNavi lets it through.
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local controller = require("./controller")
 
 return define.chip {
     id = "bn5:dethphnx",
@@ -15,4 +18,6 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     slot_in_limit = 1,
+    traits = { "not_navi_slot" },
+    dimming = controller.hook,
 }

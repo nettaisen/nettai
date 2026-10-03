@@ -1270,7 +1270,18 @@ BN6's spin with the Katanas' step, lib/stepsword, marked moving while it runs); 
 bomb, objects/crakbom, attack object 0x24: BN6's code no BN6 chip throws; it hits the column where it lands);
 Quake1 to 3 (BN5's own Quake bomb, objects/quake, attack object 0x51: a weight that drops on the panel three ahead
 and hits its level's region); IceSeed, SeaSeed, GrasSeed and LavaSeed (the shared seed with BN5's look,
-objects/seed, attack object 0x4A). Each matches every frame of its lab recordings. The batch's shared modules
+objects/seed, attack object 0x4A); CannBall (objects/cannball, attack object 0x35: it breaks the panel it lands on);
+Geyser (objects/geyser, attack objects 0x42 and 0x43: BN6's BlkBomb code reworked, a splash of 10 on solid ground, in
+a hole a geyser whose water hits the eight panels around in a shuffled order); MetaGel (its controller, effect
+object 0x21, and gel, attack object 0x45: BN6's code no BN6 chip drops; a gel on each row's panel just ahead of the
+user's area, taking it); Magnum (BN5's own: its controller, effect object 0x30, and gunner, actor object 2, the
+shared stand-in's drawing, a sight stepping across the enemy's columns until A or 180 ticks, then the column shot
+and broken; its unused modes 1 and 2 too); VarSwrd (BN5's action 0x2A: BN6's sequences and BN5's picks, ProtoSoul
+and ShadowSoul waiting while A is up) with its hidden picks as chips, FtrSword (0x172: the shared slash over three
+panels) and SonicBom (0x173: BN5's action 0x2B, the sonic boom swing with the Katanas' step), whose records
+gen_content.py writes (its USED_CHIPS). The chip lab has VarSwrd's five commands and Magnum's A press besides the
+generated scenarios (chiplab's library-bn5, by hand). Each matches every frame of its lab recordings. The batch's
+shared modules
 (content/common, as above): airhocky/puck and flick, gundels/beam, bugbomb/bomb, snake/snake, yoyo/throw,
 tankcan/action and shell, lifesync/marker, moonbld/blade and bombs/seed, each BN6's at its old path its BN6 wrapper
 (BN6 the same). BN5's Cannon, HiCannon and M-Cannon draw BN5's cannon (0c-01) and sound; CircGun and DarkCirc share
@@ -1287,8 +1298,9 @@ Not shown by the labs: Static's bug levels 1 to 3; GunDelSol's held A; Katana's 
 Slasher's request 0x80000 (`actions.stun_strike`, BN5's action 0x49, unfilled) and its other console's chip name
 (`sub_801EB18`); lib/arm's NaviStats +0x4C and AIData +0x12 (read as 0); the kinds 4 and up of CrakBom's bomb (no
 chip throws them); battle flag 0x40's effect object 0x83 (0x080E9FD2, 0x080E9FA4: CrakBom's and Quake's bombs; never
-in a netbattle). **Waiting:** Wind, Fan, RockCube, BoyBomb1 to 3, RedFrut1 to 3, Voltz1 to 3 and VDoll (on BN5's
-field obstacles), and CannBall, Geyser, VarSwrd (its hidden picks 0x172 and 0x173), MetaGel and Magnum.
+in a netbattle); Geyser's geyser (no recording throws it into a hole); a computer-controlled navi's VarSwrd pick (its
+tactics' byte, 0x0802D4E2 +0x12: no such navi in the engine yet). **Waiting:** Wind, Fan, RockCube, BoyBomb1 to 3,
+RedFrut1 to 3, Voltz1 to 3 and VDoll (on BN5's field obstacles).
 
 ### 15.7 BN5's MegaMan, stages and roles (as built)
 

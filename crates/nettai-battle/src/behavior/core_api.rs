@@ -913,6 +913,10 @@ impl CoreApi for Battle {
         self.round.alive_actors[side as usize & 1].iter().flatten().copied().collect()
     }
 
+    fn tracked(&self, side: u8) -> Option<ObjectRef> {
+        self.sides[side as usize & 1].tracked
+    }
+
     fn objects_of_kind(&self, kind: u16) -> Vec<ObjectRef> {
         self.objects.in_order().filter(|&r| self.objects.get(r).kind.0 == kind).collect()
     }
@@ -925,8 +929,16 @@ impl CoreApi for Battle {
         self.rng.next_positive()
     }
 
+    fn console_rng_positive(&mut self, side: u8) -> u32 {
+        self.consoles[side as usize & 1].rng.next_positive()
+    }
+
     fn shuffle_order(&mut self, n: usize, rounds: usize) -> ApiResult<Vec<usize>> {
         shuffle_order(&mut self.rng, n, rounds)
+    }
+
+    fn console_shuffle_order(&mut self, side: u8, n: usize, rounds: usize) -> ApiResult<Vec<usize>> {
+        shuffle_order(&mut self.consoles[side as usize & 1].rng, n, rounds)
     }
 
     fn jitter(&mut self, mask: u32, pos: Vec3) -> Vec3 {
@@ -2434,6 +2446,14 @@ impl CoreApi for Battle {
         crate::dimming::hide_user_sparing(self, user);
     }
 
+    fn hide_actor(&mut self, o: ObjectRef) {
+        crate::dimming::hide_actor(self, o);
+    }
+
+    fn show_actor(&mut self, o: ObjectRef) {
+        crate::dimming::show_actor(self, o);
+    }
+
     fn clear_navicust_bugs(&mut self, side: u8) {
         let b = &mut self.stats[side as usize & 1].bugs;
         b.processing = 0;
@@ -2454,6 +2474,10 @@ impl CoreApi for Battle {
 
     fn navi_chip_left(&mut self, controller: ObjectRef) {
         kinds::navi_chip::navi_left(self, controller);
+    }
+
+    fn last_navi_chip(&self) -> Option<(ChipHandle, u8, u32)> {
+        self.last_navi_chip.map(|l| (l.chip, l.element, l.damage))
     }
 
     fn navi_warp(&mut self, user: ObjectRef, out: bool) {
