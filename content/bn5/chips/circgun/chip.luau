@@ -1,10 +1,10 @@
 --!strict
 -- CircGun (BN5 chip 0x061): a gun sight circles the enemy's area until A or 360 ticks, then leaves four shots on the
--- panels it passes: BN5's CircGun (objects/circgun: the shared CircGun with BN5's look, DarkCirc's kinds) of its
+-- panels it passes: BN5's CircGun (chips/circgun/circgun: the shared CircGun with BN5's look, DarkCirc's kinds) of its
 -- variant: period 2, 4 shots, look 0.
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local circgun = require("../../objects/circgun/circgun")
+local circgun = require("./circgun")
 
 return define.chip {
     id = "bn5:circgun",

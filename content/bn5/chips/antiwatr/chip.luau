@@ -1,9 +1,9 @@
 --!strict
 -- AntiWatr (BN5 chip 0x08d): a trap the other side's first aqua hit springs, striking back in aqua on every
--- panel the enemy stands on (objects/anti-trap: BN6's ElemTrap trap and counterattack, BN5's).
+-- panel the enemy stands on (lib/traps/anti_trap: BN6's ElemTrap trap and counterattack, BN5's).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local anti_trap = require("../../objects/anti-trap/trap")
+local anti_trap = require("../../lib/traps/anti_trap")
 
 return define.chip {
     id = "bn5:antiwatr",
