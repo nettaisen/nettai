@@ -1,6 +1,7 @@
 --!strict
--- Jealousy (BN5 chip 0x0d4): a cut-in chip whose effect hits every panel the opponent's side stands on once for each chip
--- the opponent holds, 10 ticks apart (./controller: BN5's effect object #0x36, BN6's code that no BN6 chip uses).
+-- Jealousy (BN5 chip 0x0d4): a cut-in chip whose effect hits every panel the opponent's side stands on once for
+-- each chip the opponent holds, 10 ticks apart (./controller: BN5's effect object #0x36, BN6's code that no BN6 chip
+-- uses).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local controller = require("./controller")
