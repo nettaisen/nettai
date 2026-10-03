@@ -409,26 +409,10 @@ impl Editor {
                 self.edited();
             }
             Msg::Ruleset(s, c) => {
-                let side = &mut self.m.sides[s];
-                side.ruleset = c.value;
-                // What the new rules don't have goes.
-                if !side.has_system(&content, nettai_match::FORMS_SYSTEM) {
-                    side.crosses = None;
-                }
-                if !side.has_system(&content, nettai_match::PATCH_CARDS_SYSTEM) {
-                    side.cards.clear();
-                }
-                if !side.has_system(&content, nettai_match::NAVICUST_SYSTEM) {
-                    side.navicust = None;
-                }
-                // (BN5's karma and souls, with rules that take them.)
-                if !nettai_match::facts::takes(&content, side, nettai_match::facts::SOULS_FIELD) {
-                    side.souls = None;
-                }
-                if !nettai_match::facts::takes(&content, side, nettai_match::facts::KARMA_FIELD) {
-                    side.karma = nettai_match::facts::DEFAULT_KARMA;
-                }
+                // What the new rules don't take goes (`Side::set_ruleset`).
+                self.m.sides[s].set_ruleset(&content, c.value);
                 self.typed.remove(&(s, "karma"));
+                self.sp_typed.retain(|&(x, _), _| x != s);
                 self.edited();
             }
             Msg::Navi(s, c) => {

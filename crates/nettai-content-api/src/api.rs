@@ -2040,6 +2040,18 @@ pub trait CoreApi {
     /// thrown at panel (x, y) after shaking `shake` ticks, hitting with the
     /// damage word `damage` (`sub_8018002` does it).
     fn obstacle_throw(&mut self, o: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32);
+    /// BN5's ColonelSoul army (docs/design/bn5-map.md §15.11): arm side
+    /// `side` (BattleState+0x5C bit 0x10 or 0x20, 0x080CAC1E) with its
+    /// soldiers' damage words (0x080CABF8): the sword soldier's and the gun
+    /// soldier's. While it is armed, an obstacle of a game whose rules have
+    /// `effects.obstacle_soldiers`, standing on a panel of the side's enemy,
+    /// turns into the side's soldier.
+    fn obstacle_arm_soldiers(&mut self, side: u8, sword: u32, gun: u32);
+    /// 0x080CAC30: disarm side `side`; its words stay.
+    fn obstacle_disarm_soldiers(&mut self, side: u8);
+    /// Whether side `side` is armed, and its words (0x080CAC06,
+    /// 0x080CAC12): what its soldiers strike with as they read them.
+    fn obstacle_soldiers(&self, side: u8) -> (bool, u32, u32);
     // ---- Field objects (obstacles) -------------------------------------------
 
     /// Whether another object asked `flag` of the field object `o`.

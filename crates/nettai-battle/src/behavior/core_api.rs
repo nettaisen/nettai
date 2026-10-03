@@ -2743,6 +2743,19 @@ impl CoreApi for Battle {
         kinds::obstacle::request_throw(self, o, side, x, y, shake, damage);
     }
 
+    fn obstacle_arm_soldiers(&mut self, side: u8, sword: u32, gun: u32) {
+        self.obstacle_soldiers[side as usize & 1] = kinds::obstacle::Soldiers { armed: true, words: [sword, gun] };
+    }
+
+    fn obstacle_disarm_soldiers(&mut self, side: u8) {
+        self.obstacle_soldiers[side as usize & 1].armed = false;
+    }
+
+    fn obstacle_soldiers(&self, side: u8) -> (bool, u32, u32) {
+        let s = self.obstacle_soldiers[side as usize & 1];
+        (s.armed, s.words[0], s.words[1])
+    }
+
     fn obstacle_present(&self, o: ObjectRef) -> bool {
         use kinds::obstacle::f2;
         self.objects
