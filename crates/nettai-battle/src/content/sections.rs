@@ -154,6 +154,10 @@ struct StatusSection {
     hp_bug_periods: [u8; 8],
     #[serde(default = "yes")]
     form_tick: bool,
+    #[serde(default)]
+    bugs_before_drain: bool,
+    #[serde(default)]
+    drain_bug_flags: bool,
 }
 
 fn yes() -> bool {
@@ -415,6 +419,10 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
             "status" => {
                 let s: StatusSection = r.read(spec, &at).map_err(e)?;
                 (rules.hp_bug_periods, rules.form_tick) = (s.hp_bug_periods, s.form_tick);
+                rules.intake = super::rules::IntakeRules {
+                    bugs_before_drain: s.bugs_before_drain,
+                    drain_bug_flags: s.drain_bug_flags,
+                };
             }
             "lockon" => {
                 let s: LockonSection = r.read(spec, &at).map_err(e)?;

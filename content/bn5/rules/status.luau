@@ -392,8 +392,15 @@ local status = {
         timer = { other = 0 },
     },
     -- BN5's per-form tick table (0x080EB1E8) runs none of BN6's `sub_80F0608` (the Fire charge, a form's
-    -- height): MegaMan's (0x080F04CE) steps GyroSoul's overlay (rules/souls).
-    rules = define.rules("bn5:status", { hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 }, form_tick = false }),
+    -- height): MegaMan's (0x080F04CE) steps GyroSoul's overlay (rules/souls). Its hit intake (0x080178EC) takes a
+    -- hit's NaviCust bug (0x0801103E) before the HP bug drains (0x0800DFEC), and a drain bug's argument goes by its
+    -- flags (bit 4 adds, bit 5 subtracts, else it raises the level).
+    rules = define.rules("bn5:status", {
+        hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 },
+        form_tick = false,
+        bugs_before_drain = true,
+        drain_bug_flags = true,
+    }),
 }
 
 return status
