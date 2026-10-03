@@ -4,7 +4,7 @@
 -- code) with BN5's held bomb and BugBomb.
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local bombs = require("../../lib/bombs")
+local bombs = require("../../lib/bombs/bombs")
 local bug_bomb = require("./bomb")
 local common = require("@common/bugbomb/bomb")
 

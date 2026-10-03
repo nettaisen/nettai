@@ -1,9 +1,9 @@
 --!strict
 -- DarkTorn (BN5 chip 0x0c5): a dark chip: action 0x22's third form, HP-bug tornadoes spreading back by the side's
--- statistic 3 (objects/tornado). Its use costs custom-screen damage (rules/light-dark).
+-- statistic 3 (chips/tornado/tornado). Its use costs custom-screen damage (rules/light-dark).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local tornado = require("../../objects/tornado/tornado")
+local tornado = require("../tornado/tornado")
 
 return define.chip {
     id = "bn5:darktorn",
