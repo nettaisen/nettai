@@ -6,7 +6,7 @@
 -- while paused and dimmed, but doesn't animate while dimmed. Each game makes its kind (`shield.make`) with its sound;
 -- its looks are the game's rows (`shield.look`).
 
-local slot = require("@bn6/lib/slot")
+local slot = require("@common/slot")
 
 local shield = {}
 

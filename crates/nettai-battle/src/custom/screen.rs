@@ -122,31 +122,6 @@ pub struct Slot {
     pub uses_left: u8,
 }
 
-/// The Crosses a screen offers (`+0x50`), by their place among the
-/// player's Crosses (0-4: the version's Cross number, or the place in the
-/// setup's Cross list, `Unlocks::cross_at`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct CrossWindow {
-    pub offered: [u8; CROSSES],
-    pub count: u8,
-    /// Per offered entry: chosen (only one can be).
-    pub marked: [bool; CROSSES],
-    /// The entry under the window's cursor.
-    pub cursor: u8,
-    /// The chosen Cross (its place), if any.
-    pub chosen: Option<u8>,
-}
-
-impl CrossWindow {
-    /// The Cross under the cursor, by its form: its place among the
-    /// player's Crosses (`Unlocks::cross_at`: the setup's Cross list's
-    /// entry, of either game, else the version's Cross with that number).
-    /// None when the content has no such Cross.
-    pub fn hovered(&self, unlocks: &Unlocks, library: &dyn Library, navi: nettai_content_api::NaviHandle) -> Option<nettai_content_api::FormHandle> {
-        unlocks.cross_at(library, navi, *self.offered.get(self.cursor as usize)?)
-    }
-}
-
 /// Where a player's screen is. Tick counts start at 1 on the tick after
 /// the one that entered the state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -157,26 +132,18 @@ pub enum Phase {
     Choosing,
     /// SELECT hid the window to look at the field (`sub_8026D06`).
     Hidden { stage: HiddenStage },
-    /// R shows the chip's description (`sub_8026E4C`); `from_cross_window`
-    /// for a Cross's description (`sub_8026E78`). The screen waits for its
-    /// chatbox to close.
-    Description { from_cross_window: bool, chatbox: Chatbox },
+    /// R shows the chip's description (`sub_8026E4C`), or a system's window
+    /// a form's (BN6's Cross window: the Cross's, `sub_8026E78`): `window`
+    /// the window it returns to, `form` the form described. The screen
+    /// waits for its chatbox to close.
+    Description { window: Option<WindowHandle>, form: Option<nettai_content_api::FormHandle>, chatbox: Chatbox },
     /// L: the "no time to run" message (`sub_8026E98`), whose chatbox
     /// starts on the state's first tick (`sub_8026EC8`) and is waited for
     /// from the next (`sub_8026FAA`).
     RunMessage { chatbox: Option<Chatbox> },
-    /// The Cross window opens (`sub_8027834`, 12 ticks).
-    CrossWindowOpening { tick: u8 },
-    /// The Cross window (`sub_802794A`); `entered`: its first tick, which
-    /// reads no input, has run.
-    CrossWindow { entered: bool },
-    /// The Cross window closes (`sub_802790C`, 6 ticks).
-    CrossWindowClosing { tick: u8 },
-    /// A Cross was chosen (`sub_8027A58`, 34 ticks).
-    CrossChosen { tick: u8 },
     /// A system's window is up (docs/design/rules-in-luau.md §4.4: BN6's
-    /// Beast Out, `sub_802770C`): its `update` runs each tick, `tick` from
-    /// 1, until it says it is done.
+    /// Beast Out, `sub_802770C`, and the Cross window): its `update` runs
+    /// each tick, `tick` from 1, until it says it is done.
     Window { window: WindowHandle, tick: u16 },
     /// BN5's soul button was picked (its state 9, 0x080232D0): `sub` its
     /// sub-state (0x080232F0's offsets 0 to 0x18), `counter` its count
@@ -299,7 +266,8 @@ pub struct Screen {
     pub chips_left: u8,
     /// Chips dealt at most.
     pub hand_size: u8,
-    /// The navi is MegaMan (the Cross window and Beast Out are his).
+    /// The navi changes form (MegaMan: the dark chips' cursor and the
+    /// window's colors are his).
     pub megaman: bool,
     /// The form a system's pick puts the navi in at the turn's start (BN6's
     /// Beast Out, `+0x17`), and the system's place in the side's ruleset.
@@ -308,7 +276,6 @@ pub struct Screen {
     /// BN5's soul button: the soul it offers or gave (slot 11's +5 and +6)
     /// and the slot of the chip given up for it (+4).
     pub soul: SoulButton,
-    pub crosses: CrossWindow,
     /// A Program Advance formed at OK: its animation runs after the
     /// window slides out.
     pub program_advance: Option<FormedAdvance>,
@@ -355,8 +322,6 @@ pub struct PlayerView<'a> {
 /// cleared on the round's first screen).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RoundMemory {
-    /// Crosses used this round, by their place (`CrossWindow`).
-    pub crosses_used: [bool; CROSSES],
     /// BN5's souls given this round (0x02034E10): bit n Soul Unison with
     /// soul n, bit 16 + n its Chaos Unison.
     pub souls_used: u32,
@@ -392,17 +357,14 @@ impl Screen {
             form: None,
             form_owner: None,
             soul: SoulButton::default(),
-            crosses: CrossWindow::default(),
             program_advance: None,
             hud: Banner::default(),
             look: ScreenLook::new(view.late_turns, false, None),
         };
         // The side's systems as the screen opens (BN6's: the round's
-        // Beast Out forgotten on its first screen, ChargeCross's screens).
+        // Beast Out and Crosses forgotten on its first screen, ChargeCross's
+        // screens, the Crosses offered and the window's Cross tab).
         extras.opened(&mut screen);
-        if view.crosses_allowed() && view.emotion != Emotion::WornOut {
-            screen.crosses = view.offered_crosses();
-        }
         // sub_802A40C: the side's rules' hand size (BN6's cross system's,
         // with ChargeCross's chips), else the framework's.
         screen.hand_size = extras.hand_size().unwrap_or_else(|| hand_size(view, turn));
@@ -414,11 +376,7 @@ impl Screen {
                 screen.cursor = s;
             }
         }
-        // sub_8026840: the window with the Cross tab while MegaMan has a
-        // Cross left this round; sub_8028476: the chip window shows the
-        // first slot.
-        screen.look.cross_tab =
-            screen.megaman && view.crosses_allowed() && view.emotion != Emotion::WornOut && view.crosses_left() != 0;
+        // sub_8028476: the chip window shows the first slot.
         screen.show_chip_window(folder, view);
         screen.draw_slots(folder, view);
         screen
@@ -569,25 +527,16 @@ impl Screen {
 
     /// `sub_80279C8`: the emblem, the Regular chip's frame and the last
     /// turns' block, drawn by the window's frame counter.
-    fn draw_window(&mut self, folder: &BattleFolder) {
+    pub(crate) fn draw_window(&mut self, folder: &BattleFolder) {
         self.look.draw_emblem(0);
         self.look.draw_regular(folder.regular_pending);
         self.look.draw_turn_limit();
     }
 
-    /// `sub_802794A`'s drawing: the window's sprites, the Crosses' names
-    /// (the frontend's, from `crosses`) and the Cross window's cursor; the
-    /// frame counts on.
-    fn draw_cross_window(&mut self, folder: &BattleFolder) {
-        self.draw_window(folder);
-        self.look.draw_cross_cursor();
-        self.look.frame += 1;
-    }
-
     /// `sub_802A394`: choosing chips or reading a chip's description, the
     /// cursor rests on a dark chip (as it counts in a selection).
     fn on_dark_chip(&self, view: &PlayerView, folder: &BattleFolder) -> bool {
-        matches!(self.phase, Phase::Choosing | Phase::Description { from_cross_window: false, .. })
+        matches!(self.phase, Phase::Choosing | Phase::Description { window: None, .. })
             && self.chip_in(self.cursor, folder).is_some_and(|c| is_dark(checked(c, view), view))
     }
 
@@ -642,7 +591,7 @@ impl Screen {
                 };
                 None
             }
-            Phase::Description { from_cross_window, mut chatbox } => {
+            Phase::Description { window, form, mut chatbox } => {
                 // The screen sees the chatbox closed the tick after it
                 // closes, and reads keys again the tick after that; the
                 // chatbox runs after the screen, each tick. The emblem is
@@ -650,11 +599,16 @@ impl Screen {
                 self.look.draw_emblem(0);
                 if !chatbox.is_open() {
                     self.look.play(ScreenSound::DescriptionClose);
-                    self.phase = if from_cross_window { Phase::CrossWindow { entered: false } } else { Phase::Choosing };
+                    // (Back to the window it came from: its first tick
+                    // again, which reads no keys.)
+                    self.phase = match window {
+                        Some(window) => Phase::Window { window, tick: 0 },
+                        None => Phase::Choosing,
+                    };
                     return None;
                 }
                 chatbox.update(joy.held, joy.pressed);
-                self.phase = Phase::Description { from_cross_window, chatbox };
+                self.phase = Phase::Description { window, form, chatbox };
                 None
             }
             Phase::RunMessage { chatbox } => {
@@ -677,96 +631,13 @@ impl Screen {
                 self.phase = Phase::RunMessage { chatbox: Some(chatbox) };
                 None
             }
-            Phase::CrossWindowOpening { tick } => {
-                // sub_8027834: the window's map changes every 3 ticks (the
-                // frontend's); on the 12th the Cross window is up, and its
-                // state runs at once.
-                let tick = tick + 1;
-                if tick == 1 {
-                    self.look.play(ScreenSound::CrossWindowOpen);
-                }
-                if tick >= 12 {
-                    self.phase = Phase::CrossWindow { entered: true };
-                    self.look.frame = 0;
-                    self.draw_cross_window(folder);
-                } else {
-                    self.phase = Phase::CrossWindowOpening { tick };
-                    self.look.frame = tick as u32;
-                    self.draw_window(folder);
-                }
-                None
-            }
-            Phase::CrossWindow { entered } => {
-                // sub_802794A: its first tick reads no keys; every tick
-                // draws, after the keys.
-                if entered {
-                    self.cross_window(joy, view, extras);
-                } else {
-                    self.phase = Phase::CrossWindow { entered: true };
-                    self.look.frame = 0;
-                }
-                self.draw_cross_window(folder);
-                None
-            }
-            Phase::CrossWindowClosing { tick } => {
-                // sub_802790C: after 5 ticks the window is the chips' again
-                // (`sub_80279FC`, `sub_80279C8`, `sub_8028476`).
-                let tick = tick + 1;
-                if tick == 1 {
-                    self.look.play(ScreenSound::CrossWindowClose);
-                }
-                self.look.frame = tick as u32;
-                if tick >= 6 {
-                    self.phase = Phase::Choosing;
-                    self.draw_window(folder);
-                    self.show_chip_window(folder, view);
-                } else {
-                    self.phase = Phase::CrossWindowClosing { tick };
-                }
-                self.look.draw_emblem(0);
-                self.look.draw_regular(folder.regular_pending);
-                None
-            }
-            Phase::CrossChosen { tick } => {
-                // sub_8027A58: 16 ticks, then the screen fades to white and
-                // back; when it is white the Cross is put on (`sub_8027AAE`:
-                // the face, the window, the sound), and when it is clear
-                // again the chips are chosen (`sub_8027ADE`).
-                let tick = tick + 1;
-                match tick {
-                    1 => self.look.frame = 0,
-                    2..=16 => self.look.frame += 1,
-                    17 => {
-                        self.look.frame = 0;
-                        self.look.fade.start(FadeMode::EndToWhite, CROSS_FADE_SPEED);
-                    }
-                    CROSS_PUT_ON_TICK => {
-                        self.look.fade.start(FadeMode::IntroFromWhite, CROSS_FADE_SPEED);
-                        if let Some(cross) = self.crosses.chosen {
-                            self.look.face = cross_face(view, cross);
-                        }
-                        self.draw_window(folder);
-                        self.show_chip_window(folder, view);
-                        self.look.play(ScreenSound::CrossChosen);
-                    }
-                    34 => {
-                        self.draw_window(folder);
-                        self.show_chip_window(folder, view);
-                    }
-                    _ => {}
-                }
-                self.look.draw_emblem(0);
-                self.look.draw_regular(folder.regular_pending);
-                self.phase = if tick >= 34 { Phase::Choosing } else { Phase::CrossChosen { tick } };
-                None
-            }
             Phase::Window { window, tick } => {
                 // The system's window (BN6's Beast Out, `sub_802770C`): its
                 // update, then back to choosing when it is done (unless it
                 // moved the screen on itself).
                 let tick = tick.saturating_add(1);
                 self.phase = Phase::Window { window, tick };
-                let stays = extras.window_update(self, folder, console, window);
+                let stays = extras.window_update(self, folder, console, joy, window);
                 if !stays && self.phase == (Phase::Window { window, tick }) {
                     self.phase = Phase::Choosing;
                 }
@@ -929,18 +800,14 @@ impl Screen {
     /// State 4 (`sub_8028B74`): one key per tick. Directions (auto-repeat)
     /// come first, then A, B, START, SELECT, R and L (pressed).
     fn choose(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, extras: &mut dyn super::Extras) -> Option<Request> {
+        // The side's systems first (BN6's UP opening the Cross window, which
+        // the original asks before the cursor's UP).
+        if (joy.repeat | joy.pressed) != 0 && extras.keys(self, folder, joy) {
+            return None;
+        }
         let here = self.slots[self.cursor as usize];
         let rep = joy.repeat;
         let target = if rep & (keys::UP | keys::DOWN) != 0 {
-            if rep & keys::UP != 0
-                && self.megaman
-                && self.form.is_none()
-                && self.crosses.count != 0
-                && (self.cursor == OK_SLOT || self.cursor <= 4)
-            {
-                self.phase = Phase::CrossWindowOpening { tick: 0 };
-                return None;
-            }
             Some(here.vertical)
         } else if rep & keys::LEFT != 0 {
             Some(here.left)
@@ -977,7 +844,7 @@ impl Screen {
             // invalid chip's description.
             if let Some(c) = self.chip_in(self.cursor, folder) {
                 let lines = view.library.chip(checked(c, view).id).description_lines;
-                self.describe(joy, lines, false);
+                self.describe(joy, lines, None, None);
                 self.look.play(ScreenSound::Description);
             }
         } else if p & keys::L != 0 {
@@ -1037,7 +904,7 @@ impl Screen {
 
     /// The systems' buttons that say (BN6's Beast Out, `sub_8028F48`; its
     /// scrap, `sub_8028F84`), unless used up or picked.
-    fn refresh_buttons(&mut self, extras: &mut dyn super::Extras) {
+    pub(crate) fn refresh_buttons(&mut self, extras: &mut dyn super::Extras) {
         for s in 0..SLOTS {
             if let SlotKind::Button { button, cell: ButtonCell::Only | ButtonCell::Left } = self.slots[s].kind
                 && self.slots[s].state != SlotState::Selected
@@ -1063,6 +930,11 @@ impl Screen {
             "beast_out_gregar" => ScreenSound::BeastOut(super::GameVersion::Gregar),
             "beast_out_falzar" => ScreenSound::BeastOut(super::GameVersion::Falzar),
             "beast_out_flash" => ScreenSound::BeastOutFlash,
+            "cursor" => ScreenSound::Cursor,
+            "description" => ScreenSound::Description,
+            "cross_window_open" => ScreenSound::CrossWindowOpen,
+            "cross_window_close" => ScreenSound::CrossWindowClose,
+            "cross_chosen" => ScreenSound::CrossChosen,
             _ => return false,
         };
         self.look.play(sound);
@@ -1077,9 +949,9 @@ impl Screen {
         }
     }
 
-    /// `custom.open_window`.
-    pub fn open_window(&mut self, window: WindowHandle) {
-        self.phase = Phase::Window { window, tick: 0 };
+    /// `custom.open_window`: `ticks` the ticks it has had already.
+    pub fn open_window(&mut self, window: WindowHandle, ticks: u16) {
+        self.phase = Phase::Window { window, tick: ticks };
     }
 
     /// The window's ticks so far (from 1), if one is up.
@@ -1155,7 +1027,7 @@ impl Screen {
     }
 
     /// `sub_8028476`: the chip window shows the slot under the cursor.
-    fn show_chip_window(&mut self, folder: &BattleFolder, view: &PlayerView) {
+    pub(crate) fn show_chip_window(&mut self, folder: &BattleFolder, view: &PlayerView) {
         let chip = self.chip_in(self.cursor, folder).map(|c| checked(c, view));
         let w = &mut self.look.chip_window;
         w.slot = self.cursor;
@@ -1170,17 +1042,14 @@ impl Screen {
         self.selected += 1;
     }
 
-    /// B (`sub_8029032`): take back the last pick; with none, the Cross.
+    /// B (`sub_8029032`): take back the last pick; with none, what a
+    /// system takes back (BN6's Cross).
     fn deselect(&mut self, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) {
         if self.selected == 0 {
-            let Some(_) = self.crosses.chosen else {
+            if !extras.take_back(self, folder) {
                 self.look.play(ScreenSound::Refused);
                 return;
-            };
-            self.crosses.marked[self.crosses.cursor as usize] = false;
-            self.crosses.chosen = None;
-            self.look.face = None;
-            self.look.play(ScreenSound::Cancel);
+            }
         } else if self.slots[self.selection[self.selected as usize - 1] as usize].kind == SlotKind::Soul {
             // 0x08024D44: taking the soul back puts the chip given up for
             // it back in its place, and the button is on offer again.
@@ -1206,63 +1075,21 @@ impl Screen {
         self.look.play(ScreenSound::Back);
     }
 
-    /// The Cross window's keys (`sub_8028A78`).
-    fn cross_window(&mut self, joy: &Joypad, view: &PlayerView, extras: &mut dyn super::Extras) {
-        let w = &mut self.crosses;
-        if w.chosen.is_none() {
-            let n = w.count;
-            if joy.repeat & (keys::UP | keys::DOWN) != 0 {
-                w.cursor = if joy.repeat & keys::UP != 0 {
-                    if w.cursor == 0 { n - 1 } else { w.cursor - 1 }
-                } else if w.cursor + 1 >= n {
-                    0
-                } else {
-                    w.cursor + 1
-                };
-                if n > 1 {
-                    self.look.play(ScreenSound::Cursor);
-                }
-                return;
-            }
-            if joy.pressed & keys::A != 0 {
-                let i = w.cursor as usize;
-                if w.marked[i] {
-                    self.look.play(ScreenSound::Refused);
-                    return;
-                }
-                self.look.play(ScreenSound::Pick);
-                let w = &mut self.crosses;
-                w.marked[i] = true;
-                w.chosen = Some(w.offered[i]);
-                self.phase = Phase::CrossChosen { tick: 0 };
-                // A chosen Cross grays out Beast Out (its button's state).
-                self.refresh_buttons(extras);
-                return;
-            }
-        }
-        let p = joy.pressed;
-        if p & keys::B != 0 {
-            self.phase = Phase::CrossWindowClosing { tick: 0 };
-        } else if p & keys::START != 0 {
-            self.cursor = OK_SLOT;
-            self.phase = Phase::CrossWindowClosing { tick: 0 };
-            self.look.play(ScreenSound::Cursor);
-        } else if p & keys::R != 0 {
-            // The cursor's Cross's description: that Cross's own (with a
-            // setup's Cross list, of whichever game it is).
-            let form = self.crosses.hovered(view.unlocks, view.library, view.stats.navi);
-            let lines = form.map_or(3, |f| view.library.cross_description_lines(f));
-            self.describe(joy, lines, true);
-            self.look.play(ScreenSound::Description);
-        }
-    }
-
     /// R: a description's chatbox (`chatbox_runScript` in the key's
     /// handler), which runs its first tick this tick.
-    fn describe(&mut self, joy: &Joypad, lines: u8, from_cross_window: bool) {
+    fn describe(&mut self, joy: &Joypad, lines: u8, window: Option<WindowHandle>, form: Option<nettai_content_api::FormHandle>) {
         let mut chatbox = Chatbox::new(Script::Description { breaks: lines.saturating_sub(1) });
         chatbox.update(joy.held, joy.pressed);
-        self.phase = Phase::Description { from_cross_window, chatbox };
+        self.phase = Phase::Description { window, form, chatbox };
+    }
+
+    /// `custom.describe`: R in the window up, `form`'s description (`lines`
+    /// long), back to the window when it closes. False when no window is
+    /// up.
+    pub fn describe_form(&mut self, joy: &Joypad, lines: u8, form: Option<nettai_content_api::FormHandle>) -> bool {
+        let Phase::Window { window, .. } = self.phase else { return false };
+        self.describe(joy, lines, Some(window), form);
+        true
     }
 
     /// DustCross's scrap (`sub_8027406`): every 25 ticks the last picked
@@ -1603,13 +1430,6 @@ const SOUL_FADE_SPEED: u8 = 32;
 /// second tick (`sub_8027434`).
 const SCRAP_TIMER_START: u32 = 0x18;
 
-/// The tick of a Cross's choice the white fade is over and the Cross put
-/// on (`sub_8027AAE`: 16 ticks, then 8 steps of the fade, then one more).
-pub const CROSS_PUT_ON_TICK: u8 = 25;
-
-/// The speed of the white fade a Cross's choice runs.
-const CROSS_FADE_SPEED: u8 = 0x20;
-
 /// The window's offset off the screen, and its slide a tick.
 const SLIDE: u32 = 0x78;
 const SLIDE_STEP: u32 = 12;
@@ -1625,16 +1445,6 @@ fn scan(list: &[u8], start: u8, absent: impl Fn(u8) -> bool) -> u8 {
         i += 1;
     }
     list[i]
-}
-
-/// `sub_802A088`: the face of the Cross chosen (by its place), its Beast
-/// form's while the navi is in Beast Out.
-fn cross_face(view: &PlayerView, cross: u8) -> Option<nettai_content_api::FormHandle> {
-    let form = view.unlocks.cross_at(view.library, view.stats.navi, cross)?;
-    match view.library.form_kind(view.stats.form) {
-        crate::content::FormKind::Base | crate::content::FormKind::Cross => Some(form),
-        _ => view.library.form_in_beast_out(form),
-    }
 }
 
 
@@ -1723,52 +1533,6 @@ impl PlayerView<'_> {
     /// What the screen asks of the navi's form.
     pub fn form_traits(&self) -> FormTraits {
         self.library.form_traits(self.stats.form)
-    }
-
-    /// `sub_8029F70` (battle modes 0, 0xA and 0xB).
-    fn crosses_allowed(&self) -> bool {
-        !self.random_battle
-            && if self.unlocks.beast_out_sealed {
-                self.megaman()
-            } else {
-                !self.per_player_gauges
-            }
-    }
-
-    /// `sub_8029EC8`: how many Crosses the navi owns and hasn't used this
-    /// round.
-    fn crosses_left(&self) -> usize {
-        (0..CROSSES as u8).filter(|&i| self.unlocks.owns_cross(i) && !self.round.crosses_used[i as usize]).count()
-    }
-
-    /// `sub_8029EF8`: the Crosses owned, not used this round, and not the
-    /// one the navi starts battles in.
-    fn offered_crosses(&self) -> CrossWindow {
-        let mut w = CrossWindow::default();
-        for i in 0..CROSSES as u8 {
-            // (A Cross the content doesn't have isn't offered.)
-            let Some(form) = self.unlocks.cross_at(self.library, self.stats.navi, i) else { continue };
-            let starting = self.stats.starting_form;
-            if self.unlocks.owns_cross(i) && !self.round.crosses_used[i as usize] && starting != form && self.listed_cross_fits(form) {
-                w.offered[w.count as usize] = i;
-                w.count += 1;
-            }
-        }
-        w
-    }
-
-    /// What a setup's Cross list (`Unlocks::cross_list`, nettai's
-    /// extension) offers of its entries: Crosses only, and in a Beast
-    /// form only the Crosses whose Beast it is (that game's: their forms
-    /// in Beast Out are that Beast's). Everything else offers.
-    fn listed_cross_fits(&self, form: nettai_content_api::FormHandle) -> bool {
-        if self.unlocks.cross_list.is_none() {
-            return true;
-        }
-        let current = self.stats.form;
-        let in_beast = self.library.form_kind(current).is_beast();
-        self.library.form_kind(form) == crate::content::FormKind::Cross
-            && !(in_beast && self.library.form_game(form) != self.library.form_game(current))
     }
 
 

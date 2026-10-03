@@ -5,7 +5,7 @@
 -- barrier on the user with its visual, then waits 61 ticks. Each game makes its own (`controller.make`) with its
 -- barriers' raise; a chip's `dimming` hook is the made controller's `hook(barrier)`.
 
-local dimming_chips = require("@bn6/lib/dimming")
+local dimming_chips = require("@common/dimming")
 
 local controller = {}
 

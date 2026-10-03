@@ -8,7 +8,7 @@
 -- corns (chips/cornsht/corn) that don't spread.
 
 local collision = require("../../rules/collision")
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 local corn = require("../cornsht/corn")
 
 local sower = {}

@@ -9,7 +9,7 @@
 
 local arm_launch = require("../../lib/arm-launch")
 local collision = require("../../rules/collision")
-local regions = require("@bn6/lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 
 local woodnos = {}

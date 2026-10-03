@@ -317,6 +317,10 @@ all twelve player-screens of the three scenarios match there too. Unit tests: cu
 
 ## 4. Beast Out and Crosses
 
+BN6's Beast Out and its Cross window are its rules' (docs/design/rules-in-luau.md §4.4): the beast system's
+button and windows (content/bn6/rules/beast/custom.luau) and the cross system's windows
+(content/bn6/rules/cross/window.luau), whose state holds what this section's screen remembers.
+
 **Who gets what** (per player; the original reads the local save):
 
 - The Beast Out button (slot 11) exists for MegaMan with Beast Out unlocked (event flag 0xE0) and event flag 0x163
@@ -342,7 +346,7 @@ un-chooses it. Beast Out goes first in the pick list once its animation ends, so
 | Beast Out in a Cross | the Cross's Beast form (Cross + 0x0C) |
 | Cross i | Gregar 1 + i, Falzar 6 + i; + 0x0C when in a Beast form |
 
-The round remembers Beast Out and each Cross used (`dword_20349A0`, `custom::RoundMemory`). No NaviStats change
+The round remembers Beast Out and each Cross used (`dword_20349A0`: the beast and cross systems' state). No NaviStats change
 here: the form changes at the turn's start (battle-flow.md §3.4.1). The transform record's +3 (a turn count) is
 never read in battle and is not modeled; its +4 ("Cross change") is always 0xFF (its only writer is dead code).
 All 20 recorded transformations match **[dumps]** (Crosses 2, 5, 6, 7, 0x0A, Beast Out 0x0B, 0x0C, 0x11).
@@ -356,8 +360,8 @@ Crosses (docs/frontend.md §2). Without a list (every recording, the chip lab, t
 applies and the screen is the original's.
 
 - **Places.** The window's entries, the Cross chosen and the round's record of Crosses used go by a Cross's place
-  among the player's Crosses (`CrossWindow::offered`, `RoundMemory::crosses_used`): the version's Cross number
-  without a list, the place in the list with one (`Unlocks::cross_at`, `owns_cross`). Everything else is as above:
+  among the player's Crosses (the cross system's `offered` and `crosses_used`): the version's Cross number without
+  a list, the place in the list with one (window.luau's `cross_at` and `owns_cross`, as `Unlocks`'). Everything else is as above:
   a Cross used this round and the navi's starting form aren't offered, A chooses, B takes it back, the face is the
   Cross's, OK sends the Cross's form (its form in Beast Out when the navi is in a Beast form).
 - **What a list offers.** Its entries that are Crosses (a form of kind `cross`; anything else is never offered),
@@ -599,7 +603,8 @@ reads depends on it.
   the Cross window its own cursor (`sub_80289E4`); closing the Cross window, putting a Cross on and the re-deal's
   end draw the chip window again (`sub_8028476`). A Cross's choice whitens the screen on the screen's fade (mode 4
   then 0, at 0x20 a frame) and, once white, shows the Cross's face (`sub_802A088`: its Beast form's in Beast Out).
-  The Cross window's names and palette 10 are the frontend's, from the screen's Cross window.
+  The Cross window's names and palette 10 are the frontend's, from the cross system's state (nettai-render's
+  `CrossWindow`, by its fields' names).
 - **The scrap**: each chip scrapped takes its icon off the picked column (`sub_80281D4`) and draws the chip window
   again; the slots' tiles keep the look they were last drawn with (`look.slot_picked`: a picked chip's slot shows
   the empty icon until the slots are drawn again, on the scrap's last tick).

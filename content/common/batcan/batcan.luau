@@ -10,15 +10,17 @@
 -- Each game makes its own (`batcan.make`) with its look: the bat cannon, the sound, the shot's collision types and
 -- spark, and whether raising the cannon restarts the navi's form overlay (BN6's; BN5's 0x080EE448 doesn't).
 
-local attachment = require("@bn6/objects/attachment/attachment")
+local attachment = require("@common/attachment/attachment")
 
 local batcan = {}
 
 export type Look = {
     -- The shot kind's id.
     shot_id: string,
-    -- The bat cannon (BN6's attachment row 0xF, BN5's 0x21: it sits at a fixed offset by its holder).
+    -- The bat cannon (BN6's attachment row 0xF, BN5's 0x21: it sits at a fixed offset by its holder), and the
+    -- game's attachment kind that holds it.
     bat: AttachmentLook,
+    attachment: Kind,
     sound: Sound,
     shot: { is: CollisionType, hits: CollisionType, spark: Spark },
     -- Raising the cannon restarts the navi's form overlay (BN6's).
@@ -170,7 +172,7 @@ function batcan.make(look: Look): BatCan
                 if held then
                     held:set_lifecycle("destroy")
                 end
-                attachment.attach(me, look.bat, "related")
+                attachment.attach(look.attachment, me, look.bat, "related")
                 me:set_status("using_action", true)
                 me.step_init = 4
                 return

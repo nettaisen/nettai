@@ -21,7 +21,7 @@
 -- and the telop's chip. Related object 1 is the host.
 
 local beat = require("./beat")
-local dimming_chips = require("../dimming")
+local dimming_chips = require("@common/dimming")
 local rush = require("./rush")
 local tango = require("./tango")
 

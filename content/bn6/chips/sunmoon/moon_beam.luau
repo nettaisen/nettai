@@ -13,7 +13,7 @@ export type State = {
 }
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local moon_beam = {}
 

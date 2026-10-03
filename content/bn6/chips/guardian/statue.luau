@@ -13,8 +13,11 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local common = require("@common/guardian/statue")
+local effects = require("../../lib/effects")
+local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local strike = require("./strike")
 
 local statue = {}
@@ -52,7 +55,9 @@ local made = common.make {
     strike_is = collision.thrown_piercing_break,
     strike_hits = collision.hits_navis,
     strike = strike,
-    absorbs = true,
+    absorbed = absorbed_obstacle.look { sprite = SPRITE },
+    effects = { puff = effects.puff },
+    bubble = rising_bubble.kind,
 }
 statue.kind = made.kind
 statue.spawn = made.spawn

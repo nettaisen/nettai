@@ -2,8 +2,8 @@
 -- The plus chips used on their own (instant chip effect 3, `sub_8010488`,
 -- run once by action 0x1C): from a special source (battle flag 0x40 mode)
 -- the chip's damage, and an extra, go into the bonus its side stores for
--- its special chip; otherwise a sparkle (objects/rising-bubble) rises by
--- the navi. On the custom screen a plus chip folds into the chip before it
+-- its special chip; otherwise a sparkle (@common/instant/sparkle, BN6's
+-- bubble) rises by the navi. On the custom screen a plus chip folds into the chip before it
 -- (its `modifier`); this is its use alone.
 --
 -- Atk+10, Atk+30, FinalGun, NumTrap, MegaBstr and DarkPlus are `instant =
@@ -13,12 +13,9 @@
 -- invalid chip's are the sparkle alone (`plus.sparkle_alone`).
 
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
+local sparkle = require("@common/instant/sparkle")
 
 local plus = {}
-
--- The sparkle: 4 pixels toward the enemy's side, 48 up; and its sound.
-local TOWARD, HEIGHT = 4, 48
-local SPARKLE_SOUND = asset.sound("bn6:panel-poison")
 
 local BONUS_SOUND = asset.sound("bn6:bonus")
 
@@ -32,12 +29,7 @@ plus.PARALYZE, plus.UNINSTALL = 0x4000, 0x2000
 
 -- `loc_80104B6` (shared with `sub_80104E0`): a sparkle by the navi's
 -- panel, on the enemy's side of it.
-function plus.sparkle(user: Object)
-    local x, y = field.center(user.panel_x, user.panel_y)
-    local toward = 1 - 2 * user.alliance
-    rising_bubble.spawn(Vec3.new(x + int.shl(toward * TOWARD, 16), y, int.shl(HEIGHT, 16)), 0)
-    battle.play_sound(SPARKLE_SOUND)
-end
+plus.sparkle = sparkle.make(rising_bubble.kind, asset.sound("bn6:panel-poison"))
 
 -- `sub_8010488`: from a special source, the attack's damage plus `extra`
 -- into the side's bonus `bonus`; else the sparkle.

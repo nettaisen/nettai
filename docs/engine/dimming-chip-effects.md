@@ -942,7 +942,7 @@ and Cross scenarios use the index − 0x18 attachment. `counter-cut-in` reaches 
 non-player user, the user deleted before the effect, no player for formula 21.
 
 **Ported**: chips/numbrbl (`numbrbl/controller` with the navi chip phases, `numbrbl/numberman` on
-lib/dimming/stand_in, `numbrbl/ball`); the chip's damage is the formula `hp_last_digits` (21). The arm's record index comes from the user's NameID: MegaMan's (0x1A0) is 0 and his forms' (0x1AB + form)
+content/common/dimming/stand_in, `numbrbl/ball`); the chip's damage is the formula `hp_last_digits` (21). The arm's record index comes from the user's NameID: MegaMan's (0x1A0) is 0 and his forms' (0x1AB + form)
 0x18 + form, so the arm's animation is the form; other navis' (1 to 11) get none. Lab: 22/22.
 
 ## 16. Subtype 29: CornFsta (T4#0x68, T1#0x1E, T3#0xAA, T3#0x10)
@@ -1038,7 +1038,7 @@ an opponent of 40 HP, and the corn and its bursts end with the battle. `stage-ho
 panels leave them. **Unverified**: no panel for a burst, the free panels all in the ring, a failed spawn.
 (The moving burst and the spread, Param1 0 or 1..0xFE, are CornSht's: shot-chips.md §9.1.)
 
-**Ported**: chips/cornfsta (`cornfsta/controller`, `cornfsta/farmer` on lib/dimming/stand_in with the
+**Ported**: chips/cornfsta (`cornfsta/controller`, `cornfsta/farmer` on content/common/dimming/stand_in with the
 user's NameID, `cornfsta/sower` for T3#0xAA); the bursts are CornSht's corns (chips/cornsht/corn, generation
 0xFF) and the farmer holds CornSht's gun. Lab: 8/8.
 

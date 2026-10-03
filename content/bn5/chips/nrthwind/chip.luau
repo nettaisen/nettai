@@ -7,8 +7,8 @@
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local collision = require("../../rules/collision")
-local dimming_chips = require("@bn6/lib/dimming")
-local regions = require("@bn6/lib/regions")
+local dimming_chips = require("@common/dimming")
+local regions = require("@common/regions")
 
 -- A streak (effect object #0x3A, BN6's `sub_80E4848`): sheet 0c-00's animation 0 (in palette 0), blown forward
 -- 16 pixels a tick, thrown up and falling, for 30 ticks.
