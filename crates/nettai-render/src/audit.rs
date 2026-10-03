@@ -22,7 +22,7 @@
 //! everything they named, not that they look or sound like the original
 //! (the frame comparison outside this repository checks that).
 
-use nettai_battle::content::{BackgroundId, BannerId, Content, MugshotId, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, Content, MugshotId, PackId, SpriteId};
 use nettai_battle::custom::GameVersion;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 use std::collections::{BTreeMap, HashSet};
@@ -40,9 +40,13 @@ pub enum Lookup {
     Palette(SpriteId, u8, u8),
     /// A background, in its pack.
     Background(BackgroundId),
-    /// The field's panel block for a panel type, owner (0 the viewer's)
-    /// and row (1..=3).
-    Panel(u8, u8, u8),
+    /// A pack's field's panel block for a panel type (the engine's
+    /// number), owner (0 the viewer's) and row (1..=3).
+    Panel(PackId, u8, u8, u8),
+    /// A panel type (the engine's number), or a highlight (16 + its number),
+    /// that no loaded pack's field draws in an arena of a pack's: a tinted
+    /// normal panel (`stage::FieldArt`).
+    PanelTint(PackId, u8),
     /// A chip's icon (over the navi, on the custom screen's slots).
     ChipIcon(ChipHandle),
     /// A chip's picture in the chip window.
@@ -121,12 +125,14 @@ impl Lookup {
         let chip = |h: ChipHandle| &c.defs.chip(h).key;
         let navi = |h: NaviHandle| &c.defs.navi(h).key;
         let form = |h: FormHandle| &c.defs.form(h).key;
+        let pack_name = |p: PackId| c.assets.packs.get(p.index()).map_or(format!("pack {}", p.index()), String::clone);
         match *self {
             Lookup::Sprite(id) => format!("sprite {}", sprite(id)),
             Lookup::Animation(id, anim) => format!("sprite {} animation {anim}", sprite(id)),
             Lookup::Palette(id, set, index) => format!("sprite {} palette {set}/{index}", sprite(id)),
             Lookup::Background(id) => format!("background {}", asset(AssetKind::Background, id.0)),
-            Lookup::Panel(kind, owner, row) => format!("panel {kind} owner {owner} row {row}"),
+            Lookup::Panel(pack, kind, owner, row) => format!("panel {kind} owner {owner} row {row} in {}", pack_name(pack)),
+            Lookup::PanelTint(arena, kind) => format!("panel {kind} tinted in an arena of {}", pack_name(arena)),
             Lookup::ChipIcon(h) => format!("chip {} icon", chip(h)),
             Lookup::ChipArt(h) => format!("chip {} picture", chip(h)),
             Lookup::ChipName(h) => format!("chip {} name", chip(h)),
@@ -173,6 +179,9 @@ pub struct Problems {
     pub known: Vec<Known>,
     /// Every distinct lookup made so far, each checked once.
     lookups: HashSet<Lookup>,
+    /// What is drawn otherwise than the packs would, by design, and said,
+    /// not counted (a panel no pack draws, drawn tinted).
+    said: BTreeMap<String, Seen>,
 }
 
 /// A place of a frame where the frontend differs from the original on
@@ -205,6 +214,21 @@ impl Problems {
         s.last = frame;
     }
 
+    /// Note what is drawn otherwise by design: said, not counted as a
+    /// problem.
+    pub fn say(&mut self, what: String) {
+        let frame = self.frame;
+        let s = self.said.entry(what).or_insert(Seen { count: 0, first: frame, last: frame });
+        s.count += 1;
+        s.last = frame;
+    }
+
+    /// What was said ([`Problems::say`]), as [`Problems::lines`] says the
+    /// problems.
+    pub fn said_lines(&self) -> Vec<String> {
+        lines(&self.said)
+    }
+
     /// Note a lookup: true the first time it is made this run, when the
     /// caller checks it (a lookup is checked once a run).
     pub fn lookup(&mut self, l: Lookup) -> bool {
@@ -235,14 +259,19 @@ impl Problems {
 
     /// One line per problem: the text, how often, and the frames.
     pub fn lines(&self) -> Vec<String> {
-        self.iter()
-            .map(|(what, s)| match (s.first, s.last) {
-                (Some(a), Some(b)) if a != b => format!("{what} ({} times, frames {a}..={b})", s.count),
-                (Some(a), _) => format!("{what} (frame {a})"),
-                _ => format!("{what} ({} times)", s.count),
-            })
-            .collect()
+        lines(&self.seen)
     }
+}
+
+/// One line per entry: the text, how often, and the frames.
+fn lines(seen: &BTreeMap<String, Seen>) -> Vec<String> {
+    seen.iter()
+        .map(|(what, s)| match (s.first, s.last) {
+            (Some(a), Some(b)) if a != b => format!("{what} ({} times, frames {a}..={b})", s.count),
+            (Some(a), _) => format!("{what} (frame {a})"),
+            _ => format!("{what} ({} times)", s.count),
+        })
+        .collect()
 }
 
 #[cfg(test)]
