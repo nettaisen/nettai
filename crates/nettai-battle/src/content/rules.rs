@@ -100,13 +100,32 @@ pub struct EffectsRules {
     /// longer.
     #[serde(default = "yes")]
     pub spark_steps_at_start: bool,
+    /// How an object's collision types are set again (`sub_801A082`).
+    #[serde(default)]
+    pub retype: RetypeRule,
 }
 
 impl Default for EffectsRules {
     /// BN6's.
     fn default() -> EffectsRules {
-        EffectsRules { shake: ShakeRule::default(), spark_steps_at_start: true }
+        EffectsRules { shake: ShakeRule::default(), spark_steps_at_start: true, retype: RetypeRule::default() }
     }
+}
+
+/// How `sub_801A082` (an object's damage, hit modifier and collision types
+/// set again: `reset_collision_types`) goes.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RetypeRule {
+    /// BN6's: what it is and what it hits, marked as made while dimmed
+    /// when the battle is.
+    #[default]
+    Bn6,
+    /// BN5's (0x08016B9E): what it is alone, never marked; its store of
+    /// what it hits goes to the row number plus 0x34, a BIOS address no
+    /// write reaches, so it keeps hitting what it did. A bug code's
+    /// garbage high byte is the target lookup's offset, as the setup's.
+    Bn5,
 }
 
 /// How the camera shakes (`camera_doShakeEffect_80301e8`).

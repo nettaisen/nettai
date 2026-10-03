@@ -1672,6 +1672,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "clear_emotion_window_glitch", |_, ()| with(|api, _| Ok(api.clear_emotion_window_glitch())));
     lib_fn!(lua, t, "fill_custom_gauge", |_, ()| with(|api, _| Ok(api.fill_custom_gauge())));
+    lib_fn!(lua, t, "drain_custom_gauge", |_, n: LuaValue| {
+        let n = u16_arg(n, "gauge")?;
+        with(|api, _| Ok(api.drain_custom_gauge(n)))
+    });
     lib_fn!(lua, t, "add_side_gauge", |_, (side, n): (LuaValue, LuaValue)| {
         let (side, n) = (u8_arg(side, "side")? & 1, u16_arg(n, "gauge")?);
         with(|api, _| Ok(api.add_side_gauge(side, n)))
@@ -2139,6 +2143,13 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         }
     });
     lib_fn!(lua, t, "swallowable", |_, o: Me| with(|api, _| Ok(api.obstacle_swallowable(o.0))));
+    lib_fn!(lua, t, "throwable", |_, o: Me| with(|api, _| Ok(api.obstacle_throwable(o.0))));
+    lib_fn!(lua, t, "throw", |_, (o, side, x, y, shake, damage): (Me, u8, u8, u8, u8, u32)| {
+        with(|api, _| {
+            api.obstacle_throw(o.0, side, x, y, shake, damage);
+            Ok(())
+        })
+    });
     for &r in ObstacleRequest::ALL {
         t.set(
             r.name(),
