@@ -205,3 +205,5 @@
 "bn5:blakwing/wing" = { pool = "attack", index = 0x7F }
 "bn5:csmopris/navi" = { pool = "actor", index = 0x26 }
 "bn5:csmopris/comet" = { pool = "attack", index = 0x74 }
+"bn5:football/navi" = { pool = "actor", index = 0x25 }
+"bn5:football/ball" = { pool = "attack", index = 0x95 }
