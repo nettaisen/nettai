@@ -288,7 +288,8 @@ function top.make(look: AirSpinTopLook): AirSpinTop
             battle.play_sound(look.sounds.hit_bomb)
             leave(me)
         else
-            if look.extra_spins and (bit32.btest(c.hit_flags, EXTRA_SPIN_HIT) or bit32.btest(c.damage_elements, WIND)) then
+            local wind_hit = bit32.btest(c.hit_flags, EXTRA_SPIN_HIT) or bit32.btest(c.damage_elements, WIND)
+            if look.extra_spins and wind_hit then
                 local s = me.state :: State
                 s.spins += 1
             end
@@ -383,7 +384,15 @@ function top.make(look: AirSpinTopLook): AirSpinTop
     -- `damage`. It runs while dimmed and is its side's class-1 field object
     -- at once. Its position is the spawner's registers (the panel Y, the
     -- element and 0) until its init places it.
-    local function spawn(owner: Object, x: number, y: number, element: number, palette: number, spins: number, damage: number): Object?
+    local function spawn(
+        owner: Object,
+        x: number,
+        y: number,
+        element: number,
+        palette: number,
+        spins: number,
+        damage: number
+    ): Object?
         local o = battle.spawn(kind, Vec3.new(y, element, 0))
         if o then
             o.panel_x, o.panel_y = x, y
