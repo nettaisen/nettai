@@ -1,7 +1,7 @@
 --!strict
 -- SumnBlk's dimming controller (the original's effect object #0x7C,
 -- `sub_80E9120`; docs/engine/dimming-chips.md §9.1). The usual dimming
--- phases (lib/dimming), with an effect (`sub_80E9164`): with a hole in
+-- phases (@common/dimming), with an effect (`sub_80E9164`): with a hole in
 -- front of the user and nothing on it, the navi (navi.luau) comes out of
 -- it, and the effect waits for it to be gone; else it is over at once.
 

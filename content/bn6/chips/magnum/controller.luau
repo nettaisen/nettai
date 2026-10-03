@@ -1,7 +1,7 @@
 --!strict
 -- Magnum's dimming controller (the original's effect object #0x5B,
 -- `sub_80E71C4`; docs/engine/dimming-chip-effects.md §11): the usual
--- dimming phases (lib/dimming), with an effect that sends out the gunner
+-- dimming phases (@common/dimming), with an effect that sends out the gunner
 -- (./gunner) with the damage plus the bonus and lasts until it is done.
 
 local dimming_chips = require("@common/dimming")

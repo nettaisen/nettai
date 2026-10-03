@@ -2,7 +2,7 @@
 -- The navi-changing chips' dimming controller (the original's effect
 -- object #0x84, `sub_80E9570`): HubBatc, the arm chips (PunchArm,
 -- NeedlArm, PuzzlArm, BoomrArm), BugRSwrd and BgDthThd, and DarkInvs. The
--- usual dimming phases (lib/dimming), with an effect by what the chip
+-- usual dimming phases (@common/dimming), with an effect by what the chip
 -- changes (`off_80E95C8`, by the original's first chip parameter):
 --
 --   "hub" (0, HubBatc, `sub_80E95D8`): the buster at attack level 5 or

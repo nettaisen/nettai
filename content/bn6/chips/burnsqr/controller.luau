@@ -1,7 +1,7 @@
 --!strict
 -- BurnSqr1-3's dimming controller (the original's effect object #0x59,
 -- `sub_80E702C`; docs/engine/dimming-chip-effects.md §2): the usual dimming
--- phases (lib/dimming), with an effect that sends out the burner (./burner)
+-- phases (@common/dimming), with an effect that sends out the burner (./burner)
 -- with the damage plus the bonus and lasts until it is done.
 
 local burner = require("./burner")

@@ -14,7 +14,7 @@ local stand_in = require("@common/dimming/stand_in")
 local actor = {}
 
 export type State = {
-    -- The controller waiting on it (lib/dimming/stand_in).
+    -- The controller waiting on it (@common/dimming/stand_in).
     controller: Object?,
     -- The buster it holds (its +0x74).
     held: Object?,

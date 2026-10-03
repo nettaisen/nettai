@@ -1,7 +1,7 @@
 --!strict
 -- LifeSync's dimming controller (the original's effect object #0x5C,
 -- `sub_80E7260`; docs/engine/dimming-chip-effects.md §14): the usual
--- dimming phases (lib/dimming), with an effect that, outside link
+-- dimming phases (@common/dimming), with an effect that, outside link
 -- battles, marks the enemy two panels ahead and after a warning sets the
 -- HP of the other side's other combatants to that enemy's.
 --

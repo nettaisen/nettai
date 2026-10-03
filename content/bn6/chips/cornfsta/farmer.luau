@@ -1,7 +1,7 @@
 --!strict
 -- CornFsta's farmer (the original's actor object #0x1E, `sub_80BCB50`;
 -- docs/engine/dimming-chip-effects.md §16): a stand-in for the user
--- (lib/dimming/stand_in) who raises CornSht's corn gun and, on the tenth
+-- (@common/dimming/stand_in) who raises CornSht's corn gun and, on the tenth
 -- tick, sends a sower (./sower) out from the panel in front; once the
 -- sower is done, 31 ticks, then the user comes back. (He is always
 -- shown: no blind-viewer step.)
@@ -14,7 +14,7 @@ local sower = require("./sower")
 local farmer = {}
 
 export type State = {
-    -- The chip's controller (lib/dimming/stand_in).
+    -- The chip's controller (@common/dimming/stand_in).
     controller: Object?,
     -- The corn gun (ExtraVars+4).
     held: Object?,

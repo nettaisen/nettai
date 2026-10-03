@@ -1,7 +1,7 @@
 --!strict
 -- Sensor's dimming controller (the original's effect object #0x65,
 -- `sub_80E7BFC`; docs/engine/dimming-chips.md §8.1). The usual dimming
--- phases (lib/dimming), with an effect (`sub_80E7C40`) that sets the
+-- phases (@common/dimming), with an effect (`sub_80E7C40`) that sets the
 -- turret (turret.luau) on the panel in front of the user if it is free,
 -- with the chip's damage and its Atk+ bonus, then waits 60 ticks.
 
