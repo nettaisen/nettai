@@ -1,7 +1,7 @@
 --!strict
 -- BN6's Crosses on the custom screen (docs/design/rules-in-luau.md §3.1,
 -- S6): ChargeCross's extra chips and the hand size they go into
--- (`sub_802A49C`, `sub_802A40C`).
+-- (`sub_802A49C`, `sub_802A40C`), and DustCross's scrap button.
 
 type State = {
     -- `dword_20349A0`: consecutive screens opened in ChargeCross (or its
@@ -59,8 +59,33 @@ local function hand_size(side: number): number
     return n
 end
 
+-- DustCross's scrap button (`sub_8027F10`), two cells wide on slots 8 and
+-- 9, usable once: with a chip picked last (`sub_8028F84`), A scraps the
+-- picks (`sub_8028E04`).
+local scrap: ButtonSpec = {
+    slot = 8,
+    cells = 2,
+    uses = 1,
+    right = 11,
+    left = 7,
+    shown = function(side: number): boolean
+        return battle.navi(side).navi.forms ~= nil and form_has(side, "scrap_button")
+    end,
+    state = function(side: number): "selectable" | "unavailable"
+        return if custom.last_pick_is_chip(side) then "selectable" else "unavailable"
+    end,
+    pressed = function(side: number)
+        if custom.cursor_state(side) == "selectable" then
+            custom.sacrifice(side)
+        else
+            custom.refuse(side)
+        end
+    end,
+}
+
 return define.system {
     id = "bn6:cross",
     state = { charge_cross_screens = "u8" },
+    buttons = { scrap = scrap },
     custom = { hand_size = hand_size },
 }
