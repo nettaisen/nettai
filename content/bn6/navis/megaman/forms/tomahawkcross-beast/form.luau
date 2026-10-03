@@ -9,7 +9,7 @@ local throw = require("./throw")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "tomahawkcross-beast",
+    id = "bn6:tomahawkcross-beast",
     kind = "cross_beast",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -17,11 +17,11 @@ return define.form {
     cross_of = tomahawkman,
     -- A weakness hit breaks the Cross: back to the Beast.
     breaks_to = falzar_beast,
-    sprite = asset.sprite("tomahawkcross-beast"),
+    sprite = asset.sprite("bn6:tomahawkcross-beast"),
     element = "wood",
     buster_bonus = 0,
     weapons = { buster = falzar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = throw.weapon },
-    mugshot = asset.mugshot("tomahawkcross-beast"),
+    mugshot = asset.mugshot("bn6:tomahawkcross-beast"),
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
     null_bonus = 30,
     -- The chips A charges.
@@ -44,7 +44,7 @@ return define.form {
         aura_anim = 13,
         ice = "medium",
         -- The beast's head, in the Cross's palette.
-        parts = { beast_head = { sprite = asset.sprite("beast-head"), palette = 4 } },
+        parts = { beast_head = { sprite = asset.sprite("bn6:beast-head"), palette = 4 } },
         attach_points = {
             { 4, 16 },
             { 4, 24 },

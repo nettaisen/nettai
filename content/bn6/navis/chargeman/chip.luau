@@ -16,7 +16,7 @@ local STATE = { timer = "u16" }
 
 local ERUPT, RECOVER = 0x0, 0x4
 local ANIM_ERUPT = 6
-local SOUND = asset.sound("volcano")
+local SOUND = asset.sound("bn6:volcano")
 
 local ERUPT_TICKS, RECOVER_TICKS = 0x1E, 0x1E
 -- The timer value the volcano erupts at.
@@ -98,7 +98,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [ERUPT] = blow, [RECOVER] = recover }
 
 return define.chip {
-    id = "volcchrg",
+    id = "bn6:volcchrg",
     codes = { "C" },
     element = "fire",
     family = "fire",
@@ -113,7 +113,7 @@ return define.chip {
     slot_in_limit = 1,
     -- `sub_80F1334` (`off_80F1348`).
     action = define.action {
-        id = "volcchrg/action",
+        id = "bn6:volcchrg/action",
         state = STATE,
         update = function(me: Object, s: State)
             link.run(me, s, PHASES, "VolcChrg (sub_80F1334)")

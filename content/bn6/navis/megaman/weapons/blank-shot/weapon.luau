@@ -17,7 +17,7 @@ export type State = {
 local blank_shot = {}
 
 -- The click: GunDelSol's sound.
-local CLICK = asset.sound("gundels1")
+local CLICK = asset.sound("bn6:gundels1")
 
 -- The phases, on the attack's step.
 local RAISE, RECOVER = 0x0, 0x4
@@ -82,10 +82,10 @@ local function update(me: Object, s: State)
     end
 end
 
-blank_shot.action = define.action { id = "megaman/blank-shot/action", state = { timer = "u16" }, update = update }
+blank_shot.action = define.action { id = "bn6:megaman/blank-shot/action", state = { timer = "u16" }, update = update }
 
 blank_shot.weapon = define.weapon {
-    id = "megaman/blank-shot",
+    id = "bn6:megaman/blank-shot",
     -- The charge table's row 2; Charge 5 reads on into row 3's first
     -- entry, as the original's table does.
     charge_ticks = { 180, 180, 180, 180, 180, 40 },

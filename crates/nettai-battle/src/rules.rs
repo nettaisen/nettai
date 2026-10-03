@@ -8,7 +8,7 @@
 //! (`system.state()` in a hook): a side's rules see the other side through
 //! the engine alone.
 
-use nettai_content_api::{ContentState, HookCall, RulesetHandle, SystemHook, Value};
+use nettai_content_api::{ChipHandle, ContentState, HookCall, ObjectRef, RulesetHandle, SystemHook, Value};
 
 use crate::battle::Battle;
 use crate::content::Content;
@@ -25,11 +25,11 @@ pub struct SideRules {
 
 impl SideRules {
     /// A player's rules at a round's start: the ruleset their setup names
-    /// (or the content's stock one), its systems' state zeroed. Their
-    /// setup's blocks are made zero for a setup that gives none, and must
-    /// otherwise be the ruleset's.
-    pub fn for_player(content: &Content, player: &mut PlayerSetup) -> SideRules {
-        let ruleset = player.ruleset.or_else(|| content.defs.stock_ruleset());
+    /// (or game `arena`'s stock one, the stage's game's), its systems'
+    /// state zeroed. Their setup's blocks are made zero for a setup that
+    /// gives none, and must otherwise be the ruleset's.
+    pub fn for_player(content: &Content, player: &mut PlayerSetup, arena: crate::content::RootId) -> SideRules {
+        let ruleset = player.ruleset.or_else(|| content.defs.stock_ruleset_of(&content.defs.roots[arena.index()]));
         let Some(r) = ruleset else {
             assert!(player.rules.is_empty(), "a player's setup gives system setups, and the content has no ruleset");
             return SideRules::default();
@@ -63,7 +63,9 @@ impl PlayerSetup {
         system: &str,
         field: &str,
     ) -> Result<(&'a mut ContentState, &'a nettai_content_api::Schema, usize), String> {
-        let r = self.ruleset.or_else(|| content.defs.stock_ruleset()).ok_or("the content has no ruleset")?;
+        // (No ruleset in the setup: the system's game's stock rules.)
+        let game = nettai_content_api::keys::root_of(system).ok_or_else(|| format!("system {system:?} names no game"))?;
+        let r = self.ruleset.or_else(|| content.defs.stock_ruleset_of(game)).ok_or("the content has no ruleset")?;
         let def = content.defs.ruleset(r);
         if self.rules.is_empty() {
             self.rules = def.systems.iter().map(|&h| ContentState::new(content.defs.system(h).setup)).collect();
@@ -71,7 +73,7 @@ impl PlayerSetup {
         let slot = def
             .systems
             .iter()
-            .position(|&h| nettai_content_api::keys::names(&content.defs.system(h).key, system))
+            .position(|&h| content.defs.system(h).key == system)
             .ok_or_else(|| format!("ruleset {} has no system {system}", def.key))?;
         let block = &mut self.rules[slot];
         let schema = &content.defs.schemas[block.id().0 as usize].schema;
@@ -139,9 +141,41 @@ impl Battle {
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(hook) {
-                crate::behavior::call_hook(self, f, HookCall::System { side, slot: slot as u8, hook });
+                let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: None };
+                crate::behavior::call_hook(self, f, call);
             }
         }
+    }
+
+    /// Side `side`'s systems' `navi_intake(side, navi)`, each tick of the
+    /// fight in the navi's intake. (A ruleset without the hook calls
+    /// nothing: BN6's.)
+    pub(crate) fn systems_navi_intake(&mut self, side: u8, navi: ObjectRef) {
+        let Some(r) = self.rules[side as usize].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::NaviIntake) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::NaviIntake, navi: Some(navi), chip: None };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
+    /// Side `side`'s systems' `chip_check(side, navi, chip)` as a chip's
+    /// use is prepared: the chip the first system that answers puts in its
+    /// place, or none (the use goes ahead).
+    pub(crate) fn systems_chip_check(&mut self, side: u8, navi: ObjectRef, chip: Option<ChipHandle>) -> Option<ChipHandle> {
+        let r = self.rules[side as usize].ruleset?;
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::ChipCheck) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipCheck, navi: Some(navi), chip };
+                if let Value::Def(nettai_content_api::Registry::Chip, c) = crate::behavior::call_hook(self, f, call) {
+                    return Some(ChipHandle(c));
+                }
+            }
+        }
+        None
     }
 }
 
@@ -191,8 +225,8 @@ mod tests {
     fn each_side_runs_its_rulesets_systems_for_itself() {
         let b = started(scenario::setup());
         let content = &b.content;
-        let stock = content.defs.stock_ruleset().expect("the test content's stock rules");
-        assert_eq!(content.defs.ruleset(stock).key, "test:test");
+        let stock = content.defs.stock_ruleset_of(testing::ROOT).expect("the test content's stock rules");
+        assert_eq!(content.defs.ruleset(stock).key, "test:stock");
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).ruleset, Some(stock));
             // (BN6's beast system first, then the counter, then BN6's forms
@@ -207,7 +241,7 @@ mod tests {
     fn a_player_plays_by_the_ruleset_their_setup_names() {
         let content = scenario::content();
         let mut setup = scenario::setup();
-        setup.players[1].ruleset = content.defs.ruleset_by_key("test-other");
+        setup.players[1].ruleset = content.defs.ruleset_by_key("test:test-other");
         let b = started(setup);
         assert_eq!(b.side_rules(0).states.len(), 3, "side 0 keeps the stock rules");
         assert_eq!(b.side_rules(1).states.len(), 2, "side 1 plays by its own");
@@ -220,11 +254,38 @@ mod tests {
     fn a_systems_player_setup_reaches_it_and_no_other() {
         let content = scenario::content();
         let mut setup = scenario::setup();
-        setup.players[0].set_rule(&content, "test/counter", "bonus", Value::Int(7)).unwrap();
-        assert!(setup.players[0].set_rule(&content, "test/marker", "mark", Value::Int(1)).is_err(), "not the stock rules'");
+        setup.players[0].set_rule(&content, "test:test/counter", "bonus", Value::Int(7)).unwrap();
+        assert!(setup.players[0].set_rule(&content, "test:test/marker", "mark", Value::Int(1)).is_err(), "not the stock rules'");
         let b = started(setup);
         assert_eq!(field(&b, 0, 1, "bonus"), FieldValue::U16(14));
         assert_eq!(field(&b, 1, 1, "bonus"), FieldValue::U16(0), "the other player's setup is its own");
+    }
+
+    /// The per-tick and chip-use hooks (docs/design/bn5-map.md §15.3 item
+    /// 14): a system's `navi_intake` is called with the side and its navi,
+    /// and its `chip_check` with the chip about to be used, whose answer
+    /// takes the chip's place; a side whose rules lack them calls nothing.
+    #[test]
+    fn a_systems_intake_and_chip_check_hooks() {
+        let content = scenario::content();
+        let watch = content.defs.ruleset_by_key("test:test-watch").expect("the watcher's ruleset");
+        let mut setup = scenario::setup();
+        setup.players[1].ruleset = Some(watch);
+        let mut b = started(setup);
+        let navi = b.player(1).expect("side 1's navi");
+        b.systems_navi_intake(1, navi);
+        b.systems_navi_intake(1, navi);
+        let p = b.objects.get(navi).panel;
+        assert_eq!(field(&b, 1, 0, "intakes"), FieldValue::U16(2));
+        assert_eq!((field(&b, 1, 0, "x"), field(&b, 1, 0, "y")), (FieldValue::U8(p.x), FieldValue::U8(p.y)));
+        let bomb = testing::chip_in(&content, "test:test/bomb");
+        let seed = testing::chip_in(&content, "test:test/seed");
+        assert_eq!(b.systems_chip_check(1, navi, Some(bomb)), Some(seed));
+        assert_eq!(b.systems_chip_check(1, navi, Some(seed)), None);
+        assert_eq!(b.systems_chip_check(1, navi, None), None);
+        // Side 0's rules have neither hook.
+        let navi0 = b.player(0).expect("side 0's navi");
+        assert_eq!(b.systems_chip_check(0, navi0, Some(bomb)), None);
     }
 
     #[test]
@@ -237,7 +298,7 @@ mod tests {
         let schema = &b.content.defs.schemas[s.id().0 as usize].schema;
         s.set(schema, schema.index_of("starts").unwrap(), Value::Int(9)).unwrap();
         assert_ne!(changed.digest(), b.digest());
-        assert_eq!(testing::build().defs.rulesets.len(), 4);
+        assert_eq!(testing::build().defs.rulesets.len(), 5);
     }
 
     /// A mix (testdata's rules/mix.luau): the stock rules less BN6's forms
@@ -246,11 +307,11 @@ mod tests {
     fn a_mix_is_its_bases_systems_changed() {
         let content = scenario::content();
         let defs = &content.defs;
-        let mix = defs.ruleset_by_key("test-mix").expect("the mix");
+        let mix = defs.ruleset_by_key("test:test-mix").expect("the mix");
         let names: Vec<&str> = defs.ruleset(mix).systems.iter().map(|&h| defs.system(h).key.as_str()).collect();
         assert_eq!(names, ["test:beast", "test:test/counter", "test:test/marker"]);
-        assert_eq!(defs.ruleset(mix).base, defs.stock_ruleset());
-        assert_eq!(defs.ruleset(mix).game, crate::content::RootId::HOME);
+        assert_eq!(defs.ruleset(mix).base, defs.stock_ruleset_of(testing::ROOT));
+        assert_eq!(Some(defs.ruleset(mix).game), defs.root_id(testing::ROOT));
         let mut setup = scenario::setup();
         setup.players[1].ruleset = Some(mix);
         let b = started(setup);
@@ -264,7 +325,7 @@ mod tests {
     /// another pause sound) and pools (16 actors).
     mod two_games {
         use super::*;
-        use crate::content::{Content, RootId, RootManifest, SoundRole};
+        use crate::content::{Content, RootManifest, SoundRole};
         use crate::object::Pool;
         use std::sync::Arc;
 
@@ -272,7 +333,7 @@ mod tests {
             (
                 "rules/ruleset",
                 "local systems = require('@test/rules/systems')\n\
-                 return define.ruleset { id = 'twin', stock = true, systems = { systems.counter } }",
+                 return define.ruleset { id = 'twin:stock', stock = true, systems = { systems.counter } }",
             ),
             (
                 "rules/roles",
@@ -281,11 +342,12 @@ mod tests {
                  for k, v in test do spec[k] = v end\n\
                  local sounds = {}\n\
                  for k, v in test.sounds do sounds[k] = v end\n\
-                 sounds.pause = asset.sound('pause')\n\
+                 sounds.pause = asset.sound('twin:pause')\n\
                  spec.sounds = sounds\n\
+                 spec.id = 'twin:roles'\n\
                  return define.roles(spec)",
             ),
-            ("rules/pools", "return define.rules('pools', { actor = 16, attack = 32, effect = 32 })"),
+            ("rules/pools", "return define.rules('twin:pools', { actor = 16, attack = 32, effect = 32 })"),
         ];
 
         /// The test content with the `twin` root beside it, and twin's own
@@ -300,7 +362,7 @@ mod tests {
                 index.sprites.insert("navi".into(), navi);
                 let frame = crate::content::AnimFrame { duration: 4, flags: crate::object::sprite::FRAME_LAST };
                 testing::add_pack(&mut c, "twin", index, [(navi, vec![vec![frame]])].into_iter().collect());
-                let manifest = RootManifest { name: "twin".into(), assets: None, requires: vec!["test".into()] };
+                let manifest = RootManifest::named("twin");
                 c.scripts.add_root(manifest, TWIN.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
                 c.define().unwrap_or_else(|e| panic!("{e}"));
                 Arc::new(c)
@@ -325,11 +387,12 @@ mod tests {
 
         #[test]
         fn each_side_reads_its_games_data_and_the_battle_its_arenas() {
-            let b = battle(["test", "twin"]);
+            let b = battle(["test:stock", "twin:stock"]);
             let twin = b.content.defs.root_id("twin").expect("the twin root");
+            let test = b.content.defs.root_id(testing::ROOT).expect("the test game");
             // The stage is the test content's: the arena's game is.
-            assert_eq!(b.games.arena, RootId::HOME);
-            assert_eq!(b.games.sides, [RootId::HOME, twin]);
+            assert_eq!(b.games.arena, test);
+            assert_eq!(b.games.sides, [test, twin]);
             let pause = |side| b.side_roles(side).sound(SoundRole::Pause);
             assert_ne!(pause(0), pause(1), "each side's sounds are its game's");
             assert_eq!(b.arena_roles().sound(SoundRole::Pause), pause(0));
@@ -349,18 +412,18 @@ mod tests {
 
         #[test]
         fn a_capacity_is_the_larger_of_the_two_games() {
-            let both = battle(["twin", "twin"]);
+            let both = battle(["twin:stock", "twin:stock"]);
             assert_eq!([Pool::Actor, Pool::Attack, Pool::Effect].map(|p| both.objects.capacity(p)), [16, 32, 32]);
-            assert_eq!(battle(["twin", "test"]).objects.capacity(Pool::Actor), 32);
+            assert_eq!(battle(["twin:stock", "test:stock"]).objects.capacity(Pool::Actor), 32);
             // A battle of one game is that game's (the test content's: 32).
-            assert_eq!(battle(["test", "test"]).objects.capacity(Pool::Actor), 32);
+            assert_eq!(battle(["test:stock", "test:stock"]).objects.capacity(Pool::Actor), 32);
         }
 
         /// A duel with a different game on each side plays and rolls back:
         /// a copy taken mid-round goes the same way as the whole.
         #[test]
         fn a_battle_of_two_games_plays_and_rolls_back() {
-            for rulesets in [["test", "twin"], ["twin", "twin"], ["test-mix", "twin"]] {
+            for rulesets in [["test:stock", "twin:stock"], ["twin:stock", "twin:stock"], ["test:test-mix", "twin:stock"]] {
                 let c = content();
                 let mut setup = scenario::setup();
                 setup.content = c.hash();
@@ -402,7 +465,7 @@ mod tests {
             let content = scenario::content();
             let mut s = scenario::setup();
             let p = &mut s.players[0];
-            p.ruleset = content.defs.ruleset_by_key("test-cards");
+            p.ruleset = content.defs.ruleset_by_key("test:test-cards");
             let list: Vec<InstalledCard> = cards
                 .iter()
                 .map(|&(key, enabled)| InstalledCard {
@@ -418,21 +481,21 @@ mod tests {
         #[test]
         fn the_cards_are_definitions_and_the_setups_part() {
             let content = scenario::content();
-            let h = content.defs.patch_card_by_key("test-stats").expect("the test card");
+            let h = content.defs.patch_card_by_key("test:test-stats").expect("the test card");
             let card = content.patch_card(h);
             assert_eq!(card.mb, 20);
             let kinds: Vec<(&str, bool)> = card.effects.iter().map(|e| (e.kind.as_str(), e.bug)).collect();
             assert_eq!(kinds, [("hp_add", false), ("hp_percent_add", false), ("attack_add", false), ("body", false), ("hp_drain", true)]);
             // The cards are in the setup, which the digest covers.
-            let a = with_cards(&[("test-stats", true)], |_| {});
-            let b = with_cards(&[("test-stats", false)], |_| {});
+            let a = with_cards(&[("test:test-stats", true)], |_| {});
+            let b = with_cards(&[("test:test-stats", false)], |_| {});
             assert_ne!(a.setup.players[0].patch_cards, b.setup.players[0].patch_cards);
             assert_ne!(a.digest(), b.digest());
         }
 
         #[test]
         fn a_card_changes_the_stats_by_its_kinds_order() {
-            let b = with_cards(&[("test-stats", true)], |_| {});
+            let b = with_cards(&[("test:test-stats", true)], |_| {});
             let s = &b.stats[0];
             // HP 1000: +30 first, then +10% (the card lists them the other way).
             assert_eq!((s.max_hp, s.hp), (1133, 1133));
@@ -444,7 +507,7 @@ mod tests {
 
         #[test]
         fn a_later_card_writes_over_an_earlier_one() {
-            let b = with_cards(&[("test-stats", true), ("test-later", true)], |_| {});
+            let b = with_cards(&[("test:test-stats", true), ("test:test-later", true)], |_| {});
             let s = &b.stats[0];
             assert_eq!(s.attack, 2, "Attack 0 + 3 - 1");
             assert_eq!(s.giga_level, 0xFF, "GigaFolder- doesn't clamp");
@@ -452,7 +515,7 @@ mod tests {
 
         #[test]
         fn abilities_choices_and_chip_shuffle() {
-            let b = with_cards(&[("test-abilities", true)], |s| {
+            let b = with_cards(&[("test:test-abilities", true)], |s| {
                 s.support = Some(Supports::default());
                 s.float_shoes = true;
                 s.number_open = true;
@@ -460,8 +523,8 @@ mod tests {
             let s = &b.stats[0];
             let content = &b.content;
             assert!(s.super_armor && !s.float_shoes);
-            assert_eq!(s.first_barrier, content.defs.record("barrier/200"));
-            assert_eq!(s.weapons.charge_shot_kind, content.defs.record("shot/charged-confusing"));
+            assert_eq!(s.first_barrier, content.defs.record("test:barrier/200"));
+            assert_eq!(s.weapons.charge_shot_kind, content.defs.record("test:shot/charged-confusing"));
             assert_eq!(s.support, Some(Supports { rush: true, ..Supports::default() }));
             assert_eq!(s.gauge_speed, GaugeSpeed::Fast);
             assert!(s.chip_shuffle && !s.number_open, "ChpShufl turns NumbrOpn off");
@@ -470,14 +533,14 @@ mod tests {
 
         #[test]
         fn a_switched_off_card_does_nothing_but_the_glitch_follows_the_stats() {
-            let b = with_cards(&[("test-stats", false)], |s| s.support = Some(Supports::default()));
+            let b = with_cards(&[("test:test-stats", false)], |s| s.support = Some(Supports::default()));
             let mut want = scenario::setup().navi_stats[0];
             want.support = Some(Supports::default());
             // The HP is set to its maximum (the reload's, in the real world).
             want.hp = want.max_hp;
             assert_eq!(b.stats[0], want);
             assert!(!b.consoles[0].emotion_window_glitch);
-            let bugged = with_cards(&[("test-stats", false)], |s| {
+            let bugged = with_cards(&[("test:test-stats", false)], |s| {
                 s.support = Some(Supports::default());
                 s.bugs.emotion = 1;
             });
@@ -495,7 +558,7 @@ mod tests {
 
         #[test]
         fn the_support_bug_keeps_supports_off() {
-            let b = with_cards(&[("test-abilities", true)], |s| s.support = None);
+            let b = with_cards(&[("test:test-abilities", true)], |s| s.support = None);
             assert_eq!(b.stats[0].support, None, "the byte 0xFF stays 0xFF when a bit is set");
         }
     }

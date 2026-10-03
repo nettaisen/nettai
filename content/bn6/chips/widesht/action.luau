@@ -31,7 +31,7 @@ local WAVE_Z = 0x10_0000
 local HIT_MODS = { [0] = 0, [1] = 3, [2] = 1, [3] = 1 }
 
 -- The wide shooter (the original's attachment row 0x23).
-local SHOOTER = attachment.look { sprite = asset.sprite("wide-shooter"), palette = 0, attach_point = 12 }
+local SHOOTER = attachment.look { sprite = asset.sprite("bn6:wide-shooter"), palette = 0, attach_point = 12 }
 
 -- A wide shot: its waves (`shooter` and `z`, where a game's aren't BN6's
 -- wide shooter and 16 pixels: BN5's).
@@ -120,8 +120,8 @@ function widesht.action(spec: WideShotSpec): Action
 end
 
 widesht.actions = {
-    widesht = widesht.action { id = "widesht/action", wave = wave.variants.wide, waves = 1 },
-    suprspr = widesht.action { id = "suprspr/action", wave = wave.variants.super, waves = 3 },
+    widesht = widesht.action { id = "bn6:widesht/action", wave = wave.variants.wide, waves = 1 },
+    suprspr = widesht.action { id = "bn6:suprspr/action", wave = wave.variants.super, waves = 3 },
 }
 
 return widesht

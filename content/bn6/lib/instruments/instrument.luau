@@ -26,14 +26,14 @@ export type State = {
     tune_in: number,
 }
 
-local SPRITE = asset.sprite("instrument")
+local SPRITE = asset.sprite("bn6:instrument")
 local HP = 60
 local LIFETIME = 0x960
 -- Its collision: another body of its side, reached by the other side.
 local HIT_MOD = 3
 -- How it looks absorbed (the original's obstacle kind's sprite: its own).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
-local APPEAR_SOUND, BREAK_SOUND = asset.sound("appear"), asset.sound("hit-bomb-1")
+local APPEAR_SOUND, BREAK_SOUND = asset.sound("bn6:appear"), asset.sound("bn6:hit-bomb-1")
 -- Resting before it plays.
 local REST_TICKS = 0x1E
 -- The animations: standing, resting, playing.
@@ -228,7 +228,7 @@ local function init(me: Object)
 end
 
 instrument.kind = define.kind {
-    id = "instrument",
+    id = "bn6:instrument",
     pool = "attack",
     state = { instrument = "record:instrument", effect_in = "u32", tune_in = "u32" },
     -- `sub_80D4088`.

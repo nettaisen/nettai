@@ -20,10 +20,10 @@ export type State = {
     steered: boolean,
 }
 
-local SPRITE = asset.sprite("slash-wave")
-local SOUND_AQUA_NEEDLE_2 = asset.sound("aqua-needle-2")
-local SOUND_BOOMERANG = asset.sound("boomerang")
-local SOUND_OK_8B = asset.sound("ok-8b")
+local SPRITE = asset.sprite("bn6:slash-wave")
+local SOUND_AQUA_NEEDLE_2 = asset.sound("bn6:aqua-needle-2")
+local SOUND_BOOMERANG = asset.sound("bn6:boomerang")
+local SOUND_OK_8B = asset.sound("bn6:ok-8b")
 
 -- Its height (a halfword store over Z's whole part).
 local HEIGHT = 0x14
@@ -237,7 +237,7 @@ local function tick(me: Object)
 end
 
 wave.kind = define.kind {
-    id = "slashman/wave",
+    id = "bn6:slashman/wave",
     pool = "attack",
     state = { variant = "record:slashman-wave", steered = "bool" },
     -- `sub_80D07CC`.

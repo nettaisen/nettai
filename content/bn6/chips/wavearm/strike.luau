@@ -25,7 +25,7 @@ strike.STATE = { timer = "u16" }
 local STRIKE, RECOVER = 0x0, 0x4
 -- The tick (timer value) the waves go.
 local SEND_AT = 0x0D
-local SOUND = asset.sound("bblstar1")
+local SOUND = asset.sound("bn6:bblstar1")
 
 function strike.action(spec: Spec): Action
     -- `sub_80ED6CA`: a wave from (dx, dy) off the navi's panel, with the

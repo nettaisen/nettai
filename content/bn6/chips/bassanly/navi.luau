@@ -18,9 +18,9 @@ export type State = {
 
 local bassanly = {}
 
-local SPRITE = asset.sprite("bass-anly")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_BASS_ANLY = asset.sound("bass-anly")
+local SPRITE = asset.sprite("bn6:bass-anly")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_BASS_ANLY = asset.sound("bn6:bass-anly")
 
 -- His cloak: a form overlay on his sprite, stepping while dimmed, on his
 -- animation + 0x14 (`dword_80C3D98`).
@@ -168,7 +168,7 @@ local function leave(me: Object)
 end
 
 bassanly.kind = define.kind {
-    id = "bassanly/navi",
+    id = "bn6:bassanly/navi",
     pool = "actor",
     state = { controller = "object" },
     -- `sub_80C3CE8`.

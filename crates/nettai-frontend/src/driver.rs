@@ -104,7 +104,7 @@ impl TracePlayer {
             .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
             .map(|(i, _)| i)
             .collect();
-        TracePlayer { round, content, compat: Compat::bn6(), frames, pos: 0, round_number }
+        TracePlayer { compat: Compat::bn6_for(&content), round, content, frames, pos: 0, round_number }
     }
 
     /// Every round of a trace file, on `content`.
@@ -390,7 +390,7 @@ mod tests {
         let stage = content.stage_by_key(nettai_battle::content::testing::LINK_BATTLE);
         let settings = BattleSettings::on(&content, stage);
         // GunDelS3 N, which the test content has.
-        let folder = folder_of(&content, &[("gundels3", 13)]);
+        let folder = folder_of(&content, &[("test:gundels3", 13)]);
         let mut live = LivePlayer::new(live_setup(&content, settings, [folder, folder], 7), content.clone());
         let mut b = live.start();
         let mut shown = false;
@@ -485,11 +485,11 @@ mod tests {
         use nettai_battle::content::Element;
         use nettai_battle::kinds::player::{NaviAction, navi_action};
         let content = nettai_match::testing::bn6_content();
-        let heat = content.defs.form_by_key("heatcross").unwrap();
-        let heat_beast = content.defs.form_by_key("heatcross-beast").unwrap();
+        let heat = content.defs.form_by_key("bn6:heatcross").unwrap();
+        let heat_beast = content.defs.form_by_key("bn6:heatcross-beast").unwrap();
         let stage = nettai_match::link_battle_stages(&content)[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
-        let folder = folder_of(&content, &[("cannon", 0)]);
+        let folder = folder_of(&content, &[("bn6:cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], 5);
         setup.players[0].unlocks.cross_list = Some(nettai_battle::custom::CrossList::new(&[heat]));
         let mut live = LivePlayer::new(setup, content.clone());
@@ -527,7 +527,7 @@ mod tests {
         assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
         assert_eq!(b.objects.get(p0).element & 0xF, Element::Fire as u8);
         // B held charges the buster; let go, HeatCross's flame.
-        let flame = content.defs.action_by_key("heatcross/charge/action").unwrap();
+        let flame = content.defs.action_by_key("bn6:heatcross/charge/action").unwrap();
         let mut charged = false;
         play_until(
             &mut live,

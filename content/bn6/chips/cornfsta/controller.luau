@@ -32,7 +32,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "cornfsta/controller",
+    id = "bn6:cornfsta/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool" },
     -- `sub_80E7E9C`.

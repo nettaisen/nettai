@@ -47,10 +47,10 @@ export type State = {
 
 local roll = {}
 
-local SPRITE = asset.sprite("roll-heart")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_ROLL = asset.sound("roll")
-local SOUND_ROLL_2 = asset.sound("roll-2")
+local SPRITE = asset.sprite("bn6:roll-heart")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_ROLL = asset.sound("bn6:roll")
+local SOUND_ROLL_2 = asset.sound("bn6:roll-2")
 
 -- The controller calls her spawner through r3, which her position takes
 -- (her init sets it all).
@@ -71,7 +71,7 @@ local WARP_SPEED = 0xF_0000
 
 -- Her ribbon (the original's attachment row 0x12), its animation 5,
 -- animating while dimmed.
-local RIBBON = attachment.look { sprite = asset.sprite("roll-heart"), palette = 0 }
+local RIBBON = attachment.look { sprite = asset.sprite("bn6:roll-heart"), palette = 0 }
 local RIBBON_ANIM = 5
 
 -- A sparkle 20 pixels above her.
@@ -474,7 +474,7 @@ local function finish(me: Object)
 end
 
 roll.kind = define.kind {
-    id = "roll/navi",
+    id = "bn6:roll/navi",
     pool = "actor",
     state = {
         home_x = "u8",

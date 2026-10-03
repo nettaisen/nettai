@@ -14,15 +14,15 @@ parts.slashes_navis = { is = collision.slash, hits = collision.hits_navis }
 
 -- The blades (the original's attachment rows 3, 0x19 to 0x1C).
 parts.blades = {
-    sword = attachment.look { sprite = asset.sprite("sword"), palette = 0 },
-    fire = attachment.look { sprite = asset.sprite("fire-sword"), palette = 0 },
-    aqua = attachment.look { sprite = asset.sprite("aqua-sword"), palette = 0 },
-    elec = attachment.look { sprite = asset.sprite("elec-sword"), palette = 0 },
-    bamboo = attachment.look { sprite = asset.sprite("sword"), palette = 2 },
+    sword = attachment.look { sprite = asset.sprite("bn6:sword"), palette = 0 },
+    fire = attachment.look { sprite = asset.sprite("bn6:fire-sword"), palette = 0 },
+    aqua = attachment.look { sprite = asset.sprite("bn6:aqua-sword"), palette = 0 },
+    elec = attachment.look { sprite = asset.sprite("bn6:elec-sword"), palette = 0 },
+    bamboo = attachment.look { sprite = asset.sprite("bn6:sword"), palette = 2 },
 }
 
 -- The slashes (effects 0x16 to 0x1C, 0x25, 0x2D, 0x5F).
-local SLASH, BIG = asset.sprite("sword-slash"), asset.sprite("big-slash")
+local SLASH, BIG = asset.sprite("bn6:sword-slash"), asset.sprite("bn6:big-slash")
 parts.effects = {
     -- Sword's, over the panel ahead.
     slash = define.effect { sprite = SLASH, anim = 2, palette = 0 },
@@ -40,14 +40,14 @@ parts.effects = {
     big = define.effect { sprite = BIG, anim = 0, palette = 0 },
     dark = define.effect { sprite = BIG, anim = 0, palette = 2 },
     -- CrosSwrd's X.
-    cross = define.effect { sprite = asset.sprite("cross-slash"), anim = 0, palette = 0 },
+    cross = define.effect { sprite = asset.sprite("bn6:cross-slash"), anim = 0, palette = 0 },
 }
 
 -- The swings: most swords', and the big swords' (LifeSrd, DrkSword,
 -- DblDream).
 parts.sounds = {
-    swing = asset.sound("sword-swing"),
-    big_swing = asset.sound("big-sword-swing"),
+    swing = asset.sound("bn6:sword-swing"),
+    big_swing = asset.sound("bn6:big-sword-swing"),
 }
 
 -- `sub_80EBAE8`: the blade's animation, which matches the user's arm: a

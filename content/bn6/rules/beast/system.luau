@@ -23,7 +23,7 @@ local function changes_form(side: number): boolean
 end
 
 return define.system {
-    id = "beast",
+    id = "bn6:beast",
     state = { check_delay = "u8" },
     hooks = {
         -- `sub_8009338`: the custom screen closed.

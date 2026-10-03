@@ -28,6 +28,10 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     crate::kinds::common::panel_burn(b, r);
     barrier(b, r);
     standing_effects(b, r);
+    // The side's rules, each tick (BN5's light and dark: a dark MegaMan
+    // clears the holy panel he stands on, 0x08017136; BN6's call nothing).
+    let side = b.objects.get(r).alliance;
+    b.systems_navi_intake(side, r);
     slide_triggers(b, r);
     hp_bug_drain(b, r);
     drop_cursor_trap(b, r);

@@ -13,13 +13,13 @@ local VARIANT = boomerang.variant {
     speed = 0x8_0000,
     turn_speed = 314573,
     grass = false,
-    sprite = asset.sprite("boomerang"),
+    sprite = asset.sprite("bn5:boomerang"),
     is = collision.attack,
     spark = sparks.wood,
 }
 
 return define.chip {
-    id = "boomer",
+    id = "bn5:boomer",
     codes = { "A", "L", "V", "*" },
     element = "wood",
     family = "wood",

@@ -5,7 +5,7 @@
 local navi = require("./navi")
 
 return define.chip {
-    id = "bassanly",
+    id = "bn6:bassanly",
     codes = { "F" },
     element = "null",
     family = "null",

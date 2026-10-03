@@ -6,10 +6,10 @@
 local ticker = require("../lib/ticker")
 
 return {
-    define.chip { id = "test/ticker1", action = ticker.action { length = 6 } },
-    define.chip { id = "test/ticker2", action = ticker.action { length = 9 } },
+    define.chip { id = "test:test/ticker1", action = ticker.action { length = 6 } },
+    define.chip { id = "test:test/ticker2", action = ticker.action { length = 9 } },
     define.chip {
-        id = "test/ticker3",
+        id = "test:test/ticker3",
         action = ticker.action { length = 3, next = ticker.action { length = 2 } },
     },
 }

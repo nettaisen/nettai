@@ -9,7 +9,7 @@ local regions = require("../../lib/regions")
 local throw = require("../../lib/bombs/throw")
 
 return define.chip {
-    id = "minibomb",
+    id = "bn6:minibomb",
     codes = { "B", "L", "R", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 0, mb = 6, damage = 50, hit_param = 30, lockout = 0,

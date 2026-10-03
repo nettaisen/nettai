@@ -87,7 +87,7 @@ local function init(me: Object)
 end
 
 marker.kind = define.kind {
-    id = "meteors/marker",
+    id = "bn6:meteors/marker",
     pool = "effect",
     state = {
         look = "record:marker-look",

@@ -25,7 +25,7 @@ end
 
 return {
     define.chip {
-        id = "energbom",
+        id = "bn6:energbom",
         codes = { "C", "K", "V", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 11, damage = 40, hit_param = 10, lockout = 0,
@@ -37,7 +37,7 @@ return {
         action = energy_throw(),
     },
     define.chip {
-        id = "megenbom",
+        id = "bn6:megenbom",
         codes = { "G", "M", "O", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 27, damage = 60, hit_param = 10, lockout = 0,

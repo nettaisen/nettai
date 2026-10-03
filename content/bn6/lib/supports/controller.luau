@@ -125,7 +125,7 @@ local function effect(me: Object)
 end
 
 supports.kind = define.kind {
-    id = "support/controller",
+    id = "bn6:support/controller",
     pool = "effect",
     state = { support = { "rush", "beat", "tango" }, out = "bool", eaten = "chip", telop_chip = "chip" },
     -- `sub_80E8FE0`.

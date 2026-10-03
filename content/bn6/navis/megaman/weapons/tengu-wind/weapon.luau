@@ -13,7 +13,7 @@ local tengu_wind = {}
 
 local COOLDOWN = 0x28
 
-local SOUND = asset.sound("dustbrk")
+local SOUND = asset.sound("bn6:dustbrk")
 
 -- The gusts pull: the weak push, turned toward the navi.
 local PULL: GustHow = { pulls = true }
@@ -43,7 +43,7 @@ function tengu_wind.blow(user: Object, _spec: InstantChipSpec)
 end
 
 tengu_wind.weapon = define.weapon {
-    id = "megaman/tengu-wind",
+    id = "bn6:megaman/tengu-wind",
     -- The charge table's row 0x10, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 60, 60, 60 },

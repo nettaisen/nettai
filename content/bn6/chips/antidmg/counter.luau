@@ -21,8 +21,8 @@ export type State = {
 
 local STATE = { timer = "u16" }
 
-local SOUND_VANISH = asset.sound("trap-vanish")
-local SOUND_THROW = asset.sound("boomerang")
+local SOUND_VANISH = asset.sound("bn6:trap-vanish")
+local SOUND_THROW = asset.sound("bn6:boomerang")
 local VANISH_ANIM = 4
 -- The shuriken's hit modifier.
 local HIT_MOD = 1
@@ -174,6 +174,6 @@ end
 -- catch (`sub_801056A`) and the AntiDmg program's stance (`sub_80105F2`,
 -- with the variant its weapon zeroes), leave the attack's variant 0: a
 -- random enemy.
-counter.action = counter.action_at("antidmg/counter", "random")
+counter.action = counter.action_at("bn6:antidmg/counter", "random")
 
 return counter

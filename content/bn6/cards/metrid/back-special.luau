@@ -7,7 +7,7 @@
 local meteors = require("../../lib/patch-cards/meteors")
 
 return meteors.weapon {
-    id = "patch-cards/metrid/back-special",
+    id = "bn6:patch-cards/metrid/back-special",
     drops = 3,
     -- The charge table's row 0x53, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

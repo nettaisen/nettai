@@ -201,43 +201,43 @@ mod tests {
         let mut said = |f: &SavedFolder| -> Vec<String> { problems(&mut b, 0, &(*f).into()).into_iter().map(|p| format!("{}: {}", p.rule, p.text)).collect() };
         // Five Recov10s (4 MB) and the rest plain chips is legal; a sixth
         // isn't.
-        let mut chips = [chip("recov10"); FOLDER_SIZE];
-        let mut plain = ["cannon", "airshot", "vulcan1", "spreadr1", "minibomb", "sword"].iter().cycle();
+        let mut chips = [chip("bn6:recov10"); FOLDER_SIZE];
+        let mut plain = ["bn6:cannon", "bn6:airshot", "bn6:vulcan1", "bn6:spreadr1", "bn6:minibomb", "bn6:sword"].iter().cycle();
         for c in chips.iter_mut().skip(5) {
             *c = chip(plain.next().unwrap());
         }
         assert_eq!(said(&base(chips)), Vec::<String>::new());
         let mut six = chips;
-        six[5] = chip("recov10");
-        assert!(said(&base(six)).iter().any(|v| v.contains("copies: 6 copies of recov10")));
+        six[5] = chip("bn6:recov10");
+        assert!(said(&base(six)).iter().any(|v| v.contains("copies: 6 copies of bn6:recov10")));
         // A code the chip doesn't come in.
         let mut code = chips;
         code[0].code = ChipCode(25);
         assert!(said(&base(code)).iter().any(|v| v.contains("code Z")));
         // Six Mega chips; two Giga chips.
         let mut megas = chips;
-        for (i, key) in ["roll", "roll2", "heatman", "elecman", "slashman", "eraseman"].iter().enumerate() {
+        for (i, key) in ["bn6:roll", "bn6:roll2", "bn6:heatman", "bn6:elecman", "bn6:slashman", "bn6:eraseman"].iter().enumerate() {
             megas[10 + i] = chip(key);
         }
         assert!(said(&base(megas)).iter().any(|v| v.contains("6 Mega chips")));
         let mut gigas = chips;
-        gigas[10] = chip("bass");
-        gigas[11] = chip("deltaray");
+        gigas[10] = chip("bn6:bass");
+        gigas[11] = chip("bn6:deltaray");
         assert!(said(&base(gigas)).iter().any(|v| v.contains("2 Giga chips")));
         // A Regular chip past the Regular memory (Roll3 is 60 MB).
         let mut regular = base(chips);
-        regular.chips[10] = chip("roll3");
+        regular.chips[10] = chip("bn6:roll3");
         regular.regular = Some(10);
-        assert!(said(&regular).iter().any(|v| v.contains("the Regular chip roll3")));
+        assert!(said(&regular).iter().any(|v| v.contains("the Regular chip bn6:roll3")));
         // Tag chips: two entries of 60 MB together at most, not the Regular.
         let mut tags = base(chips);
         tags.tags = Some((5, 6));
         assert_eq!(said(&tags), Vec::<String>::new());
-        tags.chips[6] = chip("roll3");
+        tags.chips[6] = chip("bn6:roll3");
         assert!(said(&tags).iter().any(|v| v.contains("tags: the tag chips")), "{:?}", said(&tags));
         // A chip the pack doesn't list.
         let mut dark = chips;
-        dark[0] = chip("drksword");
-        assert!(said(&base(dark)).iter().any(|v| v.contains("chip: entry 0: drksword is no chip a folder can hold")));
+        dark[0] = chip("bn6:drksword");
+        assert!(said(&base(dark)).iter().any(|v| v.contains("chip: entry 0: bn6:drksword is no chip a folder can hold")));
     }
 }

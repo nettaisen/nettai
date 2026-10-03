@@ -651,13 +651,13 @@ pub struct BattleGames {
 }
 
 impl BattleGames {
-    /// A round's: its stage's root and its players' rulesets' games.
+    /// A round's: its stage's game and its players' rulesets' games (a
+    /// player with none plays the stage's game's stock rules).
     pub fn of(content: &Content, setup: &RoundSetup) -> BattleGames {
         let defs = &content.defs;
-        BattleGames {
-            arena: defs.root_of(&defs.stage(setup.settings.stage).key),
-            sides: [0, 1].map(|p| defs.ruleset_game(setup.players[p].ruleset)),
-        }
+        let stage = &defs.stage(setup.settings.stage).key;
+        let arena = defs.root_of(stage).unwrap_or_else(|| panic!("stage {stage}'s id names no game"));
+        BattleGames { arena, sides: [0, 1].map(|p| defs.ruleset_game(setup.players[p].ruleset, arena)) }
     }
 
     /// The pools' capacities: each the larger of the two players' games'
@@ -687,8 +687,8 @@ impl Battle {
         let panels = &content.rules_of(games.arena).panels;
         let (field, mode) = (Field::new(panels, &stage.layout, stage.panel_pattern, stage.mode), stage.mode);
         let objects = Objects::with_capacity(games.pool_capacity(&content));
-        let hands = [ChipHand::empty(&content), ChipHand::empty(&content)];
-        let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p]));
+        let hands = [ChipHand::empty(&content, games.arena), ChipHand::empty(&content, games.arena)];
+        let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p], games.arena));
         let mut b = Battle {
             content,
             games,
@@ -804,11 +804,34 @@ impl Battle {
         }
     }
 
+    /// The game of the definition with id `key`: its prefix's (the engine's
+    /// own `engine/...`, the arena's).
+    pub fn game_of(&self, key: &str) -> crate::content::RootId {
+        self.content.defs.root_of(key).unwrap_or(self.games.arena)
+    }
+
+    /// The chip a zeroed chip field reads: the arena's game's zeroed chip
+    /// (`Content::chip_or_zeroed`).
+    pub fn chip_or_zeroed(&self, h: Option<nettai_content_api::ChipHandle>) -> nettai_content_api::ChipHandle {
+        self.content.chip_or_zeroed(self.games.arena, h)
+    }
+
+    /// The record a chip field names, a zeroed one the arena's game's
+    /// zeroed chip's.
+    pub fn chip_field(&self, h: Option<nettai_content_api::ChipHandle>) -> &crate::content::ChipData {
+        self.content.chip_field(self.games.arena, h)
+    }
+
+    /// The arena's game's zeroed chip.
+    pub fn zeroed_chip(&self) -> Option<nettai_content_api::ChipHandle> {
+        self.content.zeroed_chip(self.games.arena)
+    }
+
     /// The rules of chip `chip`'s own game (docs/design/rules-in-luau.md
     /// §7.5: a chip runs as its game wrote it); no chip, the arena's.
     pub fn chip_rules(&self, chip: Option<nettai_content_api::ChipHandle>) -> &crate::content::Rules {
         match chip {
-            Some(h) => self.content.rules_of(self.content.defs.root_of(&self.content.defs.chip(h).key)),
+            Some(h) => self.content.rules_of(self.game_of(&self.content.defs.chip(h).key)),
             None => self.arena_rules(),
         }
     }
@@ -1733,13 +1756,18 @@ impl Battle {
     }
 
     /// Whether a custom-screen request goes through the reversions and the
-    /// sequencer (battle mode 5, or not the battle flag 0x40 mode).
+    /// sequencer (battle mode 5, or not the battle flag 0x40 mode; BN5's
+    /// 0x08007774 tests the flag alone).
     fn custom_request_transforms(&self) -> bool {
-        self.round.mode_copy == 5 || self.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
+        let mode_5 = self.round.mode_copy == 5 && self.arena_rules().flow.sequencer_before_custom;
+        mode_5 || self.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
     }
 
     /// Fighting state 0x20 (`sub_8008452`): a custom screen was asked for:
-    /// wait for the navis' reversions, then state 0x24.
+    /// wait for the navis' reversions, then state 0x24. BN5's (0x08007774,
+    /// the flow without `sequencer_before_custom`) opens the screen from
+    /// this state, on the tick the reversions are done, as state 0x24 does
+    /// a tick later.
     fn fight_custom_revert(&mut self) {
         if self.custom_request_transforms() {
             if self.fight.init == 0 {
@@ -1756,6 +1784,10 @@ impl Battle {
             if self.step_custom_reversion() {
                 return;
             }
+        }
+        if !self.arena_rules().flow.sequencer_before_custom {
+            self.fight.result = 6;
+            return;
         }
         self.fight.state = fight::CUSTOM_SEQUENCE;
         self.fight.sub = 0;
@@ -2215,6 +2247,44 @@ mod tests {
         assert_eq!(b.fight.judge.outcome, 3);
         b.start_judge(20, 10);
         assert_eq!(b.fight.judge.outcome, 1);
+    }
+
+    /// docs/design/bn5-map.md §15.3 item 18: a custom screen asked for in
+    /// the fight opens a tick sooner in BN5's flow (0x08007774 sets the
+    /// result itself once the reversions are done) than in BN6's, which
+    /// goes through state 0x24 first.
+    #[test]
+    fn bn5s_custom_request_opens_from_its_own_state() {
+        let ticks = |sequencer_before_custom: bool| {
+            let mut c: crate::content::Content = testing::build();
+            c.define().unwrap_or_else(|e| panic!("{e}"));
+            for rules in &mut c.rules {
+                rules.flow.sequencer_before_custom = sequencer_before_custom;
+            }
+            let c = std::sync::Arc::new(c);
+            let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+            setup.content = c.hash();
+            let mut b = Battle::new(setup, c);
+            b.spawn_actors();
+            b.run_objects();
+            b.fight.state = fight::CUSTOM_REVERT;
+            b.fight.init = 0;
+            let mut n = 0;
+            while b.fight.result != 6 {
+                n += 1;
+                assert!(n < 100, "the screen never opens");
+                match b.fight.state {
+                    fight::CUSTOM_REVERT => b.fight_custom_revert(),
+                    fight::CUSTOM_SEQUENCE => b.fight_custom_sequence(),
+                    s => panic!("state {s:#x}"),
+                }
+            }
+            (n, b.fight.state)
+        };
+        let (bn6, bn6_state) = ticks(true);
+        let (bn5, bn5_state) = ticks(false);
+        assert_eq!((bn5_state, bn6_state), (fight::CUSTOM_REVERT, fight::CUSTOM_SEQUENCE));
+        assert!(bn5 < bn6, "BN5 {bn5} ticks, BN6 {bn6}");
     }
 
     #[test]

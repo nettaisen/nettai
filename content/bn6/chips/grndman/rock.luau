@@ -27,8 +27,8 @@ export type State = {
 
 type Drop = GroundRockDrop
 
-local SPRITE = asset.sprite("falling-rock")
-local SOUND_BREAK = asset.sound("falling-rock")
+local SPRITE = asset.sprite("bn6:falling-rock")
+local SOUND_BREAK = asset.sound("bn6:falling-rock")
 
 -- Its height as it starts to fall, how fast it falls (`byte_80D5574`),
 -- and for how long.
@@ -168,7 +168,7 @@ local function init(me: Object)
 end
 
 rock.kind = define.kind {
-    id = "grndman/rock",
+    id = "bn6:grndman/rock",
     pool = "attack",
     state = { warning = "u8", while_dimmed = "bool", cracks = "bool", silent = "bool" },
     -- `sub_80D535C`.

@@ -25,8 +25,8 @@ export type State = {
     solid_only: boolean,
 }
 
-local SPRITE = asset.sprite("panel-strike")
-local SOUND_COL_ARMY_2 = asset.sound("col-army-2")
+local SPRITE = asset.sprite("bn6:panel-strike")
+local SOUND_COL_ARMY_2 = asset.sound("bn6:col-army-2")
 
 -- `sub_80C5E00`: on its panel, its collision on with its region off.
 local function init(me: Object)
@@ -115,7 +115,7 @@ local function tick(me: Object)
 end
 
 panel_strike.kind = define.kind {
-    id = "panel-strike",
+    id = "bn6:panel-strike",
     pool = "attack",
     state = { cracks = "bool", warning = "u8", hit_mod = "u8", solid_only = "bool" },
     -- `sub_80C5DDC`.

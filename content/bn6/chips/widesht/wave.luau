@@ -26,8 +26,8 @@ function wave.variant(v: WaveVariant): WaveVariant
     return define.record("wave-variant", v)
 end
 
-local SPRITE = asset.sprite("wide-wave")
-local SOUND = asset.sound("wide-shot")
+local SPRITE = asset.sprite("bn6:wide-wave")
+local SOUND = asset.sound("bn6:wide-shot")
 local HIT_MOD = 3
 -- The rising wave's animation, and the sliding one's.
 local ANIM_RISE, ANIM_SLIDE = 0, 1
@@ -36,7 +36,7 @@ local HOLD_TICKS = 0xF
 -- The afterimages: every 5 ticks (the first after 10), of sprite "10-00"
 -- (animation 1) with this color shader, for 20 ticks.
 local TRAIL_FIRST, TRAIL_INTERVAL = 0xA, 5
-local TRAIL_SPRITE = asset.sprite("rock-cubes")
+local TRAIL_SPRITE = asset.sprite("bn6:rock-cubes")
 local TRAIL_ANIM, TRAIL_SHADER, TRAIL_TICKS = 1, 0xC3FF, 0x14
 -- What a holding variant writes over its spawner's attack (the step and
 -- its entry flag, the element and the variant byte, which nothing reads,
@@ -195,7 +195,7 @@ local function init(me: Object)
 end
 
 wave.kind = define.kind {
-    id = "widesht/wave",
+    id = "bn6:widesht/wave",
     pool = "attack",
     state = { variant = "record:wave-variant", hit_mod = "u8", hit_panel = "u32", trail = "i32" },
     -- `sub_80CB49C`.

@@ -27,10 +27,10 @@ export type State = { variant: CountdownVariant }
 
 local countdown = {}
 
-local SPRITE = asset.sprite("countdown-bomb")
+local SPRITE = asset.sprite("bn6:countdown-bomb")
 
 local HIT_MOD = 3
-local PLACE_SOUND = asset.sound("appear")
+local PLACE_SOUND = asset.sound("bn6:appear")
 -- Where it can stand once it is up: a solid panel on the field with
 -- nothing on it (`allows_bodies`: bodies are fine).
 local STANDS, OCCUPIED, OCCUPIED_BUT_BODIES = 0x10010, 0x0F88_0080, 0x0388_0080
@@ -38,16 +38,16 @@ local STANDS, OCCUPIED, OCCUPIED_BUT_BODIES = 0x10010, 0x0F88_0080, 0x0388_0080
 -- parts left hidden), then 30 more.
 local STEP_TICKS, LAST_TICKS, SHORT_TICKS = 0x3C, 0x1E, 0xF
 local SHOWS_3, SHOWS_2, SHOWS_1 = 0x3400_0000, 0x2C00_0000, 0x1C00_0000
-local TICK_SOUND, LAST_SOUND = asset.sound("tick"), asset.sound("last")
+local TICK_SOUND, LAST_SOUND = asset.sound("bn6:tick"), asset.sound("bn6:last")
 -- Blinking away: 8 ticks.
 local BLINK_TICKS = 8
 -- The blast (`byte_80CDD30`): over the area of the side it hits for, no
 -- hit spark, hit modifier 3; with bursts there every 2 ticks.
 local BLAST_HIT_MOD = 3
 local BURST_INTERVAL = 2
-local BLAST_SOUND = asset.sound("burst")
+local BLAST_SOUND = asset.sound("bn6:burst")
 -- The sound of the puff where it was broken.
-local PUFF_SOUND = asset.sound("hit-bomb-1")
+local PUFF_SOUND = asset.sound("bn6:hit-bomb-1")
 -- How it looks absorbed (the original's obstacle kind 2): its own sprite,
 -- with the sprite parts it hid (its digits); thrown, its parts keep their
 -- own facing.
@@ -314,7 +314,7 @@ local function update(me: Object)
 end
 
 countdown.kind = define.kind {
-    id = "timebom/countdown",
+    id = "bn6:timebom/countdown",
     pool = "attack",
     state = { variant = "record:countdown-variant" },
     update = update,

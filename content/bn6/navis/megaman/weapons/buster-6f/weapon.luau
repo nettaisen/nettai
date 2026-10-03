@@ -5,7 +5,7 @@
 local buster = require("../buster/weapon")
 
 return define.weapon {
-    id = "megaman/buster-6f",
+    id = "bn6:megaman/buster-6f",
     charge_ticks = { 100, 90, 80, 70, 60, 100, 90, 80 }, -- by Charge 0..7; past 4, the next routine's row
     setup = buster.weapon.setup,
 }

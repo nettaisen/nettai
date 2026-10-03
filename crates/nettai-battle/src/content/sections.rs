@@ -96,6 +96,8 @@ struct ReactionsSection {
     push_reading: super::rules::PushReading,
     ice: [SlideVector; 6],
     bubble_bob: [i8; 32],
+    #[serde(default)]
+    slide_speed: super::rules::SlideSpeed,
 }
 
 #[derive(Deserialize)]
@@ -299,6 +301,7 @@ fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definit
                 let s: ReactionsSection = r.read(spec, &at).map_err(e)?;
                 (rules.push_vectors, rules.ice_vectors, rules.bubble_bob) = (s.push, s.ice, s.bubble_bob);
                 rules.push_reading = s.push_reading;
+                rules.slide_speed = s.slide_speed;
             }
             "berserk" => {
                 let s: BerserkSection = r.read(spec, &at).map_err(e)?;
@@ -372,6 +375,7 @@ fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definit
             }
             "chip-use" => rules.chip_use = r.read::<super::rules::ChipUseRules>(spec, &at).map_err(e)?,
             "flow" => rules.flow = r.read::<super::rules::FlowRules>(spec, &at).map_err(e)?,
+            "effects" => rules.effects = r.read::<super::rules::EffectsRules>(spec, &at).map_err(e)?,
             "sp-chips" => {
                 let s: SpChipsSection = r.read(spec, &at).map_err(e)?;
                 (rules.sp_deletion_times, rules.sp_slots) = (s.deletion_times, s.slots);
@@ -401,7 +405,7 @@ fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definit
 pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), ContentError> {
     let r = SpecReader::new(&content.assets, definitions);
     let mut all = Vec::new();
-    for root in content.scripts.root_names() {
+    for root in Content::game_names(&content.scripts, definitions) {
         let mut rules = content.base_rules.clone();
         sections(&mut rules, &root, &r, definitions)?;
         all.push(rules);

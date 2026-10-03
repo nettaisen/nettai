@@ -27,13 +27,13 @@ local DRAW, RECOVER = 0x0, 0x4
 local UNTIL_ANIM_END, AFTER = 1, 2
 
 -- The bow (the original's attachment row 0x17).
-local BOW = attachment.look { sprite = asset.sprite("bow"), palette = 0, attach_point = 0x17 }
+local BOW = attachment.look { sprite = asset.sprite("bn6:bow"), palette = 0, attach_point = 0x17 }
 -- The navi's attach point the arrows are shot from.
 local HAND = 0x17
 -- Panels an arrow passes over, by side (`byte_80ECEAC`): flag 0x10000 and
 -- none of the other side's bodies.
 local PASSES = { [0] = { require = 0x10000, forbid = 0x05800000 }, [1] = { require = 0x10000, forbid = 0x0A800000 } }
-local SOUND_TWANG = asset.sound("twang")
+local SOUND_TWANG = asset.sound("bn6:twang")
 
 -- `sub_80ECF00`: an arrow over (x, y), leaving after `delay` ticks: at the
 -- panel's center a pixel up, at the navi's hand height (its sprite's
@@ -132,7 +132,7 @@ local function shoot(): Action
 end
 
 chips[1] = define.chip {
-    id = "trnarrw1",
+    id = "bn6:trnarrw1",
     codes = { "A", "F", "K" },
     element = "aqua", family = "aqua", class = "standard",
     rarity = 0, mb = 30, damage = 30, hit_param = 30, lockout = 0,
@@ -144,7 +144,7 @@ chips[1] = define.chip {
     action = shoot(),
 }
 chips[2] = define.chip {
-    id = "trnarrw2",
+    id = "bn6:trnarrw2",
     codes = { "G", "M", "Z" },
     element = "aqua", family = "aqua", class = "standard",
     rarity = 1, mb = 36, damage = 40, hit_param = 30, lockout = 0,
@@ -156,7 +156,7 @@ chips[2] = define.chip {
     action = shoot(),
 }
 chips[3] = define.chip {
-    id = "trnarrw3",
+    id = "bn6:trnarrw3",
     codes = { "M", "S", "Y" },
     element = "aqua", family = "aqua", class = "standard",
     rarity = 2, mb = 42, damage = 50, hit_param = 30, lockout = 0,

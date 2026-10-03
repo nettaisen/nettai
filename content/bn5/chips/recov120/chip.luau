@@ -7,7 +7,7 @@
 local heal = require("@bn6/chips/recov/heal")
 
 return define.chip {
-    id = "recov120",
+    id = "bn5:recov120",
     codes = { "K" },
     element = "null",
     family = "recovery",

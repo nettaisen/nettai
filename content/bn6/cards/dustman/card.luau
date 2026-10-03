@@ -6,7 +6,7 @@ local back_special = require("./back-special")
 local variants = require("../../objects/projectile/variants")
 
 return define.patch_card {
-    id = "dustman",
+    id = "bn6:dustman",
     mb = 37,
     effects = {
         cards.hp(140),

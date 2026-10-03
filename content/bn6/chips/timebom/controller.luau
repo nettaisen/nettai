@@ -72,7 +72,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "timebom/controller",
+    id = "bn6:timebom/controller",
     pool = "effect",
     state = { bonus = "u16", variant = "record:countdown-variant" },
     -- `sub_80E31D8`.

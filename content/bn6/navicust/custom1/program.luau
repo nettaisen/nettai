@@ -4,7 +4,7 @@
 local programs = require("../../rules/navicust/programs")
 
 return define.navicust_program {
-    id = "custom1",
+    id = "bn6:custom1",
     colors = { "blue" },
     shape = {
         ".......",

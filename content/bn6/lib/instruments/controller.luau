@@ -38,7 +38,7 @@ local function effect(me: Object)
 end
 
 instruments.kind = define.kind {
-    id = "instruments/controller",
+    id = "bn6:instruments/controller",
     pool = "effect",
     state = { instrument = "record:instrument" },
     update = dimming_chips.phases { name = "the instrument chips", effect = effect },

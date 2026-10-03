@@ -60,33 +60,34 @@ fn unhex(s: &str) -> Vec<u8> {
 
 /// The live navi's stats on `content`.
 pub fn live_navi(content: &Content) -> NaviStats {
-    codec::navi_stats(&unhex(LIVE_NAVI).try_into().unwrap(), &codec::Ids::new(content, Compat::bn6()))
+    codec::navi_stats(&unhex(LIVE_NAVI).try_into().unwrap(), &codec::Ids::new(content, Compat::bn6_for(content)))
 }
 
 /// The backgrounds a link battle draws from (`sub_81209DC`'s
 /// `byte_8120A20`, by name; some are there twice, so twice as likely).
+/// BN6's: a link battle is.
 const LINK_BACKGROUNDS: [&str; 21] = [
-    "honeycomb",
-    "statues",
-    "statues",
-    "seals",
-    "clouds",
-    "sprouts",
-    "calendar-checkers",
-    "calendar-mint",
-    "calendar-lavender",
-    "calendar-navy",
-    "calendar-blue",
-    "calendar-cyan",
-    "trees",
-    "calendar-green",
-    "calendar-bright-blue",
-    "code",
-    "globes",
-    "code-2",
-    "code-2",
-    "calendar-purple",
-    "calendar-purple",
+    "bn6:honeycomb",
+    "bn6:statues",
+    "bn6:statues",
+    "bn6:seals",
+    "bn6:clouds",
+    "bn6:sprouts",
+    "bn6:calendar-checkers",
+    "bn6:calendar-mint",
+    "bn6:calendar-lavender",
+    "bn6:calendar-navy",
+    "bn6:calendar-blue",
+    "bn6:calendar-cyan",
+    "bn6:trees",
+    "bn6:calendar-green",
+    "bn6:calendar-bright-blue",
+    "bn6:code",
+    "bn6:globes",
+    "bn6:code-2",
+    "bn6:code-2",
+    "bn6:calendar-purple",
+    "bn6:calendar-purple",
 ];
 
 /// A link battle's arena drawn from `draws`: its stage and background, then
@@ -132,7 +133,7 @@ impl Side {
     pub fn live(content: &Content, folder: SavedFolder, crosses: CrossList, game: GameVersion) -> Side {
         let stats = crate::starting(content, live_navi(content), game);
         Side {
-            ruleset: content.defs.stock_ruleset(),
+            ruleset: content.defs.stock_ruleset_of(crate::DEFAULT_GAME),
             navi: stats.navi,
             game,
             stats,
@@ -179,7 +180,7 @@ pub fn plain(content: &Arc<Content>, seed: u32) -> Result<Match, String> {
     let folder = SavedFolder { chips: [FolderChip::new(chip, content.chip(chip).codes[0]); 30], regular: None, tags: None };
     let game = GameVersion::Falzar;
     let side = Side {
-        ruleset: content.defs.stock_ruleset(),
+        ruleset: content.defs.stock_ruleset_of(crate::DEFAULT_GAME),
         navi,
         game,
         stats: Side::base_stats(content, navi, game),
@@ -279,10 +280,10 @@ mod tests {
             gregar > 0 && gregar < 5
         });
         assert!(mixed);
-        let forced = live(&content, 3, Some(crate::link_stage(&content, "netbattle-43").unwrap())).unwrap();
+        let forced = live(&content, 3, Some(crate::link_stage(&content, "bn6:netbattle-43").unwrap())).unwrap();
         assert_eq!(content.defs.stage(forced.arena.first.stage).key, "bn6:netbattle-43");
         assert_eq!(forced.sides, live(&content, 3, None).unwrap().sides);
-        assert!(crate::link_stage(&content, "netbattle-100").is_err());
+        assert!(crate::link_stage(&content, "bn6:netbattle-100").is_err());
     }
 
     /// A plain match is one the checks accept (its folder the rules' draw).

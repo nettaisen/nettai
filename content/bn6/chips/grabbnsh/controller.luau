@@ -18,8 +18,8 @@ export type State = {
 }
 
 -- The flash on each panel taken back (effect 0x3B).
-local RETURNED = define.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 0 }
-local SOUND_RETURN = asset.sound("err-select-91")
+local RETURNED = define.effect { sprite = asset.sprite("bn6:grab-shot"), anim = 1, palette = 0 }
+local SOUND_RETURN = asset.sound("bn6:err-select-91")
 local INTERVAL, AFTER = 0x1E, 0x3C
 -- Where the hands go (`byte_80E2E24`, by side): the other side's player
 -- navi's panels.
@@ -109,7 +109,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "grabbnsh/controller",
+    id = "bn6:grabbnsh/controller",
     pool = "effect",
     state = { bonus = "u16", strikes = "u32" },
     -- `sub_80E2CA4`.

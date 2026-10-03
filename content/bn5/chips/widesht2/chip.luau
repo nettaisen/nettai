@@ -10,10 +10,10 @@ local wave = require("../../objects/wave/variants")
 local widesht = require("@bn6/chips/widesht/action")
 
 -- BN5's wide shooter (its attachment row 0x11).
-local SHOOTER = attachment.look { sprite = asset.sprite("wide-shooter"), palette = 0, attach_point = 12 }
+local SHOOTER = attachment.look { sprite = asset.sprite("bn5:wide-shooter"), palette = 0, attach_point = 12 }
 
 return define.chip {
-    id = "widesht2",
+    id = "bn5:widesht2",
     codes = { "E", "F", "G" },
     element = "aqua",
     family = "aqua",

@@ -1354,8 +1354,8 @@ declare int: {
 
 -- ---- Definitions and assets (docs/design/content-model-v2.md §3) -----------------------------
 
--- Assets, named while content loads (`asset.sprite("bomb")`; names are
--- compat/assets.toml's): one value per asset. (`SpriteAsset`, since
+-- Assets, named in full while content loads (`asset.sprite("bn6:bomb")`: the
+-- pack's game, then its name, a game's compat/assets.toml's): one value per asset. (`SpriteAsset`, since
 -- `Sprite` is an object's sprite.)
 declare class SpriteAsset
     name: string
@@ -1435,6 +1435,14 @@ export type SystemSpec = {
         -- (not the simulation): the folder is `battle.checked_folder()`, and
         -- each rule it breaks is `battle.folder_problem(rule, text)`.
         folder_check: ((side: number) -> ())?,
+        -- Each tick of the fight, in the navi's intake after the standing
+        -- effects (`sub_801AC6C`; BN5's light and dark MegaMan clears a holy
+        -- panel there).
+        navi_intake: ((side: number, navi: Object) -> ())?,
+        -- A chip's use is prepared (the end of `sub_80127C0`): nil lets it
+        -- be used, a chip is what the navi uses instead. The first system
+        -- that answers decides.
+        chip_check: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
     }?,
 }
 export type System = SystemSpec
@@ -1982,9 +1990,11 @@ export type Region = RegionSpec
 export type CollisionTypeSpec = { id: string, side0: number, side1: number, row_offset: number? }
 export type CollisionType = CollisionTypeSpec
 
--- What the ruleset needs from content by role (rules/roles.luau, once):
--- each role names the definition that fills it.
+-- What the ruleset needs from content by role (rules/roles.luau, once per
+-- game): each role names the definition that fills it. `id` names the game
+-- whose roles they are (`bn6:roles`).
 export type RolesSpec = {
+    id: string,
     actions: {
         anti_damage_counter: Action?,
         anti_sword_counter: Action?,
