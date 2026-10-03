@@ -23,11 +23,14 @@ local SPEED, EDGE = 0x8_0000, 150
 -- The hooks (0x080DAD8C: dx, dy, the effect), and what they catch (0x080DAD84, by side: the other side's navis and
 -- the field's obstacles). Each hook's hit: the panel alone, the elec spark (row 3), thrown, hitting navis, hit
 -- modifier 1 (0x080DAD98's 0x0A050301).
-local HOOKS = {
-    { 0, -1, define.effect { sprite = SPRITE, anim = 1, palette = 0 } },
-    { 1, 0, define.effect { sprite = SPRITE, anim = 2, palette = 0 } },
-    { 0, 1, define.effect { sprite = SPRITE, anim = 1, palette = 0 } },
-    { -1, 0, define.effect { sprite = SPRITE, anim = 2, palette = 0 } },
+type Hook = { dx: number, dy: number, effect: Effect }
+local VERTICAL = define.effect { sprite = SPRITE, anim = 1, palette = 0 }
+local HORIZONTAL = define.effect { sprite = SPRITE, anim = 2, palette = 0 }
+local HOOKS: { Hook } = {
+    { dx = 0, dy = -1, effect = VERTICAL },
+    { dx = 1, dy = 0, effect = HORIZONTAL },
+    { dx = 0, dy = 1, effect = VERTICAL },
+    { dx = -1, dy = 0, effect = HORIZONTAL },
 }
 local CATCHES: { [number]: number } = { [0] = 0x0580_0000, [1] = 0x0A80_0000 }
 local HOOK_LIFETIME = 20
@@ -69,7 +72,7 @@ local function hook(me: Object, x: number, y: number): number
     end
     local n = 0
     for _, h in HOOKS do
-        local px, py = x + h[1], y + h[2]
+        local px, py = x + h.dx, y + h.dy
         if bit32.btest(field.flags(px, py), catches) then
             battle.hitbox(me, {
                 panel_x = px,
@@ -86,7 +89,7 @@ local function hook(me: Object, x: number, y: number): number
             })
             n += 1
             local cx, cy = field.center(x, y)
-            local e = battle.effect(Vec3.new(cx + h[1] * 20 * 0x10000, cy + h[2] * 12 * 0x10000, me.pos.z), h[3])
+            local e = battle.effect(Vec3.new(cx + h.dx * 20 * 0x10000, cy + h.dy * 12 * 0x10000, me.pos.z), h.effect)
             if e then
                 e.timer = HOOK_LIFETIME
             end
