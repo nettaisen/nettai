@@ -495,9 +495,9 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
                 let i = (0..4).find(|&i| bits & (1 << i) != 0).unwrap_or(4);
                 facing(b.arena_rules().push_vectors[i + off])
             }
-            // BN5's 0x0800C9D8: the first of bits 2 to 5 of the side-0
-            // hits' modifier, else of the side-1 hits' with the direction
-            // reversed; five rows (none past the fifth).
+            // BN5's 0x0800C9D8: the first of bits 2 to 5 of the unflipped
+            // hitters' modifier, else of the flipped ones' with the
+            // direction reversed; five rows (none past the fifth).
             PushReading::Bn5 => {
                 let [from0, from1] = coll(b, r).hit_mod_by_side;
                 let first = |hm: u8| (0..4).find(|&i| (hm >> 2) & (1 << i) != 0).unwrap_or(4);
@@ -568,8 +568,9 @@ mod tests {
         (b, players)
     }
 
-    /// The push of side 1's navi after hits from side 0 with modifier
-    /// `from0` and from side 1 with `from1` (BN6 reads them together).
+    /// The push of side 1's navi after hits from unflipped hitters with
+    /// modifier `from0` and from flipped ones with `from1` (BN6 reads them
+    /// together).
     fn push(reading: PushReading, from0: u8, from1: u8) -> SlideVector {
         let (mut b, [_, r]) = fight(reading);
         let c = coll_mut(&mut b, r);
@@ -579,11 +580,11 @@ mod tests {
         slide_vector(&b, r)
     }
 
-    /// docs/design/bn5-map.md §15.3 item 2: BN5's push reads the side-0
-    /// hits' modifier toward the navi's front, else the side-1 hits' the
-    /// other way; BN6's reads them together, toward the front.
+    /// docs/design/bn5-map.md §15.3 item 2: BN5's push reads the unflipped
+    /// hitters' modifier toward the navi's front, else the flipped ones'
+    /// the other way; BN6's reads them together, toward the front.
     #[test]
-    fn bn5_pushes_by_the_hitters_side() {
+    fn bn5_pushes_by_the_hitters_flip() {
         // Bit 2: row 0, six panels along +x times the navi's front (side
         // 1's is -1).
         let left = SlideVector { dx: -1, dy: 0, tiles: 6 };
@@ -591,8 +592,8 @@ mod tests {
         assert_eq!(push(PushReading::Bn6, 0x04, 0), left);
         assert_eq!(push(PushReading::Bn6, 0, 0x04), left);
         assert_eq!(push(PushReading::Bn5, 0x04, 0), left);
-        assert_eq!(push(PushReading::Bn5, 0, 0x04), right, "a hit from its own side pushes it the other way");
-        // The side-0 hits come first.
+        assert_eq!(push(PushReading::Bn5, 0, 0x04), right, "a flipped hitter's hit pushes it the other way");
+        // The unflipped hitters' hits come first.
         assert_eq!(push(PushReading::Bn5, 0x04, 0x08), left);
         // BN6's 0x80 picks the vertical rows; BN5 has no such bit.
         let v = push(PushReading::Bn6, 0x84, 0);
