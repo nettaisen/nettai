@@ -307,3 +307,7 @@ export type YoyoThrowSpec = {
     attachment: Kind,
     throw: (me: Object, x: number, y: number, z: number, damage: number) -> Object?,
 }
+
+-- A follow effect's look (@common/follow-effect): a row of a game's looks and its routine.
+export type FollowEffectBehavior = "none" | "slide" | "flash" | "while_in_action" | "riding" | "timed"
+export type FollowEffectLook = { sprite: SpriteAsset, anim: number, palette: number, behavior: FollowEffectBehavior }
