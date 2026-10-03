@@ -3,7 +3,7 @@
 -- enemy navi for each: BN6's controller (@bn6/chips/grabbnsh; BN5's the same code).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local controller = require("@bn6/chips/grabbnsh/controller")
+local controller = require("./controller")
 
 return define.chip {
     id = "bn5:grabbnsh",

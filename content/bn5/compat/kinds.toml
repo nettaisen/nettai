@@ -24,13 +24,13 @@
 "bn6:bomb" = { pool = "attack", index = 0x08 }
 "bn5:grab/shot" = { pool = "attack", index = 0x0F }
 "bn6:energbom/burst" = { pool = "attack", index = 0x11 }
-"bn6:grabbnsh/hand" = { pool = "attack", index = 0x46 }
+"bn5:grabbnsh/hand" = { pool = "attack", index = 0x46 }
 "bn6:instrument" = { pool = "attack", index = 0x78 }
 "bn5:grab/controller" = { pool = "effect", index = 0x03, scratch_position = true }
 "bn5:gauge-speed" = { pool = "effect", index = 0x1C, scratch_position = true }
 "bn5:panel-changer" = { pool = "effect", index = 0x1F, scratch_position = true }
 "bn5:panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
-"bn6:grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
+"bn5:grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
 "bn5:trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
 "bn6:instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
 "bn6:protoman/navi" = { pool = "actor", index = 0x3C }
@@ -38,9 +38,9 @@
 "bn5:holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 "bn5:holydrem/actor" = { pool = "actor", index = 0x1C }
 "bn5:holydrem/shot" = { pool = "attack", index = 0x83 }
-"bn6:invisibl/controller" = { pool = "effect", index = 0x5D, scratch_position = true }
-"bn6:mine/controller" = { pool = "effect", index = 0x29, scratch_position = true }
-"bn6:mine/land-mine" = { pool = "attack", index = 0x4C }
+"bn5:invisibl/controller" = { pool = "effect", index = 0x5D, scratch_position = true }
+"bn5:mine/controller" = { pool = "effect", index = 0x29, scratch_position = true }
+"bn5:mine/land-mine" = { pool = "attack", index = 0x4C }
 "bn6:antidmg/shuriken" = { pool = "attack", index = 0xC2 }
 "bn6:rising-bubble" = { pool = "effect", index = 0x14 }
 "bn5:firehit/fist" = { pool = "attack", index = 0x5B }
