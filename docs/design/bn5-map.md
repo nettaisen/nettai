@@ -1612,7 +1612,7 @@ actor 0x26, and comets, attack 0x74), Football (GridMan, actor 0x25, and balls, 
 and BigNoise (ShadeMan, actor 0x1B, and his noise, attack 0x04: BN5's own, not BN6's flame), each in its chip's
 folder with the kinds it owns.
 
-**Waiting.** AirSpin1–3 (BN6's AirSpin top with BN5's changes: random targets, its own panel setting, its hit's
+**Waiting** (since 2026-10-03 bn5-navichips', what is found of them so far given with them). AirSpin1–3 (BN6's AirSpin top with BN5's changes: random targets, its own panel setting, its hit's
 self type 4) and AqWhirl1–3 (BN5's own, attack object 0x5D), both on BN6's AirSpin action, to move to
 content/common; PileDrvr (its controller, effect 0x6F, piles, attack 0x99, and their charge, attack 0x9A: AirSpin's
 top reworked, so with AirSpin); CopyDmg (BN5's action 0x24, the buster arm and a spawn by subtype, with BN6's mark,
