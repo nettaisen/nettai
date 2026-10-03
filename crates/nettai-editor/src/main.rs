@@ -79,7 +79,7 @@ fn show(report: &nettai_content::report::Report) {
 
 /// The font the editor writes with: the frontend's bundled Murecho (Latin,
 /// kana and kanji, for the Japanese names).
-const FONT: &[u8] = include_bytes!("../../nettai-frontend/fonts/murecho/Murecho-VariableFont_wght.ttf");
+const FONT: &[u8] = include_bytes!("../../nettai-render/fonts/murecho/Murecho-VariableFont_wght.ttf");
 
 fn main() -> iced::Result {
     let options = match parse() {

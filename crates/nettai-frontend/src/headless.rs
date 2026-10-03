@@ -209,7 +209,7 @@ pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<Vec<
             out.cues += cues.len() as u32;
             if let Some(banks) = &sound {
                 for &cue in cues {
-                    crate::audit::check_cue(&s.battle, banks, cue, &mut renderer.problems);
+                    crate::sound_lookups::check_cue(&s.battle, banks, cue, &mut renderer.problems);
                 }
             }
             if let Some(a) = &mut audio {
