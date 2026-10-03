@@ -8,7 +8,7 @@
 
 pub mod custom;
 pub mod lettering;
-pub use lettering::{BASE_LANGUAGE, CustomLettering, HudLettering};
+pub use lettering::{BASE_LANGUAGE, CustomLettering, HudLettering, lend_marks};
 pub use custom::{ButtonPictures, ChipArt, CursorPlace, CustomLayout, CustomScreen, MapPatch, PatchList, Picture, SlotPictures, VersionPictures};
 
 /// Assets a game version has its own of: the base game's (`base_version`,

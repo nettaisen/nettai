@@ -845,6 +845,8 @@ declare class Navi
     float_shoes: boolean
     air_shoes: boolean
     undershirt: boolean
+    -- BN5's Hub Style (NaviStats +0x4C), which its patch card 111 sets.
+    hub_style: boolean
     -- HP when the round starts, and its maximum.
     hp: number
     max_hp: number
@@ -1633,6 +1635,9 @@ export type SystemSpec = {
     id: string,
     state: StateSchema?,
     setup: StateSchema?,
+    -- What a player's setup that says nothing of a field holds (else zero): a
+    -- value of each field given (an enum's by name).
+    setup_defaults: { [string]: number | boolean | string }?,
     -- Its own actions, which reach its state (`system.state()`) for the
     -- side of the navi running them.
     actions: { Action }?,
