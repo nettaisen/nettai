@@ -324,7 +324,7 @@ by the binding.
 
 | Hook | Called | BN6 does |
 |---|---|---|
-| `round_setup(side)` | once per side as the round is set up (`Battle::new`), before anything reads the side's stats, which it may change | the patch cards (rules/patch-cards: added with them, docs/design/patch-cards.md §3) |
+| `round_setup(side)` | once per side as the round is set up (`Battle::new`), before anything reads the side's stats, which it may change | the NaviCust's compile (rules/navicust, docs/design/navicust.md), then the patch cards (rules/patch-cards: added with them, docs/design/patch-cards.md §3) |
 | `round_start(side)` | once per side, after the navis spawn | reads its setup into state (the Beast Out counter, the Crosses owned) |
 | `turn_check(side, request) -> busy?` | at the sequencer's check (`sub_801486C`), per side | Beast Out runs out (`sub_80159C6`) |
 | `turn_started(side)` | after the sequencer, at the turn's start (`sub_800840C`'s end) | a turn in Beast Out spends one (`sub_8015A38`) |
@@ -332,6 +332,7 @@ by the binding.
 | `custom_closed(side)` | when both results are in and the fight resumes (`sub_8009338`) | the Beast Out check's delay is set to 1 |
 | `custom_result(side, result)` | when both results are in (`sub_800B3D8`) | |
 | `round_end(side)` | once per side as the round finishes | Beast Out used and crossed, read after the battle |
+| `folder_check(side)` | only when a tool asks (`Battle::check_folder`: a match's checks, a netplay offer, the editor, live play's random folder), never in a simulation | the folder rules (rules/folder: the size, the chips the pack lists, codes, copies by MB, Mega, Giga and dark limits, the Regular memory, the tag chips' 60 MB) |
 
 **The custom screen** (§4.4): `custom.open(side) -> Offer`, a button's `available(side)` and `press(side)`, a
 window's `update(side, pad)`, `custom.keys(side, pad) -> handled`, `custom.hand_size(side) -> n`,
@@ -1103,4 +1104,40 @@ BN6 stays byte-identical; BN5's side is unit tests and asm citations, and the BN
   with 96 rollback rows, the 189 legacy rounds (2,746,946 frames, 115,897 after known deviations), the lab 6542
   (6539 matched, 3 to a known deviation; 5,773,035 frames) with 0 sound rounds differing, the audit 72 traces with
   0 problems.
+
+### The NaviCust and the folder rules (2026-10-02, branch match-editor)
+
+The match editor's work (docs/frontend.md §6, README "The match editor") brought two more of BN6's rules into its
+content.
+
+- **The NaviCust** (docs/design/navicust.md): a setup's placed programs
+  (`PlayerSetup::navicust`), the programs as definitions (`define.navicust_program`, 46 of them, written from
+  the ROM's part table by verify's `tools/navicust/gen.py`), the board as a rule section
+  (`define.rules("navicust", ...)`, `Rules::navicust`) and the compile as the `navicust` system's `round_setup`,
+  which the stock ruleset runs before the patch cards'. Rust keeps only the geometry: shapes, quarter turns,
+  boards and whether a shape fits (`NaviCustRules::fits`). Luau reads the setup with `battle.navicust(side)`.
+- **The folder rules** (rules/folder/system.luau): a new hook, `folder_check(side)`, which a tool calls through
+  `Battle::check_folder(side, chips, regular, tags, complete)` and never a simulation. The hook reads the folder
+  with `battle.checked_folder()` and names each rule it breaks with `battle.folder_problem(rule, text)`. Rust
+  only calls it and returns the problems (`FolderProblem {rule, text}`); the state it uses (`Battle::folder_check`)
+  lives only during the call, and the digest leaves it out. Each side's folder is checked by its own ruleset's
+  systems, with its navi's stats as the round set them up (`NaviStat::RegularMemory` is new, read-only). The
+  editor, `--match`, a netplay offer and live play's random draw go through it (`nettai_match::folders`). The draw
+  makes a folder from the rules' pool (`rule = "chip"`: the chips the hook accepts one at a time) and keeps a
+  chip only when the partial folder breaks nothing. Its draws are the same as the Rust rules': the same seed gives
+  the same folders (seed 42's drawn match file has the same folders as before the move).
+- **The editor's chip pictures** come from each chip's own game's pack (R3b's "not done"): `Pictures::load`
+  takes the packs in `pack_paths` order and looks a chip's icon and art up in its root's `assets` pack, by its
+  local key.
+- **Not done**: the patch cards' 80 MB and 32 cards (`nettai_match::check::CARD_MB`) are still checked in Rust;
+  they are the cards' menu's, and would move with a `cards_check` hook.
+- **Gates** (match-editor after main d4d846cb): the build without warnings (and with all features), 463 tests, the
+  content check (886 modules), gen-content check 0 errors (it now compares the NaviCust boards with the ROM's),
+  `tools/navicust/gen.py check` 46 programs with 0 differences; machgun 1074/1331 and soundmod
+  21962/14933/20436 with 96 rollback rows and the 189 legacy rounds; the lab 6548/6548 (6545 to the end, 3 to
+  ElemTrap's known deviation; 5,775,231 frames) with 0 sound rounds differing (floor 6548, 6548, 175969 with the
+  six `navicust-compile/` scenarios); the audit 72 traces (635,424 frames), 0 problems; trace-tests' `navicust`:
+  1,274 lab sides and Tango's 4 saves, 0 differ. After main a39285fe (P1a), the merge's tier: the build without
+  warnings (all features), 469 tests, the content check (888 modules), gen-content check 0 errors, machgun and
+  soundmod as above, `navicust` 0 differ.
 

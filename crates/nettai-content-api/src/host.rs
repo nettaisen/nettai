@@ -187,6 +187,11 @@ pub enum SystemHook {
     /// `custom_closed(side)`: both results are in and the fight resumes
     /// (`sub_8009338`).
     CustomClosed,
+    /// `folder_check(side)`: a tool asks whether a folder keeps the side's
+    /// game's folder rules (`Battle::check_folder`, not the simulation):
+    /// the folder is `battle.checked_folder()`, and each rule it breaks is
+    /// `battle.folder_problem(rule, text)`. Its result is unused.
+    FolderCheck,
 }
 
 impl SystemHook {
@@ -199,16 +204,18 @@ impl SystemHook {
             SystemHook::TurnStarted => "turn_started",
             SystemHook::CustomRequested => "custom_requested",
             SystemHook::CustomClosed => "custom_closed",
+            SystemHook::FolderCheck => "folder_check",
         }
     }
 
-    pub const ALL: [SystemHook; 6] = [
+    pub const ALL: [SystemHook; 7] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
         SystemHook::TurnStarted,
         SystemHook::CustomRequested,
         SystemHook::CustomClosed,
+        SystemHook::FolderCheck,
     ];
 }
 

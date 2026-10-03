@@ -20,3 +20,6 @@ rfd = "0.15"
 # --screenshot writes the window as a PNG.
 png = "0.17"
 toml = "0.8"
+
+[dev-dependencies]
+nettai-match = { path = "../nettai-match", features = ["testing"] }

@@ -23,6 +23,12 @@ pub fn navi(content: &Content, n: NaviHandle) -> &str {
     content.strings.navi(key).and_then(|s| s.name.as_deref()).unwrap_or(key)
 }
 
+/// A NaviCust program's name, else its key.
+pub fn navicust_program(content: &Content, p: nettai_content_api::NaviCustProgramHandle) -> &str {
+    let key = &content.defs.navicust_program(p).key;
+    content.strings.navicust_program(key).and_then(|s| s.name.as_deref()).unwrap_or(key)
+}
+
 /// A patch card's name (its first line, for a name the locales break in
 /// two), else its key.
 pub fn patch_card(content: &Content, c: PatchCardHandle) -> String {

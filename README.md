@@ -97,10 +97,13 @@ and edits them, checking them against the content as you go, and plays them:
     cargo run --release -p nettai-frontend -- --match match.toml     # what Play runs
 
 Its panes show only what the side's ruleset has (Crosses with the forms system, patch cards with the patch-cards
-system): the arena; each side's ruleset, navi and game, with the stats the round starts the navi with; the folder
-(the chip pack's chips with their pictures, searchable, a code puts a chip in the selected entry; the Regular and
-tag chips; the copies and the Mega, Giga, Regular and tag limits live); the Crosses; the patch cards (MB used of
-80); the NaviCust; every stat. The problems with the match show at the bottom as you edit. Play saves the match and
+system, the NaviCust with the navicust system): the arena; each side's ruleset, navi and game, with the stats the
+round starts the navi with; the folder (the chips the side's folder rules allow, with their pictures, searchable, a
+code puts a chip in the selected entry; the Regular and tag chips; the copies and the Mega, Giga, Regular and tag
+limits live, as the game's folder rules count them); the Crosses; the patch cards (MB used of 80); the NaviCust (the
+board as the side's game draws it, with its frame and command line: a program's colour swatch adds it where it
+fits, a click picks a placed program or moves the picked one to the cell, and the picked one can be moved, turned,
+recoloured, compressed or removed; the stats it compiles to show beside it); every stat. The problems with the match show at the bottom as you edit. Play saves the match and
 runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). Random draws a match as
 live play does, and `nettai-frontend --play --save-match FILE` writes live play's draw out to edit. `--lang ja` (or
 the language list) names the chips, navis, Crosses and patch cards in Japanese; `--content` and `--pack` are the
@@ -115,8 +118,9 @@ macOS and Windows need nothing more.
 
 - [`docs/design`](docs/design): how the engine and its content are built: the content model
   ([content-model-v2.md](docs/design/content-model-v2.md)), how to write content
-  ([content-migration.md](docs/design/content-migration.md)), scripting, the content pack, rollback, and what
-  other games would need ([multi-game.md](docs/design/multi-game.md)).
+  ([content-migration.md](docs/design/content-migration.md)), scripting, the content pack, rollback, the NaviCust
+  ([navicust.md](docs/design/navicust.md)), and what other games would need
+  ([multi-game.md](docs/design/multi-game.md)).
 - [`docs/engine`](docs/engine): the original game's battle routines, specified from the disassembly.
 - [`docs/frontend.md`](docs/frontend.md): the frontend, and match files (§6).
 

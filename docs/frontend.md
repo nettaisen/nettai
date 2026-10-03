@@ -652,8 +652,8 @@ them).
 ## 6. Match files
 
 A match file is everything a round needs, chosen before the battle: the
-arena, and each side's ruleset, navi, game, stats, folder, Crosses and patch
-cards, in TOML, by content key (a definition's key, as content names it;
+arena, and each side's ruleset, navi, game, stats, folder, Crosses, patch
+cards and NaviCust, in TOML, by content key (a definition's key, as content names it;
 `bn6:cannon`, or unqualified when one root defines it). `--match FILE` plays
 one (you are its left side), `--save-match FILE` writes the match played,
 and nettai-editor makes and edits them (README.md, "The match editor").
@@ -693,6 +693,14 @@ tags = [5, 6]                              # optional: two entries
 hp = 1000
 regular_memory = 50
 sun = true
+
+[left.navicust]                            # optional: MegaMan's NaviCust, compiled into his stats
+expansions = 2                             # optional: the board, 0 (4x4) to 2 (5x5, the default)
+programs = [                               # in the save's order; x, y the centre on the 7x7 grid
+    { program = "bn6:suprarmr", color = "red", x = 2, y = 3 },
+    { program = "bn6:undersht", color = "white", x = 5, y = 3, rotation = 1 },   # quarter turns
+    { program = "bn6:hp-100", color = "pink", x = 3, y = 1, compressed = true },
+]
 ```
 
 **The stats block** (`nettai_match::stats`) sets the navi's stats by name
@@ -713,6 +721,16 @@ NaviCust's bugs (`step_bug`, `panel_trail`, `panel_trail_level`,
 so a written block gives back the same stats. Writing a match, only the
 fields that differ are written.
 
+**The NaviCust** (`[left.navicust]`, docs/design/navicust.md) is the
+programs placed on MegaMan's grid, by key and colour name (a program's
+`colors`). With one, the stats block is the save's stats before the NaviCust:
+only what a save keeps through the NaviCust's reload (`hp`, `regular_memory`,
+`mood`, `beast_out_counter`, `sun`, `form` and the folder fields), since the
+ruleset's `navicust` system makes the rest (the abilities, levels, weapons and
+bugs) from the programs as the round is set up. Without one, the stats block
+is the stats as they are, NaviCust included, as a recording's are. The
+editor's NaviCust pane places the programs on the board as the game does.
+
 **The checks** (`nettai_match::check`) run when a file loads, when a netplay
 offer arrives (the same `check_side`), and live in the editor; each problem
 is said with where it is:
@@ -721,13 +739,22 @@ is said with where it is:
   pack, a ruleset, a navi, a Cross, a patch card, a chip, a weapon, a record,
   a form), and every stat is in range;
 - the arena's stages are link battle stages (`link_battle_stages`);
-- the folder keeps BN6's rules (`nettai_match::folders`: 30 entries, copies
-  by MB, each chip in one of its codes, at most three dark chips, chips the
-  chip pack lists; the tag chips two other entries of 60 MB together at most,
-  `sub_81349E8`), and its Mega, Giga and Regular limits are the navi's stats
-  as the round starts them (after the rules' `round_setup`: the patch cards'
-  folder limits, as the original's folder editor and link battle check read
-  the reloaded stats);
+- the folder keeps its game's rules, which each side's ruleset checks: the
+  ruleset's systems' `folder_check` hooks (BN6's are rules/folder/system.luau:
+  30 entries, copies by MB, each chip in one of its codes, at most three dark
+  chips, chips the chip pack lists, the Regular chip within the Regular
+  memory, the tag chips two other entries of 60 MB together at most). The
+  Mega, Giga and Regular limits are the navi's stats as the round starts them
+  (after the rules' `round_setup`: the NaviCust's and the patch cards' folder
+  limits, as the original's folder editor and link battle check read the
+  reloaded stats). Rust only asks (`Battle::check_folder`) and reports what
+  the hooks say, so another game's folder rules are its own Luau; live play's
+  random folders are drawn from the rules' pool and kept only when the hooks
+  accept them (`nettai_match::folders`);
+- a NaviCust only with a ruleset that has the navicust system, and only for
+  MegaMan; every program fits the board, none overlaps another, the copies of
+  one program in one colour are all compressed or all not (the save keeps
+  one flag for them), and the stats block holds only what a save keeps;
 - a Cross list only with a ruleset that has the forms system, of the navi's
   Crosses (a navi that changes form), at most five, none twice;
 - patch cards only with a ruleset that has the patch-cards system, each
