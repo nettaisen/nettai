@@ -265,6 +265,8 @@ declare class Collision
     status_base: Status?
     -- Bug code (low byte) and argument (high byte).
     bugs: number
+    -- The bug code and argument the last resolution's hits brought (CollisionData+0x9C, +0x9D), which the navi takes.
+    inflicted_bugs: number
     hit_mod_base: number
     -- The damage it deals.
     self_damage: number
@@ -1128,6 +1130,9 @@ declare battle: {
     -- enough: the count wraps below 0).
     bug_frags: (side: number) -> number,
     spend_bug_frags: (side: number, count: number) -> (),
+    -- The level of the navi code a side's save received (0 to 14), nil
+    -- when none was (BN6's event flag 0x163).
+    navi_level: (side: number) -> number?,
     -- `sub_802E4B8`: the side's SELECT or Cross special in progress.
     side_special: (side: number) -> SideSpecial,
     -- A system's takeover of the side's navi starts for `ticks` (counted
@@ -1699,6 +1704,10 @@ export type SystemSpec = {
         -- kind (presentation; `sub_801002C`, BN5's 0x0800DD94). The first
         -- system that answers decides; none, the framework's (BN6's).
         navi_palette: ((side: number, navi: Object) -> number?)?,
+        -- Before the navi takes its hit's NaviCust bug (`sub_80139F6`, BN5's 0x0801103E): a system may change the bug
+        -- (`navi.collision.inflicted_bugs`), or answer true: the bug and the weapons' reload are skipped. The first
+        -- system that answers true decides.
+        navi_bug: ((side: number, navi: Object) -> boolean?)?,
         -- Each tick of the idle action of a navi whose side's takeover runs
         -- (`sub_802D4C6`), in place of the player's decisions: what it did,
         -- as `controller` answers, or "own_chip" (an attack of its own
@@ -2612,7 +2621,8 @@ declare custom: {
     -- drawn; the form the system's pick holds for the turn's start, and
     -- whether another system's holds it; whether the picks are full;
     -- whether one of the system's buttons is picked; what the screen reads
-    -- of its player from the setup.
+    -- of its player that isn't a system's setup (the emotion it reads, a
+    -- random battle).
     pick: (side: number) -> (),
     play: (side: number, sound: string) -> (),
     set_column_icon: (side: number, chip: Chip?) -> (),
@@ -2654,13 +2664,6 @@ declare custom: {
     refresh_buttons: (side: number) -> (),
     player: (side: number) -> {
         emotion: Emotion,
-        version: "gregar" | "falzar",
-        -- The Crosses owned, by Cross number (1-5).
-        crosses: { boolean },
-        -- The setup's Cross list (nettai's extension), in its order.
-        cross_list: { FormDef }?,
-        beast_out: boolean,
-        beast_out_sealed: boolean,
         random_battle: boolean,
     },
 }
