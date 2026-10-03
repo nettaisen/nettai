@@ -28,31 +28,24 @@ use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
 const COLUMNS: usize = 15;
 const ROWS: usize = 20;
-/// Where the screen's tiles go in the HUD layer's character block.
+/// Where the screen's tiles go in the HUD layer's character block: the
+/// window frame from tile 1, the rest where the pack's game loads them
+/// (`CustomScreen::layout`: BN6's `CustomLayout::BN6`, the chip window's
+/// name from 0x9B, BN5's from 0x59).
 const WINDOW_TILE: u16 = 0x01;
-const COLUMN_CELL_TILE: u16 = 0x89;
-const TURN_LIMIT_TILE: u16 = 0x8D;
-const NAME_TILE: u16 = 0x9B;
-const ART_TILE: u16 = 0xAB;
 /// A chip picture's tiles (7x6).
 const PICTURE_TILES: u16 = 42;
-const CODE_TILE: u16 = 0xD5;
-const ELEMENT_TILE: u16 = 0xD7;
-const DIGIT_TILE: u16 = 0xDB;
-const SLOT_TILE: u16 = 0xE1;
-const COLUMN_ICON_TILE: u16 = 0x125;
-const NAME_BAR_TILE: u16 = 0x1D6;
-/// The Crosses' names in the Cross window (9x2 each, `byte_8029DF8`).
-const CROSS_NAME_TILE: u16 = 0x139;
+/// The Crosses' names in the Cross window (9x2 each, `byte_8029DF8`,
+/// from the layout's `cross_names`).
 pub(crate) const CROSS_NAME_TILES: usize = 18;
 /// The Cross window's maps: three opening steps, then the window with one
 /// to five Crosses.
 const CROSS_OPENING_MAPS: usize = 3;
 /// The Program Advance animation's names (`sub_802B80C`): 9 cells of the
-/// 8x16 font from tile 0xAB, 18 tiles a name; a pick's code in its last
-/// cell; a name every 3 rows from row 5, a column right of the layer's
-/// scroll; the recipe's in palette 10, the others' in 13.
-const ADVANCE_NAME_TILE: u16 = 0xAB;
+/// 8x16 font from the chip window's picture's first tile (BN6's 0xAB), 18
+/// tiles a name; a pick's code in its last cell; a name every 3 rows from
+/// row 5, a column right of the layer's scroll; the recipe's in palette 10,
+/// the others' in 13.
 const ADVANCE_NAME_CELLS: usize = 9;
 const ADVANCE_FIRST_ROW: i32 = 5;
 /// The chips past the table's that the animation shows no code for.
@@ -322,27 +315,58 @@ struct View<'a> {
 }
 
 /// A system's button as the frontend draws it (docs/design/rules-in-luau.md
-/// §4.8: BN6's, by name): its details picture, its tiles (`count` a state,
-/// selectable then unavailable and picked), and the cursor over it.
+/// §4.8: BN6's, by name): its details picture (in a palette by its state, if
+/// it has palettes), its tiles (`count` a state, selectable then
+/// unavailable and picked), and the cursor over it.
 struct ButtonLook<'a> {
     details: &'a Picture,
+    palettes: &'a [Palette],
     tiles: &'a Tiles,
     count: usize,
     cursor: (i32, i32, &'static CursorShape),
 }
 
+impl ButtonLook<'_> {
+    /// Its details picture for a slot in state `state`.
+    fn details(&self, state: usize) -> Picture {
+        let palette = self.palettes.get(state).or(self.palettes.first()).copied().unwrap_or(self.details.palette);
+        Picture { palette, ..self.details.clone() }
+    }
+}
+
 impl<'a> View<'a> {
-    /// The look of button `button`: BN6's ChpShufl re-deal and DustCross
-    /// scrap. A name the frontend doesn't know is drawn as nothing.
+    /// The look of button `button`, by its name (`named_look`).
     fn button_look(&self, button: nettai_battle::content::ButtonHandle) -> Option<ButtonLook<'a>> {
+        self.named_look(self.b.content.defs.button(button).name.as_str())
+    }
+
+    /// The look of the button named `name`: the pack's of that name
+    /// (`CustomScreen::buttons`: BN5's "soul", the special slot's, under
+    /// OK), else BN6's ChpShufl re-deal and DustCross scrap. A name the
+    /// frontend doesn't know is drawn as nothing.
+    fn named_look(&self, name: &str) -> Option<ButtonLook<'a>> {
         let a = self.assets;
-        match self.b.content.defs.button(button).name.as_str() {
-            "redeal" => Some(ButtonLook { details: &a.pictures.redeal, tiles: &a.redeal_buttons, count: 12, cursor: (0x38, 0x80, &BUTTON_CURSOR) }),
-            "scrap" => Some(ButtonLook { details: &a.pictures.scrap, tiles: &a.scrap_buttons, count: 12, cursor: (0x38, 0x80, &BUTTON_CURSOR) }),
+        if let Some(b) = a.button(name) {
+            let count = b.width as usize * b.height as usize;
+            return Some(ButtonLook { details: &b.picture, palettes: &b.palettes, tiles: &b.tiles, count, cursor: SPECIAL_CURSOR });
+        }
+        let cursor = (0x38, 0x80, &BUTTON_CURSOR);
+        match name {
+            "redeal" => Some(ButtonLook { details: &a.pictures.redeal, palettes: &[], tiles: &a.redeal_buttons, count: 12, cursor }),
+            "scrap" => Some(ButtonLook { details: &a.pictures.scrap, palettes: &[], tiles: &a.scrap_buttons, count: 12, cursor }),
             _ => None,
         }
     }
 }
+
+/// The cursor over the special slot under OK (Beast Out's, BN5's soul
+/// button).
+const SPECIAL_CURSOR: (i32, i32, &CursorShape) = (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR);
+
+/// The name BN5's soul button is drawn by (`SlotKind::Soul`; the pack's
+/// `CustomScreen::buttons`), which a system's button of that name draws by
+/// too.
+const SOUL_BUTTON: &str = "soul";
 
 impl View<'_> {
     fn icon(&self, c: FolderChip, problems: &mut Problems) -> Option<&Tiles> {
@@ -425,6 +449,8 @@ struct Window {
     /// the pick's code).
     name: Option<(String, usize)>,
     advance_names: Vec<Option<(String, usize, Option<String>)>>,
+    /// Where the blocks go among the layer's tile numbers (the pack's).
+    layout: nettai_assets::CustomLayout,
 }
 
 /// A slot's state as the original's byte holds it.
@@ -462,13 +488,15 @@ impl Window {
             picture_known: None,
             name: None,
             advance_names: Vec::new(),
+            layout: a.layout,
         };
         // sub_8026840: the window's map, with the Cross tab or without; or
         // the Cross window's.
         let cross = cross_map(v.screen);
         let (map, patches) = match cross {
             Some(i) => (a.cross_maps.get(i), &a.cross_patches),
-            None => (a.window_maps.get(v.screen.look.cross_tab as usize), &a.window_patches),
+            // (A game without the Cross tab has one map: BN5.)
+            None => (a.window_maps.get(v.screen.look.cross_tab as usize).or(a.window_maps.first()), &a.window_patches),
         };
         if let Some(m) = map {
             for (cell, e) in w.map.iter_mut().zip(m) {
@@ -490,9 +518,9 @@ impl Window {
             tile += p.width as u16 * p.height as u16;
         }
         w.tiles.put(WINDOW_TILE, &a.window_tiles);
-        w.tiles.put(COLUMN_CELL_TILE, &a.column_cells);
-        w.tiles.put(TURN_LIMIT_TILE, &a.turn_limit);
-        w.tiles.put(NAME_BAR_TILE, &a.name_bar);
+        w.tiles.put(w.layout.column_cells, &a.column_cells);
+        w.tiles.put(w.layout.turn_limit, &a.turn_limit);
+        w.tiles.put(w.layout.name_bar, &a.name_bar);
         w.palettes[11] = a.icon_palette;
         w.palettes[12] = a.gray_palette;
         w.palettes[14] = a.other_palette;
@@ -573,7 +601,7 @@ impl Window {
     ) {
         let mut glyphs = crate::lookups::advance_name(v.hud, chip, name, problems);
         let letter = code.map(|code| if code < 26 { char::from(b'A' + code).to_string() } else { "*".to_string() });
-        let at = ADVANCE_NAME_TILE + (2 * ADVANCE_NAME_CELLS * k) as u16;
+        let at = self.layout.art + (2 * ADVANCE_NAME_CELLS * k) as u16;
         if text.takes(name) && letter.as_deref().is_none_or(|l| text.takes(l)) {
             // (The name's box: the cells before the code's, which nothing
             // else uses.)
@@ -611,7 +639,7 @@ impl Window {
         for slot in 0..w.count.min(5) as usize {
             let Some((own, number)) = picture(slot) else { continue };
             let name = number + if slot == w.cursor as usize { 0 } else { 5 };
-            let at = CROSS_NAME_TILE + (CROSS_NAME_TILES * slot) as u16;
+            let at = self.layout.cross_names + (CROSS_NAME_TILES * slot) as u16;
             self.tiles.put_part(at, &own.cross_names, CROSS_NAME_TILES * name, CROSS_NAME_TILES);
             for i in 0..CROSS_NAME_TILES {
                 let (x, y) = (1 + i % 9, 1 + 2 * slot + i / 9);
@@ -645,15 +673,16 @@ impl Window {
         let slot = cw.slot.min(SPECIAL_SLOT);
         let blank_details = |w: &mut Window, picture: &Picture| {
             // sub_80287D2: the name's cells and the window's colors.
-            w.tiles.fill(NAME_TILE, 2 * NAME_CELLS, BLANK_8);
+            w.tiles.fill(w.layout.name, 2 * NAME_CELLS, BLANK_8);
             w.palettes[9] = a.frame_palettes.first().copied().unwrap_or([0; 16]);
-            w.tiles.put(ART_TILE, &picture.tiles);
+            w.tiles.put(w.layout.art, &picture.tiles);
             w.palettes[10] = picture.palette;
             // sub_802869E
-            w.tiles.fill(CODE_TILE, 2, BLANK_8);
-            w.tiles.fill(ELEMENT_TILE, 4, BLANK_7);
-            w.tiles.fill(DIGIT_TILE, 6, BLANK_8);
+            w.tiles.fill(w.layout.code, 2, BLANK_8);
+            w.tiles.fill(w.layout.element, 4, BLANK_7);
+            w.tiles.fill(w.layout.digits, 6, BLANK_8);
         };
+        let state = state_number(v.screen.slots[slot as usize].state);
         match v.screen.slots[slot as usize].kind {
             SlotKind::Chip { .. } | SlotKind::NaviChip(_) => {
                 let Some(c) = cw.last_chip else { return };
@@ -670,11 +699,17 @@ impl Window {
             }
             SlotKind::Button { button, .. } => {
                 if let Some(look) = v.button_look(button) {
-                    blank_details(self, look.details);
+                    blank_details(self, &look.details(state));
                 }
             }
-            // (BN5's soul button: its pictures aren't in the packs yet.)
-            SlotKind::Soul | SlotKind::Empty | SlotKind::Hidden => {}
+            // BN5's soul button (0x08024540: its picture in the palette of
+            // its state), drawn by its name.
+            SlotKind::Soul => {
+                if let Some(look) = v.named_look(SOUL_BUTTON) {
+                    blank_details(self, &look.details(state));
+                }
+            }
+            SlotKind::Empty | SlotKind::Hidden => {}
         }
     }
 
@@ -691,10 +726,10 @@ impl Window {
         if text.takes(name) {
             // The name's cells in the window's color, the words on the
             // text layer in all eight of them (nothing follows the name).
-            self.tiles.put(NAME_TILE, &fonts::cell_text(v.hud, &[], NAME_CELLS, NAME_SHIFT));
+            self.tiles.put(self.layout.name, &fonts::cell_text(v.hud, &[], NAME_CELLS, NAME_SHIFT));
             self.name = Some((name.to_string(), NAME_CELLS));
         } else {
-            self.tiles.put(NAME_TILE, &fonts::cell_text(v.hud, &glyphs, NAME_CELLS, NAME_SHIFT));
+            self.tiles.put(self.layout.name, &fonts::cell_text(v.hud, &glyphs, NAME_CELLS, NAME_SHIFT));
         }
         // (The Beast Out chip's picture is the Beast's the navi goes into.)
         let beast_out = v.b.side_roles(v.b.setup.local_side).try_chip(nettai_battle::content::ChipRole::BeastOut) == Some(c.id);
@@ -709,7 +744,7 @@ impl Window {
             crate::lookups::chip_art(&v.packs, &v.b.content, c.id, problems).map(|art| (&art.picture, Some(art)))
         };
         if let Some((p, art)) = art {
-            self.tiles.put(ART_TILE, &p.tiles);
+            self.tiles.put(self.layout.art, &p.tiles);
             self.palettes[10] = if beast_out { p.palette } else { data.art_palette.unwrap_or(p.palette) };
             let console_version = version_name(v.b, v.side);
             self.picture_known = match art {
@@ -727,10 +762,10 @@ impl Window {
         let frame = crate::lookups::chip_window(a, &v.b.content, c.id, c.code.0, problems);
         self.palettes[9] = a.frame_palettes.get(frame).copied().unwrap_or([0; 16]);
         let code = c.code.0.min(NO_CODE) as usize;
-        self.tiles.put_part(CODE_TILE, &a.codes, 2 * code, 2);
+        self.tiles.put_part(self.layout.code, &a.codes, 2 * code, 2);
         let family = data.family as usize;
         if family < a.element_colors.len() {
-            self.tiles.put_part(ELEMENT_TILE, &a.elements, 4 * family, 4);
+            self.tiles.put_part(self.layout.element, &a.elements, 4 * family, 4);
         }
         let shows = data.flags.0 & (ChipFlags::HAS_DAMAGE | ChipFlags::DAMAGE_SHOWN_VARIABLE) != 0;
         let digits: Vec<usize> = if !shows {
@@ -743,9 +778,9 @@ impl Window {
             damage.min(999).to_string().bytes().map(|d| (d - b'0') as usize).collect()
         };
         let blanks = 3 - digits.len();
-        self.tiles.fill(DIGIT_TILE, 2 * blanks, BLANK_8);
+        self.tiles.fill(self.layout.digits, 2 * blanks, BLANK_8);
         for (i, &d) in digits.iter().enumerate() {
-            self.tiles.put_part(DIGIT_TILE + 2 * (blanks + i) as u16, &a.digits, 2 * d, 2);
+            self.tiles.put_part(self.layout.digits + 2 * (blanks + i) as u16, &a.digits, 2 * d, 2);
         }
     }
 
@@ -754,7 +789,7 @@ impl Window {
     /// their state.
     fn slots(&mut self, v: &View, problems: &mut Problems) {
         let a = v.assets;
-        let mut at = SLOT_TILE;
+        let mut at = self.layout.slots;
         for (s, slot) in v.screen.slots.iter().enumerate() {
             let state = state_number(slot.state);
             match slot.kind {
@@ -773,9 +808,15 @@ impl Window {
                     }
                     at += 6;
                 }
-                // (BN5's soul button: its tiles aren't in the packs yet.)
-                SlotKind::Ok | SlotKind::Soul | SlotKind::Button { cell: ButtonCell::Right, .. } => {}
+                SlotKind::Ok | SlotKind::Button { cell: ButtonCell::Right, .. } => {}
                 SlotKind::BeastOut => self.tiles.put_part(at, &v.beast.beast_buttons, 8 * (state != 0) as usize, 8),
+                // BN5's soul button in the special slot's place (its
+                // patch's tiles, as Beast Out's).
+                SlotKind::Soul => {
+                    if let Some(look) = v.named_look(SOUL_BUTTON) {
+                        self.tiles.put_part(at, look.tiles, look.count * state, look.count);
+                    }
+                }
                 SlotKind::Button { button, .. } => {
                     if let Some(look) = v.button_look(button) {
                         self.tiles.put_part(at, look.tiles, look.count * state, look.count);
@@ -817,11 +858,11 @@ impl Window {
         let a = v.assets;
         let picks = v.screen.selection();
         for i in 0..5usize {
-            let at = COLUMN_ICON_TILE + 4 * i as u16;
+            let at = self.layout.column_icons + 4 * i as u16;
             let icon = v.screen.look.column[i].and_then(|c| v.icon(c, problems));
             self.tiles.put(at, icon.unwrap_or(&a.empty_icon));
             let filled = (i < picks.len()) as u16;
-            let tile = COLUMN_CELL_TILE + 2 * filled;
+            let tile = self.layout.column_cells + 2 * filled;
             for (x, hflip) in [(11, false), (14, true)] {
                 self.map[(3 + 2 * i) * COLUMNS + x] = MapEntry { tile, hflip, vflip: false, palette: 9 };
                 self.map[(4 + 2 * i) * COLUMNS + x] = MapEntry { tile: tile + 1, hflip, vflip: false, palette: 9 };
@@ -842,7 +883,7 @@ impl Window {
 
     /// The chip window's picture, where it shows, as a known difference.
     fn known_picture(&self, place: Placement, why: &'static str, problems: &mut Problems) {
-        let art = ART_TILE..ART_TILE + PICTURE_TILES;
+        let art = self.layout.art..self.layout.art + PICTURE_TILES;
         let mut rect: Option<[i32; 4]> = None;
         for y in 0..ROWS {
             for x in place.from..place.to {
@@ -878,7 +919,7 @@ impl Window {
     /// layer.
     fn name_item(&self, text: &mut TextSink, place: Placement) {
         let Some((name, cells)) = &self.name else { return };
-        let Some(i) = self.map.iter().position(|e| e.tile == NAME_TILE) else { return };
+        let Some(i) = self.map.iter().position(|e| e.tile == self.layout.name) else { return };
         let (col, row) = (i % COLUMNS, i / COLUMNS);
         let palette = &self.palettes[self.map[i].palette as usize & 15];
         let shift = NAME_SHIFT as usize;
@@ -946,14 +987,14 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
     let cells = len.min(8);
     let mut col = 0x1D - cells as i32;
     if len < ENEMY_NAME_CELLS {
-        w.cell(hud_layer, bar(NAME_BAR_TILE), col, 0, 0);
-        w.cell(hud_layer, bar(NAME_BAR_TILE + 1), col, 1, 0);
+        w.cell(hud_layer, bar(w.layout.name_bar), col, 0, 0);
+        w.cell(hud_layer, bar(w.layout.name_bar + 1), col, 1, 0);
         col += 1;
     }
     let n = if len < ENEMY_NAME_CELLS { len } else { ENEMY_NAME_CELLS };
     for k in 0..n as i32 {
-        w.cell(hud_layer, bar(NAME_BAR_TILE + 2), col + k, 0, 0);
-        w.cell(hud_layer, bar(NAME_BAR_TILE + 3), col + k, 1, 0);
+        w.cell(hud_layer, bar(w.layout.name_bar + 2), col + k, 0, 0);
+        w.cell(hud_layer, bar(w.layout.name_bar + 3), col + k, 1, 0);
     }
 }
 
@@ -1027,7 +1068,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             (16 * col + 8, 0x68 + 0x18 * row, &CHIP_CURSOR)
         }
         SlotKind::Ok => (0x58 + 3, 0x70 - 2, &OK_CURSOR),
-        SlotKind::BeastOut | SlotKind::Soul => (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR),
+        SlotKind::BeastOut | SlotKind::Soul => SPECIAL_CURSOR,
         SlotKind::Button { button, .. } => v.button_look(button).map_or((0x38, 0x80, &BUTTON_CURSOR), |l| l.cursor),
     };
     let palette = v.emblem_palette();
@@ -1163,7 +1204,7 @@ pub fn draw<'a>(
     // (`sub_802BA18`), each 9x2 cells column by column.
     let col = (place.scroll >> 3) as i32 + 1;
     for (k, row, palette) in advance_names {
-        let first = ADVANCE_NAME_TILE + (2 * ADVANCE_NAME_CELLS * k) as u16;
+        let first = w.layout.art + (2 * ADVANCE_NAME_CELLS * k) as u16;
         for i in 0..2 * ADVANCE_NAME_CELLS as u16 {
             let e = MapEntry { tile: first + i, hflip: false, vflip: false, palette };
             w.cell(hud_layer, e, col + (i / 2) as i32, row + (i % 2) as i32, place.scroll);
@@ -1182,7 +1223,7 @@ pub fn draw<'a>(
     if screen.look.turn_limit && place.to == COLUMNS {
         // sub_8029D34: 7x2 at column 15, row 4.
         for i in 0..14u16 {
-            let e = MapEntry { tile: TURN_LIMIT_TILE + i, hflip: false, vflip: false, palette: 9 };
+            let e = MapEntry { tile: w.layout.turn_limit + i, hflip: false, vflip: false, palette: 9 };
             w.cell(hud_layer, e, 15 + (i % 7) as i32, 4 + (i / 7) as i32, place.scroll);
         }
     }

@@ -42,8 +42,8 @@ language = "en"
 "bn5:blakwing" = { name = "BlakWing", description = "Wing atk\nfrom a\ncave" }
 "bn5:blinder" = { name = "Blinder", description = "Blinds\nenemy w/\nlight" }
 "bn5:blizman" = { name = "BlizMan", description = "Snowball\nexpands\nwhen hit" }
-"bn5:blizman-ds" = { name = "BlizManDS", description = "Snowball\nexpands\nwhen hit" }
-"bn5:blizman-sp" = { name = "BlizManSP", description = "Snowball\nexpands\nwhen hit" }
+"bn5:blizman-ds" = { name = "BlizMan\uE008", description = "Snowball\nexpands\nwhen hit" }
+"bn5:blizman-sp" = { name = "BlizMan\uE003", description = "Snowball\nexpands\nwhen hit" }
 "bn5:blkbomb" = { name = "BlkBomb", description = "Firebomb\nhits 3rd\nsq ahead!" }
 "bn5:bodygrd" = { name = "BodyGrd", description = "Bodyguard\nthrows\nninjastar" }
 "bn5:boomer" = { name = "Boomer", description = "Boomerang\nencircles\nfield" }
@@ -71,16 +71,16 @@ language = "en"
 "bn5:chaoslrd" = { name = "ChaosLrd", description = "Hatred\nformed\ninto Bass" }
 "bn5:circgun" = { name = "CircGun", description = "Stop site\nw/ Button\nand attck" }
 "bn5:cloudman" = { name = "CloudMan", description = "Thndr atk\nbehind\nthe enmy" }
-"bn5:cloudmn-ds" = { name = "CloudMnDS", description = "Thndr atk\nbehind\nthe enmy" }
-"bn5:cloudmn-sp" = { name = "CloudMnSP", description = "Thndr atk\nbehind\nthe enmy" }
+"bn5:cloudmn-ds" = { name = "CloudMn\uE008", description = "Thndr atk\nbehind\nthe enmy" }
+"bn5:cloudmn-sp" = { name = "CloudMn\uE003", description = "Thndr atk\nbehind\nthe enmy" }
 "bn5:colonel" = { name = "Colonel", description = "Slice\nenemy in\nsame row" }
-"bn5:colonel-ds" = { name = "ColonelDS", description = "Slice\nenemy in\nsame row" }
-"bn5:colonel-sp" = { name = "ColonelSP", description = "Slice\nenemy in\nsame row" }
+"bn5:colonel-ds" = { name = "Colonel\uE008", description = "Slice\nenemy in\nsame row" }
+"bn5:colonel-sp" = { name = "Colonel\uE003", description = "Slice\nenemy in\nsame row" }
 "bn5:colorpt" = { name = "ColorPt", description = "+10 for\nnext chip\nattack" }
 "bn5:copydmg" = { name = "CopyDmg", description = "Duplicate\ndamage to\n2nd enemy" }
 "bn5:cosmoman" = { name = "CosmoMan", description = "Meteors\nhit enemy" }
-"bn5:cosmomn-ds" = { name = "CosmoMnDS", description = "Meteors\nhit enemy" }
-"bn5:cosmomn-sp" = { name = "CosmoMnSP", description = "Meteors\nhit enemy" }
+"bn5:cosmomn-ds" = { name = "CosmoMn\uE008", description = "Meteors\nhit enemy" }
+"bn5:cosmomn-sp" = { name = "CosmoMn\uE003", description = "Meteors\nhit enemy" }
 "bn5:crakbom" = { name = "CrakBom", description = "Bomb\ncracks\n3sq ahead" }
 "bn5:crakout" = { name = "CrakOut", description = "Destroys\n1 panel\nin front" }
 "bn5:crossdiv" = { name = "CrossDiv", description = "Cross-\nslice!" }
@@ -105,8 +105,8 @@ language = "en"
 "bn5:dethphnx" = { name = "DethPhnx", description = "Fire Atk!\nRecycle\nNavi too" }
 "bn5:discord" = { name = "Discord", description = "Confuses\nenemies\nw/ music" }
 "bn5:django" = { name = "Django", description = "Burns\nwith\nsunlight" }
-"bn5:django-ds" = { name = "DjangoDS", description = "Burns\nwith\nsunlight" }
-"bn5:django-sp" = { name = "DjangoSP", description = "Burns\nwith\nsunlight" }
+"bn5:django-ds" = { name = "Django\uE008", description = "Burns\nwith\nsunlight" }
+"bn5:django-sp" = { name = "Django\uE003", description = "Burns\nwith\nsunlight" }
 "bn5:drilarm1" = { name = "DrilArm1", description = "Knocks\nenmy 2sq\naway" }
 "bn5:drilarm2" = { name = "DrilArm2", description = "Knocks\nenmy 2sq\naway" }
 "bn5:drilarm3" = { name = "DrilArm3", description = "Knocks\nenmy 2sq\naway" }
@@ -143,8 +143,8 @@ language = "en"
 "bn5:grasseed" = { name = "GrasSeed", description = "Makes 9sq\nmeadow\n3sq ahead" }
 "bn5:greatyo" = { name = "GreatYo", description = "Moves 3sq\nvertical" }
 "bn5:gridman" = { name = "GridMan", description = "Explodes\nwhen\ntouchdown" }
-"bn5:gridman-ds" = { name = "GridManDS", description = "Explodes\nwhen\ntouchdown" }
-"bn5:gridman-sp" = { name = "GridManSP", description = "Explodes\nwhen\ntouchdown" }
+"bn5:gridman-ds" = { name = "GridMan\uE008", description = "Explodes\nwhen\ntouchdown" }
+"bn5:gridman-sp" = { name = "GridMan\uE003", description = "Explodes\nwhen\ntouchdown" }
 "bn5:guard1" = { name = "Guard1", description = "Repels a\nenemy's\nattack" }
 "bn5:guard2" = { name = "Guard2", description = "Repels a\nenemy's\nattack" }
 "bn5:guard3" = { name = "Guard3", description = "Repels a\nenemy's\nattack" }
@@ -154,8 +154,8 @@ language = "en"
 "bn5:gundels2" = { name = "GunDelS2", description = "Sunshine\nappear w/\nButton" }
 "bn5:gundels3" = { name = "GunDelS3", description = "Sunshine\nappear w/\nButton" }
 "bn5:gyroman" = { name = "GyroMan", description = "Bombs the\nfront of\nsame row" }
-"bn5:gyroman-ds" = { name = "GyroManDS", description = "Bombs the\nfront of\nsame row" }
-"bn5:gyroman-sp" = { name = "GyroManSP", description = "Bombs the\nfront of\nsame row" }
+"bn5:gyroman-ds" = { name = "GyroMan\uE008", description = "Bombs the\nfront of\nsame row" }
+"bn5:gyroman-sp" = { name = "GyroMan\uE003", description = "Bombs the\nfront of\nsame row" }
 "bn5:h-burst" = { name = "H-Burst", description = "Secondary\nexplosion\nafter hit" }
 "bn5:hicannon" = { name = "HiCannon", description = "Cannon to\nattack\n1 enemy" }
 "bn5:holydrem" = { name = "HolyDrem", description = "Holy shot\nsucks in\nHolyPanl!" }
@@ -175,12 +175,12 @@ language = "en"
 "bn5:katana2" = { name = "Katana2", description = "Cut twice\nonce wide\nonce long" }
 "bn5:katana3" = { name = "Katana3", description = "Cut twice\nonce wide\nonce long" }
 "bn5:knightmn" = { name = "KnightMn", description = "Circle\naround\nand atk" }
-"bn5:knigtmn-ds" = { name = "KnigtMnDS", description = "Circle\naround\nand atk" }
-"bn5:knigtmn-sp" = { name = "KnigtMnSP", description = "Circle\naround\nand atk" }
+"bn5:knigtmn-ds" = { name = "KnigtMn\uE008", description = "Circle\naround\nand atk" }
+"bn5:knigtmn-sp" = { name = "KnigtMn\uE003", description = "Circle\naround\nand atk" }
 "bn5:lance" = { name = "Lance", description = "Lance\nthrough\nback line" }
 "bn5:larkman" = { name = "LarkMan", description = "Whirl\nforward\nand atk" }
-"bn5:larkman-ds" = { name = "LarkManDS", description = "Whirl\nforward\nand atk" }
-"bn5:larkman-sp" = { name = "LarkManSP", description = "Whirl\nforward\nand atk" }
+"bn5:larkman-ds" = { name = "LarkMan\uE008", description = "Whirl\nforward\nand atk" }
+"bn5:larkman-sp" = { name = "LarkMan\uE003", description = "Whirl\nforward\nand atk" }
 "bn5:lavaseed" = { name = "LavaSeed", description = "Makes 9sq\nlava zone\n3sq ahead" }
 "bn5:lcounter" = { name = "LCounter", description = "ミテイ" }
 "bn5:lcrsshld" = { name = "LCrsShld", description = "ミテイ" }
@@ -193,12 +193,12 @@ language = "en"
 "bn5:lstepswd" = { name = "LStepSwd", description = "ミテイ" }
 "bn5:m-cannon" = { name = "M-Cannon", description = "Cannon to\nattack\n1 enemy" }
 "bn5:magnetmn" = { name = "MagnetMn", description = "NS tackle\nand chrge" }
-"bn5:magntmn-ds" = { name = "MagntMnDS", description = "NS tackle\nand chrge" }
-"bn5:magntmn-sp" = { name = "MagntMnSP", description = "NS tackle\nand chrge" }
+"bn5:magntmn-ds" = { name = "MagntMn\uE008", description = "NS tackle\nand chrge" }
+"bn5:magntmn-sp" = { name = "MagntMn\uE003", description = "NS tackle\nand chrge" }
 "bn5:magnum" = { name = "Magnum", description = "Cursor\ndestroys\npanels!" }
 "bn5:meddy" = { name = "Meddy", description = "Throw 2\nbombs to\nenmy area" }
-"bn5:meddy-ds" = { name = "MeddyDS", description = "Throw 2\nbombs to\nenmy area" }
-"bn5:meddy-sp" = { name = "MeddySP", description = "Throw 2\nbombs to\nenmy area" }
+"bn5:meddy-ds" = { name = "Meddy\uE008", description = "Throw 2\nbombs to\nenmy area" }
+"bn5:meddy-sp" = { name = "Meddy\uE003", description = "Throw 2\nbombs to\nenmy area" }
 "bn5:megenbom" = { name = "MegEnBom", description = "Throws a\nbomb 3sq\nahead" }
 "bn5:metagel" = { name = "MetaGel", description = "Gel atk\nsteals a\npanel!" }
 "bn5:meteors" = { name = "Meteors", description = "Drop many\nmeteor on\nenmy area" }
@@ -214,15 +214,15 @@ language = "en"
 "bn5:mudwave" = { name = "MudWave", description = "MudWave\nout of\nhole" }
 "bn5:muramasa" = { name = "Muramasa", description = "Atk power\nequal amt\nof lostHP" }
 "bn5:napalmmn" = { name = "NapalmMn", description = "Explosion\nspreads\n9 panels" }
-"bn5:naplmmn-ds" = { name = "NaplmMnDS", description = "Explosion\nspreads\n9 panels" }
-"bn5:naplmmn-sp" = { name = "NaplmMnSP", description = "Explosion\nspreads\n9 panels" }
+"bn5:naplmmn-ds" = { name = "NaplmMn\uE008", description = "Explosion\nspreads\n9 panels" }
+"bn5:naplmmn-sp" = { name = "NaplmMn\uE003", description = "Explosion\nspreads\n9 panels" }
 "bn5:navi-20" = { name = "Navi+20", description = "+20 for\nselected\nNavi chip" }
 "bn5:neovari" = { name = "NeoVari", description = "A magical\nshifting\nsword" }
 "bn5:nrthwind" = { name = "NrthWind", description = "Wind blws\noff aura,\nbarriers" }
 "bn5:numbrbl" = { name = "NumbrBl", description = "Last 2\nHP digits\n= atk pwr" }
 "bn5:numbrman" = { name = "NumbrMan", description = "Bomb 3\nahead!\nHits 9sq" }
-"bn5:numbrmn-ds" = { name = "NumbrMnDS", description = "Bomb 3\nahead!\nHits 9sq" }
-"bn5:numbrmn-sp" = { name = "NumbrMnSP", description = "Bomb 3\nahead!\nHits 9sq" }
+"bn5:numbrmn-ds" = { name = "NumbrMn\uE008", description = "Bomb 3\nahead!\nHits 9sq" }
+"bn5:numbrmn-sp" = { name = "NumbrMn\uE003", description = "Bomb 3\nahead!\nHits 9sq" }
 "bn5:omegarkt" = { name = "OmegaRkt", description = "A rocket\nmoves\nstraight" }
 "bn5:otenko" = { name = "Otenko", description = "Put Otnko\nto raise\natk pwr" }
 "bn5:panlgrab" = { name = "PanlGrab", description = "Steals 1\nenemy\nsquare!" }
@@ -234,8 +234,8 @@ language = "en"
 "bn5:poisphar" = { name = "PoisPhar", description = "Places a\npoisoned\nPharaoh" }
 "bn5:poltrgst" = { name = "Poltrgst", description = "Objects\nthrown at\nenemies!" }
 "bn5:protoman" = { name = "ProtoMan", description = "Move in\nand slice\nthe enemy" }
-"bn5:protomn-ds" = { name = "ProtoMnDS", description = "Move in\nand slice\nthe enemy" }
-"bn5:protomn-sp" = { name = "ProtoMnSP", description = "Move in\nand slice\nthe enemy" }
+"bn5:protomn-ds" = { name = "ProtoMn\uE008", description = "Move in\nand slice\nthe enemy" }
+"bn5:protomn-sp" = { name = "ProtoMn\uE003", description = "Move in\nand slice\nthe enemy" }
 "bn5:pulsar1" = { name = "Pulsar1", description = "Sonic atk\nspreads\nwhen hits" }
 "bn5:pulsar2" = { name = "Pulsar2", description = "Sonic atk\nspreads\nwhen hits" }
 "bn5:pulsar3" = { name = "Pulsar3", description = "Sonic atk\nspreads\nwhen hits" }
@@ -258,18 +258,18 @@ language = "en"
 "bn5:resetbom" = { name = "ResetBom", description = "Reduces\npower\n3sq ahead" }
 "bn5:rockcube" = { name = "RockCube", description = "Place a\nrock cube\nin front" }
 "bn5:roll" = { name = "Roll", description = "Attack an\nenmy,then\nheals you" }
-"bn5:roll-ds" = { name = "RollDS", description = "Attack an\nenmy,then\nheals you" }
-"bn5:roll-sp" = { name = "RollSP", description = "Attack an\nenmy,then\nheals you" }
+"bn5:roll-ds" = { name = "Roll\uE008", description = "Attack an\nenmy,then\nheals you" }
+"bn5:roll-sp" = { name = "Roll\uE003", description = "Attack an\nenmy,then\nheals you" }
 "bn5:seaseed" = { name = "SeaSeed", description = "Makes 9sq\nwtr zone\n3sq ahead" }
 "bn5:serchman" = { name = "SerchMan", description = "Aim\nand fire\n5 shots" }
-"bn5:serchmn-ds" = { name = "SerchMnDS", description = "Aim\nand fire\n5 shots" }
-"bn5:serchmn-sp" = { name = "SerchMnSP", description = "Aim\nand fire\n5 shots" }
+"bn5:serchmn-ds" = { name = "SerchMn\uE008", description = "Aim\nand fire\n5 shots" }
+"bn5:serchmn-sp" = { name = "SerchMn\uE003", description = "Aim\nand fire\n5 shots" }
 "bn5:shademan" = { name = "ShadeMan", description = "CrshNoise\nattck all\ndirection" }
-"bn5:shademn-ds" = { name = "ShadeMnDS", description = "CrshNoise\nattck all\ndirection" }
-"bn5:shademn-sp" = { name = "ShadeMnSP", description = "CrshNoise\nattck all\ndirection" }
+"bn5:shademn-ds" = { name = "ShadeMn\uE008", description = "CrshNoise\nattck all\ndirection" }
+"bn5:shademn-sp" = { name = "ShadeMn\uE003", description = "CrshNoise\nattck all\ndirection" }
 "bn5:shadoman" = { name = "ShadoMan", description = "Throw 3\nninja\nstars" }
-"bn5:shadomn-ds" = { name = "ShadoMnDS", description = "Throw 3\nninja\nstars" }
-"bn5:shadomn-sp" = { name = "ShadoMnSP", description = "Throw 3\nninja\nstars" }
+"bn5:shadomn-ds" = { name = "ShadoMn\uE008", description = "Throw 3\nninja\nstars" }
+"bn5:shadomn-sp" = { name = "ShadoMn\uE003", description = "Throw 3\nninja\nstars" }
 "bn5:shakpar1" = { name = "ShakPar1", description = "Shakeys\nParalyze\nthe enmy" }
 "bn5:shakpar2" = { name = "ShakPar2", description = "Shakeys\nParalyze\nthe enmy" }
 "bn5:shakpar3" = { name = "ShakPar3", description = "Shakeys\nParalyze\nthe enmy" }
@@ -305,11 +305,11 @@ language = "en"
 "bn5:timebom3" = { name = "TimeBom3", description = "Explodes\n3 seconds\nlater" }
 "bn5:timpani" = { name = "Timpani", description = "Paralyzes\nenemies\nw/ music" }
 "bn5:tmhwkman" = { name = "TmhwkMan", description = "Slice 2sq\nside,3sq\nvertical" }
-"bn5:tmhwkmn-ds" = { name = "TmhwkMnDS", description = "Slice 2sq\nside,3sq\nvertical" }
-"bn5:tmhwkmn-sp" = { name = "TmhwkMnSP", description = "Slice 2sq\nside,3sq\nvertical" }
+"bn5:tmhwkmn-ds" = { name = "TmhwkMn\uE008", description = "Slice 2sq\nside,3sq\nvertical" }
+"bn5:tmhwkmn-sp" = { name = "TmhwkMn\uE003", description = "Slice 2sq\nside,3sq\nvertical" }
 "bn5:toadman" = { name = "ToadMan", description = "Sing and\nparalyze\nthe enemy" }
-"bn5:toadman-ds" = { name = "ToadManDS", description = "Sing and\nparalyze\nthe enemy" }
-"bn5:toadman-sp" = { name = "ToadManSP", description = "Sing and\nparalyze\nthe enemy" }
+"bn5:toadman-ds" = { name = "ToadMan\uE008", description = "Sing and\nparalyze\nthe enemy" }
+"bn5:toadman-sp" = { name = "ToadMan\uE003", description = "Sing and\nparalyze\nthe enemy" }
 "bn5:tornado" = { name = "Tornado", description = "8hit strm\n2 squares\nahead" }
 "bn5:tripcrak" = { name = "TripCrak", description = "Destroys\n3 panels\nin front" }
 "bn5:varswrd" = { name = "VarSwrd", description = "A magical\nshifting\nsword" }

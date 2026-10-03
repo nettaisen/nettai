@@ -21,7 +21,9 @@
 //! The pack is the games' own data: write it outside version control.
 
 mod content;
+mod custom;
 mod graphics;
+mod hud;
 mod rom;
 mod sound;
 mod sprite;
