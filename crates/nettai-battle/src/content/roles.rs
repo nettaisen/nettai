@@ -120,16 +120,23 @@ pub enum KindRole {
     /// #0xD2, `sub_80DFD74`) and an actor object (#0x28, `sub_80C02A6`).
     Mode9Attack,
     Mode9Actor,
+    /// What an obstacle turns into where an armed side's ColonelSoul can
+    /// use it (BN5's attack object #0x30, 0x080CA834: the step
+    /// `effects.obstacle_soldiers` enables, `kinds::obstacle::Soldiers`).
+    /// The engine sets its state field `gun` (0 the sword's soldier, 1 the
+    /// gun's: its Param1).
+    ObstacleSoldier,
 }
 
 impl KindRole {
-    pub const ALL: [KindRole; 6] = [
+    pub const ALL: [KindRole; 7] = [
         KindRole::AbsorbedObstacle,
         KindRole::FallingRock,
         KindRole::Support,
         KindRole::AntiRecovery,
         KindRole::Mode9Attack,
         KindRole::Mode9Actor,
+        KindRole::ObstacleSoldier,
     ];
 
     /// Its name in `rules/roles.luau`'s `kinds`.
@@ -141,6 +148,7 @@ impl KindRole {
             KindRole::Mode9Actor => "mode9_actor",
             KindRole::Support => "support",
             KindRole::AntiRecovery => "anti_recovery",
+            KindRole::ObstacleSoldier => "obstacle_soldier",
         }
     }
 
