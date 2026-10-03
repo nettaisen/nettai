@@ -109,3 +109,4 @@
 "bn5:rock" = { pool = "attack", index = 0x59 }
 "bn5:rock/debris" = { pool = "effect", index = 0x38 }
 "bn5:boulder" = { pool = "attack", index = 0x6E }
+"bn5:greatyo/controller" = { pool = "effect", index = 0x70 }
