@@ -61,14 +61,15 @@ local function raise_arm_for(look: BusterLook, navi: Object, holder: Object, whi
     -- the palette (the Gregar Crosses in Beast Out: palettes 5 to 9).
     local arm = form.buster_arm
     local palette_add = 0
-    if form.kind == "base" then
+    if form.base then
         if navi:navi_state("no_charge") then
             palette_add = NO_CHARGE_PALETTE
         elseif stats.element ~= 0 then
             palette_add = 0x14 + stats.element
         end
-    elseif form.kind == "beast" then
-        -- Gregar and Falzar Beast.
+    elseif table.find(form.traits or {}, "mood_palette") then
+        -- A form whose palette follows the mood (BN6's Gregar and Falzar
+        -- Beast).
         if battle.emotion(side) == "full_synchro" then
             palette_add = NO_CHARGE_PALETTE
         end

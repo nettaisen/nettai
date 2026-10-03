@@ -31,7 +31,8 @@ return define.form {
     -- What R shows in the Cross window.
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 10,
-    traits = { "scrap_button" },
+    -- The custom screen has the scrap button (the cross system's, `sub_8027F10`).
+    scrap_button = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 10 },
     identity = define.identity {

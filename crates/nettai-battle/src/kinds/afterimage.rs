@@ -27,8 +27,9 @@ pub enum Tether {
     /// Nothing.
     #[default]
     None,
-    /// The navi's side leaving its Beast forms.
-    BeastForm,
+    /// The navi's side leaving the forms whose afterimages stay
+    /// (`afterimages_stay`: BN6's Beast forms).
+    Form,
     /// The navi going back to a non-attack action.
     Attack,
 }
@@ -101,8 +102,9 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u1
     o.related[0] = Some(owner);
     o.alliance = alliance;
     o.flags |= flags::RUN_WHILE_PAUSED;
-    // sub_80E341E: tied to the Beast form, or to the attack.
-    let tether = if b.form(alliance as usize).kind.is_beast() { Tether::BeastForm } else { Tether::Attack };
+    // sub_80E341E: tied to the form (BN6's Beast forms), or to the attack.
+    let stays = b.form(alliance as usize).traits.has(crate::content::FormTraits::AFTERIMAGES_STAY);
+    let tether = if stays { Tether::Form } else { Tether::Attack };
     // Less green, with a ground shadow (the spawner's r7 is 0x01010014 - n).
     let look = PlainLook { color_shader: COLOR_SHADER, shadow: PlainShadow::Ground, ..Default::default() };
     *vars(b, r) = Vars { lifetime, tether, anim, plain: look };
@@ -262,7 +264,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let tether = vars(b, r).tether;
     let alliance = b.objects.get(r).alliance;
     let cut = match tether {
-        Tether::BeastForm => !b.form(alliance as usize).kind.is_beast(),
+        Tether::Form => !b.form(alliance as usize).traits.has(crate::content::FormTraits::AFTERIMAGES_STAY),
         Tether::Attack => !crate::kinds::player::navi_action(b, owner).is_attack(),
         Tether::None => false,
     };

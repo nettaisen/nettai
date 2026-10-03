@@ -9,8 +9,10 @@ local forms = require("../../../../rules/forms/system")
 return define.form {
     id = "bn6:gregar-beast-over",
     kind = "beast_over",
-    -- The beast system's berserk decides its idle (`sub_802D322`).
-    traits = { "controlled" },
+    -- The target marker shows, its afterimages stay, a Null chip's A charge times by the claw,
+    -- and its damaging Null chips deal double (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`,
+    -- `sub_8012ABC`); the beast system's berserk decides its idle (`sub_802D322`).
+    traits = { "controlled", "shows_target_marker", "afterimages_stay", "alt_charge_time", "doubles_null" },
     -- It glows (`sub_8016A38`, `byte_8016A68`): the navi's color shader by the battle time, a tick each.
     glow = {
         0x0000, 0x0000, 0x0041, 0x0461, 0x0881, 0x0CC2, 0x10E2, 0x1102, 0x1543,

@@ -4,6 +4,7 @@
 
 local instrument = require("../../lib/instruments/instrument")
 local instruments = require("../../lib/instruments/controller")
+local kind = require("../../rules/forms/kind")
 
 -- How long its every-third-tick invulnerability lasts.
 local INVULNERABLE_TICKS = 4
@@ -12,7 +13,7 @@ local INVULNERABLE_TICKS = 4
 -- ticks (`object_setInvulnerableTime`), but in Beast Over.
 local function cheer(me: Object)
     for _, actor in battle.alive_actors(me.alliance) do
-        if not battle.navi(actor.alliance).beast_over then
+        if not kind.beast_over(actor.alliance) then
             actor:set_status_timer("invulnerable", INVULNERABLE_TICKS)
             actor:set_status("invulnerable", true)
         end
