@@ -2,8 +2,8 @@
 -- BN5's netbattle stages: the battle settings records its link battles take a stage from (0x0811AF4C, 95 records,
 -- BN6's `BattleSettingsList1` netbattle records' counterpart), each distinct one a stage, with its panel layout
 -- (0x0800BD6C) and its actor list (the navis, and the obstacles: BN5's boulders, rocks and Guardian statues,
--- actor types 3, 8 and 9: objects/boulder, objects/rock, chips/guardian/guardian). A record's numbers (its places in the
--- list, its layout's number and its actor list's address) are compat's.
+-- actor types 3, 8 and 9: objects/boulder, objects/rock, chips/guardian/guardian). A record's numbers (its
+-- places in the list, its layout's number and its actor list's address) are compat's.
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
 local boulder = require("../objects/boulder/boulder")

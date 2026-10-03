@@ -1590,7 +1590,7 @@ chips with no use yet). The last ones: BugFix; LCrsShld, LStepSwd, LCounter (the
 controller, effect 0x8A, gives the side five uses of the ability, which only a Liberation Mission's specials read,
 nothing a netbattle reads); Poltrgst (BN5's own: controller effect 0x72, stand-in actor 0x58, poltergeist effect
 0x73); Navi+20; GunDelEX; InfVulc1–3, LifeSrd, PoisPhar, TimeBom+; GreatYo (controller effect 0x70: the leader and
-two followers); PitHoky (the puck's row 3, BN5's objects/puck); SuprSpr1–3 (wave kinds 6 to 8, objects/wave);
+two followers); PitHoky (the puck's row 3, chips/airhoc/puck); SuprSpr1–3 (wave kinds 6 to 8, chips/widesht/variants);
 GigaCan1–3 (projectile row 0x0C: hit modifier 0x49, the blast spark; BN5's projectile has none of BN6's row-0x0C
 bursts; the third afterimage on NaviStats +0x4C reads 0, as lib/arm's); H-Burst (BN5's shot: a probe of row 0, its
 explosions effect row 0x3C; its bursts are 8, the shot's table 0x080DA514 read at the record's word 0x103, past its
