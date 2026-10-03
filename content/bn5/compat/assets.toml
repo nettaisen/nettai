@@ -209,6 +209,7 @@ tango-land = 0x0d4
 bblstar1 = 0x0d8
 falling-rock = 0x0d9
 crack-shot = 0x0da
+shademan-call = 0x0de
 sand-worm = 0x0e1
 grid-dash = 0x0e4
 rockfall = 0x0e5
