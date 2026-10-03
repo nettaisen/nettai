@@ -131,7 +131,7 @@ katana.action = define.action {
                 lifetime = 0x14,
                 shadow = "ground",
             })
-            me.panel_x, me.panel_y = x, y
+            me.panel_x, me.panel_y = x :: number, y :: number
             me:set_coordinates_from_panel()
             me:update_collision_panels()
             if s.turned == 1 then

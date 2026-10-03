@@ -14,20 +14,11 @@ local shell = {}
 
 -- A shell's own hit and its blast (`ShellSpec`): its hit modifier, whether the blast cracks its panels, and the
 -- blast's damage shift (BN5's: none).
-export type Spec = { hit_mod: number, cracks: boolean, shift: number }
+export type Spec = ShellSpec
 
 -- A game's shell: what it is and hits, its sounds (the shot, a hit or blast), the edge blast's look and collision
 -- type, the explosions' and a hit's burst's effects.
-export type Look = {
-    is: CollisionType,
-    hits: CollisionType,
-    sound: Sound,
-    hit_sound: Sound,
-    blast: Effect,
-    blast_is: CollisionType,
-    explosion: Effect,
-    burst: Effect,
-}
+export type Look = TankShellLook
 
 export type State = {
     -- The hit modifier its own hit carries (a row of `byte_80CB6F0`: 0x4B for TankCan's kind 0, 0x63 for kind 1).

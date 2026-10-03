@@ -35,8 +35,8 @@ export type Spec = {
     id: string?,
     gun: AttachmentLook,
     firing_ticks: number,
-    beam: beam.Look,
-    beam_in_sun: beam.Look,
+    beam: SunBeamLook,
+    beam_in_sun: SunBeamLook,
     wide: boolean?,
 }
 

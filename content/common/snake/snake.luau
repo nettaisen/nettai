@@ -15,29 +15,9 @@ local snake = {}
 -- A game's snake: its sprite and sounds, the ticks it waits before its leap, its strike's element, spark, hit
 -- modifier and collision types, and how it tells its nest it's out (`joined`, at its init) and gone (`left`, at its
 -- end).
-export type Look = {
-    sprite: SpriteAsset,
-    rise_sound: Sound,
-    leap_sound: Sound,
-    wait: number,
-    strike_element: number,
-    strike_spark: Spark,
-    strike_hit_mod: number,
-    is: CollisionType,
-    hits: CollisionType,
-    joined: (me: Object) -> (),
-    left: (me: Object) -> (),
-}
+export type Look = SnakeLook
 
-export type State = {
-    -- The panel it leaps at (ExtraVars+0, +4; x 0xFF: none).
-    target_x: number,
-    target_y: number,
-    -- Its nest (the original's pointer to the nest's counter or flag).
-    nest: Object?,
-    -- Its place in its nest's flags (BN5's).
-    slot: number,
-}
+export type State = SnakeState
 
 -- Rising two pixels a tick up to 10; then the wait; then the leap, 16 pixels a tick. The strike: 8 pixels up,
 -- resolving while dimmed.
@@ -54,7 +34,7 @@ local HOLE = { [0] = { require = 0x00, forbid = 0x0F8800B0 }, [1] = { require = 
 local TARGET = { [0] = 0x05800000, [1] = 0x0A800000 }
 
 -- A nest's scan: where it is (Param3, Param4: bytes, the column stepping off the field when the scan ends).
-export type Scan = { scan_x: number, scan_y: number }
+export type Scan = SnakeScan
 
 -- `sub_80D2D40`: the panel a snake from (hx, hy) aims at: of the panels from the column in front of the hole
 -- forward (rows 1 to 3, until the column leaves the field) that hold a target, the first in that order, replaced by

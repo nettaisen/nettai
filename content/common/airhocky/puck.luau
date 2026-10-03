@@ -17,20 +17,11 @@ local puck = {}
 -- A puck's variant (a row of BN6's `byte_80C9818`, BN5's 0x080CA3A4): the steps it lasts (0: no limit), how
 -- it bounces (1: off its own side too, once across; the game also divides by it, see `slide`), the ticks per
 -- step, and whether it leaves a trail.
-export type Variant = { steps: number, own_side: number, ticks: number, trail: boolean? }
+export type Variant = PuckVariant
 
 -- A game's puck: its sprite (the trail's too), its sound and the bounce's, what it is and reaches, its hits'
 -- spark, the effect it bursts in, and its trail's tint.
-export type Look = {
-    sprite: SpriteAsset,
-    sound: Sound,
-    bounce: Sound,
-    is: CollisionType,
-    hits: CollisionType,
-    spark: Spark,
-    burst: Effect,
-    trail_tint: number,
-}
+export type Look = PuckLook
 
 export type State = {
     variant: Variant,

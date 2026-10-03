@@ -91,7 +91,8 @@ local function blow(spec: Blow): Action
             else battle.side_stat(me.alliance, SIDE_STAT)
         local dir = me.facing
         level = math.min(level, 3)
-        local t = if spread.tornadoes then spread.tornadoes[level] else spread.tornado
+        local by_level = spread.tornadoes :: { [number]: TornadoSpec }?
+        local t = if by_level then by_level[level] else spread.tornado
         for _, p in spread.panels[level] do
             tornado.spawn(me, x + dir * p[1], y + p[2], element, damage, t, spec.tornado_kind)
         end

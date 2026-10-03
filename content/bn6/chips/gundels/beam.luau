@@ -13,8 +13,6 @@ local common = require("@common/gundels/beam")
 
 local beam = {}
 
-export type State = common.State
-
 -- The looks (`dword_80E5C28`): GunDelSol's, and GunDelEX's wider one.
 beam.sprites = {
     plain = asset.sprite("bn6:sun-beam"),
