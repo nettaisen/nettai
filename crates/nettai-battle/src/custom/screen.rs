@@ -315,9 +315,6 @@ pub struct RoundMemory {
     pub crosses_used: [bool; CROSSES],
     /// Beast Out was picked this round.
     pub beast_out_used: bool,
-    /// Consecutive screens opened in ChargeCross (or its Beast form),
-    /// up to 3: each deals one more chip.
-    pub charge_cross_screens: u8,
     /// The link navis whose own chips were put in a hand this round (a bit
     /// each: the original's by the chip's place among them).
     pub navi_chips_used: u32,
@@ -327,16 +324,8 @@ impl Screen {
     /// The screen a player gets when the custom screen opens (`sub_8026840`):
     /// compact the folder, deal, and lay out the slots. `turn`: the
     /// screen's number in the round (1 = first).
-    pub fn open(folder: &mut BattleFolder, view: &PlayerView, turn: u8, round: &mut RoundMemory) -> Screen {
+    pub fn open(folder: &mut BattleFolder, view: &PlayerView, turn: u8, extras: &mut dyn super::Extras) -> Screen {
         let megaman = view.megaman();
-        // sub_802A49C: ChargeCross (a form with `extra_chips`) deals one
-        // more chip per screen spent in it, up to three.
-        let traits = view.form_traits();
-        round.charge_cross_screens = if megaman && traits.has(FormTraits::EXTRA_CHIPS) {
-            (round.charge_cross_screens + 1).min(3)
-        } else {
-            0
-        };
         folder.compact();
         let chips_left = folder.count() as u8;
         let mut screen = Screen {
@@ -364,7 +353,9 @@ impl Screen {
         if view.crosses_allowed() && view.emotion != Emotion::WornOut {
             screen.crosses = view.offered_crosses();
         }
-        screen.hand_size = hand_size(view, turn, round.charge_cross_screens, false);
+        // sub_802A40C: the side's rules' hand size (BN6's cross system's,
+        // with ChargeCross's chips), else the framework's.
+        screen.hand_size = extras.hand_size().unwrap_or_else(|| hand_size(view, turn));
         screen.lay_out(view);
         // sub_802806C: a cursor on the first slot goes to the first dark
         // chip dealt (as the class limits count it).
@@ -1513,18 +1504,22 @@ fn navi_chip(view: &PlayerView) -> Option<FolderChip> {
     view.library.navi_chip(view.stats.navi)
 }
 
-/// `sub_802A40C`: how many chips a screen deals.
-fn hand_size(view: &PlayerView, turn: u8, charge_cross_screens: u8, scrap_button: bool) -> u8 {
+/// `sub_802A40C` without a form's share (BN6's: ChargeCross's chips, and
+/// NumbrOpn not in DustCross, which its cross system's
+/// `custom.hand_size` adds): how many chips a screen deals by the custom
+/// level, NumbrOpn and the hand-shrink bug, when the side's rules don't
+/// say.
+fn hand_size(view: &PlayerView, turn: u8) -> u8 {
     let s = view.stats;
     let mut extra: i16 = 0;
-    let mut n = s.custom_level as i16 + charge_cross_screens as i16;
+    let mut n = s.custom_level as i16;
     if n > 8 {
         extra = n - 8;
         n = 8;
     }
-    if !view.form_traits().has(FormTraits::SCRAP_BUTTON) && !scrap_button && s.number_open {
+    if s.number_open {
         n = 10;
-        extra = charge_cross_screens as i16;
+        extra = 0;
     }
     let bug = s.bugs.hand_shrink_turn;
     if bug != 0 && turn >= bug {
