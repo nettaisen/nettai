@@ -1495,11 +1495,15 @@ P1's items 12 and 8 (bn5-map.md §15.3), on R4.
 - **Next.** Beast Out (its button, the BeastOut chip and their animations as windows, the result's form) goes with
   the Cross window: the two read each other (a chosen Cross greys out Beast Out, and Beast Out blocks the
   window). Then the setup (S6c).
-- **Gates** (on main db435c78):
-  - the build without warnings, 481 tests, the content check (1,251 modules), gen-content check 0 errors;
-  - `gate-against.sh` with everything selected: the 189 legacy rounds, machgun and soundmod with 96 rollback rows,
-    and the lab 6548 (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
-  - identity.sh against main's frontend on main's content: the custom-screen list identical in the default text
-    mode (42 scenarios, 47,580 frames); the custom-screen and sample lists identical with `--text original` (174
-    scenarios, 200,712 frames); the sample list identical in the default mode (132 scenarios, 153,132 frames);
-  - the audit 0 problems; BN5's replays as before; us-spelling 0.
+- **Merged with main f816b94d** (bn5-port-5): BN5's soul button (`SlotKind::Soul`, `Phase::SoulChosen`, in Rust)
+  sits beside the system buttons. It and its sequence take the extras too. A port of it to a BN5 system's button
+  and window is BN5's, when its rules come.
+- **Gates** (on main f816b94d):
+  - the build without warnings, 482 tests, the content check (1,275 modules), gen-content check 0 errors;
+  - `gate-against.sh full`: the 189 legacy rounds, machgun and soundmod with 96 rollback rows, and the lab 6548
+    (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
+  - identity.sh against main's frontend on main's content: the custom-screen and sample lists identical in both
+    text modes (174 scenarios, 200,712 frames each);
+  - the audit 0 problems; us-spelling 0;
+  - BN5's replays as main's, on a BN5 pack extracted again for bn5-port-5's asset names: 402 match every frame,
+    18 replay, 223,414 of 948,097 frames.
