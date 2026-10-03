@@ -8,7 +8,7 @@
 -- for the port's BN5 definitions (docs/design/bn5-map.md §15); the content check lists them as unfilled,
 -- and a battle stops at the first it needs.
 --
--- Not filled for want of a BN5 counterpart: the A charge's glow and Full Synchro's aura (BN6's), the
+-- Not filled for want of a BN5 counterpart: Full Synchro's aura (BN6's), the
 -- freeze and bubble sounds and sprites (BN5 has neither status), the eruption's (BN5's lava panels
 -- don't erupt: they burn and go, §15), the Cross and Beast Out sounds and the custom screen's Cross
 -- window, re-deal and scrap (BN6's).
@@ -148,8 +148,11 @@ return define.roles {
         loser = asset.sound("bn5:loser"),
     },
     sprites = {
-        -- The charge glow of a B charge.
+        -- The charge glow of a B charge; of an A charge (14-15); of an armed Chaos Unison charge (14-1C), its
+        -- animation the chaos cycle's window (0x080E0EA4).
         charge_glow = asset.sprite("bn5:charge-glow"),
+        charge_glow_a = asset.sprite("bn5:charge-glow-a"),
+        charge_glow_chaos = asset.sprite("bn5:chaos-charge-glow"),
         -- The status visuals over a navi (0x080E08EC, BN6's `byte_80E08E4`): confusion's stars and blindness (BN6's
         -- numbers) and the immobilized one (10-2d, BN6's 10-00).
         confusion = asset.sprite("bn5:confusion"),
