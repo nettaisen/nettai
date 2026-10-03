@@ -268,6 +268,15 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
         Ok(st) => st[s],
         Err(_) => side.stats,
     };
+    // (With several games' chips, each says its game.)
+    let several = e.pool[s].iter().map(|&h| game_of(&c.defs.chip(h).key)).collect::<std::collections::BTreeSet<_>>().len() > 1;
+    let tag = |h: nettai_content_api::ChipHandle| -> Element<Msg> {
+        if several {
+            text(game_label(game_of(&c.defs.chip(h).key))).size(11).color(DIM).width(Length::Fixed(30.0)).into()
+        } else {
+            space().width(0).into()
+        }
+    };
     // The folder's entries.
     let mut entries = Column::new().spacing(1);
     for (i, chip) in f.chips.iter().enumerate() {
@@ -285,6 +294,7 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
                     text(format!("{i:>2}")).size(12).color(DIM).width(Length::Fixed(22.0)),
                     icon(e, chip.id),
                     text(e.names.chip(c, chip.id)).size(14).width(Length::Fill),
+                    tag(chip.id),
                     text(chip.code.letter().to_string()).size(14).color(if ok { Color::BLACK } else { RED }).width(Length::Fixed(16.0)),
                     text(marks).size(12).color(GREEN).width(Length::Fixed(64.0)),
                 ]
@@ -310,7 +320,15 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
             let sd = c.chip(selected.id);
             let about = column![
                 text(format!("Entry {}: {} {}", e.entry[s], e.names.chip(c, selected.id), selected.code.letter())).size(15),
-                text(format!("{} · {} MB · {} damage", class_name(sd.class), sd.mb, sd.damage)).size(13).color(DIM),
+                text(format!(
+                    "{} · {} MB · {} damage · {}",
+                    class_name(sd.class),
+                    sd.mb,
+                    sd.damage,
+                    game_label(game_of(&c.defs.chip(selected.id).key))
+                ))
+                .size(13)
+                .color(DIM),
                 row![
                     button("Regular").on_press(Msg::Regular(s)).style(button::secondary),
                     button("Tag").on_press(Msg::Tag(s)).style(button::secondary),
@@ -360,7 +378,6 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
     // of the game picked, searched.
     let games: Vec<&str> =
         e.pool[s].iter().map(|&h| game_of(&c.defs.chip(h).key)).collect::<std::collections::BTreeSet<_>>().into_iter().collect();
-    let several = games.len() > 1;
     let needle = e.search.to_lowercase();
     let mut pool: Vec<(String, &str, nettai_content_api::ChipHandle)> = e.pool[s]
         .iter()
@@ -371,7 +388,7 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
         .collect();
     pool.sort();
     let mut list = Column::new().spacing(1);
-    for (name, game, h) in pool.into_iter().take(400) {
+    for (name, _, h) in pool.into_iter().take(400) {
         let d = c.chip(h);
         let held = f.chips().filter(|x| x.id == h).count();
         let codes = d.codes.iter().fold(Row::new().spacing(2), |r, &code| {
@@ -379,13 +396,11 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
         });
         let count = if held > 0 { format!("×{held}") } else { String::new() };
         let dark = d.flags.has(ChipFlags::DARK);
-        let game: Element<Msg> =
-            if several { text(game_label(game)).size(11).color(DIM).width(Length::Fixed(30.0)).into() } else { space().width(0).into() };
         list = list.push(
             row![
                 icon(e, h),
                 text(name).size(14).width(Length::Fill).color(if dark { RED } else { Color::BLACK }),
-                game,
+                tag(h),
                 text(format!("{} {} MB", class_letter(d.class), d.mb)).size(12).color(DIM).width(Length::Fixed(64.0)),
                 text(count).size(12).color(GREEN).width(Length::Fixed(34.0)),
                 container(codes.wrap()).width(Length::Fixed(150.0)),

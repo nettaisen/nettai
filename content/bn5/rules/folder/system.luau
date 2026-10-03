@@ -51,16 +51,20 @@ local function is_dark(c: Chip): boolean
     return has(c.flags, "dark")
 end
 
+local function class(c: Chip): string
+    return c.class or ""
+end
+
 -- What the chip pack lists: a chip a folder can hold.
 local function in_pack(c: Chip): boolean
-    return COPIES[c.class] ~= nil and c.codes ~= nil and #c.codes > 0 and table.find(PAST_THE_PACK, c) == nil
+    return COPIES[class(c)] ~= nil and c.codes ~= nil and #c.codes > 0 and table.find(PAST_THE_PACK, c) == nil
 end
 
 local function copies_allowed(c: Chip): number
     if is_dark(c) then
         return DARK_COPIES
     end
-    return COPIES[c.class] or 0
+    return COPIES[class(c)] or 0
 end
 
 local function name(c: Chip): string
@@ -111,7 +115,7 @@ local function check(side: number)
     for _, c in order do
         local n, allowed = copies[c], copies_allowed(c)
         if n > allowed then
-            local what = if is_dark(c) then "a dark chip" else string.format("a %s chip", c.class)
+            local what = if is_dark(c) then "a dark chip" else string.format("a %s chip", class(c))
             problem("copies", string.format("%d copies of %s (%s), past %d", n, name(c), what, allowed))
         end
     end
