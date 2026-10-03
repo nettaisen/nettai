@@ -610,6 +610,25 @@ export type ThunderBallLook = {
     dark_sound: Sound?,
 }
 
+-- ElemTrap's counterattack by element (chips/elemtrap/strike): its sound,
+-- its hits' spark, hit modifier and status, and the bursts' look.
+export type ElemTrapStrike = { sound: Sound?, spark: Spark, hit_mod: number, status: Status?, burst: Effect }
+-- A game's counterattack (`strike.make_kind`): its strikes by element
+-- (null to wood), and what its hits are and reach.
+export type ElemTrapStrikeLook = { strikes: { [number]: ElemTrapStrike }, self_type: CollisionType, target: CollisionType }
+-- A game's trap (chips/elemtrap/trap, `trap.make_kind`): what springs it
+-- (fire to wood's first hit, or one element's: the one it is set with),
+-- what it is and reaches, where its sparkles show (16.16, from the
+-- panel's center: down the field, up), and its counterattack's kind.
+export type ElemTrapLook = {
+    watches: "fire_to_wood" | "one",
+    self_type: CollisionType,
+    target: CollisionType,
+    sparkle_dy: number,
+    sparkle_z: number,
+    strike_kind: Kind,
+}
+
 -- How FireHit's fist strikes (chips/firehit/fist): the spark its hit shows
 -- and its collision types.
 export type FireHitFistLook = { spark: Spark, target: CollisionType, self_type: CollisionType }
