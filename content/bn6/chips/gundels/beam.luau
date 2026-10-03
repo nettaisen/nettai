@@ -8,7 +8,7 @@
 -- Its look (`SunBeam`, types.d.luau: the original's first two
 -- parameters, a look of `dword_80E5C28` and a palette) is its spawner's.
 
-local slot = require("../../lib/slot")
+local slot = require("@common/slot")
 
 local beam = {}
 

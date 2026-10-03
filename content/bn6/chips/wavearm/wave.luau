@@ -10,8 +10,8 @@
 -- it, poisons it) hits as a thrown attack.
 
 local collision = require("../../rules/collision")
-local panels = require("../../lib/panels")
-local regions = require("../../lib/regions")
+local panels = require("@common/panels")
+local regions = require("@common/regions")
 
 local wave = {}
 

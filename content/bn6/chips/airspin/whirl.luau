@@ -9,7 +9,7 @@
 -- field. Its region comes back 8 ticks after each hit.
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local whirl = {}
 
