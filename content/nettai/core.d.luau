@@ -1130,6 +1130,9 @@ declare battle: {
     -- enough: the count wraps below 0).
     bug_frags: (side: number) -> number,
     spend_bug_frags: (side: number, count: number) -> (),
+    -- The level of the navi code a side's save received (0 to 14), nil
+    -- when none was (BN6's event flag 0x163).
+    navi_level: (side: number) -> number?,
     -- `sub_802E4B8`: the side's SELECT or Cross special in progress.
     side_special: (side: number) -> SideSpecial,
     -- A system's takeover of the side's navi starts for `ticks` (counted
@@ -2618,7 +2621,8 @@ declare custom: {
     -- drawn; the form the system's pick holds for the turn's start, and
     -- whether another system's holds it; whether the picks are full;
     -- whether one of the system's buttons is picked; what the screen reads
-    -- of its player from the setup.
+    -- of its player that isn't a system's setup (the emotion it reads, a
+    -- random battle).
     pick: (side: number) -> (),
     play: (side: number, sound: string) -> (),
     set_column_icon: (side: number, chip: Chip?) -> (),
@@ -2660,13 +2664,6 @@ declare custom: {
     refresh_buttons: (side: number) -> (),
     player: (side: number) -> {
         emotion: Emotion,
-        version: "gregar" | "falzar",
-        -- The Crosses owned, by Cross number (1-5).
-        crosses: { boolean },
-        -- The setup's Cross list (nettai's extension), in its order.
-        cross_list: { FormDef }?,
-        beast_out: boolean,
-        beast_out_sealed: boolean,
         random_battle: boolean,
     },
 }
