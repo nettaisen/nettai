@@ -26,10 +26,10 @@ export type State = {
 local FIRE = 1
 local DROP_TICKS = 0x14
 -- Whether to pick a panel next to the target, by a draw's low four bits
--- (`byte_80E5B50`, running into `byte_80E5B58`), and the neighbours
+-- (`byte_80E5B50`, running into `byte_80E5B58`), and the neighbors
 -- (`byte_80E5B58`, its last pair the next routine's code).
 local NEAR = { [0] = false, true, true, false, false, false, false, false, false, true, false, true, true, false, true, false }
-local NEIGHBOURS = { { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }
+local NEIGHBORS = { { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }
 
 -- `sub_80E5A8A`: one of the other side's navis still standing, at random
 -- (a draw only if there is one).
@@ -46,7 +46,7 @@ local function pick(me: Object): Object?
     return standing[battle.rng_positive() % #standing + 1]
 end
 
--- `sub_80E5AD6`: the target's panel, or on some draws a neighbour of it on
+-- `sub_80E5AD6`: the target's panel, or on some draws a neighbor of it on
 -- the field (another draw picks which).
 local function aim(target: Object?): (number, number)
     if target == nil then
@@ -57,7 +57,7 @@ local function aim(target: Object?): (number, number)
         return x, y
     end
     local near = {}
-    for _, d in NEIGHBOURS do
+    for _, d in NEIGHBORS do
         local nx, ny = x + d[1], y + d[2]
         if field.valid(nx, ny) then
             table.insert(near, bit32.bor(bit32.band(nx, 0xFF), bit32.lshift(ny, 4)))

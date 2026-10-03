@@ -1,12 +1,15 @@
 //! The packs' pictures the editor shows: each chip's icon and its custom
-//! screen picture, as RGBA images. A chip's pictures are its own game's
-//! pack's (the pack its root names its assets in), under its key there, as
-//! the frontend draws them (`nettai_frontend::packs`). Everything the editor
-//! reads of the packs' graphics is here.
+//! screen picture, as images. A chip's pictures are drawn by nettai-render
+//! as a frame draws them (`nettai_render::pictures`: its game's pack's,
+//! under its key there). Everything the editor reads of the packs'
+//! graphics is here.
 
 use iced::widget::image::Handle;
-use nettai_assets::{Bundle, Palette, Tiles};
+use nettai_assets::Bundle;
 use nettai_battle::Content;
+use nettai_content_api::ChipHandle;
+use nettai_render::packs::Packs;
+use nettai_render::pictures::{self, Image};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -26,31 +29,8 @@ pub struct Pictures {
     chips: HashMap<String, ChipPictures>,
 }
 
-/// A BGR555 colour as RGBA (index 0 of a palette is see-through).
-fn rgba(c: u16) -> [u8; 4] {
-    let five = |v: u16| ((v & 31) << 3 | (v & 31) >> 2) as u8;
-    [five(c), five(c >> 5), five(c >> 10), 0xFF]
-}
-
-/// `tiles` laid out row-major, `w` by `h` tiles, in `palette`.
-fn image(tiles: &Tiles, w: usize, h: usize, palette: &Palette) -> Option<Handle> {
-    if tiles.len() < w * h {
-        return None;
-    }
-    let (pw, ph) = (w * 8, h * 8);
-    let mut out = vec![0u8; pw * ph * 4];
-    for t in 0..w * h {
-        let tile = tiles.get(t)?;
-        let (tx, ty) = (t % w * 8, t / w * 8);
-        for (i, &p) in tile.iter().enumerate() {
-            if p == 0 {
-                continue;
-            }
-            let (x, y) = (tx + i % 8, ty + i / 8);
-            out[(y * pw + x) * 4..][..4].copy_from_slice(&rgba(palette[p as usize]));
-        }
-    }
-    Some(Handle::from_rgba(pw as u32, ph as u32, out))
+fn handle(i: Image) -> Handle {
+    Handle::from_rgba(i.width, i.height, i.rgba)
 }
 
 impl Pictures {
@@ -64,14 +44,16 @@ impl Pictures {
                 .map_err(|r| format!("can't load the graphics of {}: {} problems", path.display(), r.issues.len()))?;
             bundles.push(b);
         }
+        if bundles.is_empty() {
+            return Ok(Pictures::default());
+        }
+        // (The own pack only draws a chip whose game has none loaded.)
+        let packs = Packs::new(bundles.iter().collect(), nettai_battle::content::PackId(0));
         let mut chips = HashMap::new();
-        for d in &content.defs.chips {
-            let game = content.defs.root_of(&d.key).and_then(|r| content.defs.roots.get(r.index()));
-            let Some(pack) = game.and_then(|g| content.assets.pack(g)) else { continue };
-            let Some(b) = bundles.get(pack.index()) else { continue };
-            let local = nettai_content_api::keys::local(&d.key);
-            let icon = b.hud.chip_icon(local).and_then(|t| image(t, 2, 2, &b.hud.icon_palette));
-            let art = b.custom.chip_art(local).and_then(|a| image(&a.picture.tiles, 7, 6, &d.record.art_palette.unwrap_or(a.picture.palette)));
+        for (i, d) in content.defs.chips.iter().enumerate() {
+            let chip = ChipHandle(i as u16);
+            let icon = pictures::chip_icon(&packs, content, chip).map(handle);
+            let art = pictures::chip_art(&packs, content, chip).map(handle);
             chips.insert(d.key.clone(), ChipPictures { icon, art });
         }
         Ok(Pictures { chips })

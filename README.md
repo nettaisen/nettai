@@ -26,7 +26,10 @@ netplay needs.
 - `m4a`: the GBA's M4A (Sappy) sound driver.
 - `nettai-netplay`: rollback netplay on [getgud](https://github.com/tangobattle/getgud), its inputs carried by
   [rennet](https://github.com/tangobattle/rennet) over UDP (or any datagram channel), with a simulated lossy network.
-- `nettai-frontend`: a desktop app that draws battles: it replays recorded matches or plays live.
+- `nettai-render`: draws a battle into frames: the stage, the objects, the HUD, the custom screen and the text, from
+  engine state and the packs' graphics; no window, sound or network.
+- `nettai-frontend`: the desktop app that shows battles drawn by `nettai-render`: it replays recorded matches or
+  plays live, alone or over the network, with sound.
 - `nettai-match`: match files, everything a round needs by content key, checked; live play's random draw.
 - `nettai-editor`: a desktop app that edits match files and plays them with the frontend.
 - `bn6-extract`: extracts BN6's graphics and sound from the four ROMs into a content pack.
@@ -63,7 +66,7 @@ live with the verification workspace (below).
 
 The window can be resized; the picture keeps whole pixels. Chip names, telops, the chatbox's descriptions and
 messages and the HUD's text lines are drawn with a vector font at the window's resolution, over the pixel art:
-Murecho (Latin and Japanese), bundled under the SIL Open Font License in `crates/nettai-frontend/fonts`.
+Murecho (Latin and Japanese), bundled under the SIL Open Font License in `crates/nettai-render/fonts`.
 `--text original` draws them in the game's own fonts instead, exactly as the original does, and `--font <file>`
 uses another TrueType or OpenType font ([text-rendering.md](docs/design/text-rendering.md) §9).
 
@@ -105,7 +108,7 @@ round starts the navi with; the folder (the chips the side's folder rules allow,
 code puts a chip in the selected entry; the Regular and tag chips; the copies and the Mega, Giga, Regular and tag
 limits live, as the game's folder rules count them); the Crosses; the patch cards (MB used of 80); the NaviCust (the
 board as the side's game draws it, with its frame and command line, edited with the mouse as Tango's is: drag a
-program's colour swatch onto the grid, or press a placed program to pick it up and drag it; while held it shows
+program's color swatch onto the grid, or press a placed program to pick it up and drag it; while held it shows
 where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click, Delete
 or a drag off the grid takes it off, Esc puts it back; right-clicking a placed program turns it; the stats it
 compiles to show beside it, and the stats-and-bugs block set directly is the pane's other view); every stat. The problems with the match show at the bottom as you edit. Play saves the match and

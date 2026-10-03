@@ -35,7 +35,7 @@ local LOWER_TICKS = 3
 -- The shot's height, 16.16.
 local SHOT_Z = 0x18_0000
 
--- The afterimages: their colour shader and lifetime, the navi's attach
+-- The afterimages: their color shader and lifetime, the navi's attach
 -- point the cannon's sits at, the navi's animation the other holds.
 local AFTERIMAGE_SHADER, AFTERIMAGE_TICKS = 0x8318, 0x1E
 local CANNON_POINT, NAVI_ANIM = 7, 8

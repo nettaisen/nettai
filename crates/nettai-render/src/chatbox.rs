@@ -295,7 +295,7 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
 /// the text's left: up to a pixel short of the inner edge of the box's
 /// right frame, on the map's row at the text's middle (the first pixel
 /// column, from the inside, of the rightmost tile drawn on that row that
-/// isn't the colour under the text's left). The description box ends 27
+/// isn't the color under the text's left). The description box ends 27
 /// tiles in, short of the line buffer's 192 pixels; the message box spans
 /// the screen. The line buffer's width when the map has no such frame.
 pub fn text_room(g: &Graphics, kind: usize) -> i32 {
@@ -384,7 +384,7 @@ pub fn frame_after(frames: &[(u8, u8)], updates: u16) -> usize {
     k
 }
 
-/// A colour with the tint added, each channel saturating
+/// A color with the tint added, each channel saturating
 /// (`sub_3005F34`).
 fn tint(c: u16, t: u16) -> u16 {
     let ch = |v: u16, s: u16| (((v >> s) & 31) + ((t >> s) & 31)).min(31) << s;

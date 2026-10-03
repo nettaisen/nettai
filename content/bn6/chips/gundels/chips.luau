@@ -1,7 +1,7 @@
 --!strict
 -- GunDelS1-3 and GunDelEX: a sun beam that drains the column two panels
 -- ahead, more in the sun (./action, ./beam). Each level fires longer and
--- holds its gun in its own colours; GunDelEX's beam is wider and covers
+-- holds its gun in its own colors; GunDelEX's beam is wider and covers
 -- the column past it too.
 
 local action = require("./action")

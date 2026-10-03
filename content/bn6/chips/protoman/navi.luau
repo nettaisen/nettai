@@ -21,8 +21,8 @@ local effects = require("../../lib/effects")
 local regions = require("../../lib/regions")
 
 export type State = {
-    -- The grey of his colour shader, fading in (object +0x19).
-    grey: number,
+    -- The gray of his color shader, fading in (object +0x19).
+    gray: number,
     -- The controller waiting for him (its pointer sits in ExtraVars[1]).
     controller: Object?,
     -- Whether the next search starts at the top of its column
@@ -58,8 +58,8 @@ protoman.bn6 = protoman.look {
     spawner_address = 0x080C2A4D,
 }
 
--- His fade-in's starting grey.
-local FADE_GREY = 0x1F
+-- His fade-in's starting gray.
+local FADE_GRAY = 0x1F
 
 -- What he looks for (`off_80C2904`: an enemy navi's body), what a panel
 -- he lands on must be (solid) and be free of (as words).
@@ -84,11 +84,11 @@ local function countdown(me: Object, ticks: number): boolean
 end
 
 -- Action 0 (`sub_80C2798`): appear.
--- `sub_80C27B4`: he fades in from grey 31, 2 a tick, flickering.
+-- `sub_80C27B4`: he fades in from gray 31, 2 a tick, flickering.
 local function fade_in(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
-        s.grey = FADE_GREY
+        s.gray = FADE_GRAY
         battle.play_sound(SOUND_APPEAR)
         me.timer = 0
         me.phase_init = 4
@@ -100,13 +100,13 @@ local function fade_in(me: Object)
     if bit32.band(t, 1) ~= 0 then
         me.visible = false
     end
-    local grey = s.grey - 2
-    s.grey = grey
-    if grey > 0 then
+    local gray = s.gray - 2
+    s.gray = gray
+    if gray > 0 then
         return
     end
     me.visible = true
-    s.grey = 0
+    s.gray = 0
     me.phase, me.phase_init = 4, 0
 end
 
@@ -272,7 +272,7 @@ local ACTIONS: { [number]: { [number]: (Object) -> () } } = {
 }
 
 -- `sub_80C2770`: the action (and phase); his sprite, while dimmed too;
--- his colour shader from the grey (`sub_80C2A3A`).
+-- his color shader from the gray (`sub_80C2A3A`).
 local function update_state(me: Object)
     if me.action == 8 then
         leave(me)
@@ -288,10 +288,10 @@ local function update_state(me: Object)
         f(me)
     end
     me:update_sprite_while_dimmed()
-    me.sprite.color_shader = (me.state :: State).grey * 0x421
+    me.sprite.color_shader = (me.state :: State).gray * 0x421
 end
 
--- `sub_80C2710`: on his user's panel, faded out (grey); then his first
+-- `sub_80C2710`: on his user's panel, faded out (gray); then his first
 -- update at once.
 local function init(me: Object)
     local look = (me.state :: State).look
@@ -324,7 +324,7 @@ end
 protoman.kind = define.kind {
     id = "bn6:protoman/navi",
     pool = "actor",
-    state = { grey = "u8", controller = "object", fresh = "u8", flip = "u8", look = "record:protoman-look" },
+    state = { gray = "u8", controller = "object", fresh = "u8", flip = "u8", look = "record:protoman-look" },
     -- `sub_80C26F0`.
     update = function(me: Object)
         local l = me.lifecycle

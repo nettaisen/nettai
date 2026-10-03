@@ -342,7 +342,7 @@ impl Side {
         let Some(mut folder) = self.folder else { return };
         let mut round = self.round;
         let regular = folder.regular_pending;
-        // (Palette 11 keeps the last chip window's element colours from
+        // (Palette 11 keeps the last chip window's element colors from
         // screen to screen.)
         let last_chip = self.screen.and_then(|s| s.look.chip_window.last_chip).filter(|_| ctx.turn != 1);
         let mut screen = Screen::open(&mut folder, &self.view(ctx, regular), ctx.turn, &mut round);

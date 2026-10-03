@@ -6,7 +6,7 @@
 -- he draws his sword (in his first related slot, which held his user) and
 -- strikes: the Colonel chips' ScreenDivide, an X of hit regions over the
 -- middle row of the first column ahead that is wholly the enemy's;
--- CrossDiv's, a cross (an X and its centre) on the first panel ahead
+-- CrossDiv's, a cross (an X and its center) on the first panel ahead
 -- holding an enemy navi (or three columns ahead). A flash, and a camera
 -- shake. Then he goes, and the controller moves on. See
 -- docs/engine/chips.md §3.6.22.
@@ -23,8 +23,8 @@ export type State = {
     -- His palette, and his strike (from the chip's parameters).
     palette: number,
     cross: boolean,
-    -- The grey of his colour shader, fading in (object +0x19).
-    grey: number,
+    -- The gray of his color shader, fading in (object +0x19).
+    gray: number,
     -- His cape (ExtraVars[0]).
     cape: Object?,
     -- The controller waiting for him (its pointer sits in ExtraVars[1]).
@@ -59,8 +59,8 @@ local CROSS = {
     define.effect { sprite = asset.sprite("bn6:colonel-effect"), anim = 2, palette = 0 },
 }
 
--- His fade-in's starting grey.
-local FADE_GREY = 0x1F
+-- His fade-in's starting gray.
+local FADE_GRAY = 0x1F
 
 -- The controller calls his spawner through r3, which his position takes
 -- (his init sets it all).
@@ -79,7 +79,7 @@ local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 -- When his strike lands (the timer before its tick's count down).
 local STRIKE_TICK = 0x20
 
--- `sub_80B8230`: on his user's panel, faded out (grey 0x7FFF shader),
+-- `sub_80B8230`: on his user's panel, faded out (gray 0x7FFF shader),
 -- with his cape.
 local function init(me: Object)
     local sprite = me.sprite
@@ -99,12 +99,12 @@ local function init(me: Object)
 end
 
 -- Action 0 (`sub_80B82C4`): appear.
--- `sub_80B82E0`: shown; he fades in from grey 31, 2 a tick, flickering.
+-- `sub_80B82E0`: shown; he fades in from gray 31, 2 a tick, flickering.
 local function fade_in(me: Object)
     local s = me.state :: State
     me.visible = true
     if me.phase_init == 0 then
-        s.grey = FADE_GREY
+        s.gray = FADE_GRAY
         battle.play_sound(SOUND_APPEAR)
         me.timer = 0
         me.phase_init = 4
@@ -115,13 +115,13 @@ local function fade_in(me: Object)
     if bit32.band(t, 1) ~= 0 then
         me.visible = false
     end
-    local grey = s.grey - 2
-    s.grey = grey
-    if grey > 0 then
+    local gray = s.gray - 2
+    s.gray = gray
+    if gray > 0 then
         return
     end
     me.visible = true
-    s.grey = 0
+    s.gray = 0
     me.phase, me.phase_init = 4, 0
 end
 
@@ -226,7 +226,7 @@ local function screen_divide(me: Object)
 end
 
 -- `sub_80B8564`: CrossDiv: a cross on the enemy's panel (an X, then its
--- centre again), its two effects 12 pixels up, a 40-tick flash.
+-- center again), its two effects 12 pixels up, a 40-tick flash.
 local function cross_divide(me: Object)
     if at_back(me) then
         return
@@ -312,7 +312,7 @@ local PHASES: { [number]: { [number]: (Object) -> () } } = {
 }
 
 -- `sub_80B829C`: the action (and phase); his sprite, while dimmed too; his
--- colour shader from the grey (`sub_80B844A`).
+-- color shader from the gray (`sub_80B844A`).
 local function update_state(me: Object)
     if me.action == 8 then
         leave(me)
@@ -328,7 +328,7 @@ local function update_state(me: Object)
         f(me)
     end
     me:update_sprite_while_dimmed()
-    me.sprite.color_shader = (me.state :: State).grey * 0x421
+    me.sprite.color_shader = (me.state :: State).gray * 0x421
 end
 
 -- `sub_80B843C`: the controller moves on, and he is freed.
@@ -344,7 +344,7 @@ colonel.kind = define.kind {
     id = "bn6:colonel/navi",
     pool = "actor",
     state = {
-        grey = "u8",
+        gray = "u8",
         cape = "object",
         controller = "object",
         palette = "u8",

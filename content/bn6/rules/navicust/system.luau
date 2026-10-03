@@ -34,7 +34,7 @@ local board = require("./board")
 local programs = require("./programs")
 
 local SIZE = board.SIZE
-local CENTRE = SIZE // 2
+local CENTER = SIZE // 2
 
 -- Whether the cell of `rows` (a definition's shape: strings of `#` and
 -- `.`) at (x, y) is filled.
@@ -74,14 +74,14 @@ local function shape(p: PlacedProgram): { { boolean } }
     return out
 end
 
--- The grid cells a shape covers with its centre at (x, y), in its rows'
+-- The grid cells a shape covers with its center at (x, y), in its rows'
 -- order: { x, y } each.
 local function cells(s: { { boolean } }, x: number, y: number): { { number } }
     local out: { { number } } = {}
     for j = 0, SIZE - 1 do
         for i = 0, SIZE - 1 do
             if s[j][i] then
-                local cx, cy = x - CENTRE + i, y - CENTRE + j
+                local cx, cy = x - CENTER + i, y - CENTER + j
                 if cx >= 0 and cx < SIZE and cy >= 0 and cy < SIZE then
                     out[#out + 1] = { cx, cy }
                 end
@@ -273,7 +273,7 @@ local function compile(side: number)
     end
     -- Beside one of its color (`sub_813BD24`): for each program, the
     -- programs its shape moved a cell meets (`sub_813BD90`; where a
-    -- neighbour counts), each once; one of the same color counts for its
+    -- neighbor counts), each once; one of the same color counts for its
     -- own bug (`sub_813BE38`).
     for i, p in parts do
         local met: { number } = {}
@@ -281,7 +281,7 @@ local function compile(side: number)
             for _, c in cells(shapes[i], p.x + d[1], p.y + d[2]) do
                 local q = at(grid, c[1], c[2])
                 if q ~= nil and q ~= i and table.find(met, q) == nil then
-                    if string.sub(board.NEIGHBOURS[c[2] + 1], c[1] + 1, c[1] + 1) ~= "x" then
+                    if string.sub(board.NEIGHBORS[c[2] + 1], c[1] + 1, c[1] + 1) ~= "x" then
                         table.insert(met, q)
                     end
                 end

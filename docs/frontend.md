@@ -1,4 +1,4 @@
-# The rendering frontend (`nettai-frontend`)
+# The frontend (`nettai-frontend` and `nettai-render`)
 
 A desktop app that runs a battle through the native engine and draws it the
 way the original does, in its 240x160 frame scaled up by the largest whole
@@ -14,6 +14,28 @@ own fonts, exactly as the original does.
 
 It replays a golden trace (the recorded inputs of a real match) or is
 played live from the keyboard, and can render chosen frames to PNG.
+
+Two crates make it up:
+
+- **nettai-render** draws a battle into frames, and nothing else: it
+  composes the layers (`compose`), draws the stage and the field
+  (`stage`), the objects (`objects`), the HUD with its banners and telops
+  (`hud`), the custom screen (`custom`) and the chatbox (`chatbox`); the
+  strings in the game's fonts or as the text layer's items (`fonts`,
+  `textlayer`, `strings`) and the vector font that draws those
+  (`vfont`); each pack's graphics (`packs`); the lookups a frame makes of
+  the packs and the content (`lookups`), each noted and checked once a run
+  (`audit`); `Renderer`, which draws a frame, and `present`, which scales
+  one to an output of any size, or writes it as a PNG; and a chip's
+  pictures on their own (`pictures`, which the editor shows). It has no
+  window, sound, network, netplay or command line.
+- **nettai-frontend** is the app around it: the window and the keys
+  (`app`, with the status line's small font, `text`); the sessions
+  (`session`) and what drives them (`driver`: a trace, live play, a match
+  file; `netplay`); the sound, a `TickHook` to nettai-audio, and the
+  audio's own lookups (`sound_lookups`); the command line (`main`);
+  headless output (`headless`) and the audits (`content_audit`,
+  `headless::audit_traces`).
 
 ## 1. The content pack
 
@@ -60,7 +82,7 @@ asset names among it: two players play with the same packs, or give
 `--content content/bn6` and `--pack` alike.)
 
 The graphics load into the types of the `nettai-assets` crate, decoded
-(tiles as palette indices, colours as BGR555):
+(tiles as palette indices, colors as BGR555):
 
 - **Sprites**: every battle sprite (categories 0x00..=0x14 of
   `SpritePointersList`), per animation frame its tileset, palette set and
@@ -82,8 +104,8 @@ The graphics load into the types of the `nettai-assets` crate, decoded
 - **The custom screen** (`graphics/custom`): the window's tiles, maps and
   patches, each chip's picture (`chip-art/<chip>.png`; for a chip whose
   palette no ROM holds, the Gregar and Falzar chips, its definition's
-  `art_palette` colours it) and the buttons',
-  chip codes, element icons and their colours, damage digits, the slots'
+  `art_palette` colors it) and the buttons',
+  chip codes, element icons and their colors, damage digits, the slots'
   codes and buttons, the cursor, the navis' emblems, the Regular chip's
   frame. A pack extracted before it loads without them (with a warning),
   and the screen isn't drawn.
@@ -119,7 +141,7 @@ Options: `--pack <dir>` names a content pack elsewhere and `--content <dir>`
 the battle content (see above), `--mute` turns the sound off, `--round N`
 starts a trace at round N (later rounds follow when a round's input runs
 out), `--scale N` sets the window's first size (default 4 times 240x160;
-the window can be resized, and the picture keeps whole pixels, centred on
+the window can be resized, and the picture keeps whole pixels, centered on
 black), `--paused` starts paused, `--png-scale N` scales headless output
 (the text layer is drawn at that scale too), `--quit-after N` closes the
 window after N ticks (with `NETTAI_WINDOW_SHOT=<file>` set, the window's
@@ -170,7 +192,7 @@ sets it up (`--match`, §6):
   Regular chip within the navi's Regular memory, 50 MB; no tag chips in a draw), from
   the chips the chip pack lists (Standard, Mega and Giga, not the dark
   chips, and not the five the US game has no routine for). The codes lean to
-  two the folder favours, and `*`. Each console shuffles its folder from
+  two the folder favors, and `*`. Each console shuffles its folder from
   the seed at the round's init, as before.
 - **Five Crosses for each Cross window**, drawn from MegaMan's ten, both
   games' (the setup's Cross list, nettai's extension:
@@ -187,7 +209,7 @@ gives the same setup.
 
 The custom screen is the engine's (docs/engine/custom-screen.md), drawn, and
 also shown as text: the dealt chips in the grid's order (`>` the cursor,
-`+` picked, `-` greyed), OK and Beast Out, the picks and the Cross window's
+`+` picked, `-` grayed), OK and Beast Out, the picks and the Cross window's
 Crosses by name. The keys are the game's (A picks, B takes back, START goes
 to OK, UP from the top row opens the Cross window, R describes, SELECT
 hides). The right navi's screen picks its first chip and presses OK. As in
@@ -266,8 +288,10 @@ picture or with a name the font can't spell, a face, an emblem, a banner
 without glyphs, a telop's banner that is no telop's, a text line, a song.
 Each exits 1 if there was any; drawing itself skips what it can't find,
 so nothing else notices. Every such lookup goes through one module
-(`lookups.rs`), which notes it (`audit::Lookup`) and checks it once a run,
-so both audits make the lookups a frame makes, through the same functions:
+(nettai-render's `lookups.rs`; the audio's, a cue's song, nettai-frontend's
+`sound_lookups.rs`), which notes it (`audit::Lookup`) and checks it once a
+run, so both audits make the lookups a frame makes, through the same
+functions:
 
 - `--audit-content` (`content_audit.rs`) makes every lookup for everything
   the content defines, in every language it has strings in: every chip's
@@ -305,7 +329,9 @@ after every step with the session.
 
 ## 3. What is drawn, and how
 
-Layers, back to front: the backdrop colour, the background (priority 3),
+The drawing is nettai-render's; the modules this section names are its.
+
+Layers, back to front: the backdrop color, the background (priority 3),
 the field (priority 2), sprites of priority 2, the HUD layer (priority 1),
 sprites of priority 0 (banners), and BG0 (priority 0: the custom screen's
 enemy names).
@@ -323,7 +349,7 @@ enemy names).
   by whole pixels;
 - per part: flip-adjusted offsets, the original's culling, hardware
   position wrapping, the palette the object chose plus the frame's first
-  part's offset, the colour shader;
+  part's offset, the color shader;
 - the first part is the shadow: hidden, drawn on the ground one layer back
   (`sprite_hasShadow`), or drawn with the sprite (`sprite_noShadow`). Many
   sprites' first part is no shadow but part of the picture, so a kind that
@@ -343,7 +369,7 @@ animations.
 
 **HUD** (`hud.rs`), by the original's HUD tasks:
 
-- the HP box with its rolling number and colours, and the custom gauge
+- the HP box with its rolling number and colors, and the custom gauge
   (fill, the full gauge's animation, whose phase carries over from the
   last "Cstmzing..." wait);
 - the emotion window: the face the navi's form names for its emotion,
@@ -362,7 +388,7 @@ animations.
   defensive chip as "????";
 - the HP numbers under objects, in the console's four places
   (`Battle::hp_numbers`): the opponent's navi's, LilBoiler's damage taken
-  (rolling, coloured);
+  (rolling, colored);
 - the warning markers (`Battle::warnings`): the arrow over the custom
   gauge, or over a place on the field, blinking with the console's frame
   counter;
@@ -385,10 +411,10 @@ after the camera, so a shake moves them against the sprites there.
 black after the first battle of a set), the round's end to black. A dimming
 darkens the stage (background and field: the palettes 0-8) and leaves the
 sprites and the HUD's layer. The transformation sequencer fades every tile
-layer to black while navis change form (sprites keep their colours). A
+layer to black while navis change form (sprites keep their colors). A
 palette flash takes the transformation's palette transform: variant 0
 (`sub_80E10C0`) whitens the stage's palettes on the frames its counter has
-bit 2 clear and leaves the HUD's colours, variant 1 (`sub_80E114C`, the
+bit 2 clear and leaves the HUD's colors, variant 1 (`sub_80E114C`, the
 FlashBomb's) whitens the stage, the HUD and the sprites every frame;
 neither shows while the battle holds it (`objects::palette_flash`).
 
@@ -404,10 +430,10 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   copies in as it runs; it slides in and out a column or two a tick under
   the layer's scroll, and SELECT takes it off;
 - the chip window: the chip's name (8 cells of the 8x16 font, in the
-  window's colours), its picture and palette, the window's colours by its
-  class (a dark chip's dark: no BN6 chip is one), its code, its element's icon and colours, its damage ("???" for
+  window's colors), its picture and palette, the window's colors by its
+  class (a dark chip's dark: no BN6 chip is one), its code, its element's icon and colors, its damage ("???" for
   Muramasa); for OK, Beast Out and the buttons their pictures;
-- the slots (each dealt chip's icon and code, greyed or picked by its
+- the slots (each dealt chip's icon and code, grayed or picked by its
   palette; the empty slots; the Beast Out, re-deal and scrap buttons) and
   the picked column's icons and cells;
 - sprites (layer 1, bucket 0, each in front of the last, as the raw OAM
@@ -428,7 +454,7 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   slots dealt again, the emblem and the Regular chip's frame throughout;
 - a console's own pictures by its version (`Versioned`: a Gregar console's
   Beast and emblem, the pack's `-gregar` assets); a Cross's name and
-  colours in the Cross window are its own game's (`custom::cross_picture`,
+  colors in the Cross window are its own game's (`custom::cross_picture`,
   for the form in the entry's place, `Unlocks::cross_at`), so a Gregar
   Cross shows Gregar's name in any window, and a window a setup's Cross
   list mixes shows each game's own; the Beast Out button, its picture in
@@ -474,7 +500,7 @@ past its advance but never before eight pixels). In the original text
 mode that is all. In the font mode (the default) each of those strings
 that the font has every character of becomes a text item instead
 (`textlayer.rs`): the words, in the box the original's glyphs take, with
-the face and shadow colours of the palette the original draws them in;
+the face and shadow colors of the palette the original draws them in;
 the glyphs are left out of the frame (a telop's glyph parts become blank
 parts, as many, so the sprite limit is unchanged). `Renderer::render`
 returns a `Frame`: the picture, per pixel the depth key of what won it
@@ -508,8 +534,8 @@ characters), so two players of different languages play one battle. The
 frontend's own text (live play's status line, folder listings) is the
 content's own strings.
 
-The bundled font is Murecho (`crates/nettai-frontend/fonts/murecho`, SIL
-Open Font License 1.1, its licence beside it): Latin, kana and some 2,300
+The bundled font is Murecho (`crates/nettai-render/fonts/murecho`, SIL
+Open Font License 1.1, its license beside it): Latin, kana and some 2,300
 kanji, weight 700 for the 8x16 font's strings and 300 for the chatbox's.
 A string too wide for its box is squeezed (to 85%, 70% with kana or kanji)
 and then made smaller; it never leaves its box, and its layout never
@@ -521,7 +547,7 @@ Presentation outputs: the simulation reads none of them (`digest.rs` lists
 the ones the state digest leaves out).
 
 - `object::sprite::Look` on every `Sprite` (palette, flips, shadow mode,
-  white flash, colour shader, alpha, mosaic, priority, hidden parts),
+  white flash, color shader, alpha, mosaic, priority, hidden parts),
   reset by `Sprite::load` and set where the behaviors call the game's
   `sprite_*` routines; the player navi's palette (`navi_palette`: no-charge,
   the Cross palettes, a link navi's, Beast Over's glow) and status shaders
@@ -625,10 +651,10 @@ from the fight's first frame), the chips' pictures included; the Gregar
 chip's on a Falzar console is the known difference above.
 
 The comparison needs the ROM, so it lives outside this repository, with the
-lists of scenarios. The frontend's own tests (`cargo test -p nettai-frontend`)
-use a small synthetic asset set and a live battle built in code, and the
-bundled font for the text layer (its layout and the depth test; not its
-pixels, which are floating-point arithmetic).
+lists of scenarios. The frontend's own tests (`cargo test -p nettai-render
+-p nettai-frontend`) use a small synthetic asset set and a live battle
+built in code, and the bundled font for the text layer (its layout and the
+depth test; not its pixels, which are floating-point arithmetic).
 
 The recorders take each picture at the traced console's own VBlank, as
 its main loop leaves `main_awaitFrame`. Screenshots of the right-hand
@@ -746,7 +772,7 @@ sun = true
 
 [left.navicust]                            # optional: MegaMan's NaviCust, compiled into his stats
 expansions = 2                             # optional: the board, 0 (4x4) to 2 (5x5, the default)
-programs = [                               # in the save's order; x, y the centre on the 7x7 grid
+programs = [                               # in the save's order; x, y the center on the 7x7 grid
     { program = "bn6:suprarmr", color = "red", x = 2, y = 3 },
     { program = "bn6:undersht", color = "white", x = 5, y = 3, rotation = 1 },   # quarter turns
     { program = "bn6:hp-100", color = "pink", x = 3, y = 1, compressed = true },
@@ -772,7 +798,7 @@ so a written block gives back the same stats. Writing a match, only the
 fields that differ are written.
 
 **The NaviCust** (`[left.navicust]`, docs/design/navicust.md) is the
-programs placed on MegaMan's grid, by key and colour name (a program's
+programs placed on MegaMan's grid, by key and color name (a program's
 `colors`). With one, the stats block is the save's stats before the NaviCust:
 only what a save keeps through the NaviCust's reload (`hp`, `regular_memory`,
 `mood`, `beast_out_counter`, `sun`, `form` and the folder fields), since the
@@ -803,7 +829,7 @@ is said with where it is:
   accept them (`nettai_match::folders`);
 - a NaviCust only with a ruleset that has the navicust system, and only for
   MegaMan; every program fits the board, none overlaps another, the copies of
-  one program in one colour are all compressed or all not (the save keeps
+  one program in one color are all compressed or all not (the save keeps
   one flag for them), and the stats block holds only what a save keeps;
 - a Cross list only with a ruleset that has the forms system, of the navi's
   Crosses (a navi that changes form), at most five, none twice;

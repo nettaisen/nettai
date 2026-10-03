@@ -32,7 +32,7 @@ const MAP_CELLS: u32 = 15 * 20;
 /// palettes 11, 12 and 14 (the HUD load list).
 const FRAME_PALETTES: (u32, usize) = (0x086E_587C, 4);
 const ICON_PALETTE: u32 = 0x0872_CFF4;
-const GREY_PALETTE: u32 = 0x0872_CFB4;
+const GRAY_PALETTE: u32 = 0x0872_CFB4;
 const OTHER_PALETTE: u32 = 0x086E_58FC;
 /// ChipData: 0x2C bytes a chip; +0x24 its picture, +0x28 the picture's
 /// palette.
@@ -46,12 +46,12 @@ const OK_PICKED: (u32, u32) = (0x0872_25B4, 0x0872_57F4);
 const OTHER: (u32, u32) = (0x0872_25B4, 0x0872_57D4);
 const REDEAL: (u32, u32) = (0x0872_2AF4, 0x0872_5854);
 const SCRAP: (u32, u32) = (0x0873_3E74, 0x0873_43D4);
-/// Chip codes (8x16, `dword_86E2E98`), element icons and their colours
-/// (`dword_86E3598`, `dword_86E3B18`: six colours each), damage digits
+/// Chip codes (8x16, `dword_86E2E98`), element icons and their colors
+/// (`dword_86E3598`, `dword_86E3B18`: six colors each), damage digits
 /// (`dword_86E411C`).
 const CODES: (u32, usize) = (0x086E_2E98, 28);
 const ELEMENTS: (u32, usize) = (0x086E_3598, 11);
-const ELEMENT_COLOURS: u32 = 0x086E_3B18;
+const ELEMENT_COLORS: u32 = 0x086E_3B18;
 const DIGITS: (u32, usize) = (0x086E_411C, 11);
 /// The slots' codes (16x8, `dword_86E591C`), the empty slot's icon, and the
 /// re-deal and scrap buttons (`dword_86E441C`, `dword_86E4D9C`; Beast
@@ -76,9 +76,9 @@ const EMBLEM_OF: u32 = 0x0802_819C;
 const EMBLEM_PALETTE_OF: u32 = 0x0802_818C;
 const LINK_NAVIS: usize = 12;
 const REGULAR: (u32, usize) = (0x086E_1238, 0x400);
-/// The Program Advance animation's names' colours (`byte_802BA48`: three
+/// The Program Advance animation's names' colors (`byte_802BA48`: three
 /// sets of four).
-const ADVANCE_NAME_COLOURS: (u32, u32) = (0x0802_BA48, 3);
+const ADVANCE_NAME_COLORS: (u32, u32) = (0x0802_BA48, 3);
 
 /// What a version's own custom screen shows (`VersionPictures`), at its
 /// ROM's addresses (the code is at the same places in both US ROMs; the
@@ -136,7 +136,7 @@ fn tiles(rom: &Rom, (a, len): (u32, usize)) -> Tiles {
     Tiles::from_4bpp(rom.bytes(a, len))
 }
 
-/// A palette as the hardware shows it: bit 15 of a colour is ignored
+/// A palette as the hardware shows it: bit 15 of a color is ignored
 /// (the pictures of the chips the US release cut hold 0xCCCC).
 fn palette(rom: &Rom, a: u32) -> Palette {
     palettes_from_bytes(rom.bytes(a, 32))[0].map(|c| c & 0x7FFF)
@@ -190,7 +190,7 @@ pub fn custom(roms: &crate::Roms, names: &AssetNames) -> CustomScreen {
         cross_patches: patches(rom, CROSS_PATCHES),
         frame_palettes: palettes(FRAME_PALETTES),
         icon_palette: palette(rom, ICON_PALETTE),
-        grey_palette: palette(rom, GREY_PALETTE),
+        gray_palette: palette(rom, GRAY_PALETTE),
         other_palette: palette(rom, OTHER_PALETTE),
         chip_art: (0..CHIP_COUNT).map(|id| chip_art(roms, names, id)).collect(),
         pictures: SlotPictures {
@@ -202,8 +202,8 @@ pub fn custom(roms: &crate::Roms, names: &AssetNames) -> CustomScreen {
         },
         codes: glyphs(CODES),
         elements: tiles(rom, (ELEMENTS.0, 0x80 * ELEMENTS.1)),
-        element_colours: (0..ELEMENTS.1 as u32)
-            .map(|e| std::array::from_fn(|i| rom.u16(ELEMENT_COLOURS + 12 * e + 2 * i as u32)))
+        element_colors: (0..ELEMENTS.1 as u32)
+            .map(|e| std::array::from_fn(|i| rom.u16(ELEMENT_COLORS + 12 * e + 2 * i as u32)))
             .collect(),
         digits: glyphs(DIGITS),
         slot_codes: glyphs(SLOT_CODES),
@@ -218,8 +218,8 @@ pub fn custom(roms: &crate::Roms, names: &AssetNames) -> CustomScreen {
         emblem_of: rom.bytes(EMBLEM_OF, LINK_NAVIS).to_vec(),
         emblem_palette_of: rom.bytes(EMBLEM_PALETTE_OF, LINK_NAVIS).to_vec(),
         regular: tiles(rom, REGULAR),
-        advance_name_colours: (0..ADVANCE_NAME_COLOURS.1)
-            .map(|i| std::array::from_fn(|k| rom.u16(ADVANCE_NAME_COLOURS.0 + 8 * i + 2 * k as u32) & 0x7FFF))
+        advance_name_colors: (0..ADVANCE_NAME_COLORS.1)
+            .map(|i| std::array::from_fn(|k| rom.u16(ADVANCE_NAME_COLORS.0 + 8 * i + 2 * k as u32) & 0x7FFF))
             .collect(),
         languages: Vec::new(),
     }

@@ -58,14 +58,14 @@ const ADVANCE_FIRST_ROW: i32 = 5;
 /// The chips past the table's that the animation shows no code for.
 pub(crate) const ADVANCE_NO_CODE_FROM: u16 = 0x160;
 const LAYER_TILES: usize = 0x200;
-/// The window's background colours: what the original copies over cells
+/// The window's background colors: what the original copies over cells
 /// the chip window leaves empty (`byte_802A6C0`, `byte_802A680`,
 /// `byte_802A700`: solid 8, 7 and 1).
 const BLANK_8: u8 = 8;
 const BLANK_7: u8 = 7;
 const BLANK_1: u8 = 1;
 /// The chip window's name: 8 cells, its pixels shifted to the window's
-/// colours from 8 (`sub_80284E2`).
+/// colors from 8 (`sub_80284E2`).
 const NAME_CELLS: usize = 8;
 const NAME_SHIFT: u8 = 8;
 /// A code no chip has: the invalid chip's (blank in the slots).
@@ -291,7 +291,7 @@ impl LayerTiles {
         self.put(at, &Tiles { pixels: src.to_vec() });
     }
 
-    /// Fill `n` tiles from `at` with one colour index.
+    /// Fill `n` tiles from `at` with one color index.
     fn fill(&mut self, at: u16, n: usize, index: u8) {
         let from = at as usize * Tiles::TILE;
         let to = (from + n * Tiles::TILE).min(self.pixels.len());
@@ -345,11 +345,11 @@ impl View<'_> {
     }
 }
 
-/// A Cross's name pictures and colours in the Cross window, by the Cross's
+/// A Cross's name pictures and colors in the Cross window, by the Cross's
 /// own game (a Gregar Cross shows Gregar's name in any player's window):
 /// its game's custom-screen pictures and its number among that game's
 /// Crosses. Its name is `cross_names`' 18 tiles from `18 * number` on the
-/// cursor's row (`18 * (number + 5)` on the others'), its colours
+/// cursor's row (`18 * (number + 5)` on the others'), its colors
 /// `cross_palettes[number]` (`[number + 5]` once used). `navi` is the
 /// navi whose Cross it is.
 pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
@@ -471,7 +471,7 @@ impl Window {
         w.tiles.put(TURN_LIMIT_TILE, &a.turn_limit);
         w.tiles.put(NAME_BAR_TILE, &a.name_bar);
         w.palettes[11] = a.icon_palette;
-        w.palettes[12] = a.grey_palette;
+        w.palettes[12] = a.gray_palette;
         w.palettes[14] = a.other_palette;
         w.palettes[13] = v.hud.hp_palettes[0];
         w.chip_window(v, text, problems);
@@ -491,7 +491,7 @@ impl Window {
     /// the picks', one every 8 ticks; `sub_802B8E0`: the recipe's taken
     /// off; `sub_802B920`: the Program Advance's in their place at 16
     /// ticks, all taken off at 96), as (name, row, palette) with each
-    /// name's tiles copied in, and palette 10's colours.
+    /// name's tiles copied in, and palette 10's colors.
     fn program_advance(&mut self, v: &View, text: &TextSink, problems: &mut Problems) -> Vec<(usize, i32, u8)> {
         use nettai_battle::custom::screen::ProgramAdvanceStep as S;
         let s = v.screen;
@@ -522,7 +522,7 @@ impl Window {
             self.put_advance_text(v, k, pa.chip, name, None, text, problems);
             out.push((k, row(k), 10));
         }
-        if let Some(c) = v.assets.advance_name_colours.get(v.screen.look.pa_palette as usize) {
+        if let Some(c) = v.assets.advance_name_colors.get(v.screen.look.pa_palette as usize) {
             self.palettes[10][..4].copy_from_slice(c);
         }
         out
@@ -577,7 +577,7 @@ impl Window {
     fn cross_names(&mut self, v: &View, problems: &mut Problems) {
         let w = &v.screen.crosses;
         let side = &v.b.custom.sides[v.side as usize];
-        // Each Cross's name and colours are its own game's (a setup's Cross
+        // Each Cross's name and colors are its own game's (a setup's Cross
         // list can offer the other game's: docs/engine/custom-screen.md
         // §4.1).
         let navi = v.b.stats[v.side as usize].navi;
@@ -607,21 +607,21 @@ impl Window {
     /// `sub_8028476`: the chip window shows what it was last drawn for: a
     /// chip's name, picture, code, element and damage (`sub_80284E2`), or
     /// a button's picture (`sub_80286D4`, `sub_802871C`, `sub_80287A4`,
-    /// `sub_802877C`) with the window's colours where the chip's details
+    /// `sub_802877C`) with the window's colors where the chip's details
     /// go.
     fn chip_window(&mut self, v: &View, text: &TextSink, problems: &mut Problems) {
         let a = v.assets;
         let cw = v.screen.look.chip_window;
-        // Palette 11's colours from 10 are the last chip's element's.
+        // Palette 11's colors from 10 are the last chip's element's.
         if let Some(c) = cw.last_chip {
             let family = v.b.content.chip(c.id).family as usize;
-            if let Some(colours) = a.element_colours.get(family) {
-                self.palettes[11][10..].copy_from_slice(colours);
+            if let Some(colors) = a.element_colors.get(family) {
+                self.palettes[11][10..].copy_from_slice(colors);
             }
         }
         let slot = cw.slot.min(SPECIAL_SLOT);
         let blank_details = |w: &mut Window, picture: &Picture| {
-            // sub_80287D2: the name's cells and the window's colours.
+            // sub_80287D2: the name's cells and the window's colors.
             w.tiles.fill(NAME_TILE, 2 * NAME_CELLS, BLANK_8);
             w.palettes[9] = a.frame_palettes.first().copied().unwrap_or([0; 16]);
             w.tiles.put(ART_TILE, &picture.tiles);
@@ -652,8 +652,8 @@ impl Window {
     }
 
     /// `sub_80284E2`: a chip's name (8 cells of the 8x16 font in the
-    /// window's colours), its picture and palette, the window's colours by
-    /// the chip's class, its code, its element's icon (and colours), and
+    /// window's colors), its picture and palette, the window's colors by
+    /// the chip's class, its code, its element's icon (and colors), and
     /// its damage if it shows (Muramasa's as "???"), right-aligned in three
     /// cells.
     fn chip_details(&mut self, v: &View, c: FolderChip, text: &TextSink, problems: &mut Problems) {
@@ -662,7 +662,7 @@ impl Window {
         let name = text.strings.chip_name(&v.b.content, c.id);
         let glyphs = crate::lookups::chip_name(v.hud, &v.b.content, c.id, name, problems);
         if text.takes(name) {
-            // The name's cells in the window's colour, the words on the
+            // The name's cells in the window's color, the words on the
             // text layer in all eight of them (nothing follows the name).
             self.tiles.put(NAME_TILE, &fonts::cell_text(v.hud, &[], NAME_CELLS, NAME_SHIFT));
             self.name = Some((name.to_string(), NAME_CELLS));
@@ -695,14 +695,14 @@ impl Window {
                 _ => None,
             };
         }
-        // The frame's colours by class, a dark chip's (of the first
+        // The frame's colors by class, a dark chip's (of the first
         // three classes) dark; the code's glyph, the element's icon.
         let frame = crate::lookups::chip_window(a, &v.b.content, c.id, c.code.0, problems);
         self.palettes[9] = a.frame_palettes.get(frame).copied().unwrap_or([0; 16]);
         let code = c.code.0.min(NO_CODE) as usize;
         self.tiles.put_part(CODE_TILE, &a.codes, 2 * code, 2);
         let family = data.family as usize;
-        if family < a.element_colours.len() {
+        if family < a.element_colors.len() {
             self.tiles.put_part(ELEMENT_TILE, &a.elements, 4 * family, 4);
         }
         let shows = data.flags.0 & (ChipFlags::HAS_DAMAGE | ChipFlags::DAMAGE_SHOWN_VARIABLE) != 0;
@@ -848,7 +848,7 @@ impl Window {
 
     /// The chip window's name on the text layer (the font mode): over the
     /// name's cells where the window's map puts them, in their palette's
-    /// colours from 8 (`NAME_SHIFT`), cut to the window's columns on the
+    /// colors from 8 (`NAME_SHIFT`), cut to the window's columns on the
     /// layer.
     fn name_item(&self, text: &mut TextSink, place: Placement) {
         let Some((name, cells)) = &self.name else { return };
@@ -1144,12 +1144,12 @@ pub fn draw<'a>(
         }
         // In the font mode, the name and the code on the text layer.
         if let Some(Some((name, cells, code))) = w.advance_names.get(k) {
-            let colours = &w.palettes[palette as usize & 15];
+            let colors = &w.palettes[palette as usize & 15];
             let at = |c: i32, n: usize| Rect::new(layer_x(col + c, place.scroll), 8 * row, 8 * n as i32, 16);
-            text.push(Plane::Hud, TextItem::new(name.as_str(), Role::Cell, at(0, *cells), colours[1], Some(colours[2])));
+            text.push(Plane::Hud, TextItem::new(name.as_str(), Role::Cell, at(0, *cells), colors[1], Some(colors[2])));
             if let Some(code) = code {
                 let last = ADVANCE_NAME_CELLS as i32 - 1;
-                text.push(Plane::Hud, TextItem::new(code.as_str(), Role::Cell, at(last, 1), colours[1], Some(colours[2])));
+                text.push(Plane::Hud, TextItem::new(code.as_str(), Role::Cell, at(last, 1), colors[1], Some(colors[2])));
             }
         }
     }

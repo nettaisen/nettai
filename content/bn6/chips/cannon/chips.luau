@@ -1,6 +1,6 @@
 --!strict
 -- Cannon, HiCannon and M-Cannon: a shot from the panel ahead that
--- staggers what it hits; the same cannon in three colours (the
+-- staggers what it hits; the same cannon in three colors (the
 -- original's action 0x14 with subtypes 0 to 2; lib/cannon.luau).
 
 local shooter = require("../../lib/cannon")
