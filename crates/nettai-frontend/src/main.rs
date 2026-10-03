@@ -582,6 +582,9 @@ fn main() {
             bundles.push(b);
         }
     }
+    // A mark one game's font lacks (BN5's stacked DS in BN6's) is drawn
+    // with the glyph of another loaded game's font that has it.
+    nettai_assets::lend_marks(&mut bundles);
     let mut renderer = Renderer::with_packs(Packs::new(bundles.iter().collect(), own));
     let strings = strings.map(Arc::new);
     renderer.set_strings(strings.clone());
