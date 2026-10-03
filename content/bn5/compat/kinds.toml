@@ -115,3 +115,5 @@
 "bn5:geyser/water" = { pool = "attack", index = 0x43, scratch_position = true }
 "bn5:metagel/controller" = { pool = "effect", index = 0x21, scratch_position = true }
 "bn5:metagel/gel" = { pool = "attack", index = 0x45, scratch_position = true }
+"bn5:magnum/controller" = { pool = "effect", index = 0x30, scratch_position = true }
+"bn5:magnum/gunner" = { pool = "actor", index = 0x02 }
