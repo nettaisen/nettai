@@ -12,6 +12,7 @@ use crate::packs::Packs;
 use nettai_assets::{BannerLayout, ChipArt, CustomScreen, DialogueFont, Hud, Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles};
 use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, Content, MugshotId, PackId, SpriteId};
 use nettai_battle::custom::GameVersion;
+use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::Emotion;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 
@@ -145,7 +146,10 @@ pub fn panel_tint(c: &Content, arena: PackId, kind: u8, problems: &mut Problems)
     if problems.lookup(Lookup::PanelTint(arena, kind)) {
         let what = match kind.checked_sub(HIGHLIGHT_TINT) {
             Some(h) => format!("highlight {h}"),
-            None => format!("panel type {kind}"),
+            None => match PanelType::ALL.get(kind as usize) {
+                Some(t) => format!("panel type {kind} ({t:?})"),
+                None => format!("panel type {kind}"),
+            },
         };
         problems.say(format!("in an arena of {}, {what} is in no loaded pack's field: drawn as a tinted normal panel", pack_name(c, arena)));
     }

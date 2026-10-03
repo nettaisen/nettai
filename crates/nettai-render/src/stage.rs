@@ -53,7 +53,9 @@ impl FieldArt {
     /// arena's pack's field's if it draws the type; else the field of the
     /// pack of the first loaded game, in root order, whose `panels` section
     /// names the type (the order the simulation takes a type's rule in,
-    /// `sections::fill_panel_types`), if it draws it; else tinted. A
+    /// `sections::fill_panel_types`) and whose field draws it (a pack
+    /// extracted before `panel_types` draws none: the next game's); else
+    /// tinted. A
     /// highlight is the arena's field's if it has it; else the first loaded
     /// game's field's, in root order, that has it; else tinted.
     pub fn of(c: &Content, packs: &Packs, arena: RootId) -> FieldArt {
@@ -64,11 +66,11 @@ impl FieldArt {
             if field(pack).draws(t as u8) {
                 return Art::Field(pack);
             }
-            let named = roots().find(|r| c.rules_of(*r).panels.types.get(t as usize).is_some_and(|rule| rule.named));
-            match named.map(|r| packs.id_of_root(c, r)) {
-                Some(p) if field(p).draws(t as u8) => Art::Field(p),
-                _ => Art::Tint,
-            }
+            roots()
+                .filter(|r| c.rules_of(*r).panels.types.get(t as usize).is_some_and(|rule| rule.named))
+                .map(|r| packs.id_of_root(c, r))
+                .find(|&p| field(p).draws(t as u8))
+                .map_or(Art::Tint, Art::Field)
         });
         let highlights = [1, 2].map(|h| {
             let has = |p: PackId| field(p).highlights.len() >= h;
@@ -544,6 +546,12 @@ mod tests {
         assert_eq!(art.panel(PanelType::Sea), Art::Field(twin_pack), "the sea is twin's, whose game names it");
         assert_eq!(art.panel(PanelType::Lava), Art::Tint, "no loaded field draws lava");
         assert_eq!((art.highlight(1), art.highlight(2)), (Art::Field(test_pack), Art::Field(twin_pack)));
+        // A game that names the sea and whose field doesn't draw it (a pack
+        // extracted before `panel_types`) passes it to the next game that
+        // names it.
+        let mut both = (**c).clone();
+        both.rules[b.games.arena.index()].panels.types[PanelType::Sea as usize].named = true;
+        assert_eq!(FieldArt::of(&both, &packs, b.games.arena).panel(PanelType::Sea), Art::Field(twin_pack));
 
         let stage = Stage::new(&packs, c, b.games.arena, None, StageClock::default());
         let mut layer = Layer::new(2, 2);
