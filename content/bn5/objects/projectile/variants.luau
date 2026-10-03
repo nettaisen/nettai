@@ -18,6 +18,16 @@ variants.charged = projectile.variant { id = "bn5:shot/charged", collision = SHO
 -- The cannons' shot (row 1): it staggers (hit modifier 3).
 variants.cannon = projectile.variant { id = "bn5:shot/cannon", collision = SHOT, hit_mod = 3, element = "null", spark = sparks.impact }
 
+-- The GigaCans' shot (row 0x0C, 0x080C47A8): the blast spark and hit modifier 0x49 (BN6's 3). It doesn't burst:
+-- BN5's projectile (0x080C48B0) has none of BN6's row-0x0C bursts, around what it hits or over the last two columns.
+variants.gigacan = projectile.variant {
+    id = "bn5:shot/gigacan",
+    collision = SHOT,
+    hit_mod = 0x49,
+    element = "null",
+    spark = sparks.blast,
+}
+
 -- AirShot's shot (BN5's row 4): it pushes (hit modifier 0x61), without BN6's wind element (BN5 has none).
 variants.air = projectile.variant {
     id = "bn5:shot/air",
