@@ -81,6 +81,10 @@ impl Extras for TestButtons {
 
     fn confirmed(&mut self, _: &mut Screen, _: &mut BattleFolder) {}
 
+    fn chip_picked(&mut self, _: &mut Screen, _: &mut BattleFolder, _: ChipHandle) {}
+
+    fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle) {}
+
     fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: crate::content::WindowHandle) -> bool {
         false
     }

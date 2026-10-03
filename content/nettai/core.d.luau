@@ -1536,6 +1536,9 @@ export type SystemSpec = {
         open: ((side: number) -> ())?,
         -- OK built the hand.
         confirmed: ((side: number) -> ())?,
+        -- A chip of the hand picked, or its pick taken back.
+        chip_picked: ((side: number, chip: Chip) -> ())?,
+        chip_taken_back: ((side: number, chip: Chip) -> ())?,
     }?,
     hooks: {
         -- Once per side as the round is set up, before anything reads the
@@ -1717,7 +1720,9 @@ export type ChipSpec = {
     -- counts it), "navi_slot" (AntiNavi turns it back though it lacks the
     -- `navi` flag), "heals" (AntiRecv springs on it), "user_stays" (a navi
     -- chip whose user isn't warped off the field), "navi_returns_user" (a
-    -- navi chip whose navi brings the user back itself).
+    -- navi chip whose navi brings the user back itself), "goes_with_any"
+    -- (it goes with any selection on the custom screen, and leaves the
+    -- selection's rules alone: BN6's BeastOut chip).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",

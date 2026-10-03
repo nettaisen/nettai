@@ -2084,6 +2084,11 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         }
         // The side, then the navi, the chip and the weapon, where the hook
         // has them (nil in between).
+        // A custom screen's chip hooks: the side, then the chip.
+        HookCall::System { side, hook: SystemHook::CustomChipPicked | SystemHook::CustomChipTakenBack, chip, .. } => vec![
+            LuaValue::Integer(side as i64),
+            chip.map_or(Ok(LuaValue::Nil), |c| bound.def_value(Registry::Chip, c.0).map(LuaValue::Table))?,
+        ],
         HookCall::System { side, navi, chip, weapon, .. } => {
             let mut v = vec![
                 LuaValue::Integer(side as i64),
