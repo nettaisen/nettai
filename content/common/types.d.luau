@@ -50,6 +50,28 @@ export type Projectiles = {
 -- holds) and its projectiles.
 export type ShooterLook = { sound: Sound, attachment: Kind, projectiles: Projectiles }
 
+-- A game's throw (@common/bombs/throw): the wind-up's sound, and its attachment kind (what the navi holds).
+export type ThrowLook = { sound: Sound, attachment: Kind }
+
+-- A game's thrown bomb (@common/bombs/bomb): its kind's key, its sprite, its landing's sound, the splash in a hole,
+-- the explosion over its blast and the puff when the battle ends.
+export type BombLook = { id: string, sprite: SpriteAsset, hit_sound: Sound, splash: Effect, explosion: Effect, puff: Effect }
+
+-- A game's thrown bombs, made of its `BombLook` (@common/bombs/bomb): the kind, and a thrower of a variant.
+export type Bombs = { kind: Kind, thrower: (variant: BombVariant) -> Thrower }
+
+-- Aiming thrown things over one game's sine table (@common/trajectory).
+export type Trajectory = {
+    div: (num: number, denom: number) -> (number, number, number),
+    sqrt: (x: number) -> number,
+    arctan2: (x: number, y: number) -> number,
+    sine: (i: number) -> number,
+    angle: (dx: number, dy: number) -> number,
+    toward: (angle: number, speed: number) -> (number, number),
+    in_ticks: (pos: Vec3, x: number, y: number, z: number, ticks: number, gravity: number) -> Vec3,
+    at_speed: (pos: Vec3, vel_y: number, x: number, y: number, z: number, speed: number, gravity: number) -> (number, number),
+}
+
 -- A trap chip's object (a "trap" record, @common/traps/controller): `set` spawns it for the controller and its user,
 -- with the chip and bonus the controller keeps.
 export type Trap = {
