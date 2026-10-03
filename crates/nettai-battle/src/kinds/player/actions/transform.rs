@@ -8,10 +8,10 @@
 use crate::actor::status;
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
-use crate::content::{EffectRole, FormKind, SoundRole};
+use crate::content::{EffectRole, SoundRole};
 use super::ActionVars;
 use crate::kinds::player::{
-    ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, coll_mut, exit_attack_state, form, form_of,
+    ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, coll_mut, exit_attack_state, form,
     reset_status, set_mood, snap_to_future_panel, stats, stats_mut,
 };
 use crate::kinds::{effect, full_synchro_aura};
@@ -178,24 +178,13 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
     o.phase_init = s.phase_init;
 }
 
-/// `sub_80158CC`: mood 0x80 (stored directly); outside battle mode 1, a
-/// Beast Out is used up, and Beast Over exhausts the navi.
+/// `sub_80158CC`: mood 0x80 (stored directly); then the side's systems'
+/// `form_reverted` (BN6's: outside battle mode 1, a Beast Out is used up,
+/// and Beast Over exhausts the navi).
 fn spend_form(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
     b.stats[side].mood = 0x80;
-    if crate::kinds::player::battle_mode(b) == 1 {
-        return;
-    }
-    match form_of(b, r).kind {
-        FormKind::Beast | FormKind::CrossBeast => ai_mut(b, r).beast_out_spent = true,
-        FormKind::BeastOver => {
-            // sub_8014466: exhausted, then the mood 0 that exhaustion
-            // itself blocks.
-            ai_mut(b, r).beast_over_exhausted = true;
-            set_mood(b, side as u8, 0);
-        }
-        _ => {}
-    }
+    b.systems_form_reverted(side as u8, r);
 }
 
 /// `sub_80143B4`: anger ends, without touching the mood.

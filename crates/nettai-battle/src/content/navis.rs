@@ -489,6 +489,10 @@ impl FormTraits {
     /// A metal panel doesn't slide the navi (BN5's soul 5, NaviStats
     /// +0x2C: 0x08017216).
     pub const STANDS_ON_METAL: u8 = 0x40;
+    /// The side's systems' controller decides the navi's idle (Beast Over's
+    /// berserk, `sub_802D322`): the player's buttons don't reach it
+    /// (`apply_actor_inputs`), and a full gauge opens the custom screen.
+    pub const CONTROLLED: u8 = 0x80;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "status_immune"),
         (0x02, "erases"),
@@ -497,6 +501,7 @@ impl FormTraits {
         (0x10, "scrap_button"),
         (0x20, "special_holds_buster"),
         (0x40, "stands_on_metal"),
+        (0x80, "controlled"),
     ];
 
     pub fn has(self, bit: u8) -> bool {

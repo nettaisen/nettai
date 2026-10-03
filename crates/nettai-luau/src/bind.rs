@@ -658,6 +658,17 @@ impl UserData for Object {
             Ok((p.x, p.y))
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
+        // A controller's (the systems' `controller` hook).
+        methods.add_method("next_chip", |_, this, ()| {
+            let chip = with(|api, _| api.next_chip(this.0).map_err(api_error))?;
+            bound(|b| chip.map_or(Ok(LuaValue::Nil), |c| Ok(LuaValue::Table(b.def_value(Registry::Chip, c.0)?))))
+        });
+        methods.add_method("use_chip", |_, this, ()| with(|api, _| api.use_chip(this.0).map_err(api_error)));
+        methods.add_method("start_move_to", |_, this, (x, y, end_lag): (LuaValue, LuaValue, LuaValue)| {
+            let p = panel(x, y)?;
+            let end_lag = int(&end_lag, "end_lag")? as u16;
+            with(|api, _| api.start_move_to(this.0, p, end_lag).map_err(api_error))
+        });
         // The wrapper's (the role `actions.beast_rush`).
         methods.add_method("run_wrapped", |_, this, ()| with(|api, _| api.run_wrapped(this.0).map_err(api_error)));
         methods.add_method("chain_next_chip", |_, this, ()| with(|api, _| api.chain_next_chip(this.0).map_err(api_error)));
@@ -1944,6 +1955,20 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 "a system's chip_check returns nil or a chip definition, not a {}",
                 v.type_name()
             ))),
+        },
+        // A controller's outcome, by the original's number.
+        HookCall::System { hook: SystemHook::Controller, .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::String(s) => match &*s.to_str()? {
+                "nothing" => Ok(Value::Int(0)),
+                "chip" => Ok(Value::Int(1)),
+                "buster" => Ok(Value::Int(2)),
+                "moved" => Ok(Value::Int(3)),
+                other => Err(mlua::Error::runtime(format!(
+                    "a controller returns \"nothing\", \"chip\", \"buster\" or \"moved\", not {other:?}"
+                ))),
+            },
+            _ => Err(mlua::Error::runtime(format!("a controller returns its outcome's name, not a {}", v.type_name()))),
         },
         HookCall::System { .. } => Ok(Value::Nil),
     }

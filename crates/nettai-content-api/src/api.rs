@@ -270,6 +270,13 @@ named_fields! {
         /// The wrapper's state starts over (`sub_801011A` clears it with the
         /// attack's links); the wrapper clears it once it has.
         WrapperFresh = "wrapper_fresh", Bool, rw;
+        /// The controller's state starts over (a form's `berserk` effect,
+        /// `sub_802D310`); the controller clears it once it has.
+        ControllerFresh = "controller_fresh", Bool, rw;
+        /// Exhausted for the rest of the battle (BN6's after Beast Over):
+        /// worn out, the mood can't change, 1 HP lost per tick (never the
+        /// last), no Full Synchro or anger.
+        Exhausted = "exhausted", Bool, rw;
         /// +0x2C: an object a step or the wrapper turns to face in the panel
         /// patterns 0x23, 0x31 and 0x33 (only the unused `sub_80116F6` sets
         /// one).
@@ -1540,6 +1547,15 @@ pub trait CoreApi {
     fn step_target(&self, o: ObjectRef, dir: u8) -> Option<PanelPos>;
     /// `sub_80116AE`: start a step toward `dir` from input.
     fn start_move(&mut self, o: ObjectRef, dir: u8);
+    /// `sub_800EDD0`'s chip: the hand's chip at the cursor (none: the hand
+    /// is empty).
+    fn next_chip(&self, o: ObjectRef) -> ApiResult<Option<crate::ChipHandle>>;
+    /// `sub_800FB54`: use the chip the navi's requests ask for (as idle
+    /// does on A): whether its use started.
+    fn use_chip(&mut self, o: ObjectRef) -> ApiResult<bool>;
+    /// `sub_80116AE(5, end_lag, 2)`: a step straight to `target` (column 0:
+    /// no step), then `end_lag` ticks.
+    fn start_move_to(&mut self, o: ObjectRef, target: PanelPos, end_lag: u16) -> ApiResult<()>;
     /// `sub_801B9E6`'s attack, from inside the wrapper (the role
     /// `actions.beast_rush`): run the action the navi runs.
     fn run_wrapped(&mut self, o: ObjectRef) -> ApiResult<()>;

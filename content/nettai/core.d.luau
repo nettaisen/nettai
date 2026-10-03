@@ -396,6 +396,13 @@ declare class Object
     -- The wrapper's state starts over (`sub_801011A` sets it with the
     -- attack's links); the wrapper clears it once it has.
     wrapper_fresh: boolean
+    -- The controller's state starts over (a form's `berserk` effect); the
+    -- controller clears it once it has.
+    controller_fresh: boolean
+    -- Exhausted for the rest of the battle (BN6's after Beast Over): worn
+    -- out, the mood can't change, 1 HP lost per tick (never the last), no
+    -- Full Synchro or anger.
+    exhausted: boolean
     -- What a step or the wrapper turns to face in the panel patterns 0x23,
     -- 0x31 and 0x33 (read-only; only the unused `sub_80116F6` sets one).
     face_target: Object?
@@ -659,6 +666,15 @@ declare class Object
     function lockon_panel(self, x: number, y: number, mode: Lockon?): (number, number)
     -- `object_canMove`: not immobilized, sliding or moving.
     function can_move(self): boolean
+    -- `sub_800EDD0`'s chip: the hand's chip at the cursor (nil: the hand is
+    -- empty).
+    function next_chip(self): Chip?
+    -- `sub_800FB54`: use the chip the navi's requests ask for (as idle does
+    -- on A): whether its use started.
+    function use_chip(self): boolean
+    -- `sub_80116AE(5, end_lag, 2)`: a step straight to (x, y) (column 0: no
+    -- step), then `end_lag` ticks.
+    function start_move_to(self, x: number, y: number, end_lag: number): ()
     -- The wrapper's (the role `actions.beast_rush`): run the action the
     -- navi runs (`sub_801B9E6`'s attack).
     function run_wrapped(self): ()
@@ -1469,6 +1485,16 @@ export type SystemSpec = {
         -- be used, a chip is what the navi uses instead. The first system
         -- that answers decides.
         chip_check: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
+        -- Each tick of the idle action of a navi whose form is `controlled`
+        -- (BN6's Beast Over, `sub_802D322`), in place of the player's
+        -- decisions: what it did ("nothing", "chip": a chip's use started,
+        -- "buster": the buster is to fire, "moved": a step started), which
+        -- the framework carries out as idle does. The first system that
+        -- answers decides.
+        controller: ((side: number, navi: Object) -> ("nothing" | "chip" | "buster" | "moved")?)?,
+        -- The framework reverts the navi to its base form, its form not yet
+        -- changed (`sub_80158CC`).
+        form_reverted: ((side: number, navi: Object) -> ())?,
     }?,
 }
 export type System = SystemSpec
@@ -1737,7 +1763,10 @@ export type FormEffect =
 --   scrap_button: the custom screen has the scrap button (DustCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
 --     special is asked for (TenguCross and DustCross in Beast Out);
---   stands_on_metal: a metal panel doesn't slide the navi (BN5's soul 5).
+--   stands_on_metal: a metal panel doesn't slide the navi (BN5's soul 5);
+--   controlled: the side's systems' `controller` decides its idle (BN6's
+--     Beast Over: the berserk), the player's buttons don't reach it, and a
+--     full gauge opens the custom screen.
 export type FormTrait =
     "status_immune"
     | "erases"
@@ -1746,6 +1775,7 @@ export type FormTrait =
     | "scrap_button"
     | "special_holds_buster"
     | "stands_on_metal"
+    | "controlled"
 -- One of MegaMan's forms (§3.2).
 export type FormDef = {
     id: string,

@@ -1288,6 +1288,8 @@ impl CoreApi for Battle {
             ActorField::AttackKind => i(at.kind as i64),
             ActorField::BeastLockon => i(at.beast_lockon as i64),
             ActorField::WrapperFresh => Value::Bool(at.wrapper_fresh),
+            ActorField::ControllerFresh => Value::Bool(a.controller_fresh),
+            ActorField::Exhausted => Value::Bool(a.exhausted),
             ActorField::FaceTarget => at.face_target.map_or(Value::Nil, Value::Object),
             ActorField::RushLockon => at.rush_lockon.map_or(Value::Nil, |h| Value::Def(Registry::Lockon, h.0)),
             ActorField::AttackChip => at.chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
@@ -1370,6 +1372,8 @@ impl CoreApi for Battle {
             (ActorField::SpecialSource, FieldValue::U8(x)) => at.special_source = x,
             (ActorField::BeastLockon, FieldValue::U8(x)) => at.beast_lockon = x,
             (ActorField::WrapperFresh, FieldValue::Bool(x)) => at.wrapper_fresh = x,
+            (ActorField::ControllerFresh, FieldValue::Bool(x)) => a.controller_fresh = x,
+            (ActorField::Exhausted, FieldValue::Bool(x)) => a.exhausted = x,
             (ActorField::RushLockon, FieldValue::Ref(_)) => at.rush_lockon = rush_lockon,
             (ActorField::AttackChip, FieldValue::Ref(_)) => at.chip = attack_chip,
             (ActorField::Marker, FieldValue::U32(x)) => at.marker = x,
@@ -1639,6 +1643,23 @@ impl CoreApi for Battle {
 
     fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: Option<nettai_content_api::LockonHandle>) -> PanelPos {
         kinds::player::actions::lockon::lockon_panel(self, o, target, mode)
+    }
+
+    fn next_chip(&self, o: ObjectRef) -> ApiResult<Option<ChipHandle>> {
+        self.actor_of(o)?;
+        Ok(kinds::player::next_chip(self, o))
+    }
+
+    fn use_chip(&mut self, o: ObjectRef) -> ApiResult<bool> {
+        self.actor_of(o)?;
+        Ok(kinds::player::chip_use::use_chip(self, o).is_some())
+    }
+
+    fn start_move_to(&mut self, o: ObjectRef, target: PanelPos, end_lag: u16) -> ApiResult<()> {
+        self.actor_of(o)?;
+        use kinds::player::actions::movement::{self, MoveKind};
+        movement::start_absolute(self, o, target, end_lag, MoveKind::Absolute);
+        Ok(())
     }
 
     fn run_wrapped(&mut self, o: ObjectRef) -> ApiResult<()> {

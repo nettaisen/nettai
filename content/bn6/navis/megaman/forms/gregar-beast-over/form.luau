@@ -9,6 +9,8 @@ local forms = require("../../../../rules/forms/system")
 return define.form {
     id = "bn6:gregar-beast-over",
     kind = "beast_over",
+    -- The beast system's berserk decides its idle (`sub_802D322`).
+    traits = { "controlled" },
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
     game = "gregar",
