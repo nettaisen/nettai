@@ -126,4 +126,7 @@
 "bn5:cacdanc/cactus" = { pool = "attack", index = 0xB1 }
 "bn5:hotbody/fire" = { pool = "effect", index = 0x57 }
 "bn5:hotbody/flame" = { pool = "attack", index = 0x9D }
+"bn5:bodygrd/controller" = { pool = "effect", index = 0x6D, scratch_position = true }
+"bn5:bodygrd/striker" = { pool = "effect", index = 0x6E, scratch_position = true }
+"bn5:bodygrd/shuriken" = { pool = "attack", index = 0x5C }
 "bn5:cusvolt/beam" = { pool = "attack", index = 0xB8 }
