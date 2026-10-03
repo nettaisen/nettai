@@ -156,12 +156,15 @@ impl HudState {
         // the US games' shows it from the navi's first decision in the
         // fight (`Battle::chip_hud`). Presentation of the Japanese games'
         // HUD code (docs/engine/jp-differences.md §5); once the fight runs
-        // its decisions set the window on either console.
+        // its decisions set the window on either console. A BN5 console's
+        // does it too (0x080230CC: its game's flow's `chip_window_at_close`).
         // (The task starts as the screens' results are exchanged, on the
         // tick the icons come back.)
         let fighting = b.round.mode == mode::FIGHTING;
         let icons = b.chip_hud_for(b.setup.local_side).icons;
-        if region == "jp" && icons && !self.icons_were && (b.round.mode == mode::CUSTOM || self.mode_was == mode::CUSTOM) {
+        let own_game = b.content.rules_of(b.games.sides[b.setup.local_side as usize & 1]);
+        let at_close = region == "jp" || own_game.flow.chip_window_at_close;
+        if at_close && icons && !self.icons_were && (b.round.mode == mode::CUSTOM || self.mode_was == mode::CUSTOM) {
             (self.early_window, self.early_fight_ticks) = (true, 0);
         }
         if self.early_window {
@@ -283,9 +286,16 @@ fn custom_open(b: &Battle) -> bool {
 /// the ticks "Cstmzing..." has been up (`sub_801E474` starts it).
 fn waiting_ticks(b: &Battle) -> Option<u32> {
     let sent = b.custom.sides[b.setup.local_side as usize].sent.as_ref()?;
+    // A screen that closes with the results (BN5's Team Battle screen)
+    // ends the wait a tick before it closes: its console has the results
+    // a tick before (0x080266FA stops the HUD's wait task, 0x1000, and
+    // its state 8 closes the screen on the next tick). (`round.ticks` is
+    // already the next tick's: the results are in on it.)
+    let ending = b.arena_rules().flow.custom_closes_with_results
+        && b.custom.sides.iter().all(|s| s.sent.as_ref().is_some_and(|x| x.arrives <= b.round.ticks));
     // (On the tick the custom mode starts the screens haven't opened yet:
     // what was sent is the last screen's.)
-    (crate::custom::screens_open(b) && !b.custom.committed).then(|| b.round.ticks.saturating_sub(sent.sent_at + 1))
+    (crate::custom::screens_open(b) && !b.custom.committed && !ending).then(|| b.round.ticks.saturating_sub(sent.sent_at + 1))
 }
 
 /// Whether the custom gauge is drawn (a chip's effect may hide it:

@@ -85,8 +85,30 @@ const PICTURE_BYTES: usize = 0x540;
 /// Chip codes (8x16), element icons (2x2) and the six colors each brings,
 /// damage digits (0-9, '?'): `sub_80284E2`'s counterpart.
 const CODES: (u32, usize) = (0x086F_86B0, 28);
-const ELEMENTS: (u32, usize) = (0x086F_8DB0, 13);
+const ELEMENTS: u32 = 0x086F_8DB0;
 const ELEMENT_COLORS: u32 = 0x086F_9430;
+/// The icons and colors are by the chip record's family byte (+6), BN5's
+/// order (its first 13 are icons; past them the routine reads on into what
+/// follows, as the pack does); the pack has them by the engine's family
+/// numbers (`ChipFamily`, BN6's order with BN5's recovery and invisible
+/// after it): for each, BN5's family byte.
+const FAMILY_BYTES: [u32; 15] = [
+    0,  // fire
+    1,  // aqua
+    2,  // elec
+    3,  // wood
+    5,  // plus
+    6,  // sword
+    8,  // cursor
+    9,  // summon (BN5's obstacles)
+    10, // wind
+    11, // break
+    12, // null
+    13, // program advance
+    14, // special
+    4,  // recovery
+    7,  // invisible
+];
 const DIGITS: (u32, usize) = (0x086F_9B4C, 11);
 /// The slots' codes (16x8), the empty slot's icon.
 const SLOT_CODES: (u32, usize) = (0x086F_AFCC, 28);
@@ -103,6 +125,11 @@ const SCRAP_BUTTONS: (u32, usize) = (0x086F_A7CC, 0x600);
 const SOUL_BUTTONS: (u32, usize) = (0x086F_BB64, 0x240);
 const SOUL_PICTURE: u32 = 0x0873_22E8;
 const SOUL_PALETTES: (u32, u32) = (0x0873_4D48, 2);
+/// The souls' icons in the picked column, by soul number (13: Chaos Unison's; the
+/// column's 0x08024010 from 0x0802341C), which the soul choice (state 9,
+/// 0x0802330C) first flies as a sprite in this palette (sprite palette 13).
+const SOUL_ICONS: (u32, usize) = (0x0874_9FB8, 14 * 0x80);
+const SOUL_ICON_PALETTE: u32 = 0x0874_AAB8;
 /// Sprites: the cursor's corner (two frames), the Regular chip's frame.
 const CURSOR: (u32, usize) = (0x086F_ACEC, 0x40);
 const REGULAR: (u32, usize) = (0x086F_72B0, 0x400);
@@ -170,6 +197,8 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         tiles: block(rom, SOUL_BUTTONS),
         picture: picture(rom, (SOUL_PICTURE, SOUL_PALETTES.0)),
         palettes: (0..SOUL_PALETTES.1).map(|i| palette(rom, SOUL_PALETTES.0 + 0x20 * i)).collect(),
+        icons: block(rom, SOUL_ICONS),
+        icon_palette: palette(rom, SOUL_ICON_PALETTE),
     };
     let map = |a: u32| -> Vec<MapEntry> { (0..MAP_CELLS).map(|i| MapEntry::from_gba(rom.u16(a + 2 * i))).collect() };
     CustomScreen {
@@ -200,8 +229,8 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
             other: picture(rom, OTHER),
         },
         codes: glyphs(CODES),
-        elements: tiles(rom, ELEMENTS.0, 0x80 * ELEMENTS.1),
-        element_colors: (0..ELEMENTS.1 as u32).map(|e| std::array::from_fn(|i| rom.u16(ELEMENT_COLORS + 12 * e + 2 * i as u32))).collect(),
+        elements: Tiles { pixels: FAMILY_BYTES.iter().flat_map(|&b| tiles(rom, ELEMENTS + 0x80 * b, 0x80).pixels).collect() },
+        element_colors: FAMILY_BYTES.iter().map(|&b| std::array::from_fn(|i| rom.u16(ELEMENT_COLORS + 12 * b + 2 * i as u32) & 0x7FFF)).collect(),
         digits: glyphs(DIGITS),
         slot_codes: glyphs(SLOT_CODES),
         empty_icon: tiles(rom, EMPTY_ICON, 0x80),

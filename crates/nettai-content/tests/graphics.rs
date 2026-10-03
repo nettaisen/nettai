@@ -194,7 +194,15 @@ fn custom() -> CustomScreen {
         layout: CustomLayout { name: 0x59, art: 0x69, ..CustomLayout::BN6 },
         buttons: vec![(
             "soul".into(),
-            ButtonPictures { width: 3, height: 2, tiles: tiles(18, 98), picture: picture(99), palettes: vec![palette(99), palette(100)] },
+            ButtonPictures {
+                width: 3,
+                height: 2,
+                tiles: tiles(18, 98),
+                picture: picture(99),
+                palettes: vec![palette(99), palette(100)],
+                icons: tiles(56, 101),
+                icon_palette: palette(102),
+            },
         )],
         window_tiles: tiles(0x87, 40),
         column_cells: tiles(4, 41),

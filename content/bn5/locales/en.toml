@@ -335,3 +335,6 @@ language = "en"
 "bn5:yoyo" = { name = "YoYo", description = "Yoyo atk\nreaches\n3sq ahead" }
 "bn5:yoyomode" = { name = "YoYoMode", description = "ミテイ" }
 "bn5:z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
+
+[navis]
+"bn5:megaman" = { name = "MegaMan" }

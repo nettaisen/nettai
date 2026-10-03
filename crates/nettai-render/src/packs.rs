@@ -15,19 +15,22 @@ use nettai_content_api::AssetKind;
 pub struct Packs<'a> {
     bundles: Vec<&'a Bundle>,
     own: PackId,
+    /// The console's version (`Renderer::console_version`): the one whose
+    /// own art a chip each version draws its own way shows.
+    version: Option<&'static str>,
 }
 
 impl<'a> Packs<'a> {
     /// One pack's graphics: every asset is its.
     pub fn one(bundle: &'a Bundle) -> Packs<'a> {
-        Packs { bundles: vec![bundle], own: PackId(0) }
+        Packs { bundles: vec![bundle], own: PackId(0), version: None }
     }
 
     /// Several packs' graphics, by `PackId`; `own` the frontend's own
     /// game's.
     pub fn new(bundles: Vec<&'a Bundle>, own: PackId) -> Packs<'a> {
         assert!(own.index() < bundles.len(), "the frontend's own pack is loaded");
-        Packs { bundles, own }
+        Packs { bundles, own, version: None }
     }
 
     /// The graphics of pack `pack` (the own pack's for one not loaded: a
@@ -63,14 +66,37 @@ impl<'a> Packs<'a> {
         c.defs.root_of(key).map_or(self.own(), |r| self.of_root(c, r))
     }
 
-    /// A chip's icon: its game's pack's, under its key there.
-    pub fn chip_icon(&self, c: &Content, key: &str) -> Option<&'a nettai_assets::Tiles> {
-        self.of_key(c, key).hud.chip_icon(nettai_content_api::keys::local(key))
+    /// Draw a console of `version` (`Renderer::console_version`; None: the
+    /// pack's first).
+    pub fn set_version(&mut self, version: Option<&'static str>) {
+        self.version = version;
     }
 
-    /// A chip's picture: its game's pack's, under its key there.
+    /// A chip's icon: its game's pack's, under its key there, else its
+    /// version's (`version_key`).
+    pub fn chip_icon(&self, c: &Content, key: &str) -> Option<&'a nettai_assets::Tiles> {
+        let pack = self.of_key(c, key);
+        let local = nettai_content_api::keys::local(key);
+        pack.hud.chip_icon(local).or_else(|| pack.hud.chip_icon(&self.version_key(pack, local)?))
+    }
+
+    /// A chip's picture: its game's pack's, under its key there, else its
+    /// version's (`version_key`).
     pub fn chip_art(&self, c: &Content, key: &str) -> Option<&'a nettai_assets::ChipArt> {
-        self.of_key(c, key).custom.chip_art(nettai_content_api::keys::local(key))
+        let pack = self.of_key(c, key);
+        let local = nettai_content_api::keys::local(key);
+        pack.custom.chip_art(local).or_else(|| pack.custom.chip_art(&self.version_key(pack, local)?))
+    }
+
+    /// The key of the console's version's art of a chip each version of
+    /// `pack`'s game draws its own way (BN5's navi chips: the pack has it
+    /// once a version, `{key}-{version}`, docs/design/bn5-map.md §11): the
+    /// console's version if the pack has it, else the pack's first.
+    fn version_key(&self, pack: &Bundle, local: &str) -> Option<String> {
+        let mut versions = pack.custom.chip_art.iter().filter_map(|a| a.version.as_deref());
+        let first = versions.clone().next()?;
+        let version = self.version.filter(|&v| versions.any(|w| w == v)).unwrap_or(first);
+        Some(format!("{local}-{version}"))
     }
 
     /// Sprite `id`'s sheet, from its pack.

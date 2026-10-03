@@ -335,3 +335,6 @@ language = "ja"
 "bn5:yoyo" = { name = "ヨーヨー", description = "3マス前までとどく\nヨーヨー攻撃!\n3マス前は3ヒット" }
 "bn5:yoyomode" = { name = "ヨーヨーモード", description = "ミテイ" }
 "bn5:z-saver" = { name = "Zセイバー", description = "でんせつの あかい\nレプリロイドの\n3だんぎりソード" }
+
+[navis]
+"bn5:megaman" = { name = "ロックマン" }
