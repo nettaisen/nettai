@@ -454,6 +454,9 @@ pub struct Battle {
     pub sides: [SideState; 2],
     /// Per-side statistics counters (`byte_203EAE0`, `sub_800AB46`).
     pub side_stats: [[u8; 16]; 2],
+    /// Per side: BN5's ColonelSoul army, armed or not, and its soldiers'
+    /// damage words (`kinds::obstacle::Soldiers`).
+    pub obstacle_soldiers: [crate::kinds::obstacle::Soldiers; 2],
     /// The first four counters of BN5's per-player battle record
     /// (`sub_802D064`'s, 0x0802AEA6): the counter hits and inflicted bugs
     /// that land on the other side's navis no player controls, at most 10
@@ -783,6 +786,7 @@ impl Battle {
             link: Link::new(setup.link_delay),
             sides: [SideState::default(); 2],
             side_stats: [[0; 16]; 2],
+            obstacle_soldiers: Default::default(),
             navi_hit_counts: [[0; 4]; 2],
             tactics: [setup.players[0].tactics.clone(), setup.players[1].tactics.clone()],
             linked: [LinkedRecord::default(); 2],
