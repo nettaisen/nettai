@@ -206,6 +206,7 @@ bblstar1 = 0x0d8
 falling-rock = 0x0d9
 crack-shot = 0x0da
 sand-worm = 0x0e1
+grid-dash = 0x0e4
 rockfall = 0x0e5
 fire-hit = 0x0ed
 drilarm = 0x0f0
