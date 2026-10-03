@@ -65,9 +65,8 @@ fn a_collision_type_defined_twice_is_an_error() {
 /// collision type once).
 #[test]
 fn bn6_content_has_no_definition_errors() {
-    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
     let mut c = nettai_battle::Content::default();
-    c.scripts = Scripts::root(RootManifest::named("bn6"), testing::modules_under(dir));
+    c.scripts = testing::bn6_scripts();
     c.assets = testing::asset_names_for(&c.scripts);
     c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
     let mut r = Report::default();
@@ -89,10 +88,12 @@ fn bn6_strings_name_bn6_definitions_and_only_their_shape_is_hashed() {
     assert!(langs.contains(&"en".to_string()) && langs.contains(&"ja".to_string()), "{langs:?}");
     let mut r = Report::default();
     let root = nettai_content::root::read(dir, &mut r).expect("content/bn6 reads");
+    let common = nettai_content::root::read(&dir.join("../common"), &mut r).expect("content/common reads");
     assert!(root.modules.keys().all(|m| !m.starts_with("locales/")), "a strings table read as a module");
     let define = |strings: nettai_content::locale::Strings| {
         let mut c = nettai_battle::Content::default();
         c.scripts = Scripts::root(root.manifest.clone(), root.modules.clone());
+        c.scripts.add_root(common.manifest.clone(), common.modules.clone());
         c.assets = testing::asset_names_for(&c.scripts);
         c.strings = strings;
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
@@ -128,11 +129,13 @@ fn bn5_and_bn6_load_together_under_their_names() {
     let mut r = Report::default();
     let bn6 = nettai_content::root::read(&repo.join("content/bn6"), &mut r).expect("content/bn6 reads");
     let bn5 = nettai_content::root::read(&repo.join("content/bn5"), &mut r).expect("content/bn5 reads");
+    let common = nettai_content::root::read(&repo.join("content/common"), &mut r).expect("content/common reads");
     let mut c = nettai_battle::Content::default();
     c.strings = bn6.strings;
     c.strings.merge(bn5.strings);
     c.scripts = Scripts::root(bn6.manifest, bn6.modules);
     c.scripts.add_root(bn5.manifest, bn5.modules);
+    c.scripts.add_root(common.manifest, common.modules);
     c.assets = testing::asset_names_for(&c.scripts);
     if let Err(e) = c.define() {
         let e = e.message;
@@ -182,6 +185,8 @@ fn bn5s_rules_are_its_games() {
         ..Default::default()
     };
     c.scripts.add_root(bn5.manifest, bn5.modules);
+    let common = nettai_content::root::read(&repo.join("content/common"), &mut r).expect("content/common reads");
+    c.scripts.add_root(common.manifest, common.modules);
     // Each root's names in its own assets pack (BN5's in bn5's).
     c.assets = testing::asset_names_for(&c.scripts);
     c.define().unwrap_or_else(|e| panic!("{e}"));

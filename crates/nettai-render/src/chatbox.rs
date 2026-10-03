@@ -555,9 +555,11 @@ mod tests {
         let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6"));
         let mut report = nettai_content::report::Report::default();
         let root = nettai_content::root::read(dir, &mut report).expect("content/bn6 reads");
+        let common = nettai_content::root::read(&dir.join("../common"), &mut report).expect("content/common reads");
         let mut c = Content::default();
         c.strings = root.strings;
         c.scripts = nettai_battle::content::Scripts::root(root.manifest, root.modules);
+        c.scripts.add_root(common.manifest, common.modules);
         c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
         let ja = nettai_content::locale::load(dir, "ja").unwrap().expect("ja.toml");

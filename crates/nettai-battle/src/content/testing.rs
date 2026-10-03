@@ -302,9 +302,16 @@ pub const ROOT: &str = "test";
 
 /// A BN6 module as the test content borrows it: its ids and asset names,
 /// which BN6 writes in full (`bn6:...`), are the test content's
-/// (`test:...`), on its synthetic pack.
+/// (`test:...`), on its synthetic pack. What it requires of BN6's folder
+/// (`@bn6/...`) is the test folder's, and the shared modules it requires
+/// (`@common/...`, content/common) come into the test folder under
+/// `common/`.
 fn borrowed(source: String) -> String {
-    source.replace("\"bn6:", "\"test:").replace("'bn6:", "'test:")
+    source
+        .replace("\"bn6:", "\"test:")
+        .replace("'bn6:", "'test:")
+        .replace("\"@bn6/", "\"@test/")
+        .replace("\"@common/", "\"@test/common/")
 }
 
 /// The content model v2 test pack (crates/nettai-battle/testdata/pack):
@@ -313,6 +320,15 @@ const TEST_PACK: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/pack");
 
 /// The test content's own modules (its roles).
 const TEST_CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/content");
+
+/// content/bn6's modules (folder `bn6`) with the modules BN5 and BN6
+/// share (content/common, folder `common`), as the content loads them.
+pub fn bn6_scripts() -> Scripts {
+    let content = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content");
+    let mut s = Scripts::root(RootManifest::named("bn6"), modules_under(&format!("{content}/bn6")));
+    s.add_root(RootManifest::named("common"), modules_under(&format!("{content}/common")));
+    s
+}
 
 /// Every `.luau` module under `dir`, by path without `.luau`.
 pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
@@ -971,6 +987,9 @@ fn navi_chip_assets(a: &mut nettai_content_api::PackIndex) {
 
 /// Where the BN6 scripts are (the source overlay in this repository).
 const OVERLAY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
+/// Where the modules BN5 and BN6 share are (content/common), borrowed
+/// under `common/`.
+const COMMON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/common");
 
 /// The test content's scripts: its own modules (testdata/content), these
 /// modules of the BN6 overlay, and whatever they `require` of it.
@@ -979,7 +998,10 @@ pub fn scripts() -> Scripts {
     SCRIPTS
         .get_or_init(|| {
             let read = |path: &str| {
-                let file = format!("{OVERLAY}/{path}.luau");
+                let file = match path.strip_prefix("common/") {
+                    Some(shared) => format!("{COMMON}/{shared}.luau"),
+                    None => format!("{OVERLAY}/{path}.luau"),
+                };
                 borrowed(std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}")))
             };
             let modules = [
@@ -1433,7 +1455,8 @@ pub fn scripts() -> Scripts {
 }
 
 /// The modules `source` (the module `module`) requires: each
-/// `require("<relative path>")`, as a module path.
+/// `require("<relative path>")` and `require("@test/<path>")` (a borrowed
+/// module's, `borrowed`), as a module path.
 fn requires(module: &str, source: &str) -> Vec<String> {
     let dir: Vec<&str> = module.split('/').collect();
     let dir = &dir[..dir.len() - 1];
@@ -1442,6 +1465,9 @@ fn requires(module: &str, source: &str) -> Vec<String> {
         .skip(1)
         .filter_map(|rest| rest.split_once("\")").map(|(path, _)| path))
         .map(|path| {
+            if let Some(top) = path.strip_prefix("@test/") {
+                return top.to_string();
+            }
             let mut parts: Vec<&str> = dir.to_vec();
             for part in path.split('/') {
                 match part {
