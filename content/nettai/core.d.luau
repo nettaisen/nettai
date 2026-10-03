@@ -136,6 +136,8 @@ export type Request =
     | "cross_special"
     | "volley"
     | "weakness_hit"
+    -- The slide request (the collision's flag2 0x10).
+    | "slide"
 -- A navi's state bits.
 export type NaviStateFlag =
     "controllable"
@@ -388,8 +390,22 @@ declare class Object
     special_source: number
     -- Which set_attack kind started it (read-only).
     attack_kind: number
-    -- 1 while the action runs inside a form's action wrapper.
-    beast_lockon: number
+    -- 1 while the action runs inside the side's wrapper (the role
+    -- `actions.wrapper`: BN6's Beast Out rush).
+    wrapped: number
+    -- The wrapper's state starts over (`sub_801011A` sets it with the
+    -- attack's links); the wrapper clears it once it has.
+    wrapper_fresh: boolean
+    -- The controller's state starts over (a form's `berserk` effect); the
+    -- controller clears it once it has.
+    controller_fresh: boolean
+    -- Exhausted for the rest of the battle (BN6's after Beast Over): worn
+    -- out, the mood can't change, 1 HP lost per tick (never the last), no
+    -- Full Synchro or anger.
+    exhausted: boolean
+    -- What a step or the wrapper turns to face in the panel patterns 0x23,
+    -- 0x31 and 0x33 (read-only; only the unused `sub_80116F6` sets one).
+    face_target: Object?
     -- The lock-on mode the attack's own action asks the Beast Out rush for
     -- (the charged sword's, by its slash); nil: the chip's.
     rush_lockon: Lockon?
@@ -411,9 +427,10 @@ declare class Object
     ai_index: number
     -- The sprite overlay attached for the current attack (writable).
     overlay: Object?
-    -- Writable links: the Beast Out lock-on marker, the charge glow, the
+    -- Writable links: the target marker (BN6's Beast Out lock-on marker),
+    -- the charge glow, the
     -- Full Synchro aura.
-    lockon_marker: Object?
+    target_marker: Object?
     charge_glow: Object?
     full_synchro_aura: Object?
     -- The charge: level 0 none, 1 charging, 2 full; source 0 none, 1 A, 2 B.
@@ -650,6 +667,32 @@ declare class Object
     function lockon_panel(self, x: number, y: number, mode: Lockon?): (number, number)
     -- `object_canMove`: not immobilized, sliding or moving.
     function can_move(self): boolean
+    -- `sub_800EDD0`'s chip: the hand's chip at the cursor (nil: the hand is
+    -- empty).
+    function next_chip(self): Chip?
+    -- `sub_800FB54`: use the chip the navi's requests ask for (as idle does
+    -- on A): whether its use started.
+    function use_chip(self): boolean
+    -- `sub_80116AE(5, end_lag, 2)`: a step straight to (x, y) (column 0: no
+    -- step), then `end_lag` ticks.
+    function start_move_to(self, x: number, y: number, end_lag: number): ()
+    -- The wrapper's (the role `actions.wrapper`): run the action the
+    -- navi runs (`sub_801B9E6`'s attack).
+    function run_wrapped(self): ()
+    -- `sub_800FC30`: start the next chip in the hand inside the wrapper
+    -- (prepared, its action started, `wrapped` 1), unless it has the
+    -- `no_chain` trait, is a dimming chip, or the hand is empty. Whether it
+    -- did.
+    function chain_next_chip(self): boolean
+    -- `sub_8013CC4`: the NaviCust panel-trail bugs on the panel (x, y) the
+    -- navi leaves.
+    function panel_trail(self, x: number, y: number): ()
+    -- On a target marker (a navi's `target_marker`): `sub_80E1654` (true:
+    -- it holds where it is, looking locked on) and `sub_80E1662` (false: it
+    -- follows its target again).
+    function freeze_target_marker(self, on: boolean): ()
+    -- `sub_800F2FC`: turn to face `target`'s column.
+    function face_toward(self, target: Object): ()
     -- `sub_80DBB64`: put a junk look (`obstacle.junk_look`) on the sprite:
     -- the sprite, a shadow if the look has one, its animation and palette,
     -- flipped by the object's side unless the look keeps its own; false
@@ -1443,6 +1486,20 @@ export type SystemSpec = {
         -- be used, a chip is what the navi uses instead. The first system
         -- that answers decides.
         chip_check: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
+        -- A chip's use started (`sub_800FB54`, its action set): `chip` the
+        -- chip it reads (the zeroed chip for the empty hand), `weapon` the
+        -- form's weapon run instead of it (a charged use), else nil.
+        chip_used: ((side: number, navi: Object, chip: Chip, weapon: Weapon?) -> ())?,
+        -- Each tick of the idle action of a navi whose form is `controlled`
+        -- (BN6's Beast Over, `sub_802D322`), in place of the player's
+        -- decisions: what it did ("nothing", "chip": a chip's use started,
+        -- "buster": the buster is to fire, "moved": a step started), which
+        -- the framework carries out as idle does. The first system that
+        -- answers decides.
+        controller: ((side: number, navi: Object) -> ("nothing" | "chip" | "buster" | "moved")?)?,
+        -- The framework reverts the navi to its base form, its form not yet
+        -- changed (`sub_80158CC`).
+        form_reverted: ((side: number, navi: Object) -> ())?,
     }?,
 }
 export type System = SystemSpec
@@ -1697,7 +1754,7 @@ export type FormEffect =
     | "float_shoes"
     | "floating_body"
     | "untouchable"
-    | "lockon_marker"
+    | "target_marker"
     | "invulnerable"
     | "berserk"
 -- What the ruleset asks of particular forms:
@@ -1711,7 +1768,10 @@ export type FormEffect =
 --   scrap_button: the custom screen has the scrap button (DustCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
 --     special is asked for (TenguCross and DustCross in Beast Out);
---   stands_on_metal: a metal panel doesn't slide the navi (BN5's soul 5).
+--   stands_on_metal: a metal panel doesn't slide the navi (BN5's soul 5);
+--   controlled: the side's systems' `controller` decides its idle (BN6's
+--     Beast Over: the berserk), the player's buttons don't reach it, and a
+--     full gauge opens the custom screen.
 export type FormTrait =
     "status_immune"
     | "erases"
@@ -1720,6 +1780,7 @@ export type FormTrait =
     | "scrap_button"
     | "special_holds_buster"
     | "stands_on_metal"
+    | "controlled"
 -- One of MegaMan's forms (§3.2).
 export type FormDef = {
     id: string,
@@ -1732,7 +1793,7 @@ export type FormDef = {
     -- forms', rules/forms), which the pause handler runs at a turn's start.
     -- Every form but the base form names one.
     change: Action?,
-    -- Whose game's form it is (the Beast's roar, Beast Over's glow).
+    -- Whose game's form it is (the Beast's roar).
     game: ("gregar" | "falzar")?,
     -- The navi a Cross (and one in Beast Out) is made with.
     cross_of: NaviDef?,
@@ -1764,11 +1825,15 @@ export type FormDef = {
     -- Its A charge builds up the next Fire chip's damage, up to this much.
     fire_charge: number?,
     -- What its status reset gives the navi, and what a NaviCust change
-    -- gives back (none: the reset's, without the lock-on marker).
+    -- gives back (none: the reset's, without the target marker).
     status_reset: { FormEffect }?,
     navicust_refresh: { FormEffect }?,
     -- The height it floats at, in pixels.
     hover: number?,
+    -- Its glow: the navi's color shader by the battle time, an entry a
+    -- tick, over and over (Beast Over's). A navi in it takes no sprite
+    -- palette and no invulnerable glow.
+    glow: { number }?,
     -- The shots of the buster volley the Cross special's controller fires
     -- in it (the original stores the form's number where it meant 6).
     special_volley: number?,
@@ -2010,10 +2075,9 @@ export type RolesSpec = {
         turn: Action?,
         cross_death: Action?,
         volley: Action?,
-        charged_sword: Action?,
-        beast_claw: Action?,
         dust_beast_scatter: Action?,
         charge_tackle: Action?,
+        wrapper: Action?,
     }?,
     kinds: {
         absorbed_obstacle: Kind?,
@@ -2046,11 +2110,6 @@ export type RolesSpec = {
         hit_bug_blind: Status?,
         hit_bug_confuse: Status?,
     }?,
-    -- The Beast Out lock-on modes the ruleset names itself: the Beast
-    -- forms' charged claw's.
-    lockon: {
-        beast_claw: Lockon?,
-    }?,
     -- The one-shot effects the ruleset shows itself: a navi deleted (and
     -- a cross merged, a navi arriving, a form put on or taken off), HP
     -- recovered, a side cutting in, a trap springing, an obstacle encased,
@@ -2061,7 +2120,7 @@ export type RolesSpec = {
         cut_in_flash: Effect?,
         trap_mark: Effect?,
         encased: Effect?,
-        beast_over_burst: Effect?,
+        burst: Effect?,
     }?,
     -- The hit sparks the ruleset shows itself: a new registration's until
     -- its owner names another, a blocked hit's, an eruption's, a thrown
@@ -2120,7 +2179,7 @@ export type RolesSpec = {
         fade: Sound?,
         obstacle_lift: Sound?,
         obstacle_throw: Sound?,
-        beast_over_burst: Sound?,
+        burst: Sound?,
         cross_special: Sound?,
         refused: Sound?,
         custom_open: Sound?,
@@ -2157,7 +2216,7 @@ export type RolesSpec = {
     }?,
     -- The sprites of the engine's own kinds: the charge glows, the Full
     -- Synchro aura, the status visuals, the ice block and the bubble, the
-    -- hit marker, the eruption, the lock-on marker. (The Beast head and the
+    -- hit marker, the eruption, the target marker. (The Beast head and the
     -- idle overlay are the parts of the identities that wear them.)
     sprites: {
         charge_glow: SpriteAsset?,
@@ -2170,7 +2229,7 @@ export type RolesSpec = {
         bubble: SpriteAsset?,
         hit_marker: SpriteAsset?,
         eruption: SpriteAsset?,
-        lockon_marker: SpriteAsset?,
+        target_marker: SpriteAsset?,
     }?,
     -- The banners the ruleset shows itself: a round's start, a turn's, the
     -- final turns', a draw, the damage judge's, a telop's on either side,

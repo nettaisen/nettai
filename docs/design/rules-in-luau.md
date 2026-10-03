@@ -1298,3 +1298,73 @@ P1's items 12 and 8 (bn5-map.md §15.3), on R4.
   rollback rows, the 189 legacy rounds (2,746,946 frames), the lab 6548 (6545 matched, 3 to a known deviation;
   5,775,231 frames) with 0 sound rounds differing; the audit 49 traces and the static audit, 0 problems; BN5's
   replays as before: 252 replay, 243 match every frame, 139,499 of 948,097 frames.
+
+### S3, Beast Out and Beast Over (2026-10-02)
+
+- **The rush** (content/bn6/rules/beast/rush.luau) is an action of BN6's beast system and fills the role
+  `actions.wrapper`. The dispatcher (`sub_801B9E6`) runs it instead of an attack whose `wrapped` byte is 1, provided
+  the side plays by the system that owns it. That byte is AIAttackVars+0x1D, `beast_lockon` before; it is now the
+  framework's, in `AttackVars` and as the actor field `wrapped`. The rush's state is the system's (`rush_*`, the
+  original's +0x1E to +0x27). `wrapper_fresh`, set with the attack's links (`sub_801011A`), starts it over.
+  - Rust keeps the lock-on search (actions/lockon.rs, `sub_80EAF60`'s modes, BN6 data until S7).
+  - API: `navi:run_wrapped()`, `navi:chain_next_chip()`, `navi:panel_trail(x, y)`, `navi:face_toward(o)`,
+    `marker:freeze_target_marker(on)`, the actor fields `wrapper_fresh` and `face_target`, and the request `"slide"`.
+- **What runs inside the rush** is decided by a new system hook, `chip_used(side, navi, chip, weapon)`, called at the
+  end of `sub_800FB54` once the use's action has started. `chip` is the chip the use reads (the zeroed chip for the
+  empty hand); `weapon` is the form's weapon when one runs instead (a charged use). BN6's system marks:
+  - a chip with the lock-on flag, in a Beast form or from the Cross special;
+  - the Beast forms' claw;
+  - SlashCross Beast's charged sword.
+
+  The roles `actions.charged_sword`, `actions.beast_claw` and the whole `lockon` group are gone: only the system
+  recognizes them now.
+- **Berserk** (rules/beast/berserk.luau) is Beast Over's controller (`sub_802D322` to `sub_802D430`).
+  - Both Beast Overs carry a new form trait, `controlled`. The side's systems' `controller(side, navi)` hook decides
+    a controlled navi's idle, answering "nothing", "chip", "buster" or "moved". The framework carries out the chip
+    and the buster as idle does.
+  - The player's input doesn't reach a controlled navi (`apply_actor_inputs`), and a full gauge opens its custom
+    screen (`custom_open_requested`).
+  - Its state is the system's (`berserk_*`). The form's `berserk` effect (`sub_802D310`) sets the actor's
+    `controller_fresh`, which starts it over.
+  - API: `navi:next_chip()`, `navi:use_chip()`, `navi:start_move_to(x, y, end_lag)`.
+  - berserk.rs keeps the Cross special's share (S4).
+- **Exhaustion.** A new hook, `form_reverted(side, navi)`, is called at `sub_80158CC` after the mood 0x80. There,
+  outside battle mode 1, BN6's system spends a Beast Out (`beast_out_spent`) or exhausts a Beast Over (`exhausted`,
+  then mood 0). `beast_over_exhausted` became the framework's `exhausted` (an actor field). What exhaustion does stays
+  the framework's: emotion 5, the mood held, no anger, and the drain of 1 HP a tick, never the last.
+- **The glow** is form data. `FormData::glow`, the Beast Overs' `glow`, holds color shaders by the battle time
+  (`byte_8016A68`, `byte_8016A9C`), and an empty list is refused. A form with a glow takes no sprite palette and no
+  invulnerable glow (`sub_8016860`'s Beast Over test). `GREGAR_OVER_GLOW` and `FALZAR_OVER_GLOW` are gone.
+- **The shared kinds** (§3.2):
+  - `engine/target-marker` (kinds/target_marker.rs), `engine/burst` (kinds/burst.rs) and `engine/afterimage`;
+  - with them the actor field and form effect `target_marker`, the sprite role `target_marker`, and the effect and
+    sound roles `burst`;
+  - compat's kinds.toml and rules.toml follow, while the assets keep BN6's names.
+
+  The marker's targeting (`sub_80E1670`) stays a Rust primitive, since BN5 has the same routine (§6.1, §6.4). What
+  BN6 reads of the marker (its panel, `sub_80E164A`) and its freeze are the beast system's calls.
+- **Decisions** (taken while the user was away; for review):
+  1. One form trait, `controlled`, instead of `navi:set_controller`, `navi:hold_input` and `battle.forces_custom`
+     (§3.1). It is data on the hot path (§6.4), and the three always go together in BN6 (forms 0x17 and 0x18). A game
+     that needs one alone splits the trait.
+  2. No `form_changed` hook yet. Nothing in S3 needs one: the berserk restarts on the form's effect, and exhaustion
+     comes at the revert. S5 adds it if the emotions do.
+  3. The wrapper is a role and a byte rather than `navi:set_wrapper`: the dispatcher reads the byte each tick, and
+     the system writes it once per use.
+  4. The drain stays framework, keyed on `exhausted`. In Luau it would be a call every tick for the rest of the
+     battle, and it is what exhaustion does; when to exhaust is BN6's choice, and that is the system's.
+  5. Two reads still use `FormKind::is_beast` until S7 replaces `FormKind`: the marker's visibility (forms 0xB to
+     0x18) and the afterimage's `beast_form` tether. BN5's same code tests its own form range.
+  6. `beast_out_spent` stays an actor field until its readers move (the emotion in S5, the Beast Out button in S6).
+- **Fixed during the move:** the first replay after the role rename found `actions.wrapper` filled with the Rush
+  chip's action. A `local rush` in roles.luau had shadowed the beast rush's; the gates caught it at once.
+- **Verify** (branch rules-s3):
+  - gen-content decodes the Beast Overs' `controlled` and `glow`, and names the effect `TARGET_MARKER`;
+  - trace-tests' stub listing drops the lock-on roles.
+- **Gates** (on main 89147e03):
+  - the build without warnings, 481 tests, the content check (1,248 modules), gen-content check 0 errors;
+  - `gate-against.sh` with everything selected: machgun and soundmod with 96 rollback rows, the 189 legacy rounds
+    (2,746,946 frames), and the lab 6548 (6545 matched, 3 to a known deviation; 5,775,231 frames) with 0 sound rounds
+    differing;
+  - the audit: 49 traces and the static audit, 0 problems;
+  - BN5's replays as before: 252 replay, 243 match every frame, 139,499 of 948,097 frames.

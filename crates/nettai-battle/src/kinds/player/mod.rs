@@ -11,7 +11,7 @@
 pub mod actions;
 pub(crate) mod berserk;
 mod navi_action;
-mod chip_use;
+pub(crate) mod chip_use;
 pub use chip_use::{next_chip_bonus, next_chip_doubles};
 
 /// `sub_8010740`: the opponent's Rush takes `chip` (a weapon's).
@@ -48,7 +48,6 @@ pub use navi_action::{EngineAction, NaviAction, NaviWord};
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
 use crate::content::ActorEntry;
 use crate::content::{FormData, FormKind, NaviData};
-use crate::custom::GameVersion;
 use crate::setup::{NaviStats, effects};
 
 /// Panel center coordinates (`object_getCoordinatesForPanels`, which
@@ -281,7 +280,7 @@ fn panel_kind(b: &Battle, p: PanelPos) -> PanelType {
 
 /// `sub_8010004`: the next chip in the side's hand (none: the game's
 /// 0xFFFF).
-fn next_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
+pub(crate) fn next_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
     let hand = &b.hands[b.objects.get(r).alliance as usize];
     hand.ids.get(hand.cursor as usize).copied().flatten()
 }
@@ -315,7 +314,7 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
     let mood = b.stats[side as usize].mood;
     let p = b.player(side).expect("side has a player");
     let a = ai(b, p);
-    if a.beast_over_exhausted || mood == 0 {
+    if a.exhausted || mood == 0 {
         Emotion::WornOut
     } else if a.anger != 0 {
         Emotion::Angry
@@ -333,7 +332,7 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
 pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
     let Some(p) = b.player(side) else { return };
     let a = ai(b, p);
-    if a.beast_out_spent || a.beast_over_exhausted {
+    if a.beast_out_spent || a.exhausted {
         return;
     }
     b.stats[side as usize].mood = mood;
@@ -434,10 +433,10 @@ impl From<EngineAction> for NaviAction {
 /// Out lock-on marker (`sub_80E1662`; a no-op without one).
 pub(crate) fn reset_attack_links(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
-    a.attack.beast_lockon = 0;
-    a.attack.rush.restart();
-    if let Some(marker) = a.lockon_marker {
-        crate::kinds::lockon_marker::unfreeze(b, marker);
+    a.attack.wrapped = 0;
+    a.attack.wrapper_fresh = true;
+    if let Some(marker) = a.target_marker {
+        crate::kinds::target_marker::unfreeze(b, marker);
     }
 }
 
@@ -1048,20 +1047,9 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// Beast Over's glow by the battle time, over 26 ticks (`byte_8016A68`,
-/// Gregar's; `byte_8016A9C`, Falzar's): color shaders.
-const GREGAR_OVER_GLOW: [u16; 26] = [
-    0x0000, 0x0000, 0x0041, 0x0461, 0x0881, 0x0CC2, 0x10E2, 0x1102, 0x1543, 0x1983, 0x1DC3, 0x21E4, 0x2204, 0x2204,
-    0x21E4, 0x1DC3, 0x1983, 0x1543, 0x1102, 0x10E2, 0x0CC2, 0x0CA2, 0x0881, 0x0861, 0x0441, 0x0421,
-];
-const FALZAR_OVER_GLOW: [u16; 26] = [
-    0x0000, 0x0000, 0x0402, 0x0423, 0x0444, 0x0866, 0x0887, 0x0888, 0x0CAA, 0x0CCC, 0x0CEE, 0x110F, 0x1110, 0x1110,
-    0x110F, 0x0CEE, 0x0CCC, 0x0CAA, 0x0888, 0x0887, 0x0866, 0x0865, 0x0444, 0x0443, 0x0422, 0x0421,
-];
-
-/// `sub_80100EC` (presentation only): a Beast Over navi glows
-/// (`sub_8016A38`, a color shader by the battle time); any other takes
-/// its sprite palette (`sub_801002C`):
+/// `sub_80100EC` (presentation only): a navi in a form with a glow
+/// glows (`sub_8016A38`, Beast Over's: a color shader by the battle time);
+/// any other takes its sprite palette (`sub_801002C`):
 ///
 /// - MegaMan while he can't charge (status 0x200): 1, plus the element
 ///   style's;
@@ -1074,15 +1062,15 @@ const FALZAR_OVER_GLOW: [u16; 26] = [
 ///   navi's multiplier in `byte_80212BB` is 1).
 fn navi_palette(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
-    let (kind, game, form_palette) = {
-        let form = form_of(b, r);
-        (form.kind, form.game, form.palette)
-    };
-    if kind.is_beast_over() {
-        let glow = if game == Some(GameVersion::Falzar) { &FALZAR_OVER_GLOW } else { &GREGAR_OVER_GLOW };
-        b.objects.sprite_mut(r).look.color_shader = glow[(b.round.battle_time % 26) as usize];
+    if let Some(glow) = &form_of(b, r).glow {
+        let shader = glow[(b.round.battle_time % glow.len() as u32) as usize];
+        b.objects.sprite_mut(r).look.color_shader = shader;
         return;
     }
+    let (kind, form_palette) = {
+        let form = form_of(b, r);
+        (form.kind, form.palette)
+    };
     let no_charge = ai(b, r).status & crate::actor::status::NO_CHARGE != 0;
     let full_synchro = emotion(b, b.objects.get(r).alliance) == Emotion::FullSynchro;
     let style = if s.element != 0 { s.element.wrapping_mul(5).wrapping_add(0x12) } else { 0 };
@@ -1155,7 +1143,7 @@ fn emotion_timer(b: &mut Battle, r: ObjectRef) {
         // sub_80143CE: anger, unless tired or exhausted.
         2 => {
             let a = ai(b, r);
-            if !a.beast_out_spent && !a.beast_over_exhausted {
+            if !a.beast_out_spent && !a.exhausted {
                 set_flag2(b, r, 0x200);
             }
         }

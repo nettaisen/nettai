@@ -147,7 +147,11 @@ pub struct AttackVars {
     pub special_source: u8,
     /// Which `set_attack` slot started the action.
     pub kind: u8,
-    pub beast_lockon: u8,
+    /// 1 while the action runs inside the side's wrapper (`sub_801B9E6`
+    /// runs the role `actions.wrapper` instead): BN6's Beast Out lock-on
+    /// byte, which its beast system sets as a chip's use starts
+    /// (`chip_used`) and the rush as it chains the next.
+    pub wrapped: u8,
     /// The lock-on mode the attack's own action asks the Beast Out rush
     /// for: the charged sword's (the role `charged_sword`), which its
     /// setup gives with the slash it starts (the original reads a table by
@@ -178,9 +182,10 @@ pub struct AttackVars {
     /// The effect the instant chips' action runs (`off_80EC3F0[subtype]`):
     /// the chip's, or a weapon's that names one (TenguCross's wind).
     pub instant: Option<crate::kinds::player::actions::instant::Effect>,
-    /// +0x1E..+0x27: the Beast Out rush around the action, when
-    /// `beast_lockon` is 1.
-    pub rush: crate::kinds::player::actions::beast_rush::Vars,
+    /// The wrapper's state starts over: `sub_801011A` clears its bytes
+    /// (+0x1E..+0x27, which the game's wrapper, BN6's Beast Out rush, now
+    /// keeps in its system's state); the wrapper clears this once it has.
+    pub wrapper_fresh: bool,
 }
 
 /// Joypad state as an actor sees it.
@@ -270,11 +275,15 @@ pub struct ActorData {
     /// blocks mood changes (`sub_8015BEC`) and anger (`sub_80143CE`).
     pub beast_out_spent: bool,
     pub anger: u16,
-    /// AIData+0x36: exhausted after Beast Over (`sub_80158CC` →
-    /// `sub_8014466` stores 0x3C0, which nothing counts down): emotion 5,
-    /// mood changes blocked, and 1 HP lost per tick for the rest of the
-    /// battle, never the last one (`sub_8014498`).
-    pub beast_over_exhausted: bool,
+    /// AIData+0x36: exhausted for the rest of the battle (BN6's after Beast
+    /// Over: `sub_80158CC` → `sub_8014466` stores 0x3C0, which nothing
+    /// counts down; its beast system sets it, `form_reverted`): emotion 5,
+    /// mood changes blocked, and 1 HP lost per tick, never the last one
+    /// (`sub_8014498`).
+    pub exhausted: bool,
+    /// The controller's state starts over (a form's `berserk` effect,
+    /// `sub_802D310`); the controller clears it once it has.
+    pub controller_fresh: bool,
     /// AIData+0x38: ticks before a road panel can start another slide
     /// (5 after a road slide, `sub_80166D0`/`sub_8016730`; counted down
     /// by `sub_801A36A`).
@@ -286,9 +295,9 @@ pub struct ActorData {
     /// restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses
     /// record it every tick (`sub_8108F74`); nothing sets it for players.
     pub bubble_base_z: i16,
-    /// AIData+0x40: the Beast Out lock-on marker (effect #0xF,
+    /// AIData+0x40: the target marker (effect #0xF, BN6's Beast Out lock-on marker:
     /// `sub_80E1620`), which `sub_80E1662` unfreezes.
-    pub lockon_marker: Option<ObjectRef>,
+    pub target_marker: Option<ObjectRef>,
     /// Action requests from input (`request::*`).
     pub requests: u32,
     /// Actor state bits (`status::*`).

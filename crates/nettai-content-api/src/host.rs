@@ -160,9 +160,17 @@ pub enum HookCall {
     /// A hook of a system of side `side`'s ruleset (docs/design/
     /// rules-in-luau.md §4.1), the system in place `slot` of the ruleset's
     /// list: while it runs, `system.state()` is that system's state of that
-    /// side. It is called with the side, then the navi and the chip the
-    /// hook is about, where it has them. Its result is the hook's.
-    System { side: u8, slot: u8, hook: SystemHook, navi: Option<ObjectRef>, chip: Option<crate::ChipHandle> },
+    /// side. It is called with the side, then the navi, the chip and the
+    /// weapon the hook is about, where it has them (nil in between). Its
+    /// result is the hook's.
+    System {
+        side: u8,
+        slot: u8,
+        hook: SystemHook,
+        navi: Option<ObjectRef>,
+        chip: Option<crate::ChipHandle>,
+        weapon: Option<crate::WeaponHandle>,
+    },
 }
 
 /// Which hook of a system is called (docs/design/rules-in-luau.md §4.1).
@@ -199,6 +207,24 @@ pub enum SystemHook {
     /// system refuses a chip its MegaMan may not use: 0x08010118). The
     /// first system that answers decides.
     ChipCheck,
+    /// `chip_used(side, navi, chip, weapon)`: a chip's use started
+    /// (`sub_800FB54`, its action set): `chip` the chip it reads (the
+    /// zeroed chip for the empty hand), `weapon` the form's weapon run
+    /// instead of it (a charged use), else nil. BN6's beast system decides
+    /// whether it runs inside the rush (the attack's `wrapped`). Its result
+    /// is unused.
+    ChipUsed,
+    /// `controller(side, navi)`: each tick of the idle action of a navi whose
+    /// form is `controlled` (BN6's Beast Over: `sub_802D322`), in place of
+    /// the player's decisions: "nothing", "chip" (a chip's use started),
+    /// "buster" (the buster is to fire) or "moved" (a step started); the
+    /// framework carries it out as idle does. The first system that
+    /// answers decides.
+    Controller,
+    /// `form_reverted(side, navi)`: the framework reverts the navi to its
+    /// base form, its form not yet changed (`sub_80158CC`): BN6's spends a
+    /// Beast Out and exhausts a Beast Over. Its result is unused.
+    FormReverted,
     /// `folder_check(side)`: a tool asks whether a folder keeps the side's
     /// game's folder rules (`Battle::check_folder`, not the simulation):
     /// the folder is `battle.checked_folder()`, and each rule it breaks is
@@ -219,10 +245,13 @@ impl SystemHook {
             SystemHook::FolderCheck => "folder_check",
             SystemHook::NaviIntake => "navi_intake",
             SystemHook::ChipCheck => "chip_check",
+            SystemHook::ChipUsed => "chip_used",
+            SystemHook::Controller => "controller",
+            SystemHook::FormReverted => "form_reverted",
         }
     }
 
-    pub const ALL: [SystemHook; 9] = [
+    pub const ALL: [SystemHook; 12] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -232,6 +261,9 @@ impl SystemHook {
         SystemHook::FolderCheck,
         SystemHook::NaviIntake,
         SystemHook::ChipCheck,
+        SystemHook::ChipUsed,
+        SystemHook::Controller,
+        SystemHook::FormReverted,
     ];
 }
 

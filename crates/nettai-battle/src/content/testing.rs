@@ -1148,6 +1148,10 @@ pub fn scripts() -> Scripts {
                 ("rules/collision", "rules/collision"),
                 // BN6's Beast Out turns, a system of the test rules.
                 ("rules/beast/system", "rules/beast/system"),
+                ("rules/beast/rush", "rules/beast/rush"),
+                ("rules/beast/berserk", "rules/beast/berserk"),
+                // (Its tables are the test content's own, the same as BN6's.)
+                ("rules/berserk", "rules/berserk"),
                 ("lib/trajectory", "lib/trajectory"),
                 ("lib/hp", "lib/hp"),
                 // The bombs and seeds: the chips, whose actions the test

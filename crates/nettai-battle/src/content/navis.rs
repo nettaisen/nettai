@@ -225,7 +225,7 @@ pub struct FormData {
     /// Added to the buster's damage.
     pub buster_bonus: u8,
     pub kind: FormKind,
-    /// Whose game's form it is: the Beast's roar and Beast Over's glow.
+    /// Whose game's form it is: the Beast's roar.
     #[serde(default)]
     pub game: Option<GameVersion>,
     /// MegaMan's palette in it (`byte_80203EA`: a Cross's; the base form's
@@ -268,7 +268,7 @@ pub struct FormData {
     pub fire_charge: Option<u16>,
     /// What the status reset gives it (`sub_8014536`), and what a NaviCust
     /// change gives back (`sub_801469C`; none: the reset's, without the
-    /// lock-on marker).
+    /// target marker).
     #[serde(default)]
     pub status_reset: FormEffects,
     #[serde(default)]
@@ -276,6 +276,12 @@ pub struct FormData {
     /// The height it floats at, in whole pixels (`sub_80F0608`).
     #[serde(default)]
     pub hover: i16,
+    /// Its glow: the navi's color shader by the battle time, one entry a
+    /// tick, over and over (`sub_8016A38`: Beast Over's, `byte_8016A68` and
+    /// `byte_8016A9C`). A navi in it takes no sprite palette
+    /// (`sub_80100EC`) and no invulnerable glow (`sub_8016860`).
+    #[serde(default)]
+    pub glow: Option<Vec<u16>>,
     /// The shots of the buster volley the Cross special's controller
     /// fires in it (`sub_802D4F0`).
     #[serde(default)]
@@ -380,7 +386,7 @@ pub struct RunMessage {
 impl FormData {
     /// What a NaviCust change gives the form back.
     pub fn refresh_effects(&self) -> FormEffects {
-        self.navicust_refresh.unwrap_or(FormEffects(self.status_reset.0 & !FormEffects::LOCKON_MARKER))
+        self.navicust_refresh.unwrap_or(FormEffects(self.status_reset.0 & !FormEffects::TARGET_MARKER))
     }
 }
 
@@ -439,8 +445,8 @@ impl FormEffects {
     /// Untouchable (ObjectFlags1 0x08000000): no hit reaches it, and poison
     /// panels don't hurt it.
     pub const UNTOUCHABLE: u16 = 0x020;
-    /// The Beast's lock-on marker.
-    pub const LOCKON_MARKER: u16 = 0x040;
+    /// The target marker (BN6's Beast forms' lock-on marker).
+    pub const TARGET_MARKER: u16 = 0x040;
     /// Invulnerable for good.
     pub const INVULNERABLE: u16 = 0x080;
     /// The berserk controller starts over.
@@ -452,7 +458,7 @@ impl FormEffects {
         (0x008, "float_shoes"),
         (0x010, "floating_body"),
         (0x020, "untouchable"),
-        (0x040, "lockon_marker"),
+        (0x040, "target_marker"),
         (0x080, "invulnerable"),
         (0x100, "berserk"),
     ];
@@ -489,6 +495,10 @@ impl FormTraits {
     /// A metal panel doesn't slide the navi (BN5's soul 5, NaviStats
     /// +0x2C: 0x08017216).
     pub const STANDS_ON_METAL: u8 = 0x40;
+    /// The side's systems' controller decides the navi's idle (Beast Over's
+    /// berserk, `sub_802D322`): the player's buttons don't reach it
+    /// (`apply_actor_inputs`), and a full gauge opens the custom screen.
+    pub const CONTROLLED: u8 = 0x80;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "status_immune"),
         (0x02, "erases"),
@@ -497,6 +507,7 @@ impl FormTraits {
         (0x10, "scrap_button"),
         (0x20, "special_holds_buster"),
         (0x40, "stands_on_metal"),
+        (0x80, "controlled"),
     ];
 
     pub fn has(self, bit: u8) -> bool {

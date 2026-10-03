@@ -62,20 +62,23 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
     b.chip_hud[side].window = super::input::chips_enabled(b, r);
     phase_timer(b, r);
-    // Beast Over: the berserk controller decides.
-    if form_of(b, r).kind.is_beast_over() {
-        use super::berserk::Outcome;
-        match super::berserk::control(b, r) {
-            Outcome::Nothing | Outcome::Moved => {}
-            Outcome::Chip => {
+    // A controlled form (BN6's Beast Over): the side's systems' controller
+    // decides (`sub_802D322`, the berserk).
+    if form_of(b, r).traits.has(crate::content::FormTraits::CONTROLLED) {
+        match b.systems_controller(side as u8, r) {
+            // A chip's use started.
+            1 => {
                 let chip = super::next_chip(b, r);
                 after_chip(b, r, chip);
             }
-            Outcome::Buster => {
+            // The buster.
+            2 => {
                 leave_idle(b, r);
                 let action = buster_routine(b, r);
                 set_attack(b, r, action, 1);
             }
+            // Nothing, or a step started.
+            _ => {}
         }
         return;
     }

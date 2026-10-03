@@ -88,6 +88,8 @@ fn timer_index(t: StatusTimer) -> usize {
 
 fn request_bit(f: RequestFlag) -> u32 {
     match f {
+        // (Not an action request: `request` and `set_request` read flag2.)
+        RequestFlag::Slide => 0,
         RequestFlag::Buster => request::BUSTER,
         RequestFlag::ChargedShot => request::CHARGED_SHOT,
         RequestFlag::Chip => request::CHIP,
@@ -115,6 +117,9 @@ fn request_bit(f: RequestFlag) -> u32 {
         RequestFlag::WeaknessHit => request::WEAKNESS_HIT,
     }
 }
+
+/// The collision's flag2 bit of the slide request (`RequestFlag::Slide`).
+const SLIDE_REQUEST: u32 = 0x10;
 
 fn navi_state_bit(f: NaviState) -> u32 {
     match f {
@@ -307,7 +312,7 @@ impl CoreApi for Battle {
     }
 
     fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef> {
-        kinds::beast_over_burst::spawn(self, navi)
+        kinds::burst::spawn(self, navi)
     }
 
     fn show_hud(&mut self, part: HudPart, shown: bool) {
@@ -1281,7 +1286,11 @@ impl CoreApi for Battle {
             ActorField::Extra => i(at.extra as i64),
             ActorField::SpecialSource => i(at.special_source as i64),
             ActorField::AttackKind => i(at.kind as i64),
-            ActorField::BeastLockon => i(at.beast_lockon as i64),
+            ActorField::Wrapped => i(at.wrapped as i64),
+            ActorField::WrapperFresh => Value::Bool(at.wrapper_fresh),
+            ActorField::ControllerFresh => Value::Bool(a.controller_fresh),
+            ActorField::Exhausted => Value::Bool(a.exhausted),
+            ActorField::FaceTarget => at.face_target.map_or(Value::Nil, Value::Object),
             ActorField::RushLockon => at.rush_lockon.map_or(Value::Nil, |h| Value::Def(Registry::Lockon, h.0)),
             ActorField::AttackChip => at.chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ActorField::Marker => i(at.marker as i64),
@@ -1290,7 +1299,7 @@ impl CoreApi for Battle {
             ActorField::AttackCount => i(at.count as i64),
             ActorField::ActorType => i(actor_type_index(a.actor_type)),
             ActorField::AiIndex => i(a.ai_index as i64),
-            ActorField::LockonMarker => a.lockon_marker.into(),
+            ActorField::TargetMarker => a.target_marker.into(),
             ActorField::ChargeGlow => a.charge_glow.into(),
             ActorField::FullSynchroAura => a.full_synchro_aura.into(),
             ActorField::ChargeLevel => i(a.charge_level as i64),
@@ -1361,14 +1370,17 @@ impl CoreApi for Battle {
             (ActorField::AttackLockout, FieldValue::U8(x)) => at.lockout = x,
             (ActorField::Extra, FieldValue::U16(x)) => at.extra = x,
             (ActorField::SpecialSource, FieldValue::U8(x)) => at.special_source = x,
-            (ActorField::BeastLockon, FieldValue::U8(x)) => at.beast_lockon = x,
+            (ActorField::Wrapped, FieldValue::U8(x)) => at.wrapped = x,
+            (ActorField::WrapperFresh, FieldValue::Bool(x)) => at.wrapper_fresh = x,
+            (ActorField::ControllerFresh, FieldValue::Bool(x)) => a.controller_fresh = x,
+            (ActorField::Exhausted, FieldValue::Bool(x)) => a.exhausted = x,
             (ActorField::RushLockon, FieldValue::Ref(_)) => at.rush_lockon = rush_lockon,
             (ActorField::AttackChip, FieldValue::Ref(_)) => at.chip = attack_chip,
             (ActorField::Marker, FieldValue::U32(x)) => at.marker = x,
             (ActorField::ThrownLook, FieldValue::Ref(_)) => at.thrown_look = thrown_look,
             (ActorField::ThrownAnim, FieldValue::U8(x)) => at.thrown_anim = x,
             (ActorField::AttackCount, FieldValue::U16(x)) => at.count = x,
-            (ActorField::LockonMarker, FieldValue::Object(r)) => a.lockon_marker = r,
+            (ActorField::TargetMarker, FieldValue::Object(r)) => a.target_marker = r,
             (ActorField::ChargeGlow, FieldValue::Object(r)) => a.charge_glow = r,
             (ActorField::FullSynchroAura, FieldValue::Object(r)) => a.full_synchro_aura = r,
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
@@ -1384,10 +1396,18 @@ impl CoreApi for Battle {
     }
 
     fn request(&self, o: ObjectRef, f: RequestFlag) -> ApiResult<bool> {
+        if f == RequestFlag::Slide {
+            return Ok(self.collision_of(o)?.f2 & SLIDE_REQUEST != 0);
+        }
         Ok(self.actor_of(o)?.requests & request_bit(f) != 0)
     }
 
     fn set_request(&mut self, o: ObjectRef, f: RequestFlag, on: bool) -> ApiResult<()> {
+        if f == RequestFlag::Slide {
+            let c = self.collision_of_mut(o)?;
+            c.f2 = if on { c.f2 | SLIDE_REQUEST } else { c.f2 & !SLIDE_REQUEST };
+            return Ok(());
+        }
         let a = self.actor_of_mut(o)?;
         let bit = request_bit(f);
         a.requests = if on { a.requests | bit } else { a.requests & !bit };
@@ -1622,7 +1642,62 @@ impl CoreApi for Battle {
     }
 
     fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: Option<nettai_content_api::LockonHandle>) -> PanelPos {
-        kinds::player::actions::beast_rush::lockon_panel(self, o, target, mode)
+        kinds::player::actions::lockon::lockon_panel(self, o, target, mode)
+    }
+
+    fn next_chip(&self, o: ObjectRef) -> ApiResult<Option<ChipHandle>> {
+        self.actor_of(o)?;
+        Ok(kinds::player::next_chip(self, o))
+    }
+
+    fn use_chip(&mut self, o: ObjectRef) -> ApiResult<bool> {
+        self.actor_of(o)?;
+        Ok(kinds::player::chip_use::use_chip(self, o).is_some())
+    }
+
+    fn start_move_to(&mut self, o: ObjectRef, target: PanelPos, end_lag: u16) -> ApiResult<()> {
+        self.actor_of(o)?;
+        use kinds::player::actions::movement::{self, MoveKind};
+        movement::start_absolute(self, o, target, end_lag, MoveKind::Absolute);
+        Ok(())
+    }
+
+    fn run_wrapped(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        let action = kinds::player::navi_action(self, o);
+        if !action.is_attack() {
+            return Err(ApiError::Other(format!("run_wrapped: the navi runs {action:?}, not an attack")));
+        }
+        kinds::player::actions::dispatch(self, o, action);
+        Ok(())
+    }
+
+    fn chain_next_chip(&mut self, o: ObjectRef) -> ApiResult<bool> {
+        self.actor_of(o)?;
+        Ok(kinds::player::chip_use::chain_next_chip(self, o))
+    }
+
+    fn panel_trail(&mut self, o: ObjectRef, from: PanelPos) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::actions::movement::panel_trail(self, o, from);
+        Ok(())
+    }
+
+    fn freeze_target_marker(&mut self, marker: ObjectRef, on: bool) -> ApiResult<()> {
+        if !self.objects.is_allocated(marker) || self.content.defs.engine_kind(self.objects.get(marker).kind) != Some(kinds::EngineKind::TargetMarker) {
+            return Err(ApiError::Other("freeze_target_marker: not a lock-on marker".into()));
+        }
+        if on { kinds::target_marker::freeze(self, marker) } else { kinds::target_marker::unfreeze(self, marker) }
+        Ok(())
+    }
+
+    fn face_toward(&mut self, o: ObjectRef, target: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        if !self.objects.is_allocated(target) {
+            return Err(ApiError::Other("face_toward: the target is gone".into()));
+        }
+        kinds::player::face_toward(self, o, target);
+        Ok(())
     }
 
     fn can_move(&self, o: ObjectRef) -> bool {

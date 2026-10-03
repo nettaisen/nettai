@@ -240,7 +240,7 @@ netbattle can run them where that has been read:
 | `navis/megaman/turn.luau`, `chips/antidmg/counter.luau`, `kinds/player/chip_use.rs` | 4 | the turn (`sub_80EDF0C`); AntiDmg's counter aimed at the nearest enemy (`sub_8016218`); the special chip's gauge cost (`sub_800EE98`, `sub_802E830`) | can't: L and R never turn on a link stage (§5); the counter's variant is 0 wherever it starts (below); the special chip is battle flag 0x40's |
 | `content/chips.rs` | 3 | damage formulas 0, 19 and 22: the opponent's HP, the custom gauge, half the opponent's max HP | can't: no chip record's damage is 1000, 1019 or 1022 (`gen-content check` reads them all) |
 | `chips/lifesync` | 6 | LifeSync's aim, marker, warning and sync | can't: a link battle skips them (dimming-chip-effects.md §14) |
-| `kinds/lockon_marker.rs` | 3 | the lock-on marker's choice between two targets | can't: a side has one combatant |
+| `kinds/target_marker.rs` | 3 | the lock-on marker's choice between two targets | can't: a side has one combatant |
 | `lib/bombs/slash.luau` | 4 | a bomb's lingering hit (attack object #0xA) | can't: no chip throws bomb kind 1 |
 | `objects/follow-effect` | 4 | the follow effect's looks 3, 5, 6 and 8 | can't: no spawner passes look 3, and looks 5, 6 and 8 come from an AI navi's actions and an out-of-scope object (DeltaRay's 4 and ElecMan's 7 run) |
 | `chips/lilbolr/layer.luau` | 4 | a layer's own flip, row offset, held sprite and visibility | can't: the viruses' settings |

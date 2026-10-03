@@ -27,7 +27,7 @@ return define.form {
     -- The chips A charges.
     charged_chips = { { family = "null", damaging = false } },
     -- What its status reset gives the navi (`sub_8014536`).
-    status_reset = { "air_shoes", "float_shoes", "floating_body", "lockon_marker" },
+    status_reset = { "air_shoes", "float_shoes", "floating_body", "target_marker" },
     -- The Cross special's buster volley (`sub_802D4F0`).
     special_volley = 2,
     -- The buster arm it raises (lib/buster).
