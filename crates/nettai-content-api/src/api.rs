@@ -1317,6 +1317,9 @@ pub trait CoreApi {
     fn player(&self, side: u8) -> Option<ObjectRef>;
     /// A side's combatants still in, in slot order.
     fn alive_actors(&self, side: u8) -> Vec<ObjectRef>;
+    /// `sub_802EFEE`: the actor `side` tracks in the battle flag 0x40
+    /// mode (its side state's +0x44), if any.
+    fn tracked(&self, side: u8) -> Option<ObjectRef>;
     /// Slot `i` (from 0, of four) of a side's list of alive actors.
     fn alive_actor_slot(&self, side: u8, i: u8) -> Option<ObjectRef>;
     /// Player `side`'s tactics (BN5's computer-navi data): how many entries
@@ -1340,6 +1343,9 @@ pub trait CoreApi {
     fn rng(&mut self) -> u32;
     /// `GetPositiveSignedRNG2`: one draw, bit 31 cleared.
     fn rng_positive(&mut self) -> u32;
+    /// `GetPositiveSignedRNG1` on `side`'s console: one draw of that
+    /// console's own RNG (RNG1), bit 31 cleared.
+    fn console_rng_positive(&mut self, side: u8) -> u32;
     /// `AddRandomVarianceToTwoCoords`: jitter x and z by up to mask/2
     /// pixels (one draw).
     fn jitter(&mut self, mask: u32, pos: Vec3) -> Vec3;
@@ -1900,6 +1906,11 @@ pub trait CoreApi {
     /// its barrier visual, its confusion and blindness visuals and the HUD
     /// stay (BugFix's glow).
     fn hide_user_sparing(&mut self, user: ObjectRef);
+    /// `sub_80E146C`: an actor that isn't a player vanishes (its barrier
+    /// visual and its confusion and blindness visuals with it), and
+    /// `sub_80E14AC` it is back: BN5's Django's coffin.
+    fn hide_actor(&mut self, o: ObjectRef);
+    fn show_actor(&mut self, o: ObjectRef);
     /// `sub_80E49C4` (BugFix): a side's NaviCust bugs are fixed: the stats
     /// processing, the panel trail's level, the buster's blanks, the
     /// on-hit status, the custom damage, the emotion, the custom and HP
@@ -1911,6 +1922,10 @@ pub trait CoreApi {
     fn clear_emotion_window_glitch(&mut self);
     /// A navi chip's navi is done: its controller moves on.
     fn navi_chip_left(&mut self, controller: ObjectRef);
+    /// The last navi chip used, of either side (`byte_203C960`, BN5's
+    /// 0x0203C430): the chip, and the element and the damage word, bonus
+    /// included, its navi came with; none since the battle started.
+    fn last_navi_chip(&self) -> Option<(ChipHandle, u8, u32)>;
     /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the
     /// navi warp, actor 0x2D).
     fn navi_warp(&mut self, user: ObjectRef, out: bool);
