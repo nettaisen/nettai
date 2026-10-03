@@ -92,3 +92,5 @@
 "bn5:wavepit/wave" = { pool = "attack", index = 0xA5 }
 "bn5:woodnos/wave" = { pool = "attack", index = 0xA6 }
 "bn5:woodnos/geyser" = { pool = "attack", index = 0xA7 }
+"bn5:sidebub/bubble" = { pool = "attack", index = 0x8F }
+"bn5:flying-shot" = { pool = "attack", index = 0x0B }

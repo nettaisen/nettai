@@ -7,7 +7,7 @@
 -- edge and, 6 ticks later, hits its column's edge panel and the one before it with the chip's damage (hit modifier
 -- 8), then lingers 30 ticks.
 
-local buster = require("@bn6/lib/buster")
+local arm_launch = require("../../lib/arm-launch")
 local collision = require("../../rules/collision")
 local regions = require("@bn6/lib/regions")
 local sparks = require("../../lib/sparks")
@@ -252,66 +252,9 @@ local function wave(owner: Object, x: number, y: number, element: number, damage
     end
 end
 
-export type ActionState = {
-    -- The action's count (AIAttackVars+0x10).
-    timer: number,
-}
-
-local THROW_ANIM = 14
-local LAUNCH_AT, LAUNCH_TICKS, RECOVER_TICKS = 1, 15, 5
-
--- The phases, on the attack's step.
-local LAUNCH, RECOVER = 0x0, 0x4
-
--- 0x080ED2A0: the arm raised; on the count's 1 the wave; at 16 the recovery.
-local function launching(me: Object, s: ActionState)
-    if me.step_init == 0 then
-        me:set_animation(THROW_ANIM)
-        buster.raise_arm(me)
-        me:set_status("using_action", true)
-        me.step_init = 4
-        s.timer = 0
-    end
-    if s.timer == LAUNCH_AT then
-        local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-        wave(me, me.panel_x + me.facing, me.panel_y, me.attack_element, damage)
-    end
-    local t = s.timer + 1
-    s.timer = t
-    if t > LAUNCH_TICKS then
-        me.step, me.step_init = RECOVER, 0
-    end
-end
-
--- 0x080ED2FA: 6 ticks, then the arm goes and back to idle.
-local function recover(me: Object, s: ActionState)
-    if me.step_init == 0 then
-        s.timer = RECOVER_TICKS
-        me.step_init = 4
-    end
-    local t = s.timer - 1
-    s.timer = t
-    if t < 0 then
-        me:set_status("using_action", false)
-        me.related1 = nil
-        me.overlay = nil
-        me:exit_attack()
-    end
-end
-
-woodnos.action = define.action {
-    state = { timer = "u16" },
-    -- 0x080ED286.
-    update = function(me: Object, s: ActionState)
-        local step = me.step
-        if step == LAUNCH then
-            launching(me, s)
-        elseif step == RECOVER then
-            recover(me, s)
-        else
-            error(string.format("WoodNos's phase %#x reads past 0x080ED298", step))
-        end
-    end,
-}
+-- 0x080ED286: the arm raised, the wave on the action's second tick (lib/arm-launch).
+woodnos.action = arm_launch.action("0x080ED298", function(me: Object, damage: number)
+    wave(me, me.panel_x + me.facing, me.panel_y, me.attack_element, damage)
+end)
 
 return woodnos
