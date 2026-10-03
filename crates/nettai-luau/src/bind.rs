@@ -1146,6 +1146,115 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_cursor_state(side).map_err(api_error))
     });
+    // The calling system's place, whose button, window or form a call names.
+    let own = |what: &str| -> mlua::Result<u8> { Ok(system_ctx(what)?.slot) };
+    let chip_or_nil = |v: &LuaValue, what: &str| -> mlua::Result<Option<nettai_content_api::ChipHandle>> {
+        if v.is_nil() { Ok(None) } else { Ok(Some(nettai_content_api::ChipHandle(bound(|b| def_arg(b, v, Registry::Chip, what))?))) }
+    };
+    let form_or_nil = |v: &LuaValue, what: &str| -> mlua::Result<Option<nettai_content_api::FormHandle>> {
+        if v.is_nil() { Ok(None) } else { Ok(Some(nettai_content_api::FormHandle(bound(|b| def_arg(b, v, Registry::Form, what))?))) }
+    };
+    lib_fn!(lua, t, "pick", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_pick(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "play", |_, (side, sound): (LuaValue, String)| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_play(side, &sound).map_err(api_error))
+    });
+    lib_fn!(lua, t, "set_column_icon", move |_, (side, chip): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let chip = chip_or_nil(&chip, "custom.set_column_icon")?;
+        with(|api, _| api.custom_set_column_icon(side, chip).map_err(api_error))
+    });
+    lib_fn!(lua, t, "open_window", move |_, (side, window): (LuaValue, String)| {
+        let side = u8_arg(side, "side")? & 1;
+        let system = own("custom.open_window")?;
+        with(|api, _| api.custom_open_window(side, system, &window).map_err(api_error))
+    });
+    lib_fn!(lua, t, "window_tick", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_window_tick(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "shake", |_, (side, magnitude, ticks): (LuaValue, LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let (magnitude, ticks) = (int(&magnitude, "magnitude")? as u16, int(&ticks, "ticks")? as u16);
+        with(|api, _| api.custom_shake(side, magnitude, ticks).map_err(api_error))
+    });
+    lib_fn!(lua, t, "frame", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_frame(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "set_frame", |_, (side, frame): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let frame = int(&frame, "frame")? as u32;
+        with(|api, _| api.custom_set_frame(side, frame).map_err(api_error))
+    });
+    lib_fn!(lua, t, "spin", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_spin(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "fade", |_, (side, mode, speed): (LuaValue, String, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let speed = int(&speed, "speed")? as u8;
+        with(|api, _| api.custom_fade(side, &mode, speed).map_err(api_error))
+    });
+    lib_fn!(lua, t, "set_face", move |_, (side, form): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let form = form_or_nil(&form, "custom.set_face")?;
+        with(|api, _| api.custom_set_face(side, form).map_err(api_error))
+    });
+    lib_fn!(lua, t, "pick_first", move |_, (side, icon): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let icon = chip_or_nil(&icon, "custom.pick_first")?;
+        with(|api, _| api.custom_pick_first(side, icon).map_err(api_error))
+    });
+    lib_fn!(lua, t, "set_button_state", move |_, (side, button, state): (LuaValue, String, String)| {
+        let side = u8_arg(side, "side")? & 1;
+        let system = own("custom.set_button_state")?;
+        with(|api, _| api.custom_set_button_state(side, system, &button, &state).map_err(api_error))
+    });
+    lib_fn!(lua, t, "update_availability", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_update_availability(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "draw_emblem", |_, (side, x): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let x = int(&x, "x")? as u32;
+        with(|api, _| api.custom_draw_emblem(side, x).map_err(api_error))
+    });
+    lib_fn!(lua, t, "set_form", move |_, (side, form): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let system = own("custom.set_form")?;
+        let form = form_or_nil(&form, "custom.set_form")?;
+        with(|api, _| api.custom_set_form(side, system, form).map_err(api_error))
+    });
+    lib_fn!(lua, t, "form_taken", move |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let system = own("custom.form_taken")?;
+        with(|api, _| api.custom_form_taken(side, system).map_err(api_error))
+    });
+    lib_fn!(lua, t, "full", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_full(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "button_picked", move |_, (side, button): (LuaValue, String)| {
+        let side = u8_arg(side, "side")? & 1;
+        let system = own("custom.button_picked")?;
+        with(|api, _| api.custom_button_picked(side, system, &button).map_err(api_error))
+    });
+    lib_fn!(lua, t, "player", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let p = with(|api, _| api.custom_player(side).map_err(api_error))?;
+        let t = lua.create_table()?;
+        t.raw_set("emotion", p.emotion.name())?;
+        t.raw_set("version", p.version)?;
+        t.raw_set("cross_list", p.cross_list)?;
+        t.raw_set("beast_out", p.beast_out)?;
+        t.raw_set("beast_out_sealed", p.beast_out_sealed)?;
+        t.raw_set("random_battle", p.random_battle)?;
+        Ok(t)
+    });
     Ok(t)
 }
 
@@ -1975,6 +2084,11 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         }
         // The side, then the navi, the chip and the weapon, where the hook
         // has them (nil in between).
+        // A custom screen's chip hooks: the side, then the chip.
+        HookCall::System { side, hook: SystemHook::CustomChipPicked | SystemHook::CustomChipTakenBack, chip, .. } => vec![
+            LuaValue::Integer(side as i64),
+            chip.map_or(Ok(LuaValue::Nil), |c| bound.def_value(Registry::Chip, c.0).map(LuaValue::Table))?,
+        ],
         HookCall::System { side, navi, chip, weapon, .. } => {
             let mut v = vec![
                 LuaValue::Integer(side as i64),
@@ -2037,8 +2151,8 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             },
             _ => Err(mlua::Error::runtime(format!("a controller returns its outcome's name, not a {}", v.type_name()))),
         },
-        // A button's `shown` and `state`.
-        HookCall::System { hook: SystemHook::ButtonShown, .. } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
+        // A button's `shown` and `state`, a window's `update`.
+        HookCall::System { hook: SystemHook::ButtonShown | SystemHook::WindowUpdate, .. } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
         HookCall::System { hook: SystemHook::ButtonState, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
             LuaValue::String(s) => match &*s.to_str()? {
