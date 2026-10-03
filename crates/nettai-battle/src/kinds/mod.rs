@@ -293,7 +293,7 @@ fn opponent_hp(b: &Battle, side: u8) -> u16 {
 /// gauge plus 0x1500 in the battle flag 0x40 mode): 10 to 32 over the first
 /// half, to 128 by seven eighths, to 255 short of full; a full gauge (or
 /// more) gives 10.
-fn gauge_damage(b: &Battle, side: u8) -> u16 {
+pub(crate) fn gauge_damage(b: &Battle, side: u8) -> u16 {
     let gauge = if b.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0 {
         b.sides[side as usize & 1].gauge as u32 + 0x1500
     } else {

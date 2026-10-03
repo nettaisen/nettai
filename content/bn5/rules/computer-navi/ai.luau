@@ -4,7 +4,7 @@
 -- player whose Chaos Unison failed: their computer-navi data, the battle's `tactic`s), entry by entry. An entry is a
 -- chip, which it gets in place for (./place) and uses, or a pattern: a place by its target and a run of chips. Three
 -- times in four it plays the first entry; otherwise, or with nothing to play, it steps into the row of an enemy and
--- fires its buster, twice. Its state is the navi's (the system's `navi_state`, AIData +0xF0 on).
+-- fires its buster (a punch, ./punch), twice. Its state is the navi's (the system's `navi_state`, AIData +0xF0 on).
 
 local data = require("./data")
 local panels = require("./panels")
@@ -80,8 +80,8 @@ ai.layout = {
     place_target = "object",
 }
 
--- What it fires between moves (weapon routine 0x3E, ./buster).
-local buster: Weapon = require("./buster").weapon
+-- What it fires between moves, its buster (weapon routine 0x3E: a punch, ./punch).
+local buster: Weapon = require("./punch").weapon
 
 -- ---- Targets --------------------------------------------------------------------------------------------------
 
@@ -120,13 +120,8 @@ local function next_chip_target(navi: Object, s: State): Object?
     return t
 end
 
--- 0x0802BE06: the chip's search starts one further on.
-function ai.skip_target(s: State)
-    s.next_target += 1
-    if s.next_target > 4 then
-        s.next_target = 0
-    end
-end
+-- 0x0802BE06: the chip's search starts one further on (./place's, which its searches call too).
+ai.skip_target = place.skip_target
 
 -- ---- Tactics ------------------------------------------------------------------------------------------------
 
@@ -151,10 +146,10 @@ local function shuffle(navi: Object)
     end
 end
 
--- 0x0802BE54 and 0x0802BEA0: the first of the first `n` entries that is a chip whose record's byte 14 has `bit`
--- comes first (it and the first change places); none before an empty place: nil.
-local function pick_by(navi: Object, bit: number, n: number): Chip?
-    local side = tactics_side(navi)
+-- 0x0802BE4E and 0x0802BE9A (the navi's own side's tactics), 0x0802BE54 and 0x0802BEA0 (the other side's): the
+-- first of side `side`'s first `n` entries that is a chip whose record's byte 14 has `bit` comes first (it and the
+-- first change places); none before an empty place: nil.
+local function pick_by(side: number, bit: number, n: number): Chip?
     for i = 1, n do
         local e = battle.tactic(side, i)
         if e == nil then
@@ -207,16 +202,12 @@ local function decide(navi: Object, s: State)
         return to_buster(s)
     end
     if front_pressure(s) >= 50 then
-        local chip = pick_by(navi, 1, 30)
-        if chip then
-            ai.use_chip(navi, chip)
-            turn(navi, s)
-            s.front_ticks = 0
-            return
-        end
+        -- (Its pick, 0x0802BA78, calls 0x081BC8AC, which is data, not code. The counters stay 0, so it never runs.)
+        error("the computer navi's front pressure reached 50: its pick (0x0802BA78) calls 0x081BC8AC, which is data")
     end
     if hole_pressure(s) >= 50 then
-        local chip = pick_by(navi, 2, 42)
+        -- (Its own side's tactics, where the rest of its decision plays the other side's.)
+        local chip = pick_by(navi.alliance, 2, 42)
         if chip then
             ai.use_chip(navi, chip)
             turn(navi, s)
@@ -328,7 +319,7 @@ local function pattern_place(navi: Object, s: State)
     end
     s.step = 0
     s.misses += 1
-    ai.skip_target(s)
+    place.skip_target(s)
     local x, y = panels.random_own(navi)
     step_to(navi, s, x, y)
 end
