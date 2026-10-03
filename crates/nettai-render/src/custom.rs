@@ -735,7 +735,7 @@ impl Window {
         let shows = data.flags.0 & (ChipFlags::HAS_DAMAGE | ChipFlags::DAMAGE_SHOWN_VARIABLE) != 0;
         let digits: Vec<usize> = if !shows {
             Vec::new()
-        } else if matches!(data.formula, Some(DamageFormula::HpLost)) {
+        } else if matches!(data.formula, Some(DamageFormula::HpLost { .. })) {
             // (The original knows Muramasa by its number.)
             vec![DIGIT_UNKNOWN; 3]
         } else {
