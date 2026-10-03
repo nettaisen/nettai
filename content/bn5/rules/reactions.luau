@@ -6,7 +6,8 @@
 -- `sub_800E548` otherwise): five rows, and none for BN6's 0x80 flag (rows 5 to 9, zero here). BN5 has no bubbled reaction
 -- (BN6's action 7 is absent): its bob is zero. A slide and a drag go 8 pixels a tick in depth where BN6's
 -- go 6 (0x0801361E, 0x080143A8). What a navi wears restarts after an animation change, a flinch or a drag by
--- reloading its animation at its next step (0x080C374E), where BN6's steps it at once.
+-- reloading its animation at its next step (0x080C374E), where BN6's steps it at once. The counter a stance's caught
+-- hit starts (ShadowSoul's B+Back) runs its first step at once (0x0800E340), where BN6's waits for the next tick.
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
 return define.rules("bn5:reactions", {
@@ -34,4 +35,5 @@ return define.rules("bn5:reactions", {
     bubble_bob = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
     slide_speed = { x = 0xA_0000, y = 0x8_0000 },
     overlay_restart = "reload",
+    stance_counter = "at_once",
 })

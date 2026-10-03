@@ -249,9 +249,9 @@ return define.system {
                 field.set_type(x, y, "normal")
             end
         end,
-        -- 0x08010030: a dark chip's use, which may fizzle, and its cost; 0x08010118: a chip for the other kind of
-        -- MegaMan becomes the invalid chip.
-        chip_check = function(side: number, navi: Object, chip: Chip?): Chip?
+        -- 0x08010030: a dark chip's use, which may fizzle, and the chip's cost (before the hand bonus's panel is
+        -- spent, 0x080100B0).
+        chip_cost = function(side: number, navi: Object, chip: Chip?): Chip?
             if chip == nil then
                 return nil
             end
@@ -259,6 +259,13 @@ return define.system {
                 return invalid
             end
             cost(side, chip)
+            return nil
+        end,
+        -- 0x08010118: a chip for the other kind of MegaMan becomes the invalid chip.
+        chip_check = function(side: number, _navi: Object, chip: Chip?): Chip?
+            if chip == nil then
+                return nil
+            end
             if battle.navi(side).navi ~= megaman then
                 return nil
             end

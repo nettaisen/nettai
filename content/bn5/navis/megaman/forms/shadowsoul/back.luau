@@ -18,7 +18,7 @@ local function setup(navi: Object): Action
     navi.attack_damage = DAMAGE
     navi.hit_param = HIT_PARAM
     navi.extra = 0
-    navi.charged = 1
+    navi.attack_variant = 1
     local s = navi:action_state(back.action) :: { timer: number }
     s.timer = TICKS
     navi.attack_lockout = COOLDOWN

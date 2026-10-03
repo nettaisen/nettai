@@ -4,6 +4,8 @@
 -- counterpart 0x0800E0BE: MegaMan's isn't by variant), his netbattle banners (0x080090D8, 0x080090B0), his
 -- weapons (weapons/: the buster and the charged shot, BN6's actions with BN5's setups), and his identity: his
 -- actor record (0x08014C94: version 0, a player, AI index 0) and his sprite's 30 attach points (./attach_points). BN5 has no weakness table (BN6's `byte_80108D1`).
+-- On sea, his Aqua chips with damage (dimming chips too) hit 30 harder and spend the sea under him, unless his soul
+-- gives a bonus of its own (0x0800D0A6: NumberSoul's, NapalmSoul's; the panel turns Normal at 0x080100B0).
 --
 -- Not yet (docs/design/bn5-map.md §15.7): the held offset and the custom screen's no-running message.
 
@@ -31,6 +33,7 @@ return define.navi {
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("bn5:megaman-win"), lose = asset.banner("bn5:megaman-deleted") },
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
+    panel_bonus = { panel = "sea", family = "aqua", damage = 30 },
     -- His fresh stats, as a navi's stats start (0x080111BA from the table 0x0801D55F: his row, BN6's):
     -- the stats a match's side starts him at.
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },

@@ -100,6 +100,8 @@ struct ReactionsSection {
     slide_speed: super::rules::SlideSpeed,
     #[serde(default)]
     overlay_restart: super::rules::OverlayRestart,
+    #[serde(default)]
+    stance_counter: super::rules::StanceCounter,
 }
 
 #[derive(Deserialize)]
@@ -362,6 +364,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                 rules.push_reading = s.push_reading;
                 rules.slide_speed = s.slide_speed;
                 rules.overlay_restart = s.overlay_restart;
+                rules.stance_counter = s.stance_counter;
             }
             "berserk" => {
                 let s: BerserkSection = r.read(spec, &at).map_err(e)?;

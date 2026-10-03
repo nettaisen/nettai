@@ -4,7 +4,7 @@
 -- its key, its shuriken's kind, its sounds and its puff). When
 -- an AntiDmg trap (or the AntiDmg program's stance) catches a hit, the
 -- navi vanishes in a puff and throws a shuriken (./shuriken) at an enemy,
--- by the attack's variant (its `charged`): a random one for 0, the nearest
+-- by the attack's variant (`attack_variant`): a random one for 0, the nearest
 -- ahead, its own row first, for 1, none for any other. A trap chip's catch
 -- leaves it 0, the stance its weapon's: BN6's AntiDmg program 0, BN5's
 -- ShadowSoul 1. The ruleset starts it by role (`actions.anti_damage_counter`,
@@ -116,7 +116,7 @@ end
 local function throw(me: Object, s: State, spec: Spec)
     me.visible = false
     if me.step_init == 0 then
-        local variant = me.charged
+        local variant = me.attack_variant
         local x, y
         if variant == 0 then
             x, y = random_enemy(me)

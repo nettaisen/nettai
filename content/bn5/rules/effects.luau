@@ -4,10 +4,13 @@
 -- battle's RNG2, twice a shaking tick, holding while the battle is paused without dimming (BN6's draws from each
 -- console's RNG1); its hit spark (0x080E0870) doesn't step its sprite as it starts, so it lasts a tick longer than
 -- BN6's (`sub_80E0864`); setting an object's collision types again (0x08016B9E, BN6's `sub_801A082`) sets what it
--- is alone, never marked as made while dimmed (its store of what it hits goes to a BIOS address).
+-- is alone, never marked as made while dimmed (its store of what it hits goes to a BIOS address); its hit kernel
+-- (0x0801691C, BN6's IWRAM `sub_3007218`) has no FloatShoe test (BN5's types have no 0x80), lets the Elec element
+-- reach a submerged or bubbled side, and breaks and marks a guard by its own types.
 
 return define.rules("bn5:effects", {
     shake = "battle",
     spark_steps_at_start = false,
     retype = "bn5",
+    resolve = "bn5",
 })

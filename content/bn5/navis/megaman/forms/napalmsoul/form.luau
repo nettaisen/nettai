@@ -4,7 +4,8 @@
 -- wears his cannon). Its weapons (0x0801CA1C's row 4, loaded by 0x0800DCA0): the buster (routine 0), the fire
 -- bullets (0x19, ./charge), Fire chips charged with A (0x27: any Fire chip but a dimming or dark one, 0x0801090A;
 -- their damage doubled, 0x080103D0, and each lobbed as a napalm bomb, ./charged-chip: 0x08010442), Chaos Unison's
--- (0x37: DarkMetr); no B+Back (0xFF).
+-- (0x37: DarkMetr); no B+Back (0xFF). Its Fire chips with damage, dimming chips too, hit 40 harder used uncharged
+-- with the A charge not full (0x0800D0A6).
 
 local attach_points = require("../../attach_points")
 local buster = require("../../weapons/buster")
@@ -32,6 +33,7 @@ return define.form {
         -- Routine 0x37 (0x0800FA7A): DarkMetr (chip 0xC3), the charge table's row 0x37.
         chaos = chaos.weapon("bn5:napalmsoul/chaos", darkmetr, { 70, 90, 110, 130, 150, 40 }),
     },
+    chip_bonus = { family = "fire", damage = 40, dimming_chips = true, uncharged = true },
     charged_chips = { { family = "fire", damaging = false, plain = true } },
     charged_bonus = { damage = 0xFF },
     charged_action = charged_chip.action,

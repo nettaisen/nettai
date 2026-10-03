@@ -495,11 +495,21 @@ impl Battle {
     /// use is prepared: the chip the first system that answers puts in its
     /// place, or none (the use goes ahead).
     pub(crate) fn systems_chip_check(&mut self, side: u8, navi: ObjectRef, chip: Option<ChipHandle>) -> Option<ChipHandle> {
+        self.systems_chip_answer(SystemHook::ChipCheck, side, navi, chip)
+    }
+
+    /// Side `side`'s systems' `chip_cost(side, navi, chip)`, earlier in
+    /// the preparation: as `systems_chip_check`.
+    pub(crate) fn systems_chip_cost(&mut self, side: u8, navi: ObjectRef, chip: Option<ChipHandle>) -> Option<ChipHandle> {
+        self.systems_chip_answer(SystemHook::ChipCost, side, navi, chip)
+    }
+
+    fn systems_chip_answer(&mut self, hook: SystemHook, side: u8, navi: ObjectRef, chip: Option<ChipHandle>) -> Option<ChipHandle> {
         let r = self.rules[side as usize].ruleset?;
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
-            if let Some(f) = content.defs.system(h).hook(SystemHook::ChipCheck) {
-                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipCheck, navi: Some(navi), chip, weapon: None };
+            if let Some(f) = content.defs.system(h).hook(hook) {
+                let call = HookCall::System { side, slot: slot as u8, hook, navi: Some(navi), chip, weapon: None };
                 if let Value::Def(nettai_content_api::Registry::Chip, c) = crate::behavior::call_hook(self, f, call) {
                     return Some(ChipHandle(c));
                 }

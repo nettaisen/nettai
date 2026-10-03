@@ -2,10 +2,10 @@
 -- MeddySoul's charged shot (`meddysoul/charge`): the original's weapon routine 0xE (0x0800F728) sets 30 damage and 10
 -- more per point of buster Attack plus one (0x0800FE5E), its own counter byte, no element and the capsule's
 -- parameters (variant 0, its column, not running while dimmed), and starts action 0x3E (0x080EEA58): MegaMan throws
--- (the counter window open) and on the tenth tick, with a sound, a capsule (Meddy's, objects/capsule) at the panel
+-- (the counter window open) and on the tenth tick, with a sound, a capsule (Meddy's, chips/meddy/capsule) at the panel
 -- three ahead. 21 ticks, then 6 of recovery.
 
-local capsule = require("../../../../objects/capsule/capsule")
+local capsule = require("../../../../chips/meddy/capsule")
 
 local charge = {}
 
