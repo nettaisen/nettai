@@ -110,7 +110,7 @@ local function trail(me: Object, s: State)
     end
     s.trail = TRAIL_INTERVAL
     battle.afterimage(me, me.pos, {
-        sprite = TRAIL_SPRITE,
+        sprite = s.variant.trail_sprite or TRAIL_SPRITE,
         anim = TRAIL_ANIM,
         flip = bit32.bxor(me.alliance, me.flip),
         lifetime = TRAIL_TICKS,
