@@ -677,7 +677,7 @@ pub struct CheckedFolder {
 
 /// A program on a side's NaviCust, as content reads it
 /// (`battle.navicust`): the program's handle, its color (an index into the
-/// definition's `colors`), its centre on the 7x7 grid, its quarter turns
+/// definition's `colors`), its center on the 7x7 grid, its quarter turns
 /// clockwise, and whether it is compressed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PlacedProgram {
@@ -1093,7 +1093,7 @@ pub trait CoreApi {
     /// `sub_801DC7C(dx, dy)`: every console's HUD numbers `o`'s HP under
     /// it (output only), `dx`, `dy` pixels from where it projects `o`'s
     /// position; `damage`: the damage `o` took instead (its max HP less its
-    /// HP), uncentred.
+    /// HP), uncentered.
     fn show_hp(&mut self, o: ObjectRef, dx: i8, dy: i8, damage: bool);
     /// `sub_801DD34`: `o`'s HP number goes.
     fn hide_hp(&mut self, o: ObjectRef);

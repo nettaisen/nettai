@@ -1,9 +1,9 @@
 //! Showing a frame at the output's size: the 240x160 picture scaled up,
 //! then its text items drawn over it at the output's resolution (the
-//! window and the PNG writer share this).
+//! window and the PNG writer, [`write_png`], share this).
 //!
 //! The scaling policy: the picture takes the largest whole multiple of
-//! 240x160 that fits the output, centred on black, so every frame pixel is
+//! 240x160 that fits the output, centered on black, so every frame pixel is
 //! the same square of output pixels whatever the window's size; only an
 //! output smaller than 240x160 gets a fractional (shrunk) picture. Text is
 //! drawn at the same placement and scale.
@@ -11,6 +11,7 @@
 use crate::compose::{HEIGHT, WIDTH, to_rgb};
 use crate::render::Frame;
 use crate::vfont::TextRenderer;
+use std::path::Path;
 
 /// Where the frame lands in the output: its top left, its size and the
 /// output pixels a frame pixel takes.
@@ -69,14 +70,36 @@ pub fn present(frame: &Frame, text: Option<&mut TextRenderer>, out: &mut [u32], 
     place
 }
 
+/// Write a frame as an RGB PNG, scaled up by an integer factor, with its
+/// text items drawn at that scale by `text` ([`present`]).
+pub fn write_png(path: &Path, frame: &Frame, scale: usize, text: Option<&mut TextRenderer>) -> std::io::Result<()> {
+    let scale = scale.max(1);
+    let (w, h) = (WIDTH * scale, HEIGHT * scale);
+    let mut out = vec![0u32; w * h];
+    present(frame, text, &mut out, w, h);
+    write_rgb_png(path, &out, w, h)
+}
+
+/// Write 0RGB pixels, `w` by `h`, as an RGB PNG.
+pub fn write_rgb_png(path: &Path, out: &[u32], w: usize, h: usize) -> std::io::Result<()> {
+    let rgb: Vec<u8> = out.iter().flat_map(|&c| [(c >> 16) as u8, (c >> 8) as u8, c as u8]).collect();
+    let file = std::io::BufWriter::new(std::fs::File::create(path)?);
+    let mut enc = png::Encoder::new(file, w as u32, h as u32);
+    enc.set_color(png::ColorType::Rgb);
+    enc.set_depth(png::BitDepth::Eight);
+    let mut writer = enc.write_header().map_err(std::io::Error::other)?;
+    writer.write_image_data(&rgb).map_err(std::io::Error::other)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn whole_multiples_centred_and_shrunk_only_below_one() {
+    fn whole_multiples_centered_and_shrunk_only_below_one() {
         assert_eq!(Placement::fit(960, 640), Placement { x: 0, y: 0, width: 960, height: 640, scale: 4.0 });
-        // A window between multiples: the largest that fits, centred.
+        // A window between multiples: the largest that fits, centered.
         let p = Placement::fit(1000, 700);
         assert_eq!((p.x, p.y, p.width, p.height, p.scale), (20, 30, 960, 640, 4.0));
         assert_eq!(p.frame_pixel(20, 30), Some((0, 0)));

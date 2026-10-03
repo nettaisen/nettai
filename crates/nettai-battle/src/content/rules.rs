@@ -246,7 +246,7 @@ impl NaviCustRules {
         self.boards.get(expansions as usize)
     }
 
-    /// Whether a program of `shape` can be placed with its centre at
+    /// Whether a program of `shape` can be placed with its center at
     /// `(x, y)` on `board` (BN6's `sub_813BB00`): every cell it covers is a
     /// cell of the board or its frame, and not all of them the frame.
     pub fn fits(board: &Board, shape: &crate::navicust::Shape, x: u8, y: u8) -> bool {
@@ -355,7 +355,7 @@ impl PanelRules {
 }
 
 /// What one panel type is, and what it does (docs/design/bn5-map.md
-/// §15.2; the behaviours are the engine's, keyed by the panel type, their
+/// §15.2; the behaviors are the engine's, keyed by the panel type, their
 /// numbers the game's).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PanelTypeRule {

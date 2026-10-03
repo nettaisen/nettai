@@ -16,7 +16,7 @@ export type State = {
     look: Identity?,
 }
 
--- How far in front of its panel's centre it starts, how fast it flies
+-- How far in front of its panel's center it starts, how fast it flies
 -- (16.16); its height, in whole pixels.
 local AHEAD, SPEED, HEIGHT = 0x12_0000, 0x6_0000, 0x10
 

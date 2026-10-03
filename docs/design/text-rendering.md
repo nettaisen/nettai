@@ -1,7 +1,7 @@
 # Text rendering: the extracted pixel fonts, and font files
 
 **Status (2026-10-02): built.** The user chose crisp text at the window's resolution (option B of §2.1, which §6
-had rejected as the default) with a bundled open-licence font, as the default; §9 "As built" says what was built
+had rejected as the default) with a bundled open-license font, as the default; §9 "As built" says what was built
 and how, and records the decisions. §10 is the languages built on it (`--lang en|ja`) and where display text lives
 (no definition holds any: `locales/<lang>.toml`). §0 to §8 are the investigation as written before it, unchanged.
 
@@ -20,7 +20,7 @@ definitions, `compat/text.toml`), [rollback.md](rollback.md) §3 (presentation u
 ## 0. Summary
 
 - **BN6 draws battle text with two fonts, and a lot of what looks like text is pictures.** The 8x16 font (224
-  glyphs, fixed 8-pixel advance, a face colour and a shadow colour) draws chip names, telops, the other player's
+  glyphs, fixed 8-pixel advance, a face color and a shadow color) draws chip names, telops, the other player's
   used chip and the HUD's text lines. The dialogue font (16x12 cells, proportional advance from a width table,
   about 460 glyphs with kana and kanji) draws the chatbox: chip descriptions and the no-running message. Banners,
   every number but the turn countdown (HP, damage, the count box, round numbers), "PAUSE" and "Cstmzing..." are
@@ -45,7 +45,7 @@ definitions, `compat/text.toml`), [rollback.md](rollback.md) §3 (presentation u
     banners' squash and the sprite limit work as they do now.
   - Three modes: `original` (extracted fonts only: what the comparison uses), `font` (font files only: what a pack
     without a ROM uses), and `auto`, the default: the extracted font wherever it can spell the whole string in its
-    box, a bundled open-licence pixel font for the strings it can't.
+    box, a bundled open-license pixel font for the strings it can't.
   - `auto` changes no pixel of BN6's own content, so the default stays comparable with the original, and mods,
     translations and Japanese text with kanji stop losing characters.
   - Numbers and the picture labels stay pictures in every mode. Banners are out of scope.
@@ -59,17 +59,17 @@ definitions, `compat/text.toml`), [rollback.md](rollback.md) §3 (presentation u
   - Names and descriptions are part of the content hash. A translation that edited them would make two peers'
     content differ. Display strings for other languages have to live outside the hashed content (§4.3).
 - **The work**: about 1,300 to 1,600 lines in the frontend and the content crates for steps 1 to 5 of §6.3, one
-  small dependency (`fontdue`), and one or two committed font files with their licences. It should start after
+  small dependency (`fontdue`), and one or two committed font files with their licenses. It should start after
   the custom screen is drawn (§6.5).
 
 ## 1. Today's state
 
 ### 1.1 The fonts the original has
 
-| Font | Where (original labels) | Cell and advance | Colours | Glyphs | In the pack |
+| Font | Where (original labels) | Cell and advance | Colors | Glyphs | In the pack |
 |---|---|---|---|---|---|
 | The 8x16 font | `dword_86B7AE0`, drawn into tiles by `renderTextGfx_8045F8C` and as sprite glyphs by the HUD tasks | 8x16 cell, one glyph a cell, advance always 8; the ink sits almost wholly in rows 3 to 14 and is 7 pixels wide plus the shadow | 2: face (index 1) and a shadow to the right and below (index 2) | 0xE0 (224) | yes: `graphics/hud/font.png` and `font_chars` in `hud.json` |
-| The dialogue font | `byte_86ACD60`, drawn by `sub_3006F8C` (the chatbox) and `sub_80461D0` | 16x12 cell; advance from a width table (`byte_8043CA4`; two more tables for other screens): capitals and digits 8, `I` 6, lowercase 6 to 8, the space 8, kana and kanji 11 | a face colour (index 1) and a softer one on some pixels (index 3); the chatbox adds a colour offset to pick the text colour | about 460: the first 0xE4 by one byte, the rest by a two-byte code (`E4 nn`); the kana and about two hundred kanji are still in the US ROM | no (nothing draws the chatbox yet) |
+| The dialogue font | `byte_86ACD60`, drawn by `sub_3006F8C` (the chatbox) and `sub_80461D0` | 16x12 cell; advance from a width table (`byte_8043CA4`; two more tables for other screens): capitals and digits 8, `I` 6, lowercase 6 to 8, the space 8, kana and kanji 11 | a face color (index 1) and a softer one on some pixels (index 3); the chatbox adds a color offset to pick the text color | about 460: the first 0xE4 by one byte, the rest by a two-byte code (`E4 nn`); the kana and about two hundred kanji are still in the US ROM | no (nothing draws the chatbox yet) |
 | The banner letters | per banner, 20 pointers to 8x16 letter pictures that include the bar behind them (`pt_801EF84`) | 8x16, 20 cells a banner | the banner palette | (pictures) | as one picture a banner: `graphics/hud/banners/<name>.png` |
 
 The text encoding is one table, `compat/text.toml` (what each byte below 0xE0 draws, as UTF-8). Glyphs with no
@@ -82,14 +82,14 @@ character of their own had bracketed names: `[EX]`, `[SP]`, `[RV]`, `[BX]`, `[FZ
 "Cells" below are the 8-pixel columns and rows of the HUD's tile layer. "Drawn" says whether the frontend draws
 it today.
 
-| What | The string comes from | How it becomes pixels | The original's layout | Layer and colours | Drawn |
+| What | The string comes from | How it becomes pixels | The original's layout | Layer and colors | Drawn |
 |---|---|---|---|---|---|
-| The next chip's name in the hand window | the chip definition's `name` (UTF-8), through the hand's chip handle | `Hud::glyphs` spells it in the 8x16 font, longest glyph name first; at most 8 glyphs | from cell column 0 on rows 18 and 19 (y 144); the damage digits follow the last glyph at once, then `+` and the bonus, then `x2` | the HUD tile layer (priority 1), in the HP box's palette, so it turns with the HP box's colour state (normal, healing, hurt or low) | yes |
-| A telop | the chip the engine's `Banner::telop` names (`Battle::telop_for` gives the viewer's side of it), then the definition's `name` | the 8x16 font as 8x16 sprite parts | name, damage, `+bonus` centred as 15 glyphs are in the viewer's half of the screen (`x = place + (15 - n) * 4`; places (0, 32) and (120, 32)); `x2` after; the other player's moves 16 pixels left for an `x2`. No scroll. The banners' vertical squash: it grows over 5 ticks, holds 0x30, shrinks over 5 (`sub_801CE28`) | sprites of priority 0, front layer, bucket 6; the HP box's normal palette | yes |
+| The next chip's name in the hand window | the chip definition's `name` (UTF-8), through the hand's chip handle | `Hud::glyphs` spells it in the 8x16 font, longest glyph name first; at most 8 glyphs | from cell column 0 on rows 18 and 19 (y 144); the damage digits follow the last glyph at once, then `+` and the bonus, then `x2` | the HUD tile layer (priority 1), in the HP box's palette, so it turns with the HP box's color state (normal, healing, hurt or low) | yes |
+| A telop | the chip the engine's `Banner::telop` names (`Battle::telop_for` gives the viewer's side of it), then the definition's `name` | the 8x16 font as 8x16 sprite parts | name, damage, `+bonus` centered as 15 glyphs are in the viewer's half of the screen (`x = place + (15 - n) * 4`; places (0, 32) and (120, 32)); `x2` after; the other player's moves 16 pixels left for an `x2`. No scroll. The banners' vertical squash: it grows over 5 ticks, holds 0x30, shrinks over 5 (`sub_801CE28`) | sprites of priority 0, front layer, bucket 6; the HP box's normal palette | yes |
 | A hidden telop, "????" | a literal in the frontend (the original shows the name of chip 0x171) | four `?` of the 8x16 font | as a telop | as a telop | yes |
 | The chip the other player just used | `Battle::used_chips`, then the definition's `name` | the 8x16 font as sprite parts | laid out as a telop at the right-hand place, without the squash, for 60 ticks | as a telop | yes |
 | "????" beside the mugshot and at the right edge (a defensive chip is set) | nothing: it is a picture | HUD layer tiles 0x1CC and 0x1CD | 4x2 cells at column 6 or 26, rows 2 and 3 | HUD tile layer | yes |
-| The turn countdown and "TIME UP!" | the pack's `hud.json` `texts` (lines 3 to 13 of the ROM's HUD text script, as glyph numbers; the seconds are lines like `"    5   "`) | the 8x16 font | 8 glyphs from column 11, rows 0 and 1; the padding spaces in the line centre it | HUD tile layer, HP box palette | yes |
+| The turn countdown and "TIME UP!" | the pack's `hud.json` `texts` (lines 3 to 13 of the ROM's HUD text script, as glyph numbers; the seconds are lines like `"    5   "`) | the 8x16 font | 8 glyphs from column 11, rows 0 and 1; the padding spaces in the line center it | HUD tile layer, HP box palette | yes |
 | The HUD message line, "COUNTER HIT!" | `Battle::message` picks the line; the text is the pack's `texts` line 14 | the 8x16 font | 17 glyphs from column 7, rows 2 and 3; padded with spaces | HUD tile layer, HP box palette | yes |
 | The other HUD lines: "DOUBLE DELETE!", "TRIPLE", "QUADRUPLE", "PENALTY!!", "SHUFFLE!", "LEFT 0" | the pack's `texts` | the 8x16 font | as the message line | HUD tile layer | no (virus battles and the custom screen's) |
 | "VS" between the judge's numbers | the frontend's literal (the pack's `texts` line 2 holds it too) | the 8x16 font | columns 14 and 15, rows 5 and 6 | HUD tile layer | yes |
@@ -109,7 +109,7 @@ through a font.
   other two of the 47 banner entries are the telops' places). The round and turn numbers are the banner digits
   (`banner-digits.png`).
 - **Numbers**: the HP box's digits and the damage digits with `+` and `x2` (HUD layer tiles), the opponent's HP
-  digits under its navi (sprites in three colours), the judge's two numbers, the count box beside the mugshot
+  digits under its navi (sprites in three colors), the judge's two numbers, the count box beside the mugshot
   (0 to 10, one picture each), the custom screen's damage digits and chip code letters.
 - **Labels**: "PAUSE" (five sprite glyphs), "Cstmzing..." (8x2 tiles), the full gauge's "L or R", and the custom
   screen's fixed labels.
@@ -161,7 +161,7 @@ Three choices are independent, and it helps to keep them apart:
 - What it needs from the renderer: nothing new. `Layer::draw_tile` and `SpritePart` already take any tiles.
 - Interleaving comes for free, because the text is in the same composition as everything else:
   - priority: HUD-layer text is under priority-0 sprites (banners, the mugshot), telops are sprites of priority 0;
-  - a dimming darkens only the stage's palettes, so text keeps its colours, as it does now;
+  - a dimming darkens only the stage's palettes, so text keeps its colors, as it does now;
   - the transformation's fade and the screen fades reach text through `Fades`, as now;
   - the telop's squash is `SpritePart::vscale` on the text's parts;
   - camera shake does not move HUD text (the HUD layer and the HUD's screen-placed sprites don't shake), and
@@ -183,7 +183,7 @@ Three choices are independent, and it helps to keep them apart:
   - a per-pixel depth mask from `compose` (the priority and rank of what won each frame pixel), so an item is
     hidden where something in front of it was drawn. Without it, HUD-layer text shows through the mugshot and
     banners that cover it;
-  - the fades applied to text colours by the text layer (the screen fade, and the HUD fade for HUD-layer items);
+  - the fades applied to text colors by the text layer (the screen fade, and the HUD fade for HUD-layer items);
     the telop's squash as a transform; sprites blended over text approximated;
   - the window (`app.rs`) and the PNG writer (`headless.rs`) compositing the items after scaling, and a real
     scaling policy if the window stops being an integer multiple;
@@ -196,14 +196,14 @@ vector font.
 
 ### 2.2 Libraries
 
-The versions are the ones examined; licences and dependencies are read from their manifests. Newer versions may
+The versions are the ones examined; licenses and dependencies are read from their manifests. Newer versions may
 exist.
 
-| Crate | What it does | Licence | Dependencies | Notes |
+| Crate | What it does | License | Dependencies | Notes |
 |---|---|---|---|---|
 | `fontdue` 0.9 | parses TTF/OTF and rasterizes outlines; a simple layout helper | MIT OR Apache-2.0 OR Zlib | `ttf-parser`, `hashbrown` | No shaping (its README points to cosmic-text for that), no hinting, no embedded bitmap strikes. One maintainer. The smallest way to turn a font file into glyph bitmaps |
 | `ab_glyph` 0.2 | parses (through `owned_ttf_parser`) and rasterizes outlines; exposes embedded bitmap strikes (`EBDT`: mono, 2-, 4-, 8-bit) as raw data | Apache-2.0 | `ab_glyph_rasterizer`, `owned_ttf_parser` → `ttf-parser` | No shaping, no hinting. Reads the bitmap strikes that `.otb` and some pixel TTFs carry |
-| `swash` 0.2 | scaling with hinting, rasterizing (`zeno`), bitmap strikes, colour glyphs | Apache-2.0 OR MIT | `skrifa` → `read-fonts`; optional `zeno`, `yazi` | The rasterizer cosmic-text uses. Hinting is what makes small vector text tolerable |
+| `swash` 0.2 | scaling with hinting, rasterizing (`zeno`), bitmap strikes, color glyphs | Apache-2.0 OR MIT | `skrifa` → `read-fonts`; optional `zeno`, `yazi` | The rasterizer cosmic-text uses. Hinting is what makes small vector text tolerable |
 | `harfrust` 0.3 | text shaping: the HarfBuzz port | MIT | `read-fonts`, `bitflags`, `bytemuck`, `smallvec`, `core_maths` | **It replaces `rustybuzz`**, whose repository was archived in July 2026 with a note to move to HarfRust |
 | `cosmic-text` 0.15 | the whole stack: font database and fallback, shaping (HarfRust), bidi, line breaking, layout, rasterizing (swash) | MIT OR Apache-2.0 | 14 direct (`fontdb`, `harfrust`, `skrifa`, `swash`, `unicode-bidi`, `unicode-linebreak`, `unicode-script`, `unicode-segmentation`, `rangemap`, `self_cell`, `smol_str`, ...); about 40 packages in its tree without system-font discovery, some 30 of them new to this workspace | Its default features discover system fonts (`fontconfig`); turned off, it uses only the font data it is given. The right tool for option B and for scripts that need shaping |
 | `bdf-parser` 0.1 | parses BDF bitmap fonts | MIT OR Apache-2.0 | `nom`, `bstr`, `strum`, `thiserror` | BDF is a small line-oriented text format; a reader of about 200 lines needs no crate |
@@ -225,22 +225,22 @@ reaches the simulation (§5).
 
 ### 2.3 Which font
 
-The repository can hold fonts under open licences (OFL, Apache, public domain or as permissive). It cannot hold
+The repository can hold fonts under open licenses (OFL, Apache, public domain or as permissive). It cannot hold
 a font traced from the ROM's glyphs: that is ROM-derived media.
 
 | Source | For | Against |
 |---|---|---|
-| **A bundled open-licence pixel font** | text always draws, the same on every machine; fits the frame; can be chosen to sit well beside BN6's art | no open font is BN6's; it needs choosing, and a CJK one is large (thousands of glyphs; not measured here) |
+| **A bundled open-license pixel font** | text always draws, the same on every machine; fits the frame; can be chosen to sit well beside BN6's art | no open font is BN6's; it needs choosing, and a CJK one is large (thousands of glyphs; not measured here) |
 | **A bundled general UI font** (Noto Sans, Inter, M PLUS) | wide coverage, familiar | only usable with option B |
-| **The user's system fonts** | nothing to bundle; covers the user's language | differs on every machine, so screenshots and tests don't reproduce; needs font discovery (`fontdb`, fontconfig on Linux); licence unknown. Reasonable only as an explicit `--font <path>` |
+| **The user's system fonts** | nothing to bundle; covers the user's language | differs on every machine, so screenshots and tests don't reproduce; needs font discovery (`fontdb`, fontconfig on Linux); license unknown. Reasonable only as an explicit `--font <path>` |
 | **A font the content or the pack names** | a mod, a translation or a from-scratch pack brings its own look and coverage; BN6's pack is the case where the font happens to be extracted | the frontend still needs a fallback for a pack that names none |
 
 These combine: the pack or the content root names fonts for the text roles, and the frontend bundles a fallback.
 
-Candidates, with licences as their projects state them (checked 2026-10-01; read the licence file in the release
+Candidates, with licenses as their projects state them (checked 2026-10-01; read the license file in the release
 again before committing one):
 
-| Font | Size | Covers | Licence | Fits |
+| Font | Size | Covers | License | Fits |
 |---|---|---|---|---|
 | Ark Pixel Font | 10 and 12 px; monospaced and proportional builds; released as OTF, TTF, OTB, BDF, PCF | Latin, kana, kanji (Japanese, Chinese and Korean builds) | OFL 1.1 | the dialogue role (the original's is 12 rows tall with 11-pixel kana), and names where proportional is accepted. Actively maintained; its 16 px size was dropped in September 2026 |
 | Fusion Pixel Font | 8, 10, 12 px | Latin and CJK, merged from Ark Pixel, Misaki, Galmuri and others | OFL 1.1 | as Ark Pixel, with an 8 px size |
@@ -249,14 +249,14 @@ again before committing one):
 | Galmuri | 8, 10, 12, 15 px | Latin-1, kana, 6,355 kanji, Hangul | OFL 1.1 | Korean; a DS-era look |
 | GNU Unifont | 8x16 and 16x16 | the whole Basic Multilingual Plane | GPLv2+ with the font exception, and OFL 1.1 since 13.0.04 | the last-resort fallback: it has everything, in the original's cell height, but thin, and CJK takes two cells |
 | Terminus | 8x16 (and others), with bold | Latin, Greek, Cyrillic: 1,356 characters | OFL 1.1 | Latin names in 8x16 cells with a bold weight near the original's |
-| Spleen | 8x16 (and others); BDF, OTB, OTF | Latin-1, Latin Extended-A | BSD 2-Clause | as Terminus; permissive but not one of the three licences named |
+| Spleen | 8x16 (and others); BDF, OTB, OTF | Latin-1, Latin Extended-A | BSD 2-Clause | as Terminus; permissive but not one of the three licenses named |
 | Pixel Operator (and its Mono, Bold and 8 px cuts) | 16 px and 8 px | Latin | CC0 1.0 (its HB cut is OFL) | proportional Latin at 7 pixels a letter: 8 letters fit the 64-pixel name box |
 | Press Start 2P | 8x8, 8-pixel advance | Latin, Greek, Cyrillic | OFL 1.1 | drops into the 8-pixel cells unchanged, at half the height; an arcade look |
 | Departure Mono | 11 px, monospaced | Latin | OFL 1.1 | status and debug text |
 | Noto Sans, Noto Sans JP, M PLUS 1p, Inter | vector | very wide | OFL 1.1 | option B only |
 
 Under the OFL a subset or otherwise modified font may not keep a Reserved Font Name, if the font declares one.
-Committing a release file unmodified, with its licence text beside it, avoids the question.
+Committing a release file unmodified, with its license text beside it, avoids the question.
 
 ### 2.4 Layout
 
@@ -265,7 +265,7 @@ numbers (120 pixels, half the screen), 8 and 17 for the HUD lines, and 192 pixel
 
 - **Cell fonts** (the extracted 8x16 font, or any font with an 8-pixel advance): lay out by cells as today. This
   is the only layout the reference mode uses.
-- **Proportional fonts**: lay out by the font's advances and place by pixel width. The telop's centring becomes
+- **Proportional fonts**: lay out by the font's advances and place by pixel width. The telop's centering becomes
   `x = place + (120 - width) / 2`, which is the original's formula when every advance is 8.
 - **A name wider than its box**, in order:
   1. if the font stack has a narrower or smaller cut (12, then 10, then 8 pixels), use the first that fits;
@@ -320,7 +320,7 @@ font but the extracted one differs wherever it draws.
   check that everything else is still identical: that catches a font mode that disturbed the sprite limit, the
   layer order or a fade. This is optional; the reference mode is the real check.
 - **Tests in this repository** use a small hand-made bitmap font, as the frontend's tests use synthetic assets
-  now: layout (centring, overflow, ellipsis, wrap), fallback choice, and exact bitmaps. The bundled font is
+  now: layout (centering, overflow, ellipsis, wrap), fallback choice, and exact bitmaps. The bundled font is
   tested through its bitmap form, which is exact (§2.2).
 
 Why `auto` and not `font` as the default: the project measures itself by pixel-exactness, the extracted font is
@@ -344,7 +344,7 @@ trade the original look for consistency in every frame, to fix a problem BN6's o
   mode, it should be the text (`"line one\nline two"`), with the engine deriving the counts as it derives a
   description's line count. The agent drawing the custom screen will need this first.
 - **The HUD's lines and "????".** "TIME UP!", "COUNTER HIT!", the delete lines and the hidden chip's name are
-  game text. They should be strings in the content root (a small strings module or table), with their centring
+  game text. They should be strings in the content root (a small strings module or table), with their centering
   done by the frontend instead of by padding spaces. The pack's `texts` then only checks them.
 - **Which fonts a pack or content root offers, and for which role.** Two roles exist: names (the cell font) and
   dialogue. BN6's pack offers its extracted fonts for both; another pack names font files. This is the
@@ -373,7 +373,7 @@ have the same number of lines, because nothing in the simulation reads it.
 - The text mode and the user's font choice: a preference.
 - Rasterizer settings, the fallback order beyond what a pack names, the shadow's shape.
 - The digit pictures and the labels of §1.3.
-- A per-string style. If a string ever needs emphasis or a colour, that is markup in the dialogue text, as the
+- A per-string style. If a string ever needs emphasis or a color, that is markup in the dialogue text, as the
   original's text commands are, and can wait for a string that needs it.
 
 ## 5. Rollback netplay
@@ -409,7 +409,7 @@ Text rendering is presentation only, and stays so under this design.
 3. **Drawn into the 240x160 frame** (§2.1 A), through the existing layers and sprite parts.
 4. **Three modes**, `--text original|auto|font`, default `auto`, and `--font <path>[:<px>]` to put a font file
    at the head of the stack.
-5. **A bundled fallback font** under an open licence, committed with its licence text.
+5. **A bundled fallback font** under an open license, committed with its license text.
 6. **Numbers and picture labels unchanged. Banners out of scope.**
 
 ### 6.2 Why, and the alternative I rejected
@@ -448,7 +448,7 @@ Sizes: S is up to about 150 lines, M 150 to 500, L more than that or new archite
 | 1 | The text layer with the extracted fonts only: text items, cell layout, the two outputs (HUD tiles, sprite parts). Convert the sites of §1.2. No pixel may change: the frame comparison is the test | M (about 400) |
 | 2 | The bitmap font type and its loaders: from the pack's fonts; a BDF reader; TTF and OTF through `fontdue` behind a cargo feature. Tests with a hand-made font | M (about 350) |
 | 3 | Proportional layout, the overflow rules, inline marks, the font stack and per-string fallback; `--text` and `--font`; the audit reports a fallback as a note in `auto` and a missing glyph as a problem in `original` | M (about 350) |
-| 4 | Choose and commit the fallback font with its licence; the content check's warnings (a name outside the glyph table or over 8 glyphs, text not in normalization form C); docs | S, plus the choice |
+| 4 | Choose and commit the fallback font with its license; the content check's warnings (a name outside the glyph table or over 8 glyphs, text not in normalization form C); docs | S, plus the choice |
 | 5 | The HUD's lines and "????" as content strings; per-language strings tables outside the hash; the frontend's `--lang` | M (about 300, plus content) |
 | 6 | Optional: the comparison's text mask (the frontend writes text rectangles; the script masks them) | S, in both repositories |
 | 7 | Optional, a separate decision: output-resolution text. The renderer returns text items and a depth mask; the window and the PNG writer composite them; cosmic-text with supplied fonts only; a UI font bundled | L (800 to 1,200, some thirty new crates) |
@@ -472,7 +472,7 @@ pixel-identical, and steps 1, 3 and 5 should each end with the frame comparison 
 - `content/bn6`: the strings of step 5; `run_message` as text.
 - `crates/nettai-battle`: only step 0's `run_message` reading (counts derived from text). Nothing else: the engine
   has no part in text.
-- A new `assets/fonts/<family>/` (or the frontend crate's own `assets/`) for the committed font and its licence.
+- A new `assets/fonts/<family>/` (or the frontend crate's own `assets/`) for the committed font and its license.
 - `docs/frontend.md`, `docs/design/asset-formats.md` §4, and this document rewritten as built.
 - In the verification workspace: the comparison passes `--text original`; optionally the mask.
 
@@ -501,7 +501,7 @@ edited now.
 3. **The fallback font or fonts.** My suggestion is one family for both roles, Ark Pixel 12 px proportional in
    its Japanese build (OFL: Latin, kana, kanji), and to audition it in the hand window and a telop beside two
    cell fonts before committing: Terminus 8x16 bold (OFL) for Latin names in the original's cells, and k8x12 for
-   Japanese in 8-pixel cells if its licence notice is acceptable. Whether to commit a CJK font now (a large file)
+   Japanese in 8-pixel cells if its license notice is acceptable. Whether to commit a CJK font now (a large file)
    or Latin now and CJK with the Japanese content is part of this.
 4. **Whether numbers change.** Recommended: no, in every mode.
 5. **Whether banners are in scope.** Recommended: no; step 8 if a pack ever adds navis.
@@ -522,7 +522,7 @@ edited now.
 - **Font size on disk.** A CJK pixel font holds thousands of glyphs and is probably megabytes; I did not download
   one to measure. It should be loaded from a file at run time rather than compiled into the binary, and its size
   checked before it is committed.
-- **The font candidates were not auditioned in the frame**, apart from the three pixel fonts of §8. Their licences
+- **The font candidates were not auditioned in the frame**, apart from the three pixel fonts of §8. Their licenses
   and sizes are from their projects' pages; how each looks beside BN6's HUD is still to be seen (step 4).
 - **`fontdue` has one maintainer and no hinting.** For pixel fonts at their native size neither matters. If it
   ever does, `ab_glyph` gave identical bitmaps in the spike and also reads embedded bitmap strikes, and a
@@ -544,7 +544,7 @@ Nothing from them is committed.
   every coverage value was 0 or 255, every advance a whole number of pixels (7, 5 and 8), and the two crates'
   results were identical. The same fonts drawn at four times the size on a 960-pixel-wide canvas match the
   frame-resolution drawing scaled up, so an output-resolution layer adds nothing for them.
-- **A UI font in the frame is not usable.** Noto Sans at 11 px gave a spread of some 150 distinct grey levels
+- **A UI font in the frame is not usable.** Noto Sans at 11 px gave a spread of some 150 distinct gray levels
   over one eight-letter name, different between the two rasterizers; drawn into the frame it is soft with
   antialiasing and uneven without. Noto Sans JP kanji at 10 and 12 px in the frame are unreadable. Both are sharp
   on the 960-pixel canvas, where they no longer look like the game.
@@ -567,12 +567,12 @@ The user's request: "implement native font rendering for places in the ui with d
    fallback font of §6.1 were not built.
 2. **The default mode: the font.** `--text font|original`, default `font`. `original` is today's exact pixel
    rendering, the reference the frame comparison and the tests use.
-3. **The font: a bundled open-licence font**, committed with the frontend with its licence text, so the text looks
+3. **The font: a bundled open-license font**, committed with the frontend with its license text, so the text looks
    the same everywhere. The user chose **Murecho** ("murecho supports jp text and looks mostly like your current
    font"), over my first pick, Saira (§9.4); the description text's weight is the user's too (300).
 4. **Numbers, banners and other pictures stay pixel art** (§6.6 4 and 5).
-5. **The font lives with the frontend**: `crates/nettai-frontend/fonts/murecho/`, with `OFL.txt`. `--font PATH`
-   puts another TrueType or OpenType file in its place.
+5. **The font lives with the drawing**: `crates/nettai-render/fonts/murecho/` (nettai-frontend's until the drawing
+   became its own crate), with `OFL.txt`. `--font PATH` puts another TrueType or OpenType file in its place.
 6. Translations (§4.3) and the HUD's lines as content strings (§4.2) were not part of it. Translations came
    next: §10.
 
@@ -584,7 +584,7 @@ Every string below comes from content or varies; each is drawn in the original's
 |---|---|---|---|---|
 | The next chip's name (the hand window) | cell | its glyphs' cells from (0, 144); the damage digits stay after them | the HUD layer's | the HUD layer's, the screen's |
 | The chip window's name (custom screen) | cell | the window's 8 name cells where its map puts them, cut to the window's columns while it slides | the HUD layer's | as above (Beast Out's darkening, a Cross's whitening) |
-| A telop, "????" for a hidden one | cell | the name's cells, centred; the digits after them | its sprite parts' (front layer, bucket 6) | the sprites', the screen's; the banners' squash |
+| A telop, "????" for a hidden one | cell | the name's cells, centered; the digits after them | its sprite parts' (front layer, bucket 6) | the sprites', the screen's; the banners' squash |
 | The chip the other player just used | cell | as a telop, without the squash | its sprite parts' | as a telop |
 | The Program Advance animation's names and codes | cell | 8 cells for the name, the 9th for the code | the HUD layer's | the HUD layer's |
 | The enemy names (round's first screen) | cell | their glyphs' cells on BG0, ending at column 30 | BG0's | BG0's (the HUD palettes') |
@@ -601,10 +601,10 @@ the frontend's own status text (`text.rs`).
 
 - **Collecting** (`textlayer.rs`): the places that draw text ask a `TextSink`. In the font mode, for a string the
   font has every character of, they leave its glyphs out of the frame and hand the sink a `TextItem` (the words,
-  the role, the box, the alignment, a clip, the face and shadow colours of the palette the original draws it with,
+  the role, the box, the alignment, a clip, the face and shadow colors of the palette the original draws it with,
   the squash, how many units are printed). A string the font lacks a character of is drawn whole in the game's
   font, as in the original mode (a string never mixes two fonts). What the glyphs leave behind is the original's
-  background: blank HUD-layer cells, the chip window's name cells in the window's colour 8, blank sprite parts in
+  background: blank HUD-layer cells, the chip window's name cells in the window's color 8, blank sprite parts in
   place of a telop's glyph parts (as many, where they were, so the sprite limit drops the same objects), the
   chatbox's 18 sprites blank. The helpers are `fonts::layer_text` and `fonts::layer_line`; the telop, the custom
   screen's names and the chatbox ask the sink themselves.
@@ -618,7 +618,7 @@ the frontend's own status text (`text.rs`).
 - **`Renderer::render` returns a `Frame`**: the picture, the depth keys and the items, each given its key and its
   fades: its layer's (the HUD layer's for the HUD layer and BG0, the sprites' for sprite items) and then the
   screen's. The HUD layer's shake (the custom screen's) moves its items with it.
-- **Colours and fades**: the face and the shadow are the palette's indices 1 and 2 (the chip window's 9 and 10, as
+- **Colors and fades**: the face and the shadow are the palette's indices 1 and 2 (the chip window's 9 and 10, as
   its name's pixels are shifted by 8; the chatbox's index 1 and no shadow), through `apply_fade` as the frame's
   own pixels go. So a dimming leaves text as it leaves the HUD, Beast Out's fade darkens the custom screen's names,
   a Cross's choice and the FlashBomb's flash whiten them, and the screen fades take everything.
@@ -627,7 +627,7 @@ the frontend's own status text (`text.rs`).
 - **Drawing** (`present.rs`, `vfont.rs`): the window (`app.rs`) and the PNG writer (`headless.rs`) both go through
   `present`: the frame scaled to the output, then each item laid out and rasterized at the output's scale and
   blended over it, pixel by pixel through the item's clip and the depth keys of the frame pixel under it.
-- **The scaling policy**: the picture takes the largest whole multiple of 240x160 that fits the output, centred
+- **The scaling policy**: the picture takes the largest whole multiple of 240x160 that fits the output, centered
   on black, so every frame pixel is the same square whatever the size; only an output smaller than 240x160 gets a
   fractional, shrunk picture. The window is resizable and follows this; text is drawn at the same placement and
   scale. Headless PNGs are `--png-scale` times 240x160, exactly.
@@ -640,7 +640,7 @@ the frontend's own status text (`text.rs`).
 ### 9.4 Layout
 
 - **Roles.** The 8x16 font's strings (`Role::Cell`): capitals 10 frame pixels high (the original's take rows 4
-  to 13 of the 16), the baseline 14 rows down, weight 700, a shadow in the palette's shadow colour half a frame
+  to 13 of the 16), the baseline 14 rows down, weight 700, a shadow in the palette's shadow color half a frame
   pixel right and down (the original's is a pixel; half reads better at 3x and 4x). The dialogue font's
   (`Role::Dialogue`): capitals 9 pixels high, the baseline 10.5 rows down, weight 300, no shadow.
 - **Fitting.** The box is the original's: the cells its glyphs take (one a character the pack's font lacks, up to
@@ -649,7 +649,7 @@ the frontend's own status text (`text.rs`).
   free at the box's right, as the original's glyphs do before the digits. A string too wide is, in order: drawn in
   narrower cuts down to the width axis's "condensed" (75) for a font that has the axis; squeezed horizontally down
   to 85%, or 70% for a string with kana or kanji (their glyphs are an em wide where the 8x16 font's cells are about
-  half that); then made smaller, centred on its capitals. It never leaves its box. With the bundled font, 123 of
+  half that); then made smaller, centered on its capitals. It never leaves its box. With the bundled font, 123 of
   the 342 chip names are squeezed in their own cells, and three (Magnum, TmhkMan[EX], TmhkMan[SP]) are also made
   3% smaller. A chatbox line's box is the open box's inside, which the frontend reads off the box's map
   (`chatbox::text_room`: the right frame's inner edge on a text row), not the 192-pixel line buffer, which runs
@@ -657,9 +657,9 @@ the frontend's own status text (`text.rs`).
   description and message lines in en.toml and ja.toml, ten are wider than their box at the font's width, all
   Japanese Crosses' descriptions in the description box, and are squeezed to 92-100%; the test
   `every_chatbox_line_fits_its_box` measures them all.
-- **Alignment**: left, as the original's glyphs start their cells; a telop's name centred in its cells.
+- **Alignment**: left, as the original's glyphs start their cells; a telop's name centered in its cells.
 - **Marks**: a mark is one character (§10.5). One the font has is the font's (Ⓡ, ✕, ○); else the layer draws it:
-  a button (Ⓐ, Ⓑ) as its letter at 68% of the size in a ring centred on the capitals, a stacked mark (EX, SP) as
+  a button (Ⓐ, Ⓑ) as its letter at 68% of the size in a ring centered on the capitals, a stacked mark (EX, SP) as
   its two letters one above the other in one cell.
 - **Printing**: a chatbox line is laid out whole and drawn up to the units the chatbox has printed, so the line
   doesn't move as it grows.
@@ -699,7 +699,7 @@ Murecho (Neil Summerour, Positype; SIL Open Font License 1.1, no Reserved Font N
   all 2,404 frames (1,667, and the custom screen's 737).
 - **The comparison pins the mode**: the verification workspace's `frontend-compare` scripts pass `--text original`
   to a frontend that has the option (a baseline from before it gets nothing extra).
-- **Tests** (`cargo test -p nettai-frontend`): the depth mask; text hidden where a sprite in front won and faded
+- **Tests** (`cargo test -p nettai-render`): the depth mask; text hidden where a sprite in front won and faded
   with its layer; a font-mode telop as an item over blank parts where the original's glyph parts were; a HUD line
   without its padding; layout that never leaves its box, isn't stretched, and squeezes before shrinking; kana and
   kanji laid out; the placement policy; marks (a stacked mark in one cell, a button in its ring: §10.5). The font
@@ -868,7 +868,7 @@ character, so a string encodes and decodes the same way and a mark is one charac
   pack written before (hud.json version 6) has the bracketed names, so the frontend asks for it to be extracted
   again (version 7).
 - **The font mode**: a mark the font has is drawn by the font (Ⓡ, ✕, ○ with Murecho). One it lacks the text layer
-  draws (`vfont::mark`): a button as its letter at 68% of the size, centred in an antialiased ring 1.15 times the
+  draws (`vfont::mark`): a button as its letter at 68% of the size, centered in an antialiased ring 1.15 times the
   capitals' height with a stroke a tenth of it; a stacked mark as its two letters in one cell, each as high as half
   the capitals less a gap (10%), the first on top, so the pair spans the capitals' height as the game's glyph does,
   drawn 1.55 times wider and a weight heavier than the text (the game's stacked letters are as wide as its others,

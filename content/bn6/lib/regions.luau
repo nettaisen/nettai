@@ -52,7 +52,7 @@ regions.ring = define.region {
     panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } },
 }
 
--- The anchor and its four neighbours (region 0x09: H-Burst's even bursts).
+-- The anchor and its four neighbors (region 0x09: H-Burst's even bursts).
 regions.plus = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
 
 -- The anchor and the panel above it (region 0x18: a big rolling log).
@@ -100,7 +100,7 @@ regions.other_navi = {
 }
 
 -- The four around the anchor (region 0x0A).
-regions.neighbours = define.region { panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
+regions.neighbors = define.region { panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
 
 -- `GetRandomRelativePanelFiltered`: of region `r`'s panels around (x, y),
 -- dx stepping by `dir`, one whose flags have every `require` bit and no

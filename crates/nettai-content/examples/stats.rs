@@ -25,7 +25,7 @@ fn main() {
             for p in ps {
                 for &c in p {
                     if c & 0x8000 != 0 {
-                        *n.entry("colours with bit 15").or_default() += 1;
+                        *n.entry("colors with bit 15").or_default() += 1;
                     }
                 }
             }

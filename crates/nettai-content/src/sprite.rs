@@ -5,7 +5,7 @@
 //!
 //! - `atlas.png`: every part image the sprite draws, once each, as an
 //!   8-bit indexed PNG. Its palette is the sprite's palette set (16 rows of
-//!   16 colours; `sprite_setPalette` picks the row). A part image is the
+//!   16 colors; `sprite_setPalette` picks the row). A part image is the
 //!   part's tiles as stored (unflipped); its pixels display in the row of
 //!   the palette offset it is first drawn with.
 //! - `sprite.json`: the tile sets (which atlas rectangle fills which tiles)
@@ -39,7 +39,7 @@ pub const VERSION: u32 = 1;
 const ATLAS_WIDTH: u32 = 256;
 /// Space between parts in the atlas.
 const GAP: u32 = 8;
-/// The palette rows an indexed image holds (256 colours).
+/// The palette rows an indexed image holds (256 colors).
 pub const ATLAS_PALETTE_ROWS: usize = 16;
 
 /// The folder name of a sprite.
@@ -453,7 +453,7 @@ pub fn import(dir: &Path, name: &str, report: &mut Report) -> Option<SpriteSheet
         report.warn(
             file(&doc.atlas),
             format!(
-                "{} palette colours aren't GBA colours (5 bits a channel) and were rounded: entries {:?}",
+                "{} palette colors aren't GBA colors (5 bits a channel) and were rounded: entries {:?}",
                 off_grid.len(),
                 &off_grid[..off_grid.len().min(8)]
             ),
@@ -471,7 +471,7 @@ pub fn import(dir: &Path, name: &str, report: &mut Report) -> Option<SpriteSheet
             for (i, c) in row.iter().enumerate().take(16) {
                 match u16::from_str_radix(c.trim_start_matches("0x"), 16) {
                     Ok(v) => p[i] = v,
-                    Err(_) => report.error(file("sprite.json"), format!("{what}: {c:?} isn't a hex colour")),
+                    Err(_) => report.error(file("sprite.json"), format!("{what}: {c:?} isn't a hex color")),
                 }
             }
             rows.push(p);
@@ -506,8 +506,8 @@ pub fn import(dir: &Path, name: &str, report: &mut Report) -> Option<SpriteSheet
                 report.warn(
                     file(&doc.atlas),
                     format!(
-                        "tileset {t} region {r} (at {:?}) mixes colours from different palette rows; \
-                         only each colour's place within its row is kept",
+                        "tileset {t} region {r} (at {:?}) mixes colors from different palette rows; \
+                         only each color's place within its row is kept",
                         reg.at
                     ),
                 );

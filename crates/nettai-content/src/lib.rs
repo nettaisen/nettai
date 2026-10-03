@@ -25,7 +25,7 @@
 //! it found in a [`report::Report`]; nothing is silently approximated.
 //!
 //! The graphics and sound modules know GBA-style data (4bpp tiles,
-//! 16-colour palettes, OAM parts, M4A songs) but no BN6 rule; only [`hud`],
+//! 16-color palettes, OAM parts, M4A songs) but no BN6 rule; only [`hud`],
 //! [`custom`] and the field's panel tables are BN6-shaped.
 
 pub mod aseprite;
