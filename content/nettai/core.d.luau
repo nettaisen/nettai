@@ -842,6 +842,8 @@ declare class Navi
     float_shoes: boolean
     air_shoes: boolean
     undershirt: boolean
+    -- BN5's Hub Style (NaviStats +0x4C), which its patch card 111 sets.
+    hub_style: boolean
     -- HP when the round starts, and its maximum.
     hp: number
     max_hp: number
@@ -1521,6 +1523,19 @@ declare obstacle: {
     -- thrown at panel (x, y) after shaking `shake` ticks, hitting with the
     -- damage word `damage`.
     throw: (o: Object, side: number, x: number, y: number, shake: number, damage: number) -> (),
+    -- BN5's ColonelSoul army (docs/design/bn5-map.md §15.11): arm side
+    -- `side` (BattleState+0x5C bit 0x10 or 0x20, 0x080CAC1E) with its
+    -- soldiers' damage words (0x080CABF8): the sword soldier's and the gun
+    -- soldier's. While it is armed, an obstacle of a game whose rules have
+    -- `effects.obstacle_soldiers`, standing on a panel of the side's enemy
+    -- with one of the enemy's bodies on its row, turns into the side's
+    -- soldier (the role `kinds.obstacle_soldier`).
+    arm_soldiers: (side: number, sword: number, gun: number) -> (),
+    -- 0x080CAC30: disarm side `side`; its words stay.
+    disarm_soldiers: (side: number) -> (),
+    -- Whether side `side` is armed, and its words (0x080CAC06,
+    -- 0x080CAC12): what its soldiers strike with as they read them.
+    soldiers: (side: number) -> (boolean, number, number),
 }
 
 -- Exact integer helpers.
@@ -1632,6 +1647,9 @@ export type SystemSpec = {
     id: string,
     state: StateSchema?,
     setup: StateSchema?,
+    -- What a player's setup that says nothing of a field holds (else zero): a
+    -- value of each field given (an enum's by name).
+    setup_defaults: { [string]: number | boolean | string }?,
     -- Its own actions, which reach its state (`system.state()`) for the
     -- side of the navi running them.
     actions: { Action }?,

@@ -1,7 +1,8 @@
 //! A side from a BN6 save file (bn6-compat's `save`): what S6c's setup
 //! takes of it, the game, what it unlocks on the custom screen, the navi
-//! code's level and the SP navi deletion times. (The folder, NaviCust,
-//! patch cards and stats are a later import's.)
+//! code's level and the SP navi deletion times; or from a BN5 one, its
+//! karma and souls (`import_bn5`). (The folder, NaviCust, patch cards and
+//! stats are a later import's.)
 
 use crate::{CrossList, Side};
 use bn6_compat::save::Save;
@@ -15,7 +16,11 @@ impl Side {
     /// game as the save's reload gives them. What is worth saying about it
     /// (what the side keeps), or why the file isn't a save.
     pub fn import_save(&mut self, content: &Content, file: &[u8]) -> Result<Vec<String>, String> {
-        let save = Save::read(file)?;
+        let save = match Save::read(file) {
+            Ok(save) => save,
+            // Else a BN5 save: its karma and souls.
+            Err(six) => return self.import_bn5_save(content, file).map_err(|five| format!("{six}; {five}")),
+        };
         let level = save.navi_level()?;
         let mut notes = Vec::new();
         self.game = save.version();

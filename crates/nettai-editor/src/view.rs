@@ -4,7 +4,7 @@
 
 use crate::app::{Choice, Editor, Msg, Tab};
 use crate::names::Lang;
-use iced::widget::{Column, Row, button, checkbox, column, container, image, pick_list, row, rule, scrollable, space, text, text_input};
+use iced::widget::{Column, Row, button, checkbox, column, container, image, pick_list, row, rule, scrollable, slider, space, text, text_input};
 use iced::{Alignment, Color, Element, Length, Theme};
 use nettai_battle::content::{ChipClass, ChipFlags};
 use nettai_battle::custom::GameVersion;
@@ -69,6 +69,9 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         if side.has_system(&e.content, FORMS_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
             tabs = tabs.push(nav("  Crosses", Tab::Crosses(s), e.tab));
         }
+        if nettai_match::facts::takes(&e.content, side, nettai_match::facts::SOULS_FIELD) {
+            tabs = tabs.push(nav("  Souls", Tab::Souls(s), e.tab));
+        }
         if side.has_system(&e.content, PATCH_CARDS_SYSTEM) {
             tabs = tabs.push(nav("  Patch cards", Tab::Cards(s), e.tab));
         }
@@ -83,6 +86,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         Tab::Navi(s) => navi(e, s),
         Tab::Folder(s) => folder(e, s),
         Tab::Crosses(s) => crosses(e, s),
+        Tab::Souls(s) => souls(e, s),
         Tab::Cards(s) => cards(e, s),
         Tab::NaviCust(s) => crate::navicust::view(e, s),
         Tab::Stats(s) => stats_pane(e, s, None),
@@ -175,15 +179,21 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
         field("Ruleset", pick_list(rulesets, ruleset, move |r| Msg::Ruleset(s, r))),
         text(format!("Its systems: {}", if systems.is_empty() { "none".into() } else { systems.join(", ") })).size(13).color(DIM),
         field("Navi", pick_list(navis, Some(navi), move |n| Msg::Navi(s, n))),
-        field("Game", pick_list(games, game, move |g| Msg::Game(s, g))),
     ]
     .spacing(10);
-    if c.navi(side.navi).forms.is_none() {
+    // What the side's rules and navi take, alone: BN6's game, a navi
+    // code's level (`nettai_match::facts`).
+    if side.takes_game(c) {
+        col = col.push(field("Game", pick_list(games, game, move |g| Msg::Game(s, g))));
+    }
+    // (No navi code for BN5's MegaMan.)
+    let level_kind = side.takes_level(c).then(|| c.navi(side.navi).forms.is_none());
+    if level_kind == Some(true) {
         col = col.push(field("Navi level", text_input("0", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
         if crate::levels::has_levels(c, side) {
             col = col.push(text("0 to 14: changing it fills in the stats the save gives at that level, the game cleared (the stats pane).").size(13).color(DIM));
         }
-    } else {
+    } else if level_kind == Some(false) {
         col = col.push(field("Navi code level", text_input("none", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
         col = col.push(
             text("Empty: no navi code (as usual). 0 to 14: MegaMan received from a navi code, his level's gains over his NaviCust, no Beast Out button.")
@@ -194,12 +204,67 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     col = col.push(field("Bug frags", text_input("0", &frags).on_input(move |t| Msg::BugFrags(s, t)).width(Length::Fixed(100.0))));
     col = col.push(checkbox(side.emotion_window_glitch).label("The emotion window glitches (the save's NaviCust bug flag)").on_toggle(move |b| Msg::Glitch(s, b)));
     col = col.push(button("Import from save…").on_press(Msg::ImportSave(s)));
-    col = col.push(text("From a BN6 .sav: the game, Beast Out and the Crosses it owns, the navi code's level and the SP times.").size(13).color(DIM));
-    col = col.push(rule::horizontal(1));
-    col = col.push(sp_times(e, s));
+    col = col.push(
+        text(if side.takes_game(c) {
+            "From a BN6 .sav: the game, Beast Out and the Crosses it owns, the navi code's level and the SP times."
+        } else {
+            "From a BN5 .sav (or a raw save image): its karma and the souls it has (its version's)."
+        })
+        .size(13)
+        .color(DIM),
+    );
+    if nettai_match::facts::takes(c, side, nettai_match::facts::KARMA_FIELD) {
+        col = col.push(rule::horizontal(1));
+        col = col.push(karma(e, s));
+    }
+    if side.takes_sp_times(c) {
+        col = col.push(rule::horizontal(1));
+        col = col.push(sp_times(e, s));
+    }
     col = col.push(rule::horizontal(1));
     col = col.push(round_stats(e, s));
     scrollable(col).into()
+}
+
+/// BN5's karma, the save's light/dark value: a slider from 0 to 1000 and
+/// its number, presets (light 500, very light 1000, dark 0), and what BN5
+/// makes of it (0x08010118: a dark MegaMan under 470, light from 470; the
+/// starting mood's tiers, 0x0801283A: under 470 dark, under 500 worried,
+/// 1000 the brightest; at or under 499 he clears holy panels).
+fn karma(e: &Editor, s: usize) -> Element<'_, Msg> {
+    let v = e.side(s).karma;
+    let set = move |x: u16| Msg::Karma(s, x);
+    let shown = e.typed.get(&(s, "karma")).cloned().unwrap_or_else(|| v.to_string());
+    let kind = if v < 470 { "dark" } else if v >= 1000 { "very light" } else { "light" };
+    let mood = match v {
+        0..=469 => "0: the dark face and palette, dark chips usable in a link battle, light chips refused, no soul button".to_string(),
+        470..=499 => "64: worried (no soul button until the mood rises)".to_string(),
+        1000.. => "190, the palette's brightest tier".to_string(),
+        _ => format!("{} (karma / 20 + 103; 0x80 at 500)", v / 20 + 103),
+    };
+    let holy = if v <= 499 { " Holy panels he stands on turn Normal." } else { "" };
+    let preset = |name: &'static str, x: u16| button(text(format!("{name} ({x})")).size(13)).on_press(set(x)).style(button::secondary);
+    column![
+        text("Light and dark").size(16),
+        row![
+            label_text("Karma".into()),
+            slider(0..=1000, v.min(1000), set).step(10u16).width(Length::Fixed(300.0)),
+            text_input("500", &shown).on_input(move |t| Msg::KarmaText(s, t)).width(Length::Fixed(70.0)),
+        ]
+        .spacing(8)
+        .align_y(Alignment::Center),
+        row![space().width(Length::Fixed(160.0)), preset("Light", 500), preset("Very light", 1000), preset("Dark", 0)].spacing(8),
+        text(format!("{v}: a {kind} MegaMan. Starting mood {mood}.{holy}")).size(13),
+        text("The save's light/dark value, 0 to 1000; a fresh save's 500. Under 470 dark (dark chips, no light ones); 499 or under clears holy panels; under 500 worried at the start; 1000 the brightest.")
+            .size(13)
+            .color(DIM),
+    ]
+    .spacing(6)
+    .into()
+}
+
+fn label_text<'a>(s: String) -> Element<'a, Msg> {
+    text(s).size(14).width(Length::Fixed(160.0)).into()
 }
 
 /// The side's SP navi deletion times (`mm:ss.cc`; empty the fastest), each
@@ -211,10 +276,9 @@ fn sp_times(e: &Editor, s: usize) -> Element<'_, Msg> {
     let mut col = column![text("SP navi deletion times").size(16), text("mm:ss.cc; empty: the fastest. The SP navi chips' damage goes by them.").size(13).color(DIM)]
         .spacing(6);
     for (i, slot) in slots.iter().enumerate() {
-        // The SP navi chip whose damage reads the slot, by its name.
-        let chip = (0..c.defs.chips.len() as u16)
-            .map(nettai_content_api::ChipHandle)
-            .find(|&h| c.chip_links(h).sp_slot == Some(i as u8));
+        // The SP navi chip whose damage reads the slot (the rules' game's),
+        // by its name.
+        let chip = nettai_match::facts::sp_chip(c, side, i);
         let label = chip.map_or_else(|| slot.clone(), |h| e.names.chip(c, h));
         let shown = e.sp_typed.get(&(s, i)).cloned().unwrap_or_else(|| match side.sp_times.0[i] {
             0 => String::new(),
@@ -513,6 +577,47 @@ fn crosses(e: &Editor, s: usize) -> Element<'_, Msg> {
             };
             col = col.push(checkbox(on).label(format!("{} ({game})", e.names.form(c, f))).on_toggle(move |b| Msg::Cross(s, f, b)));
         }
+    }
+    scrollable(col).into()
+}
+
+// ---- A side's souls ------------------------------------------------------------------------
+
+/// The souls the side has (BN5's Soul Unison): every soul of the content
+/// (the default), or those checked, of either version. A soul whose chip
+/// family the folder never holds never comes up.
+fn souls(e: &Editor, s: usize) -> Element<'_, Msg> {
+    let c = &e.content;
+    let side = e.side(s);
+    let every = side.souls.is_none();
+    let owned = nettai_match::facts::owned_souls(c, side);
+    let all = nettai_match::facts::all_souls(c);
+    let mut col = column![
+        heading(format!("{}: souls", SIDES[s])),
+        text("The souls the soul button may offer (for the last chip picked of the soul's family). Any soul, either version's: a real save has its version's six.")
+            .size(13)
+            .color(DIM),
+        checkbox(every).label("Every soul (the default)").on_toggle(move |b| Msg::EverySoul(s, b)),
+        text(format!("{} of {} souls", owned.len(), all.len())).size(13).color(DIM),
+    ]
+    .spacing(8);
+    for f in all {
+        let form = c.form(f);
+        let face: Element<Msg> = match e.pictures.face(&c.defs.form(f).key) {
+            Some(h) => image(h.clone()).width(64).height(32).filter_method(image::FilterMethod::Nearest).into(),
+            None => space().width(64).height(32).into(),
+        };
+        let about = form.soul.as_ref().map_or(String::new(), |x| format!("soul {}, for {:?} chips", x.number, x.family).to_lowercase());
+        let on = owned.contains(&f);
+        let mut tick = checkbox(on);
+        if !every {
+            tick = tick.on_toggle(move |b| Msg::Soul(s, f, b));
+        }
+        col = col.push(
+            row![tick, face, text(e.names.form(c, f)).size(15).width(Length::Fixed(160.0)), text(about).size(13).color(DIM)]
+                .spacing(10)
+                .align_y(Alignment::Center),
+        );
     }
     scrollable(col).into()
 }

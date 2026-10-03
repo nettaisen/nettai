@@ -450,6 +450,7 @@ impl CoreApi for Battle {
             NaviStat::FloatShoes => Value::Bool(s.float_shoes),
             NaviStat::AirShoes => Value::Bool(s.air_shoes),
             NaviStat::Undershirt => Value::Bool(s.undershirt),
+            NaviStat::HubStyle => Value::Bool(s.hub_style),
             NaviStat::Hp => i(s.hp as i64),
             NaviStat::MaxHp => i(s.max_hp as i64),
             NaviStat::MegaLevel => i(s.mega_level as i64),
@@ -569,6 +570,7 @@ impl CoreApi for Battle {
             (NaviStat::FloatShoes, FieldValue::Bool(x)) => s.float_shoes = x,
             (NaviStat::AirShoes, FieldValue::Bool(x)) => s.air_shoes = x,
             (NaviStat::Undershirt, FieldValue::Bool(x)) => s.undershirt = x,
+            (NaviStat::HubStyle, FieldValue::Bool(x)) => s.hub_style = x,
             // The support bug: none (the byte 0xFF); cleared, none set.
             (NaviStat::SupportBug, FieldValue::Bool(true)) => s.support = None,
             (NaviStat::SupportBug, FieldValue::Bool(false)) => {
@@ -2738,6 +2740,19 @@ impl CoreApi for Battle {
 
     fn obstacle_throw(&mut self, o: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32) {
         kinds::obstacle::request_throw(self, o, side, x, y, shake, damage);
+    }
+
+    fn obstacle_arm_soldiers(&mut self, side: u8, sword: u32, gun: u32) {
+        self.obstacle_soldiers[side as usize & 1] = kinds::obstacle::Soldiers { armed: true, words: [sword, gun] };
+    }
+
+    fn obstacle_disarm_soldiers(&mut self, side: u8) {
+        self.obstacle_soldiers[side as usize & 1].armed = false;
+    }
+
+    fn obstacle_soldiers(&self, side: u8) -> (bool, u32, u32) {
+        let s = self.obstacle_soldiers[side as usize & 1];
+        (s.armed, s.words[0], s.words[1])
     }
 
     fn obstacle_present(&self, o: ObjectRef) -> bool {
