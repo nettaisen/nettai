@@ -29,7 +29,7 @@ local VORTEX = define.effect { sprite = asset.sprite("bn6:dust-cloud"), anim = 0
 local VORTEX_TICKS = 2
 
 -- DustCross's Beast form (the navi stats' form).
-local DUST_BEAST = "dustcross-beast"
+local DUST_BEAST = "bn6:dustcross-beast"
 
 local SOUND = asset.sound("bn6:dustbrk")
 

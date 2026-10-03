@@ -27,12 +27,19 @@
 //! [left.stats]                       # optional: over the navi's fresh stats (crate::stats)
 //! hp = 1000
 //! regular_memory = 50
+//!
+//! [left.navicust]                    # optional: the NaviCust, which the rules compile
+//! expansions = 2                     # optional: the board's (else the largest)
+//! programs = [                       # in the list's order; x, y the centre on the 7x7 grid
+//!     { program = "bn6:suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
+//! ]
 //! ```
 
 use crate::{Arena, Match, Place, Side, stats};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
 use nettai_battle::custom::{CrossList, FolderChip, GameVersion, SavedFolder};
+use nettai_battle::navicust::{NaviCust, PlacedProgram};
 use nettai_battle::patch_cards::InstalledCard;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -86,6 +93,34 @@ pub struct SideFile {
     pub folder: FolderFile,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub stats: BTreeMap<String, toml::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub navicust: Option<NaviCustFile>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NaviCustFile {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expansions: Option<u8>,
+    #[serde(default)]
+    pub programs: Vec<ProgramFile>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProgramFile {
+    pub program: String,
+    pub color: String,
+    pub x: u8,
+    pub y: u8,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub rotation: u8,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub compressed: bool,
+}
+
+fn is_zero(n: &u8) -> bool {
+    *n == 0
 }
 
 fn falzar() -> String {
@@ -236,11 +271,41 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
         }
     }
     let folder = resolve_folder(content, &s.folder, &mut say);
+    let navicust = match &s.navicust {
+        None => None,
+        Some(n) => {
+            let mut parts = Vec::with_capacity(n.programs.len());
+            for (i, p) in n.programs.iter().enumerate() {
+                let Some(program) = content.defs.navicust_program_by_key(&p.program) else {
+                    say(format!("navicust program {}: no NaviCust program {:?}", i + 1, p.program));
+                    continue;
+                };
+                let def = content.defs.navicust_program(program);
+                let Some(color) = def.colors.iter().position(|c| *c == p.color) else {
+                    say(format!("navicust program {}: {} comes in {}, not {:?}", i + 1, def.key, def.colors.join(", "), p.color));
+                    continue;
+                };
+                parts.push(PlacedProgram { program, color: color as u8, x: p.x, y: p.y, rotation: p.rotation, compressed: p.compressed });
+            }
+            let expansions = n.expansions.unwrap_or_else(|| {
+                let rules = &content.rules_of(crate::ruleset_game(content, ruleset)).navicust;
+                rules.boards.len().saturating_sub(1) as u8
+            });
+            match NaviCust::new(&parts, expansions) {
+                Ok(n) => Some(n),
+                Err(e) => {
+                    say(e);
+                    None
+                }
+            }
+        }
+    };
     let navi = navi?;
     let mut stats = Side::base_stats(content, navi, game);
     for p in stats::apply(content, &s.stats, &mut stats) {
         say(format!("stats: {p}"));
     }
+    let stats = crate::starting(content, stats, game);
     if problems.len() > start {
         return None;
     }
@@ -255,6 +320,7 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
         cards,
         navi_level: s.level.unwrap_or(0),
         bug_frags: s.bug_frags.unwrap_or(0),
+        navicust,
     })
 }
 
@@ -302,7 +368,24 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
             regular: s.folder.regular,
             tags: s.folder.tags.map(|(a, b)| [a, b]),
         },
-        stats: stats::diff(content, &Side::base_stats(content, s.navi, s.game), &s.round_stats()),
+        stats: s.stats_block(content),
+        navicust: s.navicust.map(|n| NaviCustFile {
+            expansions: Some(n.expansions),
+            programs: n
+                .iter()
+                .map(|p| {
+                    let def = content.defs.navicust_program(p.program);
+                    ProgramFile {
+                        program: def.key.clone(),
+                        color: def.colors.get(p.color as usize).cloned().unwrap_or_default(),
+                        x: p.x,
+                        y: p.y,
+                        rotation: p.rotation,
+                        compressed: p.compressed,
+                    }
+                })
+                .collect(),
+        }),
     };
     MatchFile {
         seed: m.seed,

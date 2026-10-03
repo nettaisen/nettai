@@ -419,6 +419,35 @@ Japanese consoles; each also checks the stats after the cards and the emotion wi
 | The charged shot's programs 0x14 to 0x1A (effects 0x5B to 0x61), Blind as the hit status (0x90), the water, magnet, holy, poison and normal panel trails (0x86, 0x89 to 0x8C), ChipRecovery's second id (0x7C) | No card has them; the code is the cards' other values'. |
 | A link navi's glitch when the save's flag 0x1723 is set (the last application with MegaMan left it) | The system counts the link navi's stats' bugs; a save with the flag set and a link navi operated would differ. |
 
+## The NaviCust's compile (docs/design/navicust.md)
+
+BN6's NaviCust is compiled by the ruleset's `navicust` system (rules/navicust/system.luau) from a setup's placed
+programs. The verification workspace's `trace-tests --test navicust` compiles every chip lab side that sets a
+NaviCust, and Tango's four raw saves, and compares the stats and the emotion window's glitch flag with the
+recording's setup.
+
+### Covered
+
+| Branch | Scenarios | Result |
+|---|---|---|
+| Each of the 46 programs' effects, on the command line or as a plus part (`navicust_jt_NCPs`), and the clamps after them | `navicust/*`, `navicust-compile/gigfldr1`, `collect-millions`, `battery-jungle` and the chip and form scenarios with NaviCusts (1,274 sides, 167 with programs) | match |
+| The bugs counted: plus parts and programs on and off the command line, same-coloured neighbours (the neighbour's group), five and six colours, the frame | the same, 112 with the bug flag; `navicust-compile/bug-result`, `bug-encounter` | match |
+| Every bug group a program brings, at each level the lab reaches; BugStop clearing them | the same | match |
+| One exclusive group twice on the command line (the rightmost works) | `navicust-compile/exclusive-guard`, `battery-jungle` | match |
+| Compressed shapes (the save's flag 0x2660 + part id) | every scenario above (the base saves set every flag) | match |
+| Tango's raw saves (US and JP, Falzar and Gregar): empty NaviCusts, the stats and the flag | the four saves | match |
+
+### Not reached (ported)
+
+| Branch | Why |
+|---|---|
+| A program that works anywhere (the part table's +1 = 2) | No BN6 part is one. |
+| Bug group 10 (`unread`, NaviStats+0x62) | No part has the group and no colour count brings it; nothing reads the stat. |
+| Bug groups 13 to 15 | No part has one; the original's bug table would read past its end. |
+| The smaller boards (4x4 and 5x4, key item 0x71 below 2), and a program on the frame of one | Every save the lab has is fully expanded; a match file can name a smaller board (`expansions`). |
+| Overlapping programs (a later program's cell over an earlier one's) | The game's own placing refuses them, and so do a match's checks and the editor. |
+| An uncompressed program on a save whose flag compresses it | The engine compiles a placed program as the setup says. A save keeps one flag for each program and colour, and the original reads that flag. A match file keeps the copies of a program in one colour the same. |
+
 ## Ruleset
 
 Scenarios named here are in the verification workspace's chiplab library; `flow/` and `custom/` are new folders

@@ -367,6 +367,13 @@ pub struct Encoding {
     pub dialogue_glyphs: Vec<String>,
 }
 
+/// The NaviCust programs' numbers (navicust.toml).
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NaviCustNumbers {
+    pub programs: BTreeMap<String, u8>,
+}
+
 /// content/bn6/compat: the original's numbers by content key. Every map
 /// is key to numbers. One key may have several numbers (a weapon's alias
 /// routines, a stage's settings records), and several actions may share a
@@ -390,6 +397,9 @@ pub struct Compat {
     /// The patch cards by the number a Japanese save's card list holds
     /// (patch-cards.toml).
     pub patch_cards: BTreeMap<String, u8>,
+    /// The NaviCust programs by their number (navicust.toml): a part id
+    /// is 4 x the number + its colour variant.
+    pub navicust: NaviCustNumbers,
     /// The kinds by the slot they fill.
     slots: BTreeMap<(Pool, u8), String>,
     /// The game whose ids it numbers (`bn6`): its keys are those ids, in
@@ -419,7 +429,7 @@ pub const FILES: [&str; 13] = [
 pub const ROOT: &str = "bn6";
 
 /// This repository's compat (content/bn6/compat), built in.
-const BN6: [(&str, &str); 13] = [
+const BN6: [(&str, &str); 14] = [
     ("chips.toml", include_str!("../../../content/bn6/compat/chips.toml")),
     ("actions.toml", include_str!("../../../content/bn6/compat/actions.toml")),
     ("navis.toml", include_str!("../../../content/bn6/compat/navis.toml")),
@@ -433,6 +443,7 @@ const BN6: [(&str, &str); 13] = [
     ("text.toml", include_str!("../../../content/bn6/compat/text.toml")),
     ("games.toml", include_str!("../../../content/bn6/compat/games.toml")),
     ("patch-cards.toml", include_str!("../../../content/bn6/compat/patch-cards.toml")),
+    ("navicust.toml", include_str!("../../../content/bn6/compat/navicust.toml")),
 ];
 
 impl Compat {
@@ -500,6 +511,7 @@ impl Compat {
             text: get(&text, "text.toml")?,
             games: get(&text, "games.toml")?,
             patch_cards: get(&text, "patch-cards.toml")?,
+            navicust: get(&text, "navicust.toml")?,
             slots: BTreeMap::new(),
             root: ROOT.to_string(),
         };
@@ -542,6 +554,7 @@ impl Compat {
         unique("records.toml: projectile_variants", self.records.projectile_variants.iter().map(|(k, &n)| (k, n)))?;
         unique("records.toml: barriers", self.records.barriers.iter().map(|(k, &n)| (k, n)))?;
         unique("patch-cards.toml", self.patch_cards.iter().map(|(k, &n)| (k, n)))?;
+        unique("navicust.toml", self.navicust.programs.iter().map(|(k, &n)| (k, n)))?;
         unique("rules.toml: lockon", self.rules.lockon.iter().map(|(k, &n)| (k, n)))?;
         unique("rules.toml: statuses", self.rules.statuses.iter().map(|(k, &n)| (k, n)))?;
         unique("assets.toml: sprites", self.assets.sprites.iter().map(|(k, n)| (k, n.clone())))?;

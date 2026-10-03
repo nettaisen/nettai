@@ -1,12 +1,14 @@
-//! The pack's pictures the editor shows: each chip's icon and its custom
-//! screen picture, by the chip's key, as RGBA images. Everything the editor
-//! reads of a pack's graphics is here, so a change to how packs load (several
-//! packs, one per game root) is a change to this module alone.
+//! The packs' pictures the editor shows: each chip's icon and its custom
+//! screen picture, as RGBA images. A chip's pictures are its own game's
+//! pack's (the pack its root names its assets in), under its key there, as
+//! the frontend draws them (`nettai_frontend::packs`). Everything the editor
+//! reads of the packs' graphics is here.
 
 use iced::widget::image::Handle;
-use nettai_assets::{Palette, Tiles};
+use nettai_assets::{Bundle, Palette, Tiles};
+use nettai_battle::Content;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::PathBuf;
 
 /// A chip's pictures.
 #[derive(Clone, Debug)]
@@ -17,7 +19,8 @@ pub struct ChipPictures {
     pub art: Option<Handle>,
 }
 
-/// The pictures of every chip the pack has, by chip key.
+/// The pictures of every chip the packs have, by the chip's key (as the
+/// content keys it).
 #[derive(Default)]
 pub struct Pictures {
     chips: HashMap<String, ChipPictures>,
@@ -51,25 +54,31 @@ fn image(tiles: &Tiles, w: usize, h: usize, palette: &Palette) -> Option<Handle>
 }
 
 impl Pictures {
-    /// The pictures of the pack in `pack` (its graphics), or why not.
-    pub fn load(pack: &Path) -> Result<Pictures, String> {
-        let (bundle, _report) = nettai_content::pack::load_graphics(pack)
-            .map_err(|r| format!("can't load the graphics of {}: {}", pack.display(), r.issues.len()))?;
-        let hud = &bundle.hud;
-        let mut chips: HashMap<String, ChipPictures> = HashMap::new();
-        for icon in &hud.chip_icons {
-            let handle = image(&icon.tiles, 2, 2, &hud.icon_palette);
-            chips.entry(icon.key.clone()).or_insert(ChipPictures { icon: None, art: None }).icon = handle;
+    /// The pictures of `content`'s chips from `packs` (the packs the content
+    /// loaded with; each chip's from its game's), or why not.
+    pub fn load(content: &Content, packs: &[PathBuf]) -> Result<Pictures, String> {
+        // Each pack's graphics, by the content's pack order.
+        let mut bundles: Vec<Bundle> = Vec::new();
+        for path in nettai_content::pack::pack_paths(content, packs) {
+            let (b, _) = nettai_content::pack::load_graphics(&path)
+                .map_err(|r| format!("can't load the graphics of {}: {} problems", path.display(), r.issues.len()))?;
+            bundles.push(b);
         }
-        for art in &bundle.custom.chip_art {
-            let handle = image(&art.picture.tiles, 7, 6, &art.picture.palette);
-            chips.entry(art.key.clone()).or_insert(ChipPictures { icon: None, art: None }).art = handle;
+        let mut chips = HashMap::new();
+        for d in &content.defs.chips {
+            let game = content.defs.root_of(&d.key).and_then(|r| content.defs.roots.get(r.index()));
+            let Some(pack) = game.and_then(|g| content.assets.pack(g)) else { continue };
+            let Some(b) = bundles.get(pack.index()) else { continue };
+            let local = nettai_content_api::keys::local(&d.key);
+            let icon = b.hud.chip_icon(local).and_then(|t| image(t, 2, 2, &b.hud.icon_palette));
+            let art = b.custom.chip_art(local).and_then(|a| image(&a.picture.tiles, 7, 6, &d.record.art_palette.unwrap_or(a.picture.palette)));
+            chips.insert(d.key.clone(), ChipPictures { icon, art });
         }
         Ok(Pictures { chips })
     }
 
-    /// The pictures of the chip with this key (as content keys it).
+    /// The pictures of the chip with this key (as the content keys it).
     pub fn chip(&self, key: &str) -> Option<&ChipPictures> {
-        self.chips.get(key).or_else(|| self.chips.get(nettai_content_api::keys::local(key)))
+        self.chips.get(key)
     }
 }

@@ -294,6 +294,60 @@ pub struct PatchCardEffect {
     pub bug: bool,
 }
 
+/// A NaviCust program (`define.navicust_program`; BN4's, BN5's and BN6's
+/// Navi Customizer parts, docs/design/navicust.md): what every game's
+/// program is. The engine keeps what a NaviCust's board needs of it, its
+/// colors and shapes and whether it is a plus part; the rest (BN6's: what it
+/// does, which bug it brings, which programs it excludes) is the
+/// definition's data, which the game's rules read. Its name is the
+/// locales'.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct NaviCustProgramDef {
+    pub key: String,
+    /// The colors it comes in (BN6's `white`, `yellow`, `pink`, `red`,
+    /// `blue`, `green`), in its variants' order: a placed program's color
+    /// is an index into them.
+    pub colors: Vec<String>,
+    /// A plus part (BN6: one that belongs off the command line).
+    pub plus: bool,
+    /// Its shape, centred on the grid's middle cell, and compressed (none:
+    /// it doesn't compress).
+    pub shape: crate::navicust::Shape,
+    pub compressed: Option<crate::navicust::Shape>,
+}
+
+impl NaviCustProgramDef {
+    /// Its shape as placed: compressed or not, turned.
+    pub fn placed_shape(&self, compressed: bool, rotation: u8) -> crate::navicust::Shape {
+        let s = if compressed { self.compressed.as_ref().unwrap_or(&self.shape) } else { &self.shape };
+        crate::navicust::rotate(s, rotation)
+    }
+}
+
+/// A shape from a definition: seven rows of seven cells, `#` a cell it
+/// covers and `.` one it doesn't.
+fn read_shape(d: &Data) -> Result<crate::navicust::Shape, String> {
+    use crate::navicust::SIZE;
+    let Data::List(rows) = d else { return Err(format!("a shape is {SIZE} rows of {SIZE} cells (strings of `#` and `.`)")) };
+    if rows.len() != SIZE {
+        return Err(format!("a shape is {SIZE} rows, not {}", rows.len()));
+    }
+    let mut shape = [[false; SIZE]; SIZE];
+    for (y, row) in rows.iter().enumerate() {
+        let Some(row) = row.str() else { return Err(format!("row {} is not a string", y + 1)) };
+        if row.len() != SIZE || !row.bytes().all(|b| b == b'#' || b == b'.') {
+            return Err(format!("row {} is not {SIZE} cells of `#` and `.`: {row:?}", y + 1));
+        }
+        for (x, b) in row.bytes().enumerate() {
+            shape[y][x] = b == b'#';
+        }
+    }
+    if !shape.iter().flatten().any(|&c| c) {
+        return Err("a shape covers no cell".into());
+    }
+    Ok(shape)
+}
+
 /// A content state layout.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SchemaDef {
@@ -329,6 +383,8 @@ pub struct Defs {
     pub records: Vec<RecordDef>,
     /// The patch cards, by handle.
     pub patch_cards: Vec<PatchCardDef>,
+    /// The NaviCust programs, by handle.
+    pub navicust_programs: Vec<NaviCustProgramDef>,
     /// One-shot effects' and hit sparks' looks (`define.effect`,
     /// `define.spark`), by handle.
     pub effects: Vec<super::EffectSprite>,
@@ -526,6 +582,15 @@ impl Defs {
 
     pub fn patch_card(&self, h: nettai_content_api::PatchCardHandle) -> &PatchCardDef {
         &self.patch_cards[h.index()]
+    }
+
+    /// The NaviCust program with this key.
+    pub fn navicust_program_by_key(&self, key: &str) -> Option<nettai_content_api::NaviCustProgramHandle> {
+        self.navicust_programs.binary_search_by(|p| p.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::NaviCustProgramHandle(i as u16))
+    }
+
+    pub fn navicust_program(&self, h: nettai_content_api::NaviCustProgramHandle) -> &NaviCustProgramDef {
+        &self.navicust_programs[h.index()]
     }
 
     /// A record's handle by key.
@@ -1601,6 +1666,32 @@ impl Defs {
             patch_cards.push(PatchCardDef { key: d.key.clone(), mb: mb as u8, effects });
         }
 
+        // The NaviCust programs: their colors and shapes (what they do is a
+        // game's rules').
+        let mut navicust_programs = Vec::new();
+        for d in definitions.of(Registry::NaviCustProgram) {
+            let what = |e: &str| ContentError::new(format!("{}.luau: navicust_program {}: {e}", d.module, d.key));
+            no_display_text(d)?;
+            let Data::List(list) = d.spec.field("colors") else {
+                return Err(what("needs `colors`, the colors it comes in (strings), in its variants' order"));
+            };
+            let colors: Vec<String> = list.iter().map(|c| c.str().map(str::to_string)).collect::<Option<_>>().ok_or_else(|| what("a color is a string"))?;
+            if colors.is_empty() || colors.len() > 0xFF {
+                return Err(what("comes in 1 to 255 colors"));
+            }
+            let plus = match d.spec.field("plus") {
+                Data::Nil => false,
+                Data::Bool(b) => *b,
+                _ => return Err(what("`plus` is a boolean")),
+            };
+            let shape = read_shape(d.spec.field("shape")).map_err(|e| what(&format!("shape: {e}")))?;
+            let compressed = match d.spec.field("compressed") {
+                Data::Nil => None,
+                c => Some(read_shape(c).map_err(|e| what(&format!("compressed: {e}")))?),
+            };
+            navicust_programs.push(NaviCustProgramDef { key: d.key.clone(), colors, plus, shape, compressed });
+        }
+
         // Each definition's handle.
         fn position<'a>(mut keys: impl Iterator<Item = &'a String>, key: &str) -> u16 {
             keys.position(|k| k == key).expect("an entry") as u16
@@ -1649,6 +1740,7 @@ impl Defs {
             statuses,
             records,
             patch_cards,
+            navicust_programs,
             effects,
             sparks,
             regions,

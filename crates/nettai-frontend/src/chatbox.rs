@@ -10,7 +10,7 @@
 //! language), drawn in the dialogue font.
 //! docs/frontend.md §3.
 
-use crate::audit::Problems;
+use crate::audit::{Lookup, Problems};
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
 use crate::objects::SpriteList;
@@ -77,25 +77,28 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
     // own, whose lines and characters the chatbox's timing counts
     // (`shown`).
     let strings = &sink.strings;
-    let (chatbox, said, portrait) = match screen.phase {
+    // (Each with the lookup its text is: whose it is.)
+    let (chatbox, said, portrait, lookup) = match screen.phase {
         Phase::Description { from_cross_window: false, chatbox } => {
             // The chip under the cursor as the screen checked it (the chip
             // window's).
-            let said = screen.look.chip_window.last_chip.and_then(|c| strings.chip_description(&b.content, c.id));
-            (chatbox, said, None)
+            let chip = screen.look.chip_window.last_chip.map(|c| c.id);
+            let said = chip.and_then(|c| strings.chip_description(&b.content, c));
+            (chatbox, said, None, chip.map(Lookup::ChipDescription))
         }
         Phase::Description { from_cross_window: true, chatbox } => {
-            (chatbox, cross_description(&b.content, strings, &side.unlocks, navi, &screen.crosses), None)
+            let form = screen.crosses.hovered(&side.unlocks, &*b.content, navi);
+            let said = form.and_then(|f| strings.form_description(&b.content, f));
+            (chatbox, said, None, form.map(Lookup::CrossDescription))
         }
         Phase::RunMessage { chatbox: Some(chatbox) } => {
-            (chatbox, strings.run_message(&b.content, navi), b.content.navi(navi).run_message.portrait)
+            let said = strings.run_message(&b.content, navi);
+            (chatbox, said, b.content.navi(navi).run_message.portrait, Some(Lookup::RunMessage(navi)))
         }
         _ => return None,
     };
     let translated = said.is_some_and(|s| s.translated);
-    let graphics = &assets.hud.chatbox;
-    if graphics.is_empty() || assets.hud.dialogue_font.is_empty() {
-        problems.note("the pack has no chatbox graphics or dialogue font (extract it again)".into());
+    if !crate::lookups::chatbox_graphics(&assets.hud, problems) {
         return None;
     }
     let kind = match chatbox.script() {
@@ -103,22 +106,27 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
         Script::RunMessage { .. } => MESSAGE_BOX,
     };
     let string = said.map_or("", |s| s.text);
+    // (The dialogue font's glyphs, which the original text mode draws: in
+    // either mode the lookup.)
+    let glyphs = match lookup {
+        Some(l) => crate::lookups::dialogue(&assets.hud.dialogue_font, l, string, problems),
+        None => Vec::new(),
+    };
     let (text, lines) = if sink.takes(string) {
         (Tiles { pixels: vec![0; TEXT_WIDTH * TEXT_ROWS] }, Some(printed(&chatbox, string, translated)))
     } else {
-        (text_tiles(assets, &chatbox, string, translated, problems), None)
+        (text_tiles(assets, &chatbox, &glyphs, translated), None)
     };
     let portrait = match (portrait, chatbox.look().portrait) {
-        (Some(id), Some(look)) => match packs.sprite(&b.content, id) {
-            Some(sheet) => {
+        (Some(id), Some(look)) => {
+            let who = || "(a portrait)".to_string();
+            let sheet = crate::lookups::sprite(packs, &b.content, id, &who, problems);
+            if let Some(sheet) = sheet {
+                crate::lookups::animation(sheet, &b.content, id, look.anim, &who, problems);
                 note_true_face(b, navi, side.unlocks.version, problems);
-                Some((sheet, look))
             }
-            None => {
-                problems.note(format!("{} (a portrait) is not in the pack's graphics", crate::objects::sprite_name(b, id)));
-                None
-            }
-        },
+            sheet.map(|sheet| (sheet, look))
+        }
         _ => None,
     };
     Some(Shown { chatbox, kind, text, lines, portrait })
@@ -189,24 +197,14 @@ pub fn shown(chatbox: &Chatbox, units: &[usize], translated: bool) -> Vec<usize>
     }
 }
 
-/// The text's sprite tiles: the lines printed so far composed into the
-/// line buffer's image, cut into the eighteen sprites' tiles (each
-/// sprite's row by row).
-fn text_tiles(assets: &Bundle, chatbox: &Chatbox, string: &str, translated: bool, problems: &mut Problems) -> Tiles {
+/// The text's sprite tiles: the lines printed so far (`lines`, the text's
+/// first three lines in the dialogue font's glyphs) composed into the line
+/// buffer's image, cut into the eighteen sprites' tiles (each sprite's row
+/// by row).
+fn text_tiles(assets: &Bundle, chatbox: &Chatbox, lines: &[Vec<u16>], translated: bool) -> Tiles {
     let font = &assets.hud.dialogue_font;
     let mut image = vec![0u8; TEXT_WIDTH * TEXT_ROWS];
     if chatbox.look().text.is_some() {
-        let lines: Vec<Vec<u16>> = string
-            .split('\n')
-            .take(3)
-            .map(|line| {
-                let (glyphs, missing) = fonts::dialogue_glyphs(font, line);
-                if !missing.is_empty() {
-                    problems.note(format!("the chatbox's {line:?}: the pack's dialogue font has no glyph for {missing:?}"));
-                }
-                glyphs
-            })
-            .collect();
         let units: Vec<usize> = lines.iter().map(Vec::len).collect();
         for (k, (glyphs, n)) in lines.iter().zip(shown(chatbox, &units, translated)).enumerate() {
             fonts::dialogue_text(font, &glyphs[..n], &mut image, TEXT_WIDTH, LINE_ROWS * k);

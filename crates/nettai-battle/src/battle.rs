@@ -458,6 +458,9 @@ pub struct Battle {
     pub(crate) sound: [Vec<SoundCue>; 2],
     /// How the round ended, once the end state is through.
     pub(crate) outcome: Option<RoundEnd>,
+    /// A folder a tool is having checked (`Battle::check_folder`), and what
+    /// it breaks: no part of the simulation.
+    pub(crate) folder_check: Option<crate::rules::FolderCheck>,
 }
 
 /// How a round ended (`sub_8007CA0`).
@@ -740,6 +743,7 @@ impl Battle {
             rules,
             sound: [Vec::new(), Vec::new()],
             outcome: None,
+            folder_check: None,
             setup,
         };
         // Each side's systems set the round up before anything reads the
