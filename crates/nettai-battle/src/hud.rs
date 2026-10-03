@@ -152,7 +152,7 @@ pub struct HpNumber {
     /// rolling (+2).
     pub hp: u16,
     /// It shows the damage taken (max HP less HP) instead, without
-    /// centring its digits (flags 0x18, which the original gives
+    /// centering its digits (flags 0x18, which the original gives
     /// LilBoiler's NameID and its training viruses').
     pub damage: bool,
 }

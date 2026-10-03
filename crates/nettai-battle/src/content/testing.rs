@@ -1575,7 +1575,7 @@ pub fn metal_slide() -> crate::content::PanelSlide {
 
 /// The custom screen's grid: five chip slots on top, five below, OK at
 /// the top row's right end and a special button under it; the last two
-/// bottom slots start hidden. A neighbour that is missing is looked for
+/// bottom slots start hidden. A neighbor that is missing is looked for
 /// along its row, which wraps through OK (the top row) or the button
 /// under it (the bottom row).
 pub fn custom_screen_layout() -> CustomScreenLayout {

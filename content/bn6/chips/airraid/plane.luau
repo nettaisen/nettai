@@ -56,7 +56,7 @@ local TAKE_OFF_TICKS, CLIMB = 0x1E, 0xA000
 local BOMB_PERIOD = 10
 -- The other side's bodies (by its side: `off_80D3834`).
 local OTHER_BODY: { [number]: number } = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
--- The neighbour a bomb may stray to: the other side's panels, by side
+-- The neighbor a bomb may stray to: the other side's panels, by side
 -- (`byte_80D37E4`).
 local STRAY: { [number]: { require: number, forbid: number } } = {
     [0] = { require = 0x0001_0020, forbid = 0 },
@@ -65,9 +65,9 @@ local STRAY: { [number]: { require: number, forbid: number } } = {
 -- A bomb's strike: highlighted 6 ticks, its hits unmodified, no crack,
 -- on any panel (its spawn parameters 0x20600).
 local STRIKE: PanelStrike = { warning = 6, hit_mod = 0 }
--- With no neighbour to stray to, the game strikes column 0 of a row it
+-- With no neighbor to stray to, the game strikes column 0 of a row it
 -- leaves in a register: the low byte of the panel table's address
--- (`ePanelData`) when the last neighbour it tried is on the field.
+-- (`ePanelData`) when the last neighbor it tried is on the field.
 local PANEL_TABLE_LOW_BYTE = 0xE0
 
 -- The actions (the object's action byte).
@@ -112,7 +112,7 @@ local function targets(me: Object): { number }
 end
 
 -- `sub_80D3770`: a bomb: the next of the targets, and one time in four a
--- random neighbour of it on the other side; with no target, the other
+-- random neighbor of it on the other side; with no target, the other
 -- side's back column in its own row.
 local function bomb(me: Object)
     local s = me.state :: State
@@ -132,11 +132,11 @@ local function bomb(me: Object)
         if draw == 1 or draw == 5 then
             local dir = panels.side_direction(me.alliance)
             local cond = STRAY[me.alliance]
-            local nx, ny = regions.random_panel(x, y, regions.neighbours, dir, cond.require, cond.forbid)
+            local nx, ny = regions.random_panel(x, y, regions.neighbors, dir, cond.require, cond.forbid)
             if nx and ny then
                 x, y = nx, ny
             else
-                -- None: x 0, and the row the last test (the neighbour
+                -- None: x 0, and the row the last test (the neighbor
                 -- behind) left in a register.
                 local last = x - dir
                 y = if last >= 1 and last <= 6 then PANEL_TABLE_LOW_BYTE else y

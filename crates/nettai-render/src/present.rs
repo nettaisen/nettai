@@ -3,7 +3,7 @@
 //! window and the PNG writer, [`write_png`], share this).
 //!
 //! The scaling policy: the picture takes the largest whole multiple of
-//! 240x160 that fits the output, centred on black, so every frame pixel is
+//! 240x160 that fits the output, centered on black, so every frame pixel is
 //! the same square of output pixels whatever the window's size; only an
 //! output smaller than 240x160 gets a fractional (shrunk) picture. Text is
 //! drawn at the same placement and scale.
@@ -97,9 +97,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn whole_multiples_centred_and_shrunk_only_below_one() {
+    fn whole_multiples_centered_and_shrunk_only_below_one() {
         assert_eq!(Placement::fit(960, 640), Placement { x: 0, y: 0, width: 960, height: 640, scale: 4.0 });
-        // A window between multiples: the largest that fits, centred.
+        // A window between multiples: the largest that fits, centered.
         let p = Placement::fit(1000, 700);
         assert_eq!((p.x, p.y, p.width, p.height, p.scale), (20, 30, 960, 640, 4.0));
         assert_eq!(p.frame_pixel(20, 30), Some((0, 0)));

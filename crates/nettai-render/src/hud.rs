@@ -121,7 +121,7 @@ impl Mood {
 struct RollingHp {
     shown: u16,
     /// 0 normal, 1 healing, 2 hurt or low.
-    colour: u8,
+    color: u8,
     hold: u8,
 }
 
@@ -132,7 +132,7 @@ struct HpNumberShown {
     number: HpNumber,
     shown: u16,
     /// 0 normal, 1 dropping, 2 rising.
-    colour: u8,
+    color: u8,
     timer: u8,
 }
 
@@ -212,13 +212,13 @@ impl HudState {
         if let Some(r) = b.player(local) {
             let o = b.objects.get(r);
             let (h, m) = (o.hp, o.max_hp);
-            let s = self.hp.get_or_insert(RollingHp { shown: h, colour: 0, hold: 0 });
+            let s = self.hp.get_or_insert(RollingHp { shown: h, color: 0, hold: 0 });
             if h > s.shown {
-                s.colour = 1;
+                s.color = 1;
                 s.shown = roll(s.shown, h, 4);
                 s.hold = 15;
             } else if h < s.shown {
-                s.colour = 2;
+                s.color = 2;
                 s.shown = roll(s.shown, h, 4);
                 s.hold = 15;
             } else {
@@ -226,7 +226,7 @@ impl HudState {
                     s.hold -= 1;
                 }
                 if s.hold == 0 {
-                    s.colour = if h <= m / 4 { 2 } else { 0 };
+                    s.color = if h <= m / 4 { 2 } else { 0 };
                 }
             }
         }
@@ -239,25 +239,25 @@ impl HudState {
             };
             let e = match shown {
                 Some(e) if e.number == number => e,
-                _ => shown.insert(HpNumberShown { number, shown: number.hp, colour: 0, timer: 0 }),
+                _ => shown.insert(HpNumberShown { number, shown: number.hp, color: 0, timer: 0 }),
             };
             let o = b.objects.get(number.object);
             let poisoned = o.collision.is_some_and(|c| b.collision.get(c).poison_timer != 0);
             if e.shown < o.hp {
-                e.colour = 2;
+                e.color = 2;
                 e.timer = 10;
                 e.shown = roll(e.shown, o.hp, 2);
             } else if e.shown > o.hp {
-                e.colour = 1;
+                e.color = 1;
                 e.timer = 1;
                 e.shown = roll(e.shown, o.hp, 2);
             } else if poisoned {
-                e.colour = 1;
+                e.color = 1;
                 e.timer = 2;
             } else if e.timer > 0 {
                 e.timer -= 1;
                 if e.timer == 0 {
-                    e.colour = 0;
+                    e.color = 0;
                 }
             }
         }
@@ -342,14 +342,14 @@ pub fn draw<'a>(
     let local = b.setup.local_side;
     let player = b.player(local);
     let open = custom_open(b);
-    let colour = state.hp.map(|h| h.colour).unwrap_or(0) as usize;
+    let color = state.hp.map(|h| h.color).unwrap_or(0) as usize;
 
     let (hide_mugshot, hide_boxes) = transform_hides(b);
     // HP box, top left (moved right with the custom screen's window).
     let shift = crate::custom::hud_shift(b);
     if let Some(r) = player.filter(|_| !hide_boxes) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
-        let pal = &hud.hp_palettes[colour.min(2)];
+        let pal = &hud.hp_palettes[color.min(2)];
         for (i, &e) in hud.hp_box.iter().enumerate() {
             put_px(layer, hud, pal, e, shift + 8 * (i as i32 % 6), 8 * (i as i32 / 6));
         }
@@ -360,7 +360,7 @@ pub fn draw<'a>(
         }
     }
 
-    // Custom gauge, top centre.
+    // Custom gauge, top center.
     if gauge_shown(b, state) {
         let pal = &hud.gauge_palette;
         for (i, &e) in hud.gauge_frame.iter().enumerate() {
@@ -408,7 +408,7 @@ pub fn draw<'a>(
     // (`sub_801DACC(0x400)`), and they are back with the gauge, once the
     // local result is sent.
     if !open && !hide_boxes && !crate::custom::gauge_held(b) {
-        let pal = &hud.hp_palettes[colour.min(2)];
+        let pal = &hud.hp_palettes[color.min(2)];
         for (side, column) in [(local, 6), (local ^ 1, 26)] {
             if b.linked[side as usize & 1].chip.is_none() {
                 continue;
@@ -458,7 +458,7 @@ pub fn draw<'a>(
     // "TIME UP!", at the top (`sub_801E398`: 8 glyphs from column 11),
     // while the fight runs.
     // "TIME UP!" stays for the judge's first second.
-    let text_palette = &hud.hp_palettes[colour.min(2)];
+    let text_palette = &hud.hp_palettes[color.min(2)];
     let timed = match b.fight.state {
         fight::FIGHTING | fight::PAUSE => b.fight.turn_timer != TURN_TICKS,
         fight::JUDGE => b.fight.sub == 0,
@@ -486,7 +486,7 @@ pub fn draw<'a>(
         {
             let bonus = nettai_battle::kinds::player::next_chip_bonus(b, r);
             let doubled = nettai_battle::kinds::player::next_chip_doubles(b, r);
-            draw_chip_name(b, layer, text, hud, &hud.hp_palettes[colour.min(2)], hand, chip, (bonus, doubled), problems);
+            draw_chip_name(b, layer, text, hud, &hud.hp_palettes[color.min(2)], hand, chip, (bonus, doubled), problems);
         }
     }
 
@@ -518,12 +518,12 @@ pub fn draw<'a>(
             continue;
         }
         // The damage taken instead (`sub_801C296`'s flag 0x10), from the
-        // place without centring (flag 8).
+        // place without centering (flag 8).
         let value = if number.damage { o.max_hp.wrapping_sub(e.shown) } else { e.shown };
         let n = value.min(9999).to_string().len() as i32;
         let x = p.x + number.dx as i32 + if number.damage { 0 } else { 4 * n - 32 };
         let y = p.y + number.dy as i32;
-        let digits = &hud.enemy_digits[e.colour.min(2) as usize];
+        let digits = &hud.enemy_digits[e.color.min(2) as usize];
         let mut group = Vec::new();
         for (k, d) in digits4(value).into_iter().enumerate() {
             if d == 10 {
@@ -966,7 +966,7 @@ fn banner_scale(b: &Battle) -> i32 {
 
 /// A telop (`sub_801E95C` lays it out, `sub_801CF9E` draws it): the chip's
 /// name in the font's glyphs, then for a chip whose damage shows the
-/// damage, "+bonus" and "x2", centred in the viewer's half of the screen,
+/// damage, "+bonus" and "x2", centered in the viewer's half of the screen,
 /// with the banners' squash.
 #[allow(clippy::too_many_arguments)]
 fn telop_parts<'a>(
@@ -1017,7 +1017,7 @@ static BLANK_GLYPH: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Til
 
 /// A chip's name (its words and the font's glyphs for them) with its
 /// numbers (damage, bonus, doubled) as `sub_801E95C` lays them out from a
-/// telop banner's place: centred as fifteen glyphs are; the other player's
+/// telop banner's place: centered as fifteen glyphs are; the other player's
 /// (`remote`) moves over for the "x2". In the font mode the name is a text
 /// item in the cells its glyphs take, returned, and blank parts stand in
 /// for the glyphs.
@@ -1049,7 +1049,7 @@ fn name_parts<'a>(
     let pal = hud.hp_palettes[0];
     let item = font.then(|| {
         let item = TextItem::new(words, Role::Cell, Rect::new(x, y, 8 * cells as i32, 16), pal[1], Some(pal[2]));
-        TextItem { align: Align::Centre, vscale, ..item }
+        TextItem { align: Align::Center, vscale, ..item }
     });
     let after = x + 8 * cells as i32;
     for c in name {
@@ -1119,7 +1119,7 @@ mod tests {
             Some(Telop { side: 0, chip: Some(chip), damage: 120, doubled: true, bonus: 10, hidden: TelopHidden::No });
         let hud = hud();
         let mut problems = Problems::default();
-        // Its user's console: "SunGun3" "120" "+10" is 13 glyphs, centred as
+        // Its user's console: "SunGun3" "120" "+10" is 13 glyphs, centered as
         // 15 are, then "x2".
         let mut parts = Vec::new();
         telop_parts(&b, &hud, &hud.banners[0x4C / 4], b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems);
@@ -1152,7 +1152,7 @@ mod tests {
         let mut parts = Vec::new();
         telop_parts(&b, &hud, &hud.banners[0x50 / 4], b.telop_for(1).unwrap(), &mut parts, &TextSink::original(), &mut problems);
         assert_eq!(parts.iter().map(|p| p.first_tile).collect::<Vec<_>>(), [glyph_of('?'); 4]);
-        // Four glyphs centred as fifteen are, from the right banner's place.
+        // Four glyphs centered as fifteen are, from the right banner's place.
         assert_eq!(parts[0].x, 120 + 44);
         let mut parts = Vec::new();
         telop_parts(&b, &hud, &hud.banners[0x4C / 4], b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems);
@@ -1179,7 +1179,7 @@ mod tests {
         assert!(parts[..7].iter().all(|p| p.tiles.pixels.iter().all(|&v| v == 0)));
         assert_eq!(parts[7].first_tile, 2 * (DAMAGE_DIGIT + 1));
         assert_eq!((item.text.as_str(), item.rect), ("SunGun3", Rect::new(8, 32, 56, 16)));
-        assert_eq!((item.align, item.vscale), (Align::Centre, parts[0].vscale));
+        assert_eq!((item.align, item.vscale), (Align::Center, parts[0].vscale));
         assert_eq!((item.face, item.shadow), (hud.hp_palettes[0][1], Some(hud.hp_palettes[0][2])));
         // In the original mode there is none.
         let mut parts = Vec::new();
@@ -1202,7 +1202,7 @@ mod tests {
         let mut parts = Vec::new();
         telop_parts(&b, &hud, &hud.banners[0x4C / 4], b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
         assert_eq!(parts.iter().map(|p| p.first_tile).collect::<Vec<_>>(), "Sol".chars().map(glyph_of).collect::<Vec<_>>());
-        // Centred as fifteen glyphs are: the translation's three.
+        // Centered as fifteen glyphs are: the translation's three.
         assert_eq!(parts[0].x, 6 * 8);
         assert!(text.strings.take_missing().is_empty());
         // A chip the table has no name for shows the definition's, noted.
