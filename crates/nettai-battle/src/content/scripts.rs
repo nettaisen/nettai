@@ -32,11 +32,6 @@ impl RootManifest {
         RootManifest { name: name.to_string() }
     }
 
-    /// The game pack a game folder's assets are in (its name).
-    pub fn assets(&self) -> &str {
-        &self.name
-    }
-
     /// What is wrong with it, if anything.
     pub fn check(&self) -> Result<(), String> {
         if !keys::valid_root_name(&self.name) {
@@ -49,12 +44,10 @@ impl RootManifest {
 /// The content's Luau modules.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Scripts {
-    /// Source text by module name: its root's name and its path in the
-    /// root without `.luau` (`bn6:objects/sun-beam/sun_beam`).
+    /// Source text by module name: its folder's name and its path in the
+    /// folder without `.luau` (`bn6:objects/sun-beam/sun_beam`).
     pub modules: BTreeMap<String, String>,
-    /// The roots the modules come from: the content's own first (its
-    /// home: the root the content was loaded from), then those it
-    /// requires.
+    /// The folders the modules come from.
     pub roots: Vec<RootManifest>,
     /// Their bytecode, as the define phase compiled it (a runtime then
     /// skips the compiler).
@@ -69,7 +62,7 @@ impl Scripts {
         s
     }
 
-    /// Add a root's modules, by path in the root.
+    /// Add a folder's modules, by path in the folder.
     pub fn add_root(&mut self, manifest: RootManifest, modules: BTreeMap<String, String>) {
         for (path, source) in modules {
             self.modules.insert(Scripts::name(&manifest.name, &path), source);
@@ -77,7 +70,7 @@ impl Scripts {
         self.roots.push(manifest);
     }
 
-    /// The module name of path `path` in root `root`.
+    /// The module name of path `path` in folder `root`.
     pub fn name(root: &str, path: &str) -> String {
         format!("{root}{}{path}", keys::SEPARATOR)
     }
@@ -87,8 +80,8 @@ impl Scripts {
         self.modules.get_mut(&Scripts::name(folder, path))
     }
 
-    /// What is wrong with the roots: a manifest's, a root named twice, a
-    /// root required that isn't here, a module of no root.
+    /// What is wrong with the folders: a bad name, a name twice, a module
+    /// of no loaded folder.
     pub fn check_roots(&self) -> Result<(), String> {
         for (i, r) in self.roots.iter().enumerate() {
             r.check()?;

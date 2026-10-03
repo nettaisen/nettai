@@ -73,7 +73,7 @@ impl PlayerSetup {
         let slot = def
             .systems
             .iter()
-            .position(|&h| nettai_content_api::keys::names(&content.defs.system(h).key, system))
+            .position(|&h| content.defs.system(h).key == system)
             .ok_or_else(|| format!("ruleset {} has no system {system}", def.key))?;
         let block = &mut self.rules[slot];
         let schema = &content.defs.schemas[block.id().0 as usize].schema;

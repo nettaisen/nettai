@@ -422,21 +422,14 @@ impl Defs {
         ruleset.map_or(default, |r| self.ruleset(r).game)
     }
 
-    /// Look `key` up with `exact`, as it is: ids are written in full
-    /// (`bn6:cannon`; the engine's own `engine/...`). Lookups by key are
-    /// for tools, tests and setups by name, never the simulation's.
-    fn find<T>(&self, key: &str, exact: impl Fn(&str) -> Option<T>) -> Option<T> {
-        exact(key)
-    }
-
     /// The ruleset with this key.
     pub fn ruleset_by_key(&self, key: &str) -> Option<RulesetHandle> {
-        self.find(key, |k| self.rulesets.iter().position(|r| r.key == k).map(|i| RulesetHandle(i as u16)))
+        self.rulesets.iter().position(|r| r.key == key).map(|i| RulesetHandle(i as u16))
     }
 
     /// The kind with this key.
     pub fn kind_by_key(&self, key: &str) -> Option<KindHandle> {
-        self.find(key, |k| self.kind_keys.get(k).copied())
+        self.kind_keys.get(key).copied()
     }
 
     pub fn kind(&self, h: KindHandle) -> &KindDef {
@@ -463,12 +456,12 @@ impl Defs {
 
     /// The action with this key.
     pub fn action_by_key(&self, key: &str) -> Option<ActionHandle> {
-        self.find(key, |k| self.actions.binary_search_by(|a| a.key.as_str().cmp(k)).ok().map(|i| ActionHandle(i as u16)))
+        self.actions.binary_search_by(|a| a.key.as_str().cmp(key)).ok().map(|i| ActionHandle(i as u16))
     }
 
     /// The chip with this key.
     pub fn chip_by_key(&self, key: &str) -> Option<ChipHandle> {
-        self.find(key, |k| self.chip_keys.get(k).copied())
+        self.chip_keys.get(key).copied()
     }
 
     pub fn chip(&self, h: ChipHandle) -> &ChipDef {
@@ -481,7 +474,7 @@ impl Defs {
 
     /// The navi with this key.
     pub fn navi_by_key(&self, key: &str) -> Option<NaviHandle> {
-        self.find(key, |k| self.navis.binary_search_by(|n| n.key.as_str().cmp(k)).ok().map(|i| NaviHandle(i as u16)))
+        self.navis.binary_search_by(|n| n.key.as_str().cmp(key)).ok().map(|i| NaviHandle(i as u16))
     }
 
     pub fn form(&self, h: FormHandle) -> &FormDef {
@@ -490,7 +483,7 @@ impl Defs {
 
     /// The form with this key.
     pub fn form_by_key(&self, key: &str) -> Option<FormHandle> {
-        self.find(key, |k| self.forms.binary_search_by(|f| f.key.as_str().cmp(k)).ok().map(|i| FormHandle(i as u16)))
+        self.forms.binary_search_by(|f| f.key.as_str().cmp(key)).ok().map(|i| FormHandle(i as u16))
     }
 
     pub fn stage(&self, h: StageHandle) -> &StageDef {
@@ -499,28 +492,22 @@ impl Defs {
 
     /// The stage with this key.
     pub fn stage_by_key(&self, key: &str) -> Option<StageHandle> {
-        self.find(key, |k| self.stages.binary_search_by(|s| s.key.as_str().cmp(k)).ok().map(|i| StageHandle(i as u16)))
+        self.stages.binary_search_by(|s| s.key.as_str().cmp(key)).ok().map(|i| StageHandle(i as u16))
     }
 
     /// The status effect with this key.
     pub fn status_by_key(&self, key: &str) -> Option<nettai_content_api::StatusHandle> {
-        self.find(key, |k| {
-            self.statuses.binary_search_by(|s| s.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::StatusHandle(i as u16))
-        })
+        self.statuses.binary_search_by(|s| s.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::StatusHandle(i as u16))
     }
 
     /// The identity with this key.
     pub fn identity_by_key(&self, key: &str) -> Option<nettai_content_api::IdentityHandle> {
-        self.find(key, |k| {
-            self.identities.binary_search_by(|i| i.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::IdentityHandle(i as u16))
-        })
+        self.identities.binary_search_by(|i| i.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::IdentityHandle(i as u16))
     }
 
     /// The lock-on mode with this key.
     pub fn lockon_by_key(&self, key: &str) -> Option<nettai_content_api::LockonHandle> {
-        self.find(key, |k| {
-            self.lockons.binary_search_by(|l| l.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::LockonHandle(i as u16))
-        })
+        self.lockons.binary_search_by(|l| l.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::LockonHandle(i as u16))
     }
 
     pub fn weapon(&self, h: WeaponHandle) -> &WeaponDef {
@@ -529,15 +516,12 @@ impl Defs {
 
     /// The weapon with this key.
     pub fn weapon_by_key(&self, key: &str) -> Option<WeaponHandle> {
-        self.find(key, |k| self.weapon_keys.get(k).copied())
+        self.weapon_keys.get(key).copied()
     }
-
 
     /// The patch card with this key.
     pub fn patch_card_by_key(&self, key: &str) -> Option<nettai_content_api::PatchCardHandle> {
-        self.find(key, |k| {
-            self.patch_cards.binary_search_by(|c| c.key.as_str().cmp(k)).ok().map(|i| nettai_content_api::PatchCardHandle(i as u16))
-        })
+        self.patch_cards.binary_search_by(|c| c.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::PatchCardHandle(i as u16))
     }
 
     pub fn patch_card(&self, h: nettai_content_api::PatchCardHandle) -> &PatchCardDef {
@@ -546,7 +530,7 @@ impl Defs {
 
     /// A record's handle by key.
     pub fn record(&self, key: &str) -> Option<RecordHandle> {
-        self.find(key, |k| self.records.binary_search_by(|r| r.key.as_str().cmp(k)).ok().map(|i| RecordHandle(i as u16)))
+        self.records.binary_search_by(|r| r.key.as_str().cmp(key)).ok().map(|i| RecordHandle(i as u16))
     }
 
     /// The layout with this key.

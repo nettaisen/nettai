@@ -8,8 +8,9 @@ use nettai_battle::content::{BackgroundId, BannerId, Content, InPack, MugshotId,
 use nettai_content_api::AssetKind;
 
 /// The loaded packs' graphics, by `PackId` (the content's `AssetNames::packs`
-/// order), and the content's own pack's, which draws what belongs to no
-/// asset (the HUD's frame, the custom screen's).
+/// order), and the frontend's own game's pack's (BN6's, by name:
+/// `nettai_match::DEFAULT_GAME`), which draws what belongs to no asset (the
+/// HUD's frame, the custom screen's).
 #[derive(Clone)]
 pub struct Packs<'a> {
     bundles: Vec<&'a Bundle>,
@@ -22,35 +23,35 @@ impl<'a> Packs<'a> {
         Packs { bundles: vec![bundle], own: PackId(0) }
     }
 
-    /// Several packs' graphics, by `PackId`; `own` the content's own.
+    /// Several packs' graphics, by `PackId`; `own` the frontend's own
+    /// game's.
     pub fn new(bundles: Vec<&'a Bundle>, own: PackId) -> Packs<'a> {
-        assert!(own.index() < bundles.len(), "the content's own pack is loaded");
+        assert!(own.index() < bundles.len(), "the frontend's own pack is loaded");
         Packs { bundles, own }
     }
 
-    /// The graphics of pack `pack` (the content's own for one not loaded:
-    /// a frontend of one pack).
+    /// The graphics of pack `pack` (the own pack's for one not loaded: a
+    /// frontend of one pack).
     pub fn bundle(&self, pack: PackId) -> &'a Bundle {
         self.bundles.get(pack.index()).copied().unwrap_or(self.bundles[self.own.index()])
     }
 
-    /// The content's own pack's graphics.
+    /// The own pack's graphics.
     pub fn own(&self) -> &'a Bundle {
         self.bundles[self.own.index()]
     }
 
-    /// The graphics of root `root`'s assets pack (a game's: the arena's,
-    /// a side's).
+    /// The graphics of game `root`'s pack (the arena's, a side's).
     pub fn of_root(&self, c: &Content, root: RootId) -> &'a Bundle {
-        let game = c.scripts.roots.get(root.index()).map(|r| r.assets());
+        let game = c.defs.roots.get(root.index());
         match game.and_then(|g| c.assets.pack(g)) {
             Some(p) => self.bundle(p),
             None => self.own(),
         }
     }
 
-    /// The graphics of the pack a definition's root names its assets in
-    /// (a chip's icon and picture are its game's, under its own key).
+    /// The graphics of the pack of a definition's game, its id's prefix (a
+    /// chip's icon and picture are its game's, under its id's own part).
     pub fn of_key(&self, c: &Content, key: &str) -> &'a Bundle {
         c.defs.root_of(key).map_or(self.own(), |r| self.of_root(c, r))
     }
