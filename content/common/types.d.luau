@@ -307,3 +307,6 @@ export type YoyoThrowSpec = {
     attachment: Kind,
     throw: (me: Object, x: number, y: number, z: number, damage: number) -> Object?,
 }
+
+-- A game's moon blade (@common/moonbld/blade): its sprite, and what it is and hits.
+export type MoonBladeLook = { sprite: SpriteAsset, is: CollisionType, hits: CollisionType }
