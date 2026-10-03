@@ -1,12 +1,40 @@
 --!strict
--- BN5's bombs' parts, for BN6's throw (@bn6/lib/bombs/throw, the original's action 0x12; BN5's the same code but for
--- the thrown object's parameter, which BN5's passes none of): the bomb the navi holds (the attachment table's row
--- 4, 0c-02, BN5's sprite of BN6's look).
+-- BN5's throw (action 0x12) and thrown bomb (attack object #8): BN6's code (@common/bombs), BN5's attachment and
+-- bomb kind; the throw's sound, the bomb's sprite, sound and effects BN6's. A chip's throw is
+-- `bombs.throw { held = ..., thrower = ... }`; MiniBomb's, EnergBom's and MegEnBom's thrower `bombs.thrower(variant)`.
 
-local attachment = require("@bn6/objects/attachment/attachment")
+local attachment = require("../objects/attachment/attachment")
+local bomb = require("@common/bombs/bomb")
+local effects = require("@bn6/lib/effects")
+local throw = require("@common/bombs/throw")
 
 local bombs = {}
 
-bombs.held = attachment.look { sprite = asset.sprite("bn5:bomb"), palette = 0 }
+local SPRITE = asset.sprite("bn6:bomb")
+
+-- What the navi holds while throwing a bomb.
+bombs.held = attachment.look { sprite = SPRITE, palette = 0 }
+
+-- A bomb variant.
+bombs.variant = bomb.variant
+
+local made = bomb.make {
+    id = "bn5:bomb",
+    sprite = SPRITE,
+    hit_sound = asset.sound("bn6:hit-bomb-1"),
+    splash = effects.splash,
+    explosion = effects.explosion,
+    puff = effects.puff,
+}
+
+-- A thrower that throws a bomb of `variant`, null-element.
+bombs.thrower = made.thrower
+
+local THROW: ThrowLook = { sound = asset.sound("bn6:minibomb-throw"), attachment = attachment.kind }
+
+-- A chip's throw.
+function bombs.throw(spec: ThrowSpec): Action
+    return throw.action(spec, THROW)
+end
 
 return bombs

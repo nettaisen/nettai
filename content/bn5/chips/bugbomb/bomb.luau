@@ -10,7 +10,9 @@
 
 local collision = require("../../rules/collision")
 local common = require("@common/bugbomb/bomb")
+local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local statuses = require("../../rules/status")
+local trajectory = require("../../lib/trajectory")
 
 local bug_bomb = {}
 
@@ -59,6 +61,8 @@ bug_bomb.kind = common.make_kind("bn5:bugbomb/bomb", {
     crushed_sound = asset.sound("bn5:hit-bomb-0"),
     burst_sound = asset.sound("bn5:hit-bomb-1"),
     pick_bug = pick_bug,
+    bubble = rising_bubble.kind,
+    trajectory = trajectory,
 })
 
 return bug_bomb

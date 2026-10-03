@@ -314,6 +314,12 @@ const TEST_PACK: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/pack");
 /// The test content's own modules (its roles).
 const TEST_CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/content");
 
+/// The shared folder (content/common) as a root of `scripts`: what BN6's
+/// modules require by `@common/...`, for content that loads them.
+pub fn add_shared(scripts: &mut Scripts) {
+    scripts.add_root(RootManifest::named(nettai_content_api::keys::SHARED), modules_under(COMMON));
+}
+
 /// Every `.luau` module under `dir`, by path without `.luau`.
 pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
     fn walk(root: &std::path::Path, dir: &std::path::Path, out: &mut std::collections::BTreeMap<String, String>) {
@@ -972,6 +978,10 @@ fn navi_chip_assets(a: &mut nettai_content_api::PackIndex) {
 /// Where the BN6 scripts are (the source overlay in this repository).
 const OVERLAY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
 
+/// The behavior BN5 and BN6 share (content/common), which BN6's modules
+/// require by `@common/...`: a root of its own beside the test content's.
+const COMMON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/common");
+
 /// The test content's scripts: its own modules (testdata/content), these
 /// modules of the BN6 overlay, and whatever they `require` of it.
 pub fn scripts() -> Scripts {
@@ -983,7 +993,6 @@ pub fn scripts() -> Scripts {
                 borrowed(std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}")))
             };
             let modules = [
-                ("lib/slot", "lib/slot"),
                 ("objects/attachment/attachment", "objects/attachment/attachment"),
                 // GunDelSol: the chips, whose actions the SunGuns run.
                 ("chips/gundels/beam", "chips/gundels/beam"),
@@ -992,7 +1001,6 @@ pub fn scripts() -> Scripts {
                 ("chips/eraseman/mark", "chips/eraseman/mark"),
                 ("chips/eraseman/beam", "chips/eraseman/beam"),
                 ("chips/eraseman/navi", "chips/eraseman/navi"),
-                ("lib/dimming", "lib/dimming"),
                 ("lib/grab/shot", "lib/grab/shot"),
                 ("lib/grab/controller", "lib/grab/controller"),
                 ("chips/areagrab/chip", "chips/areagrab/chip"),
@@ -1107,7 +1115,6 @@ pub fn scripts() -> Scripts {
                 ("chips/justcone/chip", "chips/justcone/chip"),
                 ("chips/golmhit/golem", "chips/golmhit/golem"),
                 ("chips/golmhit/chips", "chips/golmhit/chips"),
-                ("lib/element", "lib/element"),
                 ("lib/projectile", "lib/projectile"),
                 ("objects/gust/gust", "objects/gust/gust"),
                 // WindRack's action, which TenguCross's charged shot swings
@@ -1138,11 +1145,9 @@ pub fn scripts() -> Scripts {
                 ("chips/rflectr/shot", "chips/rflectr/shot"),
                 ("chips/rflectr/guard", "chips/rflectr/guard"),
                 ("chips/rflectr/chips", "chips/rflectr/chips"),
-                ("chips/recov/heal", "chips/recov/heal"),
                 ("chips/recov/chips", "chips/recov/chips"),
                 ("lib/burner/burn", "lib/burner/burn"),
                 ("lib/burner/flame", "lib/burner/flame"),
-                ("lib/regions", "lib/regions"),
                 ("lib/effects", "lib/effects"),
                 ("lib/sparks", "lib/sparks"),
                 ("rules/collision", "rules/collision"),
@@ -1285,7 +1290,6 @@ pub fn scripts() -> Scripts {
                 ("objects/rising-bubble/rising_bubble", "objects/rising-bubble/rising_bubble"),
                 // ElemTrap, the time bombs and Mine: BN6's definitions,
                 // whose hooks the test traps and time bombs run.
-                ("lib/panels", "lib/panels"),
                 ("chips/elemtrap/trap", "chips/elemtrap/trap"),
                 ("chips/elemtrap/strike", "chips/elemtrap/strike"),
                 ("chips/elemtrap/chip", "chips/elemtrap/chip"),
@@ -1417,7 +1421,8 @@ pub fn scripts() -> Scripts {
             let own = modules_under(TEST_CONTENT);
             let mut all: std::collections::BTreeMap<String, String> =
                 modules.map(|(to, from)| (to, read(&from))).chain(own).collect();
-            // What they require of the overlay comes with them.
+            // What they require of the overlay comes with them (what they
+            // require of content/common is its root's).
             let mut pending: Vec<String> = all.keys().cloned().collect();
             while let Some(module) = pending.pop() {
                 for required in requires(&module, &all[&module]) {
@@ -1427,13 +1432,16 @@ pub fn scripts() -> Scripts {
                     }
                 }
             }
-            Scripts::root(RootManifest::named(ROOT), all)
+            let mut scripts = Scripts::root(RootManifest::named(ROOT), all);
+            add_shared(&mut scripts);
+            scripts
         })
         .clone()
 }
 
 /// The modules `source` (the module `module`) requires: each
-/// `require("<relative path>")`, as a module path.
+/// `require("<relative path>")`, as a module path. (A require of another
+/// folder, `@common/...`, is that folder's.)
 fn requires(module: &str, source: &str) -> Vec<String> {
     let dir: Vec<&str> = module.split('/').collect();
     let dir = &dir[..dir.len() - 1];
@@ -1441,6 +1449,7 @@ fn requires(module: &str, source: &str) -> Vec<String> {
         .split("require(\"")
         .skip(1)
         .filter_map(|rest| rest.split_once("\")").map(|(path, _)| path))
+        .filter(|path| !path.starts_with('@'))
         .map(|path| {
             let mut parts: Vec<&str> = dir.to_vec();
             for part in path.split('/') {

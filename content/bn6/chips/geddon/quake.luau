@@ -7,7 +7,7 @@
 -- lets its holder go on. Geddon's and the capsules' controller
 -- (./controller) spawns it.
 
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 
 local quake = {}

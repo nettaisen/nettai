@@ -1,120 +1,29 @@
 --!strict
 -- The Spreaders' action (the original's action 0x25, `sub_80ECBB0`;
--- docs/engine/shot-chips.md §5): the navi raises its gun and on the second
--- tick fires a bullet (objects/bullet) from the panel ahead, which bursts
--- where it finds something; 21 ticks of recovery. SpoutCross's charged
--- shot fires its own bullet from its water cannon the same way.
+-- docs/engine/shot-chips.md §5): the shared action
+-- (@common/spreadr/action) with BN6's sound, attachment and bullet.
+-- SpoutCross's charged shot fires its own bullet from its water cannon the
+-- same way.
 
 local attachment = require("../../objects/attachment/attachment")
 local bullet = require("../../objects/bullet/bullet")
+local common = require("@common/spreadr/action")
 
 local spreader = {}
 
-export type State = {
-    -- Ticks since the gun came up, then the recovery's countdown.
-    timer: number,
-}
-
 -- One state for every spreader.
-spreader.STATE = { timer = "u16" }
-
--- The phases, on the attack's step.
-local FIRE, RECOVER = 0x0, 0x4
-
-local ANIM = 0xB
-local SOUND = asset.sound("bn6:h-burst")
--- The bullet leaves once the count passes this; the recovery's ticks.
-local FIRE_AFTER, RECOVER_TICKS = 1, 0x14
-
--- What a spreader fires: its gun (the original's attachment rows 0x15 and
--- 0x2F, by `dword_80ECC54`), the bullet's height (16.16, by
--- `dword_80ECC5C`), and the bullet; another game's bullet kind and shot
--- sound (BN5's Spreader's: BN6's by default).
-export type SpreaderSpec = {
-    id: string?,
-    gun: AttachmentLook,
-    z: number,
-    bullet: BulletVariant,
-    bullet_kind: Kind?,
-    sound: Sound?,
-}
+spreader.STATE = common.STATE
 
 spreader.guns = {
     spreader = attachment.look { sprite = asset.sprite("bn6:spreader"), palette = 0, attach_point = 11 },
     water_cannon = attachment.look { sprite = asset.sprite("bn6:water-cannon"), palette = 0, attach_point = 25 },
 }
 
--- `sub_80ECC86`: the gun's animation by the holder's AI index (the link
--- navis HeatMan, GroundMan and DustMan, 1, 9 and 10: 2; the others 0).
-local function gun_anim(me: Object): number
-    local ai = me.ai_index
-    if ai == 1 or ai == 9 or ai == 10 then
-        return 2
-    end
-    if ai > 27 then
-        error(string.format("AI index %d reads past off_80ECC94", ai))
-    end
-    return 0
-end
+local LOOK: SpreaderLook = { sound = asset.sound("bn6:h-burst"), attachment = attachment.kind, bullet_kind = bullet.kind }
 
 -- A chip's spreader.
 function spreader.action(spec: SpreaderSpec): Action
-    -- `sub_80ECBCC`: raise the gun; on the second tick, the bullet.
-    local function fire(me: Object, s: State)
-        if me.step_init == 0 then
-            me:set_animation(ANIM)
-            me:open_counter_window()
-            attachment.attach(me, spec.gun, "overlay", { anim = gun_anim(me) })
-            me:set_status("using_action", true)
-            me.step_init = 4
-            s.timer = 0
-        end
-        local t = s.timer + 1
-        s.timer = t
-        if t <= FIRE_AFTER then
-            return
-        end
-        local gun = me.overlay
-        if gun then
-            gun.anim += 1
-        end
-        battle.play_sound(spec.sound or SOUND)
-        local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-        bullet.fire(me, me.panel_x + me.facing, me.panel_y, spec.z, spec.bullet, me.attack_element, damage, spec.bullet_kind)
-        me.step, me.step_init = RECOVER, 0
-    end
-
-    -- `sub_80ECC60`: 21 ticks, then the gun goes and back to idle.
-    local function recover(me: Object, s: State)
-        if me.step_init == 0 then
-            s.timer = RECOVER_TICKS
-            me.step_init = 4
-        end
-        local t = s.timer - 1
-        s.timer = t
-        if t < 0 then
-            me.related1 = nil
-            me.overlay = nil
-            me:exit_attack()
-        end
-    end
-
-    return define.action {
-        id = spec.id,
-        state = spreader.STATE,
-        args = spec,
-        -- `sub_80ECBB0`.
-        update = function(me: Object, s: State)
-            local step = me.step
-            if step == FIRE then
-                fire(me, s)
-            elseif step == RECOVER then
-                recover(me, s)
-            else
-                error(string.format("spreader phase %#x reads past off_80ECBC4", step))
-            end
-        end,
-    }
+    return common.action(spec, LOOK)
 end
 
 return spreader

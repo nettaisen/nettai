@@ -12,8 +12,8 @@
 -- Unlike BN6's slash: no moving state set or cleared, two swings always, its own hits and slashes by swing
 -- (0x080EFBC4, 0x080EFBE0), the blade in the overlay slot, and no recovery ticks.
 
-local attachment = require("@bn6/objects/attachment/attachment")
-local regions = require("@bn6/lib/regions")
+local attachment = require("../attachment/attachment")
+local regions = require("@common/regions")
 local swords = require("../../lib/swords")
 
 local katana = {}

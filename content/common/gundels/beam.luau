@@ -9,7 +9,7 @@
 -- objects/gundels). BN5's hides it whenever the battle is dimmed (0x080E5C44): BN6's third parameter, which shows
 -- it then too (CrosOver's), BN5's has not, and its spawns never set it.
 
-local slot = require("@bn6/lib/slot")
+local slot = require("../slot")
 
 local beam = {}
 

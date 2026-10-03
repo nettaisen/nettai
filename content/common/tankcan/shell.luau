@@ -7,8 +7,8 @@
 --
 -- Each game makes its kind with `shell.make_kind(id, look)` (BN6's chips/tankcan/shell, BN5's chips/tankcan1).
 
-local panels = require("@bn6/lib/panels")
-local regions = require("@bn6/lib/regions")
+local panels = require("../panels")
+local regions = require("../regions")
 
 local shell = {}
 

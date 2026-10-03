@@ -5,7 +5,7 @@
 -- starts it by role (`actions.body_guard_counter`, rules/roles.luau).
 
 local effects = require("../../lib/effects")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local striker = require("./striker")
 
 local counter = {}

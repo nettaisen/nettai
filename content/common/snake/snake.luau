@@ -7,8 +7,7 @@
 --
 -- A game makes its snake kind with `snake.make_kind(id, look)`.
 
-local regions = require("@bn6/lib/regions")
-local trajectory = require("@bn6/lib/trajectory")
+local regions = require("../regions")
 
 local snake = {}
 
@@ -122,7 +121,7 @@ end
 -- ---- The snake --------------------------------------------------------------------------------------------------
 
 -- `sub_80D3058`: 16 pixels a tick toward the target panel's center, or straight ahead without one.
-local function aim(me: Object)
+local function aim(me: Object, look: Look)
     local s = me.state :: State
     local x, y = field.center(me.panel_x, me.panel_y)
     if s.target_x == 0xFF then
@@ -130,6 +129,7 @@ local function aim(me: Object)
         return
     end
     local tx, ty = field.center(s.target_x, s.target_y)
+    local trajectory = look.trajectory
     local angle = trajectory.angle(int.i32(tx - x), int.i32(ty - y))
     local vx, vy = trajectory.toward(angle, SPEED)
     me.vel = Vec3.new(vx, vy, me.vel.z)
@@ -245,7 +245,7 @@ local function init(me: Object, look: Look)
     me.anim = 0
     sprite:set_animation(0)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    aim(me)
+    aim(me, look)
     me:set_lifecycle("update")
     tick(me, look)
 end

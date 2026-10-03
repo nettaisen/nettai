@@ -14,7 +14,7 @@
 --
 -- (NaviStats +0x4C and AIData+0x12 aren't modeled: no setup or rule of the engine's sets them, so they read 0.)
 
-local attachment = require("@bn6/objects/attachment/attachment")
+local attachment = require("../objects/attachment/attachment")
 
 local arm = {}
 

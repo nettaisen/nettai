@@ -615,7 +615,17 @@ also be fully qualified as well".
   with no battle takes the game that has the thing. A frontend's and the match tool's default game is BN6's, by name
   (`nettai_match::DEFAULT_GAME`).
 - **content/common** is a folder of behavior only: modules the games' folders share by path
-  (`require("@common/...")`), with no assets of their own, so it needs no pack, and no compat or locales.
+  (`require("@common/...")`), with no assets of their own, so it needs no pack, and no compat or locales. A common
+  module holds no game's ids or asset names and requires only common modules: it exports the behavior as makers
+  that take a game's look and constants (`traps.make_kind(id)`, `bomb.make(look)`, `cannon.action(spec, look)`;
+  the looks' types in content/common/types.d.luau). Each game's folder defines its own kinds, actions and records
+  with them and keeps its looks: BN6's modules at their old paths are thin wrappers that pass BN6's (so BN6's
+  callers are unchanged), BN5's folder makes its own (`bn5:trap-chip`, `bn5:attachment`, ...). A helper with no
+  game data moves whole (`@common/regions`, `@common/panels`, `@common/dimming`). Where BN5 still uses a BN6
+  definition as its own (BN6's effects, a few BN6 collision rows), it requires it from `@bn6/...` and says so
+  (docs/design/bn5-map.md §15.6, "Shared code"). It loads as a root of no game (`keys::SHARED`): no roles, no
+  rules, no field, no compat ids; what defines a game's folder alone (a test, gen-content's check) loads it beside
+  (`testing::add_shared`), and the checker types each folder with its types.d.luau.
 - **Version variants keep their suffixes** (`-falzar`/`-gregar`, `-protoman`/`-colonel`); region (US, JP) is a
   field, not a namespace.
 - **Handles** intern over the union in byte order of the ids; peers with the same content hash have the same
@@ -1625,4 +1635,69 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   - identity.sh against main's frontend on main's content: the custom-screen and sample lists identical in both
     text modes (174 scenarios, 200,712 frames each);
   - the audit 0 problems; us-spelling 0 (after it fixed a British spelling of mine in S6a's note);
+  - BN5's replays as main's: 402 match, 18 replay, 223,414 of 948,097 frames.
+### S6b2, the Cross window (2026-10-03)
+
+- **The Cross window is the cross system's** (content/bn6/rules/cross/window.luau):
+  - as the screen opens (`custom.open`): the Crosses offered (`sub_8029EF8`, `sub_8029F70`) and the window's Cross
+    tab (`sub_8029EC8`, `sub_8026840`), with nettai's Cross list (window.luau's `cross_at`, `owns_cross` and the
+    list's fit, ported from `Unlocks` and `PlayerView`);
+  - UP opening it (`custom.keys`, `sub_8028B74`);
+  - four windows: `cross_opening` (12 ticks, `sub_8027834`), `cross_window` (`sub_802794A`, its keys
+    `sub_8028A78`), `cross_closing` (6, `sub_802790C`) and `cross_chosen` (34, `sub_8027A58`, `sub_8027AAE`,
+    `sub_8027ADE`). The opening's last tick runs the window's first (`custom.open_window(side, "cross_window", 1)`:
+    the ticks it has had), so the next tick reads keys, as the original's does;
+  - B with nothing picked taking the Cross back (`custom.take_back`, `sub_8029032`);
+  - the result form at the choice (`custom.set_form`: the Cross, or its form in Beast Out in a Beast form,
+    `sub_802937A`), and the face when the Cross is put on (`sub_802A088`);
+  - the round's Crosses used (`custom.confirmed`), forgotten on its first screen.
+  - Its state: `crosses_used`, `offered`, `offered_count`, `marked`, `window_cursor`, `cross_chosen`, `chosen`.
+- **The framework:**
+  - Two hooks: `custom.keys` (choosing, on a tick with keys, before the screen's own; the first true takes them) and
+    `custom.take_back` (B with nothing picked; none answering true, B is refused). `SystemHook::ALL` has 28.
+  - `Phase::Description { window, form, chatbox }`: a window's description (`custom.describe`) returns to the
+    window at its first tick; the chatbox prints the form's description.
+  - The joypad reaches the hooks: `Extras::keys` and `window_update` take it, and `with_screen_console` puts it in
+    the battle's side (bn6-compat's checker ticks a side of its own).
+  - The library gains:
+    - `cursor`, `set_cursor`, `pressed`, `repeated` (keys by name: `input::key_named`);
+    - `draw_window`, `draw_regular`, `draw_cross_cursor`, `show_chip_window`, `set_cross_tab`, `describe`,
+      `refresh_buttons`;
+    - `play`'s `cursor`, `description`, `cross_window_open`, `cross_window_close`, `cross_chosen`;
+    - `open_window`'s `ticks`;
+    - `player`'s `crosses`, and `cross_list` as the list's forms (it was a bool).
+  - `Battle::system_state(side, key)`: a system's state and its layout, for a reader.
+  - `Library::cross_description_lines` is `form_description_lines`.
+- **The renderer** reads the window from the cross system's state by its fields' names (nettai-render's
+  `CrossWindow::of`), and its stage from the window up (`cross_stage`). `CROSS_PUT_ON_TICK` (25, window.luau's
+  `PUT_ON_TICK`) is the renderer's own now: the map's look. The chatbox prints `Description`'s form's
+  description. The driver titles the Cross windows by name.
+- **Gone from Rust:** `CrossWindow`, `Screen::crosses`, `Phase::{CrossWindowOpening, CrossWindow,
+  CrossWindowClosing, CrossChosen}`, `RoundMemory::crosses_used`, the confirm's Cross, `cross_face`,
+  `PlayerView::{crosses_allowed, crosses_left, offered_crosses, listed_cross_fits}`, and `custom.form_taken`'s
+  bridge (S6b1): a Cross holds the result form itself now, as Beast Out does. `Unlocks::cross_at` stays for the
+  renderer's names until S6c.
+- **Tests.** The screen's five Cross tests used the Rust window. They are now battle tests on BN6's content
+  (nettai-frontend's driver tests):
+  - a Cross list's offer of either game, once a round;
+  - R describing the Cross under the cursor;
+  - a Beast form's offer;
+  - Crosses only, and not the starting form;
+  - B taking the Cross back (new).
+
+  The chatbox's test checks the forms' descriptions in both languages; the list's mapping is Luau's.
+- **Decisions** (the user away):
+  - Four windows, not one with sub-states: the framework's tick counts each, and the renderer tells them apart by
+    name.
+  - The window's drawing calls keep the look's BN6 names (`draw_cross_cursor`, `set_cross_tab`): the screen's look
+    is BN6's, which BN5 shares.
+  - `CROSS_PUT_ON_TICK` is repeated in the renderer as the look's, rather than kept as a look field in the state.
+- **Gates** (on main 9b87a94e):
+  - the build without warnings, 482 tests, the content check (1,277 modules), gen-content check 0 errors;
+  - the full gate (the selected gate ran everything): the 189 legacy rounds, 96 rollback rows matching, and the lab
+    6548 (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
+  - identity.sh against main's frontend on main's content: the custom-screen and sample lists identical in both
+    text modes (174 scenarios, 200,712 frames each). The custom-screen list has the Cross window's keys, its close,
+    the take-back, one Cross owned and none offered;
+  - the audit 0 problems; us-spelling 0;
   - BN5's replays as main's: 402 match, 18 replay, 223,414 of 948,097 frames.

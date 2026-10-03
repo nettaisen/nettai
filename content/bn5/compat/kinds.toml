@@ -1,8 +1,8 @@
 # BN5's object kinds: the original's pool and index (the traces compare them), and the positions the comparison
 # skips (register garbage the spawner leaves until the kind's init places it): bn5-compat's comparison reads them.
 # Written by hand from the BN5 recordings and code, as kinds come up in the replays: edit it when content is renamed
-# or added. A key without a root is BN5's own; `engine/...` the engine's; a qualified one (`bn6:...`) BN6's, which
-# BN5's code shares (its flags here are BN6's compat's, the same code).
+# or added. A key without a root is BN5's own (most made with content/common's shared code); `engine/...` the
+# engine's; a qualified one (`bn6:...`) BN6's, which BN5's code shares (its flags here are BN6's compat's).
 
 "engine/player" = { pool = "actor", index = 0x00 }
 "engine/intro" = { pool = "effect", index = 0x02, scratch_position = true }
@@ -15,40 +15,38 @@
 "engine/spark" = { pool = "effect", index = 0x04 }
 "engine/status-visual" = { pool = "effect", index = 0x06 }
 "engine/afterimage" = { pool = "effect", index = 0x28 }
-"bn6:attachment" = { pool = "actor", index = 0x05 }
-"bn6:widesht/wave" = { pool = "attack", index = 0x3B }
-"bn6:boomer/boomerang" = { pool = "attack", index = 0x32 }
+"bn5:attachment" = { pool = "actor", index = 0x05 }
+"bn5:widesht/wave" = { pool = "attack", index = 0x3B }
+"bn5:boomer/boomerang" = { pool = "attack", index = 0x32 }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
 "engine/navi-chip" = { pool = "effect", index = 0x10, scratch_position = true }
-"bn6:projectile" = { pool = "attack", index = 0x00 }
-"bn6:bomb" = { pool = "attack", index = 0x08 }
-"bn6:grab/shot" = { pool = "attack", index = 0x0F }
-"bn6:energbom/burst" = { pool = "attack", index = 0x11 }
-"bn6:grabbnsh/hand" = { pool = "attack", index = 0x46 }
-"bn6:instrument" = { pool = "attack", index = 0x78 }
-"bn6:grab/controller" = { pool = "effect", index = 0x03, scratch_position = true }
-"bn6:gauge-speed" = { pool = "effect", index = 0x1C, scratch_position = true }
-"bn6:panel-changer" = { pool = "effect", index = 0x1F, scratch_position = true }
-"bn6:panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
-"bn6:grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
-"bn6:trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
-"bn6:instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
-"bn6:protoman/navi" = { pool = "actor", index = 0x3C }
+"bn5:projectile" = { pool = "attack", index = 0x00 }
+"bn5:bomb" = { pool = "attack", index = 0x08 }
+"bn5:grab/shot" = { pool = "attack", index = 0x0F }
+"bn5:energbom/burst" = { pool = "attack", index = 0x11 }
+"bn5:grabbnsh/hand" = { pool = "attack", index = 0x46 }
+"bn5:grab/controller" = { pool = "effect", index = 0x03, scratch_position = true }
+"bn5:gauge-speed" = { pool = "effect", index = 0x1C, scratch_position = true }
+"bn5:panel-changer" = { pool = "effect", index = 0x1F, scratch_position = true }
+"bn5:panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
+"bn5:grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
+"bn5:trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
+"bn5:protoman/navi" = { pool = "actor", index = 0x3C }
 "bn5:sonic-boom" = { pool = "attack", index = 0x58 }
 "bn5:holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 "bn5:holydrem/actor" = { pool = "actor", index = 0x1C }
 "bn5:holydrem/shot" = { pool = "attack", index = 0x83 }
-"bn6:invisibl/controller" = { pool = "effect", index = 0x5D, scratch_position = true }
-"bn6:mine/controller" = { pool = "effect", index = 0x29, scratch_position = true }
-"bn6:mine/land-mine" = { pool = "attack", index = 0x4C }
-"bn6:antidmg/shuriken" = { pool = "attack", index = 0xC2 }
-"bn6:rising-bubble" = { pool = "effect", index = 0x14 }
+"bn5:invisibl/controller" = { pool = "effect", index = 0x5D, scratch_position = true }
+"bn5:mine/controller" = { pool = "effect", index = 0x29, scratch_position = true }
+"bn5:mine/land-mine" = { pool = "attack", index = 0x4C }
+"bn5:antidmg/shuriken" = { pool = "attack", index = 0xC2 }
+"bn5:rising-bubble" = { pool = "effect", index = 0x14 }
 "bn5:firehit/fist" = { pool = "attack", index = 0x5B }
 "bn5:bullet" = { pool = "attack", index = 0x12 }
 "bn5:tornado" = { pool = "attack", index = 0x31 }
 "bn5:anti-trap/trap" = { pool = "attack", index = 0x4D, scratch_position = true }
 "bn5:anti-trap/strike" = { pool = "effect", index = 0x2B, scratch_position = true }
-"bn6:panel-bursts" = { pool = "effect", index = 0x24, scratch_position = true }
+"bn5:panel-bursts" = { pool = "effect", index = 0x24, scratch_position = true }
 "bn5:crack" = { pool = "attack", index = 0x18 }
 "bn5:soul-image" = { pool = "actor", index = 0x2A }
 "bn5:timebom/countdown" = { pool = "attack", index = 0x4B }
@@ -60,7 +58,7 @@
 "bn5:meteor" = { pool = "attack", index = 0x56 }
 "bn5:meteor-shower" = { pool = "effect", index = 0x46 }
 "bn5:meteors/controller" = { pool = "effect", index = 0x34, scratch_position = true }
-"bn6:meteors/marker" = { pool = "effect", index = 0x35, scratch_position = true }
+"bn5:meteors/marker" = { pool = "effect", index = 0x35, scratch_position = true }
 "bn5:drill" = { pool = "attack", index = 0x71 }
 "bn5:instrument" = { pool = "attack", index = 0x78 }
 "bn5:instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
