@@ -202,30 +202,38 @@ fn mixed_and_cross_game_matches_play() {
     assert!(used[0].iter().any(|k| k.starts_with("bn5:")) && used[1].iter().any(|k| k.starts_with("bn6:")), "{used:?}");
 }
 
-/// A BN5 side's light/dark value and souls write to a match file and read
-/// back; the value's default (a fresh save's 500) and an unlisted soul list
-/// (every soul) are left out.
+/// A BN5 side's karma and souls write to a match file and read back; the
+/// karma's default (a fresh save's 500) and an unlisted soul list (every
+/// soul) are left out, so old files load unchanged.
 #[test]
-fn setups_and_souls_write_and_read_back() {
+fn karma_and_souls_write_and_read_back() {
     let content = every_game();
-    let left = bn5(&TANGO_BN5, "").replacen("navi = \"bn5:megaman\"\n", "navi = \"bn5:megaman\"\nsouls = [\"bn5:protosoul\"]\n", 1)
-        + "\n[{side}.setup.\"bn5:light-dark\"]\nvalue = 100\n";
+    let left = bn5(&TANGO_BN5, "")
+        .replacen("navi = \"bn5:megaman\"\n", "navi = \"bn5:megaman\"\nkarma = 100\nsouls = [\"bn5:protosoul\", \"bn5:colonelsoul\"]\n", 1);
     let m = parse(&content, &left, &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap_or_else(|p| panic!("{p:?}"));
     let s = &m.sides[0];
-    assert_eq!(crate::setups::value(&content, s, "bn5:light-dark", "value"), Some(crate::setups::SetupValue::Int(100)));
-    assert_eq!(s.souls, Some(vec![content.defs.form_by_key("bn5:protosoul").unwrap()]));
+    assert_eq!(s.karma, 100);
+    let souls = ["bn5:protosoul", "bn5:colonelsoul"].map(|k| content.defs.form_by_key(k).unwrap());
+    assert_eq!(s.souls, Some(souls.to_vec()), "either version's");
     let text = crate::write(&content, &m);
-    assert!(text.contains("souls = [\"bn5:protosoul\"]") && text.contains("[left.setup.\"bn5:light-dark\"]\nvalue = 100"), "{text}");
+    assert!(text.contains("karma = 100") && text.contains("souls = [") && text.contains("\"bn5:colonelsoul\""), "{text}");
     assert_eq!(crate::parse(&content, &text).unwrap(), m);
     // A side that says nothing of them: the defaults, nothing written.
     let plain = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
-    assert_eq!(crate::setups::value(&content, &plain.sides[0], "bn5:light-dark", "value"), Some(crate::setups::SetupValue::Int(500)));
+    assert_eq!((plain.sides[0].karma, plain.sides[0].souls.clone()), (500, None));
     let text = crate::write(&content, &plain);
-    assert!(!text.contains("setup") && !text.contains("souls"), "{text}");
-    // A soul list under BN6's rules, a form that is no soul: said.
-    let bad = side("bn6:stock", "bn6:megaman", &BN6, "").replacen("navi = \"bn6:megaman\"\n", "navi = \"bn6:megaman\"\nsouls = [\"bn6:heatcross\"]\n", 1);
+    assert!(!text.contains("karma") && !text.contains("souls"), "{text}");
+    // Karma past 1000; karma and a soul list under BN6's rules; a form that
+    // is no soul: said.
+    let bad = side("bn6:stock", "bn6:megaman", &BN6, "")
+        .replacen("navi = \"bn6:megaman\"\n", "navi = \"bn6:megaman\"\nkarma = 1200\nsouls = [\"bn6:heatcross\"]\n", 1);
     let e = parse(&content, &bn5(&TANGO_BN5, ""), &bad).unwrap_err();
-    for p in ["right: a soul list, but the ruleset has no Soul Unison (no souls system)", "right: HeatCross is no soul"] {
+    for p in [
+        "right: karma 1200: the light/dark value is 0 to 1000",
+        "right: karma, but the ruleset has no light and dark MegaMan (no system takes `karma`)",
+        "right: a soul list, but the ruleset has no Soul Unison (no system takes `souls`)",
+        "right: HeatCross is no soul",
+    ] {
         assert!(e.iter().any(|x| x == p), "{p:?} not in {e:?}");
     }
 }
@@ -246,10 +254,10 @@ fn started(content: &Arc<Content>, m: &Match, ticks: usize) -> nettai_battle::Ba
 fn a_dark_side_starts_dark() {
     use nettai_battle::kinds::player::Emotion;
     let content = every_game();
-    let at = |value: Option<i64>| {
+    let at = |value: Option<u16>| {
         let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
         if let Some(v) = value {
-            m.sides[0].setups.entry("bn5:light-dark".into()).or_default().insert("value".into(), crate::setups::SetupValue::Int(v));
+            m.sides[0].karma = v;
         }
         let b = started(&content, &m, 40);
         (b.stats[0].mood, nettai_battle::kinds::player::emotion(&b, 0))
@@ -264,9 +272,9 @@ fn a_dark_side_starts_dark() {
 }
 
 /// The soul button offers only a soul the side has: with every soul
-/// (ProtoSoul among them), a Sword picked offers ProtoSoul; with none, no
-/// soul button; with another soul alone, the button is there but the
-/// sword's soul isn't offered.
+/// (ProtoSoul among them), a Sword picked offers ProtoSoul; with none, or
+/// with GyroSoul alone, the button is there but the sword's soul isn't
+/// offered.
 #[test]
 fn an_unowned_soul_cant_be_chosen() {
     use nettai_battle::custom::screen::{Phase, SPECIAL_SLOT, SlotKind, SlotState};
@@ -274,16 +282,11 @@ fn an_unowned_soul_cant_be_chosen() {
     // Swords alone, so the first chip dealt is one (no folder the rules
     // take: the round is played as set up).
     let sword = content.defs.chip_by_key("bn5:sword").unwrap();
-    let offered = |souls: Option<Vec<nettai_content_api::FormHandle>>, owned: Option<u16>| {
+    let offered = |souls: Option<Vec<nettai_content_api::FormHandle>>| {
         let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
         m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
         m.sides[0].souls = souls;
-        let mut setup = m.round(&content, 0x5EED);
-        if let Some(bits) = owned {
-            setup.players[0].souls.owned = bits;
-            setup.players[0].souls.button = true;
-        }
-        let mut b = nettai_battle::Battle::new(setup, content.clone());
+        let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
         let mut last = 0u16;
         for _ in 0..400 {
             let screen = b.custom.sides[0].screen.as_ref().filter(|s| s.phase == Phase::Choosing);
@@ -300,25 +303,28 @@ fn an_unowned_soul_cant_be_chosen() {
         }
         panic!("no chip picked");
     };
-    assert_eq!(offered(None, None), (true, true));
-    assert_eq!(offered(Some(Vec::new()), None), (false, false));
-    // Soul 2's flag alone (GyroSoul's: the button is there, not ProtoSoul).
-    assert_eq!(offered(None, Some(1 << 2)), (true, false));
+    assert_eq!(offered(None), (true, true));
+    assert_eq!(offered(Some(Vec::new())), (true, false));
+    assert_eq!(offered(Some(vec![content.defs.form_by_key("bn5:gyrosoul").unwrap()])), (true, false));
+    // ProtoSoul alone, or with Team Colonel's ColonelSoul: offered.
+    let proto = content.defs.form_by_key("bn5:protosoul").unwrap();
+    assert_eq!(offered(Some(vec![proto, content.defs.form_by_key("bn5:colonelsoul").unwrap()])), (true, true));
 }
 
-/// A side's setups and souls go into its round's setup: the light and
-/// dark system's block holds the value, and the souls are the soul
-/// button's.
+/// A side's karma and souls go into its round's setup: the light and dark
+/// system's block holds the karma, the souls system's the souls, which
+/// are the soul button's (by their numbers).
 #[test]
-fn setups_and_souls_reach_the_round() {
+fn karma_and_souls_reach_the_round() {
     let content = every_game();
     let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
-    m.sides[0].setups.entry("bn5:light-dark".into()).or_default().insert("value".into(), crate::setups::SetupValue::Int(300));
+    m.sides[0].karma = 300;
+    m.sides[0].souls = Some(vec![content.defs.form_by_key("bn5:colonelsoul").unwrap()]);
     let b = started(&content, &m, 1);
     let (schema, block) = b.system_setup(0, "bn5:light-dark").unwrap();
-    assert_eq!(block.get(schema, schema.index_of("value").unwrap()), nettai_content_api::FieldValue::U16(300));
+    assert_eq!(block.get(schema, schema.index_of("karma").unwrap()), nettai_content_api::FieldValue::U16(300));
     let souls = b.setup.players[0].souls;
-    assert!(souls.button && souls.chaos && souls.owned & (1 << 1) != 0, "{souls:?}");
+    assert!(souls.button && souls.chaos && souls.owned == 1 << 7, "{souls:?}");
     // A BN6 side has no souls.
     assert_eq!(b.setup.players[1].souls, nettai_battle::custom::SoulUnlocks::default());
 }

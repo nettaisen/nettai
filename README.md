@@ -127,13 +127,12 @@ every pack in `data/content` as the frontend does (each chip's pictures from its
 with no use yet left out, with the frontend's warning), and Play hands the frontend the same: `--content` and
 `--pack` are the frontend's, and only what you give is passed on.
 
-A side's navi pane also shows the rules' setup: each field of its ruleset's systems' setups that its own fields
-don't write, as the round will start with it (unset: the system's default). A BN5 side's light/dark value is a
-slider from 0 to 1000 with its number, presets (light 500, very light 1000, dark 0) and what BN5 makes of it (dark
-under 470, the starting mood's tiers at 470, 500 and 1000, holy panels cleared at 499 or under). A side whose ruleset
-has Soul Unison has a Souls pane: every soul of the content by default, or those checked, each with its face, of
-either version. Changing the ruleset drops the souls and the setups it doesn't have. "Import from save…" on a BN5
-side reads a BN5 .sav (or a raw save image): its light/dark value and its souls.
+A BN5 side's navi pane has its karma (the light/dark value): a slider from 0 to 1000 with its number, presets
+(light 500, very light 1000, dark 0) and what BN5 makes of it (dark under 470, the starting mood's tiers at 470, 500
+and 1000, holy panels cleared at 499 or under). A side whose rules take souls has a Souls pane: every soul of the
+content by default, or those checked, each with its face, any of them, of either version. Changing the ruleset drops
+the karma and the souls when the new rules don't take them. "Import from save…" reads a BN5 .sav (or a raw save
+image) too: its karma and its souls.
 
 The editor is an [iced](https://iced.rs) app, drawn in software (tiny-skia), so it needs no GPU backend. On Linux it
 needs the usual windowing libraries (X11 or Wayland, and `libxkbcommon`), and its Open and Save As dialogs use
