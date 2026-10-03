@@ -177,6 +177,8 @@ return define.system {
     state = { counter = "u8", used = "bool", spent = "bool", exhausted = "bool", check_delay = "u8" },
     -- What the player brings (the save's unlock), read-only in battle.
     setup = { unlocked = "bool", sealed = "bool" },
+    -- (`setup_defaults = { field = value }`: what a player's setup that says nothing of a field
+    -- holds, else zero; BN5's light and dark system's `{ karma = 500 }`, a fresh save's.)
     hooks = {
         round_start = function(side: number) ... end,
         turn_check = function(side: number, request: TransformRequest) ... end,   -- Beast Out runs out
