@@ -4,6 +4,7 @@
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local vulcan = require("../../objects/vulcan/vulcan")
+local recipe_vulcan3 = require("../vulcan3/chip")
 
 return define.chip {
     id = "bn5:infvulc3",
@@ -18,5 +19,11 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
+    -- BN5's recipes (written by tools/bn5/recipes.py): in the order of its full table (0x08027FC8); the netbattles'
+    -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
+    -- gauge tries.
+    program_advances = {
+        { order = 44, code_run = { chip = recipe_vulcan3, count = 3 } },
+    },
     action = vulcan.infinite(28),
 }

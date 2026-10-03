@@ -93,6 +93,9 @@ impl PaRecipe {
 pub struct ProgramAdvance {
     pub result: ChipHandle,
     pub recipe: Recipe,
+    /// Tried only with battle flag 0x40 (see
+    /// [`ProgramAdvanceRecipe::per_player_gauges_only`]).
+    pub per_player_gauges_only: bool,
 }
 
 /// A recipe by chip handles (see [`PaRecipe`]).
@@ -125,6 +128,12 @@ pub struct ProgramAdvanceRecipe {
     /// Where the recipe is tried among all the Program Advances (the
     /// original's table order): the first that matches wins.
     pub order: u8,
+    /// Tried only in a battle where each side keeps its own gauge (battle
+    /// flag 0x40, never set in a netbattle): BN5's 21 recipes its full
+    /// table (0x08027FC8) has before the netbattles' (0x0802801C, the rest
+    /// of it; 0x080251DC picks the table by `sub_800A8F8`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub per_player_gauges_only: bool,
     #[serde(flatten)]
     pub recipe: PaRecipe,
 }

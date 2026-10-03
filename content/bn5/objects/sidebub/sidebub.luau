@@ -107,8 +107,8 @@ local function tick(me: Object)
         battle.play_sound(SOUND_POP)
         c:set_region(nil)
         me.anim = 1
-        -- (0x08016B9E's store of what it hits goes astray: it keeps hitting what it hit.)
-        me:reset_collision_types(collision.attack, collision.hit_by_other_side_or_blockers, HIT_MOD)
+        -- (0x08016B9E: its store of what it hits goes astray, so it keeps hitting what it hit: BN5's retype rule.)
+        me:reset_collision_types(collision.attack, collision.hits_navis, HIT_MOD)
         me.timer = BURST_WAIT
         me.action = BURSTING
         return
