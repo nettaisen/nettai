@@ -4,7 +4,7 @@
 -- player whose Chaos Unison failed: their computer-navi data, the battle's `tactic`s), entry by entry. An entry is a
 -- chip, which it gets in place for (./place) and uses, or a pattern: a place by its target and a run of chips. Three
 -- times in four it plays the first entry; otherwise, or with nothing to play, it steps into the row of an enemy and
--- fires its buster (a punch, ./punch), twice. Its state is the navi's (the system's `navi_state`, AIData +0xF0 on).
+-- fires its buster (three shots, ./buster), twice. Its state is the navi's (the system's `navi_state`, AIData +0xF0 on).
 
 local data = require("./data")
 local panels = require("./panels")
@@ -80,8 +80,8 @@ ai.layout = {
     place_target = "object",
 }
 
--- What it fires between moves, its buster (weapon routine 0x3E: a punch, ./punch).
-local buster: Weapon = require("./punch").weapon
+-- What it fires between moves, its buster (weapon routine 0x3E: three shots, ./buster).
+local buster: Weapon = require("./buster").weapon
 
 -- ---- Targets --------------------------------------------------------------------------------------------------
 

@@ -31,6 +31,6 @@ return define.navi {
         -- The Full Synchro aura's animation: BN6's rule (`sub_80C4C52`: the AI index), which BN5 hasn't (its aura
         -- is its own, to come with BN5's emotions); the engine asks every player for one.
         aura_anim = 0,
-        attach_points = attach_points,
+        attach_points = attach_points[0],
     },
 }

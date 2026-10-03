@@ -16,7 +16,7 @@ return define.identity {
     version = 0,
     actor_type = "navi",
     ai_index = 0x16,
-    attach_points = attach_points,
+    attach_points = attach_points[0],
     body = {
         sprite = asset.sprite("bn5:megaman"),
         shadow = true,
