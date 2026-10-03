@@ -2954,7 +2954,7 @@ Numbers that remain for other reasons, and are not names of content:
 **Left to others:**
 
 - The frontend's emotion window finds a face in hud.json by compat's form and navi numbers
-  (crates/nettai-frontend/src/hud.rs). Reading the definitions' `mugshot` instead is the presentation work's.
+  (crates/nettai-render/src/hud.rs). Reading the definitions' `mugshot` instead is the presentation work's.
 - Roles nothing fills: `actions.volley`, `kinds.mode9_attack` and `kinds.mode9_actor` (content-migration.md
   §6). No netbattle reaches them.
 
