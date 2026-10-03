@@ -1539,6 +1539,13 @@ export type SystemSpec = {
         -- A chip of the hand picked, or its pick taken back.
         chip_picked: ((side: number, chip: Chip) -> ())?,
         chip_taken_back: ((side: number, chip: Chip) -> ())?,
+        -- Choosing chips, a tick with keys (`custom.pressed`,
+        -- `custom.repeated`), before the screen's own: whether the system
+        -- took them. The first system that answers true takes them.
+        keys: ((side: number) -> boolean)?,
+        -- B with nothing picked: whether the system took something back
+        -- (none: B is refused).
+        take_back: ((side: number) -> boolean)?,
     }?,
     hooks: {
         -- Once per side as the round is set up, before anything reads the
@@ -1830,6 +1837,33 @@ export type NaviDef = {
         back_special_damage: number?,
     }?,
     cross_hp: { number }?,
+    -- What the save's reload gives it by its link navi level (BN6's
+    -- `reloadCurNaviBaseStats`): its base HP by the story's progress, and
+    -- what each level adds over its fresh stats. Tools fill a side's stats
+    -- from it; no battle reads it.
+    levels: NaviLevels?,
+}
+-- A navi's levels (docs/engine/link-navis.md).
+export type NaviLevels = {
+    -- The base and maximum HP, by the story's progress (0 to 6).
+    base_hp: { number },
+    -- Each level's gains, from level 0.
+    by_level: { NaviLevelGain },
+}
+-- What a level adds: HP to the maximum, the buster's levels (to 4 at
+-- most), the custom level (to 8) and the Mega level (to 10); the abilities
+-- it gives; the B+Back special it sets.
+export type NaviLevelGain = {
+    hp: number,
+    attack: number?,
+    rapid: number?,
+    charge: number?,
+    custom_level: number?,
+    mega_level: number?,
+    super_armor: boolean?,
+    float_shoes: boolean?,
+    air_shoes: boolean?,
+    back_special: Weapon?,
 }
 -- A navi's no-running message. Its words are locales/<lang>.toml's; the
 -- content's own language's (en) time it: the characters in each line, and
@@ -2409,9 +2443,11 @@ declare custom: {
     last_pick_is_chip: (side: number) -> boolean,
     cursor_state: (side: number) -> "selectable" | "unavailable" | "selected",
     -- For a system's buttons and windows: the slot under the cursor picked;
-    -- a screen sound ("pick", "refused", "back", "cancel",
-    -- "beast_out_gregar", "beast_out_falzar", "beast_out_flash"); the last
-    -- pick's column cell; one of the system's windows opened, and its ticks
+    -- a screen sound ("pick", "refused", "back", "cancel", "cursor",
+    -- "description", "beast_out_gregar", "beast_out_falzar",
+    -- "beast_out_flash", "cross_window_open", "cross_window_close",
+    -- "cross_chosen"); the last pick's column cell; one of the system's
+    -- windows opened (`ticks`: the ticks it has had already), and its ticks
     -- so far; this console's camera shake; the window's frame counter; the
     -- emblem's spin; a screen fade ("beast_out", "beast_out_back",
     -- "end_to_white", "intro_from_white"); the emotion window's face; the
@@ -2424,7 +2460,7 @@ declare custom: {
     pick: (side: number) -> (),
     play: (side: number, sound: string) -> (),
     set_column_icon: (side: number, chip: Chip?) -> (),
-    open_window: (side: number, window: string) -> (),
+    open_window: (side: number, window: string, ticks: number?) -> (),
     window_tick: (side: number) -> number,
     shake: (side: number, magnitude: number, ticks: number) -> (),
     frame: (side: number) -> number,
@@ -2440,10 +2476,33 @@ declare custom: {
     form_taken: (side: number) -> boolean,
     full: (side: number) -> boolean,
     button_picked: (side: number, button: string) -> boolean,
+    -- The screen's cursor (its slot) and moving it; whether a key is
+    -- pressed this tick, or repeats.
+    cursor: (side: number) -> number,
+    set_cursor: (side: number, slot: number) -> (),
+    pressed: (side: number, key: Key) -> boolean,
+    repeated: (side: number, key: Key) -> boolean,
+    -- The screen's drawing, for a window: the window's sprites (the
+    -- emblem, the Regular chip's frame, the last turns' block), the Regular
+    -- chip's frame alone, the Cross window's cursor, the chip window
+    -- showing the slot under the cursor, and the window's Cross tab.
+    draw_window: (side: number) -> (),
+    draw_regular: (side: number) -> (),
+    draw_cross_cursor: (side: number) -> (),
+    show_chip_window: (side: number) -> (),
+    set_cross_tab: (side: number, on: boolean) -> (),
+    -- R in the window up: the form's description (three lines without
+    -- one), back to the window when it closes.
+    describe: (side: number, form: FormDef?) -> (),
+    -- The systems' buttons' states asked again.
+    refresh_buttons: (side: number) -> (),
     player: (side: number) -> {
         emotion: Emotion,
         version: "gregar" | "falzar",
-        cross_list: boolean,
+        -- The Crosses owned, by Cross number (1-5).
+        crosses: { boolean },
+        -- The setup's Cross list (nettai's extension), in its order.
+        cross_list: { FormDef }?,
         beast_out: boolean,
         beast_out_sealed: boolean,
         random_battle: boolean,
