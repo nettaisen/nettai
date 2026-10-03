@@ -104,7 +104,8 @@ pub enum Graphics {
     Warning,
 }
 
-/// An emotion's number in a [`Lookup::FormFace`] (`sub_8015B54`'s code).
+/// An emotion's number in a [`Lookup::FormFace`] (`sub_8015B54`'s code;
+/// BN5's worried, its own 1, 6).
 pub fn emotion_number(e: nettai_battle::kinds::player::Emotion) -> u8 {
     use nettai_battle::kinds::player::Emotion;
     match e {
@@ -113,6 +114,7 @@ pub fn emotion_number(e: nettai_battle::kinds::player::Emotion) -> u8 {
         Emotion::FullSynchro => 2,
         Emotion::Angry => 3,
         Emotion::WornOut => 5,
+        Emotion::Worried => 6,
     }
 }
 
