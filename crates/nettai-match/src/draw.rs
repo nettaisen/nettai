@@ -58,7 +58,7 @@ fn unhex(s: &str) -> Vec<u8> {
 
 /// The live navi's stats on `content`.
 pub fn live_navi(content: &Content) -> NaviStats {
-    codec::navi_stats(&unhex(LIVE_NAVI).try_into().unwrap(), &codec::Ids::new(content, Compat::bn6()))
+    codec::navi_stats(&unhex(LIVE_NAVI).try_into().unwrap(), &codec::Ids::new(content, Compat::bn6_for(content)))
 }
 
 /// The backgrounds a link battle draws from (`sub_81209DC`'s
@@ -222,9 +222,9 @@ mod tests {
             gregar > 0 && gregar < 5
         });
         assert!(mixed);
-        let forced = live(&content, 3, Some(crate::link_stage(&content, "netbattle-43").unwrap())).unwrap();
+        let forced = live(&content, 3, Some(crate::link_stage(&content, "bn6:netbattle-43").unwrap())).unwrap();
         assert_eq!(content.defs.stage(forced.arena.first.stage).key, "bn6:netbattle-43");
         assert_eq!(forced.sides, live(&content, 3, None).unwrap().sides);
-        assert!(crate::link_stage(&content, "netbattle-100").is_err());
+        assert!(crate::link_stage(&content, "bn6:netbattle-100").is_err());
     }
 }

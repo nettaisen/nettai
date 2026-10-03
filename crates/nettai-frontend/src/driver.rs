@@ -104,7 +104,7 @@ impl TracePlayer {
             .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
             .map(|(i, _)| i)
             .collect();
-        TracePlayer { round, content, compat: Compat::bn6(), frames, pos: 0, round_number }
+        TracePlayer { compat: Compat::bn6_for(&content), round, content, frames, pos: 0, round_number }
     }
 
     /// Every round of a trace file, on `content`.

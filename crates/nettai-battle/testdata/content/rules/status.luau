@@ -40,7 +40,9 @@ local status: { [string]: Status } = {}
 
 local function define_all(keys: { string }, cancels_flinch: boolean, survives_counter: boolean)
     for _, key in keys do
-        status[string.gsub(key, "-", "_")] = define.status {
+        -- (By the id's own part: `paralyze_150` for `test:paralyze-150`.)
+        local name = string.gsub(string.sub(key, #"test:" + 1), "-", "_")
+        status[name] = define.status {
             id = key,
             requests = 0,
             duration = 60,

@@ -176,8 +176,8 @@ mod tests {
     fn a_systems_player_setup_reaches_it_and_no_other() {
         let content = scenario::content();
         let mut setup = scenario::setup();
-        setup.players[0].set_rule(&content, "test/counter", "bonus", Value::Int(7)).unwrap();
-        assert!(setup.players[0].set_rule(&content, "test/marker", "mark", Value::Int(1)).is_err(), "not the stock rules'");
+        setup.players[0].set_rule(&content, "test:test/counter", "bonus", Value::Int(7)).unwrap();
+        assert!(setup.players[0].set_rule(&content, "test:test/marker", "mark", Value::Int(1)).is_err(), "not the stock rules'");
         let b = started(setup);
         assert_eq!(field(&b, 0, 1, "bonus"), FieldValue::U16(14));
         assert_eq!(field(&b, 1, 1, "bonus"), FieldValue::U16(0), "the other player's setup is its own");
@@ -220,7 +220,7 @@ mod tests {
     /// another pause sound) and pools (16 actors).
     mod two_games {
         use super::*;
-        use crate::content::{Content, RootId, RootManifest, SoundRole};
+        use crate::content::{Content, RootManifest, SoundRole};
         use crate::object::Pool;
         use std::sync::Arc;
 
@@ -307,18 +307,18 @@ mod tests {
 
         #[test]
         fn a_capacity_is_the_larger_of_the_two_games() {
-            let both = battle(["twin", "twin"]);
+            let both = battle(["twin:stock", "twin:stock"]);
             assert_eq!([Pool::Actor, Pool::Attack, Pool::Effect].map(|p| both.objects.capacity(p)), [16, 32, 32]);
-            assert_eq!(battle(["twin", "test"]).objects.capacity(Pool::Actor), 32);
+            assert_eq!(battle(["twin:stock", "test:stock"]).objects.capacity(Pool::Actor), 32);
             // A battle of one game is that game's (the test content's: 32).
-            assert_eq!(battle(["test", "test"]).objects.capacity(Pool::Actor), 32);
+            assert_eq!(battle(["test:stock", "test:stock"]).objects.capacity(Pool::Actor), 32);
         }
 
         /// A duel with a different game on each side plays and rolls back:
         /// a copy taken mid-round goes the same way as the whole.
         #[test]
         fn a_battle_of_two_games_plays_and_rolls_back() {
-            for rulesets in [["test", "twin"], ["twin", "twin"], ["test-mix", "twin"]] {
+            for rulesets in [["test:stock", "twin:stock"], ["twin:stock", "twin:stock"], ["test:test-mix", "twin:stock"]] {
                 let c = content();
                 let mut setup = scenario::setup();
                 setup.content = c.hash();
@@ -382,15 +382,15 @@ mod tests {
             let kinds: Vec<(&str, bool)> = card.effects.iter().map(|e| (e.kind.as_str(), e.bug)).collect();
             assert_eq!(kinds, [("hp_add", false), ("hp_percent_add", false), ("attack_add", false), ("body", false), ("hp_drain", true)]);
             // The cards are in the setup, which the digest covers.
-            let a = with_cards(&[("test-stats", true)], |_| {});
-            let b = with_cards(&[("test-stats", false)], |_| {});
+            let a = with_cards(&[("test:test-stats", true)], |_| {});
+            let b = with_cards(&[("test:test-stats", false)], |_| {});
             assert_ne!(a.setup.players[0].patch_cards, b.setup.players[0].patch_cards);
             assert_ne!(a.digest(), b.digest());
         }
 
         #[test]
         fn a_card_changes_the_stats_by_its_kinds_order() {
-            let b = with_cards(&[("test-stats", true)], |_| {});
+            let b = with_cards(&[("test:test-stats", true)], |_| {});
             let s = &b.stats[0];
             // HP 1000: +30 first, then +10% (the card lists them the other way).
             assert_eq!((s.max_hp, s.hp), (1133, 1133));
@@ -402,7 +402,7 @@ mod tests {
 
         #[test]
         fn a_later_card_writes_over_an_earlier_one() {
-            let b = with_cards(&[("test-stats", true), ("test-later", true)], |_| {});
+            let b = with_cards(&[("test:test-stats", true), ("test:test-later", true)], |_| {});
             let s = &b.stats[0];
             assert_eq!(s.attack, 2, "Attack 0 + 3 - 1");
             assert_eq!(s.giga_level, 0xFF, "GigaFolder- doesn't clamp");
@@ -410,7 +410,7 @@ mod tests {
 
         #[test]
         fn abilities_choices_and_chip_shuffle() {
-            let b = with_cards(&[("test-abilities", true)], |s| {
+            let b = with_cards(&[("test:test-abilities", true)], |s| {
                 s.support = Some(Supports::default());
                 s.float_shoes = true;
                 s.number_open = true;
@@ -428,14 +428,14 @@ mod tests {
 
         #[test]
         fn a_switched_off_card_does_nothing_but_the_glitch_follows_the_stats() {
-            let b = with_cards(&[("test-stats", false)], |s| s.support = Some(Supports::default()));
+            let b = with_cards(&[("test:test-stats", false)], |s| s.support = Some(Supports::default()));
             let mut want = scenario::setup().navi_stats[0];
             want.support = Some(Supports::default());
             // The HP is set to its maximum (the reload's, in the real world).
             want.hp = want.max_hp;
             assert_eq!(b.stats[0], want);
             assert!(!b.consoles[0].emotion_window_glitch);
-            let bugged = with_cards(&[("test-stats", false)], |s| {
+            let bugged = with_cards(&[("test:test-stats", false)], |s| {
                 s.support = Some(Supports::default());
                 s.bugs.emotion = 1;
             });
@@ -453,7 +453,7 @@ mod tests {
 
         #[test]
         fn the_support_bug_keeps_supports_off() {
-            let b = with_cards(&[("test-abilities", true)], |s| s.support = None);
+            let b = with_cards(&[("test:test-abilities", true)], |s| s.support = None);
             assert_eq!(b.stats[0].support, None, "the byte 0xFF stays 0xFF when a bit is set");
         }
     }
