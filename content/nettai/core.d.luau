@@ -1182,7 +1182,7 @@ declare battle: {
     -- makes for a navi no buttons drive (BN5's computer navi draws it).
     sword_pick: (side: number) -> number,
     set_sword_pick: (side: number, pick: number) -> (),
-    -- Presentation: whether the side's emotion window shows its form's second set of faces (`mugshot.variant`:
+    -- Presentation: whether the side's emotion window shows its base form's second set of faces (`mugshot.variant`:
     -- BN5's Hub Style).
     set_face_variant: (side: number, variant: boolean) -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
@@ -1899,7 +1899,8 @@ export type MugshotFaces = {
     full_synchro: Mugshot?,
     worn_out: Mugshot?,
     worried: Mugshot?,
-    -- A second set, which the side's rules may show instead (`battle.set_face_variant`: BN5's Hub Style).
+    -- A second set, shown while the navi's Chaos Unison charge is armed (BN5's soul's chaos look), or in the base form
+    -- when the side's rules ask (`battle.set_face_variant`: BN5's Hub Style).
     variant: FaceSet?,
 }
 
