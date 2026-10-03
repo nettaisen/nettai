@@ -47,6 +47,8 @@
 "bn5:django/sun" = { pool = "effect", index = 0x7B }
 "bn5:django/lights" = { pool = "effect", index = 0x7D, scratch_panel = true }
 "bn5:django/rubble" = { pool = "effect", index = 0x84 }
+"bn5:shademan/navi" = { pool = "actor", index = 0x19 }
+"bn5:shademan/crush" = { pool = "attack", index = 0x34 }
 "bn5:sonic-boom" = { pool = "attack", index = 0x58 }
 "bn5:holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 "bn5:holydrem/actor" = { pool = "actor", index = 0x1C }
