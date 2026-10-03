@@ -625,12 +625,14 @@ export type ThunderBallLook = {
 export type ElemTrapStrike = { sound: Sound?, spark: Spark, hit_mod: number, status: Status?, burst: Effect }
 -- A game's counterattack (`strike.make_kind`): its strikes by element
 -- (null to wood), and what its hits are and reach.
-export type ElemTrapStrikeLook = { strikes: { [number]: ElemTrapStrike }, self_type: CollisionType, target: CollisionType }
+export type ElemTrapStrikeLook = { strikes: { [number]: ElemTrapStrike }, self_type: CollisionType, target: CollisionType, bursts: Kind }
 -- A game's trap (chips/elemtrap/trap, `trap.make_kind`): what springs it
 -- (fire to wood's first hit, or one element's: the one it is set with),
 -- what it is and reaches, where its sparkles show (16.16, from the
 -- panel's center: down the field, up), and its counterattack's kind.
 export type ElemTrapLook = {
+    sparkle: Effect,
+    sparkle_sound: Sound,
     watches: "fire_to_wood" | "one",
     self_type: CollisionType,
     target: CollisionType,
@@ -641,7 +643,7 @@ export type ElemTrapLook = {
 
 -- How FireHit's fist strikes (chips/firehit/fist): the spark its hit shows
 -- and its collision types.
-export type FireHitFistLook = { spark: Spark, target: CollisionType, self_type: CollisionType }
+export type FireHitFistLook = { sprite: SpriteAsset, sound: Sound, spark: Spark, target: CollisionType, self_type: CollisionType }
 
 -- How a yoyo flies (chips/yoyo/yoyo): GreatYo's (three that move
 -- together), the panels it rolls out and its spinning rounds.
