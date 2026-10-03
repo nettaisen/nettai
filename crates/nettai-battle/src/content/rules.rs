@@ -110,12 +110,25 @@ pub struct EffectsRules {
     /// How an object's collision types are set again (`sub_801A082`).
     #[serde(default)]
     pub retype: RetypeRule,
+    /// An obstacle's reaction has BN5's step for ColonelSoul's army
+    /// (0x080CAB02 from its four reactions, docs/design/bn5-map.md §15.11:
+    /// `kinds::obstacle::Soldiers`): one standing where an armed side can
+    /// use it turns into that side's soldier (the role
+    /// `kinds.obstacle_soldier`). Read of the obstacle's own game's rules
+    /// (its kind's), not the arena's.
+    #[serde(default)]
+    pub obstacle_soldiers: bool,
 }
 
 impl Default for EffectsRules {
     /// BN6's.
     fn default() -> EffectsRules {
-        EffectsRules { shake: ShakeRule::default(), spark_steps_at_start: true, retype: RetypeRule::default() }
+        EffectsRules {
+            shake: ShakeRule::default(),
+            spark_steps_at_start: true,
+            retype: RetypeRule::default(),
+            obstacle_soldiers: false,
+        }
     }
 }
 
@@ -199,6 +212,25 @@ pub enum PushReading {
     /// BN5's 0x0800C9D8: the first of bits 2 to 5 of the unflipped
     /// hitters' modifier, else of the flipped ones' with the direction
     /// reversed.
+    Bn5,
+}
+
+/// Which pairs of collisions a hit can't join (the hit test, BN6's
+/// `sub_3007218`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HitTest {
+    /// BN6's: a submerged body (flag 0x4) meets only collision types with
+    /// bit 0x8 or 0x1000; a FloatShoe body (flag 0x20) only those with the
+    /// 0x80 self bit; a guard breaks to types with 0x2 (0x1002 with 0x4000)
+    /// and turns aside those without 0x0C005000.
+    #[default]
+    Bn6,
+    /// BN5's (0x0801691C): a submerged or bubbled body (flags 0x80000004)
+    /// meets only types with 0x8 or 0x1000 unless the other is elec; a
+    /// FloatShoe body meets all (BN5's types have no 0x80 self bit); a
+    /// guard breaks to types with 0x1002 always and turns aside those
+    /// without 0x0C004000.
     Bn5,
 }
 
@@ -305,6 +337,8 @@ pub struct Rules {
     /// How a push reads the hit modifiers (docs/design/bn5-map.md §15.3
     /// item 2).
     pub push_reading: PushReading,
+    /// Which pairs a hit can't join (docs/design/bn5-map.md §15.3 item 12).
+    pub hit_test: HitTest,
     /// Ice slides by the direction the navi last moved.
     pub ice_vectors: [SlideVector; 6],
     /// How fast a navi slides and is dragged (the reactions section's).

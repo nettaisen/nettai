@@ -7,6 +7,11 @@
 [weapons]
 "bn5:megaman/buster" = [0x00]
 "bn5:megaman/charged-shot" = [0x01]
+# The NaviCust programs' B+Back specials (navis/megaman/weapons/guards): Shield's, Reflect's (the program's 0x61; 0x20
+# the same routine), AntiDmg's. A weapon's first number is the one its program writes.
+"bn5:megaman/shield" = [0x1F]
+"bn5:megaman/reflect" = [0x61, 0x20]
+"bn5:megaman/anti-damage" = [0x21]
 
 # Projectile variants: the projectile table's rows (0x080C4718, BN6's `off_80C4C78`) the buster-shot and
 # charged-shot programs (NaviStats +0x4D, +0x4F) name; the buster's and the charged shot's own, and the chips'.
