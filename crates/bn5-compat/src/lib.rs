@@ -8,6 +8,8 @@
 //!   repository's, built in.
 //! - [`codec`]: BN5's records in the engine's terms: the 0x60-byte
 //!   NaviStats with BN5's light/dark value, the panels, the chip blocks.
+//! - [`save`]: a BN5 save file, and what a player's setup takes of it
+//!   (the light/dark value, the souls it has).
 //! - `trace` (feature `trace`): the chip lab's BN5 recordings, read,
 //!   decoded and replayed (docs/design/bn5-map.md §15.5).
 //!
@@ -19,6 +21,7 @@
 //! bn5-map.md §13 lists what of BN5's records has no engine counterpart.
 
 pub mod codec;
+pub mod save;
 #[cfg(feature = "trace")]
 pub mod trace;
 
@@ -32,6 +35,26 @@ use std::path::Path;
 /// by ids in full (`bn5:cannon`; docs/design/rules-in-luau.md, the flat
 /// namespace).
 pub const ROOT: &str = "bn5";
+
+/// A BN5 game's version.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Version {
+    Protoman,
+    Colonel,
+}
+
+impl Version {
+    /// The event flag of soul `number` (1 to 12) in this version's save, if
+    /// it can have it (0x08024BF0, the soul button's table: Team
+    /// ProtoMan's souls 1 to 6 flags 2 to 7, Team Colonel's 7 to 12 flags 8
+    /// to 0x0D; the other version's 0xFF, never offered).
+    pub fn soul_flag(self, number: u8) -> Option<u16> {
+        match (self, number) {
+            (Version::Protoman, 1..=6) | (Version::Colonel, 7..=12) => Some(number as u16 + 1),
+            _ => None,
+        }
+    }
+}
 
 /// BN5's object pools: how many slots each has (bn5-map.md §3.1). The
 /// actors' is half BN6's (32); the engine's `object::SLOTS` is one number
