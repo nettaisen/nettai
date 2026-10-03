@@ -1387,3 +1387,51 @@ them.
   (actor record 0x18D: a navi of AI index 0x16, 500 HP, on a random panel for the other side) that runs BN5's
   computer navi AI (0x0802B4AC, AIData +0xF0): a second navi on a side, driven by an AI, which the engine hasn't.
   Eleven of the twelve chaos recordings fail the charge.
+
+### 15.9 bn5-chips-b: chips 0x070–0x0DC, 0x119–0x12C, 0x137–0x138, 0x13B–0x15D, Guard1–3 (as built)
+
+**Program Advances.** A player's formed Program Advances are a `u64` (`ProgramAdvancesUsed`; content may define 64
+Program Advances: BN6's 30 and BN5's 30 load together). BN5's full table (0x08027FC8) is 21 recipes and then the
+netbattles' table (0x0802801C); only a battle with each side keeping its own gauge (battle flag 0x40, a Liberation
+Mission's) tries those 21: a recipe's `per_player_gauges_only = true`, which `find_program_advance` skips unless
+the battle's `per_player_gauges` is set. A recipe's `order` is its index in the full table. bn6battle-verify's
+tools/bn5/recipes.py writes BN5's recipes (and the flag) into the Program Advances' chip files, naming only chips
+that have a use; rerun it as chips get theirs.
+
+**Rules.** The `effects` section's `retype = "bn5"`: BN5's retype (0x08016B9E, BN6's `sub_801A9E8`'s counterpart)
+sets the self type only (no dimmed bit), leaves the target type and writes the target's `row_offset` plus four
+times the side into the next word. A hit's modifier goes into its side's slot by its flip (`hit_mod_by_side`).
+
+**Obstacles and stages.** The rock and its debris (content/common/rock), the boulder (content/common/boulder) are
+makers BN6's chips/rockcube and objects/boulder wrap (same APIs). BN5's rock (attack object 0x59, rows by
+variant), its debris (effect 0x38) and boulder (attack 0x6E) are in content/bn5/objects; the stage statue (the
+Guardian's, @common/guardian/statue) takes its stage damage word. The 25 netbattle stages that waited on them are
+in content/bn5/stages/netbattle.luau and compat/stages.toml (64 stage recordings match). The engine's obstacle
+service gains `obstacle.throw` (`sub_800F6AC`: the request `sub_8018002` serves; nothing in BN6 makes it) and
+`obstacle.throwable` (an identity's `throwable`, default true; BN5's mine sets false: Poltergeist's 0x080E8CA0
+skips BN5's NameIDs 0xDA, 0xD3, 0xD2, 0xE5, 0xE4 and 0xE7). A thrown obstacle's landing (`sub_80180EC`, BN5's
+0x08014AB4: r4 = 0x06050001, Param2 0) shows the plain spark: the role `sparks.thrown_obstacle` is `plain` in both
+games (BN6's said `charged`, read from the wrong byte; BN6 never throws one). Item 19 (the obstacle framework's
+word +0x5C and attack object 0x30) is still unread: no recording meets it.
+
+**Shared modules moved to content/common** (makers taking a game's look; BN6's modules wrap them with the same
+APIs): anubis, guardian, otenko, justcone, batcan, colorpt, geddon (controller, quake), barriers (visual,
+controller), rflectr, rock (rock, debris), boulder, bugfix (glow, controller), h-burst (action, burst).
+
+**Chips.** In the range, 111 chips match all their recordings (426 of its 543 recordings; the 117 left belong to
+chips with no use yet). The last ones: BugFix; LCrsShld, LStepSwd, LCounter (the Liberation chips: BN5's
+controller, effect 0x8A, gives the side five uses of the ability, which only a Liberation Mission's specials read,
+nothing a netbattle reads); Poltrgst (BN5's own: controller effect 0x72, stand-in actor 0x58, poltergeist effect
+0x73); Navi+20; GunDelEX; InfVulc1–3, LifeSrd, PoisPhar, TimeBom+; GreatYo (controller effect 0x70: the leader and
+two followers); PitHoky (the puck's row 3, BN5's objects/puck); SuprSpr1–3 (wave kinds 6 to 8, objects/wave);
+GigaCan1–3 (projectile row 0x0C: hit modifier 0x49, the blast spark; BN5's projectile has none of BN6's row-0x0C
+bursts; the third afterimage on NaviStats +0x4C reads 0, as lib/arm's); H-Burst (BN5's shot: a probe of row 0, its
+explosions effect row 0x3C; its bursts are 8, the shot's table 0x080DA514 read at the record's word 0x103, past its
+four bytes).
+
+**Waiting.** RainyDay, ElemRage, AirSpin1–3 (BN6's AirSpin top with BN5's changes: random targets, its own panel
+setting, its hit's self type 4), AqWhirl1–3 (BN5's own, attack object 0x5D), CopyDmg, HotBody1–3, CusVolt1–3,
+DarkInvs, NumbrBl, Jealousy, BlakWing, NeoVari, Z-Saver, ElemPowr; Boxer1–3, ShakPar1–3 and CacDanc1–3 (action
+0x1A's instant effects 21 to 23; they also wait on HotBody and Voltz); BodyGrd (its controller, effect 0x6D, and
+BN6's striker and shuriken); the navi Program Advances CsmoPris, WildBird, Football, BigNoise, PileDrvr and
+LeadRaid, ChaosLrd (on the navi chips).
