@@ -33,7 +33,6 @@
 "bn5:trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
 "bn5:protoman/navi" = { pool = "actor", index = 0x3C }
 "engine/body-overlay" = { pool = "actor", index = 0x56 }
-"engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
 "bn5:larkman/navi" = { pool = "actor", index = 0x1E }
 "bn5:larkman/swoop" = { pool = "attack", index = 0xBA }
