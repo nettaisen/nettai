@@ -2262,6 +2262,7 @@ dependencies = [
  "nettai-content",
  "nettai-content-api",
  "nettai-match",
+ "nettai-render",
  "png",
  "rfd",
  "toml",
