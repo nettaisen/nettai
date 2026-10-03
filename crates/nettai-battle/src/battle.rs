@@ -452,6 +452,14 @@ pub struct Battle {
     pub sides: [SideState; 2],
     /// Per-side statistics counters (`byte_203EAE0`, `sub_800AB46`).
     pub side_stats: [[u8; 16]; 2],
+    /// The first four counters of BN5's per-player battle record
+    /// (`sub_802D064`'s, 0x0802AEA6): the counter hits and inflicted bugs
+    /// that land on the other side's navis no player controls, at most 10
+    /// each.
+    pub navi_hit_counts: [[u8; 4]; 2],
+    /// Each player's tactics (`crate::tactics`), as the computer navis'
+    /// AI turns them: their setups' at the round's start.
+    pub tactics: [crate::tactics::Tactics; 2],
     /// Per-side registry of defensive chips and their linked objects
     /// (0x10 bytes per side at 0x02036720).
     pub linked: [LinkedRecord; 2],
@@ -541,6 +549,9 @@ pub struct SideState {
     /// FstGauge), counted down by `sub_80107D4`.
     pub slow_gauge_ticks: u16,
     pub fast_gauge_ticks: u16,
+    /// +0x12: the swing a variable sword makes for a navi no buttons drive
+    /// (BN5's computer navi draws it before VarSwrd or NeoVari, 0x0802A330).
+    pub sword_pick: u8,
     /// +0x44: the target the side tracks (an actor of the other side), which
     /// an obstacle leaving hands on (`sub_802EF74`).
     pub tracked: Option<ObjectRef>,
@@ -755,6 +766,8 @@ impl Battle {
             link: Link::new(setup.link_delay),
             sides: [SideState::default(); 2],
             side_stats: [[0; 16]; 2],
+            navi_hit_counts: [[0; 4]; 2],
+            tactics: [setup.players[0].tactics.clone(), setup.players[1].tactics.clone()],
             linked: [LinkedRecord::default(); 2],
             dimming: Default::default(),
             last_navi_chip: None,

@@ -30,6 +30,7 @@ use nettai_battle::link::Link;
 use nettai_battle::navicust::NaviCust;
 use nettai_battle::patch_cards::{InstalledCard, PatchCards};
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage, effects};
+use nettai_battle::tactics::Tactics;
 use nettai_battle::{Battle, Rng};
 use nettai_content_api::{NaviHandle, RulesetHandle, StageHandle};
 
@@ -61,6 +62,9 @@ impl Arena {
         Arena { later: [place.clone(), place.clone()], first: place }
     }
 }
+
+/// What a side's tactics' send draws from, with the seed and the side.
+const TACTICS_SALT: u32 = 0x5441_4354;
 
 /// What a player brings to a match: their rules, their navi and game, the
 /// navi's stats (what their save and NaviCust give it), their folder (as a
@@ -97,6 +101,12 @@ pub struct Side {
     /// directly). With one, the stats are the navi's fresh stats with what
     /// the save keeps (`stats::SAVE_FIELDS`).
     pub navicust: Option<NaviCust>,
+    /// BN5's computer-navi data, the player's save's block (entries in place
+    /// order): what a computer navi across from them plays (BN5's Dark
+    /// MegaMan, nettai_battle::tactics). Empty: none to play (he fires his
+    /// buster between rests). The round's setup sends them as the console
+    /// does (`Tactics::sent`).
+    pub tactics: Tactics,
 }
 
 impl Side {
@@ -257,6 +267,7 @@ impl Match {
             navi_level: 0,
             bug_frags: 0,
             navicust: None,
+            tactics: Tactics::default(),
         };
         let boards = navicust_rules(content, &side).boards.len();
         if side.has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0 {
@@ -301,6 +312,11 @@ impl Match {
                 rules: Vec::new(),
                 patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
                 navicust: s.navicust,
+                // The block the console sends (0x0802C7BE), its RNG2 a
+                // stream of the side's own from the seed (the original's
+                // is the console's at the link's start, which nothing
+                // here runs).
+                tactics: s.tactics.sent(&mut Rng::new(seed ^ TACTICS_SALT ^ (side as u32).wrapping_mul(0x9E37_79B9))),
             }
         };
         RoundSetup {
