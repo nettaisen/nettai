@@ -1,6 +1,9 @@
 --!strict
--- YoYo (BN5 chip 0x052): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- YoYo (BN5 chip 0x052): a yoyo that rolls two panels ahead, spins twice there and rolls back (BN5's yoyo,
+-- objects/yoyo; the throw BN6's, action 0x4A).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local yoyo = require("../../objects/yoyo/yoyo")
 
 return define.chip {
     id = "bn5:yoyo",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
+    action = yoyo.action("bn5:yoyo/action", yoyo.spec { mode = 0, panels = 2, rounds = 2 }),
 }

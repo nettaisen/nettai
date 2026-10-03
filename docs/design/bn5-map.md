@@ -1233,6 +1233,33 @@ lib/swords (a slash's `blade_anim`; parts.hold's anim).
 (BN5's own, 0x080E2338), the mode chips, Program Advances' recipes (TimeBom+'s among them), the flag-0x40 mode's
 effect 0x83 (FireHit's warning, the swords' swing, the meteors, DrilArm's start: never in a netbattle).
 
+**Chips 0x000 to 0x06F** (2026-10-03, bn5-chips-a): WideBlde, LongBlde and CustSwrd (the shared slash with BN5's
+parts and its effects 0x19, 0x1A and 0x28; CustSwrd's damage the custom gauge's, formula 45); AirHoc (the shared
+puck and flick, content/common/airhocky, of BN5's look); Static (BN5's tornado blow, its tornadoes paralyzing by
+the bug level: none, 90, 120, 150 ticks); Spreader (the shared Spreaders' action with BN5's gun and bullet row 3:
+BN5's flash 0x21 and sound); GunDelS1 to 3 (the shared sun beam, content/common/gundels; BN5's GunDelSol,
+objects/gundels); BugBomb (the shared BugBomb, content/common/bugbomb, with BN5's bugs: either HP drain plus 2 or
+the emotion swings); Katana1 to 3 (objects/katana); MrkCan1 to 3 (objects/mrkcan: the sweeping sight, effect
+0x44, and the cannon at its panel); Pulsar1 to 3 and SpShake1 to 3 (lib/armshot, and lib/arm: BN5's buster arm,
+0x080EBABE; the pulse, attack 0x6A, and the shake wave, 0x68); Skully1 to 3 (objects/skully, attack 0x88);
+Astroid1 to 3 (objects/meteors: instant effect 17, 6, 8 and 10 meteors); Snake (the shared snake and holes' scan,
+content/common/snake: BN5's nest sends three snakes at a time with a flag each, its snakes wait 48 ticks and
+strike as wood); YoYo (the shared throw, content/common/yoyo; BN5's yoyo, objects/yoyo, attack 0x52, GreatYo's
+modes too); Slasher (BN5's own action 0x29: while A is held, the wide slash at an enemy navi's column); CircGun
+(the shared CircGun of DarkCirc's look, 4 shots); TankCan1 to 3 (the shared action and shell,
+content/common/tankcan; BN5's shell, objects/tankcan); WindRack (BN5's own action: BN6's swing without the
+gusts). Each matches every frame of its lab recordings. The batch's shared modules (content/common, as above):
+airhocky/puck and flick, gundels/beam, bugbomb/bomb, snake/snake, yoyo/throw, tankcan/action and shell, each
+BN6's at its old path its BN6 wrapper (BN6 the same).
+
+Not shown by the labs: Static's bug levels 1 to 3; GunDelSol's held A; Katana's charged step; Slasher's request
+0x80000 (`actions.stun_strike`, BN5's action 0x49, unfilled) and its other console's chip name (`sub_801EB18`);
+BN5's bug intake (0x0801103E: an argument's bit 4 adds, where BN6's always adds; BugBomb's codes are the engine's
+adds of 2); lib/arm's NaviStats +0x4C and AIData +0x12 (read as 0). **Waiting:** the seeds, CannBall and Geyser
+(on the shared bombs), Wind, Fan, RockCube, BoyBomb1 to 3, RedFrut1 to 3 and Voltz1 to 3 (on BN5's field
+obstacles), and Quake1 to 3, CrakBom, ParaBom, ResetBom, VDoll, VarSwrd, MoonBld1 to 3, LifeSync, MetaGel and
+Magnum.
+
 ### 15.7 BN5's MegaMan, stages and roles (as built)
 
 - **MegaMan** (content/bn5/navis/megaman, `bn5:megaman`): BN5's navi 0, NameID 0x180, from BN5's tables (his

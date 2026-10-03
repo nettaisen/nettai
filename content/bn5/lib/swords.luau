@@ -50,6 +50,11 @@ swords.effects = {
     wide = define.effect { sprite = SLASH, anim = 0, palette = 0 },
     -- Over two panels: LongSwrd's (0x17).
     long = define.effect { sprite = SLASH, anim = 1, palette = 0 },
+    -- WideBlde's (0x19) and LongBlde's (0x1A): WideSwrd's and LongSwrd's in another palette.
+    wide_blade = define.effect { sprite = SLASH, anim = 0, palette = 5 },
+    long_blade = define.effect { sprite = SLASH, anim = 1, palette = 5 },
+    -- CustSwrd's big slash over two columns (0x28).
+    custom = define.effect { sprite = asset.sprite("bn5:big-slash"), anim = 0, palette = 3 },
     -- DrkSword's dark big slash (0x1C).
     dark = define.effect { sprite = asset.sprite("bn5:big-slash"), anim = 0, palette = 2 },
 }
