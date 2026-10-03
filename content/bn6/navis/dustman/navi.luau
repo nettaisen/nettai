@@ -27,7 +27,7 @@ return define.navi {
         dimming_chips = false,
         by_level = { 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 },
     },
-    -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
+    -- What a navi switch brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },

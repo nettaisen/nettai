@@ -60,11 +60,11 @@ pub mod request {
     pub const STUN_STRIKE: u32 = 0x80000;
     pub const SELECT_SPECIAL: u32 = 0x0200_0000;
     /// Change Cross while paused (`sub_802DCDE`, from the transformation
-    /// sequencer): pause-time action 0x1C with `status::CHANGING_CROSS`.
-    pub const CROSS_CHANGE: u32 = 0x0400_0000;
+    /// sequencer): pause-time action 0x1C with `status::SWITCHING_NAVI`.
+    pub const NAVI_SWITCH: u32 = 0x0400_0000;
     /// Cross death (action 0x4C) outside the pause; pause-time request for
-    /// action 0x1C inside it. Both set `status::CROSS_KNOCKOUT`.
-    pub const CROSS_DEATH: u32 = 0x0800_0000;
+    /// action 0x1C inside it. Both set `status::SWITCH_KNOCKOUT`.
+    pub const SWITCH_KNOCKOUT: u32 = 0x0800_0000;
     /// Battle mode 9 A press.
     pub const MODE9_A: u32 = 0x1000_0000;
     /// A system's takeover of the side's navi is asked for (BN6's Cross
@@ -101,13 +101,13 @@ pub mod status {
     /// Anti-damage trap armed (acts like chip 0xBB).
     pub const TRAP_ARMED: u32 = 0x800;
     /// Pause handler: changing Cross (`sub_802D714`).
-    pub const CHANGING_CROSS: u32 = 0x1000;
+    pub const SWITCHING_NAVI: u32 = 0x1000;
     /// Knocked out of a Cross instead of deleted (action 0x4C, or the
     /// pause handler's `sub_802D926`). Takes over the action dispatch.
-    pub const CROSS_KNOCKOUT: u32 = 0x2000;
-    /// A Cross change took effect (set when `sub_802D714` ends). A link
+    pub const SWITCH_KNOCKOUT: u32 = 0x2000;
+    /// A navi switch took effect (set when `sub_802D714` ends). A link
     /// navi with it falls back instead of being deleted (`sub_802DD2A`).
-    pub const CROSSED: u32 = 0x4000;
+    pub const SWITCHED: u32 = 0x4000;
     /// The volley (action 0x30) runs. Takes over the action dispatch.
     pub const VOLLEY: u32 = 0x1_0000;
     /// Takes over the action dispatch like the two above; no setter was

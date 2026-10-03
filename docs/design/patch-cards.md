@@ -84,7 +84,7 @@ ruleset (docs/design/rules-in-luau.md §2.2): BN6's is content/bn6/rules/patch-c
 - **Before** (until the user's decision), the cards were records of type "patch-card" and the installed cards the
   system's own setup block (`record:patch-card[16]`, `bool[16]`), with the names in a `[records]` table.
 - **The hook.** The cards must change the stats before the battle copies them: the navi's init reads them as it
-  spawns, and the battle-start copy (`cross_stats`) is made with the battle. S0's `round_start` runs after the
+  spawns, and the battle-start copy (`reserves`) is made with the battle. S0's `round_start` runs after the
   navis spawn, too late, so this work added `round_setup(side)`: once per side in `Battle::new`, before anything
   reads the side's stats, which a system may change through `battle.navi(side)`. After it the framework copies the
   stats to the battle-start copy. It is a hook like S0's (`SystemHook::RoundSetup`, called with

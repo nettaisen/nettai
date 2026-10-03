@@ -1947,15 +1947,15 @@ fn a_cross_change_lands_changes_and_settles_while_paused() {
     // Side 0 changes to the navi it already is (the test content has only
     // MegaMan): kept, then taken back from the kept stats.
     let (mut b, p0, p1) = fight();
-    b.turn_transforms[0].cross_change = Some(b.content.navi_by_key(testing::MEGAMAN));
-    super::cross_change::request_change(&mut b, p0);
+    b.turn_transforms[0].navi_switch = Some(b.content.navi_by_key(testing::MEGAMAN));
+    super::navi_switch::request_change(&mut b, p0);
     b.paused = true;
     b.objects.get_mut(p0).hp = 700;
     // The request starts the pause action, then 4 ticks landing, the
     // change, 21 ticks settling.
     tick(&mut b, p0, p1, 0);
     assert_eq!(act(&b, p0), FORM_CHANGE);
-    assert_ne!(ai_mut(&mut b, p0).status & status::CHANGING_CROSS, 0);
+    assert_ne!(ai_mut(&mut b, p0).status & status::SWITCHING_NAVI, 0);
     for _ in 0..4 {
         tick(&mut b, p0, p1, 0);
     }
@@ -1963,7 +1963,7 @@ fn a_cross_change_lands_changes_and_settles_while_paused() {
     tick(&mut b, p0, p1, 0);
     assert_eq!(ai_mut(&mut b, p0).attack.step, 8);
     // The kept stats carry the HP the navi had.
-    assert_eq!((b.cross_stats[0].hp, b.objects.get(p0).hp), (700, 700));
+    assert_eq!((b.reserves[0].hp, b.objects.get(p0).hp), (700, 700));
     for _ in 0..20 {
         tick(&mut b, p0, p1, 0);
     }
@@ -1971,7 +1971,7 @@ fn a_cross_change_lands_changes_and_settles_while_paused() {
     tick(&mut b, p0, p1, 0);
     assert_eq!(act(&b, p0), IDLE);
     let st = ai_mut(&mut b, p0).status;
-    assert_eq!((st & status::CROSSED != 0, st & status::CHANGING_CROSS), (true, 0));
+    assert_eq!((st & status::SWITCHED != 0, st & status::SWITCHING_NAVI), (true, 0));
 }
 
 // ---- Content model v2: definitions in a battle ---------------------------------------------

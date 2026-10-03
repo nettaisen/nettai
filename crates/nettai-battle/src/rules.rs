@@ -645,7 +645,7 @@ mod tests {
             // HP 1000: +30 first, then +10% (the card lists them the other way).
             assert_eq!((s.max_hp, s.hp), (1133, 1133));
             assert_eq!((s.attack, s.element, s.bugs.hp_drain), (3, 2, 2));
-            assert_eq!(b.cross_stats[0], b.stats[0], "the battle-start copy is of the stats after the cards");
+            assert_eq!(b.reserves[0], b.stats[0], "the battle-start copy is of the stats after the cards");
             assert!(b.consoles[0].emotion_window_glitch, "the HP drain is a bug: flag 0x1723");
             assert_eq!(b.stats[1], scenario::setup().navi_stats[1], "the other side has none");
         }
