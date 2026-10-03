@@ -126,3 +126,4 @@
 "bn5:cacdanc/cactus" = { pool = "attack", index = 0xB1 }
 "bn5:hotbody/fire" = { pool = "effect", index = 0x57 }
 "bn5:hotbody/flame" = { pool = "attack", index = 0x9D }
+"bn5:cusvolt/beam" = { pool = "attack", index = 0xB8 }
