@@ -348,6 +348,22 @@ impl Battle {
         self.systems_ask(side, SystemHook::NaviPalette, Some(navi))
     }
 
+    /// Side `side`'s systems' `navi_bug(side, navi)`: whether one answered
+    /// true (the bug and the weapons' reload skipped).
+    pub(crate) fn systems_navi_bug(&mut self, side: u8, navi: ObjectRef) -> bool {
+        let Some(r) = self.rules[side as usize & 1].ruleset else { return false };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::NaviBug) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::NaviBug, navi: Some(navi), chip: None, weapon: None };
+                if let Value::Bool(true) = crate::behavior::call_hook(self, f, call) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     /// Side `side`'s systems' `hook`, in order, until one answers a number.
     fn systems_ask(&mut self, side: u8, hook: SystemHook, navi: Option<ObjectRef>) -> Option<u8> {
         let r = self.rules[side as usize & 1].ruleset?;
