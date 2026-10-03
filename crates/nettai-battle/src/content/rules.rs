@@ -157,8 +157,9 @@ pub enum PushReading {
     /// toward the navi's front; the 0x80 bit picks the last five rows.
     #[default]
     Bn6,
-    /// BN5's 0x0800C9D8: the first of bits 2 to 5 of the side-0 hits'
-    /// modifier, else of the side-1 hits' with the direction reversed.
+    /// BN5's 0x0800C9D8: the first of bits 2 to 5 of the unflipped
+    /// hitters' modifier, else of the flipped ones' with the direction
+    /// reversed.
     Bn5,
 }
 
