@@ -256,6 +256,7 @@ tenguman-nose = 0x0fb
 immobilizer = 0x0fc
 bass-anly = 0x0fd
 junk-shot = 0x0ff
+magnet-crash = 0x100
 gyro-drop = 0x105
 gyro-bomb-drop = 0x106
 trap-vanish = 0x107
