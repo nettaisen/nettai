@@ -1,18 +1,23 @@
 --!strict
 -- BlkBomb (BN5 chip 0x02e): a black bomb lobbed three panels ahead that sits there until a fire hit sets it off
--- over the other side's area: BN6's BlkBomb (@bn6/chips/blkbomb, BN5's attack object #0x47, BN6's #0x4A; the same
+-- over the other side's area: the shared BlkBomb (@common/blkbomb, BN5's attack object #0x47, BN6's #0x4A; the same
 -- code but for how it leaves, BN5's 0x080CE594, BN6's `sub_80CD700`, and its hit intake, BN5's that of BN6's
 -- `sub_801ADFA` where BN6's is `sub_801AD12`, which BN5 hasn't) with BN5's look (its spark, BN5's 0x0A, and
--- collision types), thrown by BN6's throw (the same held look, BN5's attachment row 0x1A, BN6's 0x2D). (BN5's
+-- collision types; its identity, sprite, sounds, burst and what it hits BN6's), thrown by the shared throw (lib/bombs:
+-- the same held look, BN5's attachment row 0x1A, BN6's 0x2D). (BN5's
 -- action table has 8 rows to BN6's 10, no frozen or bubbled: its idle and its return are 7 and 6 where BN6's are 9
 -- and 8, the same actions.)
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local black_bomb = require("@bn6/chips/blkbomb/bomb")
+local attachment = require("../../objects/attachment/attachment")
+local black_bomb = require("@common/blkbomb/bomb")
+local bombs = require("../../lib/bombs")
 local collision = require("../../rules/collision")
 local effects = require("@bn6/lib/effects")
+local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
+local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local sparks = require("../../lib/sparks")
-local throw = require("@bn6/lib/bombs/throw")
+local trajectory = require("../../lib/trajectory")
 
 local SOUND_HIT_BOMB = asset.sound("bn5:hit-bomb-1")
 
@@ -47,12 +52,31 @@ end
 
 local KIND = black_bomb.make_kind("bn5:blkbomb/bomb", {
     destroyed = destroyed,
+    identity = define.identity {
+        id = "bn5:blkbomb",
+        class = "field_object",
+        version = 2,
+        ai_index = 1,
+        look = { sprite = asset.sprite("bn6:black-bomb"), anim = 0, palette = 0, shadow = true },
+    },
+    sprite = asset.sprite("bn6:black-bomb"),
     spark = sparks.breaking,
     is = collision.neutral_object,
+    target = collision.everything,
     burst_is = collision.attack,
+    burst_target = collision.hits_navis,
     -- 0x08017984: any hit from the other side pushes it.
     push = "any_hit",
+    land_sound = asset.sound("bn6:land"),
+    burst_sound = asset.sound("bn6:burst"),
+    burst_effect = effects.explosion,
+    bubble = rising_bubble.kind,
+    bursts = panel_bursts.kind,
+    trajectory = trajectory,
 })
+
+-- What the navi holds while throwing one: the bomb's sprite, palette 4 (BN5's attachment row 0x1A).
+local HELD = attachment.look { sprite = asset.sprite("bn6:bomb"), palette = 4 }
 
 return define.chip {
     id = "bn5:blkbomb",
@@ -67,5 +91,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = throw.action { held = black_bomb.held, thrower = black_bomb.thrower(KIND) },
+    action = bombs.throw { held = HELD, thrower = black_bomb.thrower(KIND) },
 }

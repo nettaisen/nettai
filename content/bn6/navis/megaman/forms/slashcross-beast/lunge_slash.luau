@@ -7,7 +7,7 @@
 
 local collision = require("../../../../rules/collision")
 local hit_flash = require("./hit_flash")
-local regions = require("../../../../lib/regions")
+local regions = require("@common/regions")
 
 local lunge_slash = {}
 

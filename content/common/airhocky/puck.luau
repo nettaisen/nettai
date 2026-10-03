@@ -10,7 +10,7 @@
 -- Its look (sprite, sounds, collision types, spark, burst) is a game's: each game makes its kind with
 -- `puck.make_kind(id, look)` (BN6's chips/airhocky/puck, BN5's chips/airhoc).
 
-local regions = require("@bn6/lib/regions")
+local regions = require("../regions")
 
 local puck = {}
 

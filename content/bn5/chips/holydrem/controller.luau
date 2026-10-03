@@ -1,11 +1,11 @@
 --!strict
 -- HolyDrem's dimming controller (BN5's effect object #0x59, 0x080E6DFC: the same as BN6's BurnSqr controller,
 -- `sub_80E702C`, but for what its effect sends out and where it keeps its flag): the usual dimming phases
--- (@bn6/lib/dimming), with an effect that sends out HolyDrem's stand-in (./actor) with the damage plus the bonus
+-- (@common/dimming), with an effect that sends out HolyDrem's stand-in (./actor) with the damage plus the bonus
 -- and lasts until it is done.
 
 local actor = require("./actor")
-local dimming_chips = require("@bn6/lib/dimming")
+local dimming_chips = require("@common/dimming")
 
 export type State = {
     -- The Atk+ / cross bonus the telop shows (+0x32), which the shots' damage adds.

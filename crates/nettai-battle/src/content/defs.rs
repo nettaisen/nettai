@@ -1359,6 +1359,7 @@ impl Defs {
                 definitions.of(Registry::Record).iter().position(|r| r.key == key).map(|i| RecordHandle(i as u16))
             })?;
             record.cross_hp = super::navis::read_cross_hp(d)?;
+            record.levels = super::navis::read_levels(d, &weapon_handle)?;
             record.identity = identity_of(d, &identities)?;
             record.forms = match d.spec.field("forms") {
                 Data::Nil => None,
@@ -2126,6 +2127,8 @@ mod tests {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
         let mut c = Content::default();
         c.scripts = crate::content::Scripts::root(crate::content::RootManifest::named("bn6"), crate::content::testing::modules_under(dir));
+        // (With the shared folder its modules require, content/common.)
+        crate::content::testing::add_shared(&mut c.scripts);
         c.assets = crate::content::testing::asset_names_for(&c.scripts);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));

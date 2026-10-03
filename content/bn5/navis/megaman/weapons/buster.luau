@@ -1,8 +1,10 @@
 --!strict
 -- MegaMan's buster in BN5 (`megaman/buster`): the original's weapon routine 0 (0x0800F522, BN6's `sub_8011A26`),
--- which sets up BN6's buster shot (@bn6/navis/megaman/weapons/buster, BN5's action 0x11: the same code but for
--- the muzzle flash's attachment row and the absorbed-obstacle throw, which BN5 hasn't). The NaviCust's buster
--- bugs may make a shot a blank or a charged shot instead (BN6's pick, `sub_8013D5E`: the same code). Unlike
+-- which sets up the shared buster shot (@common/megaman/buster, BN6's action 0x11, BN5's 0x11: the same code but
+-- for the muzzle flash's attachment row and the absorbed-obstacle throw, which BN5 hasn't) with BN5's buster parts,
+-- projectile and attachment; its sound BN6's. The NaviCust's buster bugs may make a shot a blank (the shared blank
+-- shot, @common/megaman/blank_shot: BN5's action 0x33, its click BN6's) or a charged shot instead (BN6's pick,
+-- `sub_8013D5E`: the same code). Unlike
 -- BN6's, the damage is Attack plus the navi's buster bonus (0x0800F5AC by navi: no worn-out rule, no form's
 -- bonus, no cap), and it always draws: on half the draws the shot is the one the navi's buster-shot program
 -- names (NaviStats +0x4D, the plain shot when 0).
@@ -10,12 +12,32 @@
 -- (Not here: BN5's MegaMan in his base form with NaviStats +0x4C set fires a spread of projectile row 18;
 -- bn5-compat refuses such stats until it is.)
 
-local blank_shot = require("@bn6/navis/megaman/weapons/blank-shot/weapon")
-local buster = require("@bn6/navis/megaman/weapons/buster/weapon")
+local attachment = require("../../../objects/attachment/attachment")
+local blank = require("@common/megaman/blank_shot")
 local charged_shot = require("./charged-shot")
+local common = require("@common/megaman/buster")
+local lib = require("../../../lib/buster")
+local projectile = require("../../../lib/projectile")
 local variants = require("../../../objects/projectile/variants")
 
 local bn5 = {}
+
+-- The shot (BN5's action 0x11), which throws no absorbed obstacle (BN5 absorbs none).
+local buster = {
+    pick = common.pick,
+    shot = common.shot_action {
+        id = "bn5:megaman/buster/shot",
+        buster = lib,
+        projectiles = projectile,
+        attachment = attachment.kind,
+        shot_sound = asset.sound("bn6:buster-shot"),
+        plain = variants.plain,
+        throw_sound = asset.sound("bn6:junk-shot"),
+    },
+}
+
+-- The blank shot (BN5's action 0x33).
+local blank_shot = blank.make { id = "bn5:megaman/blank-shot/action", buster = lib, click = asset.sound("bn6:gundels1") }
 
 -- 0x0800F522.
 function bn5.setup(navi: Object): Action

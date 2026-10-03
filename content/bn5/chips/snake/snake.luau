@@ -11,7 +11,8 @@
 
 local collision = require("../../rules/collision")
 local common = require("@common/snake/snake")
-local dimming_chips = require("@bn6/lib/dimming")
+local trajectory = require("../../lib/trajectory")
+local dimming_chips = require("@common/dimming")
 local sparks = require("../../lib/sparks")
 
 local snake = {}
@@ -28,6 +29,7 @@ export type NestState = {
 }
 
 snake.kind = common.make_kind("bn5:snake/snake", {
+    trajectory = trajectory,
     sprite = asset.sprite("bn5:snake"),
     rise_sound = asset.sound("bn5:appear"),
     leap_sound = asset.sound("bn5:aqua-needle-2"),

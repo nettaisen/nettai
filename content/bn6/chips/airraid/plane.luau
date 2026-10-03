@@ -17,9 +17,9 @@ local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local layer = require("../lilbolr/layer")
 local panel_strike = require("../../objects/panel-strike/panel_strike")
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 local propeller = require("./propeller")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local plane = {}
 

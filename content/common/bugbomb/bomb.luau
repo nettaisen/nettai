@@ -7,9 +7,9 @@
 --
 -- Each game makes its kind with `bomb.make_kind(id, look)` (BN6's chips/bugbomb, BN5's chips/bugbomb).
 
-local regions = require("@bn6/lib/regions")
-local rising_bubble = require("@bn6/objects/rising-bubble/rising_bubble")
-local trajectory = require("@bn6/lib/trajectory")
+local regions = require("../regions")
+local rising_bubble = require("../rising-bubble/rising_bubble")
+local trajectory = require("../trajectory")
 
 local bomb = {}
 
@@ -83,7 +83,7 @@ local function fly(me: Object, look: Look, s: State)
     end
     me:set_coordinates_from_panel()
     local p = me.pos
-    rising_bubble.spawn(Vec3.new(p.x, p.y, 0), 0)
+    rising_bubble.spawn(look.bubble, Vec3.new(p.x, p.y, 0), 0)
     me.collision:set_region(nil)
     me.visible = false
     me.lifecycle = "destroy"
@@ -156,10 +156,11 @@ local function init(me: Object, look: Look, s: State)
     me.future_panel_x, me.future_panel_y = s.target_x, s.target_y
     local tx, ty = field.center(s.target_x, s.target_y)
     local p = me.pos
-    s.angle = trajectory.angle(int.i32(tx - p.x), int.i32(ty - p.y))
-    local vx, vy = trajectory.toward(s.angle, SPEED)
+    local aim = look.trajectory
+    s.angle = aim.angle(int.i32(tx - p.x), int.i32(ty - p.y))
+    local vx, vy = aim.toward(s.angle, SPEED)
     me.vel = Vec3.new(vx, vy, me.vel.z)
-    local vz, ticks = trajectory.at_speed(me.pos, vy, tx, ty, LANDING_Z, SPEED, GRAVITY)
+    local vz, ticks = aim.at_speed(me.pos, vy, tx, ty, LANDING_Z, SPEED, GRAVITY)
     me.vel = Vec3.new(vx, vy, vz)
     me.timer = ticks
     me.hp, me.max_hp = HP, HP

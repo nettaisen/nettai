@@ -1,11 +1,11 @@
 --!strict
 -- AirRaid's dimming controller (the original's effect object #0x4B,
 -- `sub_80E5ECC`; docs/engine/dimming-chips.md §7.1). The usual dimming
--- phases (lib/dimming), with an effect (`sub_80E5F10`) that sets the
+-- phases (@common/dimming), with an effect (`sub_80E5F10`) that sets the
 -- plane (plane.luau) on the panel in front of the user if it is free,
 -- with the chip's damage and its Atk+ bonus, then waits 60 ticks.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local plane = require("./plane")
 
 local controller = {}

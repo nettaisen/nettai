@@ -8,12 +8,12 @@
 -- cracking them, with a palette flash. Then it goes and the controller
 -- moves on. See docs/engine/chips.md §3.6.32.
 
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 local meteor = require("./meteor")
 local moon_beam = require("./moon_beam")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 export type State = {
     -- The controller waiting for it (ExtraVars[0]).

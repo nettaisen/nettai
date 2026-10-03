@@ -10,7 +10,7 @@
 -- name; each charged slash (./slashes) names its own.
 
 local collision = require("../../../../rules/collision")
-local regions = require("../../../../lib/regions")
+local regions = require("@common/regions")
 local statuses = require("../../../../rules/status")
 
 export type State = {
