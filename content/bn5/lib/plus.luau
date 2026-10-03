@@ -5,12 +5,18 @@
 -- damage alone to the side's bonus, playing the bonus sound only for a chip that goes to the next chip. Otherwise,
 -- as BN6's, the sparkle by the navi (@bn6/lib/instant/plus).
 --
--- Attck+10 and Attck+30 are `instant = plus.attack` (+0x11 0: none goes to the next chip; DarkPlus's does, with
--- its own module).
+-- Attck+10 and Attck+30 are `instant = plus.attack` (+0x11 0: none goes to the next chip); DarkPlus is `plus.dark`
+-- (+0x11 1): its damage becomes the Atk+ bonus of the hand's next chip if that does damage, the navi takes its tint
+-- (AIData+0x3C 24, which nothing counts down: its status shader goes to its first green, 0x080136B8) and the bonus
+-- sound plays; else the sparkle.
 
 local bn6_plus = require("@bn6/lib/instant/plus")
 
 local plus = {}
+
+local BONUS_SOUND = asset.sound("bn5:bonus")
+-- DarkPlus's tint.
+local TINT = 24
 
 -- The side's special chip bonuses (`battle.add_special_bonus`'s index).
 local ATTACK_BONUS = 0
@@ -19,6 +25,25 @@ local ATTACK_BONUS = 0
 function plus.attack(user: Object, _spec: InstantChipSpec)
     if battle.per_player_gauges() then
         battle.add_special_bonus(user.alliance, ATTACK_BONUS, user.attack_damage)
+        return
+    end
+    bn6_plus.sparkle(user)
+end
+
+-- DarkPlus's `instant` hook (0x0800E198 with +0x11 1).
+function plus.dark(user: Object, _spec: InstantChipSpec)
+    if battle.per_player_gauges() then
+        battle.add_special_bonus(user.alliance, ATTACK_BONUS, user.attack_damage)
+        user.plus_tint = TINT
+        battle.play_sound(BONUS_SOUND)
+        return
+    end
+    local side = user.alliance
+    local i = battle.hand_cursor(side)
+    if battle.hand_chip_damages(side, i) then
+        battle.set_hand_attack_bonus(side, i, user.attack_damage)
+        user.plus_tint = TINT
+        battle.play_sound(BONUS_SOUND)
         return
     end
     bn6_plus.sparkle(user)
