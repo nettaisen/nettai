@@ -233,6 +233,14 @@ pub enum SystemHook {
     /// system ends it (`battle.end_takeover`). The first system that
     /// answers decides.
     Takeover,
+    /// `countered(side, victim)`: side `side`'s navi landed a counter on
+    /// `victim` (`sub_801A200`): BN6's emotion system gives Full Synchro
+    /// unless the victim's mood is held. Its result is unused.
+    Countered,
+    /// `navi_tick(side, navi)`: each unpaused tick, after the navi's input
+    /// (`sub_8013DA0`'s place), for a navi a system asked it for (its
+    /// `ticked`): BN6's NaviCust emotion-swing bug. Its result is unused.
+    NaviTick,
     /// `form_reverted(side, navi)`: the framework reverts the navi to its
     /// base form, its form not yet changed (`sub_80158CC`): BN6's spends a
     /// Beast Out and exhausts a Beast Over. Its result is unused.
@@ -261,11 +269,13 @@ impl SystemHook {
             SystemHook::Controller => "controller",
             SystemHook::FormReverted => "form_reverted",
             SystemHook::TakeoverRequested => "takeover_requested",
+            SystemHook::Countered => "countered",
+            SystemHook::NaviTick => "navi_tick",
             SystemHook::Takeover => "takeover",
         }
     }
 
-    pub const ALL: [SystemHook; 14] = [
+    pub const ALL: [SystemHook; 16] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -280,6 +290,8 @@ impl SystemHook {
         SystemHook::FormReverted,
         SystemHook::TakeoverRequested,
         SystemHook::Takeover,
+        SystemHook::Countered,
+        SystemHook::NaviTick,
     ];
 }
 

@@ -141,6 +141,9 @@ export type Request =
     | "weakness_hit"
     -- The slide request (the collision's flag2 0x10).
     | "slide"
+    -- The anger request (the collision's flag2 0x200): angry at the next
+    -- status update, unless the mood is held.
+    | "anger"
 -- A navi's state bits.
 export type NaviStateFlag =
     "controllable"
@@ -402,6 +405,11 @@ declare class Object
     -- The controller's state starts over (a form's `berserk` effect); the
     -- controller clears it once it has.
     controller_fresh: boolean
+    -- Its mood is held (held tired or exhausted): what another side's rules
+    -- read (BN6's counter).
+    mood_held: boolean
+    -- The side's systems' `navi_tick` runs for it each tick.
+    ticked: boolean
     -- Exhausted for the rest of the battle (BN6's after Beast Over): worn
     -- out, the mood can't change, 1 HP lost per tick (never the last), no
     -- Full Synchro or anger.
@@ -450,8 +458,9 @@ declare class Object
     buster_weapon: Weapon?
     charge_shot_weapon: Weapon?
     back_special_weapon: Weapon?
-    -- Writable: the Beast Out counter is spent (AIData+0x32).
-    beast_out_spent: boolean
+    -- Writable: held tired (AIData+0x32; BN6's "the Beast Out counter is
+    -- spent"): emotion 1, the mood held, no anger.
+    tired: boolean
     -- Writable: the barrier's visual (AIData+0x60), which hides and shows
     -- with the navi (its state's `shown`).
     barrier_visual: Object?
@@ -1516,6 +1525,11 @@ export type SystemSpec = {
         -- DarkInvs asks for its Cross special): a system starts it
         -- (`battle.take_over`).
         takeover_requested: ((side: number, navi: Object) -> ())?,
+        -- The side's navi landed a counter on `victim` (`sub_801A200`).
+        countered: ((side: number, victim: Object) -> ())?,
+        -- Each unpaused tick, after the navi's input (`sub_8013DA0`'s
+        -- place), for a navi a system asked it for (its `ticked`).
+        navi_tick: ((side: number, navi: Object) -> ())?,
         -- Each tick of the idle action of a navi whose side's takeover runs
         -- (`sub_802D4C6`), in place of the player's decisions: what it did,
         -- as `controller` answers, or "own_chip" (an attack of its own

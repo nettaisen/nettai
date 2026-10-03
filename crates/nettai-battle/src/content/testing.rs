@@ -1148,6 +1148,7 @@ pub fn scripts() -> Scripts {
                 ("rules/collision", "rules/collision"),
                 // BN6's Beast Out turns, a system of the test rules.
                 ("rules/beast/system", "rules/beast/system"),
+                ("rules/emotion/system", "rules/emotion/system"),
                 ("rules/beast/rush", "rules/beast/rush"),
                 ("rules/beast/berserk", "rules/beast/berserk"),
                 // (Its chips are the test content's own: testdata's
