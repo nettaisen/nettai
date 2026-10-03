@@ -27,6 +27,13 @@ bullet.variants = {
         effect = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 0 },
         single = true,
     },
+    -- The InfVulcs' (row 0xE: BN6's but for its hit, BN5's effect 0x3E, the Vulcans' in palette 2; BN6's a glint).
+    infinite = common.variant {
+        region = regions.long,
+        hit_mod = 1,
+        effect = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 2 },
+        single = true,
+    },
     -- SuprVulc's (row 0x10: BN6's): the same, its hit brighter.
     super_vulcan = common.variant {
         region = regions.long,
