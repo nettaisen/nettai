@@ -75,10 +75,9 @@ local CLEARS_HOLY = 499
 local LIGHT_CHIPS = 470
 
 export type Setup = {
-    -- The save's light/dark value (NaviStats +0x44).
+    -- The save's light/dark value (NaviStats +0x44): 0 to 1000; a fresh save's 500 (0x08010C00), the setup's
+    -- default.
     value: number,
-    -- Hub Style (NaviStats +0x4C): the NaviCust's HubBatc in its fourth color (part 0x6F, 0x08138214), 1; else 0.
-    hub_style: number,
 }
 
 -- Dark MegaMan's AI index, and BN5's navi 23's (0x0800DE40: a computer navi of either draws in palette 1).
@@ -149,9 +148,9 @@ local function palette(side: number, navi: Object): number?
     else
         p = tier(value())
     end
-    local hub_style = (system.setup() :: Setup).hub_style
-    if hub and hub_style ~= 0 then
-        return p + hub_style * 5 + 20
+    -- Hub Style (NaviStats +0x4C: the NaviCust's HubBatc in its fourth color, part 0x6F, 0x08138214).
+    if hub and stats.hub_style then
+        return p + 5 + 20
     end
     return p + (if in_soul then 0 else stats.element) * 5
 end
@@ -199,11 +198,13 @@ end
 
 return define.system {
     id = "bn5:light-dark",
-    setup = { value = "u16", hub_style = "u8" },
+    setup = { value = "u16" },
+    -- A fresh save's value (0x08010C00 writes 500 to NaviStats +0x44): neither light nor dark.
+    setup_defaults = { value = 500 },
     hooks = {
         -- Hub Style shows the base form's second set of faces (0x0801AF8E).
         round_setup = function(side: number)
-            battle.set_face_variant(side, (system.setup() :: Setup).hub_style ~= 0)
+            battle.set_face_variant(side, battle.navi(side).hub_style)
         end,
         -- 0x08010EC8: MegaMan's starting mood.
         starting_mood = function(_side: number): number?

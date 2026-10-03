@@ -56,3 +56,12 @@ pub fn chip_art(packs: &Packs, c: &Content, chip: ChipHandle) -> Option<Image> {
     let art = crate::lookups::chip_art(packs, c, chip, &mut Problems::default())?;
     image(&art.picture.tiles, 7, 6, &c.chip(chip).art_palette.unwrap_or(art.picture.palette))
 }
+
+/// A form's face in the emotion window (its definition's mugshot, the
+/// plain emotion's), 32x16, in its first palette: a soul's or a Cross's
+/// picture for a tool.
+pub fn form_face(packs: &Packs, c: &Content, form: nettai_content_api::FormHandle) -> Option<Image> {
+    let (_, face) = crate::lookups::form_face(packs, c, form, nettai_battle::kinds::player::Emotion::Normal, &mut Problems::default());
+    let (tiles, palettes) = face?;
+    image(tiles, 4, 2, palettes.first()?)
+}
