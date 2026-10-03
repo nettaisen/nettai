@@ -1,13 +1,13 @@
 --!strict
 -- NumberMan, the navi of the NumberMan chips (BN5's actor object #0x0F, 0x080BB34C; BN5's own, built on BN6's navi
 -- template), brought by their navi chip controller. He appears with his face (./overlay) (and goes at once off a
--- panel that isn't solid), stands 40 ticks, and throws a die (objects/dice) three columns ahead: its face, drawn
+-- panel that isn't solid), stands 40 ticks, and throws a die (chips/numbrman/dice) three columns ahead: its face, drawn
 -- (0x080BB4D8: 1 and 2 two times in 16, 3 to 5 three, 6 two... as the table goes), times his damage is what it
 -- deals when it bursts there. Once it is gone he waits 30 ticks and leaves; the controller moves on.
 
 local navi_chips = require("@common/navi-chips/navi")
 local overlay = require("./overlay")
-local dice = require("../../objects/dice/dice")
+local dice = require("./dice")
 
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).

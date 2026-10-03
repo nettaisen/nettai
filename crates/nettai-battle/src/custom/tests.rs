@@ -118,8 +118,8 @@ struct Player {
 }
 
 impl Player {
-    fn new(chips: &[(ChipId, u8)], version: GameVersion) -> Player {
-        let setup = PlayerSetup { folder: Some(folder(chips)), unlocks: Unlocks::everything(version), ..PlayerSetup::default() };
+    fn new(chips: &[(ChipId, u8)]) -> Player {
+        let setup = PlayerSetup { folder: Some(folder(chips)), ..PlayerSetup::default() };
         Player { side: Side::new(&setup), console: Console::new(&setup.console), lib: library(), stats: stats(), tick: 0 }
     }
 
@@ -191,7 +191,7 @@ impl Player {
 
 #[test]
 fn five_chips_are_dealt_into_the_top_row() {
-    let mut p = Player::new(&[], GameVersion::Falzar);
+    let mut p = Player::new(&[]);
     p.open();
     let s = p.screen();
     assert_eq!(s.hand_size, 5);
@@ -214,7 +214,7 @@ fn five_chips_are_dealt_into_the_top_row() {
 
 #[test]
 fn the_timeline_from_opening_to_sending() {
-    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1)], GameVersion::Falzar);
+    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1)]);
     p.open();
     assert!(p.side.in_custom);
     // The window slides in for 10 ticks; keys meanwhile are lost.
@@ -251,7 +251,7 @@ fn the_timeline_from_opening_to_sending() {
 
 #[test]
 fn nothing_picked_sends_no_hand() {
-    let mut p = Player::new(&[], GameVersion::Falzar);
+    let mut p = Player::new(&[]);
     p.open();
     p.wait(10);
     p.step(0);
@@ -266,7 +266,7 @@ fn nothing_picked_sends_no_hand() {
 #[test]
 fn picks_share_a_code_or_a_chip() {
     // SHOT A, SHOT B, WAVE A, WAVE *, MEGA C.
-    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (WAVE, 0), (WAVE, STAR), (MEGA, 2)], GameVersion::Falzar);
+    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (WAVE, 0), (WAVE, STAR), (MEGA, 2)]);
     p.open();
     p.wait(10);
     p.step(0);
@@ -292,7 +292,7 @@ fn picks_share_a_code_or_a_chip() {
 
 #[test]
 fn mega_chips_past_the_limit_turn_invalid() {
-    let mut p = Player::new(&[(MEGA, 0)], GameVersion::Falzar);
+    let mut p = Player::new(&[(MEGA, 0)]);
     p.side.class_uses = builder::ClassCounts { mega: 2, ..Default::default() };
     p.open();
     p.wait(10);
@@ -309,7 +309,7 @@ fn mega_chips_past_the_limit_turn_invalid() {
 
 #[test]
 fn dust_cross_scraps_the_picks() {
-    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)], GameVersion::Falzar);
+    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)]);
     p.stats.form = library::testing::DUST_CROSS;
     p.open();
     assert!(matches!(p.screen().slots[8].kind, SlotKind::Button { button: ButtonHandle(0), cell: ButtonCell::Left }));
@@ -347,7 +347,7 @@ fn dust_cross_scrapping_the_regular_chip_ends_it() {
     // keeps its Regular bit: sub_802A61A, which shows the chips dealt
     // again, only resets the slots' states.)
     let chips = [(SHOT, 0), (SHOT, 1), (WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)];
-    let mut p = Player::new(&chips, GameVersion::Falzar);
+    let mut p = Player::new(&chips);
     let mut f = folder(&chips);
     f.regular_pending = true;
     p.side.folder = Some(f);
@@ -374,7 +374,7 @@ fn dust_cross_scrapping_the_regular_chip_ends_it() {
 #[test]
 fn hand_size() {
     let size = |custom_level: u8, shrink: u8, turn: u8, number_open: bool| {
-        let mut p = Player::new(&[], GameVersion::Falzar);
+        let mut p = Player::new(&[]);
         p.stats.custom_level = custom_level;
         p.stats.bugs.hand_shrink_turn = shrink;
         p.stats.number_open = number_open;
@@ -392,7 +392,7 @@ fn hand_size() {
 
 #[test]
 fn select_hides_the_window_until_a_key() {
-    let mut p = Player::new(&[], GameVersion::Falzar);
+    let mut p = Player::new(&[]);
     p.open();
     p.wait(10);
     p.step(0);
@@ -412,7 +412,7 @@ fn select_hides_the_window_until_a_key() {
 fn chip_shuffle_redeals_what_is_not_picked() {
     // Thirty different chips (ids and codes), the first one the pick.
     let chips: Vec<(ChipId, u8)> = (0..30).map(|i| ([SHOT, WAVE][i % 2], (i / 2) as u8 % 3)).collect();
-    let mut p = Player::new(&chips, GameVersion::Falzar);
+    let mut p = Player::new(&chips);
     p.stats.chip_shuffle = true;
     p.console = Console::new(&ConsoleSetup { rng: 0x1234_5678, ..ConsoleSetup::default() });
     p.open();
@@ -457,7 +457,7 @@ fn chip_shuffle_redeals_what_is_not_picked() {
 #[test]
 fn chip_shuffle_leaves_the_regular_chip_and_the_tag_pair() {
     let chips: Vec<(ChipId, u8)> = (0..30).map(|i| ([SHOT, WAVE][i % 2], (i / 2) as u8 % 3)).collect();
-    let mut p = Player::new(&chips, GameVersion::Falzar);
+    let mut p = Player::new(&chips);
     p.stats.chip_shuffle = true;
     let mut f = folder(&chips);
     f.regular_pending = true;
@@ -487,7 +487,7 @@ fn chip_shuffle_leaves_the_regular_chip_and_the_tag_pair() {
 #[test]
 fn the_tag_pair_index_follows_the_folder_as_picks_leave_it() {
     let chips: Vec<(ChipId, u8)> = (0..30).map(|i| ([SHOT, WAVE][i % 2], (i / 2) as u8 % 3)).collect();
-    let mut p = Player::new(&chips, GameVersion::Falzar);
+    let mut p = Player::new(&chips);
     p.stats.chip_shuffle = true;
     p.console = Console::new(&ConsoleSetup { rng: 0x0BAD_F00D, tag_pair: Some(12), ..ConsoleSetup::default() });
     p.open();
@@ -529,7 +529,7 @@ fn the_tag_pair_index_follows_the_folder_as_picks_leave_it() {
 /// A screen whose first chip (SHOT A) has a description of `lines` lines,
 /// taking keys.
 fn describing(lines: usize) -> Player {
-    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1)], GameVersion::Falzar);
+    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1)]);
     p.lib.chips[0].1.description_lines = lines as u8;
     p.open();
     p.wait(10);
@@ -631,7 +631,7 @@ fn the_no_running_message_starts_a_tick_after_l() {
 #[test]
 fn a_dark_chip_takes_the_cursor_and_darkens_the_screen() {
     use crate::battle::FadeMode;
-    let mut p = Player::new(&[(SHOT, 0), (DARK, 0), (SHOT, 1)], GameVersion::Falzar);
+    let mut p = Player::new(&[(SHOT, 0), (DARK, 0), (SHOT, 1)]);
     p.open();
     // sub_802806C: the cursor starts on the first dark chip dealt.
     assert_eq!(p.screen().cursor, 1);
@@ -681,7 +681,7 @@ fn a_dark_chip_takes_the_cursor_and_darkens_the_screen() {
 
 #[test]
 fn the_cursor_stays_put_without_a_dark_chip() {
-    let mut p = Player::new(&[(SHOT, 0), (MEGA, 0)], GameVersion::Falzar);
+    let mut p = Player::new(&[(SHOT, 0), (MEGA, 0)]);
     p.open();
     assert_eq!(p.screen().cursor, 0);
     for _ in 0..20 {
