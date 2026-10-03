@@ -8,7 +8,7 @@
 //! on each other. See docs/engine/chips.md §3.6.
 
 use crate::battle::{Battle, FadeMode, battle_flags};
-use crate::content::{BannerId, BannerRole, ChipFlags, ChipTraits, SoundRole, Trap};
+use crate::content::{BannerId, BannerRole, ChipTraits, SoundRole, Trap};
 use nettai_content_api::ChipHandle;
 use crate::hud::{BannerStatus, Telop, TelopChip, TelopHidden};
 use crate::kinds::common::{self, Progress};
@@ -268,13 +268,15 @@ fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
 }
 
 /// The navi chips AntiNavi turns back: the original's block of them in its
-/// chip table, which is every chip with the `navi` flag, and the chips with
-/// the `navi_slot` trait (the US games' records of Django's three lack the
-/// flag; BN6's content has the Japanese games', which have it).
+/// chip table (`ChipTraits::in_navi_block`): the chips with the `navi`
+/// flag but those with the `not_navi_slot` trait (BN5's version navi
+/// chips), and the chips with the `navi_slot` trait (the US games' records
+/// of Django's three lack the flag; BN6's content has the Japanese games',
+/// which have it).
 fn is_navi_chip(b: &Battle, chip: Option<ChipHandle>) -> bool {
     chip.is_some_and(|h| {
         let c = b.content.chip(h);
-        c.flags.has(ChipFlags::NAVI) || c.traits.has(ChipTraits::NAVI_SLOT)
+        c.traits.in_navi_block(c.flags)
     })
 }
 
@@ -494,6 +496,26 @@ pub fn show_user(b: &mut Battle, user: ObjectRef) {
     if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
         crate::kinds::full_synchro_aura::show(b, aura);
     }
+}
+
+/// `sub_80E146C` (`sub_80E14EC` for an actor that isn't a player: BN5's
+/// Django shutting a navi in his coffin): the actor vanishes, its barrier
+/// visual and its confusion and blindness visuals with it. (Its HUD's draw
+/// task 0, `sub_801DACC(1)`, presentation the engine doesn't keep, goes
+/// too.)
+pub fn hide_actor(b: &mut Battle, o: ObjectRef) {
+    b.objects.get_mut(o).set_visible(false);
+    set_barrier_visual_shown(b, o, false);
+    set_links_visible(b, o, false);
+}
+
+/// `sub_80E14AC` (`sub_80E1502` for an actor that isn't a player): it is
+/// back, its barrier visual and its confusion and blindness visuals with
+/// it.
+pub fn show_actor(b: &mut Battle, o: ObjectRef) {
+    b.objects.get_mut(o).set_visible(true);
+    set_barrier_visual_shown(b, o, true);
+    set_links_visible(b, o, true);
 }
 
 /// `sub_8010312` / `sub_801031C` with state bit 0x100000: the user is
