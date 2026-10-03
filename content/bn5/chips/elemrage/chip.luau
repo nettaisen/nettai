@@ -1,6 +1,9 @@
 --!strict
--- ElemRage (BN5 chip 0x080): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- ElemRage (BN5 chip 0x080): a row of three flames from the panel ahead, of the element of the panel the user stands
+-- on, which then spread and paralyze (chips/elemrage/elemrage, action 0x56; the record's parameters: 3 flames, 30 ticks).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local elemrage = require("./elemrage")
 
 return define.chip {
     id = "bn5:elemrage",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
+    action = elemrage.action("bn5:elemrage/action", 3, 30, 0),
 }
