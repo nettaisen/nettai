@@ -64,3 +64,5 @@
 "bn5:drill" = { pool = "attack", index = 0x71 }
 "bn5:instrument" = { pool = "attack", index = 0x78 }
 "bn5:instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
+"bn5:geddon/controller" = { pool = "effect", index = 0x1D, scratch_position = true }
+"bn6:geddon/quake" = { pool = "effect", index = 0x1E, scratch_position = true }
