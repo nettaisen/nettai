@@ -575,7 +575,8 @@ format.
   key: id, action and subtype; `damage_formula` for the 46 whose damage is a formula, 1000 and up; `colonel` for the
   48 whose Team Colonel record differs: the version Gigas' library flag, the navi chips' +0x16);
   `compat/panels.toml` (BN5's 11 panel types, their flag words and the engine's type each is);
-  `chips/<key>/chip.luau` (each chip's common record and its `megaman` extension, §6.1; no use yet); and
+  `chips/<key>/chip.luau` (each chip's common record and its `megaman` extension, §6.1; no use yet; since §15.12 a
+  series' ported chips share chips/<series>/chips.luau, and the generator finds each definition by its id); and
   `locales/en.toml`, `ja.toml` (names and descriptions from the US and the Japanese ROMs). The records are Team
   ProtoMan's: the Japanese ROMs' differ only in the library's sort keys (+0x18), Team Colonel's only where compat
   says, and both versions' strings are the same. Keys follow BN6's: the US name in lower case, `+` and spaces as
@@ -1254,24 +1255,24 @@ parts and its effects 0x19, 0x1A and 0x28; CustSwrd's damage the custom gauge's,
 puck and flick, content/common/airhocky, of BN5's look); Static (BN5's tornado blow, its tornadoes paralyzing by
 the bug level: none, 90, 120, 150 ticks); Spreader (the shared Spreaders' action with BN5's gun and bullet row 3:
 BN5's flash 0x21 and sound); GunDelS1 to 3 (the shared sun beam, content/common/gundels; BN5's GunDelSol,
-objects/gundels); BugBomb (the shared BugBomb, content/common/bugbomb, with BN5's bugs: either HP drain plus 2 or
-the emotion swings); Katana1 to 3 (objects/katana); MrkCan1 to 3 (objects/mrkcan: the sweeping sight, effect
+chips/gundels/gundels); BugBomb (the shared BugBomb, content/common/bugbomb, with BN5's bugs: either HP drain plus 2 or
+the emotion swings); Katana1 to 3 (chips/katana/katana); MrkCan1 to 3 (chips/mrkcan/mrkcan: the sweeping sight, effect
 0x44, and the cannon at its panel); Pulsar1 to 3 and SpShake1 to 3 (lib/armshot, and lib/arm: BN5's buster arm,
-0x080EBABE; the pulse, attack 0x6A, and the shake wave, 0x68); Skully1 to 3 (objects/skully, attack 0x88);
+0x080EBABE; the pulse, attack 0x6A, and the shake wave, 0x68); Skully1 to 3 (chips/skully/skully, attack 0x88);
 Astroid1 to 3 (objects/meteors: instant effect 17, 6, 8 and 10 meteors); Snake (the shared snake and holes' scan,
 content/common/snake: BN5's nest sends three snakes at a time with a flag each, its snakes wait 48 ticks and
-strike as wood); YoYo (the shared throw, content/common/yoyo; BN5's yoyo, objects/yoyo, attack 0x52, GreatYo's
+strike as wood); YoYo (the shared throw, content/common/yoyo; BN5's yoyo, chips/yoyo/yoyo, attack 0x52, GreatYo's
 modes too); Slasher (BN5's own action 0x29: while A is held, the wide slash at an enemy navi's column); CircGun
 (the shared CircGun of DarkCirc's look, 4 shots); TankCan1 to 3 (the shared action and shell,
-content/common/tankcan; BN5's shell, objects/tankcan); WindRack (BN5's own action: BN6's swing without the
+content/common/tankcan; BN5's shell, chips/tankcan/tankcan); WindRack (BN5's own action: BN6's swing without the
 gusts). Then LifeSync (BN5's controller, effect object 0x5C: no sync in a boss-ranked battle either, the HP
-capped by each one's max HP in turn, flag 0x40's hit of 50); MoonBld1 to 3 (BN5's own action 0x53, objects/moonbld:
+capped by each one's max HP in turn, flag 0x40's hit of 50); MoonBld1 to 3 (BN5's own action 0x53, chips/moonbld/moonbld:
 BN6's spin with the Katanas' step, lib/stepsword, marked moving while it runs); CrakBom, ParaBom and ResetBom (their
-bomb, objects/crakbom, attack object 0x24: BN6's code no BN6 chip throws; it hits the column where it lands);
-Quake1 to 3 (BN5's own Quake bomb, objects/quake, attack object 0x51: a weight that drops on the panel three ahead
+bomb, chips/crakbom/crakbom, attack object 0x24: BN6's code no BN6 chip throws; it hits the column where it lands);
+Quake1 to 3 (BN5's own Quake bomb, chips/quake/quake, attack object 0x51: a weight that drops on the panel three ahead
 and hits its level's region); IceSeed, SeaSeed, GrasSeed and LavaSeed (the shared seed with BN5's look,
-objects/seed, attack object 0x4A); CannBall (objects/cannball, attack object 0x35: it breaks the panel it lands on);
-Geyser (objects/geyser, attack objects 0x42 and 0x43: BN6's BlkBomb code reworked, a splash of 10 on solid ground, in
+lib/bombs/seed, attack object 0x4A); CannBall (chips/cannball/cannball, attack object 0x35: it breaks the panel it lands on);
+Geyser (chips/geyser/geyser, attack objects 0x42 and 0x43: BN6's BlkBomb code reworked, a splash of 10 on solid ground, in
 a hole a geyser whose water hits the eight panels around in a shuffled order); MetaGel (its controller, effect
 object 0x21, and gel, attack object 0x45: BN6's code no BN6 chip drops; a gel on each row's panel just ahead of the
 user's area, taking it); Magnum (BN5's own: its controller, effect object 0x30, and gunner, actor object 2, the
@@ -1285,7 +1286,7 @@ shared modules
 (content/common, as above): airhocky/puck and flick, gundels/beam, bugbomb/bomb, snake/snake, yoyo/throw,
 tankcan/action and shell, lifesync/marker, moonbld/blade and bombs/seed, each BN6's at its old path its BN6 wrapper
 (BN6 the same). BN5's Cannon, HiCannon and M-Cannon draw BN5's cannon (0c-01) and sound; CircGun and DarkCirc share
-one set of kinds (objects/circgun).
+one set of kinds (chips/circgun/circgun).
 
 BN5's hit intake (0x080178EC) takes a hit's NaviCust bug (0x0801103E) before the HP bug drains (0x0800DFEC), where
 BN6's `sub_801AC6C` drains first, and a drain bug's argument goes by its flags (bit 4 adds its low four bits, bit 5
@@ -1524,8 +1525,13 @@ which the engine runs for a side whose rules say so (the status section's `emoti
   (0x08011A94), then the emotion swings to one of 0x0801147C's sixteen (seven normal, seven worried, one angry, one
   Full Synchro) but the one it last swung to (every entry of it taken out), drawn from RNG2: angry asks for anger (the
   request, no mood test), any other sets 0x0801148C's mood (0x99, 0x3F, 0, 0xFF) through the setter. It runs from the
-  tick of every navi of the player's kind (a Dark MegaMan's too, by his side's stats), each with its own counters
-  (AIData +0x3A, +0x0B), and a curse (BugCurse) can set the bug mid-round, so every player's navi is ticked.
+  tick of every navi of the player's kind (0x080EAD6A; a computer navi's, 0x080F224C, has none), each with its own
+  counters (AIData +0x3A, +0x0B), and a curse (BugCurse) can set the bug mid-round, so every player's navi is ticked.
+- **The face in Chaos Unison** (0x08019704): while the chaos charge is armed (0x080125F6, AIData +0x12) the window's
+  picture is drawn in its palette 11 on, the pack's *soul*-chaos faces (the soul form's `mugshot.variant`); the
+  palette is read as the window draws, so a blink back to the soul's face after the failure's revert shows it plain.
+- **Dark MegaMan's appearance** (BN6's `sub_80164A0`, the shared mid-battle appearance): white, fading over its 30
+  ticks (the color shader gray at the second timer's level), which the engine now draws.
   BugCurse's four recordings match through it.
 - **The soul break** (0x080122C8, BN6's `sub_8015766`; the status section's `form_break = "bn5"`): a dark chip used in
   a soul (0x08010070) sets the weakness request, which breaks any form (BN6's only a Cross or a Beast) to the base
@@ -1614,3 +1620,61 @@ attack 0x28: to share); NumbrBl (BN5's own NumberMan stand-in with BN6's balls),
 share, with BN5's changes); DarkInvs (BN5's own: the user's navi on the computer-navi AI for 600 ticks, bn5-port-6's
 system); Jealousy (BN6's leftover code, BG transfers; it counts the other side's hand, which the engine has no call
 for yet); LeadRaid and ChaosLrd (actors 0x20 and 0x22, and 0x51: §14.5).
+
+### 15.12 The content's layout (as built)
+
+content/bn5 is laid out as content/bn6 is (content-model-v2.md §4.1; the user, 2026-10-03: "you should consolidate
+the chips together where appropriate and move colocate objects with those chips, where appropriate like what bn6
+does"). The verification workspace's `tools/bn5/layout.py <checkout>` computes the layout from the content and
+moves it there (git mv, every `require` rewired, no id changed); its `tools/bn5/gen_content.py` finds each chip's
+definition by its id wherever it is. The move changed no recording's replay (§15.5's report the same, recording by
+recording).
+
+- **Series files.** A series' chips are one module, chips/<series>/chips.luau: each chip a `local` with its own
+  comment above it, the requires once at the top, the module returning the chips by key
+  (`require("../cannon/chips").hicannon`), as BN6's chips/cannon/chips.luau. The series are BN6's where BN6 has the
+  same chips (barrier, batcan, cannon, colorpt with DblPoint, energbom with MegEnBom, firehit, grabbnsh with
+  GrabRvng, gundels, recov, tankcan, timebom with TimeBom+, tornado with Static, vulcan with SuprVulc; wind with
+  Fan and gigacan once they have uses); each navi chip with its SP and DS (blizman, cloudman, colonel, cosmoman,
+  django, gridman, gyroman, knightmn, larkman, magnetmn, meddy, napalmmn, numbrman, protoman, roll, serchman,
+  shademan, shadoman, tmhwkman, toadman); numbered levels (astroid, cactbal, crsshld, drilarm, elcreel, geddon,
+  guard, infvulc, katana, moonbld, mrkcan, pulsar, quake, sidebub, skully, spshake, widesht, woodnos; airspin,
+  aqwhirl, boxer and the rest as they are ported); a Program Advance whose ingredients are one series'; and BN5's
+  own two: crakout (CrakOut, DublCrak, TripCrak, as BN6's CrakShot series) and cannmode (the Liberation Missions'
+  mode chips: CannMode, CannBall's, SwrdMode, YoYoMode, DrilMode). A chip in no series keeps
+  chips/<key>/chip.luau.
+- **A chip without a use keeps its own folder** until the port gives it one: the loader leaves it out by its
+  folder, with every chip folder that requires one of its modules (content-model-v2.md §7.3), so it can't be in a
+  file with chips that play. The next run of layout.py takes it into its series.
+- **Kinds with their owners** (§4.1's rules 1 to 5). A kind one chip or series uses is in its folder
+  (chips/vulcan/vulcan, chips/timebom/timebom, chips/widesht/wave and variants, chips/yoyo/yoyo). One with a
+  natural owner and borrowers is the owner's: the dark chips borrow their light chip's (DarkDril
+  chips/drilarm/drill, DarkThnd chips/thunder/ball, DarkTorn chips/tornado/tornado, DrkLance chips/lance/lance,
+  DarkCirc chips/circgun/circgun, DarkWide chips/widesht/wave), the InfVulcs chips/vulcan/vulcan, PoisPhar
+  chips/anubis/anubis, ParaBom and ResetBom chips/crakbom/crakbom, MudWave and RedWave chips/wavepit/wavepit. A
+  family's is in its lib/ folder, its builder with it: lib/bombs (bombs, seed), lib/guard (guard, the Guard chips'
+  shock wave), lib/traps (traps, the Anti traps' anti_trap), lib/instruments (instrument), lib/navi-chips (the
+  navi chips' throw marker). The soul system's are rules/souls' (shade, image).
+- **objects/** keeps what several families share (attachment, bullet, flying-shot, panel-bursts, panel-changer,
+  projectile with its variants, rising-bubble), and six modules whose `define.kind` keys name no owner, which
+  can't move without new ids (the content check keys a kind in an owner's folder under the owner): capsule
+  (Meddy's), dice (NumberMan's), gyro-bomb, napalm-bomb, crack (CrakOut's) and meteors (the shower and its
+  marker). Re-keyed (`bn5:meddy/capsule`, ..., with compat's kinds.toml), the next run moves them.
+
+| | before | after |
+|---|---|---|
+| modules | 535 | 423 |
+| chips/ folders | 333 (a chip each) | 221: 53 series' (165 chips), 168 chips' own (68 without a use yet) |
+| objects/ folders | 53 | 13 |
+| lib/ | 18 modules | 15 modules, 5 family folders |
+
+**A branch from before the layout:** merge main and take main's moves; where main merged a chip you changed into a
+series, the merge reports your chips/<key>/chip.luau as modified and deleted: keep yours (`git add` it); where
+main only repointed `require` lines you also changed, keep yours. Commit the merge, then run
+`tools/bn5/layout.py <checkout>` from the verification workspace's main: it takes your version of the chip into
+its series file, moves your new chips and objects to their places, and repoints your requires of old paths (a
+chip's by its id, another module's by git's renames). Then build and test as usual. A series' new kinds are keyed
+under its folder (`bn5:<series>/...`), and a chip gets its series file's place by gaining a use. (Tried on
+bn5-chips-b at 3c524c21: the merge stopped at four chip files and one block of requires, as above; the run then took
+26 chips into 10 series files, moved 7 new kinds and repointed 22 old requires, and the branch's §15.5 report
+stayed the same, recording by recording: 1,250 matching, 871,358 frames.)
