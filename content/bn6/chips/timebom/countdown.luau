@@ -47,20 +47,9 @@ local BURST_INTERVAL = 2
 -- Its actions (`off_80CD9F4`).
 local APPEAR, DESTROYED, COUNTDOWN, BLINK_AWAY = 0, 2, 8, 9
 
--- How a game's bomb looks and sounds, and how it leaves.
-export type Look = {
-    sprite: SpriteAsset,
-    sounds: { place: Sound, tick: Sound, last: Sound, blast: Sound, puff: Sound },
-    -- The blast's collision: what it is and what it hits.
-    blast: { is: CollisionType, hits: CollisionType },
-    -- How it looks absorbed (nil: nothing absorbs it).
-    absorbed: AbsorbedLook?,
-    -- Any removal leaves a puff (BN5's): no absorbing, no blinking out.
-    removal_puffs: boolean?,
-}
 
 -- A countdown bomb kind (`id`) of `look`.
-function countdown.make_kind(id: string, look: Look): Kind
+function countdown.make_kind(id: string, look: CountdownLook): Kind
     local SPRITE = look.sprite
     local PLACE_SOUND, TICK_SOUND, LAST_SOUND = look.sounds.place, look.sounds.tick, look.sounds.last
     local BLAST_SOUND, PUFF_SOUND = look.sounds.blast, look.sounds.puff

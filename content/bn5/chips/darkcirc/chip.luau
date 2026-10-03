@@ -13,7 +13,7 @@ local gun = require("@bn6/chips/circgun/gun")
 local shot = require("@bn6/chips/circgun/shot")
 local sparks = require("../../lib/sparks")
 
-local LOOK: shot.Look = {
+local LOOK: CircGunLook = {
     sprite = asset.sprite("bn5:sight"),
     sounds = {
         step = asset.sound("bn5:erase-man"),

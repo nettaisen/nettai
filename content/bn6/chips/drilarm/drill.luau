@@ -41,19 +41,6 @@ export type State = {
 -- How long a drill hits, and its Param3 (`light`).
 export type Spec = { ticks: number, light: boolean? }
 
--- How a game's drill is: its hit's spark, what the first and second are
--- and hit, what Param3 means ("light", BN6's; or the bug a dark one's hit
--- carries, BN5's), and whether its spawn keeps the user's element and the
--- second takes the first's running while dimmed (BN6's do; BN5's
--- 0x080D41C8 and 0x080D4100 don't).
-export type Look = {
-    spark: Spark,
-    first: CollisionType,
-    second: CollisionType,
-    hits: CollisionType,
-    param3: "light" | { bug: number, bug_arg: number },
-    keeps_element: boolean,
-}
 
 -- Ticks between hits.
 local PERIOD = 0x0C
@@ -63,7 +50,7 @@ local HIT_MOD, LIGHT_HIT_MOD = 0x61, 3
 -- A drill kind (`id`) of `look`, with its spawner.
 function drill.make_kind(
     id: string,
-    look: Look
+    look: DrillLook
 ): (Kind, (owner: Object, element: number, z: number, damage: number, spec: Spec, slot: ("related" | "child")?) -> Object?)
     local kind: Kind
 
@@ -215,8 +202,7 @@ function drill.make_kind(
     end
 end
 
-local bn6_spawn
-drill.kind, bn6_spawn = drill.make_kind("bn6:drilarm/drill", {
+local bn6_kind, bn6_spawn = drill.make_kind("bn6:drilarm/drill", {
     spark = sparks.breaking,
     first = collision.breaking,
     second = collision.second_drill,
@@ -224,6 +210,7 @@ drill.kind, bn6_spawn = drill.make_kind("bn6:drilarm/drill", {
     param3 = "light",
     keeps_element = true,
 })
+drill.kind = bn6_kind
 
 -- `sub_80D2B8E` from its user: the first drill for `owner`, held in its
 -- first related object (a navi's attack), or in its state's `child` (a

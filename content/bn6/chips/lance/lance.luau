@@ -19,19 +19,7 @@ export type State = {
     palette: number,
 }
 
--- A lance's hit: what it is and hits, its spark, hit modifier and bug.
-export type Hit = {
-    is: CollisionType,
-    hits: CollisionType,
-    spark: Spark,
-    hit_mod: number,
-    bug: number?,
-    bug_arg: number?,
-}
 
--- How a game's lance looks and hits: its sprite, its sound, and its hit by
--- its palette (Param1).
-export type Look = { sprite: SpriteAsset, sound: Sound, hits: { [number]: Hit } }
 -- How far past its panel it appears, in pixels, and how fast it slides
 -- back, 16.16.
 local AHEAD, SPEED = 0x40, 0x8_0000
@@ -40,7 +28,7 @@ local AHEAD, SPEED = 0x40, 0x8_0000
 local THRUST, BLINK = 0, 4
 
 -- A lance kind (`id`) of `look`.
-function lance.make_kind(id: string, look: Look): Kind
+function lance.make_kind(id: string, look: LanceLook): Kind
     -- `sub_80D2514`: slide back; the hit on the seventh tick; after eight,
     -- blink.
     local function thrust(me: Object)
