@@ -10,6 +10,13 @@ function hooks.start(me: Object, form: FormDef)
     me:put_on_form_overlay(form)
 end
 
+-- What MegaMan is taken for follows his form: BN5 finds his attach points (a chip's icon over him, what he holds) by
+-- his soul's sprite (0x08015180: NaviStats +0x2C and +0x29 through `sub_800FC9E`), which a soul's identity carries; the
+-- base form has none of its own, his navi's.
+function hooks.identity(me: Object, form: FormDef)
+    me.identity = form.identity or battle.navi(me.alliance).navi.identity
+end
+
 -- 0x0800F088: take off what `form` wore.
 function hooks.finish(me: Object, form: FormDef)
     me:take_off_form_overlay(form)
