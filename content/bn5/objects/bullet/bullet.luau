@@ -7,6 +7,7 @@
 
 local bn6_bullet = require("@bn6/objects/bullet/bullet")
 local collision = require("../../rules/collision")
+local regions = require("@bn6/lib/regions")
 
 local bullet = {}
 
@@ -19,6 +20,13 @@ bullet.kind = bn6_bullet.make_kind("bn5:bullet", {
 bullet.variants = {
     -- The Vulcans' (row 0xC: BN6's): the panel found and the one behind it, staggering.
     vulcan = bn6_bullet.variants.vulcan,
+    -- The Spreader's (row 3: BN6's with BN5's flash, effect 0x21, and sound): the 3x3 around the panel found.
+    spreader = bn6_bullet.variant {
+        region = regions.square,
+        hit_mod = 0,
+        effect = define.effect { sprite = asset.sprite("bn5:pink-flash"), anim = 0, palette = 0 },
+        sound = asset.sound("bn5:h-burst"),
+    },
 }
 
 return bullet
