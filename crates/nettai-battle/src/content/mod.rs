@@ -52,7 +52,7 @@ pub mod testing;
 pub use chips::*;
 pub use custom::*;
 pub use defs::*;
-pub use identity::{BodyPart, FieldLook, IceSize, Identity, IdentityClass, IdentityOwner, OverlayHooks, Parts};
+pub use identity::{ActorBody, BodyPart, FieldLook, IceSize, Identity, IdentityClass, IdentityOwner, OverlayHooks, Parts};
 pub use navis::*;
 pub use roles::*;
 pub use rules::*;

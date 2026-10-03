@@ -54,10 +54,14 @@ pub enum ActionRole {
     /// (`sub_801B9E6`): BN6's Beast Out rush (`sub_80EAD9C`). Unfilled, the
     /// attack runs as it is.
     Wrapper,
+    /// BN5's Chaos Unison charge released out of its window (0x39): the
+    /// battle dims, a Dark MegaMan comes for the other side, and the navi
+    /// is back in its base form.
+    ChaosFailure,
 }
 
 impl ActionRole {
-    pub const ALL: [ActionRole; 12] = [
+    pub const ALL: [ActionRole; 13] = [
         ActionRole::AntiDamageCounter,
         ActionRole::AntiSwordCounter,
         ActionRole::BodyGuardCounter,
@@ -70,6 +74,7 @@ impl ActionRole {
         ActionRole::DustBeastScatter,
         ActionRole::ChargeTackle,
         ActionRole::Wrapper,
+        ActionRole::ChaosFailure,
     ];
 
     /// Its name in `rules/roles.luau`'s `actions`.
@@ -87,6 +92,7 @@ impl ActionRole {
             ActionRole::DustBeastScatter => "dust_beast_scatter",
             ActionRole::ChargeTackle => "charge_tackle",
             ActionRole::Wrapper => "wrapper",
+            ActionRole::ChaosFailure => "chaos_failure",
         }
     }
 
@@ -416,6 +422,9 @@ definition_roles! {
         /// (`sub_80E0F2E`).
         ChargeGlow = "charge_glow",
         ChargeGlowA = "charge_glow_a",
+        /// BN5's: the glow of an armed Chaos Unison charge (0x080E0EA4),
+        /// whose animation shows the chaos cycle's window.
+        ChargeGlowChaos = "charge_glow_chaos",
         /// The Full Synchro aura.
         FullSynchroAura = "full_synchro_aura",
         /// The status visuals over a navi: confusion's stars, blindness,
@@ -471,16 +480,22 @@ pub enum HookRole {
     /// variant 3 in its registry class; or the bubble, attack #0xA3
     /// `sub_80D99EC`).
     Encased,
+    /// `(navi) -> Object?`: a navi no player controls is being deleted:
+    /// what sparkles over it while it flashes (BN5's 0x08013DA0: effect
+    /// object 0x11, `sub_80E1A6A`, for 90 ticks), which the deletion's end
+    /// ends (`sub_80E1A86`).
+    NaviDeleted,
 }
 
 impl HookRole {
-    pub const ALL: [HookRole; 2] = [HookRole::FirstBarrier, HookRole::Encased];
+    pub const ALL: [HookRole; 3] = [HookRole::FirstBarrier, HookRole::Encased, HookRole::NaviDeleted];
 
     /// Its name in `rules/roles.luau`'s `hooks`.
     pub fn name(self) -> &'static str {
         match self {
             HookRole::FirstBarrier => "first_barrier",
             HookRole::Encased => "encased",
+            HookRole::NaviDeleted => "navi_deleted",
         }
     }
 
