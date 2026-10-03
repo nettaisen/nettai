@@ -613,6 +613,7 @@ export type ThunderBallLook = {
     big_anim: number,
     is: CollisionType,
     dark_is: CollisionType?,
+    target: CollisionType,
     hit_mod: number,
     spark: Spark,
     sound: Sound,
