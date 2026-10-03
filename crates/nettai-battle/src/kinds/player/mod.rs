@@ -87,6 +87,7 @@ pub(crate) use status::end_anger;
 
 pub(crate) use reactions::passed;
 
+use crate::content::Emotions;
 use nettai_content_api::IdentityHandle;
 use crate::actor::{ActorData, ActorId, ActorType, request};
 use crate::battle::{Battle, battle_flags};
@@ -363,14 +364,20 @@ pub enum Emotion {
     FullSynchro,
     /// (3)
     Angry,
-    /// Mood 0, or exhausted after Beast Over (5).
+    /// Mood 0, or exhausted after Beast Over (5). (BN5's mood of 0: a dark
+    /// MegaMan's.)
     WornOut,
+    /// BN5's mood under 65 (its emotion 1, 0x08012740): worried.
+    Worried,
 }
 
-/// `sub_8015B54`: a side's emotion.
+/// `sub_8015B54`: a side's emotion (BN5's: `bn5_emotion`).
 pub fn emotion(b: &Battle, side: u8) -> Emotion {
     let mood = b.stats[side as usize].mood;
     let p = b.player(side).expect("side has a player");
+    if b.rules_for(p).emotions == Emotions::Bn5 {
+        return bn5_emotion(b, p, mood);
+    }
     let a = ai(b, p);
     if a.exhausted || mood == 0 {
         Emotion::WornOut
@@ -385,6 +392,30 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
     }
 }
 
+/// BN5's 0x0801270C (0x08012740; in battle mode 1, 0x080127C0: Full
+/// Synchro or normal): in a soul (NaviStats +0x2C), the soul's own face
+/// (its emotion 4), which nothing doubles or ends; then anger (AIData
+/// +0x34), a mood of 0 (5: a dark MegaMan's), Full Synchro (0xFF), normal
+/// (65 and up), else worried (1).
+fn bn5_emotion(b: &Battle, p: ObjectRef, mood: u8) -> Emotion {
+    if battle_mode(b) == 1 {
+        return if mood == 0xFF { Emotion::FullSynchro } else { Emotion::Normal };
+    }
+    if form_of(b, p).kind != FormKind::Base {
+        Emotion::Normal
+    } else if ai(b, p).anger != 0 {
+        Emotion::Angry
+    } else if mood == 0 {
+        Emotion::WornOut
+    } else if mood == 0xFF {
+        Emotion::FullSynchro
+    } else if mood >= 65 {
+        Emotion::Normal
+    } else {
+        Emotion::Worried
+    }
+}
+
 /// Whether a navi's mood is held (`sub_8015BEC`'s test): held tired or
 /// exhausted. Another side's rules read it (`sub_801A200`'s counter).
 pub(crate) fn mood_held(b: &Battle, r: ObjectRef) -> bool {
@@ -392,10 +423,15 @@ pub(crate) fn mood_held(b: &Battle, r: ObjectRef) -> bool {
     a.tired || a.exhausted
 }
 
-/// `sub_8015BEC`: set a side's mood, unless its navi's mood is held.
+/// `sub_8015BEC`: set a side's mood, unless its navi's mood is held
+/// (BN5's 0x080127D6: unless the mood is 0).
 pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
     let Some(p) = b.player(side) else { return };
-    if mood_held(b, p) {
+    let held = match b.rules_for(p).emotions {
+        Emotions::Bn6 => mood_held(b, p),
+        Emotions::Bn5 => b.stats[side as usize].mood == 0,
+    };
+    if held {
         return;
     }
     b.stats[side as usize].mood = mood;
@@ -857,8 +893,12 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).stamina = 10;
     let eff = b.setup.settings.effects;
     if eff & effects::LINK != 0 || eff & 0x1_0000 != 0 || stats(b, r).mood != 0xFF {
-        // sub_8015C2C: the starting mood.
-        stats_mut(b, r).mood = 0x80;
+        // sub_8015C2C: the starting mood (the side's systems may say
+        // another: BN5's light and dark system's, by the light/dark value,
+        // 0x0801283A).
+        let side = b.objects.get(r).alliance;
+        let mood = b.systems_starting_mood(side).unwrap_or(0x80);
+        stats_mut(b, r).mood = mood;
     }
     if stats(b, r).first_barrier.is_some() {
         // sub_801A7CC(stat 6) and the barrier's visual (sub_80E0D98): the
@@ -1151,6 +1191,13 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
     if let Some(glow) = &form_of(b, r).glow {
         let shader = glow[(b.round.battle_time % glow.len() as u32) as usize];
         b.objects.sprite_mut(r).look.color_shader = shader;
+        return;
+    }
+    // The side's systems may pick it (BN5's 0x0800DD94: its light and dark
+    // system's).
+    let side = b.objects.get(r).alliance;
+    if let Some(palette) = b.systems_navi_palette(side, r) {
+        b.objects.sprite_mut(r).look.palette = palette;
         return;
     }
     let (kind, form_palette) = {
