@@ -271,7 +271,9 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     }
     for i in 0..c.defs.forms.len() {
         for emotion in EMOTIONS {
-            lookups::form_face(packs, c, FormHandle(i as u16), emotion, p);
+            for variant in [false, true] {
+                lookups::form_face(packs, c, FormHandle(i as u16), emotion, variant, p);
+            }
         }
     }
 
