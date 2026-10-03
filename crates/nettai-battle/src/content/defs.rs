@@ -55,6 +55,10 @@ pub struct KindDef {
     pub schema: StateId,
     /// What places it when a stage names it (`kind.place`).
     pub place: Option<FnId>,
+    /// What the leaving of a navi chip's navi one of its objects brought
+    /// does to it (`kind.navi_left`; BN5's DethPhnx): the navi calls
+    /// `navi_chip.navi_left` with the object.
+    pub navi_left: Option<FnId>,
 }
 
 /// A navi action content implements.
@@ -1056,6 +1060,7 @@ impl Defs {
                 implementation: KindImpl::Engine(kind),
                 schema: schema_id(NO_STATE),
                 place: None,
+                navi_left: None,
             };
             kinds.add(key.to_string(), def, "the engine's".into());
         }
@@ -1070,12 +1075,17 @@ impl Defs {
                 Data::Nil => None,
                 _ => Some(functions.id(slot(d, "place")?)),
             };
+            let navi_left = match d.spec.field("navi_left") {
+                Data::Nil => None,
+                _ => Some(functions.id(slot(d, "navi_left")?)),
+            };
             let def = KindDef {
                 key: d.key.clone(),
                 pool,
                 implementation: KindImpl::Script { update: functions.id(slot(d, "update")?) },
                 schema: state_of(d)?,
                 place,
+                navi_left,
             };
             kinds.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }

@@ -1289,9 +1289,20 @@ declare dimming: {
     show_actor: (o: Object) -> (),
 }
 
+-- The last navi chip used (`navi_chip.last`): the chip (whose `navi` hook
+-- brings its navi), and the element and the damage word, bonus included,
+-- its navi came with.
+export type LastNaviChip = { chip: Chip, element: number, damage: number }
+
 declare navi_chip: {
-    -- The navi is done: its controller moves on.
+    -- The navi is done: its controller moves on (an object of a content
+    -- kind that brought the navi itself: its kind's `navi_left`).
     navi_left: (controller: Object) -> (),
+    -- The last navi chip used, of either side, this battle (`byte_203C960`,
+    -- BN5's 0x0203C430: the navi chip controller keeps the chips of the navi
+    -- chips' block, as their navis come), or nil. BN5's DethPhnx brings its
+    -- navi again.
+    last: () -> LastNaviChip?,
     -- `sub_80E1332`: the user warps out (`out`) or back in.
     warp: (user: Object, out: boolean) -> (),
 }
@@ -1484,6 +1495,9 @@ export type KindSpec = {
     -- What places it when a stage names it among its `actors`: it returns
     -- what it placed, if anything.
     place: ((spec: PlaceSpec) -> Object?)?,
+    -- An object of it brought a navi chip's navi itself (passing itself as
+    -- the navi's controller): the navi is done (`navi_chip.navi_left`).
+    navi_left: ((me: Object) -> ())?,
 }
 export type Kind = KindSpec
 
@@ -1715,9 +1729,11 @@ export type ChipSpec = {
     -- barrier holds), "no_cut_in" (the other side can't cut in on its
     -- dimming), "element_sword" (a link navi's own chip's family bonus
     -- counts it), "navi_slot" (AntiNavi turns it back though it lacks the
-    -- `navi` flag), "heals" (AntiRecv springs on it), "user_stays" (a navi
-    -- chip whose user isn't warped off the field), "navi_returns_user" (a
-    -- navi chip whose navi brings the user back itself).
+    -- `navi` flag), "not_navi_slot" (AntiNavi lets it through and it isn't
+    -- kept as the last navi chip, though it has the `navi` flag: past the
+    -- navi chips' block), "heals" (AntiRecv springs on it), "user_stays" (a
+    -- navi chip whose user isn't warped off the field), "navi_returns_user"
+    -- (a navi chip whose navi brings the user back itself).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",

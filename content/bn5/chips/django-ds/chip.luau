@@ -20,5 +20,8 @@ return define.chip {
     flags = { "dimming", "library", "variable_damage" },
     slot_in_limit = 1,
     megaman = "dark",
+    -- (In the navi chips' block though the US record lacks the `navi` flag: AntiNavi turns it back, and it is kept
+    -- as the last navi chip.)
+    traits = { "navi_slot" },
     navi = navi.summon_dark,
 }

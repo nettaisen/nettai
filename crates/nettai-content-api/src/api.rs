@@ -1760,6 +1760,10 @@ pub trait CoreApi {
     fn clear_emotion_window_glitch(&mut self);
     /// A navi chip's navi is done: its controller moves on.
     fn navi_chip_left(&mut self, controller: ObjectRef);
+    /// The last navi chip used, of either side (`byte_203C960`, BN5's
+    /// 0x0203C430): the chip, and the element and the damage word, bonus
+    /// included, its navi came with; none since the battle started.
+    fn last_navi_chip(&self) -> Option<(ChipHandle, u8, u32)>;
     /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the
     /// navi warp, actor 0x2D).
     fn navi_warp(&mut self, user: ObjectRef, out: bool);

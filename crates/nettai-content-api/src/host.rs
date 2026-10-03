@@ -149,6 +149,10 @@ pub enum HookCall {
     InstantChip { user: ObjectRef, spec: InstantChipSpec },
     /// A kind's `place(spec)`: returns what it placed, or nil.
     Place { spec: PlaceSpec },
+    /// A kind's `navi_left(controller)`: the navi chip's navi an object of
+    /// the kind brought (BN5's DethPhnx: the last navi chip's) is done. Its
+    /// result is unused.
+    NaviLeft { controller: ObjectRef },
     /// A role hook the ruleset calls with a navi (`define.roles`'
     /// `hooks`): its result is unused.
     RoleNavi { navi: ObjectRef },

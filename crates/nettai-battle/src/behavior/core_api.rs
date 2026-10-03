@@ -2220,6 +2220,10 @@ impl CoreApi for Battle {
         kinds::navi_chip::navi_left(self, controller);
     }
 
+    fn last_navi_chip(&self) -> Option<(ChipHandle, u8, u32)> {
+        self.last_navi_chip.map(|l| (l.chip, l.element, l.damage))
+    }
+
     fn navi_warp(&mut self, user: ObjectRef, out: bool) {
         use kinds::navi_warp::{Warp, spawn};
         spawn(self, user, if out { Warp::Out } else { Warp::In });
