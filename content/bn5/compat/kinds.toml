@@ -34,6 +34,9 @@
 "bn6:trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
 "bn6:instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
 "bn6:protoman/navi" = { pool = "actor", index = 0x3C }
+"bn5:larkman/navi" = { pool = "actor", index = 0x1E }
+"bn5:larkman/swoop" = { pool = "attack", index = 0xBA }
+"bn5:larkman/follower" = { pool = "attack", index = 0xCB }
 "bn5:sonic-boom" = { pool = "attack", index = 0x58 }
 "bn5:holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 "bn5:holydrem/actor" = { pool = "actor", index = 0x1C }
