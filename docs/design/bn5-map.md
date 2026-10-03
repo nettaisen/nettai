@@ -1416,9 +1416,14 @@ word +0x5C and attack object 0x30) is still unread: no recording meets it.
 
 **Shared modules moved to content/common** (makers taking a game's look; BN6's modules wrap them with the same
 APIs): anubis, guardian, otenko, justcone, batcan, colorpt, geddon (controller, quake), barriers (visual,
-controller), rflectr, rock (rock, debris), boulder, bugfix (glow, controller), h-burst (action, burst).
+controller), rflectr, rock (rock, debris), boulder, bugfix (glow, controller), h-burst (action, burst), bodygrd
+(striker, shuriken).
 
-**Chips.** In the range, 111 chips match all their recordings (426 of its 543 recordings; the 117 left belong to
+**Engine.** The damage formula `gauge_level` (BN5's 73 to 75, CusVolt's: `base` plus 100 by the custom gauge's level,
+none when full); `battle.gauge_full` (battle flag 2) and `battle.drain_custom_gauge` (`sub_801DFD0`, CusVolt's drain
+outside link battles).
+
+**Chips.** In the range, 128 chips match all their recordings (464 of its 543 recordings; the 79 left belong to
 chips with no use yet). The last ones: BugFix; LCrsShld, LStepSwd, LCounter (the Liberation chips: BN5's
 controller, effect 0x8A, gives the side five uses of the ability, which only a Liberation Mission's specials read,
 nothing a netbattle reads); Poltrgst (BN5's own: controller effect 0x72, stand-in actor 0x58, poltergeist effect
@@ -1427,11 +1432,18 @@ two followers); PitHoky (the puck's row 3, BN5's objects/puck); SuprSpr1–3 (wa
 GigaCan1–3 (projectile row 0x0C: hit modifier 0x49, the blast spark; BN5's projectile has none of BN6's row-0x0C
 bursts; the third afterimage on NaviStats +0x4C reads 0, as lib/arm's); H-Burst (BN5's shot: a probe of row 0, its
 explosions effect row 0x3C; its bursts are 8, the shot's table 0x080DA514 read at the record's word 0x103, past its
-four bytes).
+four bytes); the instant Program Advances Boxer1–3 (effect 21: a boxer, effect 0x64, punching FireHit's fists down
+the rows), ShakPar1–3 (effect 22: a shaker, effect 0x66, sending paralyzing SpShake waves from the back column) and
+CacDanc1–3 (effect 23: a dancer, effect 0x65, a field object dropping cactuses, attack 0xB1); HotBody1–3 (action
+0x58: a fire, effect 0x57, spreading flames, attack 0x9D, to the enemies around the last ones; its position stays
+the spawner's registers, as its copy of the navi's is stored at address 0x34); CusVolt1–3 (action 0x27: a beam,
+attack 0xB8, following the navi); BodyGrd (BN5's sends the striker out at once from its controller, effect 0x6D,
+where BN6's is a trap); ElemPowr (its controller, effect 0x7F: 10 Atk+ a panel of the type the user stands on,
+those panels back to normal through the panel changer's rows 15 to 19).
 
-**Waiting.** RainyDay, ElemRage, AirSpin1–3 (BN6's AirSpin top with BN5's changes: random targets, its own panel
-setting, its hit's self type 4), AqWhirl1–3 (BN5's own, attack object 0x5D), CopyDmg, HotBody1–3, CusVolt1–3,
-DarkInvs, NumbrBl, Jealousy, BlakWing, NeoVari, Z-Saver, ElemPowr; Boxer1–3, ShakPar1–3 and CacDanc1–3 (action
-0x1A's instant effects 21 to 23; they also wait on HotBody and Voltz); BodyGrd (its controller, effect 0x6D, and
-BN6's striker and shuriken); the navi Program Advances CsmoPris, WildBird, Football, BigNoise, PileDrvr and
-LeadRaid, ChaosLrd (on the navi chips).
+**Waiting.** RainyDay (its controller, effect 0x75), ElemRage, AirSpin1–3 (BN6's AirSpin top with BN5's changes:
+random targets, its own panel setting, its hit's self type 4), AqWhirl1–3 (BN5's own, attack object 0x5D; both on
+BN6's AirSpin action, to move to content/common), CopyDmg, DarkInvs, NumbrBl, NeoVari, Z-Saver (BN6 has these: to
+share), Jealousy (BN6's leftover code, BG transfers), BlakWing (its controller, effect 0x54, and BN5's attack 0x7E
+from BN6's leftover code); the navi Program Advances CsmoPris, WildBird, Football, BigNoise, PileDrvr and LeadRaid,
+ChaosLrd (on the navi chips).
