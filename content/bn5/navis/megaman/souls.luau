@@ -27,6 +27,7 @@ local by_form: { [string]: Soul } = {
     ["bn5:searchsoul"] = "search",
     ["bn5:napalmsoul"] = "napalm",
     ["bn5:magnetsoul"] = "magnet",
+    ["bn5:colonelsoul"] = "colonel",
 }
 
 -- The soul `navi`'s side is in, nil for none.
