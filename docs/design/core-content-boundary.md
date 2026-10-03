@@ -172,13 +172,15 @@ for the action to read, don't exist: what an action needs of its chip is its bui
 
 ### 4.3 Beast Out's wrapper around arbitrary chips
 
-When a chip with a lock-on mode is used in a Beast form, the dispatcher routes every tick through the rush
-(`beast_rush::update`) instead of the chip's action: it holds the panel, warps next to the lock-on marker's
-target by the chip's lock-on mode (a `define.lockon`), runs the chip's action from its own phase, watches for
-it to end, then chains the next chip or warps back. It is the ruleset's, and wraps whatever action content
-defines; a chip says how it is wrapped in its record (`beast = { lockon, rush }`) and its `no_chain` trait. Two
-actions ask for another mode than their chip's: the ruleset recognizes them by role, and one gives its mode
-itself (`rush_lockon`).
+When a chip with a lock-on mode is used in a Beast form, BN6's beast system marks the attack `wrapped` as its use
+starts (its `chip_used` hook), and the dispatcher then routes every tick through the side's wrapper (the role
+`actions.wrapper`: content/bn6/rules/beast/rush.luau) instead of the chip's action: it holds the panel, warps
+next to the target marker's target by the chip's lock-on mode (a `define.lockon`), runs the chip's action from
+its own phase (`navi:run_wrapped()`), watches for it to end, then chains the next chip or warps back. It is the
+ruleset's, and wraps whatever action content defines; a chip says how it is wrapped in its record (`beast = {
+lockon, rush }`) and its `no_chain` trait. Two actions ask for another mode than their chip's: the system
+recognizes them (the Beast claw's and SlashCross's charged sword), and one gives its mode itself
+(`rush_lockon`). (rules-in-luau.md, As built S3.)
 
 ### 4.4 Content reaching into other objects
 

@@ -53,7 +53,7 @@ return {
         cut_in_flash = effect(),
         trap_mark = effect(),
         encased = effect(),
-        beast_over_burst = effect(),
+        burst = effect(),
         panel_splash = effect(),
     },
     sparks = {
@@ -111,8 +111,7 @@ return {
         fade = asset.sound("test:test-sound-fade"),
         obstacle_lift = asset.sound("test:test-sound-obstacle-lift"),
         obstacle_throw = asset.sound("test:test-sound-obstacle-throw"),
-        beast_over_burst = asset.sound("test:test-sound-beast-over-burst"),
-        cross_special = asset.sound("test:test-sound-cross-special"),
+        burst = asset.sound("test:test-sound-beast-over-burst"),
         refused = asset.sound("test:test-sound-refused"),
         custom_open = asset.sound("test:test-sound-custom-open"),
         custom_cursor = asset.sound("test:test-sound-custom-cursor"),
@@ -154,7 +153,7 @@ return {
         bubble = asset.sprite("test:test-sprite-bubble"),
         hit_marker = asset.sprite("test:test-sprite-hit-marker"),
         eruption = asset.sprite("test:test-sprite-eruption"),
-        lockon_marker = asset.sprite("test:test-sprite-lockon-marker"),
+        target_marker = asset.sprite("test:test-sprite-lockon-marker"),
     },
     banners = {
         round_start = asset.banner("test:test-banner-round-start"),

@@ -1,15 +1,15 @@
-//! Changing navis mid-battle (a "Cross change": the battle flag 0x40
+//! Changing navis mid-battle (a "navi switch": the battle flag 0x40
 //! mode's link navi switch). A player's transformation record names the
 //! navi to change to (+4); at the turn's start the transformation
 //! sequencer asks the navi (`sub_802DCDE`), and the pause handler runs the
 //! change as action 0x1C (`sub_802D714`): the navi lands, becomes the other
-//! navi (its stats kept or fresh, `Battle::cross_stats`), and after 21
+//! navi (its stats kept or fresh, `Battle::reserves`), and after 21
 //! ticks goes on as it. A navi changed so falls back to the one it was
-//! instead of being deleted (`sub_802DD2A`): the Cross knockout
+//! instead of being deleted (`sub_802DD2A`): the switch knockout
 //! (`sub_802D926`) brings the kept navi back. See docs/engine/battle-flow.md
 //! §3.4.
 //!
-//! Only the battle flag 0x40 mode sends a Cross change; no recording has
+//! Only the battle flag 0x40 mode sends a navi switch; no recording has
 //! one, so all of it is unverified.
 
 use super::ActionVars;
@@ -36,11 +36,11 @@ pub struct Vars {
 
 fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
     let a = &mut ai_mut(b, r).attack;
-    if !matches!(a.action, ActionVars::CrossChange(_)) {
-        a.action = ActionVars::CrossChange(Vars::default());
+    if !matches!(a.action, ActionVars::NaviSwitch(_)) {
+        a.action = ActionVars::NaviSwitch(Vars::default());
     }
     match &mut a.action {
-        ActionVars::CrossChange(v) => v,
+        ActionVars::NaviSwitch(v) => v,
         _ => unreachable!(),
     }
 }
@@ -53,7 +53,7 @@ fn set_step(b: &mut Battle, r: ObjectRef, step: u8) {
 
 /// `sub_802DCDE`: the transformation sequencer asks `navi` to change.
 pub(crate) fn request_change(b: &mut Battle, navi: ObjectRef) {
-    ai_mut(b, navi).requests |= request::CROSS_CHANGE;
+    ai_mut(b, navi).requests |= request::NAVI_SWITCH;
 }
 
 /// `sub_802D714`: one paused tick of the change, then the sprite steps
@@ -69,19 +69,19 @@ pub(in crate::kinds::player) fn change(b: &mut Battle, r: ObjectRef) {
             if settle(b, r) {
                 // (The HUD shows the navi again.)
                 let a = ai_mut(b, r);
-                a.status |= status::CROSSED;
-                a.status &= !(status::TRAP_ARMED | status::CHANGING_CROSS);
+                a.status |= status::SWITCHED;
+                a.status &= !(status::TRAP_ARMED | status::SWITCHING_NAVI);
                 a.requests &= !(request::BODY_GUARD_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::ANTI_DAMAGE_TRIGGERED);
                 exit_attack_state(b, r);
             }
         }
-        s => panic!("Cross change step {s:#x} reads past its table (off_802D72C)"),
+        s => panic!("navi switch step {s:#x} reads past its table (off_802D72C)"),
     }
     common::step_sprite(b, r);
 }
 
 /// `sub_802D926` (the pause handler sets the variant to 0 first): one
-/// paused tick of the Cross knockout; the sprite steps with variant 0
+/// paused tick of the switch knockout; the sprite steps with variant 0
 /// (`sub_801BCD0`).
 pub(in crate::kinds::player) fn knock_out(b: &mut Battle, r: ObjectRef) {
     match ai(b, r).attack.step {
@@ -93,15 +93,15 @@ pub(in crate::kinds::player) fn knock_out(b: &mut Battle, r: ObjectRef) {
         8 => {
             if settle(b, r) {
                 let a = ai_mut(b, r);
-                a.status &= !(status::TRAP_ARMED | status::CROSS_KNOCKOUT | status::CROSSED);
-                a.requests &= !(request::CROSS_CHANGE
+                a.status &= !(status::TRAP_ARMED | status::SWITCH_KNOCKOUT | status::SWITCHED);
+                a.requests &= !(request::NAVI_SWITCH
                     | request::BODY_GUARD_TRIGGERED
                     | request::ANTI_SWORD_TRIGGERED
                     | request::ANTI_DAMAGE_TRIGGERED);
                 exit_attack_state(b, r);
             }
         }
-        s => panic!("Cross knockout step {s:#x} reads past its table (off_802D944)"),
+        s => panic!("switch knockout step {s:#x} reads past its table (off_802D944)"),
     }
     // (The original steps the sprite when the attack's variant byte is 0,
     // which its only caller, the pause handler, stores first.)
@@ -183,16 +183,16 @@ fn become_other_navi(b: &mut Battle, r: ObjectRef) {
     form::navi_death_hook(b, r, identity);
     navi_status::end_anger(b, r);
     // The navi it leaves is kept when it is the kept one (with its HP).
-    if b.cross_stats[side].navi == b.stats[side].navi {
+    if b.reserves[side].navi == b.stats[side].navi {
         b.stats[side].hp = b.objects.get(r).hp;
-        b.cross_stats[side] = b.stats[side];
+        b.reserves[side] = b.stats[side];
     }
     // sub_802DCCC: the record's navi.
-    let Some(target) = b.turn_transforms[side].cross_change else {
-        panic!("a Cross change without a navi reads 0xFF as one (sub_802DCCC)");
+    let Some(target) = b.turn_transforms[side].navi_switch else {
+        panic!("a navi switch without a navi reads 0xFF as one (sub_802DCCC)");
     };
-    let kept = b.cross_stats[side].navi == target;
-    b.stats[side] = if kept { b.cross_stats[side] } else { fresh_stats(target, &b.content) };
+    let kept = b.reserves[side].navi == target;
+    b.stats[side] = if kept { b.reserves[side] } else { fresh_stats(target, &b.content) };
     super::super::refresh_navicust_state(b, r);
     take_identity(b, r);
     let s = *stats(b, r);
@@ -218,7 +218,7 @@ fn take_back(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
     let identity = b.objects.get(r).identity;
     form::navi_death_hook(b, r, identity);
-    b.stats[side] = b.cross_stats[side];
+    b.stats[side] = b.reserves[side];
     take_identity(b, r);
     form::navi_init_hook(b, r, b.objects.get(r).identity);
     let s = *stats(b, r);
@@ -275,7 +275,7 @@ fn fresh_stats(navi: NaviHandle, content: &Content) -> NaviStats {
 /// the table's column is the navi's level).
 fn changed_hp(b: &Battle, navi: NaviHandle, side: u8) -> (u16, u16) {
     let Some(row) = b.content.navi(navi).cross_hp else {
-        panic!("navi {:?}'s HP after a Cross change reads past its table (sub_802DD70)", b.content.defs.navi(navi).key);
+        panic!("navi {:?}'s HP after a navi switch reads past its table (sub_802DD70)", b.content.defs.navi(navi).key);
     };
     let hp = row[side as usize & 1];
     (hp, hp)

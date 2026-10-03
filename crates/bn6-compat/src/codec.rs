@@ -532,14 +532,14 @@ pub fn chip_hand_bytes(h: &ChipHand, ids: &Ids) -> [u8; 0x50] {
 }
 
 /// A transformation request from the game's 0x10-byte record: +0 the
-/// form, +4 the Cross change (0xFF = none for both). +1 and +3 are
+/// form, +4 the navi switch (0xFF = none for both). +1 and +3 are
 /// custom-screen bookkeeping nothing in battle reads, and +8 names the
 /// requesting navi object, which is always the side's player.
 pub fn transform_request(b: &[u8], ids: &Ids) -> TransformRequest {
     let opt = |v: u8| (v != 0xFF).then_some(v);
     TransformRequest {
         form: opt(b[0]).map(|f| ids.form(f)),
-        cross_change: opt(b[4]).map(|n| ids.navi(n)),
+        navi_switch: opt(b[4]).map(|n| ids.navi(n)),
         ..TransformRequest::NONE
     }
 }

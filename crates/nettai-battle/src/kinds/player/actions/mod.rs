@@ -7,10 +7,9 @@
 //! (which `set_attack` resets); what an action keeps besides that lives
 //! in its own state struct in `AttackVars::action`.
 
-pub mod beast_rush;
-pub mod cross_change;
-pub mod cross_special;
+pub mod navi_switch;
 pub mod instant;
+pub mod lockon;
 pub mod movement;
 pub mod navi_chip;
 pub mod reactive;
@@ -35,8 +34,7 @@ pub enum ActionVars {
     Move(movement::Vars),
     FormChange(transform::Vars),
     Instant(instant::Vars),
-    CrossSpecial(cross_special::Vars),
-    CrossChange(cross_change::Vars),
+    NaviSwitch(navi_switch::Vars),
     /// A content action's declared state (see `content`).
     Content(nettai_content_api::ContentState),
 }
@@ -54,7 +52,6 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: super::NaviAction) {
         A::Engine(E::NaviChip) => navi_chip::update(b, r),
         // (Unpaused, the form change's CurAction is the instant chips'.)
         A::Engine(E::InstantChip | E::FormChange) => instant::update(b, r),
-        A::Engine(E::CrossSpecial) => cross_special::update(b, r),
         state => unreachable!("{state:?} is not an attack"),
     }
 }

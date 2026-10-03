@@ -46,7 +46,7 @@ pub fn definitions(c: &Content, r: &mut Report) {
         }
         // The roles that name a definition of their registry, or an asset.
         use nettai_battle::content::{
-            BannerRole, CollisionRole, EffectRole, LockonRole, MusicRole, RegionRole, SoundRole, SparkRole, SpriteRole,
+            BannerRole, CollisionRole, EffectRole, MusicRole, RegionRole, SoundRole, SparkRole, SpriteRole,
             StatusRole,
         };
         let mut unfilled = |group: &str, name: &str, filled: bool| {
@@ -59,9 +59,6 @@ pub fn definitions(c: &Content, r: &mut Report) {
         let own = c.rules.get(i).map(|rules| &rules.panels.types[..]).unwrap_or(&[]);
         let needs_burn = own.iter().any(|t| t.named && t.burn.is_some());
         let needs_splash = own.iter().any(|t| t.named && t.holds.is_some());
-        for role in LockonRole::ALL {
-            unfilled("lockon", role.name(), roles.lockons.contains_key(&role));
-        }
         for role in StatusRole::ALL {
             unfilled("statuses", role.name(), roles.statuses.contains_key(&role));
         }

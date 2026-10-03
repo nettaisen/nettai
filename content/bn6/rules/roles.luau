@@ -9,7 +9,7 @@ local antiswrd_counter = require("../chips/antiswrd/counter")
 local barriers = require("../lib/barriers/barriers")
 local beast_out = require("../chips/beastout/chip")
 local beat = require("../chips/beat/chip")
-local beast_claw = require("../navis/megaman/weapons/beast-claw/weapon")
+local beast_rush = require("./beast/rush")
 local bodygrd_counter = require("../chips/bodygrd/counter")
 local charge_tackle = require("../navis/megaman/forms/chargecross/tackle")
 local charged_shot = require("../navis/megaman/weapons/charged-shot/weapon")
@@ -24,10 +24,8 @@ local tango = require("../chips/tango/chip")
 local turn = require("../navis/megaman/turn")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
-local lockon = require("./lockon")
 local regions = require("../lib/regions")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
-local slash_charge = require("../navis/megaman/forms/slashcross/charge")
 local sparks = require("../lib/sparks")
 local stun_strike = require("../lib/swords/stun_strike")
 local statuses = require("./status")
@@ -47,21 +45,20 @@ return define.roles {
         -- The strike the navi's request 0x80000 starts from idle (a
         -- machine sword's, by the attack's chip).
         stun_strike = stun_strike.action,
-        -- What a Cross navi protected at the battle's end runs
+        -- What a switched-in navi protected at the battle's end runs
         -- (GroundCross's drill).
-        cross_protect = ground_drill.action,
+        switch_protect = ground_drill.action,
         -- The turn L or R starts where turning is enabled.
         turn = turn.action,
-        -- A Cross navi's knock-out (SlashCross Beast's lunge).
-        cross_death = slash_beast_lunge.action,
+        -- A switched-in navi's knock-out (SlashCross Beast's lunge).
+        switch_knockout = slash_beast_lunge.action,
         -- (`volley`, what the navi's volley request starts, isn't filled.
         -- The original starts its action 0x30, WideSht's and SuprSpr's
         -- routine, on whatever the attack's parameter bytes hold; no
         -- routine raises the request, and the port raises it nowhere.)
-        -- SlashCross's charged slash, which the Beast rush recognizes.
-        charged_sword = slash_charge.action,
-        -- The Beast forms' charged claw.
-        beast_claw = beast_claw.action,
+        -- The wrapper an attack runs inside while its `wrapped` is 1:
+        -- the Beast Out rush (`sub_80EAD9C`).
+        wrapper = beast_rush.action,
         -- DustCross Beast's scatter, during which the navi isn't grounded.
         dust_beast_scatter = dust_beast_scatter.action,
         -- ChargeCross's tackle, during which an invulnerable navi doesn't
@@ -103,11 +100,6 @@ return define.roles {
         hit_bug_blind = statuses.blind_1200,
         hit_bug_confuse = statuses.confuse_960,
     },
-    lockon = {
-        -- The Beast forms' charged claw's lock-on mode, whatever chip its
-        -- attack carries.
-        beast_claw = lockon.beast_claw,
-    },
     effects = {
         -- A navi deleted (its two explosions), a cross merged into MegaMan,
         -- a navi arriving mid-battle or back from a Cross special, a form
@@ -123,7 +115,7 @@ return define.roles {
         -- What an obstacle encased in ice or a bubble flickers with.
         encased = effects.explosion,
         -- The bursts around a navi going Beast Over.
-        beast_over_burst = effects.beast_over_burst,
+        burst = effects.beast_over_burst,
     },
     sparks = {
         -- What a new collision registration's hits show until its owner
@@ -200,9 +192,7 @@ return define.roles {
         -- A cross merging into MegaMan; a form change starting; a Cross
         -- put on (two sounds at once); a Beast Out put on; the beasts'
         -- roars; Beast Over's rumbles and bursts.
-        beast_over_burst = asset.sound("bn6:beast-over-burst"),
-        -- A Cross navi starting its special's chip.
-        cross_special = asset.sound("bn6:elmnt-man-2"),
+        burst = asset.sound("bn6:beast-over-burst"),
         -- SELECT with too little gauge: its player hears that it can't (and
         -- what can't be picked or taken back on the custom screen).
         refused = asset.sound("bn6:cant-jack-in"),
@@ -265,7 +255,7 @@ return define.roles {
         hit_marker = asset.sprite("bn6:hit-marker"),
         -- A volcano panel's eruption; the Beast forms' lock-on marker.
         eruption = asset.sprite("bn6:eruption"),
-        lockon_marker = asset.sprite("bn6:lockon-marker"),
+        target_marker = asset.sprite("bn6:lockon-marker"),
     },
     banners = {
         -- A round's start (the battle's number), a turn's, the final turns'.

@@ -660,6 +660,36 @@ impl UserData for Object {
             Ok((p.x, p.y))
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
+        // A controller's (the systems' `controller` hook).
+        methods.add_method("next_chip", |_, this, ()| {
+            let chip = with(|api, _| api.next_chip(this.0).map_err(api_error))?;
+            bound(|b| chip.map_or(Ok(LuaValue::Nil), |c| Ok(LuaValue::Table(b.def_value(Registry::Chip, c.0)?))))
+        });
+        methods.add_method("use_chip", |_, this, ()| with(|api, _| api.use_chip(this.0).map_err(api_error)));
+        methods.add_method("start_chip_attack", |_, this, (chip, kind): (LuaValue, LuaValue)| {
+            let chip = bound(|b| def_arg(b, &chip, Registry::Chip, "start_chip_attack"))?;
+            let kind = int(&kind, "kind")? as u8;
+            with(|api, _| api.start_chip_attack(this.0, nettai_content_api::ChipHandle(chip), kind).map_err(api_error))
+        });
+        methods.add_method("start_move_to", |_, this, (x, y, end_lag): (LuaValue, LuaValue, LuaValue)| {
+            let p = panel(x, y)?;
+            let end_lag = int(&end_lag, "end_lag")? as u16;
+            with(|api, _| api.start_move_to(this.0, p, end_lag).map_err(api_error))
+        });
+        // The wrapper's (the role `actions.wrapper`).
+        methods.add_method("run_wrapped", |_, this, ()| with(|api, _| api.run_wrapped(this.0).map_err(api_error)));
+        methods.add_method("chain_next_chip", |_, this, ()| with(|api, _| api.chain_next_chip(this.0).map_err(api_error)));
+        methods.add_method("panel_trail", |_, this, (x, y): (LuaValue, LuaValue)| {
+            let p = panel(x, y)?;
+            with(|api, _| api.panel_trail(this.0, p).map_err(api_error))
+        });
+        methods.add_method("freeze_target_marker", |_, this, on: bool| {
+            with(|api, _| api.freeze_target_marker(this.0, on).map_err(api_error))
+        });
+        methods.add_method("face_toward", |_, this, target: LuaValue| {
+            let target = object_arg(&target, "face_toward")?.ok_or_else(|| mlua::Error::runtime("face_toward: expected an Object"))?;
+            with(|api, _| api.face_toward(this.0, target).map_err(api_error))
+        });
         methods.add_method("wear_navi_image", |_, this, (user, megaman): (mlua::UserDataRef<Object>, LuaValue)| {
             let megaman = nettai_content_api::NaviHandle(bound(|b| def_arg(b, &megaman, Registry::Navi, "wear_navi_image"))?);
             with(|api, _| api.wear_navi_image(this.0, user.0, megaman).map_err(api_error))
@@ -1275,6 +1305,25 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "side_special", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.side_special(side).name()))
+    });
+    lib_fn!(lua, t, "take_over", |_, (side, ticks): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let ticks = int(&ticks, "ticks")? as u16;
+        with(|api, _| {
+            api.take_over(side, ticks);
+            Ok(())
+        })
+    });
+    lib_fn!(lua, t, "end_takeover", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| {
+            api.end_takeover(side);
+            Ok(())
+        })
+    });
+    lib_fn!(lua, t, "takeover_ticks", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.takeover_ticks(side)))
     });
     lib_fn!(lua, t, "player", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -1896,14 +1945,17 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(c as i64));
             vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
         }
-        // The side, then the navi and the chip, where the hook has them.
-        HookCall::System { side, navi, chip, .. } => {
-            let mut v = vec![LuaValue::Integer(side as i64)];
-            if let Some(n) = navi {
-                v.push(obj(n)?);
-            }
-            if let Some(c) = chip {
-                v.push(LuaValue::Table(bound.def_value(Registry::Chip, c.0)?));
+        // The side, then the navi, the chip and the weapon, where the hook
+        // has them (nil in between).
+        HookCall::System { side, navi, chip, weapon, .. } => {
+            let mut v = vec![
+                LuaValue::Integer(side as i64),
+                navi.map_or(Ok(LuaValue::Nil), obj)?,
+                chip.map_or(Ok(LuaValue::Nil), |c| bound.def_value(Registry::Chip, c.0).map(LuaValue::Table))?,
+                weapon.map_or(Ok(LuaValue::Nil), |w| bound.def_value(Registry::Weapon, w.0).map(LuaValue::Table))?,
+            ];
+            while v.len() > 1 && v.last().is_some_and(LuaValue::is_nil) {
+                v.pop();
             }
             v
         }
@@ -1940,6 +1992,22 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 "a system's chip_check returns nil or a chip definition, not a {}",
                 v.type_name()
             ))),
+        },
+        // A controller's or a takeover's outcome, by the original's number
+        // (4: an attack of the takeover's own).
+        HookCall::System { hook: SystemHook::Controller | SystemHook::Takeover, .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::String(s) => match &*s.to_str()? {
+                "nothing" => Ok(Value::Int(0)),
+                "chip" => Ok(Value::Int(1)),
+                "buster" => Ok(Value::Int(2)),
+                "moved" => Ok(Value::Int(3)),
+                "own_chip" => Ok(Value::Int(4)),
+                other => Err(mlua::Error::runtime(format!(
+                    "a controller returns \"nothing\", \"chip\", \"buster\", \"moved\" or \"own_chip\", not {other:?}"
+                ))),
+            },
+            _ => Err(mlua::Error::runtime(format!("a controller returns its outcome's name, not a {}", v.type_name()))),
         },
         HookCall::System { .. } => Ok(Value::Nil),
     }

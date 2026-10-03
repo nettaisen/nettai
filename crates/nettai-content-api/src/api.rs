@@ -23,7 +23,7 @@ pub enum NaviAction {
     /// One of the ruleset's own states or actions: `"entry"`,
     /// `"take_control"`, `"deletion"`, `"flinch"`, `"paralysis"`, `"drag"`,
     /// `"freeze"`, `"bubble"`, `"idle"`, `"move"`, `"dimming_chip"`,
-    /// `"navi_chip"`, `"instant_chip"`, `"form_change"`, `"cross_special"`.
+    /// `"navi_chip"`, `"instant_chip"`, `"form_change"`.
     Engine(&'static str),
 }
 
@@ -264,8 +264,28 @@ named_fields! {
         SpecialSource = "special_source", U8, rw;
         /// Which `set_attack` kind started the action (0..5).
         AttackKind = "attack_kind", U8, ro;
-        /// 1 while the action runs inside a form's action wrapper.
-        BeastLockon = "beast_lockon", U8, rw;
+        /// 1 while the action runs inside the side's wrapper (`sub_801B9E6`
+        /// runs the role `actions.wrapper` instead: BN6's Beast Out rush).
+        Wrapped = "wrapped", U8, rw;
+        /// The wrapper's state starts over (`sub_801011A` clears it with the
+        /// attack's links); the wrapper clears it once it has.
+        WrapperFresh = "wrapper_fresh", Bool, rw;
+        /// The controller's state starts over (a form's `berserk` effect,
+        /// `sub_802D310`); the controller clears it once it has.
+        ControllerFresh = "controller_fresh", Bool, rw;
+        /// Its mood is held (`sub_8015BEC`): held tired or exhausted. What
+        /// another side's rules read (BN6's counter, `sub_801A200`).
+        MoodHeld = "mood_held", Bool, ro;
+        /// The side's systems' `navi_tick` runs for it each tick.
+        Ticked = "ticked", Bool, rw;
+        /// Exhausted for the rest of the battle (BN6's after Beast Over):
+        /// worn out, the mood can't change, 1 HP lost per tick (never the
+        /// last), no Full Synchro or anger.
+        Exhausted = "exhausted", Bool, rw;
+        /// +0x2C: an object a step or the wrapper turns to face in the panel
+        /// patterns 0x23, 0x31 and 0x33 (only the unused `sub_80116F6` sets
+        /// one).
+        FaceTarget = "face_target", Object, ro;
         /// The lock-on mode the attack's own action asks the Beast Out rush
         /// for (the charged sword's, by its slash); none: the chip's.
         RushLockon = "rush_lockon", Ref(Registry::Lockon, None), rw;
@@ -286,8 +306,8 @@ named_fields! {
         ActorType = "actor_type", enum_type(&ACTOR_TYPES), ro;
         /// Form or AI variant.
         AiIndex = "ai_index", U8, ro;
-        /// The Beast Out lock-on marker.
-        LockonMarker = "lockon_marker", Object, rw;
+        /// The target marker (BN6's Beast Out lock-on marker).
+        TargetMarker = "target_marker", Object, rw;
         /// The charge glow.
         ChargeGlow = "charge_glow", Object, rw;
         /// The Full Synchro aura.
@@ -310,7 +330,7 @@ named_fields! {
         BackSpecialWeapon = "back_special_weapon", Ref(Registry::Weapon, None), ro;
         /// AIData+0x32: the Beast Out counter is spent (BugFix sets it by
         /// the navi's counter, `sub_8014446` / `sub_801443C`).
-        BeastOutSpent = "beast_out_spent", Bool, rw;
+        Tired = "tired", Bool, rw;
         /// AIData+0x60: the barrier's visual (effect #7).
         BarrierVisual = "barrier_visual", Object, rw;
         /// BN5's AIData+0x3C: DarkPlus's tint (0 none), which picks the
@@ -635,12 +655,20 @@ named_flags! {
         BHeld = "b_held",
         StunStrike = "stun_strike",
         SelectSpecial = "select_special",
-        CrossChange = "cross_change",
-        CrossDeath = "cross_death",
+        NaviSwitch = "navi_switch",
+        SwitchKnockout = "switch_knockout",
         Mode9A = "mode9_a",
-        CrossSpecial = "cross_special",
+        /// A system's takeover of the side's navi (BN6's Cross special).
+        Takeover = "takeover",
         Volley = "volley",
         WeaknessHit = "weakness_hit",
+        /// The slide request (the collision's flag2 0x10, not an action
+        /// request).
+        Slide = "slide",
+        /// The anger request (the collision's flag2 0x200): the navi gets
+        /// angry at its next status update, unless its mood is held
+        /// (`sub_8014326`).
+        Anger = "anger",
     }
 }
 
@@ -654,9 +682,9 @@ named_flags! {
         NoCharge = "no_charge",
         CanTurn = "can_turn",
         TrapArmed = "trap_armed",
-        ChangingCross = "changing_cross",
-        CrossKnockout = "cross_knockout",
-        Crossed = "crossed",
+        ChangingCross = "switching_navi",
+        CrossKnockout = "switch_knockout",
+        Crossed = "switched",
         Volley = "volley",
         Uninterruptible = "uninterruptible",
         CrossBreaking = "cross_breaking",
@@ -753,12 +781,13 @@ named_flags! {
 }
 
 named_flags! {
-    /// A side's SELECT or Cross special in progress (battle flag 0x40
-    /// mode; `sub_802E4B8`).
+    /// A side's special in progress (battle flag 0x40 mode;
+    /// `sub_802E4B8`): the SELECT special, or a system's takeover of the
+    /// side's navi (BN6's Cross special).
     pub enum SideSpecial {
         None = "none",
         Select = "select",
-        Cross = "cross",
+        Takeover = "takeover",
     }
 }
 
@@ -1154,8 +1183,16 @@ pub trait CoreApi {
     /// `sub_800F4B2`: a side spends `n` bug frags (the count wraps below
     /// 0, as the original's does: its callers check first).
     fn spend_bug_frags(&mut self, side: u8, n: u32);
-    /// `sub_802E4B8`: the side's SELECT or Cross special in progress.
+    /// `sub_802E4B8`: the side's SELECT special or takeover in progress.
     fn side_special(&self, side: u8) -> SideSpecial;
+    /// A system's takeover of side `side`'s navi starts, for `ticks`
+    /// (counted down in the navi's stage B, `sub_802E1D8`), or ends: while
+    /// it runs, idle asks the side's systems' `takeover` (BN6's Cross
+    /// special: SideState +0x54 and +0x30).
+    fn take_over(&mut self, side: u8, ticks: u16);
+    fn end_takeover(&mut self, side: u8);
+    /// Its ticks left.
+    fn takeover_ticks(&self, side: u8) -> u16;
     /// A side's player navi.
     fn player(&self, side: u8) -> Option<ObjectRef>;
     /// A side's combatants still in, in slot order.
@@ -1539,7 +1576,7 @@ pub trait CoreApi {
     /// chip or charged shot, 3 special, 4 move...).
     fn set_content_attack(&mut self, o: ObjectRef, action: u16, kind: u8) -> ApiResult<()>;
     /// `sub_801011A`: clear the attack's link bytes and unfreeze the
-    /// lock-on marker.
+    /// target marker.
     fn reset_attack_links(&mut self, o: ObjectRef);
     /// `sub_800FA54`: the held direction (1 up, 2 down, 3 back, 4
     /// forward; 0 none).
@@ -1548,6 +1585,33 @@ pub trait CoreApi {
     fn step_target(&self, o: ObjectRef, dir: u8) -> Option<PanelPos>;
     /// `sub_80116AE`: start a step toward `dir` from input.
     fn start_move(&mut self, o: ObjectRef, dir: u8);
+    /// `sub_800EDD0`'s chip: the hand's chip at the cursor (none: the hand
+    /// is empty).
+    fn next_chip(&self, o: ObjectRef) -> ApiResult<Option<crate::ChipHandle>>;
+    /// `sub_800FB54`: use the chip the navi's requests ask for (as idle
+    /// does on A): whether its use started.
+    fn use_chip(&mut self, o: ObjectRef) -> ApiResult<bool>;
+    /// The attack `chip` starts (`sub_80127C0`'s dispatch: its action, or
+    /// the dimming, navi or instant chip's), in `set_attack` slot `kind`.
+    fn start_chip_attack(&mut self, o: ObjectRef, chip: crate::ChipHandle, kind: u8) -> ApiResult<()>;
+    /// `sub_80116AE(5, end_lag, 2)`: a step straight to `target` (column 0:
+    /// no step), then `end_lag` ticks.
+    fn start_move_to(&mut self, o: ObjectRef, target: PanelPos, end_lag: u16) -> ApiResult<()>;
+    /// `sub_801B9E6`'s attack, from inside the wrapper (the role
+    /// `actions.wrapper`): run the action the navi runs.
+    fn run_wrapped(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_800FC30`: the next chip in the hand starts inside the wrapper
+    /// (prepared, its action started, `wrapped` 1): not one with the
+    /// `no_chain` trait, a dimming chip, or the empty hand. Whether it did.
+    fn chain_next_chip(&mut self, o: ObjectRef) -> ApiResult<bool>;
+    /// `sub_8013CC4`: the NaviCust panel-trail bugs on the panel the navi
+    /// leaves, `from`.
+    fn panel_trail(&mut self, o: ObjectRef, from: PanelPos) -> ApiResult<()>;
+    /// `sub_80E1654` (on) and `sub_80E1662` (off): the target marker holds
+    /// where it is, looking locked on, or follows its target again.
+    fn freeze_target_marker(&mut self, marker: ObjectRef, on: bool) -> ApiResult<()>;
+    /// `sub_800F2FC`: turn to face `target`'s column.
+    fn face_toward(&mut self, o: ObjectRef, target: ObjectRef) -> ApiResult<()>;
     /// `ho_8026554`: the panel the navi would attack `target` from in
     /// Beast Out lock-on mode `mode` (its own panel for mode 0 or a
     /// target off the field; (0, 0x7F) when no panel fits).

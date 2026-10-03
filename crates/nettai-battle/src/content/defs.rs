@@ -30,7 +30,7 @@ use super::{
     FormData, NaviData,
 };
 use super::roles::{
-    ActionRole, BannerRole, ChipRole, CollisionRole, EffectRole, HookRole, KindRole, LockonRole, MusicRole, RegionRole,
+    ActionRole, BannerRole, ChipRole, CollisionRole, EffectRole, HookRole, KindRole, MusicRole, RegionRole,
     Roles, SoundRole, SparkRole, SpriteRole, StatusRole,
 };
 use crate::kinds::{ENGINE_KINDS, EngineKind};
@@ -409,9 +409,6 @@ pub struct Defs {
     /// The Program Advances, in the order they are tried (each chip holds
     /// the recipes that make it; `sub_8029520`).
     pub program_advances: Vec<super::ProgramAdvance>,
-    /// The Cross special's chips by row (`Rules::cross_special`), each with
-    /// the chip whose damage it strikes with, if another's; by [`RootId`].
-    pub cross_special: Vec<Vec<Vec<(ChipHandle, Option<ChipHandle>)>>>,
     /// State layouts by [`StateId`].
     pub schemas: Vec<SchemaDef>,
     /// The functions the runtime binds, by [`FnId`].
@@ -807,7 +804,6 @@ fn read_roles(
     actions: &[ActionDef],
     kinds: &[KindDef],
     chips: &[ChipDef],
-    lockons: &[LockonDef],
     statuses: &[StatusDef],
     functions: &mut Functions,
 ) -> Result<Roles, ContentError> {
@@ -871,17 +867,6 @@ fn read_roles(
                         .binary_search_by(|c| c.key.as_str().cmp(&key))
                         .map_err(|_| what(format!("{full} names the chip {key:?}, which the content doesn't have")))?;
                     roles.chips.insert(role, ChipHandle(i as u16));
-                }
-                "lockon" => {
-                    let names: Vec<&str> = LockonRole::ALL.iter().map(|r| r.name()).collect();
-                    let role = LockonRole::named(&name).ok_or_else(|| {
-                        what(format!("the ruleset has no role lockon.{name} (it has {})", names.join(", ")))
-                    })?;
-                    let Data::Ref(Registry::Lockon, key) = v else {
-                        return Err(what(format!("lockon.{name} is not a lock-on mode")));
-                    };
-                    let h = lockons.iter().position(|l| &l.key == key).expect("a defined lock-on mode");
-                    roles.lockons.insert(role, nettai_content_api::LockonHandle(h as u16));
                 }
                 "statuses" => {
                     let names: Vec<&str> = StatusRole::ALL.iter().map(|r| r.name()).collect();
@@ -1265,24 +1250,6 @@ impl Defs {
                 .map(|i| ChipHandle(i as u16))
                 .map_err(|_| ContentError::new(format!("{whose} names the chip {key:?}, which the content doesn't have")))
         };
-        let mut cross_special = Vec::with_capacity(root_names.len());
-        for root in 0..root_names.len() {
-            let rows = &content.rules_of(RootId(root as u8)).cross_special;
-            let mut of_root = Vec::with_capacity(rows.len());
-            for row in rows {
-                let at = "the Cross special's chips (rules cross-special)";
-                let mut out = Vec::with_capacity(row.len());
-                for c in row {
-                    let damage_of = match &c.damage_of {
-                        Some(k) => Some(chip_handle(k, at)?),
-                        None => None,
-                    };
-                    out.push((chip_handle(&c.chip, at)?, damage_of));
-                }
-                of_root.push(out);
-            }
-            cross_special.push(of_root);
-        }
 
         // Navis, forms and identities: the definitions, in key order (a
         // definition's handle is its place among its registry's).
@@ -1462,6 +1429,9 @@ impl Defs {
             if f.record.beast.is_some_and(|b| kind_of(b) != super::FormKind::CrossBeast) {
                 return Err(ContentError::new(format!("form {}'s `beast` is not a Cross in Beast Out", f.key)));
             }
+            if f.record.glow.as_ref().is_some_and(|g| g.is_empty()) {
+                return Err(ContentError::new(format!("form {}'s `glow` has no shaders", f.key)));
+            }
         }
         for n in &navis {
             let Some(sets) = &n.record.forms else { continue };
@@ -1586,7 +1556,7 @@ impl Defs {
             let own: Vec<&Definition> =
                 definitions.of(Registry::Roles).iter().filter(|d| keys::root_of(&d.key).unwrap_or("") == name.as_str()).collect();
             roles.push(match own[..] {
-                [d] => read_roles(d, &definitions, &content.assets, &actions, &kinds, &chips, &lockons, &statuses, &mut functions)?,
+                [d] => read_roles(d, &definitions, &content.assets, &actions, &kinds, &chips, &statuses, &mut functions)?,
                 _ => Roles::default(),
             });
         }
@@ -1791,7 +1761,6 @@ impl Defs {
             action_owner,
             change_actions,
             program_advances,
-            cross_special,
             schemas,
             functions: Vec::new(),
         };

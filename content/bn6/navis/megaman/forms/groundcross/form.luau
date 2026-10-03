@@ -37,7 +37,7 @@ return define.form {
     status_reset = { "super_armor" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 9,
-    -- A Cross change that finds the drill rising (its animation) lets go of it.
+    -- A change into a Cross that finds the drill rising (its animation) lets go of it.
     cross_release_anim = 0x16,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 9 },
