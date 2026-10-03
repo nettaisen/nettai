@@ -58,8 +58,9 @@ pub trait Library {
     fn run_message_talking(&self, _navi: NaviHandle) -> [u32; 3] {
         [0; 3]
     }
-    /// The lines of a Cross's description (`FormData::description_lines`).
-    fn cross_description_lines(&self, _form: FormHandle) -> u8 {
+    /// The lines of a form's description (`FormData::description_lines`:
+    /// BN6's Crosses').
+    fn form_description_lines(&self, _form: FormHandle) -> u8 {
         3
     }
     /// The screen's slot grid and neighbor scans.
@@ -153,7 +154,7 @@ impl Library for Content {
         self.navi(navi).run_message.talking
     }
 
-    fn cross_description_lines(&self, form: FormHandle) -> u8 {
+    fn form_description_lines(&self, form: FormHandle) -> u8 {
         self.form(form).description_lines
     }
 
@@ -263,8 +264,8 @@ impl Library for GameLibrary<'_> {
         self.content.run_message_talking(navi)
     }
 
-    fn cross_description_lines(&self, form: FormHandle) -> u8 {
-        self.content.cross_description_lines(form)
+    fn form_description_lines(&self, form: FormHandle) -> u8 {
+        self.content.form_description_lines(form)
     }
 
     fn layout(&self) -> &CustomScreenLayout {
@@ -435,7 +436,7 @@ pub(crate) mod testing {
         }
         /// Form f's description has f % 3 + 1 lines, so a test can tell
         /// whose description a chatbox shows.
-        fn cross_description_lines(&self, form: FormHandle) -> u8 {
+        fn form_description_lines(&self, form: FormHandle) -> u8 {
             (form.0 % 3) as u8 + 1
         }
         fn layout(&self) -> &CustomScreenLayout {
