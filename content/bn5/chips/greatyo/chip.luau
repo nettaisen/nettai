@@ -8,7 +8,7 @@
 local attachment = require("../../objects/attachment/attachment")
 local controller = require("./controller")
 local throw = require("@common/yoyo/throw")
-local yoyo = require("../../objects/yoyo/yoyo")
+local yoyo = require("../yoyo/yoyo")
 local recipe_varswrd = require("../varswrd/chip")
 local recipe_yoyo = require("../yoyo/chip")
 

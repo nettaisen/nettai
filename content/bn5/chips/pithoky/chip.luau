@@ -1,11 +1,11 @@
 --!strict
 -- PitHoky (BN5 chip 0x155): the Program Advance of three AirHocs with consecutive codes (or two CannBalls and an
--- AirHoc): AirHoc's flick (action 0x21) of BN5's puck in row 3 (objects/puck: 18 steps, a trail), down the field (the
+-- AirHoc): AirHoc's flick (action 0x21) of BN5's puck in row 3 (chips/airhoc/puck: 18 steps, a trail), down the field (the
 -- record's Param1 3 and Param2 1).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local flick = require("@common/airhocky/flick")
-local puck = require("../../objects/puck/puck")
+local puck = require("../airhoc/puck")
 local recipe_airhoc = require("../airhoc/chip")
 local recipe_cannball = require("../cannball/chip")
 

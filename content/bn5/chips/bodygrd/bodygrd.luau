@@ -3,10 +3,10 @@
 -- 0x080E8620: the usual dimming phases; its effect, 0x080E8664, sends out the striker at once with the controller's
 -- element and damage word plus the Atk+ bonus, and is done when its second parameter is 0, the record's: at once),
 -- the shared striker (@common/bodygrd/striker, effect object #0x6E, 0x080E86B0: BN6's code) with BN5's identity and
--- BN5's diving shuriken (objects/shuriken, attack object #0x5C).
+-- BN5's diving shuriken (chips/shadoman/shuriken, attack object #0x5C).
 
 local dimming_chips = require("@common/dimming")
-local shuriken = require("../../objects/shuriken/shuriken")
+local shuriken = require("../shadoman/shuriken")
 local striker = require("@common/bodygrd/striker")
 
 local bodygrd = {}

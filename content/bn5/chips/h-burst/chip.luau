@@ -9,8 +9,8 @@
 local action = require("@common/h-burst/action")
 local attachment = require("../../objects/attachment/attachment")
 local burst = require("./burst")
-local recipe_energbom = require("../energbom/chip")
-local recipe_megenbom = require("../megenbom/chip")
+local recipe_energbom = require("../energbom/chips").energbom
+local recipe_megenbom = require("../energbom/chips").megenbom
 local recipe_spreader = require("../spreader/chip")
 
 local LOOK: HyperBurstLook = {
