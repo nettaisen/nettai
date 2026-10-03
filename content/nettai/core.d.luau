@@ -1015,11 +1015,14 @@ declare battle: {
     -- Player `side`'s tactics (BN5's computer-navi data, which a computer
     -- navi on the other side plays): how many entries they count; the entry
     -- in place `i` (from 1; past the count, an empty place): a chip, a
-    -- pattern's number (from 1), or nil (nothing, or an empty place); and
+    -- pattern's number (from 1), false (nothing: chip 0, a block no save
+    -- filled) or nil (an empty place); and
     -- pattern `i` (from 1): its place from the target (`dx` columns toward
     -- the navi's enemies, `dy` rows) and its chips.
     tactic_count: (side: number) -> number,
-    tactic: (side: number, i: number) -> (Chip | number)?,
+    -- Slot `i` (1 to 4) of a side's list of alive actors, filled or not.
+    alive_actor_slot: (side: number, i: number) -> Object?,
+    tactic: (side: number, i: number) -> (Chip | number | false)?,
     tactic_pattern: (side: number, i: number) -> (number, number, { Chip }),
     -- The first entry and the entry in place `i` (from 1) change places
     -- (0x0802C0DC); the first entry goes last of the count, the rest move

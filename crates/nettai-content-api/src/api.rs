@@ -1044,7 +1044,10 @@ pub struct ColumnInfo {
 pub enum TacticEntry {
     Chip(crate::ChipHandle),
     Pattern(u8),
+    /// The halfword 0 (chip 0: a block no save filled).
     Nothing,
+    /// An empty place (0xFFFF).
+    Empty,
 }
 
 /// A side's defensive-chip record (the linked registry).
@@ -1240,6 +1243,8 @@ pub trait CoreApi {
     fn player(&self, side: u8) -> Option<ObjectRef>;
     /// A side's combatants still in, in slot order.
     fn alive_actors(&self, side: u8) -> Vec<ObjectRef>;
+    /// Slot `i` (from 0, of four) of a side's list of alive actors.
+    fn alive_actor_slot(&self, side: u8, i: u8) -> Option<ObjectRef>;
     /// Player `side`'s tactics (BN5's computer-navi data): how many entries
     /// they count, their entry in place `i` (from 0; past the count, an
     /// empty place), and their pattern `i` (from 0): its place from the

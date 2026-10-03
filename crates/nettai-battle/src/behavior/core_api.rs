@@ -688,6 +688,10 @@ impl CoreApi for Battle {
         Battle::player(self, side & 1)
     }
 
+    fn alive_actor_slot(&self, side: u8, i: u8) -> Option<ObjectRef> {
+        self.round.alive_actors[side as usize & 1].get(i as usize).copied().flatten()
+    }
+
     fn alive_actors(&self, side: u8) -> Vec<ObjectRef> {
         self.round.alive_actors[side as usize & 1].iter().flatten().copied().collect()
     }
@@ -701,7 +705,8 @@ impl CoreApi for Battle {
         match self.tactics[side as usize & 1].get(i) {
             Tactic::Chip(c) => nettai_content_api::TacticEntry::Chip(c),
             Tactic::Pattern(p) => nettai_content_api::TacticEntry::Pattern(p),
-            Tactic::Nothing | Tactic::Empty => nettai_content_api::TacticEntry::Nothing,
+            Tactic::Nothing => nettai_content_api::TacticEntry::Nothing,
+            Tactic::Empty => nettai_content_api::TacticEntry::Empty,
         }
     }
 

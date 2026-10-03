@@ -1400,7 +1400,8 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         match e {
             nettai_content_api::TacticEntry::Chip(c) => bound(|b| chip_value(b, Some(c))),
             nettai_content_api::TacticEntry::Pattern(p) => Ok(LuaValue::Integer(p as i64 + 1)),
-            nettai_content_api::TacticEntry::Nothing => Ok(LuaValue::Nil),
+            nettai_content_api::TacticEntry::Nothing => Ok(LuaValue::Boolean(false)),
+            nettai_content_api::TacticEntry::Empty => Ok(LuaValue::Nil),
         }
     });
     lib_fn!(lua, t, "tactic_pattern", |lua, (side, i): (LuaValue, LuaValue)| {
@@ -1427,6 +1428,15 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "turn_tactics", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.turn_tactics(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "alive_actor_slot", |lua, (side, i): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let i = int(&i, "slot")?;
+        if !(1..=4).contains(&i) {
+            return Err(mlua::Error::runtime("battle.alive_actor_slot: a side has slots 1 to 4"));
+        }
+        let o = with(|api, _| Ok(api.alive_actor_slot(side, (i - 1) as u8)))?;
+        object_value(lua, o)
     });
     lib_fn!(lua, t, "alive_actors", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
