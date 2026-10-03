@@ -100,9 +100,24 @@ fn counterattack_damage(word: u32) -> u32 {
 }
 
 /// The navi is done (`sub_80BADE4` and the like write 0 through the
-/// pointer they were given).
+/// pointer they were given): the controller's flag, or, for an object of a
+/// content kind that brought the navi itself (BN5's DethPhnx), its kind's
+/// `navi_left`.
 pub fn navi_left(b: &mut Battle, controller: ObjectRef) {
-    vars_mut(b, controller).navi_acting = false;
+    if let crate::kinds::Vars::NaviChip(v) = &mut b.objects.get_mut(controller).vars {
+        v.navi_acting = false;
+        return;
+    }
+    let kind = b.objects.get(controller).kind;
+    match b.content.defs.kind(kind).navi_left {
+        Some(hook) => {
+            crate::behavior::call_hook(b, hook, HookCall::NaviLeft { controller });
+        }
+        None => panic!(
+            "a navi chip's navi left, but its controller is a {}, which has no `navi_left`",
+            b.content.defs.kind(kind).key
+        ),
+    }
 }
 
 pub fn update(b: &mut Battle, r: ObjectRef) {
@@ -205,11 +220,22 @@ fn effect(b: &mut Battle, r: ObjectRef) {
     }
 }
 
+/// The last navi chip used (`byte_203C960`, BN5's 0x0203C430): the chip
+/// (the original keeps its navi's number and its parameters, which the
+/// chip's `navi` hook stands for), and the element and the damage word,
+/// bonus included, its navi came with.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct LastNaviChip {
+    pub chip: nettai_content_api::ChipHandle,
+    pub element: u8,
+    pub damage: u32,
+}
+
 /// `off_802CD5C[navi]`: bring the chip's navi, with the damage and the
 /// bonus: the chip's `navi` hook. (Count's and Django's entries of the
 /// US games' table are null, and the game jumps to address 0; their chips'
-/// hooks bring the Japanese games' navis. The game also records the last
-/// navi chip used, `byte_203C960`, which nothing in a battle reads.)
+/// hooks bring the Japanese games' navis.) A chip of the navi chips' block
+/// is then kept as the last navi chip used (`Battle::last_navi_chip`).
 fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let v = vars(b, r).clone();
     let damage = v.damage.wrapping_add(v.chip.bonus as u32);
@@ -227,4 +253,8 @@ fn bring_navi(b: &mut Battle, r: ObjectRef) {
     };
     // The spawner sets the flag, through the pointer it hands the navi.
     vars_mut(b, r).navi_acting = navi.is_some();
+    let c = b.content.chip(chip);
+    if c.traits.in_navi_block(c.flags) {
+        b.last_navi_chip = Some(LastNaviChip { chip, element, damage });
+    }
 }
