@@ -328,9 +328,11 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
             SlotKind::Ok => "OK".to_string(),
             SlotKind::BeastOut => "BEAST OUT".to_string(),
             SlotKind::Soul => "SOUL".to_string(),
-            SlotKind::Scrap { right_half: false } => "SCRAP".to_string(),
-            SlotKind::Redeal { right_half: false } => "REDEAL".to_string(),
-            SlotKind::Empty | SlotKind::Hidden | SlotKind::Scrap { .. } | SlotKind::Redeal { .. } => return String::new(),
+            // A system's button, by its name ("redeal": "REDEAL").
+            SlotKind::Button { button, cell: nettai_battle::custom::ButtonCell::Only | nettai_battle::custom::ButtonCell::Left } => {
+                b.content.defs.button(button).name.replace('_', " ").to_uppercase()
+            }
+            SlotKind::Empty | SlotKind::Hidden | SlotKind::Button { .. } => return String::new(),
             _ => screen.chip_in(slot, folder).map(|c| format!("{} {}", nettai_render::strings::own_chip_name(&b.content, c.id), c.code.letter())).unwrap_or_default(),
         };
         let mark = match x.state {
