@@ -1137,5 +1137,7 @@ content.
   21962/14933/20436 with 96 rollback rows and the 189 legacy rounds; the lab 6548/6548 (6545 to the end, 3 to
   ElemTrap's known deviation; 5,775,231 frames) with 0 sound rounds differing (floor 6548, 6548, 175969 with the
   six `navicust-compile/` scenarios); the audit 72 traces (635,424 frames), 0 problems; trace-tests' `navicust`:
-  1,274 lab sides and Tango's 4 saves, 0 differ.
+  1,274 lab sides and Tango's 4 saves, 0 differ. After main a39285fe (P1a), the merge's tier: the build without
+  warnings (all features), 469 tests, the content check (888 modules), gen-content check 0 errors, machgun and
+  soundmod as above, `navicust` 0 differ.
 
