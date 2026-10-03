@@ -7,27 +7,15 @@
 //! its layer and sprite ordering rules.
 
 pub mod app;
-pub mod audit;
-pub mod chatbox;
-pub mod compose;
 pub mod content_audit;
-pub mod custom;
 pub mod driver;
-pub mod fonts;
 pub mod headless;
-pub mod hud;
-pub mod lookups;
 pub mod netplay;
-pub mod objects;
-pub mod packs;
-pub mod present;
-pub mod render;
 pub mod session;
-pub mod stage;
+pub mod sound_lookups;
 pub mod text;
-pub mod textlayer;
-pub mod vfont;
-pub mod strings;
+
+pub use nettai_render::{audit, chatbox, compose, custom, fonts, hud, lookups, objects, packs, present, render, stage, strings, textlayer, vfont};
 
 pub use render::{Frame, Renderer};
 pub use session::{Session, TickHook};
