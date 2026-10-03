@@ -387,3 +387,33 @@ export type AirSpinTop = {
     spawn: (owner: Object, x: number, y: number, element: number, palette: number, spins: number, damage: number) -> Object?,
     sender: (palette: number, spins: number) -> AirSpinSender,
 }
+
+-- A game's Z Saver (@common/zsaver/action): its action's id; its sounds
+-- (the swing, the command's); its blade (the attachment kind, the look,
+-- its animation by its holder); the slashes' hit types and their effects
+-- (by index, 1 to 3); how it throws the fourth slash's boom; and BN5's
+-- differences: the Katanas' step (its lib/stepsword), and the command's
+-- window shut once A isn't held.
+export type ZSaverLook = {
+    id: string,
+    swing_sound: Sound,
+    command_sound: Sound,
+    attachment: Kind,
+    blade: AttachmentLook,
+    blade_anim: (me: Object) -> number,
+    is: CollisionType,
+    hits: CollisionType,
+    effects: { Effect },
+    boom: (owner: Object, x: number, y: number, element: number, damage: number, boom: SonicBoom) -> Object?,
+    step: StepSword?,
+    a_held_window: boolean,
+}
+
+-- BN5's step before a charged sword (bn5 lib/stepsword), as Z Saver takes
+-- it.
+export type StepSword = {
+    start: (me: Object, s: any, moving: boolean) -> (),
+    afterimage: (me: Object, anim: number) -> (),
+    flip: (me: Object) -> number,
+    step_back: (me: Object, s: any) -> (),
+}
