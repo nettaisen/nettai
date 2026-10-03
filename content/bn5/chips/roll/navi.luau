@@ -12,8 +12,8 @@
 -- Her palette and her ribbon's are RollDS's 1 (her level 4).
 
 local common = require("@common/roll/navi")
-local attachment = require("@bn6/objects/attachment/attachment")
-local panel_changer = require("@bn6/objects/panel-changer/panel_changer")
+local attachment = require("../../objects/attachment/attachment")
+local panel_changer = require("../../objects/panel-changer/panel_changer")
 local heart = require("./heart")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
@@ -74,6 +74,7 @@ return common.make {
     sparkle = heart.sparkle,
     ribbon = attachment.look { sprite = asset.sprite("bn5:roll-ribbon"), palette = 0 },
     ribbon_anim = 0,
+    attach = attachment.attach,
     heart = heart.spawn,
     spawner_address = 0x080C0D2D,
     hits = collision.hits_navis,

@@ -199,12 +199,15 @@ impl ChipTraits {
     /// user out and not back in (`sub_80E18F8`: Roll's chips, the
     /// original's navi 0).
     pub const NAVI_RETURNS_USER: u16 = 0x80;
+    /// It goes with any selection, and the selection's code and chip rules
+    /// leave it out (`sub_8028E4C`, `sub_8028EC8`: BN6's BeastOut chip).
+    pub const GOES_WITH_ANY: u16 = 0x100;
     /// AntiNavi lets it through, and it isn't kept as the last navi chip
     /// used, though it has the `navi` flag: it is past the navi chips'
     /// block of the chip table (`sub_800BDB2`, `sub_80E1880`: chips 0xDD to
     /// 0x118; BN5's version navi chips, Bass, BassAnly, Phoenix and
     /// DethPhnx, have the flag).
-    pub const NOT_NAVI_SLOT: u16 = 0x100;
+    pub const NOT_NAVI_SLOT: u16 = 0x200;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "no_chain"),
         (0x02, "aura_bonus"),
@@ -214,7 +217,8 @@ impl ChipTraits {
         (0x20, "heals"),
         (0x40, "user_stays"),
         (0x80, "navi_returns_user"),
-        (0x100, "not_navi_slot"),
+        (0x100, "goes_with_any"),
+        (0x200, "not_navi_slot"),
     ];
 
     pub fn has(self, bit: u16) -> bool {

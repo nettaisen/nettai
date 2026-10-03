@@ -1,12 +1,12 @@
 --!strict
--- BN5's wide waves (BN6's chips/widesht/wave, the original's attack object #0x3B; BN5's the same code but for
--- its sprite, 10-1d where BN6's is 10-37), as BN5's chips need them: the kinds' speeds are BN6's
+-- BN5's wide waves (the shared wave, @common/widesht/wave, BN6's attack object #0x3B; BN5's the same code but for
+-- its sprite, 10-1d where BN6's is 10-37), as BN5's chips need them, for BN5's wave (./wave): the kinds' speeds are BN6's
 -- (`byte_80CB58C`, BN5's 0x080CC880: the same values), the collision types BN5's. A chip names its kind in its
 -- record's parameters (+0x10, the attack's +0x0C): WideSht1 to WideSht3 kinds 3 to 5, where BN6's one WideSht has
 -- 3.
 
 local collision = require("../../rules/collision")
-local wave = require("@bn6/chips/widesht/wave")
+local wave = require("@common/widesht/wave")
 
 local variants = {}
 

@@ -11,9 +11,8 @@
 -- the controller's address her position takes; and BN5's additions: what more she does as she appears, how she
 -- finds her target in the battle flag 0x40 mode, and what more she does as her heart drops.
 
-local attachment = require("@bn6/objects/attachment/attachment")
-local panels = require("@bn6/lib/panels")
-local regions = require("@bn6/lib/regions")
+local panels = require("../panels")
+local regions = require("../regions")
 
 -- What a chip summons her with (the chips' first parameter picks them): her whip's rounds of three hits (1; 3 for
 -- the parameter 5, which no chip has) and her palette (BN6's Roll3's, BN5's RollDS's is 1); BN5's: the parameter
@@ -31,9 +30,10 @@ export type Spec = {
     swish: Sound,
     -- Her warp's sparkle (the effect table's row 0x26).
     sparkle: Effect,
-    -- Her ribbon (an attachment look) and its animation.
+    -- Her ribbon (an attachment look) and its animation, and the game's attachment (`attach` of its kind).
     ribbon: AttachmentLook,
     ribbon_anim: number,
+    attach: (owner: Object, look: AttachmentLook, which: Slot, options: AttachmentOptions?) -> Object?,
     -- Her heart: on (x, y) for `user`, healing `amount` (the game's heart object's spawn, `sub_80CE224`).
     heart: (user: Object, x: number, y: number, amount: number) -> Object?,
     -- The controller calls her spawner through r3, which her position takes (her init sets it all): the spawner's
@@ -359,7 +359,7 @@ function roll.make(spec: Spec): Roll
         local s = me.state :: State
         local x, y = me.panel_x + me.facing, me.panel_y
         if me.phase_init == 0 then
-            local ribbon = attachment.attach(
+            local ribbon = spec.attach(
                 me,
                 spec.ribbon,
                 "held",

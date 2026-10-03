@@ -13,9 +13,13 @@
 //!   what the content names): each sprite with every animation and its
 //!   frames, each sound's song, each banner's glyphs (a telop's banner its
 //!   place, the judge's its numbers), each background and mugshot;
-//! - the HUD's text lines, the field's panel blocks (for the panel types
-//!   the own pack's game names), the custom screen, the chatbox and the
-//!   warning marker.
+//! - the HUD's text lines, the custom screen, the chatbox and the warning
+//!   marker;
+//! - the field (docs/design/rules-in-luau.md §7.4): each loaded game's
+//!   pack's blocks for the panel types its game names, and in an arena of
+//!   each, every panel type a loaded game names and both highlights, as
+//!   the stage draws them (`stage::FieldArt`: the arena's field, another
+//!   pack's, or a tinted normal panel, which is said, not counted).
 //!
 //! It takes seconds and catches what a trace's frames would only catch for
 //! the chips and the navis the trace shows: a lookup by the wrong key
@@ -25,13 +29,14 @@
 
 use nettai_assets::Bundle;
 use nettai_battle::Content;
-use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackId, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackId, RootId, SpriteId};
 use nettai_battle::custom::GameVersion;
 use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::Emotion;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 use nettai_render::audit::{Lookup, Problems};
 use nettai_render::packs::Packs;
+use nettai_render::stage::{Art, FieldArt};
 use nettai_render::strings::DisplayText;
 use nettai_render::{hud, lookups};
 use std::collections::{BTreeSet, HashSet};
@@ -57,6 +62,9 @@ pub struct ContentAudit {
     /// The strings a language's table lacks (`ja: chips.bn6:hidden.name`),
     /// which show in the content's own: not problems.
     pub untranslated: Vec<String>,
+    /// What is drawn otherwise by design (a panel type no loaded pack's
+    /// field draws, tinted): said, not problems.
+    pub notes: Vec<String>,
 }
 
 /// A language to check: its name and its strings table (none: the
@@ -93,6 +101,9 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
         // by design: not a lookup that fails.)
         out.untranslated.extend(text.take_missing().into_iter().map(|what| format!("{lang}: {what}")));
         out.made.extend(problems.lookups().map(|l| l.describe(c)));
+        if k == 0 {
+            out.notes = problems.said_lines();
+        }
         out.languages.push(lang.clone());
         // (A language's problems that the content's own has too are told
         // once.)
@@ -121,19 +132,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     for line in (hud::TEXT_TIME_UP..=hud::TEXT_TIME_UP + 10).chain([hud::TEXT_COUNTER_HIT]) {
         lookups::text_line(hud, line, p);
     }
-    // (The field is the own pack's, its blocks those of the types its game's
-    // `panels` section names: BN6's field has no BN5 metal, lava or sea.
-    // A type another game makes takes the art of no field yet:
-    // docs/design/rules-in-luau.md §7.4.)
-    let own_game = c.assets.packs.get(packs.own_pack().index()).and_then(|g| c.defs.root_id(g)).unwrap_or_default();
-    let named = &c.rules_of(own_game).panels.types;
-    for kind in PanelType::ALL.into_iter().filter(|&t| named.get(t as usize).is_some_and(|r| r.named)) {
-        for owner in 0..2 {
-            for y in 1..=3 {
-                lookups::panel_block(&own.field, kind as usize, owner, y, p);
-            }
-        }
-    }
+    field(c, packs, p);
 
     // The chips: the Beast Out chip's picture is the Beast's (the custom
     // screen's), not its own.
@@ -233,6 +232,57 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     }
 }
 
+/// The field (docs/design/rules-in-luau.md §7.4). Each loaded game's pack
+/// draws the panel types its game's `panels` section names, with their
+/// blocks (BN6's field none of BN5's metal, lava or sea). In an arena of
+/// each loaded game, every panel type a loaded game names and both
+/// highlights are drawn as the stage draws them (`FieldArt`): from the
+/// arena's field, another pack's, or as a tinted normal panel, which is
+/// said, not counted.
+fn field(c: &Content, packs: &Packs, p: &mut Problems) {
+    // (The shared folder, content/common, is no game: it has no field.)
+    let roots: Vec<RootId> = (0..c.rules.len())
+        .map(|i| RootId(i as u8))
+        .filter(|r| c.defs.roots.get(r.index()).is_none_or(|name| name != nettai_content_api::keys::SHARED))
+        .collect();
+    let names = |root: RootId, t: PanelType| c.rules_of(root).panels.types.get(t as usize).is_some_and(|r| r.named);
+    let blocks = |pack: PackId, t: PanelType, p: &mut Problems| {
+        for owner in 0..2 {
+            for y in 1..=3 {
+                lookups::panel_block(c, &packs.bundle(pack).field, pack, t as u8, owner, y, p);
+            }
+        }
+    };
+    for &root in &roots {
+        let pack = packs.id_of_root(c, root);
+        for t in PanelType::ALL.into_iter().filter(|&t| names(root, t)) {
+            if packs.bundle(pack).field.draws(t as u8) {
+                blocks(pack, t, p);
+            } else {
+                p.note(format!(
+                    "{}'s field doesn't draw panel type {} ({t:?}), which its game names (extract the pack again)",
+                    lookups::pack_name(c, pack),
+                    t as u8
+                ));
+            }
+        }
+    }
+    for &arena in &roots {
+        let art = FieldArt::of(c, packs, arena);
+        for t in PanelType::ALL.into_iter().filter(|&t| roots.iter().any(|&r| names(r, t))) {
+            match art.panel(t) {
+                Art::Field(from) => blocks(from, t, p),
+                Art::Tint => lookups::panel_tint(c, art.arena, t as u8, p),
+            }
+        }
+        for h in 1..=2 {
+            if art.highlight(h) == Art::Tint {
+                lookups::panel_tint(c, art.arena, lookups::HIGHLIGHT_TINT + h, p);
+            }
+        }
+    }
+}
+
 /// A sprite the content names: its sheet, every animation with its frames,
 /// as many as the engine's timing for it has, and each frame's own palette
 /// (its first part's, which an object's palette 0 picks).
@@ -286,14 +336,14 @@ mod tests {
         let own = c.assets.pack(testing::ROOT).expect("the test pack");
         let missing = |c: &Content| {
             let found = audit(c, vec![Bundle::default()], own, None, &[("en".into(), None)]);
-            found.problems.iter().filter(|p| p.contains("has no block for panel type")).count()
+            found.problems.iter().filter(|p| p.contains("doesn't draw panel type")).count()
         };
-        assert_eq!(missing(&c), PanelType::ALL.len() * 6);
+        assert_eq!(missing(&c), PanelType::ALL.len());
         for t in [PanelType::Metal, PanelType::Lava, PanelType::Sea] {
             let test = c.defs.root_id(testing::ROOT).expect("the test game");
             c.rules[test.index()].panels.types[t as usize].named = false;
         }
-        assert_eq!(missing(&c), (PanelType::ALL.len() - 3) * 6);
+        assert_eq!(missing(&c), PanelType::ALL.len() - 3);
     }
 
     /// A lookup by the wrong key fails for every chip (R1's: a chip's icon

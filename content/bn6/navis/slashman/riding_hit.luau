@@ -6,7 +6,7 @@
 -- it reaches another panel. See docs/engine/standard-chips.md, "Action
 -- 0x0A".
 
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local riding_hit = {}
 

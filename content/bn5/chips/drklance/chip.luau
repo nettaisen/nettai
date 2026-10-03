@@ -4,7 +4,7 @@
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local bn5_lance = require("../../objects/lance/lance")
-local lance = require("@bn6/chips/lance/lance")
+local lance = require("@common/lance/lance")
 
 return define.chip {
     id = "bn5:drklance",

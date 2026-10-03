@@ -14,8 +14,8 @@
 local controllers = require("../phoenix/controllers")
 local fire = require("./fire")
 local collision = require("../../rules/collision")
-local panels = require("@bn6/lib/panels")
-local regions = require("@bn6/lib/regions")
+local panels = require("@common/panels")
+local regions = require("@common/regions")
 
 local phoenix = {}
 

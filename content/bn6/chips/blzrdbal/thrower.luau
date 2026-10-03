@@ -1,17 +1,17 @@
 --!strict
 -- BlzrdBal's thrower (the original's actor object #4, `sub_80B8A18`;
 -- docs/engine/dimming-chip-effects.md §10): a stand-in for the user
--- (lib/dimming/stand_in) that throws the snowball (./ball) from 10 pixels
+-- (@common/dimming/stand_in) that throws the snowball (./ball) from 10 pixels
 -- in front of it after 35 ticks, unless it stands on a panel that isn't
 -- solid, and gives the user back 91 ticks later.
 
 local ball = require("./ball")
-local stand_in = require("../../lib/dimming/stand_in")
+local stand_in = require("@common/dimming/stand_in")
 
 local thrower = {}
 
 export type State = {
-    -- The chip's controller (lib/dimming/stand_in).
+    -- The chip's controller (@common/dimming/stand_in).
     controller: Object?,
 }
 

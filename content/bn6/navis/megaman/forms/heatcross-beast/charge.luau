@@ -8,7 +8,7 @@
 -- and the flames die down once it stops.
 
 local element_pillar = require("../../../../objects/element-pillar/element_pillar")
-local regions = require("../../../../lib/regions")
+local regions = require("@common/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {

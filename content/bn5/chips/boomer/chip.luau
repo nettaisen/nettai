@@ -1,11 +1,12 @@
 --!strict
 -- Boomer (BN5 chip 0x006): a boomerang flies from the user's back column along row 3, up the far column and back
--- along row 1: BN6's boomerang (@bn6/chips/boomer/boomerang, instant chip effect 1; BN5's the same code but that
+-- along row 1: the shared boomerang (@common/boomer/boomerang, instant chip effect 1; BN5's the same code but that
 -- it turns no panel to grass and has no tomahawk), with BN5's variant (0x080CAF50 row 5, its record's parameter:
 -- BN6's Boomer's speeds), sprite (10-14), collision type and spark.
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local boomerang = require("@bn6/chips/boomer/boomerang")
+local boomerang = require("@common/boomer/boomerang")
+local kind = require("./boomerang")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
 
@@ -31,5 +32,5 @@ return define.chip {
     lockout = 30,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    instant = boomerang.instant(VARIANT),
+    instant = boomerang.instant(kind, VARIANT),
 }

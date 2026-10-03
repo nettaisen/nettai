@@ -7,7 +7,7 @@
 -- turret ends it.
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")
 

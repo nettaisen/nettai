@@ -9,10 +9,10 @@
 -- it off). Then he goes, and the controller moves on. See
 -- docs/engine/chips.md §3.6.13.
 
-local panels = require("../../lib/panels")
-local navi_chips = require("@common/navi-chips/navi")
+local panels = require("@common/panels")
+local navi_chips = require("../../lib/navi-chips/navi")
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 
 export type State = {

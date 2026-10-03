@@ -6,7 +6,7 @@
 -- he took back at the other side one by one, 20 ticks apart (./junk). See
 -- docs/engine/chips.md §3.6.26.
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("../../lib/navi-chips/navi")
 local junk_ball = require("../../navis/megaman/forms/dustcross/junk_ball")
 local junk = require("./junk")
 

@@ -13,7 +13,7 @@ local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obst
 local collision = require("../../rules/collision")
 local curse = require("./curse")
 local effects = require("../../lib/effects")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 local trajectory = require("../../lib/trajectory")
 
