@@ -16,7 +16,7 @@ export type State = {
     ticks: number,
 }
 
-local SPRITE = asset.sprite("magnet")
+local SPRITE = asset.sprite("bn6:magnet")
 local HAND, PANEL = 0x1F, 0x28
 -- An enemy of each side stands there (the other side's body bit).
 local ENEMY_BODY = { [0] = 0x0400_0000, 0x0800_0000 }
@@ -102,7 +102,7 @@ local function init(me: Object)
 end
 
 magnet.kind = define.kind {
-    id = "magcoil/magnet",
+    id = "bn6:magcoil/magnet",
     pool = "attack",
     state = { ticks = "u8" },
     -- `sub_80D7DE4`.

@@ -1,6 +1,6 @@
 --!strict
 -- A water mark of SpoutMan's geyser (the original's effect object #0x2E,
--- `sub_80E39A0`): 2 pixels up and down from its panel's centre it shows
+-- `sub_80E39A0`): 2 pixels up and down from its panel's center it shows
 -- for its ticks, the geyser's own column or the trail to it. The navi
 -- chip's (the original's Param3 1) counts down and steps its sprite while
 -- dimmed; another waits a dimming out, and goes as soon as its owner isn't
@@ -19,7 +19,7 @@ export type State = {
     while_dimmed: boolean,
 }
 
-local SPRITE = asset.sprite("spout-geyser")
+local SPRITE = asset.sprite("bn6:spout-geyser")
 
 -- Its animation (`word_80E3A30`): the trail's, the column's.
 local ANIM_TRAIL, ANIM_COLUMN = 1, 2
@@ -80,7 +80,7 @@ local function init(me: Object)
 end
 
 mark.kind = define.kind {
-    id = "spoutman/mark",
+    id = "bn6:spoutman/mark",
     pool = "effect",
     state = { column = "bool", ticks = "u8", while_dimmed = "bool" },
     -- `sub_80E39A0`.

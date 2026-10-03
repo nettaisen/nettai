@@ -18,7 +18,7 @@ export type State = {
     trail: number,
 }
 
-local SPRITE = asset.sprite("charge-wave")
+local SPRITE = asset.sprite("bn6:charge-wave")
 
 -- Its speed, 16.16.
 local SPEED = 0xC_0000
@@ -29,7 +29,7 @@ local TRAIL_FIRST, TRAIL_EVERY = 0xA, 5
 local TRAIL_SHADER, TRAIL_LIFETIME = 0xCA8F, 0x14
 
 -- The flash where it hits.
-local HIT_FLASH = define.effect { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 6 }
+local HIT_FLASH = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 1, palette = 6 }
 
 -- Its hit: an attack at navis, no spark.
 local HIT_MOD = 3
@@ -127,7 +127,7 @@ local function init(me: Object)
 end
 
 charge_wave.kind = define.kind {
-    id = "chargecross-beast/wave",
+    id = "bn6:chargecross-beast/wave",
     pool = "attack",
     state = { hit_panel = "u16", trail = "i32" },
     -- `sub_80DDA84`.

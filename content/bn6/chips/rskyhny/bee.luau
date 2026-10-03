@@ -26,7 +26,7 @@ export type State = {
     turns: number,
 }
 
-local SPRITE = asset.sprite("honey-bee")
+local SPRITE = asset.sprite("bn6:honey-bee")
 -- What it is and hits (`dword_80D34A8`).
 local HIT = { is = collision.attack, hits = collision.hits_navis }
 local HIT_MOD = 0x01
@@ -329,7 +329,7 @@ local function init(me: Object): boolean
 end
 
 bee.kind = define.kind {
-    id = "rskyhny/bee",
+    id = "bn6:rskyhny/bee",
     pool = "attack",
     state = { speed = "i32", turn_speed = "i32", target = "object", palette = "u8", turns = "u8" },
     -- `sub_80D30D0`.

@@ -80,7 +80,7 @@ the reload. The battle sees the cards through two things:
   bug flag, as in the US). jp-differences.md §8 #17.
 
 The JP battle code is otherwise the US code (jp-differences.md §2: no other routine differs for cards). So the
-cards' battle behaviour is US code: the weapon routines, actions and objects the US ROM has but that no US data
+cards' battle behavior is US code: the weapon routines, actions and objects the US ROM has but that no US data
 names (§3).
 
 ### 1.4 A netbattle
@@ -94,7 +94,7 @@ EXE6 netplay exchanges nothing more than a real link cable does, so the same hol
 
 **117 cards** (numbers 1 to 117), each 2 to 6 effects and 5 to 80 MB, in the ROM's card table (0x081429B0): a u16
 offset per card number, then per card a header entry (0xAB, MB, 0) and its effects as (id, parameter, shown as a
-bug) triples. The third byte only colours the menu text; the apply routine never reads it. Effect names are a
+bug) triples. The third byte only colors the menu text; the apply routine never reads it. Effect names are a
 text archive (0x0812F224's pointer). EXE6 Gregar's table (0x08144778) is the same bytes.
 
 **170 effect ids** have a handler (0x00 to 0xA9). Ids 0xAA to 0xB7 have names (the NaviCust programs' names:
@@ -169,7 +169,7 @@ Appendix A has every card.
 
 ## 3. What the cards reach in a battle
 
-The cards' battle behaviour is US code that no US data names: weapon routines (`off_80117D4`), three actions and
+The cards' battle behavior is US code that no US data names: weapon routines (`off_80117D4`), three actions and
 an instant effect. The content has each as a definition with the original's number in compat:
 
 | What | Original | Content |
@@ -218,7 +218,7 @@ rule, BN6's patch-cards system (content/bn6/rules/patch-cards/system.luau, in co
   the slots seeded from the stats, each switched-on card's effects in the kinds' order, the clamps, the copy
   (BugStop holding back the bug slots), ChpShufl turning NumbrOpn off, MaxHP and HP. With cards installed it
   pushes the emotion window's glitch (`battle.set_emotion_window_glitch`): the stats after the cards have a
-  NaviCust bug (§1.3). Afterwards the framework copies the stats to the battle-start copy (`cross_stats`).
+  NaviCust bug (§1.3). Afterwards the framework copies the stats to the battle-start copy (`reserves`).
 - **What stays as the original has it**: the kinds' order rather than the card's, a later card's choice winning,
   GigaFolder− not clamping, the HP clamp after each HP effect, the percentages rounded toward zero, a card that
   lists one effect twice applying the first.

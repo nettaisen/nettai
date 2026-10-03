@@ -9,7 +9,7 @@ This spec covers the battle's control flow for a cable-link PvP netbattle:
 - RNG usage;
 - the battle-wide state an engine must carry.
 
-Object behaviour, panels, damage and chips have their own specs; this document only fixes *when* those systems run and what glue state connects them.
+Object behavior, panels, damage and chips have their own specs; this document only fixes *when* those systems run and what glue state connects them.
 
 It is written so that a clean Rust reimplementation can be built from it without the assembly. Every claim carries a ROM address or function name from the bn6f disassembly. Anything not verified is marked **(uncertain)** and collected in §11.
 
@@ -314,13 +314,13 @@ At frame 123 the handler sees bit 2: `sub_801DA48(1)`, `sub_801BECC(1)`, [1]=4. 
 
 **Round banner `sub_80092A0`:**
 
-| [2] | Handler | Behaviour | Ticks (round 1) |
+| [2] | Handler | Behavior | Ticks (round 1) |
 |---|---|---|---|
 | 0 | `sub_80092C0` | If BS+0x1A ≠ 0: BS+0x28 = 10, then decrement until < 0 → [2]=4. If BS+0x1A = 0: go straight to [1]=8. | 124–135 |
 | 4 | `sub_80092F0` | Init: `sub_801E792(0, BS+0x1A)` (round banner, UI id 0x30). Then wait for `sub_801E754() == 0` → [2]=8. | 136–195 |
 | 8 | `sub_8009314` | BS+0x28 = 10, decrement until < 0 → [1]=8, [2..3]=0 | 196–207 |
 
-**Banner lifetime model** (used here, in fighting state 4 and in the result states). The drawing is presentation, but the lifetime gates the flow, so it must be modelled.
+**Banner lifetime model** (used here, in fighting state 4 and in the result states). The drawing is presentation, but the lifetime gates the flow, so it must be modeled.
 
 - `sub_801E792(id, arg)` (0x0801E792): if HUD task bit 15 is already set, do nothing and return 1. Otherwise:
   - reset `byte_2036840` ([0]=0, [7]=0);
@@ -437,12 +437,12 @@ A transform record: +0 requested form (0xFF none), +4 Cross change (0xFF none), 
   - 8 `sub_801498E`: on init, `SetScreenFade(0x40, 0x10)` (0x6C in mode 1). When done: HUD back, [0..3] = 8 (word store). Fade 0x40 takes **17** ticks: 1889 → 1906.
 - **State 8, `sub_8014A00`**: wait while either navi reverts (`sub_80159A2`: AIData+0x48 bit 0x100 or request 0x40). Then, per side in order, wait while it changes Cross (`sub_802DCEC`: +0x48 bit 0x1000 or request 0x4000000), clearing that side's +4. Then busy = 0.
 
-**The Cross change** (a navi switch; ported in kinds/player/actions/cross_change.rs, **[unverified]**: the custom
+**The Cross change** (the navi switch; ported in kinds/player/actions/navi_switch.rs, **[unverified]**: the custom
 screen never sends one, custom-screen.md §6): the pause handler runs `sub_802D714` as action 0x1C with state 0x1000.
 Step 0 (`sub_802D738`, 4 ticks): onto the destination panel on the ground, facing the default way, flags and
 requests 0x1C41 cleared (the requests' clear passes the flags' mask again), animation 4, links cut, region 1.
 Step 4 (`sub_802D7A0`, one tick): the form's overlay and the navi's death hook, anger ends; the side's second
-NaviStats block (`eBattleNaviStats2034A60`, a copy of the battle-start stats: `Battle::cross_stats`) takes the
+NaviStats block (`eBattleNaviStats2034A60`, a copy of the battle-start stats: `Battle::reserves`) takes the
 current stats (with the object's HP) when it holds the same navi; the navi becomes the record's navi from that block
 when it holds it, else fresh (`init_8013B64`: the defaults and `byte_80210DD`'s row); AI index and NameID from the
 navi, its sprite (animation 3), overlay or init hook, the post-init hook, statuses and anger cleared, HP from the
@@ -691,7 +691,7 @@ BS+0x18/0x19 are local-perspective.
 
 ## 4. The battle tick: `battle_8007A44` (0x08007A44)
 
-This is the exact call order. "Sim" = the call changes simulation state (anything that later feeds object behaviour, HP, RNG2, flow timing, BattleState, chip blocks or inputs).
+This is the exact call order. "Sim" = the call changes simulation state (anything that later feeds object behavior, HP, RNG2, flow timing, BattleState, chip blocks or inputs).
 
 | # | Call | Gate | Sim | Effect |
 |---|---|---|---|---|
@@ -1096,7 +1096,7 @@ Zeroed at every battle start except where noted.
 | 0x38 | u16 | tick-based gauge for other modes (unused in PvP) | `sub_800A6D8` (unreferenced) |
 | 0x3A | u16 | escape flag | `sub_800AAE8` (not PvP) |
 | 0x3C | u32 | BattleSettings pointer (PvP 0x0200AF60) | battle start |
-| 0x40 | u32 | battle time (ticks fighting, cap 0x8C9F) | `sub_800A6A6`; busting level, some object colour flashes |
+| 0x40 | u32 | battle time (ticks fighting, cap 0x8C9F) | `sub_800A6A6`; busting level, some object color flashes |
 | 0x44 / 0x45 | u8 | tag chips present / tag insertion index | folder |
 | 0x4C–0x5B | u16 | NameIDs (alliance 0 at +0x4C, alliance 1 at +0x54) | `sub_80077D2` |
 | 0x5C | u8 | intro progress bits (init 0x0C; +0x10, +0x01, +0x02) | intro controller via `sub_8001382`; `sub_800139A` |
@@ -1190,7 +1190,7 @@ Update order is list order. Spawning and freeing rules belong to the object spec
 
 ## 9. Presentation vs simulation checklist
 
-### 9.1 Must be modelled (possibly as counters)
+### 9.1 Must be modeled (possibly as counters)
 
 - **Packet application** `sub_801FF18`: inputs, status bytes, block transfers (§6).
 - **All flow state machines:** top, mode, fighting machine, custom-screen outcome, result states, judge (§2–§3).
@@ -1263,7 +1263,7 @@ These are already delayed 4 ticks; a player's chip hand, stats and transform rec
 5. **NaviStats+0x08** (gauge speed class) and **+0x2C values 0x17/0x18** (inputs ignored and auto custom-open) have no confirmed meaning.
 6. **Render-pass side effects:** `sub_3006028`/`sub_30061E8` write sprite sub-struct bytes, and `sub_800C5E0` clears panel latches +0x01/+0x0D. These are assumed never read by simulation code; this was not proven exhaustively.
 7. **Intro length** (52 ticks) is driven by object code: the remote navi's mosaic fade and the intro controller's 17-tick fade wait. It was measured; no closed formula was derived. The intro object state differs between the two cores.
-8. **`sub_801CC94`**'s RNG1 draw (the emotion window's flicker on a bugged navi) is modelled per console (custom-screen.md §8) and checked against the recordings' RNG1 column.
+8. **`sub_801CC94`**'s RNG1 draw (the emotion window's flicker on a bugged navi) is modeled per console (custom-screen.md §8) and checked against the recordings' RNG1 column.
 9. **Settings +1 and +7, and effects bits 0x200/0x800:** no battle-code reader was found.
 10. **`sub_80AA88C`** writes only when the drop table has a non-0xFFFF entry. This was checked only for NameID 0x1A0 (the PvP navi); other navis' IDs were not checked.
 11. **Chip block +0x44 semantics**, and "choosing no chips keeps the previous remaining hand": the latter follows from the 0xFF skip in `sub_800B3D8`; the chip lab's `flow/keep-hand` has it with chips left in the hand.

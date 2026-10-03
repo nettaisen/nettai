@@ -7,7 +7,7 @@ local golem = require("./golem")
 
 return {
     define.chip {
-        id = "golmhit1",
+        id = "bn6:golmhit1",
         codes = { "I", "K", "Y" },
         element = "null", family = "break", class = "standard",
         rarity = 0, mb = 17, damage = 140, hit_param = 30, lockout = 20,
@@ -17,7 +17,7 @@ return {
         instant = golem.instant { palette = 0 },
     },
     define.chip {
-        id = "golmhit2",
+        id = "bn6:golmhit2",
         codes = { "D", "P", "U" },
         element = "null", family = "break", class = "standard",
         rarity = 1, mb = 27, damage = 190, hit_param = 30, lockout = 20,
@@ -27,7 +27,7 @@ return {
         instant = golem.instant { palette = 1 },
     },
     define.chip {
-        id = "golmhit3",
+        id = "bn6:golmhit3",
         codes = { "H", "M", "V" },
         element = "null", family = "break", class = "standard",
         rarity = 2, mb = 37, damage = 250, hit_param = 30, lockout = 20,

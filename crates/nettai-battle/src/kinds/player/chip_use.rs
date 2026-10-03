@@ -9,7 +9,7 @@ use crate::battle::Battle;
 use crate::collision::f1;
 use crate::content::{ChipData, ChipFamily, ChipFlags, ChipTraits, Content};
 use crate::object::{ObjectRef, PanelPos, Vec3};
-use nettai_content_api::ChipHandle;
+use nettai_content_api::{ChipHandle, WeaponHandle};
 
 /// Damage-word flag bits a chip use can add (see `oBattleObject_Damage`).
 mod damage_flags {
@@ -32,7 +32,7 @@ const BONUS_SOUND: crate::content::SoundRole = crate::content::SoundRole::Damage
 /// `sub_800FB54`: when a chip request is up (and not sliding), take the
 /// next chip and start its action. Returns the attack's chip (the game
 /// returns 0xFFFF for no use), itself none for the game's 0.
-pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle>> {
+pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle>> {
     let requested = ai(b, r).requests & (request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
     if flag1(b, r) & f1::SLIDING != 0 || requested == 0 {
         return None;
@@ -72,15 +72,9 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
                 ai_mut(b, r).attack.charged = 0;
                 let action = super::idle::weapon_routine(b, r, weapon);
                 set_attack(b, r, action, 2);
-                // The Beast forms' claw and SlashCross Beast's charged sword
-                // (the form's `charged_sword_rush`) run inside the Beast Out
-                // rush.
-                use crate::content::{ActionRole, FormTraits};
-                let sword_rush = form_of(b, r).traits.has(FormTraits::CHARGED_SWORD_RUSH);
-                let runs = |role| matches!(action, super::NaviAction::Content(h) if b.roles_for(r).is_action(role, h));
-                if runs(ActionRole::BeastClaw) || (runs(ActionRole::ChargedSword) && sword_rush) {
-                    ai_mut(b, r).attack.beast_lockon = 1;
-                }
+                // (BN6's beast system runs the Beast forms' claw and
+                // SlashCross Beast's charged sword inside its rush.)
+                chip_used(b, r, Some(weapon));
                 ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
                 return Some(ai(b, r).attack.chip);
             }
@@ -88,20 +82,27 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
     }
     let action = prepare(b, r, charge);
     set_attack(b, r, action, 2);
-    let beast = form_of(b, r).kind.is_beast();
-    let content = b.content.clone();
-    let a = &mut ai_mut(b, r).attack;
-    if a.special_source != 0 || beast {
-        a.beast_lockon = content.chip_field(a.chip).beast_lockon as u8;
-    }
+    // (BN6's beast system runs a chip with the lock-on flag inside its
+    // rush, in a Beast form or from the Cross special.)
+    chip_used(b, r, None);
     ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
     Some(ai(b, r).attack.chip)
 }
 
-/// `sub_800FC30`: the Beast Out rush chains the next chip, starting its
-/// action (inside the rush again). Not the chips with the `no_chain` trait
+/// The side's systems' `chip_used` once the use's action started (and
+/// `set_attack` cleared the attack's `wrapped`): the chip the attack reads
+/// (the zeroed chip for the empty hand), and the form's weapon run instead
+/// of it.
+fn chip_used(b: &mut Battle, r: ObjectRef, weapon: Option<WeaponHandle>) {
+    let side = b.objects.get(r).alliance;
+    let chip = b.content.chip_or_zeroed(b.games.arena, ai(b, r).attack.chip);
+    b.systems_chip_used(side, r, chip, weapon);
+}
+
+/// `sub_800FC30`: the wrapper (BN6's Beast Out rush) chains the next chip,
+/// starting its action (inside the wrapper again). Not the chips with the `no_chain` trait
 /// (the variable swords), dimming chips, or an empty hand. True if it did.
-pub(super) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
+pub(crate) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
     let Some(chip) = hand_entry(b, r).chip else { return false };
     if b.content.chip(chip).traits.has(ChipTraits::NO_CHAIN) {
         return false;
@@ -111,7 +112,7 @@ pub(super) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
     }
     let action = prepare(b, r, 0);
     set_attack(b, r, action, 2);
-    ai_mut(b, r).attack.beast_lockon = 1;
+    ai_mut(b, r).attack.wrapped = 1;
     true
 }
 
@@ -162,7 +163,7 @@ pub fn next_chip_doubles(b: &Battle, r: ObjectRef) -> bool {
 /// The chip an object other than a player carries: its zeroed chip field,
 /// the zeroed chip (nothing else sets it).
 fn carried_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
-    b.objects.get(r).chip.or_else(|| b.content.zeroed_chip())
+    b.objects.get(r).chip.or_else(|| b.zeroed_chip())
 }
 
 /// The record of a hand entry's chip; the empty hand's (0xFFFF) is past
@@ -254,6 +255,14 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         b.bump_side_stat(side, 6, 1);
     }
     dark_chip_side_effect(b, r, e.chip);
+    // BN5's 0x080100E6: the side's rules may refuse the chip (its light and
+    // dark system, 0x08010118). The navi then uses the chip they give
+    // instead (BN5's 0x185, its variant 3 and no parameters, the rest of
+    // the attack as prepared: its lockout is still the refused chip's).
+    if let Some(instead) = b.systems_chip_check(side, r, e.chip) {
+        ai_mut(b, r).attack.chip = Some(instead);
+        return chip_action(b, r, Some(instead));
+    }
     chip_action(b, r, e.chip)
 }
 
@@ -266,7 +275,7 @@ pub(crate) fn chip_action(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
     use super::actions::instant::Effect;
     use super::{EngineAction as E, NaviAction as A};
     let content = b.content.clone();
-    let chip = content.chip_or_zeroed(chip);
+    let chip = content.chip_or_zeroed(b.games.arena, chip);
     match content.defs.chip(chip).usage {
         ChipUsage::Action(h) => A::Content(h),
         ChipUsage::Dimming(_) => A::Engine(E::DimmingChip),
@@ -330,12 +339,12 @@ fn slot_in_entry(b: &mut Battle, r: ObjectRef) -> HandEntry {
         return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: 0 };
     }
     // The zeroed field is the zeroed chip.
-    let chip = b.sides[side].special_chip.or_else(|| b.content.zeroed_chip());
+    let chip = b.sides[side].special_chip.or_else(|| b.zeroed_chip());
     pay_for_special_chip(b, side, chip);
     let extra = chip_bonus(b, r, chip);
     let content = b.content.clone();
     let cd = entry_record(&content, chip);
-    ai_mut(b, r).attack.beast_lockon = cd.beast_lockon as u8;
+    ai_mut(b, r).attack.wrapped = cd.beast_lockon as u8;
     let damage = crate::hand::chip_damage(b, chip, side as u8);
     let mut extra = extra;
     let s = &mut b.sides[side];

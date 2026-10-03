@@ -6,21 +6,21 @@ local charge = require("./charge")
 local slashman = require("./chip")
 
 return define.navi {
-    id = "slashman",
-    sprite = asset.sprite("slashman"),
+    id = "bn6:slashman",
+    sprite = asset.sprite("bn6:slashman"),
     element = "null",
     weakness = { "break" },
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("slashman-win"), lose = asset.banner("slashman-deleted") },
+    banners = { win = asset.banner("bn6:slashman-win"), lose = asset.banner("bn6:slashman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`): the Falzar ROM has no
     -- SlashMan face, and shows TenguMan's.
-    mugshot = asset.mugshot("slashman"),
+    mugshot = asset.mugshot("bn6:slashman"),
     merge_height = 4,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("slashman-portrait"),
+        portrait = asset.sprite("bn6:slashman-portrait"),
     },
     own_chip = { chip = slashman, code = "S" },
     chip_bonus = {
@@ -28,7 +28,7 @@ return define.navi {
         dimming_chips = false,
         by_level = { 0, 0, 0, 0, 0, 0, 0, 30, 30, 30, 30, 40, 40, 40, 50 },
     },
-    -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
+    -- What a navi switch brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },

@@ -43,6 +43,7 @@ fn icon<'a>(e: &'a Editor, chip: nettai_content_api::ChipHandle) -> Element<'a, 
 
 pub fn view(e: &Editor) -> Element<'_, Msg> {
     let bar = row![
+        button("New").on_press(Msg::New),
         button("Open").on_press(Msg::Open),
         button("Save").on_press(Msg::Save),
         button("Save as").on_press(Msg::SaveAs),
@@ -108,8 +109,8 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
     let stages: Vec<Choice<_>> =
         nettai_match::link_battle_stages(c).into_iter().map(|s| Choice { label: c.defs.stage(s).key.clone(), value: s }).collect();
     let mut backgrounds: Vec<Choice<Option<String>>> = vec![Choice { label: "the stage's own".into(), value: None }];
-    // (By the name a match writes: the content's own pack's, unqualified.)
-    backgrounds.extend(c.assets.backgrounds.keys().map(|b| nettai_content_api::keys::local(b).to_string()).map(|b| Choice { label: b.clone(), value: Some(b) }));
+    // (By the name a match writes, in full.)
+    backgrounds.extend(c.assets.backgrounds.keys().map(|b| Choice { label: b.clone(), value: Some(b.clone()) }));
     let place = |i: usize, p: &nettai_match::Place| -> Element<Msg> {
         let stage = Choice { label: c.defs.stage(p.stage).key.clone(), value: p.stage };
         let bg = Choice { label: p.background.clone().unwrap_or("the stage's own".into()), value: p.background.clone() };
@@ -270,47 +271,73 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
         if f.tags.is_some_and(|(a, b)| a == i as u8 || b == i as u8) {
             marks.push_str(" TAG");
         }
-        let d = c.chip(chip.id);
-        let ok = d.codes.contains(&chip.code);
-        let line = row![
-            text(format!("{i:>2}")).size(12).color(DIM).width(Length::Fixed(22.0)),
-            icon(e, chip.id),
-            text(e.names.chip(c, chip.id)).size(14).width(Length::Fill),
-            text(chip.code.letter().to_string()).size(14).color(if ok { Color::BLACK } else { RED }).width(Length::Fixed(16.0)),
-            text(marks).size(12).color(GREEN).width(Length::Fixed(64.0)),
-        ]
+        let line = match chip {
+            Some(chip) => {
+                let ok = c.chip(chip.id).codes.contains(&chip.code);
+                row![
+                    text(format!("{i:>2}")).size(12).color(DIM).width(Length::Fixed(22.0)),
+                    icon(e, chip.id),
+                    text(e.names.chip(c, chip.id)).size(14).width(Length::Fill),
+                    text(chip.code.letter().to_string()).size(14).color(if ok { Color::BLACK } else { RED }).width(Length::Fixed(16.0)),
+                    text(marks).size(12).color(GREEN).width(Length::Fixed(64.0)),
+                ]
+            }
+            None => row![
+                text(format!("{i:>2}")).size(12).color(DIM).width(Length::Fixed(22.0)),
+                space().width(16).height(16),
+                text("(empty)").size(14).color(DIM).width(Length::Fill),
+                text(marks).size(12).color(GREEN).width(Length::Fixed(64.0)),
+            ],
+        }
         .spacing(6)
         .align_y(Alignment::Center);
         let b = button(line).width(Length::Fill).padding([1, 4]).on_press(Msg::Entry(s, i));
         entries = entries.push(b.style(if e.entry[s] == i { button::secondary } else { button::text }));
     }
-    let selected = f.chips[e.entry[s]];
-    let picture: Element<Msg> = match e.pictures.chip(&c.defs.chip(selected.id).key).and_then(|p| p.art.clone()) {
-        Some(h) => image(h).width(112).height(96).filter_method(image::FilterMethod::Nearest).into(),
-        None => space().width(112).height(96).into(),
+    let (picture, about): (Element<Msg>, Element<Msg>) = match f.chips[e.entry[s]] {
+        Some(selected) => {
+            let picture = match e.pictures.chip(&c.defs.chip(selected.id).key).and_then(|p| p.art.clone()) {
+                Some(h) => image(h).width(112).height(96).filter_method(image::FilterMethod::Nearest).into(),
+                None => space().width(112).height(96).into(),
+            };
+            let sd = c.chip(selected.id);
+            let about = column![
+                text(format!("Entry {}: {} {}", e.entry[s], e.names.chip(c, selected.id), selected.code.letter())).size(15),
+                text(format!("{} · {} MB · {} damage", class_name(sd.class), sd.mb, sd.damage)).size(13).color(DIM),
+                row![
+                    button("Regular").on_press(Msg::Regular(s)).style(button::secondary),
+                    button("Tag").on_press(Msg::Tag(s)).style(button::secondary),
+                    button("Clear").on_press(Msg::ClearEntry(s)).style(button::secondary),
+                ]
+                .spacing(6),
+            ]
+            .spacing(4);
+            (picture, about.into())
+        }
+        None => (
+            space().width(112).height(96).into(),
+            column![
+                text(format!("Entry {}: empty", e.entry[s])).size(15),
+                text("A code in the list below puts that chip here.").size(13).color(DIM),
+            ]
+            .spacing(4)
+            .into(),
+        ),
     };
-    let sd = c.chip(selected.id);
-    let about = column![
-        text(format!("Entry {}: {} {}", e.entry[s], e.names.chip(c, selected.id), selected.code.letter())).size(15),
-        text(format!("{} · {} MB · {} damage", class_name(sd.class), sd.mb, sd.damage)).size(13).color(DIM),
-        row![
-            button("Regular").on_press(Msg::Regular(s)).style(button::secondary),
-            button("Tag").on_press(Msg::Tag(s)).style(button::secondary)
-        ]
-        .spacing(6),
-    ]
-    .spacing(4);
     // The counts and the limits, live.
-    let count = |class: ChipClass| f.chips.iter().filter(|x| c.chip(x.id).class == class).count();
-    let regular = f.regular.and_then(|r| f.chips.get(r as usize)).map(|x| {
+    let count = |class: ChipClass| f.chips().filter(|x| c.chip(x.id).class == class).count();
+    let chip_at = |i: u8| f.chips.get(i as usize).copied().flatten();
+    let regular = f.regular.and_then(chip_at).map(|x| {
         format!("Regular: {} ({} MB; the navi's memory {})", e.names.chip(c, x.id), c.chip(x.id).mb, stats.reg_up)
     });
     let tags = f.tags.map(|(a, b)| {
-        let mb: u32 = [a, b].iter().filter_map(|&i| f.chips.get(i as usize)).map(|x| c.chip(x.id).mb as u32).sum();
+        let mb: u32 = [a, b].into_iter().filter_map(chip_at).map(|x| c.chip(x.id).mb as u32).sum();
         format!("Tags: entries {a} and {b} ({mb} MB)")
     });
     let counts = text(format!(
-        "Mega {} (the navi's level {}) · Giga {} (level {}) · {} · {}",
+        "{} of {} chips · Mega {} (the navi's level {}) · Giga {} (level {}) · {} · {}",
+        f.chips().count(),
+        f.chips.len(),
         count(ChipClass::Mega),
         stats.mega_level,
         count(ChipClass::Giga),
@@ -334,7 +361,7 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
     let mut list = Column::new().spacing(1);
     for (name, h) in pool.into_iter().take(400) {
         let d = c.chip(h);
-        let held = f.chips.iter().filter(|x| x.id == h).count();
+        let held = f.chips().filter(|x| x.id == h).count();
         let codes = d.codes.iter().fold(Row::new().spacing(2), |r, &code| {
             r.push(button(text(code.letter().to_string()).size(12)).padding([1, 5]).on_press(Msg::Put(s, h, code)))
         });

@@ -28,7 +28,7 @@ function navi_chips.spawn(kind: Kind, user: Object, spec: NaviChipSpec, r3: numb
     return o
 end
 
--- His init: on his panel's centre (Z's whole part cleared; all of Z with
+-- His init: on his panel's center (Z's whole part cleared; all of Z with
 -- `ground`), `sprite` loaded at animation 0 and palette 0 with `shadow`,
 -- facing his side.
 function navi_chips.stand(me: Object, sprite: SpriteAsset, shadow: Shadow, ground: boolean?)

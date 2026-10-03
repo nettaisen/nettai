@@ -10,7 +10,7 @@ comes from two places:
   this repository: people own it, and the verification workspace checks it against the ROM (§3);
 - a **content pack**, a folder of open-format assets that `bn6-extract content` writes from the user's ROM:
   graphics (with the sprites' animation timing) and sound, each under its name, and the asset index that lists
-  them. The definitions name the pack's assets (`asset.sprite("bomb")`), never their numbers.
+  them. The definitions name the pack's assets in full (`asset.sprite("bn6:bomb")`), never their numbers.
 
 This document describes the two and how they load, and the `Content` API the engine and other layers use. The
 pack's graphics and sound formats are in [asset-formats.md](asset-formats.md); what a definition is and how to
@@ -51,12 +51,10 @@ rules/*.luau                              rule sections (`define.rules`), collis
                                           lock-on modes, and the roles (roles.luau)
 lib/*.luau, lib/FAMILY/*.luau             helpers and builders families share; the shared effects, sparks
                                           and regions
-root.toml                                 the root's manifest: its name (`bn6`, which qualifies its keys:
-                                          `bn6:minibomb`), its assets' pack, the roots it requires
-types.d.luau                              the root's shared types (for editors and the checker; the
+types.d.luau                              the game's shared types (for editors and the checker; the
                                           engine's API is content/nettai/core.d.luau)
-compat/*.toml                             the original's numbers by key: tools' data, never the engine's
-locales/<lang>.toml                       the display text (names, descriptions, messages) by definition key; the own
+compat/*.toml                             the original's numbers by id: tools' data, never the engine's
+locales/<lang>.toml                       the display text (names, descriptions, messages) by definition id; the own
                                           language's (en.toml) is the content's, whose shape (lines, characters)
                                           the battle counts, the others a frontend's alone
 ```
@@ -68,8 +66,11 @@ A module is `--!strict` Luau that returns a table. While it loads it makes defin
 returns is what other modules get from `require("../../lib/bombs/bomb")` (a path relative to the requiring
 file). Nothing registers a module: the engine runs what the definitions hold.
 
-`nettai_content::root::read(dir)` reads a content root: every module, by its path without `.luau`.
-`nettai_content::root::bn6()` is BN6's: `$BN6_CONTENT`, else this repository's content/bn6.
+The folder is named as its game (content/bn6), and every id its modules, compat and locales write is in full,
+`bn6:minibomb`, as is every asset name, `asset.sprite("bn6:bomb")` (rules-in-luau.md §7.2: the content is one
+namespace). `nettai_content::root::read(dir)` reads a folder: every module, by its path without `.luau`;
+`read_all(content)` every folder of a content directory, content/nettai (the engine's declarations) aside.
+`nettai_content::root::content()` is the content directory: `$NETTAI_CONTENT`, else this repository's content/.
 
 ## 2. The pack
 
@@ -124,7 +125,7 @@ rendering, `--mute`) skips the sound.
 through the battle, by handle:
 
 ```rust
-let content: Arc<Content> = Arc::new(nettai_content::pack::load_battle(&nettai_content::root::bn6(), pack)?.0);
+let content: Arc<Content> = Arc::new(nettai_content::pack::load_battle(&nettai_content::root::content(), pack)?.0);
 let setup = RoundSetup { content: content.hash(), settings, navi_stats, ... };
 let mut b = Battle::new(setup, content.clone());
 

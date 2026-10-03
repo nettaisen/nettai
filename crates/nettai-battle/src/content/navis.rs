@@ -67,15 +67,15 @@ pub struct NaviData {
     /// Its identity: what the object that is this navi is taken for.
     #[serde(skip)]
     pub identity: Option<IdentityHandle>,
-    /// The weapons it comes with (`byte_80210DD`): what a Cross change
+    /// The weapons it comes with (`byte_80210DD`): what a navi switch
     /// gives its buttons.
     #[serde(skip)]
     pub weapons: FormWeapons,
-    /// The rest of what a Cross change brings it with, fresh; none for a
+    /// The rest of what a navi switch brings it with, fresh; none for a
     /// navi no change can bring.
     #[serde(skip)]
     pub fresh: Option<FreshStats>,
-    /// Its HP after a Cross change, by side (`byte_802DD88`).
+    /// Its HP after a navi switch, by side (`byte_802DD88`).
     #[serde(skip)]
     pub cross_hp: Option<[u16; 2]>,
 }
@@ -105,11 +105,15 @@ impl NaviTraits {
 
 serde_flags!(NaviTraits, u8);
 
-/// The forms a navi changes into, by the player's game.
+/// The forms a navi changes into, by the player's game (BN6's), and its
+/// souls (BN5's Soul Unison).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviForms {
     pub gregar: FormSet,
     pub falzar: FormSet,
+    /// The souls the custom screen's soul button offers (each a form with
+    /// its [`SoulData`]).
+    pub souls: Vec<FormHandle>,
 }
 
 impl NaviForms {
@@ -130,7 +134,7 @@ pub struct FormSet {
     pub beast_over: Option<FormHandle>,
 }
 
-/// A navi's stats when a Cross change brings it fresh (`byte_80210DD`,
+/// A navi's stats when a navi switch brings it fresh (`byte_80210DD`,
 /// with its weapons): its HP, its body's programs, the first barrier, its
 /// Mega and Giga levels, and the damage of its B+Back special.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -190,6 +194,8 @@ pub enum FormKind {
     CrossBeast,
     /// Beast Over: the navi acts on its own.
     BeastOver,
+    /// A soul (BN5's Soul Unison): united with a navi for some turns.
+    Soul,
 }
 
 impl FormKind {
@@ -214,10 +220,23 @@ impl FormKind {
     }
 }
 
+/// A soul's place on BN5's custom screen: its number (NaviStats +0x2C,
+/// the soul-used bits' and the save's soul flags' order) and the family
+/// of the chip given up for it (0x08024BE0's table).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SoulData {
+    pub number: u8,
+    pub family: ChipFamily,
+}
+
 /// One of MegaMan's forms.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FormData {
+    /// A soul's number and family (`kind = "soul"`).
+    #[serde(default)]
+    pub soul: Option<SoulData>,
     pub sprite: SpriteId,
     pub element: Element,
     #[serde(default)]
@@ -225,7 +244,7 @@ pub struct FormData {
     /// Added to the buster's damage.
     pub buster_bonus: u8,
     pub kind: FormKind,
-    /// Whose game's form it is: the Beast's roar and Beast Over's glow.
+    /// Whose game's form it is: the Beast's roar.
     #[serde(default)]
     pub game: Option<GameVersion>,
     /// MegaMan's palette in it (`byte_80203EA`: a Cross's; the base form's
@@ -268,7 +287,7 @@ pub struct FormData {
     pub fire_charge: Option<u16>,
     /// What the status reset gives it (`sub_8014536`), and what a NaviCust
     /// change gives back (`sub_801469C`; none: the reset's, without the
-    /// lock-on marker).
+    /// target marker).
     #[serde(default)]
     pub status_reset: FormEffects,
     #[serde(default)]
@@ -276,11 +295,21 @@ pub struct FormData {
     /// The height it floats at, in whole pixels (`sub_80F0608`).
     #[serde(default)]
     pub hover: i16,
+    /// Its glow: the navi's color shader by the battle time, one entry a
+    /// tick, over and over (`sub_8016A38`: Beast Over's, `byte_8016A68` and
+    /// `byte_8016A9C`). A navi in it takes no sprite palette
+    /// (`sub_80100EC`) and no invulnerable glow (`sub_8016860`).
+    #[serde(default)]
+    pub glow: Option<Vec<u16>>,
     /// The shots of the buster volley the Cross special's controller
     /// fires in it (`sub_802D4F0`).
     #[serde(default)]
     pub special_volley: u16,
-    /// A Cross change that finds the navi in this animation lets go of it
+    /// The lag at the end of a move in it, in place of MegaMan's 4 (BN5's
+    /// ShadowSoul's 0: 0x0800E0D2).
+    #[serde(default)]
+    pub move_lag: Option<u8>,
+    /// A change into a Cross that finds the navi in this animation lets go of it
     /// and of what it holds (`sub_8014B18`: GroundCross's drill).
     #[serde(default)]
     pub cross_release_anim: Option<u8>,
@@ -296,6 +325,11 @@ pub struct FormData {
     /// turn's start.
     #[serde(skip)]
     pub change: Option<nettai_content_api::ActionHandle>,
+    /// The action that takes a navi out of it back to its base form when
+    /// its side asks (BN5's souls': 0x080121D8), run while paused; none:
+    /// the framework's revert (`sub_8015614`, BN6's forms).
+    #[serde(skip)]
+    pub revert: Option<nettai_content_api::ActionHandle>,
     /// A Cross's form in Beast Out.
     #[serde(skip)]
     pub beast: Option<FormHandle>,
@@ -380,7 +414,7 @@ pub struct RunMessage {
 impl FormData {
     /// What a NaviCust change gives the form back.
     pub fn refresh_effects(&self) -> FormEffects {
-        self.navicust_refresh.unwrap_or(FormEffects(self.status_reset.0 & !FormEffects::LOCKON_MARKER))
+        self.navicust_refresh.unwrap_or(FormEffects(self.status_reset.0 & !FormEffects::TARGET_MARKER))
     }
 }
 
@@ -406,6 +440,10 @@ pub struct ChargedChips {
     /// And the chips with the `element_sword` trait.
     #[serde(default)]
     pub element_swords: bool,
+    /// Only its chips that are neither dimming chips nor dark chips (BN5's
+    /// souls, 0x0801090A).
+    #[serde(default)]
+    pub plain: bool,
 }
 
 fn yes() -> bool {
@@ -439,8 +477,8 @@ impl FormEffects {
     /// Untouchable (ObjectFlags1 0x08000000): no hit reaches it, and poison
     /// panels don't hurt it.
     pub const UNTOUCHABLE: u16 = 0x020;
-    /// The Beast's lock-on marker.
-    pub const LOCKON_MARKER: u16 = 0x040;
+    /// The target marker (BN6's Beast forms' lock-on marker).
+    pub const TARGET_MARKER: u16 = 0x040;
     /// Invulnerable for good.
     pub const INVULNERABLE: u16 = 0x080;
     /// The berserk controller starts over.
@@ -452,7 +490,7 @@ impl FormEffects {
         (0x008, "float_shoes"),
         (0x010, "floating_body"),
         (0x020, "untouchable"),
-        (0x040, "lockon_marker"),
+        (0x040, "target_marker"),
         (0x080, "invulnerable"),
         (0x100, "berserk"),
     ];
@@ -489,6 +527,10 @@ impl FormTraits {
     /// A metal panel doesn't slide the navi (BN5's soul 5, NaviStats
     /// +0x2C: 0x08017216).
     pub const STANDS_ON_METAL: u8 = 0x40;
+    /// The side's systems' controller decides the navi's idle (Beast Over's
+    /// berserk, `sub_802D322`): the player's buttons don't reach it
+    /// (`apply_actor_inputs`), and a full gauge opens the custom screen.
+    pub const CONTROLLED: u8 = 0x80;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "status_immune"),
         (0x02, "erases"),
@@ -497,6 +539,7 @@ impl FormTraits {
         (0x10, "scrap_button"),
         (0x20, "special_holds_buster"),
         (0x40, "stands_on_metal"),
+        (0x80, "controlled"),
     ];
 
     pub fn has(self, bit: u8) -> bool {
@@ -605,15 +648,19 @@ pub(crate) fn read_form(
 ) -> Result<FormData, nettai_content_api::ContentError> {
     use serde_json::Value as Json;
     // (`buster_arm` is the content's own: the arm a navi raises.)
-    let o = super::reader::fields(d, r, &["id", "identity", "cross_of", "beast", "breaks_to", "change", "weapons", "buster_arm"])?;
+    let o = super::reader::fields(d, r, &["id", "identity", "cross_of", "beast", "breaks_to", "change", "revert", "weapons", "buster_arm"])?;
     let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
-    if form.kind != FormKind::Base && form.game.is_none() {
-        return Err(super::reader::err(d, "a form that is not the base form says whose `game` it is (gregar, falzar)"));
+    // (BN5's souls are of no BN6 version.)
+    if !matches!(form.kind, FormKind::Base | FormKind::Soul) && form.game.is_none() {
+        return Err(super::reader::err(d, "a form that is not the base form or a soul says whose `game` it is (gregar, falzar)"));
+    }
+    if (form.kind == FormKind::Soul) != form.soul.is_some() {
+        return Err(super::reader::err(d, "a soul (`kind = \"soul\"`) and only a soul names its `soul`"));
     }
     Ok(form)
 }
 
-/// A navi definition's `fresh`: what a Cross change brings it with.
+/// A navi definition's `fresh`: what a navi switch brings it with.
 pub(crate) fn read_fresh(
     d: &nettai_content_api::Definition,
     record: impl Fn(&str) -> Option<nettai_content_api::RecordHandle>,
@@ -660,7 +707,7 @@ pub(crate) fn read_fresh(
     }))
 }
 
-/// A navi definition's `cross_hp`: its HP after a Cross change, by side.
+/// A navi definition's `cross_hp`: its HP after a navi switch, by side.
 pub(crate) fn read_cross_hp(d: &nettai_content_api::Definition) -> Result<Option<[u16; 2]>, nettai_content_api::ContentError> {
     use nettai_content_api::{ContentError, Data};
     let what = || ContentError::new(format!("{}.luau: navi {}: `cross_hp` is two HP values, by side", d.module, d.key));

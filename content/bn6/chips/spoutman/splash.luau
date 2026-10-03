@@ -19,7 +19,7 @@ export type State = {
     cracks: boolean,
 }
 
-local SPRITE = asset.sprite("spout-splash")
+local SPRITE = asset.sprite("bn6:spout-splash")
 
 -- `sub_80C8708`: on its panel on the ground, collision on.
 local function init(me: Object)
@@ -93,7 +93,7 @@ local function finish(me: Object)
 end
 
 splash.kind = define.kind {
-    id = "spoutman/splash",
+    id = "bn6:spoutman/splash",
     pool = "attack",
     state = { while_dimmed = "bool", cracks = "bool" },
     -- `loc_80C86D8`.

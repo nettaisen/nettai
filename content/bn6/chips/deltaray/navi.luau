@@ -47,16 +47,16 @@ export type State = {
 
 local deltaray = {}
 
-local SPRITE = asset.sprite("protoman")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_COPY_MARK = asset.sound("mark")
-local SOUND_DELTA_RAY_2 = asset.sound("delta-ray-2")
-local SOUND_LOG_IN_77 = asset.sound("log-in")
+local SPRITE = asset.sprite("bn6:protoman")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_COPY_MARK = asset.sound("bn6:mark")
+local SOUND_DELTA_RAY_2 = asset.sound("bn6:delta-ray-2")
+local SOUND_LOG_IN_77 = asset.sound("bn6:log-in")
 
 -- The flash above him as he arrives (effect 0x03), and the mark on his
 -- target (effect 0x28).
-local FLASH = define.effect { sprite = asset.sprite("deletion"), anim = 0, palette = 0 }
-local MARK = define.effect { sprite = asset.sprite("hit-sparks"), anim = 11, palette = 1 }
+local FLASH = define.effect { sprite = asset.sprite("bn6:deletion"), anim = 0, palette = 0 }
+local MARK = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 11, palette = 1 }
 
 -- What he looks for (by side, `off_80C2F2C`: an enemy navi's body), and a
 -- panel he can stand on: solid, and none of these (by side).
@@ -75,7 +75,7 @@ local SWORD_ANIM = 0x0B
 local SLASH = parts.effects.wide
 
 -- His bursts' look (the follow effect's look 4).
-local BURST = follow_effect.look { sprite = asset.sprite("follow-effect"), anim = 0, palette = 0, behavior = "flash" }
+local BURST = follow_effect.look { sprite = asset.sprite("bn6:follow-effect"), anim = 0, palette = 0, behavior = "flash" }
 
 local function st(me: Object): State
     return me.state :: State
@@ -165,7 +165,7 @@ end
 
 -- `sub_80C2C14`: from the column ahead, the first enemy navi (rows 1 to
 -- 3) whose panel behind and above is one he can stand on: its panel is
--- his target (FuturePanel, the delta's centre), 30 ticks. None: 15 ticks,
+-- his target (FuturePanel, the delta's center), 30 ticks. None: 15 ticks,
 -- and Timer2 0xFF.
 local function search(me: Object)
     local s = st(me)
@@ -478,7 +478,7 @@ local function gone(me: Object)
 end
 
 deltaray.kind = define.kind {
-    id = "deltaray/navi",
+    id = "bn6:deltaray/navi",
     pool = "actor",
     state = {
         controller = "object",

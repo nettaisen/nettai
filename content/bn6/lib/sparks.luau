@@ -6,12 +6,12 @@ local sparks = {}
 -- By element (null, fire, aqua, elec, wood, and 5), the spark
 -- `sub_801A146` gives an attack of that element (hit effects 0 to 5).
 local BY_ELEMENT: { [number]: Spark } = {
-    [0] = define.spark { sprite = asset.sprite("hit-sparks"), anim = 0, palette = 0 },
-    [1] = define.spark { sprite = asset.sprite("hit-sparks"), anim = 2, palette = 0 },
-    [2] = define.spark { sprite = asset.sprite("hit-sparks"), anim = 3, palette = 0 },
-    [3] = define.spark { sprite = asset.sprite("hit-sparks"), anim = 4, palette = 0 },
-    [4] = define.spark { sprite = asset.sprite("hit-sparks"), anim = 5, palette = 0 },
-    [5] = define.spark { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 },
+    [0] = define.spark { sprite = asset.sprite("bn6:hit-sparks"), anim = 0, palette = 0 },
+    [1] = define.spark { sprite = asset.sprite("bn6:hit-sparks"), anim = 2, palette = 0 },
+    [2] = define.spark { sprite = asset.sprite("bn6:hit-sparks"), anim = 3, palette = 0 },
+    [3] = define.spark { sprite = asset.sprite("bn6:hit-sparks"), anim = 4, palette = 0 },
+    [4] = define.spark { sprite = asset.sprite("bn6:hit-sparks"), anim = 5, palette = 0 },
+    [5] = define.spark { sprite = asset.sprite("bn6:pink-flash"), anim = 0, palette = 0 },
 }
 
 -- The element sparks by name (hit effects 1 to 4), for hits that name
@@ -29,21 +29,21 @@ sparks.aqua = BY_ELEMENT[2]
 sparks.elec = BY_ELEMENT[3]
 
 -- A cannon's impact (spark 7: the cannons, AirShot).
-sparks.impact = define.spark { sprite = asset.sprite("impact"), anim = 0, palette = 0 }
+sparks.impact = define.spark { sprite = asset.sprite("bn6:impact"), anim = 0, palette = 0 }
 
 -- A breaking hit (spark 0x0A: the break family's shots, a thrown obstacle,
 -- JustcOne's fist, a rock; GroundMan's drill and rocks, DustMan's junk,
 -- BigHook's flames).
-sparks.breaking = define.spark { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
+sparks.breaking = define.spark { sprite = asset.sprite("bn6:hit-sparks"), anim = 1, palette = 0 }
 
 -- A shot's impact (spark 9: a projectile variant nothing names yet).
-sparks.shot = define.spark { sprite = asset.sprite("shot-impact"), anim = 0, palette = 0 }
+sparks.shot = define.spark { sprite = asset.sprite("bn6:shot-impact"), anim = 0, palette = 0 }
 
 -- A blast (spark 0x0B: GigaCan's shot).
-sparks.blast = define.spark { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+sparks.blast = define.spark { sprite = asset.sprite("bn6:explosion"), anim = 0, palette = 0 }
 
 -- A bat's impact (spark 0x0D: BatCan's shot).
-sparks.bat = define.spark { sprite = asset.sprite("hit-marker"), anim = 1, palette = 0 }
+sparks.bat = define.spark { sprite = asset.sprite("bn6:hit-marker"), anim = 1, palette = 0 }
 
 -- The element sparks by name (hit effects 1 to 3), for hits that name
 -- theirs rather than take their element's.
@@ -53,11 +53,11 @@ sparks.fire, sparks.aqua, sparks.elec = BY_ELEMENT[1], BY_ELEMENT[2], BY_ELEMENT
 sparks.wood = BY_ELEMENT[4]
 
 -- The erase beams' spark (hit effect 0x0C).
-sparks.erase = define.spark { sprite = asset.sprite("pink-flash"), anim = 0, palette = 2 }
+sparks.erase = define.spark { sprite = asset.sprite("bn6:pink-flash"), anim = 0, palette = 2 }
 
 -- A heavy hit's (hit effect 6): Magnum's shot, the beasts' claws and bites,
 -- the flying shot's arrows, VDoll's curse, JudgeMan's books.
-sparks.heavy = define.spark { sprite = asset.sprite("hit-sparks"), anim = 8, palette = 0 }
+sparks.heavy = define.spark { sprite = asset.sprite("bn6:hit-sparks"), anim = 8, palette = 0 }
 
 -- `sub_801A146`: the spark of an attack of `element` (its primary
 -- element, the low nibble).
@@ -72,8 +72,8 @@ end
 
 -- The rest of the original's sparks (gen-content).
 -- Spark 0x08.
-sparks.guard = define.spark { sprite = asset.sprite("hit"), anim = 0, palette = 0 }
+sparks.guard = define.spark { sprite = asset.sprite("bn6:hit"), anim = 0, palette = 0 }
 -- Spark 0x0E.
-sparks.uninstall = define.spark { sprite = asset.sprite("spark-0e"), anim = 0, palette = 0 }
+sparks.uninstall = define.spark { sprite = asset.sprite("bn6:spark-0e"), anim = 0, palette = 0 }
 
 return sparks

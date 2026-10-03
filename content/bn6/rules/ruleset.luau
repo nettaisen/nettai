@@ -5,15 +5,20 @@
 -- take them slice by slice (§8).
 
 local beast = require("./beast/system")
+local cross = require("./cross/system")
 local folder = require("./folder/system")
+local emotion = require("./emotion/system")
 local forms = require("./forms/system")
 local navicust = require("./navicust/system")
 local patch_cards = require("./patch-cards/system")
 
 return define.ruleset {
-    id = "bn6",
+    id = "bn6:stock",
     stock = true,
     systems = {
+        -- The Crosses on the custom screen: ChargeCross's chips and the
+        -- hand size.
+        cross,
         -- The NaviCust: the programs a player placed, compiled into the
         -- navi's stats (docs/design/navicust.md); before the patch cards,
         -- which apply to what it made.
@@ -24,6 +29,9 @@ return define.ruleset {
         forms.system,
         -- Beast Out's turns.
         beast,
+        -- Its emotions: tired at the start, Full Synchro on a counter, the
+        -- NaviCust's swing bug.
+        emotion.system,
         -- The folder's rules, which tools ask (the simulation never does).
         folder,
     },

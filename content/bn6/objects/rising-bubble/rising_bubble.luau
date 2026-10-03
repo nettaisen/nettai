@@ -13,7 +13,7 @@ export type State = {
     palette: number,
 }
 
-local SPRITE = asset.sprite("small-puff")
+local SPRITE = asset.sprite("bn6:small-puff")
 local ANIM = 1
 -- Up two pixels a tick.
 local RISE = 0x2_0000
@@ -44,7 +44,7 @@ local function init(me: Object)
 end
 
 rising_bubble.kind = define.kind {
-    id = "rising-bubble",
+    id = "bn6:rising-bubble",
     pool = "effect",
     state = { palette = "u8" },
     -- `sub_80E1CF8`.

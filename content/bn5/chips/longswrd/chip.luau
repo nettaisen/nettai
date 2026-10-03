@@ -8,7 +8,7 @@ local slash = require("@bn6/lib/swords/slash")
 local swords = require("../../lib/swords")
 
 return define.chip {
-    id = "longswrd",
+    id = "bn5:longswrd",
     codes = { "C", "M", "S" },
     element = "null",
     family = "sword",
@@ -22,6 +22,7 @@ return define.chip {
     slot_in_limit = 3,
     action = slash.action {
         blade = swords.blade,
+        blade_anim = swords.blade_anim,
         hit = { region = regions.long, collision = swords.slashes_navis, hit_mod = 3 },
         effect = swords.effects.long,
         sound = swords.swing,

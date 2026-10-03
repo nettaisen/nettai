@@ -36,15 +36,15 @@ export type State = {
     attackers: number,
 }
 
-local SPRITE = asset.sprite("guardian-statue")
+local SPRITE = asset.sprite("bn6:guardian-statue")
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
 local IDENTITY = define.identity {
-    id = "guardian",
+    id = "bn6:guardian",
     class = "field_object",
     version = 4,
     ai_index = 1,
-    look = { sprite = asset.sprite("guardian-statue"), anim = 0, palette = 0, shadow = true },
+    look = { sprite = asset.sprite("bn6:guardian-statue"), anim = 0, palette = 0, shadow = true },
 }
 -- How it looks absorbed (the original's obstacle kind's sprite: its own).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
@@ -55,11 +55,11 @@ local APPEAR_TICKS = 3
 local SOLID, OCCUPIED = 0x10, 0x0F88_0080
 -- The damage the stages' statues strike with.
 local STAGE_DAMAGE = 200
-local SOUND_PLACE = asset.sound("appear")
-local SOUND_CRUMBLE = asset.sound("panel-poison")
-local SOUND_STRIKE = asset.sound("beast-over-burst")
+local SOUND_PLACE = asset.sound("bn6:appear")
+local SOUND_CRUMBLE = asset.sound("bn6:panel-poison")
+local SOUND_STRIKE = asset.sound("bn6:beast-over-burst")
 -- The flash it arrives in, 16 pixels up (effect 0x15).
-local ARRIVAL = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 }
+local ARRIVAL = define.effect { sprite = asset.sprite("bn6:puff"), anim = 3, palette = 0 }
 -- What it is and reaches: a neutral obstacle that everything reaches
 -- (row 0x0E, while dimmed too, breaking), hit modifier 3.
 local IS = collision.neutral_body
@@ -79,7 +79,7 @@ local STRIKE_REGION: { [number]: Region } = {
 }
 local STRIKE_IS = collision.thrown_piercing_break
 local STRIKE_HITS, STRIKE_HIT_MOD = collision.hits_navis, 3
-local STRIKE_BURST = define.effect { sprite = asset.sprite("lightning"), anim = 0, palette = 0 }
+local STRIKE_BURST = define.effect { sprite = asset.sprite("bn6:lightning"), anim = 0, palette = 0 }
 local STRIKE_ANIM = 1
 
 -- Its actions (`off_80D4D60`).
@@ -362,7 +362,7 @@ function statue.spawn(owner: Object?, x: number, y: number, damage: number, pos:
 end
 
 KIND = define.kind {
-    id = "guardian/statue",
+    id = "bn6:guardian/statue",
     pool = "attack",
     state = { staged = "bool", quiet = "bool", strike = "bool", attackers = "u32" },
     -- `sub_80D4C84`.

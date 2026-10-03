@@ -19,7 +19,7 @@ export type State = {
     ticks: number,
 }
 
-local SOUND = asset.sound("invisible")
+local SOUND = asset.sound("bn6:invisible")
 local WAIT = 0x1E
 
 -- `sub_80E7518`: the user turns invisible, then 31 ticks pass.
@@ -44,7 +44,7 @@ local function effect(me: Object)
 end
 
 invisible.kind = define.kind {
-    id = "invisibl/controller",
+    id = "bn6:invisibl/controller",
     pool = "effect",
     state = { ticks = "u16" },
     -- `sub_80E74D4`.

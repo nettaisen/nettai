@@ -34,7 +34,7 @@ export type State = {
 
 -- ProtoMan's look and identity (which his parts and attach points come
 -- by).
-local PROTOMAN_SPRITE = asset.sprite("protoman")
+local PROTOMAN_SPRITE = asset.sprite("bn6:protoman")
 local PROTOMAN = protoman.identity
 -- Where each stands from the user's spot (`dword_80BCE44`, pixels; x
 -- toward its front).
@@ -42,17 +42,17 @@ local OFFSET: { [string]: { number } } = { megaman = { -10, -10 }, protoman = { 
 
 -- The charge (effects 0x4E and 0x4F at its attach point 0, for 40 and 20
 -- ticks).
-local CHARGING = define.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
-local CHARGED = define.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
+local CHARGING = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 0, palette = 0 }
+local CHARGED = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 2, palette = 0 }
 local CHARGE_TICKS, CHARGED_AT, CHARGING_LASTS = 0x3C, 0x14, 0x28
-local SOUND_CHARGING = asset.sound("buster-charge")
-local SOUND_CHARGED = asset.sound("buster-charged")
+local SOUND_CHARGING = asset.sound("bn6:buster-charge")
+local SOUND_CHARGED = asset.sound("bn6:buster-charged")
 -- Ten volleys (or slashes), 15 ticks apart, flashing on their first,
 -- sixth and eleventh ticks; then 31 ticks.
 local VOLLEYS, VOLLEY_TICKS, FLASH_AT, FLASH_AT_2, AFTER = 10, 0xF, 0xA, 5, 0x1E
-local SOUND_VOLLEY = asset.sound("buster-shot")
-local SOUND_SLASH = asset.sound("sword-swing")
-local SOUND_APPEAR = asset.sound("appear")
+local SOUND_VOLLEY = asset.sound("bn6:buster-shot")
+local SOUND_SLASH = asset.sound("bn6:sword-swing")
+local SOUND_APPEAR = asset.sound("bn6:appear")
 -- MegaMan's flash, ProtoMan's (effects 0x21, 0x16).
 local FLASH = { megaman = effects.flash, protoman = parts.effects.wide }
 -- ProtoMan's sword (attachment row 3, animation 0xB).
@@ -349,7 +349,7 @@ local function protoman_appear(me: Object)
     else
         error(string.format("DblHero's ProtoMan: appearing phase %#x reads past off_80BD07C", phase))
     end
-    -- sub_80BD374: the white as a colour shader.
+    -- sub_80BD374: the white as a color shader.
     me.sprite.color_shader = s.white * 0x421
 end
 
@@ -489,7 +489,7 @@ local function init(me: Object)
 end
 
 heroes.kind = define.kind {
-    id = "dblhero/heroes",
+    id = "bn6:dblhero/heroes",
     pool = "actor",
     state = {
         controller = "object",

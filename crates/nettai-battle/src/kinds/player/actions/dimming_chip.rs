@@ -44,7 +44,7 @@ pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) 
     // The chip's controller. (The original's table, off_802CCB4, has null
     // entries, 34, 35, 39 and 40, where the game jumps to address 0:
     // Gregar's and Falzar's chips' hooks say so; no chip names the others.)
-    let chip = b.content.chip_or_zeroed(a.chip);
+    let chip = b.chip_or_zeroed(a.chip);
     let hook = match b.content.defs.chip(chip).usage {
         ChipUsage::Dimming(f) => f,
         u => panic!("chip {:?} is a dimming chip's, but it is used as {u:?}", b.content.defs.chip(chip).key),

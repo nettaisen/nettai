@@ -88,6 +88,8 @@ fn timer_index(t: StatusTimer) -> usize {
 
 fn request_bit(f: RequestFlag) -> u32 {
     match f {
+        // (Not action requests: `request` and `set_request` read flag2.)
+        RequestFlag::Slide | RequestFlag::Anger => 0,
         RequestFlag::Buster => request::BUSTER,
         RequestFlag::ChargedShot => request::CHARGED_SHOT,
         RequestFlag::Chip => request::CHIP,
@@ -107,12 +109,26 @@ fn request_bit(f: RequestFlag) -> u32 {
         RequestFlag::BHeld => request::B_HELD,
         RequestFlag::StunStrike => request::STUN_STRIKE,
         RequestFlag::SelectSpecial => request::SELECT_SPECIAL,
-        RequestFlag::CrossChange => request::CROSS_CHANGE,
-        RequestFlag::CrossDeath => request::CROSS_DEATH,
+        RequestFlag::NaviSwitch => request::NAVI_SWITCH,
+        RequestFlag::SwitchKnockout => request::SWITCH_KNOCKOUT,
         RequestFlag::Mode9A => request::MODE9_A,
-        RequestFlag::CrossSpecial => request::CROSS_SPECIAL,
+        RequestFlag::Takeover => request::TAKEOVER,
         RequestFlag::Volley => request::VOLLEY,
         RequestFlag::WeaknessHit => request::WEAKNESS_HIT,
+    }
+}
+
+/// The collision's flag2 bits of the slide and anger requests
+/// (`RequestFlag::Slide`, `RequestFlag::Anger`).
+const SLIDE_REQUEST: u32 = 0x10;
+const ANGER_REQUEST: u32 = 0x200;
+
+/// The flag2 bit a request that isn't an action request reads.
+fn flag2_request(f: RequestFlag) -> Option<u32> {
+    match f {
+        RequestFlag::Slide => Some(SLIDE_REQUEST),
+        RequestFlag::Anger => Some(ANGER_REQUEST),
+        _ => None,
     }
 }
 
@@ -125,9 +141,9 @@ fn navi_state_bit(f: NaviState) -> u32 {
         NaviState::NoCharge => status::NO_CHARGE,
         NaviState::CanTurn => status::CAN_TURN,
         NaviState::TrapArmed => status::TRAP_ARMED,
-        NaviState::ChangingCross => status::CHANGING_CROSS,
-        NaviState::CrossKnockout => status::CROSS_KNOCKOUT,
-        NaviState::Crossed => status::CROSSED,
+        NaviState::ChangingCross => status::SWITCHING_NAVI,
+        NaviState::CrossKnockout => status::SWITCH_KNOCKOUT,
+        NaviState::Crossed => status::SWITCHED,
         NaviState::Volley => status::VOLLEY,
         NaviState::Uninterruptible => status::UNINTERRUPTIBLE,
         NaviState::CrossBreaking => status::CROSS_BREAKING,
@@ -244,6 +260,17 @@ fn int(v: FieldValue) -> i64 {
     }
 }
 
+impl Battle {
+    /// Side `side`'s custom screen, which a custom hook reaches (§4.4).
+    fn custom_screen(&self, side: u8) -> ApiResult<&crate::custom::screen::Screen> {
+        self.custom.sides[side as usize & 1].screen.as_ref().ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+    }
+
+    fn custom_screen_mut(&mut self, side: u8) -> ApiResult<&mut crate::custom::screen::Screen> {
+        self.custom.sides[side as usize & 1].screen.as_mut().ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+    }
+}
+
 impl CoreApi for Battle {
     // ---- The battle ------------------------------------------------------
 
@@ -274,7 +301,7 @@ impl CoreApi for Battle {
             }
         } else {
             // Another object's chip word: zeroed, the zeroed chip.
-            match o.chip.or_else(|| self.content.zeroed_chip()) {
+            match o.chip.or_else(|| self.zeroed_chip()) {
                 Some(h) => self.content.chip(h).flags,
                 None => ChipFlags(0),
             }
@@ -286,6 +313,9 @@ impl CoreApi for Battle {
         match f {
             BattleInfo::Link => Value::Bool(self.setup.settings.effects & crate::setup::effects::LINK != 0),
             BattleInfo::BossRank => Value::Bool(self.setup.settings.effects & crate::setup::effects::BOSS_RANK != 0),
+            BattleInfo::NoDarkChips => {
+                Value::Bool(self.setup.settings.effects & crate::setup::effects::NO_DARK_CHIPS != 0)
+            }
             BattleInfo::Mode => Value::Int(self.round.mode_copy as i64),
             BattleInfo::PanelPattern => Value::Int(self.content.stage(self.setup.settings.stage).panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
@@ -307,7 +337,7 @@ impl CoreApi for Battle {
     }
 
     fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef> {
-        kinds::beast_over_burst::spawn(self, navi)
+        kinds::burst::spawn(self, navi)
     }
 
     fn show_hud(&mut self, part: HudPart, shown: bool) {
@@ -449,6 +479,7 @@ impl CoreApi for Battle {
         };
         match (stat, v) {
             (NaviStat::Element, FieldValue::U8(x)) => s.element = x,
+            (NaviStat::Mood, FieldValue::U8(x)) => s.mood = x,
             (NaviStat::ChipRecovery, FieldValue::U16(x)) => s.chip_recovery = x,
             (NaviStat::BusterShot, FieldValue::Ref(_)) => s.weapons.buster_shot = record,
             (NaviStat::ChargeShotKind, FieldValue::Ref(_)) => s.weapons.charge_shot_kind = record,
@@ -575,12 +606,60 @@ impl CoreApi for Battle {
         *frags = frags.wrapping_sub(n);
     }
 
+    fn custom_refuse(&mut self, side: u8) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.refuse();
+        Ok(())
+    }
+
+    fn custom_sacrifice(&mut self, side: u8) -> ApiResult<()> {
+        let s = self.custom_screen_mut(side)?;
+        let slot = s.cursor_button_slot().ok_or_else(|| ApiError::Other("custom.sacrifice: no button under the cursor".into()))?;
+        s.start_sacrifice(slot);
+        Ok(())
+    }
+
+    fn custom_redeal(&mut self, side: u8) -> ApiResult<()> {
+        let s = self.custom_screen_mut(side)?;
+        let slot = s.cursor_button_slot().ok_or_else(|| ApiError::Other("custom.redeal: no button under the cursor".into()))?;
+        s.start_redeal(slot);
+        Ok(())
+    }
+
+    fn custom_last_pick_is_chip(&self, side: u8) -> ApiResult<bool> {
+        Ok(self.custom_screen(side)?.last_pick_is_chip())
+    }
+
+    fn custom_cursor_state(&self, side: u8) -> ApiResult<&'static str> {
+        let s = self.custom_screen(side)?;
+        let slot = s.cursor_button_slot().ok_or_else(|| ApiError::Other("custom.cursor_state: no button under the cursor".into()))?;
+        use crate::custom::screen::SlotState;
+        Ok(match s.slots[slot as usize].state {
+            SlotState::Selectable => "selectable",
+            SlotState::Unavailable => "unavailable",
+            SlotState::Selected => "selected",
+        })
+    }
+
+    fn take_over(&mut self, side: u8, ticks: u16) {
+        let s = &mut self.sides[side as usize & 1];
+        s.takeover = 1;
+        s.takeover_ticks = ticks;
+    }
+
+    fn end_takeover(&mut self, side: u8) {
+        self.sides[side as usize & 1].takeover = 0;
+    }
+
+    fn takeover_ticks(&self, side: u8) -> u16 {
+        self.sides[side as usize & 1].takeover_ticks
+    }
+
     fn side_special(&self, side: u8) -> SideSpecial {
         let s = &self.sides[side as usize & 1];
         if s.select_special != 0 {
             SideSpecial::Select
-        } else if s.cross_special != 0 {
-            SideSpecial::Cross
+        } else if s.takeover != 0 {
+            SideSpecial::Takeover
         } else {
             SideSpecial::None
         }
@@ -627,6 +706,12 @@ impl CoreApi for Battle {
     fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16) {
         if let Some(b) = self.hands[side as usize & 1].attack_bonus.get_mut(i as usize) {
             *b = b.wrapping_add(n);
+        }
+    }
+
+    fn set_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16) {
+        if let Some(b) = self.hands[side as usize & 1].attack_bonus.get_mut(i as usize) {
+            *b = n;
         }
     }
 
@@ -689,6 +774,10 @@ impl CoreApi for Battle {
 
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8) {
         Battle::bump_side_stat(self, side & 1, index as usize & 0xF, n);
+    }
+
+    fn set_side_stat(&mut self, side: u8, index: u8, n: u8) {
+        self.side_stats[side as usize & 1][index as usize & 0xF] = n;
     }
 
     // Subtype 8 (Wind and Fan).
@@ -900,7 +989,6 @@ impl CoreApi for Battle {
             A::Engine(E::NaviChip) => NaviAction::Engine("navi_chip"),
             A::Engine(E::InstantChip) => NaviAction::Engine("instant_chip"),
             A::Engine(E::FormChange) => NaviAction::Engine("form_change"),
-            A::Engine(E::CrossSpecial) => NaviAction::Engine("cross_special"),
             A::Content(h) => NaviAction::Content(h.0),
         })
     }
@@ -1281,7 +1369,13 @@ impl CoreApi for Battle {
             ActorField::Extra => i(at.extra as i64),
             ActorField::SpecialSource => i(at.special_source as i64),
             ActorField::AttackKind => i(at.kind as i64),
-            ActorField::BeastLockon => i(at.beast_lockon as i64),
+            ActorField::Wrapped => i(at.wrapped as i64),
+            ActorField::WrapperFresh => Value::Bool(at.wrapper_fresh),
+            ActorField::ControllerFresh => Value::Bool(a.controller_fresh),
+            ActorField::MoodHeld => Value::Bool(a.tired || a.exhausted),
+            ActorField::Ticked => Value::Bool(a.ticked),
+            ActorField::Exhausted => Value::Bool(a.exhausted),
+            ActorField::FaceTarget => at.face_target.map_or(Value::Nil, Value::Object),
             ActorField::RushLockon => at.rush_lockon.map_or(Value::Nil, |h| Value::Def(Registry::Lockon, h.0)),
             ActorField::AttackChip => at.chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ActorField::Marker => i(at.marker as i64),
@@ -1290,7 +1384,7 @@ impl CoreApi for Battle {
             ActorField::AttackCount => i(at.count as i64),
             ActorField::ActorType => i(actor_type_index(a.actor_type)),
             ActorField::AiIndex => i(a.ai_index as i64),
-            ActorField::LockonMarker => a.lockon_marker.into(),
+            ActorField::TargetMarker => a.target_marker.into(),
             ActorField::ChargeGlow => a.charge_glow.into(),
             ActorField::FullSynchroAura => a.full_synchro_aura.into(),
             ActorField::ChargeLevel => i(a.charge_level as i64),
@@ -1302,8 +1396,9 @@ impl CoreApi for Battle {
             ActorField::BusterWeapon => weapon(a.buster),
             ActorField::ChargeShotWeapon => weapon(a.charge_shot),
             ActorField::BackSpecialWeapon => weapon(a.back_special),
-            ActorField::BeastOutSpent => Value::Bool(a.beast_out_spent),
+            ActorField::Tired => Value::Bool(a.tired),
             ActorField::BarrierVisual => a.barrier_visual.into(),
+            ActorField::PlusTint => i(a.plus_tint as i64),
         })
     }
 
@@ -1361,14 +1456,18 @@ impl CoreApi for Battle {
             (ActorField::AttackLockout, FieldValue::U8(x)) => at.lockout = x,
             (ActorField::Extra, FieldValue::U16(x)) => at.extra = x,
             (ActorField::SpecialSource, FieldValue::U8(x)) => at.special_source = x,
-            (ActorField::BeastLockon, FieldValue::U8(x)) => at.beast_lockon = x,
+            (ActorField::Wrapped, FieldValue::U8(x)) => at.wrapped = x,
+            (ActorField::WrapperFresh, FieldValue::Bool(x)) => at.wrapper_fresh = x,
+            (ActorField::ControllerFresh, FieldValue::Bool(x)) => a.controller_fresh = x,
+            (ActorField::Ticked, FieldValue::Bool(x)) => a.ticked = x,
+            (ActorField::Exhausted, FieldValue::Bool(x)) => a.exhausted = x,
             (ActorField::RushLockon, FieldValue::Ref(_)) => at.rush_lockon = rush_lockon,
             (ActorField::AttackChip, FieldValue::Ref(_)) => at.chip = attack_chip,
             (ActorField::Marker, FieldValue::U32(x)) => at.marker = x,
             (ActorField::ThrownLook, FieldValue::Ref(_)) => at.thrown_look = thrown_look,
             (ActorField::ThrownAnim, FieldValue::U8(x)) => at.thrown_anim = x,
             (ActorField::AttackCount, FieldValue::U16(x)) => at.count = x,
-            (ActorField::LockonMarker, FieldValue::Object(r)) => a.lockon_marker = r,
+            (ActorField::TargetMarker, FieldValue::Object(r)) => a.target_marker = r,
             (ActorField::ChargeGlow, FieldValue::Object(r)) => a.charge_glow = r,
             (ActorField::FullSynchroAura, FieldValue::Object(r)) => a.full_synchro_aura = r,
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
@@ -1376,18 +1475,27 @@ impl CoreApi for Battle {
             (ActorField::BackSpecialCooldown, FieldValue::U8(x)) => a.back_special_cooldown = x,
             (ActorField::BusterWeapon, FieldValue::Ref(_)) => a.buster = weapon,
             (ActorField::ChargeShotWeapon, FieldValue::Ref(_)) => a.charge_shot = weapon,
-            (ActorField::BeastOutSpent, FieldValue::Bool(x)) => a.beast_out_spent = x,
+            (ActorField::Tired, FieldValue::Bool(x)) => a.tired = x,
             (ActorField::BarrierVisual, FieldValue::Object(r)) => a.barrier_visual = r,
+            (ActorField::PlusTint, FieldValue::U16(x)) => a.plus_tint = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
     }
 
     fn request(&self, o: ObjectRef, f: RequestFlag) -> ApiResult<bool> {
+        if let Some(bit) = flag2_request(f) {
+            return Ok(self.collision_of(o)?.f2 & bit != 0);
+        }
         Ok(self.actor_of(o)?.requests & request_bit(f) != 0)
     }
 
     fn set_request(&mut self, o: ObjectRef, f: RequestFlag, on: bool) -> ApiResult<()> {
+        if let Some(bit) = flag2_request(f) {
+            let c = self.collision_of_mut(o)?;
+            c.f2 = if on { c.f2 | bit } else { c.f2 & !bit };
+            return Ok(());
+        }
         let a = self.actor_of_mut(o)?;
         let bit = request_bit(f);
         a.requests = if on { a.requests | bit } else { a.requests & !bit };
@@ -1589,6 +1697,17 @@ impl CoreApi for Battle {
         kinds::player::form_change_target(self, o)
     }
 
+    fn stop_moving(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::actions::transform::stop_moving(self, o);
+        Ok(())
+    }
+
+    fn form_change_soul(&self, o: ObjectRef) -> (u8, bool) {
+        let t = &self.turn_transforms[self.objects.get(o).alliance as usize & 1];
+        (t.turns, t.chaos)
+    }
+
     fn pin_overlay(&mut self, o: ObjectRef) {
         kinds::player::form::pin_overlay(self, o);
     }
@@ -1622,7 +1741,69 @@ impl CoreApi for Battle {
     }
 
     fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: Option<nettai_content_api::LockonHandle>) -> PanelPos {
-        kinds::player::actions::beast_rush::lockon_panel(self, o, target, mode)
+        kinds::player::actions::lockon::lockon_panel(self, o, target, mode)
+    }
+
+    fn next_chip(&self, o: ObjectRef) -> ApiResult<Option<ChipHandle>> {
+        self.actor_of(o)?;
+        Ok(kinds::player::next_chip(self, o))
+    }
+
+    fn use_chip(&mut self, o: ObjectRef) -> ApiResult<bool> {
+        self.actor_of(o)?;
+        Ok(kinds::player::chip_use::use_chip(self, o).is_some())
+    }
+
+    fn start_chip_attack(&mut self, o: ObjectRef, chip: ChipHandle, kind: u8) -> ApiResult<()> {
+        self.actor_of(o)?;
+        let action = kinds::player::chip_use::chip_action(self, o, Some(chip));
+        kinds::player::set_attack(self, o, action, kind);
+        Ok(())
+    }
+
+    fn start_move_to(&mut self, o: ObjectRef, target: PanelPos, end_lag: u16) -> ApiResult<()> {
+        self.actor_of(o)?;
+        use kinds::player::actions::movement::{self, MoveKind};
+        movement::start_absolute(self, o, target, end_lag, MoveKind::Absolute);
+        Ok(())
+    }
+
+    fn run_wrapped(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        let action = kinds::player::navi_action(self, o);
+        if !action.is_attack() {
+            return Err(ApiError::Other(format!("run_wrapped: the navi runs {action:?}, not an attack")));
+        }
+        kinds::player::actions::dispatch(self, o, action);
+        Ok(())
+    }
+
+    fn chain_next_chip(&mut self, o: ObjectRef) -> ApiResult<bool> {
+        self.actor_of(o)?;
+        Ok(kinds::player::chip_use::chain_next_chip(self, o))
+    }
+
+    fn panel_trail(&mut self, o: ObjectRef, from: PanelPos) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::actions::movement::panel_trail(self, o, from);
+        Ok(())
+    }
+
+    fn freeze_target_marker(&mut self, marker: ObjectRef, on: bool) -> ApiResult<()> {
+        if !self.objects.is_allocated(marker) || self.content.defs.engine_kind(self.objects.get(marker).kind) != Some(kinds::EngineKind::TargetMarker) {
+            return Err(ApiError::Other("freeze_target_marker: not a lock-on marker".into()));
+        }
+        if on { kinds::target_marker::freeze(self, marker) } else { kinds::target_marker::unfreeze(self, marker) }
+        Ok(())
+    }
+
+    fn face_toward(&mut self, o: ObjectRef, target: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        if !self.objects.is_allocated(target) {
+            return Err(ApiError::Other("face_toward: the target is gone".into()));
+        }
+        kinds::player::face_toward(self, o, target);
+        Ok(())
     }
 
     fn can_move(&self, o: ObjectRef) -> bool {
@@ -2161,7 +2342,7 @@ impl CoreApi for Battle {
         // The original tests the NameID word, whose high half is an
         // actor's next chip (0xFFFF for none) and 0 for anything else: an
         // actor's word is a field object's only with chip 0 next.
-        let plain = ob.actor.is_none() || (ob.chip.is_some() && ob.chip == self.content.zeroed_chip());
+        let plain = ob.actor.is_none() || (ob.chip.is_some() && ob.chip == self.zeroed_chip());
         let identity = self.content.identity(ob.identity);
         plain && identity.class == crate::content::IdentityClass::FieldObject && identity.scrap
     }
@@ -2183,7 +2364,7 @@ impl CoreApi for Battle {
         // (the original's NameID 0x1A0, or past the link navis'), else
         // MegaMan's.
         use crate::content::IdentityClass;
-        let base = self.content.base_form();
+        let base = self.content.base_form_for(megaman);
         let megaman_identity = self.content.navi(megaman).identity;
         let user_name = self.objects.get(user).identity;
         let class = self.content.identity(user_name).class;

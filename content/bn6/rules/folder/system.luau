@@ -153,6 +153,6 @@ local function check(side: number)
 end
 
 return define.system {
-    id = "folder",
+    id = "bn6:folder",
     hooks = { folder_check = check },
 }

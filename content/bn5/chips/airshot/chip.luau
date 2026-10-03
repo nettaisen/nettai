@@ -9,10 +9,10 @@ local attachment = require("@bn6/objects/attachment/attachment")
 local variants = require("../../objects/projectile/variants")
 
 -- BN5's air shooter (its attachment row 8: BN6's row 0x13's look, BN5's sprite).
-local SHOOTER = attachment.look { sprite = asset.sprite("air-shooter"), palette = 0, attach_point = 10 }
+local SHOOTER = attachment.look { sprite = asset.sprite("bn5:air-shooter"), palette = 0, attach_point = 10 }
 
 return define.chip {
-    id = "airshot",
+    id = "bn5:airshot",
     codes = { "*" },
     element = "null",
     family = "wind",

@@ -9,7 +9,7 @@ local wave = require("./wave")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "chargecross-beast",
+    id = "bn6:chargecross-beast",
     kind = "cross_beast",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -17,13 +17,13 @@ return define.form {
     cross_of = chargeman,
     -- A weakness hit breaks the Cross: back to the Beast.
     breaks_to = gregar_beast,
-    sprite = asset.sprite("chargecross-beast"),
+    sprite = asset.sprite("bn6:chargecross-beast"),
     element = "fire",
     buster_bonus = 0,
     weapons = { buster = gregar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = wave.weapon },
     -- Its face in the emotion window (`byte_801E700`): the Falzar ROM has no
     -- ChargeCross Beast face, and shows DustCross Beast's.
-    mugshot = asset.mugshot("chargecross-beast"),
+    mugshot = asset.mugshot("bn6:chargecross-beast"),
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
     null_bonus = 30,
     -- The chips A charges.
@@ -31,7 +31,7 @@ return define.form {
     -- The A charge builds up the next Fire chip's damage, up to this much.
     fire_charge = 100,
     -- What its status reset gives the navi (`sub_8014536`).
-    status_reset = { "super_armor", "lockon_marker", "invulnerable", "berserk" },
+    status_reset = { "super_armor", "target_marker", "invulnerable", "berserk" },
     -- After a NaviCust change only the SuperArmor comes back (`sub_801469C`).
     navicust_refresh = { "super_armor" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.

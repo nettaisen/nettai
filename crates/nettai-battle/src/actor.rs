@@ -60,14 +60,17 @@ pub mod request {
     pub const STUN_STRIKE: u32 = 0x80000;
     pub const SELECT_SPECIAL: u32 = 0x0200_0000;
     /// Change Cross while paused (`sub_802DCDE`, from the transformation
-    /// sequencer): pause-time action 0x1C with `status::CHANGING_CROSS`.
-    pub const CROSS_CHANGE: u32 = 0x0400_0000;
+    /// sequencer): pause-time action 0x1C with `status::SWITCHING_NAVI`.
+    pub const NAVI_SWITCH: u32 = 0x0400_0000;
     /// Cross death (action 0x4C) outside the pause; pause-time request for
-    /// action 0x1C inside it. Both set `status::CROSS_KNOCKOUT`.
-    pub const CROSS_DEATH: u32 = 0x0800_0000;
+    /// action 0x1C inside it. Both set `status::SWITCH_KNOCKOUT`.
+    pub const SWITCH_KNOCKOUT: u32 = 0x0800_0000;
     /// Battle mode 9 A press.
     pub const MODE9_A: u32 = 0x1000_0000;
-    pub const CROSS_SPECIAL: u32 = 0x2000_0000;
+    /// A system's takeover of the side's navi is asked for (BN6's Cross
+    /// special, which DarkInvs asks for): idle's `sub_802E4E4` hands it to
+    /// the side's systems (`takeover_requested`).
+    pub const TAKEOVER: u32 = 0x2000_0000;
     /// Starts action 0x30 (`sub_80ED55C`, with `status::VOLLEY`): a
     /// volley of shots, the count per variant. No setter was found.
     pub const VOLLEY: u32 = 0x4000_0000;
@@ -98,13 +101,13 @@ pub mod status {
     /// Anti-damage trap armed (acts like chip 0xBB).
     pub const TRAP_ARMED: u32 = 0x800;
     /// Pause handler: changing Cross (`sub_802D714`).
-    pub const CHANGING_CROSS: u32 = 0x1000;
+    pub const SWITCHING_NAVI: u32 = 0x1000;
     /// Knocked out of a Cross instead of deleted (action 0x4C, or the
     /// pause handler's `sub_802D926`). Takes over the action dispatch.
-    pub const CROSS_KNOCKOUT: u32 = 0x2000;
-    /// A Cross change took effect (set when `sub_802D714` ends). A link
+    pub const SWITCH_KNOCKOUT: u32 = 0x2000;
+    /// A navi switch took effect (set when `sub_802D714` ends). A link
     /// navi with it falls back instead of being deleted (`sub_802DD2A`).
-    pub const CROSSED: u32 = 0x4000;
+    pub const SWITCHED: u32 = 0x4000;
     /// The volley (action 0x30) runs. Takes over the action dispatch.
     pub const VOLLEY: u32 = 0x1_0000;
     /// Takes over the action dispatch like the two above; no setter was
@@ -147,7 +150,11 @@ pub struct AttackVars {
     pub special_source: u8,
     /// Which `set_attack` slot started the action.
     pub kind: u8,
-    pub beast_lockon: u8,
+    /// 1 while the action runs inside the side's wrapper (`sub_801B9E6`
+    /// runs the role `actions.wrapper` instead): BN6's Beast Out lock-on
+    /// byte, which its beast system sets as a chip's use starts
+    /// (`chip_used`) and the rush as it chains the next.
+    pub wrapped: u8,
     /// The lock-on mode the attack's own action asks the Beast Out rush
     /// for: the charged sword's (the role `charged_sword`), which its
     /// setup gives with the slash it starts (the original reads a table by
@@ -178,9 +185,10 @@ pub struct AttackVars {
     /// The effect the instant chips' action runs (`off_80EC3F0[subtype]`):
     /// the chip's, or a weapon's that names one (TenguCross's wind).
     pub instant: Option<crate::kinds::player::actions::instant::Effect>,
-    /// +0x1E..+0x27: the Beast Out rush around the action, when
-    /// `beast_lockon` is 1.
-    pub rush: crate::kinds::player::actions::beast_rush::Vars,
+    /// The wrapper's state starts over: `sub_801011A` clears its bytes
+    /// (+0x1E..+0x27, which the game's wrapper, BN6's Beast Out rush, now
+    /// keeps in its system's state); the wrapper clears this once it has.
+    pub wrapper_fresh: bool,
 }
 
 /// Joypad state as an actor sees it.
@@ -226,10 +234,9 @@ pub struct ActorData {
     /// AIData+0x0A: ticks toward the next HP lost to the custom-screen HP
     /// drain bug (`sub_80102AC`).
     pub drain_counter: u8,
-    /// AIData+0x0B: the emotion the NaviCust emotion-swing bug last rolled
-    /// (`sub_8013DA0`): 0 normal (mood 0x99), 1 tired, 2 angry, 3 Full
-    /// Synchro (mood 0xFF).
-    pub swung_emotion: u8,
+    /// The side's systems' `navi_tick` runs for it each tick (BN6's
+    /// NaviCust emotion-swing bug, `sub_8013DA0`).
+    pub ticked: bool,
     // (AIData+0x0F, the turn-start Beast Out check's delay, is BN6's beast
     // system's state: content/bn6/rules/beast/system.luau.)
     /// AIData+0x10: drain hits this navi landed on the opponent, turned
@@ -262,33 +269,39 @@ pub struct ActorData {
     pub pad: Pad,
     /// Mirror of `pad` maintained while dimmed.
     pub dimmed_pad: Pad,
-    /// AIData+0x32: the Beast Out counter is spent (the game stores
-    /// 0xFFFF): set at init with a zero counter (`sub_8013892`), by the
-    /// turn-start check (`sub_80159C6`), when a Beast Out reverts
-    /// (`sub_80158CC`), and by the NaviCust emotion-swing bug
-    /// (`sub_8013DA0`); cleared by `sub_8014446`. Gives emotion 1 and
-    /// blocks mood changes (`sub_8015BEC`) and anger (`sub_80143CE`).
-    pub beast_out_spent: bool,
+    /// AIData+0x32: held tired (the game stores 0xFFFF; BN6's "the Beast
+    /// Out counter is spent"): emotion 1, the mood held (`sub_8015BEC`)
+    /// and no anger (`sub_80143CE`). A game's systems set it: BN6's at the
+    /// round's start with a zero counter (`sub_8013892`), at the turn-start
+    /// check (`sub_80159C6`), when a Beast Out reverts (`sub_80158CC`), and
+    /// by the NaviCust emotion-swing bug (`sub_8013DA0`); `sub_8014446`
+    /// clears it.
+    pub tired: bool,
     pub anger: u16,
-    /// AIData+0x36: exhausted after Beast Over (`sub_80158CC` →
-    /// `sub_8014466` stores 0x3C0, which nothing counts down): emotion 5,
-    /// mood changes blocked, and 1 HP lost per tick for the rest of the
-    /// battle, never the last one (`sub_8014498`).
-    pub beast_over_exhausted: bool,
+    /// AIData+0x36: exhausted for the rest of the battle (BN6's after Beast
+    /// Over: `sub_80158CC` → `sub_8014466` stores 0x3C0, which nothing
+    /// counts down; its beast system sets it, `form_reverted`): emotion 5,
+    /// mood changes blocked, and 1 HP lost per tick, never the last one
+    /// (`sub_8014498`).
+    pub exhausted: bool,
+    /// The controller's state starts over (a form's `berserk` effect,
+    /// `sub_802D310`); the controller clears it once it has.
+    pub controller_fresh: bool,
     /// AIData+0x38: ticks before a road panel can start another slide
     /// (5 after a road slide, `sub_80166D0`/`sub_8016730`; counted down
     /// by `sub_801A36A`).
     pub road_cooldown: u16,
-    /// AIData+0x3A: ticks toward the next swing of the NaviCust
-    /// emotion-swing bug (every 60, `sub_8013DA0`).
-    pub emotion_swing_ticks: u16,
     /// AIData+0x3C: the height (Z, whole pixels) a bubble bobs around and
     /// restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses
     /// record it every tick (`sub_8108F74`); nothing sets it for players.
     pub bubble_base_z: i16,
-    /// AIData+0x40: the Beast Out lock-on marker (effect #0xF,
+    /// BN5's AIData+0x3C: DarkPlus's tint (0x0800E1DC sets 24; nothing
+    /// counts it down), which picks the navi's status shader after the
+    /// invulnerable glow (0x080136B8). BN6 has none.
+    pub plus_tint: u16,
+    /// AIData+0x40: the target marker (effect #0xF, BN6's Beast Out lock-on marker:
     /// `sub_80E1620`), which `sub_80E1662` unfreezes.
-    pub lockon_marker: Option<ObjectRef>,
+    pub target_marker: Option<ObjectRef>,
     /// Action requests from input (`request::*`).
     pub requests: u32,
     /// Actor state bits (`status::*`).
@@ -322,9 +335,6 @@ pub struct ActorData {
     /// Its saved lifecycle position (`obj+0x5C`), which a status action
     /// and a form change return to.
     pub saved_word: Option<crate::kinds::player::NaviWord>,
-    /// AIData+0xF0: the Beast Over berserk controller's state
-    /// (`sub_802D322`), in the 0x10 bytes allocation leaves alone.
-    pub berserk: crate::kinds::player::berserk::State,
     /// Obstacles the obstacle-absorbing chip pulled in, in arrival order
     /// (at most eight; the game keeps them at +0x6C with the count at
     /// +0x0D).
@@ -357,13 +367,13 @@ impl Actors {
         &mut self.slots[id.0 as usize]
     }
 
-    /// Allocate the lowest free slot, cleared, except for its last 0x10
-    /// bytes, which the game leaves alone (the berserk controller's).
+    /// Allocate the lowest free slot, cleared. (The game leaves the last
+    /// 0x10 bytes alone: the controllers' state, Beast Over's berserk and
+    /// the Cross special's, which are BN6's systems' now, by side.)
     pub fn allocate(&mut self) -> Option<ActorId> {
         let slot = (0..SLOTS as u8).find(|&i| self.in_use & (1 << i) == 0)?;
         self.in_use |= 1 << slot;
-        let berserk = self.slots[slot as usize].berserk;
-        self.slots[slot as usize] = ActorData { berserk, ..ActorData::default() };
+        self.slots[slot as usize] = ActorData::default();
         Some(ActorId(slot))
     }
 

@@ -22,7 +22,7 @@ export type State = {
     blows: number,
 }
 
-local SPRITE = asset.sprite("whirlwind")
+local SPRITE = asset.sprite("bn6:whirlwind")
 -- Forty pixels ahead of its panel.
 local AHEAD = 0x28_0000
 -- Its hits' modifier.
@@ -109,7 +109,7 @@ local function init(me: Object)
 end
 
 tornado.kind = define.kind {
-    id = "falzar/tornado",
+    id = "bn6:falzar/tornado",
     pool = "attack",
     state = { ticks = "u8", every = "u32", blows = "u32" },
     -- `sub_80DF188`: by state (its end `object_genericDestroy`), then the

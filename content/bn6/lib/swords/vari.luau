@@ -35,7 +35,7 @@ vari.STATE = { flip = "u8", progress = "u8[5]" }
 local COUNTDOWN = 0x30
 -- The phases, on the attack's step.
 local START, PICK = 0, 4
-local SOUND = asset.sound("ok-8b")
+local SOUND = asset.sound("bn6:ok-8b")
 -- The forms that wait while A is up: SlashCross and its Beast (the Beast
 -- Overs pick at random, and the Beast forms give the pick's Beast
 -- lock-on).
@@ -108,7 +108,7 @@ local function become(me: Object, spec: Spec, i: number)
     me:set_attack(action, 0)
     local lockon = if chip.beast ~= nil and chip.beast.rush ~= false then 1 else 0
     if me.special_source ~= 0 then
-        me.beast_lockon = lockon
+        me.wrapped = lockon
         return
     end
     local stats = battle.navi(me.alliance)
@@ -119,7 +119,7 @@ local function become(me: Object, spec: Spec, i: number)
         me:set_attack(slash_charge.of_action(me, action), 0)
     end
     if stats.beast then
-        me.beast_lockon = lockon
+        me.wrapped = lockon
     end
 end
 

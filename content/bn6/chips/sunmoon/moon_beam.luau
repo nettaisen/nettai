@@ -17,8 +17,8 @@ local regions = require("../../lib/regions")
 
 local moon_beam = {}
 
-local SPRITE = asset.sprite("moon-beam")
-local SOUND_MOON_BEAM = asset.sound("moon-beam")
+local SPRITE = asset.sprite("bn6:moon-beam")
+local SOUND_MOON_BEAM = asset.sound("bn6:moon-beam")
 local ANIM = 4
 
 -- How far ahead of its panel it stands (whole pixels).
@@ -116,7 +116,7 @@ local function init(me: Object)
 end
 
 moon_beam.kind = define.kind {
-    id = "sunmoon/moon-beam",
+    id = "bn6:sunmoon/moon-beam",
     pool = "attack",
     state = { ticks = "u8" },
     -- `sub_80DC0E8`.

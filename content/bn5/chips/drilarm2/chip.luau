@@ -1,9 +1,12 @@
 --!strict
--- DrilArm2 (BN5 chip 0x049): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- DrilArm2 (BN5 chip 0x049): the navi's arm becomes a drill and two drills grind the two panels ahead for 24
+-- ticks plus 10: BN6's DrilArm (action 0x4F, BN6's 0x2E) as BN5's (objects/drill).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local drill = require("../../objects/drill/drill")
 
 return define.chip {
-    id = "drilarm2",
+    id = "bn5:drilarm2",
     codes = { "D", "L", "S" },
     element = "null",
     family = "break",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
+    action = drill.action(false),
 }

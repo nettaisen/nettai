@@ -28,6 +28,7 @@
 //! to what is deterministic (`sandbox`).
 
 mod bind;
+pub mod coverage;
 mod define;
 pub mod sandbox;
 pub mod verify;
@@ -53,12 +54,6 @@ use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
 #[derive(Clone, Debug, Default)]
 pub struct Pack {
     modules: BTreeMap<String, String>,
-    /// Each root's `requires`: the roots its modules may `require` from
-    /// (`require("@bn6/rules/beast/system")`).
-    roots: BTreeMap<String, Vec<String>>,
-    /// Each root's assets pack (its game; by default the root's name): what
-    /// an unqualified asset name of its modules is.
-    assets: BTreeMap<String, String>,
     compiled: Compiled,
 }
 
@@ -90,60 +85,30 @@ impl Compiled {
 }
 
 impl Pack {
-    /// Modules by name (`bn6:chips/minibomb/chip`). Each module's root is
-    /// one of the pack's, which requires no other until
-    /// [`Pack::with_requires`] says so.
+    /// Modules by name: their content folder and their path in it
+    /// (`bn6:chips/minibomb/chip`). Every folder's modules load together,
+    /// one namespace (docs/design/rules-in-luau.md, the flat namespace).
     pub fn new(modules: impl IntoIterator<Item = (String, String)>) -> Pack {
         let modules: BTreeMap<String, String> = modules.into_iter().collect();
-        let mut roots = BTreeMap::new();
         for name in modules.keys() {
-            let root = keys::root_of(name).unwrap_or_else(|| panic!("module {name:?} names no root (`<root>:<path>`)"));
-            roots.entry(root.to_string()).or_insert_with(Vec::new);
+            assert!(keys::root_of(name).is_some(), "module {name:?} names no folder (`<folder>:<path>`)");
         }
-        Pack { modules, roots, assets: BTreeMap::new(), compiled: Compiled::default() }
+        Pack { modules, compiled: Compiled::default() }
     }
 
-    /// One root's modules, by path in the root (`chips/minibomb/chip`).
+    /// One folder's modules, by path in the folder (`chips/minibomb/chip`).
     pub fn root(name: &str, modules: impl IntoIterator<Item = (String, String)>) -> Pack {
-        let mut p = Pack::new(modules.into_iter().map(|(path, source)| (format!("{name}{}{path}", keys::SEPARATOR), source)));
-        p.roots.entry(name.to_string()).or_default();
-        p
+        Pack::new(modules.into_iter().map(|(path, source)| (format!("{name}{}{path}", keys::SEPARATOR), source)))
     }
 
-    /// Root `root` may require from `requires` (its manifest's).
-    pub fn with_requires(mut self, root: &str, requires: Vec<String>) -> Pack {
-        self.roots.insert(root.to_string(), requires);
-        self
-    }
-
-    /// Root `root`'s asset names resolve in pack `game` (its manifest's
-    /// `assets`).
-    pub fn with_assets(mut self, root: &str, game: &str) -> Pack {
-        self.assets.insert(root.to_string(), game.to_string());
-        self
-    }
-
-    /// The pack an asset name of root `root`'s modules resolves in.
-    fn assets_of(&self, root: &str) -> String {
-        self.assets.get(root).cloned().unwrap_or_else(|| root.to_string())
-    }
-
-    /// Asset name `name` as a module of root `root` means it: an
-    /// unqualified name its own pack's; a qualified one (`bn6:bomb`) only of
-    /// its own pack or a pack of a root it requires.
-    pub fn asset_name(&self, root: &str, name: &str) -> Result<String, String> {
-        let own = self.assets_of(root);
-        match keys::root_of(name) {
-            None => Ok(keys::qualify(&own, name)),
-            Some(game) => {
-                let allowed = game == own
-                    || self.roots.get(root).is_some_and(|r| r.iter().any(|q| self.assets_of(q) == game));
-                if allowed {
-                    Ok(name.to_string())
-                } else {
-                    Err(format!("{name:?}: root {root} names only its own pack's assets ({own}) and those of the roots it requires"))
-                }
-            }
+    /// Asset name `name` as content writes it: in full, its pack's game
+    /// first (`bn6:bomb`; docs/design/rules-in-luau.md, the flat namespace:
+    /// "so loading assets must also be fully qualified as well").
+    pub fn asset_name(name: &str) -> Result<String, String> {
+        if keys::is_qualified(name) {
+            Ok(name.to_string())
+        } else {
+            Err(format!("{name:?} names no pack: write an asset's name in full (\"bn6:{name}\")"))
         }
     }
 
@@ -350,6 +315,9 @@ impl LuauContent {
     ) -> Result<R, ContentError> {
         let _enter = bind::Enter::new(api, &self.bound, system);
         BUDGET.with(|b| b.set(self.budget));
+        if coverage::recording() {
+            coverage::called(f);
+        }
         let result = self.functions[f.0 as usize].call::<R>(args).map_err(|e| ContentError::new(e.to_string()));
         if self.collect_garbage {
             self.lua.gc_collect().map_err(|e| ContentError::new(e.to_string()))?;
@@ -442,26 +410,21 @@ struct Loader {
 }
 
 /// Resolve a `require` path from module `from` (`bn6:rules/beast/system`):
-/// relative to its directory within its root (`./rush`, `../lib/slot`), or
-/// in a root it requires, or its own, from that root's top
-/// (`@bn6/rules/cross/system`). `roots` gives each root's `requires`.
-fn resolve(from: &str, path: &str, roots: &BTreeMap<String, Vec<String>>) -> Result<String, String> {
-    let (root, from_path) = from.split_once(keys::SEPARATOR).ok_or_else(|| format!("module {from:?} names no root"))?;
+/// relative to its directory within its folder (`./rush`, `../lib/slot`),
+/// or in any content folder from its top (`@bn6/rules/cross/system`).
+fn resolve(from: &str, path: &str) -> Result<String, String> {
+    let (root, from_path) = from.split_once(keys::SEPARATOR).ok_or_else(|| format!("module {from:?} names no folder"))?;
     if let Some(rest) = path.strip_prefix('@') {
-        let (target, p) = rest.split_once('/').ok_or_else(|| format!("require({path:?}): a root's module is `@<root>/<path>`"))?;
+        let (target, p) =
+            rest.split_once('/').ok_or_else(|| format!("require({path:?}): a folder's module is `@<folder>/<path>`"))?;
         let p = p.trim_end_matches(".luau");
         if p.split('/').any(|s| s.is_empty() || s == "." || s == "..") {
-            return Err(format!("require({path:?}): a path from a root's top names its directories"));
-        }
-        if target != root && !roots.get(root).is_some_and(|r| r.iter().any(|x| x == target)) {
-            return Err(format!(
-                "require({path:?}) from {from}: root {root} doesn't require root {target} (its manifest's `requires`)"
-            ));
+            return Err(format!("require({path:?}): a path from a folder's top names its directories"));
         }
         return Ok(format!("{target}{}{p}", keys::SEPARATOR));
     }
     if !(path.starts_with("./") || path.starts_with("../")) {
-        return Err(format!("require({path:?}): content paths start with ./, ../ or @<root>/"));
+        return Err(format!("require({path:?}): content paths start with ./, ../ or @<folder>/"));
     }
     let mut parts: Vec<&str> = from_path.split('/').collect();
     parts.pop();
@@ -537,7 +500,7 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
     };
     define::install(&lua, &collector, module.clone()).map_err(err)?;
     let assets = Rc::new(RefCell::new(define::AssetTables::new(&lua, assets.clone()).map_err(err)?));
-    define::install_assets(&lua, &assets, module, Rc::new(pack.clone())).map_err(err)?;
+    define::install_assets(&lua, &assets, module).map_err(err)?;
     let require = {
         let loader = Rc::downgrade(&loader);
         lua.create_function(move |lua, path: String| {
@@ -546,7 +509,7 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
                 .ok_or_else(|| mlua::Error::runtime("require is only available while content loads"))?;
             let from = loader.borrow().stack.last().cloned();
             let from = from.ok_or_else(|| mlua::Error::runtime("require is only available at the top of a module"))?;
-            let target = resolve(&from, &path, &loader.borrow().pack.roots).map_err(mlua::Error::runtime)?;
+            let target = resolve(&from, &path).map_err(mlua::Error::runtime)?;
             load_module(lua, &loader, &target)
         })
         .map_err(err)?
@@ -555,7 +518,10 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
     // Libraries and globals become read-only; the budget stops runaway
     // loops (also while loading).
     lua.sandbox(true).map_err(err)?;
-    lua.set_interrupt(|_| {
+    lua.set_interrupt(|lua| {
+        if coverage::recording() {
+            coverage::interrupt(lua);
+        }
         BUDGET.with(|b| match b.get() {
             0 => Err(mlua::Error::runtime("content ran past its budget (a runaway loop?)")),
             n => {

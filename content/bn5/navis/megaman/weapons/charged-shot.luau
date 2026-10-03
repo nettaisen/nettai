@@ -29,7 +29,7 @@ function bn5.setup(navi: Object): Action
 end
 
 bn5.weapon = define.weapon {
-    id = "megaman/charged-shot",
+    id = "bn5:megaman/charged-shot",
     -- The charge table's row 1 (0x0801CA6C, BN6's values); Charge 5 reads on into row 2's first entry.
     charge_ticks = { 100, 90, 80, 70, 60, 180 },
     setup = bn5.setup,

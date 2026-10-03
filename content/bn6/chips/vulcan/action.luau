@@ -23,17 +23,18 @@ vulcan.STATE = { timer = "u16" }
 local RAISE, FIRE, LOWER = 0x0, 0x4, 0x8
 
 local ANIM_HOLD, ANIM_FIRE = 0xA, 0xD
-local SOUND = asset.sound("col-army-2")
+local SOUND = asset.sound("bn6:col-army-2")
 -- Ticks between bullets (less one), and of the lowering.
 local INTERVAL, LOWER_TICKS = 10, 0xA
 -- The bullets' heights, by the RNG's draw (`dword_80EBFF0`), 16.16.
 local HEIGHTS = { 0x08_0000, 0x10_0000, 0x18_0000, 0x20_0000 }
 
 -- The vulcan (the original's attachment row 0xD).
-local VULCAN = attachment.look { sprite = asset.sprite("vulcan"), palette = 0, attach_point = 14 }
+local VULCAN = attachment.look { sprite = asset.sprite("bn6:vulcan"), palette = 0, attach_point = 14 }
 
--- What a chip's vulcan fires: how many bullets, and which.
-export type VulcanSpec = { shots: number, bullet: BulletVariant }
+-- What a chip's vulcan fires: how many bullets, and which; the vulcan the
+-- navi holds (BN6's by default) and the bullets' kind (BN6's by default).
+export type VulcanSpec = { shots: number, bullet: BulletVariant, arm: AttachmentLook?, bullet_kind: Kind? }
 vulcan.bullets = { plain = bullet.variants.vulcan, super = bullet.variants.super_vulcan }
 
 -- A chip's vulcan.
@@ -43,7 +44,7 @@ function vulcan.action(spec: VulcanSpec): Action
         if me.step_init == 0 then
             me:set_animation(ANIM_HOLD)
             me:open_counter_window()
-            attachment.attach(me, VULCAN, "overlay")
+            attachment.attach(me, spec.arm or VULCAN, "overlay")
             me:set_status("using_action", true)
             me.step_init = 4
             s.timer = 1
@@ -76,7 +77,7 @@ function vulcan.action(spec: VulcanSpec): Action
         s.timer = INTERVAL
         local z = HEIGHTS[bit32.band(battle.rng_positive(), 3) + 1]
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-        bullet.fire(me, me.panel_x + me.facing, me.panel_y, z, spec.bullet, me.attack_element, damage)
+        bullet.fire(me, me.panel_x + me.facing, me.panel_y, z, spec.bullet, me.attack_element, damage, spec.bullet_kind)
         battle.play_sound(SOUND)
         local left = me.attack_count - 1
         me.attack_count = left

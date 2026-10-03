@@ -6,21 +6,21 @@
 //!
 //! [arena]                            # the stage's game decides the battle's data
 //! stage = "bn6:netbattle-43"
-//! background = "honeycomb"           # optional: else the stage's own
+//! background = "bn6:honeycomb"       # optional: else the stage's own
 //! later = [                          # optional: the set's later rounds (else the first's)
-//!     { stage = "bn6:netbattle-12", background = "code" },
+//!     { stage = "bn6:netbattle-12", background = "bn6:code" },
 //!     { stage = "bn6:netbattle-7" },
 //! ]
 //!
 //! [left]                             # you, side 0; then [right]
-//! ruleset = "bn6:bn6"                # optional: else the content's stock ruleset
+//! ruleset = "bn6:stock"              # optional: else BN6's (crate::DEFAULT_GAME)
 //! navi = "bn6:megaman"
 //! game = "falzar"                    # or "gregar"
 //! crosses = ["bn6:heatcross", "bn6:spoutcross"]   # optional: else the game's own five
 //! cards = [{ card = "bn6:canodumb" }, { card = "bn6:shadow", on = false }]
 //!
 //! [left.folder]
-//! chips = ["bn6:cannon A", "bn6:cannon A", ...]   # 30, each "key code"
+//! chips = ["bn6:cannon A", "bn6:cannon A", ...]   # 30, each "key code" ("" empty, while it's being made)
 //! regular = 4                        # optional: an entry, counting from 0
 //! tags = [5, 6]                      # optional
 //!
@@ -30,15 +30,15 @@
 //!
 //! [left.navicust]                    # optional: the NaviCust, which the rules compile
 //! expansions = 2                     # optional: the board's (else the largest)
-//! programs = [                       # in the list's order; x, y the centre on the 7x7 grid
+//! programs = [                       # in the list's order; x, y the center on the 7x7 grid
 //!     { program = "bn6:suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
 //! ]
 //! ```
 
-use crate::{Arena, Match, Place, Side, stats};
+use crate::{Arena, Folder, Match, Place, Side, stats};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
-use nettai_battle::custom::{CrossList, FolderChip, GameVersion, SavedFolder};
+use nettai_battle::custom::{CrossList, FolderChip, GameVersion};
 use nettai_battle::navicust::{NaviCust, PlacedProgram};
 use nettai_battle::patch_cards::InstalledCard;
 use serde::{Deserialize, Serialize};
@@ -193,7 +193,7 @@ fn resolve_place(content: &Content, stage: &str, background: &Option<String>, at
     if let Some(b) = background
         && crate::background(content, b).is_none()
     {
-        problems.push(format!("{at}: no background {b:?}"));
+        problems.push(crate::no_background(at, b));
     }
     Some(Place { stage: stage?, background: background.clone() })
 }
@@ -288,7 +288,7 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
                 parts.push(PlacedProgram { program, color: color as u8, x: p.x, y: p.y, rotation: p.rotation, compressed: p.compressed });
             }
             let expansions = n.expansions.unwrap_or_else(|| {
-                let rules = &content.rules_of(content.defs.ruleset_game(ruleset)).navicust;
+                let rules = &content.side_rules(ruleset, crate::ruleset_game(content, ruleset)).navicust;
                 rules.boards.len().saturating_sub(1) as u8
             });
             match NaviCust::new(&parts, expansions) {
@@ -324,29 +324,38 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
     })
 }
 
-fn resolve_folder(content: &Content, f: &FolderFile, say: &mut impl FnMut(String)) -> Option<SavedFolder> {
-    if f.chips.len() != FOLDER_SIZE {
-        say(format!("the folder has {} chips; a folder is {FOLDER_SIZE}", f.chips.len()));
+/// A file's folder: up to 30 entries, an empty one `""` and those past the
+/// last given empty (a folder being made; the checks say it isn't whole).
+fn resolve_folder(content: &Content, f: &FolderFile, say: &mut impl FnMut(String)) -> Option<Folder> {
+    if f.chips.len() > FOLDER_SIZE {
+        say(format!("the folder has {} entries; a folder is {FOLDER_SIZE}", f.chips.len()));
         return None;
     }
-    let mut chips = Vec::with_capacity(FOLDER_SIZE);
+    let mut folder = Folder { regular: f.regular, tags: f.tags.map(|[a, b]| (a, b)), ..Folder::EMPTY };
+    let mut ok = true;
     for (i, entry) in f.chips.iter().enumerate() {
+        if entry.trim().is_empty() {
+            continue;
+        }
         let parsed = entry.rsplit_once(' ').and_then(|(key, code)| {
             let mut letters = code.chars();
             let code = letters.next().and_then(ChipCode::from_letter).filter(|_| letters.next().is_none())?;
             Some((key.trim(), code))
         });
         let Some((key, code)) = parsed else {
-            say(format!("folder entry {i}: {entry:?} is not \"<chip> <code>\" (a code is A-Z or *)"));
+            say(format!("folder entry {i}: {entry:?} is not \"<chip> <code>\" (a code is A-Z or *; \"\" an empty entry)"));
+            ok = false;
             continue;
         };
         match content.defs.chip_by_key(key) {
-            Some(id) => chips.push(FolderChip::new(id, code)),
-            None => say(format!("folder entry {i}: no chip {key:?}")),
+            Some(id) => folder.chips[i] = Some(FolderChip::new(id, code)),
+            None => {
+                say(format!("folder entry {i}: no chip {key:?}"));
+                ok = false;
+            }
         }
     }
-    let chips: [FolderChip; FOLDER_SIZE] = chips.try_into().ok()?;
-    Some(SavedFolder { chips, regular: f.regular, tags: f.tags.map(|[a, b]| (a, b)) })
+    ok.then_some(folder)
 }
 
 /// A match as a file.
@@ -364,7 +373,11 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
         crosses: s.crosses.map(|l| l.forms().map(|f| content.defs.form(f).key.clone()).collect()),
         cards: s.cards.iter().map(|c| CardFile { card: content.defs.patch_card(c.card).key.clone(), on: c.enabled }).collect(),
         folder: FolderFile {
-            chips: s.folder.chips.iter().map(|&c| chip_entry(content, c)).collect(),
+            // An empty entry is "", and those after the last chip are left off.
+            chips: {
+                let last = s.folder.chips.iter().rposition(|c| c.is_some()).map_or(0, |i| i + 1);
+                s.folder.chips[..last].iter().map(|c| c.map_or(String::new(), |c| chip_entry(content, c))).collect()
+            },
             regular: s.folder.regular,
             tags: s.folder.tags.map(|(a, b)| [a, b]),
         },
@@ -457,16 +470,16 @@ mod tests {
         // A Mega chip past the navi's Mega level.
         let mut m = drawn.clone();
         m.sides[1].stats.mega_level = 0;
-        let megas = m.sides[1].folder.chips.iter().filter(|c| content.chip(c.id).class == nettai_battle::content::ChipClass::Mega).count();
+        let megas = m.sides[1].folder.chips().filter(|c| content.chip(c.id).class == nettai_battle::content::ChipClass::Mega).count();
         if megas > 0 {
             has(crate::check_match(&content, &m), "Mega chips, past the navi's 0");
         }
         // Patch cards past 80 MB; a Cross list for a navi without Crosses.
         let mut m = drawn.clone();
-        m.sides[0].cards = crate::patch_cards(&content, "canodumb,amonicul,coldbear,megalian,mettfire,kilplant").unwrap();
+        m.sides[0].cards = crate::patch_cards(&content, "bn6:canodumb,bn6:amonicul,bn6:coldbear,bn6:megalian,bn6:mettfire,bn6:kilplant").unwrap();
         has(crate::check_match(&content, &m), "left: the patch cards are");
         let mut m = drawn.clone();
-        let protoman = content.defs.navi_by_key("protoman").unwrap();
+        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].game);
         has(crate::check_match(&content, &m), "right: a Cross list, but ProtoMan doesn't change form");
@@ -477,8 +490,8 @@ mod tests {
     #[test]
     fn crosses_need_the_forms_system() {
         let content = nettai_battle::content::testing::content();
-        let mix = content.defs.ruleset_by_key("test-mix").unwrap();
-        let stock = content.defs.stock_ruleset();
+        let mix = content.defs.ruleset_by_key("test:test-mix").unwrap();
+        let stock = content.defs.stock_ruleset_of("test");
         assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM));
         assert!(!crate::ruleset_has_system(&content, Some(mix), crate::FORMS_SYSTEM));
     }

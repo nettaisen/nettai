@@ -67,6 +67,8 @@ impl<T> std::fmt::Display for Choice<T> {
 #[derive(Clone, Debug)]
 pub enum Msg {
     Tab(Tab),
+    /// A new, empty match.
+    New,
     Open,
     Save,
     SaveAs,
@@ -90,6 +92,8 @@ pub enum Msg {
     // The folder.
     Entry(usize, usize),
     Put(usize, ChipHandle, ChipCode),
+    /// The selected entry emptied.
+    ClearEntry(usize),
     Regular(usize),
     Tag(usize),
     Search(String),
@@ -114,10 +118,10 @@ pub enum Msg {
 
 /// How the editor was started.
 pub struct Options {
-    /// The content root given (`--content`), which Play hands the frontend
-    /// too; else the roots are found as the frontend finds them.
+    /// The content directory given (`--content`), which Play hands the
+    /// frontend too; else the repository's.
     pub content: Option<PathBuf>,
-    /// The roots loaded, the home first (their strings tables).
+    /// The content folders loaded (their strings tables).
     pub roots: Vec<PathBuf>,
     /// The packs given by directory (`--pack`), each in place of the found
     /// one of its game, which Play hands the frontend too.
@@ -160,10 +164,9 @@ pub struct Editor {
 
 impl Editor {
     pub fn new(content: Arc<Content>, pictures: Pictures, options: Options) -> Editor {
-        // A new match: live play's draw, else a plain one (content live play
-        // can't draw from).
+        // A new match is an empty one (Random draws one as live play does).
         let new = |content: &Arc<Content>| {
-            nettai_match::draw::live(content, 1, None).or_else(|_| nettai_match::draw::plain(content, 1)).unwrap_or_else(|e| {
+            nettai_match::Match::empty(content).unwrap_or_else(|e| {
                 eprintln!("the content makes no match: {e}");
                 std::process::exit(1)
             })
@@ -310,6 +313,18 @@ impl Editor {
         let content = self.content.clone();
         match msg {
             Msg::Tab(t) => self.tab = t,
+            Msg::New => {
+                if let Ok(m) = nettai_match::Match::empty(&content) {
+                    self.m = m;
+                    self.path = None;
+                    self.dirty = false;
+                    self.typed.clear();
+                    self.entry = [0, 0];
+                    self.navicust = Default::default();
+                    self.refresh();
+                    self.status = "a new match".into();
+                }
+            }
             Msg::Open => {
                 if let Some(path) = rfd::FileDialog::new().add_filter("match", &["toml"]).pick_file() {
                     match std::fs::read_to_string(&path).map_err(|e| vec![e.to_string()]).and_then(|t| read(&content, &t)) {
@@ -424,9 +439,22 @@ impl Editor {
             Msg::Entry(s, i) => self.entry[s] = i,
             Msg::Put(s, chip, code) => {
                 let i = self.entry[s];
-                self.m.sides[s].folder.chips[i] = FolderChip::new(chip, code);
+                self.m.sides[s].folder.chips[i] = Some(FolderChip::new(chip, code));
                 // On to the next entry, as one fills a folder.
                 self.entry[s] = (i + 1) % self.m.sides[s].folder.chips.len();
+                self.edited();
+            }
+            Msg::ClearEntry(s) => {
+                let i = self.entry[s] as u8;
+                let f = &mut self.m.sides[s].folder;
+                f.chips[i as usize] = None;
+                // It is no longer the Regular or a tag chip.
+                if f.regular == Some(i) {
+                    f.regular = None;
+                }
+                if f.tags.is_some_and(|(a, b)| a == i || b == i) {
+                    f.tags = None;
+                }
                 self.edited();
             }
             Msg::Regular(s) => {

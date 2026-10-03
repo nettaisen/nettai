@@ -74,7 +74,7 @@ cut-in", "telop" and "supports" are used as in the rest of the project.
   games overlap (`bn6:cannon`, `bn5:cannon`, `bn4:cannon`); content/nettai holds only the engine's API declarations.
   A player's folder may hold any game's chips; a chip behaves as its game wrote it, under its user's rules.
 - **Slices** (§8): S0 systems, rulesets, per-side state and the cost tools; then BN6's systems one at a time; roots
-  after S2; then the shared rules, parameterised where BN5 differs.
+  after S2; then the shared rules, parameterized where BN5 differs.
 
 ## 1. Where the rules are today
 
@@ -172,7 +172,7 @@ local berserk = require("./berserk")
 export type State = { counter: number, used: boolean, spent: boolean, exhausted: boolean, check_delay: number }
 
 return define.system {
-    id = "beast",
+    id = "bn6:beast",
     -- Each side's fields (the side keeps them, §5).
     state = { counter = "u8", used = "bool", spent = "bool", exhausted = "bool", check_delay = "u8" },
     -- What the player brings (the save's unlock), read-only in battle.
@@ -194,7 +194,7 @@ A ruleset is a list of systems with the data the framework reads for its player:
 ```luau
 -- content/bn6/rules/ruleset.luau
 return define.ruleset {
-    id = "bn6",
+    id = "bn6:stock",
     stock = true,                  -- the game's own rules
     systems = { cross, beast, cross_special, emotion, navicust, dark_chips, link_navis },
     sections = require("./sections"),   -- rule sections: elements, panels, the custom screen's layout, ...
@@ -202,11 +202,13 @@ return define.ruleset {
 }
 ```
 
-- **Stock rulesets**: each game root defines exactly one ruleset with `stock = true`, its game's own rules.
-- **Mixes**: a ruleset may start from another and change its systems: `define.ruleset { id = "bn6-souls", base =
-  bn6, add = { bn5_soul_unison }, sections = { custom_screen = SOULS_AND_CROSSES } }`. A mix needs the layout and
-  roles its systems use; the define phase checks every button a system offers has a slot. Mixes are content (a
-  mod's root, §7.2); a setup chooses a ruleset by key.
+- **Stock rulesets**: each game defines exactly one ruleset with `stock = true`, its game's own rules
+  (`bn6:stock`).
+- **Mixes**: a ruleset may start from another and change its systems: `define.ruleset { id = "mix:bn6-souls", base =
+  bn6, add = { bn5_soul_unison }, sections = { define.rules("mix:souls/custom-screen", SOULS_AND_CROSSES) } }`. A
+  mix's own `sections` are what its sides read over its game's (built: P1 item 8); a mix needs the layout and roles
+  its systems use; the define phase checks every button a system offers has a slot. Mixes are content (a mod's
+  folder, §7.2); a setup chooses a ruleset by id.
 - **Dependencies**: a system may name systems it needs (`requires = { beast }` on Beast Over) or can't run with
   (`excludes`); the define phase checks every ruleset.
 - **Order**: the framework calls a ruleset's systems in its `systems` order. Notification hooks call every system;
@@ -258,7 +260,7 @@ content/bn6/rules/
   api.luau                    the `bn6` module content calls (§4.6)
 ```
 
-A form's own behaviour stays with the form (navis/megaman/forms/<form>/), as its weapons do.
+A form's own behavior stays with the form (navis/megaman/forms/<form>/), as its weapons do.
 
 ## 3. What moves, and in what order
 
@@ -288,7 +290,7 @@ These stay Rust and lose their BN6 names (and their BN6 assumptions, where the m
 | `engine/lockon-marker`, `engine/afterimage`, `engine/beast-over-burst` | shared kinds under generic names (`engine/target-marker`, `engine/afterimage`, `engine/burst`), with the BN6-only target and freeze as the Beast system's calls |
 | The scrap and re-deal phases | the chip window's sacrifice and re-deal machinery, which buttons of any system start |
 
-### 3.3 Series-common, parameterised by game
+### 3.3 Series-common, parameterized by game
 
 Each moves when its BN5 counterpart is read, by rule 2 of §2.1. Known now:
 
@@ -586,45 +588,54 @@ battle change nothing: each side's systems run for their own side.
 4. **Rules mix**: a ruleset can take systems from several games (Crosses, Beast Out and Soul Unison together), as
    content.
 
-### 7.2 Roots and namespaces (agreed with the BN5 work)
+### 7.2 One namespace (R4; it replaced R1's roots)
 
-A root is a content directory with a manifest; a pack declares its game in its own manifest (`game = "bn5"`):
+The user (2026-10-02): "i think the idea of packs is just kind of wonky anyway, maybe you should just have it all
+in a flat namespace and then in the chip ids directly have bn6:cannon or whatever", and "so loading assets must
+also be fully qualified as well".
 
-```toml
-# content/bn6/root.toml
-name = "bn6"          # its namespace: a game root's is its game
-assets = "bn6"        # whose pack its asset names resolve in (by default its name)
-requires = []         # roots whose definitions it may name; a game root names none
-```
-
-- **Keys are qualified by the loader**: `bn6:minibomb`, `bn5:cannon`. Inside a root, modules and its compat write
-  keys and asset names unqualified, exactly as today, so BN6's don't change. The engine's own entries keep their
-  `engine/...` keys, outside every root.
+- **Every folder of content/ loads**, one namespace: content/bn6, content/bn5, and any other. A folder is named as
+  its game; there is no manifest. content/nettai holds the engine's API declarations and defines nothing.
+  `--content` (and `$NETTAI_CONTENT`) names the content directory, by default the repository's content/.
+- **Every id is written in full**, its game first: `id = "bn6:minibomb"`, `bn5:cannon`; a section's name
+  (`define.rules("bn6:panels", ...)`), the roles' id (`bn6:roles`), a stock ruleset's (`bn6:stock`, `bn5:stock`),
+  a system's (`bn6:beast`); a mix keeps its own descriptive id. The loader refuses an id without its game, naming
+  the folder's game as the fix. The engine's own entries keep their `engine/...` keys, of no game.
+- **A definition's game is its id's prefix.** The loaded games are the folders and the ids' prefixes, by name
+  (`Defs::roots`; a `RootId` is a place in it).
+- **Asset names are in full**: `asset.sprite("bn6:bomb")`, any loaded pack's; a name without its pack's game is
+  refused by the loader, a match's background by the match check. A pack keeps its own names (`bomb`); its game is
+  its manifest's.
+- **Modules require by path**: `require("@bn6/rules/beast/system")` names any folder; `./` and `../` stay within
+  the folder.
+- **Compat and locale tables are keyed by full id**, as content writes them; compat is per game (bn6-compat reads
+  content/bn6/compat, bn5-compat content/bn5/compat), and a trace names only its game's content.
+- **Lookups are exact** (`Defs::*_by_key`): tools, tests, setups and match files write ids in full.
+- **No home.** What a battle reads is the arena's (the stage's game's) or a side's (its ruleset's, §2.3); a tool
+  with no battle takes the game that has the thing. A frontend's and the match tool's default game is BN6's, by name
+  (`nettai_match::DEFAULT_GAME`).
+- **content/common** is a folder of behavior only: modules the games' folders share by path
+  (`require("@common/...")`), with no assets of their own, so it needs no pack, and no compat or locales.
 - **Version variants keep their suffixes** (`-falzar`/`-gregar`, `-protoman`/`-colonel`); region (US, JP) is a
   field, not a namespace.
-- **Handles** intern over the union in byte order of the qualified keys; peers with the same roots and content hash
-  have the same handles.
-- **Compat is per root**: bn6-compat reads content/bn6/compat for BN6's traces and saves, a bn5-compat
-  content/bn5/compat. A trace names only its game's content.
-- **content/nettai** holds the engine's API declarations (the generic part of today's core.d.luau and
-  types.d.luau). It defines nothing.
+- **Handles** intern over the union in byte order of the ids; peers with the same content hash have the same
+  handles.
 
 ### 7.3 Each game exports its own library
 
-There is no shared content library (the user's decision). Each game root defines its own chips, kinds, builders,
+There is no shared content library (the user's decision). Each game's folder defines its own chips, kinds, builders,
 forms and systems, even where they overlap with another game's: `bn6:cannon`, `bn5:cannon`, `bn4:cannon` are three
-definitions, each verified against its own game. A game root `require`s only its own modules. When BN5's routine is
-the same as BN6's (bn5-map.md says which), BN5's module may start as a copy of BN6's, and then belongs to BN5.
+definitions, each verified against its own game. When BN5's routine is the same as BN6's (bn5-map.md says which),
+BN5's module may start as a copy of BN6's, and then belongs to BN5 (or the two share it from content/common, §7.2).
 
-A root that composes games (a mix of rules, a mod) names them in `requires` and refers to their exports by
-qualified key and module (`require("@bn6/rules/cross/system")`); its own definitions are its namespace's, with its
-`assets` pack. The in-repo tests use such a root for mixes (§7.6).
+A folder that composes games (a mix of rules, a mod) requires their modules by path
+(`require("@bn6/rules/cross/system")`) and names their definitions by id. The in-repo tests use such a folder for
+mixes (§7.6).
 
 ### 7.4 Assets
 
-A definition's asset names resolve in its root's `assets` pack: `bn5:cannon`'s sprites are BN5's. The engine's
-asset handles cover every loaded pack; a sprite's identity gains its pack (`SpriteId` is a pack, a category and an
-index); the frontend and the audio load each pack the battle's roots name.
+A definition names its assets in full: `bn5:cannon`'s sprites are `bn5:...`, BN5's pack's. The engine's asset
+handles cover every loaded pack (R3a); the frontend and the audio draw and play each asset from its own pack (R3b).
 
 #### The field's art in a mixed battle (proposed, pending the user; to build in slice R)
 
@@ -638,7 +649,7 @@ The field's rules follow the stage's game (§2.3); its art does too.
 3. **A panel type the arena's game lacks** (a BN6 chip making a BN6-only panel in a BN5 arena):
    - the simulation runs it by the type's own definition, so the rules never depend on the art. **Built in P1**
      (the simulation half; the art half is still the user's to decide): a type the arena's `panels` section doesn't
-     name takes its rule (flags, sound, expiry, behaviours) from the first other loaded game whose section names it,
+     name takes its rule (flags, sound, expiry, behaviors) from the first other loaded game whose section names it,
      in root order; one no loaded game names keeps an empty rule, never a panic (`sections::fill_panel_types`);
    - it is drawn from the first pack that has it: the arena's, then the pack of the game that defines the type. Its
      blocks keep their own palettes, loaded into free palette slots;
@@ -652,7 +663,7 @@ The field's rules follow the stage's game (§2.3); its art does too.
 - **A player's ruleset rules that player** (§2.3): their custom screen, transformations, emotions, controls, and the
   side's rule data and roles.
 - **The battle's data is the stage's game's** (§2.3): the field, the flow, the pools.
-- **A definition's behaviour is its own**: a chip's use, a kind's update, a weapon's setup, a form's actions and
+- **A definition's behavior is its own**: a chip's use, a kind's update, a weapon's setup, a form's actions and
   hooks run as their game wrote them, on the framework's services.
 - **A definition's common record means the same everywhere**: a chip's codes, element, class, MB, damage, counter
   parameter, flags and lockout; a form's element, weakness, buster bonus, weapons and charged chips.
@@ -1109,6 +1120,49 @@ BN6 stays byte-identical; BN5's side is unit tests and asm citations, and the BN
   (6539 matched, 3 to a known deviation; 5,773,035 frames) with 0 sound rounds differing, the audit 72 traces with
   0 problems.
 
+### P1b, BN5's light and dark, effects, slides and custom request (2026-10-02, branch bn5-port-4)
+
+The engine items the BN5 replays stopped on (docs/design/bn5-map.md §15.3 items 14 to 18), built by the BN5 port
+with the coordinator's go-ahead while the rules work did R4. BN6 stays byte-identical: its ruleset has no system
+with the new hooks, and its sections keep BN6's numbers by default.
+
+- **Two system hooks (item 14).** `navi_intake(side, navi)` runs each tick of the fight in the navi's intake
+  (`sub_801AC6C`), after the standing effects, where BN5's 0x080178EC calls 0x08017136. `chip_check(side, navi,
+  chip)` runs at the end of a chip use's preparation (`sub_80127C0`, where BN5's 0x080100E6 checks), and is a
+  deciding hook: nil lets the use go ahead, and a chip takes its place. The navi keeps the attack as prepared (its
+  lockout is the refused chip's, as BN5's), with only the chip changed. `HookCall::System` now carries the navi
+  and the chip a hook is about. The binding passes them after the side. A side whose ruleset has no system with
+  the hook calls nothing (`Battle::systems_navi_intake`, `systems_chip_check`).
+- **BN5's light and dark MegaMan** (content/bn5/rules/light-dark, in BN5's stock ruleset). The system's setup is
+  the save's light/dark value (NaviStats +0x44); bn5-compat writes it from a recording's setup line, through
+  `PlayerSetup::set_rule`. At 499 or less, the holy panel under the navi turns Normal each tick. A chip whose
+  `megaman` field (its record's +0x15) asks for the other kind of MegaMan becomes the invalid chip (BN5's 0x185,
+  now in content: gen_content.py's `RULE_CHIPS`), and its use shows a sparkle. Any navi but MegaMan passes. The
+  dark chips' own refusals and costs (BN5's 0x08010030) wait for BN5's dark chip rules.
+- **The `effects` section, the arena's (items 15 and 16).** `shake = "battle"`: BN5's camera shake (0x08030D78)
+  has one channel. It draws its jitter twice a shaking tick from the battle's RNG2, alike on every console, and
+  holds while the battle is paused without dimming (BN6's draws from each console's RNG1, on two channels).
+  `spark_steps_at_start = false`: BN5's hit spark (0x080E0870) doesn't step its sprite as it starts, so it lives
+  a tick longer.
+- **Slides (item 17).** The `reactions` section's `slide_speed`, the arena's: a navi's slide (`sub_8016730`) and
+  drag (`sub_80178D4`) go 8 pixels a tick in depth in BN5 (0x0801361E, 0x080143A8), 6 in BN6. Arriving on a panel
+  whose type has a `slide` rule (BN5's metal) is as arriving on BN6's roads (BN5's 0x08013564 tests type 5 where
+  BN6 tests 9 to 12). A type that `holds` (BN5's sea) ends the slide.
+- **The custom request (item 18).** BN5's state 0x20 (0x08007774) opens the custom screen itself once the
+  reversions are done. BN6 first goes through state 0x24, which takes a tick. The flow without
+  `sequencer_before_custom` now does BN5's. BN5's test of the request skips BN6's battle mode 5 too.
+- **Tests:** the hooks with a test system (`test/watcher`), the shake's draws, the spark's tick, the drag's
+  speed, and the request's tick count, each against BN6's.
+- **The BN5 replays** (1,380 recordings): 252 replay and 243 match every frame, with 139,499 battle frames
+  matched (24 and 79,701 before). The rest: DrkRecov (4), whose dark chip cost is unread, and the souls (5),
+  which aren't ported.
+- **Gates** (on main a157d2ab, the fast gates): the build of every target without warnings, 479 tests, the
+  content check (888 modules), gen-content check 0 errors (it decodes BN6's slide speed, `sub_8016730`'s
+  literals, the drag's the same), `gate-against.sh full` passed in 537 s (machgun 1074/1331 and soundmod
+  21962/14933/20436 with rollback at every latency, the 189 legacy rounds, 2,746,946 frames, 0 sound rounds
+  differing; the lab 6548, 6545 matched and 3 to a known deviation, 5,775,231 frames, 0 sound rounds differing),
+  the audit 49 traces with 0 problems.
+
 ### The NaviCust and the folder rules (2026-10-02, branch match-editor)
 
 The match editor's work (docs/frontend.md §6, README "The match editor") brought two more of BN6's rules into its
@@ -1145,3 +1199,311 @@ content.
   warnings (all features), 469 tests, the content check (888 modules), gen-content check 0 errors, machgun and
   soundmod as above, `navicust` 0 differ.
 
+### R4, one namespace (2026-10-02)
+
+The user: "i think the idea of packs is just kind of wonky anyway, maybe you should just have it all in a flat
+namespace and then in the chip ids directly have bn6:cannon or whatever", and "so loading assets must also be fully
+qualified as well". §7.2 is the model; R1's roots (manifests, `requires`, the home, keys qualified by the loader)
+are gone.
+
+- **Every folder of content/ loads** (`nettai_content::root::read_all`; content/nettai, the declarations, aside),
+  each named as its game; root.toml is gone. `root::content()` is the content directory (`$NETTAI_CONTENT`, else
+  the repository's content/): the frontend's, the editor's and the extractors' `--content`, and every loader's
+  default (`root::bn6()` and `$BN6_CONTENT` are gone). A folder that names assets of its own game's pack loads only
+  with that pack, else it is left out with a warning (`pack::battle_content_packs`); the frontend's and the
+  editor's `pack::load_found` reads every folder, leaves out one whose pack isn't found (saying how to write it)
+  or without which the rest define, and loads the rest (`Loaded::roots` the folders loaded). A folder of behavior
+  only (content/common: no assets of its own) needs no pack and no locales.
+- **Every id is written in full** (`nettai_luau::define`): `bn6:minibomb`; a section's name (`bn6:panels`), the
+  roles' id (`bn6:roles`, `RolesSpec::id`), the stock rulesets' (`bn6:stock`, `bn5:stock`, `test:stock`). An id
+  without its game is refused, every one at once, each naming its folder's game as the fix. Derived keys follow
+  their owner (`bn6:minibomb/action`); `engine/...` keys stay.
+- **A definition's game is its id's prefix.** The games are the folders and the ids' prefixes, by name
+  (`Content::game_names`: `Defs::roots`, a `RootId` a place in it; a state schema's key names what it is the
+  state of, `system:bn6:beast/state`, and isn't a game). `BattleGames`: the arena is the stage's id's game, a
+  side's its ruleset's, defaulting to the arena's. **No home**: what a battle reads with no side is the arena's
+  (`Battle::game_of`, `chip_or_zeroed`, `chip_field`, `zeroed_chip`, `ChipHand::empty(content, game)`,
+  `SideRules::for_player`); a tool with no battle takes the first game that has the thing (`Library for
+  Content`); a frontend's and the match tool's default is BN6's, by name (`nettai_match::DEFAULT_GAME`, its
+  `ruleset_game`), and a pack whose manifest says no game is BN6's (`pack::UNSAID_GAME`). Gone:
+  `Defs::stock_ruleset`, `Defs::home_roles`, `Content::home_rules`, `RootId::HOME`, `Scripts::home`,
+  `home_module_mut` (now `module_mut(folder, path)`), `RootManifest::assets`.
+- **Asset names are in full** (`nettai_luau::Pack::asset_name`): `asset.sprite("bn6:bomb")`, any loaded pack's; a
+  name without its game is refused by the loader and, a match's background, by the match check
+  (`nettai_match::background`, the link battle backgrounds `bn6:...`). A pack keeps its own names (`bomb`; a
+  chip's icon and picture under its id's own part, which bn6-extract and bn5-extract now write from compat's full
+  keys).
+- **Requires by path**: `require("@bn6/rules/beast/system")` names any folder; `./` and `../` stay within the
+  folder.
+- **Compat and locale tables are keyed by full id**: chips, actions, kinds, navis, forms, stages, weapons, patch
+  cards, NaviCust programs; records' weapons and variants, rules' lock-ons, statuses and identities, games' per-kind
+  tables, curation's; every `[chips]`-like locale table. Role tables (`[effects]`, `[sounds]`) are keyed by role
+  name, and an assets.toml by the pack's own names. bn6-compat's `def_key` and `root_in` and bn5-compat's
+  `qualify`, `qualify_key` and `strip` are gone (their tables hand ids out as they are);
+  `Compat::bn6_for(content)` is BN6's compat for content that stands in for BN6 under another name (the test
+  content, `test`: `Compat::bn6_as`), the codec's and the frontend's when they run it.
+- **Lookups are exact**: `Defs::find` and `keys::names` are gone; tools, tests, setups and match files write ids
+  in full. Content that compares a definition's `id` at run time writes it in full too (the Beast busters' and the
+  absorb's forms, the Beast buster's palette table, EraseCross's charge).
+- **The test content is one game, `test`**: its own modules and the BN6 modules it borrows, whose `bn6:` ids and
+  asset names read as `test:` ones (`testing::borrowed`); twin's modules are `twin:`. Tests compare objects' kinds
+  by the id's own part (`Battle::local_kind_key`) where their expected tables name them so.
+- **The match file**: its ids were already full; a background is now in full (`bn6:honeycomb`), the stock ruleset
+  is `bn6:stock` (was `bn6:bn6`), a side with no ruleset plays BN6's, and `--cards` takes ids in full
+  (`bn6:canodumb,-bn6:shadow`).
+- **The content check** (`nettai-content-check`, no argument) checks content/: every folder against content/nettai
+  and every folder's own declarations, each module by its folder and path; a folder alone still checks alone. BN5's
+  HolyDrem used two types of another module, which the checker reads as `any`: the casts say so.
+- **The rewrite** is verify's tools/r4-flat-ids.py (ids, section names and asset names in the modules; the locale
+  and compat tables), tools/r4-fix-ids.py (ids a module builds in code, from the loader's messages) and
+  tools/r4-rust-keys.py (Rust tests' lookups by id), re-run on what landed since (the NaviCust programs, the folder
+  system, BN5's third batch). Verify's generators write ids in full (tools/bn5/gen_content.py through the rewrite,
+  tools/navicust/gen.py), gen-content reads compat by full id and checks compat's keys are BN6's ids. Its test of
+  the roles and collision types had expected `collision type thrown`, unqualified since R1: `bn6:thrown`.
+- **Gates** (on main a157d2ab and bn5-port-4 74fb97b7 merged, verify cf4524a1 and bn5-4 90f5f1a4): the build
+  without warnings, 479 tests, the content check (content/, 1,246 modules), gen-content check 0 errors and its 6
+  tests, `gate-against.sh full`: machgun 1074/1331 and soundmod 21962/14933/20436 with 96 rollback rows, the 189
+  legacy rounds (2,746,946 frames), the lab 6548 (6545 matched, 3 to a known deviation; 5,775,231 frames) with 0
+  sound rounds differing; the audit 49 traces and the static audit, 0 problems. BN5's replays as bn5-port-4's:
+  1,380 recordings, 252 replay, 243 match every frame, 139,499 of 948,097 frames. tools/bn5/gen_content.py check
+  0 errors, tools/navicust/gen.py check 0 differences.
+
+### P1c, a base form per game and a mix's own sections (2026-10-02)
+
+P1's items 12 and 8 (bn5-map.md §15.3), on R4.
+
+- **A base form per game (item 12).** `Defs::base_forms` holds each game's base form, by `RootId` (a form of
+  `kind = "base"`'s game is its id's prefix); two in one game are refused, and a navi that changes form needs its
+  game's. `Content::base_form_of(game)` and `base_form_for(navi)` (the navi's game's) replace `base_form()`: a navi's
+  fresh stats, the bug code's form byte, the change back to the base form, a stand-in's look, an afterimage, the
+  netplay stand-in, bn5-compat's NaviStats. A game without a base form of its own takes the first game's, by name,
+  that has one: BN5's MegaMan keeps BN6's until BN5's port defines `bn5:base` (and his souls' forms), which it now
+  can.
+- **A mix's own sections (item 8).** `define.ruleset { ..., sections = { define.rules("mix:souls/custom-screen",
+  ...) } }`: a section's kind is its id's last part, so a folder may hold several rulesets' sections. A section a
+  ruleset lists is that ruleset's, not its folder's game's (`sections::build` leaves it out). `RulesetDef::sections`
+  and `Content::ruleset_rules` (by `RulesetHandle`: the ruleset's game's tables with its own sections over them,
+  `sections::build_rulesets`) make `Content::side_rules(ruleset, game)`, which a side reads about itself:
+  `Battle::side_game_rules` and `rules_for` (`BattleGames::rulesets`), the custom screen (`GameLibrary::ruleset`),
+  the match's NaviCust board. Only the sections about a side may be a ruleset's own (custom-screen, berserk,
+  navicust, status, lockon, cross-special); the battle's (elements, panels, reactions, math, pools, buster,
+  banners, flow, effects) and a chip's game's (chip-use, sp-chips) are refused, and a stock ruleset lists none (its
+  game's are its folder's). No BN5 or BN6 ruleset has sections of its own: every battle of theirs reads as before.
+- **Tests**: `two_games::each_game_has_its_base_form` (twin's base form beside test's; a game without one takes
+  test's; two in one game refused); `a_mix_brings_its_own_side_sections` (testdata's rules/souls.luau: its sides'
+  HP bug periods are its own, the game's and the other side's don't change; a `math` section and a stock
+  ruleset's sections refused).
+- **Gates** (on main 18c2de15): the build without warnings, 481 tests, the content check (1,246 modules),
+  gen-content check 0 errors, `gate-against.sh full`: machgun 1074/1331 and soundmod 21962/14933/20436 with 96
+  rollback rows, the 189 legacy rounds (2,746,946 frames), the lab 6548 (6545 matched, 3 to a known deviation;
+  5,775,231 frames) with 0 sound rounds differing; the audit 49 traces and the static audit, 0 problems; BN5's
+  replays as before: 252 replay, 243 match every frame, 139,499 of 948,097 frames.
+
+### S3, Beast Out and Beast Over (2026-10-02)
+
+- **The rush** (content/bn6/rules/beast/rush.luau) is an action of BN6's beast system and fills the role
+  `actions.wrapper`. The dispatcher (`sub_801B9E6`) runs it instead of an attack whose `wrapped` byte is 1, provided
+  the side plays by the system that owns it. That byte is AIAttackVars+0x1D, `beast_lockon` before; it is now the
+  framework's, in `AttackVars` and as the actor field `wrapped`. The rush's state is the system's (`rush_*`, the
+  original's +0x1E to +0x27). `wrapper_fresh`, set with the attack's links (`sub_801011A`), starts it over.
+  - Rust keeps the lock-on search (actions/lockon.rs, `sub_80EAF60`'s modes, BN6 data until S7).
+  - API: `navi:run_wrapped()`, `navi:chain_next_chip()`, `navi:panel_trail(x, y)`, `navi:face_toward(o)`,
+    `marker:freeze_target_marker(on)`, the actor fields `wrapper_fresh` and `face_target`, and the request `"slide"`.
+- **What runs inside the rush** is decided by a new system hook, `chip_used(side, navi, chip, weapon)`, called at the
+  end of `sub_800FB54` once the use's action has started. `chip` is the chip the use reads (the zeroed chip for the
+  empty hand); `weapon` is the form's weapon when one runs instead (a charged use). BN6's system marks:
+  - a chip with the lock-on flag, in a Beast form or from the Cross special;
+  - the Beast forms' claw;
+  - SlashCross Beast's charged sword.
+
+  The roles `actions.charged_sword`, `actions.beast_claw` and the whole `lockon` group are gone: only the system
+  recognizes them now.
+- **Berserk** (rules/beast/berserk.luau) is Beast Over's controller (`sub_802D322` to `sub_802D430`).
+  - Both Beast Overs carry a new form trait, `controlled`. The side's systems' `controller(side, navi)` hook decides
+    a controlled navi's idle, answering "nothing", "chip", "buster" or "moved". The framework carries out the chip
+    and the buster as idle does.
+  - The player's input doesn't reach a controlled navi (`apply_actor_inputs`), and a full gauge opens its custom
+    screen (`custom_open_requested`).
+  - Its state is the system's (`berserk_*`). The form's `berserk` effect (`sub_802D310`) sets the actor's
+    `controller_fresh`, which starts it over.
+  - API: `navi:next_chip()`, `navi:use_chip()`, `navi:start_move_to(x, y, end_lag)`.
+  - berserk.rs keeps the Cross special's share (S4).
+- **Exhaustion.** A new hook, `form_reverted(side, navi)`, is called at `sub_80158CC` after the mood 0x80. There,
+  outside battle mode 1, BN6's system spends a Beast Out (`beast_out_spent`) or exhausts a Beast Over (`exhausted`,
+  then mood 0). `beast_over_exhausted` became the framework's `exhausted` (an actor field). What exhaustion does stays
+  the framework's: emotion 5, the mood held, no anger, and the drain of 1 HP a tick, never the last.
+- **The glow** is form data. `FormData::glow`, the Beast Overs' `glow`, holds color shaders by the battle time
+  (`byte_8016A68`, `byte_8016A9C`), and an empty list is refused. A form with a glow takes no sprite palette and no
+  invulnerable glow (`sub_8016860`'s Beast Over test). `GREGAR_OVER_GLOW` and `FALZAR_OVER_GLOW` are gone.
+- **The shared kinds** (§3.2):
+  - `engine/target-marker` (kinds/target_marker.rs), `engine/burst` (kinds/burst.rs) and `engine/afterimage`;
+  - with them the actor field and form effect `target_marker`, the sprite role `target_marker`, and the effect and
+    sound roles `burst`;
+  - compat's kinds.toml and rules.toml follow, while the assets keep BN6's names.
+
+  The marker's targeting (`sub_80E1670`) stays a Rust primitive, since BN5 has the same routine (§6.1, §6.4). What
+  BN6 reads of the marker (its panel, `sub_80E164A`) and its freeze are the beast system's calls.
+- **Decisions** (taken while the user was away; for review):
+  1. One form trait, `controlled`, instead of `navi:set_controller`, `navi:hold_input` and `battle.forces_custom`
+     (§3.1). It is data on the hot path (§6.4), and the three always go together in BN6 (forms 0x17 and 0x18). A game
+     that needs one alone splits the trait.
+  2. No `form_changed` hook yet. Nothing in S3 needs one: the berserk restarts on the form's effect, and exhaustion
+     comes at the revert. S5 adds it if the emotions do.
+  3. The wrapper is a role and a byte rather than `navi:set_wrapper`: the dispatcher reads the byte each tick, and
+     the system writes it once per use.
+  4. The drain stays framework, keyed on `exhausted`. In Luau it would be a call every tick for the rest of the
+     battle, and it is what exhaustion does; when to exhaust is BN6's choice, and that is the system's.
+  5. Two reads still use `FormKind::is_beast` until S7 replaces `FormKind`: the marker's visibility (forms 0xB to
+     0x18) and the afterimage's `beast_form` tether. BN5's same code tests its own form range.
+  6. `beast_out_spent` stays an actor field until its readers move (the emotion in S5, the Beast Out button in S6).
+- **Fixed during the move:** the first replay after the role rename found `actions.wrapper` filled with the Rush
+  chip's action. A `local rush` in roles.luau had shadowed the beast rush's; the gates caught it at once.
+- **Verify** (branch rules-s3):
+  - gen-content decodes the Beast Overs' `controlled` and `glow`, and names the effect `TARGET_MARKER`;
+  - trace-tests' stub listing drops the lock-on roles.
+- **Gates** (on main 89147e03):
+  - the build without warnings, 481 tests, the content check (1,248 modules), gen-content check 0 errors;
+  - `gate-against.sh` with everything selected: machgun and soundmod with 96 rollback rows, the 189 legacy rounds
+    (2,746,946 frames), and the lab 6548 (6545 matched, 3 to a known deviation; 5,775,231 frames) with 0 sound rounds
+    differing;
+  - the audit: 49 traces and the static audit, 0 problems;
+  - BN5's replays as before: 252 replay, 243 match every frame, 139,499 of 948,097 frames.
+
+### S4, the Cross special and the navi switch (2026-10-02)
+
+- **The Cross special** (DarkInvs' auto-battle in the battle flag 0x40 mode) is BN6's, in the beast system
+  (rules/beast/cross-special.luau). The original's two controllers, Beast Over's berserk and the Cross special,
+  keep their state in the same 16 bytes (AIData+0xF0): each clears it, and either may find what the other left,
+  for example when a Beast Over comes during a takeover. So both share the system's `controller_*` fields. §2's
+  separate cross-special/ folder would have split them.
+  - **The framework keeps a side takeover**: SideState's `takeover` and `takeover_ticks` (+0x54 and +0x30, the
+    Cross special's before). The countdown stays where `sub_802E1D8` runs it, at the end of stage B, which some
+    ticks skip. The request bit 0x20000000 is now `"takeover"`.
+  - **Two new hooks.** When idle finds the request (`sub_802E4E4`), it calls `takeover_requested(side, navi)`: BN6
+    starts the special (0x1E0 ticks via `battle.take_over`, invulnerable, the state cleared). While the takeover
+    runs, idle calls `takeover(side, navi)` after the SELECT special's check. The answers are those of
+    `controller`, plus "own_chip": a chip of the special's own started, so the used chip is the attack's.
+  - BN6's controller picks its chip from its section's rows (`rules/cross-special.luau`, read by `require`).
+  - **The end** (`sub_80EFDB2`) is the system's action `bn6:beast/cross-special-end` (compat 0x59, `engine/cross-
+    special` before).
+  - API: `battle.take_over`, `end_takeover`, `takeover_ticks`, `navi:start_chip_attack(chip, kind)`; `side_special`
+    answers `"takeover"` (`"cross"` before).
+  - Gone: berserk.rs, actions/cross_special.rs, `EngineAction::CrossSpecial`, `ActorData::berserk`,
+    `Defs::cross_special`, the sound role `cross_special`. `Rules::cross_special` stays only for gen-content's
+    check of the rows, until S7.
+- **The navi switch.** The "Cross change", BN6's name for the flag 0x40 mode's switch to a link navi, is renamed
+  (§3.2):
+  - `actions/navi_switch.rs` and `TransformRequest::navi_switch`;
+  - `Battle::reserves` (`cross_stats`);
+  - the requests `NAVI_SWITCH` and `SWITCH_KNOCKOUT` (`"navi_switch"`, `"switch_knockout"`);
+  - the states `SWITCHING_NAVI`, `SWITCH_KNOCKOUT` and `SWITCHED`;
+  - the action roles `switch_protect` and `switch_knockout`;
+  - stage B's `action_requests`.
+
+  A change into a Cross form (its sound, the Cross merge, `cross_release_anim`) keeps its own name.
+- **The Cross bonuses** (`sub_800EF34`, `sub_8013236`, `sub_8012AFA`, the fire charge) are already form and navi data
+  that the framework reads (`chip_bonus`, `null_bonus`, `charged_chips`, `charged_bonus`, `charge_doubles`,
+  `chip_heals`, `fire_charge`), as §6.1 allows. They run per frame (the HUD's bonus) or per tick (the A charge, the
+  fire charge), where a hook would put Luau in a plain fight. No charge hook was added. S7 moves the fields to the
+  systems' `extends`. Two rules still read the form kind and go with `FormKind` in S7: Beast Over's Null doubling
+  (`sub_8012ABC`) and the Beast forms' Null charge time (`sub_8012F62`).
+- **Decisions** (for review):
+  1. The Cross special shares the beast system, for the shared state above.
+  2. The takeover's state is the side's. The original's lives in the actor slot's last 16 bytes, which a later
+     actor in that slot inherits. For the side's player navi this is the same memory unless the navi switch moves
+     it to another slot, which no recording has.
+  3. The bonuses stay data, as above.
+- **Verify** (branch rules-s4): the audit's notes name the navi switch.
+- **Gates** (on main ce1dbf09):
+  - the build without warnings, 481 tests, the content check (1,249 modules), gen-content check 0 errors;
+  - `gate-against.sh full`: machgun and soundmod with 96 rollback rows, the 189 legacy rounds (2,746,946 frames),
+    and the lab 6548 (6545 matched, 3 to a known deviation) with 0 sound rounds differing, including the 24
+    DarkInvs scenarios;
+  - the audit 0 problems; BN5's replays as before (252 replay, 243 match, 139,499 of 948,097 frames);
+  - us-spelling 0 on both branches.
+
+### S5, emotions (2026-10-02)
+
+- **BN6's emotion system** (content/bn6/rules/emotion/system.luau, in the stock ruleset after the beast system) holds
+  BN6's rules for when:
+  - **a navi starts the round tired.** At `round_start`, a navi whose Beast Out counter is spent starts tired
+    (`sub_8013892`'s part, the original's init).
+  - **a counter gives Full Synchro.** `countered(side, victim)`, run by the counterer's side's systems: in base
+    form or a plain Beast Out, unless the victim's mood is held (`sub_801A200`'s rule, reading the other side's
+    pushed fact, §4.7).
+  - **the NaviCust swing bug runs.** `navi_tick(side, navi)` (`sub_8013DA0`), only for a navi whose `ticked` the
+    system set at the round's start (its emotion bug). Patch cards set the bug before that, and only BugFix clears
+    it, which the hook reads each tick as the original does. Its state (`swing_ticks`, `swung`, the original's
+    AIData +0x3A and +0x0B) is the system's.
+- **The framework keeps the emotion's state, which BN5's rules share**:
+  - the mood;
+  - `tired`, a held state (`beast_out_spent` before; BN6's beast and emotion systems and BugFix set it);
+  - `exhausted` (S3);
+  - anger, with its flag, its timer and the request `"anger"` (flag2 0x200);
+  - the stunned ticks;
+  - the order `sub_8015B54` reads them in;
+  - `set_mood`'s hold, `mood_held` (held tired or exhausted), an actor field other sides' rules read.
+- **Decisions** (for review):
+  1. **No pushed emotion** (§4.6). The emotion stays computed from the framework's state, which per-frame and
+     per-tick paths read: the palette, the aura, the HUD, the chip doubling, idle's worn-out check. BN5's rules
+     (its counter's 0x80, the soul's effect) act on the same levers: the mood, the held states, anger, and their
+     own `countered` hook. If BN5's emotions need names BN6's five lack, the pushed emotion comes with BN5's port.
+  2. **Anger stays framework.** Its trigger (120 stunned ticks or a hit of 300), its 600 ticks, mood 0x80 and
+     `sub_8015B54`'s order stay. BN5 has the same routines (the map: similar), so by §2.1's rule 2 they are
+     series-common, parameterized when BN5's are read.
+  3. `mood_held` is derived rather than pushed: the same fact §4.7 needs, with nothing to keep in step.
+  4. **No `navi_hit` or `form_changed` hooks.** Nothing that moved needs them.
+  5. **The swing bug's state is the side's** (AIData's in the original), as the takeover's is (S4).
+- **BN5 sides** no longer get BN6's counter rule or a tired start through the framework. BN5's replays are unchanged.
+- **Gates** (on main d835f206):
+  - the build without warnings, 481 tests, the content check (1,250 modules), gen-content check 0 errors;
+  - `gate-against.sh` with everything selected: machgun and soundmod with 96 rollback rows, the 189 legacy rounds
+    (2,746,946 frames), and the lab 6548 (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
+  - BN5's replays as before (252 replay, 243 match, 139,499 of 948,097 frames).
+
+### S6a, the custom screen's extras: the mechanism, the hand size, two buttons (2026-10-02)
+
+- **The mechanism** (§4.4). The screen stays a Rust state machine and asks `custom::Extras`. The battle answers
+  with the side's systems (`SideExtras`); a screen without a battle (the screen's own tests) gets no answers
+  (`NoExtras`).
+  - While a system's function runs, the screen and the folder sit back in the battle's side, so the `custom`
+    library reaches them, and they are taken back afterwards.
+  - `Side::open_with` and `tick_with` take the extras; `open` and `tick` keep their signatures.
+  - bn6-compat's screen check (`check_custom_screens`, now on an `Arc<Content>`) builds a battle from the round's
+    setup and asks `Battle::custom_extras(side)`, setting the side's stats and the turn from the trace first.
+  - The hand built at OK reads a formula chip's damage from the battle, so those (`Defs::formula_chips`) are read
+    before the extras borrow it.
+- **`custom.hand_size(side)`**, a system's `custom` hook, asked as the screen opens (§3.3). BN6's comes from its
+  new `cross` system (content/bn6/rules/cross, first in the stock ruleset): ChargeCross's extra chips (its
+  `charge_cross_screens`, out of `RoundMemory`), the custom level, NumbrOpn (not in DustCross) and the
+  hand-shrink bug (`sub_802A49C`, `sub_802A40C`). With no answer the framework's rule applies: the same without
+  a form's share, which is what BN5 sides get, as before.
+- **Buttons.**
+  - A system declares its buttons: `buttons = { name = { slot, cells, uses, right, left, shown, state, pressed }
+    }`, read into `Defs::buttons`.
+  - `SlotKind::Button { button, cell }` (a cell: only, left, right) replaces `Scrap` and `Redeal`.
+  - As the screen opens, each button whose `shown` answers takes its slots, in the order the systems are listed;
+    the first to claim a slot keeps it. `state`, where a button has one, is asked at the open and after each pick
+    unless the button is picked or used up. `pressed` answers A.
+  - The `custom` library: `refuse`, `sacrifice` and `redeal` (the shared machinery for the button under the
+    cursor, which keeps its button's slot in its phase), `last_pick_is_chip`, `cursor_state`.
+  - BN6's two:
+    - DustCross's scrap, the cross system's: two wide on 8 and 9, usable once, selectable with a chip picked last.
+    - ChpShufl's re-deal, the navicust system's.
+- **The frontend.** nettai-render draws a button by its name (`View::button_look`: BN6's `redeal` and `scrap`
+  pictures, tiles and cursor, §4.8). The driver labels a button by its name.
+- **Next.** Beast Out (its button, the BeastOut chip and their animations as windows, the result's form) goes with
+  the Cross window: the two read each other (a chosen Cross greys out Beast Out, and Beast Out blocks the
+  window). Then the setup (S6c).
+- **Merged with main f816b94d** (bn5-port-5): BN5's soul button (`SlotKind::Soul`, `Phase::SoulChosen`, in Rust)
+  sits beside the system buttons. It and its sequence take the extras too. A port of it to a BN5 system's button
+  and window is BN5's, when its rules come.
+- **Gates** (on main f816b94d):
+  - the build without warnings, 482 tests, the content check (1,275 modules), gen-content check 0 errors;
+  - `gate-against.sh full`: the 189 legacy rounds, machgun and soundmod with 96 rollback rows, and the lab 6548
+    (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
+  - identity.sh against main's frontend on main's content: the custom-screen and sample lists identical in both
+    text modes (174 scenarios, 200,712 frames each);
+  - the audit 0 problems; us-spelling 0;
+  - BN5's replays as main's, on a BN5 pack extracted again for bn5-port-5's asset names: 402 match every frame,
+    18 replay, 223,414 of 948,097 frames.

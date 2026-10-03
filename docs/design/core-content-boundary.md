@@ -141,7 +141,7 @@ These are the game's, kept bit-exact; the API exposes them and must not smooth t
   breaking edit it in place. A reservation succeeds only if nobody holds the panel.
 - **Sprites.** A frame of duration d is current for exactly d updates. Which stepping routine an object calls
   (`update_sprite`, `update_sprite_while_dimmed`, `update_sprite_while_paused`, `step_sprite`) is part of its
-  behaviour. Animation timing is simulation data (lifetimes end on frame flags); pixels and the look are
+  behavior. Animation timing is simulation data (lifetimes end on frame flags); pixels and the look are
   output only.
 - **RNG.** One simulation stream, drawn in object update order through `battle.rng`, `rng_positive` and
   `jitter`. A content change that adds, removes or reorders a draw changes everything after it.
@@ -172,13 +172,15 @@ for the action to read, don't exist: what an action needs of its chip is its bui
 
 ### 4.3 Beast Out's wrapper around arbitrary chips
 
-When a chip with a lock-on mode is used in a Beast form, the dispatcher routes every tick through the rush
-(`beast_rush::update`) instead of the chip's action: it holds the panel, warps next to the lock-on marker's
-target by the chip's lock-on mode (a `define.lockon`), runs the chip's action from its own phase, watches for
-it to end, then chains the next chip or warps back. It is the ruleset's, and wraps whatever action content
-defines; a chip says how it is wrapped in its record (`beast = { lockon, rush }`) and its `no_chain` trait. Two
-actions ask for another mode than their chip's: the ruleset recognizes them by role, and one gives its mode
-itself (`rush_lockon`).
+When a chip with a lock-on mode is used in a Beast form, BN6's beast system marks the attack `wrapped` as its use
+starts (its `chip_used` hook), and the dispatcher then routes every tick through the side's wrapper (the role
+`actions.wrapper`: content/bn6/rules/beast/rush.luau) instead of the chip's action: it holds the panel, warps
+next to the target marker's target by the chip's lock-on mode (a `define.lockon`), runs the chip's action from
+its own phase (`navi:run_wrapped()`), watches for it to end, then chains the next chip or warps back. It is the
+ruleset's, and wraps whatever action content defines; a chip says how it is wrapped in its record (`beast = {
+lockon, rush }`) and its `no_chain` trait. Two actions ask for another mode than their chip's: the system
+recognizes them (the Beast claw's and SlashCross's charged sword), and one gives its mode itself
+(`rush_lockon`). (rules-in-luau.md, As built S3.)
 
 ### 4.4 Content reaching into other objects
 
@@ -227,7 +229,7 @@ the tick at which the action opens the window.
 
 Freed collision slots keep their mask bits and fields; a deleted player keeps its collision handle, so once
 another object reuses the slot, the dead player's "status" is that object's. Generational handles would be
-safer and would change behaviour the traces observe. A handle's meaning is "whatever is in that slot now",
+safer and would change behavior the traces observe. A handle's meaning is "whatever is in that slot now",
 which is the game's meaning.
 
 ### 4.10 Dimming and the cut-in

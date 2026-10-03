@@ -37,14 +37,14 @@ export type State = {
     roar: number,
 }
 
-local SPRITE = asset.sprite("gregar-summon")
+local SPRITE = asset.sprite("bn6:gregar-summon")
 -- The arrival's look: animation 8 of its sprite.
 local ARRIVAL_ANIM = 8
 
-local SOUND_APPEAR = asset.sound("log-in")
-local SOUND_FLASH = asset.sound("bug")
-local SOUND_ROAR = asset.sound("beast-out-chosen-gregar")
-local SOUND_GROWL = asset.sound("roar")
+local SOUND_APPEAR = asset.sound("bn6:log-in")
+local SOUND_FLASH = asset.sound("bn6:bug")
+local SOUND_ROAR = asset.sound("bn6:beast-out-chosen-gregar")
+local SOUND_GROWL = asset.sound("bn6:roar")
 
 -- Its actions.
 local APPEAR, FLASH, RISE, STAY, ATTACK, SINK = 0x0, 0x4, 0x8, 0xC, 0x10, 0x14
@@ -147,7 +147,7 @@ local function flash(me: Object)
     count(me, RISE)
 end
 
--- 0x080C3F40: its colours back; 30 ticks; then the first piece stays and
+-- 0x080C3F40: its colors back; 30 ticks; then the first piece stays and
 -- the second attacks.
 local function rise(me: Object)
     if me.phase_init == 0 then
@@ -266,7 +266,7 @@ local function init(me: Object)
 end
 
 summon.kind = define.kind {
-    id = "gregar/summon",
+    id = "bn6:gregar/summon",
     pool = "actor",
     state = {
         piece = "u8",

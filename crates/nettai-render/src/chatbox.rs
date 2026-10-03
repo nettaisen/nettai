@@ -295,7 +295,7 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
 /// the text's left: up to a pixel short of the inner edge of the box's
 /// right frame, on the map's row at the text's middle (the first pixel
 /// column, from the inside, of the rightmost tile drawn on that row that
-/// isn't the colour under the text's left). The description box ends 27
+/// isn't the color under the text's left). The description box ends 27
 /// tiles in, short of the line buffer's 192 pixels; the message box spans
 /// the screen. The line buffer's width when the map has no such frame.
 pub fn text_room(g: &Graphics, kind: usize) -> i32 {
@@ -384,7 +384,7 @@ pub fn frame_after(frames: &[(u8, u8)], updates: u16) -> usize {
     k
 }
 
-/// A colour with the tint added, each channel saturating
+/// A color with the tint added, each channel saturating
 /// (`sub_3005F34`).
 fn tint(c: u16, t: u16) -> u16 {
     let ch = |v: u16, s: u16| (((v >> s) & 31) + ((t >> s) & 31)).min(31) << s;
@@ -556,15 +556,15 @@ mod tests {
         let mut report = nettai_content::report::Report::default();
         let root = nettai_content::root::read(dir, &mut report).expect("content/bn6 reads");
         let mut c = Content::default();
-        c.strings = root.strings.qualified(&root.manifest.name);
+        c.strings = root.strings;
         c.scripts = nettai_battle::content::Scripts::root(root.manifest, root.modules);
         c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        let ja = nettai_content::locale::load_all(dir, "ja").unwrap().expect("ja.toml");
+        let ja = nettai_content::locale::load(dir, "ja").unwrap().expect("ja.toml");
         let form = |key: &str| c.defs.form_by_key(key).unwrap_or_else(|| panic!("no form {key}"));
-        let navi = c.defs.navi_by_key("megaman").expect("megaman");
+        let navi = c.defs.navi_by_key("bn6:megaman").expect("megaman");
         let list = Unlocks {
-            cross_list: Some(CrossList::new(&[form("heatcross"), form("groundcross")])),
+            cross_list: Some(CrossList::new(&[form("bn6:heatcross"), form("bn6:groundcross")])),
             ..Unlocks::everything(GameVersion::Falzar)
         };
         let version = Unlocks::everything(GameVersion::Falzar);

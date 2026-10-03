@@ -7,7 +7,7 @@ local lockon = require("../../rules/lockon")
 local variants = require("../../objects/projectile/variants")
 
 return define.chip {
-    id = "airshot",
+    id = "bn6:airshot",
     codes = { "*" },
     element = "null", family = "wind", class = "standard",
     rarity = 1, mb = 4, damage = 20, hit_param = 20, lockout = 0,

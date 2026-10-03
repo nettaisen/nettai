@@ -18,7 +18,7 @@ local function fill(user: Object, _spec: InstantChipSpec)
 end
 
 return define.chip {
-    id = "fullcust",
+    id = "bn6:fullcust",
     codes = { "*" },
     element = "null", family = "null", class = "standard",
     rarity = 3, mb = 50, damage = 0, hit_param = 0, lockout = 20,

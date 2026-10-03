@@ -6,7 +6,10 @@
 -- region is hit once (the tick after it finds the target), with an effect
 -- shown over the region or at the bullet. What differs between its uses
 -- is its variant (`bullet.variant { ... }`, the original's `byte_80C68D4`
--- rows). See docs/engine/shot-chips.md §4.1.
+-- rows). See docs/engine/shot-chips.md §4.1. A game whose bullet probes
+-- and hits with its own collision types makes its kind with
+-- `bullet.make_kind(id, look)` (BN5's) and fires it with `bullet.fire`'s
+-- `kind`.
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
@@ -23,6 +26,10 @@ export type State = {
 function bullet.variant(v: BulletVariant): BulletVariant
     return define.record("bullet-variant", v)
 end
+
+-- BN6's look: the probe's self type (row 0x3D), the burst's (an attack)
+-- and what both reach.
+local BN6: BulletLook = { probe = collision.probe, attack = collision.attack, target = collision.hits_navis }
 
 -- Done: off its panels, and freed at the next update.
 local function finish(me: Object)
@@ -44,8 +51,8 @@ end
 -- `sub_80C6A50`: the burst: its hit over the variant's region on the panel
 -- it found (`sub_80C6AB8`: an attack of its own element now, which hits
 -- with the variant's modifier and status), the effect, the sound.
-local function burst(me: Object, v: BulletVariant)
-    me:reset_collision_types(collision.attack, collision.hits_navis, v.hit_mod)
+local function burst(me: Object, v: BulletVariant, look: BulletLook)
+    me:reset_collision_types(look.attack, look.target, v.hit_mod)
     me.collision.element = bit32.band(me.element, 0xF)
     me.collision.secondary_element = bit32.band(me.element, 0xF0)
     local status = v.status
@@ -67,7 +74,7 @@ end
 
 -- `sub_80C69AC`: the hits against it resolve and spark; the first time it
 -- finds something (its DEAD status a latch) it bursts there.
-local function tick(me: Object)
+local function tick(me: Object, look: BulletLook)
     local v = (me.state :: State).variant
     local c = me.collision
     c:remove()
@@ -80,7 +87,7 @@ local function tick(me: Object)
     if me.action == 0 then
         step(me)
     elseif me.phase == 0 then
-        burst(me, v)
+        burst(me, v, look)
     else
         -- `sub_80C6AAC`: its hit landed; done.
         c:set_region(nil)
@@ -91,41 +98,47 @@ end
 
 -- `sub_80C6964`: on its panel, unseen, a probe (§1 of shot-chips.md: it
 -- finds what an attack would hit without hurting it, element null).
-local function init(me: Object)
+local function init(me: Object, look: BulletLook)
     me:set_coordinates_from_panel()
     if not me:create_collision() then
         me:free()
         return
     end
-    me:setup_collision(collision.probe, collision.hits_navis, 0)
+    me:setup_collision(look.probe, look.target, 0)
     me.collision.element = 0
     me.collision:present()
     me:set_lifecycle("update")
 end
 
-bullet.kind = define.kind {
-    id = "bullet",
-    pool = "attack",
-    state = { variant = "record:bullet-variant" },
-    -- `sub_80C6946`.
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            init(me)
-        elseif l == "update" then
-            tick(me)
-        else
-            me:destroy()
-        end
-    end,
-}
+-- A bullet kind (`id`) of `look`.
+function bullet.make_kind(id: string, look: BulletLook): Kind
+    return define.kind {
+        id = id,
+        pool = "attack",
+        state = { variant = "record:bullet-variant" },
+        -- `sub_80C6946`.
+        update = function(me: Object)
+            local l = me.lifecycle
+            if l == "init" then
+                init(me, look)
+            elseif l == "update" then
+                tick(me, look)
+            else
+                me:destroy()
+            end
+        end,
+    }
+end
+
+bullet.kind = bullet.make_kind("bn6:bullet", BN6)
 
 -- `sub_80C6ADA`: a bullet of `variant` from `owner` on panel (x, y) at
 -- height `z` (16.16), with `element` and the damage word; nil if the
 -- attack pool is full. It takes the owner's side and flip, runs later
--- this tick, right after its spawner, and keeps its Z.
-function bullet.fire(owner: Object, x: number, y: number, z: number, variant: BulletVariant, element: number, damage: number): Object?
-    local o = battle.spawn(bullet.kind, Vec3.new(0, 0, z))
+-- this tick, right after its spawner, and keeps its Z. Of `kind`, BN6's by
+-- default.
+function bullet.fire(owner: Object, x: number, y: number, z: number, variant: BulletVariant, element: number, damage: number, kind: Kind?): Object?
+    local o = battle.spawn(kind or bullet.kind, Vec3.new(0, 0, z))
     if o then
         (o.state :: State).variant = variant
         o.panel_x, o.panel_y = x, y
@@ -140,15 +153,15 @@ end
 -- The variants (the original's rows: region, hit modifier, effect,
 -- status, sound; rows 0xC, 0xE, 0x10..0x12 show their effect once, at the
 -- bullet).
-local SPLASH = define.effect { sprite = asset.sprite("spout-splash"), anim = 0, palette = 0 }
-local HIT = define.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 0 }
-local HIT_BRIGHT = define.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 1 }
-local GLINT = define.effect { sprite = asset.sprite("form-change"), anim = 1, palette = 0 }
-local SPARKLE = define.effect { sprite = asset.sprite("colonel-effect"), anim = 3, palette = 0 }
-local SPREAD = asset.sound("h-burst")
-local SPLASHING = asset.sound("spout-ball")
+local SPLASH = define.effect { sprite = asset.sprite("bn6:spout-splash"), anim = 0, palette = 0 }
+local HIT = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 0 }
+local HIT_BRIGHT = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 1 }
+local GLINT = define.effect { sprite = asset.sprite("bn6:form-change"), anim = 1, palette = 0 }
+local SPARKLE = define.effect { sprite = asset.sprite("bn6:colonel-effect"), anim = 3, palette = 0 }
+local SPREAD = asset.sound("bn6:h-burst")
+local SPLASHING = asset.sound("bn6:spout-ball")
 -- (The fire rows' sound is the one the target squares make as they move.)
-local FIRE = asset.sound("target-move")
+local FIRE = asset.sound("bn6:target-move")
 
 local function v(region: Region, hit_mod: number, effect: Effect, sound: Sound?, more: { single: boolean?, status: Status? }?): BulletVariant
     local m: { single: boolean?, status: Status? } = more or {}

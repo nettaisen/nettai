@@ -43,7 +43,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "snake/controller",
+    id = "bn6:snake/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool" },
     -- `sub_80E5944`.

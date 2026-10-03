@@ -30,7 +30,7 @@ local CHARGE, STOP, BACK, RECOVER = 0x0, 0x4, 0x8, 0xC
 local ANIM_CHARGE, ANIM_STOP, ANIM_BACK = 0xF, 4, 3
 local STOP_TICKS, BACK_TICKS, RECOVER_TICKS = 3, 3, 0x1E
 
-local SOUND = asset.sound("charge-train")
+local SOUND = asset.sound("bn6:charge-train")
 
 -- The hits' counter byte, and his hits' element: Fire (the attack's
 -- element byte).
@@ -213,7 +213,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [CHARGE] = run, [STOP] = stop, [BACK] = back, [RECOVER] = recover }
 
 charge.action = define.action {
-    id = "chargeman/charge/action",
+    id = "bn6:chargeman/charge/action",
     state = { timer = "u16", cars = "u8", car1 = "object", car2 = "object" },
     -- `sub_80F1198` (`off_80F11AC`).
     update = function(me: Object, s: State)
@@ -222,7 +222,7 @@ charge.action = define.action {
 }
 
 charge.weapon = define.weapon {
-    id = "chargeman/charge",
+    id = "bn6:chargeman/charge",
     -- The charge table's row 0x48, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 120, 110, 100, 95, 90, 100, 90, 80 },

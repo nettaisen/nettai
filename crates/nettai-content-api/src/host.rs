@@ -160,8 +160,17 @@ pub enum HookCall {
     /// A hook of a system of side `side`'s ruleset (docs/design/
     /// rules-in-luau.md §4.1), the system in place `slot` of the ruleset's
     /// list: while it runs, `system.state()` is that system's state of that
-    /// side. Its result is the hook's.
-    System { side: u8, slot: u8, hook: SystemHook },
+    /// side. It is called with the side, then the navi, the chip and the
+    /// weapon the hook is about, where it has them (nil in between). Its
+    /// result is the hook's.
+    System {
+        side: u8,
+        slot: u8,
+        hook: SystemHook,
+        navi: Option<ObjectRef>,
+        chip: Option<crate::ChipHandle>,
+        weapon: Option<crate::WeaponHandle>,
+    },
 }
 
 /// Which hook of a system is called (docs/design/rules-in-luau.md §4.1).
@@ -187,6 +196,70 @@ pub enum SystemHook {
     /// `custom_closed(side)`: both results are in and the fight resumes
     /// (`sub_8009338`).
     CustomClosed,
+    /// `navi_intake(side, navi)`: each tick of the fight, in the navi's
+    /// intake (`sub_801AC6C`) after the standing effects: BN5's light and
+    /// dark system clears the holy panel a dark MegaMan stands on
+    /// (0x08017136). Its result is unused.
+    NaviIntake,
+    /// `chip_check(side, navi, chip)`: a chip's use is prepared (the end of
+    /// `sub_80127C0`, where BN5's 0x080100E6 checks it): nil lets it be
+    /// used; a chip is what the navi uses instead (BN5's light and dark
+    /// system refuses a chip its MegaMan may not use: 0x08010118). The
+    /// first system that answers decides.
+    ChipCheck,
+    /// `chip_used(side, navi, chip, weapon)`: a chip's use started
+    /// (`sub_800FB54`, its action set): `chip` the chip it reads (the
+    /// zeroed chip for the empty hand), `weapon` the form's weapon run
+    /// instead of it (a charged use), else nil. BN6's beast system decides
+    /// whether it runs inside the rush (the attack's `wrapped`). Its result
+    /// is unused.
+    ChipUsed,
+    /// `controller(side, navi)`: each tick of the idle action of a navi whose
+    /// form is `controlled` (BN6's Beast Over: `sub_802D322`), in place of
+    /// the player's decisions: "nothing", "chip" (a chip's use started),
+    /// "buster" (the buster is to fire) or "moved" (a step started); the
+    /// framework carries it out as idle does. The first system that
+    /// answers decides.
+    Controller,
+    /// `takeover_requested(side, navi)`: idle finds the navi's takeover
+    /// request (`sub_802E4E4`; BN6's DarkInvs asks for its Cross
+    /// special): a system starts it (`battle.take_over`). Its result is
+    /// unused.
+    TakeoverRequested,
+    /// `takeover(side, navi)`: each tick of the idle action of a navi whose
+    /// side's takeover runs (`sub_802D4C6`, the Cross special), in place
+    /// of the player's decisions: what it did, as `controller` answers,
+    /// or "own_chip" (an attack of its own started: the attack's chip). The
+    /// system ends it (`battle.end_takeover`). The first system that
+    /// answers decides.
+    Takeover,
+    /// `countered(side, victim)`: side `side`'s navi landed a counter on
+    /// `victim` (`sub_801A200`): BN6's emotion system gives Full Synchro
+    /// unless the victim's mood is held. Its result is unused.
+    Countered,
+    /// `navi_tick(side, navi)`: each unpaused tick, after the navi's input
+    /// (`sub_8013DA0`'s place), for a navi a system asked it for (its
+    /// `ticked`): BN6's NaviCust emotion-swing bug. Its result is unused.
+    NaviTick,
+    /// `custom.hand_size(side)`: how many chips the side's custom screen
+    /// deals (`sub_802A40C`; BN5's `sub_802A49C`), asked as it opens. The
+    /// first system that answers decides; none answering, the framework's
+    /// rule (the custom level, NumbrOpn and the hand-shrink bug).
+    CustomHandSize,
+    /// A system's custom-screen button's `shown(side)` (§4.4), as the
+    /// screen opens: whether it is on the screen. (Not in `hooks`: each
+    /// button names its own functions.)
+    ButtonShown,
+    /// A button's `state(side)`, at the open and after each pick unless it
+    /// is selected: "selectable" or "unavailable". A button without one is
+    /// selectable at the open and left as it is.
+    ButtonState,
+    /// A button's `pressed(side)`: A on it.
+    ButtonPressed,
+    /// `form_reverted(side, navi)`: the framework reverts the navi to its
+    /// base form, its form not yet changed (`sub_80158CC`): BN6's spends a
+    /// Beast Out and exhausts a Beast Over. Its result is unused.
+    FormReverted,
     /// `folder_check(side)`: a tool asks whether a folder keeps the side's
     /// game's folder rules (`Battle::check_folder`, not the simulation):
     /// the folder is `battle.checked_folder()`, and each rule it breaks is
@@ -205,10 +278,23 @@ impl SystemHook {
             SystemHook::CustomRequested => "custom_requested",
             SystemHook::CustomClosed => "custom_closed",
             SystemHook::FolderCheck => "folder_check",
+            SystemHook::NaviIntake => "navi_intake",
+            SystemHook::ChipCheck => "chip_check",
+            SystemHook::ChipUsed => "chip_used",
+            SystemHook::Controller => "controller",
+            SystemHook::FormReverted => "form_reverted",
+            SystemHook::TakeoverRequested => "takeover_requested",
+            SystemHook::Countered => "countered",
+            SystemHook::NaviTick => "navi_tick",
+            SystemHook::CustomHandSize => "custom.hand_size",
+            SystemHook::ButtonShown => "button.shown",
+            SystemHook::ButtonState => "button.state",
+            SystemHook::ButtonPressed => "button.pressed",
+            SystemHook::Takeover => "takeover",
         }
     }
 
-    pub const ALL: [SystemHook; 7] = [
+    pub const ALL: [SystemHook; 20] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -216,6 +302,19 @@ impl SystemHook {
         SystemHook::CustomRequested,
         SystemHook::CustomClosed,
         SystemHook::FolderCheck,
+        SystemHook::NaviIntake,
+        SystemHook::ChipCheck,
+        SystemHook::ChipUsed,
+        SystemHook::Controller,
+        SystemHook::FormReverted,
+        SystemHook::TakeoverRequested,
+        SystemHook::Takeover,
+        SystemHook::Countered,
+        SystemHook::NaviTick,
+        SystemHook::CustomHandSize,
+        SystemHook::ButtonShown,
+        SystemHook::ButtonState,
+        SystemHook::ButtonPressed,
     ];
 }
 

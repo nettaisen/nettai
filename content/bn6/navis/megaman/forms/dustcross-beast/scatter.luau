@@ -177,7 +177,7 @@ local function land(me: Object, s: State)
 end
 
 scatter.action = define.action {
-    id = "dustcross-beast/scatter/action",
+    id = "bn6:dustcross-beast/scatter/action",
     state = { timer = "u16", targets = "u8[6]" },
     -- `sub_80EF328`.
     update = function(me: Object, s: State)
@@ -195,7 +195,7 @@ scatter.action = define.action {
 }
 
 scatter.weapon = define.weapon {
-    id = "dustcross-beast/scatter",
+    id = "bn6:dustcross-beast/scatter",
     -- The charge table's row 0x1D, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 40, 40, 40, 40, 40, 20, 20, 20 },

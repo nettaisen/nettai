@@ -2,7 +2,7 @@
 -- A bubble star (the original's attack object #0x42, `sub_80CC5A8`):
 -- BblStar's. It drifts forward from its panel at its chip's speed,
 -- swaying 24 pixels up and down the field along a sine wave that makes one
--- sway per 80 pixels travelled, and bubbles what it hits (status 0x60).
+-- sway per 80 pixels traveled, and bubbles what it hits (status 0x60).
 -- After a hit its region is off until it reaches another panel; a hit on
 -- something that pops it (hit flag 0x800000) bursts it. It ends past the
 -- field's side edges. A star on an invalid panel, or with no collision
@@ -30,8 +30,8 @@ export type State = {
     center_y: number,
 }
 
-local SPRITE = asset.sprite("bubble-star")
-local SOUND_HIT = asset.sound("bubble")
+local SPRITE = asset.sprite("bn6:bubble-star")
+local SOUND_HIT = asset.sound("bn6:bubble")
 -- One full sway (a phase of 0x10000) per this far, 16.16.
 local SWAY_LENGTH = 0x50_0000
 -- The sway's height: 24 pixels at the sine's peak (256).
@@ -158,7 +158,7 @@ local function init(me: Object)
 end
 
 star.kind = define.kind {
-    id = "bblstar/star",
+    id = "bn6:bblstar/star",
     pool = "attack",
     state = { speed = "i32", palette = "u8", hit_panel = "u32", phase_step = "i32", center_y = "i32" },
     -- `sub_80CC5A8`.

@@ -146,7 +146,7 @@ local function effect(me: Object)
 end
 
 grab.kind = define.kind {
-    id = "grab/controller",
+    id = "bn6:grab/controller",
     pool = "effect",
     state = { bonus = "u16", whole_column = "bool" },
     update = dimming_chips.phases { name = "AreaGrab", effect = effect },

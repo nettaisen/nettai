@@ -69,9 +69,9 @@ pub fn folder(content: &Content, chips: &[(&str, u8)]) -> BattleFolder {
 /// A MegaMan (base form, Falzar Beast Out available) with `hp` HP, on
 /// `content`.
 pub fn megaman(content: &Content, hp: u16) -> NaviStats {
-    let base = content.base_form();
     // MegaMan: the content's navi that changes form.
     let megaman = content.form_changing_navi().unwrap_or_else(|| panic!("the content has no navi that changes form"));
+    let base = content.base_form_for(megaman);
     // MegaMan's own weapons; the A button of battle mode 9 is his buster.
     let own = content.navi(megaman).weapons;
     NaviStats {

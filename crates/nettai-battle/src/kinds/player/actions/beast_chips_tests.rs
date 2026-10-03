@@ -23,8 +23,8 @@ fn megaman() -> NaviStats {
         max_base_hp: 1000,
         mood: 0x80,
         weapons: NaviWeapons {
-            buster: testing::weapon("megaman/buster"),
-            charge_shot: testing::weapon("megaman/charged-shot"),
+            buster: testing::weapon("test:megaman/buster"),
+            charge_shot: testing::weapon("test:megaman/charged-shot"),
             ..Default::default()
         },
         ..testing::megaman_on(&testing::content())
@@ -67,7 +67,7 @@ fn tick(b: &mut Battle, p: [ObjectRef; 2], held: u16) {
 /// until its controller has come: tick 0 is the controller's first.
 fn use_chip(b: &mut Battle, p: [ObjectRef; 2], chip: &str, controller: &str) -> ObjectRef {
     let chip = testing::chip_in(&b.content, chip);
-    let mut hand = ChipHand::empty(&b.content);
+    let mut hand = ChipHand::empty(&b.content, b.games.arena);
     hand.ids[0] = Some(chip);
     hand.damage[0] = b.content.chip(chip).damage;
     b.hands[0] = hand;
@@ -192,7 +192,7 @@ fn gregar_sends_its_two_pieces_which_breathe_flames_and_drop_rocks() {
     // They appear with a sound; the second brings the arrival, five pixels
     // down the field and up from it, for 60 ticks.
     run_to(&mut b, p, &mut t, e + 32);
-    assert!(heard(&b, "log-in"));
+    assert!(heard(&b, "test:log-in"));
     assert!(pieces.iter().all(|&r| b.objects.get(r).flags & flags::VISIBLE != 0));
     let arrival = one(&b, "beast-chips/arrival").expect("the arrival");
     let s = b.objects.get(second).pos;
@@ -201,7 +201,7 @@ fn gregar_sends_its_two_pieces_which_breathe_flames_and_drop_rocks() {
     run_to(&mut b, p, &mut t, e + 92);
     assert_eq!(b.objects.get(first).action, 4, "60 ticks");
     run_to(&mut b, p, &mut t, e + 93);
-    assert!(heard(&b, "bug"));
+    assert!(heard(&b, "test:bug"));
     assert!(one(&b, "beast-chips/arrival").is_none());
     assert_eq!((b.objects.get(first).anim, b.objects.get(second).anim), (1, 5));
     run_to(&mut b, p, &mut t, e + 108);
@@ -215,7 +215,7 @@ fn gregar_sends_its_two_pieces_which_breathe_flames_and_drop_rocks() {
     let hp = |b: &Battle| b.objects.get(p[1]).hp;
     assert_eq!(hp(&b), 1000);
     run_to(&mut b, p, &mut t, e + 140);
-    assert!(heard(&b, "beast-out-chosen-gregar") && heard(&b, "roar"));
+    assert!(heard(&b, "test:beast-out-chosen-gregar") && heard(&b, "test:roar"));
     let flames = all(&b, "gregar/flame");
     let mut panels: Vec<(u8, u8)> = flames.iter().map(|&f| (b.objects.get(f).panel.x, b.objects.get(f).panel.y)).collect();
     panels.sort();
@@ -243,7 +243,7 @@ fn gregar_sends_its_two_pieces_which_breathe_flames_and_drop_rocks() {
             drops += 1;
             assert_eq!((n - (e + 140)) % 20, 0, "a rock at {n}");
         }
-        if heard(&b, "roar") {
+        if heard(&b, "test:roar") {
             growls.push(n - (e + 140));
         }
     }
@@ -280,7 +280,7 @@ fn falzar_sends_feathers_then_its_three_pieces_and_a_whirlwind() {
     assert_eq!((o.damage, o.stamina), (100, 0x8A));
     assert!(o.panel.x >= 4, "the other side's area: {:?}", o.panel);
     run_to(&mut b, p, &mut t, e + 32);
-    assert!(heard(&b, "justice-one"));
+    assert!(heard(&b, "test:justice-one"));
     assert_eq!(b.objects.get(feather).pos.z, 0xC0_0000);
     run_to(&mut b, p, &mut t, e + 47);
     assert_eq!(b.objects.get(feather).pos, Vec3 { x: dive.x - 0xC_0000, z: 0xC_0000, ..dive });
@@ -320,13 +320,13 @@ fn falzar_sends_feathers_then_its_three_pieces_and_a_whirlwind() {
     assert_eq!(b.objects.get(lead).pos, Vec3 { y: over.y - 0x1_0000, z: over.z - 0x1_0000, ..over });
     assert_eq!(b.objects.get(pieces[0]).pos, over);
     run_to(&mut b, p, &mut t, e + 183);
-    assert!(heard(&b, "log-in"));
+    assert!(heard(&b, "test:log-in"));
     let arrival = one(&b, "beast-chips/arrival").expect("the arrival");
     let l = b.objects.get(lead).pos;
     assert_eq!(b.objects.get(arrival).pos, Vec3 { x: l.x, y: l.y + 0x5_0000, z: l.z + 0x5_0000 });
     assert_eq!(b.objects.get(arrival).anim, 0xC);
     run_to(&mut b, p, &mut t, e + 244);
-    assert!(heard(&b, "bug"));
+    assert!(heard(&b, "test:bug"));
     run_to(&mut b, p, &mut t, e + 290);
     let actions: Vec<u8> = pieces.iter().map(|&r| b.objects.get(r).action).collect();
     assert_eq!(actions, [0xC, 0xC, 0x10]);
@@ -336,7 +336,7 @@ fn falzar_sends_feathers_then_its_three_pieces_and_a_whirlwind() {
     let hp = |b: &Battle| b.objects.get(p[1]).hp;
     let before = hp(&b);
     run_to(&mut b, p, &mut t, e + 291);
-    assert!(heard(&b, "beast-out-chosen-falzar") && heard(&b, "elec-pulse"));
+    assert!(heard(&b, "test:beast-out-chosen-falzar") && heard(&b, "test:elec-pulse"));
     let wind = one(&b, "falzar/tornado").expect("the whirlwind");
     let o = b.objects.get(wind);
     let front = at(3, 2, 0);

@@ -7,23 +7,31 @@ local beast_claw = require("../../weapons/beast-claw/weapon")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "gregar-beast-over",
+    id = "bn6:gregar-beast-over",
     kind = "beast_over",
+    -- The beast system's berserk decides its idle (`sub_802D322`).
+    traits = { "controlled" },
+    -- It glows (`sub_8016A38`, `byte_8016A68`): the navi's color shader by the battle time, a tick each.
+    glow = {
+        0x0000, 0x0000, 0x0041, 0x0461, 0x0881, 0x0CC2, 0x10E2, 0x1102, 0x1543,
+        0x1983, 0x1DC3, 0x21E4, 0x2204, 0x2204, 0x21E4, 0x1DC3, 0x1983, 0x1543,
+        0x1102, 0x10E2, 0x0CC2, 0x0CA2, 0x0881, 0x0861, 0x0441, 0x0421,
+    },
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
     game = "gregar",
     -- (No hit breaks Beast Over; the original's routine, by the form's number, would drop
     -- either to the Falzar beast.)
     breaks_to = falzar_beast,
-    sprite = asset.sprite("gregar-beast"),
+    sprite = asset.sprite("bn6:gregar-beast"),
     element = "null",
     buster_bonus = 0,
     weapons = { buster = gregar_beast_buster.weapon, alt_a_charge = beast_claw.weapon },
     -- Its face in the emotion window (`byte_801E700`): the Falzar ROM has no
     -- Gregar Beast Over face, and shows Falzar Beast Over's.
-    mugshot = asset.mugshot("gregar-beast-over"),
+    mugshot = asset.mugshot("bn6:gregar-beast-over"),
     -- What its status reset gives the navi (`sub_8014536`).
-    status_reset = { "super_armor", "lockon_marker", "invulnerable", "berserk" },
+    status_reset = { "super_armor", "target_marker", "invulnerable", "berserk" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 23,
     -- The buster arm it raises (lib/buster).

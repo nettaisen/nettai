@@ -6,7 +6,7 @@ local b_button = require("./b-button")
 local chrgs = require("../../lib/patch-cards/chrgs")
 
 return define.patch_card {
-    id = "beetle",
+    id = "bn6:beetle",
     mb = 11,
     effects = {
         cards.hp(100),

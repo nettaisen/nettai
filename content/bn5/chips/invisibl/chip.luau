@@ -6,7 +6,7 @@
 local invisible = require("@bn6/chips/invisibl/controller")
 
 return define.chip {
-    id = "invisibl",
+    id = "bn5:invisibl",
     codes = { "*" },
     element = "null",
     family = "invisible",
