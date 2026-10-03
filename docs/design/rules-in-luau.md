@@ -1460,3 +1460,46 @@ P1's items 12 and 8 (bn5-map.md §15.3), on R4.
   - `gate-against.sh` with everything selected: machgun and soundmod with 96 rollback rows, the 189 legacy rounds
     (2,746,946 frames), and the lab 6548 (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
   - BN5's replays as before (252 replay, 243 match, 139,499 of 948,097 frames).
+
+### S6a, the custom screen's extras: the mechanism, the hand size, two buttons (2026-10-02)
+
+- **The mechanism** (§4.4). The screen stays a Rust state machine and asks `custom::Extras`. The battle answers
+  with the side's systems (`SideExtras`); a screen without a battle (the screen's own tests) gets no answers
+  (`NoExtras`).
+  - While a system's function runs, the screen and the folder sit back in the battle's side, so the `custom`
+    library reaches them, and they are taken back afterwards.
+  - `Side::open_with` and `tick_with` take the extras; `open` and `tick` keep their signatures.
+  - bn6-compat's screen check (`check_custom_screens`, now on an `Arc<Content>`) builds a battle from the round's
+    setup and asks `Battle::custom_extras(side)`, setting the side's stats and the turn from the trace first.
+  - The hand built at OK reads a formula chip's damage from the battle, so those (`Defs::formula_chips`) are read
+    before the extras borrow it.
+- **`custom.hand_size(side)`**, a system's `custom` hook, asked as the screen opens (§3.3). BN6's comes from its
+  new `cross` system (content/bn6/rules/cross, first in the stock ruleset): ChargeCross's extra chips (its
+  `charge_cross_screens`, out of `RoundMemory`), the custom level, NumbrOpn (not in DustCross) and the
+  hand-shrink bug (`sub_802A49C`, `sub_802A40C`). With no answer the framework's rule applies: the same without
+  a form's share, which is what BN5 sides get, as before.
+- **Buttons.**
+  - A system declares its buttons: `buttons = { name = { slot, cells, uses, right, left, shown, state, pressed }
+    }`, read into `Defs::buttons`.
+  - `SlotKind::Button { button, cell }` (a cell: only, left, right) replaces `Scrap` and `Redeal`.
+  - As the screen opens, each button whose `shown` answers takes its slots, in the order the systems are listed;
+    the first to claim a slot keeps it. `state`, where a button has one, is asked at the open and after each pick
+    unless the button is picked or used up. `pressed` answers A.
+  - The `custom` library: `refuse`, `sacrifice` and `redeal` (the shared machinery for the button under the
+    cursor, which keeps its button's slot in its phase), `last_pick_is_chip`, `cursor_state`.
+  - BN6's two:
+    - DustCross's scrap, the cross system's: two wide on 8 and 9, usable once, selectable with a chip picked last.
+    - ChpShufl's re-deal, the navicust system's.
+- **The frontend.** nettai-render draws a button by its name (`View::button_look`: BN6's `redeal` and `scrap`
+  pictures, tiles and cursor, §4.8). The driver labels a button by its name.
+- **Next.** Beast Out (its button, the BeastOut chip and their animations as windows, the result's form) goes with
+  the Cross window: the two read each other (a chosen Cross greys out Beast Out, and Beast Out blocks the
+  window). Then the setup (S6c).
+- **Gates** (on main db435c78):
+  - the build without warnings, 481 tests, the content check (1,251 modules), gen-content check 0 errors;
+  - `gate-against.sh` with everything selected: the 189 legacy rounds, machgun and soundmod with 96 rollback rows,
+    and the lab 6548 (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
+  - identity.sh against main's frontend on main's content: the custom-screen list identical in the default text
+    mode (42 scenarios, 47,580 frames); the custom-screen and sample lists identical with `--text original` (174
+    scenarios, 200,712 frames); the sample list identical in the default mode (132 scenarios, 153,132 frames);
+  - the audit 0 problems; BN5's replays as before; us-spelling 0.
