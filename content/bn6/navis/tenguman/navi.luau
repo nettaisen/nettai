@@ -34,6 +34,30 @@ return define.navi {
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, back_special = tengu_wind.weapon },
     fresh = { hp = 150, float_shoes = true, air_shoes = true, mega_level = 5, giga_level = 1 },
     cross_hp = { 100, 150 },
+    -- What the save's reload gives it at its link navi level
+    -- (`reloadCurNaviBaseStats_8120df0`, docs/engine/link-navis.md): its base
+    -- and maximum HP by the story's progress (`off_8120F44`), and what each
+    -- level, 0 to 14, adds over its fresh stats (`pt_8121200`'s scripts).
+    levels = {
+        base_hp = { 300, 300, 300, 400, 500, 600, 800 },
+        by_level = {
+            { hp = 40, float_shoes = true, air_shoes = true },
+            { hp = 80, float_shoes = true, air_shoes = true },
+            { hp = 120, rapid = 1, float_shoes = true, air_shoes = true },
+            { hp = 160, rapid = 1, float_shoes = true, air_shoes = true },
+            { hp = 200, attack = 1, rapid = 1, float_shoes = true, air_shoes = true },
+            { hp = 240, attack = 1, rapid = 2, float_shoes = true, air_shoes = true },
+            { hp = 280, attack = 1, rapid = 2, float_shoes = true, air_shoes = true },
+            { hp = 320, attack = 1, rapid = 2, custom_level = 1, float_shoes = true, air_shoes = true },
+            { hp = 360, attack = 1, rapid = 3, custom_level = 1, float_shoes = true, air_shoes = true },
+            { hp = 400, attack = 2, rapid = 3, custom_level = 1, float_shoes = true, air_shoes = true },
+            { hp = 440, attack = 2, rapid = 3, custom_level = 1, float_shoes = true, air_shoes = true },
+            { hp = 500, attack = 2, rapid = 3, custom_level = 1, float_shoes = true, air_shoes = true },
+            { hp = 650, attack = 2, rapid = 3, custom_level = 2, float_shoes = true, air_shoes = true },
+            { hp = 800, attack = 2, rapid = 4, charge = 1, custom_level = 2, mega_level = 1, float_shoes = true, air_shoes = true },
+            { hp = 1000, attack = 3, rapid = 4, charge = 1, custom_level = 2, mega_level = 1, float_shoes = true, air_shoes = true },
+        },
+    },
     identity = define.identity {
         class = "link_navi",
         version = 0,
