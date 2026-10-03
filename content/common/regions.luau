@@ -58,6 +58,10 @@ regions.plus = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 
 -- The anchor and the panel above it (region 0x18: a big rolling log).
 regions.tall = define.region { panels = { { 0, 0 }, { 0, -1 } } }
 
+-- The anchor and the two panels diagonally behind it (region 0x1F: BN5's
+-- ColonelSoul's screen divide).
+regions.vee = define.region { panels = { { 0, 0 }, { -1, -1 }, { -1, 1 } } }
+
 -- Six in a row from the anchor (region 0x08: BN5's MagnetSoul's pull).
 regions.row = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } }
 
