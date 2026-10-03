@@ -676,9 +676,9 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_open_window(&mut self, side: u8, system: u8, window: &str) -> ApiResult<()> {
+    fn custom_open_window(&mut self, side: u8, system: u8, window: &str, ticks: u16) -> ApiResult<()> {
         let w = self.own_window(side, system, window)?;
-        self.custom_screen_mut(side)?.open_window(w);
+        self.custom_screen_mut(side)?.open_window(w, ticks);
         Ok(())
     }
 
@@ -764,9 +764,7 @@ impl CoreApi for Battle {
 
     fn custom_form_taken(&self, side: u8, system: u8) -> ApiResult<bool> {
         let screen = self.custom_screen(side)?;
-        // (A Cross chosen in the Cross window, which is still the
-        // framework's, holds it too.)
-        Ok((screen.form.is_some() && screen.form_owner != Some(system)) || screen.crosses.chosen.is_some())
+        Ok(screen.form.is_some() && screen.form_owner != Some(system))
     }
 
     fn custom_full(&self, side: u8) -> ApiResult<bool> {
@@ -778,6 +776,77 @@ impl CoreApi for Battle {
         let h = self.own_button(side, system, button)?;
         let screen = self.custom_screen(side)?;
         Ok(screen.selection().iter().any(|&s| matches!(screen.slots[s as usize].kind, SlotKind::Button { button, .. } if button == h)))
+    }
+
+    fn custom_cursor(&self, side: u8) -> ApiResult<u8> {
+        Ok(self.custom_screen(side)?.cursor)
+    }
+
+    fn custom_set_cursor(&mut self, side: u8, slot: u8) -> ApiResult<()> {
+        if slot as usize >= crate::custom::screen::SLOTS {
+            return Err(ApiError::Other(format!("custom.set_cursor: no slot {slot}")));
+        }
+        self.custom_screen_mut(side)?.cursor = slot;
+        Ok(())
+    }
+
+    fn custom_pressed(&self, side: u8, key: &str) -> ApiResult<bool> {
+        let bit = crate::input::key_named(key).ok_or_else(|| ApiError::Other(format!("custom.pressed: no key is named {key:?}")))?;
+        self.custom_screen(side)?;
+        Ok(self.custom.sides[side as usize & 1].joypad.pressed & bit != 0)
+    }
+
+    fn custom_repeated(&self, side: u8, key: &str) -> ApiResult<bool> {
+        let bit = crate::input::key_named(key).ok_or_else(|| ApiError::Other(format!("custom.repeated: no key is named {key:?}")))?;
+        self.custom_screen(side)?;
+        Ok(self.custom.sides[side as usize & 1].joypad.repeat & bit != 0)
+    }
+
+    fn custom_draw_window(&mut self, side: u8) -> ApiResult<()> {
+        let folder = self.custom.sides[side as usize & 1].folder.ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        self.custom_screen_mut(side)?.draw_window(&folder);
+        Ok(())
+    }
+
+    fn custom_draw_regular(&mut self, side: u8) -> ApiResult<()> {
+        let folder = self.custom.sides[side as usize & 1].folder.ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        self.custom_screen_mut(side)?.look.draw_regular(folder.regular_pending);
+        Ok(())
+    }
+
+    fn custom_draw_cross_cursor(&mut self, side: u8) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.draw_cross_cursor();
+        Ok(())
+    }
+
+    fn custom_show_chip_window(&mut self, side: u8) -> ApiResult<()> {
+        self.with_custom_screen(side, |screen, view, folder, _, _| screen.show_chip_window(folder, view))
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+    }
+
+    fn custom_set_cross_tab(&mut self, side: u8, on: bool) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.cross_tab = on;
+        Ok(())
+    }
+
+    fn custom_describe(&mut self, side: u8, form: Option<nettai_content_api::FormHandle>) -> ApiResult<()> {
+        let joy = self.custom.sides[side as usize & 1].joypad;
+        let described = self
+            .with_custom_screen(side, |screen, view, _, _, _| {
+                // (Three lines for a form the content has no description of.)
+                let lines = form.map_or(3, |f| view.library.form_description_lines(f));
+                screen.describe_form(&joy, lines, form)
+            })
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        if !described {
+            return Err(ApiError::Other("custom.describe: no window is up".into()));
+        }
+        Ok(())
+    }
+
+    fn custom_refresh_buttons(&mut self, side: u8) -> ApiResult<()> {
+        self.with_custom_screen(side, |screen, _, _, _, extras| screen.refresh_buttons(extras))
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
     }
 
     fn custom_player(&self, side: u8) -> ApiResult<nettai_content_api::api::CustomPlayer> {
@@ -795,7 +864,8 @@ impl CoreApi for Battle {
                 crate::custom::GameVersion::Gregar => "gregar",
                 crate::custom::GameVersion::Falzar => "falzar",
             },
-            cross_list: s.unlocks.cross_list.is_some(),
+            crosses: s.unlocks.crosses,
+            cross_list: s.unlocks.cross_list.map(|l| l.forms().collect()),
             beast_out: s.unlocks.beast_out,
             beast_out_sealed: s.unlocks.beast_out_sealed,
             random_battle: self.setup.settings.effects & crate::setup::effects::RANDOM != 0,

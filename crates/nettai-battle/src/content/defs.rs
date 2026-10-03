@@ -1359,6 +1359,7 @@ impl Defs {
                 definitions.of(Registry::Record).iter().position(|r| r.key == key).map(|i| RecordHandle(i as u16))
             })?;
             record.cross_hp = super::navis::read_cross_hp(d)?;
+            record.levels = super::navis::read_levels(d, &weapon_handle)?;
             record.identity = identity_of(d, &identities)?;
             record.forms = match d.spec.field("forms") {
                 Data::Nil => None,

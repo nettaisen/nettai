@@ -771,7 +771,7 @@ navi = "bn6:megaman"
 game = "gregar"                            # optional: falzar (default) or gregar
 crosses = ["bn6:heatcross", "bn6:spoutcross"]   # optional: else the game's own five
 cards = [{ card = "bn6:canodumb" }, { card = "bn6:shadow", on = false }]
-level = 0                                  # optional: a link navi's level
+level = 0                                  # optional: a link navi's level (its stats are its level's)
 bug_frags = 0                              # optional
 emotion_window_glitch = false              # optional: the save's NaviCust bug flag (0x1720)
 
@@ -780,7 +780,7 @@ chips = ["bn6:cannon A", "bn6:cannon A", "bn6:airshot *"]   # 30 entries, "<key>
 regular = 4                                # optional: an entry, counting from 0
 tags = [5, 6]                              # optional: two entries
 
-[left.stats]                               # optional: what differs from the navi's fresh stats
+[left.stats]                               # optional: what differs from the navi's fresh stats (a link navi's at its level)
 hp = 1000
 regular_memory = 50
 sun = true
@@ -796,7 +796,10 @@ programs = [                               # in the save's order; x, y the cente
 
 **The stats block** (`nettai_match::stats`) sets the navi's stats by name
 over its fresh stats (`NaviStats::fresh`, `init_8013B64`: what a new save
-gives the navi), of the side's game: `hp` (the base HP, which also sets the
+gives the navi), of the side's game; a link navi's over its stats at its
+`level`, as the PET's reload gives them (`nettai_match::link_navis`,
+docs/engine/link-navis.md: the base HP of the cleared game and the level's
+HP, buster levels, custom and Mega levels and abilities): `hp` (the base HP, which also sets the
 maximum and the HP the round starts with; `max_hp` and `current_hp` set
 those apart), `attack`, `rapid`, `charge`, `custom_level`, `mega_level`,
 `giga_level`, `regular_memory`, `mood`, `element`, `beast_out_counter`,
