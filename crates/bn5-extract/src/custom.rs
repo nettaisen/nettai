@@ -13,7 +13,8 @@
 use crate::hud::{palette, tiles};
 use crate::rom::{Rom, Roms, Version};
 use nettai_assets::{
-    ButtonPictures, ChipArt, CustomLayout, CustomScreen, MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles, VersionPictures,
+    ButtonPictures, ChipArt, CursorPlace, CustomLayout, CustomScreen, MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles,
+    VersionPictures,
     Versioned,
 };
 
@@ -31,7 +32,10 @@ const WINDOW_PATCHES: (u32, u16) = (0x0802_3938, 0x59);
 const MAP_CELLS: u32 = 15 * 20;
 /// Where the blocks load (BN6's `CustomLayout::BN6`, all lower by the
 /// frame's 0x42 tiles, the column's icons by 0x44: the special button is
-/// two tiles narrower).
+/// two tiles narrower); the hidden slots' fill (0x08025D44: solid 2, BN6's
+/// solid 1); the cursor over OK (0x08024704: at (0x58, 0x70), BN6's
+/// (0x5B, 0x6E)) and over the soul button (0x08024734: at (0x58, 0x88)),
+/// their corners read from `CURSOR_CORNERS`.
 const LAYOUT: CustomLayout = CustomLayout {
     column_cells: 0x47,
     turn_limit: 0x4B,
@@ -44,7 +48,25 @@ const LAYOUT: CustomLayout = CustomLayout {
     column_icons: 0xE1,
     name_bar: 0x1B6,
     cross_names: 0,
+    slot_blank: 2,
+    ok_cursor: CursorPlace { x: 0x58, y: 0x70, corners: [[(0, 0, false, false); 4]; 2] },
+    special_cursor: CursorPlace { x: 0x58, y: 0x88, corners: [[(0, 0, false, false); 4]; 2] },
 };
+/// The cursor's corners over OK and over the soul button (`sub_80288D0`'s
+/// and `sub_8028904`'s counterparts' tables: four words a frame, y in the
+/// low half, x and the flips (0x1000 h, 0x2000 v) in the high).
+const CURSOR_CORNERS: (u32, u32) = (0x0802_4714, 0x0802_4744);
+
+/// A cursor's corners from a table of them.
+fn cursor_corners(rom: &Rom, a: u32) -> [[(i8, i8, bool, bool); 4]; 2] {
+    std::array::from_fn(|f| {
+        std::array::from_fn(|k| {
+            let w = rom.u32(a + 16 * f as u32 + 4 * k as u32);
+            let hi = (w >> 16) as u16;
+            (w as u16 as i8, (hi & 0xFF) as i8, hi & 0x1000 != 0, hi & 0x2000 != 0)
+        })
+    })
+}
 /// Background palette 9 by the chip window's class (standard, mega, giga,
 /// dark), and palettes 11, 12 and 14 (the HUD's load list).
 const FRAME_PALETTES: (u32, usize) = (0x086F_AF2C, 4);
@@ -69,6 +91,11 @@ const DIGITS: (u32, usize) = (0x086F_9B4C, 11);
 /// The slots' codes (16x8), the empty slot's icon.
 const SLOT_CODES: (u32, usize) = (0x086F_AFCC, 28);
 const EMPTY_ICON: u32 = 0x086F_B6CC;
+/// The re-deal and scrap buttons over slots 8 and 9 (BN6 `sub_80282D2`'s
+/// and `sub_8028340`'s counterparts: 12 tiles a state; the shared screen's,
+/// which a netbattle doesn't offer).
+const REDEAL_BUTTONS: (u32, usize) = (0x086F_9E4C, 0x480);
+const SCRAP_BUTTONS: (u32, usize) = (0x086F_A7CC, 0x600);
 /// The soul button (slot 11, BN6's Beast Out's place): its tiles, 3x2 a
 /// state (selectable, unavailable, pressed; the HUD's load list's to tile
 /// 0xDB), and its picture in the chip window with a palette a state
@@ -146,7 +173,11 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
     };
     let map = |a: u32| -> Vec<MapEntry> { (0..MAP_CELLS).map(|i| MapEntry::from_gba(rom.u16(a + 2 * i))).collect() };
     CustomScreen {
-        layout: LAYOUT,
+        layout: CustomLayout {
+            ok_cursor: CursorPlace { corners: cursor_corners(rom, CURSOR_CORNERS.0), ..LAYOUT.ok_cursor },
+            special_cursor: CursorPlace { corners: cursor_corners(rom, CURSOR_CORNERS.1), ..LAYOUT.special_cursor },
+            ..LAYOUT
+        },
         buttons: vec![("soul".into(), soul)],
         window_tiles: block(rom, WINDOW_TILES),
         column_cells: block(rom, COLUMN_CELLS),
@@ -174,8 +205,8 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         digits: glyphs(DIGITS),
         slot_codes: glyphs(SLOT_CODES),
         empty_icon: tiles(rom, EMPTY_ICON, 0x80),
-        redeal_buttons: Tiles::default(),
-        scrap_buttons: Tiles::default(),
+        redeal_buttons: block(rom, REDEAL_BUTTONS),
+        scrap_buttons: block(rom, SCRAP_BUTTONS),
         versioned,
         cursor: block(rom, CURSOR),
         cross_cursor: Tiles::default(),

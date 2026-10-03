@@ -460,7 +460,8 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
             "CUSTOM: CROSS (UP/DOWN, A CHOOSE, B BACK)"
         }
         Phase::CrossChosen { .. } => "CUSTOM: CROSS!",
-        Phase::BeastOutChosen { .. } => "CUSTOM: BEAST OUT!",
+        // A system's window, by its name (BN6's Beast Out).
+        Phase::Window { window, .. } if b.content.defs.window(window).name == "beast_out" => "CUSTOM: BEAST OUT!",
         Phase::SoulChosen { .. } => "CUSTOM: SOUL UNISON!",
         _ => "CUSTOM",
     };
@@ -469,7 +470,6 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         let x = &screen.slots[slot as usize];
         let label = match x.kind {
             SlotKind::Ok => "OK".to_string(),
-            SlotKind::BeastOut => "BEAST OUT".to_string(),
             SlotKind::Soul => "SOUL".to_string(),
             // A system's button, by its name ("redeal": "REDEAL").
             SlotKind::Button { button, cell: nettai_battle::custom::ButtonCell::Only | nettai_battle::custom::ButtonCell::Left } => {
@@ -703,7 +703,7 @@ mod tests {
                 if b.round.turn < 2 {
                     return 0;
                 }
-                beast |= screen.beast_out;
+                beast |= screen.form.is_some();
                 // Each key held two ticks (a direction acts on a hold's
                 // second), then let go.
                 let key = match (beast, screen.cursor) {

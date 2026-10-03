@@ -141,14 +141,13 @@ impl<'a> Renderer<'a> {
 
     /// Draw a battle as a 240x160 frame with its text items.
     pub fn render(&mut self, b: &Battle) -> Frame {
-        let assets = self.assets;
         self.problems.known.clear();
         let view = Self::view(b);
-        // (The background is its own pack's; the field, the content's own
-        // pack's.)
+        // (The background is its own pack's; the field, the arena's game's
+        // pack's, a panel type it doesn't draw another's: `FieldArt`.)
         let background = crate::lookups::background(&self.packs, &b.content, b.setup.settings.background, &mut self.problems);
         let draw = !self.lookups_only;
-        let stage = draw.then(|| Stage::new(assets, background, StageClock::of(b)));
+        let stage = draw.then(|| Stage::new(&self.packs, &b.content, b.games.arena, background, StageClock::of(b)));
         match &stage {
             Some(stage) => {
                 self.background.clear();
@@ -156,7 +155,7 @@ impl<'a> Renderer<'a> {
                 self.field.clear();
                 stage.draw_field(b, &mut self.field, b.setup.local_side, &view, &mut self.problems);
             }
-            None => crate::stage::field_lookups(b, assets, b.setup.local_side, &mut self.problems),
+            None => crate::stage::field_lookups(b, &self.packs, b.setup.local_side, &mut self.problems),
         }
         self.hud.drawn = draw;
         self.names.drawn = draw;
