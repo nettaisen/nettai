@@ -345,3 +345,16 @@ export type HyperBurstSpec = { id: string?, bursts: number }
 -- A game's BodyGrd striker (@common/bodygrd/striker): its kind's key, its identity, the shurikens' kind and the
 -- throw's sound.
 export type BodyGuardStrikerLook = { id: string, identity: Identity, shuriken: Kind, throw_sound: Sound }
+
+-- A follow effect's look (@common/follow-effect): a row of a game's looks and its routine.
+export type FollowEffectBehavior = "none" | "slide" | "flash" | "while_in_action" | "riding" | "timed"
+export type FollowEffectLook = { sprite: SpriteAsset, anim: number, palette: number, behavior: FollowEffectBehavior }
+
+-- BassAnly's dark ball (@common/bassanly/shot): its level (0 to 3: its
+-- speeds), its slant (-1 up, 1 down), and how it homes.
+export type DarkBallHoming = "none" | "diagonal" | "seeking"
+export type DarkBall = {
+    level: number,
+    slant: number,
+    homing: DarkBallHoming,
+}

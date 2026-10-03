@@ -85,7 +85,8 @@ local ROWS: { [number]: Row } = {
         sprite = asset.sprite("bn5:holy-dream-shot"),
         speed = 0x5_0000,
     },
-    [0x1] = row { hit_mod = 3, element = 0, spark = sparks.heavy, sprite = asset.sprite("bn5:sprite-0c-43"), speed = 0xA_0000 },
+    -- BugCharg's shots (its charger's sprite).
+    [0x1] = row { hit_mod = 3, element = 0, spark = sparks.heavy, sprite = asset.sprite("bn5:bug-charger"), speed = 0xA_0000 },
     [0x2] = row { hit_mod = 0, element = 3, sprite = ELEC_SHOT, status = statuses.paralyze_90, speed = 0x3_0000 },
     [0x3] = row { hit_mod = 0, element = 3, sprite = ELEC_SHOT, status = statuses.paralyze_90, speed = 0x3_8000 },
     [0x4] = row { hit_mod = 0, element = 3, sprite = ELEC_SHOT, status = statuses.paralyze_90, speed = 0x4_0000 },
