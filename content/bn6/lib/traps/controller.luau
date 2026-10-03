@@ -1,95 +1,21 @@
 --!strict
--- The trap chips' dimming controller (the original's effect object #0x2A,
--- `sub_80E34C0`): AntiNavi, AntiDmg, AntiSwrd, AntiRecv, ElemTrap and
--- BodyGrd. The usual dimming phases (lib/dimming), with the telop hidden,
--- and an effect that makes the chip its user's side's defensive chip (the
--- linked record: the damage intake, a navi chip's arrival or a recovery
--- springs the trap), with its object for the chips that have one
--- (ElemTrap's trap), then waits 61 ticks. See docs/engine/chips.md §3.6.9.
---
--- A chip's `dimming` hook is `traps.hook(trap?)` (`sub_80E353E`,
--- `off_802CCB4[20]`). What the original's first chip parameter picked in
--- `off_80E3574` (0 ElemTrap's trap, 1 to 5 nothing) is the hook's
--- argument: the trap the chip sets, if any.
+-- BN6's trap chips' dimming controller (the original's effect object #0x2A,
+-- `sub_80E34C0`): the shared controller (@common/traps/controller), BN6's
+-- kind. A chip's `dimming` hook is `traps.hook(trap?)` (`sub_80E353E`,
+-- `off_802CCB4[20]`): the trap the chip sets, if any.
 
-local dimming_chips = require("@common/dimming")
+local common = require("@common/traps/controller")
 
 local traps = {}
 
--- A trap with an object of its own (a "trap" record): `set` spawns it for
--- the controller and its user (`sub_80E3560`'s table entry), with the chip
--- and bonus the controller keeps.
-export type Trap = {
-    set: (controller: Object, user: Object, chip: Chip?, bonus: number) -> Object?,
-}
-
-export type State = {
-    -- The chip and the Atk+ / cross bonus the telop shows (object +0x30,
-    -- +0x32), which the side's record keeps for the trap's spring.
-    chip: Chip?,
-    bonus: number,
-    -- The chip's trap object, if it has one.
-    trap: Trap?,
-}
-
-local WAIT = 0x3C
-
--- `sub_80E3504`: the side's previous defensive chip goes; this one takes
--- its place (`sub_802CE8A`, on its user's side), with its object
--- (`sub_80E3560`); 61 ticks.
-local function effect(me: Object)
-    if me.phase_init == 0 then
-        me.timer = WAIT
-        battle.clear_linked(me.alliance)
-        local user = me.related1
-        if not user then
-            error("the trap chip's controller has no user (sub_802CE8A reads through a null pointer)")
-        end
-        local s = me.state :: State
-        local trap = s.trap
-        local object = if trap then trap.set(me, user, s.chip, s.bonus) else nil
-        battle.set_linked(user.alliance, {
-            chip = s.chip,
-            bonus = s.bonus,
-            damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16)),
-            owner = user,
-            object = object,
-        })
-        me.phase_init = 4
-    end
-    local t = me.timer - 1
-    me.timer = t
-    if t < 0 then
-        dimming_chips.done(me)
-    end
-end
-
-traps.kind = define.kind {
-    id = "bn6:trap-chip",
-    pool = "effect",
-    state = { chip = "chip", bonus = "u16", trap = "record:trap" },
-    -- `sub_80E34C0`.
-    update = dimming_chips.phases { name = "a trap chip", effect = effect, hidden = true },
-}
+traps.kind = common.make_kind("bn6:trap-chip")
 
 -- A trap's object, as a record a controller can keep.
-function traps.trap(t: Trap): Trap
-    return define.record("trap", t)
-end
+traps.trap = common.trap
 
--- A chip's `dimming` hook (`sub_80E353E`): the controller for `user`, on
--- its side, setting `trap`'s object if the chip has one. (The spawner
--- copies the user's side only, not its facing.)
+-- A chip's `dimming` hook: BN6's controller, setting `trap`'s object.
 function traps.hook(trap: Trap?): (user: Object, spec: DimmingChipSpec) -> Object?
-    return function(user: Object, spec: DimmingChipSpec): Object?
-        local o = dimming_chips.spawn(traps.kind, user, spec, true)
-        if o then
-            local s = o.state :: State
-            s.chip, s.bonus = spec.chip, spec.bonus
-            s.trap = trap
-        end
-        return o
-    end
+    return common.hook(traps.kind, trap)
 end
 
 return traps

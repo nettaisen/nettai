@@ -13,7 +13,7 @@ local collision = require("../../rules/collision")
 local effects = require("@bn6/lib/effects")
 local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")
-local traps = require("@bn6/lib/traps/controller")
+local traps = require("../../lib/traps")
 
 local trap = {}
 
