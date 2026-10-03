@@ -113,3 +113,5 @@
 "bn5:cannball/ball" = { pool = "attack", index = 0x35 }
 "bn5:geyser/bomb" = { pool = "attack", index = 0x42 }
 "bn5:geyser/water" = { pool = "attack", index = 0x43, scratch_position = true }
+"bn5:metagel/controller" = { pool = "effect", index = 0x21, scratch_position = true }
+"bn5:metagel/gel" = { pool = "attack", index = 0x45, scratch_position = true }
