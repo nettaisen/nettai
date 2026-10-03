@@ -205,7 +205,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     if let Some(banks) = banks {
         for h in handles(AssetKind::Sound) {
             // (The no-music song stops the music: it has none.)
-            lookups::sound(c, banks, h, true, p);
+            crate::sound_lookups::sound(c, banks, h, true, p);
         }
     }
     for id in handles(AssetKind::Banner).map(BannerId) {
