@@ -386,10 +386,20 @@ pub struct FormData {
 /// (`sub_8015B54`): the mugshots' numbers. An emotion without a face of
 /// its own shows the normal one. (In BN6 the base form has MegaMan's five,
 /// a Cross a tired one besides, a Beast a Full Synchro one: `sub_801E6A8`
-/// adds 5 or 1 to `byte_801E700`'s picture.)
+/// adds 5 or 1 to `byte_801E700`'s picture. BN5's MegaMan has a worried
+/// one besides, and a second set: his Hub Style's, 0x0801AF64.)
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize)]
+pub struct Faces {
+    pub own: FaceSet,
+    /// The second set, which the side's rules may show instead
+    /// (`SideState::face_variant`).
+    pub variant: Option<FaceSet>,
+}
+
+/// One set of faces, by emotion.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct Faces {
+pub struct FaceSet {
     pub normal: super::MugshotId,
     #[serde(default)]
     pub angry: Option<super::MugshotId>,
@@ -399,9 +409,11 @@ pub struct Faces {
     pub full_synchro: Option<super::MugshotId>,
     #[serde(default)]
     pub worn_out: Option<super::MugshotId>,
+    #[serde(default)]
+    pub worried: Option<super::MugshotId>,
 }
 
-impl Faces {
+impl FaceSet {
     /// The face for `emotion`.
     pub fn of(&self, emotion: crate::kinds::player::Emotion) -> super::MugshotId {
         use crate::kinds::player::Emotion;
@@ -411,22 +423,67 @@ impl Faces {
             Emotion::Tired => self.tired,
             Emotion::FullSynchro => self.full_synchro,
             Emotion::WornOut => self.worn_out,
+            Emotion::Worried => self.worried,
         };
         face.unwrap_or(self.normal)
     }
 }
 
-/// A form definition's `mugshot`: one face, or faces by emotion.
+impl Faces {
+    /// The face for `emotion` (the own set's).
+    pub fn of(&self, emotion: crate::kinds::player::Emotion) -> super::MugshotId {
+        self.own.of(emotion)
+    }
+
+    /// The face for `emotion` in the set the side shows: the second set's
+    /// when `variant` and the form has one.
+    pub fn shown(&self, emotion: crate::kinds::player::Emotion, variant: bool) -> super::MugshotId {
+        match self.variant {
+            Some(v) if variant => v.of(emotion),
+            _ => self.own.of(emotion),
+        }
+    }
+}
+
+/// A form definition's `mugshot`: one face, or faces by emotion (and a
+/// second set, `variant`).
 fn faces<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Faces>, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct ByEmotion {
+        normal: super::MugshotId,
+        #[serde(default)]
+        angry: Option<super::MugshotId>,
+        #[serde(default)]
+        tired: Option<super::MugshotId>,
+        #[serde(default)]
+        full_synchro: Option<super::MugshotId>,
+        #[serde(default)]
+        worn_out: Option<super::MugshotId>,
+        #[serde(default)]
+        worried: Option<super::MugshotId>,
+        #[serde(default)]
+        variant: Option<FaceSet>,
+    }
     #[derive(Deserialize)]
     #[serde(untagged)]
     enum Spec {
         One(super::MugshotId),
-        ByEmotion(Faces),
+        ByEmotion(ByEmotion),
     }
     Ok(Option::<Spec>::deserialize(d)?.map(|s| match s {
-        Spec::One(normal) => Faces { normal, ..Faces::default() },
-        Spec::ByEmotion(f) => f,
+        Spec::One(normal) => Faces { own: FaceSet { normal, ..FaceSet::default() }, variant: None },
+        Spec::ByEmotion(f) => Faces {
+            own: FaceSet {
+                normal: f.normal,
+                angry: f.angry,
+                tired: f.tired,
+                full_synchro: f.full_synchro,
+                worn_out: f.worn_out,
+                worried: f.worried,
+            },
+            variant: f.variant,
+        },
     }))
 }
 
@@ -882,5 +939,10 @@ mod tests {
         let cross = read(r#"{ "mugshot": { "normal": 5, "tired": 10 } }"#).unwrap();
         assert_eq!([Emotion::Normal, Emotion::Angry, Emotion::Tired].map(|e| cross.of(e).0), [5, 5, 10]);
         assert_eq!(read("{}"), None);
+        // BN5's MegaMan: a worried face, and a second set the side may show.
+        let bn5 = read(r#"{ "mugshot": { "normal": 0, "worried": 2, "variant": { "normal": 11, "worried": 13 } } }"#).unwrap();
+        assert_eq!([Emotion::Worried, Emotion::Angry].map(|e| bn5.shown(e, false).0), [2, 0]);
+        assert_eq!([Emotion::Worried, Emotion::Angry].map(|e| bn5.shown(e, true).0), [13, 11]);
+        assert_eq!(cross.shown(Emotion::Tired, true).0, 10);
     }
 }

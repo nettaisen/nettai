@@ -160,6 +160,12 @@ struct StatusSection {
     bugs_before_drain: bool,
     #[serde(default)]
     drain_bug_flags: bool,
+    /// "bn6" (the default) or "bn5".
+    #[serde(default)]
+    emotions: Option<String>,
+    /// "bn6" (the default) or "bn5".
+    #[serde(default)]
+    form_break: Option<String>,
 }
 
 fn yes() -> bool {
@@ -421,6 +427,16 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
             "status" => {
                 let s: StatusSection = r.read(spec, &at).map_err(e)?;
                 (rules.hp_bug_periods, rules.form_tick) = (s.hp_bug_periods, s.form_tick);
+                rules.emotions = match s.emotions.as_deref() {
+                    None | Some("bn6") => super::Emotions::Bn6,
+                    Some("bn5") => super::Emotions::Bn5,
+                    Some(other) => return Err(e(format!("{at}: emotions are \"bn6\" or \"bn5\", not {other:?}"))),
+                };
+                rules.form_break = match s.form_break.as_deref() {
+                    None | Some("bn6") => super::FormBreak::Bn6,
+                    Some("bn5") => super::FormBreak::Bn5,
+                    Some(other) => return Err(e(format!("{at}: form_break is \"bn6\" or \"bn5\", not {other:?}"))),
+                };
                 rules.intake = super::rules::IntakeRules {
                     bugs_before_drain: s.bugs_before_drain,
                     drain_bug_flags: s.drain_bug_flags,
