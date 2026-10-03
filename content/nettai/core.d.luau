@@ -932,6 +932,8 @@ declare battle: {
     link: () -> boolean,
     -- A battle against a ranked boss (battle effect 1).
     boss_rank: () -> boolean,
+    -- A battle whose dark chips fizzle (battle effect 0x100000: BN5's dark chip rule).
+    no_dark_chips: () -> boolean,
     mode: () -> number,
     panel_pattern: () -> number,
     -- Every navi is in (the intro's bit 2).
@@ -1046,6 +1048,8 @@ declare battle: {
     -- spends; 1: the Navi+ bonus a navi chip spends).
     add_special_bonus: (side: number, index: number, n: number) -> (),
     bump_side_stat: (side: number, index: number, n: number) -> (),
+    -- `sub_800AB2E`: set a side's statistics counter.
+    set_side_stat: (side: number, index: number, n: number) -> (),
     -- `sub_800AB3A`: a side's statistics counter.
     side_stat: (side: number, index: number) -> number,
     -- The damage-carry record of the side that takes the damage

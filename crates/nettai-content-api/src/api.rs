@@ -412,7 +412,8 @@ named_fields! {
         Attack = "attack", U8, rw;
         Rapid = "rapid", U8, rw;
         Charge = "charge", U8, rw;
-        Mood = "mood", U8, ro;
+        /// Writable: BN5's dark chips set it (0x080127D6).
+        Mood = "mood", U8, rw;
         /// The Beast Out turns left (writable: BN6's beast system spends
         /// them).
         BeastOutCounter = "beast_out_counter", U8, rw;
@@ -517,6 +518,9 @@ named_fields! {
         /// A battle against a ranked boss (battle effect 1: LifeSync does
         /// nothing in one, `sub_80E72C8`).
         BossRank = "boss_rank", Bool, ro;
+        /// A battle whose dark chips fizzle (battle effect 0x100000: BN5's
+        /// dark chip rule, 0x0801003C).
+        NoDarkChips = "no_dark_chips", Bool, ro;
         Mode = "mode", U8, ro;
         PanelPattern = "panel_pattern", U8, ro;
         /// Every navi is in (the intro's bit 2).
@@ -1200,6 +1204,8 @@ pub trait CoreApi {
     fn add_special_bonus(&mut self, side: u8, index: u8, n: u16) -> ApiResult<()>;
     /// `sub_800AB46`: bump a side's statistics counter.
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
+    /// `sub_800AB2E`: set a side's statistics counter.
+    fn set_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// `sub_800AB3A`: a side's statistics counter.
     fn side_stat(&self, side: u8, index: u8) -> u8;
     // Subtype 8 (Wind and Fan):

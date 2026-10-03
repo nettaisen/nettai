@@ -286,6 +286,9 @@ impl CoreApi for Battle {
         match f {
             BattleInfo::Link => Value::Bool(self.setup.settings.effects & crate::setup::effects::LINK != 0),
             BattleInfo::BossRank => Value::Bool(self.setup.settings.effects & crate::setup::effects::BOSS_RANK != 0),
+            BattleInfo::NoDarkChips => {
+                Value::Bool(self.setup.settings.effects & crate::setup::effects::NO_DARK_CHIPS != 0)
+            }
             BattleInfo::Mode => Value::Int(self.round.mode_copy as i64),
             BattleInfo::PanelPattern => Value::Int(self.content.stage(self.setup.settings.stage).panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
@@ -449,6 +452,7 @@ impl CoreApi for Battle {
         };
         match (stat, v) {
             (NaviStat::Element, FieldValue::U8(x)) => s.element = x,
+            (NaviStat::Mood, FieldValue::U8(x)) => s.mood = x,
             (NaviStat::ChipRecovery, FieldValue::U16(x)) => s.chip_recovery = x,
             (NaviStat::BusterShot, FieldValue::Ref(_)) => s.weapons.buster_shot = record,
             (NaviStat::ChargeShotKind, FieldValue::Ref(_)) => s.weapons.charge_shot_kind = record,
@@ -689,6 +693,10 @@ impl CoreApi for Battle {
 
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8) {
         Battle::bump_side_stat(self, side & 1, index as usize & 0xF, n);
+    }
+
+    fn set_side_stat(&mut self, side: u8, index: u8, n: u8) {
+        self.side_stats[side as usize & 1][index as usize & 0xF] = n;
     }
 
     // Subtype 8 (Wind and Fan).

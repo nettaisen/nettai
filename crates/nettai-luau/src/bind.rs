@@ -1358,6 +1358,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
         with(|api, _| Ok(api.bump_side_stat(side, i, n)))
     });
+    lib_fn!(lua, t, "set_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
+        let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
+        with(|api, _| Ok(api.set_side_stat(side, i, n)))
+    });
     lib_fn!(lua, t, "side_stat", |_, (side, i): (LuaValue, LuaValue)| {
         let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?);
         with(|api, _| Ok(api.side_stat(side, i)))
