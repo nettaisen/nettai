@@ -7,7 +7,7 @@
 
 use super::actions::movement::{self, MoveKind};
 use super::{
-    Emotion, ai, ai_mut, cross_protected, emotion, exit_attack_state, flag1, form_of,
+    Emotion, ai, ai_mut, switch_protected, emotion, exit_attack_state, flag1, form_of,
     is_link, reset_charge, set_attack, stats, stats_mut,
 };
 use crate::actor::{request, status};
@@ -42,10 +42,10 @@ fn battle_over(b: &mut Battle, r: ObjectRef) {
     // sub_801DACC(0x42): the console's chip icons and window go, whichever
     // navi this is.
     b.chip_hud = Default::default();
-    if cross_protected(b, r) {
+    if switch_protected(b, r) {
         // (The original stores 1 in the attack's variant byte first; the
         // action it starts doesn't use it.)
-        let protect = super::role_action(b, r, crate::content::ActionRole::CrossProtect);
+        let protect = super::role_action(b, r, crate::content::ActionRole::SwitchProtect);
         return set_attack(b, r, protect, 0);
     }
     b.objects.get_mut(r).anim = 0;

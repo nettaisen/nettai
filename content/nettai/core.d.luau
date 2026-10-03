@@ -132,8 +132,8 @@ export type Request =
     | "b_held"
     | "stun_strike"
     | "select_special"
-    | "cross_change"
-    | "cross_death"
+    | "navi_switch"
+    | "switch_knockout"
     | "mode9_a"
     -- A system's takeover of the side's navi (BN6's Cross special).
     | "takeover"
@@ -150,9 +150,9 @@ export type NaviStateFlag =
     | "no_charge"
     | "can_turn"
     | "trap_armed"
-    | "changing_cross"
-    | "cross_knockout"
-    | "crossed"
+    | "switching_navi"
+    | "switch_knockout"
+    | "switched"
     | "volley"
     | "uninterruptible"
     | "cross_breaking"
@@ -1735,7 +1735,7 @@ export type NaviDef = {
     -- has forms.
     forms: { gregar: FormSet, falzar: FormSet }?,
     identity: Identity,
-    -- What a Cross change brings it with: its weapons, the rest of its
+    -- What a navi switch brings it with: its weapons, the rest of its
     -- fresh stats, and its HP after the change, by side.
     weapons: FormWeapons?,
     fresh: {
@@ -1859,7 +1859,7 @@ export type FormDef = {
     -- The shots of the buster volley the Cross special's controller fires
     -- in it (the original stores the form's number where it meant 6).
     special_volley: number?,
-    -- A Cross change that finds the navi in this animation lets go of it.
+    -- A change into a Cross that finds the navi in this animation lets go of it.
     cross_release_anim: number?,
     traits: { FormTrait }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
@@ -2093,9 +2093,9 @@ export type RolesSpec = {
         body_guard_counter: Action?,
         forced_charged_shot: Action?,
         stun_strike: Action?,
-        cross_protect: Action?,
+        switch_protect: Action?,
         turn: Action?,
-        cross_death: Action?,
+        switch_knockout: Action?,
         volley: Action?,
         dust_beast_scatter: Action?,
         charge_tackle: Action?,

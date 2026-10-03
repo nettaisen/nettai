@@ -23,7 +23,7 @@ return define.navi {
         portrait = asset.sprite("bn6:chargeman-portrait"),
     },
     own_chip = { chip = chargeman, code = "C" },
-    -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
+    -- What a navi switch brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = a_charge },

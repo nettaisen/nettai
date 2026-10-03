@@ -50,8 +50,8 @@ pub enum EngineAction {
     NaviChip,
     /// An instant chip's use (`instant`).
     InstantChip,
-    /// A form change, a revert or a Cross change while paused
-    /// (`transform`, `cross_change`; the original's CurAction is the
+    /// A form change, a revert or a navi switch while paused
+    /// (`transform`, `navi_switch`; the original's CurAction is the
     /// instant chips' then).
     FormChange,
 }

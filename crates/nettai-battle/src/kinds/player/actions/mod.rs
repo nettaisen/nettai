@@ -7,7 +7,7 @@
 //! (which `set_attack` resets); what an action keeps besides that lives
 //! in its own state struct in `AttackVars::action`.
 
-pub mod cross_change;
+pub mod navi_switch;
 pub mod instant;
 pub mod lockon;
 pub mod movement;
@@ -34,7 +34,7 @@ pub enum ActionVars {
     Move(movement::Vars),
     FormChange(transform::Vars),
     Instant(instant::Vars),
-    CrossChange(cross_change::Vars),
+    NaviSwitch(navi_switch::Vars),
     /// A content action's declared state (see `content`).
     Content(nettai_content_api::ContentState),
 }

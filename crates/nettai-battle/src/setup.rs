@@ -198,7 +198,7 @@ impl NaviStats {
     /// `init_8013B64`: `navi`'s stats, fresh: the defaults
     /// (`initNaviStats_WithDefaultStatsMaybe_8013438`) with what the navi
     /// comes with (`byte_80210DD`'s row: the navi's `fresh` and `weapons`).
-    /// What a Cross change brings a link navi with, and what MegaMan's
+    /// What a navi switch brings a link navi with, and what MegaMan's
     /// NaviCust starts from (`sub_8136C24`). None for a navi without a row.
     pub fn fresh(navi: NaviHandle, content: &Content) -> Option<NaviStats> {
         let data = content.navi(navi);

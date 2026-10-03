@@ -218,7 +218,7 @@ rule, BN6's patch-cards system (content/bn6/rules/patch-cards/system.luau, in co
   the slots seeded from the stats, each switched-on card's effects in the kinds' order, the clamps, the copy
   (BugStop holding back the bug slots), ChpShufl turning NumbrOpn off, MaxHP and HP. With cards installed it
   pushes the emotion window's glitch (`battle.set_emotion_window_glitch`): the stats after the cards have a
-  NaviCust bug (§1.3). Afterwards the framework copies the stats to the battle-start copy (`cross_stats`).
+  NaviCust bug (§1.3). Afterwards the framework copies the stats to the battle-start copy (`reserves`).
 - **What stays as the original has it**: the kinds' order rather than the card's, a later card's choice winning,
   GigaFolder− not clamping, the HP clamp after each HP effect, the percentages rounded toward zero, a card that
   lists one effect twice applying the first.
