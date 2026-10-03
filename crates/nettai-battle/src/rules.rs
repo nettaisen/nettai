@@ -298,7 +298,40 @@ mod tests {
         let schema = &b.content.defs.schemas[s.id().0 as usize].schema;
         s.set(schema, schema.index_of("starts").unwrap(), Value::Int(9)).unwrap();
         assert_ne!(changed.digest(), b.digest());
-        assert_eq!(testing::build().defs.rulesets.len(), 5);
+        assert_eq!(testing::build().defs.rulesets.len(), 6);
+    }
+
+    /// docs/design/rules-in-luau.md P1 item 8: a mix's own sections
+    /// (testdata's rules/souls.luau: its sides' HP bug periods) are what its
+    /// sides read, over its game's; its game's own tables and the other
+    /// side's don't change; a section about the battle or a chip's game is
+    /// refused, and so is a stock ruleset's own.
+    #[test]
+    fn a_mix_brings_its_own_side_sections() {
+        let content = scenario::content();
+        let souls = content.defs.ruleset_by_key("test:test-souls").expect("the souls mix");
+        let test = content.defs.root_id(testing::ROOT).unwrap();
+        assert_eq!(content.defs.ruleset(souls).sections, ["test:souls/status"]);
+        let own = [0, 1, 2, 3, 4, 5, 6, 7];
+        assert_eq!(content.side_rules(Some(souls), test).hp_bug_periods, own);
+        assert_ne!(content.rules_of(test).hp_bug_periods, own, "the game's own tables don't take it");
+        let mut setup = scenario::setup();
+        setup.players[1].ruleset = Some(souls);
+        let b = started(setup);
+        assert_eq!(b.side_game_rules(1).hp_bug_periods, own);
+        assert_eq!(b.side_game_rules(0).hp_bug_periods, content.rules_of(test).hp_bug_periods);
+        // Refused: an arena section, a chip's game's, a stock ruleset's own.
+        let patched = |from: &str, to: &str| {
+            let mut c = testing::build();
+            let src = c.scripts.module_mut(testing::ROOT, "rules/souls").expect("the souls module");
+            assert!(src.contains(from));
+            *src = src.replacen(from, to, 1);
+            c.define().map(|_| ()).map_err(|e| e.message)
+        };
+        let e = patched("test:souls/status\", { hp_bug_periods = { 0, 1, 2, 3, 4, 5, 6, 7 } }", "test:souls/math\", { sine = {} }").unwrap_err();
+        assert!(e.contains("section test:souls/math (`math`) is the battle's or a chip's game's"), "{e}");
+        let e = patched("base = systems.stock, ", "stock = true, systems = {}, ").unwrap_err();
+        assert!(e.contains("a stock ruleset's sections are its game's"), "{e}");
     }
 
     /// A mix (testdata's rules/mix.luau): the stock rules less BN6's forms

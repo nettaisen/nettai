@@ -371,6 +371,7 @@ fn make() -> Content {
         // testdata/content/navis/test.luau.)
         base_rules: rules(),
         rules: Vec::new(),
+        ruleset_rules: Vec::new(),
         animations: animations(&assets),
         scripts: scripts(),
         assets,
