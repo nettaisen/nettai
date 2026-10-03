@@ -700,6 +700,38 @@ content/bn6/
 
 `nettai-content where <key>` prints the module that defines a key, and load errors name the module.
 
+**content/bn5 follows these rules** (as built, 2026-10-03; the user: "you should consolidate the chips together
+where appropriate and move colocate objects with those chips, where appropriate like what bn6 does"). The
+verification workspace's `tools/bn5/layout.py <checkout>` computes the layout from the content (who requires what,
+the chips' records and names, BN6's series) and moves it there with `git mv`, rewriting every `require` (a merged
+chip's `require("../hicannon/chip")` becomes `require("../cannon/chips").hicannon`); it changes no id. It is
+idempotent: a branch that gained chips or objects in the old layout runs it again after merging main (bn5-map.md
+§15.12). Its series are BN6's where BN6 has the same chips (chips/cannon, chips/recov, chips/vulcan with SuprVulc,
+chips/timebom with TimeBom+), a navi chip with its SP and DS (chips/blizman: BlizMan, BlizManSP, BlizManDS),
+numbered levels (chips/katana), a Program Advance whose ingredients are one series', and BN5's own two that no
+name shows (chips/crakout: CrakOut, DublCrak, TripCrak; chips/cannmode: the Liberation Missions' mode chips). It
+differs from BN6's layout in two things the port and the ids impose:
+
+- **A chip without a use stays in its own folder**, chips/<key>/chip.luau, until the port gives it one: the loader
+  leaves such a chip out by its folder (§7.3, partial loading), and with it every chip folder that requires one of
+  its modules, so it can't share a series file with chips that play; the next run takes it into its series.
+- **A kind keyed for another place stays where it is.** The content check wants a kind in an owner's folder keyed
+  under the owner (`<owner>/...`), and ids don't change with the layout, so a module whose `define.kind` key isn't
+  the new folder's stays in objects/ until someone re-keys it: Meddy's capsule, NumberMan's dice, GyroMan's and
+  NapalmMan's bombs, CrakOut's crack and the Meteors' shower with its marker (objects/capsule, dice, gyro-bomb,
+  napalm-bomb, crack, meteors). The script lists them.
+
+Where BN5's shared kinds went: the families' to lib/ (lib/bombs/seed for the seeds, as BN6's; lib/instruments;
+the Anti traps' in lib/traps; the Guard chips' shock wave in lib/guard; the navi chips' throw marker in
+lib/navi-chips), each family's builder moving into its folder with them (lib/bombs/bombs.luau, as BN6's
+lib/barriers/barriers.luau); the soul system's (Chaos Unison's shade, the soul's image) to rules/souls, as BN6's
+Cross merge is rules/forms'; a kind with a natural owner and borrowers to the owner (the Vulcans' gun, which the
+InfVulcs borrow; DrilArm's drill, DarkDril's too; CrakBom's bomb, ParaBom's and ResetBom's too). objects/ keeps
+what several families share (attachment, bullet, flying-shot, panel-bursts, panel-changer, projectile,
+rising-bubble) and the six held above: 13 folders from 53, and chips/ 221 folders from 333 (53 series files for
+165 chips; 168 chips in their own folders, 68 of them waiting for a use). content/common needed no change: its
+folders are already named by BN6's owners and families (common/vulcan, common/bombs), and it defines nothing.
+
 ### 4.2 Every current `objects/` entry
 
 The destinations below apply the rules to the modules that use each kind today. "Series" folders hold all their
@@ -2982,7 +3014,8 @@ Numbers that remain for other reasons, and are not names of content:
   framework's states), which the traces compare as the original numbers them.
 
 **Since:** a game being ported loads without its chips that have no use yet (§7.3, "Partial loading"), so
-BN5's content plays beside BN6's while its port goes on.
+BN5's content plays beside BN6's while its port goes on. content/bn5 is laid out by §4.1's rules (its series
+files, its kinds with their owners), kept so by the verification workspace's tools/bn5/layout.py.
 
 **Left to others:**
 
