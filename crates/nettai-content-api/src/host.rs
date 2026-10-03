@@ -160,9 +160,17 @@ pub enum HookCall {
     /// A hook of a system of side `side`'s ruleset (docs/design/
     /// rules-in-luau.md §4.1), the system in place `slot` of the ruleset's
     /// list: while it runs, `system.state()` is that system's state of that
-    /// side. It is called with the side, then the navi and the chip the
-    /// hook is about, where it has them. Its result is the hook's.
-    System { side: u8, slot: u8, hook: SystemHook, navi: Option<ObjectRef>, chip: Option<crate::ChipHandle> },
+    /// side. It is called with the side, then the navi, the chip and the
+    /// weapon the hook is about, where it has them (nil in between). Its
+    /// result is the hook's.
+    System {
+        side: u8,
+        slot: u8,
+        hook: SystemHook,
+        navi: Option<ObjectRef>,
+        chip: Option<crate::ChipHandle>,
+        weapon: Option<crate::WeaponHandle>,
+    },
 }
 
 /// Which hook of a system is called (docs/design/rules-in-luau.md §4.1).
@@ -199,6 +207,13 @@ pub enum SystemHook {
     /// system refuses a chip its MegaMan may not use: 0x08010118). The
     /// first system that answers decides.
     ChipCheck,
+    /// `chip_used(side, navi, chip, weapon)`: a chip's use started
+    /// (`sub_800FB54`, its action set): `chip` the chip it reads (the
+    /// zeroed chip for the empty hand), `weapon` the form's weapon run
+    /// instead of it (a charged use), else nil. BN6's beast system decides
+    /// whether it runs inside the rush (the attack's `wrapped`). Its result
+    /// is unused.
+    ChipUsed,
     /// `controller(side, navi)`: each tick of the idle action of a navi whose
     /// form is `controlled` (BN6's Beast Over: `sub_802D322`), in place of
     /// the player's decisions: "nothing", "chip" (a chip's use started),
@@ -230,12 +245,13 @@ impl SystemHook {
             SystemHook::FolderCheck => "folder_check",
             SystemHook::NaviIntake => "navi_intake",
             SystemHook::ChipCheck => "chip_check",
+            SystemHook::ChipUsed => "chip_used",
             SystemHook::Controller => "controller",
             SystemHook::FormReverted => "form_reverted",
         }
     }
 
-    pub const ALL: [SystemHook; 11] = [
+    pub const ALL: [SystemHook; 12] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -245,6 +261,7 @@ impl SystemHook {
         SystemHook::FolderCheck,
         SystemHook::NaviIntake,
         SystemHook::ChipCheck,
+        SystemHook::ChipUsed,
         SystemHook::Controller,
         SystemHook::FormReverted,
     ];

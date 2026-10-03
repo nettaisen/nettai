@@ -158,7 +158,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         let a = ai_mut(b, r);
         a.overlay = None;
         // The lock-on marker frees itself once unlinked.
-        a.lockon_marker = None;
+        a.target_marker = None;
         set_timer(b, r, 0x1E);
     }
     if timer_running(b, r) {

@@ -100,7 +100,7 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
     }
     if ai(b, r).berserk.moves <= 3 {
         // sub_80E164A (outside Beast Out there is no marker: nobody).
-        let p = crate::kinds::lockon_marker::panel_of(b, ai(b, r).lockon_marker);
+        let p = crate::kinds::target_marker::panel_of(b, ai(b, r).target_marker);
         let target = opponent_on(b, p, b.objects.get(r).alliance);
         let flashing =
             target.is_some_and(|t| b.objects.get(t).collision.is_some_and(|c| b.collision.get(c).f1 & f1::FLASHING != 0));
@@ -132,7 +132,7 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
     }
     let action = super::chip_use::chip_action(b, r, Some(chip));
     super::set_attack(b, r, action, 5);
-    ai_mut(b, r).attack.beast_lockon = cd.beast_lockon as u8;
+    ai_mut(b, r).attack.wrapped = cd.beast_lockon as u8;
     ai_mut(b, r).berserk.step = Step::Move;
     Outcome::Chip
 }

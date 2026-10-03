@@ -1,7 +1,7 @@
 --!strict
 -- BN6's Beast Out rush (`sub_80EAD9C`): the game's wrapper (the role
--- `actions.beast_rush`), which the navi's dispatcher (`sub_801B9E6`) runs
--- instead of an attack while the attack's `beast_lockon` is 1: a chip with
+-- `actions.wrapper`), which the navi's dispatcher (`sub_801B9E6`) runs
+-- instead of an attack while the attack's `wrapped` is 1: a chip with
 -- the lock-on flag in a Beast form, the Beast forms' charged claw and
 -- SlashCross Beast's charged sword. The navi holds its panel, warps next to
 -- the lock-on marker's target, runs the chip's action there (`run_wrapped`)
@@ -136,9 +136,9 @@ local function warp(navi: Object, s: State)
     if not s.rush_started then
         s.rush_started = true
         -- `sub_80E1654` (a no-op without a marker).
-        local marker = navi.lockon_marker
+        local marker = navi.target_marker
         if marker ~= nil then
-            marker:freeze_lockon_marker(true)
+            marker:freeze_target_marker(true)
         end
         navi:set_animation(4)
         s.rush_countdown = 3
@@ -151,7 +151,7 @@ local function warp(navi: Object, s: State)
     navi:panel_trail(hx, hy)
     local mode = lockon_mode(navi)
     local tx, ty = NO_MARKER_X, NO_MARKER_Y
-    local marker = navi.lockon_marker
+    local marker = navi.target_marker
     if marker ~= nil then
         tx, ty = marker.panel_x, marker.panel_y
     end
@@ -199,9 +199,9 @@ local function attack(navi: Object, s: State)
             s.rush_chain = false
             -- (It also writes 0xC to AIData+0x85, which no player code
             -- reads.)
-            local marker = navi.lockon_marker
+            local marker = navi.target_marker
             if marker ~= nil then
-                marker:freeze_lockon_marker(false)
+                marker:freeze_target_marker(false)
             end
             return
         end
