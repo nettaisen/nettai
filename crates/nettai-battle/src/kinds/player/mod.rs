@@ -281,7 +281,7 @@ fn panel_kind(b: &Battle, p: PanelPos) -> PanelType {
 
 /// `sub_8010004`: the next chip in the side's hand (none: the game's
 /// 0xFFFF).
-fn next_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
+pub(crate) fn next_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
     let hand = &b.hands[b.objects.get(r).alliance as usize];
     hand.ids.get(hand.cursor as usize).copied().flatten()
 }
@@ -315,7 +315,7 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
     let mood = b.stats[side as usize].mood;
     let p = b.player(side).expect("side has a player");
     let a = ai(b, p);
-    if a.beast_over_exhausted || mood == 0 {
+    if a.exhausted || mood == 0 {
         Emotion::WornOut
     } else if a.anger != 0 {
         Emotion::Angry
@@ -333,7 +333,7 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
 pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
     let Some(p) = b.player(side) else { return };
     let a = ai(b, p);
-    if a.beast_out_spent || a.beast_over_exhausted {
+    if a.beast_out_spent || a.exhausted {
         return;
     }
     b.stats[side as usize].mood = mood;
@@ -1155,7 +1155,7 @@ fn emotion_timer(b: &mut Battle, r: ObjectRef) {
         // sub_80143CE: anger, unless tired or exhausted.
         2 => {
             let a = ai(b, r);
-            if !a.beast_out_spent && !a.beast_over_exhausted {
+            if !a.beast_out_spent && !a.exhausted {
                 set_flag2(b, r, 0x200);
             }
         }

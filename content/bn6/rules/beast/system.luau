@@ -1,13 +1,14 @@
 --!strict
 -- BN6's Beast Out (docs/design/rules-in-luau.md §3.1): a navi's turns in
--- Beast Out and when they run out, and the rush (rush.luau, the game's
--- wrapper: the role `actions.beast_rush`), whose state is the system's. The
--- turn-start sequencer is the framework's (BN5 has it too); it asks each
--- side's systems at its check and when the turn starts.
+-- Beast Out and when they run out; the rush (rush.luau, the game's wrapper:
+-- the role `actions.beast_rush`); Beast Over's berserk (berserk.luau, the
+-- controller of its `controlled` forms) and its exhaustion. Their state is
+-- the system's. The turn-start sequencer is the framework's (BN5 has it
+-- too); it asks each side's systems at its check and when the turn starts.
 --
--- (Still the framework's until later slices: Beast Over, the Beast Out
--- button.)
+-- (Still the framework's until later slices: the Beast Out button.)
 
+local berserk = require("./berserk")
 local rush = require("./rush")
 
 export type State = {
@@ -19,6 +20,10 @@ export type State = {
     rush_chain: boolean,
     rush_chain_block: number,
     rush_countdown: number,
+    -- The berserk's (berserk.luau).
+    berserk_step: number,
+    berserk_moves: number,
+    berserk_started: boolean,
     -- AIData+0x0F: the turn-start check (`sub_80159C6`) runs only while
     -- this is 0, and then sets it to 2. Closing the custom screen sets it to
     -- 1 (`sub_8009338`); a mid-battle custom-screen request counts it down
@@ -44,9 +49,31 @@ return define.system {
         rush_chain = "bool",
         rush_chain_block = "u8",
         rush_countdown = "u16",
+        berserk_step = "u8",
+        berserk_moves = "u16",
+        berserk_started = "bool",
     },
     actions = { rush.action },
     hooks = {
+        -- `sub_802D322`: Beast Over's berserk decides a controlled navi's
+        -- idle.
+        controller = berserk.control,
+        -- `sub_80158CC`: outside battle mode 1, reverting spends a Beast Out
+        -- and exhausts a Beast Over.
+        form_reverted = function(side: number, navi: Object)
+            if battle.mode() == 1 then
+                return
+            end
+            local kind = battle.navi(side).form.kind
+            if kind == "beast" or kind == "cross_beast" then
+                navi.beast_out_spent = true
+            elseif kind == "beast_over" then
+                -- `sub_8014466`: exhausted, then the mood 0 that exhaustion
+                -- itself blocks.
+                navi.exhausted = true
+                battle.set_mood(side, 0)
+            end
+        end,
         -- `sub_8009338`: the custom screen closed.
         custom_closed = function(side: number)
             local s = system.state() :: State

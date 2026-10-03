@@ -271,11 +271,15 @@ pub struct ActorData {
     /// blocks mood changes (`sub_8015BEC`) and anger (`sub_80143CE`).
     pub beast_out_spent: bool,
     pub anger: u16,
-    /// AIData+0x36: exhausted after Beast Over (`sub_80158CC` →
-    /// `sub_8014466` stores 0x3C0, which nothing counts down): emotion 5,
-    /// mood changes blocked, and 1 HP lost per tick for the rest of the
-    /// battle, never the last one (`sub_8014498`).
-    pub beast_over_exhausted: bool,
+    /// AIData+0x36: exhausted for the rest of the battle (BN6's after Beast
+    /// Over: `sub_80158CC` → `sub_8014466` stores 0x3C0, which nothing
+    /// counts down; its beast system sets it, `form_reverted`): emotion 5,
+    /// mood changes blocked, and 1 HP lost per tick, never the last one
+    /// (`sub_8014498`).
+    pub exhausted: bool,
+    /// The controller's state starts over (a form's `berserk` effect,
+    /// `sub_802D310`); the controller clears it once it has.
+    pub controller_fresh: bool,
     /// AIData+0x38: ticks before a road panel can start another slide
     /// (5 after a road slide, `sub_80166D0`/`sub_8016730`; counted down
     /// by `sub_801A36A`).

@@ -32,7 +32,7 @@ const BONUS_SOUND: crate::content::SoundRole = crate::content::SoundRole::Damage
 /// `sub_800FB54`: when a chip request is up (and not sliding), take the
 /// next chip and start its action. Returns the attack's chip (the game
 /// returns 0xFFFF for no use), itself none for the game's 0.
-pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle>> {
+pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle>> {
     let requested = ai(b, r).requests & (request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
     if flag1(b, r) & f1::SLIDING != 0 || requested == 0 {
         return None;

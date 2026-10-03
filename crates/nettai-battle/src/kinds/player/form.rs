@@ -225,7 +225,10 @@ fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
         super::set_invulnerable(b, r, 0xFFFF);
     }
     if effects.has(FormEffects::BERSERK) {
+        // (The Cross special's share of the state: the framework's until
+        // S4.)
         super::berserk::reset(b, r);
+        super::ai_mut(b, r).controller_fresh = true;
     }
 }
 
