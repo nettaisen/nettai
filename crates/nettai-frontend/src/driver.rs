@@ -47,6 +47,18 @@ pub trait Driver {
     fn console_region(&self) -> &'static str {
         "us"
     }
+    /// The game version of the console whose screen this is, as its pack
+    /// names its versions' assets, for a game whose versions the engine
+    /// doesn't tell apart (BN5's "protoman" and "colonel": its navi chips'
+    /// pictures; `Renderer::console_version`). None: the engine's (BN6's
+    /// `Unlocks::version`).
+    fn console_version(&self) -> Option<&'static str> {
+        None
+    }
+    /// The trace frames this round covers (a trace's driver).
+    fn frame_range(&self) -> Option<(u32, u32)> {
+        None
+    }
     /// For a driver that runs the battle itself (netplay's rollback
     /// session), one wall-clock frame with the local player's buttons:
     /// put the frame to show in `shown` and say what happened. None: the
@@ -168,6 +180,137 @@ impl Driver for TracePlayer {
             bn6_compat::Game::JpFalzar | bn6_compat::Game::JpGregar => "jp",
             bn6_compat::Game::Falzar | bn6_compat::Game::Gregar => "us",
         }
+    }
+
+    fn frame_range(&self) -> Option<(u32, u32)> {
+        TracePlayer::frame_range(self)
+    }
+
+    fn position(&self) -> String {
+        match self.current() {
+            Some(f) => format!("round {} frame {}", self.round_number, f.frame),
+            None => format!("round {} start", self.round_number),
+        }
+    }
+}
+
+/// Every round of a trace file, on `content`, each as a driver: a BN6
+/// recording's ([`TracePlayer`]), or a BN5 one's (its setup line says
+/// `"game":"bn5"`: [`Bn5TracePlayer`]), with its round's number.
+pub fn trace_rounds(path: &std::path::Path, content: &Arc<Content>) -> Result<Vec<(usize, Box<dyn Driver>)>, String> {
+    if trace_game(path).map_err(|e| e.to_string())?.as_deref() == Some("bn5") {
+        let rounds = Bn5TracePlayer::load(path, content)?;
+        return Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect());
+    }
+    let rounds = TracePlayer::load(path, content).map_err(|e| e.to_string())?;
+    Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect())
+}
+
+/// The game a trace's first setup line names (`"game"`; BN6's recordings
+/// name none).
+fn trace_game(path: &std::path::Path) -> std::io::Result<Option<String>> {
+    use std::io::BufRead;
+    let file = std::io::BufReader::new(std::fs::File::open(path)?);
+    for line in file.lines() {
+        let line = line?;
+        if !line.starts_with("{\"setup\"") {
+            continue;
+        }
+        let game = line.split_once("\"game\":\"").and_then(|(_, rest)| rest.split_once('"')).map(|(g, _)| g.to_string());
+        return Ok(game);
+    }
+    Ok(None)
+}
+
+// ---- BN5's recordings -------------------------------------------------------
+
+/// Replays one round of a BN5 recording (the chip lab's BN5 library, read
+/// by bn5-compat): its setup on BN5's content, then each battle frame's
+/// buttons.
+pub struct Bn5TracePlayer {
+    round: bn5_compat::trace::Round,
+    content: Arc<Content>,
+    compat: &'static bn5_compat::Compat,
+    /// Indices of the frames the engine simulates.
+    frames: Vec<usize>,
+    pos: usize,
+    pub round_number: usize,
+    /// The traced console's region and version (its setup line's).
+    region: &'static str,
+    version: &'static str,
+}
+
+impl Bn5TracePlayer {
+    /// Every round of a BN5 recording, on `content`: each round's setup
+    /// must be one the content defines (bn5-compat's `Round::needs`).
+    pub fn load(path: &std::path::Path, content: &Arc<Content>) -> Result<Vec<Bn5TracePlayer>, String> {
+        let compat = bn5_compat::Compat::bn5();
+        let mut out = Vec::new();
+        for (i, round) in bn5_compat::trace::rounds(path)?.into_iter().enumerate() {
+            round.round_setup(content, compat).map_err(|e| format!("round {}: {e}", i + 1))?;
+            let d = bn5_compat::trace::decode_setup(&round.setup)?;
+            let local = d.battle_state[0x0D] as usize & 1;
+            let region = if d.japanese[local] { "jp" } else { "us" };
+            let version = match d.versions[local] {
+                bn5_compat::trace::Version::Protoman => "protoman",
+                bn5_compat::trace::Version::Colonel => "colonel",
+            };
+            let start = round.setup.frame;
+            let frames = round
+                .frames
+                .iter()
+                .enumerate()
+                .filter(|(_, f)| f.frame >= start)
+                .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
+                .map(|(i, _)| i)
+                .collect();
+            out.push(Bn5TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, region, version });
+        }
+        Ok(out)
+    }
+
+    fn current(&self) -> Option<&bn5_compat::trace::Frame> {
+        self.pos.checked_sub(1).and_then(|p| self.frames.get(p)).map(|&i| &self.round.frames[i])
+    }
+}
+
+impl Driver for Bn5TracePlayer {
+    fn start(&mut self) -> Battle {
+        self.pos = 0;
+        // (`load` saw the setup define.)
+        self.round.start(self.content.clone(), self.compat).unwrap_or_else(|e| panic!("round {}: {e}", self.round_number))
+    }
+
+    fn next(&mut self, _b: &Battle, _keys: u16) -> Option<Step> {
+        let &i = self.frames.get(self.pos)?;
+        // The frame before too: the link's session closes on the tick the
+        // end state moves on.
+        let mut window = Vec::with_capacity(2);
+        if let Some(&h) = self.pos.checked_sub(1).and_then(|p| self.frames.get(p)) {
+            window.push(&self.round.frames[h]);
+        }
+        let at = window.len();
+        window.push(&self.round.frames[i]);
+        let (input, events) = self.round.tick_inputs(at, &window);
+        self.pos += 1;
+        Some(Step { input, events, frame: Some(self.round.frames[i].frame) })
+    }
+
+    fn check(&self, b: &Battle) -> Vec<String> {
+        self.current().map(|f| bn5_compat::trace::compare(b, f, self.compat)).unwrap_or_default()
+    }
+
+    fn console_region(&self) -> &'static str {
+        self.region
+    }
+
+    fn console_version(&self) -> Option<&'static str> {
+        Some(self.version)
+    }
+
+    fn frame_range(&self) -> Option<(u32, u32)> {
+        let f = |i: usize| self.round.frames[self.frames[i]].frame;
+        (!self.frames.is_empty()).then(|| (f(0), f(self.frames.len() - 1)))
     }
 
     fn position(&self) -> String {
