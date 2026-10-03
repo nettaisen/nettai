@@ -827,9 +827,6 @@ declare class Navi
     hp_drain: number
     custom_drain: number
     panel_trail: number
-    -- The form is a Beast form, Beast Over.
-    beast: boolean
-    beast_over: boolean
     custom_level: number
     -- NaviCust bug: the hand shrinks from this turn on (0 none).
     hand_shrink_turn: number
@@ -909,8 +906,9 @@ export type HitboxSpec = {
 -- one, a copy of the owner's sprite wearing its form's overlay), flipped
 -- by the game's flip value, for `lifetime` ticks, blinking unless
 -- `steady`; its shadow at its height unless said otherwise. It ends early
--- with its `tether`: when its side leaves the Beast forms, or when its
--- owner stops attacking.
+-- with its `tether`: when its side leaves the forms whose afterimages stay
+-- (the form trait `afterimages_stay`: BN6's Beast forms), or when its owner
+-- stops attacking.
 export type AfterimageSpec = {
     sprite: SpriteAsset?,
     anim: number?,
@@ -920,7 +918,7 @@ export type AfterimageSpec = {
     palette: number?,
     shadow: Shadow?,
     steady: boolean?,
-    tether: ("beast_form" | "attack")?,
+    tether: ("form" | "attack")?,
 }
 
 -- A side's defensive-chip record (the chip; nil: no record).
@@ -1992,7 +1990,7 @@ export type NaviDef = {
     -- The forms it changes into (MegaMan's), by game: the Crosses by their
     -- number on the custom screen, Beast Out and Beast Over. Where the
     -- original asks whether a navi is MegaMan, the ruleset asks whether it
-    -- has forms. BN5's MegaMan has souls instead (forms of kind "soul",
+    -- has forms. BN5's MegaMan has souls instead (forms with a `soul`,
     -- which the custom screen's soul button offers).
     forms: { gregar: FormSet?, falzar: FormSet?, souls: { FormDef }? }?,
     identity: Identity,
@@ -2074,26 +2072,33 @@ export type FormEffect =
 --   status_immune: a hit's status doesn't take (TomahawkCross);
 --   erases: its damaging Null chips delete what has a 4 in its HP
 --     (EraseCross);
---   charged_sword_rush: its charged sword runs inside the Beast Out rush
---     (SlashCross in Beast Out);
---   extra_chips: the custom screen deals one more chip for each screen
---     spent in it, up to three (ChargeCross);
---   scrap_button: the custom screen has the scrap button (DustCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
 --     special is asked for (TenguCross and DustCross in Beast Out);
 --   stands_on_metal: a metal panel doesn't slide the navi (BN5's soul 5);
 --   controlled: the side's systems' `controller` decides its idle (BN6's
 --     Beast Over: the berserk), the player's buttons don't reach it, and a
---     full gauge opens the custom screen.
+--     full gauge opens the custom screen;
+--   shows_target_marker: the navi's target marker shows (BN6's Beast
+--     forms);
+--   afterimages_stay: an afterimage of the navi lasts while it stays in
+--     such a form, not until its attack ends (BN6's Beast forms);
+--   alt_charge_time: with a Null chip next, its A charge's time is the
+--     alternative A-charge weapon's (BN6's Beast forms);
+--   doubles_null: its damaging Null chips deal double, outside battle mode
+--     1 (Beast Over);
+--   mood_palette: its palette, and its buster arm's, follow the mood
+--     (Gregar and Falzar Beast).
 export type FormTrait =
     "status_immune"
     | "erases"
-    | "charged_sword_rush"
-    | "extra_chips"
-    | "scrap_button"
     | "special_holds_buster"
     | "stands_on_metal"
     | "controlled"
+    | "shows_target_marker"
+    | "afterimages_stay"
+    | "alt_charge_time"
+    | "doubles_null"
+    | "mood_palette"
 -- One of MegaMan's forms (§3.2).
 export type FormDef = {
     id: string,
@@ -2101,17 +2106,34 @@ export type FormDef = {
     element: ElementName,
     weakness: { string }?,
     buster_bonus: number,
-    kind: "base" | "cross" | "beast" | "cross_beast" | "beast_over" | "soul",
+    -- Its game's base form: what the game's navis are in before they change
+    -- form (one a game).
+    base: boolean?,
     -- The action that changes a navi into it (a game's form change: BN6's
     -- forms', rules/forms), which the pause handler runs at a turn's start.
     -- Every form but the base form names one.
     change: Action?,
-    -- Whose game's form it is (the Beast's roar).
+    -- BN6's forms system's extension (rules/forms/system.luau; until S8
+    -- moves BN6's declarations to bn6.d.luau): its kind (rules/forms/kind),
+    -- whose game's form it is (the Beast's roar), the navi a Cross (and one
+    -- in Beast Out) is made with, and the animation a change into a Cross
+    -- lets the navi go of.
+    kind: ("cross" | "beast" | "cross_beast" | "beast_over")?,
     game: ("gregar" | "falzar")?,
-    -- The navi a Cross (and one in Beast Out) is made with.
     cross_of: NaviDef?,
-    -- A Cross's form in Beast Out.
+    cross_release_anim: number?,
+    -- BN6's beast system's: a Cross's form in Beast Out, the Cross special's
+    -- buster volley in it (the original stores the form's number where it
+    -- meant 6), and whether its charged sword runs inside the Beast Out
+    -- rush (SlashCross in Beast Out).
     beast: FormDef?,
+    special_volley: number?,
+    charged_sword_rush: boolean?,
+    -- BN6's cross system's: the custom screen deals one more chip for each
+    -- screen spent in it, up to three (ChargeCross), or has the scrap
+    -- button (DustCross).
+    extra_chips: boolean?,
+    scrap_button: boolean?,
     -- What a weakness hit drops it to (none: it stays).
     breaks_to: FormDef?,
     -- MegaMan's palette in a Cross.
@@ -2148,9 +2170,6 @@ export type FormDef = {
     -- tick, over and over (Beast Over's). A navi in it takes no sprite
     -- palette and no invulnerable glow.
     glow: { number }?,
-    -- The shots of the buster volley the Cross special's controller fires
-    -- in it (the original stores the form's number where it meant 6).
-    special_volley: number?,
     -- The lag at the end of a move in it, in place of MegaMan's 4.
     move_lag: number?,
     -- What primes it (a use of a chip it names, not a dimming chip, with
@@ -2171,13 +2190,11 @@ export type FormDef = {
     -- (BN5's souls' own routines: SearchSoul's reveal of invisible
     -- navis, TomahawkSoul's grass).
     reset: ((navi: Object) -> ())?,
-    -- A change into a Cross that finds the navi in this animation lets go of it.
-    cross_release_anim: number?,
     traits: { FormTrait }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
     buster_arm: { anim: number, palette_add: number? }?,
-    -- A soul (`kind = "soul"`, BN5's Soul Unison): its number, the chip
+    -- A soul (BN5's Soul Unison): its number, the chip
     -- family the custom screen's soul button gives up for it, and the
     -- chaos cycle's row its Chaos Unison charge keeps whatever the chaos
     -- level (MeddySoul's; none: the level's, at most 2).
