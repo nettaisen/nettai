@@ -34,8 +34,12 @@ return define.form {
         chaos = chaos.weapon("bn5:colonelsoul/chaos", drksonic, { 40, 60, 90, 120, 150, 60 }),
     },
     palette = 0,
-    -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 0x16-0x1B, Team Colonel's souls').
-    mugshot = asset.mugshot("bn5:colonelsoul"),
+    -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 0x16-0x1B, Team Colonel's
+    -- souls'); in its Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).
+    mugshot = {
+        normal = asset.mugshot("bn5:colonelsoul"),
+        variant = { normal = asset.mugshot("bn5:colonelsoul-chaos") },
+    },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 7 of category 0).
     identity = define.identity {
