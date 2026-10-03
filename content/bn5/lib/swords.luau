@@ -29,8 +29,11 @@ swords.effects = {
     wide = define.effect { sprite = SLASH, anim = 0, palette = 0 },
     -- Over two panels: LongSwrd's (0x17).
     long = define.effect { sprite = SLASH, anim = 1, palette = 0 },
+    -- DrkSword's dark big slash (0x1C).
+    dark = define.effect { sprite = asset.sprite("bn5:big-slash"), anim = 0, palette = 2 },
 }
 swords.swing = asset.sound("bn5:sword-swing")
+swords.big_swing = asset.sound("bn5:big-sword-swing")
 swords.sonic_boom = sonic_boom.make_kind("bn5:sonic-boom", {
     sprite = SLASH,
     z = 0,
