@@ -21,6 +21,7 @@ pub enum Tab {
     Navi(usize),
     Folder(usize),
     Crosses(usize),
+    Souls(usize),
     Cards(usize),
     NaviCust(usize),
     Stats(usize),
@@ -43,6 +44,7 @@ impl Tab {
             "navi" => Tab::Navi(side),
             "folder" => Tab::Folder(side),
             "crosses" => Tab::Crosses(side),
+            "souls" => Tab::Souls(side),
             "cards" => Tab::Cards(side),
             "navicust" => Tab::NaviCust(side),
             "stats" => Tab::Stats(side),
@@ -107,6 +109,12 @@ pub enum Msg {
     // The Crosses.
     OwnCrosses(usize, bool),
     Cross(usize, FormHandle, bool),
+    // The souls: every soul (the default), or the side's list.
+    EverySoul(usize, bool),
+    Soul(usize, FormHandle, bool),
+    // BN5's karma: a value (the slider, a preset), or as typed.
+    Karma(usize, u16),
+    KarmaText(usize, String),
     // The patch cards.
     AddCard(usize, PatchCardHandle),
     CardOn(usize, usize, bool),
@@ -413,6 +421,14 @@ impl Editor {
                 if !side.has_system(&content, nettai_match::NAVICUST_SYSTEM) {
                     side.navicust = None;
                 }
+                // (BN5's karma and souls, with rules that take them.)
+                if !nettai_match::facts::takes(&content, side, nettai_match::facts::SOULS_FIELD) {
+                    side.souls = None;
+                }
+                if !nettai_match::facts::takes(&content, side, nettai_match::facts::KARMA_FIELD) {
+                    side.karma = nettai_match::facts::DEFAULT_KARMA;
+                }
+                self.typed.remove(&(s, "karma"));
                 self.edited();
             }
             Msg::Navi(s, c) => {
@@ -471,7 +487,9 @@ impl Editor {
                 self.sp_typed.insert((s, slot), t);
             }
             Msg::ImportSave(s) => {
-                if let Some(path) = rfd::FileDialog::new().add_filter("BN6 save", &["sav"]).pick_file() {
+                // A BN6 save, or a BN5 one (a .sav, or a raw image as
+                // Tango's netplay templates hold).
+                if let Some(path) = rfd::FileDialog::new().add_filter("BN6 or BN5 save", &["sav", "raw"]).pick_file() {
                     let read = std::fs::read(&path).map_err(|e| e.to_string());
                     match read.and_then(|bytes| self.m.sides[s].import_save(&content, &bytes)) {
                         Ok(notes) => {
@@ -479,7 +497,7 @@ impl Editor {
                             self.sp_typed.retain(|&(x, _), _| x != s);
                             self.edited();
                             let notes = if notes.is_empty() { String::new() } else { format!(" ({})", notes.join("; ")) };
-                            self.status = format!("the game, unlocks, navi code and SP times from {}{notes}", path.display());
+                            self.status = format!("imported {}{notes}", path.display());
                         }
                         Err(e) => self.status = format!("can't import {}: {e}", path.display()),
                     }
@@ -553,6 +571,35 @@ impl Editor {
                 forms.sort_by_key(|f| order.iter().position(|x| x == f));
                 side.crosses = Some(CrossList::new(&forms));
                 self.edited();
+            }
+            Msg::EverySoul(s, every) => {
+                let side = &mut self.m.sides[s];
+                side.souls = if every { None } else { Some(nettai_match::facts::all_souls(&content)) };
+                self.edited();
+            }
+            Msg::Soul(s, f, on) => {
+                let side = &mut self.m.sides[s];
+                let mut list = nettai_match::facts::owned_souls(&content, side);
+                list.retain(|&x| x != f);
+                if on {
+                    list.push(f);
+                }
+                // In the content's order.
+                list.sort();
+                side.souls = Some(list);
+                self.edited();
+            }
+            Msg::Karma(s, v) => {
+                self.m.sides[s].karma = v;
+                self.typed.remove(&(s, "karma"));
+                self.edited();
+            }
+            Msg::KarmaText(s, t) => {
+                if let Ok(v) = t.trim().parse::<u16>() {
+                    self.m.sides[s].karma = v;
+                    self.edited();
+                }
+                self.typed.insert((s, "karma"), t);
             }
             Msg::AddCard(s, card) => {
                 let cards = &mut self.m.sides[s].cards;

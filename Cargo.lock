@@ -2299,6 +2299,7 @@ dependencies = [
 name = "nettai-match"
 version = "0.1.0"
 dependencies = [
+ "bn5-compat",
  "bn6-compat",
  "nettai-battle",
  "nettai-content",
