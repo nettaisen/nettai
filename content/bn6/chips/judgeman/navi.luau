@@ -6,11 +6,11 @@
 -- stands free, a book (./book) flies at the enemy; once every book is done,
 -- his columns start coming back. See docs/engine/chips.md §3.6.29.
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("../../lib/navi-chips/navi")
 local book = require("./book")
 local collision = require("../../rules/collision")
-local panels = require("../../lib/panels")
-local regions = require("../../lib/regions")
+local panels = require("@common/panels")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")
 local whip = require("./whip")

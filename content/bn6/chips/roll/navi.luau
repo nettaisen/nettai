@@ -26,6 +26,7 @@ return common.make {
     -- animating while dimmed.
     ribbon = attachment.look { sprite = asset.sprite("bn6:roll-heart"), palette = 0 },
     ribbon_anim = 5,
+    attach = attachment.attach,
     heart = heart.spawn,
     spawner_address = 0x080C0DD9,
     hits = collision.hits_navis,

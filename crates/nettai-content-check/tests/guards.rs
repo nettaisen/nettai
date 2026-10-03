@@ -13,9 +13,10 @@ fn repository() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-/// The content the guards cover: the engine's API declarations, BN6's, and the engine's test content and
-/// test pack.
-const ROOTS: [&str; 4] = ["content/nettai", "content/bn6", "crates/nettai-battle/testdata/content", "crates/nettai-battle/testdata/pack"];
+/// The content the guards cover: the engine's API declarations, BN6's, the shared folder's, and the engine's test
+/// content and test pack.
+const ROOTS: [&str; 5] =
+    ["content/nettai", "content/bn6", "content/common", "crates/nettai-battle/testdata/content", "crates/nettai-battle/testdata/pack"];
 
 /// Every folder and every `.luau` file under `dir` (the API's definitions
 /// too), as paths from the repository's root with `/`.

@@ -17,6 +17,24 @@ pub mod keys {
     pub const PRESENT: u16 = 0xFC00;
 }
 
+/// A key's bit by its name ("a", "b", "select", "start", "right", "left",
+/// "up", "down", "r", "l"): what a script names keys by.
+pub fn key_named(name: &str) -> Option<u16> {
+    Some(match name {
+        "a" => keys::A,
+        "b" => keys::B,
+        "select" => keys::SELECT,
+        "start" => keys::START,
+        "right" => keys::RIGHT,
+        "left" => keys::LEFT,
+        "up" => keys::UP,
+        "down" => keys::DOWN,
+        "r" => keys::R,
+        "l" => keys::L,
+        _ => return None,
+    })
+}
+
 /// Held/pressed/released for one player, updated from each tick's input.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct InputRecord {

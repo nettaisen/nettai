@@ -14,13 +14,13 @@
 -- Then he leaves, and the controller moves on. See docs/engine/chips.md
 -- §3.6.7.
 
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 local bolt = require("./bolt")
 local effects = require("../../lib/effects")
 local ice = require("./ice")
 local meteor = require("./meteor")
 local vine = require("./vine")
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("../../lib/navi-chips/navi")
 
 -- What a chip summons him with: the ticks each element shows (the chips'
 -- first parameter).

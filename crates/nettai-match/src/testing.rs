@@ -13,6 +13,8 @@ pub fn bn6_content() -> Arc<Content> {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
         let mut c = Content::default();
         c.scripts = nettai_battle::content::Scripts::root(nettai_battle::content::RootManifest::named("bn6"), testing::modules_under(dir));
+        // (With the shared folder its modules require, content/common.)
+        testing::add_shared(&mut c.scripts);
         c.assets = testing::asset_names_for(&c.scripts);
         c.strings = nettai_content::locale::load(std::path::Path::new(dir), nettai_content::locale::OWN)
             .and_then(|s| s.ok_or_else(|| "no locales/en.toml".into()))

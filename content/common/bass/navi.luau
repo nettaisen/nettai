@@ -11,7 +11,7 @@
 -- animations, how he ends (BN6: 12 ticks, his arm down, 30 more; BN5: his last volley's animation, then gone when
 -- it ends), his shot (the game's panel strike) and its flash, and the smoke he leaves in.
 
-local panels = require("@bn6/lib/panels")
+local panels = require("../panels")
 
 local bass = {}
 

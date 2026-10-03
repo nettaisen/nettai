@@ -15,11 +15,11 @@
 -- §3.6.11.
 
 local spoutman_navi = require("../../navis/spoutman/navi")
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 local ball = require("./ball")
 local geyser = require("./geyser")
 local pillar = require("./pillar")
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("../../lib/navi-chips/navi")
 
 export type State = {
     -- The controller waiting for him (its pointer sits in his collision

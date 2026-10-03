@@ -6,7 +6,7 @@
 -- swallow (`obstacle.swallowable`) is removed, and the ball grows. It goes
 -- with the ball, at the field's end, or when the battle is over.
 
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local roller = {}
 
