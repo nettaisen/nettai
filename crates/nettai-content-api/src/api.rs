@@ -477,9 +477,6 @@ named_fields! {
         HpDrain = "hp_drain", U8, rw;
         CustomDrain = "custom_drain", U8, rw;
         PanelTrail = "panel_trail", U8, rw;
-        /// The form is a Beast form, Beast Over.
-        Beast = "beast", Bool, ro;
-        BeastOver = "beast_over", Bool, ro;
         // Written by the navi-changing dimming chips (off_802CCB4[38]).
         /// The custom screen's size.
         CustomLevel = "custom_level", U8, rw;
@@ -1036,8 +1033,9 @@ pub struct AfterimageSpec {
     pub palette: u8,
     pub shadow: Shadow,
     pub steady: bool,
-    /// It ends early: 1 when its side leaves the Beast forms, 2 when its
-    /// owner's action drops below 0x10 (0 never).
+    /// It ends early: 1 when its side leaves the forms whose afterimages
+    /// stay (BN6's Beast forms), 2 when its owner's action drops below
+    /// 0x10 (0 never).
     pub tether: u8,
 }
 

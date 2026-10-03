@@ -20,6 +20,7 @@
 //! compat's TOML.
 
 pub mod codec;
+pub mod forms;
 #[cfg(feature = "trace")]
 pub mod trace;
 pub mod save;

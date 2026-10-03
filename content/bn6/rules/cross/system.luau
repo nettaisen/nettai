@@ -13,16 +13,6 @@ type State = {
     charge_cross_screens: number,
 }
 
--- Whether the side's form has `trait`.
-local function form_has(side: number, trait: string): boolean
-    for _, t in battle.navi(side).form.traits or {} do
-        if t == trait then
-            return true
-        end
-    end
-    return false
-end
-
 -- `sub_802A49C` and `sub_802A40C`: ChargeCross (a form with `extra_chips`)
 -- deals one more chip per screen spent in it, up to three; the custom
 -- level and those chips, 8 at most (the rest kept as extra); NumbrOpn's 10
@@ -36,7 +26,7 @@ local function hand_size(side: number): number
     if turn == 1 then
         s.charge_cross_screens = 0
     end
-    if stats.navi.forms ~= nil and form_has(side, "extra_chips") then
+    if stats.navi.forms ~= nil and stats.form.extra_chips == true then
         s.charge_cross_screens = math.min(s.charge_cross_screens + 1, 3)
     else
         s.charge_cross_screens = 0
@@ -48,7 +38,7 @@ local function hand_size(side: number): number
         extra = n - 8
         n = 8
     end
-    if not form_has(side, "scrap_button") and stats.number_open then
+    if stats.form.scrap_button ~= true and stats.number_open then
         n = 10
         extra = ccs
     end
@@ -72,7 +62,8 @@ local scrap: ButtonSpec = {
     right = 11,
     left = 7,
     shown = function(side: number): boolean
-        return battle.navi(side).navi.forms ~= nil and form_has(side, "scrap_button")
+        local stats = battle.navi(side)
+        return stats.navi.forms ~= nil and stats.form.scrap_button == true
     end,
     state = function(side: number): "selectable" | "unavailable"
         return if custom.last_pick_is_chip(side) then "selectable" else "unavailable"
@@ -107,6 +98,11 @@ return define.system {
         version = { "falzar", "gregar" },
         crosses = "bool[5]",
         cross_list = "form[5]",
+    },
+    -- ChargeCross's extra chips (`extra_chips`, `sub_802A49C`) and DustCross's
+    -- scrap button (`scrap_button`, `sub_8027F10`), and theirs in Beast Out.
+    extends = {
+        form = { extra_chips = "bool", scrap_button = "bool" },
     },
     buttons = { scrap = scrap },
     windows = {
