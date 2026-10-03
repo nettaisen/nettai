@@ -147,7 +147,7 @@ serde_flags!(ChipFlags, u8);
 pub struct ExtraChipFlags(pub u8);
 
 impl ExtraChipFlags {
-    /// Cancelled by the opponent's Rush (a NaviCust support).
+    /// Canceled by the opponent's Rush (a NaviCust support).
     pub const RUSH_CANCELS: u8 = 0x02;
     /// The menus class it with the modifier chips (WhiCapsl, Uninstll and
     /// the plus chips, which the custom screen folds into the chip before
@@ -276,7 +276,7 @@ pub struct ChipData {
     #[serde(skip_deserializing, default = "super::strings::three_lines")]
     pub description_lines: u8,
     /// The palette of the chip's picture on the custom screen, 16 BGR555
-    /// colours, for a chip whose palette no ROM holds (the pack's picture
+    /// colors, for a chip whose palette no ROM holds (the pack's picture
     /// has a black one): presentation only.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub art_palette: Option<[u16; 16]>,

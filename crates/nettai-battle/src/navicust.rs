@@ -15,10 +15,10 @@
 use nettai_content_api::NaviCustProgramHandle;
 
 /// The NaviCust's grid is this many cells a side, and so is a program's
-/// shape, centred on its middle cell.
+/// shape, centered on its middle cell.
 pub const SIZE: usize = 7;
 
-/// A program's cells on a 7x7 grid, by row then column; its centre is
+/// A program's cells on a 7x7 grid, by row then column; its center is
 /// (3, 3).
 pub type Shape = [[bool; SIZE]; SIZE];
 
@@ -26,7 +26,7 @@ pub type Shape = [[bool; SIZE]; SIZE];
 pub const MAX_PARTS: usize = 49;
 
 /// A program on the grid: which, in which of its colors (an index into its
-/// definition's `colors`), where its centre is (a cell of the 7x7 grid),
+/// definition's `colors`), where its center is (a cell of the 7x7 grid),
 /// turned a quarter clockwise `rotation` times, compressed or not.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PlacedProgram {
@@ -103,7 +103,7 @@ pub fn rotate(shape: &Shape, rotation: u8) -> Shape {
     out
 }
 
-/// The grid cells a program's shape covers placed with its centre at
+/// The grid cells a program's shape covers placed with its center at
 /// `(x, y)` (those inside the grid), as (column, row).
 pub fn cells(shape: &Shape, x: u8, y: u8) -> impl Iterator<Item = (i32, i32)> + '_ {
     let c = (SIZE / 2) as i32;
@@ -120,7 +120,7 @@ mod tests {
         rows.map(|r| std::array::from_fn(|i| r.as_bytes()[i] == b'#'))
     }
 
-    /// A quarter turn clockwise moves the cell above the centre to its
+    /// A quarter turn clockwise moves the cell above the center to its
     /// right, as `sub_813B7FC` copies; four turns are none.
     #[test]
     fn programs_turn_as_bn6_turns_them() {

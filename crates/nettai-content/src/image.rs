@@ -1,13 +1,13 @@
-//! Palette-indexed PNG files and colour conversions.
+//! Palette-indexed PNG files and color conversions.
 //!
 //! Content images are 8-bit indexed PNGs. Their palette (PLTE) holds up to
-//! 16 rows of 16 colours; a pixel's value is `row * 16 + index`, where
-//! `index` is the GBA's 4-bit colour index (0 = transparent) and `row` the
-//! 16-colour palette it displays with. Entry 0 of every row is marked
+//! 16 rows of 16 colors; a pixel's value is `row * 16 + index`, where
+//! `index` is the GBA's 4-bit color index (0 = transparent) and `row` the
+//! 16-color palette it displays with. Entry 0 of every row is marked
 //! transparent (tRNS), so editors show transparency as the game does.
 //!
-//! Colours are the GBA's BGR555 widened to 8 bits per channel as
-//! `v << 3 | v >> 2` (the renderer's own conversion), so every GBA colour
+//! Colors are the GBA's BGR555 widened to 8 bits per channel as
+//! `v << 3 | v >> 2` (the renderer's own conversion), so every GBA color
 //! has exactly one RGB value and back.
 
 use std::io::BufWriter;
@@ -51,7 +51,7 @@ impl Indexed {
                 plte.extend_from_slice(&[0, 0, 0]);
             }
             enc.set_palette(plte);
-            // Entry 0 of each 16-colour row is transparent.
+            // Entry 0 of each 16-color row is transparent.
             let trns: Vec<u8> = (0..self.palette.len().max(1)).map(|i| if i % 16 == 0 { 0 } else { 255 }).collect();
             enc.set_trns(trns);
             enc.set_compression(png::Compression::Best);
@@ -65,7 +65,7 @@ impl Indexed {
         std::fs::write(path, self.to_png())
     }
 
-    /// Read an indexed PNG of any bit depth. Other colour types are refused
+    /// Read an indexed PNG of any bit depth. Other color types are refused
     /// with a message that says how to fix the file.
     pub fn from_png(bytes: &[u8]) -> Result<Indexed, String> {
         let mut dec = png::Decoder::new(bytes);
@@ -74,7 +74,7 @@ impl Indexed {
         let info = reader.info();
         if info.color_type != png::ColorType::Indexed {
             return Err(format!(
-                "saved as {:?}, not as an indexed (palette) image: the colour indices the game uses are gone. \
+                "saved as {:?}, not as an indexed (palette) image: the color indices the game uses are gone. \
                  Re-save it in indexed mode with the original palette (e.g. GIMP: Image > Mode > Indexed, \
                  'use custom palette'; Aseprite keeps indexed mode on its own)",
                 info.color_type
@@ -110,13 +110,13 @@ impl Indexed {
     }
 }
 
-/// A BGR555 colour as RGB.
+/// A BGR555 color as RGB.
 pub fn rgb(c: u16) -> [u8; 3] {
     let w = |v: u16| ((v << 3) | (v >> 2)) as u8;
     [w(c & 31), w((c >> 5) & 31), w((c >> 10) & 31)]
 }
 
-/// An RGB colour as BGR555, and whether it was exactly a GBA colour
+/// An RGB color as BGR555, and whether it was exactly a GBA color
 /// (otherwise each channel is rounded to the nearest of the 32 levels).
 pub fn bgr555(c: [u8; 3]) -> (u16, bool) {
     let ch = |v: u8| -> (u16, bool) {
@@ -136,7 +136,7 @@ pub fn palette_rgb(rows: &[[u16; 16]]) -> Vec<[u8; 3]> {
 }
 
 /// PNG palette entries back to BGR555 rows (the last row padded with
-/// black), with the indices of entries that weren't GBA colours.
+/// black), with the indices of entries that weren't GBA colors.
 pub fn palette_rows(entries: &[[u8; 3]], rows: usize) -> (Vec<[u16; 16]>, Vec<usize>) {
     let mut off_grid = Vec::new();
     let mut out = vec![[0u16; 16]; rows];
@@ -168,8 +168,8 @@ pub fn palette_change(expected: &str, entries: &[[u8; 3]], needed: usize) -> Opt
     }
     if entries.len() < needed {
         return Some(format!(
-            "the palette has {} colours but the image needs {needed}: the editor dropped entries \
-             (unused or duplicate colours). Colour indices have shifted; undo the save or re-export",
+            "the palette has {} colors but the image needs {needed}: the editor dropped entries \
+             (unused or duplicate colors). Color indices have shifted; undo the save or re-export",
             entries.len()
         ));
     }
@@ -177,7 +177,7 @@ pub fn palette_change(expected: &str, entries: &[[u8; 3]], needed: usize) -> Opt
     let (_, sorted_then) = expected.split_once('-').unwrap_or(("", ""));
     if sorted_now == sorted_then {
         return Some(
-            "the palette has the same colours in a different order: the editor re-sorted it. Pixels now \
+            "the palette has the same colors in a different order: the editor re-sorted it. Pixels now \
              point at other indices, which breaks palette swaps; undo the save or turn off palette sorting"
                 .into(),
         );
@@ -190,7 +190,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn colours_round_trip_exactly() {
+    fn colors_round_trip_exactly() {
         for c in 0..0x8000u16 {
             assert_eq!(bgr555(rgb(c)), (c, true));
         }
@@ -217,6 +217,6 @@ mod tests {
         assert!(palette_change(&fp, &p[..8], 16).unwrap().contains("dropped"));
         let mut r = p.clone();
         r[3] = [255, 255, 255];
-        assert_eq!(palette_change(&fp, &r, 16), None, "an edited colour is an edit, not damage");
+        assert_eq!(palette_change(&fp, &r, 16), None, "an edited color is an edit, not damage");
     }
 }

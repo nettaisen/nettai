@@ -63,8 +63,8 @@ pub struct ScreenLook {
     /// The battle's last turns have come (`sub_800A97A`).
     pub late_turns: bool,
     /// The Program Advance animation's counter (`word_2036660`+0xC: every
-    /// tick, from 0 when the names begin), and which of its three colour
-    /// sets background palette 10's first colours have (`byte_802BA48`).
+    /// tick, from 0 when the names begin), and which of its three color
+    /// sets background palette 10's first colors have (`byte_802BA48`).
     pub pa_ticks: u32,
     pub pa_palette: u8,
 }
@@ -96,7 +96,7 @@ const VOLUME_UP: [u16; 6] = [0x80, 0x80, 0xA0, 0xC0, 0xE0, 0x100];
 /// What the chip window was last drawn for (`sub_8028476`): the slot
 /// under the cursor and how many picks there were then (OK's picture
 /// shows whether there are any), and the last chip it showed, whose
-/// element's colours palette 11 keeps.
+/// element's colors palette 11 keeps.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ChipWindow {
     pub slot: u8,
@@ -279,7 +279,7 @@ impl ScreenLook {
     }
 
     /// `sub_802B9E4`: every 4 ticks of the names, the pause and the
-    /// result, the names' colours step through three sets, 16 ticks each
+    /// result, the names' colors step through three sets, 16 ticks each
     /// (the fourth is the second's).
     pub(crate) fn blink_program_advance(&mut self) {
         if self.pa_ticks & 3 == 0 {

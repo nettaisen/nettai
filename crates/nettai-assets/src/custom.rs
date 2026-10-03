@@ -116,19 +116,19 @@ pub struct CustomScreen {
     /// The window's palette (9) by the chip under the cursor: standard,
     /// mega, giga, dark.
     pub frame_palettes: Vec<Palette>,
-    /// The slot icons' palette (11), greyed out (12), and palette 14.
+    /// The slot icons' palette (11), grayed out (12), and palette 14.
     pub icon_palette: Palette,
-    pub grey_palette: Palette,
+    pub gray_palette: Palette,
     pub other_palette: Palette,
     // ---- The chip window.
     pub chip_art: Vec<ChipArt>,
     pub pictures: SlotPictures,
     /// Chip codes as 8x16 glyphs (A..Z, '*', then one no chip has).
     pub codes: Tiles,
-    /// Element icons (2x2) and the six colours each puts in palette 11
-    /// from colour 10.
+    /// Element icons (2x2) and the six colors each puts in palette 11
+    /// from color 10.
     pub elements: Tiles,
-    pub element_colours: Vec<[u16; 6]>,
+    pub element_colors: Vec<[u16; 6]>,
     /// Damage digits as 8x16 glyphs: 0-9, then '?'.
     pub digits: Tiles,
     // ---- The slots.
@@ -161,10 +161,10 @@ pub struct CustomScreen {
     pub emblem_palette_of: Vec<u8>,
     /// The Regular chip's frame (two frames of 4x4).
     pub regular: Tiles,
-    /// The Program Advance animation's names' first four colours
+    /// The Program Advance animation's names' first four colors
     /// (background palette 10), three sets it steps through
     /// (`byte_802BA48`).
-    pub advance_name_colours: Vec<[u16; 4]>,
+    pub advance_name_colors: Vec<[u16; 4]>,
     /// The other languages' pictures with words (`crate::lettering`).
     pub languages: Vec<(String, crate::CustomLettering)>,
 }

@@ -157,8 +157,8 @@ pub fn chip_name(hud: &Hud, c: &Content, chip: ChipHandle, name: &str, problems:
 }
 
 /// What the chip window shows of a chip besides its name and picture: its
-/// frame's colours (`frame_palettes`, by class: a dark chip's dark), its
-/// element's icon and colours, its code's glyph. Returns the frame's
+/// frame's colors (`frame_palettes`, by class: a dark chip's dark), its
+/// element's icon and colors, its code's glyph. Returns the frame's
 /// number.
 pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, problems: &mut Problems) -> usize {
     let data = c.chip(chip);
@@ -176,12 +176,12 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
     if problems.lookup(Lookup::ChipWindow(chip)) {
         let key = key(c, chip);
         if a.frame_palettes.get(frame).is_none() {
-            problems.note(format!("chip {key:?}: the custom screen has no window colours for its class ({frame})"));
+            problems.note(format!("chip {key:?}: the custom screen has no window colors for its class ({frame})"));
         }
-        // (A family past the elements with colours shows none: the
+        // (A family past the elements with colors shows none: the
         // original's.)
         let family = data.family as usize;
-        if family < a.element_colours.len() && a.elements.len() < 4 * (family + 1) {
+        if family < a.element_colors.len() && a.elements.len() < 4 * (family + 1) {
             problems.note(format!("chip {key:?}: the custom screen has no icon for its element ({family})"));
         }
         if a.codes.len() < 2 * (code.min(crate::custom::NO_CODE) as usize + 1) {
@@ -306,7 +306,7 @@ pub fn emblem(a: &CustomScreen, c: &Content, navi: NaviHandle, version: GameVers
         let palette = a.emblem_palette_of.get(number).and_then(|&i| a.emblem_palettes.get(i as usize));
         if !e.is_some_and(|e| pictures.len() >= 4 * (e as usize + 1)) || palette.is_none() {
             problems.note(format!(
-                "navi {:?} (number {number}) has no emblem or emblem colours on the {} custom screen",
+                "navi {:?} (number {number}) has no emblem or emblem colors on the {} custom screen",
                 c.defs.navi(navi).key,
                 crate::custom::game_name(version)
             ));
@@ -367,9 +367,9 @@ pub fn warning(hud: &Hud, problems: &mut Problems) -> bool {
     !hud.warning.is_empty()
 }
 
-/// A Cross's name and colours in the Cross window: its game's pictures and
+/// A Cross's name and colors in the Cross window: its game's pictures and
 /// its number among that game's Crosses (`custom::cross_picture`), with
-/// its name's tiles and colours there.
+/// its name's tiles and colors there.
 pub fn cross_name<'a>(
     a: &'a CustomScreen,
     c: &Content,
@@ -385,7 +385,7 @@ pub fn cross_name<'a>(
             Some((own, number)) => {
                 let names = crate::custom::CROSS_NAME_TILES * (number + 5 + 1);
                 if own.cross_names.len() < names || own.cross_palettes.len() < number + 5 + 1 {
-                    problems.note(format!("form {key:?}: the custom screen has no name or colours for Cross {number}"));
+                    problems.note(format!("form {key:?}: the custom screen has no name or colors for Cross {number}"));
                 }
             }
         }
