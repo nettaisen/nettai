@@ -542,6 +542,10 @@ named_fields! {
         /// custom-screen damage, emotion swings, the two HP drains, a
         /// battle-start hook, a shrinking hand).
         BugKinds = "bug_kinds", U8, ro;
+        /// BN5's NaviStats +0x32: the turns a soul lasts longer (SoulT+1's
+        /// 1), which the custom screen adds to a soul's three (signed).
+        /// Writable: BN5's NaviCust rules set it.
+        SoulTurnBonus = "soul_turn_bonus", I8, rw;
     }
 }
 
