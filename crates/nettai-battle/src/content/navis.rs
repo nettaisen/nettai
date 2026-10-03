@@ -315,6 +315,11 @@ pub struct FormData {
     /// turn's start.
     #[serde(skip)]
     pub change: Option<nettai_content_api::ActionHandle>,
+    /// The action that takes a navi out of it back to its base form when
+    /// its side asks (BN5's souls': 0x080121D8), run while paused; none:
+    /// the framework's revert (`sub_8015614`, BN6's forms).
+    #[serde(skip)]
+    pub revert: Option<nettai_content_api::ActionHandle>,
     /// A Cross's form in Beast Out.
     #[serde(skip)]
     pub beast: Option<FormHandle>,
@@ -628,7 +633,7 @@ pub(crate) fn read_form(
 ) -> Result<FormData, nettai_content_api::ContentError> {
     use serde_json::Value as Json;
     // (`buster_arm` is the content's own: the arm a navi raises.)
-    let o = super::reader::fields(d, r, &["id", "identity", "cross_of", "beast", "breaks_to", "change", "weapons", "buster_arm"])?;
+    let o = super::reader::fields(d, r, &["id", "identity", "cross_of", "beast", "breaks_to", "change", "revert", "weapons", "buster_arm"])?;
     let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
     // (BN5's souls are of no BN6 version.)
     if !matches!(form.kind, FormKind::Base | FormKind::Soul) && form.game.is_none() {

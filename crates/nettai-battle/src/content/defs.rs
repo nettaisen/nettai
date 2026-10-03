@@ -1411,6 +1411,16 @@ impl Defs {
                 }
                 other => return Err(what(d, format!("`change` is {other:?}, not an action"))),
             };
+            record.revert = match d.spec.field("revert") {
+                Data::Nil => None,
+                Data::Ref(Registry::Action, key) => {
+                    Some(ActionHandle(actions.binary_search_by(|a| a.key.as_str().cmp(key)).expect("a defined action") as u16))
+                }
+                other => return Err(what(d, format!("`revert` is {other:?}, not an action"))),
+            };
+            if record.kind == super::FormKind::Base && record.revert.is_some() {
+                return Err(what(d, "a base form names no action that reverts a navi out of it (`revert`)".into()));
+            }
             if record.kind != super::FormKind::Base && record.change.is_none() {
                 return Err(what(d, "a form other than the base form names the action that changes a navi into it (`change`)".into()));
             }
@@ -1654,11 +1664,12 @@ impl Defs {
                 action_owner[a.index()] = Some(SystemHandle(i as u16));
             }
         }
-        // The actions forms name as their change: unpaused, they are the
-        // instant chips' action (the original's CurAction 0x1C).
+        // The actions forms name as their change (and their revert):
+        // unpaused, they are the instant chips' action (the original's
+        // CurAction 0x1C, BN5's 0x1A).
         let mut change_actions = vec![false; actions.len()];
         for f in &forms {
-            if let Some(a) = f.record.change {
+            for a in [f.record.change, f.record.revert].into_iter().flatten() {
                 change_actions[a.index()] = true;
             }
         }
