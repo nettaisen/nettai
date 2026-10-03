@@ -245,6 +245,9 @@ pub struct RulesetDef {
     /// else its own root (which must then be a game's: one with a stock
     /// ruleset).
     pub game: RootId,
+    /// Its own rule sections (P1 item 8: a mix's, over its game's for the
+    /// sides that play by it; only the sections about a side), by id.
+    pub sections: Vec<String>,
 }
 
 /// A game, by its place among the content's games (`Defs::roots`, by
@@ -416,8 +419,10 @@ pub struct Defs {
     kind_keys: BTreeMap<String, KindHandle>,
     /// The engine's kinds, in [`ENGINE_KINDS`]' order.
     engine: Vec<KindHandle>,
-    /// The base form: what a navi that has not changed form is in.
-    pub base_form: Option<FormHandle>,
+    /// Each game's base form, by `RootId`: what its navis are in before
+    /// they change form (rules-in-luau.md P1 item 12: BN5's MegaMan's is
+    /// BN5's own); None for a game that defines none.
+    pub base_forms: Vec<Option<FormHandle>>,
     /// Keys by registry, for the codecs.
     chip_keys: BTreeMap<String, ChipHandle>,
     weapon_keys: BTreeMap<String, WeaponHandle>,
@@ -1410,11 +1415,23 @@ impl Defs {
                 claim_identity(&mut identities, h, super::IdentityOwner::Form(FormHandle(i as u16)), &f.key)?;
             }
         }
-        // The base form: what a navi that has not changed form is in.
-        let mut bases = forms.iter().enumerate().filter(|(_, f)| f.record.kind == super::FormKind::Base);
-        let base_form = bases.next().map(|(i, _)| FormHandle(i as u16));
-        if let Some((_, other)) = bases.next() {
-            return Err(ContentError::new(format!("two forms are base forms ({} is another)", other.key)));
+        // Each game's base form: what its navis are in before they change
+        // form; one a game.
+        let game_of = |key: &str| keys::root_of(key).and_then(|g| root_names.iter().position(|r| r == g));
+        let mut base_forms: Vec<Option<FormHandle>> = vec![None; root_names.len()];
+        for (i, f) in forms.iter().enumerate().filter(|(_, f)| f.record.kind == super::FormKind::Base) {
+            let Some(game) = game_of(&f.key) else {
+                return Err(ContentError::new(format!("base form {}'s id names no loaded game", f.key)));
+            };
+            if let Some(other) = base_forms[game] {
+                return Err(ContentError::new(format!(
+                    "two forms of {} are base forms ({} and {})",
+                    root_names[game],
+                    forms[other.index()].key,
+                    f.key
+                )));
+            }
+            base_forms[game] = Some(FormHandle(i as u16));
         }
         // What the forms and the navis' sets name is the kind of form they
         // say.
@@ -1437,8 +1454,8 @@ impl Defs {
                     )));
                 }
             }
-            if base_form.is_none() {
-                return Err(ContentError::new(format!("navi {} changes form, and no form is the base form", n.key)));
+            if game_of(&n.key).and_then(|g| base_forms[g]).is_none() {
+                return Err(ContentError::new(format!("navi {} changes form, and no form of its game is the base form", n.key)));
             }
         }
         // Stages: what they place names kinds and their variant records.
@@ -1724,7 +1741,7 @@ impl Defs {
             handles,
             kind_keys,
             engine,
-            base_form,
+            base_forms,
             chip_keys: BTreeMap::new(),
             weapon_keys: BTreeMap::new(),
             roots: root_names.clone(),
@@ -1783,11 +1800,12 @@ fn read_rulesets(definitions: &Definitions, root_names: &[String]) -> Result<Vec
         add: Vec<SystemHandle>,
         remove: Vec<SystemHandle>,
         game: Option<RootId>,
+        sections: Vec<String>,
     }
     let mut read = Vec::with_capacity(defs.len());
     for d in defs {
         let what = |e: &str| ContentError::new(format!("{}.luau: ruleset {}: {e}", d.module, d.key));
-        const FIELDS: [&str; 7] = ["id", "stock", "systems", "base", "add", "remove", "game"];
+        const FIELDS: [&str; 8] = ["id", "stock", "systems", "base", "add", "remove", "game", "sections"];
         if let Data::Map(entries) = &d.spec {
             for (k, _) in entries {
                 if !matches!(k, nettai_content_api::DataKey::Str(f) if FIELDS.contains(&f.as_str())) {
@@ -1832,7 +1850,30 @@ fn read_rulesets(definitions: &Definitions, root_names: &[String]) -> Result<Vec
             )),
             _ => return Err(what("`game` is a root's name (\"bn6\")")),
         };
-        let r = Read { stock, systems: list("systems")?, base, add: list("add")?.unwrap_or_default(), remove: list("remove")?.unwrap_or_default(), game };
+        let sections: Vec<String> = match d.spec.field("sections") {
+            Data::Nil => Vec::new(),
+            Data::List(items) => items
+                .iter()
+                .map(|v| match v {
+                    Data::Ref(Registry::Rules, key) => Ok(key.clone()),
+                    _ => Err(what("`sections` lists rule sections (define.rules(...))")),
+                })
+                .collect::<Result<_, _>>()?,
+            Data::Map(m) if m.is_empty() => Vec::new(),
+            _ => return Err(what("`sections` is a list of rule sections (define.rules(...))")),
+        };
+        if stock && !sections.is_empty() {
+            return Err(what("a stock ruleset's sections are its game's (define.rules in its folder), not its own"));
+        }
+        let r = Read {
+            stock,
+            systems: list("systems")?,
+            base,
+            add: list("add")?.unwrap_or_default(),
+            remove: list("remove")?.unwrap_or_default(),
+            game,
+            sections,
+        };
         match (r.stock, r.base, &r.systems) {
             (true, Some(_), _) => return Err(what("a stock ruleset is a game's own: it has no `base`")),
             (_, Some(_), Some(_)) => return Err(what("a ruleset made from a `base` lists what it changes (`add`, `remove`), not `systems`")),
@@ -1899,7 +1940,7 @@ fn read_rulesets(definitions: &Definitions, root_names: &[String]) -> Result<Vec
             }
         };
         visiting.pop();
-        out[i] = Some(RulesetDef { key: d.key.clone(), stock: r.stock, systems, base: r.base, game });
+        out[i] = Some(RulesetDef { key: d.key.clone(), stock: r.stock, systems, base: r.base, game, sections: r.sections.clone() });
         Ok(())
     }
     let mut out: Vec<Option<RulesetDef>> = vec![None; defs.len()];

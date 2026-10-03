@@ -288,7 +288,7 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
                 parts.push(PlacedProgram { program, color: color as u8, x: p.x, y: p.y, rotation: p.rotation, compressed: p.compressed });
             }
             let expansions = n.expansions.unwrap_or_else(|| {
-                let rules = &content.rules_of(crate::ruleset_game(content, ruleset)).navicust;
+                let rules = &content.side_rules(ruleset, crate::ruleset_game(content, ruleset)).navicust;
                 rules.boards.len().saturating_sub(1) as u8
             });
             match NaviCust::new(&parts, expansions) {
