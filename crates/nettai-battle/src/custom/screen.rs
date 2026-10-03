@@ -13,7 +13,8 @@ use super::look::{ScreenLook, ScreenSound};
 use super::Unlocks;
 use crate::console::Console;
 use crate::battle::FadeMode;
-use crate::content::ButtonHandle;
+use crate::content::{ButtonHandle, WindowHandle};
+use nettai_content_api::ChipHandle;
 use crate::content::{ChipClass, ChipCode, CustomScreenLayout, TemplateSlot};
 use crate::hud::{Banner, BannerStatus};
 use crate::input::{Joypad, keys};
@@ -54,8 +55,6 @@ pub enum SlotKind {
     NaviChip(FolderChip),
     /// The OK button.
     Ok,
-    /// The Beast Out button.
-    BeastOut,
     /// BN5's soul button (Soul Unison: slot 11, kind 2 of BN5's screen,
     /// 0x08023C54): it gives up the last chip picked for the soul of its
     /// family (`Screen::soul`).
@@ -180,8 +179,10 @@ pub enum Phase {
     CrossWindowClosing { tick: u8 },
     /// A Cross was chosen (`sub_8027A58`, 34 ticks).
     CrossChosen { tick: u8 },
-    /// Beast Out was picked (`sub_802770C`, 70 ticks).
-    BeastOutChosen { tick: u8 },
+    /// A system's window is up (docs/design/rules-in-luau.md §4.4: BN6's
+    /// Beast Out, `sub_802770C`): its `update` runs each tick, `tick` from
+    /// 1, until it says it is done.
+    Window { window: WindowHandle, tick: u16 },
     /// BN5's soul button was picked (its state 9, 0x080232D0): `sub` its
     /// sub-state (0x080232F0's offsets 0 to 0x18), `counter` its count
     /// (+0x40).
@@ -308,8 +309,10 @@ pub struct Screen {
     pub hand_size: u8,
     /// The navi is MegaMan (the Cross window and Beast Out are his).
     pub megaman: bool,
-    /// Beast Out is picked (`+0x17`).
-    pub beast_out: bool,
+    /// The form a system's pick puts the navi in at the turn's start (BN6's
+    /// Beast Out, `+0x17`), and the system's place in the side's ruleset.
+    pub form: Option<nettai_content_api::FormHandle>,
+    pub form_owner: Option<u8>,
     /// BN5's soul button: the soul it offers or gave (slot 11's +5 and +6)
     /// and the slot of the chip given up for it (+4).
     pub soul: SoulButton,
@@ -362,8 +365,6 @@ pub struct PlayerView<'a> {
 pub struct RoundMemory {
     /// Crosses used this round, by their place (`CrossWindow`).
     pub crosses_used: [bool; CROSSES],
-    /// Beast Out was picked this round.
-    pub beast_out_used: bool,
     /// BN5's souls given this round (0x02034E10): bit n Soul Unison with
     /// soul n, bit 16 + n its Chaos Unison.
     pub souls_used: u32,
@@ -396,13 +397,17 @@ impl Screen {
             chips_left,
             hand_size: 0,
             megaman,
-            beast_out: false,
+            form: None,
+            form_owner: None,
             soul: SoulButton::default(),
             crosses: CrossWindow::default(),
             program_advance: None,
             hud: Banner::default(),
             look: ScreenLook::new(view.late_turns, false, None),
         };
+        // The side's systems as the screen opens (BN6's: the round's
+        // Beast Out forgotten on its first screen, ChargeCross's screens).
+        extras.opened(&mut screen);
         if view.crosses_allowed() && view.emotion != Emotion::WornOut {
             screen.crosses = view.offered_crosses();
         }
@@ -443,11 +448,6 @@ impl Screen {
                 state: SlotState::Selectable,
                 uses_left: 0,
             };
-        }
-        if view.beast_out_button() {
-            let s = &mut self.slots[SPECIAL_SLOT as usize];
-            s.kind = SlotKind::BeastOut;
-            s.state = if view.beast_out_available() { SlotState::Selectable } else { SlotState::Unavailable };
         }
         if view.soul_button() {
             // 0x08023C54: the soul button, unavailable until a pick
@@ -708,7 +708,7 @@ impl Screen {
                 // sub_802794A: its first tick reads no keys; every tick
                 // draws, after the keys.
                 if entered {
-                    self.cross_window(joy, view);
+                    self.cross_window(joy, view, extras);
                 } else {
                     self.phase = Phase::CrossWindow { entered: true };
                     self.look.frame = 0;
@@ -768,44 +768,16 @@ impl Screen {
                 self.phase = if tick >= 34 { Phase::Choosing } else { Phase::CrossChosen { tick } };
                 None
             }
-            Phase::BeastOutChosen { tick } => {
-                let tick = tick + 1;
-                match tick {
-                    // sub_8027738: the emblem spins.
-                    1 => {
-                        self.beast_out = true;
-                        self.look.frame = 0;
-                        self.look.spin = 1;
-                    }
-                    // sub_802774C: the screen fades (0x64) and this
-                    // console's camera shakes, 40 ticks at magnitude 1.
-                    2 => {
-                        console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
-                        self.look.frame = 0;
-                        self.look.fade.start(FadeMode::BeastOut, BEAST_OUT_FADE_SPEED);
-                        self.look.play(ScreenSound::BeastOut(view.beast_game()));
-                        self.look.play(ScreenSound::Pick);
-                        self.look.play(ScreenSound::BeastOutFlash);
-                    }
-                    // sub_802777C
-                    3..=52 => self.look.frame += 1,
-                    // sub_8027796: the screen fades back in, and the
-                    // emotion window shows the Beast form (sub_802A040).
-                    53 => {
-                        self.look.fade.start(FadeMode::BeastOutBack, BEAST_OUT_FADE_SPEED);
-                        self.look.face = beast_face(view, view.emotion == Emotion::Tired);
-                        // Beast Out goes first in the selection, so B takes
-                        // it back last.
-                        let n = self.selected as usize;
-                        self.selection[..n].rotate_right(1);
-                        self.reorder_column(folder, beast_out_icon(view));
-                        self.slots[SPECIAL_SLOT as usize].state = SlotState::Selected;
-                        self.update_availability(view, folder, extras);
-                    }
-                    _ => {}
+            Phase::Window { window, tick } => {
+                // The system's window (BN6's Beast Out, `sub_802770C`): its
+                // update, then back to choosing when it is done (unless it
+                // moved the screen on itself).
+                let tick = tick.saturating_add(1);
+                self.phase = Phase::Window { window, tick };
+                let stays = extras.window_update(self, folder, console, window);
+                if !stays && self.phase == (Phase::Window { window, tick }) {
+                    self.phase = Phase::Choosing;
                 }
-                self.phase = if tick >= 70 { Phase::Choosing } else { Phase::BeastOutChosen { tick } };
-                self.look.draw_emblem(0);
                 None
             }
             Phase::SoulChosen { sub, counter } => {
@@ -1008,7 +980,7 @@ impl Screen {
         let target = if rep & (keys::UP | keys::DOWN) != 0 {
             if rep & keys::UP != 0
                 && self.megaman
-                && !self.beast_out
+                && self.form.is_none()
                 && self.crosses.count != 0
                 && (self.cursor == OK_SLOT || self.cursor <= 4)
             {
@@ -1090,18 +1062,6 @@ impl Screen {
                 self.look.play(ScreenSound::Ok);
                 return Some(Request::Confirm);
             }
-            SlotKind::BeastOut => {
-                // sub_8028D6C
-                if here.state != SlotState::Selectable || self.selected as usize >= MAX_SELECTIONS {
-                    self.look.play(ScreenSound::Refused);
-                    return None;
-                }
-                self.push_selection(cursor);
-                self.look.play(ScreenSound::Pick);
-                self.phase = Phase::BeastOutChosen { tick: 0 };
-                // (sub_802A034: the column shows the BeastOut chip.)
-                self.look.column[self.selected as usize - 1] = beast_out_icon(view);
-            }
             SlotKind::Soul => {
                 // 0x08024972: a soul on offer starts its sequence.
                 if here.state != SlotState::Selectable {
@@ -1118,6 +1078,74 @@ impl Screen {
             SlotKind::Empty | SlotKind::Hidden => {}
         }
         None
+    }
+
+    /// The systems' buttons that say (BN6's Beast Out, `sub_8028F48`; its
+    /// scrap, `sub_8028F84`), unless used up or picked.
+    fn refresh_buttons(&mut self, extras: &mut dyn super::Extras) {
+        for s in 0..SLOTS {
+            if let SlotKind::Button { button, cell: ButtonCell::Only | ButtonCell::Left } = self.slots[s].kind
+                && self.slots[s].state != SlotState::Selected
+                && let Some(state) = extras.button_state(self, button)
+            {
+                self.slots[s].state = state;
+            }
+        }
+    }
+
+    /// `custom.pick`: the slot under the cursor is picked.
+    pub fn pick_cursor(&mut self) {
+        self.push_selection(self.cursor);
+    }
+
+    /// `custom.play`: a screen sound by its name.
+    pub fn play_named(&mut self, name: &str) -> bool {
+        let sound = match name {
+            "pick" => ScreenSound::Pick,
+            "refused" => ScreenSound::Refused,
+            "back" => ScreenSound::Back,
+            "cancel" => ScreenSound::Cancel,
+            "beast_out_gregar" => ScreenSound::BeastOut(super::GameVersion::Gregar),
+            "beast_out_falzar" => ScreenSound::BeastOut(super::GameVersion::Falzar),
+            "beast_out_flash" => ScreenSound::BeastOutFlash,
+            _ => return false,
+        };
+        self.look.play(sound);
+        true
+    }
+
+    /// `custom.set_column_icon`: the last pick's cell of the column shows
+    /// `chip` (BN6's Beast Out: the BeastOut chip, `sub_802A034`).
+    pub fn set_column_icon(&mut self, chip: Option<ChipHandle>) {
+        if self.selected > 0 {
+            self.look.column[self.selected as usize - 1] = chip.map(|id| FolderChip { id, code: ChipCode(0) });
+        }
+    }
+
+    /// `custom.open_window`.
+    pub fn open_window(&mut self, window: WindowHandle) {
+        self.phase = Phase::Window { window, tick: 0 };
+    }
+
+    /// The window's ticks so far (from 1), if one is up.
+    pub fn window_tick(&self) -> Option<u16> {
+        match self.phase {
+            Phase::Window { tick, .. } => Some(tick),
+            _ => None,
+        }
+    }
+
+    /// `custom.pick_first` (`sub_8027796`, `sub_8027672`): the last pick
+    /// goes first in the selection, so B takes it back last, and the
+    /// column follows, `icon` first (else the first pick's chip).
+    pub fn pick_first(&mut self, folder: &BattleFolder, icon: Option<ChipHandle>) {
+        let n = self.selected as usize;
+        self.selection[..n].rotate_right(1);
+        let first = match icon {
+            Some(id) => Some(FolderChip { id, code: ChipCode(0) }),
+            None => self.chip_in(self.selection[0], folder),
+        };
+        self.reorder_column(folder, first);
     }
 
     /// The slot of the button under the cursor (its first cell).
@@ -1208,15 +1236,15 @@ impl Screen {
         } else {
             let last = self.selection[self.selected as usize - 1];
             self.selected -= 1;
-            if self.slots[last as usize].kind == SlotKind::BeastOut {
-                self.beast_out = false;
-            }
             self.slots[last as usize].state = SlotState::Selectable;
             self.look.column[self.selected as usize] = None;
             // sub_802A0EC: taking Beast Out (or the BeastOut chip) back
             // takes its face back.
             let beast_chip = self.chip_in(last, folder).is_some_and(|c| is_beast_out(c, view));
-            if self.slots[last as usize].kind == SlotKind::BeastOut || beast_chip {
+            if let SlotKind::Button { button, .. } = self.slots[last as usize].kind {
+                // The button's system (BN6's Beast Out: its form and face go).
+                extras.button_taken_back(self, button);
+            } else if beast_chip {
                 self.look.face = None;
                 self.look.play(ScreenSound::Back);
                 self.look.play(ScreenSound::Cancel);
@@ -1228,7 +1256,7 @@ impl Screen {
     }
 
     /// The Cross window's keys (`sub_8028A78`).
-    fn cross_window(&mut self, joy: &Joypad, view: &PlayerView) {
+    fn cross_window(&mut self, joy: &Joypad, view: &PlayerView, extras: &mut dyn super::Extras) {
         let w = &mut self.crosses;
         if w.chosen.is_none() {
             let n = w.count;
@@ -1256,8 +1284,8 @@ impl Screen {
                 w.marked[i] = true;
                 w.chosen = Some(w.offered[i]);
                 self.phase = Phase::CrossChosen { tick: 0 };
-                // A chosen Cross grays out Beast Out.
-                self.update_beast_out(view);
+                // A chosen Cross grays out Beast Out (its button's state).
+                self.refresh_buttons(extras);
                 return;
             }
         }
@@ -1485,18 +1513,8 @@ impl Screen {
             };
             slot.state = if ok { SlotState::Selectable } else { SlotState::Unavailable };
         }
-        self.update_beast_out(view);
         self.update_soul(view, folder);
-        // The systems' buttons that say (BN6's scrap, `sub_8028F84`: a
-        // picked chip last), unless used up or picked.
-        for s in 0..SLOTS {
-            if let SlotKind::Button { button, cell: ButtonCell::Only | ButtonCell::Left } = self.slots[s].kind
-                && self.slots[s].state != SlotState::Selected
-                && let Some(state) = extras.button_state(self, button)
-            {
-                self.slots[s].state = state;
-            }
-        }
+        self.refresh_buttons(extras);
         // sub_8028250: the slots are drawn again.
         self.draw_slots(folder, view);
     }
@@ -1605,16 +1623,6 @@ impl Screen {
         self.phase = Phase::SoulChosen { sub, counter };
     }
 
-    /// `sub_8028F48`: Beast Out can be picked with room left, no Cross
-    /// chosen, and the navi able to.
-    fn update_beast_out(&mut self, view: &PlayerView) {
-        let full = self.selected as usize >= MAX_SELECTIONS;
-        let cross = self.crosses.chosen.is_some();
-        let s = &mut self.slots[SPECIAL_SLOT as usize];
-        if s.kind == SlotKind::BeastOut && s.state != SlotState::Selected {
-            s.state = if !full && view.beast_out_available() && !cross { SlotState::Selectable } else { SlotState::Unavailable };
-        }
-    }
 }
 
 /// What picked chips share: nothing yet, one value, or differing values.
@@ -1687,10 +1695,6 @@ fn cross_face(view: &PlayerView, cross: u8) -> Option<nettai_content_api::FormHa
     }
 }
 
-/// The BeastOut chip, as the column shows Beast Out.
-fn beast_out_icon(view: &PlayerView) -> Option<FolderChip> {
-    view.library.beast_out_chip().map(|id| FolderChip { id, code: ChipCode(0) })
-}
 
 /// `getChipID_802A54E`: a chip as it counts in a selection. It is the
 /// invalid chip when it is a Mega or Giga chip past the navi's limit for
@@ -1831,15 +1835,6 @@ impl PlayerView<'_> {
         self.unlocks.beast_game(self.library, self.stats.form)
     }
 
-    /// `sub_8029FB4` (battle mode 0): the Beast Out button is on the
-    /// screen.
-    fn beast_out_button(&self) -> bool {
-        self.megaman()
-            && !self.unlocks.beast_out_sealed
-            && !self.per_player_gauges
-            && !self.random_battle
-            && self.unlocks.beast_out
-    }
 
     /// `sub_802A57E`: the navi can Beast Out now: not worn out, not in a
     /// Beast form. Tired, it can only once it has this round (and then
@@ -1855,9 +1850,4 @@ impl PlayerView<'_> {
         self.library.has_souls(self.stats.navi) && self.unlocks.souls.button && !self.per_player_gauges && !hidden
     }
 
-    fn beast_out_available(&self) -> bool {
-        self.emotion != Emotion::WornOut
-            && (self.emotion != Emotion::Tired || self.round.beast_out_used)
-            && !self.library.form_kind(self.stats.form).is_beast()
-    }
 }

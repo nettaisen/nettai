@@ -242,11 +242,33 @@ impl Battle {
             SystemHook::ButtonShown => d.shown,
             SystemHook::ButtonState => d.state.expect("a button's state, asked only when it has one"),
             SystemHook::ButtonPressed => d.pressed,
+            SystemHook::ButtonTakenBack => d.taken_back.expect("a button's taken_back, asked only when it has one"),
             h => panic!("{h:?} is no button's function"),
         };
         let (_, slot) = self.system_slot(side, d.system).expect("a button of the side's systems");
         let call = HookCall::System { side, slot, hook, navi: None, chip: None, weapon: None };
         crate::behavior::call_hook(self, f, call)
+    }
+
+    /// A window's `update`, as its system's for side `side`.
+    pub(crate) fn call_window(&mut self, side: u8, window: crate::content::WindowHandle) -> Value {
+        let content = self.content.clone();
+        let d = content.defs.window(window);
+        let (_, slot) = self.system_slot(side, d.system).expect("a window of the side's systems");
+        let call = HookCall::System { side, slot, hook: SystemHook::WindowUpdate, navi: None, chip: None, weapon: None };
+        crate::behavior::call_hook(self, d.update, call)
+    }
+
+    /// Side `side`'s systems' custom hook `hook(side)`, each in order.
+    pub(crate) fn systems_call_custom(&mut self, side: u8, hook: SystemHook) {
+        let Some(r) = self.rules[side as usize & 1].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(hook) {
+                let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: None, weapon: None };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
     }
 
     /// Side `side`'s systems' `custom.hand_size(side)`: the first answer.
