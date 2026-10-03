@@ -122,3 +122,5 @@
 "bn5:h-burst/burst" = { pool = "attack", index = 0x9E }
 "bn5:boxer/boxer" = { pool = "effect", index = 0x64 }
 "bn5:shakpar/shaker" = { pool = "effect", index = 0x66 }
+"bn5:cacdanc/dancer" = { pool = "effect", index = 0x65 }
+"bn5:cacdanc/cactus" = { pool = "attack", index = 0xB1 }
