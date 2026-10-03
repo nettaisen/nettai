@@ -921,6 +921,10 @@ impl CoreApi for Battle {
         self.rng.next_positive()
     }
 
+    fn console_rng_positive(&mut self, side: u8) -> u32 {
+        self.consoles[side as usize & 1].rng.next_positive()
+    }
+
     fn jitter(&mut self, mask: u32, pos: Vec3) -> Vec3 {
         kinds::spark::jitter(self, mask, pos)
     }

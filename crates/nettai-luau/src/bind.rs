@@ -1548,6 +1548,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "rng", |_, ()| with(|api, _| Ok(api.rng())));
     lib_fn!(lua, t, "rng_positive", |_, ()| with(|api, _| Ok(api.rng_positive())));
+    lib_fn!(lua, t, "console_rng_positive", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.console_rng_positive(side)))
+    });
     lib_fn!(lua, t, "jitter", |_, (mask, pos): (LuaValue, mlua::UserDataRef<LVec3>)| {
         let mask = int(&mask, "mask")? as u32;
         with(|api, _| Ok(LVec3(api.jitter(mask, pos.0))))

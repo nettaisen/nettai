@@ -1285,6 +1285,9 @@ pub trait CoreApi {
     fn rng(&mut self) -> u32;
     /// `GetPositiveSignedRNG2`: one draw, bit 31 cleared.
     fn rng_positive(&mut self) -> u32;
+    /// `GetPositiveSignedRNG1` on `side`'s console: one draw of that
+    /// console's own RNG (RNG1), bit 31 cleared.
+    fn console_rng_positive(&mut self, side: u8) -> u32;
     /// `AddRandomVarianceToTwoCoords`: jitter x and z by up to mask/2
     /// pixels (one draw).
     fn jitter(&mut self, mask: u32, pos: Vec3) -> Vec3;

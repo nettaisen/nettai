@@ -1095,6 +1095,11 @@ declare battle: {
     -- `GetRNG2` (one draw), `GetPositiveSignedRNG2` (bit 31 cleared).
     rng: () -> number,
     rng_positive: () -> number,
+    -- `GetPositiveSignedRNG1` on a side's console: a draw of that console's
+    -- own RNG (RNG1), which the consoles never share; what a console decides
+    -- by it differs between them, so the simulation follows the local
+    -- side's console (`local_side`) and draws the other's alike.
+    console_rng_positive: (side: number) -> number,
     -- `AddRandomVarianceToTwoCoords`: x and z by up to mask/2 pixels.
     jitter: (mask: number, pos: Vec3) -> Vec3,
     -- A side's hand: its cursor.
