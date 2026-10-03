@@ -89,6 +89,8 @@
 "bn5:bassanly/shot" = { pool = "attack", index = 0x73 }
 "bn5:bighook/hook" = { pool = "effect", index = 0x8C }
 "bn5:bighook/fire" = { pool = "attack", index = 0xCA }
+"bn5:metrknuk/controller" = { pool = "effect", index = 0x76, scratch_position = true }
+"bn5:metrknuk/fist" = { pool = "attack", index = 0x76 }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
 "bn5:capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "bn5:napalm-bomb" = { pool = "attack", index = 0x3A }
