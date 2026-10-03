@@ -2,7 +2,7 @@
 //! the counters its window and sprites animate by, and the screen fades
 //! its console runs (presentation; the state digest leaves it out, like
 //! `Look`). A frontend draws the screen from this and the `Screen` itself
-//! (nettai-frontend `custom`). See docs/engine/custom-screen.md §9.
+//! (nettai-render `custom`). See docs/engine/custom-screen.md §9.
 
 use crate::battle::{Fade, FadeMode};
 use crate::content::SoundRole;
