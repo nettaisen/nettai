@@ -13,7 +13,7 @@ local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local navi_chips = require("../../lib/navi-chips/navi")
 local parts = require("../../lib/swords/parts")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local twinldrs = {}
 

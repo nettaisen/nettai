@@ -1,14 +1,13 @@
 //! One player's custom screen driven by scripted buttons, with made-up
 //! chips.
 
-use super::chatbox::Script;
 use super::library::testing::{EVERY_CODE, TestLibrary, chip};
 use super::screen::{OK_SLOT, SPECIAL_SLOT};
 use super::*;
 use crate::content::{ButtonHandle, ChipClass, ChipCode, ChipFlags};
 use crate::custom::library::testing::ChipId;
 use crate::input::keys;
-use nettai_content_api::{ChipHandle, FormHandle};
+use nettai_content_api::ChipHandle;
 
 const STAR: u8 = 26;
 /// Made-up chips: a damaging chip in codes A-C and *, a second one in A, B
@@ -85,7 +84,15 @@ impl Extras for TestButtons {
 
     fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle) {}
 
-    fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: crate::content::WindowHandle) -> bool {
+    fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: &Joypad, _: crate::content::WindowHandle) -> bool {
+        false
+    }
+
+    fn keys(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &Joypad) -> bool {
+        false
+    }
+
+    fn take_back(&mut self, _: &mut Screen, _: &BattleFolder) -> bool {
         false
     }
 
@@ -203,7 +210,6 @@ fn five_chips_are_dealt_into_the_top_row() {
     // (The special slot holds a system's button, BN6's Beast Out, which
     // these tests have none of: it is absent.)
     assert!(matches!(s.slots[SPECIAL_SLOT as usize].kind, SlotKind::Empty | SlotKind::Hidden));
-    assert_eq!(s.crosses.count, 5);
 }
 
 #[test]
@@ -299,149 +305,6 @@ fn mega_chips_past_the_limit_turn_invalid() {
     let (invalid, code) = (library::testing::INVALID, screen::INVALID_CODE);
     assert_eq!(hand.ids[0], Some(ChipHandle(invalid)));
     assert_eq!(hand.selection[0], Some(FolderChip::new(ChipHandle(invalid), code)));
-}
-
-#[test]
-fn a_cross_from_the_window() {
-    let mut p = Player::new(&[], GameVersion::Falzar);
-    p.open();
-    p.wait(10);
-    p.step(0);
-    // UP from the top row opens the window (12 ticks); DOWN moves to the
-    // second Cross; A chooses it (34 ticks).
-    // UP repeats (and acts) on the second tick of the hold.
-    p.step(keys::UP);
-    let up = p.tick + 1;
-    p.step(keys::UP);
-    p.step(0);
-    while p.phase() != (Phase::CrossWindow { entered: true }) && p.tick < 1000 {
-        p.step(0);
-    }
-    assert_eq!(p.tick, up + 12);
-    p.press(keys::DOWN);
-    let a = p.tick + 1;
-    p.step(keys::A);
-    while p.phase() != Phase::Choosing && p.tick < 1000 {
-        p.step(0);
-    }
-    assert_eq!(p.tick, a + 34);
-    assert_eq!(p.screen().crosses.chosen, Some(1));
-    p.press(keys::START);
-    p.press(keys::A);
-    p.wait(20);
-    // Falzar's second Cross is form 7.
-    assert_eq!(p.side.sent.as_ref().unwrap().result.transform.form, Some(FormHandle(7)));
-    assert!(p.side.round.crosses_used[1]);
-}
-
-/// Open the screen, open the Cross window, move DOWN `down` times and
-/// choose that Cross; the screen is back to choosing chips after.
-fn choose_cross(p: &mut Player, down: usize) {
-    p.open();
-    p.wait(10);
-    p.step(0);
-    p.press(keys::UP);
-    while p.phase() != (Phase::CrossWindow { entered: true }) && p.tick < 1000 {
-        p.step(0);
-    }
-    for _ in 0..down {
-        p.press(keys::DOWN);
-    }
-    p.step(keys::A);
-    while p.phase() != Phase::Choosing && p.tick < 1000 {
-        p.step(0);
-    }
-}
-
-/// OK, and what goes out.
-fn confirm(p: &mut Player) -> CustomResult {
-    p.press(keys::START);
-    p.press(keys::A);
-    p.wait(20);
-    p.side.sent.as_ref().unwrap().result.clone()
-}
-
-/// A setup's Cross list (nettai's extension): a Falzar player offered
-/// Gregar's first Cross (form 1) and Falzar's fourth (9) gets those two,
-/// in that order, and the one chosen is what goes out.
-#[test]
-fn a_setups_cross_list_offers_crosses_of_either_game() {
-    let mut p = Player::new(&[], GameVersion::Falzar);
-    p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
-    choose_cross(&mut p, 0);
-    let w = p.screen().crosses;
-    assert_eq!((w.count, &w.offered[..2], w.chosen), (2, &[0, 1][..], Some(0)));
-    // The emotion window shows the Cross's face.
-    assert_eq!(p.screen().look.face, Some(FormHandle(1)));
-    assert_eq!(confirm(&mut p).transform.form, Some(FormHandle(1)));
-    assert_eq!(p.side.round.crosses_used, [true, false, false, false, false]);
-    // On the round's next screen the Cross used isn't offered again.
-    p.side.screen = None;
-    let ctx = p.context();
-    let (mut side, mut console) = (p.side.clone(), p.console);
-    side.open(&Context { turn: 2, ..ctx }, &mut console);
-    let w = side.screen.unwrap().crosses;
-    assert_eq!((w.count, w.offered[0]), (1, 1));
-}
-
-/// R in the Cross window describes the Cross under the cursor, by its
-/// form: with a Cross list mixing both games, a Falzar player's window
-/// shows Gregar's first Cross (form 1) its own description, not the one of
-/// Falzar's Cross in that place (form 6; the test library's descriptions
-/// differ in their lines, which time the chatbox).
-#[test]
-fn r_describes_the_hovered_cross_of_a_cross_list() {
-    for (list, down, form) in [(true, 0, 1), (true, 1, 9), (false, 0, 6), (false, 1, 7)] {
-        let mut p = Player::new(&[], GameVersion::Falzar);
-        if list {
-            p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
-        }
-        p.open();
-        p.wait(10);
-        p.step(0);
-        p.press(keys::UP);
-        while p.phase() != (Phase::CrossWindow { entered: true }) && p.tick < 1000 {
-            p.step(0);
-        }
-        for _ in 0..down {
-            p.press(keys::DOWN);
-        }
-        let w = p.screen().crosses;
-        assert_eq!(w.hovered(&p.side.unlocks, &p.lib, p.stats.navi), Some(FormHandle(form)), "list {list}, down {down}");
-        p.step(keys::R);
-        let Phase::Description { from_cross_window: true, chatbox } = p.phase() else { panic!("no description: {:?}", p.phase()) };
-        let lines = p.lib.cross_description_lines(FormHandle(form));
-        assert_eq!(chatbox.script(), Script::Description { breaks: lines - 1 }, "list {list}, down {down}");
-    }
-}
-
-/// In a Beast form a Cross list offers the Crosses whose Beast it is: in
-/// Falzar's Beast Falzar's, in a Gregar Cross's Beast form Gregar's; each
-/// takes the navi to its form in Beast Out.
-#[test]
-fn in_a_beast_form_a_cross_list_offers_that_beasts_crosses() {
-    for (beast, place, form) in [(library::testing::FALZAR_BEAST, 1, 9), (FormHandle(0x0E), 0, 1)] {
-        let mut p = Player::new(&[], GameVersion::Falzar);
-        p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
-        p.stats.form = beast;
-        choose_cross(&mut p, 0);
-        let w = p.screen().crosses;
-        assert_eq!((w.count, w.offered[0], w.chosen), (1, place, Some(place)));
-        assert_eq!(confirm(&mut p).transform.form, Some(FormHandle(form + 0x0C)));
-    }
-}
-
-/// A Cross list names Crosses only, and leaves out the navi's starting
-/// form, as the original's window does.
-#[test]
-fn a_cross_list_offers_crosses_only() {
-    let mut p = Player::new(&[], GameVersion::Gregar);
-    let list = [FormHandle(6), library::testing::GREGAR_BEAST, FormHandle(2), FormHandle(7)];
-    p.side.unlocks.cross_list = Some(CrossList::new(&list));
-    p.stats.starting_form = FormHandle(2);
-    p.open();
-    let w = p.screen().crosses;
-    assert_eq!((w.count, &w.offered[..2]), (2, &[0, 3][..]));
 }
 
 #[test]

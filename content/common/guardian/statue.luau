@@ -13,10 +13,8 @@
 --
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
 
-local absorbed_obstacle = require("@bn6/objects/absorbed-obstacle/absorbed_obstacle")
-local effects = require("@bn6/lib/effects")
-local regions = require("@bn6/lib/regions")
-local rising_bubble = require("@bn6/objects/rising-bubble/rising_bubble")
+local regions = require("@common/regions")
+local rising_bubble = require("@common/rising-bubble/rising_bubble")
 
 local statue = {}
 
@@ -55,8 +53,13 @@ export type Look = {
     strike_is: CollisionType,
     strike_hits: CollisionType,
     strike: Strike,
-    -- BN6's: absorbed, it flies to the absorber, and a removal may blink it out. BN5's: a removal leaves a puff.
-    absorbs: boolean,
+    -- How it looks absorbed (BN6's: absorbed, it flies to the absorber, and a removal may blink it out); none
+    -- (BN5's): a removal leaves a puff.
+    absorbed: AbsorbedLook?,
+    -- The effects it leaves (the game's lib/effects).
+    effects: { puff: Effect },
+    -- The game's rising bubble kind (objects/rising-bubble).
+    bubble: Kind,
 }
 
 export type Statue = {
@@ -109,20 +112,19 @@ local function leave(me: Object)
     me:set_lifecycle("destroy")
 end
 
--- A puff 16 pixels up.
-local function puff(me: Object)
-    local p = me.pos
-    battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), effects.puff)
-end
-
 function statue.make(look: Look): Statue
-    -- How it looks absorbed (the original's obstacle kind's sprite: its own).
-    local absorbed = absorbed_obstacle.look { sprite = look.sprite }
+    local absorbed = look.absorbed
+
+    -- A puff 16 pixels up.
+    local function puff(me: Object)
+        local p = me.pos
+        battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), look.effects.puff)
+    end
 
     -- `sub_80D4F70`: crumble: the dust, a bubble, the sound.
     local function crumble(me: Object)
         puff(me)
-        rising_bubble.spawn(me.pos, 0)
+        rising_bubble.spawn(look.bubble, me.pos, 0)
         battle.play_sound(look.sounds.crumble)
         leave(me)
     end
@@ -134,12 +136,12 @@ function statue.make(look: Look): Statue
         obstacle.release_tracking(me)
         obstacle.unregister(me)
         local how = obstacle.removal(me)
-        if look.absorbs and how == "absorbed" then
+        if absorbed and how == "absorbed" then
             obstacle.fly_to_absorber(me, absorbed)
             leave(me)
             return
         elseif how ~= "broken" then
-            local blink = if look.absorbs then obstacle.blink_out(me) else "no"
+            local blink = if absorbed then obstacle.blink_out(me) else "no"
             if blink == "blinking" then
                 return
             elseif blink == "done" then
@@ -148,7 +150,7 @@ function statue.make(look: Look): Statue
                 return
             end
             local p = me.pos
-            battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), effects.puff)
+            battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), look.effects.puff)
             crumble(me)
             return
         end

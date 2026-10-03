@@ -13,10 +13,8 @@
 --
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
 
-local absorbed_obstacle = require("@bn6/objects/absorbed-obstacle/absorbed_obstacle")
-local effects = require("@bn6/lib/effects")
-local regions = require("@bn6/lib/regions")
-local rising_bubble = require("@bn6/objects/rising-bubble/rising_bubble")
+local regions = require("@common/regions")
+local rising_bubble = require("@common/rising-bubble/rising_bubble")
 
 local statue = {}
 
@@ -37,8 +35,13 @@ export type Look = {
     drain: CollisionType,
     -- What the drain reaches: nothing.
     nothing: CollisionType,
-    -- BN6's: absorbed, it flies to the absorber, and a removal may blink it out. BN5's: a removal leaves a puff.
-    absorbs: boolean,
+    -- How it looks absorbed (BN6's: absorbed, it flies to the absorber, and a removal may blink it out); none
+    -- (BN5's): a removal leaves a puff.
+    absorbed: AbsorbedLook?,
+    -- The effects it leaves (the game's lib/effects).
+    effects: { puff: Effect, explosion: Effect },
+    -- The game's rising bubble kind (objects/rising-bubble).
+    bubble: Kind,
 }
 
 export type Statue = {
@@ -65,8 +68,7 @@ function statue.variant(v: AnubisVariant): AnubisVariant
 end
 
 function statue.make(look: Look): Statue
-    -- How it looks absorbed (the original's obstacle kind's sprite: its own).
-    local absorbed = absorbed_obstacle.look { sprite = look.sprite }
+    local absorbed = look.absorbed
 
     -- `sub_80CF250`: drop; landed, take the panel if it is free solid ground (the camera shaking), else break.
     local function fall(me: Object)
@@ -128,7 +130,7 @@ function statue.make(look: Look): Statue
             local x, y = bubble_panel(me)
             if x and y then
                 local cx, cy = field.center(x, y)
-                rising_bubble.spawn(Vec3.new(cx, cy, 0), 1)
+                rising_bubble.spawn(look.bubble, Vec3.new(cx, cy, 0), 1)
             end
         end
         local t = me.timer2 - 1
@@ -158,20 +160,20 @@ function statue.make(look: Look): Statue
         me.collision:set_region(nil)
         me:unreserve_panel(me.future_panel_x, me.future_panel_y)
         local how = obstacle.removal(me)
-        if look.absorbs and how == "absorbed" then
+        if absorbed and how == "absorbed" then
             obstacle.fly_to_absorber(me, absorbed)
         elseif how ~= "broken" then
-            local blink = if look.absorbs then obstacle.blink_out(me) else "no"
+            local blink = if absorbed then obstacle.blink_out(me) else "no"
             if blink == "blinking" then
                 return
             elseif blink == "no" then
                 local p = me.pos
-                battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), effects.puff)
+                battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), look.effects.puff)
             end
         else
             battle.play_sound(look.sounds["break"])
             local p = me.pos
-            battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), effects.explosion)
+            battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), look.effects.explosion)
         end
         me.visible = false
         obstacle.release_tracking(me)

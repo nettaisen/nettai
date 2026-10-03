@@ -16,7 +16,7 @@ local follow_effect = require("../../objects/follow-effect/follow_effect")
 local parts = require("../../lib/swords/parts")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 -- What a chip summons him with: his palette (the chip's first parameter
 -- picks it).

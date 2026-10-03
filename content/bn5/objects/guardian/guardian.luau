@@ -15,6 +15,8 @@
 
 local collision = require("../../rules/collision")
 local controller = require("@common/guardian/controller")
+local effects = require("@bn6/lib/effects")
+local rising_bubble = require("../rising-bubble/rising_bubble")
 local statue = require("@common/guardian/statue")
 local strike = require("@bn6/chips/guardian/strike")
 
@@ -46,7 +48,8 @@ guardian.statue = statue.make {
     strike_is = collision.thrown_piercing_break,
     strike_hits = collision.hits_navis,
     strike = strike,
-    absorbs = false,
+    effects = { puff = effects.puff },
+    bubble = rising_bubble.kind,
 }
 
 guardian.controller = controller.make { id = "bn5:guardian/controller", statue = guardian.statue.spawn }

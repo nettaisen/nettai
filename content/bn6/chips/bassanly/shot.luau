@@ -14,7 +14,7 @@
 -- docs/engine/chips.md §3.6.35.
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local shot = {}
 

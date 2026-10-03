@@ -359,8 +359,22 @@ pub trait Extras {
     /// chip)`: a chip of the hand picked, or its pick taken back.
     fn chip_picked(&mut self, screen: &mut Screen, folder: &mut BattleFolder, chip: ChipHandle);
     fn chip_taken_back(&mut self, screen: &mut Screen, chip: ChipHandle);
-    /// A window's `update` (a tick of it): whether it stays up.
-    fn window_update(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, window: crate::content::WindowHandle) -> bool;
+    /// A window's `update` (a tick of it, on the screen's joypad): whether
+    /// it stays up.
+    fn window_update(
+        &mut self,
+        screen: &mut Screen,
+        folder: &mut BattleFolder,
+        console: &mut Console,
+        joy: &Joypad,
+        window: crate::content::WindowHandle,
+    ) -> bool;
+    /// `custom.keys(side)`: choosing, a tick with keys: whether a system
+    /// took them.
+    fn keys(&mut self, screen: &mut Screen, folder: &mut BattleFolder, joy: &Joypad) -> bool;
+    /// `custom.take_back(side)`: B with nothing picked: whether a system
+    /// took something back.
+    fn take_back(&mut self, screen: &mut Screen, folder: &BattleFolder) -> bool;
 }
 
 /// No systems: every question unanswered.
@@ -391,7 +405,15 @@ impl Extras for NoExtras {
 
     fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle) {}
 
-    fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: crate::content::WindowHandle) -> bool {
+    fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: &Joypad, _: crate::content::WindowHandle) -> bool {
+        false
+    }
+
+    fn keys(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &Joypad) -> bool {
+        false
+    }
+
+    fn take_back(&mut self, _: &mut Screen, _: &BattleFolder) -> bool {
         false
     }
 }
@@ -529,14 +551,11 @@ impl Side {
                 self.round.navi_chips_used |= 1 << navi.0;
             }
         }
-        // (The original's forms by number: the game's Beast Over, Beast
-        // Out, or the Cross's form 0xC past it; a Cross by its number, in
-        // Beast Out its form 0xC past it.)
-        let (navi, form) = (ctx.stats.navi, ctx.stats.form);
-        let kind = ctx.library.form_kind(form);
+        let navi = ctx.stats.navi;
         let mut transform = TransformRequest::NONE;
-        // The form a system's pick holds (BN6's Beast Out), and what its
-        // systems note of the round (BN6's: Beast Out used).
+        // The form a system's pick holds (BN6's Beast Out or Cross), and
+        // what its systems note of the round (BN6's: Beast Out or the Cross
+        // used).
         if screen.form.is_some() {
             transform.form = screen.form;
         }
@@ -559,11 +578,6 @@ impl Side {
             };
             transform.chaos = soul.chaos;
             self.round.souls_used |= if soul.chaos { 1 << (16 + soul.number) } else { 1 << soul.number };
-        }
-        if let Some(cross) = screen.crosses.chosen {
-            let f = self.unlocks.cross_at(ctx.library, navi, cross);
-            transform.form = if kind.is_beast() { f.and_then(|f| ctx.library.form_in_beast_out(f)) } else { f };
-            self.round.crosses_used[cross as usize] = true;
         }
         for &slot in screen.selection() {
             // (0x08025088: the soul's place takes the chip given up for it
@@ -734,23 +748,33 @@ impl SideExtras<'_> {
     /// Run `f` with the side's screen (and folder) back in the battle, for
     /// `custom.*` to reach, and take them back after.
     fn with_screen<R>(&mut self, screen: &mut Screen, folder: Option<&mut BattleFolder>, f: impl FnOnce(&mut Battle) -> R) -> R {
-        self.with_screen_console(screen, folder, None, f)
+        self.with_screen_console(screen, folder, None, None, f)
     }
 
     /// [`SideExtras::with_screen`], with the side's console (its camera)
-    /// back in the battle too.
+    /// and the screen's joypad (`custom.pressed`; a checker ticks a side of
+    /// its own) back in the battle too.
     fn with_screen_console<R>(
         &mut self,
         screen: &mut Screen,
         folder: Option<&mut BattleFolder>,
         console: Option<&mut Console>,
+        joy: Option<&Joypad>,
         f: impl FnOnce(&mut Battle) -> R,
     ) -> R {
         let side = self.side as usize & 1;
-        let (old_screen, old_folder, old_console, old_emotion) =
-            (self.b.custom.sides[side].screen, self.b.custom.sides[side].folder, self.b.consoles[side], self.b.custom.sides[side].emotion);
+        let (old_screen, old_folder, old_console, old_emotion, old_joypad) = (
+            self.b.custom.sides[side].screen,
+            self.b.custom.sides[side].folder,
+            self.b.consoles[side],
+            self.b.custom.sides[side].emotion,
+            self.b.custom.sides[side].joypad,
+        );
         self.b.custom.sides[side].screen = Some(*screen);
         self.b.custom.sides[side].emotion = self.emotion;
+        if let Some(j) = joy {
+            self.b.custom.sides[side].joypad = *j;
+        }
         if let Some(f) = &folder {
             self.b.custom.sides[side].folder = Some(**f);
         }
@@ -769,6 +793,7 @@ impl SideExtras<'_> {
         self.b.custom.sides[side].folder = old_folder;
         self.b.consoles[side] = old_console;
         self.b.custom.sides[side].emotion = old_emotion;
+        self.b.custom.sides[side].joypad = old_joypad;
         r
     }
 }
@@ -837,10 +862,28 @@ impl Extras for SideExtras<'_> {
         self.with_screen(screen, None, |b| b.systems_call_custom_chip(side, nettai_content_api::SystemHook::CustomChipTakenBack, chip));
     }
 
-    fn window_update(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, window: crate::content::WindowHandle) -> bool {
+    fn window_update(
+        &mut self,
+        screen: &mut Screen,
+        folder: &mut BattleFolder,
+        console: &mut Console,
+        joy: &Joypad,
+        window: crate::content::WindowHandle,
+    ) -> bool {
         let side = self.side;
-        self.with_screen_console(screen, Some(folder), Some(console), |b| b.call_window(side, window))
+        self.with_screen_console(screen, Some(folder), Some(console), Some(joy), |b| b.call_window(side, window))
             == nettai_content_api::Value::Bool(true)
+    }
+
+    fn keys(&mut self, screen: &mut Screen, folder: &mut BattleFolder, joy: &Joypad) -> bool {
+        let side = self.side;
+        self.with_screen_console(screen, Some(folder), None, Some(joy), |b| b.systems_ask_custom(side, nettai_content_api::SystemHook::CustomKeys))
+    }
+
+    fn take_back(&mut self, screen: &mut Screen, folder: &BattleFolder) -> bool {
+        let side = self.side;
+        let mut folder = *folder;
+        self.with_screen(screen, Some(&mut folder), |b| b.systems_ask_custom(side, nettai_content_api::SystemHook::CustomTakeBack))
     }
 }
 

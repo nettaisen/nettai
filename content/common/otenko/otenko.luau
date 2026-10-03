@@ -15,10 +15,8 @@
 -- silent, whatever removed it), and whether its blessing goes to the side's special bonus with each side keeping its
 -- own gauge (BN5's 0x080DBC78, battle flag 0x40).
 
-local absorbed_obstacle = require("@bn6/objects/absorbed-obstacle/absorbed_obstacle")
-local dimming_chips = require("@bn6/lib/dimming")
-local effects = require("@bn6/lib/effects")
-local regions = require("@bn6/lib/regions")
+local dimming_chips = require("@common/dimming")
+local regions = require("@common/regions")
 
 local otenko = {}
 
@@ -41,8 +39,11 @@ export type Look = {
     -- What it is and reaches: another body of its side, hit by the other side.
     is: CollisionType,
     hits: CollisionType,
-    -- BN6's: absorbed, it flies to the absorber, and a removal may blink it out.
-    absorbs: boolean,
+    -- How it looks absorbed (BN6's: absorbed, it flies to the absorber, and a removal may blink it out); none
+    -- (BN5's): a removal leaves a puff.
+    absorbed: AbsorbedLook?,
+    -- The effects it leaves (the game's lib/effects).
+    effects: { puff: Effect, bubbles: Effect },
     -- BN5's: with each side keeping its own gauge, the side's special bonus gets the blessing.
     special_bonus: boolean,
 }
@@ -68,8 +69,7 @@ local WAIT = 0x3C
 local OCCUPIED = 0x0F88_0080
 
 function otenko.make(look: Look): Otenko
-    -- How it looks absorbed (the original's obstacle kind 0xE: its own sprite).
-    local absorbed = absorbed_obstacle.look { sprite = look.sprite }
+    local absorbed = look.absorbed
 
     -- `sub_80DB198`: if its panel is solid without a body, it takes it after 5 ticks; else it breaks.
     local function appear(me: Object)
@@ -146,18 +146,18 @@ function otenko.make(look: Look): Otenko
         me:unreserve_panel(me.future_panel_x, me.future_panel_y)
         obstacle.release_tracking(me)
         obstacle.unregister(me)
-        if look.absorbs and obstacle.removal(me) == "absorbed" then
+        if absorbed and obstacle.removal(me) == "absorbed" then
             obstacle.fly_to_absorber(me, absorbed)
         else
-            local blink = if look.absorbs then obstacle.blink_out(me) else "no"
+            local blink = if absorbed then obstacle.blink_out(me) else "no"
             if blink == "blinking" then
                 return
             elseif blink == "no" then
                 local p = me.pos
                 if me.hp ~= 0 then
-                    battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), effects.puff)
+                    battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), look.effects.puff)
                 else
-                    battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), effects.bubbles)
+                    battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), look.effects.bubbles)
                     if look.sounds["break"] then
                         battle.play_sound(look.sounds["break"])
                     end

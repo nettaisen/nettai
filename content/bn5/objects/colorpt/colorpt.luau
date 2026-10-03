@@ -6,6 +6,7 @@
 
 local controller = require("@common/colorpt/controller")
 local point = require("@common/colorpt/point")
+local trajectory = require("../../lib/trajectory")
 
 local points = point.make {
     id = "bn5:colorpt/point",
@@ -18,6 +19,7 @@ local points = point.make {
     special = function(_side: number, _navi: Object): boolean
         return battle.per_player_gauges()
     end,
+    trajectory = trajectory,
 }
 
 return controller.make { id = "bn5:colorpt/controller", point = points.spawn }

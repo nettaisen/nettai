@@ -65,8 +65,11 @@ fn a_collision_type_defined_twice_is_an_error() {
 /// collision type once).
 #[test]
 fn bn6_content_has_no_definition_errors() {
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
+    let common = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/common");
     let mut c = nettai_battle::Content::default();
-    c.scripts = testing::bn6_scripts();
+    c.scripts = Scripts::root(RootManifest::named("bn6"), testing::modules_under(dir));
+    c.scripts.add_root(RootManifest::named("common"), testing::modules_under(common));
     c.assets = testing::asset_names_for(&c.scripts);
     c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
     let mut r = Report::default();
@@ -172,6 +175,7 @@ fn bn5s_rules_are_its_games() {
     let mut r = Report::default();
     let bn6 = nettai_content::root::read(&repo.join("content/bn6"), &mut r).expect("content/bn6 reads");
     let mut bn5 = nettai_content::root::read(&repo.join("content/bn5"), &mut r).expect("content/bn5 reads");
+    let common = nettai_content::root::read(&repo.join("content/common"), &mut r).expect("content/common reads");
     let unported: Vec<String> = bn5
         .modules
         .iter()
@@ -185,7 +189,6 @@ fn bn5s_rules_are_its_games() {
         ..Default::default()
     };
     c.scripts.add_root(bn5.manifest, bn5.modules);
-    let common = nettai_content::root::read(&repo.join("content/common"), &mut r).expect("content/common reads");
     c.scripts.add_root(common.manifest, common.modules);
     // Each root's names in its own assets pack (BN5's in bn5's).
     c.assets = testing::asset_names_for(&c.scripts);

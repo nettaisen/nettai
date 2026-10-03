@@ -5,7 +5,7 @@
 -- ground, striking with the damage plus the bonus, and waits 30 ticks. Each game makes its own
 -- (`controller.make`) with its statue's spawn; the chip's `dimming` hook is the made controller's `hook`.
 
-local dimming_chips = require("@bn6/lib/dimming")
+local dimming_chips = require("@common/dimming")
 
 local controller = {}
 

@@ -11,6 +11,7 @@
 
 local collision = require("../../rules/collision")
 local common = require("@common/justcone/strike")
+local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
 
 return common.make {
@@ -26,4 +27,5 @@ return common.make {
     -- Break (secondary element 0x10); the landing's hits are of none.
     element = 0x10,
     waves_take_element = false,
+    effects = { explosion = effects.explosion, burst = effects.burst, puff = effects.puff },
 }

@@ -9,6 +9,7 @@
 
 local collision = require("../../rules/collision")
 local common = require("@common/otenko/otenko")
+local effects = require("@bn6/lib/effects")
 
 -- Its sheet, 0c-49 (BN6's JP ROMs' Otenko, the US ROMs' placeholder; BN5's pack doesn't name it yet).
 local SPRITE = asset.sprite("bn6:otenko")
@@ -30,7 +31,7 @@ local OTENKO = common.make {
     sounds = { appear = asset.sound("bn5:appear") },
     is = collision.own_body,
     hits = collision.hit_by_other_side,
-    absorbs = false,
+    effects = { puff = effects.puff, bubbles = effects.bubbles },
     special_bonus = true,
 }
 

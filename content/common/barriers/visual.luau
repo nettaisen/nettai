@@ -9,7 +9,7 @@
 -- popped branch, `sub_80E0D38`) and comes back up only on a navi that isn't bubbled (`sub_80E0CAA`); BN5's has
 -- neither (0x080E0C38, 0x080E0C5C: no blown action, no bubble status).
 
-local element = require("@bn6/lib/element")
+local element = require("@common/element")
 
 local visual = {}
 
