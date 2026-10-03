@@ -7,7 +7,6 @@
 -- (rules/light-dark).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local bn6_collision = require("@bn6/rules/collision")
 local collision = require("../../rules/collision")
 local controller = require("@common/circgun/controller")
 local effects = require("@bn6/lib/effects")
@@ -24,7 +23,7 @@ local LOOK: CircGunLook = {
     },
     hits = { [0] = collision.thrown, [1] = collision.collision_2b },
     -- (What the hit reaches and its flash BN6's.)
-    target = bn6_collision.hits_navis,
+    target = collision.hits_navis,
     flash = effects.flash,
     spark = sparks.plain,
     on_floor = true,

@@ -188,6 +188,22 @@ export type MegaManShotLook = {
 -- the navi absorbed (none: the game throws none).
 export type MegaManBusterLook = MegaManShotLook & { throw_sound: Sound, throw: ((me: Object) -> ())? }
 
+-- What a spreader fires (@common/spreadr/action): its gun (BN6's attachment rows 0x15 and 0x2F, by `dword_80ECC54`),
+-- the bullet's height (16.16, by `dword_80ECC5C`), and the bullet; its own bullet kind and shot sound (none: the
+-- game's; BN5's Spreader's).
+export type SpreaderSpec = {
+    id: string?,
+    gun: AttachmentLook,
+    z: number,
+    bullet: BulletVariant,
+    bullet_kind: Kind?,
+    sound: Sound?,
+}
+
+-- A game's spreaders (@common/spreadr/action): the shot's sound, the attachment kind (the gun's) and its bullets'
+-- kind.
+export type SpreaderLook = { sound: Sound, attachment: Kind, bullet_kind: Kind }
+
 -- A trap chip's object (a "trap" record, @common/traps/controller): `set` spawns it for the controller and its user,
 -- with the chip and bonus the controller keeps.
 export type Trap = {

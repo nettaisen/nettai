@@ -4,6 +4,7 @@
 -- chip's `dimming` hook is `grab.area` or `grab.panel`.
 
 local bn6_collision = require("@bn6/rules/collision")
+local collision = require("../rules/collision")
 local controller = require("@common/grab/controller")
 local shot = require("@common/grab/shot")
 
@@ -12,7 +13,7 @@ local shot_kind = shot.make_kind {
     sprite = asset.sprite("bn6:grab-shot"),
     fall_sound = asset.sound("bn6:grab-shot-2"),
     land_sound = asset.sound("bn6:grab-shot"),
-    target = bn6_collision.hits_navis,
+    target = collision.hits_navis,
     self_type = bn6_collision.thrown,
 }
 
