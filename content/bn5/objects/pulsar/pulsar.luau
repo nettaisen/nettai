@@ -118,7 +118,7 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     local sprite = me.sprite
     sprite:load(SPRITE)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     me.visible = true
     me.anim, me.anim_loaded = 0, 0
     sprite:set_animation(0)

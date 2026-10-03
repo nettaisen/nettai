@@ -165,7 +165,7 @@ local function init(me: Object, s: SightState)
     me.pos = Vec3.new(p.x, p.y, -0x10_0000)
     local sprite = me.sprite
     sprite:load(SIGHT_SPRITE)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0xFF
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me.visible = true
