@@ -55,6 +55,8 @@ swords.effects = {
     long_blade = define.effect { sprite = SLASH, anim = 1, palette = 5 },
     -- CustSwrd's big slash over two columns (0x28).
     custom = define.effect { sprite = asset.sprite("bn5:big-slash"), anim = 0, palette = 3 },
+    -- LifeSrd's big slash over two columns (0x1B).
+    big = define.effect { sprite = asset.sprite("bn5:big-slash"), anim = 0, palette = 0 },
     -- DrkSword's dark big slash (0x1C).
     dark = define.effect { sprite = asset.sprite("bn5:big-slash"), anim = 0, palette = 2 },
 }

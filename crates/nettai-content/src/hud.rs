@@ -55,6 +55,14 @@ pub struct HudDoc {
     pub mugshots: Vec<TileImage>,
     /// The count box showing 0..=10, then without a number.
     pub counts: TileImage,
+    /// The game has no box without a number (BN5: its faces bring their
+    /// own boxes): `counts` is the counts alone.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub no_count_box: bool,
+    /// The box a face brings for beside it, by mugshot (BN5's faces; null:
+    /// none, the count box's place), each with its face's palette.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mugshot_boxes: Vec<Option<TileImage>>,
     /// The link navis' faces, each with its two palettes (normal, Full
     /// Synchro), and the box beside them.
     pub navi_mugshots: Vec<TileImage>,
@@ -213,6 +221,19 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
             image(&file, t, Layout::Blocks { width: 4, height: 2, columns: 1 }, &[*p], 1)
         })
         .collect();
+    let mugshot_boxes = if h.mugshot_boxes.iter().all(Tiles::is_empty) {
+        Vec::new()
+    } else {
+        h.mugshot_boxes
+            .iter()
+            .enumerate()
+            .map(|(i, t)| {
+                let file = format!("mugshots/{}-box.png", names.mugshot(i as u8));
+                let p = h.mugshots.get(i).map_or([0; 16], |m| m.1);
+                (!t.is_empty()).then(|| image(&file, t, icon, &[p], 0))
+            })
+            .collect()
+    };
     let face = Layout::Blocks { width: 4, height: 2, columns: 1 };
     let navi_mugshots = h
         .navi_mugshots
@@ -326,6 +347,8 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         hidden_icon,
         mugshots,
         counts,
+        no_count_box: h.count_box.is_empty() && !h.counts.is_empty(),
+        mugshot_boxes,
         navi_mugshots,
         navi_box,
         pause,
@@ -398,6 +421,13 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         };
         navi_mugshots.push(NaviMugshot { tiles, palettes: [normal, angry] });
     }
+    let mut mugshot_boxes = Vec::new();
+    for b in &doc.mugshot_boxes {
+        mugshot_boxes.push(match b {
+            Some(i) => img(i, report)?.0,
+            None => Tiles::default(),
+        });
+    }
     let (navi_box, _) = img(&doc.navi_box, report)?;
     let (pause, _) = img(&doc.pause, report)?;
     let slice = |t: &Tiles, from: usize, n: usize| Tiles { pixels: t.pixels[from * Tiles::TILE..(from + n) * Tiles::TILE].to_vec() };
@@ -469,9 +499,11 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         hidden_icon,
         icon_palette: icon_pal[0],
         mugshots,
-        // (A pack without a count box, BN5's, has none of them.)
-        counts: (0..(counts.len() / 4).saturating_sub(1)).map(|i| slice(&counts, 4 * i, 4)).collect(),
-        count_box: if counts.len() >= 4 { slice(&counts, counts.len() - 4, 4) } else { Tiles::default() },
+        // (The last is the box without a number, unless the game has none;
+        // a pack extracted before BN5's counts has neither.)
+        counts: (0..(counts.len() / 4).saturating_sub(!doc.no_count_box as usize)).map(|i| slice(&counts, 4 * i, 4)).collect(),
+        count_box: if counts.len() >= 4 && !doc.no_count_box { slice(&counts, counts.len() - 4, 4) } else { Tiles::default() },
+        mugshot_boxes,
         navi_mugshots,
         navi_box,
         pause,

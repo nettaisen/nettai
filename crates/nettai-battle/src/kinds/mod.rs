@@ -272,7 +272,7 @@ pub fn chip_damage_formula(b: &Battle, id: nettai_content_api::ChipHandle, side:
             })
         }
         F::Gauge => gauge_damage(b, side),
-        F::HpLost => damage_taken(b, side),
+        F::HpLost { cap } => damage_taken(b, side, cap.unwrap_or(500)),
         F::HpLastDigits => hp_last_digits(b, side),
         F::HalfOpponentMaxHp => half_opponent_max_hp(b, side),
         F::NaviLevel { base, per_level } => navi_chip_damage(b, side, *base, *per_level),
@@ -344,16 +344,16 @@ fn half_opponent_max_hp(b: &Battle, side: u8) -> u16 {
 }
 
 /// `sub_8010BD0` (Muramasa's): the HP the side's player has lost, at most
-/// 500. `sub_80103BC` (`Battle::player`) looks for the player among the
+/// `cap` (BN6's 500, BN5's 999). `sub_80103BC` (`Battle::player`) looks for the player among the
 /// side's actors as spawned, but its loop never advances, so it only ever
 /// checks the first slot four times: with no player there the damage is 0.
-fn damage_taken(b: &Battle, side: u8) -> u16 {
+fn damage_taken(b: &Battle, side: u8, cap: u16) -> u16 {
     let Some(r) = b.player(side & 1) else { return 0 };
     let o = b.objects.get(r);
-    // A signed difference, capped at 500 (an HP above the maximum would
-    // give a negative damage, cut to 16 bits).
+    // A signed difference, capped (an HP above the maximum would give a
+    // negative damage, cut to 16 bits).
     let lost = o.max_hp as i32 - o.hp as i32;
-    lost.min(500) as u16
+    lost.min(cap as i32) as u16
 }
 
 /// `sub_8010AE4`: an SP navi chip's damage, lower the slower its user

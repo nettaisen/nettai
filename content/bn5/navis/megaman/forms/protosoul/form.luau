@@ -24,5 +24,7 @@ return define.form {
     charged_chips = { { family = "sword", damaging = false, plain = true } },
     charged_bonus = { damage = 0xFF },
     palette = 0,
+    -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls').
+    mugshot = asset.mugshot("bn5:protosoul"),
     buster_arm = { anim = 0 },
 }
