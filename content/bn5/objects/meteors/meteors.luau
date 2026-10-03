@@ -20,7 +20,7 @@ local sparks = require("../../lib/sparks")
 
 local meteors = {}
 
-local ROW: falling_meteor.Row = { is = collision.thrown, hits = collision.hits_navis, hit_mod = 3, shake = 1, panel = "none" }
+local ROW: MeteorRow = { is = collision.thrown, hits = collision.hits_navis, hit_mod = 3, shake = 1, panel = "none" }
 
 meteors.kind = falling_meteor.make_kind("bn5:meteor", {
     sprite = asset.sprite("bn5:meteor"),

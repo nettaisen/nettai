@@ -32,18 +32,6 @@ local LIFETIME = 0x960
 -- Its collision's hit modifier.
 local HIT_MOD = 3
 
--- How a game's instruments are: their sprite and HP (an instrument's own
--- first), sounds, what they are and what reaches them, how they look
--- absorbed (nil: nothing absorbs them), and whether any removal just puffs
--- (no absorbing, no blinking out).
-export type Look = {
-    sprite: SpriteAsset,
-    hp: number,
-    sounds: { appear: Sound, broken: Sound },
-    body: { is: CollisionType, hits: CollisionType },
-    absorbed: AbsorbedLook?,
-    removal_puffs: boolean?,
-}
 -- Resting before it plays.
 local REST_TICKS = 0x1E
 -- The animations: standing, resting, playing.
@@ -63,7 +51,7 @@ function instrument.instrument(i: Instrument): Instrument
 end
 
 -- An instrument kind (`id`) of `look`.
-function instrument.make_kind(id: string, look: Look): Kind
+function instrument.make_kind(id: string, look: InstrumentLook): Kind
     -- Gone from the field's bookkeeping, hidden, and destroyed at the next
     -- update.
     local function finish(me: Object)

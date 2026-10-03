@@ -113,7 +113,7 @@ local function horizontal(me: Object, s: State, place: (Object) -> ())
 end
 
 -- A gun kind (`id`) of `look` (./shot's), firing shots of `shot_kind`.
-function gun.make_kind(id: string, look: shot.Look, shot_kind: Kind): Kind
+function gun.make_kind(id: string, look: CircGunLook, shot_kind: Kind): Kind
     -- `sub_80D67D2`: on its panel, 8 pixels down and up (BN5's on it).
     local place = if look.on_floor then shot.place_on_floor else shot.place
 

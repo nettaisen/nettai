@@ -23,27 +23,7 @@ export type State = {
     row: number,
 }
 
--- A row (`byte_80CF3AC`): what it is and reaches and its hit modifier; the
--- camera shake it lands with (0 none, else the magnitude, 15 ticks); what
--- it does to its panel (none, cracks it, cracks it on half the draws, or
--- breaks it); and the bug its hit carries (BN5's DarkMetr's).
-export type Row = {
-    is: CollisionType,
-    hits: CollisionType,
-    hit_mod: number,
-    shake: number,
-    panel: "none" | "crack" | "crack_half" | "break",
-    bug: number?,
-    bug_arg: number?,
-}
 
--- How a game's meteor looks and sounds, its rows, and its spark by element.
-export type Look = {
-    sprite: SpriteAsset,
-    sounds: { fall: Sound, land: Sound },
-    rows: { [number]: Row },
-    spark: (element: number) -> Spark,
-}
 
 local ANIM = 0
 -- It starts 256 pixels behind and above its panel, and falls 16 forward
@@ -56,9 +36,9 @@ local BURSTS_ON = 0x0F80_0010
 local SHAKE_TICKS = 0xF
 
 -- A meteor kind (`id`) of `look`.
-function falling_meteor.make_kind(id: string, look: Look): Kind
+function falling_meteor.make_kind(id: string, look: MeteorLook): Kind
     -- Its row.
-    local function row_of(me: Object): Row
+    local function row_of(me: Object): MeteorRow
         local n = (me.state :: State).row
         local row = look.rows[n]
         if not row then
@@ -189,7 +169,7 @@ end
 
 -- BN6's rows 0 to 2, alike: thrown, hitting navis, hit modifier 3; a
 -- shake of 1; the panel left as it is.
-local BN6_ROW: Row = { is = collision.thrown, hits = collision.hits_navis, hit_mod = 3, shake = 1, panel = "none" }
+local BN6_ROW: MeteorRow = { is = collision.thrown, hits = collision.hits_navis, hit_mod = 3, shake = 1, panel = "none" }
 
 falling_meteor.kind = falling_meteor.make_kind("bn6:meteors/falling-meteor", {
     sprite = asset.sprite("bn6:meteor"),

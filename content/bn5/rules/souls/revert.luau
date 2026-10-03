@@ -51,7 +51,7 @@ function revert.update(me: Object, s: State)
         return
     end
     for _, request in { "buster", "chip", "charged_chip", "back_special", "forced_charged_shot" } do
-        me:set_request(request :: RequestFlag, false)
+        me:set_request(request :: Request, false)
     end
     me:set_navi_state("reverting_form", false)
     me:exit_attack()
