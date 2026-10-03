@@ -243,7 +243,7 @@ pub fn load_battle(content: &Path, assets: &Path) -> Result<(nettai_battle::Cont
 }
 
 /// [`load_battle`] with the assets of several packs (docs/design/
-/// rules-in-luau.md §7.4): one a game, each root's `assets` among them.
+/// rules-in-luau.md §7.4): one a game.
 pub fn load_battle_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai_battle::Content, Report), Report> {
     let (mut c, mut report) = battle_content_packs(content, packs)?;
     // The define phase: what the modules define, the tables registration
@@ -271,7 +271,7 @@ pub fn battle_content(content: &Path, assets: &Path) -> Result<(nettai_battle::C
 pub fn battle_content_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai_battle::Content, Report), Report> {
     let mut report = Report::default();
     let Some(mut roots) = crate::root::read_all(content, &mut report) else { return Err(report) };
-    let Some(games) = pack_games(packs, "bn6", &mut report) else { return Err(report) };
+    let Some(games) = pack_games(packs, &mut report) else { return Err(report) };
     roots.retain(|r| {
         let game = &r.manifest.name;
         let own_assets = format!("(\"{game}{}", nettai_content_api::keys::SEPARATOR);
@@ -308,10 +308,14 @@ pub fn battle_content_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai
     Ok((c, report))
 }
 
-/// Each pack's game (a pack that says none is taken as `home_assets`, with
-/// a warning), refusing two packs of one game; none when a manifest can't
-/// be read.
-fn pack_games(packs: &[PathBuf], home_assets: &str, report: &mut Report) -> Option<Vec<(String, PathBuf)>> {
+/// The game of a pack whose manifest says none: BN6's (packs extracted
+/// before they said it).
+pub const UNSAID_GAME: &str = "bn6";
+
+/// Each pack's game (a pack that says none is taken as [`UNSAID_GAME`]'s,
+/// with a warning), refusing two packs of one game; none when a manifest
+/// can't be read.
+fn pack_games(packs: &[PathBuf], report: &mut Report) -> Option<Vec<(String, PathBuf)>> {
     let mut games: Vec<(String, PathBuf)> = Vec::new();
     for path in packs {
         let m = read_manifest(path, report)?;
@@ -320,9 +324,9 @@ fn pack_games(packs: &[PathBuf], home_assets: &str, report: &mut Report) -> Opti
             None => {
                 report.warn(
                     MANIFEST,
-                    format!("{}: the pack says no game; it is taken as {home_assets}'s (extract it again to record its game)", path.display()),
+                    format!("{}: the pack says no game; it is taken as {UNSAID_GAME}'s (extract it again to record its game)", path.display()),
                 );
-                home_assets.to_string()
+                UNSAID_GAME.to_string()
             }
         };
         if games.iter().any(|(g, _)| *g == game) {
@@ -337,8 +341,7 @@ fn pack_games(packs: &[PathBuf], home_assets: &str, report: &mut Report) -> Opti
 /// [`load_battle_packs`]) in its pack order, by `PackId`: the frontend's
 /// graphics and sound of each.
 pub fn pack_paths(c: &nettai_battle::Content, packs: &[PathBuf]) -> Vec<PathBuf> {
-    let home_assets = c.scripts.roots.first().map(|r| r.assets().to_string()).unwrap_or_default();
-    let games = pack_games(packs, &home_assets, &mut Report::default()).unwrap_or_default();
+    let games = pack_games(packs, &mut Report::default()).unwrap_or_default();
     c.assets.packs.iter().filter_map(|g| games.iter().find(|(game, _)| game == g).map(|(_, p)| p.clone())).collect()
 }
 

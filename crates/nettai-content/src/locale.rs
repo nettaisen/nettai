@@ -1,5 +1,5 @@
-//! A content root's display text: `locales/<lang>.toml`, one table a language, by
-//! definition key (docs/design/text-rendering.md §10; the engine's
+//! A content folder's display text: `locales/<lang>.toml`, one table a
+//! language, by definition id (docs/design/text-rendering.md §10; the engine's
 //! `content::strings`).
 //!
 //! A definition holds no display text. A chip's name and description, a
@@ -17,21 +17,21 @@
 //! language = "ja"
 //!
 //! [chips]
-//! cannon = { name = "キャノン", description = "..." }
+//! "bn6:cannon" = { name = "キャノン", description = "..." }
 //!
 //! [navis]
-//! megaman = { name = "ロックマン", run_message = "..." }
+//! "bn6:megaman" = { name = "ロックマン", run_message = "..." }
 //!
 //! [forms]
-//! heatcross = { name = "...", description = "..." }
+//! "bn6:heatcross" = { name = "...", description = "..." }
 //!
 //! [patch-cards]
-//! canodumb = { name = "..." }
+//! "bn6:canodumb" = { name = "..." }
 //! ```
 //!
-//! A root's table writes its keys unqualified, as its modules do; loaded,
-//! they are qualified with the root (`bn6:cannon`, [`Strings::qualified`]),
-//! and the tables of every root the content loads are one ([`load_all`]).
+//! A table writes every id in full, as the modules do (docs/design/
+//! rules-in-luau.md, the flat namespace), and the tables of every folder
+//! the content loads are one ([`load_all`]).
 //!
 //! A line break in a description or a message is `\n`. A translated
 //! description may have another number of lines than the own language's:
@@ -50,13 +50,13 @@ pub use nettai_battle::content::strings::{ChipStrings, FormStrings, NaviStrings,
 use nettai_battle::content::{Defs, FormKind};
 use std::path::{Path, PathBuf};
 
-/// The folder of a content root that holds the tables.
+/// The folder of a content folder that holds the tables.
 pub const DIR: &str = "locales";
 
 /// The content's own language: its table is the content's words.
 pub const OWN: &str = "en";
 
-/// The table of `lang` in a content root.
+/// The table of `lang` in a content folder.
 pub fn path(root: &Path, lang: &str) -> PathBuf {
     root.join(DIR).join(format!("{lang}.toml"))
 }
@@ -111,17 +111,16 @@ pub fn languages(root: &Path) -> Vec<String> {
     out
 }
 
-/// What is wrong with root `root`'s table (as the root writes it, keys
-/// unqualified) against the definitions: a key no definition of the root
-/// has, a form's strings for a form that isn't a Cross (nothing shows
-/// them), a string with a combining mark (write the composed character);
-/// and in the own language's (`own`), a chip, navi or Cross of the root
-/// without a name, which a frontend would show by its key. (A string may
-/// be empty: the invalid chip's name is, and the Japanese games print no
-/// description for some chips.)
+/// What is wrong with folder `root`'s table against the definitions: an
+/// id not written in full, an id no definition has, a form's strings for a
+/// form that isn't a Cross (nothing shows them), a string with a combining
+/// mark (write the composed character); and in the own language's (`own`),
+/// a chip, navi or Cross of the folder's game without a name, which a
+/// frontend would show by its id. (A string may be empty: the invalid
+/// chip's name is, and the Japanese games print no description for some
+/// chips.)
 pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
     use nettai_content_api::keys::{is_qualified, root_of};
-    let q = |key: &str| key.to_string();
     let ours = |key: &str| root_of(key) == Some(root);
     let mut out = Vec::new();
     let mut text = |what: String, v: &Option<String>| {
@@ -141,21 +140,21 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
         }
     }
     for (key, c) in &s.chips {
-        if defs.chip_by_key(&q(key)).is_none() {
+        if defs.chip_by_key(key).is_none() {
             unknown.push(format!("chips.{key}: no chip has this key"));
         }
         text(format!("chips.{key}.name"), &c.name);
         text(format!("chips.{key}.description"), &c.description);
     }
     for (key, n) in &s.navis {
-        if defs.navi_by_key(&q(key)).is_none() {
+        if defs.navi_by_key(key).is_none() {
             unknown.push(format!("navis.{key}: no navi has this key"));
         }
         text(format!("navis.{key}.name"), &n.name);
         text(format!("navis.{key}.run_message"), &n.run_message);
     }
     for (key, f) in &s.forms {
-        match defs.form_by_key(&q(key)) {
+        match defs.form_by_key(key) {
             None => unknown.push(format!("forms.{key}: no form has this key")),
             Some(h) if defs.form(h).record.kind != FormKind::Cross => {
                 unknown.push(format!("forms.{key}: not a Cross (nothing shows another form's strings)"))
@@ -166,7 +165,7 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
         text(format!("forms.{key}.description"), &f.description);
     }
     for (key, c) in &s.patch_cards {
-        if defs.patch_card_by_key(&q(key)).is_none() {
+        if defs.patch_card_by_key(key).is_none() {
             unknown.push(format!("patch-cards.{key}: no patch card has this key"));
         }
         text(format!("patch-cards.{key}.name"), &c.name);
