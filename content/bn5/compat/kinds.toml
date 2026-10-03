@@ -66,3 +66,8 @@
 "bn5:instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
 "bn5:geddon/controller" = { pool = "effect", index = 0x1D, scratch_position = true }
 "bn6:geddon/quake" = { pool = "effect", index = 0x1E, scratch_position = true }
+"bn5:anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
+"bn5:anubis/statue" = { pool = "attack", index = 0x55 }
+"bn5:guardian/controller" = { pool = "effect", index = 0x52, scratch_position = true }
+"bn5:guardian/statue" = { pool = "attack", index = 0x7D }
+"bn6:guardian/strike" = { pool = "effect", index = 0x53, scratch_position = true }
