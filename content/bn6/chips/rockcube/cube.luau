@@ -6,7 +6,7 @@
 -- original's chip parameters: its variant, its field-object class and its
 -- entrance).
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local rock = require("./rock")
 
 local cube = {}

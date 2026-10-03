@@ -1098,7 +1098,7 @@ declare battle: {
     -- `sub_8000C72`: `n` entries shuffled over `rounds` rounds of two `rng_positive` draws (entry i swapped
     -- with entry draw % (i + 1), for i from n - 1 down to 1, on the first n - 1 draws; the rest drawn and
     -- dropped: docs/engine/battle-flow.md §3.1): the new order, each place's entry by its index (from 1)
-    -- before; `lib/order` puts it into a list. An error when 2 * rounds < n - 1.
+    -- before; `@common/order` puts it into a list. An error when 2 * rounds < n - 1.
     shuffle_order: (n: number, rounds: number) -> { number },
     -- `AddRandomVarianceToTwoCoords`: x and z by up to mask/2 pixels.
     jitter: (mask: number, pos: Vec3) -> Vec3,

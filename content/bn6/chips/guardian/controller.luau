@@ -5,7 +5,7 @@
 -- on the panel in front of the user if it is free solid ground, striking
 -- with the damage plus the bonus, and waits 30 ticks.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local statue = require("./statue")
 
 export type State = {

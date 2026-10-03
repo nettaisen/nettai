@@ -9,7 +9,7 @@
 -- It may wait some ticks before it sets off, and wear a palette.
 -- See docs/engine/objects-and-player.md §B8a.
 
-local element = require("../../lib/element")
+local element = require("@common/element")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
 
