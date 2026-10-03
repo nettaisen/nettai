@@ -901,6 +901,15 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
             return replay;
         }
     };
+    // The recording console's RNG1 (the trace's `rng1`), sampled after the
+    // battle's update and before the main loop's draw: the engine after
+    // frame N is the trace at N + 1. Draws the console makes after the
+    // sample (an emotion window's flicker, a camera shake's) make the two
+    // differ for a frame or a few, then agree again; a difference still
+    // there at the round's end is the model's, and stops the round at the
+    // frame it began.
+    let local = b.setup.local_side as usize & 1;
+    let mut rng1_since: Option<(u32, u32, u32)> = None;
     for i in 0..frames.len() {
         let (input, events) = round.tick_inputs(i, &frames);
         if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&input, events))) {
@@ -912,7 +921,22 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
             replay.stopped = Some(Stop::Differs { frame: frames[i].frame, differences });
             return replay;
         }
+        if let Some(next) = frames.get(i + 1) {
+            let engine = b.consoles[local].rng.state;
+            if engine == next.rng1 {
+                rng1_since = None;
+            } else if rng1_since.is_none() {
+                rng1_since = Some((frames[i].frame, engine, next.rng1));
+            }
+        }
         replay.matched += 1;
+    }
+    if let Some((frame, engine, trace)) = rng1_since {
+        let differences = vec![format!(
+            "rng1: the recording console's RNG1 differs from frame {frame} to the round's end (engine {engine:#010x}, trace {trace:#010x} at frame {})",
+            frame + 1
+        )];
+        replay.stopped = Some(Stop::Differs { frame, differences });
     }
     replay
 }
