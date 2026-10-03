@@ -513,6 +513,7 @@ impl Round {
                         button: true,
                         owned: if d.versions[side as usize] == Version::Colonel { 0b1_1111_1000_0000 } else { 0b111_1110 },
                         chaos: true,
+                        turn_bonus: d.navi_stats[side as usize].raw[0x32] as i8,
                     },
                 },
                 joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),

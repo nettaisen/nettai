@@ -10,12 +10,14 @@
 --   (effect 3) and a sound; his sprite held.
 -- - 4 (0x08012010): the soul's image comes in (objects/soul-image); 50 ticks later another flash and the soul's
 --   sound (Chaos Unison's its own); 61 ticks.
--- - 8 (0x08012090): MegaMan in the soul (his sprite by the soul, the soul's turns, his form); 10 ticks later the
---   status reset, his anger ends, his mood back to 0x80 (unless it was 0), the soul's charge state cleared and his
---   invulnerability ended.
+-- - 8 (0x08012090): MegaMan in the soul: the old form's end hook, his sprite by the soul, his statuses ended, the
+--   soul's turns, his form, the new form's start hook (./hooks); in TomahawkSoul the cameras shake; 10 ticks later
+--   the status reset (./hooks).
+-- - 0xC (0x0801216C), Chaos Unison's: 11 ticks.
 -- - 0x10 (0x08012196): 21 ticks, then the change is done and he idles.
 
 local effects = require("@bn6/lib/effects")
+local hooks = require("./hooks")
 local image = require("../../objects/soul-image/image")
 
 local change = {}
@@ -31,6 +33,10 @@ type Souls = { turns: number, chaos: boolean }
 local FLASH_SOUND = asset.sound("bn5:log-in")
 local UNISON_SOUND = asset.sound("bn5:cross-change")
 local CHAOS_SOUND = asset.sound("bn5:bug")
+
+-- The souls whose change shakes the cameras (0x0801212C: TomahawkSoul's; with battle flag 0x20, which nothing
+-- reads).
+local SHAKES: { [number]: boolean } = { [10] = true }
 
 -- The steps, in the attack's step.
 local PREPARE, IMAGE, EMERGE, CHAOS, SETTLE = 0, 4, 8, 0xC, 0x10
@@ -82,36 +88,32 @@ local function show_image(me: Object, s: State, soul: number, chaos: boolean)
 end
 
 -- 0x08012090
-local function emerge(me: Object, s: State, target: FormDef, chaos: boolean)
+local function emerge(me: Object, s: State, target: FormDef, soul: number, chaos: boolean)
     me.sprite.white = true
     if me.step_init == 0 then
         me:set_navi_state("form_change_sprite_held", false)
         me.related1 = nil
         me.overlay = nil
+        local stats = battle.navi(me.alliance)
+        hooks.finish(me, stats.form)
         me:load_form_sprite(target)
         s.timer = 10
         me:end_statuses()
         local turns, is_chaos = me:form_change_soul()
         local souls = system.state() :: Souls
         souls.turns, souls.chaos = turns, is_chaos
-        battle.navi(me.alliance).form = target
+        stats.form = target
+        hooks.start(me, target)
+        if SHAKES[soul] then
+            battle.shake_camera(2, 30)
+        end
         me.step_init = 4
     end
     s.timer -= 1
     if int.i16(s.timer) > 0 then
         return
     end
-    me:reset_status()
-    -- 0x08011A94: the mood back to 0x80 (BN5's setter leaves a mood of 0), the anger over.
-    local stats = battle.navi(me.alliance)
-    local mood = stats.mood
-    me:end_anger()
-    if mood == 0 then
-        stats.mood = 0
-    end
-    -- 0x0802C126: the soul's charge state cleared.
-    me:set_navi_state("no_charge", false)
-    me:clear_invulnerable()
+    hooks.settle(me)
     set_step(me, if chaos then CHAOS else SETTLE)
 end
 
@@ -155,7 +157,7 @@ function change.update(me: Object, s: State)
     elseif step == IMAGE then
         show_image(me, s, soul, chaos)
     elseif step == EMERGE then
-        emerge(me, s, target, chaos)
+        emerge(me, s, target, soul, chaos)
     elseif step == CHAOS then
         chaos_step(me, s)
     elseif step == SETTLE then

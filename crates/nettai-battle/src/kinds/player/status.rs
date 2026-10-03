@@ -885,6 +885,10 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         return form_change(b, r);
     }
     if st & ai_status::REVERTING_FORM != 0 {
+        // A form's own revert (BN5's souls') runs as the navi's action.
+        if let NaviAction::Content(h) = super::navi_action(b, r) {
+            return crate::behavior::run_action(b, h, r);
+        }
         return actions::transform::revert(b, r);
     }
     if st & ai_status::CHANGING_CROSS != 0 {
@@ -894,12 +898,16 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         return actions::cross_change::knock_out(b, r);
     }
     let f = ai(b, r).requests;
+    // The form's own revert (BN5's 0x08014676 saves no state word).
+    let own_revert = super::form_of(b, r).revert;
     let (bit, state) = if f & request::FORM_CHANGE != 0 {
         (request::FORM_CHANGE, ai_status::FORM_CHANGE)
     } else if f & request::REVERT_FORM != 0 {
-        // Saves the state word after zeroing it.
-        ai_mut(b, r).saved_word = None;
-        save_state_word(b, r);
+        if own_revert.is_none() {
+            // Saves the state word after zeroing it.
+            ai_mut(b, r).saved_word = None;
+            save_state_word(b, r);
+        }
         (request::REVERT_FORM, ai_status::REVERTING_FORM)
     } else if f & request::CROSS_CHANGE != 0 {
         (request::CROSS_CHANGE, ai_status::CHANGING_CROSS)
@@ -910,8 +918,9 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
     };
     // The change into a form runs the action that form names; the rest are
     // the framework's own (the original's CurAction is 0x1C for all).
-    let action = match form_change_action(b, r) {
-        Some(h) if bit == request::FORM_CHANGE => NaviAction::Content(h),
+    let action = match (form_change_action(b, r), own_revert) {
+        (Some(h), _) if bit == request::FORM_CHANGE => NaviAction::Content(h),
+        (_, Some(h)) if bit == request::REVERT_FORM => NaviAction::Content(h),
         _ => NaviAction::Engine(super::EngineAction::FormChange),
     };
     let a = ai_mut(b, r);

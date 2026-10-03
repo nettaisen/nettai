@@ -68,12 +68,14 @@ pub struct Unlocks {
 
 /// What a BN5 save has of Soul Unison: the soul button (event flag 0), the
 /// souls (bit n: soul n's flag, 0x08024BF0's table) and Chaos Unison
-/// (event flag 0x236).
+/// (event flag 0x236); and the turns its NaviCust adds to a soul (NaviStats
+/// +0x32, signed: SoulT+1's 1).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SoulUnlocks {
     pub button: bool,
     pub owned: u16,
     pub chaos: bool,
+    pub turn_bonus: i8,
 }
 
 impl Unlocks {
@@ -455,12 +457,21 @@ impl Side {
             self.round.beast_out_used = true;
         }
         if screen.slots[SPECIAL_SLOT as usize].kind == SlotKind::Soul && screen.selection().contains(&SPECIAL_SLOT) {
-            // 0x08024FF6: BN5's soul, for 3 turns (BN5 adds NaviStats +0x32,
-            // NaviCust SoulT+1, which the engine's stats don't carry: 0),
-            // Chaos Unison for 1, at most 9; the soul is used this round.
+            // 0x08024FF6: BN5's soul, for 3 turns and the NaviCust's bonus
+            // (at most 9; under 0, 1), Chaos Unison for 1; the soul is used
+            // this round.
             let soul = screen.soul;
             transform.form = soul_family.and_then(|f| ctx.library.soul_for_family(navi, f)).map(|(_, f)| f);
-            transform.turns = if soul.chaos { 1 } else { 3 };
+            let turns = 3 + self.unlocks.souls.turn_bonus as i32;
+            transform.turns = if soul.chaos {
+                1
+            } else if turns > 9 {
+                9
+            } else if turns < 0 {
+                1
+            } else {
+                turns as u8
+            };
             transform.chaos = soul.chaos;
             self.round.souls_used |= if soul.chaos { 1 << (16 + soul.number) } else { 1 << soul.number };
         }

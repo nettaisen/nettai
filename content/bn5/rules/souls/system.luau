@@ -6,6 +6,7 @@
 -- is Chaos Unison, counts the turns down and asks for the revert when they run out.
 
 local change = require("./change")
+local revert = require("./revert")
 
 local souls = {}
 
@@ -23,10 +24,17 @@ souls.action = define.action {
     update = change.update,
 }
 
+-- The revert out of a soul (./revert), as the pause handler runs it.
+souls.revert = define.action {
+    id = "bn5:souls/revert",
+    state = { timer = "u16" },
+    update = revert.update,
+}
+
 souls.system = define.system {
     id = "bn5:souls",
     state = { turns = "u8", chaos = "bool" },
-    actions = { souls.action },
+    actions = { souls.action, souls.revert },
     hooks = {
         -- 0x0801246C, 0x0801243A: in a soul whose turns ran out, MegaMan asks to revert.
         turn_check = function(side: number)
