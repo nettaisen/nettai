@@ -17,7 +17,6 @@ local antidmg_counter = require("../chips/antidmg/counter")
 local barriers = require("@bn6/lib/barriers/barriers")
 local charged_shot = require("@bn6/navis/megaman/weapons/charged-shot/weapon")
 local anti_recovery = require("../chips/antirecv/controller")
-local antiswrd_counter = require("@bn6/chips/antiswrd/counter")
 local collision = require("./collision")
 local effects = require("@bn6/lib/effects")
 local regions = require("@common/regions")
@@ -35,7 +34,7 @@ return define.roles {
         -- 0x48: AntiDmg's and AntiSwrd's, BN6's code; AntiSwrd's swinging BN5's blade and throwing BN5's sonic
         -- booms, lib/swords).
         anti_damage_counter = antidmg_counter.action,
-        anti_sword_counter = antiswrd_counter.action_with("bn5:antiswrd/counter", swords.blade, swords.sonic_boom),
+        anti_sword_counter = swords.anti_sword_counter,
     },
     kinds = {
         -- AntiRecv's counterattack, which a heal meets when the other side has AntiRecv armed (BN6's code).
