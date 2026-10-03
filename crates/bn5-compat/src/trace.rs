@@ -202,12 +202,7 @@ fn navi_stats_hex(s: &str) -> Result<NaviStats, String> {
     codec::navi_stats(&b)
 }
 
-/// A side's version.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Version {
-    Protoman,
-    Colonel,
-}
+pub use crate::Version;
 
 /// A round's setup, decoded.
 #[derive(Clone, Debug)]
@@ -590,11 +585,11 @@ impl Round {
         });
         let [mut p0, mut p1] = players;
         // Each side's light and dark MegaMan: his save's value (NaviStats
-        // +0x44) and Hub Style (+0x4C), BN5's light and dark system's setup.
+        // +0x44), BN5's light and dark system's setup. (Hub Style, +0x4C,
+        // is the stats': `navi_stats`.)
         for (p, stats) in [(&mut p0, &d.navi_stats[0]), (&mut p1, &d.navi_stats[1])] {
             if let Ok(p) = p {
                 p.set_rule(content, LIGHT_DARK, "value", nettai_content_api::Value::Int(stats.light_dark.0 as i64))?;
-                p.set_rule(content, LIGHT_DARK, "hub_style", nettai_content_api::Value::Int(stats.hub_style as i64))?;
             }
         }
         Ok(RoundSetup {
@@ -729,6 +724,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         folder_tags: [[0xFF, 0xFF], [0xFF, 0xFF]],
         chip_shuffle: false,
         number_open: false,
+        hub_style: s.hub_style != 0,
         weapons: NaviWeapons {
             buster: weapon(r[0x04])?,
             charge_shot: weapon(r[0x05])?,

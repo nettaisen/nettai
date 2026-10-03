@@ -837,6 +837,8 @@ declare class Navi
     float_shoes: boolean
     air_shoes: boolean
     undershirt: boolean
+    -- BN5's NaviCust: Hub Style (HubBatc in its fourth color, NaviStats +0x4C).
+    hub_style: boolean
     -- HP when the round starts, and its maximum.
     hp: number
     max_hp: number

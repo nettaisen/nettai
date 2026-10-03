@@ -449,6 +449,7 @@ impl CoreApi for Battle {
             NaviStat::FloatShoes => Value::Bool(s.float_shoes),
             NaviStat::AirShoes => Value::Bool(s.air_shoes),
             NaviStat::Undershirt => Value::Bool(s.undershirt),
+            NaviStat::HubStyle => Value::Bool(s.hub_style),
             NaviStat::Hp => i(s.hp as i64),
             NaviStat::MaxHp => i(s.max_hp as i64),
             NaviStat::MegaLevel => i(s.mega_level as i64),

@@ -78,6 +78,8 @@ impl Offer {
             sp_times,
             navicust,
             tactics,
+            setups,
+            souls,
         } = side;
         w.put(ruleset);
         w.put(navi);
@@ -105,6 +107,17 @@ impl Offer {
             }
         }
         w.put(tactics);
+        // The systems' setups (by system, then field), and the souls.
+        w.put(&(setups.len() as u32));
+        for (system, fields) in setups {
+            w.put(system);
+            w.put(&(fields.len() as u32));
+            for (field, v) in fields {
+                w.put(field);
+                put_setup_value(&mut w, v);
+            }
+        }
+        w.put(souls);
         w.put(stage);
         w.put(&arena.is_some());
         if let Some(a) = arena {
@@ -155,6 +168,19 @@ impl Offer {
                     None
                 },
                 tactics: r.get()?,
+                setups: {
+                    let mut setups = nettai_match::setups::Setups::new();
+                    for _ in 0..r.get::<u32>()? {
+                        let system: String = r.get()?;
+                        let fields = setups.entry(system).or_default();
+                        for _ in 0..r.get::<u32>()? {
+                            let field: String = r.get()?;
+                            fields.insert(field, get_setup_value(&mut r, 0)?);
+                        }
+                    }
+                    setups
+                },
+                souls: r.get()?,
             };
             let stage: Option<StageHandle> = r.get()?;
             let arena = if r.get::<bool>()? {
@@ -190,6 +216,54 @@ impl Offer {
         }
         Ok(())
     }
+}
+
+/// A system's setup value in an offer: a tag, then the value (an integer
+/// zigzagged, a list its length and elements).
+fn put_setup_value(w: &mut Writer, v: &nettai_match::setups::SetupValue) {
+    use nettai_match::setups::SetupValue;
+    match v {
+        SetupValue::Bool(b) => {
+            w.byte(0);
+            w.put(b);
+        }
+        SetupValue::Int(i) => {
+            w.byte(1);
+            w.put(&(((*i << 1) ^ (*i >> 63)) as u64));
+        }
+        SetupValue::Name(n) => {
+            w.byte(2);
+            w.put(n);
+        }
+        SetupValue::List(l) => {
+            w.byte(3);
+            w.put(&(l.len() as u32));
+            for x in l {
+                put_setup_value(w, x);
+            }
+        }
+    }
+}
+
+fn get_setup_value(r: &mut Reader, depth: u8) -> std::io::Result<nettai_match::setups::SetupValue> {
+    use nettai_match::setups::SetupValue;
+    let bad = |e: &str| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string());
+    Ok(match r.byte()? {
+        0 => SetupValue::Bool(r.get()?),
+        1 => {
+            let z: u64 = r.get()?;
+            SetupValue::Int(((z >> 1) as i64) ^ -((z & 1) as i64))
+        }
+        2 => SetupValue::Name(r.get()?),
+        3 if depth < 2 => {
+            let n: u32 = r.get()?;
+            if n > nettai_content_api::state::MAX_ARRAY as u32 {
+                return Err(bad("a setup list too long"));
+            }
+            SetupValue::List((0..n).map(|_| get_setup_value(r, depth + 1)).collect::<Result<_, _>>()?)
+        }
+        _ => return Err(bad("a bad setup value")),
+    })
 }
 
 /// The round both players of a match play, and the match: the host's arena

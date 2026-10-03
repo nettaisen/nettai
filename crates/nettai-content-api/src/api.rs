@@ -490,6 +490,8 @@ named_fields! {
         FloatShoes = "float_shoes", Bool, rw;
         AirShoes = "air_shoes", Bool, rw;
         Undershirt = "undershirt", Bool, rw;
+        /// BN5's NaviCust: Hub Style (HubBatc in its fourth color, +0x4C).
+        HubStyle = "hub_style", Bool, ro;
         // Written by the patch cards at the round's start (rules/
         // patch-cards.luau), with the writable ones above.
         /// HP when the round starts, and its maximum (+0x40, +0x42).

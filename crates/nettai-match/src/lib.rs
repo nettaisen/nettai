@@ -20,8 +20,11 @@ pub mod folders;
 #[cfg(test)]
 mod games;
 mod import;
+mod import_bn5;
 pub mod link_navis;
 pub mod names;
+pub mod setups;
+pub mod souls;
 pub mod sp_times;
 pub mod stats;
 #[cfg(any(test, feature = "testing"))]
@@ -122,6 +125,13 @@ pub struct Side {
     /// buster between rests). The round's setup sends them as the console
     /// does (`Tactics::sent`).
     pub tactics: Tactics,
+    /// What the side brings for its ruleset's systems besides (their
+    /// player setups, by system id and field: `setups`): BN5's light and
+    /// dark value. Only the fields given; the rest the systems' defaults.
+    pub setups: setups::Setups,
+    /// The souls the side has (BN5's Soul Unison, `souls`): none listed,
+    /// every soul the content has.
+    pub souls: Option<Vec<nettai_content_api::FormHandle>>,
 }
 
 impl Side {
@@ -298,6 +308,8 @@ impl Match {
             sp_times: SpTimes::default(),
             navicust: None,
             tactics: Tactics::default(),
+            setups: Default::default(),
+            souls: None,
         };
         let boards = navicust_rules(content, &side).boards.len();
         if side.has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0 {
@@ -326,7 +338,7 @@ impl Match {
             let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, content);
             let mut player = PlayerSetup {
                 folder: Some(folder),
-                souls: Default::default(),
+                souls: souls::unlocks(content, s),
                 joypad_phase: 0,
                 bug_frags: s.bug_frags,
                 navi_level: s.navi_level,
@@ -352,6 +364,8 @@ impl Match {
             // side says.
             let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(s.game) };
             unlocks.write(content, &mut player).expect("a side's ruleset takes BN6's setup as its systems declare it");
+            // What the side gives its systems besides, over those facts.
+            setups::write(content, s, &mut player).expect("a side's setups are its ruleset's (the match's checks)");
             player
         };
         RoundSetup {
