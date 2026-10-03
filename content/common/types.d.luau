@@ -113,6 +113,13 @@ export type TornadoBlow = {
 -- A game's blows (@common/tornado/blow): its attachment kind (the fan's) and its tornadoes' kind.
 export type TornadoBlowLook = { attachment: Kind, tornado: Kind }
 
+-- A chip's thunder shot (@common/thunder/shoot): its ball; `id`, the action's key when no chip definition holds it;
+-- `kind`, a ball kind of its own (none: the game's).
+export type ThunderShot = { id: string?, ball: ThunderBall, kind: Kind? }
+
+-- A game's thunder shots (@common/thunder/shoot): its buster (the arm) and its ball's kind.
+export type ThunderShotLook = { buster: Buster, ball: Kind }
+
 -- A trap chip's object (a "trap" record, @common/traps/controller): `set` spawns it for the controller and its user,
 -- with the chip and bonus the controller keeps.
 export type Trap = {

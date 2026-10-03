@@ -3,7 +3,6 @@
 -- BN6's Thunder (@bn6/chips/thunder) firing BN5's ball (objects/thunder).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local shoot = require("@bn6/chips/thunder/shoot")
 local statuses = require("../../rules/status")
 local thunder = require("../../objects/thunder/ball")
 
@@ -20,5 +19,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = shoot.action { ball = { panels = 5, status = statuses.paralyze_90 }, kind = thunder.kind },
+    action = thunder.shoot { ball = { panels = 5, status = statuses.paralyze_90 } },
 }
