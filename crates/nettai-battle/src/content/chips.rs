@@ -249,8 +249,12 @@ pub enum DamageFormula {
     SpNavi { slot: String, by_time: Vec<u16> },
     /// By how full the custom gauge is (`sub_8010B78`; formula 19).
     Gauge,
-    /// The HP its user has lost, at most 500 (`sub_8010BD0`; formula 20).
-    HpLost,
+    /// The HP its user has lost, at most `cap`: BN6's 500 (`sub_8010BD0`;
+    /// formula 20) when none, BN5's 999 (its formula 46, 0x0800EA78).
+    HpLost {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        cap: Option<u16>,
+    },
     /// The last two digits of its user's HP (`sub_8010BF0`; formula 21).
     HpLastDigits,
     /// Half the opponent's max HP, at most 999 (`sub_8010C06`; formula 22).
