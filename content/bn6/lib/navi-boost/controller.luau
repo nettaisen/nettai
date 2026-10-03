@@ -161,7 +161,9 @@ end
 
 -- `sub_80E9784`: DarkInvs.
 local function dark_invis(me: Object)
-    user_of(me):set_request("cross_special", true)
+    -- (BN6's beast system starts its Cross special: rules/beast/
+    -- cross-special.luau.)
+    user_of(me):set_request("takeover", true)
     dimming_chips.done(me)
 end
 

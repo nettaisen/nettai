@@ -243,7 +243,6 @@ obstacle_lift = 0x12A
 bubble = 0x12D
 burst = 0x12E
 telop = 0x173
-cross_special = 0x182
 custom_redeal = 0x182
 custom_scrap_done = 0x182
 custom_beast_out_gregar = 0x191

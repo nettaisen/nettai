@@ -191,6 +191,42 @@ impl Battle {
         0
     }
 
+    /// Side `side`'s systems' `takeover_requested(side, navi)`.
+    pub(crate) fn systems_takeover_requested(&mut self, side: u8, navi: ObjectRef) {
+        let Some(r) = self.rules[side as usize].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::TakeoverRequested) {
+                let call = HookCall::System {
+                    side,
+                    slot: slot as u8,
+                    hook: SystemHook::TakeoverRequested,
+                    navi: Some(navi),
+                    chip: None,
+                    weapon: None,
+                };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
+    /// Side `side`'s systems' `takeover(side, navi)`: the outcome the
+    /// first system that answers gives (as `systems_controller`'s, or 4:
+    /// an attack of its own); none answering is nothing.
+    pub(crate) fn systems_takeover(&mut self, side: u8, navi: ObjectRef) -> u8 {
+        let Some(r) = self.rules[side as usize].ruleset else { return 0 };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::Takeover) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::Takeover, navi: Some(navi), chip: None, weapon: None };
+                if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
+                    return n as u8;
+                }
+            }
+        }
+        0
+    }
+
     /// Side `side`'s systems' `form_reverted(side, navi)`.
     pub(crate) fn systems_form_reverted(&mut self, side: u8, navi: ObjectRef) {
         let Some(r) = self.rules[side as usize].ruleset else { return };

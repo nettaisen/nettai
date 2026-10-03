@@ -9,7 +9,6 @@
 //! (0, 1), `reactions` (2..7) and `idle` (8); 0x10 and up in `actions`.
 
 pub mod actions;
-pub(crate) mod berserk;
 mod navi_action;
 pub(crate) mod chip_use;
 pub use chip_use::{next_chip_bonus, next_chip_doubles};

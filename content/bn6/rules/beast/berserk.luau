@@ -4,7 +4,8 @@
 -- player's buttons; its idle action cycles on its own through moving next
 -- to an opponent, using the next chip, and firing the buster. Its state is
 -- the system's (the original's last 0x10 bytes of the navi's AIData,
--- +0xF0), which the form's `berserk` effect starts over (`sub_802D310`).
+-- +0xF0), which the Cross special (cross-special.luau) shares and the
+-- form's `berserk` effect starts over (`sub_802D310`).
 
 -- The step conditions, an opponent's panel, what ends the look behind an
 -- opponent and the opposing player's panel flag, by side.
@@ -12,28 +13,39 @@ local rules = require("../berserk")
 
 local berserk = {}
 
--- The beast system's state fields the berserk keeps
--- (rules/beast/system.luau declares them).
-type State = {
+-- The beast system's state fields the controllers keep (rules/beast/
+-- system.luau declares them): the berserk's and the Cross special's.
+export type State = {
     -- +0: the step (read as a jump-table offset).
-    berserk_step: number,
+    controller_step: number,
     -- +4: moves since the last chip or buster shot.
-    berserk_moves: number,
-    -- +8: the controller has started (its first step is a move).
-    berserk_started: boolean,
+    controller_moves: number,
+    -- +6: the Cross special's buster volley: shots left while an opponent
+    -- stays in the row.
+    controller_volley: number,
+    -- +8: the controller has started (the berserk's first step is a move;
+    -- the Cross special's first chip sounds).
+    controller_started: boolean,
 }
+
+-- `sub_802D310`: the state starts over.
+function berserk.reset(s: State)
+    s.controller_step, s.controller_moves, s.controller_volley, s.controller_started = 0, 0, 0, false
+end
 
 -- Use the next chip (`sub_802D358`), fire the buster (`sub_802D3A8`), step
 -- next to an opponent (`sub_802D3CA`).
 local USE_CHIP, BUSTER, MOVE = 0, 1, 2
+berserk.USE_CHIP, berserk.BUSTER, berserk.MOVE = USE_CHIP, BUSTER, MOVE
 
 -- Where the lock-on marker's target stands when the navi has no marker
 -- (`sub_80E1676`): off the field.
 local NO_MARKER_X, NO_MARKER_Y = 0xA0, 0xE3
+berserk.NO_MARKER_X, berserk.NO_MARKER_Y = NO_MARKER_X, NO_MARKER_Y
 
 -- `sub_80E7486`: the opposing player standing on (x, y) (the panel shows
 -- the other side's player flag and an alive actor's collision sits there).
-local function opponent_on(x: number, y: number, alliance: number): Object?
+function berserk.opponent_on(x: number, y: number, alliance: number): Object?
     local flag = rules.opposing_player[alliance + 1]
     if bit32.band(field.flags(x, y), flag) == 0 then
         return nil
@@ -77,7 +89,7 @@ end
 
 -- `sub_810971A`: an opponent's panel in row `y`, packed, picked at random
 -- among them (one RNG draw when there is one).
-local function opponent_in_row(navi: Object, y: number): number?
+function berserk.opponent_in_row(navi: Object, y: number): number?
     return pick(panels_in_row(y, rules.opponent[navi.alliance + 1]))
 end
 
@@ -124,7 +136,7 @@ local function choose_panel(navi: Object, cond: { require: number, forbid: numbe
     local entries: { number } = {}
     local count = 0
     for y = 1, 3 do
-        local opponent = opponent_in_row(navi, y)
+        local opponent = berserk.opponent_in_row(navi, y)
         if opponent ~= nil then
             local v = behind(navi, opponent, cond)
             table.insert(entries, v)
@@ -136,7 +148,7 @@ local function choose_panel(navi: Object, cond: { require: number, forbid: numbe
     if count == 0 then
         entries = {}
         for y = 1, 3 do
-            if opponent_in_row(navi, y) ~= nil then
+            if berserk.opponent_in_row(navi, y) ~= nil then
                 for _, p in panels_in_row(y, cond) do
                     table.insert(entries, p)
                 end
@@ -159,51 +171,51 @@ end
 -- a chip) the opponent under the lock-on marker is flashing, or no chip is
 -- left or it can't start; then the buster is next.
 local function use_chip(navi: Object, s: State): "nothing" | "chip"
-    if s.berserk_moves <= 3 then
+    if s.controller_moves <= 3 then
         local x, y = NO_MARKER_X, NO_MARKER_Y
         local marker = navi.target_marker
         if marker ~= nil then
             x, y = marker.panel_x, marker.panel_y
         end
-        local t = opponent_on(x, y, navi.alliance)
+        local t = berserk.opponent_on(x, y, navi.alliance)
         if t ~= nil and t:status("flashing") then
-            s.berserk_step = BUSTER
+            s.controller_step = BUSTER
             return "nothing"
         end
     end
     if navi:next_chip() == nil then
-        s.berserk_step = BUSTER
+        s.controller_step = BUSTER
         return "nothing"
     end
     navi:set_request("chip", true)
     if not navi:use_chip() then
-        s.berserk_step = BUSTER
+        s.controller_step = BUSTER
         return "nothing"
     end
-    s.berserk_moves = 0
-    s.berserk_step = MOVE
+    s.controller_moves = 0
+    s.controller_step = MOVE
     return "chip"
 end
 
 -- `sub_802D3A8`: after three moves, or with an opponent in the navi's row,
 -- fire the buster; a move is next either way.
 local function buster(navi: Object, s: State): "nothing" | "buster"
-    s.berserk_step = MOVE
-    if not (s.berserk_moves > 2 or opponent_in_row(navi, navi.panel_y) ~= nil) then
+    s.controller_step = MOVE
+    if not (s.controller_moves > 2 or berserk.opponent_in_row(navi, navi.panel_y) ~= nil) then
         return "nothing"
     end
-    s.berserk_moves = 0
+    s.controller_moves = 0
     return "buster"
 end
 
 -- `sub_802D3CA`: step to a panel near an opponent (`sub_802D430`); a chip
 -- is next.
-local function step_toward_opponent(navi: Object, s: State): "moved"
+function berserk.step_toward_opponent(navi: Object, s: State): "moved"
     local conds = if navi:status("air_shoe") then rules.step.floor_free else rules.step.grounded
     local tx, ty = choose_panel(navi, conds[navi.alliance + 1])
     navi:start_move_to(tx, ty, 8)
-    s.berserk_moves = (s.berserk_moves + 1) % 0x10000
-    s.berserk_step = USE_CHIP
+    s.controller_moves = (s.controller_moves + 1) % 0x10000
+    s.controller_step = USE_CHIP
     return "moved"
 end
 
@@ -213,18 +225,18 @@ function berserk.control(side: number, navi: Object): "nothing" | "chip" | "bust
     -- (`sub_802D310` cleared it: it starts over.)
     if navi.controller_fresh then
         navi.controller_fresh = false
-        s.berserk_step, s.berserk_moves, s.berserk_started = USE_CHIP, 0, false
+        berserk.reset(s)
     end
-    if not s.berserk_started then
-        s.berserk_started = true
-        s.berserk_step = MOVE
+    if not s.controller_started then
+        s.controller_started = true
+        s.controller_step = MOVE
     end
-    if s.berserk_step == USE_CHIP then
+    if s.controller_step == USE_CHIP then
         return use_chip(navi, s)
-    elseif s.berserk_step == BUSTER then
+    elseif s.controller_step == BUSTER then
         return buster(navi, s)
     end
-    return step_toward_opponent(navi, s)
+    return berserk.step_toward_opponent(navi, s)
 end
 
 return berserk

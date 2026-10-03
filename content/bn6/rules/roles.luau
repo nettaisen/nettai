@@ -194,7 +194,6 @@ return define.roles {
         -- roars; Beast Over's rumbles and bursts.
         burst = asset.sound("bn6:beast-over-burst"),
         -- A Cross navi starting its special's chip.
-        cross_special = asset.sound("bn6:elmnt-man-2"),
         -- SELECT with too little gauge: its player hears that it can't (and
         -- what can't be picked or taken back on the custom screen).
         refused = asset.sound("bn6:cant-jack-in"),

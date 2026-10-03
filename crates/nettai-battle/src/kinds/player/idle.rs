@@ -66,9 +66,13 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     // decides (`sub_802D322`, the berserk).
     if form_of(b, r).traits.has(crate::content::FormTraits::CONTROLLED) {
         match b.systems_controller(side as u8, r) {
-            // A chip's use started.
+            // A chip's use started: the hand's (1), or the attack's own (4).
             1 => {
                 let chip = super::next_chip(b, r);
+                after_chip(b, r, chip);
+            }
+            4 => {
+                let chip = ai(b, r).attack.chip;
                 after_chip(b, r, chip);
             }
             // The buster.
@@ -88,23 +92,27 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     if b.sides[side].select_special != 0 {
         return select_special(b, r);
     }
-    if b.sides[side].cross_special != 0 {
-        if b.sides[side].cross_special_ticks == 0 {
-            b.sides[side].cross_special = 0;
-            return set_attack(b, r, super::EngineAction::CrossSpecial, 0);
-        }
-        use super::berserk::Outcome;
-        match super::berserk::cross_special(b, r) {
-            Outcome::Nothing | Outcome::Moved => {}
-            Outcome::Chip => {
+    // A system's takeover (BN6's Cross special, `sub_802D4C6`): the side's
+    // systems' `takeover` decides, and ends it.
+    if b.sides[side].takeover != 0 {
+        match b.systems_takeover(side as u8, r) {
+            // A chip's use started: the hand's (1), or the attack's own (4).
+            1 => {
+                let chip = super::next_chip(b, r);
+                after_chip(b, r, chip);
+            }
+            4 => {
                 let chip = ai(b, r).attack.chip;
                 after_chip(b, r, chip);
             }
-            Outcome::Buster => {
+            // The buster.
+            2 => {
                 leave_idle(b, r);
                 let action = buster_routine(b, r);
                 set_attack(b, r, action, 1);
             }
+            // Nothing, or a step started.
+            _ => {}
         }
         return;
     }
@@ -207,13 +215,12 @@ fn start_specials(b: &mut Battle, r: ObjectRef) {
         b.sides[side].select_special = 1;
         clear_special_selection(b, r);
     }
-    if ai(b, r).requests & request::CROSS_SPECIAL != 0 {
-        ai_mut(b, r).requests &= !request::CROSS_SPECIAL;
-        b.sides[side].cross_special = 1;
+    // A takeover asked for (BN6's Cross special): the side's systems start
+    // it (`takeover_requested`).
+    if ai(b, r).requests & request::TAKEOVER != 0 {
+        ai_mut(b, r).requests &= !request::TAKEOVER;
         clear_special_selection(b, r);
-        b.sides[side].cross_special_ticks = 0x1E0;
-        super::set_invulnerable(b, r, 0xFFFF);
-        super::berserk::reset(b, r);
+        b.systems_takeover_requested(side as u8, r);
     }
 }
 
