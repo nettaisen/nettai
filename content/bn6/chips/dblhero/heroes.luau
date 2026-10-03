@@ -7,12 +7,12 @@
 -- slashes hit nothing); MegaMan gives the user back once ProtoMan is gone.
 -- MegaMan shares the user's actor data, so his buster arm is the user's.
 
-local stand_in = require("../../lib/dimming/stand_in")
+local stand_in = require("@common/dimming/stand_in")
 local attachment = require("../../objects/attachment/attachment")
 local buster = require("../../lib/buster")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local parts = require("../../lib/swords/parts")
 local protoman = require("../../navis/protoman/navi")
 

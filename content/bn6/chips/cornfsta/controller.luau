@@ -4,7 +4,7 @@
 -- dimming phases (lib/dimming), with an effect that sends the farmer
 -- (./farmer) out in the user's place and waits until he is done.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local farmer = require("./farmer")
 
 local controller = {}

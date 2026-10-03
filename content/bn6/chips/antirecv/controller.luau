@@ -12,7 +12,7 @@
 -- and the panel changer poisons the healer's panel; once it is done, the
 -- undim. See docs/engine/chips.md §3.6.7.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local panel_changer = require("../../objects/panel-changer/panel_changer")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 

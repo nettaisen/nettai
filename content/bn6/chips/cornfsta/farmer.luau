@@ -6,7 +6,7 @@
 -- sower is done, 31 ticks, then the user comes back. (He is always
 -- shown: no blind-viewer step.)
 
-local stand_in = require("../../lib/dimming/stand_in")
+local stand_in = require("@common/dimming/stand_in")
 local attachment = require("../../objects/attachment/attachment")
 local cornsht = require("../cornsht/action")
 local sower = require("./sower")

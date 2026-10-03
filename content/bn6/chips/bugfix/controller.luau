@@ -5,7 +5,7 @@
 -- over the user's side's navi (glow.luau), fixes the user's side's
 -- NaviCust bugs, and waits for the glow.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local glow = require("./glow")
 
 local bugfix = {}

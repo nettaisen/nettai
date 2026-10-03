@@ -7,7 +7,7 @@
 -- gone, it goes. The navi links it (`barrier_visual`, AIData+0x60), and
 -- hides and shows it with itself (its `shown`).
 
-local element = require("../element")
+local element = require("@common/element")
 
 local visual = {}
 

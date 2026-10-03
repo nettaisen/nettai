@@ -7,7 +7,7 @@
 
 local collision = require("../../rules/collision")
 local link = require("../../lib/link_chips")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local weapon = require("../../lib/weapon")
 
 export type State = { timer: number }

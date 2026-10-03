@@ -5,7 +5,7 @@
 -- once its grab animation is over. Only a round's first hand makes sounds.
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local hand = {}
 

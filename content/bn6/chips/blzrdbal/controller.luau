@@ -5,8 +5,8 @@
 -- (./thrower) with the damage plus the bonus and lasts 121 ticks, whether
 -- or not it is done.
 
-local dimming_chips = require("../../lib/dimming")
-local stand_in = require("../../lib/dimming/stand_in")
+local dimming_chips = require("@common/dimming")
+local stand_in = require("@common/dimming/stand_in")
 local thrower = require("./thrower")
 
 export type State = {

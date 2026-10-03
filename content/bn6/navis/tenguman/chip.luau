@@ -8,7 +8,7 @@
 
 local collision = require("../../rules/collision")
 local link = require("../../lib/link_chips")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local tornado = require("./tornado")
 
 export type State = { timer: number }

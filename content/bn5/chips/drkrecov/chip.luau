@@ -4,7 +4,7 @@
 -- 0x080EC4B8) and, unless an AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (0).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local heal = require("@bn6/chips/recov/heal")
+local heal = require("@common/recov/heal")
 
 return define.chip {
     id = "bn5:drkrecov",

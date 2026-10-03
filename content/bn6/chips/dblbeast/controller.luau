@@ -5,7 +5,7 @@
 -- sends both beasts (./gregar, ./falzar), waits until both are done, and
 -- warps the user back in.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local gregar = require("./gregar")
 local falzar = require("./falzar")
 

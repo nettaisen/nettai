@@ -5,7 +5,7 @@
 -- modifiers 1, 1 and 3, then shows for 19 more ticks.
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local burst = {}
 

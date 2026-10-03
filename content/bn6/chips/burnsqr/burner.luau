@@ -5,7 +5,7 @@
 -- step every 6 ticks, until the user presses A or 300 ticks pass, then
 -- sets the square's solid panels on fire (flames: chips/heatman/flame).
 
-local stand_in = require("../../lib/dimming/stand_in")
+local stand_in = require("@common/dimming/stand_in")
 local collision = require("../../rules/collision")
 local heat_flame = require("../../chips/heatman/flame")
 

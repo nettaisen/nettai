@@ -4,7 +4,7 @@
 -- dimming phases (lib/dimming), with an effect that sets a nest (./nest)
 -- on the user's panel, waits until its snakes are done, then 41 ticks.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local nest = require("./nest")
 
 local controller = {}

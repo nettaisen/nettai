@@ -10,7 +10,7 @@
 -- `sonic_boom.make_kind(id, look)` (BN5's).
 
 local collision = require("../../rules/collision")
-local regions = require("../regions")
+local regions = require("@common/regions")
 
 local sonic_boom = {}
 

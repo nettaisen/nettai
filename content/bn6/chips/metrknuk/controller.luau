@@ -6,8 +6,8 @@
 -- panel an enemy stands on, the others at random panels around the
 -- enemies (never the last one twice in a row).
 
-local dimming_chips = require("../../lib/dimming")
-local panels = require("../../lib/panels")
+local dimming_chips = require("@common/dimming")
+local panels = require("@common/panels")
 local fist = require("./fist")
 
 local controller = {}

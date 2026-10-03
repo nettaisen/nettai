@@ -7,8 +7,8 @@
 -- it run while dimmed. See docs/engine/chips.md §3.6.8.
 
 local collision = require("../../rules/collision")
-local panels = require("../panels")
-local regions = require("../regions")
+local panels = require("@common/panels")
+local regions = require("@common/regions")
 
 local shot = {}
 

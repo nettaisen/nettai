@@ -6,7 +6,7 @@
 -- it is done; with none of the other side's panels in that column, it ends
 -- at once. Another game's controller puts its own gun (`make`).
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local gun = require("./gun")
 
 export type State = {

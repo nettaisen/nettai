@@ -13,9 +13,9 @@ local effects = require("../../lib/effects")
 local erase_ray = require("../../navis/megaman/forms/erasecross/ray")
 local navi_chips = require("../../lib/navi-chips/navi")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 local parts = require("../../lib/swords/parts")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local trajectory = require("../../lib/trajectory")
 
 local mstrcros = {}

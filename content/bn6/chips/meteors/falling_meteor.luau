@@ -13,7 +13,7 @@
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local marker = require("./marker")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 
 local falling_meteor = {}

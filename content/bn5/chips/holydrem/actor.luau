@@ -9,7 +9,7 @@
 
 local buster = require("@bn6/lib/buster")
 local shot = require("./shot")
-local stand_in = require("@bn6/lib/dimming/stand_in")
+local stand_in = require("@common/dimming/stand_in")
 
 local actor = {}
 

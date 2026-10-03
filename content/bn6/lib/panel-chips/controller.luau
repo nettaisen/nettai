@@ -8,7 +8,7 @@
 --
 -- A chip's `dimming` hook is `panel_chips.hook(change)`, with its change.
 
-local dimming_chips = require("../dimming")
+local dimming_chips = require("@common/dimming")
 local panel_changer = require("../../objects/panel-changer/panel_changer")
 
 local panel_chips = {}

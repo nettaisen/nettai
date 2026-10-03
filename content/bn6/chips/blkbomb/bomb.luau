@@ -18,7 +18,7 @@ local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local trajectory = require("../../lib/trajectory")
 
