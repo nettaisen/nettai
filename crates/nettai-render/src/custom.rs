@@ -180,8 +180,7 @@ pub fn hud_jitter(b: &Battle) -> (i32, i32) {
     let Some((_, s)) = local(b) else { return (0, 0) };
     let shakes = matches!(
         s.phase,
-        Phase::BeastOutChosen { .. }
-            | Phase::BeastOutChipChosen { .. }
+        Phase::Window { .. }
             | Phase::CrossWindowOpening { .. }
             | Phase::CrossWindow { .. }
             | Phase::CrossWindowClosing { .. }
@@ -325,20 +324,47 @@ struct View<'a> {
 /// §4.8: BN6's, by name): its details picture, its tiles (`count` a state,
 /// selectable then unavailable and picked), and the cursor over it.
 struct ButtonLook<'a> {
-    details: &'a Picture,
+    details: std::borrow::Cow<'a, Picture>,
     tiles: &'a Tiles,
+    /// Its tiles a state, and whether its unavailable and picked states
+    /// share the second set (the Beast Out button's two).
     count: usize,
+    two_states: bool,
+    /// The tiles the slots after it start past (none: they overlap it).
+    advance: u16,
     cursor: (i32, i32, &'static CursorShape),
 }
 
 impl<'a> View<'a> {
-    /// The look of button `button`: BN6's ChpShufl re-deal and DustCross
-    /// scrap. A name the frontend doesn't know is drawn as nothing.
+    /// The look of button `button`: BN6's Beast Out (its game's
+    /// pictures), ChpShufl re-deal and DustCross scrap. A name the
+    /// frontend doesn't know is drawn as nothing.
     fn button_look(&self, button: nettai_battle::content::ButtonHandle) -> Option<ButtonLook<'a>> {
+        use std::borrow::Cow;
         let a = self.assets;
+        let wide = |details: &'a Picture, tiles: &'a Tiles| ButtonLook {
+            details: Cow::Borrowed(details),
+            tiles,
+            count: 12,
+            two_states: false,
+            advance: 12,
+            cursor: (0x38, 0x80, &BUTTON_CURSOR),
+        };
         match self.b.content.defs.button(button).name.as_str() {
-            "redeal" => Some(ButtonLook { details: &a.pictures.redeal, tiles: &a.redeal_buttons, count: 12, cursor: (0x38, 0x80, &BUTTON_CURSOR) }),
-            "scrap" => Some(ButtonLook { details: &a.pictures.scrap, tiles: &a.scrap_buttons, count: 12, cursor: (0x38, 0x80, &BUTTON_CURSOR) }),
+            "beast_out" => {
+                let beast = self.beast;
+                let details = Picture { palette: beast.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..beast.beast_out.clone() };
+                Some(ButtonLook {
+                    details: Cow::Owned(details),
+                    tiles: &beast.beast_buttons,
+                    count: 8,
+                    two_states: true,
+                    advance: 0,
+                    cursor: (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR),
+                })
+            }
+            "redeal" => Some(wide(&a.pictures.redeal, &a.redeal_buttons)),
+            "scrap" => Some(wide(&a.pictures.scrap, &a.scrap_buttons)),
             _ => None,
         }
     }
@@ -663,14 +689,9 @@ impl Window {
                 let p = if cw.picks == 0 { &a.pictures.ok } else { &a.pictures.ok_picked };
                 blank_details(self, p);
             }
-            SlotKind::BeastOut => {
-                let beast = v.beast;
-                let p = Picture { palette: beast.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..beast.beast_out.clone() };
-                blank_details(self, &p);
-            }
             SlotKind::Button { button, .. } => {
                 if let Some(look) = v.button_look(button) {
-                    blank_details(self, look.details);
+                    blank_details(self, &look.details);
                 }
             }
             // (BN5's soul button: its pictures aren't in the packs yet.)
@@ -775,11 +796,11 @@ impl Window {
                 }
                 // (BN5's soul button: its tiles aren't in the packs yet.)
                 SlotKind::Ok | SlotKind::Soul | SlotKind::Button { cell: ButtonCell::Right, .. } => {}
-                SlotKind::BeastOut => self.tiles.put_part(at, &v.beast.beast_buttons, 8 * (state != 0) as usize, 8),
                 SlotKind::Button { button, .. } => {
                     if let Some(look) = v.button_look(button) {
-                        self.tiles.put_part(at, look.tiles, look.count * state, look.count);
-                        at += look.count as u16;
+                        let set = if look.two_states { (state != 0) as usize } else { state };
+                        self.tiles.put_part(at, look.tiles, look.count * set, look.count);
+                        at += look.advance;
                     }
                 }
                 SlotKind::Empty => {
@@ -801,7 +822,7 @@ impl Window {
                 SlotKind::Empty => 11,
                 SlotKind::Chip { .. } | SlotKind::NaviChip(_) if slot.state == SlotState::Unavailable => 12,
                 SlotKind::Chip { .. } | SlotKind::NaviChip(_) => 11,
-                SlotKind::Ok | SlotKind::BeastOut => continue,
+                SlotKind::Ok => continue,
                 _ => 9,
             };
             let (x, y) = (1 + 2 * (s % 5), 13 + 3 * (s / 5));
@@ -1027,7 +1048,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             (16 * col + 8, 0x68 + 0x18 * row, &CHIP_CURSOR)
         }
         SlotKind::Ok => (0x58 + 3, 0x70 - 2, &OK_CURSOR),
-        SlotKind::BeastOut | SlotKind::Soul => (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR),
+        SlotKind::Soul => (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR),
         SlotKind::Button { button, .. } => v.button_look(button).map_or((0x38, 0x80, &BUTTON_CURSOR), |l| l.cursor),
     };
     let palette = v.emblem_palette();

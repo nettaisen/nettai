@@ -780,6 +780,18 @@ named_flags! {
     }
 }
 
+/// What a side's custom screen reads of its player (`custom.player`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CustomPlayer {
+    /// The emotion the screen reads of its navi.
+    pub emotion: Emotion,
+    pub version: &'static str,
+    pub cross_list: bool,
+    pub beast_out: bool,
+    pub beast_out_sealed: bool,
+    pub random_battle: bool,
+}
+
 named_flags! {
     /// A side's special in progress (battle flag 0x40 mode;
     /// `sub_802E4B8`): the SELECT special, or a system's takeover of the
@@ -1201,6 +1213,32 @@ pub trait CoreApi {
     fn custom_redeal(&mut self, side: u8) -> ApiResult<()>;
     fn custom_last_pick_is_chip(&self, side: u8) -> ApiResult<bool>;
     fn custom_cursor_state(&self, side: u8) -> ApiResult<&'static str>;
+    /// More of the side's custom screen, for a system's buttons and windows
+    /// (§4.4). `system` is the calling system's place in the side's ruleset,
+    /// whose button, window or form a call names.
+    fn custom_pick(&mut self, side: u8) -> ApiResult<()>;
+    fn custom_play(&mut self, side: u8, sound: &str) -> ApiResult<()>;
+    fn custom_set_column_icon(&mut self, side: u8, chip: Option<crate::ChipHandle>) -> ApiResult<()>;
+    fn custom_open_window(&mut self, side: u8, system: u8, window: &str) -> ApiResult<()>;
+    fn custom_window_tick(&self, side: u8) -> ApiResult<u16>;
+    fn custom_shake(&mut self, side: u8, magnitude: u16, ticks: u16) -> ApiResult<()>;
+    fn custom_frame(&self, side: u8) -> ApiResult<u32>;
+    fn custom_set_frame(&mut self, side: u8, frame: u32) -> ApiResult<()>;
+    fn custom_spin(&mut self, side: u8) -> ApiResult<()>;
+    fn custom_fade(&mut self, side: u8, mode: &str, speed: u8) -> ApiResult<()>;
+    fn custom_set_face(&mut self, side: u8, form: Option<crate::FormHandle>) -> ApiResult<()>;
+    fn custom_pick_first(&mut self, side: u8, icon: Option<crate::ChipHandle>) -> ApiResult<()>;
+    fn custom_set_button_state(&mut self, side: u8, system: u8, button: &str, state: &str) -> ApiResult<()>;
+    fn custom_update_availability(&mut self, side: u8) -> ApiResult<()>;
+    fn custom_draw_emblem(&mut self, side: u8, x: u32) -> ApiResult<()>;
+    fn custom_set_form(&mut self, side: u8, system: u8, form: Option<crate::FormHandle>) -> ApiResult<()>;
+    fn custom_form_taken(&self, side: u8, system: u8) -> ApiResult<bool>;
+    fn custom_full(&self, side: u8) -> ApiResult<bool>;
+    fn custom_button_picked(&self, side: u8, system: u8, button: &str) -> ApiResult<bool>;
+    /// What the screen reads of its player from the setup: the version,
+    /// whether a Cross list was given, Beast Out unlocked and sealed (until
+    /// these are BN6's systems' setup), and a random battle.
+    fn custom_player(&self, side: u8) -> ApiResult<CustomPlayer>;
     fn end_takeover(&mut self, side: u8);
     /// Its ticks left.
     fn takeover_ticks(&self, side: u8) -> u16;
