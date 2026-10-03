@@ -112,7 +112,7 @@ fn request_bit(f: RequestFlag) -> u32 {
         RequestFlag::CrossChange => request::CROSS_CHANGE,
         RequestFlag::CrossDeath => request::CROSS_DEATH,
         RequestFlag::Mode9A => request::MODE9_A,
-        RequestFlag::CrossSpecial => request::CROSS_SPECIAL,
+        RequestFlag::Takeover => request::TAKEOVER,
         RequestFlag::Volley => request::VOLLEY,
         RequestFlag::WeaknessHit => request::WEAKNESS_HIT,
     }
@@ -580,12 +580,26 @@ impl CoreApi for Battle {
         *frags = frags.wrapping_sub(n);
     }
 
+    fn take_over(&mut self, side: u8, ticks: u16) {
+        let s = &mut self.sides[side as usize & 1];
+        s.takeover = 1;
+        s.takeover_ticks = ticks;
+    }
+
+    fn end_takeover(&mut self, side: u8) {
+        self.sides[side as usize & 1].takeover = 0;
+    }
+
+    fn takeover_ticks(&self, side: u8) -> u16 {
+        self.sides[side as usize & 1].takeover_ticks
+    }
+
     fn side_special(&self, side: u8) -> SideSpecial {
         let s = &self.sides[side as usize & 1];
         if s.select_special != 0 {
             SideSpecial::Select
-        } else if s.cross_special != 0 {
-            SideSpecial::Cross
+        } else if s.takeover != 0 {
+            SideSpecial::Takeover
         } else {
             SideSpecial::None
         }
@@ -905,7 +919,6 @@ impl CoreApi for Battle {
             A::Engine(E::NaviChip) => NaviAction::Engine("navi_chip"),
             A::Engine(E::InstantChip) => NaviAction::Engine("instant_chip"),
             A::Engine(E::FormChange) => NaviAction::Engine("form_change"),
-            A::Engine(E::CrossSpecial) => NaviAction::Engine("cross_special"),
             A::Content(h) => NaviAction::Content(h.0),
         })
     }
@@ -1653,6 +1666,13 @@ impl CoreApi for Battle {
     fn use_chip(&mut self, o: ObjectRef) -> ApiResult<bool> {
         self.actor_of(o)?;
         Ok(kinds::player::chip_use::use_chip(self, o).is_some())
+    }
+
+    fn start_chip_attack(&mut self, o: ObjectRef, chip: ChipHandle, kind: u8) -> ApiResult<()> {
+        self.actor_of(o)?;
+        let action = kinds::player::chip_use::chip_action(self, o, Some(chip));
+        kinds::player::set_attack(self, o, action, kind);
+        Ok(())
     }
 
     fn start_move_to(&mut self, o: ObjectRef, target: PanelPos, end_lag: u16) -> ApiResult<()> {

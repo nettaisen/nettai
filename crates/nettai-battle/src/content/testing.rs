@@ -1150,6 +1150,9 @@ pub fn scripts() -> Scripts {
                 ("rules/beast/system", "rules/beast/system"),
                 ("rules/beast/rush", "rules/beast/rush"),
                 ("rules/beast/berserk", "rules/beast/berserk"),
+                // (Its chips are the test content's own: testdata's
+                // rules/cross-special.luau.)
+                ("rules/beast/cross-special", "rules/beast/cross-special"),
                 // (Its tables are the test content's own, the same as BN6's.)
                 ("rules/berserk", "rules/berserk"),
                 ("lib/trajectory", "lib/trajectory"),

@@ -516,14 +516,16 @@ pub struct SideState {
     pub gauge: u16,
     /// +0x50: the SELECT special runs (`sub_802E4E4`).
     pub select_special: u8,
-    /// +0x54: the Cross special (DarkInvs' auto-battle) runs.
-    pub cross_special: u8,
+    /// +0x54: a system's takeover of the side's navi runs (BN6's Cross
+    /// special, DarkInvs' auto-battle): idle asks the side's systems
+    /// (`takeover`) instead of reading the buttons.
+    pub takeover: u8,
     /// +2: ticks the SELECT special holds the navi (0xB4 when reset,
     /// `sub_802E07C`; `sub_802F068`).
     pub select_ticks: u8,
-    /// +0x30: ticks left of the Cross special (0x1E0 at its start), counted
-    /// down in the navi's stage B (`sub_802E1D8`).
-    pub cross_special_ticks: u16,
+    /// +0x30: ticks left of the takeover (BN6's Cross special starts it at
+    /// 0x1E0), counted down in the navi's stage B (`sub_802E1D8`).
+    pub takeover_ticks: u16,
     /// +0x3C / +0x3A: ticks the side's gauge stays slow / fast (SloGauge,
     /// FstGauge), counted down by `sub_80107D4`.
     pub slow_gauge_ticks: u16,

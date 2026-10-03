@@ -23,7 +23,7 @@ pub enum NaviAction {
     /// One of the ruleset's own states or actions: `"entry"`,
     /// `"take_control"`, `"deletion"`, `"flinch"`, `"paralysis"`, `"drag"`,
     /// `"freeze"`, `"bubble"`, `"idle"`, `"move"`, `"dimming_chip"`,
-    /// `"navi_chip"`, `"instant_chip"`, `"form_change"`, `"cross_special"`.
+    /// `"navi_chip"`, `"instant_chip"`, `"form_change"`.
     Engine(&'static str),
 }
 
@@ -646,7 +646,8 @@ named_flags! {
         CrossChange = "cross_change",
         CrossDeath = "cross_death",
         Mode9A = "mode9_a",
-        CrossSpecial = "cross_special",
+        /// A system's takeover of the side's navi (BN6's Cross special).
+        Takeover = "takeover",
         Volley = "volley",
         WeaknessHit = "weakness_hit",
         /// The slide request (the collision's flag2 0x10, not an action
@@ -764,12 +765,13 @@ named_flags! {
 }
 
 named_flags! {
-    /// A side's SELECT or Cross special in progress (battle flag 0x40
-    /// mode; `sub_802E4B8`).
+    /// A side's special in progress (battle flag 0x40 mode;
+    /// `sub_802E4B8`): the SELECT special, or a system's takeover of the
+    /// side's navi (BN6's Cross special).
     pub enum SideSpecial {
         None = "none",
         Select = "select",
-        Cross = "cross",
+        Takeover = "takeover",
     }
 }
 
@@ -1165,8 +1167,16 @@ pub trait CoreApi {
     /// `sub_800F4B2`: a side spends `n` bug frags (the count wraps below
     /// 0, as the original's does: its callers check first).
     fn spend_bug_frags(&mut self, side: u8, n: u32);
-    /// `sub_802E4B8`: the side's SELECT or Cross special in progress.
+    /// `sub_802E4B8`: the side's SELECT special or takeover in progress.
     fn side_special(&self, side: u8) -> SideSpecial;
+    /// A system's takeover of side `side`'s navi starts, for `ticks`
+    /// (counted down in the navi's stage B, `sub_802E1D8`), or ends: while
+    /// it runs, idle asks the side's systems' `takeover` (BN6's Cross
+    /// special: SideState +0x54 and +0x30).
+    fn take_over(&mut self, side: u8, ticks: u16);
+    fn end_takeover(&mut self, side: u8);
+    /// Its ticks left.
+    fn takeover_ticks(&self, side: u8) -> u16;
     /// A side's player navi.
     fn player(&self, side: u8) -> Option<ObjectRef>;
     /// A side's combatants still in, in slot order.
@@ -1553,6 +1563,9 @@ pub trait CoreApi {
     /// `sub_800FB54`: use the chip the navi's requests ask for (as idle
     /// does on A): whether its use started.
     fn use_chip(&mut self, o: ObjectRef) -> ApiResult<bool>;
+    /// The attack `chip` starts (`sub_80127C0`'s dispatch: its action, or
+    /// the dimming, navi or instant chip's), in `set_attack` slot `kind`.
+    fn start_chip_attack(&mut self, o: ObjectRef, chip: crate::ChipHandle, kind: u8) -> ApiResult<()>;
     /// `sub_80116AE(5, end_lag, 2)`: a step straight to `target` (column 0:
     /// no step), then `end_lag` ticks.
     fn start_move_to(&mut self, o: ObjectRef, target: PanelPos, end_lag: u16) -> ApiResult<()>;

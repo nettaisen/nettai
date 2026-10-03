@@ -99,9 +99,9 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     tick_submerged(b, r);
     tick_anger(b, r);
     drain_hp(b, r);
-    // sub_802E1D8: the side's Cross special runs down.
+    // sub_802E1D8: the side's takeover (BN6's Cross special) runs down.
     let side = &mut b.sides[b.objects.get(r).alliance as usize];
-    side.cross_special_ticks = side.cross_special_ticks.saturating_sub(1);
+    side.takeover_ticks = side.takeover_ticks.saturating_sub(1);
     Flow::Tail
 }
 

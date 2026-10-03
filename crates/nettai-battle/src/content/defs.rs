@@ -409,9 +409,6 @@ pub struct Defs {
     /// The Program Advances, in the order they are tried (each chip holds
     /// the recipes that make it; `sub_8029520`).
     pub program_advances: Vec<super::ProgramAdvance>,
-    /// The Cross special's chips by row (`Rules::cross_special`), each with
-    /// the chip whose damage it strikes with, if another's; by [`RootId`].
-    pub cross_special: Vec<Vec<Vec<(ChipHandle, Option<ChipHandle>)>>>,
     /// State layouts by [`StateId`].
     pub schemas: Vec<SchemaDef>,
     /// The functions the runtime binds, by [`FnId`].
@@ -1253,24 +1250,6 @@ impl Defs {
                 .map(|i| ChipHandle(i as u16))
                 .map_err(|_| ContentError::new(format!("{whose} names the chip {key:?}, which the content doesn't have")))
         };
-        let mut cross_special = Vec::with_capacity(root_names.len());
-        for root in 0..root_names.len() {
-            let rows = &content.rules_of(RootId(root as u8)).cross_special;
-            let mut of_root = Vec::with_capacity(rows.len());
-            for row in rows {
-                let at = "the Cross special's chips (rules cross-special)";
-                let mut out = Vec::with_capacity(row.len());
-                for c in row {
-                    let damage_of = match &c.damage_of {
-                        Some(k) => Some(chip_handle(k, at)?),
-                        None => None,
-                    };
-                    out.push((chip_handle(&c.chip, at)?, damage_of));
-                }
-                of_root.push(out);
-            }
-            cross_special.push(of_root);
-        }
 
         // Navis, forms and identities: the definitions, in key order (a
         // definition's handle is its place among its registry's).
@@ -1759,7 +1738,6 @@ impl Defs {
             action_owner,
             change_actions,
             program_advances,
-            cross_special,
             schemas,
             functions: Vec::new(),
         };

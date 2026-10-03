@@ -67,7 +67,10 @@ pub mod request {
     pub const CROSS_DEATH: u32 = 0x0800_0000;
     /// Battle mode 9 A press.
     pub const MODE9_A: u32 = 0x1000_0000;
-    pub const CROSS_SPECIAL: u32 = 0x2000_0000;
+    /// A system's takeover of the side's navi is asked for (BN6's Cross
+    /// special, which DarkInvs asks for): idle's `sub_802E4E4` hands it to
+    /// the side's systems (`takeover_requested`).
+    pub const TAKEOVER: u32 = 0x2000_0000;
     /// Starts action 0x30 (`sub_80ED55C`, with `status::VOLLEY`): a
     /// volley of shots, the count per variant. No setter was found.
     pub const VOLLEY: u32 = 0x4000_0000;
@@ -331,9 +334,6 @@ pub struct ActorData {
     /// Its saved lifecycle position (`obj+0x5C`), which a status action
     /// and a form change return to.
     pub saved_word: Option<crate::kinds::player::NaviWord>,
-    /// AIData+0xF0: the Beast Over berserk controller's state
-    /// (`sub_802D322`), in the 0x10 bytes allocation leaves alone.
-    pub berserk: crate::kinds::player::berserk::State,
     /// Obstacles the obstacle-absorbing chip pulled in, in arrival order
     /// (at most eight; the game keeps them at +0x6C with the count at
     /// +0x0D).
@@ -366,13 +366,13 @@ impl Actors {
         &mut self.slots[id.0 as usize]
     }
 
-    /// Allocate the lowest free slot, cleared, except for its last 0x10
-    /// bytes, which the game leaves alone (the berserk controller's).
+    /// Allocate the lowest free slot, cleared. (The game leaves the last
+    /// 0x10 bytes alone: the controllers' state, Beast Over's berserk and
+    /// the Cross special's, which are BN6's systems' now, by side.)
     pub fn allocate(&mut self) -> Option<ActorId> {
         let slot = (0..SLOTS as u8).find(|&i| self.in_use & (1 << i) == 0)?;
         self.in_use |= 1 << slot;
-        let berserk = self.slots[slot as usize].berserk;
-        self.slots[slot as usize] = ActorData { berserk, ..ActorData::default() };
+        self.slots[slot as usize] = ActorData::default();
         Some(ActorId(slot))
     }
 
