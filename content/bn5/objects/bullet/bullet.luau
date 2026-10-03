@@ -3,7 +3,8 @@
 -- collision types. It probes as BN5's row 0 (nothing; BN6's row 0x3D) and bursts as BN5's rows 4 and 5 (0x080C6BEC,
 -- 0x080C6D10). Its burst sets no status (BN6's `sub_80C6AB8` gives the variant's): BN5's variants have none. BN5 sets
 -- the collision's element to the whole element byte where BN6 splits it (no secondary elements: the same for BN5's
--- elements). Its variants are BN5's rows (0x080C6B20): the Vulcans' row 0xC is BN6's (its hit effect BN6's).
+-- elements). Its variants are BN5's rows (0x080C6B20): the Vulcans' row 0xC and SuprVulc's 0x10 are BN6's (their hit
+-- effects BN6's: SuprVulc's BN5's effect 0x3D, BN6's 0x6A, the same row of the effect table).
 
 local collision = require("../../rules/collision")
 local common = require("@common/bullet/bullet")
@@ -32,6 +33,20 @@ bullet.variants = {
         hit_mod = 0,
         effect = define.effect { sprite = asset.sprite("bn5:pink-flash"), anim = 0, palette = 0 },
         sound = asset.sound("bn5:h-burst"),
+    },
+    -- The InfVulcs' (row 0xE: BN6's but for its hit, BN5's effect 0x3E, the Vulcans' in palette 2; BN6's a glint).
+    infinite = common.variant {
+        region = regions.long,
+        hit_mod = 1,
+        effect = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 2 },
+        single = true,
+    },
+    -- SuprVulc's (row 0x10: BN6's): the same, its hit brighter.
+    super_vulcan = common.variant {
+        region = regions.long,
+        hit_mod = 1,
+        effect = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 1 },
+        single = true,
     },
 }
 
