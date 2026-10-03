@@ -1082,6 +1082,11 @@ export type CountdownLook = {
     absorbed: AbsorbedLook?,
     -- Any removal leaves a puff (BN5's): no absorbing, no blinking out.
     removal_puffs: boolean?,
+    -- The blast's explosions and a removal's puff, and the panel bursts'
+    -- kind.
+    explosion: Effect,
+    puff: Effect,
+    bursts: Kind,
 }
 
 -- A lance's hit: what it is and hits, its spark, hit modifier and bug.

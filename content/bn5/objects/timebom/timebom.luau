@@ -1,6 +1,6 @@
 --!strict
--- BN5's TimeBom chips' bomb and controller (TimeBom1-3 and TimeBom+, the dimming handler's subtype 10): BN6's
--- (@bn6/chips/timebom: the same code, BN5's attack object #0x4B and effect object #0x27) but for
+-- BN5's TimeBom chips' bomb and controller (TimeBom1-3 and TimeBom+, the dimming handler's subtype 10): the shared
+-- code (@common/timebom: BN6's, BN5's attack object #0x4B and effect object #0x27) but for
 --
 -- - where the bomb goes (0x080E3420, BN6's `sub_80E3264`): in each row, the enemy's frontmost panel (from the
 --   back of the field, the first panel of the other side's, then the first of the user's, one step back toward
@@ -13,9 +13,11 @@
 --   blink are its 6 and 7, BN6's 8 and 9, the same actions).
 
 local collision = require("../../rules/collision")
-local controller = require("@bn6/chips/timebom/controller")
-local countdown = require("@bn6/chips/timebom/countdown")
+local controller = require("@common/timebom/controller")
+local countdown = require("@common/timebom/countdown")
 local dimming_chips = require("@common/dimming")
+local effects = require("@bn6/lib/effects")
+local panel_bursts = require("../panel-bursts/panel_bursts")
 
 local timebom = {}
 
@@ -32,6 +34,10 @@ timebom.kind = countdown.make_kind("bn5:timebom/countdown", {
     },
     blast = { is = collision.attack, hits = collision.hits_navis },
     removal_puffs = true,
+    -- (The blast's explosions and the puff BN6's.)
+    explosion = effects.explosion,
+    puff = effects.puff,
+    bursts = panel_bursts.kind,
 })
 
 -- What the bombs are and what they react to: a neutral body, hit by everything (rows 0xE and 0xF).
