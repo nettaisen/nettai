@@ -146,8 +146,10 @@ export type WaveVariant = {
     collision: CollisionType,
     bug: number?,
     palette: number?,
-    -- Its sprite where a game's isn't BN6's wide wave (BN5's).
+    -- Its sprite where a game's isn't BN6's wide wave (BN5's), and its
+    -- trail's where that isn't BN6's rock cubes (BN5's is its wave's).
     sprite: SpriteAsset?,
+    trail_sprite: SpriteAsset?,
 }
 
 -- A sonic boom (lib/swords/sonic_boom.luau): its hit modifier, whether it
