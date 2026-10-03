@@ -15,6 +15,7 @@ local mine = land_mine.make_kind {
         ai_index = 1,
         absorbable = false,
         scrap = false,
+        throwable = false,
         look = { anim = 0, palette = 0, shadow = false },
     },
     sprite = asset.sprite("bn6:land-mine"),

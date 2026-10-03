@@ -63,7 +63,7 @@ return define.roles {
         -- a thrown obstacle's landing's.
         plain = sparks.plain,
         guard = sparks.guard,
-        thrown_obstacle = sparks.charged,
+        thrown_obstacle = sparks.plain,
         -- A lava panel's burn (the sparks' row 1, the fire spark: 0x08016D80).
         panel_burn = sparks.fire,
     },
