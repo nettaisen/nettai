@@ -29,8 +29,9 @@ const FIELD_PALETTES: u32 = 0x086F_6970;
 /// - 1 (`sub_800C01C`'s table). BN5 has 11 panel types (BN6 13).
 const PANEL_BLOCKS: u32 = 0x086F_5CB0;
 const PANEL_TYPES: u32 = 11;
-/// The highlighted panel block (`sub_800C0BA`'s): BN5 has one for both
-/// highlights (BN6 a table of two).
+/// The highlighted panel block (`sub_800C0BA`'s): BN5 has one, which it
+/// draws for both highlights (BN6 a table of two); the pack has it as both,
+/// what BN5 draws for each.
 const HIGHLIGHT_BLOCK: u32 = 0x086F_64F0;
 /// The front edges by owner (`sub_800C100`'s).
 const FRONT_EDGES: u32 = 0x086F_6510;
@@ -205,9 +206,17 @@ fn field(rom: &Rom) -> Field {
         palettes,
         first_palette: 1,
         palette_anims,
+        // (BN5's types in its own order, each by the engine's number:
+        // content/bn5/compat/panels.toml.)
+        panel_types: (0..PANEL_TYPES as u8)
+            .map(|n| match bn5_compat::Compat::bn5().panel_type(n) {
+                Ok(Some(t)) => t as u8,
+                other => panic!("BN5's panel type {n} is no engine panel type ({other:?})"),
+            })
+            .collect(),
         panels: (0..PANEL_TYPES * 6).map(|i| block(PANEL_BLOCKS + 32 * i)).collect(),
         front_edges: [edge(FRONT_EDGES), edge(FRONT_EDGES + 32)],
-        highlights: [block(HIGHLIGHT_BLOCK), block(HIGHLIGHT_BLOCK)],
+        highlights: vec![block(HIGHLIGHT_BLOCK), block(HIGHLIGHT_BLOCK)],
     }
 }
 

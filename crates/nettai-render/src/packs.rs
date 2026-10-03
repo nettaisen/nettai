@@ -42,11 +42,14 @@ impl<'a> Packs<'a> {
     /// The graphics of root `root`'s assets pack (a game's: the arena's,
     /// a side's).
     pub fn of_root(&self, c: &Content, root: RootId) -> &'a Bundle {
+        self.bundle(self.id_of_root(c, root))
+    }
+
+    /// Root `root`'s assets pack (the content's own for a root without
+    /// one loaded).
+    pub fn id_of_root(&self, c: &Content, root: RootId) -> PackId {
         let game = c.scripts.roots.get(root.index()).map(|r| r.assets());
-        match game.and_then(|g| c.assets.pack(g)) {
-            Some(p) => self.bundle(p),
-            None => self.own(),
-        }
+        game.and_then(|g| c.assets.pack(g)).filter(|p| p.index() < self.bundles.len()).unwrap_or(self.own)
     }
 
     /// The graphics of the pack a definition's root names its assets in
