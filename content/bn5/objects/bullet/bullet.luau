@@ -48,6 +48,21 @@ bullet.variants = {
         effect = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 1 },
         single = true,
     },
+    -- NapalmSoul's charged shot's (rows 0x11 and 0x12, the last one's; BN6's ColArmy's and ColForce's with their
+    -- statuses): the panel found and the one behind it, staggering (the last flinching), its hit shown once at the
+    -- bullet (effect 0x58: BN5's own vulcan hit, its animation 1).
+    napalm = common.variant {
+        region = regions.long,
+        hit_mod = 1,
+        effect = define.effect { sprite = asset.sprite("bn5:vulcan-hit"), anim = 1, palette = 0 },
+        single = true,
+    },
+    napalm_last = common.variant {
+        region = regions.long,
+        hit_mod = 3,
+        effect = define.effect { sprite = asset.sprite("bn5:vulcan-hit"), anim = 1, palette = 0 },
+        single = true,
+    },
 }
 
 return bullet

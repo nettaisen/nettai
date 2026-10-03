@@ -125,8 +125,8 @@ return define.roles {
         guard = sparks.guard,
         -- An eruption's hits' (a volcano panel's).
         eruption = sparks.fire,
-        -- A thrown obstacle's landing's.
-        thrown_obstacle = sparks.charged,
+        -- A thrown obstacle's landing's (`sub_80180EC`: the hit region's Param2 0, the plain spark).
+        thrown_obstacle = sparks.plain,
         -- A navi's programs uninstalled.
         uninstall = sparks.uninstall,
     },
