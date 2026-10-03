@@ -967,10 +967,14 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
             for (p, side) in sides.iter_mut().enumerate() {
                 let Some(side) = side else { continue };
                 let was_open = side.in_custom;
-                let request = side.tick(&context(p), &mut consoles[p], |id| {
+                let ctx = context(p);
+                battle.stats[p] = ctx.stats;
+                battle.round.turn = ctx.turn;
+                let damage = |id| {
                     let d = content.chip(id).damage;
                     if d < 1000 { d } else { 0 }
-                });
+                };
+                let request = side.tick_with(&ctx, &mut consoles[p], damage, &mut battle.custom_extras(p as u8));
                 if request == Some(Request::Confirm) {
                     confirmed[p] = Some(f.frame);
                 }

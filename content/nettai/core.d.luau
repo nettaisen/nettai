@@ -1471,6 +1471,26 @@ export type Kind = KindSpec
 -- §2.2): its state of each side and its player's setup (named fields, as a
 -- kind's state), and the hooks the framework calls, each for one side
 -- (§4.1). A system sees only its own state, of the side it is called for.
+-- A system's custom-screen button (docs/design/rules-in-luau.md §4.4).
+export type ButtonSpec = {
+    -- Its first slot, and how many it takes (1 or 2).
+    slot: number,
+    cells: number?,
+    -- Its uses on a screen (the machinery it starts counts them).
+    uses: number?,
+    -- Its first cell's right neighbor and its last cell's left one, over
+    -- the layout's.
+    right: number?,
+    left: number?,
+    -- As the screen opens: whether it is on the screen. The first button
+    -- to claim a slot keeps it.
+    shown: (side: number) -> boolean,
+    -- At the open and after each pick, unless it is picked or used up.
+    -- None: selectable at the open, then left as it is.
+    state: ((side: number) -> ("selectable" | "unavailable"))?,
+    -- A on it.
+    pressed: (side: number) -> (),
+}
 export type SystemSpec = {
     id: string,
     state: StateSchema?,
@@ -1480,6 +1500,9 @@ export type SystemSpec = {
     actions: { Action }?,
     -- Its custom screen's extras (docs/design/rules-in-luau.md §4.4): the
     -- side's screen asks them; the first system that answers decides.
+    -- Its custom-screen buttons, by name (what the frontend draws them by):
+    -- where each sits and its functions, which run as the system's.
+    buttons: { [string]: ButtonSpec }?,
     custom: {
         -- As the screen opens: how many chips it deals (`sub_802A40C`).
         -- None answering: the custom level (8 at most), NumbrOpn's 10, and
@@ -2335,6 +2358,18 @@ declare define: {
 -- What a system's own calls reach (docs/design/rules-in-luau.md §4.5,
 -- §5.3): only in a hook the framework calls (from modules under rules/,
 -- which the content check holds to).
+-- A side's custom screen, in its systems' custom hooks (§4.4): the
+-- refusal sound; the shared machinery for the button under the cursor (the
+-- picked chips scrapped, the chips not picked dealt again); whether the
+-- last pick is a chip; the state of the button under the cursor.
+declare custom: {
+    refuse: (side: number) -> (),
+    sacrifice: (side: number) -> (),
+    redeal: (side: number) -> (),
+    last_pick_is_chip: (side: number) -> boolean,
+    cursor_state: (side: number) -> "selectable" | "unavailable" | "selected",
+}
+
 declare system: {
     -- The system's state of the side it was called for (cast it to its
     -- declared type: `system.state() :: State`).

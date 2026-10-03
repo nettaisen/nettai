@@ -1116,7 +1116,35 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
 
     g.set("int", int_lib(lua)?)?;
     g.set("system", system_lib(lua)?)?;
+    g.set("custom", custom_lib(lua)?)?;
     Ok(())
+}
+
+/// `custom`: a side's custom screen, in its systems' custom hooks
+/// (docs/design/rules-in-luau.md §4.4).
+fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
+    let t = lua.create_table()?;
+    lib_fn!(lua, t, "refuse", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_refuse(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "sacrifice", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_sacrifice(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "redeal", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_redeal(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "last_pick_is_chip", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_last_pick_is_chip(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "cursor_state", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_cursor_state(side).map_err(api_error))
+    });
+    Ok(t)
 }
 
 /// `system`: what a system's own calls reach (docs/design/rules-in-luau.md
@@ -1998,6 +2026,19 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 ))),
             },
             _ => Err(mlua::Error::runtime(format!("a controller returns its outcome's name, not a {}", v.type_name()))),
+        },
+        // A button's `shown` and `state`.
+        HookCall::System { hook: SystemHook::ButtonShown, .. } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
+        HookCall::System { hook: SystemHook::ButtonState, .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::String(s) => match &*s.to_str()? {
+                "selectable" => Ok(Value::Int(0)),
+                "unavailable" => Ok(Value::Int(1)),
+                other => Err(mlua::Error::runtime(format!(
+                    "a button's state is \"selectable\" or \"unavailable\", not {other:?}"
+                ))),
+            },
+            _ => Err(mlua::Error::runtime(format!("a button's state is its name, not a {}", v.type_name()))),
         },
         // A hand size.
         HookCall::System { hook: SystemHook::CustomHandSize, .. } => match &v {

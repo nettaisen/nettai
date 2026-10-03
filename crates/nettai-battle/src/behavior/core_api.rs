@@ -260,6 +260,17 @@ fn int(v: FieldValue) -> i64 {
     }
 }
 
+impl Battle {
+    /// Side `side`'s custom screen, which a custom hook reaches (§4.4).
+    fn custom_screen(&self, side: u8) -> ApiResult<&crate::custom::screen::Screen> {
+        self.custom.sides[side as usize & 1].screen.as_ref().ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+    }
+
+    fn custom_screen_mut(&mut self, side: u8) -> ApiResult<&mut crate::custom::screen::Screen> {
+        self.custom.sides[side as usize & 1].screen.as_mut().ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+    }
+}
+
 impl CoreApi for Battle {
     // ---- The battle ------------------------------------------------------
 
@@ -589,6 +600,40 @@ impl CoreApi for Battle {
         // (The local player's save loses them too, which no battle reads.)
         let frags = &mut self.bug_frags[side as usize & 1];
         *frags = frags.wrapping_sub(n);
+    }
+
+    fn custom_refuse(&mut self, side: u8) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.refuse();
+        Ok(())
+    }
+
+    fn custom_sacrifice(&mut self, side: u8) -> ApiResult<()> {
+        let s = self.custom_screen_mut(side)?;
+        let slot = s.cursor_button_slot().ok_or_else(|| ApiError::Other("custom.sacrifice: no button under the cursor".into()))?;
+        s.start_sacrifice(slot);
+        Ok(())
+    }
+
+    fn custom_redeal(&mut self, side: u8) -> ApiResult<()> {
+        let s = self.custom_screen_mut(side)?;
+        let slot = s.cursor_button_slot().ok_or_else(|| ApiError::Other("custom.redeal: no button under the cursor".into()))?;
+        s.start_redeal(slot);
+        Ok(())
+    }
+
+    fn custom_last_pick_is_chip(&self, side: u8) -> ApiResult<bool> {
+        Ok(self.custom_screen(side)?.last_pick_is_chip())
+    }
+
+    fn custom_cursor_state(&self, side: u8) -> ApiResult<&'static str> {
+        let s = self.custom_screen(side)?;
+        let slot = s.cursor_button_slot().ok_or_else(|| ApiError::Other("custom.cursor_state: no button under the cursor".into()))?;
+        use crate::custom::screen::SlotState;
+        Ok(match s.slots[slot as usize].state {
+            SlotState::Selectable => "selectable",
+            SlotState::Unavailable => "unavailable",
+            SlotState::Selected => "selected",
+        })
     }
 
     fn take_over(&mut self, side: u8, ticks: u16) {

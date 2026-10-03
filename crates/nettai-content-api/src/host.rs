@@ -246,6 +246,16 @@ pub enum SystemHook {
     /// first system that answers decides; none answering, the framework's
     /// rule (the custom level, NumbrOpn and the hand-shrink bug).
     CustomHandSize,
+    /// A system's custom-screen button's `shown(side)` (§4.4), as the
+    /// screen opens: whether it is on the screen. (Not in `hooks`: each
+    /// button names its own functions.)
+    ButtonShown,
+    /// A button's `state(side)`, at the open and after each pick unless it
+    /// is selected: "selectable" or "unavailable". A button without one is
+    /// selectable at the open and left as it is.
+    ButtonState,
+    /// A button's `pressed(side)`: A on it.
+    ButtonPressed,
     /// `form_reverted(side, navi)`: the framework reverts the navi to its
     /// base form, its form not yet changed (`sub_80158CC`): BN6's spends a
     /// Beast Out and exhausts a Beast Over. Its result is unused.
@@ -277,11 +287,14 @@ impl SystemHook {
             SystemHook::Countered => "countered",
             SystemHook::NaviTick => "navi_tick",
             SystemHook::CustomHandSize => "custom.hand_size",
+            SystemHook::ButtonShown => "button.shown",
+            SystemHook::ButtonState => "button.state",
+            SystemHook::ButtonPressed => "button.pressed",
             SystemHook::Takeover => "takeover",
         }
     }
 
-    pub const ALL: [SystemHook; 17] = [
+    pub const ALL: [SystemHook; 20] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -299,6 +312,9 @@ impl SystemHook {
         SystemHook::Countered,
         SystemHook::NaviTick,
         SystemHook::CustomHandSize,
+        SystemHook::ButtonShown,
+        SystemHook::ButtonState,
+        SystemHook::ButtonPressed,
     ];
 }
 
