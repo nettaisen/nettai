@@ -8,7 +8,7 @@ local slash = require("@bn6/lib/swords/slash")
 local swords = require("../../lib/swords")
 
 return define.chip {
-    id = "longswrd",
+    id = "bn5:longswrd",
     codes = { "C", "M", "S" },
     element = "null",
     family = "sword",

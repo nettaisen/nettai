@@ -6,7 +6,7 @@ local widesht = require("../widesht/chip")
 local shot = require("../widesht/action")
 
 return define.chip {
-    id = "suprspr",
+    id = "bn6:suprspr",
     codes = { "A", "B", "C", "*" },
     element = "aqua",
     family = "program_advance",

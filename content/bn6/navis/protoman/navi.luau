@@ -8,19 +8,19 @@ local charge = require("./charge")
 local protoman = require("./chip")
 
 return define.navi {
-    id = "protoman",
-    sprite = asset.sprite("protoman"),
+    id = "bn6:protoman",
+    sprite = asset.sprite("bn6:protoman"),
     element = "null",
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("protoman-win"), lose = asset.banner("protoman-deleted") },
+    banners = { win = asset.banner("bn6:protoman-win"), lose = asset.banner("bn6:protoman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`).
-    mugshot = asset.mugshot("protoman"),
+    mugshot = asset.mugshot("bn6:protoman"),
     merge_height = 0,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("protoman-portrait"),
+        portrait = asset.sprite("bn6:protoman-portrait"),
     },
     own_chip = { chip = protoman, code = "B" },
     -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,

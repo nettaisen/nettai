@@ -27,7 +27,7 @@ local PATTERN, FIRE, RECOVER = 0x0, 0x4, 0x8
 
 local ANIM_SHOOT = 0x0E
 local SHOTS, SHOT_TICK, SHOT_TICKS, RECOVER_TICKS = 9, 1, 5, 5
-local SHOT_SOUND, SHOT_Z = asset.sound("buster-shot"), 0x18_0000
+local SHOT_SOUND, SHOT_Z = asset.sound("bn6:buster-shot"), 0x18_0000
 -- The rows' orders (`byte_80F0138`): the six orders of -1, 0, +1.
 local PATTERNS: { [number]: { number } } = {
     [0] = { -1, 1, 0 },
@@ -118,7 +118,7 @@ local function recover(me: Object, s: State)
 end
 
 rapid_buster.action = define.action {
-    id = "rapid-buster/action",
+    id = "bn6:rapid-buster/action",
     state = { timer = "u16", pattern = "u8" },
     -- `sub_80F00F2`.
     update = function(me: Object, s: State)

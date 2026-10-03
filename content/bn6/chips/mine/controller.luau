@@ -34,7 +34,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "mine/controller",
+    id = "bn6:mine/controller",
     pool = "effect",
     state = { bonus = "u16" },
     -- `sub_80E342C`.

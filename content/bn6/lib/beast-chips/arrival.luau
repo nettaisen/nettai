@@ -54,7 +54,7 @@ local function tick(me: Object)
 end
 
 arrival.kind = define.kind {
-    id = "beast-chips/arrival",
+    id = "bn6:beast-chips/arrival",
     pool = "effect",
     state = { look = "sprite", anim = "u8", ticks = "u8" },
     -- 0x080EE300: by state (its end `object_freeMemory`), then the sprite,

@@ -11,13 +11,13 @@ local instrument = require("@bn6/lib/instruments/instrument")
 local instruments = require("@bn6/lib/instruments/controller")
 local statuses = require("../../rules/status")
 
-local SPRITE = asset.sprite("instrument")
+local SPRITE = asset.sprite("bn5:instrument")
 
 -- Confusion (status 0x23: 4 ticks) on the other navi's panel, learning nothing.
 local EFFECT = effects.confuse(statuses.confuse_4, collision.guard_breaking, collision.nothing)
 
 return define.chip {
-    id = "discord",
+    id = "bn5:discord",
     codes = { "B", "J", "Q", "*" },
     element = "null",
     family = "summon",
@@ -32,7 +32,7 @@ return define.chip {
     -- BN5's row 1; its identity the actor record 0xDE (0x08014C94: version 5, AI index 0x21).
     dimming = instruments.hook(instrument.instrument {
         identity = define.identity {
-            id = "discord",
+            id = "bn5:discord",
             class = "field_object",
             version = 5,
             ai_index = 0x21,
@@ -41,7 +41,7 @@ return define.chip {
         palette = 2,
         play_ticks = 0x55 * 2,
         pause_ticks = 0x3C,
-        tune = asset.sound("discord"),
+        tune = asset.sound("bn5:discord"),
         effect = EFFECT,
         hp = 100,
         sprite = SPRITE,

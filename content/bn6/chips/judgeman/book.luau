@@ -27,8 +27,8 @@ export type State = {
 -- What a book's judge keeps.
 type Judge = { books_done: number }
 
-local SPRITE = asset.sprite("judgeman")
-local SOUND_APPEAR = asset.sound("appear")
+local SPRITE = asset.sprite("bn6:judgeman")
+local SOUND_APPEAR = asset.sound("bn6:appear")
 local ANIM_WAIT, ANIM_FLY = 0xA, 0xB
 
 -- Its speed (16.16).
@@ -248,7 +248,7 @@ local function tick(me: Object)
 end
 
 book.kind = define.kind {
-    id = "judgeman/book",
+    id = "bn6:judgeman/book",
     pool = "attack",
     state = { turn = "u8", axis = "u8", judge = "object", target_x = "u32", target_y = "u32" },
     -- `sub_80D7ACC`.

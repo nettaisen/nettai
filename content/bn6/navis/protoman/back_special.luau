@@ -20,7 +20,7 @@ local TICKS = 0x14
 -- The guard that only guards (the original's params word 0x114 with
 -- subtype 3).
 local GUARD = guard.action {
-    id = "protoman/back-special/action",
+    id = "bn6:protoman/back-special/action",
     ticks = TICKS,
     look = reflector_shield.looks.navicust_reflect,
     heedless = true,
@@ -48,7 +48,7 @@ local function setup_reflect(navi: Object): Action
 end
 
 back_special.weapon = define.weapon {
-    id = "protoman/back-special",
+    id = "bn6:protoman/back-special",
     -- The charge table's row 0x34, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 70, 70, 70, 70, 70, 90, 80, 70 },
@@ -56,7 +56,7 @@ back_special.weapon = define.weapon {
 }
 
 back_special.weapon_2 = define.weapon {
-    id = "protoman/back-special-2",
+    id = "bn6:protoman/back-special-2",
     -- The charge table's row 0x30, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },

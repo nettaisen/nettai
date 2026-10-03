@@ -118,10 +118,10 @@ pub enum Msg {
 
 /// How the editor was started.
 pub struct Options {
-    /// The content root given (`--content`), which Play hands the frontend
-    /// too; else the roots are found as the frontend finds them.
+    /// The content directory given (`--content`), which Play hands the
+    /// frontend too; else the repository's.
     pub content: Option<PathBuf>,
-    /// The roots loaded, the home first (their strings tables).
+    /// The content folders loaded (their strings tables).
     pub roots: Vec<PathBuf>,
     /// The packs given by directory (`--pack`), each in place of the found
     /// one of its game, which Play hands the frontend too.

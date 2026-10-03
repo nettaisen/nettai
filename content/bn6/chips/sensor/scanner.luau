@@ -21,8 +21,8 @@ export type State = {
     found: boolean,
 }
 
-local SPRITE = asset.sprite("erase-mark")
-local STEP_SOUND = asset.sound("erase-man")
+local SPRITE = asset.sprite("bn6:erase-mark")
+local STEP_SOUND = asset.sound("bn6:erase-man")
 -- The aim's row step (`off_80D9328`).
 local ROW_STEP: { [number]: number } = { [0] = -1, [1] = 0, [2] = 1 }
 -- The other side's bodies (by its side: `off_80D9340`, `off_80D9344`);
@@ -123,7 +123,7 @@ local function tick(me: Object)
 end
 
 scanner.kind = define.kind {
-    id = "sensor/scanner",
+    id = "bn6:sensor/scanner",
     pool = "attack",
     state = {
         turret = "object",

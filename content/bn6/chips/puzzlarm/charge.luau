@@ -21,7 +21,7 @@ local TICKS = 0x3C
 
 -- The pulse (the original's parameter bytes 0, 0x10, 0x3C, 0).
 puzzlarm.action = action.action {
-    id = "puzzlarm/charge/action",
+    id = "bn6:puzzlarm/charge/action",
     pulse = pulse.variant { hit_mod = 0, status = statuses.paralyze_90, ticks = TICKS, palette = 1 },
     hold = TICKS - 5,
 }
@@ -33,7 +33,7 @@ local function setup(navi: Object): Action
 end
 
 puzzlarm.weapon = define.weapon {
-    id = "puzzlarm/charge",
+    id = "bn6:puzzlarm/charge",
     charge_ticks = { 120, 120, 120, 120, 120, 100, 100, 100 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
     sticky = true,

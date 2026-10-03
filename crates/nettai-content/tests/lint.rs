@@ -15,7 +15,7 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
     // A kind under objects/ that only one chip folder uses.
     c.scripts.modules.insert(
         module("objects/held/held"),
-        "return { kind = define.kind { id = 'held', pool = 'effect', update = function(me) end } }".into(),
+        "return { kind = define.kind { id = 'test:held', pool = 'effect', update = function(me) end } }".into(),
     );
     c.scripts.modules.insert(
         module("chips/holder/chip"),
@@ -24,7 +24,7 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
             .into(),
     );
     // A role that names a definition, left out.
-    let roles = c.scripts.home_module_mut("test/rules/roles").expect("the test pack's roles");
+    let roles = c.scripts.module_mut(testing::ROOT, "test/rules/roles").expect("the test pack's roles");
     assert!(roles.contains("    sparks = ruleset.sparks,\n"));
     *roles = roles.replace("    sparks = ruleset.sparks,\n", "    sparks = { plain = ruleset.sparks.plain },\n");
     c.define().unwrap();
@@ -47,7 +47,7 @@ fn a_collision_type_defined_twice_is_an_error() {
         let row_offset = if key == "other" { 0x7F8 } else { 0x7F0 };
         c.scripts.modules.insert(
             module(path),
-            format!("return define.collision {{ id = '{key}', side0 = 0x80, side1 = 0x80, row_offset = {row_offset} }}"),
+            format!("return define.collision {{ id = 'test:{key}', side0 = 0x80, side1 = 0x80, row_offset = {row_offset} }}"),
         );
     }
     c.define().unwrap();
@@ -94,7 +94,7 @@ fn bn6_strings_name_bn6_definitions_and_only_their_shape_is_hashed() {
         let mut c = nettai_battle::Content::default();
         c.scripts = Scripts::root(root.manifest.clone(), root.modules.clone());
         c.assets = testing::asset_names_for(&c.scripts);
-        c.strings = strings.qualified("bn6");
+        c.strings = strings;
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
         c
     };
@@ -103,7 +103,7 @@ fn bn6_strings_name_bn6_definitions_and_only_their_shape_is_hashed() {
     let errors: Vec<String> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| format!("{}: {}", i.file, i.message)).collect();
     assert!(errors.is_empty(), "{}", errors.join("\n"));
     // The own strings' shape is in the records: MagPanel's one line.
-    let magpanl = c.defs.chip_by_key("magpanl").expect("magpanl");
+    let magpanl = c.defs.chip_by_key("bn6:magpanl").expect("bn6:magpanl");
     assert_eq!(c.chip(magpanl).description_lines, 1);
     // Other text of the same shape: the same content.
     let mut renamed = root.strings.clone();
@@ -113,13 +113,13 @@ fn bn6_strings_name_bn6_definitions_and_only_their_shape_is_hashed() {
     assert_eq!(define(renamed).hash(), c.hash());
     // Another shape: another content.
     let mut reshaped = root.strings.clone();
-    reshaped.chips.get_mut("magpanl").unwrap().description = Some("one\ntwo".into());
+    reshaped.chips.get_mut("bn6:magpanl").unwrap().description = Some("one\ntwo".into());
     assert_ne!(define(reshaped).hash(), c.hash());
 }
 
-/// docs/design/rules-in-luau.md §7.2: BN5's root (content/bn5) loads beside
-/// BN6's, each one's keys its own: `bn5:cannon` and `bn6:cannon` are two
-/// chips, and a key both roots define must be qualified to be looked up.
+/// docs/design/rules-in-luau.md, the flat namespace: BN5's folder
+/// (content/bn5) loads beside BN6's, one namespace, every id in full:
+/// `bn5:cannon` and `bn6:cannon` are two chips.
 /// (BN5's chips have no use yet, which the define phase refuses: until the
 /// BN5 port writes them, the refusal must be that, of a `bn5:` chip.)
 #[test]
@@ -129,8 +129,8 @@ fn bn5_and_bn6_load_together_under_their_names() {
     let bn6 = nettai_content::root::read(&repo.join("content/bn6"), &mut r).expect("content/bn6 reads");
     let bn5 = nettai_content::root::read(&repo.join("content/bn5"), &mut r).expect("content/bn5 reads");
     let mut c = nettai_battle::Content::default();
-    c.strings = bn6.strings.qualified("bn6");
-    c.strings.merge(bn5.strings.qualified("bn5"));
+    c.strings = bn6.strings;
+    c.strings.merge(bn5.strings);
     c.scripts = Scripts::root(bn6.manifest, bn6.modules);
     c.scripts.add_root(bn5.manifest, bn5.modules);
     c.assets = testing::asset_names_for(&c.scripts);
@@ -140,12 +140,11 @@ fn bn5_and_bn6_load_together_under_their_names() {
         return;
     }
     let d = &c.defs;
-    assert_eq!(d.roots, ["bn6", "bn5"]);
+    assert_eq!(d.roots, ["bn5", "bn6"]);
     let (six, five) = (d.chip_by_key("bn6:cannon").expect("bn6:cannon"), d.chip_by_key("bn5:cannon").expect("bn5:cannon"));
     assert_ne!(six, five);
-    assert_eq!(d.chip_by_key("cannon"), None, "both roots define it");
-    // The battle's rules are the content's own root's: BN6's.
-    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("bn6:bn6"));
+    assert_eq!(d.chip_by_key("cannon"), None, "an id is written in full");
+    assert_eq!(d.stock_ruleset_of("bn6"), d.ruleset_by_key("bn6:stock"));
     assert_eq!(c.strings.chip("bn5:cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
 }
 
@@ -178,7 +177,7 @@ fn bn5s_rules_are_its_games() {
         .collect();
     bn5.modules.retain(|path, _| !unported.iter().any(|k| path.starts_with(k.as_str())));
     let mut c = nettai_battle::Content {
-        strings: bn6.strings.qualified("bn6"),
+        strings: bn6.strings,
         scripts: Scripts::root(bn6.manifest, bn6.modules),
         ..Default::default()
     };
@@ -189,8 +188,8 @@ fn bn5s_rules_are_its_games() {
     let d = &c.defs;
     let five = d.root_id("bn5").expect("the bn5 root");
     assert!(d.stock_ruleset_of("bn5").is_some(), "BN5's stock ruleset");
-    assert_eq!(d.stock_ruleset(), d.stock_ruleset_of("bn6"), "the content's own is BN6's");
-    let (six, five) = (c.home_rules(), c.rules_of(five));
+    assert_eq!(d.stock_ruleset_of("bn6"), d.ruleset_by_key("bn6:stock"));
+    let (six, five) = (c.rules_of(d.root_id("bn6").expect("the bn6 game")), c.rules_of(five));
     assert_eq!(five.pools.slots(), [16, 32, 32]);
     assert_eq!(six.pools.slots(), [32, 32, 32]);
     // BN5's tables where they are BN6's, and where they aren't.

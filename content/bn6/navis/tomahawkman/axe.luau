@@ -14,7 +14,7 @@ export type State = {
     action: Action?,
 }
 
-local SPRITE = asset.sprite("eagle-tomahawk")
+local SPRITE = asset.sprite("bn6:eagle-tomahawk")
 local ANIM_RAISED, ANIM_SWUNG = 6, 7
 
 -- Its actions, which his routine sets.
@@ -81,7 +81,7 @@ local function init(me: Object)
 end
 
 axe.kind = define.kind {
-    id = "tomahawkman/axe",
+    id = "bn6:tomahawkman/axe",
     pool = "effect",
     state = { action = "action" },
     -- `sub_80E3FD0`: its sprite steps unless the battle is paused.

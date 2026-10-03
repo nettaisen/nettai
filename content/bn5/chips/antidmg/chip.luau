@@ -7,7 +7,7 @@
 local traps = require("@bn6/lib/traps/controller")
 
 return define.chip {
-    id = "antidmg",
+    id = "bn5:antidmg",
     codes = { "C", "F", "M", "*" },
     element = "null",
     family = "invisible",

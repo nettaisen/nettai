@@ -784,7 +784,7 @@ fn console_z(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, g
     }
     let drop = |d: nettai_battle::object::ObjectRef| {
         let d = b.objects.get(d);
-        compat.games.drop_z_offset(game, nettai_content_api::keys::local(&b.content.defs.kind(d.kind).key), d.pos.z, d.timer)
+        compat.games.drop_z_offset(game, &b.content.defs.kind(d.kind).key, d.pos.z, d.timer)
     };
     let offset = match drop(r) {
         0 => o.related[0].map_or(0, drop),
@@ -811,10 +811,10 @@ fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, un
         index,
         o.flags,
         [o.state, action, o.phase, o.phase_init],
-        [o.panel.x, compat.games.panel_y(game, nettai_content_api::keys::local(&b.content.defs.kind(o.kind).key), o.panel.y)],
+        [o.panel.x, compat.games.panel_y(game, &b.content.defs.kind(o.kind).key, o.panel.y)],
         o.alliance,
         [o.hp, o.max_hp],
-        [compat.games.x(game, nettai_content_api::keys::local(&b.content.defs.kind(o.kind).key), o.pos.x), o.pos.y, console_z(b, compat, r, game)],
+        [compat.games.x(game, &b.content.defs.kind(o.kind).key, o.pos.x), o.pos.y, console_z(b, compat, r, game)],
         o.timer,
         o.anim,
         status,
@@ -1071,10 +1071,10 @@ mod tests {
         for t in 1..=10 {
             let z = drop(ours, t);
             let timer = (10 - t) as u16;
-            assert_eq!(z + games.drop_z_offset(Game::JpGregar, "django/navi", z, timer), drop(theirs, t), "tick {t}");
-            assert_eq!(games.drop_z_offset(Game::JpFalzar, "django/navi", z, timer), 0);
+            assert_eq!(z + games.drop_z_offset(Game::JpGregar, "bn6:django/navi", z, timer), drop(theirs, t), "tick {t}");
+            assert_eq!(games.drop_z_offset(Game::JpFalzar, "bn6:django/navi", z, timer), 0);
         }
-        assert_eq!(games.drop_z_offset(Game::JpGregar, "django/navi", drop(ours, 1), 9), 5616);
+        assert_eq!(games.drop_z_offset(Game::JpGregar, "bn6:django/navi", drop(ours, 1), 9), 5616);
         assert_eq!(drop(ours, 10), drop(theirs, 10));
     }
 }

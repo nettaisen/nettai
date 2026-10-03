@@ -6,7 +6,7 @@ local lockon = require("../../rules/lockon")
 local cornsht = require("./action")
 
 local cornsht1 = define.chip {
-    id = "cornsht1",
+    id = "bn6:cornsht1",
     codes = { "J", "K", "L" },
     element = "wood",
     family = "wood",
@@ -24,7 +24,7 @@ local cornsht1 = define.chip {
 }
 
 local cornsht2 = define.chip {
-    id = "cornsht2",
+    id = "bn6:cornsht2",
     codes = { "C", "D", "E" },
     element = "wood",
     family = "wood",
@@ -42,7 +42,7 @@ local cornsht2 = define.chip {
 }
 
 local cornsht3 = define.chip {
-    id = "cornsht3",
+    id = "bn6:cornsht3",
     codes = { "P", "Q", "R" },
     element = "wood",
     family = "wood",

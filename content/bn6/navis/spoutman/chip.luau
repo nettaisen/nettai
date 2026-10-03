@@ -162,7 +162,7 @@ local PHASES: { [number]: (me: Object, s: State) -> () } = {
 }
 
 return define.chip {
-    id = "dripshwr",
+    id = "bn6:dripshwr",
     codes = { "A" },
     element = "aqua",
     family = "aqua",
@@ -177,7 +177,7 @@ return define.chip {
     slot_in_limit = 1,
     -- `sub_80F15CE` (`off_80F15E0`).
     action = define.action {
-        id = "dripshwr/action",
+        id = "bn6:dripshwr/action",
         state = STATE,
         update = function(me: Object, s: State)
             link.run(me, s, PHASES, "DripShwr (sub_80F15CE)")

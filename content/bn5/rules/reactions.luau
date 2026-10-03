@@ -8,7 +8,7 @@
 -- go 6 (0x0801361E, 0x080143A8).
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
-return define.rules("reactions", {
+return define.rules("bn5:reactions", {
     push = {
         { dx = 1, dy = 0, panels = 6 },
         { dx = -1, dy = 0, panels = 6 },

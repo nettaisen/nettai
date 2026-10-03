@@ -1354,8 +1354,8 @@ declare int: {
 
 -- ---- Definitions and assets (docs/design/content-model-v2.md §3) -----------------------------
 
--- Assets, named while content loads (`asset.sprite("bomb")`; names are
--- compat/assets.toml's): one value per asset. (`SpriteAsset`, since
+-- Assets, named in full while content loads (`asset.sprite("bn6:bomb")`: the
+-- pack's game, then its name, a game's compat/assets.toml's): one value per asset. (`SpriteAsset`, since
 -- `Sprite` is an object's sprite.)
 declare class SpriteAsset
     name: string
@@ -1990,9 +1990,11 @@ export type Region = RegionSpec
 export type CollisionTypeSpec = { id: string, side0: number, side1: number, row_offset: number? }
 export type CollisionType = CollisionTypeSpec
 
--- What the ruleset needs from content by role (rules/roles.luau, once):
--- each role names the definition that fills it.
+-- What the ruleset needs from content by role (rules/roles.luau, once per
+-- game): each role names the definition that fills it. `id` names the game
+-- whose roles they are (`bn6:roles`).
 export type RolesSpec = {
+    id: string,
     actions: {
         anti_damage_counter: Action?,
         anti_sword_counter: Action?,

@@ -23,9 +23,9 @@ export type State = {
 
 local tenguman = {}
 
-local SPRITE = asset.sprite("tenguman")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_TENGU_MAN = asset.sound("tengu-man")
+local SPRITE = asset.sprite("bn6:tenguman")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_TENGU_MAN = asset.sound("bn6:tengu-man")
 
 -- His body's hit region while he sweeps, and his hit's modifier.
 local REGION = regions.wide
@@ -260,7 +260,7 @@ local function finish(me: Object)
 end
 
 tenguman.kind = define.kind {
-    id = "tenguman/navi",
+    id = "bn6:tenguman/navi",
     pool = "actor",
     state = { controller = "object" },
     -- `sub_80B9C14`.

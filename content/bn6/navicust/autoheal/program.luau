@@ -4,7 +4,7 @@
 local programs = require("../../rules/navicust/programs")
 
 return define.navicust_program {
-    id = "autoheal",
+    id = "bn6:autoheal",
     colors = { "pink" },
     shape = {
         ".......",

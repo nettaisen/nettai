@@ -174,7 +174,7 @@ local function init(me: Object)
 end
 
 volley.kind = define.kind {
-    id = "aquandl/volley",
+    id = "bn6:aquandl/volley",
     pool = "effect",
     state = { targets = "u8[3]", next = "u8", left = "u8", palette = "u8" },
     -- `sub_80E50C4`.

@@ -23,8 +23,8 @@ export type State = {
     spreads: boolean,
 }
 
-local SPRITE = asset.sprite("lightning")
-local SOUND_BEAST_OVER_BURST = asset.sound("beast-over-burst")
+local SPRITE = asset.sprite("bn6:lightning")
+local SOUND_BEAST_OVER_BURST = asset.sound("bn6:beast-over-burst")
 -- The hit modifier of its own hit and of the hits around it, and their
 -- status.
 local HIT_MOD, AROUND_HIT_MOD, AROUND_STATUS = 3, 1, statuses.paralyze_150
@@ -178,7 +178,7 @@ local function tick(me: Object)
 end
 
 thunder.kind = define.kind {
-    id = "elecman/thunder",
+    id = "bn6:elecman/thunder",
     pool = "attack",
     state = { while_dimmed = "bool", spreads = "bool" },
     -- `sub_80D0D7C`.

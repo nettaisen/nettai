@@ -30,8 +30,8 @@ struct Args {
 const USAGE: &str = "usage:
   nettai-content check <pack> [--content DIR]         read every file and report what it finds, and
                                                    define the content root's definitions with the
-                                                   pack's assets (default: $BN6_CONTENT, else this
-                                                   repository's content/bn6)
+                                                   pack's assets (default: $NETTAI_CONTENT, else this
+                                                   repository's content/)
   nettai-content verify <pack> <reference-pack> [--seconds N]
                                                    check that two packs load as the same content
                                                    (graphics, sprite timing, sound as timelines and
@@ -43,7 +43,7 @@ fn parse() -> Result<Args, String> {
     let mut it = std::env::args().skip(1);
     let command = it.next().ok_or(USAGE)?;
     let pack = PathBuf::from(it.next().ok_or(USAGE)?);
-    let mut a = Args { command, pack, reference: None, content: root::bn6(), seconds: 60.0, only: Vec::new() };
+    let mut a = Args { command, pack, reference: None, content: root::content(), seconds: 60.0, only: Vec::new() };
     while let Some(flag) = it.next() {
         match flag.as_str() {
             "--content" => a.content = it.next().ok_or("--content needs a directory")?.into(),

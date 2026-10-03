@@ -35,7 +35,7 @@ export type State = {
 
 local protoman = {}
 
-local SOUND_APPEAR = asset.sound("appear")
+local SOUND_APPEAR = asset.sound("bn6:appear")
 
 -- A game's ProtoMan's look.
 function protoman.look(look: ProtoManLook): ProtoManLook
@@ -50,7 +50,7 @@ end
 -- controller calls through r3 and his position takes (his init sets it
 -- all).
 protoman.bn6 = protoman.look {
-    sprite = asset.sprite("protoman"),
+    sprite = asset.sprite("bn6:protoman"),
     palette = 0,
     sword = parts.blades.sword,
     sword_anim = 0xB,
@@ -322,7 +322,7 @@ local function finish(me: Object)
 end
 
 protoman.kind = define.kind {
-    id = "protoman/navi",
+    id = "bn6:protoman/navi",
     pool = "actor",
     state = { gray = "u8", controller = "object", fresh = "u8", flip = "u8", look = "record:protoman-look" },
     -- `sub_80C26F0`.

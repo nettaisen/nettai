@@ -251,7 +251,7 @@ fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
     let o = b.objects.get(r);
     let named = o.telop_chip;
     // A controller's zeroed chip field names the zeroed chip.
-    let chip = named.and_then(|c| c.chip.or_else(|| b.content.zeroed_chip()));
+    let chip = named.and_then(|c| c.chip.or_else(|| b.zeroed_chip()));
     let shows_damage = chip.is_some_and(|c| b.content.chip(c).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0);
     let (damage, bonus) = match named {
         Some(c) if shows_damage => (c.damage.unwrap_or(o.damage), c.bonus),

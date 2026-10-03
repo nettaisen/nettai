@@ -32,7 +32,7 @@ export type State = {
 
 -- The cubes' sheet (animation 0 a cube rising; the rows' are the cubes
 -- standing).
-local SPRITE = asset.sprite("rock-cubes")
+local SPRITE = asset.sprite("bn6:rock-cubes")
 -- How a rock looks absorbed (the original's obstacle kind 4: its own
 -- sprite, in the animation it stood in).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
@@ -49,7 +49,7 @@ local SOLID, OCCUPIED = 0x10, 0x0F880080
 local IS, HITS, HIT_MOD = collision.neutral_body, collision.everything, 3
 -- Falling from 160 pixels up, 0.25 pixels a tick faster each tick.
 local FALL_HEIGHT, GRAVITY = 0xA0_0000, 0x4000
-local LAND_SOUND = asset.sound("land")
+local LAND_SOUND = asset.sound("bn6:land")
 -- The animation it rises in.
 local RISING = 0
 -- A frame's flag: its animation's last.
@@ -66,18 +66,18 @@ end
 -- What a rock is taken for: a rock cube, an ice block (field objects, with
 -- the looks something that takes their place shows).
 local ROCK = define.identity {
-    id = "rock",
+    id = "bn6:rock",
     class = "field_object",
     version = 3,
     ai_index = 1,
-    look = { sprite = asset.sprite("rock-cubes"), anim = 1, palette = 0, shadow = true },
+    look = { sprite = asset.sprite("bn6:rock-cubes"), anim = 1, palette = 0, shadow = true },
 }
 local ICE = define.identity {
-    id = "ice-block",
+    id = "bn6:ice-block",
     class = "field_object",
     version = 4,
     ai_index = 1,
-    look = { sprite = asset.sprite("rock-cubes"), anim = 2, palette = 0, shadow = true },
+    look = { sprite = asset.sprite("bn6:rock-cubes"), anim = 2, palette = 0, shadow = true },
 }
 
 -- The rows of `byte_80CF934` (animation, HP in twos, debris palette, break
@@ -86,43 +86,43 @@ local ICE = define.identity {
 local ROWS: { [number]: RockVariant } = {
     -- A rock cube anything breaks (no chip or stage places it).
     [0] = variant {
-        id = "rockcube/rock/brittle",
+        id = "bn6:rockcube/rock/brittle",
         anim = 1,
         hp = 1,
         element = "null",
         debris_palette = 0,
-        break_sound = asset.sound("panel-crack"),
+        break_sound = asset.sound("bn6:panel-crack"),
         identity = ROCK,
     },
     -- RockCube's, and the stages'.
     [1] = variant {
-        id = "rockcube/rock/cube",
+        id = "bn6:rockcube/rock/cube",
         anim = 1,
         hp = 200,
         element = "null",
         debris_palette = 0,
-        break_sound = asset.sound("panel-crack"),
+        break_sound = asset.sound("bn6:panel-crack"),
         identity = ROCK,
     },
     -- A hard one (no chip or stage places it).
     [2] = variant {
-        id = "rockcube/rock/hard",
+        id = "bn6:rockcube/rock/hard",
         anim = 1,
         hp = 500,
         element = "null",
         debris_palette = 0,
-        break_sound = asset.sound("panel-crack"),
+        break_sound = asset.sound("bn6:panel-crack"),
         identity = ROCK,
     },
     -- The ice block: IceCube's, the stages', and what an obstacle encased
     -- in ice becomes.
     [3] = variant {
-        id = "rockcube/rock/ice",
+        id = "bn6:rockcube/rock/ice",
         anim = 2,
         hp = 200,
         element = "aqua",
         debris_palette = 1,
-        break_sound = asset.sound("falling-rock"),
+        break_sound = asset.sound("bn6:falling-rock"),
         identity = ICE,
     },
 }
@@ -310,7 +310,7 @@ function rock.spawn(x: number, y: number, side: number, spec: RockSpec, damage: 
 end
 
 KIND = define.kind {
-    id = "rockcube/rock",
+    id = "bn6:rockcube/rock",
     pool = "attack",
     state = { variant = "record:rock-variant", entrance = { "rise", "instant", "fall", "placed" } },
     -- `sub_80CF954`.

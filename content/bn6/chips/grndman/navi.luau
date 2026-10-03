@@ -29,11 +29,11 @@ export type State = {
     controller: Object?,
 }
 
-local SPRITE = asset.sprite("groundman")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_DRILL_OUT = asset.sound("drill-out")
-local SOUND_DRILL = asset.sound("drill-spin")
-local SOUND_ROCKFALL = asset.sound("rockfall")
+local SPRITE = asset.sprite("bn6:groundman")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_DRILL_OUT = asset.sound("bn6:drill-out")
+local SOUND_DRILL = asset.sound("bn6:drill-spin")
+local SOUND_ROCKFALL = asset.sound("bn6:rockfall")
 
 -- What he wears (his overlay, `sub_8010F86`): the link navi's own parts.
 local IDENTITY = groundman_navi.identity
@@ -244,7 +244,7 @@ end
 local ACTIONS = { [APPEAR] = appear, [BACK_OFF] = back_off, [DIG] = dig, [ROCKFALL] = rockfall, [LEAVE] = leave }
 
 grndman.kind = define.kind {
-    id = "grndman/navi",
+    id = "bn6:grndman/navi",
     pool = "actor",
     state = { drill = "object", rock_x = "u32", rock_y = "u32", controller = "object" },
     -- `sub_80BBB98`.

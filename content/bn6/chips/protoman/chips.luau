@@ -5,7 +5,7 @@
 local navi = require("./navi")
 
 local protoman = define.chip {
-    id = "protoman",
+    id = "bn6:protoman",
     codes = { "B", "*" },
     element = "null",
     family = "sword",
@@ -22,7 +22,7 @@ local protoman = define.chip {
 }
 
 local protomn_ex = define.chip {
-    id = "protomn-ex",
+    id = "bn6:protomn-ex",
     codes = { "B" },
     element = "null",
     family = "sword",
@@ -39,7 +39,7 @@ local protomn_ex = define.chip {
 }
 
 local protomn_sp = define.chip {
-    id = "protomn-sp",
+    id = "bn6:protomn-sp",
     codes = { "B" },
     element = "null",
     family = "sword",

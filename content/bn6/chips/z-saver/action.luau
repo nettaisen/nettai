@@ -52,13 +52,13 @@ local SWING_TICKS, HIT_TICK, RECOVER_TICKS = 0x15, 0xC, 5
 -- The command's ticks, and its keys (B and Left, as the game's bits).
 local COMMAND_TICKS = 0xC
 local KEY_B, KEY_LEFT = 0x02, 0x20
-local SWING_SOUND = asset.sound("z-saver")
-local COMMAND_SOUND = asset.sound("ok-8b")
+local SWING_SOUND = asset.sound("bn6:z-saver")
+local COMMAND_SOUND = asset.sound("bn6:ok-8b")
 local HIT_MOD = 1
 local EFFECT_Z = 0x10_0000
 -- The slashes by index (`byte_80F004C`, `dword_80F0064`): the region hit
 -- and the effect drawn over the panel ahead (effects 0x65 to 0x67).
-local SLASH_SPRITE = asset.sprite("sword-slash")
+local SLASH_SPRITE = asset.sprite("bn6:sword-slash")
 local HITS = {
     [0] = { region = regions.long, effect = define.effect { sprite = SLASH_SPRITE, anim = 1, palette = 4 } },
     [1] = { region = regions.wide, effect = define.effect { sprite = SLASH_SPRITE, anim = 0, palette = 4 } },
@@ -195,7 +195,7 @@ local function recover(me: Object, s: State)
 end
 
 zsaver.action = define.action {
-    id = "z-saver/action",
+    id = "bn6:z-saver/action",
     state = zsaver.STATE,
     -- `sub_80EFEE0`.
     update = function(me: Object, s: State)

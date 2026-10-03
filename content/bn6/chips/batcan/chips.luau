@@ -21,7 +21,7 @@ local STATE = { timer = "u16" }
 local COUNT, FIRE, RECOVER = 0x0, 0x4, 0x8
 
 local ANIM_FIRE, ANIM_DONE = 9, 0
-local SOUND = asset.sound("cannon")
+local SOUND = asset.sound("bn6:cannon")
 -- The shot leaves on this tick of the count, and the phase ends on this
 -- one; the recovery's ticks.
 local SHOT_TICK, FIRE_TICKS, RECOVER_TICKS = 5, 0xF, 0x14
@@ -29,7 +29,7 @@ local SHOT_Z = 0x18_0000
 
 -- The bat cannon (the original's attachment row 0xF: it sits at a fixed
 -- offset by its holder, not at an attach point).
-local BAT = attachment.look { sprite = asset.sprite("bat-cannon"), palette = 0, by_owner = true }
+local BAT = attachment.look { sprite = asset.sprite("bn6:bat-cannon"), palette = 0, by_owner = true }
 
 -- A chip's shots: each one's hit modifier, in the order they're fired
 -- (the original's chip parameters, or BatCan4's `byte_80EC1BC`).
@@ -120,7 +120,7 @@ end
 
 return {
     define.chip {
-        id = "batcan1",
+        id = "bn6:batcan1",
         codes = { "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -132,7 +132,7 @@ return {
         action = batcan { shots = { 3 } },
     },
     define.chip {
-        id = "batcan2",
+        id = "bn6:batcan2",
         codes = { "S" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -144,7 +144,7 @@ return {
         action = batcan { shots = { 3 } },
     },
     define.chip {
-        id = "batcan3",
+        id = "bn6:batcan3",
         codes = { "R" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -156,7 +156,7 @@ return {
         action = batcan { shots = { 3 } },
     },
     define.chip {
-        id = "batcan4",
+        id = "bn6:batcan4",
         codes = { "Z" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,

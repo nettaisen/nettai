@@ -15,8 +15,8 @@ local flame = {}
 type Spec = HeatFlame
 export type State = Spec
 
-local SPRITE = asset.sprite("heat-flame")
-local SOUND = asset.sound("form-change")
+local SPRITE = asset.sprite("bn6:heat-flame")
+local SOUND = asset.sound("bn6:form-change")
 
 -- Its actions.
 local FLARE, BURN, DIE_DOWN = 0x0, 0x4, 0x8
@@ -123,7 +123,7 @@ local function tick(me: Object)
 end
 
 flame.kind = define.kind {
-    id = "heatman/flame",
+    id = "bn6:heatman/flame",
     pool = "attack",
     state = { while_dimmed = "bool", ticks = "u8", is = "collision" },
     -- `sub_80C8C74`.
