@@ -1693,6 +1693,10 @@ export type SystemSpec = {
         -- its own record, damage and bonus; nil, the chip. The first system
         -- that answers decides.
         chip_substitute: ((side: number, navi: Object, chip: Chip) -> Chip?)?,
+        -- A chip's use was prepared (`sub_80127C0`: a use, the rush's chain,
+        -- the counter cut-in's), its substitute taken: `chip` the chip it
+        -- uses (the zeroed chip for the empty hand).
+        chip_prepared: ((side: number, navi: Object, chip: Chip) -> ())?,
         -- A chip's use started (`sub_800FB54`, its action set): `chip` the
         -- chip it reads (the zeroed chip for the empty hand), `weapon` the
         -- form's weapon run instead of it (a charged use), else nil.

@@ -34,11 +34,12 @@ return define.system {
             end
             return substitute
         end,
-        -- `sub_800B79A`: the HP bug worsened by the chip used (not a form's
-        -- weapon run instead).
-        chip_used = function(side: number, _navi: Object, chip: Chip, weapon: Weapon?)
+        -- `sub_800B79A`: the HP bug worsened by the chip a use was prepared
+        -- with (on each path: a use, the rush's chain, the counter cut-in's;
+        -- not a form's weapon run instead, which prepares none).
+        chip_prepared = function(side: number, _navi: Object, chip: Chip)
             local cost = chip.hp_bug
-            if weapon ~= nil or cost == nil or cost == 0 then
+            if cost == nil or cost == 0 then
                 return
             end
             local stats = battle.navi(side)

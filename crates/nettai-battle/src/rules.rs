@@ -238,6 +238,20 @@ impl Battle {
         }
     }
 
+    /// Side `side`'s systems' `chip_prepared(side, navi, chip)` once a
+    /// chip's use is prepared (`sub_80127C0`): `chip` the chip it uses (the
+    /// zeroed chip for the empty hand).
+    pub(crate) fn systems_chip_prepared(&mut self, side: u8, navi: ObjectRef, chip: ChipHandle) {
+        let Some(r) = self.rules[side as usize].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::ChipPrepared) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipPrepared, navi: Some(navi), chip: Some(chip), weapon: None };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
     /// Side `side`'s systems' `chip_used(side, navi, chip, weapon)` once a
     /// chip's use has started its action.
     pub(crate) fn systems_chip_used(&mut self, side: u8, navi: ObjectRef, chip: ChipHandle, weapon: Option<WeaponHandle>) {
