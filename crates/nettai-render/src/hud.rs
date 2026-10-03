@@ -55,6 +55,11 @@ pub struct HudState {
     early_fight_ticks: u8,
     mode_was: u8,
     icons_were: bool,
+    /// The custom screen showed the form chosen there in the emotion window
+    /// as it was last up (BN6's Beast Out and Crosses: `eStruct2035280`
+    /// +0x4C, which takes the window down as the screen closes; BN5's soul
+    /// choice shows none).
+    form_face_shown: bool,
 }
 
 /// The local navi's face in the emotion window (`sub_801E6A8`): what its
@@ -183,6 +188,9 @@ impl HudState {
             }
         }
         (self.mode_was, self.icons_were) = (b.round.mode, icons);
+        if crate::custom::screens_open(b) {
+            self.form_face_shown = crate::custom::face(b, b.setup.local_side as usize).is_some();
+        }
         (self.was_over, self.gauge_was_on) = (self.is_over, self.gauge_is_on);
         if let Some(n) = waiting_ticks(b) {
             self.frame = (n & 0x3F) as u8;
@@ -306,7 +314,7 @@ fn gauge_shown(b: &Battle, state: &HudState) -> bool {
         && !state.was_over
         && !custom_open(b)
         && !crate::custom::gauge_held(b)
-        && !transform_hides(b).1
+        && !transform_hides(b, state).1
 }
 
 /// Whether the round has been decided (the HUD thins out).
@@ -320,10 +328,11 @@ fn decided(b: &Battle) -> bool {
 /// While the navis change form the HUD steps aside: the mugshot from the
 /// start of the fade out, the HP box and gauge once the screen is dark.
 /// The mugshot of a player who chose a form on the custom screen is gone
-/// from the tick the fight resumes: the screen showed the form's face in
-/// the window, and closing takes the window down with it (`sub_802A0F8`).
-fn transform_hides(b: &Battle) -> (bool, bool) {
-    let chose = b.transform_requests[b.setup.local_side as usize & 1].form.is_some();
+/// from the tick the fight resumes when the screen showed the form's face
+/// in the window: closing takes the window down with it (`sub_802A0F8`;
+/// BN5's close has no such step, its soul choice shows no face).
+fn transform_hides(b: &Battle, state: &HudState) -> (bool, bool) {
+    let chose = b.transform_requests[b.setup.local_side as usize & 1].form.is_some() && state.form_face_shown;
     match b.transform_seq.state {
         SequencerState::Transform { phase: TransformPhase::FadeOut, started } => (started || chose, false),
         SequencerState::Transform { .. } => (true, true),
@@ -354,7 +363,7 @@ pub fn draw<'a>(
     let open = custom_open(b);
     let color = state.hp.map(|h| h.color).unwrap_or(0) as usize;
 
-    let (hide_mugshot, hide_boxes) = transform_hides(b);
+    let (hide_mugshot, hide_boxes) = transform_hides(b, state);
     // HP box, top left (moved right with the custom screen's window).
     let shift = crate::custom::hud_shift(b);
     if let Some(r) = player.filter(|_| !hide_boxes) {

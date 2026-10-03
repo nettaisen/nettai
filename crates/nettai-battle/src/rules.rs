@@ -284,6 +284,33 @@ impl Battle {
         }
     }
 
+    /// Side `side`'s systems' custom hook `hook(side)` in order, until one
+    /// answers true: whether one did.
+    pub(crate) fn systems_ask_custom(&mut self, side: u8, hook: SystemHook) -> bool {
+        let Some(r) = self.rules[side as usize & 1].ruleset else { return false };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(hook) {
+                let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: None, weapon: None };
+                if crate::behavior::call_hook(self, f, call) == Value::Bool(true) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Side `side`'s system `key`'s state and its layout, when the side's
+    /// ruleset has that system: for a reader of what a system keeps (the
+    /// frontend's look of BN6's Cross window reads the cross system's).
+    pub fn system_state(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &ContentState)> {
+        let r = self.rules[side as usize & 1].ruleset?;
+        let systems = &self.content.defs.ruleset(r).systems;
+        let slot = systems.iter().position(|&h| self.content.defs.system(h).key == key)?;
+        let def = self.content.defs.system(systems[slot]);
+        Some((self.content.defs.schema(def.state), self.rules[side as usize & 1].states.get(slot)?))
+    }
+
     /// Side `side`'s systems' `custom.hand_size(side)`: the first answer.
     pub(crate) fn systems_custom_hand_size(&mut self, side: u8) -> Option<u8> {
         let r = self.rules[side as usize & 1].ruleset?;
