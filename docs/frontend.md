@@ -878,6 +878,16 @@ entries = ["bn5:cannon", "pattern 1", "nothing", "empty"]   # up to 42, in the s
 patterns = [{ dx = 1, dy = 0, chips = ["bn5:sword", "bn5:wideswrd"] }]   # up to 8, each up to 6 chips
 ```
 
+A BN5 side (`ruleset = "bn5:stock"`, `navi = "bn5:megaman"`) may say besides:
+
+```toml
+[left]
+souls = ["bn5:protosoul"]                  # optional: the souls it has, of either version (none: every soul)
+
+[left.setup."bn5:light-dark"]              # optional: a system's setup, by field (the rest its defaults)
+value = 100                                # the light/dark value, 0 to 1000 (default 500; dark under 470)
+```
+
 **The stats block** (`nettai_match::stats`) sets the navi's stats by name
 over its fresh stats (`NaviStats::fresh`, `init_8013B64`: what a new save
 gives the navi), of the side's game; a link navi's over its stats at its
@@ -936,6 +946,46 @@ bugs) from the programs as the round is set up. Without one, the stats block
 is the stats as they are, NaviCust included, as a recording's are. The
 editor's NaviCust pane places the programs on the board as the game does.
 
+**The systems' setups** (`[left.setup."<system>"]`, `nettai_match::setups`)
+are what the player brings for each system of their ruleset (a system's
+`setup` fields, docs/design/rules-in-luau.md §2.2), by the system's id and
+the field's name: a boolean, an integer that fits the field, an enum's
+variant by name, a definition by key, or a list of those for an array
+field. Only the fields given are written; the rest are the system's own
+defaults (its `setup_defaults`, else zero), so a file need say nothing of a
+system to play a real save's typical setup. The fields a side's own keys
+write (BN6's `version`, `crosses`, `beast_out`, `cross_list`: `game`,
+`crosses`, `beast_out`) are written first; a setup given here for one of
+them is the one the round starts with. BN5's light and dark system
+(content/bn5/rules/light-dark) takes the save's light/dark value (NaviStats
++0x44, 0 to 1000): a fresh save's **500** by default (light for the chips,
+the starting mood 0x80, no holy panels cleared); under 470 a dark MegaMan
+(mood 0, the dark face and palette, dark chips, no soul button), 470 to
+499 worried at the start, 1000 the brightest (mood 190). Hub Style
+(NaviStats +0x4C, which BN5's patch card 111 sets) is a stat, in the stats
+block (`hub_style`), as what BN6's patch cards set is. A netplay
+offer carries the setups (protocol version 5), and a round's setup and the
+battle's digest hold them, so both peers start alike.
+
+**The souls** (`souls`, `nettai_match::souls`) are the souls the side has,
+BN5's Soul Unison, by form key: those the custom screen's soul button may
+offer. Without `souls`, every soul the content has (both versions'); with a
+list, those; an empty list, none (no soul button). The original's soul
+button (0x08024B28) offers the soul of the last chip's family when the save
+has it: each version's table (0x08024BF0) gives Team ProtoMan's souls 1 to 6
+the event flags 2 to 7 and Team Colonel's 7 to 12 the flags 8 to 0x0D, the
+other version's none, and a dark chip's Chaos Unison needs flag 0x236 too.
+The engine ports that check on the souls owned; a side may have either
+version's (nettai's extension, as a Cross list may name either game's), and
+a soul whose family the folder never holds never comes up. Only a ruleset
+with the souls system takes a list (the checks refuse one elsewhere, and a
+form that is no soul).
+
+**A BN5 save** (the editor's "Import from save…" on a BN5 side,
+`Side::import_bn5_save`, a .sav or a raw save image as Tango's netplay
+templates hold, read by `bn5_compat::save`) gives its light/dark value and
+the souls its version's flags give (the content's souls of those numbers).
+
 **The tactics** (`[left.tactics]`, nettai_battle::tactics, docs/design/bn5-map.md
 §15.9) are BN5's computer-navi data, the block a BN5 save keeps for its
 player: what a computer navi across from them plays, BN5's Dark MegaMan,
@@ -982,6 +1032,10 @@ is said with where it is:
   one flag for them), and the stats block holds only what a save keeps;
 - a Cross list only with a ruleset that has the forms system, of the navi's
   Crosses (a navi that changes form), at most five, none twice;
+- a soul list only with a ruleset that has the souls system, each a soul
+  (a form of kind `soul`), none twice, of either version;
+- each setup names a system of the side's ruleset that has a setup, a field
+  of it, and a value the field holds;
 - patch cards only with a ruleset that has the patch-cards system, each
   installed once, at most 32, their MB together at most 80 (BN6's menu adds
   none past 80 MB, `0x08141868`);

@@ -593,6 +593,40 @@ mod tests {
         assert!(Offer::from_bytes(&content, &o.to_bytes()[..10]).is_err());
     }
 
+    /// A BN5 side's offer carries its systems' setups (its light/dark
+    /// value) and its souls; both peers' rounds start from them alike. A
+    /// setup the side's ruleset hasn't is refused.
+    #[test]
+    fn offers_carry_setups_and_souls() {
+        use nettai_match::setups::SetupValue;
+        let content = nettai_match::testing::every_game();
+        let mut o = offer(&content, 5);
+        o.side.ruleset = content.defs.ruleset_by_key("bn5:stock");
+        o.side.navi = content.defs.navi_by_key("bn5:megaman").unwrap();
+        o.side.stats = Side::base_stats(&content, o.side.navi, o.side.game);
+        o.side.crosses = None;
+        o.side.navi_level = None;
+        o.side.navicust = None;
+        o.side.cards.clear();
+        o.side.setups.entry("bn5:light-dark".into()).or_default().insert("value".into(), SetupValue::Int(100));
+        o.side.souls = Some(vec![content.defs.form_by_key("bn5:protosoul").unwrap()]);
+        // (Its folder its rules take: a BN5 one.)
+        let five = nettai_match::Match::empty(&content).unwrap();
+        let mut b = nettai_match::check::start(&content, &nettai_match::Match { sides: [o.side.clone(), five.sides[1].clone()], ..five }).unwrap();
+        o.side.folder = nettai_match::folders::random_folder(&content, &mut b, 0, &mut Draws::new(3)).into();
+        let back = Offer::from_bytes(&content, &o.to_bytes()).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(back, o);
+        let (one, _) = netplay_setup(&content, 9, &[o.clone(), offer(&content, 6)]).unwrap();
+        let (two, _) = netplay_setup(&content, 9, &[back, offer(&content, 6)]).unwrap();
+        assert_eq!(format!("{one:?}"), format!("{two:?}"));
+        let mut bad = o.clone();
+        bad.side.setups.entry("bn6:cross".into()).or_default().insert("beast_out".into(), SetupValue::Bool(false));
+        assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("no system of the side's ruleset"));
+        let mut bad = o;
+        bad.side.setups.get_mut("bn5:light-dark").unwrap().insert("value".into(), SetupValue::Int(-1));
+        assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("doesn't fit"));
+    }
+
     /// What one player of [`pair`] saw: the round, the match, the settled
     /// ticks' digests, how many sounds played, a report, and why it stopped
     /// (none: it settled them all first).
