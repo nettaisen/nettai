@@ -1399,3 +1399,85 @@ them.
   (actor record 0x18D: a navi of AI index 0x16, 500 HP, on a random panel for the other side) that runs BN5's
   computer navi AI (0x0802B4AC, AIData +0xF0): a second navi on a side, driven by an AI, which the engine hasn't.
   Eleven of the twelve chaos recordings fail the charge.
+
+### 15.9 A second navi on a side: Chaos Unison's Dark MegaMan (design)
+
+**What BN5 does.** A Chaos Unison charge released off its window starts action 0x39 (0x080EE63C): the battle dims,
+MegaMan flashes, and on its second step's eighth tick a navi appears for the *other* side (0x080EE6BC: a random
+solid, empty panel of that side's area, 0x08010226 as BN6's `sub_80129F4`; BN5's generic actor spawn 0x08006AAE,
+BN6's `sub_80076A0`): actor record 0x18D (actor type navi, AI index 0x16), 500 HP and its element from the
+record's enemy structs (0x0800D138, 0x0800D160), its Param2 1 and AIData +2 1. Then MegaMan reverts. The navi:
+
+- is an actor of the player's kind (object kind 0 with its own AIData and collision), on the side's actor list
+  (0x08006B86: four slots a side) but not counted (AIData +2): neither its spawn nor its deletion (Param2 1 skips
+  0x08008AFC) changes the side's counts, so it neither ends the round nor keeps it going; the round still ends with
+  the counted navi (the side's player);
+- reads its side's NaviStats (BN5 reads them by alliance: the opponent player's Attack, Charge and the like) and
+  none of the side's input: the pad is copied to the side's player alone, and its idle (0x080EAFE0) dispatches by
+  the side's input mode and the record's AI index to BN5's computer-navi AI (0x080EB068[0x16], 0x080F1D48,
+  0x0802B4AC);
+- the AI (about 3.6 KB, 0x0802B4AC to 0x0802C438; its state AIData +0xF0 to +0xFF) moves, fires its weapon routine
+  0x3E and uses chips from a list per side (0x02034C20 + side × 0xE0: up to 42 chip ids, a count at +0x54, sixteen-
+  byte records from +0x58), its own, not the side's hand;
+- is targeted as any navi: hits by its collision, and the searches over the side's actor list (a meteor's target,
+  a lock-on) see it; it is deleted as any navi (its deletion leaves the slot to its destroy);
+- goes with the round's objects at the round's end (the next round spawns only the stage's actors).
+
+**The engine (proposal).** BN6 never has a second navi on a side, so none of this runs for it; BN6 stays byte for
+byte the same.
+
+1. *Spawn:* `battle.spawn_navi(spec)` (0x08006AAE): an actor of the player's kind with `spec.identity`'s actor
+   record (its type and AI index), `spec.hp`, on (`spec.x`, `spec.y`) for `spec.side`, Param2 and `not_counted`
+   1: on the side's alive actor list, not counted. The engine's actor bookkeeping is BN6's already (the four
+   slots, `actor_count`, `alive`, `not_counted`, `spawned_actors`), as are the deletion's Param2 test and the
+   destroy's freeing of a not-counted actor.
+2. *Who the player is:* the side's player stays `battle.player(side)` (the spawned list's first slot): the pad,
+   the hand, the custom screen, the HUD's chip window and emotion window follow it alone, as now. Nothing in the
+   custom screen or the HUD changes (the rules agent's S6 doesn't meet this).
+3. *Its decisions:* idle asks the side's systems' `controller` hook (S3) for a navi that isn't the side's player,
+   as it does for a `controlled` form: "nothing", "chip", "buster", "moved", carried out as idle does. BN5's
+   computer-navi AI is BN5 content: a system in BN5's stock ruleset (rules/computer-navi) whose controller answers
+   for its AI index 0x16; its per-side list is the system's side state, its per-navi state (AIData +0xF0, sixteen
+   bytes) an actor state the system declares (`actor_state`), allocated with the actor (several Dark MegaMen can
+   stand on one side: each Chaos Unison's failure brings one). A side whose ruleset hasn't the system leaves such
+   a navi standing (a mixed battle's BN6 side); the souls system brings BN5's AI into a mix that needs it.
+4. *Its chips and weapons:* `navi:start_chip_attack(chip)` (S4) for the list's chips, the weapon routines by
+   number as the content's weapons (0x3E), its stats the side's (`battle.navi(side)`, as BN5 reads them).
+5. *HP, deletion, targeting, the round's end:* the navi's own HP and collision; its deletion as any navi's, not
+   counted; the round's end the counted navis' (unchanged).
+6. *Rollback and netplay:* the spawn, the AI's states and the list are battle state (snapshotted and digested);
+   no input reaches the navi; the protocol doesn't change.
+
+**Then:** the chaos charge itself (AIData +0x12 armed, +0x6C its level, +0x1C/+0x1F the cycle by 0x08010650's
+rows, the release's requests and idle's starts: Rust, by the side's game's rules, BN6 never arming it), the
+failure action 0x39 (Luau), the shade (actor 0x2B), and the success's chaos weapon (AIData +0x11's routine:
+ProtoSoul's DrkSword).
+
+**As built (bn5-port-6, 2026-10-03).** All of the above, verified on every frame of the BN5 lab's `chaos-ai/`
+scenarios (a failed Chaos Unison with side 0's computer-navi data poked into its save: none, Cannon, mixed classes,
+chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's twelve seconds and his leave) and
+`souls/01-sword/chaos`:
+
+- *The charge* (Rust: armed, the cycle, the releases) and ProtoSoul's chaos weapon (routine 6: DrkSword loaded as
+  the attack, its charge row by the chaos level: navis/megaman/forms/protosoul/chaos).
+- *The failure* (action 0x39: rules/souls/chaos, the role `chaos_failure`): the dim, the white flashes, the fade,
+  the dismissal of the Dark MegaMen across (0x08104284) and the new one on a random solid empty panel of the other
+  side's area, then the revert to the base form.
+- *Dark MegaMan* (navis/dark-megaman: NameID 0x18D's record, enemy structs, collision and post-init hook) and the
+  system that drives him (rules/computer-navi/system: BN5's computer navis, a system of BN5's stock ruleset): his
+  idle (twelve seconds from his first, then his leave, the navi type's action 7), his tick (the time running down
+  outside pauses and dimming, his last three seconds blinking, the battle's end ending it).
+- *The AI* (rules/computer-navi/ai, 0x0802BA14): its decisions, the buster runs (his buster, weapon routine 0x3E,
+  is attack 0x16: three shots, rules/computer-navi/buster), the patterns, the reposition, a chip's play; the
+  pressure picks as written (the front one calls 0x081BC8AC, data: an error; the hole one reads the AI's own
+  side's tactics; their counters stay 0); getting in place for a chip by its positioning class
+  (rules/computer-navi/place: all 33 classes of 0x08029B3C, and the panel searches they share, ./panels).
+- *The tactics* (nettai_battle::tactics): the recordings' exchanged blocks (bn5-compat); a match file's
+  `[side.tactics]`, sent as the console sends them (0x0802C7BE); the netplay offer (protocol version 3).
+- BN5's shots raise BN5's own arm (lib/arm, 0x080EBABE; lib/buster's), the arm a computer navi of AI index 0x16
+  raises.
+
+New APIs: a collision's `counter_timer`, `battle.gauge_damage`, a side's sword pick (`battle.sword_pick`,
+`set_sword_pick`: `sub_802E070`+0x12, which the AI draws for VarSwrd and NeoVari and BN5's VarSwrd, when ported,
+reads for a navi no buttons drive), the identity spec's `body`. Read as constant: NaviStats +0x2A (class 28's test;
+its BN5 meaning unread, 0 in every setup).

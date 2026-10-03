@@ -140,6 +140,7 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
         rules: Vec::new(),
         patch_cards: Default::default(),
         navicust: None,
+        tactics: Default::default(),
     };
     let [a, b] = folders;
     RoundSetup {
