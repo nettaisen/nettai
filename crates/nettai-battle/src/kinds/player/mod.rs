@@ -1021,6 +1021,10 @@ pub(crate) fn reset_status(b: &mut Battle, r: ObjectRef) {
 fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     let side = b.objects.get(r).alliance as usize;
     b.hands[side].charge_bonus = [0; 6];
+    // BN5's (0x08011B3C, 0x080CAC30) disarms the side's ColonelSoul army
+    // (`obstacle::Soldiers`; the form's reset below arms it again): BN6
+    // has none to disarm.
+    b.obstacle_soldiers[side & 1].armed = false;
     ai_mut(b, r).status &= !0x20;
     // (Netbattle, local player: removes the opponent's HUD entry.)
     // BN5's 0x08011B74: a form's priming is spent (BN6 never primes).
