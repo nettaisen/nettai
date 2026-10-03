@@ -105,11 +105,15 @@ impl NaviTraits {
 
 serde_flags!(NaviTraits, u8);
 
-/// The forms a navi changes into, by the player's game.
+/// The forms a navi changes into, by the player's game (BN6's), and its
+/// souls (BN5's Soul Unison).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviForms {
     pub gregar: FormSet,
     pub falzar: FormSet,
+    /// The souls the custom screen's soul button offers (each a form with
+    /// its [`SoulData`]).
+    pub souls: Vec<FormHandle>,
 }
 
 impl NaviForms {
@@ -190,6 +194,8 @@ pub enum FormKind {
     CrossBeast,
     /// Beast Over: the navi acts on its own.
     BeastOver,
+    /// A soul (BN5's Soul Unison): united with a navi for some turns.
+    Soul,
 }
 
 impl FormKind {
@@ -214,10 +220,23 @@ impl FormKind {
     }
 }
 
+/// A soul's place on BN5's custom screen: its number (NaviStats +0x2C,
+/// the soul-used bits' and the save's soul flags' order) and the family
+/// of the chip given up for it (0x08024BE0's table).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SoulData {
+    pub number: u8,
+    pub family: ChipFamily,
+}
+
 /// One of MegaMan's forms.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FormData {
+    /// A soul's number and family (`kind = "soul"`).
+    #[serde(default)]
+    pub soul: Option<SoulData>,
     pub sprite: SpriteId,
     pub element: Element,
     #[serde(default)]
@@ -607,8 +626,12 @@ pub(crate) fn read_form(
     // (`buster_arm` is the content's own: the arm a navi raises.)
     let o = super::reader::fields(d, r, &["id", "identity", "cross_of", "beast", "breaks_to", "change", "weapons", "buster_arm"])?;
     let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
-    if form.kind != FormKind::Base && form.game.is_none() {
-        return Err(super::reader::err(d, "a form that is not the base form says whose `game` it is (gregar, falzar)"));
+    // (BN5's souls are of no BN6 version.)
+    if !matches!(form.kind, FormKind::Base | FormKind::Soul) && form.game.is_none() {
+        return Err(super::reader::err(d, "a form that is not the base form or a soul says whose `game` it is (gregar, falzar)"));
+    }
+    if (form.kind == FormKind::Soul) != form.soul.is_some() {
+        return Err(super::reader::err(d, "a soul (`kind = \"soul\"`) and only a soul names its `soul`"));
     }
     Ok(form)
 }
