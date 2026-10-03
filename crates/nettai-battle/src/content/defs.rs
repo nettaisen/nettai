@@ -215,6 +215,10 @@ pub struct SystemDef {
     /// The layout of its state of a side, and of its player setup.
     pub state: StateId,
     pub setup: StateId,
+    /// The layout of its state of each navi no player controls that it
+    /// drives (its `controller`: the navi object's own state), if it
+    /// drives any.
+    pub navi_state: Option<StateId>,
     /// Its hooks, in [`SystemHook::ALL`]'s order.
     hooks: Vec<Option<FnId>>,
     /// Its own actions, which reach its state.
@@ -1293,7 +1297,7 @@ impl Defs {
         // form's name theirs: each knows whose it is.
         let mut identities = Vec::new();
         for d in definitions.of(Registry::Identity) {
-            identities.push(super::identity::read(d, &content.assets)?);
+            identities.push(super::identity::read(d, &content.assets, &definitions)?);
         }
         if identities.windows(2).any(|w| w[0].key >= w[1].key) {
             return Err(ContentError::new("the identities are not in key order (the define phase sorts each registry)"));
@@ -1604,8 +1608,8 @@ impl Defs {
             let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks", "custom", "buttons", "actions"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks, custom, buttons, actions)")));
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "navi_state", "hooks", "custom", "buttons", "actions"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, navi_state, hooks, custom, buttons, actions)")));
                     }
                 }
             }
@@ -1712,10 +1716,19 @@ impl Defs {
                 }
                 _ => return Err(what("`buttons` is a table of buttons by name")),
             }
+            let navi_state = match d.spec.field("navi_state") {
+                Data::Nil => None,
+                _ => Some(layout("navi_state")?),
+            };
+            let controller = SystemHook::ALL.iter().position(|&h| h == SystemHook::Controller).expect("listed");
+            if navi_state.is_some() && hooks[controller].is_none() {
+                return Err(what("a `navi_state` is the state of the navis its `controller` drives: it has no `controller`"));
+            }
             systems.push(SystemDef {
                 key: d.key.clone(),
                 state: layout("state")?,
                 setup: layout("setup")?,
+                navi_state,
                 hooks,
                 actions: system_actions,
                 buttons: own_buttons,
