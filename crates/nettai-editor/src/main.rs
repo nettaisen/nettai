@@ -3,21 +3,26 @@
 
 mod app;
 mod names;
+mod navicust;
 mod pictures;
 mod view;
 
 use app::{Editor, Options, Tab};
 use names::Lang;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 const USAGE: &str = "\
 usage: nettai-editor [OPTIONS] [MATCH.toml]
 
-  --content DIR    the battle content (default: $BN6_CONTENT, else this
-                   repository's content/bn6)
-  --pack DIR       the content pack, for the chips' pictures (default:
-                   $BN6_PACK, else data/content/bn6)
+  The content packs (the chips' pictures) and the content roots are found
+  as nettai-frontend finds them: every pack in the packs directory,
+  $NETTAI_PACKS, else data/content, each by its game; BN6's root and each
+  root beside it whose game's pack is found and that loads.
+  --content DIR    the battle content: this root and those it requires
+                   (default: $BN6_CONTENT, else this repository's content/bn6
+                   and the roots beside it)
+  --pack DIR       a pack's directory, in place of the found pack of its game
+                   (again for another game's), handed to the frontend too
   --lang LANG      names in en (default) or ja
   --frontend PATH  the nettai-frontend program Play runs (default: the one
                    beside this program, else nettai-frontend on the PATH)
@@ -32,8 +37,9 @@ fn fail(msg: impl std::fmt::Display) -> ! {
 
 fn parse() -> Result<Options, String> {
     let mut o = Options {
-        content_root: std::env::var_os("BN6_CONTENT").map(PathBuf::from).unwrap_or_else(nettai_content::root::bn6),
-        pack: std::env::var_os("BN6_PACK").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/content/bn6")),
+        content: None,
+        roots: Vec::new(),
+        packs: Vec::new(),
         frontend: None,
         file: None,
         lang: Lang::En,
@@ -44,8 +50,8 @@ fn parse() -> Result<Options, String> {
     while let Some(arg) = it.next() {
         let mut value = |name: &str| it.next().ok_or_else(|| format!("{name} needs a value"));
         match arg.as_str() {
-            "--content" => o.content_root = value("--content")?.into(),
-            "--pack" => o.pack = value("--pack")?.into(),
+            "--content" => o.content = Some(value("--content")?.into()),
+            "--pack" => o.packs.push(value("--pack")?.into()),
             "--lang" => {
                 let l = value("--lang")?;
                 o.lang = Lang::from_code(&l).ok_or_else(|| format!("no language {l:?} (en or ja)"))?;
@@ -64,6 +70,13 @@ fn parse() -> Result<Options, String> {
     Ok(o)
 }
 
+/// Show what loading found (warnings and errors).
+fn show(report: &nettai_content::report::Report) {
+    for i in report.issues.iter().filter(|i| i.level != nettai_content::report::Level::Note) {
+        eprintln!("{i}");
+    }
+}
+
 /// The font the editor writes with: the frontend's bundled Murecho (Latin,
 /// kana and kanji, for the Japanese names).
 const FONT: &[u8] = include_bytes!("../../nettai-frontend/fonts/murecho/Murecho-VariableFont_wght.ttf");
@@ -79,20 +92,24 @@ fn main() -> iced::Result {
             std::process::exit(2);
         }
     };
-    let content = match nettai_content::pack::load_battle(&options.content_root, &options.pack) {
-        Ok((c, _)) => Arc::new(c),
-        Err(r) => {
-            for i in &r.issues {
-                eprintln!("{i}");
-            }
-            fail(format!(
-                "can't load the content {} with the pack {} (--content, --pack)",
-                options.content_root.display(),
-                options.pack.display()
-            ))
-        }
-    };
-    let pictures = pictures::Pictures::load(&options.pack).unwrap_or_else(|e| {
+    let mut options = options;
+    // Every pack found, and the roots that draw on them (as the frontend
+    // loads them: nettai_content::pack::load_found).
+    let mut report = nettai_content::report::Report::default();
+    let found = nettai_content::pack::find(&nettai_content::pack::packs_dir(), &options.packs, &mut report);
+    show(&report);
+    let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack, $BN6_PACK)"));
+    let loaded = nettai_content::pack::load_found(options.content.as_deref(), &found).unwrap_or_else(|r| {
+        show(&r);
+        fail("can't load the battle content (--content, --pack)")
+    });
+    show(&loaded.report);
+    for (root, why) in &loaded.left_out {
+        eprintln!("the content root {root} is left out: {why}");
+    }
+    options.roots = loaded.roots;
+    let content = Arc::new(loaded.content);
+    let pictures = pictures::Pictures::load(&content, &loaded.packs).unwrap_or_else(|e| {
         eprintln!("{e}: the chips have no pictures");
         pictures::Pictures::default()
     });

@@ -105,6 +105,8 @@ pub enum Msg {
     StatText(usize, &'static str, String),
     StatValue(usize, &'static str, stats::Value),
     StatsReset(usize),
+    // The NaviCust.
+    NaviCust(usize, crate::navicust::Edit),
     // --screenshot.
     Frame,
     Shot(iced::window::Screenshot),
@@ -112,8 +114,14 @@ pub enum Msg {
 
 /// How the editor was started.
 pub struct Options {
-    pub content_root: PathBuf,
-    pub pack: PathBuf,
+    /// The content root given (`--content`), which Play hands the frontend
+    /// too; else the roots are found as the frontend finds them.
+    pub content: Option<PathBuf>,
+    /// The roots loaded, the home first (their strings tables).
+    pub roots: Vec<PathBuf>,
+    /// The packs given by directory (`--pack`), each in place of the found
+    /// one of its game, which Play hands the frontend too.
+    pub packs: Vec<PathBuf>,
     pub frontend: Option<PathBuf>,
     pub file: Option<PathBuf>,
     pub lang: Lang,
@@ -142,21 +150,33 @@ pub struct Editor {
     /// The stats each side's round starts with (after the NaviCust and the
     /// patch cards), or why the round doesn't start.
     pub round: Result<[NaviStats; 2], String>,
+    /// The chips each side's rules let a folder hold.
+    pub pool: [Vec<ChipHandle>; 2],
+    /// Each side's NaviCust pane's own state.
+    pub navicust: [crate::navicust::State; 2],
     pub status: String,
     frames: u32,
 }
 
 impl Editor {
     pub fn new(content: Arc<Content>, pictures: Pictures, options: Options) -> Editor {
+        // A new match: live play's draw, else a plain one (content live play
+        // can't draw from).
+        let new = |content: &Arc<Content>| {
+            nettai_match::draw::live(content, 1, None).or_else(|_| nettai_match::draw::plain(content, 1)).unwrap_or_else(|e| {
+                eprintln!("the content makes no match: {e}");
+                std::process::exit(1)
+            })
+        };
         let m = match &options.file {
             Some(path) => match std::fs::read_to_string(path).map_err(|e| vec![e.to_string()]).and_then(|t| read(&content, &t)) {
                 Ok(m) => m,
                 Err(problems) => {
                     eprintln!("{}: {}", path.display(), problems.join("; "));
-                    nettai_match::draw::live(&content, 1, None).expect("a random match")
+                    new(&content)
                 }
             },
-            None => nettai_match::draw::live(&content, 1, None).expect("a random match"),
+            None => new(&content),
         };
         let mut e = Editor {
             names: Names::default(),
@@ -170,6 +190,8 @@ impl Editor {
             typed: HashMap::new(),
             problems: Vec::new(),
             round: Err(String::new()),
+            pool: Default::default(),
+            navicust: Default::default(),
             status: String::new(),
             frames: 0,
             content,
@@ -196,7 +218,7 @@ impl Editor {
         self.lang = lang;
         self.names.other = match lang {
             Lang::En => None,
-            Lang::Ja => match nettai_content::locale::load_all(&self.options.content_root, lang.code()) {
+            Lang::Ja => match nettai_content::locale::load_many(&self.options.roots, lang.code()) {
                 Ok(Some(s)) => Some(s),
                 _ => {
                     self.status = format!("the content has no {} names", lang.code());
@@ -209,7 +231,13 @@ impl Editor {
     /// Check the match again, and the stats its round starts with.
     pub fn refresh(&mut self) {
         self.problems = nettai_match::check_match(&self.content, &self.m);
-        self.round = nettai_match::check::round_stats(&self.content, &self.m);
+        match nettai_match::check::start(&self.content, &self.m) {
+            Ok(mut b) => {
+                self.pool = [0u8, 1].map(|s| nettai_match::folders::pool(&self.content, &mut b, s));
+                self.round = Ok(b.stats);
+            }
+            Err(e) => self.round = Err(e),
+        }
     }
 
     fn edited(&mut self) {
@@ -263,16 +291,15 @@ impl Editor {
             }
         };
         let program = self.frontend();
-        let started = std::process::Command::new(&program)
-            .arg("--match")
-            .arg(&path)
-            .arg("--content")
-            .arg(&self.options.content_root)
-            .arg("--pack")
-            .arg(&self.options.pack)
-            .arg("--lang")
-            .arg(self.lang.code())
-            .spawn();
+        let mut command = std::process::Command::new(&program);
+        command.arg("--match").arg(&path);
+        if let Some(root) = &self.options.content {
+            command.arg("--content").arg(root);
+        }
+        for pack in &self.options.packs {
+            command.arg("--pack").arg(pack);
+        }
+        let started = command.arg("--lang").arg(self.lang.code()).spawn();
         self.status = match started {
             Ok(_) => format!("playing {} with {}", path.display(), program.display()),
             Err(e) => format!("can't start {} ({e}): give its path with --frontend", program.display()),
@@ -309,7 +336,7 @@ impl Editor {
             }
             Msg::Draw => {
                 let seed = self.m.seed.unwrap_or(1).wrapping_mul(0x2545_F491).wrapping_add(7);
-                if let Ok(m) = nettai_match::draw::live(&content, seed, None) {
+                if let Ok(m) = nettai_match::draw::live(&content, seed, None).or_else(|_| nettai_match::draw::plain(&content, seed)) {
                     self.m = m;
                     self.typed.clear();
                     self.edited();
@@ -483,6 +510,11 @@ impl Editor {
                 side.stats = Side::base_stats(&content, side.navi, side.game);
                 self.typed.retain(|(x, _), _| *x != s);
                 self.edited();
+            }
+            Msg::NaviCust(s, edit) => {
+                if crate::navicust::update(&content, &mut self.m.sides[s], &mut self.navicust[s], edit) {
+                    self.edited();
+                }
             }
             Msg::Frame => {
                 self.frames += 1;

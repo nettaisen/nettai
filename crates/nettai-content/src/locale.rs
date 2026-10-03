@@ -83,8 +83,14 @@ pub fn load(root: &Path, lang: &str) -> Result<Option<Strings>, String> {
 /// The tables of `lang` of the root in `dir` and the roots it requires,
 /// qualified and merged into one (`None` when none has one).
 pub fn load_all(dir: &Path, lang: &str) -> Result<Option<Strings>, String> {
+    load_many(&[dir.to_path_buf()], lang)
+}
+
+/// [`load_all`] for the roots in `dirs` and the roots they require (the
+/// roots a frontend loaded: `pack::Loaded::roots`).
+pub fn load_many(dirs: &[std::path::PathBuf], lang: &str) -> Result<Option<Strings>, String> {
     let mut out: Option<Strings> = None;
-    for d in crate::root::dirs(dir)? {
+    for d in crate::root::dirs_of(dirs)? {
         let name = crate::root::read_manifest(&d)?.name;
         if let Some(s) = load(&d, lang)? {
             out.get_or_insert_with(|| Strings { language: lang.to_string(), ..Default::default() }).merge(s.qualified(&name));
@@ -156,6 +162,12 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
         }
         text(format!("patch-cards.{key}.name"), &c.name);
     }
+    for (key, c) in &s.navicust_programs {
+        if defs.navicust_program_by_key(&q(key)).is_none() {
+            unknown.push(format!("navicust-programs.{key}: no NaviCust program has this key"));
+        }
+        text(format!("navicust-programs.{key}.name"), &c.name);
+    }
     if own {
         let named = |n: Option<&Option<String>>| n.is_some_and(|n| n.is_some());
         for d in defs.chips.iter().filter(|d| ours(&d.key)) {
@@ -176,6 +188,11 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
         for d in defs.patch_cards.iter().filter(|d| ours(&d.key)) {
             if !named(s.patch_card(local(&d.key)).map(|c| &c.name)) {
                 unknown.push(format!("patch-cards.{}: the content's own language names every patch card", local(&d.key)));
+            }
+        }
+        for d in defs.navicust_programs.iter().filter(|d| ours(&d.key)) {
+            if !named(s.navicust_program(local(&d.key)).map(|c| &c.name)) {
+                unknown.push(format!("navicust-programs.{}: the content's own language names every NaviCust program", local(&d.key)));
             }
         }
     }

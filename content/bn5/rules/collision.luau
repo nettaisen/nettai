@@ -162,5 +162,7 @@ collision.collision_4b = define.collision { id = "collision-4b", side0 = 0x80000
 collision.collision_4c = define.collision { id = "collision-4c", side0 = 0x02014002, side1 = 0x01014002, row_offset = 0x260 }
 -- Row 0x4d.
 collision.collision_4d = define.collision { id = "collision-4d", side0 = 0x55000200, side1 = 0xaa000200, row_offset = 0x268 }
+-- Row 0x2b: a 12-panel thunder ball's, DarkThnd's (0x080C9FA0) (BN6 names none).
+collision.collision_2b = define.collision { id = "collision-2b", side0 = 0x80000408, side1 = 0x40000408, row_offset = 0x158 }
 
 return collision

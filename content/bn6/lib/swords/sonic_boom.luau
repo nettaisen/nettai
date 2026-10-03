@@ -4,7 +4,10 @@
 -- from the sword chips that throw one (SonicBom, SprSonic and the chips
 -- sharing their action; Z Saver's fourth slash). It ends on what it hits,
 -- or goes through (then hitting each panel once). Its sprite stays on its
--- first frame. See docs/engine/shot-chips.md §12.1.
+-- first frame. See docs/engine/shot-chips.md §12.1. Its look (sprite,
+-- height, palettes, collision type) is a game's: BN6's below
+-- (`sonic_boom.kind`); another game's kind of it is
+-- `sonic_boom.make_kind(id, look)` (BN5's).
 
 local collision = require("../../rules/collision")
 local regions = require("../regions")
@@ -17,13 +20,30 @@ export type State = {
     pierces: boolean,
 }
 
-local SPRITE = asset.sprite("sword-slash")
-local Z = 0x10_0000
+-- A game's sonic boom: its sprite, its height, its palette when it goes
+-- through, else by its element (`element_mask` of its element byte
+-- indexing `palettes`), its collision type.
+export type Look = {
+    sprite: SpriteAsset,
+    z: number,
+    piercing_palette: number,
+    palettes: { [number]: number },
+    element_mask: number,
+    is: CollisionType,
+}
+
+-- BN6's: 16 pixels up; its primary element's palette (`byte_80CF8A8`); a
+-- slash.
+local BN6: Look = {
+    sprite = asset.sprite("sword-slash"),
+    z = 0x10_0000,
+    piercing_palette = 0xB,
+    palettes = { [0] = 0, 1, 2, 3, 4, 0, 0, 0 },
+    element_mask = 0xF,
+    is = collision.slash,
+}
 -- Its speed (16.16 pixels a tick) as its throwers set it.
 sonic_boom.SPEED = 0x8_0000
--- Its palette when it goes through, else by its element (`byte_80CF8A8`).
-local PIERCING_PALETTE = 0xB
-local PALETTES = { [0] = 0, 1, 2, 3, 4, 0, 0, 0 }
 -- The hits that stop it (or that it goes through).
 local HITS = 0x3F800000
 
@@ -73,7 +93,7 @@ end
 
 -- `sub_80CF810`: shown on its panel 16 pixels up, flying the way it faces
 -- at the speed it was given; a slash of its side over the column.
-local function init(me: Object)
+local function init(me: Object, look: Look)
     if battle.over() then
         me:free()
         return
@@ -81,17 +101,17 @@ local function init(me: Object)
     local s = me.state :: State
     me.visible = true
     local sprite = me.sprite
-    sprite:load(SPRITE)
+    sprite:load(look.sprite)
     sprite.shadow = "with_sprite"
     me.anim = 0
     sprite:set_animation(0)
     sprite:step()
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     if s.pierces then
-        sprite.palette = PIERCING_PALETTE
+        sprite.palette = look.piercing_palette
     else
-        local e = bit32.band(me.element, 0xF)
-        local palette = PALETTES[e]
+        local e = bit32.band(me.element, look.element_mask)
+        local palette = look.palettes[e]
         if palette == nil then
             error(string.format("element %#x reads past byte_80CF8A8", e))
         end
@@ -99,44 +119,49 @@ local function init(me: Object)
     end
     me:set_coordinates_from_panel()
     local p = me.pos
-    me.pos = Vec3.new(p.x, p.y, Z)
+    me.pos = Vec3.new(p.x, p.y, look.z)
     me.timer = 0
     me.vel = Vec3.new(int.i32(me.facing * me.vel.x), me.vel.y, me.vel.z)
     if not me:create_collision() then
         me:free()
         return
     end
-    me:setup_collision(collision.slash, collision.hits_navis, s.hit_mod)
+    me:setup_collision(look.is, collision.hits_navis, s.hit_mod)
     me.collision:set_region(regions.wide)
     me.collision:present()
     me:set_lifecycle("update")
     tick(me)
 end
 
-sonic_boom.kind = define.kind {
-    id = "sonic-boom",
-    pool = "attack",
-    state = { hit_mod = "u8", pierces = "bool" },
-    -- `sub_80CF7F0`.
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            init(me)
-        elseif l == "update" then
-            tick(me)
-        else
-            me:destroy()
-        end
-    end,
-}
+-- A sonic boom kind (`id`) of `look`.
+function sonic_boom.make_kind(id: string, look: Look): Kind
+    return define.kind {
+        id = id,
+        pool = "attack",
+        state = { hit_mod = "u8", pierces = "bool" },
+        -- `sub_80CF7F0`.
+        update = function(me: Object)
+            local l = me.lifecycle
+            if l == "init" then
+                init(me, look)
+            elseif l == "update" then
+                tick(me)
+            else
+                me:destroy()
+            end
+        end,
+    }
+end
+
+sonic_boom.kind = sonic_boom.make_kind("sonic-boom", BN6)
 
 -- `sub_80CF91E` and its throwers' speed: a sonic boom from `owner` on
 -- panel (x, y), with `element`, the damage word and what it is, flying at
 -- `SPEED`; nil if the attack pool is full. It takes the owner's side and
 -- flip, runs later this tick, right after its spawner; its init sets its
--- Z.
-function sonic_boom.throw(owner: Object, x: number, y: number, element: number, damage: number, boom: SonicBoom): Object?
-    local o = battle.spawn(sonic_boom.kind, Vec3.zero)
+-- Z. (A game's own kind of it: `kind`.)
+function sonic_boom.throw(owner: Object, x: number, y: number, element: number, damage: number, boom: SonicBoom, kind: Kind?): Object?
+    local o = battle.spawn(kind or sonic_boom.kind, Vec3.zero)
     if o then
         local s = o.state :: State
         s.hit_mod = boom.hit_mod

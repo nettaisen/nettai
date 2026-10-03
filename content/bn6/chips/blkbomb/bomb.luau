@@ -8,7 +8,10 @@
 -- some other way (`placed`) stays.
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
--- `obstacle` service) around its own actions.
+-- `obstacle` service) around its own actions. Another game's bomb is a
+-- kind of its look (`black_bomb.make_kind`; BN5's): how it leaves the
+-- field, its hit spark, its and its burst's collision types and how a
+-- pushing hit treats it.
 
 local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local attachment = require("../../objects/attachment/attachment")
@@ -20,6 +23,19 @@ local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local trajectory = require("../../lib/trajectory")
 
 local black_bomb = {}
+
+-- A game's BlkBomb: its destroyed action (2), hit spark, collision type
+-- and its burst's, and what a pushing hit does to it.
+export type Look = {
+    destroyed: (Object) -> (),
+    spark: Spark,
+    is: CollisionType,
+    burst_is: CollisionType,
+    push: ObstaclePush,
+}
+
+-- A kind's look and its action table.
+type Kinded = Look & { actions: { [number]: (Object) -> () } }
 
 export type State = {
     -- The angle it was thrown at (BattleObject+0x0C).
@@ -69,7 +85,7 @@ black_bomb.held = attachment.look { sprite = asset.sprite("bomb"), palette = 4 }
 local DESTROYED, SET = 2, 9
 
 -- Gone from the field's bookkeeping, and freed at the next update.
-local function finish(me: Object)
+function black_bomb.finish(me: Object)
     obstacle.release_tracking(me)
     obstacle.unregister(me)
     me:unreserve_panel(me.future_panel_x, me.future_panel_y)
@@ -144,7 +160,7 @@ local function destroyed(me: Object)
                 battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), effects.puff)
             end
         end
-        finish(me)
+        black_bomb.finish(me)
         return
     end
     if me.phase_init == 0 then
@@ -154,7 +170,7 @@ local function destroyed(me: Object)
             battle.effect(me.pos, effects.explosion)
             if not (me.state :: State).set_off then
                 battle.play_sound(SOUND_HIT_BOMB)
-                finish(me)
+                black_bomb.finish(me)
                 return
             end
         end
@@ -162,26 +178,11 @@ local function destroyed(me: Object)
     if battle.dimmed() then
         return
     end
-    finish(me)
+    black_bomb.finish(me)
 end
 
 -- `sub_80CD6FC`: set down, nothing to do.
 local function idle(_me: Object) end
-
--- Its action table (`off_80CD62C`): its own actions and the framework's
--- shared ones.
-local ACTIONS: { [number]: (Object) -> () } = {
-    [0] = fly,
-    [1] = obstacle.return_to_idle,
-    [2] = destroyed,
-    [3] = obstacle.flinch,
-    [4] = obstacle.paralyzed,
-    [5] = obstacle.knocked_back,
-    [6] = obstacle.frozen,
-    [7] = obstacle.bubbled,
-    [8] = fly,
-    [9] = idle,
-}
 
 -- `sub_80CD7A0`: a fire hit sets it off.
 local function catch_fire(me: Object)
@@ -197,10 +198,10 @@ local function catch_fire(me: Object)
     me.phase, me.phase_init = 0, 0
 end
 
--- `sub_80CD5F8`.
-local function tick(me: Object)
+-- `sub_80CD5F8`, with the kind's action table (`off_80CD62C`).
+local function tick(me: Object, k: Kinded)
     me.visible = true
-    obstacle.take_hits(me, "keeps_damage")
+    obstacle.take_hits(me, k.push)
     me:hit_spark()
     catch_fire(me)
     if not (me.state :: State).placed then
@@ -208,7 +209,7 @@ local function tick(me: Object)
     end
     local a = obstacle.react(me, "breaks", "always")
     if a then
-        local action = ACTIONS[a]
+        local action = k.actions[a]
         if not action then
             error(string.format("BlkBomb action %d reads past off_80CD62C", a))
         end
@@ -220,7 +221,7 @@ end
 
 -- `sub_80CD7D0`: set off, it bursts over the side opposite its panel's
 -- owner.
-local function burst(me: Object)
+local function burst(me: Object, k: Kinded)
     if not (me.state :: State).set_off then
         return
     end
@@ -241,7 +242,7 @@ local function burst(me: Object)
         -- None.
         hit_effect = nil,
         target = collision.hits_navis,
-        self_type = collision.attack,
+        self_type = k.burst_is,
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = BURST_HIT_MOD,
@@ -252,7 +253,7 @@ local function burst(me: Object)
 end
 
 -- `sub_80CD50C`: aim at the target panel (a thrown one), with 100 HP.
-local function init(me: Object, s: State)
+local function init(me: Object, s: State, k: Kinded)
     me.visible = true
     local sprite = me.sprite
     sprite:load(SPRITE)
@@ -287,45 +288,82 @@ local function init(me: Object, s: State)
         me:free()
         return
     end
-    me:setup_collision(collision.neutral_object, collision.everything, HIT_MOD)
+    me:setup_collision(k.is, collision.everything, HIT_MOD)
     me.collision.self_damage = SELF_DAMAGE
     me.collision.counter_byte = COUNTER
     me.collision:set_region(nil)
-    me.collision:set_hit_effect(HIT_SPARK)
+    me.collision:set_hit_effect(k.spark)
     me.collision:present()
     me.lifecycle = "update"
-    tick(me)
+    tick(me, k)
 end
 
-black_bomb.kind = define.kind {
-    id = "blkbomb/bomb",
-    pool = "attack",
-    state = { angle = "u8", set_off = "bool", placed = "bool", target_x = "u8", target_y = "u8" },
-    -- `sub_80CD4EC`.
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            init(me, me.state :: State)
-        elseif l == "update" then
-            tick(me)
-        else
-            -- `sub_80CD78E`.
-            burst(me)
-            me.collision:free()
-            me:free()
-        end
-    end,
-}
+-- A BlkBomb kind (`id`) of `look`.
+function black_bomb.make_kind(id: string, look: Look): Kind
+    -- Its action table (`off_80CD62C`): its own actions and the
+    -- framework's shared ones.
+    local actions: { [number]: (Object) -> () } = {
+        [0] = fly,
+        [1] = obstacle.return_to_idle,
+        [2] = look.destroyed,
+        [3] = obstacle.flinch,
+        [4] = obstacle.paralyzed,
+        [5] = obstacle.knocked_back,
+        [6] = obstacle.frozen,
+        [7] = obstacle.bubbled,
+        [8] = fly,
+        [9] = idle,
+    }
+    local k: Kinded = {
+        destroyed = look.destroyed,
+        spark = look.spark,
+        is = look.is,
+        burst_is = look.burst_is,
+        push = look.push,
+        actions = actions,
+    }
+    return define.kind {
+        id = id,
+        pool = "attack",
+        state = { angle = "u8", set_off = "bool", placed = "bool", target_x = "u8", target_y = "u8" },
+        -- `sub_80CD4EC`.
+        update = function(me: Object)
+            local l = me.lifecycle
+            if l == "init" then
+                init(me, me.state :: State, k)
+            elseif l == "update" then
+                tick(me, k)
+            else
+                -- `sub_80CD78E`.
+                burst(me, k)
+                me.collision:free()
+                me:free()
+            end
+        end,
+    }
+end
+
+-- BN6's: a neutral object whose burst is an attack, pushed by a pushing
+-- hit with its damage kept.
+black_bomb.kind = black_bomb.make_kind("blkbomb/bomb", {
+    destroyed = destroyed,
+    spark = HIT_SPARK,
+    is = collision.neutral_object,
+    burst_is = collision.attack,
+    push = "keeps_damage",
+})
 
 -- `sub_80CD886`: a thrower for `throw.action` that throws a BlkBomb at the
 -- panel three ahead of the user: one of the side's field objects. (The
 -- original keeps that panel as a halfword from the user's panel, and its
 -- thrower's X, which nothing reads.)
-function black_bomb.thrower(): Thrower
+-- (A game's own kind of it: `kind`.)
+function black_bomb.thrower(kind: Kind?): Thrower
+    local bomb_kind = kind or black_bomb.kind
     return {
         throw = function(user: Object, pos: Vec3, damage: number): Object?
             local xy = int.u16(user.panel_x + user.panel_y * 0x100 + 3 * user.facing)
-            local o = battle.spawn(black_bomb.kind, pos)
+            local o = battle.spawn(bomb_kind, pos)
             if o then
                 local s = o.state :: State
                 s.target_x = bit32.band(xy, 0xFF)

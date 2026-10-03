@@ -158,7 +158,7 @@ local function init(me: Object)
     local s = me.state :: State
     local v = s.variant
     local sprite = me.sprite
-    sprite:load(SPRITE)
+    sprite:load(v.sprite or SPRITE)
     sprite.shadow = "with_sprite"
     me.visible = true
     me.anim, me.anim_loaded = ANIM_RISE, ANIM_RISE
