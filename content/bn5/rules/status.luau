@@ -391,7 +391,9 @@ local status = {
         duration = 0,
         timer = { other = 0 },
     },
-    rules = define.rules("bn5:status", { hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 } }),
+    -- BN5's per-form tick table (0x080EB1E8) runs none of BN6's `sub_80F0608` (the Fire charge, a form's
+    -- height): MegaMan's (0x080F04CE) steps GyroSoul's overlay (rules/souls).
+    rules = define.rules("bn5:status", { hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 }, form_tick = false }),
 }
 
 return status

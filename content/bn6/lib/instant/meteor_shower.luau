@@ -5,8 +5,8 @@
 -- falling meteor, chips/meteors/falling_meteor) falls on one of the other
 -- side's navis still standing, picked at random, or on a panel next to it
 -- (6 draws in 16).
--- (The game drops the meteor's look 2 for three drops, else 0: the rows
--- are the same.)
+-- (It drops the meteor's row 2 for three drops, else 0: BN6's rows are
+-- alike.)
 --
 -- No chip names effect 16. The patch cards' meteors (lib/patch-cards/
 -- meteors, MettFire's B button and Metrid's B+Back) spawn the shower from
@@ -33,7 +33,7 @@ local NEIGHBORS = { { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }
 
 -- `sub_80E5A8A`: one of the other side's navis still standing, at random
 -- (a draw only if there is one).
-local function pick(me: Object): Object?
+function meteor_shower.pick(me: Object): Object?
     local standing = {}
     for _, o in battle.alive_actors(bit32.bxor(me.alliance, 1)) do
         if o.hp ~= 0 then
@@ -48,7 +48,7 @@ end
 
 -- `sub_80E5AD6`: the target's panel, or on some draws a neighbor of it on
 -- the field (another draw picks which).
-local function aim(target: Object?): (number, number)
+function meteor_shower.aim(target: Object?): (number, number)
     if target == nil then
         error("meteor shower without a target (sub_80E5AD6 reads a panel through a null pointer)")
     end
@@ -74,7 +74,8 @@ end
 -- values, which its init replaces.)
 local function meteor(me: Object, x: number, y: number)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    falling_meteor.spawn(me, x, y, me.element, damage, false, Vec3.new(y, me.element, 0))
+    local row = if (me.state :: State).drops == 3 then 2 else 0
+    falling_meteor.spawn(row, me, x, y, me.element, damage, false, Vec3.new(y, me.element, 0))
 end
 
 -- `sub_80E5A22`.
@@ -90,8 +91,8 @@ local function tick(me: Object)
     end
     me.timer = DROP_TICKS
     local s = me.state :: State
-    s.target = pick(me)
-    local x, y = aim(s.target)
+    s.target = meteor_shower.pick(me)
+    local x, y = meteor_shower.aim(s.target)
     meteor(me, x, y)
     local drops = me.timer2 - 1
     me.timer2 = drops
@@ -110,7 +111,7 @@ meteor_shower.kind = define.kind {
         if l == "init" then
             -- sub_80E5A08
             local s = me.state :: State
-            s.target = pick(me)
+            s.target = meteor_shower.pick(me)
             me.timer2 = s.drops
             me.timer = 0
             me:set_lifecycle("update")

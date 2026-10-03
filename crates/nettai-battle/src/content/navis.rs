@@ -105,11 +105,15 @@ impl NaviTraits {
 
 serde_flags!(NaviTraits, u8);
 
-/// The forms a navi changes into, by the player's game.
+/// The forms a navi changes into, by the player's game (BN6's), and its
+/// souls (BN5's Soul Unison).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviForms {
     pub gregar: FormSet,
     pub falzar: FormSet,
+    /// The souls the custom screen's soul button offers (each a form with
+    /// its [`SoulData`]).
+    pub souls: Vec<FormHandle>,
 }
 
 impl NaviForms {
@@ -190,6 +194,8 @@ pub enum FormKind {
     CrossBeast,
     /// Beast Over: the navi acts on its own.
     BeastOver,
+    /// A soul (BN5's Soul Unison): united with a navi for some turns.
+    Soul,
 }
 
 impl FormKind {
@@ -214,10 +220,23 @@ impl FormKind {
     }
 }
 
+/// A soul's place on BN5's custom screen: its number (NaviStats +0x2C,
+/// the soul-used bits' and the save's soul flags' order) and the family
+/// of the chip given up for it (0x08024BE0's table).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SoulData {
+    pub number: u8,
+    pub family: ChipFamily,
+}
+
 /// One of MegaMan's forms.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FormData {
+    /// A soul's number and family (`kind = "soul"`).
+    #[serde(default)]
+    pub soul: Option<SoulData>,
     pub sprite: SpriteId,
     pub element: Element,
     #[serde(default)]
@@ -286,6 +305,10 @@ pub struct FormData {
     /// fires in it (`sub_802D4F0`).
     #[serde(default)]
     pub special_volley: u16,
+    /// The lag at the end of a move in it, in place of MegaMan's 4 (BN5's
+    /// ShadowSoul's 0: 0x0800E0D2).
+    #[serde(default)]
+    pub move_lag: Option<u8>,
     /// A change into a Cross that finds the navi in this animation lets go of it
     /// and of what it holds (`sub_8014B18`: GroundCross's drill).
     #[serde(default)]
@@ -302,6 +325,11 @@ pub struct FormData {
     /// turn's start.
     #[serde(skip)]
     pub change: Option<nettai_content_api::ActionHandle>,
+    /// The action that takes a navi out of it back to its base form when
+    /// its side asks (BN5's souls': 0x080121D8), run while paused; none:
+    /// the framework's revert (`sub_8015614`, BN6's forms).
+    #[serde(skip)]
+    pub revert: Option<nettai_content_api::ActionHandle>,
     /// A Cross's form in Beast Out.
     #[serde(skip)]
     pub beast: Option<FormHandle>,
@@ -412,6 +440,10 @@ pub struct ChargedChips {
     /// And the chips with the `element_sword` trait.
     #[serde(default)]
     pub element_swords: bool,
+    /// Only its chips that are neither dimming chips nor dark chips (BN5's
+    /// souls, 0x0801090A).
+    #[serde(default)]
+    pub plain: bool,
 }
 
 fn yes() -> bool {
@@ -616,10 +648,14 @@ pub(crate) fn read_form(
 ) -> Result<FormData, nettai_content_api::ContentError> {
     use serde_json::Value as Json;
     // (`buster_arm` is the content's own: the arm a navi raises.)
-    let o = super::reader::fields(d, r, &["id", "identity", "cross_of", "beast", "breaks_to", "change", "weapons", "buster_arm"])?;
+    let o = super::reader::fields(d, r, &["id", "identity", "cross_of", "beast", "breaks_to", "change", "revert", "weapons", "buster_arm"])?;
     let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
-    if form.kind != FormKind::Base && form.game.is_none() {
-        return Err(super::reader::err(d, "a form that is not the base form says whose `game` it is (gregar, falzar)"));
+    // (BN5's souls are of no BN6 version.)
+    if !matches!(form.kind, FormKind::Base | FormKind::Soul) && form.game.is_none() {
+        return Err(super::reader::err(d, "a form that is not the base form or a soul says whose `game` it is (gregar, falzar)"));
+    }
+    if (form.kind == FormKind::Soul) != form.soul.is_some() {
+        return Err(super::reader::err(d, "a soul (`kind = \"soul\"`) and only a soul names its `soul`"));
     }
     Ok(form)
 }

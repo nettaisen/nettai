@@ -8,7 +8,8 @@
 -- strikes: a hit on its panel and 37 ticks of its animation.
 --
 -- The chips are ./chips (FireHit1-3 are the ingredients of FlmHook's
--- Program Advances).
+-- Program Advances). A game whose fist hits with its own spark and
+-- collision types makes its kind with `fist.make_kind(id, look)` (BN5's).
 
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
@@ -32,6 +33,10 @@ local TARGETS = { [0] = 0x04000000, [1] = 0x08000000 }
 -- hits navis.
 local STRIKE_Z = 0x10_0000
 
+-- BN6's look: the strike's spark and collision types (`dword_80CFEC0`'s
+-- bytes 1 to 3).
+local BN6: FireHitFistLook = { spark = sparks.fire, target = collision.hits_navis, self_type = collision.attack }
+
 -- The actions.
 local WARN, STRIKE = 0, 4
 
@@ -54,7 +59,7 @@ local function warn(me: Object)
 end
 
 -- `sub_80CFDB0`: the hit, then 37 ticks of the fist.
-local function strike(me: Object)
+local function strike(me: Object, look: FireHitFistLook)
     if me.phase_init == 0 then
         battle.hitbox(me, {
             panel_x = me.panel_x,
@@ -62,9 +67,9 @@ local function strike(me: Object)
             element = me.element,
             z = STRIKE_Z,
             region = regions.single,
-            hit_effect = sparks.fire,
-            target = collision.hits_navis,
-            self_type = collision.attack,
+            hit_effect = look.spark,
+            target = look.target,
+            self_type = look.self_type,
             damage = me.damage,
             stamina = me.stamina,
             hit_mod = (me.state :: State).hit_mod,
@@ -82,19 +87,19 @@ local function strike(me: Object)
 end
 
 -- `sub_80CFD64`.
-local function tick(me: Object)
+local function tick(me: Object, look: FireHitFistLook)
     local a = me.action
     if a == WARN then
         warn(me)
     elseif a == STRIKE then
-        strike(me)
+        strike(me, look)
     else
         error(string.format("FireHit's fist action %#x reads past its table", a))
     end
 end
 
 -- `sub_80CFD1C`.
-local function init(me: Object)
+local function init(me: Object, look: FireHitFistLook)
     local sprite = me.sprite
     sprite:load(SPRITE)
     sprite.shadow = "with_sprite"
@@ -105,32 +110,38 @@ local function init(me: Object)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     battle.play_sound(SOUND)
     me:set_lifecycle("update")
-    tick(me)
+    tick(me, look)
 end
 
-fist.kind = define.kind {
-    id = "bn6:firehit/fist",
-    pool = "attack",
-    state = { hit_mod = "u8" },
-    -- `sub_80CFCF8`.
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            init(me)
-        elseif l == "update" then
-            tick(me)
-        else
-            me:destroy()
-        end
-        me:update_sprite()
-    end,
-}
+-- A fist kind (`id`) of `look`.
+function fist.make_kind(id: string, look: FireHitFistLook): Kind
+    return define.kind {
+        id = id,
+        pool = "attack",
+        state = { hit_mod = "u8" },
+        -- `sub_80CFCF8`.
+        update = function(me: Object)
+            local l = me.lifecycle
+            if l == "init" then
+                init(me, look)
+            elseif l == "update" then
+                tick(me, look)
+            else
+                me:destroy()
+            end
+            me:update_sprite()
+        end,
+    }
+end
+
+fist.kind = fist.make_kind("bn6:firehit/fist", BN6)
 
 -- `sub_80CFDF2` and `sub_801155A`: a fist of `owner`'s on (x, y), its hit
--- with the damage word `damage` and modifier `hit_mod`. (It spawns at the
--- registers' values, which its init replaces but for Z.)
-function fist.spawn(owner: Object, x: number, y: number, element: number, z: number, hit_mod: number, damage: number): Object?
-    local o = battle.spawn(fist.kind, Vec3.new(y, element, z))
+-- with the damage word `damage` and modifier `hit_mod`; of `kind`, BN6's
+-- by default. (It spawns at the registers' values, which its init replaces
+-- but for Z.)
+function fist.spawn(owner: Object, x: number, y: number, element: number, z: number, hit_mod: number, damage: number, kind: Kind?): Object?
+    local o = battle.spawn(kind or fist.kind, Vec3.new(y, element, z))
     if o then
         o.panel_x, o.panel_y = x, y
         o.element = element
@@ -144,30 +155,30 @@ end
 
 -- `sub_80CFE5C`: a fist on column `at` of each row where column `probe` has
 -- one of the other side's; how many.
-local function strike_column(user: Object, probe: number, at: number, hit_mod: number, spec: InstantChipSpec): number
+local function strike_column(user: Object, probe: number, at: number, hit_mod: number, spec: InstantChipSpec, kind: Kind?): number
     local targets = TARGETS[user.alliance]
     local n = 0
     for y = 1, 3 do
         if bit32.btest(field.flags(probe, y), targets) then
-            fist.spawn(user, at, y, spec.element, spec.z, hit_mod, spec.damage)
+            fist.spawn(user, at, y, spec.element, spec.z, hit_mod, spec.damage, kind)
             n += 1
         end
     end
     return n
 end
 
--- `sub_80CFE08`, instant chip effect 8: an `instant` hook whose fists hit
--- with modifier `hit_mod`. The columns ahead of the user while its row's
+-- `sub_80CFE08`, instant chip effect 8: an `instant` hook whose fists (of
+-- `kind`, BN6's by default) hit with modifier `hit_mod`. The columns ahead of the user while its row's
 -- panel there is on the field; the fists' column follows for the first
 -- three.
-function fist.instant(hit_mod: number): (user: Object, spec: InstantChipSpec) -> ()
+function fist.instant(hit_mod: number, kind: Kind?): (user: Object, spec: InstantChipSpec) -> ()
     return function(user: Object, spec: InstantChipSpec)
         local dir = user.facing
         local probe = user.panel_x + dir
         local at = probe
         local misses = 0
         while field.valid(probe, user.panel_y) do
-            if strike_column(user, probe, at, hit_mod, spec) ~= 0 then
+            if strike_column(user, probe, at, hit_mod, spec, kind) ~= 0 then
                 return
             end
             probe += dir
