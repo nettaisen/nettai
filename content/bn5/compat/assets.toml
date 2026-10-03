@@ -310,3 +310,42 @@ swirls = 0x11
 numbers = 0x12
 numbers-2 = 0x14
 glyphs = 0x1a
+
+# Mugshots: the emotion window's faces, by the number bn5-extract gives them (its hud.rs: the face
+# table's pictures with their own palettes, then the version souls' with the palettes Chaos Unison
+# shows them in, then Team Colonel's own souls').
+[mugshots]
+megaman = 0x00
+megaman-angry = 0x01
+megaman-tired = 0x02
+megaman-full-synchro = 0x03
+megaman-worn-out = 0x04
+protosoul = 0x05
+gyrosoul = 0x06
+searchsoul = 0x07
+napalmsoul = 0x08
+magnetsoul = 0x09
+meddysoul = 0x0a
+megaman-dark = 0x0b
+megaman-dark-angry = 0x0c
+megaman-dark-tired = 0x0d
+megaman-dark-full-synchro = 0x0e
+megaman-dark-worn-out = 0x0f
+protosoul-chaos = 0x10
+gyrosoul-chaos = 0x11
+searchsoul-chaos = 0x12
+napalmsoul-chaos = 0x13
+magnetsoul-chaos = 0x14
+meddysoul-chaos = 0x15
+colonelsoul = 0x16
+shadowsoul = 0x17
+numbersoul = 0x18
+tomahawksoul = 0x19
+knightsoul = 0x1a
+toadsoul = 0x1b
+colonelsoul-chaos = 0x1c
+shadowsoul-chaos = 0x1d
+numbersoul-chaos = 0x1e
+tomahawksoul-chaos = 0x1f
+knightsoul-chaos = 0x20
+toadsoul-chaos = 0x21
