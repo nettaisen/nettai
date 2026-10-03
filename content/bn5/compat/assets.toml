@@ -248,6 +248,7 @@ bass-anly-shot = 0x140
 bug = 0x143
 col-army = 0x144
 volcano = 0x146
+dark-sonic = 0x14a
 bonus = 0x157
 flame-hook-fire = 0x158
 rslash = 0x164

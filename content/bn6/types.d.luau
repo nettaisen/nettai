@@ -490,6 +490,8 @@ export type Instrument = {
     hp: number?,
     sprite: SpriteAsset?,
     absorbed: AbsorbedLook?,
+    -- Ticks between its effects (the row's byte 1; none: 3).
+    effect_period: number?,
 }
 
 -- A sword wave (navis/megaman/forms/slashcross/sword_wave, a row of the
