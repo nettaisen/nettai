@@ -189,7 +189,8 @@ local function leave(me: Object)
     end
     if countdown(me, 4) then
         me:remove_parts(navi.cape)
-        me:set_lifecycle("destroy")
+        -- (The lifecycle byte alone, as the game stores it.)
+        me.lifecycle = "destroy"
     end
 end
 

@@ -109,6 +109,10 @@
 "bn5:leadraid/protoman" = { pool = "actor", index = 0x20 }
 "bn5:leadraid/colonel" = { pool = "actor", index = 0x22 }
 "bn5:leadraid/glow" = { pool = "effect", index = 0x85 }
+"bn5:chaoslrd/navi" = { pool = "actor", index = 0x51 }
+"bn5:chaoslrd/aura" = { pool = "effect", index = 0x47 }
+"bn5:chaoslrd/gather" = { pool = "effect", index = 0x4B }
+"bn5:chaoslrd/strike" = { pool = "attack", index = 0x82 }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
 "bn5:meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "bn5:napalmmn/bomb" = { pool = "attack", index = 0x3A }
