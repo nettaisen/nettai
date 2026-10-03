@@ -30,6 +30,15 @@ pub trait Library {
     fn cross_form(&self, navi: NaviHandle, version: GameVersion, cross: u8) -> Option<FormHandle>;
     fn beast_out_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle>;
     fn beast_over_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle>;
+    /// BN5's Soul Unison: the navi has souls (the custom screen's soul
+    /// button), and the soul a chip of `family` given up gives (its number
+    /// and form).
+    fn has_souls(&self, _navi: NaviHandle) -> bool {
+        false
+    }
+    fn soul_for_family(&self, _navi: NaviHandle, _family: crate::content::ChipFamily) -> Option<(u8, FormHandle)> {
+        None
+    }
     /// What kind of form one is, what the screen asks of it, and a Cross's
     /// form in Beast Out.
     fn form_kind(&self, form: FormHandle) -> FormKind;
@@ -99,6 +108,15 @@ impl Library for Content {
 
     fn beast_over_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle> {
         self.navi(navi).forms.as_ref()?.of(version).beast_over
+    }
+
+    fn has_souls(&self, navi: NaviHandle) -> bool {
+        self.navi(navi).forms.as_ref().is_some_and(|f| !f.souls.is_empty())
+    }
+
+    fn soul_for_family(&self, navi: NaviHandle, family: crate::content::ChipFamily) -> Option<(u8, FormHandle)> {
+        let forms = self.navi(navi).forms.as_ref()?;
+        forms.souls.iter().find_map(|&f| self.form(f).soul.filter(|s| s.family == family).map(|s| (s.number, f)))
     }
 
     fn form_kind(&self, form: FormHandle) -> FormKind {
@@ -203,6 +221,14 @@ impl Library for GameLibrary<'_> {
 
     fn beast_over_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle> {
         self.content.beast_over_form(navi, version)
+    }
+
+    fn has_souls(&self, navi: NaviHandle) -> bool {
+        Library::has_souls(self.content, navi)
+    }
+
+    fn soul_for_family(&self, navi: NaviHandle, family: crate::content::ChipFamily) -> Option<(u8, FormHandle)> {
+        Library::soul_for_family(self.content, navi, family)
     }
 
     fn form_kind(&self, form: FormHandle) -> FormKind {

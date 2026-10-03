@@ -318,6 +318,7 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         }
         Phase::CrossChosen { .. } => "CUSTOM: CROSS!",
         Phase::BeastOutChosen { .. } => "CUSTOM: BEAST OUT!",
+        Phase::SoulChosen { .. } => "CUSTOM: SOUL UNISON!",
         _ => "CUSTOM",
     };
     out.push_str(title);
@@ -326,6 +327,7 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         let label = match x.kind {
             SlotKind::Ok => "OK".to_string(),
             SlotKind::BeastOut => "BEAST OUT".to_string(),
+            SlotKind::Soul => "SOUL".to_string(),
             SlotKind::Scrap { right_half: false } => "SCRAP".to_string(),
             SlotKind::Redeal { right_half: false } => "REDEAL".to_string(),
             SlotKind::Empty | SlotKind::Hidden | SlotKind::Scrap { .. } | SlotKind::Redeal { .. } => return String::new(),

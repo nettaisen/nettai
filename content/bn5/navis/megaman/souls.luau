@@ -20,8 +20,10 @@ export type Soul =
     | "knight"
     | "toad"
 
--- The soul forms by their ids (none until Soul Unison's forms are defined: no navi is in a soul).
-local by_form: { [string]: Soul } = {}
+-- The soul forms by their ids.
+local by_form: { [string]: Soul } = {
+    ["bn5:protosoul"] = "proto",
+}
 
 -- The soul `navi`'s side is in, nil for none.
 function souls.of(navi: Object): Soul?

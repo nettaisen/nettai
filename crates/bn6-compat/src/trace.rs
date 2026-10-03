@@ -136,6 +136,7 @@ fn unlocks_from_flags(version: GameVersion, flags: &[u8]) -> Unlocks {
         // (A save names no Crosses of its own: the window offers the
         // version's.)
         cross_list: None,
+        souls: Default::default(),
     }
 }
 

@@ -596,6 +596,8 @@ impl UserData for Object {
                 None => Ok(LuaValue::Nil),
             }
         });
+        methods.add_method("form_change_soul", |_, this, ()| with(|api, _| Ok(api.form_change_soul(this.0))));
+        methods.add_method("stop_moving", |_, this, ()| with(|api, _| api.stop_moving(this.0).map_err(api_error)));
         methods.add_method("pin_overlay", |_, this, ()| with(|api, _| Ok(api.pin_overlay(this.0))));
         methods.add_method("end_attack", |_, this, ()| with(|api, _| Ok(api.end_attack(this.0))));
         methods.add_method("set_attack", |_, this, (action, kind): (LuaValue, LuaValue)| {

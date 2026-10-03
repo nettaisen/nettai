@@ -1341,6 +1341,9 @@ impl Defs {
                 forms @ Data::Map(_) => {
                     let set = |game: &str| -> Result<super::FormSet, ContentError> {
                         let g = forms.field(game);
+                        if matches!(g, Data::Nil) {
+                            return Ok(super::FormSet::default());
+                        }
                         let crosses = match g.field("crosses") {
                             Data::Nil => Vec::new(),
                             Data::List(items) => items
@@ -1356,7 +1359,16 @@ impl Defs {
                             beast_over: form_ref(d, g.field("beast_over"), &format!("forms.{game}.beast_over"))?,
                         })
                     };
-                    Some(super::NaviForms { gregar: set("gregar")?, falzar: set("falzar")? })
+                    let souls = match forms.field("souls") {
+                        Data::Nil => Vec::new(),
+                        Data::List(items) => items
+                            .iter()
+                            .map(|v| form_ref(d, v, "forms.souls").map(|f| f.expect("a form")))
+                            .collect::<Result<_, _>>()?,
+                        Data::Map(m) if m.is_empty() => Vec::new(),
+                        other => return Err(what(d, format!("forms.souls is {other:?}, not a list of forms"))),
+                    };
+                    Some(super::NaviForms { gregar: set("gregar")?, falzar: set("falzar")?, souls })
                 }
                 other => return Err(what(d, format!("`forms` is {other:?}, not the forms by game"))),
             };
