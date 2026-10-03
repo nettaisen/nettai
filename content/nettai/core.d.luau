@@ -2075,6 +2075,24 @@ export type FormDef = {
     special_volley: number?,
     -- The lag at the end of a move in it, in place of MegaMan's 4.
     move_lag: number?,
+    -- What primes it (a use of a chip it names, not a dimming chip, with
+    -- a sound), and the damaging chips a primed use doubles (not dimming
+    -- chips), spending it; while it is primed nothing else doubles a chip.
+    -- The status reset spends it (BN5's GyroSoul).
+    priming: { by: ChipMatch, sound: Sound, doubles: { ChipMatch } }?,
+    -- The damaging chips (not dimming chips) that deal double while it
+    -- stands on grass, which the use turns normal (BN5's TomahawkSoul).
+    grass_doubles: ChipMatch?,
+    -- The ticks a damaging chip (not a dimming chip) used with the panel
+    -- ahead not its side's keeps it invulnerable (BN5's KnightSoul).
+    front_guard: number?,
+    -- The action its charged chips start in place of their own (BN5's
+    -- NapalmSoul's).
+    charged_action: Action?,
+    -- What else the status reset does in it, after its `status_reset`
+    -- (BN5's souls' own routines: SearchSoul's reveal of invisible
+    -- navis, TomahawkSoul's grass).
+    reset: ((navi: Object) -> ())?,
     -- A change into a Cross that finds the navi in this animation lets go of it.
     cross_release_anim: number?,
     traits: { FormTrait }?,

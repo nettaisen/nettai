@@ -149,6 +149,19 @@ pub struct SparkleOffset {
     pub z: i16,
 }
 
+/// How a navi's hooks restart what it wears after an animation change, a
+/// flinch or a drag (`sub_8011450`, `sub_80F06CE`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlayRestart {
+    /// BN6's `sub_80C44D2`: the overlay reloads its animation and steps
+    /// its sprite at once.
+    #[default]
+    Step,
+    /// BN5's 0x080C374E: it reloads its animation at its next step.
+    Reload,
+}
+
 /// How a navi's push (slide type 1) reads the hits it took.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -237,6 +250,8 @@ pub struct Rules {
     pub ice_vectors: [SlideVector; 6],
     /// How fast a navi slides and is dragged (the reactions section's).
     pub slide_speed: SlideSpeed,
+    /// How a navi's hooks restart what it wears (the reactions section's).
+    pub overlay_restart: OverlayRestart,
     /// A bubbled navi's height, by bubble timer.
     pub bubble_bob: [i8; 32],
     pub lockon: Lockon,
