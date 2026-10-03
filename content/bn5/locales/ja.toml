@@ -343,3 +343,17 @@ language = "ja"
 
 [navis]
 "bn5:megaman" = { name = "ロックマン" }
+
+[forms]
+"bn5:colonelsoul" = { name = "カーネルソウル" }
+"bn5:gyrosoul" = { name = "ジャイロソウル" }
+"bn5:knightsoul" = { name = "ナイトソウル" }
+"bn5:magnetsoul" = { name = "マグネットソウル" }
+"bn5:meddysoul" = { name = "メディソウル" }
+"bn5:napalmsoul" = { name = "ナパームソウル" }
+"bn5:numbersoul" = { name = "ナンバーソウル" }
+"bn5:protosoul" = { name = "ブルースソウル" }
+"bn5:searchsoul" = { name = "サーチソウル" }
+"bn5:shadowsoul" = { name = "シャドーソウル" }
+"bn5:toadsoul" = { name = "トードソウル" }
+"bn5:tomahawksoul" = { name = "トマホークソウル" }
