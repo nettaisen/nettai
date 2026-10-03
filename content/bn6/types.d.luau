@@ -583,6 +583,8 @@ export type TornadoVariant = { palette: number, rearm: number, bug: number?, pla
 -- self type (and the HP-bug variant's, when another), what it reaches and
 -- the spark of its element.
 export type TornadoLook = {
+    sprite: SpriteAsset,
+    sound: Sound,
     panel_variants: { [PanelType]: TornadoVariant },
     doubles_on_panel: boolean,
     is: CollisionType,

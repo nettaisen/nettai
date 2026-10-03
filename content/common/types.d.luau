@@ -91,6 +91,28 @@ export type VulcanSpec = { shots: number, bullet: BulletVariant, arm: Attachment
 -- bullets' kind.
 export type VulcanLook = { sound: Sound, arm: AttachmentLook, attachment: Kind, bullet_kind: Kind }
 
+-- What a chip's blow raises (@common/tornado/blow): one tornado (`single`), or one on each panel of `spread` at a
+-- level, by the navi's kinds of NaviCust bug or by its side's statistic 3 (`by`; `tornadoes`, by level, over
+-- `tornado`: tornadoes that differ by level, BN5's Static's); and the fan it holds, with an addition to its palette.
+export type TornadoBlow = {
+    -- The action's key when no chip definition holds it.
+    id: string?,
+    fan: AttachmentLook,
+    fan_palette: number?,
+    -- The tornadoes' kind (none: the game's).
+    tornado_kind: Kind?,
+    single: TornadoSpec?,
+    spread: {
+        by: "bug_kinds" | "side_stat",
+        panels: { [number]: { { number } } },
+        tornado: TornadoSpec,
+        tornadoes: { [number]: TornadoSpec }?,
+    }?,
+}
+
+-- A game's blows (@common/tornado/blow): its attachment kind (the fan's) and its tornadoes' kind.
+export type TornadoBlowLook = { attachment: Kind, tornado: Kind }
+
 -- A trap chip's object (a "trap" record, @common/traps/controller): `set` spawns it for the controller and its user,
 -- with the chip and bonus the controller keeps.
 export type Trap = {
