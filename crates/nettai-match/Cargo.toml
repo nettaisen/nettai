@@ -11,7 +11,9 @@ nettai-content-api = { path = "../nettai-content-api" }
 # BN6's folder rules read which chips the chip pack lists (by the
 # original's number), and live play's navi is a NaviStats record.
 bn6-compat.workspace = true
-serde = { version = "1", features = ["derive"] }
+# A BN5 save's light/dark value and souls (`import`).
+bn5-compat = { path = "../bn5-compat" }
+serde ={ version = "1", features = ["derive"] }
 toml = "0.8"
 # `testing`: BN6's content for other crates' tests (its strings).
 nettai-content = { path = "../nettai-content", optional = true }

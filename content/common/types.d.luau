@@ -358,3 +358,104 @@ export type DarkBall = {
     slant: number,
     homing: DarkBallHoming,
 }
+
+-- What AirSpin sends from the panel ahead (@common/airspin/action): the
+-- whirlwind top that rolls and spins there (its palette, its spins), BN6's
+-- seeking whirlwind no chip sends, or BN5's AqWhirl whirlpool.
+export type AirSpinSender = {
+    send: (user: Object, x: number, y: number, element: number, damage: number) -> Object?,
+    palette: number?,
+    spins: number?,
+}
+
+-- AirSpin (@common/airspin/action: BN6's action 0x38, BN5's 0x47).
+export type AirSpinSpec = {
+    id: string?,
+    whirlwind: AirSpinSender,
+}
+
+-- A game's whirlwind top (@common/airspin/top): its kind's id, sprite,
+-- identity and HP; its collision (its body, what hits it); its gust (the
+-- effect, its palette offset, whether it faces its side's way, the hit's
+-- type and targets); the effects and sounds; and the games' differences:
+-- BN6's set-down check, wind hits' extra spins and removal by chips (the
+-- absorbed look), BN5's markers and spins counted on Timer 2.
+export type AirSpinTopLook = {
+    id: string,
+    sprite: SpriteAsset,
+    identity: Identity,
+    hp: number,
+    body: CollisionType,
+    hit_by: CollisionType,
+    gust: Effect,
+    gust_palette: number,
+    gust_side: boolean,
+    gust_self: CollisionType,
+    gust_target: CollisionType,
+    puff: Effect,
+    explosion: Effect,
+    sounds: { set_down: Sound, spin: Sound, hit_bomb: Sound },
+    set_down_check: boolean,
+    extra_spins: boolean,
+    absorbed: AbsorbedLook?,
+    marker: ((owner: Object, x: number, y: number, ticks: number, style: number) -> ())?,
+    spins_on_timer2: boolean,
+}
+
+-- A whirlwind top made for a game (@common/airspin/top).
+export type AirSpinTop = {
+    kind: Kind,
+    spawn: (owner: Object, x: number, y: number, element: number, palette: number, spins: number, damage: number) -> Object?,
+    sender: (palette: number, spins: number) -> AirSpinSender,
+}
+
+-- A game's Z Saver (@common/zsaver/action): its action's id; its sounds
+-- (the swing, the command's); its blade (the attachment kind, the look,
+-- its animation by its holder); the slashes' hit types and their effects
+-- (by index, 1 to 3); how it throws the fourth slash's boom; and BN5's
+-- differences: the Katanas' step (its lib/stepsword), and the command's
+-- window shut once A isn't held.
+export type ZSaverLook = {
+    id: string,
+    swing_sound: Sound,
+    command_sound: Sound,
+    attachment: Kind,
+    blade: AttachmentLook,
+    blade_anim: (me: Object) -> number,
+    is: CollisionType,
+    hits: CollisionType,
+    effects: { Effect },
+    boom: (owner: Object, x: number, y: number, element: number, damage: number, boom: SonicBoom) -> Object?,
+    step: StepSword?,
+    a_held_window: boolean,
+}
+
+-- BN5's step before a charged sword (bn5 lib/stepsword), as Z Saver takes
+-- it.
+export type StepSword = {
+    start: (me: Object, s: any, moving: boolean) -> (),
+    afterimage: (me: Object, anim: number) -> (),
+    flip: (me: Object) -> number,
+    step_back: (me: Object, s: any) -> (),
+}
+
+-- A game's NumbrBl ball (@common/numbrbl/ball): its kind's id, sprite, the
+-- ticks it sits, its sounds (set down, hitting), its explosion, its hit's
+-- types, and the parts BN5's hides as it waits and rolls.
+export type NumberBallLook = {
+    id: string,
+    sprite: SpriteAsset,
+    sit_ticks: number,
+    set_sound: Sound,
+    hit_sound: Sound,
+    explosion: Effect,
+    is: CollisionType,
+    hits: CollisionType,
+    hidden_parts: number?,
+}
+
+-- A NumbrBl ball made for a game (@common/numbrbl/ball).
+export type NumberBall = {
+    kind: Kind,
+    spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
+}

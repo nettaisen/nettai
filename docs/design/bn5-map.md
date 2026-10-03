@@ -1314,7 +1314,9 @@ RedFrut1 to 3, Voltz1 to 3 and VDoll (on BN5's field obstacles).
   by the soul where NaviStats +0x29 is 0; 08-00, his navi sprite, has 31 one-frame animations). Changing form, he
   takes BN6's MegaMan branches (NaviStats +0x29 0 in BN5's code too: the anger, the bugs' stripped programs, the
   move lag), but for BN6's per-form tick (`sub_80F0608`), which BN5's table (0x080EB1E8) hasn't: the status
-  section's `form_tick` (BN5 false). The engine asks a player's identity for a Full Synchro aura animation, which
+  section's `form_tick` (BN5 false). His mercy flash blinks in the other phase (0x080137B6 hides him while the
+  flash timer's bit 1 is clear, BN6's `sub_8016934` while it is set): the status section's `flash_hides_on_clear`
+  (BN5 true). The engine asks a player's identity for a Full Synchro aura animation, which
   BN5 has differently (BN6's `sub_80C4C52` is absent): 0, BN6's rule, until BN5's emotions.
 - **Stages** (content/bn5/stages/netbattle.luau, compat stages.toml): a stage per distinct record of BN5's
   netbattle settings list (0x0811AF4C, 95 records), its layout (0x0800BD6C) and its actor list; the lab's

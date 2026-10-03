@@ -15,7 +15,7 @@ return define.form {
     palette = 0,
     -- MegaMan's faces in the emotion window, by his emotion (0x0801AF64: the table 0x0801AFB4 by BN5's emotion,
     -- 0x08012740; each brings its box): worried for a mood under 65, the dark face for a mood of 0 (a dark
-    -- MegaMan's); and Hub Style's (NaviStats +0x4C, the light and dark system's `hub_style`: 0x0801AF8E adds 11).
+    -- MegaMan's); and Hub Style's (NaviStats +0x4C, the navi's `hub_style`: 0x0801AF8E adds 11).
     mugshot = {
         normal = asset.mugshot("bn5:megaman"),
         angry = asset.mugshot("bn5:megaman-angry"),
