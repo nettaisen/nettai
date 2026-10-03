@@ -8,7 +8,7 @@ local weapon = require("../../lib/weapon")
 local chips = require("../../chips/gundels/chips")
 
 return define.weapon {
-    id = "patch-cards/django/charge",
+    id = "bn6:patch-cards/django/charge",
     -- The charge table's row 0x6c, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 120, 110, 100, 95, 90, 210, 200, 190 },

@@ -187,7 +187,7 @@ local function init(me: Object)
 end
 
 sower.kind = define.kind {
-    id = "cornfsta/sower",
+    id = "bn6:cornfsta/sower",
     pool = "attack",
     state = { steps = "i32", holder = "object", ring = "u8[3]", ring_next = "u8" },
     -- `sub_80DAA28`.

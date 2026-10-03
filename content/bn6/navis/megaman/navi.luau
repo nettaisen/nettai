@@ -19,17 +19,17 @@ local buster = require("./weapons/buster/weapon")
 local charged_shot = require("./weapons/charged-shot/weapon")
 
 return define.navi {
-    id = "megaman",
-    sprite = asset.sprite("megaman-navi"),
+    id = "bn6:megaman",
+    sprite = asset.sprite("bn6:megaman-navi"),
     element = "null",
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("megaman-win"), lose = asset.banner("megaman-deleted") },
+    banners = { win = asset.banner("bn6:megaman-win"), lose = asset.banner("bn6:megaman-deleted") },
     merge_height = 0,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("megaman-portrait"),
+        portrait = asset.sprite("bn6:megaman-portrait"),
     },
     -- What a Cross change brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side

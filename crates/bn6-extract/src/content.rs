@@ -6,12 +6,14 @@
 //! icons) gives them, the rest under placeholders; and the pack's asset
 //! index (`assets.toml`), which lists them all by those names.
 //!
-//! The battle content is not extracted: it is the content root's
-//! definitions (this repository's content/bn6 unless `--content` names
-//! another), which name these assets. The graphics and the index are read
-//! back from the written pack and compared with what was extracted, and
-//! the content root's definitions are defined against the pack, so a pack
-//! that wouldn't load is never left behind silently.
+//! The battle content is not extracted: it is the content directory's
+//! definitions (this repository's content/ unless `--content` names
+//! another; BN6's names are its bn6 folder's compat), which name these
+//! assets in full (`bn6:bomb`, a pack's own names being the part after its
+//! game). The graphics and the index are read back from the written pack
+//! and compared with what was extracted, and the content's definitions are
+//! defined against the pack, so a pack that wouldn't load is never left
+//! behind silently.
 //!
 //! The pack holds the game's own data: write it outside version control
 //! (data/content/ is ignored).
@@ -38,7 +40,7 @@ pub fn main(args: &[String]) {
         std::process::exit(2);
     };
     let content_dir = match &args[n..] {
-        [] => nettai_content::root::bn6(),
+        [] => nettai_content::root::content(),
         [_, dir] => dir.into(),
         _ => {
             eprintln!("{usage}");
@@ -49,7 +51,7 @@ pub fn main(args: &[String]) {
         eprintln!("{e}\n{usage}");
         std::process::exit(2);
     });
-    let names = asset_names(content_dir.join("compat").as_path());
+    let names = asset_names(content_dir.join("bn6").join("compat").as_path());
     let rom_bytes = &roms.falzar;
     let t = std::time::Instant::now();
     let bundle = crate::graphics::bundle(&roms, &names);
@@ -159,7 +161,9 @@ fn asset_names(compat: &Path) -> nettai_content::names::AssetNames {
     names.backgrounds = c.assets.backgrounds.iter().map(|(k, &v)| (v, k.clone())).collect();
     names.mugshots = c.assets.mugshots.iter().map(|(k, &v)| (v, k.clone())).collect();
     names.banners = c.assets.banners.iter().map(|(k, &v)| (v, k.clone())).collect();
-    names.chips = c.chips.iter().map(|(k, e)| (e.id, k.clone())).collect();
+    // (A chip's icon is named in the pack by its id's own part: `cannon`
+    // for `bn6:cannon`.)
+    names.chips = c.chips.iter().map(|(k, e)| (e.id, nettai_content_api::keys::local(k).to_string())).collect();
     names.glyphs = c.text.glyphs.clone();
     names.dialogue_glyphs = c.text.dialogue_glyphs.clone();
     // The Japanese ROMs' encoding is the pack's Japanese lettering's.

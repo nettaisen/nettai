@@ -24,7 +24,7 @@ local ART_PALETTE = {
 }
 
 return define.chip {
-    id = "falzar",
+    id = "bn6:falzar",
     art_palette = ART_PALETTE,
     codes = { "X" },
     element = "null",

@@ -24,14 +24,14 @@ export type State = {
     controller: Object?,
 }
 
-local SPRITE = asset.sprite("falzar-summon")
+local SPRITE = asset.sprite("bn6:falzar-summon")
 -- The arrival's look: animation 0x0C of its sprite.
 local ARRIVAL_ANIM = 0x0C
 
-local SOUND_APPEAR = asset.sound("log-in")
-local SOUND_FLASH = asset.sound("bug")
-local SOUND_CRY = asset.sound("beast-out-chosen-falzar")
-local SOUND_GUST = asset.sound("elec-pulse")
+local SOUND_APPEAR = asset.sound("bn6:log-in")
+local SOUND_FLASH = asset.sound("bn6:bug")
+local SOUND_CRY = asset.sound("bn6:beast-out-chosen-falzar")
+local SOUND_GUST = asset.sound("bn6:elec-pulse")
 
 -- Its actions.
 local APPEAR, FLASH, RISE, STAY, ATTACK, SINK = 0x0, 0x4, 0x8, 0xC, 0x10, 0x14
@@ -194,7 +194,7 @@ local function init(me: Object)
 end
 
 summon.kind = define.kind {
-    id = "falzar/summon",
+    id = "bn6:falzar/summon",
     pool = "actor",
     state = { leads = "bool", anims = "u8", controller = "object" },
     -- 0x080C4268: by state (its end `object_freeMemory`), then the sprite,

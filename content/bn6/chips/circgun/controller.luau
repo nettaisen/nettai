@@ -52,7 +52,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "circgun/controller",
+    id = "bn6:circgun/controller",
     pool = "effect",
     state = { variant = "record:circgun-variant", bonus = "u16", busy = "bool" },
     -- `sub_80E7568`.

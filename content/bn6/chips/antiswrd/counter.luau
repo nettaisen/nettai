@@ -22,7 +22,7 @@ local STATE = { timer = "u16" }
 local SWINGS = 3
 local SWING_TICKS, WAVE_AT = 0x15, 0xC
 local SWING_ANIM = 5
-local SOUND_START = asset.sound("log-in")
+local SOUND_START = asset.sound("bn6:log-in")
 local SOUND_SWING = parts.sounds.swing
 -- The booms by the swings left (`dword_80EEB14`, their hit modifiers).
 local BOOMS: { [number]: SonicBoom } = {
@@ -130,6 +130,6 @@ end
 -- catch (`sub_801056A`) and the AntiDmg program's stance (`sub_80105F2`,
 -- with the variant its weapon zeroes), leave the attack's variant 0: a
 -- sword.
-counter.action = counter.action_with("antiswrd/counter", parts.blades.sword)
+counter.action = counter.action_with("bn6:antiswrd/counter", parts.blades.sword)
 
 return counter

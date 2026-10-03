@@ -19,7 +19,7 @@ local drill = {}
 
 -- The drill arm the navi wears while it drills (the original's attachment
 -- row 0x20), in its drilling animation (1) or drawn back (0).
-drill.arm = attachment.look { sprite = asset.sprite("drill-arm"), palette = 0, attach_point = 0x13 }
+drill.arm = attachment.look { sprite = asset.sprite("bn6:drill-arm"), palette = 0, attach_point = 0x13 }
 drill.ARM_DRILLING = 1
 
 export type State = {
@@ -156,7 +156,7 @@ local function init(me: Object)
 end
 
 drill.kind = define.kind {
-    id = "drilarm/drill",
+    id = "bn6:drilarm/drill",
     pool = "attack",
     state = {
         slot = { "related", "child" },

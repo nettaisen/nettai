@@ -33,7 +33,7 @@ local function effect(me: Object)
 end
 
 panel_chips.kind = define.kind {
-    id = "panel-chips/controller",
+    id = "bn6:panel-chips/controller",
     pool = "effect",
     state = { change = "record:panel-change", busy = "bool" },
     update = dimming_chips.phases { name = "the panel chips", effect = effect },

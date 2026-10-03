@@ -5,7 +5,7 @@
 local army = require("./army")
 
 return define.chip {
-    id = "colarmy",
+    id = "bn6:colarmy",
     codes = { "B", "G", "R", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 2, mb = 25, damage = 40, hit_param = 30, lockout = 0,

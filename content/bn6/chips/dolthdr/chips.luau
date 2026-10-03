@@ -11,7 +11,7 @@ local TICKS = 0x0F
 
 return {
     define.chip {
-        id = "dolthdr1",
+        id = "bn6:dolthdr1",
         codes = { "A", "E", "Q" },
         element = "elec", family = "elec", class = "standard",
         rarity = 0, mb = 24, damage = 120, hit_param = 30, lockout = 0,
@@ -23,7 +23,7 @@ return {
         action = action.action { ticks = TICKS },
     },
     define.chip {
-        id = "dolthdr2",
+        id = "bn6:dolthdr2",
         codes = { "C", "L", "P" },
         element = "elec", family = "elec", class = "standard",
         rarity = 1, mb = 31, damage = 150, hit_param = 30, lockout = 0,
@@ -35,7 +35,7 @@ return {
         action = action.action { ticks = TICKS },
     },
     define.chip {
-        id = "dolthdr3",
+        id = "bn6:dolthdr3",
         codes = { "B", "R", "V" },
         element = "elec", family = "elec", class = "standard",
         rarity = 2, mb = 38, damage = 180, hit_param = 30, lockout = 0,

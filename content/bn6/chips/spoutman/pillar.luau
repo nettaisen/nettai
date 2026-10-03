@@ -24,7 +24,7 @@ export type State = {
 -- The owner's state: the slot this pillar sits in.
 export type OwnerState = { pillar: Object? }
 
-local SPRITE = asset.sprite("spout-pillar")
+local SPRITE = asset.sprite("bn6:spout-pillar")
 
 -- The owner's action a navi AI's pillar lasts through.
 local OWNER_ACTION = 0xB
@@ -145,7 +145,7 @@ local function finish(me: Object)
 end
 
 pillar.kind = define.kind {
-    id = "spoutman/pillar",
+    id = "bn6:spoutman/pillar",
     pool = "effect",
     state = { slot_owner = "object", while_dimmed = "bool" },
     -- `sub_80E37F4`.

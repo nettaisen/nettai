@@ -5,7 +5,7 @@
 local navi = require("./navi")
 
 local crcusman = define.chip {
-    id = "crcusman",
+    id = "bn6:crcusman",
     codes = { "C", "*" },
     element = "null",
     family = "null",
@@ -22,7 +22,7 @@ local crcusman = define.chip {
 }
 
 local crcusmn_ex = define.chip {
-    id = "crcusmn-ex",
+    id = "bn6:crcusmn-ex",
     codes = { "C" },
     element = "null",
     family = "null",
@@ -39,7 +39,7 @@ local crcusmn_ex = define.chip {
 }
 
 local crcusmn_sp = define.chip {
-    id = "crcusmn-sp",
+    id = "bn6:crcusmn-sp",
     codes = { "C" },
     element = "null",
     family = "null",

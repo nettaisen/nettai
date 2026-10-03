@@ -32,9 +32,9 @@ pub struct ChipHand {
 
 impl ChipHand {
     /// The hand every battle starts with: no chips (the selection zeroed:
-    /// `content`'s chip 0 in code A).
-    pub fn empty(content: &crate::content::Content) -> ChipHand {
-        let zeroed = content.zeroed_chip().map(|id| FolderChip::new(id, crate::content::ChipCode(0)));
+    /// game `game`'s chip 0 in code A, the arena's).
+    pub fn empty(content: &crate::content::Content, game: crate::content::RootId) -> ChipHand {
+        let zeroed = content.zeroed_chip(game).map(|id| FolderChip::new(id, crate::content::ChipCode(0)));
         ChipHand {
             cursor: 0,
             ids: [None; 6],

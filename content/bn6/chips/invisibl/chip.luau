@@ -6,7 +6,7 @@ local invisible = require("./controller")
 
 -- 360 ticks (the record's first two parameter bytes, 104 and 1).
 return define.chip {
-    id = "invisibl",
+    id = "bn6:invisibl",
     codes = { "*" },
     element = "null",
     family = "null",

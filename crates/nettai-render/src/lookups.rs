@@ -197,7 +197,7 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
 /// chip of another root shows none.
 pub fn advance_code(c: &Content, chip: ChipHandle, problems: &mut Problems) -> bool {
     let key = key(c, chip);
-    let compat = bn6_compat::Compat::bn6();
+    let compat = bn6_compat::Compat::bn6_for(c);
     let Some(local) = compat.compat_key(c, key) else { return false };
     let number = compat.chips.get(local).map(|e| e.id);
     if problems.lookup(Lookup::AdvanceName(chip)) && number.is_none() {
@@ -283,7 +283,7 @@ pub fn navi_number_of(c: &Content, navi: NaviHandle) -> usize {
 
 /// A navi's number, and false if it is BN6's but compat hasn't one.
 fn compat_navi_number(c: &Content, navi: NaviHandle) -> (usize, bool) {
-    let compat = bn6_compat::Compat::bn6();
+    let compat = bn6_compat::Compat::bn6_for(c);
     match compat.compat_key(c, &c.defs.navi(navi).key) {
         Some(local) => compat.navis.get(local).map_or((0, false), |n| (n.navi as usize, true)),
         None => (0, true),

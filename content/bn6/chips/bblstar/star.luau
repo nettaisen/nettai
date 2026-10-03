@@ -30,8 +30,8 @@ export type State = {
     center_y: number,
 }
 
-local SPRITE = asset.sprite("bubble-star")
-local SOUND_HIT = asset.sound("bubble")
+local SPRITE = asset.sprite("bn6:bubble-star")
+local SOUND_HIT = asset.sound("bn6:bubble")
 -- One full sway (a phase of 0x10000) per this far, 16.16.
 local SWAY_LENGTH = 0x50_0000
 -- The sway's height: 24 pixels at the sine's peak (256).
@@ -158,7 +158,7 @@ local function init(me: Object)
 end
 
 star.kind = define.kind {
-    id = "bblstar/star",
+    id = "bn6:bblstar/star",
     pool = "attack",
     state = { speed = "i32", palette = "u8", hit_panel = "u32", phase_step = "i32", center_y = "i32" },
     -- `sub_80CC5A8`.

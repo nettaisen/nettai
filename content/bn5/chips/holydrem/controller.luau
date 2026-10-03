@@ -27,7 +27,9 @@ local function effect(me: Object)
             o.element = me.element
             o:set_damage_word(dimming_chips.damage_plus(me, s.bonus))
             o.related1 = user
-            ;(o.state :: actor.State).controller = me
+            -- (`actor.State`: a type of another module, which the checker
+            -- reads as any.)
+            ;(o.state :: any).controller = me
             s.busy = true
             o.alliance, o.flip = user.alliance, user.flip
             o.run_while_dimmed = true
@@ -40,7 +42,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "holydrem/controller",
+    id = "bn5:holydrem/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool" },
     -- 0x080E6DFC.

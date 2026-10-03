@@ -160,8 +160,9 @@ pub enum HookCall {
     /// A hook of a system of side `side`'s ruleset (docs/design/
     /// rules-in-luau.md §4.1), the system in place `slot` of the ruleset's
     /// list: while it runs, `system.state()` is that system's state of that
-    /// side. Its result is the hook's.
-    System { side: u8, slot: u8, hook: SystemHook },
+    /// side. It is called with the side, then the navi and the chip the
+    /// hook is about, where it has them. Its result is the hook's.
+    System { side: u8, slot: u8, hook: SystemHook, navi: Option<ObjectRef>, chip: Option<crate::ChipHandle> },
 }
 
 /// Which hook of a system is called (docs/design/rules-in-luau.md §4.1).
@@ -187,6 +188,17 @@ pub enum SystemHook {
     /// `custom_closed(side)`: both results are in and the fight resumes
     /// (`sub_8009338`).
     CustomClosed,
+    /// `navi_intake(side, navi)`: each tick of the fight, in the navi's
+    /// intake (`sub_801AC6C`) after the standing effects: BN5's light and
+    /// dark system clears the holy panel a dark MegaMan stands on
+    /// (0x08017136). Its result is unused.
+    NaviIntake,
+    /// `chip_check(side, navi, chip)`: a chip's use is prepared (the end of
+    /// `sub_80127C0`, where BN5's 0x080100E6 checks it): nil lets it be
+    /// used; a chip is what the navi uses instead (BN5's light and dark
+    /// system refuses a chip its MegaMan may not use: 0x08010118). The
+    /// first system that answers decides.
+    ChipCheck,
     /// `folder_check(side)`: a tool asks whether a folder keeps the side's
     /// game's folder rules (`Battle::check_folder`, not the simulation):
     /// the folder is `battle.checked_folder()`, and each rule it breaks is
@@ -205,10 +217,12 @@ impl SystemHook {
             SystemHook::CustomRequested => "custom_requested",
             SystemHook::CustomClosed => "custom_closed",
             SystemHook::FolderCheck => "folder_check",
+            SystemHook::NaviIntake => "navi_intake",
+            SystemHook::ChipCheck => "chip_check",
         }
     }
 
-    pub const ALL: [SystemHook; 7] = [
+    pub const ALL: [SystemHook; 9] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -216,6 +230,8 @@ impl SystemHook {
         SystemHook::CustomRequested,
         SystemHook::CustomClosed,
         SystemHook::FolderCheck,
+        SystemHook::NaviIntake,
+        SystemHook::ChipCheck,
     ];
 }
 

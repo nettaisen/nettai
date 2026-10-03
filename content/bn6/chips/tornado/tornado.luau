@@ -50,8 +50,8 @@ tornado.variants = {
     row7 = variant { palette = 0, rearm = 0 },
 }
 
-local SPRITE = asset.sprite("tornado")
-local SOUND = asset.sound("aqua-surge")
+local SPRITE = asset.sprite("bn6:tornado")
+local SOUND = asset.sound("bn6:aqua-surge")
 -- What a plain tornado becomes on a panel of these types
 -- (`byte_80CA25C`).
 local PANEL_VARIANTS: { [PanelType]: Variant } = {
@@ -168,7 +168,7 @@ local function init(me: Object)
 end
 
 tornado.kind = define.kind {
-    id = "tornado/tornado",
+    id = "bn6:tornado/tornado",
     pool = "attack",
     state = { variant = "record:tornado-variant", status = "status", rearm_step = "u32", rearm_ticks = "u32" },
     -- `sub_80C9F78`.

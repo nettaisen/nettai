@@ -146,13 +146,15 @@ pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
     let mut out = Vec::new();
     for d in c.defs.definitions.of(Registry::Collision) {
         let root = nettai_content_api::keys::root_of(&d.key).unwrap_or_default();
-        let Some(manifest) = c.scripts.roots.iter().find(|m| m.name == root) else { continue };
         let tests = ["side0", "side1"].iter().any(|k| d.spec.field(k).int().is_some_and(|w| w & 0x80 != 0));
         if !tests {
             continue;
         }
         let field = format!("collision.{}", nettai_content_api::keys::local(&d.key).replace('-', "_"));
-        for required in &manifest.requires {
+        // (The other folders whose modules a module of the type's folder
+        // uses.)
+        for required in c.scripts.roots.iter().map(|r| r.name.clone()).filter(|n| n != root) {
+            let required = &required;
             let uses = format!("@{required}/");
             let prefix = format!("{root}{}", nettai_content_api::keys::SEPARATOR);
             for (name, text) in &c.scripts.modules {

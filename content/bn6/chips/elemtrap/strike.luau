@@ -34,9 +34,9 @@ local STRUCK: { [number]: number } = { [0] = 0x01A0_0000, [1] = 0x02C0_0000 }
 -- The bursts' looks: water for aqua, lightning for elec, leaves for wood
 -- (the original's panel-burst rows 0, 2 and 4; fire and the null element
 -- take the shells' fiery burst, row 3).
-local SPLASH = define.effect { sprite = asset.sprite("spout-splash"), anim = 0, palette = 0 }
-local LIGHTNING = define.effect { sprite = asset.sprite("lightning"), anim = 0, palette = 0 }
-local LEAVES = define.effect { sprite = asset.sprite("hit-sparks"), anim = 5, palette = 0 }
+local SPLASH = define.effect { sprite = asset.sprite("bn6:spout-splash"), anim = 0, palette = 0 }
+local LIGHTNING = define.effect { sprite = asset.sprite("bn6:lightning"), anim = 0, palette = 0 }
+local LEAVES = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 5, palette = 0 }
 
 -- The strike by element (null, fire, aqua, elec, wood): its sound
 -- (`byte_80E3714`; none for the null element), its hit (`byte_80E36EC`:
@@ -46,21 +46,21 @@ type Strike = { sound: Sound?, spark: Spark, hit_mod: number, status: Status?, b
 local STRIKES: { [number]: Strike } = {
     [0] = { sound = nil, spark = sparks.breaking, hit_mod = 3, status = nil, burst = effects.shell_burst },
     [1] = {
-        sound = asset.sound("target-move"),
+        sound = asset.sound("bn6:target-move"),
         spark = sparks.fire,
         hit_mod = 3,
         status = nil,
         burst = effects.shell_burst,
     },
-    [2] = { sound = asset.sound("spout-ball"), spark = sparks.aqua, hit_mod = 3, status = nil, burst = SPLASH },
+    [2] = { sound = asset.sound("bn6:spout-ball"), spark = sparks.aqua, hit_mod = 3, status = nil, burst = SPLASH },
     [3] = {
-        sound = asset.sound("beast-over-burst"),
+        sound = asset.sound("bn6:beast-over-burst"),
         spark = sparks.elec,
         hit_mod = 1,
         status = statuses.paralyze_90,
         burst = LIGHTNING,
     },
-    [4] = { sound = asset.sound("junk-shot"), spark = sparks.wood, hit_mod = 1, status = statuses.confuse_480, burst = LEAVES },
+    [4] = { sound = asset.sound("bn6:junk-shot"), spark = sparks.wood, hit_mod = 1, status = statuses.confuse_480, burst = LEAVES },
 }
 -- The bursts go over the whole field, one every 2 ticks.
 local BURST_INTERVAL = 2
@@ -129,7 +129,7 @@ local function effect(me: Object)
 end
 
 strike.kind = define.kind {
-    id = "elemtrap/strike",
+    id = "bn6:elemtrap/strike",
     pool = "effect",
     state = { bonus = "u16" },
     -- `sub_80E35A4`.

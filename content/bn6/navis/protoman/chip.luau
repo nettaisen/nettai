@@ -7,7 +7,7 @@ local regions = require("../../lib/regions")
 local slash = require("../../lib/swords/slash")
 
 return define.chip {
-    id = "stepswrd-protoman",
+    id = "bn6:stepswrd-protoman",
     codes = { "B" },
     element = "null",
     family = "sword",
@@ -21,7 +21,7 @@ return define.chip {
     library = { number = 410, index = 0, sort = 0 },
     slot_in_limit = 1,
     action = slash.action {
-        id = "stepswrd-protoman/action",
+        id = "bn6:stepswrd-protoman/action",
         blade = parts.blades.sword,
         hit = { region = regions.wide, collision = parts.slashes_navis, hit_mod = 3 },
         effect = parts.effects.wide,

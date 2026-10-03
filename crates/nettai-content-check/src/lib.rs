@@ -104,3 +104,54 @@ pub fn check_pack(dir: &Path) -> Result<(usize, Vec<Problem>), String> {
     }
     Ok((modules.len(), problems))
 }
+
+/// Check every folder of the content directory `dir` (content/: one
+/// namespace, docs/design/rules-in-luau.md) against the engine's
+/// declarations and every folder's own (a module may use another folder's
+/// types: BN5's BN6's), and lint it: the modules checked and the problems,
+/// each module named by its folder and path.
+pub fn check_content(dir: &Path) -> Result<(usize, Vec<Problem>), String> {
+    let folders: Vec<std::path::PathBuf> = {
+        let mut f: Vec<_> = std::fs::read_dir(dir)
+            .map_err(|e| format!("{}: {e}", dir.display()))?
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.is_dir() && p.file_name().is_some_and(|n| n != "nettai" && !n.to_string_lossy().starts_with('.')))
+            .collect();
+        f.sort();
+        f
+    };
+    let mut defs = own_definitions(&dir.join("nettai"))?;
+    for folder in &folders {
+        defs += &own_definitions(folder)?;
+    }
+    let mut checker = PackChecker::new(&defs)?;
+    let (mut n, mut problems) = (0, Vec::new());
+    for folder in &folders {
+        let name = folder.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        for (path, source) in modules(folder).map_err(|e| e.to_string())? {
+            let full = format!("{name}/{path}");
+            problems.extend(checker.check(&full, &source)?);
+            problems.extend(lints::lints(&path, &source).into_iter().map(|p| format!("{name}/{p}")));
+            n += 1;
+        }
+    }
+    Ok((n, problems))
+}
+
+/// A folder's own definitions (its `*.d.luau`), in name order.
+fn own_definitions(dir: &Path) -> Result<String, String> {
+    let mut files: Vec<_> = std::fs::read_dir(dir)
+        .map_err(|e| format!("{}: {e}", dir.display()))?
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.to_string_lossy().ends_with(".d.luau"))
+        .collect();
+    files.sort();
+    let mut defs = String::new();
+    for f in files {
+        defs += &std::fs::read_to_string(&f).map_err(|e| format!("{}: {e}", f.display()))?;
+        defs += "\n";
+    }
+    Ok(defs)
+}

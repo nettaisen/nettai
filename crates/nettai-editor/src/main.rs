@@ -14,13 +14,13 @@ use std::sync::Arc;
 const USAGE: &str = "\
 usage: nettai-editor [OPTIONS] [MATCH.toml]
 
-  The content packs (the chips' pictures) and the content roots are found
-  as nettai-frontend finds them: every pack in the packs directory,
-  $NETTAI_PACKS, else data/content, each by its game; BN6's root and each
-  root beside it whose game's pack is found and that loads.
-  --content DIR    the battle content: this root and those it requires
-                   (default: $BN6_CONTENT, else this repository's content/bn6
-                   and the roots beside it)
+  The content packs (the chips' pictures) and the content's folders are
+  found as nettai-frontend finds them: every pack in the packs directory,
+  $NETTAI_PACKS, else data/content, each by its game; every folder of the
+  content directory whose game's pack is found and that loads.
+  --content DIR    the battle content directory, its folders one namespace
+                   (default: $NETTAI_CONTENT, else this repository's
+                   content/)
   --pack DIR       a pack's directory, in place of the found pack of its game
                    (again for another game's), handed to the frontend too
   --lang LANG      names in en (default) or ja
@@ -93,8 +93,8 @@ fn main() -> iced::Result {
         }
     };
     let mut options = options;
-    // Every pack found, and the roots that draw on them (as the frontend
-    // loads them: nettai_content::pack::load_found).
+    // Every pack found, and the content's folders that draw on them (as the
+    // frontend loads them: nettai_content::pack::load_found).
     let mut report = nettai_content::report::Report::default();
     let found = nettai_content::pack::find(&nettai_content::pack::packs_dir(), &options.packs, &mut report);
     show(&report);
@@ -105,7 +105,7 @@ fn main() -> iced::Result {
     });
     show(&loaded.report);
     for (root, why) in &loaded.left_out {
-        eprintln!("the content root {root} is left out: {why}");
+        eprintln!("the content folder {root} is left out: {why}");
     }
     options.roots = loaded.roots;
     let content = Arc::new(loaded.content);

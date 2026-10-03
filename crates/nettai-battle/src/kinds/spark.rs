@@ -55,12 +55,17 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
                 _ => None,
             };
             let EffectSprite { sprite: id, anim, palette } = b.content.spark(look.expect("a hit spark spawned with its look"));
+            let steps = b.arena_rules().effects.spark_steps_at_start;
             let sprite = b.objects.sprite_mut(r);
             sprite.load(id);
             sprite.set_animation(anim, &b.content);
             sprite.look.shadow = crate::object::sprite::Shadow::WithSprite;
             sprite.look.palette = palette;
-            sprite.update(&b.content);
+            // (BN5's spark, 0x080E0870, doesn't step at its start: the
+            // arena's `effects` section.)
+            if steps {
+                sprite.update(&b.content);
+            }
             let o = b.objects.get_mut(r);
             o.flags &= !flags::NO_SPRITE_UPDATE;
             o.anim = anim;
@@ -83,5 +88,45 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             b.objects.sprite_mut(r).update(&b.content);
         }
         _ => b.objects.free(r),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::content::{Content, SparkRole, testing};
+    use std::sync::Arc;
+
+    /// Ticks a plain hit spark lives, in an arena whose spark steps at its
+    /// start or not.
+    fn lifetime(steps: bool) -> u32 {
+        let mut c: Content = testing::build();
+        c.define().unwrap_or_else(|e| panic!("{e}"));
+        for rules in &mut c.rules {
+            rules.effects.spark_steps_at_start = steps;
+        }
+        let c = Arc::new(c);
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+        setup.content = c.hash();
+        let mut b = Battle::new(setup, c);
+        b.spawn_actors();
+        b.run_objects();
+        let navi = b.player(0).unwrap();
+        let look = b.arena_roles().spark(SparkRole::Plain);
+        let r = spawn(&mut b, navi, Vec3::default(), look).expect("a spark");
+        let mut n = 0;
+        while b.objects.in_order().any(|o| o == r) {
+            update(&mut b, r);
+            n += 1;
+            assert!(n < 1000, "the spark never goes");
+        }
+        n
+    }
+
+    /// docs/design/bn5-map.md §15.3 item 16: BN5's spark (the arena's
+    /// `effects`) doesn't step as it starts, so it lives a tick longer.
+    #[test]
+    fn bn5s_spark_lives_a_tick_longer() {
+        assert_eq!(lifetime(false), lifetime(true) + 1);
     }
 }

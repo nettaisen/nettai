@@ -5,7 +5,7 @@
 local navi = require("./navi")
 
 local eraseman = define.chip {
-    id = "eraseman",
+    id = "bn6:eraseman",
     codes = { "K", "*" },
     element = "null",
     family = "cursor",
@@ -23,7 +23,7 @@ local eraseman = define.chip {
 }
 
 local erasemn_ex = define.chip {
-    id = "erasemn-ex",
+    id = "bn6:erasemn-ex",
     codes = { "K" },
     element = "null",
     family = "cursor",
@@ -41,7 +41,7 @@ local erasemn_ex = define.chip {
 }
 
 local erasemn_sp = define.chip {
-    id = "erasemn-sp",
+    id = "bn6:erasemn-sp",
     codes = { "K" },
     element = "null",
     family = "cursor",

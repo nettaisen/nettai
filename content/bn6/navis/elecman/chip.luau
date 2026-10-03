@@ -27,11 +27,11 @@ local STATE = { timer = "u16", glow = "object" }
 local SLIDE, SLASH, RETURN, RECOVER = 0x0, 0x4, 0x8, 0xC
 local ANIM_SLIDE, ANIM_SLASH, ANIM_RETURN = 0x10, 0x11, 3
 local SPEED = 0x5_0000
-local SOUND = asset.sound("sword-swing")
+local SOUND = asset.sound("bn6:sword-swing")
 
 -- His glow: the follow effect's look 7, riding on him while he slides and
 -- slashes; it shows the slash's animation once he slashes.
-local GLOW = follow_effect.look { sprite = asset.sprite("elec-sword"), anim = 0xF, palette = 0, behavior = "riding" }
+local GLOW = follow_effect.look { sprite = asset.sprite("bn6:elec-sword"), anim = 0xF, palette = 0, behavior = "riding" }
 local GLOW_SLASH_ANIM = 0x10
 
 -- What stops him (`sub_80F0BD2`): on the next panel, another body of
@@ -171,7 +171,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [SLIDE] = slide, [SLASH] = slash, [RETURN] = return_home, [RECOVER] = recover }
 
 return define.chip {
-    id = "delecswd",
+    id = "bn6:delecswd",
     codes = { "E" },
     element = "elec",
     family = "elec",
@@ -186,7 +186,7 @@ return define.chip {
     slot_in_limit = 3,
     -- `sub_80F09B8` (`off_80F09CC`).
     action = define.action {
-        id = "delecswd/action",
+        id = "bn6:delecswd/action",
         state = STATE,
         update = function(me: Object, s: State)
             link.run(me, s, PHASES, "DElecSwd (sub_80F09B8)")

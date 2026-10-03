@@ -29,28 +29,28 @@ export type State = {
 }
 
 -- Its sprite: animation 0 standing, 1 spinning.
-local SPRITE = asset.sprite("air-spin")
+local SPRITE = asset.sprite("bn6:air-spin")
 local HIT_MOD = 0x03
 -- Rolling speed (16.16), panels it rolls at most, HP.
 local SPEED, MAX_PANELS, HP = 0x4_0000, 4, 0x190
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
 local IDENTITY = define.identity {
-    id = "airspin-top",
+    id = "bn6:airspin-top",
     class = "field_object",
     version = 0,
     ai_index = 1,
-    look = { sprite = asset.sprite("air-spin"), anim = 1, palette = 0, shadow = false },
+    look = { sprite = asset.sprite("bn6:air-spin"), anim = 1, palette = 0, shadow = false },
 }
 -- Its field-object class, and how it looks absorbed (the original's
 -- obstacle kind 0x0C: its own sprite).
 local CLASS = 1
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 -- The spin's gust (effect 0x43), and its palette offset.
-local GUST = define.effect { sprite = asset.sprite("moon-blade"), anim = 0, palette = 0 }
+local GUST = define.effect { sprite = asset.sprite("bn6:moon-blade"), anim = 0, palette = 0 }
 local GUST_PALETTE = 2
-local SOUND_SET_DOWN, SOUND_SPIN = asset.sound("set-down"), asset.sound("spin")
-local SOUND_HIT_BOMB = asset.sound("hit-bomb-1")
+local SOUND_SET_DOWN, SOUND_SPIN = asset.sound("bn6:set-down"), asset.sound("bn6:spin")
+local SOUND_HIT_BOMB = asset.sound("bn6:hit-bomb-1")
 -- Panel flags: solid (0x10); where it can't be set down (bodies:
 -- 0x3800000); what stops its rolling (bodies and neutral objects:
 -- 0xF800000).
@@ -331,7 +331,7 @@ local function init(me: Object)
 end
 
 top.kind = define.kind {
-    id = "airspin/top",
+    id = "bn6:airspin/top",
     pool = "attack",
     state = { target_x = "i32", interval = "i32", spins = "u8", palette = "u8" },
     -- `sub_80D88E0`.

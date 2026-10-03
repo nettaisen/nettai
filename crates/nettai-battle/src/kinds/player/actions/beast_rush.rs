@@ -175,7 +175,7 @@ fn lockon_mode(b: &Battle, r: ObjectRef) -> Option<LockonHandle> {
     } else {
         None
     };
-    special.or(b.content.chip_field(attack.chip).lockon_mode)
+    special.or(b.chip_field(attack.chip).lockon_mode)
 }
 
 /// `ho_8026554` as its callers outside the rush see it (the claw's and

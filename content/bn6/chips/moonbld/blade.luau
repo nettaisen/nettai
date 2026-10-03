@@ -19,7 +19,7 @@ export type State = {
     plain: boolean,
 }
 
-local SPRITE = asset.sprite("moon-blade")
+local SPRITE = asset.sprite("bn6:moon-blade")
 -- The panels it sweeps, in order (`byte_80D5D24`): dx toward the facing
 -- side, dy.
 local SWEEP = {
@@ -102,7 +102,7 @@ local function init(me: Object)
 end
 
 blade.kind = define.kind {
-    id = "moonbld/blade",
+    id = "bn6:moonbld/blade",
     pool = "attack",
     state = { plain = "bool" },
     -- `sub_80D5C48`.

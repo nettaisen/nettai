@@ -6,7 +6,7 @@
 local controller = require("../geddon/controller")
 
 return define.chip {
-    id = "prpcapsl",
+    id = "bn6:prpcapsl",
     element = "null", family = "summon", class = "special",
     rarity = 0, mb = 6, damage = 0, hit_param = 0, lockout = 0,
     library = { number = 383, index = 0, sort = 0 },

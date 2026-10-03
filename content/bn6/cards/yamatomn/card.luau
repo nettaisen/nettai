@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local shield = require("../../navis/megaman/weapons/shield/weapon")
 
 return define.patch_card {
-    id = "yamatomn",
+    id = "bn6:yamatomn",
     mb = 35,
     effects = {
         cards.hp_percent(10),

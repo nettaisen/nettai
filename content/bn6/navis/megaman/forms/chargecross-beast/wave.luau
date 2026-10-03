@@ -24,7 +24,7 @@ local WIND_UP, RECOVER = 0x0, 0x4
 -- Fire, the hit's counter byte.
 local FIRE, HIT_PARAM = 1, 0x9E
 
-local SOUND = asset.sound("ground-beast-dash-2")
+local SOUND = asset.sound("bn6:ground-beast-dash-2")
 
 -- How high the wave rolls, 16.16.
 local WAVE_Z = 0x18_0000
@@ -105,7 +105,7 @@ local function recover(me: Object, s: State)
 end
 
 wave.action = define.action {
-    id = "chargecross-beast/wave/action",
+    id = "bn6:chargecross-beast/wave/action",
     state = { timer = "u16" },
     -- `sub_80EF282`.
     update = function(me: Object, s: State)
@@ -121,7 +121,7 @@ wave.action = define.action {
 }
 
 wave.weapon = define.weapon {
-    id = "chargecross-beast/wave",
+    id = "bn6:chargecross-beast/wave",
     -- The charge table's row 0x1C, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 20, 20, 20, 20, 20, 40, 40, 40 },

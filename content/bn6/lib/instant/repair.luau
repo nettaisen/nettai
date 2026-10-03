@@ -9,8 +9,8 @@
 
 local repair = {}
 
-local HEAL = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
-local SOUND = asset.sound("heal")
+local HEAL = define.effect { sprite = asset.sprite("bn6:heal"), anim = 0, palette = 0 }
+local SOUND = asset.sound("bn6:heal")
 
 -- `sub_801050C`: an `instant` hook.
 function repair.instant(user: Object, _spec: InstantChipSpec)

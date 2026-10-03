@@ -89,7 +89,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "dblbeast/controller",
+    id = "bn6:dblbeast/controller",
     pool = "effect",
     state = { bonus = "u16", gregar_out = "bool", falzar_out = "bool" },
     -- `sub_80E9310`.

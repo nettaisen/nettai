@@ -28,11 +28,11 @@ export type State = {
 
 -- Ticks it waits on a panel after the one it enters on (Timer2).
 local WAIT = 1
-local HIT_SOUND = asset.sound("burst")
-local SOUND = asset.sound("cannon")
+local HIT_SOUND = asset.sound("bn6:burst")
+local SOUND = asset.sound("bn6:cannon")
 -- The edge blast: its effect (effect 0x60), its hit (what it is, region,
 -- modifier), and the explosions' wait, interval and height (16.16).
-local BLAST = define.effect { sprite = asset.sprite("tank-blast"), anim = 0, palette = 0 }
+local BLAST = define.effect { sprite = asset.sprite("bn6:tank-blast"), anim = 0, palette = 0 }
 local BLAST_HIT_MOD = 3
 local FIRST_EXPLOSION, EXPLOSION_INTERVAL, EXPLOSION_Z = 0xE, 4, 0x6_0000
 
@@ -172,7 +172,7 @@ local function init(me: Object)
 end
 
 shell.kind = define.kind {
-    id = "tankcan/shell",
+    id = "bn6:tankcan/shell",
     pool = "attack",
     state = { hit_mod = "u8", cracks = "bool", shift = "u8", spots = "u8[3]" },
     -- `sub_80CB6F8`.

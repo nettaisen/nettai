@@ -10,7 +10,7 @@ local statuses = require("../../rules/status")
 local PARALYZE = statuses.paralyze_90
 
 return define.chip {
-    id = "thunder",
+    id = "bn6:thunder",
     codes = { "B", "R", "S", "*" },
     element = "elec", family = "elec", class = "standard",
     rarity = 1, mb = 7, damage = 40, hit_param = 20, lockout = 0,

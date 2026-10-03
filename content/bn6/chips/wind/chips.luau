@@ -8,7 +8,7 @@ local controller = require("./controller")
 local fan = require("./fan")
 
 local wind = define.chip {
-    id = "wind",
+    id = "bn6:wind",
     codes = { "*" },
     element = "null",
     family = "wind",
@@ -28,18 +28,18 @@ local wind = define.chip {
         wait = 1,
         hp = 40,
         identity = define.identity {
-            id = "wind",
+            id = "bn6:wind",
             class = "field_object",
             version = 3,
             ai_index = 1,
-            look = { sprite = asset.sprite("fan"), anim = 0, palette = 0, shadow = false },
+            look = { sprite = asset.sprite("bn6:fan"), anim = 0, palette = 0, shadow = false },
         },
         absorbed = fan.absorbed,
     }),
 }
 
 local fan_chip = define.chip {
-    id = "fan",
+    id = "bn6:fan",
     codes = { "*" },
     element = "null",
     family = "wind",
@@ -59,11 +59,11 @@ local fan_chip = define.chip {
         wait = 1,
         hp = 40,
         identity = define.identity {
-            id = "fan",
+            id = "bn6:fan",
             class = "field_object",
             version = 4,
             ai_index = 1,
-            look = { sprite = asset.sprite("fan"), anim = 0, palette = 1, shadow = false },
+            look = { sprite = asset.sprite("bn6:fan"), anim = 0, palette = 1, shadow = false },
         },
         absorbed = fan.absorbed,
     }),
