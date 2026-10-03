@@ -190,7 +190,7 @@ These are not fields, but they were `UNK_*` names or were named after the `UNK_4
 
 These are named after a bit value or an object index, not a struct offset or address, so this pass left them alone.
 They are candidates for a later naming pass: `request::PAUSE_40` (now `REVERT_FORM`), `request::PAUSE_4000000` (now
-`CROSS_CHANGE`), `request::TRAP_200` (now `ANTI_DAMAGE_TRIGGERED`), `request::TRAP_400` (now `ANTI_SWORD_TRIGGERED`),
+`NAVI_SWITCH`, `CROSS_CHANGE` until rules-in-Luau S4), `request::TRAP_200` (now `ANTI_DAMAGE_TRIGGERED`), `request::TRAP_400` (now `ANTI_SWORD_TRIGGERED`),
 `request::TRAP_8000` (now `BODY_GUARD_TRIGGERED`), `request::ACTION_30` (now `VOLLEY`), `request::ACTION_49` (now
 `STUN_STRIKE`), `status::CROSS_2000` ... `CROSS_40000` (see below), `battle_flags::MODE_40` (now `PER_PLAYER_GAUGES`)
 (and `is_mode_40`), and `setup::ActorKind::Object6E` / `Object7D`.
@@ -204,10 +204,10 @@ what they start. "No setter found" is from the same heuristic scan as above.
 |---|---|---|
 | `request::PAUSE_40` | `request::REVERT_FORM` | 0x40: `sub_8015994` (turn-start check, Beast Out used up). The pause handler `sub_8017BC0` turns it into action 0x1C with state 0x100. |
 | state literal `0x100` | `status::REVERTING_FORM` | `sub_8015614` runs as the pause-time action; `sub_80159A2` waits on it. |
-| `request::PAUSE_4000000` | `request::CROSS_CHANGE` | 0x4000000: `sub_802DCDE`, from the transformation sequencer when a transform record's +4 is set. Becomes action 0x1C with state 0x1000. |
-| state literal `0x1000` | `status::CHANGING_CROSS` | `sub_802D714` runs as the pause-time action; `sub_802DCEC` waits on it. |
-| `status::CROSS_2000` | `status::CROSS_KNOCKOUT` | 0x2000: set with action 0x4C from request 0x8000000 (`sub_801AF44`), or with the pause-time `sub_802D926`. Takes over the dispatch. |
-| `status::CROSS_4000` | `status::CROSSED` | 0x4000: set when the Cross change ends (`sub_802D8F0`); read by `sub_802DD2A` (a crossed link navi falls back instead of being deleted). |
+| `request::PAUSE_4000000` | `request::NAVI_SWITCH` (`CROSS_CHANGE` until rules-in-Luau S4) | 0x4000000: `sub_802DCDE`, from the transformation sequencer when a transform record's +4 is set. Becomes action 0x1C with state 0x1000. |
+| state literal `0x1000` | `status::SWITCHING_NAVI` (`CHANGING_CROSS` until S4) | `sub_802D714` runs as the pause-time action; `sub_802DCEC` waits on it. |
+| `status::CROSS_2000` | `status::SWITCH_KNOCKOUT` (`CROSS_KNOCKOUT` until S4; its request 0x8000000 is `request::SWITCH_KNOCKOUT`, `CROSS_DEATH` before) | 0x2000: set with action 0x4C from request 0x8000000 (`sub_801AF44`), or with the pause-time `sub_802D926`. Takes over the dispatch. |
+| `status::CROSS_4000` | `status::SWITCHED` (`CROSSED` until S4) | 0x4000: set when the navi switch (the Cross change) ends (`sub_802D8F0`); read by `sub_802DD2A` (a crossed link navi falls back instead of being deleted). |
 | `status::CROSS_10000` | `status::VOLLEY` | 0x10000: set with action 0x30 (`sub_80ED55C`, a volley of shots). Takes over the dispatch. |
 | `status::CROSS_20000` | `status::UNINTERRUPTIBLE` | 0x20000: takes over the dispatch like the two above; no setter found. |
 | `status::CROSS_40000` | `status::CROSS_BREAKING` | 0x40000: set on a weakness hit to a Cross form (NameID 0x1AC..0x1C1); `sub_8015766` ends the Cross over 30 ticks. |

@@ -664,6 +664,11 @@ impl UserData for Object {
             bound(|b| chip.map_or(Ok(LuaValue::Nil), |c| Ok(LuaValue::Table(b.def_value(Registry::Chip, c.0)?))))
         });
         methods.add_method("use_chip", |_, this, ()| with(|api, _| api.use_chip(this.0).map_err(api_error)));
+        methods.add_method("start_chip_attack", |_, this, (chip, kind): (LuaValue, LuaValue)| {
+            let chip = bound(|b| def_arg(b, &chip, Registry::Chip, "start_chip_attack"))?;
+            let kind = int(&kind, "kind")? as u8;
+            with(|api, _| api.start_chip_attack(this.0, nettai_content_api::ChipHandle(chip), kind).map_err(api_error))
+        });
         methods.add_method("start_move_to", |_, this, (x, y, end_lag): (LuaValue, LuaValue, LuaValue)| {
             let p = panel(x, y)?;
             let end_lag = int(&end_lag, "end_lag")? as u16;
@@ -1298,6 +1303,25 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "side_special", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.side_special(side).name()))
+    });
+    lib_fn!(lua, t, "take_over", |_, (side, ticks): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let ticks = int(&ticks, "ticks")? as u16;
+        with(|api, _| {
+            api.take_over(side, ticks);
+            Ok(())
+        })
+    });
+    lib_fn!(lua, t, "end_takeover", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| {
+            api.end_takeover(side);
+            Ok(())
+        })
+    });
+    lib_fn!(lua, t, "takeover_ticks", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.takeover_ticks(side)))
     });
     lib_fn!(lua, t, "player", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -1959,16 +1983,18 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 v.type_name()
             ))),
         },
-        // A controller's outcome, by the original's number.
-        HookCall::System { hook: SystemHook::Controller, .. } => match &v {
+        // A controller's or a takeover's outcome, by the original's number
+        // (4: an attack of the takeover's own).
+        HookCall::System { hook: SystemHook::Controller | SystemHook::Takeover, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
             LuaValue::String(s) => match &*s.to_str()? {
                 "nothing" => Ok(Value::Int(0)),
                 "chip" => Ok(Value::Int(1)),
                 "buster" => Ok(Value::Int(2)),
                 "moved" => Ok(Value::Int(3)),
+                "own_chip" => Ok(Value::Int(4)),
                 other => Err(mlua::Error::runtime(format!(
-                    "a controller returns \"nothing\", \"chip\", \"buster\" or \"moved\", not {other:?}"
+                    "a controller returns \"nothing\", \"chip\", \"buster\", \"moved\" or \"own_chip\", not {other:?}"
                 ))),
             },
             _ => Err(mlua::Error::runtime(format!("a controller returns its outcome's name, not a {}", v.type_name()))),

@@ -437,12 +437,12 @@ A transform record: +0 requested form (0xFF none), +4 Cross change (0xFF none), 
   - 8 `sub_801498E`: on init, `SetScreenFade(0x40, 0x10)` (0x6C in mode 1). When done: HUD back, [0..3] = 8 (word store). Fade 0x40 takes **17** ticks: 1889 → 1906.
 - **State 8, `sub_8014A00`**: wait while either navi reverts (`sub_80159A2`: AIData+0x48 bit 0x100 or request 0x40). Then, per side in order, wait while it changes Cross (`sub_802DCEC`: +0x48 bit 0x1000 or request 0x4000000), clearing that side's +4. Then busy = 0.
 
-**The Cross change** (a navi switch; ported in kinds/player/actions/cross_change.rs, **[unverified]**: the custom
+**The Cross change** (the navi switch; ported in kinds/player/actions/navi_switch.rs, **[unverified]**: the custom
 screen never sends one, custom-screen.md §6): the pause handler runs `sub_802D714` as action 0x1C with state 0x1000.
 Step 0 (`sub_802D738`, 4 ticks): onto the destination panel on the ground, facing the default way, flags and
 requests 0x1C41 cleared (the requests' clear passes the flags' mask again), animation 4, links cut, region 1.
 Step 4 (`sub_802D7A0`, one tick): the form's overlay and the navi's death hook, anger ends; the side's second
-NaviStats block (`eBattleNaviStats2034A60`, a copy of the battle-start stats: `Battle::cross_stats`) takes the
+NaviStats block (`eBattleNaviStats2034A60`, a copy of the battle-start stats: `Battle::reserves`) takes the
 current stats (with the object's HP) when it holds the same navi; the navi becomes the record's navi from that block
 when it holds it, else fresh (`init_8013B64`: the defaults and `byte_80210DD`'s row); AI index and NameID from the
 navi, its sprite (animation 3), overlay or init hook, the post-init hook, statuses and anger cleared, HP from the

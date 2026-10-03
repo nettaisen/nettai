@@ -67,15 +67,15 @@ pub struct NaviData {
     /// Its identity: what the object that is this navi is taken for.
     #[serde(skip)]
     pub identity: Option<IdentityHandle>,
-    /// The weapons it comes with (`byte_80210DD`): what a Cross change
+    /// The weapons it comes with (`byte_80210DD`): what a navi switch
     /// gives its buttons.
     #[serde(skip)]
     pub weapons: FormWeapons,
-    /// The rest of what a Cross change brings it with, fresh; none for a
+    /// The rest of what a navi switch brings it with, fresh; none for a
     /// navi no change can bring.
     #[serde(skip)]
     pub fresh: Option<FreshStats>,
-    /// Its HP after a Cross change, by side (`byte_802DD88`).
+    /// Its HP after a navi switch, by side (`byte_802DD88`).
     #[serde(skip)]
     pub cross_hp: Option<[u16; 2]>,
 }
@@ -130,7 +130,7 @@ pub struct FormSet {
     pub beast_over: Option<FormHandle>,
 }
 
-/// A navi's stats when a Cross change brings it fresh (`byte_80210DD`,
+/// A navi's stats when a navi switch brings it fresh (`byte_80210DD`,
 /// with its weapons): its HP, its body's programs, the first barrier, its
 /// Mega and Giga levels, and the damage of its B+Back special.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -286,7 +286,7 @@ pub struct FormData {
     /// fires in it (`sub_802D4F0`).
     #[serde(default)]
     pub special_volley: u16,
-    /// A Cross change that finds the navi in this animation lets go of it
+    /// A change into a Cross that finds the navi in this animation lets go of it
     /// and of what it holds (`sub_8014B18`: GroundCross's drill).
     #[serde(default)]
     pub cross_release_anim: Option<u8>,
@@ -624,7 +624,7 @@ pub(crate) fn read_form(
     Ok(form)
 }
 
-/// A navi definition's `fresh`: what a Cross change brings it with.
+/// A navi definition's `fresh`: what a navi switch brings it with.
 pub(crate) fn read_fresh(
     d: &nettai_content_api::Definition,
     record: impl Fn(&str) -> Option<nettai_content_api::RecordHandle>,
@@ -671,7 +671,7 @@ pub(crate) fn read_fresh(
     }))
 }
 
-/// A navi definition's `cross_hp`: its HP after a Cross change, by side.
+/// A navi definition's `cross_hp`: its HP after a navi switch, by side.
 pub(crate) fn read_cross_hp(d: &nettai_content_api::Definition) -> Result<Option<[u16; 2]>, nettai_content_api::ContentError> {
     use nettai_content_api::{ContentError, Data};
     let what = || ContentError::new(format!("{}.luau: navi {}: `cross_hp` is two HP values, by side", d.module, d.key));

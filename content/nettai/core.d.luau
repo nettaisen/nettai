@@ -53,7 +53,9 @@ export type Shadow = "hidden" | "ground" | "with_sprite"
 export type ActorType = "virus" | "navi" | "player"
 export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out"
 -- A side's SELECT or Cross special in progress (battle flag 0x40 mode).
-export type SideSpecial = "none" | "select" | "cross"
+-- A side's special in progress: the SELECT special, or a system's takeover
+-- of the side's navi (BN6's Cross special).
+export type SideSpecial = "none" | "select" | "takeover"
 -- A HUD part a chip's effect hides and shows: the custom gauge (draw task
 -- 4), the emotion window (14), the battle flag 0x40 mode's gauge drawn by
 -- its levels (17).
@@ -130,10 +132,11 @@ export type Request =
     | "b_held"
     | "stun_strike"
     | "select_special"
-    | "cross_change"
-    | "cross_death"
+    | "navi_switch"
+    | "switch_knockout"
     | "mode9_a"
-    | "cross_special"
+    -- A system's takeover of the side's navi (BN6's Cross special).
+    | "takeover"
     | "volley"
     | "weakness_hit"
     -- The slide request (the collision's flag2 0x10).
@@ -147,9 +150,9 @@ export type NaviStateFlag =
     | "no_charge"
     | "can_turn"
     | "trap_armed"
-    | "changing_cross"
-    | "cross_knockout"
-    | "crossed"
+    | "switching_navi"
+    | "switch_knockout"
+    | "switched"
     | "volley"
     | "uninterruptible"
     | "cross_breaking"
@@ -673,6 +676,9 @@ declare class Object
     -- `sub_800FB54`: use the chip the navi's requests ask for (as idle does
     -- on A): whether its use started.
     function use_chip(self): boolean
+    -- The attack `chip` starts (`sub_80127C0`'s dispatch: its action, or the
+    -- dimming, navi or instant chip's), in `set_attack` slot `kind`.
+    function start_chip_attack(self, chip: Chip, kind: number): ()
     -- `sub_80116AE(5, end_lag, 2)`: a step straight to (x, y) (column 0: no
     -- step), then `end_lag` ticks.
     function start_move_to(self, x: number, y: number, end_lag: number): ()
@@ -1051,6 +1057,12 @@ declare battle: {
     spend_bug_frags: (side: number, count: number) -> (),
     -- `sub_802E4B8`: the side's SELECT or Cross special in progress.
     side_special: (side: number) -> SideSpecial,
+    -- A system's takeover of the side's navi starts for `ticks` (counted
+    -- down in the navi's stage B, `sub_802E1D8`), or ends; while it runs,
+    -- idle asks the side's systems' `takeover`. Its ticks left.
+    take_over: (side: number, ticks: number) -> (),
+    end_takeover: (side: number) -> (),
+    takeover_ticks: (side: number) -> number,
     player: (side: number) -> Object?,
     -- A side's combatants still in, in slot order.
     alive_actors: (side: number) -> { Object },
@@ -1500,6 +1512,16 @@ export type SystemSpec = {
         -- The framework reverts the navi to its base form, its form not yet
         -- changed (`sub_80158CC`).
         form_reverted: ((side: number, navi: Object) -> ())?,
+        -- Idle finds the navi's takeover request (`sub_802E4E4`; BN6's
+        -- DarkInvs asks for its Cross special): a system starts it
+        -- (`battle.take_over`).
+        takeover_requested: ((side: number, navi: Object) -> ())?,
+        -- Each tick of the idle action of a navi whose side's takeover runs
+        -- (`sub_802D4C6`), in place of the player's decisions: what it did,
+        -- as `controller` answers, or "own_chip" (an attack of its own
+        -- started: the attack's chip). The system ends it
+        -- (`battle.end_takeover`). The first system that answers decides.
+        takeover: ((side: number, navi: Object) -> ("nothing" | "chip" | "buster" | "moved" | "own_chip")?)?,
     }?,
 }
 export type System = SystemSpec
@@ -1713,7 +1735,7 @@ export type NaviDef = {
     -- has forms.
     forms: { gregar: FormSet, falzar: FormSet }?,
     identity: Identity,
-    -- What a Cross change brings it with: its weapons, the rest of its
+    -- What a navi switch brings it with: its weapons, the rest of its
     -- fresh stats, and its HP after the change, by side.
     weapons: FormWeapons?,
     fresh: {
@@ -1837,7 +1859,7 @@ export type FormDef = {
     -- The shots of the buster volley the Cross special's controller fires
     -- in it (the original stores the form's number where it meant 6).
     special_volley: number?,
-    -- A Cross change that finds the navi in this animation lets go of it.
+    -- A change into a Cross that finds the navi in this animation lets go of it.
     cross_release_anim: number?,
     traits: { FormTrait }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
@@ -2071,9 +2093,9 @@ export type RolesSpec = {
         body_guard_counter: Action?,
         forced_charged_shot: Action?,
         stun_strike: Action?,
-        cross_protect: Action?,
+        switch_protect: Action?,
         turn: Action?,
-        cross_death: Action?,
+        switch_knockout: Action?,
         volley: Action?,
         dust_beast_scatter: Action?,
         charge_tackle: Action?,
@@ -2180,7 +2202,6 @@ export type RolesSpec = {
         obstacle_lift: Sound?,
         obstacle_throw: Sound?,
         burst: Sound?,
-        cross_special: Sound?,
         refused: Sound?,
         custom_open: Sound?,
         custom_cursor: Sound?,

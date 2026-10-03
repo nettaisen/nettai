@@ -112,7 +112,6 @@ return {
         obstacle_lift = asset.sound("test:test-sound-obstacle-lift"),
         obstacle_throw = asset.sound("test:test-sound-obstacle-throw"),
         burst = asset.sound("test:test-sound-beast-over-burst"),
-        cross_special = asset.sound("test:test-sound-cross-special"),
         refused = asset.sound("test:test-sound-refused"),
         custom_open = asset.sound("test:test-sound-custom-open"),
         custom_cursor = asset.sound("test:test-sound-custom-cursor"),

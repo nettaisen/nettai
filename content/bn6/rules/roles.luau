@@ -45,13 +45,13 @@ return define.roles {
         -- The strike the navi's request 0x80000 starts from idle (a
         -- machine sword's, by the attack's chip).
         stun_strike = stun_strike.action,
-        -- What a Cross navi protected at the battle's end runs
+        -- What a switched-in navi protected at the battle's end runs
         -- (GroundCross's drill).
-        cross_protect = ground_drill.action,
+        switch_protect = ground_drill.action,
         -- The turn L or R starts where turning is enabled.
         turn = turn.action,
-        -- A Cross navi's knock-out (SlashCross Beast's lunge).
-        cross_death = slash_beast_lunge.action,
+        -- A switched-in navi's knock-out (SlashCross Beast's lunge).
+        switch_knockout = slash_beast_lunge.action,
         -- (`volley`, what the navi's volley request starts, isn't filled.
         -- The original starts its action 0x30, WideSht's and SuprSpr's
         -- routine, on whatever the attack's parameter bytes hold; no
@@ -193,8 +193,6 @@ return define.roles {
         -- put on (two sounds at once); a Beast Out put on; the beasts'
         -- roars; Beast Over's rumbles and bursts.
         burst = asset.sound("bn6:beast-over-burst"),
-        -- A Cross navi starting its special's chip.
-        cross_special = asset.sound("bn6:elmnt-man-2"),
         -- SELECT with too little gauge: its player hears that it can't (and
         -- what can't be picked or taken back on the custom screen).
         refused = asset.sound("bn6:cant-jack-in"),
