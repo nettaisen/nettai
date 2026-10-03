@@ -329,8 +329,8 @@ impl Extras for NoExtras {
     }
 }
 
-/// Ticks a result takes to send: the link carries one of its 50 words a
-/// tick (`sub_801FF18`).
+/// Ticks a result takes to send: the link carries one of its words a tick
+/// (`sub_801FF18`), BN6's 50 (a game's own: `Library::result_words`).
 pub const SEND_TICKS: u32 = 50;
 
 impl Side {
@@ -412,7 +412,7 @@ impl Side {
                     builder::count_classes(h, &mut self.class_uses, ctx.library);
                 }
                 let result = CustomResult { hand, navi_stats: ctx.stats, transform };
-                self.sent = Some(Sent { result, sent_at: ctx.now, arrives: ctx.now + SEND_TICKS + ctx.link_delay as u32 });
+                self.sent = Some(Sent { result, sent_at: ctx.now, arrives: ctx.now + ctx.library.result_words() + ctx.link_delay as u32 });
             }
             None => {}
         }
