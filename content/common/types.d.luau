@@ -182,6 +182,9 @@ export type MegaManShotLook = {
     attachment: Kind,
     shot_sound: Sound,
     plain: ProjectileVariant,
+    -- Whether the charged shot waits before the buster comes up, asked on its first tick (none: always, BN6's; BN5's
+    -- in the battle flag 0x40 mode alone, marking the panel in front).
+    waits: ((me: Object) -> boolean)?,
 }
 
 -- A game's buster shot (@common/megaman/buster): its shot's look, and a throw's sound and its throw of the obstacle
@@ -358,13 +361,16 @@ export type NaviCustBoard = {
 }
 
 -- What a game's NaviCust compile (@common/navicust/compile) is made of besides the shared routines: its name (for
--- errors), its board, its bugs in the order the bugs' routine runs them and what each writes by its level (1 to 3),
--- what a placed program counts besides (BN5's HubBatc), and whether any bug sets the emotion window's glitch.
+-- errors), its board, its bugs in the order the bugs' routine runs them and what each writes by its level (1 to 3;
+-- `hp`, what the HP programs add), what a placed program counts besides (BN5's HubBatc), whether any bug sets the
+-- emotion window's glitch, and whether the side's HP is left as it is (`keeps_hp`: BN5's in the cyberworld; none,
+-- never).
 export type NaviCustGame = {
     name: string,
     board: NaviCustBoard,
     bugs: { string },
-    bug_work: { [string]: (stats: Navi, level: number) -> () },
+    bug_work: { [string]: (stats: Navi, level: number, hp: number) -> () },
     extra: ((part: PlacedProgram, count: (bug: string?, n: number?) -> ()) -> ())?,
     glitch: boolean,
+    keeps_hp: ((side: number) -> boolean)?,
 }

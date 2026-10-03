@@ -472,7 +472,7 @@ impl CoreApi for Battle {
             NaviStat::NumberOpen => Value::Bool(s.number_open),
             NaviStat::ChipDrops => i(s.chip_drops as i64),
             NaviStat::Encounters => i(s.encounters as i64),
-            NaviStat::SoulTurnBonus => i(self.custom.sides[side as usize & 1].unlocks.souls.turn_bonus as i64),
+            NaviStat::SoulTurnBonus => i(self.custom.sides[side as usize & 1].souls.turn_bonus as i64),
             NaviStat::BugKinds => {
                 let b = &s.bugs;
                 let kinds = [
@@ -502,7 +502,7 @@ impl CoreApi for Battle {
         };
         // (The soul turns' bonus is the custom screen's: its unlocks.)
         if let (NaviStat::SoulTurnBonus, FieldValue::I8(x)) = (stat, v) {
-            self.custom.sides[side as usize & 1].unlocks.souls.turn_bonus = x;
+            self.custom.sides[side as usize & 1].souls.turn_bonus = x;
             return Ok(());
         }
         // A record field's value: a shot program or a barrier.

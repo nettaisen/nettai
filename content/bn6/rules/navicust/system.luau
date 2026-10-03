@@ -43,7 +43,7 @@ local compile = require("@common/navicust/compile")
 local programs = require("./programs")
 
 -- Each bug at its level, 1 to 3 (`byte_813CC18`'s routines).
-local BUG_WORK: { [string]: (stats: Navi, level: number) -> () } = {
+local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
     step = function(stats, _)
         stats.step_bug = 1
     end,

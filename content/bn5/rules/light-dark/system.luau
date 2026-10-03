@@ -21,7 +21,7 @@
 --   the value / 20 + 103 (500: 0x80). A battle that holds the value (battle effect 0x20000) holds it at 500 from his
 --   start.
 -- - **His palette** (0x0800DD94, each tick: presentation): by the value's tier and the mood, the soul, the charge he
---   can't do, Hub Style (NaviStats +0x4C: the NaviCust's HubBatc, 0x08138214), the element; Dark MegaMan's (AI index
+--   can't do, Hub Style (NaviStats +0x4C: patch card 111, 0x08138214), the element; Dark MegaMan's (AI index
 --   0x16) 1.
 -- - **Hub Style's faces** (0x0801AF8E: the face plus 11): the base form's second set (`mugshot.variant`).
 -- - **Its hit bugs** (0x0801103E, the navi's hit NaviCust bug): a hit with hit flag 0x400 brings no bug to a value of
@@ -81,7 +81,8 @@ local LIGHT_CHIPS = 470
 export type Setup = {
     -- The save's light/dark value (NaviStats +0x44).
     value: number,
-    -- Hub Style (NaviStats +0x4C): the NaviCust's HubBatc in its fourth color (part 0x6F, 0x08138214), 1; else 0.
+    -- Hub Style (NaviStats +0x4C): patch card 111 installed and on (the cards' routine, 0x08138214, by 0x08137A58),
+    -- 1; else 0.
     hub_style: number,
 }
 
