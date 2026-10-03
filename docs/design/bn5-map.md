@@ -1367,8 +1367,8 @@ them.
 ### 15.8 Soul Unison (as built, in progress)
 
 - **The soul button** (the engine's custom screen, BN5's layout: slot 11, `SlotKind::Soul`, 0x08023C54,
-  0x08024B28, 0x08024972): lit for the last pick's family when the navi has a soul of it (a form of
-  `kind = "soul"` naming its `soul = { number, family }`), the save has the soul (`SoulUnlocks`: bn5-compat gives
+  0x08024B28, 0x08024972): lit for the last pick's family when the navi has a soul of it (a form naming its
+  `soul = { number, family }`), the save has the soul (`SoulUnlocks`: bn5-compat gives
   a finished save's six of the version and Chaos Unison) and it isn't used this round (Soul Unison and Chaos Unison
   apart; a dark chip's is Chaos Unison). Pressed: BN5's state 9 (`Phase::SoulChosen`: fades 0x34 and 0x30), the
   soul first in the selection in place of the chip given up. At OK the transform record asks for the soul's form,

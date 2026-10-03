@@ -16,7 +16,6 @@ local souls = require("../../../../rules/souls/system")
 
 return define.form {
     id = "bn5:protosoul",
-    kind = "soul",
     soul = { number = 1, family = "sword" },
     change = souls.action,
     revert = souls.revert,

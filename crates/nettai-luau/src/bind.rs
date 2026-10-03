@@ -1899,7 +1899,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             let tether: Option<mlua::LuaString> = spec.raw_get("tether")?;
             let tether = match tether {
                 Some(s) => named(&s, "afterimage tether", |n| match n {
-                    "beast_form" => Some(1),
+                    "form" => Some(1),
                     "attack" => Some(2),
                     _ => None,
                 })?,

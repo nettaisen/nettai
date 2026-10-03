@@ -10,6 +10,8 @@
 -- used (`dword_20349A0`). Its state is the cross system's, which the
 -- frontend draws the window from (by these fields' names).
 
+local kind = require("../forms/kind")
+
 local window = {}
 
 -- The cross system's setup (rules/cross/system.luau declares it): the
@@ -65,11 +67,6 @@ local PUT_ON_TICK = 25
 -- The side's navi changes form (MegaMan).
 local function megaman(side: number): boolean
     return battle.navi(side).navi.forms ~= nil
-end
-
--- A form kind of the Beast forms (`FormKind::is_beast`).
-local function beast_kind(kind: string): boolean
-    return kind == "beast" or kind == "cross_beast" or kind == "beast_over"
 end
 
 -- `Unlocks::cross_at`: the player's Cross in place `place`: the setup's
@@ -135,7 +132,7 @@ local function listed_cross_fits(side: number, form: FormDef): boolean
         return true
     end
     local current = battle.navi(side).form
-    return form.kind == "cross" and not (beast_kind(current.kind) and form.game ~= current.game)
+    return form.kind == "cross" and not (kind.is_beast(current.kind) and form.game ~= current.game)
 end
 
 -- The form a Cross chosen (by its place) puts the navi in at the turn's
@@ -143,7 +140,7 @@ end
 -- Out.
 local function result_form(side: number, place: number): FormDef?
     local form = cross_at(side, place)
-    if form ~= nil and beast_kind(battle.navi(side).form.kind) then
+    if form ~= nil and kind.beast(side) then
         return form.beast
     end
     return form
@@ -156,8 +153,8 @@ local function cross_face(side: number, place: number): FormDef?
     if form == nil then
         return nil
     end
-    local kind = battle.navi(side).form.kind
-    if kind == "base" or kind == "cross" then
+    local current = battle.navi(side).form
+    if current.base or current.kind == "cross" then
         return form
     end
     return form.beast

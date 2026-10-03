@@ -476,7 +476,7 @@ impl View<'_> {
 /// `cross_palettes[number]` (`[number + 5]` once used). `navi` is the
 /// navi whose Cross it is.
 pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
-    let game = c.form(form).game?;
+    let game = bn6_compat::forms::game(c, form)?;
     let number = (0..5u8).find(|&i| c.cross_form(navi, game, i) == Some(form))?;
     Some((a.versioned.get(game_name(game)), number as usize))
 }
