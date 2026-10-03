@@ -26,6 +26,11 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     {
         b.register_dimming(side, a.chip, c, r);
     }
+    // A chip whose game leaves the action on the frame it runs (BN5's
+    // 0x080EC318): no wait for the dimming to end.
+    if b.chip_rules(a.chip).chip_use.leave_on_use {
+        return exit_attack_state(b, r);
+    }
     ai_mut(b, r).attack.step_init = 1;
 }
 

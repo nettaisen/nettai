@@ -38,8 +38,10 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         ai_mut(b, r).attack.step = 1;
         run_effect(b, r);
         // (The game reads the subtype again after the effect: only the
-        // weapon's, 0x14, waits.)
-        if !matches!(ai(b, r).attack.instant, Some(Effect::RunsThenWaits(_))) {
+        // weapon's, 0x14, waits; in a game that leaves the action on the
+        // use frame, nothing waits: BN5's 0x080EC6F6.)
+        let leaves = b.chip_rules(ai(b, r).attack.chip).chip_use.leave_on_use;
+        if leaves || !matches!(ai(b, r).attack.instant, Some(Effect::RunsThenWaits(_))) {
             return exit_attack_state(b, r);
         }
         ai_mut(b, r).attack.action = ActionVars::Instant(Vars { timer: 8 });

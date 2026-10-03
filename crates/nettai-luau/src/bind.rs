@@ -1192,6 +1192,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, mood) = (u8_arg(side, "side")? & 1, u8_arg(mood, "mood")?);
         with(|api, _| Ok(api.set_mood(side, mood)))
     });
+    lib_fn!(lua, t, "gain_mood", |_, (side, n): (LuaValue, LuaValue)| {
+        let (side, n) = (u8_arg(side, "side")? & 1, int(&n, "amount")? as u16);
+        with(|api, _| Ok(api.gain_mood(side, n)))
+    });
+    lib_fn!(lua, t, "lose_mood", |_, (side, n): (LuaValue, LuaValue)| {
+        let (side, n) = (u8_arg(side, "side")? & 1, int(&n, "amount")? as u16);
+        with(|api, _| Ok(api.lose_mood(side, n)))
+    });
     lib_fn!(lua, t, "set_emotion_window_glitch", |_, (side, on): (LuaValue, bool)| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.set_emotion_window_glitch(side, on)))
@@ -1209,6 +1217,58 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             list.raw_set(i + 1, entry)?;
         }
         Ok(list)
+    });
+    // A side's NaviCust: { expansions, parts = { { program = <the
+    // definition>, color = <its name>, x, y, rotation, compressed } } }, or
+    // nil when the setup gives none.
+    lib_fn!(lua, t, "navicust", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let Some((expansions, parts)) = with(|api, _| Ok(api.navicust(side)))? else { return Ok(LuaValue::Nil) };
+        let out = lua.create_table()?;
+        out.raw_set("expansions", expansions)?;
+        let list = lua.create_table()?;
+        for (i, p) in parts.into_iter().enumerate() {
+            let entry = lua.create_table()?;
+            let program = bound(|b| b.def_value(Registry::NaviCustProgram, p.program))?;
+            let color: LuaValue = program.get::<mlua::Table>("colors")?.get(p.color as usize + 1)?;
+            entry.raw_set("program", program)?;
+            entry.raw_set("color", color)?;
+            entry.raw_set("x", p.x)?;
+            entry.raw_set("y", p.y)?;
+            entry.raw_set("rotation", p.rotation)?;
+            entry.raw_set("compressed", p.compressed)?;
+            list.raw_set(i + 1, entry)?;
+        }
+        out.raw_set("parts", list)?;
+        Ok(LuaValue::Table(out))
+    });
+    // The folder a tool asks the rules to check (`folder_check`): { side,
+    // chips = { { chip = <the definition>, code = "A" } }, regular = n?,
+    // tags = { a, b }?, complete } (entries counting from 1), or nil.
+    lib_fn!(lua, t, "checked_folder", |lua, ()| {
+        let Some(f) = with(|api, _| Ok(api.checked_folder()))? else { return Ok(LuaValue::Nil) };
+        let out = lua.create_table()?;
+        out.raw_set("side", f.side)?;
+        let chips = lua.create_table()?;
+        for (i, (chip, code)) in f.chips.iter().enumerate() {
+            let entry = lua.create_table()?;
+            entry.raw_set("chip", bound(|b| b.def_value(Registry::Chip, *chip))?)?;
+            let letter = if *code == 26 { "*".to_string() } else { ((b'A' + code) as char).to_string() };
+            entry.raw_set("code", letter)?;
+            chips.raw_set(i + 1, entry)?;
+        }
+        out.raw_set("chips", chips)?;
+        if let Some(r) = f.regular {
+            out.raw_set("regular", r as i64 + 1)?;
+        }
+        if let Some((a, b)) = f.tags {
+            out.raw_set("tags", lua.create_sequence_from([a as i64 + 1, b as i64 + 1])?)?;
+        }
+        out.raw_set("complete", f.complete)?;
+        Ok(LuaValue::Table(out))
+    });
+    lib_fn!(lua, t, "folder_problem", |_, (rule, text): (String, String)| {
+        with(|api, _| Ok(api.folder_problem(&rule, &text)))
     });
     lib_fn!(lua, t, "side_special", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;

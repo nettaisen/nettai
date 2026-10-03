@@ -17,7 +17,8 @@ export type State = {
 
 -- A chip's shot: its ball; `id`, the action's key when no chip definition
 -- holds it.
-export type Spec = { id: string?, ball: ThunderBall }
+-- (`kind`: a game's own kind of the ball, `ball.make_kind`'s.)
+export type Spec = { id: string?, ball: ThunderBall, kind: Kind? }
 
 -- One state for both chips' shots.
 shoot.STATE = { timer = "u16" }
@@ -40,7 +41,7 @@ function shoot.action(spec: Spec): Action
             -- The damage word (the hit parameter in its high half), plus
             -- the Atk+ bonus.
             local damage = me.attack_damage + me.hit_param * 0x10000 + me.extra
-            ball.spawn(me, me.panel_x + me.facing, me.panel_y, me.attack_element, damage, spec.ball)
+            ball.spawn(me, me.panel_x + me.facing, me.panel_y, me.attack_element, damage, spec.ball, spec.kind)
         end
         local t = s.timer + 1
         s.timer = t

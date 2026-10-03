@@ -72,6 +72,10 @@ export type PanelType =
     | "road_down"
     | "road_left"
     | "road_right"
+    -- BN5's (docs/design/bn5-map.md §15.2).
+    | "metal"
+    | "lava"
+    | "sea"
 -- Status flags of an object with collision data.
 export type StatusFlag =
     "guard"
@@ -712,6 +716,8 @@ declare class Navi
     starting_form: FormDef
     -- The navi's game: 0 Gregar, 1 Falzar.
     version: number
+    -- The Regular chip's MB at most.
+    regular_memory: number
     max_base_hp: number
     chip_recovery: number
     -- NaviCust: the buster shot's and the charged shot's programs (the
@@ -759,6 +765,8 @@ declare class Navi
     rush: boolean
     beat: boolean
     tango: boolean
+    -- Writable: a game's NaviCust rules bring the support bug (none, and
+    -- none can be set) or clear it.
     support_bug: boolean
     -- NaviCust bugs: steps go astray (1), the panel trail's level, the
     -- status a hit gives, the custom screen's damage, the emotion swings,
@@ -773,7 +781,8 @@ declare class Navi
     chip_shuffle: boolean
     number_open: boolean
     -- What the NaviCust does to chip drops (1 its collector bug) and random
-    -- encounters (1 its encounter bug): no netbattle reads them.
+    -- encounters (1 its encounter bug): no netbattle reads them. Writable:
+    -- a game's NaviCust rules set them.
     chip_drops: number
     encounters: number
     -- `sub_800FE52`: how many kinds of NaviCust bug the navi has.
@@ -967,6 +976,12 @@ declare battle: {
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
+    -- The mood rises by `n` to 254 at most; 0 and 0xFF stay (BN5's
+    -- 0x08012802: its recovery chips).
+    gain_mood: (side: number, n: number) -> (),
+    -- The mood falls by `n` to 1 at least; 0 stays (`sub_8015C12`, BN5's
+    -- 0x08012820: its navi chips leaving).
+    lose_mood: (side: number, n: number) -> (),
     -- Whether the side's console starts its emotion window glitching (the
     -- save's NaviCust bug flag): a system decides it in `round_setup` (BN6's
     -- patch cards do).
@@ -974,6 +989,19 @@ declare battle: {
     -- A side's installed patch cards in their list's order, each switched
     -- on or not (the player's setup's; a game's rules apply them).
     patch_cards: (side: number) -> { { card: PatchCard, enabled: boolean } },
+    -- A side's NaviCust (the player's setup's; a game's rules compile it into
+    -- the navi's stats in `round_setup`): its board's expansions and its
+    -- programs in its list's order, each with its color, its centre on the
+    -- 7x7 grid, its quarter turns clockwise and whether it is compressed;
+    -- nil when the setup gives none (the stats are already the NaviCust's).
+    navicust: (side: number) -> NaviCust?,
+    -- The folder a tool asks the rules to check (a system's `folder_check`):
+    -- whose side, its chips in order, its Regular and tag chips (places in
+    -- `chips`), and whether it is all of a folder (else the chips so far:
+    -- the rules about a whole folder wait); nil when none is.
+    checked_folder: () -> CheckedFolder?,
+    -- A rule the checked folder breaks: the rule's name and what to say.
+    folder_problem: (rule: string, text: string) -> (),
     -- A side's bug frags, and spending some (its callers check there are
     -- enough: the count wraps below 0).
     bug_frags: (side: number) -> number,
@@ -1403,6 +1431,10 @@ export type SystemSpec = {
         custom_requested: ((side: number) -> ())?,
         -- Both results are in and the fight resumes (`sub_8009338`).
         custom_closed: ((side: number) -> ())?,
+        -- A tool asks whether a folder keeps the side's game's folder rules
+        -- (not the simulation): the folder is `battle.checked_folder()`, and
+        -- each rule it breaks is `battle.folder_problem(rule, text)`.
+        folder_check: ((side: number) -> ())?,
     }?,
 }
 export type System = SystemSpec
@@ -1555,6 +1587,8 @@ export type ChipFamily =
     | "null"
     | "program_advance"
     | "special"
+    | "recovery"
+    | "invisible"
 export type ElementName = "null" | "fire" | "aqua" | "elec" | "wood"
 -- The chips a navi's or a form's rule is about: an element's, or a
 -- family's.
@@ -1663,7 +1697,8 @@ export type FormEffect =
 --     spent in it, up to three (ChargeCross);
 --   scrap_button: the custom screen has the scrap button (DustCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
---     special is asked for (TenguCross and DustCross in Beast Out).
+--     special is asked for (TenguCross and DustCross in Beast Out);
+--   stands_on_metal: a metal panel doesn't slide the navi (BN5's soul 5).
 export type FormTrait =
     "status_immune"
     | "erases"
@@ -1671,6 +1706,7 @@ export type FormTrait =
     | "extra_chips"
     | "scrap_button"
     | "special_holds_buster"
+    | "stands_on_metal"
 -- One of MegaMan's forms (§3.2).
 export type FormDef = {
     id: string,
@@ -1792,6 +1828,51 @@ export type PatchCardSpec = {
     effects: { PatchCardEffect },
 }
 export type PatchCard = PatchCardSpec
+
+-- A NaviCust program (BN4's, BN5's and BN6's Navi Customizer parts;
+-- docs/design/navicust.md): what every game's program is. Its key (compat's
+-- navicust.toml gives its number), the colors it comes in in its variants'
+-- order, whether it is a plus part, and its shape: seven rows of seven cells
+-- (`#` a cell it covers, `.` one it doesn't), centred on the middle cell, and
+-- compressed (nil: it doesn't compress). What it does is a game's rules'
+-- (BN6's: `bug`, `exclusive`, `anywhere`, `effects`, read by rules/navicust). Its name is
+-- the locales' (locales/<lang>.toml's `navicust-programs`).
+export type NaviCustProgramSpec = {
+    id: string,
+    colors: { string },
+    plus: boolean?,
+    shape: { string },
+    compressed: { string }?,
+    bug: string?,
+    exclusive: string?,
+    anywhere: boolean?,
+    effects: { NaviCustEffect }?,
+}
+export type NaviCustProgram = NaviCustProgramSpec
+
+-- A program on a side's NaviCust (`battle.navicust`).
+export type PlacedProgram = {
+    program: NaviCustProgram,
+    color: string,
+    x: number,
+    y: number,
+    rotation: number,
+    compressed: boolean,
+}
+
+export type NaviCust = {
+    expansions: number,
+    parts: { PlacedProgram },
+}
+
+-- A folder being checked (`battle.checked_folder`).
+export type CheckedFolder = {
+    side: number,
+    chips: { { chip: Chip, code: string } },
+    regular: number?,
+    tags: { number }?,
+    complete: boolean,
+}
 
 export type LockonDef = {
     id: string,
@@ -2120,6 +2201,7 @@ declare define: {
     lockon: (spec: LockonDef) -> LockonDef,
     identity: (spec: IdentitySpec) -> Identity,
     patch_card: (spec: PatchCardSpec) -> PatchCard,
+    navicust_program: (spec: NaviCustProgramSpec) -> NaviCustProgram,
     -- A rule section (§3.8): one table of rules no entity owns, by its
     -- section name (`define.rules("elements", { ... })`).
     rules: <T>(section: string, spec: T) -> T,

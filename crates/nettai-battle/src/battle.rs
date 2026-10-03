@@ -458,6 +458,9 @@ pub struct Battle {
     pub(crate) sound: [Vec<SoundCue>; 2],
     /// How the round ended, once the end state is through.
     pub(crate) outcome: Option<RoundEnd>,
+    /// A folder a tool is having checked (`Battle::check_folder`), and what
+    /// it breaks: no part of the simulation.
+    pub(crate) folder_check: Option<crate::rules::FolderCheck>,
 }
 
 /// How a round ended (`sub_8007CA0`).
@@ -740,6 +743,7 @@ impl Battle {
             rules,
             sound: [Vec::new(), Vec::new()],
             outcome: None,
+            folder_check: None,
             setup,
         };
         // Each side's systems set the round up before anything reads the
@@ -796,6 +800,15 @@ impl Battle {
     pub fn rules_for(&self, r: ObjectRef) -> &crate::content::Rules {
         match self.side_of(r) {
             Some(side) => self.side_game_rules(side),
+            None => self.arena_rules(),
+        }
+    }
+
+    /// The rules of chip `chip`'s own game (docs/design/rules-in-luau.md
+    /// §7.5: a chip runs as its game wrote it); no chip, the arena's.
+    pub fn chip_rules(&self, chip: Option<nettai_content_api::ChipHandle>) -> &crate::content::Rules {
+        match chip {
+            Some(h) => self.content.rules_of(self.content.defs.root_of(&self.content.defs.chip(h).key)),
             None => self.arena_rules(),
         }
     }
@@ -1281,19 +1294,28 @@ impl Battle {
             return;
         }
         if self.custom.committed {
-            self.restart_gauge();
-            self.play_sound(SoundCue::RestoreVolume);
-            // `sub_8009338`: each side's rules, for a side with its navi.
-            for side in 0..2 {
-                if self.player_actor(side).is_some() {
-                    self.notify_side(side, SystemHook::CustomClosed);
-                }
-            }
-            self.custom.committed = false;
-            self.enter_mode(mode::FIGHTING);
-            return;
+            return self.close_custom_screens();
         }
         self.tick_custom_screens(recorded);
+        // (BN5's Team Battle screen, 0x08025EF2, closes on the tick both
+        // results are in: docs/design/bn5-map.md §15.3 item 13.)
+        if self.custom.committed && self.arena_rules().flow.custom_closes_with_results {
+            self.close_custom_screens();
+        }
+    }
+
+    /// `sub_8026A6C`: the screens close and the fight resumes.
+    fn close_custom_screens(&mut self) {
+        self.restart_gauge();
+        self.play_sound(SoundCue::RestoreVolume);
+        // `sub_8009338`: each side's rules, for a side with its navi.
+        for side in 0..2 {
+            if self.player_actor(side).is_some() {
+                self.notify_side(side, SystemHook::CustomClosed);
+            }
+        }
+        self.custom.committed = false;
+        self.enter_mode(mode::FIGHTING);
     }
 
     /// `sub_800B3D8`: both results are in: each hand with chips replaces
@@ -1639,7 +1661,7 @@ impl Battle {
         }
         match self.round_result() {
             1 => {
-                if self.round.escape != 0 {
+                if self.round.escape != 0 && self.arena_rules().flow.escape_check {
                     // sub_800AAD6: an escape ends the battle as a loss
                     // (result code 4, then 2), straight to the fade-out.
                     self.round.result = BattleResult::Escaped as u8;
@@ -1743,7 +1765,9 @@ impl Battle {
     /// Fighting state 0x24 (`sub_8008492`): the transformation sequencer
     /// runs once more from the start, then the custom screen opens.
     fn fight_custom_sequence(&mut self) {
-        if self.custom_request_transforms() {
+        // (BN5 opens the screen straight after the reversions: its flow has
+        // no state 0x24.)
+        if self.custom_request_transforms() && self.arena_rules().flow.sequencer_before_custom {
             if self.step_transform_sequencer() {
                 return;
             }
@@ -1856,7 +1880,11 @@ impl Battle {
                 }
             }
             self.fight.init = 4;
-            self.fight.timer = 0x66;
+            // (A special battle's wait, and the win's in battle modes 4, 5
+            // and 8, is the shorter: `sub_80081A4`, `sub_800825A`.)
+            let wait = self.arena_rules().flow.result_wait;
+            let short = special || (win && matches!(self.round.mode_copy, 4 | 5 | 8));
+            self.fight.timer = if short { wait.special } else { wait.normal } as _;
             // Netbattle win/lose banners are the navi's; a round lost on
             // time (the judge's ruling) says "YOU LOSE" (`sub_800825A`).
             let navi = self.content.navi(self.stats[self.round.local_side as usize].navi);

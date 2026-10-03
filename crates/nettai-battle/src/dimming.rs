@@ -287,11 +287,6 @@ fn anti_navi_waits(b: &Battle, side: u8) -> bool {
 /// How long the sparkle shows before AntiNavi's telop, in ticks after the
 /// first.
 const ANTI_NAVI_WAIT: u16 = 0x1E;
-/// `sub_800ABC6`'s sparkle (the role `effects.trap_mark`): 16 pixels down
-/// the field and 32 up from the panel's center, with its sound (the role
-/// `sounds.cut_in`).
-const SPARKLE_DY: i32 = 0x10_0000;
-const SPARKLE_Z: i32 = 0x20_0000;
 
 /// `sub_800BDB2` (a navi chip's action after the dim; `off_800BDC4` by
 /// phase): on to the name, unless the other side's AntiNavi turns the
@@ -328,7 +323,12 @@ fn anti_navi_check(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let (x, y) = crate::kinds::player::panel_coordinates(p.x, p.y);
     let local = b.round.local_side;
     let look = b.roles_for(r).effect(crate::content::EffectRole::TrapMark);
-    crate::kinds::effect::spawn(b, crate::object::Vec3 { x, y: y + SPARKLE_DY, z: SPARKLE_Z }, look, local, 0, 0);
+    // `sub_800ABC6`'s sparkle (the role `effects.trap_mark`), where
+    // AntiNavi's game puts it from the panel's center (BN6: 16 pixels down
+    // the field and 32 up), with its sound (the role `sounds.cut_in`).
+    let at = b.chip_rules(b.linked[side as usize ^ 1].chip).chip_use.anti_navi_sparkle;
+    let (dy, z) = ((at.dy as i32) << 16, (at.z as i32) << 16);
+    crate::kinds::effect::spawn(b, crate::object::Vec3 { x, y: y + dy, z }, look, local, 0, 0);
     b.sound(SoundRole::CutIn);
     set_phase(b, r, 4);
 }

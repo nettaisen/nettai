@@ -324,7 +324,7 @@ by the binding.
 
 | Hook | Called | BN6 does |
 |---|---|---|
-| `round_setup(side)` | once per side as the round is set up (`Battle::new`), before anything reads the side's stats, which it may change | the patch cards (rules/patch-cards: added with them, docs/design/patch-cards.md §3) |
+| `round_setup(side)` | once per side as the round is set up (`Battle::new`), before anything reads the side's stats, which it may change | the NaviCust's compile (rules/navicust, docs/design/navicust.md), then the patch cards (rules/patch-cards: added with them, docs/design/patch-cards.md §3) |
 | `round_start(side)` | once per side, after the navis spawn | reads its setup into state (the Beast Out counter, the Crosses owned) |
 | `turn_check(side, request) -> busy?` | at the sequencer's check (`sub_801486C`), per side | Beast Out runs out (`sub_80159C6`) |
 | `turn_started(side)` | after the sequencer, at the turn's start (`sub_800840C`'s end) | a turn in Beast Out spends one (`sub_8015A38`) |
@@ -332,6 +332,7 @@ by the binding.
 | `custom_closed(side)` | when both results are in and the fight resumes (`sub_8009338`) | the Beast Out check's delay is set to 1 |
 | `custom_result(side, result)` | when both results are in (`sub_800B3D8`) | |
 | `round_end(side)` | once per side as the round finishes | Beast Out used and crossed, read after the battle |
+| `folder_check(side)` | only when a tool asks (`Battle::check_folder`: a match's checks, a netplay offer, the editor, live play's random folder), never in a simulation | the folder rules (rules/folder: the size, the chips the pack lists, codes, copies by MB, Mega, Giga and dark limits, the Regular memory, the tag chips' 60 MB) |
 
 **The custom screen** (§4.4): `custom.open(side) -> Offer`, a button's `available(side)` and `press(side)`, a
 window's `update(side, pad)`, `custom.keys(side, pad) -> handled`, `custom.hand_size(side) -> n`,
@@ -635,7 +636,10 @@ The field's rules follow the stage's game (§2.3); its art does too.
 2. **Every pack declares which panel types it draws.** BN5's field has 11 panel types (BN6's 13) and one highlight
    block (BN6's two).
 3. **A panel type the arena's game lacks** (a BN6 chip making a BN6-only panel in a BN5 arena):
-   - the simulation runs it by the type's own definition, so the rules never depend on the art;
+   - the simulation runs it by the type's own definition, so the rules never depend on the art. **Built in P1**
+     (the simulation half; the art half is still the user's to decide): a type the arena's `panels` section doesn't
+     name takes its rule (flags, sound, expiry, behaviours) from the first other loaded game whose section names it,
+     in root order; one no loaded game names keeps an empty rule, never a panic (`sections::fill_panel_types`);
    - it is drawn from the first pack that has it: the arena's, then the pack of the game that defines the type. Its
      blocks keep their own palettes, loaded into free palette slots;
    - if no loaded pack has it, a fallback block is drawn: a normal panel with a tint, never a hole.
@@ -1027,7 +1031,9 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
   is one pack's; `driver_of(PackId)` reads a pack's driver.
 - **Loading** (nettai-frontend): `--pack` repeats, one pack a game (`--pack <bn6> --pack <bn5>`); the content
   loads over all of them (`pack::load_battle_packs`), and `pack::pack_paths` puts the directories in the content's
-  pack order for the graphics and the sound. The player's language applies to the content's own pack. The audit
+  pack order for the graphics and the sound. (Since: the frontend and the editor load every pack in
+  `data/content` or `$NETTAI_PACKS`, `--pack` only overriding one, and the roots beside BN6's that load:
+  `pack::find`, `pack::load_found`, docs/frontend.md §1.) The player's language applies to the content's own pack. The audit
   checks a cue's song in its own pack's bank.
 - **Tests**: `packs::tests::each_asset_draws_from_its_own_pack` (a twin root and pack beside the test content,
   their navis' sprites the same pack number: each drawn from its own pack's sheet; a root's game; a chip's icon by
@@ -1049,3 +1055,91 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
   scenarios identical (183,877 frames), 22 differ, each by one of two more R1 regressions this fixes, both compat
   lookups by the qualified key: a Program Advance pick's code beside its name (`Cannon A`), and a link navi's
   emblem on the custom screen (MegaMan's before).
+
+### P1a, BN5's framework (2026-10-02)
+
+The engine additions BN5's data and rules need (docs/design/bn5-map.md §15.3), with the coordinator's answers.
+BN6 stays byte-identical; BN5's side is unit tests and asm citations, and the BN5 replays where they reach.
+
+- **Panels (items 1 and 3).** `PanelType` gains `Metal` (13), `Lava` (14) and `Sea` (15), appended. A game's
+  `panels` section names only its types (BN6 its 13, BN5 its 11); one it doesn't name is another loaded game's
+  (§7.4). What a type does is engine code keyed by the type, its numbers in the section: `expires` (ticks to normal,
+  blinking the last 60; BN6's roads 0x708, BN5's lava and sea 960; a panel's one `expire_timer`, which its new type
+  sets), `burn` (lava: 50 in fire, shifted by the weakness, the panel turning normal with the arena's spark
+  `panel_burn`; in the navi's and the obstacles' intake, first, as BN5's 0x080178EC and 0x08017A18 have it),
+  `drains` (sea: fire bodies, as poison drains any), `holds` (sea: 20 ticks immobilized at a move's end, with the
+  arena's effect `panel_splash`), `submerges` (sea: a body that dives, the actor's status 0x20, is submerged on it
+  and none off it), `slide` (metal: by the direction of the move, the steps tried in turn, BN5's tables at
+  0x0800C920 and 0x0800C9C0; a form with `stands_on_metal`, BN5's soul 5, doesn't slide), `cleared_by` (the
+  element whose hitboxes turn the type normal: fire grass, aqua the volcano and lava, wood roads and metal; BN6's
+  conversions now read it). Per game `mend` (BN6 0x258 and 0x1E0 in battle mode 1, BN5 600 in both). BN5's panels
+  section is registered with its own types; bn5-compat maps BN5's 5, 8 and 10 to them.
+- **Push (item 2).** `reactions.push_reading = "bn5"`, the arena's: BN5's 0x0800C9D8 reads the side-0 hits'
+  modifier toward the navi's front, else the side-1 hits' the other way. The hit resolver keeps the modifiers by
+  the hitter's side (`CollisionData::hit_mod_by_side`, BN5's +0x18 and +0x19, 0x08016AA6), which BN6 doesn't read.
+  BN5's obstacle push (0x08017AD8) isn't ported.
+- **Optional roles (item 4).** `statuses.ice_freeze` and `hooks.encased` may be absent: no freeze, nothing
+  encased.
+- **Families (item 5).** `ChipFamily::Recovery` and `Invisible`, appended.
+- **The mood (item 6), changed from the answer first given** (the coordinator approved the change): BN5's mood byte
+  is the engine's mood (`NaviStats::mood`), so instead of a `bn5:mood` system with hooks there is
+  `battle.gain_mood(side, n)` (BN5's 0x08012802: 0 and 0xFF stay, 254 at most) and `battle.lose_mood(side, n)`
+  (`sub_8015C12`, BN5's 0x08012820, which the hits' loss now calls), and `heal.action`'s optional `mood`. BN5's
+  emotion rules (its counter's 0x80, the soul) are BN5's port and S5's.
+- **The flow (items 7 and 13).** The `flow` section, the arena's: `custom_closes_with_results` (BN5's Team Battle
+  screen, 0x08025EF2, closes on the tick both results are in; the AIData +0x0F BN6 sets then is BN6's beast system's
+  `custom_closed`, which BN5's ruleset lacks), `sequencer_before_custom` (BN5 opens the screen straight after the
+  reversions), `escape_check` (BN5 has no `sub_800AAD6`), `result_wait` (102 ticks, 94 in a special battle and for a
+  win in battle modes 4, 5 and 8: `sub_80081A4` and `sub_800825A`, whose short wait the engine had left out; BN5's
+  special 65). The BN5 replays: 115 past setup matched their first 219 frames, now 284 to 428 (4 match every frame;
+  32,959 frames match in all, 25,170 before); the next stop is the panels at frame 426 (bn5-compat's).
+- **Collision words (item 9).** No engine change: `lint::self_bit_targets` reports a collision type that tests
+  BN6's 0x80 self bit, named by a module that uses another root's modules (BN5's own row 0x3D, `probe`, does;
+  nothing hands it to BN6's modules).
+- **The chip's own game (items 10 and 11).** The `chip-use` section, read from the chip's own root
+  (`Battle::chip_rules`): `leave_on_use` (BN5's dimming handler and instant chips leave the action on the frame
+  they run) and `anti_navi_sparkle` (BN6 16 down and 32 up, BN5 16 up; `SPARKLE_DY` and `SPARKLE_Z` were Rust).
+- **Not yet:** item 8 (a mix's own sections) and item 12 (a base form per game), after R4; BN5's navi intake as a
+  whole (its order, its holy panel's light/dark rule at 0x08017136) is BN5's port.
+- **Gates** (on main d4d846cb): the build without warnings, 465 tests, the content check (837 modules),
+  gen-content check 0 errors (it decodes BN6's new rule fields), machgun 1074/1331 and soundmod 21962/14933/20436
+  with 96 rollback rows, the 189 legacy rounds (2,746,946 frames, 115,897 after known deviations), the lab 6542
+  (6539 matched, 3 to a known deviation; 5,773,035 frames) with 0 sound rounds differing, the audit 72 traces with
+  0 problems.
+
+### The NaviCust and the folder rules (2026-10-02, branch match-editor)
+
+The match editor's work (docs/frontend.md §6, README "The match editor") brought two more of BN6's rules into its
+content.
+
+- **The NaviCust** (docs/design/navicust.md): a setup's placed programs
+  (`PlayerSetup::navicust`), the programs as definitions (`define.navicust_program`, 46 of them, written from
+  the ROM's part table by verify's `tools/navicust/gen.py`), the board as a rule section
+  (`define.rules("navicust", ...)`, `Rules::navicust`) and the compile as the `navicust` system's `round_setup`,
+  which the stock ruleset runs before the patch cards'. Rust keeps only the geometry: shapes, quarter turns,
+  boards and whether a shape fits (`NaviCustRules::fits`). Luau reads the setup with `battle.navicust(side)`.
+- **The folder rules** (rules/folder/system.luau): a new hook, `folder_check(side)`, which a tool calls through
+  `Battle::check_folder(side, chips, regular, tags, complete)` and never a simulation. The hook reads the folder
+  with `battle.checked_folder()` and names each rule it breaks with `battle.folder_problem(rule, text)`. Rust
+  only calls it and returns the problems (`FolderProblem {rule, text}`); the state it uses (`Battle::folder_check`)
+  lives only during the call, and the digest leaves it out. Each side's folder is checked by its own ruleset's
+  systems, with its navi's stats as the round set them up (`NaviStat::RegularMemory` is new, read-only). The
+  editor, `--match`, a netplay offer and live play's random draw go through it (`nettai_match::folders`). The draw
+  makes a folder from the rules' pool (`rule = "chip"`: the chips the hook accepts one at a time) and keeps a
+  chip only when the partial folder breaks nothing. Its draws are the same as the Rust rules': the same seed gives
+  the same folders (seed 42's drawn match file has the same folders as before the move).
+- **The editor's chip pictures** come from each chip's own game's pack (R3b's "not done"): `Pictures::load`
+  takes the packs in `pack_paths` order and looks a chip's icon and art up in its root's `assets` pack, by its
+  local key.
+- **Not done**: the patch cards' 80 MB and 32 cards (`nettai_match::check::CARD_MB`) are still checked in Rust;
+  they are the cards' menu's, and would move with a `cards_check` hook.
+- **Gates** (match-editor after main d4d846cb): the build without warnings (and with all features), 463 tests, the
+  content check (886 modules), gen-content check 0 errors (it now compares the NaviCust boards with the ROM's),
+  `tools/navicust/gen.py check` 46 programs with 0 differences; machgun 1074/1331 and soundmod
+  21962/14933/20436 with 96 rollback rows and the 189 legacy rounds; the lab 6548/6548 (6545 to the end, 3 to
+  ElemTrap's known deviation; 5,775,231 frames) with 0 sound rounds differing (floor 6548, 6548, 175969 with the
+  six `navicust-compile/` scenarios); the audit 72 traces (635,424 frames), 0 problems; trace-tests' `navicust`:
+  1,274 lab sides and Tango's 4 saves, 0 differ. After main a39285fe (P1a), the merge's tier: the build without
+  warnings (all features), 469 tests, the content check (888 modules), gen-content check 0 errors, machgun and
+  soundmod as above, `navicust` 0 differ.
+
