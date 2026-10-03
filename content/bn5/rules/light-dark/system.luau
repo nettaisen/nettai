@@ -136,7 +136,7 @@ local function palette(side: number, navi: Object): number?
         -- A link navi's (0x0800DA98, by BN5's navi numbers): BN5's content has none; the framework's.
         return nil
     end
-    local in_soul = stats.form.kind ~= "base"
+    local in_soul = not stats.form.base
     local p = 2
     local hub = true
     if navi.ai_index == NAVI_23 then
@@ -173,7 +173,7 @@ local function use_dark_chip(side: number, navi: Object): boolean
         return false
     end
     -- In a soul, the soul breaks (the weakness request: 0x080122C8, the status section's `form_break`).
-    if battle.navi(side).form.kind ~= "base" then
+    if not battle.navi(side).form.base then
         navi:set_request("weakness_hit", true)
     end
     battle.set_side_stat(side, DARK_CHIP_USED, 1)

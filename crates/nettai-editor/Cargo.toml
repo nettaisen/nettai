@@ -14,6 +14,8 @@ nettai-content-api = { path = "../nettai-content-api" }
 nettai-assets = { path = "../nettai-assets" }
 nettai-render = { path = "../nettai-render" }
 nettai-match = { path = "../nettai-match" }
+# BN6's systems' extensions of its forms (a Cross's game).
+bn6-compat.workspace = true
 # The window: iced (Cargo.lock pins the release), drawn in software (tiny-skia:
 # no GPU backend to build); a canvas draws the NaviCust.
 iced = { version = "0.14", default-features = false, features = ["tiny-skia", "crisp", "web-colors", "thread-pool", "linux-theme-detection", "x11", "wayland", "canvas", "image-without-codecs"] }

@@ -741,7 +741,7 @@ mod tests {
             (
                 "navis/base",
                 "local test = require('@test/navis/test')\n\
-                 return define.form { id = 'twin:base', kind = 'base', sprite = asset.sprite('twin:navi'), element = 'null', \
+                 return define.form { id = 'twin:base', base = true, sprite = asset.sprite('twin:navi'), element = 'null', \
                  buster_bonus = 0, weapons = test.base.weapons, buster_arm = { anim = 0 } }",
             ),
         ];

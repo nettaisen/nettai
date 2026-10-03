@@ -102,7 +102,7 @@ pub use ai_navi::Controller;
 pub(crate) use ai_navi::spawn as spawn_ai_navi;
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
 use crate::content::ActorEntry;
-use crate::content::{FormData, FormKind, NaviData};
+use crate::content::{FormData, FormTraits, NaviData};
 use crate::setup::{NaviStats, effects};
 
 /// Panel center coordinates (`object_getCoordinatesForPanels`, which
@@ -203,7 +203,7 @@ pub(crate) fn form_of(b: &Battle, r: ObjectRef) -> &FormData {
 
 /// The object's side is in the base form (a link navi always is).
 pub(crate) fn in_base_form(b: &Battle, r: ObjectRef) -> bool {
-    form_of(b, r).kind == FormKind::Base
+    form_of(b, r).base
 }
 
 /// The object's side's navi changes form: where the original asks whether
@@ -401,7 +401,7 @@ fn bn5_emotion(b: &Battle, p: ObjectRef, mood: u8) -> Emotion {
     if battle_mode(b) == 1 {
         return if mood == 0xFF { Emotion::FullSynchro } else { Emotion::Normal };
     }
-    if form_of(b, p).kind != FormKind::Base {
+    if !form_of(b, p).base {
         Emotion::Normal
     } else if ai(b, p).anger != 0 {
         Emotion::Angry
@@ -429,7 +429,7 @@ pub fn shows_face_variant(b: &Battle, side: u8) -> bool {
 /// picked.
 pub fn face_hub(b: &Battle, side: u8) -> bool {
     let Some(p) = b.player(side) else { return false };
-    b.sides[side as usize & 1].face_variant && form_of(b, p).kind == FormKind::Base
+    b.sides[side as usize & 1].face_variant && form_of(b, p).base
 }
 
 /// Presentation: the second set while the side's navi's Chaos Unison charge
@@ -763,7 +763,7 @@ pub fn request_form_change(b: &mut Battle, r: ObjectRef) {
 /// none, or the base form).
 pub(crate) fn form_change_target(b: &Battle, r: ObjectRef) -> Option<nettai_content_api::FormHandle> {
     let side = b.objects.get(r).alliance as usize;
-    b.turn_transforms[side].form.filter(|&f| b.content.form(f).kind != FormKind::Base)
+    b.turn_transforms[side].form.filter(|&f| !b.content.form(f).base)
 }
 
 /// `sub_801597C`: a form change is running.
@@ -1224,9 +1224,9 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
         b.objects.sprite_mut(r).look.palette = palette;
         return;
     }
-    let (kind, form_palette) = {
+    let (base, mood_palette, soul, form_palette) = {
         let form = form_of(b, r);
-        (form.kind, form.palette)
+        (form.base, form.traits.has(FormTraits::MOOD_PALETTE), form.soul.is_some(), form.palette)
     };
     let no_charge = ai(b, r).status & crate::actor::status::NO_CHARGE != 0;
     let full_synchro = emotion(b, b.objects.get(r).alliance) == Emotion::FullSynchro;
@@ -1240,21 +1240,20 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
     } else if no_charge {
         1u8.wrapping_add(style)
     } else {
-        match kind {
-            FormKind::Base => (if s.mood == 0xFF { 4u8 } else { 0 }).wrapping_add(style),
-            FormKind::Beast => {
-                if s.mood == 0xFF {
-                    4
-                } else {
-                    0
-                }
-            }
+        let by_mood = if s.mood == 0xFF { 4u8 } else { 0 };
+        if base {
+            by_mood.wrapping_add(style)
+        } else if mood_palette {
+            // (BN6's Beast Out.)
+            by_mood
+        } else if soul && ai(b, r).chaos.armed {
             // BN5's soul (0x0800DDCA): palette 2 while its Chaos Unison
             // charge is armed.
-            FormKind::Soul if ai(b, r).chaos.armed => 2,
+            2
+        } else {
             // `byte_80203EA`: a Cross's palette (the bytes after the
             // Crosses', a Cross in Beast Out's, are 0).
-            _ => form_palette,
+            form_palette
         }
     };
     b.objects.sprite_mut(r).look.palette = palette;

@@ -284,7 +284,7 @@ mod tests {
         assert_eq!(games.len(), 2);
         let mixed = (0..12).any(|seed| {
             let list = live(&content, seed, None).unwrap().sides[0].crosses.unwrap();
-            let gregar = list.forms().filter(|&f| content.form(f).game == Some(GameVersion::Gregar)).count();
+            let gregar = list.forms().filter(|&f| bn6_compat::forms::game(&content, f) == Some(GameVersion::Gregar)).count();
             gregar > 0 && gregar < 5
         });
         assert!(mixed);

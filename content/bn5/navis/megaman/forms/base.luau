@@ -7,7 +7,7 @@ local charged_shot = require("../weapons/charged-shot")
 
 return define.form {
     id = "bn5:base",
-    kind = "base",
+    base = true,
     sprite = asset.sprite("bn5:megaman"),
     element = "null",
     buster_bonus = 0,

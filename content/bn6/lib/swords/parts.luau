@@ -7,6 +7,7 @@
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local common = require("@common/swords/parts")
+local kind = require("../../rules/forms/kind")
 
 local parts = {}
 
@@ -51,17 +52,27 @@ parts.sounds = {
     big_swing = asset.sound("bn6:big-sword-swing"),
 }
 
+-- MegaMan's base AI's blade, by side `side`'s form: 0, or a Beast form's
+-- (0xC for Gregar's, 0xD for Falzar's). (CrosOver's MegaMan, whose user may
+-- be anyone, picks his blade as MegaMan's base AI.)
+function parts.base_blade_anim(side: number): number
+    if not kind.beast(side) then
+        return 0
+    end
+    return if battle.navi(side).form.game == "gregar" then 0x0C else 0x0D
+end
+
 -- `sub_80EBAE8`: the blade's animation, which matches the user's arm.
-parts.blade_anim = common.blade_anim
--- The same for MegaMan's base AI, by side `side`'s form.
-parts.base_blade_anim = common.base_blade_anim
+function parts.blade_anim(me: Object): number
+    return common.arm_anim(me, parts.base_blade_anim)
+end
 -- `sub_80EBB78`: added to the blade's palette.
 parts.blade_palette = common.blade_palette
 
 -- `sub_80B8E30` with a blade: hold it (in the first related slot), its
 -- palette plus `palette_add`, in animation `anim` (none: `blade_anim`'s).
 function parts.hold(me: Object, blade: AttachmentLook, palette_add: number, anim: number?): Object?
-    return common.hold(attachment.kind, me, blade, palette_add, anim)
+    return common.hold(attachment.kind, me, blade, palette_add, anim or parts.blade_anim(me))
 end
 
 -- Let go of the blade (and anything in the overlay slot).

@@ -19,6 +19,14 @@ export type SonicBoomLook = {
     hits: CollisionType,
 }
 
+-- What a game's sword slash (@common/swords/slash) asks of the user's form: the blade's animation where a chip doesn't
+-- say, and whether the user's side is in a form where a step sword neither steps nor steps back (BN6's Beast forms:
+-- its lib/swords/slash).
+export type SlashGame = {
+    blade_anim: ((Object) -> number)?,
+    stays: ((side: number) -> boolean)?,
+}
+
 -- A game's buster parts (@common/buster): the muzzle flash a shot leaves, the buster arm, an enemy navi's arm, the
 -- recovery after a shot (by Rapid, then the open panels ahead), and its attachment kind.
 export type BusterLook = {

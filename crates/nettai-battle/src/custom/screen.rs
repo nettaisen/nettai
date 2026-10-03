@@ -1547,7 +1547,7 @@ impl PlayerView<'_> {
     /// BN5 emotion is worried or dark (0x08012740: in a soul or angry he
     /// may; at mood 0 he is dark, below 65 worried, at 0xFF Full Synchro).
     fn soul_button(&self) -> bool {
-        let in_soul = self.library.form_kind(self.stats.form) == crate::content::FormKind::Soul;
+        let in_soul = self.library.form_is_soul(self.stats.form);
         let mood = self.stats.mood;
         let hidden = !in_soul && self.emotion != Emotion::Angry && (mood == 0 || (mood != 0xFF && mood < 65));
         self.library.has_souls(self.stats.navi) && self.souls.button && !self.per_player_gauges && !hidden

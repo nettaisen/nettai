@@ -28,6 +28,9 @@ export type Spec = {
     start_sound: Sound,
     swing_sound: Sound,
     attachment: Kind,
+    -- The blade's animation by its holder (none: the shared one's,
+    -- @common/swords/parts; BN6's gives its Beast forms' arms).
+    blade_anim: ((Object) -> number)?,
 }
 
 local SWINGS = 3
@@ -64,7 +67,8 @@ local function swing(me: Object, s: State, spec: Spec)
         me:refresh_form_overlay()
         battle.clear_linked(me.alliance)
         battle.play_sound(spec.swing_sound)
-        parts.hold(spec.attachment, me, spec.blade, 0)
+        local blade_anim = spec.blade_anim
+        parts.hold(spec.attachment, me, spec.blade, 0, if blade_anim ~= nil then blade_anim(me) else nil)
         me:set_status("using_action", true)
         s.timer = SWING_TICKS
         me.step_init = 4
