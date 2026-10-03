@@ -308,6 +308,23 @@ export type YoyoThrowSpec = {
     throw: (me: Object, x: number, y: number, z: number, damage: number) -> Object?,
 }
 
+-- A game's moon blade (@common/moonbld/blade): its sprite, and what it is and hits.
+export type MoonBladeLook = { sprite: SpriteAsset, is: CollisionType, hits: CollisionType }
+
+-- A game's thrown seed (@common/bombs/seed): its sprite and animation, what it is and hits and its hit modifier, the
+-- spark of its element its hits show (none: no spark), and the splash it leaves in a hole and the puff when the
+-- battle ends.
+export type SeedLook = {
+    sprite: SpriteAsset,
+    anim: number,
+    is: CollisionType,
+    hits: CollisionType,
+    hit_mod: number,
+    spark: ((element: number) -> Spark)?,
+    splash: Effect,
+    puff: Effect,
+}
+
 -- A follow effect's look (@common/follow-effect): a row of a game's looks and its routine.
 export type FollowEffectBehavior = "none" | "slide" | "flash" | "while_in_action" | "riding" | "timed"
 export type FollowEffectLook = { sprite: SpriteAsset, anim: number, palette: number, behavior: FollowEffectBehavior }
