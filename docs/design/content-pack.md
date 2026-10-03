@@ -10,7 +10,7 @@ comes from two places:
   this repository: people own it, and the verification workspace checks it against the ROM (§3);
 - a **content pack**, a folder of open-format assets that `bn6-extract content` writes from the user's ROM:
   graphics (with the sprites' animation timing) and sound, each under its name, and the asset index that lists
-  them. The definitions name the pack's assets (`asset.sprite("bomb")`), never their numbers.
+  them. The definitions name the pack's assets in full (`asset.sprite("bn6:bomb")`), never their numbers.
 
 This document describes the two and how they load, and the `Content` API the engine and other layers use. The
 pack's graphics and sound formats are in [asset-formats.md](asset-formats.md); what a definition is and how to

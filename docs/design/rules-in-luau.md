@@ -172,7 +172,7 @@ local berserk = require("./berserk")
 export type State = { counter: number, used: boolean, spent: boolean, exhausted: boolean, check_delay: number }
 
 return define.system {
-    id = "beast",
+    id = "bn6:beast",
     -- Each side's fields (the side keeps them, §5).
     state = { counter = "u8", used = "bool", spent = "bool", exhausted = "bool", check_delay = "u8" },
     -- What the player brings (the save's unlock), read-only in battle.
@@ -194,7 +194,7 @@ A ruleset is a list of systems with the data the framework reads for its player:
 ```luau
 -- content/bn6/rules/ruleset.luau
 return define.ruleset {
-    id = "bn6",
+    id = "bn6:stock",
     stock = true,                  -- the game's own rules
     systems = { cross, beast, cross_special, emotion, navicust, dark_chips, link_navis },
     sections = require("./sections"),   -- rule sections: elements, panels, the custom screen's layout, ...
@@ -202,11 +202,12 @@ return define.ruleset {
 }
 ```
 
-- **Stock rulesets**: each game root defines exactly one ruleset with `stock = true`, its game's own rules.
-- **Mixes**: a ruleset may start from another and change its systems: `define.ruleset { id = "bn6-souls", base =
+- **Stock rulesets**: each game defines exactly one ruleset with `stock = true`, its game's own rules
+  (`bn6:stock`).
+- **Mixes**: a ruleset may start from another and change its systems: `define.ruleset { id = "mix:bn6-souls", base =
   bn6, add = { bn5_soul_unison }, sections = { custom_screen = SOULS_AND_CROSSES } }`. A mix needs the layout and
   roles its systems use; the define phase checks every button a system offers has a slot. Mixes are content (a
-  mod's root, §7.2); a setup chooses a ruleset by key.
+  mod's folder, §7.2); a setup chooses a ruleset by id.
 - **Dependencies**: a system may name systems it needs (`requires = { beast }` on Beast Over) or can't run with
   (`excludes`); the define phase checks every ruleset.
 - **Order**: the framework calls a ruleset's systems in its `systems` order. Notification hooks call every system;
@@ -1152,3 +1153,63 @@ content.
   warnings (all features), 469 tests, the content check (888 modules), gen-content check 0 errors, machgun and
   soundmod as above, `navicust` 0 differ.
 
+### R4, one namespace (2026-10-02)
+
+The user: "i think the idea of packs is just kind of wonky anyway, maybe you should just have it all in a flat
+namespace and then in the chip ids directly have bn6:cannon or whatever", and "so loading assets must also be fully
+qualified as well". §7.2 is the model; R1's roots (manifests, `requires`, the home, keys qualified by the loader)
+are gone.
+
+- **Every folder of content/ loads** (`nettai_content::root::read_all`; content/nettai, the declarations, aside),
+  each named as its game; root.toml is gone. `root::content()` is the content directory (`$NETTAI_CONTENT`, else
+  the repository's content/): the frontend's, the editor's and the extractors' `--content`, and every loader's
+  default (`root::bn6()` and `$BN6_CONTENT` are gone). A folder that names assets of its own game's pack loads only
+  with that pack, else it is left out with a warning (`pack::battle_content_packs`); the frontend's and the
+  editor's `pack::load_found` reads every folder, leaves out one whose pack isn't found (saying how to write it)
+  or without which the rest define, and loads the rest (`Loaded::roots` the folders loaded). A folder of behavior
+  only (content/common: no assets of its own) needs no pack and no locales.
+- **Every id is written in full** (`nettai_luau::define`): `bn6:minibomb`; a section's name (`bn6:panels`), the
+  roles' id (`bn6:roles`, `RolesSpec::id`), the stock rulesets' (`bn6:stock`, `bn5:stock`, `test:stock`). An id
+  without its game is refused, every one at once, each naming its folder's game as the fix. Derived keys follow
+  their owner (`bn6:minibomb/action`); `engine/...` keys stay.
+- **A definition's game is its id's prefix.** The games are the folders and the ids' prefixes, by name
+  (`Content::game_names`: `Defs::roots`, a `RootId` a place in it; a state schema's key names what it is the
+  state of, `system:bn6:beast/state`, and isn't a game). `BattleGames`: the arena is the stage's id's game, a
+  side's its ruleset's, defaulting to the arena's. **No home**: what a battle reads with no side is the arena's
+  (`Battle::game_of`, `chip_or_zeroed`, `chip_field`, `zeroed_chip`, `ChipHand::empty(content, game)`,
+  `SideRules::for_player`); a tool with no battle takes the first game that has the thing (`Library for
+  Content`); a frontend's and the match tool's default is BN6's, by name (`nettai_match::DEFAULT_GAME`, its
+  `ruleset_game`), and a pack whose manifest says no game is BN6's (`pack::UNSAID_GAME`). Gone:
+  `Defs::stock_ruleset`, `Defs::home_roles`, `Content::home_rules`, `RootId::HOME`, `Scripts::home`,
+  `home_module_mut` (now `module_mut(folder, path)`), `RootManifest::assets`.
+- **Asset names are in full** (`nettai_luau::Pack::asset_name`): `asset.sprite("bn6:bomb")`, any loaded pack's; a
+  name without its game is refused by the loader and, a match's background, by the match check
+  (`nettai_match::background`, the link battle backgrounds `bn6:...`). A pack keeps its own names (`bomb`; a
+  chip's icon and picture under its id's own part, which bn6-extract and bn5-extract now write from compat's full
+  keys).
+- **Requires by path**: `require("@bn6/rules/beast/system")` names any folder; `./` and `../` stay within the
+  folder.
+- **Compat and locale tables are keyed by full id**: chips, actions, kinds, navis, forms, stages, weapons, patch
+  cards, NaviCust programs; records' weapons and variants, rules' lock-ons, statuses and identities, games' per-kind
+  tables, curation's; every `[chips]`-like locale table. Role tables (`[effects]`, `[sounds]`) are keyed by role
+  name, and an assets.toml by the pack's own names. bn6-compat's `def_key` and `root_in` and bn5-compat's
+  `qualify`, `qualify_key` and `strip` are gone (their tables hand ids out as they are);
+  `Compat::bn6_for(content)` is BN6's compat for content that stands in for BN6 under another name (the test
+  content, `test`: `Compat::bn6_as`), the codec's and the frontend's when they run it.
+- **Lookups are exact**: `Defs::find` and `keys::names` are gone; tools, tests, setups and match files write ids
+  in full. Content that compares a definition's `id` at run time writes it in full too (the Beast busters' and the
+  absorb's forms, the Beast buster's palette table, EraseCross's charge).
+- **The test content is one game, `test`**: its own modules and the BN6 modules it borrows, whose `bn6:` ids and
+  asset names read as `test:` ones (`testing::borrowed`); twin's modules are `twin:`. Tests compare objects' kinds
+  by the id's own part (`Battle::local_kind_key`) where their expected tables name them so.
+- **The match file**: its ids were already full; a background is now in full (`bn6:honeycomb`), the stock ruleset
+  is `bn6:stock` (was `bn6:bn6`), a side with no ruleset plays BN6's, and `--cards` takes ids in full
+  (`bn6:canodumb,-bn6:shadow`).
+- **The content check** (`nettai-content-check`, no argument) checks content/: every folder against content/nettai
+  and every folder's own declarations, each module by its folder and path; a folder alone still checks alone. BN5's
+  HolyDrem used two types of another module, which the checker reads as `any`: the casts say so.
+- **The rewrite** is verify's tools/r4-flat-ids.py (ids, section names and asset names in the modules; the locale
+  and compat tables), tools/r4-fix-ids.py (ids a module builds in code, from the loader's messages) and
+  tools/r4-rust-keys.py (Rust tests' lookups by id), re-run on what landed since (the NaviCust programs, the folder
+  system, BN5's third batch). Verify's generators write ids in full (tools/bn5/gen_content.py through the rewrite,
+  tools/navicust/gen.py), gen-content reads compat by full id and checks compat's keys are BN6's ids.
