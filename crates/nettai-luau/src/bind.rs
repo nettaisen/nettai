@@ -1103,6 +1103,16 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     lib_fn!(lua, navi_chip, "navi_left", |_, c: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.navi_chip_left(c.0)))
     });
+    lib_fn!(lua, navi_chip, "last", |lua, ()| {
+        let Some((chip, element, damage)) = with(|api, _| Ok(api.last_navi_chip()))? else {
+            return Ok(LuaValue::Nil);
+        };
+        let t = lua.create_table()?;
+        t.raw_set("chip", bound(|b| chip_value(b, Some(chip)))?)?;
+        t.raw_set("element", element)?;
+        t.raw_set("damage", damage)?;
+        Ok(LuaValue::Table(t))
+    });
     g.set("navi_chip", navi_chip)?;
 
     let vec3 = lua.create_table()?;
@@ -1519,6 +1529,11 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let list = with(|api, _| Ok(api.alive_actors(side)))?;
         lua.create_sequence_from(list.into_iter().map(Object))
     });
+    lib_fn!(lua, t, "tracked", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let o = with(|api, _| Ok(api.tracked(side)))?;
+        object_value(lua, o)
+    });
     lib_fn!(lua, t, "objects_of", |lua, kind: LuaValue| {
         let list = with(|api, b| match b.def(&kind) {
             Some((Registry::Kind, h)) => Ok(api.objects_of_kind(h)),
@@ -1529,6 +1544,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "rng", |_, ()| with(|api, _| Ok(api.rng())));
     lib_fn!(lua, t, "rng_positive", |_, ()| with(|api, _| Ok(api.rng_positive())));
+    lib_fn!(lua, t, "console_rng_positive", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.console_rng_positive(side)))
+    });
     lib_fn!(lua, t, "jitter", |_, (mask, pos): (LuaValue, mlua::UserDataRef<LVec3>)| {
         let mask = int(&mask, "mask")? as u32;
         with(|api, _| Ok(LVec3(api.jitter(mask, pos.0))))
@@ -1949,6 +1968,8 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "hide_user_sparing", |_, user: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.hide_user_sparing(user.0)))
     });
+    lib_fn!(lua, t, "hide_actor", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_actor(o.0))));
+    lib_fn!(lua, t, "show_actor", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.show_actor(o.0))));
     Ok(t)
 }
 
@@ -2125,6 +2146,7 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             vec![LuaValue::Table(t)]
         }
         HookCall::RoleNavi { navi } => vec![obj(navi)?],
+        HookCall::NaviLeft { controller } => vec![obj(controller)?],
         HookCall::RoleEncased { obstacle, ice, class } => {
             let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(c as i64));
             vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
@@ -2173,7 +2195,9 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::Place { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
-        HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } | HookCall::RoleEncased { .. } => Ok(Value::Nil),
+        HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } | HookCall::RoleEncased { .. } | HookCall::NaviLeft { .. } => {
+            Ok(Value::Nil)
+        }
         // A chip check's substitute; no other system hook returns anything.
         HookCall::System { hook: SystemHook::ChipCheck, .. } if !v.is_nil() => match bound.def(&v) {
             Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),

@@ -1089,12 +1089,20 @@ declare battle: {
     player: (side: number) -> Object?,
     -- A side's combatants still in, in slot order.
     alive_actors: (side: number) -> { Object },
+    -- `sub_802EFEE`: the actor `side` tracks in the battle flag 0x40 mode
+    -- (`per_player_gauges`), if any.
+    tracked: (side: number) -> Object?,
     -- The objects of a kind in the update list, in update order, whatever
     -- their lifecycle state (the game's walks of the list).
     objects_of: (kind: Kind) -> { Object },
     -- `GetRNG2` (one draw), `GetPositiveSignedRNG2` (bit 31 cleared).
     rng: () -> number,
     rng_positive: () -> number,
+    -- `GetPositiveSignedRNG1` on a side's console: a draw of that console's
+    -- own RNG (RNG1), which the consoles never share; what a console decides
+    -- by it differs between them, so the simulation follows the local
+    -- side's console (`local_side`) and draws the other's alike.
+    console_rng_positive: (side: number) -> number,
     -- `AddRandomVarianceToTwoCoords`: x and z by up to mask/2 pixels.
     jitter: (mask: number, pos: Vec3) -> Vec3,
     -- A side's hand: its cursor.
@@ -1285,11 +1293,27 @@ declare dimming: {
     -- `sub_80E1352(user, 0xF)`: the user vanishes, but its barrier visual,
     -- its confusion and blindness visuals and the HUD stay.
     hide_user_sparing: (user: Object) -> (),
+    -- `sub_80E146C` / `sub_80E14AC`: an actor that isn't a player vanishes
+    -- (its barrier visual and its confusion and blindness visuals with it)
+    -- and comes back (BN5's Django's coffin).
+    hide_actor: (o: Object) -> (),
+    show_actor: (o: Object) -> (),
 }
 
+-- The last navi chip used (`navi_chip.last`): the chip (whose `navi` hook
+-- brings its navi), and the element and the damage word, bonus included,
+-- its navi came with.
+export type LastNaviChip = { chip: Chip, element: number, damage: number }
+
 declare navi_chip: {
-    -- The navi is done: its controller moves on.
+    -- The navi is done: its controller moves on (an object of a content
+    -- kind that brought the navi itself: its kind's `navi_left`).
     navi_left: (controller: Object) -> (),
+    -- The last navi chip used, of either side, this battle (`byte_203C960`,
+    -- BN5's 0x0203C430: the navi chip controller keeps the chips of the navi
+    -- chips' block, as their navis come), or nil. BN5's DethPhnx brings its
+    -- navi again.
+    last: () -> LastNaviChip?,
     -- `sub_80E1332`: the user warps out (`out`) or back in.
     warp: (user: Object, out: boolean) -> (),
 }
@@ -1482,6 +1506,9 @@ export type KindSpec = {
     -- What places it when a stage names it among its `actors`: it returns
     -- what it placed, if anything.
     place: ((spec: PlaceSpec) -> Object?)?,
+    -- An object of it brought a navi chip's navi itself (passing itself as
+    -- the navi's controller): the navi is done (`navi_chip.navi_left`).
+    navi_left: ((me: Object) -> ())?,
 }
 export type Kind = KindSpec
 
@@ -1687,16 +1714,24 @@ export type Weapon = WeaponSpec
 -- A chip's damage by formula: the opponent's HP; an SP navi chip's, by its
 -- navi's deletion time (its slot of the rules' `sp-chips`, and the damage
 -- for each of that section's time steps); the custom gauge's; the HP the
--- user has lost (at most `cap`: BN6's 500 when none); the last two digits of the user's HP; half the opponent's
--- max HP; a link navi's own chip's, by its level.
+-- user has lost (at most `cap`: BN6's 500 when none); the last two digits
+-- of the user's HP; half the opponent's max HP; a link navi's own chip's,
+-- by its level; by a count of the user's side (BN5's DS navi chips, Roll
+-- SP's, Django SP's: `by_count[n]`, the last for more). BN5's SP and count
+-- formulas give `per_player_gauges` in the battle flag 0x40 mode.
 export type DamageFormula =
     { formula: "opponent_hp" }
-    | { formula: "sp_navi", slot: string, by_time: { number } }
+    | { formula: "sp_navi", slot: string, by_time: { number }, per_player_gauges: number? }
     | { formula: "gauge" }
     | { formula: "hp_lost", cap: number? }
     | { formula: "hp_last_digits" }
     | { formula: "half_opponent_max_hp" }
     | { formula: "navi_level", base: number, per_level: number }
+    | { formula: "count", of: DamageCount, by_count: { number }, per_player_gauges: number? }
+
+-- What a count formula counts: a side statistic, the side's panels of a
+-- type, the turns before this one.
+export type DamageCount = { side_stat: number } | { own_panels: PanelType } | "turns_before"
 
 export type ChipSpec = {
     id: string,
@@ -1728,9 +1763,11 @@ export type ChipSpec = {
     -- barrier holds), "no_cut_in" (the other side can't cut in on its
     -- dimming), "element_sword" (a link navi's own chip's family bonus
     -- counts it), "navi_slot" (AntiNavi turns it back though it lacks the
-    -- `navi` flag), "heals" (AntiRecv springs on it), "user_stays" (a navi
-    -- chip whose user isn't warped off the field), "navi_returns_user" (a
-    -- navi chip whose navi brings the user back itself), "goes_with_any"
+    -- `navi` flag), "not_navi_slot" (AntiNavi lets it through and it isn't
+    -- kept as the last navi chip, though it has the `navi` flag: past the
+    -- navi chips' block), "heals" (AntiRecv springs on it), "user_stays" (a
+    -- navi chip whose user isn't warped off the field), "navi_returns_user"
+    -- (a navi chip whose navi brings the user back itself), "goes_with_any"
     -- (it goes with any selection on the custom screen, and leaves the
     -- selection's rules alone: BN6's BeastOut chip).
     traits: { string }?,

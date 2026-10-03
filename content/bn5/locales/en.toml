@@ -130,6 +130,7 @@ language = "en"
 "bn5:firehit3" = { name = "FireHit3", description = "Slams\nclosest\nenemy" }
 "bn5:football" = { name = "Football", description = "Kick a\nball to\nenmy area" }
 "bn5:fstgauge" = { name = "FstGauge", description = "CustGauge\nTemporary\nspeed-up" }
+"bn5:ftrsword" = { name = "FtrSword", description = "" }
 "bn5:fullcust" = { name = "FullCust", description = "CustGauge\ninstantly\nrefills" }
 "bn5:geddon1" = { name = "Geddon1", description = "Cracks\nall panel\non screen" }
 "bn5:geddon2" = { name = "Geddon2", description = "Breaks\nall empty\npanels" }
@@ -284,6 +285,7 @@ language = "en"
 "bn5:slogauge" = { name = "SloGauge", description = "CustGauge\nTemporary\nslow-down" }
 "bn5:snake" = { name = "Snake", description = "Call snak\nfrom hole\nin area" }
 "bn5:snctuary" = { name = "Snctuary", description = "Chng all\nown panel\nto holy" }
+"bn5:sonicbom" = { name = "SonicBom", description = "" }
 "bn5:spreader" = { name = "Spreader", description = "Creates a\nlarge\nexplosion" }
 "bn5:spshake1" = { name = "SpShake1", description = "Shakey\nshivers\n3sq ahead" }
 "bn5:spshake2" = { name = "SpShake2", description = "Shakey\nshivers\n3sq ahead" }

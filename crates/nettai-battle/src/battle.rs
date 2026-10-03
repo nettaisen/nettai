@@ -459,6 +459,10 @@ pub struct Battle {
     pub linked: [LinkedRecord; 2],
     /// Per side: its dimming (`byte_203CF00`).
     pub dimming: [crate::dimming::DimmingRecord; 2],
+    /// The last navi chip used, of either side (`byte_203C960`, BN5's
+    /// 0x0203C430; cleared as the battle starts, `sub_800B75A`): BN5's
+    /// DethPhnx brings its navi again; nothing in BN6 reads it.
+    pub last_navi_chip: Option<crate::kinds::navi_chip::LastNaviChip>,
     /// Per side: the player's rules, its ruleset and its systems' state
     /// (docs/design/rules-in-luau.md).
     pub rules: [crate::rules::SideRules; 2],
@@ -765,6 +769,7 @@ impl Battle {
             side_stats: [[0; 16]; 2],
             linked: [LinkedRecord::default(); 2],
             dimming: Default::default(),
+            last_navi_chip: None,
             rules,
             sound: [Vec::new(), Vec::new()],
             outcome: None,
