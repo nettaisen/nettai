@@ -1,6 +1,13 @@
 --!strict
--- CsmoPris (BN5 chip 0x157): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- CsmoPris (BN5 chip 0x157): the Program Advance of two Astroid3s and CosmoMnSP or CosmoMnDS: CosmoMan cuts in, rises
+-- over the middle row and sends nine comets along the rows that turn toward the enemy navi (./csmopris, the summon
+-- table's entry 22).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local csmopris = require("./csmopris")
+local recipe_astroid3 = require("../astroid3/chip")
+local recipe_cosmomn_ds = require("../cosmomn-ds/chip")
+local recipe_cosmomn_sp = require("../cosmomn-sp/chip")
 
 return define.chip {
     id = "bn5:csmopris",
@@ -15,4 +22,12 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     slot_in_limit = 1,
+    -- BN5's recipes (written by tools/bn5/recipes.py): in the order of its full table (0x08027FC8); the netbattles'
+    -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
+    -- gauge tries.
+    program_advances = {
+        { order = 26, sequence = { recipe_astroid3, recipe_astroid3, recipe_cosmomn_sp } },
+        { order = 27, sequence = { recipe_astroid3, recipe_astroid3, recipe_cosmomn_ds } },
+    },
+    navi = csmopris.summon,
 }
