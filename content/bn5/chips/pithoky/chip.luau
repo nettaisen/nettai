@@ -7,6 +7,7 @@
 local flick = require("@common/airhocky/flick")
 local puck = require("../../objects/puck/puck")
 local recipe_airhoc = require("../airhoc/chip")
+local recipe_cannball = require("../cannball/chip")
 
 return define.chip {
     id = "bn5:pithoky",
@@ -25,6 +26,7 @@ return define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
+        { order = 19, sequence = { recipe_cannball, recipe_cannball, recipe_airhoc }, per_player_gauges_only = true },
         { order = 55, code_run = { chip = recipe_airhoc, count = 3 } },
     },
     action = flick.action {

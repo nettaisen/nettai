@@ -9,6 +9,7 @@ local attachment = require("../../objects/attachment/attachment")
 local controller = require("./controller")
 local throw = require("@common/yoyo/throw")
 local yoyo = require("../../objects/yoyo/yoyo")
+local recipe_varswrd = require("../varswrd/chip")
 local recipe_yoyo = require("../yoyo/chip")
 
 local LEADER = yoyo.spec { mode = 1, panels = 4, rounds = 5 }
@@ -31,6 +32,7 @@ return define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
+        { order = 20, sequence = { recipe_varswrd, recipe_varswrd, recipe_yoyo }, per_player_gauges_only = true },
         { order = 56, code_run = { chip = recipe_yoyo, count = 3 } },
     },
     action = throw.action {
