@@ -483,11 +483,19 @@ pub fn load_found(content: Option<&Path>, found: &[Found]) -> Result<Loaded, Rep
     let games: Vec<(String, PathBuf)> = found.iter().map(|f| (f.game.clone(), f.dir.clone())).collect();
     let mut left_out: Vec<(String, String)> = Vec::new();
     let mut loadable: Vec<crate::root::Root> = Vec::new();
-    for f in folders {
+    for mut f in folders {
         let game = f.manifest.name.clone();
         if needs_pack(&f) && !games.iter().any(|(g, _)| *g == game) {
             left_out.push((game.clone(), no_pack(&game, found)));
         } else {
+            // (A port's chips it hasn't written a use for yet play as absent.)
+            let unported = f.leave_out_unported();
+            if !unported.is_empty() {
+                report.warn(
+                    f.dir.display().to_string(),
+                    format!("{} of {game}'s chips have no use yet and are left out ({}{})", unported.len(), unported[..unported.len().min(5)].join(", "), if unported.len() > 5 { ", ..." } else { "" }),
+                );
+            }
             loadable.push(f);
         }
     }

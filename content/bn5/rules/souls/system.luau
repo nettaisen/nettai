@@ -3,7 +3,8 @@
 -- button (the framework's, BN5's screen: it gives up the last chip picked for the soul of its family, a soul a form
 -- of `kind = "soul"` naming its `soul.family`) asks for it in the turn's transform record; at the turn's start the
 -- sequencer runs the soul's change (./change). The system keeps the side's soul turns (AIData +0x0F) and whether it
--- is Chaos Unison, counts the turns down and asks for the revert when they run out.
+-- is Chaos Unison, counts the turns down as each later custom screen is asked for and asks for the revert when they
+-- run out.
 
 local change = require("./change")
 local revert = require("./revert")
@@ -44,8 +45,11 @@ souls.system = define.system {
                 navi:set_request("revert_form", true)
             end
         end,
-        -- 0x0801248C: a turn starts: MegaMan's soul turns count down (not below 0, and not 0xFF).
-        turn_started = function(side: number)
+        -- 0x0801248C, which BN5 calls as a custom screen is asked for mid-fight (0x08007774, BN6's `sub_8008452`'s
+        -- place, where BN6 counts its Beast Out down: not at the turn's start, so a soul's first turn shows all its
+        -- turns): MegaMan's soul turns count down (not below 0, and not 0xFF), unless the side's navi isn't
+        -- MegaMan (NaviStats +0x29).
+        custom_requested = function(side: number)
             local s = system.state() :: State
             if battle.navi(side).navi.id == "bn5:megaman" and s.turns ~= 0xFF and s.turns ~= 0 then
                 s.turns -= 1

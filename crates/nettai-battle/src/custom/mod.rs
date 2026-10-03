@@ -109,6 +109,10 @@ pub struct PlayerSetup {
     /// navicust system); none: the stats are the setup's as they are (a
     /// recording's, which the original's NaviCust has already made).
     pub navicust: Option<crate::navicust::NaviCust>,
+    /// The player's tactics (BN5's computer-navi data, `crate::tactics`),
+    /// which a computer navi on the other side plays; none: empty. (A
+    /// recording's; match files and netplay don't carry them yet.)
+    pub tactics: crate::tactics::Tactics,
 }
 
 impl Default for PlayerSetup {
@@ -125,6 +129,7 @@ impl Default for PlayerSetup {
             rules: Vec::new(),
             patch_cards: Default::default(),
             navicust: None,
+            tactics: Default::default(),
         }
     }
 }

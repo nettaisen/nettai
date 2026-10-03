@@ -1,9 +1,10 @@
 --!strict
 -- BN5's stock rules (docs/design/rules-in-luau.md §2.2): the systems a BN5 player plays by: light and dark
--- MegaMan so far; Soul Unison, Chaos Unison, BN5's emotions and its Team Battle come as systems
--- (docs/design/bn5-map.md §15).
+-- MegaMan, Soul Unison and the computer navis Chaos Unison brings so far; BN5's emotions and its Team Battle come as
+-- systems (docs/design/bn5-map.md §15).
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
+local computer_navi = require("./computer-navi/system")
 local light_dark = require("./light-dark/system")
 local souls = require("./souls/system")
 
@@ -15,5 +16,8 @@ return define.ruleset {
         light_dark,
         -- Soul Unison: the soul's turns, the revert when they run out (the change is its souls' own action).
         souls.system,
+        -- The computer navis a battle brings (a failed Chaos Unison's Dark MegaMan): their AI, their time, their
+        -- leave.
+        computer_navi.system,
     },
 }

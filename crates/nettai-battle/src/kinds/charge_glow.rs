@@ -96,25 +96,30 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let panel = b.objects.get(owner).panel;
     let visible = vars(b, r).enabled && crate::field::is_valid(panel.x, panel.y);
     let source = b.actors.get(actor).charge_source;
+    let chaos = b.actors.get(actor).chaos;
     // Seen by a viewer who sees the owner's side (`sub_800EB6C`), and on
-    // its owner's console only unless the B button charges (source 2).
+    // its owner's console only unless the B button charges (source 2) for
+    // anything but an armed Chaos Unison charge (BN5's 0x080E0DE6).
     let shown_to = |b: &Battle, viewer: u8| match source {
         0 => false,
-        2 => b.sees(viewer, alliance),
+        2 if !chaos.armed => b.sees(viewer, alliance),
         _ => viewer == alliance & 1 && b.sees(viewer, alliance),
     };
     let shown = [0u8, 1].map(|viewer| visible && shown_to(b, viewer));
     b.set_visible_by_viewer(r, shown);
-    select_sprite(b, r, source);
+    select_sprite(b, r, source, chaos.armed);
     let level = b.actors.get(actor).charge_level;
     let v = vars(b, r);
     v.previous_level = v.level;
     v.level = level;
-    b.objects.get_mut(r).anim = level;
-    if level == 0 {
+    // A full armed Chaos Unison charge shows its cycle's window (BN5's
+    // 0x080E0E10): animation 2 + the window.
+    let anim = if level == 2 && source == 2 && chaos.armed { chaos.window + 2 } else { level };
+    b.objects.get_mut(r).anim = anim;
+    if anim == 0 {
         b.objects.get_mut(r).set_visible(false);
     }
-    charge_sound(b, r, alliance, source);
+    charge_sound(b, r, alliance, source, chaos.armed);
     let (dx, dz) = crate::kinds::player::attach_point(b, owner, 0);
     let p = b.objects.get(owner).pos;
     b.objects.get_mut(r).pos = Vec3 { x: p.x.wrapping_add(dx << 16), y: p.y, z: p.z.wrapping_add(dz << 16) };
@@ -123,24 +128,34 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80E0F5E`: the charge sounds, as the charge starts and as it
 /// completes; only the charging navi's player hears a charge unless it
-/// comes from source 2.
-fn charge_sound(b: &mut Battle, r: ObjectRef, alliance: u8, source: u8) {
+/// comes from source 2 (and isn't an armed Chaos Unison charge: BN5's
+/// 0x080E0EEC).
+fn charge_sound(b: &mut Battle, r: ObjectRef, alliance: u8, source: u8, chaos: bool) {
     let v = vars(b, r);
     let id = match (v.level, v.previous_level) {
         (1, 0) => SoundRole::BusterCharge,
         (2, 1) => SoundRole::BusterCharged,
         _ => return,
     };
-    if source == 2 {
+    if source == 2 && !chaos {
         b.sound(id);
     } else {
         b.sound_for(alliance, id);
     }
 }
 
-/// `sub_80E0F2E`: the A charge glows differently from the B charge.
-fn select_sprite(b: &mut Battle, r: ObjectRef, source: u8) {
-    let wanted = if source == 1 { SpriteRole::ChargeGlowA } else { SpriteRole::ChargeGlow };
+/// `sub_80E0F2E`: the A charge glows differently from the B charge, and
+/// an armed Chaos Unison charge differently again (BN5's 0x080E0EA4).
+/// (BN5 also lifts the glow 16 pixels for its navi of NameID 0x182 in
+/// animations 18 and 20, 0x080E0E58: no navi here has that record.)
+fn select_sprite(b: &mut Battle, r: ObjectRef, source: u8, chaos: bool) {
+    let wanted = if source == 1 {
+        SpriteRole::ChargeGlowA
+    } else if chaos {
+        SpriteRole::ChargeGlowChaos
+    } else {
+        SpriteRole::ChargeGlow
+    };
     if vars(b, r).sprite == Some(wanted) {
         return;
     }

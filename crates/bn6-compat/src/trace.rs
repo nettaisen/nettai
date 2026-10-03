@@ -502,6 +502,7 @@ impl Round {
             patch_cards: self.patch_cards(side, ids),
             // (A recording's stats are what its NaviCust made.)
             navicust: None,
+            tactics: Default::default(),
         };
         unlocks.write(ids.content, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));
         player
