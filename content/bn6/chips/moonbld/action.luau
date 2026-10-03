@@ -26,9 +26,10 @@ local SOUND = asset.sound("bn6:spin")
 local SWINGS = 1
 -- The phase's ticks, and the tick (timer value) the blade comes out.
 local SWING_TICKS, BLADE_AT = 0x15, 0x12
--- The low byte of the swing routine's address (`sub_80EE2CE`), which the
--- blade's spawner leaves in its panel Y.
-local SWING_ROUTINE_LOW = 0xCF
+-- The swing routine's address (`sub_80EE2CE`, with the Thumb bit), which
+-- the phase's dispatch leaves in a register: the blade's spawner leaves it
+-- in the blade's X and its low byte in its panel Y (./blade).
+local SWING_ROUTINE = 0x080EE2CF
 
 -- MoonBld's swing.
 function action.action(spec: { id: string?, charged: ChargedSlash? }): Action
@@ -55,7 +56,7 @@ function action.action(spec: { id: string?, charged: ChargedSlash? }): Action
             -- The damage word (the hit parameter in its high half), plus
             -- the Atk+ bonus.
             local damage = me.attack_damage + me.hit_param * 0x10000 + me.extra
-            blade.spawn(me, bit32.band(me.extra, 0xFF), SWING_ROUTINE_LOW, damage, false)
+            blade.spawn(me, bit32.band(me.extra, 0xFF), SWING_ROUTINE, damage, false)
         end
         local t = s.timer - 1
         s.timer = t
