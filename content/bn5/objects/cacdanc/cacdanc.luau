@@ -25,7 +25,7 @@ local cacdanc = {}
 local SPRITE = asset.sprite("bn5:sprite-10-30")
 local ANIM = 4
 local HIT_MOD = 1
-local FALL_SOUND, BOUNCE_SOUND = asset.sound("bn5:sound-105"), asset.sound("bn5:sound-0f6")
+local FALL_SOUND, BOUNCE_SOUND = asset.sound("bn5:drop"), asset.sound("bn5:sound-0f6")
 -- It starts 160 pixels up and falls 0.25 pixels a tick faster each tick; the bounce takes 10 ticks, falling a pixel a
 -- tick faster each.
 local START_Z, FALL_GRAVITY = 0xA0_0000, int.i32(0xFFFFC000)
