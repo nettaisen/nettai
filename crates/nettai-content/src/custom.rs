@@ -20,7 +20,7 @@ use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
 use nettai_assets::{
-    ButtonPictures, ChipArt, CustomLayout, CustomLettering, CustomScreen, MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles,
+    ButtonPictures, ChipArt, CursorPlace, CustomLayout, CustomLettering, CustomScreen, MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles,
     VersionPictures, Versioned,
 };
 use serde::{Deserialize, Serialize};
@@ -127,19 +127,102 @@ pub struct LayoutDoc {
     pub column_icons: u16,
     pub name_bar: u16,
     pub cross_names: u16,
+    pub slot_blank: u8,
+    pub ok_cursor: CursorDoc,
+    pub special_cursor: CursorDoc,
+}
+
+/// `nettai_assets::CursorPlace`: the place, and each frame's four corners
+/// as [y, x, hflip, vflip].
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CursorDoc {
+    pub at: [i16; 2],
+    pub corners: [[[i8; 4]; 4]; 2],
+}
+
+impl From<CursorPlace> for CursorDoc {
+    fn from(p: CursorPlace) -> CursorDoc {
+        CursorDoc { at: [p.x, p.y], corners: p.corners.map(|f| f.map(|(y, x, h, v)| [y, x, h as i8, v as i8])) }
+    }
+}
+
+impl From<CursorDoc> for CursorPlace {
+    fn from(d: CursorDoc) -> CursorPlace {
+        CursorPlace { x: d.at[0], y: d.at[1], corners: d.corners.map(|f| f.map(|[y, x, h, v]| (y, x, h != 0, v != 0))) }
+    }
 }
 
 impl From<CustomLayout> for LayoutDoc {
     fn from(l: CustomLayout) -> LayoutDoc {
-        let CustomLayout { column_cells, turn_limit, name, art, code, element, digits, slots, column_icons, name_bar, cross_names } = l;
-        LayoutDoc { column_cells, turn_limit, name, art, code, element, digits, slots, column_icons, name_bar, cross_names }
+        let CustomLayout {
+            column_cells,
+            turn_limit,
+            name,
+            art,
+            code,
+            element,
+            digits,
+            slots,
+            column_icons,
+            name_bar,
+            cross_names,
+            slot_blank,
+            ok_cursor,
+            special_cursor,
+        } = l;
+        LayoutDoc {
+            column_cells,
+            turn_limit,
+            name,
+            art,
+            code,
+            element,
+            digits,
+            slots,
+            column_icons,
+            name_bar,
+            cross_names,
+            slot_blank,
+            ok_cursor: ok_cursor.into(),
+            special_cursor: special_cursor.into(),
+        }
     }
 }
 
 impl From<LayoutDoc> for CustomLayout {
     fn from(l: LayoutDoc) -> CustomLayout {
-        let LayoutDoc { column_cells, turn_limit, name, art, code, element, digits, slots, column_icons, name_bar, cross_names } = l;
-        CustomLayout { column_cells, turn_limit, name, art, code, element, digits, slots, column_icons, name_bar, cross_names }
+        let LayoutDoc {
+            column_cells,
+            turn_limit,
+            name,
+            art,
+            code,
+            element,
+            digits,
+            slots,
+            column_icons,
+            name_bar,
+            cross_names,
+            slot_blank,
+            ok_cursor,
+            special_cursor,
+        } = l;
+        CustomLayout {
+            column_cells,
+            turn_limit,
+            name,
+            art,
+            code,
+            element,
+            digits,
+            slots,
+            column_icons,
+            name_bar,
+            cross_names,
+            slot_blank,
+            ok_cursor: ok_cursor.into(),
+            special_cursor: special_cursor.into(),
+        }
     }
 }
 

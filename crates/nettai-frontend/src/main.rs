@@ -437,6 +437,9 @@ fn audit_content(args: &Args, content: &nettai_battle::Content, by_pack: &[PathB
     if !found.untranslated.is_empty() {
         eprintln!("audit-content: shown in the content's own (a table lacks them): {}", found.untranslated.join(", "));
     }
+    for note in &found.notes {
+        eprintln!("audit-content: note: {note}");
+    }
     // (As --audit lists a trace's, under the name "content".)
     if let Some(path) = &args.lookups {
         let text: String = found.made.iter().map(|l| format!("content\t{l}\n")).collect();
@@ -482,6 +485,9 @@ fn audit_traces(args: &Args, content: &Arc<nettai_battle::Content>, setup: &head
                     } else {
                         println!("{name}: {line}");
                     }
+                }
+                for line in found.problems.said_lines() {
+                    eprintln!("{}note: {line}", if one { String::new() } else { format!("{name}: ") });
                 }
                 if !one {
                     eprintln!("audit {name}: {} frames, {} sound cues, {} problems", found.frames, found.cues, found.problems.len());

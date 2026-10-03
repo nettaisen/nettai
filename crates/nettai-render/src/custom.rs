@@ -52,11 +52,10 @@ const ADVANCE_FIRST_ROW: i32 = 5;
 pub(crate) const ADVANCE_NO_CODE_FROM: u16 = 0x160;
 const LAYER_TILES: usize = 0x200;
 /// The window's background colors: what the original copies over cells
-/// the chip window leaves empty (`byte_802A6C0`, `byte_802A680`,
-/// `byte_802A700`: solid 8, 7 and 1).
+/// the chip window leaves empty (`byte_802A6C0`, `byte_802A680`: solid 8
+/// and 7; a hidden slot's, the layout's `slot_blank`).
 const BLANK_8: u8 = 8;
 const BLANK_7: u8 = 7;
-const BLANK_1: u8 = 1;
 /// The chip window's name: 8 cells, its pixels shifted to the window's
 /// colors from 8 (`sub_80284E2`).
 const NAME_CELLS: usize = 8;
@@ -173,8 +172,7 @@ pub fn hud_jitter(b: &Battle) -> (i32, i32) {
     let Some((_, s)) = local(b) else { return (0, 0) };
     let shakes = matches!(
         s.phase,
-        Phase::BeastOutChosen { .. }
-            | Phase::BeastOutChipChosen { .. }
+        Phase::Window { .. }
             | Phase::CrossWindowOpening { .. }
             | Phase::CrossWindow { .. }
             | Phase::CrossWindowClosing { .. }
@@ -319,18 +317,24 @@ struct View<'a> {
 /// it has palettes), its tiles (`count` a state, selectable then
 /// unavailable and picked), and the cursor over it.
 struct ButtonLook<'a> {
-    details: &'a Picture,
+    details: std::borrow::Cow<'a, Picture>,
+    /// The details picture's palettes by the slot's state (none: its own).
     palettes: &'a [Palette],
     tiles: &'a Tiles,
+    /// Its tiles a state, and whether its unavailable and picked states
+    /// share the second set (the Beast Out button's two).
     count: usize,
-    cursor: (i32, i32, &'static CursorShape),
+    two_states: bool,
+    /// The tiles the slots after it start past (none: they overlap it).
+    advance: u16,
+    cursor: (i32, i32, CursorShape),
 }
 
 impl ButtonLook<'_> {
     /// Its details picture for a slot in state `state`.
     fn details(&self, state: usize) -> Picture {
         let palette = self.palettes.get(state).or(self.palettes.first()).copied().unwrap_or(self.details.palette);
-        Picture { palette, ..self.details.clone() }
+        Picture { palette, ..self.details.clone().into_owned() }
     }
 }
 
@@ -341,27 +345,47 @@ impl<'a> View<'a> {
     }
 
     /// The look of the button named `name`: the pack's of that name
-    /// (`CustomScreen::buttons`: BN5's "soul", the special slot's, under
-    /// OK), else BN6's ChpShufl re-deal and DustCross scrap. A name the
+    /// (`CustomScreen::buttons`: BN5's "soul", the special slot's under OK,
+    /// its picture in a palette by its state), else BN6's Beast Out (its
+    /// game's pictures), ChpShufl re-deal and DustCross scrap. A name the
     /// frontend doesn't know is drawn as nothing.
     fn named_look(&self, name: &str) -> Option<ButtonLook<'a>> {
+        use std::borrow::Cow;
         let a = self.assets;
         if let Some(b) = a.button(name) {
             let count = b.width as usize * b.height as usize;
-            return Some(ButtonLook { details: &b.picture, palettes: &b.palettes, tiles: &b.tiles, count, cursor: SPECIAL_CURSOR });
+            let cursor = cursor_at(&a.layout.special_cursor);
+            return Some(ButtonLook { details: Cow::Borrowed(&b.picture), palettes: &b.palettes, tiles: &b.tiles, count, two_states: false, advance: 0, cursor });
         }
-        let cursor = (0x38, 0x80, &BUTTON_CURSOR);
+        let wide = |details: &'a Picture, tiles: &'a Tiles| ButtonLook {
+            details: Cow::Borrowed(details),
+            palettes: &[],
+            tiles,
+            count: 12,
+            two_states: false,
+            advance: 12,
+            cursor: (0x38, 0x80, BUTTON_CURSOR),
+        };
         match name {
-            "redeal" => Some(ButtonLook { details: &a.pictures.redeal, palettes: &[], tiles: &a.redeal_buttons, count: 12, cursor }),
-            "scrap" => Some(ButtonLook { details: &a.pictures.scrap, palettes: &[], tiles: &a.scrap_buttons, count: 12, cursor }),
+            "beast_out" => {
+                let beast = self.beast;
+                let details = Picture { palette: beast.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..beast.beast_out.clone() };
+                Some(ButtonLook {
+                    details: Cow::Owned(details),
+                    palettes: &[],
+                    tiles: &beast.beast_buttons,
+                    count: 8,
+                    two_states: true,
+                    advance: 0,
+                    cursor: cursor_at(&a.layout.special_cursor),
+                })
+            }
+            "redeal" => Some(wide(&a.pictures.redeal, &a.redeal_buttons)),
+            "scrap" => Some(wide(&a.pictures.scrap, &a.scrap_buttons)),
             _ => None,
         }
     }
 }
-
-/// The cursor over the special slot under OK (Beast Out's, BN5's soul
-/// button).
-const SPECIAL_CURSOR: (i32, i32, &CursorShape) = (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR);
 
 /// The name BN5's soul button is drawn by (`SlotKind::Soul`; the pack's
 /// `CustomScreen::buttons`), which a system's button of that name draws by
@@ -692,11 +716,6 @@ impl Window {
                 let p = if cw.picks == 0 { &a.pictures.ok } else { &a.pictures.ok_picked };
                 blank_details(self, p);
             }
-            SlotKind::BeastOut => {
-                let beast = v.beast;
-                let p = Picture { palette: beast.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..beast.beast_out.clone() };
-                blank_details(self, &p);
-            }
             SlotKind::Button { button, .. } => {
                 if let Some(look) = v.button_look(button) {
                     blank_details(self, &look.details(state));
@@ -803,13 +822,12 @@ impl Window {
                     // sub_8028214: the code's glyph; the special codes
                     // show blank.
                     match c.code.0 {
-                        0x1B | 0x1C => self.tiles.fill(at + 4, 2, BLANK_1),
+                        0x1B | 0x1C => self.tiles.fill(at + 4, 2, self.layout.slot_blank),
                         code => self.tiles.put_part(at + 4, &a.slot_codes, 2 * code.min(EMPTY_SLOT_CODE) as usize, 2),
                     }
                     at += 6;
                 }
                 SlotKind::Ok | SlotKind::Button { cell: ButtonCell::Right, .. } => {}
-                SlotKind::BeastOut => self.tiles.put_part(at, &v.beast.beast_buttons, 8 * (state != 0) as usize, 8),
                 // BN5's soul button in the special slot's place (its
                 // patch's tiles, as Beast Out's).
                 SlotKind::Soul => {
@@ -819,8 +837,9 @@ impl Window {
                 }
                 SlotKind::Button { button, .. } => {
                     if let Some(look) = v.button_look(button) {
-                        self.tiles.put_part(at, look.tiles, look.count * state, look.count);
-                        at += look.count as u16;
+                        let set = if look.two_states { (state != 0) as usize } else { state };
+                        self.tiles.put_part(at, look.tiles, look.count * set, look.count);
+                        at += look.advance;
                     }
                 }
                 SlotKind::Empty => {
@@ -830,7 +849,7 @@ impl Window {
                 }
                 SlotKind::Hidden if s as u8 == SPECIAL_SLOT => self.tiles.put_part(at, &v.beast.beast_buttons, 24, 8),
                 SlotKind::Hidden => {
-                    self.tiles.fill(at, 6, BLANK_1);
+                    self.tiles.fill(at, 6, self.layout.slot_blank);
                     at += 6;
                 }
             }
@@ -842,7 +861,7 @@ impl Window {
                 SlotKind::Empty => 11,
                 SlotKind::Chip { .. } | SlotKind::NaviChip(_) if slot.state == SlotState::Unavailable => 12,
                 SlotKind::Chip { .. } | SlotKind::NaviChip(_) => 11,
-                SlotKind::Ok | SlotKind::BeastOut => continue,
+                SlotKind::Ok => continue,
                 _ => 9,
             };
             let (x, y) = (1 + 2 * (s % 5), 13 + 3 * (s / 5));
@@ -1000,7 +1019,9 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
 
 /// The cursor's corners (`sub_8028820`): where its slot's frame is
 /// (`jt_802886C`'s routines, less 3) and the four 8x8 corners in each of
-/// its two frames (`byte_80288B0` and the others: y, x, flips).
+/// its two frames (`byte_80288B0` and the others: y, x, flips). OK's and
+/// the special slot's are the pack's (`CustomLayout`: BN5's sit otherwise).
+#[derive(Clone, Copy)]
 struct CursorShape {
     corners: [[(i32, i32, bool, bool); 4]; 2],
 }
@@ -1011,18 +1032,13 @@ const CHIP_CURSOR: CursorShape = CursorShape {
         [(1, 1, false, false), (1, 0xC, true, false), (0xC, 0xC, true, true), (0xC, 1, false, true)],
     ],
 };
-const OK_CURSOR: CursorShape = CursorShape {
-    corners: [
-        [(2, 1, false, false), (2, 0x16, true, false), (0x14, 0x16, true, true), (0x14, 1, false, true)],
-        [(4, 3, false, false), (4, 0x14, true, false), (0x12, 0x14, true, true), (0x12, 3, false, true)],
-    ],
-};
-const BEAST_OUT_CURSOR: CursorShape = CursorShape {
-    corners: [
-        [(2, 1, false, false), (2, 0x16, true, false), (0xE, 0x16, true, true), (0xE, 1, false, true)],
-        [(3, 2, false, false), (3, 0x15, true, false), (0xD, 0x15, true, true), (0xD, 2, false, true)],
-    ],
-};
+
+/// The cursor at a place the pack gives (OK's, the special slot's).
+fn cursor_at(p: &nettai_assets::CursorPlace) -> (i32, i32, CursorShape) {
+    let corners = p.corners.map(|frame| frame.map(|(y, x, h, v)| (y as i32, x as i32, h, v)));
+    (p.x as i32, p.y as i32, CursorShape { corners })
+}
+
 const BUTTON_CURSOR: CursorShape = CursorShape {
     corners: [
         [(2, 2, false, false), (2, 0x1C, true, false), (0x14, 0x1C, true, true), (0x14, 2, false, true)],
@@ -1065,11 +1081,11 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
     let (x, y, shape) = match s.slots[slot as usize].kind {
         SlotKind::Chip { .. } | SlotKind::NaviChip(_) | SlotKind::Empty | SlotKind::Hidden => {
             let (col, row) = ((slot % 5) as i32, (slot / 5) as i32);
-            (16 * col + 8, 0x68 + 0x18 * row, &CHIP_CURSOR)
+            (16 * col + 8, 0x68 + 0x18 * row, CHIP_CURSOR)
         }
-        SlotKind::Ok => (0x58 + 3, 0x70 - 2, &OK_CURSOR),
-        SlotKind::BeastOut | SlotKind::Soul => SPECIAL_CURSOR,
-        SlotKind::Button { button, .. } => v.button_look(button).map_or((0x38, 0x80, &BUTTON_CURSOR), |l| l.cursor),
+        SlotKind::Ok => cursor_at(&a.layout.ok_cursor),
+        SlotKind::Soul => cursor_at(&a.layout.special_cursor),
+        SlotKind::Button { button, .. } => v.button_look(button).map_or((0x38, 0x80, BUTTON_CURSOR), |l| l.cursor),
     };
     let palette = v.emblem_palette();
     // Queued last corner first (`sub_8028820`).
