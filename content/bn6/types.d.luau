@@ -702,13 +702,6 @@ export type AquaNeedleSpec = {
     palette: number,
 }
 
--- H-Burst (chips/h-burst, action 0x34): the bursts its shot makes where
--- it hits.
-export type HyperBurstSpec = {
-    id: string?,
-    bursts: number,
-}
-
 -- A rolling log (chips/rlnglog/log): a big one also covers the panel
 -- above it; the ticks a hit that takes HP stops it; its HP; thrown in an
 -- arc onto the panel ahead (else it drops in from above).
