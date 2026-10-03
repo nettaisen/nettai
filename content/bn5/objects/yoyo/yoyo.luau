@@ -13,9 +13,9 @@
 -- skipped spin tick.
 
 local collision = require("../../rules/collision")
-local regions = require("@bn6/lib/regions")
+local regions = require("@common/regions")
 local throw = require("@common/yoyo/throw")
-local attachment = require("@bn6/objects/attachment/attachment")
+local attachment = require("../attachment/attachment")
 
 local yoyo = {}
 
@@ -335,6 +335,7 @@ function yoyo.action(id: string, spec: Spec): Action
     return throw.action {
         id = id,
         arm = yoyo.arm,
+        attachment = attachment.kind,
         throw = function(me: Object, x: number, y: number, z: number, damage: number): Object?
             return yoyo.spawn(me, x, y, 0, z, damage, spec, "related")
         end,

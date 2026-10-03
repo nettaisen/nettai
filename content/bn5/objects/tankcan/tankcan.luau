@@ -4,7 +4,7 @@
 -- 0x080CC9EC: its collision row 0, BN6's), its edge blast BN5's effect 0x47 hitting as an attack (BN6's thrown,
 -- 0x080CCB40) and unshifted, its sounds and effects.
 
-local attachment = require("@bn6/objects/attachment/attachment")
+local attachment = require("../attachment/attachment")
 local action = require("@common/tankcan/action")
 local collision = require("../../rules/collision")
 local shell = require("@common/tankcan/shell")
@@ -28,6 +28,7 @@ local CANNON = attachment.look { sprite = asset.sprite("bn5:tank-cannon"), palet
 tankcan.action = action.action {
     id = "bn5:tankcan/action",
     cannon = CANNON,
+    attachment = attachment.kind,
     kind = tankcan.kind,
     shell = { hit_mod = 0x4B, cracks = true, shift = 0 },
 }

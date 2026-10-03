@@ -4,7 +4,7 @@
 -- from the panel ahead on the 23rd, the screen shaking; it lowers the cannon on the 36th and is back to idle 4 ticks
 -- later.
 
-local attachment = require("@bn6/objects/attachment/attachment")
+local attachment = require("../attachment/attachment")
 local shell = require("./shell")
 
 local tankcan = {}
@@ -28,7 +28,8 @@ local SHELL_Z = 0x18_0000
 -- The cannon's recoil (its second animation).
 local ARM_FIRE = 1
 
--- A chip's tank cannon: the cannon it holds, the shell kind and how its shell flies.
+-- A chip's tank cannon: the cannon it holds (and its game's attachment kind), the shell kind and how its shell
+-- flies.
 export type Spec = TankCanSpec
 
 function tankcan.action(spec: Spec): Action
@@ -38,7 +39,7 @@ function tankcan.action(spec: Spec): Action
             me:set_animation(ANIM_AIM)
             me:open_counter_window()
             s.timer = AIM_TICKS
-            attachment.attach(me, spec.cannon, "overlay")
+            attachment.attach(spec.attachment, me, spec.cannon, "overlay")
             me:set_status("using_action", true)
             me.step_init = 4
             return

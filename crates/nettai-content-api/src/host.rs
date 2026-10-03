@@ -262,6 +262,16 @@ pub enum SystemHook {
     /// `custom.confirmed(side)`: OK was pressed and the hand is built (the
     /// round's Beast Out or Cross noted). Its result is unused.
     CustomConfirmed,
+    /// `custom.keys(side)`: choosing chips, on a tick a key repeats or is
+    /// pressed, before the screen's own keys (`custom.pressed`,
+    /// `custom.repeated`): whether the system took the tick's keys (BN6's
+    /// UP opening the Cross window, `sub_8028B74`). The first system that
+    /// answers true takes them.
+    CustomKeys,
+    /// `custom.take_back(side)`: B with nothing picked (`sub_8029032`):
+    /// whether the system took something back (BN6's Cross chosen). The
+    /// first system that answers true did; none, and B is refused.
+    CustomTakeBack,
     /// A system's window's `update(side)`, each tick it is up: whether it
     /// stays up (`custom.window_tick` counts its ticks from 1).
     WindowUpdate,
@@ -311,6 +321,8 @@ impl SystemHook {
             SystemHook::CustomHandSize => "custom.hand_size",
             SystemHook::CustomOpen => "custom.open",
             SystemHook::CustomConfirmed => "custom.confirmed",
+            SystemHook::CustomKeys => "custom.keys",
+            SystemHook::CustomTakeBack => "custom.take_back",
             SystemHook::CustomChipPicked => "custom.chip_picked",
             SystemHook::CustomChipTakenBack => "custom.chip_taken_back",
             SystemHook::WindowUpdate => "window.update",
@@ -322,7 +334,7 @@ impl SystemHook {
         }
     }
 
-    pub const ALL: [SystemHook; 26] = [
+    pub const ALL: [SystemHook; 28] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -349,6 +361,8 @@ impl SystemHook {
         SystemHook::ButtonTakenBack,
         SystemHook::CustomChipPicked,
         SystemHook::CustomChipTakenBack,
+        SystemHook::CustomKeys,
+        SystemHook::CustomTakeBack,
     ];
 }
 

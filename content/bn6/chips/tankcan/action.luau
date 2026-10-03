@@ -20,7 +20,7 @@ local TANK = attachment.look { sprite = asset.sprite("bn6:tank-cannon"), palette
 
 -- A chip's tank cannon: the shell it fires.
 function tankcan.action(spec: { shell: ShellSpec }): Action
-    return common.action { cannon = TANK, kind = shell.kind, shell = spec.shell }
+    return common.action { cannon = TANK, attachment = attachment.kind, kind = shell.kind, shell = spec.shell }
 end
 
 return tankcan

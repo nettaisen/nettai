@@ -1,18 +1,18 @@
 --!strict
 -- BurnSqr's burner (the original's actor object #0x13, `sub_80BAF50`;
 -- docs/engine/dimming-chip-effects.md §2): a stand-in for the user
--- (lib/dimming/stand_in) that moves a 2x2 square over the whole field, a
+-- (@common/dimming/stand_in) that moves a 2x2 square over the whole field, a
 -- step every 6 ticks, until the user presses A or 300 ticks pass, then
 -- sets the square's solid panels on fire (flames: chips/heatman/flame).
 
-local stand_in = require("../../lib/dimming/stand_in")
+local stand_in = require("@common/dimming/stand_in")
 local collision = require("../../rules/collision")
 local heat_flame = require("../../chips/heatman/flame")
 
 local burner = {}
 
 export type State = {
-    -- The chip's controller, waiting on it (lib/dimming/stand_in).
+    -- The chip's controller, waiting on it (@common/dimming/stand_in).
     controller: Object?,
     -- The square: its start column (ExtraVars+0xC), where it turns
     -- (+0x10), and its top left panel (+0x14, +0x18).

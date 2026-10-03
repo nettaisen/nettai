@@ -1,10 +1,9 @@
 --!strict
--- WideBlde (BN5 chip 0x033): WideSwrd's slash, stronger: BN6's slash (@bn6/lib/swords/slash, the original's action
+-- WideBlde (BN5 chip 0x033): WideSwrd's slash, stronger: the shared slash (@common/swords/slash, the original's action
 -- 0x13; BN5's the same code) with BN5's parts (lib/swords) and its slash effect 0x19.
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local regions = require("@bn6/lib/regions")
-local slash = require("@bn6/lib/swords/slash")
+local regions = require("@common/regions")
 local swords = require("../../lib/swords")
 
 return define.chip {
@@ -20,7 +19,7 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = slash.action {
+    action = swords.slash {
         blade = swords.blade,
         blade_anim = swords.blade_anim,
         hit = { region = regions.wide, collision = swords.slashes_navis, hit_mod = 3 },

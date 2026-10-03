@@ -1,8 +1,8 @@
-//! A side's stats block: the navi's stats by name, over what a fresh save
-//! gives it (`Side::base_stats`). A match file's `[left.stats]` sets what
-//! differs; writing one, the fields that differ are written. Every stat a
-//! round starts from is a field, so a written block gives back the same
-//! stats.
+//! A side's stats block: the navi's stats by name, over what a save gives
+//! it (`Side::save_base`: its fresh stats, a link navi's at its level). A
+//! match file's `[left.stats]` sets what differs; writing one, the fields
+//! that differ are written. Every stat a round starts from is a field, so a
+//! written block gives back the same stats.
 //!
 //! The fields, in the order they apply: `hp` sets the base HP, the maximum
 //! and the HP the round starts with together; `max_hp` and `current_hp`

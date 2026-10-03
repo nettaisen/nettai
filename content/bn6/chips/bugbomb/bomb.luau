@@ -10,7 +10,9 @@
 
 local collision = require("../../rules/collision")
 local common = require("@common/bugbomb/bomb")
+local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local statuses = require("../../rules/status")
+local trajectory = require("../../lib/trajectory")
 
 local bug_bomb = {}
 
@@ -65,6 +67,8 @@ bug_bomb.kind = common.make_kind("bn6:bugbomb/bomb", {
     crushed_sound = SOUND_HIT_BOMB,
     burst_sound = SOUND_HIT_BOMB,
     pick_bug = pick_bug,
+    bubble = rising_bubble.kind,
+    trajectory = trajectory,
 })
 
 -- `sub_80D9FA8`: a thrower for `throw.action` that throws a BugBomb at the

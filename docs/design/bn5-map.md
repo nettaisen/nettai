@@ -1140,8 +1140,30 @@ banners (49, the same layout as BN6's: 0x0801B810), their digits and palette, an
 problems). Waiting in this batch: DrkRecov's dark chip cost (HP bug: BN5's own code, unread, §6), HolyDrem's light
 MegaMan (§6.1), the swing's call BN6 stubs out (0x080E9FD2, battle flag 0x40: never in a netbattle).
 
-**BN6's modules changed for BN5** (each the smallest change that lets BN5 reuse it; BN6's behavior the same, its
-full set run on the batch):
+**Shared code (common-shared, 2026-10-03; the user's direction: shared BN5/BN6 behavior in content/common).** The
+BN6 modules the lists below opened for BN5 now live in content/common as makers that take a game's look (none holds a
+game's ids or assets; rules-in-luau.md §7.2), BN6's modules at their old paths their BN6 wrappers, BN5's its own
+definitions made with them: the regions, panels, slot, element, trajectory (over a game's sine table), dimming and
+its stand-in, the recovery heal, the attachment, the buster's parts, the projectile and its firing, the cannons,
+AirShot, the bombs' throw and bomb, the energy burst, BlkBomb, the panel bursts, the rising bubble, the panel
+changer and the panel chips', trap chips', gauge chips', grab chips', GrabBnsh's, Invisibl's, Mine's, AntiRecv's,
+CircGun's, Meteors', TimeBom's and the instruments' controllers with their objects (the grab shot, the hand, the
+mine, the gun and shot, the falling meteor and its marker, the countdown bomb, the instrument and its effects),
+AntiDmg's counter and shuriken, the swords' parts and slash, the sonic boom, AntiSwrd's counter, the wide shot and
+wave, the bullet and the vulcans, the tornado and its blow, Thunder's ball and shot, FireHit's fist, ElemTrap's trap
+and counterattack, Lance's lance, DrilArm's drill, ProtoMan, the boomerang, the plus chips' sparkle, the Spreaders'
+action, the shower's aim, and MegaMan's buster, blank and charged shots. BN5 makes its own kinds of each (compat's
+kinds.toml names them `bn5:...`); a BN5 look names BN6's assets where BN6's module did, as before. BN5 still uses
+these BN6 definitions as its own: BN6's effects (lib/effects: the explosions, puffs and flashes BN6's modules
+showed), BN6's collision rows that keep the 0x80 self bit where BN5's own rows drop it (thrown, curse, thrown-slash,
+attack, slash: BN5's grab shot, energy burst, GrabBnsh's hand, AntiDmg's shuriken, ProtoMan's slash and the
+projectile's burst; where BN5's row equals BN6's, BN5's own), BN6's plain shot as the fallback of BN5's forced
+charged shot, and BN6's barriers and their visual (lib/barriers: waits on bn5-chips-b's content/common/barriers).
+The 0x80 bit and the fallback are as BN6's modules had them; whether BN5's rows are the right ones is the chips'
+porters' to check.
+
+The lists below say how each was opened (each the smallest change that lets BN5 reuse it; BN6's behavior the same,
+its full set run on the batch):
 
 - lib/instruments/instrument.luau (and types.d.luau's `Instrument`): optional `hp` and `sprite`. BN5's
   instruments have 100 HP and their own sprite, where the library had 60 and BN6's sprite as constants.
@@ -1210,6 +1232,33 @@ lib/swords (a slash's `blade_anim`; parts.hold's anim).
 **Waiting:** LarkMan, GridMan and their SP and DS (BN5's own navis, §14.4: the action map's `bn5-only`), DarkInvs
 (BN5's own, 0x080E2338), the mode chips, Program Advances' recipes (TimeBom+'s among them), the flag-0x40 mode's
 effect 0x83 (FireHit's warning, the swords' swing, the meteors, DrilArm's start: never in a netbattle).
+
+**Chips 0x000 to 0x06F** (2026-10-03, bn5-chips-a): WideBlde, LongBlde and CustSwrd (the shared slash with BN5's
+parts and its effects 0x19, 0x1A and 0x28; CustSwrd's damage the custom gauge's, formula 45); AirHoc (the shared
+puck and flick, content/common/airhocky, of BN5's look); Static (BN5's tornado blow, its tornadoes paralyzing by
+the bug level: none, 90, 120, 150 ticks); Spreader (the shared Spreaders' action with BN5's gun and bullet row 3:
+BN5's flash 0x21 and sound); GunDelS1 to 3 (the shared sun beam, content/common/gundels; BN5's GunDelSol,
+objects/gundels); BugBomb (the shared BugBomb, content/common/bugbomb, with BN5's bugs: either HP drain plus 2 or
+the emotion swings); Katana1 to 3 (objects/katana); MrkCan1 to 3 (objects/mrkcan: the sweeping sight, effect
+0x44, and the cannon at its panel); Pulsar1 to 3 and SpShake1 to 3 (lib/armshot, and lib/arm: BN5's buster arm,
+0x080EBABE; the pulse, attack 0x6A, and the shake wave, 0x68); Skully1 to 3 (objects/skully, attack 0x88);
+Astroid1 to 3 (objects/meteors: instant effect 17, 6, 8 and 10 meteors); Snake (the shared snake and holes' scan,
+content/common/snake: BN5's nest sends three snakes at a time with a flag each, its snakes wait 48 ticks and
+strike as wood); YoYo (the shared throw, content/common/yoyo; BN5's yoyo, objects/yoyo, attack 0x52, GreatYo's
+modes too); Slasher (BN5's own action 0x29: while A is held, the wide slash at an enemy navi's column); CircGun
+(the shared CircGun of DarkCirc's look, 4 shots); TankCan1 to 3 (the shared action and shell,
+content/common/tankcan; BN5's shell, objects/tankcan); WindRack (BN5's own action: BN6's swing without the
+gusts). Each matches every frame of its lab recordings. The batch's shared modules (content/common, as above):
+airhocky/puck and flick, gundels/beam, bugbomb/bomb, snake/snake, yoyo/throw, tankcan/action and shell, each
+BN6's at its old path its BN6 wrapper (BN6 the same).
+
+Not shown by the labs: Static's bug levels 1 to 3; GunDelSol's held A; Katana's charged step; Slasher's request
+0x80000 (`actions.stun_strike`, BN5's action 0x49, unfilled) and its other console's chip name (`sub_801EB18`);
+BN5's bug intake (0x0801103E: an argument's bit 4 adds, where BN6's always adds; BugBomb's codes are the engine's
+adds of 2); lib/arm's NaviStats +0x4C and AIData +0x12 (read as 0). **Waiting:** the seeds, CannBall and Geyser
+(on the shared bombs), Wind, Fan, RockCube, BoyBomb1 to 3, RedFrut1 to 3 and Voltz1 to 3 (on BN5's field
+obstacles), and Quake1 to 3, CrakBom, ParaBom, ResetBom, VDoll, VarSwrd, MoonBld1 to 3, LifeSync, MetaGel and
+Magnum.
 
 ### 15.7 BN5's MegaMan, stages and roles (as built)
 

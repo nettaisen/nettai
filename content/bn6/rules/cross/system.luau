@@ -1,7 +1,10 @@
 --!strict
 -- BN6's Crosses on the custom screen (docs/design/rules-in-luau.md §3.1,
--- S6): ChargeCross's extra chips and the hand size they go into
--- (`sub_802A49C`, `sub_802A40C`), and DustCross's scrap button.
+-- S6): the Cross window (window.luau), ChargeCross's extra chips and the
+-- hand size they go into (`sub_802A49C`, `sub_802A40C`), and DustCross's
+-- scrap button.
+
+local window = require("./window")
 
 type State = {
     -- `dword_20349A0`: consecutive screens opened in ChargeCross (or its
@@ -85,7 +88,29 @@ local scrap: ButtonSpec = {
 
 return define.system {
     id = "bn6:cross",
-    state = { charge_cross_screens = "u8" },
+    state = {
+        charge_cross_screens = "u8",
+        -- The Cross window's (window.luau).
+        crosses_used = "bool[5]",
+        offered = "u8[5]",
+        offered_count = "u8",
+        marked = "bool[5]",
+        window_cursor = "u8",
+        cross_chosen = "bool",
+        chosen = "u8",
+    },
     buttons = { scrap = scrap },
-    custom = { hand_size = hand_size },
+    windows = {
+        cross_opening = window.opening,
+        cross_window = window.window,
+        cross_closing = window.closing,
+        cross_chosen = window.chosen,
+    },
+    custom = {
+        hand_size = hand_size,
+        open = window.open,
+        confirmed = window.confirmed,
+        keys = window.keys,
+        take_back = window.take_back,
+    },
 }

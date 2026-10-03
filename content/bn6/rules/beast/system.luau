@@ -7,8 +7,8 @@
 -- the berserk's state, as the original's share their 0x10 bytes. Their
 -- state is the system's. The turn-start sequencer is the framework's (BN5 has it
 -- too); it asks each side's systems at its check and when the turn starts.
---
--- (Still the framework's until later slices: the Beast Out button.)
+-- Beast Out on the custom screen (its button, its animations and the
+-- BeastOut chip's) is custom.luau.
 
 local beast_claw = require("../../navis/megaman/weapons/beast-claw/weapon")
 local berserk = require("./berserk")

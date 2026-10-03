@@ -9,13 +9,13 @@
 -- The sight reports to the navi through the attack's marker word (AIAttackVars+0x30: its result byte, then the
 -- panel found): 0 searching, 1 found, 2 nothing.
 
-local attachment = require("@bn6/objects/attachment/attachment")
+local attachment = require("../attachment/attachment")
 local collision = require("../../rules/collision")
-local regions = require("@bn6/lib/regions")
-local slot = require("@bn6/lib/slot")
+local regions = require("@common/regions")
+local slot = require("@common/slot")
 local sparks = require("../../lib/sparks")
 local status = require("../../rules/status")
-local trajectory = require("@bn6/lib/trajectory")
+local trajectory = require("../../lib/trajectory")
 
 local mrkcan = {}
 

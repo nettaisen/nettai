@@ -8,7 +8,7 @@
 
 local navi_chips = require("../../lib/navi-chips/navi")
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local crcusman = {}
 

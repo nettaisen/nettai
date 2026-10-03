@@ -25,6 +25,7 @@ function throw.action(spec: { id: string, yoyo: YoyoSpec }): Action
     return common.action {
         id = spec.id,
         arm = ARM,
+        attachment = attachment.kind,
         throw = function(me: Object, x: number, y: number, z: number, damage: number): Object?
             if spec.yoyo.great then
                 return yoyo.spawn_controller(me, x, y, 0, z, damage, spec.yoyo)

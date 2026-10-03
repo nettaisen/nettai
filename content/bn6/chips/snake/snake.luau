@@ -7,6 +7,7 @@
 
 local collision = require("../../rules/collision")
 local common = require("@common/snake/snake")
+local trajectory = require("../../lib/trajectory")
 
 local snake = {}
 
@@ -20,6 +21,7 @@ local function counter_add(me: Object, n: number)
 end
 
 snake.kind = common.make_kind("bn6:snake/snake", {
+    trajectory = trajectory,
     sprite = asset.sprite("bn6:snake"),
     rise_sound = asset.sound("bn6:appear"),
     leap_sound = asset.sound("bn6:aqua-needle-2"),
