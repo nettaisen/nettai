@@ -13,6 +13,7 @@
 -- an action of their own; link navis' actions would too.
 
 local falling_meteor = require("../../chips/meteors/falling_meteor")
+local shower = require("@common/meteors/shower")
 
 local meteor_shower = {}
 
@@ -25,50 +26,10 @@ export type State = {
 
 local FIRE = 1
 local DROP_TICKS = 0x14
--- Whether to pick a panel next to the target, by a draw's low four bits
--- (`byte_80E5B50`, running into `byte_80E5B58`), and the neighbors
--- (`byte_80E5B58`, its last pair the next routine's code).
-local NEAR = { [0] = false, true, true, false, false, false, false, false, false, true, false, true, true, false, true, false }
-local NEIGHBORS = { { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }
-
--- `sub_80E5A8A`: one of the other side's navis still standing, at random
--- (a draw only if there is one).
-function meteor_shower.pick(me: Object): Object?
-    local standing = {}
-    for _, o in battle.alive_actors(bit32.bxor(me.alliance, 1)) do
-        if o.hp ~= 0 then
-            table.insert(standing, o)
-        end
-    end
-    if #standing == 0 then
-        return nil
-    end
-    return standing[battle.rng_positive() % #standing + 1]
-end
-
--- `sub_80E5AD6`: the target's panel, or on some draws a neighbor of it on
--- the field (another draw picks which).
-function meteor_shower.aim(target: Object?): (number, number)
-    if target == nil then
-        error("meteor shower without a target (sub_80E5AD6 reads a panel through a null pointer)")
-    end
-    local x, y = target.panel_x, target.panel_y
-    if not NEAR[bit32.band(battle.rng_positive(), 0xF)] then
-        return x, y
-    end
-    local near = {}
-    for _, d in NEIGHBORS do
-        local nx, ny = x + d[1], y + d[2]
-        if field.valid(nx, ny) then
-            table.insert(near, bit32.bor(bit32.band(nx, 0xFF), bit32.lshift(ny, 4)))
-        end
-    end
-    if #near == 0 then
-        return x, y
-    end
-    local b = bit32.band(near[battle.rng_positive() % #near + 1], 0xFF)
-    return bit32.band(b, 7), bit32.rshift(b, 4)
-end
+-- `sub_80E5A8A`: one of the other side's navis still standing, at random;
+-- `sub_80E5AD6`: the target's panel, or a neighbor (@common/meteors/shower).
+meteor_shower.pick = shower.pick
+meteor_shower.aim = shower.aim
 
 -- `sub_80CF594`: a meteor on (x, y). (Its X and Y are the registers'
 -- values, which its init replaces.)

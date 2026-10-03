@@ -1118,6 +1118,9 @@ export type MeteorLook = {
     sounds: { fall: Sound, land: Sound },
     rows: { [number]: MeteorRow },
     spark: (element: number) -> Spark,
+    -- Its landing's burst, and its panel marker's kind.
+    burst: Effect,
+    marker: Kind,
 }
 
 -- How a game's drill is: its hit's spark, what the first and second are
