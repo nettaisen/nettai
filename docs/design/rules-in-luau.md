@@ -612,7 +612,7 @@ also be fully qualified as well".
 - **No home.** What a battle reads is the arena's (the stage's game's) or a side's (its ruleset's, §2.3); a tool
   with no battle takes the game that has the thing. A frontend's and the match tool's default game is BN6's, by name
   (`nettai_match::DEFAULT_GAME`).
-- **content/common** is a folder of behaviour only: modules the games' folders share by path
+- **content/common** is a folder of behavior only: modules the games' folders share by path
   (`require("@common/...")`), with no assets of their own, so it needs no pack, and no compat or locales.
 - **Version variants keep their suffixes** (`-falzar`/`-gregar`, `-protoman`/`-colonel`); region (US, JP) is a
   field, not a namespace.
