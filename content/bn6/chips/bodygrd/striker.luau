@@ -1,144 +1,35 @@
 --!strict
 -- BodyGrd's striker (the original's effect object #0x6E, `sub_80E8268`):
--- the counter's unseen thrower, one of its side's field objects (one a
--- side) with 1 HP. Outside dimming, every 20 ticks it drops a shuriken
--- (./shuriken) on the enemy's player navi, ten in all, until the battle is
--- over, the navi is down or another field object replaces it.
+-- the shared striker (@common/bodygrd/striker) with BN6's identity, its
+-- shurikens (./shuriken) and sound: the counter's unseen thrower, one of
+-- its side's field objects with 1 HP, dropping a shuriken on the enemy's
+-- player navi every 20 ticks, ten in all.
 
+local common = require("@common/bodygrd/striker")
 local shuriken = require("./shuriken")
 
 local striker = {}
 
--- Its identity: a field object nothing swallows or leaves as junk, with
--- no look.
-local IDENTITY = define.identity {
-    id = "bn6:bodygrd-striker",
-    class = "field_object",
-    version = 0,
-    ai_index = 1,
-    scrap = false,
-    look = { anim = 0, palette = 0, shadow = false },
-}
-local EVERY, STRIKES = 0x14, 0xB
-local SOUND_THROW = asset.sound("bn6:boomerang")
-local HIT_MOD = 1
-
--- Gone: out of the field-object registry, freed next update.
-local function leave(me: Object)
-    -- (On the battle's end, the strikes' end or no target, the original
-    -- first clears the word its ExtraVars+0 points at: nothing set it, so
-    -- the store lands at address 0.)
-    obstacle.unregister(me)
-    me:set_lifecycle("destroy")
-end
-
--- `sub_80E8326`: its target's panel: in a netbattle the other side's
--- player navi, while it has HP (`sub_80E8378`); offline, the other side's
--- combatant with the most HP, the later slot on a tie.
-local function target(me: Object): (number?, number?)
-    local other = bit32.bxor(me.alliance, 1)
-    if battle.link() then
-        local p = battle.player(other)
-        if not p then
-            error("BodyGrd's striker: sub_80103BC finds no player navi and sub_80E8378 reads its HP from address 0")
-        end
-        if p.hp == 0 then
-            return nil, nil
-        end
-        return p.panel_x, p.panel_y
-    end
-    local best: Object? = nil
-    for _, o in battle.alive_actors(other) do
-        if best == nil or o.hp >= best.hp then
-            best = o
-        end
-    end
-    if not best then
-        return nil, nil
-    end
-    return best.panel_x, best.panel_y
-end
-
--- `sub_80E82D4`: every 20 ticks, a shuriken on the target.
-local function strike(me: Object)
-    if battle.over() then
-        leave(me)
-        return
-    end
-    if me.hp == 0 then
-        leave(me)
-        return
-    end
-    local t = me.timer - 1
-    me.timer = t
-    if t ~= 0 then
-        return
-    end
-    local left = me.timer2 - 1
-    me.timer2 = left
-    if left == 0 then
-        leave(me)
-        return
-    end
-    local x, y = target(me)
-    if not x or not y then
-        leave(me)
-        return
-    end
-    local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    shuriken.spawn(me, x, y, me.element, HIT_MOD, damage)
-    battle.play_sound(SOUND_THROW)
-    me.timer = EVERY
-end
-
--- `sub_80E829E`: nothing while dimmed; by phase.
-local function tick(me: Object)
-    if battle.dimmed() then
-        return
-    end
-    if me.phase == 0 then
-        -- sub_80E82C0
-        me.timer2, me.timer = STRIKES, EVERY
-        me.phase, me.phase_init = 4, 0
-    elseif me.phase ~= 4 then
-        error(string.format("BodyGrd's striker: phase %#x reads past off_80E82B8", me.phase))
-    end
-    strike(me)
-end
-
-striker.kind = define.kind {
+striker.kind = common.make_kind {
     id = "bn6:bodygrd/striker",
-    pool = "effect",
-    -- `sub_80E8268`.
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            -- sub_80E8288
-            me.identity = IDENTITY
-            me.hp, me.max_hp = 1, 1
-            me:set_lifecycle("update")
-            tick(me)
-        elseif l == "update" then
-            tick(me)
-        else
-            me:free()
-        end
-    end,
+    -- Its identity: a field object nothing swallows or leaves as junk,
+    -- with no look.
+    identity = define.identity {
+        id = "bn6:bodygrd-striker",
+        class = "field_object",
+        version = 0,
+        ai_index = 1,
+        scrap = false,
+        look = { anim = 0, palette = 0, shadow = false },
+    },
+    shuriken = shuriken.kind,
+    throw_sound = asset.sound("bn6:boomerang"),
 }
 
 -- `sub_80E8396`: the striker with `element` and the damage word, of
--- `user`'s side; its side's one field object of class 1. (Its position is
--- the spawner's registers, which nothing reads.)
+-- `user`'s side.
 function striker.spawn(user: Object, element: number, damage: number): Object?
-    local o = battle.spawn(striker.kind)
-    if not o then
-        return nil
-    end
-    o.element = element
-    o.alliance = user.alliance
-    o:set_damage_word(damage)
-    obstacle.register(o, user.alliance, 1)
-    return o
+    return common.spawn(striker.kind, user, element, damage)
 end
 
 return striker

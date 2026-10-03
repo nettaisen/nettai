@@ -45,7 +45,10 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// 4: an offer's side carries the navi code's level as an option, Beast
 /// Out unlocked and the SP deletion times, and a player's BN6 setup is its
 /// systems' (the battle's digest differs).
-pub const VERSION: u16 = 4;
+/// 5: an offer's side carries BN5's karma and the souls it has; NaviStats
+/// carries BN5's Hub Style (+0x4C); a system's setup starts from its
+/// defaults (BN5's karma 500).
+pub const VERSION: u16 = 5;
 
 /// The rollback horizon, in elements (ticks, besides the rare payload or
 /// marker): the widest gap a player's stream may have at the other peer

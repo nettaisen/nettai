@@ -156,6 +156,10 @@ pub enum HookCall {
     /// A role hook the ruleset calls with a navi (`define.roles`'
     /// `hooks`): its result is unused.
     RoleNavi { navi: ObjectRef },
+    /// A form's hook the engine calls with the navi in it (its `reset`:
+    /// what else the status reset does in the form, BN5's souls'). Its
+    /// result is unused.
+    FormNavi { navi: ObjectRef },
     /// `encased(obstacle, ice, class)` (`sub_801813A`'s end): put what an
     /// obstacle encased in ice (`ice`) or a bubble becomes on its panel; its
     /// field-object registry class (none: it wasn't registered). Its result

@@ -692,13 +692,6 @@ export type AquaNeedleSpec = {
     palette: number,
 }
 
--- H-Burst (chips/h-burst, action 0x34): the bursts its shot makes where
--- it hits.
-export type HyperBurstSpec = {
-    id: string?,
-    bursts: number,
-}
-
 -- A rolling log (chips/rlnglog/log): a big one also covers the panel
 -- above it; the ticks a hit that takes HP stops it; its HP; thrown in an
 -- arc onto the panel ahead (else it drops in from above).
@@ -713,21 +706,6 @@ export type RollingLog = {
 export type RollingLogSpec = {
     id: string?,
     log: RollingLog,
-}
-
--- What AirSpin sends from the panel ahead (chips/airspin): the whirlwind
--- top that rolls and spins there (its palette, its spins), or the seeking
--- whirlwind no chip sends.
-export type AirSpinSender = {
-    send: (user: Object, x: number, y: number, element: number, damage: number) -> Object?,
-    palette: number?,
-    spins: number?,
-}
-
--- AirSpin (chips/airspin, action 0x38).
-export type AirSpinSpec = {
-    id: string?,
-    whirlwind: AirSpinSender,
 }
 
 -- DolThdr (chips/dolthdr, action 0x3E): the thunder's ticks, and whether

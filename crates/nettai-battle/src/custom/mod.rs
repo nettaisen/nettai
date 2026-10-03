@@ -98,8 +98,9 @@ pub struct PlayerSetup {
     /// none: the content's stock ruleset.
     pub ruleset: Option<nettai_content_api::RulesetHandle>,
     /// What the player brings for each system of their ruleset (its
-    /// `setup` fields), in the ruleset's order; none given: all zero
-    /// (`PlayerSetup::set_rule` writes one by name).
+    /// `setup` fields), in the ruleset's order; none given: each system's
+    /// defaults (`setup_defaults`, the rest zero; `PlayerSetup::set_rule`
+    /// writes one by name).
     pub rules: Vec<nettai_content_api::ContentState>,
     /// The patch cards the player has installed (`crate::patch_cards`):
     /// their ruleset's rules apply them (BN6's patch-cards system).
@@ -449,7 +450,7 @@ impl Side {
         // checked it.)
         let soul_family = screen.chip_in(screen.soul.given_up, folder).map(|c| ctx.library.chip(screen::checked(c, &view).id).family);
         let mut pa_used = self.program_advances;
-        let built = builder::build(&picks, ctx.turn, &mut pa_used, ctx.library, damage);
+        let built = builder::build(&picks, ctx.turn, &mut pa_used, ctx.library, ctx.per_player_gauges, damage);
         self.program_advances = pa_used;
         for p in &picks {
             // A link navi's own chip is spent for the round (the bit of

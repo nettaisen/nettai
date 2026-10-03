@@ -398,6 +398,8 @@ local status = {
     rules = define.rules("bn5:status", {
         hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 },
         form_tick = false,
+        -- The mercy flash hides the navi while its timer's bit 1 is clear (0x080137B6; BN6's while it is set).
+        flash_hides_on_clear = true,
         bugs_before_drain = true,
         drain_bug_flags = true,
         -- BN5's emotions (0x08012740): a soul first, then anger, a mood of 0 (a dark MegaMan's), Full Synchro, a mood

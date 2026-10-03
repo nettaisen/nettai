@@ -84,6 +84,7 @@ language = "en"
 "bn5:crakbom" = { name = "CrakBom", description = "Bomb\ncracks\n3sq ahead" }
 "bn5:crakout" = { name = "CrakOut", description = "Destroys\n1 panel\nin front" }
 "bn5:crossdiv" = { name = "CrossDiv", description = "Cross-\nslice!" }
+"bn5:crosswrd" = { name = "CrosSwrd", description = "" }
 "bn5:crsshld1" = { name = "CrsShld1", description = "Attacks\neven when\nguarding!" }
 "bn5:crsshld2" = { name = "CrsShld2", description = "Attacks\neven when\nguarding!" }
 "bn5:crsshld3" = { name = "CrsShld3", description = "Attacks\neven when\nguarding!" }
@@ -100,6 +101,7 @@ language = "en"
 "bn5:darkthnd" = { name = "DarkThnd", description = "CORNER\nENMY BY\nTHUNDER" }
 "bn5:darktorn" = { name = "DarkTorn", description = "TORNADO\nEXPANDS\nWHEN HIT" }
 "bn5:darkwide" = { name = "DarkWide", description = "WIDE SHOT\nPIERCES\nTHE ENMY" }
+"bn5:dbldream" = { name = "DblDream", description = "" }
 "bn5:dblpoint" = { name = "DblPoint", description = "+20 for\nnext chip\nattack" }
 "bn5:deltaray" = { name = "DeltaRay", description = "A Button\npower up\nby 3 swrd" }
 "bn5:dethphnx" = { name = "DethPhnx", description = "Fire Atk!\nRecycle\nNavi too" }
@@ -287,6 +289,7 @@ language = "en"
 "bn5:snctuary" = { name = "Snctuary", description = "Chng all\nown panel\nto holy" }
 "bn5:sonicbom" = { name = "SonicBom", description = "" }
 "bn5:spreader" = { name = "Spreader", description = "Creates a\nlarge\nexplosion" }
+"bn5:sprsonic" = { name = "SprSonic", description = "" }
 "bn5:spshake1" = { name = "SpShake1", description = "Shakey\nshivers\n3sq ahead" }
 "bn5:spshake2" = { name = "SpShake2", description = "Shakey\nshivers\n3sq ahead" }
 "bn5:spshake3" = { name = "SpShake3", description = "Shakey\nshivers\n3sq ahead" }
