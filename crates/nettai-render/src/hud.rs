@@ -737,10 +737,10 @@ fn draw_chip_name(
 
 /// The pack's text lines (`Hud::texts`): "TIME UP!", then the seconds 1-10;
 /// and "COUNTER HIT!".
-pub(crate) const TEXT_TIME_UP: usize = 3;
+pub const TEXT_TIME_UP: usize = 3;
 /// The turn timer's start: it shows once it has counted.
 const TURN_TICKS: u16 = 0xA5 * 4 - 1;
-pub(crate) const TEXT_COUNTER_HIT: usize = 14;
+pub const TEXT_COUNTER_HIT: usize = 14;
 
 /// Draw the pack's text line `line` on the HUD layer: up to `width` glyphs
 /// from tile column `col`, on tile rows `row` and `row + 1`.

@@ -3,10 +3,12 @@ name = "nettai-frontend"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "Draws nettai battles: replays golden traces or plays live"
+description = "The desktop app that shows nettai battles drawn by nettai-render: replays golden traces, plays live or over the network, with sound"
 
 [dependencies]
 nettai-battle = { path = "../nettai-battle" }
+# The drawing: a battle into frames.
+nettai-render = { path = "../nettai-render" }
 # Trace playback, and the live driver's setup records.
 bn6-compat = { workspace = true, features = ["trace"] }
 nettai-assets = { path = "../nettai-assets" }
@@ -22,11 +24,9 @@ nettai-match = { path = "../nettai-match" }
 nettai-content-api = { path = "../nettai-content-api" }
 m4a.workspace = true
 minifb = "0.28"
-png = "0.17"
-# The text layer's vector font: shaping with kerning, outlines rasterized with
-# antialiasing (docs/design/text-rendering.md).
-swash = "0.2"
 
 [dev-dependencies]
+# Reading the headless test's PNGs back.
+png = "0.17"
 nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
 nettai-match = { path = "../nettai-match", features = ["testing"] }
