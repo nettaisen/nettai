@@ -49,3 +49,4 @@
 "bn5:anti-trap/trap" = { pool = "attack", index = 0x4D, scratch_position = true }
 "bn5:anti-trap/strike" = { pool = "effect", index = 0x2B, scratch_position = true }
 "bn6:panel-bursts" = { pool = "effect", index = 0x24, scratch_position = true }
+"bn5:crack" = { pool = "attack", index = 0x18 }
