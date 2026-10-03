@@ -473,9 +473,9 @@ are separate), so BN5's assets are named for BN5 alone. For the packs:
 - **Sound** is per pack too: BN5's songs and sound effects are BN5's numbers in BN5's m4a bank; a cue names
   `<game>:<song>` once qualified, and the audio loads each pack's bank. Two packs' banks never mix inside one
   m4a player (a song plays with its own pack's instruments).
-- **Formats:** `nettai-content/hud` and `nettai-content/custom` are BN6's layouts (multi-game.md §1.6). BN5's
-  HUD and custom screen differ (souls, team navis); bn5-extract writes what is shared in those formats and leaves
-  the rest to formats the BN5 ruleset will need, rather than stretch BN6's.
+- **Formats:** `nettai-content/hud` and `nettai-content/custom` were BN6's layouts (multi-game.md §1.6). BN5's
+  HUD and custom screen are written in them with optional fields where BN5 lays them out otherwise (§11: the
+  faces' own boxes, the window's layout, the buttons by name), which a BN6 pack writes none of.
 
 ## 10. Tracing BN5 (as built)
 
@@ -508,11 +508,26 @@ as bn6-extract takes BN6's) writes a pack whose manifest says `game = "bn5"`:
 
 - **What it has:** the 272 battle sprites (the same in both US ROMs), the field (11 panel types, BN6 13; one
   highlight block for both highlights, BN6 two), the 29 battle backgrounds with their scrolling and animations, the
-  m4a bank (308 songs, 105 samples), the 368 chips' pictures and icons, the HUD's 8x16 font, and the dialogue font
-  (442 glyphs; BN5's advance table is a word a glyph, BN6's a byte).
+  m4a bank (308 songs, 105 samples), the 368 chips' pictures and icons (and the invalid chip's, 0x185, past them),
+  the HUD's 8x16 font, and the dialogue font (442 glyphs; BN5's advance table is a word a glyph, BN6's a byte).
+- **The HUD** (bn5-extract's `hud.rs`): the layer from tile 0x180 and the gauge from 0x202 (BN6 0x1A0, 0x222), the
+  HP box, the gauge's frame and "L or R", the enemy digits, the chip icons' palette, the banners (49) with their
+  digits, "Cstmzing...", "PAUSE", the HUD's text lines, the warning marker, the chatbox (its 20 tiles from 0x2EB,
+  its maps and arrow) and the emotion window's faces: BN5's 16 pictures a version (0-4 MegaMan by emotion, the
+  order of BN6's table, 0x0801AFB4; 5-10 the version's souls; 11-15 dark MegaMan), 0x180 bytes each, a face of
+  MegaMan's or dark MegaMan's with its own 2x2 box (`mugshot_boxes`), a soul's beside the turns left (`counts`,
+  0x0801985C: 10 - n), 22 palettes (11 more for Chaos Unison); Team Colonel's from its own ROM (0x087417FC...).
+- **The custom screen** (`custom.rs`): BN6's window and patch list but for the special slot, a 3x2 button; the
+  window's parts at BN5's tile numbers (`layout`: the name 0x59, the picture 0x69, the code 0x93, the element
+  0x95, the digits 0x99, the slots 0x9F, the column's icons 0xE1 and cells 0x47, the turn limit 0x4B, the name
+  bar 0x1B6), a hidden slot filled with tile 2, the cursor over OK at (0x58, 0x70) and over the button at (0x58,
+  0x88) with their corners (0x08024714, 0x08024744); the 13 element icons in BN5's family order, put in the
+  engine's; the re-deal and scrap buttons; the soul button (`buttons`: its states' tiles 0x086FBB64, its picture
+  0x087322E8 with Soul Unison's and Chaos Unison's palettes, the souls' 2x2 icons 0x08749FB8, 14 with Chaos's, in
+  sprite palette 13, 0x0874AAB8); the emblems by version (13, with 8 palettes).
 - **Versions:** 12 chips (0x12D–0x136, 0x139, 0x13A: the version navi chips) are drawn differently by each
-  version's ROM; their pictures and icons are in the pack twice, `chip-12d-protoman` and `chip-12d-colonel`, with
-  their `version`.
+  version's ROM; their pictures and icons are in the pack twice, `CHIP-protoman` and `CHIP-colonel`, with their
+  `version`, and a console shows its own version's (the frontend's `Packs::chip_art`).
 - **Version songs:** Team Colonel has 11 songs of its own at Team ProtoMan's numbers (0x13C–0x142, 0x145, 0x146,
   0x170, 0x171: its navi chips' sounds). They are in the pack beside Team ProtoMan's, each a song file named with
   its version (`sound-13c-protoman`, `sound-13c-colonel`, with `version` in its header and `base_version =
@@ -524,17 +539,18 @@ as bn6-extract takes BN6's) writes a pack whose manifest says `game = "bn5"`:
 - **Left out, for now:**
   - The Japanese ROMs' one different sprite (14-17, which has text on it): the US release localized it rather than
     cut it, so the pack keeps the US's, as BN6's does.
-  - BN5's HUD and custom-screen layouts (§9).
   - **Languages** (BN6's shape, text-rendering.md §10): with a BN5 content root, its strings go in
     `content/bn5/locales/en.toml` (from the US ROMs) and `ja.toml` (from the Japanese ROMs), keyed by definition
     key; and bn5-extract writes the Japanese ROMs' lettering beside the US's as nettai-assets' `HudLettering` and
     `CustomLettering` (the fonts in the Japanese encoding, the HUD's lines, the banners and pictures with words in
-    them), as bn6-extract's `lettering` does. Neither exists yet: the pack is the US ROMs' lettering alone.
+    them), as bn6-extract's `lettering` does. The strings exist; the lettering doesn't yet: the pack is the US
+    ROMs' lettering alone, so a BN5 console in Japanese (`--lang ja --text original`) draws the Japanese names in
+    the US font (the static audit says so, not counted).
 - **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until a BN5 content
   root names them in its compat, as BN6's does.
 - **Shared decoding:** the sprite archive and GFX-animation decoders are BN6's format and code; bn5-extract has its
   own copy, which belongs in one shared decoder with bn6-extract's when that is next reworked.
-- nettai-content's HUD reader now accepts a pack without the count box (BN5 has none).
+- nettai-content's HUD reader accepts a pack without the count box (`no_count_box`: BN5 has none).
 
 ## 12. Reproducing
 

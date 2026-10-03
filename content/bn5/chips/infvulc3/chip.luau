@@ -1,6 +1,9 @@
 --!strict
--- InfVulc3 (BN5 chip 0x145): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- InfVulc3 (BN5 chip 0x145): the Program Advance of three Vulcan3s with consecutive codes: action 0x19 with subtype
+-- 6, the Vulcans' action with the InfVulcs' gun firing 28 of their bullets (objects/vulcan).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local vulcan = require("../../objects/vulcan/vulcan")
 
 return define.chip {
     id = "bn5:infvulc3",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
+    action = vulcan.infinite(28),
 }
