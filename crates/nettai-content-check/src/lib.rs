@@ -16,6 +16,9 @@ use std::time::Duration;
 /// A type error, as `path:line:col: message`.
 pub type Problem = String;
 
+/// The folder of behavior every game's folder may require (content/common).
+pub const COMMON: &str = "common";
+
 /// A checker loaded with a pack's API definitions.
 pub struct PackChecker {
     checker: luau_analyze::Checker,
@@ -67,13 +70,22 @@ pub fn modules(dir: &Path) -> std::io::Result<Vec<(String, String)>> {
 }
 
 /// The definitions a root's modules check against: the engine's (every
-/// `*.d.luau` of content/nettai, the sibling `nettai` of `dir`), then the
+/// `*.d.luau` of content/nettai, the sibling `nettai` of `dir`), the shared
+/// folder's (content/common's, the sibling `common` of `dir`, when there is
+/// one: the types of the modules every game's folder requires), then the
 /// root's own (its `*.d.luau`: BN6's shared types, `types.d.luau`), each in
 /// name order.
 pub fn definitions(dir: &Path) -> Result<String, String> {
-    let engine = dir.parent().unwrap_or(Path::new(".")).join("nettai");
+    let parent = dir.parent().unwrap_or(Path::new("."));
+    let engine = parent.join("nettai");
+    let common = parent.join(COMMON);
+    let mut folders = vec![engine.as_path()];
+    if common.is_dir() && common.file_name() != dir.file_name() {
+        folders.push(common.as_path());
+    }
+    folders.push(dir);
     let mut defs = String::new();
-    for d in [engine.as_path(), dir] {
+    for d in folders {
         let mut files: Vec<_> = std::fs::read_dir(d)
             .map_err(|e| format!("{}: {e}", d.display()))?
             .flatten()
