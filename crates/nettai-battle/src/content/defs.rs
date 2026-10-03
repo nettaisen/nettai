@@ -219,8 +219,9 @@ pub struct SystemDef {
     hooks: Vec<Option<FnId>>,
     /// Its own actions, which reach its state.
     pub actions: Vec<ActionHandle>,
-    /// Its custom-screen buttons.
+    /// Its custom-screen buttons and windows.
     pub buttons: Vec<ButtonHandle>,
+    pub windows: Vec<WindowHandle>,
 }
 
 impl SystemDef {
@@ -250,7 +251,22 @@ pub struct ButtonDef {
     pub shown: FnId,
     pub state: Option<FnId>,
     pub pressed: FnId,
+    pub taken_back: Option<FnId>,
 }
+
+/// A custom-screen window of a system's (docs/design/rules-in-luau.md
+/// §4.4): its update, run as its system's each tick it is up.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct WindowDef {
+    pub system: SystemHandle,
+    /// Its name in the system's `windows` (what the frontend draws it by).
+    pub name: String,
+    pub update: FnId,
+}
+
+/// A window, by its place in [`Defs::windows`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct WindowHandle(pub u16);
 
 /// A button, by its place in [`Defs::buttons`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -431,8 +447,9 @@ pub struct Defs {
     pub roles: Vec<Roles>,
     /// The systems and rulesets (docs/design/rules-in-luau.md), by handle.
     pub systems: Vec<SystemDef>,
-    /// The systems' custom-screen buttons.
+    /// The systems' custom-screen buttons and windows.
     pub buttons: Vec<ButtonDef>,
+    pub windows: Vec<WindowDef>,
     pub rulesets: Vec<RulesetDef>,
     /// Each action's system, if it is one's, by action handle.
     action_owner: Vec<Option<SystemHandle>>,
@@ -467,6 +484,10 @@ impl Defs {
 
     pub fn button(&self, h: ButtonHandle) -> &ButtonDef {
         &self.buttons[h.0 as usize]
+    }
+
+    pub fn window(&self, h: WindowHandle) -> &WindowDef {
+        &self.windows[h.0 as usize]
     }
 
     /// The system an action is one of, if any (its state is that system's).
@@ -1601,12 +1622,13 @@ impl Defs {
         // The systems and the rulesets.
         let mut systems = Vec::new();
         let mut buttons: Vec<ButtonDef> = Vec::new();
+        let mut windows: Vec<WindowDef> = Vec::new();
         for d in definitions.of(Registry::System) {
             let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks", "custom", "buttons", "actions"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks, custom, buttons, actions)")));
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks", "custom", "buttons", "windows", "actions"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks, custom, buttons, windows, actions)")));
                     }
                 }
             }
@@ -1681,8 +1703,8 @@ impl Defs {
                         let Data::Map(fields) = spec else { return Err(at("a table of its place and functions")) };
                         for (f, _) in fields {
                             let f = f.to_string();
-                            if !["slot", "cells", "uses", "right", "left", "shown", "state", "pressed"].contains(&f.as_str()) {
-                                return Err(at(&format!("`{f}` is no field of a button (slot, cells, uses, right, left, shown, state, pressed)")));
+                            if !["slot", "cells", "uses", "right", "left", "shown", "state", "pressed", "taken_back"].contains(&f.as_str()) {
+                                return Err(at(&format!("`{f}` is no field of a button (slot, cells, uses, right, left, shown, state, pressed, taken_back)")));
                             }
                         }
                         let byte = |f: &str| -> Result<Option<u8>, ContentError> {
@@ -1701,6 +1723,7 @@ impl Defs {
                         let shown = func("shown", true)?.expect("needed");
                         let state = func("state", false)?;
                         let pressed = func("pressed", true)?.expect("needed");
+                        let taken_back = func("taken_back", false)?;
                         let slot = byte("slot")?.ok_or_else(|| at("`slot` is missing"))?;
                         let cells = byte("cells")?.unwrap_or(1);
                         if !(1..=2).contains(&cells) {
@@ -1708,10 +1731,33 @@ impl Defs {
                         }
                         let (uses, right, left) = (byte("uses")?.unwrap_or(0), byte("right")?, byte("left")?);
                         own_buttons.push(ButtonHandle((buttons.len()) as u16));
-                        buttons.push(ButtonDef { system, name: name.clone(), slot, cells, uses, right, left, shown, state, pressed });
+                        buttons.push(ButtonDef { system, name: name.clone(), slot, cells, uses, right, left, shown, state, pressed, taken_back });
                     }
                 }
                 _ => return Err(what("`buttons` is a table of buttons by name")),
+            }
+            // Its custom-screen windows, by name.
+            let mut own_windows = Vec::new();
+            match d.spec.field("windows") {
+                Data::Nil => {}
+                Data::Map(entries) => {
+                    for (k, spec) in entries {
+                        let name = k.to_string();
+                        let Data::Map(fields) = spec else {
+                            return Err(what(&format!("window `{name}`: a table with its `update`")));
+                        };
+                        if let Some((f, _)) = fields.iter().find(|(f, _)| f.to_string() != "update") {
+                            return Err(what(&format!("window `{name}`: `{f}` is no field of a window (update)")));
+                        }
+                        if !matches!(spec.field("update"), Data::Function) {
+                            return Err(what(&format!("window `{name}`: `update` is a function")));
+                        }
+                        let update = functions.id(FnSource::slot(Registry::System, &d.key, &format!("windows.{name}.update")));
+                        own_windows.push(WindowHandle(windows.len() as u16));
+                        windows.push(WindowDef { system, name, update });
+                    }
+                }
+                _ => return Err(what("`windows` is a table of windows by name")),
             }
             systems.push(SystemDef {
                 key: d.key.clone(),
@@ -1720,6 +1766,7 @@ impl Defs {
                 hooks,
                 actions: system_actions,
                 buttons: own_buttons,
+                windows: own_windows,
             });
         }
         // Each action's system, if it is one's.
@@ -1864,6 +1911,7 @@ impl Defs {
             roles,
             systems,
             buttons,
+            windows,
             rulesets,
             action_owner,
             change_actions,

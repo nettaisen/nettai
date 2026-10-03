@@ -268,6 +268,9 @@ pub struct Side {
     /// slides out (None: no chips picked).
     pub built: Option<(Option<ChipHand>, TransformRequest)>,
     pub sent: Option<Sent>,
+    /// The emotion the screen reads of its navi (its context's), which its
+    /// systems' hooks read too (`custom.player`), set while one runs.
+    pub emotion: Emotion,
 }
 
 impl Side {
@@ -283,6 +286,7 @@ impl Side {
             in_custom: false,
             built: None,
             sent: None,
+            emotion: Emotion::Normal,
         }
     }
 
@@ -345,6 +349,18 @@ pub trait Extras {
     fn button_state(&mut self, screen: &Screen, button: crate::content::ButtonHandle) -> Option<SlotState>;
     /// A button's `pressed` (A on it), which may change the screen.
     fn button_pressed(&mut self, screen: &mut Screen, folder: &mut BattleFolder, button: crate::content::ButtonHandle);
+    /// A button's `taken_back` (B took its pick back), if it has one.
+    fn button_taken_back(&mut self, screen: &mut Screen, button: crate::content::ButtonHandle);
+    /// `custom.open(side)`: the screen opens.
+    fn opened(&mut self, screen: &mut Screen);
+    /// `custom.confirmed(side)`: OK built the hand.
+    fn confirmed(&mut self, screen: &mut Screen, folder: &mut BattleFolder);
+    /// `custom.chip_picked(side, chip)` and `custom.chip_taken_back(side,
+    /// chip)`: a chip of the hand picked, or its pick taken back.
+    fn chip_picked(&mut self, screen: &mut Screen, folder: &mut BattleFolder, chip: ChipHandle);
+    fn chip_taken_back(&mut self, screen: &mut Screen, chip: ChipHandle);
+    /// A window's `update` (a tick of it): whether it stays up.
+    fn window_update(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, window: crate::content::WindowHandle) -> bool;
 }
 
 /// No systems: every question unanswered.
@@ -364,6 +380,20 @@ impl Extras for NoExtras {
     }
 
     fn button_pressed(&mut self, _: &mut Screen, _: &mut BattleFolder, _: crate::content::ButtonHandle) {}
+
+    fn button_taken_back(&mut self, _: &mut Screen, _: crate::content::ButtonHandle) {}
+
+    fn opened(&mut self, _: &mut Screen) {}
+
+    fn confirmed(&mut self, _: &mut Screen, _: &mut BattleFolder) {}
+
+    fn chip_picked(&mut self, _: &mut Screen, _: &mut BattleFolder, _: ChipHandle) {}
+
+    fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle) {}
+
+    fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: crate::content::WindowHandle) -> bool {
+        false
+    }
 }
 
 /// Ticks a result takes to send: the link carries one of its 50 words a
@@ -395,6 +425,7 @@ impl Side {
 
     /// [`Side::open`], asking the side's systems.
     pub fn open_with(&mut self, ctx: &Context, console: &mut Console, extras: &mut dyn Extras) {
+        self.emotion = ctx.emotion;
         self.in_custom = true;
         self.built = None;
         self.sent = None;
@@ -434,10 +465,11 @@ impl Side {
         damage: impl Fn(ChipHandle) -> u16,
         extras: &mut dyn Extras,
     ) -> Option<Request> {
+        self.emotion = ctx.emotion;
         let (Some(mut screen), Some(mut folder)) = (self.screen, self.folder) else { return None };
         let request = screen.tick(&self.joypad, &self.view(ctx, folder.regular_pending), &mut folder, console, extras);
         match request {
-            Some(Request::Confirm) => self.confirm(ctx, &mut screen, &mut folder, console, damage),
+            Some(Request::Confirm) => self.confirm(ctx, &mut screen, &mut folder, console, damage, extras),
             Some(Request::Send) => {
                 // sub_8026DC4's first tick: sub_802A4FC counts the classes,
                 // sub_800B3A2 sends the hand, the navi's stats as they are
@@ -472,6 +504,7 @@ impl Side {
         folder: &mut BattleFolder,
         console: &mut Console,
         damage: impl Fn(ChipHandle) -> u16,
+        extras: &mut dyn Extras,
     ) {
         let view = self.view(ctx, folder.regular_pending);
         let picks: Vec<Pick> = screen
@@ -502,10 +535,12 @@ impl Side {
         let (navi, form) = (ctx.stats.navi, ctx.stats.form);
         let kind = ctx.library.form_kind(form);
         let mut transform = TransformRequest::NONE;
-        if screen.slots[SPECIAL_SLOT as usize].kind == SlotKind::BeastOut && screen.selection().contains(&SPECIAL_SLOT) {
-            transform.form = self.unlocks.beast_form(ctx.library, navi, form, ctx.emotion == Emotion::Tired);
-            self.round.beast_out_used = true;
+        // The form a system's pick holds (BN6's Beast Out), and what its
+        // systems note of the round (BN6's: Beast Out used).
+        if screen.form.is_some() {
+            transform.form = screen.form;
         }
+        extras.confirmed(screen, folder);
         if screen.slots[SPECIAL_SLOT as usize].kind == SlotKind::Soul && screen.selection().contains(&SPECIAL_SLOT) {
             // 0x08024FF6: BN5's soul, for 3 turns and the NaviCust's bonus
             // (at most 9; under 0, 1), Chaos Unison for 1; the soul is used
@@ -557,10 +592,16 @@ impl Battle {
     /// What side `side`'s screen reads of the battle (and its game data,
     /// the battle's content).
     fn custom_context<'a>(&self, side: u8, library: &'a dyn Library) -> Context<'a> {
+        Context { emotion: crate::kinds::player::emotion(self, side), ..self.custom_context_without_emotion(side, library) }
+    }
+
+    /// [`Battle::custom_context`] with the emotion left normal, for a
+    /// caller that has the screen's own.
+    fn custom_context_without_emotion<'a>(&self, side: u8, library: &'a dyn Library) -> Context<'a> {
         Context {
             library,
             stats: self.stats[side as usize],
-            emotion: crate::kinds::player::emotion(self, side),
+            emotion: Emotion::Normal,
             turn: self.round.turn,
             per_player_gauges: self.round.flags & battle_flags::PER_PLAYER_GAUGES != 0,
             random_battle: self.setup.settings.effects & effects::RANDOM != 0,
@@ -587,7 +628,7 @@ impl Battle {
             let ctx = self.custom_context(side, &library);
             let mut s = self.custom.sides[side as usize].clone();
             let mut console = self.consoles[side as usize];
-            s.open_with(&ctx, &mut console, &mut SideExtras { b: self, side });
+            s.open_with(&ctx, &mut console, &mut SideExtras { b: self, side, emotion: ctx.emotion });
             self.custom.sides[side as usize] = s;
             self.consoles[side as usize] = console;
         }
@@ -631,7 +672,7 @@ impl Battle {
                 Some(&(_, d)) => d,
                 None => content.chip(id).damage,
             };
-            let request = s.tick_with(&ctx, &mut console, damage, &mut SideExtras { b: self, side });
+            let request = s.tick_with(&ctx, &mut console, damage, &mut SideExtras { b: self, side, emotion: ctx.emotion });
             // The screen's sounds, which only its player hears.
             if let Some(screen) = &s.screen {
                 for sound in screen.look.drawn.sounds() {
@@ -676,8 +717,8 @@ impl Battle {
     /// for a screen run outside the battle's own loop (bn6-compat's check
     /// of the traces' screens, which sets the side's stats and the turn
     /// first).
-    pub fn custom_extras(&mut self, side: u8) -> impl Extras + '_ {
-        SideExtras { b: self, side }
+    pub fn custom_extras(&mut self, side: u8, emotion: Emotion) -> impl Extras + '_ {
+        SideExtras { b: self, side, emotion }
     }
 }
 
@@ -685,25 +726,49 @@ impl Battle {
 struct SideExtras<'b> {
     b: &'b mut Battle,
     side: u8,
+    /// The emotion the screen reads (its context's).
+    emotion: Emotion,
 }
 
 impl SideExtras<'_> {
     /// Run `f` with the side's screen (and folder) back in the battle, for
     /// `custom.*` to reach, and take them back after.
     fn with_screen<R>(&mut self, screen: &mut Screen, folder: Option<&mut BattleFolder>, f: impl FnOnce(&mut Battle) -> R) -> R {
+        self.with_screen_console(screen, folder, None, f)
+    }
+
+    /// [`SideExtras::with_screen`], with the side's console (its camera)
+    /// back in the battle too.
+    fn with_screen_console<R>(
+        &mut self,
+        screen: &mut Screen,
+        folder: Option<&mut BattleFolder>,
+        console: Option<&mut Console>,
+        f: impl FnOnce(&mut Battle) -> R,
+    ) -> R {
         let side = self.side as usize & 1;
-        let (old_screen, old_folder) = (self.b.custom.sides[side].screen, self.b.custom.sides[side].folder);
+        let (old_screen, old_folder, old_console, old_emotion) =
+            (self.b.custom.sides[side].screen, self.b.custom.sides[side].folder, self.b.consoles[side], self.b.custom.sides[side].emotion);
         self.b.custom.sides[side].screen = Some(*screen);
+        self.b.custom.sides[side].emotion = self.emotion;
         if let Some(f) = &folder {
             self.b.custom.sides[side].folder = Some(**f);
+        }
+        if let Some(c) = &console {
+            self.b.consoles[side] = **c;
         }
         let r = f(self.b);
         *screen = self.b.custom.sides[side].screen.expect("the screen stays");
         if let Some(folder) = folder {
             *folder = self.b.custom.sides[side].folder.expect("the folder stays");
         }
+        if let Some(console) = console {
+            *console = self.b.consoles[side];
+        }
         self.b.custom.sides[side].screen = old_screen;
         self.b.custom.sides[side].folder = old_folder;
+        self.b.consoles[side] = old_console;
+        self.b.custom.sides[side].emotion = old_emotion;
         r
     }
 }
@@ -742,6 +807,69 @@ impl Extras for SideExtras<'_> {
     fn button_pressed(&mut self, screen: &mut Screen, folder: &mut BattleFolder, button: crate::content::ButtonHandle) {
         let side = self.side;
         self.with_screen(screen, Some(folder), |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonPressed));
+    }
+
+    fn button_taken_back(&mut self, screen: &mut Screen, button: crate::content::ButtonHandle) {
+        if self.b.content.defs.button(button).taken_back.is_none() {
+            return;
+        }
+        let side = self.side;
+        self.with_screen(screen, None, |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonTakenBack));
+    }
+
+    fn opened(&mut self, screen: &mut Screen) {
+        let side = self.side;
+        self.with_screen(screen, None, |b| b.systems_call_custom(side, nettai_content_api::SystemHook::CustomOpen));
+    }
+
+    fn confirmed(&mut self, screen: &mut Screen, folder: &mut BattleFolder) {
+        let side = self.side;
+        self.with_screen(screen, Some(folder), |b| b.systems_call_custom(side, nettai_content_api::SystemHook::CustomConfirmed));
+    }
+
+    fn chip_picked(&mut self, screen: &mut Screen, folder: &mut BattleFolder, chip: ChipHandle) {
+        let side = self.side;
+        self.with_screen(screen, Some(folder), |b| b.systems_call_custom_chip(side, nettai_content_api::SystemHook::CustomChipPicked, chip));
+    }
+
+    fn chip_taken_back(&mut self, screen: &mut Screen, chip: ChipHandle) {
+        let side = self.side;
+        self.with_screen(screen, None, |b| b.systems_call_custom_chip(side, nettai_content_api::SystemHook::CustomChipTakenBack, chip));
+    }
+
+    fn window_update(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, window: crate::content::WindowHandle) -> bool {
+        let side = self.side;
+        self.with_screen_console(screen, Some(folder), Some(console), |b| b.call_window(side, window))
+            == nettai_content_api::Value::Bool(true)
+    }
+}
+
+impl Battle {
+    /// Run `f` on side `side`'s custom screen as a `custom.*` call does from
+    /// a custom hook: the screen and the folder out of the side (back after),
+    /// the side's view as the screen reads it, its console, and the side's
+    /// extras for what the screen asks in turn. None when no screen is open.
+    pub(crate) fn with_custom_screen<R>(
+        &mut self,
+        side: u8,
+        f: impl FnOnce(&mut Screen, &PlayerView, &mut BattleFolder, &mut Console, &mut dyn Extras) -> R,
+    ) -> Option<R> {
+        let i = side as usize & 1;
+        let (Some(mut screen), Some(mut folder)) = (self.custom.sides[i].screen, self.custom.sides[i].folder) else { return None };
+        let copy = self.custom.sides[i].clone();
+        let content = self.content.clone();
+        let library = library::GameLibrary { content: &content, game: self.games.sides[i], ruleset: self.games.rulesets[i] };
+        // (The emotion the screen reads, its own: a battle that checks the
+        // traces' screens alone has no navi to ask.)
+        let emotion = copy.emotion;
+        let ctx = Context { emotion, ..self.custom_context_without_emotion(side, &library) };
+        let view = copy.view(&ctx, folder.regular_pending);
+        let mut console = self.consoles[i];
+        let r = f(&mut screen, &view, &mut folder, &mut console, &mut SideExtras { b: self, side, emotion });
+        self.custom.sides[i].screen = Some(screen);
+        self.custom.sides[i].folder = Some(folder);
+        self.consoles[i] = console;
+        Some(r)
     }
 }
 
