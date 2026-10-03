@@ -88,6 +88,8 @@ fn timer_index(t: StatusTimer) -> usize {
 
 fn request_bit(f: RequestFlag) -> u32 {
     match f {
+        // (Not an action request: `request` and `set_request` read flag2.)
+        RequestFlag::Slide => 0,
         RequestFlag::Buster => request::BUSTER,
         RequestFlag::ChargedShot => request::CHARGED_SHOT,
         RequestFlag::Chip => request::CHIP,
@@ -115,6 +117,9 @@ fn request_bit(f: RequestFlag) -> u32 {
         RequestFlag::WeaknessHit => request::WEAKNESS_HIT,
     }
 }
+
+/// The collision's flag2 bit of the slide request (`RequestFlag::Slide`).
+const SLIDE_REQUEST: u32 = 0x10;
 
 fn navi_state_bit(f: NaviState) -> u32 {
     match f {
@@ -1282,6 +1287,8 @@ impl CoreApi for Battle {
             ActorField::SpecialSource => i(at.special_source as i64),
             ActorField::AttackKind => i(at.kind as i64),
             ActorField::BeastLockon => i(at.beast_lockon as i64),
+            ActorField::WrapperFresh => Value::Bool(at.wrapper_fresh),
+            ActorField::FaceTarget => at.face_target.map_or(Value::Nil, Value::Object),
             ActorField::RushLockon => at.rush_lockon.map_or(Value::Nil, |h| Value::Def(Registry::Lockon, h.0)),
             ActorField::AttackChip => at.chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ActorField::Marker => i(at.marker as i64),
@@ -1362,6 +1369,7 @@ impl CoreApi for Battle {
             (ActorField::Extra, FieldValue::U16(x)) => at.extra = x,
             (ActorField::SpecialSource, FieldValue::U8(x)) => at.special_source = x,
             (ActorField::BeastLockon, FieldValue::U8(x)) => at.beast_lockon = x,
+            (ActorField::WrapperFresh, FieldValue::Bool(x)) => at.wrapper_fresh = x,
             (ActorField::RushLockon, FieldValue::Ref(_)) => at.rush_lockon = rush_lockon,
             (ActorField::AttackChip, FieldValue::Ref(_)) => at.chip = attack_chip,
             (ActorField::Marker, FieldValue::U32(x)) => at.marker = x,
@@ -1384,10 +1392,18 @@ impl CoreApi for Battle {
     }
 
     fn request(&self, o: ObjectRef, f: RequestFlag) -> ApiResult<bool> {
+        if f == RequestFlag::Slide {
+            return Ok(self.collision_of(o)?.f2 & SLIDE_REQUEST != 0);
+        }
         Ok(self.actor_of(o)?.requests & request_bit(f) != 0)
     }
 
     fn set_request(&mut self, o: ObjectRef, f: RequestFlag, on: bool) -> ApiResult<()> {
+        if f == RequestFlag::Slide {
+            let c = self.collision_of_mut(o)?;
+            c.f2 = if on { c.f2 | SLIDE_REQUEST } else { c.f2 & !SLIDE_REQUEST };
+            return Ok(());
+        }
         let a = self.actor_of_mut(o)?;
         let bit = request_bit(f);
         a.requests = if on { a.requests | bit } else { a.requests & !bit };
@@ -1622,7 +1638,45 @@ impl CoreApi for Battle {
     }
 
     fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: Option<nettai_content_api::LockonHandle>) -> PanelPos {
-        kinds::player::actions::beast_rush::lockon_panel(self, o, target, mode)
+        kinds::player::actions::lockon::lockon_panel(self, o, target, mode)
+    }
+
+    fn run_wrapped(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        let action = kinds::player::navi_action(self, o);
+        if !action.is_attack() {
+            return Err(ApiError::Other(format!("run_wrapped: the navi runs {action:?}, not an attack")));
+        }
+        kinds::player::actions::dispatch(self, o, action);
+        Ok(())
+    }
+
+    fn chain_next_chip(&mut self, o: ObjectRef) -> ApiResult<bool> {
+        self.actor_of(o)?;
+        Ok(kinds::player::chip_use::chain_next_chip(self, o))
+    }
+
+    fn panel_trail(&mut self, o: ObjectRef, from: PanelPos) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::actions::movement::panel_trail(self, o, from);
+        Ok(())
+    }
+
+    fn freeze_lockon_marker(&mut self, marker: ObjectRef, on: bool) -> ApiResult<()> {
+        if !self.objects.is_allocated(marker) || self.content.defs.engine_kind(self.objects.get(marker).kind) != Some(kinds::EngineKind::LockonMarker) {
+            return Err(ApiError::Other("freeze_lockon_marker: not a lock-on marker".into()));
+        }
+        if on { kinds::lockon_marker::freeze(self, marker) } else { kinds::lockon_marker::unfreeze(self, marker) }
+        Ok(())
+    }
+
+    fn face_toward(&mut self, o: ObjectRef, target: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        if !self.objects.is_allocated(target) {
+            return Err(ApiError::Other("face_toward: the target is gone".into()));
+        }
+        kinds::player::face_toward(self, o, target);
+        Ok(())
     }
 
     fn can_move(&self, o: ObjectRef) -> bool {

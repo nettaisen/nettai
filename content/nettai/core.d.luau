@@ -136,6 +136,8 @@ export type Request =
     | "cross_special"
     | "volley"
     | "weakness_hit"
+    -- The slide request (the collision's flag2 0x10).
+    | "slide"
 -- A navi's state bits.
 export type NaviStateFlag =
     "controllable"
@@ -388,8 +390,15 @@ declare class Object
     special_source: number
     -- Which set_attack kind started it (read-only).
     attack_kind: number
-    -- 1 while the action runs inside a form's action wrapper.
+    -- 1 while the action runs inside the game's wrapper (the role
+    -- `actions.beast_rush`: BN6's Beast Out rush).
     beast_lockon: number
+    -- The wrapper's state starts over (`sub_801011A` sets it with the
+    -- attack's links); the wrapper clears it once it has.
+    wrapper_fresh: boolean
+    -- What a step or the wrapper turns to face in the panel patterns 0x23,
+    -- 0x31 and 0x33 (read-only; only the unused `sub_80116F6` sets one).
+    face_target: Object?
     -- The lock-on mode the attack's own action asks the Beast Out rush for
     -- (the charged sword's, by its slash); nil: the chip's.
     rush_lockon: Lockon?
@@ -650,6 +659,23 @@ declare class Object
     function lockon_panel(self, x: number, y: number, mode: Lockon?): (number, number)
     -- `object_canMove`: not immobilized, sliding or moving.
     function can_move(self): boolean
+    -- The wrapper's (the role `actions.beast_rush`): run the action the
+    -- navi runs (`sub_801B9E6`'s attack).
+    function run_wrapped(self): ()
+    -- `sub_800FC30`: start the next chip in the hand inside the wrapper
+    -- (prepared, its action started, `beast_lockon` 1), unless it has the
+    -- `no_chain` trait, is a dimming chip, or the hand is empty. Whether it
+    -- did.
+    function chain_next_chip(self): boolean
+    -- `sub_8013CC4`: the NaviCust panel-trail bugs on the panel (x, y) the
+    -- navi leaves.
+    function panel_trail(self, x: number, y: number): ()
+    -- On a lock-on marker (a navi's `lockon_marker`): `sub_80E1654` (true:
+    -- it holds where it is, looking locked on) and `sub_80E1662` (false: it
+    -- follows its target again).
+    function freeze_lockon_marker(self, on: boolean): ()
+    -- `sub_800F2FC`: turn to face `target`'s column.
+    function face_toward(self, target: Object): ()
     -- `sub_80DBB64`: put a junk look (`obstacle.junk_look`) on the sprite:
     -- the sprite, a shadow if the look has one, its animation and palette,
     -- flipped by the object's side unless the look keeps its own; false
@@ -2014,6 +2040,7 @@ export type RolesSpec = {
         beast_claw: Action?,
         dust_beast_scatter: Action?,
         charge_tackle: Action?,
+        beast_rush: Action?,
     }?,
     kinds: {
         absorbed_obstacle: Kind?,

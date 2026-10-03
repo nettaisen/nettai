@@ -7,6 +7,7 @@
 
 local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local beast_claw = require("../../navis/megaman/weapons/beast-claw/weapon")
+local beast_rush = require("../../rules/beast/rush")
 local dust_beast_scatter = require("../../navis/megaman/forms/dustcross-beast/scatter")
 local encased_bubble = require("../../objects/encased-bubble/bubble")
 local falling_rock = require("../../objects/falling-rock/falling_rock")
@@ -32,6 +33,7 @@ return define.roles {
         cross_death = slash_beast_lunge.action,
         charged_sword = slash_charge.action,
         beast_claw = beast_claw.action,
+        beast_rush = beast_rush.action,
         dust_beast_scatter = dust_beast_scatter.action,
     },
     kinds = {

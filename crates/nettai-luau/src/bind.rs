@@ -658,6 +658,20 @@ impl UserData for Object {
             Ok((p.x, p.y))
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
+        // The wrapper's (the role `actions.beast_rush`).
+        methods.add_method("run_wrapped", |_, this, ()| with(|api, _| api.run_wrapped(this.0).map_err(api_error)));
+        methods.add_method("chain_next_chip", |_, this, ()| with(|api, _| api.chain_next_chip(this.0).map_err(api_error)));
+        methods.add_method("panel_trail", |_, this, (x, y): (LuaValue, LuaValue)| {
+            let p = panel(x, y)?;
+            with(|api, _| api.panel_trail(this.0, p).map_err(api_error))
+        });
+        methods.add_method("freeze_lockon_marker", |_, this, on: bool| {
+            with(|api, _| api.freeze_lockon_marker(this.0, on).map_err(api_error))
+        });
+        methods.add_method("face_toward", |_, this, target: LuaValue| {
+            let target = object_arg(&target, "face_toward")?.ok_or_else(|| mlua::Error::runtime("face_toward: expected an Object"))?;
+            with(|api, _| api.face_toward(this.0, target).map_err(api_error))
+        });
         methods.add_method("wear_navi_image", |_, this, (user, megaman): (mlua::UserDataRef<Object>, LuaValue)| {
             let megaman = nettai_content_api::NaviHandle(bound(|b| def_arg(b, &megaman, Registry::Navi, "wear_navi_image"))?);
             with(|api, _| api.wear_navi_image(this.0, user.0, megaman).map_err(api_error))

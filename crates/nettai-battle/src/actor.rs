@@ -178,9 +178,10 @@ pub struct AttackVars {
     /// The effect the instant chips' action runs (`off_80EC3F0[subtype]`):
     /// the chip's, or a weapon's that names one (TenguCross's wind).
     pub instant: Option<crate::kinds::player::actions::instant::Effect>,
-    /// +0x1E..+0x27: the Beast Out rush around the action, when
-    /// `beast_lockon` is 1.
-    pub rush: crate::kinds::player::actions::beast_rush::Vars,
+    /// The wrapper's state starts over: `sub_801011A` clears its bytes
+    /// (+0x1E..+0x27, which the game's wrapper, BN6's Beast Out rush, now
+    /// keeps in its system's state); the wrapper clears this once it has.
+    pub wrapper_fresh: bool,
 }
 
 /// Joypad state as an actor sees it.

@@ -264,8 +264,16 @@ named_fields! {
         SpecialSource = "special_source", U8, rw;
         /// Which `set_attack` kind started the action (0..5).
         AttackKind = "attack_kind", U8, ro;
-        /// 1 while the action runs inside a form's action wrapper.
+        /// 1 while the action runs inside the game's wrapper (`sub_801B9E6`
+        /// runs the role `actions.beast_rush` instead: BN6's Beast Out rush).
         BeastLockon = "beast_lockon", U8, rw;
+        /// The wrapper's state starts over (`sub_801011A` clears it with the
+        /// attack's links); the wrapper clears it once it has.
+        WrapperFresh = "wrapper_fresh", Bool, rw;
+        /// +0x2C: an object a step or the wrapper turns to face in the panel
+        /// patterns 0x23, 0x31 and 0x33 (only the unused `sub_80116F6` sets
+        /// one).
+        FaceTarget = "face_target", Object, ro;
         /// The lock-on mode the attack's own action asks the Beast Out rush
         /// for (the charged sword's, by its slash); none: the chip's.
         RushLockon = "rush_lockon", Ref(Registry::Lockon, None), rw;
@@ -634,6 +642,9 @@ named_flags! {
         CrossSpecial = "cross_special",
         Volley = "volley",
         WeaknessHit = "weakness_hit",
+        /// The slide request (the collision's flag2 0x10, not an action
+        /// request).
+        Slide = "slide",
     }
 }
 
@@ -1529,6 +1540,21 @@ pub trait CoreApi {
     fn step_target(&self, o: ObjectRef, dir: u8) -> Option<PanelPos>;
     /// `sub_80116AE`: start a step toward `dir` from input.
     fn start_move(&mut self, o: ObjectRef, dir: u8);
+    /// `sub_801B9E6`'s attack, from inside the wrapper (the role
+    /// `actions.beast_rush`): run the action the navi runs.
+    fn run_wrapped(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_800FC30`: the next chip in the hand starts inside the wrapper
+    /// (prepared, its action started, `beast_lockon` 1): not one with the
+    /// `no_chain` trait, a dimming chip, or the empty hand. Whether it did.
+    fn chain_next_chip(&mut self, o: ObjectRef) -> ApiResult<bool>;
+    /// `sub_8013CC4`: the NaviCust panel-trail bugs on the panel the navi
+    /// leaves, `from`.
+    fn panel_trail(&mut self, o: ObjectRef, from: PanelPos) -> ApiResult<()>;
+    /// `sub_80E1654` (on) and `sub_80E1662` (off): the lock-on marker holds
+    /// where it is, looking locked on, or follows its target again.
+    fn freeze_lockon_marker(&mut self, marker: ObjectRef, on: bool) -> ApiResult<()>;
+    /// `sub_800F2FC`: turn to face `target`'s column.
+    fn face_toward(&mut self, o: ObjectRef, target: ObjectRef) -> ApiResult<()>;
     /// `ho_8026554`: the panel the navi would attack `target` from in
     /// Beast Out lock-on mode `mode` (its own panel for mode 0 or a
     /// target off the field; (0, 0x7F) when no panel fits).

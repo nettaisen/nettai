@@ -128,8 +128,15 @@ fn tail(b: &mut Battle, r: ObjectRef) {
 pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
     let action = navi_action(b, r);
     if action.is_attack() {
-        if ai(b, r).attack.beast_lockon == 1 {
-            return actions::beast_rush::update(b, r);
+        // The game's wrapper (BN6's Beast Out rush, `sub_80EAD9C`) runs
+        // instead, and runs the action when it chooses
+        // (`CoreApi::run_wrapped`).
+        // (A wrapper of a system a side's rules lack doesn't run.)
+        if ai(b, r).attack.beast_lockon == 1
+            && let Some(wrapper) = b.roles_for(r).try_action(crate::content::ActionRole::BeastRush)
+            && b.content.defs.action_owner(wrapper).is_none_or(|s| b.system_slot(b.objects.get(r).alliance, s).is_some())
+        {
+            return crate::behavior::run_action(b, wrapper, r);
         }
         return actions::dispatch(b, r, action);
     }
