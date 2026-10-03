@@ -33,12 +33,20 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance;
     b.systems_navi_intake(side, r);
     slide_triggers(b, r);
+    // (BN5's takes the hit's NaviCust bug before the HP bug drains: the
+    // navi's game's intake rules.)
+    let bugs_first = b.rules_for(r).intake.bugs_before_drain;
+    if bugs_first {
+        bug_navicust(b, r);
+    }
     hp_bug_drain(b, r);
     drop_cursor_trap(b, r);
     anti_damage_traps(b, r);
     bug_hp_level(b, r);
     bug_paralyze_blind(b, r);
-    bug_navicust(b, r);
+    if !bugs_first {
+        bug_navicust(b, r);
+    }
     hit_modifier_requests(b, r);
     counter_paralysis(b, r);
     navicust_hit_bug(b, r);
@@ -543,9 +551,26 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
     let (code, arg) = (bugs as u8, (bugs >> 8) as u8);
     let mut edited = false;
     let content = b.content.clone();
+    let flags = b.rules_for(r).intake.drain_bug_flags;
     let s = stats_mut(b, r);
     match code {
         0 => {}
+        // BN5's 0x0801103E: the drain bugs' argument by its flags; a level
+        // that wouldn't rise is left, with nothing reloaded.
+        0x18 | 0x19 if flags => {
+            let level = if code == 0x18 { &mut s.bugs.hp_drain } else { &mut s.bugs.custom_drain };
+            let n = arg & 0xF;
+            *level = if arg & 0x10 != 0 {
+                (*level + n).min(7)
+            } else if arg & 0x20 != 0 {
+                level.saturating_sub(n)
+            } else if n > *level {
+                n
+            } else {
+                return;
+            };
+            edited = true;
+        }
         0x18 => {
             s.bugs.hp_drain = (s.bugs.hp_drain as u32 + arg as u32).min(7) as u8;
             edited = true;

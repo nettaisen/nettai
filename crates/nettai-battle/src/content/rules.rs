@@ -163,6 +163,22 @@ pub enum PushReading {
     Bn5,
 }
 
+/// How a navi takes a hit's NaviCust bug where a game's differs from BN6's
+/// (`sub_801AC6C`, `sub_80139F6`; the default).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct IntakeRules {
+    /// The bug is taken before the HP bug drains (BN5's hit intake,
+    /// 0x080178EC, calls 0x0801103E before 0x0800DFEC); BN6's after, so a
+    /// drain bug's first drain comes a tick later.
+    pub bugs_before_drain: bool,
+    /// A drain bug's argument (codes 0x18 and 0x19) goes by its flags
+    /// (BN5's 0x0801103E): with bit 4 it adds its low four bits (to at most
+    /// 7), with bit 5 it subtracts them (to at least 0), else it raises the
+    /// level to them (no lower level changes, and nothing is reloaded).
+    /// BN6's adds the argument (to at most 7).
+    pub drain_bug_flags: bool,
+}
+
 /// Global rules: element weakness, collision types, panels, banners,
 /// statuses and the Beast Out lock-on.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -183,6 +199,9 @@ pub struct Rules {
     /// and ChargeMan's: the Fire chips' charge, a form's height); BN5's
     /// table (0x080EB1E8) has none of it (rule section `status`).
     pub form_tick: bool,
+    /// How a navi takes a hit's NaviCust bug (rule section `status`, the
+    /// navi's game's).
+    pub intake: IntakeRules,
     /// What the charge rules read for an empty hand's chip.
     pub empty_hand: EmptyHandChip,
     /// Ticks of recovery after a buster shot, by Rapid stat, then by open

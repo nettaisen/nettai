@@ -1562,6 +1562,7 @@ fn rules() -> Rules {
         // (The statuses are testdata/content/rules/status.luau's.)
         hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
         form_tick: true,
+        intake: Default::default(),
         empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         chaos_cycle: Vec::new(),
