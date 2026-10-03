@@ -725,21 +725,6 @@ export type RollingLogSpec = {
     log: RollingLog,
 }
 
--- What AirSpin sends from the panel ahead (chips/airspin): the whirlwind
--- top that rolls and spins there (its palette, its spins), or the seeking
--- whirlwind no chip sends.
-export type AirSpinSender = {
-    send: (user: Object, x: number, y: number, element: number, damage: number) -> Object?,
-    palette: number?,
-    spins: number?,
-}
-
--- AirSpin (chips/airspin, action 0x38).
-export type AirSpinSpec = {
-    id: string?,
-    whirlwind: AirSpinSender,
-}
-
 -- DolThdr (chips/dolthdr, action 0x3E): the thunder's ticks, and whether
 -- the navi holds the buster arm rather than the doll (no chip does).
 export type DollThunderSpec = {

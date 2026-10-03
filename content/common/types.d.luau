@@ -337,3 +337,53 @@ export type DarkBall = {
     slant: number,
     homing: DarkBallHoming,
 }
+
+-- What AirSpin sends from the panel ahead (@common/airspin/action): the
+-- whirlwind top that rolls and spins there (its palette, its spins), BN6's
+-- seeking whirlwind no chip sends, or BN5's AqWhirl whirlpool.
+export type AirSpinSender = {
+    send: (user: Object, x: number, y: number, element: number, damage: number) -> Object?,
+    palette: number?,
+    spins: number?,
+}
+
+-- AirSpin (@common/airspin/action: BN6's action 0x38, BN5's 0x47).
+export type AirSpinSpec = {
+    id: string?,
+    whirlwind: AirSpinSender,
+}
+
+-- A game's whirlwind top (@common/airspin/top): its kind's id, sprite,
+-- identity and HP; its collision (its body, what hits it); its gust (the
+-- effect, its palette offset, whether it faces its side's way, the hit's
+-- type and targets); the effects and sounds; and the games' differences:
+-- BN6's set-down check, wind hits' extra spins and removal by chips (the
+-- absorbed look), BN5's markers and spins counted on Timer 2.
+export type AirSpinTopLook = {
+    id: string,
+    sprite: SpriteAsset,
+    identity: Identity,
+    hp: number,
+    body: CollisionType,
+    hit_by: CollisionType,
+    gust: Effect,
+    gust_palette: number,
+    gust_side: boolean,
+    gust_self: CollisionType,
+    gust_target: CollisionType,
+    puff: Effect,
+    explosion: Effect,
+    sounds: { set_down: Sound, spin: Sound, hit_bomb: Sound },
+    set_down_check: boolean,
+    extra_spins: boolean,
+    absorbed: AbsorbedLook?,
+    marker: ((owner: Object, x: number, y: number, ticks: number, style: number) -> ())?,
+    spins_on_timer2: boolean,
+}
+
+-- A whirlwind top made for a game (@common/airspin/top).
+export type AirSpinTop = {
+    kind: Kind,
+    spawn: (owner: Object, x: number, y: number, element: number, palette: number, spins: number, damage: number) -> Object?,
+    sender: (palette: number, spins: number) -> AirSpinSender,
+}
