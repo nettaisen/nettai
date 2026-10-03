@@ -187,7 +187,7 @@ fn end_reaction(b: &mut Battle, r: ObjectRef) {
 /// overlay.
 fn reset_form_overlay(b: &mut Battle, r: ObjectRef) {
     if let Some(overlay) = b.objects.get(r).related[1] {
-        crate::kinds::form_overlay::restart(b, overlay);
+        super::restart_overlay(b, r, overlay);
     }
 }
 
