@@ -21,6 +21,7 @@
 "bn5:shot/bright" = 0x03
 "bn5:shot/air" = 0x04
 "bn5:shot/charged" = 0x06
+"bn5:shot/gigacan" = 0x0C
 
 # The barriers NaviStats +0x06 names as the one a navi enters with (0 none): FstBarr's (1), the Barrier chip's
 # (lib/barriers: BN6's rows, BN5's visual).

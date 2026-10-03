@@ -100,13 +100,32 @@ pub struct EffectsRules {
     /// longer.
     #[serde(default = "yes")]
     pub spark_steps_at_start: bool,
+    /// How an object's collision types are set again (`sub_801A082`).
+    #[serde(default)]
+    pub retype: RetypeRule,
 }
 
 impl Default for EffectsRules {
     /// BN6's.
     fn default() -> EffectsRules {
-        EffectsRules { shake: ShakeRule::default(), spark_steps_at_start: true }
+        EffectsRules { shake: ShakeRule::default(), spark_steps_at_start: true, retype: RetypeRule::default() }
     }
+}
+
+/// How `sub_801A082` (an object's damage, hit modifier and collision types
+/// set again: `reset_collision_types`) goes.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RetypeRule {
+    /// BN6's: what it is and what it hits, marked as made while dimmed
+    /// when the battle is.
+    #[default]
+    Bn6,
+    /// BN5's (0x08016B9E): what it is alone, never marked; its store of
+    /// what it hits goes to the row number plus 0x34, a BIOS address no
+    /// write reaches, so it keeps hitting what it did. A bug code's
+    /// garbage high byte is the target lookup's offset, as the setup's.
+    Bn5,
 }
 
 /// How the camera shakes (`camera_doShakeEffect_80301e8`).
@@ -147,6 +166,19 @@ impl Default for SlideSpeed {
 pub struct SparkleOffset {
     pub dy: i16,
     pub z: i16,
+}
+
+/// How a navi's hooks restart what it wears after an animation change, a
+/// flinch or a drag (`sub_8011450`, `sub_80F06CE`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlayRestart {
+    /// BN6's `sub_80C44D2`: the overlay reloads its animation and steps
+    /// its sprite at once.
+    #[default]
+    Step,
+    /// BN5's 0x080C374E: it reloads its animation at its next step.
+    Reload,
 }
 
 /// How a navi's push (slide type 1) reads the hits it took.
@@ -234,6 +266,12 @@ pub struct Rules {
     /// and ChargeMan's: the Fire chips' charge, a form's height); BN5's
     /// table (0x080EB1E8) has none of it (rule section `status`).
     pub form_tick: bool,
+    /// Which ticks of the mercy flash show the navi (rule section `status`):
+    /// BN6's hides it while the flash timer's bit 1 is set
+    /// (`sub_8016934`), BN5's while it is clear (0x080137B6): the same
+    /// blink, two ticks out of phase. Presentation: visibility is no part
+    /// of the simulation.
+    pub flash_hides_on_clear: bool,
     /// Whose emotions the side's navi has (rule section `status`): BN6's
     /// (`sub_8015B54`, `sub_8015BEC`) or BN5's (0x08012740: a soul first,
     /// then anger, a mood of 0 and Full Synchro, a mood under 65 worried;
@@ -285,6 +323,8 @@ pub struct Rules {
     pub ice_vectors: [SlideVector; 6],
     /// How fast a navi slides and is dragged (the reactions section's).
     pub slide_speed: SlideSpeed,
+    /// How a navi's hooks restart what it wears (the reactions section's).
+    pub overlay_restart: OverlayRestart,
     /// A bubbled navi's height, by bubble timer.
     pub bubble_bob: [i8; 32],
     pub lockon: Lockon,

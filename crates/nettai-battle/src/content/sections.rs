@@ -100,6 +100,8 @@ struct ReactionsSection {
     bubble_bob: [i8; 32],
     #[serde(default)]
     slide_speed: super::rules::SlideSpeed,
+    #[serde(default)]
+    overlay_restart: super::rules::OverlayRestart,
 }
 
 #[derive(Deserialize)]
@@ -158,6 +160,8 @@ struct StatusSection {
     hp_bug_periods: [u8; 8],
     #[serde(default = "yes")]
     form_tick: bool,
+    #[serde(default)]
+    flash_hides_on_clear: bool,
     #[serde(default)]
     bugs_before_drain: bool,
     #[serde(default)]
@@ -362,6 +366,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                 rules.push_reading = s.push_reading;
                 rules.hit_test = s.hit_test;
                 rules.slide_speed = s.slide_speed;
+                rules.overlay_restart = s.overlay_restart;
             }
             "berserk" => {
                 let s: BerserkSection = r.read(spec, &at).map_err(e)?;
@@ -430,6 +435,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
             "status" => {
                 let s: StatusSection = r.read(spec, &at).map_err(e)?;
                 (rules.hp_bug_periods, rules.form_tick) = (s.hp_bug_periods, s.form_tick);
+                rules.flash_hides_on_clear = s.flash_hides_on_clear;
                 rules.emotions = match s.emotions.as_deref() {
                     None | Some("bn6") => super::Emotions::Bn6,
                     Some("bn5") => super::Emotions::Bn5,

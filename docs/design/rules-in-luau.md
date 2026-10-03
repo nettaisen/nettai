@@ -177,6 +177,8 @@ return define.system {
     state = { counter = "u8", used = "bool", spent = "bool", exhausted = "bool", check_delay = "u8" },
     -- What the player brings (the save's unlock), read-only in battle.
     setup = { unlocked = "bool", sealed = "bool" },
+    -- (`setup_defaults = { field = value }`: what a player's setup that says nothing of a field
+    -- holds, else zero; BN5's light and dark system's `{ karma = 500 }`, a fresh save's.)
     hooks = {
         round_start = function(side: number) ... end,
         turn_check = function(side: number, request: TransformRequest) ... end,   -- Beast Out runs out
@@ -1170,6 +1172,10 @@ with the new hooks, and its sections keep BN6's numbers by default.
   drag (`sub_80178D4`) go 8 pixels a tick in depth in BN5 (0x0801361E, 0x080143A8), 6 in BN6. Arriving on a panel
   whose type has a `slide` rule (BN5's metal) is as arriving on BN6's roads (BN5's 0x08013564 tests type 5 where
   BN6 tests 9 to 12). A type that `holds` (BN5's sea) ends the slide.
+- **What a navi wears restarting.** The `reactions` section's `overlay_restart`, the navi's game's: an animation
+  change, a flinch and a drag restart what a navi wears (`sub_8011450`, `sub_80F06CE`). BN6's restart
+  (`sub_80C44D2`) reloads the overlay's animation and steps its sprite at once (`"step"`, the default); BN5's
+  (0x080C374E) only has it reload at its next step (`"reload"`).
 - **The custom request (item 18).** BN5's state 0x20 (0x08007774) opens the custom screen itself once the
   reversions are done. BN6 first goes through state 0x24, which takes a tick. The flow without
   `sequencer_before_custom` now does BN5's. BN5's test of the request skips BN6's battle mode 5 too.

@@ -175,7 +175,9 @@ burst = 0x68
 [sparks]
 plain = 0x00
 eruption = 0x01
-thrown_obstacle = 0x05
+# (`sub_80180EC`'s word 0x06050001: its byte 1, 0, is the spark; bytes 2 and 3 are
+# the collision types below.)
+thrown_obstacle = 0x00
 guard = 0x08
 uninstall = 0x0E
 

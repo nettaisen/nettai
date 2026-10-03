@@ -89,8 +89,8 @@ pub struct NaviStats {
     pub weapon_bytes: [u8; 4],
     /// BN5's own: the light/dark value.
     pub light_dark: LightDark,
-    /// BN5's own (+0x4C): Hub Style, patch card 111 installed and on (the
-    /// cards' routine, 0x08138214, by 0x08137A58): 1, else 0.
+    /// BN5's own (+0x4C): Hub Style, which patch card 111 (0x6F) sets when
+    /// installed and on (0x08138214): 1, else 0.
     pub hub_style: u8,
     /// The whole block.
     pub raw: [u8; NAVI_STATS],

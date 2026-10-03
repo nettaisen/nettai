@@ -1561,6 +1561,7 @@ fn rules() -> Rules {
         // (The statuses are testdata/content/rules/status.luau's.)
         hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
         form_tick: true,
+        flash_hides_on_clear: false,
         emotions: Default::default(),
         form_break: Default::default(),
         intake: Default::default(),
@@ -1601,6 +1602,7 @@ fn rules() -> Rules {
         push_reading: Default::default(),
         hit_test: Default::default(),
         slide_speed: Default::default(),
+        overlay_restart: Default::default(),
         // A triangle wave: 256 at a quarter turn, -256 at three quarters,
         // over a turn and a half.
         sine: (0..384)

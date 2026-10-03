@@ -1,5 +1,5 @@
 --!strict
--- BN5's NaviCust board (docs/design/bn5-map.md §15.11): its 5x5 grid, in the middle of the engine's 7x7 (a program's
+-- BN5's NaviCust board (docs/design/bn5-map.md §15.13): its 5x5 grid, in the middle of the engine's 7x7 (a program's
 -- 5x5 shape likewise, centered on its middle cell), its command line and where a neighbor counts. The rule section
 -- (./section.luau) gives the board and the command line to the engine (a setup's programs must fit them); the
 -- navicust system (./system.luau) reads them all from here.
