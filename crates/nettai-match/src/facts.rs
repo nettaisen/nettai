@@ -32,9 +32,11 @@ use nettai_battle::custom::PlayerSetup;
 use nettai_battle::rules::Fact;
 use nettai_content_api::{FormHandle, Registry, Value};
 
-/// The setup fields the facts go into.
+/// The setup fields the facts go into (BN6's game version is S6c's:
+/// bn6-compat's `Unlocks::write`, its cross and beast systems').
 pub const KARMA_FIELD: &str = "karma";
 pub const SOULS_FIELD: &str = "souls";
+pub const VERSION_FIELD: &str = "version";
 
 /// A fresh save's karma (0x08010C00), and the most there is.
 pub const DEFAULT_KARMA: u16 = 500;
@@ -130,4 +132,69 @@ pub fn write(content: &Content, side: &Side, player: &mut PlayerSetup) -> Result
         player.souls.chaos = true;
     }
     Ok(())
+}
+
+impl Side {
+    /// Whether the side's rules take its game (Gregar or Falzar: BN6's
+    /// cross and beast systems' `version`). A BN5 side's don't.
+    pub fn takes_game(&self, content: &Content) -> bool {
+        takes(content, self, VERSION_FIELD)
+    }
+
+    /// Whether the side's navi takes a navi code's level: its definition
+    /// says what a level gives it (`levels`: BN6's MegaMan and link navis;
+    /// BN5's MegaMan has none).
+    pub fn takes_level(&self, content: &Content) -> bool {
+        content.navi(self.navi).levels.is_some()
+    }
+
+    /// Whether the side's rules take SP navi deletion times (their rules'
+    /// `sp_slots`: BN6's and BN5's, each their own SP navis).
+    pub fn takes_sp_times(&self, content: &Content) -> bool {
+        !crate::sp_slots(content, self.ruleset).is_empty()
+    }
+
+    /// The side on `ruleset`, without what the new rules don't take: the
+    /// Crosses, patch cards and NaviCust without their systems, the karma
+    /// and souls without theirs, the game (back to Falzar) without
+    /// `version`, and the SP times when the new rules' SP navis aren't the
+    /// old's (their slots differ).
+    pub fn set_ruleset(&mut self, content: &Content, ruleset: Option<nettai_content_api::RulesetHandle>) {
+        let old_slots = crate::sp_slots(content, self.ruleset).to_vec();
+        self.ruleset = ruleset;
+        if !self.has_system(content, crate::FORMS_SYSTEM) {
+            self.crosses = None;
+        }
+        if !self.has_system(content, crate::PATCH_CARDS_SYSTEM) {
+            self.cards.clear();
+        }
+        if !self.has_system(content, crate::NAVICUST_SYSTEM) {
+            self.navicust = None;
+        }
+        if !takes(content, self, SOULS_FIELD) {
+            self.souls = None;
+        }
+        if !takes(content, self, KARMA_FIELD) {
+            self.karma = DEFAULT_KARMA;
+        }
+        if !self.takes_game(content) {
+            self.game = nettai_battle::custom::GameVersion::Falzar;
+            self.stats.version = crate::version_byte(self.game);
+        }
+        if crate::sp_slots(content, self.ruleset) != old_slots.as_slice() {
+            self.sp_times = Default::default();
+        }
+    }
+}
+
+/// The SP navi chip whose damage reads slot `slot` of the side's rules (a
+/// chip of the rules' game), if the content has it: the slot's name in a
+/// tool.
+pub fn sp_chip(content: &Content, side: &Side, slot: usize) -> Option<nettai_content_api::ChipHandle> {
+    let game = crate::ruleset_game(content, side.ruleset_or_stock(content));
+    let game = content.defs.roots.get(game.index())?;
+    (0..content.defs.chips.len() as u16).map(nettai_content_api::ChipHandle).find(|&h| {
+        content.chip_links(h).sp_slot == Some(slot as u8)
+            && nettai_content_api::keys::root_of(&content.defs.chip(h).key) == Some(game.as_str())
+    })
 }

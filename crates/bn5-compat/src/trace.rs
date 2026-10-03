@@ -11,7 +11,8 @@ use crate::{Compat, pool_of_type, pool_slots};
 use nettai_battle::content::ChipCode;
 use nettai_battle::custom::{BattleFolder, FolderChip, PlayerSetup};
 use nettai_battle::console::ConsoleSetup;
-use nettai_battle::setup::NaviWeapons;
+use nettai_battle::navicust::{NaviCust, PlacedProgram};
+use nettai_battle::setup::{NaviCustBugs, NaviWeapons};
 use nettai_battle::{Battle, Content, NaviStats as EngineNaviStats, PlayerTick, RoundSetup, TickEvents};
 use nettai_content_api::{RecordHandle, WeaponHandle};
 use nettai_content_api::Pool;
@@ -682,9 +683,12 @@ fn battle_folder(content: &Content, compat: &Compat, b: &[u8], regular_pending: 
 /// A side's stats in the engine's terms: BN5's NaviStats fields where the
 /// engine has them (docs/design/bn5-map.md §3.3, §13), its navi, weapons,
 /// programs and first barrier by compat (records.toml); MegaMan in the base
-/// form (BN5's souls are its forms, to come); what BN5 has none of (BN6's
-/// Beast Out counter, the sun, the version, the NaviCust's bugs: BN5's
-/// bytes there aren't read) none.
+/// form (BN5's souls are its forms, to come); the NaviCust's bugs and what
+/// it does to drops and encounters at BN6's offsets, the ones BN5's bugs'
+/// routine writes (0x08140054's: +0x12, +0x13, +0x14, +0x15, +0x16, +0x1A,
+/// +0x24, +0x26, +0x28, +0x31, +0x54; the rest of BN6's bug bytes, which
+/// only a battle's hits write, none at the start); what BN5 has none of
+/// (BN6's Beast Out counter, the sun, the version) none.
 pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
     let navi_key = navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
     let navi = content.defs.navi_by_key(&navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
@@ -725,8 +729,8 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         version: 0,
         beast_out_counter: 0,
         sun: false,
-        chip_drops: 0,
-        encounters: 0,
+        chip_drops: r[0x26],
+        encounters: r[0x28],
         navi,
         navi_variant: s.navi_variant,
         form: base,
@@ -750,8 +754,41 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
             charge_shot_kind: variant(r[0x4F])?,
             back_special_damage: 0,
         },
-        bugs: Default::default(),
+        bugs: NaviCustBugs {
+            panel_trail_kind: r[0x12],
+            panel_trail_level: r[0x13],
+            buster_blanks: r[0x14],
+            buster_charged: r[0x15],
+            hit_status: r[0x16],
+            battle_start: r[0x1A],
+            emotion: r[0x24],
+            processing: r[0x31],
+            custom_damage: u16::from_le_bytes([r[0x54], r[0x55]]),
+            ..Default::default()
+        },
     })
+}
+
+/// A save's NaviCust in the engine's terms (BN5's list: [`crate::save::NAVICUST_PARTS`]
+/// parts of 8 bytes, +0 the part id, +2 the center's column, +3 its row, +4
+/// the quarter turns clockwise; +5, the editor's compression mark, isn't
+/// what the compile reads). BN5's 5x5 board is the middle of the engine's
+/// 7x7 grid (content/bn5/rules/navicust/board.luau), a cell one column and
+/// one row on. A part is compressed when `compressed` says so of its part id
+/// (event flag 0x1EC0 + the id, which 0x0813EEFC reads). The list's empty
+/// entries (id 0) are left out, the others kept in order; BN5's board has
+/// no expansions.
+pub fn navicust(content: &Content, compat: &Compat, list: &[u8], compressed: impl Fn(u8) -> bool) -> Result<NaviCust, String> {
+    let mut parts = Vec::new();
+    for e in list.chunks_exact(8) {
+        let Some((key, color)) = compat.navicust_part(e[0])? else { continue };
+        let program = content.defs.navicust_program_by_key(key).ok_or_else(|| format!("the content has no NaviCust program {key}"))?;
+        if e[2] > 4 || e[3] > 4 || e[4] > 3 {
+            return Err(format!("NaviCust part {:#04x} at column {}, row {}, turned {}: off BN5's 5x5 board", e[0], e[2], e[3], e[4]));
+        }
+        parts.push(PlacedProgram { program, color, x: e[2] + 1, y: e[3] + 1, rotation: e[4], compressed: compressed(e[0]) });
+    }
+    NaviCust::new(&parts, 0)
 }
 
 /// BN5's navi numbers' keys in its root (NaviStats +0x29): MegaMan's.
