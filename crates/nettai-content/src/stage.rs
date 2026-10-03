@@ -93,6 +93,8 @@ pub struct PaletteAnimDoc {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PaletteFrameDoc {
     pub ticks: u8,
+    /// (A pack extracted before the American spellings has the British key.)
+    #[serde(alias = "colours")]
     pub colors: Vec<String>,
 }
 
@@ -513,4 +515,16 @@ fn read_tiled_map(path: &Path, name: &str, report: &mut Report) -> Option<(Vec<M
         });
     }
     Some((map, w as u16, h as u16))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_pack_with_the_british_key_still_loads() {
+        let text = r##"{"ticks": 3, "colours": ["#000000"]}"##; // us-spelling: keep
+        let frame: PaletteFrameDoc = serde_json::from_str(text).unwrap();
+        assert_eq!((frame.ticks, frame.colors.len()), (3, 1));
+    }
 }
