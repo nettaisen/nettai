@@ -85,6 +85,14 @@ return define.system {
         beast_out = "bool",
         cross_list = "form[5]",
     },
+    -- A chip's Beast rush (`beast`): the lock-on mode it runs by (none: where
+    -- the navi stands), and `rush = false` for a chip with a mode that
+    -- doesn't rush (docs/design/rules-in-luau.md §7.5).
+    extends = {
+        chip = {
+            beast = { lockon = "lockon", rush = "bool" },
+        },
+    },
     actions = { rush.action, cross_special.action },
     -- Beast Out on the custom screen (custom.luau).
     buttons = { beast_out = custom_beast.button },

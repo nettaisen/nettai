@@ -151,6 +151,9 @@ return {
     sun_gun_ex = sun_gun("sun-gun-ex", 0x04, 4),
     -- Invisibl's six seconds.
     veil = chip("veil", 0x05, {
+        -- (The counter system's made-up extension.)
+        test_weight = 3,
+        test_tag = { level = 2, kind = "b" },
         flags = { "dimming", "standard_library" },
         extra_flags = { "rush_cancels" },
         family = "plus",
