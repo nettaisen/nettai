@@ -27,6 +27,13 @@ bullet.variants = {
         effect = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 0 },
         single = true,
     },
+    -- The Spreader's (row 3: BN6's with BN5's flash, effect 0x21, and sound): the 3x3 around the panel found.
+    spreader = common.variant {
+        region = regions.square,
+        hit_mod = 0,
+        effect = define.effect { sprite = asset.sprite("bn5:pink-flash"), anim = 0, palette = 0 },
+        sound = asset.sound("bn5:h-burst"),
+    },
     -- The InfVulcs' (row 0xE: BN6's but for its hit, BN5's effect 0x3E, the Vulcans' in palette 2; BN6's a glint).
     infinite = common.variant {
         region = regions.long,

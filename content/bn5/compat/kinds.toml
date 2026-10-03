@@ -61,6 +61,21 @@
 "bn5:drill" = { pool = "attack", index = 0x71 }
 "bn5:instrument" = { pool = "attack", index = 0x78 }
 "bn5:instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
+"bn5:airhoc/puck" = { pool = "attack", index = 0x2E }
+"bn5:gundels/beam" = { pool = "effect", index = 0x48 }
+"bn5:bugbomb/bomb" = { pool = "attack", index = 0x77 }
+"bn5:mrkcan/sight" = { pool = "effect", index = 0x44 }
+"bn5:pulsar/pulse" = { pool = "attack", index = 0x6A }
+"bn5:spshake/wave" = { pool = "attack", index = 0x68 }
+"bn5:skully/skull" = { pool = "attack", index = 0x88 }
+"bn5:snake/controller" = { pool = "effect", index = 0x32, scratch_position = true }
+"bn5:snake/nest" = { pool = "attack", index = 0x53 }
+"bn5:snake/snake" = { pool = "attack", index = 0x54 }
+"bn5:yoyo/yoyo" = { pool = "attack", index = 0x52 }
+"bn5:circgun/gun" = { pool = "attack", index = 0x89 }
+"bn5:circgun/shot" = { pool = "attack", index = 0x8A }
+"bn5:circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
+"bn5:tankcan/shell" = { pool = "attack", index = 0x3C }
 "bn5:geddon/controller" = { pool = "effect", index = 0x1D, scratch_position = true }
 "bn5:geddon/quake" = { pool = "effect", index = 0x1E, scratch_position = true }
 "bn5:anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
