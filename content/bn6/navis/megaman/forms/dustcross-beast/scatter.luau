@@ -8,7 +8,7 @@
 -- doesn't ground the navi (the role `dust_beast_scatter`).
 
 local junk_shot = require("./junk_shot")
-local regions = require("../../../../lib/regions")
+local regions = require("@common/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {

@@ -5,7 +5,7 @@
 -- panel in front of the user if it is free solid ground, and waits 31
 -- ticks.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local fan = require("./fan")
 
 export type State = { variant: FanVariant }
