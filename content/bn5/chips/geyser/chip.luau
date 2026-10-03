@@ -1,6 +1,11 @@
 --!strict
--- Geyser (BN5 chip 0x02d): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- Geyser (BN5 chip 0x02d): an aqua bomb lobbed at the panel three ahead: on solid ground a splash of 10 damage; in a
+-- hole, a geyser that hits its panel and sends water onto the eight around it: BN5's throw (lib/bombs, action 0x12
+-- subtype 5) and its Geyser (objects/geyser, attack objects #0x42 and #0x43).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local bombs = require("../../lib/bombs")
+local geyser = require("../../objects/geyser/geyser")
 
 return define.chip {
     id = "bn5:geyser",
@@ -15,4 +20,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
+    action = bombs.throw { held = bombs.held, thrower = geyser.thrower(0) },
 }

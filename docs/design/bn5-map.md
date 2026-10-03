@@ -1264,17 +1264,43 @@ strike as wood); YoYo (the shared throw, content/common/yoyo; BN5's yoyo, object
 modes too); Slasher (BN5's own action 0x29: while A is held, the wide slash at an enemy navi's column); CircGun
 (the shared CircGun of DarkCirc's look, 4 shots); TankCan1 to 3 (the shared action and shell,
 content/common/tankcan; BN5's shell, objects/tankcan); WindRack (BN5's own action: BN6's swing without the
-gusts). Each matches every frame of its lab recordings. The batch's shared modules (content/common, as above):
-airhocky/puck and flick, gundels/beam, bugbomb/bomb, snake/snake, yoyo/throw, tankcan/action and shell, each
-BN6's at its old path its BN6 wrapper (BN6 the same).
+gusts). Then LifeSync (BN5's controller, effect object 0x5C: no sync in a boss-ranked battle either, the HP
+capped by each one's max HP in turn, flag 0x40's hit of 50); MoonBld1 to 3 (BN5's own action 0x53, objects/moonbld:
+BN6's spin with the Katanas' step, lib/stepsword, marked moving while it runs); CrakBom, ParaBom and ResetBom (their
+bomb, objects/crakbom, attack object 0x24: BN6's code no BN6 chip throws; it hits the column where it lands);
+Quake1 to 3 (BN5's own Quake bomb, objects/quake, attack object 0x51: a weight that drops on the panel three ahead
+and hits its level's region); IceSeed, SeaSeed, GrasSeed and LavaSeed (the shared seed with BN5's look,
+objects/seed, attack object 0x4A); CannBall (objects/cannball, attack object 0x35: it breaks the panel it lands on);
+Geyser (objects/geyser, attack objects 0x42 and 0x43: BN6's BlkBomb code reworked, a splash of 10 on solid ground, in
+a hole a geyser whose water hits the eight panels around in a shuffled order); MetaGel (its controller, effect
+object 0x21, and gel, attack object 0x45: BN6's code no BN6 chip drops; a gel on each row's panel just ahead of the
+user's area, taking it); Magnum (BN5's own: its controller, effect object 0x30, and gunner, actor object 2, the
+shared stand-in's drawing, a sight stepping across the enemy's columns until A or 180 ticks, then the column shot
+and broken; its unused modes 1 and 2 too); VarSwrd (BN5's action 0x2A: BN6's sequences and BN5's picks, ProtoSoul
+and ShadowSoul waiting while A is up) with its hidden picks as chips, FtrSword (0x172: the shared slash over three
+panels) and SonicBom (0x173: BN5's action 0x2B, the sonic boom swing with the Katanas' step), whose records
+gen_content.py writes (its USED_CHIPS). The chip lab has VarSwrd's five commands and Magnum's A press besides the
+generated scenarios (chiplab's library-bn5, by hand). Each matches every frame of its lab recordings. The batch's
+shared modules
+(content/common, as above): airhocky/puck and flick, gundels/beam, bugbomb/bomb, snake/snake, yoyo/throw,
+tankcan/action and shell, lifesync/marker, moonbld/blade and bombs/seed, each BN6's at its old path its BN6 wrapper
+(BN6 the same). BN5's Cannon, HiCannon and M-Cannon draw BN5's cannon (0c-01) and sound; CircGun and DarkCirc share
+one set of kinds (objects/circgun).
 
-Not shown by the labs: Static's bug levels 1 to 3; GunDelSol's held A; Katana's charged step; Slasher's request
-0x80000 (`actions.stun_strike`, BN5's action 0x49, unfilled) and its other console's chip name (`sub_801EB18`);
-BN5's bug intake (0x0801103E: an argument's bit 4 adds, where BN6's always adds; BugBomb's codes are the engine's
-adds of 2); lib/arm's NaviStats +0x4C and AIData +0x12 (read as 0). **Waiting:** the seeds, CannBall and Geyser
-(on the shared bombs), Wind, Fan, RockCube, BoyBomb1 to 3, RedFrut1 to 3 and Voltz1 to 3 (on BN5's field
-obstacles), and Quake1 to 3, CrakBom, ParaBom, ResetBom, VDoll, VarSwrd, MoonBld1 to 3, LifeSync, MetaGel and
-Magnum.
+BN5's hit intake (0x080178EC) takes a hit's NaviCust bug (0x0801103E) before the HP bug drains (0x0800DFEC), where
+BN6's `sub_801AC6C` drains first, and a drain bug's argument goes by its flags (bit 4 adds its low four bits, bit 5
+subtracts them, else the level rises to them): the status section's `bugs_before_drain` and `drain_bug_flags`
+(MoonBld's bug 0x18 drains a tick sooner; BugBomb's codes are its own, argument 0x12). The rest of 0x0801103E is
+BN6's `sub_80139F6` but for codes BN5's chips here don't give (0xFD and 0xFC: a drain of 1 on conditions; no 0xF8
+or 0xF5, which set their bytes as any other code): not ported.
+
+Not shown by the labs: Static's bug levels 1 to 3; GunDelSol's held A; Katana's and MoonBld's charged step;
+Slasher's request 0x80000 (`actions.stun_strike`, BN5's action 0x49, unfilled) and its other console's chip name
+(`sub_801EB18`); lib/arm's NaviStats +0x4C and AIData +0x12 (read as 0); the kinds 4 and up of CrakBom's bomb (no
+chip throws them); battle flag 0x40's effect object 0x83 (0x080E9FD2, 0x080E9FA4: CrakBom's and Quake's bombs; never
+in a netbattle); Geyser's geyser (no recording throws it into a hole); a computer-controlled navi's VarSwrd pick (its
+tactics' byte, 0x0802D4E2 +0x12: no such navi in the engine yet). **Waiting:** Wind, Fan, RockCube, BoyBomb1 to 3,
+RedFrut1 to 3, Voltz1 to 3 and VDoll (on BN5's field obstacles).
 
 ### 15.7 BN5's MegaMan, stages and roles (as built)
 

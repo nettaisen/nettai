@@ -1,6 +1,9 @@
 --!strict
--- MoonBld2 (BN5 chip 0x03a): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- MoonBld2 (BN5 chip 0x03a): a spin with a blade that sweeps the eight panels around the navi (BN5's MoonBld,
+-- objects/moonbld: action 0x53, BN6's swing with the shared moon blade; a charged one steps first).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local moonbld = require("../../objects/moonbld/moonbld")
 
 return define.chip {
     id = "bn5:moonbld2",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
+    action = moonbld.action,
 }
