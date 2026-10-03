@@ -98,6 +98,7 @@
 "bn5:bugcharg/controller" = { pool = "effect", index = 0x7C, scratch_position = true }
 "bn5:bugcharg/actor" = { pool = "actor", index = 0x59 }
 "bn5:airspin/top" = { pool = "attack", index = 0x9B }
+"bn5:aqwhirl/whirlpool" = { pool = "attack", index = 0x5D }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
 "bn5:meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "bn5:napalmmn/bomb" = { pool = "attack", index = 0x3A }
