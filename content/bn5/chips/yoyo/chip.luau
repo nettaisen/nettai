@@ -1,9 +1,9 @@
 --!strict
 -- YoYo (BN5 chip 0x052): a yoyo that rolls two panels ahead, spins twice there and rolls back (BN5's yoyo,
--- objects/yoyo; the throw BN6's, action 0x4A).
+-- chips/yoyo/yoyo; the throw BN6's, action 0x4A).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local yoyo = require("../../objects/yoyo/yoyo")
+local yoyo = require("./yoyo")
 
 return define.chip {
     id = "bn5:yoyo",

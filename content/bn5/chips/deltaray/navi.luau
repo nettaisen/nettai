@@ -9,7 +9,7 @@
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local common = require("@common/deltaray/navi")
-local follow_effect = require("../../objects/follow-effect/follow_effect")
+local follow_effect = require("./follow_effect")
 
 return common.make {
     id = "bn5:deltaray/navi",
