@@ -883,6 +883,20 @@ pub(crate) fn no_display_text(d: &Definition) -> Result<(), ContentError> {
     Ok(())
 }
 
+/// The fields the systems of game `game` extend its definitions of
+/// `registry` with (`extends`), read off the systems' definitions before
+/// they are built: what a record's reader leaves to them. (Building the
+/// systems checks them.)
+fn extended_fields(definitions: &Definitions, registry: Registry, game: &str) -> Vec<String> {
+    let mut fields = Vec::new();
+    for s in definitions.of(Registry::System).iter().filter(|s| keys::root_of(&s.key) == Some(game)) {
+        if let Data::Map(own) = s.spec.field("extends").field(registry.name()) {
+            fields.extend(own.iter().map(|(k, _)| k.to_string()));
+        }
+    }
+    fields
+}
+
 /// A chip definition's record (docs/design/content-model-v2.md §3.1): the
 /// fields the engine reads, with the lock-on mode by the handle `r` gives
 /// it, and the chips it names (its Program Advance recipes' ingredients, a
@@ -1525,15 +1539,10 @@ impl Defs {
         }
         let mut forms = Vec::new();
         for d in definitions.of(Registry::Form) {
-            let mut record = super::navis::read_form(d, &reader)?;
+            let extended = extended_fields(&definitions, Registry::Form, keys::root_of(&d.key).unwrap_or(""));
+            let mut record = super::navis::read_form(d, &reader, &extended.iter().map(String::as_str).collect::<Vec<_>>())?;
             record.weapons = read_weapons(d)?;
             record.identity = identity_of(d, &identities)?;
-            record.cross_of = match d.spec.field("cross_of") {
-                Data::Nil => None,
-                Data::Ref(Registry::Navi, key) => Some(NaviHandle(handle_of(Registry::Navi, key))),
-                other => return Err(what(d, format!("`cross_of` is {other:?}, not a navi"))),
-            };
-            record.beast = form_ref(d, d.spec.field("beast"), "beast")?;
             record.breaks_to = form_ref(d, d.spec.field("breaks_to"), "breaks_to")?;
             record.change = match d.spec.field("change") {
                 Data::Nil => None,
@@ -1556,17 +1565,11 @@ impl Defs {
                 }
                 other => return Err(what(d, format!("`charged_action` is {other:?}, not an action"))),
             };
-            if record.kind == super::FormKind::Base && record.revert.is_some() {
+            if record.base && record.revert.is_some() {
                 return Err(what(d, "a base form names no action that reverts a navi out of it (`revert`)".into()));
             }
-            if record.kind != super::FormKind::Base && record.change.is_none() {
+            if !record.base && record.change.is_none() {
                 return Err(what(d, "a form other than the base form names the action that changes a navi into it (`change`)".into()));
-            }
-            if record.kind.has_cross() != record.cross_of.is_some() {
-                return Err(what(d, "a Cross (and one in Beast Out) names the navi it is made with (`cross_of`), and no other form does".into()));
-            }
-            if (record.kind == super::FormKind::Cross) != record.beast.is_some() {
-                return Err(what(d, "a Cross names its form in Beast Out (`beast`), and no other form does".into()));
             }
             let reset = match d.spec.field("reset") {
                 Data::Nil => None,
@@ -1583,7 +1586,7 @@ impl Defs {
         // form; one a game.
         let game_of = |key: &str| keys::root_of(key).and_then(|g| root_names.iter().position(|r| r == g));
         let mut base_forms: Vec<Option<FormHandle>> = vec![None; root_names.len()];
-        for (i, f) in forms.iter().enumerate().filter(|(_, f)| f.record.kind == super::FormKind::Base) {
+        for (i, f) in forms.iter().enumerate().filter(|(_, f)| f.record.base) {
             let Some(game) = game_of(&f.key) else {
                 return Err(ContentError::new(format!("base form {}'s id names no loaded game", f.key)));
             };
@@ -1597,29 +1600,16 @@ impl Defs {
             }
             base_forms[game] = Some(FormHandle(i as u16));
         }
-        // What the forms and the navis' sets name is the kind of form they
-        // say.
-        let kind_of = |h: FormHandle| forms[h.index()].record.kind;
+        // (What a game's forms and its navis' sets say of each other is its
+        // systems': BN6's are checked by bn6-compat's tests.)
         for f in &forms {
-            if f.record.beast.is_some_and(|b| kind_of(b) != super::FormKind::CrossBeast) {
-                return Err(ContentError::new(format!("form {}'s `beast` is not a Cross in Beast Out", f.key)));
-            }
             if f.record.glow.as_ref().is_some_and(|g| g.is_empty()) {
                 return Err(ContentError::new(format!("form {}'s `glow` has no shaders", f.key)));
             }
         }
         for n in &navis {
-            let Some(sets) = &n.record.forms else { continue };
-            for set in [&sets.gregar, &sets.falzar] {
-                let ok = set.crosses.iter().all(|&c| kind_of(c) == super::FormKind::Cross)
-                    && set.beast_out.is_none_or(|f| kind_of(f) == super::FormKind::Beast)
-                    && set.beast_over.is_none_or(|f| kind_of(f) == super::FormKind::BeastOver);
-                if !ok {
-                    return Err(ContentError::new(format!(
-                        "navi {}'s forms: `crosses` are Crosses, `beast_out` a Beast and `beast_over` a Beast Over",
-                        n.key
-                    )));
-                }
+            if n.record.forms.is_none() {
+                continue;
             }
             if game_of(&n.key).and_then(|g| base_forms[g]).is_none() {
                 return Err(ContentError::new(format!("navi {} changes form, and no form of its game is the base form", n.key)));

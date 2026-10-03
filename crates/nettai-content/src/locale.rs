@@ -47,7 +47,8 @@
 //! none.
 
 pub use nettai_battle::content::strings::{ChipStrings, FormStrings, NaviStrings, PatchCardStrings, Strings};
-use nettai_battle::content::{Defs, FormKind};
+use nettai_battle::content::Defs;
+use nettai_content_api::FormHandle;
 use std::path::{Path, PathBuf};
 
 /// The folder of a content folder that holds the tables.
@@ -128,6 +129,15 @@ pub fn languages(root: &Path) -> Vec<String> {
 pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
     use nettai_content_api::keys::{is_qualified, root_of};
     let ours = |key: &str| root_of(key) == Some(root);
+    // The Crosses: the forms the navis' Cross windows offer (their form
+    // sets' `crosses`), whose strings the window shows.
+    let crosses: std::collections::BTreeSet<FormHandle> = defs
+        .navis
+        .iter()
+        .filter_map(|n| n.record.forms.as_ref())
+        .flat_map(|f| f.gregar.crosses.iter().chain(&f.falzar.crosses))
+        .copied()
+        .collect();
     let mut out = Vec::new();
     let mut text = |what: String, v: &Option<String>| {
         if let Some(v) = v {
@@ -163,7 +173,7 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
     for (key, f) in &s.forms {
         match defs.form_by_key(key) {
             None => unknown.push(format!("forms.{key}: no form has this key")),
-            Some(h) if defs.form(h).record.kind != FormKind::Cross => {
+            Some(h) if !crosses.contains(&h) => {
                 unknown.push(format!("forms.{key}: not a Cross (nothing shows another form's strings)"))
             }
             Some(_) => {}
@@ -195,7 +205,7 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
                 unknown.push(format!("navis.{}: the content's own language names every navi", d.key));
             }
         }
-        for d in defs.forms.iter().filter(|d| ours(&d.key) && d.record.kind == FormKind::Cross) {
+        for (_, d) in defs.forms.iter().enumerate().filter(|(i, d)| ours(&d.key) && crosses.contains(&FormHandle(*i as u16))) {
             if !named(s.form(&d.key).map(|f| &f.name)) {
                 unknown.push(format!("forms.{}: the content's own language names every Cross", d.key));
             }

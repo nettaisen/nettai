@@ -640,15 +640,15 @@ struct Failures {
 
 impl Observer<StandInBattle> for Failures {
     fn simulated(&mut self, frame: u32, game: &StandInBattle) {
-        use nettai_battle::content::FormKind;
+        use bn6_compat::forms::{Kind, kind};
         let b = &game.battle;
         if let Some(nettai_battle::RoundEnd::Error(message)) = b.round_end() {
             self.stopped += 1;
             self.first.get_or_insert_with(|| format!("frame {frame}: {message}"));
         }
-        let kinds = [0, 1].map(|side| b.form(side).kind);
-        self.cross += kinds.iter().any(|&k| matches!(k, FormKind::Cross | FormKind::CrossBeast)) as u64;
-        self.beast += kinds.iter().any(|k| k.is_beast()) as u64;
+        let kinds = [0, 1].map(|side| kind(&b.content, b.stats[side].form));
+        self.cross += kinds.iter().any(|k| k.is_some_and(Kind::has_cross)) as u64;
+        self.beast += kinds.iter().any(|k| k.is_some_and(Kind::is_beast)) as u64;
         self.dimmed += b.is_dimmed() as u64;
     }
 }
