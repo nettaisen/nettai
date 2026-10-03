@@ -76,7 +76,7 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
   --cards KEYS     live play: your patch cards (the Japanese games'
                    Modification Cards), their keys comma-separated in the
                    order they apply; -KEY installs one switched off (e.g.
-                   canodumb,-shadow)
+                   bn6:canodumb,-bn6:shadow)
   --their-cards KEYS  the right navi's patch cards, likewise
   --match FILE     play the match this file sets up (docs/frontend.md §6: the
                    arena, each side's ruleset, navi, game, folder, Crosses,

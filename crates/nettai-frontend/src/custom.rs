@@ -390,7 +390,7 @@ pub fn version_name(b: &Battle, side: u8) -> &'static str {
 /// A side's navi's number (see `View::navi_number`).
 pub fn navi_number(b: &Battle, side: u8) -> usize {
     let key = &b.content.defs.navi(b.stats[side as usize & 1].navi).key;
-    let compat = bn6_compat::Compat::bn6();
+    let compat = bn6_compat::Compat::bn6_for(&b.content);
     compat.compat_key(&b.content, key).and_then(|k| compat.navis.get(k)).map_or(0, |n| n.navi as usize)
 }
 
@@ -537,7 +537,7 @@ impl Window {
     /// A pick's name and code into name `k`'s tiles.
     fn put_advance_name(&mut self, v: &View, k: usize, c: FolderChip, text: &TextSink, problems: &mut Problems) {
         let key = &v.b.content.defs.chip(c.id).key;
-        let compat = bn6_compat::Compat::bn6();
+        let compat = bn6_compat::Compat::bn6_for(&v.b.content);
         let number = compat.compat_key(&v.b.content, key).and_then(|k| compat.chips.get(k)).map_or(u16::MAX, |e| e.id);
         let code = (number < ADVANCE_NO_CODE_FROM).then_some(c.code.0);
         self.put_advance_text(v, k, text.strings.chip_name(&v.b.content, c.id), code, text, problems);

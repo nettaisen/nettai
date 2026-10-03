@@ -77,7 +77,7 @@ pub fn copies_allowed(mb: u8) -> usize {
 /// The chips a folder can be made of: the pack's folder chips (above),
 /// with at least one code, in handle order.
 pub fn folder_chips(content: &Content) -> Vec<ChipHandle> {
-    let compat = Compat::bn6();
+    let compat = Compat::bn6_for(content);
     content
         .defs
         .chips
@@ -276,14 +276,14 @@ mod tests {
         let base = |chips: [FolderChip; FOLDER_SIZE]| SavedFolder { chips, regular: None, tags: None };
         // Five Recov10s (4 MB) and the rest plain chips is legal; a sixth
         // isn't.
-        let mut chips = [chip("recov10"); FOLDER_SIZE];
-        let mut plain = ["cannon", "airshot", "vulcan1", "spreadr1", "minibomb", "sword"].iter().cycle();
+        let mut chips = [chip("bn6:recov10"); FOLDER_SIZE];
+        let mut plain = ["bn6:cannon", "bn6:airshot", "bn6:vulcan1", "bn6:spreadr1", "bn6:minibomb", "bn6:sword"].iter().cycle();
         for c in chips.iter_mut().skip(5) {
             *c = chip(plain.next().unwrap());
         }
         assert_eq!(violations(&content, &base(chips), limits()), Vec::<String>::new());
         let mut six = chips;
-        six[5] = chip("recov10");
+        six[5] = chip("bn6:recov10");
         assert!(violations(&content, &base(six), limits()).iter().any(|v| v.contains("6 copies of Recov10")));
         // A code the chip doesn't come in.
         let mut code = chips;
@@ -291,22 +291,22 @@ mod tests {
         assert!(violations(&content, &base(code), limits()).iter().any(|v| v.contains("code Z")));
         // Six Mega chips; two Giga chips.
         let mut megas = chips;
-        for (i, key) in ["roll", "roll2", "heatman", "elecman", "slashman", "eraseman"].iter().enumerate() {
+        for (i, key) in ["bn6:roll", "bn6:roll2", "bn6:heatman", "bn6:elecman", "bn6:slashman", "bn6:eraseman"].iter().enumerate() {
             megas[10 + i] = chip(key);
         }
         assert!(violations(&content, &base(megas), limits()).iter().any(|v| v.contains("6 Mega chips")));
         let mut gigas = chips;
-        gigas[10] = chip("bass");
-        gigas[11] = chip("deltaray");
+        gigas[10] = chip("bn6:bass");
+        gigas[11] = chip("bn6:deltaray");
         assert!(violations(&content, &base(gigas), limits()).iter().any(|v| v.contains("2 Giga chips")));
         // A Regular chip past the Regular memory (Roll3 is 60 MB).
         let mut regular = base(chips);
-        regular.chips[10] = chip("roll3");
+        regular.chips[10] = chip("bn6:roll3");
         regular.regular = Some(10);
         assert!(violations(&content, &regular, limits()).iter().any(|v| v.contains("the Regular chip Roll3")));
         // A chip the pack doesn't list.
         let mut dark = chips;
-        dark[0] = chip("drksword");
+        dark[0] = chip("bn6:drksword");
         assert!(violations(&content, &base(dark), limits()).iter().any(|v| v.contains("no chip a folder can hold")));
         assert_eq!(copies_allowed(19), 5);
         assert_eq!((copies_allowed(20), copies_allowed(39), copies_allowed(49), copies_allowed(50)), (4, 3, 2, 1));

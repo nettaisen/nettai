@@ -82,22 +82,9 @@ impl Scripts {
         format!("{root}{}{path}", keys::SEPARATOR)
     }
 
-    /// The content's own root's name (None for content without scripts).
-    pub fn home(&self) -> Option<&str> {
-        self.roots.first().map(|r| r.name.as_str())
-    }
-
-    /// The roots' names, the content's own first, by `RootId`; content
-    /// without roots is one root of no name.
-    pub fn root_names(&self) -> Vec<String> {
-        if self.roots.is_empty() { vec![String::new()] } else { self.roots.iter().map(|r| r.name.clone()).collect() }
-    }
-
-    /// Module `path` of the content's own root, to change (tests and
-    /// tools).
-    pub fn home_module_mut(&mut self, path: &str) -> Option<&mut String> {
-        let name = Scripts::name(self.home()?, path);
-        self.modules.get_mut(&name)
+    /// Module `path` of folder `folder`, to change (tests and tools).
+    pub fn module_mut(&mut self, folder: &str, path: &str) -> Option<&mut String> {
+        self.modules.get_mut(&Scripts::name(folder, path))
     }
 
     /// What is wrong with the roots: a manifest's, a root named twice, a
@@ -209,9 +196,9 @@ mod tests {
 
     #[test]
     fn what_the_namespace_refuses() {
-        let e = content(vec![folder("game", &[("rules/turns", "return define.system { id = 'test:turns' }")])]).unwrap_err();
-        assert!(e.contains("\"turns\" names no game: write it in full (\"bn6:turns\")"), "{e}");
-        let e = content(vec![folder("game", &[("rules/x", "return define.rules('test:pools', { actor = 16 })")])]).unwrap_err();
+        let e = content(vec![folder("game", &[("rules/turns", "return define.system { id = 'turns' }")])]).unwrap_err();
+        assert!(e.contains("\"turns\" names no game: write it in full (\"game:turns\")"), "{e}");
+        let e = content(vec![folder("game", &[("rules/x", "return define.rules('pools', { actor = 16 })")])]).unwrap_err();
         assert!(e.contains("section name \"pools\" names no game"), "{e}");
         let e = content(vec![folder("game", GAME), folder("game", &[])]).unwrap_err();
         assert!(e.contains("two folders are named game"), "{e}");

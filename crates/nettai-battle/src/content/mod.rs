@@ -256,7 +256,9 @@ impl Content {
     /// without scripts is one game of no name.
     pub(crate) fn game_names(scripts: &Scripts, definitions: &nettai_content_api::Definitions) -> Vec<String> {
         let mut games: std::collections::BTreeSet<String> = scripts.roots.iter().map(|r| r.name.clone()).collect();
-        for d in &definitions.defs {
+        // (A state schema's key names what it is the state of:
+        // `system:bn6:beast/state`.)
+        for d in definitions.defs.iter().filter(|d| d.registry != nettai_content_api::Registry::Schema) {
             if let Some(game) = nettai_content_api::keys::root_of(&d.key) {
                 games.insert(game.to_string());
             }

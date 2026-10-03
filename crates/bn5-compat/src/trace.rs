@@ -7,7 +7,7 @@
 //! §15.5: the setup stops at what BN5's content doesn't define yet).
 
 use crate::codec::{self, ChipHand, NAVI_STATS, NaviStats, Panel};
-use crate::{Compat, pool_of_type, pool_slots, qualify};
+use crate::{Compat, pool_of_type, pool_slots};
 use nettai_battle::content::ChipCode;
 use nettai_battle::custom::{BattleFolder, FolderChip, PlayerSetup, Unlocks};
 use nettai_battle::console::ConsoleSetup;
@@ -641,7 +641,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
 /// BN5's navi numbers' keys in its root (NaviStats +0x29): MegaMan's.
 /// (The Team Battle's navis come with their content.)
 pub fn navi_key(n: u8) -> Option<String> {
-    (n == 0).then(|| qualify("megaman"))
+    (n == 0).then(|| format!("{}:megaman", crate::ROOT))
 }
 
 /// Differences between the engine and a BN5 frame: the state machine and

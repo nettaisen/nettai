@@ -28,10 +28,10 @@
 # The rocks a stage places, by the argument of the actor list's entry (the row of
 # `byte_80CF934`).
 [rock_variants]
-"rockcube/rock/brittle" = 0
-"rockcube/rock/cube" = 1
-"rockcube/rock/hard" = 2
-"rockcube/rock/ice" = 3
+"bn6:rockcube/rock/brittle" = 0
+"bn6:rockcube/rock/cube" = 1
+"bn6:rockcube/rock/hard" = 2
+"bn6:rockcube/rock/ice" = 3
 
 # The projectile's variants a navi's stats name as a shot program (NaviStats+0x4D the
 # buster shot's, +0x4F the charged shot's), by the row of `off_80C4C78`. (The byte 0 is no

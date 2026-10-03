@@ -447,7 +447,7 @@ mod tests {
         let content = bn6_test_content();
         let mut o = offer(&content, 5);
         o.stage = Some(nettai_match::link_battle_stages(&content)[3]);
-        o.side.cards = nettai_match::patch_cards(&content, "canodumb,-shadow").unwrap_or_default();
+        o.side.cards = nettai_match::patch_cards(&content, "bn6:canodumb,-bn6:shadow").unwrap_or_default();
         assert_eq!(Offer::from_bytes(&content, &o.to_bytes()).unwrap(), o);
         // A match file's arena goes too.
         let mut a = o.clone();

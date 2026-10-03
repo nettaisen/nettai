@@ -1,6 +1,6 @@
 //! Compatibility with BN5's original games (Team ProtoMan and Team Colonel,
-//! US and Japanese): their numbers for BN5's content (content/bn5/compat,
-//! rules-in-luau.md §7.2: compat is per root), and what reads them.
+//! US and Japanese): their numbers for BN5's content (content/bn5/compat:
+//! compat is per game), and what reads them.
 //!
 //! - [`Compat`]: the tables, content key to the original's numbers (chip
 //!   ids, the chips' uses by number, damage formulas, the version
@@ -11,15 +11,11 @@
 //! - `trace` (feature `trace`): the chip lab's BN5 recordings, read,
 //!   decoded and replayed (docs/design/bn5-map.md §15.5).
 //!
-//! Keys: content/bn5 writes them unqualified, as its root's loader reads
-//! them (rules-in-luau.md R: content/bn5/root.toml names the root `bn5`);
-//! at its boundary this crate qualifies the keys it hands out (`bn5:cannon`,
-//! [`qualify`]) and strips the ones it is handed ([`strip`]), as bn6-compat
-//! does with `bn6`.
+//! Keys: the tables are keyed by ids in full (`bn5:cannon`, a BN6 kind BN5
+//! numbers `bn6:...`), as content writes them (docs/design/rules-in-luau.md,
+//! the flat namespace), and hand them out as they are.
 //!
-//! The engine never reads any of it (a test guards it). BN5's content has
-//! no root yet (rules-in-luau.md R): what needs one (handles, kinds, the
-//! comparison with a running battle) waits for it, and docs/design/
+//! The engine never reads any of it (a test guards it). docs/design/
 //! bn5-map.md §13 lists what of BN5's records has no engine counterpart.
 
 pub mod codec;
@@ -32,20 +28,10 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// BN5's game: its ids' prefix (content/bn5's).
+/// BN5's game: its ids' prefix (content/bn5's). Compat's tables are keyed
+/// by ids in full (`bn5:cannon`; docs/design/rules-in-luau.md, the flat
+/// namespace).
 pub const ROOT: &str = "bn5";
-
-/// An id compat writes, in full (docs/design/rules-in-luau.md, the flat
-/// namespace: compat writes ids in full, `bn5:cannon`; a key written
-/// without its game is BN5's).
-pub fn qualify(key: &str) -> String {
-    if key.contains(':') || key.starts_with("engine/") { key.to_string() } else { format!("{ROOT}:{key}") }
-}
-
-/// An id, if it is BN5's (compat's tables are keyed by it).
-pub fn strip(key: &str) -> Option<&str> {
-    nettai_content_api::keys::root_of(key).filter(|r| *r == ROOT).map(|_| key)
-}
 
 /// BN5's object pools: how many slots each has (bn5-map.md §3.1). The
 /// actors' is half BN6's (32); the engine's `object::SLOTS` is one number
@@ -166,11 +152,6 @@ pub struct RecordNumbers {
     pub projectile_variants: BTreeMap<String, u8>,
     #[serde(default)]
     pub barriers: BTreeMap<String, u8>,
-}
-
-/// A compat key qualified: its own root's if it names none.
-pub fn qualify_key(key: &str) -> String {
-    if key.contains(':') { key.to_string() } else { qualify(key) }
 }
 
 /// BN5's asset names (assets.toml): the names bn5-extract writes its
@@ -300,33 +281,32 @@ impl Compat {
         let stages: BTreeMap<String, StageEntry> = toml::from_str(&text("stages.toml")?).map_err(|e| format!("stages.toml: {e}"))?;
         let records: RecordNumbers = toml::from_str(&text("records.toml")?).map_err(|e| format!("records.toml: {e}"))?;
         let kinds: BTreeMap<String, KindEntry> = toml::from_str(&text("kinds.toml")?).map_err(|e| format!("kinds.toml: {e}"))?;
-        let kinds = kinds.into_iter().map(|(k, v)| (if k.starts_with("engine/") { k } else { qualify_key(&k) }, v)).collect();
         Ok(Compat { chips, panels: by_number, chip_keys, assets, rules, stages, records, kinds })
     }
 
-    /// A chip's key by its id, as compat writes it (unqualified).
+    /// A chip's id (`bn5:cannon`) by its number.
     pub fn chip_key(&self, id: u16) -> Option<&str> {
         self.chip_keys.get(&id).map(String::as_str)
     }
 
-    /// A chip's qualified key (`bn5:cannon`) by its id.
+    /// [`Compat::chip_key`], owned.
     pub fn chip(&self, id: u16) -> Option<String> {
-        self.chip_key(id).map(qualify)
+        self.chip_key(id).map(String::from)
     }
 
-    /// A chip's entry by its qualified key.
+    /// A chip's entry by its id.
     pub fn chip_entry(&self, key: &str) -> Option<&ChipEntry> {
-        strip(key).and_then(|k| self.chips.get(k))
+        self.chips.get(key)
     }
 
     /// The stage whose layout and actor list a settings record names: its
-    /// qualified key.
+    /// id.
     pub fn stage(&self, layout: u8, actor_list: u32) -> Option<String> {
-        self.stages.iter().find(|(_, e)| e.layout == layout && e.actor_list == actor_list).map(|(k, _)| qualify(k))
+        self.stages.iter().find(|(_, e)| e.layout == layout && e.actor_list == actor_list).map(|(k, _)| k.clone())
     }
 
-    /// The weapon of a routine number: its qualified key (None: 0xFF, no
-    /// weapon; Err: a number records.toml lacks).
+    /// The weapon of a routine number: its id (None: 0xFF, no weapon; Err:
+    /// a number records.toml lacks).
     pub fn weapon(&self, n: u8) -> Result<Option<String>, String> {
         if n == 0xFF {
             return Ok(None);
@@ -335,13 +315,13 @@ impl Compat {
             .weapons
             .iter()
             .find(|(_, v)| v.contains(&n))
-            .map(|(k, _)| Some(qualify_key(k)))
+            .map(|(k, _)| Some(k.clone()))
             .ok_or_else(|| format!("weapon routine {n:#04x}"))
     }
 
-    /// The projectile variant of a row: its qualified key.
+    /// The projectile variant of a row: its id.
     pub fn projectile_variant(&self, n: u8) -> Result<String, String> {
-        self.records.projectile_variants.iter().find(|&(_, &v)| v == n).map(|(k, _)| qualify_key(k)).ok_or_else(|| format!("projectile row {n:#04x}"))
+        self.records.projectile_variants.iter().find(|&(_, &v)| v == n).map(|(k, _)| k.clone()).ok_or_else(|| format!("projectile row {n:#04x}"))
     }
 
     /// The barrier of a type (None: 0, none).
@@ -349,12 +329,12 @@ impl Compat {
         if n == 0 {
             return Ok(None);
         }
-        self.records.barriers.iter().find(|&(_, &v)| v == n).map(|(k, _)| Some(qualify_key(k))).ok_or_else(|| format!("barrier type {n}"))
+        self.records.barriers.iter().find(|&(_, &v)| v == n).map(|(k, _)| Some(k.clone())).ok_or_else(|| format!("barrier type {n}"))
     }
 
-    /// A status's qualified key (`bn5:paralyze-90`) by a hit's status byte.
+    /// A status's id (`bn5:paralyze-90`) by a hit's status byte.
     pub fn status(&self, byte: u8) -> Option<String> {
-        self.rules.statuses.iter().find(|&(_, &n)| n == byte).map(|(k, _)| qualify(k))
+        self.rules.statuses.iter().find(|&(_, &n)| n == byte).map(|(k, _)| k.clone())
     }
 
     /// The sprites' names by (category, index).

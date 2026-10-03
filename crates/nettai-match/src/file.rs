@@ -380,7 +380,7 @@ mod tests {
         }
         // Patch cards past 80 MB; a Cross list for a navi without Crosses.
         let mut m = drawn.clone();
-        m.sides[0].cards = crate::patch_cards(&content, "canodumb,amonicul,coldbear,megalian,mettfire,kilplant").unwrap();
+        m.sides[0].cards = crate::patch_cards(&content, "bn6:canodumb,bn6:amonicul,bn6:coldbear,bn6:megalian,bn6:mettfire,bn6:kilplant").unwrap();
         has(crate::check_match(&content, &m), "left: the patch cards are");
         let mut m = drawn.clone();
         let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
