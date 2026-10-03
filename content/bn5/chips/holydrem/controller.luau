@@ -1,7 +1,7 @@
 --!strict
 -- HolyDrem's dimming controller (BN5's effect object #0x59, 0x080E6DFC: the same as BN6's BurnSqr controller,
 -- `sub_80E702C`, but for what its effect sends out and where it keeps its flag): the usual dimming phases
--- (@bn6/lib/dimming), with an effect that sends out HolyDrem's stand-in (./actor) with the damage plus the bonus
+-- (@common/dimming), with an effect that sends out HolyDrem's stand-in (./actor) with the damage plus the bonus
 -- and lasts until it is done.
 
 local actor = require("./actor")

@@ -1,6 +1,6 @@
 --!strict
 -- PanlGrab (BN5 chip 0x074): a dimming that drops a grab shot on the first panel past the user's side's front in
--- its row: BN6's (@bn6/lib/grab; BN5's the same code).
+-- its row: BN6's (@common/grab; BN5's the same code).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local grab = require("../../lib/grab")

@@ -22,7 +22,7 @@ pub fn definitions(c: &Content, r: &mut Report) {
     // Each game's roles (a root with a stock ruleset; content with no
     // rulesets, its own root's).
     // (The shared folder, content/common, is no game: it has no roles.)
-    let shared = |i: usize| defs.roots.get(i).is_some_and(|name| name == "common");
+    let shared = |i: usize| defs.roots.get(i).is_some_and(|name| name == nettai_content_api::keys::SHARED);
     let first = (0..defs.roles.len()).find(|&i| !shared(i)).unwrap_or(0);
     let games: Vec<usize> = (0..defs.roles.len())
         .filter(|&i| !shared(i) && (i == first || defs.roots.get(i).is_some_and(|name| defs.stock_ruleset_of(name).is_some())))
@@ -154,7 +154,7 @@ pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
         // (The other folders whose modules a module of the type's folder
         // uses. The shared folder, content/common, is BN6's code made to take
         // a game's looks: BN6's own types, with the bit, are its.)
-        for required in c.scripts.roots.iter().map(|r| r.name.clone()).filter(|n| n != root && !(n == "common" && root == "bn6")) {
+        for required in c.scripts.roots.iter().map(|r| r.name.clone()).filter(|n| n != root && !(n == nettai_content_api::keys::SHARED && root == "bn6")) {
             let required = &required;
             let uses = format!("@{required}/");
             let prefix = format!("{root}{}", nettai_content_api::keys::SEPARATOR);
