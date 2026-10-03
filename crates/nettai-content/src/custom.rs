@@ -19,7 +19,10 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
-use nettai_assets::{ChipArt, CustomLettering, CustomScreen, MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles, VersionPictures, Versioned};
+use nettai_assets::{
+    ButtonPictures, ChipArt, CustomLayout, CustomLettering, CustomScreen, MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles,
+    VersionPictures, Versioned,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -98,6 +101,56 @@ pub struct CustomDoc {
     /// `language` is the pack's own).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub languages: BTreeMap<String, CustomLanguageDoc>,
+    /// Where the blocks go among the HUD layer's tile numbers, for a game
+    /// whose window is laid out otherwise than BN6's (none: BN6's,
+    /// `CustomLayout::BN6`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<LayoutDoc>,
+    /// The buttons drawn by name (BN5's soul button): each one's tiles by
+    /// state and its picture in the chip window with that picture's
+    /// palettes by state.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub buttons: Vec<ButtonDoc>,
+}
+
+/// `nettai_assets::CustomLayout`: the tile number each block loads at.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LayoutDoc {
+    pub column_cells: u16,
+    pub turn_limit: u16,
+    pub name: u16,
+    pub art: u16,
+    pub code: u16,
+    pub element: u16,
+    pub digits: u16,
+    pub slots: u16,
+    pub column_icons: u16,
+    pub name_bar: u16,
+    pub cross_names: u16,
+}
+
+impl From<CustomLayout> for LayoutDoc {
+    fn from(l: CustomLayout) -> LayoutDoc {
+        let CustomLayout { column_cells, turn_limit, name, art, code, element, digits, slots, column_icons, name_bar, cross_names } = l;
+        LayoutDoc { column_cells, turn_limit, name, art, code, element, digits, slots, column_icons, name_bar, cross_names }
+    }
+}
+
+impl From<LayoutDoc> for CustomLayout {
+    fn from(l: LayoutDoc) -> CustomLayout {
+        let LayoutDoc { column_cells, turn_limit, name, art, code, element, digits, slots, column_icons, name_bar, cross_names } = l;
+        CustomLayout { column_cells, turn_limit, name, art, code, element, digits, slots, column_icons, name_bar, cross_names }
+    }
+}
+
+/// A button drawn by name (`nettai_assets::ButtonPictures`): its tiles
+/// (`size` tiles a state), and its picture with a palette row a state.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ButtonDoc {
+    pub name: String,
+    pub size: [u8; 2],
+    pub tiles: TileImage,
+    pub picture: TileImage,
 }
 
 /// Another language's pictures with words: its own files, named with the
@@ -284,7 +337,18 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         }
         languages.insert(lang.clone(), CustomLanguageDoc { pictures, cross_names });
     }
-    let maps = |m: &[Vec<MapEntry>]| m.iter().map(|m| m.iter().map(tiles::entry_text).collect()).collect();
+    let buttons = c
+        .buttons
+        .iter()
+        .map(|(name, b)| {
+            let (w, h) = (b.width as u32, b.height as u32);
+            let states = (b.tiles.len() as u32).div_ceil((w * h).max(1)).max(1);
+            let tiles = image(&format!("buttons/{name}.png"), &b.tiles, Layout::Blocks { width: w, height: h, columns: states }, &[frame0], 0, &none);
+            let picture = image(&format!("pictures/{name}.png"), &b.picture.tiles, PICTURE, &b.palettes, b.palettes.len(), &none);
+            ButtonDoc { name: name.clone(), size: [b.width, b.height], tiles, picture }
+        })
+        .collect();
+    let maps =|m: &[Vec<MapEntry>]| m.iter().map(|m| m.iter().map(tiles::entry_text).collect()).collect();
     let doc = CustomDoc {
         format: FORMAT.into(),
         version: VERSION,
@@ -318,6 +382,8 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         regular,
         advance_name_colors: c.advance_name_colors.iter().map(|s| s.iter().map(|&c| tiles::color_text(c)).collect()).collect(),
         languages,
+        layout: (c.layout != CustomLayout::BN6).then(|| c.layout.into()),
+        buttons,
     };
     files.push(("custom.json".into(), json_lines(&doc)));
     files
@@ -402,7 +468,16 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         }
         languages.push((lang.clone(), CustomLettering { pictures, cross_names }));
     }
+    let mut buttons = Vec::new();
+    for b in &doc.buttons {
+        let (picture, palettes) = img(&b.picture, report)?;
+        let picture = Picture { tiles: picture, palette: palettes.first().copied().unwrap_or([0; 16]) };
+        let tiles = img(&b.tiles, report)?.0;
+        buttons.push((b.name.clone(), ButtonPictures { width: b.size[0], height: b.size[1], tiles, picture, palettes }));
+    }
     Some(CustomScreen {
+        layout: doc.layout.map_or(CustomLayout::BN6, CustomLayout::from),
+        buttons,
         window_tiles,
         column_cells: img(&doc.column_cells, report)?.0,
         turn_limit: img(&doc.turn_limit, report)?.0,

@@ -290,12 +290,14 @@ fn compat_navi_number(c: &Content, navi: NaviHandle) -> (usize, bool) {
     }
 }
 
-/// A navi's emblem (four 8x8 tiles) on a console of `version`, as the
+/// A navi's emblem (four 8x8 tiles) on a console of `version` (the pack's
+/// version `console` names, for a game whose versions the engine doesn't
+/// tell apart: `Renderer::console_version`), as the
 /// custom screen's 4x4 sprite holds it (the middle four tiles).
-pub fn emblem(a: &CustomScreen, c: &Content, navi: NaviHandle, version: GameVersion, problems: &mut Problems) -> Tiles {
+pub fn emblem(a: &CustomScreen, c: &Content, navi: NaviHandle, version: GameVersion, console: Option<&str>, problems: &mut Problems) -> Tiles {
     let number = navi_number(c, navi, problems);
     let e = a.emblem_of.get(number).copied();
-    let pictures = &a.versioned.get(crate::custom::game_name(version)).emblems;
+    let pictures = &a.versioned.get(console.unwrap_or(crate::custom::game_name(version))).emblems;
     let mut t = Tiles { pixels: vec![0; 16 * Tiles::TILE] };
     for (k, place) in [5usize, 6, 9, 10].into_iter().enumerate() {
         if let Some(src) = pictures.get(4 * e.unwrap_or(0) as usize + k) {
