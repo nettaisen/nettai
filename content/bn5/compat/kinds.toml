@@ -110,3 +110,6 @@
 "bn5:rock/debris" = { pool = "effect", index = 0x38 }
 "bn5:boulder" = { pool = "attack", index = 0x6E }
 "bn5:greatyo/controller" = { pool = "effect", index = 0x70 }
+"bn5:bugfix/glow" = { pool = "actor", index = 0x5D }
+"bn5:bugfix/controller" = { pool = "effect", index = 0x3B, scratch_position = true }
+"bn5:liberation/controller" = { pool = "effect", index = 0x8A, scratch_position = true }
