@@ -163,7 +163,7 @@ pub struct PortraitLook {
     /// the tick it is set).
     pub anim: u8,
     pub updates: u16,
-    /// The colour added to its palette (BGR555 per channel, saturating):
+    /// The color added to its palette (BGR555 per channel, saturating):
     /// the tint before this tick's step of the fade.
     pub tint: u16,
 }

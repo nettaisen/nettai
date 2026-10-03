@@ -209,7 +209,7 @@ impl<'a> Ids<'a> {
     }
 
     /// The NaviCust program a part id names (its number, `id >> 2`) and its
-    /// colour (the variant, `id & 3`, the definition's colour in that
+    /// color (the variant, `id & 3`, the definition's color in that
     /// place); none for 0, no part.
     pub fn navicust_part(&self, id: u8) -> Option<(NaviCustProgramHandle, u8)> {
         if id == 0 {
@@ -460,7 +460,7 @@ pub fn patch_cards(list: &[u8], ids: &Ids) -> Result<PatchCards, String> {
 // ---- The NaviCust -------------------------------------------------------------------
 
 /// A save's NaviCust (BN6: the list at 0x02004190, 0x31 parts of 8 bytes:
-/// +0 the part id, +3 the centre's column, +4 its row, +5 the quarter turns
+/// +0 the part id, +3 the center's column, +4 its row, +5 the quarter turns
 /// clockwise), on a board with `expansions` (key item 0x71's count); a part
 /// is compressed when `compressed` says so of its part id (event flag 0x2660
 /// + the id, which `sub_813B7A0` reads). The list's empty entries (id 0)

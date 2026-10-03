@@ -481,7 +481,7 @@ RelatedObject1 = its propeller (`sub_80B89DC` with r3 = 0: T1#3, §7.3); state 4
    body (side 0: 0x04000000, side 1: 0x08000000), appended.
 2. None: the target is the other side's back column ((alliance ^ 1) · 5 + 1) in its own row.
 3. Else: i = EV+8 (reset to 0 when ≥ the count), EV+8 = i + 1, the panel list[i]; then `GetPositiveSignedRNG2()
-   & 7` (one RNG2 draw); on 1 or 5, a random neighbour: `GetRandomRelativePanelFiltered` over region 0xA's
+   & 7` (one RNG2 draw); on 1 or 5, a random neighbor: `GetRandomRelativePanelFiltered` over region 0xA's
    offsets ((0,−1), (0,1), (1,0), (−1,0), dx by the side's direction) meeting `byte_80D37E4[side]` (side 0:
    require 0x10020; side 1: require 0x10000, forbid 0x20: the other side's panels), one more RNG2 draw
    (`% count`, BIOS division); none matching returns x 0 (a strike off the field) and y left in r1.
@@ -515,7 +515,7 @@ unless dimmed, paused or the owner's f1 has 0x80110C00, and unless EV+0x14 with 
 **Timeline** (lab, `chips/0x068-airraid1/hit`): the plane at 441 with its propeller; the undim ends 518; it
 takes off 519..548, bombs from 550 (overlay) with the first strike at 551, then every 10 ticks.
 
-**Lab**: the plane, its propeller and overlay, the bombs with and without the neighbour pick are reached.
+**Lab**: the plane, its propeller and overlay, the bombs with and without the neighbor pick are reached.
 The plane shot down, the battle's end and the bombs against a barrier and an invisible navi
 (`chips/0x068-airraid1/broken`, `ko`, `barrier`, `invisible`) match every frame, as do the destroyed action's
 removal paths (`dustman`, `colarmy`, `absorbed`), the plane's lifetime (`lifetime`), the bombs' panel list as the
@@ -711,7 +711,7 @@ rest (lib/barriers/barriers.luau), the panel changes (§4.2) `panel_changer.chan
 records, the turrets' look and HP (§8.1) and SumnBlk's and the points' parameters the hooks' arguments; the
 small per-aim tables of §8 and §7 are the kinds' constants. Collision types: rules/collision.luau (`nothing`
 0x00, `own-body` 0x13, `guard-breaking` 0x32 join); regions: lib/regions.luau (the whole-field regions 0x80,
-0x83, 0x84/0x85, the four neighbours 0x0A and `GetRandomRelativePanelFiltered`); the area-steal rule
+0x83, 0x84/0x85, the four neighbors 0x0A and `GetRandomRelativePanelFiltered`); the area-steal rule
 (`sub_800D668`) and the front of an area (`sub_800D4D0`): lib/panels.luau.
 
 Framework (Rust): `sub_801A7CC` is `Object:raise_barrier` (the barrier byte by behavior: plain 1, bubble 8,

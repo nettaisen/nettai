@@ -5,7 +5,7 @@
 //! (`chip-art/<chip>.png`); `custom.json` lists them in the game's order.
 //!
 //! Each palette belongs to one image, as rows of that image's palette
-//! (`palettes` in its entry); the three palettes no image owns are colour
+//! (`palettes` in its entry); the three palettes no image owns are color
 //! lists in `custom.json`. Images drawn with another image's palette show
 //! it for viewing only.
 //!
@@ -53,16 +53,18 @@ pub struct CustomDoc {
     /// Crosses; and its patches.
     pub cross_maps: Vec<Vec<String>>,
     pub cross_patches: PatchListDoc,
-    /// Background palettes 11 (the slot icons), 12 (greyed out) and 14.
+    /// Background palettes 11 (the slot icons), 12 (grayed out) and 14.
     pub icon_palette: Vec<String>,
-    pub grey_palette: Vec<String>,
+    /// (A pack extracted before the American spellings has the British key.)
+    #[serde(alias = "grey_palette")]
+    pub gray_palette: Vec<String>,
     pub other_palette: Vec<String>,
     /// Chips' pictures by chip key, in the game's order, each with its
     /// palette.
     pub chip_art: Vec<ChipArtDoc>,
     pub pictures: PicturesDoc,
     /// Chip codes as 8x16 glyphs; element icons, each in a palette row
-    /// whose colours 10-15 are the ones it brings; damage digits (0-9, '?').
+    /// whose colors 10-15 are the ones it brings; damage digits (0-9, '?').
     pub codes: TileImage,
     pub elements: TileImage,
     pub digits: TileImage,
@@ -87,9 +89,11 @@ pub struct CustomDoc {
     pub emblem_of: Vec<u8>,
     pub emblem_palette_of: Vec<u8>,
     pub regular: TileImage,
-    /// The Program Advance animation's names' first four colours, the sets
-    /// it steps through.
-    pub advance_name_colours: Vec<Vec<String>>,
+    /// The Program Advance animation's names' first four colors, the sets
+    /// it steps through. (A pack extracted before the American spellings has
+    /// the British key.)
+    #[serde(alias = "advance_name_colours")]
+    pub advance_name_colors: Vec<Vec<String>>,
     /// The other languages' pictures with words, by language (the HUD's
     /// `language` is the pack's own).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -185,9 +189,9 @@ fn patch_list(d: &PatchListDoc) -> PatchList {
 }
 
 /// The element icons' palette rows: the icon palette with each element's
-/// colours from 10 on.
+/// colors from 10 on.
 fn element_rows(c: &CustomScreen) -> Vec<Palette> {
-    c.element_colours
+    c.element_colors
         .iter()
         .map(|e| {
             let mut p = c.icon_palette;
@@ -293,7 +297,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         cross_maps: maps(&c.cross_maps),
         cross_patches: patch_doc(&c.cross_patches),
         icon_palette: tiles::palette_text(&c.icon_palette),
-        grey_palette: tiles::palette_text(&c.grey_palette),
+        gray_palette: tiles::palette_text(&c.gray_palette),
         other_palette: tiles::palette_text(&c.other_palette),
         chip_art,
         pictures: PicturesDoc { ok, ok_picked, redeal, scrap, other },
@@ -312,7 +316,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         emblem_of: c.emblem_of.clone(),
         emblem_palette_of: c.emblem_palette_of.clone(),
         regular,
-        advance_name_colours: c.advance_name_colours.iter().map(|s| s.iter().map(|&c| tiles::colour_text(c)).collect()).collect(),
+        advance_name_colors: c.advance_name_colors.iter().map(|s| s.iter().map(|&c| tiles::color_text(c)).collect()).collect(),
         languages,
     };
     files.push(("custom.json".into(), json_lines(&doc)));
@@ -409,13 +413,13 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         cross_patches: patch_list(&doc.cross_patches),
         frame_palettes,
         icon_palette: palette(&doc.icon_palette, report),
-        grey_palette: palette(&doc.grey_palette, report),
+        gray_palette: palette(&doc.gray_palette, report),
         other_palette: palette(&doc.other_palette, report),
         chip_art,
         pictures,
         codes: img(&doc.codes, report)?.0,
         elements,
-        element_colours: element_rows.iter().map(|p| std::array::from_fn(|i| p[10 + i])).collect(),
+        element_colors: element_rows.iter().map(|p| std::array::from_fn(|i| p[10 + i])).collect(),
         digits: img(&doc.digits, report)?.0,
         slot_codes: img(&doc.slot_codes, report)?.0,
         empty_icon: img(&doc.empty_icon, report)?.0,
@@ -429,14 +433,14 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         emblem_of: doc.emblem_of.clone(),
         emblem_palette_of: doc.emblem_palette_of.clone(),
         regular: img(&doc.regular, report)?.0,
-        advance_name_colours: doc
-            .advance_name_colours
+        advance_name_colors: doc
+            .advance_name_colors
             .iter()
             .map(|set| {
                 if set.len() != 4 {
-                    report.error(&name, format!("a set of the Program Advance names' colours has 4 colours, not {}", set.len()));
+                    report.error(&name, format!("a set of the Program Advance names' colors has 4 colors, not {}", set.len()));
                 }
-                std::array::from_fn(|k| set.get(k).and_then(|c| tiles::parse_colour(c).ok()).map_or(0, |(c, _)| c))
+                std::array::from_fn(|k| set.get(k).and_then(|c| tiles::parse_color(c).ok()).map_or(0, |(c, _)| c))
             })
             .collect(),
         languages,

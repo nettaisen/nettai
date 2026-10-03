@@ -209,7 +209,7 @@ fn picks_share_a_code_or_a_chip() {
     p.press(keys::RIGHT);
     p.press(keys::A);
     assert_eq!(states(&p), [Selected, Unavailable, Selectable, Selected, Unavailable]);
-    // A on a greyed chip does nothing; B takes back the last pick.
+    // A on a grayed chip does nothing; B takes back the last pick.
     p.press(keys::RIGHT);
     p.press(keys::A);
     assert_eq!(p.screen().selection(), [0, 3]);
@@ -291,7 +291,7 @@ fn a_cross_from_the_window() {
     }
     assert_eq!(p.tick, a + 34);
     assert_eq!(p.screen().crosses.chosen, Some(1));
-    // A chosen Cross greys out Beast Out.
+    // A chosen Cross grays out Beast Out.
     assert_eq!(p.screen().slots[SPECIAL_SLOT as usize].state, SlotState::Unavailable);
     p.press(keys::START);
     p.press(keys::A);

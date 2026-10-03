@@ -30,7 +30,7 @@
 //!
 //! [left.navicust]                    # optional: the NaviCust, which the rules compile
 //! expansions = 2                     # optional: the board's (else the largest)
-//! programs = [                       # in the list's order; x, y the centre on the 7x7 grid
+//! programs = [                       # in the list's order; x, y the center on the 7x7 grid
 //!     { program = "bn6:suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
 //! ]
 //! ```
