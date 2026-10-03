@@ -177,6 +177,11 @@ pub struct FormDef {
     /// `status_reset` (BN5's souls' routines, 0x08011B92: SearchSoul's
     /// reveal, ColonelSoul's, TomahawkSoul's grass).
     pub reset: Option<FnId>,
+    /// `put_on(navi)` and `take_off(navi)`: what else it wears and takes
+    /// off with its start and end hooks, after its identity's parts (BN5's
+    /// NumberSoul's layer, a content object: 0x0800F07C, 0x0800F0DE).
+    pub put_on: Option<FnId>,
+    pub take_off: Option<FnId>,
 }
 
 /// A stage (`define.stage`).
@@ -1480,11 +1485,14 @@ impl Defs {
             if (record.kind == super::FormKind::Cross) != record.beast.is_some() {
                 return Err(what(d, "a Cross names its form in Beast Out (`beast`), and no other form does".into()));
             }
-            let reset = match d.spec.field("reset") {
-                Data::Nil => None,
-                _ => Some(functions.id(slot(d, "reset")?)),
+            let mut hook = |field: &str| -> Result<Option<FnId>, ContentError> {
+                Ok(match d.spec.field(field) {
+                    Data::Nil => None,
+                    _ => Some(functions.id(slot(d, field)?)),
+                })
             };
-            forms.push(FormDef { key: d.key.clone(), record, reset });
+            let (reset, put_on, take_off) = (hook("reset")?, hook("put_on")?, hook("take_off")?);
+            forms.push(FormDef { key: d.key.clone(), record, reset, put_on, take_off });
         }
         for (i, f) in forms.iter().enumerate() {
             if let Some(h) = f.record.identity {

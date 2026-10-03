@@ -5,18 +5,23 @@
 -- weapons (weapons/: the buster and the charged shot, BN6's actions with BN5's setups), and his identity: his
 -- actor record (0x08014C94: version 0, a player, AI index 0) and his sprite's 30 attach points (./attach_points). BN5 has no weakness table (BN6's `byte_80108D1`).
 --
--- Not yet (docs/design/bn5-map.md §15.7, §15.8): his souls 6 and 8 to 12 (forms, with Soul Unison), the held offset
--- and the custom screen's no-running message.
+-- Not yet (docs/design/bn5-map.md §15.7): the held offset and the custom screen's no-running message.
 
 local attach_points = require("./attach_points")
 local buster = require("./weapons/buster")
 local charged_shot = require("./weapons/charged-shot")
 local colonelsoul = require("./forms/colonelsoul/form")
 local gyrosoul = require("./forms/gyrosoul/form")
+local knightsoul = require("./forms/knightsoul/form")
 local magnetsoul = require("./forms/magnetsoul/form")
+local meddysoul = require("./forms/meddysoul/form")
 local napalmsoul = require("./forms/napalmsoul/form")
+local numbersoul = require("./forms/numbersoul/form")
 local protosoul = require("./forms/protosoul/form")
 local searchsoul = require("./forms/searchsoul/form")
+local shadowsoul = require("./forms/shadowsoul/form")
+local toadsoul = require("./forms/toadsoul/form")
+local tomahawksoul = require("./forms/tomahawksoul/form")
 
 return define.navi {
     id = "bn5:megaman",
@@ -30,7 +35,22 @@ return define.navi {
     -- the stats a match's side starts him at.
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
     -- His souls, which the custom screen's soul button offers (rules/souls).
-    forms = { souls = { protosoul, gyrosoul, searchsoul, napalmsoul, magnetsoul, colonelsoul } },
+    forms = {
+        souls = {
+            protosoul,
+            gyrosoul,
+            searchsoul,
+            napalmsoul,
+            magnetsoul,
+            meddysoul,
+            colonelsoul,
+            shadowsoul,
+            numbersoul,
+            tomahawksoul,
+            knightsoul,
+            toadsoul,
+        },
+    },
     identity = define.identity {
         class = "megaman",
         version = 0,

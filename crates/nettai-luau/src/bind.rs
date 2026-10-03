@@ -1418,6 +1418,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         }
         with(|api, _| Ok(api.shake_camera_secondary(magnitude, ticks)))
     });
+    lib_fn!(lua, t, "set_shake_through_pause", |_, on: bool| with(|api, _| Ok(api.set_shake_through_pause(on))));
     lib_fn!(lua, t, "burst", |_, navi: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.spawn_burst(navi.0).map(Object)))
     });

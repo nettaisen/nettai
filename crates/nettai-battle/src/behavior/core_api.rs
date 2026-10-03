@@ -150,6 +150,7 @@ fn navi_state_bit(f: NaviState) -> u32 {
         NaviState::FormChangeSpriteHeld => status::FORM_CHANGE_SPRITE_HELD,
         NaviState::HeatTrap => status::HEAT_TRAP,
         NaviState::Vanished => status::VANISHED,
+        NaviState::Dives => status::DIVES,
     }
 }
 
@@ -375,6 +376,15 @@ impl CoreApi for Battle {
 
     fn shake_camera_secondary(&mut self, magnitude: u16, ticks: u16) {
         Battle::shake_camera_secondary(self, magnitude, ticks);
+    }
+
+    fn set_shake_through_pause(&mut self, on: bool) {
+        use crate::battle::battle_flags::SHAKE_THROUGH_PAUSE;
+        if on {
+            self.set_flags(SHAKE_THROUGH_PAUSE);
+        } else {
+            self.round.flags &= !SHAKE_THROUGH_PAUSE;
+        }
     }
 
     fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef> {

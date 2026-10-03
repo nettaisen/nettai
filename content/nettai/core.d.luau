@@ -163,6 +163,9 @@ export type NaviStateFlag =
     | "heat_trap"
     -- Gone from the field while its navi chip's navi acts.
     | "vanished"
+    -- It dives: a panel that submerges (BN5's sea) submerges it and doesn't
+    -- hold it at a move's end (BN5's ToadSoul). The status reset ends it.
+    | "dives"
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 -- A navi's drag reaction step.
 export type DragStep = "start" | "slide" | "recover"
@@ -1086,6 +1089,9 @@ declare battle: {
     -- at `magnitude` (0-3). Drawn only, but each shaking tick draws from
     -- the consoles' own RNGs, which ChpShufl's re-deal reads.
     shake_camera: (magnitude: number, ticks: number) -> (),
+    -- `battle_setFlags(0x20)` / `battle_clearFlags(0x20)`: the cameras
+    -- shake even while the battle is paused (BN5's TomahawkSoul's change).
+    set_shake_through_pause: (on: boolean) -> (),
     -- `sub_80302B6`: the cameras' second shake.
     shake_camera_secondary: (magnitude: number, ticks: number) -> (),
     -- `sub_80EA438`: a burst around the navi's panel (effect #0x90, which
@@ -2119,6 +2125,10 @@ export type FormDef = {
     -- (BN5's souls' own routines: SearchSoul's reveal of invisible
     -- navis, TomahawkSoul's grass).
     reset: ((navi: Object) -> ())?,
+    -- What else it puts on and takes off with its start and end hooks,
+    -- after its identity's parts (BN5's NumberSoul's layer).
+    put_on: ((navi: Object) -> ())?,
+    take_off: ((navi: Object) -> ())?,
     -- A change into a Cross that finds the navi in this animation lets go of it.
     cross_release_anim: number?,
     traits: { FormTrait }?,
