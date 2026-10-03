@@ -227,6 +227,43 @@ impl Battle {
         0
     }
 
+    /// Side `side`'s systems' buttons, in the order the systems are listed.
+    pub(crate) fn side_buttons(&self, side: u8) -> Vec<crate::content::ButtonHandle> {
+        let Some(r) = self.rules[side as usize & 1].ruleset else { return Vec::new() };
+        self.content.defs.ruleset(r).systems.iter().flat_map(|&h| self.content.defs.system(h).buttons.iter().copied()).collect()
+    }
+
+    /// One of a button's functions (`shown`, `state`, `pressed`), as its
+    /// system's for side `side`.
+    pub(crate) fn call_button(&mut self, side: u8, button: crate::content::ButtonHandle, hook: SystemHook) -> Value {
+        let content = self.content.clone();
+        let d = content.defs.button(button);
+        let f = match hook {
+            SystemHook::ButtonShown => d.shown,
+            SystemHook::ButtonState => d.state.expect("a button's state, asked only when it has one"),
+            SystemHook::ButtonPressed => d.pressed,
+            h => panic!("{h:?} is no button's function"),
+        };
+        let (_, slot) = self.system_slot(side, d.system).expect("a button of the side's systems");
+        let call = HookCall::System { side, slot, hook, navi: None, chip: None, weapon: None };
+        crate::behavior::call_hook(self, f, call)
+    }
+
+    /// Side `side`'s systems' `custom.hand_size(side)`: the first answer.
+    pub(crate) fn systems_custom_hand_size(&mut self, side: u8) -> Option<u8> {
+        let r = self.rules[side as usize & 1].ruleset?;
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::CustomHandSize) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::CustomHandSize, navi: None, chip: None, weapon: None };
+                if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
+                    return Some(n as u8);
+                }
+            }
+        }
+        None
+    }
+
     /// Side `side`'s systems' `countered(side, victim)`.
     pub(crate) fn systems_countered(&mut self, side: u8, victim: ObjectRef) {
         self.systems_call(side, SystemHook::Countered, victim);

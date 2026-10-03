@@ -20,7 +20,7 @@ pub mod screen;
 pub use folder::{BattleFolder, FolderChip, SavedFolder};
 pub use library::{GameLibrary, Library};
 pub use look::{DarkHover, Drawn, ScreenLook};
-pub use screen::{Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind, SlotState};
+pub use screen::{ButtonCell, ButtonPlace, Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind, SlotState};
 
 use crate::battle::{Battle, CustomResult, battle_flags};
 use crate::console::{Console, ConsoleSetup};
@@ -330,6 +330,42 @@ pub struct Context<'a> {
     pub link_delay: u8,
 }
 
+/// What a player's custom screen asks its side's systems
+/// (docs/design/rules-in-luau.md §4.4: their `custom` hooks). The battle
+/// answers ([`crate::battle::Battle`]'s side extras); a screen without one
+/// (the screen's own tests) gets no answers.
+pub trait Extras {
+    /// `custom.hand_size(side)`: how many chips the screen deals, as it
+    /// opens; none: the framework's rule.
+    fn hand_size(&mut self) -> Option<u8>;
+    /// The buttons on the screen `screen` (as it opens), in the order the
+    /// side's systems are listed: each that its `shown` says is.
+    fn buttons(&mut self, screen: &Screen) -> Vec<screen::ButtonPlace>;
+    /// A button's `state` (at the open and after each pick), if it has one.
+    fn button_state(&mut self, screen: &Screen, button: crate::content::ButtonHandle) -> Option<SlotState>;
+    /// A button's `pressed` (A on it), which may change the screen.
+    fn button_pressed(&mut self, screen: &mut Screen, folder: &mut BattleFolder, button: crate::content::ButtonHandle);
+}
+
+/// No systems: every question unanswered.
+pub struct NoExtras;
+
+impl Extras for NoExtras {
+    fn hand_size(&mut self) -> Option<u8> {
+        None
+    }
+
+    fn buttons(&mut self, _: &Screen) -> Vec<screen::ButtonPlace> {
+        Vec::new()
+    }
+
+    fn button_state(&mut self, _: &Screen, _: crate::content::ButtonHandle) -> Option<SlotState> {
+        None
+    }
+
+    fn button_pressed(&mut self, _: &mut Screen, _: &mut BattleFolder, _: crate::content::ButtonHandle) {}
+}
+
 /// Ticks a result takes to send: the link carries one of its 50 words a
 /// tick (`sub_801FF18`).
 pub const SEND_TICKS: u32 = 50;
@@ -354,6 +390,11 @@ impl Side {
     /// the status bit goes up and the player's screen deals. The round's
     /// first screen forgets the previous round's Crosses and Beast Out.
     pub fn open(&mut self, ctx: &Context, console: &mut Console) {
+        self.open_with(ctx, console, &mut NoExtras);
+    }
+
+    /// [`Side::open`], asking the side's systems.
+    pub fn open_with(&mut self, ctx: &Context, console: &mut Console, extras: &mut dyn Extras) {
         self.in_custom = true;
         self.built = None;
         self.sent = None;
@@ -361,12 +402,11 @@ impl Side {
             self.round = RoundMemory::default();
         }
         let Some(mut folder) = self.folder else { return };
-        let mut round = self.round;
         let regular = folder.regular_pending;
         // (Palette 11 keeps the last chip window's element colors from
         // screen to screen.)
         let last_chip = self.screen.and_then(|s| s.look.chip_window.last_chip).filter(|_| ctx.turn != 1);
-        let mut screen = Screen::open(&mut folder, &self.view(ctx, regular), ctx.turn, &mut round);
+        let mut screen = Screen::open(&mut folder, &self.view(ctx, regular), ctx.turn, extras);
         if screen.look.chip_window.last_chip.is_none() {
             screen.look.chip_window.last_chip = last_chip;
         }
@@ -375,7 +415,6 @@ impl Side {
         if console.tag_pair.is_some_and(|t| t < screen.hand_size) {
             console.tag_pair = None;
         }
-        self.round = round;
         self.folder = Some(folder);
         self.screen = Some(screen);
     }
@@ -384,8 +423,19 @@ impl Side {
     /// `damage`: a chip's damage for this player now (`sub_80109A4`), for
     /// the hand built at OK.
     pub fn tick(&mut self, ctx: &Context, console: &mut Console, damage: impl Fn(ChipHandle) -> u16) -> Option<Request> {
+        self.tick_with(ctx, console, damage, &mut NoExtras)
+    }
+
+    /// [`Side::tick`], asking the side's systems.
+    pub fn tick_with(
+        &mut self,
+        ctx: &Context,
+        console: &mut Console,
+        damage: impl Fn(ChipHandle) -> u16,
+        extras: &mut dyn Extras,
+    ) -> Option<Request> {
         let (Some(mut screen), Some(mut folder)) = (self.screen, self.folder) else { return None };
-        let request = screen.tick(&self.joypad, &self.view(ctx, folder.regular_pending), &mut folder, console);
+        let request = screen.tick(&self.joypad, &self.view(ctx, folder.regular_pending), &mut folder, console, extras);
         match request {
             Some(Request::Confirm) => self.confirm(ctx, &mut screen, &mut folder, console, damage),
             Some(Request::Send) => {
@@ -535,7 +585,11 @@ impl Battle {
         for side in 0..2u8 {
             let library = library::GameLibrary { content: &content, game: self.games.sides[side as usize], ruleset: self.games.rulesets[side as usize] };
             let ctx = self.custom_context(side, &library);
-            self.custom.sides[side as usize].open(&ctx, &mut self.consoles[side as usize]);
+            let mut s = self.custom.sides[side as usize].clone();
+            let mut console = self.consoles[side as usize];
+            s.open_with(&ctx, &mut console, &mut SideExtras { b: self, side });
+            self.custom.sides[side as usize] = s;
+            self.consoles[side as usize] = console;
         }
     }
 
@@ -564,7 +618,20 @@ impl Battle {
             let ctx = self.custom_context(side, &library);
             let mut s = self.custom.sides[side as usize].clone();
             let mut console = self.consoles[side as usize];
-            let request = s.tick(&ctx, &mut console, |id| crate::hand::chip_damage(self, Some(id), side));
+            // (A chip's damage now, for the hand built at OK: a formula's
+            // reads the battle, so those are read before the extras borrow
+            // it.)
+            let formulas: Vec<(ChipHandle, u16)> = content
+                .defs
+                .formula_chips
+                .iter()
+                .map(|&id| (id, crate::hand::chip_damage(self, Some(id), side)))
+                .collect();
+            let damage = |id: ChipHandle| match formulas.iter().find(|(c, _)| *c == id) {
+                Some(&(_, d)) => d,
+                None => content.chip(id).damage,
+            };
+            let request = s.tick_with(&ctx, &mut console, damage, &mut SideExtras { b: self, side });
             // The screen's sounds, which only its player hears.
             if let Some(screen) = &s.screen {
                 for sound in screen.look.drawn.sounds() {
@@ -601,6 +668,80 @@ impl Battle {
         if !self.late_turns() {
             self.gauge.enabled = true;
         }
+    }
+}
+
+impl Battle {
+    /// Side `side`'s custom-screen extras (its systems' `custom` hooks),
+    /// for a screen run outside the battle's own loop (bn6-compat's check
+    /// of the traces' screens, which sets the side's stats and the turn
+    /// first).
+    pub fn custom_extras(&mut self, side: u8) -> impl Extras + '_ {
+        SideExtras { b: self, side }
+    }
+}
+
+/// A side's custom screen's extras: its systems' `custom` hooks.
+struct SideExtras<'b> {
+    b: &'b mut Battle,
+    side: u8,
+}
+
+impl SideExtras<'_> {
+    /// Run `f` with the side's screen (and folder) back in the battle, for
+    /// `custom.*` to reach, and take them back after.
+    fn with_screen<R>(&mut self, screen: &mut Screen, folder: Option<&mut BattleFolder>, f: impl FnOnce(&mut Battle) -> R) -> R {
+        let side = self.side as usize & 1;
+        let (old_screen, old_folder) = (self.b.custom.sides[side].screen, self.b.custom.sides[side].folder);
+        self.b.custom.sides[side].screen = Some(*screen);
+        if let Some(f) = &folder {
+            self.b.custom.sides[side].folder = Some(**f);
+        }
+        let r = f(self.b);
+        *screen = self.b.custom.sides[side].screen.expect("the screen stays");
+        if let Some(folder) = folder {
+            *folder = self.b.custom.sides[side].folder.expect("the folder stays");
+        }
+        self.b.custom.sides[side].screen = old_screen;
+        self.b.custom.sides[side].folder = old_folder;
+        r
+    }
+}
+
+impl Extras for SideExtras<'_> {
+    fn hand_size(&mut self) -> Option<u8> {
+        self.b.systems_custom_hand_size(self.side)
+    }
+
+    fn buttons(&mut self, screen: &Screen) -> Vec<screen::ButtonPlace> {
+        let content = self.b.content.clone();
+        let mut screen = *screen;
+        let side = self.side;
+        let mut out = Vec::new();
+        for button in self.b.side_buttons(side) {
+            let shown = self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonShown));
+            if shown == nettai_content_api::Value::Bool(true) {
+                let d = content.defs.button(button);
+                out.push(screen::ButtonPlace { button, slot: d.slot, cells: d.cells, uses: d.uses, right: d.right, left: d.left });
+            }
+        }
+        out
+    }
+
+    fn button_state(&mut self, screen: &Screen, button: crate::content::ButtonHandle) -> Option<SlotState> {
+        self.b.content.defs.button(button).state?;
+        let mut screen = *screen;
+        let side = self.side;
+        match self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonState)) {
+            nettai_content_api::Value::Int(0) => Some(SlotState::Selectable),
+            nettai_content_api::Value::Int(_) => Some(SlotState::Unavailable),
+            _ => None,
+        }
+    }
+
+    fn button_pressed(&mut self, screen: &mut Screen, folder: &mut BattleFolder, button: crate::content::ButtonHandle) {
+        let side = self.side;
+        self.with_screen(screen, Some(folder), |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonPressed));
     }
 }
 
