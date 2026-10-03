@@ -1,7 +1,10 @@
-//! The Beast Out lock-on marker (effect object #0x0F, `sub_80E1520`). It
-//! sits on the opponent MegaMan's Beast Out chips home in on, and its panel
-//! is the target they read (`sub_80E164A`). Shown only to the Beast Out
-//! navi's own side. See docs/engine/objects-and-player.md §A.7.
+//! The target marker (effect object #0x0F, `sub_80E1520`; BN5 has the
+//! same): it sits over the opponent nearest ahead of its owner, shown only
+//! to the owner's side while the owner's form is a Beast form (forms 0xB
+//! to 0x18; S7 replaces the form kind). Its panel is what BN6's Beast Out
+//! rush and berserk read as the target (`sub_80E164A`), and its freeze is
+//! theirs (`sub_80E1654`, the framework unfreezes it as an attack's links
+//! reset: `sub_80E1662`). See docs/engine/objects-and-player.md §A.7.
 
 use crate::battle::Battle;
 use crate::kinds::common::{self, Progress, set_progress};
@@ -20,14 +23,14 @@ pub struct Vars {
 
 fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
     match &mut b.objects.get_mut(r).vars {
-        crate::kinds::Vars::LockonMarker(v) => v,
-        v => panic!("lock-on marker with {v:?}"),
+        crate::kinds::Vars::TargetMarker(v) => v,
+        v => panic!("target marker with {v:?}"),
     }
 }
 
 /// `sub_80E1620`: give `owner` a marker (kept in its actor data).
 pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
-    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::LockonMarker, Vec3::default(), [0; 4])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::TargetMarker, Vec3::default(), [0; 4])?;
     let (alliance, flip) = {
         let o = b.objects.get(owner);
         (o.alliance, o.flip)
@@ -37,12 +40,12 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
     o.alliance = alliance;
     o.flip = flip;
     o.flags |= flags::RUN_WHILE_PAUSED;
-    let actor = b.objects.get(owner).actor.expect("lock-on marker owner has actor data");
-    b.actors.get_mut(actor).lockon_marker = Some(r);
+    let actor = b.objects.get(owner).actor.expect("target marker owner has actor data");
+    b.actors.get_mut(actor).target_marker = Some(r);
     Some(r)
 }
 
-/// `sub_80E1654`: hold the marker where it is (a chip locked on).
+/// `sub_80E1654`: hold the marker where it is (BN6's rush locked on).
 pub fn freeze(b: &mut Battle, r: ObjectRef) {
     vars(b, r).frozen = true;
     b.objects.get_mut(r).anim = 1;
@@ -78,7 +81,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             // sub_80E1540
             // sprite_load and sprite_loadAnimationData: its animation 0
             // from the first frame's time.
-            let sprite = b.roles_for(r).sprite(crate::content::SpriteRole::LockonMarker);
+            let sprite = b.roles_for(r).sprite(crate::content::SpriteRole::TargetMarker);
             b.objects.sprite_mut(r).load(sprite);
             b.objects.sprite_mut(r).set_animation(0, &b.content);
             b.objects.sprite_mut(r).look.shadow = crate::object::sprite::Shadow::WithSprite;
@@ -94,13 +97,13 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 }
 
 fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
-    b.objects.get(r).related[0].expect("lock-on marker has an owner")
+    b.objects.get(r).related[0].expect("target marker has an owner")
 }
 
 /// The owner's actor-data link to this marker.
 fn link(b: &mut Battle, r: ObjectRef) -> &mut Option<ObjectRef> {
-    let actor = b.objects.get(owner(b, r)).actor.expect("lock-on marker owner has actor data");
-    &mut b.actors.get_mut(actor).lockon_marker
+    let actor = b.objects.get(owner(b, r)).actor.expect("target marker owner has actor data");
+    &mut b.actors.get_mut(actor).target_marker
 }
 
 /// `sub_80E1566`.
@@ -174,7 +177,7 @@ fn target(b: &Battle, r: ObjectRef) -> ObjectRef {
             return best;
         }
     }
-    panic!("a lock-on marker with no opponent to target reads through a null pointer");
+    panic!("a target marker with no opponent to target reads through a null pointer");
 }
 
 /// `sub_80E1730`: of two targets in range, the one in the owner's row;

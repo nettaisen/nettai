@@ -168,7 +168,7 @@ recovery = 0x06
 cut_in_flash = 0x1E
 encased = 0x42
 trap_mark = 0x46
-beast_over_burst = 0x68
+burst = 0x68
 
 # The roles `sparks` of rules/roles.luau: the hit spark (`byte_80E0804`) the original's
 # routines name each by.
@@ -241,7 +241,7 @@ bubble_pop = 0x124
 arrive = 0x129
 obstacle_lift = 0x12A
 bubble = 0x12D
-beast_over_burst = 0x12E
+burst = 0x12E
 telop = 0x173
 cross_special = 0x182
 custom_redeal = 0x182
@@ -262,7 +262,7 @@ winner = 0x01F
 # The roles `sprites` of rules/roles.luau: the sprite ("cc-ii") the original's routines
 # load for each.
 [sprites]
-lockon_marker = "0c-09"
+target_marker = "0c-09"
 bubble = "0c-20"
 immobilized = "10-00"
 eruption = "10-24"

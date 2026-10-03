@@ -9,7 +9,7 @@
 use std::collections::BTreeMap;
 
 use nettai_content_api::{
-    ActionHandle, ChipHandle, CollisionHandle, EffectHandle, FnId, KindHandle, LockonHandle, RegionHandle, SparkHandle,
+    ActionHandle, ChipHandle, CollisionHandle, EffectHandle, FnId, KindHandle, RegionHandle, SparkHandle,
     StatusHandle,
 };
 
@@ -42,22 +42,20 @@ pub enum ActionRole {
     /// on whatever the attack's parameter bytes hold). No routine raises
     /// the request, and BN6's content leaves the role unfilled.
     Volley,
-    /// The charged sword (SlashCross's charged slash, 0x41), which the
-    /// Beast rush recognizes for its lock-on mode.
-    ChargedSword,
-    /// The Beast forms' charged claw (0x52), which the Beast rush and chip
-    /// use recognize.
-    BeastClaw,
     /// DustCross Beast's scatter (0x50), during which the ruleset doesn't
     /// ground a MegaMan navi.
     DustBeastScatter,
     /// ChargeCross's tackle (0x56), during which an invulnerable navi
     /// doesn't glow (`sub_8016860`).
     ChargeTackle,
+    /// The wrapper an attack runs inside while its `wrapped` is 1
+    /// (`sub_801B9E6`): BN6's Beast Out rush (`sub_80EAD9C`). Unfilled, the
+    /// attack runs as it is.
+    Wrapper,
 }
 
 impl ActionRole {
-    pub const ALL: [ActionRole; 13] = [
+    pub const ALL: [ActionRole; 12] = [
         ActionRole::AntiDamageCounter,
         ActionRole::AntiSwordCounter,
         ActionRole::BodyGuardCounter,
@@ -67,10 +65,9 @@ impl ActionRole {
         ActionRole::Turn,
         ActionRole::CrossDeath,
         ActionRole::Volley,
-        ActionRole::ChargedSword,
-        ActionRole::BeastClaw,
         ActionRole::DustBeastScatter,
         ActionRole::ChargeTackle,
+        ActionRole::Wrapper,
     ];
 
     /// Its name in `rules/roles.luau`'s `actions`.
@@ -85,10 +82,9 @@ impl ActionRole {
             ActionRole::Turn => "turn",
             ActionRole::CrossDeath => "cross_death",
             ActionRole::Volley => "volley",
-            ActionRole::ChargedSword => "charged_sword",
-            ActionRole::BeastClaw => "beast_claw",
             ActionRole::DustBeastScatter => "dust_beast_scatter",
             ActionRole::ChargeTackle => "charge_tackle",
+            ActionRole::Wrapper => "wrapper",
         }
     }
 
@@ -142,29 +138,6 @@ impl KindRole {
 
     pub fn named(name: &str) -> Option<KindRole> {
         KindRole::ALL.into_iter().find(|r| r.name() == name)
-    }
-}
-
-/// The Beast Out lock-on modes the ruleset names by role.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum LockonRole {
-    /// The Beast forms' charged claw's (`sub_80EAF1A`), whatever chip the
-    /// attack carries.
-    BeastClaw,
-}
-
-impl LockonRole {
-    pub const ALL: [LockonRole; 1] = [LockonRole::BeastClaw];
-
-    /// Its name in `rules/roles.luau`'s `lockon`.
-    pub fn name(self) -> &'static str {
-        match self {
-            LockonRole::BeastClaw => "beast_claw",
-        }
-    }
-
-    pub fn named(name: &str) -> Option<LockonRole> {
-        LockonRole::ALL.into_iter().find(|r| r.name() == name)
     }
 }
 
@@ -255,9 +228,9 @@ definition_roles! {
         /// What an obstacle encased in ice or a bubble flickers with
         /// (`sub_8018186`).
         Encased = "encased",
-        /// One of the bursts around a navi going Beast Over
-        /// (`sub_80E7D0C`).
-        BeastOverBurst = "beast_over_burst",
+        /// One of the burst's (`sub_80E7D0C`; BN6's around a navi going
+        /// Beast Over).
+        Burst = "burst",
         /// The splash of a body held by a panel at a move's end (BN5's sea,
         /// effect 0x63: 0x0801715E). Only a game whose panels hold needs
         /// it.
@@ -372,8 +345,8 @@ definition_roles! {
         /// A thrown obstacle is lifted, and flies.
         ObstacleLift = "obstacle_lift",
         ObstacleThrow = "obstacle_throw",
-        /// Each of Beast Over's bursts.
-        BeastOverBurst = "beast_over_burst",
+        /// Each of the burst's (BN6's around a navi going Beast Over).
+        Burst = "burst",
         /// A Cross navi starts its special's chip.
         CrossSpecial = "cross_special",
         /// SELECT pressed with too little gauge: its player hears that it
@@ -459,8 +432,8 @@ definition_roles! {
         HitMarker = "hit_marker",
         /// A volcano panel's eruption.
         Eruption = "eruption",
-        /// The Beast forms' lock-on marker.
-        LockonMarker = "lockon_marker",
+        /// The target marker (BN6's Beast forms' lock-on marker).
+        TargetMarker = "target_marker",
     }
 }
 
@@ -562,7 +535,6 @@ pub struct Roles {
     pub kinds: BTreeMap<KindRole, KindHandle>,
     pub hooks: BTreeMap<HookRole, FnId>,
     pub chips: BTreeMap<ChipRole, ChipHandle>,
-    pub lockons: BTreeMap<LockonRole, LockonHandle>,
     pub statuses: BTreeMap<StatusRole, StatusHandle>,
     pub effects: BTreeMap<EffectRole, EffectHandle>,
     pub sparks: BTreeMap<SparkRole, SparkHandle>,
@@ -694,15 +666,6 @@ impl Roles {
             .banners
             .get(&role)
             .unwrap_or_else(|| panic!("the role banners.{} is not filled (define.roles in rules/roles.luau)", role.name()))
-    }
-
-    /// The lock-on mode of `role`; a role content hasn't filled is a panic
-    /// naming it.
-    pub fn lockon(&self, role: LockonRole) -> LockonHandle {
-        *self
-            .lockons
-            .get(&role)
-            .unwrap_or_else(|| panic!("the role lockon.{} is not filled (define.roles in rules/roles.luau)", role.name()))
     }
 
     /// The kind of `role`; a role content hasn't filled is a panic naming

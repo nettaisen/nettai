@@ -128,8 +128,15 @@ fn tail(b: &mut Battle, r: ObjectRef) {
 pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
     let action = navi_action(b, r);
     if action.is_attack() {
-        if ai(b, r).attack.beast_lockon == 1 {
-            return actions::beast_rush::update(b, r);
+        // The game's wrapper (BN6's Beast Out rush, `sub_80EAD9C`) runs
+        // instead, and runs the action when it chooses
+        // (`CoreApi::run_wrapped`).
+        // (A wrapper of a system a side's rules lack doesn't run.)
+        if ai(b, r).attack.wrapped == 1
+            && let Some(wrapper) = b.roles_for(r).try_action(crate::content::ActionRole::Wrapper)
+            && b.content.defs.action_owner(wrapper).is_none_or(|s| b.system_slot(b.objects.get(r).alliance, s).is_some())
+        {
+            return crate::behavior::run_action(b, wrapper, r);
         }
         return actions::dispatch(b, r, action);
     }
@@ -254,7 +261,7 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
     let opp_form = b.form(opp as usize).kind;
     if coll(b, r).acc.counter & 0x8000 != 0 && matches!(opp_form, FormKind::Base | FormKind::Beast) {
         let a = ai(b, r);
-        if !a.beast_out_spent && !a.beast_over_exhausted {
+        if !a.beast_out_spent && !a.exhausted {
             set_mood(b, opp, 0xFF);
         }
     }
@@ -775,7 +782,7 @@ pub(crate) fn end_anger(b: &mut Battle, r: ObjectRef) {
 /// `sub_8014498`: exhausted after Beast Over, lose 1 HP per tick (never
 /// to 0).
 fn drain_hp(b: &mut Battle, r: ObjectRef) {
-    if b.is_battle_over() || !ai(b, r).beast_over_exhausted {
+    if b.is_battle_over() || !ai(b, r).exhausted {
         return;
     }
     let o = b.objects.get_mut(r);
@@ -812,7 +819,8 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
     }
     let action = navi_action(b, r);
     if f & f1::INVULNERABLE != 0
-        && !super::form_of(b, r).kind.is_beast_over()
+        // (Not in a form with its own glow: Beast Over.)
+        && super::form_of(b, r).glow.is_none()
         && action != NaviAction::Entry
         // (`sub_8016860` reads CurAction: not during ChargeCross's tackle.)
         && !super::runs_role(b, r, crate::content::ActionRole::ChargeTackle)

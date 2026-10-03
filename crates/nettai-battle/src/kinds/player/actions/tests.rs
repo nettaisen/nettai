@@ -991,7 +991,7 @@ fn dustcross_beast_scatter_throws_at_six_panels_the_enemy_first() {
 fn slashcross_beast_lunge_strikes_from_beside_its_target() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
-    crate::kinds::lockon_marker::spawn(&mut b, p0);
+    crate::kinds::target_marker::spawn(&mut b, p0);
     tick(&mut b, p0, p1, 0);
     tick(&mut b, p0, p1, 0);
     assert_eq!(start_weapon(&mut b, p0, "test:slashcross-beast/lunge"), "slashcross-beast/lunge/action");
