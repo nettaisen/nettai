@@ -172,6 +172,10 @@ pub struct Content {
     /// by `RootId`: made by [`Content::define`]. A battle reads its arena's
     /// and each side's game's (docs/design/rules-in-luau.md §2.3).
     pub rules: Vec<Rules>,
+    /// Each ruleset's own tables, by `RulesetHandle`: a mix's game's with its
+    /// own sections (P1 item 8); None for a ruleset without sections of its
+    /// own. Made by [`Content::define`].
+    pub ruleset_rules: Vec<Option<Rules>>,
     /// Every sprite's animation timing.
     pub animations: Animations,
     /// The assets content can name (`asset.sprite("bomb")`): the loader
@@ -199,6 +203,7 @@ impl Content {
             let definitions = Default::default();
             sections::build(self, &definitions)?;
             self.defs = Defs::build(self, definitions)?;
+            sections::build_rulesets(self)?;
             return Ok(());
         }
         self.scripts.check_roots().map_err(nettai_content_api::ContentError::new)?;
@@ -207,6 +212,7 @@ impl Content {
         // The rule sections into the ruleset's typed tables.
         sections::build(self, &definitions)?;
         self.defs = Defs::build(self, definitions)?;
+        sections::build_rulesets(self)?;
         self.count_strings();
         Ok(())
     }
@@ -248,6 +254,13 @@ impl Content {
     /// Game `root`'s tables.
     pub fn rules_of(&self, root: RootId) -> &Rules {
         &self.rules[root.index()]
+    }
+
+    /// The tables a side playing by `ruleset` reads about itself: the
+    /// ruleset's own (a mix's, with its sections: P1 item 8), else its game's
+    /// (`game`, the ruleset's or, with none, the stage's game).
+    pub fn side_rules(&self, ruleset: Option<nettai_content_api::RulesetHandle>, game: RootId) -> &Rules {
+        ruleset.and_then(|r| self.ruleset_rules.get(r.index())?.as_ref()).unwrap_or_else(|| self.rules_of(game))
     }
 
     /// The games of content: its folders and every game an id names, by
