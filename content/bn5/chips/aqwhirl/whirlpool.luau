@@ -235,7 +235,15 @@ whirlpool.kind = define.kind {
 
 -- 0x080D1A34 (with 0x0800F1F6): a whirlpool of `owner`'s on (x, y) in `palette` at `speed`, with the damage word
 -- `damage`. Its position is the spawner's registers (the panel Y, the element and 0) until its init places it.
-function whirlpool.spawn(owner: Object, x: number, y: number, element: number, palette: number, speed: number, damage: number): Object?
+function whirlpool.spawn(
+    owner: Object,
+    x: number,
+    y: number,
+    element: number,
+    palette: number,
+    speed: number,
+    damage: number
+): Object?
     local o = battle.spawn(whirlpool.kind, Vec3.new(y, element, 0))
     if o then
         local s = o.state :: State
