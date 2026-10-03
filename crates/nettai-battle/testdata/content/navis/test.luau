@@ -33,7 +33,7 @@ local function navi(id: string, sprite: string, class: IdentityClass, ai_index: 
         merge_height = 0,
         run_message = {},
         weapons = WEAPONS,
-        -- What a Cross change brings it with.
+        -- What a navi switch brings it with.
         fresh = { hp = 100, mega_level = 5, giga_level = 1 },
         cross_hp = { 100, 150 },
         forms = if megaman then { gregar = { crosses = {} }, falzar = { crosses = {} } } else nil,

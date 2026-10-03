@@ -6,6 +6,7 @@
 
 local beast = require("./beast/system")
 local folder = require("./folder/system")
+local emotion = require("./emotion/system")
 local forms = require("./forms/system")
 local navicust = require("./navicust/system")
 local patch_cards = require("./patch-cards/system")
@@ -24,6 +25,9 @@ return define.ruleset {
         forms.system,
         -- Beast Out's turns.
         beast,
+        -- Its emotions: tired at the start, Full Synchro on a counter, the
+        -- NaviCust's swing bug.
+        emotion.system,
         -- The folder's rules, which tools ask (the simulation never does).
         folder,
     },

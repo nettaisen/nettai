@@ -383,12 +383,12 @@ pub struct Battle {
     pub games: BattleGames,
     pub setup: RoundSetup,
     pub stats: [NaviStats; 2],
-    /// Each side's other navi's stats for a Cross change
+    /// Each side's other navi's stats for a navi switch
     /// (`eBattleNaviStats2034A60`): a copy of the side's stats at the
     /// battle's start; a change keeps the navi it leaves here when it is
     /// this one, and takes the navi it goes to from here when it is that
-    /// one (`sub_802D7A0`); a Cross knockout takes it back (`sub_802D9B0`).
-    pub cross_stats: [NaviStats; 2],
+    /// one (`sub_802D7A0`); a switch knockout takes it back (`sub_802D9B0`).
+    pub reserves: [NaviStats; 2],
     pub rng: Rng,
     /// Each player's console: its own RNG (RNG1), which ChpShufl's re-deal
     /// draws from, and what advances it (`console`).
@@ -523,14 +523,16 @@ pub struct SideState {
     pub gauge: u16,
     /// +0x50: the SELECT special runs (`sub_802E4E4`).
     pub select_special: u8,
-    /// +0x54: the Cross special (DarkInvs' auto-battle) runs.
-    pub cross_special: u8,
+    /// +0x54: a system's takeover of the side's navi runs (BN6's Cross
+    /// special, DarkInvs' auto-battle): idle asks the side's systems
+    /// (`takeover`) instead of reading the buttons.
+    pub takeover: u8,
     /// +2: ticks the SELECT special holds the navi (0xB4 when reset,
     /// `sub_802E07C`; `sub_802F068`).
     pub select_ticks: u8,
-    /// +0x30: ticks left of the Cross special (0x1E0 at its start), counted
-    /// down in the navi's stage B (`sub_802E1D8`).
-    pub cross_special_ticks: u16,
+    /// +0x30: ticks left of the takeover (BN6's Cross special starts it at
+    /// 0x1E0), counted down in the navi's stage B (`sub_802E1D8`).
+    pub takeover_ticks: u16,
     /// +0x3C / +0x3A: ticks the side's gauge stays slow / fast (SloGauge,
     /// FstGauge), counted down by `sub_80107D4`.
     pub slow_gauge_ticks: u16,
@@ -704,7 +706,7 @@ impl Battle {
             content,
             games,
             stats: setup.navi_stats,
-            cross_stats: setup.navi_stats,
+            reserves: setup.navi_stats,
             rng: Rng::new(setup.rng),
             consoles: [Console::new(&setup.players[0].console), Console::new(&setup.players[1].console)],
             round: RoundState {
@@ -759,9 +761,9 @@ impl Battle {
         };
         // Each side's systems set the round up before anything reads the
         // side's stats (BN6's patch cards change them); the battle-start
-        // copy of the stats (`cross_stats`) is of the stats after them.
+        // copy of the stats (`reserves`) is of the stats after them.
         b.notify_systems(nettai_content_api::SystemHook::RoundSetup);
-        b.cross_stats = b.stats;
+        b.reserves = b.stats;
         // Init's last steps: refresh every panel, then one unpaused panel
         // update.
         b.field.refresh_all(&b.content.rules_of(b.games.arena).panels, &b.collision);
@@ -1641,7 +1643,8 @@ impl Battle {
         for side in 0..2u8 {
             let Some(a) = self.player_actor(side) else { continue };
             let over = self.is_battle_over();
-            let berserk = self.form(side as usize).kind.is_beast_over();
+            // (A controlled form, BN6's Beast Over: the controller decides.)
+            let berserk = self.form(side as usize).traits.has(crate::content::FormTraits::CONTROLLED);
             let held = self.inputs[side as usize].held;
             let dimmed = self.is_dimmed();
             let ad = self.actors.get_mut(a);
@@ -1856,7 +1859,9 @@ impl Battle {
         if self.is_dimmed() || self.is_battle_over() {
             return false;
         }
-        let berserk = |side: usize| self.form(side).kind.is_beast_over();
+        // (A controlled navi, BN6's Beast Over, can't ask for it: a full
+        // gauge opens it.)
+        let berserk = |side: usize| self.form(side).traits.has(crate::content::FormTraits::CONTROLLED);
         ((berserk(0) || berserk(1)) && self.round.flags & battle_flags::GAUGE_FULL != 0)
             || self.round.flags & battle_flags::CUSTOM_REQUESTED != 0
     }

@@ -62,15 +62,17 @@ local watcher = define.system {
 }
 
 -- BN6's own Beast Out turns (content/bn6/rules/beast), which the test
--- navis' forms go by as BN6's do.
+-- navis' forms go by as BN6's do, and its emotions (content/bn6/rules/
+-- emotion: Full Synchro on a counter).
 local beast = require("./beast/system")
+local emotion = require("./emotion/system")
 local forms = require("./forms/system")
 
 return {
     counter = counter,
     marker = marker,
     -- The test content's own rules.
-    stock = define.ruleset { id = "test:stock", stock = true, systems = { beast, counter, forms.system } },
+    stock = define.ruleset { id = "test:stock", stock = true, systems = { beast, counter, forms.system, emotion.system } },
     -- Another player's: the marker first, then the counter.
     other = define.ruleset { id = "test:test-other", systems = { marker, counter } },
     -- BN6's patch cards, then the counter.

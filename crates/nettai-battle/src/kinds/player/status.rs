@@ -5,7 +5,7 @@
 
 use super::{
     actions, ai, ai_mut, attach_point, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_paralysis, coll,
-    Emotion, coll_mut, cross_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, per_player_gauges, navi_record,
+    Emotion, coll_mut, switch_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, per_player_gauges, navi_record,
     coordinates_to_panel, panel_kind, reactions, reset_attack_links, save_state_word, set_attack, navi_action,
     set_navi_action, NaviAction,
     set_coordinates_from_panel, set_flag1, set_flag2, set_mood,
@@ -15,7 +15,6 @@ use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
 use crate::field::PanelType;
 use crate::object::{DragStep, ObjectRef, PanelPos, Vec3};
-use crate::content::FormKind;
 
 /// `sub_801AF44`, including the action dispatch (`sub_801B9E6`).
 pub(super) fn update(b: &mut Battle, r: ObjectRef) {
@@ -61,7 +60,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
         return Flow::Tail;
     }
     let st = ai(b, r).status;
-    if st & (ai_status::CROSS_KNOCKOUT | ai_status::VOLLEY | ai_status::UNINTERRUPTIBLE) != 0 {
+    if st & (ai_status::SWITCH_KNOCKOUT | ai_status::VOLLEY | ai_status::UNINTERRUPTIBLE) != 0 {
         return Flow::Dispatch;
     }
     if st & ai_status::CROSS_BREAKING != 0 && cross_lane(b, r) {
@@ -71,7 +70,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
         return Flow::Tail;
     }
     b.objects.get_mut(r).prevent_anim = 0;
-    if let Some(flow) = cross_requests(b, r) {
+    if let Some(flow) = action_requests(b, r) {
         return flow;
     }
     if flag2(b, r) & 0x100 != 0 {
@@ -99,9 +98,9 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     tick_submerged(b, r);
     tick_anger(b, r);
     drain_hp(b, r);
-    // sub_802E1D8: the side's Cross special runs down.
+    // sub_802E1D8: the side's takeover (BN6's Cross special) runs down.
     let side = &mut b.sides[b.objects.get(r).alliance as usize];
-    side.cross_special_ticks = side.cross_special_ticks.saturating_sub(1);
+    side.takeover_ticks = side.takeover_ticks.saturating_sub(1);
     Flow::Tail
 }
 
@@ -128,8 +127,15 @@ fn tail(b: &mut Battle, r: ObjectRef) {
 pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
     let action = navi_action(b, r);
     if action.is_attack() {
-        if ai(b, r).attack.beast_lockon == 1 {
-            return actions::beast_rush::update(b, r);
+        // The game's wrapper (BN6's Beast Out rush, `sub_80EAD9C`) runs
+        // instead, and runs the action when it chooses
+        // (`CoreApi::run_wrapped`).
+        // (A wrapper of a system a side's rules lack doesn't run.)
+        if ai(b, r).attack.wrapped == 1
+            && let Some(wrapper) = b.roles_for(r).try_action(crate::content::ActionRole::Wrapper)
+            && b.content.defs.action_owner(wrapper).is_none_or(|s| b.system_slot(b.objects.get(r).alliance, s).is_some())
+        {
+            return crate::behavior::run_action(b, wrapper, r);
         }
         return actions::dispatch(b, r, action);
     }
@@ -234,8 +240,8 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
         dead = b.objects.get(r).hp == 0;
     }
     if dead {
-        if cross_protected(b, r) {
-            ai_mut(b, r).requests |= request::CROSS_DEATH;
+        if switch_protected(b, r) {
+            ai_mut(b, r).requests |= request::SWITCH_KNOCKOUT;
         } else {
             set_flag2(b, r, 1);
         }
@@ -251,12 +257,10 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
     }
     let side = b.objects.get(r).alliance;
     let opp = side ^ 1;
-    let opp_form = b.form(opp as usize).kind;
-    if coll(b, r).acc.counter & 0x8000 != 0 && matches!(opp_form, FormKind::Base | FormKind::Beast) {
-        let a = ai(b, r);
-        if !a.beast_out_spent && !a.beast_over_exhausted {
-            set_mood(b, opp, 0xFF);
-        }
+    // A counter: the counterer's side's rules (BN6's emotion system: Full
+    // Synchro, unless this navi's mood is held).
+    if coll(b, r).acc.counter & 0x8000 != 0 {
+        b.systems_countered(opp, r);
     }
     let loss = coll(b, r).acc.mood_damage;
     super::lose_mood(b, side, loss);
@@ -271,12 +275,12 @@ fn cross_lane(b: &mut Battle, r: ObjectRef) -> bool {
 
 /// The Cross/Beast requests in `ai.requests` (none fire for base
 /// MegaMan).
-fn cross_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
+fn action_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     let f = ai(b, r).requests;
-    if f & request::CROSS_DEATH != 0 {
-        ai_mut(b, r).requests &= !request::CROSS_DEATH;
-        ai_mut(b, r).status |= ai_status::CROSS_KNOCKOUT;
-        let death = super::role_action(b, r, crate::content::ActionRole::CrossDeath);
+    if f & request::SWITCH_KNOCKOUT != 0 {
+        ai_mut(b, r).requests &= !request::SWITCH_KNOCKOUT;
+        ai_mut(b, r).status |= ai_status::SWITCH_KNOCKOUT;
+        let death = super::role_action(b, r, crate::content::ActionRole::SwitchKnockout);
         set_attack(b, r, death, 0);
         return Some(Flow::Dispatch);
     }
@@ -775,7 +779,7 @@ pub(crate) fn end_anger(b: &mut Battle, r: ObjectRef) {
 /// `sub_8014498`: exhausted after Beast Over, lose 1 HP per tick (never
 /// to 0).
 fn drain_hp(b: &mut Battle, r: ObjectRef) {
-    if b.is_battle_over() || !ai(b, r).beast_over_exhausted {
+    if b.is_battle_over() || !ai(b, r).exhausted {
         return;
     }
     let o = b.objects.get_mut(r);
@@ -815,7 +819,8 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
     }
     let action = navi_action(b, r);
     if f & f1::INVULNERABLE != 0
-        && !super::form_of(b, r).kind.is_beast_over()
+        // (Not in a form with its own glow: Beast Over.)
+        && super::form_of(b, r).glow.is_none()
         && action != NaviAction::Entry
         // (`sub_8016860` reads CurAction: not during ChargeCross's tackle.)
         && !super::runs_role(b, r, crate::content::ActionRole::ChargeTackle)
@@ -899,11 +904,11 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         }
         return actions::transform::revert(b, r);
     }
-    if st & ai_status::CHANGING_CROSS != 0 {
-        return actions::cross_change::change(b, r);
+    if st & ai_status::SWITCHING_NAVI != 0 {
+        return actions::navi_switch::change(b, r);
     }
-    if st & ai_status::CROSS_KNOCKOUT != 0 {
-        return actions::cross_change::knock_out(b, r);
+    if st & ai_status::SWITCH_KNOCKOUT != 0 {
+        return actions::navi_switch::knock_out(b, r);
     }
     let f = ai(b, r).requests;
     // The form's own revert (BN5's 0x08014676 saves no state word).
@@ -917,10 +922,10 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
             save_state_word(b, r);
         }
         (request::REVERT_FORM, ai_status::REVERTING_FORM)
-    } else if f & request::CROSS_CHANGE != 0 {
-        (request::CROSS_CHANGE, ai_status::CHANGING_CROSS)
-    } else if f & request::CROSS_DEATH != 0 {
-        (request::CROSS_DEATH, ai_status::CROSS_KNOCKOUT)
+    } else if f & request::NAVI_SWITCH != 0 {
+        (request::NAVI_SWITCH, ai_status::SWITCHING_NAVI)
+    } else if f & request::SWITCH_KNOCKOUT != 0 {
+        (request::SWITCH_KNOCKOUT, ai_status::SWITCH_KNOCKOUT)
     } else {
         return;
     };

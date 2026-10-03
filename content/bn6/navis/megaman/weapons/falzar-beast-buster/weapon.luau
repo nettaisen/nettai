@@ -80,7 +80,7 @@ function falzar_beast_buster.beast_setup(navi: Object, over: string, volleys: Vo
     navi.extra = 0
     navi.attack_lockout = 0
     navi.marker = 0
-    local cross_special = battle.per_player_gauges() and battle.side_special(navi.alliance) == "cross"
+    local cross_special = battle.per_player_gauges() and battle.side_special(navi.alliance) == "takeover"
     if cross_special or battle.navi(navi.alliance).form.id == over then
         volleys.cycle = 1
         volleys.repeats = REPEATS
