@@ -125,7 +125,8 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     // `panels` section names: BN6's field has no BN5 metal, lava or sea.
     // A type another game makes takes the art of no field yet:
     // docs/design/rules-in-luau.md §7.4.)
-    let named = &c.home_rules().panels.types;
+    let own_game = c.defs.root_id(nettai_match::DEFAULT_GAME).unwrap_or_default();
+    let named = &c.rules_of(own_game).panels.types;
     for kind in PanelType::ALL.into_iter().filter(|&t| named.get(t as usize).is_some_and(|r| r.named)) {
         for owner in 0..2 {
             for y in 1..=3 {
