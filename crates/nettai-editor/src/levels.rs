@@ -18,7 +18,13 @@ pub fn has_levels(content: &Content, side: &Side) -> bool {
 /// reload at the side's level over the side's stats. False (nothing done)
 /// for another navi.
 pub fn switch_navi(content: &Content, side: &mut Side, navi: NaviHandle) -> bool {
-    let Some(stats) = side.reloaded_as(content, navi) else { return false };
+    // (A link navi exists through its navi code: from no level, level 0.)
+    let level = side.navi_level;
+    side.navi_level = level.or(Some(0));
+    let Some(stats) = side.reloaded_as(content, navi) else {
+        side.navi_level = level;
+        return false;
+    };
     side.navi = navi;
     side.stats = stats;
     side.crosses = None;
@@ -45,5 +51,6 @@ pub fn reset(content: &Content, side: &Side) -> NaviStats {
 pub fn differs(content: &Content, side: &Side, f: &stats::Field) -> Option<String> {
     let derived = side.reloaded(content)?;
     let level = (f.get)(&derived);
-    (level != (f.get)(&side.stats)).then(|| format!("level {} gives {}", side.navi_level, stats::to_toml(content, level)))
+    let at = side.navi_level.map_or("no level".to_string(), |l| format!("level {l}"));
+    (level != (f.get)(&side.stats)).then(|| format!("{at} gives {}", stats::to_toml(content, level)))
 }

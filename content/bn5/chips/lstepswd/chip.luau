@@ -1,6 +1,10 @@
 --!strict
--- LStepSwd (BN5 chip 0x11f): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- LStepSwd (BN5 chip 0x11f): a Liberation chip: a copy of the user's navi glows over it as it logs in, and the side gets
+-- five uses of StepSword's Liberation ability, which only a Liberation Mission's specials use (the dimming handler's
+-- subtype 66, objects/bugfix).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local bugfix = require("../../objects/bugfix/bugfix")
 
 return define.chip {
     id = "bn5:lstepswd",
@@ -15,4 +19,5 @@ return define.chip {
     lockout = 0,
     flags = { "dimming" },
     slot_in_limit = 1,
+    dimming = bugfix.liberation("stepswd"),
 }

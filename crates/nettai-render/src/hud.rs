@@ -830,7 +830,7 @@ fn mugshot_parts<'a>(
         // (The mugshot's own pack's HUD holds its picture.)
         let Some((tiles, palettes, picture)) = crate::lookups::navi_face(packs, &b.content, stats.navi, problems) else { return };
         let full_synchro = emotion(b, side as u8) == Emotion::FullSynchro;
-        let pal = palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default();
+        let pal = window_faded(b, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
         out.push(block(tiles, 32, 16, pal, x, 18));
         out.push(block(&hud.navi_box, 16, 16, pal, x + 32, 18));
         note_true_face(b, side, Some(picture), x, problems);
@@ -852,6 +852,7 @@ fn mugshot_parts<'a>(
     ) else { return };
     // (The white of a change to Full Synchro: `byte_801CD80`.)
     let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
+    let pal = window_faded(b, pal);
     out.push(block(gfx, 32, 16, pal, x, 18));
     // The box beside it: the face's own (BN5's), a count, or the box
     // without one. A game whose faces bring their boxes has no box
@@ -868,6 +869,17 @@ fn mugshot_parts<'a>(
         out.push(block(tiles, 16, 16, pal, x + 32, 18));
     }
     note_true_face(b, side, face.picture.map(|p| p.id), x, problems);
+}
+
+/// The emotion window's palette (sprite palette 12: `byte_30016D0`) as
+/// the custom screen's second fade record leaves it: a dark chip's hover
+/// darkens sprite palettes 10-13 (`custom::window_fade`), the window's face
+/// among them.
+fn window_faded(b: &Battle, palette: Palette) -> Palette {
+    match crate::custom::window_fade(b) {
+        Some(f) => palette.map(|c| crate::compose::apply_fade(c, f)),
+        None => palette,
+    }
 }
 
 /// The count a side's emotion window shows beside a face that brings no
@@ -906,7 +918,7 @@ fn falzar_face(picture: u8) -> bool {
 /// the face's palette, are a known difference.
 fn note_true_face(b: &Battle, side: usize, picture: Option<u8>, x: i32, problems: &mut Problems) {
     use nettai_battle::custom::GameVersion;
-    let console = b.custom.sides[b.setup.local_side as usize & 1].unlocks.version;
+    let console = bn6_compat::Unlocks::of_side(b, b.setup.local_side).version;
     let others = match console {
         GameVersion::Falzar => picture.is_some_and(gregar_face),
         GameVersion::Gregar => picture.is_some_and(falzar_face),
@@ -919,8 +931,9 @@ fn note_true_face(b: &Battle, side: usize, picture: Option<u8>, x: i32, problems
 /// `sub_801D814`: whether the emotion window shows the Beast Out count
 /// (else its empty box): always in battle mode 5, never in mode 1, and
 /// otherwise while the console's save has Beast Out (event flag 0xE0) and
-/// hasn't sealed it (0x163), in a battle without a gauge for each player
-/// (battle flag 0x40) that isn't random (effects 0x200000).
+/// hasn't sealed it (0x163: a navi code received, the setup's level), in a
+/// battle without a gauge for each player (battle flag 0x40) that isn't
+/// random (effects 0x200000).
 fn beast_count_shown(b: &Battle, side: u8) -> bool {
     use nettai_battle::battle::battle_flags;
     use nettai_battle::setup::effects;
@@ -928,9 +941,8 @@ fn beast_count_shown(b: &Battle, side: u8) -> bool {
         5 => true,
         1 => false,
         _ => {
-            let u = b.custom.sides[side as usize & 1].unlocks;
-            u.beast_out
-                && !u.beast_out_sealed
+            bn6_compat::Unlocks::of_side(b, side).beast_out
+                && b.setup.players[side as usize & 1].navi_level.is_none()
                 && b.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
                 && b.setup.settings.effects & effects::RANDOM == 0
         }
