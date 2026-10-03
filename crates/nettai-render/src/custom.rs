@@ -410,18 +410,19 @@ pub fn game_name(version: GameVersion) -> &'static str {
 
 /// The pictures of the Beast a side's navi goes into, or is in: the
 /// Beast Out button, its picture in the chip window and the BeastOut
-/// chip's. They are its game's (`Unlocks::beast_game`): the console's
+/// chip's. They are its game's (`bn6_compat::Unlocks::beast_game`, the beast
+/// system's rule): the console's
 /// version's, but with a setup's Cross list a Cross of the other game
 /// goes into that game's Beast (docs/engine/custom-screen.md §4.1).
 pub fn beast_pictures<'a>(b: &Battle, a: &'a CustomScreen, side: u8) -> &'a VersionPictures {
     let side = side as usize & 1;
-    let game = b.custom.sides[side].unlocks.beast_game(&*b.content, b.stats[side].form);
+    let game = bn6_compat::Unlocks::of_side(b, side as u8).beast_game(&*b.content, b.stats[side].form);
     a.versioned.get(game_name(game))
 }
 
 /// The pack's name of a console's game version (`Versioned`).
 pub fn version_name(b: &Battle, side: u8) -> &'static str {
-    game_name(b.custom.sides[side as usize & 1].unlocks.version)
+    game_name(bn6_compat::Unlocks::of_side(b, side).version)
 }
 
 /// A side's navi's number (see `View::navi_number`; its lookup is
@@ -704,13 +705,13 @@ impl Window {
     /// the Cross under the cursor's (`sub_8029EAC`: a used one's darker).
     fn cross_names(&mut self, v: &View, problems: &mut Problems) {
         let Some(w) = CrossWindow::of(v.b, v.side as usize) else { return };
-        let side = &v.b.custom.sides[v.side as usize];
+        let unlocks = bn6_compat::Unlocks::of_side(v.b, v.side);
         // Each Cross's name and colors are its own game's (a setup's Cross
         // list can offer the other game's: docs/engine/custom-screen.md
         // §4.1).
         let navi = v.b.stats[v.side as usize].navi;
         let mut picture = |slot: usize| {
-            let form = side.unlocks.cross_at(&*v.b.content, navi, w.offered[slot])?;
+            let form = unlocks.cross_at(&*v.b.content, navi, w.offered[slot])?;
             crate::lookups::cross_name(v.assets, &v.b.content, navi, form, problems)
         };
         for slot in 0..w.count.min(5) as usize {

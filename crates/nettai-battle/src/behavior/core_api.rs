@@ -860,16 +860,12 @@ impl CoreApi for Battle {
                 E::Angry => Emotion::Angry,
                 E::WornOut => Emotion::WornOut,
             },
-            version: match s.unlocks.version {
-                crate::custom::GameVersion::Gregar => "gregar",
-                crate::custom::GameVersion::Falzar => "falzar",
-            },
-            crosses: s.unlocks.crosses,
-            cross_list: s.unlocks.cross_list.map(|l| l.forms().collect()),
-            beast_out: s.unlocks.beast_out,
-            beast_out_sealed: s.unlocks.beast_out_sealed,
             random_battle: self.setup.settings.effects & crate::setup::effects::RANDOM != 0,
         })
+    }
+
+    fn navi_level(&self, side: u8) -> Option<u8> {
+        self.setup.players[side as usize & 1].navi_level
     }
 
     fn take_over(&mut self, side: u8, ticks: u16) {

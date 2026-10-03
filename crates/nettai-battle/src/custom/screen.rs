@@ -10,7 +10,6 @@ use super::builder::{ClassCounts, FormedAdvance};
 use super::chatbox::{Chatbox, Script};
 use super::library::Library;
 use super::look::{ScreenLook, ScreenSound};
-use super::Unlocks;
 use crate::console::Console;
 use crate::battle::FadeMode;
 use crate::content::{ButtonHandle, WindowHandle};
@@ -303,7 +302,8 @@ pub struct PlayerView<'a> {
     pub library: &'a dyn Library,
     pub stats: &'a NaviStats,
     pub emotion: Emotion,
-    pub unlocks: &'a Unlocks,
+    /// BN5's Soul Unison (the setup's).
+    pub souls: &'a super::SoulUnlocks,
     /// Chips sent this round, by class (`dword_20367E0`).
     pub class_uses: &'a ClassCounts,
     /// The round's Beast Out and Crosses so far.
@@ -1315,11 +1315,11 @@ impl Screen {
             let chip = checked(self.chip_in(last, folder)?, view);
             let data = view.library.chip(chip.id);
             let chaos = data.flags.has(crate::content::ChipFlags::DARK);
-            if chaos && !view.unlocks.souls.chaos {
+            if chaos && !view.souls.chaos {
                 return None;
             }
             let (number, _) = view.library.soul_for_family(view.stats.navi, data.family)?;
-            if view.unlocks.souls.owned & (1 << number) == 0 {
+            if view.souls.owned & (1 << number) == 0 {
                 return None;
             }
             let bit = if chaos { 1u32 << (16 + number) } else { 1 << number };
@@ -1547,7 +1547,7 @@ impl PlayerView<'_> {
         let in_soul = self.library.form_kind(self.stats.form) == crate::content::FormKind::Soul;
         let mood = self.stats.mood;
         let hidden = !in_soul && self.emotion != Emotion::Angry && (mood == 0 || (mood != 0xFF && mood < 65));
-        self.library.has_souls(self.stats.navi) && self.unlocks.souls.button && !self.per_player_gauges && !hidden
+        self.library.has_souls(self.stats.navi) && self.souls.button && !self.per_player_gauges && !hidden
     }
 
 }

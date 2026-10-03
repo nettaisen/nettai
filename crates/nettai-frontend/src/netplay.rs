@@ -31,7 +31,8 @@ use std::time::{Duration, Instant};
 
 use nettai_battle::content::Content;
 use nettai_battle::cues::{CueAction, CueTracker};
-use nettai_battle::custom::{CrossList, SavedFolder};
+use bn6_compat::CrossList;
+use nettai_battle::custom::SavedFolder;
 use nettai_battle::setup::RoundSetup;
 use nettai_battle::{Battle, BattleResult, RoundEnd};
 use nettai_battle::patch_cards::InstalledCard;
@@ -62,7 +63,21 @@ impl Offer {
         let mut out = Vec::new();
         let mut w = Writer(&mut out);
         let Offer { side, stage, arena } = self;
-        let Side { ruleset, navi, game, stats, emotion_window_glitch, folder, crosses, cards, navi_level, bug_frags, navicust } = side;
+        let Side {
+            ruleset,
+            navi,
+            game,
+            stats,
+            emotion_window_glitch,
+            folder,
+            crosses,
+            beast_out,
+            cards,
+            navi_level,
+            bug_frags,
+            sp_times,
+            navicust,
+        } = side;
         w.put(ruleset);
         w.put(navi);
         w.put(game);
@@ -71,10 +86,13 @@ impl Offer {
         // An offer's side is one the match's checks accepted, whose folder
         // is whole.
         w.put(&folder.saved().expect("an offer's folder is whole (the checks refuse one being made)"));
-        w.put(crosses);
+        // (BN6's Cross list by its forms: netplay's codecs know no game.)
+        w.put(&crosses.map(|l| l.forms().collect::<Vec<_>>()));
+        w.put(beast_out);
         w.put(cards);
         w.put(navi_level);
         w.put(bug_frags);
+        w.put(sp_times);
         w.put(&navicust.is_some());
         if let Some(n) = navicust {
             w.put(&n.expansions);
@@ -109,10 +127,17 @@ impl Offer {
                 stats: r.get()?,
                 emotion_window_glitch: r.get()?,
                 folder: r.get::<SavedFolder>()?.into(),
-                crosses: r.get::<Option<CrossList>>()?,
+                crosses: match r.get::<Option<Vec<nettai_content_api::FormHandle>>>()? {
+                    Some(forms) if forms.len() > bn6_compat::unlocks::CROSSES => {
+                        return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "too many Crosses"));
+                    }
+                    forms => forms.map(|f| CrossList::new(&f)),
+                },
+                beast_out: r.get()?,
                 cards: r.get::<Vec<InstalledCard>>()?,
                 navi_level: r.get()?,
                 bug_frags: r.get()?,
+                sp_times: r.get()?,
                 navicust: if r.get::<bool>()? {
                     let expansions: u8 = r.get()?;
                     let n: u16 = r.get()?;

@@ -11,7 +11,7 @@ use crate::behavior::Behaviors;
 use crate::content::{ChipCode, Content, testing};
 use nettai_content_api::ChipHandle;
 use crate::custom::screen::{OK_SLOT, Phase, SlotKind, SlotState};
-use crate::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
+use crate::custom::{BattleFolder, FolderChip, PlayerSetup};
 use crate::input::{PlayerTick, keys};
 use crate::setup::{BattleSettings, NaviStats, NaviWeapons, RoundSetup, SetScore};
 use std::sync::Arc;
@@ -59,10 +59,11 @@ pub fn setup() -> RoundSetup {
     folder.chips = [Some(FolderChip::new(testing::chip_in(&content, testing::SUN_GUN_3), ChipCode(0))); 30];
     let player = PlayerSetup {
         folder: Some(folder),
-        unlocks: Unlocks { crosses: [false; 5], beast_out: false, ..Unlocks::everything(GameVersion::Falzar) },
+        souls: Default::default(),
         joypad_phase: 0,
         bug_frags: 0,
-        navi_level: 0,
+        navi_level: None,
+        sp_times: Default::default(),
         console: Default::default(),
         ruleset: None,
         rules: Vec::new(),
@@ -78,7 +79,6 @@ pub fn setup() -> RoundSetup {
         score: SetScore::default(),
         later_stages: Default::default(),
         low_hp_music_latched: false,
-        sp_times: Default::default(),
         players: [player.clone(), player],
         link_delay: 0,
     }
