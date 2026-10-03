@@ -1,6 +1,8 @@
 --!strict
--- MetrKnuk (BN5 chip 0x130): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- MetrKnuk (BN5 chip 0x130): a giga cut-in chip that rains 16 fists around the enemies, cracking the panels (./controller).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local controller = require("./controller")
 
 return define.chip {
     id = "bn5:metrknuk",
@@ -17,4 +19,5 @@ return define.chip {
     extra_flags = { 4, 16 },
     slot_in_limit = 1,
     megaman = "light",
+    dimming = controller.hook,
 }

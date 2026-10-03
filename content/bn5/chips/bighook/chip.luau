@@ -1,6 +1,8 @@
 --!strict
--- BigHook (BN5 chip 0x134): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- BigHook (BN5 chip 0x134): The hook swings two big flames across the enemy area (./hook); its user stays on the field.
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local hook = require("./hook")
 
 return define.chip {
     id = "bn5:bighook",
@@ -17,4 +19,7 @@ return define.chip {
     extra_flags = { 8, 16 },
     slot_in_limit = 1,
     megaman = "light",
+    -- (Its user stays on the field while the hook strikes: 0x080E1910, navi 26.)
+    traits = { "user_stays" },
+    navi = hook.summon,
 }
