@@ -161,6 +161,10 @@ pub struct Rules {
     pub holding_banners: Vec<BannerId>,
     /// The HP bug's drain period by bug level.
     pub hp_bug_periods: [u8; 8],
+    /// BN6's per-form tick runs (`off_80EA93C`: `sub_80F0608`, MegaMan's
+    /// and ChargeMan's: the Fire chips' charge, a form's height); BN5's
+    /// table (0x080EB1E8) has none of it (rule section `status`).
+    pub form_tick: bool,
     /// What the charge rules read for an empty hand's chip.
     pub empty_hand: EmptyHandChip,
     /// Ticks of recovery after a buster shot, by Rapid stat, then by open

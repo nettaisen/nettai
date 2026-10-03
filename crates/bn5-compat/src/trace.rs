@@ -498,14 +498,23 @@ impl Round {
             };
             Ok(PlayerSetup {
                 folder,
-                // BN6's custom screen rules: no Cross, no Beast Out (BN5's
-                // soul screen comes with Soul Unison).
+                // No Cross, no Beast Out; BN5's Soul Unison as a finished
+                // save has it (the save's event flags aren't in a
+                // recording): the soul button, the version's six souls
+                // (Team ProtoMan's 1 to 6, Team Colonel's 7 to 12:
+                // 0x08024BF0's flags) and Chaos Unison.
                 unlocks: Unlocks {
                     version: GameVersion::Falzar,
                     crosses: Default::default(),
                     beast_out: false,
                     beast_out_sealed: false,
                     cross_list: None,
+                    souls: nettai_battle::custom::SoulUnlocks {
+                        button: true,
+                        owned: if d.versions[side as usize] == Version::Colonel { 0b1_1111_1000_0000 } else { 0b111_1110 },
+                        chaos: true,
+                        turn_bonus: d.navi_stats[side as usize].raw[0x32] as i8,
+                    },
                 },
                 joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
                 bug_frags: 0,

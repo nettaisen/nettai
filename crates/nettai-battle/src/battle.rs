@@ -194,6 +194,11 @@ pub enum FadeMode {
     TransformIn = 0x40,
     /// 0x44: the transformation sequencer's fade out.
     TransformOut = 0x44,
+    /// 0x30: BN5's soul button's flash fades back (its custom screen's
+    /// state 9).
+    SoulFlashBack = 0x30,
+    /// 0x34: ... and its flash, to full.
+    SoulFlash = 0x34,
     /// 0x10: the custom screen's Program Advance animation fades back in.
     ProgramAdvanceBack = 0x10,
     /// 0x14: ... and out, a quarter of the way.
@@ -236,6 +241,8 @@ impl FadeMode {
             FadeMode::ProgramAdvanceBack | FadeMode::DarkChipBack | FadeMode::DarkChipWindowBack | FadeMode::BeastOutBack => {
                 (false, 0)
             }
+            FadeMode::SoulFlashBack => (false, 0),
+            FadeMode::SoulFlash => (true, 0x100),
             FadeMode::DarkChipWindow => (true, 0x30),
             FadeMode::ProgramAdvance => (true, 0x40),
             FadeMode::DarkChip => (true, 0x50),

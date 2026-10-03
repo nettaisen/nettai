@@ -796,6 +796,9 @@ const GLOW: [u16; 32] = [
     0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0,
 ];
 
+/// BN5's DarkPlus tint's greens by its timer's low bits (0x080136D8).
+const PLUS_TINT: [u8; 8] = [0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1E];
+
 /// The navi's color shader for its statuses (presentation only;
 /// `loc_801B142`: `sprite_zeroColorShader`, then `sub_80143E4`,
 /// `sub_801690A`, `sub_8016860`, `sub_80168C8`, `sub_80168F0`, the later
@@ -824,6 +827,11 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
     {
         let glow = GLOW[(t & 0x1F) as usize];
         shader = if super::battle_mode(b) == 1 { glow } else { glow << 5 };
+    }
+    // BN5's 0x080136B8: DarkPlus's tint (BN6 has none).
+    let tint = ai(b, r).plus_tint;
+    if tint != 0 {
+        shader = (PLUS_TINT[(tint & 7) as usize] as u16) << 5;
     }
     if f & f1::PARALYZED != 0 {
         shader = blink(0x03FF);
@@ -890,6 +898,10 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         return form_change(b, r);
     }
     if st & ai_status::REVERTING_FORM != 0 {
+        // A form's own revert (BN5's souls') runs as the navi's action.
+        if let NaviAction::Content(h) = super::navi_action(b, r) {
+            return crate::behavior::run_action(b, h, r);
+        }
         return actions::transform::revert(b, r);
     }
     if st & ai_status::SWITCHING_NAVI != 0 {
@@ -899,12 +911,16 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         return actions::navi_switch::knock_out(b, r);
     }
     let f = ai(b, r).requests;
+    // The form's own revert (BN5's 0x08014676 saves no state word).
+    let own_revert = super::form_of(b, r).revert;
     let (bit, state) = if f & request::FORM_CHANGE != 0 {
         (request::FORM_CHANGE, ai_status::FORM_CHANGE)
     } else if f & request::REVERT_FORM != 0 {
-        // Saves the state word after zeroing it.
-        ai_mut(b, r).saved_word = None;
-        save_state_word(b, r);
+        if own_revert.is_none() {
+            // Saves the state word after zeroing it.
+            ai_mut(b, r).saved_word = None;
+            save_state_word(b, r);
+        }
         (request::REVERT_FORM, ai_status::REVERTING_FORM)
     } else if f & request::NAVI_SWITCH != 0 {
         (request::NAVI_SWITCH, ai_status::SWITCHING_NAVI)
@@ -915,8 +931,9 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
     };
     // The change into a form runs the action that form names; the rest are
     // the framework's own (the original's CurAction is 0x1C for all).
-    let action = match form_change_action(b, r) {
-        Some(h) if bit == request::FORM_CHANGE => NaviAction::Content(h),
+    let action = match (form_change_action(b, r), own_revert) {
+        (Some(h), _) if bit == request::FORM_CHANGE => NaviAction::Content(h),
+        (_, Some(h)) if bit == request::REVERT_FORM => NaviAction::Content(h),
         _ => NaviAction::Engine(super::EngineAction::FormChange),
     };
     let a = ai_mut(b, r);
