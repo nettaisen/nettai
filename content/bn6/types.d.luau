@@ -1048,3 +1048,93 @@ export type DripShower = { turns: number, quarter_ticks: number, follows_action:
 -- blinks first, whether it acts while dimmed, whether it cracks the panel
 -- it lands on, and silently.
 export type GroundRockDrop = { warning: number, while_dimmed: boolean, cracks: boolean, silent: boolean }
+
+-- The looks of the BN6 modules other games reuse (each module's `make_kind`).
+
+-- How a game's gun and shots look and sound: their sprite, the sounds of a
+-- step, a mark and a hit, the shots' hit by the look (`dword_80D690C`:
+-- look 0 a thrown attack, look 1 another attacker's), and where the gun
+-- and a shot sit (`on_floor`: BN5's, on the panel's center at height 0).
+export type CircGunLook = {
+    sprite: SpriteAsset,
+    sounds: { step: Sound, mark: Sound, hit: Sound },
+    hits: { [number]: CollisionType },
+    -- The hit's spark (element 0's).
+    spark: Spark,
+    on_floor: boolean?,
+}
+
+-- How a game's bomb looks and sounds, and how it leaves.
+export type CountdownLook = {
+    sprite: SpriteAsset,
+    sounds: { place: Sound, tick: Sound, last: Sound, blast: Sound, puff: Sound },
+    -- The blast's collision: what it is and what it hits.
+    blast: { is: CollisionType, hits: CollisionType },
+    -- How it looks absorbed (nil: nothing absorbs it).
+    absorbed: AbsorbedLook?,
+    -- Any removal leaves a puff (BN5's): no absorbing, no blinking out.
+    removal_puffs: boolean?,
+}
+
+-- A lance's hit: what it is and hits, its spark, hit modifier and bug.
+export type LanceHit = {
+    is: CollisionType,
+    hits: CollisionType,
+    spark: Spark,
+    hit_mod: number,
+    bug: number?,
+    bug_arg: number?,
+}
+
+-- How a game's lance looks and hits: its sprite, its sound, and its hit by
+-- its palette (Param1).
+export type LanceLook = { sprite: SpriteAsset, sound: Sound, hits: { [number]: LanceHit } }
+
+-- A row (`byte_80CF3AC`): what it is and reaches and its hit modifier; the
+-- camera shake it lands with (0 none, else the magnitude, 15 ticks); what
+-- it does to its panel (none, cracks it, cracks it on half the draws, or
+-- breaks it); and the bug its hit carries (BN5's DarkMetr's).
+export type MeteorRow = {
+    is: CollisionType,
+    hits: CollisionType,
+    hit_mod: number,
+    shake: number,
+    panel: "none" | "crack" | "crack_half" | "break",
+    bug: number?,
+    bug_arg: number?,
+}
+
+-- How a game's meteor looks and sounds, its rows, and its spark by element.
+export type MeteorLook = {
+    sprite: SpriteAsset,
+    sounds: { fall: Sound, land: Sound },
+    rows: { [number]: MeteorRow },
+    spark: (element: number) -> Spark,
+}
+
+-- How a game's drill is: its hit's spark, what the first and second are
+-- and hit, what Param3 means ("light", BN6's; or the bug a dark one's hit
+-- carries, BN5's), and whether its spawn keeps the user's element and the
+-- second takes the first's running while dimmed (BN6's do; BN5's
+-- 0x080D41C8 and 0x080D4100 don't).
+export type DrillLook = {
+    spark: Spark,
+    first: CollisionType,
+    second: CollisionType,
+    hits: CollisionType,
+    param3: "light" | { bug: number, bug_arg: number },
+    keeps_element: boolean,
+}
+
+-- How a game's instruments are: their sprite and HP (an instrument's own
+-- first), sounds, what they are and what reaches them, how they look
+-- absorbed (nil: nothing absorbs them), and whether any removal just puffs
+-- (no absorbing, no blinking out).
+export type InstrumentLook = {
+    sprite: SpriteAsset,
+    hp: number,
+    sounds: { appear: Sound, broken: Sound },
+    body: { is: CollisionType, hits: CollisionType },
+    absorbed: AbsorbedLook?,
+    removal_puffs: boolean?,
+}

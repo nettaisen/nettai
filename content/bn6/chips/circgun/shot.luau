@@ -28,18 +28,6 @@ local ANIM = 1
 -- (argument 0x32).
 local HIT_BUG: { [number]: { number } } = { [0] = { 0, 0 }, [1] = { 0x54, 0x32 } }
 
--- How a game's gun and shots look and sound: their sprite, the sounds of a
--- step, a mark and a hit, the shots' hit by the look (`dword_80D690C`:
--- look 0 a thrown attack, look 1 another attacker's), and where the gun
--- and a shot sit (`on_floor`: BN5's, on the panel's center at height 0).
-export type Look = {
-    sprite: SpriteAsset,
-    sounds: { step: Sound, mark: Sound, hit: Sound },
-    hits: { [number]: CollisionType },
-    -- The hit's spark (element 0's).
-    spark: Spark,
-    on_floor: boolean?,
-}
 
 -- `sub_80D67D2`: on its panel, 8 pixels down and up.
 function shot.place(me: Object)
@@ -54,7 +42,7 @@ function shot.place_on_floor(me: Object)
 end
 
 -- A shot kind (`id`) of `look_`.
-function shot.make_kind(id: string, look_: Look): Kind
+function shot.make_kind(id: string, look_: CircGunLook): Kind
     -- Done: the gun's flag cleared (as the original, wherever the gun was);
     -- freed next update.
     local function finish(me: Object)
@@ -177,7 +165,7 @@ shot.look = {
         [0] = collision.thrown,
         [1] = define.collision { id = "bn6:circgun/other-hit", side0 = 0x80000488, side1 = 0x40000488, row_offset = 0x158 },
     },
-} :: Look
+} :: CircGunLook
 
 shot.kind = shot.make_kind("bn6:circgun/shot", shot.look)
 

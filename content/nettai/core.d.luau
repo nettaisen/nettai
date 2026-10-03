@@ -1761,8 +1761,9 @@ export type NaviDef = {
     -- The forms it changes into (MegaMan's), by game: the Crosses by their
     -- number on the custom screen, Beast Out and Beast Over. Where the
     -- original asks whether a navi is MegaMan, the ruleset asks whether it
-    -- has forms.
-    forms: { gregar: FormSet, falzar: FormSet }?,
+    -- has forms. BN5's MegaMan has souls instead (forms of kind "soul",
+    -- which the custom screen's soul button offers).
+    forms: { gregar: FormSet?, falzar: FormSet?, souls: { FormDef }? }?,
     identity: Identity,
     -- What a navi switch brings it with: its weapons, the rest of its
     -- fresh stats, and its HP after the change, by side.
@@ -1839,7 +1840,7 @@ export type FormDef = {
     element: ElementName,
     weakness: { string }?,
     buster_bonus: number,
-    kind: "base" | "cross" | "beast" | "cross_beast" | "beast_over",
+    kind: "base" | "cross" | "beast" | "cross_beast" | "beast_over" | "soul",
     -- The action that changes a navi into it (a game's form change: BN6's
     -- forms', rules/forms), which the pause handler runs at a turn's start.
     -- Every form but the base form names one.
