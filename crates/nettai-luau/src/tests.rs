@@ -208,6 +208,31 @@ fn definitions_are_frozen_and_definers_close_after_loading() {
     drop(lua);
 }
 
+/// Coverage (src/coverage.rs): the modules whose code ran while recording,
+/// on this thread; nothing when not recording.
+#[test]
+fn coverage_records_the_modules_that_ran() {
+    let p = pack(&[
+        ("lib/twice", "return { twice = function(n) return n * 2 end, unused = function() return 0 end }"),
+        ("m", "local lib = require('./lib/twice')\nreturn { f = function(n) for i = 1, 2 do n = lib.twice(n) end return n end }"),
+        ("other", "return { g = function() return 1 end }"),
+    ]);
+    let (lua, _, modules, _, _) = open(&p, &AssetNames::default(), Options::default()).unwrap();
+    let LuaValue::Table(m) = &modules["test:m"] else { panic!("a table") };
+    let f: Function = m.get("f").unwrap();
+    BUDGET.with(|b| b.set(1000));
+    assert_eq!(f.call::<i64>(3).unwrap(), 12);
+    assert_eq!(coverage::take(), coverage::Ran::default(), "nothing recorded unless started");
+    coverage::start();
+    assert_eq!(f.call::<i64>(3).unwrap(), 12);
+    let ran = coverage::take();
+    assert_eq!(ran.modules.into_iter().collect::<Vec<_>>(), ["test:lib/twice", "test:m"]);
+    // Stopped: the next call isn't recorded.
+    assert_eq!(f.call::<i64>(3).unwrap(), 12);
+    assert_eq!(coverage::take(), coverage::Ran::default());
+    drop(lua);
+}
+
 #[test]
 fn a_plan_binds_definition_slots() {
     let modules = BOMBS.to_vec();
