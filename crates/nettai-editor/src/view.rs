@@ -297,16 +297,18 @@ fn light_dark<'a>(e: &'a Editor, s: usize, value: Option<nettai_match::setups::S
     };
     let set = move |x: u16| Msg::SetupValue(s, LIGHT_DARK.into(), "value".into(), SetupValue::Int(x as i64));
     let shown = e.typed.get(&(s, crate::app::setup_key(LIGHT_DARK, "value"))).cloned().unwrap_or_else(|| v.to_string());
-    let kind = if v < 470 { "dark" } else if v >= 1000 { "light, at its height" } else { "light" };
+    let kind = if v < 470 { "dark" } else if v >= 1000 { "very light" } else { "light" };
     let mood = match v {
-        0..=469 => "0: dark (dark chips usable; light chips refused)".to_string(),
-        470..=499 => "64: worried (light; no soul button until the mood rises)".to_string(),
-        1000.. => "190 (Full Synchro's tier)".to_string(),
-        _ => format!("{} (the value / 20 + 103)", v / 20 + 103),
+        0..=469 => "0: the dark face and palette, dark chips usable in a link battle, light chips refused, no soul button".to_string(),
+        470..=499 => "64: worried (no soul button until the mood rises)".to_string(),
+        1000.. => "190, the palette's brightest tier".to_string(),
+        _ => format!("{} (the value / 20 + 103; 0x80 at 500)", v / 20 + 103),
     };
+    let holy = if v <= 499 { " Holy panels he stands on turn Normal." } else { "" };
+    let preset = |name: &'static str, x: u16| button(text(format!("{name} ({x})")).size(13)).on_press(set(x)).style(button::secondary);
     column![
         row![
-            label_text("Light and dark"),
+            label_text("Light and dark".into()),
             slider(0..=1000, v, set).step(10u16).width(Length::Fixed(300.0)),
             text_input("500", &shown)
                 .on_input(move |t| Msg::SetupText(s, LIGHT_DARK.into(), "value".into(), t))
@@ -315,8 +317,9 @@ fn light_dark<'a>(e: &'a Editor, s: usize, value: Option<nettai_match::setups::S
         ]
         .spacing(8)
         .align_y(Alignment::Center),
-        text(format!("{v}: a {kind} MegaMan. Starting mood {mood}.")).size(13),
-        text("0 to 1000; a fresh save's 500. Under 470 dark (dark chips; holy panels he stands on at 499 or under turn Normal); 470 to 499 worried; 500 and up light; 1000 the brightest.")
+        row![space().width(Length::Fixed(160.0)), preset("Light", 500), preset("Very light", 1000), preset("Dark", 0)].spacing(8),
+        text(format!("{v}: a {kind} MegaMan. Starting mood {mood}.{holy}")).size(13),
+        text("0 to 1000; a fresh save's 500. Under 470 dark (dark chips, no light ones); 499 or under clears holy panels; under 500 worried at the start; 1000 the brightest.")
             .size(13)
             .color(DIM),
     ]

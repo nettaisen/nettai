@@ -61,7 +61,7 @@ pub fn chip_art(packs: &Packs, c: &Content, chip: ChipHandle) -> Option<Image> {
 /// plain emotion's), 32x16, in its first palette: a soul's or a Cross's
 /// picture for a tool.
 pub fn form_face(packs: &Packs, c: &Content, form: nettai_content_api::FormHandle) -> Option<Image> {
-    let (_, face) = crate::lookups::form_face(packs, c, form, nettai_battle::kinds::player::Emotion::Normal, &mut Problems::default());
+    let (_, face) = crate::lookups::form_face(packs, c, form, nettai_battle::kinds::player::Emotion::Normal, false, &mut Problems::default());
     let (tiles, palettes) = face?;
     image(tiles, 4, 2, palettes.first()?)
 }
