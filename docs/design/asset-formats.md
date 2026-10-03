@@ -94,6 +94,8 @@ graphics/
     regular.png  chip-art/CHIP.png  pictures/NAME.png
     beast-buttons-V.png  emblems-V.png  cross-names-V.png
     pictures/beast-out-V.png  (V: falzar, gregar)
+    buttons/NAME.png  buttons/NAME-icons.png  (a game's own buttons: BN5's soul)
+    (a BN5 pack's HUD also: mugshots/NAME-box.png, the box a face brings)
     (and another language's lettering, L: ja)
     hud/font-L.png  dialogue-font-L.png  waiting-L.png  gauge-L.png  banners/NAME-L.png
     custom/pictures/NAME-L.png  cross-names-V-L.png
@@ -388,6 +390,34 @@ Advance animation's three sets of name colors; and each chip's picture by
 its chip's key, with the `region` and `version` of a picture from another
 ROM (below). The frontend composes the tile numbers the maps name from
 these blocks, as the original's VRAM holds them.
+
+**Another game's HUD and custom screen** (BN5's, docs/design/bn5-map.md §11)
+use the same files, with optional fields where its game lays them out
+otherwise; a BN6 pack writes none of them and is byte-identical to before:
+
+- `hud.json`: the tile numbers count from the HUD layer's and the gauge's
+  first tiles (`first_tile`, `gauge_first_tile`: BN5's 0x180 and 0x202,
+  BN6's 0x1A0 and 0x222). `mugshot_boxes` gives a face that brings its own
+  2x2 box beside it (`mugshots/NAME-box.png`: BN5's MegaMan, dark MegaMan
+  and Team Colonel's faces), by mugshot number; `no_count_box` says the
+  game has no box without a count (BN5's souls' faces show their turns
+  left: `counts.png`, by count).
+- `custom.json`: `layout` (written only when it isn't BN6's) puts the
+  window's parts at the game's tile numbers (the chip's name, picture,
+  code, element and digits, the slots, the column's icons and cells, the
+  turn limit, the name bar, the Cross names), says which tile a hidden slot
+  is filled with, and where the cursor stands over OK and over the special
+  slot, with each one's corners (BN5's special slot is a 3x2 button, BN6's
+  Beast Out 2x2). `buttons` are the game's own buttons, drawn by name where
+  a system's button stands (BN5's `soul`: its states' tiles, its picture in
+  the chip window with a palette for Soul Unison and one for Chaos Unison,
+  and the souls' 2x2 icons with their sprite palette, which the soul choice
+  flies onto the column).
+- A chip each version draws its own way (BN5's version navi chips) has its
+  icon and picture once a version, `CHIP-protoman` and `CHIP-colonel` with
+  their `version`: a console shows its own version's (the frontend's
+  `Packs::chip_art`, by the console's version a recording names; live play,
+  the pack's first).
 
 **Four ROMs, and what differs by version and region.** A BN6 pack is made
 from the two US ROMs and the two Japanese ones (`bn6-extract content
