@@ -1743,8 +1743,8 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
     the level (a link navi keeps its own without a code), and the SP times. The editor's "Import from save…" runs it.
 - **Match files**: no key renamed, so old files load; the new keys are `beast_out` and `[left.sp_times]`.
   docs/frontend.md says the level's default.
-- **`protocol::VERSION` 3**: the offer's level is an option and it gains Beast Out and the SP times, and the battle's
-  digest differs.
+- **`protocol::VERSION` 4**: the offer's level is an option and it gains Beast Out and the SP times, and the battle's
+  digest differs. (bn5-port-6 landed first with 3, its tactics in the offer; the offer carries both.)
 - **Tests**:
   - bn6-compat: the save reader (a written save reads back; damaged, foreign and other-navi codes refused);
   - nettai-match: SP times, Beast Out and levels write and read back, the level checks, the import, MegaMan's
