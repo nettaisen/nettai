@@ -15,8 +15,8 @@ return define.ruleset {
     systems = {
         -- Light and dark MegaMan: the holy panels a dark one clears, the chips each may use.
         light_dark,
-        -- BN5's emotions: Full Synchro on a counter.
-        emotion,
+        -- BN5's emotions: Full Synchro on a counter, the emotion-swing bug.
+        emotion.system,
         -- Soul Unison: the soul's turns, the revert when they run out (the change is its souls' own action).
         souls.system,
         -- The computer navis a battle brings (a failed Chaos Unison's Dark MegaMan): their AI, their time, their
