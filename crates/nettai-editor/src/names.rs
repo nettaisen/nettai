@@ -36,21 +36,17 @@ pub struct Names {
     pub other: Option<Strings>,
 }
 
-/// A name for one line: a two-line name joined, and the game's stacked
-/// marks (U+E002 is EX, as the frontend's font draws it) spelled as their
-/// letters, which the editor's font has.
+/// A name for one line: a two-line name joined, and the games' stacked
+/// marks (U+E002 is EX, BN5's U+E008 DS, as the frontend's font draws them:
+/// `nettai_render::vfont::stacked_letters`) spelled as their letters,
+/// which the editor's font has.
 fn line(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
-        match c {
-            '\n' => out.push(' '),
-            '\u{E000}' => out.push_str("RV"),
-            '\u{E001}' => out.push_str("BX"),
-            '\u{E002}' => out.push_str("EX"),
-            '\u{E003}' => out.push_str("SP"),
-            '\u{E004}' => out.push_str("FZ"),
-            '\u{E005}' => out.push_str("MB"),
-            c => out.push(c),
+        match (c, nettai_render::vfont::stacked_letters(c)) {
+            ('\n', _) => out.push(' '),
+            (_, Some(letters)) => out.extend(letters),
+            (c, None) => out.push(c),
         }
     }
     out

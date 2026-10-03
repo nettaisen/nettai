@@ -553,6 +553,9 @@ named_fields! {
         /// A battle whose dark chips fizzle (battle effect 0x100000: BN5's
         /// dark chip rule, 0x0801003C).
         NoDarkChips = "no_dark_chips", Bool, ro;
+        /// A battle that holds BN5's light/dark value at 500 (battle effect
+        /// 0x20000, 0x08010EDC).
+        LightDarkHeld = "light_dark_held", Bool, ro;
         Mode = "mode", U8, ro;
         PanelPattern = "panel_pattern", U8, ro;
         /// Every navi is in (the intro's bit 2).
@@ -774,6 +777,8 @@ named_flags! {
         Angry = "angry",
         /// Mood 0, or exhausted after Beast Over.
         WornOut = "worn_out",
+        /// BN5's mood under 65.
+        Worried = "worried",
     }
 }
 
@@ -1386,6 +1391,9 @@ pub trait CoreApi {
     /// 0x0802A330).
     fn sword_pick(&self, side: u8) -> u8;
     fn set_sword_pick(&mut self, side: u8, pick: u8);
+    /// Presentation: whether side `side`'s emotion window shows its form's
+    /// second set of faces (`variant`; BN5's Hub Style).
+    fn set_face_variant(&mut self, side: u8, variant: bool);
     /// `sub_802E032`: add to a side's own custom gauge (battle flag 0x40),
     /// up to full.
     fn add_side_gauge(&mut self, side: u8, n: u16);

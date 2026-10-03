@@ -51,7 +51,7 @@ export type Pool = "actor" | "attack" | "effect"
 export type Lifecycle = "init" | "update" | "destroy" | "finish"
 export type Shadow = "hidden" | "ground" | "with_sprite"
 export type ActorType = "virus" | "navi" | "player"
-export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out"
+export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out" | "worried"
 -- A side's SELECT or Cross special in progress (battle flag 0x40 mode).
 -- A side's special in progress: the SELECT special, or a system's takeover
 -- of the side's navi (BN6's Cross special).
@@ -661,7 +661,7 @@ declare class Object
     function load_form_sprite(self, form: FormDef): ()
     -- `sub_80144C0`: the full status reset.
     function reset_status(self): ()
-    -- Anger ends; the mood is back to 0x80.
+    -- Anger ends; the mood is back to 0x80 (BN5's: a mood of 0 stays).
     function end_anger(self): ()
     -- The form the navi's side asked to change into at this turn's start
     -- (nil: none, or the base form).
@@ -1052,6 +1052,8 @@ declare battle: {
     boss_rank: () -> boolean,
     -- A battle whose dark chips fizzle (battle effect 0x100000: BN5's dark chip rule).
     no_dark_chips: () -> boolean,
+    -- A battle that holds BN5's light/dark value at 500 (battle effect 0x20000, 0x08010EDC).
+    light_dark_held: () -> boolean,
     mode: () -> number,
     panel_pattern: () -> number,
     -- Every navi is in (the intro's bit 2).
@@ -1184,6 +1186,9 @@ declare battle: {
     -- makes for a navi no buttons drive (BN5's computer navi draws it).
     sword_pick: (side: number) -> number,
     set_sword_pick: (side: number, pick: number) -> (),
+    -- Presentation: whether the side's emotion window shows its form's second set of faces (`mugshot.variant`:
+    -- BN5's Hub Style).
+    set_face_variant: (side: number, variant: boolean) -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
     add_side_gauge: (side: number, n: number) -> (),
     -- `sub_8010488`'s special-source branch: add to a bonus a side stores
@@ -1696,6 +1701,14 @@ export type SystemSpec = {
         -- Each unpaused tick, after the navi's input (`sub_8013DA0`'s
         -- place), for a navi a system asked it for (its `ticked`).
         navi_tick: ((side: number, navi: Object) -> ())?,
+        -- The mood the side's navi starts the round with (`sub_8015C2C`'s
+        -- 0x80, where `sub_8013892` sets it; BN5's by the light/dark value,
+        -- 0x0801283A). The first system that answers decides.
+        starting_mood: ((side: number) -> number?)?,
+        -- Each tick, the sprite palette of the side's navi of a player's
+        -- kind (presentation; `sub_801002C`, BN5's 0x0800DD94). The first
+        -- system that answers decides; none, the framework's (BN6's).
+        navi_palette: ((side: number, navi: Object) -> number?)?,
         -- Each tick of the idle action of a navi whose side's takeover runs
         -- (`sub_802D4C6`), in place of the player's decisions: what it did,
         -- as `controller` answers, or "own_chip" (an attack of its own
@@ -1881,12 +1894,24 @@ export type ChipMatch = { element: ElementName?, family: ChipFamily? }
 
 -- A form's faces in the emotion window by its navi's emotion: an emotion
 -- without one shows `normal`.
+export type FaceSet = {
+    normal: Mugshot,
+    angry: Mugshot?,
+    tired: Mugshot?,
+    full_synchro: Mugshot?,
+    worn_out: Mugshot?,
+    -- BN5's mood under 65.
+    worried: Mugshot?,
+}
 export type MugshotFaces = {
     normal: Mugshot,
     angry: Mugshot?,
     tired: Mugshot?,
     full_synchro: Mugshot?,
     worn_out: Mugshot?,
+    worried: Mugshot?,
+    -- A second set, which the side's rules may show instead (`battle.set_face_variant`: BN5's Hub Style).
+    variant: FaceSet?,
 }
 
 -- A navi (§3.2): MegaMan or a link navi. (`NaviDef`, since `Navi` is a
