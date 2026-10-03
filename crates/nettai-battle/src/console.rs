@@ -215,6 +215,32 @@ impl Battle {
         }
     }
 
+    /// BN5's shake (0x08030D78, the arena's `effects.shake`): one channel
+    /// (BN5 has no `sub_80302B6`), shaking while the battle isn't paused
+    /// or while it dims (`battle_isTimeStopPauseOrBattleFlags0x20_800a0a4`;
+    /// the battle's subsystem is always in use), its jitter two draws from
+    /// the battle's RNG2 (the simulation's: every console shakes alike);
+    /// otherwise held, its jitter none and its magnitude kept.
+    fn update_cameras_from_battle_rng(&mut self) {
+        let runs = !self.paused || self.is_dimmed();
+        let shake = self.consoles[0].camera.primary;
+        if !runs || shake.ticks == 0 {
+            for c in &mut self.consoles {
+                c.camera.jitter = (0, 0);
+            }
+            return;
+        }
+        let Some(&(mask, bias)) = JITTER.get(shake.magnitude as usize) else {
+            panic!("camera shake magnitude {} reads past 0x08030DF4", shake.magnitude)
+        };
+        let dx = ((self.rng.next() & mask) << 16) as i32 - bias;
+        let dy = ((self.rng.next() & mask) << 16) as i32 - bias;
+        for c in &mut self.consoles {
+            c.camera.primary.ticks = c.camera.primary.ticks.saturating_sub(1);
+            c.camera.jitter = (dx, dy);
+        }
+    }
+
     /// `sub_80302B6`: the same on the secondary channel.
     pub fn shake_camera_secondary(&mut self, magnitude: u16, ticks: u16) {
         for c in &mut self.consoles {
@@ -229,6 +255,10 @@ impl Battle {
     /// nothing sets, would also let the primary shake; the battle's
     /// subsystem is always in use.)
     pub(crate) fn update_cameras(&mut self) {
+        if self.arena_rules().effects.shake == crate::content::ShakeRule::Battle {
+            self.update_cameras_from_battle_rng();
+            return;
+        }
         let primary_first = self.round.remote_status[0] & 5 != 0 || !self.paused || self.is_dimmed();
         for c in &mut self.consoles {
             c.update_camera(primary_first);
@@ -310,6 +340,42 @@ mod tests {
         c.update_camera(true);
         assert_eq!(c.rng, expected);
         assert_eq!(c.camera.jitter, (0, 0));
+    }
+
+    /// docs/design/bn5-map.md §15.3 item 15: BN5's shake (the arena's
+    /// `effects.shake`) draws its jitter twice a tick from the battle's
+    /// RNG, alike on both consoles, and holds while paused.
+    #[test]
+    fn bn5s_shake_draws_from_the_battle() {
+        use crate::content::{Content, testing};
+        let mut c: Content = testing::build();
+        c.define().unwrap_or_else(|e| panic!("{e}"));
+        for rules in &mut c.rules {
+            rules.effects.shake = crate::content::ShakeRule::Battle;
+        }
+        let c = std::sync::Arc::new(c);
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+        setup.content = c.hash();
+        let mut b = Battle::new(setup, c);
+        let consoles = [b.consoles[0].rng, b.consoles[1].rng];
+        b.shake_camera(1, 3);
+        let mut expected = b.rng;
+        for left in (0..3).rev() {
+            b.update_cameras();
+            let dx = ((expected.next() & 3) << 16) as i32 - 0x2_0000;
+            let dy = ((expected.next() & 3) << 16) as i32 - 0x2_0000;
+            assert_eq!(b.rng, expected);
+            for c in &b.consoles {
+                assert_eq!((c.camera.jitter, c.camera.primary.ticks), ((dx, dy), left));
+            }
+        }
+        assert_eq!([b.consoles[0].rng, b.consoles[1].rng], consoles, "the consoles' own RNGs stay");
+        b.update_cameras();
+        assert_eq!(b.rng, expected);
+        b.shake_camera(1, 2);
+        b.paused = true;
+        b.update_cameras();
+        assert_eq!((b.rng, b.consoles[0].camera.primary.ticks), (expected, 2), "held while paused");
     }
 
     #[test]

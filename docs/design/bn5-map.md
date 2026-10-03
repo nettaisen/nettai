@@ -1216,6 +1216,9 @@ More for §15.3:
 13. **The custom screen's end**: BN5's Team Battle custom screen (0x08025EF2) closes the screen on the tick both
    results are in, BN6's on the next, and BN5's sets no AIData +0x0F on the navis (BN6's `sub_8009338` does): a
    choice of the side's game's custom screen (`custom::GameLibrary`) or of the arena's flow.
+Items 14 to 18 are built (rules-in-luau.md, "P1b"); 19 and the dark chips' costs wait for a replay that needs
+them.
+
 14. **A dark MegaMan clears the holy panel under him** (§6.1; 0x08017136, from all six intake updates, BN6's
    `sub_801A9B8` to `sub_801AC6C`): every tick, an object on a holy panel whose side's light/dark value is 499 or
    less turns it Normal. Team Colonel's MegaMan is dark in the lab (bn5-compat's `LightDark` reads it from the
@@ -1228,10 +1231,12 @@ More for §15.3:
 16. **The hit spark's first tick** (0x080E0870, BN6's `sub_80E0864`): BN5's spark doesn't step its sprite at its
    init, so it lasts a tick longer (spark.rs).
 17. **The metal slide's speed** (§15.2): a step up or down covers its 24 pixels in 3 ticks (8 a tick); the
-   engine's slide moves 6. Its order by the move's direction is the tables', as recorded.
-18. **A custom screen asked for in the fight** (L or R with a full gauge) opens a tick after BN5's does: the
-   recordings that dig for a chip over several turns (HolyDrem's, the chip lab's `dig`) press it twice and BN5
-   opens on the tick of the second release.
+   engine's slide moves 6. Its order by the move's direction is the tables', as recorded. A navi's slide and drag
+   both go 8 a tick in depth in BN5 (0x0801361E, 0x080143A8). A slide arriving on metal goes on as on BN6's roads
+   (0x08013564), and one arriving on sea ends.
+18. **A custom screen asked for in the fight** (L or R with a full gauge) opens a tick after BN5's does: BN5's
+   state 0x20 (0x08007774) opens the screen itself once the reversions are done, where BN6 goes through state 0x24
+   first. The recordings that dig for a chip over several turns (HolyDrem's, the chip lab's `dig`) met it.
 19. **BN5's obstacle framework** (0x08018404, BN6's `sub_801B750`): outside the dimming, an obstacle not in its
    first action on a solid panel tests a word (+0x5C of the toolkit's +0x18) against 0x20 or 0x10 by its panel's
    side, then the panels beside it, and may spawn attack object 0x30 there (0x080CAB02, 0x080CAAE2: unread
