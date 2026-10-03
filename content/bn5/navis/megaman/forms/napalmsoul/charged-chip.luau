@@ -1,11 +1,11 @@
 --!strict
 -- NapalmSoul's charged Fire chips (BN5's action 0x4B, 0x080EF2A2, which a charged chip starts in NapalmSoul in place
 -- of its own: 0x08010442): MegaMan glows (effect 0x26: sprite 14-1D on him for 20 ticks) and on the eleventh tick
--- lobs a napalm bomb (objects/napalm-bomb, variant 2) with the chip's damage at the first enemy body he finds two
+-- lobs a napalm bomb (chips/napalmmn/bomb, variant 2) with the chip's damage at the first enemy body he finds two
 -- columns ahead and on (each column his row first; none on the field: four panels ahead in his row, 0x0801265C).
 -- 21 ticks, then 11 of recovery.
 
-local bomb = require("../../../../objects/napalm-bomb/bomb")
+local bomb = require("../../../../chips/napalmmn/bomb")
 
 local charged_chip = {}
 

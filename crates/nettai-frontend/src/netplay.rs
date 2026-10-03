@@ -78,7 +78,7 @@ impl Offer {
             sp_times,
             navicust,
             tactics,
-            setups,
+            karma,
             souls,
         } = side;
         w.put(ruleset);
@@ -107,16 +107,8 @@ impl Offer {
             }
         }
         w.put(tactics);
-        // The systems' setups (by system, then field), and the souls.
-        w.put(&(setups.len() as u32));
-        for (system, fields) in setups {
-            w.put(system);
-            w.put(&(fields.len() as u32));
-            for (field, v) in fields {
-                w.put(field);
-                put_setup_value(&mut w, v);
-            }
-        }
+        // BN5's karma and souls.
+        w.put(karma);
         w.put(souls);
         w.put(stage);
         w.put(&arena.is_some());
@@ -168,18 +160,7 @@ impl Offer {
                     None
                 },
                 tactics: r.get()?,
-                setups: {
-                    let mut setups = nettai_match::setups::Setups::new();
-                    for _ in 0..r.get::<u32>()? {
-                        let system: String = r.get()?;
-                        let fields = setups.entry(system).or_default();
-                        for _ in 0..r.get::<u32>()? {
-                            let field: String = r.get()?;
-                            fields.insert(field, get_setup_value(&mut r, 0)?);
-                        }
-                    }
-                    setups
-                },
+                karma: r.get()?,
                 souls: r.get()?,
             };
             let stage: Option<StageHandle> = r.get()?;
@@ -216,54 +197,6 @@ impl Offer {
         }
         Ok(())
     }
-}
-
-/// A system's setup value in an offer: a tag, then the value (an integer
-/// zigzagged, a list its length and elements).
-fn put_setup_value(w: &mut Writer, v: &nettai_match::setups::SetupValue) {
-    use nettai_match::setups::SetupValue;
-    match v {
-        SetupValue::Bool(b) => {
-            w.byte(0);
-            w.put(b);
-        }
-        SetupValue::Int(i) => {
-            w.byte(1);
-            w.put(&(((*i << 1) ^ (*i >> 63)) as u64));
-        }
-        SetupValue::Name(n) => {
-            w.byte(2);
-            w.put(n);
-        }
-        SetupValue::List(l) => {
-            w.byte(3);
-            w.put(&(l.len() as u32));
-            for x in l {
-                put_setup_value(w, x);
-            }
-        }
-    }
-}
-
-fn get_setup_value(r: &mut Reader, depth: u8) -> std::io::Result<nettai_match::setups::SetupValue> {
-    use nettai_match::setups::SetupValue;
-    let bad = |e: &str| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string());
-    Ok(match r.byte()? {
-        0 => SetupValue::Bool(r.get()?),
-        1 => {
-            let z: u64 = r.get()?;
-            SetupValue::Int(((z >> 1) as i64) ^ -((z & 1) as i64))
-        }
-        2 => SetupValue::Name(r.get()?),
-        3 if depth < 2 => {
-            let n: u32 = r.get()?;
-            if n > nettai_content_api::state::MAX_ARRAY as u32 {
-                return Err(bad("a setup list too long"));
-            }
-            SetupValue::List((0..n).map(|_| get_setup_value(r, depth + 1)).collect::<Result<_, _>>()?)
-        }
-        _ => return Err(bad("a bad setup value")),
-    })
 }
 
 /// The round both players of a match play, and the match: the host's arena
@@ -593,12 +526,11 @@ mod tests {
         assert!(Offer::from_bytes(&content, &o.to_bytes()[..10]).is_err());
     }
 
-    /// A BN5 side's offer carries its systems' setups (its light/dark
-    /// value) and its souls; both peers' rounds start from them alike. A
-    /// setup the side's ruleset hasn't is refused.
+    /// A BN5 side's offer carries its karma and souls; both peers' rounds
+    /// start from them alike. Karma past 1000, or a soul list under rules
+    /// without souls, is refused.
     #[test]
-    fn offers_carry_setups_and_souls() {
-        use nettai_match::setups::SetupValue;
+    fn offers_carry_karma_and_souls() {
         let content = nettai_match::testing::every_game();
         let mut o = offer(&content, 5);
         o.side.ruleset = content.defs.ruleset_by_key("bn5:stock");
@@ -608,7 +540,7 @@ mod tests {
         o.side.navi_level = None;
         o.side.navicust = None;
         o.side.cards.clear();
-        o.side.setups.entry("bn5:light-dark".into()).or_default().insert("value".into(), SetupValue::Int(100));
+        o.side.karma = 100;
         o.side.souls = Some(vec![content.defs.form_by_key("bn5:protosoul").unwrap()]);
         // (Its folder its rules take: a BN5 one.)
         let five = nettai_match::Match::empty(&content).unwrap();
@@ -620,11 +552,11 @@ mod tests {
         let (two, _) = netplay_setup(&content, 9, &[back, offer(&content, 6)]).unwrap();
         assert_eq!(format!("{one:?}"), format!("{two:?}"));
         let mut bad = o.clone();
-        bad.side.setups.entry("bn6:cross".into()).or_default().insert("beast_out".into(), SetupValue::Bool(false));
-        assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("no system of the side's ruleset"));
-        let mut bad = o;
-        bad.side.setups.get_mut("bn5:light-dark").unwrap().insert("value".into(), SetupValue::Int(-1));
-        assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("doesn't fit"));
+        bad.side.karma = 1200;
+        assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("karma 1200"));
+        let mut bad = offer(&content, 6);
+        bad.side.souls = Some(Vec::new());
+        assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("no Soul Unison"));
     }
 
     /// What one player of [`pair`] saw: the round, the match, the settled
