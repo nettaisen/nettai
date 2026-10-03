@@ -42,6 +42,11 @@
 "bn5:cosmoman/navi" = { pool = "actor", index = 0x1D }
 "bn5:cosmoman/caller" = { pool = "effect", index = 0x86, scratch_z_fraction = true }
 "bn5:cosmoman/meteor" = { pool = "attack", index = 0xBF }
+"bn5:django/navi" = { pool = "actor", index = 0x24 }
+"bn5:django/coffin" = { pool = "attack", index = 0xBC }
+"bn5:django/sun" = { pool = "effect", index = 0x7B }
+"bn5:django/lights" = { pool = "effect", index = 0x7D, scratch_panel = true }
+"bn5:django/rubble" = { pool = "effect", index = 0x84 }
 "bn5:sonic-boom" = { pool = "attack", index = 0x58 }
 "bn5:holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 "bn5:holydrem/actor" = { pool = "actor", index = 0x1C }
