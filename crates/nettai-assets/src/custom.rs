@@ -6,7 +6,7 @@
 //! window frame from tile 1, ...) and from what the screen copies there as
 //! it runs (the chip under the cursor: its art, name, code, element and
 //! damage; the dealt chips' icons and codes; the picked chips' icons). The
-//! frontend's custom screen (nettai-frontend `custom`) composes those tile
+//! frontend's custom screen (nettai-render `custom`) composes those tile
 //! numbers itself, so the blocks here keep the tile numbers they load at.
 
 use crate::{MapEntry, Palette, Tiles, Versioned};

@@ -571,8 +571,8 @@ The user's request: "implement native font rendering for places in the ui with d
    the same everywhere. The user chose **Murecho** ("murecho supports jp text and looks mostly like your current
    font"), over my first pick, Saira (§9.4); the description text's weight is the user's too (300).
 4. **Numbers, banners and other pictures stay pixel art** (§6.6 4 and 5).
-5. **The font lives with the frontend**: `crates/nettai-frontend/fonts/murecho/`, with `OFL.txt`. `--font PATH`
-   puts another TrueType or OpenType file in its place.
+5. **The font lives with the drawing**: `crates/nettai-render/fonts/murecho/` (nettai-frontend's until the drawing
+   became its own crate), with `OFL.txt`. `--font PATH` puts another TrueType or OpenType file in its place.
 6. Translations (§4.3) and the HUD's lines as content strings (§4.2) were not part of it. Translations came
    next: §10.
 
@@ -699,7 +699,7 @@ Murecho (Neil Summerour, Positype; SIL Open Font License 1.1, no Reserved Font N
   all 2,404 frames (1,667, and the custom screen's 737).
 - **The comparison pins the mode**: the verification workspace's `frontend-compare` scripts pass `--text original`
   to a frontend that has the option (a baseline from before it gets nothing extra).
-- **Tests** (`cargo test -p nettai-frontend`): the depth mask; text hidden where a sprite in front won and faded
+- **Tests** (`cargo test -p nettai-render`): the depth mask; text hidden where a sprite in front won and faded
   with its layer; a font-mode telop as an item over blank parts where the original's glyph parts were; a HUD line
   without its padding; layout that never leaves its box, isn't stretched, and squeezes before shrinking; kana and
   kanji laid out; the placement policy; marks (a stacked mark in one cell, a button in its ring: §10.5). The font
