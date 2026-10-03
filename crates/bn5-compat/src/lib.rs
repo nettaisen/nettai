@@ -128,6 +128,11 @@ pub struct KindEntry {
     /// The fraction of its Z is register garbage.
     #[serde(default)]
     pub scratch_z_fraction: bool,
+    /// Its panel bytes are register garbage nothing reads (Django's
+    /// lights, spawned with the last spawned object's address in a
+    /// register): the comparison skips them.
+    #[serde(default)]
+    pub scratch_panel: bool,
 }
 
 /// A netbattle stage (stages.toml): the settings records that are it, its
