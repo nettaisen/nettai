@@ -63,7 +63,8 @@ function action.make(id: string, hit_mod: number, pierces: boolean): Action
                 if s.timer == THROW_TICK then
                     local charged = me.charged ~= 0
                     local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-                    sonic_boom.throw(swords.sonic_boom, me, me.panel_x + me.facing, me.panel_y, me.attack_element, damage, {
+                    local x, y = me.panel_x + me.facing, me.panel_y
+                    sonic_boom.throw(swords.sonic_boom, me, x, y, me.attack_element, damage, {
                         hit_mod = if charged then CHARGED_HIT_MOD else hit_mod,
                         pierces = pierces,
                     })
