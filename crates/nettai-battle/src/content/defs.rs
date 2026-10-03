@@ -2124,8 +2124,11 @@ mod tests {
     #[test]
     fn every_bn6_module_loads_in_the_define_phase() {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
+        // (With the shared folder its modules require, content/common.)
+        let common = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/common");
         let mut c = Content::default();
         c.scripts = crate::content::Scripts::root(crate::content::RootManifest::named("bn6"), crate::content::testing::modules_under(dir));
+        c.scripts.add_root(crate::content::RootManifest::named("common"), crate::content::testing::modules_under(common));
         c.assets = crate::content::testing::asset_names_for(&c.scripts);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
