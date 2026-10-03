@@ -279,6 +279,9 @@ export type SlashSpec = {
     -- The action's key when no chip definition holds it (its compat key).
     id: string?,
     blade: AttachmentLook,
+    -- The blade's animation, by its holder (none: `sub_80EBAE8`'s,
+    -- lib/swords/parts).
+    blade_anim: ((Object) -> number)?,
     hit: SwordHit,
     effect: Effect,
     effect_palette: number?,

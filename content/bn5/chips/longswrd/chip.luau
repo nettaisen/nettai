@@ -22,6 +22,7 @@ return define.chip {
     slot_in_limit = 3,
     action = slash.action {
         blade = swords.blade,
+        blade_anim = swords.blade_anim,
         hit = { region = regions.long, collision = swords.slashes_navis, hit_mod = 3 },
         effect = swords.effects.long,
         sound = swords.swing,

@@ -26,6 +26,7 @@ return define.chip {
     action = slash.action {
         id = "bn5:drksword/action",
         blade = swords.blade,
+        blade_anim = swords.blade_anim,
         hit = {
             region = regions.wide_long,
             collision = { is = collision.collision_11, hits = collision.hits_navis },
