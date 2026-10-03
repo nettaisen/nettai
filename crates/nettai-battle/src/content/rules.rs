@@ -247,6 +247,12 @@ pub struct Rules {
     /// and ChargeMan's: the Fire chips' charge, a form's height); BN5's
     /// table (0x080EB1E8) has none of it (rule section `status`).
     pub form_tick: bool,
+    /// Which ticks of the mercy flash show the navi (rule section `status`):
+    /// BN6's hides it while the flash timer's bit 1 is set
+    /// (`sub_8016934`), BN5's while it is clear (0x080137B6): the same
+    /// blink, two ticks out of phase. Presentation: visibility is no part
+    /// of the simulation.
+    pub flash_hides_on_clear: bool,
     /// Whose emotions the side's navi has (rule section `status`): BN6's
     /// (`sub_8015B54`, `sub_8015BEC`) or BN5's (0x08012740: a soul first,
     /// then anger, a mood of 0 and Full Synchro, a mood under 65 worried;

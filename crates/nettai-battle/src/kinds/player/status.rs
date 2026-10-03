@@ -875,9 +875,11 @@ fn counter_shader(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_8016934`: visible unless flashing (2 ticks off, 2 on), and hidden
-/// from a viewer whose navi is blind if it is the other side's (each
-/// console's rule, decided for both viewers).
+/// `sub_8016934`: visible unless flashing (2 ticks off, 2 on: off while
+/// the flash timer's bit 1 is set, or clear in a game whose status rules
+/// say `flash_hides_on_clear`, BN5's 0x080137B6), and hidden from a viewer
+/// whose navi is blind if it is the other side's (each console's rule,
+/// decided for both viewers).
 fn update_visibility(b: &mut Battle, r: ObjectRef) {
     if !b.is_dimmed() {
         b.objects.get_mut(r).set_visible(true);
@@ -886,7 +888,8 @@ fn update_visibility(b: &mut Battle, r: ObjectRef) {
     if f & f1::DEAD != 0 {
         return;
     }
-    if f & (f1::FLASHING | f1::INVISIBLE) != 0 && coll(b, r).status_timers[timer::FLASH] & 2 != 0 {
+    let bit = coll(b, r).status_timers[timer::FLASH] & 2 != 0;
+    if f & (f1::FLASHING | f1::INVISIBLE) != 0 && bit != b.rules_for(r).flash_hides_on_clear {
         b.objects.get_mut(r).set_visible(false);
     }
     // On its own side's console: HUD markers only. On the other's, hidden
