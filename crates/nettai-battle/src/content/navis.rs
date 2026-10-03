@@ -41,6 +41,11 @@ pub struct NaviData {
     /// A link navi's damage bonus on its family's chips.
     #[serde(default)]
     pub chip_bonus: Option<NaviChipBonus>,
+    /// MegaMan's bonus on a family's damaging chips used standing on a
+    /// type of panel, in a form with no `chip_bonus` of its own (BN5's: Aqua
+    /// chips on sea, 0x0800D0A6); the use turns the panel Normal.
+    #[serde(default)]
+    pub panel_bonus: Option<PanelChipBonus>,
     /// The no-running message the custom screen shows for the navi (L in
     /// a netbattle).
     #[serde(default)]
@@ -554,6 +559,20 @@ pub struct FormChipBonus {
     /// Dimming chips of the family count too.
     #[serde(default)]
     pub dimming_chips: bool,
+    /// Only on a use that isn't charged, with the A charge not full (BN5's
+    /// NapalmSoul, 0x0800D0A6).
+    #[serde(default)]
+    pub uncharged: bool,
+}
+
+/// The damage a navi adds to a family's damaging chips used standing on a
+/// type of panel (`NaviData::panel_bonus`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PanelChipBonus {
+    pub panel: crate::field::PanelType,
+    pub family: ChipFamily,
+    pub damage: u16,
 }
 
 /// Chips a form charges with A: a family's.

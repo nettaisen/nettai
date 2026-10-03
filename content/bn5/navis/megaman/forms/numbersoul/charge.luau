@@ -6,7 +6,7 @@
 -- face rolled (0x080EE820: 1 to 6, the middle faces likelier), a body the other side can hit. 22 ticks, then 31
 -- standing.
 
-local dice = require("../../../../objects/dice/dice")
+local dice = require("../../../../chips/numbrman/dice")
 
 local charge = {}
 

@@ -215,6 +215,12 @@ pub enum SystemHook {
     /// system refuses a chip its MegaMan may not use: 0x08010118). The
     /// first system that answers decides.
     ChipCheck,
+    /// `chip_cost(side, navi, chip)`: earlier in a chip use's preparation,
+    /// before the hand bonus's panel is spent (BN5's 0x08010030: a dark
+    /// chip's use, which may fizzle, and the chip's cost, 0x0802C934). It
+    /// answers as `chip_check` does; a chip in the use's place skips the
+    /// rest of the preparation, `chip_check` too.
+    ChipCost,
     /// `chip_used(side, navi, chip, weapon)`: a chip's use started
     /// (`sub_800FB54`, its action set): `chip` the chip it reads (the
     /// zeroed chip for the empty hand), `weapon` the form's weapon run
@@ -338,6 +344,7 @@ impl SystemHook {
             SystemHook::FolderCheck => "folder_check",
             SystemHook::NaviIntake => "navi_intake",
             SystemHook::ChipCheck => "chip_check",
+            SystemHook::ChipCost => "chip_cost",
             SystemHook::ChipUsed => "chip_used",
             SystemHook::Controller => "controller",
             SystemHook::FormReverted => "form_reverted",
@@ -363,7 +370,7 @@ impl SystemHook {
         }
     }
 
-    pub const ALL: [SystemHook; 31] = [
+    pub const ALL: [SystemHook; 32] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -373,6 +380,7 @@ impl SystemHook {
         SystemHook::FolderCheck,
         SystemHook::NaviIntake,
         SystemHook::ChipCheck,
+        SystemHook::ChipCost,
         SystemHook::ChipUsed,
         SystemHook::Controller,
         SystemHook::FormReverted,
