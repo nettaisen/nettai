@@ -2260,7 +2260,7 @@ fn weapon_definitions_carry_their_charge_times_and_traits() {
     // A navi's and a form's weapons are handles.
     let megaman = c.navi(c.navi_by_key(testing::MEGAMAN));
     assert_eq!(megaman.weapons.buster, Some(buster));
-    assert_eq!(c.form(c.base_form()).weapons.charge_shot, Some(c.weapon_by_key("test:megaman/charged-shot")));
+    assert_eq!(c.form(c.base_form_for(c.navi_by_key(testing::MEGAMAN))).weapons.charge_shot, Some(c.weapon_by_key("test:megaman/charged-shot")));
 }
 
 #[test]

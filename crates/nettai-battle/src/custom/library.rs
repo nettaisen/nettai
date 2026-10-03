@@ -163,6 +163,9 @@ impl Library for Content {
 pub struct GameLibrary<'a> {
     pub content: &'a Content,
     pub game: crate::content::RootId,
+    /// The side's ruleset, whose own sections (a mix's) the screen reads
+    /// over its game's.
+    pub ruleset: Option<nettai_content_api::RulesetHandle>,
 }
 
 impl Library for GameLibrary<'_> {
@@ -239,11 +242,11 @@ impl Library for GameLibrary<'_> {
     }
 
     fn layout(&self) -> &CustomScreenLayout {
-        &self.content.rules_of(self.game).custom_screen
+        &self.content.side_rules(self.ruleset, self.game).custom_screen
     }
 
     fn banner_holds(&self, id: BannerId) -> bool {
-        self.content.rules_of(self.game).banner_holds(id)
+        self.content.side_rules(self.ruleset, self.game).banner_holds(id)
     }
 
     fn program_advance_banner(&self, made: bool) -> BannerId {

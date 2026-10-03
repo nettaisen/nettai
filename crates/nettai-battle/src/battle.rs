@@ -648,6 +648,9 @@ pub struct DamageCarry {
 pub struct BattleGames {
     pub arena: RootId,
     pub sides: [RootId; 2],
+    /// Each side's ruleset (none: the stage's game's stock rules), whose own
+    /// sections, a mix's, the side reads over its game's.
+    pub rulesets: [Option<nettai_content_api::RulesetHandle>; 2],
 }
 
 impl BattleGames {
@@ -657,7 +660,8 @@ impl BattleGames {
         let defs = &content.defs;
         let stage = &defs.stage(setup.settings.stage).key;
         let arena = defs.root_of(stage).unwrap_or_else(|| panic!("stage {stage}'s id names no game"));
-        BattleGames { arena, sides: [0, 1].map(|p| defs.ruleset_game(setup.players[p].ruleset, arena)) }
+        let rulesets = [0, 1].map(|p| setup.players[p].ruleset);
+        BattleGames { arena, sides: rulesets.map(|r| defs.ruleset_game(r, arena)), rulesets }
     }
 
     /// The pools' capacities: each the larger of the two players' games'
@@ -770,9 +774,11 @@ impl Battle {
         self.content.defs.roles(self.games.arena)
     }
 
-    /// Side `side`'s game's tables (the rule sections about one navi).
+    /// Side `side`'s tables (the rule sections about one navi): its
+    /// ruleset's own, a mix's, else its game's.
     pub fn side_game_rules(&self, side: u8) -> &crate::content::Rules {
-        self.content.rules_of(self.games.sides[side as usize & 1])
+        let s = side as usize & 1;
+        self.content.side_rules(self.games.rulesets[s], self.games.sides[s])
     }
 
     /// Side `side`'s game's roles (what the framework uses for the side's

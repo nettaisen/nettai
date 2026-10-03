@@ -205,9 +205,10 @@ return define.ruleset {
 - **Stock rulesets**: each game defines exactly one ruleset with `stock = true`, its game's own rules
   (`bn6:stock`).
 - **Mixes**: a ruleset may start from another and change its systems: `define.ruleset { id = "mix:bn6-souls", base =
-  bn6, add = { bn5_soul_unison }, sections = { custom_screen = SOULS_AND_CROSSES } }`. A mix needs the layout and
-  roles its systems use; the define phase checks every button a system offers has a slot. Mixes are content (a
-  mod's folder, §7.2); a setup chooses a ruleset by id.
+  bn6, add = { bn5_soul_unison }, sections = { define.rules("mix:souls/custom-screen", SOULS_AND_CROSSES) } }`. A
+  mix's own `sections` are what its sides read over its game's (built: P1 item 8); a mix needs the layout and roles
+  its systems use; the define phase checks every button a system offers has a slot. Mixes are content (a mod's
+  folder, §7.2); a setup chooses a ruleset by id.
 - **Dependencies**: a system may name systems it needs (`requires = { beast }` on Beast Over) or can't run with
   (`excludes`); the define phase checks every ruleset.
 - **Order**: the framework calls a ruleset's systems in its `systems` order. Notification hooks call every system;
@@ -1266,3 +1267,34 @@ are gone.
   sound rounds differing; the audit 49 traces and the static audit, 0 problems. BN5's replays as bn5-port-4's:
   1,380 recordings, 252 replay, 243 match every frame, 139,499 of 948,097 frames. tools/bn5/gen_content.py check
   0 errors, tools/navicust/gen.py check 0 differences.
+
+### P1c, a base form per game and a mix's own sections (2026-10-02)
+
+P1's items 12 and 8 (bn5-map.md §15.3), on R4.
+
+- **A base form per game (item 12).** `Defs::base_forms` holds each game's base form, by `RootId` (a form of
+  `kind = "base"`'s game is its id's prefix); two in one game are refused, and a navi that changes form needs its
+  game's. `Content::base_form_of(game)` and `base_form_for(navi)` (the navi's game's) replace `base_form()`: a navi's
+  fresh stats, the bug code's form byte, the change back to the base form, a stand-in's look, an afterimage, the
+  netplay stand-in, bn5-compat's NaviStats. A game without a base form of its own takes the first game's, by name,
+  that has one: BN5's MegaMan keeps BN6's until BN5's port defines `bn5:base` (and his souls' forms), which it now
+  can.
+- **A mix's own sections (item 8).** `define.ruleset { ..., sections = { define.rules("mix:souls/custom-screen",
+  ...) } }`: a section's kind is its id's last part, so a folder may hold several rulesets' sections. A section a
+  ruleset lists is that ruleset's, not its folder's game's (`sections::build` leaves it out). `RulesetDef::sections`
+  and `Content::ruleset_rules` (by `RulesetHandle`: the ruleset's game's tables with its own sections over them,
+  `sections::build_rulesets`) make `Content::side_rules(ruleset, game)`, which a side reads about itself:
+  `Battle::side_game_rules` and `rules_for` (`BattleGames::rulesets`), the custom screen (`GameLibrary::ruleset`),
+  the match's NaviCust board. Only the sections about a side may be a ruleset's own (custom-screen, berserk,
+  navicust, status, lockon, cross-special); the battle's (elements, panels, reactions, math, pools, buster,
+  banners, flow, effects) and a chip's game's (chip-use, sp-chips) are refused, and a stock ruleset lists none (its
+  game's are its folder's). No BN5 or BN6 ruleset has sections of its own: every battle of theirs reads as before.
+- **Tests**: `two_games::each_game_has_its_base_form` (twin's base form beside test's; a game without one takes
+  test's; two in one game refused); `a_mix_brings_its_own_side_sections` (testdata's rules/souls.luau: its sides'
+  HP bug periods are its own, the game's and the other side's don't change; a `math` section and a stock
+  ruleset's sections refused).
+- **Gates** (on main 18c2de15): the build without warnings, 481 tests, the content check (1,246 modules),
+  gen-content check 0 errors, `gate-against.sh full`: machgun 1074/1331 and soundmod 21962/14933/20436 with 96
+  rollback rows, the 189 legacy rounds (2,746,946 frames), the lab 6548 (6545 matched, 3 to a known deviation;
+  5,775,231 frames) with 0 sound rounds differing; the audit 49 traces and the static audit, 0 problems; BN5's
+  replays as before: 252 replay, 243 match every frame, 139,499 of 948,097 frames.
