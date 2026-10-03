@@ -615,6 +615,12 @@ declare class Object
     -- The form the navi's side asked to change into at this turn's start
     -- (nil: none, or the base form).
     function form_change_target(self): FormDef?
+    -- BN5's Soul Unison: the turns the soul asked for lasts, and whether it
+    -- is Chaos Unison.
+    function form_change_soul(self): (number, boolean)
+    -- BN5's soul change's first step: no longer moving, flinching,
+    -- paralyzed or sliding (nor asked to slide).
+    function stop_moving(self): ()
     -- `sub_80C4526(overlay, 1)`: an overlay on an image sits in front (an
     -- idle overlay keeps its owner's height).
     function pin_overlay(self): ()

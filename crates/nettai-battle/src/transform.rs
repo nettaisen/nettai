@@ -15,10 +15,14 @@ pub struct TransformRequest {
     pub form: Option<FormHandle>,
     /// A Cross change: the navi to change to.
     pub cross_change: Option<NaviHandle>,
+    /// BN5's Soul Unison (`sub_8015952`'s record, 0x0203C940): the soul's
+    /// turns (+3) and whether it is Chaos Unison (+1).
+    pub turns: u8,
+    pub chaos: bool,
 }
 
 impl TransformRequest {
-    pub const NONE: TransformRequest = TransformRequest { form: None, cross_change: None };
+    pub const NONE: TransformRequest = TransformRequest { form: None, cross_change: None, turns: 0, chaos: false };
 
     pub fn is_none(&self) -> bool {
         self.form.is_none() && self.cross_change.is_none()

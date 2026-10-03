@@ -1516,6 +1516,13 @@ pub trait CoreApi {
     /// The form the navi's side asked to change into at this turn's start
     /// (none: none, or the base form).
     fn form_change_target(&self, o: ObjectRef) -> Option<crate::FormHandle>;
+    /// BN5's Soul Unison: the turns the soul the side asked for lasts, and
+    /// whether it is Chaos Unison (the turn's transform record's +3, +1).
+    fn form_change_soul(&self, o: ObjectRef) -> (u8, bool);
+    /// BN5's soul change's first step (0x08011FAC): the navi stops moving,
+    /// flinching, being paralyzed and sliding, and forgets a slide request
+    /// and its slide's step (a part of BN6's `sub_80158FA`).
+    fn stop_moving(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// `sub_80C4526(overlay, 1)`: an overlay on an image sits in front (an
     /// idle overlay keeps its owner's height).
     fn pin_overlay(&mut self, o: ObjectRef);

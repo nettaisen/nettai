@@ -1597,6 +1597,17 @@ impl CoreApi for Battle {
         kinds::player::form_change_target(self, o)
     }
 
+    fn stop_moving(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.actor_of(o)?;
+        kinds::player::actions::transform::stop_moving(self, o);
+        Ok(())
+    }
+
+    fn form_change_soul(&self, o: ObjectRef) -> (u8, bool) {
+        let t = &self.turn_transforms[self.objects.get(o).alliance as usize & 1];
+        (t.turns, t.chaos)
+    }
+
     fn pin_overlay(&mut self, o: ObjectRef) {
         kinds::player::form::pin_overlay(self, o);
     }

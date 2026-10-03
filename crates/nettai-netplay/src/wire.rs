@@ -262,7 +262,7 @@ macro_rules! wire_struct {
 wire_struct! {
     FolderChip { id, code }
     SavedFolder { chips, regular, tags }
-    TransformRequest { form, cross_change }
+    TransformRequest { form, cross_change, turns, chaos }
     Supports { rush, beat, tango }
     NaviWeapons { buster, charge_shot, back_special, a_charge, mode9_a, buster_shot, charge_shot_kind, back_special_damage }
     NaviCustBugs {
@@ -378,7 +378,7 @@ mod tests {
         hand.damage[0] = 300;
         hand.selection[1] = Some(FolderChip::new(ChipHandle(400), ChipCode::ASTERISK));
         hand.turn = [0, 1, 2, 3, 4, 5];
-        let result = CustomResult { hand: Some(hand), navi_stats: stats, transform: TransformRequest { form: Some(FormHandle(4)), cross_change: None } };
+        let result = CustomResult { hand: Some(hand), navi_stats: stats, transform: TransformRequest { form: Some(FormHandle(4)), ..TransformRequest::NONE } };
         let n = roundtrip(&Recorded { in_custom: true, result: Some(Box::new(result)) });
         assert!(n < 200, "{n} bytes");
         assert_eq!(roundtrip(&Recorded { in_custom: false, result: None }), 2);

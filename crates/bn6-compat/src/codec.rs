@@ -537,7 +537,11 @@ pub fn chip_hand_bytes(h: &ChipHand, ids: &Ids) -> [u8; 0x50] {
 /// requesting navi object, which is always the side's player.
 pub fn transform_request(b: &[u8], ids: &Ids) -> TransformRequest {
     let opt = |v: u8| (v != 0xFF).then_some(v);
-    TransformRequest { form: opt(b[0]).map(|f| ids.form(f)), cross_change: opt(b[4]).map(|n| ids.navi(n)) }
+    TransformRequest {
+        form: opt(b[0]).map(|f| ids.form(f)),
+        cross_change: opt(b[4]).map(|n| ids.navi(n)),
+        ..TransformRequest::NONE
+    }
 }
 
 // ---- Battle settings, stages, SP times ---------------------------------------------
