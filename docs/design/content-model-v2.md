@@ -2070,6 +2070,26 @@ are in this design: builders put their parameters in `args` (a captured-only par
 key), and derived keys are claimed only within the defining module (a library's shared state table otherwise took
 the first chip's key).
 
+**Partial loading: an unported chip is skipped.** Every chip is a definition with its own use (§4.2), and the
+define phase refuses a chip without one. A game being ported (BN5's content/bn5) defines every chip's record
+first, from its ROM, and gives each its use as the port writes it; meanwhile its folder must still load. The
+loaders (`nettai_content::pack`: the frontend's and the editor's `load_found`, the tools' `load_battle`, which
+netplay, the match checks and the verification harness read through) apply one rule to every content folder
+before the define phase, `Root::leave_out_unported`:
+
+- a chip whose module (`chips/<key>/chip.luau`) names none of `action`, `dimming`, `navi` and `instant` is left
+  out, with every module of its folder;
+- so is every chip folder one of whose modules requires a module left out (a Program Advance naming an unported
+  ingredient, a chip that borrows an unported chip's module), in turn;
+- one warning lists every chip left out (`3 of bn5's chips have no use yet (or need one's module) and are left
+  out: bn5:airspin1, ...`).
+
+Anything else that requires a left-out module (a rule section, a library that defines a kind) still stops the
+define phase, which says so, and the folder is left out whole with its reason, as any other error leaves it. The
+content is then exactly what loaded: its scripts hold none of the modules left out, so the content hash (a round
+setup's, netplay's handshake) covers what both peers loaded, and two peers with the same content agree. The rule
+names no game: a BN6 chip without a use would be left out the same way (none is).
+
 ### 7.4 Roles
 
 The ruleset declares what it needs from content as a typed struct; content fills it once, in `rules/roles.luau`.
@@ -2960,6 +2980,9 @@ Numbers that remain for other reasons, and are not names of content:
   battle number; a hit's bug code, which names a NaviStats byte by its offset as the game's does (bug codes have
   no definition); and the engine's own progress numbers (an object's state, action and phase, the navi
   framework's states), which the traces compare as the original numbers them.
+
+**Since:** a game being ported loads without its chips that have no use yet (§7.3, "Partial loading"), so
+BN5's content plays beside BN6's while its port goes on.
 
 **Left to others:**
 

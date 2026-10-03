@@ -97,6 +97,8 @@ pub enum Msg {
     Regular(usize),
     Tag(usize),
     Search(String),
+    /// The chip list's game (none: every game's).
+    ChipGame(Choice<Option<String>>),
     // The Crosses.
     OwnCrosses(usize, bool),
     Cross(usize, FormHandle, bool),
@@ -146,6 +148,8 @@ pub struct Editor {
     /// The folder entry each side's chip list puts chips into.
     pub entry: [usize; 2],
     pub search: String,
+    /// The game whose chips the chip list shows (none: every game's).
+    pub chip_game: Option<String>,
     /// What is typed into number fields, by field (side, name), until it
     /// reads as a number.
     pub typed: HashMap<(usize, &'static str), String>,
@@ -190,6 +194,7 @@ impl Editor {
             dirty: false,
             entry: [0, 0],
             search: String::new(),
+            chip_game: None,
             typed: HashMap::new(),
             problems: Vec::new(),
             round: Err(String::new()),
@@ -396,6 +401,9 @@ impl Editor {
                 if !side.has_system(&content, nettai_match::PATCH_CARDS_SYSTEM) {
                     side.cards.clear();
                 }
+                if !side.has_system(&content, nettai_match::NAVICUST_SYSTEM) {
+                    side.navicust = None;
+                }
                 self.edited();
             }
             Msg::Navi(s, c) => {
@@ -484,6 +492,7 @@ impl Editor {
                 self.edited();
             }
             Msg::Search(t) => self.search = t,
+            Msg::ChipGame(c) => self.chip_game = c.value,
             Msg::OwnCrosses(s, own) => {
                 let side = &mut self.m.sides[s];
                 side.crosses = if own { None } else { Some(CrossList::default()) };
