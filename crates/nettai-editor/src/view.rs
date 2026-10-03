@@ -9,7 +9,7 @@ use iced::{Alignment, Color, Element, Length, Theme};
 use nettai_battle::content::{ChipClass, ChipFlags};
 use nettai_battle::custom::GameVersion;
 use nettai_match::stats::{self, Kind, Value};
-use nettai_match::{FORMS_SYSTEM, PATCH_CARDS_SYSTEM};
+use nettai_match::{FORMS_SYSTEM, NAVICUST_SYSTEM, PATCH_CARDS_SYSTEM};
 
 pub const SIDES: [&str; 2] = ["Left (you)", "Right"];
 const RED: Color = Color::from_rgb(0.85, 0.2, 0.2);
@@ -72,7 +72,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         if side.has_system(&e.content, PATCH_CARDS_SYSTEM) {
             tabs = tabs.push(nav("  Patch cards", Tab::Cards(s), e.tab));
         }
-        if e.content.navi(side.navi).forms.is_some() {
+        if side.has_system(&e.content, NAVICUST_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
             tabs = tabs.push(nav("  NaviCust", Tab::NaviCust(s), e.tab));
         }
         tabs = tabs.push(nav("  Stats", Tab::Stats(s), e.tab));
@@ -152,12 +152,16 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
         value: Some(nettai_content_api::RulesetHandle(i as u16)),
     }));
     let ruleset = rulesets.iter().find(|r| r.value == side.ruleset).cloned();
-    let navis: Vec<Choice<_>> = (0..c.defs.navis.len() as u16)
-        .map(nettai_content_api::NaviHandle)
-        .filter(|&n| c.navi(n).fresh.is_some())
-        .map(|n| Choice { label: e.names.navi(c, n), value: n })
-        .collect();
-    let navi = Choice { label: e.names.navi(c, side.navi), value: side.navi };
+    let fresh: Vec<nettai_content_api::NaviHandle> =
+        (0..c.defs.navis.len() as u16).map(nettai_content_api::NaviHandle).filter(|&n| c.navi(n).fresh.is_some()).collect();
+    // (Two games' MegaMan: each named with his game.)
+    let games = fresh.iter().map(|&n| game_of(&c.defs.navi(n).key)).collect::<std::collections::BTreeSet<_>>().len();
+    let navi_label = |n: nettai_content_api::NaviHandle| {
+        let name = e.names.navi(c, n);
+        if games > 1 { format!("{name} ({})", game_label(game_of(&c.defs.navi(n).key))) } else { name }
+    };
+    let navis: Vec<Choice<_>> = fresh.iter().map(|&n| Choice { label: navi_label(n), value: n }).collect();
+    let navi = Choice { label: navi_label(side.navi), value: side.navi };
     let games = [Choice { label: "Falzar".into(), value: GameVersion::Falzar }, Choice { label: "Gregar".into(), value: GameVersion::Gregar }];
     let game = games.iter().find(|g| g.value == side.game).cloned();
     let systems: Vec<String> = side
@@ -352,17 +356,22 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
     let left = column![heading(format!("{}: folder", SIDES[s])), counts, scrollable(entries).height(Length::Fill)]
         .spacing(6)
         .width(Length::FillPortion(1));
-    // The chips a folder can hold, searched.
+    // The chips a folder can hold (every loaded game's the rules take),
+    // of the game picked, searched.
+    let games: Vec<&str> =
+        e.pool[s].iter().map(|&h| game_of(&c.defs.chip(h).key)).collect::<std::collections::BTreeSet<_>>().into_iter().collect();
+    let several = games.len() > 1;
     let needle = e.search.to_lowercase();
-    let mut pool: Vec<(String, nettai_content_api::ChipHandle)> = e.pool[s]
+    let mut pool: Vec<(String, &str, nettai_content_api::ChipHandle)> = e.pool[s]
         .iter()
         .copied()
-        .map(|h| (e.names.chip(c, h), h))
-        .filter(|(name, h)| needle.is_empty() || name.to_lowercase().contains(&needle) || c.defs.chip(*h).key.contains(&needle))
+        .map(|h| (e.names.chip(c, h), game_of(&c.defs.chip(h).key), h))
+        .filter(|(_, game, _)| e.chip_game.as_deref().is_none_or(|g| g == *game))
+        .filter(|(name, _, h)| needle.is_empty() || name.to_lowercase().contains(&needle) || c.defs.chip(*h).key.contains(&needle))
         .collect();
     pool.sort();
     let mut list = Column::new().spacing(1);
-    for (name, h) in pool.into_iter().take(400) {
+    for (name, game, h) in pool.into_iter().take(400) {
         let d = c.chip(h);
         let held = f.chips().filter(|x| x.id == h).count();
         let codes = d.codes.iter().fold(Row::new().spacing(2), |r, &code| {
@@ -370,10 +379,13 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
         });
         let count = if held > 0 { format!("×{held}") } else { String::new() };
         let dark = d.flags.has(ChipFlags::DARK);
+        let game: Element<Msg> =
+            if several { text(game_label(game)).size(11).color(DIM).width(Length::Fixed(30.0)).into() } else { space().width(0).into() };
         list = list.push(
             row![
                 icon(e, h),
                 text(name).size(14).width(Length::Fill).color(if dark { RED } else { Color::BLACK }),
+                game,
                 text(format!("{} {} MB", class_letter(d.class), d.mb)).size(12).color(DIM).width(Length::Fixed(64.0)),
                 text(count).size(12).color(GREEN).width(Length::Fixed(34.0)),
                 container(codes.wrap()).width(Length::Fixed(150.0)),
@@ -383,15 +395,32 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
             .align_y(Alignment::Center),
         );
     }
+    let mut filters = row![text_input("search chips", &e.search).on_input(Msg::Search)].spacing(8).align_y(Alignment::Center);
+    if several {
+        let mut choices = vec![Choice { label: "Every game".to_string(), value: None }];
+        choices.extend(games.iter().map(|g| Choice { label: game_label(g), value: Some(g.to_string()) }));
+        let picked = choices.iter().find(|x| x.value == e.chip_game).cloned();
+        filters = filters.push(pick_list(choices, picked, Msg::ChipGame).width(Length::Fixed(130.0)));
+    }
     let right = column![
         row![picture, about].spacing(10),
-        text_input("search chips", &e.search).on_input(Msg::Search),
+        filters,
         text("A code puts the chip in the selected entry.").size(12).color(DIM),
         scrollable(list).height(Length::Fill),
     ]
     .spacing(6)
     .width(Length::FillPortion(1));
     row![left.width(Length::FillPortion(2)), right.width(Length::FillPortion(3))].spacing(12).into()
+}
+
+/// The game of a definition: its key's prefix (`bn5` of `bn5:cannon`).
+fn game_of(key: &str) -> &str {
+    nettai_content_api::keys::root_of(key).unwrap_or("")
+}
+
+/// A game as the editor names it (`BN5`).
+fn game_label(game: &str) -> String {
+    game.to_uppercase()
 }
 
 fn class_name(c: ChipClass) -> &'static str {

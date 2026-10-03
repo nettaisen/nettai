@@ -37,6 +37,22 @@ pub fn bn6_content() -> Arc<Content> {
     .clone()
 }
 
+/// The content of these folders (as `nettai_content::root` reads them), one
+/// namespace, with their strings, on a made-up asset index (each folder's
+/// names in its own game's pack), every sprite timed as the test content's
+/// navi is: defined, or why not.
+pub fn defined(roots: Vec<nettai_content::root::Root>) -> Result<Content, String> {
+    let mut c = Content::default();
+    for root in roots {
+        c.strings.merge(root.strings);
+        c.scripts.add_root(root.manifest, root.modules);
+    }
+    c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
+    timed(&mut c);
+    c.define().map_err(|e| e.message)?;
+    Ok(c)
+}
+
 /// Every folder of this repository's content/ (BN5's, BN6's and the
 /// shared one), one namespace, as the loaders load it: each folder's chips
 /// with no use yet left out (`nettai_content::pack::left_out_unported`).
@@ -46,17 +62,11 @@ pub fn every_game() -> Arc<Content> {
     ALL.get_or_init(|| {
         let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content"));
         let mut report = nettai_content::report::Report::default();
-        let roots = nettai_content::root::read_all(dir, &mut report).unwrap_or_else(|| panic!("content/: {report}"));
-        let mut c = Content::default();
-        for mut root in roots {
-            nettai_content::pack::left_out_unported(&mut root, &mut report);
-            c.strings.merge(root.strings);
-            c.scripts.add_root(root.manifest, root.modules);
+        let mut roots = nettai_content::root::read_all(dir, &mut report).unwrap_or_else(|| panic!("content/: {report}"));
+        for root in &mut roots {
+            nettai_content::pack::left_out_unported(root, &mut report);
         }
-        c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
-        timed(&mut c);
-        c.define().unwrap_or_else(|e| panic!("content/: {e}"));
-        Arc::new(c)
+        Arc::new(defined(roots).unwrap_or_else(|e| panic!("content/: {e}")))
     })
     .clone()
 }
