@@ -10,7 +10,7 @@
 -- its first update overwrites both, so its position is declared scratch.
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local blade = {}
 

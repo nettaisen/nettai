@@ -8,8 +8,8 @@
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local panels = require("../../lib/panels")
-local regions = require("../../lib/regions")
+local panels = require("@common/panels")
+local regions = require("@common/regions")
 
 local shell = {}
 

@@ -11,7 +11,7 @@ local attachment = require("../../objects/attachment/attachment")
 local arm = require("../../lib/arm")
 local collision = require("../../rules/collision")
 local gust = require("../../objects/gust/gust")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local action = {}
 
