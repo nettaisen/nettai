@@ -1,7 +1,7 @@
 --!strict
 -- Snake's dimming controller (the original's effect object #0x45,
 -- `sub_80E5944`; docs/engine/dimming-chip-effects.md §13): the usual
--- dimming phases (lib/dimming), with an effect that sets a nest (./nest)
+-- dimming phases (@common/dimming), with an effect that sets a nest (./nest)
 -- on the user's panel, waits until its snakes are done, then 41 ticks.
 
 local dimming_chips = require("@common/dimming")

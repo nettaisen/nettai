@@ -1,7 +1,7 @@
 --!strict
 -- BugFix's dimming controller (the original's effect object #0x3B,
 -- `sub_80E4910`; docs/engine/dimming-chips.md §5.1): the usual dimming
--- phases (lib/dimming), with an effect (`sub_80E4954`) that puts the glow
+-- phases (@common/dimming), with an effect (`sub_80E4954`) that puts the glow
 -- over the user's side's navi (glow.luau), fixes the user's side's
 -- NaviCust bugs, and waits for the glow.
 

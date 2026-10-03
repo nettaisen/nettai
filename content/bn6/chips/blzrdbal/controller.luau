@@ -1,7 +1,7 @@
 --!strict
 -- BlzrdBal's dimming controller (the original's effect object #0x58,
 -- `sub_80E6F88`; docs/engine/dimming-chip-effects.md §10): the usual
--- dimming phases (lib/dimming), with an effect that sends out the thrower
+-- dimming phases (@common/dimming), with an effect that sends out the thrower
 -- (./thrower) with the damage plus the bonus and lasts 121 ticks, whether
 -- or not it is done.
 

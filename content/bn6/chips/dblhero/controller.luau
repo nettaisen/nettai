@@ -1,7 +1,7 @@
 --!strict
 -- DblHero's dimming controller (the original's effect object #0x6A,
 -- `sub_80E7FDC`; docs/engine/dimming-chip-effects.md §17): the usual
--- dimming phases (lib/dimming), with an effect that sends the heroes
+-- dimming phases (@common/dimming), with an effect that sends the heroes
 -- (./heroes) out in the user's place and waits until MegaMan is done.
 
 local dimming_chips = require("@common/dimming")
