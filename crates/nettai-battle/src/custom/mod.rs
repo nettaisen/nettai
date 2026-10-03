@@ -355,6 +355,10 @@ pub trait Extras {
     fn opened(&mut self, screen: &mut Screen);
     /// `custom.confirmed(side)`: OK built the hand.
     fn confirmed(&mut self, screen: &mut Screen, folder: &mut BattleFolder);
+    /// `custom.chip_picked(side, chip)` and `custom.chip_taken_back(side,
+    /// chip)`: a chip of the hand picked, or its pick taken back.
+    fn chip_picked(&mut self, screen: &mut Screen, folder: &mut BattleFolder, chip: ChipHandle);
+    fn chip_taken_back(&mut self, screen: &mut Screen, chip: ChipHandle);
     /// A window's `update` (a tick of it): whether it stays up.
     fn window_update(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, window: crate::content::WindowHandle) -> bool;
 }
@@ -382,6 +386,10 @@ impl Extras for NoExtras {
     fn opened(&mut self, _: &mut Screen) {}
 
     fn confirmed(&mut self, _: &mut Screen, _: &mut BattleFolder) {}
+
+    fn chip_picked(&mut self, _: &mut Screen, _: &mut BattleFolder, _: ChipHandle) {}
+
+    fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle) {}
 
     fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: crate::content::WindowHandle) -> bool {
         false
@@ -817,6 +825,16 @@ impl Extras for SideExtras<'_> {
     fn confirmed(&mut self, screen: &mut Screen, folder: &mut BattleFolder) {
         let side = self.side;
         self.with_screen(screen, Some(folder), |b| b.systems_call_custom(side, nettai_content_api::SystemHook::CustomConfirmed));
+    }
+
+    fn chip_picked(&mut self, screen: &mut Screen, folder: &mut BattleFolder, chip: ChipHandle) {
+        let side = self.side;
+        self.with_screen(screen, Some(folder), |b| b.systems_call_custom_chip(side, nettai_content_api::SystemHook::CustomChipPicked, chip));
+    }
+
+    fn chip_taken_back(&mut self, screen: &mut Screen, chip: ChipHandle) {
+        let side = self.side;
+        self.with_screen(screen, None, |b| b.systems_call_custom_chip(side, nettai_content_api::SystemHook::CustomChipTakenBack, chip));
     }
 
     fn window_update(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, window: crate::content::WindowHandle) -> bool {

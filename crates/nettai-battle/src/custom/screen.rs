@@ -39,11 +39,6 @@ pub const INVALID_CODE: ChipCode = ChipCode(0x1B);
 /// Codes outside the alphabet that the selection rules treat apart:
 /// the invalid chip's, and one no chip has.
 const SPECIAL_CODES: [ChipCode; 2] = [ChipCode(0x1B), ChipCode(0x1C)];
-/// Whether `c` is the "BeastOut" chip, as a folder chip (not the Beast Out
-/// button): `Library::beast_out_chip`.
-fn is_beast_out(c: FolderChip, view: &PlayerView) -> bool {
-    view.library.beast_out_chip() == Some(c.id)
-}
 
 /// What a slot holds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -187,9 +182,6 @@ pub enum Phase {
     /// sub-state (0x080232F0's offsets 0 to 0x18), `counter` its count
     /// (+0x40).
     SoulChosen { sub: u8, counter: u8 },
-    /// The BeastOut chip was picked from a chip slot (`sub_80275EC`, 85
-    /// ticks).
-    BeastOutChipChosen { tick: u8 },
     /// The selected chips are scrapped (DustCross's, `sub_8027406`), for
     /// the button in slot `button`. `done`: the last scrap is over; the
     /// next tick returns to choosing.
@@ -785,44 +777,6 @@ impl Screen {
                 self.look.draw_emblem(0);
                 None
             }
-            Phase::BeastOutChipChosen { tick } => {
-                // Like Beast Out's (`sub_802770C`), 16 ticks later: its fade
-                // out (0x64) starts at tick 17, with sounds 0x193 and 0xBC;
-                // 50 ticks on (tick 68) the chip moves to the front of the
-                // selection (the Beast Out button's state and the Beast Out
-                // flag stay as they are: the hand's chip is the Beast Out),
-                // and the fade back in (0x60) ends it.
-                let tick = tick + 1;
-                match tick {
-                    // sub_8027618
-                    1 => self.look.frame = 0,
-                    // sub_8027624
-                    2..=16 | 18..=67 => self.look.frame += 1,
-                    // sub_8027624's last tick: this console's camera
-                    // shakes as for Beast Out, and the screen fades.
-                    17 => {
-                        console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
-                        self.look.frame = 0;
-                        self.look.fade.start(FadeMode::BeastOut, BEAST_OUT_FADE_SPEED);
-                        self.look.play(ScreenSound::BeastOut(view.beast_game()));
-                        self.look.play(ScreenSound::BeastOutFlash);
-                    }
-                    // sub_8027672
-                    68 => {
-                        let n = self.selected as usize;
-                        self.selection[..n].rotate_right(1);
-                        let first = self.chip_in(self.selection[0], folder);
-                        self.reorder_column(folder, first);
-                        self.look.face = beast_face(view, false);
-                        self.update_availability(view, folder, extras);
-                        self.look.fade.start(FadeMode::BeastOutBack, BEAST_OUT_FADE_SPEED);
-                    }
-                    _ => {}
-                }
-                self.phase = if tick >= 85 { Phase::Choosing } else { Phase::BeastOutChipChosen { tick } };
-                self.look.draw_emblem(0);
-                None
-            }
             Phase::Scrapping { .. } => {
                 // sub_8027406: every tick also draws the emblem and the
                 // Regular chip's frame.
@@ -1050,9 +1004,10 @@ impl Screen {
                 // The pick's icon in the column, and the emblem spins.
                 self.look.column[self.selected as usize - 1] = self.chip_in(cursor, folder).map(|c| checked(c, view));
                 self.look.spin = 1;
-                // sub_802A00C
-                if self.chip_in(cursor, folder).is_some_and(|c| is_beast_out(c, view)) {
-                    self.phase = Phase::BeastOutChipChosen { tick: 0 };
+                // sub_802A00C: the side's systems (BN6's BeastOut chip starts
+                // its animation).
+                if let Some(c) = self.chip_in(cursor, folder) {
+                    extras.chip_picked(self, folder, c.id);
                 }
             }
             SlotKind::Ok => {
@@ -1238,16 +1193,12 @@ impl Screen {
             self.selected -= 1;
             self.slots[last as usize].state = SlotState::Selectable;
             self.look.column[self.selected as usize] = None;
-            // sub_802A0EC: taking Beast Out (or the BeastOut chip) back
-            // takes its face back.
-            let beast_chip = self.chip_in(last, folder).is_some_and(|c| is_beast_out(c, view));
+            // sub_802A0EC: the side's systems (taking Beast Out, or the
+            // BeastOut chip, back takes its face back).
             if let SlotKind::Button { button, .. } = self.slots[last as usize].kind {
-                // The button's system (BN6's Beast Out: its form and face go).
                 extras.button_taken_back(self, button);
-            } else if beast_chip {
-                self.look.face = None;
-                self.look.play(ScreenSound::Back);
-                self.look.play(ScreenSound::Cancel);
+            } else if let Some(c) = self.chip_in(last, folder) {
+                extras.chip_taken_back(self, c.id);
             }
         }
         self.update_availability(view, folder, extras);
@@ -1475,7 +1426,9 @@ impl Screen {
         for &s in self.selection() {
             let Some(c) = self.chip_in(s, folder) else { continue };
             let c = checked(c, view);
-            if is_beast_out(c, view) {
+            // (A chip that goes with any selection constrains none: BN6's
+            // BeastOut chip.)
+            if view.library.chip(c.id).traits.has(crate::content::ChipTraits::GOES_WITH_ANY) {
                 continue;
             }
             if SPECIAL_CODES.contains(&c.code) {
@@ -1498,7 +1451,7 @@ impl Screen {
             let c = checked(c, view);
             let ok = if full {
                 false
-            } else if is_beast_out(c, view) {
+            } else if view.library.chip(c.id).traits.has(crate::content::ChipTraits::GOES_WITH_ANY) {
                 true
             } else if SPECIAL_CODES.contains(&c.code) {
                 special.is_none_or(|s| s == c.code)
@@ -1660,15 +1613,10 @@ const CROSS_FADE_SPEED: u8 = 0x20;
 /// The window's offset off the screen, and its slide a tick.
 const SLIDE: u32 = 0x78;
 const SLIDE_STEP: u32 = 12;
-/// Beast Out's screen fades step 8 a frame.
-const BEAST_OUT_FADE_SPEED: u8 = 8;
 
 /// The re-deal's steps: every 4 ticks, the 8th lands.
 const REDEAL_STEP: u8 = 4;
 const REDEAL_STEPS: u8 = 8;
-/// The camera shake of Beast Out on the custom screen (`sub_80302B6(1,
-/// 0x28)`): magnitude 1, 40 ticks.
-const BEAST_OUT_SHAKE: (u16, u16) = (1, 0x28);
 
 /// Scan `list` from `start` for the first slot present.
 fn scan(list: &[u8], start: u8, absent: impl Fn(u8) -> bool) -> u8 {
@@ -1677,12 +1625,6 @@ fn scan(list: &[u8], start: u8, absent: impl Fn(u8) -> bool) -> u8 {
         i += 1;
     }
     list[i]
-}
-
-/// `sub_802A040`: the face of the Beast form Beast Out takes the navi to
-/// (when `tired` counts, Beast Over's).
-fn beast_face(view: &PlayerView, tired: bool) -> Option<nettai_content_api::FormHandle> {
-    view.unlocks.beast_form(view.library, view.stats.navi, view.stats.form, tired)
 }
 
 /// `sub_802A088`: the face of the Cross chosen (by its place), its Beast
@@ -1827,12 +1769,6 @@ impl PlayerView<'_> {
         let in_beast = self.library.form_kind(current).is_beast();
         self.library.form_kind(form) == crate::content::FormKind::Cross
             && !(in_beast && self.library.form_game(form) != self.library.form_game(current))
-    }
-
-    /// The game of the Beast the navi goes into, or is in
-    /// (`Unlocks::beast_game`): the Beast Out roar's.
-    fn beast_game(&self) -> super::GameVersion {
-        self.unlocks.beast_game(self.library, self.stats.form)
     }
 
 

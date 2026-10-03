@@ -251,6 +251,14 @@ pub enum SystemHook {
     /// round's first screen forgetting the round's Beast Out). Its result
     /// is unused.
     CustomOpen,
+    /// `custom.chip_picked(side, chip)`: a chip of the hand was picked (BN6's
+    /// BeastOut chip starts its animation, `sub_802A00C`). Its result is
+    /// unused.
+    CustomChipPicked,
+    /// `custom.chip_taken_back(side, chip)`: B took a chip's pick back
+    /// (BN6's BeastOut chip: its face goes, `sub_802A0EC`). Its result is
+    /// unused.
+    CustomChipTakenBack,
     /// `custom.confirmed(side)`: OK was pressed and the hand is built (the
     /// round's Beast Out or Cross noted). Its result is unused.
     CustomConfirmed,
@@ -303,6 +311,8 @@ impl SystemHook {
             SystemHook::CustomHandSize => "custom.hand_size",
             SystemHook::CustomOpen => "custom.open",
             SystemHook::CustomConfirmed => "custom.confirmed",
+            SystemHook::CustomChipPicked => "custom.chip_picked",
+            SystemHook::CustomChipTakenBack => "custom.chip_taken_back",
             SystemHook::WindowUpdate => "window.update",
             SystemHook::ButtonTakenBack => "button.taken_back",
             SystemHook::ButtonShown => "button.shown",
@@ -312,7 +322,7 @@ impl SystemHook {
         }
     }
 
-    pub const ALL: [SystemHook; 24] = [
+    pub const ALL: [SystemHook; 26] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -337,6 +347,8 @@ impl SystemHook {
         SystemHook::CustomConfirmed,
         SystemHook::WindowUpdate,
         SystemHook::ButtonTakenBack,
+        SystemHook::CustomChipPicked,
+        SystemHook::CustomChipTakenBack,
     ];
 }
 

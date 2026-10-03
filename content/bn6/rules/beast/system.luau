@@ -78,8 +78,13 @@ return define.system {
     actions = { rush.action, cross_special.action },
     -- Beast Out on the custom screen (custom.luau).
     buttons = { beast_out = custom_beast.button },
-    windows = { beast_out = custom_beast.window },
-    custom = { open = custom_beast.open, confirmed = custom_beast.confirmed },
+    windows = { beast_out = custom_beast.window, beast_out_chip = custom_beast.chip_window },
+    custom = {
+        open = custom_beast.open,
+        confirmed = custom_beast.confirmed,
+        chip_picked = custom_beast.chip_picked,
+        chip_taken_back = custom_beast.chip_taken_back,
+    },
     hooks = {
         -- `sub_800FB54`: what runs inside the rush. In a Beast form (or
         -- from the Cross special), a chip with the lock-on flag (its
