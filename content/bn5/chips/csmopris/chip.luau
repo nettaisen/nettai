@@ -5,9 +5,9 @@
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local csmopris = require("./csmopris")
-local recipe_astroid3 = require("../astroid3/chip")
-local recipe_cosmomn_ds = require("../cosmomn-ds/chip")
-local recipe_cosmomn_sp = require("../cosmomn-sp/chip")
+local recipe_astroid3 = require("../astroid/chips").astroid3
+local recipe_cosmomn_ds = require("../cosmoman/chips").cosmomn_ds
+local recipe_cosmomn_sp = require("../cosmoman/chips").cosmomn_sp
 
 return define.chip {
     id = "bn5:csmopris",

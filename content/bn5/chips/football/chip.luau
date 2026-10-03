@@ -4,9 +4,9 @@
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local football = require("./football")
-local recipe_gridman_ds = require("../gridman-ds/chip")
-local recipe_gridman_sp = require("../gridman-sp/chip")
-local recipe_mrkcan2 = require("../mrkcan2/chip")
+local recipe_gridman_ds = require("../gridman/chips").gridman_ds
+local recipe_gridman_sp = require("../gridman/chips").gridman_sp
+local recipe_mrkcan2 = require("../mrkcan/chips").mrkcan2
 
 return define.chip {
     id = "bn5:football",

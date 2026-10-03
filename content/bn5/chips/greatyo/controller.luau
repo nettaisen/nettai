@@ -1,15 +1,15 @@
 --!strict
 -- GreatYo's controller (effect object #0x70, 0x080E89C4): what the YoYo throw (action 0x4A with subtype 1, 0x080EF256)
--- sends out in place of a yoyo, held in the thrower's first related object. It throws three yoyos (objects/yoyo,
+-- sends out in place of a yoyo, held in the thrower's first related object. It throws three yoyos (chips/yoyo/yoyo,
 -- 0x080D0346) from its panel: a follower on the row below and one on the row above (its parameters with Param2 2,
 -- 0x080E8A84), then the leader on its own row (its parameters, Param2 1: 0x080E8A74), at its height, with its element
 -- and damage word; once all three are gone, it lets the thrower go on (clearing what holds it) and is freed.
 
-local yoyo = require("../../objects/yoyo/yoyo")
+local yoyo = require("../yoyo/yoyo")
 
 local controller = {}
 
--- How a yoyo flies (objects/yoyo's `Spec`).
+-- How a yoyo flies (chips/yoyo/yoyo's `Spec`).
 type YoyoSpec = { mode: number, panels: number, rounds: number }
 
 export type State = {
