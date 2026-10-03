@@ -661,7 +661,7 @@ declare class Object
     function load_form_sprite(self, form: FormDef): ()
     -- `sub_80144C0`: the full status reset.
     function reset_status(self): ()
-    -- Anger ends; the mood is back to 0x80.
+    -- Anger ends; the mood is back to 0x80 (BN5's: a mood of 0 stays).
     function end_anger(self): ()
     -- The form the navi's side asked to change into at this turn's start
     -- (nil: none, or the base form).
