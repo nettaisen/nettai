@@ -41,8 +41,8 @@
 "bn5:invisibl/controller" = { pool = "effect", index = 0x5D, scratch_position = true }
 "bn5:mine/controller" = { pool = "effect", index = 0x29, scratch_position = true }
 "bn5:mine/land-mine" = { pool = "attack", index = 0x4C }
-"bn6:antidmg/shuriken" = { pool = "attack", index = 0xC2 }
-"bn6:rising-bubble" = { pool = "effect", index = 0x14 }
+"bn5:antidmg/shuriken" = { pool = "attack", index = 0xC2 }
+"bn5:rising-bubble" = { pool = "effect", index = 0x14 }
 "bn5:firehit/fist" = { pool = "attack", index = 0x5B }
 "bn5:bullet" = { pool = "attack", index = 0x12 }
 "bn5:tornado" = { pool = "attack", index = 0x31 }
