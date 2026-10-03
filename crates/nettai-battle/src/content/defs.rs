@@ -173,6 +173,10 @@ pub struct NaviDef {
 pub struct FormDef {
     pub key: String,
     pub record: FormData,
+    /// `reset(navi)`: what else the status reset does in it, after its
+    /// `status_reset` (BN5's souls' routines, 0x08011B92: SearchSoul's
+    /// reveal, ColonelSoul's, TomahawkSoul's grass).
+    pub reset: Option<FnId>,
 }
 
 /// A stage (`define.stage`).
@@ -1459,6 +1463,13 @@ impl Defs {
                 }
                 other => return Err(what(d, format!("`revert` is {other:?}, not an action"))),
             };
+            record.charged_action = match d.spec.field("charged_action") {
+                Data::Nil => None,
+                Data::Ref(Registry::Action, key) => {
+                    Some(ActionHandle(actions.binary_search_by(|a| a.key.as_str().cmp(key)).expect("a defined action") as u16))
+                }
+                other => return Err(what(d, format!("`charged_action` is {other:?}, not an action"))),
+            };
             if record.kind == super::FormKind::Base && record.revert.is_some() {
                 return Err(what(d, "a base form names no action that reverts a navi out of it (`revert`)".into()));
             }
@@ -1471,7 +1482,11 @@ impl Defs {
             if (record.kind == super::FormKind::Cross) != record.beast.is_some() {
                 return Err(what(d, "a Cross names its form in Beast Out (`beast`), and no other form does".into()));
             }
-            forms.push(FormDef { key: d.key.clone(), record });
+            let reset = match d.spec.field("reset") {
+                Data::Nil => None,
+                _ => Some(functions.id(slot(d, "reset")?)),
+            };
+            forms.push(FormDef { key: d.key.clone(), record, reset });
         }
         for (i, f) in forms.iter().enumerate() {
             if let Some(h) = f.record.identity {

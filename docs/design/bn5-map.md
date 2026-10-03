@@ -1300,7 +1300,8 @@ Slasher's request 0x80000 (`actions.stun_strike`, BN5's action 0x49, unfilled) a
 (`sub_801EB18`); lib/arm's NaviStats +0x4C and AIData +0x12 (read as 0); the kinds 4 and up of CrakBom's bomb (no
 chip throws them); battle flag 0x40's effect object 0x83 (0x080E9FD2, 0x080E9FA4: CrakBom's and Quake's bombs; never
 in a netbattle); Geyser's geyser (no recording throws it into a hole); a computer-controlled navi's VarSwrd pick (its
-tactics' byte, 0x0802D4E2 +0x12: no such navi in the engine yet). **Waiting:** Wind, Fan, RockCube, BoyBomb1 to 3,
+tactics' byte, 0x0802D4E2 +0x12: no battle has one; only the story navis' routines set AIData +0xF0, 0x0802C110, so
+Chaos Unison's Dark MegaMan takes the joypad path and gets a Sword). **Waiting:** Wind, Fan, RockCube, BoyBomb1 to 3,
 RedFrut1 to 3, Voltz1 to 3 and VDoll (on BN5's field obstacles).
 
 ### 15.7 BN5's MegaMan, stages and roles (as built)
@@ -1385,15 +1386,34 @@ them.
   (routine 3: WideSwrd's slash, 80 + 10 × (Attack + 1), counter byte 0x94), Sword chips charged with A (routine
   5: any Sword chip but a dimming or dark one, `charged_chips`' `plain`, 0x0801090A; doubled, 0x080103D0). BN5's
   blade animation goes by the soul (0x080EC038: ProtoSoul 13, ColonelSoul 14, ShadowSoul 15; `blade_anim`).
-  souls/01-sword/unison matches every frame. Not yet: its B+Back shield (routine 4, BN5's guard action 0x1F, the
-  Guard chips' too).
-- **The other eleven** follow the pattern: a form file each (sprite 00-0n, image sprite 08-0n, family, weapons
-  from 0x0801CA1C), with their start hooks' parts (GyroSoul's propeller, NumberSoul's layer: identities' parts;
-  the image's for souls 2, 4, 7, 9 and 11, 0x0800EDBC), their charged shots (routines 7 to 0x2D: actions 0x3A to
-  0x45, Colonel's the chip AIData +0x32 names), their B+Back (Magnet's 0x25, Shadow's 0x45) and their chip-use
-  effects in BN5's chip use (0x0801026C: GyroSoul's next-chip doubling after a Wind chip, AIData +0x0D;
-  TomahawkSoul's doubled Wood chips on grass; KnightSoul's 50 invulnerable ticks; ShadowSoul's move lag 0, the
-  form's `move_lag`).
+  souls/01-sword/unison matches every frame; its B+Back shield is routine 4 (BN5's guard as the Reflect program's).
+- **The other eleven** follow the pattern: a form file each under navis/megaman/forms (sprite 00-0n, image sprite
+  08-0n, family, weapons from 0x0801CA1C: +5 the A-charge's routine, +6 the buster's, +7 the charged shot's, +8
+  B+Back's, +0x11 Chaos Unison's, a dark chip by routines 0x30 to 0x3A: weapons/chaos), the element by soul
+  (0x0800E634: NapalmSoul Fire, MagnetSoul Elec, TomahawkSoul Wood, ToadSoul Aqua), the charge table's rows
+  (0x0801CA6C, ten bytes a routine). What a soul wears is its identity's `parts`, a row of BN5's body overlays
+  (lib/body_overlays: 0x080C35DC; GyroSoul's propeller, row 2); the soul's image wears its navi's (0x0800EDBC:
+  GyroMan's propeller, NapalmMan's cannon, Colonel's cape, KnightMan's ball and chain). BN5's MegaMan's hooks
+  restart what he wears after an animation change, a flinch or a drag by having it reload its animation
+  (0x080C374E: the reactions section's `overlay_restart = "reload"`, where BN6's steps it at once).
+  - **The status reset by soul** (0x08011B92; a NaviCust change's, 0x08011CBC): GyroSoul's FloatShoes, floating
+    body and AirShoes and ShadowSoul's FloatShoes and floating body are the form's `status_reset`; the rest is the
+    form's `reset` hook (`FormDef::reset`, called after the flags): SearchSoul's reveal of the other side's
+    invisible navis (effect 0x8F), TomahawkSoul's grass, ColonelSoul's arming of its side's obstacles.
+  - **The chip use by soul** (0x0800FF48), by form data: `priming` (GyroSoul: a Wind chip primes it, AIData +0x0D,
+    0x080102D2; primed, the next damaging Wind or Null chip is doubled, and neither Full Synchro nor anger doubles
+    meanwhile, 0x0801026C), `grass_doubles` (TomahawkSoul's Wood chips on grass, which the use turns normal,
+    0x0801032A), `front_guard` (KnightSoul's 50 invulnerable ticks for a damaging chip used with the panel ahead
+    not its side's, 0x08010392), `charged_action` (NapalmSoul's charged Fire chips start action 0x4B, a napalm bomb
+    with the chip's damage: 0x08010442), `charged_chips` and `charged_bonus` (0x0801090A, 0x080103D0: Proto Sword,
+    Knight Break, Magnet Elec, Toad Aqua and Napalm Fire doubled; Shadow Sword without a bonus), `move_lag`
+    (ShadowSoul's 0).
+  - **Built:** GyroSoul (routine 9, action 0x3C: a tornado, attack object 0x1E, along the three panels ahead),
+    SearchSoul (8, 0x3B: five shots at the nearest enemy navi's panel, 0x08012E50), NapalmSoul (0x19, 0x44: three
+    fire bullets, rows 0x11 and 0x12), MagnetSoul (0x15, 0x42: a paralyzing field, attack object 0x75, on the
+    panel ahead and a pull over the six panels ahead) and ColonelSoul (0x14, 0x43: the screen divide on the first
+    enemy ahead): their unison recordings match every frame. Not yet: MagnetSoul's B+Back (0x25: instant effect 10,
+    immobilizers ahead), ColonelSoul's obstacles (with BN5's obstacle chips), and souls 6 and 8 to 12.
 - **Chaos Unison** waits on the engine: its charge (AIData +0x11's weapon, the routine's charge row by the chaos
   level AIData +0x6C, the cycle 0x080105F8 of 0x08010650's rows, the release's requests 0x8000 and 0x10000, the
   idle's start of the chaos weapon or of action 0x39) and, on a failed release, action 0x39 spawns the Dark MegaMan
