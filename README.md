@@ -84,7 +84,7 @@ both peers stay in step:
 These checks need no ROM:
 
     cargo test --workspace                             # the engine on its own test content
-    cargo run -p nettai-content-check -- content/bn6   # every content module type-checks; the lints
+    cargo run -p nettai-content-check                  # every content module type-checks; the lints
 
 ## The match editor
 

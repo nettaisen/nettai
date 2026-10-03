@@ -17,8 +17,9 @@ played live from the keyboard, and can render chosen frames to PNG.
 
 ## 1. The content pack
 
-The battle content the engine runs on is this repository's content/bn6 (its
-definitions; `--content <dir>` or `$BN6_CONTENT` for another). What the
+The battle content the engine runs on is this repository's content/ (every
+folder of it, one namespace: content/bn6's definitions, content/bn5's...;
+`--content <dir>` or `$NETTAI_CONTENT` for another content directory). What the
 frontend shows and plays comes from a content pack made from your own ROMs
 (the US Falzar and Gregar, `MEGAMAN6_FXXBR6E` and `MEGAMAN6_GXXBR5E`, and the
 Japanese Falzar and Gregar, `ROCKEXE6_RXXBR6J` and `ROCKEXE6_GXXBR5J`, which

@@ -574,7 +574,7 @@ NaviStats-like layout), so BN5's seams should fit it with less new work. The sam
 | Pack formats `nettai-content/hud`, `nettai-content/custom` | nettai-content hud.rs, custom.rs | BN6's layouts under generic names. |
 | `BN6_LOAD_TIMES` | nettai-frontend main.rs | Not BN6's: already `NETTAI_LOAD_TIMES` since the rename. |
 | `BN6_RATCHET_LOWER` | content-model-v2.md (history) | Dead since the ratchet was deleted; leave the history. |
-| The default pack path `data/content/bn6`, `root::bn6()` as the frontend's default | nettai-frontend, nettai-content | BN6's defaults; fine while BN6 is the only game. A `--game` choice later. |
+| The default pack path `data/content/bn6`, BN6 as the frontend's default game (`nettai_match::DEFAULT_GAME`) | nettai-frontend, nettai-content | BN6's defaults; fine while BN6 is the only game. A `--game` choice later. |
 | docs/engine | docs | BN6's reverse-engineering record (275 files cite it). Keep it in place and say so, or move it to docs/bn6 when a second game's docs arrive (one mechanical commit). |
 
 ### 5.2 What stays BN6's
@@ -585,8 +585,8 @@ NaviStats-like layout), so BN5's seams should fit it with less new work. The sam
 - **netplay's `bn6` module** and `Bn6Input`, by the user's decision. Note: in substance it is the engine's input
   adapter (buttons plus `TickEvents`), with nothing of BN6's in it; worth renaming when the ruleset seam lands, if
   a second game's input record is the same.
-- **BN6_PACK, BN6_CONTENT, BN6_COMPAT** and the **BN6_LAB_*** variables: they select BN6's pack, content root,
-  compat and lab.
+- **BN6_PACK, BN6_COMPAT** and the **BN6_LAB_*** variables: they select BN6's pack, compat and lab (the content
+  directory, every game's, is `$NETTAI_CONTENT` since rules-in-luau.md's R4).
 - **The bn6battle-verify workspace**: BN6's oracle, traces and chip lab.
 - **docs/engine**'s content (wherever it ends up), and the BN6-only modules once they are behind the `bn6`
   boundary.

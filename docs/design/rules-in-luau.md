@@ -585,45 +585,54 @@ battle change nothing: each side's systems run for their own side.
 4. **Rules mix**: a ruleset can take systems from several games (Crosses, Beast Out and Soul Unison together), as
    content.
 
-### 7.2 Roots and namespaces (agreed with the BN5 work)
+### 7.2 One namespace (R4; it replaced R1's roots)
 
-A root is a content directory with a manifest; a pack declares its game in its own manifest (`game = "bn5"`):
+The user (2026-10-02): "i think the idea of packs is just kind of wonky anyway, maybe you should just have it all
+in a flat namespace and then in the chip ids directly have bn6:cannon or whatever", and "so loading assets must
+also be fully qualified as well".
 
-```toml
-# content/bn6/root.toml
-name = "bn6"          # its namespace: a game root's is its game
-assets = "bn6"        # whose pack its asset names resolve in (by default its name)
-requires = []         # roots whose definitions it may name; a game root names none
-```
-
-- **Keys are qualified by the loader**: `bn6:minibomb`, `bn5:cannon`. Inside a root, modules and its compat write
-  keys and asset names unqualified, exactly as today, so BN6's don't change. The engine's own entries keep their
-  `engine/...` keys, outside every root.
+- **Every folder of content/ loads**, one namespace: content/bn6, content/bn5, and any other. A folder is named as
+  its game; there is no manifest. content/nettai holds the engine's API declarations and defines nothing.
+  `--content` (and `$NETTAI_CONTENT`) names the content directory, by default the repository's content/.
+- **Every id is written in full**, its game first: `id = "bn6:minibomb"`, `bn5:cannon`; a section's name
+  (`define.rules("bn6:panels", ...)`), the roles' id (`bn6:roles`), a stock ruleset's (`bn6:stock`, `bn5:stock`),
+  a system's (`bn6:beast`); a mix keeps its own descriptive id. The loader refuses an id without its game, naming
+  the folder's game as the fix. The engine's own entries keep their `engine/...` keys, of no game.
+- **A definition's game is its id's prefix.** The loaded games are the folders and the ids' prefixes, by name
+  (`Defs::roots`; a `RootId` is a place in it).
+- **Asset names are in full**: `asset.sprite("bn6:bomb")`, any loaded pack's; a name without its pack's game is
+  refused by the loader, a match's background by the match check. A pack keeps its own names (`bomb`); its game is
+  its manifest's.
+- **Modules require by path**: `require("@bn6/rules/beast/system")` names any folder; `./` and `../` stay within
+  the folder.
+- **Compat and locale tables are keyed by full id**, as content writes them; compat is per game (bn6-compat reads
+  content/bn6/compat, bn5-compat content/bn5/compat), and a trace names only its game's content.
+- **Lookups are exact** (`Defs::*_by_key`): tools, tests, setups and match files write ids in full.
+- **No home.** What a battle reads is the arena's (the stage's game's) or a side's (its ruleset's, §2.3); a tool
+  with no battle takes the game that has the thing. A frontend's and the match tool's default game is BN6's, by name
+  (`nettai_match::DEFAULT_GAME`).
+- **content/common** is a folder of behaviour only: modules the games' folders share by path
+  (`require("@common/...")`), with no assets of their own, so it needs no pack, and no compat or locales.
 - **Version variants keep their suffixes** (`-falzar`/`-gregar`, `-protoman`/`-colonel`); region (US, JP) is a
   field, not a namespace.
-- **Handles** intern over the union in byte order of the qualified keys; peers with the same roots and content hash
-  have the same handles.
-- **Compat is per root**: bn6-compat reads content/bn6/compat for BN6's traces and saves, a bn5-compat
-  content/bn5/compat. A trace names only its game's content.
-- **content/nettai** holds the engine's API declarations (the generic part of today's core.d.luau and
-  types.d.luau). It defines nothing.
+- **Handles** intern over the union in byte order of the ids; peers with the same content hash have the same
+  handles.
 
 ### 7.3 Each game exports its own library
 
-There is no shared content library (the user's decision). Each game root defines its own chips, kinds, builders,
+There is no shared content library (the user's decision). Each game's folder defines its own chips, kinds, builders,
 forms and systems, even where they overlap with another game's: `bn6:cannon`, `bn5:cannon`, `bn4:cannon` are three
-definitions, each verified against its own game. A game root `require`s only its own modules. When BN5's routine is
-the same as BN6's (bn5-map.md says which), BN5's module may start as a copy of BN6's, and then belongs to BN5.
+definitions, each verified against its own game. When BN5's routine is the same as BN6's (bn5-map.md says which),
+BN5's module may start as a copy of BN6's, and then belongs to BN5 (or the two share it from content/common, §7.2).
 
-A root that composes games (a mix of rules, a mod) names them in `requires` and refers to their exports by
-qualified key and module (`require("@bn6/rules/cross/system")`); its own definitions are its namespace's, with its
-`assets` pack. The in-repo tests use such a root for mixes (§7.6).
+A folder that composes games (a mix of rules, a mod) requires their modules by path
+(`require("@bn6/rules/cross/system")`) and names their definitions by id. The in-repo tests use such a folder for
+mixes (§7.6).
 
 ### 7.4 Assets
 
-A definition's asset names resolve in its root's `assets` pack: `bn5:cannon`'s sprites are BN5's. The engine's
-asset handles cover every loaded pack; a sprite's identity gains its pack (`SpriteId` is a pack, a category and an
-index); the frontend and the audio load each pack the battle's roots name.
+A definition names its assets in full: `bn5:cannon`'s sprites are `bn5:...`, BN5's pack's. The engine's asset
+handles cover every loaded pack (R3a); the frontend and the audio draw and play each asset from its own pack (R3b).
 
 #### The field's art in a mixed battle (proposed, pending the user; to build in slice R)
 
