@@ -1,10 +1,10 @@
 --!strict
 -- Fanfare (BN5 chip 0x064): a cut-in chip that sets an instrument in front of the user; while it plays, the user's
--- side can't be hurt (objects/instrument: the shared @common/instruments with BN5's look; its row 0 of 0x080D5158, its
+-- side can't be hurt (lib/instruments/instrument: the shared @common/instruments with BN5's look; its row 0 of 0x080D5158, its
 -- effect 0x080D542E: BN6's but for Beast Over, which BN5 hasn't).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local bn5_instrument = require("../../objects/instrument/instrument")
+local bn5_instrument = require("../../lib/instruments/instrument")
 local instrument = require("@common/instruments/instrument")
 
 -- How long its every-third-tick invulnerability lasts.

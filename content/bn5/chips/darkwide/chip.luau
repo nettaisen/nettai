@@ -1,11 +1,11 @@
 --!strict
 -- DarkWide (BN5 chip 0x0c0): a dark chip: WideSht's shot (@common/widesht) with BN5's shooter and a wave of kind 9
--- (objects/wave: it goes through and trails), one wave (its subtype's count, 0x080ED008). Its use costs buster
+-- (chips/widesht: it goes through and trails), one wave (its subtype's count, 0x080ED008). Its use costs buster
 -- blanks (rules/light-dark).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local wave = require("../../objects/wave/variants")
-local widesht = require("../../objects/wave/wave")
+local wave = require("../widesht/variants")
+local widesht = require("../widesht/wave")
 
 return define.chip {
     id = "bn5:darkwide",
