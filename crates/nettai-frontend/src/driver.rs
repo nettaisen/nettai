@@ -204,6 +204,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             ruleset: None,
             rules: Vec::new(),
             patch_cards: Default::default(),
+            navicust: None,
         }
     };
     RoundSetup {
