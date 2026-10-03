@@ -17,6 +17,8 @@ pub mod check;
 pub mod draw;
 pub mod file;
 pub mod folders;
+#[cfg(test)]
+mod games;
 pub mod link_navis;
 pub mod names;
 pub mod stats;
