@@ -415,6 +415,31 @@ impl Battle {
         None
     }
 
+    /// Side `side`'s systems' `starting_mood(side)`: the first answer.
+    pub(crate) fn systems_starting_mood(&mut self, side: u8) -> Option<u8> {
+        self.systems_ask(side, SystemHook::StartingMood, None)
+    }
+
+    /// Side `side`'s systems' `navi_palette(side, navi)`: the first answer.
+    pub(crate) fn systems_navi_palette(&mut self, side: u8, navi: ObjectRef) -> Option<u8> {
+        self.systems_ask(side, SystemHook::NaviPalette, Some(navi))
+    }
+
+    /// Side `side`'s systems' `hook`, in order, until one answers a number.
+    fn systems_ask(&mut self, side: u8, hook: SystemHook, navi: Option<ObjectRef>) -> Option<u8> {
+        let r = self.rules[side as usize & 1].ruleset?;
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(hook) {
+                let call = HookCall::System { side, slot: slot as u8, hook, navi, chip: None, weapon: None };
+                if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
+                    return Some(n as u8);
+                }
+            }
+        }
+        None
+    }
+
     /// Side `side`'s systems' `countered(side, victim)`.
     pub(crate) fn systems_countered(&mut self, side: u8, victim: ObjectRef) {
         self.systems_call(side, SystemHook::Countered, victim);

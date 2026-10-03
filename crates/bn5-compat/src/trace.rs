@@ -590,10 +590,11 @@ impl Round {
         });
         let [mut p0, mut p1] = players;
         // Each side's light and dark MegaMan: his save's value (NaviStats
-        // +0x44), BN5's light and dark system's setup.
+        // +0x44) and Hub Style (+0x4C), BN5's light and dark system's setup.
         for (p, stats) in [(&mut p0, &d.navi_stats[0]), (&mut p1, &d.navi_stats[1])] {
             if let Ok(p) = p {
                 p.set_rule(content, LIGHT_DARK, "value", nettai_content_api::Value::Int(stats.light_dark.0 as i64))?;
+                p.set_rule(content, LIGHT_DARK, "hub_style", nettai_content_api::Value::Int(stats.hub_style as i64))?;
             }
         }
         Ok(RoundSetup {
