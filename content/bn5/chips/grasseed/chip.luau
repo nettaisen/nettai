@@ -1,6 +1,11 @@
 --!strict
--- GrasSeed (BN5 chip 0x02a): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- GrasSeed (BN5 chip 0x02a): a seed thrown three panels ahead that turns the panels around where it lands to grass
+-- (only its own if it hit something): BN5's throw (lib/bombs, action 0x12) and its seed (objects/seed, attack object
+-- #0x4A).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local bombs = require("../../lib/bombs")
+local seed = require("../../objects/seed/seed")
 
 return define.chip {
     id = "bn5:grasseed",
@@ -16,4 +21,9 @@ return define.chip {
     flags = { "standard_library", "library" },
     extra_flags = { 128 },
     slot_in_limit = 3,
+    action = bombs.throw {
+        held = seed.held(seed.variants.grass),
+        held_anim = 8,
+        thrower = seed.thrower(seed.variants.grass),
+    },
 }
