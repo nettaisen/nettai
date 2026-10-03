@@ -148,7 +148,7 @@ impl Side {
             sp_times: Default::default(),
             navicust: None,
             tactics: Default::default(),
-            setups: Default::default(),
+            karma: crate::facts::DEFAULT_KARMA,
             souls: None,
         }
     }
@@ -200,7 +200,7 @@ pub fn plain(content: &Arc<Content>, seed: u32) -> Result<Match, String> {
         sp_times: Default::default(),
         navicust: None,
         tactics: Default::default(),
-        setups: Default::default(),
+        karma: crate::facts::DEFAULT_KARMA,
         souls: None,
     };
     let mut m = Match { seed: Some(seed), arena, sides: [side.clone(), side] };

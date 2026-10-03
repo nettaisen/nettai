@@ -69,7 +69,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         if side.has_system(&e.content, FORMS_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
             tabs = tabs.push(nav("  Crosses", Tab::Crosses(s), e.tab));
         }
-        if side.has_system(&e.content, nettai_match::souls::SOULS_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
+        if nettai_match::facts::takes(&e.content, side, nettai_match::facts::SOULS_FIELD) {
             tabs = tabs.push(nav("  Souls", Tab::Souls(s), e.tab));
         }
         if side.has_system(&e.content, PATCH_CARDS_SYSTEM) {
@@ -198,19 +198,14 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     col = col.push(field("Bug frags", text_input("0", &frags).on_input(move |t| Msg::BugFrags(s, t)).width(Length::Fixed(100.0))));
     col = col.push(checkbox(side.emotion_window_glitch).label("The emotion window glitches (the save's NaviCust bug flag)").on_toggle(move |b| Msg::Glitch(s, b)));
     col = col.push(button("Import from save…").on_press(Msg::ImportSave(s)));
-    let bn5 = side.ruleset_or_stock(c).and_then(|r| nettai_content_api::keys::root_of(&c.defs.ruleset(r).key)) == Some("bn5");
     col = col.push(
-        text(if bn5 {
-            "From a BN5 .sav (or a raw save image): the light/dark value and the souls it has (its version's)."
-        } else {
-            "From a BN6 .sav: the game, Beast Out and the Crosses it owns, the navi code's level and the SP times."
-        })
-        .size(13)
-        .color(DIM),
+        text("From a BN6 .sav: the game, Beast Out and the Crosses it owns, the navi code's level and the SP times. From a BN5 .sav (or a raw save image): its karma and the souls it has (its version's).")
+            .size(13)
+            .color(DIM),
     );
-    if let Some(setup) = setups(e, s) {
+    if nettai_match::facts::takes(c, side, nettai_match::facts::KARMA_FIELD) {
         col = col.push(rule::horizontal(1));
-        col = col.push(setup);
+        col = col.push(karma(e, s));
     }
     col = col.push(rule::horizontal(1));
     col = col.push(sp_times(e, s));
@@ -219,111 +214,40 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     scrollable(col).into()
 }
 
-/// What the side brings its ruleset's systems besides (their setups'
-/// fields the side's own fields don't write: `nettai_match::setups`), each
-/// its value or the system's default; BN5's light/dark value a slider with
-/// its thresholds. None: no such field.
-fn setups(e: &Editor, s: usize) -> Option<Element<'_, Msg>> {
-    use nettai_content_api::FieldType;
-    use nettai_match::setups::SetupValue;
-    let c = &*e.content;
-    let side = e.side(s);
-    let mut col = column![
-        text("The rules' setup").size(16),
-        text("What the player's save gives the systems of their rules (unset: the system's default).").size(13).color(DIM)
-    ]
-    .spacing(6);
-    let mut any = false;
-    for (system, schema) in nettai_match::setups::systems(c, side) {
-        for f in schema.fields() {
-            if nettai_match::setups::SIDE_FIELDS.contains(&f.name.as_str()) {
-                continue;
-            }
-            any = true;
-            let (sys, name) = (system.to_string(), f.name.clone());
-            let given = side.setups.get(system).and_then(|x| x.get(&f.name)).is_some();
-            let value = nettai_match::setups::value(c, side, system, &f.name);
-            let reset: Element<Msg> = if given {
-                button(text("default").size(12)).on_press(Msg::SetupDefault(s, sys.clone(), name.clone())).style(button::text).into()
-            } else {
-                text("(default)").size(12).color(DIM).into()
-            };
-            if system == LIGHT_DARK && f.name == "value" {
-                col = col.push(light_dark(e, s, value, reset));
-                continue;
-            }
-            let label = format!("{system} {}", f.name);
-            let widget: Element<Msg> = match (&f.ty, value) {
-                (FieldType::Bool, v) => {
-                    let on = v == Some(SetupValue::Bool(true));
-                    checkbox(on).on_toggle(move |b| Msg::SetupValue(s, sys.clone(), name.clone(), SetupValue::Bool(b))).into()
-                }
-                (FieldType::Enum(names), v) => {
-                    let choices: Vec<Choice<String>> = names.iter().map(|n| Choice { label: n.clone(), value: n.clone() }).collect();
-                    let picked = match v {
-                        Some(SetupValue::Name(n)) => choices.iter().find(|x| x.value == n).cloned(),
-                        _ => None,
-                    };
-                    pick_list(choices, picked, move |x| Msg::SetupValue(s, sys.clone(), name.clone(), SetupValue::Name(x.value))).into()
-                }
-                (FieldType::Array(..) | FieldType::Ref(..), _) => text("(written in the match file)").size(13).color(DIM).into(),
-                (_, v) => {
-                    let shown = e.typed.get(&(s, crate::app::setup_key(system, &f.name))).cloned().unwrap_or_else(|| match v {
-                        Some(SetupValue::Int(i)) => i.to_string(),
-                        _ => String::new(),
-                    });
-                    text_input("0", &shown).on_input(move |t| Msg::SetupText(s, sys.clone(), name.clone(), t)).width(Length::Fixed(100.0)).into()
-                }
-            };
-            col = col.push(row![label_text(label), widget, reset].spacing(8).align_y(Alignment::Center));
-        }
-    }
-    any.then(|| col.into())
-}
-
-/// BN5's light and dark system, whose setup's `value` is the save's
-/// light/dark value (content/bn5/rules/light-dark).
-const LIGHT_DARK: &str = "bn5:light-dark";
-
-/// The light/dark value: a slider from 0 to 1000 and its number, and what
-/// BN5 makes of it (0x08010118: a dark MegaMan under 470, light from 470;
-/// the starting mood's tiers, 0x0801283A: under 470 dark, under 500
-/// worried, 1000 Full Synchro; at or under 499 he clears holy panels).
-fn light_dark<'a>(e: &'a Editor, s: usize, value: Option<nettai_match::setups::SetupValue>, reset: Element<'a, Msg>) -> Element<'a, Msg> {
-    use nettai_match::setups::SetupValue;
-    let v = match value {
-        Some(SetupValue::Int(i)) => i.clamp(0, 1000) as u16,
-        _ => 500,
-    };
-    let set = move |x: u16| Msg::SetupValue(s, LIGHT_DARK.into(), "value".into(), SetupValue::Int(x as i64));
-    let shown = e.typed.get(&(s, crate::app::setup_key(LIGHT_DARK, "value"))).cloned().unwrap_or_else(|| v.to_string());
+/// BN5's karma, the save's light/dark value: a slider from 0 to 1000 and
+/// its number, presets (light 500, very light 1000, dark 0), and what BN5
+/// makes of it (0x08010118: a dark MegaMan under 470, light from 470; the
+/// starting mood's tiers, 0x0801283A: under 470 dark, under 500 worried,
+/// 1000 the brightest; at or under 499 he clears holy panels).
+fn karma(e: &Editor, s: usize) -> Element<'_, Msg> {
+    let v = e.side(s).karma;
+    let set = move |x: u16| Msg::Karma(s, x);
+    let shown = e.typed.get(&(s, "karma")).cloned().unwrap_or_else(|| v.to_string());
     let kind = if v < 470 { "dark" } else if v >= 1000 { "very light" } else { "light" };
     let mood = match v {
         0..=469 => "0: the dark face and palette, dark chips usable in a link battle, light chips refused, no soul button".to_string(),
         470..=499 => "64: worried (no soul button until the mood rises)".to_string(),
         1000.. => "190, the palette's brightest tier".to_string(),
-        _ => format!("{} (the value / 20 + 103; 0x80 at 500)", v / 20 + 103),
+        _ => format!("{} (karma / 20 + 103; 0x80 at 500)", v / 20 + 103),
     };
     let holy = if v <= 499 { " Holy panels he stands on turn Normal." } else { "" };
     let preset = |name: &'static str, x: u16| button(text(format!("{name} ({x})")).size(13)).on_press(set(x)).style(button::secondary);
     column![
+        text("Light and dark").size(16),
         row![
-            label_text("Light and dark".into()),
-            slider(0..=1000, v, set).step(10u16).width(Length::Fixed(300.0)),
-            text_input("500", &shown)
-                .on_input(move |t| Msg::SetupText(s, LIGHT_DARK.into(), "value".into(), t))
-                .width(Length::Fixed(70.0)),
-            reset,
+            label_text("Karma".into()),
+            slider(0..=1000, v.min(1000), set).step(10u16).width(Length::Fixed(300.0)),
+            text_input("500", &shown).on_input(move |t| Msg::KarmaText(s, t)).width(Length::Fixed(70.0)),
         ]
         .spacing(8)
         .align_y(Alignment::Center),
         row![space().width(Length::Fixed(160.0)), preset("Light", 500), preset("Very light", 1000), preset("Dark", 0)].spacing(8),
         text(format!("{v}: a {kind} MegaMan. Starting mood {mood}.{holy}")).size(13),
-        text("0 to 1000; a fresh save's 500. Under 470 dark (dark chips, no light ones); 499 or under clears holy panels; under 500 worried at the start; 1000 the brightest.")
+        text("The save's light/dark value, 0 to 1000; a fresh save's 500. Under 470 dark (dark chips, no light ones); 499 or under clears holy panels; under 500 worried at the start; 1000 the brightest.")
             .size(13)
             .color(DIM),
     ]
-    .spacing(4)
+    .spacing(6)
     .into()
 }
 
@@ -655,11 +579,11 @@ fn souls(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
     let side = e.side(s);
     let every = side.souls.is_none();
-    let owned = nettai_match::souls::owned(c, side);
-    let all = nettai_match::souls::all(c);
+    let owned = nettai_match::facts::owned_souls(c, side);
+    let all = nettai_match::facts::all_souls(c);
     let mut col = column![
         heading(format!("{}: souls", SIDES[s])),
-        text("The souls the soul button may offer (for the last chip picked of the soul's family). Either version's: nettai lets a side have all twelve.")
+        text("The souls the soul button may offer (for the last chip picked of the soul's family). Any soul, either version's: a real save has its version's six.")
             .size(13)
             .color(DIM),
         checkbox(every).label("Every soul (the default)").on_toggle(move |b| Msg::EverySoul(s, b)),

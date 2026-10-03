@@ -15,6 +15,7 @@ pub const DEFAULT_GAME: &str = "bn6";
 
 pub mod check;
 pub mod draw;
+pub mod facts;
 pub mod file;
 pub mod folders;
 #[cfg(test)]
@@ -23,8 +24,6 @@ mod import;
 mod import_bn5;
 pub mod link_navis;
 pub mod names;
-pub mod setups;
-pub mod souls;
 pub mod sp_times;
 pub mod stats;
 #[cfg(any(test, feature = "testing"))]
@@ -125,12 +124,11 @@ pub struct Side {
     /// buster between rests). The round's setup sends them as the console
     /// does (`Tactics::sent`).
     pub tactics: Tactics,
-    /// What the side brings for its ruleset's systems besides (their
-    /// player setups, by system id and field: `setups`): BN5's light and
-    /// dark value. Only the fields given; the rest the systems' defaults.
-    pub setups: setups::Setups,
-    /// The souls the side has (BN5's Soul Unison, `souls`): none listed,
-    /// every soul the content has.
+    /// BN5's karma, the save's light/dark value (0 to 1000; a fresh
+    /// save's 500), and the souls the side has (BN5's Soul Unison: none
+    /// listed, every soul the content has): facts its systems take by name
+    /// (`facts`).
+    pub karma: u16,
     pub souls: Option<Vec<nettai_content_api::FormHandle>>,
 }
 
@@ -308,7 +306,7 @@ impl Match {
             sp_times: SpTimes::default(),
             navicust: None,
             tactics: Tactics::default(),
-            setups: Default::default(),
+            karma: facts::DEFAULT_KARMA,
             souls: None,
         };
         let boards = navicust_rules(content, &side).boards.len();
@@ -338,7 +336,7 @@ impl Match {
             let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, content);
             let mut player = PlayerSetup {
                 folder: Some(folder),
-                souls: souls::unlocks(content, s),
+                souls: Default::default(),
                 joypad_phase: 0,
                 bug_frags: s.bug_frags,
                 navi_level: s.navi_level,
@@ -364,8 +362,8 @@ impl Match {
             // side says.
             let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(s.game) };
             unlocks.write(content, &mut player).expect("a side's ruleset takes BN6's setup as its systems declare it");
-            // What the side gives its systems besides, over those facts.
-            setups::write(content, s, &mut player).expect("a side's setups are its ruleset's (the match's checks)");
+            // Its karma and souls, into the systems that take them.
+            facts::write(content, s, &mut player).expect("a side's karma and souls fit its rules (the match's checks)");
             player
         };
         RoundSetup {

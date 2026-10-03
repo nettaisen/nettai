@@ -79,9 +79,9 @@ local CLEARS_HOLY = 499
 local LIGHT_CHIPS = 470
 
 export type Setup = {
-    -- The save's light/dark value (NaviStats +0x44): 0 to 1000; a fresh save's 500 (0x08010C00), the setup's
-    -- default.
-    value: number,
+    -- The save's light/dark value, its karma (NaviStats +0x44): 0 to 1000; a fresh save's 500 (0x08010C00), the
+    -- setup's default. (A match's side's `karma`, which nettai-match writes by this field's name.)
+    karma: number,
 }
 
 -- Dark MegaMan's AI index, and BN5's navi 23's (0x0800DE40: a computer navi of either draws in palette 1).
@@ -94,7 +94,7 @@ local function value(): number
     if battle.light_dark_held() then
         return 500
     end
-    return (system.setup() :: Setup).value
+    return (system.setup() :: Setup).karma
 end
 
 -- 0x0801283A: the starting mood by the value (its caller, 0x08010F1A, passes 0 for the Full Synchro it could ask).
@@ -223,9 +223,10 @@ end
 
 return define.system {
     id = "bn5:light-dark",
-    setup = { value = "u16" },
-    -- A fresh save's value (0x08010C00 writes 500 to NaviStats +0x44): neither light nor dark.
-    setup_defaults = { value = 500 },
+    setup = { karma = "u16" },
+    -- A fresh save's value (0x08010C00 writes 500 to NaviStats +0x44): light for the chips, no holy panels cleared,
+    -- the starting mood 0x80.
+    setup_defaults = { karma = 500 },
     hooks = {
         -- Hub Style shows the base form's second set of faces (0x0801AF8E).
         round_setup = function(side: number)
