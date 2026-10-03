@@ -464,6 +464,9 @@ declare class Object
     -- Writable: the barrier's visual (AIData+0x60), which hides and shows
     -- with the navi (its state's `shown`).
     barrier_visual: Object?
+    -- Writable: BN5's DarkPlus tint (AIData+0x3C; 0 none), which picks the
+    -- navi's status shader.
+    plus_tint: number
 
     -- `sub_800F26C`: the look its NameID gives is `sprite` (an object's
     -- NameID look; a navi's or form's NameID gives its sprite). An error
@@ -644,6 +647,12 @@ declare class Object
     -- The form the navi's side asked to change into at this turn's start
     -- (nil: none, or the base form).
     function form_change_target(self): FormDef?
+    -- BN5's Soul Unison: the turns the soul asked for lasts, and whether it
+    -- is Chaos Unison.
+    function form_change_soul(self): (number, boolean)
+    -- BN5's soul change's first step: no longer moving, flinching,
+    -- paralyzed or sliding (nor asked to slide).
+    function stop_moving(self): ()
     -- `sub_80C4526(overlay, 1)`: an overlay on an image sits in front (an
     -- idle overlay keeps its owner's height).
     function pin_overlay(self): ()
@@ -990,6 +999,8 @@ declare battle: {
     link: () -> boolean,
     -- A battle against a ranked boss (battle effect 1).
     boss_rank: () -> boolean,
+    -- A battle whose dark chips fizzle (battle effect 0x100000: BN5's dark chip rule).
+    no_dark_chips: () -> boolean,
     mode: () -> number,
     panel_pattern: () -> number,
     -- Every navi is in (the intro's bit 2).
@@ -1110,6 +1121,8 @@ declare battle: {
     -- spends; 1: the Navi+ bonus a navi chip spends).
     add_special_bonus: (side: number, index: number, n: number) -> (),
     bump_side_stat: (side: number, index: number, n: number) -> (),
+    -- `sub_800AB2E`: set a side's statistics counter.
+    set_side_stat: (side: number, index: number, n: number) -> (),
     -- `sub_800AB3A`: a side's statistics counter.
     side_stat: (side: number, index: number) -> number,
     -- The damage-carry record of the side that takes the damage
@@ -1154,6 +1167,8 @@ declare battle: {
     -- in, and adding to its Atk+ bonus.
     hand_turn: (side: number, i: number) -> number,
     add_hand_attack_bonus: (side: number, i: number, n: number) -> (),
+    -- BN5's DarkPlus: the Atk+ bonus of a hand's chip at i becomes n.
+    set_hand_attack_bonus: (side: number, i: number, n: number) -> (),
     -- A side's hand has a chip at i and it does damage (its record's
     -- "has_damage" flag).
     hand_chip_damages: (side: number, i: number) -> boolean,
@@ -1777,8 +1792,9 @@ export type NaviDef = {
     -- The forms it changes into (MegaMan's), by game: the Crosses by their
     -- number on the custom screen, Beast Out and Beast Over. Where the
     -- original asks whether a navi is MegaMan, the ruleset asks whether it
-    -- has forms.
-    forms: { gregar: FormSet, falzar: FormSet }?,
+    -- has forms. BN5's MegaMan has souls instead (forms of kind "soul",
+    -- which the custom screen's soul button offers).
+    forms: { gregar: FormSet?, falzar: FormSet?, souls: { FormDef }? }?,
     identity: Identity,
     -- What a navi switch brings it with: its weapons, the rest of its
     -- fresh stats, and its HP after the change, by side.
@@ -1855,7 +1871,7 @@ export type FormDef = {
     element: ElementName,
     weakness: { string }?,
     buster_bonus: number,
-    kind: "base" | "cross" | "beast" | "cross_beast" | "beast_over",
+    kind: "base" | "cross" | "beast" | "cross_beast" | "beast_over" | "soul",
     -- The action that changes a navi into it (a game's form change: BN6's
     -- forms', rules/forms), which the pause handler runs at a turn's start.
     -- Every form but the base form names one.
@@ -1881,8 +1897,9 @@ export type FormDef = {
     null_bonus: number?,
     -- The chips it charges with A: a family's damaging chips that aren't
     -- dimming chips (`damaging = false`: any of the family), and with
-    -- `element_swords` the chips with the `element_sword` trait.
-    charged_chips: { { family: ChipFamily, damaging: boolean?, element_swords: boolean? } }?,
+    -- `element_swords` the chips with the `element_sword` trait; `plain`:
+    -- only those that are neither dimming nor dark chips (BN5's souls).
+    charged_chips: { { family: ChipFamily, damaging: boolean?, element_swords: boolean?, plain: boolean? } }?,
     -- What a charged chip gains in it.
     charged_bonus: { damage: number?, paralyzes: boolean? }?,
     -- The chips a charge doubles, and those whose use heals a twentieth of
@@ -1904,12 +1921,17 @@ export type FormDef = {
     -- The shots of the buster volley the Cross special's controller fires
     -- in it (the original stores the form's number where it meant 6).
     special_volley: number?,
+    -- The lag at the end of a move in it, in place of MegaMan's 4.
+    move_lag: number?,
     -- A change into a Cross that finds the navi in this animation lets go of it.
     cross_release_anim: number?,
     traits: { FormTrait }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
     buster_arm: { anim: number, palette_add: number? }?,
+    -- A soul (`kind = "soul"`, BN5's Soul Unison): its number, and the
+    -- chip family the custom screen's soul button gives up for it.
+    soul: { number: number, family: ChipFamily }?,
 }
 -- Something a stage places when the round starts: a navi of `side`, or a
 -- field object by its kind (which needs a `place`), with one of the kind's

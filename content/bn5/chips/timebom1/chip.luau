@@ -1,6 +1,9 @@
 --!strict
--- TimeBom1 (BN5 chip 0x04b): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- TimeBom1 (BN5 chip 0x04b): a bomb on the enemy's frontmost panel of a random row that counts 3, 2, 1 and blows
+-- up the whole enemy area unless it is broken first (objects/timebom: BN6's TimeBom with BN5's placement).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local timebom = require("../../objects/timebom/timebom")
 
 return define.chip {
     id = "bn5:timebom1",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 30,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
+    dimming = timebom.controller.hook(timebom.variants.bomb),
 }

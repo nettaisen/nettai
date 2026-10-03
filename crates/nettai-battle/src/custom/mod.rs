@@ -62,12 +62,33 @@ pub struct Unlocks {
     /// original has no way to say (any Crosses, of either game;
     /// docs/engine/custom-screen.md §4.1). None: the original's.
     pub cross_list: Option<CrossList>,
+    /// BN5's Soul Unison: what the save has of it (none in BN6).
+    pub souls: SoulUnlocks,
+}
+
+/// What a BN5 save has of Soul Unison: the soul button (event flag 0), the
+/// souls (bit n: soul n's flag, 0x08024BF0's table) and Chaos Unison
+/// (event flag 0x236); and the turns its NaviCust adds to a soul (NaviStats
+/// +0x32, signed: SoulT+1's 1).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct SoulUnlocks {
+    pub button: bool,
+    pub owned: u16,
+    pub chaos: bool,
+    pub turn_bonus: i8,
 }
 
 impl Unlocks {
     /// Every Cross and Beast Out, as in a finished game.
     pub fn everything(version: GameVersion) -> Unlocks {
-        Unlocks { version, crosses: [true; screen::CROSSES], beast_out: true, beast_out_sealed: false, cross_list: None }
+        Unlocks {
+            version,
+            crosses: [true; screen::CROSSES],
+            beast_out: true,
+            beast_out_sealed: false,
+            cross_list: None,
+            souls: SoulUnlocks::default(),
+        }
     }
 
     /// The Cross in place `place` of the player's Crosses, the places the
@@ -462,6 +483,9 @@ impl Side {
                 Some(Pick { chip: screen::checked(chip, &view), regular })
             })
             .collect();
+        // (The family of the chip given up for BN5's soul, as the screen
+        // checked it.)
+        let soul_family = screen.chip_in(screen.soul.given_up, folder).map(|c| ctx.library.chip(screen::checked(c, &view).id).family);
         let mut pa_used = self.program_advances;
         let built = builder::build(&picks, ctx.turn, &mut pa_used, ctx.library, damage);
         self.program_advances = pa_used;
@@ -478,9 +502,28 @@ impl Side {
         let (navi, form) = (ctx.stats.navi, ctx.stats.form);
         let kind = ctx.library.form_kind(form);
         let mut transform = TransformRequest::NONE;
-        if screen.selection().contains(&SPECIAL_SLOT) {
+        if screen.slots[SPECIAL_SLOT as usize].kind == SlotKind::BeastOut && screen.selection().contains(&SPECIAL_SLOT) {
             transform.form = self.unlocks.beast_form(ctx.library, navi, form, ctx.emotion == Emotion::Tired);
             self.round.beast_out_used = true;
+        }
+        if screen.slots[SPECIAL_SLOT as usize].kind == SlotKind::Soul && screen.selection().contains(&SPECIAL_SLOT) {
+            // 0x08024FF6: BN5's soul, for 3 turns and the NaviCust's bonus
+            // (at most 9; under 0, 1), Chaos Unison for 1; the soul is used
+            // this round.
+            let soul = screen.soul;
+            transform.form = soul_family.and_then(|f| ctx.library.soul_for_family(navi, f)).map(|(_, f)| f);
+            let turns = 3 + self.unlocks.souls.turn_bonus as i32;
+            transform.turns = if soul.chaos {
+                1
+            } else if turns > 9 {
+                9
+            } else if turns < 0 {
+                1
+            } else {
+                turns as u8
+            };
+            transform.chaos = soul.chaos;
+            self.round.souls_used |= if soul.chaos { 1 << (16 + soul.number) } else { 1 << soul.number };
         }
         if let Some(cross) = screen.crosses.chosen {
             let f = self.unlocks.cross_at(ctx.library, navi, cross);
@@ -488,6 +531,9 @@ impl Side {
             self.round.crosses_used[cross as usize] = true;
         }
         for &slot in screen.selection() {
+            // (0x08025088: the soul's place takes the chip given up for it
+            // out of the folder.)
+            let slot = if screen.slots[slot as usize].kind == SlotKind::Soul { screen.soul.given_up } else { slot };
             if let SlotKind::Chip { index, regular } = screen.slots[slot as usize].kind {
                 folder.take(index as usize);
                 if regular {
