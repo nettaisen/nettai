@@ -1545,8 +1545,8 @@ impl Defs {
             let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks", "actions"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks, actions)")));
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks", "custom", "actions"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks, custom, actions)")));
                     }
                 }
             }
@@ -1563,8 +1563,8 @@ impl Defs {
                 Data::Map(entries) => {
                     for (k, v) in entries {
                         let name = k.to_string();
-                        let Some(i) = SystemHook::ALL.iter().position(|h| h.name() == name) else {
-                            let known: Vec<&str> = SystemHook::ALL.iter().map(|h| h.name()).collect();
+                        let Some(i) = SystemHook::ALL.iter().position(|h| h.name() == name && !name.starts_with("custom.")) else {
+                            let known: Vec<&str> = SystemHook::ALL.iter().map(|h| h.name()).filter(|n| !n.starts_with("custom.")).collect();
                             return Err(what(&format!("no hook is named `{name}` (the hooks: {})", known.join(", "))));
                         };
                         if !matches!(v, Data::Function) {
@@ -1574,6 +1574,26 @@ impl Defs {
                     }
                 }
                 _ => return Err(what("`hooks` is a table of functions by hook name")),
+            }
+            // Its custom screen's (docs/design/rules-in-luau.md §4.4): the
+            // hooks named `custom.<name>`.
+            match d.spec.field("custom") {
+                Data::Nil => {}
+                Data::Map(entries) => {
+                    for (k, v) in entries {
+                        let name = format!("custom.{k}");
+                        let Some(i) = SystemHook::ALL.iter().position(|h| h.name() == name) else {
+                            let known: Vec<&str> =
+                                SystemHook::ALL.iter().filter_map(|h| h.name().strip_prefix("custom.")).collect();
+                            return Err(what(&format!("no custom-screen hook is named `{k}` (the hooks: {})", known.join(", "))));
+                        };
+                        if !matches!(v, Data::Function) {
+                            return Err(what(&format!("custom-screen hook `{k}` is not a function")));
+                        }
+                        hooks[i] = Some(functions.id(FnSource::slot(Registry::System, &d.key, &name)));
+                    }
+                }
+                _ => return Err(what("`custom` is a table of functions by custom-screen hook name")),
             }
             let own: &[Data] = match d.spec.field("actions") {
                 Data::Nil => &[],

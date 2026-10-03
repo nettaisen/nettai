@@ -309,6 +309,25 @@ pub struct Context<'a> {
     pub link_delay: u8,
 }
 
+/// What a player's custom screen asks its side's systems
+/// (docs/design/rules-in-luau.md §4.4: their `custom` hooks). The battle
+/// answers ([`crate::battle::Battle`]'s side extras); a screen without one
+/// (the screen's own tests) gets no answers.
+pub trait Extras {
+    /// `custom.hand_size(side)`: how many chips the screen deals, as it
+    /// opens; none: the framework's rule.
+    fn hand_size(&mut self) -> Option<u8>;
+}
+
+/// No systems: every question unanswered.
+pub struct NoExtras;
+
+impl Extras for NoExtras {
+    fn hand_size(&mut self) -> Option<u8> {
+        None
+    }
+}
+
 /// Ticks a result takes to send: the link carries one of its 50 words a
 /// tick (`sub_801FF18`).
 pub const SEND_TICKS: u32 = 50;
@@ -333,6 +352,11 @@ impl Side {
     /// the status bit goes up and the player's screen deals. The round's
     /// first screen forgets the previous round's Crosses and Beast Out.
     pub fn open(&mut self, ctx: &Context, console: &mut Console) {
+        self.open_with(ctx, console, &mut NoExtras);
+    }
+
+    /// [`Side::open`], asking the side's systems.
+    pub fn open_with(&mut self, ctx: &Context, console: &mut Console, extras: &mut dyn Extras) {
         self.in_custom = true;
         self.built = None;
         self.sent = None;
@@ -340,12 +364,11 @@ impl Side {
             self.round = RoundMemory::default();
         }
         let Some(mut folder) = self.folder else { return };
-        let mut round = self.round;
         let regular = folder.regular_pending;
         // (Palette 11 keeps the last chip window's element colors from
         // screen to screen.)
         let last_chip = self.screen.and_then(|s| s.look.chip_window.last_chip).filter(|_| ctx.turn != 1);
-        let mut screen = Screen::open(&mut folder, &self.view(ctx, regular), ctx.turn, &mut round);
+        let mut screen = Screen::open(&mut folder, &self.view(ctx, regular), ctx.turn, extras);
         if screen.look.chip_window.last_chip.is_none() {
             screen.look.chip_window.last_chip = last_chip;
         }
@@ -354,7 +377,6 @@ impl Side {
         if console.tag_pair.is_some_and(|t| t < screen.hand_size) {
             console.tag_pair = None;
         }
-        self.round = round;
         self.folder = Some(folder);
         self.screen = Some(screen);
     }
@@ -489,7 +511,11 @@ impl Battle {
         for side in 0..2u8 {
             let library = library::GameLibrary { content: &content, game: self.games.sides[side as usize], ruleset: self.games.rulesets[side as usize] };
             let ctx = self.custom_context(side, &library);
-            self.custom.sides[side as usize].open(&ctx, &mut self.consoles[side as usize]);
+            let mut s = self.custom.sides[side as usize].clone();
+            let mut console = self.consoles[side as usize];
+            s.open_with(&ctx, &mut console, &mut SideExtras { b: self, side });
+            self.custom.sides[side as usize] = s;
+            self.consoles[side as usize] = console;
         }
     }
 
@@ -555,6 +581,28 @@ impl Battle {
         if !self.late_turns() {
             self.gauge.enabled = true;
         }
+    }
+}
+
+impl Battle {
+    /// Side `side`'s custom-screen extras (its systems' `custom` hooks),
+    /// for a screen run outside the battle's own loop (bn6-compat's check
+    /// of the traces' screens, which sets the side's stats and the turn
+    /// first).
+    pub fn custom_extras(&mut self, side: u8) -> impl Extras + '_ {
+        SideExtras { b: self, side }
+    }
+}
+
+/// A side's custom screen's extras: its systems' `custom` hooks.
+struct SideExtras<'b> {
+    b: &'b mut Battle,
+    side: u8,
+}
+
+impl Extras for SideExtras<'_> {
+    fn hand_size(&mut self) -> Option<u8> {
+        self.b.systems_custom_hand_size(self.side)
     }
 }
 

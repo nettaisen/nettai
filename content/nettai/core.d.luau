@@ -1478,6 +1478,14 @@ export type SystemSpec = {
     -- Its own actions, which reach its state (`system.state()`) for the
     -- side of the navi running them.
     actions: { Action }?,
+    -- Its custom screen's extras (docs/design/rules-in-luau.md §4.4): the
+    -- side's screen asks them; the first system that answers decides.
+    custom: {
+        -- As the screen opens: how many chips it deals (`sub_802A40C`).
+        -- None answering: the custom level (8 at most), NumbrOpn's 10, and
+        -- the hand-shrink bug.
+        hand_size: ((side: number) -> number?)?,
+    }?,
     hooks: {
         -- Once per side as the round is set up, before anything reads the
         -- side's navi stats (`battle.navi(side)`), which it may change.

@@ -241,6 +241,11 @@ pub enum SystemHook {
     /// (`sub_8013DA0`'s place), for a navi a system asked it for (its
     /// `ticked`): BN6's NaviCust emotion-swing bug. Its result is unused.
     NaviTick,
+    /// `custom.hand_size(side)`: how many chips the side's custom screen
+    /// deals (`sub_802A40C`; BN5's `sub_802A49C`), asked as it opens. The
+    /// first system that answers decides; none answering, the framework's
+    /// rule (the custom level, NumbrOpn and the hand-shrink bug).
+    CustomHandSize,
     /// `form_reverted(side, navi)`: the framework reverts the navi to its
     /// base form, its form not yet changed (`sub_80158CC`): BN6's spends a
     /// Beast Out and exhausts a Beast Over. Its result is unused.
@@ -271,11 +276,12 @@ impl SystemHook {
             SystemHook::TakeoverRequested => "takeover_requested",
             SystemHook::Countered => "countered",
             SystemHook::NaviTick => "navi_tick",
+            SystemHook::CustomHandSize => "custom.hand_size",
             SystemHook::Takeover => "takeover",
         }
     }
 
-    pub const ALL: [SystemHook; 16] = [
+    pub const ALL: [SystemHook; 17] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -292,6 +298,7 @@ impl SystemHook {
         SystemHook::Takeover,
         SystemHook::Countered,
         SystemHook::NaviTick,
+        SystemHook::CustomHandSize,
     ];
 }
 

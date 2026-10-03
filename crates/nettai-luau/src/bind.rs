@@ -1999,6 +1999,13 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             },
             _ => Err(mlua::Error::runtime(format!("a controller returns its outcome's name, not a {}", v.type_name()))),
         },
+        // A hand size.
+        HookCall::System { hook: SystemHook::CustomHandSize, .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::Integer(n) if (0..=255).contains(n) => Ok(Value::Int(*n)),
+            LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=255.0).contains(n) => Ok(Value::Int(*n as i64)),
+            _ => Err(mlua::Error::runtime(format!("custom.hand_size returns a count of chips, not {v:?}"))),
+        },
         HookCall::System { .. } => Ok(Value::Nil),
     }
 }
