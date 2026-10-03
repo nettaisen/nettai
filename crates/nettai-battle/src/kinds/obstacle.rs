@@ -539,8 +539,19 @@ const THROW_SPEED: i32 = 0x8_0000;
 /// `collision.thrown_obstacle_target`), hit modifier 3.
 const THROW_HIT_MOD: u8 = 3;
 
+/// `sub_800F6AC`: ask `r` to be picked up by `side` and thrown at (x, y)
+/// after shaking `shake` ticks, with the damage word: +0x1C, +0x1D and
+/// +0x1E, the word, f2 0x400 (side 0) or 0x800 (side 1). BN5's Poltergeist
+/// makes it (0x080E8DD8; nothing in BN6 does).
+pub fn request_throw(b: &mut Battle, r: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32) {
+    let o = b.objects.get_mut(r);
+    (o.slide_dx, o.slide_dy, o.slide_timer) = (x, y, shake);
+    (o.damage, o.stamina) = (damage as u16, (damage >> 16) as u16);
+    set_f2(b, r, if side == 0 { f2::THROWN_BY_0 } else { f2::THROWN & !f2::THROWN_BY_0 });
+}
+
 /// `sub_8018002`: picked up and thrown, the request `sub_800F6AC` makes
-/// (which nothing in the game calls): the thrower's side (`f2::THROWN`),
+/// (BN5's Poltergeist; nothing in BN6): the thrower's side (`f2::THROWN`),
 /// the target panel in `slide_dx`/`slide_dy` (+0x1C, +0x1D), the ticks it
 /// shakes in `slide_timer` (+0x1E) and the damage word. It rises 64 px in
 /// 32 ticks, shakes, flies onto the target panel at 8 px a tick and breaks

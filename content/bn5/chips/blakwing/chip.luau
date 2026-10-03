@@ -1,6 +1,9 @@
 --!strict
--- BlakWing (BN5 chip 0x0d6): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- BlakWing (BN5 chip 0x0d6): a cut-in chip: perches over the enemy's columns, and 18 wings falling down them, one
+-- every 12 ticks (./blakwing, the dimming handler's subtype 32).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local blakwing = require("./blakwing")
 
 return define.chip {
     id = "bn5:blakwing",
@@ -16,4 +19,5 @@ return define.chip {
     flags = { "dimming", "has_damage", "library" },
     slot_in_limit = 1,
     megaman = "dark",
+    dimming = blakwing.hook,
 }

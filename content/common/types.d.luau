@@ -325,6 +325,27 @@ export type SeedLook = {
     puff: Effect,
 }
 
+-- A game's H-Burst shot (@common/h-burst/burst): its probe's self type, what its bursts are and reach, their status
+-- and the explosion on each of their panels.
+export type HyperBurstShotLook = {
+    probe: CollisionType,
+    is: CollisionType,
+    hits: CollisionType,
+    status: Status,
+    explosion: Effect,
+}
+
+-- A game's H-Burst (@common/h-burst/action): the spreader the navi holds, its attachment kind, the shot's sound and
+-- the shot's kind.
+export type HyperBurstLook = { spreader: AttachmentLook, attachment: Kind, sound: Sound, burst: Kind }
+
+-- An H-Burst (BN6's action 0x34, BN5's 0x35): the bursts its shot makes where it hits.
+export type HyperBurstSpec = { id: string?, bursts: number }
+
+-- A game's BodyGrd striker (@common/bodygrd/striker): its kind's key, its identity, the shurikens' kind and the
+-- throw's sound.
+export type BodyGuardStrikerLook = { id: string, identity: Identity, shuriken: Kind, throw_sound: Sound }
+
 -- A follow effect's look (@common/follow-effect): a row of a game's looks and its routine.
 export type FollowEffectBehavior = "none" | "slide" | "flash" | "while_in_action" | "riding" | "timed"
 export type FollowEffectLook = { sprite: SpriteAsset, anim: number, palette: number, behavior: FollowEffectBehavior }
