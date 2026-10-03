@@ -3,7 +3,7 @@
 -- same code).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local gauge_speed = require("@bn6/lib/gauge-speed/controller")
+local gauge_speed = require("../../lib/gauge_speed")
 
 return define.chip {
     id = "bn5:slogauge",
