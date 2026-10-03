@@ -8,7 +8,8 @@
 -- this weapon's in compat (weapons.toml). See docs/engine/objects-and-player.md
 -- §B6.
 --
--- Action 0x11 raises the buster; on its second tick the projectile flies
+-- Action 0x11 (@common/megaman/buster, with BN6's buster parts, projectile,
+-- attachment and throw) raises the buster; on its second tick the projectile flies
 -- from the panel in front (the spread adds shots a row up and down; a
 -- throw, `throw_absorbed`'s, throws the obstacle the navi absorbed
 -- instead), with a muzzle flash in the navi's first related slot; after
@@ -16,6 +17,7 @@
 
 local attachment = require("../../../../objects/attachment/attachment")
 local blank_shot = require("../blank-shot/weapon")
+local common = require("@common/megaman/buster")
 local charged_shot = require("../charged-shot/weapon")
 local flying_shot = require("../../../../objects/flying-shot/flying_shot")
 local lib = require("../../../../lib/buster")
@@ -39,13 +41,8 @@ export type State = {
 
 local buster = {}
 
--- The phases, on the attack's step.
-local SHOOT, RECOVER = 0x0, 0x4
-
--- The sounds: the shot, and a throw's besides (the junk shot's).
-local SHOT_SOUND, THROW_SOUND = asset.sound("bn6:buster-shot"), asset.sound("bn6:junk-shot")
--- The heights the shot and a thrown obstacle fly at, 16.16.
-local SHOT_Z, THROW_Z = 0x18_0000, 0x0C_0000
+-- The height a thrown obstacle flies at, 16.16.
+local THROW_Z = 0x0C_0000
 
 -- The buster-shot programs that come on 1 draw in 8 (the others on 1 in
 -- 2): the original's rows from 0x1E on.
@@ -62,29 +59,8 @@ local RARE: { [ProjectileVariant]: boolean } = {
     [variants.charged_ice] = true,
 }
 
--- `sub_8013D5E`: what this shot is. Of 16 slots, the first `buster_blanks`
--- are blanks and the next `buster_charged` charged shots; one draw picks a
--- slot. (BN5's buster picks the same way.)
-function buster.pick(navi: Object): "buster" | "blank" | "charged"
-    local stats = battle.navi(navi.alliance)
-    local blanks, charged = stats.buster_blanks, stats.buster_charged
-    if blanks + charged > 16 then
-        error(
-            string.format(
-                "%d blank and %d charged slots overflow sub_8013D5E's 16-slot table (over its stack frame)",
-                blanks,
-                charged
-            )
-        )
-    end
-    local i = bit32.band(battle.rng(), 0xF)
-    if i < blanks then
-        return "blank"
-    elseif i < blanks + charged then
-        return "charged"
-    end
-    return "buster"
-end
+-- `sub_8013D5E`: what this shot is (@common/megaman/buster).
+buster.pick = common.pick
 
 -- `sub_8011A26`.
 function buster.setup(navi: Object): Action
@@ -123,12 +99,6 @@ function buster.throw(navi: Object): Action
     return buster.shot
 end
 
--- The attack's damage word: its damage | its hit parameter << 16
--- (AIAttackVars+0x08 as a word).
-local function damage_word(me: Object): number
-    return bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
-end
-
 -- `sub_80EB450`'s throw: the last obstacle absorbed (what the throw's
 -- setup took from the absorbed list into the attack: the original's marker
 -- word) flies from the panel in front (`sub_80C6248`).
@@ -136,86 +106,23 @@ local function throw(me: Object)
     local x, y = field.center(me.panel_x + me.facing, me.panel_y)
     flying_shot.launch(me, Vec3.new(x, y, THROW_Z), {
         variant = flying_shot.variants.thrown,
-        damage = damage_word(me),
+        damage = common.damage_word(me),
         obstacle = me.thrown_look,
         obstacle_anim = me.thrown_anim,
     })
 end
 
--- `sub_80EB450`: raise the buster; on the second tick the shot, or the
--- spread's three, or the throw, and the attachment in the first related
--- slot; after five ticks, the recovery. (The attachment in the first
--- related slot is the muzzle flash, or after a throw a second buster arm:
--- the attachment kind is what the throw left in the register. The game
--- also keeps the spread's side shots' rows in the attack's second
--- parameter, which nothing reads back.)
-local function shoot(me: Object, s: State)
-    if me.step_init == 0 then
-        me:set_animation(0x0E)
-        lib.raise_arm(me)
-        me:set_status("using_action", true)
-        me.step_init = 4
-        s.timer = 0
-    end
-    if s.timer == 1 then
-        battle.play_sound(SHOT_SOUND)
-        local flash = lib.flash
-        if s.mode == "throw" then
-            battle.play_sound(THROW_SOUND)
-            throw(me)
-            flash = lib.arm
-        else
-            -- (Without a setup's projectile, the table's first row.)
-            local variant, damage = s.projectile or variants.plain, damage_word(me)
-            me.attack_count = projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z })
-            if s.mode == "spread" then
-                projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z, row = 1 })
-                projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z, row = -1 })
-            end
-        end
-        attachment.attach(me, flash, "related")
-    end
-    s.timer += 1
-    if s.timer > 4 then
-        me.step = RECOVER
-        me.step_init = 0
-    end
-end
-
--- `sub_80EB502`: the recovery; a move may cut it short.
-local function recover(me: Object, s: State)
-    if me.step_init == 0 then
-        s.timer = me.attack_count
-        me.step_init = 4
-    end
-    local left = s.timer - 1
-    s.timer = left
-    if left < 0 then
-        me.related1 = nil
-        me.overlay = nil
-        me:exit_attack()
-        return
-    end
-    lib.move_cancel(me)
-end
-
--- `sub_80EB436`.
-local function update(me: Object, s: State)
-    local step = me.step
-    if step == SHOOT then
-        shoot(me, s)
-    elseif step == RECOVER then
-        recover(me, s)
-    else
-        error(string.format("buster shot phase %#x reads past its phase table", step))
-    end
-end
-
--- The shot; a thrown obstacle (`throw_absorbed`'s) is one too.
-buster.shot = define.action {
+-- The shot; a thrown obstacle (`throw_absorbed`'s) is one too. (The
+-- sounds: the shot, and a throw's besides, the junk shot's.)
+buster.shot = common.shot_action {
     id = "bn6:megaman/buster/shot",
-    state = { timer = "u16", mode = { "shot", "spread", "throw" }, projectile = "record:projectile-variant" },
-    update = update,
+    buster = lib,
+    projectiles = projectile,
+    attachment = attachment.kind,
+    shot_sound = asset.sound("bn6:buster-shot"),
+    plain = variants.plain,
+    throw_sound = asset.sound("bn6:junk-shot"),
+    throw = throw,
 }
 
 buster.weapon = define.weapon {
