@@ -5,10 +5,11 @@
 -- ./charge), routine 1 on A (the charged shot's: no chip charges in ColonelSoul, 0x0801090A), Chaos Unison's (0x3A:
 -- DrkSonic); no B+Back (0xFF). His sword's arm is the blade's animation 14 (0x080EC038).
 --
--- Its status reset's routine (0x08011C44) arms its side's obstacles (the battle state's +0x5C bit by side, and two
--- damage words at 0x02034000 by side: 40 and 10 more per Attack point plus one, 10 and 2 more, paralyzing, counter
--- byte 0x94) for the obstacles' soldiers (0x080CA952); every status reset disarms them first (0x080CAC30). That
--- state is the obstacles' (BN5's obstacle framework's per-side state): `arm_obstacles` is a stub until it lands.
+-- Its status reset's routine (0x08011C44) arms its side's soldiers (the obstacles' cannon and gun, 0x080CA952) with
+-- two damage words: 40 and 10 more per Attack point plus one, and 10 and 2 more, both paralyzing, counter byte 0x94
+-- (0x080CABF8, and the side's bit, 0x080CAC1E). Every status reset disarms them first (0x080CAC30). That state is
+-- the obstacles' (`obstacle.arm_soldiers`, BN5's obstacle framework's): `arm_soldiers` below is a stub until it
+-- lands.
 
 local attach_points = require("../../attach_points")
 local buster = require("../../weapons/buster")
@@ -18,8 +19,20 @@ local charged_shot = require("../../weapons/charged-shot")
 local drksonic = require("../../../../chips/drksonic/chip")
 local souls = require("../../../../rules/souls/system")
 
--- STUB (waits for BN5's obstacle framework's per-side arming slot): 0x08011C50's damage words and 0x080CAC1E's bit.
-local function arm_obstacles(navi: Object) end
+-- STUB (waits for the obstacle framework's soldiers): `obstacle.arm_soldiers(side, cannon, gun)`.
+local function arm_soldiers(side: number, cannon: number, gun: number) end
+
+local HIT_PARAM = 0x94
+-- The damage word's paralyzing bit.
+local PARALYZE = 0x4000
+
+-- 0x08011C44: the soldiers' damage words (0x08011C50, 0x0800FE5E by the navi's Attack).
+local function arm_obstacles(navi: Object)
+    local per = battle.navi(navi.alliance).attack + 1
+    local cannon = 40 + 10 * per + HIT_PARAM * 0x10000 + PARALYZE
+    local gun = 10 + 2 * per + HIT_PARAM * 0x10000 + PARALYZE
+    arm_soldiers(navi.alliance, int.u32(cannon), int.u32(gun))
+end
 
 return define.form {
     id = "bn5:colonelsoul",

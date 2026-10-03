@@ -255,6 +255,9 @@ named_fields! {
         AttackDamage = "attack_damage", U16, rw;
         /// The attack's hit parameter (its hitbox's counter byte).
         HitParam = "hit_param", U16, rw;
+        /// The attack's variant (AIAttackVars+3), as the anti-damage
+        /// counters read it.
+        AttackVariant = "attack_variant", U8, rw;
         Charged = "charged", U8, rw;
         /// Lockout the attack applies when it ends (kind 2: the chip
         /// lockout; kind 3: the B+Back cooldown).

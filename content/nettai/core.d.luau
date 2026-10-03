@@ -396,6 +396,9 @@ declare class Object
     attack_damage: number
     -- The attack's hitboxes' counter byte.
     hit_param: number
+    -- The attack's variant (AIAttackVars+3), as the anti-damage counters
+    -- read it: what a stance's weapon sets, 0 from a trap's catch.
+    attack_variant: number
     charged: number
     -- Lockout the attack applies when it ends.
     attack_lockout: number
@@ -1689,6 +1692,11 @@ export type SystemSpec = {
         -- be used, a chip is what the navi uses instead. The first system
         -- that answers decides.
         chip_check: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
+        -- Earlier in the preparation, before the hand bonus's panel is
+        -- spent (BN5's 0x08010030: a dark chip's use and the chip's cost):
+        -- as `chip_check`; a chip in the use's place skips the rest,
+        -- `chip_check` too.
+        chip_cost: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
         -- A chip's use started (`sub_800FB54`, its action set): `chip` the
         -- chip it reads (the zeroed chip for the empty hand), `weapon` the
         -- form's weapon run instead of it (a charged use), else nil.
@@ -1953,6 +1961,10 @@ export type NaviDef = {
     own_chip: { chip: Chip, code: string }?,
     -- Its damage bonus on its family's damaging chips, by its level.
     chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
+    -- MegaMan's bonus on a family's damaging chips used standing on a type
+    -- of panel, in a form with no `chip_bonus` (BN5's: Aqua chips on sea);
+    -- the use turns the panel Normal.
+    panel_bonus: { panel: PanelType, family: ChipFamily, damage: number }?,
     -- The chips it charges with A: its family's damaging chips, from a
     -- navi level on (`byte_8021369`).
     charged_chips: { family: ChipFamily, from_level: number }?,
@@ -2094,10 +2106,11 @@ export type FormDef = {
     mugshot: (Mugshot | MugshotFaces)?,
     weapons: FormWeapons?,
     identity: Identity?,
-    -- The damage it adds to a family's damaging chips, and to damaging
-    -- Null chips when that doesn't apply (Beast Out's, outside battle
-    -- mode 1).
-    chip_bonus: { family: ChipFamily, damage: number, dimming_chips: boolean? }?,
+    -- The damage it adds to a family's damaging chips (`uncharged`: only
+    -- on a use that isn't charged, with the A charge not full), and to
+    -- damaging Null chips when that doesn't apply (Beast Out's, outside
+    -- battle mode 1).
+    chip_bonus: { family: ChipFamily, damage: number, dimming_chips: boolean?, uncharged: boolean? }?,
     null_bonus: number?,
     -- The chips it charges with A: a family's damaging chips that aren't
     -- dimming chips (`damaging = false`: any of the family), and with

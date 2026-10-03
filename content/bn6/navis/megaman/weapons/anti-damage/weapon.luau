@@ -20,6 +20,7 @@ anti_damage.action = common.stance("bn6:megaman/anti-damage/action")
 -- `sub_80121BC`.
 local function setup(navi: Object): Action
     navi.attack_element = 0
+    navi.attack_variant = 0
     navi.charged = 0
     navi.extra = 0
     navi.hit_param = 0

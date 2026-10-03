@@ -447,14 +447,21 @@ impl Battle {
         if self.is_dimmed() && !(rd.f1 & f1::HIT_WHILE_DIMMED != 0 || hd.self_flags & 0x1_0000 != 0) {
             return;
         }
+        // (BN5's kernel, 0x0801691C, by the arena's rules: a bubbled side
+        // submerged too, the Elec element reaching it; no FloatShoe test;
+        // its guard's other types.)
+        let bn5 = self.arena_rules().effects.resolve == crate::content::ResolveRule::Bn5;
+        let submerged = if bn5 { f1::BUBBLED | f1::SUBMERGED } else { f1::SUBMERGED };
+        // A submerged side meets the other side's element (BN5's Elec).
+        let reaches_under = |element: u8| bn5 && element == 3;
         // The hitter's state against the receiver's type.
         let f = hd.f1;
         let rs = rd.self_flags;
         if (f & 0x202 != 0 && rs & 0x4 == 0)
-            || (f & 0x4 != 0 && rs & 0x1008 == 0)
+            || (f & submerged != 0 && rs & 0x1008 == 0 && !reaches_under(rd.element))
             || (f & 0x0080_0000 != 0 && rs & 0x0C00_3000 == 0)
             || f & f1::UNTOUCHABLE != 0
-            || (f & 0x20 != 0 && rs & 0x80 == 0)
+            || (!bn5 && f & 0x20 != 0 && rs & 0x80 == 0)
         {
             return;
         }
@@ -462,20 +469,21 @@ impl Battle {
         let f = rd.f1;
         let hs = hd.self_flags;
         if (f & 0x202 != 0 && hs & 0x4 == 0)
-            || (f & 0x4 != 0 && hs & 0x1008 == 0)
+            || (f & submerged != 0 && hs & 0x1008 == 0 && !reaches_under(hd.element))
             || (f & 0x0080_0000 != 0 && hs & 0x3000 == 0)
             || f & f1::UNTOUCHABLE != 0
-            || (f & 0x20 != 0 && hs & 0x80 == 0)
+            || (!bn5 && f & 0x20 != 0 && hs & 0x80 == 0)
         {
             return;
         }
         // Guard.
         if rd.f1 & f1::GUARD != 0 {
-            let brk = if hs & 0x4000 != 0 { 0x1002 } else { 0x0002 };
+            let brk = if bn5 || hs & 0x4000 != 0 { 0x1002 } else { 0x0002 };
+            let unmarked = if bn5 { 0x0C00_4000 } else { 0x0C00_5000 };
             if hs & brk == 0 {
                 self.collision.get_mut(h).acc.hit_flags |= 1;
                 let mut flags = hs & !0x10;
-                if flags & 0x0C00_5000 == 0 {
+                if flags & unmarked == 0 {
                     self.collision.get_mut(r).guard_dirs |= 1 << hd.flip;
                     flags |= 0x2_0000;
                 }
