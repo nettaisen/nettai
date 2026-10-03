@@ -204,7 +204,7 @@ impl NaviStats {
         let data = content.navi(navi);
         let fresh = data.fresh?;
         let defaults = NaviStats::default();
-        let base = content.base_form();
+        let base = content.base_form_for(navi);
         Some(NaviStats {
             version: 1,
             reg_up: 4,
@@ -266,12 +266,14 @@ impl NaviStats {
             }
             None
         };
-        // (A form byte can only name the base form, 0; a navi byte no navi.)
+        // (A form byte can only name the base form, 0, the navi's game's; a
+        // navi byte no navi.)
+        let navi = self.navi;
         let form = |v: u8| -> FormHandle {
             if v != 0 {
                 panic!("bug code writes form {v:#x} to NaviStats+{offset:#x}: a form by number is not supported");
             }
-            content.base_form()
+            content.base_form_for(navi)
         };
         let barrier = |v: u8| -> Option<RecordHandle> {
             if v != 0 {

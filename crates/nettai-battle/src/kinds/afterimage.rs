@@ -180,7 +180,7 @@ fn player_sprite(content: &Content, identity: Option<IdentityHandle>) -> SpriteI
     use crate::content::IdentityOwner;
     let id = content.identity(identity);
     match id.owner {
-        Some(IdentityOwner::Navi(n)) => content.navi_sprite(n, content.base_form()),
+        Some(IdentityOwner::Navi(n)) => content.navi_sprite(n, content.base_form_for(n)),
         Some(IdentityOwner::Form(f)) => content.form(f).sprite,
         // Only players' Beast Out rush leaves afterimages.
         None => unreachable!("an afterimage of identity {:?}, which is not a player's", id.key),

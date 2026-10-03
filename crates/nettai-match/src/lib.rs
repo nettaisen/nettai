@@ -174,7 +174,7 @@ pub const NAVICUST_SYSTEM: &str = "navicust";
 /// The NaviCust board of the side's game (its ruleset's game's rule
 /// section `navicust`).
 pub fn navicust_rules<'c>(content: &'c Content, s: &Side) -> &'c nettai_battle::content::NaviCustRules {
-    &content.rules_of(ruleset_game(content, s.ruleset)).navicust
+    &content.side_rules(s.ruleset, ruleset_game(content, s.ruleset)).navicust
 }
 
 /// The game of a side playing by `ruleset` (none: BN6's stock rules,
