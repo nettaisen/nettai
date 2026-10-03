@@ -70,7 +70,13 @@ impl Root {
     /// `action`, `dimming`, `navi` or `instant`: a port that hasn't written
     /// them, BN5's), with every module of their folders: the define phase
     /// refuses a chip without one, and the rest of the folder plays without
-    /// them. Their keys as the folder writes them (`chips/<key>/chip`).
+    /// them. So is every chip folder one of whose modules requires a module
+    /// left out, in turn (a Program Advance naming an unported ingredient,
+    /// a chip borrowing an unported chip's module): it can't load without
+    /// it. (Anything else that requires one stops the define phase, which
+    /// says so.) The folders' keys as the folder writes them
+    /// (`chips/<key>/chip`), in order. The content is then exactly what
+    /// loaded, and so is its hash (netplay's handshake).
     pub fn leave_out_unported(&mut self) -> Vec<String> {
         fn names_a_use(module: &str) -> bool {
             module.lines().any(|l| {
@@ -80,15 +86,74 @@ impl Root {
                     .any(|f| l.strip_prefix(f).is_some_and(|r| r.trim_start().starts_with('=')))
             })
         }
-        let unported: Vec<String> = self
+        // A module's chip folder (`chips/<key>/...`).
+        fn chip_folder(path: &str) -> Option<&str> {
+            let rest = path.strip_prefix("chips/")?;
+            rest.split_once('/').map(|(key, _)| key)
+        }
+        let mut out: std::collections::BTreeSet<String> = self
             .modules
             .iter()
             .filter_map(|(path, text)| Some(path.strip_prefix("chips/")?.strip_suffix("/chip")?).filter(|_| !names_a_use(text)))
             .map(str::to_string)
             .collect();
-        self.modules.retain(|path, _| !unported.iter().any(|k| path.starts_with(&format!("chips/{k}/"))));
-        unported
+        if out.is_empty() {
+            return Vec::new();
+        }
+        // What each module requires in this folder.
+        let requires: Vec<(&str, Vec<String>)> =
+            self.modules.iter().map(|(path, text)| (path.as_str(), requires_in(&self.manifest.name, path, text))).collect();
+        loop {
+            let more: Vec<String> = requires
+                .iter()
+                .filter_map(|(path, targets)| {
+                    let key = chip_folder(path)?;
+                    let needs = targets.iter().any(|t| chip_folder(t).is_some_and(|k| out.contains(k)));
+                    (needs && !out.contains(key)).then(|| key.to_string())
+                })
+                .collect();
+            if more.is_empty() {
+                break;
+            }
+            out.extend(more);
+        }
+        self.modules.retain(|path, _| !chip_folder(path).is_some_and(|k| out.contains(k)));
+        out.into_iter().collect()
     }
+}
+
+/// The modules `module` (a path in the folder named `root`) requires in its
+/// own folder, by path: each `require("...")` it writes, relative to it
+/// (`./x`, `../lib/x`) or from the folder's top (`@<root>/lib/x`). (What it
+/// requires of other folders isn't this folder's.)
+fn requires_in(root: &str, module: &str, text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = text;
+    while let Some(at) = rest.find("require(") {
+        rest = &rest[at + "require(".len()..];
+        let Some(quote) = rest.chars().next().filter(|q| *q == '"' || *q == '\'') else { continue };
+        let Some(end) = rest[1..].find(quote) else { break };
+        let path = rest[1..1 + end].trim_end_matches(".luau");
+        if let Some(top) = path.strip_prefix('@') {
+            if let Some(p) = top.strip_prefix(root).and_then(|p| p.strip_prefix('/')) {
+                out.push(p.to_string());
+            }
+        } else if path.starts_with("./") || path.starts_with("../") {
+            let mut parts: Vec<&str> = module.split('/').collect();
+            parts.pop();
+            for seg in path.split('/') {
+                match seg {
+                    "." | "" => {}
+                    ".." => {
+                        parts.pop();
+                    }
+                    s => parts.push(s),
+                }
+            }
+            out.push(parts.join("/"));
+        }
+    }
+    out
 }
 
 /// The folder in `dir`'s name.

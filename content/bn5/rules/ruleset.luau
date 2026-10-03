@@ -6,6 +6,7 @@
 
 local computer_navi = require("./computer-navi/system")
 local emotion = require("./emotion/system")
+local folder = require("./folder/system")
 local light_dark = require("./light-dark/system")
 local souls = require("./souls/system")
 
@@ -22,5 +23,7 @@ return define.ruleset {
         -- The computer navis a battle brings (a failed Chaos Unison's Dark MegaMan): their AI, their time, their
         -- leave.
         computer_navi.system,
+        -- The folder rules: what BN5's folder editor allows (a tool's question, never the simulation's).
+        folder,
     },
 }
