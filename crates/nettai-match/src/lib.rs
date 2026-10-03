@@ -222,29 +222,28 @@ fn background_id(content: &Content, p: &Place) -> nettai_battle::content::Backgr
 impl Match {
     /// A new match, nothing chosen yet: the first link battle stage (with
     /// its own background), and each side on the content's stock rules with
-    /// the home root's own navi (BN6's MegaMan: the navi that changes form,
-    /// else the first with fresh stats) at its fresh stats, of Falzar; an
+    /// BN6's navi ([`DEFAULT_GAME`]'s: MegaMan, the navi that changes form,
+    /// else the first with fresh stats; any game's when it has none) at its
+    /// fresh stats, of Falzar; an
     /// empty folder, no Regular or tag chips, the game's own Crosses, no
     /// patch cards, and a NaviCust with no programs where the rules have
     /// one. No seed (the battle's is drawn when it is played). Its folders
     /// are none the checks accept until they are made.
     pub fn empty(content: &Content) -> Result<Match, String> {
         let stage = *link_battle_stages(content).first().ok_or("the content has no link battle stage")?;
-        let home = content.scripts.roots.first().map(|r| r.name.clone()).unwrap_or_default();
-        let navis: Vec<NaviHandle> = (0..content.defs.navis.len() as u16)
-            .map(NaviHandle)
-            .filter(|&n| content.navi(n).fresh.is_some())
-            .filter(|&n| nettai_content_api::keys::root_of(&content.defs.navi(n).key) == Some(home.as_str()))
-            .collect();
+        let fresh: Vec<NaviHandle> = (0..content.defs.navis.len() as u16).map(NaviHandle).filter(|&n| content.navi(n).fresh.is_some()).collect();
+        let own: Vec<NaviHandle> =
+            fresh.iter().copied().filter(|&n| nettai_content_api::keys::root_of(&content.defs.navi(n).key) == Some(DEFAULT_GAME)).collect();
+        let navis = if own.is_empty() { fresh } else { own };
         let navi = navis
             .iter()
             .copied()
             .find(|&n| content.navi(n).forms.is_some())
             .or_else(|| navis.first().copied())
-            .ok_or("the content's own root has no navi with fresh stats")?;
+            .ok_or("the content has no navi with fresh stats")?;
         let game = GameVersion::Falzar;
         let mut side = Side {
-            ruleset: content.defs.stock_ruleset(),
+            ruleset: content.defs.stock_ruleset_of(DEFAULT_GAME),
             navi,
             game,
             stats: Side::base_stats(content, navi, game),

@@ -41,6 +41,11 @@ impl<'a> Packs<'a> {
         self.bundles[self.own.index()]
     }
 
+    /// The own pack.
+    pub fn own_pack(&self) -> PackId {
+        self.own
+    }
+
     /// The graphics of game `root`'s pack (the arena's, a side's).
     pub fn of_root(&self, c: &Content, root: RootId) -> &'a Bundle {
         let game = c.defs.roots.get(root.index());
