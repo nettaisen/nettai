@@ -1639,6 +1639,11 @@ export type SystemSpec = {
         -- None answering: the custom level (8 at most), NumbrOpn's 10, and
         -- the hand-shrink bug.
         hand_size: ((side: number) -> number?)?,
+        -- The screen deals, before it opens: the folder as the last screen
+        -- left it (a used chip's place still empty: `custom.folder`), with
+        -- the framework's hand size (`custom.hand_size`), on the side's
+        -- console (`battle.console_rng_positive`).
+        deal: ((side: number) -> ())?,
         -- The screen opens, before its hand size and layout.
         open: ((side: number) -> ())?,
         -- OK built the hand.
@@ -2634,6 +2639,12 @@ declare define: {
 -- picked chips scrapped, the chips not picked dealt again); whether the
 -- last pick is a chip; the state of the button under the cursor.
 declare custom: {
+    -- The side's battle folder as its screen has it: its 30 places in order,
+    -- false where a used chip left one empty until the screen deals; two of
+    -- its places swapped (1 to 30); how many chips the screen deals.
+    folder: (side: number) -> { Chip | false },
+    swap_folder: (side: number, a: number, b: number) -> (),
+    hand_size: (side: number) -> number,
     refuse: (side: number) -> (),
     sacrifice: (side: number) -> (),
     redeal: (side: number) -> (),

@@ -258,6 +258,9 @@ pub trait Extras {
     fn button_pressed(&mut self, screen: &mut Screen, folder: &mut BattleFolder, button: crate::content::ButtonHandle);
     /// A button's `taken_back` (B took its pick back), if it has one.
     fn button_taken_back(&mut self, screen: &mut Screen, button: crate::content::ButtonHandle);
+    /// `custom.deal(side)`: the screen deals, the folder not yet closed
+    /// up, on the side's console (its RNG1).
+    fn dealing(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console);
     /// `custom.open(side)`: the screen opens.
     fn opened(&mut self, screen: &mut Screen);
     /// `custom.confirmed(side)`: OK built the hand.
@@ -304,6 +307,7 @@ impl Extras for NoExtras {
 
     fn button_taken_back(&mut self, _: &mut Screen, _: crate::content::ButtonHandle) {}
 
+    fn dealing(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console) {}
     fn opened(&mut self, _: &mut Screen) {}
 
     fn confirmed(&mut self, _: &mut Screen, _: &mut BattleFolder) {}
@@ -366,7 +370,7 @@ impl Side {
         // (Palette 11 keeps the last chip window's element colors from
         // screen to screen.)
         let last_chip = self.screen.and_then(|s| s.look.chip_window.last_chip).filter(|_| ctx.turn != 1);
-        let mut screen = Screen::open(&mut folder, &self.view(ctx, regular), ctx.turn, extras);
+        let mut screen = Screen::open(&mut folder, &self.view(ctx, regular), ctx.turn, console, extras);
         if screen.look.chip_window.last_chip.is_none() {
             screen.look.chip_window.last_chip = last_chip;
         }
@@ -747,6 +751,13 @@ impl Extras for SideExtras<'_> {
         }
         let side = self.side;
         self.with_screen(screen, None, |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonTakenBack));
+    }
+
+    fn dealing(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console) {
+        let side = self.side;
+        self.with_screen_console(screen, Some(folder), Some(console), None, |b| {
+            b.systems_call_custom(side, nettai_content_api::SystemHook::CustomDeal)
+        });
     }
 
     fn opened(&mut self, screen: &mut Screen) {

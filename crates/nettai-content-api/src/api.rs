@@ -1253,6 +1253,14 @@ pub trait CoreApi {
     /// BN6's ChpShufl); whether the last pick is a chip; the state of the
     /// button under the cursor ("selectable", "unavailable", "selected").
     fn custom_refuse(&mut self, side: u8) -> ApiResult<()>;
+    /// `custom.folder(side)`: the side's battle folder as its screen has
+    /// it, its 30 places in order (a used chip's place empty until the
+    /// screen deals); `custom.swap_folder(side, a, b)`: two of its places
+    /// swapped (0-based here); `custom.hand_size(side)`: how many chips the
+    /// screen deals (as it deals, the framework's).
+    fn custom_folder(&self, side: u8) -> ApiResult<Vec<Option<crate::ChipHandle>>>;
+    fn custom_swap_folder(&mut self, side: u8, a: u8, b: u8) -> ApiResult<()>;
+    fn custom_hand_size(&self, side: u8) -> ApiResult<u8>;
     fn custom_sacrifice(&mut self, side: u8) -> ApiResult<()>;
     fn custom_redeal(&mut self, side: u8) -> ApiResult<()>;
     fn custom_last_pick_is_chip(&self, side: u8) -> ApiResult<bool>;
