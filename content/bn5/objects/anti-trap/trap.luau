@@ -1,19 +1,21 @@
 --!strict
 -- BN5's Anti traps (AntiFire, AntiWatr, AntiElec, AntiWood: action 0x15, subtype 12): the trap chips' controller
--- (@bn6/lib/traps) sets BN6's ElemTrap trap (attack object 0x4D, 0x080CF590) as BN5's code does (0x080E3778,
+-- (lib/traps) sets the shared ElemTrap trap (@common/elemtrap, attack object 0x4D, 0x080CF590) as BN5's code does
+-- (0x080E3778,
 -- which BN6 stubs), with the chip's first parameter. BN5's trap watches only that parameter's element (fire,
 -- aqua, elec, wood: 0x080CF644, BN6's `sub_80CE034` the first of the four), is BN5's nothing reaching BN5's row
 -- 0x18, and sparkles 16 pixels up from each enemy panel's center (0x080093A2). Sprung, its counterattack (effect
 -- object 0x2B, 0x080E3818) strikes as BN6's ElemTrap's with BN5's table (0x080E38D8): BN5's sparks, row 0x17 for
 -- its hits (BN6's row 4), hit modifier 3 for every element (BN6's 1 for elec and wood) and BN5's statuses.
 
-local bn6_strike = require("@bn6/chips/elemtrap/strike")
-local bn6_trap = require("@bn6/chips/elemtrap/trap")
 local collision = require("../../rules/collision")
+local common_strike = require("@common/elemtrap/strike")
+local common_trap = require("@common/elemtrap/trap")
 local effects = require("@bn6/lib/effects")
+local panel_bursts = require("../panel-bursts/panel_bursts")
 local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")
-local traps = require("@bn6/lib/traps/controller")
+local traps = require("../../lib/traps")
 
 local trap = {}
 
@@ -22,7 +24,7 @@ local SPLASH = define.effect { sprite = asset.sprite("bn6:spout-splash"), anim =
 local LIGHTNING = define.effect { sprite = asset.sprite("bn6:lightning"), anim = 0, palette = 0 }
 local LEAVES = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 5, palette = 0 }
 
-trap.strike_kind = bn6_strike.make_kind("bn5:anti-trap/strike", {
+trap.strike_kind = common_strike.make_kind("bn5:anti-trap/strike", {
     strikes = {
         [0] = { sound = nil, spark = sparks.breaking, hit_mod = 3, status = nil, burst = effects.shell_burst },
         [1] = {
@@ -50,9 +52,13 @@ trap.strike_kind = bn6_strike.make_kind("bn5:anti-trap/strike", {
     },
     self_type = collision.thrown_piercing_break,
     target = collision.hits_navis,
+    bursts = panel_bursts.kind,
 })
 
-trap.kind = bn6_trap.make_kind("bn5:anti-trap/trap", {
+-- (Its sparkle and the sparkle's sound BN6's.)
+trap.kind = common_trap.make_kind("bn5:anti-trap/trap", {
+    sparkle = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 7, palette = 0 },
+    sparkle_sound = asset.sound("bn6:dimming-sparkle"),
     watches = "one",
     self_type = collision.nothing,
     target = collision.hit_by_other_attacks,
@@ -65,7 +71,7 @@ trap.kind = bn6_trap.make_kind("bn5:anti-trap/trap", {
 function trap.hook(element: number)
     return traps.hook(traps.trap {
         set = function(controller: Object, user: Object, chip: Chip?, bonus: number): Object?
-            return bn6_trap.spawn(trap.kind, controller, user, chip, bonus, element)
+            return common_trap.spawn(trap.kind, controller, user, chip, bonus, element)
         end,
     })
 end

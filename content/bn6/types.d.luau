@@ -5,7 +5,7 @@
 
 -- Where an owner keeps an attached object: its actor overlay slot, its
 -- first related object, or its content state's `held` or `held2` field
--- (lib/slot.luau).
+-- (@common/slot).
 export type Slot = "overlay" | "related" | "held" | "held2"
 
 -- What a projectile's hit does to the panel it hits: crack it
@@ -583,6 +583,8 @@ export type TornadoVariant = { palette: number, rearm: number, bug: number?, pla
 -- self type (and the HP-bug variant's, when another), what it reaches and
 -- the spark of its element.
 export type TornadoLook = {
+    sprite: SpriteAsset,
+    sound: Sound,
     panel_variants: { [PanelType]: TornadoVariant },
     doubles_on_panel: boolean,
     is: CollisionType,
@@ -611,6 +613,7 @@ export type ThunderBallLook = {
     big_anim: number,
     is: CollisionType,
     dark_is: CollisionType?,
+    target: CollisionType,
     hit_mod: number,
     spark: Spark,
     sound: Sound,
@@ -622,12 +625,14 @@ export type ThunderBallLook = {
 export type ElemTrapStrike = { sound: Sound?, spark: Spark, hit_mod: number, status: Status?, burst: Effect }
 -- A game's counterattack (`strike.make_kind`): its strikes by element
 -- (null to wood), and what its hits are and reach.
-export type ElemTrapStrikeLook = { strikes: { [number]: ElemTrapStrike }, self_type: CollisionType, target: CollisionType }
+export type ElemTrapStrikeLook = { strikes: { [number]: ElemTrapStrike }, self_type: CollisionType, target: CollisionType, bursts: Kind }
 -- A game's trap (chips/elemtrap/trap, `trap.make_kind`): what springs it
 -- (fire to wood's first hit, or one element's: the one it is set with),
 -- what it is and reaches, where its sparkles show (16.16, from the
 -- panel's center: down the field, up), and its counterattack's kind.
 export type ElemTrapLook = {
+    sparkle: Effect,
+    sparkle_sound: Sound,
     watches: "fire_to_wood" | "one",
     self_type: CollisionType,
     target: CollisionType,
@@ -638,7 +643,7 @@ export type ElemTrapLook = {
 
 -- How FireHit's fist strikes (chips/firehit/fist): the spark its hit shows
 -- and its collision types.
-export type FireHitFistLook = { spark: Spark, target: CollisionType, self_type: CollisionType }
+export type FireHitFistLook = { sprite: SpriteAsset, sound: Sound, spark: Spark, target: CollisionType, self_type: CollisionType }
 
 -- How a yoyo flies (chips/yoyo/yoyo): GreatYo's (three that move
 -- together), the panels it rolls out and its spinning rounds.
@@ -1059,6 +1064,9 @@ export type CircGunLook = {
     sprite: SpriteAsset,
     sounds: { step: Sound, mark: Sound, hit: Sound },
     hits: { [number]: CollisionType },
+    -- What the hit reaches, and the flash it shows.
+    target: CollisionType,
+    flash: Effect,
     -- The hit's spark (element 0's).
     spark: Spark,
     on_floor: boolean?,
@@ -1074,6 +1082,11 @@ export type CountdownLook = {
     absorbed: AbsorbedLook?,
     -- Any removal leaves a puff (BN5's): no absorbing, no blinking out.
     removal_puffs: boolean?,
+    -- The blast's explosions and a removal's puff, and the panel bursts'
+    -- kind.
+    explosion: Effect,
+    puff: Effect,
+    bursts: Kind,
 }
 
 -- A lance's hit: what it is and hits, its spark, hit modifier and bug.
@@ -1110,6 +1123,9 @@ export type MeteorLook = {
     sounds: { fall: Sound, land: Sound },
     rows: { [number]: MeteorRow },
     spark: (element: number) -> Spark,
+    -- Its landing's burst, and its panel marker's kind.
+    burst: Effect,
+    marker: Kind,
 }
 
 -- How a game's drill is: its hit's spark, what the first and second are
@@ -1137,4 +1153,7 @@ export type InstrumentLook = {
     body: { is: CollisionType, hits: CollisionType },
     absorbed: AbsorbedLook?,
     removal_puffs: boolean?,
+    -- Broken, its explosion; removed, its puff.
+    explosion: Effect,
+    puff: Effect,
 }

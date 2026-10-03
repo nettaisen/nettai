@@ -1,14 +1,31 @@
 --!strict
 -- MegaMan's charged shot in BN5 (`megaman/charged-shot`): the original's weapon routine 1 (0x0800F5BC, BN6's
--- `sub_8011A7E`), which sets up BN6's charged shot (@bn6/navis/megaman/weapons/charged-shot, BN5's action 0x1E:
--- the same code but for its muzzle flash's attachment row, 13 for BN6's 5, the same look) with (Attack + 1) * 10
--- damage. Unlike BN6's it has no worn-out rule, and it always draws: on half the draws the shot is the one the
+-- `sub_8011A7E`), which sets up the shared charged shot (@common/megaman/charged_shot, BN6's action 0x16, BN5's
+-- action 0x1E: the same code but for its muzzle flash's attachment row, 13 for BN6's 5, the same look) with BN5's
+-- buster parts, projectile and attachment, and (Attack + 1) * 10 damage. (Started without its setup, by the role
+-- `forced_charged_shot`, it fires the last charged shot's projectile, or BN6's plain shot, as BN6's action did: BN5's
+-- table's first row is BN5's plain shot, which the port has yet to check.) Unlike BN6's it has no worn-out rule, and it always draws: on half the draws the shot is the one the
 -- navi's charged-shot program names (NaviStats +0x4F, the plain shot when 0), else the charged shot.
 
-local charged_shot = require("@bn6/navis/megaman/weapons/charged-shot/weapon")
+local attachment = require("../../../objects/attachment/attachment")
+local bn6_variants = require("@bn6/objects/projectile/variants")
+local buster = require("../../../lib/buster")
+local common = require("@common/megaman/charged_shot")
+local projectile = require("../../../lib/projectile")
 local variants = require("../../../objects/projectile/variants")
 
 local bn5 = {}
+
+-- The shot (BN5's action 0x1E).
+bn5.action = common.action {
+    id = "bn5:megaman/charged-shot/action",
+    buster = buster,
+    projectiles = projectile,
+    attachment = attachment.kind,
+    shot_sound = asset.sound("bn6:buster-shot"),
+    plain = bn6_variants.plain,
+}
+local charged_shot = { action = bn5.action }
 
 -- 0x0800F5BC.
 function bn5.setup(navi: Object): Action

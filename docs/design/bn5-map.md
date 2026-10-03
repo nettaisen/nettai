@@ -1156,8 +1156,30 @@ banners (49, the same layout as BN6's: 0x0801B810), their digits and palette, an
 problems). Waiting in this batch: DrkRecov's dark chip cost (HP bug: BN5's own code, unread, §6), HolyDrem's light
 MegaMan (§6.1), the swing's call BN6 stubs out (0x080E9FD2, battle flag 0x40: never in a netbattle).
 
-**BN6's modules changed for BN5** (each the smallest change that lets BN5 reuse it; BN6's behavior the same, its
-full set run on the batch):
+**Shared code (common-shared, 2026-10-03; the user's direction: shared BN5/BN6 behavior in content/common).** The
+BN6 modules the lists below opened for BN5 now live in content/common as makers that take a game's look (none holds a
+game's ids or assets; rules-in-luau.md §7.2), BN6's modules at their old paths their BN6 wrappers, BN5's its own
+definitions made with them: the regions, panels, slot, element, trajectory (over a game's sine table), dimming and
+its stand-in, the recovery heal, the attachment, the buster's parts, the projectile and its firing, the cannons,
+AirShot, the bombs' throw and bomb, the energy burst, BlkBomb, the panel bursts, the rising bubble, the panel
+changer and the panel chips', trap chips', gauge chips', grab chips', GrabBnsh's, Invisibl's, Mine's, AntiRecv's,
+CircGun's, Meteors', TimeBom's and the instruments' controllers with their objects (the grab shot, the hand, the
+mine, the gun and shot, the falling meteor and its marker, the countdown bomb, the instrument and its effects),
+AntiDmg's counter and shuriken, the swords' parts and slash, the sonic boom, AntiSwrd's counter, the wide shot and
+wave, the bullet and the vulcans, the tornado and its blow, Thunder's ball and shot, FireHit's fist, ElemTrap's trap
+and counterattack, Lance's lance, DrilArm's drill, ProtoMan, the boomerang, the plus chips' sparkle, the Spreaders'
+action, the shower's aim, and MegaMan's buster, blank and charged shots. BN5 makes its own kinds of each (compat's
+kinds.toml names them `bn5:...`); a BN5 look names BN6's assets where BN6's module did, as before. BN5 still uses
+these BN6 definitions as its own: BN6's effects (lib/effects: the explosions, puffs and flashes BN6's modules
+showed), BN6's collision rows that keep the 0x80 self bit where BN5's own rows drop it (thrown, curse, thrown-slash,
+attack, slash: BN5's grab shot, energy burst, GrabBnsh's hand, AntiDmg's shuriken, ProtoMan's slash and the
+projectile's burst; where BN5's row equals BN6's, BN5's own), BN6's plain shot as the fallback of BN5's forced
+charged shot, and BN6's barriers and their visual (lib/barriers: waits on bn5-chips-b's content/common/barriers).
+The 0x80 bit and the fallback are as BN6's modules had them; whether BN5's rows are the right ones is the chips'
+porters' to check.
+
+The lists below say how each was opened (each the smallest change that lets BN5 reuse it; BN6's behavior the same,
+its full set run on the batch):
 
 - lib/instruments/instrument.luau (and types.d.luau's `Instrument`): optional `hp` and `sprite`. BN5's
   instruments have 100 HP and their own sprite, where the library had 60 and BN6's sprite as constants.

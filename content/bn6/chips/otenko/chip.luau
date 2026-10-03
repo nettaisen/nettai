@@ -5,7 +5,7 @@
 -- games' (the content's JP-content chips take theirs): the US games' but
 -- for the library flag and the sort key.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local statue = require("./statue")
 
 local WAIT = 0x3C

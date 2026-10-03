@@ -16,6 +16,11 @@ pub const ENGINE: &str = "engine/";
 /// What separates a game's name from an id or module path in it.
 pub const SEPARATOR: char = ':';
 
+/// The shared folder (content/common): the behavior every game's folder may
+/// require (`@common/...`), a root of no game, with no definitions to name,
+/// no roles and no assets of its own.
+pub const SHARED: &str = "common";
+
 /// `key` of game `game`, in full: `bn6:minibomb` (a pack's asset by its
 /// name in the pack). An engine key stays as it is.
 pub fn qualify(game: &str, key: &str) -> String {

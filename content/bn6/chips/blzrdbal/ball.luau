@@ -6,7 +6,7 @@
 -- field objects it meets: each makes the ball bigger and its hits harder.
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local roller = require("./roller")
 
 local ball = {}
