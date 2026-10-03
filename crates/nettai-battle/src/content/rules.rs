@@ -179,6 +179,22 @@ pub struct IntakeRules {
     pub drain_bug_flags: bool,
 }
 
+/// How the weakness request breaks a form (`Rules::form_break`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum FormBreak {
+    #[default]
+    Bn6,
+    Bn5,
+}
+
+/// Whose emotions a side's navi has (`Rules::emotions`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Emotions {
+    #[default]
+    Bn6,
+    Bn5,
+}
+
 /// Global rules: element weakness, collision types, panels, banners,
 /// statuses and the Beast Out lock-on.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -199,6 +215,17 @@ pub struct Rules {
     /// and ChargeMan's: the Fire chips' charge, a form's height); BN5's
     /// table (0x080EB1E8) has none of it (rule section `status`).
     pub form_tick: bool,
+    /// Whose emotions the side's navi has (rule section `status`): BN6's
+    /// (`sub_8015B54`, `sub_8015BEC`) or BN5's (0x08012740: a soul first,
+    /// then anger, a mood of 0 and Full Synchro, a mood under 65 worried;
+    /// 0x080127D6's setter leaving a mood of 0; the anger tick passing
+    /// over AI index 23).
+    pub emotions: Emotions,
+    /// How the weakness request breaks a form (rule section `status`):
+    /// BN6's (`sub_8015766`: a Cross or a Beast, to what it breaks to) or
+    /// BN5's (0x080122C8: any form, to the base form; no animation 2, no
+    /// overlay's stepping kept, the collision region left, fewer flags).
+    pub form_break: FormBreak,
     /// How a navi takes a hit's NaviCust bug (rule section `status`, the
     /// navi's game's).
     pub intake: IntakeRules,
