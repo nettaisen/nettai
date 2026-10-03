@@ -61,3 +61,4 @@
 "bn5:meteor-shower" = { pool = "effect", index = 0x46 }
 "bn5:meteors/controller" = { pool = "effect", index = 0x34, scratch_position = true }
 "bn6:meteors/marker" = { pool = "effect", index = 0x35, scratch_position = true }
+"bn5:drill" = { pool = "attack", index = 0x71 }
