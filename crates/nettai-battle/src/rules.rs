@@ -495,11 +495,23 @@ impl Battle {
     /// use is prepared: the chip the first system that answers puts in its
     /// place, or none (the use goes ahead).
     pub(crate) fn systems_chip_check(&mut self, side: u8, navi: ObjectRef, chip: Option<ChipHandle>) -> Option<ChipHandle> {
+        self.systems_chip_answer(side, navi, chip, SystemHook::ChipCheck)
+    }
+
+    /// Side `side`'s systems' `chip_substitute(side, navi, chip)` before a
+    /// chip's record is loaded: the chip the first system that answers
+    /// puts in its place (BN6's dark chips' substitute), or none.
+    pub(crate) fn systems_chip_substitute(&mut self, side: u8, navi: ObjectRef, chip: ChipHandle) -> Option<ChipHandle> {
+        self.systems_chip_answer(side, navi, Some(chip), SystemHook::ChipSubstitute)
+    }
+
+    /// A chip hook `hook(side, navi, chip)`'s first answer, a chip.
+    fn systems_chip_answer(&mut self, side: u8, navi: ObjectRef, chip: Option<ChipHandle>, hook: SystemHook) -> Option<ChipHandle> {
         let r = self.rules[side as usize].ruleset?;
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
-            if let Some(f) = content.defs.system(h).hook(SystemHook::ChipCheck) {
-                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipCheck, navi: Some(navi), chip, weapon: None };
+            if let Some(f) = content.defs.system(h).hook(hook) {
+                let call = HookCall::System { side, slot: slot as u8, hook, navi: Some(navi), chip, weapon: None };
                 if let Value::Def(nettai_content_api::Registry::Chip, c) = crate::behavior::call_hook(self, f, call) {
                     return Some(ChipHandle(c));
                 }
@@ -850,6 +862,45 @@ mod tests {
     /// BN6's patch-cards system (content/bn6/rules/patch-cards) with the
     /// test content's made-up cards: its `round_setup` changes the stats
     /// before anything reads them.
+    /// A system's extension of its game's definitions
+    /// (docs/design/rules-in-luau.md §7.5): kept on the definition, which a
+    /// tool reads through `Defs::extension`, and checked as the content is
+    /// defined: its types, its tables' fields, its variants, one owner.
+    #[test]
+    fn a_system_extends_its_games_definitions() {
+        use nettai_content_api::{Data, Registry};
+        let content = scenario::content();
+        let veil = "test:test/veil";
+        assert_eq!(content.defs.extension(Registry::Chip, veil, "test_weight"), Some(&Data::Int(3)));
+        let tag = content.defs.extension(Registry::Chip, veil, "test_tag").expect("veil's tag");
+        assert_eq!((tag.field("level"), tag.field("kind")), (&Data::Int(2), &Data::Str("b".into())));
+        assert_eq!(content.defs.extension(Registry::Chip, testing::BOMB, "test_weight"), None);
+        let patched = |module: &str, from: &str, to: &str| {
+            let mut c = testing::build();
+            let src = c.scripts.module_mut(testing::ROOT, module).expect("the module");
+            assert!(src.contains(from), "{from}");
+            *src = src.replacen(from, to, 1);
+            c.define().map(|_| ()).map_err(|e| e.message)
+        };
+        let refused = |module: &str, from: &str, to: &str, said: &str| {
+            let e = patched(module, from, to).expect_err(said);
+            assert!(e.contains(said), "{said}: {e}");
+        };
+        let chips = "chips/test/chips";
+        refused(chips, "test_weight = 3,", "test_weight = 300,", "chip test:test/veil.test_weight is Int(300), not u8");
+        refused(chips, "kind = \"b\" }", "kind = \"c\" }", "chip test:test/veil.test_tag.kind");
+        refused(chips, "kind = \"b\" }", "kind = \"b\", hue = 1 }", "`hue` is none of its fields (kind, level)");
+        let systems = "rules/systems";
+        refused(systems, "            test_weight = \"u8\",", "            test_weight = \"u9\",", "no type is named \"u9\"");
+        refused(systems, "        chip = {\n            test_weight", "        stage = {},\n        chip = {\n            test_weight", "a system extends chip, form or navi");
+        refused(
+            systems,
+            "    id = \"test:test/marker\",",
+            "    id = \"test:test/marker\",\n    extends = { chip = { test_weight = \"u8\" } },",
+            "both extend chip definitions with `test_weight`",
+        );
+    }
+
     mod patch_cards {
         use super::*;
         use crate::patch_cards::{InstalledCard, PatchCards};
