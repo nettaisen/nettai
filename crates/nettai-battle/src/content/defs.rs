@@ -416,8 +416,10 @@ pub struct Defs {
     kind_keys: BTreeMap<String, KindHandle>,
     /// The engine's kinds, in [`ENGINE_KINDS`]' order.
     engine: Vec<KindHandle>,
-    /// The base form: what a navi that has not changed form is in.
-    pub base_form: Option<FormHandle>,
+    /// Each game's base form, by `RootId`: what its navis are in before
+    /// they change form (rules-in-luau.md P1 item 12: BN5's MegaMan's is
+    /// BN5's own); None for a game that defines none.
+    pub base_forms: Vec<Option<FormHandle>>,
     /// Keys by registry, for the codecs.
     chip_keys: BTreeMap<String, ChipHandle>,
     weapon_keys: BTreeMap<String, WeaponHandle>,
@@ -1410,11 +1412,23 @@ impl Defs {
                 claim_identity(&mut identities, h, super::IdentityOwner::Form(FormHandle(i as u16)), &f.key)?;
             }
         }
-        // The base form: what a navi that has not changed form is in.
-        let mut bases = forms.iter().enumerate().filter(|(_, f)| f.record.kind == super::FormKind::Base);
-        let base_form = bases.next().map(|(i, _)| FormHandle(i as u16));
-        if let Some((_, other)) = bases.next() {
-            return Err(ContentError::new(format!("two forms are base forms ({} is another)", other.key)));
+        // Each game's base form: what its navis are in before they change
+        // form; one a game.
+        let game_of = |key: &str| keys::root_of(key).and_then(|g| root_names.iter().position(|r| r == g));
+        let mut base_forms: Vec<Option<FormHandle>> = vec![None; root_names.len()];
+        for (i, f) in forms.iter().enumerate().filter(|(_, f)| f.record.kind == super::FormKind::Base) {
+            let Some(game) = game_of(&f.key) else {
+                return Err(ContentError::new(format!("base form {}'s id names no loaded game", f.key)));
+            };
+            if let Some(other) = base_forms[game] {
+                return Err(ContentError::new(format!(
+                    "two forms of {} are base forms ({} and {})",
+                    root_names[game],
+                    forms[other.index()].key,
+                    f.key
+                )));
+            }
+            base_forms[game] = Some(FormHandle(i as u16));
         }
         // What the forms and the navis' sets name is the kind of form they
         // say.
@@ -1437,8 +1451,8 @@ impl Defs {
                     )));
                 }
             }
-            if base_form.is_none() {
-                return Err(ContentError::new(format!("navi {} changes form, and no form is the base form", n.key)));
+            if game_of(&n.key).and_then(|g| base_forms[g]).is_none() {
+                return Err(ContentError::new(format!("navi {} changes form, and no form of its game is the base form", n.key)));
             }
         }
         // Stages: what they place names kinds and their variant records.
@@ -1724,7 +1738,7 @@ impl Defs {
             handles,
             kind_keys,
             engine,
-            base_form,
+            base_forms,
             chip_keys: BTreeMap::new(),
             weapon_keys: BTreeMap::new(),
             roots: root_names.clone(),
