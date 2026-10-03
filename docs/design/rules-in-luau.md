@@ -1368,3 +1368,56 @@ P1's items 12 and 8 (bn5-map.md §15.3), on R4.
     differing;
   - the audit: 49 traces and the static audit, 0 problems;
   - BN5's replays as before: 252 replay, 243 match every frame, 139,499 of 948,097 frames.
+
+### S4, the Cross special and the navi switch (2026-10-02)
+
+- **The Cross special** (DarkInvs' auto-battle in the battle flag 0x40 mode) is BN6's, in the beast system
+  (rules/beast/cross-special.luau). The original's two controllers, Beast Over's berserk and the Cross special,
+  keep their state in the same 16 bytes (AIData+0xF0): each clears it, and either may find what the other left,
+  for example when a Beast Over comes during a takeover. So both share the system's `controller_*` fields. §2's
+  separate cross-special/ folder would have split them.
+  - **The framework keeps a side takeover**: SideState's `takeover` and `takeover_ticks` (+0x54 and +0x30, the
+    Cross special's before). The countdown stays where `sub_802E1D8` runs it, at the end of stage B, which some
+    ticks skip. The request bit 0x20000000 is now `"takeover"`.
+  - **Two new hooks.** When idle finds the request (`sub_802E4E4`), it calls `takeover_requested(side, navi)`: BN6
+    starts the special (0x1E0 ticks via `battle.take_over`, invulnerable, the state cleared). While the takeover
+    runs, idle calls `takeover(side, navi)` after the SELECT special's check. The answers are those of
+    `controller`, plus "own_chip": a chip of the special's own started, so the used chip is the attack's.
+  - BN6's controller picks its chip from its section's rows (`rules/cross-special.luau`, read by `require`).
+  - **The end** (`sub_80EFDB2`) is the system's action `bn6:beast/cross-special-end` (compat 0x59, `engine/cross-
+    special` before).
+  - API: `battle.take_over`, `end_takeover`, `takeover_ticks`, `navi:start_chip_attack(chip, kind)`; `side_special`
+    answers `"takeover"` (`"cross"` before).
+  - Gone: berserk.rs, actions/cross_special.rs, `EngineAction::CrossSpecial`, `ActorData::berserk`,
+    `Defs::cross_special`, the sound role `cross_special`. `Rules::cross_special` stays only for gen-content's
+    check of the rows, until S7.
+- **The navi switch.** The "Cross change", BN6's name for the flag 0x40 mode's switch to a link navi, is renamed
+  (§3.2):
+  - `actions/navi_switch.rs` and `TransformRequest::navi_switch`;
+  - `Battle::reserves` (`cross_stats`);
+  - the requests `NAVI_SWITCH` and `SWITCH_KNOCKOUT` (`"navi_switch"`, `"switch_knockout"`);
+  - the states `SWITCHING_NAVI`, `SWITCH_KNOCKOUT` and `SWITCHED`;
+  - the action roles `switch_protect` and `switch_knockout`;
+  - stage B's `action_requests`.
+
+  A change into a Cross form (its sound, the Cross merge, `cross_release_anim`) keeps its own name.
+- **The Cross bonuses** (`sub_800EF34`, `sub_8013236`, `sub_8012AFA`, the fire charge) are already form and navi data
+  that the framework reads (`chip_bonus`, `null_bonus`, `charged_chips`, `charged_bonus`, `charge_doubles`,
+  `chip_heals`, `fire_charge`), as §6.1 allows. They run per frame (the HUD's bonus) or per tick (the A charge, the
+  fire charge), where a hook would put Luau in a plain fight. No charge hook was added. S7 moves the fields to the
+  systems' `extends`. Two rules still read the form kind and go with `FormKind` in S7: Beast Over's Null doubling
+  (`sub_8012ABC`) and the Beast forms' Null charge time (`sub_8012F62`).
+- **Decisions** (for review):
+  1. The Cross special shares the beast system, for the shared state above.
+  2. The takeover's state is the side's. The original's lives in the actor slot's last 16 bytes, which a later
+     actor in that slot inherits. For the side's player navi this is the same memory unless the navi switch moves
+     it to another slot, which no recording has.
+  3. The bonuses stay data, as above.
+- **Verify** (branch rules-s4): the audit's notes name the navi switch.
+- **Gates** (on main ce1dbf09):
+  - the build without warnings, 481 tests, the content check (1,249 modules), gen-content check 0 errors;
+  - `gate-against.sh full`: machgun and soundmod with 96 rollback rows, the 189 legacy rounds (2,746,946 frames),
+    and the lab 6548 (6545 matched, 3 to a known deviation) with 0 sound rounds differing, including the 24
+    DarkInvs scenarios;
+  - the audit 0 problems; BN5's replays as before (252 replay, 243 match, 139,499 of 948,097 frames);
+  - us-spelling 0 on both branches.
