@@ -61,6 +61,43 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     guard_spark(b, r);
 }
 
+/// The navi type's intake (BN5's 0x08017688, BN6's `sub_801A9B8`): a navi
+/// no player controls takes its hits as a player does, without what only a
+/// player has (the NaviCust's HP drain, hit bug and stat edits, the stunned
+/// ticks and anger, the opponent's support Tango), with whatever status a
+/// hit carries, and its drain hits credited to the other side's player
+/// without its own healing (`sub_801A308`).
+pub(super) fn collect_hits_navi(b: &mut Battle, r: ObjectRef) {
+    b.objects.sprite_mut(r).look.white = false;
+    if b.round.flags & battle_flags::FIGHTING == 0 {
+        return;
+    }
+    b.remove_collision(coll_id(b, r));
+    if b.is_battle_over() || flag1(b, r) & f1::DEAD != 0 {
+        return;
+    }
+    crate::kinds::common::panel_burn(b, r);
+    barrier(b, r);
+    standing_effects(b, r);
+    let side = b.objects.get(r).alliance;
+    b.systems_navi_intake(side, r);
+    slide_triggers(b, r);
+    drop_cursor_trap(b, r);
+    anti_damage_traps(b, r);
+    bug_hp_level(b, r);
+    bug_paralyze_blind(b, r);
+    hit_modifier_requests(b, r);
+    counter_paralysis(b, r);
+    apply_status(b, r);
+    lose_chip(b, r);
+    drain_credit(b, r);
+    final_damage(b, r);
+    tick_counter_window(b, r);
+    hit_ends_submerged(b, r);
+    pierce_ends_flash(b, r);
+    guard_spark(b, r);
+}
+
 /// `object_addHP`: heal, up to MaxHP.
 pub(super) fn add_hp(b: &mut Battle, r: ObjectRef, n: u32) {
     let o = b.objects.get_mut(r);
@@ -692,11 +729,7 @@ fn lose_chip(b: &mut Battle, r: ObjectRef) {
 /// `sub_801A324`: drain hits credit the attacker, who heals MaxHP/10 per
 /// credit on its own next stage A.
 fn drain_heal(b: &mut Battle, r: ObjectRef) {
-    let side = b.objects.get(r).alliance;
-    let opponent = b.player(side ^ 1).expect("the opponent's player");
-    let hits = coll(b, r).acc.drain_hits;
-    let o = ai_mut(b, opponent);
-    o.drain_heal_credits = o.drain_heal_credits.wrapping_add(hits as u8);
+    drain_credit(b, r);
     let a = ai_mut(b, r);
     let credits = a.drain_heal_credits as u32;
     a.drain_heal_credits = 0;
@@ -709,6 +742,16 @@ fn drain_heal(b: &mut Battle, r: ObjectRef) {
     let look = b.roles_for(r).effect(EffectRole::Recovery);
     crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
     b.sound(crate::content::SoundRole::Recovery);
+}
+
+/// `sub_801A308`: drain hits credit the other side's player (`sub_801A324`'s
+/// first part).
+fn drain_credit(b: &mut Battle, r: ObjectRef) {
+    let side = b.objects.get(r).alliance;
+    let opponent = b.player(side ^ 1).expect("the opponent's player");
+    let hits = coll(b, r).acc.drain_hits;
+    let o = ai_mut(b, opponent);
+    o.drain_heal_credits = o.drain_heal_credits.wrapping_add(hits as u8);
 }
 
 /// `object_calculateFinalDamage1`: sum the element damage (halved,

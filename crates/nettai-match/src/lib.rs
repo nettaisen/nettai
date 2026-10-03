@@ -298,6 +298,8 @@ impl Match {
                 rules: Vec::new(),
                 patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
                 navicust: s.navicust,
+                // (BN5's tactics come from a save: a match file has none.)
+                tactics: Default::default(),
             }
         };
         RoundSetup {

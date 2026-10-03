@@ -96,7 +96,9 @@ dust = "14-0e"
 shell-burst = "14-11"
 energy-burst = "14-12"
 blast = "14-13"
+charge-glow-a = "14-15"
 fire-hit = "14-1a"
+chaos-charge-glow = "14-1c"
 splash = "14-1f"
 
 # Sounds: the song table's numbers, music and sound effects.

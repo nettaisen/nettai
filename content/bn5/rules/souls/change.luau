@@ -8,17 +8,19 @@
 --
 -- - 0 (0x08011FAC): onto his future panel, facing the default way, the charge dropped, his moves stopped; a flash
 --   (effect 3) and a sound; his sprite held.
--- - 4 (0x08012010): the soul's image comes in (objects/soul-image); 50 ticks later another flash and the soul's
---   sound (Chaos Unison's its own); 61 ticks.
+-- - 4 (0x08012010): the soul's image comes in (objects/soul-image), with Chaos Unison the dark shade too (objects/
+--   chaos-shade); 50 ticks later another flash and the soul's sound (Chaos Unison's its own); 61 ticks.
 -- - 8 (0x08012090): MegaMan in the soul: the old form's end hook, his sprite by the soul, his statuses ended, the
 --   soul's turns, his form, the new form's start hook (./hooks); in TomahawkSoul the cameras shake; 10 ticks later
 --   the status reset (./hooks).
--- - 0xC (0x0801216C), Chaos Unison's: 11 ticks.
+-- - 0xC (0x0801216C), Chaos Unison's: 10 ticks, then the chaos charge is armed (the engine's: a full B charge
+--   cycles, and its release in the window fires the soul's chaos weapon, out of it the chaos failure, ./chaos).
 -- - 0x10 (0x08012196): 21 ticks, then the change is done and he idles.
 
 local effects = require("@bn6/lib/effects")
 local hooks = require("./hooks")
 local image = require("../../objects/soul-image/image")
+local shade = require("../../objects/chaos-shade/shade")
 
 local change = {}
 
@@ -72,7 +74,7 @@ local function show_image(me: Object, s: State, soul: number, chaos: boolean)
     if me.step_init == 0 then
         image.spawn(me, soul)
         if chaos then
-            image.chaos_aura(me)
+            shade.spawn(me)
         end
         s.timer = 60
         me.step_init = 4
@@ -117,14 +119,16 @@ local function emerge(me: Object, s: State, target: FormDef, soul: number, chaos
     set_step(me, if chaos then CHAOS else SETTLE)
 end
 
--- 0x0801216C: Chaos Unison's 11 ticks.
+-- 0x0801216C: Chaos Unison's 10 ticks, the chaos level back to 0; then the chaos charge is armed.
 local function chaos_step(me: Object, s: State)
     if me.step_init == 0 then
+        me.chaos_level = 0
         s.timer = 0
         me.step_init = 4
     end
     s.timer += 1
     if s.timer >= 10 then
+        me.chaos_armed = true
         set_step(me, SETTLE)
     end
 end

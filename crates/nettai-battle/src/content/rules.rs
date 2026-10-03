@@ -170,6 +170,12 @@ pub struct Rules {
     /// Ticks of recovery after a buster shot, by Rapid stat, then by open
     /// panels ahead (0..=5).
     pub buster_recovery: Vec<[u8; 6]>,
+    /// BN5's Chaos Unison cycle (0x08010650, rule section `buster`), a row
+    /// by the chaos level (at most 2): its period and three bounds. While
+    /// the B charge is full a counter runs through the period; under the
+    /// first bound a release succeeds (the window 2), then 1 under the
+    /// second, 0 under the third, 1 past it. None: no game's cycle.
+    pub chaos_cycle: Vec<[u8; 4]>,
     /// The deletion times (BCD hours:minutes:seconds.hundredths) at which
     /// an SP navi chip's damage steps down (`DamageFormula::SpNavi`).
     pub sp_deletion_times: Vec<u32>,
