@@ -881,6 +881,8 @@ declare class Navi
     encounters: number
     -- `sub_800FE52`: how many kinds of NaviCust bug the navi has.
     bug_kinds: number
+    -- BN5's NaviStats +0x32: the turns a soul lasts longer (SoulT+1), which the custom screen adds to a soul's three.
+    soul_turn_bonus: number
 end
 
 -- A one-tick hit region (`battle.hitbox`).
