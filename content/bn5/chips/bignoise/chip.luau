@@ -4,9 +4,9 @@
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local bignoise = require("./bignoise")
-local recipe_pulsar3 = require("../pulsar3/chip")
-local recipe_shademn_ds = require("../shademn-ds/chip")
-local recipe_shademn_sp = require("../shademn-sp/chip")
+local recipe_pulsar3 = require("../pulsar/chips").pulsar3
+local recipe_shademn_ds = require("../shademan/chips").shademn_ds
+local recipe_shademn_sp = require("../shademan/chips").shademn_sp
 
 return define.chip {
     id = "bn5:bignoise",

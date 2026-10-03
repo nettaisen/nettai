@@ -157,7 +157,7 @@ for k, w in spshake.waves do
     spshake.waves[k] = define.record("shake-wave", w)
 end
 
--- A wave by its parameters (ShakPar's: objects/shakpar): Param1 the speed's row of 0x080D30D4, Param2 whether it
+-- A wave by its parameters (ShakPar's: chips/shakpar/shakpar): Param1 the speed's row of 0x080D30D4, Param2 whether it
 -- paralyzes, Param3 its palette.
 local SPEEDS = { [0] = 0x1_8000, [1] = 0x2_4000, [2] = 0x3_0000 }
 function spshake.wave(speed: number, paralyzes: boolean, palette: number): Wave

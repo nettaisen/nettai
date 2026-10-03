@@ -5,9 +5,9 @@
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local navi = require("../larkman/navi")
-local recipe_katana1 = require("../katana1/chip")
-local recipe_larkman_ds = require("../larkman-ds/chip")
-local recipe_larkman_sp = require("../larkman-sp/chip")
+local recipe_katana1 = require("../katana/chips").katana1
+local recipe_larkman_ds = require("../larkman/chips").larkman_ds
+local recipe_larkman_sp = require("../larkman/chips").larkman_sp
 
 return define.chip {
     id = "bn5:wildbird",
