@@ -337,3 +337,27 @@ export type DarkBall = {
     slant: number,
     homing: DarkBallHoming,
 }
+
+-- A game's immobilizer (@common/instant/immobilizer): the mark it shows
+-- (none: BN6's, unseen) and its animation, its sound, the status its hit
+-- carries and its collision types.
+export type ImmobilizerLook = {
+    sprite: SpriteAsset?,
+    anim: number?,
+    sound: Sound,
+    status: Status,
+    target: CollisionType,
+    self_type: CollisionType,
+}
+
+-- A game's step of its swords' slash (@common/swords/slash; none: BN6's, by
+-- the chip's `step`): whether a slash steps (its afterimages on the swing,
+-- its step back after it), where to (`set_off`: the move's start, refused
+-- while moving or sliding; "step" two panels ahead, "warp" behind the
+-- enemy, turned round; nil none), and the panel a warp lands on (nil:
+-- none).
+export type SlashSteps = {
+    steps: (me: Object) -> boolean,
+    kind: (me: Object, set_off: (Object) -> boolean) -> ("step" | "warp")?,
+    warp_target: (me: Object) -> (number?, number?),
+}

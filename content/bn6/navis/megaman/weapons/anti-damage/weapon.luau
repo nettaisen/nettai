@@ -8,14 +8,14 @@
 -- AntiSwrd's 0x48 for a sword hit) with the stance's 50 damage. The navi's
 -- chips then wait 70 ticks.
 
-export type State = {
-    -- Ticks the trap stays armed (AIAttackVars+0x10).
-    timer: number,
-}
+local common = require("@common/megaman/anti_damage")
 
 local anti_damage = {}
 
 local DAMAGE, LOCKOUT, TICKS = 0x32, 0x46, 0x1E
+
+-- The stance, action 0x5A (`sub_80EFE7C`: @common/megaman/anti_damage).
+anti_damage.action = common.stance("bn6:megaman/anti-damage/action")
 
 -- `sub_80121BC`.
 local function setup(navi: Object): Action
@@ -24,44 +24,11 @@ local function setup(navi: Object): Action
     navi.extra = 0
     navi.hit_param = 0
     navi.attack_damage = DAMAGE
-    local s = navi:action_state(anti_damage.action) :: State
+    local s = navi:action_state(anti_damage.action) :: { timer: number }
     s.timer = TICKS
     navi.attack_lockout = LOCKOUT
     return anti_damage.action
 end
-
--- `sub_80EFEAC`: the trap is armed until the timer runs out.
-local function stance(me: Object, s: State)
-    if me.step_init == 0 then
-        me:set_status("using_action", true)
-        me:set_navi_state("trap_armed", true)
-        me.step_init = 4
-    end
-    local t = s.timer - 1
-    s.timer = t
-    if t < 0 then
-        me:set_navi_state("trap_armed", false)
-        me:exit_attack()
-    end
-end
-
-anti_damage.action = define.action {
-    id = "bn6:megaman/anti-damage/action",
-    state = { timer = "u16" },
-    -- `sub_80EFE7C`.
-    update = function(me: Object, s: State)
-        if me:request("anti_damage_triggered") or me:request("anti_sword_triggered") then
-            me:start_stance_counter()
-            return
-        end
-        local step = me.step
-        if step == 0 then
-            stance(me, s)
-        else
-            error(string.format("the AntiDmg stance's phase %#x reads past its table", step))
-        end
-    end,
-}
 
 anti_damage.weapon = define.weapon {
     id = "bn6:megaman/anti-damage",
