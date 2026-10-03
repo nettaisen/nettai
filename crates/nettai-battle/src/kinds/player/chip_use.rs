@@ -254,7 +254,6 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     if cd.flags.has(ChipFlags::NAVI) {
         b.bump_side_stat(side, 6, 1);
     }
-    dark_chip_side_effect(b, r, e.chip);
     // BN5's 0x080100E6: the side's rules may refuse the chip (its light and
     // dark system, 0x08010118). The navi then uses the chip they give
     // instead (BN5's 0x185, its variant 3 and no parameters, the rest of
@@ -293,21 +292,15 @@ fn deals_damage(flags: ChipFlags) -> bool {
     flags.has(ChipFlags::HAS_DAMAGE) && !flags.has(ChipFlags::DIMMING)
 }
 
-/// `sub_8010D58`: a dark chip (one with a substitute) costs a bug frag; with
-/// none left the player gets the substitute instead (the chip's own:
-/// `off_8010D84`, Sword, Thunder, Recov10, Invisibl and Atk+10 for the five
-/// dark chips), through `sub_800EF02`, with its own damage and bonus and no
-/// modifiers.
+/// `sub_8010D58`: the chip the side's systems put in the chip's place
+/// (`chip_substitute`: BN6's dark chips cost a bug frag, and with none
+/// left the player gets the chip's substitute, `off_8010D84`), through
+/// `sub_800EF02`, with its own damage and bonus and no modifiers.
 fn dark_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Option<HandEntry> {
     // (The empty hand's chip reads past the chip table, as for the record.)
     entry_record(&b.content, chip);
-    let sub = b.content.chip_links(chip.expect("a chip")).dark_substitute?;
-    let side = b.objects.get(r).alliance as usize;
-    if b.bug_frags[side] >= 1 {
-        // sub_800F4B2 (the local player's save loses one too).
-        b.bug_frags[side] -= 1;
-        return None;
-    }
+    let side = b.objects.get(r).alliance;
+    let sub = b.systems_chip_substitute(side, r, chip.expect("a chip"))?;
     let chip = Some(sub);
     // sub_800EF02: anything but a player keeps the chip it carries.
     if navi_record(b, r).actor_type != ActorType::Player {
@@ -316,18 +309,6 @@ fn dark_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Op
     let damage = crate::hand::chip_damage(b, chip, b.objects.get(r).alliance);
     let extra = chip_bonus(b, r, chip);
     Some(HandEntry { chip, damage, extra, modifiers: 0 })
-}
-
-/// `sub_800B79A`: the dark chips worsen the user's HP bug (NaviStats+0x18,
-/// at most 7) by their `hp_bug`: DrkSword +2, DarkThnd +1, DrkRecov to 7,
-/// DarkInvs nothing, DarkPlus +4.
-fn dark_chip_side_effect(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
-    let cost = chip.map_or(0, |h| b.content.chip(h).hp_bug);
-    if cost == 0 {
-        return;
-    }
-    let s = &mut super::stats_mut(b, r).bugs.hp_drain;
-    *s = s.saturating_add(cost).min(7);
 }
 
 /// `sub_800EE26`: the battle flag 0x40 mode's special chip (the side
@@ -344,7 +325,6 @@ fn slot_in_entry(b: &mut Battle, r: ObjectRef) -> HandEntry {
     let extra = chip_bonus(b, r, chip);
     let content = b.content.clone();
     let cd = entry_record(&content, chip);
-    ai_mut(b, r).attack.wrapped = cd.beast_lockon as u8;
     let damage = crate::hand::chip_damage(b, chip, side as u8);
     let mut extra = extra;
     let s = &mut b.sides[side];

@@ -86,12 +86,12 @@ The one exception is the empty-hand read in `chip_800AEE8` (§2.5).
 | +0x0C | u8 | `subtype` | Variant within the action, copied to `av[3]`. For example Cannon/HiCannon/M-Cannon = 0/1/2, GunDelS1/2/3/EX = 0/1/2/3. It indexes `off_802CCB4` for action 0x15 and `off_802CD5C` for action 0x1B. | `sub_80126E4` |
 | +0x0D | u8 | ? | **No reader found.** | – |
 | +0x0E | u8 | ? | 0/4/5/6. **No reader found.** | – |
-| +0x0F | u8 | `beast_lockon` | Copied to `av[0x1D]`, but only in Beast Out forms or for a chip-gate chip. When set, dispatch goes through the Beast wrapper `sub_80EAD9C` (§2.11). | `sub_800FB54` |
+| +0x0F | u8 | `beast_lockon` | Copied to `av[0x1D]`, but only in Beast Out forms or for a chip-gate chip. When set, dispatch goes through the Beast wrapper `sub_80EAD9C` (§2.11). nettai: BN6's beast system's chip extension `beast` (its presence, unless `rush = false`), which its `chip_used` writes to the attack's `wrapped`. | `sub_800FB54` |
 | +0x10 | u32 | `params` | 4 action-specific bytes, copied to `av.u32[0xC]` and passed as r4 to spawners. Examples: Vulcan shot row 0x0C, AirShot 4, TankCan 0x100. | `sub_80126E4` |
 | +0x14 | u8 | `lockout` | Post-chip lockout in frames. Copied to `av[5]`, then to `ai[0x19]` at attack end (§2.8). Most chips 0. Seeds and Lance 10; FireHit, Boomer, GolmHit, BusterUp, Atk+10 and others 20; Recov and TimeBom 30; AirHocky 50. | `sub_80126E4` |
 | +0x15 | u8 | `lib_index` | Library sub-index. | menus only |
 | +0x16 | u8 | `flags2` | See §1.3. | `sub_800EE98`, `sub_8010740` |
-| +0x17 | u8 | `lockon_mode` | Beast Out lock-on panel selector: `sub_80EAE28` passes it to `ho_8026554` (0x08026554), which indexes `jt_8026584`. | `sub_80EAE28` |
+| +0x17 | u8 | `lockon_mode` | Beast Out lock-on panel selector: `sub_80EAE28` passes it to `ho_8026554` (0x08026554), which indexes `jt_8026584`. nettai: the beast system's `beast.lockon` (a lock-on mode, rules/lockon.luau). | `sub_80EAE28` |
 | +0x18 | u16 | `sort_key` | Alphabetical sort. | menus only |
 | +0x1A | u16 | `damage` | Base damage. **≥ 1000 is a formula index** `damage − 1000` into `off_80109DC` (§1.5). | `sub_80109A4` (0x080109A4) and its formulas |
 | +0x1C | u16 | `library_no` | Library number (Cannon 1, …). | menus only |

@@ -14,6 +14,13 @@ local counter = define.system {
     id = "test:test/counter",
     state = { starts = "u8", side = "u8", bonus = "u16" },
     setup = { bonus = "u8" },
+    -- Made-up fields of the game's chips, for the extension's tests.
+    extends = {
+        chip = {
+            test_weight = "u8",
+            test_tag = { level = "u8", kind = { "a", "b" } },
+        },
+    },
     hooks = {
         round_start = function(side: number)
             local s = system.state() :: CounterState
