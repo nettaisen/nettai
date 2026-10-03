@@ -387,9 +387,12 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
     let left = o.slide_timer as i32 - 1;
     o.slide_timer = left as u8;
     if left > 0 {
+        // (The arena's speed: BN5's goes 8 pixels a tick in depth.)
+        let speed = b.arena_rules().slide_speed;
+        let o = b.objects.get_mut(r);
         let (dx, dy) = (o.slide_dx as i8 as i32, o.slide_dy as i8 as i32);
-        o.pos.x = o.pos.x.wrapping_add(dx * 0xA_0000);
-        o.pos.y = o.pos.y.wrapping_add(dy * 0x6_0000);
+        o.pos.x = o.pos.x.wrapping_add(dx * speed.x);
+        o.pos.y = o.pos.y.wrapping_add(dy * speed.y);
         o.panel = coordinates_to_panel(o.pos.x, o.pos.y);
         anchor_collision(b, r);
         return;
@@ -399,11 +402,15 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).panel = fp;
     set_coordinates_from_panel(b, r);
     let kind = panel_kind(b, fp);
+    // BN5's metal slides as BN6's roads do here (0x08013564: type 5 where
+    // BN6 tests 9 to 12), and its sea stops a slide (type 10): by the
+    // type's rule, its `slide` and its `holds`.
+    let rule = b.arena_rules().panels.types[kind as usize];
     let mut go_on = true;
     if kind == PanelType::Ice && coll(b, r).element != 2 {
         let o = b.objects.get_mut(r);
         o.slide_tiles = o.slide_tiles.wrapping_add(1);
-    } else if kind.is_road() && flag1(b, r) & 0x24 == 0 {
+    } else if (kind.is_road() || rule.slide.is_some()) && flag1(b, r) & 0x24 == 0 {
         if b.objects.get(r).slide_type == 3 {
             ai_mut(b, r).road_cooldown = 5;
             go_on = false;
@@ -423,6 +430,8 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
                 o.slide_tiles = o.slide_tiles.wrapping_add(1);
             }
         }
+    } else if rule.holds.is_some() {
+        go_on = false;
     }
     if go_on {
         let o = b.objects.get_mut(r);

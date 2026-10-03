@@ -17,30 +17,30 @@ export type State = {
     controller: Object?,
 }
 
-local SPRITE = asset.sprite("circusman")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_CATCH = asset.sound("circus-catch")
-local SOUND_DRUMROLL = asset.sound("drumroll")
+local SPRITE = asset.sprite("bn6:circusman")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_CATCH = asset.sound("bn6:circus-catch")
+local SOUND_DRUMROLL = asset.sound("bn6:drumroll")
 
 -- A show's sparkle (effect 0x21).
-local SPARKLE = define.effect { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 }
+local SPARKLE = define.effect { sprite = asset.sprite("bn6:pink-flash"), anim = 0, palette = 0 }
 
 -- What he is taken for: his actor record, and what he wears (his two overlays, `sub_8010FD8`).
 local IDENTITY = define.identity {
-    id = "circusman",
+    id = "bn6:circusman",
     class = "navi",
     version = 0,
     ai_index = 0xE,
     ice = "large",
     parts = {
         body = {
-            sprite = asset.sprite("circusman"),
+            sprite = asset.sprite("bn6:circusman"),
             anims = 100,
             behind = { { 0x00, 0x13 }, { 0x28, 0x4F }, { 0x63, 0x63 } },
             anim_offset = 0x14,
         },
         second = {
-            sprite = asset.sprite("circusman"),
+            sprite = asset.sprite("bn6:circusman"),
             anims = 80,
             behind = { { 0x14, 0x3B }, { 0x4F, 0x4F } },
             anim_offset = 0x28,
@@ -282,7 +282,7 @@ local ACTIONS = {
 }
 
 crcusman.kind = define.kind {
-    id = "crcusman/navi",
+    id = "bn6:crcusman/navi",
     pool = "actor",
     state = { controller = "object" },
     -- `sub_80BA364`.

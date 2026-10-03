@@ -25,7 +25,7 @@ local SLOW_RATE, FAST_RATE = 0x10, 0x40
 local OWN_TICKS, OTHER_TICKS = 0x1E0, 0x438
 local WAIT = 0x46
 -- The warning's sound (`sub_800AE90`).
-local WARNING_SOUND = asset.sound("err-select-91")
+local WARNING_SOUND = asset.sound("bn6:err-select-91")
 
 -- A side's timers: the slow one for SloGauge, the fast one for FstGauge.
 local function set_timer(side: number, fast: boolean, ticks: number)
@@ -66,7 +66,7 @@ local function effect(me: Object)
 end
 
 gauge_speed.kind = define.kind {
-    id = "gauge-speed",
+    id = "bn6:gauge-speed",
     pool = "effect",
     state = { fast = "bool" },
     -- `sub_80E23A4`.

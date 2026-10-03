@@ -25,11 +25,11 @@ export type State = {
 -- and after the sync.
 local MARKER_TICKS = 0x50
 local AIM, WARNING, AFTER = 0x14, 0x3C, 0x1E
-local SOUND_AIM = asset.sound("mark")
-local SOUND_WARNING = asset.sound("err-select-91")
+local SOUND_AIM = asset.sound("bn6:mark")
+local SOUND_WARNING = asset.sound("bn6:err-select-91")
 -- The sync's sound: the combatant's HP went up, or not.
-local SOUND_UP = asset.sound("hub")
-local SOUND_DOWN = asset.sound("lifesync")
+local SOUND_UP = asset.sound("bn6:hub")
+local SOUND_DOWN = asset.sound("bn6:lifesync")
 -- `byte_80E74C4`: the other side's player navi stands there.
 local ENEMY_NAVI = { [0] = 0x00200000, [1] = 0x00400000 }
 -- The virus that LifeSync neither takes nor gives HP to: AI 13, all its
@@ -189,7 +189,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "lifesync/controller",
+    id = "bn6:lifesync/controller",
     pool = "effect",
     state = { target = "object", synced = "object[4]" },
     -- `sub_80E7260`.

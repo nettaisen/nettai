@@ -51,7 +51,7 @@ local dripshwr = require("../../navis/spoutman/chip")
 -- `fields` over them.
 local function chip(key: string, n: number, fields: { [string]: any }): Chip
     local spec: { [string]: any } = {
-        id = "test/" .. key,
+        id = "test:test/" .. key,
         codes = { "A", "*" },
         element = "null",
         family = "null",

@@ -15,14 +15,14 @@ local sparks = require("../../lib/sparks")
 
 local falling_meteor = {}
 
-local SPRITE = asset.sprite("meteor")
+local SPRITE = asset.sprite("bn6:meteor")
 local ANIM = 0
 -- It starts 256 pixels behind and above its panel, and falls 16 forward
 -- and 16 down a tick.
 local START, SPEED = 0x100_0000, 0x10_0000
 local WAIT, FALL = 0x1E, 0x10
-local SOUND_FALL = asset.sound("justice-one")
-local SOUND_LAND = asset.sound("hit-bomb-1")
+local SOUND_FALL = asset.sound("bn6:justice-one")
+local SOUND_LAND = asset.sound("bn6:hit-bomb-1")
 -- What it is and reaches (`byte_80CF3AC`: every row's): thrown, hitting
 -- navis, hit modifier 3.
 local IS, HITS, HIT_MOD = collision.thrown, collision.hits_navis, 3
@@ -120,7 +120,7 @@ local function init(me: Object)
 end
 
 falling_meteor.kind = define.kind {
-    id = "meteors/falling-meteor",
+    id = "bn6:meteors/falling-meteor",
     pool = "attack",
     -- `sub_80CF3BE`.
     update = function(me: Object)

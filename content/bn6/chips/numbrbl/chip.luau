@@ -6,7 +6,7 @@
 local controller = require("./controller")
 
 return define.chip {
-    id = "numbrbl",
+    id = "bn6:numbrbl",
     codes = { "N" },
     element = "null",
     family = "null",

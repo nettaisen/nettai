@@ -17,8 +17,8 @@ export type State = {
     while_dimmed: boolean,
 }
 
-local SPRITE = asset.sprite("diveman")
-local SOUND = asset.sound("wide-shot")
+local SPRITE = asset.sprite("bn6:diveman")
+local SOUND = asset.sound("bn6:wide-shot")
 local ANIM = 0x14
 
 -- The splash (effect 0x2B): DiveMan's sprite.
@@ -120,7 +120,7 @@ local function tick(me: Object)
 end
 
 wave.kind = define.kind {
-    id = "diveman/wave",
+    id = "bn6:diveman/wave",
     pool = "attack",
     state = { while_dimmed = "bool" },
     -- `sub_80CB0DC`.

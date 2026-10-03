@@ -373,7 +373,7 @@ mod tests {
         stats.weapons.buster_shot = Some(RecordHandle(9));
         stats.bugs.custom_damage = 0x1234;
         stats.folder_tags = [[1, 2], [3, 0xFF]];
-        let mut hand = ChipHand::empty(&content);
+        let mut hand = ChipHand::empty(&content, content.defs.root_id(testing::ROOT).expect("the test game"));
         hand.ids[0] = Some(ChipHandle(17));
         hand.damage[0] = 300;
         hand.selection[1] = Some(FolderChip::new(ChipHandle(400), ChipCode::ASTERISK));

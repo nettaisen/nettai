@@ -22,7 +22,7 @@ local RAISE, DROP, RECOVER = 0x0, 0x4, 0x8
 -- Cursor (secondary element 0x40), the hit's counter byte.
 local CURSOR, HIT_PARAM = 0x40, 0x9E
 
-local SOUND = asset.sound("justice-one")
+local SOUND = asset.sound("bn6:justice-one")
 
 -- A frame's "last" flag.
 local LAST_FRAME = 0x80
@@ -127,7 +127,7 @@ local function recover(me: Object, s: State)
 end
 
 drop_weapon.action = define.action {
-    id = "erasecross-beast/drop/action",
+    id = "bn6:erasecross-beast/drop/action",
     state = { timer = "u16" },
     -- `sub_80EE840`.
     update = function(me: Object, s: State)
@@ -145,7 +145,7 @@ drop_weapon.action = define.action {
 }
 
 drop_weapon.weapon = define.weapon {
-    id = "erasecross-beast/drop",
+    id = "bn6:erasecross-beast/drop",
     -- The charge table's row 0x15, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 120, 120, 120, 120, 120, 120, 110, 100 },

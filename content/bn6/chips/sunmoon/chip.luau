@@ -8,7 +8,7 @@ local uninstll = require("../uninstll/chip")
 local sun = require("./sun")
 
 return define.chip {
-    id = "sunmoon",
+    id = "bn6:sunmoon",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

@@ -26,9 +26,9 @@ export type State = {
 }
 
 -- Sounds: a flash, the log in, going under.
-local FLASH_SOUND = asset.sound("bugfix-flash")
-local LOG_IN_SOUND = asset.sound("log-in")
-local SUBMERGE_SOUND = asset.sound("invisible")
+local FLASH_SOUND = asset.sound("bn6:bugfix-flash")
+local LOG_IN_SOUND = asset.sound("bn6:log-in")
+local SUBMERGE_SOUND = asset.sound("bn6:invisible")
 -- Variant bug_fix: the flashes' ticks, then the wait.
 local FLASH_TICKS, FIRST_FLASH, WAIT = 0x78, 2, 0x1E
 -- Variant submerge: submerged for 0xF0 * 2 ticks.
@@ -201,7 +201,7 @@ local function init(me: Object)
 end
 
 glow.kind = define.kind {
-    id = "bugfix/glow",
+    id = "bn6:bugfix/glow",
     pool = "actor",
     state = { variant = "u8", holder = "object" },
     -- `sub_80C4828`.

@@ -101,7 +101,7 @@ local function tick(me: Object)
 end
 
 meteor_shower.kind = define.kind {
-    id = "meteor-shower",
+    id = "bn6:meteor-shower",
     pool = "effect",
     state = { target = "object", drops = "u8" },
     -- `sub_80E59E8`.

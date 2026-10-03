@@ -147,7 +147,7 @@ fn set_phase(b: &mut Battle, r: ObjectRef, phase: u8) {
 /// way; one whose navi brings the user back (navi 0) doesn't warp it in.
 fn effect(b: &mut Battle, r: ObjectRef) {
     use crate::content::ChipTraits;
-    let traits = b.content.chip(b.content.chip_or_zeroed(vars(b, r).chip.chip)).traits;
+    let traits = b.content.chip(b.chip_or_zeroed(vars(b, r).chip.chip)).traits;
     let stays = traits.has(ChipTraits::USER_STAYS);
     match b.objects.get(r).phase {
         // sub_80E1854
@@ -217,7 +217,7 @@ fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let (panel, element) = (o.panel, o.element);
     let user = user(b, r);
     use crate::content::ChipUsage;
-    let chip = b.content.chip_or_zeroed(v.chip.chip);
+    let chip = b.chip_or_zeroed(v.chip.chip);
     let navi = match b.content.defs.chip(chip).usage {
         ChipUsage::Navi(hook) => {
             let spec = NaviChipSpec { panel, element, damage };

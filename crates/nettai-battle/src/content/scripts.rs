@@ -1,12 +1,12 @@
-//! The content's scripts: its roots' Luau modules, which live next to what
+//! The content's scripts: its folders' Luau modules, which live next to what
 //! they define (`chips/minibomb/chip.luau`, `chips/rockcube/rock.luau`,
 //! `navis/megaman/weapons/absorb/weapon.luau`, `lib/...`).
 //!
-//! Content comes from roots (docs/design/rules-in-luau.md §7.2): a
-//! directory of modules with a manifest ([`RootManifest`]) whose `name` is
-//! its namespace. A module is named by its root and its path in the root
-//! (`bn6:chips/minibomb/chip`), and every key it defines is qualified with
-//! its root (`bn6:minibomb`).
+//! Content is one namespace (docs/design/rules-in-luau.md, the flat
+//! namespace): every content folder loads (content/bn6, content/bn5...), a
+//! module is named by its folder and its path in it
+//! (`bn6:chips/minibomb/chip`), and every id a module writes is in full,
+//! its game first (`bn6:minibomb`).
 //!
 //! [`Content::define`](super::Content::define) turns what the modules
 //! define into what the script runtime binds (`content::defs`). Nothing in
@@ -17,44 +17,25 @@ use std::collections::BTreeMap;
 
 use nettai_content_api::keys;
 
-/// A content root's manifest (its `root.toml`).
+/// A content folder: its name, the part of its modules' names before the
+/// path (`bn6`). A game's folder is named as the game, whose ids its
+/// modules write (`bn6:...`).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RootManifest {
-    /// Its namespace: the keys its modules define are qualified with it. A
-    /// game root's is its game (`bn6`).
     pub name: String,
-    /// The pack its asset names resolve in, by default its name (a game
-    /// root's assets are its game's).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub assets: Option<String>,
-    /// The roots whose modules its modules may `require`
-    /// (`require("@bn6/rules/cross/system")`). A game root requires none.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub requires: Vec<String>,
 }
 
 impl RootManifest {
-    /// A root named `name` that requires nothing, with its own assets.
+    /// The folder named `name`.
     pub fn named(name: &str) -> RootManifest {
-        RootManifest { name: name.to_string(), assets: None, requires: Vec::new() }
-    }
-
-    /// The pack its asset names resolve in.
-    pub fn assets(&self) -> &str {
-        self.assets.as_deref().unwrap_or(&self.name)
+        RootManifest { name: name.to_string() }
     }
 
     /// What is wrong with it, if anything.
     pub fn check(&self) -> Result<(), String> {
         if !keys::valid_root_name(&self.name) {
-            return Err(format!(
-                "root name {:?} is not lowercase words in - (and not \"engine\")",
-                self.name
-            ));
-        }
-        if let Some(r) = self.requires.iter().find(|r| **r == self.name) {
-            return Err(format!("root {} requires itself ({r})", self.name));
+            return Err(format!("folder name {:?} is not lowercase words in - (and not \"engine\")", self.name));
         }
         Ok(())
     }
@@ -63,12 +44,10 @@ impl RootManifest {
 /// The content's Luau modules.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Scripts {
-    /// Source text by module name: its root's name and its path in the
-    /// root without `.luau` (`bn6:objects/sun-beam/sun_beam`).
+    /// Source text by module name: its folder's name and its path in the
+    /// folder without `.luau` (`bn6:objects/sun-beam/sun_beam`).
     pub modules: BTreeMap<String, String>,
-    /// The roots the modules come from: the content's own first (its
-    /// home: the root the content was loaded from), then those it
-    /// requires.
+    /// The folders the modules come from.
     pub roots: Vec<RootManifest>,
     /// Their bytecode, as the define phase compiled it (a runtime then
     /// skips the compiler).
@@ -83,7 +62,7 @@ impl Scripts {
         s
     }
 
-    /// Add a root's modules, by path in the root.
+    /// Add a folder's modules, by path in the folder.
     pub fn add_root(&mut self, manifest: RootManifest, modules: BTreeMap<String, String>) {
         for (path, source) in modules {
             self.modules.insert(Scripts::name(&manifest.name, &path), source);
@@ -91,45 +70,27 @@ impl Scripts {
         self.roots.push(manifest);
     }
 
-    /// The module name of path `path` in root `root`.
+    /// The module name of path `path` in folder `root`.
     pub fn name(root: &str, path: &str) -> String {
         format!("{root}{}{path}", keys::SEPARATOR)
     }
 
-    /// The content's own root's name (None for content without scripts).
-    pub fn home(&self) -> Option<&str> {
-        self.roots.first().map(|r| r.name.as_str())
+    /// Module `path` of folder `folder`, to change (tests and tools).
+    pub fn module_mut(&mut self, folder: &str, path: &str) -> Option<&mut String> {
+        self.modules.get_mut(&Scripts::name(folder, path))
     }
 
-    /// The roots' names, the content's own first, by `RootId`; content
-    /// without roots is one root of no name.
-    pub fn root_names(&self) -> Vec<String> {
-        if self.roots.is_empty() { vec![String::new()] } else { self.roots.iter().map(|r| r.name.clone()).collect() }
-    }
-
-    /// Module `path` of the content's own root, to change (tests and
-    /// tools).
-    pub fn home_module_mut(&mut self, path: &str) -> Option<&mut String> {
-        let name = Scripts::name(self.home()?, path);
-        self.modules.get_mut(&name)
-    }
-
-    /// What is wrong with the roots: a manifest's, a root named twice, a
-    /// root required that isn't here, a module of no root.
+    /// What is wrong with the folders: a bad name, a name twice, a module
+    /// of no loaded folder.
     pub fn check_roots(&self) -> Result<(), String> {
         for (i, r) in self.roots.iter().enumerate() {
             r.check()?;
             if self.roots[..i].iter().any(|o| o.name == r.name) {
-                return Err(format!("two roots are named {}", r.name));
-            }
-        }
-        for r in &self.roots {
-            if let Some(missing) = r.requires.iter().find(|q| !self.roots.iter().any(|o| &o.name == *q)) {
-                return Err(format!("root {} requires root {missing}, which isn't loaded", r.name));
+                return Err(format!("two folders are named {}", r.name));
             }
         }
         if let Some(m) = self.modules.keys().find(|m| !keys::root_of(m).is_some_and(|r| self.roots.iter().any(|o| o.name == r))) {
-            return Err(format!("module {m} is in no loaded root"));
+            return Err(format!("module {m} is in no loaded folder"));
         }
         Ok(())
     }
@@ -138,11 +99,7 @@ impl Scripts {
     /// from them.
     pub fn pack(&self) -> nettai_luau::Pack {
         let modules = self.modules.iter().map(|(k, v)| (k.clone(), v.clone()));
-        let mut pack = nettai_luau::Pack::new(modules).with_compiled(self.compiled.0.clone());
-        for r in &self.roots {
-            pack = pack.with_requires(&r.name, r.requires.clone()).with_assets(&r.name, r.assets());
-        }
-        pack
+        nettai_luau::Pack::new(modules).with_compiled(self.compiled.0.clone())
     }
 }
 
@@ -177,15 +134,14 @@ mod tests {
 
     type Root = (RootManifest, BTreeMap<String, String>);
 
-    fn root(name: &str, requires: &[&str], modules: &[(&str, &str)]) -> Root {
-        let manifest = RootManifest { name: name.into(), assets: None, requires: requires.iter().map(|r| r.to_string()).collect() };
-        (manifest, modules.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect())
+    fn folder(name: &str, modules: &[(&str, &str)]) -> Root {
+        (RootManifest::named(name), modules.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect())
     }
 
-    /// Content of `roots`, the first its own, defined.
-    fn content(roots: Vec<Root>) -> Result<Content, String> {
+    /// Content of `folders`, defined.
+    fn content(folders: Vec<Root>) -> Result<Content, String> {
         let mut c = Content::default();
-        for (m, modules) in roots {
+        for (m, modules) in folders {
             c.scripts.add_root(m, modules);
         }
         c.define().map_err(|e| e.message)?;
@@ -193,61 +149,60 @@ mod tests {
     }
 
     const GAME: &[(&str, &str)] = &[
-        ("rules/turns", "return define.system { id = 'turns', state = { n = 'u8' } }"),
-        ("rules/ruleset", "return define.ruleset { id = 'game', stock = true, systems = { require('./turns') } }"),
+        ("rules/turns", "return define.system { id = 'game:turns', state = { n = 'u8' } }"),
+        ("rules/ruleset", "return define.ruleset { id = 'game:stock', stock = true, systems = { require('./turns') } }"),
         ("cards", "return define.record('card', { power = 1 })"),
         ("chips/cannon", "return define.record('chip-ish', { power = 3 })"),
     ];
 
-    /// docs/design/rules-in-luau.md §7.2: two roots load together, each
-    /// one's keys qualified with its name; a root names another's modules
-    /// only if it requires it.
+    /// docs/design/rules-in-luau.md, the flat namespace: the folders load
+    /// together, one namespace; every id is written in full, its game
+    /// first, and a module reaches any folder's modules.
     #[test]
-    fn roots_load_together_under_their_names() {
+    fn folders_load_together_one_namespace() {
         let mix: &[(&str, &str)] = &[
-            // Its own ruleset, of the other root's system and its own.
-            ("rules/extra", "return define.system { id = 'extra' }"),
+            // Its own ruleset, of the other folder's system and its own.
+            ("rules/extra", "return define.system { id = 'mix:extra' }"),
             (
                 "rules/ruleset",
-                "return define.ruleset { id = 'mix', stock = true, systems = { require('@game/rules/turns'), require('./extra') } }",
+                "return define.ruleset { id = 'mix:stock', stock = true, systems = { require('@game/rules/turns'), require('./extra') } }",
             ),
             ("cards", "return define.record('card', { power = 2 })"),
         ];
-        let c = content(vec![root("mix", &["game"], mix), root("game", &[], GAME)]).unwrap();
+        let c = content(vec![folder("mix", mix), folder("game", GAME)]).unwrap();
         let d = &c.defs;
-        assert_eq!(d.roots, ["mix", "game"]);
+        assert_eq!(d.roots, ["game", "mix"], "the games, by name");
         let keys: Vec<&str> = d.systems.iter().map(|s| s.key.as_str()).collect();
         assert_eq!(keys, ["game:turns", "mix:extra"]);
-        let mix_rules = d.ruleset_by_key("mix:mix").unwrap();
+        let mix_rules = d.ruleset_by_key("mix:stock").unwrap();
         assert_eq!(d.ruleset(mix_rules).systems.len(), 2);
-        // Each root's stock rules; the content's own root's are its stock.
-        assert_eq!(d.stock_ruleset(), Some(mix_rules));
-        assert_eq!(d.stock_ruleset_of("game"), d.ruleset_by_key("game"));
-        // An unqualified key finds the one root's; one two roots define
-        // must be qualified.
-        assert_eq!(d.ruleset_by_key("mix"), Some(mix_rules));
+        assert_eq!(d.stock_ruleset_of("mix"), Some(mix_rules));
+        assert_eq!(d.stock_ruleset_of("game"), d.ruleset_by_key("game:stock"));
+        // Lookups are exact.
+        assert_eq!(d.ruleset_by_key("test:stock"), None);
         assert!(d.record("game:cards#1").is_some() && d.record("mix:cards#1").is_some());
-        assert_eq!(d.record("cards#1"), None, "two roots define it");
-        assert_eq!(d.record("chips/cannon#1"), d.record("game:chips/cannon#1"));
+        assert_eq!(d.record("test:cards#1"), None);
+        // A definition's game is its id's prefix.
+        assert_eq!(d.root_of("mix:extra"), d.root_id("mix"));
+        assert_eq!(d.root_of("engine/player"), None);
     }
 
     #[test]
-    fn a_root_reaches_only_the_roots_it_requires() {
-        let mix: &[(&str, &str)] = &[("rules/ruleset", "return define.ruleset { id = 'mix', systems = { require('@game/rules/turns') } }")];
-        let e = content(vec![root("mix", &[], mix), root("game", &[], GAME)]).unwrap_err();
-        assert!(e.contains("root mix doesn't require root game"), "{e}");
-        let e = content(vec![root("mix", &["game"], mix)]).unwrap_err();
-        assert!(e.contains("root mix requires root game, which isn't loaded"), "{e}");
-        let e = content(vec![root("game", &[], GAME), root("game", &[], &[])]).unwrap_err();
-        assert!(e.contains("two roots are named game"), "{e}");
-        let e = content(vec![root("Game", &[], GAME)]).unwrap_err();
+    fn what_the_namespace_refuses() {
+        let e = content(vec![folder("game", &[("rules/turns", "return define.system { id = 'turns' }")])]).unwrap_err();
+        assert!(e.contains("\"turns\" names no game: write it in full (\"game:turns\")"), "{e}");
+        let e = content(vec![folder("game", &[("rules/x", "return define.rules('pools', { actor = 16 })")])]).unwrap_err();
+        assert!(e.contains("section name \"pools\" names no game"), "{e}");
+        let e = content(vec![folder("game", GAME), folder("game", &[])]).unwrap_err();
+        assert!(e.contains("two folders are named game"), "{e}");
+        let e = content(vec![folder("Game", GAME)]).unwrap_err();
         assert!(e.contains("not lowercase words"), "{e}");
-        // Two stock rulesets in one root.
+        // Two stock rulesets in one game.
         let two: &[(&str, &str)] = &[
-            ("a", "return define.ruleset { id = 'a', stock = true }"),
-            ("b", "return define.ruleset { id = 'b', stock = true }"),
+            ("a", "return define.ruleset { id = 'game:a', stock = true }"),
+            ("b", "return define.ruleset { id = 'game:b', stock = true }"),
         ];
-        let e = content(vec![root("game", &[], two)]).unwrap_err();
+        let e = content(vec![folder("game", two)]).unwrap_err();
         assert!(e.contains("root game has 2 stock rulesets"), "{e}");
     }
 
@@ -257,19 +212,19 @@ mod tests {
     #[test]
     fn a_mix_changes_its_base() {
         let mix: &[(&str, &str)] = &[
-            ("rules/extra", "return define.system { id = 'extra' }"),
+            ("rules/extra", "return define.system { id = 'mix:extra' }"),
             (
                 "rules/mixes",
                 "local game = require('@game/rules/ruleset')\n\
                  local turns = require('@game/rules/turns')\n\
                  local extra = require('./extra')\n\
                  return {\n\
-                   define.ruleset { id = 'plus', base = game, add = { extra } },\n\
-                   define.ruleset { id = 'minus', base = game, remove = { turns } },\n\
+                   define.ruleset { id = 'mix:plus', base = game, add = { extra } },\n\
+                   define.ruleset { id = 'mix:minus', base = game, remove = { turns } },\n\
                  }",
             ),
         ];
-        let c = content(vec![root("mix", &["game"], mix), root("game", &[], GAME)]).unwrap();
+        let c = content(vec![folder("mix", mix), folder("game", GAME)]).unwrap();
         let d = &c.defs;
         let systems = |key: &str| -> Vec<&str> {
             let r = d.ruleset(d.ruleset_by_key(key).unwrap());
@@ -282,32 +237,34 @@ mod tests {
         // What a ruleset refuses.
         let bad = |source: &str| -> String {
             let modules: &[(&str, &str)] = &[("rules/bad", source)];
-            content(vec![root("mix", &["game"], modules), root("game", &[], GAME)]).unwrap_err()
+            content(vec![folder("mix", modules), folder("game", GAME)]).unwrap_err()
         };
         let base = "local game = require('@game/rules/ruleset')\nlocal turns = require('@game/rules/turns')\n";
         let cases = [
-            ("return define.ruleset { id = 'x', stock = true, base = game }", "has no `base`"),
-            ("return define.ruleset { id = 'x', base = game, systems = { turns } }", "not `systems`"),
-            ("return define.ruleset { id = 'x', base = game, add = { turns } }", "which it has already"),
-            ("return define.ruleset { id = 'x', systems = {}, remove = { turns } }", "names none"),
-            ("return define.ruleset { id = 'x', systems = { turns } }", "no game's"),
-            ("return define.ruleset { id = 'x', systems = { turns }, game = 'nowhere' }", "no loaded root"),
-            ("return define.ruleset { id = 'x', systems = { turns }, game = 'mix' }", "which is no game's"),
+            ("return define.ruleset { id = 'mix:x', stock = true, base = game }", "has no `base`"),
+            ("return define.ruleset { id = 'mix:x', base = game, systems = { turns } }", "not `systems`"),
+            ("return define.ruleset { id = 'mix:x', base = game, add = { turns } }", "which it has already"),
+            ("return define.ruleset { id = 'mix:x', systems = {}, remove = { turns } }", "names none"),
+            ("return define.ruleset { id = 'mix:x', systems = { turns } }", "no game's"),
+            ("return define.ruleset { id = 'mix:x', systems = { turns }, game = 'nowhere' }", "no loaded root"),
+            ("return define.ruleset { id = 'mix:x', systems = { turns }, game = 'mix' }", "which is no game's"),
         ];
         for (source, want) in cases {
             let e = bad(&format!("{base}{source}"));
             assert!(e.contains(want), "{source}: {e}");
         }
-        let e = bad("return define.ruleset { id = 'x', base = require('@game/rules/ruleset'), remove = { define.system { id = 'y' } } }");
+        let e = bad(
+            "return define.ruleset { id = 'mix:x', base = require('@game/rules/ruleset'), remove = { define.system { id = 'mix:y' } } }",
+        );
         assert!(e.contains("which its base doesn't have"), "{e}");
-        // A mix in a mod's root names its game: it is that game's.
-        let named = bad_free(&format!("{base}return define.ruleset {{ id = 'x', systems = {{ turns }}, game = 'game' }}"));
+        // A mix that names its game is that game's.
+        let named = bad_free(&format!("{base}return define.ruleset {{ id = 'mix:x', systems = {{ turns }}, game = 'game' }}"));
         assert_eq!(named.ruleset(named.ruleset_by_key("mix:x").unwrap()).game, named.root_id("game").unwrap());
     }
 
-    /// The definitions of a `mix` root holding `source` beside `game`.
+    /// The definitions of a `mix` folder holding `source` beside `game`.
     fn bad_free(source: &str) -> crate::content::Defs {
         let modules: &[(&str, &str)] = &[("rules/ok", source)];
-        content(vec![root("mix", &["game"], modules), root("game", &[], GAME)]).unwrap().defs
+        content(vec![folder("mix", modules), folder("game", GAME)]).unwrap().defs
     }
 }

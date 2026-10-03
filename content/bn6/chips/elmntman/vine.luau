@@ -12,8 +12,8 @@ local sparks = require("../../lib/sparks")
 
 local vine = {}
 
-local SPRITE = asset.sprite("elmnt-man")
-local SOUND_ELMNT_VINE = asset.sound("elmnt-vine")
+local SPRITE = asset.sprite("bn6:elmnt-man")
+local SOUND_ELMNT_VINE = asset.sound("bn6:elmnt-vine")
 local ANIM = 0x12
 
 -- `sub_80DC520`: on its panel, on the ground (Z's whole part cleared).
@@ -82,7 +82,7 @@ local function tick(me: Object)
 end
 
 vine.kind = define.kind {
-    id = "elmntman/vine",
+    id = "bn6:elmntman/vine",
     pool = "attack",
     -- `sub_80DC4FC`.
     update = function(me: Object)

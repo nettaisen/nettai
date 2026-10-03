@@ -6,7 +6,7 @@ local django_chips = require("../django/chips")
 local navi = require("./navi")
 
 return define.chip {
-    id = "crosover",
+    id = "bn6:crosover",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

@@ -8,8 +8,8 @@
 "engine/intro" = { pool = "effect", index = 0x02, scratch_position = true }
 "bn6:barrier-visual" = { pool = "effect", index = 0x07 }
 "engine/charge-glow" = { pool = "effect", index = 0x08, scratch_position_without_sprite = true }
-"blkbomb/bomb" = { pool = "attack", index = 0x47 }
-"thunder/ball" = { pool = "attack", index = 0x2A }
+"bn5:blkbomb/bomb" = { pool = "attack", index = 0x47 }
+"bn5:thunder/ball" = { pool = "attack", index = 0x2A }
 "engine/effect" = { pool = "effect", index = 0x00 }
 "engine/hitbox" = { pool = "attack", index = 0x03 }
 "engine/spark" = { pool = "effect", index = 0x04 }
@@ -34,10 +34,10 @@
 "bn6:trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
 "bn6:instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
 "bn6:protoman/navi" = { pool = "actor", index = 0x3C }
-"sonic-boom" = { pool = "attack", index = 0x58 }
-"holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
-"holydrem/actor" = { pool = "actor", index = 0x1C }
-"holydrem/shot" = { pool = "attack", index = 0x83 }
+"bn5:sonic-boom" = { pool = "attack", index = 0x58 }
+"bn5:holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
+"bn5:holydrem/actor" = { pool = "actor", index = 0x1C }
+"bn5:holydrem/shot" = { pool = "attack", index = 0x83 }
 "bn6:invisibl/controller" = { pool = "effect", index = 0x5D, scratch_position = true }
 "bn6:mine/controller" = { pool = "effect", index = 0x29, scratch_position = true }
 "bn6:mine/land-mine" = { pool = "attack", index = 0x4C }

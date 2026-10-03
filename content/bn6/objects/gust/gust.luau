@@ -28,7 +28,7 @@ export type State = {
     unseen: boolean,
 }
 
-local SPRITE = asset.sprite("gust")
+local SPRITE = asset.sprite("bn6:gust")
 
 -- Its element byte (5: past the elements, what nothing is weak to).
 local ELEMENT = 5
@@ -163,7 +163,7 @@ local function init(me: Object)
 end
 
 gust.kind = define.kind {
-    id = "gust",
+    id = "bn6:gust",
     pool = "attack",
     state = { stop_on_hit = "bool", holder = "object", slot = "u8", pulls = "bool", unseen = "bool" },
     -- `sub_80CD2EC`.

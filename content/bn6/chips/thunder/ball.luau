@@ -38,7 +38,7 @@ export type State = {
 -- BN6's look: one sprite, its animations small and big (fast, or
 -- DarkThnd's 12 panels; +1 bursting); an attack hitting with modifier 1
 -- and the elec spark; its sound, DarkThnd's own.
-local SPRITE = asset.sprite("thunder-ball")
+local SPRITE = asset.sprite("bn6:thunder-ball")
 local BN6: ThunderBallLook = {
     sprite = SPRITE,
     small_anim = 0,
@@ -47,8 +47,8 @@ local BN6: ThunderBallLook = {
     is = collision.attack,
     hit_mod = 1,
     spark = sparks.elec,
-    sound = asset.sound("erase-man-2"),
-    dark_sound = asset.sound("elec-man"),
+    sound = asset.sound("bn6:erase-man-2"),
+    dark_sound = asset.sound("bn6:elec-man"),
 }
 -- The panel count that makes DarkThnd's.
 local DARK_PANELS = 0x0C
@@ -235,7 +235,7 @@ function ball.make_kind(id: string, look: ThunderBallLook): Kind
     }
 end
 
-ball.kind = ball.make_kind("thunder/ball", BN6)
+ball.kind = ball.make_kind("bn6:thunder/ball", BN6)
 
 -- `sub_80C954C`: a thunder ball for `owner` on (x, y) with the damage word
 -- `damage`. Its position is the spawner's registers (the panel Y, the

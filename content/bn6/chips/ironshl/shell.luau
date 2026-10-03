@@ -35,8 +35,8 @@ export type State = {
     softened: boolean,
 }
 
-local SPRITE, ANIM = asset.sprite("iron-shell"), 3
-local SOUND = asset.sound("iron-shell")
+local SPRITE, ANIM = asset.sprite("bn6:iron-shell"), 3
+local SOUND = asset.sound("bn6:iron-shell")
 -- A panel's width, 16.16.
 local PANEL_WIDTH = 0x28_0000
 -- The rise as it flies off, 16.16 per tick.
@@ -217,7 +217,7 @@ local function init(me: Object)
 end
 
 shell.kind = define.kind {
-    id = "ironshl/shell",
+    id = "bn6:ironshl/shell",
     pool = "attack",
     state = {
         palette = "u8",

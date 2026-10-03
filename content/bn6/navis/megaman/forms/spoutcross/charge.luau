@@ -16,7 +16,7 @@ local charge = {}
 -- fired from the ground: `dword_80ECC54`, `dword_80ECC5C`) with the spout's
 -- bullet (the parameter word 0xD). (Its compat key maps it to 0x25.)
 local SHOT = spreader.action {
-    id = "spoutcross/charge/action",
+    id = "bn6:spoutcross/charge/action",
     gun = spreader.guns.water_cannon,
     z = 0,
     bullet = bullet.variants.spout,
@@ -35,7 +35,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "spoutcross/charge",
+    id = "bn6:spoutcross/charge",
     -- The charge table's row 0xC, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 60, 50, 40, 30, 20, 60, 60, 60 },

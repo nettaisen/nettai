@@ -381,7 +381,7 @@ fn intercepted_by(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>, beat: 
         return false;
     }
     // The attack's chip; none reads as the pack's chip 0.
-    let record = b.content.chip_field(chip).clone();
+    let record = b.chip_field(chip).clone();
     let other = b.objects.get(r).alliance ^ 1;
     let support = match b.stats[other as usize].support {
         Some(opp) if beat && opp.beat && matches!(record.class, ChipClass::Mega | ChipClass::Giga) => {

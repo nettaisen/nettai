@@ -177,7 +177,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "falzar/controller",
+    id = "bn6:falzar/controller",
     pool = "effect",
     state = { bonus = "u16", falzar_out = "bool", last_x = "u32", last_y = "u32" },
     -- 0x080EDE8C: the dimming's phases (0x080EDEAC, by action:

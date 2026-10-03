@@ -21,7 +21,7 @@ export type State = {
 local RAISE, BLOW = 0x0, 0x4
 
 local ANIM = 0x0F
-local SOUND = asset.sound("drip-shower")
+local SOUND = asset.sound("bn6:drip-shower")
 -- The attack: 20 damage, hit parameter 0x8A; the storm's ticks (the
 -- parameter word's second byte, 0x3C).
 local DAMAGE, HIT_PARAM, TICKS = 0x14, 0x8A, 0x3C
@@ -82,7 +82,7 @@ local function update(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "patch-cards/count/charge/action",
+    id = "bn6:patch-cards/count/charge/action",
     state = { timer = "u16", sound = "u16" },
     update = update,
 }
@@ -95,7 +95,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "patch-cards/count/charge",
+    id = "bn6:patch-cards/count/charge",
     -- The charge table's row 0x6D, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 210, 200, 190, 185, 180, 160, 150, 140 },

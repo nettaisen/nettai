@@ -23,8 +23,8 @@ export type State = {
     action: Action?,
 }
 
-local SPRITE = asset.sprite("groundman")
-local SOUND = asset.sound("drilarm")
+local SPRITE = asset.sprite("bn6:groundman")
+local SOUND = asset.sound("bn6:drilarm")
 
 -- Its actions.
 local WAIT, FLY, DRILL = 0, 4, 8
@@ -183,7 +183,7 @@ local function tick(me: Object)
 end
 
 drill.kind = define.kind {
-    id = "groundman/drill",
+    id = "bn6:groundman/drill",
     pool = "attack",
     state = { side = "bool", wait = "u8", action = "action" },
     -- `sub_80DDDF0`.

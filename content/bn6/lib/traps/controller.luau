@@ -65,7 +65,7 @@ local function effect(me: Object)
 end
 
 traps.kind = define.kind {
-    id = "trap-chip",
+    id = "bn6:trap-chip",
     pool = "effect",
     state = { chip = "chip", bonus = "u16", trap = "record:trap" },
     -- `sub_80E34C0`.

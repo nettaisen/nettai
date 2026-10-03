@@ -1,54 +1,47 @@
-//! Qualified keys (docs/design/rules-in-luau.md §7.2).
+//! Ids in full (docs/design/rules-in-luau.md, the flat namespace).
 //!
-//! Content loads from roots: a content directory with a manifest whose
-//! `name` is its namespace (a game root's is its game, `bn6`). Inside a
-//! root, modules, compat and locale tables write keys unqualified, as
-//! `minibomb`; the loader qualifies every definition's key with its root,
-//! `bn6:minibomb`, so roots of several games load together without their
-//! keys meeting. The engine's own entries keep their `engine/...` keys,
-//! outside every root.
+//! The content is one namespace: every folder of content/ loads, and every
+//! id is written in full, its game first (`bn6:minibomb`), in modules,
+//! compat and locale tables alike; an asset's name likewise names its
+//! pack's game (`bn6:bomb`). The engine's own entries keep their
+//! `engine/...` keys, of no game.
 //!
 //! A module is named the same way: `bn6:chips/minibomb/chip` is
 //! content/bn6/chips/minibomb/chip.luau.
 
 /// What the engine's own entries' keys start with (`engine/player`): they
-/// belong to no root.
+/// belong to no game.
 pub const ENGINE: &str = "engine/";
 
-/// What separates a root's name from a key or module path in it.
+/// What separates a game's name from an id or module path in it.
 pub const SEPARATOR: char = ':';
 
-/// `key` of root `root`: `bn6:minibomb`. An engine key stays as it is.
-pub fn qualify(root: &str, key: &str) -> String {
-    if key.starts_with(ENGINE) { key.to_string() } else { format!("{root}{SEPARATOR}{key}") }
+/// `key` of game `game`, in full: `bn6:minibomb` (a pack's asset by its
+/// name in the pack). An engine key stays as it is.
+pub fn qualify(game: &str, key: &str) -> String {
+    if key.starts_with(ENGINE) { key.to_string() } else { format!("{game}{SEPARATOR}{key}") }
 }
 
-/// The root a qualified key or module name belongs to (`bn6` of
-/// `bn6:minibomb`); None for an engine key or an unqualified one.
+/// The game an id or module name belongs to (`bn6` of `bn6:minibomb`);
+/// None for an engine key or one not written in full.
 pub fn root_of(key: &str) -> Option<&str> {
     key.split_once(SEPARATOR).map(|(root, _)| root)
 }
 
-/// A key as its root writes it: `minibomb` of `bn6:minibomb` (an engine or
-/// unqualified key as it is).
+/// An id's own part, after its game: `minibomb` of `bn6:minibomb` (a
+/// pack's name for an asset; an engine key as it is).
 pub fn local(key: &str) -> &str {
     key.split_once(SEPARATOR).map_or(key, |(_, k)| k)
 }
 
-/// Whether `key` is qualified (or the engine's): a key a lookup takes as it
-/// is, never resolving it in a root.
+/// Whether `key` is written in full (or is the engine's).
 pub fn is_qualified(key: &str) -> bool {
     key.contains(SEPARATOR) || key.starts_with(ENGINE)
 }
 
-/// Whether a definition's (qualified) key `defined` is what `key` names:
-/// the same key, or, unqualified, its key in its root.
-pub fn names(defined: &str, key: &str) -> bool {
-    defined == key || (!is_qualified(key) && local(defined) == key)
-}
-
-/// Whether `name` is a valid root name: lowercase ASCII letters and digits
-/// in `-`-separated words (`bn6`, `bn6-souls`), and not `engine`.
+/// Whether `name` is a valid game (folder) name: lowercase ASCII letters
+/// and digits in `-`-separated words (`bn6`, `bn6-souls`), and not
+/// `engine`.
 pub fn valid_root_name(name: &str) -> bool {
     name != "engine"
         && !name.is_empty()
@@ -67,9 +60,6 @@ mod tests {
         assert_eq!(root_of("engine/player"), None);
         assert_eq!(local("bn5:cannon"), "cannon");
         assert_eq!(local("cannon"), "cannon");
-        assert!(names("bn6:cannon", "cannon"));
-        assert!(names("bn6:cannon", "bn6:cannon"));
-        assert!(!names("bn6:cannon", "bn5:cannon"));
         assert!(valid_root_name("bn6-souls"));
         assert!(!valid_root_name("engine"));
         assert!(!valid_root_name("BN6"));

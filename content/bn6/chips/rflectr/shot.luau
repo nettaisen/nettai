@@ -11,7 +11,7 @@ local regions = require("../../lib/regions")
 
 local shot = {}
 
-local SPRITE = asset.sprite("pink-flash")
+local SPRITE = asset.sprite("bn6:pink-flash")
 -- Ticks before the next segment starts.
 local SPREAD_TICKS = 2
 
@@ -93,7 +93,7 @@ local function init(me: Object): boolean
 end
 
 shot.kind = define.kind {
-    id = "rflectr/shot",
+    id = "bn6:rflectr/shot",
     pool = "attack",
     -- `sub_80C9BC4`: the state, then the sprite.
     update = function(me: Object)

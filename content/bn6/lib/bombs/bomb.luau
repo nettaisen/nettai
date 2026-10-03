@@ -18,12 +18,12 @@ local bomb = {}
 
 export type State = { variant: BombVariant }
 
-local SPRITE = asset.sprite("bomb")
+local SPRITE = asset.sprite("bn6:bomb")
 -- Flight: 40 ticks at 0x2E666 a tick forward, rising at 0x20666 less
 -- 0x2800 a tick (`byte_80C5D58`; the gravity sits in the Y velocity).
 local FLIGHT_TICKS = 0x28
 local SPEED, RISE, GRAVITY = 0x2E666, 0x20666, -0x2800
-local SOUND_HIT_BOMB = asset.sound("hit-bomb-1")
+local SOUND_HIT_BOMB = asset.sound("bn6:hit-bomb-1")
 
 -- What the navi holds while throwing a bomb (the original's attachment row
 -- 0x04; BigBomb's throw adds 3 to its palette).
@@ -139,7 +139,7 @@ local function init(me: Object)
 end
 
 bomb.kind = define.kind {
-    id = "bomb",
+    id = "bn6:bomb",
     pool = "attack",
     state = { variant = "record:bomb-variant" },
     -- `sub_80C5BB0`.

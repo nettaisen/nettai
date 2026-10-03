@@ -12,8 +12,8 @@ local regions = require("../regions")
 
 local shot = {}
 
-local SPRITE = asset.sprite("grab-shot")
-local SOUND_FALL, SOUND_LAND = asset.sound("grab-shot-2"), asset.sound("grab-shot")
+local SPRITE = asset.sprite("bn6:grab-shot")
+local SOUND_FALL, SOUND_LAND = asset.sound("bn6:grab-shot-2"), asset.sound("bn6:grab-shot")
 -- How high it starts, and how fast it falls, 16.16.
 local HEIGHT, FALL_SPEED = 0x100_0000, 0x8_0000
 -- A stolen panel stays the thief's this long
@@ -102,7 +102,7 @@ local function init(me: Object)
 end
 
 shot.kind = define.kind {
-    id = "grab/shot",
+    id = "bn6:grab/shot",
     pool = "attack",
     -- `sub_80C6414`.
     update = function(me: Object)

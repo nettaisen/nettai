@@ -21,8 +21,8 @@ export type State = {
     hit_mod: number,
 }
 
-local SPRITE = asset.sprite("fire-hit")
-local SOUND = asset.sound("fire-hit")
+local SPRITE = asset.sprite("bn6:fire-hit")
+local SOUND = asset.sound("bn6:fire-hit")
 
 -- What the effect looks for (`off_80CFEB8`, by the user's side): the other
 -- side's navis and objects.
@@ -109,7 +109,7 @@ local function init(me: Object)
 end
 
 fist.kind = define.kind {
-    id = "firehit/fist",
+    id = "bn6:firehit/fist",
     pool = "attack",
     state = { hit_mod = "u8" },
     -- `sub_80CFCF8`.

@@ -45,8 +45,8 @@ local WATCH, SPRING = 0, 4
 -- `sub_800ABC6`: the sparkle on each of the enemy navi's panels
 -- (`byte_80CE0DC`: the panels of the other side's player navi), 16 pixels
 -- down and 32 up from the panel's center, and its sound.
-local SPARKLE = define.effect { sprite = asset.sprite("hit-sparks"), anim = 7, palette = 0 }
-local SPARKLE_SOUND = asset.sound("dimming-sparkle")
+local SPARKLE = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 7, palette = 0 }
+local SPARKLE_SOUND = asset.sound("bn6:dimming-sparkle")
 local SPARKLE_DY, SPARKLE_Z = 0x10_0000, 0x20_0000
 
 -- `sub_80CE0A4`: sparkles on the enemy navi's panels, first to last.
@@ -164,7 +164,7 @@ local function update(me: Object)
 end
 
 trap.kind = define.kind {
-    id = "elemtrap/trap",
+    id = "bn6:elemtrap/trap",
     pool = "attack",
     state = { chip = "chip", bonus = "u16", armed = "bool", sprung_by = "u8" },
     update = update,

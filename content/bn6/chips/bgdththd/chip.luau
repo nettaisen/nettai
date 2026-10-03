@@ -8,7 +8,7 @@ local navi_boost = require("../../lib/navi-boost/controller")
 -- (The record's extra flags 0x08 and 0x10 have no battle reader, and no
 -- name.)
 return define.chip {
-    id = "bgdththd",
+    id = "bn6:bgdththd",
     codes = { "V" },
     element = "elec", family = "elec", class = "giga",
     rarity = 4, mb = 80, damage = 0, hit_param = 138, lockout = 0,

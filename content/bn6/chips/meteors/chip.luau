@@ -116,7 +116,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "meteors/controller",
+    id = "bn6:meteors/controller",
     pool = "effect",
     state = { bonus = "u16", panels = "u8[20]", count = "u32", next = "u32" },
     -- `sub_80E4188`.
@@ -133,7 +133,7 @@ local function hook(user: Object, spec: DimmingChipSpec): Object?
 end
 
 return define.chip {
-    id = "meteors",
+    id = "bn6:meteors",
     codes = { "R" },
     element = "fire",
     family = "fire",

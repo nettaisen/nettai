@@ -379,9 +379,11 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
         let p = o.panel;
         let target = PanelPos { x: (p.x as i8 + v.dx) as u8, y: (p.y as i8 + v.dy) as u8 };
         if can_slide_to(b, r, target) {
+            // (The arena's speed: BN5's goes 8 pixels a tick in depth.)
+            let speed = b.arena_rules().slide_speed;
             let o = b.objects.get_mut(r);
-            o.vel.x = v.dx as i32 * 0xA_0000;
-            o.vel.y = v.dy as i32 * 0x6_0000;
+            o.vel.x = v.dx as i32 * speed.x;
+            o.vel.y = v.dy as i32 * speed.y;
             o.future_panel = target;
             b.reserve_panel(r, target.x, target.y);
             b.objects.get_mut(r).drag_step = DragStep::Slide;
@@ -629,6 +631,34 @@ mod tests {
         assert_eq!(slide_vector(&b, r), SlideVector { dx: 0, dy: -1, tiles: 1 });
         coll_mut(&mut b, r).direction = 4;
         assert_eq!(slide_vector(&b, r), SlideVector { dx: 0, dy: 1, tiles: 1 });
+    }
+
+    /// docs/design/bn5-map.md §15.3 item 17: a drag goes at the arena's
+    /// speed (BN6's 6 pixels a tick in depth, BN5's 8).
+    #[test]
+    fn a_drag_goes_at_the_arenas_speed() {
+        let speed = |y: i32| {
+            let mut c: Content = testing::build();
+            c.define().unwrap_or_else(|e| panic!("{e}"));
+            for rules in &mut c.rules {
+                rules.slide_speed.y = y;
+            }
+            let c = Arc::new(c);
+            let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+            setup.content = c.hash();
+            let mut b = Battle::new(setup, c);
+            b.spawn_actors();
+            b.run_objects();
+            b.round.flags |= battle_flags::FIGHTING;
+            let r = b.player(1).unwrap();
+            // A push up a panel (BN6's 0x80 rows: bit 2, row 5).
+            coll_mut(&mut b, r).hit_mod_final = 0x84;
+            b.objects.get_mut(r).slide_type = 1;
+            start_drag(&mut b, r);
+            b.objects.get(r).vel.y
+        };
+        assert_eq!(speed(0x6_0000), -0x6_0000);
+        assert_eq!(speed(0x8_0000), -0x8_0000);
     }
 
     /// docs/design/bn5-map.md §15.3 item 6: the mood rises to 254 at most,
