@@ -1359,9 +1359,9 @@ them.
    first. The recordings that dig for a chip over several turns (HolyDrem's, the chip lab's `dig`) met it.
 19. **BN5's obstacle framework** (0x08018404, BN6's `sub_801B750`): outside the dimming, an obstacle not in its
    first action on a solid panel tests a word (+0x5C of the toolkit's +0x18) against 0x20 or 0x10 by its panel's
-   side, then the panels beside it, and may spawn attack object 0x30 there (0x080CAB02, 0x080CAAE2: unread
-   further); BlkBomb's idle and return actions are 7 and 6 (BN6's 9 and 8), its table without frozen and bubbled.
-   Not met in the replays yet.
+   side, then the panels beside it, and may spawn attack object 0x30 there (0x080CAB02, 0x080CAAE2: ColonelSoul's
+   army, read in §15.11); BlkBomb's idle and return actions are 7 and 6 (BN6's 9 and 8), its table without frozen
+   and bubbled. Not met in the replays yet.
 
 ### 15.8 Soul Unison (as built, in progress)
 
@@ -1573,8 +1573,29 @@ service gains `obstacle.throw` (`sub_800F6AC`: the request `sub_8018002` serves;
 `obstacle.throwable` (an identity's `throwable`, default true; BN5's mine sets false: Poltergeist's 0x080E8CA0
 skips BN5's NameIDs 0xDA, 0xD3, 0xD2, 0xE5, 0xE4 and 0xE7). A thrown obstacle's landing (`sub_80180EC`, BN5's
 0x08014AB4: r4 = 0x06050001, Param2 0) shows the plain spark: the role `sparks.thrown_obstacle` is `plain` in both
-games (BN6's said `charged`, read from the wrong byte; BN6 never throws one). Item 19 (the obstacle framework's
-word +0x5C and attack object 0x30) is still unread: no recording meets it.
+games (BN6's said `charged`, read from the wrong byte; BN6 never throws one).
+
+Item 19 (§15.7), read: it is ColonelSoul's army. All four of BN5's obstacle reactions (0x08018000, 0x08018168,
+0x080182D4 and 0x08018404, BN6's `sub_801B394`, `sub_801B4D4`, `sub_801B610` and `sub_801B750`) add one step after
+the damage and the crushing hits (an obstacle they leave standing): outside the dimming and past its first action,
+0x080CAB02 asks whether an obstacle on a solid panel (flags 0x10) of side A stands where the other side's
+ColonelSoul can use it: BattleState+0x5C bit 0x20 (A = 0) or 0x10 (A = 1), which ColonelSoul's start (0x08011C44,
+the souls' table 0x08011BB0 entry 6) sets by its navi's side (0x080CAC1E; 0x080CAC30 clears it, from 0x08011918 and
+0x08011B3C). Then for that side S: a body of S's enemy (panel flags 0x04000000 for S = 0, 0x08000000 for S = 1) on
+one of the two panels on S's side of the obstacle (toward S's back, 0x080CAB5A, stopping off the field) gives 1;
+else one anywhere on S's front of it in the row (0x080CABB0, `object_getFirstPanelInDirectionFiltered`) gives 2.
+Either way 0x080CAAE2 spawns attack object 0x30 on the obstacle's panel (alliance S, Param1 the answer less 1,
+flipped when Param1 is 0: it faces back toward S's side) and the obstacle's HP and max HP go to 0 (a word store), so
+it breaks as any other. Attack 0x30 (0x080CA834) is the soldier: Param1 0 a cannon soldier (anim 1 for 15 ticks,
+sound 0xB0, 0x080E9FD2 on the panel ahead; then anim 2 for 24, and 6 ticks in a hit region 0x0705FF02 on the panel
+ahead, r6 ColonelSoul's first damage word, r7 3, and effect 23), Param1 1 a machine gunner (anim 4 for 15 ticks;
+then anim 5 and three shots 10 ticks apart, 0x080C6D26 with one of four values from 0x080CAA84 by RNG2, sound 0xB9,
+the second word); both then blink out over 30 ticks (action 8). The damage words (0x02034000 + 8 × side, 0x080CABF8)
+are ColonelSoul's start's: 40 + 10 a buster attack level (`sub_800FE5E`) and 10 + 2 a level, each | 0x00944000.
+0x080F8418 (an entry of 0x080F24A0, a computer navi's) sets the bit and the words too. BN5's obstacle flag word
+moves bits too (removed 0x10000, encased 0x6000; BN6's 0x8000 and 0x3000): the engine's names keep BN6's, which
+nothing outside reads. Nothing ports it yet: ColonelSoul isn't in the content, and no recording has an obstacle
+while it is active.
 
 **Shared modules moved to content/common** (makers taking a game's look; BN6's modules wrap them with the same
 APIs): anubis, guardian, otenko, justcone, batcan, colorpt, geddon (controller, quake), barriers (visual,
