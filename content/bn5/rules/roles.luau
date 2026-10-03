@@ -15,7 +15,7 @@
 
 local antidmg_counter = require("../chips/antidmg/counter")
 local barriers = require("@bn6/lib/barriers/barriers")
-local charged_shot = require("@bn6/navis/megaman/weapons/charged-shot/weapon")
+local charged_shot = require("../navis/megaman/weapons/charged-shot")
 local anti_recovery = require("../chips/antirecv/controller")
 local collision = require("./collision")
 local effects = require("@bn6/lib/effects")
@@ -27,8 +27,8 @@ local swords = require("../lib/swords")
 return define.roles {
     id = "bn5:roles",
     actions = {
-        -- The charged shot a navi's request starts from idle without its weapon's setup (BN6's action, BN5's
-        -- 0x1E: the same code but for the flash's attachment row).
+        -- The charged shot a navi's request starts from idle without its weapon's setup (BN5's 0x1E: the shared
+        -- action, @common/megaman/charged_shot, navis/megaman/weapons/charged-shot).
         forced_charged_shot = charged_shot.action,
         -- The trap chips' counters, which a trap that caught a hit starts (the original's actions 0x47 and
         -- 0x48: AntiDmg's and AntiSwrd's, BN6's code; AntiSwrd's swinging BN5's blade and throwing BN5's sonic

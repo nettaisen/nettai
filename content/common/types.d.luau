@@ -173,6 +173,21 @@ export type ProtoManKind = {
     self_type: CollisionType,
 }
 
+-- A game's MegaMan's shots (@common/megaman): the action's key, its buster parts, its projectiles, its attachment
+-- kind, the shot's sound, and the projectile a shot fires without a setup's (the table's first row).
+export type MegaManShotLook = {
+    id: string,
+    buster: Buster,
+    projectiles: Projectiles,
+    attachment: Kind,
+    shot_sound: Sound,
+    plain: ProjectileVariant,
+}
+
+-- A game's buster shot (@common/megaman/buster): its shot's look, and a throw's sound and its throw of the obstacle
+-- the navi absorbed (none: the game throws none).
+export type MegaManBusterLook = MegaManShotLook & { throw_sound: Sound, throw: ((me: Object) -> ())? }
+
 -- A trap chip's object (a "trap" record, @common/traps/controller): `set` spawns it for the controller and its user,
 -- with the chip and bonus the controller keeps.
 export type Trap = {
