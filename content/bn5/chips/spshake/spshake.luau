@@ -157,12 +157,23 @@ for k, w in spshake.waves do
     spshake.waves[k] = define.record("shake-wave", w)
 end
 
--- 0x080D319E: a wave of `wave` on (x, y), elec, with the damage word.
-local function spawn(owner: Object, x: number, y: number, damage: number, wave: Wave): Object?
-    local o = battle.spawn(spshake.kind, Vec3.new(y, ELEC, 0))
+-- A wave by its parameters (ShakPar's: chips/shakpar/shakpar): Param1 the speed's row of 0x080D30D4, Param2 whether it
+-- paralyzes, Param3 its palette.
+local SPEEDS = { [0] = 0x1_8000, [1] = 0x2_4000, [2] = 0x3_0000 }
+function spshake.wave(speed: number, paralyzes: boolean, palette: number): Wave
+    local v = SPEEDS[speed]
+    if not v then
+        error(string.format("the SpShake wave's speed %d reads past 0x080D30D4", speed))
+    end
+    return define.record("shake-wave", { speed = v, paralyzes = paralyzes, palette = palette })
+end
+
+-- 0x080D319E: a wave of `wave` on (x, y) with `element` (the SpShakes' action passes elec) and the damage word.
+function spshake.spawn(owner: Object, x: number, y: number, element: number, damage: number, wave: Wave): Object?
+    local o = battle.spawn(spshake.kind, Vec3.new(y, element, 0))
     if o then
         o.panel_x, o.panel_y = x, y
-        o.element = ELEC
+        o.element = element
         o:set_damage_word(damage)
         o.alliance, o.flip = owner.alliance, owner.flip
         local s = o.state :: State
@@ -176,7 +187,7 @@ function spshake.action(id: string, wave: Wave): Action
     return armshot.action {
         id = id,
         fire = function(me: Object, x: number, y: number, damage: number)
-            spawn(me, x, y, damage, wave)
+            spshake.spawn(me, x, y, ELEC, damage, wave)
         end,
     }
 end

@@ -179,6 +179,11 @@ pub(crate) fn take_off_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
 pub(super) fn apply_form_flags(b: &mut Battle, r: ObjectRef) {
     let effects = form_of(b, r).status_reset;
     apply_effects(b, r, effects);
+    // The form's own (`reset`: BN5's souls' routines, 0x08011B92).
+    let form = super::stats(b, r).form;
+    if let Some(f) = b.content.defs.form(form).reset {
+        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
+    }
 }
 
 /// `sub_801469C`: after a NaviCust edit (a bug code, an uninstall) the

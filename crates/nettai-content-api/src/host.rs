@@ -156,6 +156,10 @@ pub enum HookCall {
     /// A role hook the ruleset calls with a navi (`define.roles`'
     /// `hooks`): its result is unused.
     RoleNavi { navi: ObjectRef },
+    /// A form's hook the engine calls with the navi in it (its `reset`:
+    /// what else the status reset does in the form, BN5's souls'). Its
+    /// result is unused.
+    FormNavi { navi: ObjectRef },
     /// `encased(obstacle, ice, class)` (`sub_801813A`'s end): put what an
     /// obstacle encased in ice (`ice`) or a bubble becomes on its panel; its
     /// field-object registry class (none: it wasn't registered). Its result
@@ -255,6 +259,14 @@ pub enum SystemHook {
     /// `sub_801002C`, BN5's 0x0800DD94: its light and dark system's). The
     /// first system that answers decides; none, the framework's (BN6's).
     NaviPalette,
+    /// `navi_bug(side, navi)`: before the navi takes its hit's NaviCust bug
+    /// (`sub_80139F6`, BN5's 0x0801103E): a system may change the bug
+    /// (the collision's `inflicted_bugs`: BN5's light and dark system turns
+    /// its codes 0xFD and 0xFC into an HP drain or none), or answer true:
+    /// the bug and the weapons' reload are skipped (BN5's, for hit flag
+    /// 0x400 on a light/dark value of 1000 or more). The first system that
+    /// answers true decides.
+    NaviBug,
     /// `custom.hand_size(side)`: how many chips the side's custom screen
     /// deals (`sub_802A40C`; BN5's `sub_802A49C`), asked as it opens. The
     /// first system that answers decides; none answering, the framework's
@@ -334,6 +346,7 @@ impl SystemHook {
             SystemHook::NaviTick => "navi_tick",
             SystemHook::StartingMood => "starting_mood",
             SystemHook::NaviPalette => "navi_palette",
+            SystemHook::NaviBug => "navi_bug",
             SystemHook::CustomHandSize => "custom.hand_size",
             SystemHook::CustomOpen => "custom.open",
             SystemHook::CustomConfirmed => "custom.confirmed",
@@ -350,7 +363,7 @@ impl SystemHook {
         }
     }
 
-    pub const ALL: [SystemHook; 30] = [
+    pub const ALL: [SystemHook; 31] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -369,6 +382,7 @@ impl SystemHook {
         SystemHook::NaviTick,
         SystemHook::StartingMood,
         SystemHook::NaviPalette,
+        SystemHook::NaviBug,
         SystemHook::CustomHandSize,
         SystemHook::ButtonShown,
         SystemHook::ButtonState,

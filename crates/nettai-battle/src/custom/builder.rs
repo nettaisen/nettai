@@ -20,14 +20,15 @@ pub mod modifier_bits {
 
 /// Program Advances a player has formed this round (once each), by the
 /// result's place among them (`Library::advance_index`; the original's bit
-/// is the result's place in its chip table past the last Giga chip).
+/// is the result's place in its chip table past the last Giga chip). The
+/// content's Program Advances of every game have their own bits.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct ProgramAdvancesUsed(pub u32);
+pub struct ProgramAdvancesUsed(pub u64);
 
 impl ProgramAdvancesUsed {
     /// `sub_8029652`: spend a Program Advance; false if it was spent.
     fn spend(&mut self, index: u8) -> bool {
-        let bit = 1 << index;
+        let bit = 1u64 << index;
         let fresh = self.0 & bit == 0;
         self.0 |= bit;
         fresh
@@ -75,12 +76,14 @@ pub struct FormedAdvance {
 
 /// Build a hand from the picked chips, in pick order (`sub_8029110`),
 /// with each chip's damage from `damage`. `turn`: the screen's number in
-/// the round (1 = first).
+/// the round (1 = first). `per_player_gauges`: battle flag 0x40 (the
+/// recipes only it tries count).
 pub fn build(
     picks: &[Pick],
     turn: u8,
     pa_used: &mut ProgramAdvancesUsed,
     library: &dyn Library,
+    per_player_gauges: bool,
     damage: impl Fn(ChipHandle) -> u16,
 ) -> Built {
     let mut entries = [EMPTY; 6];
@@ -97,7 +100,7 @@ pub fn build(
     let mut program_advance = None;
     if !picks.is_empty() {
         let chips: Vec<FolderChip> = picks.iter().map(|p| p.chip).collect();
-        if let Some((result, start, len)) = find_program_advance(&chips, pa_used, library) {
+        if let Some((result, start, len)) = find_program_advance(&chips, pa_used, library, per_player_gauges) {
             // sub_80292CC: the recipe's chips become the Program Advance;
             // it is the Regular chip if one of them was.
             let regular = entries[start..start + len].iter().fold(0, |m, e| m | (e.modifiers & modifier_bits::REGULAR));
@@ -125,15 +128,21 @@ pub fn build(
 
 /// `sub_8029520`: the first Program Advance in the selection, trying each
 /// start position in turn and the recipes in table order; one already
-/// formed this round is passed over. Returns (result, start, length).
+/// formed this round is passed over, and one only battle flag 0x40 tries
+/// without it (BN5's 0x080251DC: its full table with the flag, the
+/// netbattles' without). Returns (result, start, length).
 fn find_program_advance(
     chips: &[FolderChip],
     used: &mut ProgramAdvancesUsed,
     library: &dyn Library,
+    per_player_gauges: bool,
 ) -> Option<(ChipHandle, usize, usize)> {
     for start in 0..chips.len().saturating_sub(2) {
         let rest = &chips[start..];
         for pa in library.program_advances() {
+            if pa.per_player_gauges_only && !per_player_gauges {
+                continue;
+            }
             let len = pa.recipe.len();
             if rest.len() < len || !recipe_matches(&pa.recipe, &rest[..len]) {
                 continue;
@@ -292,8 +301,13 @@ mod tests {
                 ProgramAdvance {
                     result: ChipHandle(0x141),
                     recipe: Recipe::Sequence(vec![ChipHandle(QUIET), ChipHandle(CANNON), ChipHandle(QUIET)]),
+                    per_player_gauges_only: false,
                 },
-                ProgramAdvance { result: ChipHandle(0x140), recipe: Recipe::CodeRun { chip: ChipHandle(CANNON), count: 3 } },
+                ProgramAdvance {
+                    result: ChipHandle(0x140),
+                    recipe: Recipe::CodeRun { chip: ChipHandle(CANNON), count: 3 },
+                    per_player_gauges_only: false,
+                },
             ],
         )
     }
@@ -309,7 +323,7 @@ mod tests {
 
     fn built(picks: &[Pick]) -> Built {
         let lib = library();
-        build(picks, 1, &mut ProgramAdvancesUsed::default(), &lib, |id| lib.chip(id).damage)
+        build(picks, 1, &mut ProgramAdvancesUsed::default(), &lib, false, |id| lib.chip(id).damage)
     }
 
     #[test]
@@ -335,7 +349,7 @@ mod tests {
         picks[1].regular = true;
         let lib = library();
         let mut used = ProgramAdvancesUsed::default();
-        let b = build(&picks, 2, &mut used, &lib, |id| lib.chip(id).damage);
+        let b = build(&picks, 2, &mut used, &lib, false, |id| lib.chip(id).damage);
         assert_eq!(b.program_advance.map(|p| (p.chip, p.picks)), Some((ChipHandle(0x140), 3)));
         // The end marker moves up behind the Program Advance; the third
         // part stays past it, as in the game.
@@ -345,7 +359,7 @@ mod tests {
         let picked = |code: u8| Some(FolderChip::new(ChipHandle(CANNON), ChipCode(code)));
         assert_eq!(b.hand.selection[..4], [picked(0), picked(1), picked(2), None]);
         assert_eq!(b.hand.turn, [1; 6]);
-        let again = build(&picks, 3, &mut used, &lib, |id| lib.chip(id).damage);
+        let again = build(&picks, 3, &mut used, &lib, false, |id| lib.chip(id).damage);
         assert_eq!(again.program_advance, None);
         assert_eq!(again.hand.ids[..3], ids([CANNON; 3]));
     }
