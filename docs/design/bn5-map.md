@@ -1579,7 +1579,7 @@ controller), rflectr, rock (rock, debris), boulder, bugfix (glow, controller), h
 none when full); `battle.gauge_full` (battle flag 2) and `battle.drain_custom_gauge` (`sub_801DFD0`, CusVolt's drain
 outside link battles).
 
-**Chips.** In the range, 131 chips match all their recordings (474 of its 543 recordings; the 69 left belong to
+**Chips.** In the range, 135 chips match all their recordings (484 of its 543 recordings; the 59 left belong to
 chips with no use yet). The last ones: BugFix; LCrsShld, LStepSwd, LCounter (the Liberation chips: BN5's
 controller, effect 0x8A, gives the side five uses of the ability, which only a Liberation Mission's specials read,
 nothing a netbattle reads); Poltrgst (BN5's own: controller effect 0x72, stand-in actor 0x58, poltergeist effect
