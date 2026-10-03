@@ -1,7 +1,6 @@
 --!strict
--- BN5's BugBomb (attack object #0x77, 0x080DADBC): the shared BugBomb (@common/bugbomb/bomb, BN6's code) with BN5's
--- look and bugs. It explodes as effect 0x32 (BN6's 0x4A, the same look), sounds 0x6F crushed (BN6's 0x70), and
--- steps its sprite again after each lifecycle step (0x080DADC8).
+-- BN5's BugBomb (attack object #0x77, 0x080D4E54): the shared BugBomb (@common/bugbomb/bomb, BN6's code) with BN5's
+-- look and bugs. It explodes as effect 0x32 (BN6's 0x4A, the same look) and sounds 0x6F crushed (BN6's 0x70).
 --
 -- Its bugs (0x080D50CA, BN6's `sub_80D9FC2`): of HP drain, custom-screen HP drain and emotion swings (NaviStats
 -- +0x18, +0x19, +0x24; BN6 has a panel trail and buster blanks for the last), one its target's side lacks, at
@@ -60,7 +59,6 @@ bug_bomb.kind = common.make_kind("bn5:bugbomb/bomb", {
     crushed_sound = asset.sound("bn5:hit-bomb-0"),
     burst_sound = asset.sound("bn5:hit-bomb-1"),
     pick_bug = pick_bug,
-    sprite_after = true,
 })
 
 return bug_bomb

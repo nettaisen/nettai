@@ -1,6 +1,6 @@
 --!strict
--- A BugBomb (BN6's attack object #0xA5, `sub_80D9D4C`; BN5's #0x77, 0x080DADBC, the same code but for its
--- look, its bugs and a sprite update after each lifecycle step). Lobbed at the panel three ahead, it sits there
+-- A BugBomb (BN6's attack object #0xA5, `sub_80D9D4C`; BN5's #0x77, 0x080D4E54, the same code but for its
+-- look and its bugs). Lobbed at the panel three ahead, it sits there
 -- with 40 HP for a second and then bursts over the 3x3 around it, giving what it hits a NaviCust bug its target's
 -- side doesn't have yet, picked at random by its game (`look.pick_bug`). Breaking it or a crushing hit first ends
 -- it in an explosion; landing in a hole, in a puff of smoke.
@@ -24,7 +24,7 @@ export type State = {
 -- A game's BugBomb: its sprite and animation, what it is and is hit by while it sits (and its hits' status), and
 -- what it bursts as and reaches; the explosions (a crushed one's and the burst's on each panel of the 3x3), the
 -- sounds of its landing, its crushing and its burst; the bug its burst gives (setting the collision's bugs from
--- its target's stats); and whether it steps its sprite again after each lifecycle step (BN5's 0x080DADC8).
+-- its target's stats).
 export type Look = {
     sprite: SpriteAsset,
     anim: number,
@@ -39,7 +39,6 @@ export type Look = {
     crushed_sound: Sound,
     burst_sound: Sound,
     pick_bug: (me: Object) -> (),
-    sprite_after: boolean?,
 }
 
 -- Thrown at 0x2C000 a tick along the ground, to land 10 pixels up, falling 0x2800 a tick.
@@ -205,12 +204,7 @@ function bomb.make_kind(id: string, look: Look): Kind
             elseif l == "update" then
                 tick(me, look)
             else
-                -- (BN5's steps the sprite after this too: of a freed object, to no effect.)
                 me:destroy()
-                return
-            end
-            if look.sprite_after and me.active then
-                me:update_sprite()
             end
         end,
     }
