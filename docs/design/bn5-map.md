@@ -1259,7 +1259,7 @@ chips/gundels/gundels); BugBomb (the shared BugBomb, content/common/bugbomb, wit
 the emotion swings); Katana1 to 3 (chips/katana/katana); MrkCan1 to 3 (chips/mrkcan/mrkcan: the sweeping sight, effect
 0x44, and the cannon at its panel); Pulsar1 to 3 and SpShake1 to 3 (lib/armshot, and lib/arm: BN5's buster arm,
 0x080EBABE; the pulse, attack 0x6A, and the shake wave, 0x68); Skully1 to 3 (chips/skully/skully, attack 0x88);
-Astroid1 to 3 (objects/meteors: instant effect 17, 6, 8 and 10 meteors); Snake (the shared snake and holes' scan,
+Astroid1 to 3 (chips/meteors: instant effect 17, 6, 8 and 10 meteors); Snake (the shared snake and holes' scan,
 content/common/snake: BN5's nest sends three snakes at a time with a flag each, its snakes wait 48 ticks and
 strike as wood); YoYo (the shared throw, content/common/yoyo; BN5's yoyo, chips/yoyo/yoyo, attack 0x52, GreatYo's
 modes too); Slasher (BN5's own action 0x29: while A is held, the wide slash at an enemy navi's column); CircGun
@@ -1540,6 +1540,11 @@ which the engine runs for a side whose rules say so (the status section's `emoti
   form: BN6's Cross break without animation 2 and the overlay's refresh, the overlay's kept stepping, the collision
   region's removal and return, and the flags 0x80110000 and statuses 0x200800 it clears. (In a netbattle a light
   MegaMan's dark chip fizzles first and a dark one has no Soul Unison: no recording reaches it.)
+
+- **The light/dark bug codes** (0x0801103E, the navi's hit NaviCust bug; the hook `navi_bug`, the light and dark
+  system's): a hit with hit flag 0x400 brings nothing to a value of 1000 or more (not even the weapons' reload); code
+  0xFD is an HP drain of level 1 (code 0x18, argument 1, through the drain's flags rule) on a dark MegaMan (the value's
+  tier 2), code 0xFC the same from 500; else neither is anything. Django's hits bring both: his recordings match.
 
 **ProtoSoul's B+Back** (weapon routine 4, 0x0800F634; navis/megaman/forms/protosoul/back): BN5's guard (action 0x1F,
 lib/guard) as the NaviCust Reflect program's (subtype 4): 20 ticks (the params word 0x114's first byte), the Reflect

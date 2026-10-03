@@ -38,7 +38,7 @@ setup and both players' buttons (rollback netplay):
 | The hand, NaviStats and transform record sent in 50 link words; committed when both magic words are in | `Side::sent` (the result and the tick its last word arrives); the fight resumes when both have arrived |
 | The folder shuffle at the round's init with the console's own RNG1 | `BattleFolder::shuffled` with the RNG it's given; `RoundSetup::players[p].folder` is the shuffled folder |
 | Each console's RNG1, which ChpShufl's re-deal draws from | `Battle::consoles[p]` (`crate::console`): each player's console RNG, seeded from `PlayerSetup::console` and advanced as that console's is (§8) |
-| Save data: owned Crosses, Beast Out unlocked, game version | `custom::Unlocks` in `RoundSetup::players` |
+| Save data: owned Crosses, Beast Out unlocked, game version | BN6's cross and beast systems' setup (`PlayerSetup::rules`; `bn6_compat::Unlocks` writes and reads them); event flag 0x163 is the setup's navi code level (`PlayerSetup::navi_level`) |
 
 Nothing in the custom screen depends on which side is "local": which screen a frontend draws is presentation.
 `TickEvents` carries only `link_closed` (the end of the round) and, for checking against recordings that lack a
@@ -324,7 +324,8 @@ button and windows (content/bn6/rules/beast/custom.luau) and the cross system's 
 **Who gets what** (per player; the original reads the local save):
 
 - The Beast Out button (slot 11) exists for MegaMan with Beast Out unlocked (event flag 0xE0) and event flag 0x163
-  clear (0x163 marks a link navi operated: it is raised and lowered with the navi, so MegaMan never has it). It is
+  clear (0x163 marks a navi code received: a link navi's, or a MegaMan received from a code; the init exchange sends
+  a level only with it set, so nettai reads it as the setup's level). It is
   selectable unless the navi is worn out (emotion 5), already in a Beast form (form ≥ 0x0B), or tired (emotion 1,
   the Beast Out counter spent) without having gone Beast Out this round.
 - The Cross window offers the version's five Crosses that the save owns (Gregar's event flags 0xE2-0xE6, Falzar's

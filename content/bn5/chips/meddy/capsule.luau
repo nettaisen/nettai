@@ -8,7 +8,7 @@
 -- variant's hit modifier and status) and an explosion on each of the line's panels. Its variant (its first
 -- parameter, 0 to 5) gives its palette, its explosions' palette, its hit modifier and its status (none, confusion,
 -- blindness, immobilization, paralysis 90 and 150 ticks); one not running while dimmed (its third parameter not 2)
--- of variant 1 and up hits half as hard. Its target is marked in the battle flag 0x40 mode (objects/dice's marker).
+-- of variant 1 and up hits half as hard. Its target is marked in the battle flag 0x40 mode (lib/navi-chips/marker).
 
 local collision = require("../../rules/collision")
 local marker = require("../../lib/navi-chips/marker")
@@ -283,7 +283,7 @@ local function init(me: Object)
 end
 
 capsule.kind = define.kind {
-    id = "bn5:capsule",
+    id = "bn5:meddy/capsule",
     pool = "attack",
     state = { variant = "u8", line = "u8", mode = "u8" },
     -- 0x080C5F18.

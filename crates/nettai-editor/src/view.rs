@@ -168,7 +168,7 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
         .ruleset_or_stock(c)
         .map(|r| c.defs.ruleset(r).systems.iter().map(|&h| c.defs.system(h).key.clone()).collect())
         .unwrap_or_default();
-    let level = e.typed.get(&(s, "level")).cloned().unwrap_or(side.navi_level.to_string());
+    let level = e.typed.get(&(s, "level")).cloned().unwrap_or(side.navi_level.map_or(String::new(), |l| l.to_string()));
     let frags = e.typed.get(&(s, "bug_frags")).cloned().unwrap_or(side.bug_frags.to_string());
     let mut col = column![
         heading(SIDES[s]),
@@ -183,12 +183,46 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
         if crate::levels::has_levels(c, side) {
             col = col.push(text("0 to 14: changing it fills in the stats the save gives at that level, the game cleared (the stats pane).").size(13).color(DIM));
         }
+    } else {
+        col = col.push(field("Navi code level", text_input("none", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
+        col = col.push(
+            text("Empty: no navi code (as usual). 0 to 14: MegaMan received from a navi code, his level's gains over his NaviCust, no Beast Out button.")
+                .size(13)
+                .color(DIM),
+        );
     }
     col = col.push(field("Bug frags", text_input("0", &frags).on_input(move |t| Msg::BugFrags(s, t)).width(Length::Fixed(100.0))));
     col = col.push(checkbox(side.emotion_window_glitch).label("The emotion window glitches (the save's NaviCust bug flag)").on_toggle(move |b| Msg::Glitch(s, b)));
+    col = col.push(button("Import from save…").on_press(Msg::ImportSave(s)));
+    col = col.push(text("From a BN6 .sav: the game, Beast Out and the Crosses it owns, the navi code's level and the SP times.").size(13).color(DIM));
+    col = col.push(rule::horizontal(1));
+    col = col.push(sp_times(e, s));
     col = col.push(rule::horizontal(1));
     col = col.push(round_stats(e, s));
     scrollable(col).into()
+}
+
+/// The side's SP navi deletion times (`mm:ss.cc`; empty the fastest), each
+/// by the SP navi chip that reads it.
+fn sp_times(e: &Editor, s: usize) -> Element<'_, Msg> {
+    let c = &*e.content;
+    let side = e.side(s);
+    let slots = nettai_match::sp_slots(c, side.ruleset);
+    let mut col = column![text("SP navi deletion times").size(16), text("mm:ss.cc; empty: the fastest. The SP navi chips' damage goes by them.").size(13).color(DIM)]
+        .spacing(6);
+    for (i, slot) in slots.iter().enumerate() {
+        // The SP navi chip whose damage reads the slot, by its name.
+        let chip = (0..c.defs.chips.len() as u16)
+            .map(nettai_content_api::ChipHandle)
+            .find(|&h| c.chip_links(h).sp_slot == Some(i as u8));
+        let label = chip.map_or_else(|| slot.clone(), |h| e.names.chip(c, h));
+        let shown = e.sp_typed.get(&(s, i)).cloned().unwrap_or_else(|| match side.sp_times.0[i] {
+            0 => String::new(),
+            f => nettai_match::sp_times::format(f),
+        });
+        col = col.push(field(label, text_input("00:00.00", &shown).on_input(move |t| Msg::SpTime(s, i, t)).width(Length::Fixed(100.0))));
+    }
+    col.into()
 }
 
 /// What the round starts the navi with, once the rules have set it up.

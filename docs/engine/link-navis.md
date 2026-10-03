@@ -145,10 +145,14 @@ in the internet, each block's HP is cut to its maximum.
   in when its level changes (the reload over the side's own stats: what the save keeps stays) and when the side
   switches to a link navi (the reload over the stats of the navi switched from, as the game's switch carries them);
   an edited stat stays, and the stats pane says what the level gives where they differ.
-- **Not modeled**: MegaMan's level. The game adds it over his NaviCust (§4); nettai's NaviCust is compiled as the
-  round is set up (the navicust system's `round_setup`), and the editor offers a level only to link navis. A MegaMan
-  side's `level` still goes to the battle (`navi_level`), where nothing of MegaMan's reads it. The story's progress
-  and the internet's HP are the reload's parameters but not a match's. §3 step 2 (MegaMan with event 0x163 clear)
+- **MegaMan's level** (a MegaMan received from a navi code): the navicust system's `round_setup` adds the level's
+  gains over what his NaviCust made (§4), and the HP is the maximum again; without a NaviCust in the setup his
+  stats are as given (a recording's carry them). The editor offers him an optional level (empty: no code).
+- **The level in the setup** (`PlayerSetup::navi_level`, an option, docs/design/rules-in-luau.md S6c): none is
+  event 0x163 clear (0xFF in the battle), so BN6's rules read the flag from it (the custom screen's seal). A link
+  navi always has one: a match file without `level` gives a link navi 0 and MegaMan none, and the checks refuse a
+  link navi without one and a level past 14.
+- **Not modeled**: the story's progress and the internet's HP are the reload's parameters but not a match's. §3 step 2 (MegaMan with event 0x163 clear)
   and step 5 for MegaMan (a cutscene's switch to him with a code of his received: base HP 0, which his NaviCust's
   reset keeps) have no counterpart.
 
@@ -166,4 +170,5 @@ in the internet, each block's HP is cut to its maximum.
   saves operate MegaMan (event 0x163 clear); their link navi block is a residue (navi byte 0), so they check
   nothing.
 - **Unverified**: no recording has a link navi below the cleared game's progress, in the internet, without event
-  0x163, or MegaMan with a level; the scripts of levels other than 5 and 14 are checked against the ROM only.
+  0x163, or MegaMan with a level (his gains are nettai-match's test, by the content's table); the scripts of levels
+  other than 5 and 14 are checked against the ROM only.
