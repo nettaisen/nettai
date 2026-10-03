@@ -235,8 +235,18 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
             super::status::end_anger(b, r);
             b.sound(BONUS_SOUND);
         }
+        Some(Boost::Primed) => {
+            ai_mut(b, r).primed = false;
+            b.sound(BONUS_SOUND);
+        }
+        Some(Boost::Grass) => {
+            let p = b.objects.get(r).panel;
+            b.set_panel_type(p.x, p.y, crate::field::PanelType::Normal);
+            b.sound(BONUS_SOUND);
+        }
         Some(Boost::Cross | Boost::BeastOver) | None => {}
     }
+    prime(b, r, cd);
     let mut damage = ai(b, r).attack.damage;
     // sub_8012C34
     if e.modifiers & 2 != 0 {
@@ -261,9 +271,46 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     // the attack as prepared: its lockout is still the refused chip's).
     if let Some(instead) = b.systems_chip_check(side, r, e.chip) {
         ai_mut(b, r).attack.chip = Some(instead);
-        return chip_action(b, r, Some(instead));
+        return charged_action(b, r, charge).unwrap_or_else(|| chip_action(b, r, Some(instead)));
     }
-    chip_action(b, r, e.chip)
+    front_guard(b, r, cd);
+    charged_action(b, r, charge).unwrap_or_else(|| chip_action(b, r, e.chip))
+}
+
+/// BN5's 0x08010442: in a form with a `charged_action` (NapalmSoul), a
+/// charged use starts that action in place of the chip's.
+fn charged_action(b: &Battle, r: ObjectRef, charge: u8) -> Option<super::NaviAction> {
+    let action = form_of(b, r).charged_action?;
+    (charge != 0).then_some(super::NaviAction::Content(action))
+}
+
+/// BN5's 0x080102D2: the use of a chip its form is primed by (not a
+/// dimming chip) primes it, with the priming's sound.
+fn prime(b: &mut Battle, r: ObjectRef, cd: &ChipData) {
+    let Some(priming) = &form_of(b, r).priming else { return };
+    if chip_matches(priming.by, cd) && !cd.flags.has(ChipFlags::DIMMING) {
+        let sound = priming.sound;
+        ai_mut(b, r).primed = true;
+        b.play_sound(sound);
+    }
+}
+
+/// BN5's 0x08010392: a damaging chip (not a dimming chip) used with the
+/// panel ahead not its side's keeps a form with a front guard (KnightSoul)
+/// invulnerable a while.
+fn front_guard(b: &mut Battle, r: ObjectRef, cd: &ChipData) {
+    let Some(ticks) = form_of(b, r).front_guard else { return };
+    let o = b.objects.get(r);
+    let x = o.panel.x as i32 + crate::kinds::common::facing(o.alliance, o.flip);
+    let (y, alliance) = (o.panel.y as usize, o.alliance);
+    // (`object_getPanelDataOffset`: the field's records, the border's too,
+    // which neither side owns.)
+    let Some(ahead) = usize::try_from(x).ok().and_then(|x| b.field.panels.get(y)?.get(x)) else {
+        panic!("KnightSoul's guard reads the panel ahead of ({}, {y}), past the field's records (0x08010392)", o.panel.x);
+    };
+    if ahead.alliance != alliance && deals_damage(cd.flags) {
+        super::set_invulnerable(b, r, ticks);
+    }
 }
 
 /// The action chip `chip` starts by its usage (none: the zeroed chip,
@@ -486,20 +533,32 @@ enum Boost {
     Cross,
     /// Beast Over's Null chips.
     BeastOver,
+    /// A primed form's (spent by the use: BN5's GyroSoul).
+    Primed,
+    /// A form's chips on grass (the use turns it normal: BN5's
+    /// TomahawkSoul).
+    Grass,
 }
 
-/// `sub_8012A38`: whether the use doubles the chip's damage.
+/// `sub_8012A38`: whether the use doubles the chip's damage. A primed
+/// form doubles only what its priming does (BN5's 0x0801026C: then
+/// neither Full Synchro nor anger does).
 fn double_damage(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, damage: u16, charge: u8) -> (u16, Option<Boost>) {
     let cd = entry_record(&b.content, chip);
     if !cd.flags.has(ChipFlags::HAS_DAMAGE) {
         return (damage, None);
     }
-    let boost = match emotion(b, b.objects.get(r).alliance) {
-        Emotion::FullSynchro => Some(Boost::FullSynchro),
-        Emotion::Angry => Some(Boost::Anger),
-        _ if cross_doubles(b, r, chip, charge) => Some(Boost::Cross),
-        _ if beast_over_doubles(b, r, chip) => Some(Boost::BeastOver),
-        _ => None,
+    let boost = if ai(b, r).primed {
+        primed_doubles(b, r, cd).then_some(Boost::Primed)
+    } else {
+        match emotion(b, b.objects.get(r).alliance) {
+            Emotion::FullSynchro => Some(Boost::FullSynchro),
+            Emotion::Angry => Some(Boost::Anger),
+            _ if cross_doubles(b, r, chip, charge) => Some(Boost::Cross),
+            _ if grass_doubles(b, r, cd) => Some(Boost::Grass),
+            _ if beast_over_doubles(b, r, chip) => Some(Boost::BeastOver),
+            _ => None,
+        }
     };
     let damage = if boost.is_some() { damage | damage_flags::DOUBLE } else { damage };
     (damage, boost)
@@ -520,6 +579,23 @@ fn cross_doubles(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, charge: u8)
     }
     let a = ai(b, r);
     charge != 0 || (a.charge_level == 2 && a.charge_source == 1)
+}
+
+/// BN5's 0x08010302: a primed form doubles a chip its priming names (not
+/// a dimming chip).
+fn primed_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
+    let Some(priming) = &form_of(b, r).priming else { return false };
+    deals_damage(cd.flags) && priming.doubles.iter().any(|&rule| chip_matches(rule, cd))
+}
+
+/// BN5's 0x0801032A: a form with `grass_doubles` (TomahawkSoul) standing
+/// on grass doubles the chips it names (not dimming chips).
+fn grass_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
+    let Some(rule) = form_of(b, r).grass_doubles else { return false };
+    let p = b.objects.get(r).panel;
+    b.field.panel(p.x, p.y).is_some_and(|panel| panel.kind == crate::field::PanelType::Grass)
+        && deals_damage(cd.flags)
+        && chip_matches(rule, cd)
 }
 
 /// `sub_8012ABC`: Beast Over doubles its Null chips (not in battle mode 1).

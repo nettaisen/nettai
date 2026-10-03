@@ -98,6 +98,8 @@ struct ReactionsSection {
     bubble_bob: [i8; 32],
     #[serde(default)]
     slide_speed: super::rules::SlideSpeed,
+    #[serde(default)]
+    overlay_restart: super::rules::OverlayRestart,
 }
 
 #[derive(Deserialize)]
@@ -361,6 +363,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                 (rules.push_vectors, rules.ice_vectors, rules.bubble_bob) = (s.push, s.ice, s.bubble_bob);
                 rules.push_reading = s.push_reading;
                 rules.slide_speed = s.slide_speed;
+                rules.overlay_restart = s.overlay_restart;
             }
             "berserk" => {
                 let s: BerserkSection = r.read(spec, &at).map_err(e)?;
