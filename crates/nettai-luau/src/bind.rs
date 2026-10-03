@@ -2017,6 +2017,13 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         }
     });
     lib_fn!(lua, t, "swallowable", |_, o: Me| with(|api, _| Ok(api.obstacle_swallowable(o.0))));
+    lib_fn!(lua, t, "throwable", |_, o: Me| with(|api, _| Ok(api.obstacle_throwable(o.0))));
+    lib_fn!(lua, t, "throw", |_, (o, side, x, y, shake, damage): (Me, u8, u8, u8, u8, u32)| {
+        with(|api, _| {
+            api.obstacle_throw(o.0, side, x, y, shake, damage);
+            Ok(())
+        })
+    });
     for &r in ObstacleRequest::ALL {
         t.set(
             r.name(),

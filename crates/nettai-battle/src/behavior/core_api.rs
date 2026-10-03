@@ -2579,6 +2579,14 @@ impl CoreApi for Battle {
         plain && identity.class == crate::content::IdentityClass::FieldObject && identity.scrap
     }
 
+    fn obstacle_throwable(&self, o: ObjectRef) -> bool {
+        self.content.identity(self.objects.get(o).identity).throwable
+    }
+
+    fn obstacle_throw(&mut self, o: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32) {
+        kinds::obstacle::request_throw(self, o, side, x, y, shake, damage);
+    }
+
     fn obstacle_present(&self, o: ObjectRef) -> bool {
         use kinds::obstacle::f2;
         self.objects

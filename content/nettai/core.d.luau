@@ -1409,6 +1409,12 @@ declare obstacle: {
     -- `sub_800F486` excludes (`scrap = false`): what BlzrdBal's ball
     -- swallows.
     swallowable: (o: Object) -> boolean,
+    -- BN5's Poltergeist's test (0x080E8CA0): `o`'s identity is `throwable`.
+    throwable: (o: Object) -> boolean,
+    -- `sub_800F6AC`: ask the field object `o` to be picked up by `side` and
+    -- thrown at panel (x, y) after shaking `shake` ticks, hitting with the
+    -- damage word `damage`.
+    throw: (o: Object, side: number, x: number, y: number, shake: number, damage: number) -> (),
 }
 
 -- Exact integer helpers.
@@ -2148,6 +2154,9 @@ export type IdentitySpec = {
     -- (`scrap = false`).
     absorbable: boolean?,
     scrap: boolean?,
+    -- BN5's Poltergeist takes it (`throwable = false`: BN5's NameIDs 0xDA,
+    -- 0xD3, 0xD2, 0xE5, 0xE4 and 0xE7).
+    throwable: boolean?,
     -- What its object wears (its actor record's init hook, `off_8010E0C`):
     -- a body overlay (and a second), an overlay worn only while standing,
     -- or a beast's head (its palette; none: it follows the side's mood).

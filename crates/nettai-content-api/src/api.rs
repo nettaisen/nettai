@@ -1911,6 +1911,13 @@ pub trait CoreApi {
     /// original's NameID word 0xCD to 0xFF, its +0x2A half 0) but those
     /// `sub_800F486` excludes, which BlzrdBal's ball swallows.
     fn obstacle_swallowable(&self, o: ObjectRef) -> bool;
+    /// BN5's Poltergeist's test (0x080E8CA0): the object's identity is
+    /// `throwable`.
+    fn obstacle_throwable(&self, o: ObjectRef) -> bool;
+    /// `sub_800F6AC`: ask the field object `o` to be picked up by `side` and
+    /// thrown at panel (x, y) after shaking `shake` ticks, hitting with the
+    /// damage word `damage` (`sub_8018002` does it).
+    fn obstacle_throw(&mut self, o: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32);
     // ---- Field objects (obstacles) -------------------------------------------
 
     /// Whether another object asked `flag` of the field object `o`.
