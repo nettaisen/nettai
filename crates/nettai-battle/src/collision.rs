@@ -332,14 +332,25 @@ impl Battle {
         let Some(id) = o.collision else { return };
         let (alliance, damage) = (o.alliance, o.damage);
         let dimmed = self.is_dimmed();
+        let bn5 = self.arena_rules().effects.retype == crate::content::RetypeRule::Bn5;
+        let (target_flags, row_offset) = self.content.collision_type(target_type, alliance);
         let s = self.collision.get_mut(id);
         s.hit_mod_base = hit_mod;
         s.self_damage = damage;
-        s.self_flags = self.content.collision_type(self_type, alliance).0 | if dimmed { 0x1_0000 } else { 0 };
-        s.target_flags = self.content.collision_type(target_type, alliance).0;
+        s.self_flags = self.content.collision_type(self_type, alliance).0 | if dimmed && !bn5 { 0x1_0000 } else { 0 };
+        if !bn5 {
+            s.target_flags = target_flags;
+        }
         // A bug code's garbage high byte is what `battle_isTimeStop` left in
-        // r1 (4, or 0x10000 while dimmed).
-        let r1 = if dimmed { 0 } else { 4 };
+        // r1 (4, or 0x10000 while dimmed); BN5's, what the target lookup
+        // left.
+        let r1 = if bn5 {
+            row_offset + alliance as u16 * 4
+        } else if dimmed {
+            0
+        } else {
+            4
+        };
         decode_damage_word(s, r1, self.content.defs.roles(self.games.arena));
     }
 

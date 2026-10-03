@@ -7,7 +7,7 @@
 -- it. It hits navis (hit modifier 1) wherever it moves onto a new panel. The three differ in the ball's palette (the
 -- chip's first parameter, times 2) and damage.
 
-local buster = require("../../lib/buster")
+local arm = require("../../lib/arm")
 local collision = require("../../rules/collision")
 local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
@@ -232,7 +232,7 @@ function cactbal.action(palette: number): Action
     local function throwing(me: Object, s: ActionState)
         if me.step_init == 0 then
             me:set_animation(THROW_ANIM)
-            buster.raise_arm(me)
+            arm.raise(me)
             me:open_counter_window()
             me:set_status("using_action", true)
             s.timer = THROW_TICKS
