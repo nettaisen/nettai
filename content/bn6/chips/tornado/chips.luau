@@ -5,7 +5,8 @@
 -- raises one on that panel; Static raises them on more panels the more
 -- kinds of NaviCust bug the navi has (none: that panel; up to three: also
 -- the one behind it, the two beside it, and the two beside that one), a
--- static tornado each. The action's third form (its subtype 3, which no
+-- static tornado each. Another game's chips take the blow (`chips.blow`)
+-- with their fan and tornado kind. The action's third form (its subtype 3, which no
 -- chip has) does the same by a side statistic (`sub_800AB3A`, counter 3),
 -- spreading back toward the navi, with HP-bug tornadoes, and a fan of
 -- another palette. 42 ticks, then 21 to put the fan away.
@@ -23,11 +24,13 @@ export type State = {
 -- of `spread` at a level, by the navi's kinds of NaviCust bug or by its
 -- side's statistic 3 (`by`); and the fan it holds, with an addition to its
 -- palette.
-type Blow = {
+export type Blow = {
     -- The action's key when no chip definition holds it.
     id: string?,
     fan: AttachmentLook,
     fan_palette: number?,
+    -- The tornadoes' kind (BN6's by default).
+    tornado_kind: Kind?,
     single: TornadoSpec?,
     spread: { by: "bug_kinds" | "side_stat", panels: { [number]: { { number } } }, tornado: TornadoSpec }?,
 }
@@ -81,7 +84,7 @@ local function blow(spec: Blow): Action
             else battle.side_stat(me.alliance, SIDE_STAT)
         local dir = me.facing
         for _, p in spread.panels[math.min(level, 3)] do
-            tornado.spawn(me, x + dir * p[1], y + p[2], element, damage, spread.tornado)
+            tornado.spawn(me, x + dir * p[1], y + p[2], element, damage, spread.tornado, spec.tornado_kind)
         end
     end
 
@@ -103,7 +106,7 @@ local function blow(spec: Blow): Action
             local damage = me.attack_damage + me.hit_param * 0x10000 + me.extra
             local single = spec.single
             if single then
-                tornado.spawn(me, x, y, me.attack_element, damage, single)
+                tornado.spawn(me, x, y, me.attack_element, damage, single, spec.tornado_kind)
             else
                 spread_tornadoes(me, x, y, me.attack_element, damage)
             end
@@ -200,5 +203,8 @@ chips.back_spread = blow {
 }
 
 chips.STATE = STATE
+-- The blow, the spreads and the fans, for another game's chips.
+chips.blow = blow
+chips.STATIC_SPREAD, chips.BACK_SPREAD = STATIC_SPREAD, BACK_SPREAD
 
 return chips
