@@ -18,7 +18,7 @@ marked **verified** or **unverified** in each section.
 | 36 | 0x87..0x89 SumnBlk1-3 | T4#0x7C | the hole's navi T1#0x32 | §9 | chips/sumnblk |
 | 27 | 0xC2 ColorPt, 0xC4 DblPoint | T4#0x50 | the points T4#0x51 | §10 | chips/colorpt |
 
-Every controller is built on lib/dimming (`dimming_chips.phases`, `done`, `spawn`); a chip's `dimming` hook spawns
+Every controller is built on content/common/dimming (`dimming_chips.phases`, `done`, `spawn`); a chip's `dimming` hook spawns
 it with the chip's own data (a barrier, a panel change, an instrument, a plane, a turret's look and HP, a variant,
 a point's look and bonus) as content records, not the original's parameter bytes.
 
@@ -710,9 +710,9 @@ rest (lib/barriers/barriers.luau), the panel changes (§4.2) `panel_changer.chan
 (§6.2) `instrument.instrument` records with each chip's effect, `byte_80D34C0`'s rows (§7.2) `plane.plane`
 records, the turrets' look and HP (§8.1) and SumnBlk's and the points' parameters the hooks' arguments; the
 small per-aim tables of §8 and §7 are the kinds' constants. Collision types: rules/collision.luau (`nothing`
-0x00, `own-body` 0x13, `guard-breaking` 0x32 join); regions: lib/regions.luau (the whole-field regions 0x80,
+0x00, `own-body` 0x13, `guard-breaking` 0x32 join); regions: content/common/regions.luau (the whole-field regions 0x80,
 0x83, 0x84/0x85, the four neighbors 0x0A and `GetRandomRelativePanelFiltered`); the area-steal rule
-(`sub_800D668`) and the front of an area (`sub_800D4D0`): lib/panels.luau.
+(`sub_800D668`) and the front of an area (`sub_800D4D0`): content/common/panels.luau.
 
 Framework (Rust): `sub_801A7CC` is `Object:raise_barrier` (the barrier byte by behavior: plain 1, bubble 8,
 regenerating 0xA), with the charge glow's clobbered link (§3.4); `dimming.hide_user_sparing` (`sub_80E1352` with

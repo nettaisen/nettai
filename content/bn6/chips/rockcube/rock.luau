@@ -19,8 +19,8 @@ local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obst
 local collision = require("../../rules/collision")
 local debris = require("./debris")
 local effects = require("../../lib/effects")
-local element = require("../../lib/element")
-local regions = require("../../lib/regions")
+local element = require("@common/element")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 
 local rock = {}

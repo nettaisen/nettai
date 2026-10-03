@@ -13,7 +13,7 @@
 local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 
 local statue = {}

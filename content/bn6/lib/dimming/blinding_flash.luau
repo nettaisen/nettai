@@ -1,15 +1,15 @@
 --!strict
 -- Dimming chip subtype 2's controller (the original's effect object #0x23,
 -- `sub_80E2E34`; docs/engine/dimming-chip-effects.md §4): the usual
--- dimming phases (lib/dimming), with an effect that has the user glow
+-- dimming phases (@common/dimming), with an effect that has the user glow
 -- white for 11 ticks, then flashes the screen and blinds every navi on the
 -- enemy's area for 480 ticks (a hit of no damage), the user glowing 61
 -- ticks more. No chip has subtype 2: nothing reaches it (unverified); a
 -- chip would name `blinding_flash.hook` as its `dimming`.
 
-local dimming_chips = require("../dimming")
+local dimming_chips = require("@common/dimming")
 local collision = require("../../rules/collision")
-local regions = require("../regions")
+local regions = require("@common/regions")
 local statuses = require("../../rules/status")
 
 local blinding_flash = {}

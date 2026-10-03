@@ -1,6 +1,6 @@
 --!strict
--- BN5's drills (attack object #0x71) and DrilArm's action (BN5's 0x4F, 0x080EF490; BN6's 0x2E): BN6's
--- (@bn6/chips/drilarm, the same code) but for
+-- BN5's drills (attack object #0x71) and DrilArm's action (BN5's 0x4F, 0x080EF490; BN6's 0x2E): the shared drill
+-- (@common/drilarm/drill, BN6's code) but for
 --
 -- - the action's start: no 10-tick wait outside battle flag 0x40 mode (0x080EF4B8; with it, 10 ticks and effect
 --   object 0x83 on the panel ahead, which isn't ported: never in a netbattle), so the arm and drills come at once;
@@ -10,9 +10,9 @@
 --   while dimmed; Param3 is DarkDril's, whose hit carries the bug 0xFA (argument 1), where BN6's makes a light one;
 -- - BN5's spark and collision types.
 
-local attachment = require("@bn6/objects/attachment/attachment")
+local attachment = require("../attachment/attachment")
 local collision = require("../../rules/collision")
-local drill = require("@bn6/chips/drilarm/drill")
+local drill = require("@common/drilarm/drill")
 local sparks = require("../../lib/sparks")
 
 local bn5_drill = {}

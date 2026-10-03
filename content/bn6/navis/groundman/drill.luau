@@ -9,7 +9,7 @@
 -- while dimmed.
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 
 local drill = {}
