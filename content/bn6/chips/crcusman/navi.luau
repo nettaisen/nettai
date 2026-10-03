@@ -6,7 +6,7 @@
 -- sparkle each; else he waits. Then he rises out of sight. See
 -- docs/engine/chips.md §3.6.28.
 
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("@common/navi-chips/navi")
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 

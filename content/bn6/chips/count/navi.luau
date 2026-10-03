@@ -17,7 +17,7 @@
 -- (EXE6 Falzar 0x080BD236).
 
 local dust_storm = require("../../lib/instant/dust_storm")
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("@common/navi-chips/navi")
 local panels = require("../../lib/panels")
 local regions = require("../../lib/regions")
 local lance = require("./lance")

@@ -4,7 +4,7 @@
 -- has had its time, he goes, and the controller moves on. While he is there, his user holding B and pressing up,
 -- right and down in turn (each within a second of the first) powers the swoop (0x080BDDF4).
 
-local navi_chips = require("@bn6/lib/navi-chips/navi")
+local navi_chips = require("@common/navi-chips/navi")
 local swoop = require("./swoop")
 
 export type State = {
