@@ -79,7 +79,7 @@ graphics/
     sprite.aseprite                  optional whole-frame view (§3.5)
   field/
     tiles.png                        panel tiles; palette rows = background palette slots
-    field.json                       panel blocks, edges, highlights, cycling palettes
+    field.json                       panel types, blocks, edges, highlights, cycling palettes
   backgrounds/NAME/                   one folder per background (background.json holds its id)
     tiles.png  map.tmj  background.json  anim-K.png
   hud/
@@ -295,12 +295,29 @@ only color the image for viewing) and the palette fingerprint.
 
 **Field** (`graphics/field/`): `tiles.png` with palette rows 1..=8 the panel
 palettes (row numbers = background palette slots, so a map entry's palette is
-the row it shows in). `field.json` holds the 78 panel blocks (5x3 map
-entries by `6 * type + 3 * owner + row - 1`), the two front edges and
-highlights, and the cycling panel palettes (slot, start timer, frames of
-`ticks` and 16 colors). A map entry is text, `tile:palette` with `:h`,
-`:v` or `:hv` when flipped; a color is `#rrggbb`, or `0xNNNN` (raw BGR555)
-when it has bits RGB can't hold.
+the row it shows in). `field.json` holds:
+
+- `panel_types`: the panel types the field draws, by the engine's names
+  (`"normal"`, `"cracked"`, ..., `"metal"`, `"lava"`, `"sea"`), in the order
+  of their blocks. BN6's pack lists its 13 in the engine's order, BN5's its
+  11 in BN5's order. A panel type a field doesn't list is drawn from another
+  loaded game's field, or tinted (docs/design/rules-in-luau.md §7.4).
+- the panel blocks, six for each listed type (5x3 map entries, the block of
+  type `k` (its place in `panel_types`) for an owner and a row at
+  `6 * k + 3 * owner + row - 1`): BN6's 78, BN5's 66.
+- the two front edges;
+- one highlight or two (BN6 has two; BN5 draws one block for both, which its
+  pack writes twice);
+- the cycling panel palettes (slot, start timer, frames of `ticks` and 16
+  colors).
+
+A map entry is text, `tile:palette` with `:h`, `:v` or `:hv` when flipped;
+a color is `#rrggbb`, or `0xNNNN` (raw BGR555) when it has bits RGB can't
+hold.
+
+A field.json written before 2026-10-03 has no `panel_types`. The reader takes 78 blocks as BN6's 13 types in the
+engine's order, so the BN6 pack loads as it is. With any other number of blocks the field draws no type, and the
+reader warns to extract the pack again (a BN5 pack from before then: run bn5-extract again).
 
 A pack extracted before 2026-10-02 spells three keys the British way (`custom.json`'s gray palette and
 Program Advance name colors, `field.json`'s palette frames' colors). The reader takes either spelling,

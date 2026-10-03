@@ -637,26 +637,30 @@ mixes (§7.6).
 A definition names its assets in full: `bn5:cannon`'s sprites are `bn5:...`, BN5's pack's. The engine's asset
 handles cover every loaded pack (R3a); the frontend and the audio draw and play each asset from its own pack (R3b).
 
-#### The field's art in a mixed battle (proposed, pending the user; to build in slice R)
+#### The field's art in a mixed battle (approved by the user, built)
+
+The user approved this on 2026-10-02: "yes, borrow bn5 art then fall back". It is built as described here; the "As
+built" note, "The field's art in a mixed battle", has the details and gates.
 
 The field's rules follow the stage's game (§2.3); its art does too.
 
 1. **The field's art is the stage's game's**, like its rules: the panel tiles, their palettes and palette cycles,
    the highlights, the front edges and the background all come from the arena's pack. Both viewers see the same
    field.
-2. **Every pack declares which panel types it draws.** BN5's field has 11 panel types (BN6's 13) and one highlight
-   block (BN6's two).
-3. **A panel type the arena's game lacks** (a BN6 chip making a BN6-only panel in a BN5 arena):
-   - the simulation runs it by the type's own definition, so the rules never depend on the art. **Built in P1**
-     (the simulation half; the art half is still the user's to decide): a type the arena's `panels` section doesn't
-     name takes its rule (flags, sound, expiry, behaviors) from the first other loaded game whose section names it,
-     in root order; one no loaded game names keeps an empty rule, never a panic (`sections::fill_panel_types`);
-   - it is drawn from the first pack that has it: the arena's, then the pack of the game that defines the type. Its
-     blocks keep their own palettes, loaded into free palette slots;
-   - if no loaded pack has it, a fallback block is drawn: a normal panel with a tint, never a hole.
-4. **Today's frontend** skips drawing a panel whose block is missing (a hole), and indexes `highlights[1]`, which a
-   pack with one highlight block would panic on. Both are fixed in slice R.
-5. **The pack check reports**, per pack, which panel types and highlights it lacks.
+2. **Every pack declares which panel types it draws** (field.json's `panel_types`). BN5's field has 11 panel types
+   (BN6's 13) and one highlight block (BN6's two).
+3. **A panel type the arena's field doesn't draw** (a BN5 chip making BN5's sea in a BN6 arena):
+   - the simulation runs it by the type's own definition, so the rules never depend on the art (P1): a type the
+     arena's `panels` section doesn't name takes its rule (flags, sound, expiry, behaviors) from the first other
+     loaded game whose section names it, in root order; one no loaded game names keeps an empty rule, never a
+     panic (`sections::fill_panel_types`);
+   - it is drawn from the field of the same game: the first loaded game, in root order, whose `panels` section
+     names the type and whose field draws it. The borrowed blocks keep their own tiles, palettes and palette
+     cycles, in a palette set of their own, so the arena's palettes are left as they are;
+   - if no loaded pack draws it, it is drawn as its owner's normal panel tinted halfway to magenta, never a hole.
+4. **A highlight the arena's field lacks** is the first loaded game's that has it, else tinted the same way.
+5. **The static audit reports** each loaded game's pack that doesn't draw a panel type its game names (extract
+   it again), and says, without counting it, which panel types and highlights an arena draws tinted.
 
 ### 7.5 Which rules apply where
 
@@ -767,6 +771,10 @@ stock ruleset (BN6's patch-cards system, which `round_setup` runs; docs/design/p
 else battle-wide follows the arena's (the stage's) game (§2.3). The capacity-only limits are the object pools'
 sizes and any other pure capacity cap; a player's game is their ruleset's (a mix's, its base's). A same-game
 battle is unchanged.
+
+**The user** (2026-10-02): **the field's art in a mixed battle** is §7.4's proposal: "yes, borrow bn5 art then
+fall back". A panel type the arena's field doesn't draw is drawn from the field of the game that names it, else
+as a tinted normal panel.
 
 **The coordinator**: the budget as proposed (§6.3); content/<game>/rules/ with a folder per system (§2.4); roots
 right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only when the budget needs it (§6.4).
@@ -1034,7 +1042,8 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
   0 after); the compat numbers the custom screen reads (the navi's, a Program Advance pick's) go by
   `Compat::compat_key` for the same reason. The custom screen and the chatbox are the local side's game's pack's
   (its ruleset's game); the HUD's frame and the field are the content's own pack's. The field's art in a mixed
-  battle stays as it was (the proposal in §7.4 is still the user's to decide): `Stage::new` takes the field's
+  battle stays as it was (the proposal in §7.4 was still the user's to decide; it is built since, "The field's art
+  in a mixed battle" below): `Stage::new` takes the field's
   bundle and the background, which may be another pack's. A frontend of one pack (`Renderer::new`) draws every
   asset from it.
 - **Sound per pack** (`BattleAudio::with_banks`, `AudioOut::with_banks`): a driver per pack, each with its own
@@ -1493,7 +1502,7 @@ P1's items 12 and 8 (bn5-map.md §15.3), on R4.
 - **The frontend.** nettai-render draws a button by its name (`View::button_look`: BN6's `redeal` and `scrap`
   pictures, tiles and cursor, §4.8). The driver labels a button by its name.
 - **Next.** Beast Out (its button, the BeastOut chip and their animations as windows, the result's form) goes with
-  the Cross window: the two read each other (a chosen Cross greys out Beast Out, and Beast Out blocks the
+  the Cross window: the two read each other (a chosen Cross grays out Beast Out, and Beast Out blocks the
   window). Then the setup (S6c).
 - **Merged with main f816b94d** (bn5-port-5): BN5's soul button (`SlotKind::Soul`, `Phase::SoulChosen`, in Rust)
   sits beside the system buttons. It and its sequence take the extras too. A port of it to a BN5 system's button
@@ -1507,3 +1516,113 @@ P1's items 12 and 8 (bn5-map.md §15.3), on R4.
   - the audit 0 problems; us-spelling 0;
   - BN5's replays as main's, on a BN5 pack extracted again for bn5-port-5's asset names: 402 match every frame,
     18 replay, 223,414 of 948,097 frames.
+
+### The field's art in a mixed battle (§7.4; 2026-10-03, branch audit-panels)
+
+The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall back".
+
+- **A pack says which panel types its field draws.**
+  - `nettai_assets::Field::panel_types`: each type's engine number, in the order of its blocks.
+  - field.json's `panel_types` lists them by the engine's names (docs/design/asset-formats.md §4).
+  - bn6-extract writes BN6's 13 in the engine's order. bn5-extract writes BN5's 11 in BN5's order (metal 5,
+    lava 8, holy 9, sea 10: content/bn5/compat/panels.toml).
+  - A field may have one highlight or two. BN5 draws its one highlight block for both, so its pack keeps that
+    block twice.
+  - A field.json without the list comes from an older pack. With 78 blocks it draws BN6's 13 types in the
+    engine's order, so the shared BN6 pack loads as it is. With any other number of blocks it draws no type, and
+    the loader warns to extract it again (an older BN5 pack).
+- **The stage draws the field from the arena's game's pack.** It was the content's own pack's before.
+- **`nettai_render::stage::FieldArt`** says which pack's field draws each panel type and each highlight:
+  1. the arena's field, if it draws the type;
+  2. else the field of the first loaded game, in root order, whose `panels` section names the type and whose
+     field draws it (the order in which the simulation takes the type's rule, `sections::fill_panel_types`);
+  3. else nothing: the panel is its owner's normal panel tinted halfway to magenta, never a hole.
+
+  A highlight the arena's field lacks comes from the first loaded game whose field has it, else it is tinted. A
+  borrowed field draws with its own tiles, its own palettes and their cycles, in a palette set of its own, so the
+  arena's palettes are left as they are. Front edges and missing panels are always the arena's.
+- **Lookups and audits.**
+  - A panel lookup names its pack (`Lookup::Panel(pack, ..)`).
+  - A tinted panel is `Lookup::PanelTint`. It is said, not counted: `Problems::say` and `said_lines`, which
+    both audits print as notes.
+  - The static audit checks that each loaded game's pack draws the panel types its game names, with their
+    blocks. Then, in an arena of each loaded game, it draws every panel type any loaded game names, and both
+    highlights, through `FieldArt`, and says which are tinted.
+- **Tests.** `a_mixed_field_borrows_the_art_it_lacks_or_tints_a_normal_panel` uses a test arena and a second game,
+  `twin`, and checks that:
+  - the sea is drawn from twin's field, in twin's colors;
+  - lava, which no field draws, is tinted;
+  - highlight 2 is twin's;
+  - a game that names the sea but whose field doesn't draw it passes the sea on to the next game;
+  - without twin's pack, the sea and highlight 2 are tinted.
+
+  `the_field_is_audited_for_the_panel_types_its_game_names` covers the static audit, and
+  `an_older_field_without_panel_types_still_loads` covers a field.json from before `panel_types`.
+- **Seen.** A BN6 arena (bn6:netbattle-35) drawn headless with BN5's sea, lava and metal set on six panels and
+  both highlights shown:
+  - on a BN5 pack extracted again: BN5's own sea, lava and metal, with BN6's highlights;
+  - on a BN5 pack from before `panel_types`: the six panels as tinted normal panels, said by the lookups.
+
+  This needs BN5's folder loaded beside BN6's. A scratch program loaded it the way verify's trace-tests
+  (`bn5_content`) do, leaving out BN5's chips without a use; the frontend leaves BN5's folder out until those chips
+  are written.
+- **Packs.** A BN5 pack needs extracting again for its field to draw. Before that, a BN5 arena draws BN6's
+  panels for the types both games name (as it drew BN6's whole field before this) and tints its metal, lava and
+  sea. A BN6 pack loads as it is; extracting it again adds only the list.
+- **Gates** (merged with main e1c69bdf):
+  - the build without warnings (all targets);
+  - the tests of nettai-render, nettai-frontend, nettai-content, nettai-assets, nettai-editor and both
+    extractors;
+  - the audit gate (`audit-against.sh`): the static audit 0 problems (6,965 lookups), 49 traces 0 problems;
+  - identity.sh against main's frontend on the shared BN6 pack: the sample and custom-screen lists identical in
+    both text modes (174 scenarios, 200,712 frames each);
+  - us-spelling 0; the R4 scripts change nothing.
+
+  The pack loading touches only the graphics, not the simulation's content hash, so neither the lab nor the
+  traces ran.
+
+### S6b1, Beast Out on the custom screen (2026-10-03)
+
+- **Windows** (§4.4).
+  - A system declares its windows: `windows = { name = { update } }`, read into `Defs::windows`.
+  - `Phase::Window { window, tick }` runs a window's `update(side)` each tick, until it answers that it is done.
+    The tick counts from 1 (`custom.window_tick`).
+  - New custom hooks: `custom.open` (as the screen opens, before the hand size and the layout), `custom.confirmed`
+    (OK built the hand), `custom.chip_picked` and `custom.chip_taken_back` (a hand chip, `(side, chip)`), and a
+    button's `taken_back`.
+- **The screen's result form.** `Screen::form` and the system that set it hold the form a pick puts the navi in at
+  the turn's start. OK turns it into the transform's form.
+  - `custom.set_form` sets it. `custom.form_taken` asks whether another system holds it: Beast Out grays out under
+    a Cross's form, and the Cross window refuses under Beast Out's.
+  - Until the Cross window is a system's, a Cross the Rust window chose counts as another system's form.
+- **The `custom` library** for buttons and windows:
+  - `pick`, `play` (the screen's sounds by name), `set_column_icon`, `open_window`, `window_tick`, `shake` (this
+    console's camera), `frame` and `set_frame`, `spin`, `fade` (by name), `set_face`, `pick_first`,
+    `set_button_state`, `update_availability`, `draw_emblem`;
+  - `set_form`, `form_taken`, `full`, `button_picked`;
+  - `player`: what the screen reads of its player. Its emotion is the screen's own (the context's: `Side::emotion`),
+    so bn6-compat's check of the traces' screens, whose battle has no navi, still reads it. The version, the Cross
+    list, Beast Out unlocked and sealed, and a random battle are read from the setup until S6c.
+- **BN6's Beast Out** (content/bn6/rules/beast/custom.luau), the beast system's:
+  - the button in the special slot (`sub_8029FB4`, `sub_802A57E`, `sub_8028F48`, `sub_8028D6C`, `sub_802A0EC`);
+  - its 70-tick animation as the window `beast_out` (`sub_802770C`);
+  - the BeastOut chip's 85-tick animation as `beast_out_chip` (`sub_80275EC`, from `custom.chip_picked`);
+  - the Beast form and the roar's game (`Unlocks::beast_form` and `beast_game`, ported);
+  - the round's Beast Out (`RoundMemory::beast_out_used`) as its state, forgotten at the round's first screen, noted
+    at OK.
+- **The BeastOut chip's selection rule** is data: the chip trait `goes_with_any` (`sub_8028E4C`, `sub_8028EC8`), so
+  `ChipTraits` is now 16 bits. gen-content expects it on chip 0x13F.
+- **Gone from Rust:** `SlotKind::BeastOut`, `Phase::BeastOutChosen` and `BeastOutChipChosen`, `Screen::beast_out`,
+  `update_beast_out`, `PlayerView::beast_out_button`, `beast_out_available` and `beast_game`, `beast_face`,
+  `is_beast_out`.
+- **Tests.** The screen's own tests lose Beast Out's: the button, its timeline, and the roar's game with a Cross list
+  are BN6's Luau now. The lab's Beast Out scenarios and identity.sh cover the first two. **The Cross-list roar has
+  no recording** (the Cross list is nettai's extension): unverified until a verify-side test drives it.
+- **Gates** (on main e1c69bdf):
+  - the build without warnings, 480 tests, the content check (1,276 modules), gen-content check 0 errors;
+  - `gate-against.sh full`: the 189 legacy rounds, machgun and soundmod with 96 rollback rows, and the lab 6548
+    (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
+  - identity.sh against main's frontend on main's content: the custom-screen and sample lists identical in both
+    text modes (174 scenarios, 200,712 frames each);
+  - the audit 0 problems; us-spelling 0 (after it fixed a British spelling of mine in S6a's note);
+  - BN5's replays as main's: 402 match, 18 replay, 223,414 of 948,097 frames.
