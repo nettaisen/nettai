@@ -547,6 +547,11 @@ fn strip_programs(b: &mut Battle, r: ObjectRef, undershirt: bool) {
 /// the stat byte; a few codes are special); the weapon routines are
 /// reloaded every tick.
 fn bug_navicust(b: &mut Battle, r: ObjectRef) {
+    // The side's systems first (BN5's light and dark codes, its skip).
+    let side = b.objects.get(r).alliance;
+    if b.systems_navi_bug(side, r) {
+        return;
+    }
     let bugs = coll(b, r).acc.inflicted_bugs;
     let (code, arg) = (bugs as u8, (bugs >> 8) as u8);
     let mut edited = false;
