@@ -24,7 +24,7 @@ use nettai_content_api::RecordHandle;
 
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionId, f1};
-use crate::content::{CollisionRole, EffectRole, SoundRole, SparkRole};
+use crate::content::{CollisionRole, EffectRole, PushReading, SoundRole, SparkRole};
 use crate::field::{self, PanelType, pflags};
 use crate::kinds::common::{self, Progress};
 use crate::object::{DragStep, ObjectRef, PanelPos, SlideBounds, StateWord, Vec3, flags};
@@ -190,9 +190,9 @@ const ANY_HIT_PUSH: u8 = 0x61;
 const SLIDE_BLOCKERS: u32 = 0x0380_0000;
 const KNOCKBACK_BLOCKERS: u32 = pflags::OCCUPIED;
 
-/// A slide's speed, 16.16 a tick: 10 pixels across, 6 in depth.
-const SLIDE_SPEED_X: i32 = 0xA_0000;
-const SLIDE_SPEED_Y: i32 = 0x6_0000;
+// (A slide's speed is the obstacle's game's reactions section's
+// `slide_speed`: BN6's 10 pixels a tick across and 6 in depth, BN5's 8 in
+// depth, 0x08014894 and 0x08014730.)
 /// The panels a slide goes at most (`sub_8017E44`, whatever the hit says).
 const SLIDE_PANELS: u8 = 6;
 /// Ticks of rest after a slide that couldn't start, and after one that
@@ -319,7 +319,10 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     // (BN5's lava burns first: 0x08017A18 and its variants.)
     common::panel_burn(b, r);
     if push == Push::AnyHit {
-        push_on_any_hit(b, c);
+        match game_rules(b, r).push_reading {
+            PushReading::Bn6 => push_on_any_hit(b, c),
+            PushReading::Bn5 => push_on_any_hit_by_flip(b, c),
+        }
     }
     let hit_mod = b.collision.get(c).hit_mod_final;
     // (f1 0x40 marks objects that can't be pushed.)
@@ -343,6 +346,31 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
 
 /// `sub_801AE56`: a hit from one side only (and not of type 0x1000, nor
 /// already a push) pushes it a panel away from that side.
+/// BN5's (0x08017AD8, from its any-hit reaction 0x08017A78): the same by
+/// the hitters' flips (`hit_flags_by_flip`, 0x08017B34): one side's hits
+/// by unflipped hitters alone push it by the unflipped hitters' modifier
+/// byte (`hit_mod_by_side[0]`), by flipped ones alone by the other; any
+/// other mix, nothing.
+fn push_on_any_hit_by_flip(b: &mut Battle, c: CollisionId) {
+    let d = b.collision.get(c);
+    if d.acc.hit_flags & UNPUSHING_HIT != 0 || d.hit_mod_final & PUSHING_HIT != 0 {
+        return;
+    }
+    let [unflipped, flipped] = d.acc.hit_flags_by_flip;
+    let i = (unflipped & PUSHERS[0] != 0) as u8
+        | ((unflipped & PUSHERS[1] != 0) as u8) << 1
+        | ((flipped & PUSHERS[0] != 0) as u8) << 2
+        | ((flipped & PUSHERS[1] != 0) as u8) << 3;
+    let byte = match i {
+        1 | 2 => 0,
+        4 | 8 => 1,
+        _ => return,
+    };
+    let d = b.collision.get_mut(c);
+    d.hit_mod_by_side[byte] |= ANY_HIT_PUSH;
+    d.hit_mod_final |= ANY_HIT_PUSH;
+}
+
 fn push_on_any_hit(b: &mut Battle, c: CollisionId) {
     let d = b.collision.get(c);
     let hits = d.acc.hit_flags;
@@ -938,6 +966,9 @@ struct PushVector {
 /// obstacle held still in one (`object_updateSprite` leaves it): no pusher
 /// bits either way, so it's left out.
 fn push_vector(b: &Battle, r: ObjectRef) -> PushVector {
+    if game_rules(b, r).push_reading == PushReading::Bn5 {
+        return push_vector_bn5(b, r);
+    }
     let d = b.collision.get(collision(b, r));
     let hits = d.acc.hit_flags;
     let pusher = match (hits & PUSHERS[0] != 0, hits & PUSHERS[1] != 0) {
@@ -954,6 +985,41 @@ fn push_vector(b: &Battle, r: ObjectRef) -> PushVector {
     };
     let (dx, dy, panels) = VECTORS[i];
     PushVector { pusher, dx: dx * pusher, dy, panels }
+}
+
+/// BN5's `sub_800F598` (0x0800D4B0): the pusher is side 0 when its hits
+/// alone pushed it (nothing when both sides' did), else side 1 (neither's
+/// too); the vector is the first of bits 2 to 5 of the unflipped hitters'
+/// modifier byte (`hit_mod_by_side[0]`), else of the flipped ones' with
+/// the direction reversed, from BN5's table (0x0800D53B: BN6's four rows
+/// and a fifth of nothing when neither has a bit). (The +0x54 word takes
+/// part as in BN6's, left out the same.)
+fn push_vector_bn5(b: &Battle, r: ObjectRef) -> PushVector {
+    let d = b.collision.get(collision(b, r));
+    let hits = d.acc.hit_flags;
+    let pusher: i8 = if hits & PUSHERS[0] != 0 {
+        if hits & PUSHERS[1] != 0 {
+            return PushVector { pusher: 0, dx: 0, dy: 0, panels: 0 };
+        }
+        1
+    } else {
+        -1
+    };
+    const VECTORS: [(i8, i8, u8); 5] = [(-1, 0, 6), (1, 0, 6), (-1, 0, 1), (1, 0, 1), (0, 0, 0)];
+    let first = |hm: u8| (0..4).find(|&i| (hm >> 2) & (1 << i) != 0);
+    let [unflipped, flipped] = d.hit_mod_by_side;
+    let (i, sign) = match first(unflipped) {
+        Some(i) => (i, pusher),
+        None => (first(flipped).unwrap_or(4), -pusher),
+    };
+    let (dx, dy, panels) = VECTORS[i];
+    PushVector { pusher, dx: dx * sign, dy, panels }
+}
+
+/// The rules of `r`'s own game (its kind's): an obstacle runs as its game
+/// wrote it.
+fn game_rules(b: &Battle, r: ObjectRef) -> &crate::content::Rules {
+    b.content.rules_of(b.game_of(b.kind_key(r)))
 }
 
 /// The panel `(dx, dy)` from `p`, if it's on the field.
@@ -990,10 +1056,19 @@ fn start_slide(b: &mut Battle, r: ObjectRef, kind: Slide) {
     let fp = b.objects.get(r).future_panel;
     b.unreserve_panel(r, fp.x, fp.y);
     let v = push_vector(b, r);
+    let (bn5, speed) = {
+        let rules = game_rules(b, r);
+        (rules.push_reading == PushReading::Bn5, rules.slide_speed)
+    };
     let o = b.objects.get_mut(r);
     o.slide_dx = v.dx as u8;
     o.slide_dy = v.dy as u8;
     let panels = match kind {
+        // BN5's (0x08014894) keeps no bounds: it slides anywhere open.
+        Slide::Bounded if bn5 => {
+            o.slide_bounds = SlideBounds::Anywhere;
+            SLIDE_PANELS
+        }
         Slide::Bounded => {
             // byte_8017F24, by (pushed by side 1 or neither) * 4 + (the
             // vector goes back toward the pusher) * 2 + (the panel is side
@@ -1014,8 +1089,8 @@ fn start_slide(b: &mut Battle, r: ObjectRef, kind: Slide) {
     if panels != 0 && can_enter(b, r, kind, target) {
         let target = target.expect("an enterable panel is on the field");
         let o = b.objects.get_mut(r);
-        o.vel.x = v.dx as i32 * SLIDE_SPEED_X;
-        o.vel.y = v.dy as i32 * SLIDE_SPEED_Y;
+        o.vel.x = v.dx as i32 * speed.x;
+        o.vel.y = v.dy as i32 * speed.y;
         o.future_panel = target;
         if kind == Slide::KnockedBack {
             b.reserve_panel(r, target.x, target.y);
