@@ -37,6 +37,30 @@ return define.navi {
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
     cross_hp = { 999, 999 },
+    -- What his link navi level adds over his NaviCust (a navi code of his
+    -- received over the link cable; `pt_8121200`'s scripts,
+    -- docs/engine/link-navis.md). His row of `off_8120F44` is zeros: what
+    -- the reload would give him, were it to run for him with a level.
+    levels = {
+        base_hp = { 0, 0, 0, 0, 0, 0, 0 },
+        by_level = {
+            { hp = 20 },
+            { hp = 40 },
+            { hp = 60, attack = 1 },
+            { hp = 80, attack = 1 },
+            { hp = 100, attack = 1, rapid = 1 },
+            { hp = 120, attack = 1, rapid = 1 },
+            { hp = 140, attack = 1, rapid = 1, charge = 1 },
+            { hp = 160, attack = 1, rapid = 1, charge = 1 },
+            { hp = 180, attack = 1, rapid = 1, charge = 1 },
+            { hp = 200, attack = 1, rapid = 2, charge = 1, custom_level = 1, mega_level = 1 },
+            { hp = 220, attack = 2, rapid = 2, charge = 2, custom_level = 1, mega_level = 1 },
+            { hp = 240, attack = 2, rapid = 2, charge = 2, custom_level = 1, mega_level = 1 },
+            { hp = 260, attack = 2, rapid = 3, charge = 2, custom_level = 2, mega_level = 1 },
+            { hp = 280, attack = 2, rapid = 3, charge = 3, custom_level = 2, mega_level = 2 },
+            { hp = 300, attack = 3, rapid = 3, charge = 3, custom_level = 2, mega_level = 2 },
+        },
+    },
     -- His forms, by game: the Crosses by their number on the custom screen, Beast Out and
     -- Beast Over.
     forms = {
