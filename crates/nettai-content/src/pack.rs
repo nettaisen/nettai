@@ -277,7 +277,7 @@ pub fn battle_content_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai
 
 /// Whether the folder `r` names assets of its own game's pack (`bn5:...` in
 /// content/bn5): a game's folder does, and loads only with that pack; a
-/// folder of behaviour only (content/common) names none and needs no pack.
+/// folder of behavior only (content/common) names none and needs no pack.
 fn needs_pack(r: &crate::root::Root) -> bool {
     let own_assets = format!("(\"{}{}", r.manifest.name, nettai_content_api::keys::SEPARATOR);
     r.modules.values().any(|m| m.contains("asset.") && m.contains(&own_assets))
@@ -472,7 +472,7 @@ fn no_pack(game: &str, found: &[Found]) -> String {
 /// every pack found ([`find`]): every folder of the content directory
 /// `content` (`--content`, else [`crate::root::content`]: one namespace,
 /// docs/design/rules-in-luau.md §7.2) whose game's pack is found (a folder
-/// of behaviour only needs none). A folder whose pack isn't found is left
+/// of behavior only needs none). A folder whose pack isn't found is left
 /// out, and said why with the command that writes the pack; so is a folder
 /// the content doesn't define with when the rest define without it (one
 /// game's play never fails for another game's folder).

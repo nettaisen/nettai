@@ -15,7 +15,7 @@
 //!                                 frontend's (crate::locale)
 //! ```
 //!
-//! A folder of behaviour only (content/common: modules other folders
+//! A folder of behavior only (content/common: modules other folders
 //! require, no assets of its own, no definitions to name) needs neither
 //! compat nor locales.
 //!
@@ -107,7 +107,7 @@ pub fn read(dir: &Path, report: &mut Report) -> Option<Root> {
     }
     match crate::locale::load(dir, crate::locale::OWN) {
         Ok(Some(s)) => root.strings = s,
-        // (A folder of behaviour only has no locales.)
+        // (A folder of behavior only has no locales.)
         Ok(None) if !dir.join(crate::locale::DIR).is_dir() => {}
         Ok(None) => report.warn(format!("{}/{}.toml", crate::locale::DIR, crate::locale::OWN), "the content has no strings: its chips, navis and forms show by their keys"),
         Err(e) => report.error(format!("{}/{}.toml", crate::locale::DIR, crate::locale::OWN), e),
