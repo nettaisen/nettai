@@ -5,7 +5,7 @@
 -- targets don't test (docs/design/bn5-map.md §15.3 item 9).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local controller = require("@bn6/chips/mine/controller")
+local controller = require("./controller")
 
 return define.chip {
     id = "bn5:mine",

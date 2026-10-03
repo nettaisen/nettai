@@ -4,7 +4,7 @@
 -- for the hand's effect number (0x29, BN6's 0x3B), which is the same effect (the grab shot's animation 1).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local controller = require("@bn6/chips/grabbnsh/controller")
+local controller = require("../grabbnsh/controller")
 
 return define.chip {
     id = "bn5:grabrvng",

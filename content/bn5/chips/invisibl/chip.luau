@@ -3,7 +3,7 @@
 -- dimming spawner's entry 40; BN5's the same code), 360 ticks (the record's parameter).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local invisible = require("@bn6/chips/invisibl/controller")
+local invisible = require("./controller")
 
 return define.chip {
     id = "bn5:invisibl",
