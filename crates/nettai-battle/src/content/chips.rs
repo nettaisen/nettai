@@ -168,37 +168,40 @@ serde_flags!(ExtraChipFlags, u8);
 /// content-model-v2.md §7.5): the cases the original tells by a chip's
 /// place in its chip table. In a content file, a list of names.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct ChipTraits(pub u8);
+pub struct ChipTraits(pub u16);
 
 impl ChipTraits {
     /// The Beast rush doesn't chain it as the next chip (`sub_800FC30`:
     /// the variable swords).
-    pub const NO_CHAIN: u8 = 0x01;
+    pub const NO_CHAIN: u16 = 0x01;
     /// It hits harder while its user's barrier holds (`sub_800F1DC`: the
     /// AuraHeds and StreamHd).
-    pub const AURA_BONUS: u8 = 0x02;
+    pub const AURA_BONUS: u16 = 0x02;
     /// The other side can't cut in on the dimming it starts (`sub_800BF16`
     /// with the chip's cut-in rule: the chips past the Program Advances).
-    pub const NO_CUT_IN: u8 = 0x04;
+    pub const NO_CUT_IN: u16 = 0x04;
     /// SlashCross charges it though its family isn't Sword (`sub_8013236`:
     /// the elemental swords).
-    pub const ELEMENT_SWORD: u8 = 0x08;
+    pub const ELEMENT_SWORD: u16 = 0x08;
     /// AntiNavi turns it back though it has no `navi` flag (the navi
     /// chips' block of the chip table, `sub_800BDB2`: the US games' records
     /// of Django's chips, which lack it; BN6's content takes the Japanese
     /// games', which have it, so no BN6 chip has this).
-    pub const NAVI_SLOT: u8 = 0x10;
+    pub const NAVI_SLOT: u16 = 0x10;
     /// Its navi heals: the other side's armed AntiRecv springs instead of
     /// it coming (`sub_80E192C`: Roll's chips).
-    pub const HEALS: u8 = 0x20;
+    pub const HEALS: u16 = 0x20;
     /// Its user stays on the field while its navi acts: the navi chip's
     /// controller warps it neither out nor back in (`sub_80E1830`: BigHook,
     /// the original's navi 0x17).
-    pub const USER_STAYS: u8 = 0x40;
+    pub const USER_STAYS: u16 = 0x40;
     /// Its navi brings the user back itself: the controller warps the
     /// user out and not back in (`sub_80E18F8`: Roll's chips, the
     /// original's navi 0).
-    pub const NAVI_RETURNS_USER: u8 = 0x80;
+    pub const NAVI_RETURNS_USER: u16 = 0x80;
+    /// It goes with any selection, and the selection's code and chip rules
+    /// leave it out (`sub_8028E4C`, `sub_8028EC8`: BN6's BeastOut chip).
+    pub const GOES_WITH_ANY: u16 = 0x100;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "no_chain"),
         (0x02, "aura_bonus"),
@@ -208,14 +211,15 @@ impl ChipTraits {
         (0x20, "heals"),
         (0x40, "user_stays"),
         (0x80, "navi_returns_user"),
+        (0x100, "goes_with_any"),
     ];
 
-    pub fn has(self, bit: u8) -> bool {
+    pub fn has(self, bit: u16) -> bool {
         self.0 & bit != 0
     }
 }
 
-serde_flags!(ChipTraits, u8);
+serde_flags!(ChipTraits, u16);
 
 /// A trap chip: what the defensive-chip record that holds it catches (the
 /// ruleset's side of the trap chips, docs/engine/dimming-chips.md).
