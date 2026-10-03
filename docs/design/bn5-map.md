@@ -1426,3 +1426,32 @@ byte the same.
 rows, the release's requests and idle's starts: Rust, by the side's game's rules, BN6 never arming it), the
 failure action 0x39 (Luau), the shade (actor 0x2B), and the success's chaos weapon (AIData +0x11's routine:
 ProtoSoul's DrkSword).
+
+**As built (bn5-port-6, 2026-10-03).** All of the above, verified on every frame of the BN5 lab's `chaos-ai/`
+scenarios (a failed Chaos Unison with side 0's computer-navi data poked into its save: none, Cannon, mixed classes,
+chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's twelve seconds and his leave) and
+`souls/01-sword/chaos`:
+
+- *The charge* (Rust: armed, the cycle, the releases) and ProtoSoul's chaos weapon (routine 6: DrkSword loaded as
+  the attack, its charge row by the chaos level: navis/megaman/forms/protosoul/chaos).
+- *The failure* (action 0x39: rules/souls/chaos, the role `chaos_failure`): the dim, the white flashes, the fade,
+  the dismissal of the Dark MegaMen across (0x08104284) and the new one on a random solid empty panel of the other
+  side's area, then the revert to the base form.
+- *Dark MegaMan* (navis/dark-megaman: NameID 0x18D's record, enemy structs, collision and post-init hook) and the
+  system that drives him (rules/computer-navi/system: BN5's computer navis, a system of BN5's stock ruleset): his
+  idle (twelve seconds from his first, then his leave, the navi type's action 7), his tick (the time running down
+  outside pauses and dimming, his last three seconds blinking, the battle's end ending it).
+- *The AI* (rules/computer-navi/ai, 0x0802BA14): its decisions, the buster runs (his buster, weapon routine 0x3E,
+  is attack 0x16: three shots, rules/computer-navi/buster), the patterns, the reposition, a chip's play; the
+  pressure picks as written (the front one calls 0x081BC8AC, data: an error; the hole one reads the AI's own
+  side's tactics; their counters stay 0); getting in place for a chip by its positioning class
+  (rules/computer-navi/place: all 33 classes of 0x08029B3C, and the panel searches they share, ./panels).
+- *The tactics* (nettai_battle::tactics): the recordings' exchanged blocks (bn5-compat); a match file's
+  `[side.tactics]`, sent as the console sends them (0x0802C7BE); the netplay offer (protocol version 3).
+- BN5's shots raise BN5's own arm (lib/arm, 0x080EBABE; lib/buster's), the arm a computer navi of AI index 0x16
+  raises.
+
+New APIs: a collision's `counter_timer`, `battle.gauge_damage`, a side's sword pick (`battle.sword_pick`,
+`set_sword_pick`: `sub_802E070`+0x12, which the AI draws for VarSwrd and NeoVari and BN5's VarSwrd, when ported,
+reads for a navi no buttons drive), the identity spec's `body`. Read as constant: NaviStats +0x2A (class 28's test;
+its BN5 meaning unread, 0 in every setup).
