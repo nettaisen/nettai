@@ -21,9 +21,17 @@ local boomerang = {}
 -- A boomerang's variant: 16.16 pixels a tick along a row and along the
 -- column, whether it turns the other side's panels it crosses to grass,
 -- and whether it is the tomahawk (its own sprite and shadow, and its
--- second animation off row 1); its sprite where a game's isn't BN6's
--- (BN5's Boomer).
-export type Variant = { speed: number, turn_speed: number, grass: boolean, tomahawk: boolean?, sprite: SpriteAsset? }
+-- second animation off row 1); its sprite, collision type and spark where
+-- a game's aren't BN6's (BN5's Boomer).
+export type Variant = {
+    speed: number,
+    turn_speed: number,
+    grass: boolean,
+    tomahawk: boolean?,
+    sprite: SpriteAsset?,
+    is: CollisionType?,
+    spark: Spark?,
+}
 
 -- How a boomerang is thrown: its variant; the column (0 to 2) where it
 -- turns, or `turns = false` (the original's Param2 3: it flies straight
@@ -122,10 +130,10 @@ local function init(me: Object, s: State)
         me:free()
         return
     end
-    me:setup_collision(IS, HITS, if s.strong then STRONG_HIT_MOD else HIT_MOD)
+    me:setup_collision(v.is or IS, HITS, if s.strong then STRONG_HIT_MOD else HIT_MOD)
     local c = me.collision
     c:set_region(regions.single)
-    c:set_hit_effect(sparks.wood)
+    c:set_hit_effect(v.spark or sparks.wood)
     c:present()
     grow_grass(me, s)
     battle.play_sound(SOUND)

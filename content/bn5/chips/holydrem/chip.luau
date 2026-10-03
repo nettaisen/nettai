@@ -1,6 +1,12 @@
 --!strict
--- HolyDrem (BN5 chip 0x133): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- HolyDrem (BN5 chip 0x133): a light MegaMan's Giga chip: in the dimming, a stand-in of the user fires a shot along
+-- the row, then one more for each holy panel on the field, each panel turned Normal: 50 damage a shot
+-- (docs/design/bn5-map.md §6.2). Its dimming controller (./controller, BN6's BurnSqr controller's code), stand-in
+-- (./actor) and shot (./shot); the light MegaMan it needs is the record's `megaman` field, which the rules' light
+-- and dark system reads.
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local controller = require("./controller")
 
 return define.chip {
     id = "bn5:holydrem",
@@ -17,4 +23,5 @@ return define.chip {
     extra_flags = { 8, 16 },
     slot_in_limit = 1,
     megaman = "light",
+    dimming = controller.hook,
 }

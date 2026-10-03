@@ -49,7 +49,7 @@ end
 -- `sub_80EEA78`: a swing: the blade out, the side's trap record gone; on
 -- its 10th tick a sonic boom from the panel ahead; after 22 ticks the next
 -- swing, or the end.
-local function swing(me: Object, s: State, blade: AttachmentLook)
+local function swing(me: Object, s: State, blade: AttachmentLook, boom_kind: Kind?)
     if me.step_init == 0 then
         me:set_animation(SWING_ANIM)
         me:refresh_form_overlay()
@@ -66,7 +66,7 @@ local function swing(me: Object, s: State, blade: AttachmentLook)
         if boom == nil then
             error(string.format("AntiSwrd's counter: swing %d reads past dword_80EEB14", me.attack_count))
         end
-        sonic_boom.throw(me, me.panel_x + me.facing, me.panel_y, me.attack_element, damage, boom)
+        sonic_boom.throw(me, me.panel_x + me.facing, me.panel_y, me.attack_element, damage, boom, boom_kind)
     end
     local t = s.timer - 1
     s.timer = int.u16(t)
@@ -105,8 +105,8 @@ end
 -- The counter, swinging `blade`. (The original takes the blade from the
 -- swords' table, `byte_80EBB64`, by the attack's variant: the elemental
 -- swords' blades for 0xC to 0xF, the cannon arm for 0x10 and 0x13, a sword
--- for the rest.)
-function counter.action_with(id: string, blade: AttachmentLook): Action
+-- for the rest.) Its booms are BN6's, or a game's own kind (`boom_kind`).
+function counter.action_with(id: string, blade: AttachmentLook, boom_kind: Kind?): Action
     return define.action {
         id = id,
         state = STATE,
@@ -116,7 +116,7 @@ function counter.action_with(id: string, blade: AttachmentLook): Action
             if step == 0 then
                 start(me, s)
             elseif step == 4 then
-                swing(me, s, blade)
+                swing(me, s, blade, boom_kind)
             elseif step == 8 then
                 finish(me, s)
             else

@@ -11,6 +11,10 @@
 --
 -- Its first related slot can hold an object whose header it sets (to 1
 -- when it comes, 0 when it goes); Thunder gives none.
+--
+-- Its look (sprites, animations, collision type, hit modifier, spark, sounds) is a
+-- game's: BN6's below (`ball.kind`); another game's kind of it is
+-- `ball.make_kind(id, look)` (BN5's).
 
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
@@ -31,11 +35,21 @@ export type State = {
     bug: number,
 }
 
+-- BN6's look: one sprite, its animations small and big (fast, or
+-- DarkThnd's 12 panels; +1 bursting); an attack hitting with modifier 1
+-- and the elec spark; its sound, DarkThnd's own.
 local SPRITE = asset.sprite("bn6:thunder-ball")
--- Its animations: small, big (fast, or DarkThnd's 12 panels); +1
--- bursting.
-local SMALL, BIG = 0, 2
-local SOUND_THUNDER, SOUND_DARK = asset.sound("bn6:erase-man-2"), asset.sound("bn6:elec-man")
+local BN6: ThunderBallLook = {
+    sprite = SPRITE,
+    small_anim = 0,
+    big_sprite = SPRITE,
+    big_anim = 2,
+    is = collision.attack,
+    hit_mod = 1,
+    spark = sparks.elec,
+    sound = asset.sound("bn6:erase-man-2"),
+    dark_sound = asset.sound("bn6:elec-man"),
+}
 -- The panel count that makes DarkThnd's.
 local DARK_PANELS = 0x0C
 -- Hits that end it: bodies, neutral objects, attacks.
@@ -154,14 +168,15 @@ local function tick(me: Object)
 end
 
 -- `sub_80C940C`.
-local function init(me: Object)
+local function init(me: Object, look: ThunderBallLook)
     local s = me.state :: State
     local dark = s.panels == DARK_PANELS
+    local big = s.fast or dark
     local sprite = me.sprite
-    sprite:load(SPRITE)
+    sprite:load(if big then look.big_sprite else look.sprite)
     sprite.shadow = "with_sprite"
     me.visible = true
-    local anim = if s.fast or dark then BIG else SMALL
+    local anim = if big then look.big_anim else look.small_anim
     me.anim = anim
     me.anim_loaded = anim
     sprite:set_animation(anim)
@@ -172,10 +187,10 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(collision.attack, collision.hits_navis, 1)
+    me:setup_collision(if dark then look.dark_is or look.is else look.is, collision.hits_navis, look.hit_mod)
     local c = me.collision
     c:set_region(regions.single)
-    c:set_hit_effect(sparks.elec)
+    c:set_hit_effect(look.spark)
     if s.status then
         c.status_base = s.status
     end
@@ -185,7 +200,7 @@ local function init(me: Object)
     end
     c:present()
     aim(me)
-    battle.play_sound(if dark then SOUND_DARK else SOUND_THUNDER)
+    battle.play_sound(if dark then look.dark_sound or look.sound else look.sound)
     me:set_lifecycle("update")
     tick(me)
 end
@@ -197,32 +212,37 @@ local function burst(me: Object)
     end
 end
 
-ball.kind = define.kind {
-    id = "bn6:thunder/ball",
-    pool = "attack",
-    state = { fast = "bool", panels = "u8", status = "status", bug = "u8" },
-    -- `sub_80C93CC`.
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            init(me)
-        elseif l == "update" then
-            tick(me)
-        else
-            burst(me)
-        end
-        if me.active then
-            me:update_sprite()
-        end
-    end,
-}
+-- A thunder ball kind (`id`) of `look`.
+function ball.make_kind(id: string, look: ThunderBallLook): Kind
+    return define.kind {
+        id = id,
+        pool = "attack",
+        state = { fast = "bool", panels = "u8", status = "status", bug = "u8" },
+        -- `sub_80C93CC`.
+        update = function(me: Object)
+            local l = me.lifecycle
+            if l == "init" then
+                init(me, look)
+            elseif l == "update" then
+                tick(me)
+            else
+                burst(me)
+            end
+            if me.active then
+                me:update_sprite()
+            end
+        end,
+    }
+end
+
+ball.kind = ball.make_kind("bn6:thunder/ball", BN6)
 
 -- `sub_80C954C`: a thunder ball for `owner` on (x, y) with the damage word
 -- `damage`. Its position is the spawner's registers (the panel Y, the
 -- element and a height of 10 pixels) until its init places it; the height
--- stays.
-function ball.spawn(owner: Object, x: number, y: number, element: number, damage: number, spec: Spec): Object?
-    local o = battle.spawn(ball.kind, Vec3.new(y, element, 0xA_0000))
+-- stays. (A game's own kind of it: `kind`.)
+function ball.spawn(owner: Object, x: number, y: number, element: number, damage: number, spec: Spec, kind: Kind?): Object?
+    local o = battle.spawn(kind or ball.kind, Vec3.new(y, element, 0xA_0000))
     if o then
         local s = o.state :: State
         s.fast, s.panels, s.status, s.bug = spec.fast or false, spec.panels, spec.status, spec.bug or 0
