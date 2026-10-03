@@ -771,4 +771,30 @@ mod tests {
         assert_eq!(confirm(&mut live, &mut b).transform.form, None);
         assert_eq!(crosses_used(&b), [false; 5]);
     }
+
+    /// MegaMan received from a navi code (event flag 0x163, the setup's
+    /// level) has no Beast Out button (`sub_8029FB4`), and his Cross window
+    /// stays (`sub_8029F70`: with the flag, MegaMan's); without a code the
+    /// button is there.
+    #[test]
+    fn a_navi_code_seals_beast_out() {
+        for level in [None, Some(3)] {
+            let content = nettai_match::testing::bn6_content();
+            let stage = nettai_match::link_battle_stages(&content)[0];
+            let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
+            let folder = folder_of(&content, &[("bn6:cannon", 0)]);
+            let mut setup = live_setup(&content, settings, [folder, folder], 5);
+            setup.players[0].navi_level = level;
+            let mut live = LivePlayer::new(setup, content.clone());
+            let mut b = live.start();
+            play_until(&mut live, &mut b, 3000, |_, _| 0, |b| choosing(b).is_some());
+            let screen = b.custom.sides[0].screen.unwrap();
+            let button = match screen.slots[custom::screen::SPECIAL_SLOT as usize].kind {
+                SlotKind::Button { button, .. } => Some(b.content.defs.button(button).name.as_str()),
+                _ => None,
+            };
+            assert_eq!(button, if level.is_none() { Some("beast_out") } else { None }, "level {level:?}");
+            assert_eq!(nettai_render::custom::CrossWindow::of(&b, 0).unwrap().count, 5, "level {level:?}");
+        }
+    }
 }

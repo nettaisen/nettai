@@ -312,9 +312,15 @@ mod tests {
     /// A MegaMan with a NaviCust of BN6's programs: the navicust system
     /// compiles it into the stats the round starts with.
     fn compiled(parts: &[(&str, &str, u8, u8)]) -> (NaviStats, bool, Vec<String>) {
+        compiled_at(parts, None)
+    }
+
+    /// [`compiled`], MegaMan from a navi code of `level`.
+    fn compiled_at(parts: &[(&str, &str, u8, u8)], level: Option<u8>) -> (NaviStats, bool, Vec<String>) {
         let content = crate::testing::bn6_content();
         let mut m = crate::draw::live(&content, 3, None).unwrap();
         let s = &mut m.sides[0];
+        s.navi_level = level;
         s.stats = crate::Side::base_stats(&content, s.navi, s.game);
         (s.stats.max_base_hp, s.stats.hp, s.stats.max_hp, s.stats.reg_up) = (600, 600, 600, 50);
         let placed: Vec<PlacedProgram> = parts
@@ -356,5 +362,37 @@ mod tests {
         assert!(problems.iter().any(|p| p.contains("is over program 1")), "{problems:?}");
         let (_, _, problems) = compiled(&[("bn6:undersht", "white", 0, 1)]);
         assert!(problems.iter().any(|p| p.contains("off the board")), "{problems:?}");
+    }
+
+    /// MegaMan from a navi code gets his level's gains over what his
+    /// NaviCust made (`reloadCurNaviStatBoosts`: `sub_8121154` after
+    /// `sub_813C458`): its HP to the maximum and the HP the maximum, the
+    /// buster's levels to 4, the custom level to 8, the Mega level to 10.
+    #[test]
+    fn megaman_from_a_navi_code_gets_his_levels_gains() {
+        let content = crate::testing::bn6_content();
+        let megaman = content.form_changing_navi().unwrap();
+        let parts = [("bn6:undersht", "white", 1, 3), ("bn6:attack-1", "pink", 5, 2), ("bn6:hp-100", "white", 3, 2)];
+        let (base, _, problems) = compiled(&parts);
+        assert_eq!(problems, Vec::<String>::new());
+        for level in [0u8, 7, 14] {
+            let (s, _, problems) = compiled_at(&parts, Some(level));
+            assert_eq!(problems, Vec::<String>::new(), "level {level}");
+            let g = content.navi(megaman).levels.as_ref().unwrap().by_level[level as usize];
+            let up = |v: u8, n: u8, most: u8| (v + n).min(most);
+            assert_eq!(
+                (s.max_hp, s.hp, s.attack, s.rapid, s.charge, s.custom_level, s.mega_level),
+                (
+                    base.max_hp + g.hp,
+                    base.max_hp + g.hp,
+                    up(base.attack, g.attack, 4),
+                    up(base.rapid, g.rapid, 4),
+                    up(base.charge, g.charge, 4),
+                    up(base.custom_level, g.custom_level, 8),
+                    up(base.mega_level, g.mega_level, 10)
+                ),
+                "level {level}"
+            );
+        }
     }
 }
