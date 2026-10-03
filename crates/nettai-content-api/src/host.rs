@@ -246,6 +246,20 @@ pub enum SystemHook {
     /// first system that answers decides; none answering, the framework's
     /// rule (the custom level, NumbrOpn and the hand-shrink bug).
     CustomHandSize,
+    /// `custom.open(side)`: the side's custom screen opens, before its hand
+    /// size and its layout (BN6's: ChargeCross's screens counted, the
+    /// round's first screen forgetting the round's Beast Out). Its result
+    /// is unused.
+    CustomOpen,
+    /// `custom.confirmed(side)`: OK was pressed and the hand is built (the
+    /// round's Beast Out or Cross noted). Its result is unused.
+    CustomConfirmed,
+    /// A system's window's `update(side)`, each tick it is up: whether it
+    /// stays up (`custom.window_tick` counts its ticks from 1).
+    WindowUpdate,
+    /// A button's `taken_back(side)`: B took its pick back (BN6's Beast
+    /// Out: its face goes).
+    ButtonTakenBack,
     /// A system's custom-screen button's `shown(side)` (§4.4), as the
     /// screen opens: whether it is on the screen. (Not in `hooks`: each
     /// button names its own functions.)
@@ -287,6 +301,10 @@ impl SystemHook {
             SystemHook::Countered => "countered",
             SystemHook::NaviTick => "navi_tick",
             SystemHook::CustomHandSize => "custom.hand_size",
+            SystemHook::CustomOpen => "custom.open",
+            SystemHook::CustomConfirmed => "custom.confirmed",
+            SystemHook::WindowUpdate => "window.update",
+            SystemHook::ButtonTakenBack => "button.taken_back",
             SystemHook::ButtonShown => "button.shown",
             SystemHook::ButtonState => "button.state",
             SystemHook::ButtonPressed => "button.pressed",
@@ -294,7 +312,7 @@ impl SystemHook {
         }
     }
 
-    pub const ALL: [SystemHook; 20] = [
+    pub const ALL: [SystemHook; 24] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -315,6 +333,10 @@ impl SystemHook {
         SystemHook::ButtonShown,
         SystemHook::ButtonState,
         SystemHook::ButtonPressed,
+        SystemHook::CustomOpen,
+        SystemHook::CustomConfirmed,
+        SystemHook::WindowUpdate,
+        SystemHook::ButtonTakenBack,
     ];
 }
 

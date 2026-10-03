@@ -957,7 +957,7 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
                     let ctx = context(p);
                     battle.stats[p] = ctx.stats;
                     battle.round.turn = ctx.turn;
-                    side.open_with(&ctx, &mut consoles[p], &mut battle.custom_extras(p as u8));
+                    side.open_with(&ctx, &mut consoles[p], &mut battle.custom_extras(p as u8, ctx.emotion));
                 }
             }
             open = Some((f.frame, [None; 2], [None; 2]));
@@ -975,7 +975,7 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
                     let d = content.chip(id).damage;
                     if d < 1000 { d } else { 0 }
                 };
-                let request = side.tick_with(&ctx, &mut consoles[p], damage, &mut battle.custom_extras(p as u8));
+                let request = side.tick_with(&ctx, &mut consoles[p], damage, &mut battle.custom_extras(p as u8, ctx.emotion));
                 if request == Some(Request::Confirm) {
                     confirmed[p] = Some(f.frame);
                 }

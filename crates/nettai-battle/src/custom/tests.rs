@@ -75,6 +75,16 @@ impl Extras for TestButtons {
         (b.0 == 0).then(|| if screen.last_pick_is_chip() { SlotState::Selectable } else { SlotState::Unavailable })
     }
 
+    fn button_taken_back(&mut self, _: &mut Screen, _: ButtonHandle) {}
+
+    fn opened(&mut self, _: &mut Screen) {}
+
+    fn confirmed(&mut self, _: &mut Screen, _: &mut BattleFolder) {}
+
+    fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: crate::content::WindowHandle) -> bool {
+        false
+    }
+
     fn button_pressed(&mut self, screen: &mut Screen, _: &mut BattleFolder, b: ButtonHandle) {
         let slot = screen.cursor_button_slot().expect("a button under the cursor");
         if screen.slots[slot as usize].state != SlotState::Selectable {
@@ -182,10 +192,13 @@ fn five_chips_are_dealt_into_the_top_row() {
     assert!(s.slots[5..10].iter().all(|x| matches!(x.kind, SlotKind::Empty | SlotKind::Hidden)));
     // Left of the first chip wraps to OK; OK's right to the first chip.
     assert_eq!((s.slots[0].left, s.slots[4].right), (Some(OK_SLOT), Some(OK_SLOT)));
+    // (OK's up goes to the special slot when a system's button is there:
+    // BN6's Beast Out, which these tests have none of.)
     let ok = s.slots[OK_SLOT as usize];
-    assert_eq!((ok.vertical, ok.left, ok.right), (Some(SPECIAL_SLOT), Some(4), Some(0)));
-    let beast = s.slots[SPECIAL_SLOT as usize];
-    assert_eq!((beast.kind, beast.vertical, beast.left, beast.right), (SlotKind::BeastOut, Some(OK_SLOT), None, None));
+    assert_eq!((ok.vertical, ok.left, ok.right), (None, Some(4), Some(0)));
+    // (The special slot holds a system's button, BN6's Beast Out, which
+    // these tests have none of: it is absent.)
+    assert!(matches!(s.slots[SPECIAL_SLOT as usize].kind, SlotKind::Empty | SlotKind::Hidden));
     assert_eq!(s.crosses.count, 5);
 }
 
@@ -285,37 +298,6 @@ fn mega_chips_past_the_limit_turn_invalid() {
 }
 
 #[test]
-fn beast_out() {
-    for (version, beast) in [(GameVersion::Falzar, library::testing::FALZAR_BEAST), (GameVersion::Gregar, library::testing::GREGAR_BEAST)] {
-        let mut p = Player::new(&[], version);
-        p.open();
-        p.wait(10);
-        p.step(0);
-        p.press(keys::START);
-        p.press(keys::DOWN);
-        assert_eq!(p.screen().cursor, SPECIAL_SLOT);
-        let a_tick = p.tick + 1;
-        p.step(keys::A);
-        assert!(matches!(p.phase(), Phase::BeastOutChosen { .. }));
-        while p.phase() != Phase::Choosing && p.tick < 1000 {
-            p.step(0);
-        }
-        assert_eq!(p.tick, a_tick + 70);
-        assert!(p.screen().beast_out);
-        assert_eq!(p.screen().slots[SPECIAL_SLOT as usize].state, SlotState::Selected);
-        p.press(keys::UP);
-        p.press(keys::A);
-        p.wait(20);
-        let sent = p.side.sent.as_ref().unwrap();
-        assert_eq!(sent.result.transform.form, Some(beast));
-        // Only Beast Out was picked: an empty hand goes out (and replaces
-        // what the navi still held).
-        assert_eq!(sent.result.hand.as_ref().unwrap().ids[0], None);
-        assert!(p.side.round.beast_out_used);
-    }
-}
-
-#[test]
 fn a_cross_from_the_window() {
     let mut p = Player::new(&[], GameVersion::Falzar);
     p.open();
@@ -340,8 +322,6 @@ fn a_cross_from_the_window() {
     }
     assert_eq!(p.tick, a + 34);
     assert_eq!(p.screen().crosses.chosen, Some(1));
-    // A chosen Cross grays out Beast Out.
-    assert_eq!(p.screen().slots[SPECIAL_SLOT as usize].state, SlotState::Unavailable);
     p.press(keys::START);
     p.press(keys::A);
     p.wait(20);
@@ -428,48 +408,6 @@ fn r_describes_the_hovered_cross_of_a_cross_list() {
         let Phase::Description { from_cross_window: true, chatbox } = p.phase() else { panic!("no description: {:?}", p.phase()) };
         let lines = p.lib.cross_description_lines(FormHandle(form));
         assert_eq!(chatbox.script(), Script::Description { breaks: lines - 1 }, "list {list}, down {down}");
-    }
-}
-
-/// Beast Out from a Cross of the other game is that Cross's form in Beast
-/// Out, of that game's Beast (a Falzar player in Gregar's first Cross goes
-/// to its Beast form, 0x0D), with that game's roar; tired, that game's
-/// Beast Over. Without a Cross list the Beast's game is the version's.
-#[test]
-fn beast_out_from_the_other_games_cross_is_its_beast_form() {
-    use super::look::ScreenSound;
-    for list in [true, false] {
-        let mut p = Player::new(&[], GameVersion::Falzar);
-        if list {
-            p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
-        }
-        // In Gregar's first Cross.
-        p.stats.form = FormHandle(1);
-        p.open();
-        p.wait(10);
-        p.step(0);
-        p.press(keys::START);
-        p.press(keys::DOWN);
-        p.step(keys::A);
-        let mut roars = Vec::new();
-        while p.phase() != Phase::Choosing && p.tick < 1000 {
-            p.step(0);
-            roars.extend(p.screen().look.drawn.sounds().filter(|s| matches!(s, ScreenSound::BeastOut(_))));
-        }
-        let game = if list { GameVersion::Gregar } else { GameVersion::Falzar };
-        assert_eq!(roars, [ScreenSound::BeastOut(game)], "list {list}");
-        assert_eq!(p.screen().look.face, Some(FormHandle(0x0D)), "list {list}");
-        p.press(keys::UP);
-        p.press(keys::A);
-        p.wait(20);
-        assert_eq!(p.side.sent.as_ref().unwrap().result.transform.form, Some(FormHandle(0x0D)), "list {list}");
-        // Tired: Beast Over of the Beast's game (Gregar's 0x17, Falzar's 0x18).
-        let over = p.side.unlocks.beast_form(&p.lib, p.stats.navi, FormHandle(1), true);
-        assert_eq!(over, Some(FormHandle(if list { 0x17 } else { 0x18 })), "list {list}");
-        // From the base form Beast Out is the version's.
-        let base = p.side.unlocks.beast_form(&p.lib, p.stats.navi, FormHandle(0), false);
-        assert_eq!(base, Some(library::testing::FALZAR_BEAST));
-        assert_eq!(p.side.unlocks.beast_game(&p.lib, FormHandle(0)), GameVersion::Falzar);
     }
 }
 
