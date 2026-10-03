@@ -5,6 +5,7 @@
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
 local computer_navi = require("./computer-navi/system")
+local emotion = require("./emotion/system")
 local light_dark = require("./light-dark/system")
 local souls = require("./souls/system")
 
@@ -14,6 +15,8 @@ return define.ruleset {
     systems = {
         -- Light and dark MegaMan: the holy panels a dark one clears, the chips each may use.
         light_dark,
+        -- BN5's emotions: Full Synchro on a counter.
+        emotion,
         -- Soul Unison: the soul's turns, the revert when they run out (the change is its souls' own action).
         souls.system,
         -- The computer navis a battle brings (a failed Chaos Unison's Dark MegaMan): their AI, their time, their

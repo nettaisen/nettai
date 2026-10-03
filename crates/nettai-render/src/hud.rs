@@ -91,7 +91,9 @@ impl Face {
         let emotion = emotion(b, side);
         let f = b.content.form(form);
         Face {
-            picture: f.mugshot.and_then(|faces| crate::packs::mugshot(&b.content, faces.of(emotion))),
+            picture: f
+                .mugshot
+                .and_then(|faces| crate::packs::mugshot(&b.content, faces.shown(emotion, b.sides[side as usize].face_variant))),
             own: f.kind == FormKind::Base,
             full_synchro: emotion == Emotion::FullSynchro,
             count: b.stats[side as usize].beast_out_counter,

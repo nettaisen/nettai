@@ -293,10 +293,12 @@ fn action_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     }
     if f & request::WEAKNESS_HIT != 0 {
         ai_mut(b, r).requests &= !request::WEAKNESS_HIT;
-        // A Cross, Beast Out or a Cross in Beast Out (NameIDs 0x1AC..=0x1C1).
+        // A Cross, Beast Out or a Cross in Beast Out (NameIDs 0x1AC..=0x1C1);
+        // in BN5 (0x08017CAC) any navi.
         use crate::content::IdentityClass;
         let class = b.content.identity(b.objects.get(r).identity).class;
-        if matches!(class, IdentityClass::Cross | IdentityClass::Beast | IdentityClass::CrossBeast) {
+        let any = b.rules_for(r).form_break == crate::content::FormBreak::Bn5;
+        if any || matches!(class, IdentityClass::Cross | IdentityClass::Beast | IdentityClass::CrossBeast) {
             ai_mut(b, r).status |= ai_status::CROSS_BREAKING;
             exit_attack_state(b, r);
             cross_lane(b, r);
@@ -737,6 +739,10 @@ fn tick_submerged(b: &mut Battle, r: ObjectRef) {
 /// allows it).
 fn tick_anger(b: &mut Battle, r: ObjectRef) {
     if navi_record(b, r).actor_type != ActorType::Player {
+        return;
+    }
+    // (BN5's, 0x08011A14, passes over AI index 23.)
+    if b.rules_for(r).emotions == crate::content::Emotions::Bn5 && navi_record(b, r).ai_index == 23 {
         return;
     }
     let side = b.objects.get(r).alliance;
