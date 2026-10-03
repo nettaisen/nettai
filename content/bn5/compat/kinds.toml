@@ -120,3 +120,4 @@
 "bn5:quake/bomb" = { pool = "attack", index = 0x51 }
 "bn5:seed" = { pool = "attack", index = 0x4A }
 "bn5:h-burst/burst" = { pool = "attack", index = 0x9E }
+"bn5:boxer/boxer" = { pool = "effect", index = 0x64 }
