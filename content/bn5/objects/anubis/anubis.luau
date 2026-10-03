@@ -11,6 +11,8 @@
 
 local collision = require("../../rules/collision")
 local controller = require("@common/anubis/controller")
+local effects = require("@bn6/lib/effects")
+local rising_bubble = require("../rising-bubble/rising_bubble")
 local statue = require("@common/anubis/statue")
 
 local anubis = {}
@@ -25,7 +27,9 @@ local made = statue.make {
     hits = collision.hit_by_other_side,
     drain = collision.collision_31,
     nothing = collision.nothing,
-    absorbs = false,
+    -- BN6's puff and explosion (BN5's are the same rows of the effect table, whose sheets BN5's pack doesn't name).
+    effects = { puff = effects.puff, explosion = effects.explosion },
+    bubble = rising_bubble.kind,
 }
 anubis.statue = made
 

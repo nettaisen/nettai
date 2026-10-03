@@ -12,8 +12,8 @@
 local collision = require("../../rules/collision")
 local drill = require("../../chips/grndman/drill")
 local link = require("../../lib/link_chips")
-local panels = require("../../lib/panels")
-local regions = require("../../lib/regions")
+local panels = require("@common/panels")
+local regions = require("@common/regions")
 local rock = require("../../chips/grndman/rock")
 local sparks = require("../../lib/sparks")
 

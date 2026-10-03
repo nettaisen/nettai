@@ -7,7 +7,7 @@
 
 local charge_wave = require("./charge_wave")
 local collision = require("../../../../rules/collision")
-local regions = require("../../../../lib/regions")
+local regions = require("@common/regions")
 local statuses = require("../../../../rules/status")
 local weapon = require("../../../../lib/weapon")
 

@@ -6,6 +6,7 @@
 
 local collision = require("../../rules/collision")
 local common = require("@common/justcone/strike")
+local effects = require("@bn6/lib/effects")
 local sparks = require("../../lib/sparks")
 
 -- The fist (attack object #0xAE, 0x080DBDA4).
@@ -19,6 +20,7 @@ local STRIKE = common.make {
     wave_is = collision.attack,
     element = 0,
     waves_take_element = true,
+    effects = { explosion = effects.explosion, burst = effects.burst, puff = effects.puff },
 }
 
 return define.chip {

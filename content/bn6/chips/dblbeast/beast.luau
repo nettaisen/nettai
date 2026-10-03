@@ -6,7 +6,7 @@
 -- gives; between attacks they wait 31 ticks. Their hits add their own
 -- damage to the controller's bonus.
 
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 local collision = require("../../rules/collision")
 
 local beast = {}

@@ -9,7 +9,6 @@
 -- special chip is in use (its player's AI+0xBB), BN5's with each side keeping its own gauge (battle flag 0x40,
 -- 0x080E6746).
 
-local trajectory = require("@bn6/lib/trajectory")
 
 local point = {}
 
@@ -31,6 +30,8 @@ export type Look = {
     sounds: { appear: Sound, rise: Sound, arrive: Sound },
     -- Whether the bonus goes to the side's special bonus rather than to the chip at the hand's cursor.
     special: (side: number, navi: Object) -> boolean,
+    -- The game's aiming helpers (its sine table's: lib/trajectory).
+    trajectory: Trajectory,
 }
 
 export type Point = {
@@ -103,8 +104,8 @@ function point.make(look: Look): Point
         local s = me.state :: State
         local tx, ty = field.center(s.target_x, s.target_y)
         local p = me.pos
-        local angle = trajectory.angle(int.i32(tx - p.x), int.i32(ty - p.y))
-        local vx, vy = trajectory.toward(angle, me.vel.x)
+        local angle = look.trajectory.angle(int.i32(tx - p.x), int.i32(ty - p.y))
+        local vx, vy = look.trajectory.toward(angle, me.vel.x)
         me.pos = Vec3.new(int.i32(p.x + vx), int.i32(p.y + vy), p.z)
         me:set_panel_from_coordinates()
         if me.panel_x ~= s.target_x or me.panel_y ~= s.target_y then

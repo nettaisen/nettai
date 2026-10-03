@@ -7,11 +7,11 @@
 -- it. It hits navis (hit modifier 1) wherever it moves onto a new panel. The three differ in the ball's palette (the
 -- chip's first parameter, times 2) and damage.
 
-local buster = require("@bn6/lib/buster")
+local buster = require("../../lib/buster")
 local collision = require("../../rules/collision")
-local regions = require("@bn6/lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
-local trajectory = require("@bn6/lib/trajectory")
+local trajectory = require("../../lib/trajectory")
 
 local cactbal = {}
 

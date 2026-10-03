@@ -9,6 +9,7 @@
 -- BN6's look.
 
 local common = require("@common/colorpt/point")
+local trajectory = require("../../lib/trajectory")
 
 return common.make {
     id = "bn6:colorpt/point",
@@ -22,4 +23,5 @@ return common.make {
     special = function(_side: number, navi: Object): boolean
         return navi.special_source ~= 0
     end,
+    trajectory = trajectory,
 }

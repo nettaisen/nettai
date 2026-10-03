@@ -4,7 +4,7 @@
 -- chip sends with the attack's damage word; at 16 it recovers for 6 ticks, then lowers the arm and goes back to
 -- idle.
 
-local buster = require("@bn6/lib/buster")
+local buster = require("./buster")
 
 local arm_launch = {}
 

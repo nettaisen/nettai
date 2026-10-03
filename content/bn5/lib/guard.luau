@@ -15,7 +15,7 @@
 -- uses come with BN5's NaviCust.
 
 local collision = require("../rules/collision")
-local projectile = require("@bn6/lib/projectile")
+local projectile = require("../objects/projectile/projectile")
 local shield = require("@common/rflectr/shield")
 local sparks = require("./sparks")
 local variants = require("../objects/projectile/variants")

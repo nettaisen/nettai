@@ -1,12 +1,11 @@
 --!strict
 -- Muramasa (BN5 chip 0x0ca): a slash on the two panels ahead, as strong as the HP its user lost: BN6's slash
--- (@bn6/lib/swords/slash, the original's action 0x13 with subtype 8) with BN5's parts (lib/swords) and its slash
+-- (@common/swords/slash, the original's action 0x13 with subtype 8) with BN5's parts (lib/swords) and its slash
 -- effect (0x2D, BN5's palette 8 for BN6's 6), its damage BN5's formula 46 (0x0800EA78: BN6's formula 20 but for its
 -- cap, 999 for 500).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local regions = require("@bn6/lib/regions")
-local slash = require("@bn6/lib/swords/slash")
+local regions = require("@common/regions")
 local swords = require("../../lib/swords")
 
 return define.chip {
@@ -23,7 +22,7 @@ return define.chip {
     flags = { "has_damage", "damage_shown_variable", "library", "variable_damage" },
     slot_in_limit = 1,
     megaman = "dark",
-    action = slash.action {
+    action = swords.slash {
         blade = swords.blade,
         blade_anim = swords.blade_anim,
         hit = { region = regions.long, collision = swords.slashes_navis, hit_mod = 3 },

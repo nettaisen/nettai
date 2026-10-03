@@ -7,8 +7,10 @@
 -- if it deals damage, up to 50 for each hand entry. The behavior is BN5's
 -- too (@common/otenko/otenko), made here with BN6's look.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local common = require("@common/otenko/otenko")
+local effects = require("../../lib/effects")
 
 -- Its sprite (`sub_80DB108`'s, in `sub_80DB2C6`'s pool), with a shadow,
 -- animation 0: the Japanese ROMs' 0C-49, Otenko (animation 0 the puff he
@@ -46,6 +48,7 @@ return common.make {
     -- How it looks absorbed (the original's obstacle kind 0xE, a row of
     -- `byte_80E98C0`): its own sprite, the Japanese ROMs' row. (The US
     -- ROMs' row is the AirSpin top's sprite, 0C-41.)
-    absorbs = true,
+    absorbed = absorbed_obstacle.look { sprite = SPRITE },
+    effects = { puff = effects.puff, bubbles = effects.bubbles },
     special_bonus = false,
 }

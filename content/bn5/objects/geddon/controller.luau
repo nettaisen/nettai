@@ -1,9 +1,18 @@
 --!strict
 -- BN5's Geddon controller (effect object #0x1D, 0x080E2718): BN6's (@common/geddon/controller) without holding the
--- user's panel (0x080E275C), setting off BN6's quake (@bn6/chips/geddon/quake, BN5's effect #0x1E, the same code:
--- 0x080E27F0; its rows, by the chip's first parameter, crack, break or poison every solid panel).
+-- user's panel (0x080E275C), setting off the shared quake (@common/geddon/quake, BN5's effect #0x1E, the same code:
+-- 0x080E27F0; its rows, by the chip's first parameter, crack, break or poison every solid panel) with BN5's rising
+-- bubble and sounds (its puff the sheet 14-02, BN6's small puff).
 
 local common = require("@common/geddon/controller")
-local quake = require("@bn6/chips/geddon/quake")
+local quake = require("@common/geddon/quake")
+local rising_bubble = require("../rising-bubble/rising_bubble")
 
-return common.make { id = "bn5:geddon/controller", name = "Geddon", quake = quake.spawn, hold_panel = false }
+local quakes = quake.make {
+    id = "bn5:geddon/quake",
+    puff = define.effect { sprite = asset.sprite("bn5:small-puff"), anim = 1, palette = 0 },
+    bubble = rising_bubble.kind,
+    sounds = { puff = asset.sound("bn5:panel-crack"), bubble = asset.sound("bn5:panel-poison") },
+}
+
+return common.make { id = "bn5:geddon/controller", name = "Geddon", quake = quakes.spawn, hold_panel = false }

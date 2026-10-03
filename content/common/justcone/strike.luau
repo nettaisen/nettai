@@ -10,8 +10,7 @@
 -- element (BN6's Break, the secondary element 0x10; BN5's none: 0x080DBF66), which BN5's landing hits take too
 -- (0x080DBF7C; BN6's are of no element).
 
-local effects = require("@bn6/lib/effects")
-local regions = require("@bn6/lib/regions")
+local regions = require("@common/regions")
 
 local strike = {}
 
@@ -29,6 +28,8 @@ export type Look = {
     -- The fist's element, and whether the landing's hits take it (else none).
     element: number,
     waves_take_element: boolean,
+    -- The effects it leaves (the game's lib/effects).
+    effects: { explosion: Effect, burst: Effect, puff: Effect },
 }
 
 export type Strike = {
@@ -119,7 +120,7 @@ function strike.make(look: Look): Strike
         local facing = me.facing
         for _, d in DUST do
             local x, y = field.center(me.panel_x + d[1] * facing, me.panel_y + d[2])
-            battle.effect(Vec3.new(x, y, 0), effects.explosion)
+            battle.effect(Vec3.new(x, y, 0), look.effects.explosion)
         end
     end
 
@@ -136,7 +137,7 @@ function strike.make(look: Look): Strike
         local p = me.pos
         me.pos = Vec3.new(p.x, p.y, 0)
         if bit32.btest(field.flags(me.panel_x, me.panel_y), LANDS) then
-            battle.effect(me.pos, effects.burst)
+            battle.effect(me.pos, look.effects.burst)
             battle.play_sound(look.sounds.land)
             crack_around(me.panel_x, me.panel_y)
             land(me)
@@ -153,7 +154,7 @@ function strike.make(look: Look): Strike
             c:set_region(nil)
         end
         if not field.solid(me.panel_x, me.panel_y) then
-            battle.effect(me.pos, effects.puff)
+            battle.effect(me.pos, look.effects.puff)
             c:set_region(nil)
             me:set_lifecycle("destroy")
             return

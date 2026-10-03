@@ -13,14 +13,13 @@
 -- don't erupt: they burn and go, §15), the Cross and Beast Out sounds and the custom screen's Cross
 -- window, re-deal and scrap (BN6's).
 
-local antidmg_counter = require("@bn6/chips/antidmg/counter")
+local antidmg_counter = require("../chips/antidmg/counter")
 local barriers = require("../lib/barriers")
-local charged_shot = require("@bn6/navis/megaman/weapons/charged-shot/weapon")
-local anti_recovery = require("@bn6/chips/antirecv/controller")
-local antiswrd_counter = require("@bn6/chips/antiswrd/counter")
+local charged_shot = require("../navis/megaman/weapons/charged-shot")
+local anti_recovery = require("../chips/antirecv/controller")
 local collision = require("./collision")
 local effects = require("@bn6/lib/effects")
-local regions = require("@bn6/lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../lib/sparks")
 local statuses = require("./status")
 local swords = require("../lib/swords")
@@ -28,14 +27,14 @@ local swords = require("../lib/swords")
 return define.roles {
     id = "bn5:roles",
     actions = {
-        -- The charged shot a navi's request starts from idle without its weapon's setup (BN6's action, BN5's
-        -- 0x1E: the same code but for the flash's attachment row).
+        -- The charged shot a navi's request starts from idle without its weapon's setup (BN5's 0x1E: the shared
+        -- action, @common/megaman/charged_shot, navis/megaman/weapons/charged-shot).
         forced_charged_shot = charged_shot.action,
         -- The trap chips' counters, which a trap that caught a hit starts (the original's actions 0x47 and
         -- 0x48: AntiDmg's and AntiSwrd's, BN6's code; AntiSwrd's swinging BN5's blade and throwing BN5's sonic
         -- booms, lib/swords).
         anti_damage_counter = antidmg_counter.action,
-        anti_sword_counter = antiswrd_counter.action_with("bn5:antiswrd/counter", swords.blade, swords.sonic_boom),
+        anti_sword_counter = swords.anti_sword_counter,
     },
     kinds = {
         -- AntiRecv's counterattack, which a heal meets when the other side has AntiRecv armed (BN6's code).

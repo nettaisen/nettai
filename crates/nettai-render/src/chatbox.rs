@@ -14,15 +14,12 @@ use crate::audit::{Lookup, Problems};
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
 use crate::objects::SpriteList;
-use crate::strings::{DisplayText, Said};
 use crate::textlayer::{Plane, Rect, TextItem, TextSink};
 use crate::vfont::Role;
 use nettai_assets::{Bundle, Chatbox as Graphics, Palette, SpriteSheet, Tiles};
 use nettai_battle::custom::chatbox::{Chatbox, PortraitLook, Script};
-use nettai_battle::custom::screen::CrossWindow;
-use nettai_battle::custom::{GameVersion, Phase, Unlocks};
-use nettai_battle::{Battle, Content};
-use nettai_content_api::NaviHandle;
+use nettai_battle::custom::{GameVersion, Phase};
+use nettai_battle::Battle;
 
 /// The box's map on BG0 (`CurTileYBlockPos`): from row 12, 30 columns of
 /// 8 rows.
@@ -79,15 +76,16 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
     let strings = &sink.strings;
     // (Each with the lookup its text is: whose it is.)
     let (chatbox, said, portrait, lookup) = match screen.phase {
-        Phase::Description { from_cross_window: false, chatbox } => {
+        Phase::Description { window: None, chatbox, .. } => {
             // The chip under the cursor as the screen checked it (the chip
             // window's).
             let chip = screen.look.chip_window.last_chip.map(|c| c.id);
             let said = chip.and_then(|c| strings.chip_description(&b.content, c));
             (chatbox, said, None, chip.map(Lookup::ChipDescription))
         }
-        Phase::Description { from_cross_window: true, chatbox } => {
-            let form = screen.crosses.hovered(&side.unlocks, &*b.content, navi);
+        Phase::Description { window: Some(_), form, chatbox } => {
+            // A form a system's window describes (BN6's Cross window: the
+            // Cross under its cursor, of whichever game it is).
             let said = form.and_then(|f| strings.form_description(&b.content, f));
             (chatbox, said, None, form.map(Lookup::CrossDescription))
         }
@@ -130,19 +128,6 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
         _ => None,
     };
     Some(Shown { chatbox, kind, text, lines, portrait })
-}
-
-/// The description R shows in the Cross window: the Cross under the
-/// cursor's own, by its form (`CrossWindow::hovered`: with a setup's Cross
-/// list, of whichever game the Cross is, in the list's order).
-pub fn cross_description<'a: 'b, 'b>(
-    content: &'b Content,
-    strings: &DisplayText<'a>,
-    unlocks: &Unlocks,
-    navi: NaviHandle,
-    window: &CrossWindow,
-) -> Option<Said<'b>> {
-    window.hovered(unlocks, content, navi).and_then(|f| strings.form_description(content, f))
 }
 
 /// The lines printed so far, each with the characters of it shown (as
@@ -413,6 +398,8 @@ fn part(tiles: &Tiles, first_tile: usize, (x, y): (i32, i32), (width, height): (
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::strings::DisplayText;
+    use nettai_battle::Content;
 
     #[test]
     fn an_animation_steps_by_its_frames_times_and_loops_or_holds() {
@@ -544,41 +531,28 @@ mod tests {
         assert!(lines > 1000, "{lines} lines");
     }
 
-    /// R in the Cross window shows the description of the Cross under the
-    /// cursor, by its form: with live play's Cross list mixing both games,
-    /// a Gregar Cross (HeatCross) in a Falzar player's window shows its own
-    /// description, in either language, not that of Falzar's Cross in its
-    /// place (SpoutCross); without a list, the version's Crosses in order.
+    /// A Cross's description is its form's own, in either language: the
+    /// Cross window describes the Cross under its cursor by its form (the
+    /// cross system's `custom.describe`), so a Gregar Cross (HeatCross) in
+    /// a Falzar player's mixed Cross list shows HeatCross's, not that of
+    /// Falzar's Cross in its place.
     #[test]
-    fn a_cross_of_a_mixed_list_shows_its_own_description() {
-        use nettai_battle::custom::CrossList;
+    fn a_cross_shows_its_own_description() {
         let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6"));
         let mut report = nettai_content::report::Report::default();
         let root = nettai_content::root::read(dir, &mut report).expect("content/bn6 reads");
-        let common = nettai_content::root::read(&dir.join("../common"), &mut report).expect("content/common reads");
         let mut c = Content::default();
         c.strings = root.strings;
         c.scripts = nettai_battle::content::Scripts::root(root.manifest, root.modules);
-        c.scripts.add_root(common.manifest, common.modules);
+        nettai_battle::content::testing::add_shared(&mut c.scripts);
         c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
         let ja = nettai_content::locale::load(dir, "ja").unwrap().expect("ja.toml");
         let form = |key: &str| c.defs.form_by_key(key).unwrap_or_else(|| panic!("no form {key}"));
-        let navi = c.defs.navi_by_key("bn6:megaman").expect("megaman");
-        let list = Unlocks {
-            cross_list: Some(CrossList::new(&[form("bn6:heatcross"), form("bn6:groundcross")])),
-            ..Unlocks::everything(GameVersion::Falzar)
-        };
-        let version = Unlocks::everything(GameVersion::Falzar);
-        let mut w = CrossWindow { count: 2, ..CrossWindow::default() };
-        w.offered[1] = 1;
         for (language, table) in [(None, &c.strings), (Some(&ja), &ja)] {
             let strings = DisplayText::new(language);
-            for (unlocks, cursor, key) in
-                [(&list, 0, "heatcross"), (&list, 1, "groundcross"), (&version, 0, "spoutcross"), (&version, 1, "tomahawkcross")]
-            {
-                w.cursor = cursor;
-                let said = cross_description(&c, &strings, unlocks, navi, &w).expect("a description");
+            for key in ["heatcross", "groundcross", "spoutcross", "tomahawkcross"] {
+                let said = strings.form_description(&c, form(&format!("bn6:{key}"))).expect("a description");
                 let want = table.form(&format!("bn6:{key}")).and_then(|f| f.description.as_deref());
                 assert_eq!(Some(said.text), want, "{key} in {:?}", table.language);
             }

@@ -7,7 +7,7 @@
 -- Each game makes its own kind (`controller.make`) with its quake's spawn; a chip's `dimming` hook is the made
 -- controller's `hook(change)`.
 
-local dimming_chips = require("@bn6/lib/dimming")
+local dimming_chips = require("@common/dimming")
 
 local controller = {}
 

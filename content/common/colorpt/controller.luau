@@ -6,8 +6,8 @@
 -- all gone. Each game makes its own (`controller.make`) with its point; a chip's `dimming` hook is the made
 -- controller's `hook(point)`.
 
-local dimming_chips = require("@bn6/lib/dimming")
-local panels = require("@bn6/lib/panels")
+local dimming_chips = require("@common/dimming")
+local panels = require("@common/panels")
 
 local controller = {}
 

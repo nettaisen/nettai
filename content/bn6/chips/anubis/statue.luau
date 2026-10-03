@@ -11,8 +11,11 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local common = require("@common/anubis/statue")
+local effects = require("../../lib/effects")
+local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 
 local statue = {}
 
@@ -28,7 +31,9 @@ local made = common.make {
     hits = collision.hit_by_other_side,
     drain = DRAIN_IS,
     nothing = collision.nothing,
-    absorbs = true,
+    absorbed = absorbed_obstacle.look { sprite = asset.sprite("bn6:anubis") },
+    effects = { puff = effects.puff, explosion = effects.explosion },
+    bubble = rising_bubble.kind,
 }
 statue.kind = made.kind
 statue.spawn = made.spawn

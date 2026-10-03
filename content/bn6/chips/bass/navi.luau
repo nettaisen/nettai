@@ -9,7 +9,7 @@
 -- columns), none at a panel shot in the last 22 ticks. Then he leaves, and
 -- the controller moves on. See docs/engine/chips.md §3.6.33.
 
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 local panel_strike = require("../../objects/panel-strike/panel_strike")
 local effects = require("../../lib/effects")
 
