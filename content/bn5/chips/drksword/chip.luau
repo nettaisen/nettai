@@ -7,7 +7,6 @@
 
 local collision = require("../../rules/collision")
 local regions = require("@common/regions")
-local slash = require("@bn6/lib/swords/slash")
 local swords = require("../../lib/swords")
 
 return define.chip {
@@ -23,7 +22,7 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "dark", "variable_damage" },
     slot_in_limit = 1,
-    action = slash.action {
+    action = swords.slash {
         id = "bn5:drksword/action",
         blade = swords.blade,
         blade_anim = swords.blade_anim,
