@@ -78,7 +78,8 @@ local function aim(me: Object)
     if battle.per_player_gauges() then
         -- 0x080E739C: a hit of 50 on the enemy there (0x04050001: an attack reaching navis, the plain spark).
         if combatant_on(x, y, me.alliance) then
-            battle.hitbox(me, {
+            -- (`sub_80C53A6`'s counterpart: it runs while the battle is dimmed.)
+            local h = battle.hitbox(me, {
                 panel_x = x,
                 panel_y = y,
                 element = 0,
@@ -90,6 +91,9 @@ local function aim(me: Object)
                 damage = 50,
                 hit_mod = 3,
             })
+            if h then
+                h.run_while_dimmed = true
+            end
         end
         return nothing(me)
     end
