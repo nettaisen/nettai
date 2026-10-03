@@ -195,6 +195,8 @@ impl Hash for Battle {
             link,
             sides,
             side_stats,
+            navi_hit_counts,
+            tactics,
             linked,
             dimming,
             last_navi_chip,
@@ -232,6 +234,8 @@ impl Hash for Battle {
         link.hash(h);
         sides.hash(h);
         side_stats.hash(h);
+        navi_hit_counts.hash(h);
+        tactics.hash(h);
         linked.hash(h);
         dimming.hash(h);
         last_navi_chip.hash(h);

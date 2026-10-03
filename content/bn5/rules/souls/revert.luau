@@ -39,6 +39,7 @@ function revert.update(me: Object, s: State)
         -- sub_800FC9E(0, 0): MegaMan's base sprite.
         me:load_form_sprite(base)
         stats.form = base
+        hooks.identity(me, base)
         hooks.settle(me)
         hooks.start(me, base)
         me.related1 = nil

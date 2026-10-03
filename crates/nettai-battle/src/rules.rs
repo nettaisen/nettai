@@ -268,6 +268,18 @@ impl Battle {
         0
     }
 
+    /// The `controller(side, navi)` of side `side`'s system in place `slot`
+    /// (a navi no player controls: the system that drives it).
+    pub(crate) fn systems_controller_at(&mut self, side: u8, slot: u8, navi: ObjectRef) {
+        let Some(r) = self.rules[side as usize & 1].ruleset else { return };
+        let content = self.content.clone();
+        let Some(&h) = content.defs.ruleset(r).systems.get(slot as usize) else { return };
+        if let Some(f) = content.defs.system(h).hook(SystemHook::Controller) {
+            let call = HookCall::System { side, slot, hook: SystemHook::Controller, navi: Some(navi), chip: None, weapon: None };
+            crate::behavior::call_hook(self, f, call);
+        }
+    }
+
     /// Side `side`'s systems' `takeover_requested(side, navi)`.
     pub(crate) fn systems_takeover_requested(&mut self, side: u8, navi: ObjectRef) {
         let Some(r) = self.rules[side as usize].ruleset else { return };
