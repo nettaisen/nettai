@@ -519,7 +519,7 @@ mod tests {
         assert_eq!(st.get(&s, 3), FieldValue::Object(Some(o)));
         assert_eq!(st.get(&s, 4), FieldValue::Vec3(p));
         assert_eq!(st.get(&s, 2), FieldValue::Enum(1));
-        assert_eq!(st.get(&s, 0), FieldValue::U16(0), "neighbours untouched");
+        assert_eq!(st.get(&s, 0), FieldValue::U16(0), "neighbors untouched");
         st.set(&s, 3, Value::Nil).unwrap();
         assert_eq!(st.get(&s, 3), FieldValue::Object(None));
     }

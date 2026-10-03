@@ -6,7 +6,7 @@ AirShot, the Vulcans, the Spreaders, the BatCans, the TankCans, MachGun, CornSht
 and VDoll. standard-chips.md has the actions that fire no shot; objects-and-player.md §B8 and §B8a the buster's
 projectile (attack #0) and the flying shot (attack #0xB), which several of these fire.
 
-This is the original's behaviour, branch by branch, as the port must reproduce it. §18 says where the port keeps
+This is the original's behavior, branch by branch, as the port must reproduce it. §18 says where the port keeps
 it (content model v2) and where it departs.
 
 Conventions (standard-chips.md's, and):
@@ -85,7 +85,7 @@ Two phases (`off_80EBC20`). Variant tables: `byte_80EBD2C` (the arm kind) = 0, 1
   `byte_80EBD2C[variant]`, animation `sub_80EBD68`) into related1, USING_ACTION; it returns without counting.
   From tick 2, each tick, with the timer's value before it counts:
   - timer 8 and variant ≥ 4 (GigaCan; tick 10): two afterimages (`sub_80E33FA`, effect #0x28,
-    objects-and-player.md §A.7), both with colour shader 0x8318 and a 30-tick lifetime, blinking:
+    objects-and-player.md §A.7), both with color shader 0x8318 and a 30-tick lifetime, blinking:
     1. the arm's own sprite (`sub_80B8E62`: attachment kind `byte_80EBD2C[variant]`'s sprite in `byte_80B8BD4`,
        "0C-01" for kinds 0..2), animation 0, flipped as the navi, no shadow (its word 0x1E), at the navi's position
        plus its attach point 7 (`sub_8018810(NameID, 7, alliance, flip)`: x toward its facing, the point's y added
@@ -373,7 +373,7 @@ forward. Kinds below 6 end on their first hit; kinds 6 and up go through, hittin
 
   Then (phases 1 and 2, and the tick phase 0 ends) the collision panels. `sub_80CB6B0`: kind 9, every 5 ticks
   (ExtraVars+4), an afterimage (`sub_80CB6CA`, effect #0x28: parameters 0x10010 | flip << 24, that is sprite
-  0x10/0x00, animation 1, its flip; at its position; colour shader 0xC3FF; lifetime 0x14, no shadow). With phase
+  0x10/0x00, animation 1, its flip; at its position; color shader 0xC3FF; lifetime 0x14, no shadow). With phase
   init ≠ 0, region 0 and its panel ≠ ExtraVars: region 4 again. On the field, present; off it, region 0 and destroy
   state.
 - **Destroy** (`sub_80CB4C0`): kinds below 3 write 0 over the spawner's `av[0..3]`; `object_genericDestroy`.
@@ -549,7 +549,7 @@ lifetime is about to run out, it erupts: 32 ticks later an aqua hit over the eig
   - Init (`sub_80C3F00`): its panel from X, Y; the sprite, no shadow, VISIBLE; CurAnim and CurAnimCopy =
     ExtraVars+4; the palette; flipped; the update state; the update runs.
   - Update (`sub_80C3F52`): the owner's position; Z + ExtraVars+0xC; Y and Z − 1 pixel with ExtraVars+8 set, + 1
-    pixel otherwise; unless ExtraVars+0x18, the owner's VISIBLE bit and colour shader; unless Param3, the owner's
+    pixel otherwise; unless ExtraVars+0x18, the owner's VISIBLE bit and color shader; unless Param3, the owner's
     palette; the owner's final palette and draw priority (`sub_8002F3E`; presentation); unless ExtraVars, the owner's
     flip; the owner's blending; with ExtraVars+0x10, `sub_80C409C` (a panel-row offset: Y and Z + (3 − PanelY) · 24
     pixels, + 1 on their integer halves). Its sprite steps (`object_updateSprite`) unless dimmed, paused, or the
@@ -740,9 +740,9 @@ definition, each table row a variant record written out in Luau.
   wave reads it among its parameters; the port hands it to the wave. CornSht's corn takes its generation from the
   chip's first parameter, 0 for all three, which the port writes as 0. The curse's marks sound every 16 frames of
   the game's frame counter, which the port doesn't keep: every 16 ticks of the marking, as gauge-speed's port does.
-  The layer copies its owner's palette, colour shader, priority and blending, but the final palette is drawn only
+  The layer copies its owner's palette, color shader, priority and blending, but the final palette is drawn only
   and not kept. LilBoiler's HP display is the HUD's (`battle.show_hp`, `battle.hide_hp`: the original's
-  `sub_801DC7C` gives NameID 0xEB the flags that show its damage taken, MaxHP − HP, uncentred), presentation
+  `sub_801DC7C` gives NameID 0xEB the flags that show its damage taken, MaxHP − HP, uncentered), presentation
   that the engine keeps by place (`Battle::hp_numbers`); VDoll's curse and the gauge chips' warning arrow are
   `battle.warn`.
 - **Verified** on the traces (machgun at its floors; soundmod's second round now runs to its end, its first stops

@@ -1,6 +1,6 @@
 --!strict
 -- AquaNdl1-3: a volley of three aqua needles dropped on the enemies'
--- panels (./action), each level's needles in its own colours.
+-- panels (./action), each level's needles in its own colors.
 
 local action = require("./action")
 

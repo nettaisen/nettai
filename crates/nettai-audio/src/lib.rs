@@ -130,7 +130,7 @@ pub struct SoundCalls {
     /// The music `PlayMusic` last started (GameState's BGMusicIndicator;
     /// 0xFF: none).
     music: u8,
-    /// What it was before the last change (to undo a cancelled change).
+    /// What it was before the last change (to undo a canceled change).
     previous_music: u8,
 }
 

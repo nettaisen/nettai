@@ -74,7 +74,7 @@ pub struct Ran {
     /// A new round started (the presentation starts over).
     pub new_round: bool,
     /// The sound for this frame: cue actions (a cue played on a prediction
-    /// that turned out wrong is cancelled).
+    /// that turned out wrong is canceled).
     pub sound: Vec<CueAction>,
 }
 

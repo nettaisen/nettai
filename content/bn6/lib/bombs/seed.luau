@@ -33,7 +33,7 @@ seed.sprout = define.effect { sprite = asset.sprite("grab-shot"), anim = 1, pale
 seed.green_sprout = define.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 8 }
 
 -- What the navi holds while throwing a seed: the bomb's sprite in the
--- seed's colours (the original's attachment rows 0x24, 0x25, 0x26).
+-- seed's colors (the original's attachment rows 0x24, 0x25, 0x26).
 function seed.held(palette: number): AttachmentLook
     return attachment.look { sprite = SPRITE, palette = palette }
 end

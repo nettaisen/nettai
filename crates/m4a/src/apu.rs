@@ -723,7 +723,7 @@ impl Apu {
     }
 
     /// The PSG's contribution to the DAC now, (left, right), in DAC units
-    /// (the 10-bit DAC centred on 0).
+    /// (the 10-bit DAC centered on 0).
     pub fn sample(&self) -> (i32, i32) {
         let nr51 = self.regs[Reg::Nr51 as usize];
         let nr50 = self.regs[Reg::Nr50 as usize];
