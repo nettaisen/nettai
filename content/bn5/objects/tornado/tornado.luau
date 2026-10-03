@@ -45,6 +45,7 @@ tornado.kind = bn6_tornado.make_kind("bn5:tornado", {
 })
 
 local FAN = attachment.look { sprite = asset.sprite("bn5:hand-fan"), palette = 0, attach_point = 9 }
+local CHARGED_FAN = attachment.look { sprite = asset.sprite("bn5:hand-fan"), palette = 1, attach_point = 9 }
 
 -- Tornado's blow (subtype 1): one plain tornado two panels ahead, for 0x20 ticks (the record's parameters).
 tornado.single = blows.blow {
@@ -52,6 +53,20 @@ tornado.single = blows.blow {
     fan = FAN,
     tornado_kind = tornado.kind,
     single = { variant = tornado.variants.plain, status = nil, ticks = 0x20 },
+}
+
+-- DarkTorn's blow (subtype 3, BN6's action's third form): HP-bug tornadoes spreading back toward the navi by its
+-- side's statistic 3 (0x080CAE7E, BN6's `sub_80CA19E`: the same tables), the charged fan one palette on.
+tornado.back_spread = blows.blow {
+    id = "bn5:darktorn/action",
+    fan = CHARGED_FAN,
+    fan_palette = 1,
+    tornado_kind = tornado.kind,
+    spread = {
+        by = "side_stat",
+        panels = blows.BACK_SPREAD,
+        tornado = { variant = tornado.variants.hp_bug, status = nil, ticks = 0x20 },
+    },
 }
 
 return tornado
