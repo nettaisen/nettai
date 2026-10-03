@@ -15,11 +15,13 @@ pub const DEFAULT_GAME: &str = "bn6";
 
 pub mod check;
 pub mod draw;
+pub mod facts;
 pub mod file;
 pub mod folders;
 #[cfg(test)]
 mod games;
 mod import;
+mod import_bn5;
 pub mod link_navis;
 pub mod names;
 pub mod sp_times;
@@ -122,6 +124,12 @@ pub struct Side {
     /// buster between rests). The round's setup sends them as the console
     /// does (`Tactics::sent`).
     pub tactics: Tactics,
+    /// BN5's karma, the save's light/dark value (0 to 1000; a fresh
+    /// save's 500), and the souls the side has (BN5's Soul Unison: none
+    /// listed, every soul the content has): facts its systems take by name
+    /// (`facts`).
+    pub karma: u16,
+    pub souls: Option<Vec<nettai_content_api::FormHandle>>,
 }
 
 impl Side {
@@ -298,6 +306,8 @@ impl Match {
             sp_times: SpTimes::default(),
             navicust: None,
             tactics: Tactics::default(),
+            karma: facts::DEFAULT_KARMA,
+            souls: None,
         };
         let boards = navicust_rules(content, &side).boards.len();
         if side.has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0 {
@@ -352,6 +362,8 @@ impl Match {
             // side says.
             let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(s.game) };
             unlocks.write(content, &mut player).expect("a side's ruleset takes BN6's setup as its systems declare it");
+            // Its karma and souls, into the systems that take them.
+            facts::write(content, s, &mut player).expect("a side's karma and souls fit its rules (the match's checks)");
             player
         };
         RoundSetup {

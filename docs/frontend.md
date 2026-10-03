@@ -542,7 +542,11 @@ console does otherwise, by data, not by game:
 - a chip each version draws its own way shows the console's version's
   icon and picture, and the emblem is the console's version's
   (`Renderer::console_version`, which a BN5 recording names; live play,
-  the pack's first version).
+  the pack's first version);
+- a game's mark another game's font lacks is drawn with the glyph of the
+  loaded font that has it (`nettai_assets::lend_marks`, the Private Use
+  Area's marks alone): a BN6 console names a BN5 DS navi chip with BN5's
+  stacked DS, a BN5 console a BN6 EX chip with BN6's stacked EX.
 
 The frame comparison against BN5's consoles (verification's
 tools/frontend-compare/bn5.txt, chiplab's library-bn5) and what still
@@ -708,34 +712,30 @@ labels) and a Japanese console's HUD timings (the next chip's name shown
 from the fight's first frame), the chips' pictures included; the Gregar
 chip's on a Falzar console is the known difference above.
 
-**On BN5 consoles** (verification's tools/frontend-compare/bn5.txt: 14 of
+**On BN5 consoles** (verification's tools/frontend-compare/bn5.txt: 16 of
 chiplab's library-bn5 scenarios, Team ProtoMan against Team Colonel,
 traced on the Team ProtoMan console and once on the Team Colonel one,
-compared with `--text original`, BN5's pack loaded beside
-BN6's): of 5,616 frames, 4,690 are pixel-exact with the navis left out
-(`MASK_NAVIS`): the HUD, the custom screen with its picks and Soul
-Unison's choice, the chatbox, the banners and a deletion's result. What
-still differs is the BN5 port's to finish, not the drawing's:
+Soul and Chaos Unison and the computer navi's Chaos among them, compared
+with `--text original`, BN5's pack loaded beside BN6's): of 7,964 frames,
+7,868 are pixel-exact, the navis included: the HUD, the emotion window,
+the custom screen with its picks, Soul Unison's choice and a dark chip's
+hover, the chatbox, the banners, the mercy flash and a deletion's
+result. What still differs:
 
-- dark MegaMan's faces (pictures 11-15) and palette, which BN5 picks by a
-  stat nettai doesn't keep (NaviStats +0x4C: 0x0801AF8E, 0x0800DE04); a
-  dark MegaMan shows the light one's (the DrkSword and DrkRecov scenarios,
-  and the navis' palettes the mask leaves out);
-- a soul's turns left: BN5's window shows 3 through the soul's first turn,
-  nettai's souls system 2 (its count-down runs after the change sets the
-  turns); the chip icons over a soul-united MegaMan sit 2 pixels lower
-  (the icon's height is MegaMan's attach point, not the soul's);
+- a dark chip user's emotion window flickers once where BN5's flickers
+  twice and the other way round (DrkSword, DrkRecov): the window's draw
+  (`console.rs`, BN6's `sub_801CC94`) is right, but nettai's RNG1 is 29
+  draws behind the console's from the first custom screen on (BN5 draws
+  them as the screen opens, the folder's shuffle's count), so the flicker
+  count, an RNG1 draw, differs;
+- the next chip's name and icons a frame late as the screen closes: a BN5
+  console has both results a tick before nettai closes the screen
+  (nettai's flow closes it on the results' tick,
+  `custom_closes_with_results`), and shows them then; the "Cstmzing..."
+  wait ends there as the console's does;
 - the UNITE button for a soul not ported yet (HeatSoul for AntiFire) is
-  gray;
-- BN5's Cannon draws BN6's cannon sprite (its muzzle flash and blast
-  differ for 5 frames);
-- the chip window's name a frame late as the screen closes: a BN5 console
-  has both results a tick before nettai closes the screen (nettai's flow
-  closes it on the results' tick, `custom_closes_with_results`), and its
-  chip window starts then; the "Cstmzing..." wait ends there as the
-  console's does;
-- one scenario (a pick's check) stops: BN5's roles name no invalid chip
-  (`chips.invalid`).
+  gray where BN5's is lit;
+- a soul's buster shot's flame is whiter (a few frames).
 
 The comparison needs the ROM, so it lives outside this repository, with the
 lists of scenarios. The frontend's own tests (`cargo test -p nettai-render
@@ -878,6 +878,14 @@ entries = ["bn5:cannon", "pattern 1", "nothing", "empty"]   # up to 42, in the s
 patterns = [{ dx = 1, dy = 0, chips = ["bn5:sword", "bn5:wideswrd"] }]   # up to 8, each up to 6 chips
 ```
 
+A BN5 side (`ruleset = "bn5:stock"`, `navi = "bn5:megaman"`) may say besides:
+
+```toml
+[left]
+karma = 100                                # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
+souls = ["bn5:protosoul", "bn5:colonelsoul"]   # optional: the souls it has, any, either version (none: every soul)
+```
+
 **The stats block** (`nettai_match::stats`) sets the navi's stats by name
 over its fresh stats (`NaviStats::fresh`, `init_8013B64`: what a new save
 gives the navi), of the side's game; a link navi's over its stats at its
@@ -936,6 +944,45 @@ bugs) from the programs as the round is set up. Without one, the stats block
 is the stats as they are, NaviCust included, as a recording's are. The
 editor's NaviCust pane places the programs on the board as the game does.
 
+**The karma** (`karma`, `nettai_match::facts`) is BN5's light/dark value
+(NaviStats +0x44), 0 to 1000; without it, **500**, a fresh save's
+(0x08010C00): light for the chips, the starting mood 0x80, no holy panels
+cleared. Under 470 a dark MegaMan (mood 0, the dark face and palette, dark
+chips usable in a link battle, no soul button); 499 or under clears holy
+panels; under 500 he starts worried; 1000 the brightest (mood 190, Tango's
+light templates). Like BN6's `game`, `crosses` and `beast_out` (S6c's
+facts), the round's setup writes it into whichever of the side's systems
+declares the setup field (`PlayerSetup::set_fact`): BN5's light and dark
+system's `karma`. A ruleset that takes none refuses one other than 500.
+Hub Style (NaviStats +0x4C, which BN5's patch card 111 sets) waits for
+BN5's patch cards. A netplay offer carries the karma and the souls
+(protocol version 5), and a round's setup and the battle's digest hold
+them, so both peers start alike.
+
+**The souls** (`souls`, `nettai_match::facts`) are the souls the side has,
+BN5's Soul Unison, by form key: those the custom screen's soul button may
+offer. Without `souls`, every soul the content has (both versions'); with a
+list, those; an empty list, none (no soul button). The original's soul
+button (0x08024B28) offers the soul of the last chip's family when the save
+has it: each version's table (0x08024BF0) gives Team ProtoMan's souls 1 to 6
+the event flags 2 to 7 and Team Colonel's 7 to 12 the flags 8 to 0x0D, the
+other version's none, and a dark chip's Chaos Unison needs flag 0x236 too.
+The engine ports that check on the souls owned: the round's setup writes
+the side's into the souls system's setup field `souls` (`set_fact`), and the
+battle reads them as the save's flags, by each soul's number. A side may have
+any soul, of either version (nettai's extension, as a Cross list may name
+either game's: the user's "allow all souls to be selected regardless of
+game"), and a soul whose family the folder never holds never comes up. With
+souls, the save has Soul Unison and Chaos Unison (flags 0 and 0x236). Only a
+ruleset whose systems take `souls` takes a list (the checks refuse one
+elsewhere, and a form that is no soul).
+
+**A BN5 save** (the editor's "Import from save…", `Side::import_save`,
+which reads a save that isn't BN6's as BN5's: a .sav, or a raw save image as
+Tango's netplay templates hold, read by `bn5_compat::save`) gives its karma
+and the souls its version's flags give (the content's souls of those
+numbers).
+
 **The tactics** (`[left.tactics]`, nettai_battle::tactics, docs/design/bn5-map.md
 §15.9) are BN5's computer-navi data, the block a BN5 save keeps for its
 player: what a computer navi across from them plays, BN5's Dark MegaMan,
@@ -982,6 +1029,9 @@ is said with where it is:
   one flag for them), and the stats block holds only what a save keeps;
 - a Cross list only with a ruleset that has the forms system, of the navi's
   Crosses (a navi that changes form), at most five, none twice;
+- a soul list only with a ruleset that has the souls system, each a soul
+  (a form of kind `soul`), none twice, of either version;
+- karma 0 to 1000, and other than 500 only with rules that take it;
 - patch cards only with a ruleset that has the patch-cards system, each
   installed once, at most 32, their MB together at most 80 (BN6's menu adds
   none past 80 MB, `0x08141868`);
