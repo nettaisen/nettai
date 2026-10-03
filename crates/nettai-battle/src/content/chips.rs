@@ -245,8 +245,15 @@ pub enum DamageFormula {
     /// An SP navi chip's: by how long its user took to delete that SP navi
     /// (`sub_8010AE4`; formulas 1 to 18). `slot`: the SP navi, one of the
     /// rules' `sp_slots`; `by_time`: the damage by deletion-time step
-    /// (`Rules::sp_deletion_times`).
-    SpNavi { slot: String, by_time: Vec<u16> },
+    /// (`Rules::sp_deletion_times`). `per_player_gauges`: BN5's SP navi
+    /// chips' damage in the battle flag 0x40 mode instead (0x0800E8DE's
+    /// table; BN6's has no such branch).
+    SpNavi {
+        slot: String,
+        by_time: Vec<u16>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        per_player_gauges: Option<u16>,
+    },
     /// By how full the custom gauge is (`sub_8010B78`; formula 19).
     Gauge,
     /// The HP its user has lost, at most 500 (`sub_8010BD0`; formula 20).
@@ -259,6 +266,31 @@ pub enum DamageFormula {
     /// its user's buster attack up to 5 (`sub_8010C50`, a row of
     /// `byte_80212D4`; formulas 23 to 44).
     NaviLevel { base: u8, per_level: u8 },
+    /// By a count of its user's side, `by_count[n]` (the last entry for
+    /// more), and `per_player_gauges` in the battle flag 0x40 mode: BN5's
+    /// DS navi chips (formulas 23 to 44, 0x0800E9B0: the side's statistic
+    /// 3), Roll SP's (formula 1, 0x0800E8B4: the side's holy panels),
+    /// Django SP's (formula 22, 0x0800E98A: the turns before this one).
+    Count {
+        of: Counted,
+        by_count: Vec<u16>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        per_player_gauges: Option<u16>,
+    },
+}
+
+/// What a `DamageFormula::Count` counts.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub enum Counted {
+    /// The side's statistics counter `n` (`sub_800AB3A`).
+    SideStat(u8),
+    /// The field's panels of this type the side owns
+    /// (`object_dead_getPanelsTypeAllianceCount`).
+    OwnPanels(crate::field::PanelType),
+    /// The turns before this one: the turn number less one, as unsigned
+    /// (turn 0 counts as the most).
+    TurnsBefore,
 }
 
 /// One battle chip's record (docs/engine/chips.md §1.2): what the ruleset
