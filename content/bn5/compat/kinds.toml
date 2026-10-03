@@ -53,3 +53,6 @@
 "bn5:soul-image" = { pool = "actor", index = 0x2A }
 "bn5:timebom/countdown" = { pool = "attack", index = 0x4B }
 "bn5:timebom/controller" = { pool = "effect", index = 0x27, scratch_position = true }
+"bn5:darkcirc/gun" = { pool = "attack", index = 0x89 }
+"bn5:darkcirc/shot" = { pool = "attack", index = 0x8A }
+"bn5:darkcirc/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
