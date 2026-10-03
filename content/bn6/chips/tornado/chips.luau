@@ -32,7 +32,14 @@ export type Blow = {
     -- The tornadoes' kind (BN6's by default).
     tornado_kind: Kind?,
     single: TornadoSpec?,
-    spread: { by: "bug_kinds" | "side_stat", panels: { [number]: { { number } } }, tornado: TornadoSpec }?,
+    -- (`tornadoes`, by level, over `tornado`: another game's tornadoes
+    -- that differ by level, BN5's Static's.)
+    spread: {
+        by: "bug_kinds" | "side_stat",
+        panels: { [number]: { { number } } },
+        tornado: TornadoSpec,
+        tornadoes: { [number]: TornadoSpec }?,
+    }?,
 }
 
 -- One state for the action's blows.
@@ -83,8 +90,10 @@ local function blow(spec: Blow): Action
             then battle.navi(me.alliance).bug_kinds
             else battle.side_stat(me.alliance, SIDE_STAT)
         local dir = me.facing
-        for _, p in spread.panels[math.min(level, 3)] do
-            tornado.spawn(me, x + dir * p[1], y + p[2], element, damage, spread.tornado, spec.tornado_kind)
+        level = math.min(level, 3)
+        local t = if spread.tornadoes then spread.tornadoes[level] else spread.tornado
+        for _, p in spread.panels[level] do
+            tornado.spawn(me, x + dir * p[1], y + p[2], element, damage, t, spec.tornado_kind)
         end
     end
 
