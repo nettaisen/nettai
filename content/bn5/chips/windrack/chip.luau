@@ -1,6 +1,9 @@
 --!strict
--- WindRack (BN5 chip 0x035): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- WindRack (BN5 chip 0x035): a swing of a rack that pushes the column ahead (chips/windrack/action: BN6's WindRack,
+-- action 0x26, without its gusts).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local windrack = require("./action")
 
 return define.chip {
     id = "bn5:windrack",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
+    action = windrack.action,
 }
