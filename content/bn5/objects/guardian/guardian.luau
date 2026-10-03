@@ -35,6 +35,7 @@ guardian.statue = statue.make {
         look = { sprite = SPRITE, anim = 0, palette = 0, shadow = true },
     },
     hp = 10,
+    stage_damage = 0x00A8_00C8,
     sounds = {
         place = asset.sound("bn5:appear"),
         crumble = asset.sound("bn5:panel-poison"),
