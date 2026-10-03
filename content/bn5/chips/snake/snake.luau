@@ -40,7 +40,7 @@ snake.kind = common.make_kind("bn5:snake/snake", {
     joined = function(_me: Object) end,
     -- 0x080D07D8: its flag cleared.
     left = function(me: Object)
-        local s = me.state :: common.State
+        local s = me.state :: SnakeState
         local nest = s.nest
         if nest and nest.active then
             local n = nest.state :: NestState

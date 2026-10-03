@@ -14,8 +14,6 @@ local statuses = require("../../rules/status")
 
 local bug_bomb = {}
 
-export type State = common.State
-
 -- The explosion (effect 0x4A).
 local EXPLOSION = define.effect { sprite = asset.sprite("bn6:explosion"), anim = 0, palette = 2 }
 local SOUND_HIT_BOMB = asset.sound("bn6:hit-bomb-1")

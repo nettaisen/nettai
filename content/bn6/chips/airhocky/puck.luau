@@ -13,7 +13,7 @@ local sparks = require("../../lib/sparks")
 local puck = {}
 
 -- A puck's variant (a row of `byte_80C9818`).
-export type Variant = common.Variant
+export type Variant = PuckVariant
 
 puck.variant = common.variant
 

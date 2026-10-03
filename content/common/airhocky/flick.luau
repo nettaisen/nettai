@@ -26,7 +26,7 @@ local FLICK_AT = 0x0D
 local HEIGHT = 0x0A_0000
 
 -- A flick: the action's key `id`, its puck's kind and variant, and whether it goes down the field.
-export type Spec = { id: string, kind: Kind, puck: puck.Variant, down: boolean }
+export type Spec = FlickSpec
 
 function flick.action(spec: Spec): Action
     -- `sub_80ECCCC`: flick the puck on the timer's 0xD, then recover.

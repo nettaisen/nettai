@@ -13,8 +13,6 @@ local effects = require("../../lib/effects")
 
 local shell = {}
 
-export type State = common.State
-
 shell.kind = common.make_kind("bn6:tankcan/shell", {
     is = collision.attack,
     hits = collision.hits_navis,

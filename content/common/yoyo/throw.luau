@@ -20,11 +20,7 @@ throw.STATE = { timer = "u16" }
 
 -- A chip's throw: the action's key, the yoyo arm, and what it throws (from (x, y), `HEIGHT` up, with the damage
 -- word: the yoyo or the controller, which the navi holds in its first related object).
-export type Spec = {
-    id: string,
-    arm: AttachmentLook,
-    throw: (me: Object, x: number, y: number, z: number, damage: number) -> Object?,
-}
+export type Spec = YoyoThrowSpec
 
 -- The phases, on the attack's step.
 local THROW, PUT_AWAY = 0x0, 0x4
