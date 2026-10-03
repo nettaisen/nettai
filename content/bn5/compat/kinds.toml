@@ -71,3 +71,6 @@
 "bn5:pulsar/pulse" = { pool = "attack", index = 0x6A }
 "bn5:spshake/wave" = { pool = "attack", index = 0x68 }
 "bn5:skully/skull" = { pool = "attack", index = 0x88 }
+"bn5:snake/controller" = { pool = "effect", index = 0x32, scratch_position = true }
+"bn5:snake/nest" = { pool = "attack", index = 0x53 }
+"bn5:snake/snake" = { pool = "attack", index = 0x54 }
