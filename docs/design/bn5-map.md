@@ -1538,12 +1538,17 @@ cloud, attack 0x97: a hit over the first enemy navi ahead for each sea panel of 
 normal); ElemRage (action 0x56 and flame, attack 0x98: flames sent on ahead, of the element of the panel the user
 stands on, spreading and paralyzing; the attach point read unflipped, `sub_8018842`); WildBird (LarkMan with Param4 1,
 the summon table's entry 23: no command, his swoop's variant 6 with row 6's speed and turn, 25 more turn ticks and
-its eleven turn animations by side, 0x080DDC44).
+its eleven turn animations by side, 0x080DDC44); BlakWing (its controller, effect 0x54, flock, attack 0x7E, perches,
+effect 0x55, and wings, attack 0x7F: BN6's leftover code); the navi Program Advances CsmoPris (BN5's own CosmoMan,
+actor 0x26, and comets, attack 0x74), Football (GridMan, actor 0x25, and balls, attack 0x95, BN6's leftover code)
+and BigNoise (ShadeMan, actor 0x1B, and his noise, attack 0x04: BN5's own, not BN6's flame), each in its chip's
+folder with the kinds it owns.
 
 **Waiting.** AirSpin1–3 (BN6's AirSpin top with BN5's changes: random targets, its own panel setting, its hit's
 self type 4) and AqWhirl1–3 (BN5's own, attack object 0x5D), both on BN6's AirSpin action, to move to
-content/common; CopyDmg (BN5's action 0x24, the buster arm and a spawn by subtype, with BN6's mark, attack 0x28: to
-share); DarkInvs, NumbrBl, NeoVari, Z-Saver (BN6 has them: to share, with BN5's changes); Jealousy (BN6's leftover
-code, BG transfers); BlakWing (its controller, effect 0x54, and BN5's attack 0x7E from BN6's leftover code); the navi
-Program Advances, now the navi chips are in: CsmoPris (actor 0x26), Football (actor 0x25), BigNoise (actor 0x1B), PileDrvr (dimming subtype 47), LeadRaid and ChaosLrd
-(actors 0x20 and 0x51).
+content/common; PileDrvr (its controller, effect 0x6F, piles, attack 0x99, and their charge, attack 0x9A: AirSpin's
+top reworked, so with AirSpin); CopyDmg (BN5's action 0x24, the buster arm and a spawn by subtype, with BN6's mark,
+attack 0x28: to share); NumbrBl (BN5's own NumberMan stand-in with BN6's balls), NeoVari, Z-Saver (BN6 has them: to
+share, with BN5's changes); DarkInvs (BN5's own: the user's navi on the computer-navi AI for 600 ticks, bn5-port-6's
+system); Jealousy (BN6's leftover code, BG transfers; it counts the other side's hand, which the engine has no call
+for yet); LeadRaid and ChaosLrd (actors 0x20 and 0x22, and 0x51: §14.5).
