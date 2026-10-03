@@ -500,14 +500,15 @@ pub(crate) fn start_move(b: &mut Battle, r: ObjectRef, dir: u8) {
     movement::start(b, r, dir, lag, kind);
 }
 
-/// `sub_8010332`: ticks of lag at the end of a move (4 for MegaMan).
+/// `sub_8010332`: ticks of lag at the end of a move (4 for MegaMan, but
+/// in a form with its own: BN5's ShadowSoul's 0, 0x0800E0D2).
 fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
     if super::battle_mode(b) == 9 {
         return 1;
     }
     let s = stats(b, r);
     if super::is_megaman(b, r) {
-        return 4;
+        return super::form_of(b, r).move_lag.unwrap_or(4) as u16;
     }
     b.content.navi(s.navi).move_lag[s.navi_variant as usize] as u16
 }

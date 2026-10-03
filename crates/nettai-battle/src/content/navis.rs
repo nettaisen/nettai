@@ -299,6 +299,10 @@ pub struct FormData {
     /// fires in it (`sub_802D4F0`).
     #[serde(default)]
     pub special_volley: u16,
+    /// The lag at the end of a move in it, in place of MegaMan's 4 (BN5's
+    /// ShadowSoul's 0: 0x0800E0D2).
+    #[serde(default)]
+    pub move_lag: Option<u8>,
     /// A Cross change that finds the navi in this animation lets go of it
     /// and of what it holds (`sub_8014B18`: GroundCross's drill).
     #[serde(default)]

@@ -1783,6 +1783,8 @@ export type FormDef = {
     -- The shots of the buster volley the Cross special's controller fires
     -- in it (the original stores the form's number where it meant 6).
     special_volley: number?,
+    -- The lag at the end of a move in it, in place of MegaMan's 4.
+    move_lag: number?,
     -- A Cross change that finds the navi in this animation lets go of it.
     cross_release_anim: number?,
     traits: { FormTrait }?,
