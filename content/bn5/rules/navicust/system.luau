@@ -12,14 +12,17 @@
 -- - its bugs' table (0x08140054; ./programs.luau's BUGS);
 -- - no emotion window glitch (its flag, 0x10C1, is read outside battle only);
 -- - BugStop (+0x1F) alone stops the bugs here; the patch cards' list can stop or keep them too (0x08137A30), which
---   comes with BN5's patch cards.
+--   comes with BN5's patch cards;
+-- - the HP (0x0803C13C): in the real world the maximum again and the HP with it, as BN6's; in the cyberworld (the
+--   save's area, 0x02002944, from 0x80, or event flag 0x10B2: the setup's `cyberworld`) neither, so the HP is the
+--   save's and the maximum the effects' (0x0803C1CC: the base and the HP programs), HubBatc's bug's halving standing.
 
 local board = require("./board")
 local compile = require("@common/navicust/compile")
 local programs = require("./programs")
 
 -- Each bug at its level, 1 to 3 (0x08140054's routines).
-local BUG_WORK: { [string]: (stats: Navi, level: number) -> () } = {
+local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
     step = function(stats, _)
         stats.step_bug = 1
     end,
@@ -49,8 +52,14 @@ local BUG_WORK: { [string]: (stats: Navi, level: number) -> () } = {
     hp = function(stats, _)
         stats.hit_status = 3
     end,
-    hub = function(_, _)
-        -- (0x08140248's halved maximum, which the HP's routine, 0x0803C13C, makes whole again as the compile ends.)
+    hub = function(stats, _, hp)
+        -- 0x08140248: the maximum the base and half the HP programs, the HP no more than it (in the real world the
+        -- HP's routine, 0x0803C13C, makes both whole again as the compile ends).
+        local most = stats.max_base_hp + bit32.rshift(hp, 1)
+        stats.max_hp = bit32.band(most, 0xFFFF)
+        if most < stats.hp then
+            stats.hp = stats.max_hp
+        end
     end,
     status = function(stats, _)
         stats.battle_start_bug = 9
@@ -62,6 +71,10 @@ local BUG_WORK: { [string]: (stats: Navi, level: number) -> () } = {
 
 -- HubBatc (program 27), which bugs itself.
 local HUBBATC = "bn5:hubbatc"
+
+-- What the player's save brings (nettai-match from a match's side, the tools from a save): whether it is in the
+-- cyberworld (its area, 0x02002944, from 0x80, or event flag 0x10B2), where the compile leaves the HP.
+type Setup = { cyberworld: boolean }
 
 -- BN5's compile.
 local BN5: NaviCustGame = {
@@ -76,10 +89,14 @@ local BN5: NaviCustGame = {
         end
     end,
     glitch = false,
+    keeps_hp = function(_side: number): boolean
+        return (system.setup() :: Setup).cyberworld
+    end,
 }
 
 return define.system {
     id = "bn5:navicust",
+    setup = { cyberworld = "bool" },
     hooks = {
         round_setup = function(side: number)
             compile.run(side, BN5)
