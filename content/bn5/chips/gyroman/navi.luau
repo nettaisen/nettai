@@ -2,14 +2,14 @@
 -- GyroMan, the navi of BN5's GyroMan chips (BN5's actor object #0x0C, 0x080BAA80; BN5's own, built on BN6's navi
 -- template), brought by their navi chip controller, wearing his propeller (BN5's body overlay row 0). He appears,
 -- stands 40 ticks, rises and vanishes, and takes off from his side's back column along his row, a pixel up: 16
--- ticks on (a sound) he flies forward 3 pixels a tick, dropping a bomb (objects/gyro-bomb) on each enemy panel as
+-- ticks on (a sound) he flies forward 3 pixels a tick, dropping a bomb (chips/gyroman/bomb) on each enemy panel as
 -- he passes its center, until he reaches the field's edge; then he leaves, and the controller moves on. Holding L
 -- and R as he takes off (a sound) sends him on a bombing run instead: he flies on to the first panel holding an
 -- enemy navi, stops over it and drops a bomb every 16 ticks, one for each enemy panel in his row, and 16 ticks on
 -- flies off the field.
 
 local navi_chips = require("@common/navi-chips/navi")
-local bomb = require("../../objects/gyro-bomb/bomb")
+local bomb = require("./bomb")
 
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).
