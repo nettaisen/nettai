@@ -12,7 +12,8 @@ use nettai_battle::Battle;
 use std::sync::Arc;
 use bn6_compat::{Compat, codec};
 use nettai_battle::content::Content;
-use nettai_battle::custom::{self, CrossList, FolderChip, GameVersion, SavedFolder};
+use bn6_compat::CrossList;
+use nettai_battle::custom::{FolderChip, GameVersion, SavedFolder};
 use nettai_battle::setup::NaviStats;
 use nettai_content_api::StageHandle;
 
@@ -122,7 +123,7 @@ fn crosses(content: &Content, draws: &mut Draws) -> Result<CrossList, String> {
     let all = crate::all_crosses(content)?;
     let mut picked: Vec<usize> = (0..all.len()).collect();
     draws.shuffle(&mut picked);
-    picked.truncate(custom::screen::CROSSES);
+    picked.truncate(bn6_compat::unlocks::CROSSES);
     picked.sort();
     Ok(CrossList::new(&picked.iter().map(|&i| all[i]).collect::<Vec<_>>()))
 }
@@ -140,9 +141,11 @@ impl Side {
             emotion_window_glitch: false,
             folder: folder.into(),
             crosses: Some(crosses),
+            beast_out: true,
             cards: Vec::new(),
-            navi_level: 0,
+            navi_level: crate::default_navi_level(content, stats.navi),
             bug_frags: 0,
+            sp_times: Default::default(),
             navicust: None,
         }
     }
@@ -187,9 +190,11 @@ pub fn plain(content: &Arc<Content>, seed: u32) -> Result<Match, String> {
         emotion_window_glitch: false,
         folder: folder.into(),
         crosses: None,
+        beast_out: true,
         cards: Vec::new(),
-        navi_level: 0,
+        navi_level: crate::default_navi_level(content, navi),
         bug_frags: 0,
+        sp_times: Default::default(),
         navicust: None,
     };
     let mut m = Match { seed: Some(seed), arena, sides: [side.clone(), side] };
@@ -257,13 +262,14 @@ mod tests {
             let mut b = crate::check::start(&content, &m).unwrap();
             for side in 0..2 {
                 assert!(folders::problems(&mut b, side as u8, &m.sides[side].folder).is_empty());
-                let list = setup.players[side].unlocks.cross_list.unwrap();
+                let unlocks = bn6_compat::Unlocks::of(&b, side as u8).unwrap();
+                let list = unlocks.cross_list.unwrap();
                 assert_eq!(list.forms().count(), 5);
                 for f in list.forms() {
                     let forms = content.navi(navi).forms.as_ref().unwrap();
                     assert!(forms.gregar.crosses.contains(&f) || forms.falzar.crosses.contains(&f));
                 }
-                assert_eq!(setup.players[side].unlocks.version, m.sides[side].game);
+                assert_eq!(unlocks.version, m.sides[side].game);
                 assert_eq!(setup.navi_stats[side].version, crate::version_byte(m.sides[side].game));
             }
             assert_eq!(live(&content, seed, None).unwrap(), m);

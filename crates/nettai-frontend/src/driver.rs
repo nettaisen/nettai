@@ -5,7 +5,8 @@ use nettai_battle::battle::{mode, top};
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::cues::CueAction;
 use nettai_battle::content::{ChipCode, Content};
-use nettai_battle::custom::{self, BattleFolder, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState, Unlocks};
+use bn6_compat::Unlocks;
+use nettai_battle::custom::{self, BattleFolder, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState};
 use nettai_battle::input::keys;
 use nettai_battle::link::Link;
 use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
@@ -194,18 +195,21 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
         // goes on from there.
         let mut rng = Rng::new(seed ^ side.wrapping_mul(0x9E37_79B9));
         let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&folders[side as usize], 0, &mut rng, content);
-        PlayerSetup {
+        let mut player = PlayerSetup {
             folder: Some(folder),
-            unlocks: Unlocks::everything(GameVersion::Falzar),
+            souls: Default::default(),
             joypad_phase: 0,
             bug_frags: 0,
-            navi_level: 0,
+            navi_level: nettai_match::default_navi_level(content, stats.navi),
+            sp_times: Default::default(),
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
             ruleset: None,
             rules: Vec::new(),
             patch_cards: Default::default(),
             navicust: None,
-        }
+        };
+        Unlocks::everything(GameVersion::Falzar).write(content, &mut player).expect("BN6's setup");
+        player
     };
     RoundSetup {
         content: content.hash(),
@@ -216,7 +220,6 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
         score: SetScore::default(),
         later_stages: Default::default(),
         low_hp_music_latched: false,
-        sp_times: Default::default(),
         players: [player(0), player(1)],
         link_delay: Link::RECORDED_DELAY,
     }
@@ -364,7 +367,8 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
     }
     // BN6's Cross window (the cross system's).
     let w = nettai_render::custom::CrossWindow::of(b, side).unwrap_or_default();
-    let cross_name = |place: u8| match s.unlocks.cross_at(&*b.content, b.stats[side].navi, place) {
+    let unlocks = Unlocks::of_side(b, side as u8);
+    let cross_name = |place: u8| match unlocks.cross_at(&*b.content, b.stats[side].navi, place) {
         Some(f) => nettai_render::strings::own_form_name(&b.content, f).to_uppercase(),
         None => format!("CROSS {}", place + 1),
     };
@@ -499,7 +503,9 @@ mod tests {
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("bn6:cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], 5);
-        setup.players[0].unlocks.cross_list = Some(nettai_battle::custom::CrossList::new(&[heat]));
+        Unlocks { cross_list: Some(bn6_compat::CrossList::new(&[heat])), ..Unlocks::everything(GameVersion::Falzar) }
+            .write(&content, &mut setup.players[0])
+            .unwrap();
         let mut live = LivePlayer::new(setup, content.clone());
         let mut b = live.start();
         // The first screen: UP opens the Cross window (a hold acts on its
@@ -552,7 +558,7 @@ mod tests {
         // The next screen, opened with L once the gauge is full: Beast Out
         // (START, DOWN, A) from HeatCross is HeatCross's Beast form, of
         // Gregar's Beast: the Beast Out button and pictures are Gregar's.
-        assert_eq!(b.custom.sides[0].unlocks.beast_game(&*content, heat), GameVersion::Gregar);
+        assert_eq!(Unlocks::of(&b, 0).unwrap().beast_game(&*content, heat), GameVersion::Gregar);
         let mut beast = false;
         play_until(
             &mut live,
@@ -603,10 +609,12 @@ mod tests {
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("bn6:cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], 5);
-        setup.players[0].unlocks = Unlocks {
-            cross_list: list.map(|l| custom::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>())),
+        Unlocks {
+            cross_list: list.map(|l| bn6_compat::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>())),
             ..Unlocks::everything(version)
-        };
+        }
+        .write(&content, &mut setup.players[0])
+        .unwrap();
         tweak(&content, &mut setup.navi_stats[0]);
         let mut live = LivePlayer::new(setup, content.clone());
         let mut b = live.start();

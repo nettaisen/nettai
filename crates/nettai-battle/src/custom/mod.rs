@@ -24,11 +24,10 @@ pub use screen::{ButtonCell, ButtonPlace, Phase, PlayerView, Request, RoundMemor
 
 use crate::battle::{Battle, CustomResult, battle_flags};
 use crate::console::{Console, ConsoleSetup};
-use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
+use nettai_content_api::ChipHandle;
 use crate::hand::ChipHand;
 use crate::input::Joypad;
 use crate::kinds::player::Emotion;
-use crate::content::FormKind;
 use crate::setup::{NaviStats, effects};
 use crate::transform::TransformRequest;
 use builder::{ClassCounts, Pick, ProgramAdvancesUsed};
@@ -43,29 +42,6 @@ pub enum GameVersion {
     Falzar,
 }
 
-/// What a player's save unlocks on the custom screen.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Unlocks {
-    pub version: GameVersion,
-    /// The Crosses owned (Gregar's event flags 0xE2-0xE6, Falzar's
-    /// 0xE7-0xEB), by Cross number.
-    pub crosses: [bool; screen::CROSSES],
-    /// Beast Out is unlocked (event flag 0xE0).
-    pub beast_out: bool,
-    /// Event flag 0x163, which marks a link navi operated (raised and
-    /// lowered with the navi): no Beast Out button, and the Cross window
-    /// then needs the navi to be MegaMan (instead of battle flag 0x40
-    /// clear).
-    pub beast_out_sealed: bool,
-    /// The Crosses the setup names for the Cross window, in place of the
-    /// version's that `crosses` owns: nettai's extension, which the
-    /// original has no way to say (any Crosses, of either game;
-    /// docs/engine/custom-screen.md §4.1). None: the original's.
-    pub cross_list: Option<CrossList>,
-    /// BN5's Soul Unison: what the save has of it (none in BN6).
-    pub souls: SoulUnlocks,
-}
-
 /// What a BN5 save has of Soul Unison: the soul button (event flag 0), the
 /// souls (bit n: soul n's flag, 0x08024BF0's table) and Chaos Unison
 /// (event flag 0x236); and the turns its NaviCust adds to a soul (NaviStats
@@ -78,103 +54,14 @@ pub struct SoulUnlocks {
     pub turn_bonus: i8,
 }
 
-impl Unlocks {
-    /// Every Cross and Beast Out, as in a finished game.
-    pub fn everything(version: GameVersion) -> Unlocks {
-        Unlocks {
-            version,
-            crosses: [true; screen::CROSSES],
-            beast_out: true,
-            beast_out_sealed: false,
-            cross_list: None,
-            souls: SoulUnlocks::default(),
-        }
-    }
-
-    /// The Cross in place `place` of the player's Crosses, the places the
-    /// Cross window's entries and the round's record of Crosses used go
-    /// by: the setup's list's entry, else the version's Cross with that
-    /// number (none: the content has no such Cross).
-    pub fn cross_at(&self, library: &dyn Library, navi: NaviHandle, place: u8) -> Option<FormHandle> {
-        match &self.cross_list {
-            Some(list) => list.get(place),
-            None => library.cross_form(navi, self.version, place),
-        }
-    }
-
-    /// Whether the player has the Cross in place `place`: the save owns
-    /// it, or the setup's list names one there.
-    pub fn owns_cross(&self, place: u8) -> bool {
-        match &self.cross_list {
-            Some(list) => list.get(place).is_some(),
-            None => self.crosses.get(place as usize).copied().unwrap_or(false),
-        }
-    }
-
-    /// The Beast form Beast Out takes a navi in `form` to (`sub_802937A`,
-    /// `sub_802A040`): when `tired`, Beast Over (of `beast_game`'s game);
-    /// from the base form the version's Beast Out; from a Cross that
-    /// Cross's form in Beast Out (with a setup's Cross list, whichever
-    /// game the Cross is from: HeatCross's Beast for a Falzar player in
-    /// HeatCross, §4.1).
-    pub fn beast_form(&self, library: &dyn Library, navi: NaviHandle, form: FormHandle, tired: bool) -> Option<FormHandle> {
-        if tired {
-            library.beast_over_form(navi, self.beast_game(library, form))
-        } else if library.form_kind(form) == FormKind::Base {
-            library.beast_out_form(navi, self.version)
-        } else {
-            library.form_in_beast_out(form)
-        }
-    }
-
-    /// The game of the Beast a navi in `form` goes into, or is in: the
-    /// player's version, except that with a setup's Cross list a form of
-    /// the other game (one of its Crosses, or a Beast form of one) is that
-    /// game's (§4.1). Beast Over and the custom screen's Beast Out roar
-    /// follow it, and a frontend draws the Beast Out button and pictures
-    /// of its game.
-    pub fn beast_game(&self, library: &dyn Library, form: FormHandle) -> GameVersion {
-        match library.form_game(form) {
-            Some(game) if self.cross_list.is_some() && library.form_kind(form) != FormKind::Base => game,
-            _ => self.version,
-        }
-    }
-}
-
-/// The Crosses a setup names for a player's Cross window
-/// (`Unlocks::cross_list`): up to five forms, each a Cross, which the
-/// window offers in this order (those not used this round, and not the
-/// navi's starting form).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct CrossList {
-    forms: [Option<FormHandle>; screen::CROSSES],
-}
-
-impl CrossList {
-    /// The list of `forms`, at most the window's five.
-    pub fn new(forms: &[FormHandle]) -> CrossList {
-        assert!(forms.len() <= screen::CROSSES, "a Cross window offers at most {} Crosses, not {}", screen::CROSSES, forms.len());
-        let mut list = CrossList::default();
-        for (slot, &f) in list.forms.iter_mut().zip(forms) {
-            *slot = Some(f);
-        }
-        list
-    }
-
-    /// The Cross in place `place`.
-    pub fn get(&self, place: u8) -> Option<FormHandle> {
-        self.forms.get(place as usize).copied().flatten()
-    }
-
-    /// The Crosses, in order.
-    pub fn forms(&self) -> impl Iterator<Item = FormHandle> + '_ {
-        self.forms.iter().flatten().copied()
-    }
-}
+/// The highest level of a navi code (`sub_8121198`: a navi's 15 codes).
+pub const MAX_NAVI_LEVEL: u8 = 14;
 
 /// What a player brings to a round that only their own console knows in
-/// the original: the battle folder (shuffled at the round's init) and
-/// what their save unlocks.
+/// the original: the battle folder (shuffled at the round's init), what
+/// their save holds that the battle reads, and what their ruleset's
+/// systems take (BN6's: the game version and what the save unlocks on the
+/// custom screen, in its systems' setup blocks).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PlayerSetup {
     /// The shuffled battle folder. None only when checking against a
@@ -182,14 +69,27 @@ pub struct PlayerSetup {
     /// not simulated, and the recording supplies what it sends
     /// (`TickEvents::recorded`).
     pub folder: Option<BattleFolder>,
-    pub unlocks: Unlocks,
+    /// BN5's Soul Unison: what the save has of it (none in BN6; until BN5's
+    /// soul button is a system's).
+    pub souls: SoulUnlocks,
     /// The joypad's auto-repeat beat (0-4) on the round's first tick; each
     /// console counts its own.
     pub joypad_phase: u8,
-    /// The save's bug frags (a dark chip spends one) and the link navi's
-    /// level (its chip bonus), which the init exchange shares.
+    /// The save's bug frags (a dark chip spends one), which the init
+    /// exchange shares.
     pub bug_frags: u32,
-    pub navi_level: u8,
+    /// The level of the navi code the save received (0 to
+    /// [`MAX_NAVI_LEVEL`]; event flag 0x163 set), which the init exchange
+    /// shares (`sub_800B144`, `dword_203CFA0`): a link navi's chip bonus,
+    /// and what BN6's rules read of the code (the custom screen's seal on
+    /// Beast Out and the Cross window, MegaMan's level gains). None: no
+    /// code received (0xFF), MegaMan only: a link navi exists through its
+    /// code (docs/engine/link-navis.md).
+    pub navi_level: Option<u8>,
+    /// How fast the save deleted each SP navi (`byte_203EB00`: the save's
+    /// 0x020018C0, through the init exchange): the SP navi chips' damage
+    /// goes by it.
+    pub sp_times: crate::setup::SpTimes,
     /// What the player's console brings besides: its RNG (RNG1), which
     /// ChpShufl's re-deal draws from (`crate::console`). In netplay it is
     /// part of the setup the peers exchange.
@@ -215,10 +115,11 @@ impl Default for PlayerSetup {
     fn default() -> PlayerSetup {
         PlayerSetup {
             folder: Some(BattleFolder::empty()),
-            unlocks: Unlocks::everything(GameVersion::Falzar),
+            souls: SoulUnlocks::default(),
             joypad_phase: 0,
             bug_frags: 0,
-            navi_level: 0,
+            navi_level: None,
+            sp_times: Default::default(),
             console: ConsoleSetup::default(),
             ruleset: None,
             rules: Vec::new(),
@@ -250,7 +151,8 @@ pub struct Recorded {
 /// One player's custom-screen state through a round.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Side {
-    pub unlocks: Unlocks,
+    /// BN5's Soul Unison (the setup's).
+    pub souls: SoulUnlocks,
     /// The joypad the screen reads: the player's buttons this tick, not
     /// delayed by the link like the fight's.
     pub joypad: Joypad,
@@ -276,7 +178,7 @@ pub struct Side {
 impl Side {
     pub fn new(setup: &PlayerSetup) -> Side {
         Side {
-            unlocks: setup.unlocks,
+            souls: setup.souls,
             joypad: Joypad::new(setup.joypad_phase),
             folder: setup.folder,
             round: RoundMemory::default(),
@@ -428,7 +330,7 @@ impl Side {
             library: ctx.library,
             stats: &ctx.stats,
             emotion: ctx.emotion,
-            unlocks: &self.unlocks,
+            souls: &self.souls,
             class_uses: &self.class_uses,
             round: &self.round,
             regular_pending,
@@ -566,7 +468,7 @@ impl Side {
             // this round.
             let soul = screen.soul;
             transform.form = soul_family.and_then(|f| ctx.library.soul_for_family(navi, f)).map(|(_, f)| f);
-            let turns = 3 + self.unlocks.souls.turn_bonus as i32;
+            let turns = 3 + self.souls.turn_bonus as i32;
             transform.turns = if soul.chaos {
                 1
             } else if turns > 9 {

@@ -9,9 +9,8 @@
 use crate::codec::{self, ChipHand, NAVI_STATS, NaviStats, Panel};
 use crate::{Compat, pool_of_type, pool_slots};
 use nettai_battle::content::ChipCode;
-use nettai_battle::custom::{BattleFolder, FolderChip, PlayerSetup, Unlocks};
+use nettai_battle::custom::{BattleFolder, FolderChip, PlayerSetup};
 use nettai_battle::console::ConsoleSetup;
-use nettai_battle::custom::GameVersion;
 use nettai_battle::setup::NaviWeapons;
 use nettai_battle::{Battle, Content, NaviStats as EngineNaviStats, PlayerTick, RoundSetup, TickEvents};
 use nettai_content_api::{RecordHandle, WeaponHandle};
@@ -498,27 +497,21 @@ impl Round {
             };
             Ok(PlayerSetup {
                 folder,
-                // No Cross, no Beast Out; BN5's Soul Unison as a finished
-                // save has it (the save's event flags aren't in a
-                // recording): the soul button, the version's six souls
-                // (Team ProtoMan's 1 to 6, Team Colonel's 7 to 12:
-                // 0x08024BF0's flags) and Chaos Unison.
-                unlocks: Unlocks {
-                    version: GameVersion::Falzar,
-                    crosses: Default::default(),
-                    beast_out: false,
-                    beast_out_sealed: false,
-                    cross_list: None,
-                    souls: nettai_battle::custom::SoulUnlocks {
-                        button: true,
-                        owned: if d.versions[side as usize] == Version::Colonel { 0b1_1111_1000_0000 } else { 0b111_1110 },
-                        chaos: true,
-                        turn_bonus: d.navi_stats[side as usize].raw[0x32] as i8,
-                    },
+                // BN5's Soul Unison as a finished save has it (the save's
+                // event flags aren't in a recording): the soul button, the
+                // version's six souls (Team ProtoMan's 1 to 6, Team
+                // Colonel's 7 to 12: 0x08024BF0's flags) and Chaos Unison.
+                // (No Cross, no Beast Out: BN5's rules have neither.)
+                souls: nettai_battle::custom::SoulUnlocks {
+                    button: true,
+                    owned: if d.versions[side as usize] == Version::Colonel { 0b1_1111_1000_0000 } else { 0b111_1110 },
+                    chaos: true,
+                    turn_bonus: d.navi_stats[side as usize].raw[0x32] as i8,
                 },
                 joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
                 bug_frags: 0,
-                navi_level: 0,
+                navi_level: None,
+                sp_times: Default::default(),
                 console: ConsoleSetup {
                     rng: if side == local { self.setup.rng1 } else { 0 },
                     tag_pair: None,
@@ -549,7 +542,6 @@ impl Round {
             score: nettai_battle::SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
             later_stages: [nettai_battle::Stage { stage, background }; 2],
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
-            sp_times: Default::default(),
             players: [p0?, p1?],
             link_delay: self.link_delay(),
         })

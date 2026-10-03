@@ -785,13 +785,6 @@ named_flags! {
 pub struct CustomPlayer {
     /// The emotion the screen reads of its navi.
     pub emotion: Emotion,
-    pub version: &'static str,
-    /// The Crosses owned, by Cross number (the save's event flags).
-    pub crosses: [bool; 5],
-    /// The setup's Cross list (nettai's extension), in its order.
-    pub cross_list: Option<Vec<crate::FormHandle>>,
-    pub beast_out: bool,
-    pub beast_out_sealed: bool,
     pub random_battle: bool,
 }
 
@@ -1263,10 +1256,13 @@ pub trait CoreApi {
     fn custom_describe(&mut self, side: u8, form: Option<crate::FormHandle>) -> ApiResult<()>;
     /// The systems' buttons' states asked again (`sub_8028F48`).
     fn custom_refresh_buttons(&mut self, side: u8) -> ApiResult<()>;
-    /// What the screen reads of its player from the setup: the version,
-    /// the Crosses owned and the Cross list, Beast Out unlocked and sealed
-    /// (until these are BN6's systems' setup), and a random battle.
+    /// What the screen reads of its player that isn't a system's setup: the
+    /// emotion it reads, and a random battle.
     fn custom_player(&self, side: u8) -> ApiResult<CustomPlayer>;
+    /// The level of the navi code side `side`'s save received (0 to 14),
+    /// or none (`PlayerSetup::navi_level`): what BN6's rules read of event
+    /// flag 0x163.
+    fn navi_level(&self, side: u8) -> Option<u8>;
     fn end_takeover(&mut self, side: u8);
     /// Its ticks left.
     fn takeover_ticks(&self, side: u8) -> u16;

@@ -17,19 +17,24 @@ pub mod check;
 pub mod draw;
 pub mod file;
 pub mod folders;
+mod import;
 pub mod link_navis;
 pub mod names;
+pub mod sp_times;
 pub mod stats;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
 
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::content::Content;
-use nettai_battle::custom::{BattleFolder, CrossList, GameVersion, PlayerSetup, SavedFolder, Unlocks};
+pub use bn6_compat::CrossList;
+pub use bn6_compat::unlocks::CROSSES;
+use bn6_compat::Unlocks;
+use nettai_battle::custom::{BattleFolder, GameVersion, PlayerSetup, SavedFolder};
 use nettai_battle::link::Link;
 use nettai_battle::navicust::NaviCust;
 use nettai_battle::patch_cards::{InstalledCard, PatchCards};
-use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage, effects};
+use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, SpTimes, Stage, effects};
 use nettai_battle::{Battle, Rng};
 use nettai_content_api::{NaviHandle, RulesetHandle, StageHandle};
 
@@ -85,13 +90,21 @@ pub struct Side {
     /// The folder, its entries empty while it is being made (a round is
     /// played with a whole one: the checks refuse a match without).
     pub folder: Folder,
-    /// The Crosses the Cross window offers (none: the game's own five).
+    /// The Crosses the Cross window offers (none: the game's own five), and
+    /// Beast Out unlocked (the save's event flag 0xE0).
     pub crosses: Option<CrossList>,
+    pub beast_out: bool,
     pub cards: Vec<InstalledCard>,
-    /// A link navi's level (its chip bonus), and the save's bug frags (a
-    /// dark chip or a chip weapon spends them).
-    pub navi_level: u8,
+    /// The level of the navi code the save received (0 to 14: a link
+    /// navi's chip bonus and stats, MegaMan's gains over his NaviCust);
+    /// none, MegaMan without a code (a link navi always has one:
+    /// [`default_navi_level`]). The save's bug frags (a dark chip or a chip
+    /// weapon spends them).
+    pub navi_level: Option<u8>,
     pub bug_frags: u32,
+    /// How fast the save deleted each SP navi, in frames (the SP navi
+    /// chips' damage; 0 the fastest).
+    pub sp_times: SpTimes,
     /// The NaviCust, which the side's rules compile into the stats as the
     /// round is set up (none: the stats are what the NaviCust gives, set
     /// directly). With one, the stats are the navi's fresh stats with what
@@ -124,6 +137,13 @@ impl Side {
         }
         block
     }
+}
+
+/// A side's navi code level when it says none: a link navi's 0 (a link
+/// navi exists only through its navi code), MegaMan's none (no code
+/// received).
+pub fn default_navi_level(content: &Content, navi: NaviHandle) -> Option<u8> {
+    (!content.navi(navi).changes_form()).then_some(0)
 }
 
 /// What the console sets in the stats as a battle starts, whatever the
@@ -182,6 +202,12 @@ pub fn navicust_rules<'c>(content: &'c Content, s: &Side) -> &'c nettai_battle::
 
 /// The game of a side playing by `ruleset` (none: BN6's stock rules,
 /// [`DEFAULT_GAME`]).
+/// The SP navis whose deletion times a side's setup carries, by slot
+/// (its ruleset's rules' `sp_slots`: BN6's `sp/heatman` ...).
+pub fn sp_slots(content: &Content, ruleset: Option<RulesetHandle>) -> &[String] {
+    &content.side_rules(ruleset, ruleset_game(content, ruleset)).sp_slots
+}
+
 pub fn ruleset_game(content: &Content, ruleset: Option<RulesetHandle>) -> nettai_battle::content::RootId {
     content.defs.ruleset_game(ruleset, content.defs.root_id(DEFAULT_GAME).unwrap_or_default())
 }
@@ -253,9 +279,11 @@ impl Match {
             emotion_window_glitch: false,
             folder: Folder::EMPTY,
             crosses: None,
+            beast_out: true,
             cards: Vec::new(),
-            navi_level: 0,
+            navi_level: default_navi_level(content, navi),
             bug_frags: 0,
+            sp_times: SpTimes::default(),
             navicust: None,
         };
         let boards = navicust_rules(content, &side).boards.len();
@@ -283,14 +311,13 @@ impl Match {
             let mut rng = Rng::new(seed ^ (side as u32).wrapping_mul(0x9E37_79B9));
             let saved = s.folder.saved().expect("a whole folder (the match's checks refuse one being made; `check::start` fills one in)");
             let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, content);
-            let mut unlocks = Unlocks::everything(s.game);
-            unlocks.cross_list = s.crosses;
-            PlayerSetup {
+            let mut player = PlayerSetup {
                 folder: Some(folder),
-                unlocks,
+                souls: Default::default(),
                 joypad_phase: 0,
                 bug_frags: s.bug_frags,
                 navi_level: s.navi_level,
+                sp_times: s.sp_times,
                 console: ConsoleSetup {
                     rng: rng.state,
                     tag_pair,
@@ -301,7 +328,13 @@ impl Match {
                 rules: Vec::new(),
                 patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
                 navicust: s.navicust,
-            }
+            };
+            // What the save unlocks, into its BN6 systems' setup: every
+            // Cross of the game (or the side's list) and Beast Out as the
+            // side says.
+            let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(s.game) };
+            unlocks.write(content, &mut player).expect("a side's ruleset takes BN6's setup as its systems declare it");
+            player
         };
         RoundSetup {
             content: content.hash(),
@@ -312,7 +345,6 @@ impl Match {
             score: SetScore::default(),
             later_stages: self.arena.later.clone().map(|p| Stage { stage: p.stage, background: background_id(content, &p) }),
             low_hp_music_latched: false,
-            sp_times: Default::default(),
             players: [player(0), player(1)],
             link_delay: Link::RECORDED_DELAY,
         }

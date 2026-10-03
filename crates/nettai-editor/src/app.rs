@@ -5,11 +5,11 @@ use crate::pictures::Pictures;
 use iced::Task;
 use nettai_battle::Content;
 use nettai_battle::content::ChipCode;
-use nettai_battle::custom::{CrossList, FolderChip, GameVersion};
+use nettai_battle::custom::{FolderChip, GameVersion};
 use nettai_battle::patch_cards::InstalledCard;
 use nettai_battle::setup::NaviStats;
 use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle, RulesetHandle, StageHandle};
-use nettai_match::{Match, Side, stats};
+use nettai_match::{CrossList, Match, Side, stats};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -89,6 +89,11 @@ pub enum Msg {
     Level(usize, String),
     BugFrags(usize, String),
     Glitch(usize, bool),
+    /// An SP navi's deletion time (by its slot), as typed.
+    SpTime(usize, usize, String),
+    /// The side's game, unlocks, navi code level and SP times from a save
+    /// file.
+    ImportSave(usize),
     // The folder.
     Entry(usize, usize),
     Put(usize, ChipHandle, ChipCode),
@@ -149,6 +154,9 @@ pub struct Editor {
     /// What is typed into number fields, by field (side, name), until it
     /// reads as a number.
     pub typed: HashMap<(usize, &'static str), String>,
+    /// What is typed into each side's SP deletion times (side, slot), until
+    /// it reads as a time.
+    pub sp_typed: HashMap<(usize, usize), String>,
     /// What is wrong with the match (none: it can be played).
     pub problems: Vec<String>,
     /// The stats each side's round starts with (after the NaviCust and the
@@ -191,6 +199,7 @@ impl Editor {
             entry: [0, 0],
             search: String::new(),
             typed: HashMap::new(),
+            sp_typed: HashMap::new(),
             problems: Vec::new(),
             round: Err(String::new()),
             pool: Default::default(),
@@ -408,6 +417,10 @@ impl Editor {
                 let side = &mut self.m.sides[s];
                 let keep = stats::diff(&content, &Side::base_stats(&content, side.navi, side.game), &side.stats);
                 side.navi = c.value;
+                // (Operating MegaMan again clears the navi code received,
+                // `sub_809CD60`.)
+                side.navi_level = nettai_match::default_navi_level(&content, c.value);
+                self.typed.remove(&(s, "level"));
                 side.stats = Side::base_stats(&content, c.value, side.game);
                 // The save's own fields carry over.
                 let carried: std::collections::BTreeMap<String, toml::Value> =
@@ -425,7 +438,14 @@ impl Editor {
                 self.edited();
             }
             Msg::Level(s, t) => {
-                if let Ok(v) = t.trim().parse() {
+                // A level, or none (MegaMan without a navi code; a link navi
+                // always has one).
+                let link_navi = !content.navi(self.m.sides[s].navi).changes_form();
+                let level = match t.trim() {
+                    "" if !link_navi => Some(None),
+                    t => t.parse::<u8>().ok().map(Some),
+                };
+                if let Some(v) = level {
                     self.m.sides[s].navi_level = v;
                     crate::levels::level_changed(&content, &mut self.m.sides[s]);
                     // (The stats' fields show the new values.)
@@ -433,6 +453,29 @@ impl Editor {
                     self.edited();
                 }
                 self.typed.insert((s, "level"), t);
+            }
+            Msg::SpTime(s, slot, t) => {
+                let frames = if t.trim().is_empty() { Ok(0) } else { nettai_match::sp_times::parse(&t) };
+                if let Ok(f) = frames {
+                    self.m.sides[s].sp_times.0[slot] = f;
+                    self.edited();
+                }
+                self.sp_typed.insert((s, slot), t);
+            }
+            Msg::ImportSave(s) => {
+                if let Some(path) = rfd::FileDialog::new().add_filter("BN6 save", &["sav"]).pick_file() {
+                    let read = std::fs::read(&path).map_err(|e| e.to_string());
+                    match read.and_then(|bytes| self.m.sides[s].import_save(&content, &bytes)) {
+                        Ok(notes) => {
+                            self.typed.retain(|&(x, _), _| x != s);
+                            self.sp_typed.retain(|&(x, _), _| x != s);
+                            self.edited();
+                            let notes = if notes.is_empty() { String::new() } else { format!(" ({})", notes.join("; ")) };
+                            self.status = format!("the game, unlocks, navi code and SP times from {}{notes}", path.display());
+                        }
+                        Err(e) => self.status = format!("can't import {}: {e}", path.display()),
+                    }
+                }
             }
             Msg::BugFrags(s, t) => {
                 if let Ok(v) = t.trim().parse() {
@@ -493,7 +536,7 @@ impl Editor {
                 let side = &mut self.m.sides[s];
                 let mut forms: Vec<FormHandle> = side.crosses.map(|l| l.forms().collect()).unwrap_or_default();
                 forms.retain(|&x| x != f);
-                if on && forms.len() < nettai_battle::custom::screen::CROSSES {
+                if on && forms.len() < nettai_match::CROSSES {
                     forms.push(f);
                 }
                 // In the window's order: the navi's (Gregar's, then Falzar's).

@@ -113,7 +113,8 @@ pub struct Setup {
 /// What a save unlocks, from its event flag bytes as the setup records them
 /// (`Setup::unlock_flags`): Beast Out (flag 0xE0), the version's five
 /// Crosses (`sub_8029EF8`'s table: Gregar's flags 0xE2-0xE6, Falzar's
-/// 0xE7-0xEB, by Cross number) and flag 0x163 (operating a link navi).
+/// 0xE7-0xEB, by Cross number). (Flag 0x163, a navi code received, is the
+/// setup's `navi_level`: the recordings that have both agree.)
 fn unlocks_from_flags(version: GameVersion, flags: &[u8]) -> Unlocks {
     let flag = |f: u16| {
         let byte = match f >> 3 {
@@ -132,11 +133,9 @@ fn unlocks_from_flags(version: GameVersion, flags: &[u8]) -> Unlocks {
         version,
         crosses: std::array::from_fn(|i| flag(first + i as u16)),
         beast_out: flag(0xE0),
-        beast_out_sealed: flag(0x163),
         // (A save names no Crosses of its own: the window offers the
         // version's.)
         cross_list: None,
-        souls: Default::default(),
     }
 }
 
@@ -281,7 +280,8 @@ use crate::codec::{self, Ids};
 use nettai_battle::battle::{Battle, CustomResult, TickEvents};
 use nettai_battle::content::Content;
 use nettai_battle::console::{Console, ConsoleSetup};
-use nettai_battle::custom::{Context, GameVersion, PlayerSetup, Recorded, Request, Side, Unlocks};
+use crate::unlocks::Unlocks;
+use nettai_battle::custom::{Context, GameVersion, PlayerSetup, Recorded, Request, Side};
 use nettai_battle::hand::ChipHand;
 use nettai_battle::input::PlayerTick;
 use nettai_battle::kinds::player::Emotion;
@@ -373,10 +373,6 @@ impl Round {
             // init, which isn't among the battle frames.
             later_stages: self.setup.stages.as_deref().map(|s| codec::later_stages(&unhex(s), &ids)).unwrap_or_default(),
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
-            sp_times: match &self.setup.sp_times {
-                Some([a, b]) => [codec::sp_times(&unhex(a)), codec::sp_times(&unhex(b))],
-                None => Default::default(),
-            },
             players: std::array::from_fn(|p| self.player_setup(p as u8, &ids)),
             link_delay: self.link_delay(),
         }
@@ -477,23 +473,38 @@ impl Round {
             },
             None => self.sent_version(side),
         };
-        PlayerSetup {
+        let unlocks = match &self.setup.unlock_flags {
+            Some(f) => unlocks_from_flags(version, &unhex(&f[side as usize])),
+            None => Unlocks::everything(version),
+        };
+        // The navi code's level (0xFF: none). A trace without the levels
+        // reads as a link navi's level 0 (a link navi exists through its
+        // code) and MegaMan's none.
+        let navi_level = match self.setup.navi_levels {
+            Some(l) => (l[side as usize] != 0xFF).then_some(l[side as usize]),
+            None => (!ids.content.navi(stats.navi).changes_form()).then_some(0),
+        };
+        let mut player = PlayerSetup {
             folder,
-            unlocks: match &self.setup.unlock_flags {
-                Some(f) => unlocks_from_flags(version, &unhex(&f[side as usize])),
-                None => Unlocks::everything(version),
-            },
+            souls: Default::default(),
             joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
             bug_frags: self.setup.bug_frags.map_or(RECORDED_BUG_FRAGS, |f| f[side as usize]),
-            navi_level: self.setup.navi_levels.map_or(0, |l| l[side as usize]),
+            navi_level,
+            sp_times: match &self.setup.sp_times {
+                Some(t) => codec::sp_times(&unhex(&t[side as usize])),
+                None => Default::default(),
+            },
             console: self.console_setup(side),
-            // BN6's stock rules, with nothing its systems' setups say.
+            // BN6's stock rules; its systems' setups say what the save
+            // unlocks.
             ruleset: None,
             rules: Vec::new(),
             patch_cards: self.patch_cards(side, ids),
             // (A recording's stats are what its NaviCust made.)
             navicust: None,
-        }
+        };
+        unlocks.write(ids.content, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));
+        player
     }
 
     /// A player's console: the recording console's RNG1 and tag pair
@@ -1046,10 +1057,10 @@ mod tests {
         assert_eq!(unlocks_from_flags(GameVersion::Falzar, &[0x81, 0xF3, 0x00]), Unlocks::everything(GameVersion::Falzar));
         // Its Gregar save: Gregar's Crosses are flags 0xE2-0xE6.
         assert_eq!(unlocks_from_flags(GameVersion::Gregar, &[0xBE, 0x03, 0x00]), Unlocks::everything(GameVersion::Gregar));
-        // TomahawkCross alone (custom/one-cross-owned), and flag 0x163.
-        let u = unlocks_from_flags(GameVersion::Falzar, &[0x80, 0x83, 0x10]);
+        // TomahawkCross alone (custom/one-cross-owned).
+        let u = unlocks_from_flags(GameVersion::Falzar, &[0x80, 0x83, 0x00]);
         assert_eq!(u.crosses, [false, true, false, false, false]);
-        assert!(u.beast_out && u.beast_out_sealed);
+        assert!(u.beast_out);
         // No Beast Out (custom/no-beast-out).
         assert!(!unlocks_from_flags(GameVersion::Falzar, &[0x01, 0xF3, 0x00]).beast_out);
     }
