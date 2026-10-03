@@ -144,6 +144,7 @@ impl Side {
             navi_level: 0,
             bug_frags: 0,
             navicust: None,
+            tactics: Default::default(),
         }
     }
 
@@ -191,6 +192,7 @@ pub fn plain(content: &Arc<Content>, seed: u32) -> Result<Match, String> {
         navi_level: 0,
         bug_frags: 0,
         navicust: None,
+        tactics: Default::default(),
     };
     let mut m = Match { seed: Some(seed), arena, sides: [side.clone(), side] };
     if let Ok(mut b) = crate::check::start(content, &m) {

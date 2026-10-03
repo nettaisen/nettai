@@ -14,6 +14,7 @@ use std::io;
 use nettai_battle::custom::{CrossList, FolderChip, GameVersion, Recorded, SavedFolder};
 use nettai_battle::hand::ChipHand;
 use nettai_battle::setup::{GaugeSpeed, NaviCustBugs, NaviWeapons, Supports};
+use nettai_battle::tactics::{MAX_ENTRIES, MAX_PATTERN_CHIPS, MAX_PATTERNS, Tactic, TacticPattern, Tactics};
 use nettai_battle::transform::TransformRequest;
 use nettai_battle::{ContentHash, CustomResult, NaviStats};
 use nettai_battle::content::ChipCode;
@@ -318,6 +319,69 @@ impl Wire for InstalledCard {
     }
     fn read(r: &mut Reader) -> io::Result<InstalledCard> {
         Ok(InstalledCard { card: r.get()?, enabled: r.get()? })
+    }
+}
+
+/// A tactics entry: its kind's byte (0 a chip, 1 a pattern, 2 nothing, 3 an
+/// empty place), then a chip's handle or a pattern's index.
+impl Wire for Tactic {
+    fn write(&self, w: &mut Writer) {
+        match *self {
+            Tactic::Chip(c) => {
+                0u8.write(w);
+                c.write(w);
+            }
+            Tactic::Pattern(i) => {
+                1u8.write(w);
+                i.write(w);
+            }
+            Tactic::Nothing => 2u8.write(w),
+            Tactic::Empty => 3u8.write(w),
+        }
+    }
+    fn read(r: &mut Reader) -> io::Result<Tactic> {
+        Ok(match r.get::<u8>()? {
+            0 => Tactic::Chip(r.get()?),
+            1 => Tactic::Pattern(r.get()?),
+            2 => Tactic::Nothing,
+            3 => Tactic::Empty,
+            _ => return Err(invalid("a tactics entry of no kind")),
+        })
+    }
+}
+
+/// A pattern: its place (each a signed byte) and its chips.
+impl Wire for TacticPattern {
+    fn write(&self, w: &mut Writer) {
+        let TacticPattern { dx, dy, chips } = self;
+        (*dx as u8).write(w);
+        (*dy as u8).write(w);
+        chips.write(w);
+    }
+    fn read(r: &mut Reader) -> io::Result<TacticPattern> {
+        let dx = r.get::<u8>()? as i8;
+        let dy = r.get::<u8>()? as i8;
+        let chips: Vec<ChipHandle> = r.get()?;
+        if chips.len() > MAX_PATTERN_CHIPS {
+            return Err(invalid("a tactics pattern of too many chips"));
+        }
+        Ok(TacticPattern { dx, dy, chips })
+    }
+}
+
+impl Wire for Tactics {
+    fn write(&self, w: &mut Writer) {
+        let Tactics { entries, patterns } = self;
+        entries.write(w);
+        patterns.write(w);
+    }
+    fn read(r: &mut Reader) -> io::Result<Tactics> {
+        let entries: Vec<Tactic> = r.get()?;
+        let patterns: Vec<TacticPattern> = r.get()?;
+        if entries.len() > MAX_ENTRIES || patterns.len() > MAX_PATTERNS {
+            return Err(invalid("tactics past the block"));
+        }
+        Ok(Tactics { entries, patterns })
     }
 }
 

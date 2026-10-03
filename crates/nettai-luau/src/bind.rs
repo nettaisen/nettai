@@ -452,6 +452,10 @@ impl UserData for Object {
             let p = panel(x, y)?;
             with(|api, _| Ok(api.can_step(this.0, p)))
         });
+        methods.add_method("chips_enabled", |_, this, ()| with(|api, _| api.chips_enabled(this.0).map_err(api_error)));
+        methods.add_method("move_lag", |_, this, ()| with(|api, _| api.move_lag(this.0).map_err(api_error)));
+        methods.add_method("drop_links", |_, this, ()| with(|api, _| api.drop_links(this.0).map_err(api_error)));
+        methods.add_method("leave", |_, this, ()| with(|api, _| api.leave(this.0).map_err(api_error)));
         methods.add_method("can_stand_any_side", |_, this, (x, y): (LuaValue, LuaValue)| {
             let p = panel(x, y)?;
             with(|api, _| Ok(api.can_stand_any_side(this.0, p)))
@@ -671,10 +675,16 @@ impl UserData for Object {
             let kind = int(&kind, "kind")? as u8;
             with(|api, _| api.start_chip_attack(this.0, nettai_content_api::ChipHandle(chip), kind).map_err(api_error))
         });
-        methods.add_method("start_move_to", |_, this, (x, y, end_lag): (LuaValue, LuaValue, LuaValue)| {
+        methods.add_method("start_move_to", |_, this, (x, y, end_lag, face): (LuaValue, LuaValue, LuaValue, LuaValue)| {
             let p = panel(x, y)?;
             let end_lag = int(&end_lag, "end_lag")? as u16;
-            with(|api, _| api.start_move_to(this.0, p, end_lag).map_err(api_error))
+            let face = object_arg(&face, "face")?;
+            with(|api, _| api.start_move_to(this.0, p, end_lag, face).map_err(api_error))
+        });
+        methods.add_method("start_weapon", |_, this, (weapon, kind): (LuaValue, LuaValue)| {
+            let weapon = bound(|b| def_arg(b, &weapon, Registry::Weapon, "start_weapon"))?;
+            let kind = int(&kind, "kind")? as u8;
+            with(|api, _| api.start_weapon(this.0, nettai_content_api::WeaponHandle(weapon), kind).map_err(api_error))
         });
         // The wrapper's (the role `actions.wrapper`).
         methods.add_method("run_wrapped", |_, this, ()| with(|api, _| api.run_wrapped(this.0).map_err(api_error)));
@@ -1103,6 +1113,16 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     lib_fn!(lua, navi_chip, "navi_left", |_, c: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.navi_chip_left(c.0)))
     });
+    lib_fn!(lua, navi_chip, "last", |lua, ()| {
+        let Some((chip, element, damage)) = with(|api, _| Ok(api.last_navi_chip()))? else {
+            return Ok(LuaValue::Nil);
+        };
+        let t = lua.create_table()?;
+        t.raw_set("chip", bound(|b| chip_value(b, Some(chip)))?)?;
+        t.raw_set("element", element)?;
+        t.raw_set("damage", damage)?;
+        Ok(LuaValue::Table(t))
+    });
     g.set("navi_chip", navi_chip)?;
 
     let vec3 = lua.create_table()?;
@@ -1323,6 +1343,24 @@ fn system_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
 fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     let t = lua.create_table()?;
     lib_fn!(lua, t, "dimmed", |_, ()| with(|api, _| Ok(api.is_dimmed())));
+    lib_fn!(lua, t, "battle_time", |_, ()| with(|api, _| Ok(api.battle_time())));
+    lib_fn!(lua, t, "set_dimmed", |_, on: bool| with(|api, _| Ok(api.set_dimmed(on))));
+    lib_fn!(
+        lua,
+        t,
+        "spawn_navi",
+        |lua, (identity, x, y, side, summoner, system): (LuaValue, LuaValue, LuaValue, LuaValue, LuaValue, LuaValue)| {
+            let p = panel(x, y)?;
+            let side = u8_arg(side, "side")?;
+            let summoner = object_arg(&summoner, "summoner")?;
+            let o = with(|api, b| {
+                let identity = nettai_content_api::IdentityHandle(def_arg(b, &identity, Registry::Identity, "battle.spawn_navi")?);
+                let system = nettai_content_api::SystemHandle(def_arg(b, &system, Registry::System, "battle.spawn_navi")?);
+                api.spawn_navi(identity, p, side, summoner, system).map_err(api_error)
+            })?;
+            object_value(lua, o)
+        }
+    );
     lib_fn!(lua, t, "paused", |_, ()| with(|api, _| Ok(api.is_paused())));
     lib_fn!(lua, t, "over", |_, ()| with(|api, _| Ok(api.is_battle_over())));
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
@@ -1518,10 +1556,67 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let p = with(|api, _| Ok(api.player(side)))?;
         object_value(lua, p)
     });
+    lib_fn!(lua, t, "tactic_count", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.tactic_count(side)))
+    });
+    lib_fn!(lua, t, "tactic", |_, (side, i): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let i = int(&i, "place")?;
+        if i < 1 {
+            return Err(mlua::Error::runtime("battle.tactic: places count from 1"));
+        }
+        let e = with(|api, _| Ok(api.tactic(side, (i - 1) as usize)))?;
+        match e {
+            nettai_content_api::TacticEntry::Chip(c) => bound(|b| chip_value(b, Some(c))),
+            nettai_content_api::TacticEntry::Pattern(p) => Ok(LuaValue::Integer(p as i64 + 1)),
+            nettai_content_api::TacticEntry::Nothing => Ok(LuaValue::Boolean(false)),
+            nettai_content_api::TacticEntry::Empty => Ok(LuaValue::Nil),
+        }
+    });
+    lib_fn!(lua, t, "tactic_pattern", |lua, (side, i): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let i = int(&i, "pattern")?;
+        if i < 1 {
+            return Err(mlua::Error::runtime("battle.tactic_pattern: patterns count from 1"));
+        }
+        let (dx, dy, chips) = with(|api, _| api.tactic_pattern(side, (i - 1) as usize).map_err(api_error))?;
+        let list = lua.create_table()?;
+        for c in chips {
+            list.push(bound(|b| chip_value(b, Some(c)))?)?;
+        }
+        Ok((dx as i64, dy as i64, list))
+    });
+    lib_fn!(lua, t, "swap_tactics", |_, (side, i): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let i = int(&i, "place")?;
+        if i < 1 {
+            return Err(mlua::Error::runtime("battle.swap_tactics: places count from 1"));
+        }
+        with(|api, _| Ok(api.swap_tactics(side, (i - 1) as usize)))
+    });
+    lib_fn!(lua, t, "turn_tactics", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.turn_tactics(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "alive_actor_slot", |lua, (side, i): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let i = int(&i, "slot")?;
+        if !(1..=4).contains(&i) {
+            return Err(mlua::Error::runtime("battle.alive_actor_slot: a side has slots 1 to 4"));
+        }
+        let o = with(|api, _| Ok(api.alive_actor_slot(side, (i - 1) as u8)))?;
+        object_value(lua, o)
+    });
     lib_fn!(lua, t, "alive_actors", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         let list = with(|api, _| Ok(api.alive_actors(side)))?;
         lua.create_sequence_from(list.into_iter().map(Object))
+    });
+    lib_fn!(lua, t, "tracked", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let o = with(|api, _| Ok(api.tracked(side)))?;
+        object_value(lua, o)
     });
     lib_fn!(lua, t, "objects_of", |lua, kind: LuaValue| {
         let list = with(|api, b| match b.def(&kind) {
@@ -1533,6 +1628,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "rng", |_, ()| with(|api, _| Ok(api.rng())));
     lib_fn!(lua, t, "rng_positive", |_, ()| with(|api, _| Ok(api.rng_positive())));
+    lib_fn!(lua, t, "console_rng_positive", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.console_rng_positive(side)))
+    });
     lib_fn!(lua, t, "jitter", |_, (mask, pos): (LuaValue, mlua::UserDataRef<LVec3>)| {
         let mask = int(&mask, "mask")? as u32;
         with(|api, _| Ok(LVec3(api.jitter(mask, pos.0))))
@@ -1596,6 +1695,18 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "set_gauge_speed_ticks", |_, (side, slow, fast): (LuaValue, LuaValue, LuaValue)| {
         let (side, slow, fast) = (u8_arg(side, "side")? & 1, u16_arg(slow, "ticks")?, u16_arg(fast, "ticks")?);
         with(|api, _| Ok(api.set_gauge_speed_ticks(side, slow, fast)))
+    });
+    lib_fn!(lua, t, "gauge_damage", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.gauge_damage(side)))
+    });
+    lib_fn!(lua, t, "sword_pick", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.sword_pick(side)))
+    });
+    lib_fn!(lua, t, "set_sword_pick", |_, (side, pick): (LuaValue, LuaValue)| {
+        let (side, pick) = (u8_arg(side, "side")? & 1, u8_arg(pick, "sword pick")?);
+        with(|api, _| Ok(api.set_sword_pick(side, pick)))
     });
     lib_fn!(lua, t, "bump_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
@@ -1849,6 +1960,15 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let list = with(|api, _| Ok(api.side_field_objects(side)))?;
         lua.create_sequence_from(list.into_iter().map(Object))
     });
+    lib_fn!(lua, t, "object_slot", |lua, (side, i): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let i = int(&i, "slot")?;
+        if !(1..=3).contains(&i) {
+            return Err(mlua::Error::runtime("field.object_slot: a side has slots 1 to 3"));
+        }
+        let o = with(|api, _| Ok(api.field_object_slot(side, (i - 1) as u8)))?;
+        object_value(lua, o)
+    });
     lib_fn!(lua, t, "column", |lua, x: LuaValue| {
         let x = u8_arg(x, "column")?;
         let c = with(|api, _| Ok(api.column_info(x)))?;
@@ -1957,6 +2077,8 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "hide_user_sparing", |_, user: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.hide_user_sparing(user.0)))
     });
+    lib_fn!(lua, t, "hide_actor", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_actor(o.0))));
+    lib_fn!(lua, t, "show_actor", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.show_actor(o.0))));
     Ok(t)
 }
 
@@ -2140,6 +2262,7 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             vec![LuaValue::Table(t)]
         }
         HookCall::RoleNavi { navi } => vec![obj(navi)?],
+        HookCall::NaviLeft { controller } => vec![obj(controller)?],
         HookCall::RoleEncased { obstacle, ice, class } => {
             let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(c as i64));
             vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
@@ -2188,7 +2311,9 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::Place { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
-        HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } | HookCall::RoleEncased { .. } => Ok(Value::Nil),
+        // A navi's role hook may hand back an object (`navi_deleted`'s).
+        HookCall::RoleNavi { .. } => Ok(object_arg(&v, "the object a role hook returns")?.map_or(Value::Nil, Value::Object)),
+        HookCall::InstantChip { .. } | HookCall::RoleEncased { .. } | HookCall::NaviLeft { .. } => Ok(Value::Nil),
         // A chip check's substitute; no other system hook returns anything.
         HookCall::System { hook: SystemHook::ChipCheck, .. } if !v.is_nil() => match bound.def(&v) {
             Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),

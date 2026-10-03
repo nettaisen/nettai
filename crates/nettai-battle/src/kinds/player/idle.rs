@@ -17,8 +17,12 @@ use crate::input::keys;
 use crate::object::ObjectRef;
 use nettai_content_api::{ChipHandle, WeaponHandle};
 
-/// Action 8, `sub_80EA734`.
+/// Action 8, `sub_80EA734`. (A navi no player controls idles its own way,
+/// its driver's: `ai_navi::idle`.)
 pub(super) fn control(b: &mut Battle, r: ObjectRef) {
+    if super::ai_navi::is_ai_navi(b, r) {
+        return super::ai_navi::idle(b, r);
+    }
     if b.is_battle_over() {
         return battle_over(b, r);
     }
@@ -141,6 +145,13 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         let kind = if sticky { 2 } else { 1 };
         return set_attack(b, r, action, kind);
     }
+    // BN5's Chaos Unison releases (0x080F034E, 0x080F0382).
+    if f & request::CHAOS_SUCCESS != 0 {
+        return chaos_success(b, r);
+    }
+    if f & request::CHAOS_FAILURE != 0 {
+        return chaos_failure(b, r);
+    }
     if ai(b, r).requests & request::BACK_SPECIAL != 0 {
         leave_idle(b, r);
         let action = weapon_slot_routine(b, r, ai(b, r).back_special);
@@ -244,6 +255,35 @@ fn select_special(b: &mut Battle, r: ObjectRef) {
     }
     super::reset_select_special(s);
     ai_mut(b, r).requests &= !request::SELECT_SPECIAL;
+}
+
+/// BN5's 0x080F034E: a Chaos Unison charge released in its window: the
+/// chaos level rises (at most 4) and the soul's chaos weapon fires
+/// (0x0800F338: the side's statistic 0 counts it), an attack of kind 5
+/// (the charge stays armed).
+fn chaos_success(b: &mut Battle, r: ObjectRef) {
+    leave_idle(b, r);
+    let a = ai_mut(b, r);
+    a.chaos.level = (a.chaos.level + 1).min(4);
+    let side = b.objects.get(r).alliance;
+    b.bump_side_stat(side, 0, 1);
+    let weapon = ai(b, r).chaos.weapon;
+    let action = weapon_slot_routine(b, r, weapon);
+    set_attack(b, r, action, CHAOS_WEAPON_KIND);
+}
+
+/// The attack kinds of the chaos releases (BN5's `set_attack` slots 5 and
+/// 6): the failure's end disarms the charge (`end_attack`).
+pub(crate) const CHAOS_WEAPON_KIND: u8 = 5;
+pub(crate) const CHAOS_FAILURE_KIND: u8 = 6;
+
+/// BN5's 0x080F0382: released out of the window: uninterruptible, the
+/// chaos failure (BN5's action 0x39, the role `chaos_failure`).
+fn chaos_failure(b: &mut Battle, r: ObjectRef) {
+    ai_mut(b, r).status |= status::UNINTERRUPTIBLE;
+    leave_idle(b, r);
+    let failure = super::role_action(b, r, crate::content::ActionRole::ChaosFailure);
+    set_attack(b, r, failure, CHAOS_FAILURE_KIND);
 }
 
 /// `sub_8010660`: in link battles the NaviCust support Tango (stat 0x0D
@@ -512,7 +552,7 @@ pub(crate) fn start_move(b: &mut Battle, r: ObjectRef, dir: u8) {
 
 /// `sub_8010332`: ticks of lag at the end of a move (4 for MegaMan, but
 /// in a form with its own: BN5's ShadowSoul's 0, 0x0800E0D2).
-fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
+pub(super) fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
     if super::battle_mode(b) == 9 {
         return 1;
     }

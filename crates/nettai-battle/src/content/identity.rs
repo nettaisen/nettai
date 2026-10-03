@@ -149,6 +149,39 @@ pub enum IceSize {
     Large = 2,
 }
 
+/// What a navi no player controls is (an identity of actor type navi,
+/// spawned mid-battle: BN5's Dark MegaMan): the original's enemy structs
+/// by NameID (`enemy_getStruct1`, `enemy_getStruct2`: BN5's 0x0800D138,
+/// 0x0800D160) and the constants of its AI index's post-init hook.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ActorBody {
+    /// Its sprite (struct 1 bytes 0 and 1), and whether it has a shadow
+    /// (byte 5).
+    pub sprite: SpriteId,
+    pub shadow: bool,
+    /// Struct 1 byte 2 (AIData+3): the multiplier of its palette by
+    /// version (`sub_800F334`).
+    pub palette_scale: u8,
+    /// Its palette once in (its post-init hook's: BN5's Dark MegaMan's 1,
+    /// 0x08104270); none: `sub_800F334`'s.
+    pub palette: Option<u8>,
+    /// Struct 2: its HP (the low 12 bits) and element (the high 4).
+    pub hp: u16,
+    pub element: u8,
+    /// Struct 2 +4: what its body deals (BattleObject+0x2C).
+    pub body_damage: u16,
+    /// Its body's collision: what it is, what it reacts to and its hit
+    /// modifier (`object_setupCollisionData`'s, which struct 2 byte 3 and
+    /// the NameID pick: BN5's 0x08013C5A).
+    pub collision: (nettai_content_api::CollisionHandle, nettai_content_api::CollisionHandle, u8),
+    /// The flag-1 bits it starts with (struct 2 byte 3's: superarmor,
+    /// airshoe, floatshoe, affected by ice, untouchable; and its hook's).
+    pub flags: u32,
+    /// Its HP number never shows (BN5's NameID 0x18D: 0x0801339C,
+    /// 0x08104270).
+    pub hides_hp: bool,
+}
+
 /// The navi or form an identity is nested in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum IdentityOwner {
@@ -188,6 +221,8 @@ pub struct Identity {
     pub ice: IceSize,
     /// Whose it is, for a navi's or a form's.
     pub owner: Option<IdentityOwner>,
+    /// What it is as a navi no player controls (actor type navi).
+    pub body: Option<ActorBody>,
 }
 
 impl Identity {
@@ -209,6 +244,7 @@ impl Identity {
             aura_anim: None,
             ice: IceSize::Small,
             owner: None,
+            body: None,
         })
     }
 }
@@ -218,6 +254,7 @@ impl Identity {
 pub(crate) fn read(
     d: &nettai_content_api::Definition,
     assets: &nettai_content_api::AssetNames,
+    definitions: &nettai_content_api::Definitions,
 ) -> Result<Identity, nettai_content_api::ContentError> {
     use nettai_content_api::{AssetKind, ContentError, Data};
     let what = |m: String| ContentError::new(format!("{}.luau: identity {}: {m}", d.module, d.key));
@@ -390,6 +427,80 @@ pub(crate) fn read(
         Data::Str(s) if s == "large" => IceSize::Large,
         other => return Err(what(format!("`ice` is {other:?}, not small, medium or large"))),
     };
+    let body = match spec.field("body") {
+        Data::Nil => None,
+        b @ Data::Map(_) => {
+            if actor_type != ActorType::Navi {
+                return Err(what("only a navi no player controls (actor type navi) has a `body`".into()));
+            }
+            let collision = |field: &str| -> Result<nettai_content_api::CollisionHandle, ContentError> {
+                match b.field("collision").field(field) {
+                    Data::Ref(nettai_content_api::Registry::Collision, key) => definitions
+                        .of(nettai_content_api::Registry::Collision)
+                        .iter()
+                        .position(|c| &c.key == key)
+                        .map(|i| nettai_content_api::CollisionHandle(i as u16))
+                        .ok_or_else(|| what(format!("body.collision.{field} names {key:?}, which isn't defined"))),
+                    other => Err(what(format!("body.collision.{field} is {other:?}, not a collision type"))),
+                }
+            };
+            let word = |field: &str| -> Result<u16, ContentError> {
+                match b.field(field) {
+                    Data::Int(i) => u16::try_from(*i).map_err(|_| what(format!("body.{field} {i} is not a halfword"))),
+                    other => Err(what(format!("body.{field} is {other:?}, not a number"))),
+                }
+            };
+            let hp = word("hp")?;
+            if hp > 0xFFF {
+                return Err(what(format!("body.hp {hp} is more than its 12 bits hold")));
+            }
+            const ELEMENTS: [&str; 5] = ["null", "fire", "aqua", "elec", "wood"];
+            let element = match b.field("element") {
+                Data::Str(s) => {
+                    ELEMENTS.iter().position(|n| n == s).ok_or_else(|| what(format!("body.element {s:?} is not an element")))? as u8
+                }
+                other => return Err(what(format!("body.element is {other:?}, not an element"))),
+            };
+            let mut flags = 0u32;
+            match b.field("flags") {
+                Data::Nil => {}
+                Data::List(names) => {
+                    for n in names {
+                        use crate::collision::f1;
+                        flags |= match n {
+                            Data::Str(s) if s == "superarmor" => f1::SUPERARMOR,
+                            Data::Str(s) if s == "airshoe" => f1::AIRSHOE,
+                            Data::Str(s) if s == "floatshoe" => f1::FLOATSHOE,
+                            Data::Str(s) if s == "affected_by_ice" => f1::AFFECTED_BY_ICE,
+                            Data::Str(s) if s == "untouchable" => f1::UNTOUCHABLE,
+                            other => {
+                                return Err(what(format!(
+                                    "body.flags has {other:?}, not superarmor, airshoe, floatshoe, affected_by_ice or untouchable"
+                                )));
+                            }
+                        };
+                    }
+                }
+                other => return Err(what(format!("body.flags is {other:?}, not a list of names"))),
+            }
+            Some(ActorBody {
+                sprite: sprite(b.field("sprite"), "body.sprite")?,
+                shadow: flag(b.field("shadow"), "body.shadow", false)?,
+                palette_scale: byte(b.field("palette_scale"), "body.palette_scale")?,
+                palette: match b.field("palette") {
+                    Data::Nil => None,
+                    v => Some(byte(v, "body.palette")?),
+                },
+                hp,
+                element,
+                body_damage: word("body_damage")?,
+                collision: (collision("body")?, collision("target")?, byte(b.field("collision").field("hit_modifier"), "body.collision.hit_modifier")?),
+                flags,
+                hides_hp: flag(b.field("hides_hp"), "body.hides_hp", false)?,
+            })
+        }
+        other => return Err(what(format!("`body` is {other:?}, not a table"))),
+    };
     Ok(Identity {
         key: d.key.clone(),
         class,
@@ -408,5 +519,6 @@ pub(crate) fn read(
         aura_anim,
         ice,
         owner: None,
+        body,
     })
 }

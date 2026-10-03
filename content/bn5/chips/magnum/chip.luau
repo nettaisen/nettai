@@ -1,6 +1,10 @@
 --!strict
--- Magnum (BN5 chip 0x05e): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- Magnum (BN5 chip 0x05e): a cut-in chip: the user's stand-in moves a sight across the enemy's columns until A or 180
+-- ticks, then shoots the sight's column, breaking its panels: BN5's controller (controller.luau, the dimming
+-- handler's subtype 15, effect object #0x30) and gunner (gunner.luau, actor object #2) of mode 0.
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local controller = require("./controller")
 
 return define.chip {
     id = "bn5:magnum",
@@ -15,4 +19,5 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
+    dimming = controller.hook(0),
 }

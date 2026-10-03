@@ -1,6 +1,9 @@
 --!strict
--- Phoenix (BN5 chip 0x139): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- Phoenix (BN5 chip 0x139): The phoenix drops 18 fireballs on the field's middle columns, then heals its user's side (./controller,
+-- ./phoenix). Past the navi chips' block: AntiNavi lets it through.
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local controller = require("./controller")
 
 return define.chip {
     id = "bn5:phoenix",
@@ -15,4 +18,6 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi" },
     slot_in_limit = 1,
+    traits = { "not_navi_slot" },
+    dimming = controller.hook,
 }
