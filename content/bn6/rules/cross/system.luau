@@ -99,6 +99,15 @@ return define.system {
         cross_chosen = "bool",
         chosen = "u8",
     },
+    -- What the player's save brings (bn6-compat writes it, nettai-match
+    -- from a match's side): the game's version (its five Crosses), the
+    -- Crosses it owns (by Cross number: Gregar's event flags 0xE2-0xE6,
+    -- Falzar's 0xE7-0xEB), and nettai's Cross list (window.luau).
+    setup = {
+        version = { "falzar", "gregar" },
+        crosses = "bool[5]",
+        cross_list = "form[5]",
+    },
     buttons = { scrap = scrap },
     windows = {
         cross_opening = window.opening,
