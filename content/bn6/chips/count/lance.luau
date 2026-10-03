@@ -10,7 +10,7 @@
 -- reach): ported, unverified. See docs/engine/chips.md §3.6.37.
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 
 local lance = {}

@@ -2,7 +2,8 @@
 //!
 //! `graphics/field/`: `tiles.png` (the panel tiles; the image's palette
 //! rows are the background palette slots, rows 1..=8 the panel palettes)
-//! and `field.json` (panel blocks, edges and highlights as map entries
+//! and `field.json` (the panel types it draws, by the engine's names;
+//! panel blocks, edges and highlights as map entries
 //! `tile:palette[:flip]`, and the cycling panel palettes).
 //!
 //! `graphics/backgrounds/NN/`: `tiles.png`, `map.tmj` (a Tiled map of the
@@ -17,6 +18,7 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::tiles::{self, Layout, TileImage};
 use nettai_assets::{AnimTarget, Background, Field, GfxAnim, GfxAnimFrame, MapEntry, Palette, PaletteAnim, Tiles};
+use nettai_battle::field::PanelType;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -75,11 +77,23 @@ pub struct FieldDoc {
     /// the first row and how many.
     pub palette_rows: [u8; 2],
     pub palette_anims: Vec<PaletteAnimDoc>,
-    /// 5x3 blocks by 6 * panel type + 3 * owner + row - 1.
+    /// The panel types the field draws, by the engine's names, in the
+    /// order of their blocks (docs/design/rules-in-luau.md §7.4). A field
+    /// without the list is an older pack's: 78 blocks are BN6's 13 types
+    /// in the engine's order, any other number types it can't tell.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub panel_types: Option<Vec<PanelType>>,
+    /// 5x3 blocks by 6 * the type's place in `panel_types` + 3 * owner +
+    /// row - 1.
     pub panels: Vec<Vec<String>>,
     pub front_edges: Vec<Vec<String>>,
+    /// One or two: by highlight - 1.
     pub highlights: Vec<Vec<String>>,
 }
+
+/// The panel types of an older pack's field (no `panel_types`): BN6's 13,
+/// in the engine's order, the only layout it had.
+const LEGACY_PANEL_TYPES: usize = 13;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PaletteAnimDoc {
@@ -130,6 +144,7 @@ pub fn export_field(f: &Field) -> Vec<(String, Vec<u8>)> {
                 frames: a.frames.iter().map(|(p, t)| PaletteFrameDoc { ticks: *t, colors: tiles::palette_text(p) }).collect(),
             })
             .collect(),
+        panel_types: Some(f.panel_types.iter().filter_map(|&t| PanelType::ALL.get(t as usize).copied()).collect()),
         panels: f.panels.iter().map(|b| texts(b)).collect(),
         front_edges: f.front_edges.iter().map(|b| texts(b)).collect(),
         highlights: f.highlights.iter().map(|b| texts(b)).collect(),
@@ -167,10 +182,24 @@ pub fn import_field(dir: &Path, prefix: &str, report: &mut Report) -> Option<Fie
         blocks(&doc.panels, 15, report).into_iter().map(|b| b.try_into().unwrap()).collect();
     let edges = blocks(&doc.front_edges, 5, report);
     let lights = blocks(&doc.highlights, 15, report);
-    if edges.len() != 2 || lights.len() != 2 {
-        report.error(&name, "there are two front edges and two highlights");
+    if edges.len() != 2 || !(1..=2).contains(&lights.len()) {
+        report.error(&name, "there are two front edges, and one highlight or two");
         return None;
     }
+    let panel_types: Vec<u8> = match &doc.panel_types {
+        Some(types) => {
+            if 6 * types.len() != panels.len() {
+                report.error(&name, format!("{} panel types need {} blocks, not {}", types.len(), 6 * types.len(), panels.len()));
+                return None;
+            }
+            types.iter().map(|&t| t as u8).collect()
+        }
+        None if panels.len() == 6 * LEGACY_PANEL_TYPES => (0..LEGACY_PANEL_TYPES as u8).collect(),
+        None => {
+            report.warn(&name, "the field doesn't say which panel types it draws, so it draws none (extract it again)");
+            Vec::new()
+        }
+    };
     let palette_anims = doc
         .palette_anims
         .iter()
@@ -186,9 +215,10 @@ pub fn import_field(dir: &Path, prefix: &str, report: &mut Report) -> Option<Fie
         palettes,
         first_palette: doc.palette_rows[0],
         palette_anims,
+        panel_types,
         panels,
         front_edges: [edges[0].clone().try_into().unwrap(), edges[1].clone().try_into().unwrap()],
-        highlights: [lights[0].clone().try_into().unwrap(), lights[1].clone().try_into().unwrap()],
+        highlights: lights.into_iter().map(|b| b.try_into().unwrap()).collect(),
     })
 }
 

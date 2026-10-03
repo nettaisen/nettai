@@ -11,8 +11,8 @@
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local effects = require("../effects")
-local panels = require("../panels")
-local regions = require("../regions")
+local panels = require("@common/panels")
+local regions = require("@common/regions")
 local sparks = require("../sparks")
 
 local seed = {}

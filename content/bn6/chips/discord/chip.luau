@@ -3,7 +3,7 @@
 -- while it plays, the other side's navi is confused (lib/instruments).
 
 local collision = require("../../rules/collision")
-local effects = require("../../lib/instruments/effects")
+local effects = require("@common/instruments/effects")
 local instrument = require("../../lib/instruments/instrument")
 local instruments = require("../../lib/instruments/controller")
 local statuses = require("../../rules/status")

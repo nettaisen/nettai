@@ -66,7 +66,8 @@ importer, and, when a window opens, the sound. `NETTAI_LOAD_TIMES=1` prints
 how long each part took. Each sprite, banner, mugshot, background and sound
 comes from its own pack, a chip's icon and picture from its game's, the
 custom screen from the local player's game's (docs/design/rules-in-luau.md,
-As built R3b).
+As built R3b), and the field from the arena's game's (§7.4; see "Field and
+background" below).
 
 The content roots go with the packs (`nettai_content::pack::load_found`):
 `--content <dir>` loads that root and the roots it requires (so does
@@ -301,10 +302,14 @@ functions:
   with its portrait; every form's face for each emotion, every Cross's name
   and description; and every asset of the loaded packs (each sprite with
   every animation, its frames and their own palettes; each song, banner,
-  background, mugshot), the HUD's text lines, the field's panel blocks, the
-  custom screen, the chatbox. It takes a second or two, and a lookup by the
-  wrong key fails it for every chip, not only for those a trace shows (its
-  test: `a_lookup_by_the_wrong_key_fails_for_every_chip`). A string a
+  background, mugshot), the HUD's text lines, the custom screen, the
+  chatbox. It checks the field too: each loaded game's pack must draw
+  the panel types its game names; then, in an arena of each game, every
+  panel type a loaded game names and both highlights are drawn as the
+  stage draws them, and a tinted one is said as a note. It takes a
+  second or two, and a lookup by the wrong key fails it for every chip,
+  not only for those a trace shows (its test:
+  `a_lookup_by_the_wrong_key_fails_for_every_chip`). A string a
   language's table lacks shows in the content's own, by design: it is said,
   not counted.
 - `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
@@ -365,7 +370,17 @@ enemy names).
 **Field and background** (`stage.rs`): each panel's block by displayed type
 and owner (from the viewer's side), highlights, missing panels, front
 edges, the cycling panel palettes; the background's scroll and tile
-animations.
+animations. The field is the arena's game's pack's. In a mixed battle
+(docs/design/rules-in-luau.md §7.4, "The field's art in a mixed battle"),
+`FieldArt` says where each panel type and highlight comes from:
+- the arena's field, if it draws it (field.json's `panel_types`);
+- else the field of the first loaded game whose `panels` section names
+  it and whose field draws it, with that field's own tiles, palettes and
+  palette cycles (BN5's sea in a BN6 arena is BN5's);
+- else the owner's normal panel, tinted halfway to magenta, never a hole.
+
+Front edges and missing panels are always the arena's. A tinted panel is
+said in the audits, not counted.
 
 **HUD** (`hud.rs`), by the original's HUD tasks:
 
@@ -756,7 +771,7 @@ navi = "bn6:megaman"
 game = "gregar"                            # optional: falzar (default) or gregar
 crosses = ["bn6:heatcross", "bn6:spoutcross"]   # optional: else the game's own five
 cards = [{ card = "bn6:canodumb" }, { card = "bn6:shadow", on = false }]
-level = 0                                  # optional: a link navi's level
+level = 0                                  # optional: a link navi's level (its stats are its level's)
 bug_frags = 0                              # optional
 emotion_window_glitch = false              # optional: the save's NaviCust bug flag (0x1720)
 
@@ -765,7 +780,7 @@ chips = ["bn6:cannon A", "bn6:cannon A", "bn6:airshot *"]   # 30 entries, "<key>
 regular = 4                                # optional: an entry, counting from 0
 tags = [5, 6]                              # optional: two entries
 
-[left.stats]                               # optional: what differs from the navi's fresh stats
+[left.stats]                               # optional: what differs from the navi's fresh stats (a link navi's at its level)
 hp = 1000
 regular_memory = 50
 sun = true
@@ -781,7 +796,10 @@ programs = [                               # in the save's order; x, y the cente
 
 **The stats block** (`nettai_match::stats`) sets the navi's stats by name
 over its fresh stats (`NaviStats::fresh`, `init_8013B64`: what a new save
-gives the navi), of the side's game: `hp` (the base HP, which also sets the
+gives the navi), of the side's game; a link navi's over its stats at its
+`level`, as the PET's reload gives them (`nettai_match::link_navis`,
+docs/engine/link-navis.md: the base HP of the cleared game and the level's
+HP, buster levels, custom and Mega levels and abilities): `hp` (the base HP, which also sets the
 maximum and the HP the round starts with; `max_hp` and `current_hp` set
 those apart), `attack`, `rapid`, `charge`, `custom_level`, `mega_level`,
 `giga_level`, `regular_memory`, `mood`, `element`, `beast_out_counter`,

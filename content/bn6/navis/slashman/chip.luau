@@ -11,8 +11,8 @@
 
 local collision = require("../../rules/collision")
 local link = require("../../lib/link_chips")
-local panels = require("../../lib/panels")
-local regions = require("../../lib/regions")
+local panels = require("@common/panels")
+local regions = require("@common/regions")
 local riding_hit = require("./riding_hit")
 
 export type State = {
