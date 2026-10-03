@@ -6,8 +6,9 @@
 -- flag 0x40 mode). Nothing in battle reads either (docs/engine/
 -- field-names.md, SideState), so the effect changes nothing observable.
 --
--- Unverified: no chip, weapon routine or link navi of BN6's names effect
--- 11, so nothing uses `side_special.instant`.
+-- No chip, weapon routine or link navi of BN6's names effect 11; BN5's
+-- mode chips (CannMode to DrilMode, FinalGun) use it, the same code
+-- (0x0802D62A), and their lab recordings match.
 
 local side_special = {}
 
