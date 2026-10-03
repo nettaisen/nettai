@@ -317,7 +317,7 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
         Emotion::WornOut
     } else if a.anger != 0 {
         Emotion::Angry
-    } else if a.beast_out_spent {
+    } else if a.tired {
         Emotion::Tired
     } else if mood == 0xFF {
         Emotion::FullSynchro
@@ -326,12 +326,17 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
     }
 }
 
-/// `sub_8015BEC`: set a side's mood, unless its navi is in a special
-/// emotion state.
+/// Whether a navi's mood is held (`sub_8015BEC`'s test): held tired or
+/// exhausted. Another side's rules read it (`sub_801A200`'s counter).
+pub(crate) fn mood_held(b: &Battle, r: ObjectRef) -> bool {
+    let a = ai(b, r);
+    a.tired || a.exhausted
+}
+
+/// `sub_8015BEC`: set a side's mood, unless its navi's mood is held.
 pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
     let Some(p) = b.player(side) else { return };
-    let a = ai(b, p);
-    if a.beast_out_spent || a.exhausted {
+    if mood_held(b, p) {
         return;
     }
     b.stats[side as usize].mood = mood;
@@ -793,9 +798,8 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
         let hook = b.roles_for(r).hook(crate::content::HookRole::FirstBarrier);
         crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleNavi { navi: r });
     }
-    if stats(b, r).beast_out_counter == 0 {
-        ai_mut(b, r).beast_out_spent = true;
-    }
+    // (BN6's emotion system holds a navi whose Beast Out counter is spent
+    // tired from the round's start.)
     reset_navicust_state(b, r);
 }
 
@@ -1034,7 +1038,12 @@ fn apply_starting_hp_bug(b: &mut Battle, r: ObjectRef) {
 /// `sub_80EA484`: the per-tick pipeline (§12.M M1).
 fn tick(b: &mut Battle, r: ObjectRef) {
     input::update(b, r);
-    emotion_timer(b, r);
+    // The side's systems' tick for the navi, if one asked (BN6's NaviCust
+    // emotion-swing bug, `sub_8013DA0`), not while paused.
+    if !b.paused && ai(b, r).ticked {
+        let side = b.objects.get(r).alliance;
+        b.systems_navi_tick(side, r);
+    }
     intake::collect_hits(b, r);
     status::update(b, r);
     per_form_tick(b, r);
@@ -1097,62 +1106,6 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
         }
     };
     b.objects.sprite_mut(r).look.palette = palette;
-}
-
-/// `byte_8013E44`: the emotions the swing rolls from (six normal, eight
-/// tired, one angry, one Full Synchro), before the current one is
-/// swapped out.
-const EMOTION_SWINGS: [u8; 16] = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3];
-/// `dword_8013E54`: the mood a normal (0) or Full Synchro (3) swing sets.
-const SWING_MOODS: [u8; 4] = [0x99, 0x3C, 0x00, 0xFF];
-
-/// `sub_8013DA0`: the NaviCust emotion-swing bug (stat 0x24), while the
-/// Beast Out counter (stat 0x21) lasts: in a form it only keeps the navi
-/// calm and untired; in base form, every 60 ticks the emotion swings to a
-/// random other one (a roll of 16 from `EMOTION_SWINGS`, where the current
-/// emotion counts as normal, or as tired when it is normal).
-fn emotion_timer(b: &mut Battle, r: ObjectRef) {
-    if b.paused {
-        return;
-    }
-    let s = *stats(b, r);
-    if s.bugs.emotion == 0 || s.beast_out_counter == 0 {
-        return;
-    }
-    if !in_base_form(b, r) {
-        status::end_anger(b, r);
-        ai_mut(b, r).beast_out_spent = false;
-        return;
-    }
-    let a = ai_mut(b, r);
-    a.emotion_swing_ticks = a.emotion_swing_ticks.wrapping_add(1);
-    if a.emotion_swing_ticks < 0x3C {
-        return;
-    }
-    a.emotion_swing_ticks = 0;
-    status::end_anger(b, r);
-    // sub_8014446
-    ai_mut(b, r).beast_out_spent = false;
-    let current = ai(b, r).swung_emotion;
-    let choices = EMOTION_SWINGS.map(|e| if e != current { e } else { u8::from(current == 0) });
-    let roll = b.rng.next_positive() % choices.len() as u32;
-    let swung = choices[roll as usize];
-    ai_mut(b, r).swung_emotion = swung;
-    match swung {
-        // sub_80143CE: anger, unless tired or exhausted.
-        2 => {
-            let a = ai(b, r);
-            if !a.beast_out_spent && !a.exhausted {
-                set_flag2(b, r, 0x200);
-            }
-        }
-        // sub_801443C
-        1 => ai_mut(b, r).beast_out_spent = true,
-        _ => {
-            let side = b.objects.get(r).alliance;
-            set_mood(b, side, SWING_MOODS[swung as usize]);
-        }
-    }
 }
 
 /// `off_80EA93C[AIIndex]`: the per-form tick hook, which only MegaMan's

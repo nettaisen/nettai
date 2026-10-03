@@ -273,6 +273,11 @@ named_fields! {
         /// The controller's state starts over (a form's `berserk` effect,
         /// `sub_802D310`); the controller clears it once it has.
         ControllerFresh = "controller_fresh", Bool, rw;
+        /// Its mood is held (`sub_8015BEC`): held tired or exhausted. What
+        /// another side's rules read (BN6's counter, `sub_801A200`).
+        MoodHeld = "mood_held", Bool, ro;
+        /// The side's systems' `navi_tick` runs for it each tick.
+        Ticked = "ticked", Bool, rw;
         /// Exhausted for the rest of the battle (BN6's after Beast Over):
         /// worn out, the mood can't change, 1 HP lost per tick (never the
         /// last), no Full Synchro or anger.
@@ -325,7 +330,7 @@ named_fields! {
         BackSpecialWeapon = "back_special_weapon", Ref(Registry::Weapon, None), ro;
         /// AIData+0x32: the Beast Out counter is spent (BugFix sets it by
         /// the navi's counter, `sub_8014446` / `sub_801443C`).
-        BeastOutSpent = "beast_out_spent", Bool, rw;
+        Tired = "tired", Bool, rw;
         /// AIData+0x60: the barrier's visual (effect #7).
         BarrierVisual = "barrier_visual", Object, rw;
     }
@@ -653,6 +658,10 @@ named_flags! {
         /// The slide request (the collision's flag2 0x10, not an action
         /// request).
         Slide = "slide",
+        /// The anger request (the collision's flag2 0x200): the navi gets
+        /// angry at its next status update, unless its mood is held
+        /// (`sub_8014326`).
+        Anger = "anger",
     }
 }
 

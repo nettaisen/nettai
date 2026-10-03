@@ -34,7 +34,7 @@ local function effect(me: Object)
         battle.clear_emotion_window_glitch()
         -- sub_8014446 / sub_801443C: the Beast Out counter is spent
         -- again unless the navi has one.
-        user.beast_out_spent = battle.navi(user.alliance).beast_out_counter == 0
+        user.tired = battle.navi(user.alliance).beast_out_counter == 0
         me.timer = TIMER
         me.phase_init = 4
     end
