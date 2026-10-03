@@ -399,6 +399,12 @@ impl Editor {
                 self.edited();
             }
             Msg::Navi(s, c) => {
+                // A link navi: its stats at the side's level, as the game switches.
+                if crate::levels::switch_navi(&content, &mut self.m.sides[s], c.value) {
+                    self.typed.retain(|&(x, k), _| x != s || stats::field(k).is_none());
+                    self.edited();
+                    return Task::none();
+                }
                 let side = &mut self.m.sides[s];
                 let keep = stats::diff(&content, &Side::base_stats(&content, side.navi, side.game), &side.stats);
                 side.navi = c.value;
@@ -421,6 +427,9 @@ impl Editor {
             Msg::Level(s, t) => {
                 if let Ok(v) = t.trim().parse() {
                     self.m.sides[s].navi_level = v;
+                    crate::levels::level_changed(&content, &mut self.m.sides[s]);
+                    // (The stats' fields show the new values.)
+                    self.typed.retain(|&(x, k), _| x != s || stats::field(k).is_none());
                     self.edited();
                 }
                 self.typed.insert((s, "level"), t);
@@ -535,7 +544,7 @@ impl Editor {
             }
             Msg::StatsReset(s) => {
                 let side = &mut self.m.sides[s];
-                side.stats = Side::base_stats(&content, side.navi, side.game);
+                side.stats = crate::levels::reset(&content, side);
                 self.typed.retain(|(x, _), _| *x != s);
                 self.edited();
             }
