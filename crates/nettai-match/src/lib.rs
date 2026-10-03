@@ -17,6 +17,7 @@ pub mod check;
 pub mod draw;
 pub mod file;
 pub mod folders;
+pub mod link_navis;
 pub mod names;
 pub mod stats;
 #[cfg(any(test, feature = "testing"))]
@@ -112,10 +113,12 @@ impl Side {
         starting(content, self.stats, self.game)
     }
 
-    /// The side's stats block: what differs from the navi's fresh stats,
-    /// but what the battle's start sets (MegaMan's variant).
+    /// The side's stats block: what differs from the navi's stats as a save
+    /// gives them (a link navi's at its level: `Side::save_base`), but what
+    /// the battle's start sets (MegaMan's variant).
     pub fn stats_block(&self, content: &Content) -> std::collections::BTreeMap<String, toml::Value> {
-        let mut block = stats::diff(content, &Side::base_stats(content, self.navi, self.game), &self.round_stats(content));
+        let base = Side::save_base(content, self.navi, self.game, self.navi_level);
+        let mut block = stats::diff(content, &base, &self.round_stats(content));
         if content.navi(self.navi).forms.is_some() {
             block.remove("navi_variant");
         }

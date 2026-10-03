@@ -1,14 +1,13 @@
 //! One player's custom screen driven by scripted buttons, with made-up
 //! chips.
 
-use super::chatbox::Script;
 use super::library::testing::{EVERY_CODE, TestLibrary, chip};
 use super::screen::{OK_SLOT, SPECIAL_SLOT};
 use super::*;
 use crate::content::{ButtonHandle, ChipClass, ChipCode, ChipFlags};
 use crate::custom::library::testing::ChipId;
 use crate::input::keys;
-use nettai_content_api::{ChipHandle, FormHandle};
+use nettai_content_api::ChipHandle;
 
 const STAR: u8 = 26;
 /// Made-up chips: a damaging chip in codes A-C and *, a second one in A, B
@@ -73,6 +72,28 @@ impl Extras for TestButtons {
 
     fn button_state(&mut self, screen: &Screen, b: ButtonHandle) -> Option<SlotState> {
         (b.0 == 0).then(|| if screen.last_pick_is_chip() { SlotState::Selectable } else { SlotState::Unavailable })
+    }
+
+    fn button_taken_back(&mut self, _: &mut Screen, _: ButtonHandle) {}
+
+    fn opened(&mut self, _: &mut Screen) {}
+
+    fn confirmed(&mut self, _: &mut Screen, _: &mut BattleFolder) {}
+
+    fn chip_picked(&mut self, _: &mut Screen, _: &mut BattleFolder, _: ChipHandle) {}
+
+    fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle) {}
+
+    fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: &Joypad, _: crate::content::WindowHandle) -> bool {
+        false
+    }
+
+    fn keys(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &Joypad) -> bool {
+        false
+    }
+
+    fn take_back(&mut self, _: &mut Screen, _: &BattleFolder) -> bool {
+        false
     }
 
     fn button_pressed(&mut self, screen: &mut Screen, _: &mut BattleFolder, b: ButtonHandle) {
@@ -182,11 +203,13 @@ fn five_chips_are_dealt_into_the_top_row() {
     assert!(s.slots[5..10].iter().all(|x| matches!(x.kind, SlotKind::Empty | SlotKind::Hidden)));
     // Left of the first chip wraps to OK; OK's right to the first chip.
     assert_eq!((s.slots[0].left, s.slots[4].right), (Some(OK_SLOT), Some(OK_SLOT)));
+    // (OK's up goes to the special slot when a system's button is there:
+    // BN6's Beast Out, which these tests have none of.)
     let ok = s.slots[OK_SLOT as usize];
-    assert_eq!((ok.vertical, ok.left, ok.right), (Some(SPECIAL_SLOT), Some(4), Some(0)));
-    let beast = s.slots[SPECIAL_SLOT as usize];
-    assert_eq!((beast.kind, beast.vertical, beast.left, beast.right), (SlotKind::BeastOut, Some(OK_SLOT), None, None));
-    assert_eq!(s.crosses.count, 5);
+    assert_eq!((ok.vertical, ok.left, ok.right), (None, Some(4), Some(0)));
+    // (The special slot holds a system's button, BN6's Beast Out, which
+    // these tests have none of: it is absent.)
+    assert!(matches!(s.slots[SPECIAL_SLOT as usize].kind, SlotKind::Empty | SlotKind::Hidden));
 }
 
 #[test]
@@ -282,224 +305,6 @@ fn mega_chips_past_the_limit_turn_invalid() {
     let (invalid, code) = (library::testing::INVALID, screen::INVALID_CODE);
     assert_eq!(hand.ids[0], Some(ChipHandle(invalid)));
     assert_eq!(hand.selection[0], Some(FolderChip::new(ChipHandle(invalid), code)));
-}
-
-#[test]
-fn beast_out() {
-    for (version, beast) in [(GameVersion::Falzar, library::testing::FALZAR_BEAST), (GameVersion::Gregar, library::testing::GREGAR_BEAST)] {
-        let mut p = Player::new(&[], version);
-        p.open();
-        p.wait(10);
-        p.step(0);
-        p.press(keys::START);
-        p.press(keys::DOWN);
-        assert_eq!(p.screen().cursor, SPECIAL_SLOT);
-        let a_tick = p.tick + 1;
-        p.step(keys::A);
-        assert!(matches!(p.phase(), Phase::BeastOutChosen { .. }));
-        while p.phase() != Phase::Choosing && p.tick < 1000 {
-            p.step(0);
-        }
-        assert_eq!(p.tick, a_tick + 70);
-        assert!(p.screen().beast_out);
-        assert_eq!(p.screen().slots[SPECIAL_SLOT as usize].state, SlotState::Selected);
-        p.press(keys::UP);
-        p.press(keys::A);
-        p.wait(20);
-        let sent = p.side.sent.as_ref().unwrap();
-        assert_eq!(sent.result.transform.form, Some(beast));
-        // Only Beast Out was picked: an empty hand goes out (and replaces
-        // what the navi still held).
-        assert_eq!(sent.result.hand.as_ref().unwrap().ids[0], None);
-        assert!(p.side.round.beast_out_used);
-    }
-}
-
-#[test]
-fn a_cross_from_the_window() {
-    let mut p = Player::new(&[], GameVersion::Falzar);
-    p.open();
-    p.wait(10);
-    p.step(0);
-    // UP from the top row opens the window (12 ticks); DOWN moves to the
-    // second Cross; A chooses it (34 ticks).
-    // UP repeats (and acts) on the second tick of the hold.
-    p.step(keys::UP);
-    let up = p.tick + 1;
-    p.step(keys::UP);
-    p.step(0);
-    while p.phase() != (Phase::CrossWindow { entered: true }) && p.tick < 1000 {
-        p.step(0);
-    }
-    assert_eq!(p.tick, up + 12);
-    p.press(keys::DOWN);
-    let a = p.tick + 1;
-    p.step(keys::A);
-    while p.phase() != Phase::Choosing && p.tick < 1000 {
-        p.step(0);
-    }
-    assert_eq!(p.tick, a + 34);
-    assert_eq!(p.screen().crosses.chosen, Some(1));
-    // A chosen Cross grays out Beast Out.
-    assert_eq!(p.screen().slots[SPECIAL_SLOT as usize].state, SlotState::Unavailable);
-    p.press(keys::START);
-    p.press(keys::A);
-    p.wait(20);
-    // Falzar's second Cross is form 7.
-    assert_eq!(p.side.sent.as_ref().unwrap().result.transform.form, Some(FormHandle(7)));
-    assert!(p.side.round.crosses_used[1]);
-}
-
-/// Open the screen, open the Cross window, move DOWN `down` times and
-/// choose that Cross; the screen is back to choosing chips after.
-fn choose_cross(p: &mut Player, down: usize) {
-    p.open();
-    p.wait(10);
-    p.step(0);
-    p.press(keys::UP);
-    while p.phase() != (Phase::CrossWindow { entered: true }) && p.tick < 1000 {
-        p.step(0);
-    }
-    for _ in 0..down {
-        p.press(keys::DOWN);
-    }
-    p.step(keys::A);
-    while p.phase() != Phase::Choosing && p.tick < 1000 {
-        p.step(0);
-    }
-}
-
-/// OK, and what goes out.
-fn confirm(p: &mut Player) -> CustomResult {
-    p.press(keys::START);
-    p.press(keys::A);
-    p.wait(20);
-    p.side.sent.as_ref().unwrap().result.clone()
-}
-
-/// A setup's Cross list (nettai's extension): a Falzar player offered
-/// Gregar's first Cross (form 1) and Falzar's fourth (9) gets those two,
-/// in that order, and the one chosen is what goes out.
-#[test]
-fn a_setups_cross_list_offers_crosses_of_either_game() {
-    let mut p = Player::new(&[], GameVersion::Falzar);
-    p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
-    choose_cross(&mut p, 0);
-    let w = p.screen().crosses;
-    assert_eq!((w.count, &w.offered[..2], w.chosen), (2, &[0, 1][..], Some(0)));
-    // The emotion window shows the Cross's face.
-    assert_eq!(p.screen().look.face, Some(FormHandle(1)));
-    assert_eq!(confirm(&mut p).transform.form, Some(FormHandle(1)));
-    assert_eq!(p.side.round.crosses_used, [true, false, false, false, false]);
-    // On the round's next screen the Cross used isn't offered again.
-    p.side.screen = None;
-    let ctx = p.context();
-    let (mut side, mut console) = (p.side.clone(), p.console);
-    side.open(&Context { turn: 2, ..ctx }, &mut console);
-    let w = side.screen.unwrap().crosses;
-    assert_eq!((w.count, w.offered[0]), (1, 1));
-}
-
-/// R in the Cross window describes the Cross under the cursor, by its
-/// form: with a Cross list mixing both games, a Falzar player's window
-/// shows Gregar's first Cross (form 1) its own description, not the one of
-/// Falzar's Cross in that place (form 6; the test library's descriptions
-/// differ in their lines, which time the chatbox).
-#[test]
-fn r_describes_the_hovered_cross_of_a_cross_list() {
-    for (list, down, form) in [(true, 0, 1), (true, 1, 9), (false, 0, 6), (false, 1, 7)] {
-        let mut p = Player::new(&[], GameVersion::Falzar);
-        if list {
-            p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
-        }
-        p.open();
-        p.wait(10);
-        p.step(0);
-        p.press(keys::UP);
-        while p.phase() != (Phase::CrossWindow { entered: true }) && p.tick < 1000 {
-            p.step(0);
-        }
-        for _ in 0..down {
-            p.press(keys::DOWN);
-        }
-        let w = p.screen().crosses;
-        assert_eq!(w.hovered(&p.side.unlocks, &p.lib, p.stats.navi), Some(FormHandle(form)), "list {list}, down {down}");
-        p.step(keys::R);
-        let Phase::Description { from_cross_window: true, chatbox } = p.phase() else { panic!("no description: {:?}", p.phase()) };
-        let lines = p.lib.cross_description_lines(FormHandle(form));
-        assert_eq!(chatbox.script(), Script::Description { breaks: lines - 1 }, "list {list}, down {down}");
-    }
-}
-
-/// Beast Out from a Cross of the other game is that Cross's form in Beast
-/// Out, of that game's Beast (a Falzar player in Gregar's first Cross goes
-/// to its Beast form, 0x0D), with that game's roar; tired, that game's
-/// Beast Over. Without a Cross list the Beast's game is the version's.
-#[test]
-fn beast_out_from_the_other_games_cross_is_its_beast_form() {
-    use super::look::ScreenSound;
-    for list in [true, false] {
-        let mut p = Player::new(&[], GameVersion::Falzar);
-        if list {
-            p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
-        }
-        // In Gregar's first Cross.
-        p.stats.form = FormHandle(1);
-        p.open();
-        p.wait(10);
-        p.step(0);
-        p.press(keys::START);
-        p.press(keys::DOWN);
-        p.step(keys::A);
-        let mut roars = Vec::new();
-        while p.phase() != Phase::Choosing && p.tick < 1000 {
-            p.step(0);
-            roars.extend(p.screen().look.drawn.sounds().filter(|s| matches!(s, ScreenSound::BeastOut(_))));
-        }
-        let game = if list { GameVersion::Gregar } else { GameVersion::Falzar };
-        assert_eq!(roars, [ScreenSound::BeastOut(game)], "list {list}");
-        assert_eq!(p.screen().look.face, Some(FormHandle(0x0D)), "list {list}");
-        p.press(keys::UP);
-        p.press(keys::A);
-        p.wait(20);
-        assert_eq!(p.side.sent.as_ref().unwrap().result.transform.form, Some(FormHandle(0x0D)), "list {list}");
-        // Tired: Beast Over of the Beast's game (Gregar's 0x17, Falzar's 0x18).
-        let over = p.side.unlocks.beast_form(&p.lib, p.stats.navi, FormHandle(1), true);
-        assert_eq!(over, Some(FormHandle(if list { 0x17 } else { 0x18 })), "list {list}");
-        // From the base form Beast Out is the version's.
-        let base = p.side.unlocks.beast_form(&p.lib, p.stats.navi, FormHandle(0), false);
-        assert_eq!(base, Some(library::testing::FALZAR_BEAST));
-        assert_eq!(p.side.unlocks.beast_game(&p.lib, FormHandle(0)), GameVersion::Falzar);
-    }
-}
-
-/// In a Beast form a Cross list offers the Crosses whose Beast it is: in
-/// Falzar's Beast Falzar's, in a Gregar Cross's Beast form Gregar's; each
-/// takes the navi to its form in Beast Out.
-#[test]
-fn in_a_beast_form_a_cross_list_offers_that_beasts_crosses() {
-    for (beast, place, form) in [(library::testing::FALZAR_BEAST, 1, 9), (FormHandle(0x0E), 0, 1)] {
-        let mut p = Player::new(&[], GameVersion::Falzar);
-        p.side.unlocks.cross_list = Some(CrossList::new(&[FormHandle(1), FormHandle(9)]));
-        p.stats.form = beast;
-        choose_cross(&mut p, 0);
-        let w = p.screen().crosses;
-        assert_eq!((w.count, w.offered[0], w.chosen), (1, place, Some(place)));
-        assert_eq!(confirm(&mut p).transform.form, Some(FormHandle(form + 0x0C)));
-    }
-}
-
-/// A Cross list names Crosses only, and leaves out the navi's starting
-/// form, as the original's window does.
-#[test]
-fn a_cross_list_offers_crosses_only() {
-    let mut p = Player::new(&[], GameVersion::Gregar);
-    let list = [FormHandle(6), library::testing::GREGAR_BEAST, FormHandle(2), FormHandle(7)];
-    p.side.unlocks.cross_list = Some(CrossList::new(&list));
-    p.stats.starting_form = FormHandle(2);
-    p.open();
-    let w = p.screen().crosses;
-    assert_eq!((w.count, &w.offered[..2]), (2, &[0, 3][..]));
 }
 
 #[test]

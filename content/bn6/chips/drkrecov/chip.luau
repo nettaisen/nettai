@@ -1,7 +1,7 @@
 --!strict
--- DrkRecov: the recovery chips' heal (chips/recov/heal.luau) of 1000 HP.
+-- DrkRecov: the recovery chips' heal (content/common/recov/heal.luau) of 1000 HP.
 
-local heal = require("../recov/heal")
+local heal = require("@common/recov/heal")
 local recov = require("../recov/chips")
 
 return define.chip {

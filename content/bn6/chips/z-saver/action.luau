@@ -12,7 +12,7 @@
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local parts = require("../../lib/swords/parts")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sonic_boom = require("../../lib/swords/sonic_boom")
 
 local zsaver = {}

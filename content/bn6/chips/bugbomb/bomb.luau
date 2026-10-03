@@ -8,7 +8,7 @@
 -- of smoke.
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local statuses = require("../../rules/status")
 local trajectory = require("../../lib/trajectory")

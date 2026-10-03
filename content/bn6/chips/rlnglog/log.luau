@@ -16,7 +16,7 @@
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local trajectory = require("../../lib/trajectory")
 
 local log = {}

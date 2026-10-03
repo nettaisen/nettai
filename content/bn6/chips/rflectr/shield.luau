@@ -7,7 +7,7 @@
 -- while paused and dimmed, but doesn't animate while dimmed. See chips.md
 -- §3.3.
 
-local slot = require("../../lib/slot")
+local slot = require("@common/slot")
 
 local shield = {}
 

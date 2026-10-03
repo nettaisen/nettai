@@ -246,6 +246,38 @@ pub enum SystemHook {
     /// first system that answers decides; none answering, the framework's
     /// rule (the custom level, NumbrOpn and the hand-shrink bug).
     CustomHandSize,
+    /// `custom.open(side)`: the side's custom screen opens, before its hand
+    /// size and its layout (BN6's: ChargeCross's screens counted, the
+    /// round's first screen forgetting the round's Beast Out). Its result
+    /// is unused.
+    CustomOpen,
+    /// `custom.chip_picked(side, chip)`: a chip of the hand was picked (BN6's
+    /// BeastOut chip starts its animation, `sub_802A00C`). Its result is
+    /// unused.
+    CustomChipPicked,
+    /// `custom.chip_taken_back(side, chip)`: B took a chip's pick back
+    /// (BN6's BeastOut chip: its face goes, `sub_802A0EC`). Its result is
+    /// unused.
+    CustomChipTakenBack,
+    /// `custom.confirmed(side)`: OK was pressed and the hand is built (the
+    /// round's Beast Out or Cross noted). Its result is unused.
+    CustomConfirmed,
+    /// `custom.keys(side)`: choosing chips, on a tick a key repeats or is
+    /// pressed, before the screen's own keys (`custom.pressed`,
+    /// `custom.repeated`): whether the system took the tick's keys (BN6's
+    /// UP opening the Cross window, `sub_8028B74`). The first system that
+    /// answers true takes them.
+    CustomKeys,
+    /// `custom.take_back(side)`: B with nothing picked (`sub_8029032`):
+    /// whether the system took something back (BN6's Cross chosen). The
+    /// first system that answers true did; none, and B is refused.
+    CustomTakeBack,
+    /// A system's window's `update(side)`, each tick it is up: whether it
+    /// stays up (`custom.window_tick` counts its ticks from 1).
+    WindowUpdate,
+    /// A button's `taken_back(side)`: B took its pick back (BN6's Beast
+    /// Out: its face goes).
+    ButtonTakenBack,
     /// A system's custom-screen button's `shown(side)` (§4.4), as the
     /// screen opens: whether it is on the screen. (Not in `hooks`: each
     /// button names its own functions.)
@@ -287,6 +319,14 @@ impl SystemHook {
             SystemHook::Countered => "countered",
             SystemHook::NaviTick => "navi_tick",
             SystemHook::CustomHandSize => "custom.hand_size",
+            SystemHook::CustomOpen => "custom.open",
+            SystemHook::CustomConfirmed => "custom.confirmed",
+            SystemHook::CustomKeys => "custom.keys",
+            SystemHook::CustomTakeBack => "custom.take_back",
+            SystemHook::CustomChipPicked => "custom.chip_picked",
+            SystemHook::CustomChipTakenBack => "custom.chip_taken_back",
+            SystemHook::WindowUpdate => "window.update",
+            SystemHook::ButtonTakenBack => "button.taken_back",
             SystemHook::ButtonShown => "button.shown",
             SystemHook::ButtonState => "button.state",
             SystemHook::ButtonPressed => "button.pressed",
@@ -294,7 +334,7 @@ impl SystemHook {
         }
     }
 
-    pub const ALL: [SystemHook; 20] = [
+    pub const ALL: [SystemHook; 28] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -315,6 +355,14 @@ impl SystemHook {
         SystemHook::ButtonShown,
         SystemHook::ButtonState,
         SystemHook::ButtonPressed,
+        SystemHook::CustomOpen,
+        SystemHook::CustomConfirmed,
+        SystemHook::WindowUpdate,
+        SystemHook::ButtonTakenBack,
+        SystemHook::CustomChipPicked,
+        SystemHook::CustomChipTakenBack,
+        SystemHook::CustomKeys,
+        SystemHook::CustomTakeBack,
     ];
 }
 

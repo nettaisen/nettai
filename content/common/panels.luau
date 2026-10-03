@@ -3,7 +3,7 @@
 -- packed as the game packs it, x | y << 4 (so a list fits a `u8[18]` state
 -- field); `panels.x` and `panels.y` unpack it.
 
-local order = require("./order")
+local order = require("@common/order")
 
 local panels = {}
 

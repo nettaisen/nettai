@@ -18,8 +18,8 @@
 
 local dust_storm = require("../../lib/instant/dust_storm")
 local navi_chips = require("../../lib/navi-chips/navi")
-local panels = require("../../lib/panels")
-local regions = require("../../lib/regions")
+local panels = require("@common/panels")
+local regions = require("@common/regions")
 local lance = require("./lance")
 
 local count = {}
