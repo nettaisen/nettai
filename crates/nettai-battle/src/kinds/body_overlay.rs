@@ -153,7 +153,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     if !holds {
         b.set_visible_by_viewer(r, owner_shown);
     }
-    // The owner's palette (unless it has its own), colour shader, white
+    // The owner's palette (unless it has its own), color shader, white
     // flash, alpha and facing.
     let own_palette = vars(b, r).own_palette;
     let owner_look = b.objects.sprite(owner).look;

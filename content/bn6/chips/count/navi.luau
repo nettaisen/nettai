@@ -51,7 +51,7 @@ local SOUND_APPEAR, SOUND_RAIN = asset.sound("appear"), asset.sound("drip-shower
 local SPAWNER_ADDRESS = 0x080BD237
 
 -- By side: the middle of the other side's area, where the rain falls and
--- the lances' search is centred (two equal tables, at 0x080BD180 and
+-- the lances' search is centered (two equal tables, at 0x080BD180 and
 -- 0x080BD390 in EXE6 Falzar).
 local MIDDLE = { [0] = { 5, 2 }, [1] = { 2, 2 } }
 

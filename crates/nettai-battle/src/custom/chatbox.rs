@@ -28,7 +28,7 @@
 //! What the box shows (its opening steps, the text printed so far, the
 //! portrait's face and tint, the key-wait arrow) is read through the
 //! accessors and [`ChatboxLook`], which the timing never reads and the
-//! state digest leaves out (a frontend draws it: nettai-frontend
+//! state digest leaves out (a frontend draws it: nettai-render
 //! `chatbox`).
 
 use crate::input::keys;
@@ -163,7 +163,7 @@ pub struct PortraitLook {
     /// the tick it is set).
     pub anim: u8,
     pub updates: u16,
-    /// The colour added to its palette (BGR555 per channel, saturating):
+    /// The color added to its palette (BGR555 per channel, saturating):
     /// the tint before this tick's step of the fade.
     pub tint: u16,
 }

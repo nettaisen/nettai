@@ -3,10 +3,11 @@
 //! (`present`: resize it at will), with the font mode's text drawn at the
 //! window's resolution.
 
-use crate::compose::{HEIGHT, WIDTH};
-use crate::render::Renderer;
 use crate::session::{Session, TickHook};
-use crate::vfont::TextRenderer;
+use nettai_render::Renderer;
+use nettai_render::compose::{HEIGHT, WIDTH};
+use nettai_render::present::{present, write_rgb_png};
+use nettai_render::vfont::TextRenderer;
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use nettai_battle::input::keys;
 use std::time::{Duration, Instant};
@@ -191,7 +192,7 @@ pub fn run(
             (w, h) = (ww, wh);
             buffer = vec![0u32; w * h];
         }
-        crate::present::present(&frame, text.as_deref_mut(), &mut buffer, w, h);
+        present(&frame, text.as_deref_mut(), &mut buffer, w, h);
         if loops % 15 == 0 {
             let t = format!("nettai-frontend - {} - x{}{}", session.driver.position(), SPEEDS[speed], if paused { " (paused)" } else { "" });
             if t != title {
@@ -206,7 +207,7 @@ pub fn run(
     }
     // What the window showed last, for a look without a screen grab.
     if let Some(path) = std::env::var_os("NETTAI_WINDOW_SHOT") {
-        crate::headless::write_rgb_png(std::path::Path::new(&path), &buffer, w, h).map_err(|e| e.to_string())?;
+        write_rgb_png(std::path::Path::new(&path), &buffer, w, h).map_err(|e| e.to_string())?;
         eprintln!("the window's last picture ({w}x{h}) is in {}", path.to_string_lossy());
     }
     Ok(())

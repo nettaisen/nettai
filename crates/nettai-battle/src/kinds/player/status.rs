@@ -783,7 +783,7 @@ const GLOW: [u16; 32] = [
     0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0,
 ];
 
-/// The navi's colour shader for its statuses (presentation only;
+/// The navi's color shader for its statuses (presentation only;
 /// `loc_801B142`: `sprite_zeroColorShader`, then `sub_80143E4`,
 /// `sub_801690A`, `sub_8016860`, `sub_80168C8`, `sub_80168F0`, the later
 /// ones over the earlier): red while angry, a black blink while

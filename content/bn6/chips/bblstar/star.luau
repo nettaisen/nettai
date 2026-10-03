@@ -2,7 +2,7 @@
 -- A bubble star (the original's attack object #0x42, `sub_80CC5A8`):
 -- BblStar's. It drifts forward from its panel at its chip's speed,
 -- swaying 24 pixels up and down the field along a sine wave that makes one
--- sway per 80 pixels travelled, and bubbles what it hits (status 0x60).
+-- sway per 80 pixels traveled, and bubbles what it hits (status 0x60).
 -- After a hit its region is off until it reaches another panel; a hit on
 -- something that pops it (hit flag 0x800000) bursts it. It ends past the
 -- field's side edges. A star on an invalid panel, or with no collision

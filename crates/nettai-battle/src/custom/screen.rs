@@ -77,14 +77,14 @@ impl SlotKind {
 pub enum SlotState {
     #[default]
     Selectable,
-    /// Greyed out: it doesn't go with the selection, or it can't be used
+    /// Grayed out: it doesn't go with the selection, or it can't be used
     /// now.
     Unavailable,
     /// Picked (a chip or Beast Out), or used up (a button).
     Selected,
 }
 
-/// A slot and its neighbours.
+/// A slot and its neighbors.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Slot {
     pub kind: SlotKind,
@@ -422,13 +422,13 @@ impl Screen {
             // sub_80280A2: a link navi's own chip, once a round.
             self.slots[9].kind = SlotKind::NaviChip(chip);
         }
-        self.fix_neighbours(layout);
+        self.fix_neighbors(layout);
         self.cursor = (0..SLOTS as u8).find(|&s| !self.slots[s as usize].kind.is_absent()).unwrap_or(OK_SLOT);
     }
 
-    /// `sub_8027F42`: point neighbours that are absent at the next slot
+    /// `sub_8027F42`: point neighbors that are absent at the next slot
     /// present along the row's scan list.
-    fn fix_neighbours(&mut self, layout: &CustomScreenLayout) {
+    fn fix_neighbors(&mut self, layout: &CustomScreenLayout) {
         let absent = |slots: &[Slot; SLOTS], s: u8| slots[s as usize].kind.is_absent();
         for s in (0..SLOTS as u8).rev() {
             let d = self.slots[s as usize];
@@ -1140,7 +1140,7 @@ impl Screen {
                 w.marked[i] = true;
                 w.chosen = Some(w.offered[i]);
                 self.phase = Phase::CrossChosen { tick: 0 };
-                // A chosen Cross greys out Beast Out.
+                // A chosen Cross grays out Beast Out.
                 self.update_beast_out(view);
                 return;
             }
@@ -1322,7 +1322,7 @@ impl Screen {
         places
     }
 
-    /// `sub_8028E32`: grey out what doesn't go with the selection.
+    /// `sub_8028E32`: gray out what doesn't go with the selection.
     pub(crate) fn update_availability(&mut self, view: &PlayerView, folder: &BattleFolder) {
         // sub_8028E4C: what the picked chips have in common.
         let mut same_chip = Common::Any;
