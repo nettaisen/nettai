@@ -1,6 +1,9 @@
 --!strict
--- ToadMan (BN5 chip 0x101): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- ToadMan (BN5 chip 0x101): ToadMan cuts in and plays a chain of paralyzing notes toward the nearest enemy ahead
+-- (./navi).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local navi = require("./navi")
 
 return define.chip {
     id = "bn5:toadman",
@@ -17,4 +20,5 @@ return define.chip {
     extra_flags = { 1 },
     slot_in_limit = 1,
     megaman = "light",
+    navi = navi.summon,
 }
