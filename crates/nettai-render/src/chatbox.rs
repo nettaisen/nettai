@@ -544,6 +544,7 @@ mod tests {
         let mut c = Content::default();
         c.strings = root.strings;
         c.scripts = nettai_battle::content::Scripts::root(root.manifest, root.modules);
+        nettai_battle::content::testing::add_shared(&mut c.scripts);
         c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
         let ja = nettai_content::locale::load(dir, "ja").unwrap().expect("ja.toml");

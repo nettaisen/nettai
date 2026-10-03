@@ -7,7 +7,7 @@
 -- from above, 0xD1 from below).
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local magnet = {}
 

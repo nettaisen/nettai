@@ -3,14 +3,14 @@
 -- Japanese ROMs' 0x080EDE8C in the Falzar ROM, 0x080EF1BC in the Gregar
 -- ROM; the US ROMs point the slot at a placeholder and their `off_802CCB4`
 -- entry 35 is null: docs/engine/beast-chips.md). The dimming's phases
--- (lib/dimming) with its own first and last: the field fades to black
+-- (@common/dimming) with its own first and last: the field fades to black
 -- rather than dims, and back from black. Its effect hides the gauge and
 -- the emotion window and warps the user out; the field's obstacles break;
 -- for 120 ticks a feather dives every 12 ticks onto a panel of the other
 -- side's (./feather); then Falzar comes (three pieces of ./summon over the
 -- user), and once it is done the user and the HUD are back.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local feather = require("./feather")
 local summon = require("./summon")
 local targets = require("../../lib/beast-chips/targets")

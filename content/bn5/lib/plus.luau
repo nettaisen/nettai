@@ -3,16 +3,25 @@
 -- record's +0x10 and +0x11: the side's bonus it goes to, and whether it goes to the next chip). BN6's tests the
 -- attack's special source; BN5's tests battle flag 0x40 (the per-player gauges, never in a netbattle) and adds the
 -- damage alone to the side's bonus, playing the bonus sound only for a chip that goes to the next chip. Otherwise,
--- as BN6's, the sparkle by the navi (@bn6/lib/instant/plus).
+-- as BN6's, the sparkle by the navi (@common/instant/sparkle: BN5's bubble, BN6's sound).
 --
 -- Attck+10 and Attck+30 are `instant = plus.attack` (+0x11 0: none goes to the next chip); DarkPlus is `plus.dark`
 -- (+0x11 1): its damage becomes the Atk+ bonus of the hand's next chip if that does damage, the navi takes its tint
 -- (AIData+0x3C 24, which nothing counts down: its status shader goes to its first green, 0x080136B8) and the bonus
 -- sound plays; else the sparkle.
 
-local bn6_plus = require("@bn6/lib/instant/plus")
+local rising_bubble = require("../objects/rising-bubble/rising_bubble")
+local sparkle = require("@common/instant/sparkle")
 
 local plus = {}
+
+-- The sparkle by the navi.
+plus.sparkle = sparkle.make(rising_bubble.kind, asset.sound("bn6:panel-poison"))
+
+-- The invalid chip's `instant` hook (action 0x1A's effect 0): the sparkle, whatever the source.
+function plus.sparkle_alone(user: Object, _spec: InstantChipSpec)
+    plus.sparkle(user)
+end
 
 local BONUS_SOUND = asset.sound("bn5:bonus")
 -- DarkPlus's tint.
@@ -27,7 +36,7 @@ function plus.attack(user: Object, _spec: InstantChipSpec)
         battle.add_special_bonus(user.alliance, ATTACK_BONUS, user.attack_damage)
         return
     end
-    bn6_plus.sparkle(user)
+    plus.sparkle(user)
 end
 
 -- DarkPlus's `instant` hook (0x0800E198 with +0x11 1).
@@ -46,7 +55,7 @@ function plus.dark(user: Object, _spec: InstantChipSpec)
         battle.play_sound(BONUS_SOUND)
         return
     end
-    bn6_plus.sparkle(user)
+    plus.sparkle(user)
 end
 
 return plus

@@ -6,7 +6,7 @@
 -- past it, with a swipe there; 6 ticks after the swing's 22, idle.
 
 local collision = require("../../../../rules/collision")
-local regions = require("../../../../lib/regions")
+local regions = require("@common/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
