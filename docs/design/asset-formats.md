@@ -302,6 +302,10 @@ highlights, and the cycling panel palettes (slot, start timer, frames of
 `:v` or `:hv` when flipped; a color is `#rrggbb`, or `0xNNNN` (raw BGR555)
 when it has bits RGB can't hold.
 
+A pack extracted before 2026-10-02 spells three keys the British way (`custom.json`'s gray palette and
+Program Advance name colors, `field.json`'s palette frames' colors). The reader takes either spelling,
+so such a pack loads without a new extraction; the extractor writes the American keys.
+
 **Backgrounds** (`graphics/backgrounds/NAME/`): `tiles.png`; `map.tmj`, a Tiled
 JSON map (orthogonal, 8x8 tiles, one tile layer, the tileset being
 `tiles.png`, gid = tile number + 1, flips as Tiled's flip bits; palettes, when
