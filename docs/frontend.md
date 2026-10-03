@@ -78,9 +78,15 @@ the frontend says why at start-up ("the content root bn5 is left out: ...":
 no pack of its game, with the command that writes one, or the define
 phase's error), so BN6's play never fails for another game's root. A
 root's chips whose module names no use yet (a port's unwritten chips: BN5's)
-are left out of it first, with a warning counting them, so the rest of the
-root loads (`Root::leave_out_unported`; the static audit covers what is
-left, the BN5 replays do the same). A root
+are left out of it first, and so are the chip folders that require one of
+theirs (`Root::leave_out_unported`: the unported-chip rule,
+docs/design/content-model-v2.md §7.3), so the rest of the root loads: the
+frontend says so at start-up with one warning listing every chip left out
+("75 of bn5's chips have no use yet (or need one's module) and are left
+out: bn5:airspin1, ..."). Every loader does the same (the editor, the tools'
+`load_battle`, the BN5 replays, the static audit), and the content then is
+what loaded: its hash, which netplay's handshake compares, covers exactly
+that. A root
 the content must load whose game's pack isn't found is an error naming the
 extract command. (Netplay's handshake compares the content, the packs'
 asset names among it: two players play with the same packs, or give
@@ -912,9 +918,15 @@ is said with where it is:
   (after the rules' `round_setup`: the NaviCust's and the patch cards' folder
   limits, as the original's folder editor and link battle check read the
   reloaded stats). Rust only asks (`Battle::check_folder`) and reports what
-  the hooks say, so another game's folder rules are its own Luau; live play's
-  random folders are drawn from the rules' pool and kept only when the hooks
-  accept them (`nettai_match::folders`);
+  the hooks say, so another game's folder rules are its own Luau: BN5's
+  (content/bn5/rules/folder/system.luau, its folder editor's) are four copies
+  of a Standard chip and one of a Mega, Giga or dark chip, the Mega and Giga
+  levels, at most three dark chips, the chips its pack lists, the Regular
+  chip within the Regular memory, and no tag chips. A side's folder may hold
+  another game's chips (a mixed folder: a BN6 side with BN5 chips), each
+  held to the side's own rules by its record (class, codes, MB, dark flag).
+  Live play's random folders are drawn from the rules' pool and kept only
+  when the hooks accept them (`nettai_match::folders`);
 - a NaviCust only with a ruleset that has the navicust system, and only for
   MegaMan; every program fits the board, none overlaps another, the copies of
   one program in one color are all compressed or all not (the save keeps
