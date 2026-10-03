@@ -78,7 +78,7 @@ impl Rect {
 pub enum Align {
     #[default]
     Left,
-    Centre,
+    Center,
     Right,
 }
 
@@ -103,7 +103,7 @@ pub struct TextItem {
     /// (`compose::depth_key`): hidden where something in front of the
     /// text's layer or sprite won the pixel.
     pub depth: u32,
-    /// The face and shadow colours (BGR555) of the palette the original
+    /// The face and shadow colors (BGR555) of the palette the original
     /// draws the string with, before the fades.
     pub face: u16,
     pub shadow: Option<u16>,

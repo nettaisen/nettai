@@ -2,7 +2,7 @@
 //! each with a priority, combined with the original's rules (a sprite
 //! wins over a layer of the same priority; among sprites the lowest
 //! priority, then the earliest, wins; semi-transparent sprites blend with
-//! what is behind them). Colours are the original's 15-bit BGR555.
+//! what is behind them). Colors are the original's 15-bit BGR555.
 
 use nettai_assets::{Palette, Tiles};
 
@@ -10,7 +10,7 @@ pub const WIDTH: usize = 240;
 pub const HEIGHT: usize = 160;
 pub const PIXELS: usize = WIDTH * HEIGHT;
 
-/// A transparent pixel in a layer (colours use 15 bits).
+/// A transparent pixel in a layer (colors use 15 bits).
 pub const CLEAR: u16 = 0x8000;
 
 /// A full-screen layer of tiles (the field, the background, the HUD).
@@ -106,7 +106,7 @@ pub struct SpritePart<'a> {
     pub alpha: Option<u8>,
     /// Mosaic block size - 1.
     pub mosaic: Option<u8>,
-    /// A vertical affine scale about the part's centre: texture rows
+    /// A vertical affine scale about the part's center: texture rows
     /// step by `n / 256` per screen row (the banners' squash and stretch).
     pub vscale: Option<i32>,
     /// A rotated or scaled sprite (`sub_802FE7A`'s matrices).
@@ -114,8 +114,8 @@ pub struct SpritePart<'a> {
 }
 
 /// An affine sprite's matrix (8.8 fixed point) and its box: each pixel of
-/// the box reads the texture at M x (pixel - the box's centre) + the
-/// sprite's centre; a doubled box is twice the sprite's size, centred on
+/// the box reads the texture at M x (pixel - the box's center) + the
+/// sprite's center; a doubled box is twice the sprite's size, centered on
 /// the same point.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Affine {
@@ -189,9 +189,9 @@ pub const BACKDROP_DEPTH: u32 = 5 << 24;
 /// opaque thing; a semi-transparent sprite counts as in front).
 pub fn compose_with_depth(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fades) -> (Vec<u16>, Vec<u32>) {
     let backdrop = apply_fade(backdrop, fades.stage);
-    // The sprite layer: per pixel the frontmost sprite's colour.
+    // The sprite layer: per pixel the frontmost sprite's color.
     let mut obj = SpriteBuffers {
-        colour: vec![CLEAR; PIXELS],
+        color: vec![CLEAR; PIXELS],
         priority: vec![4u8; PIXELS],
         alpha: vec![0xFFu8; PIXELS],
         index: vec![0u16; PIXELS],
@@ -202,7 +202,7 @@ pub fn compose_with_depth(backdrop: u16, layers: &[&Layer], parts: &[SpritePart]
     let mut out = vec![0u16; PIXELS];
     let mut depth = vec![BACKDROP_DEPTH; PIXELS];
     for i in 0..PIXELS {
-        // The two frontmost opaque candidates: (priority, rank, colour),
+        // The two frontmost opaque candidates: (priority, rank, color),
         // and the frontmost's depth key.
         let mut first: (u8, u8, u16) = (5, 0, backdrop);
         let mut second: (u8, u8, u16) = (5, 0, backdrop);
@@ -216,9 +216,9 @@ pub fn compose_with_depth(backdrop: u16, layers: &[&Layer], parts: &[SpritePart]
                 second = (key.0, key.1, c);
             }
         };
-        if obj.colour[i] != CLEAR {
+        if obj.color[i] != CLEAR {
             let d = sprite_depth(obj.priority[i], obj.index[i] as usize);
-            consider((obj.priority[i], 0), apply_fade(obj.colour[i], fades.sprites), d);
+            consider((obj.priority[i], 0), apply_fade(obj.color[i], fades.sprites), d);
         }
         for l in layers {
             let c = l.pixels[i];
@@ -240,18 +240,18 @@ pub fn compose_with_depth(backdrop: u16, layers: &[&Layer], parts: &[SpritePart]
     (out, depth)
 }
 
-/// The sprite layer, per pixel: the frontmost sprite's colour, priority,
+/// The sprite layer, per pixel: the frontmost sprite's color, priority,
 /// blend weight and index in hardware order.
 struct SpriteBuffers {
-    colour: Vec<u16>,
+    color: Vec<u16>,
     priority: Vec<u8>,
     alpha: Vec<u8>,
     index: Vec<u16>,
 }
 
 impl SpriteBuffers {
-    fn set(&mut self, i: usize, p: &SpritePart, k: u16, colour: u16) {
-        self.colour[i] = colour;
+    fn set(&mut self, i: usize, p: &SpritePart, k: u16, color: u16) {
+        self.color[i] = color;
         self.priority[i] = p.priority;
         self.alpha[i] = p.alpha.unwrap_or(0xFF);
         self.index[i] = k;
@@ -321,7 +321,7 @@ fn draw_part(p: &SpritePart, k: u16, obj: &mut SpriteBuffers) {
 }
 
 /// An affine part (as mGBA draws it): the box, its pixels read through
-/// the matrix about the centres.
+/// the matrix about the centers.
 fn draw_affine(p: &SpritePart, m: Affine, k: u16, obj: &mut SpriteBuffers) {
     let (w, h) = (p.width as i32, p.height as i32);
     let (bw, bh) = if m.double { (2 * w, 2 * h) } else { (w, h) };
@@ -404,9 +404,9 @@ mod tests {
         Tiles { pixels: vec![index; n * Tiles::TILE] }
     }
 
-    fn part(tiles: &Tiles, x: u16, y: u8, prio: u8, colour: u16) -> SpritePart<'_> {
+    fn part(tiles: &Tiles, x: u16, y: u8, prio: u8, color: u16) -> SpritePart<'_> {
         let mut palette = [0u16; 16];
-        palette[1] = colour;
+        palette[1] = color;
         SpritePart {
             x,
             y,
@@ -426,8 +426,8 @@ mod tests {
     }
 
     #[test]
-    fn an_affine_part_turns_about_its_centre() {
-        // A 16x16 sprite with its top-left 8x8 quarter coloured; a half
+    fn an_affine_part_turns_about_its_center() {
+        // A 16x16 sprite with its top-left 8x8 quarter colored; a half
         // turn (pa = pd = -1) shows it at the bottom right: box pixel x
         // reads texture column 16 - x (so the box's first column is past
         // the texture).

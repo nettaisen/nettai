@@ -198,7 +198,7 @@ What they reach:
   (`stage-*`), the rocks cracking panels and breaking cracked ones; both odds of the enemy's list, its panel
   giving way to the whole area's list when it was the last aim, and the whole area's second entry when its
   first was.
-- **Defences**: a Reflector up as the chip comes (`guard`), Barrier, Barr200 and
+- **Defenses**: a Reflector up as the chip comes (`guard`), Barrier, Barr200 and
   LifeAur put up earlier (`barrier`, `barr200`, `aura`: LifeAur stops all of Falzar's hits; Gregar's flames
   break it), Invisibl before the chip and on its telop (`invisible`, `invisible-cut-in`: nothing lands), Barrier
   on its telop (`barrier-cut-in`).

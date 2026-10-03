@@ -80,7 +80,7 @@ sprite	dust-cloud	dust-cloud	high		10-59: used by lib/effects, navis/dustman/clo
 sprite	dust-storm-mote	dust-storm-mote	high		10-10: used by lib/instant/dust_storm_mote.	
 sprite	eagle-tomahawk	eagle-tomahawk	high		10-2a: used by navis/tomahawkman/axe.	
 sprite	effect-55	effect-55	low	number	A virus's sheet (a green creature with blades); only effect 0x55 uses it (animation 12). No use names it better.	
-sprite	effect-61	grey-shards	low	number	Shows grey shard shapes; only effect 0x61 uses it.	
+sprite	effect-61	gray-shards	low	number	Shows gray shard shapes; only effect 0x61 uses it.	
 sprite	elec-coil	elec-coil	high		0c-5f: used by chips/elcpuls/action, lib/buster.	
 sprite	elec-pulse	elec-pulse	high		10-40: used by chips/elcpuls/pulse.	
 sprite	elec-sword	elec-sword	high		0c-38: used by lib/swords/parts, navis/elecman/chip.	
@@ -152,7 +152,7 @@ sprite	reflected-shot	pink-flash	medium	wrong	Shows a pink starburst. The effect
 sprite	reflector-shield	reflector-shield	high		0c-1b: used by chips/rflectr/shield.	
 sprite	reflector-shield-2	dummy-shield	low	wrong	The ROM's dummy sprite (a 16x16 dot). Rflectr's rows 4-6 name it, which nothing ported holds up.	applied: accepted-1
 sprite	reticle	reticle	high		10-27: used by chips/machgun/chips, lib/effects.	
-sprite	rising-bubble	small-puff	medium	wrong	Shows small grey puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble.	applied: accepted-1
+sprite	rising-bubble	small-puff	medium	wrong	Shows small gray puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble.	applied: accepted-1
 sprite	rock-debris	rock-debris	high		10-01: used by chips/rockcube/debris.	
 sprite	roll-heart	roll-heart	high		0c-50: used by chips/roll/heart, chips/roll/navi.	
 sprite	rolling-log	rolling-log	high		10-34: used by chips/rlnglog/log.	
@@ -689,7 +689,7 @@ effect	dust_cloud	dust_cloud	high		effect 0x63: Effect 0x63.
 effect	dustman_24	dustman_24	high		effect 0x51: Effect 0x51.	
 effect	dustman_30	dustman_30	high		effect 0x5E: Effect 0x5E.	
 effect	effect_55_12	effect_55_12	low	number	Effect 0x55: a virus sheet's animation 12. Nothing names it better.	
-effect	effect_61	grey_shards	low	number	Effect 0x61: the grey-shards sprite. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.	
+effect	effect_61	gray_shards	low	number	Effect 0x61: the gray-shards sprite. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.	
 effect	elmnt_ice	sparkle	medium		Effect 0x26: the sparkle sprite (proposed `sparkle`). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.	
 effect	energy_burst	energy_burst	high		effect 0x23: Effect 0x23.	
 effect	explosion_24	explosion_p1	medium	number	Effect 0x24: explosion, palette 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.	

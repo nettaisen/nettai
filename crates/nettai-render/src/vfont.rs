@@ -231,7 +231,7 @@ struct Placed {
     unit: usize,
 }
 
-/// A button mark's ring, in frame pixels as `Placed`: its centre and outer
+/// A button mark's ring, in frame pixels as `Placed`: its center and outer
 /// radius.
 #[derive(Clone, Copy, Debug)]
 struct Ring {
@@ -248,7 +248,7 @@ struct Layout {
     rings: Vec<Ring>,
     width: f32,
     /// How far the baseline moves down (a string made smaller stays
-    /// centred on its capitals).
+    /// centered on its capitals).
     drop: f32,
     /// A static font's horizontal squeeze.
     xscale: f32,
@@ -349,7 +349,7 @@ impl TextRenderer {
 
     /// Shape `text` at `size` (frame pixels an em): runs of characters with
     /// the font's kerning; a mark the font has no glyph for as the layer
-    /// draws it ([`mark`]): a button's letter, smaller, in a ring centred on
+    /// draws it ([`mark`]): a button's letter, smaller, in a ring centered on
     /// the capitals, or a stacked mark's two letters, each half the
     /// capitals' height less a gap, the first above the second, filling
     /// one cell between the capitals' top and the baseline.
@@ -474,7 +474,7 @@ impl TextRenderer {
         let x0 = item.rect.x as f32
             + match item.align {
                 Align::Left => 0.0,
-                Align::Centre => ((item.rect.w as f32 - layout.width) / 2.0).round(),
+                Align::Center => ((item.rect.w as f32 - layout.width) / 2.0).round(),
                 Align::Right => item.rect.w as f32 - layout.width,
             };
         let baseline = item.rect.y as f32 + st.baseline + layout.drop;
@@ -493,10 +493,10 @@ impl TextRenderer {
             return;
         }
         let shown = item.shown.unwrap_or(usize::MAX);
-        let colour = |c: u16| to_rgb(apply_fade(apply_fade(c, item.fades[0]), item.fades[1]));
+        let color = |c: u16| to_rgb(apply_fade(apply_fade(c, item.fades[0]), item.fades[1]));
         let mut target = Target { depth, place, out, out_w, clip, key: item.depth };
         let offset = (SHADOW * s).round().max(1.0) as i32;
-        let passes: Vec<(u32, i32)> = item.shadow.map(|c| (colour(c), offset)).into_iter().chain([(colour(item.face), 0)]).collect();
+        let passes: Vec<(u32, i32)> = item.shadow.map(|c| (color(c), offset)).into_iter().chain([(color(item.face), 0)]).collect();
         for (rgb, off) in passes {
             for g in layout.glyphs.iter().filter(|g| g.unit < shown) {
                 let gx = place.x as f32 + (x0 + g.x) * s;

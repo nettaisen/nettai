@@ -131,7 +131,7 @@ Common values:
 | Bit | Meaning |
 |---|---|
 | 0x80 | No slot-in gauge cost (`sub_800EE98`, 0x0800EE98; slot-in only). |
-| 0x02 | Cancelled by the opponent's **Rush** support (`sub_8010740`, 0x08010740). Set on Invisibl and WhiCapsl. See §2.10. |
+| 0x02 | Canceled by the opponent's **Rush** support (`sub_8010740`, 0x08010740). Set on Invisibl and WhiCapsl. See §2.10. |
 | 0x40 | Menu classification: the modifier chips (WhiCapsl, Uninstll, Atk+10, Navi+20, Atk+30; `ExtraChipFlags::MODIFIER`). |
 | 0x01, 0x10, 0x20 | Menu classification only. |
 
@@ -187,7 +187,7 @@ Formulas are evaluated only when `sub_80109A4` is called:
 
 ### 1.6 Action dispatch: chip id → code
 
-A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` (+0x0C).
+A chip's behavior is selected entirely by `cd.action` (+0x0B) and `cd.subtype` (+0x0C).
 
 1. At use, `sub_800FB54` calls `object_setAttack2(cd.action)`. This sets `obj.CurAction`, and `av[0x1C]` = slot 2 (§3.2).
 2. Each frame, the navi's action dispatcher `sub_801B9E6` (0x0801B9E6) runs with r4 = ai, r6 = ai+0x80 (AIState) and r7 = av:
@@ -259,7 +259,7 @@ code N; the chip's damage field is 0. Block 1 stays in its init state for the wh
 selected a chip.
 
 **Lifetime.**
-- `sub_800A954` (0x0800A954) initialises both blocks once per battle, from `sub_80071D4`. It calls `sub_800A964`,
+- `sub_800A954` (0x0800A954) initializes both blocks once per battle, from `sub_80071D4`. It calls `sub_800A964`,
   which zero-fills 0x50 bytes and then fills +2..+0xD with 0xFF.
 - Blocks are **not** reset per turn. `sub_800B3D8` overwrites a block only when that player transmitted a
   non-empty hand. A player who selects nothing therefore keeps their unused chips from the previous turn,
@@ -445,7 +445,7 @@ has AIData, and has `ActorType == 2` (player), it calls `sub_800FDEA` (0x0800FDE
 - `obj.Chip (+0x2A)` = `id[cur]`.
 
 These fields are therefore **one frame stale** while objects run. The chip pipeline reads the block directly
-(`sub_8010004`, `sub_800EDD0`), never `obj.Chip`. Player objects are recognised by `sub_800F29C(NameID) == 2`.
+(`sub_8010004`, `sub_800EDD0`), never `obj.Chip`. Player objects are recognized by `sub_800F29C(NameID) == 2`.
 The object fields are read only for non-player actors, by HUD/object code such as `sub_80E4566`, and by AI.
 
 **`chip_800AEE8`** (0x0800AEE8), for p = 0 then 1:
@@ -667,7 +667,7 @@ The non-player branch returns `(obj.Chip, 0, 0, obj.ChipsHeld)`.
 | Off | Size | Value |
 |---|---|---|
 | +0x00 | u8 | 0: phase selector |
-| +0x01 | u8 | 0: phase-initialised flag |
+| +0x01 | u8 | 0: phase-initialized flag |
 | +0x02 | u8 | element byte `cd.elem \| byte_80129E4[cd.family]` |
 | +0x03 | u8 | `cd.subtype` |
 | +0x04 | u8 | `arg`: 0 normally, 1 or family for charged uses |
@@ -1376,7 +1376,7 @@ enter on CurPhase 0 (setting it to 4) and store Timer and Timer2 together:
   state 8.
 - The mark, T4 0x62 (`sub_80E78BC`): on its panel, Z = its spawn Z's fraction (the 1 `sub_80BB81C` leaves in r3);
   sprite (0x10, 0x50); gone after Param1 ticks (or when the battle is over).
-- The segment, T3 0xC3 (`sub_80DD940`): 8 pixels behind its panel's centre at height 35/40/45 by aim, anim 1/0/2;
+- The segment, T3 0xC3 (`sub_80DD940`): 8 pixels behind its panel's center at height 35/40/45 by aim, anim 1/0/2;
   collision self 0x16, target 5, modifier 1, status 0x10, hit effect 0xC. Each tick the hits resolve; a hit turns
   its region off; after Param2 ticks it ends. With Param3 set it would end with its owner's action 0xA, and stand
   still while dimmed.
@@ -1709,7 +1709,7 @@ Sprite (8, 6) with a ground shadow; his actions enter on CurPhase 0 and step his
   cleared, state 8.
 
 **His layer, T1 0x55 (`sub_80C40D8`)**, the navi framework's (the idle overlay `kinds::idle_overlay`, from the navi hooks in `kinds::player::form`): sprite
-(0x10, 0x21) (`dword_80C40D4[Param1]`, Param1 always 0); each tick his position, visibility, palette, colour
+(0x10, 0x21) (`dword_80C40D4[Param1]`, Param1 always 0); each tick his position, visibility, palette, color
 shader, white flash, mosaic, facing and alpha, and Z's whole part 0 when his animation is 0, else 255 (out of
 sight); its sprite steps unless dimmed or paused.
 
@@ -1898,7 +1898,7 @@ element and damage word; r3 = 0). His panel is restored.
 **His drill, T4 0x61 (`sub_80E7788`)**, spawned by `sub_80E7896` (RelatedObject1 the owner, its side and flip,
 Params from r4; its position the caller's r1..r3 until the init). Init (`sub_80E77B8`): the owner's X, Y, Z; sprite
 (0x10, 0x4F), no shadow, animation 0, palette 0, flip; VISIBLE as the owner's. Each tick (`sub_80E7816`): the
-battle over → state 8 (freed). Else the owner's X, Y, Z, VISIBLE, palette, colour shader, final palette, the white
+battle over → state 8 (freed). Else the owner's X, Y, Z, VISIBLE, palette, color shader, final palette, the white
 flash and mosaic bytes (`sub_8002F3E`, `loc_8002F02`), DirectionFlip (then the sprite's flip) and alpha
 (`sprite_getMosaicScalingParameters` → `sprite_setAlpha`); with Param1 0 it goes (state 8) once the owner's
 CurAction isn't Param2. Its sprite steps as `object_updateSpriteTimestop` with Param1 set, else
@@ -1984,7 +1984,7 @@ harmless, until its timer ends).
 0xD4 none; 0xD5 0C 24 00 00 1; 0xD6 04 09 00 00 0; 0xD7 04 09 00 01 0; 0xD8 0C 23 01 00 1; 0xD9 0C 23 03 00 1; 0xDA
 none; 0xDB 0C 30 00 00 1; 0xDC 0C 30 01 00 1; 0xDD..0xE1 04 0A 00 with palettes 0, 2, 4, 6, 0xC, shadow 1; 0xE2 0C 34 01 00 1;
 0xE3 0C 35 00 00 1; 0xE4 04 05 00 00 1; 0xE5 0C 41 01 00 0; 0xE6 none; 0xE7 04 18 00 00 1; 0xE8..0xEA none; 0xEB 04
-0D 00 00 1. Rows 0xEC..0xFF overlap the bytes after the table (`byte_80212D4`'s neighbours). The content has a row as
+0D 00 00 1. Rows 0xEC..0xFF overlap the bytes after the table (`byte_80212D4`'s neighbors). The content has a row as
 the `look` of the field object's identity (`define.identity { class = "field_object", look = { ... } }` in the
 object's module), for the 23 NameIDs an object of the content takes; `scrap = false` is `sub_800F486`'s
 exclusion (0xD3 and 0xDA; 0xE9 and 0xEA are no object's).
@@ -2017,7 +2017,7 @@ Chips 0x104 DiveMan, 0x105 EX, 0x106 SP (Aqua). Content: chips/diveman (navi, wa
 
 The waves (`sub_80B9B94`), rows 1, 2, 3: `object_getClosestPanelMatchingRowFiltered(side, row)` with
 `byte_80B9BF0[side]` (side 0: forbid 0x20; side 1: require 0x20): from column 6 down (side 1: 1 up), the first
-panel of his side's colour (0 when the scan leaves the field: no wave); that panel must also meet `byte_80B9C04`
+panel of his side's color (0 when the scan leaves the field: no wave); that panel must also meet `byte_80B9C04`
 (require 0x10, forbid 0x03800000: solid, and no non-navi body of either side nor a neutral object; navis don't
 stop it): a T3 0x39 wave there (`sub_80CB1E2`: his element and damage word, r4 = 4: Param1 4; Z = r3 = the row − 1,
 which `_object_getPanelDataOffset` leaves in r3). A compare of the column with 1 (side 1: 6) on the way has no
@@ -2035,12 +2035,12 @@ panels toward the other side lasting 13 (`sub_80CB208(1, 13)`, `(2, 13)`); at 7 
   `sub_80C53A6` (region 1, hit effect 2, target 5, self 0xA, modifier 3, Z 0, resolving while dimmed) and that hit
   region's Timer = ticks (T3 #3, `sub_80C52B0`, resolves every tick, `Timer` ticks in all, and ends at its first
   hit).
-- `sub_80CB248(n)`: when the panel n ahead is valid, T4#0 effect 0x2B at its centre, Z 0, flip = the wave's flip
+- `sub_80CB248(n)`: when the panel n ahead is valid, T4#0 effect 0x2B at its center, Z 0, flip = the wave's flip
   byte.
 
 Lab: the official chips/0x104 {counter, guard, beast-charged, cross-spout-charged} and the long scenarios
 chips/0x104-diveman/long{,-miss,-adjacent,-holes,-rocks,-rocks-miss,-side1,-side1-miss,-side1-rocks} and the EX's
-and SP's long (some rows' panels refused). All match every frame. **Unverified**: a row without a panel of his colour; the wave's Param1 other than 4 (the navi AI's: it
+and SP's long (some rows' panels refused). All match every frame. **Unverified**: a row without a panel of his color; the wave's Param1 other than 4 (the navi AI's: it
 waits a dimming out, sprite paused), the battle's end, invalid panels ahead, a failed hit spawn.
 
 #### 3.6.28 CircusMan (navi chip subtype 14, T1 0xE)
@@ -2063,8 +2063,8 @@ Steps while dimmed. Actions (`off_80BA3EC`); the Z moves are halfword stores to 
 - 0x14 (`sub_80BA56C`): anim 0x10, Timer 72, Timer2 0, and on the same tick: Timer2 − 1, at 0 or below a hit
   (`sub_80BA686` → `sub_80C53A6` on his panel: region 1, no hit spark (0xFF), target 5, self 0x16, modifier 3, Z 0,
   resolving while dimmed) and a sparkle (`sub_80BA6B6`), Timer2 = 12; Timer − 1, at 0 → 0x18. Six hits, on ticks
-  0, 12, …, 60; 72 ticks in all. The sparkle: T4#0 effect 0x21 (flip 0) at X = his panel's centre ± (r & 0x1F)
-  pixels, Y = its centre + 16 pixels, Z = 36 ± (r′ & 0xF) pixels; r, r′ two `GetPositiveSignedRNG2` draws in that
+  0, 12, …, 60; 72 ticks in all. The sparkle: T4#0 effect 0x21 (flip 0) at X = his panel's center ± (r & 0x1F)
+  pixels, Y = its center + 16 pixels, Z = 36 ± (r′ & 0xF) pixels; r, r′ two `GetPositiveSignedRNG2` draws in that
   order, each sign + when its draw's bit 0 is set.
 - 0x18 (`sub_80BA5AA`): anim 0x11, Timer 7 → 0x20.
 - 0x1C (`sub_80BA5D2`), the miss: Timer 20 (anim 0xE goes on) → 0x20.
@@ -2127,7 +2127,7 @@ or object, or a neutral object) → region 0, CurState 8 (a byte store; the acti
 - 0 (`sub_80D7BB0`): sound 0x94, Timer = Param1 · 12 + 30; to −1 (Param1 · 12 + 31 ticks) → 4: the books set off
   one after another, 12 ticks apart.
 - 4 (`sub_80D7BE0`). Entry: anim 0xB, its target (`sub_80D7CCC`) into ExtraVars[1], [2], its heading
-  (`sub_80D7D4C`). Every tick, the entry's too: c = its panel's centre on its axis (Param2 0: X; else Y); it moves by
+  (`sub_80D7D4C`). Every tick, the entry's too: c = its panel's center on its axis (Param2 0: X; else Y); it moves by
   its X and Y velocities; unless its old coordinate was c, if it reached or passed c (`sub_800E708(new, old, c)`:
   new = c, old = c, or c between them): on the target's panel (`sub_80D7DC0`: `sub_800E258(X, Y)` = the target) it
   ends (region 0, CurState 8), else it heads again. Then its panel from its coordinates, the collision's panel
@@ -2139,7 +2139,7 @@ or object, or a neutral object) → region 0, CurState 8 (a byte store; the acti
 - The heading (`sub_80D7D4C`), two tries at most: the axis other than the current one (Param2) if the target
   differs from its panel along it, else the current axis if it differs; neither: both velocities negated. X: Param2
   = 0, X velocity ±0x24000 (2.25 pixels a tick) toward the target's column, Y velocity 0; Y: Param2 = 1, the same
-  in Y. Each outcome snaps it to its panel's centre (`object_setCoordinatesFromPanels`) and sets its sprite's flip
+  in Y. Each outcome snaps it to its panel's center (`object_setCoordinatesFromPanels`) and sets its sprite's flip
   from its X velocity (`sub_80D7CB0`: > 0 → 0, < 0 → 1, 0 → unchanged; raw flips, not by side). The books start with
   Param2 1, so their first heading tries X.
 
@@ -2177,7 +2177,7 @@ first update at once. Updates (`sub_80BD478`): Param1 0 by `off_80BD4A0` (action
 `off_80BD4B0` (0, 4, 8). Phases here enter on PhaseInitialized 0.
 
 ProtoMan (Param1 0):
-- 0 (`sub_80BD4BC`), each tick the phase and then the colour shader from his grey level Param4 (`sub_80BD9D4`:
+- 0 (`sub_80BD4BC`), each tick the phase and then the color shader from his gray level Param4 (`sub_80BD9D4`:
   Param4 · 0x421). Phase 0 (`sub_80BD4DC`): entry: shader 0x7FFF, Param4 = 31, sound 0x94, Timer 0. Then each tick
   VISIBLE, Timer + 1 (odd: VISIBLE off: he flickers in), Param4 − 2; at 0 or below VISIBLE, Param4 0, phase 4 (16
   ticks). Phase 4 (`sub_80BD538`): Timer 30; 30 ticks: his panel not solid → action 0xC; else FuturePanel = (x +
@@ -2198,7 +2198,7 @@ ProtoMan (Param1 0):
     0x10B11: T1 5, attachment 0x11 (sprite (0xC, 0)), animation 0xB, Param3 1; its pointer in ExtraVars[2]), sound
     0xB0, Timer 10, afterimages (`sub_80BDA7C(5)`). The tick the timer reads 5 (before its decrement): a hit on the
     panel ahead (`sub_80C53A6`: Z 16 pixels, r4 0x0405FF04: region 4, no hit spark, target 5, self 4; modifier 3;
-    his element and damage word), T4#0 effect 0x27 at its centre, 16 pixels up (flip his), a camera shake (1, 10)
+    his element and damage word), T4#0 effect 0x27 at its center, 16 pixels up (flip his), a camera shake (1, 10)
     and a palette flash (`sub_80E11E0`, r4 0x10A00: 10 ticks). 10 ticks → phase 0 (the next search).
 - 8 (`sub_80BD742`), back: phase 0 (`sub_80BD760`): anim 4, the sword off, Timer 3, counting from the entry: 3 ticks
   → 4. Phase 4 (`sub_80BD788`): anim 7 and his sprite's flip toggled (`sprite_setFlip(flip ^ 1)`) when he slashed
@@ -2221,14 +2221,14 @@ Colonel (Param1 1):
   Phase 0 (`sub_80BD8BC`) waits for Param3 0xC; then anim 5, his sword (`sub_80B8E30`, r4 0x11C1F: attachment 0x1F
   (sprite (0x10, 0x5A)), animation 0x1C, in ExtraVars[2]), the target (`sub_80BDA08`), two hits there (element 0, Z
   0, modifier 3, his damage word; regions 0x12 and 0x13: r4 0x0405FF12 and 0x0405FF13, no hit spark, target 5, self
-  4), T4#0 effects 0x36 and 0x37 at its centre (flip = his side), sound 0xC7, a camera shake (3, 0x23), a palette
+  4), T4#0 effects 0x36 and 0x37 at its center (flip = his side), sound 0xC7, a camera shake (3, 0x23), a palette
   flash (r4 0x12800: 40 ticks); 30 ticks → phase 4 (`sub_80BD960`: 20 ticks → action 8).
   The target (`sub_80BDA08`): along his row from the panel ahead, the first panel with an enemy navi's body
   (`off_80BDA68[side]`); off the field first: column `dword_80BDA70[side]` (5; side 1: 2), a column further when
   that is his own.
 - 8: `sub_80BD7EA`, as ProtoMan's 0xC.
 
-The afterimages (`sub_80BDA7C(n)`, `sub_80E33FA`: effect #0x28 of his side at his X, Y, Z, colour shader 0x8318, 30
+The afterimages (`sub_80BDA7C(n)`, `sub_80E33FA`: effect #0x28 of his side at his X, Y, Z, color shader 0x8318, 30
 ticks, blinking, no tether): with n 5 first the sword's (attachment 0x11's sprite, animation 0xB, his flip; the
 shadow at its height), then always his own (sprite (8, 0xB), animation n, his flip; a ground shadow).
 
@@ -2283,7 +2283,7 @@ MegaMan's actions (`off_80BDD24`):
   action 0x13's sword helpers: attachment, animation by form), `sub_80B8E30` into ExtraVars[2], restored; Timer 0.
   The tick the timer reads 10: Django in position (his Param4 ≠ 0): effect 0x36, region 0x13, a camera shake (3,
   0x23), a flash of 40 ticks (r4 0x12800); else effect 0x18, region 1, shake (1, 0x19), flash of 30 (0x11E00): the
-  effect at the panel ahead's centre, 16 pixels up (flip his), and a hit there (`sub_80C53A6`: Z 0, r4 0x0405FF13
+  effect at the panel ahead's center, 16 pixels up (flip his), and a hit there (`sub_80C53A6`: Z 0, r4 0x0405FF13
   or 0x0405FF01: no hit spark, target 5, self 4; modifier 3; his element and damage word). Timer + 1; past 50 →
   0x10. 0x10 (`sub_80BE098`): the attachments off, anim 4, 4 ticks: VISIBLE off → 0x14. 0x14 (`sub_80BE0CE`): anim
   3, onto the user's panel, 3 ticks → 0x18. 0x18 (`sub_80BE0FA`): 10 ticks: his parts off, VISIBLE off, state 8.
@@ -2415,10 +2415,10 @@ The leader's phases (`off_80BE88C`):
 
 A Cross (Param4 = its place in its wave):
 - 0 (`sub_80BEA50`), the first wave's entry: phase 0 (`sub_80BEA78`): Timer 30; places 0..2: sound 0x94 and VISIBLE
-  (places 3 and 4 stay hidden); Timer2 31; each tick (the entry's too) Timer − 1: at 0 the colour shader 0
+  (places 3 and 4 stay hidden); Timer2 31; each tick (the entry's too) Timer − 1: at 0 the color shader 0
   (`sprite_zeroColorShader`), phase 4; else Timer2 − 1 (not below 0) and the shader Timer2 · 0x421 (fading from
   white). Phase 4 (`sub_80BEACE`): Timer 0, sound 0x110; each tick Timer + 1 (past 20 → phase 8, that tick too) and
-  he circles out from his panel's centre: `sub_80E58D2`: X = centre + cos(a) · r · front, Y = centre + sin(a) · r
+  he circles out from his panel's center: `sub_80E58D2`: X = center + cos(a) · r · front, Y = center + sin(a) · r
   (the sine table, 1.0 = 0x100), r = Timer pixels, a = `byte_80BEB20[place]` (0, 0x55, 0xAA, 0x78, 0xC8) + Timer.
   Phase 8 (`sub_80BEB28`): 30 ticks → 0xC. Phase 0xC (`sub_80BEB46`): anim 4, 4 ticks: VISIBLE off, phase 0x10; no
   target (FuturePanelX 0): his flag cleared, his parts off, state 8. Phase 0x10 (`sub_80BEB90`): Timer = place ·
@@ -2431,7 +2431,7 @@ A Cross (Param4 = its place in its wave):
 - 0xC (`sub_80BECF0`), the sword (move 0): anim 5, sound 0xB0, the blade (`sub_80B8E30`, r4 0x10000 + attachment
   `byte_80BEDC6[look]`: 3, 3, 0x19, 0x1A, 0x1B, 0x1C) in ExtraVars[1], Timer 0. At Timer 9: a hit on the panel ahead
   (`sub_80C53A6`, r4 `byte_80BEDA8[look]` as a word: look 0 region 1, else region 4; no hit spark, target 5, self 4;
-  modifier 3; his element and damage word; Z 0), T4#0 effect `byte_80BEDC0[look]` (0x18, then 0x16) at its centre
+  modifier 3; his element and damage word; Z 0), T4#0 effect `byte_80BEDC0[look]` (0x18, then 0x16) at its center
   16 pixels up (his flip; looks 2 and up add look − 1 to its palette), a 10-tick palette flash. Timer + 1, past 21 →
   0x20. (Its table's phase 4, `sub_80BEDCC`, is never entered.)
 - 0x10 (`sub_80BEE04`), EraseCross's beam (move 1): anim 0xF; `sub_80D8F98` (attack #0x9D, navis/megaman/forms/erasecross/ray) on
@@ -2443,7 +2443,7 @@ A Cross (Param4 = its place in its wave):
   word; held in ExtraVars[2]) with flags |= 0x10; Timer 30; sound 0xF0; a 10-tick flash; Y's and Z's whole parts
   + 1; 30 ticks → 8. Phase 8: the attachment's animation 0 (`sub_80B8E70`), 10 ticks → 0x20.
 - 0x18 (`sub_80BEF2C`), TenguCross's fan (move 3): anim 5, sound 0x11F, attachment 0x2A (r4 0x1002A) in
-  ExtraVars[1], T4#0 effect 0x44 at his panel's centre 16 pixels up (his flip), Timer 21; at Timer 12 a hit on the
+  ExtraVars[1], T4#0 effect 0x44 at his panel's center 16 pixels up (his flip), Timer 21; at Timer 12 a hit on the
   panel ahead (r4 0x0405FF04: region 4; Z 16 pixels; modifier 3) and a 10-tick flash; to −1 (22 ticks) → phase 4: 5
   to −1 (6 ticks) → 0x20.
 - 0x1C (`sub_80BEFE2`), the finale's charge (move 4): phase 0 (`sub_80BF000`): Timer 0, the charge glow (T4#0
@@ -2516,15 +2516,15 @@ n 2 (3, −1), (3, 0), (3, 1).
 Bass (Param1 1), actions `off_80BF7F4`:
 - 0 (`sub_80BFA1C`): phase 0 (`sub_80BFA38`): sound 0x13B, Timer 0, X − 100 · front pixels, Z 100 pixels, X velocity
   10 · front and Z velocity −10 pixels a tick; each tick (the entry's too) he moves; at Timer 5 and 7 afterimages
-  (`sub_80BFD90(0)`); Timer + 1, at 10 onto his panel's centre (`object_setCoordinatesFromPanels`), alpha off, phase
-  4 (`sub_80BFAAE`: one tick) → 4. `sub_80BFD90(a)`: two afterimages (`sub_80E33FA`) at his X, Y − 1 and Z − 1 pixels, colour
+  (`sub_80BFD90(0)`); Timer + 1, at 10 onto his panel's center (`object_setCoordinatesFromPanels`), alpha off, phase
+  4 (`sub_80BFAAE`: one tick) → 4. `sub_80BFD90(a)`: two afterimages (`sub_80E33FA`) at his X, Y − 1 and Z − 1 pixels, color
   shader 0x8108, 15 ticks, blinking, sprite (8, 0x13) with his flip: animation 0x14 + a (r4 0x141308, r7 0xF: the
   shadow at its height), then animation a (r4 0x1308, r7 0x0101000F: a ground shadow).
 - 4 (`sub_80BFAD8`): phase 0 (`sub_80BFAF8`): anim 0, the charge glow (effect 0x4E at attach point 0, Timer 30),
   sound SOUND_BUSTER_CHARGE, Timer 40; at 20 effect 0x4F (Timer 10), sound SOUND_UNK_72; 40 ticks → 4. Phase 4
   (`sub_80BFB74`): anim 5, Timer 0, his sword (r4 0x10E03: attachment 3, animation 0xE) in ExtraVars[0], sound 0xCE;
   at Timer 10 a hit on the panel ahead (r4 0x0405FF11: region 0x11, no hit spark, target 5, self 4; modifier 3; his
-  element; Z 0), T4#0 effect 0x1B at its centre 16 pixels up (his flip, palette + 4), a camera shake (2, 0x28), a
+  element; Z 0), T4#0 effect 0x1B at its center 16 pixels up (his flip, palette + 4), a camera shake (2, 0x28), a
   30-tick flash (r4 0x11E00); past 30 → 8. Phase 8 (`sub_80BFBFA`): 30 ticks → 8.
 - 8 (`sub_80BFC28`): phase 0 (`sub_80BFC44`): anim 0, the sword off, Timer 0, Timer2 15; each later tick Timer + 1,
   past 2 Timer 0 and Timer2 − 1, at 0 VISIBLE off, alpha off, phase 4; before that alpha = Timer2 (fading out over
@@ -2829,7 +2829,7 @@ Uses 2 (F = 779) and 3 (F = 920) follow the same offsets.
 
 - **Use 2 (F = 779):** HP 520 → 40. Drops on frames 788..907, T4 alive 786..906, exit at 918.
 - **Use 3 (F = 920):** hits start at 928. HP reaches 0 at frame 938 after 10 hits, and the enemy enters CurAction 2
-  (deletion). **The attack is not cancelled by the target's death:** regions keep spawning, T4 lives until 1047,
+  (deletion). **The attack is not canceled by the target's death:** regions keep spawning, T4 lives until 1047,
   phase 2 runs 1049..1058, and the exit is at 1059 = F+139.
 
 ### 4.6 Battle 2 variant: Falzar Beast Out, and the "Geddon" that was not a dimming
@@ -2939,7 +2939,7 @@ Chip 0 "MegaBstr" (action 0x1C) is only a pseudo-chip.
    happen in the idle handler on the press frame. The action handler first runs the next frame. Idle is not
    re-entered on the frame an attack exits.
 2. **Presses during a chip or buster action are dropped** (exit clears 0x1000003F). Movement is exempt **[unverified]**.
-3. **Stale `av` bytes.** Chip use does not initialise +0x10..+0x13, +0x16..+0x1A or +0x20..+0x4F.
+3. **Stale `av` bytes.** Chip use does not initialize +0x10..+0x13, +0x16..+0x1A or +0x20..+0x4F.
 4. **`chip_800AEE8` empty-hand read.** Chip 0xFFFF reads ROM 0x082E1D85 (0x30). Treat it as a no-op.
 5. **One-frame-stale `obj.ChipsHeld` / `obj.Chip`.** `sub_800FDC0` runs after the object logic.
 6. **Usage-counter aliasing** (`sub_8021D14`, 0x170 bytes per alliance, ids up to 0x19A).
@@ -2965,7 +2965,7 @@ Chip 0 "MegaBstr" (action 0x1C) is only a pseudo-chip.
    AntiNavi paths are all code-derived; no available replay executes a dimming chip. Get a trace with a dimming chip (and ideally a
    cut-in) before trusting §3.6's frame counts. The dim length also depends on the fade level when the dimming starts.
 2. **Multi-turn hand lifetime.** The claim that a player who selects nothing keeps last turn's leftover hand comes
-   from code only; every trace here has a single turn. The link-transmit stall condition `sub_803EA2C` was not analysed.
+   from code only; every trace here has a single turn. The link-transmit stall condition `sub_803EA2C` was not analyzed.
 3. **CollisionData+0x07 (`hit_param`) semantics.** The counter-hit bit and the +0x8E/+0x90 accumulators are read
    from the resolver around 0x0300735C; their downstream use (stagger or stamina) is not established.
 4. **Per-chip frame counts** for Cannon, Vulcan and Sword are code-derived. Only GunDelSol (and its Beast variant)
