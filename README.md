@@ -106,11 +106,13 @@ Its panes show only what the side's ruleset has (Crosses with the forms system, 
 system, the NaviCust with the navicust system): the arena; each side's ruleset (every loaded game's: `bn6:stock`,
 `bn5:stock`), navi (each game's MegaMan, named with his game) and game, with the stats the
 round starts the navi with (a link navi's level fills in the stats its save gives at that level, as does switching
-to a link navi; an edited stat says what the level gives); the folder (the chips the side's folder rules allow, of
-every loaded game, each with its game and its pictures from its own game's pack, searchable and filtered by game;
-a code puts a chip in the selected entry, so a BN6 side's folder can hold BN5 chips: a mixed folder, held to the
-side's own rules; the Regular and tag chips; the copies and the Mega, Giga, Regular and tag limits live, as the
-side's ruleset's folder rules count them: BN6's folder editor's, or BN5's, content/bn5/rules/folder); the Crosses; the patch cards (MB used of 80); the NaviCust (the
+to a link navi; an edited stat says what the level gives; MegaMan's optional navi code level); the SP navi deletion
+times; Import from save (a BN6 .sav's game, unlocks, navi code level and SP times); the folder (the chips the side's
+folder rules allow, of every loaded game, each with its game and its pictures from its own game's pack, searchable
+and filtered by game; a code puts a chip in the selected entry, so a BN6 side's folder can hold BN5 chips: a mixed
+folder, held to the side's own rules; the Regular and tag chips; the copies and the Mega, Giga, Regular and tag
+limits live, as the side's ruleset's folder rules count them: BN6's folder editor's, or BN5's,
+content/bn5/rules/folder); the Crosses; the patch cards (MB used of 80); the NaviCust (the
 board as the side's game draws it, with its frame and command line, edited with the mouse as Tango's is: drag a
 program's color swatch onto the grid, or press a placed program to pick it up and drag it; while held it shows
 where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click, Delete
