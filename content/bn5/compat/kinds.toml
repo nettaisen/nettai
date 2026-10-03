@@ -84,7 +84,9 @@
 "bn5:meddy/navi" = { pool = "actor", index = 0x12 }
 "bn5:knightmn/navi" = { pool = "actor", index = 0x06 }
 "bn5:knightmn/ball" = { pool = "attack", index = 0x17, scratch_position = true }
-"bn5:deltaray/navi" = { pool = "actor", index = 0x3D, scratch_position = true }
+"bn5:deltaray/navi" = { pool = "actor", index = 0x3D }
+"bn5:bassanly/navi" = { pool = "actor", index = 0x50 }
+"bn5:bassanly/shot" = { pool = "attack", index = 0x73 }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
 "bn5:capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "bn5:napalm-bomb" = { pool = "attack", index = 0x3A }
