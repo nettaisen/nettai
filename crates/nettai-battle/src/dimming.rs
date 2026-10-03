@@ -496,6 +496,26 @@ pub fn show_user(b: &mut Battle, user: ObjectRef) {
     }
 }
 
+/// `sub_80E146C` (`sub_80E14EC` for an actor that isn't a player: BN5's
+/// Django shutting a navi in his coffin): the actor vanishes, its barrier
+/// visual and its confusion and blindness visuals with it. (Its HUD's draw
+/// task 0, `sub_801DACC(1)`, presentation the engine doesn't keep, goes
+/// too.)
+pub fn hide_actor(b: &mut Battle, o: ObjectRef) {
+    b.objects.get_mut(o).set_visible(false);
+    set_barrier_visual_shown(b, o, false);
+    set_links_visible(b, o, false);
+}
+
+/// `sub_80E14AC` (`sub_80E1502` for an actor that isn't a player): it is
+/// back, its barrier visual and its confusion and blindness visuals with
+/// it.
+pub fn show_actor(b: &mut Battle, o: ObjectRef) {
+    b.objects.get_mut(o).set_visible(true);
+    set_barrier_visual_shown(b, o, true);
+    set_links_visible(b, o, true);
+}
+
 /// `sub_8010312` / `sub_801031C` with state bit 0x100000: the user is
 /// marked gone (what a Reflector's shield, for one, hides by).
 fn set_vanished(b: &mut Battle, user: ObjectRef, on: bool) {

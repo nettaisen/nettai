@@ -1744,6 +1744,11 @@ pub trait CoreApi {
     /// its barrier visual, its confusion and blindness visuals and the HUD
     /// stay (BugFix's glow).
     fn hide_user_sparing(&mut self, user: ObjectRef);
+    /// `sub_80E146C`: an actor that isn't a player vanishes (its barrier
+    /// visual and its confusion and blindness visuals with it), and
+    /// `sub_80E14AC` it is back: BN5's Django's coffin.
+    fn hide_actor(&mut self, o: ObjectRef);
+    fn show_actor(&mut self, o: ObjectRef);
     /// `sub_80E49C4` (BugFix): a side's NaviCust bugs are fixed: the stats
     /// processing, the panel trail's level, the buster's blanks, the
     /// on-hit status, the custom damage, the emotion, the custom and HP

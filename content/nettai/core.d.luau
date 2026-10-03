@@ -1282,6 +1282,11 @@ declare dimming: {
     -- `sub_80E1352(user, 0xF)`: the user vanishes, but its barrier visual,
     -- its confusion and blindness visuals and the HUD stay.
     hide_user_sparing: (user: Object) -> (),
+    -- `sub_80E146C` / `sub_80E14AC`: an actor that isn't a player vanishes
+    -- (its barrier visual and its confusion and blindness visuals with it)
+    -- and comes back (BN5's Django's coffin).
+    hide_actor: (o: Object) -> (),
+    show_actor: (o: Object) -> (),
 }
 
 declare navi_chip: {

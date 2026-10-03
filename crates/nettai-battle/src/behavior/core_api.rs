@@ -2190,6 +2190,14 @@ impl CoreApi for Battle {
         crate::dimming::hide_user_sparing(self, user);
     }
 
+    fn hide_actor(&mut self, o: ObjectRef) {
+        crate::dimming::hide_actor(self, o);
+    }
+
+    fn show_actor(&mut self, o: ObjectRef) {
+        crate::dimming::show_actor(self, o);
+    }
+
     fn clear_navicust_bugs(&mut self, side: u8) {
         let b = &mut self.stats[side as usize & 1].bugs;
         b.processing = 0;

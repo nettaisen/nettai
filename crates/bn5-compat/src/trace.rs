@@ -712,6 +712,12 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
         let garbage = k.scratch_position || (k.scratch_position_without_sprite && flags & nettai_battle::object::flags::NO_SPRITE_UPDATE != 0);
         (garbage, k.scratch_z_fraction)
     };
+    let panel = |i: usize, p: [u8; 2]| -> String {
+        match entries.get(i) {
+            Some(Some(k)) if k.scratch_panel => "-".to_string(),
+            _ => format!("{p:?}"),
+        }
+    };
     let pos = |p: [i32; 3], garbage: bool, xy_unknown: bool, z_fraction: bool| {
         if garbage {
             "-".to_string()
@@ -737,9 +743,9 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
             let (garbage, zf) = skip(i, x.flags);
             let xy = nettai_battle::kinds::effect::xy_unknown(b, o);
             format!(
-                "type {} {kind} panel {:?} side {} hp {}/{} pos {}",
+                "type {} {kind} panel {} side {} hp {}/{} pos {}",
                 pool_type(o.pool),
-                [x.panel.x, x.panel.y],
+                panel(i, [x.panel.x, x.panel.y]),
                 x.alliance,
                 x.hp,
                 x.max_hp,
@@ -756,10 +762,10 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
             let (garbage, zf) = skip(i, o.flags);
             let xy = order.get(i).is_some_and(|&r| nettai_battle::kinds::effect::xy_unknown(b, r));
             format!(
-                "type {} #{:#04x} panel {:?} side {} hp {}/{} pos {}",
+                "type {} #{:#04x} panel {} side {} hp {}/{} pos {}",
                 o.kind,
                 o.index,
-                o.panel,
+                panel(i, o.panel),
                 o.alliance,
                 o.hp,
                 o.max_hp,
