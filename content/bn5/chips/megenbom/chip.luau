@@ -4,10 +4,9 @@
 -- types.
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local bomb = require("@bn6/lib/bombs/bomb")
-local burst = require("@bn6/chips/energbom/burst")
+local bombs = require("../../lib/bombs")
+local burst = require("../energbom/burst")
 local collision = require("../../rules/collision")
-local throw = require("@bn6/lib/bombs/throw")
 
 return define.chip {
     id = "bn5:megenbom",
@@ -22,10 +21,10 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = throw.action {
-        held = bomb.held,
+    action = bombs.throw {
+        held = bombs.held,
         held_anim = 2,
-        thrower = bomb.thrower(bomb.variant {
+        thrower = bombs.thrower(bombs.variant {
             collision = { is = collision.thrown, hits = collision.hits_navis },
             hit_mod = 1,
             palette = 0,
