@@ -3,6 +3,7 @@
 
 mod app;
 mod names;
+mod navicust;
 mod pictures;
 mod view;
 
@@ -17,7 +18,9 @@ usage: nettai-editor [OPTIONS] [MATCH.toml]
   --content DIR    the battle content (default: $BN6_CONTENT, else this
                    repository's content/bn6)
   --pack DIR       the content pack, for the chips' pictures (default:
-                   $BN6_PACK, else data/content/bn6)
+                   $BN6_PACK, else data/content/bn6); again for another
+                   game's pack, loaded beside it (each chip's pictures are
+                   its own game's), as the frontend takes them
   --lang LANG      names in en (default) or ja
   --frontend PATH  the nettai-frontend program Play runs (default: the one
                    beside this program, else nettai-frontend on the PATH)
@@ -33,7 +36,7 @@ fn fail(msg: impl std::fmt::Display) -> ! {
 fn parse() -> Result<Options, String> {
     let mut o = Options {
         content_root: std::env::var_os("BN6_CONTENT").map(PathBuf::from).unwrap_or_else(nettai_content::root::bn6),
-        pack: std::env::var_os("BN6_PACK").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/content/bn6")),
+        packs: Vec::new(),
         frontend: None,
         file: None,
         lang: Lang::En,
@@ -45,7 +48,7 @@ fn parse() -> Result<Options, String> {
         let mut value = |name: &str| it.next().ok_or_else(|| format!("{name} needs a value"));
         match arg.as_str() {
             "--content" => o.content_root = value("--content")?.into(),
-            "--pack" => o.pack = value("--pack")?.into(),
+            "--pack" => o.packs.push(value("--pack")?.into()),
             "--lang" => {
                 let l = value("--lang")?;
                 o.lang = Lang::from_code(&l).ok_or_else(|| format!("no language {l:?} (en or ja)"))?;
@@ -60,6 +63,9 @@ fn parse() -> Result<Options, String> {
             s if s.starts_with('-') => return Err(format!("unknown option {s}")),
             s => o.file = Some(s.into()),
         }
+    }
+    if o.packs.is_empty() {
+        o.packs.push(std::env::var_os("BN6_PACK").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/content/bn6")));
     }
     Ok(o)
 }
@@ -79,20 +85,20 @@ fn main() -> iced::Result {
             std::process::exit(2);
         }
     };
-    let content = match nettai_content::pack::load_battle(&options.content_root, &options.pack) {
+    let content = match nettai_content::pack::load_battle_packs(&options.content_root, &options.packs) {
         Ok((c, _)) => Arc::new(c),
         Err(r) => {
             for i in &r.issues {
                 eprintln!("{i}");
             }
             fail(format!(
-                "can't load the content {} with the pack {} (--content, --pack)",
+                "can't load the content {} with the packs {:?} (--content, --pack)",
                 options.content_root.display(),
-                options.pack.display()
+                options.packs
             ))
         }
     };
-    let pictures = pictures::Pictures::load(&options.pack).unwrap_or_else(|e| {
+    let pictures = pictures::Pictures::load(&content, &options.packs).unwrap_or_else(|e| {
         eprintln!("{e}: the chips have no pictures");
         pictures::Pictures::default()
     });

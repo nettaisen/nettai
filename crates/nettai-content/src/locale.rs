@@ -156,6 +156,12 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
         }
         text(format!("patch-cards.{key}.name"), &c.name);
     }
+    for (key, c) in &s.navicust_programs {
+        if defs.navicust_program_by_key(&q(key)).is_none() {
+            unknown.push(format!("navicust-programs.{key}: no NaviCust program has this key"));
+        }
+        text(format!("navicust-programs.{key}.name"), &c.name);
+    }
     if own {
         let named = |n: Option<&Option<String>>| n.is_some_and(|n| n.is_some());
         for d in defs.chips.iter().filter(|d| ours(&d.key)) {
@@ -176,6 +182,11 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
         for d in defs.patch_cards.iter().filter(|d| ours(&d.key)) {
             if !named(s.patch_card(local(&d.key)).map(|c| &c.name)) {
                 unknown.push(format!("patch-cards.{}: the content's own language names every patch card", local(&d.key)));
+            }
+        }
+        for d in defs.navicust_programs.iter().filter(|d| ours(&d.key)) {
+            if !named(s.navicust_program(local(&d.key)).map(|c| &c.name)) {
+                unknown.push(format!("navicust-programs.{}: the content's own language names every NaviCust program", local(&d.key)));
             }
         }
     }

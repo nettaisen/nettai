@@ -234,6 +234,9 @@ impl NaviStats {
                 back_special: data.weapons.back_special,
                 a_charge: data.weapons.a_charge,
                 back_special_damage: fresh.back_special_damage,
+                // (+0x44, which the defaults leave zero: weapon routine 0,
+                // MegaMan's buster.)
+                mode9_a: content.form_changing_navi().and_then(|m| content.navi(m).weapons.buster),
                 ..defaults.weapons
             },
             bugs: NaviCustBugs { panel_trail_kind: 0xFF, ..defaults.bugs },

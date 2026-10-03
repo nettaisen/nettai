@@ -103,6 +103,36 @@ impl Battle {
         }
     }
 
+    /// What side `side`'s rules say of a folder (their systems'
+    /// `folder_check`: BN6's folder rules), each rule it breaks named and
+    /// said; nothing when it keeps them, or when the rules have none. The
+    /// folder's chips in order, its Regular and tag chips (entries of
+    /// `chips`); `complete`: all of a folder, else the chips so far (the
+    /// rules about a whole folder wait). The rules read the side's stats as
+    /// the round set them up (its folder limits). For tools (a match's
+    /// checks, a random folder's draw): no part of the simulation.
+    pub fn check_folder(
+        &mut self,
+        side: u8,
+        chips: &[crate::custom::FolderChip],
+        regular: Option<u8>,
+        tags: Option<(u8, u8)>,
+        complete: bool,
+    ) -> Vec<FolderProblem> {
+        self.folder_check = Some(FolderCheck {
+            folder: nettai_content_api::api::CheckedFolder {
+                side: side & 1,
+                chips: chips.iter().map(|c| (c.id.0, c.code.0)).collect(),
+                regular,
+                tags,
+                complete,
+            },
+            problems: Vec::new(),
+        });
+        self.notify_side(side & 1, SystemHook::FolderCheck);
+        self.folder_check.take().map(|c| c.problems).unwrap_or_default()
+    }
+
     /// Call `hook` of each system of side `side`'s ruleset that has one.
     pub(crate) fn notify_side(&mut self, side: u8, hook: SystemHook) {
         let Some(r) = self.rules[side as usize].ruleset else { return };
@@ -113,6 +143,22 @@ impl Battle {
             }
         }
     }
+}
+
+/// A folder being checked (`Battle::check_folder`) and what it breaks.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FolderCheck {
+    pub folder: nettai_content_api::api::CheckedFolder,
+    pub problems: Vec<FolderProblem>,
+}
+
+/// A folder rule broken: the rule's name (the game's own: BN6's `chip`,
+/// `code`, `copies`, `mega`, `giga`, `dark`, `regular`, `tags`, `size`) and
+/// what to say.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FolderProblem {
+    pub rule: String,
+    pub text: String,
 }
 
 #[cfg(test)]
