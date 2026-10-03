@@ -9,17 +9,7 @@
 
 local trajectory = {}
 
--- The helpers over one game's sine table.
-export type Trajectory = {
-    div: (num: number, denom: number) -> (number, number, number),
-    sqrt: (x: number) -> number,
-    arctan2: (x: number, y: number) -> number,
-    sine: (i: number) -> number,
-    angle: (dx: number, dy: number) -> number,
-    toward: (angle: number, speed: number) -> (number, number),
-    in_ticks: (pos: Vec3, x: number, y: number, z: number, ticks: number, gravity: number) -> Vec3,
-    at_speed: (pos: Vec3, vel_y: number, x: number, y: number, z: number, speed: number, gravity: number) -> (number, number),
-}
+-- (The helpers over one game's sine table are a `Trajectory`.)
 
 -- ---- The BIOS ----------------------------------------------------------------
 

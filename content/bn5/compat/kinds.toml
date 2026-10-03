@@ -23,9 +23,9 @@
 "engine/navi-chip" = { pool = "effect", index = 0x10, scratch_position = true }
 "bn6:projectile" = { pool = "attack", index = 0x00 }
 "bn5:projectile" = { pool = "attack", index = 0x00 }
-"bn6:bomb" = { pool = "attack", index = 0x08 }
+"bn5:bomb" = { pool = "attack", index = 0x08 }
 "bn5:grab/shot" = { pool = "attack", index = 0x0F }
-"bn6:energbom/burst" = { pool = "attack", index = 0x11 }
+"bn5:energbom/burst" = { pool = "attack", index = 0x11 }
 "bn5:grabbnsh/hand" = { pool = "attack", index = 0x46 }
 "bn6:instrument" = { pool = "attack", index = 0x78 }
 "bn5:grab/controller" = { pool = "effect", index = 0x03, scratch_position = true }
@@ -51,6 +51,7 @@
 "bn5:anti-trap/trap" = { pool = "attack", index = 0x4D, scratch_position = true }
 "bn5:anti-trap/strike" = { pool = "effect", index = 0x2B, scratch_position = true }
 "bn6:panel-bursts" = { pool = "effect", index = 0x24, scratch_position = true }
+"bn5:panel-bursts" = { pool = "effect", index = 0x24, scratch_position = true }
 "bn5:crack" = { pool = "attack", index = 0x18 }
 "bn5:soul-image" = { pool = "actor", index = 0x2A }
 "bn5:timebom/countdown" = { pool = "attack", index = 0x4B }
