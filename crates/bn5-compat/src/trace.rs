@@ -769,11 +769,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
     })
 }
 
-/// BN5's NaviCust list: 25 parts of 8 bytes (a save's at 0x4D6C), the list
-/// holds.
-pub const NAVICUST_PARTS: usize = 25;
-
-/// A save's NaviCust in the engine's terms (BN5's list: [`NAVICUST_PARTS`]
+/// A save's NaviCust in the engine's terms (BN5's list: [`crate::save::NAVICUST_PARTS`]
 /// parts of 8 bytes, +0 the part id, +2 the center's column, +3 its row, +4
 /// the quarter turns clockwise; +5, the editor's compression mark, isn't
 /// what the compile reads). BN5's 5x5 board is the middle of the engine's
