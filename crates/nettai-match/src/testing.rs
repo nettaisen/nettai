@@ -1,4 +1,5 @@
-//! BN6's content for tests: content/bn6's definitions on a made-up asset
+//! BN6's content for tests: content/bn6's definitions (with the modules
+//! it shares with BN5, content/common) on a made-up asset
 //! index (`testing::asset_names_used`), every sprite timed as the test
 //! content's navi is (nothing from a ROM), with its own strings.
 
@@ -12,7 +13,7 @@ pub fn bn6_content() -> Arc<Content> {
     BN6.get_or_init(|| {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
         let mut c = Content::default();
-        c.scripts = nettai_battle::content::Scripts::root(nettai_battle::content::RootManifest::named("bn6"), testing::modules_under(dir));
+        c.scripts = testing::bn6_scripts();
         c.assets = testing::asset_names_for(&c.scripts);
         c.strings = nettai_content::locale::load(std::path::Path::new(dir), nettai_content::locale::OWN)
             .and_then(|s| s.ok_or_else(|| "no locales/en.toml".into()))
