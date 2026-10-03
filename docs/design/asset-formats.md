@@ -795,7 +795,7 @@ a few seconds. It is the only extraction.
 ## 10. Commands
 
     cargo run -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6    # ROMs -> pack
-    cargo run -p nettai-frontend -- <trace.jsonl> --pack data/content/bn6
+    cargo run -p nettai-frontend -- <trace.jsonl>                      # every pack in data/content
     cargo run -p nettai-content -- check data/content/bn6            # lint every file
     cargo run -p nettai-content -- verify data/content/bn6 <reference-pack> [--seconds N]
     cargo run -p nettai-content -- aseprite-export data/content/bn6 [NAME ...]

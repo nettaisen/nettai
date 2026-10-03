@@ -83,8 +83,14 @@ pub fn load(root: &Path, lang: &str) -> Result<Option<Strings>, String> {
 /// The tables of `lang` of the root in `dir` and the roots it requires,
 /// qualified and merged into one (`None` when none has one).
 pub fn load_all(dir: &Path, lang: &str) -> Result<Option<Strings>, String> {
+    load_many(&[dir.to_path_buf()], lang)
+}
+
+/// [`load_all`] for the roots in `dirs` and the roots they require (the
+/// roots a frontend loaded: `pack::Loaded::roots`).
+pub fn load_many(dirs: &[std::path::PathBuf], lang: &str) -> Result<Option<Strings>, String> {
     let mut out: Option<Strings> = None;
-    for d in crate::root::dirs(dir)? {
+    for d in crate::root::dirs_of(dirs)? {
         let name = crate::root::read_manifest(&d)?.name;
         if let Some(s) = load(&d, lang)? {
             out.get_or_insert_with(|| Strings { language: lang.to_string(), ..Default::default() }).merge(s.qualified(&name));

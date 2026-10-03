@@ -136,10 +136,52 @@ pub fn dirs(dir: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(out.into_iter().map(|(_, d)| d).collect())
 }
 
+/// The directories of the roots in `dirs` and the roots they require, each
+/// root once, the first's own first (the home).
+pub fn dirs_of(dirs: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
+    let mut out: Vec<(String, PathBuf)> = Vec::new();
+    for d in dirs {
+        for d in self::dirs(d)? {
+            let name = read_manifest(&d)?.name;
+            match out.iter().find(|(n, _)| *n == name) {
+                Some((_, other)) if *other != d => {
+                    return Err(format!("two roots are named {name}: {} and {}", other.display(), d.display()));
+                }
+                Some(_) => {}
+                None => out.push((name, d)),
+            }
+        }
+    }
+    Ok(out.into_iter().map(|(_, d)| d).collect())
+}
+
+/// The roots beside the root in `dir` (the other folders of its parent
+/// with a root manifest), each with its manifest, by folder name.
+pub fn beside(dir: &Path) -> Vec<(RootManifest, PathBuf)> {
+    let parent = dir.parent().unwrap_or(Path::new("."));
+    let own = std::fs::canonicalize(dir).ok();
+    let mut out: Vec<(RootManifest, PathBuf)> = std::fs::read_dir(parent)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.join(MANIFEST).is_file() && std::fs::canonicalize(p).ok() != own)
+        .filter_map(|p| read_manifest(&p).ok().map(|m| (m, p)))
+        .collect();
+    out.sort_by(|a, b| a.1.cmp(&b.1));
+    out
+}
+
 /// Read the content root in `dir` and every root it requires, its own
 /// first.
 pub fn read_all(dir: &Path, report: &mut Report) -> Option<Vec<Root>> {
-    let dirs = match dirs(dir) {
+    read_many(&[dir.to_path_buf()], report)
+}
+
+/// Read the content roots in `dirs` and every root they require, each
+/// once, the first's own first (the home: `dirs_of`).
+pub fn read_many(dirs: &[PathBuf], report: &mut Report) -> Option<Vec<Root>> {
+    let dirs = match dirs_of(dirs) {
         Ok(d) => d,
         Err(e) => {
             report.error(MANIFEST, e);

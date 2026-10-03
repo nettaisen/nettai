@@ -38,10 +38,13 @@ netplay needs.
 You need Rust with edition 2024, and four Mega Man Battle Network 6 ROMs of your own: the US Cybeast Falzar
 (`MEGAMAN6_FXXBR6E`) and Cybeast Gregar (`MEGAMAN6_GXXBR5E`), and the Japanese Rockman EXE 6 Dennoujuu Falzar
 (`ROCKEXE6_RXXBR6J`) and Dennoujuu Gregar (`ROCKEXE6_GXXBR5J`), which have what the US release cut. Extract a
-content pack from them, in that order, into `data/content/bn6`, where the tools look by default (the directory is
-gitignored):
+content pack from them, in that order, into `data/content/bn6` (the directory is gitignored):
 
     cargo run --release -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6
+
+The frontend and the editor load every pack in `data/content` (or the directory `$NETTAI_PACKS` names), each by the
+game it says, with no options: a BN5 pack written there (`bn5-extract content`) loads beside BN6's, and BN5's
+content root with it once it loads. `--pack DIR` names a pack elsewhere, in place of the found one of its game.
 
 Then run the frontend:
 
@@ -106,8 +109,9 @@ fits, a click picks a placed program or moves the picked one to the cell, and th
 recoloured, compressed or removed; the stats it compiles to show beside it); every stat. The problems with the match show at the bottom as you edit. Play saves the match and
 runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). Random draws a match as
 live play does, and `nettai-frontend --play --save-match FILE` writes live play's draw out to edit. `--lang ja` (or
-the language list) names the chips, navis, Crosses and patch cards in Japanese; `--content` and `--pack` are the
-frontend's. The editor needs the content pack for the chips' pictures, as the frontend does.
+the language list) names the chips, navis, Crosses and patch cards in Japanese. The editor loads the content and
+every pack in `data/content` as the frontend does (each chip's pictures from its own game's pack), and Play hands
+the frontend the same: `--content` and `--pack` are the frontend's, and only what you give is passed on.
 
 The editor is an [iced](https://iced.rs) app, drawn in software (tiny-skia), so it needs no GPU backend. On Linux it
 needs the usual windowing libraries (X11 or Wayland, and `libxkbcommon`), and its Open and Save As dialogs use

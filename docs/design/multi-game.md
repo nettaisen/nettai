@@ -585,8 +585,8 @@ NaviStats-like layout), so BN5's seams should fit it with less new work. The sam
 - **netplay's `bn6` module** and `Bn6Input`, by the user's decision. Note: in substance it is the engine's input
   adapter (buttons plus `TickEvents`), with nothing of BN6's in it; worth renaming when the ruleset seam lands, if
   a second game's input record is the same.
-- **BN6_PACK, BN6_CONTENT, BN6_COMPAT** and the **BN6_LAB_*** variables: they select BN6's pack, content root,
-  compat and lab.
+- **BN6_PACK** (deprecated: the frontend finds every pack in `NETTAI_PACKS`), **BN6_CONTENT, BN6_COMPAT** and the
+  **BN6_LAB_*** variables: they select BN6's pack, content root, compat and lab.
 - **The bn6battle-verify workspace**: BN6's oracle, traces and chip lab.
 - **docs/engine**'s content (wherever it ends up), and the BN6-only modules once they are behind the `bn6`
   boundary.
