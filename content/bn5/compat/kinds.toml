@@ -81,6 +81,8 @@
 "bn5:magnetmn/navi" = { pool = "actor", index = 0x0D }
 "bn5:magnetmn/magnet" = { pool = "attack", index = 0x67, scratch_position = true }
 "bn5:magnetmn/pull" = { pool = "attack", index = 0x66, scratch_position = true }
+"bn5:meddy/navi" = { pool = "actor", index = 0x12 }
+"bn5:capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "bn5:napalm-bomb" = { pool = "attack", index = 0x3A }
 "bn5:gyro-bomb" = { pool = "attack", index = 0x1B, scratch_position = true }
 "bn5:shuriken" = { pool = "attack", index = 0x5C }
