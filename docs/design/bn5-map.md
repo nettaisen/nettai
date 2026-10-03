@@ -1643,8 +1643,10 @@ none when full); `battle.gauge_full` (battle flag 2) and `battle.drain_custom_ga
 outside link battles); ColonelSoul's army (above): `obstacle.arm_soldiers`, `disarm_soldiers` and `soldiers`, the rule
 `effects.obstacle_soldiers`, the role `kinds.obstacle_soldier`.
 
-**Chips.** In the range, 135 chips match all their recordings (484 of its 543 recordings; the 59 left belong to
-chips with no use yet). The last ones: BugFix; LCrsShld, LStepSwd, LCounter (the Liberation chips: BN5's
+**Chips.** In the range, the branch's 135 chips match all their recordings, and with bn5-navichips' AirSpin1–3,
+AqWhirl1–3, Z-Saver, NumbrBl and NeoVari 144 do (525 of the range's 548 recordings, after merging main on
+2026-10-03; the 23 left are CopyDmg's, DarkInvs', Jealousy's, LeadRaid's, ChaosLrd's and PileDrvr's, bn5-navichips'
+now). The last ones: BugFix; LCrsShld, LStepSwd, LCounter (the Liberation chips: BN5's
 controller, effect 0x8A, gives the side five uses of the ability, which only a Liberation Mission's specials read,
 nothing a netbattle reads); Poltrgst (BN5's own: controller effect 0x72, stand-in actor 0x58, poltergeist effect
 0x73); Navi+20; GunDelEX; InfVulc1–3, LifeSrd, PoisPhar, TimeBom+; GreatYo (controller effect 0x70: the leader and
