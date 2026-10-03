@@ -113,3 +113,6 @@
 "bn5:bugfix/glow" = { pool = "actor", index = 0x5D }
 "bn5:bugfix/controller" = { pool = "effect", index = 0x3B, scratch_position = true }
 "bn5:liberation/controller" = { pool = "effect", index = 0x8A, scratch_position = true }
+"bn5:poltrgst/controller" = { pool = "effect", index = 0x72, scratch_position = true }
+"bn5:poltrgst/stand-in" = { pool = "actor", index = 0x58 }
+"bn5:poltrgst/poltergeist" = { pool = "effect", index = 0x73 }
