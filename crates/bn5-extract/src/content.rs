@@ -15,7 +15,9 @@ pub const USAGE: &str = "usage: bn5-extract content <protoman-us> <colonel-us> <
 
 /// The names BN5's compat (content/bn5/compat, built into bn5-compat) gives
 /// the assets: sprites, songs and banners by BN6's names for what is BN6's,
-/// chip icons by the chips' ids' own part (`cannon` for `bn5:cannon`).
+/// the faces by BN5's (its [mugshots]), chip icons by the chips' ids' own
+/// part (`cannon` for `bn5:cannon`); and what the fonts' glyphs draw (its
+/// text.toml).
 fn asset_names() -> nettai_content::names::AssetNames {
     let c = bn5_compat::Compat::bn5();
     nettai_content::names::AssetNames {
@@ -23,7 +25,10 @@ fn asset_names() -> nettai_content::names::AssetNames {
         songs: c.assets.sounds.iter().map(|(k, &v)| (v, k.clone())).collect(),
         banners: c.assets.banners.iter().map(|(k, &v)| (v, k.clone())).collect(),
         backgrounds: c.assets.backgrounds.iter().map(|(k, &v)| (v, k.clone())).collect(),
+        mugshots: c.assets.mugshots.iter().map(|(k, &v)| (v, k.clone())).collect(),
         chips: c.chip_keys.iter().map(|(&id, k)| (id, nettai_content_api::keys::local(k).to_string())).collect(),
+        glyphs: c.text.glyphs.clone(),
+        dialogue_glyphs: c.text.dialogue_glyphs.clone(),
         ..Default::default()
     }
 }
@@ -114,7 +119,7 @@ pub fn main(args: &[String]) {
         bundle.backgrounds.iter().flatten().count(),
         bank.songs.iter().flatten().count() - left_out.len(),
         bank.samples.len(),
-        crate::graphics::CHIP_COUNT,
+        bundle.custom.chip_art.len() - versioned.len(),
         versioned.len(),
         files.len(),
         bytes / 1024,
@@ -162,7 +167,29 @@ fn difference(a: &nettai_assets::Bundle, b: &nettai_assets::Bundle) -> String {
         return "the custom screen's".into();
     }
     if a.hud != b.hud {
-        return "the HUD's".into();
+        let (x, y) = (&a.hud, &b.hud);
+        let fields = [
+            ("tiles", x.tiles == y.tiles),
+            ("gauge", x.gauge_tiles == y.gauge_tiles),
+            ("palettes", x.hp_palettes == y.hp_palettes && x.gauge_palette == y.gauge_palette && x.icon_palette == y.icon_palette),
+            ("maps", x.hp_box == y.hp_box && x.gauge_frame == y.gauge_frame),
+            ("font", x.font == y.font && x.font_chars == y.font_chars),
+            ("enemy digits", x.enemy_digits == y.enemy_digits && x.enemy_palette == y.enemy_palette),
+            ("chip icons", x.chip_icons == y.chip_icons && x.hidden_icon == y.hidden_icon),
+            ("mugshots", x.mugshots == y.mugshots),
+            ("counts", x.counts == y.counts && x.count_box == y.count_box),
+            ("mugshot boxes", x.mugshot_boxes == y.mugshot_boxes),
+            ("navi mugshots", x.navi_mugshots == y.navi_mugshots && x.navi_box == y.navi_box),
+            ("pause", x.pause == y.pause),
+            ("texts", x.texts == y.texts),
+            ("banners", x.banners == y.banners && x.banner_digits == y.banner_digits && x.banner_palette == y.banner_palette),
+            ("waiting", x.waiting == y.waiting && x.waiting_palette == y.waiting_palette),
+            ("warning", x.warning == y.warning && x.warning_palette == y.warning_palette),
+            ("dialogue font", x.dialogue_font == y.dialogue_font),
+            ("chatbox", x.chatbox == y.chatbox),
+        ];
+        let differ: Vec<&str> = fields.iter().filter(|(_, same)| !same).map(|(n, _)| *n).collect();
+        return format!("the HUD's ({})", differ.join(", "));
     }
     if a.field != b.field {
         return "the field's".into();

@@ -1166,8 +1166,13 @@ fn tango_heals_her_navi_at_a_quarter_of_its_hp() {
 /// The test content with text replaced in one module (each `(from, to)`
 /// once).
 fn patched(module: &str, edits: &[(&str, &str)]) -> Content {
+    patched_in(testing::ROOT, module, edits)
+}
+
+/// [`patched`], of a module of the folder `root`.
+fn patched_in(root: &str, module: &str, edits: &[(&str, &str)]) -> Content {
     let mut c = testing::build();
-    let src = c.scripts.module_mut(testing::ROOT, module).unwrap_or_else(|| panic!("no module {module}"));
+    let src = c.scripts.module_mut(root, module).unwrap_or_else(|| panic!("no module {root}:{module}"));
     for (from, to) in edits {
         assert!(src.contains(from), "{module}.luau has no {from:?}");
         *src = src.replacen(from, to, 1);
@@ -1197,8 +1202,10 @@ fn in_update(line: &str) -> Content {
 
 #[test]
 fn state_in_module_locals_is_rejected_at_load() {
-    let c = patched(
-        "chips/gundels/beam",
+    // (The sun beam's code is the shared folder's.)
+    let c = patched_in(
+        nettai_content_api::keys::SHARED,
+        "gundels/beam",
         &[("local beam = {}", "local hums = 0\nlocal beam = {}"), ("    s.ticks += 1\n", "    s.ticks += 1\n    hums += 1\n")],
     );
     let e = load(&c).err().expect("rejected");

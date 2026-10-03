@@ -1,14 +1,15 @@
 --!strict
 -- Reactions: push slides by hit-modifier bit (0x0800CA24), ice slides by collision direction (0x0800C988),
 -- and the bubble's bob.
--- BN5's push takes the first bit of collision +0x18 (bits 2 to 5), else that of +0x19 with the
--- direction reversed (0x0800C9D8, BN6's `sub_800E548` otherwise): five rows, and none for BN6's 0x80 flag
--- (rows 5 to 9, zero here; the engine reads BN6's rule: bn5-map.md §15). BN5 has no bubbled reaction
+-- BN5's push takes the first bit of collision +0x18 (bits 2 to 5: the unflipped hitters' modifiers), else
+-- that of +0x19 (the flipped hitters', 0x08016AA6) with the direction reversed (0x0800C9D8, BN6's
+-- `sub_800E548` otherwise): five rows, and none for BN6's 0x80 flag (rows 5 to 9, zero here). BN5 has no bubbled reaction
 -- (BN6's action 7 is absent): its bob is zero. A slide and a drag go 8 pixels a tick in depth where BN6's
 -- go 6 (0x0801361E, 0x080143A8).
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
 return define.rules("bn5:reactions", {
+    push_reading = "bn5",
     push = {
         { dx = 1, dy = 0, panels = 6 },
         { dx = -1, dy = 0, panels = 6 },

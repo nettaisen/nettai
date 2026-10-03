@@ -113,6 +113,7 @@ fn bundle() -> Bundle {
         mugshots: vec![(tiles(8, 16), palette(45)), (tiles(8, 17), palette(46))],
         counts: (0..11).map(|i| tiles(4, 18 + i)).collect(),
         count_box: tiles(4, 29),
+        mugshot_boxes: vec![Tiles::default(), tiles(4, 34)],
         navi_mugshots: vec![NaviMugshot { tiles: tiles(8, 30), palettes: [palette(47), palette(48)] }],
         navi_box: tiles(4, 31),
         pause: tiles(10, 32),
@@ -190,6 +191,19 @@ fn custom() -> CustomScreen {
     let picture = |seed: u8| Picture { tiles: tiles(42, seed), palette: palette(seed as u16) };
     let patch = |x, y, w, h, by_column| MapPatch { x, y, width: w, height: h, palette: 9, by_column };
     CustomScreen {
+        layout: CustomLayout { name: 0x59, art: 0x69, ..CustomLayout::BN6 },
+        buttons: vec![(
+            "soul".into(),
+            ButtonPictures {
+                width: 3,
+                height: 2,
+                tiles: tiles(18, 98),
+                picture: picture(99),
+                palettes: vec![palette(99), palette(100)],
+                icons: tiles(56, 101),
+                icon_palette: palette(102),
+            },
+        )],
         window_tiles: tiles(0x87, 40),
         column_cells: tiles(4, 41),
         turn_limit: tiles(14, 42),
