@@ -269,6 +269,7 @@ fn lines(seen: &BTreeMap<String, Seen>) -> Vec<String> {
         .map(|(what, s)| match (s.first, s.last) {
             (Some(a), Some(b)) if a != b => format!("{what} ({} times, frames {a}..={b})", s.count),
             (Some(a), _) => format!("{what} (frame {a})"),
+            _ if s.count == 1 => format!("{what} (once)"),
             _ => format!("{what} ({} times)", s.count),
         })
         .collect()
