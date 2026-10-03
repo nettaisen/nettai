@@ -41,12 +41,12 @@ local function find(me: Object): (number?, number?)
     local list = panels.filtered_except(me, ENEMY_NAVI[me.alliance], 0)
     local right = bit32.bxor(me.alliance, me.flip) == 0
     local function pick(ahead: boolean): { number }
-        local out = {}
+        local out: { number } = {}
         for _, p in list do
             local x = panels.x(p)
             local takes = if ahead == right then x > me.panel_x else x < me.panel_x
             if takes then
-                table.insert(out, p)
+                out[#out + 1] = p
             end
         end
         return out
