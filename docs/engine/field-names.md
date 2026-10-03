@@ -35,10 +35,10 @@ Most renames are mechanical. These changed type, so their uses change too:
 | Old use | New use |
 |---|---|
 | `ai.unk_32 != 0` / `ai.unk_32 = 0xFFFF` | `ai.beast_out_spent` / `ai.beast_out_spent = true` |
-| `ai.unk_36 != 0` | `ai.beast_over_exhausted` (writing 0x3C0 becomes `= true`) |
+| `ai.unk_36 != 0` | `ai.exhausted` (writing 0x3C0 becomes `= true`; `beast_over_exhausted` until rules-in-Luau S3) |
 | `ai.unk_1c != 0` / `= 0` / `= 1` | `ai.hit_bug_latched` / `= false` / `= true` |
 | `ai.unk_3c` (u16) | `ai.bubble_base_z` (i16; `(z as i32) << 16` gives the same bits) |
-| `ai.unk_40` (already `Option<ObjectRef>`) | `ai.lockon_marker` |
+| `ai.unk_40` (already `Option<ObjectRef>`) | `ai.target_marker` (`lockon_marker` until rules-in-Luau S3) |
 | `ai.unk_50 != 0` (u32) | `ai.reset_linked_object.is_some()` (`Option<ObjectRef>`) |
 | `ai.unk_5c == 0` / `= 0` (u32) | `ai.full_synchro_aura.is_none()` / `= None` (`Option<ObjectRef>`) |
 | `obj.unk_0d` (0 / 4 / 8) | `obj.drag_step` (`DragStep::Start` / `Slide` / `Recover`; `object::DragStep`) |
@@ -74,12 +74,12 @@ Fields that already had names are unchanged. `drain_counter` (+0x0A) kept its na
 | `unk_1c` | `hit_bug_latched` | bool | AIData+0x1C: the NaviCust on-hit bug (NaviStats+0x16) already fired during this hit sequence. `sub_8013F1E` clears it when it runs with `prevent_anim` 0. The game stores 0/1. |
 | `unk_1f` | deleted | u8 | AIData+0x1F: no reader found. |
 | `unk_32` | `beast_out_spent` | bool | AIData+0x32 (the game stores 0xFFFF or 0). Set by `sub_801443C`, which is called: at init with a zero Beast Out counter (`sub_8013892`); by the turn-start check (`sub_80159C6`); when a Beast Out (not Over) reverts (`sub_80158CC`); by the emotion-swing bug (`sub_8013DA0`); and by `sub_80E4954` when the counter is 0. Cleared by `sub_8014446` (from the emotion-swing bug, and from `sub_80E4954` when the counter is not 0). Effects: emotion 1 (`sub_8015B64`), mood changes blocked (`sub_8015BEC`), anger blocked (`sub_80143CE`), counter-hit Full Synchro blocked (`sub_801A200`). |
-| `unk_36` | `beast_over_exhausted` | bool | AIData+0x36: set when a Beast Over form reverts (`sub_80158CC` → `sub_8014466`, which also sets mood 0). The game stores 0x3C0, but nothing counts it down, so it is a flag. Effects: emotion 5 (`sub_8015B64`), mood changes and anger blocked, and 1 HP lost per tick, never the last one (`sub_8014498`). |
+| `unk_36` | `exhausted` | bool | AIData+0x36: set when a Beast Over form reverts (`sub_80158CC` → `sub_8014466`, which also sets mood 0). The game stores 0x3C0, but nothing counts it down, so it is a flag. Effects: emotion 5 (`sub_8015B64`), mood changes and anger blocked, and 1 HP lost per tick, never the last one (`sub_8014498`). Named `beast_over_exhausted` until rules-in-Luau S3, which made it the framework's and gave the setting to BN6's beast system (`form_reverted`). |
 | `unk_38` | `road_cooldown` | u16 | AIData+0x38: ticks before a road panel can start another slide. Set to 5 after a road slide (`sub_80166D0`, `sub_8016730`) and to 1 by `sub_80F650A`. Counted down and tested by `sub_801A36A`; tested by `sub_801A400`. |
 | `unk_3a` | deleted | u16 | AIData+0x3A: the emotion-swing bug's 60-tick counter (`sub_8013DA0`). Re-add as `swing_timer`. |
 | `unk_3c` | `bubble_base_z` | i16 (was u16) | AIData+0x3C: the height (Z16, whole pixels) a bubble bobs around and restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses record it every tick when not bubbled (`sub_8108F74`); nothing sets it for players. |
 | `unk_3e` | deleted | u16 | AIData+0x3E: no reader found. |
-| `unk_40` | `lockon_marker` | `Option<ObjectRef>` | AIData+0x40: the Beast Out lock-on marker (effect #0xF, spawned by `sub_80E1620`). `sub_80E164A` reads its panel; `sub_80E1654`/`sub_80E1662` freeze and unfreeze it; `sub_801562C` clears the pointer. |
+| `unk_40` | `target_marker` | `Option<ObjectRef>` | AIData+0x40: the Beast Out lock-on marker (effect #0xF, spawned by `sub_80E1620`), the shared kind `engine/target-marker` since rules-in-Luau S3 (`lockon_marker` before). `sub_80E164A` reads its panel; `sub_80E1654`/`sub_80E1662` freeze and unfreeze it; `sub_801562C` clears the pointer. |
 | `unk_4c` | `stun_ticks` | u32 | AIData+0x4C: consecutive ticks spent flinching or paralyzed (`sub_80143FC` via `sub_8014432`/`sub_8014424`). At 120, base MegaMan gets angry (`sub_80142DC`). Cleared when anger ends (`sub_80143A6`/`sub_80143B4`). |
 | `unk_50` | `reset_linked_object` | `Option<ObjectRef>` (was u32) | AIData+0x50: an object tied to the navi. The full status reset ends it (`sub_80144C0` → `sub_801390C` → `sub_80E5410`: state 8, first extra var cleared) and clears the pointer. **Uncertain:** no routine that stores an object here was found. |
 | `unk_54` | deleted | u32 | AIData+0x54: read by `sub_801B9BC`. |
@@ -99,7 +99,7 @@ Fields that already had names are unchanged. `drain_counter` (+0x0A) kept its na
 | `unk_17` | deleted | u8 | AIAttackVars+0x17: the step's destination y, as above. |
 | `unk_18` | deleted | u16 | AIAttackVars+0x18: a step's end lag in ticks, set when a step starts (`sub_80116AE`, `sub_80116D8`); the step copies it into its timer (+0x10) on arrival (`sub_80EB194`). The ported step keeps it as `movement::Vars::end_lag`. (Before the merge this pass had renamed it `move_lag`.) Navi AI uses the halfword too (about 120 routines). |
 | `unk_1a` | deleted | u8 | AIAttackVars+0x1A: navi AI scratch. Written by about 76 AI routines; read by `sub_80F59E8`, `sub_8101E24`...`sub_8101EE2`, `sub_810A080`, `sub_811239A`. |
-| `unk_1e` | `rush` | u16 | AIAttackVars+0x1E: the Beast Out attack wrapper's step. `sub_80EAD9C` dispatches on the byte at +0x1E; `sub_801011A` (`reset_attack_links`, from every `set_attack`) clears the halfword. Deleted by the pass; back as `attack.rush` (`beast_rush::Vars`: its phase and the bytes after it, +0x1E..+0x27) with the wrapper's port, the Beast Out rush. |
+| `unk_1e` | `rush` | u16 | AIAttackVars+0x1E: the Beast Out attack wrapper's step. `sub_80EAD9C` dispatches on the byte at +0x1E; `sub_801011A` (`reset_attack_links`, from every `set_attack`) clears the halfword. Deleted by the pass; back as `attack.rush` (`beast_rush::Vars`: its phase and the bytes after it, +0x1E..+0x27) with the wrapper's port, the Beast Out rush. Since rules-in-Luau S3 the rush is BN6's beast system's (content/bn6/rules/beast/rush.luau, the role `actions.wrapper`) and these bytes are the system's state (`rush_*`); the byte at +0x1D, `beast_lockon` then, is the framework's `attack.wrapped`. |
 | `move_arg` | deleted | u32 | AIAttackVars+0x2C: the absolute step's panel-trail argument (`sub_80116AE`/`sub_80116D8` store 0). After the merge nothing writes or reads it. |
 
 ## Object (`object/mod.rs`; the game's BattleObject)
