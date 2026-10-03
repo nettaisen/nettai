@@ -12,6 +12,29 @@
 
 local window = {}
 
+-- The cross system's setup (rules/cross/system.luau declares it): the
+-- player's game, the Crosses their save owns by Cross number, and nettai's
+-- Cross list (up to five forms of either game, in the window's order;
+-- docs/engine/custom-screen.md §4.1), none given: the version's own.
+export type Setup = {
+    version: "falzar" | "gregar",
+    crosses: { boolean },
+    cross_list: { FormDef? },
+}
+
+-- The setup's Cross list, if it gives one (its first entry set).
+local function cross_list(): { FormDef? }?
+    local setup = system.setup() :: Setup
+    return if setup.cross_list[1] ~= nil then setup.cross_list else nil
+end
+
+-- Event flag 0x163, a navi code received (`sub_800B144` sends its level
+-- only then): no Beast Out button, and the Cross window then needs the
+-- navi to be MegaMan (instead of battle flag 0x40 clear).
+local function sealed(side: number): boolean
+    return battle.navi_level(side) ~= nil
+end
+
 -- The cross system's state fields the window keeps (rules/cross/system.luau
 -- declares them).
 export type State = {
@@ -53,15 +76,15 @@ end
 -- Cross list's entry (of either game), else the version's Cross with that
 -- number. None when the content has no such Cross.
 local function cross_at(side: number, place: number): FormDef?
-    local player = custom.player(side)
-    if player.cross_list ~= nil then
-        return player.cross_list[place + 1]
+    local list = cross_list()
+    if list ~= nil then
+        return list[place + 1]
     end
     local forms = battle.navi(side).navi.forms
     if forms == nil then
         return nil
     end
-    local set = if player.version == "gregar" then forms.gregar else forms.falzar
+    local set = if (system.setup() :: Setup).version == "gregar" then forms.gregar else forms.falzar
     if set == nil then
         return nil
     end
@@ -71,22 +94,21 @@ end
 -- `Unlocks::owns_cross`: the save owns the Cross in place `place`, or the
 -- setup's list names one there.
 local function owns_cross(side: number, place: number): boolean
-    local player = custom.player(side)
-    if player.cross_list ~= nil then
-        return player.cross_list[place + 1] ~= nil
+    local list = cross_list()
+    if list ~= nil then
+        return list[place + 1] ~= nil
     end
-    return player.crosses[place + 1] == true
+    return (system.setup() :: Setup).crosses[place + 1]
 end
 
 -- `sub_8029F70` (battle modes 0, 0xA and 0xB): not in a random battle; with
 -- the link navi seal (event flag 0x163) only MegaMan, else not with
 -- per-player gauges (battle flag 0x40).
 local function crosses_allowed(side: number): boolean
-    local player = custom.player(side)
-    if player.random_battle then
+    if custom.player(side).random_battle then
         return false
     end
-    if player.beast_out_sealed then
+    if sealed(side) then
         return megaman(side)
     end
     return not battle.per_player_gauges()
@@ -109,7 +131,7 @@ end
 -- (that game's: their forms in Beast Out are that Beast's). Everything
 -- else offers.
 local function listed_cross_fits(side: number, form: FormDef): boolean
-    if custom.player(side).cross_list == nil then
+    if cross_list() == nil then
         return true
     end
     local current = battle.navi(side).form

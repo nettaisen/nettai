@@ -4,7 +4,7 @@
 -- meets while low; landed on a panel that isn't solid it is gone in a puff, else it bounces, shows its face (1 to
 -- 6, or 9's own) for 60 ticks, flashing white in the last 50, and bursts: a hit over the 3x3 around it worth its
 -- face times its damage. Its HP and the enemy's bodies and objects it touches blow it up first, as does the battle's
--- end. NumberMan's (../../chips/numbrman/navi) runs while dimmed, an attack at navis; the others' (the 0x080EE804,
+-- end. NumberMan's (chips/numbrman/navi) runs while dimmed, an attack at navis; the others' (the 0x080EE804,
 -- 0x080F1652 and 0x080FA66A throws) a body the other side can hit, standing still while dimmed.
 --
 -- Its markers over its target (./marker) show in the battle flag 0x40 mode only.
@@ -273,7 +273,7 @@ local function init(me: Object)
 end
 
 dice.kind = define.kind {
-    id = "bn5:dice",
+    id = "bn5:numbrman/dice",
     pool = "attack",
     state = {
         face = "u8",
