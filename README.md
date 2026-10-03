@@ -105,7 +105,8 @@ and edits them, checking them against the content as you go, and plays them:
 Its panes show only what the side's ruleset has (Crosses with the forms system, patch cards with the patch-cards
 system, the NaviCust with the navicust system): the arena; each side's ruleset, navi and game, with the stats the
 round starts the navi with (a link navi's level fills in the stats its save gives at that level, as does switching
-to a link navi; an edited stat says what the level gives); the folder (the chips the side's folder rules allow, with their pictures, searchable, a
+to a link navi; an edited stat says what the level gives; MegaMan's optional navi code level); the SP navi deletion
+times; Import from save (a BN6 .sav's game, unlocks, navi code level and SP times); the folder (the chips the side's folder rules allow, with their pictures, searchable, a
 code puts a chip in the selected entry; the Regular and tag chips; the copies and the Mega, Giga, Regular and tag
 limits live, as the game's folder rules count them); the Crosses; the patch cards (MB used of 80); the NaviCust (the
 board as the side's game draws it, with its frame and command line, edited with the mouse as Tango's is: drag a
