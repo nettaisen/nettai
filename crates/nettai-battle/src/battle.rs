@@ -545,6 +545,9 @@ pub struct SideState {
     /// FstGauge), counted down by `sub_80107D4`.
     pub slow_gauge_ticks: u16,
     pub fast_gauge_ticks: u16,
+    /// +0x12: the swing a variable sword makes for a navi no buttons drive
+    /// (BN5's computer navi draws it before VarSwrd or NeoVari, 0x0802A330).
+    pub sword_pick: u8,
     /// +0x44: the target the side tracks (an actor of the other side), which
     /// an obstacle leaving hands on (`sub_802EF74`).
     pub tracked: Option<ObjectRef>,
