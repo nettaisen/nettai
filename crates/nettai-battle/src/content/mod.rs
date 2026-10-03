@@ -329,10 +329,19 @@ impl Content {
         self.defs.form_by_key(key).unwrap_or_else(|| panic!("form {key:?} is not in the content"))
     }
 
-    /// The base form: what a navi that has not changed form is in (a link
-    /// navi always).
-    pub fn base_form(&self) -> FormHandle {
-        self.defs.base_form.unwrap_or_else(|| panic!("the content has no base form"))
+    /// Game `game`'s base form: what its navis are in before they change
+    /// form (a link navi always). A game that defines none of its own (BN5,
+    /// until its port defines MegaMan's) takes the first game's, by name,
+    /// that has one.
+    pub fn base_form_of(&self, game: RootId) -> FormHandle {
+        let own = self.defs.base_forms.get(game.index()).copied().flatten();
+        own.or_else(|| self.defs.base_forms.iter().flatten().next().copied())
+            .unwrap_or_else(|| panic!("the content has no base form"))
+    }
+
+    /// The base form of navi `navi`: its game's (its id's prefix).
+    pub fn base_form_for(&self, navi: NaviHandle) -> FormHandle {
+        self.base_form_of(self.defs.root_of(&self.defs.navi(navi).key).unwrap_or_default())
     }
 
     /// The identity of a navi in a form: the form's, or in the base form

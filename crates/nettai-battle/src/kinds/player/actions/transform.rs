@@ -126,7 +126,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).slide_state = 0;
         let current = stats(b, r).form;
         form::take_off_overlay(b, r, current);
-        let base = b.content.base_form();
+        let base = b.content.base_form_for(stats(b, r).navi);
         let sprite = b.content.form(base).sprite;
         let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
         let s = b.objects.sprite_mut(r);

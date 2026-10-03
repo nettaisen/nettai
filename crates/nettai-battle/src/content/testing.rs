@@ -217,9 +217,10 @@ pub fn link_navi_on(content: &Content) -> crate::setup::NaviStats {
 /// Stats with nothing of note but MegaMan in his base form, by `content`'s
 /// handles.
 pub fn megaman_on(content: &Content) -> crate::setup::NaviStats {
-    let base = content.base_form();
+    let navi = content.navi_by_key(MEGAMAN);
+    let base = content.base_form_for(navi);
     crate::setup::NaviStats {
-        navi: content.navi_by_key(MEGAMAN),
+        navi,
         form: base,
         starting_form: base,
         ..Default::default()
