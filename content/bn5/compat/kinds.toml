@@ -85,3 +85,4 @@
 "bn5:otenko/controller" = { pool = "effect", index = 0x5F, scratch_position = true }
 "bn5:otenko/statue" = { pool = "attack", index = 0xAD }
 "bn5:cactbal/ball" = { pool = "attack", index = 0x5E }
+"bn5:elcreel/reel" = { pool = "attack", index = 0xA4 }
