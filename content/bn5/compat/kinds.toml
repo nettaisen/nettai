@@ -73,3 +73,5 @@
 "bn6:guardian/strike" = { pool = "effect", index = 0x53, scratch_position = true }
 "bn5:barrier-visual" = { pool = "effect", index = 0x07 }
 "bn5:barriers/controller" = { pool = "effect", index = 0x2F, scratch_position = true }
+"bn5:blinder/controller" = { pool = "effect", index = 0x23, scratch_position = true }
+"engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
