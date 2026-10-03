@@ -1,13 +1,13 @@
 --!strict
 -- BN6's NaviCust board (docs/design/navicust.md): its 7x7 grid, the board on
 -- it by how far it has been expanded, its command line, and where a
--- neighbour counts. The rule section (./section.luau) gives the boards and
+-- neighbor counts. The rule section (./section.luau) gives the boards and
 -- the command line to the engine (a setup's programs must fit them); the
 -- navicust system (./system.luau) reads them all from here.
 
 local board = {}
 
--- The grid is this many cells a side; a program's shape too, centred on
+-- The grid is this many cells a side; a program's shape too, centered on
 -- its middle cell.
 board.SIZE = 7
 
@@ -49,10 +49,10 @@ board.boards = {
     },
 }
 
--- Where another program counts as a neighbour (`byte_813C640`, which
+-- Where another program counts as a neighbor (`byte_813C640`, which
 -- `sub_813BD90` reads through `sub_813C624`): `x` a cell where it doesn't.
 -- The grid's top row and its outer columns don't; its bottom row does.
-board.NEIGHBOURS = {
+board.NEIGHBORS = {
     "xxxxxxx",
     "x.....x",
     "x.....x",

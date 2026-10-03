@@ -7,7 +7,7 @@ of what is in them is BN6's rules written in Rust. This document is for deciding
 BN4 and the others. It covers:
 
 - §1, an inventory: every module of the engine, the content API, the Luau runtime, the pack formats, the frontend
-  and netplay, classed as generic, BN-series but parameterised, or BN6-only, with the evidence;
+  and netplay, classed as generic, BN-series but parameterized, or BN6-only, with the evidence;
 - §2, what differs in BN4 and BN5, and what is the same;
 - §3, the architecture options and a recommendation;
 - §4, a staged plan with rough sizes;
@@ -55,7 +55,7 @@ done".
   same size (0xD8 bytes) with the fields it reads at the same offsets (the panel at +0x12, the owner at +0x16, HP
   at +0x24, max HP at +0x26), the same 0x50-byte per-player chip hand, and the same 0x2C-byte chip record with its
   fields in the same order. So most of
-  the "parameterised" two thirds will carry over to BN5 and BN4 with different numbers, and some of it with
+  the "parameterized" two thirds will carry over to BN5 and BN4 with different numbers, and some of it with
   different branches. BN1 to BN3 are an earlier lineage and would need more than a ruleset.
 - **What BN5 and BN4 add is mostly at the custom screen and in transformations**: Soul Unison (both), Chaos
   Unison (BN5), dark chips offered in battle (BN4) or carried in the folder (BN5), and different emotions. A soul
@@ -66,7 +66,7 @@ done".
   roughly five to ten times today's 124 µs worst case per rendered frame, need a new kind of global script state,
   and re-port verified rules for no gain to BN6.
 - **Now, cheaply:** names, and moving BN6-only code behind a `bn6` boundary inside the crates without changing
-  behaviour (about one to two agent-days, then one full check). **Later:** a BN5-to-BN6 routine map, the ruleset
+  behavior (about one to two agent-days, then one full check). **Later:** a BN5-to-BN6 routine map, the ruleset
   seam, then the BN5 port (oracle, compat, extractor, rules, content), roughly half to two thirds of the BN6
   effort.
 - The decisions for the user are in §6.
@@ -78,7 +78,7 @@ done".
 | Class | Meaning | Test |
 |---|---|---|
 | **G**, generic | Would serve any Battle Network game as it is | Proven only for the BN4–BN6 lineage (§2.2); for BN1–BN3, probably with parameters |
-| **P**, BN-series, parameterised | Every game in the series has it, but the code holds BN6's numbers, tables, record layout or branches | BN4 and BN5 have the same thing with other values or a few other branches |
+| **P**, BN-series, parameterized | Every game in the series has it, but the code holds BN6's numbers, tables, record layout or branches | BN4 and BN5 have the same thing with other values or a few other branches |
 | **6**, BN6-only | No other game has it | Cross, Beast Out, Beast Over, BN6's custom-screen layout and buttons, the link navis' own chips, SP deletion times, Falzar and Gregar |
 
 Most modules mix classes; the tables give the split and what makes a module BN6's.
@@ -490,7 +490,7 @@ Cheap things that don't disturb the verified engine.
 - a `game = "bn6"` line in the pack manifest (content.toml) and in a content root manifest, read and checked by the
   loader, so a frontend can tell which ruleset a pack wants (a re-extract, or a reader that defaults it).
 
-**Stage 1: move BN6-only code behind a `bn6` boundary, without changing behaviour** (one to two agent-days, then
+**Stage 1: move BN6-only code behind a `bn6` boundary, without changing behavior** (one to two agent-days, then
 the full set once: build, tests, content check, both golden traces with rollback, the full lab):
 
 1. A `bn6` module in nettai-battle: `GameVersion`, `Unlocks`, berserk.rs, beast_rush.rs, cross_change.rs,
@@ -508,7 +508,7 @@ the full set once: build, tests, content check, both golden traces with rollback
 
 The risk is low (moves only) but the diff is wide, so it conflicts with branches in flight: do it in a quiet
 moment, with a script other branches can run, as for the rename. **Don't do yet:** the `Ruleset` trait, the crate
-split, generalising NaviStats or the navi framework's branches. Their shape should come from BN5's routines.
+split, generalizing NaviStats or the navi framework's branches. Their shape should come from BN5's routines.
 
 ### 4.2 When a second game is chosen, before writing its rules
 
@@ -541,7 +541,7 @@ split, generalising NaviStats or the navi framework's branches. Their shape shou
   framework routines the map shows differ. Perhaps 4,000 to 8,000 lines.
 - **content/bn5**: the chips, Program Advances, the twelve souls (forms with weapons and charged chips), navi
   chips, team navis, stages, rule sections, roles. BN6's is 82,000 lines; BN5's might be 50,000 to 70,000, much of
-  it adapted from BN6's modules where traces show the same behaviour.
+  it adapted from BN6's modules where traces show the same behavior.
 
 All told, roughly half to two thirds of the BN6 effort: the framework, the formats, the tools and the process
 exist.

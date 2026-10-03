@@ -4,7 +4,7 @@
 -- the swing, and an effect that draws the slash. Each chip composes its own
 -- (`slash.action { blade = ..., hit = ..., effect = ..., sound = ... }`,
 -- docs/design/content-model-v2.md §5.2): DblDream swings twice, CrosSwrd
--- adds a single-panel hit, the elemental swords colour the slash.
+-- adds a single-panel hit, the elemental swords color the slash.
 --
 -- A step sword (StepSwrd) first steps two panels ahead, if that panel is on
 -- the field with nobody on it, leaving afterimages, and steps back after
@@ -35,7 +35,7 @@ local START, SET_UP, SWING, STEP_BACK, RECOVER = 0x0, 0x4, 0x8, 0xC, 0x10
 -- 0x10000), with no body on it.
 local PANEL_EXISTS, BODIES = 0x10000, 0x0F800000
 
--- The afterimages' colour shader.
+-- The afterimages' color shader.
 local AFTERIMAGE_SHADER = 0xFFE0
 
 -- CrosSwrd's second hit: a slash on the panel ahead alone.

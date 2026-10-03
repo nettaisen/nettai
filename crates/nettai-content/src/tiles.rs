@@ -116,7 +116,7 @@ pub struct TileImage {
     pub layout: Layout,
     pub tiles: usize,
     /// Rows of the image's palette that are data: `[first, count]`. The
-    /// other rows only colour the image for viewing; edits there are
+    /// other rows only color the image for viewing; edits there are
     /// ignored.
     #[serde(default)]
     pub palettes: [usize; 2],
@@ -170,11 +170,11 @@ pub fn import_image(
         }
         let (rows, off_grid) = crate::image::palette_rows(&img.palette, first + count);
         if !off_grid.iter().all(|&i| i < first * 16) {
-            report.warn(&name, "some palette colours aren't GBA colours (5 bits a channel) and were rounded");
+            report.warn(&name, "some palette colors aren't GBA colors (5 bits a channel) and were rounded");
         }
         palettes = rows[first..].to_vec();
     } else if crate::image::palette_fingerprint(&img.palette) != doc.fingerprint {
-        report.note(&name, "this image's palette is only for viewing; colour edits here are ignored");
+        report.note(&name, "this image's palette is only for viewing; color edits here are ignored");
     }
     let (t, problems) = read(&img, doc.tiles, doc.layout);
     if problems.too_small {
@@ -185,7 +185,7 @@ pub fn import_image(
         report.warn(
             &name,
             format!(
-                "tiles {:?} use colours from more than one palette row; only each colour's place in its row is kept",
+                "tiles {:?} use colors from more than one palette row; only each color's place in its row is kept",
                 &problems.mixed_rows[..problems.mixed_rows.len().min(8)]
             ),
         );
@@ -222,9 +222,9 @@ pub fn parse_entry(s: &str) -> Result<nettai_assets::MapEntry, String> {
     Ok(nettai_assets::MapEntry { tile, hflip, vflip, palette })
 }
 
-/// A colour as text: `#rrggbb`, or `0xNNNN` (raw BGR555) when it has bits
+/// A color as text: `#rrggbb`, or `0xNNNN` (raw BGR555) when it has bits
 /// an RGB value can't hold.
-pub fn colour_text(c: u16) -> String {
+pub fn color_text(c: u16) -> String {
     if c & 0x8000 != 0 {
         return format!("{c:#06x}");
     }
@@ -232,29 +232,29 @@ pub fn colour_text(c: u16) -> String {
     format!("#{r:02x}{g:02x}{b:02x}")
 }
 
-pub fn parse_colour(s: &str) -> Result<(u16, bool), String> {
+pub fn parse_color(s: &str) -> Result<(u16, bool), String> {
     if let Some(hex) = s.strip_prefix("0x") {
-        return u16::from_str_radix(hex, 16).map(|v| (v, true)).map_err(|_| format!("{s:?} isn't a colour"));
+        return u16::from_str_radix(hex, 16).map(|v| (v, true)).map_err(|_| format!("{s:?} isn't a color"));
     }
-    let hex = s.strip_prefix('#').filter(|h| h.len() == 6).ok_or_else(|| format!("{s:?} isn't a #rrggbb colour"))?;
-    let v = u32::from_str_radix(hex, 16).map_err(|_| format!("{s:?} isn't a #rrggbb colour"))?;
+    let hex = s.strip_prefix('#').filter(|h| h.len() == 6).ok_or_else(|| format!("{s:?} isn't a #rrggbb color"))?;
+    let v = u32::from_str_radix(hex, 16).map_err(|_| format!("{s:?} isn't a #rrggbb color"))?;
     Ok(crate::image::bgr555([(v >> 16) as u8, (v >> 8) as u8, v as u8]))
 }
 
 pub fn palette_text(p: &nettai_assets::Palette) -> Vec<String> {
-    p.iter().map(|&c| colour_text(c)).collect()
+    p.iter().map(|&c| color_text(c)).collect()
 }
 
 pub fn parse_palette(v: &[String], report: &mut crate::report::Report, file: &str) -> nettai_assets::Palette {
     let mut p = [0u16; 16];
     if v.len() != 16 {
-        report.error(file, format!("a palette has 16 colours, not {}", v.len()));
+        report.error(file, format!("a palette has 16 colors, not {}", v.len()));
     }
     for (i, s) in v.iter().enumerate().take(16) {
-        match parse_colour(s) {
+        match parse_color(s) {
             Ok((c, exact)) => {
                 if !exact {
-                    report.warn(file, format!("{s} isn't a GBA colour (5 bits a channel); rounded"));
+                    report.warn(file, format!("{s} isn't a GBA color (5 bits a channel); rounded"));
                 }
                 p[i] = c;
             }
@@ -269,13 +269,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn map_entries_and_colours_as_text() {
+    fn map_entries_and_colors_as_text() {
         let e = nettai_assets::MapEntry { tile: 700, hflip: true, vflip: true, palette: 5 };
         assert_eq!(entry_text(&e), "700:5:hv");
         assert_eq!(parse_entry("700:5:hv"), Ok(e));
         assert!(parse_entry("7:16").is_err());
         for c in [0u16, 0x7FFF, 0x1234, 0x8001] {
-            assert_eq!(parse_colour(&colour_text(c)), Ok((c, true)));
+            assert_eq!(parse_color(&color_text(c)), Ok((c, true)));
         }
     }
 

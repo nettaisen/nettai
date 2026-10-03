@@ -174,7 +174,7 @@ pub struct Judge {
 }
 
 /// The screen fades a battle starts (`SetScreenFade`'s modes): which
-/// colours, which way the level steps (`off_8005FB4`) and where it stops
+/// colors, which way the level steps (`off_8005FB4`) and where it stops
 /// (`off_8006040`'s last byte, times 16).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FadeMode {
@@ -1973,7 +1973,7 @@ impl Battle {
 
     /// `sub_801DC7C(dx, dy)`: `console`'s HUD (or both) numbers `r`'s HP
     /// under it, `dx`, `dy` pixels from where it projects its position;
-    /// `damage`: the damage it took instead, uncentred (see
+    /// `damage`: the damage it took instead, uncentered (see
     /// [`HpNumber`](crate::hud::HpNumber)). It takes the first free place;
     /// it gets none when one before the first free place has it already or
     /// when all four are taken. (A place freed before the one that has it

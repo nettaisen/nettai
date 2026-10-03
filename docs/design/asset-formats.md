@@ -60,7 +60,7 @@ precisely what a format can't carry and how each case is handled.
   values from its sidecar; an edited one is read for what it says, and the
   importer points out what an editor probably damaged.
 - **Game-independent formats.** The format modules know GBA-shaped data
-  (4bpp tiles, 16-colour palettes, OAM parts, tile maps, M4A songs and
+  (4bpp tiles, 16-color palettes, OAM parts, tile maps, M4A songs and
   voicegroups) and no BN6 rule. Only the HUD layout and the field's panel
   tables are BN6-shaped. They can sit under the core that the content sits
   on (see `docs/design/core-content-boundary.md`).
@@ -121,7 +121,7 @@ layout (the hardware sprites, "parts", the frame is built from) and a duration
 with flag bits. BN6's battle sprites: 298 sprites, 3,176 animations, 8,329
 frames each with its own layout, 2,005 tile sets (1,147 of them shared by
 several frames), 56,033 tiles, 35,645 parts in the 12 hardware sizes, one
-palette set per sprite (16 rows of 16 colours, of which the object picks one
+palette set per sprite (16 rows of 16 colors, of which the object picks one
 with `sprite_setPalette`; a part's palette offset is added).
 
 ### 3.2 Parts, not flattened frames
@@ -142,14 +142,14 @@ as a layered view (§3.5) in which each part is a layer.
 is the part's tiles as stored (unflipped), `width x height` pixels. Each tile
 set starts a new row of the atlas, so a row reads as one pose's pieces.
 
-- The PNG palette (PLTE) is palette set 0: 16 rows of 16 colours, 256
-  entries. A pixel's value is `row * 16 + index`: `index` is the GBA colour
+- The PNG palette (PLTE) is palette set 0: 16 rows of 16 colors, 256
+  entries. A pixel's value is `row * 16 + index`: `index` is the GBA color
   index (0 = transparent) and `row` the palette row the part is first drawn
-  with, so the atlas shows the right colours. Only `index` is data; the
+  with, so the atlas shows the right colors. Only `index` is data; the
   importer takes each pixel modulo 16. Entry 0 of every row is marked
   transparent (tRNS).
-- Colours are BGR555 widened as `v << 3 | v >> 2`, the renderer's own
-  conversion, so every GBA colour has exactly one RGB value and back.
+- Colors are BGR555 widened as `v << 3 | v >> 2`, the renderer's own
+  conversion, so every GBA color has exactly one RGB value and back.
 
 **`sprite.json`**:
 
@@ -186,9 +186,9 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
 - `palette_fingerprint`: hashes of the atlas palette as exported, in order and
   sorted, to tell a re-sorted or truncated palette from an edited one.
 - `palette_rows` counts the rows the atlas palette holds: an indexed image
-  has 256 colours, 16 rows. A palette set with more (MegaMan's has 43: the
+  has 256 colors, 16 rows. A palette set with more (MegaMan's has 43: the
   palettes his Crosses use come after his own) lists the rest in
-  `more_palette_rows`, each row 16 BGR555 colours in hex. An object picks a
+  `more_palette_rows`, each row 16 BGR555 colors in hex. An object picks a
   row by number (`palette`), so the order is the data.
 - `palette_high_bits`: palette entries whose BGR555 value has bit 15 set.
   The hardware ignores that bit and a PNG can't hold it. BN6 has 16,020 such
@@ -233,8 +233,8 @@ battle data's loader puts it in the engine's `Content::animations`.
 
 ### 3.4 Editing
 
-- **Pixels**: open `atlas.png` in any editor that keeps indexed colour. Paint
-  with the colours of the part's own palette row; only the index within a row
+- **Pixels**: open `atlas.png` in any editor that keeps indexed color. Paint
+  with the colors of the part's own palette row; only the index within a row
   counts.
 - **Palettes and palette swaps**: edit the PNG's palette. Row n is what
   `sprite_setPalette(n)` shows.
@@ -267,7 +267,7 @@ show them without flattening:
   shares them, as it would on the hardware. Shared tiles that can't be linked
   (a different shape or place) must be edited the same way everywhere; the
   importer refuses diverging copies and says how many pixels differ.
-- **Palette**: indexed colour mode, the 256-colour palette = palette set 0.
+- **Palette**: indexed color mode, the 256-color palette = palette set 0.
 - The view edits pixels, palettes, durations and loop flags. Part geometry
   stays in `sprite.json`: pixels painted outside a part's rectangle are
   reported and dropped, and adding or removing frames is refused (change
@@ -291,15 +291,15 @@ at place n (a grid 16 tiles wide; tiles below the first loaded one are blank,
 and anything drawn there is reported as ignored), the PNG palette's rows being
 the palettes. A `TileImage` entry in the JSON names the file, the layout, the
 tile count, which palette rows are data (`palettes: [first, count]`; other rows
-only colour the image for viewing) and the palette fingerprint.
+only color the image for viewing) and the palette fingerprint.
 
 **Field** (`graphics/field/`): `tiles.png` with palette rows 1..=8 the panel
 palettes (row numbers = background palette slots, so a map entry's palette is
 the row it shows in). `field.json` holds the 78 panel blocks (5x3 map
 entries by `6 * type + 3 * owner + row - 1`), the two front edges and
 highlights, and the cycling panel palettes (slot, start timer, frames of
-`ticks` and 16 colours). A map entry is text, `tile:palette` with `:h`,
-`:v` or `:hv` when flipped; a colour is `#rrggbb`, or `0xNNNN` (raw BGR555)
+`ticks` and 16 colors). A map entry is text, `tile:palette` with `:h`,
+`:v` or `:hv` when flipped; a color is `#rrggbb`, or `0xNNNN` (raw BGR555)
 when it has bits RGB can't hold.
 
 **Backgrounds** (`graphics/backgrounds/NAME/`): `tiles.png`; `map.tmj`, a Tiled
@@ -308,7 +308,7 @@ JSON map (orthogonal, 8x8 tiles, one tile layer, the tileset being
 any cell's isn't 0, as the layer's `palettes` property, a hex digit a cell);
 `background.json` (whether it has its own palette, scroll speed in 1/16 pixel,
 animations). A tile animation's frames are `anim-K.png`, one block of tiles a
-frame; a palette animation's frames are colour lists. Tiled's rotation bit is
+frame; a palette animation's frames are color lists. Tiled's rotation bit is
 refused (the GBA only flips), and so are infinite maps and compressed layers,
 each with the setting to change.
 
@@ -316,7 +316,7 @@ each with the setting to change.
 it: 8x16 glyphs for the fonts and digits, 2x2 chip icons, 4x2 mugshots, banner
 glyph rows. Each palette belongs to one image (the HP box palettes to
 `layer.png`, each mugshot's to its own file, and so on); images drawn with
-another's palette show it for viewing, and colour edits there are ignored with
+another's palette show it for viewing, and color edits there are ignored with
 a note. `hud.json` holds the map entries, what each glyph of the font draws
 (`font_chars`: the frontend spells a chip's name, which its definition
 gives, with them), each chip icon's chip (its key in the content), the link
@@ -326,7 +326,7 @@ layouts and the form emotions.
 
 The HUD's format version 6 adds the chatbox's graphics. `dialogue-font.png`
 is the dialogue font: 16x12 cells, 32 a row, palette index 0 clear (its
-palette only colours it for viewing: the chatbox draws it with the text's);
+palette only colors it for viewing: the chatbox draws it with the text's);
 `hud.json`'s `dialogue_font` gives each glyph's advance and what it draws
 (the 8x16 font's characters for the one-byte glyphs, then the two-byte
 codes' kana and kanji, `compat/text.toml`'s `dialogue_glyphs`), so a string
@@ -355,15 +355,15 @@ that has it.
 `window.png` holds the window frame's tiles with the window's four palettes
 (by the chip under the cursor's class: standard, Mega, Giga, dark), each
 chip's picture (`chip-art/CHIP.png`, 7x6 tiles) its own palette,
-`elements.png` a palette row per element whose colours 10-15 are the ones
+`elements.png` a palette row per element whose colors 10-15 are the ones
 the element brings, `emblems.png` the emblems' palettes, `cross-cursor.png`
 the Cross window's cursor (its corner and its edge, two frames) with sprite
 palette 14. `custom.json` holds the window's maps (15x20, without and with
 the Cross tab) and the Cross window's (three opening steps, then the window
 with one to five Crosses), their patch lists (a block of consecutive tile
 numbers at a cell, row or column first, in a palette), the three palettes
-no image owns as colour lists, which emblem a navi shows, and the Program
-Advance animation's three sets of name colours; and each chip's picture by
+no image owns as color lists, which emblem a navi shows, and the Program
+Advance animation's three sets of name colors; and each chip's picture by
 its chip's key, with the `region` and `version` of a picture from another
 ROM (below). The frontend composes the tile numbers the maps name from
 these blocks, as the original's VRAM holds them.
@@ -661,8 +661,8 @@ None were hit by BN6's data. What the formats can't carry, precisely:
 **Graphics**
 
 - A PNG can't hold BGR555 bit 15: carried in `palette_high_bits`.
-- Colours edited to values off the 5-bit grid are rounded (warning).
-- A pixel painted with a colour from another palette row keeps only its index
+- Colors edited to values off the 5-bit grid are rounded (warning).
+- A pixel painted with a color from another palette row keeps only its index
   within the row; its tile then uses the part's row (warning when a tile mixes
   rows).
 - Two atlas regions, or two Aseprite cels, covering the same tile must agree;
@@ -747,12 +747,12 @@ What breaks with an ordinary tool, and what the importer says:
 
 | Damage | Detected by | Message |
 |---|---|---|
-| palette re-sorted | palette fingerprint (same colours, other order) | error: "re-sorted ... undo the save or turn off palette sorting" |
+| palette re-sorted | palette fingerprint (same colors, other order) | error: "re-sorted ... undo the save or turn off palette sorting" |
 | unused palette entries dropped | fewer entries than the image needs | error: "dropped entries ... re-export" |
-| saved as RGB | PNG colour type | error: "re-save it in indexed mode with the original palette" |
-| colours off the GBA grid | per entry | warning, rounded |
-| colours from another palette row | per tile | warning |
-| a sprite view converted to RGB | Aseprite colour depth | error: "convert it back (Sprite > Color Mode > Indexed)" |
+| saved as RGB | PNG color type | error: "re-save it in indexed mode with the original palette" |
+| colors off the GBA grid | per entry | warning, rounded |
+| colors from another palette row | per tile | warning |
+| a sprite view converted to RGB | Aseprite color depth | error: "convert it back (Sprite > Color Mode > Indexed)" |
 | a Tiled map rotated, infinite, compressed | the map's fields | error naming the setting |
 | MIDI off the M4A grid | per event | error with bar.beat.tick positions |
 | loop markers lost | `[exported] loop` | warning: "the song now plays once and stops" |
