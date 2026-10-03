@@ -259,6 +259,19 @@ impl Battle {
         crate::behavior::call_hook(self, d.update, call)
     }
 
+    /// Side `side`'s systems' custom chip hook `hook(side, chip)`, each in
+    /// order.
+    pub(crate) fn systems_call_custom_chip(&mut self, side: u8, hook: SystemHook, chip: ChipHandle) {
+        let Some(r) = self.rules[side as usize & 1].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(hook) {
+                let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: Some(chip), weapon: None };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
     /// Side `side`'s systems' custom hook `hook(side)`, each in order.
     pub(crate) fn systems_call_custom(&mut self, side: u8, hook: SystemHook) {
         let Some(r) = self.rules[side as usize & 1].ruleset else { return };

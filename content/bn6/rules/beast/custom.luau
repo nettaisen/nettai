@@ -114,6 +114,57 @@ custom_beast.button = {
     end,
 } :: ButtonSpec
 
+-- The BeastOut chip picked from a chip slot (`sub_802A00C`): its
+-- animation (`sub_80275EC`).
+function custom_beast.chip_picked(side: number, chip: Chip)
+    if chip == beast_out_chip then
+        custom.open_window(side, "beast_out_chip")
+    end
+end
+
+-- `sub_802A0EC`: taking the BeastOut chip back takes its face back.
+function custom_beast.chip_taken_back(side: number, chip: Chip)
+    if chip == beast_out_chip then
+        custom.set_face(side, nil)
+        custom.play(side, "back")
+        custom.play(side, "cancel")
+    end
+end
+
+-- `sub_80275EC`: the BeastOut chip picked, 85 ticks: like Beast Out's, 16
+-- ticks later: its fade out (0x64) starts at tick 17, with sounds 0x193 and
+-- 0xBC; 50 ticks on (tick 68) the chip moves to the front of the selection
+-- (the Beast Out button's state and the form stay as they are: the hand's
+-- chip is the Beast Out), and the fade back in (0x60) ends it.
+custom_beast.chip_window = {
+    update = function(side: number): boolean
+        local tick = custom.window_tick(side)
+        if tick == 1 then
+            -- sub_8027618
+            custom.set_frame(side, 0)
+        elseif (tick >= 2 and tick <= 16) or (tick >= 18 and tick <= 67) then
+            -- sub_8027624
+            custom.set_frame(side, custom.frame(side) + 1)
+        elseif tick == 17 then
+            -- sub_8027624's last tick: this console's camera shakes as for
+            -- Beast Out, and the screen fades.
+            custom.shake(side, SHAKE_MAGNITUDE, SHAKE_TICKS)
+            custom.set_frame(side, 0)
+            custom.fade(side, "beast_out", FADE_SPEED)
+            custom.play(side, "beast_out_" .. beast_game(side))
+            custom.play(side, "beast_out_flash")
+        elseif tick == 68 then
+            -- sub_8027672
+            custom.pick_first(side, nil)
+            custom.set_face(side, beast_form(side, false))
+            custom.update_availability(side)
+            custom.fade(side, "beast_out_back", FADE_SPEED)
+        end
+        custom.draw_emblem(side, 0)
+        return tick < 85
+    end,
+}
+
 -- `sub_802770C`: Beast Out picked, 70 ticks.
 custom_beast.window = {
     update = function(side: number): boolean

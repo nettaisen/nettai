@@ -181,7 +181,6 @@ pub fn hud_jitter(b: &Battle) -> (i32, i32) {
     let shakes = matches!(
         s.phase,
         Phase::Window { .. }
-            | Phase::BeastOutChipChosen { .. }
             | Phase::CrossWindowOpening { .. }
             | Phase::CrossWindow { .. }
             | Phase::CrossWindowClosing { .. }
