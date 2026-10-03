@@ -1145,6 +1145,12 @@ with the new hooks, and its sections keep BN6's numbers by default.
 - **The BN5 replays** (1,380 recordings): 252 replay and 243 match every frame, with 139,499 battle frames
   matched (24 and 79,701 before). The rest: DrkRecov (4), whose dark chip cost is unread, and the souls (5),
   which aren't ported.
+- **Gates** (on main a157d2ab, the fast gates): the build of every target without warnings, 479 tests, the
+  content check (888 modules), gen-content check 0 errors (it decodes BN6's slide speed, `sub_8016730`'s
+  literals, the drag's the same), `gate-against.sh full` passed in 537 s (machgun 1074/1331 and soundmod
+  21962/14933/20436 with rollback at every latency, the 189 legacy rounds, 2,746,946 frames, 0 sound rounds
+  differing; the lab 6548, 6545 matched and 3 to a known deviation, 5,775,231 frames, 0 sound rounds differing),
+  the audit 49 traces with 0 problems.
 
 ### The NaviCust and the folder rules (2026-10-02, branch match-editor)
 
