@@ -29,15 +29,34 @@ names the content gives them. Extract it once:
 
     cargo run -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6
 
-(`data/content/` is gitignored.) The frontend loads the pack at start-up
-from `--pack <dir>`, else `$BN6_PACK`, else `data/content/bn6`, straight
-from its files: the content with the pack's asset index into the engine's
-`Content`, the graphics through nettai-content's importer, and, when a window
-opens, the sound. `NETTAI_LOAD_TIMES=1` prints how long each part took.
-`--pack` again loads another game's pack beside it (one pack a game): each
-sprite, banner, mugshot, background and sound comes from its own pack, a
-chip's icon and picture from its game's, the custom screen from the local
-player's game's (docs/design/rules-in-luau.md, As built R3b).
+(`data/content/` is gitignored.) The frontend (and the editor) loads at
+start-up **every pack in the packs directory**, `$NETTAI_PACKS`, else
+`data/content`: each folder with a pack manifest, by the game the manifest
+says (`nettai_content::pack::find`); `bn5-extract content` writes BN5's into
+`data/content/bn5` beside it. `--pack <dir>` names a pack elsewhere, in
+place of the found one of its game, and can be given again for another
+game's; `$BN6_PACK`, the BN6 pack's directory, still works the same way
+(deprecated: the verification's tools set it). Two packs of one game in the
+directory are an error. Each pack loads straight from its files: its asset
+index into the engine's `Content`, the graphics through nettai-content's
+importer, and, when a window opens, the sound. `NETTAI_LOAD_TIMES=1` prints
+how long each part took. Each sprite, banner, mugshot, background and sound
+comes from its own pack, a chip's icon and picture from its game's, the
+custom screen from the local player's game's (docs/design/rules-in-luau.md,
+As built R3b).
+
+The content roots go with the packs (`nettai_content::pack::load_found`):
+`--content <dir>` loads that root and the roots it requires (so does
+`$BN6_CONTENT`); without it, BN6's root (this repository's content/bn6) and
+every other root beside it (content/bn5, ...), each when its game's pack is
+found and the content loads with it. A root that doesn't is left out, and
+the frontend says why at start-up ("the content root bn5 is left out: ...":
+no pack of its game, with the command that writes one, or the define
+phase's error), so BN6's play never fails for another game's root. A root
+the content must load whose game's pack isn't found is an error naming the
+extract command. (Netplay's handshake compares the content, the packs'
+asset names among it: two players play with the same packs, or give
+`--content content/bn6` and `--pack` alike.)
 
 The graphics load into the types of the `nettai-assets` crate, decoded
 (tiles as palette indices, colours as BGR555):
@@ -89,13 +108,14 @@ are the link navis' faces, with their Full Synchro palettes.
     cargo run -p nettai-frontend -- --match match.toml           # play a match file (§6)
     cargo run -p nettai-frontend -- --play --seed 42 --save-match match.toml   # keep the draw
     cargo run -p nettai-frontend -- <trace.jsonl> --headless 150,300,600 --out <dir>
-    cargo run -p nettai-frontend -- <trace.jsonl> --audit      # what is missing?
-    cargo run -p nettai-frontend -- --play --pack <dir>        # another pack
+    cargo run -p nettai-frontend -- --audit-content            # what is missing?
+    cargo run -p nettai-frontend -- --audit <trace.jsonl>...   # and in these traces?
+    cargo run -p nettai-frontend -- --play --pack <dir>        # a pack elsewhere
     cargo run -p nettai-frontend -- --play --host 7777         # netplay: host...
     cargo run -p nettai-frontend -- --play --join 192.0.2.10:7777   # ...and join
 
-Options: `--pack <dir>` names the content pack and `--content <dir>` the
-battle content (see above), `--mute` turns the sound off, `--round N`
+Options: `--pack <dir>` names a content pack elsewhere and `--content <dir>`
+the battle content (see above), `--mute` turns the sound off, `--round N`
 starts a trace at round N (later rounds follow when a round's input runs
 out), `--scale N` sets the window's first size (default 4 times 240x160;
 the window can be resized, and the picture keeps whole pixels, centred on
@@ -238,13 +258,42 @@ something in front covers, the squash, the fades). In live play
 window (a direction acts on a hold's second tick), chooses its first Cross
 and presses OK.
 
-**Audit mode** (`--audit`) draws every frame of the trace and plays every
-sound cue into nothing, without a window, and lists what they named that
-the pack or the content doesn't have, each with the frames it happened on:
-a sprite that isn't in the pack, an animation or palette the sprite doesn't
-have, a chip without an icon or with a name the font can't spell, a banner
-without glyphs, a text line, a song. It exits 1 if there was any. It is the
-quick check after a content or loader change: nothing is silently skipped.
+**The audits** list what the drawing code and the audio look up that the
+packs or the content don't have: a sprite that isn't in its pack, an
+animation or palette the sprite doesn't have, a chip without an icon or a
+picture or with a name the font can't spell, a face, an emblem, a banner
+without glyphs, a telop's banner that is no telop's, a text line, a song.
+Each exits 1 if there was any; drawing itself skips what it can't find,
+so nothing else notices. Every such lookup goes through one module
+(`lookups.rs`), which notes it (`audit::Lookup`) and checks it once a run,
+so both audits make the lookups a frame makes, through the same functions:
+
+- `--audit-content` (`content_audit.rs`) makes every lookup for everything
+  the content defines, in every language it has strings in: every chip's
+  icon, picture, name, Program Advance name and code, its window's class,
+  element and code pictures, its description in the dialogue font; every
+  navi's face, emblem on either game's console, name and no-running message
+  with its portrait; every form's face for each emotion, every Cross's name
+  and description; and every asset of the loaded packs (each sprite with
+  every animation, its frames and their own palettes; each song, banner,
+  background, mugshot), the HUD's text lines, the field's panel blocks, the
+  custom screen, the chatbox. It takes a second or two, and a lookup by the
+  wrong key fails it for every chip, not only for those a trace shows (its
+  test: `a_lookup_by_the_wrong_key_fails_for_every_chip`). A string a
+  language's table lacks shows in the content's own, by design: it is said,
+  not counted.
+- `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
+  default one a core), and makes the lookups their frames and sound cues
+  make, without drawing: no stage, no composing, no sound synthesis
+  (`Renderer::set_lookups_only`). It catches what the content can't say
+  beforehand: the palette an object picks, a telop of a chip the engine
+  wasn't told. Each problem is listed with its trace and the frame it was
+  first seen on. `--draw` draws every frame and plays every cue into nothing
+  besides (the audit as it was before: some ten times slower). `--lookups
+  FILE` writes each trace's distinct lookups, by name (and with
+  `--audit-content`, the static audit's), for the verification's trace
+  cover: the few golden traces that, with the static audit, make every
+  lookup all of them make.
 
 **Sound**: the window plays each tick's sound cues through nettai-audio, with
 the pack's sound, unless `--mute`; headless rendering never plays sound. In

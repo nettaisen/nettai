@@ -114,9 +114,13 @@ pub enum Msg {
 
 /// How the editor was started.
 pub struct Options {
-    pub content_root: PathBuf,
-    /// The packs the content loads with (each game's), which Play hands
-    /// the frontend too.
+    /// The content root given (`--content`), which Play hands the frontend
+    /// too; else the roots are found as the frontend finds them.
+    pub content: Option<PathBuf>,
+    /// The roots loaded, the home first (their strings tables).
+    pub roots: Vec<PathBuf>,
+    /// The packs given by directory (`--pack`), each in place of the found
+    /// one of its game, which Play hands the frontend too.
     pub packs: Vec<PathBuf>,
     pub frontend: Option<PathBuf>,
     pub file: Option<PathBuf>,
@@ -214,7 +218,7 @@ impl Editor {
         self.lang = lang;
         self.names.other = match lang {
             Lang::En => None,
-            Lang::Ja => match nettai_content::locale::load_all(&self.options.content_root, lang.code()) {
+            Lang::Ja => match nettai_content::locale::load_many(&self.options.roots, lang.code()) {
                 Ok(Some(s)) => Some(s),
                 _ => {
                     self.status = format!("the content has no {} names", lang.code());
@@ -288,7 +292,10 @@ impl Editor {
         };
         let program = self.frontend();
         let mut command = std::process::Command::new(&program);
-        command.arg("--match").arg(&path).arg("--content").arg(&self.options.content_root);
+        command.arg("--match").arg(&path);
+        if let Some(root) = &self.options.content {
+            command.arg("--content").arg(root);
+        }
         for pack in &self.options.packs {
             command.arg("--pack").arg(pack);
         }
