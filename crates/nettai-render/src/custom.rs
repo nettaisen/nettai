@@ -22,7 +22,7 @@ use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipFlags, DamageFormula};
 use nettai_battle::custom::screen::{CROSS_PUT_ON_TICK, HiddenStage, OK_SLOT, SPECIAL_SLOT};
-use nettai_battle::custom::{FolderChip, GameVersion, Library, Phase, Screen, Side, SlotKind, SlotState};
+use nettai_battle::custom::{ButtonCell, FolderChip, GameVersion, Library, Phase, Screen, Side, SlotKind, SlotState};
 use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
@@ -319,6 +319,29 @@ struct View<'a> {
     packs: crate::packs::Packs<'a>,
     /// The console's region ("us", "jp": `Renderer::console_region`).
     region: &'a str,
+}
+
+/// A system's button as the frontend draws it (docs/design/rules-in-luau.md
+/// §4.8: BN6's, by name): its details picture, its tiles (`count` a state,
+/// selectable then unavailable and picked), and the cursor over it.
+struct ButtonLook<'a> {
+    details: &'a Picture,
+    tiles: &'a Tiles,
+    count: usize,
+    cursor: (i32, i32, &'static CursorShape),
+}
+
+impl<'a> View<'a> {
+    /// The look of button `button`: BN6's ChpShufl re-deal and DustCross
+    /// scrap. A name the frontend doesn't know is drawn as nothing.
+    fn button_look(&self, button: nettai_battle::content::ButtonHandle) -> Option<ButtonLook<'a>> {
+        let a = self.assets;
+        match self.b.content.defs.button(button).name.as_str() {
+            "redeal" => Some(ButtonLook { details: &a.pictures.redeal, tiles: &a.redeal_buttons, count: 12, cursor: (0x38, 0x80, &BUTTON_CURSOR) }),
+            "scrap" => Some(ButtonLook { details: &a.pictures.scrap, tiles: &a.scrap_buttons, count: 12, cursor: (0x38, 0x80, &BUTTON_CURSOR) }),
+            _ => None,
+        }
+    }
 }
 
 impl View<'_> {
@@ -645,8 +668,11 @@ impl Window {
                 let p = Picture { palette: beast.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..beast.beast_out.clone() };
                 blank_details(self, &p);
             }
-            SlotKind::Redeal { .. } => blank_details(self, &a.pictures.redeal),
-            SlotKind::Scrap { .. } => blank_details(self, &a.pictures.scrap),
+            SlotKind::Button { button, .. } => {
+                if let Some(look) = v.button_look(button) {
+                    blank_details(self, look.details);
+                }
+            }
             // (BN5's soul button: its pictures aren't in the packs yet.)
             SlotKind::Soul | SlotKind::Empty | SlotKind::Hidden => {}
         }
@@ -748,15 +774,13 @@ impl Window {
                     at += 6;
                 }
                 // (BN5's soul button: its tiles aren't in the packs yet.)
-                SlotKind::Ok | SlotKind::Soul | SlotKind::Redeal { right_half: true } | SlotKind::Scrap { right_half: true } => {}
+                SlotKind::Ok | SlotKind::Soul | SlotKind::Button { cell: ButtonCell::Right, .. } => {}
                 SlotKind::BeastOut => self.tiles.put_part(at, &v.beast.beast_buttons, 8 * (state != 0) as usize, 8),
-                SlotKind::Redeal { right_half: false } => {
-                    self.tiles.put_part(at, &a.redeal_buttons, 12 * state, 12);
-                    at += 12;
-                }
-                SlotKind::Scrap { right_half: false } => {
-                    self.tiles.put_part(at, &a.scrap_buttons, 12 * state, 12);
-                    at += 12;
+                SlotKind::Button { button, .. } => {
+                    if let Some(look) = v.button_look(button) {
+                        self.tiles.put_part(at, look.tiles, look.count * state, look.count);
+                        at += look.count as u16;
+                    }
                 }
                 SlotKind::Empty => {
                     self.tiles.put(at, &a.empty_icon);
@@ -1004,7 +1028,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
         }
         SlotKind::Ok => (0x58 + 3, 0x70 - 2, &OK_CURSOR),
         SlotKind::BeastOut | SlotKind::Soul => (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR),
-        SlotKind::Redeal { .. } | SlotKind::Scrap { .. } => (0x38, 0x80, &BUTTON_CURSOR),
+        SlotKind::Button { button, .. } => v.button_look(button).map_or((0x38, 0x80, &BUTTON_CURSOR), |l| l.cursor),
     };
     let palette = v.emblem_palette();
     // Queued last corner first (`sub_8028820`).

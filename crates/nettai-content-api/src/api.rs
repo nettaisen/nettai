@@ -1190,6 +1190,17 @@ pub trait CoreApi {
     /// it runs, idle asks the side's systems' `takeover` (BN6's Cross
     /// special: SideState +0x54 and +0x30).
     fn take_over(&mut self, side: u8, ticks: u16);
+    /// The side's custom screen, in a system's custom hook (its button's
+    /// functions; docs/design/rules-in-luau.md §4.4): the refusal sound;
+    /// the shared machinery for the button under the cursor (the picked
+    /// chips scrapped: BN6's DustCross; the chips not picked dealt again:
+    /// BN6's ChpShufl); whether the last pick is a chip; the state of the
+    /// button under the cursor ("selectable", "unavailable", "selected").
+    fn custom_refuse(&mut self, side: u8) -> ApiResult<()>;
+    fn custom_sacrifice(&mut self, side: u8) -> ApiResult<()>;
+    fn custom_redeal(&mut self, side: u8) -> ApiResult<()>;
+    fn custom_last_pick_is_chip(&self, side: u8) -> ApiResult<bool>;
+    fn custom_cursor_state(&self, side: u8) -> ApiResult<&'static str>;
     fn end_takeover(&mut self, side: u8);
     /// Its ticks left.
     fn takeover_ticks(&self, side: u8) -> u16;

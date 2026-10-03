@@ -893,10 +893,14 @@ pub struct ScreenCheck {
 /// simulated: each screen reads its navi's stats from the trace, and the
 /// emotions the screen asks about from them (`screen_emotion`). Damage
 /// from a formula is not checked (it needs the battle).
-pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -> Vec<ScreenCheck> {
+pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Compat) -> Vec<ScreenCheck> {
     let ids = Ids::new(content, compat);
     let frames: Vec<&Frame> = round.battle_frames().collect();
     let setup = round.round_setup(content, compat);
+    // A battle for the screens' extras (the sides' systems' `custom`
+    // hooks): their state through the round, and the stats and turn each
+    // screen reads, set from the trace as it opens.
+    let mut battle = Battle::new(setup.clone(), content.clone());
     let mut sides: [Option<Side>; 2] =
         std::array::from_fn(|p| round.folder_known(p as u8).then(|| Side::new(&setup.players[p])));
     // Each console's RNG as far as the screens alone go: its draws outside
@@ -929,7 +933,7 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
                 .any(|e| content.form(navi_stats(&e.navi_stats[p], &ids).form).kind.is_beast_over());
             let emotion = screen_emotion(&stats, content, beast_over_before);
             Context {
-                library: content,
+                library: &**content,
                 stats,
                 emotion,
                 turn: unhex(&f.bs)[7],
@@ -950,7 +954,10 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
         if custom && f.state[3] == 1 && prev_init == Some(0) {
             for (p, side) in sides.iter_mut().enumerate() {
                 if let Some(side) = side {
-                    side.open(&context(p), &mut consoles[p]);
+                    let ctx = context(p);
+                    battle.stats[p] = ctx.stats;
+                    battle.round.turn = ctx.turn;
+                    side.open_with(&ctx, &mut consoles[p], &mut battle.custom_extras(p as u8));
                 }
             }
             open = Some((f.frame, [None; 2], [None; 2]));
@@ -961,10 +968,14 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
             for (p, side) in sides.iter_mut().enumerate() {
                 let Some(side) = side else { continue };
                 let was_open = side.in_custom;
-                let request = side.tick(&context(p), &mut consoles[p], |id| {
+                let ctx = context(p);
+                battle.stats[p] = ctx.stats;
+                battle.round.turn = ctx.turn;
+                let damage = |id| {
                     let d = content.chip(id).damage;
                     if d < 1000 { d } else { 0 }
-                });
+                };
+                let request = side.tick_with(&ctx, &mut consoles[p], damage, &mut battle.custom_extras(p as u8));
                 if request == Some(Request::Confirm) {
                     confirmed[p] = Some(f.frame);
                 }
