@@ -987,7 +987,14 @@ impl Window {
                     self.tiles.put_part(at + 4, &a.slot_codes, 2 * EMPTY_SLOT_CODE as usize, 2);
                     at += 6;
                 }
-                SlotKind::Hidden if s as u8 == SPECIAL_SLOT => self.tiles.put_part(at, &v.beast.beast_buttons, 24, 8),
+                // (BN6's Beast Out button's hidden look; a game without
+                // the button, BN5, leaves its 3x2 the window's fill, as a
+                // hidden slot's: its handler for no special button,
+                // 0x080240D8, copies nothing in.)
+                SlotKind::Hidden if s as u8 == SPECIAL_SLOT && !v.beast.beast_buttons.is_empty() => {
+                    self.tiles.put_part(at, &v.beast.beast_buttons, 24, 8)
+                }
+                SlotKind::Hidden if s as u8 == SPECIAL_SLOT => self.tiles.fill(at, 6, self.layout.slot_blank),
                 SlotKind::Hidden => {
                     self.tiles.fill(at, 6, self.layout.slot_blank);
                     at += 6;
