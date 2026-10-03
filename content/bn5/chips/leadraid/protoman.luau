@@ -233,7 +233,12 @@ local function leave(me: Object)
         me.anim = 4
     end
     if countdown(me, 4) then
-        navi_chips.leave(me, (me.state :: State).controller)
+        -- (The lifecycle byte alone, as the game stores it.)
+        local controller = (me.state :: State).controller
+        if controller then
+            navi_chip.navi_left(controller)
+        end
+        me.lifecycle = "destroy"
     end
 end
 
