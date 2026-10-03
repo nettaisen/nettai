@@ -337,3 +337,34 @@ export type DarkBall = {
     slant: number,
     homing: DarkBallHoming,
 }
+
+-- A NaviCust program's effect (@common/navicust/effects' constructors make them; @common/navicust/compile applies
+-- them): its kind, and the kind's fields.
+export type NaviCustEffect = {
+    kind: string,
+    amount: number?,
+    weapon: Weapon?,
+    barrier: Barrier?,
+    what: string?,
+}
+
+-- A game's NaviCust board (its rules/navicust/board.luau): the grid's size, its command line, the board by expansions
+-- (`o` a cell, `f` its frame, `.` none), and where a neighbor counts (`x` a cell where it doesn't).
+export type NaviCustBoard = {
+    SIZE: number,
+    COMMAND_LINE: number,
+    boards: { { string } },
+    NEIGHBORS: { string },
+}
+
+-- What a game's NaviCust compile (@common/navicust/compile) is made of besides the shared routines: its name (for
+-- errors), its board, its bugs in the order the bugs' routine runs them and what each writes by its level (1 to 3),
+-- what a placed program counts besides (BN5's HubBatc), and whether any bug sets the emotion window's glitch.
+export type NaviCustGame = {
+    name: string,
+    board: NaviCustBoard,
+    bugs: { string },
+    bug_work: { [string]: (stats: Navi, level: number) -> () },
+    extra: ((part: PlacedProgram, count: (bug: string?, n: number?) -> ()) -> ())?,
+    glitch: boolean,
+}
