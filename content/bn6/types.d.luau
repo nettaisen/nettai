@@ -1153,4 +1153,7 @@ export type InstrumentLook = {
     body: { is: CollisionType, hits: CollisionType },
     absorbed: AbsorbedLook?,
     removal_puffs: boolean?,
+    -- Broken, its explosion; removed, its puff.
+    explosion: Effect,
+    puff: Effect,
 }
