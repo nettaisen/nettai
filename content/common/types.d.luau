@@ -19,6 +19,37 @@ export type SonicBoomLook = {
     hits: CollisionType,
 }
 
+-- A game's buster parts (@common/buster): the muzzle flash a shot leaves, the buster arm, an enemy navi's arm, the
+-- recovery after a shot (by Rapid, then the open panels ahead), and its attachment kind.
+export type BusterLook = {
+    flash: AttachmentLook,
+    arm: AttachmentLook,
+    navi_arm: AttachmentLook,
+    recovery: { { number } },
+    attachment: Kind,
+}
+
+-- What the buster's shots share, made of a game's `BusterLook` (@common/buster).
+export type Buster = {
+    flash: AttachmentLook,
+    arm: AttachmentLook,
+    raise_arm: (navi: Object) -> (),
+    raise_arm_for: (navi: Object, holder: Object, which: Slot, while_dimmed: boolean) -> (),
+    recovery: (navi: Object, x: number, y: number) -> number,
+    move_cancel: (navi: Object) -> boolean,
+}
+
+-- Firing a game's projectile (@common/projectile): from any panel, or from the panel in front as the buster does (the
+-- buster's recovery from there).
+export type Projectiles = {
+    spawn: (owner: Object, x: number, y: number, s: ProjectileShot) -> Object?,
+    fire: (navi: Object, s: ProjectileShot) -> number,
+}
+
+-- A game's shooting chips (@common/cannon, @common/airshot): the shot's sound, the attachment kind (what the navi
+-- holds) and its projectiles.
+export type ShooterLook = { sound: Sound, attachment: Kind, projectiles: Projectiles }
+
 -- A trap chip's object (a "trap" record, @common/traps/controller): `set` spawns it for the controller and its user,
 -- with the chip and bonus the controller keeps.
 export type Trap = {

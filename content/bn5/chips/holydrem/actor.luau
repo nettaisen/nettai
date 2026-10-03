@@ -7,7 +7,7 @@
 -- buster and gives the user back (docs/design/bn5-map.md §6.2). The shots come from the user's attach point 29.
 -- (The panel it reads is the engine's holy type, whichever game's stage or chip made it.)
 
-local buster = require("@bn6/lib/buster")
+local buster = require("../../lib/buster")
 local shot = require("./shot")
 local stand_in = require("@common/dimming/stand_in")
 
