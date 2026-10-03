@@ -18,5 +18,7 @@ return define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     extra_flags = { 4, 16 },
     slot_in_limit = 1,
+    -- (Past the navi chips' block: AntiNavi lets it through, and it isn't kept as the last navi chip.)
+    traits = { "not_navi_slot" },
     navi = navi.summon,
 }
