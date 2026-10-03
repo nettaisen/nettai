@@ -13,6 +13,7 @@
 local beast_claw = require("../../navis/megaman/weapons/beast-claw/weapon")
 local berserk = require("./berserk")
 local cross_special = require("./cross-special")
+local custom_beast = require("./custom")
 local rush = require("./rush")
 local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
 
@@ -47,6 +48,8 @@ export type State = {
     -- (`sub_8015A16`, MegaMan only; 0xFF is left alone). Intent uncertain:
     -- in netbattles the close always leaves 1 before the next check.
     check_delay: number,
+    -- The custom screen's (custom.luau).
+    beast_out_used: boolean,
 }
 
 -- The side's navi changes form (MegaMan): where the original asks whether
@@ -70,8 +73,18 @@ return define.system {
         controller_moves = "u16",
         controller_volley = "u16",
         controller_started = "bool",
+        beast_out_used = "bool",
     },
     actions = { rush.action, cross_special.action },
+    -- Beast Out on the custom screen (custom.luau).
+    buttons = { beast_out = custom_beast.button },
+    windows = { beast_out = custom_beast.window, beast_out_chip = custom_beast.chip_window },
+    custom = {
+        open = custom_beast.open,
+        confirmed = custom_beast.confirmed,
+        chip_picked = custom_beast.chip_picked,
+        chip_taken_back = custom_beast.chip_taken_back,
+    },
     hooks = {
         -- `sub_800FB54`: what runs inside the rush. In a Beast form (or
         -- from the Cross special), a chip with the lock-on flag (its
