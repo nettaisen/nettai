@@ -1519,6 +1519,25 @@ which the engine runs for a side whose rules say so (the status section's `emoti
   light and dark system's setup carries it (`hub_style`, bn5-compat from +0x4C).
 - The faces' names follow: `megaman-worried` (2), `megaman-dark` (4), `megaman-hub*` (11-15; they were named as
   dark faces).
+- **The emotion-swing bug** (0x080113F8, BN6's `sub_8013DA0`; rules/emotion): while the side's NaviStats +0x24 is
+  set, out of battle flag 0x40's mode and out of a soul, every 60 ticks the anger ends and the mood goes back to 0x80
+  (0x08011A94), then the emotion swings to one of 0x0801147C's sixteen (seven normal, seven worried, one angry, one
+  Full Synchro) but the one it last swung to (every entry of it taken out), drawn from RNG2: angry asks for anger (the
+  request, no mood test), any other sets 0x0801148C's mood (0x99, 0x3F, 0, 0xFF) through the setter. It runs from the
+  tick of every navi of the player's kind (a Dark MegaMan's too, by his side's stats), each with its own counters
+  (AIData +0x3A, +0x0B), and a curse (BugCurse) can set the bug mid-round, so every player's navi is ticked.
+  BugCurse's four recordings match through it.
+- **The soul break** (0x080122C8, BN6's `sub_8015766`; the status section's `form_break = "bn5"`): a dark chip used in
+  a soul (0x08010070) sets the weakness request, which breaks any form (BN6's only a Cross or a Beast) to the base
+  form: BN6's Cross break without animation 2 and the overlay's refresh, the overlay's kept stepping, the collision
+  region's removal and return, and the flags 0x80110000 and statuses 0x200800 it clears. (In a netbattle a light
+  MegaMan's dark chip fizzles first and a dark one has no Soul Unison: no recording reaches it.)
+
+**ProtoSoul's B+Back** (weapon routine 4, 0x0800F634; navis/megaman/forms/protosoul/back): BN5's guard (action 0x1F,
+lib/guard) as the NaviCust Reflect program's (subtype 4): 20 ticks (the params word 0x114's first byte), the Reflect
+program's look (its second byte: row 1), row 9's (a look of its own) with the Chaos Unison charge armed (0x914), 50
+damage, the B+Back cooldown 40. A guarded hit from the front fires the charged shot's projectile back:
+`souls/01-sword/back` (hand-written) matches on every frame, side 1's buster shot reflected for 50.
 
 Seen against mGBA (tools/frontend-compare, unmasked): chips/0x0bc-drksword/hit 1 → 286 of 314 frames exact,
 souls/01-sword/unison 19 → 598 of 704 (the dark opponent's palette and face). What still differs there: the emotion
