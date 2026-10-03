@@ -11,7 +11,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local black_bomb = require("@common/blkbomb/bomb")
-local bombs = require("../../lib/bombs")
+local bombs = require("../../lib/bombs/bombs")
 local collision = require("../../rules/collision")
 local effects = require("@bn6/lib/effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
