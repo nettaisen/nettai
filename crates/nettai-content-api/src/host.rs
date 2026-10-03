@@ -249,6 +249,16 @@ pub enum SystemHook {
     /// (`sub_8013DA0`'s place), for a navi a system asked it for (its
     /// `ticked`): BN6's NaviCust emotion-swing bug. Its result is unused.
     NaviTick,
+    /// `starting_mood(side)`: the mood the side's navi starts the round with
+    /// (`sub_8015C2C`'s 0x80, set where `sub_8013892` sets it): BN5's light
+    /// and dark system's by the light/dark value (0x0801283A). The first
+    /// system that answers decides; none, 0x80.
+    StartingMood,
+    /// `navi_palette(side, navi)`: each tick, the sprite palette of the
+    /// side's navi of a player's kind (presentation; `sub_80100EC`'s
+    /// `sub_801002C`, BN5's 0x0800DD94: its light and dark system's). The
+    /// first system that answers decides; none, the framework's (BN6's).
+    NaviPalette,
     /// `custom.hand_size(side)`: how many chips the side's custom screen
     /// deals (`sub_802A40C`; BN5's `sub_802A49C`), asked as it opens. The
     /// first system that answers decides; none answering, the framework's
@@ -326,6 +336,8 @@ impl SystemHook {
             SystemHook::TakeoverRequested => "takeover_requested",
             SystemHook::Countered => "countered",
             SystemHook::NaviTick => "navi_tick",
+            SystemHook::StartingMood => "starting_mood",
+            SystemHook::NaviPalette => "navi_palette",
             SystemHook::CustomHandSize => "custom.hand_size",
             SystemHook::CustomOpen => "custom.open",
             SystemHook::CustomConfirmed => "custom.confirmed",
@@ -342,7 +354,7 @@ impl SystemHook {
         }
     }
 
-    pub const ALL: [SystemHook; 28] = [
+    pub const ALL: [SystemHook; 30] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -359,6 +371,8 @@ impl SystemHook {
         SystemHook::Takeover,
         SystemHook::Countered,
         SystemHook::NaviTick,
+        SystemHook::StartingMood,
+        SystemHook::NaviPalette,
         SystemHook::CustomHandSize,
         SystemHook::ButtonShown,
         SystemHook::ButtonState,

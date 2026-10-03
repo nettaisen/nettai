@@ -962,15 +962,6 @@ export type PanelStrike = {
     solid_only: boolean?,
 }
 
--- BassAnly's dark ball (chips/bassanly/shot): its level (0 to 3: its
--- speeds), its slant (-1 up, 1 down), and how it homes.
-export type DarkBallHoming = "none" | "diagonal" | "seeking"
-export type DarkBall = {
-    level: number,
-    slant: number,
-    homing: DarkBallHoming,
-}
-
 -- SunMoon's meteor (chips/sunmoon/meteor): its look, what it is and hits,
 -- whether its landing shakes the camera, and what it does to a panel that
 -- holds something.
