@@ -348,6 +348,19 @@ pub struct FormData {
     /// ShadowSoul's 0: 0x0800E0D2).
     #[serde(default)]
     pub move_lag: Option<u8>,
+    /// What primes it, and what a primed use doubles (BN5's GyroSoul).
+    #[serde(default)]
+    pub priming: Option<Priming>,
+    /// The damaging chips (not dimming chips) that deal double while it
+    /// stands on grass, which the use turns normal (BN5's TomahawkSoul's
+    /// Wood chips: 0x0801032A).
+    #[serde(default)]
+    pub grass_doubles: Option<ChipMatch>,
+    /// The ticks a damaging chip (not a dimming chip) used with the panel
+    /// ahead not its side's keeps it invulnerable (BN5's KnightSoul's 50:
+    /// 0x08010392).
+    #[serde(default)]
+    pub front_guard: Option<u16>,
     /// A change into a Cross that finds the navi in this animation lets go of it
     /// and of what it holds (`sub_8014B18`: GroundCross's drill).
     #[serde(default)]
@@ -369,6 +382,10 @@ pub struct FormData {
     /// the framework's revert (`sub_8015614`, BN6's forms).
     #[serde(skip)]
     pub revert: Option<nettai_content_api::ActionHandle>,
+    /// The action its charged chips start in place of their own (BN5's
+    /// NapalmSoul's, action 0x4B: 0x08010442).
+    #[serde(skip)]
+    pub charged_action: Option<nettai_content_api::ActionHandle>,
     /// A Cross's form in Beast Out.
     #[serde(skip)]
     pub beast: Option<FormHandle>,
@@ -380,6 +397,20 @@ pub struct FormData {
     /// Its identity (the base form has none of its own: the navi's).
     #[serde(skip)]
     pub identity: Option<IdentityHandle>,
+}
+
+/// A form's priming (BN5's GyroSoul: AIData +0x0D): the use of a chip it
+/// is primed by (not a dimming chip) primes it, with a sound (0x080102D2);
+/// primed, the next damaging chip it doubles (not a dimming chip) deals
+/// double and spends it, and nothing else doubles a chip meanwhile: not
+/// Full Synchro, not anger (0x0801026C, 0x08010302). The status reset
+/// spends it.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Priming {
+    pub by: ChipMatch,
+    pub sound: crate::sound::SoundId,
+    pub doubles: Vec<ChipMatch>,
 }
 
 /// A form's faces in the emotion window, by its navi's emotion
@@ -748,7 +779,11 @@ pub(crate) fn read_form(
 ) -> Result<FormData, nettai_content_api::ContentError> {
     use serde_json::Value as Json;
     // (`buster_arm` is the content's own: the arm a navi raises.)
-    let o = super::reader::fields(d, r, &["id", "identity", "cross_of", "beast", "breaks_to", "change", "revert", "weapons", "buster_arm"])?;
+    let o = super::reader::fields(
+        d,
+        r,
+        &["id", "identity", "cross_of", "beast", "breaks_to", "change", "revert", "charged_action", "weapons", "buster_arm", "reset"],
+    )?;
     let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
     // (BN5's souls are of no BN6 version.)
     if !matches!(form.kind, FormKind::Base | FormKind::Soul) && form.game.is_none() {
