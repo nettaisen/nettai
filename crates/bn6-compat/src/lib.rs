@@ -11,6 +11,9 @@
 //!   and link data.
 //! - `trace` (feature `trace`): golden traces recorded from the original,
 //!   replayed through the engine and compared with it.
+//! - [`unlocks`]: what a save unlocks on the custom screen, and nettai's
+//!   Cross list, as BN6's systems' setup.
+//! - [`save`]: a BN6 save file, and what a player's setup reads of it.
 //!
 //! The engine never reads any of it: this crate depends on `nettai-battle`,
 //! never the other way (a test guards it), and content (Luau) can't load
@@ -19,6 +22,10 @@
 pub mod codec;
 #[cfg(feature = "trace")]
 pub mod trace;
+pub mod save;
+pub mod unlocks;
+
+pub use unlocks::{CrossList, Unlocks};
 
 use nettai_battle::Battle;
 use nettai_battle::kinds::player::{NaviAction, navi_action};

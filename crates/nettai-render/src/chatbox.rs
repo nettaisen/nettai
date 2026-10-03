@@ -67,7 +67,7 @@ pub struct Shown<'a> {
 
 /// The local player's chatbox, if one is up, with its text composed.
 pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'a>, sink: &TextSink, problems: &mut Problems) -> Option<Shown<'a>> {
-    let (side, screen) = crate::custom::local(b)?;
+    let (_, screen) = crate::custom::local(b)?;
     let navi = b.stats[b.setup.local_side as usize & 1].navi;
     // The text: the content's own strings, or the player's language's
     // (`DisplayText`); a translation prints in step with the content's
@@ -121,7 +121,7 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
             let sheet = crate::lookups::sprite(packs, &b.content, id, &who, problems);
             if let Some(sheet) = sheet {
                 crate::lookups::animation(sheet, &b.content, id, look.anim, &who, problems);
-                note_true_face(b, navi, side.unlocks.version, problems);
+                note_true_face(b, navi, bn6_compat::Unlocks::of_side(b, b.setup.local_side).version, problems);
             }
             sheet.map(|sheet| (sheet, look))
         }

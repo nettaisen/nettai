@@ -16,13 +16,18 @@
 //! ruleset = "bn6:stock"              # optional: else BN6's (crate::DEFAULT_GAME)
 //! navi = "bn6:megaman"
 //! game = "falzar"                    # or "gregar"
+//! level = 7                          # optional: the navi code's level, 0-14 (else a link navi's 0, MegaMan none)
 //! crosses = ["bn6:heatcross", "bn6:spoutcross"]   # optional: else the game's own five
+//! beast_out = false                  # optional: else Beast Out is unlocked
 //! cards = [{ card = "bn6:canodumb" }, { card = "bn6:shadow", on = false }]
 //!
 //! [left.folder]
 //! chips = ["bn6:cannon A", "bn6:cannon A", ...]   # 30, each "key code" ("" empty, while it's being made)
 //! regular = 4                        # optional: an entry, counting from 0
 //! tags = [5, 6]                      # optional
+//!
+//! [left.sp_times]                    # optional: SP navi deletion times, mm:ss.cc (else the fastest)
+//! "sp/heatman" = "00:12.34"
 //!
 //! [left.stats]                       # optional: over the navi's fresh stats, a link navi's at its level (crate::stats)
 //! hp = 1000
@@ -38,9 +43,11 @@
 use crate::{Arena, Folder, Match, Place, Side, stats};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
-use nettai_battle::custom::{CrossList, FolderChip, GameVersion};
+use crate::CrossList;
+use nettai_battle::custom::{FolderChip, GameVersion};
 use nettai_battle::navicust::{NaviCust, PlacedProgram};
 use nettai_battle::patch_cards::InstalledCard;
+use nettai_battle::setup::SpTimes;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -88,6 +95,10 @@ pub struct SideFile {
     pub emotion_window_glitch: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub crosses: Option<Vec<String>>,
+    #[serde(default = "yes", skip_serializing_if = "is_yes")]
+    pub beast_out: bool,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub sp_times: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cards: Vec<CardFile>,
     pub folder: FolderFile,
@@ -256,8 +267,8 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
                 f
             })
             .collect();
-        if forms.len() > nettai_battle::custom::screen::CROSSES {
-            say(format!("{} Crosses: a Cross window offers {}", forms.len(), nettai_battle::custom::screen::CROSSES));
+        if forms.len() > bn6_compat::unlocks::CROSSES {
+            say(format!("{} Crosses: a Cross window offers {}", forms.len(), bn6_compat::unlocks::CROSSES));
             CrossList::default()
         } else {
             CrossList::new(&forms)
@@ -300,8 +311,23 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
             }
         }
     };
+    // The SP navis' deletion times, by the rules' slot names.
+    let slots = crate::sp_slots(content, ruleset);
+    let mut sp_times = SpTimes::default();
+    for (name, time) in &s.sp_times {
+        let Some(i) = slots.iter().position(|x| x == name) else {
+            say(format!("sp_times: no SP navi slot {name:?} (the rules' are {})", slots.join(", ")));
+            continue;
+        };
+        match crate::sp_times::parse(time) {
+            Ok(frames) => sp_times.0[i] = frames,
+            Err(e) => say(format!("sp_times: {name}: {e}")),
+        }
+    }
     let navi = navi?;
-    let mut stats = Side::save_base(content, navi, game, s.level.unwrap_or(0));
+    // (No level: a link navi's 0, MegaMan's none; the checks hold it.)
+    let navi_level = s.level.or_else(|| crate::default_navi_level(content, navi));
+    let mut stats = Side::save_base(content, navi, game, navi_level);
     for p in stats::apply(content, &s.stats, &mut stats) {
         say(format!("stats: {p}"));
     }
@@ -317,9 +343,11 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
         emotion_window_glitch: s.emotion_window_glitch,
         folder: folder?,
         crosses,
+        beast_out: s.beast_out,
         cards,
-        navi_level: s.level.unwrap_or(0),
+        navi_level,
         bug_frags: s.bug_frags.unwrap_or(0),
+        sp_times,
         navicust,
     })
 }
@@ -367,10 +395,16 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
         ruleset: s.ruleset.map(|r| content.defs.ruleset(r).key.clone()),
         navi: content.defs.navi(s.navi).key.clone(),
         game: game_name(s.game).into(),
-        level: (s.navi_level != 0).then_some(s.navi_level),
+        // (The navi's default level is left out.)
+        level: s.navi_level.filter(|_| s.navi_level != crate::default_navi_level(content, s.navi)),
         bug_frags: (s.bug_frags != 0).then_some(s.bug_frags),
         emotion_window_glitch: s.emotion_window_glitch,
         crosses: s.crosses.map(|l| l.forms().map(|f| content.defs.form(f).key.clone()).collect()),
+        beast_out: s.beast_out,
+        sp_times: crate::sp_times::named(crate::sp_slots(content, s.ruleset), &s.sp_times)
+            .into_iter()
+            .map(|(name, frames)| (name, crate::sp_times::format(frames)))
+            .collect(),
         cards: s.cards.iter().map(|c| CardFile { card: content.defs.patch_card(c.card).key.clone(), on: c.enabled }).collect(),
         folder: FolderFile {
             // An empty entry is "", and those after the last chip are left off.

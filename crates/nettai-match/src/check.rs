@@ -79,6 +79,17 @@ pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
     if records.iter().flatten().any(|r| r.index() >= defs.records.len()) {
         out.push("the stats name a record the content hasn't".into());
     }
+    // The navi code's level: 0 to 14, and a link navi always has one (it
+    // exists only through its code); MegaMan may have none.
+    match s.navi_level {
+        Some(l) if l > nettai_battle::custom::MAX_NAVI_LEVEL => {
+            out.push(format!("level {l}: a navi code's level is 0 to {}", nettai_battle::custom::MAX_NAVI_LEVEL))
+        }
+        None if !content.navi(s.navi).changes_form() => {
+            out.push(format!("{} has no level: a link navi exists only through its navi code", crate::names::navi(content, s.navi)))
+        }
+        _ => {}
+    }
     // The folder's chips, before its rules.
     if let Some((i, _)) = s.folder.chips.iter().enumerate().find(|(_, c)| c.is_some_and(|c| c.id.index() >= defs.chips.len())) {
         out.push(format!("folder entry {i}: a chip the content hasn't"));

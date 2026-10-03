@@ -430,8 +430,10 @@ pub struct Battle {
     /// Per side: the bug frags the player brought (`dword_203F7E0`, from
     /// the save through the init exchange); a dark chip spends one.
     pub bug_frags: [u32; 2],
-    /// Per side: the link navi's level (`dword_203CFA0`, from the save
-    /// through the init exchange), which picks its chip bonus.
+    /// Per side: the level of the navi code the save received
+    /// (`dword_203CFA0`, from the save through the init exchange; 0xFF
+    /// none: `PlayerSetup::navi_level`), which picks a link navi's chip
+    /// bonus.
     pub navi_levels: [u8; 2],
     pub objects: Objects,
     pub actors: Actors,
@@ -739,7 +741,17 @@ impl Battle {
             transform_seq: TransformSequencer::default(),
             custom_reversion: Default::default(),
             bug_frags: [setup.players[0].bug_frags, setup.players[1].bug_frags],
-            navi_levels: [setup.players[0].navi_level, setup.players[1].navi_level],
+            navi_levels: setup.players.each_ref().map(|p| {
+                // (A setup's checks refuse a level past the navi codes:
+                // the tables a level reads stop there.)
+                let level = p.navi_level.unwrap_or(0xFF);
+                assert!(
+                    p.navi_level.is_none_or(|l| l <= crate::custom::MAX_NAVI_LEVEL),
+                    "a navi code's level is 0 to {}, not {level}",
+                    crate::custom::MAX_NAVI_LEVEL
+                );
+                level
+            }),
             objects,
             actors: Actors::default(),
             collision: Collision::new(),

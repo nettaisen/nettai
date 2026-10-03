@@ -349,7 +349,7 @@ fn damage_taken(b: &Battle, side: u8) -> u16 {
 /// the deletion-time step, of the chip's slot among the setup's SP times.
 fn sp_chip_damage(b: &Battle, id: nettai_content_api::ChipHandle, side: u8, by_time: &[u16]) -> u16 {
     let n = b.content.chip_links(id).sp_slot.expect("an SP navi chip's slot (resolved when the content loads)") as usize;
-    let time = time_bcd(b.setup.sp_times[side as usize].frames(n) as u32);
+    let time = time_bcd(b.setup.players[side as usize & 1].sp_times.frames(n) as u32);
     let step = b.content.rules_of(b.game_of(&b.content.defs.chip(id).key)).sp_deletion_times.iter().take_while(|&&t| time > t).count();
     *by_time.get(step).unwrap_or_else(|| {
         panic!("SP chip {:?} has no damage for deletion-time step {step} (sub_8010AE4)", b.content.defs.chip(id).key)
