@@ -6,6 +6,9 @@
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local anubis = require("../../objects/anubis/anubis")
+local recipe_anubis = require("../anubis/chip")
+local recipe_bugbomb = require("../bugbomb/chip")
+local recipe_geddon3 = require("../geddon3/chip")
 
 return define.chip {
     id = "bn5:poisphar",
@@ -20,5 +23,11 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "library" },
     slot_in_limit = 1,
+    -- BN5's recipes (written by tools/bn5/recipes.py): in the order of its full table (0x08027FC8); the netbattles'
+    -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
+    -- gauge tries.
+    program_advances = {
+        { order = 24, sequence = { recipe_bugbomb, recipe_geddon3, recipe_anubis } },
+    },
     dimming = anubis.controller.hook(anubis.variants.poisphar),
 }
