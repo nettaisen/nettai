@@ -78,6 +78,8 @@ pub struct Strings {
     pub forms: BTreeMap<String, FormStrings>,
     #[serde(default, rename = "patch-cards")]
     pub patch_cards: BTreeMap<String, PatchCardStrings>,
+    #[serde(default, rename = "navicust-programs")]
+    pub navicust_programs: BTreeMap<String, PatchCardStrings>,
 }
 
 /// Presentation: the records hold what the battle reads of the strings (the
@@ -100,6 +102,7 @@ impl Strings {
             navis: of(root, &self.navis),
             forms: of(root, &self.forms),
             patch_cards: of(root, &self.patch_cards),
+            navicust_programs: of(root, &self.navicust_programs),
         }
     }
 
@@ -112,6 +115,7 @@ impl Strings {
         self.navis.extend(other.navis);
         self.forms.extend(other.forms);
         self.patch_cards.extend(other.patch_cards);
+        self.navicust_programs.extend(other.navicust_programs);
     }
 
     pub fn chip(&self, key: &str) -> Option<&ChipStrings> {
@@ -128,6 +132,12 @@ impl Strings {
 
     pub fn patch_card(&self, key: &str) -> Option<&PatchCardStrings> {
         self.patch_cards.get(key)
+    }
+
+    /// A NaviCust program's name (a table with only a name, as a patch
+    /// card's).
+    pub fn navicust_program(&self, key: &str) -> Option<&PatchCardStrings> {
+        self.navicust_programs.get(key)
     }
 }
 

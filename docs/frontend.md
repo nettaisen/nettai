@@ -30,15 +30,34 @@ names the content gives them. Extract it once:
 
     cargo run -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6
 
-(`data/content/` is gitignored.) The frontend loads the pack at start-up
-from `--pack <dir>`, else `$BN6_PACK`, else `data/content/bn6`, straight
-from its files: the content with the pack's asset index into the engine's
-`Content`, the graphics through nettai-content's importer, and, when a window
-opens, the sound. `NETTAI_LOAD_TIMES=1` prints how long each part took.
-`--pack` again loads another game's pack beside it (one pack a game): each
-sprite, banner, mugshot, background and sound comes from its own pack, a
-chip's icon and picture from its game's, the custom screen from the local
-player's game's (docs/design/rules-in-luau.md, As built R3b).
+(`data/content/` is gitignored.) The frontend (and the editor) loads at
+start-up **every pack in the packs directory**, `$NETTAI_PACKS`, else
+`data/content`: each folder with a pack manifest, by the game the manifest
+says (`nettai_content::pack::find`); `bn5-extract content` writes BN5's into
+`data/content/bn5` beside it. `--pack <dir>` names a pack elsewhere, in
+place of the found one of its game, and can be given again for another
+game's; `$BN6_PACK`, the BN6 pack's directory, still works the same way
+(deprecated: the verification's tools set it). Two packs of one game in the
+directory are an error. Each pack loads straight from its files: its asset
+index into the engine's `Content`, the graphics through nettai-content's
+importer, and, when a window opens, the sound. `NETTAI_LOAD_TIMES=1` prints
+how long each part took. Each sprite, banner, mugshot, background and sound
+comes from its own pack, a chip's icon and picture from its game's, the
+custom screen from the local player's game's (docs/design/rules-in-luau.md,
+As built R3b).
+
+The content roots go with the packs (`nettai_content::pack::load_found`):
+`--content <dir>` loads that root and the roots it requires (so does
+`$BN6_CONTENT`); without it, BN6's root (this repository's content/bn6) and
+every other root beside it (content/bn5, ...), each when its game's pack is
+found and the content loads with it. A root that doesn't is left out, and
+the frontend says why at start-up ("the content root bn5 is left out: ...":
+no pack of its game, with the command that writes one, or the define
+phase's error), so BN6's play never fails for another game's root. A root
+the content must load whose game's pack isn't found is an error naming the
+extract command. (Netplay's handshake compares the content, the packs'
+asset names among it: two players play with the same packs, or give
+`--content content/bn6` and `--pack` alike.)
 
 The graphics load into the types of the `nettai-assets` crate, decoded
 (tiles as palette indices, colours as BGR555):
@@ -90,13 +109,14 @@ are the link navis' faces, with their Full Synchro palettes.
     cargo run -p nettai-frontend -- --match match.toml           # play a match file (§6)
     cargo run -p nettai-frontend -- --play --seed 42 --save-match match.toml   # keep the draw
     cargo run -p nettai-frontend -- <trace.jsonl> --headless 150,300,600 --out <dir>
-    cargo run -p nettai-frontend -- <trace.jsonl> --audit      # what is missing?
-    cargo run -p nettai-frontend -- --play --pack <dir>        # another pack
+    cargo run -p nettai-frontend -- --audit-content            # what is missing?
+    cargo run -p nettai-frontend -- --audit <trace.jsonl>...   # and in these traces?
+    cargo run -p nettai-frontend -- --play --pack <dir>        # a pack elsewhere
     cargo run -p nettai-frontend -- --play --host 7777         # netplay: host...
     cargo run -p nettai-frontend -- --play --join 192.0.2.10:7777   # ...and join
 
-Options: `--pack <dir>` names the content pack and `--content <dir>` the
-battle content (see above), `--mute` turns the sound off, `--round N`
+Options: `--pack <dir>` names a content pack elsewhere and `--content <dir>`
+the battle content (see above), `--mute` turns the sound off, `--round N`
 starts a trace at round N (later rounds follow when a round's input runs
 out), `--scale N` sets the window's first size (default 4 times 240x160;
 the window can be resized, and the picture keeps whole pixels, centred on
@@ -239,13 +259,42 @@ something in front covers, the squash, the fades). In live play
 window (a direction acts on a hold's second tick), chooses its first Cross
 and presses OK.
 
-**Audit mode** (`--audit`) draws every frame of the trace and plays every
-sound cue into nothing, without a window, and lists what they named that
-the pack or the content doesn't have, each with the frames it happened on:
-a sprite that isn't in the pack, an animation or palette the sprite doesn't
-have, a chip without an icon or with a name the font can't spell, a banner
-without glyphs, a text line, a song. It exits 1 if there was any. It is the
-quick check after a content or loader change: nothing is silently skipped.
+**The audits** list what the drawing code and the audio look up that the
+packs or the content don't have: a sprite that isn't in its pack, an
+animation or palette the sprite doesn't have, a chip without an icon or a
+picture or with a name the font can't spell, a face, an emblem, a banner
+without glyphs, a telop's banner that is no telop's, a text line, a song.
+Each exits 1 if there was any; drawing itself skips what it can't find,
+so nothing else notices. Every such lookup goes through one module
+(`lookups.rs`), which notes it (`audit::Lookup`) and checks it once a run,
+so both audits make the lookups a frame makes, through the same functions:
+
+- `--audit-content` (`content_audit.rs`) makes every lookup for everything
+  the content defines, in every language it has strings in: every chip's
+  icon, picture, name, Program Advance name and code, its window's class,
+  element and code pictures, its description in the dialogue font; every
+  navi's face, emblem on either game's console, name and no-running message
+  with its portrait; every form's face for each emotion, every Cross's name
+  and description; and every asset of the loaded packs (each sprite with
+  every animation, its frames and their own palettes; each song, banner,
+  background, mugshot), the HUD's text lines, the field's panel blocks, the
+  custom screen, the chatbox. It takes a second or two, and a lookup by the
+  wrong key fails it for every chip, not only for those a trace shows (its
+  test: `a_lookup_by_the_wrong_key_fails_for_every_chip`). A string a
+  language's table lacks shows in the content's own, by design: it is said,
+  not counted.
+- `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
+  default one a core), and makes the lookups their frames and sound cues
+  make, without drawing: no stage, no composing, no sound synthesis
+  (`Renderer::set_lookups_only`). It catches what the content can't say
+  beforehand: the palette an object picks, a telop of a chip the engine
+  wasn't told. Each problem is listed with its trace and the frame it was
+  first seen on. `--draw` draws every frame and plays every cue into nothing
+  besides (the audit as it was before: some ten times slower). `--lookups
+  FILE` writes each trace's distinct lookups, by name (and with
+  `--audit-content`, the static audit's), for the verification's trace
+  cover: the few golden traces that, with the static audit, make every
+  lookup all of them make.
 
 **Sound**: the window plays each tick's sound cues through nettai-audio, with
 the pack's sound, unless `--mute`; headless rendering never plays sound. In
@@ -653,8 +702,8 @@ them).
 ## 6. Match files
 
 A match file is everything a round needs, chosen before the battle: the
-arena, and each side's ruleset, navi, game, stats, folder, Crosses and patch
-cards, in TOML, by content key (a definition's key, as content names it;
+arena, and each side's ruleset, navi, game, stats, folder, Crosses, patch
+cards and NaviCust, in TOML, by content key (a definition's key, as content names it;
 `bn6:cannon`, or unqualified when one root defines it). `--match FILE` plays
 one (you are its left side), `--save-match FILE` writes the match played,
 and nettai-editor makes and edits them (README.md, "The match editor").
@@ -694,6 +743,14 @@ tags = [5, 6]                              # optional: two entries
 hp = 1000
 regular_memory = 50
 sun = true
+
+[left.navicust]                            # optional: MegaMan's NaviCust, compiled into his stats
+expansions = 2                             # optional: the board, 0 (4x4) to 2 (5x5, the default)
+programs = [                               # in the save's order; x, y the centre on the 7x7 grid
+    { program = "bn6:suprarmr", color = "red", x = 2, y = 3 },
+    { program = "bn6:undersht", color = "white", x = 5, y = 3, rotation = 1 },   # quarter turns
+    { program = "bn6:hp-100", color = "pink", x = 3, y = 1, compressed = true },
+]
 ```
 
 **The stats block** (`nettai_match::stats`) sets the navi's stats by name
@@ -714,6 +771,16 @@ NaviCust's bugs (`step_bug`, `panel_trail`, `panel_trail_level`,
 so a written block gives back the same stats. Writing a match, only the
 fields that differ are written.
 
+**The NaviCust** (`[left.navicust]`, docs/design/navicust.md) is the
+programs placed on MegaMan's grid, by key and colour name (a program's
+`colors`). With one, the stats block is the save's stats before the NaviCust:
+only what a save keeps through the NaviCust's reload (`hp`, `regular_memory`,
+`mood`, `beast_out_counter`, `sun`, `form` and the folder fields), since the
+ruleset's `navicust` system makes the rest (the abilities, levels, weapons and
+bugs) from the programs as the round is set up. Without one, the stats block
+is the stats as they are, NaviCust included, as a recording's are. The
+editor's NaviCust pane places the programs on the board as the game does.
+
 **The checks** (`nettai_match::check`) run when a file loads, when a netplay
 offer arrives (the same `check_side`), and live in the editor; each problem
 is said with where it is:
@@ -722,13 +789,22 @@ is said with where it is:
   pack, a ruleset, a navi, a Cross, a patch card, a chip, a weapon, a record,
   a form), and every stat is in range;
 - the arena's stages are link battle stages (`link_battle_stages`);
-- the folder keeps BN6's rules (`nettai_match::folders`: 30 entries, copies
-  by MB, each chip in one of its codes, at most three dark chips, chips the
-  chip pack lists; the tag chips two other entries of 60 MB together at most,
-  `sub_81349E8`), and its Mega, Giga and Regular limits are the navi's stats
-  as the round starts them (after the rules' `round_setup`: the patch cards'
-  folder limits, as the original's folder editor and link battle check read
-  the reloaded stats);
+- the folder keeps its game's rules, which each side's ruleset checks: the
+  ruleset's systems' `folder_check` hooks (BN6's are rules/folder/system.luau:
+  30 entries, copies by MB, each chip in one of its codes, at most three dark
+  chips, chips the chip pack lists, the Regular chip within the Regular
+  memory, the tag chips two other entries of 60 MB together at most). The
+  Mega, Giga and Regular limits are the navi's stats as the round starts them
+  (after the rules' `round_setup`: the NaviCust's and the patch cards' folder
+  limits, as the original's folder editor and link battle check read the
+  reloaded stats). Rust only asks (`Battle::check_folder`) and reports what
+  the hooks say, so another game's folder rules are its own Luau; live play's
+  random folders are drawn from the rules' pool and kept only when the hooks
+  accept them (`nettai_match::folders`);
+- a NaviCust only with a ruleset that has the navicust system, and only for
+  MegaMan; every program fits the board, none overlaps another, the copies of
+  one program in one colour are all compressed or all not (the save keeps
+  one flag for them), and the stats block holds only what a save keeps;
 - a Cross list only with a ruleset that has the forms system, of the navi's
   Crosses (a navi that changes form), at most five, none twice;
 - patch cards only with a ruleset that has the patch-cards system, each

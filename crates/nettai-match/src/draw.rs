@@ -6,11 +6,13 @@
 //! same seed gives the same match, which can be written out as a match file
 //! (`crate::file`) and played again or edited.
 
-use crate::folders::{self, FolderLimits};
+use crate::folders;
 use crate::{Arena, Match, Place, Side};
+use nettai_battle::Battle;
+use std::sync::Arc;
 use bn6_compat::{Compat, codec};
 use nettai_battle::content::Content;
-use nettai_battle::custom::{self, CrossList, GameVersion, SavedFolder};
+use nettai_battle::custom::{self, CrossList, FolderChip, GameVersion, SavedFolder};
 use nettai_battle::setup::NaviStats;
 use nettai_content_api::StageHandle;
 
@@ -129,7 +131,7 @@ impl Side {
     /// A live player: the live navi (`live_navi`) of `game`, with this
     /// folder and Cross list, on the content's stock rules, no patch cards.
     pub fn live(content: &Content, folder: SavedFolder, crosses: CrossList, game: GameVersion) -> Side {
-        let stats = NaviStats { version: crate::version_byte(game), ..live_navi(content) };
+        let stats = crate::starting(content, live_navi(content), game);
         Side {
             ruleset: content.defs.stock_ruleset_of(crate::DEFAULT_GAME),
             navi: stats.navi,
@@ -141,30 +143,86 @@ impl Side {
             cards: Vec::new(),
             navi_level: 0,
             bug_frags: 0,
+            navicust: None,
         }
     }
 
-    /// A player drawn from `draws` as netplay draws one: a legal random
-    /// folder, five Crosses of both games, a game; no patch cards.
-    pub fn drawn(content: &Content, draws: &mut Draws) -> Result<Side, String> {
-        let folder = folders::random_folder(content, FolderLimits::of(&live_navi(content)), draws);
+    /// A player drawn from `draws` as netplay draws one: a random folder
+    /// the rules accept, five Crosses of both games, a game; no patch cards.
+    pub fn drawn(content: &Arc<Content>, draws: &mut Draws) -> Result<Side, String> {
+        let stage = *crate::link_battle_stages(content).first().ok_or("the content has no link battle stage")?;
+        let mut rules = rules_battle(content, &Arena::on(Place { stage, background: None }))?;
+        let folder = folders::random_folder(content, &mut rules, 0, draws);
         let crosses = crosses(content, draws)?;
         let game = game(draws);
         Ok(Side::live(content, folder, crosses, game))
     }
 }
 
+/// A plain match for content live play can't draw one from (no navi that
+/// changes form): the first link battle stage, on both sides the content's
+/// own root's first navi with its fresh stats and a folder of its rules'
+/// pool drawn from `seed` (else its first chip with a code, thirty times),
+/// on the content's stock rules.
+pub fn plain(content: &Arc<Content>, seed: u32) -> Result<Match, String> {
+    let stage = *crate::link_battle_stages(content).first().ok_or("the content has no link battle stage")?;
+    let arena = Arena::on(Place { stage, background: None });
+    let home = content.scripts.roots.first().map(|r| r.name.clone()).unwrap_or_default();
+    let navi = (0..content.defs.navis.len() as u16)
+        .map(nettai_content_api::NaviHandle)
+        .filter(|&n| content.navi(n).fresh.is_some())
+        .min_by_key(|&n| nettai_content_api::keys::root_of(&content.defs.navi(n).key) != Some(home.as_str()))
+        .ok_or("the content has no navi with fresh stats")?;
+    let chip = (0..content.defs.chips.len() as u16)
+        .map(nettai_content_api::ChipHandle)
+        .find(|&c| !content.chip(c).codes.is_empty())
+        .ok_or("the content has no chip with a code")?;
+    let folder = SavedFolder { chips: [FolderChip::new(chip, content.chip(chip).codes[0]); 30], regular: None, tags: None };
+    let game = GameVersion::Falzar;
+    let side = Side {
+        ruleset: content.defs.stock_ruleset_of(crate::DEFAULT_GAME),
+        navi,
+        game,
+        stats: Side::base_stats(content, navi, game),
+        emotion_window_glitch: false,
+        folder,
+        crosses: None,
+        cards: Vec::new(),
+        navi_level: 0,
+        bug_frags: 0,
+        navicust: None,
+    };
+    let mut m = Match { seed: Some(seed), arena, sides: [side.clone(), side] };
+    if let Ok(mut b) = crate::check::start(content, &m) {
+        let mut draws = Draws::new(seed);
+        for s in 0..2u8 {
+            if !folders::pool(content, &mut b, s).is_empty() {
+                m.sides[s as usize].folder = folders::random_folder(content, &mut b, s, &mut draws);
+            }
+        }
+    }
+    Ok(m)
+}
+
+/// The battle a live player's folder is drawn against: two live navis on
+/// `arena` (their folders anything: the rules read the stats).
+fn rules_battle(content: &Arc<Content>, arena: &Arena) -> Result<Battle, String> {
+    let anything = SavedFolder { chips: [FolderChip::new(Default::default(), nettai_battle::content::ChipCode(0)); 30], regular: None, tags: None };
+    let side = Side::live(content, anything, CrossList::default(), GameVersion::Falzar);
+    crate::check::start(content, &Match { seed: None, arena: arena.clone(), sides: [side.clone(), side] })
+}
+
 /// Live play's match on BN6's content, drawn from `seed`: a link battle's
-/// stage (`stage` forces one) and background, a legal random folder for
-/// each player (`crate::folders`), five of MegaMan's ten Crosses, of both
-/// games, for each Cross window (`Unlocks::cross_list`,
+/// stage (`stage` forces one) and background, a random folder each
+/// player's rules accept (`crate::folders`), five of MegaMan's ten
+/// Crosses, of both games, for each Cross window (`Unlocks::cross_list`,
 /// docs/engine/custom-screen.md §4.1), and each player's game, Falzar or
 /// Gregar. Both players are 1000-HP MegaMen (`live_navi`).
-pub fn live(content: &Content, seed: u32, stage: Option<StageHandle>) -> Result<Match, String> {
+pub fn live(content: &Arc<Content>, seed: u32, stage: Option<StageHandle>) -> Result<Match, String> {
     let mut draws = Draws::new(seed);
     let arena = arena(content, &mut draws, stage)?;
-    let limits = FolderLimits::of(&live_navi(content));
-    let folders = [folders::random_folder(content, limits, &mut draws), folders::random_folder(content, limits, &mut draws)];
+    let mut rules = rules_battle(content, &arena)?;
+    let folders = [folders::random_folder(content, &mut rules, 0, &mut draws), folders::random_folder(content, &mut rules, 1, &mut draws)];
     let crosses = [crosses(content, &mut draws)?, crosses(content, &mut draws)?];
     let games = [game(&mut draws), game(&mut draws)];
     let sides = [0, 1].map(|side| Side::live(content, folders[side], crosses[side], games[side]));
@@ -196,9 +254,9 @@ mod tests {
             assert!(stages.contains(&setup.settings.stage));
             assert_eq!(setup.settings.effects & effects::RANDOM, 0);
             seen.insert(setup.settings.stage);
-            let limits = FolderLimits::of(&setup.navi_stats[0]);
+            let mut b = crate::check::start(&content, &m).unwrap();
             for side in 0..2 {
-                assert!(folders::violations(&content, &m.sides[side].folder, limits).is_empty());
+                assert!(folders::problems(&mut b, side as u8, &m.sides[side].folder).is_empty());
                 let list = setup.players[side].unlocks.cross_list.unwrap();
                 assert_eq!(list.forms().count(), 5);
                 for f in list.forms() {
@@ -226,5 +284,14 @@ mod tests {
         assert_eq!(content.defs.stage(forced.arena.first.stage).key, "bn6:netbattle-43");
         assert_eq!(forced.sides, live(&content, 3, None).unwrap().sides);
         assert!(crate::link_stage(&content, "bn6:netbattle-100").is_err());
+    }
+
+    /// A plain match is one the checks accept (its folder the rules' draw).
+    #[test]
+    fn a_plain_match_is_legal() {
+        let content = crate::testing::bn6_content();
+        let m = plain(&content, 4).unwrap();
+        assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
+        assert_ne!(m.sides[0].folder.chips[0], m.sides[0].folder.chips[1], "a drawn folder");
     }
 }

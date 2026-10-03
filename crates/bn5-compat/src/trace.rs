@@ -517,6 +517,8 @@ impl Round {
                 ruleset: Some(ruleset),
                 rules: Vec::new(),
                 patch_cards: Default::default(),
+                // The stats are the save's (no NaviCust compiled over them).
+                navicust: None,
             })
         });
         let [p0, p1] = players;

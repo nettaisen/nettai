@@ -1,0 +1,31 @@
+--!strict
+-- The NaviCust program AntiDmg (program 10), in green.
+
+local programs = require("../../rules/navicust/programs")
+local anti_damage = require("../../navis/megaman/weapons/anti-damage/weapon")
+
+return define.navicust_program {
+    id = "bn6:antidmg",
+    colors = { "green" },
+    shape = {
+        ".......",
+        ".......",
+        "...##..",
+        "...##..",
+        "..##...",
+        "..#....",
+        ".......",
+    },
+    compressed = {
+        ".......",
+        ".......",
+        "....#..",
+        "...##..",
+        "..##...",
+        "..#....",
+        ".......",
+    },
+    bug = "step",
+    exclusive = "guard",
+    effects = { programs.back_special(anti_damage.weapon) },
+}

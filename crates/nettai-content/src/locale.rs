@@ -83,9 +83,15 @@ pub fn load(root: &Path, lang: &str) -> Result<Option<Strings>, String> {
 /// The tables of `lang` of every folder of the content directory `dir`,
 /// merged into one (`None` when none has one).
 pub fn load_all(dir: &Path, lang: &str) -> Result<Option<Strings>, String> {
+    load_many(&crate::root::dirs(dir)?, lang)
+}
+
+/// [`load_all`] for the content folders `dirs` (the folders a frontend
+/// loaded: `pack::Loaded::roots`).
+pub fn load_many(dirs: &[std::path::PathBuf], lang: &str) -> Result<Option<Strings>, String> {
     let mut out: Option<Strings> = None;
-    for d in crate::root::dirs(dir)? {
-        if let Some(s) = load(&d, lang)? {
+    for d in dirs {
+        if let Some(s) = load(d, lang)? {
             out.get_or_insert_with(|| Strings { language: lang.to_string(), ..Default::default() }).merge(s);
         }
     }
@@ -134,6 +140,7 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
     // (An id is written in full, its game first: `bn6:cannon`.)
     let keys = s.chips.keys().map(|k| ("chips", k)).chain(s.navis.keys().map(|k| ("navis", k)));
     let keys = keys.chain(s.forms.keys().map(|k| ("forms", k))).chain(s.patch_cards.keys().map(|k| ("patch-cards", k)));
+    let keys = keys.chain(s.navicust_programs.keys().map(|k| ("navicust-programs", k)));
     for (table, key) in keys {
         if !is_qualified(key) {
             unknown.push(format!("{table}.{key}: an id names its game: write it in full (\"{root}:{key}\")"));
@@ -170,6 +177,12 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
         }
         text(format!("patch-cards.{key}.name"), &c.name);
     }
+    for (key, c) in &s.navicust_programs {
+        if defs.navicust_program_by_key(key).is_none() {
+            unknown.push(format!("navicust-programs.{key}: no NaviCust program has this key"));
+        }
+        text(format!("navicust-programs.{key}.name"), &c.name);
+    }
     if own {
         let named = |n: Option<&Option<String>>| n.is_some_and(|n| n.is_some());
         for d in defs.chips.iter().filter(|d| ours(&d.key)) {
@@ -190,6 +203,11 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
         for d in defs.patch_cards.iter().filter(|d| ours(&d.key)) {
             if !named(s.patch_card(&d.key).map(|c| &c.name)) {
                 unknown.push(format!("patch-cards.{}: the content's own language names every patch card", d.key));
+            }
+        }
+        for d in defs.navicust_programs.iter().filter(|d| ours(&d.key)) {
+            if !named(s.navicust_program(&d.key).map(|c| &c.name)) {
+                unknown.push(format!("navicust-programs.{}: the content's own language names every NaviCust program", d.key));
             }
         }
     }

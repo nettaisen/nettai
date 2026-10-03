@@ -22,7 +22,7 @@ local charge = {}
 local FIRE, HOLD = 0x0, 0x4
 
 -- EraseCross's form; its hit parameter.
-local ERASE_CROSS, HIT_PARAM = "erasecross", 0x94
+local ERASE_CROSS, HIT_PARAM = "bn6:erasecross", 0x94
 
 local SOUND = asset.sound("bn6:moon-beam")
 

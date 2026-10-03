@@ -18,12 +18,12 @@ use crate::objects::SpriteList;
 use crate::textlayer::{Align, Plane, Rect, TextItem, TextSink};
 use crate::vfont::Role;
 use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
-use nettai_battle::Battle;
+use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
-use nettai_battle::content::{ChipClass, ChipFlags, DamageFormula};
+use nettai_battle::content::{ChipFlags, DamageFormula};
 use nettai_battle::custom::screen::{CROSS_PUT_ON_TICK, HiddenStage, OK_SLOT, SPECIAL_SLOT};
 use nettai_battle::custom::{FolderChip, GameVersion, Library, Phase, Screen, Side, SlotKind, SlotState};
-use nettai_content_api::{FormHandle, NaviHandle};
+use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
 const COLUMNS: usize = 15;
@@ -44,7 +44,7 @@ const COLUMN_ICON_TILE: u16 = 0x125;
 const NAME_BAR_TILE: u16 = 0x1D6;
 /// The Crosses' names in the Cross window (9x2 each, `byte_8029DF8`).
 const CROSS_NAME_TILE: u16 = 0x139;
-const CROSS_NAME_TILES: usize = 18;
+pub(crate) const CROSS_NAME_TILES: usize = 18;
 /// The Cross window's maps: three opening steps, then the window with one
 /// to five Crosses.
 const CROSS_OPENING_MAPS: usize = 3;
@@ -56,7 +56,7 @@ const ADVANCE_NAME_TILE: u16 = 0xAB;
 const ADVANCE_NAME_CELLS: usize = 9;
 const ADVANCE_FIRST_ROW: i32 = 5;
 /// The chips past the table's that the animation shows no code for.
-const ADVANCE_NO_CODE_FROM: u16 = 0x160;
+pub(crate) const ADVANCE_NO_CODE_FROM: u16 = 0x160;
 const LAYER_TILES: usize = 0x200;
 /// The window's background colours: what the original copies over cells
 /// the chip window leaves empty (`byte_802A6C0`, `byte_802A680`,
@@ -69,7 +69,7 @@ const BLANK_1: u8 = 1;
 const NAME_CELLS: usize = 8;
 const NAME_SHIFT: u8 = 8;
 /// A code no chip has: the invalid chip's (blank in the slots).
-const NO_CODE: u8 = 0x1B;
+pub(crate) const NO_CODE: u8 = 0x1B;
 /// The slot code glyph an empty slot shows.
 const EMPTY_SLOT_CODE: u8 = 0x1B;
 /// The damage digits' '?' (`0xAAA` for Muramasa).
@@ -323,12 +323,7 @@ struct View<'a> {
 
 impl View<'_> {
     fn icon(&self, c: FolderChip, problems: &mut Problems) -> Option<&Tiles> {
-        let def = self.b.content.defs.chip(c.id);
-        let icon = self.packs.chip_icon(&self.b.content, &def.key);
-        if icon.is_none() {
-            problems.note(format!("chip {:?} has no icon in the pack", def.key));
-        }
-        icon
+        crate::lookups::chip_icon(&self.packs, &self.b.content, c.id, problems).map(|(icon, _)| icon)
     }
 
     /// The navi's number: its emblem and its emblem's palette (the
@@ -357,9 +352,9 @@ impl View<'_> {
 /// cursor's row (`18 * (number + 5)` on the others'), its colours
 /// `cross_palettes[number]` (`[number + 5]` once used). `navi` is the
 /// navi whose Cross it is.
-pub fn cross_picture<'a>(b: &Battle, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
-    let game = b.content.form(form).game?;
-    let number = (0..5u8).find(|&i| b.content.cross_form(navi, game, i) == Some(form))?;
+pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
+    let game = c.form(form).game?;
+    let number = (0..5u8).find(|&i| c.cross_form(navi, game, i) == Some(form))?;
     Some((a.versioned.get(game_name(game)), number as usize))
 }
 
@@ -387,11 +382,10 @@ pub fn version_name(b: &Battle, side: u8) -> &'static str {
     game_name(b.custom.sides[side as usize & 1].unlocks.version)
 }
 
-/// A side's navi's number (see `View::navi_number`).
+/// A side's navi's number (see `View::navi_number`; its lookup is
+/// `lookups::emblem`'s).
 pub fn navi_number(b: &Battle, side: u8) -> usize {
-    let key = &b.content.defs.navi(b.stats[side as usize & 1].navi).key;
-    let compat = bn6_compat::Compat::bn6_for(&b.content);
-    compat.compat_key(&b.content, key).and_then(|k| compat.navis.get(k)).map_or(0, |n| n.navi as usize)
+    crate::lookups::navi_number_of(&b.content, b.stats[side as usize & 1].navi)
 }
 
 /// The window's map, the tiles and the palettes it draws with.
@@ -484,7 +478,7 @@ impl Window {
         w.slots(v, problems);
         w.column(v, problems);
         if cross.is_some_and(|i| i >= CROSS_OPENING_MAPS) {
-            w.cross_names(v);
+            w.cross_names(v, problems);
         }
         if v.screen.look.turn_limit {
             // sub_8029D34: "FINAL TURN", 7x2 at column 15, row 4 (past the
@@ -525,7 +519,7 @@ impl Window {
         if matches!(anim.step, S::Result) && anim.timer >= 0x10 {
             let k = pa.start as usize;
             let name = text.strings.chip_name(&v.b.content, pa.chip);
-            self.put_advance_text(v, k, name, None, text, problems);
+            self.put_advance_text(v, k, pa.chip, name, None, text, problems);
             out.push((k, row(k), 10));
         }
         if let Some(c) = v.assets.advance_name_colours.get(v.screen.look.pa_palette as usize) {
@@ -536,20 +530,25 @@ impl Window {
 
     /// A pick's name and code into name `k`'s tiles.
     fn put_advance_name(&mut self, v: &View, k: usize, c: FolderChip, text: &TextSink, problems: &mut Problems) {
-        let key = &v.b.content.defs.chip(c.id).key;
-        let compat = bn6_compat::Compat::bn6_for(&v.b.content);
-        let number = compat.compat_key(&v.b.content, key).and_then(|k| compat.chips.get(k)).map_or(u16::MAX, |e| e.id);
-        let code = (number < ADVANCE_NO_CODE_FROM).then_some(c.code.0);
-        self.put_advance_text(v, k, text.strings.chip_name(&v.b.content, c.id), code, text, problems);
+        let code = crate::lookups::advance_code(&v.b.content, c.id, problems).then_some(c.code.0);
+        self.put_advance_text(v, k, c.id, text.strings.chip_name(&v.b.content, c.id), code, text, problems);
     }
 
-    /// A name (and a pick's code in its last cell) into name `k`'s tiles;
-    /// in the font mode blank tiles, and the words for the text layer.
-    fn put_advance_text(&mut self, v: &View, k: usize, name: &str, code: Option<u8>, text: &TextSink, problems: &mut Problems) {
-        let (mut glyphs, missing) = fonts::cell_glyphs(v.hud, name);
-        if !missing.is_empty() {
-            problems.note(format!("the Program Advance animation's {name:?}: the pack's font has no glyph for {missing:?}"));
-        }
+    /// A name (chip `chip`'s, and a pick's code in its last cell) into name
+    /// `k`'s tiles; in the font mode blank tiles, and the words for the
+    /// text layer.
+    #[allow(clippy::too_many_arguments)]
+    fn put_advance_text(
+        &mut self,
+        v: &View,
+        k: usize,
+        chip: ChipHandle,
+        name: &str,
+        code: Option<u8>,
+        text: &TextSink,
+        problems: &mut Problems,
+    ) {
+        let mut glyphs = crate::lookups::advance_name(v.hud, chip, name, problems);
         let letter = code.map(|code| if code < 26 { char::from(b'A' + code).to_string() } else { "*".to_string() });
         let at = ADVANCE_NAME_TILE + (2 * ADVANCE_NAME_CELLS * k) as u16;
         if text.takes(name) && letter.as_deref().is_none_or(|l| text.takes(l)) {
@@ -575,16 +574,16 @@ impl Window {
     /// `sub_802794A`: the Crosses' names (`sub_8029D94`: the one under the
     /// cursor in its own look) over the Cross window's map, and palette 10
     /// the Cross under the cursor's (`sub_8029EAC`: a used one's darker).
-    fn cross_names(&mut self, v: &View) {
+    fn cross_names(&mut self, v: &View, problems: &mut Problems) {
         let w = &v.screen.crosses;
         let side = &v.b.custom.sides[v.side as usize];
         // Each Cross's name and colours are its own game's (a setup's Cross
         // list can offer the other game's: docs/engine/custom-screen.md
         // §4.1).
         let navi = v.b.stats[v.side as usize].navi;
-        let picture = |slot: usize| {
+        let mut picture = |slot: usize| {
             let form = side.unlocks.cross_at(&*v.b.content, navi, w.offered[slot])?;
-            cross_picture(v.b, v.assets, navi, form)
+            crate::lookups::cross_name(v.assets, &v.b.content, navi, form, problems)
         };
         for slot in 0..w.count.min(5) as usize {
             let Some((own, number)) = picture(slot) else { continue };
@@ -659,13 +658,9 @@ impl Window {
     /// cells.
     fn chip_details(&mut self, v: &View, c: FolderChip, text: &TextSink, problems: &mut Problems) {
         let a = v.assets;
-        let def = v.b.content.defs.chip(c.id);
         let data = v.b.content.chip(c.id);
         let name = text.strings.chip_name(&v.b.content, c.id);
-        let (glyphs, missing) = fonts::cell_glyphs(v.hud, name);
-        if !missing.is_empty() {
-            problems.note(format!("chip {:?} is named {name:?}, but the pack's font has no glyph for {missing:?}", def.key));
-        }
+        let glyphs = crate::lookups::chip_name(v.hud, &v.b.content, c.id, name, problems);
         if text.takes(name) {
             // The name's cells in the window's colour, the words on the
             // text layer in all eight of them (nothing follows the name).
@@ -684,38 +679,25 @@ impl Window {
         let art = if beast_out {
             Some((&v.beast.beast_out, None))
         } else {
-            v.packs.chip_art(&v.b.content, &def.key).map(|art| (&art.picture, Some(art)))
+            crate::lookups::chip_art(&v.packs, &v.b.content, c.id, problems).map(|art| (&art.picture, Some(art)))
         };
-        match art {
-            Some((p, art)) => {
-                self.tiles.put(ART_TILE, &p.tiles);
-                self.palettes[10] = if beast_out { p.palette } else { data.art_palette.unwrap_or(p.palette) };
-                let console_version = version_name(v.b, v.side);
-                self.picture_known = match art {
-                    Some(a) if a.region.as_deref().is_some_and(|r| r != v.region) => {
-                        Some("the Japanese games' chip picture (a US console shows a placeholder)")
-                    }
-                    Some(a) if a.version.as_deref().is_some_and(|g| g != console_version) => {
-                        Some("the chip's own beast's picture (a console shows its own)")
-                    }
-                    _ => None,
-                };
-            }
-            None => problems.note(format!("chip {:?} has no picture in the pack", def.key)),
+        if let Some((p, art)) = art {
+            self.tiles.put(ART_TILE, &p.tiles);
+            self.palettes[10] = if beast_out { p.palette } else { data.art_palette.unwrap_or(p.palette) };
+            let console_version = version_name(v.b, v.side);
+            self.picture_known = match art {
+                Some(a) if a.region.as_deref().is_some_and(|r| r != v.region) => {
+                    Some("the Japanese games' chip picture (a US console shows a placeholder)")
+                }
+                Some(a) if a.version.as_deref().is_some_and(|g| g != console_version) => {
+                    Some("the chip's own beast's picture (a console shows its own)")
+                }
+                _ => None,
+            };
         }
         // The frame's colours by class, a dark chip's (of the first
-        // three classes) dark.
-        let class = match data.class {
-            ChipClass::Standard => Some(0),
-            ChipClass::Mega => Some(1),
-            ChipClass::Giga => Some(2),
-            _ => None,
-        };
-        let frame = match class {
-            Some(_) if data.flags.has(ChipFlags::DARK) => 3,
-            Some(c) => c,
-            None => 0,
-        };
+        // three classes) dark; the code's glyph, the element's icon.
+        let frame = crate::lookups::chip_window(a, &v.b.content, c.id, c.code.0, problems);
         self.palettes[9] = a.frame_palettes.get(frame).copied().unwrap_or([0; 16]);
         let code = c.code.0.min(NO_CODE) as usize;
         self.tiles.put_part(CODE_TILE, &a.codes, 2 * code, 2);
@@ -925,12 +907,9 @@ fn names_shown(b: &Battle, s: &Screen) -> bool {
 }
 
 fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Layer, text: &mut TextSink, problems: &mut Problems) {
-    let other = v.side ^ 1;
-    let name = text.strings.navi_name(&v.b.content, v.b.stats[other as usize].navi);
-    let (glyphs, missing) = fonts::cell_glyphs(v.hud, name);
-    if !missing.is_empty() {
-        problems.note(format!("the navi named {name:?}: the pack's font has no glyph for {missing:?}"));
-    }
+    let other = v.b.stats[(v.side ^ 1) as usize].navi;
+    let name = text.strings.navi_name(&v.b.content, other);
+    let glyphs = crate::lookups::navi_name(v.hud, other, name, problems);
     let len = glyphs.len().min(ENEMY_NAME_CELLS);
     let col = 0x1E - len as i32;
     let palette = &w.palettes[13];
@@ -1092,19 +1071,6 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
     }
 }
 
-/// The emblem's 32x32 sprite: blank but for the navi's emblem in its
-/// middle 2x2 tiles (`off_802A744`, `sub_802812C`).
-pub fn emblem_tiles(a: &CustomScreen, version: &str, navi_number: usize) -> Tiles {
-    let e = a.emblem_of.get(navi_number).copied().unwrap_or(0) as usize;
-    let mut t = Tiles { pixels: vec![0; 16 * Tiles::TILE] };
-    for (k, place) in [5usize, 6, 9, 10].into_iter().enumerate() {
-        if let Some(src) = a.versioned.get(version).emblems.get(4 * e + k) {
-            t.pixels[place * Tiles::TILE..(place + 1) * Tiles::TILE].copy_from_slice(src);
-        }
-    }
-    t
-}
-
 /// The Regular chip's frame (`sub_802899C`): a 32x32 sprite around the
 /// first slot.
 fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
@@ -1128,7 +1094,7 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
 
 /// Draw the local player's custom screen: the window on the HUD layer, the
 /// enemy names on `names_layer` (BG0), the sprites into `list`.
-/// `emblem` holds the emblem sprite's tiles (`emblem_tiles`); the font
+/// `emblem` holds the emblem sprite's tiles (`lookups::emblem`); the font
 /// mode's strings go to `text`.
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
@@ -1145,8 +1111,7 @@ pub fn draw<'a>(
 ) {
     let Some((_, screen)) = local(b) else { return };
     let a = &assets.custom;
-    if a.is_empty() {
-        problems.note("the pack has no custom screen graphics (extract it again)".into());
+    if !crate::lookups::custom_graphics(a, problems) {
         return;
     }
     let side = b.setup.local_side & 1;
