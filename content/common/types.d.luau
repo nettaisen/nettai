@@ -72,6 +72,17 @@ export type Trajectory = {
     at_speed: (pos: Vec3, vel_y: number, x: number, y: number, z: number, speed: number, gravity: number) -> (number, number),
 }
 
+-- A game's wide wave (@common/widesht/wave): its kind's key, its sprite and sound, its afterimages' sprite (a
+-- variant's own overrides both), and what it hits.
+export type WideWaveLook = { id: string, sprite: SpriteAsset, sound: Sound, trail_sprite: SpriteAsset, target: CollisionType }
+
+-- A game's wide shots (@common/widesht/action): its wide shooter (a spec's own overrides it), its attachment kind and
+-- its wave's kind.
+export type WideShotLook = { shooter: AttachmentLook, attachment: Kind, wave: Kind }
+
+-- A wide shot: its waves (`shooter` and `z`, where a chip's aren't its game's wide shooter and 16 pixels).
+export type WideShotSpec = { id: string?, wave: WaveVariant, waves: number, shooter: AttachmentLook?, z: number? }
+
 -- A trap chip's object (a "trap" record, @common/traps/controller): `set` spawns it for the controller and its user,
 -- with the chip and bonus the controller keeps.
 export type Trap = {
