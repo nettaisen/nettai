@@ -24,7 +24,8 @@ pub(super) fn entry(b: &mut Battle, r: ObjectRef) {
 /// `sub_80164A0`: a navi that isn't one of the battle's combatants
 /// appears mid-battle: hidden and untouchable, it flashes in (effect #0
 /// looks 6 and, after 20 ticks, 3, with sound 0x129), shows from the next
-/// tick on, and after 30 ticks takes control.
+/// tick on, white fading to its own colors (the color shader: gray at the
+/// second timer's level), and after 30 ticks takes control.
 fn appear(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).phase {
         // sub_80164C0
@@ -40,7 +41,8 @@ fn appear(b: &mut Battle, r: ObjectRef) {
             let o = b.objects.get_mut(r);
             o.timer = 0x14;
             o.timer2 = 0x1E;
-            // (A white color shader: presentation.)
+            // sprite_setColorShader(white)
+            b.objects.sprite_mut(r).look.color_shader = gray(0x1F);
             set_invulnerable(b, r, 0xFFFF);
             let pos = b.objects.get(r).pos;
             flash(b, pos, APPEAR_LOOK);
@@ -63,7 +65,9 @@ fn appear(b: &mut Battle, r: ObjectRef) {
             if o.timer2 != 0 {
                 return show(b, r);
             }
-            // (The color shader goes.)
+            // sprite_zeroColorShader
+            b.objects.sprite_mut(r).look.color_shader = 0;
+            let o = b.objects.get_mut(r);
             o.phase = 8;
             o.phase_init = 0;
         }
@@ -92,9 +96,16 @@ fn flash(b: &mut Battle, pos: crate::object::Vec3, look: EffectRole) {
     }
 }
 
-/// `loc_801655A`: the navi shows (in the fading color shader).
+/// `loc_801655A`: the navi shows, in the gray of the second timer's level.
 fn show(b: &mut Battle, r: ObjectRef) {
+    let level = b.objects.get(r).timer2;
+    b.objects.sprite_mut(r).look.color_shader = gray(level);
     b.objects.get_mut(r).set_visible(true);
+}
+
+/// A color shader of one level in each of its three 5-bit channels.
+fn gray(level: u16) -> u16 {
+    level.wrapping_mul(1 << 10 | 1 << 5 | 1)
 }
 
 /// `sub_80163B4`: the local navi shows at once; the other one queues for
