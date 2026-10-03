@@ -276,7 +276,7 @@ wire_struct! {
         attack, rapid, charge, first_barrier, gauge_speed, reg_up, custom_level, mega_level, giga_level, support,
         mood, element, starting_form, float_shoes, air_shoes, undershirt, super_armor, version, beast_out_counter,
         sun, chip_drops, encounters, navi, navi_variant, form, folder, folder_reg, max_base_hp, hp, max_hp,
-        chip_recovery, folder_tags, chip_shuffle, number_open, weapons, bugs,
+        chip_recovery, folder_tags, chip_shuffle, number_open, hub_style, weapons, bugs,
     }
     ChipHand { cursor, ids, damage, attack_bonus, charge_bonus, selection, turn, modifiers }
     CustomResult { hand, navi_stats, transform }
