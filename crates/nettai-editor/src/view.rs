@@ -176,6 +176,9 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     .spacing(10);
     if c.navi(side.navi).forms.is_none() {
         col = col.push(field("Navi level", text_input("0", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
+        if crate::levels::has_levels(c, side) {
+            col = col.push(text("0 to 14: changing it fills in the stats the save gives at that level, the game cleared (the stats pane).").size(13).color(DIM));
+        }
     }
     col = col.push(field("Bug frags", text_input("0", &frags).on_input(move |t| Msg::BugFrags(s, t)).width(Length::Fixed(100.0))));
     col = col.push(checkbox(side.emotion_window_glitch).label("The emotion window glitches (the save's NaviCust bug flag)").on_toggle(move |b| Msg::Glitch(s, b)));
@@ -516,16 +519,22 @@ pub fn navicust_stats(e: &Editor, s: usize) -> Element<'_, Msg> {
 fn stats_pane<'a>(e: &'a Editor, s: usize, only: Option<&'static [&'static str]>) -> Element<'a, Msg> {
     let c = &e.content;
     let side = e.side(s);
-    let base = nettai_match::Side::base_stats(c, side.navi, side.game);
+    let base = crate::levels::reset(c, side);
+    let leveled = crate::levels::has_levels(c, side);
     let (title, about) = match only {
         Some(_) => (String::new(), "What the NaviCust gives the navi, as its stats and bugs, set directly; a changed one is written to the file."),
+        None if leveled => (
+            format!("{}: stats", SIDES[s]),
+            "What the save gives the link navi at its level (its reload); a changed one is written to the file, and where it differs from the level's, said.",
+        ),
         None => (
             format!("{}: stats", SIDES[s]),
             "What the save and the NaviCust give the navi, over its fresh stats; a changed one is written to the file.",
         ),
     };
+    let reset = if leveled { "Reset to the level's" } else { "Reset to fresh" };
     let mut col = column![
-        row![heading(title), space().width(Length::Fill), button("Reset to fresh").on_press(Msg::StatsReset(s)).style(button::secondary)]
+        row![heading(title), space().width(Length::Fill), button(reset).on_press(Msg::StatsReset(s)).style(button::secondary)]
             .align_y(Alignment::Center),
         text(about).size(13).color(DIM),
     ]
@@ -595,7 +604,11 @@ fn stats_pane<'a>(e: &'a Editor, s: usize, only: Option<&'static [&'static str]>
             }
             _ => text("?").into(),
         };
-        col = col.push(row![name, widget, text(f.about).size(12).color(DIM)].spacing(8).align_y(Alignment::Center));
+        let mut line = row![name, widget].spacing(8).align_y(Alignment::Center);
+        if let Some(note) = crate::levels::differs(c, side, f) {
+            line = line.push(text(note).size(12).color(RED));
+        }
+        col = col.push(line.push(text(f.about).size(12).color(DIM)));
     }
     scrollable(col).into()
 }
