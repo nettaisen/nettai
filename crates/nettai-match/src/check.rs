@@ -119,6 +119,9 @@ pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
             out.push(format!("the tactics name pattern {}, which they haven't", *i as u16 + 1));
         }
     }
+    // The systems' setups, and the souls.
+    out.extend(crate::setups::check(content, s));
+    out.extend(crate::souls::check(content, s));
     // The folder's chips, before its rules.
     if let Some((i, _)) = s.folder.chips.iter().enumerate().find(|(_, c)| c.is_some_and(|c| c.id.index() >= defs.chips.len())) {
         out.push(format!("folder entry {i}: a chip the content hasn't"));

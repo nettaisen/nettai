@@ -21,6 +21,7 @@ pub enum Tab {
     Navi(usize),
     Folder(usize),
     Crosses(usize),
+    Souls(usize),
     Cards(usize),
     NaviCust(usize),
     Stats(usize),
@@ -43,6 +44,7 @@ impl Tab {
             "navi" => Tab::Navi(side),
             "folder" => Tab::Folder(side),
             "crosses" => Tab::Crosses(side),
+            "souls" => Tab::Souls(side),
             "cards" => Tab::Cards(side),
             "navicust" => Tab::NaviCust(side),
             "stats" => Tab::Stats(side),
@@ -107,6 +109,14 @@ pub enum Msg {
     // The Crosses.
     OwnCrosses(usize, bool),
     Cross(usize, FormHandle, bool),
+    // The souls: every soul (the default), or the side's list.
+    EverySoul(usize, bool),
+    Soul(usize, FormHandle, bool),
+    // A system's setup field (system, field): a value, as typed, or back to
+    // the system's default.
+    SetupValue(usize, String, String, nettai_match::setups::SetupValue),
+    SetupText(usize, String, String, String),
+    SetupDefault(usize, String, String),
     // The patch cards.
     AddCard(usize, PatchCardHandle),
     CardOn(usize, usize, bool),
@@ -413,6 +423,11 @@ impl Editor {
                 if !side.has_system(&content, nettai_match::NAVICUST_SYSTEM) {
                     side.navicust = None;
                 }
+                if !side.has_system(&content, nettai_match::souls::SOULS_SYSTEM) {
+                    side.souls = None;
+                }
+                nettai_match::setups::retain_own(&content, side);
+                self.typed.retain(|&(x, k), _| x != s || !k.starts_with("setup"));
                 self.edited();
             }
             Msg::Navi(s, c) => {
@@ -471,15 +486,29 @@ impl Editor {
                 self.sp_typed.insert((s, slot), t);
             }
             Msg::ImportSave(s) => {
-                if let Some(path) = rfd::FileDialog::new().add_filter("BN6 save", &["sav"]).pick_file() {
+                // A BN5 side's save is BN5's (its light/dark value and
+                // souls), else BN6's.
+                let bn5 = self.m.sides[s]
+                    .ruleset_or_stock(&content)
+                    .and_then(|r| nettai_content_api::keys::root_of(&content.defs.ruleset(r).key))
+                    == Some(bn5_root());
+                let (filter, what) = if bn5 {
+                    ("BN5 save", "the light/dark value and souls")
+                } else {
+                    ("BN6 save", "the game, unlocks, navi code and SP times")
+                };
+                if let Some(path) = rfd::FileDialog::new().add_filter(filter, &["sav", "raw"]).pick_file() {
                     let read = std::fs::read(&path).map_err(|e| e.to_string());
-                    match read.and_then(|bytes| self.m.sides[s].import_save(&content, &bytes)) {
+                    let side = &mut self.m.sides[s];
+                    let imported =
+                        read.and_then(|bytes| if bn5 { side.import_bn5_save(&content, &bytes) } else { side.import_save(&content, &bytes) });
+                    match imported {
                         Ok(notes) => {
                             self.typed.retain(|&(x, _), _| x != s);
                             self.sp_typed.retain(|&(x, _), _| x != s);
                             self.edited();
                             let notes = if notes.is_empty() { String::new() } else { format!(" ({})", notes.join("; ")) };
-                            self.status = format!("the game, unlocks, navi code and SP times from {}{notes}", path.display());
+                            self.status = format!("{what} from {}{notes}", path.display());
                         }
                         Err(e) => self.status = format!("can't import {}: {e}", path.display()),
                     }
@@ -554,6 +583,46 @@ impl Editor {
                 side.crosses = Some(CrossList::new(&forms));
                 self.edited();
             }
+            Msg::EverySoul(s, every) => {
+                let side = &mut self.m.sides[s];
+                side.souls = if every { None } else { Some(nettai_match::souls::all(&content)) };
+                self.edited();
+            }
+            Msg::Soul(s, f, on) => {
+                let side = &mut self.m.sides[s];
+                let mut list = nettai_match::souls::owned(&content, side);
+                list.retain(|&x| x != f);
+                if on {
+                    list.push(f);
+                }
+                // In the content's order.
+                list.sort();
+                side.souls = Some(list);
+                self.edited();
+            }
+            Msg::SetupValue(s, system, field, v) => {
+                self.m.sides[s].setups.entry(system.clone()).or_default().insert(field.clone(), v);
+                self.typed.remove(&(s, setup_key(&system, &field)));
+                self.edited();
+            }
+            Msg::SetupText(s, system, field, t) => {
+                if let Ok(v) = t.trim().parse::<i64>() {
+                    self.m.sides[s].setups.entry(system.clone()).or_default().insert(field.clone(), nettai_match::setups::SetupValue::Int(v));
+                    self.edited();
+                }
+                self.typed.insert((s, setup_key(&system, &field)), t);
+            }
+            Msg::SetupDefault(s, system, field) => {
+                let setups = &mut self.m.sides[s].setups;
+                if let Some(fields) = setups.get_mut(&system) {
+                    fields.remove(&field);
+                    if fields.is_empty() {
+                        setups.remove(&system);
+                    }
+                }
+                self.typed.remove(&(s, setup_key(&system, &field)));
+                self.edited();
+            }
             Msg::AddCard(s, card) => {
                 let cards = &mut self.m.sides[s].cards;
                 if !cards.iter().any(|c| c.card == card) {
@@ -623,6 +692,26 @@ impl Editor {
         }
         Task::none()
     }
+}
+
+/// BN5's game, whose saves the import reads for a side of its rules.
+fn bn5_root() -> &'static str {
+    "bn5"
+}
+
+/// The key a setup field's typed text is kept under (with the side): its
+/// system and field, interned (the typed map's keys are static).
+pub fn setup_key(system: &str, field: &str) -> &'static str {
+    use std::sync::{Mutex, OnceLock};
+    static KEYS: OnceLock<Mutex<std::collections::BTreeSet<&'static str>>> = OnceLock::new();
+    let key = format!("setup:{system}.{field}");
+    let mut keys = KEYS.get_or_init(Default::default).lock().expect("the keys");
+    if let Some(k) = keys.get(key.as_str()) {
+        return k;
+    }
+    let k: &'static str = Box::leak(key.into_boxed_str());
+    keys.insert(k);
+    k
 }
 
 /// A match file's text, resolved and as it is (its problems are the

@@ -42,6 +42,12 @@
 //! [left.tactics]                     # optional: BN5's computer-navi data, the save's (none: empty)
 //! entries = ["bn5:cannon", "pattern 1", "nothing", "empty"]   # up to 42: a chip, a pattern by its number, 0, 0xFFFF
 //! patterns = [{ dx = 1, dy = 0, chips = ["bn5:sword", "bn5:wideswrd"] }]   # up to 8, each up to 6 chips
+//!
+//! # A BN5 side ([left] with ruleset = "bn5:stock", navi = "bn5:megaman") may say besides:
+//! souls = ["bn5:protosoul"]          # optional (in [left]): the souls it has, of either version (none: every soul)
+//!
+//! [left.setup."bn5:light-dark"]      # optional: a system's player setup by field (crate::setups; the rest its defaults)
+//! value = 100                        # BN5's light/dark value, 0 to 1000 (a fresh save's 500; dark under 470)
 //! ```
 
 use crate::{Arena, Folder, Match, Place, Side, stats};
@@ -113,6 +119,10 @@ pub struct SideFile {
     pub navicust: Option<NaviCustFile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tactics: Option<TacticsFile>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub souls: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub setup: BTreeMap<String, BTreeMap<String, toml::Value>>,
 }
 
 /// A player's tactics (`nettai_battle::tactics`): the entries, each a chip's
@@ -353,6 +363,30 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
         }
     }
     let tactics = s.tactics.as_ref().map(|t| resolve_tactics(content, t, &mut say)).unwrap_or_default();
+    // The souls, by key.
+    let souls = s.souls.as_ref().map(|keys| {
+        keys.iter()
+            .filter_map(|k| {
+                let f = content.defs.form_by_key(k);
+                if f.is_none() {
+                    say(format!("souls: no form {k:?}"));
+                }
+                f
+            })
+            .collect()
+    });
+    // The systems' setups, as written (their checks are the match's).
+    let mut setups = crate::setups::Setups::new();
+    for (system, fields) in &s.setup {
+        for (field, v) in fields {
+            match crate::setups::SetupValue::from_toml(v) {
+                Ok(v) => {
+                    setups.entry(system.clone()).or_default().insert(field.clone(), v);
+                }
+                Err(e) => say(format!("setup: {system}.{field}: {e}")),
+            }
+        }
+    }
     let navi = navi?;
     // (No level: a link navi's 0, MegaMan's none; the checks hold it.)
     let navi_level = s.level.or_else(|| crate::default_navi_level(content, navi));
@@ -379,6 +413,8 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
         sp_times,
         navicust,
         tactics,
+        setups,
+        souls,
     })
 }
 
@@ -501,6 +537,12 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
                 .collect(),
         }),
         stats: s.stats_block(content),
+        souls: s.souls.as_ref().map(|l| l.iter().map(|&f| content.defs.form(f).key.clone()).collect()),
+        setup: s
+            .setups
+            .iter()
+            .map(|(system, fields)| (system.clone(), fields.iter().map(|(k, v)| (k.clone(), v.to_toml())).collect()))
+            .collect(),
         navicust: s.navicust.map(|n| NaviCustFile {
             expansions: Some(n.expansions),
             programs: n

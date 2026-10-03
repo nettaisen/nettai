@@ -23,10 +23,12 @@ pub struct ChipPictures {
 }
 
 /// The pictures of every chip the packs have, by the chip's key (as the
-/// content keys it).
+/// content keys it), and the faces of the forms that have one (a soul's,
+/// a Cross's), by the form's key.
 #[derive(Default)]
 pub struct Pictures {
     chips: HashMap<String, ChipPictures>,
+    faces: HashMap<String, Handle>,
 }
 
 fn handle(i: Image) -> Handle {
@@ -56,7 +58,18 @@ impl Pictures {
             let art = pictures::chip_art(&packs, content, chip).map(handle);
             chips.insert(d.key.clone(), ChipPictures { icon, art });
         }
-        Ok(Pictures { chips })
+        let mut faces = HashMap::new();
+        for (i, d) in content.defs.forms.iter().enumerate() {
+            if let Some(face) = pictures::form_face(&packs, content, nettai_content_api::FormHandle(i as u16)) {
+                faces.insert(d.key.clone(), handle(face));
+            }
+        }
+        Ok(Pictures { chips, faces })
+    }
+
+    /// The face of the form with this key, if it has one.
+    pub fn face(&self, key: &str) -> Option<&Handle> {
+        self.faces.get(key)
     }
 
     /// The pictures of the chip with this key (as the content keys it).

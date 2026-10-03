@@ -98,8 +98,9 @@ pub struct PlayerSetup {
     /// none: the content's stock ruleset.
     pub ruleset: Option<nettai_content_api::RulesetHandle>,
     /// What the player brings for each system of their ruleset (its
-    /// `setup` fields), in the ruleset's order; none given: all zero
-    /// (`PlayerSetup::set_rule` writes one by name).
+    /// `setup` fields), in the ruleset's order; none given: each system's
+    /// defaults (`setup_defaults`, the rest zero; `PlayerSetup::set_rule`
+    /// writes one by name).
     pub rules: Vec<nettai_content_api::ContentState>,
     /// The patch cards the player has installed (`crate::patch_cards`):
     /// their ruleset's rules apply them (BN6's patch-cards system).
