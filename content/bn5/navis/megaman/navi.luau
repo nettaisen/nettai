@@ -6,11 +6,12 @@
 -- actor record (0x08014C94: version 0, a player, AI index 0) and his sprite's 30 attach points (0x080151C0,
 -- 0x3C bytes a sprite: BN6's have 34). BN5 has no weakness table (BN6's `byte_80108D1`).
 --
--- Not yet (docs/design/bn5-map.md §15.7): his souls (forms, with Soul Unison), his move lag in soul 8 (0), the
--- held offset and the custom screen's no-running message.
+-- Not yet (docs/design/bn5-map.md §15.7): his souls but ProtoSoul (forms, with Soul Unison), his move lag in soul 8
+-- (0), the held offset and the custom screen's no-running message.
 
 local buster = require("./weapons/buster")
 local charged_shot = require("./weapons/charged-shot")
+local protosoul = require("./forms/protosoul/form")
 
 return define.navi {
     id = "bn5:megaman",
@@ -20,6 +21,8 @@ return define.navi {
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("bn5:megaman-win"), lose = asset.banner("bn5:megaman-deleted") },
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
+    -- His souls, which the custom screen's soul button offers (rules/souls).
+    forms = { souls = { protosoul } },
     identity = define.identity {
         class = "megaman",
         version = 0,

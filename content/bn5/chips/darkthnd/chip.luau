@@ -1,6 +1,12 @@
 --!strict
--- DarkThnd (BN5 chip 0x0c1): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- DarkThnd (BN5 chip 0x0c1): a dark chip: Thunder's shot (@bn6/chips/thunder) with BN5's big ball (objects/thunder)
+-- that homes in for 12 panels, paralyzes and carries bug 0x19 (its record's parameters); its use costs the custom
+-- screen's HP drain (rules/light-dark).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local shoot = require("@bn6/chips/thunder/shoot")
+local statuses = require("../../rules/status")
+local thunder = require("../../objects/thunder/ball")
 
 return define.chip {
     id = "bn5:darkthnd",
@@ -15,4 +21,9 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
+    action = shoot.action {
+        id = "bn5:darkthnd/action",
+        ball = { panels = 0x0C, status = statuses.paralyze_90, bug = 0x19 },
+        kind = thunder.kind,
+    },
 }

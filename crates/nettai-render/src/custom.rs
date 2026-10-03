@@ -673,7 +673,8 @@ impl Window {
                     blank_details(self, look.details);
                 }
             }
-            SlotKind::Empty | SlotKind::Hidden => {}
+            // (BN5's soul button: its pictures aren't in the packs yet.)
+            SlotKind::Soul | SlotKind::Empty | SlotKind::Hidden => {}
         }
     }
 
@@ -772,7 +773,8 @@ impl Window {
                     }
                     at += 6;
                 }
-                SlotKind::Ok | SlotKind::Button { cell: ButtonCell::Right, .. } => {}
+                // (BN5's soul button: its tiles aren't in the packs yet.)
+                SlotKind::Ok | SlotKind::Soul | SlotKind::Button { cell: ButtonCell::Right, .. } => {}
                 SlotKind::BeastOut => self.tiles.put_part(at, &v.beast.beast_buttons, 8 * (state != 0) as usize, 8),
                 SlotKind::Button { button, .. } => {
                     if let Some(look) = v.button_look(button) {
@@ -1025,7 +1027,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             (16 * col + 8, 0x68 + 0x18 * row, &CHIP_CURSOR)
         }
         SlotKind::Ok => (0x58 + 3, 0x70 - 2, &OK_CURSOR),
-        SlotKind::BeastOut => (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR),
+        SlotKind::BeastOut | SlotKind::Soul => (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR),
         SlotKind::Button { button, .. } => v.button_look(button).map_or((0x38, 0x80, &BUTTON_CURSOR), |l| l.cursor),
     };
     let palette = v.emblem_palette();

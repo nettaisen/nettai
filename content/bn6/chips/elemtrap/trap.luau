@@ -10,7 +10,10 @@
 -- appears. See docs/engine/chips.md §3.6.9.
 --
 -- The trap chips' controller (lib/traps/controller) sets it for ElemTrap:
--- `trap.set(controller, user, chip, bonus)` (`sub_80E358C`).
+-- `trap.set(controller, user, chip, bonus)` (`sub_80E358C`). A game whose
+-- trap watches one element, collides, sparkles or strikes otherwise makes
+-- its kind with `trap.make_kind(id, look)` and sets it with `trap.spawn`
+-- (BN5's AntiFire to AntiWood).
 
 local collision = require("../../rules/collision")
 local panels = require("../../lib/panels")
@@ -24,7 +27,8 @@ export type State = {
     bonus: number,
     -- Hits spring it (not in the tick it appears).
     armed: boolean,
-    -- The element that sprang it (the original's first parameter).
+    -- The element that sprang it (the original's first parameter); in a
+    -- trap that watches one element, that element from the start.
     sprung_by: number,
 }
 
@@ -49,14 +53,26 @@ local SPARKLE = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 
 local SPARKLE_SOUND = asset.sound("bn6:dimming-sparkle")
 local SPARKLE_DY, SPARKLE_Z = 0x10_0000, 0x20_0000
 
+-- BN6's look: it watches fire to wood, is nothing and reaches the other
+-- side's attacks and objects, sparkles 16 pixels down and 32 up, and
+-- strikes with ElemTrap's counterattack.
+local BN6: ElemTrapLook = {
+    watches = "fire_to_wood",
+    self_type = collision.nothing,
+    target = collision.hit_by_other_attacks,
+    sparkle_dy = SPARKLE_DY,
+    sparkle_z = SPARKLE_Z,
+    strike_kind = strike.kind,
+}
+
 -- `sub_80CE0A4`: sparkles on the enemy navi's panels, first to last.
-local function sparkle(me: Object)
+local function sparkle(me: Object, look: ElemTrapLook)
     local marked = regions.other_navi[me.alliance].field :: PanelCondition
     local list = panels.filtered(marked.require, marked.forbid)
     for i = #list, 1, -1 do
         local p = list[i]
         local x, y = field.center(panels.x(p), panels.y(p))
-        battle.effect(Vec3.new(x, y + SPARKLE_DY, SPARKLE_Z), SPARKLE, battle.local_side())
+        battle.effect(Vec3.new(x, y + look.sparkle_dy, look.sparkle_z), SPARKLE, battle.local_side())
         battle.play_sound(SPARKLE_SOUND)
     end
 end
@@ -64,19 +80,19 @@ end
 -- `sub_80CE05E`: sprung. Hit as it appeared, it just goes; else, once the
 -- battle isn't dimmed, the sparkles and the counterattack (its user's
 -- side's dimming, which the other side can't cut in on), and it goes.
-local function spring(me: Object)
+local function spring(me: Object, look: ElemTrapLook)
     local s = me.state :: State
     if s.armed then
         if battle.dimmed() then
             return
         end
-        sparkle(me)
+        sparkle(me, look)
         local user = me.related1
         if not user then
             error("ElemTrap's trap has no user (sub_80E360E reads through a null pointer)")
         end
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-        local counter = strike.spawn(user, s.sprung_by, damage, s.bonus)
+        local counter = strike.spawn(user, s.sprung_by, damage, s.bonus, look.strike_kind)
         dimming.start(user.alliance, true, counter, user, { chip = s.chip, bonus = s.bonus })
     end
     battle.clear_linked(me.alliance)
@@ -84,14 +100,19 @@ local function spring(me: Object)
 end
 
 -- `sub_80CE034`: the first of fire, aqua, elec and wood with damage this
--- tick springs it.
-local function watch(me: Object)
-    for e = FIRST_ELEMENT, LAST_ELEMENT do
+-- tick springs it (in a trap that watches one element, that element's).
+local function watch(me: Object, look: ElemTrapLook)
+    local s = me.state :: State
+    local first, last = FIRST_ELEMENT, LAST_ELEMENT
+    if look.watches == "one" then
+        first, last = s.sprung_by, s.sprung_by
+    end
+    for e = first, last do
         if me.collision:element_damage(e) ~= 0 then
-            (me.state :: State).sprung_by = e
+            s.sprung_by = e
             me.collision:set_region(nil)
             me.action, me.phase, me.phase_init = SPRING, 0, 0
-            spring(me)
+            spring(me, look)
             return
         end
     end
@@ -110,7 +131,7 @@ end
 -- `sub_802CEA6`, clearing a side's record, tells the record's object to
 -- end through its second parameter; here the trap sees that its side's
 -- record no longer names it.)
-local function tick(me: Object)
+local function tick(me: Object, look: ElemTrapLook)
     me.collision:remove()
     if battle.linked(me.alliance).object ~= me then
         vanish(me)
@@ -123,9 +144,9 @@ local function tick(me: Object)
     end
     local a = me.action
     if a == WATCH then
-        watch(me)
+        watch(me, look)
     elseif a == SPRING then
-        spring(me)
+        spring(me, look)
     else
         error(string.format("ElemTrap's trap action %#x reads past its table", a))
     end
@@ -134,47 +155,51 @@ end
 
 -- `sub_80CDFA4`: its collision over the whole field, hit while dimmed; one
 -- update unarmed, then armed.
-local function init(me: Object)
+local function init(me: Object, look: ElemTrapLook)
     me.panel_x, me.panel_y = 1, 1
     if not me:create_collision() then
         me:free()
         return
     end
-    me:setup_collision(collision.nothing, collision.hit_by_other_attacks, HIT_MOD)
+    me:setup_collision(look.self_type, look.target, HIT_MOD)
     me.collision:set_region(regions.field)
     me:set_status("hit_while_dimmed", true)
     me.collision:present()
     local s = me.state :: State
     s.armed = false
     me:set_lifecycle("update")
-    tick(me)
+    tick(me, look)
     s.armed = true
 end
 
--- `sub_80CDF84`.
-local function update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
-    end
+-- A trap kind (`id`) of `look`.
+function trap.make_kind(id: string, look: ElemTrapLook): Kind
+    return define.kind {
+        id = id,
+        pool = "attack",
+        state = { chip = "chip", bonus = "u16", armed = "bool", sprung_by = "u8" },
+        -- `sub_80CDF84`.
+        update = function(me: Object)
+            local l = me.lifecycle
+            if l == "init" then
+                init(me, look)
+            elseif l == "update" then
+                tick(me, look)
+            else
+                me:destroy()
+            end
+        end,
+    }
 end
 
-trap.kind = define.kind {
-    id = "bn6:elemtrap/trap",
-    pool = "attack",
-    state = { chip = "chip", bonus = "u16", armed = "bool", sprung_by = "u8" },
-    update = update,
-}
+trap.kind = trap.make_kind("bn6:elemtrap/trap", BN6)
 
--- `sub_80CE0EC`: the trap for `user`, on `controller`'s side, with the
--- controller's damage word, its chip and the bonus. (Its position is the
--- spawner's registers, which nothing reads.)
-function trap.set(controller: Object, user: Object, chip: Chip?, bonus: number): Object?
-    local o = battle.spawn(trap.kind, Vec3.new(0, controller.element, 0))
+-- `sub_80CE0EC`: a trap of `kind` for `user`, on `controller`'s side, with
+-- the controller's damage word, its chip and the bonus; a trap that
+-- watches one element watches `element`. (Its position is the spawner's
+-- registers, which nothing reads.)
+function trap.spawn(kind: Kind, controller: Object, user: Object, chip: Chip?, bonus: number, element: number?): Object?
+    local o = battle.spawn(kind, Vec3.new(0, controller.element, 0))
     if not o then
         return nil
     end
@@ -184,8 +209,16 @@ function trap.set(controller: Object, user: Object, chip: Chip?, bonus: number):
     o.alliance = controller.alliance
     local s = o.state :: State
     s.chip, s.bonus = chip, bonus
+    if element then
+        s.sprung_by = element
+    end
     o.run_while_dimmed = true
     return o
+end
+
+-- ElemTrap's (`sub_80E358C`): BN6's trap.
+function trap.set(controller: Object, user: Object, chip: Chip?, bonus: number): Object?
+    return trap.spawn(trap.kind, controller, user, chip, bonus)
 end
 
 return trap

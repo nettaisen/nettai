@@ -1186,15 +1186,43 @@ Third batch:
 - *Without a BN6 chip* (§14.4, `bn6 code, no chip`): Blinder, the mode chips, FinalGun: new modules from the
   shared code.
 
+**Fifth batch** (2026-10-02, bn5-port-5): BusterUp, Attck+10 and +30 (lib/plus), FireHit1 to 3, Vulcan1 to 3,
+Tornado, AntiFire/Aqua/Elec/Wood, CrakOut and its family, the dark chips DarkThnd, DrkSword, DarkTorn, DarkWide,
+DarkCirc (CircGun's kinds of BN5's look, its variant period 2, 7 shots, look 1), DrkLance (with Lance: BN6's
+lance of BN5's look, hit modifier 0x10, Param1 1's row 0x25 and bug 0x16), DarkMetr (with Meteors: the falling
+meteor's rows, 2's hit modifier 0, 3 cracking, 4 DarkMetr's breaking with bug 0x19; BN5's shower with its dark
+parameter), DarkDril (with DrilArm1 to 3: BN6's drills of BN5's look, no wait outside flag 0x40, DarkDril's 60
+ticks and bug 0xFA), DrkSonic (with Fanfare and BN5's own instruments: row 4, its effect paralyzing each enemy
+where it stands), DarkPlus (its damage the next damaging chip's Atk+ bonus, the dark tint AIData+0x3C); the dark
+chips' rule and costs (rules/light-dark: `battle.set_side_stat`, the mood, `battle.no_dark_chips`); TimeBom1 to 3
+and TimeBom+'s use (BN6's TimeBom with BN5's placement: a random row's frontmost enemy panel, 0x080E3420; the
+bombs' identities of AI index 0x21, BN5's field objects' index: actor records 0xD8 to 0xE1 all have it, and nothing
+of BN5's reads it but the record).
+
+BN6's modules changed for BN5 in the fifth batch, each a kind of its look (BN6 the same): chips/firehit/fist,
+objects/bullet, chips/vulcan/action, chips/tornado, chips/elemtrap (trap and strike), chips/widesht/wave (its
+trail), chips/timebom (countdown.make_kind, controller.make), chips/circgun (shot, gun, controller), chips/lance
+(make_kind, instant_of), chips/meteors (falling_meteor.make_kind with its rows by Param1; the controller moved to
+controller.luau), lib/instant/meteor_shower (`pick`, `aim` exported; BN6's three-drop row 2), chips/drilarm/drill
+(make_kind returning its spawner), lib/instruments (instrument.make_kind, instruments.make, `effect_period`),
+lib/swords (a slash's `blade_anim`; parts.hold's anim).
+
+**Waiting:** LarkMan, GridMan and their SP and DS (BN5's own navis, §14.4: the action map's `bn5-only`), DarkInvs
+(BN5's own, 0x080E2338), the mode chips, Program Advances' recipes (TimeBom+'s among them), the flag-0x40 mode's
+effect 0x83 (FireHit's warning, the swords' swing, the meteors, DrilArm's start: never in a netbattle).
+
 ### 15.7 BN5's MegaMan, stages and roles (as built)
 
 - **MegaMan** (content/bn5/navis/megaman, `bn5:megaman`): BN5's navi 0, NameID 0x180, from BN5's tables (his
-  sprite 08-00, element, buster bonus 1, move lag 4, banners, actor record, the 30 attach points of BN5's 0x3C-byte
-  rows), his buster and charged shot BN6's shot actions with BN5's setups (weapons/: the damage Attack plus the
-  navi's bonus, no worn-out rule or cap; a program drawn on every shot, on half the draws). He has no forms: the
-  engine allows one base form in a content (BN6's), which he takes; BN5's souls need a base form per game
-  (§15.3, item 12 below). The engine asks a player's identity for a Full Synchro aura animation, which BN5 has
-  differently (BN6's `sub_80C4C52` is absent): 0, BN6's rule, until BN5's emotions.
+  element, buster bonus 1, move lag 4, banners, actor record, the 30 attach points of BN5's 0x3C-byte rows), his
+  buster and charged shot BN6's shot actions with BN5's setups (weapons/: the damage Attack plus the navi's bonus,
+  no worn-out rule or cap; a program drawn on every shot, on half the draws). His forms are his souls (§15.8),
+  with his own base form `bn5:base` (P1c): his battle sprite is the form's, 00-00 by soul (0x0800DA3A: category 0
+  by the soul where NaviStats +0x29 is 0; 08-00, his navi sprite, has 31 one-frame animations). Changing form, he
+  takes BN6's MegaMan branches (NaviStats +0x29 0 in BN5's code too: the anger, the bugs' stripped programs, the
+  move lag), but for BN6's per-form tick (`sub_80F0608`), which BN5's table (0x080EB1E8) hasn't: the status
+  section's `form_tick` (BN5 false). The engine asks a player's identity for a Full Synchro aura animation, which
+  BN5 has differently (BN6's `sub_80C4C52` is absent): 0, BN6's rule, until BN5's emotions.
 - **Stages** (content/bn5/stages/netbattle.luau, compat stages.toml): a stage per distinct record of BN5's
   netbattle settings list (0x0811AF4C, 95 records), its layout (0x0800BD6C) and its actor list; the lab's
   settings (written to RAM by the Team Battle with its own background and effects) match the list's by layout,
@@ -1242,3 +1270,41 @@ them.
    side, then the panels beside it, and may spawn attack object 0x30 there (0x080CAB02, 0x080CAAE2: unread
    further); BlkBomb's idle and return actions are 7 and 6 (BN6's 9 and 8), its table without frozen and bubbled.
    Not met in the replays yet.
+
+### 15.8 Soul Unison (as built, in progress)
+
+- **The soul button** (the engine's custom screen, BN5's layout: slot 11, `SlotKind::Soul`, 0x08023C54,
+  0x08024B28, 0x08024972): lit for the last pick's family when the navi has a soul of it (a form of
+  `kind = "soul"` naming its `soul = { number, family }`), the save has the soul (`SoulUnlocks`: bn5-compat gives
+  a finished save's six of the version and Chaos Unison) and it isn't used this round (Soul Unison and Chaos Unison
+  apart; a dark chip's is Chaos Unison). Pressed: BN5's state 9 (`Phase::SoulChosen`: fades 0x34 and 0x30), the
+  soul first in the selection in place of the chip given up. At OK the transform record asks for the soul's form,
+  3 turns and the NaviCust's bonus (NaviStats +0x32, at most 9) or Chaos Unison's 1 (0x08024FF6;
+  `TransformRequest::turns`, `chaos`; the netplay protocol's version 2); the chip given up leaves the folder.
+- **The change** (rules/souls/change.luau, the souls' `change`, BN5's 0x08011F74, run by the shared turn-start
+  sequencer): onto the future panel, a flash, his moves stopped (`stop_moving`); the soul's image (objects/
+  soul-image, actor 0x2A, its navi's sprite 08-xx) spirals in, blinks and fades; MegaMan emerges in the soul (the
+  old form's end hook and the new one's start hook, `put_on/take_off_form_overlay`; TomahawkSoul's shake), the
+  status reset; Chaos Unison's 11 ticks arm the chaos charge (AIData +0x12, not yet modeled). The souls system
+  (rules/souls/system.luau) keeps the soul's turns (AIData +0x0F), counts them down at a turn's start (0x0801248C)
+  and asks for the revert when they run out (0x0801246C); the revert is the souls' own (`FormData::revert`, the
+  pause handler's: rules/souls/revert.luau, 0x080121D8: back to `bn5:base` with no state saved).
+- **ProtoSoul** (soul 1, sword): sprite 00-01, weapons from 0x0801CA1C's row 1: the buster, the charged slash
+  (routine 3: WideSwrd's slash, 80 + 10 × (Attack + 1), counter byte 0x94), Sword chips charged with A (routine
+  5: any Sword chip but a dimming or dark one, `charged_chips`' `plain`, 0x0801090A; doubled, 0x080103D0). BN5's
+  blade animation goes by the soul (0x080EC038: ProtoSoul 13, ColonelSoul 14, ShadowSoul 15; `blade_anim`).
+  souls/01-sword/unison matches every frame. Not yet: its B+Back shield (routine 4, BN5's guard action 0x1F, the
+  Guard chips' too).
+- **The other eleven** follow the pattern: a form file each (sprite 00-0n, image sprite 08-0n, family, weapons
+  from 0x0801CA1C), with their start hooks' parts (GyroSoul's propeller, NumberSoul's layer: identities' parts;
+  the image's for souls 2, 4, 7, 9 and 11, 0x0800EDBC), their charged shots (routines 7 to 0x2D: actions 0x3A to
+  0x45, Colonel's the chip AIData +0x32 names), their B+Back (Magnet's 0x25, Shadow's 0x45) and their chip-use
+  effects in BN5's chip use (0x0801026C: GyroSoul's next-chip doubling after a Wind chip, AIData +0x0D;
+  TomahawkSoul's doubled Wood chips on grass; KnightSoul's 50 invulnerable ticks; ShadowSoul's move lag 0, the
+  form's `move_lag`).
+- **Chaos Unison** waits on the engine: its charge (AIData +0x11's weapon, the routine's charge row by the chaos
+  level AIData +0x6C, the cycle 0x080105F8 of 0x08010650's rows, the release's requests 0x8000 and 0x10000, the
+  idle's start of the chaos weapon or of action 0x39) and, on a failed release, action 0x39 spawns the Dark MegaMan
+  (actor record 0x18D: a navi of AI index 0x16, 500 HP, on a random panel for the other side) that runs BN5's
+  computer navi AI (0x0802B4AC, AIData +0xF0): a second navi on a side, driven by an AI, which the engine hasn't.
+  Eleven of the twelve chaos recordings fail the charge.

@@ -152,6 +152,12 @@ struct NaviCustSection {
 #[serde(deny_unknown_fields)]
 struct StatusSection {
     hp_bug_periods: [u8; 8],
+    #[serde(default = "yes")]
+    form_tick: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 #[derive(Deserialize)]
@@ -406,7 +412,10 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                 rules.navicust = NaviCustRules { boards, command_line: s.command_line };
             }
             "banners" => rules.holding_banners = r.read::<BannersSection>(spec, &at).map_err(e)?.holding,
-            "status" => rules.hp_bug_periods = r.read::<StatusSection>(spec, &at).map_err(e)?.hp_bug_periods,
+            "status" => {
+                let s: StatusSection = r.read(spec, &at).map_err(e)?;
+                (rules.hp_bug_periods, rules.form_tick) = (s.hp_bug_periods, s.form_tick);
+            }
             "lockon" => {
                 let s: LockonSection = r.read(spec, &at).map_err(e)?;
                 rules.lockon.column_shifts = s.column_shifts;
