@@ -20,6 +20,45 @@ pub(super) fn update(b: &mut Battle, r: ObjectRef) {
     }
     decode(b, r);
     accumulate_charge(b, r);
+    chaos_cycle(b, r);
+}
+
+/// BN5's 0x080105F8: an armed Chaos Unison charge's cycle. While the B
+/// charge is full a counter runs through the period of the rules' row (by
+/// the chaos level, at most 2; or the soul's own), and where it stands
+/// sets the window a release reads (2: it succeeds); otherwise the counter
+/// rests at 0.
+fn chaos_cycle(b: &mut Battle, r: ObjectRef) {
+    let a = ai(b, r);
+    if !a.chaos.armed {
+        return;
+    }
+    if a.charge_source != 2 || a.charge_level != 2 {
+        ai_mut(b, r).chaos.counter = 0;
+        return;
+    }
+    // 0x080106BC: the level's row, at most 2, unless the soul has its own.
+    let row = form_of(b, r).soul.and_then(|s| s.chaos_cycle).unwrap_or(a.chaos.level.min(2));
+    let [period, first, second, third] = *b.rules_for(r).chaos_cycle.get(row as usize).unwrap_or_else(|| {
+        panic!("the chaos cycle's row {row} reads past the rules' chaos_cycle (0x08010650)")
+    });
+    let c = ai(b, r).chaos;
+    let mut counter = c.counter.wrapping_add(1);
+    if counter >= period {
+        counter = 0;
+    }
+    let window = if counter < first {
+        2
+    } else if counter < second {
+        1
+    } else if counter < third {
+        0
+    } else {
+        1
+    };
+    let a = ai_mut(b, r);
+    a.chaos.counter = counter;
+    a.chaos.window = window;
 }
 
 /// `sub_800A772`: chips are enabled for this side (intro bit 0x04/0x08)
@@ -235,7 +274,17 @@ fn decode_buster(b: &mut Battle, r: ObjectRef, f0: u32) {
     if edge & keys::B == 0 {
         return;
     }
-    let bit = if a.charge_source == 2 && a.charge_level == 2 { request::CHARGED_SHOT } else { request::BUSTER };
+    let bit = if a.charge_source == 2 && a.charge_level == 2 {
+        // BN5's armed Chaos Unison charge: released in the window, the
+        // chaos weapon; out of it, the failure (0x0801086E).
+        match (a.chaos.armed, a.chaos.window) {
+            (false, _) => request::CHARGED_SHOT,
+            (true, 2) => request::CHAOS_SUCCESS,
+            (true, _) => request::CHAOS_FAILURE,
+        }
+    } else {
+        request::BUSTER
+    };
     ai_mut(b, r).requests |= bit;
 }
 
@@ -296,6 +345,17 @@ fn accumulate_charge(b: &mut Battle, r: ObjectRef) {
 fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
     let s = stats(b, r);
     let a = ai(b, r);
+    // BN5's armed Chaos Unison charge (0x0801067E): the chaos weapon's
+    // time by the chaos level (at most 4) in place of the Charge stat.
+    if source == 2 && a.chaos.armed {
+        let Some(routine) = a.chaos.weapon else { return 0xFF };
+        let w = b.content.weapon(routine);
+        let column = a.chaos.level.min(4) as usize;
+        return match w.charge_ticks.get(column) {
+            Some(&ticks) => ticks,
+            None => panic!("content error: weapon {:?} has no charge time at chaos level {column}", w.key),
+        };
+    }
     let routine = if source == 2 {
         a.charge_shot
     } else if form_of(b, r).kind.is_beast() && uses_alt_a_charge(b, r) {

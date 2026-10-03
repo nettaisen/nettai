@@ -33,6 +33,10 @@
 //! programs = [                       # in the list's order; x, y the center on the 7x7 grid
 //!     { program = "bn6:suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
 //! ]
+//!
+//! [left.tactics]                     # optional: BN5's computer-navi data, the save's (none: empty)
+//! entries = ["bn5:cannon", "pattern 1", "nothing", "empty"]   # up to 42: a chip, a pattern by its number, 0, 0xFFFF
+//! patterns = [{ dx = 1, dy = 0, chips = ["bn5:sword", "bn5:wideswrd"] }]   # up to 8, each up to 6 chips
 //! ```
 
 use crate::{Arena, Folder, Match, Place, Side, stats};
@@ -41,6 +45,7 @@ use nettai_battle::custom::folder::FOLDER_SIZE;
 use nettai_battle::custom::{CrossList, FolderChip, GameVersion};
 use nettai_battle::navicust::{NaviCust, PlacedProgram};
 use nettai_battle::patch_cards::InstalledCard;
+use nettai_battle::tactics::{Tactic, TacticPattern, Tactics};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -95,6 +100,29 @@ pub struct SideFile {
     pub stats: BTreeMap<String, toml::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub navicust: Option<NaviCustFile>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tactics: Option<TacticsFile>,
+}
+
+/// A player's tactics (`nettai_battle::tactics`): the entries, each a chip's
+/// key, `pattern N` (from 1), `nothing` (a save's 0) or `empty` (0xFFFF), and
+/// the patterns.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TacticsFile {
+    #[serde(default)]
+    pub entries: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub patterns: Vec<PatternFile>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PatternFile {
+    pub dx: i8,
+    pub dy: i8,
+    #[serde(default)]
+    pub chips: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -300,6 +328,7 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
             }
         }
     };
+    let tactics = s.tactics.as_ref().map(|t| resolve_tactics(content, t, &mut say)).unwrap_or_default();
     let navi = navi?;
     let mut stats = Side::save_base(content, navi, game, s.level.unwrap_or(0));
     for p in stats::apply(content, &s.stats, &mut stats) {
@@ -321,7 +350,44 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
         navi_level: s.level.unwrap_or(0),
         bug_frags: s.bug_frags.unwrap_or(0),
         navicust,
+        tactics,
     })
+}
+
+/// A file's tactics: what names nothing is said, and left out.
+fn resolve_tactics(content: &Content, t: &TacticsFile, say: &mut impl FnMut(String)) -> Tactics {
+    let chip = |key: &str, say: &mut dyn FnMut(String)| {
+        let c = content.defs.chip_by_key(key);
+        if c.is_none() {
+            say(format!("tactics: no chip {key:?}"));
+        }
+        c
+    };
+    let mut entries = Vec::with_capacity(t.entries.len());
+    for e in &t.entries {
+        let e = e.trim();
+        let entry = match e {
+            "nothing" => Some(Tactic::Nothing),
+            "empty" => Some(Tactic::Empty),
+            _ => match e.strip_prefix("pattern ") {
+                Some(n) => match n.trim().parse::<u8>() {
+                    Ok(n) if n >= 1 => Some(Tactic::Pattern(n - 1)),
+                    _ => {
+                        say(format!("tactics: {e:?} is no pattern's number (from 1)"));
+                        None
+                    }
+                },
+                None => chip(e, say).map(Tactic::Chip),
+            },
+        };
+        entries.extend(entry);
+    }
+    let patterns = t
+        .patterns
+        .iter()
+        .map(|p| TacticPattern { dx: p.dx, dy: p.dy, chips: p.chips.iter().filter_map(|k| chip(k, say)).collect() })
+        .collect();
+    Tactics { entries, patterns }
 }
 
 /// A file's folder: up to 30 entries, an empty one `""` and those past the
@@ -381,6 +447,25 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
             regular: s.folder.regular,
             tags: s.folder.tags.map(|(a, b)| [a, b]),
         },
+        tactics: (s.tactics != Tactics::default()).then(|| TacticsFile {
+            entries: s
+                .tactics
+                .entries
+                .iter()
+                .map(|e| match *e {
+                    Tactic::Chip(c) => content.defs.chip(c).key.clone(),
+                    Tactic::Pattern(i) => format!("pattern {}", i as u16 + 1),
+                    Tactic::Nothing => "nothing".into(),
+                    Tactic::Empty => "empty".into(),
+                })
+                .collect(),
+            patterns: s
+                .tactics
+                .patterns
+                .iter()
+                .map(|p| PatternFile { dx: p.dx, dy: p.dy, chips: p.chips.iter().map(|&c| content.defs.chip(c).key.clone()).collect() })
+                .collect(),
+        }),
         stats: s.stats_block(content),
         navicust: s.navicust.map(|n| NaviCustFile {
             expansions: Some(n.expansions),
@@ -444,6 +529,33 @@ mod tests {
         for line in ["[arena]", "[left]", "[right.folder]", "[left.stats]", "hp = 1000", "regular_memory = 50", "bn6:"] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
+    }
+
+    /// A side's tactics (BN5's computer-navi data) write and read back, and
+    /// what they get wrong is said.
+    #[test]
+    fn tactics_write_and_read_back() {
+        let content = bn6_content();
+        let mut m = crate::draw::live(&content, 2, None).unwrap();
+        let chip = |key: &str| content.defs.chip_by_key(key).unwrap();
+        m.sides[0].tactics = Tactics {
+            entries: vec![Tactic::Chip(chip("bn6:cannon")), Tactic::Pattern(0), Tactic::Nothing, Tactic::Empty],
+            patterns: vec![TacticPattern { dx: 1, dy: -1, chips: vec![chip("bn6:sword"), chip("bn6:cannon")] }],
+        };
+        let text = write(&content, &m);
+        assert!(text.contains("[left.tactics]") && text.contains("\"pattern 1\"") && !text.contains("[right.tactics]"), "{text}");
+        let back = parse(&content, &text).unwrap_or_else(|e| panic!("{e:?}\n{text}"));
+        assert_eq!(back, m);
+        // The round sends them: packed, the empty place gone.
+        let sent = &m.round(&content, 2).players[0].tactics;
+        assert_eq!(sent.entries.len(), 3);
+        assert_eq!(sent.patterns, m.sides[0].tactics.patterns);
+        let bad = text.replacen("\"pattern 1\"", "\"pattern 2\"", 1);
+        let problems = parse(&content, &bad).unwrap_err();
+        assert!(problems.iter().any(|p| p.contains("the tactics name pattern 2")), "{problems:?}");
+        let bad = text.replacen("\"bn6:cannon\"", "\"bn6:nothing-at-all\"", 1);
+        let problems = parse(&content, &bad).unwrap_err();
+        assert!(problems.iter().any(|p| p.contains("tactics: no chip")), "{problems:?}");
     }
 
     /// What a file can get wrong is said, with where it is.
