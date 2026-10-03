@@ -15,7 +15,7 @@
 local collision = require("../../rules/collision")
 local controller = require("@bn6/chips/timebom/controller")
 local countdown = require("@bn6/chips/timebom/countdown")
-local dimming_chips = require("@bn6/lib/dimming")
+local dimming_chips = require("@common/dimming")
 
 local timebom = {}
 

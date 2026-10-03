@@ -12,7 +12,7 @@
 -- `off_80E3574` (0 ElemTrap's trap, 1 to 5 nothing) is the hook's
 -- argument: the trap the chip sets, if any.
 
-local dimming_chips = require("../dimming")
+local dimming_chips = require("@common/dimming")
 
 local traps = {}
 

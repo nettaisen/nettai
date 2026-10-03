@@ -10,8 +10,8 @@
 -- Its spawner (`sub_80CDF60`) is exported: `land_mine.spawn(side, damage)`.
 
 local collision = require("../../rules/collision")
-local panels = require("../../lib/panels")
-local regions = require("../../lib/regions")
+local panels = require("@common/panels")
+local regions = require("@common/regions")
 
 export type State = {
     -- The enemy panels it hops among, shuffled (the object's +0x60), how

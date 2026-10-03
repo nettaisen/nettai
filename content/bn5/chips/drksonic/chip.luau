@@ -9,7 +9,7 @@
 local bn5_instrument = require("../../objects/instrument/instrument")
 local collision = require("../../rules/collision")
 local instrument = require("@bn6/lib/instruments/instrument")
-local regions = require("@bn6/lib/regions")
+local regions = require("@common/regions")
 local statuses = require("../../rules/status")
 
 -- The sixth element: the hit's damage is 0.

@@ -12,7 +12,7 @@
 -- collision types makes its kind with `fist.make_kind(id, look)` (BN5's).
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 
 local fist = {}

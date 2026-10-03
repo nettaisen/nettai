@@ -9,7 +9,7 @@
 -- the HP sync with nothing to sync: it lasts the ticks the dim left on the
 -- timer, plus one, then 31 more.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local marker = require("./marker")
 
 local controller = {}

@@ -10,7 +10,7 @@
 -- side's (./feather); then Falzar comes (three pieces of ./summon over the
 -- user), and once it is done the user and the HUD are back.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local feather = require("./feather")
 local summon = require("./summon")
 local targets = require("../../lib/beast-chips/targets")

@@ -5,7 +5,7 @@
 -- down in front of himself, 18 ticks apart, then gives the user back. His
 -- sprite steps while dimmed.
 
-local stand_in = require("../../lib/dimming/stand_in")
+local stand_in = require("@common/dimming/stand_in")
 local attachment = require("../../objects/attachment/attachment")
 local buster = require("../../lib/buster")
 local ball = require("./ball")

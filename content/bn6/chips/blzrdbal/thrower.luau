@@ -6,7 +6,7 @@
 -- solid, and gives the user back 91 ticks later.
 
 local ball = require("./ball")
-local stand_in = require("../../lib/dimming/stand_in")
+local stand_in = require("@common/dimming/stand_in")
 
 local thrower = {}
 

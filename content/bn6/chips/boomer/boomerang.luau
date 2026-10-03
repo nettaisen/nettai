@@ -13,7 +13,7 @@
 -- { ... }`, a row of `byte_80CA26C`).
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 
 local boomerang = {}

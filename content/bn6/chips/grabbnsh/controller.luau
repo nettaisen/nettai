@@ -6,7 +6,7 @@
 -- dimming) and, every 31 ticks, drops a hand (./hand) on every panel an
 -- enemy navi stands on, once for each panel taken back.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local hand = require("./hand")
 
 export type State = {

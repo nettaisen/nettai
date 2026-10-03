@@ -18,7 +18,7 @@ local attachment = require("../../objects/attachment/attachment")
 local parts = require("../../lib/swords/parts")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 export type State = {
     -- The gray of his color shader, fading in (object +0x19).

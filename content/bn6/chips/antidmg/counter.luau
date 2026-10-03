@@ -8,7 +8,7 @@
 -- leave it 0: a random enemy.) The ruleset starts it by role
 -- (`actions.anti_damage_counter`, rules/roles.luau).
 
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local effects = require("../../lib/effects")
 local shuriken = require("./shuriken")
 

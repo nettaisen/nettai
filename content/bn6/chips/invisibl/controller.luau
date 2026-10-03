@@ -10,7 +10,7 @@
 -- `invisible.hook(ticks)`: the time the original's first two chip
 -- parameters gave (their halfword) is the hook's argument.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 
 local invisible = {}
 

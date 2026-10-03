@@ -7,7 +7,7 @@
 -- See docs/engine/chips.md §3.6.8. Each chip's `dimming` hook is
 -- `grab.area` or `grab.panel` (`sub_80E07E0`, `off_802CCB4[0]`).
 
-local dimming_chips = require("../dimming")
+local dimming_chips = require("@common/dimming")
 local shot = require("./shot")
 
 local grab = {}

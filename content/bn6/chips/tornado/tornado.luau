@@ -11,7 +11,7 @@
 -- look)` (BN5's) and its variants with `tornado.variant`.
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 
 local tornado = {}

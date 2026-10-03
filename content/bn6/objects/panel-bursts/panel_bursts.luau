@@ -13,7 +13,7 @@
 -- (an effect and a sound, which no row has); it is the spawner's argument
 -- now.
 
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 
 export type State = {
     -- The panels still to burst, packed x | y << 4 (the object's +0x60),

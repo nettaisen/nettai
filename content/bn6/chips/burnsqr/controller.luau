@@ -5,8 +5,8 @@
 -- with the damage plus the bonus and lasts until it is done.
 
 local burner = require("./burner")
-local dimming_chips = require("../../lib/dimming")
-local stand_in = require("../../lib/dimming/stand_in")
+local dimming_chips = require("@common/dimming")
+local stand_in = require("@common/dimming/stand_in")
 
 export type State = {
     -- The Atk+ / cross bonus the telop shows (+0x32), which the flames'

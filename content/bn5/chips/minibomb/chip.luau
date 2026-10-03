@@ -5,7 +5,7 @@
 
 local bomb = require("@bn6/lib/bombs/bomb")
 local collision = require("../../rules/collision")
-local regions = require("@bn6/lib/regions")
+local regions = require("@common/regions")
 local throw = require("@bn6/lib/bombs/throw")
 
 return define.chip {

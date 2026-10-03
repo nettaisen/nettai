@@ -5,7 +5,7 @@
 -- front of the user and nothing on it, the navi (navi.luau) comes out of
 -- it, and the effect waits for it to be gone; else it is over at once.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local navi = require("./navi")
 
 local controller = {}

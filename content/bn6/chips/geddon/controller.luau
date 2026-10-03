@@ -9,7 +9,7 @@
 -- the panels, PrpCapsl's, HealBall's, MagPanl's and the BeastOut records'
 -- crack them (the chips' first parameter, 1 or 0, picked the quake's row).
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local quake = require("./quake")
 
 local controller = {}

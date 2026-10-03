@@ -4,7 +4,7 @@
 -- dimming phases (lib/dimming), with an effect that sends the heroes
 -- (./heroes) out in the user's place and waits until MegaMan is done.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local heroes = require("./heroes")
 
 local controller = {}

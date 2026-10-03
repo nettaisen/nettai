@@ -5,7 +5,7 @@
 -- cycling through its panels from the far column. Another game's
 -- controller drops its own meteors (`controller.make`; BN5's Meteors).
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local falling_meteor = require("./falling_meteor")
 
 export type State = {

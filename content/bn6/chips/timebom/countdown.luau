@@ -24,7 +24,7 @@ local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obst
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 export type State = { variant: CountdownVariant }
 

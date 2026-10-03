@@ -12,7 +12,7 @@
 
 local collision = require("../../rules/collision")
 local effects = require("../effects")
-local regions = require("../regions")
+local regions = require("@common/regions")
 local statuses = require("../../rules/status")
 
 export type State = {
