@@ -69,6 +69,8 @@
 "bn5:numbrman/navi" = { pool = "actor", index = 0x0F }
 "bn5:numbrman/face" = { pool = "actor", index = 0x5C }
 "bn5:colonel/navi" = { pool = "actor", index = 0x08 }
+"bn5:shadoman/navi" = { pool = "actor", index = 0x07 }
+"bn5:shuriken" = { pool = "attack", index = 0x5C }
 "bn5:dice" = { pool = "attack", index = 0x05 }
 "bn5:dice-marker" = { pool = "effect", index = 0x83, scratch_position = true }
 "bn5:sonic-boom" = { pool = "attack", index = 0x58 }
