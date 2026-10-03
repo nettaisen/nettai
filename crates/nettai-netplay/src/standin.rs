@@ -109,6 +109,7 @@ pub fn megaman(content: &Content, hp: u16) -> NaviStats {
         folder_tags: [[0xFF; 2]; 2],
         chip_shuffle: false,
         number_open: false,
+        hub_style: false,
         weapons: NaviWeapons {
             buster: own.buster,
             charge_shot: own.charge_shot,
