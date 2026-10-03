@@ -400,6 +400,12 @@ local status = {
         form_tick = false,
         bugs_before_drain = true,
         drain_bug_flags = true,
+        -- BN5's emotions (0x08012740): a soul first, then anger, a mood of 0 (a dark MegaMan's), Full Synchro, a mood
+        -- under 65 worried; its mood setter (0x080127D6) leaves a mood of 0; its anger tick (0x08011A14) passes over
+        -- AI index 23.
+        emotions = "bn5",
+        -- The weakness request (a dark chip used in a soul, 0x08010070) breaks any form to the base form (0x080122C8).
+        form_break = "bn5",
     }),
 }
 

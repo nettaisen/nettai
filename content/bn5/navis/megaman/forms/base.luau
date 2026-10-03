@@ -13,14 +13,22 @@ return define.form {
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
     palette = 0,
-    -- MegaMan's faces in the emotion window, by his emotion (0x0801AFB4's: BN6's order; each brings its box). Not
-    -- yet: his dark faces (pictures 11-15, the local side's NaviStats +0x4C) and their palettes.
+    -- MegaMan's faces in the emotion window, by his emotion (0x0801AF64: the table 0x0801AFB4 by BN5's emotion,
+    -- 0x08012740; each brings its box): worried for a mood under 65, the dark face for a mood of 0 (a dark
+    -- MegaMan's); and Hub Style's (NaviStats +0x4C, the light and dark system's `hub_style`: 0x0801AF8E adds 11).
     mugshot = {
         normal = asset.mugshot("bn5:megaman"),
         angry = asset.mugshot("bn5:megaman-angry"),
-        tired = asset.mugshot("bn5:megaman-tired"),
+        worried = asset.mugshot("bn5:megaman-worried"),
         full_synchro = asset.mugshot("bn5:megaman-full-synchro"),
-        worn_out = asset.mugshot("bn5:megaman-worn-out"),
+        worn_out = asset.mugshot("bn5:megaman-dark"),
+        variant = {
+            normal = asset.mugshot("bn5:megaman-hub"),
+            angry = asset.mugshot("bn5:megaman-hub-angry"),
+            worried = asset.mugshot("bn5:megaman-hub-worried"),
+            full_synchro = asset.mugshot("bn5:megaman-hub-full-synchro"),
+            worn_out = asset.mugshot("bn5:megaman-hub-dark"),
+        },
     },
     buster_arm = { anim = 0 },
 }

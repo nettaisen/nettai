@@ -44,6 +44,8 @@ guard.looks = {
     crsshld3 = look { sprite = CROSS_SHIELD, anim = 3, fade_anim = 4, fade_ticks = 1, palette = 4 },
     guard2 = look { sprite = REFLECTOR, anim = 6, fade_anim = 7, fade_ticks = 0xE, palette = 0 },
     guard3 = look { sprite = REFLECTOR, anim = 8, fade_anim = 9, fade_ticks = 0xE, palette = 0 },
+    -- Row 9: ProtoSoul's B+Back with its Chaos Unison charge armed (navis/megaman/forms/protosoul/back).
+    chaos_reflect = look { sprite = REFLECTOR, anim = 10, fade_anim = 11, fade_ticks = 0xE, palette = 0 },
 }
 
 -- ---- CrsShld's cross ----------------------------------------------------------------------------------------------
@@ -201,6 +203,8 @@ end
 export type Counter = { kind: "wave" } | { kind: "shot" } | { kind: "gauge" } | { kind: "cross", palette: number }
 
 export type Spec = {
+    -- The action's id, for a weapon's (a chip's is derived).
+    id: string?,
     -- The guard's ticks (the chip's first parameter), its shield's look, its counter.
     ticks: number,
     look: ReflectorShieldLook,
@@ -274,6 +278,7 @@ function guard.action(spec: Spec): Action
     end
 
     return define.action {
+        id = spec.id,
         state = { timer = "u16" },
         args = spec,
         -- 0x080ECAE6: one phase.

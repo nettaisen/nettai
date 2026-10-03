@@ -12,9 +12,18 @@
 --   (0x080100EC: chip 0x185, action 0x1A's variant 3 with no parameters), which shows a sparkle.
 -- - **The dark chips** (flag 0x20; 0x08010030, before that check): one fizzles in a battle that bars them (battle
 --   effect 0x100000), in a link battle for a light MegaMan (the chips' threshold), and for any navi but MegaMan
---   (or BN5's navi 23). Used, it marks its side (statistic 2 set to 1), leaves the navi's mood at 0 and ends his
+--   (or BN5's navi 23). Used, it breaks a soul (0x08010070: the weakness request, 0x080122C8), marks its side
+--   (statistic 2 set to 1), leaves the navi's mood at 0 and ends his
 --   anger, and costs him what the chip's entry of 0x0802C934 sets (a NaviCust bug of the battle: 0x0802C974's
 --   routines; in battle flag 0x40 mode the HP drain one level more instead), the light/dark check following.
+-- - **The starting mood** (MegaMan's start, 0x08010EC8, where BN6's `sub_8013892` sets 0x80): by the value
+--   (0x0801283A): under 470 0 (a dark MegaMan's, his face the fifth: 0x0801AF64), under 500 64, from 1000 190, else
+--   the value / 20 + 103 (500: 0x80). A battle that holds the value (battle effect 0x20000) holds it at 500 from his
+--   start.
+-- - **His palette** (0x0800DD94, each tick: presentation): by the value's tier and the mood, the soul, the charge he
+--   can't do, Hub Style (NaviStats +0x4C: the NaviCust's HubBatc, 0x08138214), the element; Dark MegaMan's (AI index
+--   0x16) 1.
+-- - **Hub Style's faces** (0x0801AF8E: the face plus 11): the base form's second set (`mugshot.variant`).
 
 local invalid = require("../../chips/invalid/chip")
 local megaman = require("../../navis/megaman/navi")
@@ -60,27 +69,108 @@ local COSTS: { [string]: (stats: Stats) -> () } = {
 -- The side statistic a dark chip's use sets.
 local DARK_CHIP_USED = 2
 
-export type Setup = {
-    -- The save's light/dark value (NaviStats +0x44).
-    value: number,
-}
-
 -- A value at or below this is a dark MegaMan's for the holy panels (0x08017136: 0x1F3).
 local CLEARS_HOLY = 499
 -- A value at or above this is a light MegaMan's for the chips (0x08010118: 0xEB * 2).
 local LIGHT_CHIPS = 470
+
+export type Setup = {
+    -- The save's light/dark value (NaviStats +0x44).
+    value: number,
+    -- Hub Style (NaviStats +0x4C): the NaviCust's HubBatc in its fourth color (part 0x6F, 0x08138214), 1; else 0.
+    hub_style: number,
+}
+
+-- Dark MegaMan's AI index, and BN5's navi 23's (0x0800DE40: a computer navi of either draws in palette 1).
+local DARK_MEGAMAN = 0x16
+local NAVI_23 = 0x17
+
+-- The side's light/dark value: the save's, or 500 in a battle that holds it (0x08010EDC, at MegaMan's start: nothing
+-- reads it before).
+local function value(): number
+    if battle.light_dark_held() then
+        return 500
+    end
+    return (system.setup() :: Setup).value
+end
+
+-- 0x0801283A: the starting mood by the value (its caller, 0x08010F1A, passes 0 for the Full Synchro it could ask).
+local function starting_mood(v: number): number
+    if v < 470 then
+        return 0
+    elseif v < 500 then
+        return 64
+    elseif v >= 1000 then
+        return 190
+    end
+    return v // 20 + 103
+end
+
+-- 0x0800DE5C: the palette by the value's tier.
+local function tier(v: number): number
+    if v >= 1000 then
+        return 4
+    elseif v >= 500 then
+        return 0
+    elseif v >= 470 then
+        return 3
+    end
+    return 2
+end
+
+-- 0x0800DD94 (BN6's `sub_801002C`): the palette of a navi of the player's kind.
+local function palette(side: number, navi: Object): number?
+    if navi.actor_type ~= "player" then
+        -- A computer navi: Dark MegaMan's (and navi 23's) 1, any other 0.
+        if navi.actor_type == "navi" and (navi.ai_index == DARK_MEGAMAN or navi.ai_index == NAVI_23) then
+            return 1
+        end
+        return 0
+    end
+    local stats = battle.navi(side)
+    if stats.navi ~= megaman then
+        -- A link navi's (0x0800DA98, by BN5's navi numbers): BN5's content has none; the framework's.
+        return nil
+    end
+    local in_soul = stats.form.kind ~= "base"
+    local p = 2
+    local hub = true
+    if navi.ai_index == NAVI_23 then
+        p = 2
+    elseif navi:navi_state("no_charge") then
+        p, hub = 1, false
+    elseif in_soul then
+        -- A soul's: 2 while its Chaos Unison charge is armed.
+        return if navi.chaos_armed then 2 else 0
+    elseif stats.mood == 0xFF then
+        p = 4
+    elseif stats.mood == 0 then
+        p = if value() < LIGHT_CHIPS then 2 else 3
+    else
+        p = tier(value())
+    end
+    local hub_style = (system.setup() :: Setup).hub_style
+    if hub and hub_style ~= 0 then
+        return p + hub_style * 5 + 20
+    end
+    return p + (if in_soul then 0 else stats.element) * 5
+end
 
 -- 0x08010030: a dark chip's use; false when it fizzles.
 local function use_dark_chip(side: number, navi: Object): boolean
     if battle.no_dark_chips() then
         return false
     end
-    if battle.link() and (system.setup() :: Setup).value >= LIGHT_CHIPS then
+    if battle.link() and value() >= LIGHT_CHIPS then
         return false
     end
     -- (BN5's navi 23 may too; no other navi is in BN5's content.)
     if battle.navi(side).navi ~= megaman then
         return false
+    end
+    -- In a soul, the soul breaks (the weakness request: 0x080122C8, the status section's `form_break`).
+    if battle.navi(side).form.kind ~= "base" then
+        navi:set_request("weakness_hit", true)
     end
     battle.set_side_stat(side, DARK_CHIP_USED, 1)
     -- 0x080127D6: the mood to 0 (unless it is 0); 0x08011A94: to 0x80 (unless it is 0), and anger ends.
@@ -109,11 +199,21 @@ end
 
 return define.system {
     id = "bn5:light-dark",
-    setup = { value = "u16" },
+    setup = { value = "u16", hub_style = "u8" },
     hooks = {
+        -- Hub Style shows the base form's second set of faces (0x0801AF8E).
+        round_setup = function(side: number)
+            battle.set_face_variant(side, (system.setup() :: Setup).hub_style ~= 0)
+        end,
+        -- 0x08010EC8: MegaMan's starting mood.
+        starting_mood = function(_side: number): number?
+            return starting_mood(value())
+        end,
+        -- 0x0800DD94: the navi's palette.
+        navi_palette = palette,
         -- 0x08017136: the holy panel under a dark MegaMan turns Normal.
         navi_intake = function(_side: number, navi: Object)
-            if (system.setup() :: Setup).value > CLEARS_HOLY then
+            if value() > CLEARS_HOLY then
                 return
             end
             local x, y = navi.panel_x, navi.panel_y
@@ -139,7 +239,7 @@ return define.system {
             if wants == nil then
                 return nil
             end
-            local light = (system.setup() :: Setup).value >= LIGHT_CHIPS
+            local light = value() >= LIGHT_CHIPS
             if (wants == "light") == light then
                 return nil
             end
