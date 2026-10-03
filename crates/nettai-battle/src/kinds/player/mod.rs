@@ -339,6 +339,24 @@ pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
     b.stats[side as usize].mood = mood;
 }
 
+/// BN5's 0x08012802: a side's mood rises by `n`, to 254 at most; a mood
+/// of 0 or 0xFF (Full Synchro) stays.
+pub(crate) fn gain_mood(b: &mut Battle, side: u8, n: u16) {
+    let s = &mut b.stats[side as usize & 1];
+    if s.mood != 0 && s.mood != 0xFF {
+        s.mood = (s.mood as u32 + n as u32).min(254) as u8;
+    }
+}
+
+/// `sub_8015C12` (BN5's 0x08012820): a side's mood falls by `n`, to 1 at
+/// least; a mood of 0 stays.
+pub(crate) fn lose_mood(b: &mut Battle, side: u8, n: u16) {
+    let s = &mut b.stats[side as usize & 1];
+    if s.mood != 0 {
+        s.mood = (s.mood as i32 - n as i32).max(1) as u8;
+    }
+}
+
 /// Save the navi's lifecycle position (`obj+0x5C`) unless one is saved.
 fn save_state_word(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).saved_word.is_some() {

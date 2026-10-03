@@ -38,10 +38,13 @@ netplay needs.
 You need Rust with edition 2024, and four Mega Man Battle Network 6 ROMs of your own: the US Cybeast Falzar
 (`MEGAMAN6_FXXBR6E`) and Cybeast Gregar (`MEGAMAN6_GXXBR5E`), and the Japanese Rockman EXE 6 Dennoujuu Falzar
 (`ROCKEXE6_RXXBR6J`) and Dennoujuu Gregar (`ROCKEXE6_GXXBR5J`), which have what the US release cut. Extract a
-content pack from them, in that order, into `data/content/bn6`, where the tools look by default (the directory is
-gitignored):
+content pack from them, in that order, into `data/content/bn6` (the directory is gitignored):
 
     cargo run --release -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6
+
+The frontend and the editor load every pack in `data/content` (or the directory `$NETTAI_PACKS` names), each by the
+game it says, with no options: a BN5 pack written there (`bn5-extract content`) loads beside BN6's, and BN5's
+content root with it once it loads. `--pack DIR` names a pack elsewhere, in place of the found one of its game.
 
 Then run the frontend:
 
@@ -97,14 +100,20 @@ and edits them, checking them against the content as you go, and plays them:
     cargo run --release -p nettai-frontend -- --match match.toml     # what Play runs
 
 Its panes show only what the side's ruleset has (Crosses with the forms system, patch cards with the patch-cards
-system): the arena; each side's ruleset, navi and game, with the stats the round starts the navi with; the folder
-(the chip pack's chips with their pictures, searchable, a code puts a chip in the selected entry; the Regular and
-tag chips; the copies and the Mega, Giga, Regular and tag limits live); the Crosses; the patch cards (MB used of
-80); the NaviCust; every stat. The problems with the match show at the bottom as you edit. Play saves the match and
+system, the NaviCust with the navicust system): the arena; each side's ruleset, navi and game, with the stats the
+round starts the navi with; the folder (the chips the side's folder rules allow, with their pictures, searchable, a
+code puts a chip in the selected entry; the Regular and tag chips; the copies and the Mega, Giga, Regular and tag
+limits live, as the game's folder rules count them); the Crosses; the patch cards (MB used of 80); the NaviCust (the
+board as the side's game draws it, with its frame and command line, edited with the mouse as Tango's is: drag a
+program's colour swatch onto the grid, or press a placed program to pick it up and drag it; while held it shows
+where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click, Delete
+or a drag off the grid takes it off, Esc puts it back; right-clicking a placed program turns it; the stats it
+compiles to show beside it, and the stats-and-bugs block set directly is the pane's other view); every stat. The problems with the match show at the bottom as you edit. Play saves the match and
 runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). Random draws a match as
 live play does, and `nettai-frontend --play --save-match FILE` writes live play's draw out to edit. `--lang ja` (or
-the language list) names the chips, navis, Crosses and patch cards in Japanese; `--content` and `--pack` are the
-frontend's. The editor needs the content pack for the chips' pictures, as the frontend does.
+the language list) names the chips, navis, Crosses and patch cards in Japanese. The editor loads the content and
+every pack in `data/content` as the frontend does (each chip's pictures from its own game's pack), and Play hands
+the frontend the same: `--content` and `--pack` are the frontend's, and only what you give is passed on.
 
 The editor is an [iced](https://iced.rs) app, drawn in software (tiny-skia), so it needs no GPU backend. On Linux it
 needs the usual windowing libraries (X11 or Wayland, and `libxkbcommon`), and its Open and Save As dialogs use
@@ -115,8 +124,9 @@ macOS and Windows need nothing more.
 
 - [`docs/design`](docs/design): how the engine and its content are built: the content model
   ([content-model-v2.md](docs/design/content-model-v2.md)), how to write content
-  ([content-migration.md](docs/design/content-migration.md)), scripting, the content pack, rollback, and what
-  other games would need ([multi-game.md](docs/design/multi-game.md)).
+  ([content-migration.md](docs/design/content-migration.md)), scripting, the content pack, rollback, the NaviCust
+  ([navicust.md](docs/design/navicust.md)), and what other games would need
+  ([multi-game.md](docs/design/multi-game.md)).
 - [`docs/engine`](docs/engine): the original game's battle routines, specified from the disassembly.
 - [`docs/frontend.md`](docs/frontend.md): the frontend, and match files (§6).
 

@@ -42,7 +42,7 @@ mod reader;
 mod roles;
 mod rules;
 mod scripts;
-mod sections;
+pub(crate) mod sections;
 mod sprites;
 mod stages;
 pub mod strings;
@@ -263,6 +263,10 @@ impl Content {
     /// A patch card.
     pub fn patch_card(&self, h: nettai_content_api::PatchCardHandle) -> &defs::PatchCardDef {
         self.defs.patch_card(h)
+    }
+
+    pub fn navicust_program(&self, h: nettai_content_api::NaviCustProgramHandle) -> &defs::NaviCustProgramDef {
+        self.defs.navicust_program(h)
     }
 
     /// What a chip's record names, by handle.

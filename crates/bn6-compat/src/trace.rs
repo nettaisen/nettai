@@ -490,6 +490,8 @@ impl Round {
             ruleset: None,
             rules: Vec::new(),
             patch_cards: self.patch_cards(side, ids),
+            // (A recording's stats are what its NaviCust made.)
+            navicust: None,
         }
     }
 
