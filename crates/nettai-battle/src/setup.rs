@@ -32,6 +32,8 @@ pub mod effects {
     pub const LINK: u32 = 0x8;
     /// Multi-round set.
     pub const SET: u32 = 0x400;
+    /// BN5's light/dark value is held at 500 (0x08010EDC).
+    pub const LIGHT_DARK_HELD: u32 = 0x2_0000;
     /// Dark chips fizzle (BN5's dark chip rule, 0x0801003C).
     pub const NO_DARK_CHIPS: u32 = 0x10_0000;
     /// Random battle.
