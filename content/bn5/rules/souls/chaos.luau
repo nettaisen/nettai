@@ -99,6 +99,7 @@ local function revert(me: Object, _s: State)
     hooks.finish(me, stats.form)
     me:load_form_sprite(base)
     stats.form = base
+    hooks.identity(me, base)
     hooks.settle(me)
     hooks.start(me, base)
     me.related1 = nil
