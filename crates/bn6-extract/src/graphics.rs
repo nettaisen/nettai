@@ -346,9 +346,11 @@ fn field(rom: &Rom) -> Field {
         palettes,
         first_palette: 1,
         palette_anims,
+        // (BN6's 13 panel types, numbered as the engine numbers them.)
+        panel_types: (0..13).collect(),
         panels,
         front_edges: [edge(FRONT_EDGES), edge(FRONT_EDGES + 32)],
-        highlights: [block(HIGHLIGHT_BLOCKS), block(HIGHLIGHT_BLOCKS + 32)],
+        highlights: vec![block(HIGHLIGHT_BLOCKS), block(HIGHLIGHT_BLOCKS + 32)],
     }
 }
 

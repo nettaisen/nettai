@@ -8,9 +8,9 @@
 -- Then the controller moves on. See docs/engine/chips.md §3.6.17.
 
 local car = require("./car")
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("../../lib/navi-chips/navi")
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sparks = require("../../lib/sparks")
 
 export type State = {

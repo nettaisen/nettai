@@ -13,7 +13,7 @@
 
 local berserk = require("./berserk")
 local effects = require("../../lib/effects")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local section = require("../cross-special")
 
 local cross_special = {}

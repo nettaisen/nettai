@@ -8,7 +8,7 @@
 
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
-local regions = require("@bn6/lib/regions")
+local regions = require("@common/regions")
 
 local strike = {}
 

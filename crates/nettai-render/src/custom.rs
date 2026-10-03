@@ -21,9 +21,9 @@ use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles
 use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipFlags, DamageFormula};
-use nettai_battle::custom::screen::{CROSS_PUT_ON_TICK, HiddenStage, OK_SLOT, SPECIAL_SLOT};
+use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
 use nettai_battle::custom::{ButtonCell, FolderChip, GameVersion, Library, Phase, Screen, Side, SlotKind, SlotState};
-use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
+use nettai_content_api::{ChipHandle, FieldValue, FormHandle, NaviHandle};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
 const COLUMNS: usize = 15;
@@ -180,15 +180,7 @@ pub fn hud_jitter(b: &Battle) -> (i32, i32) {
     let Some((_, s)) = local(b) else { return (0, 0) };
     let shakes = matches!(
         s.phase,
-        Phase::BeastOutChosen { .. }
-            | Phase::BeastOutChipChosen { .. }
-            | Phase::CrossWindowOpening { .. }
-            | Phase::CrossWindow { .. }
-            | Phase::CrossWindowClosing { .. }
-            | Phase::CrossChosen { .. }
-            | Phase::Description { from_cross_window: true, .. }
-            | Phase::Scrapping { .. }
-            | Phase::Redealing { .. }
+        Phase::Window { .. } | Phase::Description { window: Some(_), .. } | Phase::Scrapping { .. } | Phase::Redealing { .. }
     );
     if !shakes {
         return (0, 0);
@@ -325,20 +317,47 @@ struct View<'a> {
 /// §4.8: BN6's, by name): its details picture, its tiles (`count` a state,
 /// selectable then unavailable and picked), and the cursor over it.
 struct ButtonLook<'a> {
-    details: &'a Picture,
+    details: std::borrow::Cow<'a, Picture>,
     tiles: &'a Tiles,
+    /// Its tiles a state, and whether its unavailable and picked states
+    /// share the second set (the Beast Out button's two).
     count: usize,
+    two_states: bool,
+    /// The tiles the slots after it start past (none: they overlap it).
+    advance: u16,
     cursor: (i32, i32, &'static CursorShape),
 }
 
 impl<'a> View<'a> {
-    /// The look of button `button`: BN6's ChpShufl re-deal and DustCross
-    /// scrap. A name the frontend doesn't know is drawn as nothing.
+    /// The look of button `button`: BN6's Beast Out (its game's
+    /// pictures), ChpShufl re-deal and DustCross scrap. A name the
+    /// frontend doesn't know is drawn as nothing.
     fn button_look(&self, button: nettai_battle::content::ButtonHandle) -> Option<ButtonLook<'a>> {
+        use std::borrow::Cow;
         let a = self.assets;
+        let wide = |details: &'a Picture, tiles: &'a Tiles| ButtonLook {
+            details: Cow::Borrowed(details),
+            tiles,
+            count: 12,
+            two_states: false,
+            advance: 12,
+            cursor: (0x38, 0x80, &BUTTON_CURSOR),
+        };
         match self.b.content.defs.button(button).name.as_str() {
-            "redeal" => Some(ButtonLook { details: &a.pictures.redeal, tiles: &a.redeal_buttons, count: 12, cursor: (0x38, 0x80, &BUTTON_CURSOR) }),
-            "scrap" => Some(ButtonLook { details: &a.pictures.scrap, tiles: &a.scrap_buttons, count: 12, cursor: (0x38, 0x80, &BUTTON_CURSOR) }),
+            "beast_out" => {
+                let beast = self.beast;
+                let details = Picture { palette: beast.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..beast.beast_out.clone() };
+                Some(ButtonLook {
+                    details: Cow::Owned(details),
+                    tiles: &beast.beast_buttons,
+                    count: 8,
+                    two_states: true,
+                    advance: 0,
+                    cursor: (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR),
+                })
+            }
+            "redeal" => Some(wide(&a.pictures.redeal, &a.redeal_buttons)),
+            "scrap" => Some(wide(&a.pictures.scrap, &a.scrap_buttons)),
             _ => None,
         }
     }
@@ -436,18 +455,104 @@ fn state_number(s: SlotState) -> usize {
     }
 }
 
+/// BN6's cross system (content/bn6/rules/cross), whose state and windows
+/// the Cross window's look reads.
+const CROSS_SYSTEM: &str = "bn6:cross";
+
+/// The tick of a Cross's choice the white fade is over and the Cross put
+/// on (`sub_8027AAE`; the cross system's `PUT_ON_TICK`): the window's map
+/// is the chips' again.
+const CROSS_PUT_ON_TICK: u16 = 25;
+
+/// BN6's Cross window as the cross system keeps it
+/// (content/bn6/rules/cross/window.luau), read by its fields' names: the
+/// Crosses offered (their places among the player's Crosses,
+/// `Unlocks::cross_at`), how many, which is chosen, the entry under the
+/// window's cursor, and the Cross chosen.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CrossWindow {
+    pub offered: [u8; 5],
+    pub count: u8,
+    pub marked: [bool; 5],
+    pub cursor: u8,
+    pub chosen: Option<u8>,
+}
+
+impl CrossWindow {
+    /// Side `side`'s Cross window, when its ruleset has BN6's cross system.
+    pub fn of(b: &Battle, side: usize) -> Option<CrossWindow> {
+        let (schema, state) = b.system_state(side as u8, CROSS_SYSTEM)?;
+        let elem = |name: &str, k: usize| state.get_elem(schema, schema.index_of(name)?, k);
+        let field = |name: &str| Some(state.get(schema, schema.index_of(name)?));
+        let byte = |v: Option<FieldValue>| match v {
+            Some(FieldValue::U8(n)) => Some(n),
+            _ => None,
+        };
+        let flag = |v: Option<FieldValue>| match v {
+            Some(FieldValue::Bool(b)) => Some(b),
+            _ => None,
+        };
+        let mut w = CrossWindow {
+            count: byte(field("offered_count"))?,
+            cursor: byte(field("window_cursor"))?,
+            chosen: flag(field("cross_chosen"))?.then_some(byte(field("chosen"))?),
+            ..CrossWindow::default()
+        };
+        for k in 0..5 {
+            w.offered[k] = byte(elem("offered", k))?;
+            w.marked[k] = flag(elem("marked", k))?;
+        }
+        Some(w)
+    }
+}
+
+/// Where BN6's Cross window is: the cross system's window up (its tick),
+/// or a description from it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CrossStage {
+    /// `sub_8027834`, 12 ticks.
+    Opening(u16),
+    /// `sub_802794A`, or a Cross's description from it.
+    Up,
+    /// `sub_802790C`, 6 ticks.
+    Closing(u16),
+    /// `sub_8027A58`, 34 ticks.
+    Chosen(u16),
+}
+
+/// The stage of BN6's Cross window on `s`, side `side`'s screen, if it is
+/// up.
+pub fn cross_stage(b: &Battle, s: &Screen) -> Option<CrossStage> {
+    let (window, tick) = match s.phase {
+        Phase::Window { window, tick } => (window, tick),
+        Phase::Description { window: Some(window), .. } => (window, 0),
+        _ => return None,
+    };
+    let d = b.content.defs.window(window);
+    if b.content.defs.system(d.system).key != CROSS_SYSTEM {
+        return None;
+    }
+    Some(match d.name.as_str() {
+        "cross_opening" => CrossStage::Opening(tick),
+        "cross_window" => CrossStage::Up,
+        "cross_closing" => CrossStage::Closing(tick),
+        "cross_chosen" => CrossStage::Chosen(tick),
+        _ => return None,
+    })
+}
+
 /// The Cross window's map the screen shows, if it shows one: its opening
 /// steps every 3 ticks (`sub_8027834`), then the window with its Crosses,
 /// until it closes (`sub_802790C`, 5 ticks) or the Cross chosen is put on
 /// (`sub_8027AAE`).
-fn cross_map(s: &Screen) -> Option<usize> {
-    let full = CROSS_OPENING_MAPS + s.crosses.count.max(1) as usize - 1;
-    match s.phase {
-        Phase::CrossWindowOpening { tick } if tick >= 3 => Some(tick as usize / 3 - 1),
-        Phase::CrossWindow { .. } | Phase::Description { from_cross_window: true, .. } | Phase::CrossWindowClosing { .. } => {
-            Some(full)
-        }
-        Phase::CrossChosen { tick } if tick < CROSS_PUT_ON_TICK => Some(full),
+fn cross_map(v: &View) -> Option<usize> {
+    let stage = cross_stage(v.b, v.screen)?;
+    let count = CrossWindow::of(v.b, v.side as usize).map_or(0, |w| w.count);
+    let full = CROSS_OPENING_MAPS + count.max(1) as usize - 1;
+    match stage {
+        CrossStage::Opening(tick) if tick >= 3 => Some(tick as usize / 3 - 1),
+        CrossStage::Up | CrossStage::Closing(_) => Some(full),
+        CrossStage::Chosen(tick) if tick < CROSS_PUT_ON_TICK => Some(full),
         _ => None,
     }
 }
@@ -465,7 +570,7 @@ impl Window {
         };
         // sub_8026840: the window's map, with the Cross tab or without; or
         // the Cross window's.
-        let cross = cross_map(v.screen);
+        let cross = cross_map(v);
         let (map, patches) = match cross {
             Some(i) => (a.cross_maps.get(i), &a.cross_patches),
             None => (a.window_maps.get(v.screen.look.cross_tab as usize), &a.window_patches),
@@ -598,7 +703,7 @@ impl Window {
     /// cursor in its own look) over the Cross window's map, and palette 10
     /// the Cross under the cursor's (`sub_8029EAC`: a used one's darker).
     fn cross_names(&mut self, v: &View, problems: &mut Problems) {
-        let w = &v.screen.crosses;
+        let Some(w) = CrossWindow::of(v.b, v.side as usize) else { return };
         let side = &v.b.custom.sides[v.side as usize];
         // Each Cross's name and colors are its own game's (a setup's Cross
         // list can offer the other game's: docs/engine/custom-screen.md
@@ -663,14 +768,9 @@ impl Window {
                 let p = if cw.picks == 0 { &a.pictures.ok } else { &a.pictures.ok_picked };
                 blank_details(self, p);
             }
-            SlotKind::BeastOut => {
-                let beast = v.beast;
-                let p = Picture { palette: beast.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..beast.beast_out.clone() };
-                blank_details(self, &p);
-            }
             SlotKind::Button { button, .. } => {
                 if let Some(look) = v.button_look(button) {
-                    blank_details(self, look.details);
+                    blank_details(self, &look.details);
                 }
             }
             // (BN5's soul button: its pictures aren't in the packs yet.)
@@ -775,11 +875,11 @@ impl Window {
                 }
                 // (BN5's soul button: its tiles aren't in the packs yet.)
                 SlotKind::Ok | SlotKind::Soul | SlotKind::Button { cell: ButtonCell::Right, .. } => {}
-                SlotKind::BeastOut => self.tiles.put_part(at, &v.beast.beast_buttons, 8 * (state != 0) as usize, 8),
                 SlotKind::Button { button, .. } => {
                     if let Some(look) = v.button_look(button) {
-                        self.tiles.put_part(at, look.tiles, look.count * state, look.count);
-                        at += look.count as u16;
+                        let set = if look.two_states { (state != 0) as usize } else { state };
+                        self.tiles.put_part(at, look.tiles, look.count * set, look.count);
+                        at += look.advance;
                     }
                 }
                 SlotKind::Empty => {
@@ -801,7 +901,7 @@ impl Window {
                 SlotKind::Empty => 11,
                 SlotKind::Chip { .. } | SlotKind::NaviChip(_) if slot.state == SlotState::Unavailable => 12,
                 SlotKind::Chip { .. } | SlotKind::NaviChip(_) => 11,
-                SlotKind::Ok | SlotKind::BeastOut => continue,
+                SlotKind::Ok => continue,
                 _ => 9,
             };
             let (x, y) = (1 + 2 * (s % 5), 13 + 3 * (s / 5));
@@ -993,7 +1093,8 @@ const BUTTON_CURSOR: CursorShape = CursorShape {
 /// it: four corners, then seven edge pieces above and below (`byte_8028A30`:
 /// y, x, flips), in sprite palette 14.
 fn cross_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<'a>> {
-    let (x, y) = (5, 5 + 16 * v.screen.crosses.cursor as i32);
+    let cursor = CrossWindow::of(v.b, v.side as usize).map_or(0, |w| w.cursor);
+    let (x, y) = (5, 5 + 16 * cursor as i32);
     let corners = [(2, 3, false, false), (2, 0x43, true, false), (0xC, 0x43, true, true), (0xC, 3, false, true)];
     let edges = (0..7).map(|i| (2, 0xB + 8 * i, false, false)).chain((0..7).map(|i| (0xC, 0xB + 8 * i, false, true)));
     let pieces = corners.into_iter().map(|c| (c, 0)).chain(edges.map(|e| (e, 1)));
@@ -1027,7 +1128,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             (16 * col + 8, 0x68 + 0x18 * row, &CHIP_CURSOR)
         }
         SlotKind::Ok => (0x58 + 3, 0x70 - 2, &OK_CURSOR),
-        SlotKind::BeastOut | SlotKind::Soul => (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR),
+        SlotKind::Soul => (0x58 + 3, 0x88 - 1, &BEAST_OUT_CURSOR),
         SlotKind::Button { button, .. } => v.button_look(button).map_or((0x38, 0x80, &BUTTON_CURSOR), |l| l.cursor),
     };
     let palette = v.emblem_palette();

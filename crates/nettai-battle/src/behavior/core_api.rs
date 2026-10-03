@@ -266,6 +266,25 @@ impl Battle {
         self.custom.sides[side as usize & 1].screen.as_ref().ok_or_else(|| ApiError::Other("no custom screen is open".into()))
     }
 
+    /// The calling system's (place `system` in side `side`'s ruleset)
+    /// button and window named `name`.
+    fn own_button(&self, side: u8, system: u8, name: &str) -> ApiResult<crate::content::ButtonHandle> {
+        let h = self.side_system(side, system)?;
+        self.content.defs.system(h).buttons.iter().copied().find(|&b| self.content.defs.button(b).name == name)
+            .ok_or_else(|| ApiError::Other(format!("the system has no button named {name:?}")))
+    }
+
+    fn own_window(&self, side: u8, system: u8, name: &str) -> ApiResult<crate::content::WindowHandle> {
+        let h = self.side_system(side, system)?;
+        self.content.defs.system(h).windows.iter().copied().find(|&w| self.content.defs.window(w).name == name)
+            .ok_or_else(|| ApiError::Other(format!("the system has no window named {name:?}")))
+    }
+
+    fn side_system(&self, side: u8, system: u8) -> ApiResult<nettai_content_api::SystemHandle> {
+        let r = self.rules[side as usize & 1].ruleset.ok_or_else(|| ApiError::Other("the side plays by no ruleset".into()))?;
+        self.content.defs.ruleset(r).systems.get(system as usize).copied().ok_or_else(|| ApiError::Other("no such system".into()))
+    }
+
     fn custom_screen_mut(&mut self, side: u8) -> ApiResult<&mut crate::custom::screen::Screen> {
         self.custom.sides[side as usize & 1].screen.as_mut().ok_or_else(|| ApiError::Other("no custom screen is open".into()))
     }
@@ -637,6 +656,219 @@ impl CoreApi for Battle {
             SlotState::Selectable => "selectable",
             SlotState::Unavailable => "unavailable",
             SlotState::Selected => "selected",
+        })
+    }
+
+    fn custom_pick(&mut self, side: u8) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.pick_cursor();
+        Ok(())
+    }
+
+    fn custom_play(&mut self, side: u8, sound: &str) -> ApiResult<()> {
+        if !self.custom_screen_mut(side)?.play_named(sound) {
+            return Err(ApiError::Other(format!("custom.play: no screen sound is named {sound:?}")));
+        }
+        Ok(())
+    }
+
+    fn custom_set_column_icon(&mut self, side: u8, chip: Option<ChipHandle>) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.set_column_icon(chip);
+        Ok(())
+    }
+
+    fn custom_open_window(&mut self, side: u8, system: u8, window: &str, ticks: u16) -> ApiResult<()> {
+        let w = self.own_window(side, system, window)?;
+        self.custom_screen_mut(side)?.open_window(w, ticks);
+        Ok(())
+    }
+
+    fn custom_window_tick(&self, side: u8) -> ApiResult<u16> {
+        self.custom_screen(side)?.window_tick().ok_or_else(|| ApiError::Other("custom.window_tick: no window is up".into()))
+    }
+
+    fn custom_shake(&mut self, side: u8, magnitude: u16, ticks: u16) -> ApiResult<()> {
+        self.consoles[side as usize & 1].shake_secondary(magnitude, ticks);
+        Ok(())
+    }
+
+    fn custom_frame(&self, side: u8) -> ApiResult<u32> {
+        Ok(self.custom_screen(side)?.look.frame)
+    }
+
+    fn custom_set_frame(&mut self, side: u8, frame: u32) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.frame = frame;
+        Ok(())
+    }
+
+    fn custom_spin(&mut self, side: u8) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.spin = 1;
+        Ok(())
+    }
+
+    fn custom_fade(&mut self, side: u8, mode: &str, speed: u8) -> ApiResult<()> {
+        use crate::battle::FadeMode;
+        let mode = match mode {
+            "beast_out" => FadeMode::BeastOut,
+            "beast_out_back" => FadeMode::BeastOutBack,
+            "end_to_white" => FadeMode::EndToWhite,
+            "intro_from_white" => FadeMode::IntroFromWhite,
+            m => return Err(ApiError::Other(format!("custom.fade: no screen fade is named {m:?}"))),
+        };
+        self.custom_screen_mut(side)?.look.fade.start(mode, speed);
+        Ok(())
+    }
+
+    fn custom_set_face(&mut self, side: u8, form: Option<nettai_content_api::FormHandle>) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.face = form;
+        Ok(())
+    }
+
+    fn custom_pick_first(&mut self, side: u8, icon: Option<ChipHandle>) -> ApiResult<()> {
+        let i = side as usize & 1;
+        let folder = self.custom.sides[i].folder.ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        self.custom_screen_mut(side)?.pick_first(&folder, icon);
+        Ok(())
+    }
+
+    fn custom_set_button_state(&mut self, side: u8, system: u8, button: &str, state: &str) -> ApiResult<()> {
+        use crate::custom::screen::{SlotKind, SlotState};
+        let state = match state {
+            "selectable" => SlotState::Selectable,
+            "unavailable" => SlotState::Unavailable,
+            "selected" => SlotState::Selected,
+            s => return Err(ApiError::Other(format!("custom.set_button_state: no state is named {s:?}"))),
+        };
+        let h = self.own_button(side, system, button)?;
+        let screen = self.custom_screen_mut(side)?;
+        let slot = screen.slots.iter_mut().find(|s| matches!(s.kind, SlotKind::Button { button, cell } if button == h && cell != crate::custom::ButtonCell::Right));
+        slot.ok_or_else(|| ApiError::Other(format!("custom.set_button_state: {button:?} isn't on the screen")))?.state = state;
+        Ok(())
+    }
+
+    fn custom_update_availability(&mut self, side: u8) -> ApiResult<()> {
+        self.with_custom_screen(side, |screen, view, folder, _, extras| screen.update_availability(view, folder, extras))
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+    }
+
+    fn custom_draw_emblem(&mut self, side: u8, x: u32) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.draw_emblem(x);
+        Ok(())
+    }
+
+    fn custom_set_form(&mut self, side: u8, system: u8, form: Option<nettai_content_api::FormHandle>) -> ApiResult<()> {
+        let screen = self.custom_screen_mut(side)?;
+        screen.form = form;
+        screen.form_owner = form.map(|_| system);
+        Ok(())
+    }
+
+    fn custom_form_taken(&self, side: u8, system: u8) -> ApiResult<bool> {
+        let screen = self.custom_screen(side)?;
+        Ok(screen.form.is_some() && screen.form_owner != Some(system))
+    }
+
+    fn custom_full(&self, side: u8) -> ApiResult<bool> {
+        Ok(self.custom_screen(side)?.selected as usize >= crate::custom::screen::MAX_SELECTIONS)
+    }
+
+    fn custom_button_picked(&self, side: u8, system: u8, button: &str) -> ApiResult<bool> {
+        use crate::custom::screen::SlotKind;
+        let h = self.own_button(side, system, button)?;
+        let screen = self.custom_screen(side)?;
+        Ok(screen.selection().iter().any(|&s| matches!(screen.slots[s as usize].kind, SlotKind::Button { button, .. } if button == h)))
+    }
+
+    fn custom_cursor(&self, side: u8) -> ApiResult<u8> {
+        Ok(self.custom_screen(side)?.cursor)
+    }
+
+    fn custom_set_cursor(&mut self, side: u8, slot: u8) -> ApiResult<()> {
+        if slot as usize >= crate::custom::screen::SLOTS {
+            return Err(ApiError::Other(format!("custom.set_cursor: no slot {slot}")));
+        }
+        self.custom_screen_mut(side)?.cursor = slot;
+        Ok(())
+    }
+
+    fn custom_pressed(&self, side: u8, key: &str) -> ApiResult<bool> {
+        let bit = crate::input::key_named(key).ok_or_else(|| ApiError::Other(format!("custom.pressed: no key is named {key:?}")))?;
+        self.custom_screen(side)?;
+        Ok(self.custom.sides[side as usize & 1].joypad.pressed & bit != 0)
+    }
+
+    fn custom_repeated(&self, side: u8, key: &str) -> ApiResult<bool> {
+        let bit = crate::input::key_named(key).ok_or_else(|| ApiError::Other(format!("custom.repeated: no key is named {key:?}")))?;
+        self.custom_screen(side)?;
+        Ok(self.custom.sides[side as usize & 1].joypad.repeat & bit != 0)
+    }
+
+    fn custom_draw_window(&mut self, side: u8) -> ApiResult<()> {
+        let folder = self.custom.sides[side as usize & 1].folder.ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        self.custom_screen_mut(side)?.draw_window(&folder);
+        Ok(())
+    }
+
+    fn custom_draw_regular(&mut self, side: u8) -> ApiResult<()> {
+        let folder = self.custom.sides[side as usize & 1].folder.ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        self.custom_screen_mut(side)?.look.draw_regular(folder.regular_pending);
+        Ok(())
+    }
+
+    fn custom_draw_cross_cursor(&mut self, side: u8) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.draw_cross_cursor();
+        Ok(())
+    }
+
+    fn custom_show_chip_window(&mut self, side: u8) -> ApiResult<()> {
+        self.with_custom_screen(side, |screen, view, folder, _, _| screen.show_chip_window(folder, view))
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+    }
+
+    fn custom_set_cross_tab(&mut self, side: u8, on: bool) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.cross_tab = on;
+        Ok(())
+    }
+
+    fn custom_describe(&mut self, side: u8, form: Option<nettai_content_api::FormHandle>) -> ApiResult<()> {
+        let joy = self.custom.sides[side as usize & 1].joypad;
+        let described = self
+            .with_custom_screen(side, |screen, view, _, _, _| {
+                // (Three lines for a form the content has no description of.)
+                let lines = form.map_or(3, |f| view.library.form_description_lines(f));
+                screen.describe_form(&joy, lines, form)
+            })
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        if !described {
+            return Err(ApiError::Other("custom.describe: no window is up".into()));
+        }
+        Ok(())
+    }
+
+    fn custom_refresh_buttons(&mut self, side: u8) -> ApiResult<()> {
+        self.with_custom_screen(side, |screen, _, _, _, extras| screen.refresh_buttons(extras))
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+    }
+
+    fn custom_player(&self, side: u8) -> ApiResult<nettai_content_api::api::CustomPlayer> {
+        let s = &self.custom.sides[side as usize & 1];
+        use crate::kinds::player::Emotion as E;
+        Ok(nettai_content_api::api::CustomPlayer {
+            emotion: match s.emotion {
+                E::Normal => Emotion::Normal,
+                E::Tired => Emotion::Tired,
+                E::FullSynchro => Emotion::FullSynchro,
+                E::Angry => Emotion::Angry,
+                E::WornOut => Emotion::WornOut,
+            },
+            version: match s.unlocks.version {
+                crate::custom::GameVersion::Gregar => "gregar",
+                crate::custom::GameVersion::Falzar => "falzar",
+            },
+            crosses: s.unlocks.crosses,
+            cross_list: s.unlocks.cross_list.map(|l| l.forms().collect()),
+            beast_out: s.unlocks.beast_out,
+            beast_out_sealed: s.unlocks.beast_out_sealed,
+            random_battle: self.setup.settings.effects & crate::setup::effects::RANDOM != 0,
         })
     }
 

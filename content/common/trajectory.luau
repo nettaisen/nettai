@@ -1,14 +1,15 @@
 --!strict
--- Aiming thrown things, BN6's and BN5's (the same code over each game's sine
--- table): the game's trajectory helpers and the GBA BIOS routines they call
--- (division, square root, arctangent), as the BIOS computes them, over a
--- game's sine table (its rules/math). A game makes its own
--- (`trajectory.make(sine)`: BN6's lib/trajectory, BN5's lib/trajectory).
+-- Aiming thrown things, as BN5 and BN6 share them: the game's trajectory
+-- helpers and the GBA BIOS routines they call (division, square root,
+-- arctangent), as the BIOS computes them, over a game's sine table (its
+-- rules' `math` section: `trajectory.over`).
 --
 -- All values are 32-bit integers as the game keeps them: positions and
 -- velocities 16.16, angles 256 steps a turn.
 
 local trajectory = {}
+
+-- (The helpers over one game's sine table are a `Trajectory`.)
 
 -- ---- The BIOS ----------------------------------------------------------------
 
@@ -84,52 +85,49 @@ end
 
 -- ---- The game's helpers ---------------------------------------------------------
 
--- A game's helpers over its sine table (`math_sinTable`, which
--- `math_cosTable` continues: 256 steps a turn, 1.0 = 0x100, over a turn and a
--- half), with the BIOS routines.
-function trajectory.make(SINE: { number })
-    local trajectory = {
-        div = trajectory.div,
-        sqrt = trajectory.sqrt,
-        arctan2 = trajectory.arctan2,
-    }
+-- The helpers over a game's `math_sinTable`, which `math_cosTable`
+-- continues: 256 steps a turn, 1.0 = 0x100, over a turn and a half.
+function trajectory.over(SINE: { number }): Trajectory
+    local t = {}
+    t.div = trajectory.div
+    t.sqrt = trajectory.sqrt
+    t.arctan2 = trajectory.arctan2
 
     -- `math_sinTable`: the sine of step `i` (256 steps a turn, 1.0 = 0x100;
     -- the table runs over a turn and a half, so the cosine of step a is entry
     -- a + 64).
-    function trajectory.sine(i: number): number
+    local function sine(i: number): number
         local v = SINE[i + 1]
         if v == nil then
             error(string.format("sine table entry %d is not in the content", i))
         end
         return v
     end
-    local sine = trajectory.sine
 
     -- `math_sinTable[i]` (signed, 1.0 = 0x100; `math_cosTable[i]` is entry
     -- i + 64).
-    trajectory.sine = sine
+    t.sine = sine
 
     -- `calcAngle_800117C`: the angle toward (dx, dy), 256 steps a turn.
-    function trajectory.angle(dx: number, dy: number): number
+    function t.angle(dx: number, dy: number): number
         return bit32.rshift(trajectory.arctan2(int.asr(dx, 16), int.asr(dy, 16)), 8)
     end
 
     -- `sub_80011A0`: a velocity of `speed` toward `angle` (x and y).
-    function trajectory.toward(angle: number, speed: number): (number, number)
+    function t.toward(angle: number, speed: number): (number, number)
         local cos, sin = sine(angle + 64), -sine(angle + 128)
         return int.asr(int.mul32(cos, speed), 8), int.asr(int.mul32(sin, speed), 8)
     end
 
     -- `sub_8001330`: the velocity that takes `pos` to (x, y, z) in `ticks`
     -- ticks, falling by `gravity` a tick.
-    function trajectory.in_ticks(pos: Vec3, x: number, y: number, z: number, ticks: number, gravity: number): Vec3
+    function t.in_ticks(pos: Vec3, x: number, y: number, z: number, ticks: number, gravity: number): Vec3
         local dx, dy = int.i32(x - pos.x), int.i32(y - pos.y)
-        local angle = trajectory.angle(dx, dy)
+        local angle = t.angle(dx, dy)
         local ax, ay = int.asr(dy, 8), int.asr(dx, 8)
         local distance = trajectory.sqrt(int.i32(int.mul32(ax, ax) + int.mul32(ay, ay)))
         local speed = trajectory.div(int.shl(distance, 8), ticks)
-        local vx, vy = trajectory.toward(angle, speed)
+        local vx, vy = t.toward(angle, speed)
         local drop = int.asr(int.mul32(int.mul32(ticks, ticks), gravity), 1)
         local vz = trajectory.div(int.i32(z - pos.z - drop), ticks)
         return Vec3.new(vx, vy, vz)
@@ -140,7 +138,7 @@ function trajectory.make(SINE: { number })
     -- `gravity` a tick: (rise, ticks). `vel_y` is what the game reads as the
     -- height when the distance rounds to no ticks (the word after the
     -- position's Z: the object's Y velocity).
-    function trajectory.at_speed(pos: Vec3, vel_y: number, x: number, y: number, z: number, speed: number, gravity: number): (number, number)
+    function t.at_speed(pos: Vec3, vel_y: number, x: number, y: number, z: number, speed: number, gravity: number): (number, number)
         local height = pos.z
         if speed ~= 0 then
             local ax, ay = int.asr(int.i32(x - pos.x), 8), int.asr(int.i32(y - pos.y), 8)
@@ -167,7 +165,7 @@ function trajectory.make(SINE: { number })
         return 0, bit32.rshift(root, 8) + up
     end
 
-    return trajectory
+    return t
 end
 
 return trajectory

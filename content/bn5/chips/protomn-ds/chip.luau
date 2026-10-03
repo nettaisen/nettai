@@ -1,13 +1,14 @@
 --!strict
--- ProtoMnDS (BN5 chip 0x0f1): ProtoMan, dark, cuts in and slashes each enemy navi he can reach, as ProtoMan's
--- (BN6's navi with BN5's look: ../protoman/chip.luau; his palette by the chip's Param1, 0x080C1714: 3 for its 4);
--- its damage by its user's side's statistic 3 (formula 24, its table's row 1).
+-- ProtoMnDS (BN5 chip 0x0f1): ProtoMan, dark, cuts in and slashes each enemy navi he can reach, as ProtoMan's (the
+-- shared navi with BN5's look: ../protoman/chip.luau; his palette by the chip's Param1, 0x080C1714: 3 for its 4); its
+-- damage by its user's side's statistic 3 (formula 24, its table's row 1).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local attachment = require("@bn6/objects/attachment/attachment")
-local navi = require("@bn6/chips/protoman/navi")
+local attachment = require("../../objects/attachment/attachment")
+local common = require("@common/protoman/navi")
+local navi = require("../protoman/navi")
 
-local LOOK = navi.look {
+local LOOK = common.look {
     sprite = asset.sprite("bn5:protoman"),
     palette = 3,
     sword = attachment.look { sprite = asset.sprite("bn5:sword"), palette = 0 },
