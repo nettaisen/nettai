@@ -75,8 +75,9 @@ local function swing(me: Object, s: State)
             box.timer = 10
         end
     end
-    s.timer -= 1
-    if s.timer < 0 then
+    local left = s.timer - 1
+    s.timer = left
+    if left < 0 then
         me.step = REST
         me.step_init = 0
     end
@@ -88,8 +89,9 @@ local function rest(me: Object, s: State)
         s.timer = 5
         me.step_init = 4
     end
-    s.timer -= 1
-    if s.timer < 0 then
+    local left = s.timer - 1
+    s.timer = left
+    if left < 0 then
         me.related1 = nil
         me.overlay = nil
         me:exit_attack()
