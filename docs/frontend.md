@@ -480,11 +480,12 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
 - a console's own pictures by its version (`Versioned`: a Gregar console's
   Beast and emblem, the pack's `-gregar` assets); a Cross's name and
   colors in the Cross window are its own game's (`custom::cross_picture`,
-  for the form in the entry's place, `Unlocks::cross_at`), so a Gregar
+  for the form in the entry's place, `bn6_compat::Unlocks::cross_at` over
+  the cross system's setup), so a Gregar
   Cross shows Gregar's name in any window, and a window a setup's Cross
   list mixes shows each game's own; the Beast Out button, its picture in
   the chip window and the BeastOut chip's picture are of the Beast the
-  navi goes into (`custom::beast_pictures`, `Unlocks::beast_game`), so a
+  navi goes into (`custom::beast_pictures`, `bn6_compat::Unlocks::beast_game`), so a
   Falzar player in HeatCross sees Gregar's;
 - what the screen does to the rest: the HP box and the mugshot move right
   with the window and the field and the sprites 15 pixels down (the
@@ -541,7 +542,11 @@ console does otherwise, by data, not by game:
 - a chip each version draws its own way shows the console's version's
   icon and picture, and the emblem is the console's version's
   (`Renderer::console_version`, which a BN5 recording names; live play,
-  the pack's first version).
+  the pack's first version);
+- a game's mark another game's font lacks is drawn with the glyph of the
+  loaded font that has it (`nettai_assets::lend_marks`, the Private Use
+  Area's marks alone): a BN6 console names a BN5 DS navi chip with BN5's
+  stacked DS, a BN5 console a BN6 EX chip with BN6's stacked EX.
 
 The frame comparison against BN5's consoles (verification's
 tools/frontend-compare/bn5.txt, chiplab's library-bn5) and what still
@@ -707,34 +712,30 @@ labels) and a Japanese console's HUD timings (the next chip's name shown
 from the fight's first frame), the chips' pictures included; the Gregar
 chip's on a Falzar console is the known difference above.
 
-**On BN5 consoles** (verification's tools/frontend-compare/bn5.txt: 14 of
+**On BN5 consoles** (verification's tools/frontend-compare/bn5.txt: 16 of
 chiplab's library-bn5 scenarios, Team ProtoMan against Team Colonel,
 traced on the Team ProtoMan console and once on the Team Colonel one,
-compared with `--text original`, BN5's pack loaded beside
-BN6's): of 5,616 frames, 4,690 are pixel-exact with the navis left out
-(`MASK_NAVIS`): the HUD, the custom screen with its picks and Soul
-Unison's choice, the chatbox, the banners and a deletion's result. What
-still differs is the BN5 port's to finish, not the drawing's:
+Soul and Chaos Unison and the computer navi's Chaos among them, compared
+with `--text original`, BN5's pack loaded beside BN6's): of 7,964 frames,
+7,868 are pixel-exact, the navis included: the HUD, the emotion window,
+the custom screen with its picks, Soul Unison's choice and a dark chip's
+hover, the chatbox, the banners, the mercy flash and a deletion's
+result. What still differs:
 
-- dark MegaMan's faces (pictures 11-15) and palette, which BN5 picks by a
-  stat nettai doesn't keep (NaviStats +0x4C: 0x0801AF8E, 0x0800DE04); a
-  dark MegaMan shows the light one's (the DrkSword and DrkRecov scenarios,
-  and the navis' palettes the mask leaves out);
-- a soul's turns left: BN5's window shows 3 through the soul's first turn,
-  nettai's souls system 2 (its count-down runs after the change sets the
-  turns); the chip icons over a soul-united MegaMan sit 2 pixels lower
-  (the icon's height is MegaMan's attach point, not the soul's);
+- a dark chip user's emotion window flickers once where BN5's flickers
+  twice and the other way round (DrkSword, DrkRecov): the window's draw
+  (`console.rs`, BN6's `sub_801CC94`) is right, but nettai's RNG1 is 29
+  draws behind the console's from the first custom screen on (BN5 draws
+  them as the screen opens, the folder's shuffle's count), so the flicker
+  count, an RNG1 draw, differs;
+- the next chip's name and icons a frame late as the screen closes: a BN5
+  console has both results a tick before nettai closes the screen
+  (nettai's flow closes it on the results' tick,
+  `custom_closes_with_results`), and shows them then; the "Cstmzing..."
+  wait ends there as the console's does;
 - the UNITE button for a soul not ported yet (HeatSoul for AntiFire) is
-  gray;
-- BN5's Cannon draws BN6's cannon sprite (its muzzle flash and blast
-  differ for 5 frames);
-- the chip window's name a frame late as the screen closes: a BN5 console
-  has both results a tick before nettai closes the screen (nettai's flow
-  closes it on the results' tick, `custom_closes_with_results`), and its
-  chip window starts then; the "Cstmzing..." wait ends there as the
-  console's does;
-- one scenario (a pick's check) stops: BN5's roles name no invalid chip
-  (`chips.invalid`).
+  gray where BN5's is lit;
+- a soul's buster shot's flame is whiter (a few frames).
 
 The comparison needs the ROM, so it lives outside this repository, with the
 lists of scenarios. The frontend's own tests (`cargo test -p nettai-render
@@ -818,8 +819,8 @@ them).
 ## 6. Match files
 
 A match file is everything a round needs, chosen before the battle: the
-arena, and each side's ruleset, navi, game, stats, folder, Crosses, patch
-cards and NaviCust, in TOML, by content key (a definition's key, as content names it;
+arena, and each side's ruleset, navi, game, navi code level, stats, folder,
+Crosses, Beast Out, SP deletion times, patch cards and NaviCust, in TOML, by content key (a definition's key, as content names it;
 `bn6:cannon`, or unqualified when one root defines it). `--match FILE` plays
 one (you are its left side), `--save-match FILE` writes the match played,
 and nettai-editor makes and edits them (README.md, "The match editor").
@@ -845,8 +846,9 @@ ruleset = "bn6:bn6"                        # optional: else the content's stock 
 navi = "bn6:megaman"
 game = "gregar"                            # optional: falzar (default) or gregar
 crosses = ["bn6:heatcross", "bn6:spoutcross"]   # optional: else the game's own five
+beast_out = false                          # optional: else Beast Out is unlocked (the save's flag 0xE0)
 cards = [{ card = "bn6:canodumb" }, { card = "bn6:shadow", on = false }]
-level = 0                                  # optional: a link navi's level (its stats are its level's)
+level = 0                                  # optional: the navi code's level, 0-14 (see below)
 bug_frags = 0                              # optional
 emotion_window_glitch = false              # optional: the save's NaviCust bug flag (0x1720)
 
@@ -854,6 +856,9 @@ emotion_window_glitch = false              # optional: the save's NaviCust bug f
 chips = ["bn6:cannon A", "bn6:cannon A", "bn6:airshot *"]   # 30 entries, "<key> <code>" ("" empty: a folder being made)
 regular = 4                                # optional: an entry, counting from 0
 tags = [5, 6]                              # optional: two entries
+
+[left.sp_times]                            # optional: how fast the save deleted each SP navi
+"sp/heatman" = "00:12.34"                  # mm:ss.cc, by the rules' slot (else the fastest, 00:00.00)
 
 [left.stats]                               # optional: what differs from the navi's fresh stats (a link navi's at its level)
 hp = 1000
@@ -893,6 +898,33 @@ NaviCust's bugs (`step_bug`, `panel_trail`, `panel_trail_level`,
 `custom_damage`, `hand_shrink_turn`, ...): every stat a round starts from,
 so a written block gives back the same stats. Writing a match, only the
 fields that differ are written.
+
+**The navi code's level** (`level`) is the level of the navi code the
+save received (docs/engine/link-navis.md), 0 to 14. A link navi exists only
+through its code, so it always has one: without `level` it is **0**, its
+stats are its reload's at level 0 and its chip bonus is level 0's. MegaMan
+without `level` has **none** (no code received, 0xFF in the battle); with
+one he was received from a navi code: his level's gains go over his
+NaviCust, and, as the game's event flag 0x163 does, his custom screen has
+no Beast Out button and his Cross window stays his even with a gauge for
+each player. The checks refuse a level past 14 and a link navi without one;
+a file written leaves out the navi's default (a link navi's 0, MegaMan's
+none).
+
+**The SP deletion times** (`[left.sp_times]`) are by the SP navi slots of
+the side's rules (BN6's `sp/heatman` to `sp/colonel`, rules/sp-chips.luau),
+each `mm:ss.cc`; a slot left out is the fastest. The game keeps frames and
+shows them as a time rounded down to the hundredth (`sub_8000D84`): a
+written time is the fewest frames that show as it, so a time the game shows
+reads back as itself. The SP navi chips' damage goes by them
+(`sub_8010AE4`).
+
+**A save** (the editor's "Import from save…", `Side::import_save`, a BN6
+.sav as an emulator keeps it, read by `bn6_compat::save`) gives a side its
+game, Beast Out and the Crosses it owns (as a Cross list, unless it owns all
+five), the navi code's level (a link navi keeps its own when the save has no
+code) and the SP times; its folder, NaviCust, patch cards and stats are not
+read yet.
 
 **The NaviCust** (`[left.navicust]`, docs/design/navicust.md) is the
 programs placed on MegaMan's grid, by key and color name (a program's

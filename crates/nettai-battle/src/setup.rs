@@ -425,10 +425,6 @@ pub struct RoundSetup {
     /// (BattleState+0x20), so a round whose init had to wait starts with
     /// it set, and its first tick plays no pinch cue.
     pub low_hp_music_latched: bool,
-    /// Per side, from the save via the init exchange: how fast each SP
-    /// navi was deleted (`byte_203EB00`). The SP navi chips' damage goes
-    /// by it.
-    pub sp_times: [SpTimes; 2],
     /// Per side: the battle folder and what the save unlocks on the
     /// custom screen.
     pub players: [crate::custom::PlayerSetup; 2],
@@ -437,7 +433,8 @@ pub struct RoundSetup {
     pub link_delay: u8,
 }
 
-/// How fast (in frames) a player deleted each SP navi (20 halfwords).
+/// How fast (in frames) a player deleted each SP navi (20 halfwords, by
+/// the rules' `sp_slots`; `PlayerSetup::sp_times`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct SpTimes(pub [u16; 20]);
 
