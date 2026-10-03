@@ -65,6 +65,32 @@ pub struct Root {
     pub strings: crate::locale::Strings,
 }
 
+impl Root {
+    /// Leave out the chips whose module names no use yet (`define.chip`'s
+    /// `action`, `dimming`, `navi` or `instant`: a port that hasn't written
+    /// them, BN5's), with every module of their folders: the define phase
+    /// refuses a chip without one, and the rest of the folder plays without
+    /// them. Their keys as the folder writes them (`chips/<key>/chip`).
+    pub fn leave_out_unported(&mut self) -> Vec<String> {
+        fn names_a_use(module: &str) -> bool {
+            module.lines().any(|l| {
+                let l = l.strip_prefix("    ").unwrap_or("");
+                ["action", "dimming", "navi", "instant"]
+                    .iter()
+                    .any(|f| l.strip_prefix(f).is_some_and(|r| r.trim_start().starts_with('=')))
+            })
+        }
+        let unported: Vec<String> = self
+            .modules
+            .iter()
+            .filter_map(|(path, text)| Some(path.strip_prefix("chips/")?.strip_suffix("/chip")?).filter(|_| !names_a_use(text)))
+            .map(str::to_string)
+            .collect();
+        self.modules.retain(|path, _| !unported.iter().any(|k| path.starts_with(&format!("chips/{k}/"))));
+        unported
+    }
+}
+
 /// The folder in `dir`'s name.
 pub fn folder_name(dir: &Path) -> Result<RootManifest, String> {
     let name = dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
