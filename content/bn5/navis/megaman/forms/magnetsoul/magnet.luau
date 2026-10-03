@@ -98,7 +98,14 @@ magnet.kind = define.kind {
 -- 0x080D4C32: the magnet `owner` holds (his first related object), at (dx, dy) from his panel, of `element` and
 -- damage word `damage`, paralyzing or not. (Its spawn position is the spawner's registers, and it has no panel
 -- until its first update follows its owner.)
-function magnet.spawn(owner: Object, dx: number, dy: number, element: number, paralyzes: boolean, damage: number): Object?
+function magnet.spawn(
+    owner: Object,
+    dx: number,
+    dy: number,
+    element: number,
+    paralyzes: boolean,
+    damage: number
+): Object?
     local o = battle.spawn(magnet.kind, Vec3.new(dy, element, 0))
     if o then
         local s = o.state :: State

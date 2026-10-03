@@ -35,8 +35,12 @@ return define.form {
         reveal.spawn(navi)
     end,
     palette = 0,
-    -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls').
-    mugshot = asset.mugshot("bn5:searchsoul"),
+    -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls'); in its
+    -- Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).
+    mugshot = {
+        normal = asset.mugshot("bn5:searchsoul"),
+        variant = { normal = asset.mugshot("bn5:searchsoul-chaos") },
+    },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 3 of category 0).
     identity = define.identity {
