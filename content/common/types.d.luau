@@ -324,3 +324,20 @@ export type SeedLook = {
     splash: Effect,
     puff: Effect,
 }
+
+-- A game's H-Burst shot (@common/h-burst/burst): its probe's self type, what its bursts are and reach, their status
+-- and the explosion on each of their panels.
+export type HyperBurstShotLook = {
+    probe: CollisionType,
+    is: CollisionType,
+    hits: CollisionType,
+    status: Status,
+    explosion: Effect,
+}
+
+-- A game's H-Burst (@common/h-burst/action): the spreader the navi holds, its attachment kind, the shot's sound and
+-- the shot's kind.
+export type HyperBurstLook = { spreader: AttachmentLook, attachment: Kind, sound: Sound, burst: Kind }
+
+-- An H-Burst (BN6's action 0x34, BN5's 0x35): the bursts its shot makes where it hits.
+export type HyperBurstSpec = { id: string?, bursts: number }
