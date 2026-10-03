@@ -75,3 +75,6 @@
 "bn5:snake/nest" = { pool = "attack", index = 0x53 }
 "bn5:snake/snake" = { pool = "attack", index = 0x54 }
 "bn5:yoyo/yoyo" = { pool = "attack", index = 0x52 }
+"bn5:circgun/gun" = { pool = "attack", index = 0x89 }
+"bn5:circgun/shot" = { pool = "attack", index = 0x8A }
+"bn5:circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
