@@ -5,7 +5,7 @@
 
 use super::{
     actions, ai, ai_mut, attach_point, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_paralysis, coll,
-    Emotion, coll_mut, cross_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, per_player_gauges, navi_record,
+    Emotion, coll_mut, switch_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, per_player_gauges, navi_record,
     coordinates_to_panel, panel_kind, reactions, reset_attack_links, save_state_word, set_attack, navi_action,
     set_navi_action, NaviAction,
     set_coordinates_from_panel, set_flag1, set_flag2, set_mood,
@@ -61,7 +61,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
         return Flow::Tail;
     }
     let st = ai(b, r).status;
-    if st & (ai_status::CROSS_KNOCKOUT | ai_status::VOLLEY | ai_status::UNINTERRUPTIBLE) != 0 {
+    if st & (ai_status::SWITCH_KNOCKOUT | ai_status::VOLLEY | ai_status::UNINTERRUPTIBLE) != 0 {
         return Flow::Dispatch;
     }
     if st & ai_status::CROSS_BREAKING != 0 && cross_lane(b, r) {
@@ -71,7 +71,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
         return Flow::Tail;
     }
     b.objects.get_mut(r).prevent_anim = 0;
-    if let Some(flow) = cross_requests(b, r) {
+    if let Some(flow) = action_requests(b, r) {
         return flow;
     }
     if flag2(b, r) & 0x100 != 0 {
@@ -241,8 +241,8 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
         dead = b.objects.get(r).hp == 0;
     }
     if dead {
-        if cross_protected(b, r) {
-            ai_mut(b, r).requests |= request::CROSS_DEATH;
+        if switch_protected(b, r) {
+            ai_mut(b, r).requests |= request::SWITCH_KNOCKOUT;
         } else {
             set_flag2(b, r, 1);
         }
@@ -278,12 +278,12 @@ fn cross_lane(b: &mut Battle, r: ObjectRef) -> bool {
 
 /// The Cross/Beast requests in `ai.requests` (none fire for base
 /// MegaMan).
-fn cross_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
+fn action_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     let f = ai(b, r).requests;
-    if f & request::CROSS_DEATH != 0 {
-        ai_mut(b, r).requests &= !request::CROSS_DEATH;
-        ai_mut(b, r).status |= ai_status::CROSS_KNOCKOUT;
-        let death = super::role_action(b, r, crate::content::ActionRole::CrossDeath);
+    if f & request::SWITCH_KNOCKOUT != 0 {
+        ai_mut(b, r).requests &= !request::SWITCH_KNOCKOUT;
+        ai_mut(b, r).status |= ai_status::SWITCH_KNOCKOUT;
+        let death = super::role_action(b, r, crate::content::ActionRole::SwitchKnockout);
         set_attack(b, r, death, 0);
         return Some(Flow::Dispatch);
     }
@@ -895,11 +895,11 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
     if st & ai_status::REVERTING_FORM != 0 {
         return actions::transform::revert(b, r);
     }
-    if st & ai_status::CHANGING_CROSS != 0 {
-        return actions::cross_change::change(b, r);
+    if st & ai_status::SWITCHING_NAVI != 0 {
+        return actions::navi_switch::change(b, r);
     }
-    if st & ai_status::CROSS_KNOCKOUT != 0 {
-        return actions::cross_change::knock_out(b, r);
+    if st & ai_status::SWITCH_KNOCKOUT != 0 {
+        return actions::navi_switch::knock_out(b, r);
     }
     let f = ai(b, r).requests;
     let (bit, state) = if f & request::FORM_CHANGE != 0 {
@@ -909,10 +909,10 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         ai_mut(b, r).saved_word = None;
         save_state_word(b, r);
         (request::REVERT_FORM, ai_status::REVERTING_FORM)
-    } else if f & request::CROSS_CHANGE != 0 {
-        (request::CROSS_CHANGE, ai_status::CHANGING_CROSS)
-    } else if f & request::CROSS_DEATH != 0 {
-        (request::CROSS_DEATH, ai_status::CROSS_KNOCKOUT)
+    } else if f & request::NAVI_SWITCH != 0 {
+        (request::NAVI_SWITCH, ai_status::SWITCHING_NAVI)
+    } else if f & request::SWITCH_KNOCKOUT != 0 {
+        (request::SWITCH_KNOCKOUT, ai_status::SWITCH_KNOCKOUT)
     } else {
         return;
     };

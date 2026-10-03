@@ -13,15 +13,15 @@ use nettai_content_api::{FormHandle, NaviHandle};
 pub struct TransformRequest {
     /// The form to change into (Beast Out, a Cross, Beast Over...).
     pub form: Option<FormHandle>,
-    /// A Cross change: the navi to change to.
-    pub cross_change: Option<NaviHandle>,
+    /// A navi switch: the navi to change to.
+    pub navi_switch: Option<NaviHandle>,
 }
 
 impl TransformRequest {
-    pub const NONE: TransformRequest = TransformRequest { form: None, cross_change: None };
+    pub const NONE: TransformRequest = TransformRequest { form: None, navi_switch: None };
 
     pub fn is_none(&self) -> bool {
-        self.form.is_none() && self.cross_change.is_none()
+        self.form.is_none() && self.navi_switch.is_none()
     }
 }
 
@@ -34,7 +34,7 @@ pub enum SequencerState {
     Check,
     /// Someone transforms (`sub_80148CC`).
     Transform { phase: TransformPhase, started: bool },
-    /// Wait for form reversions and Cross changes to finish
+    /// Wait for form reversions and navi switches to finish
     /// (`sub_8014A00`).
     Wait,
 }
@@ -99,7 +99,7 @@ impl Battle {
         let navis = rev.navis;
         let knocked_out = |b: &Battle, n: Option<crate::object::ObjectRef>| {
             n.is_some_and(|p| {
-                b.objects.get(p).actor.is_some_and(|a| b.actors.get(a).status & crate::actor::status::CROSS_KNOCKOUT != 0)
+                b.objects.get(p).actor.is_some_and(|a| b.actors.get(a).status & crate::actor::status::SWITCH_KNOCKOUT != 0)
             })
         };
         if !knocked_out(self, navis[0]) && !knocked_out(self, navis[1]) {
@@ -132,7 +132,7 @@ impl Battle {
         self.transform_seq.busy
     }
 
-    /// `sub_801486C`: a side asking for a Cross change gets it started; a
+    /// `sub_801486C`: a side asking for a navi switch gets it started; a
     /// side without a transformation has its rules check whether its form's
     /// time ran out (BN6's beast system: Beast Out, `sub_80159C6`).
     fn sequencer_check(&mut self) {
@@ -140,11 +140,11 @@ impl Battle {
         for side in 0..2u8 {
             let req = self.transform_seq.requests[side as usize];
             let navi = self.player(side);
-            if req.cross_change.is_some() {
-                // A Cross change is asked for, and the check runs too (the
+            if req.navi_switch.is_some() {
+                // A navi switch is asked for, and the check runs too (the
                 // form isn't looked at).
                 if let Some(p) = navi {
-                    player::actions::cross_change::request_change(self, p);
+                    player::actions::navi_switch::request_change(self, p);
                     self.notify_side(side, nettai_content_api::SystemHook::TurnCheck);
                 }
             } else if req.form.is_some() {
@@ -226,7 +226,7 @@ impl Battle {
             if navi.is_some_and(|p| player::changing_cross(self, p)) {
                 return;
             }
-            self.transform_seq.requests[side].cross_change = None;
+            self.transform_seq.requests[side].navi_switch = None;
         }
         self.transform_seq.busy = false;
     }

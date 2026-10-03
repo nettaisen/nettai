@@ -386,10 +386,10 @@ pub(crate) fn runs_role(b: &Battle, r: ObjectRef, role: crate::content::ActionRo
     matches!(navi_action(b, r), NaviAction::Content(h) if b.roles_for(r).is_action(role, h))
 }
 
-/// `sub_802DD2A`: a Cross navi that falls back to base form instead of
-/// dying.
-fn cross_protected(b: &Battle, r: ObjectRef) -> bool {
-    !is_megaman(b, r) && ai(b, r).status & crate::actor::status::CROSSED != 0
+/// `sub_802DD2A`: a switched-in navi (the navi switch) that falls back
+/// instead of dying.
+fn switch_protected(b: &Battle, r: ObjectRef) -> bool {
+    !is_megaman(b, r) && ai(b, r).status & crate::actor::status::SWITCHED != 0
 }
 
 /// Switch to `action` at phase 0 (the game's direct CurAction stores).
@@ -634,9 +634,9 @@ pub fn changing_form(b: &Battle, r: ObjectRef) -> bool {
     ai(b, r).status & crate::actor::status::FORM_CHANGE != 0
 }
 
-/// `sub_802DCEC`: a Cross change is pending or running.
+/// `sub_802DCEC`: a navi switch is pending or running.
 pub fn changing_cross(b: &Battle, r: ObjectRef) -> bool {
-    ai(b, r).status & crate::actor::status::CHANGING_CROSS != 0 || ai(b, r).requests & request::CROSS_CHANGE != 0
+    ai(b, r).status & crate::actor::status::SWITCHING_NAVI != 0 || ai(b, r).requests & request::NAVI_SWITCH != 0
 }
 
 // ---- Init --------------------------------------------------------------------

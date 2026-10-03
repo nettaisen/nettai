@@ -376,12 +376,12 @@ pub struct Battle {
     pub games: BattleGames,
     pub setup: RoundSetup,
     pub stats: [NaviStats; 2],
-    /// Each side's other navi's stats for a Cross change
+    /// Each side's other navi's stats for a navi switch
     /// (`eBattleNaviStats2034A60`): a copy of the side's stats at the
     /// battle's start; a change keeps the navi it leaves here when it is
     /// this one, and takes the navi it goes to from here when it is that
-    /// one (`sub_802D7A0`); a Cross knockout takes it back (`sub_802D9B0`).
-    pub cross_stats: [NaviStats; 2],
+    /// one (`sub_802D7A0`); a switch knockout takes it back (`sub_802D9B0`).
+    pub reserves: [NaviStats; 2],
     pub rng: Rng,
     /// Each player's console: its own RNG (RNG1), which ChpShufl's re-deal
     /// draws from, and what advances it (`console`).
@@ -699,7 +699,7 @@ impl Battle {
             content,
             games,
             stats: setup.navi_stats,
-            cross_stats: setup.navi_stats,
+            reserves: setup.navi_stats,
             rng: Rng::new(setup.rng),
             consoles: [Console::new(&setup.players[0].console), Console::new(&setup.players[1].console)],
             round: RoundState {
@@ -754,9 +754,9 @@ impl Battle {
         };
         // Each side's systems set the round up before anything reads the
         // side's stats (BN6's patch cards change them); the battle-start
-        // copy of the stats (`cross_stats`) is of the stats after them.
+        // copy of the stats (`reserves`) is of the stats after them.
         b.notify_systems(nettai_content_api::SystemHook::RoundSetup);
-        b.cross_stats = b.stats;
+        b.reserves = b.stats;
         // Init's last steps: refresh every panel, then one unpaused panel
         // update.
         b.field.refresh_all(&b.content.rules_of(b.games.arena).panels, &b.collision);
