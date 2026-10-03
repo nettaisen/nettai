@@ -109,3 +109,4 @@
 "bn5:sidebub/bubble" = { pool = "attack", index = 0x8F }
 "bn5:flying-shot" = { pool = "attack", index = 0x0B }
 "bn5:quake/bomb" = { pool = "attack", index = 0x51 }
+"bn5:seed" = { pool = "attack", index = 0x4A }
