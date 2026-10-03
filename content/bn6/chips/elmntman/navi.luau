@@ -20,7 +20,7 @@ local effects = require("../../lib/effects")
 local ice = require("./ice")
 local meteor = require("./meteor")
 local vine = require("./vine")
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("@common/navi-chips/navi")
 
 -- What a chip summons him with: the ticks each element shows (the chips'
 -- first parameter).

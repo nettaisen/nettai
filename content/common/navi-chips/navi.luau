@@ -1,9 +1,11 @@
 --!strict
--- What the navi chips' navis share (docs/engine/chips.md §3.6): how a chip
--- places its navi, how he stands on his panel, the footing he needs, the
--- timers of his actions, and his leaving. The navi chip controller (the
--- ruleset's) calls a chip's `navi` hook, and the navi reports back with
--- `navi_chips.leave`.
+-- What the navi chips' navis share, BN6's and BN5's (docs/engine/chips.md
+-- §3.6; BN5's spawners and helpers are BN6's code): how a chip places its
+-- navi, how he stands on his panel, the footing he needs, the timers of his
+-- actions, his leaving, and how his flying attacks tell they passed a
+-- panel's center. The navi chip controller (the ruleset's) calls a chip's
+-- `navi` hook, and the navi reports back with `navi_chips.leave`. Each game
+-- passes its navis' sprites.
 
 local navi_chips = {}
 
@@ -71,6 +73,18 @@ end
 function navi_chips.wait(me: Object, ticks: number, word: boolean?): boolean
     local left = navi_chips.countdown(me, ticks, word)
     return left ~= nil and left <= 0
+end
+
+-- `sub_800E708(a, b, c)`: c lies between a and b, ends included (and a
+-- or b equal to c): a flying attack moved from b to a passed c.
+function navi_chips.between(a: number, b: number, c: number): boolean
+    if a == c or b == c then
+        return true
+    end
+    if a > b then
+        return c >= b and c <= a
+    end
+    return c > a and c <= b
 end
 
 -- He goes: the controller (if it waits for him) moves on.

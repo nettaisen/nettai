@@ -11,7 +11,7 @@ local megaman = require("../../navis/megaman/navi")
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local element_pillar = require("../../objects/element-pillar/element_pillar")
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("@common/navi-chips/navi")
 local parts = require("../../lib/swords/parts")
 local regions = require("../../lib/regions")
 

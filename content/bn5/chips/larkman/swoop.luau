@@ -12,8 +12,8 @@
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
 local regions = require("@bn6/lib/regions")
-local link_chips = require("@bn6/lib/link_chips")
-local trajectory = require("@bn6/lib/trajectory")
+local navi_chips = require("@common/navi-chips/navi")
+local trajectory = require("../../lib/trajectory")
 local follower = require("./follower")
 
 local swoop = {}
@@ -153,7 +153,7 @@ local function rise(me: Object)
     local p, v = me.pos, me.vel
     local old_x = p.x
     me.pos = Vec3.new(int.i32(p.x + v.x), int.i32(p.y + v.y), p.z)
-    if center ~= old_x and link_chips.between(me.pos.x, old_x, center) then
+    if center ~= old_x and navi_chips.between(me.pos.x, old_x, center) then
         me:set_coordinates_from_panel()
         if int.u8(me.facing * 3 + s.start_x) == me.panel_x then
             start_turn(me, s)
