@@ -1,6 +1,9 @@
 --!strict
--- Slasher (BN5 chip 0x038): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- Slasher (BN5 chip 0x038): while A is held, a wide slash at the column of an enemy navi that steps onto the user's
+-- area (chips/slasher/action: BN5's own action 0x29).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local slasher = require("./action")
 
 return define.chip {
     id = "bn5:slasher",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
+    action = slasher.action,
 }
