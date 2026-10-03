@@ -17,7 +17,7 @@
 "engine/afterimage" = { pool = "effect", index = 0x28 }
 "bn6:attachment" = { pool = "actor", index = 0x05 }
 "bn5:attachment" = { pool = "actor", index = 0x05 }
-"bn6:widesht/wave" = { pool = "attack", index = 0x3B }
+"bn5:widesht/wave" = { pool = "attack", index = 0x3B }
 "bn6:boomer/boomerang" = { pool = "attack", index = 0x32 }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
 "engine/navi-chip" = { pool = "effect", index = 0x10, scratch_position = true }
