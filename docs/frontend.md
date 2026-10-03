@@ -870,6 +870,14 @@ entries = ["bn5:cannon", "pattern 1", "nothing", "empty"]   # up to 42, in the s
 patterns = [{ dx = 1, dy = 0, chips = ["bn5:sword", "bn5:wideswrd"] }]   # up to 8, each up to 6 chips
 ```
 
+A BN5 side (`ruleset = "bn5:stock"`, `navi = "bn5:megaman"`) may say besides:
+
+```toml
+[left]
+karma = 100                                # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
+souls = ["bn5:protosoul", "bn5:colonelsoul"]   # optional: the souls it has, any, either version (none: every soul)
+```
+
 **The stats block** (`nettai_match::stats`) sets the navi's stats by name
 over its fresh stats (`NaviStats::fresh`, `init_8013B64`: what a new save
 gives the navi), of the side's game; a link navi's over its stats at its
@@ -928,6 +936,45 @@ bugs) from the programs as the round is set up. Without one, the stats block
 is the stats as they are, NaviCust included, as a recording's are. The
 editor's NaviCust pane places the programs on the board as the game does.
 
+**The karma** (`karma`, `nettai_match::facts`) is BN5's light/dark value
+(NaviStats +0x44), 0 to 1000; without it, **500**, a fresh save's
+(0x08010C00): light for the chips, the starting mood 0x80, no holy panels
+cleared. Under 470 a dark MegaMan (mood 0, the dark face and palette, dark
+chips usable in a link battle, no soul button); 499 or under clears holy
+panels; under 500 he starts worried; 1000 the brightest (mood 190, Tango's
+light templates). Like BN6's `game`, `crosses` and `beast_out` (S6c's
+facts), the round's setup writes it into whichever of the side's systems
+declares the setup field (`PlayerSetup::set_fact`): BN5's light and dark
+system's `karma`. A ruleset that takes none refuses one other than 500.
+Hub Style (NaviStats +0x4C, which BN5's patch card 111 sets) waits for
+BN5's patch cards. A netplay offer carries the karma and the souls
+(protocol version 5), and a round's setup and the battle's digest hold
+them, so both peers start alike.
+
+**The souls** (`souls`, `nettai_match::facts`) are the souls the side has,
+BN5's Soul Unison, by form key: those the custom screen's soul button may
+offer. Without `souls`, every soul the content has (both versions'); with a
+list, those; an empty list, none (no soul button). The original's soul
+button (0x08024B28) offers the soul of the last chip's family when the save
+has it: each version's table (0x08024BF0) gives Team ProtoMan's souls 1 to 6
+the event flags 2 to 7 and Team Colonel's 7 to 12 the flags 8 to 0x0D, the
+other version's none, and a dark chip's Chaos Unison needs flag 0x236 too.
+The engine ports that check on the souls owned: the round's setup writes
+the side's into the souls system's setup field `souls` (`set_fact`), and the
+battle reads them as the save's flags, by each soul's number. A side may have
+any soul, of either version (nettai's extension, as a Cross list may name
+either game's: the user's "allow all souls to be selected regardless of
+game"), and a soul whose family the folder never holds never comes up. With
+souls, the save has Soul Unison and Chaos Unison (flags 0 and 0x236). Only a
+ruleset whose systems take `souls` takes a list (the checks refuse one
+elsewhere, and a form that is no soul).
+
+**A BN5 save** (the editor's "Import from save…", `Side::import_save`,
+which reads a save that isn't BN6's as BN5's: a .sav, or a raw save image as
+Tango's netplay templates hold, read by `bn5_compat::save`) gives its karma
+and the souls its version's flags give (the content's souls of those
+numbers).
+
 **The tactics** (`[left.tactics]`, nettai_battle::tactics, docs/design/bn5-map.md
 §15.9) are BN5's computer-navi data, the block a BN5 save keeps for its
 player: what a computer navi across from them plays, BN5's Dark MegaMan,
@@ -974,6 +1021,9 @@ is said with where it is:
   one flag for them), and the stats block holds only what a save keeps;
 - a Cross list only with a ruleset that has the forms system, of the navi's
   Crosses (a navi that changes form), at most five, none twice;
+- a soul list only with a ruleset that has the souls system, each a soul
+  (a form of kind `soul`), none twice, of either version;
+- karma 0 to 1000, and other than 500 only with rules that take it;
 - patch cards only with a ruleset that has the patch-cards system, each
   installed once, at most 32, their MB together at most 80 (BN6's menu adds
   none past 80 MB, `0x08141868`);

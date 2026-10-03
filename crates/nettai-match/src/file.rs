@@ -42,6 +42,10 @@
 //! [left.tactics]                     # optional: BN5's computer-navi data, the save's (none: empty)
 //! entries = ["bn5:cannon", "pattern 1", "nothing", "empty"]   # up to 42: a chip, a pattern by its number, 0, 0xFFFF
 //! patterns = [{ dx = 1, dy = 0, chips = ["bn5:sword", "bn5:wideswrd"] }]   # up to 8, each up to 6 chips
+//!
+//! # A BN5 side ([left] with ruleset = "bn5:stock", navi = "bn5:megaman") may say besides, in [left]:
+//! karma = 100                        # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
+//! souls = ["bn5:protosoul"]          # optional: the souls it has, any game's, either version (none: every soul)
 //! ```
 
 use crate::{Arena, Folder, Match, Place, Side, stats};
@@ -113,6 +117,10 @@ pub struct SideFile {
     pub navicust: Option<NaviCustFile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tactics: Option<TacticsFile>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub karma: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub souls: Option<Vec<String>>,
 }
 
 /// A player's tactics (`nettai_battle::tactics`): the entries, each a chip's
@@ -353,6 +361,18 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
         }
     }
     let tactics = s.tactics.as_ref().map(|t| resolve_tactics(content, t, &mut say)).unwrap_or_default();
+    // The souls, by key.
+    let souls = s.souls.as_ref().map(|keys| {
+        keys.iter()
+            .filter_map(|k| {
+                let f = content.defs.form_by_key(k);
+                if f.is_none() {
+                    say(format!("souls: no form {k:?}"));
+                }
+                f
+            })
+            .collect()
+    });
     let navi = navi?;
     // (No level: a link navi's 0, MegaMan's none; the checks hold it.)
     let navi_level = s.level.or_else(|| crate::default_navi_level(content, navi));
@@ -379,6 +399,8 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
         sp_times,
         navicust,
         tactics,
+        karma: s.karma.unwrap_or(crate::facts::DEFAULT_KARMA),
+        souls,
     })
 }
 
@@ -501,6 +523,8 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
                 .collect(),
         }),
         stats: s.stats_block(content),
+        karma: (s.karma != crate::facts::DEFAULT_KARMA).then_some(s.karma),
+        souls: s.souls.as_ref().map(|l| l.iter().map(|&f| content.defs.form(f).key.clone()).collect()),
         navicust: s.navicust.map(|n| NaviCustFile {
             expansions: Some(n.expansions),
             programs: n
