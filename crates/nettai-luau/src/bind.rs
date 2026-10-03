@@ -2304,10 +2304,11 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         HookCall::RoleNavi { .. } => Ok(object_arg(&v, "the object a role hook returns")?.map_or(Value::Nil, Value::Object)),
         HookCall::InstantChip { .. } | HookCall::RoleEncased { .. } | HookCall::NaviLeft { .. } => Ok(Value::Nil),
         // A chip check's substitute; no other system hook returns anything.
-        HookCall::System { hook: SystemHook::ChipCheck, .. } if !v.is_nil() => match bound.def(&v) {
+        HookCall::System { hook: hook @ (SystemHook::ChipCheck | SystemHook::ChipSubstitute), .. } if !v.is_nil() => match bound.def(&v) {
             Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),
             _ => Err(mlua::Error::runtime(format!(
-                "a system's chip_check returns nil or a chip definition, not a {}",
+                "a system's {} returns nil or a chip definition, not a {}",
+                hook.name(),
                 v.type_name()
             ))),
         },

@@ -6,6 +6,7 @@
 
 local beast = require("./beast/system")
 local cross = require("./cross/system")
+local dark_chips = require("./dark-chips/system")
 local folder = require("./folder/system")
 local emotion = require("./emotion/system")
 local forms = require("./forms/system")
@@ -34,5 +35,7 @@ return define.ruleset {
         emotion.system,
         -- The folder's rules, which tools ask (the simulation never does).
         folder,
+        -- The dark chips: their bug frag, substitute and HP bug.
+        dark_chips,
     },
 }

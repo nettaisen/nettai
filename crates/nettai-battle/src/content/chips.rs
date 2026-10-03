@@ -350,16 +350,10 @@ pub struct ChipData {
     /// Counter/stagger strength carried to the attack's hitbox (the high
     /// half of its damage word).
     pub hit_param: u8,
-    /// In Beast Out, the chip's attack goes through the Beast rush.
-    pub beast_lockon: bool,
     /// Input lockout after the attack ends, in ticks.
     pub lockout: u8,
     #[serde(default)]
     pub extra_flags: ExtraChipFlags,
-    /// The Beast Out rush's lock-on mode for it (`Content::lockon`); none:
-    /// the navi stays where it is.
-    #[serde(default, with = "lockon_handle", skip_serializing_if = "Option::is_none")]
-    pub lockon_mode: Option<nettai_content_api::LockonHandle>,
     /// Base damage (0 for a chip whose damage is a `formula`).
     pub damage: u16,
     /// How the damage is worked out, for a chip whose damage isn't fixed.
@@ -371,10 +365,6 @@ pub struct ChipData {
     /// A trap chip: what it catches as the side's defensive chip.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trap: Option<Trap>,
-    /// A dark chip's cost: what using it adds to its user's HP bug, which
-    /// stops at 7 (`sub_800B79A`).
-    #[serde(default)]
-    pub hp_bug: u8,
     /// Library number, index within the library, and alphabetical sort
     /// key (menus only).
     pub library_number: u16,
@@ -382,11 +372,6 @@ pub struct ChipData {
     pub sort_key: u16,
     /// Uses per battle through the Battle Chip Gate's slot-in.
     pub slot_in_limit: u8,
-    /// A dark chip's substitute: the chip (by key) its user gets instead
-    /// with no bug frag left (`sub_8010D58`). A chip with one costs a bug
-    /// frag.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub dark_substitute: Option<String>,
     /// What the chip does to the chip picked before it, as a modifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub modifier: Option<ChipModifier>,
@@ -395,16 +380,3 @@ pub struct ChipData {
     pub program_advances: Vec<ProgramAdvanceRecipe>,
 }
 
-/// A lock-on mode's handle in a record's data form: its index, or nothing.
-mod lockon_handle {
-    use nettai_content_api::LockonHandle;
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    pub fn serialize<S: Serializer>(h: &Option<LockonHandle>, s: S) -> Result<S::Ok, S::Error> {
-        h.map(|h| h.0).serialize(s)
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<LockonHandle>, D::Error> {
-        Ok(Option::<u16>::deserialize(d)?.map(LockonHandle))
-    }
-}
