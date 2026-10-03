@@ -1795,11 +1795,15 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   - `dark_substitute` and `hp_bug` are a new system's, `bn6:dark-chips` (rules/dark-chips/system.luau), last in
     BN6's stock ruleset. Its new hook `chip_substitute(side, navi, chip)` spends a bug frag or gives the substitute
     as the use is prepared (`sub_8010D58`), where Rust then loads the substitute's record, damage and bonus as
-    before. Its `chip_used` worsens the HP bug (`sub_800B79A`).
+    before. Its `chip_prepared(side, navi, chip)`, another new hook, worsens the HP bug (`sub_800B79A`) once the
+    use is prepared, its substitute taken.
   - BN5's `chip_check` couldn't serve for the substitute: it replaces the action late, the attack as prepared.
   - `ChipLinks::dark_substitute` is gone.
 - **Kept common**, as approved: `formula` (BN5 uses it) and the `no_chain` trait (the rush's chain is the
   framework's `chain_next_chip`).
+- **Fixed during the move:** the first lab run lost two DrkSword scenarios (`cross-slash-charged`, 638 of 753
+  frames). The HP bug was in `chip_used`, which only the use's own path calls; `sub_80127C0` also prepares the rush's
+  chained chip and the counter cut-in's, and each worsens the bug. Hence `chip_prepared`, called where the Rust was.
 - **Porter impact:** none. No BN5 content uses these fields, and BN6's chips keep their keys: no script to re-run.
 - **Verify:** gen-content reads the rush, the substitute and the HP bug through `Defs::extension`, and decodes the
   ROM's rush byte and lock-on mode into its own `RomChip`.
