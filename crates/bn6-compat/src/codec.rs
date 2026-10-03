@@ -640,7 +640,7 @@ mod tests {
         let s = navi_stats(&bytes(MACHGUN_P0), &ids);
         assert_eq!((s.hp, s.max_hp, s.max_base_hp), (1000, 1000, 1000));
         assert_eq!(nettai_content_api::keys::local(&ids.content.defs.navi(s.navi).key), "megaman");
-        assert_eq!(s.form, ids.content.base_form());
+        assert_eq!(s.form, ids.content.base_form_for(s.navi));
         assert!(s.float_shoes && s.air_shoes && !s.undershirt && !s.super_armor);
         assert_eq!(s.mood, 0x80);
         assert_eq!(s.support, Some(Supports::default()));

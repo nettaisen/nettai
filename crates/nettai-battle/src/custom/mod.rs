@@ -487,7 +487,7 @@ impl Battle {
         self.custom.committed = false;
         let content = self.content.clone();
         for side in 0..2u8 {
-            let library = library::GameLibrary { content: &content, game: self.games.sides[side as usize] };
+            let library = library::GameLibrary { content: &content, game: self.games.sides[side as usize], ruleset: self.games.rulesets[side as usize] };
             let ctx = self.custom_context(side, &library);
             self.custom.sides[side as usize].open(&ctx, &mut self.consoles[side as usize]);
         }
@@ -514,7 +514,7 @@ impl Battle {
                 continue;
             }
             let content = self.content.clone();
-            let library = library::GameLibrary { content: &content, game: self.games.sides[side as usize] };
+            let library = library::GameLibrary { content: &content, game: self.games.sides[side as usize], ruleset: self.games.rulesets[side as usize] };
             let ctx = self.custom_context(side, &library);
             let mut s = self.custom.sides[side as usize].clone();
             let mut console = self.consoles[side as usize];

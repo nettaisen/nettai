@@ -298,7 +298,40 @@ mod tests {
         let schema = &b.content.defs.schemas[s.id().0 as usize].schema;
         s.set(schema, schema.index_of("starts").unwrap(), Value::Int(9)).unwrap();
         assert_ne!(changed.digest(), b.digest());
-        assert_eq!(testing::build().defs.rulesets.len(), 5);
+        assert_eq!(testing::build().defs.rulesets.len(), 6);
+    }
+
+    /// docs/design/rules-in-luau.md P1 item 8: a mix's own sections
+    /// (testdata's rules/souls.luau: its sides' HP bug periods) are what its
+    /// sides read, over its game's; its game's own tables and the other
+    /// side's don't change; a section about the battle or a chip's game is
+    /// refused, and so is a stock ruleset's own.
+    #[test]
+    fn a_mix_brings_its_own_side_sections() {
+        let content = scenario::content();
+        let souls = content.defs.ruleset_by_key("test:test-souls").expect("the souls mix");
+        let test = content.defs.root_id(testing::ROOT).unwrap();
+        assert_eq!(content.defs.ruleset(souls).sections, ["test:souls/status"]);
+        let own = [0, 1, 2, 3, 4, 5, 6, 7];
+        assert_eq!(content.side_rules(Some(souls), test).hp_bug_periods, own);
+        assert_ne!(content.rules_of(test).hp_bug_periods, own, "the game's own tables don't take it");
+        let mut setup = scenario::setup();
+        setup.players[1].ruleset = Some(souls);
+        let b = started(setup);
+        assert_eq!(b.side_game_rules(1).hp_bug_periods, own);
+        assert_eq!(b.side_game_rules(0).hp_bug_periods, content.rules_of(test).hp_bug_periods);
+        // Refused: an arena section, a chip's game's, a stock ruleset's own.
+        let patched = |from: &str, to: &str| {
+            let mut c = testing::build();
+            let src = c.scripts.module_mut(testing::ROOT, "rules/souls").expect("the souls module");
+            assert!(src.contains(from));
+            *src = src.replacen(from, to, 1);
+            c.define().map(|_| ()).map_err(|e| e.message)
+        };
+        let e = patched("test:souls/status\", { hp_bug_periods = { 0, 1, 2, 3, 4, 5, 6, 7 } }", "test:souls/math\", { sine = {} }").unwrap_err();
+        assert!(e.contains("section test:souls/math (`math`) is the battle's or a chip's game's"), "{e}");
+        let e = patched("base = systems.stock, ", "stock = true, systems = {}, ").unwrap_err();
+        assert!(e.contains("a stock ruleset's sections are its game's"), "{e}");
     }
 
     /// A mix (testdata's rules/mix.luau): the stock rules less BN6's forms
@@ -348,6 +381,13 @@ mod tests {
                  return define.roles(spec)",
             ),
             ("rules/pools", "return define.rules('twin:pools', { actor = 16, attack = 32, effect = 32 })"),
+            // Its own base form (P1 item 12), the test content's weapons.
+            (
+                "navis/base",
+                "local test = require('@test/navis/test')\n\
+                 return define.form { id = 'twin:base', kind = 'base', sprite = asset.sprite('twin:navi'), element = 'null', \
+                 buster_bonus = 0, weapons = test.base.weapons, buster_arm = { anim = 0 } }",
+            ),
         ];
 
         /// The test content with the `twin` root beside it, and twin's own
@@ -368,6 +408,33 @@ mod tests {
                 Arc::new(c)
             })
             .clone()
+        }
+
+        /// docs/design/rules-in-luau.md P1 item 12: a base form per game, one
+        /// a game; a navi's is its game's, and a game without one takes the
+        /// first game's, by name, that has one.
+        #[test]
+        fn each_game_has_its_base_form() {
+            let c = content();
+            let (test, twin) = (c.defs.root_id(testing::ROOT).unwrap(), c.defs.root_id("twin").unwrap());
+            let (test_base, twin_base) = (c.defs.form_by_key("test:base"), c.defs.form_by_key("twin:base"));
+            assert!(test_base.is_some() && twin_base.is_some());
+            assert_eq!((c.defs.base_forms[test.index()], c.defs.base_forms[twin.index()]), (test_base, twin_base));
+            assert_eq!(Some(c.base_form_of(twin)), twin_base);
+            assert_eq!(Some(c.base_form_for(c.navi_by_key(testing::MEGAMAN))), test_base);
+            // A game without one (a folder of no base form, `aaa`, first by
+            // name) takes test's, the first that has one.
+            let mut lone = (*c).clone();
+            lone.scripts.add_root(RootManifest::named("aaa"), [("m".to_string(), "return define.record('x', { n = 1 })".to_string())].into());
+            lone.define().unwrap_or_else(|e| panic!("{e}"));
+            let aaa = lone.defs.root_id("aaa").unwrap();
+            assert_eq!((lone.defs.base_forms[aaa.index()], Some(lone.base_form_of(aaa))), (None, lone.defs.form_by_key("test:base")));
+            // Two in one game are refused.
+            let mut two = (*c).clone();
+            let second = TWIN.iter().find(|(p, _)| *p == "navis/base").unwrap().1.replace("twin:base", "twin:base-2");
+            *two.scripts.modules.entry(crate::content::Scripts::name("twin", "navis/base-2")).or_default() = second;
+            let e = two.define().unwrap_err().message;
+            assert!(e.contains("two forms of twin are base forms (twin:base and twin:base-2)"), "{e}");
         }
 
         /// A battle on the twin content, its sides playing by `rulesets`.
