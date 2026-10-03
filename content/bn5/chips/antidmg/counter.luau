@@ -4,6 +4,7 @@
 -- (`actions.anti_damage_counter`, rules/roles.luau): a trap's catch leaves the attack's variant 0, a random enemy.
 
 local bn6_collision = require("@bn6/rules/collision")
+local collision = require("../../rules/collision")
 local common = require("@common/antidmg/counter")
 local effects = require("@bn6/lib/effects")
 local shuriken = require("@common/antidmg/shuriken")
@@ -16,7 +17,7 @@ local shuriken_kind = shuriken.make_kind {
     land_sound = asset.sound("bn6:panel-crack"),
     puff = effects.bubbles,
     self_type = bn6_collision.thrown_slash,
-    target = bn6_collision.hits_navis,
+    target = collision.hits_navis,
 }
 
 counter.action = common.action_at {

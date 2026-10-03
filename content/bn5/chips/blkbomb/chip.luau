@@ -11,7 +11,6 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local black_bomb = require("@common/blkbomb/bomb")
-local bn6_collision = require("@bn6/rules/collision")
 local bombs = require("../../lib/bombs")
 local collision = require("../../rules/collision")
 local effects = require("@bn6/lib/effects")
@@ -63,9 +62,9 @@ local KIND = black_bomb.make_kind("bn5:blkbomb/bomb", {
     sprite = asset.sprite("bn6:black-bomb"),
     spark = sparks.breaking,
     is = collision.neutral_object,
-    target = bn6_collision.everything,
+    target = collision.everything,
     burst_is = collision.attack,
-    burst_target = bn6_collision.hits_navis,
+    burst_target = collision.hits_navis,
     -- 0x08017984: any hit from the other side pushes it.
     push = "any_hit",
     land_sound = asset.sound("bn6:land"),

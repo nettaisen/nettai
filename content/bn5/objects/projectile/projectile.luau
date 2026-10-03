@@ -3,6 +3,7 @@
 -- burst BN6's (its sound, effect and collision types). Its variants are BN5's (./variants).
 
 local bn6_collision = require("@bn6/rules/collision")
+local collision = require("../../rules/collision")
 local common = require("@common/projectile/projectile")
 local effects = require("@bn6/lib/effects")
 
@@ -15,7 +16,7 @@ projectile.kind = common.make_kind {
     id = "bn5:projectile",
     burst_sound = asset.sound("bn6:burst"),
     burst_effect = effects.explosion,
-    burst_target = bn6_collision.hits_navis,
+    burst_target = collision.hits_navis,
     burst_self_type = bn6_collision.attack,
 }
 
