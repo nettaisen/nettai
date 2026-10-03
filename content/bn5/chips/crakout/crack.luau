@@ -74,7 +74,7 @@ local function init(me: Object)
 end
 
 crack.kind = define.kind {
-    id = "bn5:crack",
+    id = "bn5:crakout/crack",
     pool = "attack",
     -- 0x080C7704.
     update = function(me: Object)

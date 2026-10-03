@@ -168,7 +168,7 @@ impl<'a> Renderer<'a> {
         // pack's.)
         let local = b.setup.local_side as usize & 1;
         let own_game = self.packs.of_root(&b.content, b.games.sides[local]);
-        let version = b.custom.sides[local].unlocks.version;
+        let version = bn6_compat::Unlocks::of_side(b, local as u8).version;
         let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, version, self.console_version, &mut self.problems);
         let chatbox = crate::chatbox::prepare(b, own_game, &self.packs, &text, &mut self.problems);
         let mut list = SpriteList::default();
