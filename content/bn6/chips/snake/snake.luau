@@ -4,7 +4,7 @@
 -- waits, then leaps at its target panel and strikes it, or flies on off
 -- the field when it has none. Snake's nest (./nest) sends them out.
 
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local collision = require("../../rules/collision")
 local trajectory = require("../../lib/trajectory")
 

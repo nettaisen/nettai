@@ -2,8 +2,9 @@
 # compares this with. Edit it when content is renamed or added.
 #
 # Names gen-content made up (the ROM, the disassembly and the engine docs give none),
-# by compat file and key, or by content module (and `chips`: the chip series' modules)
-# and name, with where each came from: to review. Rename a key in its file or module
+# by compat file and key, or by content module (and `chips`: the chip series' modules;
+# a module of the shared folder, content/common, as `@common/...`) and name, with where
+# each came from: to review. Rename a key in its file or module
 # and here; remove the entry once the name is settled.
 
 ["actions.toml"]
@@ -573,7 +574,7 @@ tornado = "effect 0x59"
 vulcan_hit = "effect 0x20"
 vulcan_hit_6a = "effect 0x6A"
 
-["lib/regions.luau"]
+["@common/regions.luau"]
 region_03 = "region 0x03"
 region_05 = "region 0x05"
 region_07 = "region 0x07"

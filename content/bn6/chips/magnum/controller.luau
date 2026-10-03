@@ -1,12 +1,12 @@
 --!strict
 -- Magnum's dimming controller (the original's effect object #0x5B,
 -- `sub_80E71C4`; docs/engine/dimming-chip-effects.md §11): the usual
--- dimming phases (lib/dimming), with an effect that sends out the gunner
+-- dimming phases (@common/dimming), with an effect that sends out the gunner
 -- (./gunner) with the damage plus the bonus and lasts until it is done.
 
-local dimming_chips = require("../../lib/dimming")
+local dimming_chips = require("@common/dimming")
 local gunner = require("./gunner")
-local stand_in = require("../../lib/dimming/stand_in")
+local stand_in = require("@common/dimming/stand_in")
 
 export type State = {
     -- The Atk+ / cross bonus the telop shows (+0x32), which the shot's

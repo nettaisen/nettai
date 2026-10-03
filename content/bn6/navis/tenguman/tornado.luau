@@ -6,7 +6,7 @@
 -- docs/engine/standard-chips.md, "Action 0x0A".
 
 local collision = require("../../rules/collision")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 
 local tornado = {}
 

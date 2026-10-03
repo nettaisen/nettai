@@ -54,7 +54,7 @@ Not yet content: 0x55 (SonicBom, Curse, Punisher, SprSonic, `sub_80EF970`) and 0
 share the sonic boom (attack #0x58, `sub_80CF7F0`), specified in shot-chips.md with the actions that fire a shot;
 and 0x0A, the link navis' chips (below).
 
-Shared helpers: lib/panels.luau (`GetRandomRelativePanelFiltered`, `sub_8109708`), lib/arm.luau (`sub_80EBAE8`,
+Shared helpers: content/common/panels.luau (`GetRandomRelativePanelFiltered`, `sub_8109708`), lib/arm.luau (`sub_80EBAE8`,
 the arm a chip attachment shows), lib/swords/vari.luau, and group G1's lib/region.luau and lib/trajectory.luau.
 (v1's lib/object_setup.luau, `sub_8011504` with the collision-panel highlight and the dust puff, went when its
 last users became definitions that set themselves up.)
@@ -220,7 +220,7 @@ subtype 3 and params 0.
   velocity, c)` (the game passes the velocity where the old X belongs: true while c ≤ X); true → the stop check.
   Stopping: his panel from the coordinates → 4; else the panel and collision panels follow. The stop check:
   the next panel (x + front) holds another body of either side or a neutral object (0x03800000) → stop; the one
-  after that isn't on the field (no 0x10000) → stop; else `GetRandomRelativePanelFiltered` (lib/panels:
+  after that isn't on the field (no 0x10000) → stop; else `GetRandomRelativePanelFiltered` (content/common/panels:
   `random_in_region`) on region 4 around the next panel, dx toward his side's front, for an enemy navi's body
   (`off_80F0C24`): found (**one RNG draw**) → stop. 4 (`sub_80F0A7A`): anim 0x11, Timer 20; a hit on the panel ahead
   (`sub_80F0B80`, `object_getEnemyDirection`: region 4, hit effect 3, target 5, self 7, r7 0x1001: modifier 1,
@@ -257,7 +257,7 @@ subtype 3 and params 0.
   the other side's area (`off_80F1434[side]`: side 0 require 0x04000020; side 1 require 0x08000000, forbid 0x20),
   then those of the other side's area without one (`byte_80F1448[side]`: side 0 require 0x20, forbid 0x04000000;
   side 1 forbid 0x08000020), the latter shuffled when there are any (`sub_8000C72(list, n, n)`: n swaps, **two RNG
-  draws each**, lib/panels' `shuffle`), then (x, 1), (x, 2), (x, 3) with x = `dword_80F145C[side]` (7; side 1: 0, off
+  draws each**, content/common/panels' `shuffle`), then (x, 1), (x, 2), (x, 3) with x = `dword_80F145C[side]` (7; side 1: 0, off
   the field); the first five get a rock (`sub_80F1460` → `sub_80D5EB0`: attack #0x86, FuturePanel the target, on
   his panel, element, Param1 = the subtype, the damage word, flags |= 0x10).
   **The volcano rock, T3 0x86 (`sub_80D5D54`)**: init: on his panel 10 pixels ahead, Z's whole part 48, sprite (0x10,

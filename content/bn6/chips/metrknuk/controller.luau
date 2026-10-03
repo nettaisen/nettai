@@ -1,13 +1,13 @@
 --!strict
 -- MetrKnuk's dimming controller (the original's effect object #0x76,
 -- `sub_80E8B00`; docs/engine/dimming-chip-effects.md §18): the usual
--- dimming phases (lib/dimming), with an effect that throws 16 fists
+-- dimming phases (@common/dimming), with an effect that throws 16 fists
 -- (./fist) at the enemy's area, 8 ticks apart: the first at a random
 -- panel an enemy stands on, the others at random panels around the
 -- enemies (never the last one twice in a row).
 
-local dimming_chips = require("../../lib/dimming")
-local panels = require("../../lib/panels")
+local dimming_chips = require("@common/dimming")
+local panels = require("@common/panels")
 local fist = require("./fist")
 
 local controller = {}

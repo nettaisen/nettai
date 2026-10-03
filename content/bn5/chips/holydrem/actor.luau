@@ -1,20 +1,20 @@
 --!strict
 -- HolyDrem's stand-in (BN5's actor object #0x1C, 0x080BD728; BN5's own, built as BN6's dimming stand-ins are:
--- @bn6/lib/dimming/stand_in): drawn as the user, where the user stands, with the buster raised, while the user
+-- @common/dimming/stand_in): drawn as the user, where the user stands, with the buster raised, while the user
 -- vanishes. It fires a shot (./shot) along the user's row at once; then it looks for holy panels over the whole
 -- field, from the far end's column toward the user, rows 1 to 3 in each (0x080BD96C), and for each one, 10 ticks
 -- later, shows a flash on it, turns it Normal and fires another shot. With none left it waits 60 ticks, lowers the
 -- buster and gives the user back (docs/design/bn5-map.md §6.2). The shots come from the user's attach point 29.
 -- (The panel it reads is the engine's holy type, whichever game's stage or chip made it.)
 
-local buster = require("@bn6/lib/buster")
+local buster = require("../../lib/buster")
 local shot = require("./shot")
-local stand_in = require("@bn6/lib/dimming/stand_in")
+local stand_in = require("@common/dimming/stand_in")
 
 local actor = {}
 
 export type State = {
-    -- The controller waiting on it (lib/dimming/stand_in).
+    -- The controller waiting on it (@common/dimming/stand_in).
     controller: Object?,
     -- The buster it holds (its +0x74).
     held: Object?,
