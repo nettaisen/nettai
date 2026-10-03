@@ -33,6 +33,11 @@ pub trait Library {
     /// BN5's Soul Unison: the navi has souls (the custom screen's soul
     /// button), and the soul a chip of `family` given up gives (its number
     /// and form).
+    /// The words a custom screen's result takes on the link, a tick each
+    /// (the sending side's game's flow: `FlowRules::result_words`).
+    fn result_words(&self) -> u32 {
+        super::SEND_TICKS
+    }
     fn has_souls(&self, _navi: NaviHandle) -> bool {
         false
     }
@@ -188,6 +193,10 @@ pub struct GameLibrary<'a> {
 }
 
 impl Library for GameLibrary<'_> {
+    fn result_words(&self) -> u32 {
+        self.content.rules_of(self.game).flow.result_words as u32
+    }
+
     fn chip(&self, id: ChipHandle) -> &ChipData {
         self.content.chip(id)
     }

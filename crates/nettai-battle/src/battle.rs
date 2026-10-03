@@ -1370,11 +1370,6 @@ impl Battle {
             return self.close_custom_screens();
         }
         self.tick_custom_screens(recorded);
-        // (BN5's Team Battle screen, 0x08025EF2, closes on the tick both
-        // results are in: docs/design/bn5-map.md §15.3 item 13.)
-        if self.custom.committed && self.arena_rules().flow.custom_closes_with_results {
-            self.close_custom_screens();
-        }
     }
 
     /// `sub_8026A6C`: the screens close and the fight resumes.
