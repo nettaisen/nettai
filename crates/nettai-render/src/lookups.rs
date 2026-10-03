@@ -10,7 +10,7 @@
 use crate::audit::{Graphics, Lookup, Problems, emotion_number};
 use crate::packs::Packs;
 use nettai_assets::{BannerLayout, ChipArt, CustomScreen, DialogueFont, Hud, Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles};
-use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, Content, MugshotId, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, Content, MugshotId, PackId, SpriteId};
 use nettai_battle::custom::GameVersion;
 use nettai_battle::kinds::player::Emotion;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
@@ -109,14 +109,46 @@ pub fn background<'a>(packs: &Packs<'a>, c: &Content, id: BackgroundId, problems
     found
 }
 
-/// The field's panel block for a panel type (`kind`, as the field numbers
-/// it), owner (0 the viewer's) and row (`y`, 1..=3).
-pub fn panel_block<'a>(field: &'a nettai_assets::Field, kind: usize, owner: usize, y: u8, problems: &mut Problems) -> Option<&'a [nettai_assets::MapEntry]> {
-    let block = field.panels.get(6 * kind + 3 * owner + y as usize - 1).map(|b| &b[..]);
-    if problems.lookup(Lookup::Panel(kind as u8, owner as u8, y)) && block.is_none() {
-        problems.note(format!("the pack's field has no block for panel type {kind}, owner {owner}, row {y}"));
+/// A pack's name for a problem's text (`bn6's pack`).
+pub fn pack_name(c: &Content, pack: PackId) -> String {
+    c.assets.packs.get(pack.index()).map_or(format!("pack {}", pack.index()), |g| format!("{g}'s pack"))
+}
+
+/// Pack `pack`'s field's panel block for a panel type (`kind`, the
+/// engine's number), owner (0 the viewer's) and row (`y`, 1..=3): a field
+/// that draws the type (`stage::FieldArt`).
+pub fn panel_block<'a>(
+    c: &Content,
+    field: &'a nettai_assets::Field,
+    pack: PackId,
+    kind: u8,
+    owner: usize,
+    y: u8,
+    problems: &mut Problems,
+) -> Option<&'a [nettai_assets::MapEntry]> {
+    let block = field.panel(kind, owner, y).map(|b| &b[..]);
+    if problems.lookup(Lookup::Panel(pack, kind, owner as u8, y)) && block.is_none() {
+        problems.note(format!("{}'s field has no block for panel type {kind}, owner {owner}, row {y}", pack_name(c, pack)));
     }
     block
+}
+
+/// The number [`Lookup::PanelTint`] gives highlight `h` (1 or 2):
+/// `HIGHLIGHT_TINT + h`.
+pub const HIGHLIGHT_TINT: u8 = 16;
+
+/// A panel type (`kind`, the engine's number; a highlight,
+/// `HIGHLIGHT_TINT + h`) that no loaded pack's field draws, in an arena of
+/// pack `arena`'s: drawn as a tinted normal panel, by design
+/// (docs/design/rules-in-luau.md §7.4). Said, not counted.
+pub fn panel_tint(c: &Content, arena: PackId, kind: u8, problems: &mut Problems) {
+    if problems.lookup(Lookup::PanelTint(arena, kind)) {
+        let what = match kind.checked_sub(HIGHLIGHT_TINT) {
+            Some(h) => format!("highlight {h}"),
+            None => format!("panel type {kind}"),
+        };
+        problems.say(format!("in an arena of {}, {what} is in no loaded pack's field: drawn as a tinted normal panel", pack_name(c, arena)));
+    }
 }
 
 /// A chip's key.

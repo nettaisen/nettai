@@ -47,9 +47,10 @@ fn assets() -> Bundle {
         first_tile: 0xA3,
         palettes,
         first_palette: 1,
+        panel_types: (0..13).collect(),
         panels: (0..13 * 6).map(|i| block((i / 3) % 2)).collect(),
         front_edges: [[MapEntry::default(); 5]; 2],
-        highlights: [[MapEntry::default(); 15]; 2],
+        highlights: vec![[MapEntry::default(); 15]; 2],
         ..Field::default()
     };
     Bundle { sprites: vec![megaman], field, ..Bundle::default() }
