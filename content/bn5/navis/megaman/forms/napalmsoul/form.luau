@@ -36,8 +36,12 @@ return define.form {
     charged_bonus = { damage = 0xFF },
     charged_action = charged_chip.action,
     palette = 0,
-    -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls').
-    mugshot = asset.mugshot("bn5:napalmsoul"),
+    -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls'); in its
+    -- Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).
+    mugshot = {
+        normal = asset.mugshot("bn5:napalmsoul"),
+        variant = { normal = asset.mugshot("bn5:napalmsoul-chaos") },
+    },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 4 of category 0).
     identity = define.identity {
