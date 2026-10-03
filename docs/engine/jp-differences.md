@@ -6,7 +6,7 @@ answers three questions:
 
 - What differs, and in which class?
 - Which JP-only objects exist, and what are they for?
-- What would the engine, which runs the US behaviour (but where the user chose the Japanese games'), get wrong in a
+- What would the engine, which runs the US behavior (but where the user chose the Japanese games'), get wrong in a
   netbattle between Japanese consoles?
 
 **The short answer.** 153 US routines are not byte-for-byte the same in JP Falzar (§2):
@@ -15,7 +15,7 @@ answers three questions:
 - 27 differ in presentation only: graphics, HUD, text, buffers.
 - 14 differ only in code no netbattle runs.
 - 2 hold the JP-only content's entry points.
-- 25 are US changes. A JP-console netbattle reaches 20 of them, which come to **15 behaviours**.
+- 25 are US changes. A JP-console netbattle reaches 20 of them, which come to **15 behaviors**.
 
 With one JP data difference (Otenko's statue as DustMan's junk) and the patch cards' emotion-window hook, that is
 17 variants. §8 lists the 16 the engine runs as the US games do, with their sizes and how to switch them, and the
@@ -48,9 +48,9 @@ that doesn't match. `tools/jp/blocks.py` repairs both:
 
 - It anchors routines on the object kind tables and the chip handler tables. A routine's place is where the JP
   table points.
-- It drops "twins": a `same` routine whose move disagrees with the median of its eight neighbours'.
+- It drops "twins": a `same` routine whose move disagrees with the median of its eight neighbors'.
 - It compares **blocks**: a run of routines that aren't the same, between two that are. The two ROMs' spans
-  between the same neighbours are compared, so code inserted or removed in the middle doesn't misalign the
+  between the same neighbors are compared, so code inserted or removed in the middle doesn't misalign the
   rest.
 
 Each block is disassembled in both ROMs and normalized:
@@ -97,7 +97,7 @@ in such a block or a battle routine reaches it.
 ### 1.4 JP Gregar
 
 `blocks.py exe6_rom.srl` finds the JP Falzar blocks again, plus 14 more. `gregar.py` compares those 14 with the US
-Gregar ROM between the same neighbours:
+Gregar ROM between the same neighbors:
 
 - 12 are US Gregar's code, compared as fmap.py compares. They are version differences: the encryption helpers,
   the default stats, custom-screen routines, the Beast's code, `sub_80F2290` and `sub_8120B54`.
@@ -115,7 +115,7 @@ JP Falzar, 153 routines:
 |---|---|---|
 | same | 85 | — |
 | cosmetic | 27 | (presentation; §5 lists what a trace would see) |
-| us-change | 25 | 20 (15 behaviours, §8) |
+| us-change | 25 | 20 (15 behaviors, §8) |
 | unreachable | 14 | — |
 | jp-content | 2 | 2 (the handler tables; the content itself is new code, §4) |
 
@@ -146,7 +146,7 @@ Each row is one routine. **Reach** says whether a netbattle between Japanese con
 | `sub_802CEF4` | the traps: see below | yes |
 | `sub_801B878` | US only: LilBolr's obstacle dispatcher (while it erupts, a crushing touch is as any hit) | yes |
 | `sub_80D774C` | LilBolr: JP calls the default dispatcher `sub_801B394` (a crushing touch drops the HP to 0), and doesn't set HP = MaxHP − (+0x2C & 0xFFF) while erupting | yes |
-| `sub_80033E4` | US only: a T4 spawn at the head of the update list. fmap.py pairs it with JP's tail spawn, its twin. Its one caller is `sub_80E360E`, whose JP behaviour the engine has (§8.2), so the engine runs it nowhere (the content API keeps it as `battle.spawn_first`) | yes |
+| `sub_80033E4` | US only: a T4 spawn at the head of the update list. fmap.py pairs it with JP's tail spawn, its twin. Its one caller is `sub_80E360E`, whose JP behavior the engine has (§8.2), so the engine runs it nowhere (the content API keeps it as `battle.spawn_first`) | yes |
 | `sub_80E360E` | ElemTrap's counterattack (T4 0x2B): the US spawns it at the head of the list, so it acts next tick; JP calls `object_spawnType4`, which links it right after the trap, so it acts in the same tick. **The engine runs JP's on every console** (the user's decision, 2026-10-02; §8.2) | yes |
 | `sub_80BABAC` | ElmntMan: when the user doesn't pick an element in Param1·20 ticks, the US picks one (an RNG2 draw, `& 3`) and attacks; JP goes to action 0x18 and he leaves | yes |
 | `sub_80C9F98` | Tornado on a volcano, grass or ice panel: the US doubles the damage but keeps the flags 0xF800; JP doubles the whole halfword, so 0x8000 is lost and 0x4000 becomes 0x8000 | yes |
@@ -255,7 +255,7 @@ the audit put them out of scope and the engine doesn't have them:
 
 So the Gregar and Falzar chips' attack objects are in the US ROM already, orphaned. Their port belongs to the
 chips. The Strike Feathers keep the controller's base damage and drop the chip's attack bonus. That is the JP
-original's behaviour (bn6-lmao "fixes" it, §9).
+original's behavior (bn6-lmao "fixes" it, §9).
 
 ### 4.4 Chip records
 
@@ -264,7 +264,7 @@ original's behaviour (bn6-lmao "fixes" it, §9).
 - **Django ×3 (0x116..0x118)**: class 3 (not a folder chip) in the US, 1 (Mega) in JP. Flags 0x00 in the US,
   0x47 in JP (dimming, damage, navi chip, library). Action 0x1B, subtype 0x13 and damage 130, 180, 260 in both.
 - **GunDelEX (0x012)**: class 3 in the US, 0 (standard) in JP; flags 0x00 against 0x40 (library). Its
-  behaviour (GunDelSol's subtype 3) is in both.
+  behavior (GunDelSol's subtype 3) is in both.
 - **Count ×3 (0x113..0x115)**: flags 0x07 against 0x47; **Otenko (0x099)**: 0x01 against 0x41. Only the
   library bit 0x40 differs.
 - Chips 0x119..0x121: flags2 (+0x16) 0x30 in the US, 0x20 or 0x00 in JP (menu classification only).
@@ -287,7 +287,7 @@ The art (icon, image, palette) is `chips.py`'s list:
   the gift has zeros there (a black picture), and the US games clear it at a new game and write "~~~~" names.
   DblBeast's card palette is also in both JP ROMs, orphaned among the chip palettes in DblBeast's place (JP Falzar
   0x08749C78, JP Gregar 0x08747BAC). Gregar's and Falzar's are in no ROM: the chips' definitions give them
-  (`art_palette`, chips/gregar and chips/falzar), the colours Tango's netplay saves have at 0xB10
+  (`art_palette`, chips/gregar and chips/falzar), the colors Tango's netplay saves have at 0xB10
   (tango-gamesupport-bn6, saves/g_jp.raw and f_jp.raw). Rendered with them, the pictures are the JP consoles'
   exactly (bn6battle-verify's JP-console recordings of both chips).
 
@@ -467,7 +467,7 @@ enemy navis' update too (JP Falzar 0x080F8268, from `sub_80F2354`).
 85 routines in JP Falzar differ only in what moved. Most are next to JP-only code, which shifts their pools or
 tables. The rest:
 
-- jump tables and colour tables moved: `sub_800794C`, `sub_8016A38`, `sub_801A554`, `sub_80E3D90`, the
+- jump tables and color tables moved: `sub_800794C`, `sub_8016A38`, `sub_801A554`, `sub_80E3D90`, the
   `sub_80E9140` twins;
 - padding: `object_setAttack0`/`1`, `battleSettings_802D2B2`, and the zero bytes after `sub_80C53A6`,
   `sub_80D05EC`, `sub_80E3B50` and `sub_80E4DA2`;
@@ -484,7 +484,7 @@ tables. The rest:
 
 What the switch looks like is §8.1. Each variant names where it lives and what a trace from a JP console would
 show against the engine. #7, ElemTrap's counterattack, has left this table: the engine runs the Japanese games'
-behaviour there, by the user's choice (§8.2).
+behavior there, by the user's choice (§8.2).
 
 | # | Variant | Size | A JP trace shows | Where to switch |
 |---|---|---|---|---|
@@ -533,7 +533,7 @@ These sizes from bn6-lmao's regions are exact (§9):
 
 ### 8.1 The console-region switch
 
-**Decided (the user, 2026-10-02): no switch, "just these chips".** The engine runs the US behaviour for §8's variants
+**Decided (the user, 2026-10-02): no switch, "just these chips".** The engine runs the US behavior for §8's variants
 (but ElemTrap's counterattack, which the user moved to the Japanese games' later that day: §8.2) and has none of this
 section's switch. The JP-content chips (GunDelEX, Otenko, Count's three, Django's three, Gregar,
 Falzar) take the Japanese games' records and routines outright (`gen-content check` compares their records with a
@@ -554,7 +554,7 @@ one ran. The region belongs in the setup:
 - **Content:** `battle.region(): "us" | "jp"` in core.d.luau, read where the variant is (`if battle.region() ==
   "jp" then ... end`). The version stays per navi (`NaviStats.version`).
   - The JP-only chips' hooks dispatch on it. In the US they keep `lib/unusable`'s error, which is what the US ROM
-    does (it jumps to address 0); in JP they run the ported behaviour.
+    does (it jumps to address 0); in JP they run the ported behavior.
 - **Records and assets:** a chip whose record differs by region (Django, GunDelEX) takes its class and flags
   from a region-keyed table. JP's sprites are extracted from the JP ROM; an asset name says which.
 - **Compat:** bn6-compat reads the region from the ROM header (BR6J or BR5J is JP) for traces and sets the
@@ -610,7 +610,7 @@ What the boundaries say:
   chip 19 spawns T1 0x12, whose init loads 0C-0F, the Django archive. bn6-lmao registers it as T1 0x12 under
   Count and gives its Django chips a C reimplementation with BN5's art instead. The JP ROM's Django chip is
   complete: the handler, the navi, the sprite.
-- **bn6-lmao changes JP behaviour in one place.** It adds the attack bonus to Falzar's Strike Feathers (a patch
+- **bn6-lmao changes JP behavior in one place.** It adds the attack bonus to Falzar's Strike Feathers (a patch
   at `falzar_controller_main`+0x302). The JP original forwards the base power only; a faithful port keeps that.
 
 ## 10. For JP tracing

@@ -79,7 +79,7 @@ fn check_cues(feed: &CueFeed) -> (usize, usize) {
         }
     }
     // Each cue the tracker hasn't settled yet (played for a frame near or
-    // past the last confirmed one) may still be cancelled or confirmed.
+    // past the last confirmed one) may still be canceled or confirmed.
     let mut confirmed: HashMap<SoundCue, i64> = HashMap::new();
     for &(_, c) in &feed.confirmed {
         *confirmed.entry(c).or_default() += 1;
@@ -87,7 +87,7 @@ fn check_cues(feed: &CueFeed) -> (usize, usize) {
     let unsettled = feed.tracker.unconfirmed() as i64;
     let cues: std::collections::HashSet<SoundCue> = balance.keys().chain(confirmed.keys()).copied().collect();
     let diff: i64 = cues.iter().map(|c| (balance.get(c).copied().unwrap_or(0) - confirmed.get(c).copied().unwrap_or(0)).abs()).sum();
-    assert!(diff <= unsettled, "viewer {}: played-minus-cancelled cues differ from the confirmed cues by {diff} ({unsettled} unsettled)", feed.viewer);
+    assert!(diff <= unsettled, "viewer {}: played-minus-canceled cues differ from the confirmed cues by {diff} ({unsettled} unsettled)", feed.viewer);
     (plays, cancels)
 }
 
@@ -105,7 +105,7 @@ fn run(what: &str, config: NetConfig, rollbacks: bool) {
         let cues: Vec<(usize, usize)> = feeds.iter().map(check_cues).collect();
         eprintln!(
             "{what} seed {seed}: {} frames in {} wall frames, over {}; \
-             rollbacks {}/{} (max depth {}/{}, resimulated {}/{}, speculated up to {}/{}); stalls {}/{}, parked {}/{}; cues played/cancelled {:?}",
+             rollbacks {}/{} (max depth {}/{}, resimulated {}/{}, speculated up to {}/{}); stalls {}/{}, parked {}/{}; cues played/canceled {:?}",
             report.frames,
             report.wall_frames,
             report.over,

@@ -203,7 +203,7 @@ subtype 3 and params 0.
 
 - **HeatPres (AI 1, `sub_80F0778`, phases `off_80F078C`).** 0 (`sub_80F0798`), the jump: his collision region
   cleared, FuturePanel = his panel, reserved (`object_reservePanel`), anim 0x12; an arc (`sub_8001330`: from his X,
-  Y, Z to the centre of the panel three ahead at Z 0 in 20 ticks with gravity −0x18000: the angle, the distance
+  Y, Z to the center of the panel three ahead at Z 0 in 20 ticks with gravity −0x18000: the angle, the distance
   `SWI_Sqrt`ed and divided by the ticks for the speed, `sub_80011A0` for X and Y, the Z velocity ((0 − Z) − 20 · 20 ·
   g / 2) / 20; lib/trajectory's `in_ticks`) into his velocity; Timer 20. Each later tick while the timer, counted down,
   stays ≥ 0: X, Y, Z += velocity, Z velocity −= 0x18000, his panel from the coordinates; then Z's whole part 0 and
@@ -215,8 +215,8 @@ subtype 3 and params 0.
   60 ticks → 8. 8 (`sub_80F0898`): anim 0, region 1, back onto FuturePanel (unreserved), `object_exitAttackState`.
 - **DElecSwd (AI 2, `sub_80F09B8`).** 0 (`sub_80F09DC`), the slide: the bonus; anim 0x10; FuturePanel his, reserved;
   ObjectFlags1 |= 0x40 (moving) and 0x400000 (using action); X velocity front · 0x50000; his glow (`sub_80E3FB4`:
-  effect #0x31 at his panel's centre, r4 = 7 | side << 8; RelatedObject1 him) in `av+0x30`; the stop check
-  (`sub_80F0BD2`) at once. Each later tick: c = his panel's centre X; X += velocity; `sub_800E708(X, the X
+  effect #0x31 at his panel's center, r4 = 7 | side << 8; RelatedObject1 him) in `av+0x30`; the stop check
+  (`sub_80F0BD2`) at once. Each later tick: c = his panel's center X; X += velocity; `sub_800E708(X, the X
   velocity, c)` (the game passes the velocity where the old X belongs: true while c ≤ X); true → the stop check.
   Stopping: his panel from the coordinates → 4; else the panel and collision panels follow. The stop check:
   the next panel (x + front) holds another body of either side or a neutral object (0x03800000) → stop; the one
@@ -224,7 +224,7 @@ subtype 3 and params 0.
   `random_in_region`) on region 4 around the next panel, dx toward his side's front, for an enemy navi's body
   (`off_80F0C24`): found (**one RNG draw**) → stop. 4 (`sub_80F0A7A`): anim 0x11, Timer 20; a hit on the panel ahead
   (`sub_80F0B80`, `object_getEnemyDirection`: region 4, hit effect 3, target 5, self 7, r7 0x1001: modifier 1,
-  status 0x10; Z 0), T4#0 effect 0x16 at the panel ahead's centre, 16 pixels up (his flip, palette + 3), sound 0xB0;
+  status 0x10; Z 0), T4#0 effect 0x16 at the panel ahead's center, 16 pixels up (his flip, palette + 3), sound 0xB0;
   the glow's CurAnim = 0x10; 20 ticks → 8. 8 (`sub_80F0AB6`): anim 3, back onto FuturePanel (unreserved), the
   coordinates and collision panels; flags: 0x40 off, 0x80000 (move complete) on, 0x400000 off; Timer 3; the glow's
   state word = 8 (`sub_80E3FC4`); 3 ticks → 0xC. 0xC (`sub_80F0B0E`): anim 0, 30 ticks → exit.
@@ -233,10 +233,10 @@ subtype 3 and params 0.
   (`sub_80D19D4`: attack #0x69, navis/slashman/riding_hit: self 7, target 5, Param1 3 (modifier), Param2 0xFF (no spark),
   Param3 1 (goes on after hitting a body), the element and damage word; it lasts while he is in action 0xA) in
   `av+0x30`; sound 0x164; 10 ticks: the heading (`sub_80F0E96`: on row 3 X velocity front · speed and route step
-  `av[0xC]` = 1; else Y velocity + speed (down), step 0) → 8. 8 (`sub_80F0D64`), the roll: c = his panel's centre on
+  `av[0xC]` = 1; else Y velocity + speed (down), step 0) → 8. 8 (`sub_80F0D64`), the roll: c = his panel's center on
   the axis (step odd: X; even: Y); X, Y += velocity; the panel under him (`sub_800E258`) must meet require 0x10010,
   forbid 0x800000 (a valid solid panel, no neutral object), else → 0xC; when the old coordinate wasn't c and he
-  reached or passed c (`sub_800E708`): snapped to its centre, the route (`sub_80F0EC0`) — ended → 0xC; then his panel
+  reached or passed c (`sub_800E708`): snapped to its center, the route (`sub_80F0EC0`) — ended → 0xC; then his panel
   and collision panels follow. 0xC (`sub_80F0DEC`): anim 7, region 1, back onto FuturePanel (unreserved), flag 0x40
   off, Timer 20, the riding hit's state word = 8 (`sub_80D1A00`); 20 ticks → exit.
   The route, `byte_80F0F50[side][step]` (target x, target y, dx, dy): side 0: (0, 3, +1, 0), (6, 0, 0, −1), (0, 1,
@@ -262,7 +262,7 @@ subtype 3 and params 0.
   his panel, element, Param1 = the subtype, the damage word, flags |= 0x10).
   **The volcano rock, T3 0x86 (`sub_80D5D54`)**: init: on his panel 10 pixels ahead, Z's whole part 48, sprite (0x10,
   0x55), a ground shadow, VISIBLE, anim 0, palette 0, flip; its sprite as `object_updateSpritePaused`. Each tick: the
-  battle over → state 8 (genericDestroy); dimmed → nothing; action 0: entry: the arc to its target's centre, Z 0, in
+  battle over → state 8 (genericDestroy); dimmed → nothing; action 0: entry: the arc to its target's center, Z 0, in
   45 ticks with gravity −0x4000 (`sub_8001330`), Timer 45, Timer2 0; each later tick while the timer, counted down,
   stays ≥ 0: Timer2 + 1 (the target highlighted while its bit 2 is clear), the move, Z velocity −0x4000, its panel
   from the coordinates; then, if its panel has any of `byte_80D5EA0[side]` (0x15800010; side 1 0x2A800010), sound
@@ -289,7 +289,7 @@ subtype 3 and params 0.
   columns beyond his toward the front) with the other side's body or object or a neutral object
   (`byte_80F1B70[side]`: 0x05800000; side 1 0x0A800000), in that order; a whole-field hit of no damage
   (`sub_80F1B78`: region 0x80, no spark, target 2, self 1, modifier 0, element 0, at (0, 0)); sound 0xB8; T4#0 effect
-  0x41 at his panel's centre, 32 pixels up (his flip); 30 ticks → 4. 4 (`sub_80F1AB6`): anim 7, 20 ticks → anim 0,
+  0x41 at his panel's center, 32 pixels up (his flip); 30 ticks → 4. 4 (`sub_80F1AB6`): anim 7, 20 ticks → anim 0,
   exit.
 - **RC Brakr (AI 9, `sub_80F1C1C`, phases 0..0x14).** 0 (`sub_80F1C48`): the bonus; rocks to drop `av[0xC]` = 9; anim
   0x11; 12 ticks → 4. 4 (`sub_80F1C78`), the dig: anim 0x12; FuturePanel his, reserved; flags 0x40 and 0x400000;
@@ -408,12 +408,12 @@ name, starts TomahawkMan's action with 10 damage and 6-tick waits. The actions r
 - **EraseMan (`sub_80F0FB4`).** 0 (`sub_80F0FD4`): anim 0x13, 20 ticks → 4. 4 (`sub_80F0FF8`): anim 0x14, sound
   0xC7, Timer 10; the tick it reaches 5, the slash (`sub_80F10F2`: a hit on the panel two ahead with region 3, the
   column; no spark, target 5, self 7, modifier 3, the element and damage) and its effect (`sub_80F111C`: T4#0
-  effect at that panel's centre 24 pixels up, the swords' wide slash in palette 6, his flip); 10 ticks → 8. 8
+  effect at that panel's center 24 pixels up, the swords' wide slash in palette 6, his flip); 10 ticks → 8. 8
   (`sub_80F1032`): 30 ticks → anim 0, exit.
 - **ChargeMan (`sub_80F1198`).** 0 (`sub_80F11BC`), the charge: FuturePanel his, reserved; flags 0x40 and
   0x400000; invulnerable (0xFFFF); his body no longer hurts (`sub_801A082` with modifier 0, self damage and
   counter byte 0); anim 0xF; sound 0xE4; X velocity front · 0x60000 and Timer = the distance to the edge column
-  (7; side 1: 0) over the speed (`sub_80F146E`). Each later tick: X += velocity; passing his panel's centre
+  (7; side 1: 0) over the speed (`sub_80F146E`). Each later tick: X += velocity; passing his panel's center
   (`sub_800E708`), a train car (`sub_80F14BC`: chips/chrgeman/car on the panel he started from, its place 0 or 1,
   no wait, his speed, the damage word; two at most, kept in `av+0x30`, `av+0x34`); the panel under him on the
   field and without a floor → 4; else his panel and collision panels follow, a hit on each new panel
@@ -428,7 +428,7 @@ name, starts TomahawkMan's action with 10 damage and 6-tick waits. The actions r
 - **TomahawkMan (`sub_80F17C4`).** 0 (`sub_80F17E4`): anim 0xF, the first parameter's ticks → 4. 4
   (`sub_80F1808`): anim 0x10, sound 0x10B, Timer 30; the tick it reaches 20, a hit on the panel ahead with region
   the two columns ahead (no spark, target 0, self 7, modifier 1, the element; **the damage word plus the Atk+
-  bonus**) and a T4#0 effect at that panel's centre 16 pixels up (the big slash, anim 1, his flip); 30 ticks → 8.
+  bonus**) and a T4#0 effect at that panel's center 16 pixels up (the big slash, anim 1, his flip); 30 ticks → 8.
   8 (`sub_80F1888`): anim 7, the second parameter's ticks → exit.
 - **TenguMan (`sub_80F19D4`).** 0 (`sub_80F19F0`): anim 0x16; three hits (`sub_80F1ADE`, `byte_80F1B18`): on the
   panels one, two and three ahead in his row (region 1, no spark, target 0, self 1; modifiers 3, 3 and, the

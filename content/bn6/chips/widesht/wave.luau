@@ -34,7 +34,7 @@ local ANIM_RISE, ANIM_SLIDE = 0, 1
 -- A holding variant's wait after it rises.
 local HOLD_TICKS = 0xF
 -- The afterimages: every 5 ticks (the first after 10), of sprite "10-00"
--- (animation 1) with this colour shader, for 20 ticks.
+-- (animation 1) with this color shader, for 20 ticks.
 local TRAIL_FIRST, TRAIL_INTERVAL = 0xA, 5
 local TRAIL_SPRITE = asset.sprite("rock-cubes")
 local TRAIL_ANIM, TRAIL_SHADER, TRAIL_TICKS = 1, 0xC3FF, 0x14
