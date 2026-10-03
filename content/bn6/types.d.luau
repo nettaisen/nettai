@@ -571,6 +571,19 @@ export type ShockWaveVariant = { anim: number, ticks: number, panel: PanelType?,
 -- its hits carry (nil: none); `plain`: it takes its panel's variant.
 export type TornadoVariant = { palette: number, rearm: number, bug: number?, plain: boolean? }
 
+-- A game's tornado (chips/tornado/tornado, `make_kind`): the variant a
+-- plain one takes on a panel type, whether that doubles its damage, its
+-- self type (and the HP-bug variant's, when another), what it reaches and
+-- the spark of its element.
+export type TornadoLook = {
+    panel_variants: { [PanelType]: TornadoVariant },
+    doubles_on_panel: boolean,
+    is: CollisionType,
+    bug_is: CollisionType?,
+    target: CollisionType,
+    spark: (element: number) -> Spark,
+}
+
 -- What a tornado is spawned with: its variant, the status its hits
 -- inflict (0: none) and its ticks.
 export type TornadoSpec = { variant: TornadoVariant, status: Status?, ticks: number }
