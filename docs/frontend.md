@@ -711,34 +711,30 @@ labels) and a Japanese console's HUD timings (the next chip's name shown
 from the fight's first frame), the chips' pictures included; the Gregar
 chip's on a Falzar console is the known difference above.
 
-**On BN5 consoles** (verification's tools/frontend-compare/bn5.txt: 14 of
+**On BN5 consoles** (verification's tools/frontend-compare/bn5.txt: 16 of
 chiplab's library-bn5 scenarios, Team ProtoMan against Team Colonel,
 traced on the Team ProtoMan console and once on the Team Colonel one,
-compared with `--text original`, BN5's pack loaded beside
-BN6's): of 5,616 frames, 4,690 are pixel-exact with the navis left out
-(`MASK_NAVIS`): the HUD, the custom screen with its picks and Soul
-Unison's choice, the chatbox, the banners and a deletion's result. What
-still differs is the BN5 port's to finish, not the drawing's:
+Soul and Chaos Unison and the computer navi's Chaos among them, compared
+with `--text original`, BN5's pack loaded beside BN6's): of 7,964 frames,
+7,868 are pixel-exact, the navis included: the HUD, the emotion window,
+the custom screen with its picks, Soul Unison's choice and a dark chip's
+hover, the chatbox, the banners, the mercy flash and a deletion's
+result. What still differs:
 
-- dark MegaMan's faces (pictures 11-15) and palette, which BN5 picks by a
-  stat nettai doesn't keep (NaviStats +0x4C: 0x0801AF8E, 0x0800DE04); a
-  dark MegaMan shows the light one's (the DrkSword and DrkRecov scenarios,
-  and the navis' palettes the mask leaves out);
-- a soul's turns left: BN5's window shows 3 through the soul's first turn,
-  nettai's souls system 2 (its count-down runs after the change sets the
-  turns); the chip icons over a soul-united MegaMan sit 2 pixels lower
-  (the icon's height is MegaMan's attach point, not the soul's);
+- a dark chip user's emotion window flickers once where BN5's flickers
+  twice and the other way round (DrkSword, DrkRecov): the window's draw
+  (`console.rs`, BN6's `sub_801CC94`) is right, but nettai's RNG1 is 29
+  draws behind the console's from the first custom screen on (BN5 draws
+  them as the screen opens, the folder's shuffle's count), so the flicker
+  count, an RNG1 draw, differs;
+- the next chip's name and icons a frame late as the screen closes: a BN5
+  console has both results a tick before nettai closes the screen
+  (nettai's flow closes it on the results' tick,
+  `custom_closes_with_results`), and shows them then; the "Cstmzing..."
+  wait ends there as the console's does;
 - the UNITE button for a soul not ported yet (HeatSoul for AntiFire) is
-  gray;
-- BN5's Cannon draws BN6's cannon sprite (its muzzle flash and blast
-  differ for 5 frames);
-- the chip window's name a frame late as the screen closes: a BN5 console
-  has both results a tick before nettai closes the screen (nettai's flow
-  closes it on the results' tick, `custom_closes_with_results`), and its
-  chip window starts then; the "Cstmzing..." wait ends there as the
-  console's does;
-- one scenario (a pick's check) stops: BN5's roles name no invalid chip
-  (`chips.invalid`).
+  gray where BN5's is lit;
+- a soul's buster shot's flame is whiter (a few frames).
 
 The comparison needs the ROM, so it lives outside this repository, with the
 lists of scenarios. The frontend's own tests (`cargo test -p nettai-render
