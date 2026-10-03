@@ -2359,10 +2359,11 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             Ok(Value::Nil)
         }
         // A chip check's substitute; no other system hook returns anything.
-        HookCall::System { hook: SystemHook::ChipCheck, .. } if !v.is_nil() => match bound.def(&v) {
+        HookCall::System { hook: hook @ (SystemHook::ChipCheck | SystemHook::ChipSubstitute), .. } if !v.is_nil() => match bound.def(&v) {
             Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),
             _ => Err(mlua::Error::runtime(format!(
-                "a system's chip_check returns nil or a chip definition, not a {}",
+                "a system's {} returns nil or a chip definition, not a {}",
+                hook.name(),
                 v.type_name()
             ))),
         },
