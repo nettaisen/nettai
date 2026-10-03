@@ -1,0 +1,66 @@
+--!strict
+-- SerchMan, SerchMnSP and SerchMnDS: the serchman series (each chip's own comment above its definition).
+-- Their records are written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local navi = require("./navi")
+
+-- SerchMan (BN5 chip 0x0e6): SearchMan cuts in, his scope sweeps the enemy area until it locks on, and he fires five
+-- shots on the panel (./navi).
+local serchman = define.chip {
+    id = "bn5:serchman",
+    codes = { "S" },
+    element = "null",
+    family = "cursor",
+    class = "mega",
+    rarity = 2,
+    mb = 42,
+    damage = 20,
+    hit_param = 133,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "navi", "library" },
+    slot_in_limit = 1,
+    megaman = "light",
+    navi = navi.summon,
+}
+
+-- SerchMnSP (BN5 chip 0x0e7): SearchMan cuts in, his scope sweeps the enemy area until it locks on, and he fires five
+-- shots on the panel (../serchman/navi); its damage by how fast its user deleted SearchMan SP (rules/sp-chips:
+-- formula 4, its table's row 3).
+local serchmn_sp = define.chip {
+    id = "bn5:serchmn-sp",
+    codes = { "S" },
+    element = "null",
+    family = "cursor",
+    class = "mega",
+    rarity = 3,
+    mb = 72,
+    damage = { formula = "sp_navi", slot = "sp/serchman", by_time = { 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25 }, per_player_gauges = 45 },
+    hit_param = 133,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "navi", "library" },
+    slot_in_limit = 1,
+    megaman = "light",
+    navi = navi.summon_sp,
+}
+
+-- SerchMnDS (BN5 chip 0x0e8): SearchMan, dark, cuts in, his scope sweeps the enemy area until it locks on, and he fires
+-- five shots on the panel (../serchman/navi); its damage by its user's side's statistic 3 (formula 26, its table's
+-- row 3).
+local serchmn_ds = define.chip {
+    id = "bn5:serchmn-ds",
+    codes = { "S" },
+    element = "null",
+    family = "cursor",
+    class = "mega",
+    rarity = 3,
+    mb = 72,
+    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75 }, per_player_gauges = 35 },
+    hit_param = 133,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },
+    slot_in_limit = 1,
+    megaman = "dark",
+    navi = navi.summon_dark,
+}
+
+return { serchman = serchman, serchmn_sp = serchmn_sp, serchmn_ds = serchmn_ds }

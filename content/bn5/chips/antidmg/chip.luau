@@ -4,7 +4,7 @@
 -- counter the role `actions.anti_damage_counter`).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local traps = require("../../lib/traps")
+local traps = require("../../lib/traps/traps")
 
 return define.chip {
     id = "bn5:antidmg",
