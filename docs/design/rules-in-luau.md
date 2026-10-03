@@ -1293,3 +1293,8 @@ P1's items 12 and 8 (bn5-map.md §15.3), on R4.
   test's; two in one game refused); `a_mix_brings_its_own_side_sections` (testdata's rules/souls.luau: its sides'
   HP bug periods are its own, the game's and the other side's don't change; a `math` section and a stock
   ruleset's sections refused).
+- **Gates** (on main 18c2de15): the build without warnings, 481 tests, the content check (1,246 modules),
+  gen-content check 0 errors, `gate-against.sh full`: machgun 1074/1331 and soundmod 21962/14933/20436 with 96
+  rollback rows, the 189 legacy rounds (2,746,946 frames), the lab 6548 (6545 matched, 3 to a known deviation;
+  5,775,231 frames) with 0 sound rounds differing; the audit 49 traces and the static audit, 0 problems; BN5's
+  replays as before: 252 replay, 243 match every frame, 139,499 of 948,097 frames.
