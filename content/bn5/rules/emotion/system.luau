@@ -5,18 +5,18 @@
 --
 -- - **Full Synchro on a counter** (0x08016FDC, BN6's `sub_801A200`): the counterer's side, in no soul (NaviStats
 --   +0x2C 0), to mood 0xFF through BN5's setter, which leaves a mood of 0 (a dark MegaMan's) as it is.
--- - **The emotion-swing bug** (0x080113F8, BN6's `sub_8013DA0`, from every navi of the player's kind's tick: a Dark
---   MegaMan's too, by his side's stats): while the side's NaviStats +0x24 is set, out of battle flag 0x40's mode and
---   out of a soul, every 60 ticks the anger ends and the mood goes back to 0x80 (0x08011A94), then the emotion swings
---   to one of the table's (0x0801147C: seven normal, seven worried, one angry, one Full Synchro) but the one it last
---   swung to (every entry of it taken out), drawn from RNG2: angry asks for anger (0x08011ABA: the request, the mood
---   not consulted), any other sets its mood (0x0801148C) through BN5's setter. A curse (BugCurse) can set the bug
---   mid-round, so every navi of the player's kind is ticked.
+-- - **The emotion-swing bug** (0x080113F8, BN6's `sub_8013DA0`, from the tick of every navi of the player's kind,
+--   0x080EAD6A; a computer navi's tick, 0x080F224C, has none): while the side's NaviStats +0x24 is set, out of battle
+--   flag 0x40's mode and out of a soul, every 60 ticks the anger ends and the mood goes back to 0x80 (0x08011A94), then
+--   the emotion swings to one of the table's (0x0801147C: seven normal, seven worried, one angry, one Full Synchro) but
+--   the one it last swung to (every entry of it taken out), drawn from RNG2: angry asks for anger (0x08011ABA: the
+--   request, the mood not consulted), any other sets its mood (0x0801148C) through BN5's setter. A curse (BugCurse) can
+--   set the bug mid-round, so every navi of the player's kind is ticked.
 
 local emotion = {}
 
--- AIData +0x3A (ticks toward the next swing) and +0x0B (the emotion last swung to) of each navi, by its slot on its
--- side's list of alive actors (the player's the first).
+-- AIData +0x3A (ticks toward the next swing) and +0x0B (the emotion last swung to) of each navi of the player's kind,
+-- by its slot on its side's list of alive actors (the player's the first).
 type State = {
     swing_ticks: { number },
     swung: { number },
@@ -38,8 +38,12 @@ local function slot(side: number, navi: Object): number
     error("a navi of the player's kind on no slot of its side's list")
 end
 
--- 0x080113F8 (the framework skips it while paused).
+-- 0x080113F8 (the framework skips it while paused). A computer navi's tick reaches the side's systems too: it has no
+-- swing.
 local function swing(side: number, navi: Object)
+    if navi.actor_type ~= "player" then
+        return
+    end
     if battle.per_player_gauges() then
         return
     end
