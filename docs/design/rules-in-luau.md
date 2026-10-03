@@ -623,7 +623,9 @@ also be fully qualified as well".
   callers are unchanged), BN5's folder makes its own (`bn5:trap-chip`, `bn5:attachment`, ...). A helper with no
   game data moves whole (`@common/regions`, `@common/panels`, `@common/dimming`). Where BN5 still uses a BN6
   definition as its own (BN6's effects, a few BN6 collision rows), it requires it from `@bn6/...` and says so
-  (docs/design/bn5-map.md §15.6, "Shared code").
+  (docs/design/bn5-map.md §15.6, "Shared code"). It loads as a root of no game (`keys::SHARED`): no roles, no
+  rules, no field, no compat ids; what defines a game's folder alone (a test, gen-content's check) loads it beside
+  (`testing::add_shared`), and the checker types each folder with its types.d.luau.
 - **Version variants keep their suffixes** (`-falzar`/`-gregar`, `-protoman`/`-colonel`); region (US, JP) is a
   field, not a namespace.
 - **Handles** intern over the union in byte order of the ids; peers with the same content hash have the same
