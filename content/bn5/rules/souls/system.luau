@@ -35,6 +35,10 @@ souls.revert = define.action {
 souls.system = define.system {
     id = "bn5:souls",
     state = { turns = "u8", chaos = "bool" },
+    -- The souls the player has (a match's side's `souls`, which nettai-match writes by this field's name; a
+    -- recording's, its version's: bn5-compat), which the custom screen's soul button may offer: the engine reads them
+    -- as the save's soul flags (0x08024BF0's, by each soul's number). Any game's souls, either version's.
+    setup = { souls = "form[16]" },
     actions = { souls.action, souls.revert },
     hooks = {
         -- 0x0801246C, 0x0801243A: in a soul whose turns ran out, MegaMan asks to revert.

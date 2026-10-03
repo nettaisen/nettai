@@ -201,3 +201,175 @@ fn mixed_and_cross_game_matches_play() {
     let used = play(&content, &m, 900);
     assert!(used[0].iter().any(|k| k.starts_with("bn5:")) && used[1].iter().any(|k| k.starts_with("bn6:")), "{used:?}");
 }
+
+/// A BN5 side's karma and souls write to a match file and read back; the
+/// karma's default (a fresh save's 500) and an unlisted soul list (every
+/// soul) are left out, so old files load unchanged.
+#[test]
+fn karma_and_souls_write_and_read_back() {
+    let content = every_game();
+    let left = bn5(&TANGO_BN5, "")
+        .replacen("navi = \"bn5:megaman\"\n", "navi = \"bn5:megaman\"\nkarma = 100\nsouls = [\"bn5:protosoul\", \"bn5:colonelsoul\"]\n", 1);
+    let m = parse(&content, &left, &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap_or_else(|p| panic!("{p:?}"));
+    let s = &m.sides[0];
+    assert_eq!(s.karma, 100);
+    let souls = ["bn5:protosoul", "bn5:colonelsoul"].map(|k| content.defs.form_by_key(k).unwrap());
+    assert_eq!(s.souls, Some(souls.to_vec()), "either version's");
+    let text = crate::write(&content, &m);
+    assert!(text.contains("karma = 100") && text.contains("souls = [") && text.contains("\"bn5:colonelsoul\""), "{text}");
+    assert_eq!(crate::parse(&content, &text).unwrap(), m);
+    // A side that says nothing of them: the defaults, nothing written.
+    let plain = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+    assert_eq!((plain.sides[0].karma, plain.sides[0].souls.clone()), (500, None));
+    let text = crate::write(&content, &plain);
+    assert!(!text.contains("karma") && !text.contains("souls"), "{text}");
+    // Karma past 1000; karma and a soul list under BN6's rules; a form that
+    // is no soul: said.
+    let bad = side("bn6:stock", "bn6:megaman", &BN6, "")
+        .replacen("navi = \"bn6:megaman\"\n", "navi = \"bn6:megaman\"\nkarma = 1200\nsouls = [\"bn6:heatcross\"]\n", 1);
+    let e = parse(&content, &bn5(&TANGO_BN5, ""), &bad).unwrap_err();
+    for p in [
+        "right: karma 1200: the light/dark value is 0 to 1000",
+        "right: karma, but the ruleset has no light and dark MegaMan (no system takes `karma`)",
+        "right: a soul list, but the ruleset has no Soul Unison (no system takes `souls`)",
+        "right: HeatCross is no soul",
+    ] {
+        assert!(e.iter().any(|x| x == p), "{p:?} not in {e:?}");
+    }
+}
+
+/// A round of `m` after `ticks` ticks of nothing pressed.
+fn started(content: &Arc<Content>, m: &Match, ticks: usize) -> nettai_battle::Battle {
+    let mut b = nettai_battle::Battle::new(m.round(content, 0x5EED), content.clone());
+    for _ in 0..ticks {
+        b.tick(&Default::default(), Default::default());
+    }
+    b
+}
+
+/// A dark MegaMan (light/dark value 100) starts with mood 0 and the dark
+/// face (the worn-out one: `bn5:megaman-dark`); a fresh save's (500)
+/// with mood 128 and his plain face; a light one (1000) at 190.
+#[test]
+fn a_dark_side_starts_dark() {
+    use nettai_battle::kinds::player::Emotion;
+    let content = every_game();
+    let at = |value: Option<u16>| {
+        let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+        if let Some(v) = value {
+            m.sides[0].karma = v;
+        }
+        let b = started(&content, &m, 40);
+        (b.stats[0].mood, nettai_battle::kinds::player::emotion(&b, 0))
+    };
+    assert_eq!(at(Some(100)), (0, Emotion::WornOut));
+    assert_eq!(at(None), ((500 / 20 + 103) as u8, Emotion::Normal));
+    assert_eq!(at(Some(1000)), (190, Emotion::Normal));
+    // The face a mood of 0 shows: the base form's dark one.
+    let base = content.base_form_for(content.defs.navi_by_key("bn5:megaman").unwrap());
+    let face = content.form(base).mugshot.unwrap().of(Emotion::WornOut);
+    assert_eq!(content.assets.handle(nettai_content_api::AssetKind::Mugshot, "bn5:megaman-dark"), Some(face.0));
+}
+
+/// The soul button offers only a soul the side has: with every soul
+/// (ProtoSoul among them), a Sword picked offers ProtoSoul; with none, or
+/// with GyroSoul alone, the button is there but the sword's soul isn't
+/// offered.
+#[test]
+fn an_unowned_soul_cant_be_chosen() {
+    use nettai_battle::custom::screen::{Phase, SPECIAL_SLOT, SlotKind, SlotState};
+    let content = every_game();
+    // Swords alone, so the first chip dealt is one (no folder the rules
+    // take: the round is played as set up).
+    let sword = content.defs.chip_by_key("bn5:sword").unwrap();
+    let offered = |souls: Option<Vec<nettai_content_api::FormHandle>>| {
+        let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+        m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
+        m.sides[0].souls = souls;
+        let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
+        let mut last = 0u16;
+        for _ in 0..400 {
+            let screen = b.custom.sides[0].screen.as_ref().filter(|s| s.phase == Phase::Choosing);
+            if let Some(s) = screen
+                && s.selected == 1
+            {
+                let slot = s.slots[SPECIAL_SLOT as usize];
+                let soul = slot.kind == SlotKind::Soul;
+                return (soul, soul && slot.state == SlotState::Selectable);
+            }
+            let a = if screen.is_some() && last == 0 { nettai_battle::input::keys::A } else { 0 };
+            last = a;
+            b.tick(&[nettai_battle::input::PlayerTick { held: a }, Default::default()], Default::default());
+        }
+        panic!("no chip picked");
+    };
+    assert_eq!(offered(None), (true, true));
+    assert_eq!(offered(Some(Vec::new())), (true, false));
+    assert_eq!(offered(Some(vec![content.defs.form_by_key("bn5:gyrosoul").unwrap()])), (true, false));
+    // ProtoSoul alone, or with Team Colonel's ColonelSoul: offered.
+    let proto = content.defs.form_by_key("bn5:protosoul").unwrap();
+    assert_eq!(offered(Some(vec![proto, content.defs.form_by_key("bn5:colonelsoul").unwrap()])), (true, true));
+}
+
+/// A side's karma and souls go into its round's setup: the light and dark
+/// system's block holds the karma, the souls system's the souls, which
+/// are the soul button's (by their numbers).
+#[test]
+fn karma_and_souls_reach_the_round() {
+    let content = every_game();
+    let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+    m.sides[0].karma = 300;
+    m.sides[0].souls = Some(vec![content.defs.form_by_key("bn5:colonelsoul").unwrap()]);
+    let b = started(&content, &m, 1);
+    let (schema, block) = b.system_setup(0, "bn5:light-dark").unwrap();
+    assert_eq!(block.get(schema, schema.index_of("karma").unwrap()), nettai_content_api::FieldValue::U16(300));
+    let souls = b.setup.players[0].souls;
+    assert!(souls.button && souls.chaos && souls.owned == 1 << 7, "{souls:?}");
+    // A BN6 side has no souls.
+    assert_eq!(b.setup.players[1].souls, nettai_battle::custom::SoulUnlocks::default());
+}
+
+/// What a side's rules and navi take decides its own fields: a BN6 side
+/// (a mixed one too: BN6's rules, BN5 chips) takes its game, a navi code's
+/// level and BN6's SP times; a BN5 side takes no game and no level, and
+/// BN5's own SP times (its SP navi chips', not BN6's).
+#[test]
+fn a_sides_fields_are_its_rules() {
+    let content = every_game();
+    let mixed: Vec<String> = TANGO_BN5.iter().take(15).map(|s| s.to_string()).chain(BN6[15..].iter().map(|s| s.to_string())).collect();
+    let m = parse(&content, &side("bn6:stock", "bn6:megaman", &refs(&mixed), ""), &bn5(&TANGO_BN5, "")).unwrap();
+    let (six, five) = (&m.sides[0], &m.sides[1]);
+    assert!(six.takes_game(&content) && six.takes_level(&content) && six.takes_sp_times(&content));
+    assert!(!five.takes_game(&content) && !five.takes_level(&content) && five.takes_sp_times(&content));
+    // Each slot's chip is of the side's rules' game.
+    let chip = |s: &crate::Side, slot| crate::facts::sp_chip(&content, s, slot).map(|h| content.defs.chip(h).key.clone());
+    assert!(chip(six, 0).is_some_and(|k| k.starts_with("bn6:")), "{:?}", chip(six, 0));
+    assert!(chip(five, 1).is_some_and(|k| k.starts_with("bn5:")), "{:?}", chip(five, 1));
+}
+
+/// A ruleset change drops what the new rules don't take: BN6's game
+/// (back to Falzar), Crosses, patch cards and NaviCust going to BN5's
+/// rules, the SP times (another game's SP navis); BN5's karma and souls
+/// going to BN6's. A BN6 side that stays on BN6's rules keeps them.
+#[test]
+fn a_ruleset_change_drops_what_the_rules_dont_take() {
+    let content = every_game();
+    let bn6 = content.defs.ruleset_by_key("bn6:stock");
+    let bn5 = content.defs.ruleset_by_key("bn5:stock");
+    let mut m = crate::draw::live(&content, 3, None).unwrap();
+    let s = &mut m.sides[0];
+    s.ruleset = bn6;
+    s.game = nettai_battle::custom::GameVersion::Gregar;
+    s.crosses = crate::navi_crosses(&content, s.navi).map(|c| crate::CrossList::new(&c[..2]));
+    assert!(s.crosses.is_some(), "live play's navi changes form");
+    s.sp_times.0[0] = 600;
+    let kept = s.clone();
+    s.set_ruleset(&content, bn6);
+    assert_eq!(*s, kept, "the same rules keep everything");
+    s.set_ruleset(&content, bn5);
+    assert_eq!((s.game, s.crosses, s.navicust, s.cards.len(), s.sp_times.0[0]), (nettai_battle::custom::GameVersion::Falzar, None, None, 0, 0));
+    s.karma = 100;
+    s.souls = Some(Vec::new());
+    s.set_ruleset(&content, bn6);
+    assert_eq!((s.karma, s.souls.clone()), (crate::facts::DEFAULT_KARMA, None));
+}

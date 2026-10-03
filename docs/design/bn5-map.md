@@ -1314,7 +1314,9 @@ RedFrut1 to 3, Voltz1 to 3 and VDoll (on BN5's field obstacles).
   by the soul where NaviStats +0x29 is 0; 08-00, his navi sprite, has 31 one-frame animations). Changing form, he
   takes BN6's MegaMan branches (NaviStats +0x29 0 in BN5's code too: the anger, the bugs' stripped programs, the
   move lag), but for BN6's per-form tick (`sub_80F0608`), which BN5's table (0x080EB1E8) hasn't: the status
-  section's `form_tick` (BN5 false). The engine asks a player's identity for a Full Synchro aura animation, which
+  section's `form_tick` (BN5 false). His mercy flash blinks in the other phase (0x080137B6 hides him while the
+  flash timer's bit 1 is clear, BN6's `sub_8016934` while it is set): the status section's `flash_hides_on_clear`
+  (BN5 true). The engine asks a player's identity for a Full Synchro aura animation, which
   BN5 has differently (BN6's `sub_80C4C52` is absent): 0, BN6's rule, until BN5's emotions.
 - **Stages** (content/bn5/stages/netbattle.luau, compat stages.toml): a stage per distinct record of BN5's
   netbattle settings list (0x0811AF4C, 95 records), its layout (0x0800BD6C) and its actor list; the lab's
@@ -1619,8 +1621,17 @@ the second word); both then blink out over 30 ticks (action 8). The damage words
 are ColonelSoul's start's: 40 + 10 a buster attack level (`sub_800FE5E`) and 10 + 2 a level, each | 0x00944000.
 0x080F8418 (an entry of 0x080F24A0, a computer navi's) sets the bit and the words too. BN5's obstacle flag word
 moves bits too (removed 0x10000, encased 0x6000; BN6's 0x8000 and 0x3000): the engine's names keep BN6's, which
-nothing outside reads. Nothing ports it yet: ColonelSoul isn't in the content, and no recording has an obstacle
-while it is active.
+nothing outside reads.
+
+As built: the engine keeps each side's army (`kinds::obstacle::Soldiers`: armed, the two words; in the snapshot and
+the digest), which content arms and reads with `obstacle.arm_soldiers(side, sword, gun)`, `obstacle.disarm_soldiers
+(side)` and `obstacle.soldiers(side)`. ColonelSoul's status reset arms it (navis/megaman/forms/colonelsoul: its
+`reset`), and the engine's status resets disarm it first, as BN5's do (0x08011918 in `sub_8014216`'s counterpart,
+0x08011B3C in `sub_80144C0`'s and `sub_80144CA`'s; BN6 has nothing to disarm). The step runs in `obstacle.react`
+for an obstacle whose own game's rules have `effects.obstacle_soldiers` (BN5's), spawning the role
+`kinds.obstacle_soldier` (objects/soldier, `bn5:colonel-soldier`; its sprite 10-20 is `colonel-soldier`) with its
+state `gun` set; the soldier's element byte is what the search left in r2 (0x0800BD1D's low byte for the sword's,
+the body mask's for the gun's). The chip lab's souls/07-obstacle/soldiers-gun and soldiers-sword record it.
 
 **Shared modules moved to content/common** (makers taking a game's look; BN6's modules wrap them with the same
 APIs): anubis, guardian, otenko, justcone, batcan, colorpt, geddon (controller, quake), barriers (visual,
@@ -1629,10 +1640,13 @@ controller), rflectr, rock (rock, debris), boulder, bugfix (glow, controller), h
 
 **Engine.** The damage formula `gauge_level` (BN5's 73 to 75, CusVolt's: `base` plus 100 by the custom gauge's level,
 none when full); `battle.gauge_full` (battle flag 2) and `battle.drain_custom_gauge` (`sub_801DFD0`, CusVolt's drain
-outside link battles).
+outside link battles); ColonelSoul's army (above): `obstacle.arm_soldiers`, `disarm_soldiers` and `soldiers`, the rule
+`effects.obstacle_soldiers`, the role `kinds.obstacle_soldier`.
 
-**Chips.** In the range, 135 chips match all their recordings (484 of its 543 recordings; the 59 left belong to
-chips with no use yet). The last ones: BugFix; LCrsShld, LStepSwd, LCounter (the Liberation chips: BN5's
+**Chips.** In the range, the branch's 135 chips match all their recordings, and with bn5-navichips' AirSpin1–3,
+AqWhirl1–3, Z-Saver, NumbrBl and NeoVari 144 do (525 of the range's 548 recordings, after merging main on
+2026-10-03; the 23 left are CopyDmg's, DarkInvs', Jealousy's, LeadRaid's, ChaosLrd's and PileDrvr's, bn5-navichips'
+now). The last ones: BugFix; LCrsShld, LStepSwd, LCounter (the Liberation chips: BN5's
 controller, effect 0x8A, gives the side five uses of the ability, which only a Liberation Mission's specials read,
 nothing a netbattle reads); Poltrgst (BN5's own: controller effect 0x72, stand-in actor 0x58, poltergeist effect
 0x73); Navi+20; GunDelEX; InfVulc1–3, LifeSrd, PoisPhar, TimeBom+; GreatYo (controller effect 0x70: the leader and

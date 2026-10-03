@@ -2150,6 +2150,19 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             Ok(())
         })
     });
+    lib_fn!(lua, t, "arm_soldiers", |_, (side, sword, gun): (LuaValue, LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let (sword, gun) = (int(&sword, "sword word")? as u32, int(&gun, "gun word")? as u32);
+        with(|api, _| Ok(api.obstacle_arm_soldiers(side, sword, gun)))
+    });
+    lib_fn!(lua, t, "disarm_soldiers", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.obstacle_disarm_soldiers(side)))
+    });
+    lib_fn!(lua, t, "soldiers", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.obstacle_soldiers(side)))
+    });
     for &r in ObstacleRequest::ALL {
         t.set(
             r.name(),
