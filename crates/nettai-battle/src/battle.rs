@@ -1634,7 +1634,8 @@ impl Battle {
         for side in 0..2u8 {
             let Some(a) = self.player_actor(side) else { continue };
             let over = self.is_battle_over();
-            let berserk = self.form(side as usize).kind.is_beast_over();
+            // (A controlled form, BN6's Beast Over: the controller decides.)
+            let berserk = self.form(side as usize).traits.has(crate::content::FormTraits::CONTROLLED);
             let held = self.inputs[side as usize].held;
             let dimmed = self.is_dimmed();
             let ad = self.actors.get_mut(a);
@@ -1849,7 +1850,9 @@ impl Battle {
         if self.is_dimmed() || self.is_battle_over() {
             return false;
         }
-        let berserk = |side: usize| self.form(side).kind.is_beast_over();
+        // (A controlled navi, BN6's Beast Over, can't ask for it: a full
+        // gauge opens it.)
+        let berserk = |side: usize| self.form(side).traits.has(crate::content::FormTraits::CONTROLLED);
         ((berserk(0) || berserk(1)) && self.round.flags & battle_flags::GAUGE_FULL != 0)
             || self.round.flags & battle_flags::CUSTOM_REQUESTED != 0
     }

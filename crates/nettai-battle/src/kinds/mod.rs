@@ -4,7 +4,7 @@
 //! content pack's scripts implement runs as content instead (`behavior`).
 
 pub mod afterimage;
-pub mod beast_over_burst;
+pub mod burst;
 pub mod body_overlay;
 pub mod bubble_visual;
 pub mod charge_glow;
@@ -19,7 +19,7 @@ pub mod hitbox;
 pub mod ice_visual;
 pub mod idle_overlay;
 pub mod intro;
-pub mod lockon_marker;
+pub mod target_marker;
 pub mod navi_chip;
 pub mod navi_warp;
 pub mod obstacle;
@@ -47,7 +47,7 @@ pub enum Vars {
     Spark(spark::Vars),
     FormOverlay(form_overlay::Vars),
     Afterimage(afterimage::Vars),
-    LockonMarker(lockon_marker::Vars),
+    TargetMarker(target_marker::Vars),
     PaletteFlash(palette_flash::Vars),
     BodyOverlay(body_overlay::Vars),
     NaviChip(navi_chip::Vars),
@@ -55,7 +55,7 @@ pub enum Vars {
     StatusVisual(status_visual::Vars),
     IdleOverlay(idle_overlay::Vars),
     FullSynchroAura(full_synchro_aura::Vars),
-    BeastOverBurst(beast_over_burst::Vars),
+    Burst(burst::Vars),
     /// A content kind's declared state (see `content`).
     Content(nettai_content_api::ContentState),
 }
@@ -72,12 +72,12 @@ impl Vars {
             EngineKind::Spark => Vars::Spark(Default::default()),
             EngineKind::FormOverlay => Vars::FormOverlay(Default::default()),
             EngineKind::Afterimage => Vars::Afterimage(Default::default()),
-            EngineKind::LockonMarker => Vars::LockonMarker(Default::default()),
+            EngineKind::TargetMarker => Vars::TargetMarker(Default::default()),
             EngineKind::PaletteFlash => Vars::PaletteFlash(Default::default()),
             EngineKind::BodyOverlay => Vars::BodyOverlay(Default::default()),
             EngineKind::IdleOverlay => Vars::IdleOverlay(Default::default()),
             EngineKind::FullSynchroAura => Vars::FullSynchroAura(Default::default()),
-            EngineKind::BeastOverBurst => Vars::BeastOverBurst(Default::default()),
+            EngineKind::Burst => Vars::Burst(Default::default()),
             EngineKind::Player
             | EngineKind::BubbleVisual
             | EngineKind::NaviChip
@@ -129,12 +129,12 @@ pub enum EngineKind {
     HitMarker,
     FormOverlay,
     Afterimage,
-    LockonMarker,
+    TargetMarker,
     PaletteFlash,
     BodyOverlay,
     IdleOverlay,
     FullSynchroAura,
-    BeastOverBurst,
+    Burst,
     NaviChip,
     NaviWarp,
     Eruption,
@@ -156,12 +156,12 @@ pub const ENGINE_KINDS: [(EngineKind, &str, Pool); 21] = [
     (EngineKind::HitMarker, "engine/hit-marker", Pool::Effect),
     (EngineKind::FormOverlay, "engine/form-overlay", Pool::Actor),
     (EngineKind::Afterimage, "engine/afterimage", Pool::Effect),
-    (EngineKind::LockonMarker, "engine/lockon-marker", Pool::Effect),
+    (EngineKind::TargetMarker, "engine/target-marker", Pool::Effect),
     (EngineKind::PaletteFlash, "engine/palette-flash", Pool::Effect),
     (EngineKind::BodyOverlay, "engine/body-overlay", Pool::Actor),
     (EngineKind::IdleOverlay, "engine/idle-overlay", Pool::Actor),
     (EngineKind::FullSynchroAura, "engine/full-synchro-aura", Pool::Actor),
-    (EngineKind::BeastOverBurst, "engine/beast-over-burst", Pool::Effect),
+    (EngineKind::Burst, "engine/burst", Pool::Effect),
     (EngineKind::NaviChip, "engine/navi-chip", Pool::Effect),
     (EngineKind::NaviWarp, "engine/navi-warp", Pool::Actor),
     (EngineKind::Eruption, "engine/eruption", Pool::Attack),
@@ -186,12 +186,12 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             EngineKind::HitMarker => hit_marker::update(b, r),
             EngineKind::FormOverlay => form_overlay::update(b, r),
             EngineKind::Afterimage => afterimage::update(b, r),
-            EngineKind::LockonMarker => lockon_marker::update(b, r),
+            EngineKind::TargetMarker => target_marker::update(b, r),
             EngineKind::PaletteFlash => palette_flash::update(b, r),
             EngineKind::BodyOverlay => body_overlay::update(b, r),
             EngineKind::IdleOverlay => idle_overlay::update(b, r),
             EngineKind::FullSynchroAura => full_synchro_aura::update(b, r),
-            EngineKind::BeastOverBurst => beast_over_burst::update(b, r),
+            EngineKind::Burst => burst::update(b, r),
             EngineKind::NaviChip => navi_chip::update(b, r),
             EngineKind::NaviWarp => navi_warp::update(b, r),
             EngineKind::Eruption => eruption::update(b, r),

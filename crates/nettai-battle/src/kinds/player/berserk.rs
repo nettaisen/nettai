@@ -1,13 +1,12 @@
-//! Beast Over's berserk controller (`sub_802D322`): in forms 0x17 and
-//! 0x18 the navi's idle action doesn't read the player's buttons; it
-//! cycles on its own through moving next to an opponent, using the next
-//! chip, and firing the buster. Its state lives in the last 0x10 bytes of
-//! the navi's AIData (+0xF0), which the form's flags clear
-//! (`sub_802D310`).
+//! The Cross special (DarkInvs, `sub_802D4E4`), which uses Beast Over's
+//! berserk machinery: its state in the last 0x10 bytes of the navi's
+//! AIData (+0xF0), which the form's flags clear (`sub_802D310`), and its
+//! step toward an opponent. (Beast Over's berserk controller itself,
+//! `sub_802D322`, is BN6's beast system's: rules/beast/berserk.luau. The
+//! Cross special moves with S4.)
 
 use super::{ai, ai_mut, flag1};
 use super::actions::movement::{self, MoveKind};
-use crate::actor::request;
 use crate::battle::Battle;
 use crate::collision::f1;
 use crate::content::PanelCondition;
@@ -58,69 +57,6 @@ pub(super) fn reset(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).berserk = State::default();
 }
 
-/// `sub_802D322`: one tick of the controller, from the idle action.
-pub(super) fn control(b: &mut Battle, r: ObjectRef) -> Outcome {
-    let s = &mut ai_mut(b, r).berserk;
-    if !s.started {
-        s.started = true;
-        s.step = Step::Move;
-    }
-    match ai(b, r).berserk.step {
-        Step::UseChip => use_chip(b, r),
-        Step::Buster => buster(b, r),
-        Step::Move => step_toward_opponent(b, r),
-    }
-}
-
-fn set_step(b: &mut Battle, r: ObjectRef, step: Step) {
-    ai_mut(b, r).berserk.step = step;
-}
-
-/// `sub_802D358`: use the next chip, unless (for the first three moves
-/// after a chip) the opponent under the lock-on marker is flashing, or no
-/// chip is left or it can't start; then the buster is next.
-fn use_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
-    if ai(b, r).berserk.moves <= 3 {
-        let p = crate::kinds::lockon_marker::panel_of(b, ai(b, r).lockon_marker);
-        let alliance = b.objects.get(r).alliance;
-        if let Some(t) = opponent_on(b, p, alliance) {
-            let flashing = b.objects.get(t).collision.is_some_and(|c| b.collision.get(c).f1 & f1::FLASHING != 0);
-            if flashing {
-                set_step(b, r, Step::Buster);
-                return Outcome::Nothing;
-            }
-        }
-    }
-    if super::next_chip(b, r).is_none() {
-        set_step(b, r, Step::Buster);
-        return Outcome::Nothing;
-    }
-    ai_mut(b, r).requests |= request::CHIP;
-    if super::chip_use::use_chip(b, r).is_none() {
-        set_step(b, r, Step::Buster);
-        return Outcome::Nothing;
-    }
-    let s = &mut ai_mut(b, r).berserk;
-    s.moves = 0;
-    s.step = Step::Move;
-    Outcome::Chip
-}
-
-/// `sub_802D3A8`: after three moves, or with an opponent in the navi's
-/// row, fire the buster; a move is next either way.
-fn buster(b: &mut Battle, r: ObjectRef) -> Outcome {
-    set_step(b, r, Step::Move);
-    let fire = ai(b, r).berserk.moves > 2 || {
-        let y = b.objects.get(r).panel.y;
-        opponent_in_row(b, r, y).is_some()
-    };
-    if !fire {
-        return Outcome::Nothing;
-    }
-    ai_mut(b, r).berserk.moves = 0;
-    Outcome::Buster
-}
-
 /// `sub_802D3CA`: step to a panel near an opponent (`sub_802D430`); a
 /// chip is next.
 fn step_toward_opponent(b: &mut Battle, r: ObjectRef) -> Outcome {
@@ -164,7 +100,7 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
     }
     if ai(b, r).berserk.moves <= 3 {
         // sub_80E164A (outside Beast Out there is no marker: nobody).
-        let p = crate::kinds::lockon_marker::panel_of(b, ai(b, r).lockon_marker);
+        let p = crate::kinds::target_marker::panel_of(b, ai(b, r).target_marker);
         let target = opponent_on(b, p, b.objects.get(r).alliance);
         let flashing =
             target.is_some_and(|t| b.objects.get(t).collision.is_some_and(|c| b.collision.get(c).f1 & f1::FLASHING != 0));
@@ -196,7 +132,7 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
     }
     let action = super::chip_use::chip_action(b, r, Some(chip));
     super::set_attack(b, r, action, 5);
-    ai_mut(b, r).attack.beast_lockon = cd.beast_lockon as u8;
+    ai_mut(b, r).attack.wrapped = cd.beast_lockon as u8;
     ai_mut(b, r).berserk.step = Step::Move;
     Outcome::Chip
 }
