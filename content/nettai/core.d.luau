@@ -1461,6 +1461,11 @@ export type RulesetSpec = {
     add: { System }?,
     remove: { System }?,
     game: string?,
+    -- Its own rule sections (`define.rules(...)`, ids of its folder): a
+    -- mix's, over its game's for the sides that play by it; only the
+    -- sections about a side (custom-screen, berserk, navicust, status,
+    -- lockon, cross-special).
+    sections: { any }?,
 }
 export type Ruleset = RulesetSpec
 
