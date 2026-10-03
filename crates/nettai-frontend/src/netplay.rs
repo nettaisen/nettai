@@ -62,7 +62,7 @@ impl Offer {
         let mut out = Vec::new();
         let mut w = Writer(&mut out);
         let Offer { side, stage, arena } = self;
-        let Side { ruleset, navi, game, stats, emotion_window_glitch, folder, crosses, cards, navi_level, bug_frags, navicust } = side;
+        let Side { ruleset, navi, game, stats, emotion_window_glitch, folder, crosses, cards, navi_level, bug_frags, navicust, tactics } = side;
         w.put(ruleset);
         w.put(navi);
         w.put(game);
@@ -85,6 +85,7 @@ impl Offer {
                 w.put(&p.compressed);
             }
         }
+        w.put(tactics);
         w.put(stage);
         w.put(&arena.is_some());
         if let Some(a) = arena {
@@ -127,6 +128,7 @@ impl Offer {
                 } else {
                     None
                 },
+                tactics: r.get()?,
             };
             let stage: Option<StageHandle> = r.get()?;
             let arena = if r.get::<bool>()? {

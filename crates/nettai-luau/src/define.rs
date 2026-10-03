@@ -350,7 +350,7 @@ pub(crate) fn finish(
     }
 
     // Schemas: the `state` tables of kinds, actions and systems, and the
-    // `setup` tables of systems.
+    // `setup` and `navi_state` tables of systems.
     let mut schema_of: HashMap<Ptr, usize> = HashMap::new();
     let mut schemas: Vec<(String, String, Table)> = Vec::new();
     let mut claim = |t: Table, key: String, module: &str, schemas: &mut Vec<(String, String, Table)>| {
@@ -365,7 +365,7 @@ pub(crate) fn finish(
     for (&(registry, key), &i) in &by_key {
         let tables: &[&str] = match registry {
             Registry::Kind | Registry::Action => &["state"],
-            Registry::System => &["state", "setup"],
+            Registry::System => &["state", "setup", "navi_state"],
             _ => continue,
         };
         for &field in tables {
