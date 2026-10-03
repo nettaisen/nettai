@@ -103,6 +103,9 @@
 "bn5:numbrbl/ball" = { pool = "attack", index = 0x91 }
 "bn5:copydmg/mark" = { pool = "attack", index = 0x28 }
 "bn5:jealousy/controller" = { pool = "effect", index = 0x36, scratch_position = true }
+"bn5:piledrvr/controller" = { pool = "effect", index = 0x6F, scratch_position = true }
+"bn5:piledrvr/pile" = { pool = "attack", index = 0x99 }
+"bn5:piledrvr/beam" = { pool = "attack", index = 0x9A }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
 "bn5:meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "bn5:napalmmn/bomb" = { pool = "attack", index = 0x3A }
