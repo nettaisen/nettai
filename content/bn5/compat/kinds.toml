@@ -43,3 +43,4 @@
 "bn6:mine/land-mine" = { pool = "attack", index = 0x4C }
 "bn6:antidmg/shuriken" = { pool = "attack", index = 0xC2 }
 "bn6:rising-bubble" = { pool = "effect", index = 0x14 }
+"bn5:firehit/fist" = { pool = "attack", index = 0x5B }
