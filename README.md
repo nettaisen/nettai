@@ -112,8 +112,10 @@ program's color swatch onto the grid, or press a placed program to pick it up an
 where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click, Delete
 or a drag off the grid takes it off, Esc puts it back; right-clicking a placed program turns it; the stats it
 compiles to show beside it, and the stats-and-bugs block set directly is the pane's other view); every stat. The problems with the match show at the bottom as you edit. Play saves the match and
-runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). Random draws a match as
-live play does, and `nettai-frontend --play --save-match FILE` writes live play's draw out to edit. `--lang ja` (or
+runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). A new match (the editor
+started without a file, or New) is empty: the first link battle stage, and on each side the stock rules' MegaMan at
+his fresh stats with an empty folder, the game's own Crosses, no patch cards and no NaviCust programs (the problems
+list says the folders aren't whole until they are). Random draws a match as live play does, and `nettai-frontend --play --save-match FILE` writes live play's draw out to edit. `--lang ja` (or
 the language list) names the chips, navis, Crosses and patch cards in Japanese. The editor loads the content and
 every pack in `data/content` as the frontend does (each chip's pictures from its own game's pack), and Play hands
 the frontend the same: `--content` and `--pack` are the frontend's, and only what you give is passed on.
