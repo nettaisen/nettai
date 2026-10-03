@@ -1,5 +1,5 @@
 --!strict
--- Cannon (BN5 chip 0x001): BN6's cannon (@bn6/lib/cannon, the original's action 0x14; BN5's the same code), firing
+-- Cannon (BN5 chip 0x001): BN6's cannon (@common/cannon, the original's action 0x14; BN5's the same code), firing
 -- BN5's cannon shot.
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 

@@ -1,5 +1,5 @@
 --!strict
--- AntiSwrd (BN5 chip 0x092): a trap that answers the next sword with a slash: BN6's (@bn6/lib/traps, its counter
+-- AntiSwrd (BN5 chip 0x092): a trap that answers the next sword with a slash: BN6's (@common/traps, its counter
 -- the role actions.anti_sword_counter; BN5's the same code).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 

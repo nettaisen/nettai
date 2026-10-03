@@ -1,6 +1,6 @@
 --!strict
 -- HolyDrem's stand-in (BN5's actor object #0x1C, 0x080BD728; BN5's own, built as BN6's dimming stand-ins are:
--- @bn6/lib/dimming/stand_in): drawn as the user, where the user stands, with the buster raised, while the user
+-- @common/dimming/stand_in): drawn as the user, where the user stands, with the buster raised, while the user
 -- vanishes. It fires a shot (./shot) along the user's row at once; then it looks for holy panels over the whole
 -- field, from the far end's column toward the user, rows 1 to 3 in each (0x080BD96C), and for each one, 10 ticks
 -- later, shows a flash on it, turns it Normal and fires another shot. With none left it waits 60 ticks, lowers the

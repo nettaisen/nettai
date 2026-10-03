@@ -462,7 +462,7 @@ impl Compat {
     /// tables with that game's ids ([`Compat::bn6_as`]).
     pub fn bn6_for(content: &nettai_battle::Content) -> &'static Compat {
         // (The shared folder, content/common, defines no game's ids.)
-        let games: Vec<&String> = content.defs.roots.iter().filter(|r| r.as_str() != "common").collect();
+        let games: Vec<&String> = content.defs.roots.iter().filter(|r| r.as_str() != nettai_content_api::keys::SHARED).collect();
         match &games[..] {
             [game] if *game != ROOT && !game.is_empty() => Compat::bn6_as(game),
             _ => Compat::bn6(),

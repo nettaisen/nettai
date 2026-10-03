@@ -1,6 +1,6 @@
 --!strict
 -- HolyPanl (BN5 chip 0x08b): the panels in front of the user turn holy: BN6's panel changer
--- (@bn6/objects/panel-changer, @bn6/lib/panel-chips; BN5's the same code).
+-- (@common/panel-changer, @common/panel-chips; BN5's the same code).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local panel_changer = require("../../objects/panel-changer/panel_changer")
