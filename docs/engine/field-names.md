@@ -9,7 +9,7 @@ Evidence is cited by routine name (`sub_801A36A`) and struct offset (`AIData+0x3
 the disassembly found no symbolic reference and no raw access through a register holding the struct pointer. That
 scan is heuristic, not a proof.
 
-Behaviour is unchanged: the golden-trace replays match the same number of frames before and after the pass
+Behavior is unchanged: the golden-trace replays match the same number of frames before and after the pass
 (machgun 1074/552, soundmod 2933/3462/1947, with main's movement and chip-use work merged in).
 
 For fields likely to come back with a later port, the evidence column suggests a name ("re-add as ...").

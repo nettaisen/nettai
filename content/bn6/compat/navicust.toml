@@ -1,5 +1,5 @@
 # The NaviCust programs (content/bn6/navicust/) by their number, a part id's high bits (the part id
-# is 4 x the number + the colour variant, the definition's colour in its `colors` place), which a
+# is 4 x the number + the color variant, the definition's color in its `colors` place), which a
 # save's NaviCust list holds (0x02004190, 8 bytes a part). Written once by the verification
 # workspace's tools/navicust/gen.py from the part table; `gen.py check` compares each program with
 # the ROM's of its number.

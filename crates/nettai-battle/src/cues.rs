@@ -8,16 +8,16 @@
 //!
 //! - a cue plays as soon as a tick first makes it, predicted or not
 //!   (waiting for confirmation would delay every sound by the latency);
-//! - when re-simulated frames make a cue again, it is recognised as the
+//! - when re-simulated frames make a cue again, it is recognized as the
 //!   one already playing and not played again. It counts as the same cue
 //!   if it was played for a frame at most `tolerance` frames away: a
 //!   corrected input often moves an event by a frame or two;
 //! - a played cue that the re-simulation no longer makes (within the
-//!   tolerance) is cancelled: the frontend stops it if it is still
+//!   tolerance) is canceled: the frontend stops it if it is still
 //!   playing, or undoes it (a music change).
 //!
 //! So a confirmed cue is played exactly once, and a predicted cue that
-//! did not happen is played and then cancelled. Frames are the netplay
+//! did not happen is played and then canceled. Frames are the netplay
 //! layer's frame numbers. Each play gets an identity ([`CueId`]), and a
 //! cancel names the play it takes back
 //! ([`CueTracker::drain_identified`]).
@@ -164,7 +164,7 @@ mod tests {
     }
 
     #[test]
-    fn a_cue_the_resimulation_drops_is_cancelled_and_a_new_one_played() {
+    fn a_cue_the_resimulation_drops_is_canceled_and_a_new_one_played() {
         let mut t = CueTracker::new(2);
         run(&mut t, 0..10, |f| if f == 8 { vec![HIT] } else { vec![] });
         t.rolled_back(6);

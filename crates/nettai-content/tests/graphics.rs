@@ -25,7 +25,7 @@ fn part(tile: u16, x: i8, y: i8, w: u8, h: u8, hflip: bool, palette: u8) -> Spri
 }
 
 /// A sprite with overlapping parts, flips, palette offsets, a shared tile
-/// set, colours with bit 15 set (as the game's trailing palette data has)
+/// set, colors with bit 15 set (as the game's trailing palette data has)
 /// and frame flags with a cue bit.
 fn sprite(category: u8, index: u8) -> SpriteSheet {
     let mut pals: Vec<Palette> = (0..16).map(palette).collect();
@@ -198,7 +198,7 @@ fn custom() -> CustomScreen {
         cross_patches: PatchList { first_tile: 0xE1, patches: vec![patch(1, 13, 2, 2, false)] },
         frame_palettes: (50..54).map(palette).collect(),
         icon_palette: palette(55),
-        grey_palette: palette(56),
+        gray_palette: palette(56),
         other_palette: palette(57),
         chip_art: vec![
             ChipArt { key: "cannon".into(), picture: picture(60), region: None, version: None },
@@ -214,7 +214,7 @@ fn custom() -> CustomScreen {
         },
         codes: tiles(56, 70),
         elements: tiles(8, 71),
-        element_colours: vec![[1, 2, 3, 4, 5, 6], [0x7FFF, 0, 0x1F, 0x3E0, 0x7C00, 0x2108]],
+        element_colors: vec![[1, 2, 3, 4, 5, 6], [0x7FFF, 0, 0x1F, 0x3E0, 0x7C00, 0x2108]],
         digits: tiles(22, 72),
         slot_codes: tiles(56, 73),
         empty_icon: tiles(4, 74),
@@ -228,7 +228,7 @@ fn custom() -> CustomScreen {
         emblem_of: vec![0, 1, 1],
         emblem_palette_of: vec![1, 0, 0],
         regular: tiles(32, 82),
-        advance_name_colours: vec![[0, 0x7FFF, 0x14A5, 0], [0, 0x43F0, 0x14A5, 0]],
+        advance_name_colors: vec![[0, 0x7FFF, 0x14A5, 0], [0, 0x43F0, 0x14A5, 0]],
         languages: vec![(
             "ja".into(),
             CustomLettering {
@@ -354,7 +354,7 @@ fn loading_reads_the_files_as_they_are() {
     write_pack(&dir, &b);
     let (first, _) = pack::load_graphics(&dir).unwrap();
     assert_eq!(first, b);
-    // Recolour one sprite colour: the next load has it.
+    // Recolor one sprite color: the next load has it.
     let atlas = dir.join("graphics/sprites/sprite-00-01/atlas.png");
     let mut img = Indexed::load(&atlas).unwrap();
     img.palette[5] = [255, 255, 255];
@@ -368,7 +368,7 @@ fn edits_in_an_image_editor_come_through() {
     let dir = temp("edit");
     let b = bundle();
     write_pack(&dir, &b);
-    // Paint one pixel of the first part (tile 0) with colour 9 of the
+    // Paint one pixel of the first part (tile 0) with color 9 of the
     // part's palette row, as an editor would.
     let atlas = dir.join("graphics/sprites/sprite-00-01/atlas.png");
     let mut img = Indexed::load(&atlas).unwrap();
@@ -402,7 +402,7 @@ fn damaged_palettes_are_refused_with_a_reason() {
     let (back, r) = import(&dir);
     assert!(back.is_none() && r.issues.iter().any(|i| i.message.contains("re-sorted")), "{r}");
 
-    // Unused colours dropped.
+    // Unused colors dropped.
     let mut img = Indexed::from_png(&good).unwrap();
     img.palette.truncate(40);
     for p in img.pixels.iter_mut() {
@@ -425,7 +425,7 @@ fn damaged_palettes_are_refused_with_a_reason() {
     let (_, r) = import(&dir);
     assert!(r.issues.iter().any(|i| i.message.contains("indexed")), "{r}");
 
-    // A colour off the GBA's 5-bit grid: accepted, rounded, warned.
+    // A color off the GBA's 5-bit grid: accepted, rounded, warned.
     let mut img = Indexed::from_png(&good).unwrap();
     img.palette[7] = [255, 1, 128];
     img.save(&atlas).unwrap();

@@ -185,7 +185,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     o.pos = Vec3 { x: owner_pos.x, y: owner_pos.y.wrapping_sub(nudge), z: owner_pos.z.wrapping_sub(nudge) };
     o.flip = owner_flip;
     let alliance = o.alliance;
-    // The owner's colour shader, white flash and mosaic, and its facing.
+    // The owner's color shader, white flash and mosaic, and its facing.
     let owner_look = b.objects.sprite(owner).look;
     let look = &mut b.objects.sprite_mut(r).look;
     look.palette = palette;

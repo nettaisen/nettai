@@ -165,7 +165,7 @@ end
 
 -- `sub_80C2C14`: from the column ahead, the first enemy navi (rows 1 to
 -- 3) whose panel behind and above is one he can stand on: its panel is
--- his target (FuturePanel, the delta's centre), 30 ticks. None: 15 ticks,
+-- his target (FuturePanel, the delta's center), 30 ticks. None: 15 ticks,
 -- and Timer2 0xFF.
 local function search(me: Object)
     local s = st(me)
