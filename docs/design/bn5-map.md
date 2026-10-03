@@ -1517,7 +1517,7 @@ controller), rflectr, rock (rock, debris), boulder, bugfix (glow, controller), h
 none when full); `battle.gauge_full` (battle flag 2) and `battle.drain_custom_gauge` (`sub_801DFD0`, CusVolt's drain
 outside link battles).
 
-**Chips.** In the range, 128 chips match all their recordings (464 of its 543 recordings; the 79 left belong to
+**Chips.** In the range, 130 chips match all their recordings (472 of its 543 recordings; the 71 left belong to
 chips with no use yet). The last ones: BugFix; LCrsShld, LStepSwd, LCounter (the Liberation chips: BN5's
 controller, effect 0x8A, gives the side five uses of the ability, which only a Liberation Mission's specials read,
 nothing a netbattle reads); Poltrgst (BN5's own: controller effect 0x72, stand-in actor 0x58, poltergeist effect
@@ -1533,11 +1533,17 @@ CacDanc1–3 (effect 23: a dancer, effect 0x65, a field object dropping cactuses
 the spawner's registers, as its copy of the navi's is stored at address 0x34); CusVolt1–3 (action 0x27: a beam,
 attack 0xB8, following the navi); BodyGrd (BN5's sends the striker out at once from its controller, effect 0x6D,
 where BN6's is a trap); ElemPowr (its controller, effect 0x7F: 10 Atk+ a panel of the type the user stands on,
-those panels back to normal through the panel changer's rows 15 to 19).
+those panels back to normal through the panel changer's rows 15 to 19); RainyDay (its controller, effect 0x75, and
+cloud, attack 0x97: a hit over the first enemy navi ahead for each sea panel of the user's side, which turns
+normal); ElemRage (action 0x56 and flame, attack 0x98: flames sent on ahead, of the element of the panel the user
+stands on, spreading and paralyzing; the attach point read unflipped, `sub_8018842`).
 
-**Waiting.** RainyDay (its controller, effect 0x75), ElemRage, AirSpin1–3 (BN6's AirSpin top with BN5's changes:
-random targets, its own panel setting, its hit's self type 4), AqWhirl1–3 (BN5's own, attack object 0x5D; both on
-BN6's AirSpin action, to move to content/common), CopyDmg, DarkInvs, NumbrBl, NeoVari, Z-Saver (BN6 has these: to
-share), Jealousy (BN6's leftover code, BG transfers), BlakWing (its controller, effect 0x54, and BN5's attack 0x7E
-from BN6's leftover code); the navi Program Advances CsmoPris, WildBird, Football, BigNoise, PileDrvr and LeadRaid,
-ChaosLrd (on the navi chips).
+**Waiting.** AirSpin1–3 (BN6's AirSpin top with BN5's changes: random targets, its own panel setting, its hit's
+self type 4) and AqWhirl1–3 (BN5's own, attack object 0x5D), both on BN6's AirSpin action, to move to
+content/common; CopyDmg (BN5's action 0x24, the buster arm and a spawn by subtype, with BN6's mark, attack 0x28: to
+share); DarkInvs, NumbrBl, NeoVari, Z-Saver (BN6 has them: to share, with BN5's changes); Jealousy (BN6's leftover
+code, BG transfers); BlakWing (its controller, effect 0x54, and BN5's attack 0x7E from BN6's leftover code); the navi
+Program Advances, now the navi chips are in: WildBird (LarkMan with Param4 1: the swoop's variant 6, its row 6 of
+speed and turn, 25 more turn ticks, its own turn animations at 0x080DDC88 and 0x080DDCA4, no command), CsmoPris
+(actor 0x26), Football (actor 0x25), BigNoise (actor 0x1B), PileDrvr (dimming subtype 47), LeadRaid and ChaosLrd
+(actors 0x20 and 0x51).
