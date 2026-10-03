@@ -2334,7 +2334,12 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         // A button's `shown` and `state`, a window's `update`, and whether a
         // system took the keys or took something back.
         HookCall::System {
-            hook: SystemHook::ButtonShown | SystemHook::WindowUpdate | SystemHook::CustomKeys | SystemHook::CustomTakeBack,
+            hook:
+                SystemHook::ButtonShown
+                | SystemHook::WindowUpdate
+                | SystemHook::CustomKeys
+                | SystemHook::CustomTakeBack
+                | SystemHook::NaviBug,
             ..
         } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
         HookCall::System { hook: SystemHook::ButtonState, .. } => match &v {

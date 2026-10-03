@@ -265,6 +265,8 @@ declare class Collision
     status_base: Status?
     -- Bug code (low byte) and argument (high byte).
     bugs: number
+    -- The bug code and argument the last resolution's hits brought (CollisionData+0x9C, +0x9D), which the navi takes.
+    inflicted_bugs: number
     hit_mod_base: number
     -- The damage it deals.
     self_damage: number
@@ -1699,6 +1701,10 @@ export type SystemSpec = {
         -- kind (presentation; `sub_801002C`, BN5's 0x0800DD94). The first
         -- system that answers decides; none, the framework's (BN6's).
         navi_palette: ((side: number, navi: Object) -> number?)?,
+        -- Before the navi takes its hit's NaviCust bug (`sub_80139F6`, BN5's 0x0801103E): a system may change the bug
+        -- (`navi.collision.inflicted_bugs`), or answer true: the bug and the weapons' reload are skipped. The first
+        -- system that answers true decides.
+        navi_bug: ((side: number, navi: Object) -> boolean?)?,
         -- Each tick of the idle action of a navi whose side's takeover runs
         -- (`sub_802D4C6`), in place of the player's decisions: what it did,
         -- as `controller` answers, or "own_chip" (an attack of its own
