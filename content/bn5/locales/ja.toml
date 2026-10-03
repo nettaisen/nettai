@@ -130,6 +130,7 @@ language = "ja"
 "bn5:firehit3" = { name = "ファイアパンチ3", description = "前方たて3れつで\n一ばんちかいてきの\nいるれつにパンチ!" }
 "bn5:football" = { name = "フットメガボール", description = "てきエリアに\n4マスはんい攻撃の\nボールをけりこむ!" }
 "bn5:fstgauge" = { name = "クイックゲージ", description = "しばらくのあいだ\nカスタムゲージの\nスピードがあがる" }
+"bn5:ftrsword" = { name = "ファイターソード", description = "" }
 "bn5:fullcust" = { name = "フルカスタム", description = "カスタムゲージが\nいっしゅんで\nマンタンになる!" }
 "bn5:geddon1" = { name = "デスマッチ1", description = "パネルのあるマスが\nすべてヒビに!" }
 "bn5:geddon2" = { name = "デスマッチ2", description = "あいているマスが\nすべてこわれる!" }
@@ -284,6 +285,7 @@ language = "ja"
 "bn5:slogauge" = { name = "ヘビーゲージ", description = "しばらくのあいだ\nカスタムゲージの\nスピードがおちる" }
 "bn5:snake" = { name = "カモンスネーク", description = "自分のエリアの\nあなマスから\nこヘビがとんでいく" }
 "bn5:snctuary" = { name = "サンクチュアリ", description = "自分のエリアの\nすべてのマスを\nホーリーパネルに!" }
+"bn5:sonicbom" = { name = "ソニックブーム", description = "" }
 "bn5:spreader" = { name = "スプレッドガン", description = "ヒットすると\nまわりの1マスに\nゆうばく!" }
 "bn5:spshake1" = { name = "スペースユラ1", description = "たて3マスはばで\nゆれながらすすむ\nユラをはっしゃ!" }
 "bn5:spshake2" = { name = "スペースユラ2", description = "たて3マスはばで\nゆれながらすすむ\nユラをはっしゃ!" }
