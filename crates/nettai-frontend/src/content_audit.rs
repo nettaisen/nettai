@@ -1,6 +1,6 @@
 //! The static content audit (`--audit-content`): every lookup the drawing
 //! code and the audio make, through the same functions
-//! ([`crate::lookups`]), for everything the content defines, in every
+//! ([`nettai_render::lookups`]), for everything the content defines, in every
 //! language the content has strings in:
 //!
 //! - every chip's icon, picture, name glyphs, its name and code in the
@@ -8,13 +8,14 @@
 //!   its description in the dialogue font;
 //! - every navi's face and emblem (on either game's console), its name and
 //!   no-running message with its portrait; every form's face for each
-//!   emotion; every Cross's name and colours and description;
+//!   emotion; every Cross's name and colors and description;
 //! - every asset of the loaded packs, by its qualified name (a superset of
 //!   what the content names): each sprite with every animation and its
 //!   frames, each sound's song, each banner's glyphs (a telop's banner its
 //!   place, the judge's its numbers), each background and mugshot;
-//! - the HUD's text lines, the field's panel blocks, the custom screen,
-//!   the chatbox and the warning marker.
+//! - the HUD's text lines, the field's panel blocks (for the panel types
+//!   the own pack's game names), the custom screen, the chatbox and the
+//!   warning marker.
 //!
 //! It takes seconds and catches what a trace's frames would only catch for
 //! the chips and the navis the trace shows: a lookup by the wrong key
@@ -22,10 +23,6 @@
 //! can't say beforehand (the animation and the palette an object picks)
 //! is the trace audit's (`--audit`).
 
-use crate::audit::{Lookup, Problems};
-use crate::lookups;
-use crate::packs::Packs;
-use crate::strings::DisplayText;
 use nettai_assets::Bundle;
 use nettai_battle::Content;
 use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackId, SpriteId};
@@ -33,6 +30,10 @@ use nettai_battle::custom::GameVersion;
 use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::Emotion;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
+use nettai_render::audit::{Lookup, Problems};
+use nettai_render::packs::Packs;
+use nettai_render::strings::DisplayText;
+use nettai_render::{hud, lookups};
 use std::collections::{BTreeSet, HashSet};
 use std::sync::Arc;
 
@@ -117,10 +118,15 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     lookups::chatbox_graphics(hud, p);
     lookups::custom_graphics(a, p);
     lookups::warning(hud, p);
-    for line in (crate::hud::TEXT_TIME_UP..=crate::hud::TEXT_TIME_UP + 10).chain([crate::hud::TEXT_COUNTER_HIT]) {
+    for line in (hud::TEXT_TIME_UP..=hud::TEXT_TIME_UP + 10).chain([hud::TEXT_COUNTER_HIT]) {
         lookups::text_line(hud, line, p);
     }
-    for kind in PanelType::ALL {
+    // (The field is the own pack's, its blocks those of the types its game's
+    // `panels` section names: BN6's field has no BN5 metal, lava or sea.
+    // A type another game makes takes the art of no field yet:
+    // docs/design/rules-in-luau.md §7.4.)
+    let named = &c.home_rules().panels.types;
+    for kind in PanelType::ALL.into_iter().filter(|&t| named.get(t as usize).is_some_and(|r| r.named)) {
         for owner in 0..2 {
             for y in 1..=3 {
                 lookups::panel_block(&own.field, kind as usize, owner, y, p);
@@ -205,7 +211,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     if let Some(banks) = banks {
         for h in handles(AssetKind::Sound) {
             // (The no-music song stops the music: it has none.)
-            lookups::sound(c, banks, h, true, p);
+            crate::sound_lookups::sound(c, banks, h, true, p);
         }
     }
     for id in handles(AssetKind::Banner).map(BannerId) {
@@ -268,6 +274,24 @@ mod tests {
         let own = c.assets.pack(testing::ROOT).expect("the test pack");
         let found = audit(&c, vec![b], own, None, &[("en".into(), None)]);
         found.problems.iter().filter(|p| p.ends_with("has no icon in the pack")).count()
+    }
+
+    /// The field's blocks are audited for the panel types the own pack's
+    /// game names, not for every type the engine has (BN5's metal, lava
+    /// and sea, which BN6's field has none of).
+    #[test]
+    fn the_field_is_audited_for_the_panel_types_its_game_names() {
+        let mut c = (*testing::content()).clone();
+        let own = c.assets.pack(testing::ROOT).expect("the test pack");
+        let missing = |c: &Content| {
+            let found = audit(c, vec![Bundle::default()], own, None, &[("en".into(), None)]);
+            found.problems.iter().filter(|p| p.contains("has no block for panel type")).count()
+        };
+        assert_eq!(missing(&c), PanelType::ALL.len() * 6);
+        for t in [PanelType::Metal, PanelType::Lava, PanelType::Sea] {
+            c.rules[nettai_battle::content::RootId::HOME.index()].panels.types[t as usize].named = false;
+        }
+        assert_eq!(missing(&c), (PanelType::ALL.len() - 3) * 6);
     }
 
     /// A lookup by the wrong key fails for every chip (R1's: a chip's icon

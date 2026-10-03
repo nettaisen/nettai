@@ -45,7 +45,7 @@ local SWORD, HIT_PARAM = 0x80, 0x94
 -- other side's body flag (0x10000) and none of 0xF800000.
 local DASH_REQUIRE, DASH_FORBID = 0x10000, 0x0F800000
 
--- The dash's afterimage: its colour shader and lifetime.
+-- The dash's afterimage: its color shader and lifetime.
 local AFTERIMAGE_SHADER, AFTERIMAGE_TICKS = 0xFFE0, 0x14
 
 -- The tick of the count the wave goes out on (the game means 17 for the

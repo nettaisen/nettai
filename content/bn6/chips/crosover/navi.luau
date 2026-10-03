@@ -180,7 +180,7 @@ local function partner_in_position(me: Object): boolean
     elseif partner.kind == attachment.kind then
         return (partner.state :: { palette_add: number }).palette_add ~= 0
     end
-    error("CrosOver: the other's slot holds an object whose Param4 (the game's 'in place') isn't modelled")
+    error("CrosOver: the other's slot holds an object whose Param4 (the game's 'in place') isn't modeled")
 end
 
 -- The slash's tick (the timer reading 10): on the panel ahead, half an X

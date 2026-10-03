@@ -310,7 +310,7 @@ pub struct NaviCustProgramDef {
     pub colors: Vec<String>,
     /// A plus part (BN6: one that belongs off the command line).
     pub plus: bool,
-    /// Its shape, centred on the grid's middle cell, and compressed (none:
+    /// Its shape, centered on the grid's middle cell, and compressed (none:
     /// it doesn't compress).
     pub shape: crate::navicust::Shape,
     pub compressed: Option<crate::navicust::Shape>,
@@ -730,10 +730,10 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
     // (The custom screen draws the chip's picture with it.)
     match json("art_palette")? {
         Json::Null => {}
-        Json::Array(colours) if colours.len() == 16 && colours.iter().all(|c| c.as_u64().is_some_and(|c| c < 0x8000)) => {
-            o.insert("art_palette".into(), Json::Array(colours));
+        Json::Array(colors) if colors.len() == 16 && colors.iter().all(|c| c.as_u64().is_some_and(|c| c < 0x8000)) => {
+            o.insert("art_palette".into(), Json::Array(colors));
         }
-        other => return Err(what(format!("`art_palette` is {other}: 16 BGR555 colours (below 0x8000)"))),
+        other => return Err(what(format!("`art_palette` is {other}: 16 BGR555 colors (below 0x8000)"))),
     }
     let defaults: [(&str, Json); 13] = [
         ("codes", Json::Array(Vec::new())),

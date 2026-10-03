@@ -349,7 +349,7 @@ local function protoman_appear(me: Object)
     else
         error(string.format("DblHero's ProtoMan: appearing phase %#x reads past off_80BD07C", phase))
     end
-    -- sub_80BD374: the white as a colour shader.
+    -- sub_80BD374: the white as a color shader.
     me.sprite.color_shader = s.white * 0x421
 end
 
