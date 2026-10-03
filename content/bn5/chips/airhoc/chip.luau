@@ -1,6 +1,26 @@
 --!strict
--- AirHoc (BN5 chip 0x005): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- AirHoc (BN5 chip 0x005): a puck flicked from the panel ahead, slanting down the field, that bounces around for 10
+-- steps: BN6's AirHocky (the shared flick and puck, @common/airhocky; BN5's action 0x21, the same code but for the
+-- recovery's start, and the puck's, attack object 0x2E, but for its sprite) with BN5's puck (10-12; its rows at
+-- 0x080CA3A4 are BN6's, the record's Param1 2 and Param2 1, down).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local collision = require("../../rules/collision")
+local flick = require("@common/airhocky/flick")
+local puck = require("@common/airhocky/puck")
+local sparks = require("../../lib/sparks")
+
+-- BN5's puck (0x080CA3D4): BN6's collision types, spark and sounds, BN5's sprite, its burst a puff (effect 0x14).
+local PUCK = puck.make_kind("bn5:airhoc/puck", {
+    sprite = asset.sprite("bn5:hockey-puck"),
+    sound = asset.sound("bn5:hockey-puck"),
+    bounce = asset.sound("bn5:bounce"),
+    is = collision.breaking,
+    hits = collision.hits_navis,
+    spark = sparks.breaking,
+    burst = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 },
+    trail_tint = 0x8318,
+})
 
 return define.chip {
     id = "bn5:airhoc",
@@ -15,4 +35,11 @@ return define.chip {
     lockout = 50,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
+    action = flick.action {
+        id = "bn5:airhoc/action",
+        kind = PUCK,
+        -- The row 2 of 0x080CA3A4: 10 steps.
+        puck = puck.variant { steps = 0x0A, own_side = 1, ticks = 6 },
+        down = true,
+    },
 }
