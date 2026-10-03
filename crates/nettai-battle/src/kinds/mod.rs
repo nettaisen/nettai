@@ -264,6 +264,7 @@ pub fn chip_damage_formula(b: &Battle, id: nettai_content_api::ChipHandle, side:
         F::HpLastDigits => hp_last_digits(b, side),
         F::HalfOpponentMaxHp => half_opponent_max_hp(b, side),
         F::NaviLevel { base, per_level } => navi_chip_damage(b, side, *base, *per_level),
+        F::GaugeLevel { base } => gauge_level_damage(b, side, *base),
     }
 }
 
@@ -308,6 +309,26 @@ fn gauge_damage(b: &Battle, side: u8) -> u16 {
         (0x60 * (g - 0x40) / 0x30 + 0x20) as u16
     } else {
         (0x80 * (g - 0x70) / 0xF + 0x80) as u16
+    }
+}
+
+/// BN5's 0x0800EB1E (CusVolt's formulas 73 to 75): `base` plus 100 by the
+/// gauge's level (the side's own gauge in the battle flag 0x40 mode, with
+/// none of `sub_8010B78`'s 0x1500): 100 × level / 95 below level 96, 100 to
+/// level 126, nothing from 127.
+fn gauge_level_damage(b: &Battle, side: u8, base: u16) -> u16 {
+    let gauge = if b.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0 {
+        b.sides[side as usize & 1].gauge as u32
+    } else {
+        b.gauge.value as u32
+    };
+    let level = gauge >> 7;
+    if level < 96 {
+        (100 * level / 95) as u16 + base
+    } else if level <= 126 {
+        100 + base
+    } else {
+        base
     }
 }
 
