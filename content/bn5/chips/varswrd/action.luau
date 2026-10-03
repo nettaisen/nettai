@@ -6,8 +6,9 @@
 -- that chip's, with its subtype and parameters and the original damage. In ProtoSoul or ShadowSoul (souls 1 and 8)
 -- the navi waits while A is up.
 --
--- (A computer-controlled navi, NaviStats +0x2A or AIData +0xF0 set, takes its tactics' pick instead, 0x0802D4E2's
--- +0x12, 5 a Sword: the engine has no such navi yet, bn5-map.md §15.6.)
+-- (A computer-controlled navi, NaviStats +0x2A or AIData +0xF0 set, would take its tactics' pick instead, 0x0802D4E2's
+-- +0x12, 5 a Sword. No battle has one: only the story navis' routines set +0xF0 (0x0802C110), not Chaos Unison's
+-- Dark MegaMan's, so he too takes the joypad path and, with A up, a Sword.)
 
 local action = {}
 
