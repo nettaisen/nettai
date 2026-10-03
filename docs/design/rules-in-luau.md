@@ -347,6 +347,8 @@ window's `update(side, pad)`, `custom.keys(side, pad) -> handled`, `custom.hand_
 | `navi_spawned(navi)` | at the navi's init | |
 | `navi_hit(navi, hit)` | once per tick the navi took hits, after the damage (where `sub_801A200` runs), on the hit side's systems | mood loss, anger, the weakness break by form |
 | `countered(navi, target)` | when the side's navi's counter landed (`sub_801A200`), on the countering side's systems, before the hit side's `navi_hit` | Full Synchro by its own form, unless the target's mood is held |
+| `starting_mood(side) -> mood` | where `sub_8013892` sets the starting mood (`sub_8015C2C`'s 0x80); the first answer | (BN5's light and dark system: by the light/dark value, 0x0801283A) |
+| `navi_palette(side, navi) -> palette` | each tick, the palette of a navi of the player's kind (presentation, `sub_801002C`); the first answer, else the framework's | (BN5's light and dark system: 0x0800DD94) |
 | `navi_deleted(navi) -> keep` | where the framework would delete the navi (deciding) | |
 | `chip_used(navi, chip) -> Use` | once per chip use, after the common path | the rush (a wrapper), the Cross bonuses, EraseCross's flag |
 | `form_changed(navi, from, to)` | after a form is applied | the tired emotion, the glow |
@@ -1467,6 +1469,10 @@ P1's items 12 and 8 (bn5-map.md §15.3), on R4.
      per-tick paths read: the palette, the aura, the HUD, the chip doubling, idle's worn-out check. BN5's rules
      (its counter's 0x80, the soul's effect) act on the same levers: the mood, the held states, anger, and their
      own `countered` hook. If BN5's emotions need names BN6's five lack, the pushed emotion comes with BN5's port.
+     *As built for BN5 (2026-10-03, bn5-map.md §15.10):* still no pushed emotion. The order and the setter are
+     the game's (the status section's `emotions`: BN5's 0x08012740 and 0x080127D6), with a sixth emotion,
+     `worried` (BN5's mood under 65); the starting mood and the palette are system hooks (`starting_mood`,
+     `navi_palette`), which BN5's light and dark system answers by its value.
   2. **Anger stays framework.** Its trigger (120 stunned ticks or a hit of 300), its 600 ticks, mood 0x80 and
      `sub_8015B54`'s order stay. BN5 has the same routines (the map: similar), so by §2.1's rule 2 they are
      series-common, parameterized when BN5's are read.
