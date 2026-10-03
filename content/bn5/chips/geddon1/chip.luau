@@ -1,6 +1,9 @@
 --!strict
--- Geddon1 (BN5 chip 0x07b): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- Geddon1 (BN5 chip 0x07b): a quake cracks every solid panel of the field, one every 8 ticks in a random order:
+-- BN6's Geddon (its quake's first row) without holding the user's panel (objects/geddon).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local controller = require("../../objects/geddon/controller")
 
 return define.chip {
     id = "bn5:geddon1",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     slot_in_limit = 1,
+    dimming = controller.hook("crack"),
 }

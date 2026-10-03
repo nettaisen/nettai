@@ -19,10 +19,12 @@ local traps = require("../../lib/traps")
 
 local trap = {}
 
--- The bursts' looks (the panel bursts' rows 0, 2 and 4; fire and the null element row 3's fiery burst).
-local SPLASH = define.effect { sprite = asset.sprite("bn6:spout-splash"), anim = 0, palette = 0 }
+-- The bursts' looks (the panel bursts' rows 0, 2 and 4; fire and the null element row 3's fiery burst): BN5's
+-- sheets, whose animations last as BN5's do (its hit sparks a tick longer than BN6's). (Elec's, 14-14, is BN6's
+-- lightning's sheet, which BN5's pack doesn't name yet.)
+local SPLASH = define.effect { sprite = asset.sprite("bn5:spout-splash"), anim = 0, palette = 0 }
 local LIGHTNING = define.effect { sprite = asset.sprite("bn6:lightning"), anim = 0, palette = 0 }
-local LEAVES = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 5, palette = 0 }
+local LEAVES = define.effect { sprite = asset.sprite("bn5:hit-sparks"), anim = 5, palette = 0 }
 
 trap.strike_kind = common_strike.make_kind("bn5:anti-trap/strike", {
     strikes = {
