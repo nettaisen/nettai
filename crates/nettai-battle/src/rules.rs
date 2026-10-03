@@ -296,7 +296,7 @@ mod tests {
         let schema = &b.content.defs.schemas[s.id().0 as usize].schema;
         s.set(schema, schema.index_of("starts").unwrap(), Value::Int(9)).unwrap();
         assert_ne!(changed.digest(), b.digest());
-        assert_eq!(testing::build().defs.rulesets.len(), 4);
+        assert_eq!(testing::build().defs.rulesets.len(), 5);
     }
 
     /// A mix (testdata's rules/mix.luau): the stock rules less BN6's forms
