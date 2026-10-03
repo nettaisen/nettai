@@ -5,12 +5,13 @@
 -- weapons (weapons/: the buster and the charged shot, BN6's actions with BN5's setups), and his identity: his
 -- actor record (0x08014C94: version 0, a player, AI index 0) and his sprite's 30 attach points (./attach_points). BN5 has no weakness table (BN6's `byte_80108D1`).
 --
--- Not yet (docs/design/bn5-map.md §15.7): his souls but ProtoSoul (forms, with Soul Unison), his move lag in soul 8
--- (0), the held offset and the custom screen's no-running message.
+-- Not yet (docs/design/bn5-map.md §15.7, §15.8): his souls 6 and 8 to 12 (forms, with Soul Unison), the held offset
+-- and the custom screen's no-running message.
 
 local attach_points = require("./attach_points")
 local buster = require("./weapons/buster")
 local charged_shot = require("./weapons/charged-shot")
+local colonelsoul = require("./forms/colonelsoul/form")
 local gyrosoul = require("./forms/gyrosoul/form")
 local magnetsoul = require("./forms/magnetsoul/form")
 local napalmsoul = require("./forms/napalmsoul/form")
@@ -29,7 +30,7 @@ return define.navi {
     -- the stats a match's side starts him at.
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
     -- His souls, which the custom screen's soul button offers (rules/souls).
-    forms = { souls = { protosoul, gyrosoul, searchsoul, napalmsoul, magnetsoul } },
+    forms = { souls = { protosoul, gyrosoul, searchsoul, napalmsoul, magnetsoul, colonelsoul } },
     identity = define.identity {
         class = "megaman",
         version = 0,
