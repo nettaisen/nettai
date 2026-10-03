@@ -29,6 +29,30 @@ return define.navi {
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = a_charge },
     fresh = { hp = 250, mega_level = 5, giga_level = 1 },
     cross_hp = { 200, 200 },
+    -- What the save's reload gives it at its link navi level
+    -- (`reloadCurNaviBaseStats_8120df0`, docs/engine/link-navis.md): its base
+    -- and maximum HP by the story's progress (`off_8120F44`), and what each
+    -- level, 0 to 14, adds over its fresh stats (`pt_8121200`'s scripts).
+    levels = {
+        base_hp = { 300, 300, 300, 400, 500, 600, 800 },
+        by_level = {
+            { hp = 60 },
+            { hp = 120 },
+            { hp = 180, charge = 1 },
+            { hp = 240, charge = 1 },
+            { hp = 300, charge = 1, custom_level = 1 },
+            { hp = 360, charge = 1, custom_level = 1 },
+            { hp = 420, attack = 1, charge = 2, custom_level = 1 },
+            { hp = 480, attack = 1, rapid = 1, charge = 2, custom_level = 1 },
+            { hp = 540, attack = 1, rapid = 1, charge = 2, custom_level = 1 },
+            { hp = 600, attack = 2, rapid = 1, charge = 2, custom_level = 2 },
+            { hp = 660, attack = 2, rapid = 1, charge = 3, custom_level = 2 },
+            { hp = 720, attack = 2, rapid = 1, charge = 3, custom_level = 2 },
+            { hp = 780, attack = 2, rapid = 1, charge = 3, custom_level = 2 },
+            { hp = 840, attack = 2, rapid = 2, charge = 3, custom_level = 2, mega_level = 1 },
+            { hp = 1000, attack = 3, rapid = 2, charge = 4, custom_level = 3, mega_level = 1, super_armor = true },
+        },
+    },
     -- The chips A charges, from a navi level on, and the most damage the charge adds to a
     -- Fire chip, by the navi's level.
     charged_chips = { family = "fire", from_level = 3 },

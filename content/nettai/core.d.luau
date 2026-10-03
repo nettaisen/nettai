@@ -1812,6 +1812,33 @@ export type NaviDef = {
         back_special_damage: number?,
     }?,
     cross_hp: { number }?,
+    -- What the save's reload gives it by its link navi level (BN6's
+    -- `reloadCurNaviBaseStats`): its base HP by the story's progress, and
+    -- what each level adds over its fresh stats. Tools fill a side's stats
+    -- from it; no battle reads it.
+    levels: NaviLevels?,
+}
+-- A navi's levels (docs/engine/link-navis.md).
+export type NaviLevels = {
+    -- The base and maximum HP, by the story's progress (0 to 6).
+    base_hp: { number },
+    -- Each level's gains, from level 0.
+    by_level: { NaviLevelGain },
+}
+-- What a level adds: HP to the maximum, the buster's levels (to 4 at
+-- most), the custom level (to 8) and the Mega level (to 10); the abilities
+-- it gives; the B+Back special it sets.
+export type NaviLevelGain = {
+    hp: number,
+    attack: number?,
+    rapid: number?,
+    charge: number?,
+    custom_level: number?,
+    mega_level: number?,
+    super_armor: boolean?,
+    float_shoes: boolean?,
+    air_shoes: boolean?,
+    back_special: Weapon?,
 }
 -- A navi's no-running message. Its words are locales/<lang>.toml's; the
 -- content's own language's (en) time it: the characters in each line, and
