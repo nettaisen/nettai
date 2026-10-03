@@ -280,22 +280,24 @@ pub fn navi_face<'a>(packs: &Packs<'a>, c: &Content, navi: NaviHandle, problems:
     face
 }
 
-/// The face a form shows for an emotion (its definition's mugshot for it):
-/// the mugshot's pack and number there, and the picture with its palettes.
+/// The face a form shows for an emotion (its definition's mugshot for it, of
+/// its second set when `variant`): the mugshot's pack and number there,
+/// and the picture with its palettes.
 #[allow(clippy::type_complexity)]
 pub fn form_face<'a>(
     packs: &Packs<'a>,
     c: &Content,
     form: FormHandle,
     emotion: Emotion,
+    variant: bool,
     problems: &mut Problems,
 ) -> (Option<nettai_battle::content::InPack<u8>>, Option<(&'a Tiles, &'a [Palette])>) {
-    let picture = c.form(form).mugshot.and_then(|faces| crate::packs::mugshot(c, faces.of(emotion)));
+    let picture = c.form(form).mugshot.and_then(|faces| crate::packs::mugshot(c, faces.shown(emotion, variant)));
     let face = picture.and_then(|m| {
         let (hud, n) = packs.mugshot(m);
         hud.mugshot(n)
     });
-    if problems.lookup(Lookup::FormFace(form, emotion_number(emotion))) && face.is_none() {
+    if problems.lookup(Lookup::FormFace(form, emotion_number(emotion) | if variant { 0x10 } else { 0 })) && face.is_none() {
         problems.note(format!("form {:?} has no mugshot in the pack", c.defs.form(form).key));
     }
     (picture, face)

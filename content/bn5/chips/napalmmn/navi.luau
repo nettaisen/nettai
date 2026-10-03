@@ -2,11 +2,11 @@
 -- NapalmMan, the navi of BN5's NapalmMan chips (BN5's actor object #0x0E, 0x080BB10C; BN5's own, built on BN6's
 -- navi template), brought by their navi chip controller, wearing his cannon (BN5's body overlay row 4). He appears
 -- (a sound); off a solid panel he sinks and goes 11 ticks on. Else, 31 ticks on, he raises his cannon (animation
--- 18) for 31 ticks and fires (animation 19, a sound) a napalm bomb (objects/napalm-bomb) from 8 pixels ahead and 56
+-- 18) for 31 ticks and fires (animation 19, a sound) a napalm bomb (chips/napalmmn/bomb) from 8 pixels ahead and 56
 -- up at the panel four columns ahead in his row (the field's edge column at most), running while dimmed; 88 ticks
 -- on he stands 30, sinks (animation 4) 5, and goes; the controller moves on.
 
-local napalm_bomb = require("../../objects/napalm-bomb/bomb")
+local napalm_bomb = require("./bomb")
 local navi_chips = require("@common/navi-chips/navi")
 
 export type State = {
