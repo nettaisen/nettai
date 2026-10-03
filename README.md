@@ -127,6 +127,18 @@ every pack in `data/content` as the frontend does (each chip's pictures from its
 with no use yet left out, with the frontend's warning), and Play hands the frontend the same: `--content` and
 `--pack` are the frontend's, and only what you give is passed on.
 
+A BN5 side's navi pane has its karma (the light/dark value): a slider from 0 to 1000 with its number, presets
+(light 500, very light 1000, dark 0) and what BN5 makes of it (dark under 470, the starting mood's tiers at 470, 500
+and 1000, holy panels cleared at 499 or under). A side whose rules take souls has a Souls pane: every soul of the
+content by default, or those checked, each with its face, any of them, of either version. A side's own fields show
+only when its rules and navi take them (`nettai_match::facts`): the game (Gregar or Falzar) with rules whose systems
+take BN6's `version`, the navi code's level with a navi whose definition has `levels` (not BN5's MegaMan), the SP
+times with rules that have SP navi slots (BN5's are its own, each named by its game's SP navi chip). A mixed side
+(BN6's rules, BN5 chips) keeps BN6's fields. Changing the ruleset drops what the new rules don't take
+(`Side::set_ruleset`): the Crosses, patch cards and NaviCust without their systems, the karma and souls without
+theirs, the game (back to Falzar) without `version`, and the SP times when the new rules' SP navis differ. "Import
+from save…" reads a BN5 .sav (or a raw save image) too: its karma and its souls.
+
 The editor is an [iced](https://iced.rs) app, drawn in software (tiny-skia), so it needs no GPU backend. On Linux it
 needs the usual windowing libraries (X11 or Wayland, and `libxkbcommon`), and its Open and Save As dialogs use
 [rfd](https://github.com/PolyMeilex/rfd), which there needs GTK 3 (`libgtk-3-dev` to build) or an XDG desktop portal.

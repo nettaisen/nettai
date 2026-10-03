@@ -127,6 +127,7 @@
 "bn5:rising-bubble" = { pool = "effect", index = 0x14 }
 "bn5:firehit/fist" = { pool = "attack", index = 0x5B }
 "bn5:bullet" = { pool = "attack", index = 0x12 }
+"bn5:colonel-soldier" = { pool = "attack", index = 0x30 }
 "bn5:tornado" = { pool = "attack", index = 0x31 }
 "bn5:anti-trap/trap" = { pool = "attack", index = 0x4D, scratch_position = true }
 "bn5:anti-trap/strike" = { pool = "effect", index = 0x2B, scratch_position = true }

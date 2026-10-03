@@ -78,6 +78,8 @@ impl Offer {
             sp_times,
             navicust,
             tactics,
+            karma,
+            souls,
         } = side;
         w.put(ruleset);
         w.put(navi);
@@ -105,6 +107,9 @@ impl Offer {
             }
         }
         w.put(tactics);
+        // BN5's karma and souls.
+        w.put(karma);
+        w.put(souls);
         w.put(stage);
         w.put(&arena.is_some());
         if let Some(a) = arena {
@@ -155,6 +160,8 @@ impl Offer {
                     None
                 },
                 tactics: r.get()?,
+                karma: r.get()?,
+                souls: r.get()?,
             };
             let stage: Option<StageHandle> = r.get()?;
             let arena = if r.get::<bool>()? {
@@ -517,6 +524,39 @@ mod tests {
         }
         assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("hasn't"));
         assert!(Offer::from_bytes(&content, &o.to_bytes()[..10]).is_err());
+    }
+
+    /// A BN5 side's offer carries its karma and souls; both peers' rounds
+    /// start from them alike. Karma past 1000, or a soul list under rules
+    /// without souls, is refused.
+    #[test]
+    fn offers_carry_karma_and_souls() {
+        let content = nettai_match::testing::every_game();
+        let mut o = offer(&content, 5);
+        o.side.ruleset = content.defs.ruleset_by_key("bn5:stock");
+        o.side.navi = content.defs.navi_by_key("bn5:megaman").unwrap();
+        o.side.stats = Side::base_stats(&content, o.side.navi, o.side.game);
+        o.side.crosses = None;
+        o.side.navi_level = None;
+        o.side.navicust = None;
+        o.side.cards.clear();
+        o.side.karma = 100;
+        o.side.souls = Some(vec![content.defs.form_by_key("bn5:protosoul").unwrap()]);
+        // (Its folder its rules take: a BN5 one.)
+        let five = nettai_match::Match::empty(&content).unwrap();
+        let mut b = nettai_match::check::start(&content, &nettai_match::Match { sides: [o.side.clone(), five.sides[1].clone()], ..five }).unwrap();
+        o.side.folder = nettai_match::folders::random_folder(&content, &mut b, 0, &mut Draws::new(3)).into();
+        let back = Offer::from_bytes(&content, &o.to_bytes()).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(back, o);
+        let (one, _) = netplay_setup(&content, 9, &[o.clone(), offer(&content, 6)]).unwrap();
+        let (two, _) = netplay_setup(&content, 9, &[back, offer(&content, 6)]).unwrap();
+        assert_eq!(format!("{one:?}"), format!("{two:?}"));
+        let mut bad = o.clone();
+        bad.side.karma = 1200;
+        assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("karma 1200"));
+        let mut bad = offer(&content, 6);
+        bad.side.souls = Some(Vec::new());
+        assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("no Soul Unison"));
     }
 
     /// What one player of [`pair`] saw: the round, the match, the settled
