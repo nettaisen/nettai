@@ -194,8 +194,8 @@ pub(super) fn refresh_form_flags(b: &mut Battle, r: ObjectRef) {
 /// (`sub_80145C2`); the flags (`SetObjectAirshoeFlag`,
 /// `SetObjectSuperArmorFlag`, AirShoe and FloatShoe of `sub_8014606`, the
 /// untouchable flag 0x08000000 with the shoes of `sub_8014674`); the floating body; the lock-on marker;
-/// invulnerable for good and the berserk controller's state cleared
-/// (`sub_8014650`).
+/// invulnerable for good and the controllers' state cleared
+/// (`sub_8014650`: `controller_fresh`, which BN6's systems read).
 fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
     if effects.has(FormEffects::CLEAR_STATUSES) {
         clear_statuses_unless_mode1(b, r);
@@ -225,9 +225,6 @@ fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
         super::set_invulnerable(b, r, 0xFFFF);
     }
     if effects.has(FormEffects::BERSERK) {
-        // (The Cross special's share of the state: the framework's until
-        // S4.)
-        super::berserk::reset(b, r);
         super::ai_mut(b, r).controller_fresh = true;
     }
 }

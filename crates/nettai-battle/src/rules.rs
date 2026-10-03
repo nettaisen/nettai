@@ -191,6 +191,42 @@ impl Battle {
         0
     }
 
+    /// Side `side`'s systems' `takeover_requested(side, navi)`.
+    pub(crate) fn systems_takeover_requested(&mut self, side: u8, navi: ObjectRef) {
+        let Some(r) = self.rules[side as usize].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::TakeoverRequested) {
+                let call = HookCall::System {
+                    side,
+                    slot: slot as u8,
+                    hook: SystemHook::TakeoverRequested,
+                    navi: Some(navi),
+                    chip: None,
+                    weapon: None,
+                };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
+    /// Side `side`'s systems' `takeover(side, navi)`: the outcome the
+    /// first system that answers gives (as `systems_controller`'s, or 4:
+    /// an attack of its own); none answering is nothing.
+    pub(crate) fn systems_takeover(&mut self, side: u8, navi: ObjectRef) -> u8 {
+        let Some(r) = self.rules[side as usize].ruleset else { return 0 };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::Takeover) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::Takeover, navi: Some(navi), chip: None, weapon: None };
+                if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
+                    return n as u8;
+                }
+            }
+        }
+        0
+    }
+
     /// Side `side`'s systems' `form_reverted(side, navi)`.
     pub(crate) fn systems_form_reverted(&mut self, side: u8, navi: ObjectRef) {
         let Some(r) = self.rules[side as usize].ruleset else { return };
@@ -609,7 +645,7 @@ mod tests {
             // HP 1000: +30 first, then +10% (the card lists them the other way).
             assert_eq!((s.max_hp, s.hp), (1133, 1133));
             assert_eq!((s.attack, s.element, s.bugs.hp_drain), (3, 2, 2));
-            assert_eq!(b.cross_stats[0], b.stats[0], "the battle-start copy is of the stats after the cards");
+            assert_eq!(b.reserves[0], b.stats[0], "the battle-start copy is of the stats after the cards");
             assert!(b.consoles[0].emotion_window_glitch, "the HP drain is a bug: flag 0x1723");
             assert_eq!(b.stats[1], scenario::setup().navi_stats[1], "the other side has none");
         }

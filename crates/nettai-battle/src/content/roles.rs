@@ -32,12 +32,14 @@ pub enum ActionRole {
     /// The strike the navi's request 0x80000 starts from idle (0x49, the
     /// machine swords' strike).
     StunStrike,
-    /// What a Cross navi protected at the battle's end runs (0x4D).
-    CrossProtect,
+    /// What a navi switched in (the navi switch) and protected at the
+    /// battle's end runs (0x4D).
+    SwitchProtect,
     /// The turn L or R starts where turning is enabled (0x3B).
     Turn,
-    /// A Cross navi's knock-out (0x4C).
-    CrossDeath,
+    /// A switched-in navi's knock-out (0x4C): it falls back to the navi
+    /// it replaced.
+    SwitchKnockout,
     /// What the navi's volley request starts (the original's action 0x30,
     /// on whatever the attack's parameter bytes hold). No routine raises
     /// the request, and BN6's content leaves the role unfilled.
@@ -61,9 +63,9 @@ impl ActionRole {
         ActionRole::BodyGuardCounter,
         ActionRole::ForcedChargedShot,
         ActionRole::StunStrike,
-        ActionRole::CrossProtect,
+        ActionRole::SwitchProtect,
         ActionRole::Turn,
-        ActionRole::CrossDeath,
+        ActionRole::SwitchKnockout,
         ActionRole::Volley,
         ActionRole::DustBeastScatter,
         ActionRole::ChargeTackle,
@@ -78,9 +80,9 @@ impl ActionRole {
             ActionRole::BodyGuardCounter => "body_guard_counter",
             ActionRole::ForcedChargedShot => "forced_charged_shot",
             ActionRole::StunStrike => "stun_strike",
-            ActionRole::CrossProtect => "cross_protect",
+            ActionRole::SwitchProtect => "switch_protect",
             ActionRole::Turn => "turn",
-            ActionRole::CrossDeath => "cross_death",
+            ActionRole::SwitchKnockout => "switch_knockout",
             ActionRole::Volley => "volley",
             ActionRole::DustBeastScatter => "dust_beast_scatter",
             ActionRole::ChargeTackle => "charge_tackle",
@@ -347,8 +349,6 @@ definition_roles! {
         ObstacleThrow = "obstacle_throw",
         /// Each of the burst's (BN6's around a navi going Beast Over).
         Burst = "burst",
-        /// A Cross navi starts its special's chip.
-        CrossSpecial = "cross_special",
         /// SELECT pressed with too little gauge: its player hears that it
         /// can't (and what can't be picked or taken back on the custom
         /// screen).
