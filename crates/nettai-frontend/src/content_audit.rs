@@ -13,8 +13,9 @@
 //!   what the content names): each sprite with every animation and its
 //!   frames, each sound's song, each banner's glyphs (a telop's banner its
 //!   place, the judge's its numbers), each background and mugshot;
-//! - the HUD's text lines, the field's panel blocks, the custom screen,
-//!   the chatbox and the warning marker.
+//! - the HUD's text lines, the field's panel blocks (for the panel types
+//!   the own pack's game names), the custom screen, the chatbox and the
+//!   warning marker.
 //!
 //! It takes seconds and catches what a trace's frames would only catch for
 //! the chips and the navis the trace shows: a lookup by the wrong key
@@ -120,7 +121,12 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     for line in (hud::TEXT_TIME_UP..=hud::TEXT_TIME_UP + 10).chain([hud::TEXT_COUNTER_HIT]) {
         lookups::text_line(hud, line, p);
     }
-    for kind in PanelType::ALL {
+    // (The field is the own pack's, its blocks those of the types its game's
+    // `panels` section names: BN6's field has no BN5 metal, lava or sea.
+    // A type another game makes takes the art of no field yet:
+    // docs/design/rules-in-luau.md §7.4.)
+    let named = &c.home_rules().panels.types;
+    for kind in PanelType::ALL.into_iter().filter(|&t| named.get(t as usize).is_some_and(|r| r.named)) {
         for owner in 0..2 {
             for y in 1..=3 {
                 lookups::panel_block(&own.field, kind as usize, owner, y, p);
@@ -268,6 +274,24 @@ mod tests {
         let own = c.assets.pack(testing::ROOT).expect("the test pack");
         let found = audit(&c, vec![b], own, None, &[("en".into(), None)]);
         found.problems.iter().filter(|p| p.ends_with("has no icon in the pack")).count()
+    }
+
+    /// The field's blocks are audited for the panel types the own pack's
+    /// game names, not for every type the engine has (BN5's metal, lava
+    /// and sea, which BN6's field has none of).
+    #[test]
+    fn the_field_is_audited_for_the_panel_types_its_game_names() {
+        let mut c = (*testing::content()).clone();
+        let own = c.assets.pack(testing::ROOT).expect("the test pack");
+        let missing = |c: &Content| {
+            let found = audit(c, vec![Bundle::default()], own, None, &[("en".into(), None)]);
+            found.problems.iter().filter(|p| p.contains("has no block for panel type")).count()
+        };
+        assert_eq!(missing(&c), PanelType::ALL.len() * 6);
+        for t in [PanelType::Metal, PanelType::Lava, PanelType::Sea] {
+            c.rules[nettai_battle::content::RootId::HOME.index()].panels.types[t as usize].named = false;
+        }
+        assert_eq!(missing(&c), (PanelType::ALL.len() - 3) * 6);
     }
 
     /// A lookup by the wrong key fails for every chip (R1's: a chip's icon
