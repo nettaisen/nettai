@@ -54,7 +54,7 @@ function strike.action(spec: StrikeSpec): Action
             hit_mod = 3,
         })
         -- The slash, flipped by the user's side (not its facing), in the
-        -- sword's colours.
+        -- sword's colors.
         local cx, cy = field.center(x, y)
         battle.effect(Vec3.new(cx, cy, 0x10 * 0x10000), parts.effects.wide, me.alliance, spec.effect_palette)
     end

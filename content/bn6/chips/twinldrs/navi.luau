@@ -31,8 +31,8 @@ export type State = {
     fresh: boolean,
     -- Colonel: his charge's glow (ExtraVars[5]).
     glow: Object?,
-    -- ProtoMan: the grey of his colour shader, fading in (Param4).
-    grey: number,
+    -- ProtoMan: the gray of his color shader, fading in (Param4).
+    gray: number,
     -- ProtoMan: how many he has found to slash; Colonel: his charge's step
     -- (Param3).
     count: number,
@@ -86,7 +86,7 @@ local CHARGING = define.effect { sprite = asset.sprite("charge-glow"), anim = 0,
 local CHARGED = define.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
 local GLOW_X, GLOW_Z = 0, 0
 
--- The afterimages ProtoMan leaves (`sub_80BDA7C`): their colour shader and
+-- The afterimages ProtoMan leaves (`sub_80BDA7C`): their color shader and
 -- lifetime.
 local AFTERIMAGE_SHADER, AFTERIMAGE_TICKS = 0x8318, 0x1E
 
@@ -175,12 +175,12 @@ end
 
 -- ---- ProtoMan -----------------------------------------------------------
 
--- `sub_80BD4DC`: he fades in from grey 31, 2 a tick, flickering.
+-- `sub_80BD4DC`: he fades in from gray 31, 2 a tick, flickering.
 local function fade_in(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
         me.sprite.color_shader = 0x7FFF
-        s.grey = 0x1F
+        s.gray = 0x1F
         battle.play_sound(SOUND_APPEAR)
         me.timer = 0
         me.phase_init = 4
@@ -192,13 +192,13 @@ local function fade_in(me: Object)
     if bit32.btest(t, 1) then
         me.visible = false
     end
-    local grey = s.grey - 2
-    if grey > 0 then
-        s.grey = grey
+    local gray = s.gray - 2
+    if gray > 0 then
+        s.gray = gray
         return
     end
     me.visible = true
-    s.grey = 0
+    s.gray = 0
     me.phase, me.phase_init = 4, 0
 end
 
@@ -225,7 +225,7 @@ local function ready(me: Object)
     me:set_action(SLASHES)
 end
 
--- `sub_80BD4BC`: his appearing, his colour shader following his grey.
+-- `sub_80BD4BC`: his appearing, his color shader following his gray.
 local function appear(me: Object)
     local phase = me.phase
     if phase == 0 then
@@ -235,7 +235,7 @@ local function appear(me: Object)
     else
         error(string.format("TwinLdrs ProtoMan's appearing phase %#x reads past its table (off_80BD4D4)", phase))
     end
-    me.sprite.color_shader = (me.state :: State).grey * 0x421
+    me.sprite.color_shader = (me.state :: State).gray * 0x421
 end
 
 -- The panel in front of an enemy navi at (x, y) will hold him: his
@@ -679,7 +679,7 @@ twinldrs.kind = define.kind {
         held = "object",
         fresh = "bool",
         glow = "object",
-        grey = "u8",
+        gray = "u8",
         count = "u8",
         home_x = "i32",
         home_y = "i32",

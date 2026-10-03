@@ -3,7 +3,7 @@
 //! checked in; `bn6-extract content` writes the pack from the user's copies
 //! of the games (both US ROMs).
 //!
-//! Colours are the GBA's 15-bit BGR555. Tiles are 8x8 with one palette index
+//! Colors are the GBA's 15-bit BGR555. Tiles are 8x8 with one palette index
 //! per pixel, where index 0 is transparent.
 
 pub mod custom;
@@ -116,7 +116,7 @@ impl Tiles {
     }
 }
 
-/// A 16-colour palette.
+/// A 16-color palette.
 pub type Palette = [u16; 16];
 
 /// Decode little-endian BGR555 palettes.
@@ -289,7 +289,7 @@ pub struct Hud {
     /// The custom gauge's tiles, from tile number `gauge_first_tile`.
     pub gauge_tiles: Tiles,
     pub gauge_first_tile: u16,
-    /// HP box colours: normal, healing, hurt or low.
+    /// HP box colors: normal, healing, hurt or low.
     pub hp_palettes: [Palette; 3],
     pub gauge_palette: Palette,
     /// The HP box (6x2) and the gauge frame (18x2) as first placed.
@@ -303,7 +303,7 @@ pub struct Hud {
     /// Area for a glyph Unicode has none for: the stacked EX is U+E002).
     /// Content's names are written in these.
     pub font_chars: Vec<String>,
-    /// The opponent's HP digits by colour (normal, dropping, rising):
+    /// The opponent's HP digits by color (normal, dropping, rising):
     /// glyph d is digit d.
     pub enemy_digits: [Tiles; 3],
     pub enemy_palette: Palette,
@@ -408,7 +408,7 @@ impl Hud {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DialogueFont {
     /// A palette index a pixel, glyph after glyph, row by row (0 is
-    /// clear; the text's colour is added to the others).
+    /// clear; the text's color is added to the others).
     pub pixels: Vec<u8>,
     pub advances: Vec<u8>,
     pub chars: Vec<String>,

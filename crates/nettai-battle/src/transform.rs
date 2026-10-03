@@ -162,7 +162,7 @@ impl Battle {
 
     /// `sub_80148CC`.
     fn sequencer_transform(&mut self, phase: TransformPhase, started: bool) {
-        // Battle mode 1 fades in other colours (0x70 / 0x6C), and shows
+        // Battle mode 1 fades in other colors (0x70 / 0x6C), and shows
         // other HUD parts; the timing is the same.
         let mode1 = self.round.mode_copy == 1;
         let set = |b: &mut Battle, phase, started| b.transform_seq.state = SequencerState::Transform { phase, started };

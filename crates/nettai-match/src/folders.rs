@@ -97,13 +97,13 @@ pub fn pool(content: &Content, b: &mut Battle, side: u8) -> Vec<ChipHandle> {
 /// A random folder that side `side`'s rules accept: chips drawn one at a
 /// time from the pool, each kept if the rules still accept the chips so far
 /// (the copies of a chip, the Mega and Giga limits), in one of its codes.
-/// The codes lean to two the folder favours (and `*`), as a player's would,
+/// The codes lean to two the folder favors (and `*`), as a player's would,
 /// so that a hand often has chips to pick together. Its Regular chip is one
 /// the rules accept as Regular, if any is.
 pub fn random_folder(content: &Content, b: &mut Battle, side: u8, draws: &mut Draws) -> SavedFolder {
     let pool = pool(content, b, side);
     assert!(!pool.is_empty(), "the rules let a folder hold no chip");
-    let favoured = [ChipCode(draws.below(26) as u8), ChipCode(draws.below(26) as u8)];
+    let favored = [ChipCode(draws.below(26) as u8), ChipCode(draws.below(26) as u8)];
     let mut chips: Vec<FolderChip> = Vec::with_capacity(FOLDER_SIZE);
     let mut tries = 0;
     while chips.len() < FOLDER_SIZE {
@@ -118,7 +118,7 @@ pub fn random_folder(content: &Content, b: &mut Battle, side: u8, draws: &mut Dr
             continue;
         }
         let liked: Vec<ChipCode> =
-            d.codes.iter().copied().filter(|c| *c == ChipCode::ASTERISK || favoured.contains(c)).collect();
+            d.codes.iter().copied().filter(|c| *c == ChipCode::ASTERISK || favored.contains(c)).collect();
         let codes = if liked.is_empty() { &d.codes } else { &liked };
         let code = codes[draws.below(codes.len())];
         chips.push(FolderChip::new(id, code));
