@@ -30,7 +30,7 @@ local function init(me: Object)
     sprite:load(SPRITE)
     me.anim = ANIM
     sprite:set_animation(ANIM)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     sprite.palette = 0
     me.visible = true
     me:set_lifecycle("update")

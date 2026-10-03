@@ -673,6 +673,10 @@ impl CoreApi for Battle {
         self.round.alive_actors[side as usize & 1].iter().flatten().copied().collect()
     }
 
+    fn tracked(&self, side: u8) -> Option<ObjectRef> {
+        self.sides[side as usize & 1].tracked
+    }
+
     fn objects_of_kind(&self, kind: u16) -> Vec<ObjectRef> {
         self.objects.in_order().filter(|&r| self.objects.get(r).kind.0 == kind).collect()
     }

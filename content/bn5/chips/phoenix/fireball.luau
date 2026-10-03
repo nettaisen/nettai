@@ -95,7 +95,7 @@ local function init(me: Object)
     local s = me.state :: State
     local sprite = me.sprite
     sprite:load(SPRITE)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0xFF
     s.start = me.pos
     me.panel_x, me.panel_y = bit32.band(s.target, 7), bit32.rshift(s.target, 4)

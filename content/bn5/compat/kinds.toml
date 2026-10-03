@@ -63,6 +63,8 @@
 "bn5:phoenix/phoenix" = { pool = "actor", index = 0x27 }
 "bn5:phoenix/fireball" = { pool = "attack", index = 0xC5 }
 "bn5:phoenix/blaze" = { pool = "effect", index = 0x88 }
+"bn5:roll/navi" = { pool = "actor", index = 0x2C }
+"bn5:roll/heart" = { pool = "attack", index = 0x4E }
 "bn5:sonic-boom" = { pool = "attack", index = 0x58 }
 "bn5:holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 "bn5:holydrem/actor" = { pool = "actor", index = 0x1C }

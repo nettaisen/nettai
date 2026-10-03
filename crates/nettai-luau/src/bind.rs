@@ -1373,6 +1373,11 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let list = with(|api, _| Ok(api.alive_actors(side)))?;
         lua.create_sequence_from(list.into_iter().map(Object))
     });
+    lib_fn!(lua, t, "tracked", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let o = with(|api, _| Ok(api.tracked(side)))?;
+        object_value(lua, o)
+    });
     lib_fn!(lua, t, "objects_of", |lua, kind: LuaValue| {
         let list = with(|api, b| match b.def(&kind) {
             Some((Registry::Kind, h)) => Ok(api.objects_of_kind(h)),

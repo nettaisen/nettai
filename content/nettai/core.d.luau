@@ -1086,6 +1086,9 @@ declare battle: {
     player: (side: number) -> Object?,
     -- A side's combatants still in, in slot order.
     alive_actors: (side: number) -> { Object },
+    -- `sub_802EFEE`: the actor `side` tracks in the battle flag 0x40 mode
+    -- (`per_player_gauges`), if any.
+    tracked: (side: number) -> Object?,
     -- The objects of a kind in the update list, in update order, whatever
     -- their lifecycle state (the game's walks of the list).
     objects_of: (kind: Kind) -> { Object },
