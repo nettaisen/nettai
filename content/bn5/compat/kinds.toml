@@ -79,3 +79,6 @@
 "bn5:colorpt/point" = { pool = "effect", index = 0x51, scratch_z_fraction = true }
 "bn5:batcan/shot" = { pool = "attack", index = 0x01 }
 "bn5:justcone/strike" = { pool = "attack", index = 0xAE }
+"bn5:nrthwind/controller" = { pool = "effect", index = 0x39, scratch_position = true }
+"bn5:nrthwind/wind" = { pool = "attack", index = 0x5A, scratch_position = true }
+"bn5:nrthwind/streak" = { pool = "effect", index = 0x3A }
