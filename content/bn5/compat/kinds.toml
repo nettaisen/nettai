@@ -76,6 +76,8 @@
 "bn5:blizman/roller" = { pool = "attack", index = 0xB7, scratch_z_fraction = true }
 "bn5:cloudman/navi" = { pool = "actor", index = 0x15 }
 "bn5:cloudman/cloud" = { pool = "attack", index = 0xB3, scratch_position = true }
+"bn5:gyroman/navi" = { pool = "actor", index = 0x0C }
+"bn5:gyro-bomb" = { pool = "attack", index = 0x1B, scratch_position = true }
 "bn5:shuriken" = { pool = "attack", index = 0x5C }
 "bn5:dice" = { pool = "attack", index = 0x05 }
 "bn5:dice-marker" = { pool = "effect", index = 0x83, scratch_position = true }
