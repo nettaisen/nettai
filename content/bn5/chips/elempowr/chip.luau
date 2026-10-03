@@ -1,6 +1,10 @@
 --!strict
--- ElemPowr (BN5 chip 0x121): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- ElemPowr (BN5 chip 0x121): a cut-in chip that takes the power of the panel type the user stands on: 10 Atk+ for each
+-- panel of it on the field (at most 90), and they all turn back to normal (./controller, the dimming handler's
+-- subtype 56).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local controller = require("./controller")
 
 return define.chip {
     id = "bn5:elempowr",
@@ -16,4 +20,5 @@ return define.chip {
     flags = { "dimming" },
     extra_flags = { 128 },
     slot_in_limit = 1,
+    dimming = controller.hook,
 }

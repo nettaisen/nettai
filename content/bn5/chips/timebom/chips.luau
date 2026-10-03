@@ -60,6 +60,11 @@ local timebom3 = define.chip {
 
 -- TimeBom+ (BN5 chip 0x15b): the Program Advance of TimeBom1, TimeBom2 and TimeBom3 in that order: TimeBom1-3's bomb
 -- with 300 HP, its own look and a harder shake (chips/timebom/timebom: BN6's TimeBom with BN5's placement).
+
+local recipe_timebom1 = timebom1
+local recipe_timebom2 = timebom2
+local recipe_timebom3 = timebom3
+
 local timebom_chip = define.chip {
     id = "bn5:timebom",
     codes = { "A", "B", "C", "*" },
@@ -73,10 +78,12 @@ local timebom_chip = define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     slot_in_limit = 1,
-    -- BN5's recipes are in the order of its full table (0x08027FC8; the netbattles' 0x0802801C is that table but
-    -- for its first 21, which only a battle with each side keeping its own gauge tries): its 24th, the
-    -- netbattles' third.
-    program_advances = { { order = 23, sequence = { timebom1, timebom2, timebom3 } } },
+    -- BN5's recipes (written by tools/bn5/recipes.py): in the order of its full table (0x08027FC8); the netbattles'
+    -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
+    -- gauge tries.
+    program_advances = {
+        { order = 23, sequence = { recipe_timebom1, recipe_timebom2, recipe_timebom3 } },
+    },
     dimming = timebom.controller.hook(timebom.variants.big),
 }
 
