@@ -120,6 +120,16 @@ export type ThunderShot = { id: string?, ball: ThunderBall, kind: Kind? }
 -- A game's thunder shots (@common/thunder/shoot): its buster (the arm) and its ball's kind.
 export type ThunderShotLook = { buster: Buster, ball: Kind }
 
+-- How a falling meteor's panel marker blinks (@common/meteors/marker; BN6's `byte_80E4334`, by the original's first
+-- parameter): its lifetime, its blink period, the ticks lit each period, and how much each period shrinks the next
+-- (doubling).
+export type MeteorMarkerLook = {
+    lifetime: number,
+    period: number,
+    lit: number,
+    shrink: number,
+}
+
 -- A trap chip's object (a "trap" record, @common/traps/controller): `set` spawns it for the controller and its user,
 -- with the chip and bonus the controller keeps.
 export type Trap = {
