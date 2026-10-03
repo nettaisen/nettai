@@ -318,7 +318,7 @@ fn depart(b: &mut Battle, r: ObjectRef) {
 /// it is missing or broken) breaks (kind 1), cracks (3) or turns to the
 /// kind's panel type, with the type's trail sound (`byte_8013D44`, the
 /// panel rules' `trail_sound`) when the type changes.
-pub(super) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
+pub(crate) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
     if ai(b, r).actor_type != ActorType::Player {
         return;
     }

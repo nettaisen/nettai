@@ -11,7 +11,7 @@
 pub mod actions;
 pub(crate) mod berserk;
 mod navi_action;
-mod chip_use;
+pub(crate) mod chip_use;
 pub use chip_use::{next_chip_bonus, next_chip_doubles};
 
 /// `sub_8010740`: the opponent's Rush takes `chip` (a weapon's).
@@ -435,7 +435,7 @@ impl From<EngineAction> for NaviAction {
 pub(crate) fn reset_attack_links(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     a.attack.beast_lockon = 0;
-    a.attack.rush.restart();
+    a.attack.wrapper_fresh = true;
     if let Some(marker) = a.lockon_marker {
         crate::kinds::lockon_marker::unfreeze(b, marker);
     }

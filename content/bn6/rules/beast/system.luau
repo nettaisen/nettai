@@ -1,13 +1,24 @@
 --!strict
 -- BN6's Beast Out (docs/design/rules-in-luau.md §3.1): a navi's turns in
--- Beast Out and when they run out. The turn-start sequencer is the
--- framework's (BN5 has it too); it asks each side's systems at its check
--- and when the turn starts.
+-- Beast Out and when they run out, and the rush (rush.luau, the game's
+-- wrapper: the role `actions.beast_rush`), whose state is the system's. The
+-- turn-start sequencer is the framework's (BN5 has it too); it asks each
+-- side's systems at its check and when the turn starts.
 --
--- (Still the framework's until later slices: the Beast forms' change
--- sequences, the rush, Beast Over, the Beast Out button.)
+-- (Still the framework's until later slices: Beast Over, the Beast Out
+-- button.)
+
+local rush = require("./rush")
 
 export type State = {
+    -- The rush's (rush.luau).
+    rush_phase: number,
+    rush_started: boolean,
+    rush_home_x: number,
+    rush_home_y: number,
+    rush_chain: boolean,
+    rush_chain_block: number,
+    rush_countdown: number,
     -- AIData+0x0F: the turn-start check (`sub_80159C6`) runs only while
     -- this is 0, and then sets it to 2. Closing the custom screen sets it to
     -- 1 (`sub_8009338`); a mid-battle custom-screen request counts it down
@@ -24,7 +35,17 @@ end
 
 return define.system {
     id = "bn6:beast",
-    state = { check_delay = "u8" },
+    state = {
+        check_delay = "u8",
+        rush_phase = "u8",
+        rush_started = "bool",
+        rush_home_x = "u8",
+        rush_home_y = "u8",
+        rush_chain = "bool",
+        rush_chain_block = "u8",
+        rush_countdown = "u16",
+    },
+    actions = { rush.action },
     hooks = {
         -- `sub_8009338`: the custom screen closed.
         custom_closed = function(side: number)
