@@ -25,21 +25,7 @@ export type State = {
 -- what it bursts as and reaches; the explosions (a crushed one's and the burst's on each panel of the 3x3), the
 -- sounds of its landing, its crushing and its burst; the bug its burst gives (setting the collision's bugs from
 -- its target's stats).
-export type Look = {
-    sprite: SpriteAsset,
-    anim: number,
-    is: CollisionType,
-    hit_by: CollisionType,
-    status: Status,
-    burst_is: CollisionType,
-    burst_hits: CollisionType,
-    crushed: Effect,
-    burst: Effect,
-    land_sound: Sound,
-    crushed_sound: Sound,
-    burst_sound: Sound,
-    pick_bug: (me: Object) -> (),
-}
+export type Look = BugBombLook
 
 -- Thrown at 0x2C000 a tick along the ground, to land 10 pixels up, falling 0x2800 a tick.
 local SPEED, LANDING_Z, GRAVITY = 0x2C000, 0x0A * 0x10000, -0x2800

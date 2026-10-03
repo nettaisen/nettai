@@ -14,7 +14,7 @@ local slot = require("@bn6/lib/slot")
 local beam = {}
 
 -- A beam's look: its sprite and palette.
-export type Look = { sprite: SpriteAsset, palette: number }
+export type Look = SunBeamLook
 
 export type State = {
     slot: Slot,

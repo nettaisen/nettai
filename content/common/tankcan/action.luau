@@ -29,7 +29,7 @@ local SHELL_Z = 0x18_0000
 local ARM_FIRE = 1
 
 -- A chip's tank cannon: the cannon it holds, the shell kind and how its shell flies.
-export type Spec = { id: string?, cannon: AttachmentLook, kind: Kind, shell: shell.Spec }
+export type Spec = TankCanSpec
 
 function tankcan.action(spec: Spec): Action
     -- `sub_80ECAE8`: raise the cannon; aim for 16 ticks.

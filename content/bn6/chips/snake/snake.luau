@@ -10,11 +10,9 @@ local common = require("@common/snake/snake")
 
 local snake = {}
 
-export type State = common.State
-
 -- The nest's count of the snakes out (the original's pointer to it).
 local function counter_add(me: Object, n: number)
-    local nest = (me.state :: State).nest
+    local nest = (me.state :: SnakeState).nest
     if nest and nest.active then
         local s = nest.state :: { snakes: number }
         s.snakes += n
