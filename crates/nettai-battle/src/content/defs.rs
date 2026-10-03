@@ -1284,12 +1284,14 @@ impl Defs {
                         super::Recipe::Sequence(keys.iter().map(|k| chip_handle(k, &at)).collect::<Result<_, _>>()?)
                     }
                 };
-                advances.push((r.order, super::ProgramAdvance { result: ChipHandle(i as u16), recipe }));
+                let per_player_gauges_only = r.per_player_gauges_only;
+                advances.push((r.order, super::ProgramAdvance { result: ChipHandle(i as u16), recipe, per_player_gauges_only }));
             }
             if !c.record.program_advances.is_empty() {
-                // (A player's record of the round's formed ones is 32 bits.)
-                if results >= 32 {
-                    return Err(ContentError::new(format!("{whose}: more than 32 chips are Program Advances")));
+                // (A player's record of the round's formed ones is 64 bits:
+                // BN6's 30 and BN5's 30 fit.)
+                if results >= 64 {
+                    return Err(ContentError::new(format!("{whose}: more than 64 chips are Program Advances")));
                 }
                 l.advance = Some(results);
                 results += 1;
