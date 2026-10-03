@@ -234,10 +234,9 @@ pub struct ActorData {
     /// AIData+0x0A: ticks toward the next HP lost to the custom-screen HP
     /// drain bug (`sub_80102AC`).
     pub drain_counter: u8,
-    /// AIData+0x0B: the emotion the NaviCust emotion-swing bug last rolled
-    /// (`sub_8013DA0`): 0 normal (mood 0x99), 1 tired, 2 angry, 3 Full
-    /// Synchro (mood 0xFF).
-    pub swung_emotion: u8,
+    /// The side's systems' `navi_tick` runs for it each tick (BN6's
+    /// NaviCust emotion-swing bug, `sub_8013DA0`).
+    pub ticked: bool,
     // (AIData+0x0F, the turn-start Beast Out check's delay, is BN6's beast
     // system's state: content/bn6/rules/beast/system.luau.)
     /// AIData+0x10: drain hits this navi landed on the opponent, turned
@@ -270,13 +269,14 @@ pub struct ActorData {
     pub pad: Pad,
     /// Mirror of `pad` maintained while dimmed.
     pub dimmed_pad: Pad,
-    /// AIData+0x32: the Beast Out counter is spent (the game stores
-    /// 0xFFFF): set at init with a zero counter (`sub_8013892`), by the
-    /// turn-start check (`sub_80159C6`), when a Beast Out reverts
-    /// (`sub_80158CC`), and by the NaviCust emotion-swing bug
-    /// (`sub_8013DA0`); cleared by `sub_8014446`. Gives emotion 1 and
-    /// blocks mood changes (`sub_8015BEC`) and anger (`sub_80143CE`).
-    pub beast_out_spent: bool,
+    /// AIData+0x32: held tired (the game stores 0xFFFF; BN6's "the Beast
+    /// Out counter is spent"): emotion 1, the mood held (`sub_8015BEC`)
+    /// and no anger (`sub_80143CE`). A game's systems set it: BN6's at the
+    /// round's start with a zero counter (`sub_8013892`), at the turn-start
+    /// check (`sub_80159C6`), when a Beast Out reverts (`sub_80158CC`), and
+    /// by the NaviCust emotion-swing bug (`sub_8013DA0`); `sub_8014446`
+    /// clears it.
+    pub tired: bool,
     pub anger: u16,
     /// AIData+0x36: exhausted for the rest of the battle (BN6's after Beast
     /// Over: `sub_80158CC` → `sub_8014466` stores 0x3C0, which nothing
@@ -291,9 +291,6 @@ pub struct ActorData {
     /// (5 after a road slide, `sub_80166D0`/`sub_8016730`; counted down
     /// by `sub_801A36A`).
     pub road_cooldown: u16,
-    /// AIData+0x3A: ticks toward the next swing of the NaviCust
-    /// emotion-swing bug (every 60, `sub_8013DA0`).
-    pub emotion_swing_ticks: u16,
     /// AIData+0x3C: the height (Z, whole pixels) a bubble bobs around and
     /// restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses
     /// record it every tick (`sub_8108F74`); nothing sets it for players.

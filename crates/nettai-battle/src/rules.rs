@@ -227,6 +227,29 @@ impl Battle {
         0
     }
 
+    /// Side `side`'s systems' `countered(side, victim)`.
+    pub(crate) fn systems_countered(&mut self, side: u8, victim: ObjectRef) {
+        self.systems_call(side, SystemHook::Countered, victim);
+    }
+
+    /// Side `side`'s systems' `navi_tick(side, navi)`.
+    pub(crate) fn systems_navi_tick(&mut self, side: u8, navi: ObjectRef) {
+        self.systems_call(side, SystemHook::NaviTick, navi);
+    }
+
+    /// Side `side`'s systems' `hook(side, navi)`, each in order; the
+    /// results unused.
+    fn systems_call(&mut self, side: u8, hook: SystemHook, navi: ObjectRef) {
+        let Some(r) = self.rules[side as usize & 1].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(hook) {
+                let call = HookCall::System { side, slot: slot as u8, hook, navi: Some(navi), chip: None, weapon: None };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
     /// Side `side`'s systems' `form_reverted(side, navi)`.
     pub(crate) fn systems_form_reverted(&mut self, side: u8, navi: ObjectRef) {
         let Some(r) = self.rules[side as usize].ruleset else { return };
@@ -308,8 +331,8 @@ mod tests {
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).ruleset, Some(stock));
             // (BN6's beast system first, then the counter, then BN6's forms
-            // system.)
-            assert_eq!(b.side_rules(side).states.len(), 3);
+            // and emotion systems.)
+            assert_eq!(b.side_rules(side).states.len(), 4);
             assert_eq!(field(&b, side, 1, "starts"), FieldValue::U8(1), "round_start ran once for side {side}");
             assert_eq!(field(&b, side, 1, "side"), FieldValue::U8(side), "it ran for its own side");
         }
@@ -321,7 +344,7 @@ mod tests {
         let mut setup = scenario::setup();
         setup.players[1].ruleset = content.defs.ruleset_by_key("test:test-other");
         let b = started(setup);
-        assert_eq!(b.side_rules(0).states.len(), 3, "side 0 keeps the stock rules");
+        assert_eq!(b.side_rules(0).states.len(), 4, "side 0 keeps the stock rules");
         assert_eq!(b.side_rules(1).states.len(), 2, "side 1 plays by its own");
         assert_eq!(field(&b, 1, 0, "mark"), FieldValue::U8(0x41));
         assert_eq!(field(&b, 1, 1, "side"), FieldValue::U8(1));
@@ -420,14 +443,14 @@ mod tests {
         let defs = &content.defs;
         let mix = defs.ruleset_by_key("test:test-mix").expect("the mix");
         let names: Vec<&str> = defs.ruleset(mix).systems.iter().map(|&h| defs.system(h).key.as_str()).collect();
-        assert_eq!(names, ["test:beast", "test:test/counter", "test:test/marker"]);
+        assert_eq!(names, ["test:beast", "test:test/counter", "test:emotion", "test:test/marker"]);
         assert_eq!(defs.ruleset(mix).base, defs.stock_ruleset_of(testing::ROOT));
         assert_eq!(Some(defs.ruleset(mix).game), defs.root_id(testing::ROOT));
         let mut setup = scenario::setup();
         setup.players[1].ruleset = Some(mix);
         let b = started(setup);
-        assert_eq!(b.side_rules(1).states.len(), 3);
-        assert_eq!(field(&b, 1, 2, "mark"), FieldValue::U8(0x41), "the marker ran for its side");
+        assert_eq!(b.side_rules(1).states.len(), 4);
+        assert_eq!(field(&b, 1, 3, "mark"), FieldValue::U8(0x41), "the marker ran for its side");
         assert_eq!(field(&b, 1, 1, "starts"), FieldValue::U8(1));
     }
 
