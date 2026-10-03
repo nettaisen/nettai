@@ -3,10 +3,11 @@
 -- in it is 00-01 (0x0800DA58[1]); he changes by BN5's soul change (rules/souls). Its weapons (0x0801CA1C's row 1,
 -- loaded by 0x0800DCA0): the buster (routine 0), the charged slash (3, ./charge), Sword chips charged with A (5,
 -- the A-charge's chips 0x0801090A: any Sword chip but a dimming or dark one; their damage doubled, 0x080103D0),
--- Chaos Unison's (AIData +0x11's routine 6, ./chaos: DrkSword).
--- Not yet: its B+Back shield (routine 4, BN5's guard action 0x1F).
+-- Chaos Unison's (AIData +0x11's routine 6, ./chaos: DrkSword), its B+Back shield (routine 4, ./back: BN5's guard,
+-- action 0x1F, as the Reflect program's).
 
 local attach_points = require("../../attach_points")
+local back = require("./back")
 local buster = require("../../weapons/buster")
 local chaos = require("./chaos")
 local charge = require("./charge")
@@ -22,7 +23,13 @@ return define.form {
     sprite = asset.sprite("bn5:protosoul"),
     element = "null",
     buster_bonus = 0,
-    weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = charged_chip.weapon, chaos = chaos.weapon },
+    weapons = {
+        buster = buster.weapon,
+        charge_shot = charge.weapon,
+        back_special = back.weapon,
+        a_charge = charged_chip.weapon,
+        chaos = chaos.weapon,
+    },
     charged_chips = { { family = "sword", damaging = false, plain = true } },
     charged_bonus = { damage = 0xFF },
     palette = 0,

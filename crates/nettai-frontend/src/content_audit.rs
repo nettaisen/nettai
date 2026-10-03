@@ -200,7 +200,8 @@ fn other_packs(c: &Content, packs: &Packs, lang: &str, text: &DisplayText) -> Ve
 }
 
 /// The emotions a form's faces are by.
-const EMOTIONS: [Emotion; 5] = [Emotion::Normal, Emotion::Tired, Emotion::FullSynchro, Emotion::Angry, Emotion::WornOut];
+const EMOTIONS: [Emotion; 6] =
+    [Emotion::Normal, Emotion::Tired, Emotion::FullSynchro, Emotion::Angry, Emotion::WornOut, Emotion::Worried];
 
 /// Every lookup, in one language (`text`, the HUD's lettering in `packs`).
 fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a::SoundBank>]>, p: &mut Problems) {

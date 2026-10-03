@@ -103,11 +103,14 @@ and edits them, checking them against the content as you go, and plays them:
     cargo run --release -p nettai-frontend -- --match match.toml     # what Play runs
 
 Its panes show only what the side's ruleset has (Crosses with the forms system, patch cards with the patch-cards
-system, the NaviCust with the navicust system): the arena; each side's ruleset, navi and game, with the stats the
+system, the NaviCust with the navicust system): the arena; each side's ruleset (every loaded game's: `bn6:stock`,
+`bn5:stock`), navi (each game's MegaMan, named with his game) and game, with the stats the
 round starts the navi with (a link navi's level fills in the stats its save gives at that level, as does switching
-to a link navi; an edited stat says what the level gives); the folder (the chips the side's folder rules allow, with their pictures, searchable, a
-code puts a chip in the selected entry; the Regular and tag chips; the copies and the Mega, Giga, Regular and tag
-limits live, as the game's folder rules count them); the Crosses; the patch cards (MB used of 80); the NaviCust (the
+to a link navi; an edited stat says what the level gives); the folder (the chips the side's folder rules allow, of
+every loaded game, each with its game and its pictures from its own game's pack, searchable and filtered by game;
+a code puts a chip in the selected entry, so a BN6 side's folder can hold BN5 chips: a mixed folder, held to the
+side's own rules; the Regular and tag chips; the copies and the Mega, Giga, Regular and tag limits live, as the
+side's ruleset's folder rules count them: BN6's folder editor's, or BN5's, content/bn5/rules/folder); the Crosses; the patch cards (MB used of 80); the NaviCust (the
 board as the side's game draws it, with its frame and command line, edited with the mouse as Tango's is: drag a
 program's color swatch onto the grid, or press a placed program to pick it up and drag it; while held it shows
 where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click, Delete
@@ -118,8 +121,9 @@ started without a file, or New) is empty: the first link battle stage, and on ea
 his fresh stats with an empty folder, the game's own Crosses, no patch cards and no NaviCust programs (the problems
 list says the folders aren't whole until they are). Random draws a match as live play does, and `nettai-frontend --play --save-match FILE` writes live play's draw out to edit. `--lang ja` (or
 the language list) names the chips, navis, Crosses and patch cards in Japanese. The editor loads the content and
-every pack in `data/content` as the frontend does (each chip's pictures from its own game's pack), and Play hands
-the frontend the same: `--content` and `--pack` are the frontend's, and only what you give is passed on.
+every pack in `data/content` as the frontend does (each chip's pictures from its own game's pack; a game's chips
+with no use yet left out, with the frontend's warning), and Play hands the frontend the same: `--content` and
+`--pack` are the frontend's, and only what you give is passed on.
 
 The editor is an [iced](https://iced.rs) app, drawn in software (tiny-skia), so it needs no GPU backend. On Linux it
 needs the usual windowing libraries (X11 or Wayland, and `libxkbcommon`), and its Open and Save As dialogs use

@@ -25,6 +25,9 @@ return define.navi {
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("bn5:megaman-win"), lose = asset.banner("bn5:megaman-deleted") },
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
+    -- His fresh stats, as a navi's stats start (0x080111BA from the table 0x0801D55F: his row, BN6's):
+    -- the stats a match's side starts him at.
+    fresh = { hp = 100, mega_level = 5, giga_level = 1 },
     -- His souls, which the custom screen's soul button offers (rules/souls).
     forms = { souls = { protosoul, gyrosoul, searchsoul, napalmsoul, magnetsoul } },
     identity = define.identity {

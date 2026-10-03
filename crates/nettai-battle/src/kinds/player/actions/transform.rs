@@ -210,8 +210,13 @@ fn calm_down(b: &mut Battle, r: ObjectRef) {
 /// `sub_8015766`: a weakness hit breaks the Cross (from action dispatch,
 /// with `status::CROSS_BREAKING`): dimming falls while the navi drops to
 /// base form (a Cross Beast to its Beast), then 30 ticks later it goes on.
-/// True while it runs.
+/// True while it runs. BN5's (0x080122C8, `FormBreak::Bn5`: a dark chip
+/// used in a soul) drops any form to the base form, and lacks animation 2
+/// and the overlay's refresh, the overlay's kept stepping, the collision
+/// region's removal and return, and the flags 0x80110000 and statuses
+/// 0x200800 it clears.
 pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> bool {
+    let bn5 = b.rules_for(r).form_break == crate::content::FormBreak::Bn5;
     if !matches!(ai(b, r).attack.action, ActionVars::FormChange(_)) {
         ai_mut(b, r).attack.action = ActionVars::FormChange(Vars::default());
     }
@@ -220,30 +225,36 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
         b.set_flags(battle_flags::DIMMED);
         b.sound(SoundRole::Fade);
         land(b, r);
-        let o = b.objects.get_mut(r);
-        o.anim = 2;
-        o.anim_loaded = 0xFF;
-        crate::kinds::player::refresh_form_overlay(b, r);
+        if !bn5 {
+            let o = b.objects.get_mut(r);
+            o.anim = 2;
+            o.anim_loaded = 0xFF;
+            crate::kinds::player::refresh_form_overlay(b, r);
+        }
         face_default(b, r);
         let pos = b.objects.get(r).pos;
         let look = b.roles_for(r).effect(EffectRole::Deletion);
         if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, look, 0, 0, 0) {
             b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
         }
-        clear_flag1(
-            b,
-            r,
-            f1::BUBBLED | f1::DRAG | f1::FROZEN | f1::SLIDING | f1::PARALYZED | f1::FLINCHING | f1::MOVING,
-        );
+        let moving = f1::SLIDING | f1::PARALYZED | f1::FLINCHING | f1::MOVING;
+        clear_flag1(b, r, if bn5 { moving } else { moving | f1::BUBBLED | f1::DRAG | f1::FROZEN });
         clear_flag2(b, r, 0x10);
         b.objects.get_mut(r).slide_state = 0;
-        keep_overlay_stepping(b, r);
+        if !bn5 {
+            keep_overlay_stepping(b, r);
+        }
         let current = stats(b, r).form;
         form::take_off_overlay(b, r, current);
         // What the form drops to (its `breaks_to`; the original's by the
         // form's number: the base form from a Cross, the game's Beast
-        // from a Cross in Beast Out); a form without one stays.
-        let new = b.content.form(current).breaks_to.unwrap_or(current);
+        // from a Cross in Beast Out); a form without one stays. BN5's: the
+        // base form.
+        let new = if bn5 {
+            b.content.base_form_for(stats(b, r).navi)
+        } else {
+            b.content.form(current).breaks_to.unwrap_or(current)
+        };
         // sub_800FC9E(MegaMan, the new form).
         let sprite = b.content.form(new).sprite;
         let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
@@ -267,17 +278,29 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
         reset_status(b, r);
         calm_down(b, r);
         form::put_on_overlay(b, r, new);
-        keep_overlay_stepping(b, r);
+        if !bn5 {
+            keep_overlay_stepping(b, r);
+        }
         clear_invulnerable(b, r);
         b.objects.get_mut(r).related[0] = None;
         ai_mut(b, r).overlay = None;
-        // object_clearCollisionRegion
-        coll_mut(b, r).region = None;
+        if !bn5 {
+            // object_clearCollisionRegion
+            coll_mut(b, r).region = None;
+        }
         set_timer(b, r, 0x1E);
         ai_mut(b, r).attack.step_init = 4;
     }
     if timer_running(b, r) {
         return true;
+    }
+    if bn5 {
+        ai_mut(b, r).status &= !status::CROSS_BREAKING;
+        b.clear_flags(battle_flags::DIMMED);
+        let a = &mut ai_mut(b, r).attack;
+        a.step = 0;
+        a.step_init = 0;
+        return false;
     }
     ai_mut(b, r).status &= !(status::CROSS_BREAKING | status::HEAT_TRAP | status::TRAP_ARMED);
     if let Some(o) = b.objects.get(r).related[1] {
