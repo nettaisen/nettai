@@ -9,8 +9,10 @@ description = "Edits nettai match files (the arena, each side's ruleset, navi, f
 nettai-battle.workspace = true
 nettai-content = { path = "../nettai-content" }
 nettai-content-api = { path = "../nettai-content-api" }
-# The pack's pictures (chip icons and art), read through `pictures`.
+# The pack's pictures (chip icons and art), read through `pictures`, drawn
+# as a frame draws them; the bundled font.
 nettai-assets = { path = "../nettai-assets" }
+nettai-render = { path = "../nettai-render" }
 nettai-match = { path = "../nettai-match" }
 # The window: iced (Cargo.lock pins the release), drawn in software (tiny-skia:
 # no GPU backend to build); a canvas draws the NaviCust.

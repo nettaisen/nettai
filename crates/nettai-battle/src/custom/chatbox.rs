@@ -28,7 +28,7 @@
 //! What the box shows (its opening steps, the text printed so far, the
 //! portrait's face and tint, the key-wait arrow) is read through the
 //! accessors and [`ChatboxLook`], which the timing never reads and the
-//! state digest leaves out (a frontend draws it: nettai-frontend
+//! state digest leaves out (a frontend draws it: nettai-render
 //! `chatbox`).
 
 use crate::input::keys;

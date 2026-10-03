@@ -1,7 +1,8 @@
-//! The lookups the drawing code and the audio make of the packs and the
-//! content, each a function that notes its [`Lookup`] and, the first time
-//! a run makes it, what is missing (`crate::audit`). A frame draws through
-//! these, and the static audit (`crate::content_audit`) makes the same
+//! The lookups the drawing code makes of the packs and the content, each a
+//! function that notes its [`Lookup`] and, the first time a run makes it,
+//! what is missing (`crate::audit`; the audio's, a cue's song, is
+//! nettai-frontend's `sound_lookups`). A frame draws through these, and the
+//! static audit (nettai-frontend's `content_audit`) makes the same
 //! lookups for everything the content defines, so a lookup by the wrong
 //! key (a chip's icon by its qualified key, a banner by its handle) fails
 //! both the same way.
@@ -453,30 +454,4 @@ pub fn text_line<'a>(hud: &'a Hud, line: usize, problems: &mut Problems) -> Opti
         problems.note(format!("the pack has no HUD text line {line}"));
     }
     glyphs
-}
-
-/// A sound's song in its pack's bank (`banks` by `PackId`), for an effect
-/// or music (`music`: the no-music song stops the music and has none).
-pub fn sound(c: &Content, banks: &[std::sync::Arc<m4a::SoundBank>], h: u16, music: bool, problems: &mut Problems) {
-    if !problems.lookup(Lookup::Sound(h)) {
-        return;
-    }
-    // (The engine's sound is a handle; the song is its pack's, in that
-    // pack's bank: the first's for a frontend of one pack.)
-    let Some(a) = c.assets.sound(h) else {
-        problems.note(format!("sound handle {h} names no sound"));
-        return;
-    };
-    if music && a.id == nettai_audio::NO_MUSIC.0 {
-        return;
-    }
-    let bank = banks.get(a.pack.index()).or(banks.first()).expect("a pack's sound");
-    if bank.song(m4a::SongId(a.id)).is_some_and(|s| !s.tracks.is_empty()) {
-        return;
-    }
-    let name = match crate::packs::name(c, AssetKind::Sound, h) {
-        Some(name) => format!("sound {name:?} ({:#05x})", a.id),
-        None => format!("sound {:#05x}", a.id),
-    };
-    problems.note(format!("{name} has no song in the pack's sound"));
 }
