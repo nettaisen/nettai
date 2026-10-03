@@ -529,4 +529,58 @@ mod tests {
         assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM));
         assert!(!crate::ruleset_has_system(&content, Some(mix), crate::FORMS_SYSTEM));
     }
+
+    /// The SP deletion times, Beast Out locked and a level write and read
+    /// back; a navi's own default level (a link navi's 0, MegaMan's none) is
+    /// left out, and a file without one reads as it.
+    #[test]
+    fn sp_times_beast_out_and_levels_write_and_read_back() {
+        let content = bn6_content();
+        let mut m = crate::draw::live(&content, 2, None).unwrap();
+        m.sides[0].beast_out = false;
+        m.sides[0].navi_level = Some(3);
+        m.sides[0].sp_times.0[0] = 721;
+        m.sides[0].sp_times.0[11] = 1500;
+        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
+        m.sides[1].navi = protoman;
+        m.sides[1].crosses = None;
+        m.sides[1].navi_level = Some(0);
+        m.sides[1].stats = crate::Side::save_base(&content, protoman, m.sides[1].game, Some(0));
+        m.sides[1].folder.regular = None;
+        let text = write(&content, &m);
+        for line in ["beast_out = false", "level = 3", "[left.sp_times]", "\"sp/heatman\" = \"00:12.01\"", "\"sp/blastman\" = \"00:25.00\""] {
+            assert!(text.contains(line), "{line}:\n{text}");
+        }
+        let right = &text[text.find("[right]").unwrap()..];
+        assert!(!right.contains("level ="), "ProtoMan's level 0 is his default:\n{right}");
+        assert_eq!(parse(&content, &text).unwrap(), m, "{text}");
+        // No level: ProtoMan's 0, MegaMan's none.
+        let no_level = text.replacen("level = 3\n", "", 1);
+        let back = parse(&content, &no_level).unwrap();
+        assert_eq!((back.sides[0].navi_level, back.sides[1].navi_level), (None, Some(0)));
+        // A time that isn't one, a slot the rules lack.
+        let bad = parse(&content, &text.replacen("\"00:12.01\"", "\"12:60.00\"", 1)).unwrap_err();
+        assert!(bad.iter().any(|p| p.contains("sp_times: sp/heatman")), "{bad:?}");
+        let bad = parse(&content, &text.replacen("\"sp/heatman\"", "\"sp/nobody\"", 1)).unwrap_err();
+        assert!(bad.iter().any(|p| p.contains("no SP navi slot \"sp/nobody\"")), "{bad:?}");
+    }
+
+    /// A navi code's level is 0 to 14, and a link navi has one.
+    #[test]
+    fn the_level_is_checked() {
+        let content = bn6_content();
+        let mut m = crate::draw::live(&content, 2, None).unwrap();
+        m.sides[0].navi_level = Some(15);
+        let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
+        has(crate::check_match(&content, &m), "left: level 15: a navi code's level is 0 to 14");
+        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
+        m.sides[0].navi_level = None;
+        m.sides[1].navi = protoman;
+        m.sides[1].crosses = None;
+        m.sides[1].navi_level = None;
+        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].game);
+        let problems = crate::check_match(&content, &m);
+        has(problems.clone(), "right: ProtoMan has no level: a link navi exists only through its navi code");
+        assert!(!problems.iter().any(|p| p.starts_with("left")), "MegaMan without a code is fine: {problems:?}");
+    }
 }

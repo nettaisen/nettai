@@ -470,11 +470,12 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
 - a console's own pictures by its version (`Versioned`: a Gregar console's
   Beast and emblem, the pack's `-gregar` assets); a Cross's name and
   colors in the Cross window are its own game's (`custom::cross_picture`,
-  for the form in the entry's place, `Unlocks::cross_at`), so a Gregar
+  for the form in the entry's place, `bn6_compat::Unlocks::cross_at` over
+  the cross system's setup), so a Gregar
   Cross shows Gregar's name in any window, and a window a setup's Cross
   list mixes shows each game's own; the Beast Out button, its picture in
   the chip window and the BeastOut chip's picture are of the Beast the
-  navi goes into (`custom::beast_pictures`, `Unlocks::beast_game`), so a
+  navi goes into (`custom::beast_pictures`, `bn6_compat::Unlocks::beast_game`), so a
   Falzar player in HeatCross sees Gregar's;
 - what the screen does to the rest: the HP box and the mugshot move right
   with the window and the field and the sprites 15 pixels down (the
@@ -743,8 +744,8 @@ them).
 ## 6. Match files
 
 A match file is everything a round needs, chosen before the battle: the
-arena, and each side's ruleset, navi, game, stats, folder, Crosses, patch
-cards and NaviCust, in TOML, by content key (a definition's key, as content names it;
+arena, and each side's ruleset, navi, game, navi code level, stats, folder,
+Crosses, Beast Out, SP deletion times, patch cards and NaviCust, in TOML, by content key (a definition's key, as content names it;
 `bn6:cannon`, or unqualified when one root defines it). `--match FILE` plays
 one (you are its left side), `--save-match FILE` writes the match played,
 and nettai-editor makes and edits them (README.md, "The match editor").
@@ -770,8 +771,9 @@ ruleset = "bn6:bn6"                        # optional: else the content's stock 
 navi = "bn6:megaman"
 game = "gregar"                            # optional: falzar (default) or gregar
 crosses = ["bn6:heatcross", "bn6:spoutcross"]   # optional: else the game's own five
+beast_out = false                          # optional: else Beast Out is unlocked (the save's flag 0xE0)
 cards = [{ card = "bn6:canodumb" }, { card = "bn6:shadow", on = false }]
-level = 0                                  # optional: a link navi's level (its stats are its level's)
+level = 0                                  # optional: the navi code's level, 0-14 (see below)
 bug_frags = 0                              # optional
 emotion_window_glitch = false              # optional: the save's NaviCust bug flag (0x1720)
 
@@ -779,6 +781,9 @@ emotion_window_glitch = false              # optional: the save's NaviCust bug f
 chips = ["bn6:cannon A", "bn6:cannon A", "bn6:airshot *"]   # 30 entries, "<key> <code>" ("" empty: a folder being made)
 regular = 4                                # optional: an entry, counting from 0
 tags = [5, 6]                              # optional: two entries
+
+[left.sp_times]                            # optional: how fast the save deleted each SP navi
+"sp/heatman" = "00:12.34"                  # mm:ss.cc, by the rules' slot (else the fastest, 00:00.00)
 
 [left.stats]                               # optional: what differs from the navi's fresh stats (a link navi's at its level)
 hp = 1000
@@ -814,6 +819,33 @@ NaviCust's bugs (`step_bug`, `panel_trail`, `panel_trail_level`,
 `custom_damage`, `hand_shrink_turn`, ...): every stat a round starts from,
 so a written block gives back the same stats. Writing a match, only the
 fields that differ are written.
+
+**The navi code's level** (`level`) is the level of the navi code the
+save received (docs/engine/link-navis.md), 0 to 14. A link navi exists only
+through its code, so it always has one: without `level` it is **0**, its
+stats are its reload's at level 0 and its chip bonus is level 0's. MegaMan
+without `level` has **none** (no code received, 0xFF in the battle); with
+one he was received from a navi code: his level's gains go over his
+NaviCust, and, as the game's event flag 0x163 does, his custom screen has
+no Beast Out button and his Cross window stays his even with a gauge for
+each player. The checks refuse a level past 14 and a link navi without one;
+a file written leaves out the navi's default (a link navi's 0, MegaMan's
+none).
+
+**The SP deletion times** (`[left.sp_times]`) are by the SP navi slots of
+the side's rules (BN6's `sp/heatman` to `sp/colonel`, rules/sp-chips.luau),
+each `mm:ss.cc`; a slot left out is the fastest. The game keeps frames and
+shows them as a time rounded down to the hundredth (`sub_8000D84`): a
+written time is the fewest frames that show as it, so a time the game shows
+reads back as itself. The SP navi chips' damage goes by them
+(`sub_8010AE4`).
+
+**A save** (the editor's "Import from save…", `Side::import_save`, a BN6
+.sav as an emulator keeps it, read by `bn6_compat::save`) gives a side its
+game, Beast Out and the Crosses it owns (as a Cross list, unless it owns all
+five), the navi code's level (a link navi keeps its own when the save has no
+code) and the SP times; its folder, NaviCust, patch cards and stats are not
+read yet.
 
 **The NaviCust** (`[left.navicust]`, docs/design/navicust.md) is the
 programs placed on MegaMan's grid, by key and color name (a program's

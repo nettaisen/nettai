@@ -158,13 +158,34 @@ impl Save {
     }
 }
 
-#[cfg(test)]
-mod tests {
+/// Save files for tests: what a save says of these facts.
+pub mod testing {
     use super::*;
+
+    /// A US save file of `version` with Beast Out (or not), the version's
+    /// Crosses owned, the navi `navi` operated and its navi code at `level`
+    /// (none: event flag 0x163 clear), and these SP times; nothing else.
+    pub fn file(version: GameVersion, beast_out: bool, crosses: [bool; 5], navi: u8, level: Option<u8>, sp_times: &SpTimes) -> Vec<u8> {
+        let mut flags = [0u8; 0x30];
+        let mut set_flag = |f: u16| flags[(f >> 3) as usize] |= 0x80 >> (f & 7);
+        if beast_out {
+            set_flag(BEAST_OUT_FLAG);
+        }
+        let first = if version == GameVersion::Gregar { GREGAR_CROSSES } else { FALZAR_CROSSES };
+        for (i, _) in crosses.iter().enumerate().filter(|(_, o)| **o) {
+            set_flag(first + i as u16);
+        }
+        if level.is_some() {
+            set_flag(NAVI_CODE_FLAG);
+        }
+        let code = level.map_or(0, |l| 0x141 + 15 * navi as u32 + l as u32).to_le_bytes();
+        let times: Vec<u8> = sp_times.0.iter().flat_map(|t| t.to_le_bytes()).collect();
+        tests_file(version, &[(EVENT_FLAGS, &flags), (NAVI, &[navi]), (NAVI_CODE, &code), (SP_TIMES, &times)], 0x3C)
+    }
 
     /// A save image with these bytes set, masked with `mask` and given its
     /// checksum, as a file.
-    fn file(version: GameVersion, set: &[(usize, &[u8])], mask: u8) -> Vec<u8> {
+    pub(super) fn tests_file(version: GameVersion, set: &[(usize, &[u8])], mask: u8) -> Vec<u8> {
         let mut image = vec![0u8; IMAGE_SIZE];
         let name: &[u8; 20] = match version {
             GameVersion::Gregar => b"REXE6 G 20060110a US",
@@ -178,7 +199,7 @@ mod tests {
         let sum: u32 = image.iter().map(|&b| b as u32).sum();
         let checksum = sum + if version == GameVersion::Gregar { 0x72 } else { 0x18 };
         image[CHECKSUM..CHECKSUM + 4].copy_from_slice(&checksum.to_le_bytes());
-        let mask_word: [u8; 4] = image[MASK..MASK + 4].try_into().unwrap();
+        let mask_word: [u8; 4] = image[MASK..MASK + 4].try_into().expect("four bytes");
         for b in image.iter_mut() {
             *b ^= mask;
         }
@@ -186,6 +207,24 @@ mod tests {
         let mut f = vec![0xFFu8; IMAGE_START];
         f.extend(image);
         f
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn file(version: GameVersion, set: &[(usize, &[u8])], mask: u8) -> Vec<u8> {
+        testing::tests_file(version, set, mask)
+    }
+
+    #[test]
+    fn the_testing_file_reads_back() {
+        let times = SpTimes(std::array::from_fn(|i| i as u16 * 37));
+        let f = testing::file(GameVersion::Gregar, false, [true, false, true, false, false], 3, Some(9), &times);
+        let s = Save::read(&f).unwrap();
+        assert_eq!((s.version(), s.navi(), s.navi_level(), s.sp_times()), (GameVersion::Gregar, 3, Ok(Some(9)), times));
+        assert_eq!((s.unlocks().beast_out, s.unlocks().crosses), (false, [true, false, true, false, false]));
     }
 
     #[test]
