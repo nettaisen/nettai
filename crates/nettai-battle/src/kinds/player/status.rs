@@ -792,6 +792,9 @@ const GLOW: [u16; 32] = [
     0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0,
 ];
 
+/// BN5's DarkPlus tint's greens by its timer's low bits (0x080136D8).
+const PLUS_TINT: [u8; 8] = [0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1E];
+
 /// The navi's color shader for its statuses (presentation only;
 /// `loc_801B142`: `sprite_zeroColorShader`, then `sub_80143E4`,
 /// `sub_801690A`, `sub_8016860`, `sub_80168C8`, `sub_80168F0`, the later
@@ -819,6 +822,11 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
     {
         let glow = GLOW[(t & 0x1F) as usize];
         shader = if super::battle_mode(b) == 1 { glow } else { glow << 5 };
+    }
+    // BN5's 0x080136B8: DarkPlus's tint (BN6 has none).
+    let tint = ai(b, r).plus_tint;
+    if tint != 0 {
+        shader = (PLUS_TINT[(tint & 7) as usize] as u16) << 5;
     }
     if f & f1::PARALYZED != 0 {
         shader = blink(0x03FF);

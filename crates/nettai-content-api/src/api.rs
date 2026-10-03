@@ -313,6 +313,9 @@ named_fields! {
         BeastOutSpent = "beast_out_spent", Bool, rw;
         /// AIData+0x60: the barrier's visual (effect #7).
         BarrierVisual = "barrier_visual", Object, rw;
+        /// BN5's AIData+0x3C: DarkPlus's tint (0 none), which picks the
+        /// navi's status shader.
+        PlusTint = "plus_tint", U16, rw;
     }
 }
 
@@ -1179,6 +1182,9 @@ pub trait CoreApi {
     /// Add to the Atk+ bonus of the chip at `i` of a side's hand
     /// (wrapping).
     fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
+    /// BN5's DarkPlus (0x0800E1D6): the Atk+ bonus of a hand's chip at `i`
+    /// becomes `n`.
+    fn set_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
     /// A side's hand has a chip at `i` and it does damage (its record's
     /// flag 0x02, "has_damage").
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool;

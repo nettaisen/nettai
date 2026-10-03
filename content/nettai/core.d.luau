@@ -435,6 +435,9 @@ declare class Object
     -- Writable: the barrier's visual (AIData+0x60), which hides and shows
     -- with the navi (its state's `shown`).
     barrier_visual: Object?
+    -- Writable: BN5's DarkPlus tint (AIData+0x3C; 0 none), which picks the
+    -- navi's status shader.
+    plus_tint: number
 
     -- `sub_800F26C`: the look its NameID gives is `sprite` (an object's
     -- NameID look; a navi's or form's NameID gives its sprite). An error
@@ -1100,6 +1103,8 @@ declare battle: {
     -- in, and adding to its Atk+ bonus.
     hand_turn: (side: number, i: number) -> number,
     add_hand_attack_bonus: (side: number, i: number, n: number) -> (),
+    -- BN5's DarkPlus: the Atk+ bonus of a hand's chip at i becomes n.
+    set_hand_attack_bonus: (side: number, i: number, n: number) -> (),
     -- A side's hand has a chip at i and it does damage (its record's
     -- "has_damage" flag).
     hand_chip_damages: (side: number, i: number) -> boolean,

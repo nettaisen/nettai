@@ -1514,6 +1514,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?, u16_arg(n, "bonus")?);
         with(|api, _| Ok(api.add_hand_attack_bonus(side, i, n)))
     });
+    lib_fn!(lua, t, "set_hand_attack_bonus", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
+        let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?, u16_arg(n, "bonus")?);
+        with(|api, _| Ok(api.set_hand_attack_bonus(side, i, n)))
+    });
     lib_fn!(lua, t, "hand_chip_damages", |_, (side, i): (LuaValue, LuaValue)| {
         let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);
         with(|api, _| Ok(api.hand_chip_damages(side, i)))

@@ -634,6 +634,12 @@ impl CoreApi for Battle {
         }
     }
 
+    fn set_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16) {
+        if let Some(b) = self.hands[side as usize & 1].attack_bonus.get_mut(i as usize) {
+            *b = n;
+        }
+    }
+
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool {
         let chip = self.hands[side as usize & 1].ids.get(i as usize).copied().flatten();
         chip.is_some_and(|h| self.content.chip(h).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0)
@@ -1312,6 +1318,7 @@ impl CoreApi for Battle {
             ActorField::BackSpecialWeapon => weapon(a.back_special),
             ActorField::BeastOutSpent => Value::Bool(a.beast_out_spent),
             ActorField::BarrierVisual => a.barrier_visual.into(),
+            ActorField::PlusTint => i(a.plus_tint as i64),
         })
     }
 
@@ -1386,6 +1393,7 @@ impl CoreApi for Battle {
             (ActorField::ChargeShotWeapon, FieldValue::Ref(_)) => a.charge_shot = weapon,
             (ActorField::BeastOutSpent, FieldValue::Bool(x)) => a.beast_out_spent = x,
             (ActorField::BarrierVisual, FieldValue::Object(r)) => a.barrier_visual = r,
+            (ActorField::PlusTint, FieldValue::U16(x)) => a.plus_tint = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
