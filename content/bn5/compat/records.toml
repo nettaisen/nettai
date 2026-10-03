@@ -13,6 +13,7 @@
 [projectile_variants]
 "bn5:shot/plain" = 0x00
 "bn5:shot/cannon" = 0x01
+"bn5:shot/bright" = 0x03
 "bn5:shot/air" = 0x04
 "bn5:shot/charged" = 0x06
 "bn5:shot/gigacan" = 0x0C

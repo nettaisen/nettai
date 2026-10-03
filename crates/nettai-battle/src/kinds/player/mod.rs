@@ -20,9 +20,62 @@ pub(crate) fn rush_cancels(b: &mut Battle, r: ObjectRef, chip: nettai_content_ap
 
 /// `loc_80126EA`: `chip` as the navi's attack (a weapon that fires a
 /// chip).
+/// `sub_800A772`: the navi's side's chips are enabled and its lockout over.
+pub(crate) fn chips_enabled(b: &Battle, r: ObjectRef) -> bool {
+    input::chips_enabled(b, r)
+}
+
+/// `sub_8010332`: the navi's move lag.
+pub(crate) fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
+    idle::move_lag(b, r)
+}
+
+/// BN5's 0x081042E6: a navi's status visuals forgotten (`sub_801A5E2`)
+/// and its chips off the HUD (`sub_801DC36`, BattleObject +0x1A, +0x2A).
+pub(crate) fn drop_links(b: &mut Battle, r: ObjectRef) {
+    let c = coll_mut(b, r);
+    c.links[crate::collision::link::CONFUSE] = None;
+    c.links[crate::collision::link::BLIND] = None;
+    let o = b.objects.get_mut(r);
+    o.chips_held = 0;
+    o.chip = None;
+}
+
+/// BN5's 0x08104306: a navi no player controls leaves: no HP, the side's
+/// damage-carry record forgets it (`sub_802CDD0`), its reservation goes,
+/// it leaves every slot of the alive lists (0x08006BC2) and its object
+/// goes to its destroy state.
+pub(crate) fn leave(b: &mut Battle, r: ObjectRef) {
+    b.objects.get_mut(r).hp = 0;
+    let side = b.objects.get(r).alliance as usize;
+    if b.damage_carry[side].target == Some(r) {
+        b.damage_carry[side].target = None;
+    }
+    let fp = b.objects.get(r).future_panel;
+    b.unreserve_panel(r, fp.x, fp.y);
+    for slot in b.round.alive_actors.iter_mut().flatten() {
+        if *slot == Some(r) {
+            *slot = None;
+        }
+    }
+    let o = b.objects.get_mut(r);
+    o.state = state::DESTROY;
+    o.action = 0;
+    o.phase = 0;
+    o.phase_init = 0;
+}
+
+/// `sub_80117BA`: weapon `weapon`'s setup, and its action started in
+/// `set_attack` slot `kind`.
+pub(crate) fn start_weapon(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle, kind: u8) {
+    let action = idle::weapon_routine(b, r, weapon);
+    set_attack(b, r, action, kind);
+}
+
 pub(crate) fn load_chip_attack(b: &mut Battle, r: ObjectRef, chip: nettai_content_api::ChipHandle) {
     chip_use::load_attack(b, r, Some(chip));
 }
+mod ai_navi;
 mod entry;
 pub(crate) mod form;
 pub(crate) mod idle;
@@ -44,6 +97,8 @@ use nettai_content_api::{ChipHandle, WeaponHandle};
 use crate::content::Content;
 
 pub use navi_action::{EngineAction, NaviAction, NaviWord};
+pub use ai_navi::Controller;
+pub(crate) use ai_navi::spawn as spawn_ai_navi;
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
 use crate::content::ActorEntry;
 use crate::content::{FormData, FormKind, NaviData};
@@ -93,6 +148,10 @@ pub fn spawn(b: &mut Battle, entry: &ActorEntry) -> Option<ObjectRef> {
 /// The player's update (`sub_80EA460`): lifecycle state, then the sprite
 /// step every tick.
 pub fn update(b: &mut Battle, r: ObjectRef) {
+    // A navi no player controls: the navi type's update (BN5's 0x080F2228).
+    if ai_navi::is_ai_navi(b, r) {
+        return ai_navi::update(b, r);
+    }
     match b.objects.get(r).state {
         state::INIT => init(b, r),
         state::UPDATE => tick(b, r),
@@ -460,10 +519,13 @@ pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
         match kind {
             2 => a.lockout = a.attack.lockout,
             3 => a.back_special_cooldown = a.attack.lockout,
+            // BN5's chaos failure disarms the Chaos Unison charge
+            // (0x0800F2D0).
+            idle::CHAOS_FAILURE_KIND => a.chaos.armed = false,
             _ => {}
         }
         a.buffered_move = 0;
-        a.requests &= !(request::ATTACKS | request::MODE9_A);
+        a.requests &= !(request::ATTACKS | request::MODE9_A | request::CHAOS);
         reset_charge(b, r);
         clear_flag1(b, r, f1::USING_ACTION);
     }
@@ -920,6 +982,7 @@ fn load_weapons(b: &mut Battle, r: ObjectRef) {
         a.a_charge = w.a_charge;
         a.back_special = w.back_special;
         a.alt_a_charge = None;
+        a.chaos.weapon = None;
     } else {
         let w = content.form(s.form).weapons;
         a.mode9_a = w.mode9_a;
@@ -928,7 +991,10 @@ fn load_weapons(b: &mut Battle, r: ObjectRef) {
         set_charge_shot_routine(a, w.charge_shot, &content);
         a.back_special = w.back_special;
         a.alt_a_charge = w.alt_a_charge;
+        a.chaos.weapon = w.chaos;
     }
+    // BN5's load (0x0800DCD8) disarms a Chaos Unison charge.
+    a.chaos.armed = false;
 }
 
 /// `sub_800FF5E`: reload the base form's weapon bytes (after a NaviCust
@@ -1100,6 +1166,9 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
                     0
                 }
             }
+            // BN5's soul (0x0800DDCA): palette 2 while its Chaos Unison
+            // charge is armed.
+            FormKind::Soul if ai(b, r).chaos.armed => 2,
             // `byte_80203EA`: a Cross's palette (the bytes after the
             // Crosses', a Cross in Beast Out's, are 0).
             _ => form_palette,

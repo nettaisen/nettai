@@ -342,17 +342,6 @@ export type HyperBurstLook = { spreader: AttachmentLook, attachment: Kind, sound
 -- An H-Burst (BN6's action 0x34, BN5's 0x35): the bursts its shot makes where it hits.
 export type HyperBurstSpec = { id: string?, bursts: number }
 
--- A game's BodyGrd shuriken (@common/bodygrd/shuriken): its kind's key, its sprite, the landing's sound, the puff it
--- appears in, what it is and hits.
-export type BodyGuardShurikenLook = {
-    id: string,
-    sprite: SpriteAsset,
-    land_sound: Sound,
-    puff: Effect,
-    is: CollisionType,
-    hits: CollisionType,
-}
-
 -- A game's BodyGrd striker (@common/bodygrd/striker): its kind's key, its identity, the shurikens' kind and the
 -- throw's sound.
 export type BodyGuardStrikerLook = { id: string, identity: Identity, shuriken: Kind, throw_sound: Sound }

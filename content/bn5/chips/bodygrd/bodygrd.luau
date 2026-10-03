@@ -2,28 +2,14 @@
 -- BN5's BodyGrd (the dimming handler's subtype 46), where BN6's is a trap: its controller (effect object #0x6D,
 -- 0x080E8620: the usual dimming phases; its effect, 0x080E8664, sends out the striker at once with the controller's
 -- element and damage word plus the Atk+ bonus, and is done when its second parameter is 0, the record's: at once),
--- the shared striker (@common/bodygrd/striker, effect object #0x6E, 0x080E86B0: BN6's code) and shuriken
--- (@common/bodygrd/shuriken, attack object #0x5C, 0x080D14F0) with BN5's look. (BN5's shuriken, at its dive's
--- start, also marks its panel for 15 ticks with effect object 0x83 in battle flag 0x40 mode, 0x080D15E6: never in a
--- netbattle, and not ported, as the other 0x83 markers.)
+-- the shared striker (@common/bodygrd/striker, effect object #0x6E, 0x080E86B0: BN6's code) with BN5's identity and
+-- BN5's diving shuriken (objects/shuriken, attack object #0x5C).
 
-local collision = require("../../rules/collision")
 local dimming_chips = require("@common/dimming")
-local shuriken = require("@common/bodygrd/shuriken")
+local shuriken = require("../../objects/shuriken/shuriken")
 local striker = require("@common/bodygrd/striker")
 
 local bodygrd = {}
-
-local SHURIKEN = shuriken.make_kind {
-    id = "bn5:bodygrd/shuriken",
-    sprite = asset.sprite("bn5:shuriken"),
-    land_sound = asset.sound("bn5:panel-crack"),
-    -- Effect row 2 (0x080DFC9C: 14-02, animation 1).
-    puff = define.effect { sprite = asset.sprite("bn5:small-puff"), anim = 1, palette = 0 },
-    -- Row 0x1C (a thrown slash) and what hits navis.
-    is = collision.thrown_slash,
-    hits = collision.hits_navis,
-}
 
 bodygrd.striker = striker.make_kind {
     id = "bn5:bodygrd/striker",
@@ -37,7 +23,7 @@ bodygrd.striker = striker.make_kind {
         throwable = false,
         look = { anim = 0, palette = 0, shadow = false },
     },
-    shuriken = SHURIKEN,
+    shuriken = shuriken.kind,
     throw_sound = asset.sound("bn5:boomerang"),
 }
 

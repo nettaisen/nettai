@@ -256,9 +256,21 @@ pub fn shift_damage_carry(b: &mut Battle) {
 /// indexes with the chip's damage past 999; the table ends at formula 44).
 pub fn chip_damage_formula(b: &Battle, id: nettai_content_api::ChipHandle, side: u8, formula: &crate::content::DamageFormula) -> u16 {
     use crate::content::DamageFormula as F;
+    // BN5's: a fixed damage in the battle flag 0x40 mode.
+    if let F::SpNavi { per_player_gauges: Some(d), .. } | F::Count { per_player_gauges: Some(d), .. } = formula
+        && b.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0
+    {
+        return *d;
+    }
     match formula {
         F::OpponentHp => opponent_hp(b, side),
         F::SpNavi { by_time, .. } => sp_chip_damage(b, id, side, by_time),
+        F::Count { of, by_count, .. } => {
+            let n = counted(b, side, of);
+            *by_count.get(n.min(by_count.len().saturating_sub(1))).unwrap_or_else(|| {
+                panic!("chip {:?}'s damage by count has no counts", b.content.defs.chip(id).key)
+            })
+        }
         F::Gauge => gauge_damage(b, side),
         F::HpLost { cap } => damage_taken(b, side, cap.unwrap_or(500)),
         F::HpLastDigits => hp_last_digits(b, side),
@@ -294,7 +306,7 @@ fn opponent_hp(b: &Battle, side: u8) -> u16 {
 /// gauge plus 0x1500 in the battle flag 0x40 mode): 10 to 32 over the first
 /// half, to 128 by seven eighths, to 255 short of full; a full gauge (or
 /// more) gives 10.
-fn gauge_damage(b: &Battle, side: u8) -> u16 {
+pub(crate) fn gauge_damage(b: &Battle, side: u8) -> u16 {
     let gauge = if b.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0 {
         b.sides[side as usize & 1].gauge as u32 + 0x1500
     } else {
@@ -375,6 +387,21 @@ fn sp_chip_damage(b: &Battle, id: nettai_content_api::ChipHandle, side: u8, by_t
     *by_time.get(step).unwrap_or_else(|| {
         panic!("SP chip {:?} has no damage for deletion-time step {step} (sub_8010AE4)", b.content.defs.chip(id).key)
     })
+}
+
+/// What a `DamageFormula::Count` counts for `side`.
+fn counted(b: &Battle, side: u8, of: &crate::content::Counted) -> usize {
+    use crate::content::Counted as C;
+    match *of {
+        C::SideStat(n) => b.side_stats[side as usize & 1][n as usize & 0xF] as usize,
+        // `object_dead_getPanelsTypeAllianceCount`: the field's panels.
+        C::OwnPanels(t) => (1..=3u8)
+            .flat_map(|y| (1..=6u8).map(move |x| (x, y)))
+            .filter(|&(x, y)| b.field.panel(x, y).is_some_and(|p| p.kind == t && p.alliance == side))
+            .count(),
+        // 0x0800E994: the turn byte less one, compared unsigned.
+        C::TurnsBefore => (b.round.turn as u32).wrapping_sub(1) as usize,
+    }
 }
 
 /// `sub_8010C50`: a link navi's chip's damage, from the side's player navi

@@ -1,5 +1,5 @@
 --!strict
--- A shuffle's order (`battle.shuffle_order`) put into a list.
+-- A shuffle's order (`battle.shuffle_order`, `battle.console_shuffle_order`) put into a list.
 
 local order = {}
 
