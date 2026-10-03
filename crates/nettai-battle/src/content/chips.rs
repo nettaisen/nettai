@@ -289,6 +289,11 @@ pub enum DamageFormula {
     /// its user's buster attack up to 5 (`sub_8010C50`, a row of
     /// `byte_80212D4`; formulas 23 to 44).
     NaviLevel { base: u8, per_level: u8 },
+    /// BN5's CusVolt (its formulas 73 to 75, 0x0800EB0E): `base` plus 100
+    /// by the custom gauge's level (its value >> 7): 100 × level / 95 below
+    /// 96, 100 to 126, none from 127 (full); the side's own gauge in the
+    /// battle flag 0x40 mode.
+    GaugeLevel { base: u16 },
     /// By a count of its user's side, `by_count[n]` (the last entry for
     /// more), and `per_player_gauges` in the battle flag 0x40 mode: BN5's
     /// DS navi chips (formulas 23 to 44, 0x0800E9B0: the side's statistic

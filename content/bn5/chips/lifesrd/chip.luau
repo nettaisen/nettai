@@ -7,6 +7,11 @@
 
 local regions = require("@common/regions")
 local swords = require("../../lib/swords")
+local recipe_longblde = require("../longblde/chip")
+local recipe_longswrd = require("../longswrd/chip")
+local recipe_sword = require("../sword/chip")
+local recipe_wideblde = require("../wideblde/chip")
+local recipe_wideswrd = require("../wideswrd/chip")
 
 return define.chip {
     id = "bn5:lifesrd",
@@ -21,6 +26,13 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
+    -- BN5's recipes (written by tools/bn5/recipes.py): in the order of its full table (0x08027FC8); the netbattles'
+    -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
+    -- gauge tries.
+    program_advances = {
+        { order = 21, sequence = { recipe_sword, recipe_wideswrd, recipe_longswrd } },
+        { order = 22, sequence = { recipe_sword, recipe_wideblde, recipe_longblde } },
+    },
     action = swords.slash {
         id = "bn5:lifesrd/action",
         blade = swords.blade,

@@ -449,7 +449,7 @@ impl Side {
         // checked it.)
         let soul_family = screen.chip_in(screen.soul.given_up, folder).map(|c| ctx.library.chip(screen::checked(c, &view).id).family);
         let mut pa_used = self.program_advances;
-        let built = builder::build(&picks, ctx.turn, &mut pa_used, ctx.library, damage);
+        let built = builder::build(&picks, ctx.turn, &mut pa_used, ctx.library, ctx.per_player_gauges, damage);
         self.program_advances = pa_used;
         for p in &picks {
             // A link navi's own chip is spent for the round (the bit of

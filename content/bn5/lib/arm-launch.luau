@@ -4,7 +4,7 @@
 -- chip sends with the attack's damage word; at 16 it recovers for 6 ticks, then lowers the arm and goes back to
 -- idle.
 
-local buster = require("./buster")
+local arm = require("./arm")
 
 local arm_launch = {}
 
@@ -23,7 +23,7 @@ local LAUNCH, RECOVER = 0x0, 0x4
 local function launching(me: Object, s: ActionState, launch: (me: Object, damage: number) -> ())
     if me.step_init == 0 then
         me:set_animation(THROW_ANIM)
-        buster.raise_arm(me)
+        arm.raise(me)
         me:set_status("using_action", true)
         me.step_init = 4
         s.timer = 0
