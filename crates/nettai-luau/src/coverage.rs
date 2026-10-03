@@ -9,9 +9,10 @@
 //! what content does.
 
 use std::cell::{Cell, RefCell};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
+use std::ffi::CStr;
 
-use mlua::Lua;
+use mlua::{Lua, ffi};
 use nettai_content_api::FnId;
 
 /// What ran while recording.
@@ -30,11 +31,16 @@ pub struct Ran {
 thread_local! {
     static RECORDING: Cell<bool> = const { Cell::new(false) };
     static RAN: RefCell<Ran> = RefCell::new(Ran::default());
+    /// The chunk names (interned strings, one per module) already counted
+    /// since [`start`], by address: an interrupt check whose function's
+    /// module is counted does no more than look it up.
+    static SEEN: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
 }
 
 /// Start recording what runs on this thread (from nothing).
 pub fn start() {
     RAN.with(|r| *r.borrow_mut() = Ran::default());
+    SEEN.with(|s| s.borrow_mut().clear());
     RECORDING.with(|r| r.set(true));
 }
 
@@ -55,17 +61,21 @@ pub(crate) fn called(f: FnId) {
 
 /// An interrupt check: the running function's module ran.
 pub(crate) fn interrupt(lua: &Lua) {
-    lua.inspect_stack(0, |d| {
-        let source = d.source().source;
-        let Some(source) = source.as_deref() else { return };
-        // The chunk's name: `@<module>.luau`.
-        let module = source.strip_prefix('@').unwrap_or(source);
-        let module = module.strip_suffix(".luau").unwrap_or(module);
-        RAN.with(|r| {
-            let mut r = r.borrow_mut();
-            if !r.modules.contains(module) {
-                r.modules.insert(module.to_string());
-            }
-        });
-    });
+    let mut ar: ffi::lua_Debug = unsafe { std::mem::zeroed() };
+    // SAFETY: the running state, level 0 (the function the check is in),
+    // what `s` fills in: its chunk's name, which lives as long as the
+    // function's prototype.
+    if unsafe { ffi::lua_getinfo(lua.state(), 0, c"s".as_ptr(), &mut ar) } == 0 || ar.source.is_null() {
+        return;
+    }
+    let key = ar.source as usize;
+    if SEEN.with(|s| !s.borrow_mut().insert(key)) {
+        return;
+    }
+    // SAFETY: as above; a NUL-terminated string.
+    let source = unsafe { CStr::from_ptr(ar.source) }.to_string_lossy();
+    // The chunk's name: `@<module>.luau`.
+    let module = source.strip_prefix('@').unwrap_or(&source);
+    let module = module.strip_suffix(".luau").unwrap_or(module);
+    RAN.with(|r| r.borrow_mut().modules.insert(module.to_string()));
 }
