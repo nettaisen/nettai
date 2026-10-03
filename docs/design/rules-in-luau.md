@@ -1493,7 +1493,7 @@ P1's items 12 and 8 (bn5-map.md §15.3), on R4.
 - **The frontend.** nettai-render draws a button by its name (`View::button_look`: BN6's `redeal` and `scrap`
   pictures, tiles and cursor, §4.8). The driver labels a button by its name.
 - **Next.** Beast Out (its button, the BeastOut chip and their animations as windows, the result's form) goes with
-  the Cross window: the two read each other (a chosen Cross greys out Beast Out, and Beast Out blocks the
+  the Cross window: the two read each other (a chosen Cross grays out Beast Out, and Beast Out blocks the
   window). Then the setup (S6c).
 - **Merged with main f816b94d** (bn5-port-5): BN5's soul button (`SlotKind::Soul`, `Phase::SoulChosen`, in Rust)
   sits beside the system buttons. It and its sequence take the extras too. A port of it to a BN5 system's button
@@ -1507,3 +1507,49 @@ P1's items 12 and 8 (bn5-map.md §15.3), on R4.
   - the audit 0 problems; us-spelling 0;
   - BN5's replays as main's, on a BN5 pack extracted again for bn5-port-5's asset names: 402 match every frame,
     18 replay, 223,414 of 948,097 frames.
+
+### S6b1, Beast Out on the custom screen (2026-10-03)
+
+- **Windows** (§4.4).
+  - A system declares its windows: `windows = { name = { update } }`, read into `Defs::windows`.
+  - `Phase::Window { window, tick }` runs a window's `update(side)` each tick, until it answers that it is done.
+    The tick counts from 1 (`custom.window_tick`).
+  - New custom hooks: `custom.open` (as the screen opens, before the hand size and the layout), `custom.confirmed`
+    (OK built the hand), `custom.chip_picked` and `custom.chip_taken_back` (a hand chip, `(side, chip)`), and a
+    button's `taken_back`.
+- **The screen's result form.** `Screen::form` and the system that set it hold the form a pick puts the navi in at
+  the turn's start. OK turns it into the transform's form.
+  - `custom.set_form` sets it. `custom.form_taken` asks whether another system holds it: Beast Out grays out under
+    a Cross's form, and the Cross window refuses under Beast Out's.
+  - Until the Cross window is a system's, a Cross the Rust window chose counts as another system's form.
+- **The `custom` library** for buttons and windows:
+  - `pick`, `play` (the screen's sounds by name), `set_column_icon`, `open_window`, `window_tick`, `shake` (this
+    console's camera), `frame` and `set_frame`, `spin`, `fade` (by name), `set_face`, `pick_first`,
+    `set_button_state`, `update_availability`, `draw_emblem`;
+  - `set_form`, `form_taken`, `full`, `button_picked`;
+  - `player`: what the screen reads of its player. Its emotion is the screen's own (the context's: `Side::emotion`),
+    so bn6-compat's check of the traces' screens, whose battle has no navi, still reads it. The version, the Cross
+    list, Beast Out unlocked and sealed, and a random battle are read from the setup until S6c.
+- **BN6's Beast Out** (content/bn6/rules/beast/custom.luau), the beast system's:
+  - the button in the special slot (`sub_8029FB4`, `sub_802A57E`, `sub_8028F48`, `sub_8028D6C`, `sub_802A0EC`);
+  - its 70-tick animation as the window `beast_out` (`sub_802770C`);
+  - the BeastOut chip's 85-tick animation as `beast_out_chip` (`sub_80275EC`, from `custom.chip_picked`);
+  - the Beast form and the roar's game (`Unlocks::beast_form` and `beast_game`, ported);
+  - the round's Beast Out (`RoundMemory::beast_out_used`) as its state, forgotten at the round's first screen, noted
+    at OK.
+- **The BeastOut chip's selection rule** is data: the chip trait `goes_with_any` (`sub_8028E4C`, `sub_8028EC8`), so
+  `ChipTraits` is now 16 bits. gen-content expects it on chip 0x13F.
+- **Gone from Rust:** `SlotKind::BeastOut`, `Phase::BeastOutChosen` and `BeastOutChipChosen`, `Screen::beast_out`,
+  `update_beast_out`, `PlayerView::beast_out_button`, `beast_out_available` and `beast_game`, `beast_face`,
+  `is_beast_out`.
+- **Tests.** The screen's own tests lose Beast Out's: the button, its timeline, and the roar's game with a Cross list
+  are BN6's Luau now. The lab's Beast Out scenarios and identity.sh cover the first two. **The Cross-list roar has
+  no recording** (the Cross list is nettai's extension): unverified until a verify-side test drives it.
+- **Gates** (on main e1c69bdf):
+  - the build without warnings, 480 tests, the content check (1,276 modules), gen-content check 0 errors;
+  - `gate-against.sh full`: the 189 legacy rounds, machgun and soundmod with 96 rollback rows, and the lab 6548
+    (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
+  - identity.sh against main's frontend on main's content: the custom-screen and sample lists identical in both
+    text modes (174 scenarios, 200,712 frames each);
+  - the audit 0 problems; us-spelling 0 (after it fixed a British spelling of mine in S6a's note);
+  - BN5's replays as main's: 402 match, 18 replay, 223,414 of 948,097 frames.
