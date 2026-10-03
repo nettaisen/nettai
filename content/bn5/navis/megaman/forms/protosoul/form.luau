@@ -16,6 +16,7 @@ return define.form {
     kind = "soul",
     soul = { number = 1, family = "sword" },
     change = souls.action,
+    revert = souls.revert,
     sprite = asset.sprite("bn5:protosoul"),
     element = "null",
     buster_bonus = 0,
