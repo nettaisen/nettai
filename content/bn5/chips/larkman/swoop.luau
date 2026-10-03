@@ -1,0 +1,316 @@
+--!strict
+-- LarkMan's swoop (BN5's attack object #0xBA, 0x080DD738; BN5's own): LarkMan's body as a hit, which flies in from
+-- below the field two columns behind its navi, diagonally up across three columns, circles back round a center 20
+-- pixels ahead of where it turns, and flies off backward. The navi chip's (variant 5, from LarkMan's navi) acts
+-- and animates while the battle is dimmed. With the navi's command entered (./navi), its body hits for nothing and
+-- a follower (./follower) carries its damage.
+--
+-- Not ported: the variants LarkMan the virus's AI spawns (0 to 4, 0x08100942: its own start panels, speeds and
+-- turn, a warning effect, waiting on the dimming and on its owner's attack), and variant 6 (the navi of the
+-- summon table's entry 23, which no chip names: a faster turn, 25 more ticks of it, its own animations).
+
+local collision = require("../../rules/collision")
+local sparks = require("../../lib/sparks")
+local regions = require("@bn6/lib/regions")
+local link_chips = require("@bn6/lib/link_chips")
+local trajectory = require("@bn6/lib/trajectory")
+local follower = require("./follower")
+
+local swoop = {}
+
+export type State = {
+    -- The navi chip's level (its Param1), which picks the palette (+0x30).
+    level: number,
+    -- It faces left (+5: its side ^ flip).
+    left: boolean,
+    -- Its column at the start (+6), and its look: 1 facing right, 3 left (+7: from below the field).
+    start_x: number,
+    dir: number,
+    -- The turn: its radius and center (+0x60, +0x6C, +0x70), its angle (16.16 of 256 a turn, +0x68) and step
+    -- (+0x64), the animation steps taken (+0x74).
+    radius: number,
+    center_x: number,
+    center_y: number,
+    angle: number,
+    angle_step: number,
+    anim_step: number,
+    -- The navi's command was entered (+0x7C), and the follower carrying its damage (+0x48).
+    powered: boolean,
+    follower: Object?,
+}
+
+local SPRITE = asset.sprite("bn5:larkman")
+local SOUND_SWOOP = asset.sound("bn5:swoop")
+local HIT_MOD = 3
+
+-- By the level (0x080DD844): the dark palette for DS's 4.
+local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 4 }
+-- By look (0x080DD850: 0 and 2, from above the field, are the virus's).
+local ANIMS: { [number]: number } = { [0] = 8, 6, 9, 0xB }
+-- The navi chip's speed (0x080DD858's row 5), the turn's step (0x080DDB7C's row 5: 16.16 of 256 steps) and the
+-- ticks it lasts less (0x080DDB9C's row 5).
+local SPEED_X, SPEED_Y = 0x8_0000, 0x4_CCCC
+local TURN_STEP = 0xD_AC50
+local TURN_SHORTER = 1
+-- The turn's animations and the angles each waits for, by look (0x080DDC1C, 0x080DDC2C: three each).
+local TURN_ANIMS: { [number]: { number } } = { [0] = { 6, 0xB, 9 }, { 8, 9, 0xB }, { 0xB, 6, 8 }, { 9, 8, 6 } }
+local TURN_ANGLES: { [number]: { number } } =
+    { [0] = { 0x40, 0x00, 0xC0 }, { 0xC0, 0x100, 0x140 }, { 0x40, 0x80, 0xC0 }, { 0xC0, 0x80, 0x40 } }
+-- The sine table (math_sinTable), as the turn reads it.
+local sine = trajectory.sine
+
+-- 0x080DDA94 (the navi chip's): two columns behind its navi, below the field, 32 pixels up.
+local function place(me: Object, s: State)
+    me.panel_y = 4
+    local navi = me.related1 :: Object
+    local x = navi.panel_x + (if s.left then 2 else -2)
+    me.panel_x = int.u8(x)
+    s.start_x = int.u8(x)
+    me:set_coordinates_from_panel()
+    local p = me.pos
+    me.pos = Vec3.new(p.x, p.y, 0x20_0000 + bit32.band(p.z, 0xFFFF))
+end
+
+-- 0x080DD76C.
+local function init(me: Object)
+    local s = me.state :: State
+    s.left = bit32.bxor(me.alliance, me.flip) ~= 0
+    place(me, s)
+    s.dir = (if s.left then 2 else 0) + (if me.panel_y ~= 0 then 1 else 0)
+    local sprite = me.sprite
+    sprite:load(SPRITE)
+    sprite.shadow = "ground"
+    me.visible = true
+    local anim = ANIMS[s.dir]
+    me.anim, me.anim_loaded = anim, anim
+    sprite:set_animation(anim)
+    s.anim_step = 0
+    sprite.palette = PALETTES[s.level] or 0
+    me.vel = Vec3.new(if s.left then -SPEED_X else SPEED_X, if me.panel_y == 4 then -SPEED_Y else SPEED_Y, me.vel.z)
+    s.powered = false
+    if not me:create_collision() then
+        me:free()
+        return
+    end
+    me:setup_collision(collision.collision_3e, collision.hits_navis, HIT_MOD)
+    me.collision:set_hit_effect(sparks.plain)
+    if not field.valid(me.panel_x, me.panel_y) then
+        me.collision:set_region(nil)
+    end
+    me.collision:present()
+    battle.play_sound(SOUND_SWOOP)
+    me:set_lifecycle("update")
+end
+
+-- 0x080DDD06: the follower goes where the body is.
+local function lead(me: Object, s: State)
+    local f = s.follower
+    if s.powered and f then
+        local p, q = me.pos, f.pos
+        f.pos = Vec3.new(p.x, p.y, q.z)
+    end
+end
+
+-- After a move: the panel under it, and its hit there when that changed.
+local function moved(me: Object, x: number, y: number)
+    me:set_panel_from_coordinates()
+    me:update_collision_panels()
+    if me.panel_x ~= x or me.panel_y ~= y then
+        me.collision:set_region(regions.single)
+    end
+end
+
+-- 0x080DDAFC: the turn starts, round a center 20 pixels ahead on the middle row's.
+local function start_turn(me: Object, s: State)
+    s.radius = 0x1F
+    s.center_x = int.u32(me.pos.x + (if s.left then -0x14_0000 else 0x14_0000))
+    s.center_y = 0x1C_0000
+    local dx = if s.left then 0x14_0000 else -0x14_0000
+    local dy = if me.panel_y == 3 then 0x18_0000 else -0x18_0000
+    local angle = trajectory.angle(dx, dy)
+    me.timer2 = angle
+    s.angle = int.shl(angle, 16)
+    local step = TURN_STEP
+    if not s.left then
+        step = -step
+    end
+    if me.panel_y ~= 3 then
+        step = -step
+    end
+    s.angle_step = step
+    me.timer = int.tdiv(0xB8, bit32.rshift(TURN_STEP, 16)) - TURN_SHORTER
+end
+
+-- Action 0 (0x080DD900): diagonally up; on reaching the center of the third column ahead, the turn.
+local function rise(me: Object)
+    local s = me.state :: State
+    if not field.valid(me.panel_x, me.panel_y) then
+        me.collision:set_region(nil)
+    end
+    lead(me, s)
+    local center = field.center(me.panel_x, me.panel_y)
+    local x, y = me.panel_x, me.panel_y
+    local p, v = me.pos, me.vel
+    local old_x = p.x
+    me.pos = Vec3.new(int.i32(p.x + v.x), int.i32(p.y + v.y), p.z)
+    if center ~= old_x and link_chips.between(me.pos.x, old_x, center) then
+        me:set_coordinates_from_panel()
+        if int.u8(me.facing * 3 + s.start_x) == me.panel_x then
+            start_turn(me, s)
+            me:set_action(4)
+            return
+        end
+    end
+    me:set_panel_from_coordinates()
+    me:update_collision_panels()
+    if field.valid(me.panel_x, me.panel_y) and (me.panel_x ~= x or me.panel_y ~= y) then
+        me.collision:set_region(regions.single)
+    end
+end
+
+-- 0x080DDBD4: the next of the turn's animations, once the angle passes its mark.
+local function turn_anim(me: Object, s: State)
+    local n = s.anim_step
+    if n >= 3 then
+        return
+    end
+    local mark = TURN_ANGLES[s.dir][n + 1]
+    local angle = me.timer2
+    if s.dir == 0 or s.dir == 3 then
+        if angle > mark then
+            return
+        end
+    elseif angle < mark then
+        return
+    end
+    me.anim = TURN_ANIMS[s.dir][n + 1]
+    s.anim_step = n + 1
+end
+
+-- Action 4 (0x080DD99E): round the center; then off.
+local function turn(me: Object)
+    local s = me.state :: State
+    lead(me, s)
+    local x, y = me.panel_x, me.panel_y
+    s.angle = int.u32(s.angle + s.angle_step)
+    me.timer2 = bit32.rshift(s.angle, 16)
+    -- 0x080DDBA4.
+    local a = bit32.band(me.timer2, 0xFF)
+    local p = me.pos
+    me.pos = Vec3.new(
+        int.i32(s.center_x + int.shl(int.mul32(sine(a + 64), s.radius), 8)),
+        int.i32(s.center_y + int.shl(int.mul32(sine(a), s.radius), 8)),
+        p.z
+    )
+    moved(me, x, y)
+    turn_anim(me, s)
+    local left = me.timer - 1
+    me.timer = left
+    if left <= 0 then
+        me:set_action(8)
+    end
+end
+
+-- Action 8 (0x080DDA00): off backward, gone off the field.
+local function leave(me: Object)
+    local s = me.state :: State
+    lead(me, s)
+    local x, y = me.panel_x, me.panel_y
+    local p, v = me.pos, me.vel
+    me.pos = Vec3.new(int.i32(p.x - v.x), int.i32(p.y + v.y), p.z)
+    moved(me, x, y)
+    if not field.valid(me.panel_x, me.panel_y) then
+        me.collision:set_region(nil)
+        me:set_lifecycle("destroy")
+    end
+end
+
+local ACTIONS = { [0] = rise, [4] = turn, [8] = leave }
+
+-- 0x080DDCD0: the navi's command was entered: its body hits for nothing, white-blue, and a follower carries its
+-- damage.
+local function power_up(me: Object, s: State)
+    if s.powered then
+        return
+    end
+    local navi = me.related1
+    if not (navi and navi.state.commanded) then
+        return
+    end
+    s.powered = true
+    me:reset_collision_types(collision.collision_46, collision.hits_navis, HIT_MOD)
+    me.collision.self_damage = 0
+    me.sprite.color_shader = 0x1E0
+    s.follower = follower.spawn(me, me.element, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
+end
+
+-- 0x080DD890: resolve the hits; act; register again.
+local function tick(me: Object)
+    local c = me.collision
+    c:remove()
+    me:hit_spark()
+    if battle.over() then
+        c:set_region(nil)
+        me.lifecycle = "destroy"
+        return
+    end
+    local s = me.state :: State
+    power_up(me, s)
+    if c.hit_flags ~= 0 then
+        c:set_region(nil)
+    end
+    local action = ACTIONS[me.action]
+    if not action then
+        error(string.format("LarkMan's swoop action %#x reads past its table (0x080DD8F4)", me.action))
+    end
+    action(me)
+    c:present()
+end
+
+swoop.kind = define.kind {
+    id = "bn5:larkman/swoop",
+    pool = "attack",
+    state = {
+        level = "u8",
+        left = "bool",
+        start_x = "u8",
+        dir = "u8",
+        radius = "u32",
+        center_x = "u32",
+        center_y = "u32",
+        angle = "u32",
+        angle_step = "i32",
+        anim_step = "u8",
+        powered = "bool",
+        follower = "object",
+    },
+    -- 0x080DD738.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
+        end
+        me:update_sprite_while_dimmed()
+    end,
+}
+
+-- 0x080DDA60: LarkMan's swoop from `navi` (the navi chip's variant 5), the chip's level, element and damage word.
+function swoop.spawn(navi: Object, level: number, element: number, damage: number): Object?
+    local o = battle.spawn(swoop.kind, Vec3.zero)
+    if o then
+        local s = o.state :: State
+        s.level = level
+        o.element = element
+        o.related1 = navi
+        o:set_damage_word(damage)
+        o.alliance, o.flip = navi.alliance, navi.flip
+        o.run_while_dimmed = true
+    end
+    return o
+end
+
+return swoop
