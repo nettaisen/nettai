@@ -387,6 +387,65 @@ impl<'a> View<'a> {
     }
 }
 
+/// The icon of the soul BN5's soul button offers or gave, if the special
+/// slot is the soul button: the pack's `icons` and the icon's first tile in
+/// them (by the soul's number, Chaos Unison's 13: 0x0802341C).
+fn soul_icon<'a>(a: &'a CustomScreen, screen: &Screen) -> Option<(&'a Tiles, usize)> {
+    if screen.slots[SPECIAL_SLOT as usize].kind != SlotKind::Soul {
+        return None;
+    }
+    let b = a.button(SOUL_BUTTON)?;
+    let soul = &screen.soul;
+    let n = if soul.chaos { CHAOS_ICON } else { soul.number as usize };
+    (b.icons.len() >= 4 * (n + 1)).then_some((&b.icons, 4 * n))
+}
+
+/// The Chaos Unison's icon among the soul button's.
+const CHAOS_ICON: usize = 13;
+
+/// BN5's soul choice (its state 9, 0x080232D0: `Phase::SoulChosen`): the
+/// soul's icon as a 16x16 sprite (sprite palette 13) over the picked
+/// column's cell after the picks (0x0802330C: y = 24 + 16 picks, x 0x60),
+/// drawn from the tick after it is loaded (0x08023360) through the white
+/// flashes, rising 2 pixels a tick for 8 ticks onto the first cell
+/// (0x0802337A), whitened by its flash (fades 0x34 and 0x30, the sprite
+/// palette's), until the soul takes the first cell (0x080233E0).
+fn soul_flight<'a>(a: &'a CustomScreen, screen: &Screen, sub: u8, counter: u8) -> Option<SpritePart<'a>> {
+    let rise = match sub {
+        4 if counter > 0 => 0,
+        8 => 2 * counter as i32,
+        12 | 16 | 20 => 16,
+        _ => return None,
+    };
+    let (tiles, first) = soul_icon(a, screen)?;
+    let b = a.button(SOUL_BUTTON)?;
+    let f = screen.look.fade;
+    let palette = match f.mode {
+        nettai_battle::battle::FadeMode::SoulFlash | nettai_battle::battle::FadeMode::SoulFlashBack => {
+            let n = (f.level >> 4).min(16) as u8;
+            b.icon_palette.map(|c| crate::compose::apply_fade(c, Fade::White(n)))
+        }
+        _ => b.icon_palette,
+    };
+    let y = 24 + 16 * screen.selection().len() as i32 - rise;
+    Some(SpritePart {
+        x: 0x60,
+        y: (y & 0xFF) as u8,
+        width: 16,
+        height: 16,
+        tiles,
+        first_tile: first,
+        hflip: false,
+        vflip: false,
+        palette,
+        priority: 1,
+        alpha: None,
+        mosaic: None,
+        vscale: None,
+        affine: None,
+    })
+}
+
 /// The name BN5's soul button is drawn by (`SlotKind::Soul`; the pack's
 /// `CustomScreen::buttons`), which a system's button of that name draws by
 /// too.
@@ -721,11 +780,11 @@ impl Window {
                     blank_details(self, &look.details(state));
                 }
             }
-            // BN5's soul button (0x08024540: its picture in the palette of
-            // its state), drawn by its name.
+            // BN5's soul button (0x08024540: its picture in its first palette, a
+            // Chaos Unison's in its second: the slot's +6), drawn by its name.
             SlotKind::Soul => {
                 if let Some(look) = v.named_look(SOUL_BUTTON) {
-                    blank_details(self, &look.details(state));
+                    blank_details(self, &look.details(v.screen.soul.chaos as usize));
                 }
             }
             SlotKind::Empty | SlotKind::Hidden => {}
@@ -770,7 +829,9 @@ impl Window {
                 Some(a) if a.region.as_deref().is_some_and(|r| r != v.region) => {
                     Some("the Japanese games' chip picture (a US console shows a placeholder)")
                 }
-                Some(a) if a.version.as_deref().is_some_and(|g| g != console_version) => {
+                // (A picture under its version's own key is the console's
+                // own: `Packs::chip_art`.)
+                Some(a) if a.version.as_deref().is_some_and(|g| g != console_version && !a.key.ends_with(g)) => {
                     Some("the chip's own beast's picture (a console shows its own)")
                 }
                 _ => None,
@@ -832,7 +893,7 @@ impl Window {
                 // patch's tiles, as Beast Out's).
                 SlotKind::Soul => {
                     if let Some(look) = v.named_look(SOUL_BUTTON) {
-                        self.tiles.put_part(at, look.tiles, look.count * state, look.count);
+                        self.tiles.put_part(at, look.tiles, look.count * (state != 0) as usize, look.count);
                     }
                 }
                 SlotKind::Button { button, .. } => {
@@ -878,8 +939,14 @@ impl Window {
         let picks = v.screen.selection();
         for i in 0..5usize {
             let at = self.layout.column_icons + 4 * i as u16;
-            let icon = v.screen.look.column[i].and_then(|c| v.icon(c, problems));
-            self.tiles.put(at, icon.unwrap_or(&a.empty_icon));
+            let icon = match v.screen.look.column[i] {
+                Some(c) => v.icon(c, problems).map(|t| (t, 0)),
+                // BN5's soul, given for a chip: its icon (0x0802341C).
+                None if picks.get(i) == Some(&SPECIAL_SLOT) => soul_icon(v.assets, v.screen),
+                None => None,
+            };
+            let (tiles, first) = icon.unwrap_or((&a.empty_icon, 0));
+            self.tiles.put_part(at, tiles, first, 4);
             let filled = (i < picks.len()) as u16;
             let tile = self.layout.column_cells + 2 * filled;
             for (x, hflip) in [(11, false), (14, true)] {
@@ -1250,6 +1317,11 @@ pub fn draw<'a>(
     // one before).
     let drawn = screen.look.drawn;
     let mut queue: Vec<SpritePart<'a>> = Vec::new();
+    // BN5's soul choice's flying icon (its state 9's routines draw it
+    // before the screen's others).
+    if let Phase::SoulChosen { sub, counter } = screen.phase {
+        queue.extend(soul_flight(a, screen, sub, counter));
+    }
     if let Some(frame) = drawn.cursor {
         queue.extend(cursor_parts(&v, a, frame));
     }

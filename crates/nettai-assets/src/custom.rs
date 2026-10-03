@@ -189,6 +189,12 @@ pub struct ButtonPictures {
     pub tiles: Tiles,
     pub picture: Picture,
     pub palettes: Vec<Palette>,
+    /// The icons (2x2 each) the picked column shows for what the button
+    /// gives, by its number (BN5's souls by their number, 13 Chaos Unison's:
+    /// 0x08024010's table), and the palette of the sprite the icon flies as
+    /// (BN5's state 9).
+    pub icons: Tiles,
+    pub icon_palette: Palette,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

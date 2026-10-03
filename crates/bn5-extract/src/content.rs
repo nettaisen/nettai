@@ -119,7 +119,7 @@ pub fn main(args: &[String]) {
         bundle.backgrounds.iter().flatten().count(),
         bank.songs.iter().flatten().count() - left_out.len(),
         bank.samples.len(),
-        crate::graphics::CHIP_COUNT,
+        bundle.custom.chip_art.len() - versioned.len(),
         versioned.len(),
         files.len(),
         bytes / 1024,

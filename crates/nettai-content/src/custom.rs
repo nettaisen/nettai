@@ -234,6 +234,9 @@ pub struct ButtonDoc {
     pub size: [u8; 2],
     pub tiles: TileImage,
     pub picture: TileImage,
+    /// The column's icons for what it gives, with the flying icon's palette.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icons: Option<TileImage>,
 }
 
 /// Another language's pictures with words: its own files, named with the
@@ -428,7 +431,8 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
             let states = (b.tiles.len() as u32).div_ceil((w * h).max(1)).max(1);
             let tiles = image(&format!("buttons/{name}.png"), &b.tiles, Layout::Blocks { width: w, height: h, columns: states }, &[frame0], 0, &none);
             let picture = image(&format!("pictures/{name}.png"), &b.picture.tiles, PICTURE, &b.palettes, b.palettes.len(), &none);
-            ButtonDoc { name: name.clone(), size: [b.width, b.height], tiles, picture }
+            let icons = (!b.icons.is_empty()).then(|| image(&format!("buttons/{name}-icons.png"), &b.icons, ICONS(14), &[b.icon_palette], 1, &none));
+            ButtonDoc { name: name.clone(), size: [b.width, b.height], tiles, picture, icons }
         })
         .collect();
     let maps =|m: &[Vec<MapEntry>]| m.iter().map(|m| m.iter().map(tiles::entry_text).collect()).collect();
@@ -556,7 +560,14 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         let (picture, palettes) = img(&b.picture, report)?;
         let picture = Picture { tiles: picture, palette: palettes.first().copied().unwrap_or([0; 16]) };
         let tiles = img(&b.tiles, report)?.0;
-        buttons.push((b.name.clone(), ButtonPictures { width: b.size[0], height: b.size[1], tiles, picture, palettes }));
+        let (icons, icon_palette) = match &b.icons {
+            Some(i) => {
+                let (t, p) = img(i, report)?;
+                (t, p.first().copied().unwrap_or([0; 16]))
+            }
+            None => (Tiles::default(), [0; 16]),
+        };
+        buttons.push((b.name.clone(), ButtonPictures { width: b.size[0], height: b.size[1], tiles, picture, palettes, icons, icon_palette }));
     }
     Some(CustomScreen {
         layout: doc.layout.map_or(CustomLayout::BN6, CustomLayout::from),
