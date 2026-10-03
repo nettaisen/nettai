@@ -15,7 +15,6 @@ use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
 use crate::field::PanelType;
 use crate::object::{DragStep, ObjectRef, PanelPos, Vec3};
-use crate::content::FormKind;
 
 /// `sub_801AF44`, including the action dispatch (`sub_801B9E6`).
 pub(super) fn update(b: &mut Battle, r: ObjectRef) {
@@ -258,12 +257,10 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
     }
     let side = b.objects.get(r).alliance;
     let opp = side ^ 1;
-    let opp_form = b.form(opp as usize).kind;
-    if coll(b, r).acc.counter & 0x8000 != 0 && matches!(opp_form, FormKind::Base | FormKind::Beast) {
-        let a = ai(b, r);
-        if !a.beast_out_spent && !a.exhausted {
-            set_mood(b, opp, 0xFF);
-        }
+    // A counter: the counterer's side's rules (BN6's emotion system: Full
+    // Synchro, unless this navi's mood is held).
+    if coll(b, r).acc.counter & 0x8000 != 0 {
+        b.systems_countered(opp, r);
     }
     let loss = coll(b, r).acc.mood_damage;
     super::lose_mood(b, side, loss);

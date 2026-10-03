@@ -105,7 +105,7 @@ return define.system {
             end
             local kind = battle.navi(side).form.kind
             if kind == "beast" or kind == "cross_beast" then
-                navi.beast_out_spent = true
+                navi.tired = true
             elseif kind == "beast_over" then
                 -- `sub_8014466`: exhausted, then the mood 0 that exhaustion
                 -- itself blocks.
@@ -147,7 +147,7 @@ return define.system {
                 if stats.beast_out_counter ~= 0 then
                     return
                 end
-                navi.beast_out_spent = true
+                navi.tired = true
                 revert = stats.beast
             end
             if revert then

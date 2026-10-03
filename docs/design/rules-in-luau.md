@@ -1421,3 +1421,42 @@ P1's items 12 and 8 (bn5-map.md §15.3), on R4.
     DarkInvs scenarios;
   - the audit 0 problems; BN5's replays as before (252 replay, 243 match, 139,499 of 948,097 frames);
   - us-spelling 0 on both branches.
+
+### S5, emotions (2026-10-02)
+
+- **BN6's emotion system** (content/bn6/rules/emotion/system.luau, in the stock ruleset after the beast system) holds
+  BN6's rules for when:
+  - **a navi starts the round tired.** At `round_start`, a navi whose Beast Out counter is spent starts tired
+    (`sub_8013892`'s part, the original's init).
+  - **a counter gives Full Synchro.** `countered(side, victim)`, run by the counterer's side's systems: in base
+    form or a plain Beast Out, unless the victim's mood is held (`sub_801A200`'s rule, reading the other side's
+    pushed fact, §4.7).
+  - **the NaviCust swing bug runs.** `navi_tick(side, navi)` (`sub_8013DA0`), only for a navi whose `ticked` the
+    system set at the round's start (its emotion bug). Patch cards set the bug before that, and only BugFix clears
+    it, which the hook reads each tick as the original does. Its state (`swing_ticks`, `swung`, the original's
+    AIData +0x3A and +0x0B) is the system's.
+- **The framework keeps the emotion's state, which BN5's rules share**:
+  - the mood;
+  - `tired`, a held state (`beast_out_spent` before; BN6's beast and emotion systems and BugFix set it);
+  - `exhausted` (S3);
+  - anger, with its flag, its timer and the request `"anger"` (flag2 0x200);
+  - the stunned ticks;
+  - the order `sub_8015B54` reads them in;
+  - `set_mood`'s hold, `mood_held` (held tired or exhausted), an actor field other sides' rules read.
+- **Decisions** (for review):
+  1. **No pushed emotion** (§4.6). The emotion stays computed from the framework's state, which per-frame and
+     per-tick paths read: the palette, the aura, the HUD, the chip doubling, idle's worn-out check. BN5's rules
+     (its counter's 0x80, the soul's effect) act on the same levers: the mood, the held states, anger, and their
+     own `countered` hook. If BN5's emotions need names BN6's five lack, the pushed emotion comes with BN5's port.
+  2. **Anger stays framework.** Its trigger (120 stunned ticks or a hit of 300), its 600 ticks, mood 0x80 and
+     `sub_8015B54`'s order stay. BN5 has the same routines (the map: similar), so by §2.1's rule 2 they are
+     series-common, parameterized when BN5's are read.
+  3. `mood_held` is derived rather than pushed: the same fact §4.7 needs, with nothing to keep in step.
+  4. **No `navi_hit` or `form_changed` hooks.** Nothing that moved needs them.
+  5. **The swing bug's state is the side's** (AIData's in the original), as the takeover's is (S4).
+- **BN5 sides** no longer get BN6's counter rule or a tired start through the framework. BN5's replays are unchanged.
+- **Gates** (on main d835f206):
+  - the build without warnings, 481 tests, the content check (1,250 modules), gen-content check 0 errors;
+  - `gate-against.sh` with everything selected: machgun and soundmod with 96 rollback rows, the 189 legacy rounds
+    (2,746,946 frames), and the lab 6548 (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
+  - BN5's replays as before (252 replay, 243 match, 139,499 of 948,097 frames).

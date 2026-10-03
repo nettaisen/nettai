@@ -88,8 +88,8 @@ fn timer_index(t: StatusTimer) -> usize {
 
 fn request_bit(f: RequestFlag) -> u32 {
     match f {
-        // (Not an action request: `request` and `set_request` read flag2.)
-        RequestFlag::Slide => 0,
+        // (Not action requests: `request` and `set_request` read flag2.)
+        RequestFlag::Slide | RequestFlag::Anger => 0,
         RequestFlag::Buster => request::BUSTER,
         RequestFlag::ChargedShot => request::CHARGED_SHOT,
         RequestFlag::Chip => request::CHIP,
@@ -118,8 +118,19 @@ fn request_bit(f: RequestFlag) -> u32 {
     }
 }
 
-/// The collision's flag2 bit of the slide request (`RequestFlag::Slide`).
+/// The collision's flag2 bits of the slide and anger requests
+/// (`RequestFlag::Slide`, `RequestFlag::Anger`).
 const SLIDE_REQUEST: u32 = 0x10;
+const ANGER_REQUEST: u32 = 0x200;
+
+/// The flag2 bit a request that isn't an action request reads.
+fn flag2_request(f: RequestFlag) -> Option<u32> {
+    match f {
+        RequestFlag::Slide => Some(SLIDE_REQUEST),
+        RequestFlag::Anger => Some(ANGER_REQUEST),
+        _ => None,
+    }
+}
 
 fn navi_state_bit(f: NaviState) -> u32 {
     match f {
@@ -1302,6 +1313,8 @@ impl CoreApi for Battle {
             ActorField::Wrapped => i(at.wrapped as i64),
             ActorField::WrapperFresh => Value::Bool(at.wrapper_fresh),
             ActorField::ControllerFresh => Value::Bool(a.controller_fresh),
+            ActorField::MoodHeld => Value::Bool(a.tired || a.exhausted),
+            ActorField::Ticked => Value::Bool(a.ticked),
             ActorField::Exhausted => Value::Bool(a.exhausted),
             ActorField::FaceTarget => at.face_target.map_or(Value::Nil, Value::Object),
             ActorField::RushLockon => at.rush_lockon.map_or(Value::Nil, |h| Value::Def(Registry::Lockon, h.0)),
@@ -1324,7 +1337,7 @@ impl CoreApi for Battle {
             ActorField::BusterWeapon => weapon(a.buster),
             ActorField::ChargeShotWeapon => weapon(a.charge_shot),
             ActorField::BackSpecialWeapon => weapon(a.back_special),
-            ActorField::BeastOutSpent => Value::Bool(a.beast_out_spent),
+            ActorField::Tired => Value::Bool(a.tired),
             ActorField::BarrierVisual => a.barrier_visual.into(),
         })
     }
@@ -1386,6 +1399,7 @@ impl CoreApi for Battle {
             (ActorField::Wrapped, FieldValue::U8(x)) => at.wrapped = x,
             (ActorField::WrapperFresh, FieldValue::Bool(x)) => at.wrapper_fresh = x,
             (ActorField::ControllerFresh, FieldValue::Bool(x)) => a.controller_fresh = x,
+            (ActorField::Ticked, FieldValue::Bool(x)) => a.ticked = x,
             (ActorField::Exhausted, FieldValue::Bool(x)) => a.exhausted = x,
             (ActorField::RushLockon, FieldValue::Ref(_)) => at.rush_lockon = rush_lockon,
             (ActorField::AttackChip, FieldValue::Ref(_)) => at.chip = attack_chip,
@@ -1401,7 +1415,7 @@ impl CoreApi for Battle {
             (ActorField::BackSpecialCooldown, FieldValue::U8(x)) => a.back_special_cooldown = x,
             (ActorField::BusterWeapon, FieldValue::Ref(_)) => a.buster = weapon,
             (ActorField::ChargeShotWeapon, FieldValue::Ref(_)) => a.charge_shot = weapon,
-            (ActorField::BeastOutSpent, FieldValue::Bool(x)) => a.beast_out_spent = x,
+            (ActorField::Tired, FieldValue::Bool(x)) => a.tired = x,
             (ActorField::BarrierVisual, FieldValue::Object(r)) => a.barrier_visual = r,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
@@ -1409,16 +1423,16 @@ impl CoreApi for Battle {
     }
 
     fn request(&self, o: ObjectRef, f: RequestFlag) -> ApiResult<bool> {
-        if f == RequestFlag::Slide {
-            return Ok(self.collision_of(o)?.f2 & SLIDE_REQUEST != 0);
+        if let Some(bit) = flag2_request(f) {
+            return Ok(self.collision_of(o)?.f2 & bit != 0);
         }
         Ok(self.actor_of(o)?.requests & request_bit(f) != 0)
     }
 
     fn set_request(&mut self, o: ObjectRef, f: RequestFlag, on: bool) -> ApiResult<()> {
-        if f == RequestFlag::Slide {
+        if let Some(bit) = flag2_request(f) {
             let c = self.collision_of_mut(o)?;
-            c.f2 = if on { c.f2 | SLIDE_REQUEST } else { c.f2 & !SLIDE_REQUEST };
+            c.f2 = if on { c.f2 | bit } else { c.f2 & !bit };
             return Ok(());
         }
         let a = self.actor_of_mut(o)?;
