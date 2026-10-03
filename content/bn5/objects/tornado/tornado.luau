@@ -15,6 +15,7 @@ local blows = require("@common/tornado/blow")
 local common = require("@common/tornado/tornado")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
+local status = require("../../rules/status")
 
 local tornado = {}
 
@@ -57,6 +58,26 @@ tornado.single = blows.blow({
     id = "bn5:tornado/action",
     fan = FAN,
     single = { variant = tornado.variants.plain, status = nil, ticks = 0x20 },
+}, LOOK)
+
+-- Static's blow (subtype 2): static tornadoes spreading around the panel two ahead by the navi's kinds of NaviCust
+-- bug (0x0800DC14, BN6's `sub_800FE52` but for its tenth kind, NaviStats +0x63, which BN5's hasn't), as BN6's
+-- (0x080CADE4, BN6's `sub_80CA104`: the same panels), the charged fan; BN5's tornadoes paralyze by level
+-- (0x080CAE50: none, 90, 120, 150 ticks; BN6's none at every level).
+tornado.static = blows.blow({
+    id = "bn5:static/action",
+    fan = CHARGED_FAN,
+    spread = {
+        by = "bug_kinds",
+        panels = blows.STATIC_SPREAD,
+        tornado = { variant = tornado.variants.static, status = nil, ticks = 0x20 },
+        tornadoes = {
+            [0] = { variant = tornado.variants.static, status = nil, ticks = 0x20 },
+            { variant = tornado.variants.static, status = status.paralyze_90, ticks = 0x20 },
+            { variant = tornado.variants.static, status = status.paralyze_120, ticks = 0x20 },
+            { variant = tornado.variants.static, status = status.paralyze_150, ticks = 0x20 },
+        },
+    },
 }, LOOK)
 
 -- DarkTorn's blow (subtype 3, BN6's action's third form): HP-bug tornadoes spreading back toward the navi by its
