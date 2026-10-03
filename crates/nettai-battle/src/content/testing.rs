@@ -1546,6 +1546,7 @@ fn rules() -> Rules {
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         sp_deletion_times: vec![0x2000, 0x4000],
         flow: Default::default(),
+        effects: Default::default(),
         chip_use: crate::content::ChipUseRules {
             leave_on_use: false,
             anti_navi_sparkle: crate::content::SparkleOffset { dy: 16, z: 32 },
@@ -1575,6 +1576,7 @@ fn rules() -> Rules {
         ],
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
         push_reading: Default::default(),
+        slide_speed: Default::default(),
         // A triangle wave: 256 at a quarter turn, -256 at three quarters,
         // over a turn and a half.
         sine: (0..384)

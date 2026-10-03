@@ -28,7 +28,7 @@ use nettai_content_api::{
     ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Registry, RequestFlag, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
-use nettai_content_api::ObjectRef;
+use nettai_content_api::{ObjectRef, SystemHook};
 use nettai_content_api::{ChipHandle, CollisionHandle, EffectHandle, RegionHandle, SparkHandle};
 
 use crate::Bound;
@@ -1886,8 +1886,17 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(c as i64));
             vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
         }
-        // Every hook so far is called with the side.
-        HookCall::System { side, .. } => vec![LuaValue::Integer(side as i64)],
+        // The side, then the navi and the chip, where the hook has them.
+        HookCall::System { side, navi, chip, .. } => {
+            let mut v = vec![LuaValue::Integer(side as i64)];
+            if let Some(n) = navi {
+                v.push(obj(n)?);
+            }
+            if let Some(c) = chip {
+                v.push(LuaValue::Table(bound.def_value(Registry::Chip, c.0)?));
+            }
+            v
+        }
     };
     Ok(mlua::MultiValue::from_iter(values))
 }
@@ -1914,7 +1923,14 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
         HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } | HookCall::RoleEncased { .. } => Ok(Value::Nil),
-        // (No hook so far returns anything.)
+        // A chip check's substitute; no other system hook returns anything.
+        HookCall::System { hook: SystemHook::ChipCheck, .. } if !v.is_nil() => match bound.def(&v) {
+            Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),
+            _ => Err(mlua::Error::runtime(format!(
+                "a system's chip_check returns nil or a chip definition, not a {}",
+                v.type_name()
+            ))),
+        },
         HookCall::System { .. } => Ok(Value::Nil),
     }
 }

@@ -38,6 +38,29 @@ local marker = define.system {
     },
 }
 
+export type WatcherState = { intakes: number, x: number, y: number }
+
+-- Counts its side's navi intakes and keeps the navi's panel; refuses the
+-- test bomb, giving the test seed instead.
+local test_chips = require("../chips/test/chips")
+local watcher = define.system {
+    id = "test:test/watcher",
+    state = { intakes = "u16", x = "u8", y = "u8" },
+    hooks = {
+        navi_intake = function(_side: number, navi: Object)
+            local s = system.state() :: WatcherState
+            s.intakes += 1
+            s.x, s.y = navi.panel_x, navi.panel_y
+        end,
+        chip_check = function(_side: number, _navi: Object, chip: Chip?): Chip?
+            if chip == test_chips.bomb then
+                return test_chips.seed
+            end
+            return nil
+        end,
+    },
+}
+
 -- BN6's own Beast Out turns (content/bn6/rules/beast), which the test
 -- navis' forms go by as BN6's do.
 local beast = require("./beast/system")
@@ -52,4 +75,6 @@ return {
     other = define.ruleset { id = "test:test-other", systems = { marker, counter } },
     -- BN6's patch cards, then the counter.
     cards = define.ruleset { id = "test:test-cards", systems = { patch_cards, counter } },
+    -- The watcher.
+    watch = define.ruleset { id = "test:test-watch", systems = { watcher } },
 }

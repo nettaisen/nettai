@@ -1119,6 +1119,49 @@ BN6 stays byte-identical; BN5's side is unit tests and asm citations, and the BN
   (6539 matched, 3 to a known deviation; 5,773,035 frames) with 0 sound rounds differing, the audit 72 traces with
   0 problems.
 
+### P1b, BN5's light and dark, effects, slides and custom request (2026-10-02, branch bn5-port-4)
+
+The engine items the BN5 replays stopped on (docs/design/bn5-map.md §15.3 items 14 to 18), built by the BN5 port
+with the coordinator's go-ahead while the rules work did R4. BN6 stays byte-identical: its ruleset has no system
+with the new hooks, and its sections keep BN6's numbers by default.
+
+- **Two system hooks (item 14).** `navi_intake(side, navi)` runs each tick of the fight in the navi's intake
+  (`sub_801AC6C`), after the standing effects, where BN5's 0x080178EC calls 0x08017136. `chip_check(side, navi,
+  chip)` runs at the end of a chip use's preparation (`sub_80127C0`, where BN5's 0x080100E6 checks), and is a
+  deciding hook: nil lets the use go ahead, and a chip takes its place. The navi keeps the attack as prepared (its
+  lockout is the refused chip's, as BN5's), with only the chip changed. `HookCall::System` now carries the navi
+  and the chip a hook is about. The binding passes them after the side. A side whose ruleset has no system with
+  the hook calls nothing (`Battle::systems_navi_intake`, `systems_chip_check`).
+- **BN5's light and dark MegaMan** (content/bn5/rules/light-dark, in BN5's stock ruleset). The system's setup is
+  the save's light/dark value (NaviStats +0x44); bn5-compat writes it from a recording's setup line, through
+  `PlayerSetup::set_rule`. At 499 or less, the holy panel under the navi turns Normal each tick. A chip whose
+  `megaman` field (its record's +0x15) asks for the other kind of MegaMan becomes the invalid chip (BN5's 0x185,
+  now in content: gen_content.py's `RULE_CHIPS`), and its use shows a sparkle. Any navi but MegaMan passes. The
+  dark chips' own refusals and costs (BN5's 0x08010030) wait for BN5's dark chip rules.
+- **The `effects` section, the arena's (items 15 and 16).** `shake = "battle"`: BN5's camera shake (0x08030D78)
+  has one channel. It draws its jitter twice a shaking tick from the battle's RNG2, alike on every console, and
+  holds while the battle is paused without dimming (BN6's draws from each console's RNG1, on two channels).
+  `spark_steps_at_start = false`: BN5's hit spark (0x080E0870) doesn't step its sprite as it starts, so it lives
+  a tick longer.
+- **Slides (item 17).** The `reactions` section's `slide_speed`, the arena's: a navi's slide (`sub_8016730`) and
+  drag (`sub_80178D4`) go 8 pixels a tick in depth in BN5 (0x0801361E, 0x080143A8), 6 in BN6. Arriving on a panel
+  whose type has a `slide` rule (BN5's metal) is as arriving on BN6's roads (BN5's 0x08013564 tests type 5 where
+  BN6 tests 9 to 12). A type that `holds` (BN5's sea) ends the slide.
+- **The custom request (item 18).** BN5's state 0x20 (0x08007774) opens the custom screen itself once the
+  reversions are done. BN6 first goes through state 0x24, which takes a tick. The flow without
+  `sequencer_before_custom` now does BN5's. BN5's test of the request skips BN6's battle mode 5 too.
+- **Tests:** the hooks with a test system (`test/watcher`), the shake's draws, the spark's tick, the drag's
+  speed, and the request's tick count, each against BN6's.
+- **The BN5 replays** (1,380 recordings): 252 replay and 243 match every frame, with 139,499 battle frames
+  matched (24 and 79,701 before). The rest: DrkRecov (4), whose dark chip cost is unread, and the souls (5),
+  which aren't ported.
+- **Gates** (on main a157d2ab, the fast gates): the build of every target without warnings, 479 tests, the
+  content check (888 modules), gen-content check 0 errors (it decodes BN6's slide speed, `sub_8016730`'s
+  literals, the drag's the same), `gate-against.sh full` passed in 537 s (machgun 1074/1331 and soundmod
+  21962/14933/20436 with rollback at every latency, the 189 legacy rounds, 2,746,946 frames, 0 sound rounds
+  differing; the lab 6548, 6545 matched and 3 to a known deviation, 5,775,231 frames, 0 sound rounds differing),
+  the audit 49 traces with 0 problems.
+
 ### The NaviCust and the folder rules (2026-10-02, branch match-editor)
 
 The match editor's work (docs/frontend.md §6, README "The match editor") brought two more of BN6's rules into its
