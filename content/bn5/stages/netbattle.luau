@@ -19,30 +19,6 @@
 --   netbattle-30 (layout 0x26, actors 0x0811b6ca): obstacles (actor types 3)
 --   netbattle-31 (layout 0x26, actors 0x0811b6db): obstacles (actor types 3)
 --   netbattle-32 (layout 0x26, actors 0x0811b6ec): obstacles (actor types 3)
---   netbattle-33 (layout 0x77, actors 0x0811b61d): metal
---   netbattle-34 (layout 0x77, actors 0x0811b626): metal
---   netbattle-35 (layout 0x7e, actors 0x0811b641): metal
---   netbattle-36 (layout 0x7e, actors 0x0811b64a): metal
---   netbattle-37 (layout 0x7d, actors 0x0811b62f): metal
---   netbattle-38 (layout 0x7d, actors 0x0811b638): metal
---   netbattle-39 (layout 0x40, actors 0x0811b641): sea
---   netbattle-40 (layout 0x40, actors 0x0811b64a): sea
---   netbattle-41 (layout 0x42, actors 0x0811b61d): sea
---   netbattle-42 (layout 0x42, actors 0x0811b626): sea
---   netbattle-43 (layout 0x44, actors 0x0811b61d): sea
---   netbattle-44 (layout 0x44, actors 0x0811b626): sea
---   netbattle-57 (layout 0x70, actors 0x0811b641): lava
---   netbattle-58 (layout 0x70, actors 0x0811b64a): lava
---   netbattle-59 (layout 0x72, actors 0x0811b61d): lava
---   netbattle-60 (layout 0x72, actors 0x0811b626): lava
---   netbattle-69 (layout 0x46, actors 0x0811b61d): sea
---   netbattle-70 (layout 0x46, actors 0x0811b626): sea
---   netbattle-75 (layout 0xad, actors 0x0811b641): sea
---   netbattle-76 (layout 0xad, actors 0x0811b64a): sea
---   netbattle-77 (layout 0x78, actors 0x0811b61d): metal
---   netbattle-78 (layout 0x78, actors 0x0811b626): metal
---   netbattle-79 (layout 0x9f, actors 0x0811b641): metal
---   netbattle-80 (layout 0x9f, actors 0x0811b64a): metal
 --   netbattle-81 (layout 0x54, actors 0x0811b763): obstacles (actor types 8)
 --   netbattle-82 (layout 0x54, actors 0x0811b774): obstacles (actor types 8)
 --   netbattle-83 (layout 0x00, actors 0x0811b785): obstacles (actor types 9)
@@ -295,6 +271,186 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
+    netbattle_33 = define.stage {
+        id = "bn5:netbattle-33",
+        layout = {
+            "normal metal normal normal metal normal",
+            "normal normal normal normal normal normal",
+            "normal metal normal normal metal normal",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    netbattle_34 = define.stage {
+        id = "bn5:netbattle-34",
+        layout = {
+            "normal metal normal normal metal normal",
+            "normal normal normal normal normal normal",
+            "normal metal normal normal metal normal",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    netbattle_35 = define.stage {
+        id = "bn5:netbattle-35",
+        layout = {
+            "normal normal normal normal normal normal",
+            "normal metal metal metal metal normal",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
+    },
+    netbattle_36 = define.stage {
+        id = "bn5:netbattle-36",
+        layout = {
+            "normal normal normal normal normal normal",
+            "normal metal metal metal metal normal",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
+    },
+    netbattle_37 = define.stage {
+        id = "bn5:netbattle-37",
+        layout = {
+            "normal normal normal normal normal normal",
+            "metal metal normal normal metal metal",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 1 }, { place = "navi", side = 1, x = 5, y = 1 } },
+    },
+    netbattle_38 = define.stage {
+        id = "bn5:netbattle-38",
+        layout = {
+            "normal normal normal normal normal normal",
+            "metal metal normal normal metal metal",
+            "normal normal normal normal normal normal",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 1 }, { place = "navi", side = 0, x = 2, y = 1 } },
+    },
+    netbattle_39 = define.stage {
+        id = "bn5:netbattle-39",
+        layout = {
+            "grass grass sea sea grass grass",
+            "grass sea sea sea sea grass",
+            "grass grass sea sea grass grass",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
+    },
+    netbattle_40 = define.stage {
+        id = "bn5:netbattle-40",
+        layout = {
+            "grass grass sea sea grass grass",
+            "grass sea sea sea sea grass",
+            "grass grass sea sea grass grass",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
+    },
+    netbattle_41 = define.stage {
+        id = "bn5:netbattle-41",
+        layout = {
+            "sea grass sea sea grass sea",
+            "grass grass grass grass grass grass",
+            "sea grass sea sea grass sea",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    netbattle_42 = define.stage {
+        id = "bn5:netbattle-42",
+        layout = {
+            "sea grass sea sea grass sea",
+            "grass grass grass grass grass grass",
+            "sea grass sea sea grass sea",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    netbattle_43 = define.stage {
+        id = "bn5:netbattle-43",
+        layout = {
+            "sea sea grass grass sea sea",
+            "grass grass grass grass grass grass",
+            "sea sea grass grass sea sea",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    netbattle_44 = define.stage {
+        id = "bn5:netbattle-44",
+        layout = {
+            "sea sea grass grass sea sea",
+            "grass grass grass grass grass grass",
+            "sea sea grass grass sea sea",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
     netbattle_45 = define.stage {
         id = "bn5:netbattle-45",
         layout = {
@@ -475,6 +631,66 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
     },
+    netbattle_57 = define.stage {
+        id = "bn5:netbattle-57",
+        layout = {
+            "grass grass lava lava grass grass",
+            "grass lava lava lava lava grass",
+            "grass grass lava lava grass grass",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
+    },
+    netbattle_58 = define.stage {
+        id = "bn5:netbattle-58",
+        layout = {
+            "grass grass lava lava grass grass",
+            "grass lava lava lava lava grass",
+            "grass grass lava lava grass grass",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
+    },
+    netbattle_59 = define.stage {
+        id = "bn5:netbattle-59",
+        layout = {
+            "grass grass lava lava grass grass",
+            "grass grass lava lava grass grass",
+            "lava grass grass grass grass lava",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    netbattle_60 = define.stage {
+        id = "bn5:netbattle-60",
+        layout = {
+            "grass grass lava lava grass grass",
+            "grass grass lava lava grass grass",
+            "lava grass grass grass grass lava",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
     netbattle_61 = define.stage {
         id = "bn5:netbattle-61",
         layout = {
@@ -595,6 +811,36 @@ return {
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
     },
+    netbattle_69 = define.stage {
+        id = "bn5:netbattle-69",
+        layout = {
+            "sea sea sea sea sea sea",
+            "sea grass sea sea grass sea",
+            "sea sea sea sea sea sea",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    netbattle_70 = define.stage {
+        id = "bn5:netbattle-70",
+        layout = {
+            "sea sea sea sea sea sea",
+            "sea grass sea sea grass sea",
+            "sea sea sea sea sea sea",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
     netbattle_71 = define.stage {
         id = "bn5:netbattle-71",
         layout = {
@@ -654,6 +900,96 @@ return {
         battle_number = 0,
         effects = 0x0000088C,
         actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    netbattle_75 = define.stage {
+        id = "bn5:netbattle-75",
+        layout = {
+            "normal sea sea sea sea normal",
+            "normal sea sea sea sea normal",
+            "normal sea sea sea sea normal",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
+    },
+    netbattle_76 = define.stage {
+        id = "bn5:netbattle-76",
+        layout = {
+            "normal sea sea sea sea normal",
+            "normal sea sea sea sea normal",
+            "normal sea sea sea sea normal",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
+    },
+    netbattle_77 = define.stage {
+        id = "bn5:netbattle-77",
+        layout = {
+            "normal metal normal normal metal normal",
+            "metal normal metal metal normal metal",
+            "normal metal normal normal metal normal",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 2, y = 2 }, { place = "navi", side = 1, x = 5, y = 2 } },
+    },
+    netbattle_78 = define.stage {
+        id = "bn5:netbattle-78",
+        layout = {
+            "normal metal normal normal metal normal",
+            "metal normal metal metal normal metal",
+            "normal metal normal normal metal normal",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 5, y = 2 }, { place = "navi", side = 0, x = 2, y = 2 } },
+    },
+    netbattle_79 = define.stage {
+        id = "bn5:netbattle-79",
+        layout = {
+            "normal normal metal metal normal normal",
+            "normal metal normal normal metal normal",
+            "metal normal normal normal normal metal",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 0, x = 1, y = 2 }, { place = "navi", side = 1, x = 6, y = 2 } },
+    },
+    netbattle_80 = define.stage {
+        id = "bn5:netbattle-80",
+        layout = {
+            "normal normal metal metal normal normal",
+            "normal metal normal normal metal normal",
+            "metal normal normal normal normal metal",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("bn5:virus-battle"),
+        background = asset.background("bn5:calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000088C,
+        actors = { { place = "navi", side = 1, x = 6, y = 2 }, { place = "navi", side = 0, x = 1, y = 2 } },
     },
     netbattle_85 = define.stage {
         id = "bn5:netbattle-85",
