@@ -83,6 +83,14 @@ export type WideShotLook = { shooter: AttachmentLook, attachment: Kind, wave: Ki
 -- A wide shot: its waves (`shooter` and `z`, where a chip's aren't its game's wide shooter and 16 pixels).
 export type WideShotSpec = { id: string?, wave: WaveVariant, waves: number, shooter: AttachmentLook?, z: number? }
 
+-- What a chip's vulcan fires (@common/vulcan/action): how many bullets, and which; the vulcan the navi holds and the
+-- bullets' kind (none: the game's).
+export type VulcanSpec = { shots: number, bullet: BulletVariant, arm: AttachmentLook?, bullet_kind: Kind? }
+
+-- A game's vulcans (@common/vulcan/action): the shot's sound, the vulcan the navi holds, its attachment kind and its
+-- bullets' kind.
+export type VulcanLook = { sound: Sound, arm: AttachmentLook, attachment: Kind, bullet_kind: Kind }
+
 -- A trap chip's object (a "trap" record, @common/traps/controller): `set` spawns it for the controller and its user,
 -- with the chip and bonus the controller keeps.
 export type Trap = {
