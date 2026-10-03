@@ -241,6 +241,7 @@ bug-bomb-land = 0x115
 arrive = 0x116
 freeze = 0x118
 hub = 0x119
+lifesync = 0x11a
 grass = 0x11b
 panel-volcano = 0x11c
 spout-ball = 0x11d

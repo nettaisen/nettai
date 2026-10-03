@@ -77,3 +77,5 @@
 "bn5:circgun/shot" = { pool = "attack", index = 0x8A }
 "bn5:circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "bn5:tankcan/shell" = { pool = "attack", index = 0x3C }
+"bn5:lifesync/controller" = { pool = "effect", index = 0x5C, scratch_position = true }
+"bn5:lifesync/marker" = { pool = "effect", index = 0x60 }
