@@ -44,16 +44,11 @@ impl<'a> Ids<'a> {
         Ids { content, compat }
     }
 
-    /// Compat's key as the content keys it (`bn6:cannon`).
-    fn def_key(&self, key: &str) -> String {
-        self.compat.def_key(self.content, key)
-    }
-
-    /// The pack BN6's numbers are of: compat's root's assets pack in the
+    /// The pack BN6's numbers are of: compat's game's pack in the
     /// content (docs/design/rules-in-luau.md §7.4: the engine knows assets
     /// by handle; the original's numbers are its pack's).
     pub fn pack(&self) -> nettai_content_api::PackId {
-        let root = self.compat.root_in(self.content);
+        let root = &self.compat.root;
         self.content.assets.pack(root).unwrap_or_else(|| panic!("the content loads no pack of {root}"))
     }
 
@@ -93,7 +88,7 @@ impl<'a> Ids<'a> {
     /// The chip with this id.
     pub fn chip(&self, id: ChipId) -> ChipHandle {
         let key = self.compat.chip_key(id).unwrap_or_else(|| panic!("chips.toml has no chip {id:#x}"));
-        self.content.defs.chip_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content defines no chip {key:?} (chip {id:#x})"))
+        self.content.defs.chip_by_key(key).unwrap_or_else(|| panic!("the content defines no chip {key:?} (chip {id:#x})"))
     }
 
     /// A chip's id.
@@ -125,7 +120,7 @@ impl<'a> Ids<'a> {
     /// The navi with this number.
     pub fn navi(&self, navi: u8) -> NaviHandle {
         let key = self.compat.navi_key(navi).unwrap_or_else(|| panic!("navis.toml has no navi {navi:#x}"));
-        self.content.defs.navi_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content defines no navi {key:?} (navi {navi:#x})"))
+        self.content.defs.navi_by_key(key).unwrap_or_else(|| panic!("the content defines no navi {key:?} (navi {navi:#x})"))
     }
 
     /// A navi's number.
@@ -137,7 +132,7 @@ impl<'a> Ids<'a> {
     /// MegaMan's form with this number.
     pub fn form(&self, form: u8) -> FormHandle {
         let key = self.compat.form_key(form).unwrap_or_else(|| panic!("forms.toml has no form {form:#x}"));
-        self.content.defs.form_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content defines no form {key:?} (form {form:#x})"))
+        self.content.defs.form_by_key(key).unwrap_or_else(|| panic!("the content defines no form {key:?} (form {form:#x})"))
     }
 
     /// A form's number.
@@ -158,7 +153,7 @@ impl<'a> Ids<'a> {
         let h = self
             .content
             .defs
-            .weapon_by_key(&self.def_key(key))
+            .weapon_by_key(key)
             .unwrap_or_else(|| panic!("the content has no weapon {key:?} (weapon routine {routine:#x})"));
         Some(h)
     }
@@ -189,7 +184,7 @@ impl<'a> Ids<'a> {
         let h = self
             .content
             .defs
-            .record(&self.def_key(key))
+            .record(key)
             .unwrap_or_else(|| panic!("the content has no projectile variant {key:?} (row {row:#x})"));
         Some(h)
     }
@@ -204,7 +199,7 @@ impl<'a> Ids<'a> {
             .find(|(_, n)| **n == number)
             .map(|(k, _)| k.as_str())
             .unwrap_or_else(|| panic!("patch-cards.toml has no patch card {number}"));
-        self.content.defs.patch_card_by_key(&self.def_key(key)).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
+        self.content.defs.patch_card_by_key(key).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
     }
 
     /// A patch card's number.
@@ -227,7 +222,7 @@ impl<'a> Ids<'a> {
             .find(|(_, n)| **n == ty)
             .map(|(k, _)| k.as_str())
             .unwrap_or_else(|| panic!("records.toml has no barrier type {ty:#x}"));
-        Some(self.content.defs.record(&self.def_key(key)).unwrap_or_else(|| panic!("the content has no barrier {key:?} (type {ty:#x})")))
+        Some(self.content.defs.record(key).unwrap_or_else(|| panic!("the content has no barrier {key:?} (type {ty:#x})")))
     }
 
     /// A first-barrier byte; 0 for none.
@@ -254,7 +249,7 @@ impl<'a> Ids<'a> {
         let key = self.compat.stage_key(settings).unwrap_or_else(|| panic!("stages.toml has no battle settings {settings:#x}"));
         self.content
             .defs
-            .stage_by_key(&self.def_key(key))
+            .stage_by_key(key)
             .unwrap_or_else(|| panic!("the content has no stage {key:?} (battle settings {settings:#x})"))
     }
 
@@ -530,7 +525,7 @@ pub fn battle_settings_of(game: Game, b: &[u8], ids: &Ids) -> BattleSettings {
         .iter()
         .filter(|(_, e)| e.layout == b[0] && games.actor_list(game, e.actor_list) == address)
         .find_map(|(key, _)| {
-            let h = content.defs.stage_by_key(&ids.compat.def_key(content, key))?;
+            let h = content.defs.stage_by_key(key)?;
             let r = content.stage(h);
             let music = r.music.map_or(NO_MUSIC as u16, |m| ids.sound_number(m));
             ((music, r.mode, r.battle_number, r.panel_pattern) == (b[2] as u16, b[3], b[5], b[6])).then_some(h)

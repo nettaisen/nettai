@@ -561,17 +561,6 @@ impl Compat {
         })
     }
 
-    /// The game compat's ids are of (`bn6`).
-    pub fn root_in<'c>(&'c self, _content: &'c nettai_battle::Content) -> &'c str {
-        &self.root
-    }
-
-    /// Compat's id `key` as content writes it: the same, in full
-    /// (`bn6:minibomb`; docs/design/rules-in-luau.md, the flat namespace).
-    pub fn def_key(&self, _content: &nettai_battle::Content, key: &str) -> String {
-        key.to_string()
-    }
-
     /// A definition's id if compat has numbers for it (one of its game's,
     /// or an engine key), else None (another game's: it has no BN6
     /// number).
@@ -647,7 +636,7 @@ impl Compat {
         if let Some(e) = EngineAction::ALL.into_iter().find(|e| keys().any(|k| k == e.key())) {
             return Some(NaviAction::Engine(e));
         }
-        keys().find_map(|key| content.defs.action_by_key(&self.def_key(content, key))).map(NaviAction::Content)
+        keys().find_map(|key| content.defs.action_by_key(key)).map(NaviAction::Content)
     }
 
     /// The original's action number for object `r`'s CurAction: a navi's

@@ -15,6 +15,10 @@
 //!                                 frontend's (crate::locale)
 //! ```
 //!
+//! A folder of behaviour only (content/common: modules other folders
+//! require, no assets of its own, no definitions to name) needs neither
+//! compat nor locales.
+//!
 //! [`read`] reads one folder, [`read_all`] every folder of a content
 //! directory (content/nettai, the engine's declarations, aside). The assets
 //! the definitions name (`asset.sprite("bn6:bomb")`) come from the
@@ -52,12 +56,12 @@ pub struct Root {
     pub manifest: RootManifest,
     /// Where it was read from.
     pub dir: PathBuf,
-    /// Modules by path in the root, without `.luau` (not the `.d.luau`
+    /// Modules by path in the folder, without `.luau` (not the `.d.luau`
     /// definitions).
     pub modules: BTreeMap<String, String>,
-    /// The content's own language's strings (`locales/en.toml`) as the
-    /// root writes them (unqualified): its display text, which the define
-    /// phase counts the chatbox's timing from (`Content::strings`).
+    /// The content's own language's strings (`locales/en.toml`), ids in
+    /// full: its display text, which the define phase counts the chatbox's
+    /// timing from (`Content::strings`).
     pub strings: crate::locale::Strings,
 }
 
@@ -87,7 +91,7 @@ pub fn read(dir: &Path, report: &mut Report) -> Option<Root> {
         }
         let full = dir.join(&rel);
         let Some(module) = rel.strip_suffix(".luau") else {
-            report.error(&rel, "a content root holds modules and the API's definitions");
+            report.error(&rel, "a content folder holds modules and the API's definitions");
             continue;
         };
         match std::fs::read_to_string(&full) {
@@ -103,6 +107,8 @@ pub fn read(dir: &Path, report: &mut Report) -> Option<Root> {
     }
     match crate::locale::load(dir, crate::locale::OWN) {
         Ok(Some(s)) => root.strings = s,
+        // (A folder of behaviour only has no locales.)
+        Ok(None) if !dir.join(crate::locale::DIR).is_dir() => {}
         Ok(None) => report.warn(format!("{}/{}.toml", crate::locale::DIR, crate::locale::OWN), "the content has no strings: its chips, navis and forms show by their keys"),
         Err(e) => report.error(format!("{}/{}.toml", crate::locale::DIR, crate::locale::OWN), e),
     }
