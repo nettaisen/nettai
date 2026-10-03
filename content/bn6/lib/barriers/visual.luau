@@ -196,7 +196,7 @@ local function init(me: Object)
 end
 
 visual.kind = define.kind {
-    id = "barrier-visual",
+    id = "bn6:barrier-visual",
     pool = "effect",
     state = { barrier = "record:barrier", shown = "bool", pop_hit_mod = "u8" },
     -- `sub_80E0AD4`: by state, then its sprite (but while the fight is on

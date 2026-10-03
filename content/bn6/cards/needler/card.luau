@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "needler",
+    id = "bn6:needler",
     mb = 10,
     effects = {
         cards.super_armor(true),

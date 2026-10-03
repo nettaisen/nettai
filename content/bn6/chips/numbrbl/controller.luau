@@ -43,7 +43,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "numbrbl/controller",
+    id = "bn6:numbrbl/controller",
     pool = "effect",
     state = { chip = "chip", bonus = "u16", balls = "u8", busy = "bool" },
     -- `sub_80E7F38`: `object_timefreezeBegin` at its init; by its action

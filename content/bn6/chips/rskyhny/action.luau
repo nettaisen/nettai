@@ -26,8 +26,8 @@ local RAISE, RELEASE, WINDOWS = 0x0, 0x4, 0x8
 
 local ANIM_RAISE = 0x0A
 -- The hive (the original's attachment row 0x28), and the sound of a bee.
-local HIVE = attachment.look { sprite = asset.sprite("hive"), palette = 0, attach_point = 0x0E }
-local BUZZ = asset.sound("buzz")
+local HIVE = attachment.look { sprite = asset.sprite("bn6:hive"), palette = 0, attach_point = 0x0E }
+local BUZZ = asset.sound("bn6:buzz")
 local WINDOW_TICKS, WINDOW_COUNT = 10, 3
 
 -- The bees by level (the chips' first parameter, `byte_80D3164`): the

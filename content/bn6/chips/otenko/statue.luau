@@ -30,14 +30,14 @@ export type State = {
 -- statue loads 0C-00, the swords' sheet, instead; the content shows the
 -- Japanese games' Otenko on every console (docs/engine/jp-differences.md
 -- §5).
-local SPRITE = asset.sprite("otenko")
+local SPRITE = asset.sprite("bn6:otenko")
 -- Its identity: a field object, which looks as Otenko when something takes
 -- its place (`byte_8021220`'s row for its NameID: DustMan's junk). That is
 -- the Japanese ROMs' row; the US ROMs' is the table's none, so DustMan
 -- throws no junk for it there (docs/engine/jp-differences.md §8, row 16).
 -- The content follows the Japanese games on every console.
 local IDENTITY = define.identity {
-    id = "otenko",
+    id = "bn6:otenko",
     class = "field_object",
     version = 2,
     ai_index = 1,
@@ -51,8 +51,8 @@ local BLESSING_ANIM = 1
 local MOST = 50
 -- Where it can stand: a solid panel without a body.
 local SOLID, BODIES = 0x10, 0x0F80_0000
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_BREAK = asset.sound("panel-poison")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_BREAK = asset.sound("bn6:panel-poison")
 -- What it is and reaches: another body of its side, hit modifier 3.
 local IS, HITS, HIT_MOD = collision.own_body, collision.hit_by_other_side, 3
 -- How it looks absorbed (the original's obstacle kind 0xE, a row of
@@ -203,7 +203,7 @@ local function init(me: Object)
 end
 
 statue.kind = define.kind {
-    id = "otenko/statue",
+    id = "bn6:otenko/statue",
     pool = "attack",
     state = { entry = "u32", turn = "u32", count = "u32" },
     -- `sub_80DB0E4`.

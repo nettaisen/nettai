@@ -41,8 +41,8 @@ local BLOW, PUT_AWAY = 0x0, 0x4
 local RISE_AT = 0x20
 
 -- The fan (the original's attachment rows 0x21 and 0x22).
-local FAN = attachment.look { sprite = asset.sprite("hand-fan"), palette = 0, attach_point = 9 }
-local CHARGED_FAN = attachment.look { sprite = asset.sprite("hand-fan"), palette = 1, attach_point = 9 }
+local FAN = attachment.look { sprite = asset.sprite("bn6:hand-fan"), palette = 0, attach_point = 9 }
+local CHARGED_FAN = attachment.look { sprite = asset.sprite("bn6:hand-fan"), palette = 1, attach_point = 9 }
 
 -- The panels each spread covers, by level (capped at 3): Static's
 -- (`off_80CA160`) and the action's third form's (`off_80CA1F8`), { dx, dy }
@@ -151,7 +151,7 @@ end
 
 local chips = {
     define.chip {
-        id = "tornado",
+        id = "bn6:tornado",
         codes = { "L", "R", "T" },
         element = "null", family = "wind", class = "standard",
         rarity = 2, mb = 16, damage = 20, hit_param = 4, lockout = 0,
@@ -166,7 +166,7 @@ local chips = {
         },
     },
     define.chip {
-        id = "static",
+        id = "bn6:static",
         codes = { "G", "S", "V" },
         element = "null", family = "wind", class = "standard",
         rarity = 2, mb = 30, damage = 20, hit_param = 4, lockout = 0,
@@ -189,7 +189,7 @@ local chips = {
 -- The action's third form, which no chip has (the original's subtype 3,
 -- with `byte_80CA208`'s tornadoes).
 chips.back_spread = blow {
-    id = "tornado/back-spread",
+    id = "bn6:tornado/back-spread",
     fan = CHARGED_FAN,
     fan_palette = 1,
     spread = {

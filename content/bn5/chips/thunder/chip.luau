@@ -12,20 +12,20 @@ local shoot = require("@bn6/chips/thunder/shoot")
 local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")
 
-local KIND = ball.make_kind("thunder/ball", {
-    sprite = asset.sprite("thunder-ball"),
+local KIND = ball.make_kind("bn5:thunder/ball", {
+    sprite = asset.sprite("bn5:thunder-ball"),
     small_anim = 0,
-    big_sprite = asset.sprite("big-thunder-ball"),
+    big_sprite = asset.sprite("bn5:big-thunder-ball"),
     big_anim = 0,
     is = collision.thrown,
     dark_is = collision.collision_2b,
     hit_mod = 0,
     spark = sparks.elec,
-    sound = asset.sound("erase-man-2"),
+    sound = asset.sound("bn5:erase-man-2"),
 })
 
 return define.chip {
-    id = "thunder",
+    id = "bn5:thunder",
     codes = { "B", "L", "P", "*" },
     element = "elec",
     family = "elec",

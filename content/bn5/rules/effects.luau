@@ -5,7 +5,7 @@
 -- console's RNG1); its hit spark (0x080E0870) doesn't step its sprite as it starts, so it lasts a tick longer than
 -- BN6's (`sub_80E0864`).
 
-return define.rules("effects", {
+return define.rules("bn5:effects", {
     shake = "battle",
     spark_steps_at_start = false,
 })

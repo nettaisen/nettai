@@ -29,9 +29,9 @@ export type State = {
     dy: number,
 }
 
-local SPRITE = asset.sprite("bass-anly-shot")
+local SPRITE = asset.sprite("bn6:bass-anly-shot")
 local HIT_MOD = 0x01
-local SOUND_COME = asset.sound("bass-anly-shot")
+local SOUND_COME = asset.sound("bn6:bass-anly-shot")
 -- Where it starts: 80 pixels behind its panel, 160 up; how it swoops.
 local BEHIND, HEIGHT = 0x50, 0xA0
 local SWOOP_X, SWOOP_Z, SWOOP_TICKS = 0x4_0000, -0x8_0000, 0x14
@@ -259,7 +259,7 @@ local function init(me: Object)
 end
 
 whirl.kind = define.kind {
-    id = "airspin/whirl",
+    id = "bn6:airspin/whirl",
     pool = "attack",
     state = {
         target_x = "i32",

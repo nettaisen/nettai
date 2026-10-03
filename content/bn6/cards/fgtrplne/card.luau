@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "fgtrplne",
+    id = "bn6:fgtrplne",
     mb = 20,
     effects = {
         cards.bug(cards.hp_percent(-10)),

@@ -37,7 +37,7 @@ export type State = {
     action: Action?,
 }
 
-local SOUND_SLIDE = asset.sound("follow-effect")
+local SOUND_SLIDE = asset.sound("bn6:follow-effect")
 
 -- "slide"'s steps, pixels a tick (`dword_80E3EB0`).
 local SLIDE = { [0] = 2, 3, 2, 0 }
@@ -202,7 +202,7 @@ local function init(me: Object)
 end
 
 follow_effect.kind = define.kind {
-    id = "follow-effect",
+    id = "bn6:follow-effect",
     pool = "effect",
     state = { look = "record:follow-effect-look", flip = "u8", palette_add = "u8", action = "action" },
     -- `sub_80E3D68`: its sprite steps unless held (HP bit 0).

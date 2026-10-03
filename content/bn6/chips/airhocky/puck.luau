@@ -52,9 +52,9 @@ local ROWS: { [number]: Variant } = {
 -- The chips' pucks.
 puck.variants = { airhocky = ROWS[2], pithocky = ROWS[3] }
 
-local SPRITE = asset.sprite("hockey-puck")
-local SOUND = asset.sound("hockey-puck")
-local SOUND_BOUNCE = asset.sound("bounce")
+local SPRITE = asset.sprite("bn6:hockey-puck")
+local SOUND = asset.sound("bn6:hockey-puck")
+local SOUND_BOUNCE = asset.sound("bn6:bounce")
 -- PitHocky's trail: every fourth tick, an afterimage of the puck for 8
 -- ticks, tinted.
 local TRAIL_TINT, TRAIL_TICKS = 0x8318, 8
@@ -278,7 +278,7 @@ local function init(me: Object)
 end
 
 puck.kind = define.kind {
-    id = "airhocky/puck",
+    id = "bn6:airhocky/puck",
     pool = "attack",
     state = {
         variant = "record:hockey-puck-variant",

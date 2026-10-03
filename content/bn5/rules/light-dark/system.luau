@@ -27,7 +27,7 @@ local CLEARS_HOLY = 499
 local LIGHT_CHIPS = 470
 
 return define.system {
-    id = "light-dark",
+    id = "bn5:light-dark",
     setup = { value = "u16" },
     hooks = {
         -- 0x08017136: the holy panel under a dark MegaMan turns Normal.

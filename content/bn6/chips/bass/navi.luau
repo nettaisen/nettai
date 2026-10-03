@@ -26,8 +26,8 @@ export type State = {
 
 local bass = {}
 
-local SPRITE = asset.sprite("bass-anly")
-local SOUND_APPEAR = asset.sound("appear")
+local SPRITE = asset.sprite("bn6:bass-anly")
+local SOUND_APPEAR = asset.sound("bn6:appear")
 
 -- His cape: a form overlay on his animation + 0x14, stepping while
 -- dimmed.
@@ -44,7 +44,7 @@ local ANY_PANEL = 0x1_0000
 local SHOT: PanelStrike = { warning = 0x14, hit_mod = 3, solid_only = true }
 local SHOT_COOLDOWN = 0x16
 -- A shot's flash at his hand (effect 0x57).
-local FLASH = define.effect { sprite = asset.sprite("hit-sparks"), anim = 8, palette = 0 }
+local FLASH = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 8, palette = 0 }
 
 local function damage_word(me: Object): number
     return bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
@@ -277,7 +277,7 @@ local function leave(me: Object)
 end
 
 bass.kind = define.kind {
-    id = "bass/navi",
+    id = "bn6:bass/navi",
     pool = "actor",
     state = { controller = "object", cooldowns = "u8[18]", columns = "u8[7]" },
     -- `sub_80C3970`.

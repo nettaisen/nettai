@@ -20,9 +20,9 @@ local STATE = { timer = "u16" }
 local RAISE, SET, LOWER = 0x0, 0x4, 0x8
 
 local ANIM_RAISE = 0x0A
-local SOUND = asset.sound("elec-pulse")
+local SOUND = asset.sound("bn6:elec-pulse")
 -- The coil the navi holds (the original's attachment row 0x2C).
-local COIL = attachment.look { sprite = asset.sprite("magnet-coil"), palette = 0, attach_point = 0x0E }
+local COIL = attachment.look { sprite = asset.sprite("bn6:magnet-coil"), palette = 0, attach_point = 0x0E }
 local HOLD, LOWER_TICKS = 0x0A, 6
 
 -- The coil's animation steps. Without a coil (its pool was full) there is
@@ -106,7 +106,7 @@ local function mag_coil(spec: MagCoilSpec): Action
 end
 
 return define.chip {
-    id = "magcoil",
+    id = "bn6:magcoil",
     codes = { "*" },
     element = "null", family = "null", class = "standard",
     rarity = 0, mb = 14, damage = 0, hit_param = 30, lockout = 0,

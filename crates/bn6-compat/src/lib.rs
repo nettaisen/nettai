@@ -402,9 +402,9 @@ pub struct Compat {
     pub navicust: NaviCustNumbers,
     /// The kinds by the slot they fill.
     slots: BTreeMap<(Pool, u8), String>,
-    /// The root its keys are written in (`bn6`; docs/design/
-    /// rules-in-luau.md §7.2): compat writes keys unqualified, as its root
-    /// does, and the content qualifies them (`bn6:minibomb`).
+    /// The game whose ids it numbers (`bn6`): its keys are those ids, in
+    /// full (`bn6:minibomb`; docs/design/rules-in-luau.md, the flat
+    /// namespace).
     pub root: String,
 }
 
@@ -425,7 +425,7 @@ pub const FILES: [&str; 13] = [
     "patch-cards.toml",
 ];
 
-/// The root BN6's compat writes its keys in.
+/// The game BN6's compat numbers.
 pub const ROOT: &str = "bn6";
 
 /// This repository's compat (content/bn6/compat), built in.
@@ -453,6 +453,34 @@ impl Compat {
         BN6_COMPAT.get_or_init(|| {
             Compat::parse(|file| Ok(BN6.iter().find(|(f, _)| *f == file).map(|(_, t)| t.to_string()).unwrap_or_default()))
                 .unwrap_or_else(|e| panic!("content/bn6/compat: {e}"))
+        })
+    }
+
+    /// BN6's compat for `content`: BN6's own, unless the content stands in
+    /// for BN6 under another name, one game that isn't BN6's (the engine's
+    /// test content, `test`, which borrows BN6's modules): then BN6's
+    /// tables with that game's ids ([`Compat::bn6_as`]).
+    pub fn bn6_for(content: &nettai_battle::Content) -> &'static Compat {
+        match &content.defs.roots[..] {
+            [game] if game != ROOT && !game.is_empty() => Compat::bn6_as(game),
+            _ => Compat::bn6(),
+        }
+    }
+
+    /// BN6's compat with game `game`'s ids in place of BN6's
+    /// (`test:minibomb` for `bn6:minibomb`), once per game.
+    pub fn bn6_as(game: &str) -> &'static Compat {
+        static AS: std::sync::Mutex<BTreeMap<String, &'static Compat>> = std::sync::Mutex::new(BTreeMap::new());
+        let mut done = AS.lock().unwrap_or_else(|e| e.into_inner());
+        done.entry(game.to_string()).or_insert_with(|| {
+            let from = format!("\"{ROOT}:");
+            let to = format!("\"{game}:");
+            let mut c = Compat::parse(|file| {
+                Ok(BN6.iter().find(|(f, _)| *f == file).map(|(_, t)| t.replace(&from, &to)).unwrap_or_default())
+            })
+            .unwrap_or_else(|e| panic!("content/bn6/compat as {game}: {e}"));
+            c.root = game.to_string();
+            Box::leak(Box::new(c))
         })
     }
 
@@ -546,28 +574,15 @@ impl Compat {
         })
     }
 
-    /// The root compat's keys are in, in `content`: its own (`bn6`) where
-    /// the content loads it, else the content's own root (the engine's
-    /// test content stands in for BN6's).
-    pub fn root_in<'c>(&'c self, content: &'c nettai_battle::Content) -> &'c str {
-        let roots = &content.defs.roots;
-        if roots.iter().any(|r| *r == self.root) { &self.root } else { roots.first().map_or(&self.root, |r| r.as_str()) }
-    }
-
-    /// Compat's key `key` as `content` keys it (`bn6:minibomb`).
-    pub fn def_key(&self, content: &nettai_battle::Content, key: &str) -> String {
-        nettai_content_api::keys::qualify(self.root_in(content), key)
-    }
-
-    /// A definition's key as compat writes it (`minibomb`), or None for a
-    /// definition of another root (it has no BN6 number). An engine key is
-    /// itself.
-    pub fn compat_key<'k>(&self, content: &nettai_battle::Content, key: &'k str) -> Option<&'k str> {
+    /// A definition's id if compat has numbers for it (one of its game's,
+    /// or an engine key), else None (another game's: it has no BN6
+    /// number).
+    pub fn compat_key<'k>(&self, _content: &nettai_battle::Content, key: &'k str) -> Option<&'k str> {
         use nettai_content_api::keys;
         if key.starts_with(keys::ENGINE) {
             return Some(key);
         }
-        (keys::root_of(key) == Some(self.root_in(content))).then(|| keys::local(key))
+        (keys::root_of(key) == Some(self.root.as_str())).then_some(key)
     }
 
     /// [`Compat::compat_key`] for messages and lookups that need one: the
@@ -634,7 +649,7 @@ impl Compat {
         if let Some(e) = EngineAction::ALL.into_iter().find(|e| keys().any(|k| k == e.key())) {
             return Some(NaviAction::Engine(e));
         }
-        keys().find_map(|key| content.defs.action_by_key(&self.def_key(content, key))).map(NaviAction::Content)
+        keys().find_map(|key| content.defs.action_by_key(key)).map(NaviAction::Content)
     }
 
     /// The original's action number for object `r`'s CurAction: a navi's

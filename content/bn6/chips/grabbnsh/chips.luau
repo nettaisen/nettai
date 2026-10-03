@@ -6,7 +6,7 @@
 local controller = require("./controller")
 
 local grabbnsh = define.chip {
-    id = "grabbnsh",
+    id = "bn6:grabbnsh",
     codes = { "B", "M", "S" },
     element = "null",
     family = "null",
@@ -23,7 +23,7 @@ local grabbnsh = define.chip {
 }
 
 local grabrvng = define.chip {
-    id = "grabrvng",
+    id = "bn6:grabrvng",
     codes = { "I", "Q", "Z" },
     element = "null",
     family = "null",

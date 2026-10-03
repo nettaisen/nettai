@@ -8,8 +8,9 @@ use nettai_battle::content::{BackgroundId, BannerId, Content, InPack, MugshotId,
 use nettai_content_api::AssetKind;
 
 /// The loaded packs' graphics, by `PackId` (the content's `AssetNames::packs`
-/// order), and the content's own pack's, which draws what belongs to no
-/// asset (the HUD's frame, the custom screen's).
+/// order), and the frontend's own game's pack's (BN6's, by name:
+/// `nettai_match::DEFAULT_GAME`), which draws what belongs to no asset (the
+/// HUD's frame, the custom screen's).
 #[derive(Clone)]
 pub struct Packs<'a> {
     bundles: Vec<&'a Bundle>,
@@ -22,37 +23,42 @@ impl<'a> Packs<'a> {
         Packs { bundles: vec![bundle], own: PackId(0) }
     }
 
-    /// Several packs' graphics, by `PackId`; `own` the content's own.
+    /// Several packs' graphics, by `PackId`; `own` the frontend's own
+    /// game's.
     pub fn new(bundles: Vec<&'a Bundle>, own: PackId) -> Packs<'a> {
-        assert!(own.index() < bundles.len(), "the content's own pack is loaded");
+        assert!(own.index() < bundles.len(), "the frontend's own pack is loaded");
         Packs { bundles, own }
     }
 
-    /// The graphics of pack `pack` (the content's own for one not loaded:
-    /// a frontend of one pack).
+    /// The graphics of pack `pack` (the own pack's for one not loaded: a
+    /// frontend of one pack).
     pub fn bundle(&self, pack: PackId) -> &'a Bundle {
         self.bundles.get(pack.index()).copied().unwrap_or(self.bundles[self.own.index()])
     }
 
-    /// The content's own pack's graphics.
+    /// The own pack's graphics.
     pub fn own(&self) -> &'a Bundle {
         self.bundles[self.own.index()]
     }
 
-    /// The graphics of root `root`'s assets pack (a game's: the arena's,
-    /// a side's).
+    /// The own pack.
+    pub fn own_pack(&self) -> PackId {
+        self.own
+    }
+
+    /// The graphics of game `root`'s pack (the arena's, a side's).
     pub fn of_root(&self, c: &Content, root: RootId) -> &'a Bundle {
-        let game = c.scripts.roots.get(root.index()).map(|r| r.assets());
+        let game = c.defs.roots.get(root.index());
         match game.and_then(|g| c.assets.pack(g)) {
             Some(p) => self.bundle(p),
             None => self.own(),
         }
     }
 
-    /// The graphics of the pack a definition's root names its assets in
-    /// (a chip's icon and picture are its game's, under its own key).
+    /// The graphics of the pack of a definition's game, its id's prefix (a
+    /// chip's icon and picture are its game's, under its id's own part).
     pub fn of_key(&self, c: &Content, key: &str) -> &'a Bundle {
-        self.of_root(c, c.defs.root_of(key))
+        c.defs.root_of(key).map_or(self.own(), |r| self.of_root(c, r))
     }
 
     /// A chip's icon: its game's pack's, under its key there.
@@ -144,7 +150,7 @@ mod tests {
         index.mugshots.insert("face".into(), 3);
         let frame = nettai_battle::content::AnimFrame { duration: 4, flags: nettai_battle::object::sprite::FRAME_LAST };
         testing::add_pack(&mut c, "twin", index, [(testing::NAVI_SPRITE, vec![vec![frame]])].into_iter().collect());
-        let manifest = RootManifest { name: "twin".into(), assets: None, requires: vec![testing::ROOT.into()] };
+        let manifest = RootManifest::named("twin");
         c.scripts.add_root(manifest, Default::default());
         c.define().unwrap_or_else(|e| panic!("{e}"));
         c
@@ -171,13 +177,13 @@ mod tests {
     fn each_asset_draws_from_its_own_pack() {
         let c = content();
         let (test, twin) = (c.assets.pack(testing::ROOT).unwrap(), c.assets.pack("twin").unwrap());
-        let chip = c.defs.chip(c.defs.chip_by_key("gundels3").expect("a test chip")).key.clone();
+        let chip = c.defs.chip(c.defs.chip_by_key("test:gundels3").expect("a test chip")).key.clone();
         let (a, b) = (bundle(1, keys::local(&chip)), bundle(2, keys::local(&chip)));
         let mut by_pack = vec![&a, &a];
         by_pack[twin.index()] = &b;
         let packs = Packs::new(by_pack, test);
         let tiles = |s: Option<&SpriteSheet>| s.expect("a sheet").tilesets[0].pixels.len() / Tiles::TILE;
-        assert_eq!(tiles(packs.sprite(&c, testing::sprite_named(&c, "test-navi"))), 1);
+        assert_eq!(tiles(packs.sprite(&c, testing::sprite_named(&c, "test:test-navi"))), 1);
         assert_eq!(tiles(packs.sprite(&c, testing::sprite_named(&c, "twin:navi"))), 2, "twin's sprite is twin's pack's");
         let root = |name: &str| c.defs.root_id(name).expect("a root");
         assert!(std::ptr::eq(packs.of_root(&c, root("twin")), &b));

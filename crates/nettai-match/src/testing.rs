@@ -14,7 +14,7 @@ pub fn bn6_content() -> Arc<Content> {
         let mut c = Content::default();
         c.scripts = nettai_battle::content::Scripts::root(nettai_battle::content::RootManifest::named("bn6"), testing::modules_under(dir));
         c.assets = testing::asset_names_for(&c.scripts);
-        c.strings = nettai_content::locale::load_all(std::path::Path::new(dir), nettai_content::locale::OWN)
+        c.strings = nettai_content::locale::load(std::path::Path::new(dir), nettai_content::locale::OWN)
             .and_then(|s| s.ok_or_else(|| "no locales/en.toml".into()))
             .unwrap_or_else(|e| panic!("content/bn6: {e}"));
         let mut navi = testing::content().animations.sprites[&testing::sprite(testing::NAVI_SPRITE)].clone();

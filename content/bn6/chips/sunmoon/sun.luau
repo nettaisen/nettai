@@ -22,11 +22,11 @@ export type State = {
 
 local sunmoon = {}
 
-local SPRITE = asset.sprite("moon-beam")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_BLAST_MAN = asset.sound("blast-man")
-local SOUND_BURST = asset.sound("burst")
-local SOUND_SUN_MOON = asset.sound("sun-moon")
+local SPRITE = asset.sprite("bn6:moon-beam")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_BLAST_MAN = asset.sound("bn6:blast-man")
+local SOUND_BURST = asset.sound("bn6:burst")
+local SOUND_SUN_MOON = asset.sound("bn6:sun-moon")
 
 -- Where it hovers (16.16).
 local HEIGHT = 0x40_0000
@@ -296,7 +296,7 @@ local function leave(me: Object)
 end
 
 sunmoon.kind = define.kind {
-    id = "sunmoon/sun",
+    id = "bn6:sunmoon/sun",
     pool = "actor",
     state = { controller = "object" },
     -- `sub_80BF260`.

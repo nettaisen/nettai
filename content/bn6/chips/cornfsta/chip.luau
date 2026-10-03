@@ -7,7 +7,7 @@ local controller = require("./controller")
 local cornsht = require("../cornsht/chips")
 
 return define.chip {
-    id = "cornfsta",
+    id = "bn6:cornfsta",
     codes = { "A", "B", "C", "*" },
     element = "wood",
     family = "program_advance",

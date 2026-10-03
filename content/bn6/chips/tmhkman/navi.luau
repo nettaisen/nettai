@@ -18,9 +18,9 @@ export type State = {
 
 local tmhkman = {}
 
-local SPRITE = asset.sprite("tomahawkman")
-local SOUND_APPEAR = asset.sound("appear")
-local SOUND_TOMAHAWK_MAN = asset.sound("tomahawk-man")
+local SPRITE = asset.sprite("bn6:tomahawkman")
+local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_TOMAHAWK_MAN = asset.sound("bn6:tomahawk-man")
 
 -- The controller calls his spawner through r3, which his position takes:
 -- its address with the Thumb bit, whose fraction his Z keeps.
@@ -29,7 +29,7 @@ local SPAWNER_ADDRESS = 0x080B999B
 -- When his tomahawk lands (ticks left of his swing).
 local STRIKE = 0x37
 -- The earth it splashes (effect 0x33).
-local EARTH = define.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
+local EARTH = define.effect { sprite = asset.sprite("bn6:big-slash"), anim = 1, palette = 0 }
 
 -- `sub_80B97E4`: on his panel, on the ground (Z's whole part cleared).
 local function init(me: Object)
@@ -153,7 +153,7 @@ end
 local ACTIONS = { [0] = appear, [4] = stand, [8] = raise, [0xC] = swing, [0x10] = leave }
 
 tmhkman.kind = define.kind {
-    id = "tmhkman/navi",
+    id = "bn6:tmhkman/navi",
     pool = "actor",
     state = { controller = "object" },
     -- `sub_80B97C0`.

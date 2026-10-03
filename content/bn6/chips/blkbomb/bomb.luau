@@ -50,15 +50,15 @@ export type State = {
     target_y: number,
 }
 
-local SPRITE = asset.sprite("black-bomb")
+local SPRITE = asset.sprite("bn6:black-bomb")
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
 local IDENTITY = define.identity {
-    id = "blkbomb",
+    id = "bn6:blkbomb",
     class = "field_object",
     version = 2,
     ai_index = 1,
-    look = { sprite = asset.sprite("black-bomb"), anim = 0, palette = 0, shadow = true },
+    look = { sprite = asset.sprite("bn6:black-bomb"), anim = 0, palette = 0, shadow = true },
 }
 local HP = 0x64
 local LIFETIME = 0x1770
@@ -67,10 +67,10 @@ local SPEED, GRAVITY = 0x2C000, -0x2800
 -- Its collision: hit modifier 3; it deals 100 with counter byte 0x1E; its
 -- hit spark (0x0A).
 local HIT_MOD, SELF_DAMAGE, COUNTER = 3, 0x64, 0x1E
-local HIT_SPARK = define.spark { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
+local HIT_SPARK = define.spark { sprite = asset.sprite("bn6:hit-sparks"), anim = 1, palette = 0 }
 -- How it looks absorbed (the original's obstacle kind's sprite: its own).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
-local SOUND_LAND, SOUND_HIT_BOMB, SOUND_BURST = asset.sound("land"), asset.sound("hit-bomb-1"), asset.sound("burst")
+local SOUND_LAND, SOUND_HIT_BOMB, SOUND_BURST = asset.sound("bn6:land"), asset.sound("bn6:hit-bomb-1"), asset.sound("bn6:burst")
 -- The burst (`byte_80CD828`): over the whole area of the side it hits, no
 -- hit spark, hit modifier 3, fire; then explosions there every 3 ticks
 -- (panel bursts).
@@ -79,7 +79,7 @@ local BURST_INTERVAL = 2
 
 -- What the navi holds while throwing one: the bomb's sprite, palette 4
 -- (the original's attachment row 0x2D).
-black_bomb.held = attachment.look { sprite = asset.sprite("bomb"), palette = 4 }
+black_bomb.held = attachment.look { sprite = asset.sprite("bn6:bomb"), palette = 4 }
 
 -- The actions (the object's action byte).
 local DESTROYED, SET = 2, 9
@@ -345,7 +345,7 @@ end
 
 -- BN6's: a neutral object whose burst is an attack, pushed by a pushing
 -- hit with its damage kept.
-black_bomb.kind = black_bomb.make_kind("blkbomb/bomb", {
+black_bomb.kind = black_bomb.make_kind("bn6:blkbomb/bomb", {
     destroyed = destroyed,
     spark = HIT_SPARK,
     is = collision.neutral_object,

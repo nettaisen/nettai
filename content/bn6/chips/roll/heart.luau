@@ -8,8 +8,8 @@
 
 local heart = {}
 
-local SPRITE = asset.sprite("roll-heart")
-local SOUND_HEAL = asset.sound("heal")
+local SPRITE = asset.sprite("bn6:roll-heart")
+local SOUND_HEAL = asset.sound("bn6:heal")
 local ANIM = 4
 
 -- Its height, and how far it sinks a tick (Z's whole part).
@@ -18,9 +18,9 @@ local SINK = 3
 
 -- The sparkle around it, and around Roll as she warps (effect 0x26), and
 -- the effect on the healed navi (effect 0x06).
-heart.sparkle = define.effect { sprite = asset.sprite("elmnt-ice"), anim = 0, palette = 0 }
+heart.sparkle = define.effect { sprite = asset.sprite("bn6:elmnt-ice"), anim = 0, palette = 0 }
 local SPARKLE = heart.sparkle
-local HEALED = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
+local HEALED = define.effect { sprite = asset.sprite("bn6:heal"), anim = 0, palette = 0 }
 
 -- `sub_80CE198`: sink, sparkling every 10 ticks; landed, hidden, on to
 -- the heal.
@@ -94,7 +94,7 @@ local function init(me: Object)
 end
 
 heart.kind = define.kind {
-    id = "roll/heart",
+    id = "bn6:roll/heart",
     pool = "attack",
     -- `sub_80CE118`.
     update = function(me: Object)

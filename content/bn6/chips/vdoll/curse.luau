@@ -26,7 +26,7 @@ export type State = {
 local MARK, WAIT, HIT = 0x0, 0x4, 0x8
 local MARK_TICKS, WAIT_TICKS, HIT_TICKS = 0x3C, 0xA, 0x1E
 -- The marks' sound (`sub_800AE90`).
-local MARK_SOUND = asset.sound("err-select-91")
+local MARK_SOUND = asset.sound("bn6:err-select-91")
 -- The hit on each panel (`sub_80E621C`: region 1, spark 6, a curse that
 -- hits navis, hit modifier 3, null).
 local HIT_MOD = 3
@@ -35,7 +35,7 @@ local HIT_MOD = 3
 local OCCUPIED = { [0] = 0x0020_0000, [1] = 0x0040_0000 }
 -- The sparkles over whoever is hit: 32 ticks of effect 0x24.
 local SPARKLES_LENGTH = 2
-local SPARKLE = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
+local SPARKLE = define.effect { sprite = asset.sprite("bn6:explosion"), anim = 0, palette = 1 }
 
 -- `sub_80E7486`: the combatant (one of either side's still in) whose
 -- collision stands on (x, y), when the panel says one of `side`'s
@@ -145,7 +145,7 @@ local function effect(me: Object)
 end
 
 curse.kind = define.kind {
-    id = "vdoll/curse",
+    id = "bn6:vdoll/curse",
     pool = "effect",
     state = { targets = "u8[4]", count = "u8" },
     -- `sub_80E6088`.

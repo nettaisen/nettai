@@ -241,7 +241,7 @@ pub fn lints(path: &str, source: &str) -> Vec<Problem> {
             let Some(eq) = after.find('=') else { continue };
             let quote = at + id + 2 + eq + 1 + (after[eq + 1..].len() - after[eq + 1..].trim_start().len());
             if let Some(key) = s.string_at(quote)
-                && !key.starts_with(&format!("{owner}/"))
+                && !key.split_once(':').map_or(key, |(_, k)| k).starts_with(&format!("{owner}/"))
             {
                 out.push(format!("{path}:{}: kind {key:?} lives in {owner}'s folder: key it \"{owner}/...\"", s.line(at)));
             }

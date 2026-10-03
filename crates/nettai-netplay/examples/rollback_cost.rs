@@ -10,7 +10,7 @@
 //!
 //! (`<pack>`: the BN6 content pack whose assets the trace's battle names,
 //! from `bn6-extract content`; the battle content is this repository's
-//! content/bn6, or `$BN6_CONTENT`. `--frames A..B`: those frames instead of
+//! content/, or `$NETTAI_CONTENT`. `--frames A..B`: those frames instead of
 //! the 2000 around the busiest; `--frames all`: the whole round. With the
 //! feature `luau-profile`, it also reports the calls into Luau per advance,
 //! by what is called: docs/design/rules-in-luau.md §6.5.)
@@ -37,7 +37,7 @@ fn main() {
     let path = args.get(1).expect(usage);
     let pack = args.get(2).expect(usage);
     let (content, _) =
-        nettai_content::pack::load_battle(&nettai_content::root::bn6(), std::path::Path::new(pack)).unwrap_or_else(|r| panic!("{pack}: {r}"));
+        nettai_content::pack::load_battle(&nettai_content::root::content(), std::path::Path::new(pack)).unwrap_or_else(|r| panic!("{pack}: {r}"));
     let content = std::sync::Arc::new(content);
     let n: usize = args.get(3).map_or(1, |s| s.parse().expect("a round number"));
     std::panic::set_hook(Box::new(|_| {}));

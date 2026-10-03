@@ -117,10 +117,10 @@ end
 -- WideSwrd's after a dash; Curse's and Punisher's (all zero) the plain
 -- slash where the navi stands, what an action that names none gets.
 sonicbom.actions = {
-    sonicbom = action("sonicbom/action", { hit_mod = 3, pierces = false }, { charged = slashes.sword, step = true }),
-    sprsonic = action("sprsonic/action", { hit_mod = 1, pierces = true }, { charged = slashes.wide, step = true }),
-    curse = action("curse/action", { hit_mod = 0, pierces = false }),
-    punisher = action("punisher/action", { hit_mod = 0, pierces = false }),
+    sonicbom = action("bn6:sonicbom/action", { hit_mod = 3, pierces = false }, { charged = slashes.sword, step = true }),
+    sprsonic = action("bn6:sprsonic/action", { hit_mod = 1, pierces = true }, { charged = slashes.wide, step = true }),
+    curse = action("bn6:curse/action", { hit_mod = 0, pierces = false }),
+    punisher = action("bn6:punisher/action", { hit_mod = 0, pierces = false }),
 }
 
 return sonicbom

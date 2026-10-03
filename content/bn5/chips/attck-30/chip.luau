@@ -6,7 +6,7 @@
 local plus = require("../../lib/plus")
 
 return define.chip {
-    id = "attck-30",
+    id = "bn5:attck-30",
     codes = { "*" },
     element = "null",
     family = "plus",

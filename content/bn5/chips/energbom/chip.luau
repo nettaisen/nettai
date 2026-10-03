@@ -10,7 +10,7 @@ local collision = require("../../rules/collision")
 local throw = require("@bn6/lib/bombs/throw")
 
 return define.chip {
-    id = "energbom",
+    id = "bn5:energbom",
     codes = { "E", "P", "W" },
     element = "null",
     family = "null",

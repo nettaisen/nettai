@@ -12,7 +12,7 @@ export type State = {
     ticks: number,
 }
 
-local SPRITE = asset.sprite("hit-sparks")
+local SPRITE = asset.sprite("bn6:hit-sparks")
 local ANIM, PALETTE = 0xB, 2
 
 -- `sub_80E7756`: the lifetime on the first tick; freed at once when it
@@ -30,7 +30,7 @@ local function tick(me: Object)
 end
 
 marker.kind = define.kind {
-    id = "lifesync/marker",
+    id = "bn6:lifesync/marker",
     pool = "effect",
     state = { ticks = "u8" },
     -- `sub_80E76F8`.

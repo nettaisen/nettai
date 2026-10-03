@@ -29,8 +29,8 @@ export type State = {
     trail: number,
 }
 
-local SPRITE = asset.sprite("flame-hook-fire")
-local SOUND = asset.sound("flame-hook-fire")
+local SPRITE = asset.sprite("bn6:flame-hook-fire")
+local SOUND = asset.sound("bn6:flame-hook-fire")
 -- Its hit modifier (`dword_80DEA38`).
 local HIT_MOD = 3
 -- Where the arc's center is: behind and down, 16.16; a column's width.
@@ -164,7 +164,7 @@ local function init(me: Object)
 end
 
 fire.kind = define.kind {
-    id = "flmhook/fire",
+    id = "bn6:flmhook/fire",
     pool = "attack",
     state = { swing = "u8", big = "bool", spark = "spark", center_x = "i32", center_y = "i32", trail = "u32" },
     -- `sub_80DE7F4`.

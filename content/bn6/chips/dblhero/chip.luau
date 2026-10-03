@@ -10,7 +10,7 @@ local protoman_chips = require("../protoman/chips")
 local wideblde = require("../wideblde/chip")
 
 return define.chip {
-    id = "dblhero",
+    id = "bn6:dblhero",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

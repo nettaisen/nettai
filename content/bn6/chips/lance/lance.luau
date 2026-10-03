@@ -17,8 +17,8 @@ export type State = {
     palette: number,
 }
 
-local SPRITE = asset.sprite("lance")
-local SOUND = asset.sound("sword-swing")
+local SPRITE = asset.sprite("bn6:lance")
+local SOUND = asset.sound("bn6:sword-swing")
 -- How far past its panel it appears, in pixels, and how fast it slides
 -- back, 16.16.
 local AHEAD, SPEED = 0x40, 0x8_0000
@@ -111,7 +111,7 @@ local function init(me: Object)
 end
 
 lance.kind = define.kind {
-    id = "lance/lance",
+    id = "bn6:lance/lance",
     pool = "attack",
     state = { palette = "u8" },
     -- `sub_80D2460`.

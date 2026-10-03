@@ -10,7 +10,7 @@ local charge = require("./charge")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "heatcross",
+    id = "bn6:heatcross",
     kind = "cross",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -19,14 +19,14 @@ return define.form {
     beast = heatcross_beast,
     -- A weakness hit breaks the Cross: back to the base form.
     breaks_to = base,
-    sprite = asset.sprite("megaman"),
+    sprite = asset.sprite("bn6:megaman"),
     element = "fire",
     buster_bonus = 1,
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },
     palette = 2,
     -- Its faces in the emotion window, and once Beast Out is spent
     -- (`byte_801E700`): the Falzar ROM has no HeatCross face, and shows SpoutCross's.
-    mugshot = { normal = asset.mugshot("heatcross"), tired = asset.mugshot("heatcross-tired") },
+    mugshot = { normal = asset.mugshot("bn6:heatcross"), tired = asset.mugshot("bn6:heatcross-tired") },
     -- What R shows in the Cross window.
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "fire", damage = 50 },
@@ -43,7 +43,7 @@ return define.form {
         aura_anim = 25,
         ice = "medium",
         -- What it wears over MegaMan's body.
-        parts = cross_overlay(asset.sprite("heatcross-overlay")),
+        parts = cross_overlay(asset.sprite("bn6:heatcross-overlay")),
         attach_points = {
             { 2, 0 },
             { 2, 0 },
