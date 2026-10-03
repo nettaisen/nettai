@@ -13,10 +13,10 @@
 -- don't erupt: they burn and go, §15), the Cross and Beast Out sounds and the custom screen's Cross
 -- window, re-deal and scrap (BN6's).
 
-local antidmg_counter = require("@bn6/chips/antidmg/counter")
+local antidmg_counter = require("../chips/antidmg/counter")
 local barriers = require("@bn6/lib/barriers/barriers")
 local charged_shot = require("@bn6/navis/megaman/weapons/charged-shot/weapon")
-local anti_recovery = require("@bn6/chips/antirecv/controller")
+local anti_recovery = require("../chips/antirecv/controller")
 local antiswrd_counter = require("@bn6/chips/antiswrd/counter")
 local collision = require("./collision")
 local effects = require("@bn6/lib/effects")
