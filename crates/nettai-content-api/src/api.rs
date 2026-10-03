@@ -394,6 +394,9 @@ named_fields! {
         StatusBase = "status_base", Ref(Registry::Status, None), rw;
         /// Bug code (low byte) and argument (high byte).
         Bugs = "bugs", U16, rw;
+        /// The bug code and argument the last resolution's hits brought
+        /// (CollisionData+0x9C, +0x9D), which the navi takes.
+        InflictedBugs = "inflicted_bugs", U16, rw;
         HitModBase = "hit_mod_base", U8, rw;
         /// The damage it deals (the object's damage at setup).
         SelfDamage = "self_damage", U16, rw;

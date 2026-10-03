@@ -348,6 +348,7 @@ window's `update(side, pad)`, `custom.keys(side, pad) -> handled`, `custom.hand_
 | `navi_hit(navi, hit)` | once per tick the navi took hits, after the damage (where `sub_801A200` runs), on the hit side's systems | mood loss, anger, the weakness break by form |
 | `countered(navi, target)` | when the side's navi's counter landed (`sub_801A200`), on the countering side's systems, before the hit side's `navi_hit` | Full Synchro by its own form, unless the target's mood is held |
 | `starting_mood(side) -> mood` | where `sub_8013892` sets the starting mood (`sub_8015C2C`'s 0x80); the first answer | (BN5's light and dark system: by the light/dark value, 0x0801283A) |
+| `navi_bug(side, navi) -> skip` | before the navi takes its hit's NaviCust bug (`sub_80139F6`); it may change the collision's `inflicted_bugs`; true skips the bug and the weapons' reload | (BN5's light and dark system: codes 0xFD, 0xFC; hit flag 0x400 from a value of 1000) |
 | `navi_palette(side, navi) -> palette` | each tick, the palette of a navi of the player's kind (presentation, `sub_801002C`); the first answer, else the framework's | (BN5's light and dark system: 0x0800DD94) |
 | `navi_deleted(navi) -> keep` | where the framework would delete the navi (deciding) | |
 | `chip_used(navi, chip) -> Use` | once per chip use, after the common path | the rush (a wrapper), the Cross bonuses, EraseCross's flag |

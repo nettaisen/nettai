@@ -554,9 +554,10 @@ pub struct SideState {
     /// +0x12: the swing a variable sword makes for a navi no buttons drive
     /// (BN5's computer navi draws it before VarSwrd or NeoVari, 0x0802A330).
     pub sword_pick: u8,
-    /// Presentation: the emotion window shows the second set of the form's
-    /// faces (BN5's Hub Style, NaviStats +0x4C: 0x0801AF8E adds 11 to the
-    /// face), as the side's rules set it (`battle.set_face_variant`).
+    /// Presentation: the emotion window shows the second set of the base
+    /// form's faces (BN5's Hub Style, NaviStats +0x4C: 0x0801AF8E adds 11 to
+    /// the face), as the side's rules set it (`battle.set_face_variant`;
+    /// `kinds::player::shows_face_variant`).
     pub face_variant: bool,
     /// +0x44: the target the side tracks (an actor of the other side), which
     /// an obstacle leaving hands on (`sub_802EF74`).
