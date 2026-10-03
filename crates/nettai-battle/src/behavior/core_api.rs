@@ -2183,7 +2183,7 @@ impl CoreApi for Battle {
         // (the original's NameID 0x1A0, or past the link navis'), else
         // MegaMan's.
         use crate::content::IdentityClass;
-        let base = self.content.base_form();
+        let base = self.content.base_form_for(megaman);
         let megaman_identity = self.content.navi(megaman).identity;
         let user_name = self.objects.get(user).identity;
         let class = self.content.identity(user_name).class;

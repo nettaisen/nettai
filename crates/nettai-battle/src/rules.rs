@@ -348,6 +348,13 @@ mod tests {
                  return define.roles(spec)",
             ),
             ("rules/pools", "return define.rules('twin:pools', { actor = 16, attack = 32, effect = 32 })"),
+            // Its own base form (P1 item 12), the test content's weapons.
+            (
+                "navis/base",
+                "local test = require('@test/navis/test')\n\
+                 return define.form { id = 'twin:base', kind = 'base', sprite = asset.sprite('twin:navi'), element = 'null', \
+                 buster_bonus = 0, weapons = test.base.weapons, buster_arm = { anim = 0 } }",
+            ),
         ];
 
         /// The test content with the `twin` root beside it, and twin's own
@@ -368,6 +375,33 @@ mod tests {
                 Arc::new(c)
             })
             .clone()
+        }
+
+        /// docs/design/rules-in-luau.md P1 item 12: a base form per game, one
+        /// a game; a navi's is its game's, and a game without one takes the
+        /// first game's, by name, that has one.
+        #[test]
+        fn each_game_has_its_base_form() {
+            let c = content();
+            let (test, twin) = (c.defs.root_id(testing::ROOT).unwrap(), c.defs.root_id("twin").unwrap());
+            let (test_base, twin_base) = (c.defs.form_by_key("test:base"), c.defs.form_by_key("twin:base"));
+            assert!(test_base.is_some() && twin_base.is_some());
+            assert_eq!((c.defs.base_forms[test.index()], c.defs.base_forms[twin.index()]), (test_base, twin_base));
+            assert_eq!(Some(c.base_form_of(twin)), twin_base);
+            assert_eq!(Some(c.base_form_for(c.navi_by_key(testing::MEGAMAN))), test_base);
+            // A game without one (a folder of no base form, `aaa`, first by
+            // name) takes test's, the first that has one.
+            let mut lone = (*c).clone();
+            lone.scripts.add_root(RootManifest::named("aaa"), [("m".to_string(), "return define.record('x', { n = 1 })".to_string())].into());
+            lone.define().unwrap_or_else(|e| panic!("{e}"));
+            let aaa = lone.defs.root_id("aaa").unwrap();
+            assert_eq!((lone.defs.base_forms[aaa.index()], Some(lone.base_form_of(aaa))), (None, lone.defs.form_by_key("test:base")));
+            // Two in one game are refused.
+            let mut two = (*c).clone();
+            let second = TWIN.iter().find(|(p, _)| *p == "navis/base").unwrap().1.replace("twin:base", "twin:base-2");
+            *two.scripts.modules.entry(crate::content::Scripts::name("twin", "navis/base-2")).or_default() = second;
+            let e = two.define().unwrap_err().message;
+            assert!(e.contains("two forms of twin are base forms (twin:base and twin:base-2)"), "{e}");
         }
 
         /// A battle on the twin content, its sides playing by `rulesets`.
