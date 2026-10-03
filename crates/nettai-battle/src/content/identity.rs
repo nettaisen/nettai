@@ -207,6 +207,9 @@ pub struct Identity {
     /// It can be swallowed or left as junk (`sub_800F486`: not a mine, not
     /// BodyGrd's striker).
     pub scrap: bool,
+    /// BN5's Poltergeist takes it (0x080E8CA0, 0x080E8D1C: not BN5's
+    /// NameIDs 0xDA, 0xD3, 0xD2, 0xE5, 0xE4 and 0xE7).
+    pub throwable: bool,
     /// What its object wears.
     pub parts: Option<Parts>,
     /// Which hooks touch what its object wears.
@@ -235,6 +238,7 @@ impl Identity {
             look: None,
             absorbable: true,
             scrap: true,
+            throwable: true,
             parts: None,
             overlay_hooks: OverlayHooks::default(),
             aura_anim: None,
@@ -509,6 +513,7 @@ pub(crate) fn read(
         look,
         absorbable: flag(spec.field("absorbable"), "absorbable", true)?,
         scrap: flag(spec.field("scrap"), "scrap", true)?,
+        throwable: flag(spec.field("throwable"), "throwable", true)?,
         parts,
         overlay_hooks,
         aura_anim,

@@ -3,56 +3,19 @@
 -- `sub_80E4910`; docs/engine/dimming-chips.md §5.1): the usual dimming
 -- phases (@common/dimming), with an effect (`sub_80E4954`) that puts the glow
 -- over the user's side's navi (glow.luau), fixes the user's side's
--- NaviCust bugs, and waits for the glow.
+-- NaviCust bugs, spends the Beast Out counter again unless the navi has one,
+-- and waits for the glow. The behavior is BN5's too
+-- (@common/bugfix/controller), made here with BN6's glow and Beast Out.
 
-local dimming_chips = require("@common/dimming")
+local common = require("@common/bugfix/controller")
 local glow = require("./glow")
 
 local bugfix = {}
 
-export type State = {
-    -- The glow runs (the original's Param2, which the glow clears).
-    busy: boolean,
-}
-
--- What the effect's first tick sets the timer to (nothing counts it).
-local TIMER = 0x3C
-
--- `sub_80E4954`.
-local function effect(me: Object)
-    if me.phase_init == 0 then
-        -- sub_80C4AEC
-        glow.spawn(me, glow.BUG_FIX, me)
-        -- sub_80E49C4
-        local user = me.related1
-        if not user then
-            error("BugFix's controller has no user (sub_80E49C4 reads through a null pointer)")
-        end
-        battle.clear_navicust_bugs(user.alliance)
-        -- sub_801E658: the emotion portrait's bug face goes, on every
-        -- console (its flicker draws the console's RNG1).
-        battle.clear_emotion_window_glitch()
-        -- sub_8014446 / sub_801443C: the Beast Out counter is spent
-        -- again unless the navi has one.
-        user.tired = battle.navi(user.alliance).beast_out_counter == 0
-        me.timer = TIMER
-        me.phase_init = 4
-    end
-    if not (me.state :: State).busy then
-        dimming_chips.done(me)
-    end
-end
-
-bugfix.kind = define.kind {
-    id = "bn6:bugfix/controller",
-    pool = "effect",
-    state = { busy = "bool" },
-    update = dimming_chips.phases { name = "BugFix", effect = effect },
-}
+local made = common.make { id = "bn6:bugfix/controller", glow = glow.spawn, beast_out = true }
+bugfix.kind = made.kind
 
 -- `sub_80E49A2`: the chip's `dimming` hook.
-function bugfix.spawn(user: Object, spec: DimmingChipSpec): Object?
-    return dimming_chips.spawn(bugfix.kind, user, spec)
-end
+bugfix.spawn = made.spawn
 
 return bugfix
