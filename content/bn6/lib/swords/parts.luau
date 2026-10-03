@@ -90,9 +90,9 @@ function parts.blade_palette(me: Object): number
 end
 
 -- `sub_80B8E30` with a blade: hold it (in the first related slot), its
--- palette plus `palette_add`.
-function parts.hold(me: Object, blade: AttachmentLook, palette_add: number): Object?
-    return attachment.attach(me, blade, "related", { anim = parts.blade_anim(me), palette_add = palette_add })
+-- palette plus `palette_add`, in animation `anim` (none: `blade_anim`'s).
+function parts.hold(me: Object, blade: AttachmentLook, palette_add: number, anim: number?): Object?
+    return attachment.attach(me, blade, "related", { anim = anim or parts.blade_anim(me), palette_add = palette_add })
 end
 
 -- Let go of the blade (and anything in the overlay slot): what is attached

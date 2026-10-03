@@ -68,9 +68,13 @@ fn chip_charges(b: &Battle, r: ObjectRef, chip: ChipHandle) -> bool {
     // The form's `charged_chips`: a family's damaging chips (ElecCross's
     // Null, SlashCross's Sword and the element swords, TomahawkCross's
     // Wood, SpoutCross's Aqua, GroundCross's Break, ChargeCross's Fire),
-    // and in Beast Out any Null chip.
+    // and in Beast Out any Null chip; BN5's souls' (0x0801090A) a family's
+    // chips that are neither dimming nor dark chips (`plain`).
+    let plain = !c.flags.has(ChipFlags::DIMMING) && !c.flags.has(ChipFlags::DARK);
     let charges = form_of(b, r).charged_chips.iter().any(|rule| {
-        (family == rule.family || (rule.element_swords && c.traits.has(ChipTraits::ELEMENT_SWORD))) && (damaging || !rule.damaging)
+        (family == rule.family || (rule.element_swords && c.traits.has(ChipTraits::ELEMENT_SWORD)))
+            && (damaging || !rule.damaging)
+            && (plain || !rule.plain)
     });
     if charges {
         return true;
