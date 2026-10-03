@@ -335,3 +335,5 @@
 "bn5:bodygrd" = { id = 0x15c, action = 0x15, subtype = 46 }
 "bn5:piledrvr" = { id = 0x15d, action = 0x15, subtype = 47 }
 "bn5:invalid" = { id = 0x185, action = 0x1a, subtype = 26 }
+"bn5:ftrsword" = { id = 0x172, action = 0x13, subtype = 9 }
+"bn5:sonicbom" = { id = 0x173, action = 0x2b, subtype = 0 }
