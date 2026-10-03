@@ -56,3 +56,4 @@
 "bn5:darkcirc/gun" = { pool = "attack", index = 0x89 }
 "bn5:darkcirc/shot" = { pool = "attack", index = 0x8A }
 "bn5:darkcirc/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
+"bn5:lance" = { pool = "attack", index = 0x4F }
