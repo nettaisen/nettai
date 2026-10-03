@@ -12,9 +12,15 @@ local vulcan = {}
 
 local GUN = attachment.look { sprite = asset.sprite("bn5:vulcan"), palette = 0, attach_point = 14 }
 
--- The vulcan of a chip that fires `shots` bullets.
-function vulcan.action(shots: number): Action
-    return vulcan_action.action { shots = shots, bullet = bullet.variants.vulcan, arm = GUN, bullet_kind = bullet.kind }
+-- The vulcan of a chip that fires `shots` bullets (0x080EC6B4 by subtype: SuprVulc's 12), of `variant` (the
+-- Vulcans' when none; SuprVulc's row 0x10).
+function vulcan.action(shots: number, variant: BulletVariant?): Action
+    return vulcan_action.action {
+        shots = shots,
+        bullet = variant or bullet.variants.vulcan,
+        arm = GUN,
+        bullet_kind = bullet.kind,
+    }
 end
 
 return vulcan
