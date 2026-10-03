@@ -133,7 +133,7 @@ setup gives both (nettai-match's `starting`).
 ## 4. Other games
 
 A game brings its own programs (its root's `define.navicust_program`s, with its own names in its own colors), its
-own board section and its own compile system. **BN5's is built** (bn5-map.md §15.11): its compile is BN6's routine
+own board section and its own compile system. **BN5's is built** (bn5-map.md §15.13): its compile is BN6's routine
 for routine, so the routines are shared (content/common/navicust/compile.luau, `compile.run(side, game)`), and each
 game's navicust system passes what is its own (`NaviCustGame`, content/common/types.d.luau): its board, its bugs in
 the order its bugs' routine runs them and what each writes by level, what a placed program counts besides (BN5's
@@ -164,7 +164,7 @@ scenario places the compressed shape (`chiplab info` prints the flags). A progra
 is compiled compressed by the original.
 
 BN5's: `trace-tests --test bn5_navicust` compiles Tango's BN5 saves and the BN5 lab's scenarios the same way, in
-every byte the engine's compile can write (bn5-map.md §15.11): 59 NaviCusts of 164 programs, all 47 programs, every
+every byte the engine's compile can write (bn5-map.md §15.13): 59 NaviCusts of 164 programs, all 47 programs, every
 bug and level that changes a byte, uncompressed shapes (a scenario clearing the save's flags), turned ones, the
 cyberworld's HP, and the finished saves' own NaviCusts. Every one matches.
 

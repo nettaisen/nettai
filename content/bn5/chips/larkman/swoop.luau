@@ -5,9 +5,11 @@
 -- and animates while the battle is dimmed. With the navi's command entered (./navi), its body hits for nothing and
 -- a follower (./follower) carries its damage.
 --
+-- WildBird's (variant 6, from the summon table's entry 23's LarkMan) flies faster (row 6), turns faster for 25 more
+-- ticks with its own animations by its side (0x080DDC44), and takes no command.
+--
 -- Not ported: the variants LarkMan the virus's AI spawns (0 to 4, 0x08100942: its own start panels, speeds and
--- turn, a warning effect, waiting on the dimming and on its owner's attack), and variant 6 (the navi of the
--- summon table's entry 23, which no chip names: a faster turn, 25 more ticks of it, its own animations).
+-- turn, a warning effect, waiting on the dimming and on its owner's attack).
 
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
@@ -19,8 +21,9 @@ local follower = require("./follower")
 local swoop = {}
 
 export type State = {
-    -- The navi chip's level (its Param1), which picks the palette (+0x30).
+    -- The navi chip's level, which picks the palette (+0x30), and its variant (Param1: 5, or WildBird's 6).
     level: number,
+    variant: number,
     -- It faces left (+5: its side ^ flip).
     left: boolean,
     -- Its column at the start (+6), and its look: 1 facing right, 3 left (+7: from below the field).
@@ -47,11 +50,29 @@ local HIT_MOD = 3
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 4 }
 -- By look (0x080DD850: 0 and 2, from above the field, are the virus's).
 local ANIMS: { [number]: number } = { [0] = 8, 6, 9, 0xB }
--- The navi chip's speed (0x080DD858's row 5), the turn's step (0x080DDB7C's row 5: 16.16 of 256 steps) and the
--- ticks it lasts less (0x080DDB9C's row 5).
-local SPEED_X, SPEED_Y = 0x8_0000, 0x4_CCCC
-local TURN_STEP = 0xD_AC50
-local TURN_SHORTER = 1
+-- By variant (5 the navi chip's, 6 WildBird's): the speed (0x080DD858's rows), the turn's step (0x080DDB7C's rows:
+-- 16.16 of 256 steps), the ticks it lasts less (0x080DDB9C's rows) and more (WildBird's 25).
+type Variant = { speed_x: number, speed_y: number, turn_step: number, shorter: number, longer: number }
+local VARIANTS: { [number]: Variant } = {
+    [5] = { speed_x = 0x8_0000, speed_y = 0x4_CCCC, turn_step = 0xD_AC50, shorter = 1, longer = 0 },
+    [6] = { speed_x = 0xC_0000, speed_y = 0x7_3333, turn_step = 0x14_8278, shorter = 0, longer = 25 },
+}
+local function variant(s: State): Variant
+    local v = VARIANTS[s.variant]
+    if not v then
+        error(string.format("LarkMan's swoop variant %d is a virus's (0x08100942), not ported", s.variant))
+    end
+    return v
+end
+-- WildBird's turn animations and the angles each waits for, by its side (0x080DDC88, 0x080DDCA4: eleven each).
+local WILD_TURN_ANIMS: { [number]: { number } } = {
+    [0] = { 8, 9, 0xB, 6, 8, 9, 0xB, 6, 8, 9, 0xB },
+    [1] = { 9, 8, 6, 0xB, 9, 8, 6, 0xB, 9, 8, 6 },
+}
+local WILD_TURN_ANGLES: { [number]: { number } } = {
+    [0] = { 0xC0, 0x100, 0x140, 0x180, 0x1C0, 0x200, 0x240, 0x280, 0x2C0, 0x300, 0x340 },
+    [1] = { 0xC0, 0x80, 0x40, 0, -0x40, -0x80, -0xC0, -0x100, -0x140, -0x180, -0x1C0 },
+}
 -- The turn's animations and the angles each waits for, by look (0x080DDC1C, 0x080DDC2C: three each).
 local TURN_ANIMS: { [number]: { number } } = { [0] = { 6, 0xB, 9 }, { 8, 9, 0xB }, { 0xB, 6, 8 }, { 9, 8, 6 } }
 local TURN_ANGLES: { [number]: { number } } =
@@ -86,7 +107,8 @@ local function init(me: Object)
     sprite:set_animation(anim)
     s.anim_step = 0
     sprite.palette = PALETTES[s.level] or 0
-    me.vel = Vec3.new(if s.left then -SPEED_X else SPEED_X, if me.panel_y == 4 then -SPEED_Y else SPEED_Y, me.vel.z)
+    local v = variant(s)
+    me.vel = Vec3.new(if s.left then -v.speed_x else v.speed_x, if me.panel_y == 4 then -v.speed_y else v.speed_y, me.vel.z)
     s.powered = false
     if not me:create_collision() then
         me:free()
@@ -130,7 +152,8 @@ local function start_turn(me: Object, s: State)
     local angle = trajectory.angle(dx, dy)
     me.timer2 = angle
     s.angle = int.shl(angle, 16)
-    local step = TURN_STEP
+    local v = variant(s)
+    local step = v.turn_step
     if not s.left then
         step = -step
     end
@@ -138,7 +161,7 @@ local function start_turn(me: Object, s: State)
         step = -step
     end
     s.angle_step = step
-    me.timer = int.tdiv(0xB8, bit32.rshift(TURN_STEP, 16)) - TURN_SHORTER
+    me.timer = int.tdiv(0xB8, bit32.rshift(v.turn_step, 16)) - v.shorter + v.longer
 end
 
 -- Action 0 (0x080DD900): diagonally up; on reaching the center of the third column ahead, the turn.
@@ -187,6 +210,26 @@ local function turn_anim(me: Object, s: State)
     s.anim_step = n + 1
 end
 
+-- 0x080DDC44 (WildBird's): the next of its eleven turn animations, once the angle (signed) passes its mark.
+local function wild_turn_anim(me: Object, s: State)
+    local n = s.anim_step
+    if n >= 11 then
+        return
+    end
+    local side = if s.left then 1 else 0
+    local mark = WILD_TURN_ANGLES[side][n + 1]
+    local angle = int.i16(me.timer2)
+    if side == 1 then
+        if angle > mark then
+            return
+        end
+    elseif angle < mark then
+        return
+    end
+    me.anim = WILD_TURN_ANIMS[side][n + 1]
+    s.anim_step = n + 1
+end
+
 -- Action 4 (0x080DD99E): round the center; then off.
 local function turn(me: Object)
     local s = me.state :: State
@@ -203,7 +246,11 @@ local function turn(me: Object)
         p.z
     )
     moved(me, x, y)
-    turn_anim(me, s)
+    if s.variant == 6 then
+        wild_turn_anim(me, s)
+    else
+        turn_anim(me, s)
+    end
     local left = me.timer - 1
     me.timer = left
     if left <= 0 then
@@ -255,7 +302,9 @@ local function tick(me: Object)
         return
     end
     local s = me.state :: State
-    power_up(me, s)
+    if s.variant == 5 then
+        power_up(me, s)
+    end
     if c.hit_flags ~= 0 then
         c:set_region(nil)
     end
@@ -272,6 +321,7 @@ swoop.kind = define.kind {
     pool = "attack",
     state = {
         level = "u8",
+        variant = "u8",
         left = "bool",
         start_x = "u8",
         dir = "u8",
@@ -298,12 +348,14 @@ swoop.kind = define.kind {
     end,
 }
 
--- 0x080DDA60: LarkMan's swoop from `navi` (the navi chip's variant 5), the chip's level, element and damage word.
-function swoop.spawn(navi: Object, level: number, element: number, damage: number): Object?
+-- 0x080DDA60: LarkMan's swoop from `navi` of `variant` (the navi chip's 5, WildBird's 6), the chip's level, element
+-- and damage word.
+function swoop.spawn(navi: Object, level: number, element: number, damage: number, variant: number): Object?
     local o = battle.spawn(swoop.kind, Vec3.zero)
     if o then
         local s = o.state :: State
         s.level = level
+        s.variant = variant
         o.element = element
         o.related1 = navi
         o:set_damage_word(damage)

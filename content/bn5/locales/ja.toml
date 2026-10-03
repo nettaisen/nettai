@@ -84,6 +84,7 @@ language = "ja"
 "bn5:crakbom" = { name = "クラックボム", description = "3マス前方にボム!\nたて3マス攻撃で\nじめんをヒビに!" }
 "bn5:crakout" = { name = "クラックアウト", description = "パネルはかい攻撃!\n目の前の1マスを\nけしさってしまう" }
 "bn5:crossdiv" = { name = "クロスディバイド", description = "前方のてきを\nクロスにきりつける" }
+"bn5:crosswrd" = { name = "クロスソード", description = "" }
 "bn5:crsshld1" = { name = "カースシールド1", description = "ガードするとあいて\nにかみつくシールド\nあいてはのろわれる" }
 "bn5:crsshld2" = { name = "カースシールド2", description = "ガードするとあいて\nにかみつくシールド\nあいてはのろわれる" }
 "bn5:crsshld3" = { name = "カースシールド3", description = "ガードするとあいて\nにかみつくシールド\nあいてはのろわれる" }
@@ -100,6 +101,7 @@ language = "ja"
 "bn5:darkthnd" = { name = "ダークサンダー", description = "マヒコウカヲモッタ\nサンダーボールデ\nジワジワオイツメヨ" }
 "bn5:darktorn" = { name = "ダークトルネード", description = "キズヲオウホドニ\nハンイヲヒロゲル\nニクシミノアラシ" }
 "bn5:darkwide" = { name = "ダークワイド", description = "タテ3マスノワイド\nショットガアイテヲ\nツラヌイテススム" }
+"bn5:dbldream" = { name = "ダブルドリーム", description = "" }
 "bn5:dblpoint" = { name = "ダブルポイント", description = "自エリアをぎせいに\nしてつぎのチップの\n攻撃力を+20ずつ" }
 "bn5:deltaray" = { name = "デルタレイエッジ", description = "きりつけるときに\nAボタンでさいこう\n3だんのソード攻撃" }
 "bn5:dethphnx" = { name = "デスフェニックス", description = "フィールド中に\nヤミの炎、さらに\nナビをリサイクル!" }
@@ -287,6 +289,7 @@ language = "ja"
 "bn5:snctuary" = { name = "サンクチュアリ", description = "自分のエリアの\nすべてのマスを\nホーリーパネルに!" }
 "bn5:sonicbom" = { name = "ソニックブーム", description = "" }
 "bn5:spreader" = { name = "スプレッドガン", description = "ヒットすると\nまわりの1マスに\nゆうばく!" }
+"bn5:sprsonic" = { name = "スーパーソニック", description = "" }
 "bn5:spshake1" = { name = "スペースユラ1", description = "たて3マスはばで\nゆれながらすすむ\nユラをはっしゃ!" }
 "bn5:spshake2" = { name = "スペースユラ2", description = "たて3マスはばで\nゆれながらすすむ\nユラをはっしゃ!" }
 "bn5:spshake3" = { name = "スペースユラ3", description = "たて3マスはばで\nゆれながらすすむ\nユラをはっしゃ!" }

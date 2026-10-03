@@ -1,6 +1,10 @@
 --!strict
--- Poltrgst (BN5 chip 0x0d5): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- Poltrgst (BN5 chip 0x0d5): the user's stand-in raises a poltergeist that throws every obstacle on the field at the
+-- other side's navi, front to back, 20 ticks apart: BN5's own (./poltergeist, the dimming handler's subtype 49; its
+-- first parameter 0: random targets).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local poltergeist = require("./poltergeist")
 
 return define.chip {
     id = "bn5:poltrgst",
@@ -15,4 +19,5 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     slot_in_limit = 1,
+    dimming = poltergeist.hook(false),
 }

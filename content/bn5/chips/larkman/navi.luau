@@ -2,7 +2,8 @@
 -- LarkMan, the navi of the LarkMan chips (BN5's actor object #0x1E, 0x080BDBFC; BN5's own), brought by their navi
 -- chip controller. He appears, stands, rises out of sight and sends his swoop (./swoop) round the field; when it
 -- has had its time, he goes, and the controller moves on. While he is there, his user holding B and pressing up,
--- right and down in turn (each within a second of the first) powers the swoop (0x080BDDF4).
+-- right and down in turn (each within a second of the first) powers the swoop (0x080BDDF4). WildBird's LarkMan (the
+-- summon table's entry 23, 0x080BDDCA: his Param4 1) sends the swoop's variant 6 instead, and takes no command.
 
 local navi_chips = require("@common/navi-chips/navi")
 local swoop = require("./swoop")
@@ -16,6 +17,8 @@ export type State = {
     command_steps: number,
     command_ticks: number,
     commanded: boolean,
+    -- WildBird's (Param4 1).
+    wild: boolean,
 }
 
 local larkman = {}
@@ -39,9 +42,9 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
--- 0x080BDDF4: the command, read from his user's held buttons.
+-- 0x080BDDF4: the command, read from his user's held buttons (none for WildBird's).
 local function command(me: Object, s: State)
-    if s.commanded then
+    if s.wild or s.commanded then
         return
     end
     if s.command_steps ~= 0 then
@@ -132,7 +135,7 @@ local function attack(me: Object)
     local left = me.timer - 1
     me.timer = left
     if left == 0x50 then
-        swoop.spawn(me, s.level, me.element, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
+        swoop.spawn(me, s.level, me.element, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)), if s.wild then 6 else 5)
     elseif left <= 0 then
         local controller = s.controller
         if controller then
@@ -153,6 +156,7 @@ larkman.kind = define.kind {
         command_steps = "u32",
         command_ticks = "i32",
         commanded = "bool",
+        wild = "bool",
     },
     -- 0x080BDBFC.
     update = function(me: Object)
@@ -172,8 +176,9 @@ larkman.kind = define.kind {
     end,
 }
 
--- 0x080BDDA0: LarkMan for `user`, reporting to `controller` (the summon table's entry 17), of a chip of `level`.
-function larkman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+-- 0x080BDDA0: LarkMan for `user`, reporting to `controller` (the summon table's entry 17), of a chip of `level`;
+-- 0x080BDDCA, `wild`: WildBird's (entry 23).
+function larkman.summon_at(level: number, wild: boolean?): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(larkman.kind, user, spec)
         if not o then
@@ -182,6 +187,7 @@ function larkman.summon_at(level: number): (user: Object, controller: Object, sp
         local s = o.state :: State
         s.controller = controller
         s.level = level
+        s.wild = wild == true
         return o
     end
 end
@@ -189,5 +195,7 @@ end
 -- LarkMan's and LarkMnSP's (levels 0); LarkMnDS's (4).
 larkman.summon = larkman.summon_at(0)
 larkman.summon_dark = larkman.summon_at(4)
+-- WildBird's.
+larkman.summon_wild = larkman.summon_at(0, true)
 
 return larkman

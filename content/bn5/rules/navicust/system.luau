@@ -1,5 +1,5 @@
 --!strict
--- BN5's NaviCust (docs/design/bn5-map.md §15.11): as the round is set up (`round_setup`, before anything reads the
+-- BN5's NaviCust (docs/design/bn5-map.md §15.13): as the round is set up (`round_setup`, before anything reads the
 -- stats), a player's NaviCust (`battle.navicust`: the programs placed on its grid) is compiled into the navi's stats,
 -- as the original's does (0x0813F97C's 0x0813FA10, for MegaMan alone; BN5's patch cards, 0x08138214, follow it). The
 -- compile is BN6's routine for routine (@common/navicust/compile): the bugs counted, the stats reset (the setup's are

@@ -1,5 +1,5 @@
 --!strict
--- BN5's NaviCust programs' effects (docs/design/bn5-map.md §15.11): a program is the engine's
+-- BN5's NaviCust programs' effects (docs/design/bn5-map.md §15.13): a program is the engine's
 -- (`define.navicust_program`, content/bn5/navicust/), its effects the values the shared constructors make
 -- (@common/navicust/effects, BN6's too), each the work of the original's handler for the program (the table at
 -- 0x0813FB44); the navicust system (./system.luau) applies a player's programs to the navi's stats as the round is set
