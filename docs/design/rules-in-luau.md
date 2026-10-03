@@ -615,7 +615,15 @@ also be fully qualified as well".
   with no battle takes the game that has the thing. A frontend's and the match tool's default game is BN6's, by name
   (`nettai_match::DEFAULT_GAME`).
 - **content/common** is a folder of behavior only: modules the games' folders share by path
-  (`require("@common/...")`), with no assets of their own, so it needs no pack, and no compat or locales.
+  (`require("@common/...")`), with no assets of their own, so it needs no pack, and no compat or locales. A common
+  module holds no game's ids or asset names and requires only common modules: it exports the behavior as makers
+  that take a game's look and constants (`traps.make_kind(id)`, `bomb.make(look)`, `cannon.action(spec, look)`;
+  the looks' types in content/common/types.d.luau). Each game's folder defines its own kinds, actions and records
+  with them and keeps its looks: BN6's modules at their old paths are thin wrappers that pass BN6's (so BN6's
+  callers are unchanged), BN5's folder makes its own (`bn5:trap-chip`, `bn5:attachment`, ...). A helper with no
+  game data moves whole (`@common/regions`, `@common/panels`, `@common/dimming`). Where BN5 still uses a BN6
+  definition as its own (BN6's effects, a few BN6 collision rows), it requires it from `@bn6/...` and says so
+  (docs/design/bn5-map.md §15.6, "Shared code").
 - **Version variants keep their suffixes** (`-falzar`/`-gregar`, `-protoman`/`-colonel`); region (US, JP) is a
   field, not a namespace.
 - **Handles** intern over the union in byte order of the ids; peers with the same content hash have the same
