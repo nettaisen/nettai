@@ -169,6 +169,32 @@ pub struct AssetNames {
     pub banners: BTreeMap<String, u8>,
     #[serde(default)]
     pub backgrounds: BTreeMap<String, u8>,
+    /// The emotion window's faces by the number bn5-extract gives them.
+    #[serde(default)]
+    pub mugshots: BTreeMap<String, u8>,
+}
+
+/// BN5's text encodings (text.toml): what each byte below `first_control`
+/// draws, the 8x16 font's glyphs then the dialogue font's past them (as
+/// BN6's text.toml), the US ROMs' and the Japanese ROMs'.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Text {
+    pub first_control: u8,
+    pub glyphs: Vec<String>,
+    #[serde(default)]
+    pub dialogue_glyphs: Vec<String>,
+    #[serde(default)]
+    pub jp: Encoding,
+}
+
+/// The Japanese ROMs' encoding (`Text::jp`), in the same shape.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Encoding {
+    pub glyphs: Vec<String>,
+    #[serde(default)]
+    pub dialogue_glyphs: Vec<String>,
 }
 
 /// BN5's compat tables (content/bn5/compat).
@@ -190,13 +216,17 @@ pub struct Compat {
     pub records: RecordNumbers,
     /// kinds.toml: the object kinds' numbers, by qualified key.
     pub kinds: BTreeMap<String, KindEntry>,
+    /// text.toml: the text encodings.
+    pub text: Text,
 }
 
 /// The files of a compat folder.
-pub const FILES: [&str; 7] = ["chips.toml", "panels.toml", "assets.toml", "rules.toml", "stages.toml", "records.toml", "kinds.toml"];
+pub const FILES: [&str; 8] =
+    ["chips.toml", "panels.toml", "assets.toml", "rules.toml", "stages.toml", "records.toml", "kinds.toml", "text.toml"];
 
 /// This repository's compat (content/bn5/compat), built in.
-const BN5: [(&str, &str); 7] = [
+const BN5: [(&str, &str); 8] = [
+    ("text.toml", include_str!("../../../content/bn5/compat/text.toml")),
     ("kinds.toml", include_str!("../../../content/bn5/compat/kinds.toml")),
     ("stages.toml", include_str!("../../../content/bn5/compat/stages.toml")),
     ("records.toml", include_str!("../../../content/bn5/compat/records.toml")),
@@ -281,7 +311,10 @@ impl Compat {
         let stages: BTreeMap<String, StageEntry> = toml::from_str(&text("stages.toml")?).map_err(|e| format!("stages.toml: {e}"))?;
         let records: RecordNumbers = toml::from_str(&text("records.toml")?).map_err(|e| format!("records.toml: {e}"))?;
         let kinds: BTreeMap<String, KindEntry> = toml::from_str(&text("kinds.toml")?).map_err(|e| format!("kinds.toml: {e}"))?;
-        Ok(Compat { chips, panels: by_number, chip_keys, assets, rules, stages, records, kinds })
+        // (A compat folder from before the encodings has none.)
+        let text_file = text("text.toml").unwrap_or_default();
+        let text: Text = if text_file.is_empty() { Text::default() } else { toml::from_str(&text_file).map_err(|e| format!("text.toml: {e}"))? };
+        Ok(Compat { chips, panels: by_number, chip_keys, assets, rules, stages, records, kinds, text })
     }
 
     /// A chip's id (`bn5:cannon`) by its number.

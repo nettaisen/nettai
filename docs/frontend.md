@@ -505,6 +505,38 @@ arrow. The text is the content's strings (the chip's or the Cross's
 far it has printed and the rest the engine's chatbox
 (docs/engine/custom-screen.md §3.5).
 
+**A console of another game** (BN5's). The HUD, the custom screen and the
+chatbox are the local side's game's pack's (`Packs::of_root` of
+`Battle::games` for the local side), so a BN5 player sees BN5's whatever
+the arena: its HP box, gauge, fonts, banners, emotion window, window and
+chatbox, by the pack's own tile numbers and layout (docs/design/
+asset-formats.md §4, "Another game's HUD and custom screen"). What a BN5
+console does otherwise, by data, not by game:
+
+- the emotion window: the faces BN5's forms name bring their own box
+  (MegaMan's five, Team Colonel's), and a soul's face shows the soul's
+  turns left beside it (the souls system's `turns`, read by name);
+- the custom screen: the special slot's button is the one the pack names
+  for the system's button (`soul`: Soul Unison's, its picture in the chip
+  window in Chaos Unison's palette for Chaos), the cursor over OK and over
+  the button where the pack's layout puts them; the soul choice
+  (`Phase::SoulChosen`, BN5's state 9) flies the soul's icon up onto the
+  column's first cell under its flash, and the cell keeps it;
+- its game's flow (rules `flow`, read of the console's own game): the
+  custom screen's close starts the chip window as a Japanese BN6 console's
+  does (`chip_window_at_close`), the intro fades in from black
+  (`intro_from_black`), and a screen that closes with the results ends the
+  "Cstmzing..." wait a tick before it closes (the full gauge's phase
+  counts on from there);
+- a chip each version draws its own way shows the console's version's
+  icon and picture, and the emblem is the console's version's
+  (`Renderer::console_version`, which a BN5 recording names; live play,
+  the pack's first version).
+
+The frame comparison against BN5's consoles (verification's
+tools/frontend-compare/bn5.txt, chiplab's library-bn5) and what still
+differs are in §4.
+
 **Text** (docs/design/text-rendering.md §9). Every string goes through
 `fonts.rs`: the 8x16 font's (`cell_glyphs`, `cell_text`, `draw_cell_text`,
 `cell_glyph`, `layer_text`, `layer_line`: the HUD's lines, chip names,
@@ -665,6 +697,35 @@ labels) and a Japanese console's HUD timings (the next chip's name shown
 from the fight's first frame), the chips' pictures included; the Gregar
 chip's on a Falzar console is the known difference above.
 
+**On BN5 consoles** (verification's tools/frontend-compare/bn5.txt: 14 of
+chiplab's library-bn5 scenarios, Team ProtoMan against Team Colonel,
+traced on the Team ProtoMan console and once on the Team Colonel one,
+compared with `--text original`, BN5's pack loaded beside
+BN6's): of 5,616 frames, 4,690 are pixel-exact with the navis left out
+(`MASK_NAVIS`): the HUD, the custom screen with its picks and Soul
+Unison's choice, the chatbox, the banners and a deletion's result. What
+still differs is the BN5 port's to finish, not the drawing's:
+
+- dark MegaMan's faces (pictures 11-15) and palette, which BN5 picks by a
+  stat nettai doesn't keep (NaviStats +0x4C: 0x0801AF8E, 0x0800DE04); a
+  dark MegaMan shows the light one's (the DrkSword and DrkRecov scenarios,
+  and the navis' palettes the mask leaves out);
+- a soul's turns left: BN5's window shows 3 through the soul's first turn,
+  nettai's souls system 2 (its count-down runs after the change sets the
+  turns); the chip icons over a soul-united MegaMan sit 2 pixels lower
+  (the icon's height is MegaMan's attach point, not the soul's);
+- the UNITE button for a soul not ported yet (HeatSoul for AntiFire) is
+  gray;
+- BN5's Cannon draws BN6's cannon sprite (its muzzle flash and blast
+  differ for 5 frames);
+- the chip window's name a frame late as the screen closes: a BN5 console
+  has both results a tick before nettai closes the screen (nettai's flow
+  closes it on the results' tick, `custom_closes_with_results`), and its
+  chip window starts then; the "Cstmzing..." wait ends there as the
+  console's does;
+- one scenario (a pick's check) stops: BN5's roles name no invalid chip
+  (`chips.invalid`).
+
 The comparison needs the ROM, so it lives outside this repository, with the
 lists of scenarios. The frontend's own tests (`cargo test -p nettai-render
 -p nettai-frontend`) use a small synthetic asset set and a live battle
@@ -725,6 +786,10 @@ them).
   the Gregar chip's description differs on a Falzar console (and the
   Falzar chip's, presumably, on a Gregar console). Not listed as known: no
   content says which chips copy that buffer.
+- A BN5 console in Japanese: the BN5 pack has the US ROMs' lettering
+  alone (docs/design/bn5-map.md §11), so `--lang ja --text original`
+  draws its Japanese names in the US font (the font mode draws them); the
+  static audit says so, not counted.
 - Live play shows the custom screen as text.
 - Affine (rotated or scaled) object sprites (`sprite_makeScalable`: no kind
   in the engine or the content uses one yet; compose draws affine parts, the
