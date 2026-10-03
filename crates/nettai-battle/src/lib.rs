@@ -33,6 +33,7 @@ pub mod rules;
 #[cfg(any(test, feature = "test-content"))]
 pub mod scenario;
 pub mod setup;
+pub mod tactics;
 pub mod sound;
 pub mod dimming;
 pub mod transform;

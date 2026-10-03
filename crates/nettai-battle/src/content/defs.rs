@@ -55,6 +55,10 @@ pub struct KindDef {
     pub schema: StateId,
     /// What places it when a stage names it (`kind.place`).
     pub place: Option<FnId>,
+    /// What the leaving of a navi chip's navi one of its objects brought
+    /// does to it (`kind.navi_left`; BN5's DethPhnx): the navi calls
+    /// `navi_chip.navi_left` with the object.
+    pub navi_left: Option<FnId>,
 }
 
 /// A navi action content implements.
@@ -215,6 +219,10 @@ pub struct SystemDef {
     /// The layout of its state of a side, and of its player setup.
     pub state: StateId,
     pub setup: StateId,
+    /// The layout of its state of each navi no player controls that it
+    /// drives (its `controller`: the navi object's own state), if it
+    /// drives any.
+    pub navi_state: Option<StateId>,
     /// Its hooks, in [`SystemHook::ALL`]'s order.
     hooks: Vec<Option<FnId>>,
     /// Its own actions, which reach its state.
@@ -1077,6 +1085,7 @@ impl Defs {
                 implementation: KindImpl::Engine(kind),
                 schema: schema_id(NO_STATE),
                 place: None,
+                navi_left: None,
             };
             kinds.add(key.to_string(), def, "the engine's".into());
         }
@@ -1091,12 +1100,17 @@ impl Defs {
                 Data::Nil => None,
                 _ => Some(functions.id(slot(d, "place")?)),
             };
+            let navi_left = match d.spec.field("navi_left") {
+                Data::Nil => None,
+                _ => Some(functions.id(slot(d, "navi_left")?)),
+            };
             let def = KindDef {
                 key: d.key.clone(),
                 pool,
                 implementation: KindImpl::Script { update: functions.id(slot(d, "update")?) },
                 schema: state_of(d)?,
                 place,
+                navi_left,
             };
             kinds.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
@@ -1316,7 +1330,7 @@ impl Defs {
         // form's name theirs: each knows whose it is.
         let mut identities = Vec::new();
         for d in definitions.of(Registry::Identity) {
-            identities.push(super::identity::read(d, &content.assets)?);
+            identities.push(super::identity::read(d, &content.assets, &definitions)?);
         }
         if identities.windows(2).any(|w| w[0].key >= w[1].key) {
             return Err(ContentError::new("the identities are not in key order (the define phase sorts each registry)"));
@@ -1629,8 +1643,8 @@ impl Defs {
             let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks", "custom", "buttons", "windows", "actions"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks, custom, buttons, windows, actions)")));
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "navi_state", "hooks", "custom", "buttons", "windows", "actions"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, navi_state, hooks, custom, buttons, windows, actions)")));
                     }
                 }
             }
@@ -1738,6 +1752,14 @@ impl Defs {
                 }
                 _ => return Err(what("`buttons` is a table of buttons by name")),
             }
+            let navi_state = match d.spec.field("navi_state") {
+                Data::Nil => None,
+                _ => Some(layout("navi_state")?),
+            };
+            let controller = SystemHook::ALL.iter().position(|&h| h == SystemHook::Controller).expect("listed");
+            if navi_state.is_some() && hooks[controller].is_none() {
+                return Err(what("a `navi_state` is the state of the navis its `controller` drives: it has no `controller`"));
+            }
             // Its custom-screen windows, by name.
             let mut own_windows = Vec::new();
             match d.spec.field("windows") {
@@ -1765,6 +1787,7 @@ impl Defs {
                 key: d.key.clone(),
                 state: layout("state")?,
                 setup: layout("setup")?,
+                navi_state,
                 hooks,
                 actions: system_actions,
                 buttons: own_buttons,

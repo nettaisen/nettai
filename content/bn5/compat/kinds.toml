@@ -31,6 +31,64 @@
 "bn5:grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
 "bn5:trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
 "bn5:protoman/navi" = { pool = "actor", index = 0x3C }
+"engine/body-overlay" = { pool = "actor", index = 0x56 }
+"engine/form-overlay" = { pool = "actor", index = 0x57 }
+"bn5:larkman/navi" = { pool = "actor", index = 0x1E }
+"bn5:larkman/swoop" = { pool = "attack", index = 0xBA }
+"bn5:larkman/follower" = { pool = "attack", index = 0xCB }
+"bn5:gridman/navi" = { pool = "actor", index = 0x1F }
+"bn5:gridman/grid" = { pool = "effect", index = 0x58 }
+"bn5:cosmoman/navi" = { pool = "actor", index = 0x1D }
+"bn5:cosmoman/caller" = { pool = "effect", index = 0x86, scratch_z_fraction = true }
+"bn5:cosmoman/meteor" = { pool = "attack", index = 0xBF }
+"bn5:django/navi" = { pool = "actor", index = 0x24 }
+"bn5:django/coffin" = { pool = "attack", index = 0xBC }
+"bn5:django/sun" = { pool = "effect", index = 0x7B }
+"bn5:django/lights" = { pool = "effect", index = 0x7D, scratch_panel = true }
+"bn5:django/rubble" = { pool = "effect", index = 0x84 }
+"bn5:shademan/navi" = { pool = "actor", index = 0x19 }
+"bn5:shademan/crush" = { pool = "attack", index = 0x34 }
+"bn5:serchman/navi" = { pool = "actor", index = 0x31 }
+"bn5:serchman/scope" = { pool = "effect", index = 0x43 }
+"bn5:serchman/shot" = { pool = "attack", index = 0x57 }
+"bn5:bass/navi" = { pool = "actor", index = 0x4F }
+"bn5:bass/strike" = { pool = "attack", index = 0x72 }
+"bn5:dethphnx/controller" = { pool = "effect", index = 0x15, scratch_position = true }
+"bn5:dethphnx/phoenix" = { pool = "actor", index = 0x28 }
+"bn5:dethphnx/fire" = { pool = "effect", index = 0x89 }
+"bn5:dethphnx/flame" = { pool = "effect", index = 0x71 }
+"bn5:phoenix/controller" = { pool = "effect", index = 0x0D, scratch_position = true }
+"bn5:phoenix/phoenix" = { pool = "actor", index = 0x27 }
+"bn5:phoenix/fireball" = { pool = "attack", index = 0xC5 }
+"bn5:phoenix/blaze" = { pool = "effect", index = 0x88 }
+"bn5:roll/navi" = { pool = "actor", index = 0x2C }
+"bn5:roll/heart" = { pool = "attack", index = 0x4E }
+"bn5:tmhwkman/navi" = { pool = "actor", index = 0x13 }
+"bn5:numbrman/navi" = { pool = "actor", index = 0x0F }
+"bn5:numbrman/face" = { pool = "actor", index = 0x5C }
+"bn5:colonel/navi" = { pool = "actor", index = 0x08 }
+"bn5:shadoman/navi" = { pool = "actor", index = 0x07 }
+"bn5:toadman/navi" = { pool = "actor", index = 0x17 }
+"bn5:toadman/note" = { pool = "attack", index = 0x81 }
+"bn5:blizman/navi" = { pool = "actor", index = 0x14 }
+"bn5:blizman/ball" = { pool = "attack", index = 0xB2 }
+"bn5:blizman/roller" = { pool = "attack", index = 0xB7, scratch_z_fraction = true }
+"bn5:cloudman/navi" = { pool = "actor", index = 0x15 }
+"bn5:cloudman/cloud" = { pool = "attack", index = 0xB3, scratch_position = true }
+"bn5:gyroman/navi" = { pool = "actor", index = 0x0C }
+"bn5:napalmmn/navi" = { pool = "actor", index = 0x0E }
+"bn5:magnetmn/navi" = { pool = "actor", index = 0x0D }
+"bn5:magnetmn/magnet" = { pool = "attack", index = 0x67, scratch_position = true }
+"bn5:magnetmn/pull" = { pool = "attack", index = 0x66, scratch_position = true }
+"bn5:meddy/navi" = { pool = "actor", index = 0x12 }
+"bn5:knightmn/navi" = { pool = "actor", index = 0x06 }
+"bn5:knightmn/ball" = { pool = "attack", index = 0x17, scratch_position = true }
+"bn5:capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
+"bn5:napalm-bomb" = { pool = "attack", index = 0x3A }
+"bn5:gyro-bomb" = { pool = "attack", index = 0x1B, scratch_position = true }
+"bn5:shuriken" = { pool = "attack", index = 0x5C }
+"bn5:dice" = { pool = "attack", index = 0x05 }
+"bn5:dice-marker" = { pool = "effect", index = 0x83, scratch_position = true }
 "bn5:sonic-boom" = { pool = "attack", index = 0x58 }
 "bn5:holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 "bn5:holydrem/actor" = { pool = "actor", index = 0x1C }
@@ -48,6 +106,7 @@
 "bn5:panel-bursts" = { pool = "effect", index = 0x24, scratch_position = true }
 "bn5:crack" = { pool = "attack", index = 0x18 }
 "bn5:soul-image" = { pool = "actor", index = 0x2A }
+"bn5:chaos-shade" = { pool = "actor", index = 0x2B }
 "bn5:timebom/countdown" = { pool = "attack", index = 0x4B }
 "bn5:timebom/controller" = { pool = "effect", index = 0x27, scratch_position = true }
 "bn5:lance" = { pool = "attack", index = 0x4F }
@@ -128,9 +187,15 @@
 "bn5:hotbody/flame" = { pool = "attack", index = 0x9D }
 "bn5:bodygrd/controller" = { pool = "effect", index = 0x6D, scratch_position = true }
 "bn5:bodygrd/striker" = { pool = "effect", index = 0x6E, scratch_position = true }
-"bn5:bodygrd/shuriken" = { pool = "attack", index = 0x5C }
 "bn5:cusvolt/beam" = { pool = "attack", index = 0xB8 }
 "bn5:elempowr/controller" = { pool = "effect", index = 0x7F, scratch_position = true }
 "bn5:rainyday/controller" = { pool = "effect", index = 0x75, scratch_position = true }
 "bn5:rainyday/cloud" = { pool = "attack", index = 0x97 }
 "bn5:elemrage/flame" = { pool = "attack", index = 0x98 }
+"bn5:cannball/ball" = { pool = "attack", index = 0x35 }
+"bn5:geyser/bomb" = { pool = "attack", index = 0x42 }
+"bn5:geyser/water" = { pool = "attack", index = 0x43, scratch_position = true }
+"bn5:metagel/controller" = { pool = "effect", index = 0x21, scratch_position = true }
+"bn5:metagel/gel" = { pool = "attack", index = 0x45, scratch_position = true }
+"bn5:magnum/controller" = { pool = "effect", index = 0x30, scratch_position = true }
+"bn5:magnum/gunner" = { pool = "actor", index = 0x02 }

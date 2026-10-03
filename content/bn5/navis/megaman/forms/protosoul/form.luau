@@ -2,11 +2,13 @@
 -- ProtoSoul (soul 1, Team ProtoMan's): BN5's Soul Unison with ProtoMan, for a sword chip given up. MegaMan's sprite
 -- in it is 00-01 (0x0800DA58[1]); he changes by BN5's soul change (rules/souls). Its weapons (0x0801CA1C's row 1,
 -- loaded by 0x0800DCA0): the buster (routine 0), the charged slash (3, ./charge), Sword chips charged with A (5,
--- the A-charge's chips 0x0801090A: any Sword chip but a dimming or dark one; their damage doubled, 0x080103D0).
--- Not yet: its B+Back shield (routine 4, BN5's guard action 0x1F) and Chaos Unison's charge (AIData +0x11's routine
--- 6, DrkSword).
+-- the A-charge's chips 0x0801090A: any Sword chip but a dimming or dark one; their damage doubled, 0x080103D0),
+-- Chaos Unison's (AIData +0x11's routine 6, ./chaos: DrkSword).
+-- Not yet: its B+Back shield (routine 4, BN5's guard action 0x1F).
 
+local attach_points = require("../../attach_points")
 local buster = require("../../weapons/buster")
+local chaos = require("./chaos")
 local charge = require("./charge")
 local charged_chip = require("../../weapons/charged-chip")
 local souls = require("../../../../rules/souls/system")
@@ -20,11 +22,21 @@ return define.form {
     sprite = asset.sprite("bn5:protosoul"),
     element = "null",
     buster_bonus = 0,
-    weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = charged_chip.weapon },
+    weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = charged_chip.weapon, chaos = chaos.weapon },
     charged_chips = { { family = "sword", damaging = false, plain = true } },
     charged_bonus = { damage = 0xFF },
     palette = 0,
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls').
     mugshot = asset.mugshot("bn5:protosoul"),
     buster_arm = { anim = 0 },
+    -- MegaMan's actor record, with his sprite in the soul's attach points (row 1 of category 0: what a chip's icon
+    -- over him and his attachments sit by).
+    identity = define.identity {
+        class = "megaman",
+        version = 0,
+        actor_type = "player",
+        ai_index = 0,
+        aura_anim = 0,
+        attach_points = attach_points[1],
+    },
 }

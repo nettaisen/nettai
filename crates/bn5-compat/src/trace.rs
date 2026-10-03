@@ -51,6 +51,47 @@ pub struct Setup {
     pub joypad_phases: Option<[u8; 2]>,
     #[serde(default)]
     pub frame_counter: Option<u16>,
+    /// Both players' computer-navi data as the link exchanged it (0xE0
+    /// bytes each, side 0's first), hex: their tactics. Older recordings
+    /// have none.
+    #[serde(default)]
+    pub ai_lists: Option<[String; 2]>,
+}
+
+/// A player's computer-navi data block (0xE0 bytes, BN5's 0x02034C20 by
+/// side) as the halfwords it holds: the entries in order (the count at
+/// +0x54) and, for each pattern an entry names, its place (`dx`, `dy`) and
+/// chips (the halfwords after it to the first 0xFFFF, at most six).
+pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, Vec<(u8, i8, i8, Vec<u16>)>), String> {
+    if block.len() != 0xE0 {
+        return Err(format!("a computer-navi data block is 0xE0 bytes, not {:#x}", block.len()));
+    }
+    let half = |o: usize| u16::from_le_bytes([block[o], block[o + 1]]);
+    let count = u32::from_le_bytes(block[0x54..0x58].try_into().expect("four bytes")) as usize;
+    if count > nettai_battle::tactics::MAX_ENTRIES {
+        return Err(format!("a computer-navi data block counts {count} entries, more than {}", nettai_battle::tactics::MAX_ENTRIES));
+    }
+    let entries: Vec<u16> = (0..count).map(|i| half(i * 2)).collect();
+    let mut patterns: Vec<(u8, i8, i8, Vec<u16>)> = Vec::new();
+    for &e in &entries {
+        if e & 0x8000 == 0 || e == 0xFFFF {
+            continue;
+        }
+        let i = (e & 0x7FFF) as usize;
+        if i >= nettai_battle::tactics::MAX_PATTERNS {
+            return Err(format!("a computer-navi data entry names pattern {i}, past the block's {}", nettai_battle::tactics::MAX_PATTERNS));
+        }
+        if patterns.iter().any(|(p, ..)| *p as usize == i) {
+            continue;
+        }
+        let at = 0x58 + i * 16;
+        let chips: Vec<u16> = (1..8).map(|k| half(at + k * 2)).take_while(|&c| c != 0xFFFF).collect();
+        if chips.len() > nettai_battle::tactics::MAX_PATTERN_CHIPS {
+            return Err(format!("a computer-navi pattern runs {} chips with no end", chips.len()));
+        }
+        patterns.push((i as u8, block[at] as i8, block[at + 1] as i8, chips));
+    }
+    Ok((entries, patterns))
 }
 
 /// A battle object as the recording has it (BN6's fields).
@@ -445,6 +486,24 @@ impl Round {
                 _ => {}
             }
         }
+        // The chips of both players' tactics.
+        if let Some(lists) = &self.setup.ai_lists {
+            for (side, l) in lists.iter().enumerate() {
+                let (entries, patterns) = tactic_block(&unhex(l)?).map_err(|e| format!("side {side}'s tactics: {e}"))?;
+                let chips = entries
+                    .iter()
+                    .filter(|&&e| e & 0x8000 == 0 && e != 0)
+                    .copied()
+                    .chain(patterns.iter().flat_map(|(.., c)| c.iter().copied()));
+                for id in chips {
+                    match compat.chip(id) {
+                        Some(key) if content.defs.chip_by_key(&key).is_some() => {}
+                        Some(key) => out.push(format!("chip {key} ({id:#05x}, side {side}'s tactics)")),
+                        None => out.push(format!("chip {id:#05x} (side {side}'s tactics: no key in compat)")),
+                    }
+                }
+            }
+        }
         let st = &d.settings;
         let actor_list = u32::from_le_bytes([st[12], st[13], st[14], st[15]]);
         match compat.stage(st[0], actor_list) {
@@ -530,6 +589,10 @@ impl Round {
                 patch_cards: Default::default(),
                 // The stats are the save's (no NaviCust compiled over them).
                 navicust: None,
+                tactics: match &self.setup.ai_lists {
+                    Some(lists) => tactics(content, compat, &unhex(&lists[side as usize])?)?,
+                    None => Default::default(),
+                },
             })
         });
         let [mut p0, mut p1] = players;
@@ -565,6 +628,35 @@ impl Round {
         b.round.ticks = u32::from_le_bytes(bs[0x64..0x68].try_into().unwrap());
         Ok(b)
     }
+}
+
+/// A player's tactics from their computer-navi data block (`tactic_block`):
+/// its chips by key.
+fn tactics(content: &Content, compat: &Compat, block: &[u8]) -> Result<nettai_battle::tactics::Tactics, String> {
+    use nettai_battle::tactics::{Tactic, TacticPattern, Tactics};
+    let (entries, patterns) = tactic_block(block)?;
+    let chip = |id: u16| -> Result<nettai_content_api::ChipHandle, String> {
+        compat
+            .chip(id)
+            .and_then(|k| content.defs.chip_by_key(&k))
+            .ok_or_else(|| format!("the tactics' chip {id:#05x} isn't in the content"))
+    };
+    let mut out = Tactics::default();
+    for e in entries {
+        out.entries.push(match e {
+            0 => Tactic::Nothing,
+            0xFFFF => Tactic::Empty,
+            e if e & 0x8000 != 0 => Tactic::Pattern((e & 0x7FFF) as u8),
+            e => Tactic::Chip(chip(e)?),
+        });
+    }
+    // The patterns in their places (the ones no entry names, empty).
+    let n = patterns.iter().map(|(i, ..)| *i as usize + 1).max().unwrap_or(0);
+    out.patterns = vec![TacticPattern::default(); n];
+    for (i, dx, dy, chips) in patterns {
+        out.patterns[i as usize] = TacticPattern { dx, dy, chips: chips.into_iter().map(chip).collect::<Result<_, _>>()? };
+    }
+    Ok(out)
 }
 
 /// A battle folder (0x50 bytes: 30 chips, code << 9 | id, 0xFFFF none) by
@@ -712,6 +804,12 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
         let garbage = k.scratch_position || (k.scratch_position_without_sprite && flags & nettai_battle::object::flags::NO_SPRITE_UPDATE != 0);
         (garbage, k.scratch_z_fraction)
     };
+    let panel = |i: usize, p: [u8; 2]| -> String {
+        match entries.get(i) {
+            Some(Some(k)) if k.scratch_panel => "-".to_string(),
+            _ => format!("{p:?}"),
+        }
+    };
     let pos = |p: [i32; 3], garbage: bool, xy_unknown: bool, z_fraction: bool| {
         if garbage {
             "-".to_string()
@@ -737,9 +835,9 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
             let (garbage, zf) = skip(i, x.flags);
             let xy = nettai_battle::kinds::effect::xy_unknown(b, o);
             format!(
-                "type {} {kind} panel {:?} side {} hp {}/{} pos {}",
+                "type {} {kind} panel {} side {} hp {}/{} pos {}",
                 pool_type(o.pool),
-                [x.panel.x, x.panel.y],
+                panel(i, [x.panel.x, x.panel.y]),
                 x.alliance,
                 x.hp,
                 x.max_hp,
@@ -756,10 +854,10 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
             let (garbage, zf) = skip(i, o.flags);
             let xy = order.get(i).is_some_and(|&r| nettai_battle::kinds::effect::xy_unknown(b, r));
             format!(
-                "type {} #{:#04x} panel {:?} side {} hp {}/{} pos {}",
+                "type {} #{:#04x} panel {} side {} hp {}/{} pos {}",
                 o.kind,
                 o.index,
-                o.panel,
+                panel(i, o.panel),
                 o.alliance,
                 o.hp,
                 o.max_hp,

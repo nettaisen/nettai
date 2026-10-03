@@ -41,7 +41,8 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// The protocol's version: peers whose versions differ can't play together
 /// (the handshake refuses).
 /// 2: a transformation request carries BN5's soul turns and Chaos Unison.
-pub const VERSION: u16 = 2;
+/// 3: a player's offer carries their tactics (BN5's computer-navi data).
+pub const VERSION: u16 = 3;
 
 /// The rollback horizon, in elements (ticks, besides the rare payload or
 /// marker): the widest gap a player's stream may have at the other peer

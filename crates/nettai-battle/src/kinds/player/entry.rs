@@ -165,6 +165,11 @@ fn wait_for_intro(b: &mut Battle, r: ObjectRef) {
 /// side's console, or on both in battle mode 6. (The original moves the
 /// number for NameIDs 0x49..=0x4E, viruses', which no player navi has.)
 fn show_hp_number(b: &mut Battle, r: ObjectRef) {
+    // (BN5 shows none for its NameID 0x18D, 0x0801339C: a body that hides
+    // its HP.)
+    if b.content.identity(b.objects.get(r).identity).body.as_ref().is_some_and(|body| body.hides_hp) {
+        return;
+    }
     let side = b.objects.get(r).alliance;
     let console = if battle_mode(b) == 6 { None } else { Some(side ^ 1) };
     b.show_hp(r, 0, 0, false, console);
