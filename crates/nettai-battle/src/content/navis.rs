@@ -78,6 +78,40 @@ pub struct NaviData {
     /// Its HP after a navi switch, by side (`byte_802DD88`).
     #[serde(skip)]
     pub cross_hp: Option<[u16; 2]>,
+    /// What the save's reload gives it by its link navi level
+    /// (docs/engine/link-navis.md). Tools fill a side's stats from it
+    /// (nettai-match's `link_navis`); no battle reads it.
+    #[serde(skip)]
+    pub levels: Option<NaviLevels>,
+}
+
+/// A navi's levels: what the save's reload (`reloadCurNaviBaseStats_8120df0`)
+/// gives it by its link navi level.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct NaviLevels {
+    /// The base and maximum HP the reload sets before the level's, by the
+    /// story's progress (`off_8120F44`; `sub_8121108`'s index, 0 to 6).
+    pub base_hp: Vec<u16>,
+    /// What each level adds, from level 0 (`pt_8121200`'s scripts, summed
+    /// by `sub_8121154`).
+    pub by_level: Vec<LevelGain>,
+}
+
+/// What a level adds (`sub_8123208`): HP to the maximum, the buster's
+/// levels (to 4 at most), the custom level (to 8) and the Mega level (to
+/// 10); the abilities it gives; the B+Back special it sets.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct LevelGain {
+    pub hp: u16,
+    pub attack: u8,
+    pub rapid: u8,
+    pub charge: u8,
+    pub custom_level: u8,
+    pub mega_level: u8,
+    pub super_armor: bool,
+    pub float_shoes: bool,
+    pub air_shoes: bool,
+    pub back_special: Option<WeaponHandle>,
 }
 
 impl NaviData {
@@ -636,7 +670,7 @@ pub(crate) fn read_navi(
     let mut o = super::reader::fields(
         d,
         r,
-        &["id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "cross_hp", "forms"],
+        &["id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "cross_hp", "levels", "forms"],
     )?;
     let banners = d.spec.field("banners");
     for (field, which) in [("win_banner", "win"), ("lose_banner", "lose")] {
@@ -728,6 +762,104 @@ pub(crate) fn read_cross_hp(d: &nettai_content_api::Definition) -> Result<Option
         },
         _ => Err(what()),
     }
+}
+
+/// A navi definition's `levels`: its base HP by the story's progress and
+/// each level's gains, the B+Back special a level sets by the weapon it
+/// names.
+pub(crate) fn read_levels(
+    d: &nettai_content_api::Definition,
+    weapon: impl Fn(&str) -> Option<WeaponHandle>,
+) -> Result<Option<NaviLevels>, nettai_content_api::ContentError> {
+    use nettai_content_api::{ContentError, Data, Registry};
+    let what = |m: String| ContentError::new(format!("{}.luau: navi {}: {m}", d.module, d.key));
+    let levels = match d.spec.field("levels") {
+        Data::Nil => return Ok(None),
+        v @ Data::Map(_) => v,
+        other => return Err(what(format!("`levels` is {other:?}, not a table"))),
+    };
+    // (A field the reload has no use for is a mistake.)
+    let known = |v: &Data, at: &str, names: &[&str]| -> Result<(), ContentError> {
+        if let Data::Map(entries) = v
+            && let Some((k, _)) = entries.iter().find(|(k, _)| !names.contains(&k.to_string().as_str()))
+        {
+            return Err(what(format!("{at} has no field `{k}` (it has {})", names.join(", "))));
+        }
+        Ok(())
+    };
+    known(levels, "levels", &["base_hp", "by_level"])?;
+    let number = |v: &Data, at: &str, max: i64| -> Result<i64, ContentError> {
+        match v {
+            Data::Int(i) if (0..=max).contains(i) => Ok(*i),
+            other => Err(what(format!("{at} is {other:?}, not a number up to {max}"))),
+        }
+    };
+    let list = |field: &str| -> Result<&[Data], ContentError> {
+        match levels.field(field) {
+            Data::List(items) if !items.is_empty() => Ok(items),
+            other => Err(what(format!("levels.{field} is {other:?}, not a list of one or more"))),
+        }
+    };
+    let base_hp = list("base_hp")?
+        .iter()
+        .enumerate()
+        .map(|(i, v)| number(v, &format!("levels.base_hp[{}]", i + 1), 0xFFFF).map(|n| n as u16))
+        .collect::<Result<_, _>>()?;
+    let mut by_level = Vec::new();
+    for (i, g) in list("by_level")?.iter().enumerate() {
+        let at = |field: &str| format!("levels.by_level[{}].{field}", i + 1);
+        if !matches!(g, Data::Map(_)) {
+            return Err(what(format!("levels.by_level[{}] is {g:?}, not a level's gains", i + 1)));
+        }
+        known(
+            g,
+            &format!("levels.by_level[{}]", i + 1),
+            &[
+                "hp",
+                "attack",
+                "rapid",
+                "charge",
+                "custom_level",
+                "mega_level",
+                "super_armor",
+                "float_shoes",
+                "air_shoes",
+                "back_special",
+            ],
+        )?;
+        let small = |field: &str| -> Result<u8, ContentError> {
+            match g.field(field) {
+                Data::Nil => Ok(0),
+                v => number(v, &at(field), 0xFF).map(|n| n as u8),
+            }
+        };
+        let flag = |field: &str| -> Result<bool, ContentError> {
+            match g.field(field) {
+                Data::Nil => Ok(false),
+                Data::Bool(b) => Ok(*b),
+                other => Err(what(format!("{} is {other:?}, not true or false", at(field)))),
+            }
+        };
+        by_level.push(LevelGain {
+            hp: number(g.field("hp"), &at("hp"), 0xFFFF)? as u16,
+            attack: small("attack")?,
+            rapid: small("rapid")?,
+            charge: small("charge")?,
+            custom_level: small("custom_level")?,
+            mega_level: small("mega_level")?,
+            super_armor: flag("super_armor")?,
+            float_shoes: flag("float_shoes")?,
+            air_shoes: flag("air_shoes")?,
+            back_special: match g.field("back_special") {
+                Data::Nil => None,
+                Data::Ref(Registry::Weapon, key) => {
+                    Some(weapon(key).ok_or_else(|| what(format!("{} names {key:?}, which is not a weapon", at("back_special"))))?)
+                }
+                other => return Err(what(format!("{} is {other:?}, not a weapon", at("back_special")))),
+            },
+        });
+    }
+    Ok(Some(NaviLevels { base_hp, by_level }))
 }
 
 #[cfg(test)]

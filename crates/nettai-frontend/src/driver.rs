@@ -314,11 +314,13 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         Phase::Hidden { .. } => "CUSTOM (HIDDEN: ANY KEY)",
         Phase::Description { .. } => "CUSTOM: CHIP INFO (ANY KEY)",
         Phase::RunMessage { .. } => "CUSTOM: NO TIME TO RUN (A)",
-        Phase::CrossWindow { .. } | Phase::CrossWindowOpening { .. } | Phase::CrossWindowClosing { .. } => {
-            "CUSTOM: CROSS (UP/DOWN, A CHOOSE, B BACK)"
-        }
-        Phase::CrossChosen { .. } => "CUSTOM: CROSS!",
-        Phase::BeastOutChosen { .. } => "CUSTOM: BEAST OUT!",
+        // A system's window, by its name (BN6's Beast Out and Cross window).
+        Phase::Window { window, .. } => match b.content.defs.window(window).name.as_str() {
+            "beast_out" => "CUSTOM: BEAST OUT!",
+            "cross_opening" | "cross_window" | "cross_closing" => "CUSTOM: CROSS (UP/DOWN, A CHOOSE, B BACK)",
+            "cross_chosen" => "CUSTOM: CROSS!",
+            _ => "CUSTOM",
+        },
         Phase::SoulChosen { .. } => "CUSTOM: SOUL UNISON!",
         _ => "CUSTOM",
     };
@@ -327,7 +329,6 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         let x = &screen.slots[slot as usize];
         let label = match x.kind {
             SlotKind::Ok => "OK".to_string(),
-            SlotKind::BeastOut => "BEAST OUT".to_string(),
             SlotKind::Soul => "SOUL".to_string(),
             // A system's button, by its name ("redeal": "REDEAL").
             SlotKind::Button { button, cell: nettai_battle::custom::ButtonCell::Only | nettai_battle::custom::ButtonCell::Left } => {
@@ -362,12 +363,15 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
     if !picks.is_empty() {
         out.push_str(&format!("\nPICKED: {}", picks.join(", ")));
     }
-    let w = &screen.crosses;
+    // BN6's Cross window (the cross system's).
+    let w = nettai_render::custom::CrossWindow::of(b, side).unwrap_or_default();
     let cross_name = |place: u8| match s.unlocks.cross_at(&*b.content, b.stats[side].navi, place) {
         Some(f) => nettai_render::strings::own_form_name(&b.content, f).to_uppercase(),
         None => format!("CROSS {}", place + 1),
     };
-    if matches!(screen.phase, Phase::CrossWindow { .. }) {
+    if matches!(screen.phase, Phase::Window { .. })
+        && nettai_render::custom::cross_stage(b, screen) == Some(nettai_render::custom::CrossStage::Up)
+    {
         let entries: Vec<String> = (0..w.count)
             .map(|i| {
                 let (cursor, marked) = (if w.cursor == i { ">" } else { " " }, if w.marked[i as usize] { "+" } else { "" });
@@ -508,10 +512,12 @@ mod tests {
             |tick, b| {
                 let s = &b.custom.sides[0];
                 let Some(screen) = s.screen.as_ref().filter(|_| s.in_custom && b.round.mode == mode::CUSTOM) else { return 0 };
-                let w = &screen.crosses;
+                let w = nettai_render::custom::CrossWindow::of(b, 0).unwrap_or_default();
                 match screen.phase {
                     Phase::Choosing if w.chosen.is_none() => [keys::UP, keys::UP, 0][tick as usize % 3],
-                    Phase::CrossWindow { entered: true } if w.chosen.is_none() => {
+                    // (The window up, past its first tick, which reads no
+                    // keys.)
+                    Phase::Window { window, tick: 1.. } if b.content.defs.window(window).name == "cross_window" && w.chosen.is_none() => {
                         assert_eq!((w.count, custom_screen_text(b, 0).unwrap().contains(">HEATCROSS")), (1, true));
                         if tick % 2 == 1 { keys::A } else { 0 }
                     }
@@ -561,7 +567,7 @@ mod tests {
                 if b.round.turn < 2 {
                     return 0;
                 }
-                beast |= screen.beast_out;
+                beast |= screen.form.is_some();
                 // Each key held two ticks (a direction acts on a hold's
                 // second), then let go.
                 let key = match (beast, screen.cursor) {
@@ -580,5 +586,182 @@ mod tests {
         let weapons = content.form(heat_beast).weapons;
         assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
         assert_eq!(content.form(heat_beast).game, Some(GameVersion::Gregar));
+    }
+
+    // BN6's Cross window (the cross system's: content/bn6/rules/cross/
+    // window.luau) with nettai's Cross list, which no recording covers.
+
+    /// A link battle on BN6's content whose side 0 is a `version` player
+    /// with the Cross list `list` (form keys; none: the version's Crosses),
+    /// its stats changed by `tweak`, run to its first screen's choosing.
+    fn cross_battle(
+        version: GameVersion,
+        list: Option<&[&str]>,
+        tweak: impl FnOnce(&Content, &mut nettai_battle::setup::NaviStats),
+    ) -> (Arc<Content>, LivePlayer, Battle) {
+        let content = nettai_match::testing::bn6_content();
+        let stage = nettai_match::link_battle_stages(&content)[0];
+        let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
+        let folder = folder_of(&content, &[("bn6:cannon", 0)]);
+        let mut setup = live_setup(&content, settings, [folder, folder], 5);
+        setup.players[0].unlocks = Unlocks {
+            cross_list: list.map(|l| custom::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>())),
+            ..Unlocks::everything(version)
+        };
+        tweak(&content, &mut setup.navi_stats[0]);
+        let mut live = LivePlayer::new(setup, content.clone());
+        let mut b = live.start();
+        play_until(&mut live, &mut b, 3000, |_, _| 0, |b| choosing(b).is_some());
+        (content, live, b)
+    }
+
+    /// The form `key` (BN6's, without its prefix).
+    fn form_of(content: &Content, key: &str) -> nettai_content_api::FormHandle {
+        content.defs.form_by_key(&format!("bn6:{key}")).unwrap_or_else(|| panic!("no form {key}"))
+    }
+
+    /// Side 0's keys, one per tick, then on to the next tick.
+    fn keys_in_turn(live: &mut LivePlayer, b: &mut Battle, held: &[u16]) {
+        for &h in held {
+            let step = live.next(b, h).unwrap();
+            b.tick(&step.input, step.events);
+        }
+    }
+
+    /// From choosing, UP opens the Cross window (a direction acts on a
+    /// hold's second tick); then the window is up and takes keys.
+    fn open_cross_window(live: &mut LivePlayer, b: &mut Battle) {
+        keys_in_turn(live, b, &[keys::UP, keys::UP, 0]);
+        play_until(live, b, 100, |_, _| 0, |b| {
+            let s = b.custom.sides[0].screen.as_ref().unwrap();
+            matches!(s.phase, Phase::Window { window, tick: 1.. } if b.content.defs.window(window).name == "cross_window")
+        });
+    }
+
+    /// In the open Cross window, DOWN `down` times and A: the Cross under
+    /// the cursor is chosen, and the screen is back to choosing chips.
+    fn choose_cross(live: &mut LivePlayer, b: &mut Battle, down: usize) {
+        for _ in 0..down {
+            keys_in_turn(live, b, &[keys::DOWN, keys::DOWN, 0]);
+        }
+        keys_in_turn(live, b, &[keys::A, 0]);
+        play_until(live, b, 100, |_, _| 0, |b| choosing(b).is_some());
+    }
+
+    /// OK, and what side 0 sends.
+    fn confirm(live: &mut LivePlayer, b: &mut Battle) -> nettai_battle::CustomResult {
+        keys_in_turn(live, b, &[keys::START, 0, keys::A, 0]);
+        play_until(live, b, 200, |_, _| 0, |b| b.custom.sides[0].sent.is_some());
+        b.custom.sides[0].sent.as_ref().unwrap().result.clone()
+    }
+
+    /// The cross system's record of the Crosses used this round.
+    fn crosses_used(b: &Battle) -> [bool; 5] {
+        let (schema, state) = b.system_state(0, "bn6:cross").expect("BN6's cross system");
+        let i = schema.index_of("crosses_used").unwrap();
+        std::array::from_fn(|k| state.get_elem(schema, i, k) == Some(nettai_content_api::FieldValue::Bool(true)))
+    }
+
+    /// A setup's Cross list offers Crosses of either game in its order: a
+    /// Falzar player offered HeatCross (Gregar's first) and GroundCross
+    /// (Falzar's fourth) gets those two; the one chosen shows its face and
+    /// goes out, is used for the round, and isn't offered on the round's
+    /// next screen.
+    #[test]
+    fn a_cross_list_offers_crosses_of_either_game_once_a_round() {
+        use nettai_battle::battle::battle_flags;
+        use nettai_render::custom::CrossWindow;
+        let (content, mut live, mut b) = cross_battle(GameVersion::Falzar, Some(&["heatcross", "groundcross"]), |_, _| {});
+        let heat = form_of(&content, "heatcross");
+        let w = CrossWindow::of(&b, 0).unwrap();
+        assert_eq!((w.count, &w.offered[..2]), (2, &[0, 1][..]));
+        open_cross_window(&mut live, &mut b);
+        choose_cross(&mut live, &mut b, 0);
+        let screen = b.custom.sides[0].screen.unwrap();
+        assert_eq!((screen.look.face, CrossWindow::of(&b, 0).unwrap().chosen), (Some(heat), Some(0)));
+        assert_eq!(confirm(&mut live, &mut b).transform.form, Some(heat));
+        assert_eq!(crosses_used(&b), [true, false, false, false, false]);
+        // The round's next screen, opened with L once the gauge is full.
+        play_until(
+            &mut live,
+            &mut b,
+            6000,
+            |tick, b| if b.round.mode == mode::FIGHTING && b.round.flags & battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 { keys::L } else { 0 },
+            |b| b.round.turn >= 2 && choosing(b).is_some(),
+        );
+        let w = CrossWindow::of(&b, 0).unwrap();
+        assert_eq!((w.count, w.offered[0]), (1, 1));
+    }
+
+    /// R in the Cross window describes the Cross under the cursor by its
+    /// form: with a Cross list mixing both games, a Falzar player's window
+    /// shows HeatCross's own description, not that of Falzar's Cross in its
+    /// place (SpoutCross); without a list, the version's Crosses in order.
+    #[test]
+    fn r_in_the_cross_window_describes_the_cross_under_the_cursor() {
+        for (list, down, key) in [(true, 0, "heatcross"), (true, 1, "groundcross"), (false, 0, "spoutcross"), (false, 1, "tomahawkcross")] {
+            let list = list.then_some(&["heatcross", "groundcross"][..]);
+            let (content, mut live, mut b) = cross_battle(GameVersion::Falzar, list, |_, _| {});
+            open_cross_window(&mut live, &mut b);
+            for _ in 0..down {
+                keys_in_turn(&mut live, &mut b, &[keys::DOWN, keys::DOWN, 0]);
+            }
+            keys_in_turn(&mut live, &mut b, &[keys::R]);
+            let phase = b.custom.sides[0].screen.unwrap().phase;
+            let Phase::Description { window: Some(_), form, chatbox } = phase else { panic!("{key}: no description: {phase:?}") };
+            let want = form_of(&content, key);
+            assert_eq!(form, Some(want), "{key}");
+            let breaks = content.form(want).description_lines - 1;
+            assert_eq!(chatbox.script(), custom::chatbox::Script::Description { breaks }, "{key}");
+        }
+    }
+
+    /// In a Beast form a Cross list offers the Crosses whose Beast it is: in
+    /// Falzar's Beast Falzar's, in a Gregar Cross's Beast form Gregar's;
+    /// each takes the navi to its form in Beast Out. (The navi starts the
+    /// battle in the Beast form: a spawned navi takes its starting form.)
+    #[test]
+    fn in_a_beast_form_a_cross_list_offers_that_beasts_crosses() {
+        for (beast, place, result) in [("falzar-beast", 1, "groundcross-beast"), ("heatcross-beast", 0, "heatcross-beast")] {
+            let (content, mut live, mut b) = cross_battle(GameVersion::Falzar, Some(&["heatcross", "groundcross"]), |c, stats| {
+                stats.form = form_of(c, beast);
+                stats.starting_form = stats.form;
+            });
+            assert_eq!(b.stats[0].form, form_of(&content, beast));
+            let w = nettai_render::custom::CrossWindow::of(&b, 0).unwrap();
+            assert_eq!((w.count, w.offered[0]), (1, place), "{beast}");
+            open_cross_window(&mut live, &mut b);
+            choose_cross(&mut live, &mut b, 0);
+            assert_eq!(confirm(&mut live, &mut b).transform.form, Some(form_of(&content, result)), "{beast}");
+        }
+    }
+
+    /// A Cross list offers Crosses only, and leaves out the navi's starting
+    /// form, as the original's window does.
+    #[test]
+    fn a_cross_list_offers_crosses_only() {
+        let list = ["spoutcross", "gregar-beast", "eleccross", "tomahawkcross"];
+        let (_, _, b) = cross_battle(GameVersion::Gregar, Some(&list), |c, stats| stats.starting_form = form_of(c, "eleccross"));
+        let w = nettai_render::custom::CrossWindow::of(&b, 0).unwrap();
+        assert_eq!((w.count, &w.offered[..2]), (2, &[0, 3][..]));
+    }
+
+    /// B with nothing picked takes the Cross chosen back: its face and its
+    /// form go, Beast Out is on offer again, and nothing goes out.
+    #[test]
+    fn b_takes_the_cross_back() {
+        let (_, mut live, mut b) = cross_battle(GameVersion::Falzar, None, |_, _| {});
+        open_cross_window(&mut live, &mut b);
+        choose_cross(&mut live, &mut b, 1);
+        let screen = b.custom.sides[0].screen.unwrap();
+        assert!(screen.form.is_some() && screen.look.face.is_some());
+        assert_eq!(screen.slots[custom::screen::SPECIAL_SLOT as usize].state, SlotState::Unavailable);
+        keys_in_turn(&mut live, &mut b, &[keys::B, 0]);
+        let screen = b.custom.sides[0].screen.unwrap();
+        assert_eq!((screen.form, screen.look.face), (None, None));
+        assert_eq!(screen.slots[custom::screen::SPECIAL_SLOT as usize].state, SlotState::Selectable);
+        assert_eq!(nettai_render::custom::CrossWindow::of(&b, 0).unwrap().chosen, None);
+        assert_eq!(confirm(&mut live, &mut b).transform.form, None);
+        assert_eq!(crosses_used(&b), [false; 5]);
     }
 }

@@ -6,7 +6,7 @@
 -- an enemy navi stands on; 20 ticks, then 30 more with his arm down.
 
 local link = require("../../lib/link_chips")
-local panels = require("../../lib/panels")
+local panels = require("@common/panels")
 local thunder = require("../../chips/elecman/thunder")
 local weapon = require("../../lib/weapon")
 

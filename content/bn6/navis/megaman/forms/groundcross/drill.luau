@@ -10,7 +10,7 @@
 local attachment = require("../../../../objects/attachment/attachment")
 local drill_object = require("../../../../chips/drilarm/drill")
 local lockon = require("../../../../rules/lockon")
-local regions = require("../../../../lib/regions")
+local regions = require("@common/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {

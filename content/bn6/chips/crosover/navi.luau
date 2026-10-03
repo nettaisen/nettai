@@ -16,7 +16,7 @@ local navi_chips = require("../../lib/navi-chips/navi")
 local parts = require("../../lib/swords/parts")
 local projectile = require("../../lib/projectile")
 local variants = require("../../objects/projectile/variants")
-local regions = require("../../lib/regions")
+local regions = require("@common/regions")
 local sun_beam = require("../gundels/beam")
 
 local crosover = {}

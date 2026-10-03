@@ -7,7 +7,7 @@
 -- once the battle is over.
 
 local collision = require("../../../../rules/collision")
-local regions = require("../../../../lib/regions")
+local regions = require("@common/regions")
 
 local charge_wave = {}
 

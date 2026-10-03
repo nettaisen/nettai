@@ -8,7 +8,7 @@
 -- one-tick hit. See docs/engine/chips.md §4.6.
 
 local collision = require("../../../../rules/collision")
-local regions = require("../../../../lib/regions")
+local regions = require("@common/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {

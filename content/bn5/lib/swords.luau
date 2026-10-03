@@ -1,5 +1,5 @@
 --!strict
--- BN5's swords' parts, for BN6's slash (@bn6/lib/swords/slash, the original's action 0x13; BN5's the same code
+-- BN5's swords' parts, for the shared slash (@common/swords/slash, BN6's action 0x13; BN5's the same code
 -- but for a step sword's afterimage and the elemental swords' slash palettes, which these swords haven't): the
 -- blade (attachment row 3, as BN6's: the same look), the slash's effects (BN5's effects 0x16 to 0x18 are
 -- BN6's: the same rows of 0x080DFC94, by the swords' table 0x080EC028), the swing's sound, and BN5's
@@ -12,9 +12,11 @@
 -- 9 going through (BN6's 0xB), else by its whole element byte (BN6's its primary element) from 0x080D0EF4, a BN5
 -- slash.
 
-local attachment = require("@bn6/objects/attachment/attachment")
+local antiswrd = require("@common/antiswrd/counter")
+local attachment = require("../objects/attachment/attachment")
 local collision = require("../rules/collision")
-local sonic_boom = require("@bn6/lib/swords/sonic_boom")
+local slash = require("@common/swords/slash")
+local sonic_boom = require("@common/swords/sonic_boom")
 
 local swords = {}
 
@@ -60,6 +62,23 @@ swords.sonic_boom = sonic_boom.make_kind("bn5:sonic-boom", {
     palettes = { [0] = 0, 2, 5, 4, 8, 0, 0, 0 },
     element_mask = 0xFF,
     is = collision.slash,
+    hits = collision.hits_navis,
 })
+
+-- A chip's slash (@common/swords/slash), its blade BN5's attachment.
+function swords.slash(spec: SlashSpec): Action
+    return slash.action(spec, attachment.kind)
+end
+
+-- AntiSwrd's counter (the original's navi action 0x48: @common/antiswrd/counter) with BN5's blade and booms; its
+-- sounds BN6's. The ruleset starts it by role (`actions.anti_sword_counter`, rules/roles.luau).
+swords.anti_sword_counter = antiswrd.action_with {
+    id = "bn5:antiswrd/counter",
+    blade = swords.blade,
+    boom = swords.sonic_boom,
+    start_sound = asset.sound("bn6:log-in"),
+    swing_sound = asset.sound("bn6:sword-swing"),
+    attachment = attachment.kind,
+}
 
 return swords
