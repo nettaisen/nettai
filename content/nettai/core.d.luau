@@ -265,6 +265,8 @@ declare class Collision
     status_base: Status?
     -- Bug code (low byte) and argument (high byte).
     bugs: number
+    -- The bug code and argument the last resolution's hits brought (CollisionData+0x9C, +0x9D), which the navi takes.
+    inflicted_bugs: number
     hit_mod_base: number
     -- The damage it deals.
     self_damage: number
@@ -1185,7 +1187,7 @@ declare battle: {
     -- makes for a navi no buttons drive (BN5's computer navi draws it).
     sword_pick: (side: number) -> number,
     set_sword_pick: (side: number, pick: number) -> (),
-    -- Presentation: whether the side's emotion window shows its form's second set of faces (`mugshot.variant`:
+    -- Presentation: whether the side's emotion window shows its base form's second set of faces (`mugshot.variant`:
     -- BN5's Hub Style).
     set_face_variant: (side: number, variant: boolean) -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
@@ -1702,6 +1704,10 @@ export type SystemSpec = {
         -- kind (presentation; `sub_801002C`, BN5's 0x0800DD94). The first
         -- system that answers decides; none, the framework's (BN6's).
         navi_palette: ((side: number, navi: Object) -> number?)?,
+        -- Before the navi takes its hit's NaviCust bug (`sub_80139F6`, BN5's 0x0801103E): a system may change the bug
+        -- (`navi.collision.inflicted_bugs`), or answer true: the bug and the weapons' reload are skipped. The first
+        -- system that answers true decides.
+        navi_bug: ((side: number, navi: Object) -> boolean?)?,
         -- Each tick of the idle action of a navi whose side's takeover runs
         -- (`sub_802D4C6`), in place of the player's decisions: what it did,
         -- as `controller` answers, or "own_chip" (an attack of its own
@@ -1902,7 +1908,8 @@ export type MugshotFaces = {
     full_synchro: Mugshot?,
     worn_out: Mugshot?,
     worried: Mugshot?,
-    -- A second set, which the side's rules may show instead (`battle.set_face_variant`: BN5's Hub Style).
+    -- A second set, shown while the navi's Chaos Unison charge is armed (BN5's soul's chaos look), or in the base form
+    -- when the side's rules ask (`battle.set_face_variant`: BN5's Hub Style).
     variant: FaceSet?,
 }
 

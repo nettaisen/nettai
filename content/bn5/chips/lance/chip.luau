@@ -1,9 +1,9 @@
 --!strict
 -- Lance (BN5 chip 0x051): three lances thrust out of the far column's panels, one per row: BN6's Lance (instant
--- chip effect 4) with BN5's lance (objects/lance).
+-- chip effect 4) with BN5's lance (chips/lance/lance).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local bn5_lance = require("../../objects/lance/lance")
+local bn5_lance = require("./lance")
 local lance = require("@common/lance/lance")
 
 return define.chip {
