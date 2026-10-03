@@ -167,6 +167,7 @@ iceseed = { name = "IceSeed", description = "Makes 9sq\nice\n3sq ahead" }
 infvulc1 = { name = "InfVulc1", description = "20-shot\ndeadly\nmachine!" }
 infvulc2 = { name = "InfVulc2", description = "24-shot\ndeadly\nmachine!" }
 infvulc3 = { name = "InfVulc3", description = "28-shot\ndeadly\nmachine!" }
+invalid = { name = "", description = "" }
 invisibl = { name = "Invisibl", description = "Invisibl\nfor a\nwhile" }
 jealousy = { name = "Jealousy", description = "More dmg\nif enemy\nhas chip" }
 justcone = { name = "JustcOne", description = "Fist Atk\non center\npanel" }

@@ -8,7 +8,7 @@
 //! (`system.state()` in a hook): a side's rules see the other side through
 //! the engine alone.
 
-use nettai_content_api::{ContentState, HookCall, RulesetHandle, SystemHook, Value};
+use nettai_content_api::{ChipHandle, ContentState, HookCall, ObjectRef, RulesetHandle, SystemHook, Value};
 
 use crate::battle::Battle;
 use crate::content::Content;
@@ -139,9 +139,41 @@ impl Battle {
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(hook) {
-                crate::behavior::call_hook(self, f, HookCall::System { side, slot: slot as u8, hook });
+                let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: None };
+                crate::behavior::call_hook(self, f, call);
             }
         }
+    }
+
+    /// Side `side`'s systems' `navi_intake(side, navi)`, each tick of the
+    /// fight in the navi's intake. (A ruleset without the hook calls
+    /// nothing: BN6's.)
+    pub(crate) fn systems_navi_intake(&mut self, side: u8, navi: ObjectRef) {
+        let Some(r) = self.rules[side as usize].ruleset else { return };
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::NaviIntake) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::NaviIntake, navi: Some(navi), chip: None };
+                crate::behavior::call_hook(self, f, call);
+            }
+        }
+    }
+
+    /// Side `side`'s systems' `chip_check(side, navi, chip)` as a chip's
+    /// use is prepared: the chip the first system that answers puts in its
+    /// place, or none (the use goes ahead).
+    pub(crate) fn systems_chip_check(&mut self, side: u8, navi: ObjectRef, chip: Option<ChipHandle>) -> Option<ChipHandle> {
+        let r = self.rules[side as usize].ruleset?;
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::ChipCheck) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipCheck, navi: Some(navi), chip };
+                if let Value::Def(nettai_content_api::Registry::Chip, c) = crate::behavior::call_hook(self, f, call) {
+                    return Some(ChipHandle(c));
+                }
+            }
+        }
+        None
     }
 }
 
@@ -225,6 +257,33 @@ mod tests {
         let b = started(setup);
         assert_eq!(field(&b, 0, 1, "bonus"), FieldValue::U16(14));
         assert_eq!(field(&b, 1, 1, "bonus"), FieldValue::U16(0), "the other player's setup is its own");
+    }
+
+    /// The per-tick and chip-use hooks (docs/design/bn5-map.md §15.3 item
+    /// 14): a system's `navi_intake` is called with the side and its navi,
+    /// and its `chip_check` with the chip about to be used, whose answer
+    /// takes the chip's place; a side whose rules lack them calls nothing.
+    #[test]
+    fn a_systems_intake_and_chip_check_hooks() {
+        let content = scenario::content();
+        let watch = content.defs.ruleset_by_key("test-watch").expect("the watcher's ruleset");
+        let mut setup = scenario::setup();
+        setup.players[1].ruleset = Some(watch);
+        let mut b = started(setup);
+        let navi = b.player(1).expect("side 1's navi");
+        b.systems_navi_intake(1, navi);
+        b.systems_navi_intake(1, navi);
+        let p = b.objects.get(navi).panel;
+        assert_eq!(field(&b, 1, 0, "intakes"), FieldValue::U16(2));
+        assert_eq!((field(&b, 1, 0, "x"), field(&b, 1, 0, "y")), (FieldValue::U8(p.x), FieldValue::U8(p.y)));
+        let bomb = testing::chip_in(&content, "test/bomb");
+        let seed = testing::chip_in(&content, "test/seed");
+        assert_eq!(b.systems_chip_check(1, navi, Some(bomb)), Some(seed));
+        assert_eq!(b.systems_chip_check(1, navi, Some(seed)), None);
+        assert_eq!(b.systems_chip_check(1, navi, None), None);
+        // Side 0's rules have neither hook.
+        let navi0 = b.player(0).expect("side 0's navi");
+        assert_eq!(b.systems_chip_check(0, navi0, Some(bomb)), None);
     }
 
     #[test]

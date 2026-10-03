@@ -1435,6 +1435,14 @@ export type SystemSpec = {
         -- (not the simulation): the folder is `battle.checked_folder()`, and
         -- each rule it breaks is `battle.folder_problem(rule, text)`.
         folder_check: ((side: number) -> ())?,
+        -- Each tick of the fight, in the navi's intake after the standing
+        -- effects (`sub_801AC6C`; BN5's light and dark MegaMan clears a holy
+        -- panel there).
+        navi_intake: ((side: number, navi: Object) -> ())?,
+        -- A chip's use is prepared (the end of `sub_80127C0`): nil lets it
+        -- be used, a chip is what the navi uses instead. The first system
+        -- that answers decides.
+        chip_check: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
     }?,
 }
 export type System = SystemSpec
