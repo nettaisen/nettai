@@ -1481,3 +1481,46 @@ New APIs: a collision's `counter_timer`, `battle.gauge_damage`, a side's sword p
 `set_sword_pick`: `sub_802E070`+0x12, which the AI draws for VarSwrd and NeoVari and BN5's VarSwrd, when ported,
 reads for a navi no buttons drive), the identity spec's `body`. Read as constant: NaviStats +0x2A (class 28's test;
 its BN5 meaning unread, 0 in every setup).
+
+### 15.10 BN5's emotions (as built)
+
+BN5's emotion is its own routine (0x0801270C → 0x08012740; in battle mode 1, 0x080127C0: Full Synchro or normal),
+which the engine runs for a side whose rules say so (the status section's `emotions = "bn5"`):
+
+| BN5's | When | The engine's | Face (0x0801AFB4) |
+|---|---|---|---|
+| 4 | in a soul (NaviStats +0x2C) | normal (the soul's own face; nothing doubles or ends) | the soul's |
+| 3 | anger (AIData +0x34) | angry | 1 |
+| 5 | a mood of 0 (a dark MegaMan's) | worn out | 4, the dark face |
+| 2 | mood 0xFF | Full Synchro | 3 |
+| 0 | a mood of 65 or more | normal | 0 |
+| 1 | a mood under 65 | **worried** (new) | 2 |
+
+- **The mood setter** (0x080127D6, BN6's `sub_8015BEC`) leaves a mood of 0 as it is (BN6's leaves a held one): a dark
+  MegaMan never reaches Full Synchro, and anger's 0x80 doesn't lift him.
+- **The anger tick** (0x08011A14) is BN6's but passes over AI index 23, and ends anger on BN5's 5 alone (BN6's 5 and
+  1: worried doesn't).
+- **The starting mood** (0x08010EC8's, where BN6's `sub_8013892` sets 0x80): by the light/dark value (0x0801283A):
+  under 470 0, under 500 64, from 1000 190, else value / 20 + 103 (500 gives 0x80, so a light MegaMan's is BN6's).
+  Battle effect 0x20000 holds the value at 500 (0x08010EDC). The hook `starting_mood`, which the light and dark
+  system answers.
+- **Full Synchro on a counter** (0x08016FDC, BN6's `sub_801A200`): the counterer, in no soul, to 0xFF through the
+  setter (rules/emotion, `bn5:emotion`). The aura (0x0801100C, 0x080C45E0) is BN6's, for an AI index up to 12 in
+  BN5's emotion 2.
+- **The palette** (0x0800DD94, BN6's `sub_801002C`; presentation): the hook `navi_palette`, the light and dark
+  system's. Dark MegaMan (a computer navi of AI index 0x16 or 0x17) 1, another computer navi 0; MegaMan in AI index
+  23 2; unable to charge 1; in a soul 0, or 2 with the Chaos Unison charge armed; else by the mood: 0xFF 4, 0 2 (dark)
+  or 3 (light), else the value's tier (0x0800DE5C: from 1000 4, from 500 0, from 470 3, else 2). Then Hub Style's
+  `hub_style * 5 + 20`, else the element's `* 5` (none in a soul). A link navi's (0x0800DA98, by BN5's navi numbers)
+  is left to the framework: BN5's content has no link navi.
+- **Hub Style** (NaviStats +0x4C): set out of battle by the NaviCust's compile (0x08138214) when HubBatc sits in its
+  fourth color (part 0x6F); 0 in every recording. It adds 11 to the face (0x0801AF8E: pictures 11-15, the base
+  form's second set of faces, `mugshot.variant`, shown by `battle.set_face_variant`) and moves the palette. The
+  light and dark system's setup carries it (`hub_style`, bn5-compat from +0x4C).
+- The faces' names follow: `megaman-worried` (2), `megaman-dark` (4), `megaman-hub*` (11-15; they were named as
+  dark faces).
+
+Seen against mGBA (tools/frontend-compare, unmasked): chips/0x0bc-drksword/hit 1 → 286 of 314 frames exact,
+souls/01-sword/unison 19 → 598 of 704 (the dark opponent's palette and face). What still differs there: the emotion
+window blinking out after a dark chip (456-537, two frames in four), the custom screen's face box, and the hit
+navi left undrawn after Cannon's hit (452-553; before this work too).
