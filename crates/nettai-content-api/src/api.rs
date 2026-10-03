@@ -420,6 +420,8 @@ named_fields! {
         StartingForm = "starting_form", Ref(Registry::Form, None), ro;
         /// The navi's game: 0 Gregar, 1 Falzar.
         Version = "version", U8, ro;
+        /// The Regular chip's MB at most (+0x09, RegUp's).
+        RegularMemory = "regular_memory", U8, ro;
         MaxBaseHp = "max_base_hp", U16, ro;
         /// The NaviCust's heal on chip use.
         ChipRecovery = "chip_recovery", U16, rw;
@@ -477,7 +479,9 @@ named_fields! {
         Rush = "rush", Bool, rw;
         Beat = "beat", Bool, rw;
         Tango = "tango", Bool, rw;
-        SupportBug = "support_bug", Bool, ro;
+        /// The support bug (+0x0D 0xFF): no supports, and none can be set.
+        /// Writable: a game's NaviCust rules bring it.
+        SupportBug = "support_bug", Bool, rw;
         /// NaviCust bugs: steps go astray (+0x31, 1), a step's panel trail
         /// level (+0x13), the status a hit gives (+0x16), the custom
         /// screen's damage (+0x54), the emotion swings (+0x24), the battle
@@ -494,9 +498,9 @@ named_fields! {
         /// What the NaviCust does to chip drops (+0x26: 1 its collector
         /// bug, bit 2 Collect) and random encounters (+0x28: 1 its
         /// encounter bug): no netbattle reads them; the patch cards' bug
-        /// count does.
-        ChipDrops = "chip_drops", U8, ro;
-        Encounters = "encounters", U8, ro;
+        /// count does. Writable: a game's NaviCust rules set them.
+        ChipDrops = "chip_drops", U8, rw;
+        Encounters = "encounters", U8, rw;
         /// `sub_800FE52`: how many kinds of NaviCust bug the navi has
         /// (astray steps, a panel trail, buster blanks, a hit status,
         /// custom-screen damage, emotion swings, the two HP drains, a
@@ -655,6 +659,34 @@ named_flags! {
         /// (`sub_80E1352` sets it, `sub_80E13DC` clears it).
         Vanished = "vanished",
     }
+}
+
+/// A folder a tool asks a side's rules to check (`folder_check`): whose
+/// side it is, its chips in order (handles and codes), its Regular and tag
+/// chips (entries of `chips`), and whether it is all of a folder (else the
+/// chips so far, as a random folder is drawn: the rules about a whole
+/// folder wait).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CheckedFolder {
+    pub side: u8,
+    pub chips: Vec<(u16, u8)>,
+    pub regular: Option<u8>,
+    pub tags: Option<(u8, u8)>,
+    pub complete: bool,
+}
+
+/// A program on a side's NaviCust, as content reads it
+/// (`battle.navicust`): the program's handle, its color (an index into the
+/// definition's `colors`), its centre on the 7x7 grid, its quarter turns
+/// clockwise, and whether it is compressed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlacedProgram {
+    pub program: u16,
+    pub color: u8,
+    pub x: u8,
+    pub y: u8,
+    pub rotation: u8,
+    pub compressed: bool,
 }
 
 named_flags! {
@@ -1100,6 +1132,16 @@ pub trait CoreApi {
     /// A side's installed patch cards in their list's order (handles), and
     /// whether each is switched on (the setup's: `PlayerSetup::patch_cards`).
     fn patch_cards(&self, side: u8) -> Vec<(u16, bool)>;
+    /// A side's NaviCust (the setup's: `PlayerSetup::navicust`): its
+    /// board's expansions and its programs in its list's order; none when
+    /// the setup gives none (its stats are already the NaviCust's).
+    fn navicust(&self, side: u8) -> Option<(u8, Vec<PlacedProgram>)>;
+    /// The folder a tool asks the side's rules to check (`folder_check`),
+    /// while it is checked.
+    fn checked_folder(&self) -> Option<CheckedFolder>;
+    /// A rule the checked folder breaks: the rule's name (`copies`, `mega`,
+    /// ... the game's own) and what to say.
+    fn folder_problem(&mut self, rule: &str, text: &str);
     /// A side's bug frags in the battle (`sub_800F4A8`).
     fn bug_frags(&self, side: u8) -> u32;
     /// `sub_800F4B2`: a side spends `n` bug frags (the count wraps below

@@ -1,0 +1,30 @@
+--!strict
+-- The NaviCust program Jungle (program 20), in green.
+
+local programs = require("../../rules/navicust/programs")
+
+return define.navicust_program {
+    id = "bn6:jungle",
+    colors = { "green" },
+    shape = {
+        ".......",
+        ".......",
+        "...#...",
+        "...#...",
+        "..###..",
+        ".......",
+        ".......",
+    },
+    compressed = {
+        ".......",
+        ".......",
+        "...#...",
+        "...#...",
+        "..##...",
+        ".......",
+        ".......",
+    },
+    bug = "encounter",
+    exclusive = "encounter-element",
+    effects = { programs.outside("jungle") },
+}

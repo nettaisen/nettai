@@ -427,6 +427,16 @@ export type PatchCardEffect = {
     -- The card shows it as a bug.
     bug: boolean?,
 }
+-- A BN6 NaviCust program's effect (rules/navicust/programs.luau's
+-- constructors make them; the navicust system applies them): its kind, and
+-- the kind's fields.
+export type NaviCustEffect = {
+    kind: string,
+    amount: number?,
+    weapon: Weapon?,
+    barrier: Barrier?,
+    what: string?,
+}
 -- A barrier (lib/barriers): `sub_801A7CC`'s row (how it behaves, its HP,
 -- the damage a hit must reach to wear it, its timer (0xFFFF: none), the
 -- element that breaks it), and its visual (`byte_80E0A14`'s look: sprite,

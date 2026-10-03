@@ -226,6 +226,25 @@ pub const FIELDS: &[Field] = &[
     int!("hand_shrink_turn", 255, "bug: from this custom screen on, one chip fewer each (0 never)", |s| s.bugs.hand_shrink_turn),
 ];
 
+/// The fields a save keeps when its NaviCust compiles (`sub_8136C24` keeps
+/// them through its reset; the rest the NaviCust makes): what a side with a
+/// NaviCust may set.
+pub const SAVE_FIELDS: &[&str] = &[
+    "hp",
+    "regular_memory",
+    "mood",
+    "beast_out_counter",
+    "sun",
+    "form",
+    "folder",
+    "folder_1_regular",
+    "folder_2_regular",
+    "folder_1_tag_a",
+    "folder_1_tag_b",
+    "folder_2_tag_a",
+    "folder_2_tag_b",
+];
+
 /// The field with this name.
 pub fn field(name: &str) -> Option<&'static Field> {
     FIELDS.iter().find(|f| f.name == name)

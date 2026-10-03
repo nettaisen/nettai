@@ -3,34 +3,161 @@
 //! name or an icon, a banner without glyphs, a sound without a song.
 //!
 //! Drawing skips what it can't find, so nothing here stops a frame; the
-//! renderer and the audio check note each case in [`Problems`], and
-//! `--audit` (headless) runs a whole trace and prints them. An empty list
-//! says the frames were drawn and the cues played with everything they
-//! named, not that they look or sound like the original (the frame
-//! comparison outside this repository checks that).
+//! renderer and the audio check note each case in [`Problems`]. Every
+//! lookup the drawing code and the audio make of the packs and the content
+//! goes through [`crate::lookups`], which notes it as a [`Lookup`] and
+//! checks it once a run. Two audits use them:
+//!
+//! - `--audit-content` ([`crate::content_audit`]) makes every lookup the
+//!   content can: every chip's icon, picture and name, every navi's and
+//!   form's face, every asset the content names, in both languages;
+//! - `--audit` runs traces and makes the lookups their frames make (only
+//!   those: nothing is drawn, `Renderer::set_lookups_only`), the asset's
+//!   animation and palette an object asks for among them, and lists each
+//!   trace's lookups for the verification's trace cover (`--lookups`).
+//!
+//! An empty list says the frames were drawn and the cues played with
+//! everything they named, not that they look or sound like the original
+//! (the frame comparison outside this repository checks that).
 
+use nettai_battle::content::{BackgroundId, BannerId, Content, MugshotId, SpriteId};
+use nettai_battle::custom::GameVersion;
 use nettai_battle::{Battle, SoundCue};
-use std::collections::BTreeMap;
+use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
+use std::collections::{BTreeMap, HashSet};
 
 /// Check that the pack's sound has the song a cue starts.
 pub fn check_cue(b: &Battle, banks: &[std::sync::Arc<m4a::SoundBank>], cue: SoundCue, problems: &mut Problems) {
-    let id = match cue {
-        SoundCue::Effect(id) => id,
-        SoundCue::Music(id) if id != nettai_audio::NO_MUSIC => id,
-        _ => return,
-    };
-    // (The engine's sound is a handle; the song is its pack's, in that
-    // pack's bank: the first's for a frontend of one pack.)
-    let (pack, song) = b.content.assets.sound(id.0).map_or((0, id.0), |a| (a.pack.index(), a.id));
-    let bank = banks.get(pack).or(banks.first()).expect("a pack's sound");
-    if bank.song(m4a::SongId(song)).is_some_and(|s| !s.tracks.is_empty()) {
-        return;
+    match cue {
+        SoundCue::Effect(id) => crate::lookups::sound(&b.content, banks, id.0, false, problems),
+        SoundCue::Music(id) => crate::lookups::sound(&b.content, banks, id.0, true, problems),
+        _ => {}
     }
-    let name = match crate::packs::name(&b.content, nettai_content_api::AssetKind::Sound, id.0) {
-        Some(name) => format!("sound {name:?} ({song:#05x})"),
-        None => format!("sound {song:#05x}"),
-    };
-    problems.note(format!("{name} has no song in the pack's sound"));
+}
+
+/// A lookup the drawing code or the audio makes of the packs or the
+/// content: what a frame or a cue named, by what it is for. Each is
+/// checked once a run ([`Problems::lookup`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Lookup {
+    /// A sprite's sheet, in its pack.
+    Sprite(SpriteId),
+    /// A sprite's animation, with its frames.
+    Animation(SpriteId, u8),
+    /// A palette of a sprite's palette set: (set, index).
+    Palette(SpriteId, u8, u8),
+    /// A background, in its pack.
+    Background(BackgroundId),
+    /// The field's panel block for a panel type, owner (0 the viewer's)
+    /// and row (1..=3).
+    Panel(u8, u8, u8),
+    /// A chip's icon (over the navi, on the custom screen's slots).
+    ChipIcon(ChipHandle),
+    /// A chip's picture in the chip window.
+    ChipArt(ChipHandle),
+    /// A chip's name in the 8x16 font (the next chip, the chip window, a
+    /// telop).
+    ChipName(ChipHandle),
+    /// The chip window's colours and pictures of a chip's class, element
+    /// and code.
+    ChipWindow(ChipHandle),
+    /// A chip's name and code in the Program Advance animation.
+    AdvanceName(ChipHandle),
+    /// A chip's description in the dialogue font (R on the custom screen).
+    ChipDescription(ChipHandle),
+    /// A mugshot, in its pack's HUD.
+    Mugshot(MugshotId),
+    /// A link navi's own face in the emotion window.
+    NaviFace(NaviHandle),
+    /// A form's face for an emotion (`emotion_number`).
+    FormFace(FormHandle, u8),
+    /// A navi's name on the custom screen (the enemy names).
+    NaviName(NaviHandle),
+    /// A navi's number in BN6's compat (its emblem's).
+    NaviNumber(NaviHandle),
+    /// A navi's emblem on a console of a game's custom screen.
+    Emblem(NaviHandle, GameVersion),
+    /// A navi's no-running message in the dialogue font, with its portrait.
+    RunMessage(NaviHandle),
+    /// A Cross's name and colours in the Cross window.
+    CrossName(FormHandle),
+    /// A Cross's description in the dialogue font.
+    CrossDescription(FormHandle),
+    /// A banner's glyphs.
+    Banner(BannerId),
+    /// A telop's place (its banner's layout).
+    Telop(BannerId),
+    /// A telop of a chip the engine wasn't told.
+    TelopUnknown,
+    /// A line of the HUD's text (`Hud::texts`).
+    TextLine(u8),
+    /// A sound's song, in its pack's sound.
+    Sound(u16),
+    /// A part of the pack's graphics that is there or not as a whole.
+    Graphics(Graphics),
+}
+
+/// The parts of a pack's graphics a frame needs as a whole.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Graphics {
+    /// The custom screen's (`graphics/custom`).
+    CustomScreen,
+    /// The chatbox's and the dialogue font.
+    Chatbox,
+    /// The warning marker.
+    Warning,
+}
+
+/// An emotion's number in a [`Lookup::FormFace`] (`sub_8015B54`'s code).
+pub fn emotion_number(e: nettai_battle::kinds::player::Emotion) -> u8 {
+    use nettai_battle::kinds::player::Emotion;
+    match e {
+        Emotion::Normal => 0,
+        Emotion::Tired => 1,
+        Emotion::FullSynchro => 2,
+        Emotion::Angry => 3,
+        Emotion::WornOut => 5,
+    }
+}
+
+impl Lookup {
+    /// The lookup as a line of text, by the content's names (`--lookups`:
+    /// stable from run to run, and between content of other packs).
+    pub fn describe(&self, c: &Content) -> String {
+        let asset = |kind: AssetKind, h: u16| crate::packs::name(c, kind, h).map_or(format!("#{h}"), str::to_string);
+        let sprite = |id: SpriteId| asset(AssetKind::Sprite, id.0);
+        let chip = |h: ChipHandle| &c.defs.chip(h).key;
+        let navi = |h: NaviHandle| &c.defs.navi(h).key;
+        let form = |h: FormHandle| &c.defs.form(h).key;
+        match *self {
+            Lookup::Sprite(id) => format!("sprite {}", sprite(id)),
+            Lookup::Animation(id, anim) => format!("sprite {} animation {anim}", sprite(id)),
+            Lookup::Palette(id, set, index) => format!("sprite {} palette {set}/{index}", sprite(id)),
+            Lookup::Background(id) => format!("background {}", asset(AssetKind::Background, id.0)),
+            Lookup::Panel(kind, owner, row) => format!("panel {kind} owner {owner} row {row}"),
+            Lookup::ChipIcon(h) => format!("chip {} icon", chip(h)),
+            Lookup::ChipArt(h) => format!("chip {} picture", chip(h)),
+            Lookup::ChipName(h) => format!("chip {} name", chip(h)),
+            Lookup::ChipWindow(h) => format!("chip {} window", chip(h)),
+            Lookup::AdvanceName(h) => format!("chip {} advance name", chip(h)),
+            Lookup::ChipDescription(h) => format!("chip {} description", chip(h)),
+            Lookup::Mugshot(id) => format!("mugshot {}", asset(AssetKind::Mugshot, id.0)),
+            Lookup::NaviFace(h) => format!("navi {} face", navi(h)),
+            Lookup::FormFace(h, e) => format!("form {} face {e}", form(h)),
+            Lookup::NaviName(h) => format!("navi {} name", navi(h)),
+            Lookup::NaviNumber(h) => format!("navi {} number", navi(h)),
+            Lookup::Emblem(h, v) => format!("navi {} emblem {}", navi(h), crate::custom::game_name(v)),
+            Lookup::RunMessage(h) => format!("navi {} run message", navi(h)),
+            Lookup::CrossName(h) => format!("form {} cross name", form(h)),
+            Lookup::CrossDescription(h) => format!("form {} description", form(h)),
+            Lookup::Banner(id) => format!("banner {}", asset(AssetKind::Banner, id.0)),
+            Lookup::Telop(id) => format!("telop {}", asset(AssetKind::Banner, id.0)),
+            Lookup::TelopUnknown => "telop of an untold chip".into(),
+            Lookup::TextLine(n) => format!("text line {n}"),
+            Lookup::Sound(h) => format!("sound {}", asset(AssetKind::Sound, h)),
+            Lookup::Graphics(g) => format!("graphics {g:?}"),
+        }
+    }
 }
 
 /// How often a problem was seen, and on which frames.
@@ -43,7 +170,8 @@ pub struct Seen {
     pub last: Option<u32>,
 }
 
-/// The problems seen so far, each once, in the order of their text.
+/// The problems seen so far, each once, in the order of their text; and
+/// the lookups made so far.
 #[derive(Clone, Debug, Default)]
 pub struct Problems {
     frame: Option<u32>,
@@ -51,6 +179,8 @@ pub struct Problems {
     /// The last frame's places where the frontend draws something else
     /// than the original on purpose (`Known`).
     pub known: Vec<Known>,
+    /// Every distinct lookup made so far, each checked once.
+    lookups: HashSet<Lookup>,
 }
 
 /// A place of a frame where the frontend differs from the original on
@@ -81,6 +211,17 @@ impl Problems {
         let s = self.seen.entry(what).or_insert(Seen { count: 0, first: frame, last: frame });
         s.count += 1;
         s.last = frame;
+    }
+
+    /// Note a lookup: true the first time it is made this run, when the
+    /// caller checks it (a lookup is checked once a run).
+    pub fn lookup(&mut self, l: Lookup) -> bool {
+        self.lookups.insert(l)
+    }
+
+    /// The distinct lookups made so far.
+    pub fn lookups(&self) -> impl Iterator<Item = Lookup> + '_ {
+        self.lookups.iter().copied()
     }
 
     pub fn is_empty(&self) -> bool {

@@ -10,11 +10,13 @@ use std::sync::Arc;
 use std::time::Instant;
 
 struct Args {
-    /// The packs (one a game: docs/design/rules-in-luau.md §7.4).
+    /// Packs given by directory, each in place of the found one of its game
+    /// (docs/design/rules-in-luau.md §7.4).
     packs: Vec<PathBuf>,
     content: Option<PathBuf>,
     mute: bool,
-    trace: Option<PathBuf>,
+    /// The trace (several with --audit).
+    traces: Vec<PathBuf>,
     round: usize,
     play: bool,
     seed: Option<u32>,
@@ -29,6 +31,13 @@ struct Args {
     paused: bool,
     headless: Option<String>,
     audit: bool,
+    /// With --audit: draw every frame and play every cue as well.
+    draw: bool,
+    /// Audit traces on this many threads (0: every core's).
+    jobs: usize,
+    /// With --audit: write each trace's lookups here.
+    lookups: Option<PathBuf>,
+    audit_content: bool,
     objects: bool,
     out: PathBuf,
     png_scale: usize,
@@ -46,9 +55,6 @@ struct Args {
 /// The most input delay netplay takes (a quarter of a second).
 const MAX_DELAY: u32 = 15;
 
-/// Where `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` puts the BN6 pack by default.
-const DEFAULT_PACK: &str = "data/content/bn6";
-
 const USAGE: &str = "\
 usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-frontend [OPTIONS] --play          play live (you are the left navi)
@@ -56,16 +62,19 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-frontend [OPTIONS] --play --host PORT        play another player over the
        nettai-frontend [OPTIONS] --play --join ADDR:PORT   network: host, or join the host
        nettai-frontend [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
-       nettai-frontend [OPTIONS] TRACE.jsonl --audit
+       nettai-frontend [OPTIONS] --audit-content
+       nettai-frontend [OPTIONS] --audit TRACE.jsonl...
 
-  --pack DIR       the content pack to play (graphics and sound), from
-                   `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <dir>` (default: $BN6_PACK, else
-                   data/content/bn6); again for another game's pack, loaded
-                   beside it: each asset draws and sounds from its own pack
-  --content DIR    the battle content: a content directory, its folders
-                   one namespace, whose definitions name the packs' assets
-                   (default: $NETTAI_CONTENT, else this repository's
-                   content/)
+  The content packs (graphics and sound, written from your ROMs by
+  `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6`)
+  are found in the packs directory, $NETTAI_PACKS, else data/content: each
+  folder with a pack, each by the game it says. The battle content is every
+  folder of the content directory, one namespace, whose game's pack is found
+  (one that doesn't load is left out, and said why).
+  --pack DIR       a pack's directory, in place of the found pack of its game
+                   (again for another game's; $BN6_PACK, deprecated, is one)
+  --content DIR    the content directory (default: $NETTAI_CONTENT, else
+                   this repository's content/)
   --mute           no sound (headless rendering never plays any)
   --round N        the trace round to start with (default 1; later rounds follow)
   --seed N         live play's seed: the field, the folders, the Crosses
@@ -98,10 +107,22 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
   --keys K         with --headless --play: the buttons you hold, by tick (e.g.
                    232-233:up,300:a+b; a b l r up down left right start
                    select)
-  --audit          draw every frame and play every sound cue into nothing, no
-                   window, and list what they named that the pack doesn't
-                   have (a sprite, an animation, a palette, a chip's icon or
-                   name glyph, a banner, a song); exits 1 if there was any
+  --audit-content  make every lookup the drawing code and the audio make for
+                   everything the content defines (every chip's icon,
+                   picture and name, every navi's and form's face, every
+                   asset the content names), in every language, and list
+                   what the packs don't have; exits 1 if there was any
+  --audit          run the traces (several at a time) making each frame's
+                   lookups and checking each sound cue, no window, and list
+                   what they named that the packs don't have (a sprite, an
+                   animation, a palette, a chip's icon or name glyph, a
+                   banner, a song); exits 1 if there was any
+  --draw           with --audit: draw every frame and play every sound cue
+                   into nothing as well (slower)
+  --jobs N         with --audit: traces at a time (default: one a core)
+  --lookups FILE   with --audit: write each trace's lookups to FILE (a line
+                   each: the trace, a tab, the lookup), for the trace cover;
+                   with --audit-content, its own (as the trace \"content\")
   --text MODE      how strings are drawn: font (default) draws the names, the
                    telop, the chatbox and the HUD's lines with a vector font at
                    the window's resolution, over the scaled frame; original
@@ -137,7 +158,7 @@ fn parse() -> Result<Args, String> {
         packs: Vec::new(),
         content: None,
         mute: false,
-        trace: None,
+        traces: Vec::new(),
         round: 1,
         play: false,
         seed: None,
@@ -151,6 +172,10 @@ fn parse() -> Result<Args, String> {
         paused: false,
         headless: None,
         audit: false,
+        draw: false,
+        jobs: 0,
+        lookups: None,
+        audit_content: false,
         objects: false,
         out: PathBuf::from("."),
         png_scale: 1,
@@ -185,6 +210,10 @@ fn parse() -> Result<Args, String> {
             "--paused" => a.paused = true,
             "--headless" => a.headless = Some(value("--headless")?),
             "--audit" => a.audit = true,
+            "--draw" => a.draw = true,
+            "--jobs" => a.jobs = number(value("--jobs")?, "--jobs")? as usize,
+            "--lookups" => a.lookups = Some(value("--lookups")?.into()),
+            "--audit-content" => a.audit_content = true,
             "--objects" => a.objects = true,
             "--out" => a.out = value("--out")?.into(),
             "--png-scale" => a.png_scale = number(value("--png-scale")?, "--png-scale")? as usize,
@@ -198,16 +227,31 @@ fn parse() -> Result<Args, String> {
             "--wait" => a.wait = number(value("--wait")?, "--wait")?,
             "-h" | "--help" => return Err(String::new()),
             s if s.starts_with('-') => return Err(format!("unknown option {s}")),
-            s => a.trace = Some(s.into()),
+            s => a.traces.push(s.into()),
         }
     }
     // A match file is played live.
     a.play |= a.match_file.is_some();
-    if a.trace.is_none() && !a.play {
-        return Err("give a trace file, --play or --match FILE".into());
+    if a.audit_content {
+        if !a.traces.is_empty() || a.play || a.audit || a.headless.is_some() {
+            return Err("--audit-content audits the content alone (--audit runs traces)".into());
+        }
+        return Ok(a);
+    }
+    if a.traces.is_empty() && !a.play {
+        return Err("give a trace file, --play, --match FILE or --audit-content".into());
+    }
+    if a.traces.len() > 1 && !a.audit {
+        return Err("one trace at a time (several with --audit)".into());
+    }
+    if (a.draw || a.lookups.is_some() || a.jobs != 0) && !a.audit && !a.audit_content {
+        return Err("--draw, --jobs and --lookups go with --audit".into());
+    }
+    if a.audit && (a.play || a.headless.is_some()) {
+        return Err("--audit runs traces, without a window".into());
     }
     if a.match_file.is_some() {
-        if a.trace.is_some() {
+        if !a.traces.is_empty() {
             return Err("--match plays a match file, not a trace".into());
         }
         if a.stage.is_some() || a.cards.iter().any(Option::is_some) {
@@ -263,24 +307,22 @@ fn load<T>(pack: &Path, what: &str, f: impl Fn(&Path) -> Result<(T, nettai_conte
         }
         Err(r) => {
             show(&r);
-            fail(format!(
-                "can't load the {what} of the content pack {}\n(write it with `cargo run -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> {}`)",
-                pack.display(),
-                pack.display()
-            ))
+            fail(format!("can't load the {what} of the content pack {} (extract it again: README.md, \"Getting started\")", pack.display()))
         }
     }
 }
 
 /// The battle's display text in `lang`: the pack's lettering in it (fonts,
-/// HUD lines, pictures with text) and the content root's strings table, if
-/// the language isn't the content's own.
-fn language(assets: nettai_assets::Bundle, root: &Path, lang: &str) -> (nettai_assets::Bundle, Option<nettai_content::locale::Strings>) {
+/// HUD lines, pictures with text) and the content folders' strings tables
+/// (`roots`), if the language isn't the content's own.
+fn language(assets: nettai_assets::Bundle, roots: &[PathBuf], lang: &str) -> (nettai_assets::Bundle, Option<nettai_content::locale::Strings>) {
     let own = nettai_content::locale::OWN;
-    let strings = if lang == own { None } else { nettai_content::locale::load_all(root, lang).unwrap_or_else(|e| fail(e)) };
+    let strings = if lang == own { None } else { nettai_content::locale::load_many(roots, lang).unwrap_or_else(|e| fail(e)) };
     if strings.is_none() && lang != own {
-        let have = nettai_content::locale::languages_all(root).join(", ");
-        fail(format!("the content ({}) has no strings in {lang:?} (it has {have})", root.display()));
+        let mut have: Vec<String> = roots.iter().flat_map(|r| nettai_content::locale::languages(r)).collect();
+        have.sort();
+        have.dedup();
+        fail(format!("the content has no strings in {lang:?} (it has {})", have.join(", ")));
     }
     let assets = assets.in_language(lang).unwrap_or_else(|e| fail(format!("{e} (extract the pack again with the Japanese ROMs)")));
     (assets, strings)
@@ -370,6 +412,113 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, seed: u32, file: 
     Session::new(Box::new(NetPlayer::new(content.clone(), conn, setup, folders, options)))
 }
 
+/// `--audit-content`: every lookup for everything the content defines, in
+/// each language a content folder has strings in; then exit.
+fn audit_content(args: &Args, content: &nettai_battle::Content, by_pack: &[PathBuf], own: nettai_battle::content::PackId, roots: &[PathBuf]) -> ! {
+    let t = Instant::now();
+    let bundles = by_pack.iter().map(|p| load(p, "graphics", nettai_content::pack::load_graphics)).collect();
+    let banks: Option<Vec<Arc<m4a::SoundBank>>> =
+        (!args.mute).then(|| by_pack.iter().map(|p| Arc::new(load(p, "sound", nettai_content::pack::load_sound))).collect());
+    let own_lang = nettai_content::locale::OWN;
+    let mut languages: Vec<nettai_frontend::content_audit::Language> = vec![(own_lang.to_string(), None)];
+    let mut langs: Vec<String> = roots.iter().flat_map(|r| nettai_content::locale::languages(r)).collect();
+    langs.sort();
+    langs.dedup();
+    for lang in langs.into_iter().filter(|l| l != own_lang) {
+        let strings = nettai_content::locale::load_many(roots, &lang).unwrap_or_else(|e| fail(e));
+        languages.push((lang, strings.map(Arc::new)));
+    }
+    let found = nettai_frontend::content_audit::audit(content, bundles, own, banks.as_deref(), &languages);
+    for p in &found.problems {
+        println!("{p}");
+    }
+    if !found.untranslated.is_empty() {
+        eprintln!("audit-content: shown in the content's own (a table lacks them): {}", found.untranslated.join(", "));
+    }
+    // (As --audit lists a trace's, under the name "content".)
+    if let Some(path) = &args.lookups {
+        let text: String = found.made.iter().map(|l| format!("content\t{l}\n")).collect();
+        std::fs::write(path, text).unwrap_or_else(|e| fail(format!("can't write {}: {e}", path.display())));
+    }
+    let assets: Vec<String> = found.assets.iter().map(|(k, n)| format!("{n} {k}s")).collect();
+    eprintln!(
+        "audit-content: {} chips, {} navis, {} forms; the packs' {}; {} lookups in {}{}; {} problems ({:.1?})",
+        found.chips,
+        found.navis,
+        found.forms,
+        assets.join(", "),
+        found.made.len(),
+        found.languages.join(" and "),
+        if banks.is_none() { ", no sound (--mute)" } else { "" },
+        found.problems.len(),
+        t.elapsed()
+    );
+    std::process::exit(if found.problems.is_empty() { 0 } else { 1 })
+}
+
+/// `--audit TRACE...`: the traces' lookups, several traces at a time; then
+/// exit. One trace prints as `--audit` always has: its problems, and a
+/// summary line.
+fn audit_traces(args: &Args, content: &Arc<nettai_battle::Content>, setup: &headless::AuditSetup) -> ! {
+    use std::sync::Mutex;
+    let t = Instant::now();
+    let jobs = if args.jobs > 0 { args.jobs } else { std::thread::available_parallelism().map_or(4, |n| n.get()) };
+    let one = args.traces.len() == 1;
+    // (Each trace's lines together.)
+    let out = Mutex::new(());
+    let done = |a: &headless::TraceAudit| {
+        let _held = out.lock().unwrap();
+        let name = a.trace.display();
+        match &a.audit {
+            Ok(found) => {
+                for s in &found.stopped {
+                    eprintln!("{}{s}", if one { String::new() } else { format!("{name}: ") });
+                }
+                for line in found.problems.lines() {
+                    if one {
+                        println!("{line}");
+                    } else {
+                        println!("{name}: {line}");
+                    }
+                }
+                if !one {
+                    eprintln!("audit {name}: {} frames, {} sound cues, {} problems", found.frames, found.cues, found.problems.len());
+                }
+            }
+            Err(e) => println!("{name}: {e}"),
+        }
+    };
+    let results = headless::audit_traces(content, setup, &args.traces, jobs, &done);
+    if let Some(path) = &args.lookups {
+        let mut text = String::new();
+        for r in &results {
+            let Ok(found) = &r.audit else { continue };
+            let name = r.trace.display();
+            text.push_str(&format!("{name}\t#frames {}\n", found.frames));
+            let mut lines: Vec<String> = found.problems.lookups().map(|l| l.describe(content)).collect();
+            lines.sort();
+            lines.dedup();
+            for l in lines {
+                text.push_str(&format!("{name}\t{l}\n"));
+            }
+        }
+        std::fs::write(path, text).unwrap_or_else(|e| fail(format!("can't write {}: {e}", path.display())));
+    }
+    let (frames, cues) = results.iter().filter_map(|r| r.audit.as_ref().ok()).fold((0u64, 0u64), |(f, c), a| (f + a.frames as u64, c + a.cues as u64));
+    let problems: usize = results.iter().map(|r| r.audit.as_ref().map_or(1, |a| a.problems.len())).sum();
+    if one {
+        eprintln!("audit: {frames} frames, {cues} sound cues, {problems} problems");
+    } else {
+        let bad = results.iter().filter(|r| r.audit.as_ref().map_or(true, |a| !a.problems.is_empty())).count();
+        eprintln!(
+            "audit: {} traces, {frames} frames, {cues} sound cues, {problems} problems ({bad} traces with problems; {jobs} at a time, {:.1?})",
+            results.len(),
+            t.elapsed()
+        );
+    }
+    std::process::exit(if problems == 0 { 0 } else { 1 })
+}
+
 fn main() {
     let args = match parse() {
         Ok(a) => a,
@@ -381,32 +530,53 @@ fn main() {
             std::process::exit(2);
         }
     };
-    let all_packs = match args.packs.is_empty() {
-        true => vec![std::env::var_os("BN6_PACK").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(DEFAULT_PACK))],
-        false => args.packs.clone(),
-    };
-    let root = args.content.clone().unwrap_or_else(nettai_content::root::content);
-    let content = Arc::new(load(&all_packs[0], "battle content", |_| nettai_content::pack::load_battle_packs(&root, &all_packs)));
+    // The packs found in the packs directory (and given by --pack), and the
+    // content's folders that draw on them.
+    let t = Instant::now();
+    let mut found_report = nettai_content::report::Report::default();
+    let packs_dir = nettai_content::pack::packs_dir();
+    let found = nettai_content::pack::find(&packs_dir, &args.packs, &mut found_report);
+    show(&found_report);
+    let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack, $BN6_PACK)"));
+    let loaded = nettai_content::pack::load_found(args.content.as_deref(), &found).unwrap_or_else(|r| {
+        show(&r);
+        fail("can't load the battle content (--content, --pack)")
+    });
+    show(&loaded.report);
+    for (root, why) in &loaded.left_out {
+        eprintln!("the content folder {root} is left out: {why}");
+    }
+    if std::env::var_os("NETTAI_LOAD_TIMES").is_some() {
+        eprintln!("loaded the battle content in {:.1?} (packs {})", t.elapsed(), loaded.packs.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join(", "));
+    }
+    let content = Arc::new(loaded.content);
+    let roots = loaded.roots;
     // Each pack's graphics, by the content's pack order (`PackId`); the
-    // content's own pack's in the player's language.
-    let by_pack = nettai_content::pack::pack_paths(&content, &all_packs);
-    // (The frontend's own game, by name: its strings, its HUD.)
-    let own = content.assets.pack(nettai_match::DEFAULT_GAME).unwrap_or_else(|| fail(format!("no {} pack is loaded", nettai_match::DEFAULT_GAME)));
+    // frontend's own game's (BN6's, by name) in the player's language.
+    let by_pack = loaded.packs;
+    let own = content.assets.pack(nettai_match::DEFAULT_GAME).unwrap_or_else(|| {
+        let why = loaded.left_out.iter().find(|(g, _)| g == nettai_match::DEFAULT_GAME).map_or(String::new(), |(_, why)| format!(": {why}"));
+        fail(format!("no {} pack is loaded{why}", nettai_match::DEFAULT_GAME))
+    });
+    session::quiet_engine_panics();
+    if args.audit_content {
+        audit_content(&args, &content, &by_pack, own, &roots);
+    }
     let mut bundles: Vec<nettai_assets::Bundle> = Vec::new();
     let mut strings = None;
     for (i, path) in by_pack.iter().enumerate() {
         let b = load(path, "graphics", nettai_content::pack::load_graphics);
         if i == own.index() {
-            let (b, s) = language(b, &root, &args.lang);
+            let (b, s) = language(b, &roots, &args.lang);
             strings = s;
             bundles.push(b);
         } else {
             bundles.push(b);
         }
     }
-    session::quiet_engine_panics();
     let mut renderer = Renderer::with_packs(nettai_frontend::packs::Packs::new(bundles.iter().collect(), own));
-    renderer.set_strings(strings.map(Arc::new));
+    let strings = strings.map(Arc::new);
+    renderer.set_strings(strings.clone());
     // The font mode's font, shared by the renderer (which strings it has)
     // and the text layer's drawing.
     let font = (args.text == TextMode::Font).then(|| {
@@ -416,6 +586,17 @@ fn main() {
         })
     });
     renderer.set_text(args.text, font.clone());
+    if args.audit {
+        let setup = headless::AuditSetup {
+            packs: renderer.packs.clone(),
+            strings,
+            text: args.text,
+            font,
+            sound: (!args.mute).then(|| by_pack.iter().map(|p| Arc::new(load(p, "sound", nettai_content::pack::load_sound))).collect()),
+            draw: args.draw,
+        };
+        audit_traces(&args, &content, &setup);
+    }
     let mut text = font.map(TextRenderer::new);
 
     let mut sessions: Vec<Session> = Vec::new();
@@ -450,7 +631,7 @@ fn main() {
             }
             sessions.push(Session::new(Box::new(LivePlayer::new(m.round(&content, seed), content.clone()))));
         }
-    } else if let Some(path) = &args.trace {
+    } else if let Some(path) = args.traces.first() {
         let rounds =
             TracePlayer::load(path, &content).unwrap_or_else(|e| fail(format!("can't read {}: {e}", path.display())));
         for r in rounds.into_iter().skip(args.round.saturating_sub(1)) {
@@ -464,21 +645,6 @@ fn main() {
         fail("nothing to play");
     }
 
-    if args.audit {
-        let sound = (!args.mute).then(|| by_pack.iter().map(|p| Arc::new(load(p, "sound", nettai_content::pack::load_sound))).collect());
-        let found = headless::audit(&mut renderer, sessions, sound);
-        for s in &found.stopped {
-            eprintln!("{s}");
-        }
-        for line in found.problems.lines() {
-            println!("{line}");
-        }
-        eprintln!("audit: {} frames, {} sound cues, {} problems", found.frames, found.cues, found.problems.len());
-        if !found.problems.is_empty() {
-            std::process::exit(1);
-        }
-        return;
-    }
     if let Some(list) = &args.headless {
         let wanted = headless::parse_frames(list).unwrap_or_else(|e| fail(e));
         let keys = headless::KeyScript::parse(args.keys.as_deref().unwrap_or("")).unwrap_or_else(|e| fail(e));

@@ -54,6 +54,9 @@ pub struct Renderer<'a> {
     /// The player's language's strings table (`--lang`), if not the
     /// content's own.
     strings: Option<Arc<nettai_content::locale::Strings>>,
+    /// Make only the frame's lookups (`--audit`): nothing is drawn or
+    /// composed, and `render` returns an empty frame.
+    lookups_only: bool,
 }
 
 impl<'a> Renderer<'a> {
@@ -79,7 +82,15 @@ impl<'a> Renderer<'a> {
             font: None,
             measure: None,
             strings: None,
+            lookups_only: false,
         }
+    }
+
+    /// From now on make only the lookups a frame makes (`--audit`): what
+    /// the frame names is asked of the packs and the content as drawing
+    /// asks it, and no pixel is drawn.
+    pub fn set_lookups_only(&mut self, on: bool) {
+        self.lookups_only = on;
     }
 
     /// Show content's display text from a language's strings table (the
@@ -128,24 +139,33 @@ impl<'a> Renderer<'a> {
         let view = Self::view(b);
         // (The background is its own pack's; the field, the content's own
         // pack's.)
-        let background = self.packs.background(&b.content, b.setup.settings.background).and_then(|(pack, n)| pack.background(n));
-        let stage = Stage::new(assets, background, StageClock::of(b));
-        self.background.clear();
-        stage.draw_background(&mut self.background);
-        self.field.clear();
-        stage.draw_field(b, &mut self.field, b.setup.local_side, &view);
+        let background = crate::lookups::background(&self.packs, &b.content, b.setup.settings.background, &mut self.problems);
+        let draw = !self.lookups_only;
+        let stage = draw.then(|| Stage::new(assets, background, StageClock::of(b)));
+        match &stage {
+            Some(stage) => {
+                self.background.clear();
+                stage.draw_background(&mut self.background);
+                self.field.clear();
+                stage.draw_field(b, &mut self.field, b.setup.local_side, &view, &mut self.problems);
+            }
+            None => crate::stage::field_lookups(b, assets, b.setup.local_side, &mut self.problems),
+        }
+        self.hud.drawn = draw;
+        self.names.drawn = draw;
         self.hud.clear();
         self.names.clear();
         let mut text =
             TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref()).with_language(self.strings.as_deref());
-        let navi = crate::custom::navi_number(b, b.setup.local_side);
         // (The local player's custom screen and chatbox: their game's
         // pack's.)
-        let own_game = self.packs.of_root(&b.content, b.games.sides[b.setup.local_side as usize & 1]);
-        let emblem = crate::custom::emblem_tiles(&own_game.custom, crate::custom::version_name(b, b.setup.local_side), navi);
+        let local = b.setup.local_side as usize & 1;
+        let own_game = self.packs.of_root(&b.content, b.games.sides[local]);
+        let version = b.custom.sides[local].unlocks.version;
+        let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, version, &mut self.problems);
         let chatbox = crate::chatbox::prepare(b, own_game, &self.packs, &text, &mut self.problems);
         let mut list = SpriteList::default();
-        objects::queue_objects(b, &self.packs, &view, self.console_region, &mut list, &mut self.problems);
+        objects::queue_objects(b, &self.packs, &view, self.console_region, &mut list, &mut self.problems, !draw);
         crate::custom::draw(
             b,
             own_game,
@@ -158,10 +178,14 @@ impl<'a> Renderer<'a> {
             &mut text,
             &mut self.problems,
         );
-        if let Some(c) = &chatbox {
+        if let Some(c) = chatbox.as_ref().filter(|_| draw) {
             crate::chatbox::draw(c, own_game, &mut self.names, &mut list, &mut text);
         }
         crate::hud::draw(b, assets, &self.packs, &self.hud_state, &mut self.hud, &mut list, &mut text, &mut self.problems);
+        let Some(stage) = stage else {
+            note_missing_strings(&mut text, &mut self.problems);
+            return Frame::default();
+        };
         let (jx, jy) = crate::custom::hud_jitter(b);
         self.hud.shift(-jx, -jy);
         let (parts, tags) = list.into_tagged_parts();
@@ -200,12 +224,7 @@ impl<'a> Renderer<'a> {
         // Each item's depth and fades: its layer's (the HUD layer's moved
         // with its shake), or its sprite parts' (an item whose parts the
         // sprite limit dropped isn't drawn).
-        if let Some(lang) = text.strings.language() {
-            let lang = lang.to_string();
-            for what in text.strings.take_missing() {
-                self.problems.note(format!("the {lang} strings table has no {what}: shown in the content's own"));
-            }
-        }
+        note_missing_strings(&mut text, &mut self.problems);
         let text = text
             .into_items()
             .into_iter()
@@ -228,6 +247,17 @@ impl<'a> Renderer<'a> {
             })
             .collect();
         Frame { pixels, depth, text }
+    }
+}
+
+/// Note what the frame asked of the player's language's strings table that
+/// it doesn't have.
+fn note_missing_strings(text: &mut TextSink, problems: &mut Problems) {
+    if let Some(lang) = text.strings.language() {
+        let lang = lang.to_string();
+        for what in text.strings.take_missing() {
+            problems.note(format!("the {lang} strings table has no {what}: shown in the content's own"));
+        }
     }
 }
 

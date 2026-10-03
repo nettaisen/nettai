@@ -183,15 +183,19 @@ pub struct Audit {
     pub stopped: Vec<String>,
 }
 
-/// Run sessions to their end, drawing every frame and playing every
-/// tick's sound cues into nothing (with `sound`, the packs' banks by
-/// `PackId`): everything a battle shows and plays is asked of the packs
-/// once, and what they lack is collected (see [`crate::audit`]).
-pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<Vec<std::sync::Arc<m4a::SoundBank>>>) -> Audit {
+/// Run sessions to their end, making every frame's lookups and checking
+/// every tick's sound cues (with `sound`, the packs' banks by `PackId`):
+/// everything a battle shows and plays is asked of the packs, and what
+/// they lack is collected (see [`crate::audit`]). With `draw` every frame
+/// is drawn and every cue played into nothing besides (the thorough audit,
+/// `--audit --draw`); else only the lookups are made, which is what the
+/// audit checks.
+pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<Vec<std::sync::Arc<m4a::SoundBank>>>, draw: bool) -> Audit {
     let mut out = Audit::default();
     renderer.problems.clear();
+    renderer.set_lookups_only(!draw);
     let songs = sessions.first().map(|s| nettai_audio::Songs::of(&s.battle.content.assets)).unwrap_or_default();
-    let mut audio = sound.clone().map(|banks| nettai_audio::BattleAudio::with_banks(banks, songs));
+    let mut audio = sound.clone().filter(|_| draw).map(|banks| nettai_audio::BattleAudio::with_banks(banks, songs));
     let mut samples = Vec::new();
     for mut s in sessions {
         renderer.reset();
@@ -219,6 +223,71 @@ pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<Vec<
     }
     out.problems = std::mem::take(&mut renderer.problems);
     out
+}
+
+/// One trace's audit ([`audit_traces`]).
+#[derive(Clone, Debug)]
+pub struct TraceAudit {
+    pub trace: std::path::PathBuf,
+    /// The audit, or why the trace couldn't be read or audited.
+    pub audit: Result<Audit, String>,
+}
+
+/// What a renderer of [`audit_traces`] is made with.
+pub struct AuditSetup<'a> {
+    pub packs: crate::packs::Packs<'a>,
+    pub strings: Option<std::sync::Arc<nettai_content::locale::Strings>>,
+    pub text: crate::textlayer::TextMode,
+    pub font: Option<std::sync::Arc<crate::vfont::VectorFont>>,
+    /// The packs' sound, by `PackId` (none: cues aren't checked).
+    pub sound: Option<Vec<std::sync::Arc<m4a::SoundBank>>>,
+    /// Draw every frame and play every cue too (`--draw`).
+    pub draw: bool,
+}
+
+/// Audit each of `traces` (its rounds one after another, as [`audit`]) on
+/// `jobs` threads, each trace with a renderer of its own over the shared
+/// packs; `done` hears of each as it ends. Returns them in `traces`' order.
+pub fn audit_traces(
+    content: &std::sync::Arc<nettai_battle::Content>,
+    setup: &AuditSetup,
+    traces: &[std::path::PathBuf],
+    jobs: usize,
+    done: &(dyn Fn(&TraceAudit) + Sync),
+) -> Vec<TraceAudit> {
+    use std::sync::Mutex;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let next = AtomicUsize::new(0);
+    let out: Mutex<Vec<Option<TraceAudit>>> = Mutex::new(vec![None; traces.len()]);
+    let one = |path: &std::path::Path| -> Result<Audit, String> {
+        let rounds = crate::driver::TracePlayer::load(path, content).map_err(|e| format!("can't read it: {e}"))?;
+        let sessions: Vec<Session> = rounds.into_iter().map(|r| Session::new(Box::new(r))).collect();
+        let mut renderer = Renderer::with_packs(setup.packs.clone());
+        renderer.set_strings(setup.strings.clone());
+        renderer.set_text(setup.text, setup.font.clone());
+        Ok(audit(&mut renderer, sessions, setup.sound.clone(), setup.draw))
+    };
+    std::thread::scope(|s| {
+        for _ in 0..jobs.clamp(1, traces.len().max(1)) {
+            s.spawn(|| {
+                loop {
+                    let i = next.fetch_add(1, Ordering::Relaxed);
+                    let Some(path) = traces.get(i) else { break };
+                    let audit = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| one(path)))
+                        .unwrap_or_else(|p| Err(format!("the frontend panicked: {}", panic_text(&p))));
+                    let t = TraceAudit { trace: path.clone(), audit };
+                    done(&t);
+                    out.lock().unwrap()[i] = Some(t);
+                }
+            });
+        }
+    });
+    out.into_inner().unwrap().into_iter().flatten().collect()
+}
+
+/// A panic's message.
+fn panic_text(p: &Box<dyn std::any::Any + Send>) -> String {
+    p.downcast_ref::<String>().cloned().or_else(|| p.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_else(|| "?".into())
 }
 
 #[cfg(test)]

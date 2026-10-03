@@ -32,7 +32,7 @@ local gregar_beast_buster = {}
 local SHOOT, NEXT = 0x0, 0x4
 
 -- Gregar Beast Over.
-local BEAST_OVER = "gregar-beast-over"
+local BEAST_OVER = "bn6:gregar-beast-over"
 
 local SOUND = asset.sound("bn6:col-army-2")
 

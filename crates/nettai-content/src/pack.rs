@@ -270,13 +270,31 @@ pub fn battle_content(content: &Path, assets: &Path) -> Result<(nettai_battle::C
 /// full, their pack's game first (`bn6:bomb`).
 pub fn battle_content_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai_battle::Content, Report), Report> {
     let mut report = Report::default();
-    let Some(mut roots) = crate::root::read_all(content, &mut report) else { return Err(report) };
+    let Some(roots) = crate::root::read_all(content, &mut report) else { return Err(report) };
     let Some(games) = pack_games(packs, &mut report) else { return Err(report) };
+    battle_content_of(roots, &games, report)
+}
+
+/// Whether the folder `r` names assets of its own game's pack (`bn5:...` in
+/// content/bn5): a game's folder does, and loads only with that pack; a
+/// folder of behaviour only (content/common) names none and needs no pack.
+fn needs_pack(r: &crate::root::Root) -> bool {
+    let own_assets = format!("(\"{}{}", r.manifest.name, nettai_content_api::keys::SEPARATOR);
+    r.modules.values().any(|m| m.contains("asset.") && m.contains(&own_assets))
+}
+
+/// The battle content of the folders `roots` with the packs `games` (each
+/// pack's game and directory), before the define phase: a folder whose
+/// game's pack isn't among them ([`needs_pack`]) is left out, with a
+/// warning.
+fn battle_content_of(
+    mut roots: Vec<crate::root::Root>,
+    games: &[(String, PathBuf)],
+    mut report: Report,
+) -> Result<(nettai_battle::Content, Report), Report> {
     roots.retain(|r| {
         let game = &r.manifest.name;
-        let own_assets = format!("(\"{game}{}", nettai_content_api::keys::SEPARATOR);
-        let names_assets = r.modules.values().any(|m| m.contains("asset.") && m.contains(&own_assets));
-        if games.iter().any(|(g, _)| g == game) || !names_assets {
+        if games.iter().any(|(g, _)| g == game) || !needs_pack(r) {
             return true;
         }
         report.warn(
@@ -290,7 +308,7 @@ pub fn battle_content_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai
     }
     let mut indices = Vec::new();
     let mut timings = Vec::new();
-    for (game, path) in &games {
+    for (game, path) in games {
         let Some(index) = crate::names::read_index(path, &mut report) else { return Err(report) };
         let Some(timing) = crate::timing::load(path, &mut report) else { return Err(report) };
         indices.push((game.clone(), index));
@@ -345,6 +363,181 @@ pub fn pack_paths(c: &nettai_battle::Content, packs: &[PathBuf]) -> Vec<PathBuf>
     c.assets.packs.iter().filter_map(|g| games.iter().find(|(game, _)| game == g).map(|(_, p)| p.clone())).collect()
 }
 
+// ---- Finding packs -------------------------------------------------------------
+
+/// Where the extractors write their packs (`data/content/bn6`,
+/// `data/content/bn5`), and where a frontend finds them.
+pub const PACKS: &str = "data/content";
+
+/// The packs directory: `$NETTAI_PACKS`, else `data/content`.
+pub fn packs_dir() -> PathBuf {
+    std::env::var_os("NETTAI_PACKS").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(PACKS))
+}
+
+/// A pack's directory and the game whose assets it holds.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Found {
+    pub game: String,
+    pub dir: PathBuf,
+}
+
+/// Every pack in `dir`: each folder with a pack manifest, by the game it
+/// says (a pack that says none, written before packs said their game, by
+/// its folder's name, with a warning). None in a missing `dir`.
+pub fn discover(dir: &Path, report: &mut Report) -> Vec<Found> {
+    let mut out: Vec<Found> = Vec::new();
+    for (folder, path) in subdirs(dir) {
+        if !path.join(MANIFEST).is_file() {
+            continue;
+        }
+        let Some(m) = read_manifest(&path, report) else { continue };
+        let game = m.game.unwrap_or_else(|| {
+            report.warn(MANIFEST, format!("{}: the pack says no game; it is taken as {folder}'s (extract it again to record its game)", path.display()));
+            folder.clone()
+        });
+        if let Some(other) = out.iter().find(|f| f.game == game) {
+            report.error(MANIFEST, format!("two packs of {game}: {} and {} (keep one, or name one with --pack)", other.dir.display(), path.display()));
+            continue;
+        }
+        out.push(Found { game, dir: path });
+    }
+    out
+}
+
+/// The packs a frontend loads from: those in `dir` (the packs directory,
+/// [`packs_dir`]), with each of `overrides` (`--pack`, given again for
+/// another) in place of the one of its game, or beside them. `$BN6_PACK`,
+/// a BN6 pack's directory, is the first override, kept for the tools that
+/// still set it (deprecated: `--pack`, or `$NETTAI_PACKS` for the
+/// directory). None when an override isn't a pack.
+pub fn find(dir: &Path, overrides: &[PathBuf], report: &mut Report) -> Option<Vec<Found>> {
+    let env = std::env::var_os("BN6_PACK").map(PathBuf::from);
+    let overrides: Vec<PathBuf> = env.into_iter().chain(overrides.iter().cloned()).collect();
+    find_with(dir, &overrides, report)
+}
+
+/// [`find`] with these overrides alone.
+fn find_with(dir: &Path, overrides: &[PathBuf], report: &mut Report) -> Option<Vec<Found>> {
+    let mut found = discover(dir, report);
+    for path in overrides {
+        let m = read_manifest(path, report)?;
+        let game = m.game.unwrap_or_else(|| {
+            let folder = path.file_name().map_or("bn6".into(), |f| f.to_string_lossy().into_owned());
+            report.warn(MANIFEST, format!("{}: the pack says no game; it is taken as {folder}'s (extract it again to record its game)", path.display()));
+            folder
+        });
+        found.retain(|f| f.game != game);
+        found.push(Found { game, dir: path.clone() });
+    }
+    found.sort_by(|a, b| a.game.cmp(&b.game));
+    Some(found)
+}
+
+/// How to write the pack of `game`, for a message.
+pub fn extract_command(game: &str, dir: &Path) -> String {
+    let dir = dir.join(game);
+    match game {
+        "bn6" => format!("cargo run --release -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> {}", dir.display()),
+        "bn5" => format!("cargo run --release -p bn5-extract -- content <protoman-us> <colonel-us> <protoman-jp> <colonel-jp> {}", dir.display()),
+        _ => format!("the {game} extractor's `content` command, into {}", dir.display()),
+    }
+}
+
+/// The battle content a frontend plays, and the packs it loaded
+/// ([`load_found`]).
+pub struct Loaded {
+    pub content: nettai_battle::Content,
+    /// The loaded packs' directories, by `PackId`.
+    pub packs: Vec<PathBuf>,
+    /// The loaded content folders' directories, by name.
+    pub roots: Vec<PathBuf>,
+    /// The content's folders that aren't loaded, each with why: their
+    /// game's pack isn't found, or the content doesn't load with them.
+    pub left_out: Vec<(String, String)>,
+    pub report: Report,
+}
+
+/// Why folder `game` can't load: no pack of its game is found.
+fn no_pack(game: &str, found: &[Found]) -> String {
+    let packs = found.iter().map(|f| format!("{} ({})", f.game, f.dir.display())).collect::<Vec<_>>();
+    let had = if packs.is_empty() { "none".to_string() } else { packs.join(", ") };
+    format!(
+        "the content folder {game} draws on {game}'s assets, and no pack of {game} is found in {} (found: {had}); write it with `{}`, or name its directory with --pack",
+        packs_dir().display(),
+        extract_command(game, &packs_dir()),
+    )
+}
+
+/// Load the battle content a frontend plays (docs/frontend.md §1) with
+/// every pack found ([`find`]): every folder of the content directory
+/// `content` (`--content`, else [`crate::root::content`]: one namespace,
+/// docs/design/rules-in-luau.md §7.2) whose game's pack is found (a folder
+/// of behaviour only needs none). A folder whose pack isn't found is left
+/// out, and said why with the command that writes the pack; so is a folder
+/// the content doesn't define with when the rest define without it (one
+/// game's play never fails for another game's folder).
+pub fn load_found(content: Option<&Path>, found: &[Found]) -> Result<Loaded, Report> {
+    let dir = content.map(Path::to_path_buf).unwrap_or_else(crate::root::content);
+    let mut report = Report::default();
+    let Some(folders) = crate::root::read_all(&dir, &mut report) else { return Err(report) };
+    let games: Vec<(String, PathBuf)> = found.iter().map(|f| (f.game.clone(), f.dir.clone())).collect();
+    let mut left_out: Vec<(String, String)> = Vec::new();
+    let mut loadable: Vec<crate::root::Root> = Vec::new();
+    for f in folders {
+        let game = f.manifest.name.clone();
+        if needs_pack(&f) && !games.iter().any(|(g, _)| *g == game) {
+            left_out.push((game.clone(), no_pack(&game, found)));
+        } else {
+            loadable.push(f);
+        }
+    }
+    if !loadable.iter().any(needs_pack) {
+        for (_, why) in &left_out {
+            report.error(dir.display().to_string(), why.clone());
+        }
+        if !report.has_errors() {
+            report.error(dir.display().to_string(), "no content folder names any asset: there is nothing to play");
+        }
+        return Err(report);
+    }
+    let load = |roots: Vec<crate::root::Root>| -> Result<(nettai_battle::Content, Report, Vec<PathBuf>, Vec<PathBuf>), Report> {
+        let dirs: Vec<PathBuf> = roots.iter().map(|r| r.dir.clone()).collect();
+        let (mut c, mut report) = battle_content_of(roots, &games, Report::default())?;
+        if let Err(e) = c.define() {
+            report.error(dir.display().to_string(), e.message);
+            return Err(report);
+        }
+        let packs = c.assets.packs.iter().filter_map(|g| games.iter().find(|(game, _)| game == g).map(|(_, p)| p.clone())).collect();
+        Ok((c, report, packs, dirs))
+    };
+    let loaded = match load(loadable.clone()) {
+        Ok(l) => l,
+        Err(r) => {
+            // A folder without which the rest define is left out, said why
+            // (a game's folder that another's requires can't be).
+            let mut out = None;
+            for (i, f) in loadable.iter().enumerate().filter(|(_, f)| needs_pack(f)) {
+                let rest: Vec<crate::root::Root> = loadable.iter().enumerate().filter(|&(j, _)| j != i).map(|(_, r)| r.clone()).collect();
+                if !rest.iter().any(needs_pack) {
+                    continue;
+                }
+                if let Ok(l) = load(rest) {
+                    let why = r.issues.iter().find(|i| i.level == crate::report::Level::Error).map_or("it doesn't load".to_string(), |i| i.to_string());
+                    left_out.push((f.manifest.name.clone(), why));
+                    out = Some(l);
+                    break;
+                }
+            }
+            match out {
+                Some(l) => l,
+                None => return Err(r),
+            }
+        }
+    };
+    let (content, report, packs, roots) = loaded;
+    Ok(Loaded { content, packs, roots, left_out, report })
+}
+
 /// Every sprite's animation timing, from its pack's `animations.json`s, and
 /// its frames' part offsets, from its `sprite.json`s: by sprite handle (each
 /// name a pack gives a sprite is a handle of it).
@@ -387,5 +580,53 @@ pub fn load_sound(root: &Path) -> Result<(SoundBank, Report), Report> {
     match import_sound(root, &mut report) {
         Some(b) => Ok((b, report)),
         None => Err(report),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A packs directory under the system's temporary one, with a pack of
+    /// each `(folder, game)` (a manifest alone).
+    fn packs(test: &str, packs: &[(&str, Option<&str>)]) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("nettai-content-{test}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        for (folder, game) in packs {
+            let (name, text) = manifest_of(folder, *game, None, false);
+            std::fs::create_dir_all(dir.join(folder)).unwrap();
+            std::fs::write(dir.join(folder).join(name), text).unwrap();
+        }
+        // (A folder that is no pack is passed over.)
+        std::fs::create_dir_all(dir.join("notes")).unwrap();
+        dir
+    }
+
+    /// Every pack in the packs directory, by its game; a pack given by
+    /// directory stands in for the found one of its game.
+    #[test]
+    fn every_pack_is_found_by_its_game() {
+        let dir = packs("found", &[("bn6", Some("bn6")), ("five", Some("bn5")), ("old", None)]);
+        let mut r = Report::default();
+        let found = discover(&dir, &mut r);
+        let games: Vec<(&str, &str)> =
+            found.iter().map(|f| (f.game.as_str(), f.dir.file_name().unwrap().to_str().unwrap())).collect();
+        assert_eq!(games, [("bn6", "bn6"), ("bn5", "five"), ("old", "old")]);
+        assert!(!r.has_errors() && r.issues.len() == 1, "a pack that says no game is its folder's, with a warning: {:?}", r.issues);
+        let other = packs("override", &[("mine", Some("bn6"))]);
+        let found = find_with(&dir, &[other.join("mine")], &mut Report::default()).unwrap();
+        let bn6 = found.iter().find(|f| f.game == "bn6").unwrap();
+        assert_eq!(bn6.dir, other.join("mine"));
+        assert_eq!(found.len(), 3);
+        // None in a directory that isn't there.
+        assert!(discover(&dir.join("missing"), &mut Report::default()).is_empty());
+        // Two packs of one game: an error.
+        let two = packs("two", &[("a", Some("bn6")), ("b", Some("bn6"))]);
+        let mut r = Report::default();
+        assert_eq!(discover(&two, &mut r).len(), 1);
+        assert!(r.has_errors());
+        for d in [dir, other, two] {
+            let _ = std::fs::remove_dir_all(d);
+        }
     }
 }
