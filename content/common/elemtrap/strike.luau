@@ -4,7 +4,7 @@
 -- trap (./trap) starts when it
 -- springs, right after the trap in the update list (the Japanese games'
 -- placement; see `strike.spawn`). The usual dimming phases
--- (lib/dimming; its telop names the trap's chip, ElemTrap, with its bonus),
+-- (@common/dimming; its telop names the trap's chip, ElemTrap, with its bonus),
 -- with an effect that strikes every panel the enemy stands on in the
 -- element that sprang the trap (the damage plus the bonus; elec and wood
 -- hits carry a status too), sets off bursts over the whole field

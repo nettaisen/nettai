@@ -3,7 +3,7 @@
 -- Japanese ROMs' 0x080EDCC8 in the Falzar ROM, 0x080EEFF8 in the Gregar
 -- ROM; the US ROMs point the slot at a placeholder and their `off_802CCB4`
 -- entry 34 is null: docs/engine/beast-chips.md). The dimming's phases
--- (lib/dimming) with its own first and last: the field fades to black
+-- (@common/dimming) with its own first and last: the field fades to black
 -- rather than dims, and back from black. Its effect hides the gauge and
 -- the emotion window, warps the user out, sends Gregar (two pieces of
 -- ./summon, one panel behind the user), waits for it to be done, and

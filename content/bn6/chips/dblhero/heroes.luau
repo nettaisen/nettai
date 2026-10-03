@@ -19,7 +19,7 @@ local protoman = require("../../navis/protoman/navi")
 local heroes = {}
 
 export type State = {
-    -- The chip's controller (lib/dimming/stand_in; none for ProtoMan).
+    -- The chip's controller (@common/dimming/stand_in; none for ProtoMan).
     controller: Object?,
     -- ProtoMan (Param1 1), else MegaMan's copy.
     protoman: boolean,

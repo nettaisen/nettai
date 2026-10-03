@@ -5,7 +5,7 @@
 
 -- Where an owner keeps an attached object: its actor overlay slot, its
 -- first related object, or its content state's `held` or `held2` field
--- (lib/slot.luau).
+-- (@common/slot).
 export type Slot = "overlay" | "related" | "held" | "held2"
 
 -- What a projectile's hit does to the panel it hits: crack it

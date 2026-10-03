@@ -1,7 +1,7 @@
 --!strict
 -- Geddon's and the capsules' dimming controller (the original's effect
 -- object #0x1D, `sub_80E24E4`; docs/engine/dimming-chip-effects.md §12):
--- the usual dimming phases (lib/dimming), with an effect that holds the
+-- the usual dimming phases (@common/dimming), with an effect that holds the
 -- user's panel and sets off a quake (./quake) over the field, and waits
 -- until it is done.
 --

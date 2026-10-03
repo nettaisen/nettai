@@ -1,7 +1,7 @@
 --!strict
 -- Anubis's and PoisPhar's dimming controller (the original's effect object
 -- #0x33, `sub_80E40EC`; docs/engine/dimming-chip-effects.md §7): the usual
--- dimming phases (lib/dimming), with an effect that drops the chip's
+-- dimming phases (@common/dimming), with an effect that drops the chip's
 -- statue (./statue) on the panel in front of the user, whatever is there,
 -- and waits 120 ticks.
 

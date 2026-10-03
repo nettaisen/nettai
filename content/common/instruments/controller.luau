@@ -1,7 +1,7 @@
 --!strict
 -- The instrument chips' dimming controller (the original's effect object
 -- #0x4A, `sub_80E5E00`; docs/engine/dimming-chips.md §6.1): Fanfare,
--- Discord, Timpani and Silence. The usual dimming phases (lib/dimming),
+-- Discord, Timpani and Silence. The usual dimming phases (@common/dimming),
 -- with an effect (`sub_80E5E44`) that sets the chip's instrument
 -- (instrument.luau) on the panel in front of the user if it is solid and
 -- free, then waits 60 ticks.
