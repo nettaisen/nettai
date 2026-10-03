@@ -2,6 +2,7 @@
 //! nettai-frontend. README.md, "The match editor".
 
 mod app;
+mod levels;
 mod names;
 mod navicust;
 mod pictures;

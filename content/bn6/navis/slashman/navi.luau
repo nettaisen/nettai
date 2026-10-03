@@ -34,6 +34,30 @@ return define.navi {
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },
     fresh = { hp = 150, mega_level = 5, giga_level = 1 },
     cross_hp = { 150, 150 },
+    -- What the save's reload gives it at its link navi level
+    -- (`reloadCurNaviBaseStats_8120df0`, docs/engine/link-navis.md): its base
+    -- and maximum HP by the story's progress (`off_8120F44`), and what each
+    -- level, 0 to 14, adds over its fresh stats (`pt_8121200`'s scripts).
+    levels = {
+        base_hp = { 300, 300, 300, 400, 500, 600, 800 },
+        by_level = {
+            { hp = 40 },
+            { hp = 80 },
+            { hp = 120, rapid = 1 },
+            { hp = 160, rapid = 1 },
+            { hp = 200, attack = 1, rapid = 1 },
+            { hp = 240, attack = 1, rapid = 2 },
+            { hp = 280, attack = 1, rapid = 2 },
+            { hp = 320, attack = 1, rapid = 2, custom_level = 1 },
+            { hp = 360, attack = 1, rapid = 3, custom_level = 1 },
+            { hp = 400, attack = 1, rapid = 3, custom_level = 1 },
+            { hp = 500, attack = 2, rapid = 3, custom_level = 1 },
+            { hp = 600, attack = 2, rapid = 3, custom_level = 1 },
+            { hp = 700, attack = 2, rapid = 3, custom_level = 2 },
+            { hp = 800, attack = 2, rapid = 4, charge = 1, custom_level = 2, mega_level = 1 },
+            { hp = 1000, attack = 2, rapid = 4, charge = 1, custom_level = 2, mega_level = 1 },
+        },
+    },
     identity = define.identity {
         class = "link_navi",
         version = 0,

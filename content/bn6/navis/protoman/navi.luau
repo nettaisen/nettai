@@ -29,6 +29,30 @@ return define.navi {
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, back_special = back_special.weapon, a_charge = a_charge },
     fresh = { hp = 250, mega_level = 5, giga_level = 1, back_special_damage = 50 },
     cross_hp = { 200, 200 },
+    -- What the save's reload gives it at its link navi level
+    -- (`reloadCurNaviBaseStats_8120df0`, docs/engine/link-navis.md): its base
+    -- and maximum HP by the story's progress (`off_8120F44`), and what each
+    -- level, 0 to 14, adds over its fresh stats (`pt_8121200`'s scripts).
+    levels = {
+        base_hp = { 300, 300, 300, 400, 500, 600, 800 },
+        by_level = {
+            { hp = 100, back_special = back_special.weapon },
+            { hp = 150, back_special = back_special.weapon },
+            { hp = 200, rapid = 1, back_special = back_special.weapon },
+            { hp = 250, rapid = 1, back_special = back_special.weapon },
+            { hp = 300, attack = 1, rapid = 1, charge = 1, back_special = back_special.weapon },
+            { hp = 350, attack = 1, rapid = 1, charge = 1, back_special = back_special.weapon },
+            { hp = 400, attack = 1, rapid = 1, charge = 1, back_special = back_special.weapon },
+            { hp = 430, attack = 1, rapid = 1, charge = 1, custom_level = 1, back_special = back_special.weapon },
+            { hp = 460, attack = 1, rapid = 1, charge = 1, custom_level = 1, back_special = back_special.weapon },
+            { hp = 490, attack = 1, rapid = 2, charge = 2, custom_level = 1, back_special = back_special.weapon },
+            { hp = 520, attack = 1, rapid = 2, charge = 2, custom_level = 1, back_special = back_special.weapon_2 },
+            { hp = 540, attack = 2, rapid = 2, charge = 2, custom_level = 1, back_special = back_special.weapon_2 },
+            { hp = 560, attack = 2, rapid = 2, charge = 2, custom_level = 1, mega_level = 1, back_special = back_special.weapon_2 },
+            { hp = 580, attack = 3, rapid = 2, charge = 2, custom_level = 1, mega_level = 1, back_special = back_special.weapon_2 },
+            { hp = 600, attack = 4, rapid = 3, charge = 3, custom_level = 2, mega_level = 1, back_special = back_special.weapon_2 },
+        },
+    },
     -- The chips A charges, from a navi level on, and those a charge doubles.
     charged_chips = { family = "sword", from_level = 11 },
     charge_doubles = { family = "sword" },
