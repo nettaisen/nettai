@@ -1600,6 +1600,7 @@ fn rules() -> Rules {
         ],
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
         push_reading: Default::default(),
+        hit_test: Default::default(),
         slide_speed: Default::default(),
         overlay_restart: Default::default(),
         stance_counter: Default::default(),

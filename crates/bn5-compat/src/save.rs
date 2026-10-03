@@ -1,6 +1,7 @@
 //! A BN5 save file (the .sav an emulator keeps), and what nettai reads of
-//! it for a player's setup: the version, the light/dark value and the
-//! souls it has.
+//! it for a player's setup: the version, the light/dark value, the souls it
+//! has, its NaviCust (the list, the compression flags, whether the compile
+//! leaves the HP) and its patch cards.
 //!
 //! The file holds the save image at 0x100: 0x7C14 bytes, the game's EWRAM
 //! from 0x02000000 as the game saves it (an address's offset in the image
@@ -15,7 +16,10 @@
 //! The event flags are at 0x029F8 (the toolkit's +0x44: 0x02002940, the
 //! game state's block, + 0xB8; flag `f` is bit `0x80 >> (f & 7)` of byte
 //! `f >> 3`), MegaMan's NaviStats at 0x52A8 (0x60 bytes: the light/dark
-//! value at +0x44).
+//! value at +0x44), the NaviCust's list at 0x4D6C (25 parts of 8 bytes) and
+//! its grid at 0x4D48, the patch cards' count at 0x79A0 and their list at
+//! 0x79D0 (a byte each: the card, bit 7 switched off), the area at 0x2944
+//! (the game state's +4: the cyberworld's from 0x80).
 
 use crate::Version;
 
@@ -31,6 +35,21 @@ const EVENT_FLAGS: usize = 0x29F8;
 /// MegaMan's NaviStats, and the light/dark value in it.
 const NAVI_STATS: usize = 0x52A8;
 const LIGHT_DARK: usize = 0x44;
+/// The NaviCust's list (`NAVICUST_PARTS` parts of 8 bytes), the patch cards'
+/// count and list, the area.
+const NAVICUST: usize = 0x4D6C;
+const CARD_COUNT: usize = 0x79A0;
+const CARDS: usize = 0x79D0;
+const AREA: usize = 0x2944;
+
+/// The NaviCust list's room.
+pub const NAVICUST_PARTS: usize = 25;
+/// A part is compressed by its event flag (this + the part id, which the
+/// shape's lookup, 0x0813EEFC, tests).
+pub const COMPRESSED_FLAG: u16 = 0x1EC0;
+/// The flag that keeps the NaviCust's HP routine (0x0803C13C) from running,
+/// as the cyberworld does.
+pub const KEEPS_HP_FLAG: u16 = 0x10B2;
 
 /// The soul button (Soul Unison, event flag 0), and Chaos Unison (0x236:
 /// the soul button's check of a dark chip, 0x08024B7E).
@@ -129,6 +148,40 @@ impl Save {
 
     pub fn chaos_unison(&self) -> bool {
         self.event_flag(CHAOS_UNISON_FLAG)
+    }
+
+    /// The unmasked image.
+    pub fn image(&self) -> &[u8] {
+        &self.image
+    }
+
+    /// MegaMan's NaviStats block.
+    pub fn navi_stats(&self) -> [u8; crate::codec::NAVI_STATS] {
+        self.image[NAVI_STATS..NAVI_STATS + crate::codec::NAVI_STATS].try_into().expect("a NaviStats block")
+    }
+
+    /// The NaviCust's list (`trace::navicust` reads it).
+    pub fn navicust_list(&self) -> &[u8] {
+        &self.image[NAVICUST..NAVICUST + NAVICUST_PARTS * 8]
+    }
+
+    /// Whether the NaviCust compresses part `part` (its event flag).
+    pub fn compressed(&self, part: u8) -> bool {
+        self.event_flag(COMPRESSED_FLAG + part as u16)
+    }
+
+    /// Whether the NaviCust's compile leaves the HP (the BN5 navicust
+    /// system's setup `cyberworld`): the save is in the cyberworld (its
+    /// area from 0x80), or has flag 0x10B2.
+    pub fn cyberworld(&self) -> bool {
+        self.image[AREA] >= 0x80 || self.event_flag(KEEPS_HP_FLAG)
+    }
+
+    /// The patch cards installed, in order: each card's number and whether
+    /// it is switched on.
+    pub fn patch_cards(&self) -> Vec<(u8, bool)> {
+        let n = self.image[CARD_COUNT] as usize;
+        self.image[CARDS..CARDS + n.min(0x30)].iter().map(|&b| (b & 0x7F, b & 0x80 == 0)).collect()
     }
 }
 
