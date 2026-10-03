@@ -1259,9 +1259,10 @@ are gone.
   system, BN5's third batch). Verify's generators write ids in full (tools/bn5/gen_content.py through the rewrite,
   tools/navicust/gen.py), gen-content reads compat by full id and checks compat's keys are BN6's ids. Its test of
   the roles and collision types had expected `collision type thrown`, unqualified since R1: `bn6:thrown`.
-- **Gates** (on main a157d2ab merged, verify cf4524a1): the build without warnings, 474 tests, the content check
-  (content/, 1,243 modules), gen-content check 0 errors and its 6 tests, `gate-against.sh full`: machgun 1074/1331
-  and soundmod 21962/14933/20436 with 96 rollback rows, the 189 legacy rounds (2,746,946 frames), the lab 6548
-  (6545 matched, 3 to a known deviation; 5,775,231 frames) with 0 sound rounds differing; the audit 49 traces and
-  the static audit, 0 problems. BN5's replays as main's: 1,380 recordings, 228 replay, 24 match every frame, 79,701
-  of 948,097 frames. tools/bn5/gen_content.py check 0 errors, tools/navicust/gen.py check 0 differences.
+- **Gates** (on main a157d2ab and bn5-port-4 74fb97b7 merged, verify cf4524a1 and bn5-4 90f5f1a4): the build
+  without warnings, 479 tests, the content check (content/, 1,246 modules), gen-content check 0 errors and its 6
+  tests, `gate-against.sh full`: machgun 1074/1331 and soundmod 21962/14933/20436 with 96 rollback rows, the 189
+  legacy rounds (2,746,946 frames), the lab 6548 (6545 matched, 3 to a known deviation; 5,775,231 frames) with 0
+  sound rounds differing; the audit 49 traces and the static audit, 0 problems. BN5's replays as bn5-port-4's:
+  1,380 recordings, 252 replay, 243 match every frame, 139,499 of 948,097 frames. tools/bn5/gen_content.py check
+  0 errors, tools/navicust/gen.py check 0 differences.
