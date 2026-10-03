@@ -27,7 +27,7 @@ parts.effects = {
     -- Sword's, over the panel ahead.
     slash = define.effect { sprite = SLASH, anim = 2, palette = 0 },
     -- Over a column: WideSwrd's, StepSwrd's, the elemental and machine
-    -- swords' (in their colours).
+    -- swords' (in their colors).
     wide = define.effect { sprite = SLASH, anim = 0, palette = 0 },
     -- Over two panels: LongSwrd's.
     long = define.effect { sprite = SLASH, anim = 1, palette = 0 },
@@ -84,7 +84,7 @@ function parts.blade_palette(me: Object): number
     if me.actor_type == "navi" and me.ai_index == 0x12 then
         -- The game compares AIData+0x16, a navi AI's version, which this
         -- engine's actors (players) don't have.
-        error("sub_80EBB78: navi AI 0x12's version (AIData+0x16) is not modelled")
+        error("sub_80EBB78: navi AI 0x12's version (AIData+0x16) is not modeled")
     end
     return 0
 end

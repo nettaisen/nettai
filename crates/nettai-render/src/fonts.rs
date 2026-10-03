@@ -21,7 +21,7 @@ use nettai_assets::{DialogueFont, Hud, Palette, Tiles};
 
 /// A string in the 8x16 font, laid into tiles as `renderTextGfx_8045F8C`
 /// does: `cells` glyph cells of two tiles each (top, then bottom), the
-/// string's glyphs first and spaces after; every pixel's colour index
+/// string's glyphs first and spaces after; every pixel's color index
 /// plus `shift` (the original adds 0, 4, 8 or 12 to each pixel, so a
 /// non-zero shift paints the font's blank pixels too). Glyphs past
 /// `cells` are cut.
@@ -76,7 +76,7 @@ pub fn box_cells(hud: &Hud, text: &str, glyphs: usize, room: usize) -> usize {
 /// A string of the 8x16 font on a tile layer: as [`draw_cell_text`] draws
 /// its glyphs (`cells` cells from (x, y)); in the font mode, when the
 /// font has the string, a text item in the glyphs' box instead, in the
-/// palette's face and shadow colours.
+/// palette's face and shadow colors.
 #[allow(clippy::too_many_arguments)]
 pub fn layer_text(
     sink: &mut TextSink,
@@ -154,7 +154,7 @@ mod tests {
 
     #[test]
     fn cell_text_pads_with_spaces_and_shifts_every_pixel() {
-        // Glyph 0 (space) blank, glyph 1 all colour 1.
+        // Glyph 0 (space) blank, glyph 1 all color 1.
         let mut font = Tiles { pixels: vec![0; 4 * Tiles::TILE] };
         font.pixels[2 * Tiles::TILE..].fill(1);
         let hud = Hud { font, font_chars: vec![" ".into(), "A".into()], ..Hud::default() };
@@ -171,7 +171,7 @@ mod tests {
     fn a_hud_line_goes_to_the_text_layer_without_its_padding() {
         use crate::compose::CLEAR;
         use crate::textlayer::TextMode;
-        // Glyph 0 (space) blank, glyphs 1 and 2 ("U", "P") all colour 1.
+        // Glyph 0 (space) blank, glyphs 1 and 2 ("U", "P") all color 1.
         let mut font = Tiles { pixels: vec![0; 6 * Tiles::TILE] };
         font.pixels[2 * Tiles::TILE..].fill(1);
         let hud = Hud { font, font_chars: vec![" ".into(), "U".into(), "P".into()], ..Hud::default() };

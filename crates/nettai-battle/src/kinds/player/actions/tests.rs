@@ -660,7 +660,7 @@ fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
     assert_eq!(runs(&b, p0), "assnswrd/action");
     // The slashes land on tick 10, on the target's own column.
     run_to(&mut b, p, &mut t, 10, 0);
-    // The slash (the swords' wide slash, in AssnSwrd's colours: palette
+    // The slash (the swords' wide slash, in AssnSwrd's colors: palette
     // offset 2 + 7) over the target's panel.
     let slash = effects(&b, "engine/effect")[0];
     let (x, y) = crate::kinds::player::panel_coordinates(5, 2);

@@ -13,7 +13,7 @@ const TIMES_GLYPH: u32 = 0x086B_A120;
 const TWO_GLYPH: u32 = 0x086B_7BA0;
 /// Gauge tiles 0x222..=0x23D (`sub_801DED0`).
 const GAUGE_TILES: u32 = 0x086E_489C;
-/// Background palette 9 (gauge) and 13 (HP box: + 0x20 per colour state).
+/// Background palette 9 (gauge) and 13 (HP box: + 0x20 per color state).
 const HUD_PALETTES: u32 = 0x086E_1C78;
 /// The initial HP box (6x2) and gauge frame (18x2) maps.
 const HP_BOX: u32 = 0x0801_EDFC;
@@ -28,7 +28,7 @@ const TEXT_END: u8 = 0xE6;
 /// ChipData: 0x2C bytes per chip; +0x20 icon pointer.
 const CHIP_DATA: u32 = 0x0802_1DA8;
 const CHIP_COUNT: u32 = 411;
-/// The opponent's HP digits by colour, and their sprite palette.
+/// The opponent's HP digits by color, and their sprite palette.
 const ENEMY_DIGITS: [u32; 3] = [0x086E_0AB8, 0x086E_0D38, 0x086E_0FB8];
 const ENEMY_PALETTE: u32 = 0x086B_7AC0;
 const HIDDEN_ICON: u32 = 0x0872_CE94;
