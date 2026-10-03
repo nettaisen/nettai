@@ -106,6 +106,9 @@
 "bn5:piledrvr/controller" = { pool = "effect", index = 0x6F, scratch_position = true }
 "bn5:piledrvr/pile" = { pool = "attack", index = 0x99 }
 "bn5:piledrvr/beam" = { pool = "attack", index = 0x9A }
+"bn5:leadraid/protoman" = { pool = "actor", index = 0x20 }
+"bn5:leadraid/colonel" = { pool = "actor", index = 0x22 }
+"bn5:leadraid/glow" = { pool = "effect", index = 0x85 }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
 "bn5:meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "bn5:napalmmn/bomb" = { pool = "attack", index = 0x3A }
