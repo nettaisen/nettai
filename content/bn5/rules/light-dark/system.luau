@@ -148,7 +148,7 @@ local function palette(side: number, navi: Object): number?
     else
         p = tier(value())
     end
-    -- Hub Style (NaviStats +0x4C: the NaviCust's HubBatc in its fourth color, part 0x6F, 0x08138214).
+    -- Hub Style (NaviStats +0x4C: BN5's patch card 111, applied at 0x08138214).
     if hub and stats.hub_style then
         return p + 5 + 20
     end

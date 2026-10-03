@@ -194,9 +194,10 @@ pub struct NaviStats {
     pub chip_shuffle: bool,
     /// +0x61: NaviCust NumbrOpn (the custom screen deals 10 chips).
     pub number_open: bool,
-    /// BN5's +0x4C: Hub Style, the NaviCust's HubBatc in its fourth color
-    /// (part 0x6F, 0x08138214): MegaMan's palettes and faces (BN5's light
-    /// and dark system). No BN6 navi has it.
+    /// BN5's +0x4C: Hub Style, which BN5's patch card 111 (0x6F) sets when
+    /// installed and on (0x08138214, the patch cards' application after the
+    /// NaviCust's compile): MegaMan's palettes and faces (BN5's light and
+    /// dark system). No BN6 navi has it.
     pub hub_style: bool,
     pub weapons: NaviWeapons,
     pub bugs: NaviCustBugs,
