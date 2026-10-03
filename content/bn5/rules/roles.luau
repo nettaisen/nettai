@@ -14,7 +14,7 @@
 -- window, re-deal and scrap (BN6's).
 
 local antidmg_counter = require("@bn6/chips/antidmg/counter")
-local barriers = require("@bn6/lib/barriers/barriers")
+local barriers = require("../lib/barriers")
 local charged_shot = require("@bn6/navis/megaman/weapons/charged-shot/weapon")
 local anti_recovery = require("@bn6/chips/antirecv/controller")
 local antiswrd_counter = require("@bn6/chips/antiswrd/counter")
@@ -156,7 +156,7 @@ return define.roles {
     },
     hooks = {
         -- The first barrier: the navi enters with the barrier its stats name (FstBarr's, BN6's code), and its
-        -- visual.
+        -- visual (BN5's, lib/barriers).
         first_barrier = function(navi: Object)
             local barrier = battle.navi(navi.alliance).first_barrier
             if barrier then
