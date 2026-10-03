@@ -90,3 +90,5 @@
 "bn5:shock-wave" = { pool = "attack", index = 0x16 }
 "bn5:crsshld/cross" = { pool = "attack", index = 0xA8 }
 "bn5:wavepit/wave" = { pool = "attack", index = 0xA5 }
+"bn5:woodnos/wave" = { pool = "attack", index = 0xA6 }
+"bn5:woodnos/geyser" = { pool = "attack", index = 0xA7 }

@@ -118,9 +118,10 @@ pub struct CollisionData {
     pub counter_timer: u8,
     pub hit_mod_base: u8,
     pub hit_mod_final: u8,
-    /// The hit modifiers of the hits it took by the hitter's side (BN5's
-    /// +0x18 and +0x19, 0x08016AA6), which BN5's push reads
-    /// (`PushReading::Bn5`); BN6 keeps them unread.
+    /// The hit modifiers of the hits it took by the hitter's flip (BN5's
+    /// +0x18 and +0x19, 0x08016AA6: an unflipped hitter's, of either side,
+    /// and a flipped one's), which BN5's push reads (`PushReading::Bn5`);
+    /// BN6 keeps them unread.
     pub hit_mod_by_side: [u8; 2],
     /// The status its hits carry, and the one the hits it took landed.
     pub status_base: Option<StatusHandle>,
@@ -521,8 +522,9 @@ impl Battle {
             rm.acc.drain_hits = rm.acc.drain_hits.wrapping_add(1);
         }
         rm.hit_mod_final |= hd.hit_mod_base;
-        // BN5 also keeps it by the hitter's side (0x08016AA6).
-        rm.hit_mod_by_side[hd.alliance as usize & 1] |= hd.hit_mod_base;
+        // BN5 also keeps it by the hitter's flip (0x08016AA6: the hitter's
+        // collision's +5, not its side's +4).
+        rm.hit_mod_by_side[hd.flip as usize & 1] |= hd.hit_mod_base;
         if hd.bugs & 0xFF != 0 {
             rm.acc.inflicted_bugs = hd.bugs;
         }
