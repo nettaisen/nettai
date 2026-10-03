@@ -7,7 +7,7 @@
 local effects = require("@bn6/lib/effects")
 local souls = require("../../navis/megaman/souls")
 
-local SOUND = asset.sound("hub")
+local SOUND = asset.sound("bn5:hub")
 
 local function raise(user: Object, _spec: InstantChipSpec)
     local stats = battle.navi(user.alliance)
