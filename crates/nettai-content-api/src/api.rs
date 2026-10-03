@@ -401,6 +401,9 @@ named_fields! {
         /// strength, bit 7 can't counter), which setup takes from the
         /// damage word's high half.
         CounterByte = "counter_byte", U8, rw;
+        /// The ticks left of its counter window (CollisionData+0x0D): a
+        /// hit with a counter byte counters it while they run.
+        CounterTimer = "counter_timer", U8, ro;
         /// What the last resolution hit (writable: some kinds clear it).
         HitFlags = "hit_flags", U32, rw;
         /// The damage taken this window.
@@ -1364,6 +1367,14 @@ pub trait CoreApi {
     fn set_gauge_rate(&mut self, rate: u16);
     /// A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
     fn set_gauge_speed_ticks(&mut self, side: u8, slow: u16, fast: u16);
+    /// `sub_8010B78`: the damage a side's custom gauge gives (its own gauge
+    /// in the battle flag 0x40 mode, else the shared one).
+    fn gauge_damage(&self, side: u8) -> u16;
+    /// A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
+    /// makes for a navi no buttons drive (BN5's computer navi draws it,
+    /// 0x0802A330).
+    fn sword_pick(&self, side: u8) -> u8;
+    fn set_sword_pick(&mut self, side: u8, pick: u8);
     /// `sub_802E032`: add to a side's own custom gauge (battle flag 0x40),
     /// up to full.
     fn add_side_gauge(&mut self, side: u8, n: u16);

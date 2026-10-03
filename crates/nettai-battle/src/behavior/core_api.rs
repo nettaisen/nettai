@@ -1034,6 +1034,18 @@ impl CoreApi for Battle {
         s.fast_gauge_ticks = fast;
     }
 
+    fn gauge_damage(&self, side: u8) -> u16 {
+        kinds::gauge_damage(self, side)
+    }
+
+    fn sword_pick(&self, side: u8) -> u8 {
+        self.sides[side as usize & 1].sword_pick
+    }
+
+    fn set_sword_pick(&mut self, side: u8, pick: u8) {
+        self.sides[side as usize & 1].sword_pick = pick;
+    }
+
     fn add_side_gauge(&mut self, side: u8, n: u16) {
         let s = &mut self.sides[side as usize & 1];
         s.gauge = (s.gauge as u32 + n as u32).min(crate::hud::CustomGauge::FULL as u32) as u16;
@@ -2325,6 +2337,7 @@ impl CoreApi for Battle {
             CollisionField::HitModBase => c.hit_mod_base as i64,
             CollisionField::SelfDamage => c.self_damage as i64,
             CollisionField::CounterByte => c.counter_byte as i64,
+            CollisionField::CounterTimer => c.counter_timer as i64,
             CollisionField::HitFlags => c.acc.hit_flags as i64,
             CollisionField::FinalDamage => c.acc.final_damage as i64,
             CollisionField::Direction => c.direction as i64,
@@ -2394,6 +2407,7 @@ impl CoreApi for Battle {
             CollisionField::CounterByte => c.counter_byte = x as u8,
             CollisionField::HitFlags => c.acc.hit_flags = x as u32,
             CollisionField::FinalDamage
+            | CollisionField::CounterTimer
             | CollisionField::GuardDirs
             | CollisionField::DamageElements
             | CollisionField::HitModFinal

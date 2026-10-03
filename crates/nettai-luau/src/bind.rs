@@ -1673,6 +1673,18 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, slow, fast) = (u8_arg(side, "side")? & 1, u16_arg(slow, "ticks")?, u16_arg(fast, "ticks")?);
         with(|api, _| Ok(api.set_gauge_speed_ticks(side, slow, fast)))
     });
+    lib_fn!(lua, t, "gauge_damage", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.gauge_damage(side)))
+    });
+    lib_fn!(lua, t, "sword_pick", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.sword_pick(side)))
+    });
+    lib_fn!(lua, t, "set_sword_pick", |_, (side, pick): (LuaValue, LuaValue)| {
+        let (side, pick) = (u8_arg(side, "side")? & 1, u8_arg(pick, "sword pick")?);
+        with(|api, _| Ok(api.set_sword_pick(side, pick)))
+    });
     lib_fn!(lua, t, "bump_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
         with(|api, _| Ok(api.bump_side_stat(side, i, n)))

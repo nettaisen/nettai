@@ -271,6 +271,9 @@ declare class Collision
     -- The counter byte (bits 0-6 counter strength, bit 7 can't counter),
     -- which setup takes from the damage word's high half.
     counter_byte: number
+    -- The ticks left of its counter window (+0x0D; read-only): a hit with a
+    -- counter byte counters it while they run.
+    counter_timer: number
     -- What the last resolution hit (some kinds clear it).
     hit_flags: number
     -- The damage taken this window (read-only).
@@ -1162,6 +1165,13 @@ declare battle: {
     set_gauge_rate: (rate: number) -> (),
     -- A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
     set_gauge_speed_ticks: (side: number, slow: number, fast: number) -> (),
+    -- `sub_8010B78`: the damage a side's custom gauge gives (its own gauge
+    -- in the battle flag 0x40 mode, else the shared one).
+    gauge_damage: (side: number) -> number,
+    -- A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
+    -- makes for a navi no buttons drive (BN5's computer navi draws it).
+    sword_pick: (side: number) -> number,
+    set_sword_pick: (side: number, pick: number) -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
     add_side_gauge: (side: number, n: number) -> (),
     -- `sub_8010488`'s special-source branch: add to a bonus a side stores
