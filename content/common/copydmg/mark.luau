@@ -143,7 +143,8 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
             end
         end
         if rec.source == me then
-            battle.set_damage_carry(side, { this_tick = rec.this_tick, previous = rec.previous, source = nil, target = nil })
+            local forgotten: DamageCarry = { this_tick = rec.this_tick, previous = rec.previous, source = nil, target = nil }
+            battle.set_damage_carry(side, forgotten)
         end
         vanish(me)
     end
