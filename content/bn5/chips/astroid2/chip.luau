@@ -1,6 +1,9 @@
 --!strict
--- Astroid2 (BN5 chip 0x069): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- Astroid2 (BN5 chip 0x069): a shower of 8 Fire meteors, one every 20 ticks on one of the enemy navis' panels or
+-- beside it, each cracking its panel (objects/meteors: instant chip effect 17, its second parameter 8).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local meteors = require("../../objects/meteors/meteors")
 
 return define.chip {
     id = "bn5:astroid2",
@@ -15,4 +18,5 @@ return define.chip {
     lockout = 60,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
+    instant = meteors.instant(false, 8),
 }
