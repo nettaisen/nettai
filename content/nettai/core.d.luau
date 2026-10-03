@@ -1354,8 +1354,8 @@ declare int: {
 
 -- ---- Definitions and assets (docs/design/content-model-v2.md §3) -----------------------------
 
--- Assets, named while content loads (`asset.sprite("bomb")`; names are
--- compat/assets.toml's): one value per asset. (`SpriteAsset`, since
+-- Assets, named in full while content loads (`asset.sprite("bn6:bomb")`: the
+-- pack's game, then its name, a game's compat/assets.toml's): one value per asset. (`SpriteAsset`, since
 -- `Sprite` is an object's sprite.)
 declare class SpriteAsset
     name: string
