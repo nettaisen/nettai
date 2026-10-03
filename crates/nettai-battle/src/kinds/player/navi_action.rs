@@ -54,18 +54,15 @@ pub enum EngineAction {
     /// (`transform`, `cross_change`; the original's CurAction is the
     /// instant chips' then).
     FormChange,
-    /// The Cross special's controller (`cross_special`).
-    CrossSpecial,
 }
 
 impl EngineAction {
-    pub const ALL: [EngineAction; 6] = [
+    pub const ALL: [EngineAction; 5] = [
         EngineAction::Move,
         EngineAction::DimmingChip,
         EngineAction::NaviChip,
         EngineAction::InstantChip,
         EngineAction::FormChange,
-        EngineAction::CrossSpecial,
     ];
 
     /// Its key, by which the validator numbers it.
@@ -76,7 +73,6 @@ impl EngineAction {
             EngineAction::NaviChip => "engine/navi-chip",
             EngineAction::InstantChip => "engine/instant-chip",
             EngineAction::FormChange => "engine/form-change",
-            EngineAction::CrossSpecial => "engine/cross-special",
         }
     }
 }

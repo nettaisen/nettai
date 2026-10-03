@@ -347,8 +347,6 @@ definition_roles! {
         ObstacleThrow = "obstacle_throw",
         /// Each of the burst's (BN6's around a navi going Beast Over).
         Burst = "burst",
-        /// A Cross navi starts its special's chip.
-        CrossSpecial = "cross_special",
         /// SELECT pressed with too little gauge: its player hears that it
         /// can't (and what can't be picked or taken back on the custom
         /// screen).

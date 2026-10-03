@@ -230,7 +230,7 @@
 "bn6:chargecross/tackle/action" = 0x56
 "bn6:dustcross/charge/action" = 0x57
 "bn6:megaman/absorb/action" = 0x58
-"engine/cross-special" = 0x59
+"bn6:beast/cross-special-end" = 0x59
 "bn6:megaman/anti-damage/action" = 0x5A
 "bn6:z-saver/action" = 0x5B
 "bn6:patch-cards/meteors" = 0x5C
