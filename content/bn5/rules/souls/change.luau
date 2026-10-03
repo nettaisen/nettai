@@ -8,7 +8,7 @@
 --
 -- - 0 (0x08011FAC): onto his future panel, facing the default way, the charge dropped, his moves stopped; a flash
 --   (effect 3) and a sound; his sprite held.
--- - 4 (0x08012010): the soul's image comes in (objects/soul-image), with Chaos Unison the dark shade too (objects/
+-- - 4 (0x08012010): the soul's image comes in (rules/souls/image), with Chaos Unison the dark shade too (objects/
 --   chaos-shade); 50 ticks later another flash and the soul's sound (Chaos Unison's its own); 61 ticks.
 -- - 8 (0x08012090): MegaMan in the soul: the old form's end hook, his sprite by the soul, his statuses ended, the
 --   soul's turns, his form, the new form's start hook (./hooks); in TomahawkSoul the cameras shake; 10 ticks later
@@ -19,8 +19,8 @@
 
 local effects = require("@bn6/lib/effects")
 local hooks = require("./hooks")
-local image = require("../../objects/soul-image/image")
-local shade = require("../../objects/chaos-shade/shade")
+local image = require("./image")
+local shade = require("./shade")
 
 local change = {}
 

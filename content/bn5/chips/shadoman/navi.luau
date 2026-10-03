@@ -4,10 +4,10 @@
 -- three of himself (Param1 1), one to each row, at the first panel of his user's side from its back corner, 15 ticks
 -- apart, each with a target (an enemy combatant ahead of it: the first not yet targeted, else the one with the most
 -- HP), and waits for them; then the controller moves on. Each appears, stands 20 ticks (and its delay), vanishes in
--- a puff, rises 32 pixels, throws a shuriken (objects/shuriken) at its target, waits 20 ticks and blinks out.
+-- a puff, rises 32 pixels, throws a shuriken (chips/shadoman/shuriken) at its target, waits 20 ticks and blinks out.
 
 local navi_chips = require("@common/navi-chips/navi")
-local shuriken = require("../../objects/shuriken/shuriken")
+local shuriken = require("./shuriken")
 
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54), or, for one he sent, him.
