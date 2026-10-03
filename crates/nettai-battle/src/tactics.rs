@@ -63,6 +63,28 @@ impl Tactics {
         }
     }
 
+    /// BN5's 0x0802C7BE: the block a console sends as a battle starts, from
+    /// its player's (the save's): the first three places shuffled by three
+    /// swaps, the next 39 by 39 (each swap two places drawn from `rng`,
+    /// RNG2 then: `sub_8000CDA`), the entries packed to the front
+    /// (`sub_8000EB6`) and counted up to the first empty place.
+    pub fn sent(&self, rng: &mut crate::rng::Rng) -> Tactics {
+        let mut places = self.entries.clone();
+        places.resize(MAX_ENTRIES, Tactic::Empty);
+        let mut shuffle = |places: &mut [Tactic], swaps: u32| {
+            let n = places.len() as u32;
+            for _ in 0..swaps {
+                let a = rng.next_positive() % n;
+                let b = rng.next_positive() % n;
+                places.swap(a as usize, b as usize);
+            }
+        };
+        shuffle(&mut places[..3], 3);
+        shuffle(&mut places[3..], 39);
+        let entries = places.into_iter().filter(|&e| e != Tactic::Empty).collect();
+        Tactics { entries, patterns: self.patterns.clone() }
+    }
+
     /// 0x0802BF1C's list part: the first entry goes last, the rest move up
     /// (`sub_8000EB6` packs the entries but the emptied first; the count
     /// stays). With no entries the original loops 2^32 times.
@@ -78,5 +100,31 @@ impl Tactics {
         packed[last] = first;
         self.entries = packed;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rng::Rng;
+
+    /// The send keeps what the block holds, packed to the front (the empty
+    /// places gone), and draws two numbers a swap: 84.
+    #[test]
+    fn the_send_packs_the_shuffled_block() {
+        let chip = |n: u16| Tactic::Chip(ChipHandle(n));
+        let t = Tactics { entries: vec![chip(1), Tactic::Empty, chip(2), Tactic::Nothing, Tactic::Pattern(0)], patterns: Vec::new() };
+        let mut rng = Rng::new(7);
+        let sent = t.sent(&mut rng);
+        let mut after = Rng::new(7);
+        for _ in 0..84 {
+            after.next_positive();
+        }
+        assert_eq!(rng, after);
+        assert_eq!(sent.entries.len(), 4);
+        for e in [chip(1), chip(2), Tactic::Nothing, Tactic::Pattern(0)] {
+            assert!(sent.entries.contains(&e), "{e:?} in {:?}", sent.entries);
+        }
+        assert_eq!(Tactics::default().sent(&mut Rng::new(7)), Tactics::default());
     }
 }

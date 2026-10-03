@@ -105,6 +105,7 @@ local function emerge(me: Object, s: State, target: FormDef, soul: number, chaos
         local souls = system.state() :: Souls
         souls.turns, souls.chaos = turns, is_chaos
         stats.form = target
+        hooks.identity(me, target)
         hooks.start(me, target)
         if SHAKES[soul] then
             battle.shake_camera(2, 30)
