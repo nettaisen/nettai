@@ -1538,6 +1538,11 @@ which the engine runs for a side whose rules say so (the status section's `emoti
   region's removal and return, and the flags 0x80110000 and statuses 0x200800 it clears. (In a netbattle a light
   MegaMan's dark chip fizzles first and a dark one has no Soul Unison: no recording reaches it.)
 
+- **The light/dark bug codes** (0x0801103E, the navi's hit NaviCust bug; the hook `navi_bug`, the light and dark
+  system's): a hit with hit flag 0x400 brings nothing to a value of 1000 or more (not even the weapons' reload); code
+  0xFD is an HP drain of level 1 (code 0x18, argument 1, through the drain's flags rule) on a dark MegaMan (the value's
+  tier 2), code 0xFC the same from 500; else neither is anything. Django's hits bring both: his recordings match.
+
 **ProtoSoul's B+Back** (weapon routine 4, 0x0800F634; navis/megaman/forms/protosoul/back): BN5's guard (action 0x1F,
 lib/guard) as the NaviCust Reflect program's (subtype 4): 20 ticks (the params word 0x114's first byte), the Reflect
 program's look (its second byte: row 1), row 9's (a look of its own) with the Chaos Unison charge armed (0x914), 50
