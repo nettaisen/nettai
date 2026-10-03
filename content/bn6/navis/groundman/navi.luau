@@ -33,6 +33,30 @@ return define.navi {
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },
     fresh = { hp = 300, super_armor = true, mega_level = 5, giga_level = 1 },
     cross_hp = { 180, 180 },
+    -- What the save's reload gives it at its link navi level
+    -- (`reloadCurNaviBaseStats_8120df0`, docs/engine/link-navis.md): its base
+    -- and maximum HP by the story's progress (`off_8120F44`), and what each
+    -- level, 0 to 14, adds over its fresh stats (`pt_8121200`'s scripts).
+    levels = {
+        base_hp = { 300, 300, 300, 400, 500, 600, 800 },
+        by_level = {
+            { hp = 60, super_armor = true },
+            { hp = 120, super_armor = true },
+            { hp = 180, charge = 1, super_armor = true },
+            { hp = 240, charge = 1, super_armor = true },
+            { hp = 300, rapid = 1, charge = 1, mega_level = 1, super_armor = true },
+            { hp = 360, rapid = 1, charge = 1, mega_level = 1, super_armor = true },
+            { hp = 420, rapid = 1, charge = 1, mega_level = 1, super_armor = true },
+            { hp = 490, attack = 1, rapid = 1, charge = 1, mega_level = 1, super_armor = true },
+            { hp = 560, attack = 1, rapid = 1, charge = 1, mega_level = 1, super_armor = true },
+            { hp = 630, attack = 1, rapid = 1, charge = 2, mega_level = 2, super_armor = true },
+            { hp = 700, attack = 1, rapid = 1, charge = 2, mega_level = 2, super_armor = true },
+            { hp = 800, attack = 2, rapid = 2, charge = 2, mega_level = 2, super_armor = true },
+            { hp = 900, attack = 2, rapid = 2, charge = 2, custom_level = 1, mega_level = 2, super_armor = true },
+            { hp = 1000, attack = 3, rapid = 2, charge = 2, custom_level = 1, mega_level = 2, super_armor = true },
+            { hp = 1200, attack = 4, rapid = 2, charge = 2, custom_level = 1, mega_level = 2, super_armor = true },
+        },
+    },
     identity = define.identity {
         class = "link_navi",
         version = 0,
