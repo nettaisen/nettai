@@ -179,15 +179,21 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
         field("Ruleset", pick_list(rulesets, ruleset, move |r| Msg::Ruleset(s, r))),
         text(format!("Its systems: {}", if systems.is_empty() { "none".into() } else { systems.join(", ") })).size(13).color(DIM),
         field("Navi", pick_list(navis, Some(navi), move |n| Msg::Navi(s, n))),
-        field("Game", pick_list(games, game, move |g| Msg::Game(s, g))),
     ]
     .spacing(10);
-    if c.navi(side.navi).forms.is_none() {
+    // What the side's rules and navi take, alone: BN6's game, a navi
+    // code's level (`nettai_match::facts`).
+    if side.takes_game(c) {
+        col = col.push(field("Game", pick_list(games, game, move |g| Msg::Game(s, g))));
+    }
+    // (No navi code for BN5's MegaMan.)
+    let level_kind = side.takes_level(c).then(|| c.navi(side.navi).forms.is_none());
+    if level_kind == Some(true) {
         col = col.push(field("Navi level", text_input("0", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
         if crate::levels::has_levels(c, side) {
             col = col.push(text("0 to 14: changing it fills in the stats the save gives at that level, the game cleared (the stats pane).").size(13).color(DIM));
         }
-    } else {
+    } else if level_kind == Some(false) {
         col = col.push(field("Navi code level", text_input("none", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
         col = col.push(
             text("Empty: no navi code (as usual). 0 to 14: MegaMan received from a navi code, his level's gains over his NaviCust, no Beast Out button.")
@@ -199,16 +205,22 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     col = col.push(checkbox(side.emotion_window_glitch).label("The emotion window glitches (the save's NaviCust bug flag)").on_toggle(move |b| Msg::Glitch(s, b)));
     col = col.push(button("Import from save…").on_press(Msg::ImportSave(s)));
     col = col.push(
-        text("From a BN6 .sav: the game, Beast Out and the Crosses it owns, the navi code's level and the SP times. From a BN5 .sav (or a raw save image): its karma and the souls it has (its version's).")
-            .size(13)
-            .color(DIM),
+        text(if side.takes_game(c) {
+            "From a BN6 .sav: the game, Beast Out and the Crosses it owns, the navi code's level and the SP times."
+        } else {
+            "From a BN5 .sav (or a raw save image): its karma and the souls it has (its version's)."
+        })
+        .size(13)
+        .color(DIM),
     );
     if nettai_match::facts::takes(c, side, nettai_match::facts::KARMA_FIELD) {
         col = col.push(rule::horizontal(1));
         col = col.push(karma(e, s));
     }
-    col = col.push(rule::horizontal(1));
-    col = col.push(sp_times(e, s));
+    if side.takes_sp_times(c) {
+        col = col.push(rule::horizontal(1));
+        col = col.push(sp_times(e, s));
+    }
     col = col.push(rule::horizontal(1));
     col = col.push(round_stats(e, s));
     scrollable(col).into()
@@ -264,10 +276,9 @@ fn sp_times(e: &Editor, s: usize) -> Element<'_, Msg> {
     let mut col = column![text("SP navi deletion times").size(16), text("mm:ss.cc; empty: the fastest. The SP navi chips' damage goes by them.").size(13).color(DIM)]
         .spacing(6);
     for (i, slot) in slots.iter().enumerate() {
-        // The SP navi chip whose damage reads the slot, by its name.
-        let chip = (0..c.defs.chips.len() as u16)
-            .map(nettai_content_api::ChipHandle)
-            .find(|&h| c.chip_links(h).sp_slot == Some(i as u8));
+        // The SP navi chip whose damage reads the slot (the rules' game's),
+        // by its name.
+        let chip = nettai_match::facts::sp_chip(c, side, i);
         let label = chip.map_or_else(|| slot.clone(), |h| e.names.chip(c, h));
         let shown = e.sp_typed.get(&(s, i)).cloned().unwrap_or_else(|| match side.sp_times.0[i] {
             0 => String::new(),
