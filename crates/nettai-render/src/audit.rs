@@ -4,13 +4,15 @@
 //!
 //! Drawing skips what it can't find, so nothing here stops a frame; the
 //! renderer and the audio check note each case in [`Problems`]. Every
-//! lookup the drawing code and the audio make of the packs and the content
-//! goes through [`crate::lookups`], which notes it as a [`Lookup`] and
-//! checks it once a run. Two audits use them:
+//! lookup the drawing code makes of the packs and the content goes through
+//! [`crate::lookups`] (the audio's, a cue's song, through nettai-frontend's
+//! `sound_lookups`), which notes it as a [`Lookup`] and checks it once a
+//! run. Two audits, nettai-frontend's, use them:
 //!
-//! - `--audit-content` ([`crate::content_audit`]) makes every lookup the
-//!   content can: every chip's icon, picture and name, every navi's and
-//!   form's face, every asset the content names, in both languages;
+//! - `--audit-content` (nettai-frontend's `content_audit`) makes every
+//!   lookup the content can: every chip's icon, picture and name, every
+//!   navi's and form's face, every asset the content names, in both
+//!   languages;
 //! - `--audit` runs traces and makes the lookups their frames make (only
 //!   those: nothing is drawn, `Renderer::set_lookups_only`), the asset's
 //!   animation and palette an object asks for among them, and lists each
