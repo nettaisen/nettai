@@ -394,6 +394,9 @@ named_fields! {
         StatusBase = "status_base", Ref(Registry::Status, None), rw;
         /// Bug code (low byte) and argument (high byte).
         Bugs = "bugs", U16, rw;
+        /// The bug code and argument the last resolution's hits brought
+        /// (CollisionData+0x9C, +0x9D), which the navi takes.
+        InflictedBugs = "inflicted_bugs", U16, rw;
         HitModBase = "hit_mod_base", U8, rw;
         /// The damage it deals (the object's damage at setup).
         SelfDamage = "self_damage", U16, rw;
@@ -571,6 +574,8 @@ named_fields! {
         PerPlayerGauges = "per_player_gauges", Bool, ro;
         /// Battle flag 1: the fight is on (collision is live).
         Fighting = "fighting", Bool, ro;
+        /// Battle flag 2: the custom gauge is full.
+        GaugeFull = "gauge_full", Bool, ro;
     }
 }
 
@@ -1371,6 +1376,9 @@ pub trait CoreApi {
     fn clear_linked(&mut self, side: u8);
     /// FullCust: the custom gauge is full.
     fn fill_custom_gauge(&mut self);
+    /// `sub_801DFD0` (BN5's CusVolt): the custom gauge drops by `n`, to 0
+    /// at least.
+    fn drain_custom_gauge(&mut self, n: u16);
     /// `sub_801DF8C`: the custom gauge fills `rate` a tick (full at
     /// 0x4000).
     fn set_gauge_rate(&mut self, rate: u16);
@@ -2014,6 +2022,13 @@ pub trait CoreApi {
     /// original's NameID word 0xCD to 0xFF, its +0x2A half 0) but those
     /// `sub_800F486` excludes, which BlzrdBal's ball swallows.
     fn obstacle_swallowable(&self, o: ObjectRef) -> bool;
+    /// BN5's Poltergeist's test (0x080E8CA0): the object's identity is
+    /// `throwable`.
+    fn obstacle_throwable(&self, o: ObjectRef) -> bool;
+    /// `sub_800F6AC`: ask the field object `o` to be picked up by `side` and
+    /// thrown at panel (x, y) after shaking `shake` ticks, hitting with the
+    /// damage word `damage` (`sub_8018002` does it).
+    fn obstacle_throw(&mut self, o: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32);
     // ---- Field objects (obstacles) -------------------------------------------
 
     /// Whether another object asked `flag` of the field object `o`.

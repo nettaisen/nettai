@@ -352,6 +352,7 @@ window's `update(side, pad)`, `custom.keys(side, pad) -> handled`, `custom.hand_
 | `navi_hit(navi, hit)` | once per tick the navi took hits, after the damage (where `sub_801A200` runs), on the hit side's systems | mood loss, anger, the weakness break by form |
 | `countered(navi, target)` | when the side's navi's counter landed (`sub_801A200`), on the countering side's systems, before the hit side's `navi_hit` | Full Synchro by its own form, unless the target's mood is held |
 | `starting_mood(side) -> mood` | where `sub_8013892` sets the starting mood (`sub_8015C2C`'s 0x80); the first answer | (BN5's light and dark system: by the light/dark value, 0x0801283A) |
+| `navi_bug(side, navi) -> skip` | before the navi takes its hit's NaviCust bug (`sub_80139F6`); it may change the collision's `inflicted_bugs`; true skips the bug and the weapons' reload | (BN5's light and dark system: codes 0xFD, 0xFC; hit flag 0x400 from a value of 1000) |
 | `navi_palette(side, navi) -> palette` | each tick, the palette of a navi of the player's kind (presentation, `sub_801002C`); the first answer, else the framework's | (BN5's light and dark system: 0x0800DD94) |
 | `navi_deleted(navi) -> keep` | where the framework would delete the navi (deciding) | |
 | `chip_used(navi, chip) -> Use` | once per chip use, after the common path | the rush (a wrapper), the Cross bonuses, EraseCross's flag |
@@ -1173,6 +1174,10 @@ with the new hooks, and its sections keep BN6's numbers by default.
   drag (`sub_80178D4`) go 8 pixels a tick in depth in BN5 (0x0801361E, 0x080143A8), 6 in BN6. Arriving on a panel
   whose type has a `slide` rule (BN5's metal) is as arriving on BN6's roads (BN5's 0x08013564 tests type 5 where
   BN6 tests 9 to 12). A type that `holds` (BN5's sea) ends the slide.
+- **What a navi wears restarting.** The `reactions` section's `overlay_restart`, the navi's game's: an animation
+  change, a flinch and a drag restart what a navi wears (`sub_8011450`, `sub_80F06CE`). BN6's restart
+  (`sub_80C44D2`) reloads the overlay's animation and steps its sprite at once (`"step"`, the default); BN5's
+  (0x080C374E) only has it reload at its next step (`"reload"`).
 - **The custom request (item 18).** BN5's state 0x20 (0x08007774) opens the custom screen itself once the
   reversions are done. BN6 first goes through state 0x24, which takes a tick. The flow without
   `sequencer_before_custom` now does BN5's. BN5's test of the request skips BN6's battle mode 5 too.
@@ -1763,16 +1768,14 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   - The offsets were also read on Tango's four raw BN6 templates by a script (version names, flags, navi, codes, SP
     times as expected). Their checksum word is zero (memory images Tango checksums when it writes them), so the
     checksum path is the tests'.
-- **Gates** (on main de4672cc: bn5-presentation, bn5-chips-a's third and bn5-chips-b's checkpoints, bn5-navichips):
-  - the build without warnings (every feature), 502 tests, the content check (1,498 modules), gen-content check 0
-    errors;
-  - the gate's steps in full: the 189 legacy rounds, 96 rollback rows matching, and the lab 6548 (6545 matched, 3 to
-    a known deviation) with 0 sound rounds differing. They ran by hand with the gate's environment, skipping
-    `every_bn5_lab_recording_decodes`: seven chaos-ai BN5 recordings carry an `ai_lists` setup field whose engine
-    side (bn5-port-6) isn't on main yet, so that test fails on main too;
-  - identity.sh against main 851e3392's frontend on its content: the custom-screen and sample lists identical in
-    both text modes (174 scenarios, 200,712 frames each); not run again after main's BN5 merges, which S6c's diff
-    doesn't touch (the audit draws 49 traces: 0 problems);
-  - us-spelling 0 on both repositories;
-  - BN5's replays as main's on the same recordings and a BN5 pack extracted from the merge: 1,099 match, 31 replay,
-    256 setup, 7 unread, 677,486 of 951,046 frames.
+- **Gates**:
+  - on the final merge (main 6d4d0ec5, then main 87f4cf65's bn5-layout and navi chips, which S6c doesn't touch): the
+    build without warnings (every feature), 511 tests, the content check (1,422 modules), gen-content check 0 errors,
+    the audit 0 problems, us-spelling 0 on both repositories, BN5's replays 1,145 matched (973,226 frames, 760,918
+    matching);
+  - the full gate, unmodified, on main 6d4d0ec5 merged: the 189 legacy rounds, 96 rollback rows matching, and the
+    lab 6548 (6545 matched, 3 to a known deviation) with 0 sound rounds differing;
+  - identity.sh against main 24565c25's frontend on its content: the custom-screen and sample lists identical in
+    both text modes (174 scenarios, 200,712 frames each); main's later merges were BN5's;
+  - BN5's replays matched main's exactly, recording for recording count and frames, at main 851e3392, de4672cc and
+    24565c25 (1,107 matched there).

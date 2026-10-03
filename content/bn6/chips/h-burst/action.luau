@@ -1,93 +1,28 @@
 --!strict
--- H-Burst (the original's action 0x34, `sub_80ED810`): the navi raises a
--- spreader (an attachment in its overlay slot) and on the second tick
--- fires H-Burst's shot (attack object #0x9E, ./burst) along its row from
--- the panel ahead: at the first thing it hits it bursts again and again.
--- Then 21 ticks of recovery.
+-- H-Burst (the original's action 0x34, `sub_80ED810`): the shared H-Burst
+-- (@common/h-burst/action) with BN6's spreader (attachment row 0x15), sound
+-- and shot (./burst).
 
 local attachment = require("../../objects/attachment/attachment")
 local burst = require("./burst")
+local common = require("@common/h-burst/action")
 
 local action = {}
 
-export type State = {
-    -- Ticks into the shot, then ticks left (AIAttackVars+0x10).
-    timer: number,
-}
-
 -- One state for every H-Burst action.
-action.STATE = { timer = "u16" }
+action.STATE = common.STATE
 
--- The phases, on the attack's step.
-local AIM, RECOVER = 0x0, 0x4
-
-local ANIM_AIM = 0x0B
-local RECOVER_TICKS = 0x14
-local SOUND = asset.sound("bn6:h-burst")
--- The spreader the navi holds (the original's attachment row 0x15).
-local SPREADER = attachment.look { sprite = asset.sprite("bn6:spreader"), palette = 0, attach_point = 0x0B }
+local LOOK: HyperBurstLook = {
+    -- The spreader the navi holds (the original's attachment row 0x15).
+    spreader = attachment.look { sprite = asset.sprite("bn6:spreader"), palette = 0, attach_point = 0x0B },
+    attachment = attachment.kind,
+    sound = asset.sound("bn6:h-burst"),
+    burst = burst.kind,
+}
 
 -- An H-Burst whose shot bursts `spec.bursts` times.
 function action.action(spec: HyperBurstSpec): Action
-    -- `sub_80ED82C`: the spreader out; on the second tick it fires.
-    local function aim(me: Object, s: State)
-        if me.step_init == 0 then
-            me:set_animation(ANIM_AIM)
-            me:open_counter_window()
-            attachment.attach(me, SPREADER, "overlay")
-            me:set_status("using_action", true)
-            me.step_init = 4
-            s.timer = 0
-        end
-        local t = s.timer + 1
-        s.timer = t
-        if t <= 1 then
-            return
-        end
-        -- The spreader's firing animation (with no spreader, the game's
-        -- store lands in low memory and does nothing).
-        local spreader = me.overlay
-        if spreader then
-            spreader.anim += 1
-        end
-        battle.play_sound(SOUND)
-        -- The damage word (the hit parameter in its high half), plus the
-        -- Atk+ bonus.
-        local damage = me.attack_damage + me.hit_param * 0x10000 + me.extra
-        burst.spawn(me, me.panel_x + me.facing, me.panel_y, me.attack_element, spec.bursts, damage)
-        me.step = RECOVER
-        me.step_init = 0
-    end
-
-    -- `sub_80ED896`: 21 ticks, then the spreader goes and back to idle.
-    local function recover(me: Object, s: State)
-        if me.step_init == 0 then
-            s.timer = RECOVER_TICKS
-            me.step_init = 4
-        end
-        local t = s.timer - 1
-        s.timer = t
-        if t < 0 then
-            me:set_status("using_action", false)
-            me.related1 = nil
-            me.overlay = nil
-            me:exit_attack()
-        end
-    end
-
-    -- `sub_80ED810`.
-    local function update(me: Object, s: State)
-        local step = me.step
-        if step == AIM then
-            aim(me, s)
-        elseif step == RECOVER then
-            recover(me, s)
-        else
-            error(string.format("H-Burst phase %#x reads past its phase table", step))
-        end
-    end
-
-    return define.action { id = spec.id, state = action.STATE, args = spec, update = update }
+    return common.action(spec, LOOK)
 end
 
 return action

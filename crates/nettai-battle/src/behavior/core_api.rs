@@ -366,6 +366,7 @@ impl CoreApi for Battle {
                 Value::Bool(self.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0)
             }
             BattleInfo::Fighting => Value::Bool(self.round.flags & crate::battle::battle_flags::FIGHTING != 0),
+            BattleInfo::GaugeFull => Value::Bool(self.round.flags & crate::battle::battle_flags::GAUGE_FULL != 0),
         }
     }
 
@@ -1033,6 +1034,10 @@ impl CoreApi for Battle {
 
     fn fill_custom_gauge(&mut self) {
         self.gauge.value = crate::hud::CustomGauge::FULL;
+    }
+
+    fn drain_custom_gauge(&mut self, n: u16) {
+        self.gauge.value = self.gauge.value.saturating_sub(n);
     }
 
     fn set_gauge_rate(&mut self, rate: u16) {
@@ -2349,6 +2354,7 @@ impl CoreApi for Battle {
             CollisionField::Element => c.element as i64,
             CollisionField::SecondaryElement => c.secondary_element as i64,
             CollisionField::Bugs => c.bugs as i64,
+            CollisionField::InflictedBugs => c.acc.inflicted_bugs as i64,
             CollisionField::HitModBase => c.hit_mod_base as i64,
             CollisionField::SelfDamage => c.self_damage as i64,
             CollisionField::CounterByte => c.counter_byte as i64,
@@ -2417,6 +2423,7 @@ impl CoreApi for Battle {
             CollisionField::Element => c.element = x as u8,
             CollisionField::SecondaryElement => c.secondary_element = x as u8,
             CollisionField::Bugs => c.bugs = x as u16,
+            CollisionField::InflictedBugs => c.acc.inflicted_bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
             CollisionField::CounterByte => c.counter_byte = x as u8,
@@ -2714,6 +2721,14 @@ impl CoreApi for Battle {
         let plain = ob.actor.is_none() || (ob.chip.is_some() && ob.chip == self.zeroed_chip());
         let identity = self.content.identity(ob.identity);
         plain && identity.class == crate::content::IdentityClass::FieldObject && identity.scrap
+    }
+
+    fn obstacle_throwable(&self, o: ObjectRef) -> bool {
+        self.content.identity(self.objects.get(o).identity).throwable
+    }
+
+    fn obstacle_throw(&mut self, o: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32) {
+        kinds::obstacle::request_throw(self, o, side, x, y, shake, damage);
     }
 
     fn obstacle_present(&self, o: ObjectRef) -> bool {

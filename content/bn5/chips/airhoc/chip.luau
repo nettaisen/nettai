@@ -5,22 +5,8 @@
 -- 0x080CA3A4 are BN6's, the record's Param1 2 and Param2 1, down).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local collision = require("../../rules/collision")
 local flick = require("@common/airhocky/flick")
-local puck = require("@common/airhocky/puck")
-local sparks = require("../../lib/sparks")
-
--- BN5's puck (0x080CA3D4): BN6's collision types, spark and sounds, BN5's sprite, its burst a puff (effect 0x14).
-local PUCK = puck.make_kind("bn5:airhoc/puck", {
-    sprite = asset.sprite("bn5:hockey-puck"),
-    sound = asset.sound("bn5:hockey-puck"),
-    bounce = asset.sound("bn5:bounce"),
-    is = collision.breaking,
-    hits = collision.hits_navis,
-    spark = sparks.breaking,
-    burst = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 },
-    trail_tint = 0x8318,
-})
+local puck = require("./puck")
 
 return define.chip {
     id = "bn5:airhoc",
@@ -37,9 +23,9 @@ return define.chip {
     slot_in_limit = 3,
     action = flick.action {
         id = "bn5:airhoc/action",
-        kind = PUCK,
+        kind = puck.kind,
         -- The row 2 of 0x080CA3A4: 10 steps.
-        puck = puck.variant { steps = 0x0A, own_side = 1, ticks = 6 },
+        puck = puck.variants.airhoc,
         down = true,
     },
 }
