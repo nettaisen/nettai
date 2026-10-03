@@ -1,8 +1,8 @@
 --!strict
 -- BN5's Mine chip's dimming controller (effect object #0x29) and mine (attack object #0x4C): BN6's code
--- (@common/mine), BN5's kinds; the mine's identity, look and collision types BN6's.
+-- (@common/mine), BN5's kinds; the mine's identity and look BN6's, its collision types BN5's (BN6's values).
 
-local bn6_collision = require("@bn6/rules/collision")
+local collision = require("../../rules/collision")
 local common = require("@common/mine/controller")
 local land_mine = require("@common/mine/land_mine")
 
@@ -21,8 +21,8 @@ local mine = land_mine.make_kind {
     hop_sound = asset.sound("bn6:hop"),
     blast = define.effect { sprite = asset.sprite("bn6:blast"), anim = 0, palette = 0 },
     blast_sound = asset.sound("bn6:hit-bomb-1"),
-    self_type = bn6_collision.mine,
-    target = bn6_collision.hits_both_sides,
+    self_type = collision.mine,
+    target = collision.hits_both_sides,
 }
 
 return common.make { id = "bn5:mine/controller", mine = mine }

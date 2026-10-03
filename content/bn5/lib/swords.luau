@@ -14,7 +14,6 @@
 
 local antiswrd = require("@common/antiswrd/counter")
 local attachment = require("../objects/attachment/attachment")
-local bn6_collision = require("@bn6/rules/collision")
 local collision = require("../rules/collision")
 local slash = require("@common/swords/slash")
 local sonic_boom = require("@common/swords/sonic_boom")
@@ -56,7 +55,6 @@ swords.effects = {
 }
 swords.swing = asset.sound("bn5:sword-swing")
 swords.big_swing = asset.sound("bn5:big-sword-swing")
--- (What its boom hits is BN6's hits-navis.)
 swords.sonic_boom = sonic_boom.make_kind("bn5:sonic-boom", {
     sprite = SLASH,
     z = 0,
@@ -64,7 +62,7 @@ swords.sonic_boom = sonic_boom.make_kind("bn5:sonic-boom", {
     palettes = { [0] = 0, 2, 5, 4, 8, 0, 0, 0 },
     element_mask = 0xFF,
     is = collision.slash,
-    hits = bn6_collision.hits_navis,
+    hits = collision.hits_navis,
 })
 
 -- A chip's slash (@common/swords/slash), its blade BN5's attachment.
