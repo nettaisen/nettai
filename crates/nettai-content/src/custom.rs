@@ -55,6 +55,8 @@ pub struct CustomDoc {
     pub cross_patches: PatchListDoc,
     /// Background palettes 11 (the slot icons), 12 (grayed out) and 14.
     pub icon_palette: Vec<String>,
+    /// (A pack extracted before the American spellings has the British key.)
+    #[serde(alias = "grey_palette")]
     pub gray_palette: Vec<String>,
     pub other_palette: Vec<String>,
     /// Chips' pictures by chip key, in the game's order, each with its
@@ -88,7 +90,9 @@ pub struct CustomDoc {
     pub emblem_palette_of: Vec<u8>,
     pub regular: TileImage,
     /// The Program Advance animation's names' first four colors, the sets
-    /// it steps through.
+    /// it steps through. (A pack extracted before the American spellings has
+    /// the British key.)
+    #[serde(alias = "advance_name_colours")]
     pub advance_name_colors: Vec<Vec<String>>,
     /// The other languages' pictures with words, by language (the HUD's
     /// `language` is the pack's own).
