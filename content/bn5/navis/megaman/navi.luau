@@ -11,7 +11,7 @@
 
 local buster = require("./weapons/buster")
 local charged_shot = require("./weapons/charged-shot")
-local protosoul = require("./forms/protosoul")
+local protosoul = require("./forms/protosoul/form")
 
 return define.navi {
     id = "bn5:megaman",

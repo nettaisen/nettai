@@ -1763,8 +1763,9 @@ export type FormDef = {
     null_bonus: number?,
     -- The chips it charges with A: a family's damaging chips that aren't
     -- dimming chips (`damaging = false`: any of the family), and with
-    -- `element_swords` the chips with the `element_sword` trait.
-    charged_chips: { { family: ChipFamily, damaging: boolean?, element_swords: boolean? } }?,
+    -- `element_swords` the chips with the `element_sword` trait; `plain`:
+    -- only those that are neither dimming nor dark chips (BN5's souls).
+    charged_chips: { { family: ChipFamily, damaging: boolean?, element_swords: boolean?, plain: boolean? } }?,
     -- What a charged chip gains in it.
     charged_bonus: { damage: number?, paralyzes: boolean? }?,
     -- The chips a charge doubles, and those whose use heals a twentieth of
@@ -1788,6 +1789,9 @@ export type FormDef = {
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
     buster_arm: { anim: number, palette_add: number? }?,
+    -- A soul (`kind = "soul"`, BN5's Soul Unison): its number, and the
+    -- chip family the custom screen's soul button gives up for it.
+    soul: { number: number, family: ChipFamily }?,
 }
 -- Something a stage places when the round starts: a navi of `side`, or a
 -- field object by its kind (which needs a `place`), with one of the kind's

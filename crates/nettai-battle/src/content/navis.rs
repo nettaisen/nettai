@@ -425,6 +425,10 @@ pub struct ChargedChips {
     /// And the chips with the `element_sword` trait.
     #[serde(default)]
     pub element_swords: bool,
+    /// Only its chips that are neither dimming chips nor dark chips (BN5's
+    /// souls, 0x0801090A).
+    #[serde(default)]
+    pub plain: bool,
 }
 
 fn yes() -> bool {
