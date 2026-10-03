@@ -223,6 +223,10 @@ pub struct SystemDef {
     /// The layout of its state of a side, and of its player setup.
     pub state: StateId,
     pub setup: StateId,
+    /// Its player setup when the player's setup says nothing of a field:
+    /// its `setup_defaults` (BN5's light/dark value a fresh save's 500),
+    /// zero elsewhere ([`SystemDef::setup_block`]).
+    pub setup_default: nettai_content_api::ContentState,
     /// The layout of its state of each navi no player controls that it
     /// drives (its `controller`: the navi object's own state), if it
     /// drives any.
@@ -237,6 +241,12 @@ pub struct SystemDef {
 }
 
 impl SystemDef {
+    /// A player's setup block for it when the player gives none: its
+    /// defaults (`setup_defaults`), the rest zero.
+    pub fn setup_block(&self) -> nettai_content_api::ContentState {
+        self.setup_default
+    }
+
     /// Its function for `hook`, if it has one.
     pub fn hook(&self, hook: SystemHook) -> Option<FnId> {
         let i = SystemHook::ALL.iter().position(|&h| h == hook).expect("every hook is listed");
@@ -1658,8 +1668,8 @@ impl Defs {
             let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "navi_state", "hooks", "custom", "buttons", "windows", "actions"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, navi_state, hooks, custom, buttons, windows, actions)")));
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, setup_defaults, navi_state, hooks, custom, buttons, windows, actions)")));
                     }
                 }
             }
@@ -1798,10 +1808,39 @@ impl Defs {
                 }
                 _ => return Err(what("`windows` is a table of windows by name")),
             }
+            // Its setup's defaults: a value of a field of its setup each
+            // (an enum's by name), which it must hold as given.
+            let setup = layout("setup")?;
+            let mut setup_default = nettai_content_api::ContentState::new(setup);
+            match d.spec.field("setup_defaults") {
+                Data::Nil => {}
+                Data::Map(entries) => {
+                    let schema = &schemas[setup.0 as usize].schema;
+                    for (k, v) in entries {
+                        let name = k.to_string();
+                        let at = |e: String| what(&format!("setup_defaults.{name}: {e}"));
+                        let i = schema.index_of(&name).ok_or_else(|| at("the setup has no such field".into()))?;
+                        let value = match (v, &schema.field(i).ty) {
+                            (Data::Bool(b), _) => nettai_content_api::Value::Bool(*b),
+                            (Data::Int(n), _) => nettai_content_api::Value::Int(*n),
+                            (Data::Str(n), nettai_content_api::FieldType::Enum(names)) => nettai_content_api::Value::Int(
+                                names.iter().position(|x| x == n).ok_or_else(|| at(format!("no variant {n:?}")))? as i64,
+                            ),
+                            (other, ty) => return Err(at(format!("{other:?} is no value of a {ty:?} field"))),
+                        };
+                        setup_default.set(schema, i, value).map_err(|e| at(e.to_string()))?;
+                        if setup_default.get(schema, i).load() != value {
+                            return Err(at(format!("{value:?} doesn't fit the field")));
+                        }
+                    }
+                }
+                _ => return Err(what("`setup_defaults` is a table of the setup's fields")),
+            }
             systems.push(SystemDef {
                 key: d.key.clone(),
                 state: layout("state")?,
-                setup: layout("setup")?,
+                setup,
+                setup_default,
                 navi_state,
                 hooks,
                 actions: system_actions,
