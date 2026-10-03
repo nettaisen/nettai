@@ -417,3 +417,24 @@ export type StepSword = {
     flip: (me: Object) -> number,
     step_back: (me: Object, s: any) -> (),
 }
+
+-- A game's NumbrBl ball (@common/numbrbl/ball): its kind's id, sprite, the
+-- ticks it sits, its sounds (set down, hitting), its explosion, its hit's
+-- types, and the parts BN5's hides as it waits and rolls.
+export type NumberBallLook = {
+    id: string,
+    sprite: SpriteAsset,
+    sit_ticks: number,
+    set_sound: Sound,
+    hit_sound: Sound,
+    explosion: Effect,
+    is: CollisionType,
+    hits: CollisionType,
+    hidden_parts: number?,
+}
+
+-- A NumbrBl ball made for a game (@common/numbrbl/ball).
+export type NumberBall = {
+    kind: Kind,
+    spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
+}
