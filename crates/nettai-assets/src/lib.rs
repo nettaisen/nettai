@@ -9,7 +9,7 @@
 pub mod custom;
 pub mod lettering;
 pub use lettering::{BASE_LANGUAGE, CustomLettering, HudLettering};
-pub use custom::{ChipArt, CustomScreen, MapPatch, PatchList, Picture, SlotPictures, VersionPictures};
+pub use custom::{ButtonPictures, ChipArt, CursorPlace, CustomLayout, CustomScreen, MapPatch, PatchList, Picture, SlotPictures, VersionPictures};
 
 /// Assets a game version has its own of: the base game's (`base_version`,
 /// a BN6 pack's "falzar"), and other versions' that differ, by version name
@@ -341,6 +341,10 @@ pub struct Hud {
     /// without a number.
     pub counts: Vec<Tiles>,
     pub count_box: Tiles,
+    /// The box a face brings for beside it (2x2 tiles), by mugshot: BN5's
+    /// faces have their own (all but its souls', which show a count); none
+    /// (empty, or past the list: BN6's) shows the count box or a count.
+    pub mugshot_boxes: Vec<Tiles>,
     /// The link navis' faces (a ROM holds its own version's navis' and
     /// ProtoMan's or Colonel's). Which face a form or a navi shows is its
     /// definition's (`mugshot`), by number (see [`NAVI_MUGSHOTS`]).
@@ -420,6 +424,12 @@ impl Hud {
             Some(i) => self.navi_mugshots.get(i as usize).map(|m| (&m.tiles, &m.palettes[..])),
             None => self.mugshots.get(number as usize).map(|(t, p)| (t, std::slice::from_ref(p))),
         }
+    }
+
+    /// The box emotion-window face `number` brings for beside it, if it
+    /// has its own (`mugshot_boxes`).
+    pub fn mugshot_box(&self, number: u8) -> Option<&Tiles> {
+        self.mugshot_boxes.get(number as usize).filter(|t| !t.is_empty())
     }
 }
 

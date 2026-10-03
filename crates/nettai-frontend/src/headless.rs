@@ -105,6 +105,7 @@ pub fn render_frames_with(
     for mut s in sessions {
         renderer.reset();
         renderer.console_region = s.driver.console_region();
+        renderer.console_version = s.driver.console_version();
         while s.step(keys.held(s.ticks as u32 + 1)) {
             renderer.observe(&s.battle);
             let Some(f) = s.frame else { continue };
@@ -179,6 +180,7 @@ pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<Vec<
     for mut s in sessions {
         renderer.reset();
         renderer.console_region = s.driver.console_region();
+        renderer.console_version = s.driver.console_version();
         while s.step(0) {
             renderer.observe(&s.battle);
             renderer.problems.at(s.frame);
@@ -239,8 +241,8 @@ pub fn audit_traces(
     let next = AtomicUsize::new(0);
     let out: Mutex<Vec<Option<TraceAudit>>> = Mutex::new(vec![None; traces.len()]);
     let one = |path: &std::path::Path| -> Result<Audit, String> {
-        let rounds = crate::driver::TracePlayer::load(path, content).map_err(|e| format!("can't read it: {e}"))?;
-        let sessions: Vec<Session> = rounds.into_iter().map(|r| Session::new(Box::new(r))).collect();
+        let rounds = crate::driver::trace_rounds(path, content).map_err(|e| format!("can't play it: {e}"))?;
+        let sessions: Vec<Session> = rounds.into_iter().map(|(_, r)| Session::new(r)).collect();
         let mut renderer = Renderer::with_packs(setup.packs.clone());
         renderer.set_strings(setup.strings.clone());
         renderer.set_text(setup.text, setup.font.clone());

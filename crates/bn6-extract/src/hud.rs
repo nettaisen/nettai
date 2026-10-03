@@ -215,6 +215,7 @@ pub fn hud(rom: &Rom, gregar: &Rom, names: &AssetNames) -> Hud {
             .collect(),
         counts: (0..=10u32).map(|n| tiles(rom, COUNTS + 0x80 * (10 - n), 0x80)).collect(),
         count_box: tiles(rom, COUNT_BOX, 0x80),
+        mugshot_boxes: Vec::new(),
         // The Falzar ROM's six, then Gregar's own five.
         navi_mugshots: (0..NAVI_MUGSHOT_COUNT)
             .map(|n| navi_mugshot(rom, (NAVI_MUGSHOTS, NAVI_MUGSHOT_PALETTES), n))
