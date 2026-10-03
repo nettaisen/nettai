@@ -2262,6 +2262,7 @@ dependencies = [
  "nettai-content",
  "nettai-content-api",
  "nettai-match",
+ "nettai-render",
  "png",
  "rfd",
  "toml",
@@ -2281,8 +2282,8 @@ dependencies = [
  "nettai-content-api",
  "nettai-match",
  "nettai-netplay",
+ "nettai-render",
  "png",
- "swash",
 ]
 
 [[package]]
@@ -2315,6 +2316,19 @@ dependencies = [
  "nettai-content",
  "nettai-content-api",
  "rennet",
+]
+
+[[package]]
+name = "nettai-render"
+version = "0.1.0"
+dependencies = [
+ "bn6-compat",
+ "nettai-assets",
+ "nettai-battle",
+ "nettai-content",
+ "nettai-content-api",
+ "png",
+ "swash",
 ]
 
 [[package]]

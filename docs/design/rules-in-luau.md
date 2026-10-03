@@ -996,7 +996,8 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
   sprite is a handle of it).
 - **The edges convert.** bn6-compat (`Ids::pack`, `asset`, `asset_number`, `background`, `sound_number`), the
   audio (`nettai_audio::Songs`: a sound handle's song; `BattleAudio::new(bank, songs)`, `Songs::cue`), the frontend
-  (`nettai_frontend::packs`: a handle's sprite, banner, mugshot, background number in its pack; one pack's
+  (`nettai_render::packs`, nettai-frontend's then: a handle's sprite, banner, mugshot, background number in its
+  pack; one pack's
   graphics until R3b), verify's gen-content (`decode::numbered_sprite` and `defined::Numbered` compare by the pack's
   numbers) and the sound tests. The engine itself did no arithmetic on a sprite's numbers but two afterimage
   and form-overlay object parameters, which now carry the handle.
@@ -1013,7 +1014,8 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
 
 ### R3b, the frontend and the audio per pack (2026-10-02)
 
-- **Graphics per pack** (`nettai_frontend::packs::Packs`): every loaded pack's `Bundle` by `PackId`, and the
+- **Graphics per pack** (`nettai_render::packs::Packs`, nettai-frontend's then): every loaded pack's `Bundle` by
+  `PackId`, and the
   content's own (its home root's `assets` pack). An asset draws from its own pack: a sprite's sheet, a banner's
   glyphs (its pack's HUD), a mugshot (its pack's HUD), a background. A chip's icon and picture are its game's pack's
   (the chip's root's `assets`), under its key there (`gundels3`, not `bn6:gundels3`): the frontend had looked them up

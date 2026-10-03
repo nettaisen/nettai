@@ -1,4 +1,4 @@
-# The rendering frontend (`nettai-frontend`)
+# The frontend (`nettai-frontend` and `nettai-render`)
 
 A desktop app that runs a battle through the native engine and draws it the
 way the original does, in its 240x160 frame scaled up by the largest whole
@@ -14,6 +14,28 @@ own fonts, exactly as the original does.
 
 It replays a golden trace (the recorded inputs of a real match) or is
 played live from the keyboard, and can render chosen frames to PNG.
+
+Two crates make it up:
+
+- **nettai-render** draws a battle into frames, and nothing else: it
+  composes the layers (`compose`), draws the stage and the field
+  (`stage`), the objects (`objects`), the HUD with its banners and telops
+  (`hud`), the custom screen (`custom`) and the chatbox (`chatbox`); the
+  strings in the game's fonts or as the text layer's items (`fonts`,
+  `textlayer`, `strings`) and the vector font that draws those
+  (`vfont`); each pack's graphics (`packs`); the lookups a frame makes of
+  the packs and the content (`lookups`), each noted and checked once a run
+  (`audit`); `Renderer`, which draws a frame, and `present`, which scales
+  one to an output of any size, or writes it as a PNG; and a chip's
+  pictures on their own (`pictures`, which the editor shows). It has no
+  window, sound, network, netplay or command line.
+- **nettai-frontend** is the app around it: the window and the keys
+  (`app`, with the status line's small font, `text`); the sessions
+  (`session`) and what drives them (`driver`: a trace, live play, a match
+  file; `netplay`); the sound, a `TickHook` to nettai-audio, and the
+  audio's own lookups (`sound_lookups`); the command line (`main`);
+  headless output (`headless`) and the audits (`content_audit`,
+  `headless::audit_traces`).
 
 ## 1. The content pack
 
@@ -265,8 +287,10 @@ picture or with a name the font can't spell, a face, an emblem, a banner
 without glyphs, a telop's banner that is no telop's, a text line, a song.
 Each exits 1 if there was any; drawing itself skips what it can't find,
 so nothing else notices. Every such lookup goes through one module
-(`lookups.rs`), which notes it (`audit::Lookup`) and checks it once a run,
-so both audits make the lookups a frame makes, through the same functions:
+(nettai-render's `lookups.rs`; the audio's, a cue's song, nettai-frontend's
+`sound_lookups.rs`), which notes it (`audit::Lookup`) and checks it once a
+run, so both audits make the lookups a frame makes, through the same
+functions:
 
 - `--audit-content` (`content_audit.rs`) makes every lookup for everything
   the content defines, in every language it has strings in: every chip's
@@ -303,6 +327,8 @@ way, as a `TickHook` (`nettai_frontend::session`), which the window runs
 after every step with the session.
 
 ## 3. What is drawn, and how
+
+The drawing is nettai-render's; the modules this section names are its.
 
 Layers, back to front: the backdrop colour, the background (priority 3),
 the field (priority 2), sprites of priority 2, the HUD layer (priority 1),
@@ -507,7 +533,7 @@ characters), so two players of different languages play one battle. The
 frontend's own text (live play's status line, folder listings) is the
 content's own strings.
 
-The bundled font is Murecho (`crates/nettai-frontend/fonts/murecho`, SIL
+The bundled font is Murecho (`crates/nettai-render/fonts/murecho`, SIL
 Open Font License 1.1, its licence beside it): Latin, kana and some 2,300
 kanji, weight 700 for the 8x16 font's strings and 300 for the chatbox's.
 A string too wide for its box is squeezed (to 85%, 70% with kana or kanji)
@@ -624,10 +650,10 @@ from the fight's first frame), the chips' pictures included; the Gregar
 chip's on a Falzar console is the known difference above.
 
 The comparison needs the ROM, so it lives outside this repository, with the
-lists of scenarios. The frontend's own tests (`cargo test -p nettai-frontend`)
-use a small synthetic asset set and a live battle built in code, and the
-bundled font for the text layer (its layout and the depth test; not its
-pixels, which are floating-point arithmetic).
+lists of scenarios. The frontend's own tests (`cargo test -p nettai-render
+-p nettai-frontend`) use a small synthetic asset set and a live battle
+built in code, and the bundled font for the text layer (its layout and the
+depth test; not its pixels, which are floating-point arithmetic).
 
 The recorders take each picture at the traced console's own VBlank, as
 its main loop leaves `main_awaitFrame`. Screenshots of the right-hand
