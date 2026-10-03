@@ -98,11 +98,11 @@
 "bn5:bugcharg/controller" = { pool = "effect", index = 0x7C, scratch_position = true }
 "bn5:bugcharg/actor" = { pool = "actor", index = 0x59 }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
-"bn5:capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
-"bn5:napalm-bomb" = { pool = "attack", index = 0x3A }
-"bn5:gyro-bomb" = { pool = "attack", index = 0x1B, scratch_position = true }
+"bn5:meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
+"bn5:napalmmn/bomb" = { pool = "attack", index = 0x3A }
+"bn5:gyroman/bomb" = { pool = "attack", index = 0x1B, scratch_position = true }
 "bn5:shuriken" = { pool = "attack", index = 0x5C }
-"bn5:dice" = { pool = "attack", index = 0x05 }
+"bn5:numbrman/dice" = { pool = "attack", index = 0x05 }
 "bn5:dice-marker" = { pool = "effect", index = 0x83, scratch_position = true }
 "bn5:sonic-boom" = { pool = "attack", index = 0x58 }
 "bn5:holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }

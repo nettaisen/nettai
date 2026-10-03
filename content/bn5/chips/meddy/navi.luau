@@ -2,12 +2,12 @@
 -- Meddy, the navi of BN5's Meddy chips (BN5's actor object #0x12, 0x080BBAA0; BN5's own, built on BN6's navi
 -- template), brought by their navi chip controller. She appears, a pixel up and nearer (and goes at once off a
 -- panel that isn't solid), stands 40 ticks and winds up (animation 6): 8 ticks in, with a sound, she throws two
--- capsules (objects/capsule, variant 0, running while dimmed), each at a panel beside an enemy navi (the first
+-- capsules (chips/meddy/capsule, variant 0, running while dimmed), each at a panel beside an enemy navi (the first
 -- such panel of four, solid and free if any is, in the enemy's area; the line it bursts along by the side it lies
 -- on) or else at a panel of the enemy's area, the second never at the first's panel; 141 ticks in she leaves, and
 -- the controller moves on.
 
-local capsule = require("../../objects/capsule/capsule")
+local capsule = require("./capsule")
 local navi_chips = require("@common/navi-chips/navi")
 local panels = require("@common/panels")
 
