@@ -337,3 +337,6 @@
 "bn5:invalid" = { id = 0x185, action = 0x1a, subtype = 26 }
 "bn5:ftrsword" = { id = 0x172, action = 0x13, subtype = 9 }
 "bn5:sonicbom" = { id = 0x173, action = 0x2b, subtype = 0 }
+"bn5:crosswrd" = { id = 0x176, action = 0x13, subtype = 10 }
+"bn5:sprsonic" = { id = 0x177, action = 0x2b, subtype = 1 }
+"bn5:dbldream" = { id = 0x178, action = 0x13, subtype = 11 }
