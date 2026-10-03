@@ -541,7 +541,11 @@ console does otherwise, by data, not by game:
 - a chip each version draws its own way shows the console's version's
   icon and picture, and the emblem is the console's version's
   (`Renderer::console_version`, which a BN5 recording names; live play,
-  the pack's first version).
+  the pack's first version);
+- a game's mark another game's font lacks is drawn with the glyph of the
+  loaded font that has it (`nettai_assets::lend_marks`, the Private Use
+  Area's marks alone): a BN6 console names a BN5 DS navi chip with BN5's
+  stacked DS, a BN5 console a BN6 EX chip with BN6's stacked EX.
 
 The frame comparison against BN5's consoles (verification's
 tools/frontend-compare/bn5.txt, chiplab's library-bn5) and what still
