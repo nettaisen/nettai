@@ -2,7 +2,7 @@
 -- FlshBom1-3: a FlashBomb (bomb.luau) set down three panels ahead that
 -- flashes the other side's area a minute later; each level holds more HP,
 -- blinds longer, and FlshBom3 hits again as it goes. The navi holds it in
--- the level's colours (its palette plus three a level).
+-- the level's colors (its palette plus three a level).
 
 local flash_bomb = require("./bomb")
 local lockon = require("../../rules/lockon")

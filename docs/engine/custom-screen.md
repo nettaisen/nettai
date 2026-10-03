@@ -119,10 +119,10 @@ first next turn.
 OK. The grid starts from `dword_802A7CC` (`Rules::custom_screen`); dealt chips fill slots 0, 1, …; slot 11 is the
 Beast Out button when the player has it (§4); slots 8/9 are DustCross's scrap button (form 0x0A or 0x16) or
 ChpShufl's re-deal button; a link navi's own chip goes in slot 9 once a round. Then `sub_8027F42` points every
-neighbour that is an empty slot at the next slot present along fixed scan lists (`CustomScreenLayout::left_scan_*`,
+neighbor that is an empty slot at the next slot present along fixed scan lists (`CustomScreenLayout::left_scan_*`,
 `right_scan_*`): with 5 chips, LEFT from slot 0 wraps to OK, RIGHT from OK to slot 0, OK and slot 11 are each
 other's UP/DOWN, and the chips have no UP/DOWN. The cursor starts on the first slot present (slot 0 when a chip was
-dealt). All neighbour bytes of all openings match **[dumps]**.
+dealt). All neighbor bytes of all openings match **[dumps]**.
 
 ## 3. Choosing
 
@@ -138,8 +138,8 @@ console-wide counter (0-4, +1 a frame) reads 0. That counter is each console's o
 One action per tick, in this order:
 
 1. UP/DOWN (repeat): UP from a top-row chip or OK opens the Cross window (§4) when the navi is MegaMan, Beast
-   Out isn't picked and a Cross is offered; otherwise the slot's vertical neighbour.
-2. LEFT (repeat), then RIGHT (repeat): the neighbour. A missing neighbour still uses up the key.
+   Out isn't picked and a Cross is offered; otherwise the slot's vertical neighbor.
+2. LEFT (repeat), then RIGHT (repeat): the neighbor. A missing neighbor still uses up the key.
 3. A (pressed): the slot's action (§3.3).
 4. B: take back the last pick (§3.4).
 5. START: the cursor goes to OK (it doesn't press it).
@@ -147,7 +147,7 @@ One action per tick, in this order:
 7. R on a chip: its description (§3.5).
 8. L: "no time to run away!" (§3.5).
 
-Cursor movement never skips greyed or picked slots. Verified on every state-4 tick of both players in both
+Cursor movement never skips grayed or picked slots. Verified on every state-4 tick of both players in both
 replays (37.5k ticks: 692 moves, 174 picks, 49 take-backs, 88 Cross windows, 40 OKs, 10 scraps…) **[dumps]**.
 
 ### 3.3 A
@@ -162,7 +162,7 @@ replays (37.5k ticks: 692 moves, 174 picks, 49 take-backs, 88 Cross windows, 40 
 
 ### 3.4 What can be picked (`sub_8028E32`)
 
-After every pick and take-back the chip slots are greyed or not (`screen::update_availability`). The picked
+After every pick and take-back the chip slots are grayed or not (`screen::update_availability`). The picked
 chips' codes (ignoring `*`) and ids are summarized first:
 
 ```
@@ -242,7 +242,7 @@ draws it (docs/frontend.md §3):
   (`+0x3D`). So the end, which clears the buffer, leaves the message's text up while the portrait fades out
   after A, and blanks it at once after held B (the end then runs on a tick that prints all at once);
 - the portrait (`chatbox_8040B8C`): drawn with the tint before the tick's step of its fade, added to each
-  colour channel (`sub_3005F34`); its face (`+0x1F0`..`+0x1F3`): still as `F5` loads it, talking from a character
+  color channel (`sub_3005F34`); its face (`+0x1F0`..`+0x1F3`): still as `F5` loads it, talking from a character
   that talks (`chatbox_8040C44`: letters and digits), idle after one that doesn't and after every command or
   character printed all at once (`chatbox_8040C9C`); the sprite takes the face when the talking changes, and its
   animation steps once a tick it's drawn;
@@ -283,7 +283,7 @@ which each opening zeroes). A on it while it is selectable (`sub_8028DD6`; sound
 - **First tick** (`sub_802721C`): +0x40 = 0; `sub_8029788` shuffles the chips it re-deals into a new order (below)
   with the console's RNG1; the button's state = selected (in use); availability (`sub_8028E32`).
 - **Then every tick** (`sub_802723A`): +0x40 += 1; every 4th: on the 8th (+0x40 = 32) `sub_802983C` writes the new
-  order into the folder, +0x16 += 1, the button's uses − 1 (state selectable if any are left, else greyed), and the
+  order into the folder, +0x16 += 1, the button's uses − 1 (state selectable if any are left, else grayed), and the
   grid takes keys again (state 4); before that, `sub_8029688` shows the chips shuffled once more: the same chips,
   shuffled in the folder itself with RNG1 (seven times; the final order doesn't depend on them, the RNG does).
   Either way availability again, and sound 0x113.
@@ -559,7 +559,7 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
 ## 9. Presentation: what the screen shows
 
 The simulation above is all the battle needs. What each console draws of its own screen is presentation: the
-frontend draws the local player's (nettai-frontend `custom`, docs/frontend.md §3), from the `Screen` and from
+frontend draws the local player's (nettai-render `custom`, docs/frontend.md §3), from the `Screen` and from
 `Screen::look` (`custom/look.rs`), the part of the original's control block at `0x020364C0` and of its VRAM that
 the screen's drawing reads. The state digest leaves `look` out, like a sprite's `Look`; nothing the simulation
 reads depends on it.
@@ -575,7 +575,7 @@ reads depends on it.
   further out than 0x67.
 - **What the window's tiles hold.** The original copies tiles into VRAM when something changes and not otherwise,
   so the look keeps what it copied: the chip window's last draw (`sub_8028476`: the slot under the cursor, the
-  picks then, and the last chip drawn, whose element's colours palette 11 keeps from screen to screen within a
+  picks then, and the last chip drawn, whose element's colors palette 11 keeps from screen to screen within a
   round); the slots as last drawn (`sub_8028250`, on opening and after every pick or take-back, so the chips OK
   takes out of the folder stay drawn while the window slides out); the picked column's icons (`sub_80281D4`: a
   pick's chip as checked, Beast Out's the BeastOut chip's, and after a Beast Out the picks again in their new
@@ -604,7 +604,7 @@ reads depends on it.
   again; the slots' tiles keep the look they were last drawn with (`look.slot_picked`: a picked chip's slot shows
   the empty icon until the slots are drawn again, on the scrap's last tick).
 - **The Program Advance animation**: its own counter (`word_2036660`+0xC, every tick, from 0 when the names begin)
-  steps the names' colours through three sets every 16 ticks (`sub_802B9E4`: background palette 10's first four,
+  steps the names' colors through three sets every 16 ticks (`sub_802B9E4`: background palette 10's first four,
   `byte_802BA48`), and the screen fades a quarter of the way for it (0x14, and 0x10 back, at 8 a frame). The names
   themselves (the picks', the recipe's taken off, the Program Advance's in their place) are the frontend's, from the
   animation's step and timer, the Program Advance formed and the hand built at OK.

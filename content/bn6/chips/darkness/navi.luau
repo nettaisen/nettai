@@ -77,7 +77,7 @@ local CHARGING = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim 
 local CHARGED = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 2, palette = 0 }
 local GLOW_X, GLOW_Z = 0, 16
 
--- Bass's afterimages (`sub_80BFD90`): their colour shader and lifetime.
+-- Bass's afterimages (`sub_80BFD90`): their color shader and lifetime.
 local AFTERIMAGE_SHADER, AFTERIMAGE_TICKS = 0x8108, 0xF
 
 -- The controller calls Dark MegaMan's spawner (`sub_80BFCD0`) through r3,

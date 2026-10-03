@@ -1,7 +1,7 @@
 --!strict
 -- AirSpin1-3: a whirlwind top set down ahead that rolls forward and
 -- spins, hitting the panels around it (./action, ./top); each level's top
--- in its own colours spins once more.
+-- in its own colors spins once more.
 
 local action = require("./action")
 local top = require("./top")

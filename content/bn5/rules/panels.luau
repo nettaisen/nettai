@@ -1,6 +1,6 @@
 --!strict
 -- BN5's panels (docs/design/bn5-map.md §15.2): its 11 panel types (0x0800BCF0) are BN6's but for metal (type 5,
--- BN6's road flags, a plate's look), lava (type 8, the volcano's flags and sound but its own behaviour) and sea
+-- BN6's road flags, a plate's look), lava (type 8, the volcano's flags and sound but its own behavior) and sea
 -- (type 10, flag 0x20000); it has no roads. Each type's flag bits; the sound a panel trail makes turning a panel
 -- into it (0x080113A0); which panels start visible and the front edges (0x0800ABAC, 0x0800ABD4); the step rules
 -- (0x0800CAE8, dashes 0x0800E114: BN6's values). BN5 has no any-side step rule (BN6's `sub_800E680` is absent):

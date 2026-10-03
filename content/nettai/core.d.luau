@@ -991,7 +991,7 @@ declare battle: {
     patch_cards: (side: number) -> { { card: PatchCard, enabled: boolean } },
     -- A side's NaviCust (the player's setup's; a game's rules compile it into
     -- the navi's stats in `round_setup`): its board's expansions and its
-    -- programs in its list's order, each with its color, its centre on the
+    -- programs in its list's order, each with its color, its center on the
     -- 7x7 grid, its quarter turns clockwise and whether it is compressed;
     -- nil when the setup gives none (the stats are already the NaviCust's).
     navicust: (side: number) -> NaviCust?,
@@ -1151,7 +1151,7 @@ declare field: {
 }
 
 -- Where an object's HP number shows (`battle.show_hp`): `dx`, `dy` pixels
--- from where the HUD projects its position (0 if nil), the digits centred
+-- from where the HUD projects its position (0 if nil), the digits centered
 -- there; with `damage`, the damage it took (its max HP less its HP), its
 -- digits right-aligned in four places from there (what the original does
 -- for LilBoiler).
@@ -1389,7 +1389,7 @@ declare asset: {
 -- field holds a definition or an asset, or nil.
 export type StateSchema = { [string]: string | { string } }
 
--- An object kind: one behaviour; what differs between uses goes in its
+-- An object kind: one behavior; what differs between uses goes in its
 -- state when spawned. `id` is qualified by its owner's folder when it lives
 -- in one ("minibomb/held").
 export type KindSpec = {
@@ -1522,7 +1522,7 @@ export type DamageFormula =
 
 export type ChipSpec = {
     id: string,
-    -- The palette of its picture on the custom screen, 16 BGR555 colours,
+    -- The palette of its picture on the custom screen, 16 BGR555 colors,
     -- for a chip whose palette no ROM holds (the pack's picture is black
     -- without it). Presentation only.
     art_palette: { number }?,
@@ -1833,7 +1833,7 @@ export type PatchCard = PatchCardSpec
 -- docs/design/navicust.md): what every game's program is. Its key (compat's
 -- navicust.toml gives its number), the colors it comes in in its variants'
 -- order, whether it is a plus part, and its shape: seven rows of seven cells
--- (`#` a cell it covers, `.` one it doesn't), centred on the middle cell, and
+-- (`#` a cell it covers, `.` one it doesn't), centered on the middle cell, and
 -- compressed (nil: it doesn't compress). What it does is a game's rules'
 -- (BN6's: `bug`, `exclusive`, `anywhere`, `effects`, read by rules/navicust). Its name is
 -- the locales' (locales/<lang>.toml's `navicust-programs`).

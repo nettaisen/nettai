@@ -141,7 +141,7 @@ These are the game's, kept bit-exact; the API exposes them and must not smooth t
   breaking edit it in place. A reservation succeeds only if nobody holds the panel.
 - **Sprites.** A frame of duration d is current for exactly d updates. Which stepping routine an object calls
   (`update_sprite`, `update_sprite_while_dimmed`, `update_sprite_while_paused`, `step_sprite`) is part of its
-  behaviour. Animation timing is simulation data (lifetimes end on frame flags); pixels and the look are
+  behavior. Animation timing is simulation data (lifetimes end on frame flags); pixels and the look are
   output only.
 - **RNG.** One simulation stream, drawn in object update order through `battle.rng`, `rng_positive` and
   `jitter`. A content change that adds, removes or reorders a draw changes everything after it.
@@ -227,7 +227,7 @@ the tick at which the action opens the window.
 
 Freed collision slots keep their mask bits and fields; a deleted player keeps its collision handle, so once
 another object reuses the slot, the dead player's "status" is that object's. Generational handles would be
-safer and would change behaviour the traces observe. A handle's meaning is "whatever is in that slot now",
+safer and would change behavior the traces observe. A handle's meaning is "whatever is in that slot now",
 which is the game's meaning.
 
 ### 4.10 Dimming and the cut-in

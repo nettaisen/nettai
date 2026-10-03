@@ -188,7 +188,7 @@ return define.roles {
         bubble_pop = asset.sound("bn6:bubble-pop"),
         confusion = asset.sound("bn6:confusion"),
         -- A navi turns invisible, shows again (or enters), arrives
-        -- mid-battle; something goes (a cancelled defensive chip,
+        -- mid-battle; something goes (a canceled defensive chip,
         -- uninstalled programs, a Cross navi's special, a form taken off).
         invisible = asset.sound("bn6:invisible"),
         appear = asset.sound("bn6:appear"),

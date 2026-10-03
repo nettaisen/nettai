@@ -42,7 +42,7 @@ pub struct State {
 }
 
 /// A program picked up: what it is and how it is turned and compressed,
-/// the cell of it the cursor holds (as an offset from its centre, so that
+/// the cell of it the cursor holds (as an offset from its center, so that
 /// cell stays under the cursor), and where it was on the grid if it was
 /// picked off it (its place in the list and the program as it was).
 #[derive(Clone, Copy, Debug)]
@@ -68,7 +68,7 @@ pub enum Edit {
     /// The placed program at this place in the list picked up by the cell
     /// pressed.
     PickUp(usize, u8, u8),
-    /// The held program put down with its centre on this cell.
+    /// The held program put down with its center on this cell.
     Place(u8, u8),
     /// The held program put back where it was picked up from.
     PutBack,
@@ -115,7 +115,7 @@ fn start_grid(content: &Content, side: &mut Side, largest: u8) {
     side.navicust = Some(NaviCust::new(&[], largest).expect("an empty NaviCust"));
 }
 
-/// Whether `shape` can go down with its centre on (x, y): on the board
+/// Whether `shape` can go down with its center on (x, y): on the board
 /// (`NaviCustRules::fits`) and over no other program.
 fn fits(content: &Content, board: Option<&Board>, parts: &[PlacedProgram], shape: &Shape, x: i32, y: i32) -> bool {
     let n = SIZE as i32;
@@ -239,7 +239,7 @@ pub fn update(content: &Content, side: &mut Side, state: &mut State, edit: Edit)
             if let Some(h) = state.held.as_mut() {
                 if content.navicust_program(h.program).compressed.is_some() {
                     h.compressed = on;
-                    // Its shape is another: held by its centre.
+                    // Its shape is another: held by its center.
                     h.grab = (0, 0);
                 }
                 return false;
@@ -337,7 +337,7 @@ impl Grid<'_> {
         self.occupied.get(y as usize)?.get(x as usize).copied().flatten()
     }
 
-    /// Where the held program's centre goes with the held cell on `cell`,
+    /// Where the held program's center goes with the held cell on `cell`,
     /// and whether it fits there.
     fn landing(&self, cell: (i32, i32)) -> Option<((i32, i32), bool)> {
         let g = self.held.as_ref()?;
@@ -418,7 +418,7 @@ impl canvas::Program<Msg> for Grid<'_> {
             let edge = if ok { Color::from_rgb8(0x60, 0xF0, 0x90) } else { Color::from_rgb8(0xF0, 0x40, 0x40) };
             let fill = Color { a: if ok { 0.8 } else { 0.45 }, ..g.color };
             let (n, mid) = (SIZE as i32, (SIZE / 2) as i32);
-            // Its cells about a centre that may be off the grid.
+            // Its cells about a center that may be off the grid.
             for (cx, cy) in cells(&g.shape, mid as u8, mid as u8).map(|(cx, cy)| (cx - mid + x, cy - mid + y)) {
                 if !(0..n).contains(&cx) || !(0..n).contains(&cy) {
                     continue;

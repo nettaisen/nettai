@@ -14,14 +14,14 @@ file gives each side its NaviCust (docs/frontend.md §6), and nettai-editor edit
 |---|---|---|
 | A program: its colors, shape, compressed shape, whether it is a plus part | the engine's record of every game's program | `define.navicust_program`, `Registry::NaviCustProgram`, `NaviCustProgramDef` |
 | What a program does, which bug it brings, which programs it excludes | the game's rules' data on the definition | BN6: `effects`, `bug`, `exclusive` (and `anywhere`), read by rules/navicust |
-| A player's NaviCust: the programs placed (program, color, centre, quarter turns, compressed) and the board's expansions | the player's setup | `PlayerSetup::navicust: Option<NaviCust>` (`crate::navicust`) |
+| A player's NaviCust: the programs placed (program, color, center, quarter turns, compressed) and the board's expansions | the player's setup | `PlayerSetup::navicust: Option<NaviCust>` (`crate::navicust`) |
 | The board: which cells a program may cover, its frame, the command line | the game's rule section | `define.rules("navicust", ...)`, `Rules::navicust` (`NaviCustRules`) |
 | The compile: placement into stats and bugs | the game's rules | BN6's `navicust` system (`round_setup`) |
 | A program's name | the locales | `[navicust-programs]` in locales/<lang>.toml |
-| A program's number (a save's part id is 4 × it + the colour variant) | compat | content/bn6/compat/navicust.toml |
+| A program's number (a save's part id is 4 × it + the color variant) | compat | content/bn6/compat/navicust.toml |
 
 So the engine knows a NaviCust's geometry, which is generic: a 7x7 grid (`navicust::SIZE`), a program's shape
-centred on its middle cell, quarter turns as BN6's four copies make them (`navicust::rotate`), and boards of `o`
+centered on its middle cell, quarter turns as BN6's four copies make them (`navicust::rotate`), and boards of `o`
 (board), `f` (frame) and `.` (no cell) cells. It also knows the one placement rule every NaviCust game shares,
 `NaviCustRules::fits` (BN6's `sub_813BB00`: each covered cell is a board or frame cell, and not all of them are
 frame). It knows nothing of what a program does. The definition's other fields are the game's, which its rules
@@ -47,7 +47,7 @@ byte for byte, so the programs have no version or region differences.
 ```luau
 return define.navicust_program {
     id = "hp-50",
-    colors = { "white", "pink", "blue" },  -- part ids 4n, 4n+1, 4n+2; 4n+3 has no colour
+    colors = { "white", "pink", "blue" },  -- part ids 4n, 4n+1, 4n+2; 4n+3 has no color
     plus = true,                           -- +1: 1
     shape = { ".......", ".......", "...#...", "...#...", ".......", ".......", "......." },
     bug = "hp",                            -- +4: bug group 9
@@ -55,8 +55,8 @@ return define.navicust_program {
 }
 ```
 
-- **Colors** are by name: `white`, `yellow`, `pink`, `red`, `blue`, `green` are colours 1 to 6. A placed program's
-  colour is an index into its definition's list, which is the variants' order.
+- **Colors** are by name: `white`, `yellow`, `pink`, `red`, `blue`, `green` are colors 1 to 6. A placed program's
+  color is an index into its definition's list, which is the variants' order.
 - **The table's bytes** are named by what they do. +0 is the exclusive group: `super-armor`, `guard` (Shield,
   Reflect, AntiDmg), `encounter-element` (OilBody, Fish, Battery, Jungle), `l-button` (Humor, Poem) and
   `custom-screen` (ChpShufl, NumbrOpn). +1 is 0 for a program, 1 for a plus part, and 2 for one that works anywhere
@@ -76,20 +76,20 @@ The original's `reloadCurNaviStatBoosts` calls `sub_813C458` when the PET's navi
 `round_setup` hook is that routine. The stock ruleset runs it before the patch cards, which apply to what it made
 (docs/engine/patch-cards.md §1.2). It works in six steps.
 
-1. **The grid.** Each program covers its shape's cells, centred on its place (`sub_813B950`; a later program
+1. **The grid.** Each program covers its shape's cells, centered on its place (`sub_813B950`; a later program
    overwrites an earlier one's cell). A program is compressed by its part id's event flag, 0x2660 + the id. A save
-   keeps it per program and colour, so a match file's copies of one program in one colour must agree.
+   keeps it per program and color, so a match file's copies of one program in one color must agree.
 2. **The bugs counted** (`sub_813BBD4`), each counted for a program's `bug`:
    - **The command line** (row 3), right to left (`sub_813BC1C`). Each program on it counts once, at its rightmost
      cell. A plus part there counts for its bug and still works. A program there works. An `anywhere` program works
      with no bug.
    - **Off the command line** (`sub_813BC98`). A program there counts for its bug and doesn't work. A plus part works.
-   - **Beside one of its colour** (`sub_813BD24`). Each program's shape is moved a cell left, right, up and down. Each
-     other program it meets counts once, but only on a cell where a neighbour counts (`byte_813C640`: not the grid's
-     top row or outer columns; its bottom row does count). A neighbour of the same colour counts for **the
-     neighbour's** bug (`sub_813BE38` reads the bug group of the program it found). So two touching programs of
-     one colour bug each other's groups.
-   - **The colours** (`sub_813BEA8`): five distinct colours count once for `status`; six or more count twice for
+   - **Beside one of its color** (`sub_813BD24`). Each program's shape is moved a cell left, right, up and down. Each
+     other program it meets counts once, but only on a cell where a neighbor counts (`byte_813C640`: not the grid's
+     top row or outer columns; its bottom row does count). A neighbor of the same color counts for **the
+     neighbor's** bug (`sub_813BE38` reads the bug group of the program it found). So two touching programs of
+     one color bug each other's groups.
+   - **The colors** (`sub_813BEA8`): five distinct colors count once for `status`; six or more count twice for
      `status-strong`.
    - **On the frame** (`sub_813C584`): a program covering a frame cell of the board counts for its bug, once.
 3. **The stats reset** (`sub_8136C24`). The original resets the stats to navi 0's fresh row (`init_8013B4E`). It keeps
@@ -132,9 +132,9 @@ setup gives both (nettai-match's `starting`).
 
 ## 4. Other games
 
-A game brings its own programs (its root's `define.navicust_program`s, with its own names in its own colours), its
+A game brings its own programs (its root's `define.navicust_program`s, with its own names in its own colors), its
 own board section and its own compile system. BN5's NaviCust works as BN6's does: a board with a command line, plus
-parts and colour bugs (bn5-map.md has its NaviStats bytes). Its board, its program table and its bug table would be
+parts and color bugs (bn5-map.md has its NaviStats bytes). Its board, its program table and its bug table would be
 its own data, and its compile a BN5 system. None of that is ported yet. The engine's model, the
 match file and the editor take it as they are. The editor draws whichever board the side's game's section gives, and
 lists the content's programs. BN4's NaviCust has two command lines and no plus parts. `NaviCustRules::command_line` is
@@ -150,8 +150,8 @@ result with the original's:
 - **The chip lab's scenarios that set a NaviCust** are compared on their recording's setup: every modeled stat byte,
   and the bug flag, with the patch cards on top where they are installed. That is 1,274 sides: 167 with programs,
   201 programs in all, and 112 with the bug flag. Between them they cover all 46 programs and every bug group a
-  program brings, including the result and encounter bugs. They also cover five and six colours, BugStop, the
-  frame, plus parts on the command line, programs off it, same-coloured neighbours, two programs of one exclusive
+  program brings, including the result and encounter bugs. They also cover five and six colors, BugStop, the
+  frame, plus parts on the command line, programs off it, same-colored neighbors, two programs of one exclusive
   group on the command line, and compressed shapes. Every one matches. The library's `navicust-compile/` scenarios
   were written for the programs and bugs the others didn't place.
 
@@ -162,7 +162,7 @@ is compiled compressed by the original.
 ## 6. Unverified (ported)
 
 - A program that works anywhere (+1 = 2): no BN6 part is one.
-- The `unread` bug (group 10): no part or colour count brings it, and nothing reads +0x62.
+- The `unread` bug (group 10): no part or color count brings it, and nothing reads +0x62.
 - Bug groups 13 to 15: no part has one. The original's table would read past its end.
 - The smaller boards (4x4, 5x4: key item 0x71 below 2). Every recorded save has the full board. A match file can
   name one (`expansions`).

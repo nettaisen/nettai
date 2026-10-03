@@ -1,6 +1,6 @@
 --!strict
 -- A water mark of SpoutMan's geyser (the original's effect object #0x2E,
--- `sub_80E39A0`): 2 pixels up and down from its panel's centre it shows
+-- `sub_80E39A0`): 2 pixels up and down from its panel's center it shows
 -- for its ticks, the geyser's own column or the trail to it. The navi
 -- chip's (the original's Param3 1) counts down and steps its sprite while
 -- dimmed; another waits a dimming out, and goes as soon as its owner isn't
