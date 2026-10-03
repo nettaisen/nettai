@@ -89,6 +89,9 @@ pub struct NaviStats {
     pub weapon_bytes: [u8; 4],
     /// BN5's own: the light/dark value.
     pub light_dark: LightDark,
+    /// BN5's own (+0x4C): Hub Style, the NaviCust's HubBatc in its fourth
+    /// color (part 0x6F, 0x08138214): 1, else 0.
+    pub hub_style: u8,
     /// The whole block.
     pub raw: [u8; NAVI_STATS],
 }
@@ -138,6 +141,7 @@ pub fn navi_stats(b: &[u8; NAVI_STATS]) -> Result<NaviStats, String> {
         max_hp: u16at(0x42),
         weapon_bytes: [b[0x04], b[0x05], b[0x07], b[0x39]],
         light_dark: LightDark(u16at(0x44)),
+        hub_style: b[0x4C],
         raw: *b,
     })
 }

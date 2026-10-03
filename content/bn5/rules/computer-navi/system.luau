@@ -122,8 +122,12 @@ computer_navi.system = define.system {
             idle(navi)
             return "nothing"
         end,
-        -- The navi type's tick of its AI index (0x080F23FC's entry).
+        -- The navi type's tick of its AI index (0x080F23FC's entry), for a navi of the navi type (a player's navi
+        -- has its own tick: the side's other systems' hooks).
         navi_tick = function(_side: number, navi: Object)
+            if navi.actor_type ~= "navi" then
+                return
+            end
             check(navi)
             tick(navi)
         end,
