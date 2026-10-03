@@ -383,7 +383,30 @@ local function compile(side: number)
     stats.hp = stats.max_hp
 end
 
+-- ChpShufl's re-deal button (`sub_80280E0`), two cells wide on slots 8
+-- and 9 (where DustCross's scrap goes first), usable once: A deals the
+-- chips not picked again (`sub_8028DD6`).
+local redeal: ButtonSpec = {
+    slot = 8,
+    cells = 2,
+    uses = 1,
+    right = 11,
+    left = 7,
+    shown = function(side: number): boolean
+        local stats = battle.navi(side)
+        return stats.navi.forms ~= nil and stats.chip_shuffle
+    end,
+    pressed = function(side: number)
+        if custom.cursor_state(side) == "selectable" then
+            custom.redeal(side)
+        else
+            custom.refuse(side)
+        end
+    end,
+}
+
 return define.system {
     id = "bn6:navicust",
+    buttons = { redeal = redeal },
     hooks = { round_setup = compile },
 }

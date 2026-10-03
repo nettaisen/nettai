@@ -219,6 +219,8 @@ pub struct SystemDef {
     hooks: Vec<Option<FnId>>,
     /// Its own actions, which reach its state.
     pub actions: Vec<ActionHandle>,
+    /// Its custom-screen buttons.
+    pub buttons: Vec<ButtonHandle>,
 }
 
 impl SystemDef {
@@ -228,6 +230,31 @@ impl SystemDef {
         self.hooks[i]
     }
 }
+
+/// A custom-screen button of a system's (docs/design/rules-in-luau.md
+/// §4.4): where it sits, and its functions, which run as its system's.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ButtonDef {
+    pub system: SystemHandle,
+    /// Its name in the system's `buttons` (what the frontend draws it by).
+    pub name: String,
+    /// Its first slot, and how many it takes (1 or 2).
+    pub slot: u8,
+    pub cells: u8,
+    /// Uses it has on a screen (the machinery it starts counts them).
+    pub uses: u8,
+    /// Its first cell's right neighbor and its last cell's left one, if
+    /// not the layout's.
+    pub right: Option<u8>,
+    pub left: Option<u8>,
+    pub shown: FnId,
+    pub state: Option<FnId>,
+    pub pressed: FnId,
+}
+
+/// A button, by its place in [`Defs::buttons`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ButtonHandle(pub u16);
 
 /// A player's rules (docs/design/rules-in-luau.md §2.2): its systems, in
 /// the order the framework calls them, and its game, whose data (roles,
@@ -374,6 +401,9 @@ pub struct Defs {
     pub actions: Vec<ActionDef>,
     pub weapons: Vec<WeaponDef>,
     pub chips: Vec<ChipDef>,
+    /// The chips whose damage is a formula (read from the battle), in
+    /// handle order.
+    pub formula_chips: Vec<ChipHandle>,
     pub navis: Vec<NaviDef>,
     pub forms: Vec<FormDef>,
     pub stages: Vec<StageDef>,
@@ -401,6 +431,8 @@ pub struct Defs {
     pub roles: Vec<Roles>,
     /// The systems and rulesets (docs/design/rules-in-luau.md), by handle.
     pub systems: Vec<SystemDef>,
+    /// The systems' custom-screen buttons.
+    pub buttons: Vec<ButtonDef>,
     pub rulesets: Vec<RulesetDef>,
     /// Each action's system, if it is one's, by action handle.
     action_owner: Vec<Option<SystemHandle>>,
@@ -431,6 +463,10 @@ pub struct Defs {
 impl Defs {
     pub fn system(&self, h: SystemHandle) -> &SystemDef {
         &self.systems[h.index()]
+    }
+
+    pub fn button(&self, h: ButtonHandle) -> &ButtonDef {
+        &self.buttons[h.0 as usize]
     }
 
     /// The system an action is one of, if any (its state is that system's).
@@ -1563,12 +1599,13 @@ impl Defs {
 
         // The systems and the rulesets.
         let mut systems = Vec::new();
+        let mut buttons: Vec<ButtonDef> = Vec::new();
         for d in definitions.of(Registry::System) {
             let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks", "actions"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks, actions)")));
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "hooks", "custom", "buttons", "actions"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, hooks, custom, buttons, actions)")));
                     }
                 }
             }
@@ -1585,8 +1622,8 @@ impl Defs {
                 Data::Map(entries) => {
                     for (k, v) in entries {
                         let name = k.to_string();
-                        let Some(i) = SystemHook::ALL.iter().position(|h| h.name() == name) else {
-                            let known: Vec<&str> = SystemHook::ALL.iter().map(|h| h.name()).collect();
+                        let Some(i) = SystemHook::ALL.iter().position(|h| h.name() == name && !name.contains('.')) else {
+                            let known: Vec<&str> = SystemHook::ALL.iter().map(|h| h.name()).filter(|n| !n.contains('.')).collect();
                             return Err(what(&format!("no hook is named `{name}` (the hooks: {})", known.join(", "))));
                         };
                         if !matches!(v, Data::Function) {
@@ -1596,6 +1633,26 @@ impl Defs {
                     }
                 }
                 _ => return Err(what("`hooks` is a table of functions by hook name")),
+            }
+            // Its custom screen's (docs/design/rules-in-luau.md §4.4): the
+            // hooks named `custom.<name>`.
+            match d.spec.field("custom") {
+                Data::Nil => {}
+                Data::Map(entries) => {
+                    for (k, v) in entries {
+                        let name = format!("custom.{k}");
+                        let Some(i) = SystemHook::ALL.iter().position(|h| h.name() == name) else {
+                            let known: Vec<&str> =
+                                SystemHook::ALL.iter().filter_map(|h| h.name().strip_prefix("custom.")).collect();
+                            return Err(what(&format!("no custom-screen hook is named `{k}` (the hooks: {})", known.join(", "))));
+                        };
+                        if !matches!(v, Data::Function) {
+                            return Err(what(&format!("custom-screen hook `{k}` is not a function")));
+                        }
+                        hooks[i] = Some(functions.id(FnSource::slot(Registry::System, &d.key, &name)));
+                    }
+                }
+                _ => return Err(what("`custom` is a table of functions by custom-screen hook name")),
             }
             let own: &[Data] = match d.spec.field("actions") {
                 Data::Nil => &[],
@@ -1611,12 +1668,57 @@ impl Defs {
                 let h = actions.binary_search_by(|a| a.key.as_str().cmp(key)).expect("a defined action");
                 system_actions.push(ActionHandle(h as u16));
             }
+            // Its custom-screen buttons, by name.
+            let system = SystemHandle(systems.len() as u16);
+            let mut own_buttons = Vec::new();
+            match d.spec.field("buttons") {
+                Data::Nil => {}
+                Data::Map(entries) => {
+                    for (k, spec) in entries {
+                        let name = k.to_string();
+                        let at = |e: &str| what(&format!("button `{name}`: {e}"));
+                        let Data::Map(fields) = spec else { return Err(at("a table of its place and functions")) };
+                        for (f, _) in fields {
+                            let f = f.to_string();
+                            if !["slot", "cells", "uses", "right", "left", "shown", "state", "pressed"].contains(&f.as_str()) {
+                                return Err(at(&format!("`{f}` is no field of a button (slot, cells, uses, right, left, shown, state, pressed)")));
+                            }
+                        }
+                        let byte = |f: &str| -> Result<Option<u8>, ContentError> {
+                            match spec.field(f) {
+                                Data::Nil => Ok(None),
+                                v => v.int().filter(|n| (0..=255).contains(n)).map(|n| Some(n as u8)).ok_or_else(|| at(&format!("`{f}` is a number"))),
+                            }
+                        };
+                        let mut func = |f: &str, needed: bool| -> Result<Option<FnId>, ContentError> {
+                            match spec.field(f) {
+                                Data::Function => Ok(Some(functions.id(FnSource::slot(Registry::System, &d.key, &format!("buttons.{name}.{f}"))))),
+                                Data::Nil if !needed => Ok(None),
+                                _ => Err(at(&format!("`{f}` is a function"))),
+                            }
+                        };
+                        let shown = func("shown", true)?.expect("needed");
+                        let state = func("state", false)?;
+                        let pressed = func("pressed", true)?.expect("needed");
+                        let slot = byte("slot")?.ok_or_else(|| at("`slot` is missing"))?;
+                        let cells = byte("cells")?.unwrap_or(1);
+                        if !(1..=2).contains(&cells) {
+                            return Err(at("`cells` is 1 or 2"));
+                        }
+                        let (uses, right, left) = (byte("uses")?.unwrap_or(0), byte("right")?, byte("left")?);
+                        own_buttons.push(ButtonHandle((buttons.len()) as u16));
+                        buttons.push(ButtonDef { system, name: name.clone(), slot, cells, uses, right, left, shown, state, pressed });
+                    }
+                }
+                _ => return Err(what("`buttons` is a table of buttons by name")),
+            }
             systems.push(SystemDef {
                 key: d.key.clone(),
                 state: layout("state")?,
                 setup: layout("setup")?,
                 hooks,
                 actions: system_actions,
+                buttons: own_buttons,
             });
         }
         // Each action's system, if it is one's.
@@ -1728,8 +1830,11 @@ impl Defs {
         let kind_keys: BTreeMap<String, KindHandle> =
             kinds.iter().enumerate().map(|(i, k)| (k.key.clone(), KindHandle(i as u16))).collect();
         let engine = ENGINE_KINDS.iter().map(|e| kind_keys[e.1]).collect();
+        let formula_chips =
+            chips.iter().enumerate().filter(|(_, c)| c.record.formula.is_some()).map(|(i, _)| ChipHandle(i as u16)).collect();
         let mut defs = Defs {
             defined: true,
+            formula_chips,
             definitions,
             handles,
             kind_keys,
@@ -1757,6 +1862,7 @@ impl Defs {
             collisions,
             roles,
             systems,
+            buttons,
             rulesets,
             action_owner,
             change_actions,
