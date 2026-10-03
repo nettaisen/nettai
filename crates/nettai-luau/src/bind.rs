@@ -2330,18 +2330,18 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         HookCall::InstantChip { .. } | HookCall::RoleEncased { .. } | HookCall::NaviLeft { .. } | HookCall::FormNavi { .. } => {
             Ok(Value::Nil)
         }
-        // A chip check's (or cost's) substitute; no other system hook returns
-        // anything.
-        HookCall::System { hook: hook @ (SystemHook::ChipCheck | SystemHook::ChipCost), .. } if !v.is_nil() => {
-            match bound.def(&v) {
-                Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),
-                _ => Err(mlua::Error::runtime(format!(
-                    "a system's {} returns nil or a chip definition, not a {}",
-                    hook.name(),
-                    v.type_name()
-                ))),
-            }
-        }
+        // A chip check's, cost's or substitute's chip; no other system hook
+        // returns anything.
+        HookCall::System {
+            hook: hook @ (SystemHook::ChipCheck | SystemHook::ChipCost | SystemHook::ChipSubstitute), ..
+        } if !v.is_nil() => match bound.def(&v) {
+            Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),
+            _ => Err(mlua::Error::runtime(format!(
+                "a system's {} returns nil or a chip definition, not a {}",
+                hook.name(),
+                v.type_name()
+            ))),
+        },
         // A controller's or a takeover's outcome, by the original's number
         // (4: an attack of the takeover's own).
         HookCall::System { hook: SystemHook::Controller | SystemHook::Takeover, .. } => match &v {

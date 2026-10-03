@@ -887,6 +887,8 @@ declare class Navi
     encounters: number
     -- `sub_800FE52`: how many kinds of NaviCust bug the navi has.
     bug_kinds: number
+    -- BN5's NaviStats +0x32: the turns a soul lasts longer (SoulT+1), which the custom screen adds to a soul's three.
+    soul_turn_bonus: number
 end
 
 -- A one-tick hit region (`battle.hitbox`).
@@ -1661,6 +1663,11 @@ export type SystemSpec = {
     buttons: { [string]: ButtonSpec }?,
     -- Its custom-screen windows, by name (`custom.open_window`).
     windows: { [string]: WindowSpec }?,
+    -- Its fields on its game's definitions (docs/design/rules-in-luau.md
+    -- §7.5), by registry (chip, form, navi): each a type name, a list of
+    -- variants, or a table of such fields. The engine checks a definition's
+    -- and reads none of them.
+    extends: { [string]: { [string]: any } }?,
     custom: {
         -- As the screen opens: how many chips it deals (`sub_802A40C`).
         -- None answering: the custom level (8 at most), NumbrOpn's 10, and
@@ -1715,6 +1722,15 @@ export type SystemSpec = {
         -- as `chip_check`; a chip in the use's place skips the rest,
         -- `chip_check` too.
         chip_cost: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
+        -- A chip's use is prepared, before its record is loaded
+        -- (`sub_8010D58`): a chip is what the navi uses in its place, with
+        -- its own record, damage and bonus; nil, the chip. The first system
+        -- that answers decides.
+        chip_substitute: ((side: number, navi: Object, chip: Chip) -> Chip?)?,
+        -- A chip's use was prepared (`sub_80127C0`: a use, the rush's chain,
+        -- the counter cut-in's), its substitute taken: `chip` the chip it
+        -- uses (the zeroed chip for the empty hand).
+        chip_prepared: ((side: number, navi: Object, chip: Chip) -> ())?,
         -- A chip's use started (`sub_800FB54`, its action set): `chip` the
         -- chip it reads (the zeroed chip for the empty hand), `weapon` the
         -- form's weapon run instead of it (a charged use), else nil.

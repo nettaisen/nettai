@@ -1178,9 +1178,8 @@ with the new hooks, and its sections keep BN6's numbers by default.
   (0x080C374E) only has it reload at its next step (`"reload"`).
 - **The souls' engine items (bn5-map.md §15.8).** The `reactions` section's `stance_counter`, the navi's game's:
   the counter a stance's caught hit starts runs from the next tick in BN6 (`sub_80105F2`, `"next_tick"`), its
-  first step at once in BN5 (0x0800E340, `"at_once"`). The `effects` section's `resolve`, the arena's: BN5's hit
-  kernel (0x0801691C, `"bn5"`) has no FloatShoe test, lets the Elec element reach a submerged or bubbled side and
-  has its own guard types. The system hook `chip_cost(side, navi, chip)` answers as `chip_check` does, earlier in
+  first step at once in BN5 (0x0800E340, `"at_once"`). (BN5's hit kernel is the `reactions` section's
+  `hit_test`.) The system hook `chip_cost(side, navi, chip)` answers as `chip_check` does, earlier in
   the preparation (BN5's 0x08010030, before the hand bonus's panel is spent); the light-dark system's dark-chip
   use and cost moved there. The navi's `panel_bonus` and the form `chip_bonus`'s `uncharged` are BN5's hand bonus
   (0x0800D0A6); the attack's `attack_variant` (AIAttackVars +3) is what the anti-damage counters aim by.
@@ -1785,3 +1784,37 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
     both text modes (174 scenarios, 200,712 frames each); main's later merges were BN5's;
   - BN5's replays matched main's exactly, recording for recording count and frames, at main 851e3392, de4672cc and
     24565c25 (1,107 matched there).
+
+### S7a, systems' extensions and the chip's BN6 fields (2026-10-03)
+
+- **`extends`** (§7.5): a system declares fields its game's definitions may carry, by registry (`chip`, `form`,
+  `navi`). Each field is typed with a state type name, a list of variants, or a table of such fields.
+  - The define phase checks each of the game's definitions that carries one: the type, an integer's range, a
+    variant's name, a table's fields. A field has one owner among a game's systems.
+  - The engine reads none of it. Luau reads it on the definition, as before; tools read it through
+    `Defs::extension(registry, key, field)`, from the definitions the content keeps (`Defs::definitions`).
+  - Declared on SystemSpec in core.d.luau. The fields' Luau types stay on ChipSpec until S8 moves BN6's
+    declarations into bn6.d.luau.
+  - Not done: another game's definition carrying an extension under the system's qualified key. Nothing needs it
+    yet, and a definition without the field reads as the system's default in its own Luau (`beast` nil: no rush).
+- **The chip's BN6 fields leave `ChipData`:**
+  - `beast_lockon` and `lockon_mode` are the beast system's `beast = { lockon, rush }`. The Rust write of the
+    attack's `wrapped` from `beast_lockon` (the Team Battle special chip's) was dead: `set_attack` clears it, and
+    the system's `chip_used` writes it.
+  - `dark_substitute` and `hp_bug` are a new system's, `bn6:dark-chips` (rules/dark-chips/system.luau), last in
+    BN6's stock ruleset. Its new hook `chip_substitute(side, navi, chip)` spends a bug frag or gives the substitute
+    as the use is prepared (`sub_8010D58`), where Rust then loads the substitute's record, damage and bonus as
+    before. Its `chip_prepared(side, navi, chip)`, another new hook, worsens the HP bug (`sub_800B79A`) once the
+    use is prepared, its substitute taken.
+  - BN5's `chip_check` couldn't serve for the substitute: it replaces the action late, the attack as prepared.
+  - `ChipLinks::dark_substitute` is gone.
+- **Kept common**, as approved: `formula` (BN5 uses it) and the `no_chain` trait (the rush's chain is the
+  framework's `chain_next_chip`).
+- **Fixed during the move:** the first lab run lost two DrkSword scenarios (`cross-slash-charged`, 638 of 753
+  frames). The HP bug was in `chip_used`, which only the use's own path calls; `sub_80127C0` also prepares the rush's
+  chained chip and the counter cut-in's, and each worsens the bug. Hence `chip_prepared`, called where the Rust was.
+- **Porter impact:** none. No BN5 content uses these fields, and BN6's chips keep their keys: no script to re-run.
+- **Verify:** gen-content reads the rush, the substitute and the HP bug through `Defs::extension`, and decodes the
+  ROM's rush byte and lock-on mode into its own `RomChip`.
+- **Tests:** rules' `a_system_extends_its_games_definitions`, on a made-up extension of the test content's counter
+  system: the value kept, and a type, a range, a variant, a table field and a second owner refused.
