@@ -199,3 +199,7 @@
 "bn5:metagel/gel" = { pool = "attack", index = 0x45, scratch_position = true }
 "bn5:magnum/controller" = { pool = "effect", index = 0x30, scratch_position = true }
 "bn5:magnum/gunner" = { pool = "actor", index = 0x02 }
+"bn5:blakwing/controller" = { pool = "effect", index = 0x54, scratch_position = true }
+"bn5:blakwing/perch" = { pool = "effect", index = 0x55 }
+"bn5:blakwing/flock" = { pool = "attack", index = 0x7E, scratch_position = true }
+"bn5:blakwing/wing" = { pool = "attack", index = 0x7F }
