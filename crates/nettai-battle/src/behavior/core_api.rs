@@ -312,7 +312,7 @@ impl CoreApi for Battle {
     }
 
     fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef> {
-        kinds::beast_over_burst::spawn(self, navi)
+        kinds::burst::spawn(self, navi)
     }
 
     fn show_hud(&mut self, part: HudPart, shown: bool) {
@@ -1286,7 +1286,7 @@ impl CoreApi for Battle {
             ActorField::Extra => i(at.extra as i64),
             ActorField::SpecialSource => i(at.special_source as i64),
             ActorField::AttackKind => i(at.kind as i64),
-            ActorField::BeastLockon => i(at.beast_lockon as i64),
+            ActorField::Wrapped => i(at.wrapped as i64),
             ActorField::WrapperFresh => Value::Bool(at.wrapper_fresh),
             ActorField::ControllerFresh => Value::Bool(a.controller_fresh),
             ActorField::Exhausted => Value::Bool(a.exhausted),
@@ -1299,7 +1299,7 @@ impl CoreApi for Battle {
             ActorField::AttackCount => i(at.count as i64),
             ActorField::ActorType => i(actor_type_index(a.actor_type)),
             ActorField::AiIndex => i(a.ai_index as i64),
-            ActorField::LockonMarker => a.lockon_marker.into(),
+            ActorField::TargetMarker => a.target_marker.into(),
             ActorField::ChargeGlow => a.charge_glow.into(),
             ActorField::FullSynchroAura => a.full_synchro_aura.into(),
             ActorField::ChargeLevel => i(a.charge_level as i64),
@@ -1370,7 +1370,7 @@ impl CoreApi for Battle {
             (ActorField::AttackLockout, FieldValue::U8(x)) => at.lockout = x,
             (ActorField::Extra, FieldValue::U16(x)) => at.extra = x,
             (ActorField::SpecialSource, FieldValue::U8(x)) => at.special_source = x,
-            (ActorField::BeastLockon, FieldValue::U8(x)) => at.beast_lockon = x,
+            (ActorField::Wrapped, FieldValue::U8(x)) => at.wrapped = x,
             (ActorField::WrapperFresh, FieldValue::Bool(x)) => at.wrapper_fresh = x,
             (ActorField::ControllerFresh, FieldValue::Bool(x)) => a.controller_fresh = x,
             (ActorField::Exhausted, FieldValue::Bool(x)) => a.exhausted = x,
@@ -1380,7 +1380,7 @@ impl CoreApi for Battle {
             (ActorField::ThrownLook, FieldValue::Ref(_)) => at.thrown_look = thrown_look,
             (ActorField::ThrownAnim, FieldValue::U8(x)) => at.thrown_anim = x,
             (ActorField::AttackCount, FieldValue::U16(x)) => at.count = x,
-            (ActorField::LockonMarker, FieldValue::Object(r)) => a.lockon_marker = r,
+            (ActorField::TargetMarker, FieldValue::Object(r)) => a.target_marker = r,
             (ActorField::ChargeGlow, FieldValue::Object(r)) => a.charge_glow = r,
             (ActorField::FullSynchroAura, FieldValue::Object(r)) => a.full_synchro_aura = r,
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
@@ -1683,11 +1683,11 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn freeze_lockon_marker(&mut self, marker: ObjectRef, on: bool) -> ApiResult<()> {
-        if !self.objects.is_allocated(marker) || self.content.defs.engine_kind(self.objects.get(marker).kind) != Some(kinds::EngineKind::LockonMarker) {
-            return Err(ApiError::Other("freeze_lockon_marker: not a lock-on marker".into()));
+    fn freeze_target_marker(&mut self, marker: ObjectRef, on: bool) -> ApiResult<()> {
+        if !self.objects.is_allocated(marker) || self.content.defs.engine_kind(self.objects.get(marker).kind) != Some(kinds::EngineKind::TargetMarker) {
+            return Err(ApiError::Other("freeze_target_marker: not a lock-on marker".into()));
         }
-        if on { kinds::lockon_marker::freeze(self, marker) } else { kinds::lockon_marker::unfreeze(self, marker) }
+        if on { kinds::target_marker::freeze(self, marker) } else { kinds::target_marker::unfreeze(self, marker) }
         Ok(())
     }
 

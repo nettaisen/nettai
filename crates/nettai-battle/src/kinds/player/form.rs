@@ -11,7 +11,7 @@ use crate::battle::Battle;
 use crate::collision::f1;
 use crate::content::{FormEffects, Parts};
 use crate::kinds::common::{Progress, set_progress};
-use crate::kinds::{body_overlay, form_overlay, idle_overlay, lockon_marker};
+use crate::kinds::{body_overlay, form_overlay, idle_overlay, target_marker};
 use crate::object::{ObjectRef, flags};
 
 /// `sub_8010DF6`: the init hook of an identity's actor record, run on the
@@ -218,8 +218,8 @@ fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
         let hm = body_hit_modifier(b);
         super::reset_body_types(b, r, true, hm);
     }
-    if effects.has(FormEffects::LOCKON_MARKER) {
-        spawn_lockon_marker(b, r);
+    if effects.has(FormEffects::TARGET_MARKER) {
+        spawn_target_marker(b, r);
     }
     if effects.has(FormEffects::INVULNERABLE) {
         super::set_invulnerable(b, r, 0xFFFF);
@@ -233,9 +233,9 @@ fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
 }
 
 /// `sub_80E1620` unless AIData+0x40 already holds a marker.
-fn spawn_lockon_marker(b: &mut Battle, r: ObjectRef) {
-    if ai(b, r).lockon_marker.is_none() {
-        lockon_marker::spawn(b, r);
+fn spawn_target_marker(b: &mut Battle, r: ObjectRef) {
+    if ai(b, r).target_marker.is_none() {
+        target_marker::spawn(b, r);
     }
 }
 

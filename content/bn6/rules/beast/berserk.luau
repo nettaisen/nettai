@@ -161,7 +161,7 @@ end
 local function use_chip(navi: Object, s: State): "nothing" | "chip"
     if s.berserk_moves <= 3 then
         local x, y = NO_MARKER_X, NO_MARKER_Y
-        local marker = navi.lockon_marker
+        local marker = navi.target_marker
         if marker ~= nil then
             x, y = marker.panel_x, marker.panel_y
         end

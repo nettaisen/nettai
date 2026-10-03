@@ -132,8 +132,8 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
         // instead, and runs the action when it chooses
         // (`CoreApi::run_wrapped`).
         // (A wrapper of a system a side's rules lack doesn't run.)
-        if ai(b, r).attack.beast_lockon == 1
-            && let Some(wrapper) = b.roles_for(r).try_action(crate::content::ActionRole::BeastRush)
+        if ai(b, r).attack.wrapped == 1
+            && let Some(wrapper) = b.roles_for(r).try_action(crate::content::ActionRole::Wrapper)
             && b.content.defs.action_owner(wrapper).is_none_or(|s| b.system_slot(b.objects.get(r).alliance, s).is_some())
         {
             return crate::behavior::run_action(b, wrapper, r);
@@ -819,7 +819,8 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
     }
     let action = navi_action(b, r);
     if f & f1::INVULNERABLE != 0
-        && !super::form_of(b, r).kind.is_beast_over()
+        // (Not in a form with its own glow: Beast Over.)
+        && super::form_of(b, r).glow.is_none()
         && action != NaviAction::Entry
         // (`sub_8016860` reads CurAction: not during ChargeCross's tackle.)
         && !super::runs_role(b, r, crate::content::ActionRole::ChargeTackle)

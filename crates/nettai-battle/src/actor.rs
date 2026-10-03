@@ -147,7 +147,11 @@ pub struct AttackVars {
     pub special_source: u8,
     /// Which `set_attack` slot started the action.
     pub kind: u8,
-    pub beast_lockon: u8,
+    /// 1 while the action runs inside the side's wrapper (`sub_801B9E6`
+    /// runs the role `actions.wrapper` instead): BN6's Beast Out lock-on
+    /// byte, which its beast system sets as a chip's use starts
+    /// (`chip_used`) and the rush as it chains the next.
+    pub wrapped: u8,
     /// The lock-on mode the attack's own action asks the Beast Out rush
     /// for: the charged sword's (the role `charged_sword`), which its
     /// setup gives with the slash it starts (the original reads a table by
@@ -291,9 +295,9 @@ pub struct ActorData {
     /// restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses
     /// record it every tick (`sub_8108F74`); nothing sets it for players.
     pub bubble_base_z: i16,
-    /// AIData+0x40: the Beast Out lock-on marker (effect #0xF,
+    /// AIData+0x40: the target marker (effect #0xF, BN6's Beast Out lock-on marker:
     /// `sub_80E1620`), which `sub_80E1662` unfreezes.
-    pub lockon_marker: Option<ObjectRef>,
+    pub target_marker: Option<ObjectRef>,
     /// Action requests from input (`request::*`).
     pub requests: u32,
     /// Actor state bits (`status::*`).

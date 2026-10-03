@@ -202,7 +202,7 @@
 "engine/charge-glow" = { pool = "effect", index = 0x08, scratch_position_without_sprite = true }
 "bn6:falling-rock/chip" = { pool = "effect", index = 0x09 }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
-"engine/lockon-marker" = { pool = "effect", index = 0x0F }
+"engine/target-marker" = { pool = "effect", index = 0x0F }
 "engine/navi-chip" = { pool = "effect", index = 0x10, scratch_position = true }
 "bn6:vdoll/sparkles" = { pool = "effect", index = 0x11, scratch_position = true }
 "bn6:rising-bubble" = { pool = "effect", index = 0x14 }
@@ -279,4 +279,4 @@
 "bn6:absorbed-obstacle" = { pool = "effect", index = 0x87 }
 "engine/ice-visual" = { pool = "effect", index = 0x89 }
 "bn6:flmhook/hook" = { pool = "effect", index = 0x8C }
-"engine/beast-over-burst" = { pool = "effect", index = 0x90, scratch_position = true }
+"engine/burst" = { pool = "effect", index = 0x90, scratch_position = true }

@@ -51,7 +51,7 @@ end
 -- `sub_80EEFBC`: where to strike from, by the lock-on marker's panel
 -- (`sub_80E164A`).
 local function target(me: Object): (number, number)
-    local marker = me.lockon_marker
+    local marker = me.target_marker
     if marker == nil then
         error("SlashCross Beast's lunge reads the lock-on marker the navi doesn't have (sub_80E164A)")
     end

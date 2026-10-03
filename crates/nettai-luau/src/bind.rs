@@ -669,15 +669,15 @@ impl UserData for Object {
             let end_lag = int(&end_lag, "end_lag")? as u16;
             with(|api, _| api.start_move_to(this.0, p, end_lag).map_err(api_error))
         });
-        // The wrapper's (the role `actions.beast_rush`).
+        // The wrapper's (the role `actions.wrapper`).
         methods.add_method("run_wrapped", |_, this, ()| with(|api, _| api.run_wrapped(this.0).map_err(api_error)));
         methods.add_method("chain_next_chip", |_, this, ()| with(|api, _| api.chain_next_chip(this.0).map_err(api_error)));
         methods.add_method("panel_trail", |_, this, (x, y): (LuaValue, LuaValue)| {
             let p = panel(x, y)?;
             with(|api, _| api.panel_trail(this.0, p).map_err(api_error))
         });
-        methods.add_method("freeze_lockon_marker", |_, this, on: bool| {
-            with(|api, _| api.freeze_lockon_marker(this.0, on).map_err(api_error))
+        methods.add_method("freeze_target_marker", |_, this, on: bool| {
+            with(|api, _| api.freeze_target_marker(this.0, on).map_err(api_error))
         });
         methods.add_method("face_toward", |_, this, target: LuaValue| {
             let target = object_arg(&target, "face_toward")?.ok_or_else(|| mlua::Error::runtime("face_toward: expected an Object"))?;
@@ -1911,14 +1911,17 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(c as i64));
             vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
         }
-        // The side, then the navi and the chip, where the hook has them.
-        HookCall::System { side, navi, chip, .. } => {
-            let mut v = vec![LuaValue::Integer(side as i64)];
-            if let Some(n) = navi {
-                v.push(obj(n)?);
-            }
-            if let Some(c) = chip {
-                v.push(LuaValue::Table(bound.def_value(Registry::Chip, c.0)?));
+        // The side, then the navi, the chip and the weapon, where the hook
+        // has them (nil in between).
+        HookCall::System { side, navi, chip, weapon, .. } => {
+            let mut v = vec![
+                LuaValue::Integer(side as i64),
+                navi.map_or(Ok(LuaValue::Nil), obj)?,
+                chip.map_or(Ok(LuaValue::Nil), |c| bound.def_value(Registry::Chip, c.0).map(LuaValue::Table))?,
+                weapon.map_or(Ok(LuaValue::Nil), |w| bound.def_value(Registry::Weapon, w.0).map(LuaValue::Table))?,
+            ];
+            while v.len() > 1 && v.last().is_some_and(LuaValue::is_nil) {
+                v.pop();
             }
             v
         }
