@@ -18,6 +18,7 @@ local barriers = require("../lib/barriers")
 local charged_shot = require("../navis/megaman/weapons/charged-shot")
 local anti_recovery = require("../chips/antirecv/controller")
 local chaos = require("./souls/chaos")
+local invalid = require("../chips/invalid/chip")
 local collision = require("./collision")
 local effects = require("@bn6/lib/effects")
 local regions = require("@common/regions")
@@ -38,6 +39,11 @@ return define.roles {
         anti_sword_counter = swords.anti_sword_counter,
         -- A Chaos Unison charge released out of its window (BN5's action 0x39: ./souls/chaos): Dark MegaMan comes.
         chaos_failure = chaos.failure,
+    },
+    chips = {
+        -- What a selection the custom screen can't allow becomes, and what a chip use the light and dark rule refuses
+        -- becomes (BN5's chip 0x185, past the named ones: chips/invalid).
+        invalid = invalid,
     },
     kinds = {
         -- AntiRecv's counterattack, which a heal meets when the other side has AntiRecv armed (BN6's code).
