@@ -8,7 +8,9 @@
 --
 -- A computer-controlled navi (NaviStats +0x2A, never set in a Team Battle, or AIData +0xF0: a navi its side's computer
 -- drives, BN5's 0x08006AAE) takes the side's sword pick instead (0x0802D4E2's +0x12, which its AI draws: the picks
--- by their place, one past the last a Sword). NeoVari's action is this one with its own sequences and picks.
+-- by their place, one past the last a Sword). In a battle no navi takes it: only the story navis' routines set +0xF0
+-- (0x0802C110), not Chaos Unison's Dark MegaMan's, so he too takes the joypad path. NeoVari's action is this one
+-- with its own sequences and picks.
 
 local action = {}
 

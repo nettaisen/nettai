@@ -572,6 +572,8 @@ named_fields! {
         PerPlayerGauges = "per_player_gauges", Bool, ro;
         /// Battle flag 1: the fight is on (collision is live).
         Fighting = "fighting", Bool, ro;
+        /// Battle flag 2: the custom gauge is full.
+        GaugeFull = "gauge_full", Bool, ro;
     }
 }
 
@@ -802,13 +804,6 @@ named_flags! {
 pub struct CustomPlayer {
     /// The emotion the screen reads of its navi.
     pub emotion: Emotion,
-    pub version: &'static str,
-    /// The Crosses owned, by Cross number (the save's event flags).
-    pub crosses: [bool; 5],
-    /// The setup's Cross list (nettai's extension), in its order.
-    pub cross_list: Option<Vec<crate::FormHandle>>,
-    pub beast_out: bool,
-    pub beast_out_sealed: bool,
     pub random_battle: bool,
 }
 
@@ -1309,10 +1304,13 @@ pub trait CoreApi {
     fn custom_describe(&mut self, side: u8, form: Option<crate::FormHandle>) -> ApiResult<()>;
     /// The systems' buttons' states asked again (`sub_8028F48`).
     fn custom_refresh_buttons(&mut self, side: u8) -> ApiResult<()>;
-    /// What the screen reads of its player from the setup: the version,
-    /// the Crosses owned and the Cross list, Beast Out unlocked and sealed
-    /// (until these are BN6's systems' setup), and a random battle.
+    /// What the screen reads of its player that isn't a system's setup: the
+    /// emotion it reads, and a random battle.
     fn custom_player(&self, side: u8) -> ApiResult<CustomPlayer>;
+    /// The level of the navi code side `side`'s save received (0 to 14),
+    /// or none (`PlayerSetup::navi_level`): what BN6's rules read of event
+    /// flag 0x163.
+    fn navi_level(&self, side: u8) -> Option<u8>;
     fn end_takeover(&mut self, side: u8);
     /// Its ticks left.
     fn takeover_ticks(&self, side: u8) -> u16;
@@ -1376,6 +1374,9 @@ pub trait CoreApi {
     fn clear_linked(&mut self, side: u8);
     /// FullCust: the custom gauge is full.
     fn fill_custom_gauge(&mut self);
+    /// `sub_801DFD0` (BN5's CusVolt): the custom gauge drops by `n`, to 0
+    /// at least.
+    fn drain_custom_gauge(&mut self, n: u16);
     /// `sub_801DF8C`: the custom gauge fills `rate` a tick (full at
     /// 0x4000).
     fn set_gauge_rate(&mut self, rate: u16);
@@ -2019,6 +2020,13 @@ pub trait CoreApi {
     /// original's NameID word 0xCD to 0xFF, its +0x2A half 0) but those
     /// `sub_800F486` excludes, which BlzrdBal's ball swallows.
     fn obstacle_swallowable(&self, o: ObjectRef) -> bool;
+    /// BN5's Poltergeist's test (0x080E8CA0): the object's identity is
+    /// `throwable`.
+    fn obstacle_throwable(&self, o: ObjectRef) -> bool;
+    /// `sub_800F6AC`: ask the field object `o` to be picked up by `side` and
+    /// thrown at panel (x, y) after shaking `shake` ticks, hitting with the
+    /// damage word `damage` (`sub_8018002` does it).
+    fn obstacle_throw(&mut self, o: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32);
     // ---- Field objects (obstacles) -------------------------------------------
 
     /// Whether another object asked `flag` of the field object `o`.

@@ -350,6 +350,9 @@ pub struct ActorData {
     pub absorbed: Vec<AbsorbedObstacle>,
     /// BN5's Chaos Unison charge. BN6 never arms it.
     pub chaos: ChaosCharge,
+    /// BN5's AIData+0x0D: its form's priming is up (GyroSoul's, after a
+    /// Wind chip: `FormData::priming`). BN6 never primes.
+    pub primed: bool,
     /// A navi no player controls (actor type navi): who brought it
     /// (AIData+0x54, `sub_80076A0`'s caller), its target (AIData+0x78: the
     /// other side's player, `sub_800F318`), and the system that drives it.

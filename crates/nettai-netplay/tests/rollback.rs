@@ -664,7 +664,8 @@ impl Observer<StandInBattle> for Failures {
 #[test]
 #[ignore]
 fn mashed_battles_with_everything_never_stop() {
-    use nettai_battle::custom::{GameVersion, Unlocks};
+    use bn6_compat::Unlocks;
+    use nettai_battle::custom::GameVersion;
     use testing::*;
     let c = content();
     let codes = |keys: &[&str]| -> Vec<(String, u8)> {
@@ -684,7 +685,7 @@ fn mashed_battles_with_everything_never_stop() {
     for seed in [11u64, 12, 13] {
         let mut setup = netbattle(&c, LINK_BATTLE, 500, seed as u32, [folder(&c, &as_refs(&a)), folder(&c, &as_refs(&b))]);
         for (p, version) in setup.players.iter_mut().zip([GameVersion::Falzar, GameVersion::Gregar]) {
-            p.unlocks = Unlocks::everything(version);
+            Unlocks::everything(version).write(&c, p).expect("the unlocks");
         }
         let start = StandInBattle::new(Battle::new(setup, c.clone()));
         let mut failures = [Failures::default(), Failures::default()];

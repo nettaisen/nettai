@@ -2,6 +2,9 @@
 -- InfVulc1, InfVulc2 and InfVulc3: the infvulc series (each chip's own comment above its definition).
 -- Their records are written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
+local recipe_vulcan1 = require("../vulcan/chips").vulcan1
+local recipe_vulcan2 = require("../vulcan/chips").vulcan2
+local recipe_vulcan3 = require("../vulcan/chips").vulcan3
 local vulcan = require("../vulcan/vulcan")
 
 -- InfVulc1 (BN5 chip 0x143): the Program Advance of three Vulcan1s with consecutive codes: action 0x19 with subtype
@@ -19,6 +22,12 @@ local infvulc1 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
+    -- BN5's recipes (written by tools/bn5/recipes.py): in the order of its full table (0x08027FC8); the netbattles'
+    -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
+    -- gauge tries.
+    program_advances = {
+        { order = 42, code_run = { chip = recipe_vulcan1, count = 3 } },
+    },
     action = vulcan.infinite(20),
 }
 
@@ -37,6 +46,12 @@ local infvulc2 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
+    -- BN5's recipes (written by tools/bn5/recipes.py): in the order of its full table (0x08027FC8); the netbattles'
+    -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
+    -- gauge tries.
+    program_advances = {
+        { order = 43, code_run = { chip = recipe_vulcan2, count = 3 } },
+    },
     action = vulcan.infinite(24),
 }
 
@@ -55,6 +70,12 @@ local infvulc3 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
+    -- BN5's recipes (written by tools/bn5/recipes.py): in the order of its full table (0x08027FC8); the netbattles'
+    -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
+    -- gauge tries.
+    program_advances = {
+        { order = 44, code_run = { chip = recipe_vulcan3, count = 3 } },
+    },
     action = vulcan.infinite(28),
 }
 

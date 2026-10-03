@@ -719,9 +719,19 @@ pub(crate) fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
         // sub_80C44D2 (MegaMan's restarts what his form wears).
         _ => {
             if let Some(o) = overlay {
-                crate::kinds::form_overlay::restart(b, o);
+                restart_overlay(b, r, o);
             }
         }
+    }
+}
+
+/// `sub_80C44D2`: restart `overlay`, what the navi `r` wears, by its game's
+/// rules: BN6's steps it at once, BN5's (0x080C374E) has it reload its
+/// animation at its next step.
+pub(crate) fn restart_overlay(b: &mut Battle, r: ObjectRef, overlay: ObjectRef) {
+    match b.rules_for(r).overlay_restart {
+        crate::content::OverlayRestart::Step => crate::kinds::form_overlay::restart(b, overlay),
+        crate::content::OverlayRestart::Reload => b.objects.get_mut(overlay).anim_loaded = 0xFF,
     }
 }
 
@@ -1013,6 +1023,8 @@ fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     b.hands[side].charge_bonus = [0; 6];
     ai_mut(b, r).status &= !0x20;
     // (Netbattle, local player: removes the opponent's HUD entry.)
+    // BN5's 0x08011B74: a form's priming is spent (BN6 never primes).
+    ai_mut(b, r).primed = false;
     let hm = body_hit_modifier(b);
     let anchor = b.anchor_region();
     let c = coll_mut(b, r);
