@@ -1013,6 +1013,8 @@ declare battle: {
     per_player_gauges: () -> boolean,
     -- Battle flag 1: the fight is on (collision is live).
     fighting: () -> boolean,
+    -- Battle flag 2: the custom gauge is full.
+    gauge_full: () -> boolean,
     -- Sound for both players, or for one side's player (output only): a
     -- sound asset (asset.sound).
     play_sound: (sound: Sound) -> (),
@@ -1110,6 +1112,8 @@ declare battle: {
     -- console's RNG1) for NaviCust bugs only.
     clear_emotion_window_glitch: () -> (),
     fill_custom_gauge: () -> (),
+    -- `sub_801DFD0` (BN5's CusVolt): the custom gauge drops by `n`, to 0 at least.
+    drain_custom_gauge: (n: number) -> (),
     -- `sub_801DF8C`: the custom gauge fills `rate` a tick (full at 0x4000).
     set_gauge_rate: (rate: number) -> (),
     -- A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
@@ -1696,6 +1700,7 @@ export type DamageFormula =
     { formula: "opponent_hp" }
     | { formula: "sp_navi", slot: string, by_time: { number } }
     | { formula: "gauge" }
+    | { formula: "gauge_level", base: number }
     | { formula: "hp_lost", cap: number? }
     | { formula: "hp_last_digits" }
     | { formula: "half_opponent_max_hp" }

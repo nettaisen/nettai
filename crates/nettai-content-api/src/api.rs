@@ -557,6 +557,8 @@ named_fields! {
         PerPlayerGauges = "per_player_gauges", Bool, ro;
         /// Battle flag 1: the fight is on (collision is live).
         Fighting = "fighting", Bool, ro;
+        /// Battle flag 2: the custom gauge is full.
+        GaugeFull = "gauge_full", Bool, ro;
     }
 }
 
@@ -1309,6 +1311,9 @@ pub trait CoreApi {
     fn clear_linked(&mut self, side: u8);
     /// FullCust: the custom gauge is full.
     fn fill_custom_gauge(&mut self);
+    /// `sub_801DFD0` (BN5's CusVolt): the custom gauge drops by `n`, to 0
+    /// at least.
+    fn drain_custom_gauge(&mut self, n: u16);
     /// `sub_801DF8C`: the custom gauge fills `rate` a tick (full at
     /// 0x4000).
     fn set_gauge_rate(&mut self, rate: u16);

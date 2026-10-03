@@ -344,6 +344,7 @@ impl CoreApi for Battle {
                 Value::Bool(self.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0)
             }
             BattleInfo::Fighting => Value::Bool(self.round.flags & crate::battle::battle_flags::FIGHTING != 0),
+            BattleInfo::GaugeFull => Value::Bool(self.round.flags & crate::battle::battle_flags::GAUGE_FULL != 0),
         }
     }
 
@@ -969,6 +970,10 @@ impl CoreApi for Battle {
 
     fn fill_custom_gauge(&mut self) {
         self.gauge.value = crate::hud::CustomGauge::FULL;
+    }
+
+    fn drain_custom_gauge(&mut self, n: u16) {
+        self.gauge.value = self.gauge.value.saturating_sub(n);
     }
 
     fn set_gauge_rate(&mut self, rate: u16) {
