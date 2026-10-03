@@ -593,6 +593,10 @@ export type ThunderBallLook = {
     dark_sound: Sound?,
 }
 
+-- How FireHit's fist strikes (chips/firehit/fist): the spark its hit shows
+-- and its collision types.
+export type FireHitFistLook = { spark: Spark, target: CollisionType, self_type: CollisionType }
+
 -- How a yoyo flies (chips/yoyo/yoyo): GreatYo's (three that move
 -- together), the panels it rolls out and its spinning rounds.
 export type YoyoSpec = { great: boolean?, panels: number, rounds: number }
