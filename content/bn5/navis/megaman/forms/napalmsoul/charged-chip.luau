@@ -22,6 +22,8 @@ export type FlashState = {
 }
 
 local THROW_ANIM, RECOVER_ANIM = 18, 19
+-- The glow's sprite (its parameters 0x141D: 14-1D, animation 0, no shadow).
+local FLASH = asset.sprite("bn5:napalmsoul-flash")
 local THROW_AT, THROW_TICKS, RECOVER_TICKS = 10, 21, 10
 -- The bomb leaves 10 pixels ahead of him and 48 up, of variant 2.
 local AHEAD, UP = 10 * 0x1_0000, 48 * 0x1_0000
@@ -78,7 +80,7 @@ local function flash(owner: Object)
     local o = battle.spawn(charged_chip.flash)
     if o then
         local s = o.state :: FlashState
-        s.sprite, s.anim, s.shadow = asset.sprite("bn5:napalmsoul-flash"), 0, false
+        s.sprite, s.anim, s.shadow = FLASH, 0, false
         o.related1 = owner
         o.alliance, o.flip = owner.alliance, owner.flip
     end
