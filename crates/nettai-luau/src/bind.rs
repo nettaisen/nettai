@@ -1548,6 +1548,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "rng", |_, ()| with(|api, _| Ok(api.rng())));
     lib_fn!(lua, t, "rng_positive", |_, ()| with(|api, _| Ok(api.rng_positive())));
+    lib_fn!(lua, t, "console_rng_positive", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.console_rng_positive(side)))
+    });
     // A shuffle's new order, as a list of 1-based indices.
     fn count(v: &LuaValue, what: &str) -> mlua::Result<usize> {
         usize::try_from(int(v, what)?).map_err(|_| mlua::Error::runtime(format!("{what} is a count, 0 or more")))
@@ -1555,6 +1559,12 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "shuffle_order", |lua, (n, rounds): (LuaValue, LuaValue)| {
         let (n, rounds) = (count(&n, "n")?, count(&rounds, "rounds")?);
         let order = with(|api, _| api.shuffle_order(n, rounds).map_err(api_error))?;
+        lua.create_sequence_from(order.into_iter().map(|i| i + 1))
+    });
+    lib_fn!(lua, t, "console_shuffle_order", |lua, (side, n, rounds): (LuaValue, LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let (n, rounds) = (count(&n, "n")?, count(&rounds, "rounds")?);
+        let order = with(|api, _| api.console_shuffle_order(side, n, rounds).map_err(api_error))?;
         lua.create_sequence_from(order.into_iter().map(|i| i + 1))
     });
     lib_fn!(lua, t, "jitter", |_, (mask, pos): (LuaValue, mlua::UserDataRef<LVec3>)| {

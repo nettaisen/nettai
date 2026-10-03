@@ -1095,11 +1095,18 @@ declare battle: {
     -- `GetRNG2` (one draw), `GetPositiveSignedRNG2` (bit 31 cleared).
     rng: () -> number,
     rng_positive: () -> number,
+    -- `GetPositiveSignedRNG1` on a side's console: a draw of that console's
+    -- own RNG (RNG1), which the consoles never share; what a console decides
+    -- by it differs between them, so the simulation follows the local
+    -- side's console (`local_side`) and draws the other's alike.
+    console_rng_positive: (side: number) -> number,
     -- `sub_8000C72`: `n` entries shuffled over `rounds` rounds of two `rng_positive` draws (entry i swapped
     -- with entry draw % (i + 1), for i from n - 1 down to 1, on the first n - 1 draws; the rest drawn and
     -- dropped: docs/engine/battle-flow.md §3.1): the new order, each place's entry by its index (from 1)
     -- before; `@common/order` puts it into a list. An error when 2 * rounds < n - 1.
+    -- `console_shuffle_order`: the same on a side's console's RNG1 (`sub_8000D12`).
     shuffle_order: (n: number, rounds: number) -> { number },
+    console_shuffle_order: (side: number, n: number, rounds: number) -> { number },
     -- `AddRandomVarianceToTwoCoords`: x and z by up to mask/2 pixels.
     jitter: (mask: number, pos: Vec3) -> Vec3,
     -- A side's hand: its cursor.

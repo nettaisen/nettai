@@ -933,8 +933,16 @@ impl CoreApi for Battle {
         self.rng.next_positive()
     }
 
+    fn console_rng_positive(&mut self, side: u8) -> u32 {
+        self.consoles[side as usize & 1].rng.next_positive()
+    }
+
     fn shuffle_order(&mut self, n: usize, rounds: usize) -> ApiResult<Vec<usize>> {
         shuffle_order(&mut self.rng, n, rounds)
+    }
+
+    fn console_shuffle_order(&mut self, side: u8, n: usize, rounds: usize) -> ApiResult<Vec<usize>> {
+        shuffle_order(&mut self.consoles[side as usize & 1].rng, n, rounds)
     }
 
     fn jitter(&mut self, mask: u32, pos: Vec3) -> Vec3 {

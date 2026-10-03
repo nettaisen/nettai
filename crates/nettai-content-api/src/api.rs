@@ -1285,11 +1285,17 @@ pub trait CoreApi {
     fn rng(&mut self) -> u32;
     /// `GetPositiveSignedRNG2`: one draw, bit 31 cleared.
     fn rng_positive(&mut self) -> u32;
+    /// `GetPositiveSignedRNG1` on `side`'s console: one draw of that
+    /// console's own RNG (RNG1), bit 31 cleared.
+    fn console_rng_positive(&mut self, side: u8) -> u32;
     /// `sub_8000C72`: `n` entries shuffled over `rounds` rounds of two
     /// `rng_positive` draws (`nettai_battle::custom::folder::shuffle`): the
     /// new order, each place the index (from 0) of the entry it now holds.
     /// An error when 2 × rounds < n − 1.
     fn shuffle_order(&mut self, n: usize, rounds: usize) -> ApiResult<Vec<usize>>;
+    /// `shuffle_order` on `side`'s console's RNG1 (`console_rng_positive`:
+    /// `sub_8000D12`, `sub_8000CA6`).
+    fn console_shuffle_order(&mut self, side: u8, n: usize, rounds: usize) -> ApiResult<Vec<usize>>;
     /// `AddRandomVarianceToTwoCoords`: jitter x and z by up to mask/2
     /// pixels (one draw).
     fn jitter(&mut self, mask: u32, pos: Vec3) -> Vec3;
