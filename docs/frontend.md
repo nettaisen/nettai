@@ -76,7 +76,11 @@ every other root beside it (content/bn5, ...), each when its game's pack is
 found and the content loads with it. A root that doesn't is left out, and
 the frontend says why at start-up ("the content root bn5 is left out: ...":
 no pack of its game, with the command that writes one, or the define
-phase's error), so BN6's play never fails for another game's root. A root
+phase's error), so BN6's play never fails for another game's root. A
+root's chips whose module names no use yet (a port's unwritten chips: BN5's)
+are left out of it first, with a warning counting them, so the rest of the
+root loads (`Root::leave_out_unported`; the static audit covers what is
+left, the BN5 replays do the same). A root
 the content must load whose game's pack isn't found is an error naming the
 extract command. (Netplay's handshake compares the content, the packs'
 asset names among it: two players play with the same packs, or give
