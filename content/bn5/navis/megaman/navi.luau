@@ -11,7 +11,11 @@
 local attach_points = require("./attach_points")
 local buster = require("./weapons/buster")
 local charged_shot = require("./weapons/charged-shot")
+local gyrosoul = require("./forms/gyrosoul/form")
+local magnetsoul = require("./forms/magnetsoul/form")
+local napalmsoul = require("./forms/napalmsoul/form")
 local protosoul = require("./forms/protosoul/form")
+local searchsoul = require("./forms/searchsoul/form")
 
 return define.navi {
     id = "bn5:megaman",
@@ -22,7 +26,7 @@ return define.navi {
     banners = { win = asset.banner("bn5:megaman-win"), lose = asset.banner("bn5:megaman-deleted") },
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
     -- His souls, which the custom screen's soul button offers (rules/souls).
-    forms = { souls = { protosoul } },
+    forms = { souls = { protosoul, gyrosoul, searchsoul, napalmsoul, magnetsoul } },
     identity = define.identity {
         class = "megaman",
         version = 0,
@@ -31,6 +35,9 @@ return define.navi {
         -- The Full Synchro aura's animation: BN6's rule (`sub_80C4C52`: the AI index), which BN5 hasn't (its aura
         -- is its own, to come with BN5's emotions); the engine asks every player for one.
         aura_anim = 0,
+        -- He wears what his soul does: his death hook takes it off (0x0800EFCC, his record's category 2), and an
+        -- animation change (0x0800F11C by AI index 0), a flinch and a drag (0x080F0500) restart it.
+        overlay_hooks = { "death", "refresh", "flinch", "drag" },
         attach_points = attach_points[0],
     },
 }

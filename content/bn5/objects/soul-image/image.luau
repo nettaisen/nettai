@@ -2,10 +2,12 @@
 -- The soul's image (actor object 0x2A, 0x080C0394; spawned by 0x080C0524, BN6's `sub_80C02A6`, which spawns its
 -- own kind 0x28 for battle mode 9): the navi MegaMan unites with comes in on a spiral around him for 22 ticks
 -- (tinted), blinks for 30 and fades out over 8. Its sprite is the soul's navi's (category 8 by the soul's number).
--- It plays the soul's start hook as it comes (0x0800ED0E with 1) and its end hook as it goes (0x0800EEBE with 1):
--- none for ProtoSoul.
+-- It puts on what the soul's navi wears as it comes (0x0800ED0E with 1: 0x0800EDBC's routines by soul, their parts
+-- stepping even while paused) and takes it off as it goes (0x0800EEBE with 1): GyroMan's propeller, NapalmMan's
+-- cannon, Colonel's cape and KnightMan's ball and chain (the body overlay rows 0, 4, 3 and 1).
 
 local SINE: { number } = require("../../rules/math").sine
+local body_overlays = require("../../lib/body_overlays")
 
 local image = {}
 
@@ -17,6 +19,27 @@ export type State = {
 -- The souls' navis' sprites, by soul number.
 local SPRITES: { [number]: SpriteAsset } = {
     [1] = asset.sprite("bn5:protoman"),
+    [2] = asset.sprite("bn5:gyroman"),
+    [3] = asset.sprite("bn5:searchman"),
+    [4] = asset.sprite("bn5:napalmman"),
+    [5] = asset.sprite("bn5:magnetman"),
+    [6] = asset.sprite("bn5:meddy"),
+    [7] = asset.sprite("bn5:colonel"),
+    [8] = asset.sprite("bn5:shadowman"),
+    [9] = asset.sprite("bn5:numberman"),
+    [10] = asset.sprite("bn5:tomahawkman"),
+    [11] = asset.sprite("bn5:knightman"),
+    [12] = asset.sprite("bn5:toadman"),
+}
+-- What the souls' navis wear, by soul number (0x0800EDBC's routines; the others' wear nothing).
+local function wears(id: string, part: BodyPart): Identity
+    return define.identity { id = id, class = "navi", parts = { body = part } }
+end
+local PARTS: { [number]: Identity } = {
+    [2] = wears("bn5:soul-image/gyroman", body_overlays.gyroman),
+    [4] = wears("bn5:soul-image/napalmman", body_overlays.napalmman),
+    [7] = wears("bn5:soul-image/colonel", body_overlays.colonel),
+    [11] = wears("bn5:soul-image/knightman", body_overlays.knightman),
 }
 local SOUND = asset.sound("bn5:cross-merge")
 -- The tint while it spirals in.
@@ -78,6 +101,10 @@ local function fade(me: Object)
     if int.i16(me.timer) < 0 then
         me.sprite.alpha = nil
         me.visible = false
+        local parts = PARTS[(me.state :: State).soul]
+        if parts then
+            me:remove_parts(parts)
+        end
         me:set_lifecycle("destroy")
         return
     end
@@ -115,6 +142,10 @@ local function init(me: Object)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me.visible = true
     battle.play_sound(SOUND)
+    local parts = PARTS[s.soul]
+    if parts then
+        me:add_parts(parts, 1)
+    end
     me:set_lifecycle("update")
     tick(me)
 end

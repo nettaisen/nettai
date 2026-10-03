@@ -23,6 +23,10 @@ export type Soul =
 -- The soul forms by their ids.
 local by_form: { [string]: Soul } = {
     ["bn5:protosoul"] = "proto",
+    ["bn5:gyrosoul"] = "gyro",
+    ["bn5:searchsoul"] = "search",
+    ["bn5:napalmsoul"] = "napalm",
+    ["bn5:magnetsoul"] = "magnet",
 }
 
 -- The soul `navi`'s side is in, nil for none.
