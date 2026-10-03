@@ -147,7 +147,7 @@ local function flash(me: Object)
     count(me, RISE)
 end
 
--- 0x080C3F40: its colours back; 30 ticks; then the first piece stays and
+-- 0x080C3F40: its colors back; 30 ticks; then the first piece stays and
 -- the second attacks.
 local function rise(me: Object)
     if me.phase_init == 0 then

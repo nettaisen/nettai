@@ -3,7 +3,7 @@
 The chip lab verifies what its recordings reach. This is the other question: **is there battle code in the
 original that the port doesn't have at all?** The answer at the audited commit: no routine of the simulation that
 a netbattle can reach is left without a counterpart. The audit found two groups, both ported since: the link
-navis' charged attacks (65 routines, §4) and six chip weapons that were defined without behaviour (§9), which
+navis' charged attacks (65 routines, §4) and six chip weapons that were defined without behavior (§9), which
 its first run missed. What is left are caveats (§7) and code that is ported but that no recording runs (§6).
 
 Three things this document said before were wrong or weaker than they read, and are corrected here:
@@ -77,9 +77,9 @@ agents' runs).
    | Presentation | HUD tasks (0x0801BE28–0x0801EC97), the IWRAM draw pass, custom screen drawing and camera routines read by hand |
    | Folded into a caller | every caller is ported (or documented): a table entry or helper of a routine the port has as one function |
    | Run in matching recordings | run, uncited, none of the above: its effects are reproduced or it has none on the simulation, since every recording that runs it matches frame for frame |
-   | Missing | run only in recordings the engine stops in; a weapon routine the data names that nothing cites; the routine of a weapon defined without behaviour (§9); or left over |
+   | Missing | run only in recordings the engine stops in; a weapon routine the data names that nothing cites; the routine of a weapon defined without behavior (§9); or left over |
 
-7. **The stub check** (`tools/audit/stubs.py`, §9): what the engine has by name without behaviour, from the
+7. **The stub check** (`tools/audit/stubs.py`, §9): what the engine has by name without behavior, from the
    loaded content and from the sources' own "not implemented" errors. A citation counts as ported in step 6;
    this is the check that a cited thing does something.
 
@@ -236,7 +236,7 @@ netbattle can run them where that has been read:
 | `crates/nettai-battle/src/battle.rs` | 13 | the communication error (`sub_8007EB8`) and escape (`sub_800AAD6`) results, the set's second init entry, the per-player gauge mode's routines | not the simulation's (the link is the port's netplay), or battle flag 0x40 |
 | `kinds/player/actions/cross_change.rs`, `entry.rs`, `hand.rs` | 17 | the Cross change and knockout while paused, the navi that appears mid-battle, the link navis' chips leaving the hand | can't: no live writer of the Cross change (unverified.md) |
 | `content/bn6/lib/rapid_buster.luau`, `lib/dimming/blinding_flash.luau`, `chips/bugfix/glow.luau`, `navis/megaman/weapons/shield`, `navis/tomahawkman`, `chips/tornado`, `chips/mstrcros`, `chips/rskyhny` | 22 | weapon routines 0x39, 0x3C, 0x8C and 0x46; dimming effect 2; the glow's two other variants; the Tornado action's subtype 3; a sword phase and a bee action nothing sets | can't: nothing names the routine, effect, variant or phase (the NaviCust writes weapon routines 0x3B, 0x8B and 0x3D only; the link navis' level tables 0x30 and 0x34) |
-| `crates/nettai-battle/src/collision.rs`, `field.rs`, `crates/nettai-frontend/src/objects.rs`, `chips/elecman` | 15 | IWRAM routines | run, not counted: the lab's coverage doesn't instrument IWRAM |
+| `crates/nettai-battle/src/collision.rs`, `field.rs`, `crates/nettai-render/src/objects.rs`, `chips/elecman` | 15 | IWRAM routines | run, not counted: the lab's coverage doesn't instrument IWRAM |
 | `navis/megaman/turn.luau`, `chips/antidmg/counter.luau`, `kinds/player/chip_use.rs` | 4 | the turn (`sub_80EDF0C`); AntiDmg's counter aimed at the nearest enemy (`sub_8016218`); the special chip's gauge cost (`sub_800EE98`, `sub_802E830`) | can't: L and R never turn on a link stage (§5); the counter's variant is 0 wherever it starts (below); the special chip is battle flag 0x40's |
 | `content/chips.rs` | 3 | damage formulas 0, 19 and 22: the opponent's HP, the custom gauge, half the opponent's max HP | can't: no chip record's damage is 1000, 1019 or 1022 (`gen-content check` reads them all) |
 | `chips/lifesync` | 6 | LifeSync's aim, marker, warning and sync | can't: a link battle skips them (dimming-chip-effects.md §14) |
@@ -354,7 +354,7 @@ the HP bug; the engine has both (`chip_use`, `intake`). `forms/gregar/cross-eras
 | `chips/0x01b-bblstar1/then-cannon`, `chips/0x17c-icecube/cut-in-refused` (`sub_801BADE`, `sub_800BEDA`) | a bubbled navi taking damage; no counter cut-in on IceCube |
 | `chips/0x004-airshot/superarmor`, `forms/falzar/cross-spout-ice-airshot`, `cross-spout-ice-wind`, `stages/shoes-roads-wind` (`sub_80178D4`, `sub_8017992`, `sub_8016730`) | a drag on a SuperArmor navi; an Aqua body dragged and pushed onto ice; shoes stopping a push on a road |
 | `stages/ice-slide-cannon`, `-thunder`, `-widesht`, `-bblstar`; `flow/mash-paralysis`, `-freeze`, `-bubble` (actions 3, 4, 6, 7) | a flinch, paralysis, freeze and bubble entered mid-slide (the hits timed into a 4-tick slide); mashing out of them |
-| `custom/refusals`, `sixth-pick`, `redeal-right-half`, `scrap-right-half` (`sub_8028B74`, `sub_8028CCC`, `sub_8029032`, `sub_8028DD6`, `sub_8028E04`) | A on a greyed chip; B with nothing to take back; R and UP on OK; DOWN with no slot below; UP from the bottom row; the re-deal and scrap buttons' right halves, pressed again once used or with nothing picked |
+| `custom/refusals`, `sixth-pick`, `redeal-right-half`, `scrap-right-half` (`sub_8028B74`, `sub_8028CCC`, `sub_8029032`, `sub_8028DD6`, `sub_8028E04`) | A on a grayed chip; B with nothing to take back; R and UP on OK; DOWN with no slot below; UP from the bottom row; the re-deal and scrap buttons' right halves, pressed again once used or with nothing picked |
 | `forms/gregar/cross-elec-001-charged`, `cross-slash-04c-charged`, `cross-charge-014-charged`, `cross-charge-beast-014-charged`, `forms/falzar/cross-tomahawk-001-charged`, `cross-ground-001-charged` (`sub_8013236`) | ElecCross charging a Null chip, SlashCross an element sword, ChargeCross and its Beast a Fire chip; TomahawkCross and GroundCross with chips that don't charge |
 | `navis/navi-05-volcchrg/charge-family-chip`, `navi-06-dripshwr/…`, `navi-07-etomahwk/…` (`sub_8013236`) | ChargeMan, SpoutMan and TomahawkMan charging their family's chips (`byte_8021369`) |
 | `navis/*/chip-001`, `chip-06e`, `chip-071`, `chip-0bc`, `chip-08d`, `chip-09a` (`sub_800F09E`) | the link navis with a chip outside their family, a dimming chip of it, and a chip without damage (their chip bonus) |
@@ -364,7 +364,7 @@ the HP bug; the engine has both (`chip_use`, `intake`). `forms/gregar/cross-eras
 | `forms/falzar/cross-tengu-hole-knockout` (`sub_800E618`) | the base form, without shoes, stepping off the hole its TenguCross was knocked out over |
 | `forms/gregar/cross-slash-beast-sword-charged` (`sub_80EAF26`) | the Beast's rush with a charged sword (action 0x41) |
 | Batch 6: `custom/cross-window-keys`, `one-cross-owned`, `take-back-cross` (`sub_8028A78`, `sub_8029EF8`, `sub_8029032`) | UP and DOWN wrapping and moving in the Cross window, SELECT, START; a save owning one Cross (a window of one, no move sound); the window reopened with a Cross chosen, and B taking the Cross back |
-| `custom/take-back-beast-out`, `chips/0x13f-beastout/take-back`, `custom/beast-out-greyed` (`sub_8029032`, `sub_8028D6C`) | B taking back the Beast Out button and the BeastOut chip; A on a Beast Out button a chosen Cross greys |
+| `custom/take-back-beast-out`, `chips/0x13f-beastout/take-back`, `custom/beast-out-greyed` (`sub_8029032`, `sub_8028D6C`) | B taking back the Beast Out button and the BeastOut chip; A on a Beast Out button a chosen Cross grays |
 | `custom/invalid-after-pick`, `custom/hide-window-later`, `custom/no-beast-out` (`updateCustomScreen_WhenUnselectingChip_8028EC8`, `sub_8026D06`, `sub_8029FB4`) | invalid chips left selectable after a valid pick; SELECT on a screen after the round's first; a save without Beast Out |
 | `navicust/chpshufl-redeal-last-chips` (`sub_8029688`, `sub_8029788`, `sub_802983C`) | ChpShufl's re-deal with the folder's last five, its last three (fewer than the hand) and none |
 | `forms/falzar/cross-dust-beast-hand`, `cross-dust-scrap-take-back` (`sub_802A40C`, `sub_8027F10`, `sub_8028F84`) | DustCross's Beast at the screen (no NumbrOpn hand, the scrap button); the scrap button with nothing picked |
@@ -410,7 +410,7 @@ damage and status areas (and the first of the others), 130:
 | `sub_80143CE`, `sub_8015BEC`, `sub_801A200` | 4 | Beast Over's exhaustion without the spent Beast Out counter: only the emotion-swing bug clears the counter's flag (+0x32), it rests while the counter is 0, and it clears the flag just before it rolls anger |
 | `sub_8015C12` | 1 | mood 0: its one writer, at Beast Over's end, is blocked by the spent counter |
 | `sub_80E541A` | 1 | the wind registry's replacement: a second fan evicts the first through the field-object registry before it registers as the wind; the other wind object is T4 0x41, an actor-list type no link stage has |
-| `sub_8028B74`, `sub_8028CCC`, `sub_8028D6C` | 5 | the tutorials' checks (index 0xFF in a netbattle); the pick count test, which five picks make dead (they grey every slot, so the state test refuses first) |
+| `sub_8028B74`, `sub_8028CCC`, `sub_8028D6C` | 5 | the tutorials' checks (index 0xFF in a netbattle); the pick count test, which five picks make dead (they gray every slot, so the state test refuses first) |
 | `sub_800F09E`, `sub_8013236` | 5 | no Wind- or Break-family chip both damages and dims, and none lacks damage; a link navi's level is never 0xFF |
 | `sub_8012FC8` | 4 | turning (every stage has the standard column pattern); a flipped navi; a navi without a buster or a charged shot |
 | `sub_800E994`, `sub_8016852`, `sub_800E548`, `sub_8017BC0`, `sub_80178D4`, `sub_80159C6` | 7 | dead code: tests whose register the code before fixes (dx = 0; a slide that moves; a direction passed; a word just zeroed; a panel test repeated on the same tick; a stat byte just tested) |
@@ -490,7 +490,7 @@ double KO; two reservations of one panel; a side's dimming registered by a statu
 shows; a second cut-in press with a request pending; the alternative A-charge's request at the charge tests; a
 save without Beast Out's counter; a push onto a road whose next panel is blocked; a counter-paralysis request on
 a paralyzed navi; the charge cut short mid-hold; on the custom screen, the slot link bytes (no writer found), a
-cursor move whose neighbour is its own slot, the scrap button in state 3, a scrap with fewer chips left than the
+cursor move whose neighbor is its own slot, the scrap button in state 3, a scrap with fewer chips left than the
 hand, a sequence PA with two * chips, tired on a round without Beast Out, a save starting battles in a Cross, and
 two telop and HUD states; in movement and the player's routines, the auto-step bug (stat 0x11), a battle started
 in a form, the panel bug over panel types 0 and 1, an astray step past a panel the dash rule refuses, the Beast
@@ -1074,7 +1074,7 @@ DustCross's scrap (`sub_8027406`). The lab now has `custom/hide-window`, `custom
 
 ## 7. Open points
 
-Nothing here is a known missing behaviour; each is a place where the audit can't close the question. Two
+Nothing here is a known missing behavior; each is a place where the audit can't close the question. Two
 earlier points are closed: the statements in other documents that the audit found out of date are corrected, and
 NaviStats+0x54 is unreachable (§5).
 
@@ -1087,8 +1087,8 @@ NaviStats+0x54 is unreachable (§5).
 
 ## 8. Limits
 
-- **Names, not behaviour.** A cited routine is taken as ported. §6 samples that and §9 checks the definitions
-  that have no behaviour at all; neither proves a ported routine right. That is the lab's job, branch by branch.
+- **Names, not behavior.** A cited routine is taken as ported. §6 samples that and §9 checks the definitions
+  that have no behavior at all; neither proves a ported routine right. That is the lab's job, branch by branch.
 - **The call graph is static.** A call through a pointer kept in memory is seen only if its table is a literal
   of some routine. The kind tables, action table and hook tables are handled explicitly; a callback stored by
   one routine and called by another through RAM would be missed. The lab's coverage is the check on that: every
@@ -1104,9 +1104,9 @@ NaviStats+0x54 is unreachable (§5).
   wrote them: 380 recordings were `unmet` until they were sorted (§11). None is now, but an expectation says
   only "damaged" or "used", so a recording can still meet it on another path than its name suggests.
 
-## 9. Defined without behaviour: the stub check
+## 9. Defined without behavior: the stub check
 
-The audit's first run reported nothing missing while six weapons a netbattle can fire had no behaviour:
+The audit's first run reported nothing missing while six weapons a netbattle can fire had no behavior:
 BugRSwrd's and BgDthThd's charged shots and the four arm chips' (the original's weapon routines 0x21 to 0x26,
 `sub_8011E40` to `sub_8011F10`). Each was a weapon definition with its charge times and no `setup`; the chip made
 it the navi's charged shot, and a full B charge stopped the engine. The audit missed them twice over: it didn't
@@ -1125,13 +1125,13 @@ nothing behind it. It reads the loaded content (through the engine's own loader)
 | Chips without a use | a chip definition needs exactly one of `action`, `dimming`, `navi` and `instant` (the define phase's error) | none can exist. The chips whose US table entries are null (Gregar's and Falzar's dimmings `off_802CCB4[34]`/`[35]`, Count's (the US release's HackJack) and Django's navis `off_802CD5C[18]`/`[19]`) use the Japanese ROMs' routines (beast-chips.md, chips.md §3.6.37–38) |
 | Actions and kinds whose update only errors | every function of the content whose body is an `error` | none |
 | Roles unfilled, or naming an action nothing implements | the loaded roles | `actions.volley` unfilled: no routine was found that raises the volley's request (0x40000000), and the port raises it nowhere (§5). (`actions.turn` is filled since step 13, with the turn, which no link stage enables.) The battle mode 9 kinds `kinds.mode9_actor` and `kinds.mode9_attack` unfilled: no content defines them, and a netbattle's mode isn't 9 |
-| Errors that say something is not implemented, ported, modelled or supported | every `panic!`, `unreachable!` and Luau `error(` with that wording (12) | none reachable: the six bug-code writes in setup.rs (a weapon routine, a shot program, a form or a navi by number, the gauge speed, an unmodelled stat: no hit carries such a code, unverified.md); a weapon without a `setup` (none now); the mode states past the fade-out (battle effects 2); `sub_80EBB78`'s AI navi version byte |
+| Errors that say something is not implemented, ported, modeled or supported | every `panic!`, `unreachable!` and Luau `error(` with that wording (12) | none reachable: the six bug-code writes in setup.rs (a weapon routine, a shot program, a form or a navi by number, the gauge speed, an unmodeled stat: no hit carries such a code, unverified.md); a weapon without a `setup` (none now); the mode states past the fade-out (battle effects 2); `sub_80EBB78`'s AI navi version byte |
 | | | one unproven: CrosOver reads its partner's Param4 through a link that outlives him, and the port models the one actor known to take his slot before the read (the user's sword). No other was found that can spawn inside the chip's dimming |
 
 The check fails when it finds a stub its notes (`stub_notes.py`) don't cover, so a new one has to be read. The
 other errors in the sources (about 400 in the content, 180 in the engine) say what the original does at that
 point: a read past a table, a null pointer, a division by zero. They are the port's record of the original's
-undefined behaviour, not gaps.
+undefined behavior, not gaps.
 
 ## 10. How deep the recordings went: the cut-in chips
 
@@ -1175,7 +1175,7 @@ places the templates by it. The 380 were sorted so:
 
 | | Recordings | What |
 |---|---|---|
-| The template was wrong: placed where the chip lands | 142 | the templates that mean "the chip hits" (Beast Out, the Cross, Atk+10, Navi+20, the counter cut-in) stand the navis where the chip lands: the adjacent column for the swords and the short reaches, two columns for Tornado, Static and MoonBld charged in SlashCross (its moon blade's ring is centred a panel ahead of its user), the gregar base's grass stage where its unseeded stage's ice blocks stop the attack (Colonel); EraseMn EX's A press comes at the aim that points down the row |
+| The template was wrong: placed where the chip lands | 142 | the templates that mean "the chip hits" (Beast Out, the Cross, Atk+10, Navi+20, the counter cut-in) stand the navis where the chip lands: the adjacent column for the swords and the short reaches, two columns for Tornado, Static and MoonBld charged in SlashCross (its moon blade's ring is centered a panel ahead of its user), the gregar base's grass stage where its unseeded stage's ice blocks stop the attack (Colonel); EraseMn EX's A press comes at the aim that points down the row |
 | The goal was wrong: no damage where the chip can't reach | 65 | `hit` from three columns and `adjacent` from the next: each says the chip is out of reach there and expects the opponent undamaged |
 | The goal was wrong: the use alone | 140 | chips whose hit needs something first: a trap a hit on its user, TimeBom its countdown, Mine a step onto it, Guardian a hit on the statue, Snake and SumnBlk a hole, CircGun and Magnum an A press, the boomerangs an edge row, Lance the far column, Muramasa lost HP, MchnSwrd a paralyzed target, ElemSwrd and AssnSwrd a panel, Rflectr a shot to reflect, ColArmy an obstacle; each description names the scenario where the hit is recorded. And Sensor's counter cut-in, whose two sensors face each other, each laser ending on the other |
 | Can't be met | 30 | Count's three chips (HackJack in the US release) and the Gregar and Falzar chips stop the original (their handlers are NULL, §9); DarkPlus alone only sparkles; ElmntMan's undirected element at the adjacent column is a draw |

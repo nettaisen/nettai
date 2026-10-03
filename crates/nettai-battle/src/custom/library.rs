@@ -53,7 +53,7 @@ pub trait Library {
     fn cross_description_lines(&self, _form: FormHandle) -> u8 {
         3
     }
-    /// The screen's slot grid and neighbour scans.
+    /// The screen's slot grid and neighbor scans.
     fn layout(&self) -> &CustomScreenLayout;
     /// Whether a banner stays up until let go (the Program Advance's).
     fn banner_holds(&self, id: BannerId) -> bool;

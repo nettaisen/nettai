@@ -96,7 +96,7 @@ local FINALE: { [string]: { Entry } } = {
 -- The sword's looks (`byte_80BEDC6`: attachments 3, 3, 0x19 to 0x1C): its
 -- blade; its hit's region (`byte_80BEDA8`: the plain sword's one panel,
 -- else a column); its slash (`byte_80BEDC0`: effect 0x18, else 0x16 in the
--- look's colour, the look's palette less one from look 2).
+-- look's color, the look's palette less one from look 2).
 local SWORDS = {
     [0] = { blade = parts.blades.sword, region = regions.single, slash = parts.effects.slash, palette = 0 },
     [1] = { blade = parts.blades.sword, region = regions.wide, slash = parts.effects.wide, palette = 0 },
@@ -195,7 +195,7 @@ local function done(me: Object)
     end
 end
 
--- His place on the circle around his panel's centre (`sub_80E58D2`):
+-- His place on the circle around his panel's center (`sub_80E58D2`):
 -- `radius` pixels out at `angle` (forward by his facing, down the field).
 local function circle(me: Object, radius: number, angle: number)
     local cx, cy = field.center(me.panel_x, me.panel_y)
@@ -360,7 +360,7 @@ local function fade_in(me: Object)
     me.sprite.color_shader = me.timer2 * 0x421
 end
 
--- `sub_80BEACE`: 21 ticks circling out from his panel's centre, a pixel
+-- `sub_80BEACE`: 21 ticks circling out from his panel's center, a pixel
 -- further and a step further round each tick.
 local function circle_out(me: Object)
     if me.phase_init == 0 then

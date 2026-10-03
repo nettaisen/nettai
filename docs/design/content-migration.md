@@ -72,8 +72,8 @@ roles (rules/roles.luau: what it starts, spawns and shows itself), never by numb
    - An action is `define.action { id?, state, update }`, usually from a family's builder: what differs
      between chips is the builder's arguments, and a variant several kinds read is a record (`define.record`).
      Anything a definition holds is in the canonical tree, so a thrower is `{ throw = fn, variant = record }`,
-     not a bare closure. Where the original's routine took a number that picked one of several behaviours
-     (the attack's variant byte, a spawn parameter), the builder takes the behaviour: a name
+     not a bare closure. Where the original's routine took a number that picked one of several behaviors
+     (the attack's variant byte, a spawn parameter), the builder takes the behavior: a name
      (`counter.action_at(id, "random")`), a record, a look.
    - A chip is `define.chip { id, ...its record..., <one use> }`: `action`, `dimming`, `navi` or `instant`. Its
      record is named fields (flags by name, the lock-on mode a definition); what the ruleset asks of a chip

@@ -74,7 +74,7 @@ cut-in", "telop" and "supports" are used as in the rest of the project.
   games overlap (`bn6:cannon`, `bn5:cannon`, `bn4:cannon`); content/nettai holds only the engine's API declarations.
   A player's folder may hold any game's chips; a chip behaves as its game wrote it, under its user's rules.
 - **Slices** (§8): S0 systems, rulesets, per-side state and the cost tools; then BN6's systems one at a time; roots
-  after S2; then the shared rules, parameterised where BN5 differs.
+  after S2; then the shared rules, parameterized where BN5 differs.
 
 ## 1. Where the rules are today
 
@@ -258,7 +258,7 @@ content/bn6/rules/
   api.luau                    the `bn6` module content calls (§4.6)
 ```
 
-A form's own behaviour stays with the form (navis/megaman/forms/<form>/), as its weapons do.
+A form's own behavior stays with the form (navis/megaman/forms/<form>/), as its weapons do.
 
 ## 3. What moves, and in what order
 
@@ -288,7 +288,7 @@ These stay Rust and lose their BN6 names (and their BN6 assumptions, where the m
 | `engine/lockon-marker`, `engine/afterimage`, `engine/beast-over-burst` | shared kinds under generic names (`engine/target-marker`, `engine/afterimage`, `engine/burst`), with the BN6-only target and freeze as the Beast system's calls |
 | The scrap and re-deal phases | the chip window's sacrifice and re-deal machinery, which buttons of any system start |
 
-### 3.3 Series-common, parameterised by game
+### 3.3 Series-common, parameterized by game
 
 Each moves when its BN5 counterpart is read, by rule 2 of §2.1. Known now:
 
@@ -638,7 +638,7 @@ The field's rules follow the stage's game (§2.3); its art does too.
 3. **A panel type the arena's game lacks** (a BN6 chip making a BN6-only panel in a BN5 arena):
    - the simulation runs it by the type's own definition, so the rules never depend on the art. **Built in P1**
      (the simulation half; the art half is still the user's to decide): a type the arena's `panels` section doesn't
-     name takes its rule (flags, sound, expiry, behaviours) from the first other loaded game whose section names it,
+     name takes its rule (flags, sound, expiry, behaviors) from the first other loaded game whose section names it,
      in root order; one no loaded game names keeps an empty rule, never a panic (`sections::fill_panel_types`);
    - it is drawn from the first pack that has it: the arena's, then the pack of the game that defines the type. Its
      blocks keep their own palettes, loaded into free palette slots;
@@ -652,7 +652,7 @@ The field's rules follow the stage's game (§2.3); its art does too.
 - **A player's ruleset rules that player** (§2.3): their custom screen, transformations, emotions, controls, and the
   side's rule data and roles.
 - **The battle's data is the stage's game's** (§2.3): the field, the flow, the pools.
-- **A definition's behaviour is its own**: a chip's use, a kind's update, a weapon's setup, a form's actions and
+- **A definition's behavior is its own**: a chip's use, a kind's update, a weapon's setup, a form's actions and
   hooks run as their game wrote them, on the framework's services.
 - **A definition's common record means the same everywhere**: a chip's codes, element, class, MB, damage, counter
   parameter, flags and lockout; a form's element, weakness, buster bonus, weapons and charged chips.
@@ -996,7 +996,8 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
   sprite is a handle of it).
 - **The edges convert.** bn6-compat (`Ids::pack`, `asset`, `asset_number`, `background`, `sound_number`), the
   audio (`nettai_audio::Songs`: a sound handle's song; `BattleAudio::new(bank, songs)`, `Songs::cue`), the frontend
-  (`nettai_frontend::packs`: a handle's sprite, banner, mugshot, background number in its pack; one pack's
+  (`nettai_render::packs`, nettai-frontend's then: a handle's sprite, banner, mugshot, background number in its
+  pack; one pack's
   graphics until R3b), verify's gen-content (`decode::numbered_sprite` and `defined::Numbered` compare by the pack's
   numbers) and the sound tests. The engine itself did no arithmetic on a sprite's numbers but two afterimage
   and form-overlay object parameters, which now carry the handle.
@@ -1013,7 +1014,8 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
 
 ### R3b, the frontend and the audio per pack (2026-10-02)
 
-- **Graphics per pack** (`nettai_frontend::packs::Packs`): every loaded pack's `Bundle` by `PackId`, and the
+- **Graphics per pack** (`nettai_render::packs::Packs`, nettai-frontend's then): every loaded pack's `Bundle` by
+  `PackId`, and the
   content's own (its home root's `assets` pack). An asset draws from its own pack: a sprite's sheet, a banner's
   glyphs (its pack's HUD), a mugshot (its pack's HUD), a background. A chip's icon and picture are its game's pack's
   (the chip's root's `assets`), under its key there (`gundels3`, not `bn6:gundels3`): the frontend had looked them up

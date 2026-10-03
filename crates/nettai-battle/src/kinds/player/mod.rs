@@ -1049,7 +1049,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 }
 
 /// Beast Over's glow by the battle time, over 26 ticks (`byte_8016A68`,
-/// Gregar's; `byte_8016A9C`, Falzar's): colour shaders.
+/// Gregar's; `byte_8016A9C`, Falzar's): color shaders.
 const GREGAR_OVER_GLOW: [u16; 26] = [
     0x0000, 0x0000, 0x0041, 0x0461, 0x0881, 0x0CC2, 0x10E2, 0x1102, 0x1543, 0x1983, 0x1DC3, 0x21E4, 0x2204, 0x2204,
     0x21E4, 0x1DC3, 0x1983, 0x1543, 0x1102, 0x10E2, 0x0CC2, 0x0CA2, 0x0881, 0x0861, 0x0441, 0x0421,
@@ -1060,7 +1060,7 @@ const FALZAR_OVER_GLOW: [u16; 26] = [
 ];
 
 /// `sub_80100EC` (presentation only): a Beast Over navi glows
-/// (`sub_8016A38`, a colour shader by the battle time); any other takes
+/// (`sub_8016A38`, a color shader by the battle time); any other takes
 /// its sprite palette (`sub_801002C`):
 ///
 /// - MegaMan while he can't charge (status 0x200): 1, plus the element
