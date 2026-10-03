@@ -599,7 +599,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         Some(k) => Some(content.defs.record(&k).ok_or_else(|| format!("the content has no barrier {k}"))?),
     };
     let r = &s.raw;
-    let base = content.base_form();
+    let base = content.base_form_for(navi);
     Ok(EngineNaviStats {
         attack: s.attack,
         rapid: s.rapid,
