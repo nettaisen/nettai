@@ -565,15 +565,15 @@ NaviStats-like layout), so BN5's seams should fit it with less new work. The sam
 | `NaviStats::version` ("0 Gregar, 1 Falzar") | setup.rs | BN6's field of BN6's NaviStats. |
 | `NaviForms { gregar, falzar }`, `FormData::game` | content/navis.rs | Forms by version, keyed by the game's versions. |
 | `Unlocks { crosses, beast_out, beast_out_sealed }`, `screen::CROSSES` | custom/mod.rs, custom/screen.rs | BN6's. |
-| `GREGAR_OVER_GLOW`, `FALZAR_OVER_GLOW` | kinds/player/mod.rs | BN6 data in Rust; content (the Beast Over form's glow). |
+| `GREGAR_OVER_GLOW`, `FALZAR_OVER_GLOW` | kinds/player/mod.rs | BN6 data in Rust; content (the Beast Over form's glow). Done: the forms' `glow` (rules-in-Luau S3). |
 | `Supports`, `SpTimes` | setup.rs | BN6's (supports perhaps BN5's too, §2.3). |
 | `FadeMode::{BeastOut, BeastOutBack, Mode1Transform*}` | battle.rs | BN6's fade table values; the fade table is per game. |
 | `actor::request::{CROSS_*, SELECT_SPECIAL, MODE9_A}` | actor.rs | BN6's request bits. |
 | `ChipFamily`, `ChipTraits`, `ExtraChipFlags::{RUSH_CANCELS, FREE_SLOT_IN}` | content/chips.rs | BN6's families and special cases. |
 | `Registry::Lockon`, `Rules::lockon`, `Rules::berserk`, `Rules::cross_special`, `Rules::sp_*` | nettai-content-api, content/rules.rs | BN6's. |
 | Roles such as `gregar_roar`, `falzar_roar`, `beast_over_*`, `cross_death`, `beast_claw` | content/roles.rs, rules/roles.luau | BN6's role set; roles become per game. |
-| `ActorField::{BeastLockon, BeastOutSpent}`, `NaviState::Cross*`, `SideSpecial`, `Emotion` | nettai-content-api api.rs, core.d.luau | BN6's API extension (§3.6). |
-| The engine kinds' keys `engine/lockon-marker`, `engine/cross-merge`, `engine/beast-over-burst`, `engine/afterimage` | kinds/mod.rs | BN6's kinds; their keys could say so (`engine/bn6/...`), which compat's kinds.toml would follow. |
+| `ActorField::{BeastLockon, BeastOutSpent}` (`BeastLockon` the framework's `Wrapped` since rules-in-Luau S3), `NaviState::Cross*`, `SideSpecial`, `Emotion` | nettai-content-api api.rs, core.d.luau | BN6's API extension (§3.6). |
+| The engine kinds' keys `engine/lockon-marker`, `engine/cross-merge`, `engine/beast-over-burst`, `engine/afterimage` | kinds/mod.rs | BN6's kinds; their keys could say so (`engine/bn6/...`), which compat's kinds.toml would follow. The marker, the burst and the afterimage are BN5's too: since rules-in-Luau S3, `engine/target-marker`, `engine/burst`, `engine/afterimage`. |
 | core.d.luau, types.d.luau | content/bn6 | The generic declarations belong to the engine (or a shared root); BN6's part stays in content/bn6. |
 | Pack formats `nettai-content/hud`, `nettai-content/custom` | nettai-content hud.rs, custom.rs | BN6's layouts under generic names. |
 | `BN6_LOAD_TIMES` | nettai-frontend main.rs | Not BN6's: already `NETTAI_LOAD_TIMES` since the rename. |
