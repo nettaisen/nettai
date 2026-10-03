@@ -133,3 +133,4 @@
 "bn5:elempowr/controller" = { pool = "effect", index = 0x7F, scratch_position = true }
 "bn5:rainyday/controller" = { pool = "effect", index = 0x75, scratch_position = true }
 "bn5:rainyday/cloud" = { pool = "attack", index = 0x97 }
+"bn5:elemrage/flame" = { pool = "attack", index = 0x98 }
