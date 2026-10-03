@@ -74,9 +74,12 @@ struct Face {
     own: bool,
     full_synchro: bool,
     count: u8,
-    /// The form and the emotion it is the face of (its lookup's).
+    /// The form and the emotion it is the face of (its lookup's), and
+    /// whether of the form's second set by the side's rules (the chaos
+    /// look's is the moment's, as the window draws).
     form: FormHandle,
     emotion: Emotion,
+    hub: bool,
 }
 
 impl Face {
@@ -89,16 +92,17 @@ impl Face {
     fn in_form(b: &Battle, r: ObjectRef, form: FormHandle) -> Face {
         let side = b.objects.get(r).alliance;
         let emotion = emotion(b, side);
+        let variant = nettai_battle::kinds::player::shows_face_variant(b, side);
+        let hub = nettai_battle::kinds::player::face_hub(b, side);
         let f = b.content.form(form);
         Face {
-            picture: f
-                .mugshot
-                .and_then(|faces| crate::packs::mugshot(&b.content, faces.shown(emotion, b.sides[side as usize].face_variant))),
+            picture: f.mugshot.and_then(|faces| crate::packs::mugshot(&b.content, faces.shown(emotion, variant))),
             own: f.kind == FormKind::Base,
             full_synchro: emotion == Emotion::FullSynchro,
             count: b.stats[side as usize].beast_out_counter,
             form,
             emotion,
+            hub,
         }
     }
 }
@@ -838,7 +842,14 @@ fn mugshot_parts<'a>(
     if let Some(form) = crate::custom::face(b, side) {
         face = Face::in_form(b, r, form);
     }
-    let (picture, Some((gfx, palettes))) = crate::lookups::form_face(packs, &b.content, face.form, face.emotion, problems) else { return };
+    let (picture, Some((gfx, palettes))) = crate::lookups::form_face(
+        packs,
+        &b.content,
+        face.form,
+        face.emotion,
+        face.hub || nettai_battle::kinds::player::face_chaos(b, side as u8),
+        problems,
+    ) else { return };
     // (The white of a change to Full Synchro: `byte_801CD80`.)
     let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
     out.push(block(gfx, 32, 16, pal, x, 18));

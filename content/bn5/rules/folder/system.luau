@@ -29,10 +29,10 @@
 -- as a chip is used. A chip of another game (a mixed folder) is held to these rules by its record: its class, its
 -- codes, its MB, its dark flag.
 
-local batcan1 = require("../../chips/batcan1/chip")
-local batcan2 = require("../../chips/batcan2/chip")
-local batcan3 = require("../../chips/batcan3/chip")
-local batcan4 = require("../../chips/batcan4/chip")
+local batcan1 = require("../../chips/batcan/chips").batcan1
+local batcan2 = require("../../chips/batcan/chips").batcan2
+local batcan3 = require("../../chips/batcan/chips").batcan3
+local batcan4 = require("../../chips/batcan/chips").batcan4
 
 local SIZE = 30
 local DARK_CHIPS = 3
