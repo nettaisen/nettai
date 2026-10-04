@@ -350,6 +350,10 @@ named_fields! {
         /// BN5's priming (AIData+0x0D): a form's `priming` chip used, its
         /// next doubling waiting.
         Primed = "primed", Bool, rw;
+        /// The chip a weapon of the navi's loads (BN5's AIData+0x32:
+        /// ColonelSoul's arm chip, which its charged shot's routine 0x13
+        /// fires, 0x0800F7D8; none: 0xFFFF).
+        WeaponChip = "weapon_chip", Ref(Registry::Chip, None), rw;
         ChaosLevel = "chaos_level", U8, rw;
         /// BN5's no-charge drive (DarkInvs): its ticks left (AIData+0x36;
         /// counted down in the intake while the navi has the no-charge
@@ -848,14 +852,16 @@ named_flags! {
 
 /// A custom screen's last pick (`custom.last_pick`): its slot (0-based),
 /// its chip as the screen checked it (the invalid chip for one with a code
-/// it hasn't), and whether it is the folder's Regular chip or a link navi's
-/// own chip.
+/// it hasn't), whether it is the folder's Regular chip or a link navi's own
+/// chip, and whether a button is attached to it
+/// (`custom.attach_to_last_pick`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CustomPick {
     pub slot: u8,
     pub chip: crate::ChipHandle,
     pub regular: bool,
     pub navi_chip: bool,
+    pub attached: bool,
 }
 
 /// What a side's custom screen reads of its player (`custom.player`).
@@ -1360,6 +1366,24 @@ pub trait CoreApi {
     /// the selection (BN5's soul given for a chip, 0x080233E0); false when
     /// the last pick isn't a chip (`custom.trade_last_pick`).
     fn custom_trade_last_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<bool>;
+    /// The system's button `button` is used on the last pick, a chip with
+    /// no button attached yet: the pick carries `modifiers` (the hand's
+    /// modifier bits) into the hand, and the button is picked until B takes
+    /// the chip back (BN5's capsules, 0x080237B4); false when the last pick
+    /// isn't such a chip (`custom.attach_to_last_pick`).
+    fn custom_attach_to_last_pick(&mut self, side: u8, system: u8, button: &str, modifiers: u8) -> ApiResult<bool>;
+    /// The last pick, a chip dealt from the folder, leaves the picks for
+    /// the system's button `button`, which is picked (BN5's Arm Change,
+    /// 0x080236C0: B, with the picks as they were, puts it back; at OK it
+    /// leaves the folder); false when the last pick isn't such a chip
+    /// (`custom.hold_last_pick`).
+    fn custom_hold_last_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<bool>;
+    /// The chip the system's button `button` holds, as the screen checked
+    /// it (`custom.held_pick`).
+    fn custom_held_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<Option<crate::ChipHandle>>;
+    /// The held chip's icon in the column cell it left, shown or not
+    /// (`custom.set_held_icon`: BN5's Arm Change's blink, 0x080236EC).
+    fn custom_set_held_icon(&mut self, side: u8, system: u8, button: &str, shown: bool) -> ApiResult<()>;
     /// The screen's fade is still running (`custom.fading`).
     fn custom_fading(&self, side: u8) -> ApiResult<bool>;
     /// The screen's cursor (its slot), and moving it; whether a key (its

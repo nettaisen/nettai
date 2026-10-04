@@ -391,6 +391,7 @@ impl Battle {
             SystemHook::ButtonState => d.state.expect("a button's state, asked only when it has one"),
             SystemHook::ButtonPressed => d.pressed,
             SystemHook::ButtonTakenBack => d.taken_back.expect("a button's taken_back, asked only when it has one"),
+            SystemHook::ButtonChip => d.chip.expect("a button's chip, asked only when it has one"),
             h => panic!("{h:?} is no button's function"),
         };
         let (_, slot) = self.system_slot(side, d.system).expect("a button of the side's systems");
