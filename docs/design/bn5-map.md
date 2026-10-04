@@ -1452,6 +1452,13 @@ them.
     an action, is dragged, flinches or is paralyzed; under (0x80000004) it is hidden, a ripple over it (effect object
     0x3E, objects/dive-ripple, the role `kinds.dive_ripple`; a splash as it starts, row 0x5D). BN6's submerged
     state (`sub_8010162`, +0x28 in BN5) stays apart.
+  - **GyroSoul's propeller while primed:** MegaMan's per-form tick (0x080EB1E8's row 0, 0x080F04CE) in soul 2 sets
+    his body overlay's animation offset (its ExtraVars word, 0x080C451A, which BN5's overlay adds to its owner's
+    animation and reads its depth by: 0x080C365C) to 17 while primed, else 0: the form's `tick` hook and
+    `set_overlay_anim_offset`. **KnightSoul's ball** is KnightMan's spawned by 0x080C768A, not KnightMan's
+    0x080C76AC that also keeps it running while dimmed (chips/knightmn/ball's `spawn`). **ShadowSoul's Chaos
+    Unison** loads DarkInvs (routine 0x31); DarkInvs's stand-in and drive end know MegaMan by his key, his navi's
+    module reaching theirs through the soul.
   - **The hit kernel** (0x0801691C, BN6's IWRAM `sub_3007218`; the reactions section's `hit_test = "bn5"`): no
     FloatShoe test (BN5's collision types have no 0x80, so BN6's test would keep every hit off a floating
     ShadowSoul or GyroSoul), the Elec element reaching a submerged or bubbled side (0x80000004), a guard broken by
