@@ -4,7 +4,7 @@
 -- player setups and hooks. Neither changes how a battle plays. A third
 -- ruleset plays by BN6's patch-cards system, for its tests.
 
-local patch_cards = require("./patch-cards/system")
+local patch_cards = require("./patch-cards")
 
 export type CounterState = { starts: number, side: number, bonus: number }
 
@@ -49,7 +49,7 @@ export type WatcherState = { intakes: number, x: number, y: number }
 
 -- Counts its side's navi intakes and keeps the navi's panel; refuses the
 -- test bomb, giving the test seed instead.
-local test_chips = require("../chips/test/chips")
+local test_chips = require("../chips/test")
 local watcher = define.system {
     id = "test/watcher",
     state = { intakes = "u16", x = "u8", y = "u8" },
@@ -72,10 +72,10 @@ local watcher = define.system {
 -- navis' forms go by as BN6's do, its emotions (content/bn6/rules/
 -- emotion: Full Synchro on a counter) and its dark chips' bug frags
 -- (content/bn6/rules/dark-chips).
-local beast = require("./beast/system")
-local dark_chips = require("./dark-chips/system")
-local emotion = require("./emotion/system")
-local forms = require("./forms/system")
+local beast = require("./beast")
+local dark_chips = require("./dark-chips")
+local emotion = require("./emotion")
+local forms = require("./forms")
 
 return {
     counter = counter,

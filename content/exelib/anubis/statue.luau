@@ -14,7 +14,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
 
 local regions = require("@exelib/regions")
-local rising_bubble = require("@exelib/rising-bubble/rising_bubble")
+local rising_bubble = require("@exelib/rising-bubble")
 
 local statue = {}
 

@@ -7,7 +7,7 @@
 -- front, and that panel); the navi holds for 90 ticks, humming every 17,
 -- and the flames die down once it stops.
 
-local element_pillar = require("../../../../objects/element-pillar/element_pillar")
+local element_pillar = require("../../../../objects/element-pillar")
 local regions = require("@exelib/regions")
 local weapon = require("../../../../lib/weapon")
 

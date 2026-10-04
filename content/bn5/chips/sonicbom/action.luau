@@ -6,7 +6,7 @@
 -- back after (lib/stepsword), its boom of hit modifier 1, leaving two afterimages as it throws. Each chip makes its
 -- own (`action.make`: SonicBom's is `action.action`).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local stepsword = require("../../lib/stepsword")
 local sonic_boom = require("@exelib/swords/sonic_boom")
 local swords = require("../../lib/swords")
