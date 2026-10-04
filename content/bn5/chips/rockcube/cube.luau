@@ -20,4 +20,6 @@ local made = common.make {
 return {
     -- 0x080E46E6: the chip's `dimming` hook, a rock cube in front of the user (the record's first parameter, 1).
     hook = made.places { variant = rock.variants.cube },
+    -- The same with the ice rock (the first parameter 3: WhiCapsl's record's, chip 0x17E, which nothing starts).
+    ice = made.places { variant = rock.variants.ice },
 }
