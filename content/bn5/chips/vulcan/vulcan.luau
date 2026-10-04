@@ -11,9 +11,9 @@ local vulcan_action = require("@common/vulcan/action")
 
 local vulcan = {}
 
--- BN5's gun, attachment and bullet; the shot's sound BN6's.
+-- BN5's gun, attachment and bullet; the shot's sound BN6's number.
 local LOOK: VulcanLook = {
-    sound = asset.sound("bn6:col-army-2"),
+    sound = asset.sound("bn5:col-army-2"),
     arm = attachment.look { sprite = asset.sprite("bn5:vulcan"), palette = 0, attach_point = 14 },
     attachment = attachment.kind,
     bullet_kind = bullet.kind,
