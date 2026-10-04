@@ -1644,6 +1644,7 @@ pub fn custom_screen_layout() -> CustomScreenLayout {
         right_scan_bottom: vec![5, 6, 7, 8, 9, 11, 10],
         left_scan_start: [5, 4, 3, 2, 1, 5, 4, 3, 2, 1, 0, 0],
         right_scan_start: [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 0, 0],
+        redeal_kept: Vec::new(),
     }
 }
 
