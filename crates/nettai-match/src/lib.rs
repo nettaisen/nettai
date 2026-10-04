@@ -118,9 +118,6 @@ pub struct Side {
     /// The navi's stats as the round starts them (the version is the
     /// game's).
     pub stats: NaviStats,
-    /// The save's event flag 0x1720: the emotion window flickers as a
-    /// bugged navi's does.
-    pub emotion_window_glitch: bool,
     /// The folder, its entries empty while it is being made (a round is
     /// played with a whole one: the checks refuse a match without).
     pub folder: Folder,
@@ -322,7 +319,6 @@ impl Side {
             navi,
             game: version,
             stats: Side::base_stats(content, navi, version),
-            emotion_window_glitch: false,
             folder: Folder::EMPTY,
             crosses: None,
             beast_out: true,
@@ -370,12 +366,7 @@ impl Match {
                 joypad_phase: 0,
                 navi_level: s.navi_level,
                 sp_times: s.sp_times,
-                console: ConsoleSetup {
-                    rng: rng.state,
-                    tag_pair,
-                    emotion_window_glitch: s.emotion_window_glitch,
-                    ..ConsoleSetup::default()
-                },
+                console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
                 rules: Vec::new(),
                 patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
                 navicust: s.navicust,
@@ -428,8 +419,7 @@ pub fn next_round(content: &Content, first: &RoundSetup, folders: &[SavedFolder;
         let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(folder, 0, &mut rng, content);
         let p = &mut next.players[side];
         p.folder = Some(folder);
-        // (The save's glitch flag stays.)
-        p.console = ConsoleSetup { rng: rng.state, tag_pair, frames: console.frames, emotion_window_glitch: p.console.emotion_window_glitch };
+        p.console = ConsoleSetup { rng: rng.state, tag_pair, frames: console.frames };
     }
     next
 }
