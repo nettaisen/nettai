@@ -89,6 +89,7 @@ language = "ja"
 "bn5:crsshld2" = { name = "カースシールド2", description = "ガードするとあいて\nにかみつくシールド\nあいてはのろわれる" }
 "bn5:crsshld3" = { name = "カースシールド3", description = "ガードするとあいて\nにかみつくシールド\nあいてはのろわれる" }
 "bn5:csmopris" = { name = "コスモプリズン", description = "コスモホールから\nわくせいをよびだし\n攻撃する!" }
+"bn5:curse" = { name = "ノロイ", description = "" }
 "bn5:custswrd" = { name = "カスタムソード", description = "カスタムゲージが\nマンタンにちかい\nほど攻撃力アップ!" }
 "bn5:cusvolt1" = { name = "カスタムボルト1", description = "ひろがる電撃!\nカスタムゲージを\nしょうひしてはなつ" }
 "bn5:cusvolt2" = { name = "カスタムボルト2", description = "ひろがる電撃!\nカスタムゲージを\nしょうひしてはなつ" }
@@ -242,6 +243,7 @@ language = "ja"
 "bn5:pulsar1" = { name = "パルスビーム1", description = "前方におんぱ攻撃!\nものにあたると\nまわりにひろがる!" }
 "bn5:pulsar2" = { name = "パルスビーム2", description = "前方におんぱ攻撃!\nものにあたると\nまわりにひろがる!" }
 "bn5:pulsar3" = { name = "パルスビーム3", description = "前方におんぱ攻撃!\nものにあたると\nまわりにひろがる!" }
+"bn5:punisher" = { name = "バチアタリ", description = "" }
 "bn5:quake1" = { name = "アースクエイク1", description = "3マス前方に\nアースクエイク攻撃\nじめんをヒビに!" }
 "bn5:quake2" = { name = "アースクエイク2", description = "3マス前方に\nアースクエイク攻撃\nじめんをヒビに!" }
 "bn5:quake3" = { name = "アースクエイク3", description = "3マス前方に\nアースクエイク攻撃\nじめんをヒビに!" }

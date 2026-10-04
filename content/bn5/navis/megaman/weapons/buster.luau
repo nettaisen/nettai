@@ -1,12 +1,12 @@
 --!strict
--- MegaMan's buster in BN5 (`megaman/buster`): the original's weapon routine 0 (0x0800F522, BN6's `sub_8011A26`),
--- which sets up the shared buster shot (@common/megaman/buster, BN6's action 0x11, BN5's 0x11: the same code but
--- for the muzzle flash's attachment row and the absorbed-obstacle throw, which BN5 hasn't) with BN5's buster parts,
--- projectile and attachment; its sound BN6's. The NaviCust's buster bugs may make a shot a blank (the shared blank
--- shot, @common/megaman/blank_shot: BN5's action 0x33, its click BN6's) or a charged shot instead (BN6's pick,
--- `sub_8013D5E`: the same code). Unlike
--- BN6's, the damage is Attack plus the navi's buster bonus (0x0800F5AC by navi: no worn-out rule, no form's
--- bonus, no cap), and it always draws: on half the draws the shot is the one the navi's buster-shot program
+-- MegaMan's buster in BN5 (`megaman/buster`): the original's weapon routine 0 (0x0800F522, BN6's `sub_8011A26`), which
+-- sets up the shared buster shot (@common/megaman/buster, BN6's action 0x11, BN5's 0x11: the same code but for the
+-- muzzle flash's attachment row and the absorbed-obstacle throw, which BN5 hasn't) with BN5's buster parts, projectile
+-- and attachment; its sound BN6's number. The NaviCust's buster bugs may make a shot a blank (the shared blank shot,
+-- @common/megaman/blank_shot: BN5's action 0x33, its click BN6's number) or a charged shot instead (BN6's pick,
+-- `sub_8013D5E`: the same code). Unlike BN6's, the damage is Attack plus the navi's buster bonus (0x0800F5AC by navi:
+-- no worn-out rule, no form's bonus, no cap), and it always draws: on half the draws the shot is the one the navi's
+-- buster-shot program
 -- names (NaviStats +0x4D, the plain shot when 0). MegaMan in his base form in Hub Style (NaviStats +0x4C, patch card
 -- 111's) fires the spread instead (the shot's variant 1: a row up and down too) of Hub Style's shot (projectile row
 -- 0x12), with its own flash (the attachment table's row 0x39, 0c-59: 0x080EBA30).
@@ -34,15 +34,15 @@ local buster = {
         buster = lib,
         projectiles = projectile,
         attachment = attachment.kind,
-        shot_sound = asset.sound("bn6:buster-shot"),
+        shot_sound = asset.sound("bn5:buster-shot"),
         plain = variants.plain,
-        throw_sound = asset.sound("bn6:junk-shot"),
+        throw_sound = asset.sound("bn5:junk-shot"),
         spread_flash = attachment.look { sprite = asset.sprite("bn5:sprite-0c-59"), palette = 0, attach_point = 0 },
     },
 }
 
 -- The blank shot (BN5's action 0x33).
-local blank_shot = blank.make { id = "bn5:megaman/blank-shot/action", buster = lib, click = asset.sound("bn6:gundels1") }
+local blank_shot = blank.make { id = "bn5:megaman/blank-shot/action", buster = lib, click = asset.sound("bn5:gundels1") }
 
 -- 0x0800F522.
 function bn5.setup(navi: Object): Action

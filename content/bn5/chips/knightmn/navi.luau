@@ -8,7 +8,7 @@
 
 local ball = require("./ball")
 local navi_chips = require("@common/navi-chips/navi")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local statuses = require("../../rules/status")
 
 export type State = {

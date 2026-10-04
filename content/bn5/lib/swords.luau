@@ -96,8 +96,8 @@ swords.anti_sword_counter = antiswrd.action_with {
     id = "bn5:antiswrd/counter",
     blade = swords.blade,
     boom = swords.sonic_boom,
-    start_sound = asset.sound("bn6:log-in"),
-    swing_sound = asset.sound("bn6:sword-swing"),
+    start_sound = asset.sound("bn5:log-in"),
+    swing_sound = asset.sound("bn5:sword-swing"),
     attachment = attachment.kind,
     -- (BN5's: no invulnerability, nothing restarted at its swings.)
     plain = true,
