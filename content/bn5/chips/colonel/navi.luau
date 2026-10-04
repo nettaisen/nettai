@@ -274,6 +274,9 @@ function colonel.summon_at(level: number, cross: boolean): (user: Object, contro
     end
 end
 
+-- What he wears (navi 7's parts), which LeadRaid's Colonel wears too (chips/leadraid/colonel).
+colonel.cape = CAPE
+
 -- Colonel's and ColonelSP's (their Param1s 0), ColonelDS's (4), CrossDiv's (its Param3 1).
 colonel.summon = colonel.summon_at(0, false)
 colonel.summon_sp = colonel.summon_at(0, false)
