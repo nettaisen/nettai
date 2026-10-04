@@ -53,6 +53,7 @@ use nettai_content_api::{NaviHandle, RulesetHandle, StageHandle};
 pub use check::{check_match, check_side};
 pub use draw::Draws;
 pub use file::{parse, write};
+pub use import::save_game;
 pub use folders::Folder;
 
 /// Where a round is fought: a stage and the background shown, by its name
@@ -89,9 +90,13 @@ impl Arena {
     }
 }
 
-/// `game`'s stock ruleset (a match file that names none plays by it).
+/// `game`'s stock ruleset (a match file that names none plays by it): the
+/// content's, when it is `game`'s.
 pub fn stock_ruleset(content: &Content, game: &str) -> Result<RulesetHandle, String> {
-    content.defs.stock_ruleset_of(game).ok_or_else(|| format!("{game} has no stock ruleset"))
+    if content.game() != game {
+        return Err(format!("the content is {}'s, not {game}'s", content.game()));
+    }
+    content.defs.stock_ruleset().ok_or_else(|| format!("{game} has no stock ruleset"))
 }
 
 /// What a side's tactics' send draws from, with the seed and the side.
@@ -219,21 +224,16 @@ pub const PATCH_CARDS_SYSTEM: &str = "patch-cards";
 /// The system that compiles the NaviCust (BN6's).
 pub const NAVICUST_SYSTEM: &str = "navicust";
 
-/// The NaviCust board of a match by `ruleset` (its game's rule section
+/// The NaviCust board of the content's game (its rule section
 /// `navicust`).
-pub fn navicust_rules(content: &Content, ruleset: RulesetHandle) -> &nettai_battle::content::NaviCustRules {
-    &rules(content, ruleset).navicust
+pub fn navicust_rules(content: &Content) -> &nettai_battle::content::NaviCustRules {
+    &content.rules().navicust
 }
 
 /// The SP navis whose deletion times a side's setup carries, by slot
-/// (the rules' `sp_slots`: BN6's `sp/heatman` ...).
-pub fn sp_slots(content: &Content, ruleset: RulesetHandle) -> &[String] {
-    &rules(content, ruleset).sp_slots
-}
-
-/// The rule sections of a match by `ruleset`.
-fn rules(content: &Content, ruleset: RulesetHandle) -> &nettai_battle::content::Rules {
-    content.side_rules(Some(ruleset), content.defs.ruleset_game(Some(ruleset), Default::default()))
+/// (the game's rules' `sp_slots`: BN6's `sp/heatman` ...).
+pub fn sp_slots(content: &Content) -> &[String] {
+    &content.rules().sp_slots
 }
 
 /// A whole match: the arena and both sides (the left, side 0, then the
@@ -292,10 +292,9 @@ impl Match {
     /// The match on `ruleset` (one of its game's), each side without what
     /// the new rules don't take (`Side::fit_rules`).
     pub fn set_ruleset(&mut self, content: &Content, ruleset: RulesetHandle) {
-        let old = self.arena.ruleset;
         self.arena.ruleset = ruleset;
         for s in &mut self.sides {
-            s.fit_rules(content, old, ruleset);
+            s.fit_rules(content, ruleset);
         }
     }
 }
@@ -329,7 +328,7 @@ impl Side {
             karma: facts::DEFAULT_KARMA,
             souls: None,
         };
-        let boards = navicust_rules(content, arena.ruleset).boards.len();
+        let boards = navicust_rules(content).boards.len();
         if arena.has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0 {
             side.navicust = NaviCust::new(&[], (boards - 1) as u8).ok();
         }
@@ -370,7 +369,6 @@ impl Match {
                     emotion_window_glitch: s.emotion_window_glitch,
                     ..ConsoleSetup::default()
                 },
-                ruleset: Some(self.arena.ruleset),
                 rules: Vec::new(),
                 patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
                 navicust: s.navicust,
@@ -384,7 +382,7 @@ impl Match {
             // Cross of the game (or the side's list) and Beast Out as the
             // side says.
             let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(s.game) };
-            unlocks.write(content, &mut player).expect("a side's ruleset takes BN6's setup as its systems declare it");
+            unlocks.write(content, Some(self.arena.ruleset), &mut player).expect("the match's ruleset takes BN6's setup as its systems declare it");
             // Its karma and souls, into the systems that take them.
             facts::write(content, &self.arena, s, &mut player).expect("a side's karma and souls fit its rules (the match's checks)");
             player
@@ -392,6 +390,8 @@ impl Match {
         RoundSetup {
             content: content.hash(),
             settings,
+            // (The match's one ruleset.)
+            ruleset: Some(self.arena.ruleset),
             navi_stats: [self.sides[0].round_stats(content), self.sides[1].round_stats(content)],
             rng: seed,
             local_side: 0,

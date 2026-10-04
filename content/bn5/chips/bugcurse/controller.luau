@@ -1,10 +1,10 @@
 --!strict
 -- BugCurse's dimming controller (BN5's effect object #0x56, 0x080E6AC8; BN5's own): the usual dimming phases
--- (@common/dimming), with an effect (0x080E6B0C) that lays a curse (./curse) on the enemy navi's panel, unless the
+-- (@exelib/dimming), with an effect (0x080E6B0C) that lays a curse (./curse) on the enemy navi's panel, unless the
 -- enemy navi is invisible, submerged, flashing or bubbled (or there is none), and waits on it; then the undim.
 
 local curse = require("./curse")
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 
 export type State = {
     -- The curse is still at work (+0x0C, the flag it was given).

@@ -10,7 +10,7 @@
 //! data: keep it out of version control (data/ is ignored).
 
 use nettai_content::report::{Level, Report};
-use nettai_content::{pack, root, timing, verify};
+use nettai_content::{index, pack, timing, verify};
 use m4a::SongId;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -43,7 +43,7 @@ fn parse() -> Result<Args, String> {
     let mut it = std::env::args().skip(1);
     let command = it.next().ok_or(USAGE)?;
     let pack = PathBuf::from(it.next().ok_or(USAGE)?);
-    let mut a = Args { command, pack, reference: None, content: root::content(), seconds: 60.0, only: Vec::new() };
+    let mut a = Args { command, pack, reference: None, content: index::content(), seconds: 60.0, only: Vec::new() };
     while let Some(flag) = it.next() {
         match flag.as_str() {
             "--content" => a.content = it.next().ok_or("--content needs a directory")?.into(),
@@ -96,10 +96,8 @@ fn main() {
                         ),
                     );
                     nettai_content::lint::definitions(&c, &mut r);
-                    // Each root's tables, against its definitions.
-                    for dir in nettai_content::root::dirs(&a.content).unwrap_or_default() {
-                        nettai_content::locale::check_root(&dir, &c, &mut r);
-                    }
+                    // The strings tables, against the definitions.
+                    nettai_content::locale::check_games(&a.content, &c, &mut r);
                 }
                 Err(failed) => r.issues.extend(failed.issues),
             }

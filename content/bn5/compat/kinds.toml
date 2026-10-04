@@ -1,7 +1,7 @@
 # BN5's object kinds: the original's pool and index (the traces compare them), and the positions the comparison
 # skips (register garbage the spawner leaves until the kind's init places it): bn5-compat's comparison reads them.
 # Written by hand from the BN5 recordings and code, as kinds come up in the replays: edit it when content is renamed
-# or added. A key without a root is BN5's own (most made with content/common's shared code); `engine/...` the
+# or added. A key without a root is BN5's own (most made with content/exelib's shared code); `engine/...` the
 # engine's; a qualified one (`bn6:...`) BN6's, which BN5's code shares (its flags here are BN6's compat's).
 
 "engine/player" = { pool = "actor", index = 0x00 }
@@ -117,6 +117,9 @@
 "bn5:chaoslrd/aura" = { pool = "effect", index = 0x47 }
 "bn5:chaoslrd/gather" = { pool = "effect", index = 0x4B }
 "bn5:chaoslrd/strike" = { pool = "attack", index = 0x82 }
+"bn5:darkinvs/controller" = { pool = "effect", index = 0x18, scratch_position = true }
+"bn5:darkinvs/stand-in" = { pool = "actor", index = 0x09 }
+"bn5:darkinvs/image" = { pool = "actor", index = 0x0A }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
 "bn5:meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "bn5:napalmmn/bomb" = { pool = "attack", index = 0x3A }
@@ -148,7 +151,11 @@
 "bn5:chaos-shade" = { pool = "actor", index = 0x2B }
 "bn5:gyrosoul/tornado" = { pool = "attack", index = 0x1E }
 "bn5:searchsoul/reveal" = { pool = "effect", index = 0x8F, scratch_position = true }
-"bn5:napalmsoul/flash" = { pool = "effect", index = 0x26 }
+"bn5:megaman/glow" = { pool = "effect", index = 0x26 }
+"bn5:dive-ripple" = { pool = "effect", index = 0x3E }
+"bn5:tomahawksoul/grass" = { pool = "effect", index = 0x16, scratch_position = true }
+"bn5:numbersoul/layer" = { pool = "actor", index = 0x54 }
+"bn5:immobilizer" = { pool = "attack", index = 0x3F }
 "bn5:magnetsoul/magnet" = { pool = "attack", index = 0x75 }
 "bn5:timebom/countdown" = { pool = "attack", index = 0x4B }
 "bn5:timebom/controller" = { pool = "effect", index = 0x27, scratch_position = true }

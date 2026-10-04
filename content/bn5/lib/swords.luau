@@ -1,5 +1,5 @@
 --!strict
--- BN5's swords' parts, for the shared slash (@common/swords/slash, BN6's action 0x13; BN5's the same code
+-- BN5's swords' parts, for the shared slash (@exelib/swords/slash, BN6's action 0x13; BN5's the same code
 -- but for a step sword's afterimage and the elemental swords' slash palettes, which these swords haven't): the
 -- blade (attachment row 3, as BN6's: the same look), the slash's effects (BN5's effects 0x16 to 0x18 are
 -- BN6's: the same rows of 0x080DFC94, by the swords' table 0x080EC028), the swing's sound, and BN5's
@@ -12,11 +12,12 @@
 -- 9 going through (BN6's 0xB), else by its whole element byte (BN6's its primary element) from 0x080D0EF4, a BN5
 -- slash.
 
-local antiswrd = require("@common/antiswrd/counter")
+local antiswrd = require("@exelib/antiswrd/counter")
 local attachment = require("../objects/attachment/attachment")
 local collision = require("../rules/collision")
-local slash = require("@common/swords/slash")
-local sonic_boom = require("@common/swords/sonic_boom")
+local slash = require("@exelib/swords/slash")
+local sonic_boom = require("@exelib/swords/sonic_boom")
+local stepsword = require("./stepsword")
 
 local swords = {}
 
@@ -74,12 +75,22 @@ swords.sonic_boom = sonic_boom.make_kind("bn5:sonic-boom", {
     hits = collision.hits_navis,
 })
 
--- A chip's slash (@common/swords/slash), its blade BN5's attachment.
+-- BN5's sword step (0x080EBD04: by the attack's charge, as its Katanas and MoonBlds take it, lib/stepsword): a
+-- charged slash steps two panels ahead, or in ShadowSoul (and by a charge of 2) behind the enemy, turned round.
+local STEPS: SlashSteps = {
+    steps = function(me: Object): boolean
+        return me.charged ~= 0
+    end,
+    kind = stepsword.kind,
+    warp_target = stepsword.behind_enemy,
+}
+
+-- A chip's slash (@exelib/swords/slash), its blade BN5's attachment, its step BN5's.
 function swords.slash(spec: SlashSpec): Action
-    return slash.action(spec, attachment.kind)
+    return slash.action(spec, attachment.kind, { steps = STEPS })
 end
 
--- AntiSwrd's counter (the original's navi action 0x48: @common/antiswrd/counter) with BN5's blade and booms; its
+-- AntiSwrd's counter (the original's navi action 0x48: @exelib/antiswrd/counter) with BN5's blade and booms; its
 -- sounds BN6's. The ruleset starts it by role (`actions.anti_sword_counter`, rules/roles.luau).
 swords.anti_sword_counter = antiswrd.action_with {
     id = "bn5:antiswrd/counter",

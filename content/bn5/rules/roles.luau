@@ -16,12 +16,14 @@ local antidmg_counter = require("../chips/antidmg/counter")
 local barriers = require("../lib/barriers")
 local charged_shot = require("../navis/megaman/weapons/charged-shot")
 local anti_recovery = require("../chips/antirecv/controller")
+local dive_ripple = require("../objects/dive-ripple/ripple")
 local soldier = require("../objects/soldier/soldier")
 local chaos = require("./souls/chaos")
+local drive_end = require("../chips/darkinvs/drive-end")
 local invalid = require("../chips/invalid/chip")
 local collision = require("./collision")
 local effects = require("@bn6/lib/effects")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
 local statuses = require("./status")
 local swords = require("../lib/swords")
@@ -30,7 +32,7 @@ return define.roles {
     id = "bn5:roles",
     actions = {
         -- The charged shot a navi's request starts from idle without its weapon's setup (BN5's 0x1E: the shared
-        -- action, @common/megaman/charged_shot, navis/megaman/weapons/charged-shot).
+        -- action, @exelib/megaman/charged_shot, navis/megaman/weapons/charged-shot).
         forced_charged_shot = charged_shot.action,
         -- The trap chips' counters, which a trap that caught a hit starts (the original's actions 0x47 and
         -- 0x48: AntiDmg's and AntiSwrd's, BN6's code; AntiSwrd's swinging BN5's blade and throwing BN5's sonic
@@ -39,6 +41,9 @@ return define.roles {
         anti_sword_counter = swords.anti_sword_counter,
         -- A Chaos Unison charge released out of its window (BN5's action 0x39: ./souls/chaos): Dark MegaMan comes.
         chaos_failure = chaos.failure,
+        -- The request 0x80000's action (BN5's 0x49): the end of DarkInvs's no-charge drive, which its timer's end asks
+        -- for (rules/status's `no_charge_drive`; chips/darkinvs/drive-end). BN6's is its stun strike.
+        stun_strike = drive_end.action,
     },
     chips = {
         -- What a selection the custom screen can't allow becomes, and what a chip use the light and dark rule refuses
@@ -51,6 +56,8 @@ return define.roles {
         -- What an obstacle turns into where an armed side's ColonelSoul can use it (attack object 0x30: BN5's own,
         -- objects/soldier).
         obstacle_soldier = soldier.kind,
+        -- The ripple over a body under the sea's surface (effect object 0x3E: objects/dive-ripple).
+        dive_ripple = dive_ripple.kind,
     },
     statuses = {
         -- What a damage word's paralysis bit makes its hits carry, and what a counter hit lands instead of a

@@ -324,15 +324,14 @@ fn load<T>(pack: &Path, what: &str, f: impl Fn(&Path) -> Result<(T, nettai_conte
 }
 
 /// The battle's display text in `lang`: the pack's lettering in it (fonts,
-/// HUD lines, pictures with text) and the content folders' strings tables
-/// (`roots`), if the language isn't the content's own.
-fn language(assets: nettai_assets::Bundle, roots: &[PathBuf], lang: &str) -> (nettai_assets::Bundle, Option<nettai_content::locale::Strings>) {
+/// HUD lines, pictures with text) and the content's strings table (content
+/// directory `dir`'s, of the games loaded), if the language isn't the
+/// content's own.
+fn language(assets: nettai_assets::Bundle, dir: &Path, games: &[String], lang: &str) -> (nettai_assets::Bundle, Option<nettai_content::locale::Strings>) {
     let own = nettai_content::locale::OWN;
-    let strings = if lang == own { None } else { nettai_content::locale::load_many(roots, lang).unwrap_or_else(|e| fail(e)) };
+    let strings = if lang == own { None } else { nettai_content::locale::load_for(dir, games, lang).unwrap_or_else(|e| fail(e)) };
     if strings.is_none() && lang != own {
-        let mut have: Vec<String> = roots.iter().flat_map(|r| nettai_content::locale::languages(r)).collect();
-        have.sort();
-        have.dedup();
+        let have = nettai_content::locale::languages(dir);
         fail(format!("the content has no strings in {lang:?} (it has {})", have.join(", ")));
     }
     let assets = assets.in_language(lang).unwrap_or_else(|e| fail(format!("{e} (extract the pack again with the Japanese ROMs)")));
@@ -426,19 +425,16 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, game: &str, seed:
 }
 
 /// `--audit-content`: every lookup for everything the content defines, in
-/// each language a content folder has strings in; then exit.
-fn audit_content(args: &Args, content: &nettai_battle::Content, by_pack: &[PathBuf], own: nettai_battle::content::PackId, roots: &[PathBuf]) -> ! {
+/// each language the content has strings in; then exit.
+fn audit_content(args: &Args, content: &nettai_battle::Content, by_pack: &[PathBuf], own: nettai_battle::content::PackId, dir: &Path, games: &[String]) -> ! {
     let t = Instant::now();
     let bundles = by_pack.iter().map(|p| load(p, "graphics", nettai_content::pack::load_graphics)).collect();
     let banks: Option<Vec<Arc<m4a::SoundBank>>> =
         (!args.mute).then(|| by_pack.iter().map(|p| Arc::new(load(p, "sound", nettai_content::pack::load_sound))).collect());
     let own_lang = nettai_content::locale::OWN;
     let mut languages: Vec<nettai_frontend::content_audit::Language> = vec![(own_lang.to_string(), None)];
-    let mut langs: Vec<String> = roots.iter().flat_map(|r| nettai_content::locale::languages(r)).collect();
-    langs.sort();
-    langs.dedup();
-    for lang in langs.into_iter().filter(|l| l != own_lang) {
-        let strings = nettai_content::locale::load_many(roots, &lang).unwrap_or_else(|e| fail(e));
+    for lang in nettai_content::locale::languages(dir).into_iter().filter(|l| l != own_lang) {
+        let strings = nettai_content::locale::load_for(dir, games, &lang).unwrap_or_else(|e| fail(e));
         languages.push((lang, strings.map(Arc::new)));
     }
     let found = nettai_frontend::content_audit::audit(content, bundles, own, banks.as_deref(), &languages);
@@ -564,36 +560,29 @@ fn main() {
     let found = nettai_content::pack::find(&packs_dir, &args.packs, &mut found_report);
     show(&found_report);
     let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack, $BN6_PACK)"));
-    let loaded = nettai_frontend::load_game(args.content.as_deref(), &game, &found).unwrap_or_else(|r| {
+    let loaded = nettai_content::pack::load_game(args.content.as_deref(), &game, &found).unwrap_or_else(|r| {
         show(&r);
         fail(format!("can't load {game}'s battle content (--content, --pack, --game)"))
     });
     show(&loaded.report);
-    for (root, why) in &loaded.left_out {
-        eprintln!("the content folder {root} is left out: {why}");
-    }
     if std::env::var_os("NETTAI_LOAD_TIMES").is_some() {
-        eprintln!("loaded the battle content in {:.1?} (packs {})", t.elapsed(), loaded.packs.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join(", "));
+        eprintln!("loaded the battle content in {:.1?} (pack {})", t.elapsed(), loaded.pack.display());
     }
     let content = Arc::new(loaded.content);
-    let roots = loaded.roots;
-    // Each pack's graphics, by the content's pack order (`PackId`); the
-    // game's own in the player's language.
-    let by_pack = loaded.packs;
-    let own = content.assets.pack(&game).unwrap_or_else(|| {
-        let why = loaded.left_out.iter().find(|(g, _)| *g == game).map_or(String::new(), |(_, why)| format!(": {why}"));
-        fail(format!("no {game} pack is loaded{why}"))
-    });
+    let (content_dir, games) = (loaded.dir, vec![loaded.game]);
+    // The game's pack's graphics, in the player's language.
+    let by_pack = vec![loaded.pack];
+    let own = content.assets.pack(&game).unwrap_or_else(|| fail(format!("no {game} pack is loaded")));
     session::quiet_engine_panics();
     if args.audit_content {
-        audit_content(&args, &content, &by_pack, own, &roots);
+        audit_content(&args, &content, &by_pack, own, &content_dir, &games);
     }
     let mut bundles: Vec<nettai_assets::Bundle> = Vec::new();
     let mut strings = None;
     for (i, path) in by_pack.iter().enumerate() {
         let b = load(path, "graphics", nettai_content::pack::load_graphics);
         if i == own.index() {
-            let (b, s) = language(b, &roots, &args.lang);
+            let (b, s) = language(b, &content_dir, &games, &args.lang);
             strings = s;
             bundles.push(b);
         } else {

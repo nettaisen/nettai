@@ -1,6 +1,6 @@
 --!strict
 -- BN5's Guardian statue and its controller (the Guardian chip, the dimming handler's subtype 31: effect object
--- #0x52, 0x080E67DC, and attack object #0x7D, 0x080D5EB4): BN6's (@common/guardian) but for
+-- #0x52, 0x080E67DC, and attack object #0x7D, 0x080D5EB4): BN6's (@exelib/guardian) but for
 --
 -- - its HP: 10 (0x080D5F12; BN6's 1);
 -- - how it leaves (0x080D6124): any removal leaves a puff (BN5 neither absorbs nor blinks obstacles out);
@@ -14,10 +14,10 @@
 -- whose telop names Punisher (chip 0x175 in both games, BN6's here: BN5's content has no use for it).
 
 local collision = require("../../rules/collision")
-local controller = require("@common/guardian/controller")
+local controller = require("@exelib/guardian/controller")
 local effects = require("@bn6/lib/effects")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
-local statue = require("@common/guardian/statue")
+local statue = require("@exelib/guardian/statue")
 local strike = require("@bn6/chips/guardian/strike")
 
 local guardian = {}

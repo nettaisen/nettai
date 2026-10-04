@@ -216,13 +216,14 @@ impl Battle {
     }
 
     /// BN5's shake (0x08030D78, the arena's `effects.shake`): one channel
-    /// (BN5 has no `sub_80302B6`), shaking while the battle isn't paused
-    /// or while it dims (`battle_isTimeStopPauseOrBattleFlags0x20_800a0a4`;
-    /// the battle's subsystem is always in use), its jitter two draws from
+    /// (BN5 has no `sub_80302B6`), shaking while the battle isn't paused,
+    /// while it dims or while battle flag 0x20 is set (TomahawkSoul's change:
+    /// `battle_isTimeStopPauseOrBattleFlags0x20_800a0a4`; the battle's
+    /// subsystem is always in use), its jitter two draws from
     /// the battle's RNG2 (the simulation's: every console shakes alike);
     /// otherwise held, its jitter none and its magnitude kept.
     fn update_cameras_from_battle_rng(&mut self) {
-        let runs = !self.paused || self.is_dimmed();
+        let runs = !self.paused || self.is_dimmed() || self.round.flags & crate::battle::battle_flags::SHAKE_THROUGH_PAUSE != 0;
         let shake = self.consoles[0].camera.primary;
         if !runs || shake.ticks == 0 {
             for c in &mut self.consoles {
@@ -251,15 +252,18 @@ impl Battle {
     /// `sub_802FFF4`'s shake, each running tick after the objects: the
     /// primary channel first unless the battle is paused without dimming
     /// while player 0's status (BattleState+0x14) has neither bit 0 nor 2
-    /// (`sub_80269D0`); the secondary otherwise. (Battle flag 0x20, which
-    /// nothing sets, would also let the primary shake; the battle's
-    /// subsystem is always in use.)
+    /// (`sub_80269D0`) or battle flag 0x20 is set (which nothing in BN6
+    /// sets); the secondary otherwise. (The battle's subsystem is always in
+    /// use.)
     pub(crate) fn update_cameras(&mut self) {
-        if self.arena_rules().effects.shake == crate::content::ShakeRule::Battle {
+        if self.game_rules().effects.shake == crate::content::ShakeRule::Battle {
             self.update_cameras_from_battle_rng();
             return;
         }
-        let primary_first = self.round.remote_status[0] & 5 != 0 || !self.paused || self.is_dimmed();
+        let primary_first = self.round.remote_status[0] & 5 != 0
+            || !self.paused
+            || self.is_dimmed()
+            || self.round.flags & crate::battle::battle_flags::SHAKE_THROUGH_PAUSE != 0;
         for c in &mut self.consoles {
             c.update_camera(primary_first);
         }
@@ -350,7 +354,8 @@ mod tests {
         use crate::content::{Content, testing};
         let mut c: Content = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));
-        for rules in &mut c.rules {
+        {
+            let rules = &mut c.rules;
             rules.effects.shake = crate::content::ShakeRule::Battle;
         }
         let c = std::sync::Arc::new(c);

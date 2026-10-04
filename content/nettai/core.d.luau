@@ -108,6 +108,9 @@ export type StatusFlag =
     | "hit_while_dimmed"
     -- A field object being carried to be thrown.
     | "carried"
+    -- No hit reaches it and it hits nothing (Falzar Beast Over's form,
+    -- BN5's DarkInvs drive).
+    | "untouchable"
 -- Status timers of an object with collision data.
 export type StatusTimer =
     "paralyze" | "confuse" | "blind" | "immobilize" | "flash" | "submerged" | "invulnerable" | "freeze" | "bubble"
@@ -163,6 +166,9 @@ export type NaviStateFlag =
     | "heat_trap"
     -- Gone from the field while its navi chip's navi acts.
     | "vanished"
+    -- It dives: a panel that submerges (BN5's sea) submerges it and doesn't
+    -- hold it at a move's end (BN5's ToadSoul). The status reset ends it.
+    | "dives"
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 -- A navi's drag reaction step.
 export type DragStep = "start" | "slide" | "recover"
@@ -396,6 +402,9 @@ declare class Object
     attack_damage: number
     -- The attack's hitboxes' counter byte.
     hit_param: number
+    -- The attack's variant (AIAttackVars+3), as the anti-damage counters
+    -- read it: what a stance's weapon sets, 0 from a trap's catch.
+    attack_variant: number
     charged: number
     -- Lockout the attack applies when it ends.
     attack_lockout: number
@@ -480,6 +489,13 @@ declare class Object
     -- its level (AIData+0x6C: releases that succeeded, at most 4).
     chaos_armed: boolean
     chaos_level: number
+    -- Writable: BN5's no-charge drive (DarkInvs): its ticks left
+    -- (AIData+0x36; counted down in the intake while the navi has the
+    -- no-charge state, asking for the stun strike at 0; 0xFFFF holds), and
+    -- the computer-navi AI driving it (AIData+0xF0, which VarSwrd's pick
+    -- reads).
+    no_charge_timer: number
+    computer_driven: boolean
 
     -- `sub_800F26C`: the look its NameID gives is `sprite` (an object's
     -- NameID look; a navi's or form's NameID gives its sprite). An error
@@ -1095,6 +1111,9 @@ declare battle: {
     -- at `magnitude` (0-3). Drawn only, but each shaking tick draws from
     -- the consoles' own RNGs, which ChpShufl's re-deal reads.
     shake_camera: (magnitude: number, ticks: number) -> (),
+    -- `battle_setFlags(0x20)` / `battle_clearFlags(0x20)`: the cameras
+    -- shake even while the battle is paused (BN5's TomahawkSoul's change).
+    set_shake_through_pause: (on: boolean) -> (),
     -- `sub_80302B6`: the cameras' second shake.
     shake_camera_secondary: (magnitude: number, ticks: number) -> (),
     -- `sub_80EA438`: a burst around the navi's panel (effect #0x90, which
@@ -1721,6 +1740,11 @@ export type SystemSpec = {
         -- be used, a chip is what the navi uses instead. The first system
         -- that answers decides.
         chip_check: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
+        -- Earlier in the preparation, before the hand bonus's panel is
+        -- spent (BN5's 0x08010030: a dark chip's use and the chip's cost):
+        -- as `chip_check`; a chip in the use's place skips the rest,
+        -- `chip_check` too.
+        chip_cost: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
         -- A chip's use is prepared, before its record is loaded
         -- (`sub_8010D58`): a chip is what the navi uses in its place, with
         -- its own record, damage and bonus; nil, the chip. The first system
@@ -1775,11 +1799,10 @@ export type SystemSpec = {
 }
 export type System = SystemSpec
 
--- A player's rules: a list of systems, which the framework calls in this
+-- A match's rules: a list of systems, which the framework calls in this
 -- order. A game's own is its `stock` ruleset (one per game). A ruleset made
--- from another (`base`, a mix) has its base's systems less `remove`, with
--- `add` after them. Its game, whose data (roles, rule sections) the side
--- reads, is the root `game` names, else its base's, else its own root
+-- from another (`base`, a variant) has its base's systems less `remove`,
+-- with `add` after them. A match plays one game by one of its rulesets
 -- (docs/design/rules-in-luau.md §2.3).
 export type RulesetSpec = {
     id: string,
@@ -1788,12 +1811,6 @@ export type RulesetSpec = {
     base: Ruleset?,
     add: { System }?,
     remove: { System }?,
-    game: string?,
-    -- Its own rule sections (`define.rules(...)`, ids of its folder): a
-    -- mix's, over its game's for the sides that play by it; only the
-    -- sections about a side (custom-screen, berserk, navicust, status,
-    -- lockon, cross-special).
-    sections: { any }?,
 }
 export type Ruleset = RulesetSpec
 
@@ -1995,6 +2012,10 @@ export type NaviDef = {
     own_chip: { chip: Chip, code: string }?,
     -- Its damage bonus on its family's damaging chips, by its level.
     chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
+    -- MegaMan's bonus on a family's damaging chips used standing on a type
+    -- of panel, in a form with no `chip_bonus` (BN5's: Aqua chips on sea);
+    -- the use turns the panel Normal.
+    panel_bonus: { panel: PanelType, family: ChipFamily, damage: number }?,
     -- The chips it charges with A: its family's damaging chips, from a
     -- navi level on (`byte_8021369`).
     charged_chips: { family: ChipFamily, from_level: number }?,
@@ -2160,10 +2181,11 @@ export type FormDef = {
     mugshot: (Mugshot | MugshotFaces)?,
     weapons: FormWeapons?,
     identity: Identity?,
-    -- The damage it adds to a family's damaging chips, and to damaging
-    -- Null chips when that doesn't apply (Beast Out's, outside battle
-    -- mode 1).
-    chip_bonus: { family: ChipFamily, damage: number, dimming_chips: boolean? }?,
+    -- The damage it adds to a family's damaging chips (`uncharged`: only
+    -- on a use that isn't charged, with the A charge not full), and to
+    -- damaging Null chips when that doesn't apply (Beast Out's, outside
+    -- battle mode 1).
+    chip_bonus: { family: ChipFamily, damage: number, dimming_chips: boolean?, uncharged: boolean? }?,
     null_bonus: number?,
     -- The chips it charges with A: a family's damaging chips that aren't
     -- dimming chips (`damaging = false`: any of the family), and with
@@ -2214,6 +2236,10 @@ export type FormDef = {
     -- also runs as a player's init ends, as its navi's init hook
     -- (`sub_8010DD0`: BN5's MegaMan's record names the same routine).
     wears: ((navi: Object) -> ())?,
+    -- What else it puts on and takes off with its start and end hooks,
+    -- after its identity's parts (BN5's NumberSoul's layer).
+    put_on: ((navi: Object) -> ())?,
+    take_off: ((navi: Object) -> ())?,
     traits: { FormTrait }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
@@ -2278,12 +2304,13 @@ export type Status = StatusDef
 -- the installed cards' limit counts) and its effects in the card's order:
 -- each a table with its `kind` and whether the card shows it as a `bug`,
 -- with the kind's own fields. What an effect does is a game's rules' (BN6's
--- patch-cards system, rules/patch-cards: `PatchCardEffect`). Its name is
--- the locales' (locales/<lang>.toml's `patch-cards`).
+-- patch-cards system, rules/patch-cards), and its type is the game's (BN6's
+-- `PatchCardEffect`, which its cards' constructors make). Its name is the
+-- locales' (locales/<lang>.toml's `patch-cards`).
 export type PatchCardSpec = {
     id: string,
     mb: number,
-    effects: { PatchCardEffect },
+    effects: { any },
 }
 export type PatchCard = PatchCardSpec
 

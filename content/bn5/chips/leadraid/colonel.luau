@@ -11,7 +11,7 @@ local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local glow = require("./glow")
 local navi = require("../colonel/navi")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 export type State = {
     -- ProtoMan, who waits for him (+0x54: ProtoMan's +0x18, his `prevent_anim`, which he clears when done).

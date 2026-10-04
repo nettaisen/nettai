@@ -3,7 +3,7 @@
 -- (shot.luau) from the panel ahead on the 7th tick; BatCan4 fires three,
 -- 16 ticks apart, the last staggering harder (the original's action 0x19,
 -- `sub_80EC0E6`; docs/engine/shot-chips.md §6). The behavior is BN5's too
--- (@common/batcan, made in shot.luau with BN6's look).
+-- (@exelib/batcan, made in shot.luau with BN6's look).
 
 local lockon = require("../../rules/lockon")
 local shot = require("./shot")

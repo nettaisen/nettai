@@ -8,8 +8,8 @@
 -- the controller moves on.
 
 local capsule = require("./capsule")
-local navi_chips = require("@common/navi-chips/navi")
-local panels = require("@common/panels")
+local navi_chips = require("@exelib/navi-chips/navi")
+local panels = require("@exelib/panels")
 
 export type State = {
     -- The controller waiting for her (the flag it gave her, +0x54).

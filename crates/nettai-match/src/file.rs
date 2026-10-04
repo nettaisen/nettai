@@ -247,8 +247,8 @@ pub fn resolve(content: &Content, f: &MatchFile) -> Result<Match, Vec<String>> {
     };
     let arena = resolve_arena(content, &f.game, ruleset, &f.arena, &mut problems);
     let Some(arena) = arena else { return Err(problems) };
-    let left = resolve_side(content, &arena.game, ruleset, &f.left, "left", &mut problems);
-    let right = resolve_side(content, &arena.game, ruleset, &f.right, "right", &mut problems);
+    let left = resolve_side(content, &arena.game, &f.left, "left", &mut problems);
+    let right = resolve_side(content, &arena.game, &f.right, "right", &mut problems);
     match (left, right) {
         (Some(left), Some(right)) if problems.is_empty() => Ok(Match { seed: f.seed, arena, sides: [left, right] }),
         _ => Err(problems),
@@ -304,15 +304,8 @@ pub fn resolve_arena(content: &Content, game: &str, ruleset: nettai_content_api:
     Some(Arena { game: game.to_string(), ruleset, first: first?, later: later? })
 }
 
-/// A file's side of a match of `game` by `ruleset`, each name the game's.
-pub fn resolve_side(
-    content: &Content,
-    game: &str,
-    ruleset: nettai_content_api::RulesetHandle,
-    s: &SideFile,
-    at: &str,
-    problems: &mut Vec<String>,
-) -> Option<Side> {
+/// A file's side of a match of `game`, each name the game's.
+pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, problems: &mut Vec<String>) -> Option<Side> {
     let start = problems.len();
     let mut say = |p: String| problems.push(format!("{at}: {p}"));
     let navi = ids::navi(content, game, &s.navi);
@@ -370,7 +363,7 @@ pub fn resolve_side(
                 };
                 parts.push(PlacedProgram { program, color: color as u8, x: p.x, y: p.y, rotation: p.rotation, compressed: p.compressed });
             }
-            let expansions = n.expansions.unwrap_or_else(|| crate::navicust_rules(content, ruleset).boards.len().saturating_sub(1) as u8);
+            let expansions = n.expansions.unwrap_or_else(|| crate::navicust_rules(content).boards.len().saturating_sub(1) as u8);
             match NaviCust::new(&parts, expansions) {
                 Ok(n) => Some(n),
                 Err(e) => {
@@ -381,7 +374,7 @@ pub fn resolve_side(
         }
     };
     // The SP navis' deletion times, by the rules' slot names.
-    let slots = crate::sp_slots(content, ruleset);
+    let slots = crate::sp_slots(content);
     let mut sp_times = SpTimes::default();
     for (name, time) in &s.sp_times {
         let Some(i) = slots.iter().position(|x| x == name) else {
@@ -510,9 +503,8 @@ fn resolve_folder(content: &Content, game: &str, s: &SideFile, say: &mut impl Fn
     ok.then_some(folder)
 }
 
-/// A side of a match by `ruleset` as a file writes it, each name its
-/// game's.
-pub fn side_file(content: &Content, ruleset: nettai_content_api::RulesetHandle, s: &Side) -> SideFile {
+/// A side as a file writes it, each name its game's.
+pub fn side_file(content: &Content, s: &Side) -> SideFile {
     let name = |key: &str| ids::local(key).to_string();
     SideFile {
         navi: name(&content.defs.navi(s.navi).key),
@@ -523,7 +515,7 @@ pub fn side_file(content: &Content, ruleset: nettai_content_api::RulesetHandle, 
         emotion_window_glitch: s.emotion_window_glitch,
         crosses: s.crosses.map(|l| l.forms().map(|f| name(&content.defs.form(f).key)).collect()),
         beast_out: s.beast_out,
-        sp_times: crate::sp_times::named(crate::sp_slots(content, ruleset), &s.sp_times)
+        sp_times: crate::sp_times::named(crate::sp_slots(content), &s.sp_times)
             .into_iter()
             .map(|(name, frames)| (name, crate::sp_times::format(frames)))
             .collect(),
@@ -588,7 +580,7 @@ pub fn arena_file(content: &Content, a: &Arena) -> ArenaFile {
 
 /// The name a file gives `game`'s `ruleset`: none for the game's stock one.
 pub fn ruleset_name(content: &Content, game: &str, ruleset: nettai_content_api::RulesetHandle) -> Option<String> {
-    (content.defs.stock_ruleset_of(game) != Some(ruleset)).then(|| ids::local(&content.defs.ruleset(ruleset).key).to_string())
+    (crate::stock_ruleset(content, game).ok() != Some(ruleset)).then(|| ids::local(&content.defs.ruleset(ruleset).key).to_string())
 }
 
 /// A match as a file.
@@ -598,8 +590,8 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
         ruleset: ruleset_name(content, &m.arena.game, m.arena.ruleset),
         seed: m.seed,
         arena: arena_file(content, &m.arena),
-        left: side_file(content, m.arena.ruleset, &m.sides[0]),
-        right: side_file(content, m.arena.ruleset, &m.sides[1]),
+        left: side_file(content, &m.sides[0]),
+        right: side_file(content, &m.sides[1]),
     }
 }
 
@@ -755,7 +747,7 @@ mod tests {
     fn crosses_need_the_forms_system() {
         let content = nettai_battle::content::testing::content();
         let mix = content.defs.ruleset_by_key("test:test-mix").unwrap();
-        let stock = content.defs.stock_ruleset_of("test").unwrap();
+        let stock = content.defs.stock_ruleset().unwrap();
         assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM));
         assert!(!crate::ruleset_has_system(&content, mix, crate::FORMS_SYSTEM));
     }

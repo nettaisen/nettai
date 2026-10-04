@@ -1,6 +1,6 @@
 --!strict
 -- BlkBomb (BN5 chip 0x02e): a black bomb lobbed three panels ahead that sits there until a fire hit sets it off
--- over the other side's area: the shared BlkBomb (@common/blkbomb, BN5's attack object #0x47, BN6's #0x4A; the same
+-- over the other side's area: the shared BlkBomb (@exelib/blkbomb, BN5's attack object #0x47, BN6's #0x4A; the same
 -- code but for how it leaves, BN5's 0x080CE594, BN6's `sub_80CD700`, and its hit intake, BN5's that of BN6's
 -- `sub_801ADFA` where BN6's is `sub_801AD12`, which BN5 hasn't) with BN5's look (its spark, BN5's 0x0A, and
 -- collision types; its identity, sprite, sounds, burst and what it hits BN6's), thrown by the shared throw (lib/bombs:
@@ -10,7 +10,7 @@
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local attachment = require("../../objects/attachment/attachment")
-local black_bomb = require("@common/blkbomb/bomb")
+local black_bomb = require("@exelib/blkbomb/bomb")
 local bombs = require("../../lib/bombs/bombs")
 local collision = require("../../rules/collision")
 local effects = require("@bn6/lib/effects")

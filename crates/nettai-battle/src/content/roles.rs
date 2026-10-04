@@ -126,10 +126,14 @@ pub enum KindRole {
     /// The engine sets its state field `gun` (0 the sword's soldier, 1 the
     /// gun's: its Param1).
     ObstacleSoldier,
+    /// The ripple over a body under the sea's surface (BN5's effect object
+    /// #0x3E, 0x080E4B64), which the navi's status tick keeps
+    /// (0x0800DEB2): the engine gives it the body as its first related.
+    DiveRipple,
 }
 
 impl KindRole {
-    pub const ALL: [KindRole; 7] = [
+    pub const ALL: [KindRole; 8] = [
         KindRole::AbsorbedObstacle,
         KindRole::FallingRock,
         KindRole::Support,
@@ -137,6 +141,7 @@ impl KindRole {
         KindRole::Mode9Attack,
         KindRole::Mode9Actor,
         KindRole::ObstacleSoldier,
+        KindRole::DiveRipple,
     ];
 
     /// Its name in `rules/roles.luau`'s `kinds`.
@@ -149,6 +154,7 @@ impl KindRole {
             KindRole::Support => "support",
             KindRole::AntiRecovery => "anti_recovery",
             KindRole::ObstacleSoldier => "obstacle_soldier",
+            KindRole::DiveRipple => "dive_ripple",
         }
     }
 

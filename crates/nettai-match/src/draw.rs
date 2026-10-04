@@ -331,7 +331,7 @@ mod tests {
         let m = plain(&content, "bn6", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
         assert_ne!(m.sides[0].folder.chips[0], m.sides[0].folder.chips[1], "a drawn folder");
-        let content = crate::testing::every_game();
+        let content = crate::testing::bn5_content();
         let m = live(&content, "bn5", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
         assert_eq!(m.arena.game, "bn5");

@@ -98,7 +98,7 @@ impl Offer {
             ruleset: nettai_match::file::ruleset_name(content, &self.game, self.ruleset),
             stage: self.stage.map(place),
             arena: self.arena.as_ref().map(|a| nettai_match::file::arena_file(content, a)),
-            side: nettai_match::file::side_file(content, self.ruleset, &self.side),
+            side: nettai_match::file::side_file(content, &self.side),
         };
         toml::to_string(&file).expect("an offer serializes").into_bytes()
     }
@@ -116,7 +116,7 @@ impl Offer {
         }
         let mut problems = Vec::new();
         let ruleset = nettai_match::file::resolve_ruleset(content, game, f.ruleset.as_deref(), &mut problems);
-        let side = ruleset.and_then(|r| nettai_match::file::resolve_side(content, game, r, &f.side, "side", &mut problems));
+        let side = nettai_match::file::resolve_side(content, game, &f.side, "side", &mut problems);
         let stage = match f.stage.as_deref().map(|name| nettai_match::link_stage(content, game, name)) {
             Some(Err(e)) => {
                 problems.push(e);
@@ -522,7 +522,7 @@ mod tests {
     /// without souls, is refused.
     #[test]
     fn offers_carry_karma_and_souls() {
-        let content = nettai_match::testing::every_game();
+        let content = nettai_match::testing::bn5_content();
         let mut o = offer_of(&content, "bn5", 5);
         o.side.karma = 100;
         o.side.souls = Some(vec![ids::form(&content, "bn5", "protosoul").unwrap()]);
@@ -534,11 +534,14 @@ mod tests {
         let mut bad = o.clone();
         bad.side.karma = 1200;
         assert!(Offer::from_bytes(&content, "bn5", &bad.to_bytes(&content)).unwrap_err().contains("karma 1200"));
-        let mut bad = offer(&content, 6);
+        let six = bn6_test_content();
+        let mut bad = offer(&six, 6);
         bad.side.souls = Some(Vec::new());
-        assert!(Offer::from_bytes(&content, "bn6", &bad.to_bytes(&content)).unwrap_err().contains("no Soul Unison"));
-        // Offers of two games, or two rulesets, make no match.
-        let e = netplay_setup(&content, 9, &[o.clone(), offer(&content, 6)]).unwrap_err();
+        assert!(Offer::from_bytes(&six, "bn6", &bad.to_bytes(&six)).unwrap_err().contains("no Soul Unison"));
+        // Offers of two games make no match.
+        let mut other = o.clone();
+        other.game = "bn6".into();
+        let e = netplay_setup(&content, 9, &[o.clone(), other]).unwrap_err();
         assert_eq!(e, "the host plays bn5, the joiner bn6: a match is of one game");
     }
 

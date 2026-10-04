@@ -37,7 +37,7 @@ fn main() {
     let path = args.get(1).expect(usage);
     let pack = args.get(2).expect(usage);
     let (content, _) =
-        nettai_content::pack::load_battle(&nettai_content::root::content(), std::path::Path::new(pack)).unwrap_or_else(|r| panic!("{pack}: {r}"));
+        nettai_content::pack::load_battle(&nettai_content::index::content(), std::path::Path::new(pack)).unwrap_or_else(|r| panic!("{pack}: {r}"));
     let content = std::sync::Arc::new(content);
     let n: usize = args.get(3).map_or(1, |s| s.parse().expect("a round number"));
     std::panic::set_hook(Box::new(|_| {}));

@@ -221,7 +221,7 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
         col = col.push(rule::horizontal(1));
         col = col.push(karma(e, s));
     }
-    if nettai_match::Side::takes_sp_times(c, ruleset) {
+    if nettai_match::Side::takes_sp_times(c) {
         col = col.push(rule::horizontal(1));
         col = col.push(sp_times(e, s));
     }
@@ -276,7 +276,7 @@ fn label_text<'a>(s: String) -> Element<'a, Msg> {
 fn sp_times(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &*e.content;
     let side = e.side(s);
-    let slots = nettai_match::sp_slots(c, e.m.arena.ruleset);
+    let slots = nettai_match::sp_slots(c);
     let mut col = column![text("SP navi deletion times").size(16), text("mm:ss.cc; empty: the fastest. The SP navi chips' damage goes by them.").size(13).color(DIM)]
         .spacing(6);
     for (i, slot) in slots.iter().enumerate() {
