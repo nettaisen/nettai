@@ -918,7 +918,8 @@ module. Where a folder holds two things, the folder's own is the init:
 
 A require of a folder names its init (`../cannon` from chips/cannon/action.luau is chips/cannon/init.luau), and
 `@<pack>/<path>` is a pack's module from its top. A module's name stays its file's (`bn6:chips/cannon/init`), and
-an anonymous definition's key with it (`chips/cannon/init#2`).
+an anonymous definition's key with it (`chips/cannon/init#2`, which was `chips/cannon/chips#2`: the renaming gave
+the anonymous definitions new keys, and so, within a registry, possibly other handles; every id stayed).
 
 **A series' module returns its chips by name** (R6; the user: "instead of stuff like aquandl[3] it should really
 be aquandl_chips.aquandl3 like the rest of the things"): each chip by its id (`-` as `_`), and the local that
