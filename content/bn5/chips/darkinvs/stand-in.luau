@@ -8,7 +8,7 @@
 local stand_in = require("@exelib/dimming/stand_in")
 
 -- MegaMan, by key (his navi's module reaches this one through his souls' Chaos Unison weapons).
-local MEGAMAN = "bn5:megaman"
+local MEGAMAN = "megaman"
 
 export type State = {
     -- The controller waiting for it (the flag it was given, +0x60: the controller's +0x0C).
@@ -19,7 +19,7 @@ type Waiting = { busy: boolean }
 
 local standin = {}
 
-local SOUND = asset.sound("bn5:bug")
+local SOUND = asset.sound("bug")
 -- How long it flickers (to 0), and MegaMan's dark palette (0x0800DE82).
 local FLICKER, DARK = 0x1E, 1
 
@@ -73,7 +73,7 @@ local function init(me: Object)
 end
 
 standin.kind = define.kind {
-    id = "bn5:darkinvs/stand-in",
+    id = "darkinvs/stand-in",
     pool = "actor",
     state = { controller = "object" },
     -- 0x080BA5C0.

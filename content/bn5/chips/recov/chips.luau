@@ -8,7 +8,7 @@ local heal = require("@exelib/recov/heal")
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (30).
 local recov10 = define.chip {
-    id = "bn5:recov10",
+    id = "recov10",
     codes = { "A", "C", "L", "*" },
     element = "null",
     family = "recovery",
@@ -27,7 +27,7 @@ local recov10 = define.chip {
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (30).
 local recov30 = define.chip {
-    id = "bn5:recov30",
+    id = "recov30",
     codes = { "C", "H", "L", "*" },
     element = "null",
     family = "recovery",
@@ -46,7 +46,7 @@ local recov30 = define.chip {
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (40).
 local recov50 = define.chip {
-    id = "bn5:recov50",
+    id = "recov50",
     codes = { "B", "H", "O", "*" },
     element = "null",
     family = "recovery",
@@ -65,7 +65,7 @@ local recov50 = define.chip {
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (40).
 local recov80 = define.chip {
-    id = "bn5:recov80",
+    id = "recov80",
     codes = { "B", "K", "O", "*" },
     element = "null",
     family = "recovery",
@@ -84,7 +84,7 @@ local recov80 = define.chip {
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (50).
 local recov120 = define.chip {
-    id = "bn5:recov120",
+    id = "recov120",
     codes = { "K" },
     element = "null",
     family = "recovery",
@@ -103,7 +103,7 @@ local recov120 = define.chip {
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (50).
 local recov150 = define.chip {
-    id = "bn5:recov150",
+    id = "recov150",
     codes = { "Q" },
     element = "null",
     family = "recovery",
@@ -122,7 +122,7 @@ local recov150 = define.chip {
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (50).
 local recov200 = define.chip {
-    id = "bn5:recov200",
+    id = "recov200",
     codes = { "I" },
     element = "null",
     family = "recovery",
@@ -141,7 +141,7 @@ local recov200 = define.chip {
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (50).
 local recov300 = define.chip {
-    id = "bn5:recov300",
+    id = "recov300",
     codes = { "Y" },
     element = "null",
     family = "recovery",

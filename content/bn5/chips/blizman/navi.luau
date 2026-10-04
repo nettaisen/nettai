@@ -19,9 +19,9 @@ export type State = {
 
 local blizman = {}
 
-local SPRITE = asset.sprite("bn5:blizzardman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_ROLL = asset.sound("bn5:blizzard-windup")
+local SPRITE = asset.sprite("blizzardman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_ROLL = asset.sound("blizzard-windup")
 -- By the level (0x080BC178): DS's 3 (SP's level is 0).
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 3 }
 local SOLID = 0x10
@@ -29,13 +29,13 @@ local SOLID = 0x10
 local THROW, DOWN = 0x40, 0x22
 -- His snowball's roller (BN5's attack object #0xB7, 0x080DD234): rows 0x48 and 0x49.
 local ROLLER = rollers.make_kind {
-    id = "bn5:blizman/roller",
+    id = "blizman/roller",
     self_type = collision.hitbox,
-    target = define.collision { id = "bn5:blizman/roller-reach", side0 = 0x3F800000, side1 = 0x3F800000, row_offset = 0x248 },
+    target = define.collision { id = "blizman/roller-reach", side0 = 0x3F800000, side1 = 0x3F800000, row_offset = 0x248 },
 }
 -- His snowball (BN5's attack object #0xB2, 0x080DC880).
 local BALL = balls.make_kind {
-    id = "bn5:blizman/ball",
+    id = "blizman/ball",
     sprite = SPRITE,
     anim = 0x12,
     grown = { 0x13, 0x13 },
@@ -127,7 +127,7 @@ local function init(me: Object)
 end
 
 blizman.kind = define.kind {
-    id = "bn5:blizman/navi",
+    id = "blizman/navi",
     pool = "actor",
     state = { controller = "object", level = "u8" },
     -- 0x080BC100.

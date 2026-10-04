@@ -28,7 +28,7 @@ local SHIELD_POINT = 6
 local BREAKS_GUARD = 0x2
 -- The wave's height, and its sound.
 local WAVE_Z = 0x10_0000
-local WAVE_SOUND = asset.sound("bn6:wave")
+local WAVE_SOUND = asset.sound("wave")
 -- The NaviCust Reflect's shot: the charged shot's projectile
 -- (`sub_80C4FFE`) at this height. (The game passes the literal 2 its flag
 -- test loaded as the shot's element, which the shot's init replaces.)

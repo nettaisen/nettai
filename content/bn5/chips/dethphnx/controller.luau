@@ -5,4 +5,4 @@
 local controllers = require("../phoenix/controllers")
 local phoenix = require("./phoenix")
 
-return controllers.make { id = "bn5:dethphnx/controller", name = "DethPhnx", spawn = phoenix.spawn }
+return controllers.make { id = "dethphnx/controller", name = "DethPhnx", spawn = phoenix.spawn }

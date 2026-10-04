@@ -222,11 +222,13 @@ the transform records hold the requesting navi at +8. Three layouts differ besid
 `sub_802A49C` counterpart is similar 0.62), the opening `sub_8026840` and the round's custom memory: absent.
 
 **BN5's own:** the custom screen's entry (`sub_8009338`, similar 0.66) runs BN6's screen (`sub_8026A28`) unless
-the battle flag 0x40 mode is on (`sub_800A8F8`, the same code), in which case it runs BN5's own screen (0x08025EF2,
-in a 2.9 KB block from 0x08025E4E, beside another of 3.2 KB from 0x080269A0). BN6's flag-0x40 mode is the "Cross
-change mode", never in a netbattle. **Tango's Team Battles don't set it** (the battle flags, battle state +0x32, read 0
-in the traces): their custom screen is the shared one, and the per-player gauges and SELECT special of the flag-0x40
-mode don't run either.
+battle flag 0x40 is on (`sub_800A8F8`, the same code): BN5's operation battle, which its setter (0x0802D590) turns on
+when the battle mode isn't 1 and the navi's stats' +0x2A is set (both navis computer-driven, each side its own gauge).
+Then it runs BN5's own screen, the Tactics screen (0x08025EF2, in a 2.9 KB block from 0x08025E4E, beside another of
+3.2 KB from 0x080269A0). BN6's flag 0x40 is another mode, its chip gate battle (each side its own gauge, which pays
+for the chips slotted into its chip gate), never in a netbattle without gates. **Tango's Team Battles don't set it**
+(the battle flags, battle state +0x32, read 0 in the traces): their custom screen is the shared one, and the operation
+battle's own gauges and SELECT special don't run either.
 
 **Soul Unison on the shared screen** (read in Team ProtoMan's code, driven in the chip lab, §10): Beast Out's
 button under OK (slot 11, kind 2) is BN5's Soul Unison button. After every pick and take-back (`sub_8028E32`'s
@@ -360,7 +362,7 @@ reach_bn5.py); a few chips hit nobody standing anywhere, and their code says wha
   wave there; none on the field, the chip does nothing.
 - **The mode chips** (CannMode to DrilMode, FinalGun; action 0x1A, sub-type 0x0C, 0x0802D62A): they set the
   user's side's buster mode (the per-side block of BN6's flag-0x40 gauges, `sub_802E070`: its +0x0B the chip's
-  parameter, +0x2E 480 ticks, 360 in flag-0x40 mode). The damage comes from the buster afterwards.
+  parameter, +0x2E 480 ticks, 360 in the operation battle). The damage comes from the buster afterwards.
 - **Slasher** (action 0x29, 0x080ED328): while A is held, it looks over the whole field for the opponent's navi on
   a panel of the user's alliance (`sub_801273E`'s counterpart, panel flags: the opponent navi's body bit, and the
   panel's alliance); only then it strikes. So it needs the opponent standing on a panel of the user's area (the lab's
@@ -1051,13 +1053,14 @@ code, 6 the same but for constants, 34 similar, 1 differs and 8 absent. What dif
 
 - `sub_800825A` (the result): a special battle's result wait 65 ticks (BN6 94); the normal win's 102 as BN6's;
   `sub_80081A4` plays BN5's own winner songs at the same numbers (0x19 special, 0x1F).
-- `sub_80080D2` (fighting): no Cross-special check (BN6 +0x3A, `sub_800AAD6` absent) and no per-player gauge
+- `sub_80080D2` (fighting): no Cross-special check (BN6 +0x3A, `sub_800AAD6` absent) and no own-gauge
   decrement (0x2900) on a custom request; BN5 calls 0x08025ED0 there.
 - `sub_8008452`, `sub_8008492`: after the reversions BN5 opens the custom screen (result 6) directly: no
   transformation sequencer re-run (BN6's state 0x24 is absent), and no mode-5 test.
 - `sub_800840C`, `sub_8009158`, `sub_8009338`, `sub_80102AC`, `sub_8013FD0`, `sub_8007EB8`: BN5 adds tests of
-  battle flag 0x40 (`sub_800A8F8`, set in link battles) around single-player steps; `sub_8009338` calls the
-  custom screen's 0x08022C5C/0x08022D70 there (BN6's `sub_8026840` is absent).
+  battle flag 0x40 (`sub_800A8F8`: the operation battle, which BN5's setter, 0x0802D590, turns on when the battle
+  mode isn't 1 and NaviStats +0x2A is set) around single-player steps; `sub_8009338` calls the custom screen's
+  0x08022C5C/0x08022D70 there (BN6's `sub_8026840` is absent).
 - `sub_8007CA0` (round end): BN5 writes the light/dark value back (NaviStats +0x44, under battle effect 0x800)
   and three BN5 counters (0x0801289C, 0x0801288E, 0x0801299E); constants not read yet at 0x080070CE (5, BN6 1)
   and 0x080070EA (16 and 217, BN6 23 and 51).
@@ -1257,7 +1260,7 @@ controller.luau), lib/instant/meteor_shower (`pick`, `aim` exported; BN6's three
 lib/swords (a slash's `blade_anim`; parts.hold's anim).
 
 **Waiting:** LarkMan, GridMan and their SP and DS (BN5's own navis, §14.4: the action map's `bn5-only`), DarkInvs
-(BN5's own, 0x080E2338), the mode chips, Program Advances' recipes (TimeBom+'s among them), the flag-0x40 mode's
+(BN5's own, 0x080E2338), the mode chips, Program Advances' recipes (TimeBom+'s among them), the operation battle's
 effect 0x83 (FireHit's warning, the swords' swing, the meteors, DrilArm's start: never in a netbattle).
 
 **Chips 0x000 to 0x06F** (2026-10-03, bn5-chips-a): WideBlde, LongBlde and CustSwrd (the shared slash with BN5's
@@ -1651,9 +1654,9 @@ navi left undrawn after Cannon's hit (452-553; before this work too).
 
 **Program Advances.** A player's formed Program Advances are a `u64` (`ProgramAdvancesUsed`; content may define 64
 Program Advances: BN6's 30 and BN5's 30 load together). BN5's full table (0x08027FC8) is 21 recipes and then the
-netbattles' table (0x0802801C); only a battle with each side keeping its own gauge (battle flag 0x40, a Liberation
-Mission's) tries those 21: a recipe's `per_player_gauges_only = true`, which `find_program_advance` skips unless
-the battle's `per_player_gauges` is set. A recipe's `order` is its index in the full table. bn6battle-verify's
+netbattles' table (0x0802801C); only BN5's operation battle (battle flag 0x40, each side its own gauge: BN5's setter,
+0x0802D590, tests NaviStats +0x2A) tries those 21: a recipe's `operation_battle_only = true`, which
+`find_program_advance` skips unless the battle is one (`battle.own_gauges()`, the engine's `OWN_GAUGES`). A recipe's `order` is its index in the full table. bn6battle-verify's
 tools/bn5/recipes.py writes BN5's recipes (and the flag) into the Program Advances' chip files, naming only chips
 that have a use; rerun it as chips get theirs.
 
@@ -1747,11 +1750,11 @@ folder with the kinds it owns.
 - *Shared with BN6 in content/exelib* (BN6's wrappers at their old paths): AirSpin1–3 (common/airspin: the action and
   its top made by a look; BN5's top attack 0x9B), Z-Saver (common/zsaver), NumbrBl (common/numbrbl's balls and
   controller; BN5's NumberMan stand-in, actor 0x45, its own), CopyDmg (common/copydmg: BN5's action 0x24 with the buster
-  arm, BN6's mark, attack 0x28, which in the battle flag 0x40 mode hits its panel each tick it marks).
+  arm, BN6's mark, attack 0x28, which in the operation battle hits its panel each tick it marks).
 - *BN5's own, on BN6's action:* AqWhirl1–3 (the whirlpool, attack 0x5D); NeoVari and its picks CrosSwrd, SprSonic and
   DblDream (VarSwrd's action by its sequences; a computer-driven navi, AIData +0xF0, takes the side's sword pick).
 - *BN6's leftover code no BN6 chip uses, in BN5's folders:* Jealousy (effect 0x36: the other side's held chips counted,
-  `battle.hand_left` and the objects' `chips_held`; in the battle flag 0x40 mode its warning and
+  `battle.hand_left` and the objects' `chips_held`; in the operation battle its warning and
   `battle.drain_side_gauge`); PileDrvr (effect 0x6F, piles attack 0x99 and their beams attack 0x9A: a timed beam, not
   AirSpin's top) with its two recipes.
 - *BN5's own:* LeadRaid (ProtoMan actor 0x20, Colonel actor 0x22 striking an X, their charge glow effect 0x85; ProtoMan
@@ -1768,7 +1771,7 @@ tools/bn5/recipes.py finds chips wherever layout.py put them (`--check`).
 **BN5's dark MegaMan's last stand** (bn5-navichips, 2026-10-03, as built; its scenarios library-bn5/dark-survival:
 holds, antirecv, antirecv-mood, soul, every frame matching). A player MegaMan (AI index 0) of BN5's emotion 5 (a mood
 of 0 out of a soul, unangry; never in battle mode 1) whom a loss of HP brings to 0 holds at 1 HP, once a battle (the
-side's statistic 1 marks it spent; NaviStats +0x2A, the battle flag 0x40 mode's, rules it out), and asks for the request
+side's statistic 1 marks it spent; NaviStats +0x2A, the operation battle's, rules it out), and asks for the request
 0x40000000 (0x0802C16C, from object_subtractHP, 0x0800C6E0, and applyDamageToPlayer, 0x080185A2): the roles' `volley`,
 BN5's action 0x30 (rules/emotion/dark-survival). The battle dims and the screen fades out (the transformation's fade,
 `battle.screen_fade`; white, untouchable, his future panel, a flash), the HUD's gauge, HP box and emotion window go (the
@@ -1776,7 +1779,7 @@ HUD part `hp_box`: draw task 7, the box and its low-HP alarm), his dark self com
 rules/souls/shade's code, `shade.make`), the computer drives him for 720 ticks as DarkInvs's drive does (its end
 action 0x49), the HUD comes back (without the gauge in the last turns, `battle.late_turns`) and the screen fades in. The
 status section's `hp_loss = "bn5"` holds BN5's object_subtractHP (a player's loss drains its side's gauge too: ×128,
-in the battle flag 0x40 mode 0, 0x555, 0xAAA or 0x2000 by its size, 0x0800C734) and BN5's applyDamageToPlayer (a hit
+in the operation battle 0, 0x555, 0xAAA or 0x2000 by its size, 0x0800C734) and BN5's applyDamageToPlayer (a hit
 shows, white then its sounds, only by the register r1 the check leaves at 0 HP, and one that doesn't show goes
 straight to the deletion test, which tries the stand first). AntiRecv's counterattack takes its HP through
 `Object:subtract_hp` (BN6's the same), BN5's its mood too (0x080E39DC: its damage word's high half, 0x08012820), and
@@ -1977,7 +1980,7 @@ supports (the role `kinds.support`).
 
 What the programs in battle brought into the engine:
 
-- BN5's charged shot (0x080EC9F0) waits only in the battle flag 0x40 mode, marking the panel in front; else it fires
+- BN5's charged shot (0x080EC9F0) waits only in the operation battle, marking the panel in front; else it fires
   on its first tick (the shared charged shot's `waits`).
 - BN5's hit test (0x0801691C, §15.3 item 12): a FloatShoe body is hit (BN6's needs the hitter's 0x80 self bit, which
   BN5's collision types lack), and its raw channel (0x08017494) has no FloatShoe test either, so a barrier under

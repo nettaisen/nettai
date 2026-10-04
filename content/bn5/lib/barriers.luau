@@ -13,11 +13,11 @@ local common_visual = require("@exelib/barriers/visual")
 
 local barriers = {}
 
-local visual = common_visual.make { id = "bn5:barrier-visual", blows = false }
+local visual = common_visual.make { id = "barrier-visual", blows = false }
 barriers.visual = visual
 
-local SPRITE, BUBBLE, AURA = asset.sprite("bn5:barrier"), asset.sprite("bn5:bubble"), asset.sprite("bn5:aura")
-local SOUND, BUBBLE_SOUND, BUBBLE_POP = asset.sound("bn5:barrier"), asset.sound("bn5:bubble"), asset.sound("bn5:bubble-pop")
+local SPRITE, BUBBLE, AURA = asset.sprite("barrier"), asset.sprite("bubble"), asset.sprite("aura")
+local SOUND, BUBBLE_SOUND, BUBBLE_POP = asset.sound("barrier"), asset.sound("bubble"), asset.sound("bubble-pop")
 local NO_TIMER = 0xFFFF
 
 local function barrier(b: Barrier): Barrier
@@ -26,7 +26,7 @@ end
 
 -- Type 1: 10 HP (the Barrier chip's and FstBarr's).
 barriers.barrier_10 = barrier {
-    id = "bn5:barrier/10",
+    id = "barrier/10",
     behavior = "plain",
     hp = 10,
     threshold = 0,
@@ -37,7 +37,7 @@ barriers.barrier_10 = barrier {
 
 -- Type 5: 100 HP.
 barriers.barrier_100 = barrier {
-    id = "bn5:barrier/100",
+    id = "barrier/100",
     behavior = "plain",
     hp = 100,
     threshold = 0,
@@ -48,7 +48,7 @@ barriers.barrier_100 = barrier {
 
 -- Type 7: 200 HP.
 barriers.barrier_200 = barrier {
-    id = "bn5:barrier/200",
+    id = "barrier/200",
     behavior = "plain",
     hp = 200,
     threshold = 0,
@@ -59,7 +59,7 @@ barriers.barrier_200 = barrier {
 
 -- Type 8: a bubble that takes one hit, grows back 240 ticks later, and breaks on elec.
 barriers.bubble = barrier {
-    id = "bn5:barrier/bubble",
+    id = "barrier/bubble",
     behavior = "bubble",
     hp = 1,
     threshold = 0,
@@ -71,7 +71,7 @@ barriers.bubble = barrier {
 
 -- Type 9: an aura that stops every hit of less than 200 for 3000 ticks.
 barriers.life_aura = barrier {
-    id = "bn5:barrier/life-aura",
+    id = "barrier/life-aura",
     behavior = "plain",
     hp = 1,
     threshold = 200,
@@ -93,7 +93,7 @@ function barriers.raise(navi: Object, b: Barrier, keep_old: boolean?)
 end
 
 barriers.controller = common_controller.make {
-    id = "bn5:barriers/controller",
+    id = "barriers/controller",
     raise = function(navi: Object, b: Barrier)
         barriers.raise(navi, b)
     end,

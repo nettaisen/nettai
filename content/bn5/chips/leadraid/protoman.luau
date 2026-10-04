@@ -27,14 +27,14 @@ export type State = {
 
 local protoman = {}
 
-local SPRITE = asset.sprite("bn5:protoman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_SWING = asset.sound("bn5:sword-swing")
+local SPRITE = asset.sprite("protoman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_SWING = asset.sound("sword-swing")
 -- His sword (the attachment row 3), its animation 1, animating while dimmed.
-local SWORD = attachment.look { sprite = asset.sprite("bn5:sword"), palette = 0 }
+local SWORD = attachment.look { sprite = asset.sprite("sword"), palette = 0 }
 local SWORD_ANIM = 1
 -- His slash's effect (the effect table's row 0x16), 16 pixels up.
-local SLASH = define.effect { sprite = asset.sprite("bn5:sword-slash"), anim = 0, palette = 0 }
+local SLASH = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
 local SLASH_Z = 0x10_0000
 -- What he looks for (0x080BE5BC, 0x080BE594: an enemy navi's body), and a panel he can stand on: solid, with no body
 -- on it but his side's navi's (0x080BE560, 0x080BE4E8).
@@ -283,7 +283,7 @@ local function init(me: Object)
 end
 
 protoman.kind = define.kind {
-    id = "bn5:leadraid/protoman",
+    id = "leadraid/protoman",
     pool = "actor",
     state = { controller = "object", colonel = "object", glow = "object" },
     -- 0x080BE1C8.

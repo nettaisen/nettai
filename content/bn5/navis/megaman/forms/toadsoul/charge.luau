@@ -22,8 +22,8 @@ export type State = {
 local HIT_PARAM = 0x94
 local ANIM = 16
 -- His horn (the attachment table's row 0x31: sprite 0C-1F, palette 0, at his position).
-local HORN = attachment.look { sprite = asset.sprite("bn5:toadsoul-horn"), palette = 0 }
-local SOUND = asset.sound("bn5:toad-melody")
+local HORN = attachment.look { sprite = asset.sprite("toadsoul-horn"), palette = 0 }
+local SOUND = asset.sound("toad-melody")
 -- The routine's parameters (0x0A0600): no dimming, the next note 6 ticks in, each note 10 ticks.
 local CHAIN: { life: number, delay: number, dimmed: boolean } = { life = 10, delay = 6, dimmed = false }
 local BLOW_TICKS, RECOVER_TICKS = 15, 5
@@ -64,7 +64,7 @@ local function recover(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "bn5:toadsoul/charge/action",
+    id = "toadsoul/charge/action",
     state = { timer = "u16", target = "object" },
     -- 0x080EF5A2
     update = function(me: Object, s: State)
@@ -92,7 +92,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "bn5:toadsoul/charge",
+    id = "toadsoul/charge",
     -- The charge table's row 0x2D (0x0801CC2E); Charge 5 reads on into row 0x2E's first entry.
     charge_ticks = { 140, 135, 130, 125, 120, 60 },
     setup = setup,

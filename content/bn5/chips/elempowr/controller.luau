@@ -78,7 +78,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "bn5:elempowr/controller",
+    id = "elempowr/controller",
     pool = "effect",
     state = { busy = "bool" },
     -- 0x080E9B68.

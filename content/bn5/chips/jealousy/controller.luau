@@ -4,13 +4,14 @@
 -- side holds (the most any of its actors holds: a player's hand from its cursor, another actor's own count, 0x080E4562)
 -- and, once for each, every 10 ticks, hits every panel the other side stands on (0x080E45CC: region 1, the heavy
 -- spark, hit modifier 3, the chip's damage); with none held, or once no panel had one of them, it waits 90 ticks. In
--- the battle flag 0x40 mode it warns the other side's player over the gauge for its first 70 of those (0x080E4642),
+-- the operation battle it warns the other side's player over the gauge for its first 70 of those (0x080E4642),
 -- and then empties that side's custom gauge (0x080E4628).
 
 local collision = require("../../rules/collision")
 local dimming_chips = require("@exelib/dimming")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
+local operation_battle = require("../../lib/operation_battle")
 
 local controller = {}
 
@@ -25,8 +26,8 @@ export type State = {
 local OCCUPIED = { [0] = 0x0020_0000, [1] = 0x0040_0000 }
 local BETWEEN, WAIT, WARN_UNTIL = 0x0A, 0x5A, 0x14
 local HIT_MOD = 3
-local WARNING = asset.sound("bn5:err-select-91")
--- What the gauge loses in the battle flag 0x40 mode: all of it.
+local WARNING = asset.sound("err-select-91")
+-- What the gauge loses in the operation battle: all of it.
 local FULL_GAUGE = 0x4000
 
 -- 0x080E4596: the chips `o` holds: a player its side's hand from the cursor, another actor its own count (+0x1A).
@@ -117,13 +118,13 @@ local function effect(me: Object)
             me.phase, me.phase_init = 8, 0
         end
     elseif phase == 8 then
-        -- 0x080E4510: 90 ticks, warning the other side for the first 70 (battle flag 0x40); then that side's gauge
-        -- empties (battle flag 0x40) and the undim.
+        -- 0x080E4510: 90 ticks, warning the other side for the first 70 (the operation battle); then that side's gauge
+        -- empties (the operation battle) and the undim.
         if me.phase_init == 0 then
             me.timer = WAIT
             me.phase_init = 4
         end
-        if me.timer >= WARN_UNTIL and battle.per_player_gauges() then
+        if me.timer >= WARN_UNTIL and operation_battle() then
             -- 0x080E4642: on the consoles of the side this isn't (`battle_networkInvert`), over the gauge.
             battle.warn(WARNING, nil, bit32.bxor(me.alliance, 1))
         end
@@ -132,7 +133,7 @@ local function effect(me: Object)
         if t >= 0 then
             return
         end
-        if battle.per_player_gauges() then
+        if operation_battle() then
             battle.drain_side_gauge(bit32.bxor(me.alliance, 1), FULL_GAUGE)
         end
         dimming_chips.done(me)
@@ -142,7 +143,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "bn5:jealousy/controller",
+    id = "jealousy/controller",
     pool = "effect",
     state = { left = "u32", bonus = "u16" },
     -- 0x080E443C.

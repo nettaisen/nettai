@@ -11,7 +11,7 @@ local lockon = require("../../rules/lockon")
 local mark = require("./mark")
 
 return define.chip {
-    id = "bn6:copydmg",
+    id = "copydmg",
     codes = { "*" },
     element = "null", family = "cursor", class = "standard",
     rarity = 1, mb = 12, damage = 0, hit_param = 0, lockout = 0,
@@ -23,7 +23,7 @@ return define.chip {
     beast = { lockon = lockon.cannon },
     action = action.make {
         id = nil,
-        sound = asset.sound("bn6:buster-shot"),
+        sound = asset.sound("buster-shot"),
         raise_arm = buster.raise_arm,
         shot = mark.spawn,
     },

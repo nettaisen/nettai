@@ -9,7 +9,7 @@ export type State = {
     done: boolean,
 }
 
-local SPRITE = asset.sprite("bn5:django-coffin")
+local SPRITE = asset.sprite("django-coffin")
 
 -- 0x080DE074: on its panel, on the ground, drawn with its sprite (animation 0, loaded with the sprite update).
 local function init(me: Object)
@@ -34,7 +34,7 @@ local function tick(me: Object)
 end
 
 coffin.kind = define.kind {
-    id = "bn5:django/coffin",
+    id = "django/coffin",
     pool = "attack",
     state = { done = "bool" },
     -- 0x080DE050.

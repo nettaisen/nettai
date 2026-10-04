@@ -15,8 +15,8 @@ local sparks = require("../../lib/sparks")
 
 local bolt = {}
 
-local SPRITE = asset.sprite("bn6:lightning")
-local SOUND_BEAST_OVER_BURST = asset.sound("bn6:beast-over-burst")
+local SPRITE = asset.sprite("lightning")
+local SOUND_BEAST_OVER_BURST = asset.sound("beast-over-burst")
 
 -- `sub_80DC41C`: on its panel, on the ground (Z's whole part cleared).
 local function init(me: Object)
@@ -85,7 +85,7 @@ local function tick(me: Object)
 end
 
 bolt.kind = define.kind {
-    id = "bn6:elmntman/bolt",
+    id = "elmntman/bolt",
     pool = "attack",
     -- `sub_80DC3F8`.
     update = function(me: Object)

@@ -44,7 +44,7 @@ export type State = {
 }
 
 local SHOT = { is = collision.attack, hits = collision.hits_navis }
-local ELEC_SHOT = asset.sprite("bn5:thunder-ball")
+local ELEC_SHOT = asset.sprite("thunder-ball")
 
 local function row(r: {
     is: CollisionType?,
@@ -73,7 +73,7 @@ local function row(r: {
     }
 end
 
-local BUBBLE = asset.sprite("bn5:sprite-10-41")
+local BUBBLE = asset.sprite("sprite-10-41")
 
 -- The rows at 0x080C5D0C.
 local ROWS: { [number]: Row } = {
@@ -82,11 +82,11 @@ local ROWS: { [number]: Row } = {
         hit_mod = 3,
         element = 0,
         spark = sparks.plain,
-        sprite = asset.sprite("bn5:holy-dream-shot"),
+        sprite = asset.sprite("holy-dream-shot"),
         speed = 0x5_0000,
     },
     -- BugCharg's shots (its charger's sprite).
-    [0x1] = row { hit_mod = 3, element = 0, spark = sparks.heavy, sprite = asset.sprite("bn5:bug-charger"), speed = 0xA_0000 },
+    [0x1] = row { hit_mod = 3, element = 0, spark = sparks.heavy, sprite = asset.sprite("bug-charger"), speed = 0xA_0000 },
     [0x2] = row { hit_mod = 0, element = 3, sprite = ELEC_SHOT, status = statuses.paralyze_90, speed = 0x3_0000 },
     [0x3] = row { hit_mod = 0, element = 3, sprite = ELEC_SHOT, status = statuses.paralyze_90, speed = 0x3_8000 },
     [0x4] = row { hit_mod = 0, element = 3, sprite = ELEC_SHOT, status = statuses.paralyze_90, speed = 0x4_0000 },
@@ -94,7 +94,7 @@ local ROWS: { [number]: Row } = {
     [0x6] = row {
         hit_mod = 1,
         element = 0,
-        sprite = asset.sprite("bn5:immobilized"),
+        sprite = asset.sprite("immobilized"),
         anim = 1,
         status = statuses.immobilize_120,
         speed = 0xA_0000,
@@ -210,7 +210,7 @@ local function init(me: Object)
 end
 
 flying_shot.kind = define.kind {
-    id = "bn5:flying-shot",
+    id = "flying-shot",
     pool = "attack",
     state = { row = "u8", range = "u8", highlight = "bool" },
     -- 0x080C5DCC.

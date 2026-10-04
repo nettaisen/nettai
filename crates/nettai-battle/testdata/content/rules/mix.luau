@@ -5,4 +5,4 @@
 local systems = require("./systems")
 local forms = require("./forms/system")
 
-return define.ruleset { id = "test:test-mix", base = systems.stock, remove = { forms.system }, add = { systems.marker } }
+return define.ruleset { id = "test-mix", base = systems.stock, remove = { forms.system }, add = { systems.marker } }

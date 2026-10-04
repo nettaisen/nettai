@@ -12,7 +12,7 @@ local statuses = require("../../rules/status")
 
 -- The phases of its effect.
 local FLASH, BLIND = 0x0, 0x4
-local SOUND = asset.sound("bn5:blinding-flash")
+local SOUND = asset.sound("blinding-flash")
 
 -- The user flashes white this tick.
 local function whiten(me: Object)
@@ -86,13 +86,13 @@ end
 
 -- Its controller (effect object #0x23; BN6's `sub_80E2E34`).
 local CONTROLLER = define.kind {
-    id = "bn5:blinder/controller",
+    id = "blinder/controller",
     pool = "effect",
     update = dimming_chips.phases { name = "Blinder", effect = effect },
 }
 
 return define.chip {
-    id = "bn5:blinder",
+    id = "blinder",
     codes = { "A", "D", "H", "*" },
     element = "null",
     family = "invisible",

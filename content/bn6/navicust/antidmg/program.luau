@@ -5,7 +5,7 @@ local programs = require("../../rules/navicust/programs")
 local anti_damage = require("../../navis/megaman/weapons/anti-damage/weapon")
 
 return define.navicust_program {
-    id = "bn6:antidmg",
+    id = "antidmg",
     colors = { "green" },
     shape = {
         ".......",

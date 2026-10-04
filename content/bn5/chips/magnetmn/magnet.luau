@@ -34,9 +34,9 @@ export type State = {
 
 local magnet = {}
 
-local SPRITE = asset.sprite("bn5:magnetman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_CRASH = asset.sound("bn5:magnet-crash")
+local SPRITE = asset.sprite("magnetman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_CRASH = asset.sound("magnet-crash")
 -- By the level (0x0800DA8A: navi 5's count, 2, by 0x0800DAE8's row), then its pole added: DS's 6.
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 4, 6 }
 -- By the variant (0x080D2DE0, 0x080D2DEC): the hit modifier and the status.
@@ -224,7 +224,7 @@ local function init(me: Object)
 end
 
 magnet.kind = define.kind {
-    id = "bn5:magnetmn/magnet",
+    id = "magnetmn/magnet",
     pool = "attack",
     state = {
         pole = "u8",

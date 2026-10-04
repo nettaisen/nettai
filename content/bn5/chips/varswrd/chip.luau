@@ -14,7 +14,7 @@ local sword = require("../sword/chip")
 local wideswrd = require("../wideswrd/chip")
 
 return define.chip {
-    id = "bn5:varswrd",
+    id = "varswrd",
     codes = { "B", "C", "V" },
     element = "null",
     family = "sword",
@@ -27,7 +27,7 @@ return define.chip {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = action.action {
-        id = "bn5:varswrd/action",
+        id = "varswrd/action",
         -- The sequences (0x080ED4E4), facing right (flip 0) and mirrored, as joypad words with A held: 0x81 A+down, 0x91
         -- A+down+right, 0x11 A+right, 0xA1 A+down+left, 0x21 A+left, 0x41 A+up, 0x03 A+B.
         sequences = {

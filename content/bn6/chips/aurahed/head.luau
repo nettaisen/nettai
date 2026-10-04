@@ -30,9 +30,9 @@ export type State = {
 
 -- `sub_8011504`'s words: the sprite (animation 4, a ground shadow), and
 -- the collision (a breaking attack, hit modifier 3 or 1 by its strength).
-local SPRITE, ANIM = asset.sprite("bn6:aura-head"), 4
+local SPRITE, ANIM = asset.sprite("aura-head"), 4
 local STRONG_HIT_MOD, HIT_MOD = 3, 1
-local SOUND = asset.sound("bn6:set-down")
+local SOUND = asset.sound("set-down")
 -- A panel's width, 16.16.
 local PANEL = 0x28_0000
 -- Panels it charges across unless it runs to the far edge.
@@ -163,7 +163,7 @@ local function init(me: Object)
 end
 
 head.kind = define.kind {
-    id = "bn6:aurahed/head",
+    id = "aurahed/head",
     pool = "attack",
     state = {
         hit_panel = "u32",

@@ -25,13 +25,13 @@ local PULL, RECOVER = 0x0, 0x4
 local COOLDOWN = 0x28
 
 -- The vortex effect, and what keeps it alive each tick.
-local VORTEX = define.effect { sprite = asset.sprite("bn6:dust-cloud"), anim = 0, palette = 0 }
+local VORTEX = define.effect { sprite = asset.sprite("dust-cloud"), anim = 0, palette = 0 }
 local VORTEX_TICKS = 2
 
 -- DustCross's Beast form (the navi stats' form).
-local DUST_BEAST = "bn6:dustcross-beast"
+local DUST_BEAST = "dustcross-beast"
 
-local SOUND = asset.sound("bn6:dustbrk")
+local SOUND = asset.sound("dustbrk")
 
 -- `sub_8011F84`: only the cooldown.
 local function setup(navi: Object): Action
@@ -86,7 +86,7 @@ local function recover(me: Object, s: State)
 end
 
 absorb.action = define.action {
-    id = "bn6:megaman/absorb/action",
+    id = "megaman/absorb/action",
     state = { timer = "u16", vortex = "object" },
     -- `sub_80EFCB4`: the phase, then the vortex lives on while this runs.
     update = function(me: Object, s: State)
@@ -106,7 +106,7 @@ absorb.action = define.action {
 }
 
 absorb.weapon = define.weapon {
-    id = "bn6:megaman/absorb",
+    id = "megaman/absorb",
     -- The charge table's row 0x2A, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },

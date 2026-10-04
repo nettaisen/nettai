@@ -7,7 +7,7 @@
 local drill = require("../drilarm/drill")
 
 return define.chip {
-    id = "bn5:darkdril",
+    id = "darkdril",
     codes = { "D" },
     element = "null",
     family = "break",

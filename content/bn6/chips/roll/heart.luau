@@ -9,15 +9,15 @@ local common = require("@exelib/roll/heart")
 
 -- The sparkle around it, and around Roll as she warps (effect 0x26), and
 -- the effect on the healed navi (effect 0x06).
-local SPARKLE = define.effect { sprite = asset.sprite("bn6:elmnt-ice"), anim = 0, palette = 0 }
+local SPARKLE = define.effect { sprite = asset.sprite("elmnt-ice"), anim = 0, palette = 0 }
 
 local heart = common.make {
-    id = "bn6:roll/heart",
-    sprite = asset.sprite("bn6:roll-heart"),
+    id = "roll/heart",
+    sprite = asset.sprite("roll-heart"),
     anim = 4,
-    heal_sound = asset.sound("bn6:heal"),
+    heal_sound = asset.sound("heal"),
     sparkle = SPARKLE,
-    healed = define.effect { sprite = asset.sprite("bn6:heal"), anim = 0, palette = 0 },
+    healed = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 },
 }
 
 return { kind = heart.kind, spawn = heart.spawn, sparkle = SPARKLE }

@@ -163,7 +163,7 @@ Pause byte (0x02001B8A): 1 on frames 72–592 and 1224–1969, otherwise 0. Batt
 - `sub_800A954`: both chip blocks become 0x50 zero bytes with +2..+0xD = 0xFF.
 - `sub_800A79C`: BS+0x5C = 0x0C.
 - `UnpauseBattle`.
-- `sub_802DFFC`: zero `unk_2036120` (0x3A0 bytes, the flag-0x40 per-player structs).
+- `sub_802DFFC`: zero `unk_2036120` (0x3A0 bytes, the chip gate battle's per-side structs, battle flag 0x40).
 - `sub_802D08C(0/1)`, and other presentation resets.
 
 For round 1 only, `sub_80071D4` first zero-fills 0x02033000–0x02039AA0, 0x02039ADC–0x0203CCE0 and 0x0203CDA8–0x02040000.
@@ -189,7 +189,10 @@ For round 1 only, `sub_80071D4` first zero-fills 0x02033000–0x02039AA0, 0x0203
 Work done by `sub_800794C`:
 - `sub_800318C`: empty object list.
 - `InitializeT1/T3/T4BattleObjectStructs`.
-- `sub_802E112`: sets battle flag 0x40 only for non-link battles or when EVENT_1722 is set. **Not set in PvP.**
+- `sub_802E112`: sets battle flag 0x40, the chip gate battle (each side its own custom gauge; the engine's
+  `OWN_GAUGES`): in a battle that isn't a link battle, when a chip gate is on the link port (the gate byte,
+  0x0200AD04); in a link battle (battle mode 0), when EVENT_1722 is set (both consoles have one). **Not set in a
+  netbattle without gates.**
 - `sub_8007338`: camera.
 - `sub_800A0C6`: zero the input records.
 - `sub_801BE70`: zero the HUD struct `eStruct2035280` (0x60 bytes), then +0x22 = 0x20 (gauge rate), +0x26 = 0xFFFF; also zero `dword_20352E0`, `byte_203EB50`, `dword_203CA48` and `dword_20367E0` (mega/giga use counters).
@@ -361,7 +364,7 @@ Net effect: a banner started on tick T is seen as finished by the mode handler o
   - (NaviStats(0)+0x2C or NaviStats(1)+0x2C ∈ {0x17,0x18}) **and** flag 2; or
   - flag 0x10.
 
-Inside `sub_80080D2` the checks run in this order: KO/result, then START pause, then the custom check. The flag-0x40 path (`sub_800A244`: L/R with per-player gauge ≥ 0x2900) is not used in PvP.
+Inside `sub_80080D2` the checks run in this order: KO/result, then START pause, then the custom check. The flag-0x40 path (`sub_800A244`: L/R with the side's own gauge ≥ 0x2900) is not used in PvP.
 
 #### 3.3.2 Mode state 8, `sub_8009338`
 
@@ -480,7 +483,7 @@ Neither `sub_801486C` nor `sub_8014A00` is affected by the custom screen's close
    - 7 → [0]=0x18.
    - After any of these, return.
 8. `p = sub_800A046()`. If p ≠ 0xFF: [5]=p, `PauseBattle`, [0]=0x1C, `sub_801E15C` (HUD and sound only), return.
-9. Flag-0x40 mode only (`sub_800A8F8`): `sub_800A244`. In PvP: `sub_800A1D0()` → if true, `PauseBattle`, [0]=0x20.
+9. Chip gate battle only (battle flag 0x40) (`sub_800A8F8`): `sub_800A244`. In PvP: `sub_800A1D0()` → if true, `PauseBattle`, [0]=0x20.
 
 The first fighting tick is when the battle unpauses: frames 593 / 1970.
 
@@ -833,7 +836,7 @@ The port's model: each player's input is their buttons on that tick; the simulat
 | +0x4 | s8 | `sub_801FF18` | block-transfer index; 0xFF = none | if ≥ 0: `recv_p[idx] = +8` (`recv_0` = `dword_203F4A0`, `recv_1` = `dword_203F5A0`, 64 dwords each) |
 | +0x6 | u8 | `sub_801FF18` | sender's BS+0x11 (status bits) | → BS+0x14 (P0) / BS+0x15 (P1) |
 | +0x8 | u32 | `sub_801FF18` | `dword_203CBE0[idx]` (unchanged when idle) | see +4 |
-| +0xC | u16 | `sub_801FF18` | `sub_803F740(4)` (link diagnostic) | → `unk_2036120+0x2C` / `unk_20362F0+0x2C`; no simulation reader (the only reader, `sub_802E558`, reads it through a wrong register) |
+| +0xC | u16 | `sub_801FF18` | `sub_803F740(4)`: the chip slotted into the console's chip gate (the chip gate battle's) | → `unk_2036120+0x2C` / `unk_20362F0+0x2C`, the side's gate chip; no simulation reader (the only reader, `sub_802E558`, reads it through a wrong register) |
 | +0xE / +0xF | u8 | `sub_803EE98` | `sub_8144D18()` / `sub_8144D24()` | none |
 
 Bytes +5 and +7 are 0.
@@ -988,7 +991,7 @@ Trace:
 
 **Opening:** see §3.3.1. Either player's navi, while flag 2 is set, pressing L or R sets flag 0x10. The next `sub_80080D2` tick pauses and goes to machine state 0x20.
 
-Note: the per-player structs `unk_2036120 + 0x1D0·p` (`sub_802E070`, +0x28 thresholds 0x2900/0x1500) belong to the flag-0x40 mode only and are not the PvP gauge.
+Note: the per-player structs `unk_2036120 + 0x1D0·p` (`sub_802E070`, +0x28 thresholds 0x2900/0x1500) belong to the chip gate battle only (battle flag 0x40) and are not the PvP gauge.
 
 ### 7.2 State changes around the custom screen
 
@@ -1032,7 +1035,7 @@ A block with byte 0 = 0xFF means "no chips chosen" and is **not** installed, so 
 | Off | Type | Meaning |
 |---|---|---|
 | +0x00 | u8 | At confirm: 0 = chips chosen, 0xFF = none. During the fight: index of the next chip, incremented by `sub_800FC7C` on use (0→1→2→3 at 638, 779, 920). |
-| +0x01 | u8 | flag-0x40 mode only (0) |
+| +0x01 | u8 | Chip gate battle only (battle flag 0x40) (0) |
 | +0x02 | u16[6] | chip ids (9-bit), 0xFFFF-terminated (≤ 5 chips) |
 | +0x0E | u16[6] | base damage, from `sub_80109A4(id, localSide)`; refreshed by `chip_800AEE8` for flagged chips |
 | +0x1A | u16[6] | Attack+ bonus (`sub_8029224`: chips 0xB8, 0xB9, 0xC0, 0xC1, 0xC3 add to the previous chip) |
@@ -1121,7 +1124,7 @@ In the machgun trace these bytes never change: +0x0C, +0x21–0x27, +0x2A–0x31
 | 0x08 | special (with BS+0x0B = 1) | `sub_80D8DEE` | — | (not PvP) |
 | 0x10 | custom-screen request | `sub_8012FC8` | `sub_801DF92` | `sub_800A1D0` |
 | 0x20 | (unknown) | no setter found | `sub_8014CC0`, `sub_8014F04`, `sub_8015128`, and two more | `battle_isTimeStopPauseOrBattleFlags0x20_800a0a4` |
-| 0x40 | alternate "per-player gauge / link navi" mode | `sub_802E112` (not in PvP) | — | `TestBattleFlag_0x40` / `sub_800A8F8` (fighting branches, `sub_802DE5C`, `sub_802E156`) |
+| 0x40 | the chip gate battle: each side its own custom gauge, which pays for the chips slotted into its gate (the engine's `OWN_GAUGES`; BN5's is its operation battle) | `sub_802E112` (a netbattle only with two gates) | — | `TestBattleFlag_0x40` / `sub_800A8F8` (fighting branches, `sub_802DE5C`, `sub_802E156`) |
 
 In the machgun match the word was 0x0000, then 0x0001 from the first fighting tick.
 
@@ -1214,7 +1217,7 @@ Update order is list order. Spawning and freeing rules belong to the object spec
 | `sub_8003C70`, `sub_80046F8`, `sub_80049B0` | `sub_80028C0(0/2/5)`: overworld sprite passes. |
 | `sub_800C5E0` | Panel graphics: `sub_800C192` (panel tile animation) and BG tile writes (`sub_800C01C`/`sub_800C0BA`/`sub_800C100`/`sub_800C138` → `iCopyBackgroundTiles`). It clears the panel redraw latches +0x01 and +0x0D after consuming them (§11). |
 | `sub_801BF64` | HUD draw tasks: tile/palette uploads and OAM for HP boxes, gauge, chip icons, emotion window, banner, timer. |
-| `sub_802E156` | Copies a per-player gauge into the HUD only under flag 0x40. |
+| `sub_802E156` | Copies a side's own gauge into the HUD only under flag 0x40 (the chip gate battle). |
 | `sub_8009FCC` | Draws the deferred sprite list `dword_3002180`. |
 | `sub_803C59C(0xE0,0x90)` | Link-quality icon. |
 | Camera `sub_802FFF4` | Writes only `eCamera` and BG scroll. It **does** advance RNG1 while shaking; keep that if RNG1 must match. |

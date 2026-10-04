@@ -32,8 +32,8 @@ export type State = {
     aim_ticks: number,
 }
 
-local SPRITE = asset.sprite("bn6:eraseman")
-local SOUND_APPEAR, SOUND_MARK, SOUND_SLASH = asset.sound("bn6:appear"), asset.sound("bn6:erase-man"), asset.sound("bn6:erase-man-2")
+local SPRITE = asset.sprite("eraseman")
+local SOUND_APPEAR, SOUND_MARK, SOUND_SLASH = asset.sound("appear"), asset.sound("erase-man"), asset.sound("erase-man-2")
 
 -- The aims each row cycles through, five bytes a row, 0xFF ending a row
 -- early (`byte_80BB88C`).
@@ -228,7 +228,7 @@ end
 local ACTIONS = { [APPEAR] = appear, [STAND] = stand, [AIM] = aim, [RAISE] = raise, [SLASH] = slash, [LEAVE] = leave }
 
 eraseman.kind = define.kind {
-    id = "bn6:eraseman/navi",
+    id = "eraseman/navi",
     pool = "actor",
     state = { cycle = "u8", aim = "u8", controller = "object", aim_ticks = "u8" },
     -- `sub_80BB608`.

@@ -15,9 +15,9 @@ local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
 
 return common.make {
-    id = "bn6:justcone/strike",
-    sprite = asset.sprite("bn6:justice-one"),
-    sounds = { fall = asset.sound("bn6:justice-one"), land = asset.sound("bn6:hit-bomb-1") },
+    id = "justcone/strike",
+    sprite = asset.sprite("justice-one"),
+    sounds = { fall = asset.sound("justice-one"), land = asset.sound("hit-bomb-1") },
     -- Its own collision (`dword_80DB558`): a thrown breaking attack that
     -- hits navis, with the breaking spark.
     is = collision.thrown_break,

@@ -19,11 +19,10 @@ local ruleset = require("../../rules/ruleset")
 local statuses = require("../../rules/status")
 local ticker = require("../lib/ticker")
 
-return define.roles {
-    id = "test:roles",
+return {
     actions = {
-        anti_damage_counter = ticker.action { id = "test:test/anti-damage-counter", length = 4 },
-        forced_charged_shot = ticker.action { id = "test:test/forced-charged-shot", length = 3 },
+        anti_damage_counter = ticker.action { id = "test/anti-damage-counter", length = 4 },
+        forced_charged_shot = ticker.action { id = "test/forced-charged-shot", length = 3 },
         stun_strike = stun_strike.action,
         switch_protect = ground_drill.action,
         turn = turn.action,

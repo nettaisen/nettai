@@ -22,7 +22,7 @@ protoman.look = common.look
 -- controller calls through r3 and his position takes (his init sets it
 -- all).
 protoman.bn6 = protoman.look {
-    sprite = asset.sprite("bn6:protoman"),
+    sprite = asset.sprite("protoman"),
     palette = 0,
     sword = parts.blades.sword,
     sword_anim = 0xB,
@@ -31,8 +31,8 @@ protoman.bn6 = protoman.look {
 }
 
 local made = common.make {
-    id = "bn6:protoman/navi",
-    appear_sound = asset.sound("bn6:appear"),
+    id = "protoman/navi",
+    appear_sound = asset.sound("appear"),
     swing_sound = parts.sounds.swing,
     attachment = attachment.kind,
     target = collision.hits_navis,

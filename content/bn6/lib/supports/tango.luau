@@ -8,13 +8,13 @@ local effects = require("../effects")
 local heal = require("./heal")
 
 return common.make {
-    id = "bn6:tango",
-    sprite = asset.sprite("bn6:tango"),
-    arrive_sound = asset.sound("bn6:arrive"),
-    land_sound = asset.sound("bn6:tango-land"),
-    throw_sound = asset.sound("bn6:minibomb-throw"),
+    id = "tango",
+    sprite = asset.sprite("tango"),
+    arrive_sound = asset.sound("arrive"),
+    land_sound = asset.sound("tango-land"),
+    throw_sound = asset.sound("minibomb-throw"),
     -- Her arrival sparkle (the original's effect 0x15); she leaves in a puff.
-    arrive = define.effect { sprite = asset.sprite("bn6:puff"), anim = 3, palette = 0 },
+    arrive = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 },
     puff = effects.puff,
     heal = heal,
 }

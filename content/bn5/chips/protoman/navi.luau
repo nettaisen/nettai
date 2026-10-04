@@ -7,9 +7,9 @@ local collision = require("../../rules/collision")
 local common = require("@exelib/protoman/navi")
 
 return common.make {
-    id = "bn5:protoman/navi",
-    appear_sound = asset.sound("bn5:appear"),
-    swing_sound = asset.sound("bn5:sword-swing"),
+    id = "protoman/navi",
+    appear_sound = asset.sound("appear"),
+    swing_sound = asset.sound("sword-swing"),
     attachment = attachment.kind,
     target = collision.hits_navis,
     self_type = collision.slash,

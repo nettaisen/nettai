@@ -18,7 +18,7 @@ export type State = {
 }
 
 -- 0x080CFE2C: the thrown bomb, sprite 0c-02 in animation 1; 0x080CFF9A: the weight, 04-02 in animation 3.
-local BOMB, WEIGHT = asset.sprite("bn5:bomb"), asset.sprite("bn5:quake-drop")
+local BOMB, WEIGHT = asset.sprite("bomb"), asset.sprite("quake-drop")
 -- Its speed along the ground and its fall while lobbed (16.16), its height over the panel, and its drop.
 local SPEED, GRAVITY, HANG_Z, DROP = 0x40000, -0x3C00, 0x30 * 0x10000, -0x80000
 local HANG_TICKS = 25
@@ -27,9 +27,9 @@ local PALETTES = { [0] = 0, [1] = 6, [2] = 12, [3] = 0 }
 -- Its hit's region by level (0x080D0060: regions 1, 4 and 9).
 local REGIONS = { [0] = regions.single, [1] = regions.wide, [2] = regions.plus }
 -- Effect 0 (the explosion) on each panel it hits; effect 0x12 (a puff) as it goes.
-local EXPLOSION = define.effect { sprite = asset.sprite("bn5:explosion"), anim = 0, palette = 0 }
-local PUFF = define.effect { sprite = asset.sprite("bn5:puff"), anim = 0, palette = 0 }
-local SOUND_LAND = asset.sound("bn5:land")
+local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
+local SOUND_LAND = asset.sound("land")
 -- What it is and hits: BN5's rows 0x15 and 5, hit modifier 3.
 local HIT_MOD = 3
 
@@ -78,7 +78,7 @@ local function hang(me: Object, s: State)
     sprite:set_animation(0xFF)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     sprite.palette = PALETTES[s.level]
-    -- (With battle flag 0x40, which a netbattle never sets, 0x080E9FA4 spawns effect object 0x83 at the panel for 60
+    -- (In the operation battle, which a netbattle never sets, 0x080E9FA4 spawns effect object 0x83 at the panel for 60
     -- ticks: not ported, bn5-map.md §15.6.)
     me.action = 8
     me.phase, me.phase_init = 0, 0
@@ -156,7 +156,7 @@ local function tick(me: Object)
 end
 
 quake.kind = define.kind {
-    id = "bn5:quake/bomb",
+    id = "quake/bomb",
     pool = "attack",
     state = { level = "u8" },
     -- 0x080CFE0C.

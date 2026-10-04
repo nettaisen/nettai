@@ -22,22 +22,22 @@ local parts = require("../../lib/swords/parts")
 export type Summon = { palette: number }
 
 -- His bursts' look (the follow effect's look 4).
-local BURST = follow_effect.look { sprite = asset.sprite("bn6:follow-effect"), anim = 0, palette = 0, behavior = "flash" }
+local BURST = follow_effect.look { sprite = asset.sprite("follow-effect"), anim = 0, palette = 0, behavior = "flash" }
 
 return common.make {
-    id = "bn6:deltaray/navi",
-    sprite = asset.sprite("bn6:protoman"),
+    id = "deltaray/navi",
+    sprite = asset.sprite("protoman"),
     sounds = {
-        appear = asset.sound("bn6:appear"),
-        arrive = asset.sound("bn6:log-in"),
-        mark = asset.sound("bn6:mark"),
+        appear = asset.sound("appear"),
+        arrive = asset.sound("log-in"),
+        mark = asset.sound("mark"),
         swing = parts.sounds.swing,
-        burst = asset.sound("bn6:delta-ray-2"),
+        burst = asset.sound("delta-ray-2"),
     },
     -- The flash above him as he arrives (effect 0x03), and the mark on his
     -- target (effect 0x28); his slash drawn over the column (effect 0x27).
-    flash = define.effect { sprite = asset.sprite("bn6:deletion"), anim = 0, palette = 0 },
-    mark = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 11, palette = 1 },
+    flash = define.effect { sprite = asset.sprite("deletion"), anim = 0, palette = 0 },
+    mark = define.effect { sprite = asset.sprite("hit-sparks"), anim = 11, palette = 1 },
     slash = parts.effects.wide,
     -- His sword: the swords' blade (the original's attachment 3), its
     -- animation 0x0B, stepping while dimmed.

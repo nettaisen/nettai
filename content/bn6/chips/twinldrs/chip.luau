@@ -8,7 +8,7 @@ local colonel_chips = require("../colonel/chips")
 local navi = require("./navi")
 
 return define.chip {
-    id = "bn6:twinldrs",
+    id = "twinldrs",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

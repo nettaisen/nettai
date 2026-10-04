@@ -7,7 +7,7 @@
 local bugfix = require("../../objects/bugfix/bugfix")
 
 return define.chip {
-    id = "bn5:lstepswd",
+    id = "lstepswd",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",

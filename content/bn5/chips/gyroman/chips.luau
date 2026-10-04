@@ -6,7 +6,7 @@ local navi = require("./navi")
 
 -- GyroMan (BN5 chip 0x0e0): GyroMan cuts in and flies along his row, dropping bombs on the enemy panels (./navi).
 local gyroman = define.chip {
-    id = "bn5:gyroman",
+    id = "gyroman",
     codes = { "G" },
     element = "null",
     family = "null",
@@ -25,14 +25,14 @@ local gyroman = define.chip {
 -- GyroManSP (BN5 chip 0x0e1): GyroMan cuts in and flies along his row, dropping bombs on the enemy panels
 -- (../gyroman/navi); its damage by how fast its user deleted GyroMan SP (rules/sp-chips: formula 3, its table's row 2).
 local gyroman_sp = define.chip {
-    id = "bn5:gyroman-sp",
+    id = "gyroman-sp",
     codes = { "G" },
     element = "null",
     family = "null",
     class = "mega",
     rarity = 3,
     mb = 66,
-    damage = { formula = "sp_navi", slot = "sp/gyroman", by_time = { 140, 135, 130, 125, 120, 115, 110, 105, 100, 95, 90 }, per_player_gauges = 80 },
+    damage = { formula = "sp_navi", slot = "sp/gyroman", by_time = { 140, 135, 130, 125, 120, 115, 110, 105, 100, 95, 90 }, operation_battle = 80 },
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
@@ -44,14 +44,14 @@ local gyroman_sp = define.chip {
 -- GyroManDS (BN5 chip 0x0e2): GyroMan, dark, cuts in and flies along his row, dropping bombs on the enemy panels
 -- (../gyroman/navi); its damage by its user's side's statistic 3 (formula 25, its table's row 2).
 local gyroman_ds = define.chip {
-    id = "bn5:gyroman-ds",
+    id = "gyroman-ds",
     codes = { "G" },
     element = "null",
     family = "null",
     class = "mega",
     rarity = 3,
     mb = 66,
-    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140 }, per_player_gauges = 70 },
+    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140 }, operation_battle = 70 },
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },

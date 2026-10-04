@@ -13,16 +13,16 @@ local navi = require("./navi")
 -- BN5's effect 0x33 (BN6's 0x27, the same row), his palette 0 (0x080C1714) and his spawner BN5's 0x080C1A00.
 
 local LOOK = common.look {
-    sprite = asset.sprite("bn5:protoman"),
+    sprite = asset.sprite("protoman"),
     palette = 0,
-    sword = attachment.look { sprite = asset.sprite("bn5:sword"), palette = 0 },
+    sword = attachment.look { sprite = asset.sprite("sword"), palette = 0 },
     sword_anim = 1,
-    slash = define.effect { sprite = asset.sprite("bn5:sword-slash"), anim = 0, palette = 0 },
+    slash = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 },
     spawner_address = 0x080C1A01,
 }
 
 local protoman = define.chip {
-    id = "bn5:protoman",
+    id = "protoman",
     codes = { "B" },
     element = "null",
     family = "sword",
@@ -43,23 +43,23 @@ local protoman = define.chip {
 -- fast its user deleted ProtoMan SP (rules/sp-chips: formula 2, its table's row 1).
 
 local LOOK_PROTOMN_SP = common.look {
-    sprite = asset.sprite("bn5:protoman"),
+    sprite = asset.sprite("protoman"),
     palette = 0,
-    sword = attachment.look { sprite = asset.sprite("bn5:sword"), palette = 0 },
+    sword = attachment.look { sprite = asset.sprite("sword"), palette = 0 },
     sword_anim = 1,
-    slash = define.effect { sprite = asset.sprite("bn5:sword-slash"), anim = 0, palette = 0 },
+    slash = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 },
     spawner_address = 0x080C1A01,
 }
 
 local protomn_sp = define.chip {
-    id = "bn5:protomn-sp",
+    id = "protomn-sp",
     codes = { "B" },
     element = "null",
     family = "sword",
     class = "mega",
     rarity = 3,
     mb = 79,
-    damage = { formula = "sp_navi", slot = "sp/protoman", by_time = { 250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150 }, per_player_gauges = 220 },
+    damage = { formula = "sp_navi", slot = "sp/protoman", by_time = { 250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150 }, operation_battle = 220 },
     hit_param = 158,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
@@ -73,23 +73,23 @@ local protomn_sp = define.chip {
 -- damage by its user's side's statistic 3 (formula 24, its table's row 1).
 
 local LOOK_PROTOMN_DS = common.look {
-    sprite = asset.sprite("bn5:protoman"),
+    sprite = asset.sprite("protoman"),
     palette = 3,
-    sword = attachment.look { sprite = asset.sprite("bn5:sword"), palette = 0 },
+    sword = attachment.look { sprite = asset.sprite("sword"), palette = 0 },
     sword_anim = 1,
-    slash = define.effect { sprite = asset.sprite("bn5:sword-slash"), anim = 0, palette = 0 },
+    slash = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 },
     spawner_address = 0x080C1A01,
 }
 
 local protomn_ds = define.chip {
-    id = "bn5:protomn-ds",
+    id = "protomn-ds",
     codes = { "B" },
     element = "null",
     family = "sword",
     class = "mega",
     rarity = 3,
     mb = 79,
-    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250 }, per_player_gauges = 180 },
+    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250 }, operation_battle = 180 },
     hit_param = 158,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },

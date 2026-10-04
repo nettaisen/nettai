@@ -11,12 +11,12 @@ local statuses = require("../../rules/status")
 
 local burst = {}
 
-burst.kind = common.make_kind("bn6:h-burst/burst", {
+burst.kind = common.make_kind("h-burst/burst", {
     probe = collision.probe,
     is = collision.attack,
     hits = collision.hits_navis,
     status = statuses.paralyze_90,
-    explosion = define.effect { sprite = asset.sprite("bn6:pink-flash"), anim = 0, palette = 2 },
+    explosion = define.effect { sprite = asset.sprite("pink-flash"), anim = 0, palette = 2 },
 })
 
 -- `sub_80D9130`: a shot on (x, y) for `owner` that bursts `bursts` times,

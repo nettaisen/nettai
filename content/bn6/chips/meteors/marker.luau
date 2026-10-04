@@ -9,7 +9,7 @@ local marker = {}
 -- A meteor's: 45 ticks, lit 5 of every 10.
 marker.meteor = common.meteor
 
-marker.kind = common.make_kind("bn6:meteors/marker")
+marker.kind = common.make_kind("meteors/marker")
 
 -- `sub_80E43F6`: a marker of `look` highlighting `region` on (x, y), of
 -- `owner`'s side.

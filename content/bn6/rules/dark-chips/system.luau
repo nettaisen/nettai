@@ -13,7 +13,7 @@
 local MAX_HP_BUG = 7
 
 return define.system {
-    id = "bn6:dark-chips",
+    id = "dark-chips",
     extends = {
         chip = {
             dark_substitute = "chip",

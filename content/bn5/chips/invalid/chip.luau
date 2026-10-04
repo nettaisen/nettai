@@ -9,7 +9,7 @@
 local plus = require("../../lib/plus")
 
 return define.chip {
-    id = "bn5:invalid",
+    id = "invalid",
     codes = {},
     element = "null",
     family = "null",

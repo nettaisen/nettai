@@ -6,7 +6,7 @@
 local traps = require("../../lib/traps/traps")
 
 return define.chip {
-    id = "bn5:antiswrd",
+    id = "antiswrd",
     codes = { "D", "O", "R" },
     element = "null",
     family = "sword",

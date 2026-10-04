@@ -30,9 +30,9 @@ local TRAIL = { [false] = 4, [true] = 6 }
 local SHADER = { [false] = 0x83E0, [true] = 0xA1EF }
 
 return common.make({
-    id = "bn6:flmhook/fire",
-    sprite = asset.sprite("bn6:flame-hook-fire"),
-    sound = asset.sound("bn6:flame-hook-fire"),
+    id = "flmhook/fire",
+    sprite = asset.sprite("flame-hook-fire"),
+    sound = asset.sound("flame-hook-fire"),
     self_type = collision.breaking,
     target = collision.hits_navis,
     arcs = function(big: boolean): { number }
