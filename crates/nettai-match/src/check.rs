@@ -2,10 +2,12 @@
 //! it loads, a netplay offer when it arrives (`check_side`), and the editor
 //! shows as they fail. Each problem is said, with where it is.
 //!
-//! - **The arena**: link battle stages (`crate::link_battle_stages`), and
-//!   backgrounds the pack has.
-//! - **A side**: its ruleset, navi, stats' forms and patch cards are the
-//!   content's; a Cross list only with a ruleset that has the forms system,
+//! - **The arena**: a game of the content's, one of its rulesets, its link
+//!   battle stages (`crate::link_battle_stages`), and backgrounds its pack
+//!   has.
+//! - **A side**: its navi, chips, patch cards, NaviCust programs and souls
+//!   are the match's game's, its stats' forms the content's; a Cross list
+//!   only with a ruleset that has the forms system,
 //!   each a Cross of the navi's, at most five, none twice; patch cards only
 //!   with a ruleset that has the patch-cards system, each installed once, at
 //!   most [`MAX_CARDS`], their MB together at most [`CARD_MB`] (BN6's menu
@@ -18,7 +20,7 @@
 //!   the reload made).
 
 use crate::folders;
-use crate::{Arena, Match, Place, Side};
+use crate::{Arena, Match, Place, Side, ids};
 use nettai_battle::Battle;
 use nettai_battle::content::Content;
 use nettai_battle::patch_cards::MAX_CARDS;
@@ -28,40 +30,49 @@ use std::sync::Arc;
 /// The installed patch cards' MB together at most (BN6's).
 pub const CARD_MB: u32 = 80;
 
-fn check_place(content: &Content, p: &Place, at: &str, out: &mut Vec<String>) {
-    if p.stage.index() >= content.defs.stages.len() {
-        out.push(format!("{at}: a stage the content hasn't"));
+fn check_place(content: &Content, game: &str, p: &Place, at: &str, out: &mut Vec<String>) {
+    if p.stage.index() >= content.defs.stages.len() || !ids::in_game(game, &content.defs.stage(p.stage).key) {
+        out.push(format!("{at}: a stage {game} hasn't"));
         return;
     }
-    if !crate::link_battle_stages(content).contains(&p.stage) {
-        out.push(format!("{at}: {} is no link battle stage", content.defs.stage(p.stage).key));
+    if !crate::link_battle_stages(content, game).contains(&p.stage) {
+        out.push(format!("{at}: {} is no link battle stage", ids::local(&content.defs.stage(p.stage).key)));
     }
     if let Some(b) = &p.background
-        && crate::background(content, b).is_none()
+        && crate::background(content, game, b).is_none()
     {
-        out.push(crate::no_background(at, b));
+        out.push(crate::no_background(at, game, b));
     }
 }
 
 /// What is wrong with an arena.
 pub fn check_arena(content: &Content, a: &Arena) -> Vec<String> {
     let mut out = Vec::new();
-    check_place(content, &a.first, "arena", &mut out);
+    let games = ids::games(content);
+    if !games.contains(&a.game) {
+        return vec![format!("no game {:?} (the content's are {})", a.game, games.join(", "))];
+    }
+    if a.ruleset.index() >= content.defs.rulesets.len() || !ids::in_game(&a.game, &content.defs.ruleset(a.ruleset).key) {
+        out.push(format!("a ruleset {} hasn't", a.game));
+        return out;
+    }
+    check_place(content, &a.game, &a.first, "arena", &mut out);
     for (i, p) in a.later.iter().enumerate() {
-        check_place(content, p, &format!("arena: later round {}", i + 2), &mut out);
+        check_place(content, &a.game, p, &format!("arena: later round {}", i + 2), &mut out);
     }
     out
 }
 
-/// What is wrong with a side that needs no battle to see.
-pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
+/// What is wrong with a side of a match on `arena` (a sound one:
+/// `check_arena`) that needs no battle to see.
+pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<String> {
     let mut out = Vec::new();
     let defs = &content.defs;
-    if s.ruleset.is_some_and(|r| r.index() >= defs.rulesets.len()) {
-        out.push("a ruleset the content hasn't".into());
-    }
-    if s.navi.index() >= defs.navis.len() {
-        out.push("a navi the content hasn't".into());
+    let game = arena.game.as_str();
+    // Everything the side names is the game's.
+    let of_game = |key: &str| ids::in_game(game, key);
+    if s.navi.index() >= defs.navis.len() || !of_game(&defs.navi(s.navi).key) {
+        out.push(format!("a navi {game} hasn't"));
         return out;
     }
     let st = &s.stats;
@@ -109,8 +120,9 @@ pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
         nettai_battle::tactics::Tactic::Chip(c) => Some(*c),
         _ => None,
     });
-    if chips.chain(t.patterns.iter().flat_map(|p| p.chips.iter().copied())).any(|c| c.index() >= defs.chips.len()) {
-        out.push("the tactics name a chip the content hasn't".into());
+    let foreign = |c: nettai_content_api::ChipHandle| c.index() >= defs.chips.len() || !of_game(&defs.chip(c).key);
+    if chips.chain(t.patterns.iter().flat_map(|p| p.chips.iter().copied())).any(foreign) {
+        out.push(format!("the tactics name a chip {game} hasn't"));
     }
     for e in &t.entries {
         if let nettai_battle::tactics::Tactic::Pattern(i) = e
@@ -120,15 +132,15 @@ pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
         }
     }
     // The karma and the souls.
-    out.extend(crate::facts::check(content, s));
+    out.extend(crate::facts::check(content, arena, s));
     // The folder's chips, before its rules.
-    if let Some((i, _)) = s.folder.chips.iter().enumerate().find(|(_, c)| c.is_some_and(|c| c.id.index() >= defs.chips.len())) {
-        out.push(format!("folder entry {i}: a chip the content hasn't"));
+    if let Some((i, _)) = s.folder.chips.iter().enumerate().find(|(_, c)| c.is_some_and(|c| foreign(c.id))) {
+        out.push(format!("folder entry {i}: a chip {game} hasn't"));
         return out;
     }
     // The Crosses.
     if let Some(list) = &s.crosses {
-        if !s.has_system(content, crate::FORMS_SYSTEM) {
+        if !arena.has_system(content, crate::FORMS_SYSTEM) {
             out.push("a Cross list, but the ruleset has no Crosses (no forms system)".into());
         }
         let forms: Vec<_> = list.forms().collect();
@@ -152,14 +164,14 @@ pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
     }
     // The patch cards.
     if !s.cards.is_empty() {
-        if !s.has_system(content, crate::PATCH_CARDS_SYSTEM) {
+        if !arena.has_system(content, crate::PATCH_CARDS_SYSTEM) {
             out.push("patch cards, but the ruleset has no patch-cards system".into());
         }
         if s.cards.len() > MAX_CARDS {
             out.push(format!("{} patch cards installed: a list holds {MAX_CARDS}", s.cards.len()));
         }
-        if s.cards.iter().any(|c| c.card.index() >= defs.patch_cards.len()) {
-            out.push("a patch card the content hasn't".into());
+        if s.cards.iter().any(|c| c.card.index() >= defs.patch_cards.len() || !of_game(&defs.patch_card(c.card).key)) {
+            out.push(format!("a patch card {game} hasn't"));
         } else {
             for (i, c) in s.cards.iter().enumerate() {
                 if s.cards[..i].iter().any(|d| d.card == c.card) {
@@ -174,7 +186,7 @@ pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
     }
     // The NaviCust.
     if let Some(n) = &s.navicust {
-        out.extend(check_navicust(content, s, n));
+        out.extend(check_navicust(content, arena, s, n));
     }
     // The folder's chips are the content's (its rules wait for the round).
     let in_folder = |i: u8| s.folder.has(i);
@@ -192,12 +204,12 @@ pub fn check_side_alone(content: &Content, s: &Side) -> Vec<String> {
 /// its frame, not all on the frame), over no other (`sub_813BB68`); copies
 /// of a program in one color all compressed or not (the save keeps it by
 /// program and color: event flag 0x2660 + the part id).
-pub fn check_navicust(content: &Content, s: &Side, n: &nettai_battle::navicust::NaviCust) -> Vec<String> {
+pub fn check_navicust(content: &Content, arena: &Arena, s: &Side, n: &nettai_battle::navicust::NaviCust) -> Vec<String> {
     use nettai_battle::content::NaviCustRules;
     use nettai_battle::navicust::{SIZE, cells};
     let mut out = Vec::new();
     let defs = &content.defs;
-    if !s.has_system(content, crate::NAVICUST_SYSTEM) {
+    if !arena.has_system(content, crate::NAVICUST_SYSTEM) {
         out.push("a NaviCust, but the ruleset has no navicust system".into());
     }
     if content.navi(s.navi).forms.is_none() {
@@ -208,7 +220,7 @@ pub fn check_navicust(content: &Content, s: &Side, n: &nettai_battle::navicust::
             out.push(format!("stats: {name} is the NaviCust's (with a NaviCust the stats set only {})", crate::stats::SAVE_FIELDS.join(", ")));
         }
     }
-    let rules = crate::navicust_rules(content, s);
+    let rules = crate::navicust_rules(content, arena.ruleset);
     let Some(board) = rules.board(n.expansions) else {
         out.push(format!("a NaviCust with {} expansions: the game's board has {} sizes", n.expansions, rules.boards.len()));
         return out;
@@ -216,8 +228,8 @@ pub fn check_navicust(content: &Content, s: &Side, n: &nettai_battle::navicust::
     let mut grid = [[None; SIZE]; SIZE];
     let mut compression: Vec<((u16, u8), bool)> = Vec::new();
     for (i, p) in n.iter().enumerate() {
-        if p.program.index() >= defs.navicust_programs.len() {
-            out.push(format!("navicust program {}: a program the content hasn't", i + 1));
+        if p.program.index() >= defs.navicust_programs.len() || !ids::in_game(&arena.game, &defs.navicust_program(p.program).key) {
+            out.push(format!("navicust program {}: a program {} hasn't", i + 1, arena.game));
             continue;
         }
         let def = defs.navicust_program(p.program);
@@ -294,19 +306,20 @@ fn folder_problems(b: &mut Battle, side: usize, s: &Side) -> Vec<String> {
     }
 }
 
-/// What is wrong with one side, as a netplay offer brings it: everything
-/// [`check_side_alone`] sees, and its folder against the stats its round
-/// starts with (the side on both sides of a round on the first link
-/// battle stage).
-pub fn check_side(content: &Arc<Content>, s: &Side) -> Vec<String> {
-    let mut out = check_side_alone(content, s);
+/// What is wrong with one side of a match on `arena`, as a netplay offer
+/// brings it: everything [`check_side_alone`] sees, and its folder against
+/// the stats its round starts with (the side on both sides of a round on
+/// the arena).
+pub fn check_side(content: &Arc<Content>, arena: &Arena, s: &Side) -> Vec<String> {
+    let mut out = check_arena(content, arena);
     if !out.is_empty() {
         return out;
     }
-    let Some(&stage) = crate::link_battle_stages(content).first() else {
-        return vec!["the content has no link battle stage".into()];
-    };
-    let m = Match { seed: None, arena: Arena::on(Place { stage, background: None }), sides: [s.clone(), s.clone()] };
+    out = check_side_alone(content, arena, s);
+    if !out.is_empty() {
+        return out;
+    }
+    let m = Match { seed: None, arena: arena.clone(), sides: [s.clone(), s.clone()] };
     match start(content, &m) {
         Ok(mut b) => out.extend(folder_problems(&mut b, 0, s)),
         Err(e) => out.push(e),
@@ -317,9 +330,12 @@ pub fn check_side(content: &Arc<Content>, s: &Side) -> Vec<String> {
 /// What is wrong with a match, each problem with where it is.
 pub fn check_match(content: &Arc<Content>, m: &Match) -> Vec<String> {
     let mut out = check_arena(content, &m.arena);
+    if !out.is_empty() {
+        return out;
+    }
     let sides = ["left", "right"];
     for (s, at) in m.sides.iter().zip(sides) {
-        out.extend(check_side_alone(content, s).into_iter().map(|p| format!("{at}: {p}")));
+        out.extend(check_side_alone(content, &m.arena, s).into_iter().map(|p| format!("{at}: {p}")));
     }
     if !out.is_empty() {
         return out;
@@ -349,15 +365,15 @@ mod tests {
     /// [`compiled`], MegaMan from a navi code of `level`.
     fn compiled_at(parts: &[(&str, &str, u8, u8)], level: Option<u8>) -> (NaviStats, bool, Vec<String>) {
         let content = crate::testing::bn6_content();
-        let mut m = crate::draw::live(&content, 3, None).unwrap();
+        let mut m = crate::draw::live(&content, "bn6", 3, None).unwrap();
         let s = &mut m.sides[0];
         s.navi_level = level;
         s.stats = crate::Side::base_stats(&content, s.navi, s.game);
         (s.stats.max_base_hp, s.stats.hp, s.stats.max_hp, s.stats.reg_up) = (600, 600, 600, 50);
         let placed: Vec<PlacedProgram> = parts
             .iter()
-            .map(|&(key, color, x, y)| {
-                let program = content.defs.navicust_program_by_key(key).unwrap();
+            .map(|&(name, color, x, y)| {
+                let program = ids::navicust_program(&content, "bn6", name).unwrap();
                 let color = content.defs.navicust_program(program).colors.iter().position(|c| c == color).unwrap() as u8;
                 PlacedProgram { program, color, x, y, rotation: 0, compressed: false }
             })
@@ -371,27 +387,27 @@ mod tests {
     #[test]
     fn a_navicust_compiles_into_the_stats() {
         // UnderSht on the command line, Attack+1 and HP+100 off it: no bug.
-        let (s, glitch, problems) = compiled(&[("bn6:undersht", "white", 1, 3), ("bn6:attack-1", "pink", 5, 2), ("bn6:hp-100", "white", 3, 2)]);
+        let (s, glitch, problems) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 5, 2), ("hp-100", "white", 3, 2)]);
         assert_eq!(problems, Vec::<String>::new());
         assert!(s.undershirt && !glitch);
         assert_eq!((s.attack, s.max_hp, s.hp), (1, 700, 700));
         assert_eq!((s.bugs.buster_blanks, s.bugs.hp_drain), (0, 0));
         // Attack+1 on the command line: the buster bug (and it still works).
-        let (s, glitch, _) = compiled(&[("bn6:undersht", "white", 1, 3), ("bn6:attack-1", "pink", 5, 4), ("bn6:hp-100", "white", 3, 2)]);
+        let (s, glitch, _) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 5, 4), ("hp-100", "white", 3, 2)]);
         assert!(glitch);
         assert_eq!((s.attack, s.bugs.buster_blanks, s.bugs.buster_charged), (1, 6, 1));
         // Attack+1 beside HP+100 of its color: each brings the other's bug.
-        let (s, glitch, _) = compiled(&[("bn6:undersht", "white", 1, 3), ("bn6:attack-1", "pink", 5, 2), ("bn6:hp-100", "pink", 3, 2)]);
+        let (s, glitch, _) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 5, 2), ("hp-100", "pink", 3, 2)]);
         assert!(glitch);
         assert_eq!((s.bugs.buster_blanks, s.bugs.hp_drain, s.bugs.hit_status), (6, 1, 3));
         // UnderSht off the command line: the step bug, and no UnderSht.
-        let (s, glitch, _) = compiled(&[("bn6:undersht", "white", 1, 2)]);
+        let (s, glitch, _) = compiled(&[("undersht", "white", 1, 2)]);
         assert!(glitch && !s.undershirt);
         assert_eq!(s.bugs.processing, 1);
         // Over another, and off the board: said.
-        let (_, _, problems) = compiled(&[("bn6:undersht", "white", 1, 3), ("bn6:attack-1", "pink", 1, 3)]);
+        let (_, _, problems) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 1, 3)]);
         assert!(problems.iter().any(|p| p.contains("is over program 1")), "{problems:?}");
-        let (_, _, problems) = compiled(&[("bn6:undersht", "white", 0, 1)]);
+        let (_, _, problems) = compiled(&[("undersht", "white", 0, 1)]);
         assert!(problems.iter().any(|p| p.contains("off the board")), "{problems:?}");
     }
 
@@ -403,7 +419,7 @@ mod tests {
     fn megaman_from_a_navi_code_gets_his_levels_gains() {
         let content = crate::testing::bn6_content();
         let megaman = content.form_changing_navi().unwrap();
-        let parts = [("bn6:undersht", "white", 1, 3), ("bn6:attack-1", "pink", 5, 2), ("bn6:hp-100", "white", 3, 2)];
+        let parts = [("undersht", "white", 1, 3), ("attack-1", "pink", 5, 2), ("hp-100", "white", 3, 2)];
         let (base, _, problems) = compiled(&parts);
         assert_eq!(problems, Vec::<String>::new());
         for level in [0u8, 7, 14] {

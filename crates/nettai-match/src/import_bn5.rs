@@ -1,40 +1,40 @@
 //! A side from a BN5 save file (bn5-compat's `save`): its karma (the
 //! light/dark value) and the souls it has. (Its folder, NaviCust and stats
-//! are a later import's.) `Side::import_save` comes here for a save that
+//! are a later import's.) `Match::import_save` comes here for a save that
 //! isn't BN6's.
 
-use crate::Side;
+use crate::{Arena, Side};
 use bn5_compat::save::Save;
 use nettai_battle::content::Content;
 
+/// The BN5 save in `file` (a .sav's bytes, or a raw save image as Tango's
+/// netplay templates hold), or why it is none.
+pub(crate) fn read(file: &[u8]) -> Result<Save, String> {
+    Save::read(file).or_else(|e| Save::from_image(file).map_err(|_| e))
+}
+
 impl Side {
-    /// Take the karma and the souls from the BN5 save in `file` (a .sav's
-    /// bytes, or a raw save image as Tango's netplay templates hold): the
-    /// souls its version's flags give (the content's BN5 souls of those
-    /// numbers; none without Soul Unison) as the side's soul list. What is
-    /// worth saying about it, or why the file isn't a BN5 save.
-    pub fn import_bn5_save(&mut self, content: &Content, file: &[u8]) -> Result<Vec<String>, String> {
-        let save = Save::read(file).or_else(|e| Save::from_image(file).map_err(|_| e))?;
+    /// Take the karma and the souls from a BN5 save, the side of a match
+    /// on `arena` (a BN5 one): the souls its version's flags give (the
+    /// game's souls of those numbers; none without Soul Unison) as the
+    /// side's soul list. What is worth saying about it.
+    pub fn import_bn5_save(&mut self, content: &Content, arena: &Arena, save: &Save) -> Vec<String> {
         let mut notes = Vec::new();
         self.karma = save.light_dark();
-        if !crate::facts::takes(content, self, crate::facts::KARMA_FIELD) {
-            notes.push("the side's ruleset has no light and dark MegaMan: the save's karma is kept, unused".into());
+        if !crate::facts::takes(content, arena.ruleset, crate::facts::KARMA_FIELD) {
+            notes.push("the match's ruleset has no light and dark MegaMan: the save's karma is kept, unused".into());
         }
         let numbers = if save.soul_unison() { save.souls() } else { Vec::new() };
-        let all = crate::facts::all_souls(content);
+        let all = crate::facts::all_souls(content, &arena.game);
         let mut souls = Vec::new();
         for n in numbers {
-            let of = all.iter().copied().find(|&f| {
-                content.form(f).soul.as_ref().is_some_and(|s| s.number == n)
-                    && nettai_content_api::keys::root_of(&content.defs.form(f).key) == Some(bn5_compat::ROOT)
-            });
-            match of {
+            match all.iter().copied().find(|&f| content.form(f).soul.as_ref().is_some_and(|s| s.number == n)) {
                 Some(f) => souls.push(f),
-                None => notes.push(format!("the save has soul {n}, which the content hasn't")),
+                None => notes.push(format!("the save has soul {n}, which {} hasn't", arena.game)),
             }
         }
         self.souls = Some(souls);
-        Ok(notes)
+        notes
     }
 }
 
@@ -43,9 +43,9 @@ mod tests {
     use crate::testing::every_game;
 
     /// A Team ProtoMan save, dark, with every soul flag set: its karma and
-    /// its version's souls the content has (ProtoSoul among them), through
-    /// the save import (`import_save`, which takes a save that isn't BN6's
-    /// as BN5's).
+    /// its version's souls BN5 has (ProtoSoul among them), through the save
+    /// import (`import_save`, which takes a save that isn't BN6's as BN5's,
+    /// into a match of BN5's).
     #[test]
     fn a_bn5_save_gives_the_karma_and_souls() {
         let content = every_game();
@@ -54,17 +54,22 @@ mod tests {
         image[0x29F8] = 0xFF;
         image[0x29F9] = 0xFF;
         image[0x52A8 + 0x44..0x52A8 + 0x46].copy_from_slice(&100u16.to_le_bytes());
-        let mut m = crate::Match::empty(&content).unwrap();
-        let s = &mut m.sides[0];
-        s.ruleset = content.defs.ruleset_by_key("bn5:stock");
-        s.navi = content.defs.navi_by_key("bn5:megaman").unwrap();
-        let notes = s.import_save(&content, &image).unwrap();
+        // Into a BN6 match: the match becomes BN5's.
+        let mut m = crate::Match::empty(&content, "bn6").unwrap();
+        m.seed = Some(9);
+        let notes = m.import_save(&content, 0, &image).unwrap();
+        assert_eq!((m.arena.game.as_str(), m.seed), ("bn5", Some(9)));
+        assert_eq!(notes[0], "a bn5 save: the match is now bn5's, both sides new");
+        let s = &m.sides[0];
+        assert_eq!(crate::ids::local(&content.defs.navi(s.navi).key), "megaman");
+        assert!(crate::ids::in_game("bn5", &content.defs.navi(s.navi).key));
         assert_eq!(s.karma, 100);
-        let souls: Vec<&str> = s.souls.as_ref().unwrap().iter().map(|&f| content.defs.form(f).key.as_str()).collect();
-        assert!(souls.contains(&"bn5:protosoul") && !souls.contains(&"bn5:colonelsoul"), "{souls:?}");
-        // (Its six souls: those the content hasn't yet are said.)
-        assert_eq!(notes.len() + souls.len(), 6, "{notes:?}");
-        let e = s.import_save(&content, b"not a save").unwrap_err();
+        let souls: Vec<&str> = s.souls.as_ref().unwrap().iter().map(|&f| crate::ids::local(&content.defs.form(f).key)).collect();
+        assert!(souls.contains(&"protosoul") && !souls.contains(&"colonelsoul"), "{souls:?}");
+        // (Its six souls: those the game hasn't yet are said.)
+        assert_eq!(notes.len() - 1 + souls.len(), 6, "{notes:?}");
+        assert_eq!(m.sides[1], crate::Match::empty(&content, "bn5").unwrap().sides[1]);
+        let e = m.import_save(&content, 0, b"not a save").unwrap_err();
         assert!(e.contains("BN6") && e.contains("BN5"), "{e}");
     }
 }
