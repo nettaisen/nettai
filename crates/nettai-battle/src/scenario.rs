@@ -59,7 +59,6 @@ pub fn setup() -> RoundSetup {
     folder.chips = [Some(FolderChip::new(testing::chip_in(&content, testing::SUN_GUN_3), ChipCode(0))); 30];
     let player = PlayerSetup {
         folder: Some(folder),
-        souls: Default::default(),
         joypad_phase: 0,
         bug_frags: 0,
         navi_level: None,
