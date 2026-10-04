@@ -474,6 +474,7 @@ impl CoreApi for Battle {
             NaviStat::NumberOpen => Value::Bool(s.number_open),
             NaviStat::ChipDrops => i(s.chip_drops as i64),
             NaviStat::Encounters => i(s.encounters as i64),
+            NaviStat::SoulTurnBonus => i(self.custom.sides[side as usize & 1].souls.turn_bonus as i64),
             NaviStat::BugKinds => {
                 let b = &s.bugs;
                 let kinds = [
@@ -501,6 +502,11 @@ impl CoreApi for Battle {
             }
             _ => None,
         };
+        // (The soul turns' bonus is the custom screen's: its unlocks.)
+        if let (NaviStat::SoulTurnBonus, FieldValue::I8(x)) = (stat, v) {
+            self.custom.sides[side as usize & 1].souls.turn_bonus = x;
+            return Ok(());
+        }
         // A record field's value: a shot program or a barrier.
         let record = match v {
             FieldValue::Ref(Some((Registry::Record, h))) => Some(nettai_content_api::RecordHandle(h)),
@@ -578,6 +584,7 @@ impl CoreApi for Battle {
             }
             (NaviStat::ChipDrops, FieldValue::U8(x)) => s.chip_drops = x,
             (NaviStat::Encounters, FieldValue::U8(x)) => s.encounters = x,
+            (NaviStat::SoulTurnBonus, _) => unreachable!("the soul turns' bonus is written above"),
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1012,6 +1019,11 @@ impl CoreApi for Battle {
         }
     }
 
+    fn hand_left(&self, side: u8) -> u8 {
+        let h = &self.hands[side as usize & 1];
+        h.ids.iter().skip(h.cursor as usize).take_while(|c| c.is_some()).count() as u8
+    }
+
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool {
         let chip = self.hands[side as usize & 1].ids.get(i as usize).copied().flatten();
         chip.is_some_and(|h| self.content.chip(h).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0)
@@ -1069,6 +1081,11 @@ impl CoreApi for Battle {
     fn add_side_gauge(&mut self, side: u8, n: u16) {
         let s = &mut self.sides[side as usize & 1];
         s.gauge = (s.gauge as u32 + n as u32).min(crate::hud::CustomGauge::FULL as u32) as u16;
+    }
+
+    fn drain_side_gauge(&mut self, side: u8, n: u16) {
+        let s = &mut self.sides[side as usize & 1];
+        s.gauge = s.gauge.saturating_sub(n);
     }
 
     fn add_special_bonus(&mut self, side: u8, index: u8, n: u16) -> ApiResult<()> {
@@ -1422,6 +1439,7 @@ impl CoreApi for Battle {
             ObjectField::Stamina => i(ob.stamina as i64),
             ObjectField::Identity => ob.identity.map_or(Value::Nil, |h| Value::Def(Registry::Identity, h.0)),
             ObjectField::PreventAnim => i(ob.prevent_anim as i64),
+            ObjectField::ChipsHeld => i(ob.chips_held as i64),
             ObjectField::Pos => Value::Vec3(ob.pos),
             ObjectField::Vel => Value::Vec3(ob.vel),
             ObjectField::Related1 => ob.related[0].into(),

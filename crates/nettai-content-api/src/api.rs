@@ -214,6 +214,9 @@ named_fields! {
         Identity = "identity", Ref(Registry::Identity, None), rw;
         /// Holds an object's sprite (and more, by kind: `PreventAnim`).
         PreventAnim = "prevent_anim", U8, rw;
+        /// BattleObject +0x1A: a player's chips left in its hand as the HUD
+        /// shows them; another actor's own count (BN5's Jealousy reads it).
+        ChipsHeld = "chips_held", U8, ro;
         Pos = "pos", Vec3, rw;
         Vel = "vel", Vec3, rw;
         Related1 = "related1", Object, rw;
@@ -544,6 +547,10 @@ named_fields! {
         /// custom-screen damage, emotion swings, the two HP drains, a
         /// battle-start hook, a shrinking hand).
         BugKinds = "bug_kinds", U8, ro;
+        /// BN5's NaviStats +0x32: the turns a soul lasts longer (SoulT+1's
+        /// 1), which the custom screen adds to a soul's three (signed).
+        /// Writable: BN5's NaviCust rules set it.
+        SoulTurnBonus = "soul_turn_bonus", I8, rw;
     }
 }
 
@@ -1369,6 +1376,9 @@ pub trait CoreApi {
     /// A side's hand has a chip at `i` and it does damage (its record's
     /// flag 0x02, "has_damage").
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool;
+    /// BN5's Jealousy (0x080E4596): the chips left in a side's hand, from
+    /// its cursor to the first empty slot.
+    fn hand_left(&self, side: u8) -> u8;
     /// A side's defensive-chip record.
     fn linked(&self, side: u8) -> LinkedChip;
     fn set_linked(&mut self, side: u8, rec: LinkedChip);
@@ -1398,6 +1408,9 @@ pub trait CoreApi {
     /// `sub_802E032`: add to a side's own custom gauge (battle flag 0x40),
     /// up to full.
     fn add_side_gauge(&mut self, side: u8, n: u16);
+    /// `sub_802E04E`: take from a side's own custom gauge (battle flag
+    /// 0x40), down to empty.
+    fn drain_side_gauge(&mut self, side: u8, n: u16);
     /// `sub_8010488`'s special-source branch: add `n` to one of the bonuses
     /// a side stores for its special chip (`index` 0: the Atk+ bonus a
     /// damaging chip spends, +0x36; 1: the Navi+ bonus a navi chip spends,
