@@ -2,7 +2,7 @@
 -- BN5's Soul Unison change (0x08011F74, BN6's `sub_8014A38`'s place): while the battle is paused at a turn's start,
 -- MegaMan unites with the soul his side asked for (the turn's transform record: `navi:form_change_target()`, its
 -- turns and Chaos Unison `navi:form_change_soul()`). The turn-start sequencer (the framework's) waits for it. Every
--- soul names this action as its `change` (./system).
+-- soul names this action as its `change` (./init).
 --
 -- Its steps (0x08011F94, on the attack's step):
 --
@@ -29,7 +29,7 @@ export type State = {
     timer: number,
 }
 
--- The souls system's state (./system).
+-- The souls system's state (./init).
 type Souls = { turns: number, chaos: boolean, arm_chip: Chip? }
 
 local FLASH_SOUND = asset.sound("log-in")
