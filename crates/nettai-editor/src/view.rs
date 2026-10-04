@@ -197,7 +197,7 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     col = col.push(
         text(
             "From a BN6 .sav: the version, Beast Out and the Crosses it owns, the navi code's level and the SP times. \
-             From a BN5 .sav (or a raw save image): its karma and the souls it has (its version's). \
+             From a BN5 .sav (or a raw save image): its karma, the souls it has (its version's) and its NaviCust board's size. \
              A save of another game than the match's makes a new match of its game.",
         )
         .size(13)
