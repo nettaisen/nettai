@@ -22,8 +22,8 @@ export type State = {
     -- Ticks left in the phase (AIAttackVars+0x10). (The swings left are
     -- the navi's `attack_count`.)
     timer: number,
-    -- The navi turned round while stepping (+0x34; nothing in the
-    -- player's actions sets it).
+    -- The navi turned round while stepping (+0x34): BN5's warp behind its
+    -- target (ShadowSoul's charged swords); BN6's player actions never.
     turned: number,
 }
 
@@ -63,9 +63,11 @@ local function damage_word(me: Object): number
 end
 
 -- A chip's slash, its blade an attachment of `attachment` (a game's kind),
--- with what `game` asks of the user's form (`SlashGame`: BN6's Beast forms).
+-- with what `game` asks of the user's form (`SlashGame`: BN6's Beast forms)
+-- and its step (its `steps`; none: BN6's, by the chip's `step`).
 function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Action
     local rules: SlashGame = game or {}
+    local steps = rules.steps
     -- The blade's animation (`sub_80EBAE8`, or the spec's game's own).
     local blade_anim = spec.blade_anim or rules.blade_anim or parts.blade_anim
     local in_place = rules.stays
@@ -73,25 +75,63 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
         return in_place ~= nil and in_place(me.alliance)
     end
 
-    -- `sub_80EB79C`: straight to the swing, or for a step sword, the step.
+    -- `sub_800E5FC`: not while moving or sliding; then moving, from its
+    -- panel, which it holds.
+    local function set_off(me: Object): boolean
+        if me:status("moving") or me:status("sliding") then
+            return false
+        end
+        me:set_status("moving", true)
+        me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
+        me:reserve_panel(me.panel_x, me.panel_y)
+        return true
+    end
+
+    -- Whether the slash steps (BN6's a step sword; a game's by its
+    -- `steps`): its afterimages on the swing, its step back after it.
+    local function stepping(me: Object): boolean
+        if steps then
+            return steps.steps(me)
+        end
+        return if spec.step then true else false
+    end
+
+    -- Where the step goes, and whether it ends turned round: BN6's
+    -- (`sub_80EB79C`) for a step sword, two panels ahead; a game's by
+    -- its `steps` (nil: no step).
+    local function step_to(me: Object): ("step" | "warp")?
+        if steps then
+            return steps.kind(me, set_off)
+        end
+        if not spec.step then
+            return nil
+        end
+        if me.special_source == 0 and not stays(me) and not set_off(me) then
+            return nil
+        end
+        return "step"
+    end
+
+    -- `sub_80EB79C`: straight to the swing, or for a step, the step.
     local function start(me: Object, s: State)
         set_step(me, SET_UP)
-        if not spec.step then
+        local kind = step_to(me)
+        if kind == nil then
             return
         end
-        if me.special_source == 0 and not stays(me) then
-            -- sub_800E5FC: not while moving or sliding.
-            if me:status("moving") or me:status("sliding") then
-                return
+        local x: number?, y: number?
+        if kind == "warp" then
+            s.turned = 1
+            x, y = (steps :: SlashSteps).warp_target(me)
+        else
+            s.turned = 0
+            -- sub_8015B00: two panels ahead.
+            x, y = me.panel_x + 2 * me.facing, me.panel_y
+            if not field.check(x, y, PANEL_EXISTS, BODIES) then
+                x, y = nil, nil
             end
-            me:set_status("moving", true)
-            me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
-            me:reserve_panel(me.panel_x, me.panel_y)
         end
-        s.turned = 0
-        -- sub_8015B00: two panels ahead.
-        local x, y = me.panel_x + 2 * me.facing, me.panel_y
-        if not field.check(x, y, PANEL_EXISTS, BODIES) then
+        if x == nil or y == nil then
             s.turned = 0
             me:set_animation(4)
             set_step(me, STEP_BACK)
@@ -104,7 +144,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
             lifetime = 0x14,
             shadow = "ground",
         })
-        me.panel_x, me.panel_y = x, y
+        me.panel_x, me.panel_y = x :: number, y :: number
         me:set_coordinates_from_panel()
         me:update_collision_panels()
         if s.turned == 1 then
@@ -176,7 +216,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
             -- (nullsub_12 is passed the panel ahead and the hit region.)
             me.step_init = 4
         end
-        if s.timer == 0x10 and spec.step then
+        if s.timer == 0x10 and stepping(me) then
             battle.afterimage(me, me.pos, {
                 anim = 5,
                 flip = flip(me),
@@ -209,7 +249,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
             me.step_init = 0
             return
         end
-        set_step(me, if spec.step then STEP_BACK else RECOVER)
+        set_step(me, if stepping(me) then STEP_BACK else RECOVER)
     end
 
     -- `sub_80EBB98`: a step sword goes back where it stepped from once its
