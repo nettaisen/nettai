@@ -155,7 +155,10 @@ pub struct CollisionData {
     /// This slot's bit (`0x80000000 >> slot`).
     pub bit: u32,
     /// Status visual objects and other links (0x48..0x67).
-    pub links: [Option<ObjectRef>; 4],
+    /// BN5's +0x2C: how long a body stays under the sea's surface (0xFFFF
+    /// while it dives on a panel that submerges: 0x08017030).
+    pub dive_timer: u16,
+    pub links: [Option<ObjectRef>; 5],
     pub acc: Accumulators,
 }
 
@@ -169,6 +172,9 @@ pub mod link {
     pub const FREEZE: usize = 2;
     /// +0x60: bubble.
     pub const BUBBLE: usize = 3;
+    /// BN5's +0x50: the ripple over a body under the sea's surface
+    /// (0x0800DEB2).
+    pub const RIPPLE: usize = 4;
 }
 
 /// Indices into `status_timers`.
@@ -573,7 +579,9 @@ impl Battle {
         if thaw {
             m += 1;
         }
-        if rd.f1 & f1::BUBBLED != 0 && hd.element == 3 {
+        // (BN6's bubble; BN5's kernel has none: its flag 0x80000000 is a
+        // body under the sea's surface, whose elec hits its panel doubles.)
+        if !bn5 && rd.f1 & f1::BUBBLED != 0 && hd.element == 3 {
             m += 1;
         }
         rm.acc.exclamation = m - 1;
@@ -695,5 +703,60 @@ fn decode_damage_word(s: &mut CollisionData, r1: u16, roles: &crate::content::Ro
     }
     if d & 0x1000 != 0 {
         s.bugs = (r1 << 8).wrapping_add(0xF7);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::battle::battle_flags;
+    use crate::content::{HitTest, testing};
+    use std::sync::Arc;
+
+    /// A fight on the test content whose arena tests hits by `test`: the
+    /// battle and its two navis' collisions (side 0's, side 1's).
+    fn fight(test: HitTest) -> (Battle, [CollisionId; 2]) {
+        let mut c: Content = testing::build();
+        c.define().unwrap_or_else(|e| panic!("{e}"));
+        for rules in &mut c.rules {
+            rules.hit_test = test;
+        }
+        let c = Arc::new(c);
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+        setup.content = c.hash();
+        let mut b = Battle::new(setup, c);
+        b.spawn_actors();
+        b.run_objects();
+        b.round.flags |= battle_flags::FIGHTING;
+        let ids = [0, 1].map(|side| {
+            let p = b.player(side).unwrap();
+            b.objects.get(p).collision.unwrap()
+        });
+        (b, ids)
+    }
+
+    /// Side 1's guarding navi hit by side 0's navi as an attack of types
+    /// `types`: whether the guard held (the hitter told it was guarded).
+    fn guarded(test: HitTest, types: u32) -> bool {
+        let (mut b, [h, r]) = fight(test);
+        b.collision.get_mut(r).f1 |= f1::GUARD;
+        b.collision.get_mut(h).self_flags = types;
+        b.collision.get_mut(h).f1 = 0;
+        b.resolve_hit(r, h);
+        b.collision.get(h).acc.hit_flags & 1 != 0
+    }
+
+    /// docs/design/bn5-map.md §15.11: BN5's guard breaks on type 0x1000
+    /// whatever 0x4000 (BN6's only with it); with both, either breaks.
+    /// (BN5's guarded-direction mask, 0x0C004000 to BN6's 0x0C005000,
+    /// differs only for a hit of 0x1000, which BN5's guard never holds.)
+    #[test]
+    fn bn5_guard_breaks_on_0x1000() {
+        assert!(guarded(HitTest::Bn6, 0x8000_1000));
+        assert!(!guarded(HitTest::Bn5, 0x8000_1000));
+        assert!(!guarded(HitTest::Bn6, 0x8000_5000));
+        assert!(!guarded(HitTest::Bn5, 0x8000_5000));
+        assert!(guarded(HitTest::Bn6, 0x8000_0000));
+        assert!(guarded(HitTest::Bn5, 0x8000_0000));
     }
 }

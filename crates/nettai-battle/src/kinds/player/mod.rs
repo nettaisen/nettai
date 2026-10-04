@@ -805,8 +805,12 @@ fn init(b: &mut Battle, r: ObjectRef) {
         // sub_8015B22
         b.objects.get_mut(r).identity = b.content.form_identity(s.navi, s.form);
     }
-    // sub_8011268: the starting form's overlay (none in base form).
-    form::put_on_overlay(b, r, s.form);
+    // sub_8011268: the starting form's overlay. A base form's is its navi's
+    // init hook's, below (BN6's base form wears nothing; BN5's init has no
+    // call here, its base form's routine being MegaMan's record's hook).
+    if !b.content.form(s.form).base {
+        form::put_on_overlay(b, r, s.form);
+    }
     reset_status(b, r);
     style_hook(b, r);
     // sub_801DB84, sub_8018856, sub_801DC06, sub_801DC36: the HP number
@@ -823,7 +827,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     post_init_hook(b, r);
     if in_base_form(b, r) {
         let identity = b.objects.get(r).identity;
-        form::navi_init_hook(b, r, identity);
+        form::base_init_hook(b, r, identity);
     }
     reset_side_state(b, r);
     apply_starting_hp_bug(b, r);

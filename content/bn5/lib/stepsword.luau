@@ -59,6 +59,25 @@ local function behind_enemy(me: Object): (number?, number?)
     return nil, nil
 end
 
+stepsword.behind_enemy = behind_enemy
+
+-- The swords' slash's step (action 0x13, 0x080EBD04: @common/swords/slash with BN5's `steps`): none uncharged; else,
+-- once `set_off` lets it (not while moving or sliding), behind the enemy in ShadowSoul or by a charge of 2, two
+-- panels ahead by 1, none by any other charge (set off all the same).
+function stepsword.kind(me: Object, set_off: (Object) -> boolean): ("step" | "warp")?
+    local mode = me.charged
+    if mode == 0 or not set_off(me) then
+        return nil
+    end
+    local soul = battle.navi(me.alliance).form.soul
+    if (soul and soul.number == SHADOW_SOUL) or mode == 2 then
+        return "warp"
+    elseif mode == 1 then
+        return "step"
+    end
+    return nil
+end
+
 -- 0x080125D4: two panels ahead, if on the field and empty.
 local function two_ahead(me: Object): (number?, number?)
     local x, y = me.panel_x + 2 * me.facing, me.panel_y

@@ -7,6 +7,7 @@
 -- navi's own side; the navi then waits 8 ticks (the instant chips' action's
 -- wait for this effect).
 
+local common = require("@common/gust/gust")
 local gust = require("../../../../objects/gust/gust")
 
 local tengu_wind = {}
@@ -14,9 +15,6 @@ local tengu_wind = {}
 local COOLDOWN = 0x28
 
 local SOUND = asset.sound("bn6:dustbrk")
-
--- The gusts pull: the weak push, turned toward the navi.
-local PULL: GustHow = { pulls = true }
 
 -- `sub_8011CA8`: the cooldown; its effect is the weapon's `instant`, which
 -- the instant chips' action runs.
@@ -26,20 +24,9 @@ local function setup(navi: Object)
 end
 
 -- `sub_80CD4AC` (instant effect 0x14; the patch card dustman's B+Back
--- too): a gust in each row, from column 6 when the navi faces
--- right (1 when it faces left). The gusts' side is the navi's shifted by
--- its flip (the game's `lsl`), their flip 0; no damage, nothing tracks
--- them.
+-- too): a gust in each row, pulling (@common/gust/gust's `blow_rows`).
 function tengu_wind.blow(user: Object, _spec: InstantChipSpec)
-    local facing = bit32.bxor(user.alliance, user.flip)
-    local x = 5 * bit32.bxor(facing, 1) + 1
-    local flip = user.flip
-    local word = if flip < 32 then bit32.lshift(user.alliance, flip) else 0
-    local side, side_flip = bit32.band(word, 0xFF), bit32.band(bit32.rshift(word, 8), 0xFF)
-    for y = 1, 3 do
-        gust.spawn(x, y, side, side_flip, PULL, 0, nil, 0)
-    end
-    battle.play_sound(SOUND)
+    common.blow_rows(gust.kind, user, SOUND)
 end
 
 tengu_wind.weapon = define.weapon {
