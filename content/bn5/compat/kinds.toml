@@ -117,6 +117,9 @@
 "bn5:chaoslrd/aura" = { pool = "effect", index = 0x47 }
 "bn5:chaoslrd/gather" = { pool = "effect", index = 0x4B }
 "bn5:chaoslrd/strike" = { pool = "attack", index = 0x82 }
+"bn5:darkinvs/controller" = { pool = "effect", index = 0x18, scratch_position = true }
+"bn5:darkinvs/stand-in" = { pool = "actor", index = 0x09 }
+"bn5:darkinvs/image" = { pool = "actor", index = 0x0A }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
 "bn5:meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "bn5:napalmmn/bomb" = { pool = "attack", index = 0x3A }
@@ -148,7 +151,11 @@
 "bn5:chaos-shade" = { pool = "actor", index = 0x2B }
 "bn5:gyrosoul/tornado" = { pool = "attack", index = 0x1E }
 "bn5:searchsoul/reveal" = { pool = "effect", index = 0x8F, scratch_position = true }
-"bn5:napalmsoul/flash" = { pool = "effect", index = 0x26 }
+"bn5:megaman/glow" = { pool = "effect", index = 0x26 }
+"bn5:dive-ripple" = { pool = "effect", index = 0x3E }
+"bn5:tomahawksoul/grass" = { pool = "effect", index = 0x16, scratch_position = true }
+"bn5:numbersoul/layer" = { pool = "actor", index = 0x54 }
+"bn5:immobilizer" = { pool = "attack", index = 0x3F }
 "bn5:magnetsoul/magnet" = { pool = "attack", index = 0x75 }
 "bn5:timebom/countdown" = { pool = "attack", index = 0x4B }
 "bn5:timebom/controller" = { pool = "effect", index = 0x27, scratch_position = true }

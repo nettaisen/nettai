@@ -36,8 +36,8 @@ local FLASH_SOUND = asset.sound("bn5:log-in")
 local UNISON_SOUND = asset.sound("bn5:cross-change")
 local CHAOS_SOUND = asset.sound("bn5:bug")
 
--- The souls whose change shakes the cameras (0x0801212C: TomahawkSoul's; with battle flag 0x20, which nothing
--- reads).
+-- The souls whose change shakes the cameras (0x0801212C: TomahawkSoul's), with battle flag 0x20 set (0x08012138), which
+-- has the cameras shake while the battle is paused, until the change's end clears it (0x080121B6).
 local SHAKES: { [number]: boolean } = { [10] = true }
 
 -- The steps, in the attack's step.
@@ -109,6 +109,7 @@ local function emerge(me: Object, s: State, target: FormDef, soul: number, chaos
         hooks.start(me, target)
         if SHAKES[soul] then
             battle.shake_camera(2, 30)
+            battle.set_shake_through_pause(true)
         end
         me.step_init = 4
     end
@@ -145,6 +146,7 @@ local function settle(me: Object, s: State)
         return
     end
     me:set_navi_state("form_change", false)
+    battle.set_shake_through_pause(false)
     me:exit_attack()
 end
 
