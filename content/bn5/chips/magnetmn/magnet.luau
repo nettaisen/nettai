@@ -159,7 +159,8 @@ local function linger(me: Object)
     local left = me.timer - 1
     me.timer = int.u16(left)
     if left <= 0 then
-        me:set_lifecycle("destroy")
+        -- (0x080D2FB2: the state byte alone.)
+        me.lifecycle = "destroy"
     end
 end
 
