@@ -63,8 +63,9 @@ pub mod f1 {
     /// (a null pointer): BIOS memory, which game code can't read, gives
     /// the opcode the BIOS last fetched (open bus). After a software
     /// interrupt, such as the object spawn's fill (`ZeroFillByWord`'s
-    /// CpuSet), that is 0xE3A02004 (an interrupt in between would leave
-    /// 0xE55EC002; unverified).
+    /// CpuSet), that is 0xE3A02004: BN6's, the rule's default
+    /// (`content::MissingCollisionStatus`). An interrupt in between leaves
+    /// 0xE55EC002, which BN5's console reads there.
     pub const NULL_READ: u32 = 0xE3A0_2004;
 }
 

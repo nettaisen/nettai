@@ -141,7 +141,7 @@ local function take(me: Object)
     end
     s.count = n
     if n == 0 then
-        me.lifecycle = "destroy"
+        me:set_lifecycle("destroy")
         return
     end
     local facing_left = bit32.bxor(me.alliance, me.flip) ~= 0
@@ -162,7 +162,7 @@ local function take(me: Object)
             end
         end
     end
-    me.lifecycle = "update"
+    me:set_lifecycle("update")
 end
 
 -- 0x080E8DD8: throw each, then wait until the field has none left.
@@ -198,7 +198,7 @@ local function linger(me: Object)
     local t = me.timer - 1
     me.timer = int.u16(t)
     if t < 0 then
-        me.lifecycle = "destroy"
+        me:set_lifecycle("destroy")
     end
 end
 
@@ -262,7 +262,7 @@ local function stand(me: Object)
     end
     local user = me.related1 :: Object
     me:remove_parts_of(user)
-    me.lifecycle = "destroy"
+    me:set_lifecycle("destroy")
     dimming.show_user(user)
     local c = s.controller
     if c and c.active then
@@ -291,7 +291,7 @@ local function stand_in_init(me: Object)
     end
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     dimming.hide_user_sparing(user)
-    me.lifecycle = "update"
+    me:set_lifecycle("update")
     stand(me)
 end
 
