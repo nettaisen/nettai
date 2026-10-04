@@ -1324,9 +1324,7 @@ pub trait CoreApi {
     fn custom_swap_folder(&mut self, side: u8, a: u8, b: u8) -> ApiResult<()>;
     fn custom_hand_size(&self, side: u8) -> ApiResult<u8>;
     fn custom_sacrifice(&mut self, side: u8) -> ApiResult<()>;
-    /// `keeps`: how many of the hand's chips dealt again stay in the hand,
-    /// by how many they are.
-    fn custom_redeal(&mut self, side: u8, keeps: [u8; 12]) -> ApiResult<()>;
+    fn custom_redeal(&mut self, side: u8) -> ApiResult<()>;
     fn custom_last_pick_is_chip(&self, side: u8) -> ApiResult<bool>;
     fn custom_cursor_state(&self, side: u8) -> ApiResult<&'static str>;
     /// More of the side's custom screen, for a system's buttons and windows
