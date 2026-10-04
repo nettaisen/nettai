@@ -1414,6 +1414,20 @@ them.
   one) or Chaos Unison's 1 (0x08024FF6; `custom.set_form`'s turns and Chaos flag, `TransformRequest::turns`,
   `chaos`); the chip given up leaves the folder in the soul's place. B on the soul puts the chip back. (Until
   2026-10-04 this was the custom screen's Rust: `SlotKind::Soul`, `Phase::SoulChosen`, `SoulUnlocks`.)
+- **SearchSoul's Shuffle** (the souls system's button `redeal`, the name the frontend draws the pack's re-deal
+  button's tiles and picture for; rules/souls/shuffle.luau; the per-soul slots,
+  0x08023CF8, by the soul the emotion routine leaves in r1, so never in battle mode 1): slots 8 and 9 (types 4 and 5),
+  its right neighbor the special slot, its left the eighth chip's; three uses a screen (3 less the screen's +0x16,
+  which each open zeroes). A on it (0x080249B0, no sound of its own; BN6's ChpShufl plays one, now its button's
+  content's `custom.play("redeal")`) is the framework's re-deal, the screen's state 0x28 (0x08023488, BN6's
+  `sub_80271F8`), a `hop` each of its eight steps (the roles' `custom_redeal_shuffle`). BN5's keeps some of the hand
+  in the hand (0x080253E8's table, 0x080254C8: the custom-screen rules' `redeal_kept`, by how many of the hand it
+  deals again: 0, 0, 0, 1, 1, 2, 2, 3, 3): the hand's are shuffled among themselves, then all but the first kept
+  with the rest of the folder. Its scenarios: souls/03-cursor/shuffle, shuffle-3, shuffle-picked-1 to 5.
+- **NumberSoul's hand of ten** (rules/souls/hand.luau, the souls system's `custom.hand_size`; 0x08025BE4): MegaMan
+  in soul 9 is dealt ten chips whatever his custom level, in battle modes 0 and 6 (mode 1 takes the same branch, but
+  its emotion routine, 0x080127C0, leaves the stats' address in r1, not the soul: the custom level's hand; any other
+  mode deals five, which nothing answers yet). Its scenario: souls/09-plus/hand-of-ten.
 - **The change** (rules/souls/change.luau, the souls' `change`, BN5's 0x08011F74, run by the shared turn-start
   sequencer): onto the future panel, a flash, his moves stopped (`stop_moving`); the soul's image (objects/
   soul-image, actor 0x2A, its navi's sprite 08-xx) spirals in, blinks and fades; MegaMan emerges in the soul (the
