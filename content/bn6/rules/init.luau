@@ -43,7 +43,6 @@ return define.ruleset {
     berserk = require("./berserk"),
     buster = require("./buster"),
     chip_use = require("./chip-use"),
-    cross_special = require("./cross-special"),
     custom_screen = require("./custom-screen"),
     elements = require("./elements"),
     flow = require("./flow"),

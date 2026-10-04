@@ -1552,7 +1552,6 @@ fn rules() -> Rules {
         },
         // The SP navi chips BN6's modules bring: Count[SP].
         sp_slots: vec!["sp/count".into()],
-        cross_special: Vec::new(),
         push_vectors: [
             SlideVector { dx: 1, dy: 0, tiles: 6 },
             SlideVector { dx: -1, dy: 0, tiles: 6 },
