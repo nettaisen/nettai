@@ -50,6 +50,7 @@ chips = [
     "chips/bassanly/chip",
     "chips/batcan/chips",
     "chips/bblwrap/chip",
+    "chips/beat/chip",
     "chips/bighook/chip",
     "chips/bignoise/chip",
     "chips/blakwing/chip",
@@ -189,6 +190,7 @@ chips = [
     "chips/resetbom/chip",
     "chips/rockcube/chip",
     "chips/roll/chips",
+    "chips/rush/chip",
     "chips/seaseed/chip",
     "chips/serchman/chips",
     "chips/shademan/chips",
@@ -207,6 +209,7 @@ chips = [
     "chips/spshake/chips",
     "chips/suprspr/chips",
     "chips/sword/chip",
+    "chips/tango/chip",
     "chips/tankcan/chips",
     "chips/thunder/chip",
     "chips/timebom/chips",
@@ -215,6 +218,7 @@ chips = [
     "chips/toadman/chips",
     "chips/tornado/chips",
     "chips/varswrd/chip",
+    "chips/vdoll/chip",
     "chips/voltz/chips",
     "chips/vulcan/chips",
     "chips/wavepit/chip",
@@ -416,8 +420,4 @@ navicust = [
     "navicust/sprarmr/program",
     "navicust/tango/program",
     "navicust/undersht/program",
-]
-# Chips defined without a use yet: not loaded (a port that writes the use moves them up).
-unported = [
-    "chips/vdoll/chip",
 ]

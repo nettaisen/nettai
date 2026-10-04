@@ -63,7 +63,7 @@ local function wait(me: Object)
     end
     me.run_while_paused = false
     me.visible = true
-    me:set_action(STANDING)
+    me:set_action(obstacle.action_byte(me, STANDING))
 end
 
 -- `sub_80D2398`.
