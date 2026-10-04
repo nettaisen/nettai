@@ -1381,7 +1381,7 @@ them.
    army, read in §15.11); BlkBomb's idle and return actions are 7 and 6 (BN6's 9 and 8), its table without frozen
    and bubbled. Not met in the replays yet.
 
-### 15.8 Soul Unison (as built, in progress)
+### 15.8 Soul Unison (as built)
 
 - **The soul button** (the engine's custom screen, BN5's layout: slot 11, `SlotKind::Soul`, 0x08023C54,
   0x08024B28, 0x08024972): lit for the last pick's family when the navi has a soul of it (a form naming its
@@ -1416,7 +1416,9 @@ them.
   - **The status reset by soul** (0x08011B92; a NaviCust change's, 0x08011CBC): GyroSoul's FloatShoes, floating
     body and AirShoes and ShadowSoul's FloatShoes and floating body are the form's `status_reset`; the rest is the
     form's `reset` hook (`FormDef::reset`, called after the flags): SearchSoul's reveal of the other side's
-    invisible navis (effect 0x8F), TomahawkSoul's grass, ColonelSoul's arming of its side's obstacles.
+    invisible navis (effect 0x8F), TomahawkSoul's grass (effect 0x16), ToadSoul's dives (the navi state "dives"),
+    ColonelSoul's arming of its side's soldiers (`obstacle.arm_soldiers`, 0x08011C44; §15.11). The forms' `put_on`
+    and `take_off` hooks run with the start and end hooks (0x0800F024, 0x0800F088): NumberSoul's layer (actor 0x54).
   - **The chip use by soul** (0x0800FF48), by form data: `priming` (GyroSoul: a Wind chip primes it, AIData +0x0D,
     0x080102D2; primed, the next damaging Wind or Null chip is doubled, and neither Full Synchro nor anger doubles
     meanwhile, 0x0801026C), `grass_doubles` (TomahawkSoul's Wood chips on grass, which the use turns normal,
@@ -1425,12 +1427,39 @@ them.
     with the chip's damage: 0x08010442), `charged_chips` and `charged_bonus` (0x0801090A, 0x080103D0: Proto Sword,
     Knight Break, Magnet Elec, Toad Aqua and Napalm Fire doubled; Shadow Sword without a bonus), `move_lag`
     (ShadowSoul's 0).
-  - **Built:** GyroSoul (routine 9, action 0x3C: a tornado, attack object 0x1E, along the three panels ahead),
-    SearchSoul (8, 0x3B: five shots at the nearest enemy navi's panel, 0x08012E50), NapalmSoul (0x19, 0x44: three
-    fire bullets, rows 0x11 and 0x12), MagnetSoul (0x15, 0x42: a paralyzing field, attack object 0x75, on the
-    panel ahead and a pull over the six panels ahead) and ColonelSoul (0x14, 0x43: the screen divide on the first
-    enemy ahead): their unison recordings match every frame. Not yet: MagnetSoul's B+Back (0x25: instant effect 10,
-    immobilizers ahead), ColonelSoul's obstacles (with BN5's obstacle chips), and souls 6 and 8 to 12.
+  - **The hand's bonus** (0x0800D0A6, from the hand entry 0x0800D054 and the chip window 0x0800D018): NumberSoul's
+    damaging Null chips +10 and NapalmSoul's damaging Fire chips +40 on a use that isn't charged with the A charge
+    not full (the form's `chip_bonus`, `uncharged`); in any other form, MegaMan's damaging Aqua chips +30 on sea
+    (the navi's `panel_bonus`), the sea under him turning Normal as the use is prepared (0x080100B0), after the
+    light-dark system's dark-chip use and cost (the system hook `chip_cost`, 0x08010030) and before its
+    light/dark check (`chip_check`, 0x08010118).
+  - **The charged swords** (action 0x13 by the attack's charge, 0x080EBD04; lib/swords' `SlashSteps` for the common
+    slash): a charged slash steps two panels ahead (charge 1, 0x080125D4), or in ShadowSoul (and by a charge of 2)
+    warps behind the enemy, turned round (0x08012538); the afterimages and the step back go by a charge.
+  - **The B+Back moves**: ProtoSoul's guard (routine 4, the Reflect program's), MagnetSoul's immobilizers ahead
+    (0x25: instant effect 10, a glow, @common/instant/immobilizer with BN5's mark), ShadowSoul's anti-damage stance
+    (0x45, action 0x3D: @common/navicust/anti-damage, the AntiDmg program's) with the attack's variant 1, so its
+    counter throws at the nearest enemy ahead (`attack_variant`, AIAttackVars +3); BN5's stance counter runs its
+    first step at once (0x0800E340: the reactions section's `stance_counter = "at_once"`).
+  - **ToadSoul under the sea** (0x0800DF5A, 0x08017030, 0x0800DEB2; by the arena's panel rules' `submerges`): a
+    diving body on sea is under the surface (its dive timer, BN5's CollisionData +0x2C, held), its flag 0x80000000
+    on (the bit BN6's bubble has; BN5's kernel doubles no elec hit by it, the panel's elec bonus does) unless it uses
+    an action, is dragged, flinches or is paralyzed; under (0x80000004) it is hidden, a ripple over it (effect object
+    0x3E, objects/dive-ripple, the role `kinds.dive_ripple`; a splash as it starts, row 0x5D). BN6's submerged
+    state (`sub_8010162`, +0x28 in BN5) stays apart.
+  - **The hit kernel** (0x0801691C, BN6's IWRAM `sub_3007218`; the reactions section's `hit_test = "bn5"`): no
+    FloatShoe test (BN5's collision types have no 0x80, so BN6's test would keep every hit off a floating
+    ShadowSoul or GyroSoul), the Elec element reaching a submerged or bubbled side (0x80000004), a guard broken by
+    types 0x1002 and marked unless the hitter has 0x0C004000.
+  - **Built:** all twelve: ProtoSoul, GyroSoul (routine 9, action 0x3C: a tornado, attack object 0x1E, along the
+    three panels ahead), SearchSoul (8, 0x3B: five shots at the nearest enemy navi's panel, 0x08012E50), NapalmSoul
+    (0x19, 0x44: three fire bullets, rows 0x11 and 0x12), MagnetSoul (0x15, 0x42: a paralyzing field, attack object
+    0x75, on the panel ahead and a pull over the six panels ahead), ColonelSoul (0x14, 0x43: the screen divide on
+    the first enemy ahead), MeddySoul (0xE, 0x3E: a capsule, mode 0), ShadowSoul (0x17: LongSwrd's slash),
+    NumberSoul (7, 0x3A: the dice), TomahawkSoul (0x1A, 0x45), KnightSoul (0x11, 0x40: KnightMan's ball's swing,
+    confusing) and ToadSoul (0x2D, 0x50: ToadMan's notes). The souls recordings match every frame but MeddySoul's
+    and KnightSoul's unisons (RedFrut1, BoyBomb3: the obstacle chips), ShadowSoul's Chaos Unison (DarkInvs: the
+    navi chips') and four Chaos Unisons that stop at the Dark MegaMan's panel.
 - **Chaos Unison** waits on the engine: its charge (AIData +0x11's weapon, the routine's charge row by the chaos
   level AIData +0x6C, the cycle 0x080105F8 of 0x08010650's rows, the release's requests 0x8000 and 0x10000, the
   idle's start of the chaos weapon or of action 0x39) and, on a failed release, action 0x39 spawns the Dark MegaMan

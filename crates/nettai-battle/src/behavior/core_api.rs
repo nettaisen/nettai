@@ -150,6 +150,7 @@ fn navi_state_bit(f: NaviState) -> u32 {
         NaviState::FormChangeSpriteHeld => status::FORM_CHANGE_SPRITE_HELD,
         NaviState::HeatTrap => status::HEAT_TRAP,
         NaviState::Vanished => status::VANISHED,
+        NaviState::Dives => status::DIVES,
     }
 }
 
@@ -376,6 +377,15 @@ impl CoreApi for Battle {
 
     fn shake_camera_secondary(&mut self, magnitude: u16, ticks: u16) {
         Battle::shake_camera_secondary(self, magnitude, ticks);
+    }
+
+    fn set_shake_through_pause(&mut self, on: bool) {
+        use crate::battle::battle_flags::SHAKE_THROUGH_PAUSE;
+        if on {
+            self.set_flags(SHAKE_THROUGH_PAUSE);
+        } else {
+            self.round.flags &= !SHAKE_THROUGH_PAUSE;
+        }
     }
 
     fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef> {
@@ -1749,6 +1759,7 @@ impl CoreApi for Battle {
             ActorField::AttackElement => i(at.element as i64),
             ActorField::AttackDamage => i(at.damage as i64),
             ActorField::HitParam => i(at.hit_param as i64),
+            ActorField::AttackVariant => i(at.variant as i64),
             ActorField::Charged => i(at.charged as i64),
             ActorField::AttackLockout => i(at.lockout as i64),
             ActorField::Extra => i(at.extra as i64),
@@ -1839,6 +1850,7 @@ impl CoreApi for Battle {
             (ActorField::AttackElement, FieldValue::U8(x)) => at.element = x,
             (ActorField::AttackDamage, FieldValue::U16(x)) => at.damage = x,
             (ActorField::HitParam, FieldValue::U16(x)) => at.hit_param = x,
+            (ActorField::AttackVariant, FieldValue::U8(x)) => at.variant = x,
             (ActorField::Charged, FieldValue::U8(x)) => at.charged = x,
             (ActorField::AttackLockout, FieldValue::U8(x)) => at.lockout = x,
             (ActorField::Extra, FieldValue::U16(x)) => at.extra = x,
