@@ -49,9 +49,9 @@ pub trait Driver {
     }
     /// The game version of the console whose screen this is, as its pack
     /// names its versions' assets, for a game whose versions the engine
-    /// doesn't tell apart (BN5's "protoman" and "colonel": its navi chips'
-    /// pictures; `Renderer::console_version`). None: the engine's (BN6's
-    /// `Unlocks::version`).
+    /// doesn't tell apart (BN5's "protoman" and "colonel": its emblems, the
+    /// other version's chips; `Renderer::console_version`). None: the
+    /// engine's (BN6's `Unlocks::version`).
     fn console_version(&self) -> Option<&'static str> {
         None
     }

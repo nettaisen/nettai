@@ -527,9 +527,13 @@ as bn6-extract takes BN6's) writes a pack whose manifest says `game = "bn5"`:
   engine's; the re-deal and scrap buttons; the soul button (`buttons`: its states' tiles 0x086FBB64, its picture
   0x087322E8 with Soul Unison's and Chaos Unison's palettes, the souls' 2x2 icons 0x08749FB8, 14 with Chaos's, in
   sprite palette 13, 0x0874AAB8); the emblems by version (13, with 8 palettes).
-- **Versions:** 12 chips (0x12D–0x136, 0x139, 0x13A: the version navi chips) are drawn differently by each
-  version's ROM; their pictures and icons are in the pack twice, `CHIP-protoman` and `CHIP-colonel`, with their
-  `version`, and a console shows its own version's (the frontend's `Packs::chip_art`).
+- **Versions:** 12 chips (0x12D–0x136, 0x139, 0x13A: each version's five Giga chips, and DethPhnx and Phoenix)
+  are drawn differently by each version's ROM: a ROM holds the art of its own (the ones its library lists, the
+  record's flag 0x40: Team ProtoMan's Bass, DeltaRay, BugCurse, HolyDrem, BigHook, DethPhnx; Team Colonel's
+  MetrKnuk, OmegaRkt, BassAnly, CrossDiv, BugCharg, Phoenix) and has it again at the other's counterparts. The
+  pack has each chip's picture and icon once, from its own version's ROM, under the chip's key, the picture with
+  its `version`: either console shows it, and a console of the other version's is a known difference there
+  (docs/frontend.md §5).
 - **Version songs:** Team Colonel has 11 songs of its own at Team ProtoMan's numbers (0x13C–0x142, 0x145, 0x146,
   0x170, 0x171: its navi chips' sounds). They are in the pack beside Team ProtoMan's, each a song file named with
   its version (`sound-13c-protoman`, `sound-13c-colonel`, with `version` in its header and `base_version =

@@ -14,8 +14,9 @@ use nettai_content_api::AssetKind;
 pub struct Packs<'a> {
     bundles: Vec<&'a Bundle>,
     own: PackId,
-    /// The console's version (`Renderer::console_version`): the one whose
-    /// own art a chip each version draws its own way shows.
+    /// The console's version (`Renderer::console_version`): a chip of
+    /// another version's shows that version's ROM's art, which this console
+    /// draws otherwise (`ChipArt::version`).
     version: Option<&'static str>,
 }
 
@@ -61,36 +62,24 @@ impl<'a> Packs<'a> {
     }
 
     /// Draw a console of `version` (`Renderer::console_version`; None: the
-    /// pack's first).
+    /// engine's).
     pub fn set_version(&mut self, version: Option<&'static str>) {
         self.version = version;
     }
 
-    /// A chip's icon: its game's pack's, under its key there, else its
-    /// version's (`version_key`).
+    /// The console's version, when the frontend says it (`set_version`).
+    pub fn version(&self) -> Option<&'static str> {
+        self.version
+    }
+
+    /// A chip's icon: its game's pack's, under its key there.
     pub fn chip_icon(&self, c: &Content, key: &str) -> Option<&'a nettai_assets::Tiles> {
-        let pack = self.game(c);
-        let local = nettai_content_api::keys::local(key);
-        pack.hud.chip_icon(local).or_else(|| pack.hud.chip_icon(&self.version_key(pack, local)?))
+        self.game(c).hud.chip_icon(nettai_content_api::keys::local(key))
     }
 
-    /// A chip's picture: its game's pack's, under its key there, else its
-    /// version's (`version_key`).
+    /// A chip's picture: its game's pack's, under its key there.
     pub fn chip_art(&self, c: &Content, key: &str) -> Option<&'a nettai_assets::ChipArt> {
-        let pack = self.game(c);
-        let local = nettai_content_api::keys::local(key);
-        pack.custom.chip_art(local).or_else(|| pack.custom.chip_art(&self.version_key(pack, local)?))
-    }
-
-    /// The key of the console's version's art of a chip each version of
-    /// `pack`'s game draws its own way (BN5's navi chips: the pack has it
-    /// once a version, `{key}-{version}`, docs/design/bn5-map.md §11): the
-    /// console's version if the pack has it, else the pack's first.
-    fn version_key(&self, pack: &Bundle, local: &str) -> Option<String> {
-        let mut versions = pack.custom.chip_art.iter().filter_map(|a| a.version.as_deref());
-        let first = versions.clone().next()?;
-        let version = self.version.filter(|&v| versions.any(|w| w == v)).unwrap_or(first);
-        Some(format!("{local}-{version}"))
+        self.game(c).custom.chip_art(nettai_content_api::keys::local(key))
     }
 
     /// Sprite `id`'s sheet, from its pack.

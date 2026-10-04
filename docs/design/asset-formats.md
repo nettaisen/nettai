@@ -413,11 +413,12 @@ otherwise; a BN6 pack writes none of them and is byte-identical to before:
   the chip window with a palette for Soul Unison and one for Chaos Unison,
   and the souls' 2x2 icons with their sprite palette, which the soul choice
   flies onto the column).
-- A chip each version draws its own way (BN5's version navi chips) has its
-  icon and picture once a version, `CHIP-protoman` and `CHIP-colonel` with
-  their `version`: a console shows its own version's (the frontend's
-  `Packs::chip_art`, by the console's version a recording names; live play,
-  the pack's first).
+- A version's own chip (BN5's and BN6's version Giga chips, BN5's Phoenix
+  and DethPhnx), which the other version's ROM draws as its counterpart,
+  has its icon and picture once, under the chip's key, from its own
+  version's ROM, the picture with that `version`: the frontend shows it on
+  either console, and a console of the other version's is a known
+  difference there (docs/frontend.md §5).
 
 **Four ROMs, and what differs by version and region.** A BN6 pack is made
 from the two US ROMs and the two Japanese ones (`bn6-extract content
