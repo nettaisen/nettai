@@ -2001,6 +2001,15 @@ the counted bytes: supports, Hub) stopped on RNG1 at the first check, re-recorde
 bug-hp's stop was its last frame: a flicker's draw on the frame a recording ends has no frame left to agree, which
 bn5-compat's RNG1 comparison now leaves.
 
+The first barriers' visuals on a round's first tick: the other side's navi inits first (its first barrier's visual
+asking at once whether the local navi is blind, 0x0800CDF4), before the local navi has collision data, and the game
+reads its status word through the null pointer, from the BIOS. BN6's read gives the object spawn's CpuSet opcode,
+0xE3A02004, with the blind bit (the visual hidden for a tick); BN5's console gives an interrupt's, 0xE55EC002 (read
+at 0x0800CE18 with a scratch trap in the chip lab), without it: the visual shows at once. The status section's
+`missing_collision_status` (the engine's `Rules::missing_collision_status`, BN6's by default) says which; the
+replays' full object comparison caught it (navicust-compile/bug-colors, patch-cards-stats/bugstop, cards-02, cards-03,
+cards-08, clamps-hp: both sides with first barriers).
+
 ### 15.15 BN5's supports (as built)
 
 The NaviCust supports, Rush, Beat and Tango, are BN6's code in BN5 (docs/engine/chips.md §2.10), so the two share
