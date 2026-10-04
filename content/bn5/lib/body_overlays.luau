@@ -40,7 +40,7 @@ body_overlays.napalmman = {
 -- tables' pointers and the sprite table (none 0: in front) and the code after them (its first byte 0: behind, his
 -- animation 52).
 body_overlays.hub = {
-    sprite = asset.sprite("sprite-0c-58"),
+    sprite = asset.sprite("hub-shade"),
     anims = 53,
     behind = { { 52, 52 } },
 }

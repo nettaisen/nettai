@@ -57,7 +57,7 @@ pub use host::{
     InstantChipSpec, Manifest, NaviChipSpec, PlaceSpec, SystemHook,
 };
 pub use registry::{
-    ActionHandle, ChipHandle, CollisionHandle, EffectHandle, FormHandle, IdentityHandle, KindHandle, LockonHandle, NaviHandle,
+    ActionHandle, ChipHandle, CollisionHandle, EffectHandle, FormHandle, IdentityHandle, KindHandle, NaviHandle,
     NaviCustProgramHandle, PatchCardHandle, RecordHandle, RegionHandle, Registry, RulesetHandle, SparkHandle, StageHandle, StatusHandle, SystemHandle, WeaponHandle,
     valid_key,
 };

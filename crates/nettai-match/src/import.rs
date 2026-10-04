@@ -59,9 +59,9 @@ impl Side {
         self.game = save.version();
         let unlocks = save.unlocks();
         self.beast_out = unlocks.beast_out;
-        self.crosses = match content.navi(self.navi).forms.as_ref() {
-            Some(forms) if !unlocks.crosses.iter().all(|&c| c) => {
-                let own = &forms.of(self.game).crosses;
+        self.crosses = match bn6_compat::forms::set(content, self.navi, self.game) {
+            Some(set) if !unlocks.crosses.iter().all(|&c| c) => {
+                let own = &set.crosses;
                 let owned: Vec<_> = own.iter().zip(unlocks.crosses).filter(|(_, o)| *o).map(|(&f, _)| f).collect();
                 Some(CrossList::new(&owned))
             }

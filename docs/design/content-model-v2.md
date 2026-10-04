@@ -106,7 +106,7 @@ Every definition belongs to one registry. The engine knows the registries and th
 | region | `define.region` | derived | panel offsets, or a whole-field condition | (none) |
 | collision | `define.collision` | required `id` (shared vocabulary) | a collision type's flag words by side | (none) |
 | status | `define.status` | required `id` (shared vocabulary) | requests, duration, timer | (none) |
-| lockon | `define.lockon` | required `id` (shared vocabulary) | the Beast Out lock-on search | (none) |
+| (lockon) | `define.record("lockon", ...)` since rules-in-luau.md S7c | required `id` | the Beast Out lock-on search | (none) |
 | record | `define.record(type, spec)` | derived, or `id` | only its type name (Luau reads the fields) | (none, unless a setup names it) |
 | patch_card | `define.patch_card` | required `id` | its MB and its effects' kinds and bug flags (a game's rules read the rest; §3.11) | the card's number, in compat/patch-cards.toml |
 | sprite, sound, banner, background, mugshot, chip icon | `asset.*` (§6.3) | the asset's name | names; sprites' animation timing | the ROM's numbers, in compat/assets.toml |
@@ -514,8 +514,9 @@ Shared ones live in `lib/effects.luau`, `lib/sparks.luau`, `lib/regions.luau`, `
 disappear: nothing compared reads them (the generic effect's first parameter was its effect id; parameters are
 not compared, §10). Region 0 ("none") is `nil`, and region 1 (the anchor panel) is `regions.single`.
 
-**As built** (step 12, lock-on modes). A lock-on mode is `LockonMode` by `LockonHandle` (`Content::lockon`,
-`Defs::lockons`): the definitions carry no number. A chip's `beast.lockon`, a charged slash's `lockon`, the
+**As built** (step 12, lock-on modes; since rules-in-luau.md S7c a record of type "lockon", read by its
+`RecordHandle`). A lock-on mode is `LockonMode` (`Content::lockon`, `Defs::lockons`): the definitions carry no
+number. A chip's `beast.lockon`, a charged slash's `lockon`, the
 navi's `rush_lockon` and `me:lockon_panel(x, y, mode)` take the definition (nil: the navi stays where it is,
 the original's mode 0), `ChipData::lockon_mode` and `AttackVars::rush_lockon` are `Option<LockonHandle>`, and
 the one mode the ruleset names itself, the Beast claw's, is the role `lockon.beast_claw`. The modes nobody's
@@ -622,7 +623,7 @@ return define.ruleset {
 }
 ```
 
-A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `sp_chips`, `cross_special`);
+A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `sp_chips`);
 one the ruleset doesn't name keeps the engine's table. **Only the stock ruleset holds sections and roles**: another
 of the game's rulesets (a variant, `base`) changes only its systems (`add`, `remove`), and a section or `roles` on
 it is a load error saying so. The engine reads the sections and roles game-wide (the chips' links read the SP slots
@@ -642,7 +643,7 @@ allowing it later is additive (each ruleset's tables, a variant's fields replaci
 | `custom_screen` | rules/custom-screen.luau | the slot grid and neighbor scans (rules/custom-screen.toml) |
 | `buster` | rules/buster.luau | recovery by Rapid and open panels; the empty hand's chip (rules/weapons.toml) |
 | `banners` | rules/banners.luau | which banners hold until removed, by banner asset (rules/banners.toml) |
-| `pools`, `flow`, `chip_use`, `sp_chips`, `cross_special`, `navicust`, `effects` | rules/<name>.luau (rules/navicust/section.luau) | the object pools' sizes, the flow's timings, chip use, the SP navis' deletion times and slots, the Cross special's chips, the NaviCust boards, BN5's effect rules |
+| `pools`, `flow`, `chip_use`, `sp_chips`, `navicust`, `effects` | rules/<name>.luau (rules/navicust/section.luau) | the object pools' sizes, the flow's timings, chip use, the SP navis' deletion times and slots, the NaviCust boards, BN5's effect rules |
 
 Where v1 kept per-entity rows in a shared table, they move to the entity: charge times into weapons, the Cross
 palettes into forms, the SP chips' deletion-time steps into `lib/navi-chips/sp.luau` next to the formula,
