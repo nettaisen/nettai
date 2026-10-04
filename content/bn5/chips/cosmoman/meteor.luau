@@ -7,7 +7,7 @@
 
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local meteor = {}
 

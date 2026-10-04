@@ -1,14 +1,14 @@
 --!strict
 -- Discord (BN5 chip 0x065): a cut-in chip that sets an instrument in front of the user; while it plays, the other
--- side's navi is confused (lib/instruments/instrument: the shared @common/instruments; BN5's the same code but for the sprite, with its own
+-- side's navi is confused (lib/instruments/instrument: the shared @exelib/instruments; BN5's the same code but for the sprite, with its own
 -- numbers: 100 HP, `byte_80D4140`'s BN5 counterpart 0x080D5224; it plays 0x55 × 2 ticks and pauses 0x3C, 0x080D5158
 -- row 1 and 0x080D53B0).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local collision = require("../../rules/collision")
-local effects = require("@common/instruments/effects")
+local effects = require("@exelib/instruments/effects")
 local bn5_instrument = require("../../lib/instruments/instrument")
-local instrument = require("@common/instruments/instrument")
+local instrument = require("@exelib/instruments/instrument")
 local statuses = require("../../rules/status")
 
 local SPRITE = bn5_instrument.sprite

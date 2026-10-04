@@ -1808,11 +1808,10 @@ export type SystemSpec = {
 }
 export type System = SystemSpec
 
--- A player's rules: a list of systems, which the framework calls in this
+-- A match's rules: a list of systems, which the framework calls in this
 -- order. A game's own is its `stock` ruleset (one per game). A ruleset made
--- from another (`base`, a mix) has its base's systems less `remove`, with
--- `add` after them. Its game, whose data (roles, rule sections) the side
--- reads, is the root `game` names, else its base's, else its own root
+-- from another (`base`, a variant) has its base's systems less `remove`,
+-- with `add` after them. A match plays one game by one of its rulesets
 -- (docs/design/rules-in-luau.md §2.3).
 export type RulesetSpec = {
     id: string,
@@ -1821,12 +1820,6 @@ export type RulesetSpec = {
     base: Ruleset?,
     add: { System }?,
     remove: { System }?,
-    game: string?,
-    -- Its own rule sections (`define.rules(...)`, ids of its folder): a
-    -- mix's, over its game's for the sides that play by it; only the
-    -- sections about a side (custom-screen, berserk, navicust, status,
-    -- lockon, cross-special).
-    sections: { any }?,
 }
 export type Ruleset = RulesetSpec
 
@@ -2319,12 +2312,13 @@ export type Status = StatusDef
 -- the installed cards' limit counts) and its effects in the card's order:
 -- each a table with its `kind` and whether the card shows it as a `bug`,
 -- with the kind's own fields. What an effect does is a game's rules' (BN6's
--- patch-cards system, rules/patch-cards: `PatchCardEffect`). Its name is
--- the locales' (locales/<lang>.toml's `patch-cards`).
+-- patch-cards system, rules/patch-cards), and its type is the game's (BN6's
+-- `PatchCardEffect`, which its cards' constructors make). Its name is the
+-- locales' (locales/<lang>.toml's `patch-cards`).
 export type PatchCardSpec = {
     id: string,
     mb: number,
-    effects: { PatchCardEffect },
+    effects: { any },
 }
 export type PatchCard = PatchCardSpec
 

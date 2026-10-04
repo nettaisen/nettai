@@ -3,16 +3,16 @@
 -- the dimming's phases, a nest on the user's panel, 41 ticks once it is done) with BN5's nest and snakes.
 --
 -- - The nest (attack object #0x53, 0x080D03E4, BN6's #0x72 reworked) scans the user's side's holes from the far
---   column back (the shared scan, @common/snake/snake) and sends snakes out of up to three at once, each with its
+--   column back (the shared scan, @exelib/snake/snake) and sends snakes out of up to three at once, each with its
 --   flag (ExtraVars+4: a byte each); when every flag is clear again it sends the next three; once the holes run out
 --   and the flags are clear, it goes.
 -- - The snake (attack object #0x54, BN6's #0x73: the shared snake) waits 48 ticks (BN6 20), strikes as wood (BN6
 --   null) with the wood spark (spark 4, BN6's 5) and clears its flag when it goes.
 
 local collision = require("../../rules/collision")
-local common = require("@common/snake/snake")
+local common = require("@exelib/snake/snake")
 local trajectory = require("../../lib/trajectory")
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 local sparks = require("../../lib/sparks")
 
 local snake = {}

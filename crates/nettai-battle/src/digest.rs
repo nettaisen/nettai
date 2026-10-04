@@ -160,8 +160,6 @@ impl Hash for Battle {
             // Read-only data shared by snapshots: its identity is in the
             // setup (`RoundSetup::content`).
             content: _,
-            // (Made from the setup and the content.)
-            games: _,
             setup,
             stats,
             reserves,

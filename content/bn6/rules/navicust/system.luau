@@ -34,12 +34,12 @@
 -- (its definition's); its `bug`, its `exclusive` and its `effects` this
 -- system's (./programs.luau). A program `anywhere` (no BN6 program is one)
 -- works on the command line or off it and is never bugged by where it is.
--- The compile is the one BN5's shares (@common/navicust/compile); BN6's are
+-- The compile is the one BN5's shares (@exelib/navicust/compile); BN6's are
 -- its board (its frame, where a neighbor counts), its bugs and the emotion
 -- window's glitch.
 
 local board = require("./board")
-local compile = require("@common/navicust/compile")
+local compile = require("@exelib/navicust/compile")
 local programs = require("./programs")
 
 -- Each bug at its level, 1 to 3 (`byte_813CC18`'s routines).

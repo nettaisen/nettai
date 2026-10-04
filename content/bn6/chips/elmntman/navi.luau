@@ -14,7 +14,7 @@
 -- Then he leaves, and the controller moves on. See docs/engine/chips.md
 -- §3.6.7.
 
-local panels = require("@common/panels")
+local panels = require("@exelib/panels")
 local bolt = require("./bolt")
 local effects = require("../../lib/effects")
 local ice = require("./ice")

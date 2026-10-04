@@ -54,6 +54,13 @@ use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
 #[derive(Clone, Debug, Default)]
 pub struct Pack {
     modules: BTreeMap<String, String>,
+    /// The modules the define phase loads, in order (each pack's listed
+    /// modules), which require the rest; none: every module, in name order
+    /// (a pack a test makes of modules alone).
+    entries: Vec<String>,
+    /// The packs the modules are of, by name: what a module may require
+    /// (`packs::check_require`); none: any module (a test's modules alone).
+    packs: BTreeMap<String, nettai_content_api::PackManifest>,
     compiled: Compiled,
 }
 
@@ -85,15 +92,29 @@ impl Compiled {
 }
 
 impl Pack {
-    /// Modules by name: their content folder and their path in it
-    /// (`bn6:chips/minibomb/chip`). Every folder's modules load together,
-    /// one namespace (docs/design/rules-in-luau.md, the flat namespace).
+    /// Modules by name: their pack and their path in it
+    /// (`bn6:chips/minibomb/chip`, `keys::module_name`;
+    /// docs/design/content-model-v2.md §4.0).
     pub fn new(modules: impl IntoIterator<Item = (String, String)>) -> Pack {
         let modules: BTreeMap<String, String> = modules.into_iter().collect();
         for name in modules.keys() {
-            assert!(keys::root_of(name).is_some(), "module {name:?} names no folder (`<folder>:<path>`)");
+            assert!(keys::root_of(name).is_some(), "module {name:?} names no pack (`<pack>:<path>`)");
         }
-        Pack { modules, compiled: Compiled::default() }
+        Pack { modules, entries: Vec::new(), packs: BTreeMap::new(), compiled: Compiled::default() }
+    }
+
+    /// The same pack, the define phase starting from these modules (each
+    /// pack's listed modules, by name) and loading what they require.
+    pub fn with_entries(mut self, entries: Vec<String>) -> Pack {
+        self.entries = entries;
+        self
+    }
+
+    /// The same pack, its modules' packs these: a require reaches only its
+    /// own pack and the support packs it uses (`packs::check_require`).
+    pub fn with_packs(mut self, packs: impl IntoIterator<Item = nettai_content_api::PackManifest>) -> Pack {
+        self.packs = packs.into_iter().map(|p| (p.id.clone(), p)).collect();
+        self
     }
 
     /// One folder's modules, by path in the folder (`chips/minibomb/chip`).
@@ -409,37 +430,6 @@ struct Loader {
     stack: Vec<String>,
 }
 
-/// Resolve a `require` path from module `from` (`bn6:rules/beast/system`):
-/// relative to its directory within its folder (`./rush`, `../lib/slot`),
-/// or in any content folder from its top (`@bn6/rules/cross/system`).
-fn resolve(from: &str, path: &str) -> Result<String, String> {
-    let (root, from_path) = from.split_once(keys::SEPARATOR).ok_or_else(|| format!("module {from:?} names no folder"))?;
-    if let Some(rest) = path.strip_prefix('@') {
-        let (target, p) =
-            rest.split_once('/').ok_or_else(|| format!("require({path:?}): a folder's module is `@<folder>/<path>`"))?;
-        let p = p.trim_end_matches(".luau");
-        if p.split('/').any(|s| s.is_empty() || s == "." || s == "..") {
-            return Err(format!("require({path:?}): a path from a folder's top names its directories"));
-        }
-        return Ok(format!("{target}{}{p}", keys::SEPARATOR));
-    }
-    if !(path.starts_with("./") || path.starts_with("../")) {
-        return Err(format!("require({path:?}): content paths start with ./, ../ or @<folder>/"));
-    }
-    let mut parts: Vec<&str> = from_path.split('/').collect();
-    parts.pop();
-    for seg in path.trim_end_matches(".luau").split('/') {
-        match seg {
-            "." | "" => {}
-            ".." => {
-                parts.pop().ok_or_else(|| format!("require({path:?}) from {from} leaves root {root}"))?;
-            }
-            s => parts.push(s),
-        }
-    }
-    Ok(format!("{root}{}{}", keys::SEPARATOR, parts.join("/")))
-}
-
 fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Result<LuaValue> {
     let source = {
         let l = loader.borrow();
@@ -503,13 +493,17 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
     define::install_assets(&lua, &assets, module).map_err(err)?;
     let require = {
         let loader = Rc::downgrade(&loader);
+        let packs = pack.packs.clone();
         lua.create_function(move |lua, path: String| {
             let loader = loader
                 .upgrade()
                 .ok_or_else(|| mlua::Error::runtime("require is only available while content loads"))?;
             let from = loader.borrow().stack.last().cloned();
             let from = from.ok_or_else(|| mlua::Error::runtime("require is only available at the top of a module"))?;
-            let target = resolve(&from, &path).map_err(mlua::Error::runtime)?;
+            let target = keys::resolve(&from, &path).map_err(mlua::Error::runtime)?;
+            if !packs.is_empty() {
+                nettai_content_api::packs::check_require(&packs, &from, &path, &target).map_err(mlua::Error::runtime)?;
+            }
             load_module(lua, &loader, &target)
         })
         .map_err(err)?
@@ -530,8 +524,9 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
             }
         })
     });
-    // Every module, in path order, as if required from the pack's root.
-    let paths: Vec<String> = pack.modules.keys().cloned().collect();
+    // Each pack's listed modules, in order, and what they require; without
+    // any, every module in name order.
+    let paths: Vec<String> = if pack.entries.is_empty() { pack.modules.keys().cloned().collect() } else { pack.entries.clone() };
     for path in &paths {
         BUDGET.with(|b| b.set(options.budget.saturating_mul(16)));
         let v = load_module(&lua, &loader, path);

@@ -1,12 +1,12 @@
 --!strict
 -- BN6's bombs' and seeds' throw (the original's action 0x12,
--- `sub_80EB628`): the shared throw (@common/bombs/throw) with BN6's sound
+-- `sub_80EB628`): the shared throw (@exelib/bombs/throw) with BN6's sound
 -- and attachment. Each chip composes its own (`throw.action { held = ...,
 -- thrower = ... }`): what it holds, and what throws what it throws
 -- (docs/design/content-model-v2.md §5.1).
 
 local attachment = require("../../objects/attachment/attachment")
-local common = require("@common/bombs/throw")
+local common = require("@exelib/bombs/throw")
 
 local throw = {}
 

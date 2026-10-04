@@ -1,14 +1,14 @@
 --!strict
 -- BN6's NaviCust programs' effects (docs/design/navicust.md): a program is
 -- the engine's (`define.navicust_program`, content/bn6/navicust/), its
--- effects the values the shared constructors make (@common/navicust/effects,
+-- effects the values the shared constructors make (@exelib/navicust/effects,
 -- which BN5's programs share), each the work of the original's handler for
 -- the program (`navicust_jt_NCPs`); the navicust system (./system.luau)
 -- applies a player's programs to the navi's stats as the round is set up.
 -- What a program brings when it is bugged is its `bug` (one of `BUGS`), and
 -- which programs only one of on the command line works is its `exclusive`.
 
-local effects = require("@common/navicust/effects")
+local effects = require("@exelib/navicust/effects")
 
 local programs = {}
 

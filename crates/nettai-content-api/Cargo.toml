@@ -8,3 +8,5 @@ description = "The battle engine's content API: what chips, attacks and effects 
 [dependencies]
 # SpriteId is written "CC-II" in content files; the derives (`serde(transparent)`).
 serde = { version = "1", features = ["derive"] }
+# A pack's manifest (manifest.toml: its kind, its uses, its definitions).
+toml = "0.8"

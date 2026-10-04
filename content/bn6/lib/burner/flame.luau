@@ -14,7 +14,7 @@
 -- flames burn their full time; the chain passes the pointer on.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../sparks")
 
 local flame = {}
