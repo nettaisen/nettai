@@ -7,7 +7,7 @@
 --
 -- These are their actions; the chips are ./chips.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local corn = require("./corn")
 
 local cornsht = {}

@@ -9,7 +9,7 @@
 -- flash or sound), his attack requests and his uninterruptibility are dropped, the battle undims and he idles.
 
 local base = require("../../navis/megaman/forms/base")
-local computer_navi = require("../computer-navi/system")
+local computer_navi = require("../computer-navi")
 local dark_megaman = require("../../navis/dark-megaman/identity")
 local hooks = require("./hooks")
 local panels = require("../computer-navi/panels")

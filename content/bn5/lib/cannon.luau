@@ -3,7 +3,7 @@
 -- projectile, its arms (the attachment table's rows 0 to 2: sprite 0c-01 in palettes 0 to 2), its sound (0xAE) and
 -- GigaCan's third afterimage in Hub Style.
 
-local attachment = require("../objects/attachment/attachment")
+local attachment = require("../objects/attachment")
 local common = require("@exelib/cannon")
 local projectile = require("./projectile")
 

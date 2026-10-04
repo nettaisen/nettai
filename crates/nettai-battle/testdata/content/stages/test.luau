@@ -3,7 +3,7 @@
 -- (in either order of placing), and the same with rock cubes or boulders
 -- on the field (the BN6 overlay's kinds).
 
-local boulder = require("../objects/boulder/boulder")
+local boulder = require("../objects/boulder")
 local rock = require("../chips/rockcube/rock")
 
 local PLAIN = {

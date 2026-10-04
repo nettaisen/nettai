@@ -4,7 +4,7 @@
 -- projectile. A chip gives what the navi holds and what it fires
 -- (`airshot.action { shooter = ..., shot = ... }`).
 
-local attachment = require("../objects/attachment/attachment")
+local attachment = require("../objects/attachment")
 local common = require("@exelib/airshot")
 local projectile = require("./projectile")
 

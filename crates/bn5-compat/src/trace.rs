@@ -634,12 +634,16 @@ impl Round {
                 joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
                 navi_level: None,
                 sp_times: Default::default(),
+                // (The save's emotion window glitch, which a recording
+                // has, is no setup's: BN5's rules make it. A compiled
+                // side's is its compile's and its cards', which `start`
+                // checks against the console's. A side without a recorded
+                // NaviCust has it from the stats' NaviCust bugs; a bug
+                // that writes no stat, HubBatc's, the rules can't see
+                // there: `GLITCH_UNSEEN`.)
                 console: ConsoleSetup {
                     rng: if side == local { self.setup.rng1 } else { self.setup.rng1s.map_or(0, |r| r[side as usize & 1]) },
                     tag_pair: None,
-                    // (A compiled side's glitch is its compile's and its
-                    // cards': `start` checks it against the console's.)
-                    emotion_window_glitch: !compiled(side as usize) && self.setup.emotion_window_glitches.is_some_and(|g| g[side as usize & 1]),
                     frames,
                 },
                 rules: Vec::new(),
@@ -887,9 +891,9 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
 /// 7x7 grid (content/bn5/rules/navicust/board.luau), a cell one column and
 /// one row on. A part is compressed when `compressed` says so of its part id
 /// (event flag 0x1EC0 + the id, which 0x0813EEFC reads). The list's empty
-/// entries (id 0) are left out, the others kept in order; BN5's board has
-/// no expansions.
-pub fn navicust(content: &Content, compat: &Compat, list: &[u8], compressed: impl Fn(u8) -> bool) -> Result<NaviCust, String> {
+/// entries (id 0) are left out, the others kept in order, on a board with
+/// `expansions` (the save's ExpMemry: [`crate::save::Save::expansions`]).
+pub fn navicust(content: &Content, compat: &Compat, list: &[u8], expansions: u8, compressed: impl Fn(u8) -> bool) -> Result<NaviCust, String> {
     let mut parts = Vec::new();
     for e in list.chunks_exact(8) {
         let Some((key, color)) = compat.navicust_part(e[0])? else { continue };
@@ -899,7 +903,7 @@ pub fn navicust(content: &Content, compat: &Compat, list: &[u8], compressed: imp
         }
         parts.push(PlacedProgram { program, color, x: e[2] + 1, y: e[3] + 1, rotation: e[4], compressed: compressed(e[0]) });
     }
-    NaviCust::new(&parts, 0)
+    NaviCust::new(&parts, expansions)
 }
 
 /// A save's patch cards (each card's number and whether it is switched on,
@@ -1106,7 +1110,21 @@ pub struct Replay {
     pub matched: usize,
     /// Why it stopped (none: every frame matched).
     pub stopped: Option<Stop>,
+    /// A difference the replay is known to have, and why (none: none):
+    /// [`GLITCH_UNSEEN`].
+    pub known: Option<&'static str>,
 }
+
+/// A known difference: the recording's save had the emotion window's
+/// glitch (flag 0x10C1) and the stats it recorded have no NaviCust bug to
+/// make it from. The engine takes no glitch from a setup: BN5's rules make
+/// it, from a NaviCust's compile or, of stats given as compiled, from the
+/// bugs in them. HubBatc's bug halves the HP programs and writes no bug
+/// stat, and a recording carries no NaviCust to compile, so MegaMan's
+/// window doesn't flicker in the replay and the console's RNG1 draws
+/// differ (the recording console's a replay compares: `navicust/hubbatc`
+/// stops on it).
+pub const GLITCH_UNSEEN: &str = "the save's emotion window glitch with no bug in the stats (HubBatc's bug writes none; the recording carries no NaviCust)";
 
 #[derive(Clone, Debug)]
 pub enum Stop {
@@ -1122,7 +1140,7 @@ pub enum Stop {
 /// and compared, up to the first difference.
 pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Replay {
     let frames: Vec<&Frame> = round.battle_frames().collect();
-    let mut replay = Replay { frames: frames.len(), matched: 0, stopped: None };
+    let mut replay = Replay { frames: frames.len(), matched: 0, stopped: None, known: None };
     let mut b = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| round.start(content.clone(), compat))) {
         Ok(Ok(b)) => b,
         Ok(Err(e)) => {
@@ -1144,6 +1162,14 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
     // draw as the recording ends) has no frame left to agree on, and is
     // left.
     let local = b.setup.local_side as usize & 1;
+    // The recorded glitch of a navi whose window reads it (the navi that
+    // changes form), which the rules didn't make.
+    let unseen = |side: usize| {
+        round.setup.emotion_window_glitches.is_some_and(|g| g[side]) && !b.consoles[side].emotion_window_glitch && content.navi(b.stats[side].navi).changes_form()
+    };
+    if unseen(0) || unseen(1) {
+        replay.known = Some(GLITCH_UNSEEN);
+    }
     let mut rng1_since: Option<(u32, u32, u32)> = None;
     for i in 0..frames.len() {
         let (input, events) = round.tick_inputs(i, &frames);

@@ -6,13 +6,13 @@
 -- no `form`), who brings the Crosses (`form` their form) in two waves and
 -- waits for each to finish. See docs/engine/chips.md §3.6.34.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local drill = require("../drilarm/drill")
 local effects = require("../../lib/effects")
 local erase_ray = require("../../navis/megaman/forms/erasecross/ray")
 local navi_chips = require("../../lib/navi-chips/navi")
-local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
+local panel_bursts = require("../../objects/panel-bursts")
 local panels = require("@exelib/panels")
 local parts = require("../../lib/swords/parts")
 local regions = require("@exelib/regions")
@@ -45,17 +45,17 @@ export type State = {
 }
 
 -- MegaMan and his Crosses.
-local megaman = require("../../navis/megaman/navi")
-local HEATCROSS = require("../../navis/megaman/forms/heatcross/form")
-local ELECCROSS = require("../../navis/megaman/forms/eleccross/form")
-local SLASHCROSS = require("../../navis/megaman/forms/slashcross/form")
-local ERASECROSS = require("../../navis/megaman/forms/erasecross/form")
-local CHARGECROSS = require("../../navis/megaman/forms/chargecross/form")
-local SPOUTCROSS = require("../../navis/megaman/forms/spoutcross/form")
-local TOMAHAWKCROSS = require("../../navis/megaman/forms/tomahawkcross/form")
-local TENGUCROSS = require("../../navis/megaman/forms/tengucross/form")
-local GROUNDCROSS = require("../../navis/megaman/forms/groundcross/form")
-local DUSTCROSS = require("../../navis/megaman/forms/dustcross/form")
+local megaman = require("../../navis/megaman")
+local HEATCROSS = require("../../navis/megaman/forms/heatcross")
+local ELECCROSS = require("../../navis/megaman/forms/eleccross")
+local SLASHCROSS = require("../../navis/megaman/forms/slashcross")
+local ERASECROSS = require("../../navis/megaman/forms/erasecross")
+local CHARGECROSS = require("../../navis/megaman/forms/chargecross")
+local SPOUTCROSS = require("../../navis/megaman/forms/spoutcross")
+local TOMAHAWKCROSS = require("../../navis/megaman/forms/tomahawkcross")
+local TENGUCROSS = require("../../navis/megaman/forms/tengucross")
+local GROUNDCROSS = require("../../navis/megaman/forms/groundcross")
+local DUSTCROSS = require("../../navis/megaman/forms/dustcross")
 
 -- A wave's Cross: his form, move and sword look, which side of his
 -- target he stands on (`beside`: 1 in front of it, 0 behind it), his

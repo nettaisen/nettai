@@ -4,7 +4,7 @@
 -- the user's row, the element and the hook's own address (0x080E46E6, the handler's `bx r3`, Thumb).
 
 local common = require("@exelib/rockcube/cube")
-local rock = require("../../objects/rock/rock")
+local rock = require("../../objects/rock")
 
 local HOOK_ADDRESS = 0x080E46E7
 

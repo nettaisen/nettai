@@ -9,7 +9,7 @@
 -- (`dword_80CE2B0`, `byte_80CE41E`, `byte_80CE421`, `byte_80CE418` and the
 -- chip's palette).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/bombs/seed")
 local effects = require("../effects")

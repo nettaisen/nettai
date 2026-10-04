@@ -3,7 +3,7 @@
 -- (@exelib/h-burst/action) with BN6's spreader (attachment row 0x15), sound
 -- and shot (./burst).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local burst = require("./burst")
 local common = require("@exelib/h-burst/action")
 

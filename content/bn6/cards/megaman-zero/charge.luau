@@ -5,7 +5,7 @@
 -- (`loc_80126EA`, lib/weapon's `chip`) and starts what its use starts.
 
 local weapon = require("../../lib/weapon")
-local z_saver = require("../../chips/z-saver/chip")
+local z_saver = require("../../chips/z-saver")
 
 return define.weapon {
     id = "patch-cards/megaman-zero/charge",

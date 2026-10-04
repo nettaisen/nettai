@@ -4,7 +4,7 @@
 -- was, and starts action 0x3C (0x080EE958): MegaMan raises his arm (the attachment row 0x22) and on the sixth tick
 -- blows a tornado along the three panels ahead (./tornado); 31 ticks, then 6 of recovery.
 
-local attachment = require("../../../../objects/attachment/attachment")
+local attachment = require("../../../../objects/attachment")
 local tornado = require("./tornado")
 
 local charge = {}

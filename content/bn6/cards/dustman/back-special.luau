@@ -5,7 +5,7 @@
 -- toward the navi), without TenguCross's cooldown. The original's weapon
 -- routine 0x86 (`sub_801254A`).
 
-local tengu_wind = require("../../navis/megaman/weapons/tengu-wind/weapon")
+local tengu_wind = require("../../navis/megaman/weapons/tengu-wind")
 
 -- `sub_801254A`: its effect is the weapon's `instant`, which the instant
 -- chips' action runs.

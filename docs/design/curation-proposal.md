@@ -107,18 +107,18 @@ Each name follows from a single, clear use or from what the asset reads: a Cross
 | current | proposed | evidence |
 |---|---|---|
 | `beast-over-burst` | `lightning` (wrong now) *applied* | Shows lightning bolts. ElecMan's thunder, ElemTrap's and ElmntMan's bolts, and Beast Over's burst (effect 0x45) use it. |
-| `body-overlay-02` | `heatman-overlay` *applied* | Only HeatMan wears it (navis/heatman/navi.luau): his flames. |
-| `body-overlay-04` | `heatcross-overlay` *applied* | Only the heatcross form wears it (navis/megaman/forms/heatcross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-05` | `spoutcross-overlay` *applied* | Only the spoutcross form wears it (navis/megaman/forms/spoutcross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-08` | `eleccross-overlay` *applied* | Only the eleccross form wears it (navis/megaman/forms/eleccross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-09` | `tengucross-overlay` *applied* | Only the tengucross form wears it (navis/megaman/forms/tengucross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-0a` | `slashcross-overlay` *applied* | Only the slashcross form wears it (navis/megaman/forms/slashcross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-0b` | `groundman-overlay` *applied* | Only GroundMan wears it (navis/groundman/navi.luau). |
-| `body-overlay-0c` | `erasecross-overlay` *applied* | Only the erasecross form wears it (navis/megaman/forms/erasecross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-0d` | `groundcross-overlay` *applied* | Only the groundcross form wears it (navis/megaman/forms/groundcross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-0e` | `tomahawkcross-overlay` *applied* | Only the tomahawkcross form wears it (navis/megaman/forms/tomahawkcross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-11` | `chargecross-overlay` *applied* | Only the chargecross form wears it (navis/megaman/forms/chargecross/form.luau, `parts`); named for the body overlay row it had. |
-| `body-overlay-12` | `dustcross-overlay` *applied* | Only the dustcross form wears it (navis/megaman/forms/dustcross/form.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-02` | `heatman-overlay` *applied* | Only HeatMan wears it (navis/heatman/init.luau): his flames. |
+| `body-overlay-04` | `heatcross-overlay` *applied* | Only the heatcross form wears it (navis/megaman/forms/heatcross/init.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-05` | `spoutcross-overlay` *applied* | Only the spoutcross form wears it (navis/megaman/forms/spoutcross/init.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-08` | `eleccross-overlay` *applied* | Only the eleccross form wears it (navis/megaman/forms/eleccross/init.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-09` | `tengucross-overlay` *applied* | Only the tengucross form wears it (navis/megaman/forms/tengucross/init.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-0a` | `slashcross-overlay` *applied* | Only the slashcross form wears it (navis/megaman/forms/slashcross/init.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-0b` | `groundman-overlay` *applied* | Only GroundMan wears it (navis/groundman/init.luau). |
+| `body-overlay-0c` | `erasecross-overlay` *applied* | Only the erasecross form wears it (navis/megaman/forms/erasecross/init.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-0d` | `groundcross-overlay` *applied* | Only the groundcross form wears it (navis/megaman/forms/groundcross/init.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-0e` | `tomahawkcross-overlay` *applied* | Only the tomahawkcross form wears it (navis/megaman/forms/tomahawkcross/init.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-11` | `chargecross-overlay` *applied* | Only the chargecross form wears it (navis/megaman/forms/chargecross/init.luau, `parts`); named for the body overlay row it had. |
+| `body-overlay-12` | `dustcross-overlay` *applied* | Only the dustcross form wears it (navis/megaman/forms/dustcross/init.luau, `parts`); named for the body overlay row it had. |
 | `burner-2` | `heatcross-burner` *applied* | HeatCross's burner (lib/burner/burn.luau, attachment row 0x1E); `burner` is FireBrn's. |
 | `copy-mark` | `hit-sparks` (wrong now) *applied* | Shows the hit sparks (plain, breaking, and one per element: sparks by element use its animations 0, 2-5) and the TRAP! mark (animation 7); 30 uses, CopyDmg's mark only one of them. |
 
@@ -436,7 +436,7 @@ proposal-worthy name for lack of a better one, are listed with their reason.
 
 | name | confidence | why it stays |
 |---|---|---|
-| `beast-claw-2` | high | 0x1c6: used by navis/megaman/weapons/beast-claw/weapon. |
+| `beast-claw-2` | high | 0x1c6: used by navis/megaman/weapons/beast-claw/init. |
 | `beep-64` | high | The disassembly's SOUND_BEEP_64: a menu sound the battle doesn't play; the number tells its variants apart. |
 | `beep-75` | high | The disassembly's SOUND_BEEP_75: a menu sound the battle doesn't play; the number tells its variants apart. |
 | `cur-move-80` | high | The disassembly's SOUND_CUR_MOVE_80: a menu sound the battle doesn't play; the number tells its variants apart. |
