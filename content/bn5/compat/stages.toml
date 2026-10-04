@@ -1,6 +1,7 @@
 # BN5's netbattle stages: the battle settings records (0x0811AF4C, 16 bytes each) that are each stage, its panel
 # layout's number (settings byte 0) and its actor list's address (bytes 12..16). Identical records are one
-# stage. Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM.
+# stage. The addresses are Team ProtoMan's US ROM's (games.toml: the other ROMs'). Written by
+# tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM.
 
 "bn5:netbattle-1" = { settings = [0x00], layout = 0x00, actor_list = 0x0811B61D }
 "bn5:netbattle-2" = { settings = [0x01], layout = 0x00, actor_list = 0x0811B626 }
