@@ -58,8 +58,11 @@ export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out"
 export type SideSpecial = "none" | "select" | "takeover"
 -- A HUD part a chip's effect hides and shows: the custom gauge (draw task
 -- 4), the emotion window (14), the battle flag 0x40 mode's gauge drawn by
--- its levels (17).
-export type HudPart = "gauge" | "emotion_window" | "level_gauge"
+-- its levels (17), the HP box and its low-HP alarm (7).
+export type HudPart = "gauge" | "emotion_window" | "level_gauge" | "hp_box"
+-- A screen fade content starts (`SetScreenFade`'s modes): the
+-- transformation sequencer's fade out (0x44, to full) and back in (0x40).
+export type ScreenFade = "transform_out" | "transform_in"
 export type PanelType =
     "missing"
     | "broken"
@@ -147,6 +150,8 @@ export type Request =
     -- The anger request (the collision's flag2 0x200): angry at the next
     -- status update, unless the mood is held.
     | "anger"
+    -- The drag request (the collision's flag2 0x100: a knockback's).
+    | "drag"
 -- A navi's state bits.
 export type NaviStateFlag =
     "controllable"
@@ -796,6 +801,10 @@ declare class Object
     -- and sound; with `anti_recovery`, the opponent's armed AntiRecv turns
     -- it into damage instead (true when it did).
     function heal(self, amount: number, anti_recovery: boolean): boolean
+    -- `object_subtractHP`: the HP down by `amount`, to 0, by its side's
+    -- rules (BN5's drain a player's side's gauge too, and may hold a dark
+    -- MegaMan at 1 HP: his last stand).
+    function subtract_hp(self, amount: number): ()
     -- `sub_801265A`: the buster's damage.
     function buster_damage(self): number
     -- `sub_80127C0(0)`: fill the attack from the chip at the hand's cursor
@@ -1104,6 +1113,13 @@ declare battle: {
     fighting: () -> boolean,
     -- Battle flag 2: the custom gauge is full.
     gauge_full: () -> boolean,
+    -- A link battle's last turns, from its 15th custom screen (`sub_800A97A`).
+    late_turns: () -> boolean,
+    -- A screen fade runs (`IsScreenFadeActive`).
+    screen_fading: () -> boolean,
+    -- `SetScreenFade`: the screen fades out (to full) or back in (to clear)
+    -- from where it is, `speed` a step.
+    screen_fade: (fade: ScreenFade, speed: number) -> (),
     -- Sound for both players, or for one side's player (output only): a
     -- sound asset (asset.sound).
     play_sound: (sound: Sound) -> (),

@@ -418,6 +418,89 @@ fn bn5_emotion(b: &Battle, p: ObjectRef, mood: u8) -> Emotion {
     }
 }
 
+/// The side statistic a last stand marks (0x0800931C's byte 1): the
+/// side's is spent.
+const STOOD: usize = 1;
+
+/// What BN5's 0x0802C16C finds of a navi a loss of HP has brought to 0.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum LastStand {
+    /// A player MegaMan of BN5's emotion 5 whose side hasn't stood: he
+    /// holds at 1 HP and asks for the volley (BN5's action 0x30).
+    Holds,
+    /// Not; and whether the register r1 its callers read next is left
+    /// non-zero (BN5's `applyDamageToPlayer` takes it for HP left, and
+    /// shows the hit).
+    Falls { shows: bool },
+}
+
+/// BN5's 0x0802C16C: a player MegaMan (AIData +0, +1: actor type 2, AI
+/// index 0), NaviStats +0x2A clear (which the battle flag 0x40 mode's init
+/// reads, 0x0802D590: the engine has it as that mode), his side not stood
+/// yet (0x0800931C(side, 1)), of BN5's emotion 5 (0x0801270C: a mood of 0,
+/// out of a soul and unangry, never in battle mode 1). What it leaves in r1
+/// on a fall: the actor type, the AI index, the NaviStats pointer, 1, else
+/// the soul (NaviStats +0x2C).
+pub(crate) fn last_stand(b: &Battle, r: ObjectRef) -> LastStand {
+    let Some(id) = b.objects.get(r).actor else { return LastStand::Falls { shows: false } };
+    let a = b.actors.get(id);
+    if a.actor_type != ActorType::Player {
+        return LastStand::Falls { shows: a.actor_type != ActorType::Virus };
+    }
+    let side = b.objects.get(r).alliance;
+    if a.ai_index != 0 || per_player_gauges(b) || b.side_stats[side as usize & 1][STOOD] != 0 || battle_mode(b) == 1 {
+        return LastStand::Falls { shows: true };
+    }
+    if emotion(b, side) == Emotion::WornOut {
+        return LastStand::Holds;
+    }
+    LastStand::Falls { shows: !in_base_form(b, r) }
+}
+
+/// The last stand held (0x0800C722, 0x0801860E): 1 HP, and the volley
+/// asked for.
+pub(crate) fn hold_last_stand(b: &mut Battle, r: ObjectRef) {
+    b.objects.get_mut(r).hp = 1;
+    ai_mut(b, r).requests |= request::VOLLEY;
+}
+
+/// BN5's 0x0800C734: what a player's loss drains of its side's gauge in
+/// the battle flag 0x40 mode, by its size.
+fn gauge_loss(amount: u16) -> u32 {
+    match amount {
+        0..=9 => 0,
+        10..=90 => 0x555,
+        91..=299 => 0xAAA,
+        _ => 0x2000,
+    }
+}
+
+/// BN5's `object_subtractHP` (0x0800C6E0): a player's loss first drains
+/// its side's gauge (0x0802D4C0: by the loss ×128, in the battle flag 0x40
+/// mode by `gauge_loss`), then the HP goes down, to 0, where the last
+/// stand may hold. Whether r1 is left non-zero (`kinds::subtract_hp`).
+pub(crate) fn bn5_lose_hp(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
+    let player = b.objects.get(r).actor.is_some_and(|id| b.actors.get(id).actor_type == ActorType::Player);
+    if player {
+        let drain = if per_player_gauges(b) { gauge_loss(amount) } else { (amount as u32) << 7 };
+        let side = b.objects.get(r).alliance as usize & 1;
+        let s = &mut b.sides[side];
+        s.gauge = (s.gauge as u32).saturating_sub(drain) as u16;
+    }
+    let o = b.objects.get_mut(r);
+    o.hp = o.hp.saturating_sub(amount);
+    if o.hp != 0 {
+        return true;
+    }
+    match last_stand(b, r) {
+        LastStand::Holds => {
+            hold_last_stand(b, r);
+            true
+        }
+        LastStand::Falls { shows } => shows,
+    }
+}
+
 /// Presentation: whether side `side`'s emotion window shows its form's
 /// second set of faces: while its navi's Chaos Unison charge is armed
 /// (`face_chaos`), or by the side's rules (`face_hub`).
