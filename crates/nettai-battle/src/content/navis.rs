@@ -767,7 +767,6 @@ pub(crate) fn read_form(
         "weapons",
         "buster_arm",
         "reset",
-        "wears",
         "put_on",
         "take_off",
     ];

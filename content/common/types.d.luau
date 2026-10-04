@@ -646,3 +646,66 @@ export type CopyDamageMark = {
     kind: Kind,
     spawn: (owner: Object, x: number, y: number, element: number, damage: number) -> Object?,
 }
+
+-- A Wind's or Fan's fan (@common/wind/fan): its palette; `pulls`: it blows
+-- Fan's pulling gust from the far column rather than Wind's pushing one
+-- from the enemy's front column; ticks from becoming its side's wind to
+-- the first gust; HP; its identity (what it is taken for) and how it looks
+-- absorbed (objects/absorbed-obstacle's `look`; BN6's, which absorbs it).
+export type FanVariant = {
+    palette: number,
+    pulls: boolean,
+    wait: number,
+    hp: number,
+    identity: Identity,
+    absorbed: AbsorbedLook?,
+}
+
+-- A game's Wind and Fan fan (@common/wind/fan): its kind's id, look, sounds and effects, its collision types, the
+-- game's gust, and BN5's differences.
+export type FanLook = {
+    id: string,
+    sprite: SpriteAsset,
+    -- As it is placed, as it starts blowing, as it breaks.
+    appear_sound: Sound,
+    blow_sound: Sound,
+    break_sound: Sound,
+    -- Removed (a puff 12 pixels up); broken (an explosion).
+    puff: Effect,
+    explosion: Effect,
+    -- What it is and what reaches it: its side's obstacles' (the other side's attacks, objects and bodies, and
+    -- neutral objects).
+    is: CollisionType,
+    hits: CollisionType,
+    -- The game's gust (`sub_80CD488`).
+    spawn_gust: (x: number, y: number, alliance: number, flip: number, how: GustHow, damage: number, holder: Object?,
+        slot: number) -> Object?,
+    -- BN6's: a chip's removal can make it blink out or be absorbed (`sub_800F8CE`, `sub_800F90E`); BN5's leaving
+    -- (0x080CE90E) has neither.
+    absorbs: boolean,
+    -- BN5's Fan's gust (0x080CE96C) starts on the far column alone, none when another obstacle stands there; BN6's
+    -- tries the panels toward the fan.
+    far_column_only: boolean?,
+}
+
+export type Fan = {
+    kind: Kind,
+    -- `sub_80CD2B4`: a fan of `variant` on (x, y), of `owner`'s side and facing, running while dimmed, with the
+    -- damage word `damage`; its side's one field object of class 1 (a second replaces the first). Its position is
+    -- the spawner's registers until its init places it.
+    spawn: (owner: Object, variant: FanVariant, x: number, y: number, damage: number) -> Object?,
+}
+
+-- A game's Wind and Fan controller (@common/wind/controller): its kind's id, the game's fan (`sub_80CD2B4`), and
+-- where it spawns, by its user and the dimming (none: where `dimming_chips.spawn` puts it).
+export type WindControllerLook = {
+    id: string,
+    spawn_fan: (owner: Object, variant: FanVariant, x: number, y: number, damage: number) -> Object?,
+    position: ((user: Object, spec: DimmingChipSpec) -> Vec3)?,
+}
+
+export type WindController = {
+    kind: Kind,
+    -- A chip's `dimming` hook (BN6's `sub_80E3128`, BN5's 0x080E32E4): the controller placing a fan of `variant`.
+    hook: (variant: FanVariant) -> (user: Object, spec: DimmingChipSpec) -> Object?,
+}

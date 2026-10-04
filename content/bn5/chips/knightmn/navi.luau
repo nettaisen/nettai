@@ -8,7 +8,7 @@
 
 local ball = require("./ball")
 local navi_chips = require("@common/navi-chips/navi")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local statuses = require("../../rules/status")
 
 export type State = {
@@ -44,7 +44,8 @@ local function leave(me: Object)
         navi_chip.navi_left(controller)
     end
     me:remove_parts(CHAIN)
-    me:set_lifecycle("destroy")
+    -- (0x080B9E60: the state byte alone; his action and phase stay.)
+    me.lifecycle = "destroy"
 end
 
 -- Action 0 (0x080B9CD4): shown, he falls; landed off a solid panel he goes in smoke (32 pixels up); else he lands,
