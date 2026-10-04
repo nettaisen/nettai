@@ -8,7 +8,7 @@
 -- in all.
 
 local lockon = require("../../rules/lockon")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local shot = require("./shot")
 
 export type State = {

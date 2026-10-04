@@ -1,6 +1,6 @@
 --!strict
 -- AirSpin's whirlwind top (BN5's attack object #0x9B, 0x080D9EE4): BN6's
--- (@common/airspin/top) in BN5's look. Its side's own body of 50 HP that
+-- (@exelib/airspin/top) in BN5's look. Its side's own body of 50 HP that
 -- the other side hits (BN6's is a neutral one of 400), set down wherever it
 -- is sent; a wind hit doesn't spin it more and no chip removes it; its gust
 -- (effect 0x4F, not turned to its side) hits without pushing. As it stands,
@@ -12,7 +12,7 @@
 -- panel to type 2, double its spins and hit every 5 ticks: nothing calls it.
 
 local collision = require("../../rules/collision")
-local common = require("@common/airspin/top")
+local common = require("@exelib/airspin/top")
 local effects = require("../../lib/effects")
 local marker = require("../../lib/navi-chips/marker")
 

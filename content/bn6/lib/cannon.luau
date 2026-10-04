@@ -1,11 +1,11 @@
 --!strict
 -- BN6's cannons' action (the original's action 0x14, `sub_80EBC0E`): the
--- shared action (@common/cannon) with BN6's sound, attachment and
+-- shared action (@exelib/cannon) with BN6's sound, attachment and
 -- projectile. Each chip composes its own (`cannon.action { arm = ...,
 -- shot = ... }`): what it holds and what it fires.
 
 local attachment = require("../objects/attachment/attachment")
-local common = require("@common/cannon")
+local common = require("@exelib/cannon")
 local projectile = require("./projectile")
 
 local cannon = {}

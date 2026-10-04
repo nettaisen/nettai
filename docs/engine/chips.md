@@ -795,7 +795,7 @@ already set up (Beat first); Tango every idle frame before any request:
   the next Cannons wear), and `navicust/bug-support` (a bugged Rush never comes). Each support is hosted once by
   either side. Not reached: a Giga chip for Beat, WhiCapsl for Rush (its hand left alone), Rush with the victim's
   navi gone, a failed spawn.
-- **The content** is shared with BN5 (content/common/supports: `controller`, `rush`, `beat`, `tango`, `heal`, each
+- **The content** is shared with BN5 (content/exelib/supports: `controller`, `rush`, `beat`, `tango`, `heal`, each
   made of a game's look: its kinds' keys, sprites, sounds and effects, Rush's bite and spared chip, the heal's
   trajectory and barrier); BN6's lib/supports and BN5's make them. BN5's are BN6's code (the controller effect
   object #0x74, 0x080E8F50; Rush, Beat and Tango actors #0x4B to #0x4D, 0x080C2214, 0x080C24C8, 0x080C2714; the
@@ -1611,7 +1611,7 @@ lab's RskyHny scenarios (every one that runs as far as the chip matches), with t
 
 Content: lib/dragons (`action`: the action's builder; `head`, T3#0xC9; `body`, T3#0xC8; `dragon`: what the two
 share, and a dragon's variant), with a chip folder each (chips/heatdrgn, elecdrgn, aquadrgn, wooddrgn). The target
-column is content/common/panels' `enemy_column`, which MachGun shares.
+column is content/exelib/panels' `enemy_column`, which MachGun shares.
 
 The action: phase 0 (`sub_80EF4D0`): anim 0xC, counter window, USING_ACTION, `av+0x10` = 15; at 13, the dragon; at -1,
 `av+0x10` = 5 and phase 4 (`sub_80ECA0C`: 6 ticks, then `object_exitAttackState`). The column (`sub_80ED040`): the

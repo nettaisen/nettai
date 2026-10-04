@@ -16,8 +16,8 @@ use crate::object::ObjectRef;
 
 /// The counter action a trap's request starts: AntiDmg's, AntiSwrd's, or
 /// (neither) BodyGrd's.
-fn counter_action(b: &Battle, r: ObjectRef, requests: u32, body_guard: bool) -> NaviAction {
-    let roles = b.roles_for(r);
+fn counter_action(b: &Battle, requests: u32, body_guard: bool) -> NaviAction {
+    let roles = b.roles();
     let h = if requests & request::ANTI_DAMAGE_TRIGGERED != 0 {
         roles.action(ActionRole::AntiDamageCounter)
     } else if requests & request::ANTI_SWORD_TRIGGERED != 0 || !body_guard {
@@ -69,7 +69,7 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
     a.element = 0;
     a.lockout = 0;
     a.variant = 0;
-    let action = counter_action(b, r, requests, true);
+    let action = counter_action(b, requests, true);
     set_attack(b, r, action, 0);
     // The other player's console shows the trap chip's name (sub_801EB18).
     if let Some(chip) = rec.chip {
@@ -98,9 +98,9 @@ pub(crate) fn stance_counter(b: &mut Battle, r: ObjectRef) {
     a.chip = None;
     a.element = 0;
     a.lockout = lockout;
-    let action = counter_action(b, r, requests, false);
+    let action = counter_action(b, requests, false);
     set_attack(b, r, action, 0);
-    if b.rules_for(r).stance_counter == crate::content::StanceCounter::AtOnce {
+    if b.game_rules().stance_counter == crate::content::StanceCounter::AtOnce {
         super::dispatch(b, r, action);
     }
 }

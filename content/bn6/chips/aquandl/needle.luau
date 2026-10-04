@@ -7,7 +7,7 @@
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 local needle = {}

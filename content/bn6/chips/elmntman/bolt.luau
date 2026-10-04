@@ -10,7 +10,7 @@
 -- `scratch_z_fraction`). See docs/engine/chips.md §3.6.7.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 local bolt = {}

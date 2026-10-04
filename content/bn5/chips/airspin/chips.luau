@@ -2,10 +2,10 @@
 -- AirSpin1, AirSpin2 and AirSpin3: the airspin series (each chip's own comment above its definition).
 -- Their records are written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local action = require("@common/airspin/action")
+local action = require("@exelib/airspin/action")
 local top = require("./top")
 
--- AirSpin1 (BN5 chip 0x082): action 0x47, BN6's AirSpin (@common/airspin/action): a whirlwind top
+-- AirSpin1 (BN5 chip 0x082): action 0x47, BN6's AirSpin (@exelib/airspin/action): a whirlwind top
 -- (./top) set down ahead in palette 0, spinning 2 times.
 local airspin1 = define.chip {
     id = "bn5:airspin1",
@@ -23,7 +23,7 @@ local airspin1 = define.chip {
     action = action.action { whirlwind = top.sender(0, 2) },
 }
 
--- AirSpin2 (BN5 chip 0x083): action 0x47, BN6's AirSpin (@common/airspin/action): a whirlwind top
+-- AirSpin2 (BN5 chip 0x083): action 0x47, BN6's AirSpin (@exelib/airspin/action): a whirlwind top
 -- (./top) set down ahead in palette 1, spinning 3 times.
 local airspin2 = define.chip {
     id = "bn5:airspin2",
@@ -41,7 +41,7 @@ local airspin2 = define.chip {
     action = action.action { whirlwind = top.sender(1, 3) },
 }
 
--- AirSpin3 (BN5 chip 0x084): action 0x47, BN6's AirSpin (@common/airspin/action): a whirlwind top
+-- AirSpin3 (BN5 chip 0x084): action 0x47, BN6's AirSpin (@exelib/airspin/action): a whirlwind top
 -- (./top) set down ahead in palette 2, spinning 4 times.
 local airspin3 = define.chip {
     id = "bn5:airspin3",

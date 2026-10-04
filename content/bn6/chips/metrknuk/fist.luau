@@ -1,12 +1,12 @@
 --!strict
 -- A MetrKnuk fist (the original's attack object #0xB4, `sub_80DBCEC`;
 -- docs/engine/dimming-chip-effects.md §18): the shared fist
--- (@common/metrknuk/fist), BN6's kind. It falls from high up behind its
+-- (@exelib/metrknuk/fist), BN6's kind. It falls from high up behind its
 -- panel onto it, hits it with a burst, cracks it and shakes the camera,
 -- then bounces back up and goes.
 
 local collision = require("../../rules/collision")
-local common = require("@common/metrknuk/fist")
+local common = require("@exelib/metrknuk/fist")
 local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
 

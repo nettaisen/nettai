@@ -1,10 +1,10 @@
 --!strict
 -- AntiDmg's shuriken (the original's attack object #0xC2, `sub_80DD764`):
--- the shared shuriken (@common/antidmg/shuriken), BN6's kind and look: a
+-- the shared shuriken (@exelib/antidmg/shuriken), BN6's kind and look: a
 -- thrown slash (row 0x1C) that hits navis.
 
 local collision = require("../../rules/collision")
-local common = require("@common/antidmg/shuriken")
+local common = require("@exelib/antidmg/shuriken")
 local effects = require("../../lib/effects")
 
 local shuriken = {}

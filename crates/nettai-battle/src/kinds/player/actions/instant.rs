@@ -40,7 +40,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         // (The game reads the subtype again after the effect: only the
         // weapon's, 0x14, waits; in a game that leaves the action on the
         // use frame, nothing waits: BN5's 0x080EC6F6.)
-        let leaves = b.chip_rules(ai(b, r).attack.chip).chip_use.leave_on_use;
+        let leaves = b.game_rules().chip_use.leave_on_use;
         if leaves || !matches!(ai(b, r).attack.instant, Some(Effect::RunsThenWaits(_))) {
             return exit_attack_state(b, r);
         }

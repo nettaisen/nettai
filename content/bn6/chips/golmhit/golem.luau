@@ -14,7 +14,7 @@
 -- cracks its panel, or its column, where it lands.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local golem = {}
 

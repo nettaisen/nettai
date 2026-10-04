@@ -16,7 +16,7 @@
 -- middle of the other side's area, `dust_storm.spawn`.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local mote = require("./dust_storm_mote")
 
 local dust_storm = {}
