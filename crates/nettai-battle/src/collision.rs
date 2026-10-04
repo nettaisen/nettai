@@ -697,3 +697,58 @@ fn decode_damage_word(s: &mut CollisionData, r1: u16, roles: &crate::content::Ro
         s.bugs = (r1 << 8).wrapping_add(0xF7);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::battle::battle_flags;
+    use crate::content::{HitTest, testing};
+    use std::sync::Arc;
+
+    /// A fight on the test content whose arena tests hits by `test`: the
+    /// battle and its two navis' collisions (side 0's, side 1's).
+    fn fight(test: HitTest) -> (Battle, [CollisionId; 2]) {
+        let mut c: Content = testing::build();
+        c.define().unwrap_or_else(|e| panic!("{e}"));
+        for rules in &mut c.rules {
+            rules.hit_test = test;
+        }
+        let c = Arc::new(c);
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+        setup.content = c.hash();
+        let mut b = Battle::new(setup, c);
+        b.spawn_actors();
+        b.run_objects();
+        b.round.flags |= battle_flags::FIGHTING;
+        let ids = [0, 1].map(|side| {
+            let p = b.player(side).unwrap();
+            b.objects.get(p).collision.unwrap()
+        });
+        (b, ids)
+    }
+
+    /// Side 1's guarding navi hit by side 0's navi as an attack of types
+    /// `types`: whether the guard held (the hitter told it was guarded).
+    fn guarded(test: HitTest, types: u32) -> bool {
+        let (mut b, [h, r]) = fight(test);
+        b.collision.get_mut(r).f1 |= f1::GUARD;
+        b.collision.get_mut(h).self_flags = types;
+        b.collision.get_mut(h).f1 = 0;
+        b.resolve_hit(r, h);
+        b.collision.get(h).acc.hit_flags & 1 != 0
+    }
+
+    /// docs/design/bn5-map.md §15.11: BN5's guard breaks on type 0x1000
+    /// whatever 0x4000 (BN6's only with it); with both, either breaks.
+    /// (BN5's guarded-direction mask, 0x0C004000 to BN6's 0x0C005000,
+    /// differs only for a hit of 0x1000, which BN5's guard never holds.)
+    #[test]
+    fn bn5_guard_breaks_on_0x1000() {
+        assert!(guarded(HitTest::Bn6, 0x8000_1000));
+        assert!(!guarded(HitTest::Bn5, 0x8000_1000));
+        assert!(!guarded(HitTest::Bn6, 0x8000_5000));
+        assert!(!guarded(HitTest::Bn5, 0x8000_5000));
+        assert!(guarded(HitTest::Bn6, 0x8000_0000));
+        assert!(guarded(HitTest::Bn5, 0x8000_0000));
+    }
+}
