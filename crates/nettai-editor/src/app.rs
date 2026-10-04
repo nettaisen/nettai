@@ -84,17 +84,21 @@ pub enum Msg {
     Background(usize, Choice<Option<String>>),
     LaterSame(bool),
     Seed(String),
+    /// The match's game: a new match of it (the sides start over).
+    Game(Choice<String>),
+    /// The match's ruleset, one of its game's.
+    Ruleset(Choice<RulesetHandle>),
     // A side.
-    Ruleset(usize, Choice<Option<RulesetHandle>>),
     Navi(usize, Choice<NaviHandle>),
-    Game(usize, Choice<GameVersion>),
+    Version(usize, Choice<GameVersion>),
     Level(usize, String),
     BugFrags(usize, String),
     Glitch(usize, bool),
     /// An SP navi's deletion time (by its slot), as typed.
     SpTime(usize, usize, String),
-    /// The side's game, unlocks, navi code level and SP times from a save
-    /// file.
+    /// The side from a save file (a BN6 save's version, unlocks, navi code
+    /// level and SP times; a BN5 save's karma and souls), into a match of
+    /// the save's game.
     ImportSave(usize),
     // The folder.
     Entry(usize, usize),
@@ -104,8 +108,6 @@ pub enum Msg {
     Regular(usize),
     Tag(usize),
     Search(String),
-    /// The chip list's game (none: every game's).
-    ChipGame(Choice<Option<String>>),
     // The Crosses.
     OwnCrosses(usize, bool),
     Cross(usize, FormHandle, bool),
@@ -136,7 +138,7 @@ pub struct Options {
     /// The content directory given (`--content`), which Play hands the
     /// frontend too; else the repository's.
     pub content: Option<PathBuf>,
-    /// The content directory loaded, and its games loaded (their strings
+    /// The content directory loaded, and the game loaded (its strings
     /// tables).
     pub content_dir: PathBuf,
     pub games: Vec<String>,
@@ -163,8 +165,8 @@ pub struct Editor {
     /// The folder entry each side's chip list puts chips into.
     pub entry: [usize; 2],
     pub search: String,
-    /// The game whose chips the chip list shows (none: every game's).
-    pub chip_game: Option<String>,
+    /// The games a match can be of.
+    pub games: Vec<String>,
     /// What is typed into number fields, by field (side, name), until it
     /// reads as a number.
     pub typed: HashMap<(usize, &'static str), String>,
@@ -186,9 +188,10 @@ pub struct Editor {
 
 impl Editor {
     pub fn new(content: Arc<Content>, pictures: Pictures, options: Options) -> Editor {
-        // A new match is an empty one (Random draws one as live play does).
+        // A new match is an empty one of the content's game (Random draws
+        // one as live play does).
         let new = |content: &Arc<Content>| {
-            nettai_match::Match::empty(content).unwrap_or_else(|e| {
+            nettai_match::Match::empty(content, content.game()).unwrap_or_else(|e| {
                 eprintln!("the content makes no match: {e}");
                 std::process::exit(1)
             })
@@ -212,7 +215,7 @@ impl Editor {
             dirty: false,
             entry: [0, 0],
             search: String::new(),
-            chip_game: None,
+            games: crate::load::games(options.content.as_deref(), &options.packs),
             typed: HashMap::new(),
             sp_typed: HashMap::new(),
             problems: Vec::new(),
@@ -260,7 +263,7 @@ impl Editor {
         self.problems = nettai_match::check_match(&self.content, &self.m);
         match nettai_match::check::start(&self.content, &self.m) {
             Ok(mut b) => {
-                self.pool = [0u8, 1].map(|s| nettai_match::folders::pool(&self.content, &mut b, s));
+                self.pool = [0u8, 1].map(|s| nettai_match::folders::pool(&self.content, self.m.game(), &mut b, s));
                 self.round = Ok(b.stats);
             }
             Err(e) => self.round = Err(e),
@@ -270,6 +273,26 @@ impl Editor {
     fn edited(&mut self) {
         self.dirty = true;
         self.refresh();
+    }
+
+    /// Have `game`'s content, loading it if the content loaded hasn't it.
+    fn content_of(&mut self, game: &str) -> Result<Arc<Content>, String> {
+        if !crate::load::holds(&self.content, game) {
+            let loaded = crate::load::load_game(self.options.content.as_deref(), &self.options.packs, game)?;
+            self.content = loaded.content;
+            self.pictures = loaded.pictures;
+            (self.options.content_dir, self.options.games) = (loaded.dir, vec![loaded.game]);
+            self.set_lang(self.lang);
+        }
+        Ok(self.content.clone())
+    }
+
+    /// Forget what was typed and picked for the sides (they are new).
+    fn forget_sides(&mut self) {
+        self.typed.retain(|&(s, _), _| s > 1);
+        self.sp_typed.clear();
+        self.entry = [0, 0];
+        self.navicust = Default::default();
     }
 
     pub fn side(&self, s: usize) -> &Side {
@@ -338,24 +361,29 @@ impl Editor {
         match msg {
             Msg::Tab(t) => self.tab = t,
             Msg::New => {
-                if let Ok(m) = nettai_match::Match::empty(&content) {
+                if let Ok(m) = nettai_match::Match::empty(&content, self.m.game()) {
                     self.m = m;
                     self.path = None;
                     self.dirty = false;
-                    self.typed.clear();
-                    self.entry = [0, 0];
-                    self.navicust = Default::default();
+                    self.forget_sides();
                     self.refresh();
-                    self.status = "a new match".into();
+                    self.status = format!("a new match of {}", self.m.game());
                 }
             }
             Msg::Open => {
                 if let Some(path) = rfd::FileDialog::new().add_filter("match", &["toml"]).pick_file() {
-                    match std::fs::read_to_string(&path).map_err(|e| vec![e.to_string()]).and_then(|t| read(&content, &t)) {
+                    // (The file's game's content: loaded if it is another's.)
+                    let opened = std::fs::read_to_string(&path).map_err(|e| vec![e.to_string()]).and_then(|t| {
+                        let game = nettai_match::file::game_of(&t).map_err(|e| vec![e])?;
+                        let content = self.content_of(&game).map_err(|e| vec![e])?;
+                        read(&content, &t)
+                    });
+                    match opened {
                         Ok(m) => {
                             self.m = m;
                             self.path = Some(path);
                             self.dirty = false;
+                            self.forget_sides();
                             self.typed.clear();
                             self.refresh();
                             self.status = "opened".into();
@@ -375,9 +403,9 @@ impl Editor {
             }
             Msg::Draw => {
                 let seed = self.m.seed.unwrap_or(1).wrapping_mul(0x2545_F491).wrapping_add(7);
-                if let Ok(m) = nettai_match::draw::live(&content, seed, None).or_else(|_| nettai_match::draw::plain(&content, seed)) {
+                if let Ok(m) = nettai_match::draw::live(&content, self.m.game(), seed, None) {
                     self.m = m;
-                    self.typed.clear();
+                    self.forget_sides();
                     self.edited();
                 }
             }
@@ -400,7 +428,13 @@ impl Editor {
             Msg::LaterSame(same) => {
                 if same {
                     self.m.arena.later = [self.m.arena.first.clone(), self.m.arena.first.clone()];
-                } else if let Ok(a) = nettai_match::draw::arena(&content, &mut nettai_match::Draws::new(self.m.seed.unwrap_or(1)), None) {
+                } else if let Ok(a) = nettai_match::draw::arena(
+                    &content,
+                    &self.m.arena.game,
+                    self.m.arena.ruleset,
+                    &mut nettai_match::Draws::new(self.m.seed.unwrap_or(1)),
+                    None,
+                ) {
                     self.m.arena.later = a.later;
                 }
                 self.edited();
@@ -410,11 +444,27 @@ impl Editor {
                 self.typed.insert((2, "seed"), t);
                 self.edited();
             }
-            Msg::Ruleset(s, c) => {
-                // What the new rules don't take goes (`Side::set_ruleset`).
-                self.m.sides[s].set_ruleset(&content, c.value);
-                self.typed.remove(&(s, "karma"));
-                self.sp_typed.retain(|&(x, _), _| x != s);
+            Msg::Game(c) => {
+                // Everything below the game is the game's: a new match of
+                // it, the seed kept.
+                if c.value != self.m.arena.game {
+                    match self.content_of(&c.value).and_then(|content| nettai_match::Match::empty(&content, &c.value)) {
+                        Ok(mut m) => {
+                            m.seed = self.m.seed;
+                            self.m = m;
+                            self.forget_sides();
+                            self.status = format!("a match of {}: the sides start over", c.value);
+                            self.edited();
+                        }
+                        Err(e) => self.status = format!("can't make a match of {}: {e}", c.value),
+                    }
+                }
+            }
+            Msg::Ruleset(c) => {
+                // What the new rules don't take goes (`Match::set_ruleset`).
+                self.m.set_ruleset(&content, c.value);
+                self.typed.retain(|&(_, k), _| k != "karma");
+                self.sp_typed.clear();
                 self.edited();
             }
             Msg::Navi(s, c) => {
@@ -435,13 +485,13 @@ impl Editor {
                 // The save's own fields carry over.
                 let carried: std::collections::BTreeMap<String, toml::Value> =
                     keep.into_iter().filter(|(k, _)| ["hp", "regular_memory", "mood", "sun", "beast_out_counter"].contains(&k.as_str())).collect();
-                stats::apply(&content, &carried, &mut side.stats);
+                stats::apply(&content, &self.m.arena.game, &carried, &mut side.stats);
                 if content.navi(c.value).forms.is_none() {
                     side.crosses = None;
                 }
                 self.edited();
             }
-            Msg::Game(s, c) => {
+            Msg::Version(s, c) => {
                 let side = &mut self.m.sides[s];
                 side.game = c.value;
                 side.stats.version = nettai_match::version_byte(c.value);
@@ -474,11 +524,20 @@ impl Editor {
             }
             Msg::ImportSave(s) => {
                 // A BN6 save, or a BN5 one (a .sav, or a raw image as
-                // Tango's netplay templates hold).
+                // Tango's netplay templates hold): a match of its game.
                 if let Some(path) = rfd::FileDialog::new().add_filter("BN6 or BN5 save", &["sav", "raw"]).pick_file() {
                     let read = std::fs::read(&path).map_err(|e| e.to_string());
-                    match read.and_then(|bytes| self.m.sides[s].import_save(&content, &bytes)) {
+                    let game = self.m.arena.game.clone();
+                    // (The save's game's content: loaded if it is another's.)
+                    let imported = read.and_then(|bytes| {
+                        let content = self.content_of(nettai_match::save_game(&bytes)?)?;
+                        self.m.import_save(&content, s, &bytes)
+                    });
+                    match imported {
                         Ok(notes) => {
+                            if self.m.arena.game != game {
+                                self.forget_sides();
+                            }
                             self.typed.retain(|&(x, _), _| x != s);
                             self.sp_typed.retain(|&(x, _), _| x != s);
                             self.edited();
@@ -539,7 +598,6 @@ impl Editor {
                 self.edited();
             }
             Msg::Search(t) => self.search = t,
-            Msg::ChipGame(c) => self.chip_game = c.value,
             Msg::OwnCrosses(s, own) => {
                 let side = &mut self.m.sides[s];
                 side.crosses = if own { None } else { Some(CrossList::default()) };
@@ -560,12 +618,12 @@ impl Editor {
             }
             Msg::EverySoul(s, every) => {
                 let side = &mut self.m.sides[s];
-                side.souls = if every { None } else { Some(nettai_match::facts::all_souls(&content)) };
+                side.souls = if every { None } else { Some(nettai_match::facts::all_souls(&content, &self.m.arena.game)) };
                 self.edited();
             }
             Msg::Soul(s, f, on) => {
                 let side = &mut self.m.sides[s];
-                let mut list = nettai_match::facts::owned_souls(&content, side);
+                let mut list = nettai_match::facts::owned_souls(&content, &self.m.arena.game, side);
                 list.retain(|&x| x != f);
                 if on {
                     list.push(f);
@@ -634,7 +692,7 @@ impl Editor {
                 self.edited();
             }
             Msg::NaviCust(s, edit) => {
-                if crate::navicust::update(&content, &mut self.m.sides[s], &mut self.navicust[s], edit) {
+                if crate::navicust::update(&content, &self.m.arena, &mut self.m.sides[s], &mut self.navicust[s], edit) {
                     self.edited();
                 }
             }
