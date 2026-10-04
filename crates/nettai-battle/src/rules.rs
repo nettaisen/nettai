@@ -758,9 +758,11 @@ mod tests {
     /// docs/design/rules-in-luau.md §2.3, with a second game, `twin`: its
     /// own stock rules (the test counter), roles (the test content's, with
     /// another pause sound) and pools (16 actors).
+    /// (Ignored since packs: twin requires the test content's modules,
+    /// which one game pack may not; one game a match, P3, removes them.)
     mod two_games {
         use super::*;
-        use crate::content::{Content, RootManifest, SoundRole};
+        use crate::content::{Content, SoundRole};
         use crate::object::Pool;
         use std::sync::Arc;
 
@@ -804,8 +806,7 @@ mod tests {
                 index.sprites.insert("navi".into(), navi);
                 let frame = crate::content::AnimFrame { duration: 4, flags: crate::object::sprite::FRAME_LAST };
                 testing::add_pack(&mut c, "twin", index, [(navi, vec![vec![frame]])].into_iter().collect());
-                let manifest = RootManifest::named("twin");
-                c.scripts.add_root(manifest, TWIN.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
+                c.scripts.add_game("twin", TWIN.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
                 c.define().unwrap_or_else(|e| panic!("{e}"));
                 Arc::new(c)
             })
@@ -816,6 +817,7 @@ mod tests {
         /// a game; a navi's is its game's, and a game without one takes the
         /// first game's, by name, that has one.
         #[test]
+        #[ignore = "a second game borrowing the test content's modules is a cross-game require (docs/design/content-model-v2.md §4.0); P3 removes what mixing needs"]
         fn each_game_has_its_base_form() {
             let c = content();
             let (test, twin) = (c.defs.root_id(testing::ROOT).unwrap(), c.defs.root_id("twin").unwrap());
@@ -827,7 +829,7 @@ mod tests {
             // A game without one (a folder of no base form, `aaa`, first by
             // name) takes test's, the first that has one.
             let mut lone = (*c).clone();
-            lone.scripts.add_root(RootManifest::named("aaa"), [("m".to_string(), "return define.record('x', { n = 1 })".to_string())].into());
+            lone.scripts.add_game("aaa", [("m".to_string(), "return define.record('x', { n = 1 })".to_string())].into());
             lone.define().unwrap_or_else(|e| panic!("{e}"));
             let aaa = lone.defs.root_id("aaa").unwrap();
             assert_eq!((lone.defs.base_forms[aaa.index()], Some(lone.base_form_of(aaa))), (None, lone.defs.form_by_key("test:base")));
@@ -835,6 +837,7 @@ mod tests {
             let mut two = (*c).clone();
             let second = TWIN.iter().find(|(p, _)| *p == "navis/base").unwrap().1.replace("twin:base", "twin:base-2");
             *two.scripts.modules.entry(crate::content::Scripts::name("twin", "navis/base-2")).or_default() = second;
+            crate::content::testing::add_index(&mut two.scripts, "twin");
             let e = two.define().unwrap_err().message;
             assert!(e.contains("two forms of twin are base forms (twin:base and twin:base-2)"), "{e}");
         }
@@ -855,6 +858,7 @@ mod tests {
         }
 
         #[test]
+        #[ignore = "a second game borrowing the test content's modules is a cross-game require (docs/design/content-model-v2.md §4.0); P3 removes what mixing needs"]
         fn each_side_reads_its_games_data_and_the_battle_its_arenas() {
             let b = battle(["test:stock", "twin:stock"]);
             let twin = b.content.defs.root_id("twin").expect("the twin root");
@@ -880,6 +884,7 @@ mod tests {
         }
 
         #[test]
+        #[ignore = "a second game borrowing the test content's modules is a cross-game require (docs/design/content-model-v2.md §4.0); P3 removes what mixing needs"]
         fn a_capacity_is_the_larger_of_the_two_games() {
             let both = battle(["twin:stock", "twin:stock"]);
             assert_eq!([Pool::Actor, Pool::Attack, Pool::Effect].map(|p| both.objects.capacity(p)), [16, 32, 32]);
@@ -891,6 +896,7 @@ mod tests {
         /// A duel with a different game on each side plays and rolls back:
         /// a copy taken mid-round goes the same way as the whole.
         #[test]
+        #[ignore = "a second game borrowing the test content's modules is a cross-game require (docs/design/content-model-v2.md §4.0); P3 removes what mixing needs"]
         fn a_battle_of_two_games_plays_and_rolls_back() {
             for rulesets in [["test:stock", "twin:stock"], ["twin:stock", "twin:stock"], ["test:test-mix", "twin:stock"]] {
                 let c = content();

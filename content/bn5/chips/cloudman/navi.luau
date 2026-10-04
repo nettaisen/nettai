@@ -5,7 +5,7 @@
 -- once. Else he waits 30 ticks, raises his arms (animation 3) 30, holds them (animation 4) 110, stands 90, and
 -- leaves; the controller moves on.
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("@exelib/navi-chips/navi")
 local cloud = require("./cloud")
 
 export type State = {

@@ -583,9 +583,13 @@ pub struct Defs {
     /// Keys by registry, for the codecs.
     chip_keys: BTreeMap<String, ChipHandle>,
     weapon_keys: BTreeMap<String, WeaponHandle>,
-    /// The roots the content came from, by name, its own first
-    /// (`Scripts::roots`): what an unqualified key is looked up in.
+    /// The games of the content, by name (`RootId`'s order): its game
+    /// packs, and every prefix an id has (the support pack's anonymous
+    /// definitions are `exelib`'s).
     pub roots: Vec<String>,
+    /// The game packs the content loads (`Scripts::games`), in their
+    /// order.
+    pub games: Vec<String>,
 }
 
 impl Defs {
@@ -632,6 +636,13 @@ impl Defs {
             .iter()
             .position(|r| r.stock && keys::root_of(&r.key) == Some(root))
             .map(|i| RulesetHandle(i as u16))
+    }
+
+    /// Whether `name` is a game pack the content loads (the support pack
+    /// `exelib` is none); content without packs (a test's modules alone)
+    /// counts each of its roots.
+    pub fn is_game(&self, name: &str) -> bool {
+        if self.games.is_empty() { self.roots.iter().any(|r| r == name) } else { self.games.iter().any(|g| g == name) }
     }
 
     /// The root named `name`.
@@ -2090,6 +2101,7 @@ impl Defs {
             chip_keys: BTreeMap::new(),
             weapon_keys: BTreeMap::new(),
             roots: root_names.clone(),
+            games: content.scripts.games(),
             kinds: Vec::new(),
             actions,
             weapons,
@@ -2325,9 +2337,11 @@ mod tests {
     fn every_bn6_module_loads_in_the_define_phase() {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
         let mut c = Content::default();
-        c.scripts = crate::content::Scripts::root(crate::content::RootManifest::named("bn6"), crate::content::testing::modules_under(dir));
-        // (With the shared folder its modules require, content/common.)
+        c.scripts = crate::content::Scripts::dir("bn6", crate::content::testing::modules_under(dir));
+        // (With a manifest for BN6 and the support pack its modules
+        // require, content/exelib.)
         crate::content::testing::add_shared(&mut c.scripts);
+        crate::content::testing::add_index(&mut c.scripts, "bn6");
         c.assets = crate::content::testing::asset_names_for(&c.scripts);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));

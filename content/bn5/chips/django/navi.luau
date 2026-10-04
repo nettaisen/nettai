@@ -12,8 +12,8 @@
 -- value 500 or more); the engine reads BN6's dispatch (`sub_80139F6`), which has neither.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
-local navi_chips = require("@common/navi-chips/navi")
+local regions = require("@exelib/regions")
+local navi_chips = require("@exelib/navi-chips/navi")
 local coffin = require("./coffin")
 local sun = require("./sun")
 local lights = require("./lights")

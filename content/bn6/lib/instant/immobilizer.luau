@@ -5,7 +5,7 @@
 -- effect 9 spawns it (immobilize.luau).
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local statuses = require("../../rules/status")
 
 local immobilizer = {}

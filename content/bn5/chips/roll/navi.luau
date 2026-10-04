@@ -1,5 +1,5 @@
 --!strict
--- Roll, the navi of BN5's Roll chips (BN5's actor object #0x2C, 0x080C06A4): BN6's (@common/roll/navi; the same code
+-- Roll, the navi of BN5's Roll chips (BN5's actor object #0x2C, 0x080C06A4): BN6's (@exelib/roll/navi; the same code
 -- but for her sprite, her ribbon, BN5's attachment row 6, 0c-0f, and these) with her heart (./heart), and BN5's
 -- additions:
 --
@@ -11,7 +11,7 @@
 --
 -- Her palette and her ribbon's are RollDS's 1 (her level 4).
 
-local common = require("@common/roll/navi")
+local common = require("@exelib/roll/navi")
 local attachment = require("../../objects/attachment/attachment")
 local panel_changer = require("../../objects/panel-changer/panel_changer")
 local heart = require("./heart")

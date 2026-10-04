@@ -329,10 +329,10 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
 /// arena's field, another pack's, or as a tinted normal panel, which is
 /// said, not counted.
 fn field(c: &Content, packs: &Packs, p: &mut Problems) {
-    // (The shared folder, content/common, is no game: it has no field.)
+    // (The shared scripts, content/exelib, are no game: they have no field.)
     let roots: Vec<RootId> = (0..c.rules.len())
         .map(|i| RootId(i as u8))
-        .filter(|r| c.defs.roots.get(r.index()).is_none_or(|name| name != nettai_content_api::keys::SHARED))
+        .filter(|r| c.defs.roots.get(r.index()).is_none_or(|name| c.defs.is_game(name)))
         .collect();
     let names = |root: RootId, t: PanelType| c.rules_of(root).panels.types.get(t as usize).is_some_and(|r| r.named);
     let blocks = |pack: PackId, t: PanelType, p: &mut Problems| {

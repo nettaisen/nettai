@@ -9,7 +9,7 @@
 
 local collision = require("../../rules/collision")
 local effects = require("@bn6/lib/effects")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 export type State = {
     -- The controller waiting on it (+0x60: it holds the rocket until it clears it).

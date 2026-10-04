@@ -1,10 +1,10 @@
 --!strict
--- BN5's projectile (attack object #0, BN6's code: @common/projectile/projectile), BN5's kind; a bursting variant's
+-- BN5's projectile (attack object #0, BN6's code: @exelib/projectile/projectile), BN5's kind; a bursting variant's
 -- burst BN6's (its sound, effect and collision types). Its variants are BN5's (./variants).
 
 local bn6_collision = require("@bn6/rules/collision")
 local collision = require("../../rules/collision")
-local common = require("@common/projectile/projectile")
+local common = require("@exelib/projectile/projectile")
 local effects = require("@bn6/lib/effects")
 
 local projectile = {}

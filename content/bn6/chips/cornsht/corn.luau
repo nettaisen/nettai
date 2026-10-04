@@ -7,8 +7,8 @@
 -- on. See docs/engine/shot-chips.md §9.1.
 
 local collision = require("../../rules/collision")
-local panels = require("@common/panels")
-local regions = require("@common/regions")
+local panels = require("@exelib/panels")
+local regions = require("@exelib/regions")
 
 local corn = {}
 

@@ -10,7 +10,7 @@
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local panel_changer = require("../../objects/panel-changer/panel_changer")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 local elemrage = {}

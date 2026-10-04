@@ -1,24 +1,58 @@
-//! The content in content/bn6 (the BN6 source overlay) type-checks against
-//! its API definitions, and misuse of the API is a type error.
+//! The content (content/) type-checks, each pack against its
+//! declarations; its manifests and requires name only modules that are
+//! there, each require one its pack may make; and misuse of the API is a
+//! type error.
 
 use std::path::Path;
 
 fn pack() -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../content/bn6")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../content")
 }
 
 #[test]
-fn the_content_pack_type_checks_against_the_core_api() {
-    let (checked, problems) = nettai_content_check::check_pack(&pack()).unwrap();
-    assert!(checked >= 16, "found the pack's modules ({checked})");
+fn the_content_type_checks_against_the_core_api() {
+    let (checked, problems) = nettai_content_check::check_content(&pack()).unwrap();
+    assert!(checked >= 1000, "found the content's modules ({checked})");
     assert!(problems.is_empty(), "type errors:\n{}", problems.join("\n"));
+}
+
+/// docs/design/content-model-v2.md §4.0: a listed module or a require of
+/// no module, a folder that is no pack, a require of another game's module
+/// (game to game, support to game) and a cycle of support packs fail the
+/// check with their paths.
+#[test]
+fn what_the_packs_refuse() {
+    let dir = std::env::temp_dir().join(format!("nettai-check-{}", std::process::id()));
+    let write = |path: &str, text: &str| {
+        let p = dir.join(path);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, text).unwrap();
+    };
+    write("g/manifest.toml", "id = \"g\"\nkind = \"game\"\nuses = [\"lib\"]\n[definitions]\nrules = [\"there\", \"gone\"]\n");
+    write("g/there.luau", "local y = require(\"./nowhere\")\nlocal z = require(\"@h/x\")\nlocal w = require(\"@lib/x\")\nreturn {}\n");
+    write("h/manifest.toml", "id = \"h\"\nkind = \"game\"\n");
+    write("h/x.luau", "return {}\n");
+    write("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\nuses = [\"base\"]\n");
+    write("lib/x.luau", "local g = require(\"@g/there\")\nlocal _ = asset.sprite(\"g:x\")\nreturn {}\n");
+    write("base/manifest.toml", "id = \"base\"\nkind = \"support\"\nuses = [\"lib\"]\n");
+    write("stray/x.luau", "return {}\n");
+    let problems = nettai_content_check::reach(&dir).unwrap();
+    let has = |want: &str| assert!(problems.iter().any(|p| p.contains(want)), "{want}: {problems:#?}");
+    has("g/manifest.toml: lists gone, and no module g/gone.luau is there");
+    has("g/there.luau: require(\"./nowhere\"): no module g/nowhere.luau");
+    has("g/there.luau: require(\"@h/x\"): h is a game pack, which no other pack requires");
+    has("lib/x.luau: require(\"@g/there\"): g is a game pack, which no other pack requires");
+    has("lib/x.luau: support pack lib names an asset");
+    has("its uses make a cycle: base uses lib uses base");
+    has("stray/: no manifest.toml; a folder of content/ is a pack");
+    std::fs::remove_dir_all(&dir).ok();
 }
 
 /// The engine's test pack and test content (crates/nettai-battle/testdata)
 /// type-check against the same definitions, and pass the lints.
 #[test]
 fn the_test_pack_and_test_content_type_check() {
-    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack()).unwrap()).unwrap();
+    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "bn6").unwrap()).unwrap();
     let mut problems = Vec::new();
     for (name, at_least) in [("pack", 5), ("content", 5)] {
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../nettai-battle/testdata").join(name);
@@ -37,7 +71,7 @@ fn the_test_pack_and_test_content_type_check() {
 
 #[test]
 fn misuse_of_the_v2_api_is_a_type_error() {
-    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack()).unwrap()).unwrap();
+    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "bn6").unwrap()).unwrap();
     for (bad, why) in [
         ("local _ = define.kind { id = 'x', pool = 'water', update = function(me: Object) end }", "not a pool"),
         ("local _ = define.kind { id = 'x', pool = 'attack' }", "a kind without its update"),
@@ -55,7 +89,7 @@ fn misuse_of_the_v2_api_is_a_type_error() {
 
 #[test]
 fn the_numeric_api_that_is_gone_is_a_type_error() {
-    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack()).unwrap()).unwrap();
+    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "bn6").unwrap()).unwrap();
     for (bad, why) in [
         ("local _ = battle.spawn(\"attack\", 8)", "a spawn by pool and index"),
         ("local _ = battle.spawn_kind(\"rock\")", "a spawn by name"),
@@ -87,7 +121,7 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
 
 #[test]
 fn misuse_of_the_core_api_is_a_type_error() {
-    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack()).unwrap()).unwrap();
+    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "bn6").unwrap()).unwrap();
     for (bad, why) in [
         ("local function f(me: Object) me.anmi = 3 end", "misspelled field"),
         ("local function f(me: Object) me:set_lifecycle(\"running\") end", "not a lifecycle state"),

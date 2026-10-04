@@ -1202,9 +1202,9 @@ fn in_update(line: &str) -> Content {
 
 #[test]
 fn state_in_module_locals_is_rejected_at_load() {
-    // (The sun beam's code is the shared folder's.)
+    // (The sun beam's code is the support pack's.)
     let c = patched_in(
-        nettai_content_api::keys::SHARED,
+        "exelib",
         "gundels/beam",
         &[("local beam = {}", "local hums = 0\nlocal beam = {}"), ("    s.ticks += 1\n", "    s.ticks += 1\n    hums += 1\n")],
     );

@@ -1,6 +1,6 @@
 --!strict
 -- A thrown seed (the original's attack object #0x4F, `sub_80CE24C`):
--- PoisSeed, IceSeed and GrasSeed: the shared seed (@common/bombs/seed)
+-- PoisSeed, IceSeed and GrasSeed: the shared seed (@exelib/bombs/seed)
 -- with BN6's look. It flies three panels ahead in the bomb's arc and
 -- lands: on a solid panel it hits it for a tick, then turns the panels
 -- around it into its variant's kind of panel, only its own if the hit
@@ -11,7 +11,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local common = require("@common/bombs/seed")
+local common = require("@exelib/bombs/seed")
 local effects = require("../effects")
 local sparks = require("../sparks")
 

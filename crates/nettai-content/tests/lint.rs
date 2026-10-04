@@ -1,7 +1,7 @@
 //! `nettai-content check`'s report on definitions, on the engine's test pack
 //! and on BN6's content.
 
-use nettai_battle::content::{RootManifest, Scripts, testing};
+use nettai_battle::content::{Scripts, testing};
 use nettai_content::report::{Level, Report};
 
 /// The test content's module `path`'s name.
@@ -27,6 +27,8 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
     let roles = c.scripts.module_mut(testing::ROOT, "test/rules/roles").expect("the test pack's roles");
     assert!(roles.contains("    sparks = ruleset.sparks,\n"));
     *roles = roles.replace("    sparks = ruleset.sparks,\n", "    sparks = { plain = ruleset.sparks.plain },\n");
+    // (The test game's index loads every module of it: written again with the new ones.)
+    testing::add_index(&mut c.scripts, testing::ROOT);
     c.define().unwrap();
     let mut r = Report::default();
     nettai_content::lint::definitions(&c, &mut r);
@@ -50,6 +52,7 @@ fn a_collision_type_defined_twice_is_an_error() {
             format!("return define.collision {{ id = 'test:{key}', side0 = 0x80, side1 = 0x80, row_offset = {row_offset} }}"),
         );
     }
+    testing::add_index(&mut c.scripts, testing::ROOT);
     c.define().unwrap();
     // (The test content's own types share rows with BN6's, whose module
     // it has too: only these are looked at.)
@@ -61,16 +64,27 @@ fn a_collision_type_defined_twice_is_an_error() {
     assert!(errors.iter().any(|e| e.contains("collision type test:one is row 0xfe") && e.contains("test:two (test:lib/two.luau)")), "{errors:?}");
 }
 
+/// The repository's content directory.
+const CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content");
+
+/// content/'s games `games` (each pack's listed modules and what they
+/// require) on made-up asset indices, with their strings: not defined.
+fn read(games: &[&str]) -> nettai_battle::Content {
+    let mut r = Report::default();
+    let games: Vec<String> = games.iter().map(|g| g.to_string()).collect();
+    let read = nettai_content::index::read(std::path::Path::new(CONTENT), &games, &mut r).unwrap_or_else(|| panic!("{r}"));
+    let mut c = nettai_battle::Content::default();
+    c.scripts = read.scripts();
+    c.strings = read.strings;
+    c.assets = testing::asset_names_for(&c.scripts);
+    c
+}
+
 /// BN6's content defines without an error in its definitions (each
 /// collision type once).
 #[test]
 fn bn6_content_has_no_definition_errors() {
-    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
-    let common = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/common");
-    let mut c = nettai_battle::Content::default();
-    c.scripts = Scripts::root(RootManifest::named("bn6"), testing::modules_under(dir));
-    c.scripts.add_root(RootManifest::named("common"), testing::modules_under(common));
-    c.assets = testing::asset_names_for(&c.scripts);
+    let mut c = read(&["bn6"]);
     c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
     let mut r = Report::default();
     nettai_content::lint::definitions(&c, &mut r);
@@ -79,83 +93,61 @@ fn bn6_content_has_no_definition_errors() {
     assert!(errors.is_empty(), "{}", errors.join("\n"));
 }
 
-/// BN6's strings tables (content/bn6/locales) name only definitions BN6's
-/// content has, and every chip, navi and form has its name in the own
-/// language's. The root reader leaves them out of the modules; the own
+/// The strings tables (content/<game>/locales) name only definitions the content
+/// has, and every chip, navi and form of BN6 has its name in the own
+/// language's. The loader reads them apart from the modules; the own
 /// language's strings shape the records (a description's lines), and the
 /// hash covers that shape alone: text that keeps it changes nothing.
 #[test]
-fn bn6_strings_name_bn6_definitions_and_only_their_shape_is_hashed() {
-    let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6"));
+fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
+    let dir = std::path::Path::new(CONTENT);
     let langs = nettai_content::locale::languages(dir);
     assert!(langs.contains(&"en".to_string()) && langs.contains(&"ja".to_string()), "{langs:?}");
-    let mut r = Report::default();
-    let root = nettai_content::root::read(dir, &mut r).expect("content/bn6 reads");
-    let common = nettai_content::root::read(&dir.join("../common"), &mut r).expect("content/common reads");
-    assert!(root.modules.keys().all(|m| !m.starts_with("locales/")), "a strings table read as a module");
+    let base = read(&["bn6", "bn5"]);
+    assert!(base.scripts.modules.keys().all(|m| !m.contains("locales/")), "a strings table read as a module");
     let define = |strings: nettai_content::locale::Strings| {
-        let mut c = nettai_battle::Content::default();
-        c.scripts = Scripts::root(root.manifest.clone(), root.modules.clone());
-        c.scripts.add_root(common.manifest.clone(), common.modules.clone());
-        c.assets = testing::asset_names_for(&c.scripts);
+        let mut c = base.clone();
         c.strings = strings;
-        c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
+        c.define().unwrap_or_else(|e| panic!("content/: {e}"));
         c
     };
-    let c = define(root.strings.clone());
-    nettai_content::locale::check_root(dir, &c, &mut r);
+    let c = define(base.strings.clone());
+    let mut r = Report::default();
+    nettai_content::locale::check_games(dir, &c, &mut r);
     let errors: Vec<String> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| format!("{}: {}", i.file, i.message)).collect();
     assert!(errors.is_empty(), "{}", errors.join("\n"));
     // The own strings' shape is in the records: MagPanel's one line.
     let magpanl = c.defs.chip_by_key("bn6:magpanl").expect("bn6:magpanl");
     assert_eq!(c.chip(magpanl).description_lines, 1);
     // Other text of the same shape: the same content.
-    let mut renamed = root.strings.clone();
+    let mut renamed = base.strings.clone();
     for s in renamed.chips.values_mut() {
         s.name = Some("Renamed".into());
     }
     assert_eq!(define(renamed).hash(), c.hash());
     // Another shape: another content.
-    let mut reshaped = root.strings.clone();
+    let mut reshaped = base.strings.clone();
     reshaped.chips.get_mut("bn6:magpanl").unwrap().description = Some("one\ntwo".into());
     assert_ne!(define(reshaped).hash(), c.hash());
 }
 
-/// Every content folder of this repository (content/bn5, content/bn6,
-/// content/common) on made-up asset indices, as the loaders take them: the
-/// chips with no use yet left out (`nettai_content::pack::
-/// left_out_unported`), and their keys. Not defined.
-fn every_folder() -> (nettai_battle::Content, Vec<String>) {
-    let repo = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
-    let mut r = Report::default();
-    let mut c = nettai_battle::Content::default();
-    let mut left = Vec::new();
-    for name in ["bn6", "bn5", "common"] {
-        let mut root = nettai_content::root::read(&repo.join("content").join(name), &mut r).unwrap_or_else(|| panic!("content/{name} reads"));
-        left.extend(nettai_content::pack::left_out_unported(&mut root, &mut r).into_iter().map(|k| format!("{name}:{k}")));
-        c.strings.merge(root.strings);
-        c.scripts.add_root(root.manifest, root.modules);
-    }
-    // Each folder's names in its own game's pack (BN5's in bn5's).
-    c.assets = testing::asset_names_for(&c.scripts);
-    (c, left)
-}
-
-/// docs/design/rules-in-luau.md, the flat namespace: BN5's folder
-/// (content/bn5) loads beside BN6's, one namespace, every id in full:
+/// docs/design/rules-in-luau.md, the flat namespace, and
+/// content-model-v2.md §4.0: BN5 loads beside BN6, every id in full:
 /// `bn5:cannon` and `bn6:cannon` are two chips. BN5's chips that have no
-/// use yet (the port writes them) are left out as the loaders leave them
-/// out; none of BN6's is.
+/// use yet (the port writes them) are its manifest's `unported`, which
+/// don't load.
 #[test]
 fn bn5_and_bn6_load_together_under_their_names() {
-    let (mut c, left) = every_folder();
-    assert!(left.iter().all(|k| k.starts_with("bn5:")), "{left:?}");
+    let mut c = read(&["bn6", "bn5"]);
     c.define().unwrap_or_else(|e| panic!("{e}"));
-    for k in &left {
-        assert!(c.defs.chip_by_key(k).is_none(), "{k} is left out");
+    let manifest = c.scripts.manifest("bn5").expect("BN5's manifest").clone();
+    for path in &manifest.definitions.unported {
+        let key = format!("bn5:{}", path.trim_start_matches("chips/").trim_end_matches("/chip"));
+        assert!(c.defs.chip_by_key(&key).is_none(), "{key} is unported");
     }
     let d = &c.defs;
-    assert_eq!(d.roots, ["bn5", "bn6", "common"]);
+    assert_eq!(d.roots, ["bn5", "bn6", "exelib"]);
+    assert_eq!(d.games, ["bn6", "bn5"]);
     let (six, five) = (d.chip_by_key("bn6:cannon").expect("bn6:cannon"), d.chip_by_key("bn5:cannon").expect("bn5:cannon"));
     assert_ne!(six, five);
     assert_eq!(d.chip_by_key("cannon"), None, "an id is written in full");
@@ -163,58 +155,28 @@ fn bn5_and_bn6_load_together_under_their_names() {
     assert_eq!(c.strings.chip("bn5:cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
 }
 
-/// The loaders' unported-chip rule (`Root::leave_out_unported`): a chip
-/// whose module names no use is left out with its folder, and so is a chip
-/// folder that requires a module of one left out, in turn; the rest
-/// defines, and the content (its hash) is what it would be without them.
+/// docs/design/content-model-v2.md §4.0: what loads is what the manifests
+/// list and their requires reach. BN6 alone reads no BN5 module, and both
+/// read the support pack's modules their requires reach, no other.
 #[test]
-fn an_unported_chip_is_left_out_with_the_chips_that_need_it() {
-    let read = |extra: &[(&str, &str)]| {
-        let mut r = Report::default();
-        let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6"));
-        let mut root = nettai_content::root::read(dir, &mut r).expect("content/bn6 reads");
-        for (path, text) in extra {
-            root.modules.insert(path.to_string(), text.to_string());
-        }
-        root
-    };
-    let define = |root: nettai_content::root::Root| {
-        let mut c = nettai_battle::Content::default();
-        c.strings = root.strings;
-        c.scripts = Scripts::root(root.manifest, root.modules);
-        testing::add_shared(&mut c.scripts);
-        c.assets = testing::asset_names_for(&c.scripts);
-        c.define().unwrap_or_else(|e| panic!("{e}"));
-        c
-    };
-    let later = "return define.chip {\n    id = \"bn6:later\",\n    codes = { \"A\" },\n    class = \"standard\",\n}\n";
-    let ammo = "return { shots = 3 }\n";
-    let borrower = "local later = require(\"../later/chip\")\nlocal ammo = require(\"@bn6/chips/later/ammo\")\n\
-                    return define.chip {\n    id = \"bn6:borrower\",\n    codes = { \"A\" },\n    class = \"standard\",\n    instant = function(side) end,\n}\n";
-    let mut root = read(&[("chips/later/chip", later), ("chips/later/ammo", ammo), ("chips/borrower/chip", borrower)]);
-    let mut r = Report::default();
-    let left = nettai_content::pack::left_out_unported(&mut root, &mut r);
-    assert_eq!(left, ["borrower", "later"]);
-    assert!(!root.modules.keys().any(|m| m.starts_with("chips/later/") || m.starts_with("chips/borrower/")));
-    let warnings: Vec<String> = r.issues.iter().map(|i| i.message.clone()).collect();
-    assert_eq!(warnings.len(), 1, "one warning: {warnings:?}");
-    assert!(warnings[0].contains("bn6:borrower, bn6:later"), "{warnings:?}");
-    let c = define(root);
-    assert_eq!(c.defs.chip_by_key("bn6:later"), None);
-    // As if they had never been there: the same content, the same hash.
-    let mut plain = read(&[]);
-    assert!(nettai_content::pack::left_out_unported(&mut plain, &mut Report::default()).is_empty());
-    assert_eq!(define(plain).hash(), c.hash());
+fn a_load_reads_what_its_manifests_reach() {
+    let six = read(&["bn6"]);
+    assert!(six.scripts.modules.keys().all(|m| !m.starts_with("bn5")), "BN6 alone reads none of BN5's");
+    assert!(six.scripts.modules.keys().any(|m| m.starts_with("exelib:")), "the shared scripts its modules require");
+    let both = read(&["bn6", "bn5"]);
+    assert!(both.scripts.modules.len() > six.scripts.modules.len());
+    assert_eq!(both.scripts.games(), ["bn6", "bn5"]);
+    assert_eq!(both.scripts.packs[0].id, "exelib", "the support pack first");
 }
 
 /// docs/design/rules-in-luau.md R2: BN5's stock ruleset and rule sections
 /// (content/bn5/rules) are its game's, beside BN6's: its pools (16 actors),
 /// its banners, its element tables. With them, the BN5 chips the port has
 /// given uses (docs/design/bn5-map.md §15.6); the rest, without a use yet,
-/// are left out (the loaders' rule).
+/// are its index's unported chips.
 #[test]
 fn bn5s_rules_are_its_games() {
-    let (mut c, _) = every_folder();
+    let mut c = read(&["bn6", "bn5"]);
     c.define().unwrap_or_else(|e| panic!("{e}"));
     let d = &c.defs;
     let five = d.root_id("bn5").expect("the bn5 root");
