@@ -229,6 +229,16 @@ pub struct DecodedSetup {
     pub battle_state: Vec<u8>,
 }
 
+impl DecodedSetup {
+    /// The traced console's ROM: its side's version and region (the
+    /// BattleState's local side, +0x0D), whose addresses its settings
+    /// record (its RAM's) holds.
+    pub fn traced_rom(&self) -> (Version, bool) {
+        let local = self.battle_state[0x0D] as usize & 1;
+        (self.versions[local], self.japanese[local])
+    }
+}
+
 pub fn decode_setup(s: &Setup) -> Result<DecodedSetup, String> {
     if s.game != "bn5" {
         return Err(format!("a {} recording", s.game));
@@ -509,7 +519,8 @@ impl Round {
         }
         let st = &d.settings;
         let actor_list = u32::from_le_bytes([st[12], st[13], st[14], st[15]]);
-        match compat.stage(st[0], actor_list) {
+        let (version, japanese) = d.traced_rom();
+        match compat.stage(st[0], actor_list, version, japanese) {
             Some(k) if content.defs.stage_by_key(&k).is_some() => {}
             Some(k) => out.push(format!("the stage {k} (settings {})", stage_bytes(st))),
             None => out.push(format!("the stage (settings {}: no BN5 netbattle stage)", stage_bytes(st))),
@@ -537,7 +548,8 @@ impl Round {
         let bs = &d.battle_state;
         let st = &d.settings;
         let actor_list = u32::from_le_bytes([st[12], st[13], st[14], st[15]]);
-        let stage = compat.stage(st[0], actor_list).and_then(|k| content.defs.stage_by_key(&k)).expect("needs saw the stage");
+        let (version, japanese) = d.traced_rom();
+        let stage = compat.stage(st[0], actor_list, version, japanese).and_then(|k| content.defs.stage_by_key(&k)).expect("needs saw the stage");
         let pack = content.assets.pack(crate::ROOT).expect("needs saw the pack");
         let background = nettai_battle::content::BackgroundId(
             content

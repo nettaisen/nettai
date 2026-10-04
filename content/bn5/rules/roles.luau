@@ -14,19 +14,24 @@
 
 local antidmg_counter = require("../chips/antidmg/counter")
 local barriers = require("../lib/barriers")
+local beat = require("../chips/beat/chip")
 local charged_shot = require("../navis/megaman/weapons/charged-shot")
 local anti_recovery = require("../chips/antirecv/controller")
 local dive_ripple = require("../objects/dive-ripple/ripple")
 local soldier = require("../objects/soldier/soldier")
 local chaos = require("./souls/chaos")
 local drive_end = require("../chips/darkinvs/drive-end")
+local dark_survival = require("./emotion/dark-survival")
 local invalid = require("../chips/invalid/chip")
 local collision = require("./collision")
 local effects = require("../lib/effects")
 local regions = require("@exelib/regions")
+local rush = require("../chips/rush/chip")
 local sparks = require("../lib/sparks")
 local statuses = require("./status")
+local supports = require("../lib/supports/controller")
 local swords = require("../lib/swords")
+local tango = require("../chips/tango/chip")
 
 return define.roles {
     id = "bn5:roles",
@@ -44,11 +49,19 @@ return define.roles {
         -- The request 0x80000's action (BN5's 0x49): the end of DarkInvs's no-charge drive, which its timer's end asks
         -- for (rules/status's `no_charge_drive`; chips/darkinvs/drive-end). BN6's is its stun strike.
         stun_strike = drive_end.action,
+        -- The request 0x40000000's action (BN5's 0x30): a dark MegaMan's last stand, which a loss of HP that brings
+        -- him to 0 asks for (rules/status's `hp_loss`; ./emotion/dark-survival). BN6's is a volley no routine asks
+        -- for.
+        volley = dark_survival.action,
     },
     chips = {
         -- What a selection the custom screen can't allow becomes, and what a chip use the light and dark rule refuses
         -- becomes (BN5's chip 0x185, past the named ones: chips/invalid).
         invalid = invalid,
+        -- The chips the NaviCust supports' telops name (BN5's 0x179 to 0x17B, past the library: BN6's numbers).
+        rush = rush,
+        beat = beat,
+        tango = tango,
     },
     kinds = {
         -- AntiRecv's counterattack, which a heal meets when the other side has AntiRecv armed (BN6's code).
@@ -56,6 +69,9 @@ return define.roles {
         -- What an obstacle turns into where an armed side's ColonelSoul can use it (attack object 0x30: BN5's own,
         -- objects/soldier).
         obstacle_soldier = soldier.kind,
+        -- The NaviCust supports' controller (Rush's, Beat's and Tango's: BN5's effect object 0x74, BN6's code,
+        -- lib/supports).
+        support = supports.kind,
         -- The ripple over a body under the sea's surface (effect object 0x3E: objects/dive-ripple).
         dive_ripple = dive_ripple.kind,
     },
@@ -84,8 +100,8 @@ return define.roles {
         recovery = effects.heal,
         cut_in_flash = effects.cut_in_flash,
         -- The mark over a navi whose trap sprang (AntiNavi, AntiRecv): BN5's effect 43 is BN6's 0x46 (hit
-        -- sparks, animation 7). (BN5 shows it on the panel's center, 16 pixels up; BN6 16 pixels down the
-        -- field and 32 up: the engine's, §15.3.)
+        -- sparks, animation 7), where rules/chip-use's `anti_navi_sparkle` puts it (BN5's on the panel's center,
+        -- 16 pixels up; BN6's 16 pixels down the field and 32 up).
         trap_mark = effects.trap_mark,
         -- The splash of a body a sea panel holds at a move's end (effect 0x63: 0x0801715E).
         panel_splash = define.effect { sprite = asset.sprite("bn5:splash"), anim = 0, palette = 0 },
