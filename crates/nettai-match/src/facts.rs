@@ -1,11 +1,11 @@
 //! What a side's save brings that its ruleset's systems take by a field's
 //! name (S6c's facts, `PlayerSetup::set_fact`), besides BN6's (the game,
-//! the Crosses, Beast Out: bn6-compat's `Unlocks`): BN5's karma and souls.
-//! A match file and a netplay offer carry them as the side's own keys
-//! (`karma`, `souls`); the round's setup writes each into whichever of the
-//! side's systems declares the field (BN5's light and dark system's
-//! `karma`, its souls system's `souls`), and a ruleset with none takes
-//! none.
+//! the Crosses, Beast Out: bn6-compat's `Unlocks`): BN5's karma, souls,
+//! Soul Unison and Chaos Unison. A match file and a netplay offer carry them
+//! as the side's own keys (`karma`, `souls`, `soul_unison`, `chaos_unison`);
+//! the round's setup writes each into whichever of the side's systems
+//! declares the field (BN5's light and dark system's `karma`, its souls
+//! system's the rest), and a ruleset with none takes none.
 //!
 //! **Karma** is BN5's light/dark value (NaviStats +0x44), 0 to 1000: a
 //! fresh save's 500 (0x08010C00) is the default. Under 470 a dark MegaMan
@@ -24,6 +24,11 @@
 //! souls system's setup, as the save's flags). A side may have any soul of
 //! the match's game, of either version: none listed, every soul. A real
 //! save holds its own version's six; the save import reads them.
+//!
+//! **Soul Unison and Chaos Unison** are the save's event flags 0 and 0x236:
+//! the soul button at all (the souls system's, content/bn5/rules/souls), and
+//! a dark chip's Chaos Unison. A finished save has both (the default; the
+//! souls system's `setup_defaults` too); the save import reads them.
 
 use crate::{Arena, Side, ids};
 use nettai_battle::content::Content;

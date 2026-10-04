@@ -354,6 +354,68 @@ fn an_unowned_soul_cant_be_chosen() {
     assert_eq!(offered(Some(vec![proto, crate::ids::form(&content, "bn5", "colonelsoul").unwrap()])), (true, true));
 }
 
+/// The soul given for a chip (the souls system's button and window): the
+/// soul takes the Sword's place, first in the selection; B puts the Sword
+/// back and offers the soul again; given again and OK, the turn's form is
+/// ProtoSoul for 3 turns and the Sword leaves the folder in its place.
+#[test]
+fn the_soul_takes_the_chips_place() {
+    use nettai_battle::custom::screen::{Phase, SPECIAL_SLOT, SlotKind, SlotState};
+    use nettai_battle::input::{PlayerTick, keys};
+    let content = bn5_content();
+    let sword = crate::ids::chip(&content, "bn5", "sword").unwrap();
+    let proto = crate::ids::form(&content, "bn5", "protosoul").unwrap();
+    let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
+    m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
+    let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
+    let screen = |b: &nettai_battle::Battle| b.custom.sides[0].screen.expect("a screen");
+    // A tick with `key` pressed, then ticks without until the screen is
+    // back to choosing.
+    let mut press = |b: &mut nettai_battle::Battle, key: u16| {
+        b.tick(&[PlayerTick { held: key }, Default::default()], Default::default());
+        for _ in 0..200 {
+            b.tick(&[PlayerTick { held: 0 }, Default::default()], Default::default());
+            if b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing) {
+                return;
+            }
+        }
+        panic!("the screen stays out of choosing");
+    };
+    for _ in 0..400 {
+        if b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing) {
+            break;
+        }
+        b.tick(&[PlayerTick { held: 0 }, Default::default()], Default::default());
+    }
+    // The first Sword picked: the soul is on offer.
+    press(&mut b, keys::A);
+    let s = screen(&b);
+    assert_eq!((s.selection(), s.slots[SPECIAL_SLOT as usize].state), (&[0u8][..], SlotState::Selectable));
+    assert!(matches!(s.slots[SPECIAL_SLOT as usize].kind, SlotKind::Button { .. }));
+    // Given: the soul first in the selection, the Sword's slot still picked.
+    b.custom.sides[0].screen.as_mut().unwrap().cursor = SPECIAL_SLOT;
+    press(&mut b, keys::A);
+    let s = screen(&b);
+    assert_eq!(s.selection(), &[SPECIAL_SLOT][..]);
+    assert_eq!((s.slots[0].state, s.slots[SPECIAL_SLOT as usize].state), (SlotState::Selected, SlotState::Selected));
+    assert_eq!(s.trade.map(|t| (t.button, t.chip)), Some((SPECIAL_SLOT, 0)));
+    // B: the Sword back in its place, the soul on offer again.
+    press(&mut b, keys::B);
+    let s = screen(&b);
+    assert_eq!((s.selection(), s.trade), (&[0u8][..], None));
+    assert_eq!(s.slots[SPECIAL_SLOT as usize].state, SlotState::Selectable);
+    // Given again, and OK: the turn's form, its turns, the Sword gone.
+    press(&mut b, keys::A);
+    b.custom.sides[0].screen.as_mut().unwrap().cursor = nettai_battle::custom::screen::OK_SLOT;
+    b.tick(&[PlayerTick { held: keys::A }, Default::default()], Default::default());
+    let (hand, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
+    assert_eq!((transform.form, transform.turns, transform.chaos), (Some(proto), 3, false));
+    assert!(hand.is_some(), "the soul is a pick");
+    let folder = b.custom.sides[0].folder.expect("a folder");
+    assert_eq!(folder.chips[0], None, "the Sword given up left the folder");
+    assert_eq!(folder.count(), 29);
+}
+
 /// A side's karma and souls go into its round's setup: the light and dark
 /// system's block holds the karma, the souls system's the souls (which the
 /// soul button offers, by their numbers), Soul Unison and Chaos Unison
