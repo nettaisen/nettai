@@ -159,6 +159,7 @@ local redeal: ButtonSpec = {
     end,
     pressed = function(side: number)
         if custom.cursor_state(side) == "selectable" then
+            custom.play(side, "redeal")
             custom.redeal(side)
         else
             custom.refuse(side)

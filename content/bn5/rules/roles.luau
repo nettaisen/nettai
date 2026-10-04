@@ -158,6 +158,8 @@ return {
         obstacle_throw = asset.sound("etomahwk"),
         -- SELECT with too little gauge, and what can't be picked or taken back on the custom screen.
         refused = asset.sound("cant-jack-in"),
+        -- SearchSoul's Shuffle's shuffles (0x08023512: the framework's re-deal, each of its eight steps).
+        custom_redeal_shuffle = asset.sound("hop"),
         -- The custom screen's: the window slides in; the cursor moves; SELECT hides and shows the window; a
         -- pick, OK, a pick taken back; L's no-running message; R's description opens and closes; the
         -- Program Advance animation's chips of the recipe and the Program Advance.
