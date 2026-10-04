@@ -129,7 +129,8 @@ local function leave(me: Object)
         if face then
             face:set_lifecycle("destroy")
         end
-        me:set_lifecycle("destroy")
+        -- (0x080BB53C: the state byte alone; his action and phase stay.)
+        me.lifecycle = "destroy"
     end
 end
 

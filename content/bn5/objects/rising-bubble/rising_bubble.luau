@@ -6,7 +6,7 @@ local common = require("@exelib/rising-bubble/rising_bubble")
 
 local rising_bubble = {}
 
-rising_bubble.kind = common.make_kind("bn5:rising-bubble", asset.sprite("bn6:small-puff"))
+rising_bubble.kind = common.make_kind("bn5:rising-bubble", asset.sprite("bn5:small-puff"))
 
 -- A bubble at `pos` in sprite palette `palette`.
 function rising_bubble.spawn(pos: Vec3, palette: number): Object?

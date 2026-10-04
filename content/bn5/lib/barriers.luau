@@ -6,7 +6,7 @@
 -- bubble status). The barrier chips' dimming controller is BN6's code (@exelib/barriers/controller: BN5's effect
 -- object #0x2F, 0x080E3CCC).
 --
--- The sheets are BN6's names (0c-3d, 0c-20, 0c-07: the same archives, which BN5's pack doesn't name yet).
+-- The sheets are BN6's numbers (0c-3d, 0c-20, 0c-07: the same archives).
 
 local common_controller = require("@exelib/barriers/controller")
 local common_visual = require("@exelib/barriers/visual")
@@ -16,7 +16,7 @@ local barriers = {}
 local visual = common_visual.make { id = "bn5:barrier-visual", blows = false }
 barriers.visual = visual
 
-local SPRITE, BUBBLE, AURA = asset.sprite("bn6:barrier"), asset.sprite("bn6:bubble"), asset.sprite("bn6:aura")
+local SPRITE, BUBBLE, AURA = asset.sprite("bn5:barrier"), asset.sprite("bn5:bubble"), asset.sprite("bn5:aura")
 local SOUND, BUBBLE_SOUND, BUBBLE_POP = asset.sound("bn5:barrier"), asset.sound("bn5:bubble"), asset.sound("bn5:bubble-pop")
 local NO_TIMER = 0xFFFF
 

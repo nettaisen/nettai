@@ -43,6 +43,14 @@ pub struct FlowRules {
     /// fades in from white).
     #[serde(default)]
     pub intro_from_black: bool,
+    /// Sound, read of the arena's game: the low-HP music switch (BN6's
+    /// `sub_8009158`: while a console's navi is at a quarter of its HP or
+    /// less, the music plays a semitone higher and 282/256 as fast). BN5
+    /// has none: its ROM has no tempo or pitch control (BN6's
+    /// `sub_800065A` and `sound_8000672` have no counterpart), and none of
+    /// its lab's sound recordings calls one.
+    #[serde(default = "yes")]
+    pub low_hp_music: bool,
 }
 
 fn yes() -> bool {
@@ -72,6 +80,7 @@ impl Default for FlowRules {
             result_wait: ResultWait { normal: 0x66, special: 0x5E },
             chip_window_at_close: false,
             intro_from_black: false,
+            low_hp_music: true,
         }
     }
 }
@@ -122,6 +131,13 @@ pub struct EffectsRules {
     /// `kinds::palette_flash`) by its mode.
     #[serde(default)]
     pub palette_flash: PaletteFlashRule,
+    /// An afterimage (`sub_80E33FA`) and a form overlay (`sub_80C4530`'s
+    /// spawner) run while the battle is paused: BN6's spawners set their
+    /// header flag 0x04; BN5's (0x080E35F4, and its overlays', whose flags
+    /// its lab records without it) don't. Read of the owner's game's
+    /// rules.
+    #[serde(default = "yes")]
+    pub overlays_run_while_paused: bool,
 }
 
 impl Default for EffectsRules {
@@ -133,6 +149,7 @@ impl Default for EffectsRules {
             retype: RetypeRule::default(),
             obstacle_soldiers: false,
             palette_flash: PaletteFlashRule::default(),
+            overlays_run_while_paused: true,
         }
     }
 }
@@ -336,6 +353,9 @@ pub struct Rules {
     /// blink, two ticks out of phase. Presentation: visibility is no part
     /// of the simulation.
     pub flash_hides_on_clear: bool,
+    /// How a navi's status block runs its reactions (rule section
+    /// `status`).
+    pub reactions: Reactions,
     /// Whose emotions the side's navi has (rule section `status`): BN6's
     /// (`sub_8015B54`, `sub_8015BEC`) or BN5's (0x08012740: a soul first,
     /// then anger, a mood of 0 and Full Synchro, a mood under 65 worried;
@@ -545,6 +565,45 @@ pub struct PanelRules {
     /// its lava, 9 its holy, 10 its sea), which a panel trail's byte
     /// (NaviStats+0x12) names. Empty: BN6's.
     pub numbers: Vec<PanelType>,
+    /// Whether a reservation marks its holder (`Reservations`).
+    pub reservations: Reservations,
+}
+
+/// How a navi's status block (`sub_801AF44`'s top block, from the
+/// action requests to the status timers) runs its reactions.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Reactions {
+    /// BN6's: a drag, then the slides, a flinch, then the mercy flash's
+    /// timer (`sub_801A5EE`, only while the battle is fighting); a drag or
+    /// a flinch resets the attack's links and ends a freeze or a bubble,
+    /// and keeps a paralysis that a counter just made or that no flash
+    /// request comes with.
+    #[default]
+    Bn6,
+    /// BN5's (0x08017CC8 on): the mercy flash's timer first (0x080173C4,
+    /// whatever the battle's flags), then the slides, a drag and a flinch;
+    /// a drag or a flinch ends a paralysis unless a counter just made it
+    /// (0x08017084 unless its flag2 bit, the engine's 0x4000), and resets
+    /// nothing else (BN5 has no freeze or bubble).
+    Bn5,
+}
+
+/// What reserving a panel does to its holder (the panels section's
+/// `reservations`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Reservations {
+    /// BN6's: the holder's header flag 0x20 is set (`object_reservePanel`),
+    /// and its destroy releases what it holds (`sub_801BB78`, from
+    /// `object_genericDestroy` and the navis' end).
+    #[default]
+    Marked,
+    /// BN5's: the holder isn't marked (its reserve, 0x0801865C, sets only
+    /// the panel's), and nothing releases a destroyed holder's (its
+    /// destroys, 0x080138B6 and 0x080138F2, free the collision and the
+    /// object alone).
+    Unmarked,
 }
 
 impl PanelRules {

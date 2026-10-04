@@ -139,7 +139,7 @@ local function leave(me: Object)
         me.anim = 4
     end
     if countdown(me, 4) then
-        navi_chips.leave(me, (me.state :: State).controller)
+        navi_chips.leave_keeping_action(me, (me.state :: State).controller)
     end
 end
 
