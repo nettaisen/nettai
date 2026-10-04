@@ -571,6 +571,9 @@ impl UserData for Object {
         });
         methods.add_method("drop_statuses", |_, this, ()| with(|api, _| api.drop_statuses(this.0).map_err(api_error)));
         methods.add_method("end_statuses", |_, this, ()| with(|api, _| api.end_statuses(this.0).map_err(api_error)));
+        methods.add_method("set_overlay_anim_offset", |_, this, offset: u8| {
+            with(|api, _| Ok(api.set_overlay_anim_offset(this.0, offset)))
+        });
         methods.add_method("overlay_stepping", |_, this, mode: mlua::LuaString| {
             let keep = match &*mode.to_str()? {
                 "keep" => true,

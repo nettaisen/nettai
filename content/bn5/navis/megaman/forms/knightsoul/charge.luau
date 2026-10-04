@@ -2,8 +2,9 @@
 -- KnightSoul's charged shot (`knightsoul/charge`): the original's weapon routine 0x11 (0x0800F7A6) sets 30 damage and
 -- 10 more per point of buster Attack plus one (0x0800FE5E), its own counter byte and the ball's swing (12 a tick,
 -- one turn, confusing for 480 ticks, the ground ball), and starts action 0x40 (0x080EEAF6): MegaMan swings
--- (the counter window open) and on the fifth tick his wrecking ball (KnightMan's, chips/knightmn/ball) circles him
--- on the ground, a sound. 15 ticks, then 16 and 16 more (his arm down).
+-- (the counter window open) and on the fifth tick his wrecking ball (KnightMan's, chips/knightmn/ball: 0x080C768A,
+-- not running while dimmed as KnightMan's does) circles him on the ground, a sound. 15 ticks, then 16 and 16 more
+-- (his arm down).
 
 local ball = require("../../../../chips/knightmn/ball")
 local status = require("../../../../rules/status")
@@ -34,7 +35,7 @@ local function swing(me: Object, s: State)
     end
     if s.timer == SWING_AT then
         battle.play_sound(SOUND)
-        ball.swing(me, int.u32(me.attack_damage + me.hit_param * 0x10000), SWING)
+        ball.spawn(me, int.u32(me.attack_damage + me.hit_param * 0x10000), SWING)
     end
     s.timer += 1
     if s.timer >= SWING_TICKS then

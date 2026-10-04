@@ -1582,6 +1582,7 @@ fn rules() -> Rules {
         hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
         form_tick: true,
         flash_hides_on_clear: false,
+        missing_collision_status: Default::default(),
         reactions: Default::default(),
         emotions: Default::default(),
         form_break: Default::default(),
