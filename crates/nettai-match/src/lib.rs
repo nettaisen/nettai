@@ -1,16 +1,20 @@
 //! Match setups: everything a round needs, chosen before the battle (the
-//! arena, and each side's ruleset, navi, game, stats, folder, Crosses and
-//! patch cards), as a human-readable TOML file of content keys
-//! (docs/frontend.md §6), checked against the content (`check`), and the
-//! round it plays ([`Match::round`]). Live play's random draw of one is
-//! here too (`draw`), so a drawn setup can be written out and edited.
+//! game and its ruleset, the arena, and each side's navi, version, stats,
+//! folder, Crosses and patch cards), as a human-readable TOML file of
+//! names (docs/frontend.md §6), checked against the content (`check`), and
+//! the round it plays ([`Match::round`]). Live play's random draw of one
+//! is here too (`draw`), so a drawn setup can be written out and edited.
 //!
 //! nettai-frontend plays a match file (`--match`), and netplay's offers are
 //! a side of one: the same checks refuse a bad file and a bad offer.
 //! nettai-editor edits them.
+//!
+//! A match is of one game, which its arena chooses (`Arena::game`), and
+//! one ruleset of that game's (`Arena::ruleset`): both sides play by it
+//! with the game's navis, chips, souls and patch cards, every one named in
+//! the game's namespace alone (`ids`). There is no mixing of games.
 
-/// The game a match plays when it names no ruleset: BN6 (docs/design/rules-in-luau.md,
-/// the flat namespace: the default game is a frontend's, by name).
+/// The game a frontend plays without a match file: BN6.
 pub const DEFAULT_GAME: &str = "bn6";
 
 #[cfg(test)]
@@ -22,6 +26,7 @@ pub mod file;
 pub mod folders;
 #[cfg(test)]
 mod games;
+pub mod ids;
 mod import;
 mod import_bn5;
 pub mod link_navis;
@@ -50,46 +55,60 @@ pub use draw::Draws;
 pub use file::{parse, write};
 pub use folders::Folder;
 
-/// Where a round is fought: a stage and the background shown (none: the
-/// stage's own).
+/// Where a round is fought: a stage and the background shown, by its name
+/// in the match's game's pack (none: the stage's own).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Place {
     pub stage: StageHandle,
     pub background: Option<String>,
 }
 
-/// The arena (docs/design/rules-in-luau.md §2.3: the stage's game decides
-/// the battle's data): the first round's place and the set's later
-/// rounds' (the original's init exchange carries those).
+/// The arena, which decides everything else: the match's game (`bn6`,
+/// `bn5`: everything else a match names is that game's), the ruleset both
+/// sides play by (one of the game's), the first round's place and the
+/// set's later rounds' (the original's init exchange carries those), its
+/// stages the game's.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Arena {
+    pub game: String,
+    pub ruleset: RulesetHandle,
     pub first: Place,
     pub later: [Place; 2],
 }
 
 impl Arena {
-    /// Every round on one place.
-    pub fn on(place: Place) -> Arena {
-        Arena { later: [place.clone(), place.clone()], first: place }
+    /// Every round of a match of `game` by `ruleset` on one place.
+    pub fn on(game: &str, ruleset: RulesetHandle, place: Place) -> Arena {
+        Arena { game: game.to_string(), ruleset, later: [place.clone(), place.clone()], first: place }
     }
+
+    /// Whether the match's ruleset has the system with this name (`forms`,
+    /// `patch-cards`).
+    pub fn has_system(&self, content: &Content, system: &str) -> bool {
+        ruleset_has_system(content, self.ruleset, system)
+    }
+}
+
+/// `game`'s stock ruleset (a match file that names none plays by it).
+pub fn stock_ruleset(content: &Content, game: &str) -> Result<RulesetHandle, String> {
+    content.defs.stock_ruleset_of(game).ok_or_else(|| format!("{game} has no stock ruleset"))
 }
 
 /// What a side's tactics' send draws from, with the seed and the side.
 const TACTICS_SALT: u32 = 0x5441_4354;
 
-/// What a player brings to a match: their rules, their navi and game, the
-/// navi's stats (what their save and NaviCust give it), their folder (as a
-/// save holds it, once whole: the round's init shuffles it), the Crosses their Cross
-/// window offers, their patch cards (each switched on or not, in the order
-/// they apply), and the rest of what their save says.
+/// What a player brings to a match, all of it the match's game's: their
+/// navi and version, the navi's stats (what their save and NaviCust give
+/// it), their folder (as a save holds it, once whole: the round's init
+/// shuffles it), the Crosses their Cross window offers, their patch cards
+/// (each switched on or not, in the order they apply), and the rest of
+/// what their save says.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Side {
-    /// The player's ruleset (none: the content's stock ruleset).
-    pub ruleset: Option<RulesetHandle>,
     pub navi: NaviHandle,
-    /// The player's game: their Beast (Beast Out and Beast Over), their
-    /// console's own pictures and Beast Out roar, and the navi's game
-    /// (NaviStats+0x20, which MstrCros reads).
+    /// The player's version of the game: their Beast (Beast Out and Beast
+    /// Over), their console's own pictures and Beast Out roar, and the
+    /// navi's version (NaviStats+0x20, which MstrCros reads).
     pub game: GameVersion,
     /// The navi's stats as the round starts them (the version is the
     /// game's).
@@ -180,20 +199,6 @@ pub fn starting(content: &Content, mut s: NaviStats, game: GameVersion) -> NaviS
     s
 }
 
-impl Side {
-
-    /// The ruleset the side plays by: its own, else the content's stock.
-    pub fn ruleset_or_stock(&self, content: &Content) -> Option<RulesetHandle> {
-        self.ruleset.or_else(|| content.defs.stock_ruleset_of(crate::DEFAULT_GAME))
-    }
-
-    /// Whether the side's ruleset has the system with this key (unqualified,
-    /// in any root: `forms`, `patch-cards`).
-    pub fn has_system(&self, content: &Content, system: &str) -> bool {
-        ruleset_has_system(content, self.ruleset_or_stock(content), system)
-    }
-}
-
 /// The navi's game as NaviStats+0x20 has it (0 Gregar, 1 Falzar).
 pub fn version_byte(game: GameVersion) -> u8 {
     match game {
@@ -202,11 +207,9 @@ pub fn version_byte(game: GameVersion) -> u8 {
     }
 }
 
-/// Whether `ruleset` (none: none at all) lists a system whose key is
-/// `system` in its root (`bn6:forms` for `forms`).
-pub fn ruleset_has_system(content: &Content, ruleset: Option<RulesetHandle>, system: &str) -> bool {
-    let Some(r) = ruleset else { return false };
-    content.defs.ruleset(r).systems.iter().any(|&s| nettai_content_api::keys::local(&content.defs.system(s).key) == system)
+/// Whether `ruleset` lists a system named `system` in its game (`forms`).
+pub fn ruleset_has_system(content: &Content, ruleset: RulesetHandle, system: &str) -> bool {
+    content.defs.ruleset(ruleset).systems.iter().any(|&s| ids::local(&content.defs.system(s).key) == system)
 }
 
 /// The system that brings the Cross window and the form changes (BN6's).
@@ -216,22 +219,21 @@ pub const PATCH_CARDS_SYSTEM: &str = "patch-cards";
 /// The system that compiles the NaviCust (BN6's).
 pub const NAVICUST_SYSTEM: &str = "navicust";
 
-/// The NaviCust board of the side's game (its ruleset's game's rule
-/// section `navicust`).
-pub fn navicust_rules<'c>(content: &'c Content, s: &Side) -> &'c nettai_battle::content::NaviCustRules {
-    &content.side_rules(s.ruleset, ruleset_game(content, s.ruleset)).navicust
+/// The NaviCust board of a match by `ruleset` (its game's rule section
+/// `navicust`).
+pub fn navicust_rules(content: &Content, ruleset: RulesetHandle) -> &nettai_battle::content::NaviCustRules {
+    &rules(content, ruleset).navicust
 }
 
-/// The game of a side playing by `ruleset` (none: BN6's stock rules,
-/// [`DEFAULT_GAME`]).
 /// The SP navis whose deletion times a side's setup carries, by slot
-/// (its ruleset's rules' `sp_slots`: BN6's `sp/heatman` ...).
-pub fn sp_slots(content: &Content, ruleset: Option<RulesetHandle>) -> &[String] {
-    &content.side_rules(ruleset, ruleset_game(content, ruleset)).sp_slots
+/// (the rules' `sp_slots`: BN6's `sp/heatman` ...).
+pub fn sp_slots(content: &Content, ruleset: RulesetHandle) -> &[String] {
+    &rules(content, ruleset).sp_slots
 }
 
-pub fn ruleset_game(content: &Content, ruleset: Option<RulesetHandle>) -> nettai_battle::content::RootId {
-    content.defs.ruleset_game(ruleset, content.defs.root_id(DEFAULT_GAME).unwrap_or_default())
+/// The rule sections of a match by `ruleset`.
+fn rules(content: &Content, ruleset: RulesetHandle) -> &nettai_battle::content::Rules {
+    content.side_rules(Some(ruleset), content.defs.ruleset_game(Some(ruleset), Default::default()))
 }
 
 /// A whole match: the arena and both sides (the left, side 0, then the
@@ -249,55 +251,71 @@ pub struct Match {
 /// were, 0x600).
 pub const MATCH_EFFECTS: u32 = 0x600;
 
-/// The background a match names, `name`, written in full (`bn6:clouds`):
-/// its handle, if the packs have it (docs/design/rules-in-luau.md, the flat
-/// namespace).
-pub fn background(content: &Content, name: &str) -> Option<nettai_battle::content::BackgroundId> {
-    content.assets.handle(nettai_content_api::AssetKind::Background, name).map(nettai_battle::content::BackgroundId)
+/// The background a match of `game` names `name`: its handle, if the
+/// game's pack has it.
+pub fn background(content: &Content, game: &str, name: &str) -> Option<nettai_battle::content::BackgroundId> {
+    ids::background(content, game, name)
 }
 
-/// What is wrong with a background a match names that the packs haven't.
-pub(crate) fn no_background(at: &str, name: &str) -> String {
-    if nettai_content_api::keys::is_qualified(name) {
-        format!("{at}: no background {name:?}")
-    } else {
-        format!("{at}: background {name:?} names no pack: write it in full (\"bn6:{name}\")")
-    }
+/// What is wrong with a background a match names that its game's pack
+/// hasn't.
+pub(crate) fn no_background(at: &str, game: &str, name: &str) -> String {
+    format!("{at}: no background {name:?} in {game}")
 }
 
-/// The background a place shows.
-fn background_id(content: &Content, p: &Place) -> nettai_battle::content::BackgroundId {
-    p.background.as_ref().and_then(|b| background(content, b)).unwrap_or(content.stage(p.stage).background)
+/// The background a place of a match of `game` shows.
+fn background_id(content: &Content, game: &str, p: &Place) -> nettai_battle::content::BackgroundId {
+    p.background.as_ref().and_then(|b| background(content, game, b)).unwrap_or(content.stage(p.stage).background)
 }
 
 impl Match {
-    /// A new match, nothing chosen yet: the first link battle stage (with
-    /// its own background), and each side on the content's stock rules with
-    /// BN6's navi ([`DEFAULT_GAME`]'s: MegaMan, the navi that changes form,
-    /// else the first with fresh stats; any game's when it has none) at its
-    /// fresh stats, of Falzar; an
-    /// empty folder, no Regular or tag chips, the game's own Crosses, no
-    /// patch cards, and a NaviCust with no programs where the rules have
-    /// one. No seed (the battle's is drawn when it is played). Its folders
-    /// are none the checks accept until they are made.
-    pub fn empty(content: &Content) -> Result<Match, String> {
-        let stage = *link_battle_stages(content).first().ok_or("the content has no link battle stage")?;
-        let fresh: Vec<NaviHandle> = (0..content.defs.navis.len() as u16).map(NaviHandle).filter(|&n| content.navi(n).fresh.is_some()).collect();
-        let own: Vec<NaviHandle> =
-            fresh.iter().copied().filter(|&n| nettai_content_api::keys::root_of(&content.defs.navi(n).key) == Some(DEFAULT_GAME)).collect();
-        let navis = if own.is_empty() { fresh } else { own };
+    /// A new match of `game`, nothing chosen yet: the game's stock rules,
+    /// its first link battle stage (with its own background), and on each
+    /// side its navi (MegaMan, the navi that changes form, else the first
+    /// with fresh stats) at its fresh stats, of Falzar; an empty folder, no
+    /// Regular or tag chips, the game's own Crosses, no patch cards, and a
+    /// NaviCust with no programs where the rules have one. No seed (the
+    /// battle's is drawn when it is played). Its folders are none the
+    /// checks accept until they are made.
+    pub fn empty(content: &Content, game: &str) -> Result<Match, String> {
+        let stage = *link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
+        let arena = Arena::on(game, stock_ruleset(content, game)?, Place { stage, background: None });
+        let side = Side::fresh(content, &arena)?;
+        Ok(Match { seed: None, arena, sides: [side.clone(), side] })
+    }
+
+    /// The match's game.
+    pub fn game(&self) -> &str {
+        &self.arena.game
+    }
+
+    /// The match on `ruleset` (one of its game's), each side without what
+    /// the new rules don't take (`Side::fit_rules`).
+    pub fn set_ruleset(&mut self, content: &Content, ruleset: RulesetHandle) {
+        let old = self.arena.ruleset;
+        self.arena.ruleset = ruleset;
+        for s in &mut self.sides {
+            s.fit_rules(content, old, ruleset);
+        }
+    }
+}
+
+impl Side {
+    /// A side of a match on `arena`, nothing chosen yet (`Match::empty`).
+    pub fn fresh(content: &Content, arena: &Arena) -> Result<Side, String> {
+        let game = &arena.game;
+        let navis: Vec<NaviHandle> = navis(content, game);
         let navi = navis
             .iter()
             .copied()
             .find(|&n| content.navi(n).forms.is_some())
             .or_else(|| navis.first().copied())
-            .ok_or("the content has no navi with fresh stats")?;
-        let game = GameVersion::Falzar;
+            .ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
+        let version = GameVersion::Falzar;
         let mut side = Side {
-            ruleset: content.defs.stock_ruleset_of(DEFAULT_GAME),
             navi,
-            game,
-            stats: Side::base_stats(content, navi, game),
+            game: version,
+            stats: Side::base_stats(content, navi, version),
             emotion_window_glitch: false,
             folder: Folder::EMPTY,
             crosses: None,
@@ -311,22 +329,25 @@ impl Match {
             karma: facts::DEFAULT_KARMA,
             souls: None,
         };
-        let boards = navicust_rules(content, &side).boards.len();
-        if side.has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0 {
+        let boards = navicust_rules(content, arena.ruleset).boards.len();
+        if arena.has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0 {
             side.navicust = NaviCust::new(&[], (boards - 1) as u8).ok();
         }
-        Ok(Match { seed: None, arena: Arena::on(Place { stage, background: None }), sides: [side.clone(), side] })
+        Ok(side)
     }
+}
 
+impl Match {
     /// The round this match starts with, its battle's RNG and each console's
     /// from `seed`: the arena's first place, each side's player on their
     /// side (their folder shuffled by their console's RNG), the set's later
     /// places.
     pub fn round(&self, content: &Content, seed: u32) -> RoundSetup {
         let first = &self.arena.first;
+        let game = &self.arena.game;
         let settings = BattleSettings {
             stage: first.stage,
-            background: background_id(content, first),
+            background: background_id(content, game, first),
             effects: content.stage(first.stage).effects | MATCH_EFFECTS,
         };
         let player = |side: usize| {
@@ -349,7 +370,7 @@ impl Match {
                     emotion_window_glitch: s.emotion_window_glitch,
                     ..ConsoleSetup::default()
                 },
-                ruleset: s.ruleset,
+                ruleset: Some(self.arena.ruleset),
                 rules: Vec::new(),
                 patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
                 navicust: s.navicust,
@@ -365,7 +386,7 @@ impl Match {
             let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(s.game) };
             unlocks.write(content, &mut player).expect("a side's ruleset takes BN6's setup as its systems declare it");
             // Its karma and souls, into the systems that take them.
-            facts::write(content, s, &mut player).expect("a side's karma and souls fit its rules (the match's checks)");
+            facts::write(content, &self.arena, s, &mut player).expect("a side's karma and souls fit its rules (the match's checks)");
             player
         };
         RoundSetup {
@@ -375,7 +396,7 @@ impl Match {
             rng: seed,
             local_side: 0,
             score: SetScore::default(),
-            later_stages: self.arena.later.clone().map(|p| Stage { stage: p.stage, background: background_id(content, &p) }),
+            later_stages: self.arena.later.clone().map(|p| Stage { stage: p.stage, background: background_id(content, game, &p) }),
             low_hp_music_latched: false,
             players: [player(0), player(1)],
             link_delay: Link::RECORDED_DELAY,
@@ -406,52 +427,64 @@ pub fn next_round(content: &Content, first: &RoundSetup, folders: &[SavedFolder;
     next
 }
 
-/// The stages a link battle draws from: the content's link battle stages
-/// that aren't the random battle's (`sub_81209DC` draws a link battle's
-/// from the settings records 0 to 0x5F; those from 0x60 on are the random
-/// battle's, `effects::RANDOM`). A match is fought on one of them.
-pub fn link_battle_stages(content: &Content) -> Vec<StageHandle> {
+/// The stages a link battle of `game` draws from: the game's link battle
+/// stages that aren't the random battle's (`sub_81209DC` draws a link
+/// battle's from the settings records 0 to 0x5F; those from 0x60 on are
+/// the random battle's, `effects::RANDOM`). A match is fought on one of
+/// them.
+pub fn link_battle_stages(content: &Content, game: &str) -> Vec<StageHandle> {
     (0..content.defs.stages.len() as u16)
         .map(StageHandle)
         .filter(|&s| {
             let e = content.stage(s).effects;
-            e & effects::LINK != 0 && e & effects::RANDOM == 0
+            e & effects::LINK != 0 && e & effects::RANDOM == 0 && ids::in_game(game, &content.defs.stage(s).key)
         })
         .collect()
 }
 
-/// The link battle stage with this key.
-pub fn link_stage(content: &Content, key: &str) -> Result<StageHandle, String> {
-    let stages = link_battle_stages(content);
-    content.defs.stage_by_key(key).filter(|s| stages.contains(s)).ok_or_else(|| {
-        let keys: Vec<&str> = stages.iter().map(|&s| content.defs.stage(s).key.as_str()).collect();
-        format!("no link battle stage {key:?}; the content's are {}", keys.join(", "))
+/// `game`'s link battle stage named `name`.
+pub fn link_stage(content: &Content, game: &str, name: &str) -> Result<StageHandle, String> {
+    let stages = link_battle_stages(content, game);
+    ids::stage(content, game, name).filter(|s| stages.contains(s)).ok_or_else(|| {
+        let names: Vec<&str> = stages.iter().map(|&s| ids::local(&content.defs.stage(s).key)).collect();
+        format!("no link battle stage {name:?} in {game} ({game}'s are {})", names.join(", "))
     })
 }
 
-/// Patch cards from a list of card keys, comma-separated, in the order
-/// they apply (e.g. `bn6:canodumb,-bn6:shadow`): a key after `-` is installed but
-/// switched off (docs/engine/patch-cards.md).
-pub fn patch_cards(content: &Content, list: &str) -> Result<Vec<InstalledCard>, String> {
+/// `game`'s navis a side can play (those with fresh stats), in handle
+/// order.
+pub fn navis(content: &Content, game: &str) -> Vec<NaviHandle> {
+    (0..content.defs.navis.len() as u16)
+        .map(NaviHandle)
+        .filter(|&n| content.navi(n).fresh.is_some() && ids::in_game(game, &content.defs.navi(n).key))
+        .collect()
+}
+
+/// Patch cards of `game` from a list of their names, comma-separated, in
+/// the order they apply (e.g. `canodumb,-shadow`): a name after `-` is
+/// installed but switched off (docs/engine/patch-cards.md).
+pub fn patch_cards(content: &Content, game: &str, list: &str) -> Result<Vec<InstalledCard>, String> {
     let mut cards = Vec::new();
     for item in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
-        let (key, enabled) = match item.strip_prefix('-') {
-            Some(key) => (key, false),
+        let (name, enabled) = match item.strip_prefix('-') {
+            Some(name) => (name, false),
             None => (item, true),
         };
-        let card = content.defs.patch_card_by_key(key).ok_or_else(|| {
-            let keys: Vec<&str> = content.defs.patch_cards.iter().map(|c| c.key.as_str()).collect();
-            format!("no patch card {key:?}; the content's are {}", keys.join(", "))
+        let card = ids::patch_card(content, game, name).ok_or_else(|| {
+            let names: Vec<&str> =
+                content.defs.patch_cards.iter().map(|c| c.key.as_str()).filter(|k| ids::in_game(game, k)).map(ids::local).collect();
+            format!("no patch card {name:?} in {game} ({game}'s are {})", names.join(", "))
         })?;
         cards.push(InstalledCard { card, enabled });
     }
     Ok(cards)
 }
 
-/// The form-changing navi's Crosses of both games, in the games' order
-/// (Gregar's, then Falzar's).
-pub fn all_crosses(content: &Content) -> Result<Vec<nettai_content_api::FormHandle>, String> {
-    let navi = content.form_changing_navi().ok_or("the content has no navi that changes form")?;
+/// The Crosses of `game`'s navi that changes form, of both versions, in
+/// the versions' order (Gregar's, then Falzar's).
+pub fn all_crosses(content: &Content, game: &str) -> Result<Vec<nettai_content_api::FormHandle>, String> {
+    let navi = navis(content, game).into_iter().find(|&n| navi_crosses(content, n).is_some_and(|c| !c.is_empty()));
+    let navi = navi.ok_or_else(|| format!("{game} has no navi with Crosses"))?;
     navi_crosses(content, navi).ok_or_else(|| "the navi that changes form has no forms".into())
 }
 
@@ -461,30 +494,33 @@ pub fn navi_crosses(content: &Content, navi: NaviHandle) -> Option<Vec<nettai_co
     Some([GameVersion::Gregar, GameVersion::Falzar].iter().flat_map(|&g| forms.of(g).crosses.iter().copied()).collect())
 }
 
-/// What a match is, for the terminal: the seed, the field, each side's
-/// game and Crosses, and with `folders` the folders; `you` is the side the
-/// player plays.
+/// What a match is, for the terminal: its game and rules, the seed, the
+/// field, each side's navi, version (where the rules take one) and
+/// Crosses, and with `folders` the folders; `you` is the side the player
+/// plays.
 pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usize) -> String {
     let place = |p: &Place| {
-        let stage = &content.defs.stage(p.stage).key;
+        let stage = ids::local(&content.defs.stage(p.stage).key);
         match &p.background {
             Some(b) => format!("stage {stage}, background {b}"),
             None => format!("stage {stage}"),
         }
     };
-    let mut out = format!("match: seed {seed}, {}", place(&m.arena.first));
+    let ruleset = ids::local(&content.defs.ruleset(m.arena.ruleset).key);
+    let mut out = format!("match of {} ({ruleset} rules): seed {seed}, {}", m.arena.game, place(&m.arena.first));
     for (side, s) in m.sides.iter().enumerate() {
         let who = match (side == you, side) {
             (true, _) => "you",
             (false, 0) => "the left navi",
             (false, _) => "the right navi",
         };
-        let game = match s.game {
-            GameVersion::Gregar => "Gregar",
-            GameVersion::Falzar => "Falzar",
+        let version = match s.game {
+            GameVersion::Gregar => " of Gregar",
+            GameVersion::Falzar => " of Falzar",
         };
+        let version = if Side::takes_game(content, m.arena.ruleset) { version } else { "" };
         let navi = names::navi(content, s.navi);
-        out.push_str(&format!("\n  {navi} of {game} ({who})"));
+        out.push_str(&format!("\n  {navi}{version} ({who})"));
         if let Some(list) = &s.crosses {
             let crosses: Vec<&str> = list.forms().map(|f| names::form(content, f)).collect();
             out.push_str(&format!(", Crosses: {}", crosses.join(", ")));
