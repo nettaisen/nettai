@@ -220,7 +220,8 @@ local function offer_dark_chip(side: number)
             end
         end
     end
-    if taken == nil or first <= custom.hand_size(side) then
+    -- (`first` is set with `taken`.)
+    if taken == nil or (first :: number) <= custom.hand_size(side) then
         return
     end
     custom.swap_folder(side, custom.hand_size(side) + 1, taken)
