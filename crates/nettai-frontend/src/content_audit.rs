@@ -260,9 +260,10 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
                 }
             }
         }
-        if let Some(forms) = &data.forms {
+        if data.forms.is_some() {
             for version in [GameVersion::Falzar, GameVersion::Gregar] {
-                for &form in &forms.of(version).crosses {
+                let crosses = bn6_compat::forms::set(c, navi, version).map(|s| s.crosses).unwrap_or_default();
+                for &form in &crosses {
                     lookups::cross_name(a, c, navi, form, p);
                     if let Some(said) = text.form_description(c, form) {
                         lookups::dialogue(font, Lookup::CrossDescription(form), said.text, p);

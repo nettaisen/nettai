@@ -1870,7 +1870,6 @@ export type RulesetSpec = {
     berserk: any?,
     buster: any?,
     chip_use: any?,
-    cross_special: any?,
     custom_screen: any?,
     effects: any?,
     elements: any?,
@@ -2099,11 +2098,13 @@ export type NaviDef = {
     fire_charge: { number }?,
     -- "status_immune": a hit's status doesn't take.
     traits: { "status_immune" }?,
-    -- The forms it changes into (MegaMan's), by game: the Crosses by their
-    -- number on the custom screen, Beast Out and Beast Over. Where the
-    -- original asks whether a navi is MegaMan, the ruleset asks whether it
-    -- has forms. BN5's MegaMan has souls instead (forms with a `soul`,
-    -- which the custom screen's soul button offers).
+    -- Its forms (MegaMan's): where the original asks whether a navi is
+    -- MegaMan, the ruleset asks whether it has them. The engine reads
+    -- `souls` (BN5's Soul Unison: forms with a `soul`, which the custom
+    -- screen's soul button offers); the rest is its game's: BN6's sets by
+    -- game (`gregar`, `falzar`: the Crosses by their number on the custom
+    -- screen, Beast Out and Beast Over), which BN6's rules and bn6-compat
+    -- read.
     forms: { gregar: FormSet?, falzar: FormSet?, souls: { FormDef }? }?,
     identity: Identity,
     -- What a navi switch brings it with: its weapons, the rest of its
@@ -2364,7 +2365,8 @@ export type StatusDef = {
     survives_counter: boolean?,
 }
 export type Status = StatusDef
--- A Beast Out lock-on mode (rules/lockon): how the rush picks the panel to
+-- A Beast Out lock-on mode (BN6's rules/lockon: a record of type "lockon",
+-- `define.record("lockon", { id = ..., ... })`): how the rush picks the panel to
 -- attack a target from. `stay`: the navi's own panel. `row`: along the
 -- target's row counting from the navi's own column (`same_row_offsets`
 -- when they share a row), then the rows `row_shifts` away. `near`: the
@@ -2783,7 +2785,6 @@ declare define: {
     region: (spec: RegionSpec) -> Region,
     collision: (spec: CollisionTypeSpec) -> CollisionType,
     status: (spec: StatusDef) -> StatusDef,
-    lockon: (spec: LockonDef) -> LockonDef,
     identity: (spec: IdentitySpec) -> Identity,
     patch_card: (spec: PatchCardSpec) -> PatchCard,
     navicust_program: (spec: NaviCustProgramSpec) -> NaviCustProgram,

@@ -48,7 +48,6 @@
 
 pub use nettai_battle::content::strings::{ChipStrings, FormStrings, NaviStrings, PatchCardStrings, Strings};
 use nettai_battle::content::Defs;
-use nettai_content_api::FormHandle;
 use std::path::{Path, PathBuf};
 
 /// The directory of a pack that holds its tables.
@@ -113,25 +112,13 @@ pub fn languages(dir: &Path) -> Vec<String> {
 }
 
 /// What is wrong with a game's table against its definitions: an id no
-/// definition has, a form's strings for a
-/// form that isn't a Cross (nothing shows them), a string with a combining
-/// mark (write the composed character); and in the own language's (`own`),
-/// a chip, navi or Cross without a name, which a frontend would show by
-/// its id. (A string may be empty: the invalid
-/// chip's name is, and the Japanese games print no description for some
-/// chips.)
+/// definition has, a string with a combining mark (write the composed
+/// character); and in the own language's (`own`), a chip or navi without a
+/// name, which a frontend would show by its id. (Which forms' strings
+/// something shows is a game's: BN6's Crosses', which nettai-match's BN6
+/// tests check.) (A string may be empty: the invalid chip's name is, and
+/// the Japanese games print no description for some chips.)
 pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
-    // The Crosses: the forms the navis' Cross windows offer (their form
-    // sets' `crosses`), whose strings the window shows.
-    let crosses: std::collections::BTreeSet<FormHandle> = defs
-        .navis
-        .iter()
-        .filter_map(|n| n.record.forms.as_ref())
-        .flat_map(|f| f.gregar.crosses.iter().chain(&f.falzar.crosses))
-        .copied()
-        // (And the souls: BN5's soul window shows their names.)
-        .chain(defs.forms.iter().enumerate().filter(|(_, f)| f.record.soul.is_some()).map(|(i, _)| FormHandle(i as u16)))
-        .collect();
     let mut out = Vec::new();
     let mut text = |what: String, v: &Option<String>| {
         if let Some(v) = v {
@@ -157,12 +144,8 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
         text(format!("navis.{key}.run_message"), &n.run_message);
     }
     for (key, f) in &s.forms {
-        match defs.form_by_key(key) {
-            None => unknown.push(format!("forms.{key}: no form has this key")),
-            Some(h) if !crosses.contains(&h) => {
-                unknown.push(format!("forms.{key}: not a Cross (nothing shows another form's strings)"))
-            }
-            Some(_) => {}
+        if defs.form_by_key(key).is_none() {
+            unknown.push(format!("forms.{key}: no form has this key"));
         }
         text(format!("forms.{key}.name"), &f.name);
         text(format!("forms.{key}.description"), &f.description);
@@ -189,11 +172,6 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
         for d in &defs.navis {
             if !named(s.navi(&d.key).map(|n| &n.name)) {
                 unknown.push(format!("navis.{}: the content's own language names every navi", d.key));
-            }
-        }
-        for (_, d) in defs.forms.iter().enumerate().filter(|(i, _)| crosses.contains(&FormHandle(*i as u16))) {
-            if !named(s.form(&d.key).map(|f| &f.name)) {
-                unknown.push(format!("forms.{}: the content's own language names every Cross", d.key));
             }
         }
         for d in &defs.patch_cards {
