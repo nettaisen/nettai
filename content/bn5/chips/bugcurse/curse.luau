@@ -22,7 +22,7 @@ local WAIT = 0x3A
 -- The bugs it hits with, a tick each (the code in the low byte, its argument in the high), and in the operation battle
 -- mode.
 local BUGS: { number } = { 0x0124, 0x1418, 0x1419, 0x04FF, 0x04FE }
-local BUGS_PER_PLAYER: { number } = { 0x1218, 0x04F9, 0x0814 }
+local BUGS_OPERATION_BATTLE: { number } = { 0x1218, 0x04F9, 0x0814 }
 
 -- Its controller is done waiting on it (the flag it gave it, cleared).
 local function release(me: Object)
@@ -70,15 +70,15 @@ end
 -- Action 4 (0x080D65E8): a bug a tick, 5 of them (3 in the operation battle); then the controller moves on, and
 -- it goes.
 local function bugs(me: Object)
-    local per_player = operation_battle()
+    local operation = operation_battle()
     if me.phase_init == 0 then
-        me.timer = if per_player then 3 else 5
+        me.timer = if operation then 3 else 5
         me.timer2 = 0
         me.phase_init = 4
     end
     local n = me.timer2
     if n < 5 then
-        local list = if per_player then BUGS_PER_PLAYER else BUGS
+        local list = if operation then BUGS_OPERATION_BATTLE else BUGS
         local bug = list[n + 1]
         if bug == nil then
             error(string.format("BugCurse's curse: bug %d reads past 0x080D664E", n))

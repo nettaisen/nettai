@@ -273,7 +273,7 @@ pub enum DamageFormula {
     /// (`sub_8010AE4`; formulas 1 to 18). `slot`: the SP navi, one of the
     /// rules' `sp_slots`; `by_time`: the damage by deletion-time step
     /// (`Rules::sp_deletion_times`). `operation_battle`: BN5's SP navi
-    /// chips' damage in the battle flag 0x40 mode instead (0x0800E8DE's
+    /// chips' damage in the own-gauges mode instead (0x0800E8DE's
     /// table; BN6's has no such branch).
     SpNavi {
         slot: String,
@@ -300,7 +300,7 @@ pub enum DamageFormula {
     /// BN5's CusVolt (its formulas 73 to 75, 0x0800EB0E): `base` plus 100
     /// by the custom gauge's level (its value >> 7): 100 × level / 95 below
     /// 96, 100 to 126, none from 127 (full); the side's own gauge in the
-    /// battle flag 0x40 mode.
+    /// the own-gauges mode.
     GaugeLevel { base: u16 },
     /// By a count of its user's side, `by_count[n]` (the last entry for
     /// more), and `operation_battle` in BN5's operation battle: BN5's

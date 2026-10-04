@@ -61,7 +61,7 @@ fn a_collision_type_defined_twice_is_an_error() {
     let mut r = Report::default();
     nettai_content::lint::definitions(&c, &mut r);
     let errors: Vec<&str> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| i.message.as_str()).collect();
-    assert!(errors.iter().any(|e| e.contains("collision type test:one is row 0xfe") && e.contains("two (test:lib/two.luau)")), "{errors:?}");
+    assert!(errors.iter().any(|e| e.contains("collision type one is row 0xfe") && e.contains("two (test:lib/two.luau)")), "{errors:?}");
 }
 
 /// The repository's content directory.
@@ -134,8 +134,9 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
     assert_ne!(define(reshaped).hash(), c.hash());
 }
 
-/// docs/design/content-model-v2.md §4.0: content is one game, every id in
-/// full: BN5's content has `bn5:cannon` and no `bn6:cannon`. BN5's chips
+/// docs/design/content-model-v2.md §4.0: content is one game, its ids
+/// local: BN5's content has `cannon`, BN5's own, and a name written with a
+/// game (`bn6:cannon`, `bn5:cannon`) names nothing. BN5's chips
 /// that have no use yet (the port writes them) are its manifest's
 /// `unported`, which don't load. Two games are two contents.
 #[test]
@@ -149,9 +150,9 @@ fn a_game_loads_alone_under_its_names() {
     }
     let d = &c.defs;
     assert_eq!((c.game(), d.game.as_str()), ("bn5", "bn5"));
-    assert!(d.chip_by_key("cannon").is_some());
-    assert_eq!(d.chip_by_key("cannon"), None, "BN6's chips are another content's");
-    assert_eq!(d.chip_by_key("cannon"), None, "an id is written in full");
+    assert!(d.chip_by_key("cannon").is_some(), "an id is local to its game");
+    assert_eq!(d.chip_by_key("bn6:cannon"), None, "BN6's chips are another content's"); // (written in full)
+    assert_eq!(d.chip_by_key("bn5:cannon"), None, "an id is written without its game"); // (written in full)
     assert_eq!(d.stock_ruleset(), d.ruleset_by_key("stock"));
     assert_eq!(c.strings.chip("cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
     let mut both = read(&["bn6", "bn5"]);

@@ -121,7 +121,9 @@ pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
         }
         for m in p.entries().iter().chain(p.unported().iter()) {
             let file = format!("{}.luau", keys::module_path(m));
-            if !dir.join(&file).is_file() {
+            // (A folder names its `init` module.)
+            let init = format!("{}.luau", keys::module_path(&keys::init_of(m)));
+            if !dir.join(&file).is_file() && !dir.join(&init).is_file() {
                 problems.push(format!("{}/{}: lists {}, and no module {file} is there", p.id, packs::MANIFEST, keys::local(m)));
             }
         }
@@ -133,7 +135,9 @@ pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
                     Ok(target) => {
                         if let Err(e) = packs::check_require(&all, &name, &written, &target) {
                             problems.push(e);
-                        } else if !dir.join(format!("{}.luau", keys::module_path(&target))).is_file() {
+                        } else if !dir.join(format!("{}.luau", keys::module_path(&target))).is_file()
+                            && !dir.join(format!("{}.luau", keys::module_path(&keys::init_of(&target)))).is_file()
+                        {
                             problems.push(format!("{file}: require({written:?}): no module {}.luau", keys::module_path(&target)));
                         }
                     }

@@ -23,7 +23,7 @@ fn bn5_compat_reads() {
     assert_eq!(built_in.chip_key(0x133), Some("holydrem"));
     assert_eq!(built_in.chip(0x133).as_deref(), Some("holydrem"));
     assert_eq!(built_in.chip_entry("holydrem").map(|c| c.id), Some(0x133));
-    assert_eq!(built_in.chip_entry("holydrem"), None);
+    assert_eq!(built_in.chip_entry("bn6:holydrem"), None); // (written in full)
     let phoenix = &built_in.chips["phoenix"];
     assert_eq!(phoenix.colonel.as_ref().and_then(|c| c.flags.as_deref()).map(|f| f.contains(&"library".to_string())), Some(true));
     assert_eq!(built_in.chips["custswrd"].damage_formula, Some(45));
@@ -133,10 +133,11 @@ fn a_rounds_setup_names_what_the_content_lacks() {
     assert_eq!(round.chip_ids().unwrap(), [0x001]);
     let content = std::sync::Arc::new(nettai_battle::content::testing::build());
     let needs = round.needs(&content, Compat::bn5()).unwrap();
-    assert_eq!(needs[0], "chip bn5:cannon (0x001)");
-    assert!(needs.contains(&"side 1's navi bn5:megaman (0x00)".to_string()), "{needs:?}");
+    assert_eq!(needs[0], "chip cannon (0x001)");
+    // (Its navi's name, `megaman`, the test content has: a name is its
+    // game's, and a round runs on its own game's content.)
     assert!(needs.iter().any(|n| n.starts_with("the stage")), "{needs:?}");
     assert_eq!(needs.last().map(String::as_str), Some("BN5's pack"));
     let replay = trace::run_round(&round, &content, Compat::bn5());
-    assert!(matches!(replay.stopped, Some(Stop::Setup(ref e)) if e.contains("chip bn5:cannon")), "{:?}", replay.stopped);
+    assert!(matches!(replay.stopped, Some(Stop::Setup(ref e)) if e.contains("chip cannon")), "{:?}", replay.stopped);
 }

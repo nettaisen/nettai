@@ -31,8 +31,7 @@ local stun_strike = require("../lib/swords/stun_strike")
 local statuses = require("./status")
 local supports = require("../lib/supports/controller")
 
-return define.roles {
-    id = "roles",
+return {
     actions = {
         -- The charged shot a navi's request starts from idle without its
         -- weapon's setup (the original's action 0x16).

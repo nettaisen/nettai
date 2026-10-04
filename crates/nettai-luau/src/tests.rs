@@ -55,7 +55,7 @@ fn a_support_pack_has_no_game_context() {
         uses: uses.iter().map(|u| u.to_string()).collect(),
         ..Default::default()
     };
-    let packs = [manifest("lib", PackKind::Support, &[]), manifest("test", PackKind::Game, &["lib"])];
+    let packs = [manifest("lib", PackKind::Support, &[]), manifest("game", PackKind::Game, &["lib"])];
     let load = |modules: &[(&str, &str)]| {
         let pack = Pack::new(modules.iter().map(|(n, s)| (n.to_string(), s.to_string())))
             .with_entries(vec![modules[0].0.to_string()])
@@ -67,7 +67,7 @@ fn a_support_pack_has_no_game_context() {
     let maker = "return function(look: any) return define.effect { sprite = look.sprite, anim = 0 } end";
     load(&[
         (
-            "test:x",
+            "game:x",
             "local make = require('@lib/m')\nlocal _ = system.state\nreturn make({ sprite = asset.sprite('bomb') })",
         ),
         ("lib:m", maker),
@@ -77,15 +77,15 @@ fn a_support_pack_has_no_game_context() {
         assert!(e.contains(&format!("{module}: a support pack has no `{name}`")), "{module} naming `{name}`: {e}");
     };
     // At a support module's top.
-    let e = load(&[("test:x", "return require('@lib/m')"), ("lib:m", "return asset.sprite('bomb')")]).unwrap_err();
+    let e = load(&[("game:x", "return require('@lib/m')"), ("lib:m", "return asset.sprite('bomb')")]).unwrap_err();
     refused(&e, "asset", "lib:m");
-    let e = load(&[("test:x", "return require('@lib/m')"), ("lib:m", "return system.side")]).unwrap_err();
+    let e = load(&[("game:x", "return require('@lib/m')"), ("lib:m", "return system.side")]).unwrap_err();
     refused(&e, "system", "lib:m");
     // After a game's module has named the asset: Luau resolves a module's
     // globals against the VM's when it loads, so the support pack's must
     // be missing there too, not only in its environment.
     let e = load(&[
-        ("test:x", "local s = asset.sprite('bomb')\nreturn require('@lib/m')"),
+        ("game:x", "local s = asset.sprite('bomb')\nreturn require('@lib/m')"),
         ("lib:m", "return asset.sprite('bomb')"),
     ])
     .unwrap_err();
@@ -93,7 +93,7 @@ fn a_support_pack_has_no_game_context() {
     // In a support pack's function, though a game's module calls it while
     // it loads: a function keeps its module's environment.
     let e = load(&[
-        ("test:x", "local make = require('@lib/m')\nreturn make()"),
+        ("game:x", "local make = require('@lib/m')\nreturn make()"),
         ("lib:m", "return function() return define.effect { sprite = asset.sprite('bomb'), anim = 0 } end"),
     ])
     .unwrap_err();
@@ -262,17 +262,30 @@ fn assets_resolve_by_name_while_content_loads() {
     assert!(e.is_ok(), "calling it later is the runtime's error, not the define phase's");
 }
 
+/// A game's rules are one definition, its stock ruleset (rules/init.luau):
+/// its rule sections and its roles are plain tables in it, whose
+/// definitions are references (docs/design/content-model-v2.md §3.8).
 #[test]
-fn the_roles_are_one_definition() {
+fn a_games_rules_are_one_ruleset() {
     let d = define_named(&[
         ("lib/counter", "return define.action { id = 'counter', state = {}, update = function(me, s) end }"),
-        ("rules/roles", "return define.roles { id = 'roles', actions = { anti_damage_counter = require('../lib/counter') } }"),
+        ("rules/roles", "return { actions = { anti_damage_counter = require('../lib/counter') } }"),
+        ("rules/pools", "return { actor = 32, attack = 32, effect = 32 }"),
+        (
+            "rules/init",
+            "return define.ruleset { id = 'stock', stock = true, systems = {}, pools = require('./pools'), roles = require('./roles') }",
+        ),
     ])
     .unwrap();
-    let roles = d.get(Registry::Roles, "roles").expect("keyed roles");
-    assert_eq!(roles.spec.field("actions").field("anti_damage_counter"), &Data::Ref(Registry::Action, "counter".into()));
-    let e = define_named(&[("a", "return define.roles { id = 'roles' }"), ("b", "return define.roles { id = 'roles' }")]).unwrap_err();
-    assert!(e.contains("roles \"roles\" is defined twice"), "{e}");
+    let stock = d.get(Registry::Ruleset, "stock").expect("the stock ruleset");
+    assert_eq!(stock.spec.field("roles").field("actions").field("anti_damage_counter"), &Data::Ref(Registry::Action, "counter".into()));
+    assert_eq!(stock.spec.field("pools").field("actor"), &Data::Int(32));
+    // No definer makes a section or the roles apart from it.
+    for definer in ["rules('pools', {})", "roles {}"] {
+        let source = format!("return define.{definer}");
+        let e = define_named(&[("m", source.as_str())]).unwrap_err();
+        assert!(e.contains("attempt to call a nil value"), "define.{definer}: {e}");
+    }
 }
 
 #[test]
@@ -283,7 +296,7 @@ fn definitions_are_frozen_and_definers_close_after_loading() {
     )]);
     let (lua, defined, modules, _, _) = open(&p, &AssetNames::default(), Options::default()).unwrap();
     assert!(defined.tables.iter().all(|t| t.is_readonly()));
-    let LuaValue::Table(m) = &modules["test:m"] else { panic!("a table") };
+    let LuaValue::Table(m) = &modules["test:m"] else { panic!("a table") }; // (written in full)
     let late: Function = m.get("late").unwrap();
     BUDGET.with(|b| b.set(1000));
     let e = late.call::<LuaValue>(()).unwrap_err().to_string();
@@ -301,7 +314,7 @@ fn coverage_records_the_modules_that_ran() {
         ("other", "return { g = function() return 1 end }"),
     ]);
     let (lua, _, modules, _, _) = open(&p, &AssetNames::default(), Options::default()).unwrap();
-    let LuaValue::Table(m) = &modules["test:m"] else { panic!("a table") };
+    let LuaValue::Table(m) = &modules["test:m"] else { panic!("a table") }; // (written in full)
     let f: Function = m.get("f").unwrap();
     BUDGET.with(|b| b.set(1000));
     assert_eq!(f.call::<i64>(3).unwrap(), 12);
@@ -309,7 +322,7 @@ fn coverage_records_the_modules_that_ran() {
     coverage::start();
     assert_eq!(f.call::<i64>(3).unwrap(), 12);
     let ran = coverage::take();
-    assert_eq!(ran.modules.into_iter().collect::<Vec<_>>(), ["test:lib/twice", "test:m"]);
+    assert_eq!(ran.modules.into_iter().collect::<Vec<_>>(), ["test:lib/twice", "test:m"]); // (written in full)
     // Stopped: the next call isn't recorded.
     assert_eq!(f.call::<i64>(3).unwrap(), 12);
     assert_eq!(coverage::take(), coverage::Ran::default());

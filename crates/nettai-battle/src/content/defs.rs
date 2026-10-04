@@ -547,8 +547,8 @@ pub struct Defs {
     pub regions: Vec<super::Region>,
     /// Collision types (`define.collision`), by handle.
     pub collisions: Vec<CollisionTypeDef>,
-    /// What the game needs from content by role (`define.roles`; none
-    /// defined, none filled).
+    /// What the game needs from content by role (its stock ruleset's
+    /// `roles`; none given, none filled).
     pub roles: Roles,
     /// The systems and rulesets (docs/design/rules-in-luau.md), by handle.
     pub systems: Vec<SystemDef>,
@@ -951,8 +951,16 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
     serde_json::from_value(Json::Object(o)).map_err(|e| what(e.to_string()))
 }
 
-/// `define.roles { actions = { ... }, kinds = { ... } }` (content::roles):
-/// each role a definition.
+/// The game's stock ruleset (`define.ruleset { stock = true, ... }`, its
+/// rules/init.luau), which holds its rule sections and its roles; none for
+/// content without one. (A game has one: `read_rulesets` refuses two.)
+pub(crate) fn stock_ruleset(definitions: &Definitions) -> Option<&Definition> {
+    definitions.of(Registry::Ruleset).iter().find(|d| matches!(d.spec.field("stock"), Data::Bool(true)))
+}
+
+/// The stock ruleset's `roles = { actions = { ... }, kinds = { ... } }`
+/// (content::roles; a plain table, rules/roles.luau): each role a
+/// definition.
 fn read_roles(
     d: &Definition,
     definitions: &Definitions,
@@ -963,15 +971,15 @@ fn read_roles(
     statuses: &[StatusDef],
     functions: &mut Functions,
 ) -> Result<Roles, ContentError> {
-    let what = |e: String| ContentError::new(format!("{}.luau: roles: {e}", d.module));
-    let Data::Map(groups) = &d.spec else { return Err(what("a table of role groups".into())) };
+    let what = |e: String| ContentError::new(format!("{}.luau: ruleset {}: roles: {e}", d.module, d.key));
+    let groups: &[(nettai_content_api::DataKey, Data)] = match d.spec.field("roles") {
+        Data::Nil => &[],
+        Data::Map(groups) => groups,
+        _ => return Err(what("a table of role groups".into())),
+    };
     let mut roles = Roles::default();
     for (group, entries) in groups {
         let group = group.to_string();
-        // (Its id names its game: `bn6:roles`.)
-        if group == "id" {
-            continue;
-        }
         let Data::Map(entries) = entries else { return Err(what(format!("`{group}` is a table"))) };
         for (name, v) in entries {
             let name = name.to_string();
@@ -1008,7 +1016,7 @@ fn read_roles(
                     if !matches!(v, Data::Function) {
                         return Err(what(format!("hooks.{name} is not a function")));
                     }
-                    roles.hooks.insert(role, functions.id(FnSource::slot(Registry::Roles, &d.key, &format!("hooks.{name}"))));
+                    roles.hooks.insert(role, functions.id(FnSource::slot(Registry::Ruleset, &d.key, &format!("roles.hooks.{name}"))));
                 }
                 "chips" => {
                     let names: Vec<&str> = ChipRole::ALL.iter().map(|r| r.name()).collect();
@@ -1691,14 +1699,11 @@ impl Defs {
             collisions.push(CollisionTypeDef { flags: [word("side0")?, word("side1")?], row_offset });
         }
 
-        // The roles: the game's (it defines at most one).
-        let roles = match definitions.of(Registry::Roles) {
-            [] => Roles::default(),
-            [d] => read_roles(d, &definitions, &content.assets, &actions, &kinds, &chips, &statuses, &mut functions)?,
-            more => {
-                let keys: Vec<&str> = more.iter().map(|d| d.key.as_str()).collect();
-                return Err(ContentError::new(format!("{game} defines {} roles ({}); a game has one", more.len(), keys.join(", "))));
-            }
+        // The roles: the game's, its stock ruleset's `roles` (docs/design/
+        // content-model-v2.md §7.4).
+        let roles = match stock_ruleset(&definitions) {
+            Some(d) => read_roles(d, &definitions, &content.assets, &actions, &kinds, &chips, &statuses, &mut functions)?,
+            None => Roles::default(),
         };
 
         // The systems and the rulesets.
@@ -2110,10 +2115,26 @@ fn read_rulesets(definitions: &Definitions, game: &str) -> Result<Vec<RulesetDef
     for d in defs {
         let what = |e: &str| ContentError::new(format!("{}.luau: ruleset {}: {e}", d.module, d.key));
         const FIELDS: [&str; 6] = ["id", "stock", "systems", "base", "add", "remove"];
+        // (The game's rule sections and roles: its stock ruleset's fields
+        // alone. A variant changes its base's systems, nothing else.)
+        let stock = matches!(d.spec.field("stock"), Data::Bool(true));
         if let Data::Map(entries) = &d.spec {
             for (k, _) in entries {
-                if !matches!(k, nettai_content_api::DataKey::Str(f) if FIELDS.contains(&f.as_str())) {
+                let nettai_content_api::DataKey::Str(f) = k else {
                     return Err(what(&format!("`{k}` is no field of a ruleset ({})", FIELDS.join(", "))));
+                };
+                let game_wide = f == "roles" || super::sections::SECTIONS.contains(&f.as_str());
+                if game_wide && !stock {
+                    return Err(what(&format!(
+                        "`{f}`: a game's rule sections and roles are its stock ruleset's (rules/init.luau); another ruleset changes only the systems (`add`, `remove` of its `base`)"
+                    )));
+                }
+                if !game_wide && !FIELDS.contains(&f.as_str()) {
+                    return Err(what(&format!(
+                        "`{f}` is no field of a ruleset ({}; a stock one's rule sections {} and `roles`)",
+                        FIELDS.join(", "),
+                        super::sections::SECTIONS.join(", ")
+                    )));
                 }
             }
         }

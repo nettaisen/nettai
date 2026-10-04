@@ -165,7 +165,7 @@ end
 -- A class's routine: its steps by the step byte (the original's jump tables, `[step]` 0, 4, 8), or one routine.
 type Step = (navi: Object, s: State) -> ()
 
--- 0x08029D18 (classes 0 and 17, and 7 in flag-0x40 mode): the chip reaches the target from where the navi stands
+-- 0x08029D18 (classes 0 and 17, and 7 in the operation battle): the chip reaches the target from where the navi stands
 -- (its reach list toward its enemies): in place if a hit would land, else a step anywhere of its own area; else a
 -- step to a panel from which it reaches, or, with none, the next target and a step anywhere.
 local function reach_from_here(navi: Object, s: State)
@@ -358,7 +358,7 @@ local function lava_ahead(navi: Object, s: State)
     go(navi, s, 4, x, y :: number)
 end
 
--- 0x0802A2C8 (class 7 out of flag-0x40 mode): with the custom gauge's damage (`sub_8010B78`) 100 or more, a step to
+-- 0x0802A2C8 (class 7 out of the operation battle): with the custom gauge's damage (`sub_8010B78`) 100 or more, a step to
 -- a panel from which reach list 10 reaches the target; else not ready and a step anywhere.
 local function gauge_reach(navi: Object, s: State)
     if battle.gauge_damage(navi.alliance) >= 100 then
@@ -842,7 +842,7 @@ local function run(class: number, navi: Object, s: State)
     step(navi, s)
 end
 
--- 0x0802A2A0 (class 7): in flag-0x40 mode class 0's; else its own steps (0x0802A2C0).
+-- 0x0802A2A0 (class 7): in the operation battle class 0's; else its own steps (0x0802A2C0).
 local CLASS_7: { [number]: Step } = steps(gauge_reach)
 
 -- 0x08029B3C: one decision's step: busy until the class's routine says otherwise; whether it still is.

@@ -142,7 +142,7 @@ pub fn background(c: &Content, id: BackgroundId) -> Option<u8> {
     number(c, AssetKind::Background, id.0).map(|n| n.id as u8)
 }
 
-/// The name content gives `kind` asset `h` (`bn6:bomb`), for a problem's
+/// The name content gives `kind` asset `h` (`bomb`), for a problem's
 /// text.
 pub fn name(c: &Content, kind: AssetKind, h: u16) -> Option<&str> {
     let names = match kind {

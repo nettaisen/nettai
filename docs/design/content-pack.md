@@ -47,8 +47,9 @@ navis/megaman/forms/KEY/form.luau         MegaMan's forms, with their weapons an
 navis/megaman/weapons/KEY/weapon.luau     the weapons several forms share (`define.weapon`)
 objects/KIND/*.luau                       object kinds several owners spawn (`define.kind`)
 stages/netbattle.luau                     the stages (`define.stage`), with their layouts and actors
-rules/*.luau                              rule sections (`define.rules`), collision types, statuses,
-                                          lock-on modes, and the roles (roles.luau)
+rules/init.luau                           the stock ruleset: the game's one rules definition
+rules/*.luau                              its rule sections (plain tables), collision types, statuses,
+                                          lock-on modes, and the roles (roles.luau, a plain table)
 lib/*.luau, lib/FAMILY/*.luau             helpers and builders families share; the shared effects, sparks
                                           and regions
 types.d.luau                              the game's shared types (for editors and the checker; the

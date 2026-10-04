@@ -2,9 +2,9 @@
 //! §7.4): content names a sprite, a sound, a banner, a background or a
 //! mugshot (`asset.sprite("bomb")`), and the name resolves while content
 //! loads to an asset handle, its place among its kind's names in byte-wise
-//! order. Content loads from several packs at once (one a game): every name
-//! is qualified with its pack's game (`bn6:bomb`), as the loader qualifies
-//! definitions' keys, so the handles cover every loaded pack. The engine
+//! order. A match plays one game, so a name is its game's asset pack's own
+//! (`bomb`), as an id is local to its game (docs/design/content-model-v2.md
+//! §4.0). The engine
 //! knows an asset by its handle alone; what the pack calls it (a sprite's
 //! category and index, a sound's song-table entry) is here, for loaders,
 //! frontends, the audio and compat.
@@ -51,7 +51,7 @@ impl std::fmt::Display for AssetKind {
     }
 }
 
-/// The assets content can name, by kind and qualified name (`bn6:bomb`),
+/// The assets content can name, by kind and name (`bomb`, the pack's own),
 /// each with its pack and the pack's own number for it. A kind's handles
 /// are its names' places in byte order.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]

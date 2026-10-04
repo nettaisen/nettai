@@ -102,7 +102,7 @@ pub struct HudHidden {
     pub gauge: bool,
     /// The emotion window (draw task 14, `sub_801CDEC`).
     pub emotion_window: bool,
-    /// The battle flag 0x40 mode's gauge, drawn by its levels (draw task
+    /// The own-gauges mode's gauge, drawn by its levels (draw task
     /// 17, `sub_801C640`).
     pub level_gauge: bool,
 }

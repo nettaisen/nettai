@@ -21,7 +21,7 @@ local mark = common_mark.make {
     is = collision.attack,
     hits = collision.hits_navis,
     reload_anim = true,
-    per_player_hit = { spark = sparks.plain, is = collision.attack, hits = collision.hits_navis },
+    own_gauges_hit = { spark = sparks.plain, is = collision.attack, hits = collision.hits_navis },
 }
 
 return define.chip {

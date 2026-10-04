@@ -111,8 +111,8 @@ Every definition belongs to one registry. The engine knows the registries and th
 | patch_card | `define.patch_card` | required `id` | its MB and its effects' kinds and bug flags (a game's rules read the rest; §3.11) | the card's number, in compat/patch-cards.toml |
 | sprite, sound, banner, background, mugshot, chip icon | `asset.*` (§6.3) | the asset's name | names; sprites' animation timing | the ROM's numbers, in compat/assets.toml |
 
-Singletons, defined once per pack: `define.rules(section, spec)` for each rule table (§3.8) and `define.roles`
-for what the ruleset needs by role (§7.4). **Identities** (the NameID records, §3.2) are `define.identity`,
+A game's rules are one definition, its stock ruleset (`define.ruleset`, rules/init.luau), which holds its rule
+sections (§3.8) and its roles (§7.4) as plain tables: neither is a definition of its own. **Identities** (the NameID records, §3.2) are `define.identity`,
 nested in the navi or form they belong to and keyed by it (`heatcross/identity`) or a field object's own (with
 an `id`), which compat maps to NameIDs through navis.toml, forms.toml and rules.toml. One more registry is
 internal: **state schemas**, one per distinct state table (§3.5), which
@@ -590,21 +590,45 @@ crates/nettai-battle/testdata/content/stages/test.luau, and tests name stages by
 
 ### 3.8 Rules
 
-Each rule table is a section, defined once:
+A game's rules are one plain Luau library with a single definition: its stock ruleset, `rules/init.luau` (the
+manifest lists it as `rules`, the folder's name, as a require names a folder's `init`). The ruleset names its
+systems and, as fields, each rule table, a **section**, and the game's roles (§7.4). A section is a plain table its
+module returns; the engine reads each against its schema when the ruleset is defined (sections.rs), and a message
+names the place (`rules/init.luau: ruleset stock: panels.types.grass.flags: invalid type`):
 
 ```luau
 -- rules/elements.luau
 --!strict
 -- Element weakness: extra damage multiplier by the receiver's element, then the hitter's (null, fire,
 -- aqua, elec, wood, drain); the secondary elements a chip family adds to its attacks.
-return define.rules("elements", {
+return {
     weakness = {
         null = { 0, 0, 0, 0, 0, 0 }, fire = { 0, 0, 1, 0, 0, 0 }, aqua = { 0, 0, 0, 1, 0, 0 },
         elec = { 0, 0, 0, 0, 1, 0 }, wood = { 0, 1, 0, 0, 0, 0 }, drain = { 0, 0, 0, 0, 0, 0 },
     },
     family_elements = { sword = { "sword" }, cursor = { "cursor" }, wind = { "wind" }, ["break"] = { "break" } },
-})
+}
+
+-- rules/init.luau
+return define.ruleset {
+    id = "stock",
+    stock = true,
+    systems = { cross, navicust, patch_cards, forms.system, beast, emotion.system, folder, dark_chips },
+    elements = require("./elements"),
+    panels = require("./panels"),
+    lockon = require("./lockon").rules,   -- a module whose table holds more than the section
+    -- ...
+    roles = require("./roles"),
+}
 ```
+
+A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `sp_chips`, `cross_special`);
+one the ruleset doesn't name keeps the engine's table. **Only the stock ruleset holds sections and roles**: another
+of the game's rulesets (a variant, `base`) changes only its systems (`add`, `remove`), and a section or `roles` on
+it is a load error saying so. The engine reads the sections and roles game-wide (the chips' links read the SP slots
+as the content is defined, the custom screen, the renderer and the tools read `Content::rules()`), so a ruleset of
+its own sections would mean the battle carrying its ruleset's tables into all of them; nothing needs one yet, and
+allowing it later is additive (each ruleset's tables, a variant's fields replacing its base's wholesale).
 
 | Section | Module | Holds (v1 file) |
 |---|---|---|
@@ -618,6 +642,7 @@ return define.rules("elements", {
 | `custom_screen` | rules/custom-screen.luau | the slot grid and neighbor scans (rules/custom-screen.toml) |
 | `buster` | rules/buster.luau | recovery by Rapid and open panels; the empty hand's chip (rules/weapons.toml) |
 | `banners` | rules/banners.luau | which banners hold until removed, by banner asset (rules/banners.toml) |
+| `pools`, `flow`, `chip_use`, `sp_chips`, `cross_special`, `navicust`, `effects` | rules/<name>.luau (rules/navicust/section.luau) | the object pools' sizes, the flow's timings, chip use, the SP navis' deletion times and slots, the Cross special's chips, the NaviCust boards, BN5's effect rules |
 
 Where v1 kept per-entity rows in a shared table, they move to the entity: charge times into weapons, the Cross
 palettes into forms, the SP chips' deletion-time steps into `lib/navi-chips/sp.luau` next to the formula,
@@ -699,7 +724,7 @@ kind = "game"          # or "support"
 uses = ["exelib"]      # the support packs it requires from
 
 [definitions]          # its modules, by path in the pack
-rules = ["rules/banners", "rules/ruleset", ...]
+rules = ["rules"]      # rules/init.luau: the stock ruleset, the game's one rules definition (§3.8)
 chips = ["chips/airshot/chip", "chips/cannon/chips", ...]
 navis = [...]
 forms = [...]
@@ -711,9 +736,24 @@ unported = ["chips/x/chip", ...]
 ```
 
 - **Kinds.** A game pack is what a match plays. A support pack defines nothing a game lists (no chips, navis, forms,
-  stages, patch cards, NaviCust programs, rulesets, roles or rule sections), names no asset (the content check's
-  lint) and has no strings: its makers take the game's ids and looks. A support pack's manifest has no
-  `[definitions]`.
+  stages, patch cards, NaviCust programs or rulesets) and has no strings: its makers take the game's ids and looks.
+  A support pack's manifest has no `[definitions]`.
+- **A support pack has no game context** (the user: "for support libraries they must not be able to use implicit
+  game context, they can only use game context if they've been passed in"). Its modules run in an environment of
+  their own (`nettai_luau::define::environments`), a read-only copy of the globals without what resolves to the
+  playing game implicitly: `asset` (the game's asset pack by name) and `system` (the running system of the game's
+  ruleset). Reaching for either is an error naming the support module (`exelib:x: a support pack has no
+  `asset`...`), wherever it runs: a function keeps its module's environment, so a maker a game's module calls
+  still has none. What a support pack needs of the game arrives as its callers' arguments (the looks and specs its
+  makers take: their sprites, sounds, collision types, sparks, the ids of what they define). The rest stays: the
+  engine's API on what it is given (`battle`, `field`, `obstacle`, `dimming`, `navi_chip`, `custom`, `int`,
+  `Vec3`, the objects' methods), whose definitions and assets are arguments, never names; the battle's own state
+  it reads (`battle.navi(side).form`, `custom.folder(side)`); and the rules the engine applies behind those calls
+  (a hit's spark, `me:run_wrapped()`'s wrapper role). `define` stays, for the anonymous definitions and the ones
+  whose ids the caller passes. Luau resolves a module's globals against the VM's when it loads (lvmload.cpp's
+  `resolveImportSafe`), so `asset`, `system` and `define` are in no global table: each module gets its pack's
+  environment, the game's with them. The content check's lint warns early: a support module naming `asset.`,
+  `system.` or writing an id of its own (`id = "..."`).
 - **What a pack requires.** `uses` names the support packs a pack requires from; a support pack uses only support
   packs, without cycles (refused with the chain named).
 
@@ -726,7 +766,8 @@ unported = ["chips/x/chip", ...]
   (`nettai_content::index::follow`), the runtime's `require` (`nettai_luau::Pack::with_packs`) and the content check
   refuse anything else, naming the module and the require (`packs::check_require`).
 - **The definitions.** A game pack's lists name, by registry, the modules that define what a person picks or a
-  ruleset names: `rules` (the stock ruleset, its roles, its rule sections), `chips`, `navis`, `forms`, `stages`,
+  ruleset names: `rules` (its rulesets: the stock one, rules/init.luau, holds its systems, rule sections and
+  roles; a folder's `init` is listed by the folder's name, `rules`), `chips`, `navis`, `forms`, `stages`,
   `patch_cards`, `navicust`. A series module stands for its chips. Weapons, kinds, actions and the rest come in
   through requires. `also` loads a module that defines something nothing listed requires (BN6's alias buster
   routines, an effect or a kind the original's tables number, which compat names). `unported` names the chips the
@@ -747,16 +788,23 @@ unported = ["chips/x/chip", ...]
   that another pack's code names is the support pack's: packs.py moved 51 of BN6's 105 to exelib/types.d.luau. The
   engine's patch card spec takes `effects: { any }`, since each game types its own effects (BN6's
   `PatchCardEffect`). Luau's .luaurc has no field for definition files.
-- **Names.** A module's name is its pack and its path in it (`bn6:chips/cannon/chips`, `exelib:swords/slash`).
-  Anonymous definitions keep keys of that spelling (`exelib:regions#57`). Ids and asset names are written in full,
-  for now.
+- **Names.** Ids are local to their game (the user: "no i don't want qualified ids since you can't cross between
+  games anymore"; "once a game is selected for the match, the rest of the configuration becomes completely
+  namespaced for that side. so it's not possible to name another game's stuff"): `cannon`, `megaman`,
+  `heatcross/charge/action`, and an asset by its pack's name (`asset.sprite("bomb")`); compat, the locales and match
+  files write them so. A module's name is its pack and its path in it (`bn6:chips/cannon/chips`,
+  `exelib:swords/slash`). A game module's anonymous definition is keyed by its path (`chips/cannon/chips#2`), a
+  support pack's by its name (`exelib:regions#57`, which content never writes). Nothing refuses a `:` in a name:
+  another game's names can't be loaded.
 - **The modules keep `define.*`.** A manifest only says which load and which are the game's.
 - **Kept up by scripts** in the verification workspace:
   - tools/content/index.py writes each manifest's lists from the pack's modules, by `define.<registry>`. A chip
     naming no use is unported, and so, in turn, is a chip that requires an unported chip's module.
   - gen_content.py runs index.py after writing, and layout.py's moves keep the lists right.
   - tools/content/packs.py is the porters' migration. It renames common to exelib, removes R5's layout, writes the
-    manifests, moves the shared types, and lists the cross-game requires that are left.
+    manifests, moves the shared types, lists the cross-game requires that are left, writes ids local (step 6),
+    rewrites the engine's Rust for one game a match and local ids (step 7), names flag 0x40's modes (step 8) and
+    makes a game's rules one ruleset table (step 9).
   - A porter merges main, runs `tools/content/packs.py <checkout>`, then builds and tests.
 
 R5 (2026-10-03, never merged) had made content/ one namespace with explicit indices: content/bn6/init.luau and a
@@ -2211,12 +2259,13 @@ covers what both peers loaded, and two peers with the same content agree.
 
 ### 7.4 Roles
 
-The ruleset declares what it needs from content as a typed struct; content fills it once, in `rules/roles.luau`.
-A role left empty is a load error naming it.
+The ruleset declares what it needs from content as a typed struct; content fills it once, in `rules/roles.luau`: a
+plain table the stock ruleset names (`roles = require("./roles")`, §3.8). A role left empty is a load error naming
+it.
 
 ```luau
 -- rules/roles.luau
-return define.roles {
+return {
     kinds = {
         absorbed_obstacle = require("../objects/absorbed-obstacle/kind"),
         falling_rock = require("../objects/falling-rock/kind"),

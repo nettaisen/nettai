@@ -8,8 +8,8 @@
 //! packs it uses; the define phase loads each pack's listed modules and
 //! what they require, nothing else, and holds a game pack's lists to the
 //! whole truth. A module requires only its own pack's modules and those of
-//! the support packs its pack uses. Every id a module writes is in full,
-//! its game first (`bn6:minibomb`).
+//! the support packs its pack uses. Every id a module writes is local to
+//! its game (`minibomb`).
 //!
 //! [`Content::define`](super::Content::define) turns what the modules
 //! define into what the script runtime binds (`content::defs`). Nothing in
@@ -143,7 +143,7 @@ impl Scripts {
         packs::load_order(&all, &self.games())?;
         for p in &self.packs {
             for m in p.entries() {
-                if !self.modules.contains_key(&m) {
+                if !self.modules.contains_key(&m) && !self.modules.contains_key(&keys::init_of(&m)) {
                     return Err(format!("{}/{}: lists {}, which isn't there", p.id, packs::MANIFEST, keys::module_path(&m)));
                 }
             }
@@ -262,8 +262,16 @@ mod tests {
     fn what_the_namespace_refuses() {
         let e = content(vec![folder("game", &[("rules/turns", "return define.system { id = 'game:turns' }")])]).unwrap_err();
         assert!(e.contains("\"game:turns\" is not a valid id"), "{e}");
-        let e = content(vec![folder("game", &[("rules/x", "return define.rules('Pools', { actor = 16 })")])]).unwrap_err();
-        assert!(e.contains("\"Pools\" is not a valid section name"), "{e}");
+        // A section is a stock ruleset's field by the engine's name.
+        let e = content(vec![folder("game", &[("rules/x", "return define.ruleset { id = 'x', stock = true, Pools = { actor = 16 } }")])])
+            .unwrap_err();
+        assert!(e.contains("`Pools` is no field of a ruleset"), "{e}");
+        let e = content(vec![folder("game", &[("rules/x", "return define.ruleset { id = 'x', stock = true, pools = { actor = 0, attack = 32, effect = 32 } }")])])
+            .unwrap_err();
+        assert!(e.contains("ruleset x: pools: a pool holds 1 to"), "{e}");
+        let e = content(vec![folder("game", &[("rules/x", "return define.ruleset { id = 'x', stock = true, pools = { actor = 'many', attack = 32, effect = 32 } }")])])
+            .unwrap_err();
+        assert!(e.contains("ruleset x: pools.actor: invalid type"), "{e}");
         let e = content(vec![folder("Game", GAME)]).unwrap_err();
         assert!(e.contains("not lowercase words"), "{e}");
         // Two stock rulesets in one game.
@@ -314,6 +322,9 @@ mod tests {
             ("return define.ruleset { id = 'x', base = game, add = { turns } }", "which it has already"),
             ("return define.ruleset { id = 'x', systems = {}, remove = { turns } }", "names none"),
             ("return define.ruleset { id = 'x', systems = { turns }, game = 'game' }", "`game` is no field of a ruleset"),
+            // The game's rule sections and roles are its stock ruleset's.
+            ("return define.ruleset { id = 'x', base = game, pools = { actor = 16 } }", "`pools`: a game's rule sections and roles are its stock ruleset's"),
+            ("return define.ruleset { id = 'x', systems = { turns }, roles = {} }", "`roles`: a game's rule sections and roles are its stock ruleset's"),
         ];
         for (source, want) in cases {
             let e = bad(&format!("{base}{source}"));

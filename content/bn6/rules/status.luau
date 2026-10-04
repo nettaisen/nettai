@@ -600,7 +600,7 @@ local status = {
         duration = 65535,
         timer = { other = 1 },
     },
-    rules = define.rules("status", { hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 } }),
+    rules = { hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 } },
 }
 
 return status

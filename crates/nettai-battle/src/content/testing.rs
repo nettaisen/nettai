@@ -141,8 +141,7 @@ pub fn sound(n: u16) -> crate::sound::SoundId {
     crate::sound::SoundId(c.assets.sound_handle(pack, n).unwrap_or_else(|| panic!("the test pack has no song {n:#x}")))
 }
 
-/// The test content's asset `name` of `kind`, written in full
-/// (`test:test-navi`): its handle.
+/// The test content's asset `name` of `kind` (`test-navi`): its handle.
 pub fn asset_named(c: &Content, kind: nettai_content_api::AssetKind, name: &str) -> u16 {
     c.assets.handle(kind, name).unwrap_or_else(|| panic!("the test content has no {kind} {name:?}"))
 }
@@ -351,8 +350,8 @@ pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
 /// hands and navi stats hold them (`TICKER_1`, `TICKER_2`, `TICK_SHOT`).
 pub fn with_test_pack() -> Content {
     let mut c = make();
-    // The test pack brings its own roles.
-    c.scripts.modules.remove(&Scripts::name(ROOT, "rules/roles"));
+    // The test pack brings its own roles (the stock ruleset's `roles`).
+    c.scripts.modules.insert(Scripts::name(ROOT, "rules/roles"), "return require(\"../test/rules/roles\")\n".to_string());
     for (path, source) in modules_under(TEST_PACK) {
         c.scripts.modules.insert(Scripts::name(ROOT, &format!("test/{path}")), source);
     }

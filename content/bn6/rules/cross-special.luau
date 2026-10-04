@@ -27,7 +27,7 @@ local varswrd = require("../chips/varswrd/chip")
 local vulcan = require("../chips/vulcan/chips")
 local wideswrd = require("../chips/wideswrd/chip")
 
-return define.rules("cross-special", {
+return {
     rows = {
         { cannons.cannon, minibomb, wideswrd },
         -- EnergBom.
@@ -51,4 +51,4 @@ return define.rules("cross-special", {
             { chip = lifesrd, damage_of = varswrd },
         },
     },
-})
+}

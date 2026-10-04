@@ -159,7 +159,7 @@ pub struct FightMachine {
 /// The ticks between a console's low-HP sounds.
 const LOW_HP_SOUND_TICKS: u8 = 0x2D;
 
-/// What opening the custom screen costs a side in the battle flag 0x40
+/// What opening the custom screen costs a side in the own-gauges mode
 /// mode (`sub_800A29A`).
 const GAUGE_CUSTOM_COST: u16 = 0x2900;
 
@@ -460,8 +460,8 @@ pub struct Battle {
     /// The link: what each player sends reaches the fight `delay` ticks
     /// later.
     pub link: Link,
-    /// Per-side extra battle state (`sub_802E070`), used by the battle-flag
-    /// 0x40 mode.
+    /// Per-side extra battle state (`sub_802E070`), used by the own-gauges
+    /// mode (battle flag 0x40, `battle_flags::OWN_GAUGES`).
     pub sides: [SideState; 2],
     /// Per-side statistics counters (`byte_203EAE0`, `sub_800AB46`).
     pub side_stats: [[u8; 16]; 2],
@@ -541,7 +541,7 @@ enum SetStanding {
 
 /// A side's extra battle state (0x1D0 bytes at `sub_802E070(side)`); only
 /// the fields the engine reads or writes are modeled (the rest are listed
-/// in docs/engine/field-names.md). The per-player gauges' mode (battle
+/// in docs/engine/field-names.md). The own-gauges mode (battle
 /// flag 0x40) uses it; outside it, only SloGauge and FstGauge write it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SideState {
@@ -1700,7 +1700,7 @@ impl Battle {
             return;
         }
         let open = if self.round.flags & battle_flags::OWN_GAUGES != 0 {
-            // sub_800A244: in the battle flag 0x40 mode a side opens it with
+            // sub_800A244: in the own-gauges mode a side opens it with
             // L or R and a gauge of 0x2900, which it pays.
             let sides = self.gauge_custom_requests();
             for side in 0..2 {
@@ -1738,7 +1738,7 @@ impl Battle {
     }
 
     /// Whether a custom-screen request goes through the reversions and the
-    /// sequencer (battle mode 5, or not the battle flag 0x40 mode; BN5's
+    /// sequencer (battle mode 5, or not the own-gauges mode; BN5's
     /// 0x08007774 tests the flag alone).
     fn custom_request_transforms(&self) -> bool {
         let mode_5 = self.round.mode_copy == 5 && self.game_rules().flow.sequencer_before_custom;

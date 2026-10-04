@@ -209,12 +209,12 @@ local lockon = {
     },
 }
 
-lockon.rules = define.rules("lockon", {
+lockon.rules = {
     column_shifts = { -1, -2, -3, -4 },
     clear_path = {
         { require = 0x00000000, forbid = 0x05800000 },
         { require = 0x00000000, forbid = 0x0A800000 },
     },
-})
+}
 
 return lockon

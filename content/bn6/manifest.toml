@@ -7,26 +7,9 @@ kind = "game"
 uses = ["exelib"]
 
 [definitions]
-# Its stock ruleset (and with it its systems), its roles and its rule sections.
+# Its rules: its stock ruleset (rules/init.luau: its systems, its rule sections and its roles).
 rules = [
-    "rules/banners",
-    "rules/berserk",
-    "rules/buster",
-    "rules/chip-use",
-    "rules/cross-special",
-    "rules/custom-screen",
-    "rules/elements",
-    "rules/flow",
-    "rules/lockon",
-    "rules/math",
-    "rules/navicust/section",
-    "rules/panels",
-    "rules/pools",
-    "rules/reactions",
-    "rules/roles",
-    "rules/ruleset",
-    "rules/sp-chips",
-    "rules/status",
+    "rules",
 ]
 # Its chips: a module defining one, or a series module defining several.
 chips = [
