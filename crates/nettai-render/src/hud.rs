@@ -300,16 +300,9 @@ fn custom_open(b: &Battle) -> bool {
 /// the ticks "Cstmzing..." has been up (`sub_801E474` starts it).
 fn waiting_ticks(b: &Battle) -> Option<u32> {
     let sent = b.custom.sides[b.setup.local_side as usize].sent.as_ref()?;
-    // A screen that closes with the results (BN5's Team Battle screen)
-    // ends the wait a tick before it closes: its console has the results
-    // a tick before (0x080266FA stops the HUD's wait task, 0x1000, and
-    // its state 8 closes the screen on the next tick). (`round.ticks` is
-    // already the next tick's: the results are in on it.)
-    let ending = b.arena_rules().flow.custom_closes_with_results
-        && b.custom.sides.iter().all(|s| s.sent.as_ref().is_some_and(|x| x.arrives <= b.round.ticks));
     // (On the tick the custom mode starts the screens haven't opened yet:
     // what was sent is the last screen's.)
-    (crate::custom::screens_open(b) && !b.custom.committed && !ending).then(|| b.round.ticks.saturating_sub(sent.sent_at + 1))
+    (crate::custom::screens_open(b) && !b.custom.committed).then(|| b.round.ticks.saturating_sub(sent.sent_at + 1))
 }
 
 /// Whether the custom gauge is drawn (a chip's effect may hide it:

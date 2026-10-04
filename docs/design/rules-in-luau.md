@@ -1123,8 +1123,9 @@ BN6 stays byte-identical; BN5's side is unit tests and asm citations, and the BN
   `battle.gain_mood(side, n)` (BN5's 0x08012802: 0 and 0xFF stay, 254 at most) and `battle.lose_mood(side, n)`
   (`sub_8015C12`, BN5's 0x08012820, which the hits' loss now calls), and `heal.action`'s optional `mood`. BN5's
   emotion rules (its counter's 0x80, the soul) are BN5's port and S5's.
-- **The flow (items 7 and 13).** The `flow` section, the arena's: `custom_closes_with_results` (BN5's Team Battle
-  screen, 0x08025EF2, closes on the tick both results are in; the AIData +0x0F BN6 sets then is BN6's beast system's
+- **The flow (items 7 and 13).** The `flow` section, the arena's: `result_words` (a custom screen's result's words
+  on the link, a tick each, read of the sending side's game: BN6 50, BN5 49; the screens close the tick after both
+  results are in, in both games: bn5-map.md §15.3 item 13; the AIData +0x0F BN6 sets then is BN6's beast system's
   `custom_closed`, which BN5's ruleset lacks), `sequencer_before_custom` (BN5 opens the screen straight after the
   reversions), `escape_check` (BN5 has no `sub_800AAD6`), `result_wait` (102 ticks, 94 in a special battle and for a
   win in battle modes 4, 5 and 8: `sub_80081A4` and `sub_800825A`, whose short wait the engine had left out; BN5's
