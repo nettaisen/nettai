@@ -172,8 +172,8 @@ pub(crate) struct Environments {
 }
 
 /// The module of the content function calling (stack level 1), for
-/// messages.
-fn caller(lua: &Lua) -> String {
+/// messages and the API's guards.
+pub(crate) fn caller(lua: &Lua) -> String {
     lua.inspect_stack(1, |d| d.source().source.map(|s| s.trim_start_matches('@').trim_end_matches(".luau").to_string()))
         .flatten()
         .unwrap_or_else(|| "a support pack's module".to_string())

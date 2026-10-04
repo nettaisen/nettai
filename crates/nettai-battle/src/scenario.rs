@@ -60,7 +60,6 @@ pub fn setup() -> RoundSetup {
     let player = PlayerSetup {
         folder: Some(folder),
         joypad_phase: 0,
-        bug_frags: 0,
         navi_level: None,
         sp_times: Default::default(),
         console: Default::default(),

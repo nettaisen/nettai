@@ -573,7 +573,6 @@ impl Round {
             Ok(PlayerSetup {
                 folder,
                 joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
-                bug_frags: 0,
                 navi_level: None,
                 sp_times: Default::default(),
                 console: ConsoleSetup {

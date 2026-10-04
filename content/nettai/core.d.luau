@@ -1186,10 +1186,9 @@ declare battle: {
     checked_folder: () -> CheckedFolder?,
     -- A rule the checked folder breaks: the rule's name and what to say.
     folder_problem: (rule: string, text: string) -> (),
-    -- A side's bug frags, and spending some (its callers check there are
-    -- enough: the count wraps below 0).
-    bug_frags: (side: number) -> number,
-    spend_bug_frags: (side: number, count: number) -> (),
+    -- Whether side `side`'s ruleset has system `system` (a game's folder
+    -- rules ask it of the chips a system plays).
+    side_has_system: (side: number, system: System) -> boolean,
     -- The level of the navi code a side's save received (0 to 14), nil
     -- when none was (BN6's event flag 0x163).
     navi_level: (side: number) -> number?,
@@ -1979,9 +1978,6 @@ export type ChipSpec = {
     flags: { string }?,
     -- Named bits, and the value of a bit the engine doesn't name yet.
     extra_flags: { string | number }?,
-    -- Its lock-on mode, and whether it goes through the Beast rush (`rush
-    -- = false`: a mode without the rush, as some records have).
-    beast: { lockon: Lockon?, rush: boolean? }?,
     library: { number: number, index: number, sort: number }?,
     slot_in_limit: number?,
     -- What the ruleset asks of the chip: "no_chain" (the Beast rush's
@@ -2002,10 +1998,6 @@ export type ChipSpec = {
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
     -- "anti_recovery".
     trap: string?,
-    -- A dark chip: the chip its user gets without bug frags, and what its
-    -- use adds to the user's HP bug.
-    dark_substitute: Chip?,
-    hp_bug: number?,
     modifier: any?,
     program_advances: { any }?,
     -- Its use: exactly one of these.
@@ -2013,6 +2005,9 @@ export type ChipSpec = {
     dimming: ((user: Object, spec: DimmingChipSpec) -> Object?)?,
     navi: ((user: Object, controller: Object, spec: NaviChipSpec) -> Object?)?,
     instant: ((user: Object, spec: InstantChipSpec) -> ())?,
+    -- Its game's systems' fields (their `extends.chip`: BN6's `beast`,
+    -- `dark_substitute`, `hp_bug`; content/bn6/types.d.luau types them).
+    [string]: any,
 }
 export type Chip = ChipSpec
 
@@ -2105,7 +2100,7 @@ export type NaviDef = {
     -- game (`gregar`, `falzar`: the Crosses by their number on the custom
     -- screen, Beast Out and Beast Over), which BN6's rules and bn6-compat
     -- read.
-    forms: { gregar: FormSet?, falzar: FormSet?, souls: { FormDef }? }?,
+    forms: { souls: { FormDef }?, [string]: any }?,
     identity: Identity,
     -- What a navi switch brings it with: its weapons, the rest of its
     -- fresh stats, and its HP after the change, by side.
@@ -2158,7 +2153,6 @@ export type RunMessage = {
     -- Who says it: the portrait beside the box (presentation).
     portrait: SpriteAsset?,
 }
-export type FormSet = { crosses: { FormDef }, beast_out: FormDef?, beast_over: FormDef? }
 export type FormWeapons = {
     buster: Weapon?,
     charge_shot: Weapon?,
@@ -2226,27 +2220,6 @@ export type FormDef = {
     -- forms', rules/forms), which the pause handler runs at a turn's start.
     -- Every form but the base form names one.
     change: Action?,
-    -- BN6's forms system's extension (rules/forms/system.luau; until S8
-    -- moves BN6's declarations to bn6.d.luau): its kind (rules/forms/kind),
-    -- whose game's form it is (the Beast's roar), the navi a Cross (and one
-    -- in Beast Out) is made with, and the animation a change into a Cross
-    -- lets the navi go of.
-    kind: ("cross" | "beast" | "cross_beast" | "beast_over")?,
-    game: ("gregar" | "falzar")?,
-    cross_of: NaviDef?,
-    cross_release_anim: number?,
-    -- BN6's beast system's: a Cross's form in Beast Out, the Cross special's
-    -- buster volley in it (the original stores the form's number where it
-    -- meant 6), and whether its charged sword runs inside the Beast Out
-    -- rush (SlashCross in Beast Out).
-    beast: FormDef?,
-    special_volley: number?,
-    charged_sword_rush: boolean?,
-    -- BN6's cross system's: the custom screen deals one more chip for each
-    -- screen spent in it, up to three (ChargeCross), or has the scrap
-    -- button (DustCross).
-    extra_chips: boolean?,
-    scrap_button: boolean?,
     -- What a weakness hit drops it to (none: it stays).
     breaks_to: FormDef?,
     -- MegaMan's palette in a Cross.
@@ -2325,6 +2298,9 @@ export type FormDef = {
     -- chaos cycle's row its Chaos Unison charge keeps whatever the chaos
     -- level (MeddySoul's; none: the level's, at most 2).
     soul: { number: number, family: ChipFamily, chaos_cycle: number? }?,
+    -- Its game's systems' fields (their `extends.form`: BN6's `kind`,
+    -- `game`, `cross_of`, `beast`, ...; content/bn6/types.d.luau types them).
+    [string]: any,
 }
 -- Something a stage places when the round starts: a navi of `side`, or a
 -- field object by its kind (which needs a `place`), with one of the kind's
@@ -2902,5 +2878,11 @@ declare system: {
     setup: () -> any,
     -- That side (0 or 1).
     side: () -> number,
+    -- Another system's state of side `side` (nil: the side's ruleset lacks
+    -- it), for a game's rules alone: its API module (BN6's rules/api.luau)
+    -- reaches what its systems keep for its chips, which never call this
+    -- themselves (the content check holds to it, and the call refuses a
+    -- module outside rules/).
+    state_of: (side: number, system: System) -> any,
 }
 
