@@ -1095,10 +1095,10 @@ mod tests {
         for t in 1..=10 {
             let z = drop(ours, t);
             let timer = (10 - t) as u16;
-            assert_eq!(z + games.drop_z_offset(Game::JpGregar, "bn6:django/navi", z, timer), drop(theirs, t), "tick {t}");
-            assert_eq!(games.drop_z_offset(Game::JpFalzar, "bn6:django/navi", z, timer), 0);
+            assert_eq!(z + games.drop_z_offset(Game::JpGregar, "django/navi", z, timer), drop(theirs, t), "tick {t}");
+            assert_eq!(games.drop_z_offset(Game::JpFalzar, "django/navi", z, timer), 0);
         }
-        assert_eq!(games.drop_z_offset(Game::JpGregar, "bn6:django/navi", drop(ours, 1), 9), 5616);
+        assert_eq!(games.drop_z_offset(Game::JpGregar, "django/navi", drop(ours, 1), 9), 5616);
         assert_eq!(drop(ours, 10), drop(theirs, 10));
     }
 }

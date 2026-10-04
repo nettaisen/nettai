@@ -167,17 +167,17 @@ mod tests {
         let content = bn6_content();
         // (navi, attack, rapid, charge, custom, Mega, max HP, base HP.)
         let tango = [
-            ("bn6:heatman", 3, 2, 2, 6, 6, 2000, 800),
-            ("bn6:elecman", 3, 2, 2, 6, 7, 1900, 800),
-            ("bn6:slashman", 2, 4, 1, 7, 6, 1800, 800),
-            ("bn6:eraseman", 3, 2, 3, 6, 7, 1500, 700),
-            ("bn6:chargeman", 3, 2, 4, 8, 6, 1800, 800),
-            ("bn6:spoutman", 3, 2, 2, 6, 6, 1900, 800),
-            ("bn6:tomahawkman", 4, 2, 2, 6, 7, 1800, 800),
-            ("bn6:tenguman", 3, 4, 1, 7, 6, 1800, 800),
-            ("bn6:groundman", 4, 2, 2, 6, 7, 2000, 800),
-            ("bn6:dustman", 2, 3, 2, 8, 6, 2000, 800),
-            ("bn6:protoman", 4, 3, 3, 7, 6, 1400, 800),
+            ("heatman", 3, 2, 2, 6, 6, 2000, 800),
+            ("elecman", 3, 2, 2, 6, 7, 1900, 800),
+            ("slashman", 2, 4, 1, 7, 6, 1800, 800),
+            ("eraseman", 3, 2, 3, 6, 7, 1500, 700),
+            ("chargeman", 3, 2, 4, 8, 6, 1800, 800),
+            ("spoutman", 3, 2, 2, 6, 6, 1900, 800),
+            ("tomahawkman", 4, 2, 2, 6, 7, 1800, 800),
+            ("tenguman", 3, 4, 1, 7, 6, 1800, 800),
+            ("groundman", 4, 2, 2, 6, 7, 2000, 800),
+            ("dustman", 2, 3, 2, 8, 6, 2000, 800),
+            ("protoman", 4, 3, 3, 7, 6, 1400, 800),
         ];
         for (key, attack, rapid, charge, custom, mega, max_hp, base_hp) in tango {
             let n = navi(&content, key);
@@ -188,12 +188,12 @@ mod tests {
                 "{key}"
             );
         }
-        let tengu = Side::save_base(&content, navi(&content, "bn6:tenguman"), GameVersion::Falzar, Some(14));
+        let tengu = Side::save_base(&content, navi(&content, "tenguman"), GameVersion::Falzar, Some(14));
         assert!(tengu.float_shoes && tengu.air_shoes);
-        let protoman = navi(&content, "bn6:protoman");
+        let protoman = navi(&content, "protoman");
         let back = |level| Side::save_base(&content, protoman, GameVersion::Falzar, Some(level)).weapons.back_special.map(|w| content.defs.weapon(w).key.clone());
-        assert_eq!(back(14).as_deref(), Some("bn6:protoman/back-special-2"), "the reflecting guard from level 10");
-        assert_eq!(back(9).as_deref(), Some("bn6:protoman/back-special"), "the guard that only guards below");
+        assert_eq!(back(14).as_deref(), Some("protoman/back-special-2"), "the reflecting guard from level 10");
+        assert_eq!(back(9).as_deref(), Some("protoman/back-special"), "the guard that only guards below");
     }
 
     /// The chip lab's ProtoMan at level 5 (`navis/navi-11-stepswrd/level-5`):
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn protoman_at_level_5() {
         let content = bn6_content();
-        let s = Side::save_base(&content, navi(&content, "bn6:protoman"), GameVersion::Falzar, Some(5));
+        let s = Side::save_base(&content, navi(&content, "protoman"), GameVersion::Falzar, Some(5));
         assert_eq!((s.attack, s.rapid, s.charge, s.custom_level, s.mega_level, s.max_hp, s.max_base_hp), (1, 1, 1, 5, 5, 1150, 800));
     }
 
@@ -212,7 +212,7 @@ mod tests {
     #[test]
     fn what_the_reload_keeps() {
         let content = bn6_content();
-        let heatman = navi(&content, "bn6:heatman");
+        let heatman = navi(&content, "heatman");
         let mut from = NaviStats::fresh(heatman, &content).unwrap();
         (from.reg_up, from.folder, from.folder_reg, from.hp) = (50, 2, [3, 0xFF], 2500);
         (from.custom_level, from.mega_level, from.giga_level, from.attack) = (7, 8, 3, 4);
@@ -229,7 +229,7 @@ mod tests {
         from.hp = 10;
         assert_eq!(at(&from, Some(14), 3, false).hp, 10);
         assert!(reloaded(&content, heatman, &from, Reload::at(Some(15))).is_none(), "past the levels");
-        assert!(reloaded(&content, navi(&content, "bn6:megaman"), &from, Reload::at(Some(3))).is_none(), "MegaMan's are his NaviCust's");
+        assert!(reloaded(&content, navi(&content, "megaman"), &from, Reload::at(Some(3))).is_none(), "MegaMan's are his NaviCust's");
     }
 
     /// A level's gains clamp: the buster's levels at 4, the Mega level at
@@ -237,7 +237,7 @@ mod tests {
     #[test]
     fn a_levels_gains_clamp() {
         let content = bn6_content();
-        let megaman = navi(&content, "bn6:megaman");
+        let megaman = navi(&content, "megaman");
         let mut s = NaviStats::fresh(megaman, &content).unwrap();
         (s.attack, s.rapid, s.charge, s.mega_level, s.custom_level, s.max_hp) = (3, 9, 4, 9, 8, 1000);
         add_level(&content, megaman, 14, &mut s).unwrap();
@@ -253,7 +253,7 @@ mod tests {
     fn a_match_file_gives_a_link_navi_its_levels_stats() {
         let content = bn6_content();
         let mut m = crate::draw::live(&content, 3, None).unwrap();
-        let heatman = navi(&content, "bn6:heatman");
+        let heatman = navi(&content, "heatman");
         let s = &mut m.sides[1];
         s.navi_level = Some(14);
         s.stats = s.reloaded_as(&content, heatman).unwrap();

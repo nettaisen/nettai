@@ -8,7 +8,7 @@ local weapon = require("../../lib/weapon")
 local mchnswrd = require("../../chips/mchnswrd/chip")
 
 return define.weapon {
-    id = "bn6:patch-cards/darkmech/back-special",
+    id = "patch-cards/darkmech/back-special",
     -- The charge table's row 0x89, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 200, 190, 180 },

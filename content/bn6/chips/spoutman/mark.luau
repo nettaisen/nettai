@@ -19,7 +19,7 @@ export type State = {
     while_dimmed: boolean,
 }
 
-local SPRITE = asset.sprite("bn6:spout-geyser")
+local SPRITE = asset.sprite("spout-geyser")
 
 -- Its animation (`word_80E3A30`): the trail's, the column's.
 local ANIM_TRAIL, ANIM_COLUMN = 1, 2
@@ -80,7 +80,7 @@ local function init(me: Object)
 end
 
 mark.kind = define.kind {
-    id = "bn6:spoutman/mark",
+    id = "spoutman/mark",
     pool = "effect",
     state = { column = "bool", ticks = "u8", while_dimmed = "bool" },
     -- `sub_80E39A0`.

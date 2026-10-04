@@ -13,11 +13,11 @@ local panel_changer = {}
 panel_changer.change = common.change
 
 -- The sounds most changes make: a tick every fourth tick, and the change.
-panel_changer.TICK_SOUND = asset.sound("bn6:panel-change-tick")
-panel_changer.CHANGE_SOUND = asset.sound("bn6:panel-change")
-panel_changer.POISON_SOUND = asset.sound("bn6:panel-poison")
+panel_changer.TICK_SOUND = asset.sound("panel-change-tick")
+panel_changer.CHANGE_SOUND = asset.sound("panel-change")
+panel_changer.POISON_SOUND = asset.sound("panel-poison")
 
-panel_changer.kind = common.make_kind("bn6:panel-changer")
+panel_changer.kind = common.make_kind("panel-changer")
 
 -- `sub_80E2ACA`: a changer of `change` on panel (`x`, `y`), on `spawner`'s
 -- side and facing; `holder` goes on once it is done.

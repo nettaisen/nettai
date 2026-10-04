@@ -21,8 +21,8 @@ local BLOW, RECOVER = 0x0, 0x4
 -- The tick (timer value) the star is blown.
 local BLOW_AT = 0x0D
 
-local SOUND_BLOW = asset.sound("bn6:bblstar1")
-local SOUND_STAR = asset.sound("bn6:hockey-puck")
+local SOUND_BLOW = asset.sound("bblstar1")
+local SOUND_STAR = asset.sound("hockey-puck")
 
 -- What a chip's star is like (`byte_80CC65C`'s row and the palette, which
 -- the original picks by the chip's first parameter): its speed, 16.16 a
@@ -83,7 +83,7 @@ end
 
 return {
     define.chip {
-        id = "bn6:bblstar1",
+        id = "bblstar1",
         codes = { "B", "E", "T" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 0, mb = 30, damage = 60, hit_param = 30, lockout = 0,
@@ -95,7 +95,7 @@ return {
         action = blow { speed = 0x1_8000, palette = 0 },
     },
     define.chip {
-        id = "bn6:bblstar2",
+        id = "bblstar2",
         codes = { "C", "L", "V" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 1, mb = 38, damage = 80, hit_param = 30, lockout = 0,
@@ -107,7 +107,7 @@ return {
         action = blow { speed = 0x2_4000, palette = 1 },
     },
     define.chip {
-        id = "bn6:bblstar3",
+        id = "bblstar3",
         codes = { "G", "R", "S" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 2, mb = 46, damage = 100, hit_param = 30, lockout = 0,

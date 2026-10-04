@@ -68,27 +68,27 @@ pub fn live_navi(content: &Content) -> NaviStats {
 /// `byte_8120A20`, by name; some are there twice, so twice as likely).
 /// BN6's: a link battle is.
 const LINK_BACKGROUNDS: [&str; 21] = [
-    "bn6:honeycomb",
-    "bn6:statues",
-    "bn6:statues",
-    "bn6:seals",
-    "bn6:clouds",
-    "bn6:sprouts",
-    "bn6:calendar-checkers",
-    "bn6:calendar-mint",
-    "bn6:calendar-lavender",
-    "bn6:calendar-navy",
-    "bn6:calendar-blue",
-    "bn6:calendar-cyan",
-    "bn6:trees",
-    "bn6:calendar-green",
-    "bn6:calendar-bright-blue",
-    "bn6:code",
-    "bn6:globes",
-    "bn6:code-2",
-    "bn6:code-2",
-    "bn6:calendar-purple",
-    "bn6:calendar-purple",
+    "honeycomb",
+    "statues",
+    "statues",
+    "seals",
+    "clouds",
+    "sprouts",
+    "calendar-checkers",
+    "calendar-mint",
+    "calendar-lavender",
+    "calendar-navy",
+    "calendar-blue",
+    "calendar-cyan",
+    "trees",
+    "calendar-green",
+    "calendar-bright-blue",
+    "code",
+    "globes",
+    "code-2",
+    "code-2",
+    "calendar-purple",
+    "calendar-purple",
 ];
 
 /// A link battle's arena drawn from `draws`: its stage and background, then
@@ -177,7 +177,7 @@ pub fn plain(content: &Arc<Content>, seed: u32) -> Result<Match, String> {
     let navi = (0..content.defs.navis.len() as u16)
         .map(nettai_content_api::NaviHandle)
         .filter(|&n| content.navi(n).fresh.is_some())
-        .min_by_key(|&n| nettai_content_api::keys::root_of(&content.defs.navi(n).key) != Some(home.as_str()))
+        .min_by_key(|_| home.is_empty())
         .ok_or("the content has no navi with fresh stats")?;
     let chip = (0..content.defs.chips.len() as u16)
         .map(nettai_content_api::ChipHandle)
@@ -292,10 +292,10 @@ mod tests {
             gregar > 0 && gregar < 5
         });
         assert!(mixed);
-        let forced = live(&content, 3, Some(crate::link_stage(&content, "bn6:netbattle-43").unwrap())).unwrap();
-        assert_eq!(content.defs.stage(forced.arena.first.stage).key, "bn6:netbattle-43");
+        let forced = live(&content, 3, Some(crate::link_stage(&content, "netbattle-43").unwrap())).unwrap();
+        assert_eq!(content.defs.stage(forced.arena.first.stage).key, "netbattle-43");
         assert_eq!(forced.sides, live(&content, 3, None).unwrap().sides);
-        assert!(crate::link_stage(&content, "bn6:netbattle-100").is_err());
+        assert!(crate::link_stage(&content, "netbattle-100").is_err());
     }
 
     /// A plain match is one the checks accept (its folder the rules' draw).

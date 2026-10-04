@@ -14,7 +14,7 @@ ball.make_kind = common.make_kind
 -- BN6's look: one sprite, its animations small and big (fast, or
 -- DarkThnd's 12 panels; +1 bursting); an attack hitting navis with
 -- modifier 1 and the elec spark; its sound, DarkThnd's own.
-local SPRITE = asset.sprite("bn6:thunder-ball")
+local SPRITE = asset.sprite("thunder-ball")
 local BN6: ThunderBallLook = {
     sprite = SPRITE,
     small_anim = 0,
@@ -24,11 +24,11 @@ local BN6: ThunderBallLook = {
     target = collision.hits_navis,
     hit_mod = 1,
     spark = sparks.elec,
-    sound = asset.sound("bn6:erase-man-2"),
-    dark_sound = asset.sound("bn6:elec-man"),
+    sound = asset.sound("erase-man-2"),
+    dark_sound = asset.sound("elec-man"),
 }
 
-ball.kind = common.make_kind("bn6:thunder/ball", BN6)
+ball.kind = common.make_kind("thunder/ball", BN6)
 
 -- `sub_80C954C`: a thunder ball for `owner` on (x, y) with the damage word
 -- `damage`. (A game's own kind of it: `kind`.)

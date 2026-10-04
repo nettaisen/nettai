@@ -15,7 +15,7 @@ end
 
 return {
     define.chip {
-        id = "bn6:lilbolr1",
+        id = "lilbolr1",
         codes = { "F", "K", "L" },
         element = "null", family = "summon", class = "standard",
         rarity = 0, mb = 18, damage = 100, hit_param = 30, lockout = 0,
@@ -25,7 +25,7 @@ return {
         action = boiler_throw(0),
     },
     define.chip {
-        id = "bn6:lilbolr2",
+        id = "lilbolr2",
         codes = { "E", "M", "V" },
         element = "null", family = "summon", class = "standard",
         rarity = 1, mb = 23, damage = 140, hit_param = 30, lockout = 0,
@@ -35,7 +35,7 @@ return {
         action = boiler_throw(2),
     },
     define.chip {
-        id = "bn6:lilbolr3",
+        id = "lilbolr3",
         codes = { "G", "S", "Z" },
         element = "null", family = "summon", class = "standard",
         rarity = 2, mb = 28, damage = 180, hit_param = 30, lockout = 0,

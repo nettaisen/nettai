@@ -9,7 +9,7 @@ local common = require("@exelib/lifesync/marker")
 
 local marker = {}
 
-marker.kind = common.make_kind("bn6:lifesync/marker", asset.sprite("bn6:hit-sparks"))
+marker.kind = common.make_kind("lifesync/marker", asset.sprite("hit-sparks"))
 
 -- `sub_80E7774`: a marker at `pos` for `ticks` ticks.
 function marker.spawn(pos: Vec3, ticks: number): Object?

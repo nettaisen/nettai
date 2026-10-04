@@ -22,7 +22,7 @@ local test_chips = require("../chips/test/chips")
 local turn = require("../navis/megaman/turn")
 
 return define.roles {
-    id = "test:roles",
+    id = "roles",
     actions = {
         forced_charged_shot = charged_shot.action,
         -- The strike the navi's request 0x80000 starts from idle (a

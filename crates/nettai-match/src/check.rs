@@ -371,27 +371,27 @@ mod tests {
     #[test]
     fn a_navicust_compiles_into_the_stats() {
         // UnderSht on the command line, Attack+1 and HP+100 off it: no bug.
-        let (s, glitch, problems) = compiled(&[("bn6:undersht", "white", 1, 3), ("bn6:attack-1", "pink", 5, 2), ("bn6:hp-100", "white", 3, 2)]);
+        let (s, glitch, problems) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 5, 2), ("hp-100", "white", 3, 2)]);
         assert_eq!(problems, Vec::<String>::new());
         assert!(s.undershirt && !glitch);
         assert_eq!((s.attack, s.max_hp, s.hp), (1, 700, 700));
         assert_eq!((s.bugs.buster_blanks, s.bugs.hp_drain), (0, 0));
         // Attack+1 on the command line: the buster bug (and it still works).
-        let (s, glitch, _) = compiled(&[("bn6:undersht", "white", 1, 3), ("bn6:attack-1", "pink", 5, 4), ("bn6:hp-100", "white", 3, 2)]);
+        let (s, glitch, _) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 5, 4), ("hp-100", "white", 3, 2)]);
         assert!(glitch);
         assert_eq!((s.attack, s.bugs.buster_blanks, s.bugs.buster_charged), (1, 6, 1));
         // Attack+1 beside HP+100 of its color: each brings the other's bug.
-        let (s, glitch, _) = compiled(&[("bn6:undersht", "white", 1, 3), ("bn6:attack-1", "pink", 5, 2), ("bn6:hp-100", "pink", 3, 2)]);
+        let (s, glitch, _) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 5, 2), ("hp-100", "pink", 3, 2)]);
         assert!(glitch);
         assert_eq!((s.bugs.buster_blanks, s.bugs.hp_drain, s.bugs.hit_status), (6, 1, 3));
         // UnderSht off the command line: the step bug, and no UnderSht.
-        let (s, glitch, _) = compiled(&[("bn6:undersht", "white", 1, 2)]);
+        let (s, glitch, _) = compiled(&[("undersht", "white", 1, 2)]);
         assert!(glitch && !s.undershirt);
         assert_eq!(s.bugs.processing, 1);
         // Over another, and off the board: said.
-        let (_, _, problems) = compiled(&[("bn6:undersht", "white", 1, 3), ("bn6:attack-1", "pink", 1, 3)]);
+        let (_, _, problems) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 1, 3)]);
         assert!(problems.iter().any(|p| p.contains("is over program 1")), "{problems:?}");
-        let (_, _, problems) = compiled(&[("bn6:undersht", "white", 0, 1)]);
+        let (_, _, problems) = compiled(&[("undersht", "white", 0, 1)]);
         assert!(problems.iter().any(|p| p.contains("off the board")), "{problems:?}");
     }
 
@@ -403,7 +403,7 @@ mod tests {
     fn megaman_from_a_navi_code_gets_his_levels_gains() {
         let content = crate::testing::bn6_content();
         let megaman = content.form_changing_navi().unwrap();
-        let parts = [("bn6:undersht", "white", 1, 3), ("bn6:attack-1", "pink", 5, 2), ("bn6:hp-100", "white", 3, 2)];
+        let parts = [("undersht", "white", 1, 3), ("attack-1", "pink", 5, 2), ("hp-100", "white", 3, 2)];
         let (base, _, problems) = compiled(&parts);
         assert_eq!(problems, Vec::<String>::new());
         for level in [0u8, 7, 14] {

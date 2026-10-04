@@ -32,9 +32,9 @@ local gregar_beast_buster = {}
 local SHOOT, NEXT = 0x0, 0x4
 
 -- Gregar Beast Over.
-local BEAST_OVER = "bn6:gregar-beast-over"
+local BEAST_OVER = "gregar-beast-over"
 
-local SOUND = asset.sound("bn6:col-army-2")
+local SOUND = asset.sound("col-army-2")
 
 -- The projectile, whichever way the draw's low bit falls (`dword_80EC5B4`:
 -- the charged shot's either way).
@@ -137,13 +137,13 @@ local function update(me: Object, s: State)
 end
 
 gregar_beast_buster.action = define.action {
-    id = "bn6:megaman/gregar-beast-buster/action",
+    id = "megaman/gregar-beast-buster/action",
     state = { timer = "u16", repeats = "u8", cycle = "u8" },
     update = update,
 }
 
 gregar_beast_buster.weapon = define.weapon {
-    id = "bn6:megaman/gregar-beast-buster",
+    id = "megaman/gregar-beast-buster",
     -- The charge table's row 4, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 80, 75, 70, 65, 60, 20, 20, 20 },

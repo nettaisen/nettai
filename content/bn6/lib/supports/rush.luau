@@ -23,9 +23,9 @@ export type State = {
 
 local rush = {}
 
-local SPRITE = asset.sprite("bn6:rush")
-local APPEAR_SOUND = asset.sound("bn6:place")
-local BITE_SOUND = asset.sound("bn6:bite")
+local SPRITE = asset.sprite("rush")
+local APPEAR_SOUND = asset.sound("place")
+local BITE_SOUND = asset.sound("bite")
 -- The status byte his bite carries.
 local STATUS = statuses.paralyze_150
 -- The chip he leaves in the hand: the second WhiCapsl.
@@ -223,7 +223,7 @@ local function update(me: Object)
 end
 
 rush.kind = define.kind {
-    id = "bn6:rush",
+    id = "rush",
     pool = "actor",
     state = { eaten = "chip" },
     update = update,

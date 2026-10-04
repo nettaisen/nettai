@@ -9,10 +9,10 @@ local collision = require("../../rules/collision")
 local common = require("@exelib/copydmg/mark")
 
 return common.make {
-    id = "bn6:copydmg/mark",
-    sprite = asset.sprite("bn6:hit-sparks"),
+    id = "copydmg/mark",
+    sprite = asset.sprite("hit-sparks"),
     anim = 0x0B,
-    sound = asset.sound("bn6:mark"),
+    sound = asset.sound("mark"),
     is = collision.attack,
     hits = collision.hits_navis,
     reload_anim = false,

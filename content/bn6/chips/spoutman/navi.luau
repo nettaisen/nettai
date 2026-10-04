@@ -32,10 +32,10 @@ export type State = {
 
 local spoutman = {}
 
-local SPRITE = asset.sprite("bn6:spoutman")
-local SOUND_APPEAR = asset.sound("bn6:appear")
-local SOUND_BUBBLE = asset.sound("bn6:bubble")
-local SOUND_SPOUT_MAN = asset.sound("bn6:spout-man")
+local SPRITE = asset.sprite("spoutman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_BUBBLE = asset.sound("bubble")
+local SOUND_SPOUT_MAN = asset.sound("spout-man")
 
 -- What he wears (his layer, `sub_8010F7A`): the link navi's own parts.
 local IDENTITY = spoutman_navi.identity
@@ -50,7 +50,7 @@ local GEYSER_TICKS = 0x5A
 -- panel it lands on.
 local BALL: WaterBall = { while_dimmed = true, cracks = true }
 -- His throw's splash where he stands (effect 0x2A).
-local THROW = define.effect { sprite = asset.sprite("bn6:spout-man-effect"), anim = 0, palette = 0 }
+local THROW = define.effect { sprite = asset.sprite("spout-man-effect"), anim = 0, palette = 0 }
 
 -- The controller calls his spawner through r3, which his position takes:
 -- its address with the Thumb bit, whose fraction his Z keeps.
@@ -242,7 +242,7 @@ local ACTIONS = {
 }
 
 spoutman.kind = define.kind {
-    id = "bn6:spoutman/navi",
+    id = "spoutman/navi",
     pool = "actor",
     state = { controller = "object", pillar = "object" },
     -- `sub_80B94BC`.

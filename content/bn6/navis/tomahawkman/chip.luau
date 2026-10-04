@@ -22,7 +22,7 @@ local STATE = { timer = "u16", axe = "object" }
 
 local RAISE, SWING, RECOVER = 0x0, 0x4, 0x8
 local ANIM_RAISE, ANIM_SWING, ANIM_RECOVER = 0x11, 0x12, 7
-local SOUND = asset.sound("bn6:etomahwk")
+local SOUND = asset.sound("etomahwk")
 
 local RAISE_TICKS, SWING_TICKS, RECOVER_TICKS = 0x10, 0x1E, 0x1E
 -- The timer value the blow falls at, and the camera's shake then.
@@ -100,7 +100,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [RAISE] = raise, [SWING] = swing, [RECOVER] = recover }
 
 return define.chip {
-    id = "bn6:etomahwk",
+    id = "etomahwk",
     codes = { "T" },
     element = "null",
     family = "null",
@@ -115,7 +115,7 @@ return define.chip {
     slot_in_limit = 1,
     -- `sub_80F18AC` (`off_80F18C0`).
     action = define.action {
-        id = "bn6:etomahwk/action",
+        id = "etomahwk/action",
         state = STATE,
         update = function(me: Object, s: State)
             link.run(me, s, PHASES, "ETomahwk (sub_80F18AC)")

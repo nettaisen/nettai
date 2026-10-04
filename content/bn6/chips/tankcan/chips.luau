@@ -13,7 +13,7 @@ local SHELL = { hit_mod = 0x4B, cracks = true, shift = 0 }
 
 return {
     define.chip {
-        id = "bn6:tankcan1",
+        id = "tankcan1",
         codes = { "A", "G", "R" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 17, damage = 120, hit_param = 20, lockout = 0,
@@ -25,7 +25,7 @@ return {
         action = tankcan.action { shell = SHELL },
     },
     define.chip {
-        id = "bn6:tankcan2",
+        id = "tankcan2",
         codes = { "L", "S", "V" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 28, damage = 160, hit_param = 20, lockout = 0,
@@ -37,7 +37,7 @@ return {
         action = tankcan.action { shell = SHELL },
     },
     define.chip {
-        id = "bn6:tankcan3",
+        id = "tankcan3",
         codes = { "B", "M", "P" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 39, damage = 200, hit_param = 20, lockout = 0,

@@ -6,7 +6,7 @@ local lockon = require("../../rules/lockon")
 local shot = require("./action")
 
 return define.chip {
-    id = "bn6:widesht",
+    id = "widesht",
     codes = { "P", "Q", "R" },
     element = "aqua",
     family = "aqua",

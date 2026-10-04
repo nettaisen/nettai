@@ -18,7 +18,7 @@ function counter.action_with(id: string, blade: AttachmentLook, boom_kind: Kind?
         id = id,
         blade = blade,
         boom = boom_kind or sonic_boom.kind,
-        start_sound = asset.sound("bn6:log-in"),
+        start_sound = asset.sound("log-in"),
         swing_sound = parts.sounds.swing,
         attachment = attachment.kind,
         blade_anim = parts.blade_anim,
@@ -29,6 +29,6 @@ end
 -- catch (`sub_801056A`) and the AntiDmg program's stance (`sub_80105F2`,
 -- with the variant its weapon zeroes), leave the attack's variant 0: a
 -- sword.
-counter.action = counter.action_with("bn6:antiswrd/counter", parts.blades.sword)
+counter.action = counter.action_with("antiswrd/counter", parts.blades.sword)
 
 return counter

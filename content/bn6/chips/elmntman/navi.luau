@@ -44,23 +44,23 @@ export type State = {
 
 local elmntman = {}
 
-local SPRITE = asset.sprite("bn6:elmnt-man")
-local SOUND_APPEAR = asset.sound("bn6:appear")
-local SOUND_ELMNT_MAN = asset.sound("bn6:elmnt-man")
-local SOUND_ELMNT_MAN_2 = asset.sound("bn6:elmnt-man-2")
-local SOUND_ELMNT_MAN_3 = asset.sound("bn6:grass")
-local SOUND_ELMNT_MAN_4 = asset.sound("bn6:elmnt-man-4")
+local SPRITE = asset.sprite("elmnt-man")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_ELMNT_MAN = asset.sound("elmnt-man")
+local SOUND_ELMNT_MAN_2 = asset.sound("elmnt-man-2")
+local SOUND_ELMNT_MAN_3 = asset.sound("grass")
+local SOUND_ELMNT_MAN_4 = asset.sound("elmnt-man-4")
 
 -- What he is taken for: his actor record, and what he wears (his overlay, `sub_8011004`).
 local IDENTITY = define.identity {
-    id = "bn6:elementman",
+    id = "elementman",
     class = "navi",
     version = 0,
     ai_index = 0x10,
     ice = "large",
     parts = {
         body = {
-            sprite = asset.sprite("bn6:elmnt-man"),
+            sprite = asset.sprite("elmnt-man"),
             anims = 32,
             behind = { { 0x00, 0x0B }, { 0x1F, 0x1F } },
             own_palette = true,
@@ -392,7 +392,7 @@ local ACTIONS = {
 }
 
 elmntman.kind = define.kind {
-    id = "bn6:elmntman/navi",
+    id = "elmntman/navi",
     pool = "actor",
     state = {
         element = "u8",

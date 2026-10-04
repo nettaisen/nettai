@@ -122,17 +122,6 @@ impl Pack {
         Pack::new(modules.into_iter().map(|(path, source)| (format!("{name}{}{path}", keys::SEPARATOR), source)))
     }
 
-    /// Asset name `name` as content writes it: in full, its pack's game
-    /// first (`bn6:bomb`; docs/design/rules-in-luau.md, the flat namespace:
-    /// "so loading assets must also be fully qualified as well").
-    pub fn asset_name(name: &str) -> Result<String, String> {
-        if keys::is_qualified(name) {
-            Ok(name.to_string())
-        } else {
-            Err(format!("{name:?} names no pack: write an asset's name in full (\"bn6:{name}\")"))
-        }
-    }
-
     /// The same pack, with bytecode compiled before (see [`Compiled`]).
     pub fn with_compiled(mut self, compiled: Compiled) -> Pack {
         self.compiled = compiled;
@@ -537,7 +526,9 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
     let compiled = std::mem::take(&mut loader.borrow_mut().compiled);
     drop(loader);
     let assets = Rc::try_unwrap(assets).ok().expect("the resolvers hold the asset tables weakly").into_inner();
-    let defined = define::finish(&lua, &collector, &assets)
+    let games: std::collections::HashSet<String> =
+        pack.packs.values().filter(|p| p.kind == nettai_content_api::PackKind::Game).map(|p| p.id.clone()).collect();
+    let defined = define::finish(&lua, &collector, &assets, &games)
         .map_err(|e| ContentError::new(format!("loading Luau content: {e}")))?;
     // Nothing a script can reach may change after loading.
     lua.globals().set_readonly(true);

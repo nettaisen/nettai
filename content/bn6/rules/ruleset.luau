@@ -14,7 +14,7 @@ local navicust = require("./navicust/system")
 local patch_cards = require("./patch-cards/system")
 
 return define.ruleset {
-    id = "bn6:stock",
+    id = "stock",
     stock = true,
     systems = {
         -- The Crosses on the custom screen: ChargeCross's chips and the

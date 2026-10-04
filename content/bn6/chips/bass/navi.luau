@@ -17,8 +17,8 @@ local effects = require("../../lib/effects")
 local SHOT: PanelStrike = { warning = 0x14, hit_mod = 3, solid_only = true }
 
 return common.make {
-    id = "bn6:bass/navi",
-    sprite = asset.sprite("bn6:bass-anly"),
+    id = "bass/navi",
+    sprite = asset.sprite("bass-anly"),
     -- His cape: a form overlay on his animation + 0x14, stepping while
     -- dimmed.
     cape_anim_offset = 0x14,
@@ -31,7 +31,7 @@ return common.make {
         panel_strike.spawn(me, x, y, 0, SHOT, damage, 0, true)
     end,
     -- A shot's flash at his hand (effect 0x57).
-    flash = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 8, palette = 0 },
+    flash = define.effect { sprite = asset.sprite("hit-sparks"), anim = 8, palette = 0 },
     smoke = effects.smoke,
-    appear = asset.sound("bn6:appear"),
+    appear = asset.sound("appear"),
 }

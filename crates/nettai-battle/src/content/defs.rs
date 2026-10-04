@@ -22,7 +22,7 @@ use nettai_content_api::SpriteId;
 use nettai_content_api::{
     ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, FnId, FnSource, FormHandle, KindHandle,
     NaviHandle, Pool, RecordHandle, Registry, RulesetHandle, Schema, StageHandle, StateId, SystemHandle, SystemHook,
-    WeaponHandle, keys,
+    WeaponHandle,
 };
 
 use super::{
@@ -864,13 +864,13 @@ pub(crate) fn no_display_text(d: &Definition) -> Result<(), ContentError> {
     Ok(())
 }
 
-/// The fields the systems of game `game` extend its definitions of
-/// `registry` with (`extends`), read off the systems' definitions before
-/// they are built: what a record's reader leaves to them. (Building the
-/// systems checks them.)
-fn extended_fields(definitions: &Definitions, registry: Registry, game: &str) -> Vec<String> {
+/// The fields the game's systems extend its definitions of `registry` with
+/// (`extends`), read off the systems' definitions before they are built:
+/// what a record's reader leaves to them. (Building the systems checks
+/// them.)
+fn extended_fields(definitions: &Definitions, registry: Registry) -> Vec<String> {
     let mut fields = Vec::new();
-    for s in definitions.of(Registry::System).iter().filter(|s| keys::root_of(&s.key) == Some(game)) {
+    for s in definitions.of(Registry::System) {
         if let Data::Map(own) = s.spec.field("extends").field(registry.name()) {
             fields.extend(own.iter().map(|(k, _)| k.to_string()));
         }
@@ -1514,7 +1514,7 @@ impl Defs {
         }
         let mut forms = Vec::new();
         for d in definitions.of(Registry::Form) {
-            let extended = extended_fields(&definitions, Registry::Form, keys::root_of(&d.key).unwrap_or(""));
+            let extended = extended_fields(&definitions, Registry::Form);
             let mut record = super::navis::read_form(d, &reader, &extended.iter().map(String::as_str).collect::<Vec<_>>())?;
             record.weapons = read_weapons(d)?;
             record.identity = identity_of(d, &identities)?;
@@ -1908,14 +1908,11 @@ impl Defs {
                 extends,
             });
         }
-        // The extensions: one system of a game owns a field of a registry,
-        // and its game's definitions that carry it carry it of its type.
+        // The extensions: one system of the game owns a field of a registry,
+        // and the definitions that carry it carry it of its type.
         for (i, s) in systems.iter().enumerate() {
-            let game = nettai_content_api::keys::root_of(&s.key);
             for e in &s.extends {
-                if let Some(other) = systems[..i].iter().find(|o| {
-                    nettai_content_api::keys::root_of(&o.key) == game && o.extends.iter().any(|x| x.registry == e.registry && x.field == e.field)
-                }) {
+                if let Some(other) = systems[..i].iter().find(|o| o.extends.iter().any(|x| x.registry == e.registry && x.field == e.field)) {
                     return Err(ContentError::new(format!(
                         "systems {} and {} both extend {} definitions with `{}`",
                         other.key,
@@ -1924,7 +1921,7 @@ impl Defs {
                         e.field
                     )));
                 }
-                for d in definitions.of(e.registry).iter().filter(|d| nettai_content_api::keys::root_of(&d.key) == game) {
+                for d in definitions.of(e.registry) {
                     e.ty.check(d.spec.field(&e.field), &format!("{} {}.{}", e.registry, d.key, e.field))
                         .map_err(|m| ContentError::new(format!("{}.luau: {m} (system {}'s extension)", d.module, s.key)))?;
                 }

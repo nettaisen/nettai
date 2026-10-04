@@ -14,7 +14,7 @@ local heat_charge = {}
 -- The flame (the original's parameter word 0x23C) from HeatCross's burner
 -- (its attack variant 1).
 local FLAME = burn.action {
-    id = "bn6:heatcross/charge/action",
+    id = "heatcross/charge/action",
     burner = burn.burners.heat,
     flame = { ticks = 0x3C, spread = 2 },
 }
@@ -34,7 +34,7 @@ local function setup(navi: Object): Action
 end
 
 heat_charge.weapon = define.weapon {
-    id = "bn6:heatcross/charge",
+    id = "heatcross/charge",
     -- The charge table's row 6; Charge 5 reads on into row 7's first
     -- entry, as the original's table does.
     charge_ticks = { 70, 60, 50, 45, 40, 90 },

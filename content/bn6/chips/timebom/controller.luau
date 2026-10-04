@@ -46,6 +46,6 @@ local function place(me: Object)
     end
 end
 
-local bn6 = common.make("bn6:timebom/controller", place)
+local bn6 = common.make("timebom/controller", place)
 
 return { kind = bn6.kind, hook = bn6.hook, make = common.make }

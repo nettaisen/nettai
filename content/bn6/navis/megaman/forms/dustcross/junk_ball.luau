@@ -17,8 +17,8 @@ export type State = {
     while_dimmed: boolean,
 }
 
-local SPRITE = asset.sprite("bn6:dustman")
-local SOUND_LAND = asset.sound("bn6:land")
+local SPRITE = asset.sprite("dustman")
+local SOUND_LAND = asset.sound("land")
 
 -- How far in front of its panel's center it starts, and how fast it rolls,
 -- 16.16.
@@ -177,7 +177,7 @@ local function tick(me: Object)
 end
 
 junk_ball.kind = define.kind {
-    id = "bn6:dustcross/junk-ball",
+    id = "dustcross/junk-ball",
     pool = "attack",
     state = { while_dimmed = "bool" },
     -- `sub_80DB6A4`.

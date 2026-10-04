@@ -24,19 +24,19 @@ local rock = {}
 
 -- The cubes' sheet (animation 0 a cube rising; the rows' are the cubes
 -- standing).
-local SPRITE = asset.sprite("bn6:rock-cubes")
+local SPRITE = asset.sprite("rock-cubes")
 
 -- What a rock is taken for: a rock cube, an ice block (field objects, with
 -- the looks something that takes their place shows).
 local ROCK = define.identity {
-    id = "bn6:rock",
+    id = "rock",
     class = "field_object",
     version = 3,
     ai_index = 1,
     look = { sprite = SPRITE, anim = 1, palette = 0, shadow = true },
 }
 local ICE = define.identity {
-    id = "bn6:ice-block",
+    id = "ice-block",
     class = "field_object",
     version = 4,
     ai_index = 1,
@@ -49,50 +49,50 @@ local ICE = define.identity {
 local ROWS: { [number]: RockVariant } = {
     -- A rock cube anything breaks (no chip or stage places it).
     [0] = common.variant {
-        id = "bn6:rockcube/rock/brittle",
+        id = "rockcube/rock/brittle",
         anim = 1,
         hp = 1,
         element = "null",
         debris_palette = 0,
-        break_sound = asset.sound("bn6:panel-crack"),
+        break_sound = asset.sound("panel-crack"),
         identity = ROCK,
     },
     -- RockCube's, and the stages'.
     [1] = common.variant {
-        id = "bn6:rockcube/rock/cube",
+        id = "rockcube/rock/cube",
         anim = 1,
         hp = 200,
         element = "null",
         debris_palette = 0,
-        break_sound = asset.sound("bn6:panel-crack"),
+        break_sound = asset.sound("panel-crack"),
         identity = ROCK,
     },
     -- A hard one (no chip or stage places it).
     [2] = common.variant {
-        id = "bn6:rockcube/rock/hard",
+        id = "rockcube/rock/hard",
         anim = 1,
         hp = 500,
         element = "null",
         debris_palette = 0,
-        break_sound = asset.sound("bn6:panel-crack"),
+        break_sound = asset.sound("panel-crack"),
         identity = ROCK,
     },
     -- The ice block: IceCube's, the stages', and what an obstacle encased
     -- in ice becomes.
     [3] = common.variant {
-        id = "bn6:rockcube/rock/ice",
+        id = "rockcube/rock/ice",
         anim = 2,
         hp = 200,
         element = "aqua",
         debris_palette = 1,
-        break_sound = asset.sound("bn6:falling-rock"),
+        break_sound = asset.sound("falling-rock"),
         identity = ICE,
     },
 }
 rock.variants = { brittle = ROWS[0], cube = ROWS[1], hard = ROWS[2], ice = ROWS[3] }
 
 local made = common.make {
-    id = "bn6:rockcube/rock",
+    id = "rockcube/rock",
     sprite = SPRITE,
     debris = debris.kind,
     effects = { puff = effects.puff, dust = effects.dust },
@@ -101,7 +101,7 @@ local made = common.make {
     spark = sparks.breaking,
     is = collision.neutral_body,
     hits = collision.everything,
-    land_sound = asset.sound("bn6:land"),
+    land_sound = asset.sound("land"),
     -- The original's obstacle kind 4: its own sprite, in the animation it
     -- stood in.
     absorbed = absorbed_obstacle.look { sprite = SPRITE },

@@ -24,7 +24,7 @@ export type State = {
     action: Action?,
 }
 
-local SPRITE = asset.sprite("bn6:erase-beam")
+local SPRITE = asset.sprite("erase-beam")
 
 -- By aim: the height in whole pixels (`dword_80DD9FC`) and the animation
 -- (`dword_80DDA04`); a fourth entry is each word's last byte.
@@ -103,7 +103,7 @@ local function tick(me: Object)
 end
 
 beam.kind = define.kind {
-    id = "bn6:eraseman/beam",
+    id = "eraseman/beam",
     pool = "attack",
     state = { aim = "u8", ticks = "u8", navis = "bool", action = "action" },
     -- `sub_80DD940`.

@@ -33,7 +33,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "bn6:wind/controller",
+    id = "wind/controller",
     pool = "effect",
     state = { variant = "record:fan-variant" },
     -- `sub_80E309C`.

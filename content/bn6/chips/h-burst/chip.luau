@@ -7,7 +7,7 @@ local lockon = require("../../rules/lockon")
 local spreadr = require("../spreadr/chips")
 
 return define.chip {
-    id = "bn6:h-burst",
+    id = "h-burst",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -27,5 +27,5 @@ return define.chip {
         { order = 25, code_run = { chip = spreadr.spreadr3, count = 3 } },
     },
     -- Its first parameter: ten bursts.
-    action = action.action { id = "bn6:h-burst/action", bursts = 10 },
+    action = action.action { id = "h-burst/action", bursts = 10 },
 }
