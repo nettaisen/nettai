@@ -4,7 +4,6 @@
 //! libraries.
 
 use super::folder::FolderChip;
-use super::GameVersion;
 use crate::content::{BannerId, ChipData, ChipRole, Content, CustomScreenLayout, FormTraits, ProgramAdvance};
 use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
 
@@ -25,11 +24,6 @@ pub trait Library {
     /// Whether a navi changes form (MegaMan): the screen offers it its
     /// Crosses and Beast Out.
     fn changes_form(&self, navi: NaviHandle) -> bool;
-    /// A navi's forms in a game: the Cross with this number on the screen,
-    /// Beast Out and Beast Over (none: the content has no such form).
-    fn cross_form(&self, navi: NaviHandle, version: GameVersion, cross: u8) -> Option<FormHandle>;
-    fn beast_out_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle>;
-    fn beast_over_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle>;
     /// BN5's Soul Unison: the navi has souls (the custom screen's soul
     /// button), and the soul a chip of `family` given up gives (its number
     /// and form).
@@ -104,18 +98,6 @@ impl Library for Content {
 
     fn changes_form(&self, navi: NaviHandle) -> bool {
         self.navi(navi).changes_form()
-    }
-
-    fn cross_form(&self, navi: NaviHandle, version: GameVersion, cross: u8) -> Option<FormHandle> {
-        self.navi(navi).forms.as_ref()?.of(version).crosses.get(cross as usize).copied()
-    }
-
-    fn beast_out_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle> {
-        self.navi(navi).forms.as_ref()?.of(version).beast_out
-    }
-
-    fn beast_over_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle> {
-        self.navi(navi).forms.as_ref()?.of(version).beast_over
     }
 
     fn has_souls(&self, navi: NaviHandle) -> bool {
@@ -234,8 +216,6 @@ pub(crate) mod testing {
 
     /// The test library's forms the tests name.
     pub const DUST_CROSS: FormHandle = FormHandle(0x0A);
-    pub const GREGAR_BEAST: FormHandle = FormHandle(0x0B);
-    pub const FALZAR_BEAST: FormHandle = FormHandle(0x0C);
 
     /// The chips the screen names by role, as the test library numbers them.
     pub const BEAST_OUT: ChipId = 0x13F;
@@ -272,15 +252,6 @@ pub(crate) mod testing {
         }
         fn changes_form(&self, navi: NaviHandle) -> bool {
             navi.0 == 0
-        }
-        fn cross_form(&self, _navi: NaviHandle, version: GameVersion, cross: u8) -> Option<FormHandle> {
-            Some(FormHandle(cross as u16 + if version == GameVersion::Gregar { 1 } else { 6 }))
-        }
-        fn beast_out_form(&self, _navi: NaviHandle, version: GameVersion) -> Option<FormHandle> {
-            Some(if version == GameVersion::Gregar { GREGAR_BEAST } else { FALZAR_BEAST })
-        }
-        fn beast_over_form(&self, _navi: NaviHandle, version: GameVersion) -> Option<FormHandle> {
-            Some(FormHandle(if version == GameVersion::Gregar { 0x17 } else { 0x18 }))
         }
         fn form_traits(&self, _form: FormHandle) -> FormTraits {
             FormTraits::default()

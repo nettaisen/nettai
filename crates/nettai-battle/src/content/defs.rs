@@ -166,6 +166,9 @@ pub struct NaviDef {
     pub own_chip: Option<(ChipHandle, super::ChipCode)>,
 }
 
+/// The record type of a lock-on mode (`define.record("lockon", ...)`).
+pub const LOCKON_RECORD: &str = "lockon";
+
 /// One of MegaMan's forms (`define.form`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FormDef {
@@ -207,9 +210,11 @@ pub struct StatusDef {
     pub effect: super::StatusEffect,
 }
 
-/// A Beast Out lock-on mode (`define.lockon`).
+/// A Beast Out lock-on mode: a record of type "lockon" (`LOCKON_RECORD`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct LockonDef {
+    /// Its record (a record of type "lockon").
+    pub record: RecordHandle,
     pub key: String,
     pub mode: super::LockonMode,
 }
@@ -717,8 +722,8 @@ impl Defs {
     }
 
     /// The lock-on mode with this key.
-    pub fn lockon_by_key(&self, key: &str) -> Option<nettai_content_api::LockonHandle> {
-        self.lockons.binary_search_by(|l| l.key.as_str().cmp(key)).ok().map(|i| nettai_content_api::LockonHandle(i as u16))
+    pub fn lockon_by_key(&self, key: &str) -> Option<RecordHandle> {
+        self.lockons.iter().find(|l| l.key == key).map(|l| l.record)
     }
 
     pub fn weapon(&self, h: WeaponHandle) -> &WeaponDef {
@@ -1473,26 +1478,7 @@ impl Defs {
             record.forms = match d.spec.field("forms") {
                 Data::Nil => None,
                 forms @ Data::Map(_) => {
-                    let set = |game: &str| -> Result<super::FormSet, ContentError> {
-                        let g = forms.field(game);
-                        if matches!(g, Data::Nil) {
-                            return Ok(super::FormSet::default());
-                        }
-                        let crosses = match g.field("crosses") {
-                            Data::Nil => Vec::new(),
-                            Data::List(items) => items
-                                .iter()
-                                .map(|v| form_ref(d, v, &format!("forms.{game}.crosses")).map(|f| f.expect("a form")))
-                                .collect::<Result<_, _>>()?,
-                            Data::Map(m) if m.is_empty() => Vec::new(),
-                            other => return Err(what(d, format!("forms.{game}.crosses is {other:?}, not a list of forms"))),
-                        };
-                        Ok(super::FormSet {
-                            crosses,
-                            beast_out: form_ref(d, g.field("beast_out"), &format!("forms.{game}.beast_out"))?,
-                            beast_over: form_ref(d, g.field("beast_over"), &format!("forms.{game}.beast_over"))?,
-                        })
-                    };
+                    // (The rest of the table is its game's: BN6's sets.)
                     let souls = match forms.field("souls") {
                         Data::Nil => Vec::new(),
                         Data::List(items) => items
@@ -1502,7 +1488,7 @@ impl Defs {
                         Data::Map(m) if m.is_empty() => Vec::new(),
                         other => return Err(what(d, format!("forms.souls is {other:?}, not a list of forms"))),
                     };
-                    Some(super::NaviForms { gregar: set("gregar")?, falzar: set("falzar")?, souls })
+                    Some(super::NaviForms { souls })
                 }
                 other => return Err(what(d, format!("`forms` is {other:?}, not the forms by game"))),
             };
@@ -1626,21 +1612,6 @@ impl Defs {
             stages.add(d.key.clone(), StageDef { key: d.key.clone(), record }, format!("defined in {}.luau", d.module));
         }
         let stages: Vec<StageDef> = stages.sorted()?.into_iter().map(|(_, s)| s).collect();
-
-        // The lock-on modes, by key (the definitions' order).
-        let mut lockons = Vec::new();
-        for d in definitions.of(Registry::Lockon) {
-            let what = |e: String| ContentError::new(format!("{}.luau: lockon {}: {e}", d.module, d.key));
-            let mut spec = d.spec.clone();
-            if let Data::Map(entries) = &mut spec {
-                entries.retain(|(k, _)| !matches!(k, nettai_content_api::DataKey::Str(s) if s == "id"));
-            }
-            let mode: super::LockonMode = reader.read(&spec, &d.key).map_err(what)?;
-            lockons.push(LockonDef { key: d.key.clone(), mode });
-        }
-        if lockons.windows(2).any(|w| w[0].key >= w[1].key) {
-            return Err(ContentError::new("the lock-on modes are not in key order (the define phase sorts each registry)"));
-        }
 
         // The status effects, by key (the definitions' order).
         let mut statuses = Vec::new();
@@ -1969,6 +1940,18 @@ impl Defs {
             .iter()
             .map(|d| RecordDef { key: d.key.clone(), record_type: d.record_type.clone().unwrap_or_default() })
             .collect();
+        // The lock-on modes (`ho_8026554`'s, which `navi:lockon_panel` reads):
+        // the records of type "lockon", by handle.
+        let mut lockons = Vec::new();
+        for (i, d) in definitions.of(Registry::Record).iter().enumerate().filter(|(_, d)| d.record_type.as_deref() == Some(LOCKON_RECORD)) {
+            let what = |e: String| ContentError::new(format!("{}.luau: lockon record {}: {e}", d.module, d.key));
+            let mut spec = d.spec.clone();
+            if let Data::Map(entries) = &mut spec {
+                entries.retain(|(k, _)| !matches!(k, nettai_content_api::DataKey::Str(s) if s == "id"));
+            }
+            let mode: super::LockonMode = reader.read(&spec, &d.key).map_err(what)?;
+            lockons.push(LockonDef { record: RecordHandle(i as u16), key: d.key.clone(), mode });
+        }
 
         // The patch cards: their capacity cost and their effects' kinds
         // (what the effects do is a game's rules').
