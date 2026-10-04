@@ -89,7 +89,7 @@ return define.system {
     -- charged sword runs inside the rush.
     extends = {
         chip = {
-            beast = { lockon = "lockon", rush = "bool" },
+            beast = { lockon = "record:lockon", rush = "bool" },
         },
         form = {
             beast = "form",

@@ -4,7 +4,6 @@
 use super::flags::serde_flags;
 use super::{BannerId, ChipFamily, CodedChip, Element, SecondaryElements, SpriteId};
 use crate::actor::ActorType;
-use crate::custom::GameVersion;
 use nettai_content_api::{FormHandle, IdentityHandle, WeaponHandle};
 use serde::{Deserialize, Serialize};
 
@@ -63,10 +62,10 @@ pub struct NaviData {
     pub fire_charge: Option<Vec<u8>>,
     #[serde(default)]
     pub traits: NaviTraits,
-    /// The forms it changes into (MegaMan's), by game. Where the original
-    /// asks whether a navi is MegaMan, the ruleset asks whether it has
-    /// forms. (This and what follows are read from the definition by
-    /// handle, not with the rest of the record.)
+    /// Its forms ([`NaviForms`]): where the original asks whether a navi is
+    /// MegaMan, the ruleset asks whether it has forms. (This and what
+    /// follows are read from the definition by handle, not with the rest of
+    /// the record.)
     #[serde(skip)]
     pub forms: Option<NaviForms>,
     /// Its identity: what the object that is this navi is taken for.
@@ -144,33 +143,16 @@ impl NaviTraits {
 
 serde_flags!(NaviTraits, u8);
 
-/// The forms a navi changes into, by the player's game (BN6's), and its
-/// souls (BN5's Soul Unison).
+/// A navi's forms (`forms`): that it has any says the navi changes form
+/// (MegaMan: where the original asks whether a navi is MegaMan), and its
+/// souls are BN5's Soul Unison's. What else the table holds is its game's
+/// (BN6's sets by game, `gregar` and `falzar`: its Crosses, Beast Out and
+/// Beast Over, which BN6's rules and bn6-compat's `forms` read).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviForms {
-    pub gregar: FormSet,
-    pub falzar: FormSet,
     /// The souls the custom screen's soul button offers (each a form with
     /// its [`SoulData`]).
     pub souls: Vec<FormHandle>,
-}
-
-impl NaviForms {
-    pub fn of(&self, version: GameVersion) -> &FormSet {
-        match version {
-            GameVersion::Gregar => &self.gregar,
-            GameVersion::Falzar => &self.falzar,
-        }
-    }
-}
-
-/// A game's forms: its Crosses by their number on the custom screen (the
-/// save's unlock flags' order), Beast Out and Beast Over.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct FormSet {
-    pub crosses: Vec<FormHandle>,
-    pub beast_out: Option<FormHandle>,
-    pub beast_over: Option<FormHandle>,
 }
 
 /// A navi's stats when a navi switch brings it fresh (`byte_80210DD`,

@@ -22,7 +22,7 @@ use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipFlags, ChipTraits};
 use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
-use nettai_battle::custom::{ButtonCell, FolderChip, GameVersion, Library, Phase, Screen, Side, SlotKind, SlotState};
+use nettai_battle::custom::{ButtonCell, FolderChip, GameVersion, Phase, Screen, Side, SlotKind, SlotState};
 use nettai_content_api::{ChipHandle, FieldValue, FormHandle, NaviHandle};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
@@ -477,7 +477,7 @@ impl View<'_> {
 /// navi whose Cross it is.
 pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
     let game = bn6_compat::forms::game(c, form)?;
-    let number = (0..5u8).find(|&i| c.cross_form(navi, game, i) == Some(form))?;
+    let number = (0..5u8).find(|&i| bn6_compat::forms::cross(c, navi, game, i) == Some(form))?;
     Some((a.versioned.get(game_name(game)), number as usize))
 }
 
