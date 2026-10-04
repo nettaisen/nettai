@@ -11,6 +11,9 @@ local forms = require("../../../../rules/forms/system")
 return define.form {
     id = "bn6:heatcross-beast",
     kind = "cross_beast",
+    -- The target marker shows, its afterimages stay, and a Null chip's A charge times by the
+    -- alternative routine (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`).
+    traits = { "shows_target_marker", "afterimages_stay", "alt_charge_time" },
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
     game = "gregar",

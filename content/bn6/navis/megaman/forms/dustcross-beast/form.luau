@@ -37,7 +37,11 @@ return define.form {
     status_reset = { "air_shoes", "float_shoes", "floating_body", "target_marker" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 22,
-    traits = { "scrap_button", "special_holds_buster" },
+    -- The target marker shows, its afterimages stay, and a Null chip's A charge times by the
+    -- alternative routine (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`).
+    traits = { "special_holds_buster", "shows_target_marker", "afterimages_stay", "alt_charge_time" },
+    -- The custom screen has the scrap button (the cross system's, `sub_8027F10`).
+    scrap_button = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 22 },
     identity = define.identity {
