@@ -1,10 +1,10 @@
 --!strict
--- What BN5's buster shots share (@common/buster: BN6's code) but the arm they raise, BN5's own (lib/arm): BN6's muzzle
+-- What BN5's buster shots share (@exelib/buster: BN6's code) but the arm they raise, BN5's own (lib/arm): BN6's muzzle
 -- flash (and the arm looks BN6's code keeps), BN5's recovery table (rules/buster: BN6's values) and BN5's attachment.
 
 local arm = require("./arm")
 local attachment = require("../objects/attachment/attachment")
-local common = require("@common/buster")
+local common = require("@exelib/buster")
 
 local buster = common.make {
     flash = attachment.look { sprite = asset.sprite("bn6:muzzle-flash"), palette = 0, attach_point = 0x10 },

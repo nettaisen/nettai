@@ -77,16 +77,12 @@ pub fn backgrounds<'c>(content: &'c Content, game: &str) -> Vec<&'c str> {
     content.assets.backgrounds.keys().filter(|k| in_game(game, k)).map(|k| local(k)).collect()
 }
 
-/// The games a match can be of: the content's games with a stock ruleset
-/// and a link battle stage, by name.
+/// The games a match on `content` can be of: its game, when it has a stock
+/// ruleset and a link battle stage (a content holds one game).
 pub fn games(content: &Content) -> Vec<String> {
-    content
-        .defs
-        .roots
-        .iter()
-        .filter(|g| content.defs.stock_ruleset_of(g).is_some() && !crate::link_battle_stages(content, g).is_empty())
-        .cloned()
-        .collect()
+    let game = content.game();
+    let playable = content.defs.stock_ruleset().is_some() && !crate::link_battle_stages(content, game).is_empty();
+    if playable { vec![game.to_string()] } else { Vec::new() }
 }
 
 #[cfg(test)]
@@ -94,20 +90,17 @@ mod tests {
     use super::*;
 
     /// A match's lookups see only its game: a name is its game's (`cannon`
-    /// in bn5 is BN5's Cannon, in bn6 BN6's), and a name the game hasn't,
-    /// whatever it is, is none.
+    /// in bn6 is BN6's Cannon), and a name the game hasn't, whatever it is
+    /// (another game's, written in full), is none.
     #[test]
     fn lookups_see_only_their_game() {
-        let content = crate::testing::every_game();
-        let (five, six) = (chip(&content, "bn5", "cannon").unwrap(), chip(&content, "bn6", "cannon").unwrap());
-        assert_ne!(five, six);
-        assert_eq!(content.defs.chip(five).key, "bn5:cannon");
+        let content = crate::testing::bn6_content();
+        let six = chip(&content, "bn6", "cannon").unwrap();
         assert_eq!(local(&content.defs.chip(six).key), "cannon");
-        // BN6's Crosses and patch cards aren't BN5's; nothing names across.
         assert!(form(&content, "bn6", "heatcross").is_some());
-        assert_eq!(form(&content, "bn5", "heatcross"), None);
-        assert_eq!(chip(&content, "bn5", "bn6:cannon"), None);
+        assert_eq!(chip(&content, "bn5", "cannon"), None);
+        assert_eq!(chip(&content, "bn6", "bn6:cannon"), None);
         assert_eq!(ruleset(&content, "bn6", "stock").map(|r| content.defs.ruleset(r).key.as_str()), Some("bn6:stock"));
-        assert_eq!(games(&content), ["bn5", "bn6"]);
+        assert_eq!(games(&content), ["bn6"]);
     }
 }

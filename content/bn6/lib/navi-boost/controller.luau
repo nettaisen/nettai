@@ -2,7 +2,7 @@
 -- The navi-changing chips' dimming controller (the original's effect
 -- object #0x84, `sub_80E9570`): HubBatc, the arm chips (PunchArm,
 -- NeedlArm, PuzzlArm, BoomrArm), BugRSwrd and BgDthThd, and DarkInvs. The
--- usual dimming phases (@common/dimming), with an effect by what the chip
+-- usual dimming phases (@exelib/dimming), with an effect by what the chip
 -- changes (`off_80E95C8`, by the original's first chip parameter):
 --
 --   "hub" (0, HubBatc, `sub_80E95D8`): the buster at attack level 5 or
@@ -19,7 +19,7 @@
 -- palette)` or `navi_boost.dark`.
 
 local collision = require("../../rules/collision")
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 local shield = require("../../navis/megaman/weapons/shield/weapon")
 
 local navi_boost = {}

@@ -12,7 +12,7 @@ local widesht = require("../widesht/wave")
 
 -- SuprSpr1 (BN5 chip 0x149): the Program Advance of WideSht1, WideSht1 and WideSht1 with one code: the navi raises its
 -- wide shooter and sends three waves over a column of three, 14 ticks apart, that go through what they hit, the last
--- staggering harder: the shared WideSht's (@common/widesht, BN5's action 0x25 with subtype 1) three waves, at the
+-- staggering harder: the shared WideSht's (@exelib/widesht, BN5's action 0x25 with subtype 1) three waves, at the
 -- floor, of BN5's wave kind 6 (chips/widesht: the record's parameters).
 local suprspr1 = define.chip {
     id = "bn5:suprspr1",
@@ -39,7 +39,7 @@ local suprspr1 = define.chip {
 
 -- SuprSpr2 (BN5 chip 0x14a): the Program Advance of WideSht2, WideSht2 and WideSht2 with one code: the navi raises its
 -- wide shooter and sends three waves over a column of three, 14 ticks apart, that go through what they hit, the last
--- staggering harder: the shared WideSht's (@common/widesht, BN5's action 0x25 with subtype 1) three waves, at the
+-- staggering harder: the shared WideSht's (@exelib/widesht, BN5's action 0x25 with subtype 1) three waves, at the
 -- floor, of BN5's wave kind 7 (chips/widesht: the record's parameters).
 local suprspr2 = define.chip {
     id = "bn5:suprspr2",
@@ -66,7 +66,7 @@ local suprspr2 = define.chip {
 
 -- SuprSpr3 (BN5 chip 0x14b): the Program Advance of WideSht3, WideSht3 and WideSht3 with one code: the navi raises its
 -- wide shooter and sends three waves over a column of three, 14 ticks apart, that go through what they hit, the last
--- staggering harder: the shared WideSht's (@common/widesht, BN5's action 0x25 with subtype 1) three waves, at the
+-- staggering harder: the shared WideSht's (@exelib/widesht, BN5's action 0x25 with subtype 1) three waves, at the
 -- floor, of BN5's wave kind 8 (chips/widesht: the record's parameters).
 local suprspr3 = define.chip {
     id = "bn5:suprspr3",

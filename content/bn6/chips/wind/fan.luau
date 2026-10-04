@@ -14,7 +14,7 @@ local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obst
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local gust = require("../../objects/gust/gust")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local fan = {}
 

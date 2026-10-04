@@ -346,18 +346,18 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             navi_level: nettai_match::default_navi_level(content, stats.navi),
             sp_times: Default::default(),
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
-            ruleset: None,
             rules: Vec::new(),
             patch_cards: Default::default(),
             navicust: None,
             tactics: Default::default(),
         };
-        Unlocks::everything(GameVersion::Falzar).write(content, &mut player).expect("BN6's setup");
+        Unlocks::everything(GameVersion::Falzar).write(content, None, &mut player).expect("BN6's setup");
         player
     };
     RoundSetup {
         content: content.hash(),
         settings,
+        ruleset: None,
         navi_stats: [stats, stats],
         rng: seed,
         local_side: 0,
@@ -648,7 +648,7 @@ mod tests {
         let folder = folder_of(&content, &[("bn6:cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], 5);
         Unlocks { cross_list: Some(bn6_compat::CrossList::new(&[heat])), ..Unlocks::everything(GameVersion::Falzar) }
-            .write(&content, &mut setup.players[0])
+            .write(&content, None, &mut setup.players[0])
             .unwrap();
         let mut live = LivePlayer::new(setup, content.clone());
         let mut b = live.start();
@@ -757,7 +757,7 @@ mod tests {
             cross_list: list.map(|l| bn6_compat::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>())),
             ..Unlocks::everything(version)
         }
-        .write(&content, &mut setup.players[0])
+        .write(&content, None, &mut setup.players[0])
         .unwrap();
         tweak(&content, &mut setup.navi_stats[0]);
         let mut live = LivePlayer::new(setup, content.clone());

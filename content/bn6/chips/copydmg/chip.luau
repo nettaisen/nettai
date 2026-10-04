@@ -1,11 +1,11 @@
 --!strict
 -- CopyDmg (the original's action 0x23, `sub_80ECA34`): the action BN5
--- shares (@common/copydmg/action): the navi raises its buster and, on the
+-- shares (@exelib/copydmg/action): the navi raises its buster and, on the
 -- next tick, fires its mark (mark.luau) along its row from the panel
 -- ahead: the first navi it hits takes, for 180 ticks, the damage its side
 -- took the tick before on top of its own. 5 ticks, then 11 of recovery.
 
-local action = require("@common/copydmg/action")
+local action = require("@exelib/copydmg/action")
 local buster = require("../../lib/buster")
 local lockon = require("../../rules/lockon")
 local mark = require("./mark")

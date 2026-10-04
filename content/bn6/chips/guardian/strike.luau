@@ -5,7 +5,7 @@
 -- usual dimming phases (its telop names Punisher), with an effect that
 -- tells the statue to strike and waits 60 ticks.
 
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 local punisher = require("../punisher/chip")
 
 local strike = {}

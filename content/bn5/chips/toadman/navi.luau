@@ -5,7 +5,7 @@
 -- combatant in his cone ahead (a row nearer it each step; none: straight ahead), paralyzing. 30 ticks of playing, 30
 -- standing, and he leaves; the controller moves on.
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("@exelib/navi-chips/navi")
 local note = require("./note")
 
 export type State = {
@@ -36,7 +36,7 @@ local function in_cone(me: Object, x: number, y: number, x2: number, y2: number)
 end
 
 -- 0x080BC92C: the enemy combatant in his cone from the panel ahead nearest it in columns (then the upper); none.
-local function find_target(me: Object): Object?
+function toadman.find_target(me: Object): Object?
     local x, y = me.panel_x + me.facing, me.panel_y
     local best: Object? = nil
     for _, o in battle.alive_actors(bit32.bxor(me.alliance, 1)) do
@@ -104,7 +104,7 @@ end
 local function play(me: Object)
     if me.phase_init == 0 then
         me.anim = 0x15
-        local target = find_target(me)
+        local target = toadman.find_target(me)
         note.spawn(me, me.panel_x + me.facing, me.panel_y, CHAIN, target)
         battle.play_sound(SOUND_PLAY)
     end

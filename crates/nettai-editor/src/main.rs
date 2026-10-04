@@ -38,7 +38,8 @@ fn fail(msg: impl std::fmt::Display) -> ! {
 fn parse() -> Result<Options, String> {
     let mut o = Options {
         content: None,
-        roots: Vec::new(),
+        content_dir: std::path::PathBuf::new(),
+        games: Vec::new(),
         packs: Vec::new(),
         frontend: None,
         file: None,
@@ -96,7 +97,7 @@ fn main() -> iced::Result {
         None => nettai_match::DEFAULT_GAME.to_string(),
     };
     let loaded = load::load_game(options.content.as_deref(), &options.packs, &game).unwrap_or_else(|e| fail(e));
-    options.roots = loaded.roots;
+    (options.content_dir, options.games) = (loaded.dir, vec![loaded.game]);
     let (content, pictures) = (loaded.content, loaded.pictures);
     // A round that doesn't start is a problem the editor shows, not a
     // message on the terminal.

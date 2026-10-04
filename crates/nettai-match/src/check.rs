@@ -220,7 +220,7 @@ pub fn check_navicust(content: &Content, arena: &Arena, s: &Side, n: &nettai_bat
             out.push(format!("stats: {name} is the NaviCust's (with a NaviCust the stats set only {})", crate::stats::SAVE_FIELDS.join(", ")));
         }
     }
-    let rules = crate::navicust_rules(content, arena.ruleset);
+    let rules = crate::navicust_rules(content);
     let Some(board) = rules.board(n.expansions) else {
         out.push(format!("a NaviCust with {} expansions: the game's board has {} sizes", n.expansions, rules.boards.len()));
         return out;

@@ -35,7 +35,7 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     slide_triggers(b, r);
     // (BN5's takes the hit's NaviCust bug before the HP bug drains: the
     // navi's game's intake rules.)
-    let bugs_first = b.rules_for(r).intake.bugs_before_drain;
+    let bugs_first = b.game_rules().intake.bugs_before_drain;
     if bugs_first {
         bug_navicust(b, r);
     }
@@ -67,6 +67,28 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     hit_ends_submerged(b, r);
     pierce_ends_flash(b, r);
     guard_spark(b, r);
+    if b.game_rules().intake.no_charge_drive {
+        no_charge_timer(b, r);
+    }
+}
+
+/// BN5's 0x0800DBE0 (its intake's last step): with the no-charge state,
+/// unless the battle is dimmed or paused, the drive's ticks run down (from
+/// any count but 0 and 0xFFFF); their end asks for the stun strike (BN5's
+/// action 0x49: the drive's end).
+fn no_charge_timer(b: &mut Battle, r: ObjectRef) {
+    if ai(b, r).status & crate::actor::status::NO_CHARGE == 0 || b.is_dimmed() || b.paused {
+        return;
+    }
+    let a = ai_mut(b, r);
+    let t = a.no_charge_timer;
+    if t == 0xFFFF || t == 0 {
+        return;
+    }
+    a.no_charge_timer = t - 1;
+    if t - 1 == 0 {
+        a.requests |= crate::actor::request::STUN_STRIKE;
+    }
 }
 
 /// The navi type's intake (BN5's 0x08017688, BN6's `sub_801A9B8`): a navi
@@ -266,7 +288,7 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
     let p = coll(b, r).panel;
     let Some(t) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
     let f = flag1(b, r);
-    let drains = b.arena_rules().panels.types[t as usize].drains;
+    let drains = b.game_rules().panels.types[t as usize].drains;
     let on_grass;
     if t == PanelType::Poison || drains.is_some_and(|e| e == coll(b, r).element) {
         if f & (f1::UNTOUCHABLE | f1::FLOATSHOE | f1::INVULNERABLE) == 0 {
@@ -326,7 +348,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
     // BN5's panels at a move's end (0x0801715E, after its own flag test):
     // metal slides the body, sea holds it.
-    let rule = b.arena_rules().panels.types[kind as usize];
+    let rule = b.game_rules().panels.types[kind as usize];
     if (rule.slide.is_some() || rule.holds.is_some()) && flag1(b, r) & 0x0010_0040 == 0 {
         if rule.slide.is_some() {
             return metal_slide(b, r);
@@ -372,7 +394,7 @@ fn panel_hold(b: &mut Battle, r: ObjectRef, ticks: u16) {
     coll_mut(b, r).status_timers[crate::collision::timer::IMMOBILIZE] = ticks;
     super::set_flag1(b, r, f1::IMMOBILIZED);
     let pos = b.objects.get(r).pos;
-    let look = b.arena_roles().effect(crate::content::EffectRole::PanelSplash);
+    let look = b.roles().effect(crate::content::EffectRole::PanelSplash);
     crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
 }
 
@@ -385,7 +407,7 @@ fn hp_bug_drain(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let level = stats(b, r).bugs.hp_drain as usize;
-    let period = *b.rules_for(r).hp_bug_periods.get(level).expect("HP bug level");
+    let period = *b.game_rules().hp_bug_periods.get(level).expect("HP bug level");
     let a = ai_mut(b, r);
     if period != 0 {
         a.hp_drain_counter = a.hp_drain_counter.wrapping_add(1);
@@ -556,7 +578,7 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
     let (code, arg) = (bugs as u8, (bugs >> 8) as u8);
     let mut edited = false;
     let content = b.content.clone();
-    let flags = b.rules_for(r).intake.drain_bug_flags;
+    let flags = b.game_rules().intake.drain_bug_flags;
     let s = stats_mut(b, r);
     match code {
         0 => {}
@@ -610,7 +632,7 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
             }
             let pos = b.objects.get(r).pos;
             let at = crate::object::Vec3 { z: pos.z.wrapping_add(0x10_0000), ..pos };
-            let spark = b.roles_for(r).spark(SparkRole::Uninstall);
+            let spark = b.roles().spark(SparkRole::Uninstall);
             crate::kinds::spark::spawn(b, r, at, spark);
             b.sound(crate::content::SoundRole::Fade);
         }
@@ -659,7 +681,7 @@ fn counter_paralysis(b: &mut Battle, r: ObjectRef) {
     if c.acc.hit_flags & 0x40 == 0 || c.status_final.is_some_and(|s| b.content.status(s).survives_counter) {
         return;
     }
-    coll_mut(b, r).status_final = Some(b.roles_for(r).status(StatusRole::CounterParalysis));
+    coll_mut(b, r).status_final = Some(b.roles().status(StatusRole::CounterParalysis));
     set_flag2(b, r, 0x4000);
     clear_flag2(b, r, 0x6);
 }
@@ -693,8 +715,8 @@ fn navicust_hit_bug(b: &mut Battle, r: ObjectRef) {
     }
     match stats(b, r).bugs.hit_status {
         0 => {}
-        1 => coll_mut(b, r).status_final = Some(b.roles_for(r).status(StatusRole::HitBugBlind)),
-        2 => coll_mut(b, r).status_final = Some(b.roles_for(r).status(StatusRole::HitBugConfuse)),
+        1 => coll_mut(b, r).status_final = Some(b.roles().status(StatusRole::HitBugBlind)),
+        2 => coll_mut(b, r).status_final = Some(b.roles().status(StatusRole::HitBugConfuse)),
         3 => {
             let bugs = &mut stats_mut(b, r).bugs;
             if bugs.hp_drain < 7 {
@@ -769,7 +791,7 @@ fn drain_heal(b: &mut Battle, r: ObjectRef) {
     }
     add_hp(b, r, heal);
     let pos = b.objects.get(r).pos;
-    let look = b.roles_for(r).effect(EffectRole::Recovery);
+    let look = b.roles().effect(EffectRole::Recovery);
     crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
     b.sound(crate::content::SoundRole::Recovery);
 }
@@ -871,6 +893,6 @@ fn guard_spark(b: &mut Battle, r: ObjectRef) {
     b.sound(crate::content::SoundRole::Guard);
     let p = b.objects.get(r).pos;
     let pos = crate::kinds::spark::jitter(b, 0xF, Vec3 { z: p.z.wrapping_add(0x10_0000), ..p });
-    let spark = b.roles_for(r).spark(SparkRole::Guard);
+    let spark = b.roles().spark(SparkRole::Guard);
     crate::kinds::spark::spawn(b, r, pos, spark);
 }

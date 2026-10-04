@@ -6,7 +6,7 @@
 -- recovery.
 
 local bullet = require("../../../../objects/bullet/bullet")
-local bullets = require("@common/bullet/bullet")
+local bullets = require("@exelib/bullet/bullet")
 
 local charge = {}
 

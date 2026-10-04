@@ -1,13 +1,13 @@
 --!strict
 -- WideSht and SuprSpr (the original's action 0x30, `sub_80ED55C`;
 -- docs/engine/shot-chips.md §10): the shared action
--- (@common/widesht/action) with BN6's wide shooter, attachment and wave.
+-- (@exelib/widesht/action) with BN6's wide shooter, attachment and wave.
 --
 -- These are their actions; the chips are ./chip and chips/suprspr
 -- (WideSht is SuprSpr's Program Advance ingredient).
 
 local attachment = require("../../objects/attachment/attachment")
-local common = require("@common/widesht/action")
+local common = require("@exelib/widesht/action")
 local wave = require("./wave")
 
 local widesht = {}

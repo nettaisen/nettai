@@ -1,13 +1,13 @@
 --!strict
 -- The patch cards' HeatS and BubSht (B↓HeatS, B↓BubSht): weapon routines 0x4A (0x0800FC5A) and 0x56 (0x0800FCFE),
--- the Spreaders' action (BN5's 0x18, @common/spreadr/action) in its variants 1 and 2: Spreader's gun (the
+-- the Spreaders' action (BN5's 0x18, @exelib/spreadr/action) in its variants 1 and 2: Spreader's gun (the
 -- attachment table's row 9, 0x080EC578), the bullet leaving after the count's 10 (0x080EC57C), from 16 pixels up and
 -- from the ground (0x080EC580). HeatS fires the bullet's row 8, a Fire burst of 40 over the panel it finds and the
 -- one behind; BubSht its row 4, an Aqua splash of 50.
 
 local attachment = require("../../../objects/attachment/attachment")
 local bullet = require("../../../objects/bullet/bullet")
-local spreader = require("@common/spreadr/action")
+local spreader = require("@exelib/spreadr/action")
 
 local spreads = {}
 

@@ -155,7 +155,10 @@ pub struct CollisionData {
     /// This slot's bit (`0x80000000 >> slot`).
     pub bit: u32,
     /// Status visual objects and other links (0x48..0x67).
-    pub links: [Option<ObjectRef>; 4],
+    /// BN5's +0x2C: how long a body stays under the sea's surface (0xFFFF
+    /// while it dives on a panel that submerges: 0x08017030).
+    pub dive_timer: u16,
+    pub links: [Option<ObjectRef>; 5],
     pub acc: Accumulators,
 }
 
@@ -169,6 +172,9 @@ pub mod link {
     pub const FREEZE: usize = 2;
     /// +0x60: bubble.
     pub const BUBBLE: usize = 3;
+    /// BN5's +0x50: the ripple over a body under the sea's surface
+    /// (0x0800DEB2).
+    pub const RIPPLE: usize = 4;
 }
 
 /// Indices into `status_timers`.
@@ -293,7 +299,7 @@ impl Battle {
     pub fn create_collision(&mut self, obj: ObjectRef) -> Option<CollisionId> {
         let id = self.collision.allocate();
         if let Some(id) = id {
-            self.collision.get_mut(id).hit_effect = Some(self.arena_roles().spark(SparkRole::Plain));
+            self.collision.get_mut(id).hit_effect = Some(self.roles().spark(SparkRole::Plain));
         }
         self.objects.get_mut(obj).collision = id;
         id
@@ -302,7 +308,7 @@ impl Battle {
     /// The registration's own panel as a region (`object_setCollisionRegion`
     /// with 1, what a setup gives every registration).
     pub fn anchor_region(&self) -> Option<RegionHandle> {
-        Some(self.arena_roles().region(RegionRole::Anchor))
+        Some(self.roles().region(RegionRole::Anchor))
     }
 
     /// `object_setupCollisionData`.
@@ -310,7 +316,7 @@ impl Battle {
         let o = self.objects.get(obj).clone();
         let Some(id) = o.collision else { return };
         let dimmed = self.is_dimmed();
-        let anchor = self.arena_roles().region(RegionRole::Anchor);
+        let anchor = self.roles().region(RegionRole::Anchor);
         let s = self.collision.get_mut(id);
         s.parent = Some(obj);
         s.hit_mod_base = hit_mod;
@@ -328,7 +334,7 @@ impl Battle {
         // The garbage high byte of any bug code: the table offset the
         // target lookup left in r1.
         let r1 = row_offset + o.alliance as u16 * 4;
-        decode_damage_word(s, r1, self.content.defs.roles(self.games.arena));
+        decode_damage_word(s, r1, self.content.defs.roles());
     }
 
     /// `sub_801A082`: redo the damage and collision-type part of the setup
@@ -338,7 +344,7 @@ impl Battle {
         let Some(id) = o.collision else { return };
         let (alliance, damage) = (o.alliance, o.damage);
         let dimmed = self.is_dimmed();
-        let bn5 = self.arena_rules().effects.retype == crate::content::RetypeRule::Bn5;
+        let bn5 = self.game_rules().effects.retype == crate::content::RetypeRule::Bn5;
         let (target_flags, row_offset) = self.content.collision_type(target_type, alliance);
         let s = self.collision.get_mut(id);
         s.hit_mod_base = hit_mod;
@@ -357,7 +363,7 @@ impl Battle {
         } else {
             4
         };
-        decode_damage_word(s, r1, self.content.defs.roles(self.games.arena));
+        decode_damage_word(s, r1, self.content.defs.roles());
     }
 
     /// `object_presentCollisionData`: clear the accumulators and register.
@@ -378,7 +384,7 @@ impl Battle {
             self.collision.masks[(y * 8 + x) as usize] |= bit;
             // Whole-field registrations refresh the wrong panel (a no-op).
             if !whole_field {
-                self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
+                self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
             }
         }
     }
@@ -405,7 +411,7 @@ impl Battle {
             if whole_field && !was {
                 continue;
             }
-            self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
+            self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
             self.pair_test(x, y, id);
             self.convert_panel(x, y, id);
         }
@@ -455,7 +461,7 @@ impl Battle {
         }
         // (BN5's test, 0x0801691C: a bubbled body counts as submerged, elec
         // reaching either; no FloatShoe test; the guard's own masks.)
-        let bn5 = self.content.rules_of(self.games.arena).hit_test == HitTest::Bn5;
+        let bn5 = self.content.rules().hit_test == HitTest::Bn5;
         let submerged = if bn5 { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
         // The hitter's state against the receiver's type.
         let f = hd.f1;
@@ -515,7 +521,7 @@ impl Battle {
         // Aqua on ice: freeze a body standing on ice (in a game that has
         // the freeze: the arena's role `statuses.ice_freeze`; BN5 has none,
         // docs/design/bn5-map.md §15.3 item 4).
-        if let Some(freeze) = self.arena_roles().try_status(StatusRole::IceFreeze)
+        if let Some(freeze) = self.roles().try_status(StatusRole::IceFreeze)
             && rd.element == 2
             && hs & 0x0C00_0000 != 0
             && rs & 0x0C00_0000 == 0
@@ -556,10 +562,10 @@ impl Battle {
             rm.acc.inflicted_bugs = hd.bugs;
         }
         // Multiplier.
-        // (The hit kernel's table: the arena's game's.)
+        // (The hit kernel's table.)
         let w1 = self
             .content
-            .rules_of(self.games.arena)
+            .rules()
             .element_weakness
             .get(rd.element as usize)
             .and_then(|row| row.get(hd.element as usize))
@@ -573,7 +579,9 @@ impl Battle {
         if thaw {
             m += 1;
         }
-        if rd.f1 & f1::BUBBLED != 0 && hd.element == 3 {
+        // (BN6's bubble; BN5's kernel has none: its flag 0x80000000 is a
+        // body under the sea's surface, whose elec hits its panel doubles.)
+        if !bn5 && rd.f1 & f1::BUBBLED != 0 && hd.element == 3 {
             m += 1;
         }
         rm.acc.exclamation = m - 1;
@@ -610,7 +618,7 @@ impl Battle {
         if self.is_dimmed() && !(rd.f1 & f1::HIT_WHILE_DIMMED != 0 || hd.self_flags & 0x1_0000 != 0) {
             return;
         }
-        let bn5 = self.content.rules_of(self.games.arena).hit_test == HitTest::Bn5;
+        let bn5 = self.content.rules().hit_test == HitTest::Bn5;
         if !bn5 && ((hd.f1 & 0x20 != 0 && rd.self_flags & 0x80 == 0) || (rd.f1 & 0x20 != 0 && hd.self_flags & 0x80 == 0)) {
             return;
         }
@@ -638,7 +646,7 @@ impl Battle {
         let Some(p) = self.field.panel(x, y) else { return };
         // (BN6: fire on grass, aqua on volcano, wood on roads; BN5's
         // 0x08016D14 the same with lava and metal.)
-        let cleared_by = self.content.rules_of(self.games.arena).panels.types[p.kind as usize].cleared_by;
+        let cleared_by = self.content.rules().panels.types[p.kind as usize].cleared_by;
         if cleared_by == Some(e) {
             self.set_panel_type(x, y, PanelType::Normal);
         }
@@ -710,7 +718,8 @@ mod tests {
     fn fight(test: HitTest) -> (Battle, [CollisionId; 2]) {
         let mut c: Content = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));
-        for rules in &mut c.rules {
+        {
+            let rules = &mut c.rules;
             rules.hit_test = test;
         }
         let c = Arc::new(c);

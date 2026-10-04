@@ -5,25 +5,29 @@
 //! one, its karma and souls (`import_bn5`). (The folder, NaviCust, patch
 //! cards and stats are a later import's.)
 
-use crate::{Arena, CrossList, Match, Side};
+use crate::{CrossList, Match, Side};
 use bn6_compat::save::Save;
 use nettai_battle::content::Content;
 
+/// The game of the save in `file` (a .sav's bytes, or a raw BN5 save
+/// image): `bn6` or `bn5`, or why it is neither's.
+pub fn save_game(file: &[u8]) -> Result<&'static str, String> {
+    match Save::read(file) {
+        Ok(_) => Ok(bn6_compat::ROOT),
+        Err(six) => crate::import_bn5::read(file).map(|_| bn5_compat::ROOT).map_err(|five| format!("{six}; {five}")),
+    }
+}
+
 impl Match {
     /// Fill side `side` from the save in `file` (a .sav's bytes, or a raw
-    /// BN5 save image): the match is the save's game's, so a save of
-    /// another game's makes the match a new one of that game
-    /// (`Match::empty`, the seed kept) first. What is worth saying about
-    /// it, or why the file is no save of a game the content has.
+    /// BN5 save image) of the content's game ([`save_game`]: a frontend
+    /// loads that game's first): the match is the save's game's, so a save
+    /// of another game than the match's makes the match a new one of that
+    /// game (`Match::empty`, the seed kept) first. What is worth saying
+    /// about it, or why the file is no save of the content's game.
     pub fn import_save(&mut self, content: &Content, side: usize, file: &[u8]) -> Result<Vec<String>, String> {
-        let (game, six) = match Save::read(file) {
-            Ok(save) => (bn6_compat::ROOT, Ok(save)),
-            Err(e) => (bn5_compat::ROOT, Err(e)),
-        };
-        let five = match six {
-            Ok(_) => None,
-            Err(six) => Some(crate::import_bn5::read(file).map_err(|five| format!("{six}; {five}"))?),
-        };
+        let game = save_game(file)?;
+        let five = if game == bn5_compat::ROOT { Some(crate::import_bn5::read(file)?) } else { None };
         let mut notes = Vec::new();
         if self.arena.game != game {
             let seed = self.seed;
@@ -35,7 +39,7 @@ impl Match {
         let s = &mut self.sides[side];
         notes.extend(match five {
             Some(save) => s.import_bn5_save(content, &arena, &save),
-            None => s.import_bn6_save(content, &arena, &Save::read(file).expect("read above"))?,
+            None => s.import_bn6_save(content, &Save::read(file).expect("read above"))?,
         });
         Ok(notes)
     }
@@ -43,13 +47,13 @@ impl Match {
 
 impl Side {
     /// Take the version, the unlocks, the navi code's level and the SP
-    /// deletion times from a BN6 save, the side of a match on `arena` (a
-    /// BN6 one): the version's Crosses it owns become the side's Cross list
+    /// deletion times from a BN6 save, the side of a BN6 match: the
+    /// version's Crosses it owns become the side's Cross list
     /// (none when it owns all five: the version's own), and a link navi's
     /// stats follow its level and version as the save's reload gives them.
     /// What is worth saying about it (what the side keeps), or why the save
     /// can't be read.
-    pub fn import_bn6_save(&mut self, content: &Content, arena: &Arena, save: &Save) -> Result<Vec<String>, String> {
+    pub fn import_bn6_save(&mut self, content: &Content, save: &Save) -> Result<Vec<String>, String> {
         let level = save.navi_level()?;
         let mut notes = Vec::new();
         self.game = save.version();
@@ -75,7 +79,7 @@ impl Side {
         }
         // The SP times of the rules' slots (the save's halfwords past them,
         // unused, read as 0xFFFF: a match file holds the slots alone).
-        let slots = crate::sp_slots(content, arena.ruleset).len();
+        let slots = crate::sp_slots(content).len();
         self.sp_times = save.sp_times();
         for t in self.sp_times.0.iter_mut().skip(slots) {
             *t = 0;

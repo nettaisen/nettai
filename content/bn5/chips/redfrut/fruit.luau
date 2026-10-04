@@ -9,7 +9,7 @@
 -- gives nothing. Its params are the chip's (+0x10: the gift and its palette, +0x11: its hops).
 
 local collision = require("../../rules/collision")
-local panels = require("@common/panels")
+local panels = require("@exelib/panels")
 
 local fruit = {}
 

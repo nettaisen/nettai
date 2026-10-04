@@ -1,13 +1,13 @@
 --!strict
 -- BodyGrd's shuriken (the original's attack object #0x5C, `sub_80CFEC4`):
--- the shared shuriken (@common/bodygrd/shuriken), BN6's kind and look: a
+-- the shared shuriken (@exelib/bodygrd/shuriken), BN6's kind and look: a
 -- thrown slash (row 0x1C) that hits navis. It dives from 180 pixels up and
 -- behind onto its panel in 16 ticks, highlighting it, appearing with a
 -- puff halfway, hits it for two ticks, lies there 30 ticks and blinks out
 -- over 20.
 
 local collision = require("../../rules/collision")
-local common = require("@common/bodygrd/shuriken")
+local common = require("@exelib/bodygrd/shuriken")
 local effects = require("../../lib/effects")
 
 local shuriken = {}

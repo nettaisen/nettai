@@ -1,11 +1,11 @@
 --!strict
 -- BodyGrd's striker (the original's effect object #0x6E, `sub_80E8268`):
--- the shared striker (@common/bodygrd/striker) with BN6's identity, its
+-- the shared striker (@exelib/bodygrd/striker) with BN6's identity, its
 -- shurikens (./shuriken) and sound: the counter's unseen thrower, one of
 -- its side's field objects with 1 HP, dropping a shuriken on the enemy's
 -- player navi every 20 ticks, ten in all.
 
-local common = require("@common/bodygrd/striker")
+local common = require("@exelib/bodygrd/striker")
 local shuriken = require("./shuriken")
 
 local striker = {}
