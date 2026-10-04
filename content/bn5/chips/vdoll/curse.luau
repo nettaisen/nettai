@@ -10,9 +10,9 @@
 
 local collision = require("../../rules/collision")
 local curse_chip = require("../curse/chip")
-local dimming_chips = require("@common/dimming")
-local panels = require("@common/panels")
-local regions = require("@common/regions")
+local dimming_chips = require("@exelib/dimming")
+local panels = require("@exelib/panels")
+local regions = require("@exelib/regions")
 local sparkles = require("./sparkles")
 local sparks = require("../../lib/sparks")
 

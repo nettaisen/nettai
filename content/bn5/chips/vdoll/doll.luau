@@ -1,5 +1,5 @@
 --!strict
--- BN5's VDoll doll (attack object #0x7A, 0x080D5618): the shared one (@common/vdoll/doll, BN6's code) in BN5's look,
+-- BN5's VDoll doll (attack object #0x7A, 0x080D5618): the shared one (@exelib/vdoll/doll, BN6's code) in BN5's look,
 -- and BN5's differences:
 --
 -- - from the start (0x080D568C) a body of no side that anything reaches, hit modifier 3 (BN6's own object reached
@@ -16,7 +16,7 @@
 -- Its actions are BN6's numbers (BN5's table, 0x080D5704, has six shared entries: its setting down is BN5's 6).
 
 local collision = require("../../rules/collision")
-local common = require("@common/vdoll/doll")
+local common = require("@exelib/vdoll/doll")
 local curse = require("./curse")
 local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
