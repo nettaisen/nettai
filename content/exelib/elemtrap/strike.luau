@@ -12,7 +12,7 @@
 -- makes its kind with `strike.make_kind(id, look)`.
 
 local dimming_chips = require("../dimming")
-local panel_bursts = require("../panel-bursts/panel_bursts")
+local panel_bursts = require("../panel-bursts")
 local regions = require("../regions")
 
 export type State = {

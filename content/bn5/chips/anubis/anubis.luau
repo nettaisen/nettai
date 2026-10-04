@@ -12,7 +12,7 @@
 local collision = require("../../rules/collision")
 local controller = require("@exelib/anubis/controller")
 local effects = require("../../lib/effects")
-local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
+local rising_bubble = require("../../objects/rising-bubble")
 local statue = require("@exelib/anubis/statue")
 
 local anubis = {}

@@ -5,7 +5,7 @@
 -- does, from the water cannon, low, with the bullet's row 7: a splash over
 -- the 3x3 around the panel it finds, 70 Aqua damage.
 
-local bullet = require("../../objects/bullet/bullet")
+local bullet = require("../../objects/bullet")
 local spreader = require("../../chips/spreadr/action")
 
 -- The Spreaders' action as the original's variant 2 (the water cannon,

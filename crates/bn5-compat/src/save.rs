@@ -19,7 +19,9 @@
 //! value at +0x44), the NaviCust's list at 0x4D6C (25 parts of 8 bytes) and
 //! its grid at 0x4D48, the patch cards' count at 0x79A0 and their list at
 //! 0x79D0 (a byte each: the card, bit 7 switched off), the area at 0x2944
-//! (the game state's +4: the cyberworld's from 0x80).
+//! (the game state's +4: the cyberworld's from 0x80), the key items' counts
+//! at 0x3DB0 (the toolkit's +0x50, a byte an item: ExpMemry's, item 0x61,
+//! is the NaviCust board's expansions).
 
 use crate::Version;
 
@@ -41,6 +43,11 @@ const NAVICUST: usize = 0x4D6C;
 const CARD_COUNT: usize = 0x79A0;
 const CARDS: usize = 0x79D0;
 const AREA: usize = 0x2944;
+/// The key items' counts (a byte an item, which 0x0803C120 reads), and
+/// ExpMemry among them: the NaviCust board's expansions, which the NaviCust
+/// screen reads as it opens (0x08132928) to pick its board (0x0813F138).
+const KEY_ITEMS: usize = 0x3DB0;
+pub const EXP_MEMORY: u8 = 0x61;
 
 /// The NaviCust list's room.
 pub const NAVICUST_PARTS: usize = 25;
@@ -165,6 +172,17 @@ impl Save {
         &self.image[NAVICUST..NAVICUST + NAVICUST_PARTS * 8]
     }
 
+    /// How many of key item `item` the save has.
+    pub fn key_item(&self, item: u8) -> u8 {
+        self.image[KEY_ITEMS + item as usize]
+    }
+
+    /// The NaviCust board's expansions: the ExpMemry the save has (none a
+    /// 4x4 board, one 5x4, two 5x5; a finished save has both).
+    pub fn expansions(&self) -> u8 {
+        self.key_item(EXP_MEMORY)
+    }
+
     /// Whether the NaviCust compresses part `part` (its event flag).
     pub fn compressed(&self, part: u8) -> bool {
         self.event_flag(COMPRESSED_FLAG + part as u16)
@@ -219,6 +237,18 @@ mod tests {
         assert_eq!(s.souls(), [8, 12]);
         assert!(!s.chaos_unison());
         assert_eq!(s.light_dark(), 0);
+    }
+
+    /// The NaviCust board's expansions are the save's ExpMemry (key item
+    /// 0x61's count).
+    #[test]
+    fn a_saves_expansions_are_its_exp_memory() {
+        let mut img = image(Version::Protoman, &[], 500);
+        assert_eq!(Save::from_image(&img).unwrap().expansions(), 0);
+        img[0x3DB0 + 0x61] = 2;
+        img[0x3DB0 + 0x60] = 9;
+        let s = Save::from_image(&img).unwrap();
+        assert_eq!((s.expansions(), s.key_item(0x60)), (2, 9));
     }
 
     /// A .sav: the image at 0x100, masked, with its checksum; a damaged one

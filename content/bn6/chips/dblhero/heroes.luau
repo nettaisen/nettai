@@ -8,13 +8,13 @@
 -- MegaMan shares the user's actor data, so his buster arm is the user's.
 
 local stand_in = require("@exelib/dimming/stand_in")
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local buster = require("../../lib/buster")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local regions = require("@exelib/regions")
 local parts = require("../../lib/swords/parts")
-local protoman = require("../../navis/protoman/navi")
+local protoman = require("../../navis/protoman")
 
 local heroes = {}
 

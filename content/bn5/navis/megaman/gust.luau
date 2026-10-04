@@ -5,7 +5,7 @@
 -- The patch cards' Vacuum blows three (navis/megaman/weapons/instants).
 
 local collision = require("../../rules/collision")
-local common = require("@exelib/gust/gust")
+local common = require("@exelib/gust")
 
 local gust = {}
 

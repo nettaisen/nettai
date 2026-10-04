@@ -77,11 +77,11 @@ The content goes with the packs (`nettai_content::pack::load_game`;
 docs/design/content-model-v2.md §4.0): `--content <dir>` names the content
 directory (so does `$NETTAI_CONTENT`); without it, this repository's
 content/. A match plays one game: the frontend loads that game's pack (its
-manifest's listed modules and what they require, with the support packs it
-uses, exelib) and its asset pack, nothing else; `nettai_content::pack::games`
+top module, init.luau, and what it requires, with the support packs it
+depends on, exelib) and its asset pack, nothing else; `nettai_content::pack::games`
 lists the games it can offer, each with its asset pack or the command that
-writes one. A game's chips without a use yet (a port's unwritten chips:
-BN5's) are its manifest's `unported`, which don't load. Every loader does the same (the
+writes one. A game's chips without a use yet (a port's unwritten chips)
+aren't required by its init.luau, so they don't load. Every loader does the same (the
 editor, the tools' `load_battle`, the BN5 replays, the static audit), and
 the content then is what loaded: its hash, which netplay's handshake
 compares, covers exactly that. A game the content must load whose pack
@@ -251,13 +251,13 @@ frontend's side is `netplay`):
   the animations' timing), and refuses a mismatch on both sides with what
   differs ("can't play: the other side plays other content (its hash ...,
   this one's ...)"). Each player then brings their own side of the match (an
-  offer, by name in the game as a match file names things: protocol version
-  6): a match file's left side and ruleset (`--match`), or a folder, a
-  version and five Crosses drawn from their own `--seed` (as live play draws
-  a player's) with their patch cards (`--cards`), by the game's stock rules;
-  the other player's is checked against the content as a match file's side
-  is (`nettai_match::check_side`, §6), and both must bring the same ruleset
-  (a match has one). The language (`--lang`) is each player's own. The field
+  offer, by name in the game as a match file names things): a match file's
+  left side (`--match`), or a folder, a version and five Crosses drawn from
+  their own `--seed` (as live play draws a player's) with their patch cards
+  (`--cards`); the other player's is checked against the content as a match
+  file's side is (`nettai_match::check_side`, §6). Both play by the game's
+  rules (a game has one ruleset, so an offer names none: protocol version
+  9). The language (`--lang`) is each player's own. The field
   is the host's: its match file's arena, else drawn from both players'
   halves of the seed (on the host's `--stage`, if it names one); the
   battle's RNG comes from the halves of the seed. Both print what was
@@ -539,10 +539,10 @@ What a BN5 console does otherwise, by data, not by game:
   custom screen's close starts the chip window as a Japanese BN6 console's
   does (`chip_window_at_close`), the intro fades in from black
   (`intro_from_black`);
-- a chip each version draws its own way shows the console's version's
-  icon and picture, and the emblem is the console's version's
-  (`Renderer::console_version`, which a BN5 recording names; live play,
-  the pack's first version).
+- a version's own chip (its five Giga chips, DethPhnx or Phoenix) shows
+  its own version's ROM's icon and picture on either console (§5), and the
+  emblem is the console's version's (`Renderer::console_version`, which a
+  BN5 recording names; live play, the pack's first version).
 
 The frame comparison against BN5's consoles (verification's
 tools/frontend-compare/bn5.txt, chiplab's library-bn5) and what still
@@ -774,6 +774,22 @@ them).
   region's ROMs, 48 pixels around it (`objects::OTHER_REGION_MARGIN`: the
   US's sprite there may reach past the Japanese one). The console's region is
   the trace's (`game_regions`; US without it).
+- **Deliberate: a version's own chips on the other version's console.**
+  Each ROM draws its own version's chips and has their art again at the
+  other version's counterparts: BN6's five Giga chips a version (Bass and
+  BassAnly, BigHook and MetrKnuk, DeltaRay and CrossDiv, ColForce and
+  HubBatc, BugRSwrd and BgDthThd share one picture, palette and icon in a
+  ROM); BN5's five a version and its phoenix (Team ProtoMan's ROM draws
+  MetrKnuk and CrossDiv as HolyDrem, OmegaRkt and BugCharg as BigHook,
+  BassAnly as Bass, Phoenix as DethPhnx; Team Colonel's the other way).
+  The pack has each chip's picture and icon once, from its own version's
+  ROM (the one whose library lists it), marked with that version
+  (`ChipArt::version`), and the frontend and the editor show it on either
+  console (the user's choice: a version's chips show that version's art
+  always). A console of the other version shows the counterpart's there:
+  the chip window's picture, the icons in the custom screen's slots and
+  column, and the icons over the navi are listed as known
+  (`lookups::other_versions_icon`).
 - **Deliberate: the Gregar and Falzar chips' pictures.** Each Japanese ROM
   has one picture for both chips, its own beast; the pack has each chip's
   own (Gregar's from the Japanese Gregar ROM, Falzar's from the Japanese
@@ -809,7 +825,8 @@ them).
 ## 6. Match files
 
 A match file is everything a round needs, chosen before the battle: the
-game, the ruleset both sides play by, the arena, and each side's navi,
+game (which is its rules: a game has one ruleset, so a match names none),
+the arena, and each side's navi,
 version, navi code level, stats, folder, Crosses, Beast Out, SP deletion
 times, patch cards and NaviCust, in TOML. **A match is of one game**, named
 once at the file's top: everything else is a name in that game's namespace
@@ -826,8 +843,7 @@ setup written out and played again is the same battle (the frontend's test
 `a_saved_match_plays_the_same_battle` compares the digest every tick).
 
 ```toml
-game = "bn6"                               # the match's game: everything below is its
-ruleset = "stock"                          # optional: both sides' rules, one of the game's (else its stock)
+game = "bn6"                               # the match's game and its rules: everything below is its
 seed = 42                                  # optional: the setup's and battle's seed
 
 [arena]
@@ -863,7 +879,7 @@ regular_memory = 50
 sun = true
 
 [left.navicust]                            # optional: MegaMan's NaviCust, compiled into his stats
-expansions = 2                             # optional: the board, 0 (4x4) to 2 (5x5, the default)
+expansions = 2                             # optional: the board, 0 (4x4) to 2 (5x5, the default), in BN6 and BN5
 programs = [                               # in the save's order; x, y the center on the 7x7 grid
     { program = "suprarmr", color = "red", x = 2, y = 3 },
     { program = "undersht", color = "white", x = 5, y = 3, rotation = 1 },   # quarter turns
@@ -949,7 +965,7 @@ programs placed on MegaMan's grid, by name and color name (a program's
 `colors`). With one, the stats block is the save's stats before the NaviCust:
 only what a save keeps through the NaviCust's reload (`hp`, `regular_memory`,
 `mood`, `beast_out_counter`, `sun`, `form` and the folder fields), since the
-ruleset's `navicust` system makes the rest (the abilities, levels, weapons and
+game's `navicust` system makes the rest (the abilities, levels, weapons and
 bugs) from the programs as the round is set up. Without one, the stats block
 is the stats as they are, NaviCust included, as a recording's are. The
 editor's NaviCust pane places the programs on the board as the game does.
@@ -963,7 +979,7 @@ panels; under 500 he starts worried; 1000 the brightest (mood 190, Tango's
 light templates). Like BN6's `version`, `crosses` and `beast_out` (S6c's
 facts), the round's setup writes it into whichever of the rules' systems
 declares the setup field (`PlayerSetup::set_fact`): BN5's light and dark
-system's `karma`. A ruleset that takes none refuses one other than 500.
+system's `karma`. A game whose rules take none refuses one other than 500.
 Hub Style (NaviStats +0x4C, which BN5's patch card 111 sets) waits for
 BN5's patch cards. A netplay offer carries the karma and the souls
 (protocol version 5), and a round's setup and the battle's digest hold
@@ -983,22 +999,24 @@ the side's into the souls system's setup field `souls` (`set_fact`), and the
 battle reads them as the save's flags, by each soul's number. A side may have
 any of the game's souls, of either version (nettai's extension, as a Cross
 list may name either version's), and a soul whose family the folder never
-holds never comes up. Only a ruleset whose systems take `souls` takes a list
+holds never comes up. Only a game whose rules' systems take `souls` takes a list
 (the checks refuse one elsewhere, and a form that is no soul).
 
 **Soul Unison and Chaos Unison** (`soul_unison`, `chaos_unison`) are the
 save's event flags 0 and 0x236: the soul button at all, and a dark chip's
 Chaos Unison. Both are on unless a side says (`soul_unison = false`), as a
 finished save has them; the round's setup writes them into the souls
-system's setup (its defaults, on, for a setup that says nothing). A ruleset
-that takes neither refuses one off. The netplay offer carries them
+system's setup (its defaults, on, for a setup that says nothing). A game
+whose rules take neither refuses one off. The netplay offer carries them
 (protocol version 7).
 
 **A BN5 save** (the editor's "Import from save…", `Match::import_save`,
 which reads a save that isn't BN6's as BN5's: a .sav, or a raw save image as
 Tango's netplay templates hold, read by `bn5_compat::save`) makes the match
 BN5's and gives its karma, the souls its version's flags give (BN5's
-souls of those numbers), and its Soul Unison and Chaos Unison.
+souls of those numbers), its Soul Unison and Chaos Unison and, to a side
+with a NaviCust, the board of its ExpMemry (`expansions`: the NaviCust's
+programs aren't the import's yet).
 
 **The tactics** (`[left.tactics]`, nettai_battle::tactics, docs/design/bn5-map.md
 §15.9) are BN5's computer-navi data, the block a BN5 save keeps for its
@@ -1018,14 +1036,13 @@ offer arrives (the same `check_side`), and live in the editor; each problem
 is said with where it is:
 
 - the game is one the content has, and every name names a definition of
-  the game's (a stage, a background of its pack, a ruleset, a navi, a
+  the game's (a stage, a background of its pack, a navi, a
   Cross, a patch card, a chip, a NaviCust program, a soul, a weapon, a
   record, a form), and every stat is in range; a match made in memory
   holding another game's (no file or offer can) is refused the same way
   ("right: a navi bn5 hasn't");
 - the arena's stages are the game's link battle stages (`link_battle_stages`);
-- the folder keeps the game's rules, which the match's ruleset checks: the
-  ruleset's systems' `folder_check` hooks (BN6's are rules/folder/system.luau:
+- the folder keeps the game's rules: their systems' `folder_check` hooks (BN6's are rules/folder/init.luau:
   30 chips, so a folder being made, with empty entries, is no folder yet;
   copies by MB, each chip in one of its codes, at most three dark
   chips, chips the chip pack lists, the Regular chip within the Regular
@@ -1035,23 +1052,23 @@ is said with where it is:
   limits, as the original's folder editor and link battle check read the
   reloaded stats). Rust only asks (`Battle::check_folder`) and reports what
   the hooks say, so another game's folder rules are its own Luau: BN5's
-  (content/bn5/rules/folder/system.luau, its folder editor's) are four copies
+  (content/bn5/rules/folder/init.luau, its folder editor's) are four copies
   of a Standard chip and one of a Mega, Giga or dark chip, the Mega and Giga
   levels, at most three dark chips, the chips its pack lists, the Regular
   chip within the Regular memory, and no tag chips. A folder holds the
   game's chips alone (the rules' pool is the game's). Live play's random
   folders are drawn from the rules' pool and kept only
   when the hooks accept them (`nettai_match::folders`);
-- a NaviCust only with a ruleset that has the navicust system, and only for
+- a NaviCust only in a game whose rules have the navicust system, and only for
   MegaMan; every program fits the board, none overlaps another, the copies of
   one program in one color are all compressed or all not (the save keeps
   one flag for them), and the stats block holds only what a save keeps;
-- a Cross list only with a ruleset that has the forms system, of the navi's
+- a Cross list only in a game whose rules have the forms system, of the navi's
   Crosses (a navi that changes form), at most five, none twice;
-- a soul list only with a ruleset that has the souls system, each a soul
+- a soul list only in a game whose rules have the souls system, each a soul
   of the game's (a form of kind `soul`), none twice, of either version;
 - karma 0 to 1000, and other than 500 only with rules that take it;
-- patch cards only with a ruleset that has the patch-cards system, each
+- patch cards only in a game whose rules have the patch-cards system, each
   installed once, at most 32, their MB together at most 80 (BN6's menu adds
   none past 80 MB, `0x08141868`);
 - the round starts (`Battle::new` doesn't stop).

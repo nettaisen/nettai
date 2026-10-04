@@ -5,7 +5,7 @@
 -- looks only DeltaRay's burst (look 4, "flash", sprite 10-34) is here: looks 0 to 3 run BN5's own routines, which
 -- nothing ported spawns.
 
-local common = require("@exelib/follow-effect/follow_effect")
+local common = require("@exelib/follow-effect")
 
 local follow_effect = {}
 

@@ -9,7 +9,7 @@
 -- (`shot/...`), which a setup's stats name it by (compat records.toml,
 -- `projectile_variants`).
 
-local projectile = require("./projectile")
+local projectile = require("../projectile")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")

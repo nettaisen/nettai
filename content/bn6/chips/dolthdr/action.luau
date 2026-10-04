@@ -6,7 +6,7 @@
 -- thunder's ticks (the original's second parameter); then the navi puts
 -- it away over 7 ticks.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local buster = require("../../lib/buster")
 local doll = require("./doll")
 

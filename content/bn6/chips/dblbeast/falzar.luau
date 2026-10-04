@@ -7,11 +7,11 @@
 -- goes, and tells the controller.
 
 local beast = require("./beast")
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
-local falzar_beast = require("../../navis/megaman/forms/falzar-beast/form")
+local falzar_beast = require("../../navis/megaman/forms/falzar-beast")
 local parts = require("../../lib/swords/parts")
 
 local falzar = {}

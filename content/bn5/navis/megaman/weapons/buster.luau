@@ -13,7 +13,7 @@
 --
 -- The patch cards' TriBustr (B button routine 0x65, 0x0800FE12) is this routine with its own charge row.
 
-local attachment = require("../../../objects/attachment/attachment")
+local attachment = require("../../../objects/attachment")
 local blank = require("@exelib/megaman/blank_shot")
 local charged_shot = require("./charged-shot")
 local common = require("@exelib/megaman/buster")

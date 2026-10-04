@@ -2,7 +2,7 @@
 -- The instruments (the original's attack object #0x78, `sub_80D4230`): the
 -- shared instrument (@exelib/instruments/instrument), BN6's kind and look.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
+local absorbed_obstacle = require("../../objects/absorbed-obstacle")
 local collision = require("../../rules/collision")
 local common = require("@exelib/instruments/instrument")
 local effects = require("../effects")

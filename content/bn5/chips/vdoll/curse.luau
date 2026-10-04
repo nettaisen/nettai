@@ -9,7 +9,7 @@
 -- there; 30 ticks later the dimming ends.
 
 local collision = require("../../rules/collision")
-local curse_chip = require("../curse/chip")
+local curse_chip = require("../curse")
 local dimming_chips = require("@exelib/dimming")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")

@@ -8,8 +8,8 @@
 -- the navi has it a Beast buster gives way to the plain one.
 
 local charge = require("../../lib/navi-boost/charge")
-local drksword = require("../drksword/chip")
-local sword = require("../sword/chip")
+local drksword = require("../drksword")
+local sword = require("../sword")
 
 -- The attack's element byte: Null, with the Sword bit.
 local ELEMENT = 0x80
