@@ -6,9 +6,9 @@
 -- modifier. See docs/engine/shot-chips.md §6.1. The behavior is BN5's too
 -- (@exelib/batcan), made here with BN6's look.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
-local common = require("@exelib/batcan/batcan")
+local common = require("@exelib/batcan")
 local sparks = require("../../lib/sparks")
 
 return common.make {

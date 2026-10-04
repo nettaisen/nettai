@@ -6,7 +6,7 @@
 -- and a chain of paralyzing Elec notes (ToadMan's, chips/toadman/note) steps from the panel ahead toward the target.
 -- 16 ticks, then 5 of recovery, the horn put away.
 
-local attachment = require("../../../../objects/attachment/attachment")
+local attachment = require("../../../../objects/attachment")
 local note = require("../../../../chips/toadman/note")
 local toadman = require("../../../../chips/toadman/navi")
 

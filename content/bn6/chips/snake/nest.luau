@@ -7,7 +7,7 @@
 -- (The holes' scan and the snakes' targets are the shared snake's,
 -- @exelib/snake/snake.)
 
-local common = require("@exelib/snake/snake")
+local common = require("@exelib/snake")
 local snake = require("./snake")
 
 local nest = {}

@@ -323,10 +323,10 @@ mod tests {
 
     #[test]
     fn lints_catch_placeholders_compat_modules_and_unqualified_kinds() {
-        let l = lints("chips/minibomb/chip.luau", "local S = asset.sprite('sprite-0c-01')\nlocal K = define.kind { id = 'bomb', pool = 'attack' }\n");
+        let l = lints("chips/minibomb/init.luau", "local S = asset.sprite('sprite-0c-01')\nlocal K = define.kind { id = 'bomb', pool = 'attack' }\n");
         assert_eq!(l.len(), 2, "{l:?}");
         assert!(l[0].contains("placeholder") && l[1].contains("minibomb/"));
-        assert!(lints("chips/minibomb/chip.luau", "local K = define.kind { id = 'minibomb/held', pool = 'effect' }").is_empty());
+        assert!(lints("chips/minibomb/init.luau", "local K = define.kind { id = 'minibomb/held', pool = 'effect' }").is_empty());
         assert!(lints("lib/bombs/bomb.luau", "local K = define.kind { id = 'bomb', pool = 'attack' }").is_empty());
         // A navi's folder (without its index prefix), and a form's inside it.
         let dash = "local K = define.kind { id = 'megaman/dash-hit', pool = 'attack' }";
@@ -340,7 +340,7 @@ mod tests {
         // A system's state, outside the rules.
         let l = lints("chips/x/chip.luau", "local s = system.state()\n");
         assert!(l.len() == 1 && l[0].contains("`system.state` is a system's own"), "{l:?}");
-        assert!(lints("rules/beast/system.luau", "local s = system.state()\nlocal u = system.setup()\n").is_empty());
+        assert!(lints("rules/beast/init.luau", "local s = system.state()\nlocal u = system.setup()\n").is_empty());
         // A form's kinds are keyed under the form, and a navi's under its
         // name, whatever number its folder still carries.
         let surge = "local K = define.kind { id = 'spoutcross-beast/surge', pool = 'attack' }";

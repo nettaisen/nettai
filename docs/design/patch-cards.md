@@ -64,7 +64,7 @@ All of it is content now (docs/engine/patch-cards.md §3).
 **The cards are the engine's; their effects are a game's rules'** (the user, 2026-10-02: "the engine should know
 what a patch card is"). BN4, BN5 (JP) and BN6 (JP) all have patch cards, so a card and a player's installed cards
 are engine concepts, as chips and folders are; what an effect does is each game's rule, a system of its stock
-ruleset (docs/design/rules-in-luau.md §2.2): BN6's is content/bn6/rules/patch-cards/system.luau, whose
+ruleset (docs/design/rules-in-luau.md §2.2): BN6's is content/bn6/rules/patch-cards/init.luau, whose
 `round_setup` hook applies them.
 
 - **A definition kind of its own**: `define.patch_card { id, mb, effects }`, `Registry::PatchCard`,

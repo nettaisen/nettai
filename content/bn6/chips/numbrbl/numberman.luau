@@ -6,7 +6,7 @@
 -- sprite steps while dimmed.
 
 local stand_in = require("@exelib/dimming/stand_in")
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local buster = require("../../lib/buster")
 local ball = require("./ball")
 

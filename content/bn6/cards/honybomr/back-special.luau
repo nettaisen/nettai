@@ -8,7 +8,7 @@
 -- the attack's byte +0x1C to 3, which starting a B+Back sets anyway.)
 
 local rskyhny = require("../../chips/rskyhny/action")
-local rskyhny_chips = require("../../chips/rskyhny/chips")
+local rskyhny_chips = require("../../chips/rskyhny")
 
 -- RskyHny's action with the level-1 bees, dragging. (Its compat key maps
 -- it to 0x39.)
@@ -22,7 +22,7 @@ local COOLDOWN = 0x28
 
 -- `sub_801255C`.
 local function setup(navi: Object): Action
-    navi:load_chip_attack(rskyhny_chips[1])
+    navi:load_chip_attack(rskyhny_chips.rskyhny1)
     navi.attack_lockout = COOLDOWN
     return HONEY
 end

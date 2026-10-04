@@ -11,7 +11,7 @@
 -- remove it (absorbed, or blinking out). It keeps running while dimmed,
 -- but only acts outside dimming.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
+local absorbed_obstacle = require("../../objects/absorbed-obstacle")
 local collision = require("../../rules/collision")
 local common = require("@exelib/airspin/top")
 local effects = require("../../lib/effects")

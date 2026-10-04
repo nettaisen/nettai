@@ -9,7 +9,7 @@
 -- The sight reports to the navi through the attack's marker word (AIAttackVars+0x30: its result byte, then the
 -- panel found): 0 searching, 1 found, 2 nothing.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local slot = require("@exelib/slot")

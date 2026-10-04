@@ -7,7 +7,7 @@
 -- 25 at random; blocked on the way (no floor, or the other side's body or an
 -- object), he leaves at once. See docs/engine/chips.md §3.6.25.
 
-local groundman_navi = require("../../navis/groundman/navi")
+local groundman_navi = require("../../navis/groundman")
 local navi_chips = require("../../lib/navi-chips/navi")
 local collision = require("../../rules/collision")
 local drill = require("./drill")

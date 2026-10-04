@@ -6,7 +6,7 @@
 -- damage.
 
 local collision = require("../../rules/collision")
-local common = require("@exelib/tornado/tornado")
+local common = require("@exelib/tornado")
 local sparks = require("../../lib/sparks")
 
 local tornado = {}

@@ -8,7 +8,7 @@
 -- sound, attachment and projectiles): BN6's AirShot its shooter and wind
 -- shot, BN5's its own.
 
-local attachment = require("./attachment/attachment")
+local attachment = require("./attachment")
 
 local airshot = {}
 

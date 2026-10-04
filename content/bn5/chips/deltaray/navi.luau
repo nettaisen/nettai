@@ -6,7 +6,7 @@
 -- no white flashes at the strike or the burst, and, in the operation battle, its aim at the enemy navi his
 -- side tracks (0x080C1E68). His palette is navi 1's count by the level (0x0800DA8A: 0 for the chip's level 0).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/deltaray/navi")
 local follow_effect = require("./follow_effect")

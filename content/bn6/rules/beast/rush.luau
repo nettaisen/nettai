@@ -11,14 +11,14 @@
 -- original's attack variables +0x1E to +0x27, next to the chip action's
 -- own).
 
-local beast_claw = require("../../navis/megaman/weapons/beast-claw/weapon")
+local beast_claw = require("../../navis/megaman/weapons/beast-claw")
 local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
 local kind = require("../forms/kind")
 local lockon = require("../lockon")
 
 local rush = {}
 
--- The beast system's state fields the rush keeps (rules/beast/system.luau
+-- The beast system's state fields the rush keeps (rules/beast/init.luau
 -- declares them).
 type State = {
     -- The phase: hold the panel, warp, attack.

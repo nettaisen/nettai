@@ -7,8 +7,8 @@
 -- where it finds something; 21 ticks of recovery. SpoutCross's charged
 -- shot fires its own bullet from its water cannon the same way.
 
-local attachment = require("../attachment/attachment")
-local bullet = require("../bullet/bullet")
+local attachment = require("../attachment")
+local bullet = require("../bullet")
 
 local spreader = {}
 

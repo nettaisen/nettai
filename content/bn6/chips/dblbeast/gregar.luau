@@ -6,12 +6,12 @@
 -- row) and a slam (two hits); then it goes, and tells the controller.
 
 local beast = require("./beast")
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local buster = require("../../lib/buster")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
-local gregar_beast = require("../../navis/megaman/forms/gregar-beast/form")
+local gregar_beast = require("../../navis/megaman/forms/gregar-beast")
 local parts = require("../../lib/swords/parts")
 
 local gregar = {}

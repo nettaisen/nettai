@@ -7,7 +7,7 @@
 -- ticks later the dimming ends. See docs/engine/shot-chips.md §14.2.
 
 local collision = require("../../rules/collision")
-local curse_chip = require("../curse/chip")
+local curse_chip = require("../curse")
 local dimming_chips = require("@exelib/dimming")
 local regions = require("@exelib/regions")
 local sparkles = require("./sparkles")
