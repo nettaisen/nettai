@@ -3,6 +3,7 @@
 
 mod app;
 mod levels;
+mod load;
 mod names;
 mod navicust;
 mod pictures;
@@ -10,18 +11,16 @@ mod view;
 
 use app::{Editor, Options, Tab};
 use names::Lang;
-use std::sync::Arc;
 
 const USAGE: &str = "\
 usage: nettai-editor [OPTIONS] [MATCH.toml]
 
-  The content packs (the chips' pictures) and the content's folders are
-  found as nettai-frontend finds them: every pack in the packs directory,
-  $NETTAI_PACKS, else data/content, each by its game; every folder of the
-  content directory whose game's pack is found and that loads.
-  --content DIR    the battle content directory, its folders one namespace
-                   (default: $NETTAI_CONTENT, else this repository's
-                   content/)
+  A match is of one game, BN6 or BN5, picked first in the arena pane: the
+  file's, else BN6. Its content and its pack (the chips' pictures) are
+  found as nettai-frontend finds them: the packs in the packs directory,
+  $NETTAI_PACKS, else data/content, each by its game.
+  --content DIR    the battle content directory (default: $NETTAI_CONTENT,
+                   else this repository's content/)
   --pack DIR       a pack's directory, in place of the found pack of its game
                    (again for another game's), handed to the frontend too
   --lang LANG      names in en (default) or ja
@@ -72,13 +71,6 @@ fn parse() -> Result<Options, String> {
     Ok(o)
 }
 
-/// Show what loading found (warnings and errors).
-fn show(report: &nettai_content::report::Report) {
-    for i in report.issues.iter().filter(|i| i.level != nettai_content::report::Level::Note) {
-        eprintln!("{i}");
-    }
-}
-
 /// The font the editor writes with: the frontend's bundled Murecho (Latin,
 /// kana and kanji, for the Japanese names).
 const FONT: &[u8] = nettai_render::vfont::BUNDLED;
@@ -95,25 +87,18 @@ fn main() -> iced::Result {
         }
     };
     let mut options = options;
-    // Every pack found, and the game the editor loads with its pack (as the
-    // frontend does: nettai_content::pack::load_game).
-    let mut report = nettai_content::report::Report::default();
-    let found = nettai_content::pack::find(&nettai_content::pack::packs_dir(), &options.packs, &mut report);
-    show(&report);
-    let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack, $BN6_PACK)"));
-    // (One game a match, docs/design/content-model-v2.md §4.0: the
-    // editor's is BN6 until it chooses one.)
-    let loaded = nettai_content::pack::load_game(options.content.as_deref(), nettai_match::DEFAULT_GAME, &found).unwrap_or_else(|r| {
-        show(&r);
-        fail("can't load the battle content (--content, --pack)")
-    });
-    show(&loaded.report);
-    (options.content_dir, options.games) = (loaded.dir.clone(), vec![loaded.game.clone()]);
-    let content = Arc::new(loaded.content);
-    let pictures = pictures::Pictures::load(&content, std::slice::from_ref(&loaded.pack)).unwrap_or_else(|e| {
-        eprintln!("{e}: the chips have no pictures");
-        pictures::Pictures::default()
-    });
+    // The game's content, as the frontend loads it: the file's game, else
+    // BN6.
+    let game = match &options.file {
+        Some(path) => std::fs::read_to_string(path)
+            .map_err(|e| e.to_string())
+            .and_then(|t| nettai_match::file::game_of(&t))
+            .unwrap_or_else(|e| fail(format!("{}: {e}", path.display()))),
+        None => nettai_match::DEFAULT_GAME.to_string(),
+    };
+    let loaded = load::load_game(options.content.as_deref(), &options.packs, &game).unwrap_or_else(|e| fail(e));
+    (options.content_dir, options.games) = (loaded.dir, vec![loaded.game]);
+    let (content, pictures) = (loaded.content, loaded.pictures);
     // A round that doesn't start is a problem the editor shows, not a
     // message on the terminal.
     std::panic::set_hook(Box::new(|_| {}));
