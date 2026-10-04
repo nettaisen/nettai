@@ -12,17 +12,17 @@ local projectile = require("../../../lib/projectile")
 local variants = require("../../../objects/projectile/variants")
 
 local made = common.make {
-    id = "bn5:megaman/rapid-buster/action",
+    id = "megaman/rapid-buster/action",
     buster = buster,
     projectiles = projectile,
     attachment = attachment.kind,
-    shot_sound = asset.sound("bn5:buster-shot"),
+    shot_sound = asset.sound("buster-shot"),
     shot = variants.charged,
     overlay_steps = false,
 }
 
 return define.weapon {
-    id = "bn5:megaman/rapid-buster",
+    id = "megaman/rapid-buster",
     -- The charge table's row 0x68, by Charge 0 to 5: past 4 it reads on into row 0x69's first entry.
     charge_ticks = { 110, 100, 90, 80, 70, 140 },
     setup = made.setup,

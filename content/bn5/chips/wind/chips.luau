@@ -9,7 +9,7 @@ local fan = require("./fan")
 -- subtype 9) that blows a gust along the enemy's rows every 12 ticks for 24 seconds, pushing away from the enemy's
 -- front column (./fan, the record's first parameter 0).
 local wind = define.chip {
-    id = "bn5:wind",
+    id = "wind",
     codes = { "*" },
     element = "null",
     family = "wind",
@@ -29,7 +29,7 @@ local wind = define.chip {
         wait = 1,
         hp = 40,
         identity = define.identity {
-            id = "bn5:wind",
+            id = "wind",
             class = "field_object",
             version = 3,
             ai_index = 0x21,
@@ -42,7 +42,7 @@ local wind = define.chip {
 -- subtype 9) that blows a gust along the enemy's rows every 12 ticks for 24 seconds, pulling from the far column
 -- (./fan, the record's first parameter 1).
 local fan_chip = define.chip {
-    id = "bn5:fan",
+    id = "fan",
     codes = { "*" },
     element = "null",
     family = "wind",
@@ -62,7 +62,7 @@ local fan_chip = define.chip {
         wait = 1,
         hp = 40,
         identity = define.identity {
-            id = "bn5:fan",
+            id = "fan",
             class = "field_object",
             version = 4,
             ai_index = 0x21,

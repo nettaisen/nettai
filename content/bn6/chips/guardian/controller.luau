@@ -9,4 +9,4 @@
 local common = require("@exelib/guardian/controller")
 local statue = require("./statue")
 
-return common.make { id = "bn6:guardian/controller", statue = statue.spawn }
+return common.make { id = "guardian/controller", statue = statue.spawn }

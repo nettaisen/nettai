@@ -10,4 +10,4 @@
 local common = require("@exelib/colorpt/controller")
 local point = require("./point")
 
-return common.make { id = "bn6:colorpt/controller", point = point.spawn }
+return common.make { id = "colorpt/controller", point = point.spawn }

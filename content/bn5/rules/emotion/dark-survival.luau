@@ -20,6 +20,7 @@
 -- His sprite steps every tick, paused or not (`sub_801BCD0`, 0x080187D4).
 
 local shade = require("../souls/shade")
+local operation_battle = require("../../lib/operation_battle")
 
 local survival = {}
 
@@ -29,9 +30,9 @@ export type State = {
 }
 
 -- The flash: BN5's effect 3 (0x080DFC94's row 3: 14-03).
-local FLASH = define.effect { sprite = asset.sprite("bn5:deletion"), anim = 0, palette = 0 }
-local FLASH_SOUND = asset.sound("bn5:log-in")
-local CHANGE_SOUND = asset.sound("bn5:cross-change")
+local FLASH = define.effect { sprite = asset.sprite("deletion"), anim = 0, palette = 0 }
+local FLASH_SOUND = asset.sound("log-in")
+local CHANGE_SOUND = asset.sound("cross-change")
 -- The side's statistic the stand marks (0x0800931C's byte 1, which 0x0802C16C reads).
 local STOOD = 1
 -- How long the computer drives him (0x080EFF64).
@@ -50,7 +51,7 @@ local HUD_LAST_TURNS: { HudPart } = { "hp_box", "emotion_window" }
 -- His dark self (actor object 0x2E, 0x080C0EA0; spawned by 0x080C0FE2): Chaos Unison's shade's code, but a pixel up
 -- and on rather than two, its ground shadow kept, and wearing what MegaMan's record puts on while it is out.
 local dark_self = shade.make {
-    id = "bn5:dark-survival/shade",
+    id = "dark-survival/shade",
     name = "the dark survival's shade",
     phases = 0x080C0F14,
     lift = 0x1_0000,
@@ -71,9 +72,9 @@ local function flash(me: Object)
     end
 end
 
--- 0x0800916A: the netbattle's last turns (from its 15th custom screen; never in the battle flag 0x40 mode).
+-- 0x0800916A: the netbattle's last turns (from its 15th custom screen; never in the operation battle).
 local function last_turns(): boolean
-    return not battle.per_player_gauges() and battle.late_turns()
+    return not operation_battle() and battle.late_turns()
 end
 
 -- 0x080EFE48
@@ -174,6 +175,6 @@ local function update(me: Object, s: State)
     me:step_sprite()
 end
 
-survival.action = define.action { id = "bn5:dark-survival", state = { timer = "u16" }, update = update }
+survival.action = define.action { id = "dark-survival", state = { timer = "u16" }, update = update }
 
 return survival

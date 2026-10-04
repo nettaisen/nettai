@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "bn5:cosmoman",
+    id = "cosmoman",
     mb = 44,
     effects = {
         cards.mega_folder(1),

@@ -16,8 +16,8 @@ local sparks = require("../../lib/sparks")
 
 local army = {}
 
-local SPRITE = asset.sprite("bn6:col-army")
-local APPEAR_SOUND, SHOT_SOUND = asset.sound("bn6:col-army"), asset.sound("bn6:col-army-2")
+local SPRITE = asset.sprite("col-army")
+local APPEAR_SOUND, SHOT_SOUND = asset.sound("col-army"), asset.sound("col-army-2")
 -- Its collision: an object of its side that the other side's attacks,
 -- objects and bodies (and blockers) reach; hit modifier 3; the plain
 -- spark.
@@ -194,7 +194,7 @@ local function init(me: Object)
 end
 
 army.kind = define.kind {
-    id = "bn6:colarmy/army",
+    id = "colarmy/army",
     pool = "attack",
     -- `sub_80C9D00`.
     update = function(me: Object)

@@ -24,10 +24,10 @@ export type State = {
     burst: number,
 }
 
-local SPRITE = asset.sprite("bn5:sprite-10-41")
-local SOUND_RISE = asset.sound("bn5:sound-123")
-local SOUND_POP = asset.sound("bn5:bubble-pop")
-local SOUND_BURST = asset.sound("bn5:junk-shot")
+local SPRITE = asset.sprite("sprite-10-41")
+local SOUND_RISE = asset.sound("sound-123")
+local SOUND_POP = asset.sound("bubble-pop")
+local SOUND_BURST = asset.sound("junk-shot")
 local HIT_MOD = 3
 -- Its waits: before the first drift (with the animation set to 0 at 5 left), and before its burst shot.
 local WAIT, WAIT_ANIM_AT, BURST_WAIT = 15, 5, 20
@@ -189,7 +189,7 @@ local function init(me: Object)
 end
 
 sidebub.bubble = define.kind {
-    id = "bn5:sidebub/bubble",
+    id = "sidebub/bubble",
     pool = "attack",
     state = { way = "u8", travel = "u8", burst = "u8" },
     -- 0x080D8484.

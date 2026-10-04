@@ -8,7 +8,7 @@ local cusvolt = require("./cusvolt")
 -- (chips/cusvolt/cusvolt, action 0x27), draining half the custom gauge; its damage 10 plus up to 100 by how full the gauge is
 -- (BN5's formula 73: none for a full one).
 local cusvolt1 = define.chip {
-    id = "bn5:cusvolt1",
+    id = "cusvolt1",
     codes = { "A", "V", "Y", "*" },
     element = "elec",
     family = "elec",
@@ -22,14 +22,14 @@ local cusvolt1 = define.chip {
     traits = { "hides_damage_as_a" },
     slot_in_limit = 3,
     damage = { formula = "gauge_level", base = 10 },
-    action = cusvolt.action("bn5:cusvolt1/action"),
+    action = cusvolt.action("cusvolt1/action"),
 }
 
 -- CusVolt2 (BN5 chip 0x0a7): an electric beam over the panel and the column ahead that follows the navi for 25 ticks
 -- (chips/cusvolt/cusvolt, action 0x27), draining half the custom gauge; its damage 30 plus up to 100 by how full the gauge is
 -- (BN5's formula 74: none for a full one).
 local cusvolt2 = define.chip {
-    id = "bn5:cusvolt2",
+    id = "cusvolt2",
     codes = { "C", "E", "G" },
     element = "elec",
     family = "elec",
@@ -43,14 +43,14 @@ local cusvolt2 = define.chip {
     traits = { "hides_damage_as_a" },
     slot_in_limit = 3,
     damage = { formula = "gauge_level", base = 30 },
-    action = cusvolt.action("bn5:cusvolt2/action"),
+    action = cusvolt.action("cusvolt2/action"),
 }
 
 -- CusVolt3 (BN5 chip 0x0a8): an electric beam over the panel and the column ahead that follows the navi for 25 ticks
 -- (chips/cusvolt/cusvolt, action 0x27), draining half the custom gauge; its damage 50 plus up to 100 by how full the gauge is
 -- (BN5's formula 75: none for a full one).
 local cusvolt3 = define.chip {
-    id = "bn5:cusvolt3",
+    id = "cusvolt3",
     codes = { "G", "M", "P" },
     element = "elec",
     family = "elec",
@@ -64,7 +64,7 @@ local cusvolt3 = define.chip {
     traits = { "hides_damage_as_a" },
     slot_in_limit = 3,
     damage = { formula = "gauge_level", base = 50 },
-    action = cusvolt.action("bn5:cusvolt3/action"),
+    action = cusvolt.action("cusvolt3/action"),
 }
 
 return { cusvolt1 = cusvolt1, cusvolt2 = cusvolt2, cusvolt3 = cusvolt3 }

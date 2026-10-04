@@ -15,7 +15,7 @@ local batcan = shot.action
 
 return {
     define.chip {
-        id = "bn6:batcan1",
+        id = "batcan1",
         codes = { "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -27,7 +27,7 @@ return {
         action = batcan { shots = { 3 } },
     },
     define.chip {
-        id = "bn6:batcan2",
+        id = "batcan2",
         codes = { "S" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -39,7 +39,7 @@ return {
         action = batcan { shots = { 3 } },
     },
     define.chip {
-        id = "bn6:batcan3",
+        id = "batcan3",
         codes = { "R" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -51,7 +51,7 @@ return {
         action = batcan { shots = { 3 } },
     },
     define.chip {
-        id = "bn6:batcan4",
+        id = "batcan4",
         codes = { "Z" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,

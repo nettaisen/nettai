@@ -17,8 +17,8 @@ export type State = {
 
 local cloudman = {}
 
-local SPRITE = asset.sprite("bn5:cloudman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
+local SPRITE = asset.sprite("cloudman")
+local SOUND_APPEAR = asset.sound("appear")
 -- By the level (0x080BC37C): DS's 6 (SP's level is 0).
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 6 }
 -- A panel a cloud takes: any but one with these flags (as one word).
@@ -116,7 +116,7 @@ local function init(me: Object)
 end
 
 cloudman.kind = define.kind {
-    id = "bn5:cloudman/navi",
+    id = "cloudman/navi",
     pool = "actor",
     state = { controller = "object", level = "u8" },
     -- 0x080BC304.

@@ -7,20 +7,20 @@ local charge = require("./charge")
 local tenguman = require("./chip")
 
 return define.navi {
-    id = "bn6:tenguman",
-    sprite = asset.sprite("bn6:tenguman"),
+    id = "tenguman",
+    sprite = asset.sprite("tenguman"),
     element = "null",
     weakness = { "sword" },
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("bn6:tenguman-win"), lose = asset.banner("bn6:tenguman-deleted") },
+    banners = { win = asset.banner("tenguman-win"), lose = asset.banner("tenguman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`).
-    mugshot = asset.mugshot("bn6:tenguman"),
+    mugshot = asset.mugshot("tenguman"),
     merge_height = -8,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("bn6:tenguman-portrait"),
+        portrait = asset.sprite("tenguman-portrait"),
     },
     own_chip = { chip = tenguman, code = "T" },
     chip_bonus = {

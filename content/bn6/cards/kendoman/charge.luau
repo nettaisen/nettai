@@ -8,7 +8,7 @@ local weapon = require("../../lib/weapon")
 local bambswrd = require("../../chips/bambswrd/chip")
 
 return define.weapon {
-    id = "bn6:patch-cards/kendoman/charge",
+    id = "patch-cards/kendoman/charge",
     -- The charge table's row 0x68, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 100, 90, 80, 75, 70, 100, 90, 80 },

@@ -4,7 +4,7 @@
 local programs = require("../../rules/navicust/programs")
 
 return define.navicust_program {
-    id = "bn6:speedmax",
+    id = "speedmax",
     colors = { "green" },
     plus = true,
     shape = {

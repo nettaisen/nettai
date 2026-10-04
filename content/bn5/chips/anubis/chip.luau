@@ -6,7 +6,7 @@
 local anubis = require("./anubis")
 
 return define.chip {
-    id = "bn5:anubis",
+    id = "anubis",
     codes = { "A" },
     element = "null",
     family = "summon",

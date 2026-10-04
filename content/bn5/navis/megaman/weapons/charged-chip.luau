@@ -12,6 +12,6 @@ function charged_chip.routine(id: string, ticks: { number }): Weapon
 end
 
 -- Routine 5 (ProtoSoul's): the charge table's row 5 (0x0801CA9E); Charge 5 reads on into row 6's first entry.
-charged_chip.weapon = charged_chip.routine("bn5:megaman/charged-chip", { 30, 30, 30, 30, 30, 40 })
+charged_chip.weapon = charged_chip.routine("megaman/charged-chip", { 30, 30, 30, 30, 30, 40 })
 
 return charged_chip

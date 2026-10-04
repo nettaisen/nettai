@@ -16,7 +16,7 @@ export type State = {
 
 local HIT_PARAM = 0x94
 local THROW_ANIM = 6
-local SOUND = asset.sound("bn5:minibomb-throw")
+local SOUND = asset.sound("minibomb-throw")
 local THROW_AT, THROW_TICKS, RECOVER_TICKS = 9, 21, 5
 local REACH = 3
 
@@ -62,7 +62,7 @@ local function recover(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "bn5:meddysoul/charge/action",
+    id = "meddysoul/charge/action",
     state = { timer = "u16" },
     -- 0x080EEA58
     update = function(me: Object, s: State)
@@ -86,7 +86,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "bn5:meddysoul/charge",
+    id = "meddysoul/charge",
     -- The charge table's row 0xE (0x0801CAF8); Charge 5 reads on into row 0xF's first entry.
     charge_ticks = { 70, 65, 60, 55, 50, 0 },
     setup = setup,

@@ -5,7 +5,7 @@
 
 use super::{
     actions, ai, ai_mut, attach_point, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_paralysis, coll,
-    Emotion, coll_mut, switch_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, per_player_gauges, navi_record,
+    Emotion, coll_mut, switch_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, own_gauges, navi_record,
     coordinates_to_panel, panel_kind, reactions, reset_attack_links, save_state_word, set_attack, navi_action,
     set_navi_action, NaviAction,
     set_coordinates_from_panel, set_flag1, set_flag2, set_mood,
@@ -236,14 +236,15 @@ fn bug_effect(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_801A45C`: a counter hit fills the attacker's per-side gauge (flag
-/// 0x40 mode), is counted, and closes the counter window.
+/// `sub_801A45C`: a counter hit fills the attacker's own gauge (the
+/// own-gauges mode, battle flag 0x40), is counted, and closes the counter
+/// window.
 fn counter_hit_bookkeeping(b: &mut Battle, r: ObjectRef) {
     if coll(b, r).acc.hit_flags & 0x40 == 0 {
         return;
     }
     let opp = b.objects.get(r).alliance ^ 1;
-    if per_player_gauges(b) {
+    if own_gauges(b) {
         // sub_802E032
         let s = &mut b.sides[opp as usize];
         s.gauge = (s.gauge as u32 + 0x1500).min(0x4000) as u16;
@@ -1024,7 +1025,7 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
 /// `sub_801728E`): the other player's navi blinks blue while it can be
 /// countered, to a local player in Full Synchro; BN5's no-charge drive
 /// flickers gray its last 180 ticks (0x080136E0, between the two); in the
-/// per-player gauges' mode a navi glows yellow while its SELECT special
+/// own-gauges mode a navi glows yellow while its SELECT special
 /// runs.
 fn counter_shader(b: &mut Battle, r: ObjectRef) {
     let t = b.round.battle_time;
@@ -1047,7 +1048,7 @@ fn counter_shader(b: &mut Battle, r: ObjectRef) {
             b.objects.sprite_mut(r).look.color_shader = v | v << 5 | v << 10;
         }
     }
-    if per_player_gauges(b)
+    if own_gauges(b)
         && navi_action(b, r) != NaviAction::Entry
         && b.sides[alliance as usize & 1].select_special != 0
     {

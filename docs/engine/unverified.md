@@ -372,7 +372,7 @@ first only, and the second takes what the spawner leaves in that register, the e
 - Field objects: a pushing hit other than AirShot's on a fan or statue that doesn't break it (none found: see
   the table above).
 - Instant chips (`off_80EC3F0`): FullCust's and the plus chips' special-source branches (not reachable:
-  per-player gauges and the special chips are not a netbattle's); ColForce from a real Gregar side 1 (the
+  each side's own gauge and the special chips are not a netbattle's); ColForce from a real Gregar side 1 (the
   lab's bases have none; `chips/0x130-colforce/side1` gives a Falzar side the chip). Effects 2, 6, 9, 11, 16
   and 17 are called only by the link navis' weapons (not surveyed here).
 - The chips' charged shots beyond their scenarios: the arm chips' in a Cross or Beast Out (the two bug chips' are

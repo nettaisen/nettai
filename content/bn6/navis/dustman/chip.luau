@@ -23,7 +23,7 @@ local STATE = { timer = "u16", cloud = "object", overlay = "object" }
 
 local PULL, CRUSH, RECOVER = 0x0, 0x4, 0x8
 local ANIM_PULL, ANIM_CRUSH = 0x12, 0x14
-local SOUND_PULL, SOUND_CRUSH = asset.sound("bn6:dustbrk"), asset.sound("bn6:dustbrk-2")
+local SOUND_PULL, SOUND_CRUSH = asset.sound("dustbrk"), asset.sound("dustbrk-2")
 
 local PULL_TICKS, CRUSH_TICKS, RECOVER_TICKS = 0x1E, 0x28, 0x1E
 -- The timer value the crush lands at.
@@ -140,7 +140,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [PULL] = draw_in, [CRUSH] = crush, [RECOVER] = recover }
 
 return define.chip {
-    id = "bn6:dustbrk",
+    id = "dustbrk",
     codes = { "D" },
     element = "null",
     family = "break",
@@ -155,7 +155,7 @@ return define.chip {
     slot_in_limit = 1,
     -- `sub_80F1FA0` (`off_80F1FB4`).
     action = define.action {
-        id = "bn6:dustbrk/action",
+        id = "dustbrk/action",
         state = STATE,
         update = function(me: Object, s: State)
             link.run(me, s, PHASES, "DustBrk (sub_80F1FA0)")

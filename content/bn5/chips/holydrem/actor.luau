@@ -27,7 +27,7 @@ export type State = {
 }
 
 -- The flash on a holy panel the scan takes (effect 41: 0c-13's animation 1).
-local FLASH = define.effect { sprite = asset.sprite("bn5:grab-shot"), anim = 1, palette = 0 }
+local FLASH = define.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 0 }
 -- The pose (the user's sprite's animation 14); the shots' attach point.
 local POSE, MUZZLE = 14, 29
 -- Ticks to the first shot, between the panels, and after the last.
@@ -145,7 +145,7 @@ local function leave(me: Object)
 end
 
 actor.kind = define.kind {
-    id = "bn5:holydrem/actor",
+    id = "holydrem/actor",
     pool = "actor",
     state = { controller = "object", held = "object", x = "i32", y = "i32", dx = "i32", shots = "u16" },
     -- 0x080BD728.

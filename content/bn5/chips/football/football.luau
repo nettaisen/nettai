@@ -10,7 +10,7 @@
 -- panels (thrown, hit modifier 3), and 20 ticks later goes in a puff.
 --
 -- (Its variants 0 to 3 are GridMan the virus's: they wait out the dimming, aim at a random panel around its target
--- and highlight where they land; they end if their owner is blind or confused. In battle flag 0x40 mode, never in a
+-- and highlight where they land; they end if their owner is blind or confused. In the operation battle, never in a
 -- netbattle, the balls also mark their panels with 0x080E9FA4's effect object #0x83, which isn't ported.)
 
 local collision = require("../../rules/collision")
@@ -20,7 +20,7 @@ local sparks = require("../../lib/sparks")
 
 local football = {}
 
-local SPRITE = asset.sprite("bn5:gridman")
+local SPRITE = asset.sprite("gridman")
 
 -- ---- The ball -------------------------------------------------------------------------------------------------------
 
@@ -29,8 +29,8 @@ local DROP_Z, DROP_VZ, DROP_TICKS = 0x90_0000, 0x8_0000, 30
 local GRAVITY, LAND_Z = 0x1_0000, 0x8_0000
 local HIT_MOD = 3
 local LANDING = define.effect { sprite = SPRITE, anim = 0x11, palette = 0 }
-local PUFF = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 }
-local SOUND_LAND = asset.sound("bn5:sound-13f")
+local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local SOUND_LAND = asset.sound("sound-13f")
 -- The block it hits: its panel and the ones right and down (0x080D94BC); the virus's ball highlights the same block
 -- (0x080D9600).
 local BLOCK = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } }
@@ -235,7 +235,7 @@ local function ball_tick(me: Object)
 end
 
 football.ball = define.kind {
-    id = "bn5:football/ball",
+    id = "football/ball",
     pool = "attack",
     state = { variant = "u8", around = "object" },
     -- 0x080D9258: by its lifecycle, then a sprite step.
@@ -297,7 +297,7 @@ export type State = {
     kicked: number,
 }
 
-local SOUND_APPEAR, SOUND_KICK = asset.sound("bn5:appear"), asset.sound("bn5:sound-13e")
+local SOUND_APPEAR, SOUND_KICK = asset.sound("appear"), asset.sound("sound-13e")
 local KICKS: { [number]: boolean } = { [171] = true, [126] = true, [111] = true, [96] = true }
 
 local function done(me: Object)
@@ -384,7 +384,7 @@ end
 local ACTIONS = { [0] = appear, [4] = stand, [8] = kicks, [0xC] = leave }
 
 football.kind = define.kind {
-    id = "bn5:football/navi",
+    id = "football/navi",
     pool = "actor",
     state = { controller = "object", kicked = "u8" },
     -- 0x080BF628.

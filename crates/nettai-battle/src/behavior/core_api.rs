@@ -367,8 +367,8 @@ impl CoreApi for Battle {
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
             BattleInfo::LocalSide => Value::Int(self.round.local_side as i64),
             BattleInfo::Turn => Value::Int(self.round.turn as i64),
-            BattleInfo::PerPlayerGauges => {
-                Value::Bool(self.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0)
+            BattleInfo::OwnGauges => {
+                Value::Bool(self.round.flags & crate::battle::battle_flags::OWN_GAUGES != 0)
             }
             BattleInfo::Fighting => Value::Bool(self.round.flags & crate::battle::battle_flags::FIGHTING != 0),
             BattleInfo::GaugeFull => Value::Bool(self.round.flags & crate::battle::battle_flags::GAUGE_FULL != 0),

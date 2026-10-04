@@ -17,7 +17,7 @@ local strike = require("./strike")
 
 return {
     action = define.action {
-        id = "bn6:stun-strike/action",
+        id = "stun-strike/action",
         state = strike.STATE,
         update = function(me: Object, s: any)
             local chip = me.attack_chip

@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local guards = require("../../navis/megaman/weapons/guards")
 
 return define.patch_card {
-    id = "bn5:serenade",
+    id = "serenade",
     mb = 50,
     effects = {
         cards.chip_recovery(100),

@@ -7,7 +7,7 @@ local timebom = require("./timebom")
 -- TimeBom1 (BN5 chip 0x04b): a bomb on the enemy's frontmost panel of a random row that counts 3, 2, 1 and blows
 -- up the whole enemy area unless it is broken first (chips/timebom/timebom: BN6's TimeBom with BN5's placement).
 local timebom1 = define.chip {
-    id = "bn5:timebom1",
+    id = "timebom1",
     codes = { "H", "N", "T" },
     element = "null",
     family = "summon",
@@ -25,7 +25,7 @@ local timebom1 = define.chip {
 -- TimeBom2 (BN5 chip 0x04c): a bomb on the enemy's frontmost panel of a random row that counts 3, 2, 1 and blows
 -- up the whole enemy area unless it is broken first (chips/timebom/timebom: BN6's TimeBom with BN5's placement).
 local timebom2 = define.chip {
-    id = "bn5:timebom2",
+    id = "timebom2",
     codes = { "D", "H", "Z" },
     element = "null",
     family = "summon",
@@ -43,7 +43,7 @@ local timebom2 = define.chip {
 -- TimeBom3 (BN5 chip 0x04d): a bomb on the enemy's frontmost panel of a random row that counts 3, 2, 1 and blows
 -- up the whole enemy area unless it is broken first (chips/timebom/timebom: BN6's TimeBom with BN5's placement).
 local timebom3 = define.chip {
-    id = "bn5:timebom3",
+    id = "timebom3",
     codes = { "F", "H", "S" },
     element = "null",
     family = "summon",
@@ -66,7 +66,7 @@ local recipe_timebom2 = timebom2
 local recipe_timebom3 = timebom3
 
 local timebom_chip = define.chip {
-    id = "bn5:timebom",
+    id = "timebom",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

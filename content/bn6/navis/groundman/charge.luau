@@ -18,7 +18,7 @@ local THROW, RECOVER = 0x0, 0x4
 local ANIM_THROW, ANIM_RECOVER = 0xF, 7
 local THROW_TICKS, RECOVER_TICKS = 0x46, 0x14
 
-local SOUND = asset.sound("bn6:drill-launch")
+local SOUND = asset.sound("drill-launch")
 
 -- The hits' counter byte, and the drills' element: Null (the attack's
 -- element byte).
@@ -79,7 +79,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [THROW] = throw, [RECOVER] = recover }
 
 charge.action = define.action {
-    id = "bn6:groundman/charge/action",
+    id = "groundman/charge/action",
     state = { timer = "u16" },
     -- `sub_80F1BA8` (`off_80F1BBC`).
     update = function(me: Object, s: State)
@@ -88,7 +88,7 @@ charge.action = define.action {
 }
 
 charge.weapon = define.weapon {
-    id = "bn6:groundman/charge",
+    id = "groundman/charge",
     -- The charge table's row 0x4A, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 130, 120, 110, 105, 100, 0, 0, 0 },

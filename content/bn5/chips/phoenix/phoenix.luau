@@ -25,11 +25,11 @@ export type State = {
     targets: { number },
 }
 
-local SPRITE = asset.sprite("bn5:phoenix")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_HEAL = asset.sound("bn5:heal")
+local SPRITE = asset.sprite("phoenix")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_HEAL = asset.sound("heal")
 -- The healing's sparkle (the effect table's row 6).
-local HEALED = define.effect { sprite = asset.sprite("bn5:heal"), anim = 0, palette = 0 }
+local HEALED = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
 -- The targets' columns (0x080BFD80, 0x080BFD86): the middle, and beside it.
 local MIDDLE = { 0x13, 0x23, 0x33, 0x14, 0x24, 0x34 }
 local BESIDE = { 0x12, 0x22, 0x32, 0x15, 0x25, 0x35 }
@@ -242,7 +242,7 @@ local function init(me: Object)
 end
 
 phoenix.kind = define.kind {
-    id = "bn5:phoenix/phoenix",
+    id = "phoenix/phoenix",
     pool = "actor",
     state = { controller = "object", targets = "u8[18]" },
     -- 0x080BFA70.

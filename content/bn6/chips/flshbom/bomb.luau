@@ -26,7 +26,7 @@ export type State = {
 }
 
 -- `sub_8011504`: sprite `flash-bomb` with a ground shadow, animation 0.
-local SPRITE = asset.sprite("bn6:flash-bomb")
+local SPRITE = asset.sprite("flash-bomb")
 local HIT_MOD, SET_HIT_MOD = 3, 3
 local FLIGHT_TICKS, GRAVITY = 0x28, -0x3000
 -- What in its hits ends it at once: bodies and objects (0x0F800000).
@@ -37,7 +37,7 @@ local OWN_BODY = { [0] = 0x08000000, [1] = 0x04000000 }
 -- ticks) and a sound; the hit covers the other side's area; strong
 -- variants hit with damage 0x14 and counter 0.
 local FLASH_AT = 2
-local SOUND_FLASH = asset.sound("bn6:flash")
+local SOUND_FLASH = asset.sound("flash")
 local STRONG_DAMAGE = 0x140000
 
 -- What the navi holds while throwing one (the original's attachment row
@@ -220,7 +220,7 @@ local function init(me: Object)
 end
 
 flash_bomb.kind = define.kind {
-    id = "bn6:flshbom/bomb",
+    id = "flshbom/bomb",
     pool = "attack",
     state = { variant = "record:flash-bomb-variant", target_x = "u8", target_y = "u8" },
     -- `sub_80D9A50`.

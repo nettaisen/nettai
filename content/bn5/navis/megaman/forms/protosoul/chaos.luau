@@ -15,7 +15,7 @@ local function setup(navi: Object): Chip
 end
 
 chaos.weapon = define.weapon {
-    id = "bn5:protosoul/chaos",
+    id = "protosoul/chaos",
     -- The charge table's row 6 (0x0801CAA8), by the chaos level (at most 4); level 5 would read on into row 7's
     -- first entry.
     charge_ticks = { 40, 60, 90, 120, 150, 130 },

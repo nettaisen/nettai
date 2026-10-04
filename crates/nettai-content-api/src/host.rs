@@ -153,8 +153,8 @@ pub enum HookCall {
     /// the kind brought (BN5's DethPhnx: the last navi chip's) is done. Its
     /// result is unused.
     NaviLeft { controller: ObjectRef },
-    /// A role hook the ruleset calls with a navi (`define.roles`'
-    /// `hooks`): its result is unused.
+    /// A role hook the ruleset calls with a navi (the roles' `hooks`):
+    /// its result is unused.
     RoleNavi { navi: ObjectRef },
     /// A form's hook the engine calls with the navi in it (its `reset`:
     /// what else the status reset does in the form, BN5's souls'). Its

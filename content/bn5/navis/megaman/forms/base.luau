@@ -1,5 +1,5 @@
 --!strict
--- BN5's MegaMan's base form (`bn5:base`, the engine's base form of BN5's game: rules-in-luau.md P1c): MegaMan in no
+-- BN5's MegaMan's base form (`base`, the engine's base form of BN5's game: rules-in-luau.md P1c): MegaMan in no
 -- soul (NaviStats +0x2C 0), his sprite by his soul (0x0800DA58[0]). His weapons in it are his navi's, from his stats.
 -- In Hub Style (NaviStats +0x4C, patch card 111's) he wears its shade.
 
@@ -8,7 +8,7 @@ local buster = require("../weapons/buster")
 local charged_shot = require("../weapons/charged-shot")
 
 -- Hub Style's shade (the body overlay's row 5), as an identity wears it.
-local HUB = define.identity { id = "bn5:megaman/hub-shade", class = "navi", parts = { body = body_overlays.hub } }
+local HUB = define.identity { id = "megaman/hub-shade", class = "navi", parts = { body = body_overlays.hub } }
 
 -- 0x0800EE1C (the base form's put-on routine, 0x0800F038's row 0, and MegaMan's actor record's init hook, 0x0800ED90's
 -- row 11, as his init ends): in his base form (+0x2C 0, read again) in Hub Style, what he wore down and the shade on
@@ -23,9 +23,9 @@ local function put_on(navi: Object)
 end
 
 return define.form {
-    id = "bn5:base",
+    id = "base",
     base = true,
-    sprite = asset.sprite("bn5:megaman"),
+    sprite = asset.sprite("megaman"),
     element = "null",
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
@@ -34,17 +34,17 @@ return define.form {
     -- 0x08012740; each brings its box): worried for a mood under 65, the dark face for a mood of 0 (a dark
     -- MegaMan's); and Hub Style's (NaviStats +0x4C, the navi's `hub_style`: 0x0801AF8E adds 11).
     mugshot = {
-        normal = asset.mugshot("bn5:megaman"),
-        angry = asset.mugshot("bn5:megaman-angry"),
-        worried = asset.mugshot("bn5:megaman-worried"),
-        full_synchro = asset.mugshot("bn5:megaman-full-synchro"),
-        worn_out = asset.mugshot("bn5:megaman-dark"),
+        normal = asset.mugshot("megaman"),
+        angry = asset.mugshot("megaman-angry"),
+        worried = asset.mugshot("megaman-worried"),
+        full_synchro = asset.mugshot("megaman-full-synchro"),
+        worn_out = asset.mugshot("megaman-dark"),
         variant = {
-            normal = asset.mugshot("bn5:megaman-hub"),
-            angry = asset.mugshot("bn5:megaman-hub-angry"),
-            worried = asset.mugshot("bn5:megaman-hub-worried"),
-            full_synchro = asset.mugshot("bn5:megaman-hub-full-synchro"),
-            worn_out = asset.mugshot("bn5:megaman-hub-dark"),
+            normal = asset.mugshot("megaman-hub"),
+            angry = asset.mugshot("megaman-hub-angry"),
+            worried = asset.mugshot("megaman-hub-worried"),
+            full_synchro = asset.mugshot("megaman-hub-full-synchro"),
+            worn_out = asset.mugshot("megaman-hub-dark"),
         },
     },
     buster_arm = { anim = 0 },

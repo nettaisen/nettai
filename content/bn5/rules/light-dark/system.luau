@@ -15,7 +15,7 @@
 --   (or BN5's navi 23). Used, it breaks a soul (0x08010070: the weakness request, 0x080122C8), marks its side
 --   (statistic 2 set to 1), leaves the navi's mood at 0 and ends his
 --   anger, and costs him what the chip's entry of 0x0802C934 sets (a NaviCust bug of the battle: 0x0802C974's
---   routines; in battle flag 0x40 mode the HP drain one level more instead), the light/dark check following.
+--   routines; in the operation battle the HP drain one level more instead), the light/dark check following.
 -- - **The starting mood** (MegaMan's start, 0x08010EC8, where BN6's `sub_8013892` sets 0x80): by the value
 --   (0x0801283A): under 470 0 (a dark MegaMan's, his face the fifth: 0x0801AF64), under 500 64, from 1000 190, else
 --   the value / 20 + 103 (500: 0x80). A battle that holds the value (battle effect 0x20000) holds it at 500 from his
@@ -37,6 +37,7 @@
 
 local invalid = require("../../chips/invalid/chip")
 local megaman = require("../../navis/megaman/navi")
+local operation_battle = require("../../lib/operation_battle")
 
 -- A navi's stats as the costs write them.
 type Stats = Navi
@@ -55,25 +56,25 @@ local function custom_drain(stats: Stats)
     stats.custom_drain = math.min(stats.custom_drain + 2, 7)
 end
 local COSTS: { [string]: (stats: Stats) -> () } = {
-    ["bn5:darkcirc"] = custom_damage,
-    ["bn5:drksword"] = buster_blanks,
-    ["bn5:darkinvs"] = step_bug,
-    ["bn5:darkplus"] = step_bug,
-    ["bn5:drklance"] = function(stats: Stats)
+    ["darkcirc"] = custom_damage,
+    ["drksword"] = buster_blanks,
+    ["darkinvs"] = step_bug,
+    ["darkplus"] = step_bug,
+    ["drklance"] = function(stats: Stats)
         stats.hit_status = 2
     end,
-    ["bn5:darkwide"] = buster_blanks,
-    ["bn5:darkthnd"] = custom_drain,
-    ["bn5:drkrecov"] = function(stats: Stats)
+    ["darkwide"] = buster_blanks,
+    ["darkthnd"] = custom_drain,
+    ["drkrecov"] = function(stats: Stats)
         stats.hp_drain = 7
     end,
-    ["bn5:darkmetr"] = custom_drain,
-    ["bn5:darkdril"] = function(stats: Stats)
+    ["darkmetr"] = custom_drain,
+    ["darkdril"] = function(stats: Stats)
         stats.panel_trail = 4
         stats.panel_trail_level = 4
     end,
-    ["bn5:darktorn"] = custom_damage,
-    ["bn5:drksonic"] = step_bug,
+    ["darktorn"] = custom_damage,
+    ["drksonic"] = step_bug,
 }
 
 -- The side statistic a dark chip's use sets.
@@ -193,7 +194,7 @@ local function use_dark_chip(side: number, navi: Object): boolean
 end
 
 -- DrkRecov, which a dark chip offer to MegaMan at low HP prefers (0x08025192: chip 0xC2).
-local DRKRECOV = "bn5:drkrecov"
+local DRKRECOV = "drkrecov"
 
 -- 0x08025114, from the custom screen's opening (0x08022C5C) after its hand size and before the folder closes up: a
 -- worried or dark MegaMan (BN5's emotions 1 and 5: a mood under 65, or 0) is offered a dark chip of his folder. Its
@@ -239,7 +240,7 @@ local function cost(side: number, chip: Chip)
         return
     end
     local stats = battle.navi(side)
-    if battle.per_player_gauges() then
+    if operation_battle() then
         stats.hp_drain = math.min(stats.hp_drain + 1, 7)
         return
     end
@@ -268,7 +269,7 @@ local function navi_bug(_side: number, navi: Object): boolean?
 end
 
 return define.system {
-    id = "bn5:light-dark",
+    id = "light-dark",
     setup = { karma = "u16" },
     -- A fresh save's value (0x08010C00 writes 500 to NaviStats +0x44): light for the chips, no holy panels cleared,
     -- the starting mood 0x80.

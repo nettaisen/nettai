@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local zap_ring = require("../../navis/megaman/weapons/zap-ring")
 
 return define.patch_card {
-    id = "bn5:bunny",
+    id = "bunny",
     mb = 8,
     effects = {
         cards.body("elec"),

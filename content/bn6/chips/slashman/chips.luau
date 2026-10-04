@@ -5,7 +5,7 @@
 local navi = require("./navi")
 
 local slashman = define.chip {
-    id = "bn6:slashman",
+    id = "slashman",
     codes = { "S", "*" },
     element = "null",
     family = "sword",
@@ -23,7 +23,7 @@ local slashman = define.chip {
 }
 
 local slashmn_ex = define.chip {
-    id = "bn6:slashmn-ex",
+    id = "slashmn-ex",
     codes = { "S" },
     element = "null",
     family = "sword",
@@ -41,7 +41,7 @@ local slashmn_ex = define.chip {
 }
 
 local slashmn_sp = define.chip {
-    id = "bn6:slashmn-sp",
+    id = "slashmn-sp",
     codes = { "S" },
     element = "null",
     family = "sword",

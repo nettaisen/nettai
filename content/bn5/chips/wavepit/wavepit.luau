@@ -32,8 +32,8 @@ export type State = {
 
 -- Its look: sheet 0c-3a, animation 0, no shadow (0x080DAE18's 0x00000C3A); its collision (0x04050300): an attack
 -- hitting navis, hit modifier 3.
-local SPRITE = asset.sprite("bn5:sprite-0c-3a")
-local SOUND = asset.sound("bn5:sound-12f")
+local SPRITE = asset.sprite("sprite-0c-3a")
+local SOUND = asset.sound("sound-12f")
 local HIT_MOD = 3
 local SOLID = 0x10
 local WAIT = 20
@@ -132,7 +132,7 @@ local function init(me: Object)
 end
 
 wavepit.kind = define.kind {
-    id = "bn5:wavepit/wave",
+    id = "wavepit/wave",
     pool = "attack",
     state = { palette = "u8", anywhere = "bool" },
     -- 0x080DADBC.

@@ -7,7 +7,7 @@ local buster = require("../../navis/megaman/weapons/buster")
 local hells_rolling = require("../../navis/megaman/weapons/hells-rolling")
 
 return define.patch_card {
-    id = "bn5:bass-cross-megaman-colonel",
+    id = "bass-cross-megaman-colonel",
     mb = 70,
     effects = {
         cards.hp_percent(20),

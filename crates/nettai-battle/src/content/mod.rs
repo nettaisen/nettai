@@ -208,7 +208,7 @@ fn check_lists(scripts: &Scripts, definitions: &nettai_content_api::Definitions)
             let registries = GAME_LISTS.iter().find(|(n, _)| *n == list).map(|(_, r)| *r).unwrap_or_default();
             for path in paths {
                 let m = p.module(path);
-                if !definitions.defs.iter().any(|d| d.module == m && registries.contains(&d.registry)) {
+                if !definitions.defs.iter().any(|d| (d.module == m || d.module == keys::init_of(&m)) && registries.contains(&d.registry)) {
                     let names: Vec<&str> = registries.iter().map(|r| r.name()).collect();
                     return Err(ContentError::new(format!(
                         "{}/{MANIFEST}: `{list}` lists {path}, which defines no {}",
@@ -222,7 +222,7 @@ fn check_lists(scripts: &Scripts, definitions: &nettai_content_api::Definitions)
     for d in &definitions.defs {
         let Some((list, _)) = GAME_LISTS.iter().find(|(_, rs)| rs.contains(&d.registry)) else { continue };
         let Some(pack) = keys::root_of(&d.module) else { continue };
-        let path = keys::local(&d.module);
+        let path = keys::listed_as(keys::local(&d.module));
         match scripts.manifest(pack) {
             None => {
                 return Err(ContentError::new(format!("{}: {} {}: its pack, {pack}, has no manifest", file(&d.module), d.registry, d.key)));
@@ -236,7 +236,7 @@ fn check_lists(scripts: &Scripts, definitions: &nettai_content_api::Definitions)
                 )));
             }
             Some(p) => {
-                let listed = p.definitions.lists().iter().any(|(l, paths)| l == list && paths.iter().any(|x| x == path));
+                let listed = p.definitions.lists().iter().any(|(l, paths)| l == list && paths.iter().any(|x| keys::listed_as(x) == path));
                 if !listed {
                     return Err(ContentError::new(format!(
                         "{}: {} {} is {pack}'s, and {pack}/{MANIFEST} doesn't list {path} in `{list}`",

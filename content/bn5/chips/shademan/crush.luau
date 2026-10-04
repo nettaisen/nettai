@@ -18,8 +18,8 @@ export type State = {
     wide: boolean,
 }
 
-local SPRITE = asset.sprite("bn5:shademan")
-local SOUND = asset.sound("bn5:elec-pulse")
+local SPRITE = asset.sprite("shademan")
+local SOUND = asset.sound("elec-pulse")
 -- By the command (its Param1 the palette and the hit modifier's choice, its Param2 the status): 0x0000, 0x1201,
 -- 0x2209.
 local LOOKS: { [Effect]: { palette: number, hit_mod: number, status: Status? } } = {
@@ -102,7 +102,7 @@ local function init(me: Object)
 end
 
 crush.kind = define.kind {
-    id = "bn5:shademan/crush",
+    id = "shademan/crush",
     pool = "attack",
     state = { effect = { "none", "paralyze", "confuse" }, wide = "bool" },
     -- 0x080CB4AC.

@@ -9,9 +9,9 @@ local rock = require("../../objects/rock/rock")
 local HOOK_ADDRESS = 0x080E46E7
 
 local made = common.make {
-    id = "bn5:rockcube/cube",
+    id = "rockcube/cube",
     spawn_rock = rock.spawn,
-    place_sound = asset.sound("bn5:place"),
+    place_sound = asset.sound("place"),
     position = function(user: Object, spec: DimmingChipSpec): Vec3
         return Vec3.new(user.panel_y, spec.element, HOOK_ADDRESS)
     end,

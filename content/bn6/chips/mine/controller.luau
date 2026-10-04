@@ -7,4 +7,4 @@
 local common = require("@exelib/mine/controller")
 local land_mine = require("./land_mine")
 
-return common.make { id = "bn6:mine/controller", mine = land_mine.kind }
+return common.make { id = "mine/controller", mine = land_mine.kind }
