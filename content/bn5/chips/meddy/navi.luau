@@ -161,7 +161,7 @@ local function appear(me: Object)
         battle.play_sound(SOUND_APPEAR)
         me.visible = true
     end
-    if navi_chips.wait(me, 4, true) then
+    if navi_chips.wait_on_init(me, 4, true) then
         me:set_action(if field.check(me.panel_x, me.panel_y, SOLID, 0) then 4 else 0xC)
     end
 end
@@ -171,7 +171,7 @@ local function stand(me: Object)
     if me.phase_init == 0 then
         me.anim = 0
     end
-    if navi_chips.wait(me, 0x28, true) then
+    if navi_chips.wait_on_init(me, 0x28, true) then
         me:set_action(8)
     end
 end
@@ -202,7 +202,7 @@ local function leave(me: Object)
     if me.phase_init == 0 then
         me.anim = 4
     end
-    if navi_chips.wait(me, 4, true) then
+    if navi_chips.wait_on_init(me, 4, true) then
         navi_chips.leave(me, (me.state :: State).controller)
     end
 end

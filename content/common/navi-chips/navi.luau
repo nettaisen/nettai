@@ -75,6 +75,31 @@ function navi_chips.wait(me: Object, ticks: number, word: boolean?): boolean
     return left ~= nil and left <= 0
 end
 
+-- The timer as BN5's navis keep it (CloudMan's, GyroMan's, MagnetMan's and
+-- Meddy's actions): on the phase's init byte, not the phase. On
+-- `phase_init` 0, `phase_init` 4 with `ticks` (Timer2 cleared when `word`),
+-- returning nil, so that what the action starts with on the same test runs
+-- once; after, one tick down, returning what is left.
+function navi_chips.countdown_on_init(me: Object, ticks: number, word: boolean?): number?
+    if me.phase_init == 0 then
+        me.phase_init = 4
+        me.timer = ticks
+        if word then
+            me.timer2 = 0
+        end
+        return nil
+    end
+    local left = me.timer - 1
+    me.timer = left
+    return left
+end
+
+-- That timer: true once it has run out.
+function navi_chips.wait_on_init(me: Object, ticks: number, word: boolean?): boolean
+    local left = navi_chips.countdown_on_init(me, ticks, word)
+    return left ~= nil and left <= 0
+end
+
 -- `sub_800E708(a, b, c)`: c lies between a and b, ends included (and a
 -- or b equal to c): a flying attack moved from b to a passed c.
 function navi_chips.between(a: number, b: number, c: number): boolean
