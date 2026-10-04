@@ -48,7 +48,7 @@ local function swing(side: number, navi: Object)
         return
     end
     local stats = battle.navi(side)
-    if stats.form.kind ~= "base" or stats.emotion_bug == 0 then
+    if not stats.form.base or stats.emotion_bug == 0 then
         return
     end
     local s = system.state() :: State
@@ -88,7 +88,7 @@ emotion.system = define.system {
             end
         end,
         countered = function(side: number, _victim: Object)
-            if battle.navi(side).form.kind == "base" then
+            if battle.navi(side).form.base then
                 battle.set_mood(side, 0xFF)
             end
         end,

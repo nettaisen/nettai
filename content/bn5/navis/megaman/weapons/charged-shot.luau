@@ -68,7 +68,9 @@ function bn5.program_setup(navi: Object): Action
     navi.hit_param = 0
     navi.attack_lockout = 0
     local s = navi:action_state(charged_shot.action) :: { projectile: ProjectileVariant? }
-    s.projectile = stats.charge_shot_kind or variants.charged
+    -- (The program's 0 is the projectile table's first row, the plain shot: none, here.)
+    local program = stats.charge_shot_kind
+    s.projectile = if program == nil or program == variants.plain then variants.charged else program
     return charged_shot.action
 end
 

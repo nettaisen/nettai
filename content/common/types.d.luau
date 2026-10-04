@@ -19,6 +19,14 @@ export type SonicBoomLook = {
     hits: CollisionType,
 }
 
+-- What a game's sword slash (@common/swords/slash) asks of the user's form: the blade's animation where a chip doesn't
+-- say, and whether the user's side is in a form where a step sword neither steps nor steps back (BN6's Beast forms:
+-- its lib/swords/slash).
+export type SlashGame = {
+    blade_anim: ((Object) -> number)?,
+    stays: ((side: number) -> boolean)?,
+}
+
 -- A game's buster parts (@common/buster): the muzzle flash a shot leaves, the buster arm, an enemy navi's arm, the
 -- recovery after a shot (by Rapid, then the open panels ahead), and its attachment kind.
 export type BusterLook = {
@@ -580,4 +588,35 @@ export type PatchCardsGame = {
     choice: { [string]: string },
     bodies: { [string]: number },
     hit_status: { [string]: number },
+}
+
+-- CopyDmg's action for a game (@common/copydmg/action): its id, the shot's
+-- sound, how the navi raises its buster, and what it fires (the game's
+-- mark).
+export type CopyDamageSpec = {
+    id: string?,
+    sound: Sound,
+    raise_arm: (me: Object) -> (),
+    shot: (owner: Object, x: number, y: number, element: number, damage: number) -> Object?,
+}
+
+-- A game's CopyDmg mark (@common/copydmg/mark): its kind's id, sprite and
+-- animation, its hit's sound and types; BN5's reloads its animation at its
+-- init and hits its panel each tick it marks in the battle flag 0x40 mode
+-- (the hit's spark and types).
+export type CopyDamageMarkLook = {
+    id: string,
+    sprite: SpriteAsset,
+    anim: number,
+    sound: Sound,
+    is: CollisionType,
+    hits: CollisionType,
+    reload_anim: boolean,
+    per_player_hit: { spark: Spark, is: CollisionType, hits: CollisionType }?,
+}
+
+-- A CopyDmg mark made for a game (@common/copydmg/mark).
+export type CopyDamageMark = {
+    kind: Kind,
+    spawn: (owner: Object, x: number, y: number, element: number, damage: number) -> Object?,
 }

@@ -10,11 +10,12 @@ local attachment = {}
 attachment.look = common.look
 
 -- BN5's lift (0x080B9AB8): MegaMan's (NameID 0x180: his identities') in Hub Style (NaviStats +0x4C of the
--- attachment's side), 1 pixel; else the look's.
+-- attachment's side), 1; else the look's (every BN5 row's is 0). BN5's follow (0x080B9B50) adds its byte, unsigned,
+-- to Y and Z, where BN6's subtracts its signed byte: in the shared code's terms, -1.
 attachment.kind = common.make_kind("bn5:attachment", function(owner: Object, side: number): number?
     local identity = owner.identity
     if identity ~= nil and identity.class == "megaman" and battle.navi(side).hub_style ~= 0 then
-        return 1
+        return -1
     end
     return nil
 end)

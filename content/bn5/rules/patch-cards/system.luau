@@ -10,8 +10,9 @@
 -- block of slots seeded from the stats (0x08137B56) and each switched-on card's effects run over it in the kinds'
 -- order (0x08137B00; the run BN6's shares, @common/patch-cards/apply); the HP the working HP; then the slots a card
 -- wrote copied into the stats (0x081382B8's 39 routines), some of them through tables, BugStop (the card's, at 1)
--- holding back the bug slots. Their bug count (0x081384D8) sets event flag 0x10C4, which only the menus read: no
--- emotion window glitch.
+-- holding back the bug slots. Their bug count (0x081384D8: the NaviCust's bug bytes, the encounters' and drops' bugs,
+-- no supports) sets event flag 0x10C4, the emotion window's glitch when the save has cards (0x0813F650: the card
+-- count, not the switched-on cards; without cards the NaviCust's flag, 0x10C1).
 --
 -- The HP (0x0813F97C, after the cards): in the real world the maximum; in the cyberworld (the setup's `cyberworld`:
 -- the save's area, 0x02002944, from 0x80, or event flag 0x10B2) no more than it.
@@ -37,6 +38,30 @@ local BUG_KINDS: { [string]: boolean } = {
     custom_hp_drain = true,
     status_bug = true,
 }
+
+-- 0x081384D8: how many of the bugs the stats have (the cards' flag 0x10C4 from 1).
+local function bug_count(stats: Navi): number
+    local n = 0
+    for _, bugged in {
+        stats.step_bug == 1,
+        stats.panel_trail_level ~= 0,
+        stats.buster_blanks ~= 0,
+        stats.hit_status ~= 0,
+        stats.custom_damage ~= 0,
+        stats.emotion_bug ~= 0,
+        stats.hp_drain ~= 0,
+        stats.custom_drain ~= 0,
+        stats.battle_start_bug ~= 0,
+        stats.encounters == 1,
+        stats.chip_drops == 1,
+        stats.support_bug,
+    } do
+        if bugged then
+            n += 1
+        end
+    end
+    return n
+end
 
 -- The cards' run (0x08137B00) over `stats`: the copy into them (0x081382B8's routines).
 local function run(stats: Navi, installed: { { card: PatchCard, enabled: boolean } })
@@ -122,6 +147,8 @@ local function apply(side: number)
     end
     if #installed > 0 then
         run(stats, installed)
+        -- 0x081382A2: the cards' bug flag, which the emotion window reads with cards in the list.
+        battle.set_emotion_window_glitch(side, bug_count(stats) > 0)
     else
         stats.hub_style = 0
     end

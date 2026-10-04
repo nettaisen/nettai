@@ -10,11 +10,11 @@ local charged_shot = require("../weapons/charged-shot")
 -- Hub Style's shade (the body overlay's row 5), as an identity wears it.
 local HUB = define.identity { id = "bn5:megaman/hub-shade", class = "navi", parts = { body = body_overlays.hub } }
 
--- 0x0800EE1C (the base form's routine of 0x0800F024): in his base form (+0x2C 0, read again) in Hub Style, what he
--- wore down and the shade on (Param3 0).
+-- 0x0800EE1C (the base form's routine of 0x0800F024, and MegaMan's actor record's init hook, 0x0800ED90's row 11, as
+-- his init ends): in his base form (+0x2C 0, read again) in Hub Style, what he wore down and the shade on (Param3 0).
 local function wears(navi: Object)
     local stats = battle.navi(navi.alliance)
-    if stats.form.kind ~= "base" or stats.hub_style == 0 then
+    if not stats.form.base or stats.hub_style == 0 then
         return
     end
     navi:take_off_form_overlay(stats.form)
@@ -23,7 +23,7 @@ end
 
 return define.form {
     id = "bn5:base",
-    kind = "base",
+    base = true,
     sprite = asset.sprite("bn5:megaman"),
     element = "null",
     buster_bonus = 0,

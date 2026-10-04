@@ -9,11 +9,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FlowRules {
-    /// The custom screen closes on the tick both results are in (BN5's
-    /// Team Battle screen, 0x08025EF2), not on the next (BN6's
-    /// `sub_8026A28`: `CustomScreens::committed`).
-    #[serde(default)]
-    pub custom_closes_with_results: bool,
+    /// The words a custom screen's result takes on the link, one a tick
+    /// (`sub_800B3A2`'s count: BN6's 50; BN5's 49, its NaviStats 0x60
+    /// bytes to BN6's 0x64), read of the sending side's game: the screens
+    /// close on the tick after both results are in (`sub_8026A28`; BN5's
+    /// Team Battle screen's state 8, 0x08025FEC, after 0x080266FA).
+    #[serde(default = "result_words")]
+    pub result_words: u8,
     /// Before the custom screen opens, the transformation sequencer runs
     /// once more after the reversions (BN6's state 0x24, `sub_8008492`);
     /// BN5 opens it straight after them.
@@ -55,11 +57,16 @@ pub struct ResultWait {
     pub special: u16,
 }
 
+/// BN6's result words (`FlowRules::result_words`).
+fn result_words() -> u8 {
+    50
+}
+
 impl Default for FlowRules {
     /// BN6's flow.
     fn default() -> FlowRules {
         FlowRules {
-            custom_closes_with_results: false,
+            result_words: 50,
             sequencer_before_custom: true,
             escape_check: true,
             result_wait: ResultWait { normal: 0x66, special: 0x5E },
@@ -111,6 +118,10 @@ pub struct EffectsRules {
     /// (its kind's), not the arena's.
     #[serde(default)]
     pub obstacle_soldiers: bool,
+    /// What holds a screen palette flash (effect object #0x0A,
+    /// `kinds::palette_flash`) by its mode.
+    #[serde(default)]
+    pub palette_flash: PaletteFlashRule,
 }
 
 impl Default for EffectsRules {
@@ -121,8 +132,25 @@ impl Default for EffectsRules {
             spark_steps_at_start: true,
             retype: RetypeRule::default(),
             obstacle_soldiers: false,
+            palette_flash: PaletteFlashRule::default(),
         }
     }
+}
+
+/// What holds a screen palette flash (effect object #0x0A) while the battle
+/// is paused or dimmed, by its mode (Param3: bit 0 keeps it flashing while
+/// dimmed, bit 1 while paused).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PaletteFlashRule {
+    /// BN6's (`sub_80E10C0`, `sub_80E114C`): bit 1 keeps it going through
+    /// both; else a pause holds it, and dimming does unless the variant's
+    /// bit is set (variant 0 tests bit 0, variant 1 bit 1).
+    #[default]
+    Bn6,
+    /// BN5's (0x080E104C, 0x080E10D0): a pause holds either variant
+    /// whatever its mode; dimming holds it only with a mode of 0.
+    Bn5,
 }
 
 /// How `sub_801A082` (an object's damage, hit modifier and collision types
@@ -194,7 +222,11 @@ pub enum OverlayRestart {
     Reload,
 }
 
-/// How a navi's push (slide type 1) reads the hits it took.
+/// How a navi's push (slide type 1) reads the hits it took; and, of an
+/// obstacle's own game, how an obstacle's push does (`kinds::obstacle`:
+/// BN5's 0x0800D4B0 reads the hits by the hitters' flips, its slide
+/// keeps no bounds, 0x08014894, and its push on any hit goes by the
+/// hitters' flips, 0x08017AD8).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PushReading {

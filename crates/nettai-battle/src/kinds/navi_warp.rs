@@ -101,7 +101,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // lost on the way), or a link navi's own; then, in a form, the
     // overlay's Param3 = 1 and flags 0x14.
     form::put_on_navi_overlay(b, r, navi_id, form, 1);
-    if b.content.form(form).kind != crate::content::FormKind::Base
+    if !b.content.form(form).base
         && let Some(overlay) = b.objects.get(r).related[1]
     {
         form::keep_overlay_stepping(b, overlay);

@@ -7,6 +7,7 @@
 -- system's.
 
 local beast_out_chip = require("../../chips/beastout/chip")
+local kind = require("../forms/kind")
 
 local custom_beast = {}
 
@@ -25,11 +26,6 @@ local FADE_SPEED = 8
 -- The side's navi changes form (MegaMan).
 local function megaman(side: number): boolean
     return battle.navi(side).navi.forms ~= nil
-end
-
--- A form kind of the Beast forms.
-local function beast_kind(kind: string): boolean
-    return kind == "beast" or kind == "cross_beast" or kind == "beast_over"
 end
 
 -- The beast system's setup (rules/beast/system.luau declares it): the
@@ -54,7 +50,7 @@ end
 local function beast_game(side: number): "gregar" | "falzar"
     local setup = system.setup() :: Setup
     local form = battle.navi(side).form
-    if form.game ~= nil and setup.cross_list[1] ~= nil and form.kind ~= "base" then
+    if form.game ~= nil and setup.cross_list[1] ~= nil and not form.base then
         return form.game :: "gregar" | "falzar"
     end
     return setup.version
@@ -75,7 +71,7 @@ local function beast_form(side: number, tired: boolean): FormDef?
     if tired then
         local set = of(beast_game(side))
         return if set ~= nil then set.beast_over else nil
-    elseif stats.form.kind == "base" then
+    elseif stats.form.base then
         local set = of((system.setup() :: Setup).version)
         return if set ~= nil then set.beast_out else nil
     end
@@ -87,7 +83,7 @@ end
 local function available(side: number): boolean
     local s = system.state() :: State
     local emotion = custom.player(side).emotion
-    return emotion ~= "worn_out" and (emotion ~= "tired" or s.beast_out_used) and not beast_kind(battle.navi(side).form.kind)
+    return emotion ~= "worn_out" and (emotion ~= "tired" or s.beast_out_used) and not kind.beast(side)
 end
 
 -- The Beast Out button (`sub_8029FB4`, battle mode 0), in the special slot.

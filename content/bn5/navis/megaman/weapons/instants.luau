@@ -8,10 +8,10 @@
 --   the second, which the timer's high byte reads, is what the last attack left. The engine keeps no attack
 --   parameters, so it reads 0 here.)
 -- - B↓Vacuum (`megaman/vacuum`, routine 0x4C, 0x0800FC82): effect 25 (0x080CEBC8, BN6's `sub_80CD4AC`, TenguCross's
---   wind: the same code): a pulling gust (objects/gust) down each row from the far column, with its sound.
+--   wind: the same code): a pulling gust (navis/megaman/gust) down each row from the far column, with its sound.
 
 local common_gust = require("@common/gust/gust")
-local gust = require("../../../objects/gust/gust")
+local gust = require("../gust")
 
 local instants = {}
 
