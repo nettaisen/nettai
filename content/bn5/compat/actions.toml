@@ -31,3 +31,23 @@
 "bn5:napalmsoul/charged-chip" = 0x4B
 # A computer navi's leave (its state table's own entry 7, past BN5's idle).
 "bn5:computer-navi/leave" = 0x07
+# Soul Unison's revert (the instant chips' number, as the change).
+"bn5:souls/revert" = 0x1A
+# MegaMan's weapons (the NaviCust's, the patch cards' charged chips and Hub Style's): their actions' numbers, the chip
+# actions they share where they share one.
+"bn5:megaman/blank-shot/action" = 0x38
+"bn5:megaman/bubble-shot/action" = 0x18
+"bn5:megaman/fire-arm/action" = 0x57
+"bn5:megaman/heat-shot/action" = 0x18
+"bn5:megaman/hells-rolling/action" = 0x47
+"bn5:megaman/rapid-buster/action" = 0x2E
+"bn5:megaman/reflect/action" = 0x1F
+"bn5:megaman/shield/action" = 0x1F
+"bn5:megaman/anti-damage/action" = 0x3D
+"bn5:megaman/tankcan1/action" = 0x46
+"bn5:megaman/zap-ring/action" = 0x32
+# The souls' charged weapons and B+Back.
+"bn5:numbersoul/charge/action" = 0x3A
+"bn5:shadowsoul/back/action" = 0x3D
+"bn5:meddysoul/charge/action" = 0x3E
+"bn5:knightsoul/charge/action" = 0x40
