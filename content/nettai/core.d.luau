@@ -1251,6 +1251,9 @@ declare battle: {
     -- Presentation: whether the side's emotion window shows its base form's second set of faces (`mugshot.variant`:
     -- BN5's Hub Style).
     set_face_variant: (side: number, variant: boolean) -> (),
+    -- Presentation: whether the custom screen's enemy names show the side's navi by its variant name (the locale's
+    -- `variant_name`: BN5's Hub Style in a link battle).
+    set_name_variant: (side: number, variant: boolean) -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
     add_side_gauge: (side: number, n: number) -> (),
     -- `sub_802E04E`: take from a side's own custom gauge, down to empty.
@@ -2583,10 +2586,13 @@ export type RolesSpec = {
         tango: Chip?,
     }?,
     -- The statuses the ruleset inflicts itself: what a damage word's
-    -- paralysis bit carries, what a counter hit lands, what an aqua hit
-    -- gives a body on ice, and the NaviCust on-hit bug's.
+    -- paralysis bit carries (and, with BN5's rule `effects.damage_word`,
+    -- its confusion and blindness bits), what a counter hit lands, what an
+    -- aqua hit gives a body on ice, and the NaviCust on-hit bug's.
     statuses: {
         damage_word_paralysis: Status?,
+        damage_word_confusion: Status?,
+        damage_word_blindness: Status?,
         counter_paralysis: Status?,
         ice_freeze: Status?,
         hit_bug_blind: Status?,

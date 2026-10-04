@@ -18,7 +18,7 @@ cannon.arms = {
 
 -- GigaCan's third afterimage (0x080EC224): in Hub Style (NaviStats +0x4C of the user's side), its shade (0c-58) in the
 -- navi's animation 8, where the navi stands, without a shadow.
-local HUB_SHADE = asset.sprite("sprite-0c-58")
+local HUB_SHADE = asset.sprite("hub-shade")
 local function hub_afterimage(me: Object, flip: number)
     if battle.navi(me.alliance).hub_style == 0 then
         return

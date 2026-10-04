@@ -347,7 +347,7 @@ language = "ja"
 "z-saver" = { name = "Zセイバー", description = "でんせつの あかい\nレプリロイドの\n3だんぎりソード" }
 
 [navis]
-"megaman" = { name = "ロックマン" }
+"megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
 
 [forms]
 "colonelsoul" = { name = "カーネルソウル" }

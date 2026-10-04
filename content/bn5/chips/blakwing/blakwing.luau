@@ -17,9 +17,9 @@ local sparks = require("../../lib/sparks")
 
 local blakwing = {}
 
-local SPRITE = asset.sprite("sprite-0c-42")
+local SPRITE = asset.sprite("black-wing")
 local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
-local SOUND_START, SOUND_FLAP = asset.sound("place"), asset.sound("sound-130")
+local SOUND_START, SOUND_FLAP = asset.sound("place"), asset.sound("black-wing-flap")
 
 -- ---- The perch ------------------------------------------------------------------------------------------------------
 

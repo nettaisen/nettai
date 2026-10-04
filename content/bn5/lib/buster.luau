@@ -1,6 +1,7 @@
 --!strict
 -- What BN5's buster shots share (@exelib/buster: BN6's code) but the arm they raise, BN5's own (lib/arm): the muzzle
--- flash (BN5's attachment row 0x0D, BN6's 5), the arm looks BN6's code keeps (BN5's rows 0x23 and 0x2B), BN5's recovery
+-- flash (BN5's attachment row 0x0D, BN6's 5: 0x080EBA08, sprite 0C-06 in BN5's own colors; a spread shot's would be row
+-- 0x39, 0C-59, which no BN5 buster fires), the arm looks BN6's code keeps (BN5's rows 0x23 and 0x2B), BN5's recovery
 -- table (rules/buster: BN6's values) and BN5's attachment.
 
 local arm = require("./arm")
