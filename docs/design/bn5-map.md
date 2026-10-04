@@ -1708,11 +1708,18 @@ of +0x18, else of +0x19 reversed, with a fifth row of nothing (BN6's reads past 
 `slide_speed`). The chip lab's chips/0x055-boybomb1/pushed and airshot record a buster's and an AirShot's
 knockback; RedFrut's broken and eaten recordings (side 0's buster, side 1's after side 0's Cannon) its gifts.
 
-Found on the way, left to their owners: RedFrut3's Full Synchro on a light MegaMan needs BN5's Full Synchro aura
-(actor object 0x5E, 0x080C45E0: sprite 14-16, the engine's role `sprites.full_synchro_aura`, unfilled for BN5; it
-frees itself rather than going to destroy, and its spawner allows AI indexes to 12), so its recording isn't in the
-lab; BN5's guard (0x080169B8) breaks on a hit of types 0x1002 always (BN6's on 0x0002, 0x1002 with 0x4000) and marks
-a guarded direction unless the hit has 0x0C004000 (BN6's 0x0C005000).
+**BN5's Full Synchro aura and guard** (found with RedFrut3, then built). The aura is actor object 0x5E (0x080C45E0):
+the role `sprites.full_synchro_aura` is BN5's sprite 14-16 (`full-synchro-aura`), and the engine's aura, by the
+side's `emotions` rule, takes BN5's ways: its sprite steps while paused (0x080C45E0), but once the fight is on it
+stops running while paused (it clears its header's run-while-paused bit, 0x080C4648), it keeps the animation it
+started with (the navi's actor record's AI index, 0x0800D1C0), and it hides while its navi is bubbled too
+(0x80000004); like BN6's it frees itself as Full Synchro ends. Its spawner (0x0801100C) allows AI indexes to 12. The
+chip lab's chips/0x044-redfrut3/broken, chips/0x004-airshot/counter (a counter hit's Full Synchro, 0x08016FDC) and
+counter-paused (a pause through it) record it. BN5's guard (0x080169B8, the arena's rule `effects.guard`) breaks on
+a hit of types 0x1002 whatever its 0x4000 (BN6's: 0x0002, or 0x1002 with 0x4000) and marks a guarded direction
+unless the hit has 0x0C004000 (BN6's 0x0C005000). No recording can show it: BN5's own types with 0x1000 all have
+0x4000, so only another game's attack in a BN5 arena breaks a guard that BN6's would hold; and the direction mask
+differs only for 0x1000, which BN5's guard never holds. A unit test (`collision::tests`) shows the first.
 
 ### 15.12 The content's layout (as built)
 
