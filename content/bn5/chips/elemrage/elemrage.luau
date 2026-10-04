@@ -260,6 +260,9 @@ local RAGES: { [string]: { element: number, palette: number } } = {
 }
 local NONE = { element = 0, palette = 4 }
 local CLAW = attachment.look { sprite = asset.sprite("bn5:sprite-0c-33"), palette = 0, attach_point = 0x16 }
+-- (The flame and the claw MegaMan's B↓FireAm fires too: navis/megaman/weapons/fire-arm.)
+elemrage.spawn_flame = spawn_flame
+elemrage.claw = CLAW
 local ROAR, RAGE_ROAR = asset.sound("bn5:roar"), asset.sound("bn5:sound-12c")
 -- The user's panel back to normal (the panel changer's row 11: its own panel, 30 ticks, flickering).
 local RESTORE = panel_changer.change {

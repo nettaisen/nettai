@@ -558,6 +558,12 @@ impl Battle {
         self.systems_chip_answer(side, navi, chip, SystemHook::ChipCheck)
     }
 
+    /// Side `side`'s systems' `chip_cost(side, navi, chip)`, earlier in
+    /// the preparation: as `systems_chip_check`.
+    pub(crate) fn systems_chip_cost(&mut self, side: u8, navi: ObjectRef, chip: Option<ChipHandle>) -> Option<ChipHandle> {
+        self.systems_chip_answer(side, navi, chip, SystemHook::ChipCost)
+    }
+
     /// Side `side`'s systems' `chip_substitute(side, navi, chip)` before a
     /// chip's record is loaded: the chip the first system that answers
     /// puts in its place (BN6's dark chips' substitute), or none.

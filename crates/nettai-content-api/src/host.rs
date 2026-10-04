@@ -215,6 +215,12 @@ pub enum SystemHook {
     /// system refuses a chip its MegaMan may not use: 0x08010118). The
     /// first system that answers decides.
     ChipCheck,
+    /// `chip_cost(side, navi, chip)`: earlier in a chip use's preparation,
+    /// before the hand bonus's panel is spent (BN5's 0x08010030: a dark
+    /// chip's use, which may fizzle, and the chip's cost, 0x0802C934). It
+    /// answers as `chip_check` does; a chip in the use's place skips the
+    /// rest of the preparation, `chip_check` too.
+    ChipCost,
     /// `chip_substitute(side, navi, chip)`: a chip's use is prepared, before
     /// its record is loaded (`sub_80127C0`'s `sub_8010D58`): a chip is what
     /// the navi uses in its place, with its own record, damage and bonus
@@ -358,6 +364,7 @@ impl SystemHook {
             SystemHook::FolderCheck => "folder_check",
             SystemHook::NaviIntake => "navi_intake",
             SystemHook::ChipCheck => "chip_check",
+            SystemHook::ChipCost => "chip_cost",
             SystemHook::ChipSubstitute => "chip_substitute",
             SystemHook::ChipPrepared => "chip_prepared",
             SystemHook::ChipUsed => "chip_used",
@@ -386,7 +393,7 @@ impl SystemHook {
         }
     }
 
-    pub const ALL: [SystemHook; 34] = [
+    pub const ALL: [SystemHook; 35] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -396,6 +403,7 @@ impl SystemHook {
         SystemHook::FolderCheck,
         SystemHook::NaviIntake,
         SystemHook::ChipCheck,
+        SystemHook::ChipCost,
         SystemHook::ChipSubstitute,
         SystemHook::ChipPrepared,
         SystemHook::ChipUsed,
