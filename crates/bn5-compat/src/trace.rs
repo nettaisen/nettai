@@ -584,7 +584,6 @@ impl Round {
                     turn_bonus: d.navi_stats[side as usize].raw[0x32] as i8,
                 },
                 joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
-                bug_frags: 0,
                 navi_level: None,
                 sp_times: Default::default(),
                 console: ConsoleSetup {

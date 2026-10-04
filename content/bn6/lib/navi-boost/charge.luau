@@ -5,6 +5,8 @@
 -- alike: not charged, no Atk+ bonus, a chip lockout of 20 ticks after it,
 -- the counter byte 0x14.
 
+local bn6 = require("../../rules/api")
+
 local charge = {}
 
 local LOCKOUT = 0x14
@@ -24,12 +26,7 @@ end
 -- `sub_800F4A8`, `sub_800F4B2`: a bug frag of the navi's side goes, if it
 -- has one. Whether it had.
 function charge.spend_bug_frag(navi: Object): boolean
-    local side = navi.alliance
-    if battle.bug_frags(side) < 1 then
-        return false
-    end
-    battle.spend_bug_frags(side, 1)
-    return true
+    return bn6.spend_bug_frags(navi.alliance, 1)
 end
 
 return charge
