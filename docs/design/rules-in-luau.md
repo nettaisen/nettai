@@ -429,12 +429,13 @@ Everything content can, plus, from modules under its game's rules/ folder (a lin
 
 ### 4.6 A game's API for content, and emotions
 
-Content today calls BN6-only API in Rust (`battle.bug_frags`, `me.beast_lockon`, `me.beast_out_spent`, MstrCros's
-Crosses). After S8 these are BN6's Luau module, content/bn6/rules/api.luau, declared in content/bn6/bn6.d.luau. Each
-function reads the user's side's systems through the engine and **says what it does when the user's ruleset lacks
-the system**: `bn6.bug_frags(side)` is 0, `bn6.spend_bug_frags` does nothing, `bn6.crosses(side)` is empty. A chip
-whose use makes no sense without a system says so (`requires = { "bn6:cross" }`), and a setup check refuses it in
-a folder whose ruleset lacks it.
+Content once called BN6-only API in Rust (`battle.bug_frags`, `me.beast_lockon`, `me.beast_out_spent`, MstrCros's
+Crosses). Since S8 (As built below) what is left of it is BN6's Luau module, content/bn6/rules/api.luau (`bn6`), its
+types in content/bn6/types.d.luau. Each function reads the side's systems (`system.state_of`, a game's rules' alone)
+and **says what it does when the side's ruleset lacks the system**: `bn6.bug_frags(side)` is 0 and
+`bn6.spend_bug_frags` spends nothing without the dark-chips system. A chip a system plays (MstrCros, the cross
+system's) is in BN6's folder rules' list, and the folder check (`folder_check`, rule `system`) refuses it in a
+folder whose ruleset lacks the system (`battle.side_has_system`).
 
 Emotions are each game's (BN6's five; BN5's differ): a system declares its emotions' names, pushes the current one
 per side, and `battle.emotion(side)` returns that name with its game. Full Synchro and the mood, which the lineage
@@ -2142,3 +2143,44 @@ plain Luau library with a single definition.
   - `bn6_forms_agree_with_their_kinds` checks the sets.
 - **Porter impact:** none. BN5 content defines no lock-on modes or sets. A branch that writes
   `define.lockon {` writes `define.record("lockon", {` instead (with the closing `})`).
+
+### S8, BN6's API (2026-10-04)
+
+The plan as approved: "use `system.state_of(side, key)`, and move bug frags out of the engine into the dark-chips
+system. The point of S7/S8 is an engine with no BN6 resources, and a guarded accessor keeps that honest."
+
+- **Bug frags are the dark-chips system's** (content/bn6/rules/dark-chips/system.luau): its setup's `bug_frags`
+  (u32, what the player brings: a tool writes it as a fact, `set_fact("bug_frags", ...)`, nettai-match's
+  `facts::BUG_FRAGS_FIELD`, bn6-compat's trace setup), its state's `bug_frags`, which `round_setup` fills from
+  the setup, and its `chip_substitute` spends. `Battle::bug_frags`, `PlayerSetup::bug_frags`, the digest's
+  field, `CoreApi::bug_frags`/`spend_bug_frags` and `battle.bug_frags`/`spend_bug_frags` are gone (the state is
+  the system's, in the snapshot and the digest as every system's).
+- **`system.state_of(side, system)`** (nettai-luau's `system` library): another system's state of a side, nil when
+  the side's ruleset lacks it (`CoreApi::system_slot_of`). It takes the system's definition (as every definition
+  argument, a value, never a name). A game's rules alone call it: the call refuses a module outside a pack's
+  rules/ (the calling function's module, so a chip's function that reaches it through another module is refused
+  too), and the content check's lint names a module outside rules/ that writes it. A support pack has no `system`
+  at all (P2). **`battle.side_has_system(side, system)`**: whether the side's ruleset has the system.
+- **BN6's API module**, content/bn6/rules/api.luau (`bn6`): `bug_frags`, `spend_bug_frags` (whether it spent:
+  never without the dark-chips system or enough frags), `navi_level` (the engine's, which a link navi's chip bonus
+  reads too), and the form kinds' `beast`, `beast_over`, `is_beast` (rules/forms/kind). The navi boosts' charged
+  shots (lib/navi-boost) spend through it. Rules modules keep calling what they own directly.
+- **BN6's declarations leave core.d.luau** for content/bn6/types.d.luau: a chip's `beast`, `dark_substitute`,
+  `hp_bug` (`Bn6ChipFields`), a form's `kind`, `game`, `cross_of`, `cross_release_anim`, `beast`,
+  `special_volley`, `charged_sword_rush`, `extra_chips`, `scrap_button` (`Bn6FormFields`), and `FormSet`. The
+  engine's `ChipSpec`, `FormDef` and a navi's `forms` take the systems' extension fields untyped (`[string]: any`);
+  a BN6 module that wants them typed casts (`(chip :: any) :: Bn6ChipFields`, the Beast rush's lock-on mode).
+  `LockonDef` stays the engine's: its search reads it.
+- **A system's chips in a folder**: BN6's folder rules (rules/folder/system.luau) list the chips a system plays
+  (MstrCros, the cross system's) and refuse one in a folder whose side's ruleset lacks the system (rule `system`).
+  BeastOut, the beast system's, is past the chip pack already.
+- **The test content** plays BN6's dark-chips system in its stock ruleset (testdata's rules/systems.luau), so the
+  navi boosts' tests spend frags; `testing::bug_frags` and `set_bug_frags` read and write its state.
+- **Decisions** (for review):
+  1. `system.state_of` takes the system's definition, not its key: P2's rule that content names nothing by key
+     (the approval said `state_of(side, key)`).
+  2. No `bn6.crosses(side)`: nothing asks for it yet.
+  3. The folder rule lists the system's chips itself, where the plan put `requires = { system }` on the chip: a
+     chip requiring its system's module makes a require cycle (the systems require their chips).
+  4. The runtime guard on `system.state_of` reads the calling function's module (the stack's chunk), so it holds
+     for a function that runs after loading too, where the lint only sees the text.

@@ -9,15 +9,21 @@
 -- bn5-map.md §15.11): an obstacle where an armed side can use it turns into its soldier (objects/soldier, the role
 -- `kinds.obstacle_soldier`). Its screen palette flash (effect object 0x0A, 0x080E1030) holds through a pause whatever its
 -- mode, and through dimming only with no mode (both variants: BN6's variant 1 tests the pause bit for dimming too).
+-- Its damage words' flag bits (0x080165EC, BN6's `sub_8019F44`) are its own: 0x4000 paralyzes without a flinch,
+-- 0x2000 confuses, 0x1000 blinds, 0x800 gives bug code 0x18 (ColonelSoul's soldiers strike with 0x4000).
 
 return {
     shake = "battle",
     spark_steps_at_start = false,
     retype = "bn5",
+    damage_word = "bn5",
     obstacle_soldiers = true,
     palette_flash = "bn5",
     -- Its afterimages (0x080E35F4) and form overlays don't run while paused (no header flag 0x04).
     overlays_run_while_paused = false,
+    -- Its sprites' frame load (0x03006898) leaves the palette offset of a frame's first part to the next step
+    -- (0x03006948): its hit spark, which doesn't step as it starts, shows its first frame in palette 0.
+    load_sets_part_palette = false,
     -- Its obstacles' action tables have no frozen or bubbled entries: a kind's own actions from 6 (BN6's from 8).
     obstacle_actions = "bn5",
 }

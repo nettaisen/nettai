@@ -482,3 +482,43 @@ export type DripShower = { turns: number, quarter_ticks: number, follows_action:
 export type GroundRockDrop = { warning: number, while_dimmed: boolean, cracks: boolean, silent: boolean }
 
 -- The looks of the BN6 modules other games reuse (each module's `make_kind`).
+
+-- BN6's fields of the engine's chips, forms and navis: its systems'
+-- extensions (`extends`), which the engine's specs take untyped
+-- (`[string]: any`). A module that wants them typed casts to these.
+--
+-- A chip's: its Beast Out lock-on mode, and whether it goes through the
+-- Beast rush (`rush = false`: a mode without the rush, as some records
+-- have; the beast system's); a dark chip's substitute without bug frags,
+-- and what its use adds to the user's HP bug (the dark-chips system's).
+export type Bn6ChipFields = {
+    beast: { lockon: Lockon?, rush: boolean? }?,
+    dark_substitute: Chip?,
+    hp_bug: number?,
+}
+
+-- A form's: its kind (rules/forms/kind), whose game's form it is (the
+-- Beast's roar), the navi a Cross (and one in Beast Out) is made with, and
+-- the animation a change into a Cross lets the navi go of (the forms
+-- system's); a Cross's form in Beast Out, the Cross special's buster volley
+-- in it (the original stores the form's number where it meant 6), and
+-- whether its charged sword runs inside the Beast Out rush (SlashCross in
+-- Beast Out; the beast system's); the custom screen dealing one more chip
+-- for each screen spent in it, up to three (ChargeCross), or the scrap
+-- button (DustCross; the cross system's).
+export type Bn6FormFields = {
+    kind: ("cross" | "beast" | "cross_beast" | "beast_over")?,
+    game: ("gregar" | "falzar")?,
+    cross_of: NaviDef?,
+    cross_release_anim: number?,
+    beast: FormDef?,
+    special_volley: number?,
+    charged_sword_rush: boolean?,
+    extra_chips: boolean?,
+    scrap_button: boolean?,
+}
+
+-- A navi's forms by game: the Crosses by their number on the custom
+-- screen, Beast Out and Beast Over (its `forms.gregar`, `forms.falzar`),
+-- which BN6's rules and bn6-compat read.
+export type FormSet = { crosses: { FormDef }, beast_out: FormDef?, beast_over: FormDef? }

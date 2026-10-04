@@ -78,6 +78,9 @@ return {
         -- What a damage word's paralysis bit makes its hits carry, and what a counter hit lands instead of a
         -- flinch (BN5's status bytes 0x10 and 0x12, BN6's numbers).
         damage_word_paralysis = statuses.paralyze_90,
+        -- What its confusion and blindness bits (0x2000, 0x1000) make them carry (0x080165EC: bytes 0x20, 0x30).
+        damage_word_confusion = statuses.confuse_480,
+        damage_word_blindness = statuses.blind_480,
         counter_paralysis = statuses.paralyze_150,
         -- The NaviCust on-hit bug's, by its level (0x32, 0x22).
         hit_bug_blind = statuses.blind_1200,

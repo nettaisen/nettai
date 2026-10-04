@@ -1289,11 +1289,6 @@ pub trait CoreApi {
     /// A rule the checked folder breaks: the rule's name (`copies`, `mega`,
     /// ... the game's own) and what to say.
     fn folder_problem(&mut self, rule: &str, text: &str);
-    /// A side's bug frags in the battle (`sub_800F4A8`).
-    fn bug_frags(&self, side: u8) -> u32;
-    /// `sub_800F4B2`: a side spends `n` bug frags (the count wraps below
-    /// 0, as the original's does: its callers check first).
-    fn spend_bug_frags(&mut self, side: u8, n: u32);
     /// `sub_802E4B8`: the side's SELECT special or takeover in progress.
     fn side_special(&self, side: u8) -> SideSpecial;
     /// A system's takeover of side `side`'s navi starts, for `ticks`
@@ -1459,6 +1454,10 @@ pub trait CoreApi {
     /// Presentation: whether side `side`'s emotion window shows its form's
     /// second set of faces (`variant`; BN5's Hub Style).
     fn set_face_variant(&mut self, side: u8, variant: bool);
+    /// Presentation: whether the custom screen's enemy names show side
+    /// `side`'s navi by its variant name (BN5's Hub Style in a link battle,
+    /// 0x0801AE3A).
+    fn set_name_variant(&mut self, side: u8, variant: bool);
     /// `sub_802E032`: add to a side's own custom gauge (battle flag 0x40),
     /// up to full.
     fn add_side_gauge(&mut self, side: u8, n: u16);
@@ -1669,6 +1668,9 @@ pub trait CoreApi {
     /// The player setup of that system: what the player brought, read-only
     /// in battle.
     fn system_setup(&self, side: u8, slot: u8) -> ApiResult<&ContentState>;
+    /// The place of system `system` in side `side`'s ruleset, if the
+    /// ruleset has it (`system.state_of`, `battle.side_has_system`).
+    fn system_slot_of(&self, side: u8, system: crate::SystemHandle) -> Option<u8>;
     /// `SpawnT4BattleObjectWithId0`: the one-shot effect `look`.
     fn spawn_effect(&mut self, pos: Vec3, look: crate::EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
     /// `sub_801BD3C`: the one-shot effect `look` on each field panel of

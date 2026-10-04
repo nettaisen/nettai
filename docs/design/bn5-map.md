@@ -1380,7 +1380,11 @@ them.
    GetRNG2 draws each shaking tick where BN6 draws from GetRNG1, one channel (BN6's two), and no shake while the
    time is stopped; BN5's shakes change the simulation's RNG (a BlkBomb's landing: 15 ticks of draws).
 16. **The hit spark's first tick** (0x080E0870, BN6's `sub_80E0864`): BN5's spark doesn't step its sprite at its
-   init, so it lasts a tick longer (spark.rs).
+   init, so it lasts a tick longer (spark.rs). BN5's frame load (0x03006898, in IWRAM) also leaves the palette
+   offset of the frame's first part (the sprite's +5) to the sprite's next step (0x03006948), where BN6's
+   (`sub_3006730`) takes it: a spark's first frame shows in its palette 0 (an elec spark blue-white, not yellow),
+   as does any sprite drawn after a frame load and before its next step (the effects section's
+   `load_sets_part_palette`, `Look::part_palette`; presentation).
 17. **The metal slide's speed** (§15.2): a step up or down covers its 24 pixels in 3 ticks (8 a tick); the
    engine's slide moves 6. Its order by the move's direction is the tables', as recorded. A navi's slide and drag
    both go 8 a tick in depth in BN5 (0x0801361E, 0x080143A8). A slide arriving on metal goes on as on BN6's roads
@@ -2038,8 +2042,12 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   byte where BN6's subtracts the signed one), his base form wears its shade (body overlay row 5, 0c-58: 0x0800EE1C,
   the form's `put_on`, which also runs as a player's init ends, MegaMan's record's init hook being that routine;
   BN5's init has no starting form's overlay), GigaCan leaves a third afterimage (0x080EC224), the palette is
-  `hub_style * 5 + 20` and the faces move (§15.10). Not yet: the HUD's opponent entry (0x0801AE3A, presentation:
-  with battle effect 8, the other side's NameID 0x180 when its +0x53 is set, else 0xEA in Hub Style).
+  `hub_style * 5 + 20` and the faces move (§15.10), and in a link battle the enemy names show the navi's variant
+  name (0x0801AE3A, presentation: with battle effect 8, the other side's NameID 0x180 when its +0x53 is set, else
+  0xEA, BCMegaMn, in Hub Style; +0x53 is the reload's, 0x08135968, 1 exactly when 0x08137A58 finds no Hub Style:
+  the light-dark system's `round_setup`, `battle.set_name_variant`, the locales' `variant_name`; checked against
+  mGBA by verification's library-bn5 custom/hub-name). Battle effect 0x40000 names every entry 0xE6 (ChaosLrd): no
+  stage of BN5's content has it, not built.
 - The emotion window's start keeps the glitch outside BN5's battle modes 1 to 4; the engine's start keeps BN6's rule
   (no random battles, not modes 1 to 5 and 8), the same for a netbattle.
 

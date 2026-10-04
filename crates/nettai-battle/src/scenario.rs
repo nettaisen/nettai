@@ -61,7 +61,6 @@ pub fn setup() -> RoundSetup {
         folder: Some(folder),
         souls: Default::default(),
         joypad_phase: 0,
-        bug_frags: 0,
         navi_level: None,
         sp_times: Default::default(),
         console: Default::default(),

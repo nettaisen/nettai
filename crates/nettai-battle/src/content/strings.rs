@@ -33,13 +33,17 @@ pub struct ChipStrings {
     pub description: Option<String>,
 }
 
-/// A navi's strings: its name (the custom screen's enemy name) and its
+/// A navi's strings: its name (the custom screen's enemy name), the name
+/// the enemy names show instead when its side's rules ask
+/// (`battle.set_name_variant`: BN5's Hub Style, "BCMegaMn"), and its
 /// no-running message (L), its lines apart by `\n`.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NaviStrings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub variant_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub run_message: Option<String>,
 }

@@ -1374,6 +1374,25 @@ fn system_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "state", |_, ()| Ok(State(StateOf::System(system_ctx("system.state")?))));
     lib_fn!(lua, t, "setup", |_, ()| Ok(State(StateOf::Setup(system_ctx("system.setup")?))));
     lib_fn!(lua, t, "side", |_, ()| Ok(system_ctx("system.side")?.side));
+    // Another system's state of side `side`, for a game's rules alone (its
+    // API module, docs/design/rules-in-luau.md, As built S8): the game's
+    // API reaches what its systems keep (BN6's bug frags, the dark-chips
+    // system's) for its chips, which never call it themselves. Nil when the
+    // side's ruleset lacks the system.
+    lib_fn!(lua, t, "state_of", |lua, (side, system): (LuaValue, LuaValue)| {
+        let caller = crate::define::caller(lua);
+        if !nettai_content_api::keys::local(&caller).starts_with("rules/") {
+            return Err(mlua::Error::runtime(format!(
+                "{caller}: system.state_of is a game's rules' (a module under rules/, its API module): content reaches a system's state through the game's API"
+            )));
+        }
+        let side = u8_arg(side, "side")? & 1;
+        let slot = with(|api, b| {
+            let system = nettai_content_api::SystemHandle(def_arg(b, &system, Registry::System, "system.state_of")?);
+            Ok(api.system_slot_of(side, system))
+        })?;
+        Ok(slot.map(|slot| State(StateOf::System(SystemCtx { side, slot }))))
+    });
     Ok(t)
 }
 
@@ -1481,17 +1500,18 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.emotion(side).name()))
     });
-    lib_fn!(lua, t, "bug_frags", |_, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.bug_frags(side)))
-    });
     lib_fn!(lua, t, "navi_level", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.navi_level(side)))
     });
-    lib_fn!(lua, t, "spend_bug_frags", |_, (side, n): (LuaValue, LuaValue)| {
-        let (side, n) = (u8_arg(side, "side")? & 1, int(&n, "count")? as u32);
-        with(|api, _| Ok(api.spend_bug_frags(side, n)))
+    // Whether side `side`'s ruleset has system `system` (a game's folder
+    // rules ask it of the chips a system plays).
+    lib_fn!(lua, t, "side_has_system", |_, (side, system): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, b| {
+            let system = nettai_content_api::SystemHandle(def_arg(b, &system, Registry::System, "battle.side_has_system")?);
+            Ok(api.system_slot_of(side, system).is_some())
+        })
     });
     lib_fn!(lua, t, "set_mood", |_, (side, mood): (LuaValue, LuaValue)| {
         let (side, mood) = (u8_arg(side, "side")? & 1, u8_arg(mood, "mood")?);
@@ -1762,6 +1782,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "set_face_variant", |_, (side, variant): (LuaValue, bool)| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.set_face_variant(side, variant)))
+    });
+    lib_fn!(lua, t, "set_name_variant", |_, (side, variant): (LuaValue, bool)| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.set_name_variant(side, variant)))
     });
     lib_fn!(lua, t, "bump_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
