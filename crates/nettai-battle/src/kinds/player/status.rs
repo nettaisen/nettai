@@ -152,6 +152,8 @@ fn bn5_reactions(b: &mut Battle, r: ObjectRef) -> Flow {
     }
     tick_statuses(b, r);
     tick_submerged(b, r);
+    // 0x08017D84: the sea's dive (0x0800DF5A).
+    tick_dive(b, r);
     tick_anger(b, r);
     drain_hp(b, r);
     Flow::Tail

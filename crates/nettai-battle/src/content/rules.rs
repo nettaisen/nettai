@@ -364,7 +364,8 @@ pub struct Rules {
     pub hp_bug_periods: [u8; 8],
     /// BN6's per-form tick runs (`off_80EA93C`: `sub_80F0608`, MegaMan's
     /// and ChargeMan's: the Fire chips' charge, a form's height); BN5's
-    /// table (0x080EB1E8) has none of it (rule section `status`).
+    /// table (0x080EB1E8) has none of it (rule section `status`), its
+    /// MegaMan's routine being the forms' own (`FormDef::tick`).
     pub form_tick: bool,
     /// Which ticks of the mercy flash show the navi (rule section `status`):
     /// BN6's hides it while the flash timer's bit 1 is set

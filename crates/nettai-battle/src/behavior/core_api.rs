@@ -1817,6 +1817,7 @@ impl CoreApi for Battle {
             ActorField::BarrierVisual => a.barrier_visual.into(),
             ActorField::PlusTint => i(a.plus_tint as i64),
             ActorField::ChaosArmed => Value::Bool(a.chaos.armed),
+            ActorField::Primed => Value::Bool(a.primed),
             ActorField::ChaosLevel => i(a.chaos.level as i64),
             ActorField::NoChargeTimer => i(a.no_charge_timer as i64),
             ActorField::ComputerDriven => Value::Bool(a.computer_driven),
@@ -1901,6 +1902,7 @@ impl CoreApi for Battle {
             (ActorField::BarrierVisual, FieldValue::Object(r)) => a.barrier_visual = r,
             (ActorField::PlusTint, FieldValue::U16(x)) => a.plus_tint = x,
             (ActorField::ChaosArmed, FieldValue::Bool(x)) => a.chaos.armed = x,
+            (ActorField::Primed, FieldValue::Bool(x)) => a.primed = x,
             (ActorField::ChaosLevel, FieldValue::U8(x)) => a.chaos.level = x.min(4),
             (ActorField::NoChargeTimer, FieldValue::U16(x)) => a.no_charge_timer = x,
             (ActorField::ComputerDriven, FieldValue::Bool(x)) => a.computer_driven = x,
@@ -2075,6 +2077,12 @@ impl CoreApi for Battle {
             } else {
                 kinds::player::form::normal_overlay_stepping(self, overlay);
             }
+        }
+    }
+
+    fn set_overlay_anim_offset(&mut self, o: ObjectRef, offset: u8) {
+        if let Some(overlay) = self.objects.get(o).related[1] {
+            kinds::body_overlay::set_extra_offset(self, overlay, offset);
         }
     }
 
