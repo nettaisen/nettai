@@ -49,9 +49,10 @@ content pack from them, in that order, into `data/content/bn6` (the directory is
 
     cargo run --release -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6
 
-The frontend and the editor load every pack in `data/content` (or the directory `$NETTAI_PACKS` names), each by the
-game it says, with no options: a BN5 pack written there (`bn5-extract content`) loads beside BN6's, and BN5's
-content root with it once it loads. `--pack DIR` names a pack elsewhere, in place of the found one of its game.
+The frontend and the editor find the packs in `data/content` (or the directory `$NETTAI_PACKS` names), each by the
+game it says, with no options: a BN5 pack written there (`bn5-extract content`) sits beside BN6's. You play one game
+at a time, BN6 or BN5: a match file names its game, else `--game` does (`bn6` by default), and the battle is that
+game's content on its pack. `--pack DIR` names a pack elsewhere, in place of the found one of its game.
 
 Then run the frontend:
 
@@ -60,8 +61,9 @@ Then run the frontend:
     cargo run --release -p nettai-frontend -- --play --headless 1-120 --out <dir>   # render frames to PNG
 
 In live play alone you are the left navi, and the right one is a stand-in that stands still. Each start draws its setup from a seed, which
-it prints: a link battle stage and background, each side's game (Falzar's or Gregar's Beast), a legal random folder
-for each side, and five Crosses of both games in each Cross window. `--seed N` replays a setup, `--stage NAME` forces the stage (`netbattle-1` to `netbattle-96`)
+it prints: a link battle stage and background, each side's version (Falzar's or Gregar's Beast), a legal random
+folder for each side, and five Crosses of both versions in each Cross window (`--game bn5`: a BN5 match, its sides
+BN5's MegaMan with a random folder). `--seed N` replays a setup, `--stage NAME` forces the stage (`netbattle-1` to `netbattle-96`)
 and `--show-folders` prints the folders. Keys: the arrows move, Z is A, X is B, A is L,
 S is R, Enter is START and Backspace is SELECT; Space pauses, `.` steps a frame while paused, `-` and `=` change
 the speed, F5 restarts the round, H toggles the status line and Esc quits. `--help` lists the options, and
@@ -80,9 +82,9 @@ forwarded to the host's machine:
     cargo run --release -p nettai-frontend -- --play --host 7777                    # host, the left navi
     cargo run --release -p nettai-frontend -- --play --join 192.0.2.10:7777         # join, the right navi
 
-Both need the same engine and the same content pack (the handshake checks, and says what differs). Each brings their
-own folder, game and Crosses, drawn from their own `--seed`, and their patch cards (`--cards`); the host's `--stage`
-picks the stage. Both play with rollback: inputs go out every frame, the other player's are predicted until they
+Both need the same engine, game and content pack, and play by the same ruleset (the handshake checks, and says what
+differs). Each brings their own folder, version and Crosses, drawn from their own `--seed`, and their patch cards
+(`--cards`); the host's `--stage` picks the stage. Both play with rollback: inputs go out every frame, the other player's are predicted until they
 arrive, and the battle is simulated again when a prediction was wrong. The status line shows the round trip, the
 loss, the input delay (`--delay N`, default 2), the rollbacks and the frames waited ([docs/frontend.md](docs/frontend.md)
 §2, [rollback.md](docs/design/rollback.md) §4). The netplay tests play netbattles between two rollback sessions over a
@@ -98,50 +100,54 @@ These checks need no ROM:
 
 ## The match editor
 
-A match file sets up a round: the arena (stage and background), and each side's ruleset, navi, game, folder,
-Crosses, patch cards, NaviCust and stats, by content key ([docs/frontend.md](docs/frontend.md) §6). The editor makes
-and edits them, checking them against the content as you go, and plays them:
+A match file sets up a round of one game, BN6 or BN5: the game and its ruleset, the arena (stage and background),
+and each side's navi, version, folder, Crosses, patch cards, NaviCust and stats, each by its name in the game
+(`cannon`, `megaman`; [docs/frontend.md](docs/frontend.md) §6). The editor makes and edits them, checking them
+against the content as you go, and plays them:
 
     cargo build --release -p nettai-frontend -p nettai-editor
     cargo run --release -p nettai-editor -- [match.toml]
     cargo run --release -p nettai-frontend -- --match match.toml     # what Play runs
 
-Its panes show only what the side's ruleset has (Crosses with the forms system, patch cards with the patch-cards
-system, the NaviCust with the navicust system): the arena; each side's ruleset (every loaded game's: `bn6:stock`,
-`bn5:stock`), navi (each game's MegaMan, named with his game) and game, with the stats the
-round starts the navi with (a link navi's level fills in the stats its save gives at that level, as does switching
-to a link navi; an edited stat says what the level gives; MegaMan's optional navi code level); the SP navi deletion
-times; Import from save (a BN6 .sav's game, unlocks, navi code level and SP times); the folder (the chips the side's
-folder rules allow, of every loaded game, each with its game and its pictures from its own game's pack, searchable
-and filtered by game; a code puts a chip in the selected entry, so a BN6 side's folder can hold BN5 chips: a mixed
-folder, held to the side's own rules; the Regular and tag chips; the copies and the Mega, Giga, Regular and tag
-limits live, as the side's ruleset's folder rules count them: BN6's folder editor's, or BN5's,
-content/bn5/rules/folder); the Crosses; the patch cards (MB used of 80); the NaviCust (the
-board as the side's game draws it, with its frame and command line, edited with the mouse as Tango's is: drag a
-program's color swatch onto the grid, or press a placed program to pick it up and drag it; while held it shows
-where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click, Delete
-or a drag off the grid takes it off, Esc puts it back; right-clicking a placed program turns it; the stats it
-compiles to show beside it, and the stats-and-bugs block set directly is the pane's other view); every stat. The problems with the match show at the bottom as you edit. Play saves the match and
-runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). A new match (the editor
-started without a file, or New) is empty: the first link battle stage, and on each side the stock rules' MegaMan at
-his fresh stats with an empty folder, the game's own Crosses, no patch cards and no NaviCust programs (the problems
-list says the folders aren't whole until they are). Random draws a match as live play does, and `nettai-frontend --play --save-match FILE` writes live play's draw out to edit. `--lang ja` (or
-the language list) names the chips, navis, Crosses and patch cards in Japanese. The editor loads the content and
-every pack in `data/content` as the frontend does (each chip's pictures from its own game's pack; a game's chips
-with no use yet left out, with the frontend's warning), and Play hands the frontend the same: `--content` and
-`--pack` are the frontend's, and only what you give is passed on.
+The arena pane picks the game first: everything below it is that game's, and there is no way to pick another
+game's navi, chip, soul or patch card. Changing the game makes a new match of it (the sides start over). Beside it
+is the ruleset both sides play by (one of the game's: its stock rules), with its systems. The panes show only what
+that ruleset has (Crosses with the forms system, patch cards with the patch-cards system, the NaviCust with the
+navicust system, souls with the souls system): the arena's stages and backgrounds (the game's); each side's navi
+(the game's) and version, with the stats the round starts the navi with (a link navi's level fills in the stats
+its save gives at that level, as does switching to a link navi; an edited stat says what the level gives; MegaMan's
+optional navi code level); the SP navi deletion times; Import from save; the folder (the game's chips the rules
+allow, with their pictures from the game's pack, searchable; a code puts a chip in the selected entry; the Regular
+and tag chips; the copies and the Mega, Giga, Regular and tag limits live, as the ruleset's folder rules count them:
+BN6's folder editor's, or BN5's, content/bn5/rules/folder); the Crosses; the patch cards (the game's; MB used of 80);
+the NaviCust (the board as the game draws it, with its frame and command line, edited with the mouse as Tango's is:
+drag a program's color swatch onto the grid, or press a placed program to pick it up and drag it; while held it
+shows where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click,
+Delete or a drag off the grid takes it off, Esc puts it back; right-clicking a placed program turns it; the stats it
+compiles to show beside it, and the stats-and-bugs block set directly is the pane's other view); every stat (its
+weapons, records and forms the game's). The problems with the match show at the bottom as you edit. Play saves the
+match and runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). A new match
+(the editor started without a file, or New) is an empty one of the game (BN6 to start with): its stock rules, its
+first link battle stage, and on each side its MegaMan at his fresh stats with an empty folder, the version's own
+Crosses, no patch cards and no NaviCust programs (the problems list says the folders aren't whole until they are).
+Random draws a match of the game as live play does, and `nettai-frontend --play --save-match FILE` writes live
+play's draw out to edit. `--lang ja` (or the language list) names the chips, navis, Crosses and patch cards in
+Japanese. The editor loads the match's game's content and pack as the frontend does (a game's chips with no use yet
+left out, with the frontend's warning), and Play hands the frontend the same: `--content` and `--pack` are the
+frontend's, and only what you give is passed on.
 
-A BN5 side's navi pane has its karma (the light/dark value): a slider from 0 to 1000 with its number, presets
-(light 500, very light 1000, dark 0) and what BN5 makes of it (dark under 470, the starting mood's tiers at 470, 500
-and 1000, holy panels cleared at 499 or under). A side whose rules take souls has a Souls pane: every soul of the
-content by default, or those checked, each with its face, any of them, of either version. A side's own fields show
-only when its rules and navi take them (`nettai_match::facts`): the game (Gregar or Falzar) with rules whose systems
-take BN6's `version`, the navi code's level with a navi whose definition has `levels` (not BN5's MegaMan), the SP
-times with rules that have SP navi slots (BN5's are its own, each named by its game's SP navi chip). A mixed side
-(BN6's rules, BN5 chips) keeps BN6's fields. Changing the ruleset drops what the new rules don't take
-(`Side::set_ruleset`): the Crosses, patch cards and NaviCust without their systems, the karma and souls without
-theirs, the game (back to Falzar) without `version`, and the SP times when the new rules' SP navis differ. "Import
-from save…" reads a BN5 .sav (or a raw save image) too: its karma and its souls.
+A BN5 match's navi pane has the side's karma (the light/dark value): a slider from 0 to 1000 with its number,
+presets (light 500, very light 1000, dark 0) and what BN5 makes of it (dark under 470, the starting mood's tiers at
+470, 500 and 1000, holy panels cleared at 499 or under). Its Souls pane has every soul of BN5 by default, or those
+checked, each with its face, of either version. A side's own fields show only when the rules and its navi take them
+(`nettai_match::facts`): the version (Gregar or Falzar) with rules whose systems take BN6's `version`, the navi
+code's level with a navi whose definition has `levels` (not BN5's MegaMan), the SP times with rules that have SP
+navi slots (each named by the game's SP navi chip). Changing the ruleset drops what the new rules don't take
+(`Match::set_ruleset`): the Crosses, patch cards and NaviCust without their systems, the karma and souls without
+theirs, the version (back to Falzar) without `version`, and the SP times when the new rules' SP navis differ.
+"Import from save…" reads a BN6 .sav (its version, Beast Out and the Crosses it owns, the navi code's level and the
+SP times) or a BN5 one (a .sav or a raw save image: its karma and its souls) into a match of the save's game: a
+save of the other game makes a new match of its game first.
 
 The editor is an [iced](https://iced.rs) app, drawn in software (tiny-skia), so it needs no GPU backend. On Linux it
 needs the usual windowing libraries (X11 or Wayland, and `libxkbcommon`), and its Open and Save As dialogs use
