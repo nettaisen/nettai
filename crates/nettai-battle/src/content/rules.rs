@@ -119,12 +119,14 @@ pub struct EffectsRules {
     /// How an object's collision types are set again (`sub_801A082`).
     #[serde(default)]
     pub retype: RetypeRule,
+    /// How a damage word's flag bits decode (`sub_8019F44`).
+    #[serde(default)]
+    pub damage_word: DamageWordRule,
     /// An obstacle's reaction has BN5's step for ColonelSoul's army
     /// (0x080CAB02 from its four reactions, docs/design/bn5-map.md §15.11:
     /// `kinds::obstacle::Soldiers`): one standing where an armed side can
     /// use it turns into that side's soldier (the role
-    /// `kinds.obstacle_soldier`). Read of the obstacle's own game's rules
-    /// (its kind's), not the arena's.
+    /// `kinds.obstacle_soldier`).
     #[serde(default)]
     pub obstacle_soldiers: bool,
     /// What holds a screen palette flash (effect object #0x0A,
@@ -157,6 +159,27 @@ pub enum ObstacleActions {
     Bn5,
 }
 
+/// How the collision setup (`object_setupCollisionData`'s and
+/// `sub_801A082`'s call of `sub_8019F44`) decodes the flag bits of an
+/// object's damage word: the damage is its low 11 bits, doubled with
+/// 0x8000.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DamageWordRule {
+    /// BN6's: 0x4000 the role `statuses.damage_word_paralysis` with hit
+    /// modifier 1 (a flinch too); then 0x2000 bug code 0xF8 (and no more),
+    /// else 0x1000 bug code 0xF7, each code's high byte what the caller
+    /// left in r1.
+    #[default]
+    Bn6,
+    /// BN5's (0x080165EC): 0x4000 the paralysis (status byte 0x10) with hit
+    /// modifier 0 (no flinch), and no more; else 0x2000 the role
+    /// `statuses.damage_word_confusion` (0x20), and no more; else 0x1000
+    /// `statuses.damage_word_blindness` (0x30); then 0x800 bug code 0x18
+    /// with high byte 0x11.
+    Bn5,
+}
+
 impl Default for EffectsRules {
     /// BN6's.
     fn default() -> EffectsRules {
@@ -164,6 +187,7 @@ impl Default for EffectsRules {
             shake: ShakeRule::default(),
             spark_steps_at_start: true,
             retype: RetypeRule::default(),
+            damage_word: DamageWordRule::default(),
             obstacle_soldiers: false,
             palette_flash: PaletteFlashRule::default(),
             overlays_run_while_paused: true,
