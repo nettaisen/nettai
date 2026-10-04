@@ -544,8 +544,9 @@ pub enum BoardCell {
 /// The NaviCust's board: its 7x7 grid's cells by row, then column.
 pub type Board = [[BoardCell; crate::navicust::SIZE]; crate::navicust::SIZE];
 
-/// The NaviCust's boards, by how far it has been expanded (BN6's: 4x4, 5x4
-/// and 5x5, by key item 0x71), and its command line (a row).
+/// The NaviCust's boards, by how far it has been expanded (BN6's and BN5's:
+/// 4x4, 5x4 and 5x5, by key item 0x71 and BN5's 0x61; BN5's without a
+/// frame), and its command line (a row).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviCustRules {
     pub boards: Vec<Board>,

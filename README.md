@@ -146,8 +146,8 @@ navi slots (each named by the game's SP navi chip). Changing the ruleset drops w
 (`Match::set_ruleset`): the Crosses, patch cards and NaviCust without their systems, the karma and souls without
 theirs, the version (back to Falzar) without `version`, and the SP times when the new rules' SP navis differ.
 "Import from save…" reads a BN6 .sav (its version, Beast Out and the Crosses it owns, the navi code's level and the
-SP times) or a BN5 one (a .sav or a raw save image: its karma and its souls) into a match of the save's game: a
-save of the other game makes a new match of its game first.
+SP times) or a BN5 one (a .sav or a raw save image: its karma, its souls and its NaviCust board's expansions) into a
+match of the save's game: a save of the other game makes a new match of its game first.
 
 The editor is an [iced](https://iced.rs) app, drawn in software (tiny-skia), so it needs no GPU backend. On Linux it
 needs the usual windowing libraries (X11 or Wayland, and `libxkbcommon`), and its Open and Save As dialogs use

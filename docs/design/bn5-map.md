@@ -1937,9 +1937,21 @@ two share it: content/exelib/navicust/compile.luau, each game's navicust system 
 quirks (`NaviCustGame`). BN6's compile is unchanged (trace-tests' navicust: Tango's four saves and the lab's 1274
 NaviCusts). BN5's, content/bn5/rules/navicust:
 
-- **The board** (rules/navicust/board.luau, the section `bn5:navicust`): 5x5 cells, no expansions and no frame, any
-  cell of it a neighbor's; the engine's 7x7 grid with BN5's board in its middle, the command line BN5's row 2 (the
-  engine's 3). A part's 5x5 shapes (the part table's +8, +0xC) sit in the middle of the definition's 7x7.
+- **The board** (rules/navicust/board.luau, the section `navicust`): BN5's 5x5 grid is the middle of the engine's
+  7x7, the command line BN5's row 2 (the engine's 3), no frame, any cell of it a neighbor's. A part's 5x5 shapes (the
+  part table's +8, +0xC) sit in the middle of the definition's 7x7. The board on the grid is the save's ExpMemry's
+  (key item 0x61's count, a byte at the save image's 0x3DB0 + 0x61: the toolkit's +0x50, which 0x0803C120 reads):
+  4x4 with none, 5x4 with one, 5x5 with two, from the grid's top left, the command line the third row of each. Only
+  the NaviCust screen reads the count, as it opens (0x08132928, into its +0x0F): it picks the board's mask (0x0813F138:
+  three 15x15 masks, 0x0813EA34, 0x0813EB15 and 0x0813EBF6, a cell at (x + 5, y + 5); the same bytes in the four
+  ROMs, their tables at BRBE 0x0813F148, BRKE 0x0813F230, BRBJ 0x0813ECD4 and BRKJ 0x0813EDBC), its background
+  (0x08132FB4) and the cursor's bounds (0x0813324C and 0x081333B0: 4 by 4, 5 by 4, 5 by 5). Placing a part asks the
+  mask (0x0813F250: every cell the part covers is one of the board's, so nothing juts off it), then the grid
+  (0x0813F2A4: over no other part). The compile (0x0813FA10) reads neither the count nor a mask. As built: the
+  section's three `boards` by `NaviCust::expansions`, as BN6's (the match file's `[side.navicust] expansions`, the
+  largest when it says none; nettai-match's check of each program against the board; the editor's board picker);
+  bn5-compat reads the count (`Save::expansions`) and the BN5 save import sets it on the side's NaviCust. Every save
+  on hand has both ExpMemry.
 - **The programs** (content/bn5/navicust/, 47; compat/navicust.toml by number and colored variant), written by the
   verification workspace's tools/bn5/gen_navicust.py from the part table (BRBE 0x0813D540, BRKE 0x0813D628, BRBJ
   0x0813D0CC, BRKJ 0x0813D1B4; 16 bytes a part id, program n's four variants at 4n..4n+3: +0 the exclusive group,

@@ -411,6 +411,48 @@ mod tests {
         assert!(problems.iter().any(|p| p.contains("off the board")), "{problems:?}");
     }
 
+    /// BN5's board grows with its ExpMemry (4x4, 5x4, 5x5, no frame): a
+    /// program in the fifth column fits from one expansion, one in the fifth
+    /// row from two; off the board it is said, as the original's placing
+    /// refuses it (0x0813F250). A new side's board is the largest, and the
+    /// compile is the same on every board the programs fit.
+    #[test]
+    fn bn5s_board_grows_with_its_expansions() {
+        let content = crate::testing::bn5_content();
+        assert_eq!(crate::navicust_rules(&content).boards.len(), 3);
+        let m = crate::draw::live(&content, "bn5", 3, None).unwrap();
+        assert_eq!(crate::Match::empty(&content, "bn5").unwrap().sides[0].navicust.map(|n| n.expansions), Some(2));
+        let undersht = ids::navicust_program(&content, "bn5", "undersht").unwrap();
+        // (UnderSht covers its center and the cell above it.)
+        let with = |x: u8, y: u8, expansions: u8| {
+            let mut m = m.clone();
+            let part = PlacedProgram { program: undersht, color: 0, x, y, rotation: 0, compressed: false };
+            m.sides[0].navicust = Some(NaviCust::new(&[part], expansions).unwrap());
+            m
+        };
+        let said = |x: u8, y: u8, expansions: u8| -> Vec<String> {
+            check_match(&content, &with(x, y, expansions)).into_iter().filter(|p| p.contains("navicust") || p.contains("NaviCust")).collect()
+        };
+        let works = |x: u8, y: u8, expansions: u8| Battle::new(with(x, y, expansions).round(&content, 3), content.clone()).stats[0].undershirt;
+        // On the command line (the engine's row 3) inside the 4x4: every board.
+        for expansions in 0..3 {
+            assert_eq!((said(1, 3, expansions), works(1, 3, expansions)), (Vec::new(), true), "{expansions} expansions");
+        }
+        // The fifth column (the engine's 5): from one expansion.
+        assert!(said(5, 3, 0).iter().any(|p| p.contains("off the board")));
+        for expansions in 1..3 {
+            assert_eq!((said(5, 3, expansions), works(5, 3, expansions)), (Vec::new(), true), "{expansions} expansions");
+        }
+        // The fifth row (the engine's 5): from two (off the command line there).
+        for expansions in 0..2 {
+            assert!(said(1, 5, expansions).iter().any(|p| p.contains("off the board")), "{expansions} expansions");
+        }
+        assert_eq!((said(1, 5, 2), works(1, 5, 2)), (Vec::new(), false));
+        // No frame: off the 5x5 is off every board; and a fourth size is none.
+        assert!(said(6, 3, 2).iter().any(|p| p.contains("off the board")));
+        assert!(said(1, 3, 3).iter().any(|p| p.contains("3 expansions")));
+    }
+
     /// MegaMan from a navi code gets his level's gains over what his
     /// NaviCust made (`reloadCurNaviStatBoosts`: `sub_8121154` after
     /// `sub_813C458`): its HP to the maximum and the HP the maximum, the
