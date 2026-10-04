@@ -317,13 +317,10 @@ A map entry is text, `tile:palette` with `:h`, `:v` or `:hv` when flipped;
 a color is `#rrggbb`, or `0xNNNN` (raw BGR555) when it has bits RGB can't
 hold.
 
-A field.json written before 2026-10-03 has no `panel_types`. The reader takes 78 blocks as BN6's 13 types in the
-engine's order, so the BN6 pack loads as it is. With any other number of blocks the field draws no type, and the
-reader warns to extract the pack again (a BN5 pack from before then: run bn5-extract again).
-
-A pack extracted before 2026-10-02 spells three keys the British way (`custom.json`'s gray palette and
-Program Advance name colors, `field.json`'s palette frames' colors). The reader takes either spelling,
-so such a pack loads without a new extraction; the extractor writes the American keys.
+The reader takes the format as the extractors write it today, and nothing older: every file's version is the
+format's own (a pack of another is refused, with a note to extract it again), `panel_types`, the custom screen,
+the warning marker, the chatbox and the dialogue font are required, and so are the manifest's `game` and the
+asset index.
 
 **Backgrounds** (`graphics/backgrounds/NAME/`): `tiles.png`; `map.tmj`, a Tiled
 JSON map (orthogonal, 8x8 tiles, one tile layer, the tileset being

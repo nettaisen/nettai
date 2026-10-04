@@ -177,7 +177,7 @@ fn an_unknown_name_is_refused() {
 #[test]
 fn a_matchs_lookups_only_see_its_game() {
     for (game, content) in [("bn5", bn5_content()), ("bn6", bn6_content())] {
-        let of = |key: &str| crate::ids::in_game(game, key);
+        let of = |key: &str| crate::ids::in_game(&content, game, key);
         assert!(crate::link_battle_stages(&content, game).iter().all(|&s| of(&content.defs.stage(s).key)));
         assert!(crate::navis(&content, game).iter().all(|&n| of(&content.defs.navi(n).key)));
         assert!(crate::facts::all_souls(&content, game).iter().all(|&f| of(&content.defs.form(f).key)));
@@ -234,7 +234,7 @@ fn a_bn5_match_plays() {
     let content = bn5_content();
     let m = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
     let used = play(&content, &m, 900);
-    assert!(used.iter().all(|u| !u.is_empty() && u.iter().all(|k| crate::ids::in_game("bn5", k))), "{used:?}");
+    assert!(used.iter().all(|u| !u.is_empty() && u.iter().all(|k| crate::ids::in_game(&content, "bn5", k))), "{used:?}");
 }
 
 /// A BN5 side's karma and souls write to a match file and read back; the
@@ -455,6 +455,6 @@ fn a_sides_fields_are_its_rules() {
     assert!(!crate::Side::takes_game(&c5) && !five.sides[0].takes_level(&c5) && crate::Side::takes_sp_times(&c5));
     // Each slot's chip is of the match's game.
     let chip = |c: &nettai_battle::Content, m: &Match, slot| crate::facts::sp_chip(c, &m.arena, slot).map(|h| c.defs.chip(h).key.clone());
-    assert!(chip(&c6, &six, 0).is_some_and(|k| crate::ids::in_game("bn6", &k)), "{:?}", chip(&c6, &six, 0));
-    assert!(chip(&c5, &five, 1).is_some_and(|k| crate::ids::in_game("bn5", &k)), "{:?}", chip(&c5, &five, 1));
+    assert!(chip(&c6, &six, 0).is_some_and(|k| crate::ids::in_game(&c6, "bn6", &k)), "{:?}", chip(&c6, &six, 0));
+    assert!(chip(&c5, &five, 1).is_some_and(|k| crate::ids::in_game(&c5, "bn5", &k)), "{:?}", chip(&c5, &five, 1));
 }

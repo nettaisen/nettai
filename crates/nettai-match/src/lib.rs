@@ -427,7 +427,7 @@ pub fn link_battle_stages(content: &Content, game: &str) -> Vec<StageHandle> {
         .map(StageHandle)
         .filter(|&s| {
             let e = content.stage(s).effects;
-            e & effects::LINK != 0 && e & effects::RANDOM == 0 && ids::in_game(game, &content.defs.stage(s).key)
+            e & effects::LINK != 0 && e & effects::RANDOM == 0 && ids::in_game(content, game, &content.defs.stage(s).key)
         })
         .collect()
 }
@@ -446,7 +446,7 @@ pub fn link_stage(content: &Content, game: &str, name: &str) -> Result<StageHand
 pub fn navis(content: &Content, game: &str) -> Vec<NaviHandle> {
     (0..content.defs.navis.len() as u16)
         .map(NaviHandle)
-        .filter(|&n| content.navi(n).fresh.is_some() && ids::in_game(game, &content.defs.navi(n).key))
+        .filter(|&n| content.navi(n).fresh.is_some() && ids::in_game(content, game, &content.defs.navi(n).key))
         .collect()
 }
 
@@ -462,7 +462,7 @@ pub fn patch_cards(content: &Content, game: &str, list: &str) -> Result<Vec<Inst
         };
         let card = ids::patch_card(content, game, name).ok_or_else(|| {
             let names: Vec<&str> =
-                content.defs.patch_cards.iter().map(|c| c.key.as_str()).filter(|k| ids::in_game(game, k)).map(ids::local).collect();
+                content.defs.patch_cards.iter().map(|c| c.key.as_str()).filter(|k| ids::in_game(content, game, k)).map(ids::local).collect();
             format!("no patch card {name:?} in {game} ({game}'s are {})", names.join(", "))
         })?;
         cards.push(InstalledCard { card, enabled });

@@ -1288,9 +1288,9 @@ are gone.
 - **The content check** (`nettai-content-check`, no argument) checks content/: every folder against content/nettai
   and every folder's own declarations, each module by its folder and path; a folder alone still checks alone. BN5's
   HolyDrem used two types of another module, which the checker reads as `any`: the casts say so.
-- **The rewrite** is verify's tools/r4-flat-ids.py (ids, section names and asset names in the modules; the locale
+- **The rewrite** was verify's tools/r4-flat-ids.py (ids, section names and asset names in the modules; the locale
   and compat tables), tools/r4-fix-ids.py (ids a module builds in code, from the loader's messages) and
-  tools/r4-rust-keys.py (Rust tests' lookups by id), re-run on what landed since (the NaviCust programs, the folder
+  tools/r4-rust-keys.py (Rust tests' lookups by id; the three scripts are deleted since), re-run on what landed since (the NaviCust programs, the folder
   system, BN5's third batch). Verify's generators write ids in full (tools/bn5/gen_content.py through the rewrite,
   tools/navicust/gen.py), gen-content reads compat by full id and checks compat's keys are BN6's ids. Its test of
   the roles and collision types had expected `collision type thrown`, unqualified since R1: `bn6:thrown`.

@@ -12,7 +12,7 @@ use nettai_battle::link::Link;
 use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
 use nettai_battle::{Battle, PlayerTick, Rng, TickEvents};
 use bn6_compat::trace::{self, Frame, Round};
-use bn6_compat::{Compat, codec};
+use bn6_compat::Compat;
 use std::sync::Arc;
 
 /// One tick's inputs.
@@ -153,20 +153,15 @@ impl Driver for TracePlayer {
     fn next(&mut self, _b: &Battle, _keys: u16) -> Option<Step> {
         let &i = self.frames.get(self.pos)?;
         let f = &self.round.frames[i];
-        // The frames around it: the link's events are read from the frame
-        // before (the session closing) and the one after (a recorded
-        // custom screen's result).
-        let mut window = Vec::with_capacity(3);
+        // The frame before it too: the link's events are read from it (the
+        // session closing).
+        let mut window = Vec::with_capacity(2);
         if let Some(&h) = self.pos.checked_sub(1).and_then(|p| self.frames.get(p)) {
             window.push(&self.round.frames[h]);
         }
         let at = window.len();
         window.push(f);
-        if let Some(&j) = self.frames.get(self.pos + 1) {
-            window.push(&self.round.frames[j]);
-        }
-        let ids = codec::Ids::new(&self.content, self.compat);
-        let (input, events) = self.round.tick_inputs(at, &window, &ids);
+        let (input, events) = self.round.tick_inputs(at, &window);
         self.pos += 1;
         Some(Step { input, events, frame: Some(f.frame) })
     }

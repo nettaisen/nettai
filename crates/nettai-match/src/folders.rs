@@ -87,7 +87,7 @@ pub const CHIP_RULE: &str = "chip";
 pub fn pool(content: &Content, game: &str, b: &mut Battle, side: u8) -> Vec<ChipHandle> {
     (0..content.defs.chips.len() as u16)
         .map(ChipHandle)
-        .filter(|&id| crate::ids::in_game(game, &content.defs.chip(id).key))
+        .filter(|&id| crate::ids::in_game(content, game, &content.defs.chip(id).key))
         .filter(|&id| {
             let code = content.chip(id).codes.first().copied().unwrap_or(ChipCode(0));
             !b.check_folder(side, &[FolderChip::new(id, code)], None, None, false).iter().any(|p| p.rule == CHIP_RULE)
