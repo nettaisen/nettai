@@ -69,6 +69,9 @@ pub enum Lookup {
     FormFace(FormHandle, u8),
     /// A navi's name on the custom screen (the enemy names).
     NaviName(NaviHandle),
+    /// A navi's variant name there (`battle.set_name_variant`: BN5's Hub
+    /// Style).
+    NaviVariantName(NaviHandle),
     /// A navi's number in BN6's compat (its emblem's).
     NaviNumber(NaviHandle),
     /// A navi's emblem on a console of a game's custom screen.
@@ -145,6 +148,7 @@ impl Lookup {
             Lookup::NaviFace(h) => format!("navi {} face", navi(h)),
             Lookup::FormFace(h, e) => format!("form {} face {e}", form(h)),
             Lookup::NaviName(h) => format!("navi {} name", navi(h)),
+            Lookup::NaviVariantName(h) => format!("navi {} variant name", navi(h)),
             Lookup::NaviNumber(h) => format!("navi {} number", navi(h)),
             Lookup::Emblem(h, v) => format!("navi {} emblem {}", navi(h), crate::custom::game_name(v)),
             Lookup::RunMessage(h) => format!("navi {} run message", navi(h)),

@@ -27,7 +27,7 @@ local gyroman = {}
 local SPRITE = asset.sprite("gyroman")
 local SOUND_APPEAR = asset.sound("appear")
 -- (0x104 and 0x105: 0x080BAC56 and 0x080BACBE load them as 5 + 255 and 6 + 255.)
-local SOUND_TAKEOFF = asset.sound("sound-104")
+local SOUND_TAKEOFF = asset.sound("gyro-takeoff")
 local SOUND_DROP = asset.sound("drop")
 local SOUND_RUN = asset.sound("ok-8b")
 -- What he wears (0x0800EE4E: BN5's body overlay row 0, its sprite 10-0A, behind him in his animations 0 to 5, 7,

@@ -32,7 +32,7 @@ local ball = {}
 type Look = { sprite: SpriteAsset, z: number, radius: number }
 local LOOKS: { [number]: Look } = {
     [0] = { sprite = asset.sprite("knightman-ball"), z = 0x10_0000, radius = 0x1E },
-    [1] = { sprite = asset.sprite("sprite-0c-05"), z = 0, radius = 0x23 },
+    [1] = { sprite = asset.sprite("knightsoul-ball"), z = 0, radius = 0x23 },
 }
 
 local function look_of(me: Object): Look

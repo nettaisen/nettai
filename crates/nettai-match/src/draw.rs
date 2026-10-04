@@ -299,8 +299,8 @@ mod tests {
                 let list = unlocks.cross_list.unwrap();
                 assert_eq!(list.forms().count(), 5);
                 for f in list.forms() {
-                    let forms = content.navi(navi).forms.as_ref().unwrap();
-                    assert!(forms.gregar.crosses.contains(&f) || forms.falzar.crosses.contains(&f));
+                    let crosses = |g| bn6_compat::forms::set(&content, navi, g).unwrap().crosses;
+                    assert!(crosses(GameVersion::Gregar).contains(&f) || crosses(GameVersion::Falzar).contains(&f));
                 }
                 assert_eq!(unlocks.version, m.sides[side].game);
                 assert_eq!(setup.navi_stats[side].version, crate::version_byte(m.sides[side].game));

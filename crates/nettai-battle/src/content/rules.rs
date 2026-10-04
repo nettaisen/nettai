@@ -120,12 +120,14 @@ pub struct EffectsRules {
     /// How an object's collision types are set again (`sub_801A082`).
     #[serde(default)]
     pub retype: RetypeRule,
+    /// How a damage word's flag bits decode (`sub_8019F44`).
+    #[serde(default)]
+    pub damage_word: DamageWordRule,
     /// An obstacle's reaction has BN5's step for ColonelSoul's army
     /// (0x080CAB02 from its four reactions, docs/design/bn5-map.md §15.11:
     /// `kinds::obstacle::Soldiers`): one standing where an armed side can
     /// use it turns into that side's soldier (the role
-    /// `kinds.obstacle_soldier`). Read of the obstacle's own game's rules
-    /// (its kind's), not the arena's.
+    /// `kinds.obstacle_soldier`).
     #[serde(default)]
     pub obstacle_soldiers: bool,
     /// What holds a screen palette flash (effect object #0x0A,
@@ -158,6 +160,27 @@ pub enum ObstacleActions {
     Bn5,
 }
 
+/// How the collision setup (`object_setupCollisionData`'s and
+/// `sub_801A082`'s call of `sub_8019F44`) decodes the flag bits of an
+/// object's damage word: the damage is its low 11 bits, doubled with
+/// 0x8000.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DamageWordRule {
+    /// BN6's: 0x4000 the role `statuses.damage_word_paralysis` with hit
+    /// modifier 1 (a flinch too); then 0x2000 bug code 0xF8 (and no more),
+    /// else 0x1000 bug code 0xF7, each code's high byte what the caller
+    /// left in r1.
+    #[default]
+    Bn6,
+    /// BN5's (0x080165EC): 0x4000 the paralysis (status byte 0x10) with hit
+    /// modifier 0 (no flinch), and no more; else 0x2000 the role
+    /// `statuses.damage_word_confusion` (0x20), and no more; else 0x1000
+    /// `statuses.damage_word_blindness` (0x30); then 0x800 bug code 0x18
+    /// with high byte 0x11.
+    Bn5,
+}
+
 impl Default for EffectsRules {
     /// BN6's.
     fn default() -> EffectsRules {
@@ -165,6 +188,7 @@ impl Default for EffectsRules {
             shake: ShakeRule::default(),
             spark_steps_at_start: true,
             retype: RetypeRule::default(),
+            damage_word: DamageWordRule::default(),
             obstacle_soldiers: false,
             palette_flash: PaletteFlashRule::default(),
             overlays_run_while_paused: true,
@@ -449,10 +473,6 @@ pub struct Rules {
     /// order (`RoundSetup::sp_times`): an SP navi chip's formula names its
     /// slot by these names.
     pub sp_slots: Vec<String>,
-    /// The Cross special's chips (`sub_802D5A8`): a row by the hundreds of
-    /// the navi's base max HP (the first row up to 199, the last from its
-    /// place on), each chip by key.
-    pub cross_special: Vec<Vec<SpecialChip>>,
     /// The sine table (`math_sinTable`, which `math_cosTable` continues):
     /// 256 steps a turn, 1.0 = 0x100, over a turn and a half, so that the
     /// cosine of step `a` is entry `a + 64`.
@@ -570,17 +590,6 @@ impl PoolSizes {
     pub fn slots(&self) -> [u8; 3] {
         [self.actor, self.attack, self.effect]
     }
-}
-
-/// One of the Cross special's chips (`sub_802D4F0`): the chip its
-/// controller uses, by key, with another chip's damage where the original
-/// takes it from one (the last row's LifeSrd strikes with VarSwrd's).
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SpecialChip {
-    pub chip: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub damage_of: Option<String>,
 }
 
 impl Rules {

@@ -22,7 +22,7 @@ use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipFlags, ChipTraits};
 use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
-use nettai_battle::custom::{ButtonCell, FolderChip, GameVersion, Library, Phase, Screen, Side, SlotKind, SlotState};
+use nettai_battle::custom::{ButtonCell, FolderChip, GameVersion, Phase, Screen, Side, SlotKind, SlotState};
 use nettai_content_api::{ChipHandle, FieldValue, FormHandle, NaviHandle};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
@@ -532,7 +532,7 @@ impl View<'_> {
 /// navi whose Cross it is.
 pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
     let game = bn6_compat::forms::game(c, form)?;
-    let number = (0..5u8).find(|&i| c.cross_form(navi, game, i) == Some(form))?;
+    let number = (0..5u8).find(|&i| bn6_compat::forms::cross(c, navi, game, i) == Some(form))?;
     Some((a.versioned.get(game_name(game)), number as usize))
 }
 
@@ -1197,9 +1197,13 @@ fn names_shown(b: &Battle, s: &Screen) -> bool {
 }
 
 fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Layer, text: &mut TextSink, problems: &mut Problems) {
-    let other = v.b.stats[(v.side ^ 1) as usize].navi;
-    let name = text.strings.navi_name(&v.b.content, other);
-    let glyphs = crate::lookups::navi_name(v.hud, other, name, problems);
+    let side = (v.side ^ 1) as usize;
+    let other = v.b.stats[side].navi;
+    // (Its variant name when its side's rules ask: BN5's Hub Style in a link
+    // battle, 0x0801AE3A's NameID 0xEA.)
+    let variant = if v.b.looks[side].name_variant { text.strings.navi_variant_name(&v.b.content, other) } else { None };
+    let name = variant.unwrap_or_else(|| text.strings.navi_name(&v.b.content, other));
+    let glyphs = crate::lookups::navi_name(v.hud, other, variant.is_some(), name, problems);
     let len = glyphs.len().min(ENEMY_NAME_CELLS);
     let col = 0x1E - len as i32;
     let palette = &w.palettes[13];
