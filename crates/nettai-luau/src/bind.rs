@@ -665,11 +665,12 @@ impl UserData for Object {
         });
         methods.add_method("lockon_panel", |_, this, (x, y, mode): (LuaValue, LuaValue, LuaValue)| {
             let p = panel(x, y)?;
-            // A lock-on mode (rules/lockon), or nil: the navi's own panel.
+            // A lock-on mode (a record of type "lockon": BN6's rules/lockon), or
+            // nil: the navi's own panel.
             let mode = bound(|b| match (&mode, b.def(&mode)) {
                 (LuaValue::Nil, _) => Ok(None),
-                (_, Some((Registry::Lockon, h))) => Ok(Some(nettai_content_api::LockonHandle(h))),
-                _ => Err(mlua::Error::runtime("lockon_panel: expected a lock-on mode definition or nil")),
+                (_, Some((Registry::Record, h))) => Ok(Some(nettai_content_api::RecordHandle(h))),
+                _ => Err(mlua::Error::runtime("lockon_panel: expected a lock-on mode (a \"lockon\" record) or nil")),
             })?;
             let p = with(|api, _| Ok(api.lockon_panel(this.0, p, mode)))?;
             Ok((p.x, p.y))
@@ -1784,6 +1785,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "set_face_variant", |_, (side, variant): (LuaValue, bool)| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.set_face_variant(side, variant)))
+    });
+    lib_fn!(lua, t, "set_name_variant", |_, (side, variant): (LuaValue, bool)| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.set_name_variant(side, variant)))
     });
     lib_fn!(lua, t, "bump_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);

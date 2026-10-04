@@ -11,7 +11,7 @@
 use nettai_battle::Battle;
 use crate::forms;
 use nettai_battle::content::Content;
-use nettai_battle::custom::{GameVersion, Library, PlayerSetup};
+use nettai_battle::custom::{GameVersion, PlayerSetup};
 use nettai_battle::rules::Fact;
 use nettai_content_api::{FieldType, FieldValue, FormHandle, NaviHandle, Registry, Value};
 
@@ -143,10 +143,10 @@ impl Unlocks {
     /// Cross window's entries and the round's record of Crosses used go
     /// by: the setup's list's entry, else the version's Cross with that
     /// number (none: the content has no such Cross).
-    pub fn cross_at(&self, library: &dyn Library, navi: NaviHandle, place: u8) -> Option<FormHandle> {
+    pub fn cross_at(&self, content: &Content, navi: NaviHandle, place: u8) -> Option<FormHandle> {
         match &self.cross_list {
             Some(list) => list.get(place),
-            None => library.cross_form(navi, self.version, place),
+            None => forms::cross(content, navi, self.version, place),
         }
     }
 
@@ -167,9 +167,9 @@ impl Unlocks {
     /// a Falzar player in HeatCross).
     pub fn beast_form(&self, content: &Content, navi: NaviHandle, form: FormHandle, tired: bool) -> Option<FormHandle> {
         if tired {
-            content.beast_over_form(navi, self.beast_game(content, form))
+            forms::beast_over(content, navi, self.beast_game(content, form))
         } else if content.form(form).base {
-            content.beast_out_form(navi, self.version)
+            forms::beast_out(content, navi, self.version)
         } else {
             forms::in_beast_out(content, form)
         }

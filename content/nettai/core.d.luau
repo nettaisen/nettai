@@ -1252,6 +1252,9 @@ declare battle: {
     -- Presentation: whether the side's emotion window shows its base form's second set of faces (`mugshot.variant`:
     -- BN5's Hub Style).
     set_face_variant: (side: number, variant: boolean) -> (),
+    -- Presentation: whether the custom screen's enemy names show the side's navi by its variant name (the locale's
+    -- `variant_name`: BN5's Hub Style in a link battle).
+    set_name_variant: (side: number, variant: boolean) -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
     add_side_gauge: (side: number, n: number) -> (),
     -- `sub_802E04E`: take from a side's own custom gauge, down to empty.
@@ -1867,7 +1870,6 @@ export type RulesetSpec = {
     berserk: any?,
     buster: any?,
     chip_use: any?,
-    cross_special: any?,
     custom_screen: any?,
     effects: any?,
     elements: any?,
@@ -2096,11 +2098,13 @@ export type NaviDef = {
     fire_charge: { number }?,
     -- "status_immune": a hit's status doesn't take.
     traits: { "status_immune" }?,
-    -- The forms it changes into (MegaMan's), by game: the Crosses by their
-    -- number on the custom screen, Beast Out and Beast Over. Where the
-    -- original asks whether a navi is MegaMan, the ruleset asks whether it
-    -- has forms. BN5's MegaMan has souls instead (forms with a `soul`,
-    -- which the custom screen's soul button offers).
+    -- Its forms (MegaMan's): where the original asks whether a navi is
+    -- MegaMan, the ruleset asks whether it has them. The engine reads
+    -- `souls` (BN5's Soul Unison: forms with a `soul`, which the custom
+    -- screen's soul button offers); the rest is its game's: BN6's sets by
+    -- game (`gregar`, `falzar`: the Crosses by their number on the custom
+    -- screen, Beast Out and Beast Over), which BN6's rules and bn6-compat
+    -- read.
     forms: { gregar: FormSet?, falzar: FormSet?, souls: { FormDef }? }?,
     identity: Identity,
     -- What a navi switch brings it with: its weapons, the rest of its
@@ -2361,7 +2365,8 @@ export type StatusDef = {
     survives_counter: boolean?,
 }
 export type Status = StatusDef
--- A Beast Out lock-on mode (rules/lockon): how the rush picks the panel to
+-- A Beast Out lock-on mode (BN6's rules/lockon: a record of type "lockon",
+-- `define.record("lockon", { id = ..., ... })`): how the rush picks the panel to
 -- attack a target from. `stay`: the navi's own panel. `row`: along the
 -- target's row counting from the navi's own column (`same_row_offsets`
 -- when they share a row), then the rows `row_shifts` away. `near`: the
@@ -2605,10 +2610,13 @@ export type RolesSpec = {
         tango: Chip?,
     }?,
     -- The statuses the ruleset inflicts itself: what a damage word's
-    -- paralysis bit carries, what a counter hit lands, what an aqua hit
-    -- gives a body on ice, and the NaviCust on-hit bug's.
+    -- paralysis bit carries (and, with BN5's rule `effects.damage_word`,
+    -- its confusion and blindness bits), what a counter hit lands, what an
+    -- aqua hit gives a body on ice, and the NaviCust on-hit bug's.
     statuses: {
         damage_word_paralysis: Status?,
+        damage_word_confusion: Status?,
+        damage_word_blindness: Status?,
         counter_paralysis: Status?,
         ice_freeze: Status?,
         hit_bug_blind: Status?,
@@ -2780,7 +2788,6 @@ declare define: {
     region: (spec: RegionSpec) -> Region,
     collision: (spec: CollisionTypeSpec) -> CollisionType,
     status: (spec: StatusDef) -> StatusDef,
-    lockon: (spec: LockonDef) -> LockonDef,
     identity: (spec: IdentitySpec) -> Identity,
     patch_card: (spec: PatchCardSpec) -> PatchCard,
     navicust_program: (spec: NaviCustProgramSpec) -> NaviCustProgram,

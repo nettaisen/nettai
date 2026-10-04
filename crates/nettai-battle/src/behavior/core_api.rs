@@ -1138,7 +1138,11 @@ impl CoreApi for Battle {
     }
 
     fn set_face_variant(&mut self, side: u8, variant: bool) {
-        self.sides[side as usize & 1].face_variant = variant;
+        self.looks[side as usize & 1].face_variant = variant;
+    }
+
+    fn set_name_variant(&mut self, side: u8, variant: bool) {
+        self.looks[side as usize & 1].name_variant = variant;
     }
 
     fn add_side_gauge(&mut self, side: u8, n: u16) {
@@ -1808,7 +1812,7 @@ impl CoreApi for Battle {
             ActorField::Ticked => Value::Bool(a.ticked),
             ActorField::Exhausted => Value::Bool(a.exhausted),
             ActorField::FaceTarget => at.face_target.map_or(Value::Nil, Value::Object),
-            ActorField::RushLockon => at.rush_lockon.map_or(Value::Nil, |h| Value::Def(Registry::Lockon, h.0)),
+            ActorField::RushLockon => at.rush_lockon.map_or(Value::Nil, |h| Value::Def(Registry::Record, h.0)),
             ActorField::AttackChip => at.chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ActorField::Marker => i(at.marker as i64),
             ActorField::ThrownLook => at.thrown_look.map_or(Value::Nil, |h| Value::Def(Registry::Record, h.0)),
@@ -1861,11 +1865,11 @@ impl CoreApi for Battle {
         };
         // The Beast rush's lock-on mode by definition, or none.
         let rush_lockon = match (f, v) {
-            (ActorField::RushLockon, FieldValue::Ref(Some((Registry::Lockon, h)))) => {
-                if h as usize >= self.content.defs.lockons.len() {
-                    return Err(ApiError::Other(format!("rush_lockon: no lock-on mode has handle {h}")));
+            (ActorField::RushLockon, FieldValue::Ref(Some((Registry::Record, h)))) => {
+                if self.content.lockon(nettai_content_api::RecordHandle(h)).is_none() {
+                    return Err(ApiError::Other(format!("rush_lockon: record {h} is no lock-on mode (a \"lockon\" record)")));
                 }
-                Some(nettai_content_api::LockonHandle(h))
+                Some(nettai_content_api::RecordHandle(h))
             }
             (ActorField::RushLockon, FieldValue::Ref(Some((other, _)))) => {
                 return Err(ApiError::Other(format!("rush_lockon: a {other} is not a lock-on mode")));
@@ -2197,7 +2201,7 @@ impl CoreApi for Battle {
         kinds::player::idle::start_move(self, o, dir);
     }
 
-    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: Option<nettai_content_api::LockonHandle>) -> PanelPos {
+    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: Option<nettai_content_api::RecordHandle>) -> PanelPos {
         kinds::player::actions::lockon::lockon_panel(self, o, target, mode)
     }
 

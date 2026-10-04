@@ -294,7 +294,7 @@ named_fields! {
         FaceTarget = "face_target", Object, ro;
         /// The lock-on mode the attack's own action asks the Beast Out rush
         /// for (the charged sword's, by its slash); none: the chip's.
-        RushLockon = "rush_lockon", Ref(Registry::Lockon, None), rw;
+        RushLockon = "rush_lockon", Ref(Registry::Record, Some("lockon".into())), rw;
         /// A per-action word some actions keep (a move's direction change,
         /// a thrown obstacle).
         Marker = "marker", U32, rw;
@@ -1482,6 +1482,10 @@ pub trait CoreApi {
     /// Presentation: whether side `side`'s emotion window shows its form's
     /// second set of faces (`variant`; BN5's Hub Style).
     fn set_face_variant(&mut self, side: u8, variant: bool);
+    /// Presentation: whether the custom screen's enemy names show side
+    /// `side`'s navi by its variant name (BN5's Hub Style in a link battle,
+    /// 0x0801AE3A).
+    fn set_name_variant(&mut self, side: u8, variant: bool);
     /// `sub_802E032`: add to a side's own custom gauge (battle flag 0x40),
     /// up to full.
     fn add_side_gauge(&mut self, side: u8, n: u16);
@@ -1894,7 +1898,7 @@ pub trait CoreApi {
     /// `ho_8026554`: the panel the navi would attack `target` from in
     /// Beast Out lock-on mode `mode` (its own panel for mode 0 or a
     /// target off the field; (0, 0x7F) when no panel fits).
-    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: Option<crate::LockonHandle>) -> PanelPos;
+    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: Option<crate::RecordHandle>) -> PanelPos;
     /// `object_canMove`: not immobilized, sliding or moving.
     fn can_move(&self, o: ObjectRef) -> bool;
     /// `sub_800E2FC`: heal `amount` HP with the recovery sparkle and

@@ -740,7 +740,7 @@ string is a content root's `locales/<lang>.toml`.
 | A chip's description (R on the custom screen) | `en.toml` | `ja.toml`, the Japanese ROMs' descriptions |
 | A Cross's description | `en.toml` `[forms]` | `ja.toml` `[forms]` |
 | The no-running message (L) | `en.toml` `[navis]` `run_message` | `ja.toml` `[navis]` `run_message` |
-| The enemy names (a round's first custom screen) | `en.toml` `[navis]` `name`, the ROM's name for the navi's NameID (ChrgeMan, GrndMan, TmhkMan, ProtoMan) | `ja.toml` `[navis]` `name` (ロックマン, キラーマン, アクアマン, ブルース...) |
+| The enemy names (a round's first custom screen) | `en.toml` `[navis]` `name`, the ROM's name for the navi's NameID (ChrgeMan, GrndMan, TmhkMan, ProtoMan); `variant_name` when the side's rules ask (`battle.set_name_variant`: BN5's Hub Style, BCMegaMn) | `ja.toml` `[navis]` `name` (ロックマン, キラーマン, アクアマン, ブルース...), `variant_name` (FCロックマン) |
 | A Cross's name (the frontend's own text: live play's terminal summary, the plain-text screen's Cross window) | `en.toml` `[forms]` | (English) |
 | A patch card's name (gen-content checks them; the frontend's `--cards` messages; no screen shows them yet) | `en.toml` `[patch-cards]`, the fan translation's | `ja.toml` `[patch-cards]`, the Japanese ROMs' card names |
 | The HUD's lines (the seconds, "TIME UP!", "COUNTER HIT!"), "VS", "????" | the pack's text script, in the US font's glyphs | the same words, in the Japanese font's glyphs (the pack's Japanese lettering) |
@@ -761,7 +761,7 @@ the US's (the user's choice).
 ### 10.2 Where the strings live
 
 - **Every display string is a content root's `locales/<lang>.toml`**, keyed by definition key: `[chips]` (name,
-  description), `[navis]` (name, run_message), `[forms]` (a Cross's name and description), `[patch-cards]` (a
+  description), `[navis]` (name, variant_name, run_message), `[forms]` (a Cross's name and description), `[patch-cards]` (a
   patch card's name). What reads each is §10.6. The engine's
   `content::strings::Strings` is one table; nettai-content's `locale` reads them. A definition holds none: the define
   phase refuses a `name`, `description` or `description_lines` field (core.d.luau's specs have none).

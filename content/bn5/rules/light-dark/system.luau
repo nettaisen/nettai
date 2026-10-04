@@ -24,6 +24,12 @@
 --   can't do, Hub Style (NaviStats +0x4C: patch card 111, 0x08138214), the element; Dark MegaMan's (AI index
 --   0x16) 1.
 -- - **Hub Style's faces** (0x0801AF8E: the face plus 11): the base form's second set (`mugshot.variant`).
+-- - **Hub Style's name** (0x0801AE3A, the enemy names on the round's first custom screen; presentation): in a link
+--   battle (effect 8) the other side's entry is NameID 0x180 (MegaMan) when its NaviStats +0x53 is set, else 0xEA
+--   (BCMegaMn, the navi's `variant_name`) in Hub Style, else the list's own (the navi's NameID: MegaMan's 0x180).
+--   +0x53 is written once, by the reload (0x08135968): 1 when the NaviCust's path finds no Hub Style (0x08137A58),
+--   else 0; so the name is BCMegaMn exactly in Hub Style. (Battle effect 0x40000 names every entry 0xE6, ChaosLrd:
+--   no stage of BN5's content has that effect, and the enemy names have no entry but the navi's: not built.)
 -- - **Its hit bugs** (0x0801103E, the navi's hit NaviCust bug): a hit with hit flag 0x400 brings no bug to a value of
 --   1000 or more (the weapons not reloaded either); code 0xFD is an HP drain of level 1 (code 0x18, argument 1) on a
 --   dark MegaMan (the value's tier, 0x0800DE5C, 2), code 0xFC the same on a value of 500 or more; else neither is
@@ -273,9 +279,12 @@ return define.system {
         deal = offer_dark_chip,
     },
     hooks = {
-        -- Hub Style shows the base form's second set of faces (0x0801AF8E).
+        -- Hub Style shows the base form's second set of faces (0x0801AF8E), and in a link battle the navi's variant
+        -- name among the enemy names (0x0801AE3A).
         round_setup = function(side: number)
-            battle.set_face_variant(side, battle.navi(side).hub_style ~= 0)
+            local hub = battle.navi(side).hub_style ~= 0
+            battle.set_face_variant(side, hub)
+            battle.set_name_variant(side, hub and battle.link())
         end,
         -- 0x08010EC8: MegaMan's starting mood.
         starting_mood = function(_side: number): number?
