@@ -31,7 +31,7 @@ local SHIELD = shield.make { id = "rflectr/shield", sound = asset.sound("follow-
 
 -- Its looks (0x080CA1F0's rows, by the guard's second parameter: BN6's `byte_80C9664`'s but for rows 3 to 6, BN5's
 -- ProtoMan's and CrsShld's, and row 9's sheet).
-local REFLECTOR, CROSS_SHIELD = asset.sprite("reflector-shield"), asset.sprite("sprite-04-05")
+local REFLECTOR, CROSS_SHIELD = asset.sprite("reflector-shield"), asset.sprite("cross-shield")
 local function look(l: ReflectorShieldLook): ReflectorShieldLook
     return shield.look(l)
 end
@@ -55,7 +55,7 @@ guard.looks = {
 -- stops on its panel, and 8 ticks later strikes it once (an attack, hit modifier 3), then goes.
 type CrossState = { palette: number }
 
-local CROSS_SPRITE = asset.sprite("sprite-04-05")
+local CROSS_SPRITE = asset.sprite("cross-shield")
 local CROSS_SPEED = 20
 local CROSS_SOUND = asset.sound("bite")
 -- Its actions.
