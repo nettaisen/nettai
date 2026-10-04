@@ -1301,12 +1301,13 @@ BN6's `sub_80139F6` but for codes BN5's chips here don't give (0xFD and 0xFC: a 
 or 0xF5, which set their bytes as any other code): not ported.
 
 Not shown by the labs: Static's bug levels 1 to 3; GunDelSol's held A; Katana's and MoonBld's charged step;
-Slasher's request 0x80000 (`actions.stun_strike`, BN5's action 0x49, unfilled) and its other console's chip name
-(`sub_801EB18`); lib/arm's NaviStats +0x4C and AIData +0x12 (read as 0); the kinds 4 and up of CrakBom's bomb (no
-chip throws them); battle flag 0x40's effect object 0x83 (0x080E9FD2, 0x080E9FA4: CrakBom's and Quake's bombs; never
-in a netbattle); Geyser's geyser (no recording throws it into a hole); a computer-controlled navi's VarSwrd pick (its
-tactics' byte, 0x0802D4E2 +0x12: no battle has one; only the story navis' routines set AIData +0xF0, 0x0802C110, so
-Chaos Unison's Dark MegaMan takes the joypad path and gets a Sword). **Waiting:** Wind, Fan, RockCube, BoyBomb1 to 3,
+Slasher's request 0x80000 (`actions.stun_strike`, BN5's action 0x49: DarkInvs's drive's end, which only that drive's
+timer raises) and its other console's chip name (`sub_801EB18`); lib/arm's NaviStats +0x4C and AIData +0x12 (read as
+0); the kinds 4 and up of CrakBom's bomb (no chip throws them); battle flag 0x40's effect object 0x83 (0x080E9FD2,
+0x080E9FA4: CrakBom's and Quake's bombs; never in a netbattle); Geyser's geyser (no recording throws it into a hole).
+(A computer-controlled navi's VarSwrd pick, the side's sword pick, is DarkInvs's drive's: 0x0802C110 sets AIData
++0xF0 for the story navis and DarkInvs, never Chaos Unison's Dark MegaMan, who takes the joypad path; the lab's
+chips/0x0bd-darkinvs/tactics-varswrd shows it.) **Waiting:** Wind, Fan, RockCube, BoyBomb1 to 3,
 RedFrut1 to 3, Voltz1 to 3 and VDoll (on BN5's field obstacles).
 
 ### 15.7 BN5's MegaMan, stages and roles (as built)
@@ -1717,14 +1718,31 @@ actor 0x26, and comets, attack 0x74), Football (GridMan, actor 0x25, and balls, 
 and BigNoise (ShadeMan, actor 0x1B, and his noise, attack 0x04: BN5's own, not BN6's flame), each in its chip's
 folder with the kinds it owns.
 
-**Waiting** (since 2026-10-03 bn5-navichips', what is found of them so far given with them). AirSpin1–3 (BN6's AirSpin top with BN5's changes: random targets, its own panel setting, its hit's
-self type 4) and AqWhirl1–3 (BN5's own, attack object 0x5D), both on BN6's AirSpin action, to move to
-content/common; PileDrvr (its controller, effect 0x6F, piles, attack 0x99, and their charge, attack 0x9A: AirSpin's
-top reworked, so with AirSpin); CopyDmg (BN5's action 0x24, the buster arm and a spawn by subtype, with BN6's mark,
-attack 0x28: to share); NumbrBl (BN5's own NumberMan stand-in with BN6's balls), NeoVari, Z-Saver (BN6 has them: to
-share, with BN5's changes); DarkInvs (BN5's own: the user's navi on the computer-navi AI for 600 ticks, bn5-port-6's
-system); Jealousy (BN6's leftover code, BG transfers; it counts the other side's hand, which the engine has no call
-for yet); LeadRaid and ChaosLrd (actors 0x20 and 0x22, and 0x51: §14.5).
+**bn5-navichips' fifteen** (2026-10-03, as built; every recording of theirs matches on every frame):
+
+- *Shared with BN6 in content/common* (BN6's wrappers at their old paths): AirSpin1–3 (common/airspin: the action and
+  its top made by a look; BN5's top attack 0x9B), Z-Saver (common/zsaver), NumbrBl (common/numbrbl's balls and
+  controller; BN5's NumberMan stand-in, actor 0x45, its own), CopyDmg (common/copydmg: BN5's action 0x24 with the buster
+  arm, BN6's mark, attack 0x28, which in the battle flag 0x40 mode hits its panel each tick it marks).
+- *BN5's own, on BN6's action:* AqWhirl1–3 (the whirlpool, attack 0x5D); NeoVari and its picks CrosSwrd, SprSonic and
+  DblDream (VarSwrd's action by its sequences; a computer-driven navi, AIData +0xF0, takes the side's sword pick).
+- *BN6's leftover code no BN6 chip uses, in BN5's folders:* Jealousy (effect 0x36: the other side's held chips counted,
+  `battle.hand_left` and the objects' `chips_held`; in the battle flag 0x40 mode its warning and
+  `battle.drain_side_gauge`); PileDrvr (effect 0x6F, piles attack 0x99 and their beams attack 0x9A: a timed beam, not
+  AirSpin's top) with its two recipes.
+- *BN5's own:* LeadRaid (ProtoMan actor 0x20, Colonel actor 0x22 striking an X, their charge glow effect 0x85; ProtoMan
+  waits on his `prevent_anim`, which Colonel's spawn sets); ChaosLrd (Bass actor 0x51, the dark beast effect 0x47, the
+  gathering flames effect 0x4B on the sine table, the chaos strike attack 0x82; its landing's palette flash needs BN5's
+  `effects.palette_flash`: a pause holds either variant, dimming only a modeless one); DarkInvs (effect 0x18, its
+  stand-in actor 9; the user driven for 600 ticks, untouchable, by the computer-navi AI's other family, 0x0802B4AC, on
+  its own side's tactics, facing the target searched from a step's column; the status section's `no_charge_drive`: the
+  timer at the intake's end, the idle's step asked of the systems' `controller`, the last 180 ticks' gray flicker; its
+  end, BN5's action 0x49, the roles' `stun_strike`, with its dark image, actor 10).
+
+Found on the way, not ported (no chip of these needs it): a player MegaMan (AI index 0) of emotion 5 whose HP a hit
+takes to 0 keeps 1 HP and starts action 0x30 (0x0802C16C from 0x080185A2 and 0x0800C6E0, unless NaviStats +0x2A or
+the battle setting 0x0800931C(side, 1)); a DarkInvs drive playing NeoVari's pick shows it (the opponent of the
+bn5-team-dark base). tools/bn5/recipes.py finds chips wherever layout.py put them (`--check`).
 
 **The obstacle chips** (from chips-a's range, 2026-10-03). RedFrut1–3 (action 0x1A's instant effect 15,
 0x080D818C, BN5's own: chips/redfrut/fruit): a fruit (attack object 0x8D, NameID 0xE7) drops on a random free panel
