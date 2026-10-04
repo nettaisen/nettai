@@ -19,7 +19,7 @@ local sparks = require("../../lib/sparks")
 
 local rock = {}
 
-local SPRITE = asset.sprite("sprite-10-02")
+local SPRITE = asset.sprite("rock")
 local SMALL_PUFF = asset.sprite("small-puff")
 -- Effects 1, 2 and 0x14 (BN5's table, 0x080DFC94, as BN6's rows): a splash, dust, a puff.
 local SPLASH = define.effect { sprite = SMALL_PUFF, anim = 0, palette = 0 }
@@ -27,7 +27,7 @@ local DUST = define.effect { sprite = SMALL_PUFF, anim = 1, palette = 0 }
 local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 
 -- The debris (0x080E46F4: sheet 10-09, landing in a splash).
-rock.debris = common_debris.make_kind("rock/debris", asset.sprite("sprite-10-09"), SPLASH)
+rock.debris = common_debris.make_kind("rock/debris", asset.sprite("rock-debris"), SPLASH)
 
 -- What a rock is taken for: a rock cube (actor record 0xD0), an ice block (0xD1).
 local ROCK = define.identity {
