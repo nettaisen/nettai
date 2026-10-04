@@ -208,6 +208,13 @@ impl ChipTraits {
     /// 0x118; BN5's version navi chips, Bass, BassAnly, Phoenix and
     /// DethPhnx, have the flag).
     pub const NOT_NAVI_SLOT: u16 = 0x200;
+    /// The custom screen's chip window shows "???" for its damage on a
+    /// copy of code A, and its damage on any other: the original compares
+    /// the whole chip word, number and code, with the chip's number, so
+    /// only code A (0) matches (`sub_80284E2`: Muramasa, whose only code
+    /// is M; BN5's 0x080243C0: Muramasa, CustSwrd and the three CusVolts,
+    /// of which CusVolt1 comes as an A).
+    pub const HIDES_DAMAGE_AS_A: u16 = 0x400;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "no_chain"),
         (0x02, "aura_bonus"),
@@ -219,6 +226,7 @@ impl ChipTraits {
         (0x80, "navi_returns_user"),
         (0x100, "goes_with_any"),
         (0x200, "not_navi_slot"),
+        (0x400, "hides_damage_as_a"),
     ];
 
     pub fn has(self, bit: u16) -> bool {

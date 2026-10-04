@@ -20,7 +20,7 @@ use crate::vfont::Role;
 use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
 use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
-use nettai_battle::content::{ChipFlags, DamageFormula};
+use nettai_battle::content::{ChipFlags, ChipTraits};
 use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
 use nettai_battle::custom::{ButtonCell, FolderChip, GameVersion, Library, Phase, Screen, Side, SlotKind, SlotState};
 use nettai_content_api::{ChipHandle, FieldValue, FormHandle, NaviHandle};
@@ -874,8 +874,8 @@ impl Window {
     /// `sub_80284E2`: a chip's name (8 cells of the 8x16 font in the
     /// window's colors), its picture and palette, the window's colors by
     /// the chip's class, its code, its element's icon (and colors), and
-    /// its damage if it shows (Muramasa's as "???"), right-aligned in three
-    /// cells.
+    /// its damage if it shows ("???" for a chip that hides it as an A:
+    /// `ChipTraits::HIDES_DAMAGE_AS_A`), right-aligned in three cells.
     fn chip_details(&mut self, v: &View, c: FolderChip, text: &TextSink, problems: &mut Problems) {
         let a = v.assets;
         let data = v.b.content.chip(c.id);
@@ -930,8 +930,9 @@ impl Window {
         let shows = data.flags.0 & (ChipFlags::HAS_DAMAGE | ChipFlags::DAMAGE_SHOWN_VARIABLE) != 0;
         let digits: Vec<usize> = if !shows {
             Vec::new()
-        } else if matches!(data.formula, Some(DamageFormula::HpLost { .. })) {
-            // (The original knows Muramasa by its number.)
+        } else if data.traits.has(ChipTraits::HIDES_DAMAGE_AS_A) && c.code.0 == 0 {
+            // (The original compares the whole chip word, number and code,
+            // with Muramasa's number: only an A matches.)
             vec![DIGIT_UNKNOWN; 3]
         } else {
             let damage = nettai_battle::hand::chip_damage(v.b, Some(c.id), v.side);
