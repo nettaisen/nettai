@@ -2,15 +2,18 @@
 -- Soul Unison on BN5's custom screen (docs/design/rules-in-luau.md §4.4, docs/design/bn5-map.md §15.8): the soul
 -- button in the special slot (0x08023C54, its offer 0x08024B28, A on it 0x08024972), the soul's choice as the window
 -- `soul_unison` (the screen's state 9, 0x080232D0), the soul given at OK (0x08024FF6) and the round's souls used
--- (0x02034E10). Its state is the souls system's (./system).
+-- (0x02034E10). Its state is the souls system's (./init). What a soul adds to the screen (its per-soul slots,
+-- 0x08023CF8) is a module each, gathered at this module's end for the system.
 
+local arm_change = require("./arm-change")
+local capsules = require("./capsules")
 local hand = require("./hand")
 local operation_battle = require("../../lib/operation_battle")
 local shuffle = require("./shuffle")
 
 local custom_souls = {}
 
--- The souls system's state fields the screen keeps (./system declares them).
+-- The souls system's state fields the screen keeps (./init declares them).
 type State = {
     -- 0x02034E10: the souls given this round: bit n Soul Unison with soul n, bit 16 + n its Chaos Unison (the
     -- round's first screen forgets them).
@@ -25,7 +28,7 @@ type State = {
     unite_count: number,
 }
 
--- What the player's save brings (./system declares it): the souls it has (their flags, 0x08024BF0's, by each soul's
+-- What the player's save brings (./init declares it): the souls it has (their flags, 0x08024BF0's, by each soul's
 -- number), Soul Unison (event flag 0: the button) and Chaos Unison (event flag 0x236).
 type Setup = {
     souls: { FormDef? },
@@ -58,7 +61,7 @@ local function soul_for(side: number, family: string): FormDef?
     return nil
 end
 
--- The setup's souls' places (./system's `form[16]`).
+-- The setup's souls' places (./init's `form[16]`).
 local SOUL_PLACES = 16
 
 -- The save has soul `number` (its flag: one of the setup's souls of that number).
@@ -78,12 +81,13 @@ local function used_bit(number: number, chaos: boolean): number
     return bit32.lshift(1, if chaos then 16 + number else number)
 end
 
--- 0x08024B28: the soul the last pick offers: a chip (not the Regular chip, not a link navi's) of a family one of the
--- navi's souls is for, a soul the save has (a dark chip's Chaos Unison needs the save's Chaos Unison), not given yet
--- this round (Soul Unison and Chaos Unison apart). None: (nil, 0, false).
+-- 0x08024B28: the soul the last pick offers: a chip (not the Regular chip, not a link navi's, with no capsule mixed
+-- into it: the slot's +5) of a family one of the navi's souls is for, a soul the save has (a dark chip's Chaos
+-- Unison needs the save's Chaos Unison), not given yet this round (Soul Unison and Chaos Unison apart). None:
+-- (nil, 0, false).
 local function offer(side: number): (FormDef?, number, boolean)
     local last = custom.last_pick(side)
-    if last == nil or last.regular or last.navi_chip then
+    if last == nil or last.regular or last.navi_chip or last.attached then
         return nil, 0, false
     end
     local chip = last.chip
@@ -215,11 +219,18 @@ function custom_souls.open(side: number)
     if battle.turn() == 1 then
         (system.state() :: State).souls_used = 0
     end
+    arm_change.open(side)
+end
+
+-- The screen deals (0x08022CFC to 0x08023BF4: its hand, then its slots).
+function custom_souls.deal(side: number)
+    capsules.deal(side)
 end
 
 -- 0x08024FF6: OK with the soul picked: the turn's form is the soul, for 3 turns and the save's bonus (at most 9;
 -- under 0, 1), a Chaos Unison for 1; the soul is given this round.
 function custom_souls.confirmed(side: number)
+    arm_change.confirmed(side)
     if not custom.button_picked(side, "soul") then
         return
     end
@@ -236,12 +247,28 @@ function custom_souls.confirmed(side: number)
     s.souls_used = bit32.bor(s.souls_used, used_bit(s.offer_number, s.offer_chaos))
 end
 
--- The system's buttons: the soul button, and what a soul adds to the screen, each in its own module.
+-- The turn's start, before either side's change of form (0x08011DDC).
+function custom_souls.turn_opened(side: number)
+    arm_change.turn_opened(side)
+end
+
+-- The system's buttons and windows, by name (what the frontend draws them by), and the state fields they keep,
+-- beside the soul button's (./init declares those): the soul button, and what a soul adds to the screen, each in
+-- its own module.
 custom_souls.buttons = {
     soul = custom_souls.button,
     -- SearchSoul's Shuffle (./shuffle), by the name the frontend draws the pack's re-deal button for.
     redeal = shuffle.button,
+    capsule_1 = capsules.buttons[1],
+    capsule_2 = capsules.buttons[2],
+    arm_change = arm_change.button,
 }
+custom_souls.windows = {
+    soul_unison = custom_souls.window,
+    capsule = capsules.window,
+    arm_change = arm_change.window,
+}
+custom_souls.states = { capsules.state, arm_change.state }
 
 -- The screen's hand: NumberSoul's ten chips (./hand).
 custom_souls.hand_size = hand.size

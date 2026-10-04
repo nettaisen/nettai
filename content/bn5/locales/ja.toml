@@ -46,6 +46,7 @@ language = "ja"
 "blizman-ds" = { name = "ブリザードマン\uE008", description = "前方にゆきだま!\nものにあたると\nまきこんで大きく!" }
 "blizman-sp" = { name = "ブリザードマン\uE003", description = "前方にゆきだま!\nものにあたると\nまきこんで大きく!" }
 "blkbomb" = { name = "ブラックボム", description = "ふはつだんを\n3マス前になげる!\n炎攻撃でバクハツ!" }
+"blkcapsl" = { name = "ブラックカプセル", description = "1つ前にえらんだ\n攻撃チップに\nもうもくをつける" }
 "bodygrd" = { name = "ボディガード", description = "ようじんぼうが\nしゅりけんをなげ\n攻撃してくれる!" }
 "boomer" = { name = "ブーメラン", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
 "boxer1" = { name = "マッドボクサー1", description = "前方のかくれつに\n炎のパンチを\nれんぞくではなつ!" }
@@ -235,12 +236,14 @@ language = "ja"
 "phoenix" = { name = "フェニックス", description = "フィールドまん中に\nふりそそぐ火炎!\nさらにHPかいふく" }
 "piledrvr" = { name = "パイルドライバー", description = "目の前のマスに\nパイルドライバーを\nおいて前方を攻撃!" }
 "pithoky" = { name = "ジゴクホッケー", description = "はんしゃしながら\nすすむきょうふの\nホッケー攻撃!" }
+"pnkcapsl" = { name = "ピンクカプセル", description = "1つ前にえらんだ\n攻撃チップに\nリカバリーをつける" }
 "pnlretrn" = { name = "パネルリターン", description = "自分のエリアの\nパネルをノーマルに\nもどす!" }
 "poisphar" = { name = "ポイズンファラオ", description = "目の前にどくを\nはっせいさせる\nファラオぞうをおく" }
 "poltrgst" = { name = "ポルターガイスト", description = "フィールド上にある\nぶったいをとばして\nあいてにぶつける!" }
 "protoman" = { name = "ブルース", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
 "protomn-ds" = { name = "ブルース\uE008", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
 "protomn-sp" = { name = "ブルース\uE003", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+"prpcapsl" = { name = "パープルカプセル", description = "1つ前にえらんだ\n攻撃チップに\nHPバグをつける" }
 "pulsar1" = { name = "パルスビーム1", description = "前方におんぱ攻撃!\nものにあたると\nまわりにひろがる!" }
 "pulsar2" = { name = "パルスビーム2", description = "前方におんぱ攻撃!\nものにあたると\nまわりにひろがる!" }
 "pulsar3" = { name = "パルスビーム3", description = "前方におんぱ攻撃!\nものにあたると\nまわりにひろがる!" }
@@ -331,6 +334,7 @@ language = "ja"
 "vulcan2" = { name = "バルカン2", description = "5れんしゃバルカン\nヒットすると1マス\nおくにもかんつう!" }
 "vulcan3" = { name = "バルカン3", description = "7れんしゃバルカン\nヒットすると1マス\nおくにもかんつう!" }
 "wavepit" = { name = "ツナミホール", description = "水パネルから\nツナミがはっせい" }
+"whicapsl" = { name = "ホワイトカプセル", description = "1つ前にえらんだ\n攻撃チップに\nマヒこうかをつける" }
 "wideblde" = { name = "ワイドブレード", description = "目の前のてきを\nきりつける!\nはんいはたて3マス" }
 "widesht1" = { name = "ワイドショット1", description = "たて3マスのはばを\nもつワイドショット\nを前方へはなつ!" }
 "widesht2" = { name = "ワイドショット2", description = "たて3マスのはばを\nもつワイドショット\nを前方へはなつ!" }
@@ -342,6 +346,7 @@ language = "ja"
 "woodnos1" = { name = "ウッディノーズ1", description = "前方にタネをはなつ\n画面そとから2マス\nのえだがのびてくる" }
 "woodnos2" = { name = "ウッディノーズ2", description = "前方にタネをはなつ\n画面そとから2マス\nのえだがのびてくる" }
 "woodnos3" = { name = "ウッディノーズ3", description = "前方にタネをはなつ\n画面そとから2マス\nのえだがのびてくる" }
+"yelcapsl" = { name = "イエローカプセル", description = "1つ前にえらんだ\n攻撃チップに\nこんらんをつける" }
 "yoyo" = { name = "ヨーヨー", description = "3マス前までとどく\nヨーヨー攻撃!\n3マス前は3ヒット" }
 "yoyomode" = { name = "ヨーヨーモード", description = "ミテイ" }
 "z-saver" = { name = "Zセイバー", description = "でんせつの あかい\nレプリロイドの\n3だんぎりソード" }

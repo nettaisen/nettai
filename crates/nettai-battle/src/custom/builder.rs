@@ -14,8 +14,15 @@ pub mod modifier_bits {
     pub const REGULAR: u8 = 0x01;
     /// WhiCapsl folded in: the chip paralyzes.
     pub const PARALYZE: u8 = 0x02;
-    /// Uninstll folded in: the chip uninstalls.
+    /// Uninstll folded in: the chip uninstalls (the damage word's 0x2000;
+    /// BN5's confusion, mixed in by its yellow capsule).
     pub const UNINSTALL: u8 = 0x04;
+    /// BN5's capsules (0x08023824, by 0x08010368 and 0x0800FFF6): the
+    /// damage word's 0x1000 (its blindness), its 0x0800 (its HP bug), and
+    /// the user healed a tenth of its HP at the use.
+    pub const DAMAGE_1000: u8 = 0x08;
+    pub const HEAL: u8 = 0x10;
+    pub const DAMAGE_0800: u8 = 0x20;
 }
 
 /// Program Advances a player has formed this round (once each), by the
@@ -41,6 +48,9 @@ pub struct Pick {
     /// The chip as it counts (after `screen::checked`).
     pub chip: FolderChip,
     pub regular: bool,
+    /// The modifier bits a button mixed into the pick (the slot's `marks`:
+    /// BN5's capsules).
+    pub marks: u8,
 }
 
 /// One entry of the hand being built (the work area `dword_2033000`).
@@ -94,7 +104,7 @@ pub fn build(
             id: Some(p.chip.id),
             damage: damage(p.chip.id),
             bonus: 0,
-            modifiers: if p.regular { modifier_bits::REGULAR } else { 0 },
+            modifiers: if p.regular { modifier_bits::REGULAR } else { 0 } | p.marks,
         };
     }
     let mut program_advance = None;
@@ -318,7 +328,7 @@ mod tests {
     }
 
     fn pick(id: ChipId, code: u8) -> Pick {
-        Pick { chip: FolderChip::new(ChipHandle(id), ChipCode(code)), regular: false }
+        Pick { chip: FolderChip::new(ChipHandle(id), ChipCode(code)), regular: false, marks: 0 }
     }
 
     fn built(picks: &[Pick]) -> Built {

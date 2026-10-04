@@ -384,6 +384,8 @@ pub struct ButtonDef {
     pub state: Option<FnId>,
     pub pressed: FnId,
     pub taken_back: Option<FnId>,
+    /// The chip it shows (`chip`), if it shows one.
+    pub chip: Option<FnId>,
 }
 
 /// A custom-screen window of a system's (docs/design/rules-in-luau.md
@@ -1755,8 +1757,8 @@ impl Defs {
                         let Data::Map(fields) = spec else { return Err(at("a table of its place and functions")) };
                         for (f, _) in fields {
                             let f = f.to_string();
-                            if !["slot", "cells", "uses", "right", "left", "shown", "state", "pressed", "taken_back"].contains(&f.as_str()) {
-                                return Err(at(&format!("`{f}` is no field of a button (slot, cells, uses, right, left, shown, state, pressed, taken_back)")));
+                            if !["slot", "cells", "uses", "right", "left", "shown", "state", "pressed", "taken_back", "chip"].contains(&f.as_str()) {
+                                return Err(at(&format!("`{f}` is no field of a button (slot, cells, uses, right, left, shown, state, pressed, taken_back, chip)")));
                             }
                         }
                         let byte = |f: &str| -> Result<Option<u8>, ContentError> {
@@ -1776,6 +1778,7 @@ impl Defs {
                         let state = func("state", false)?;
                         let pressed = func("pressed", true)?.expect("needed");
                         let taken_back = func("taken_back", false)?;
+                        let chip = func("chip", false)?;
                         let slot = byte("slot")?.ok_or_else(|| at("`slot` is missing"))?;
                         let cells = byte("cells")?.unwrap_or(1);
                         if !(1..=2).contains(&cells) {
@@ -1783,7 +1786,7 @@ impl Defs {
                         }
                         let (uses, right, left) = (byte("uses")?.unwrap_or(0), byte("right")?, byte("left")?);
                         own_buttons.push(ButtonHandle((buttons.len()) as u16));
-                        buttons.push(ButtonDef { system, name: name.clone(), slot, cells, uses, right, left, shown, state, pressed, taken_back });
+                        buttons.push(ButtonDef { system, name: name.clone(), slot, cells, uses, right, left, shown, state, pressed, taken_back, chip });
                     }
                 }
                 _ => return Err(what("`buttons` is a table of buttons by name")),
