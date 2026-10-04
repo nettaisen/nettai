@@ -215,6 +215,18 @@ pub enum SystemHook {
     /// system refuses a chip its MegaMan may not use: 0x08010118). The
     /// first system that answers decides.
     ChipCheck,
+    /// `chip_substitute(side, navi, chip)`: a chip's use is prepared, before
+    /// its record is loaded (`sub_80127C0`'s `sub_8010D58`): a chip is what
+    /// the navi uses in its place, with its own record, damage and bonus
+    /// (BN6's dark chips' substitute, with no bug frag left); nil, the chip.
+    /// The first system that answers decides.
+    ChipSubstitute,
+    /// `chip_prepared(side, navi, chip)`: a chip's use was prepared
+    /// (`sub_80127C0`, on each of its paths: a use, the wrapper's chain, the
+    /// counter cut-in's), its substitute taken: `chip` the chip it uses.
+    /// BN6's dark chips worsen the user's HP bug (`sub_800B79A`). Its result
+    /// is unused.
+    ChipPrepared,
     /// `chip_used(side, navi, chip, weapon)`: a chip's use started
     /// (`sub_800FB54`, its action set): `chip` the chip it reads (the
     /// zeroed chip for the empty hand), `weapon` the form's weapon run
@@ -272,6 +284,14 @@ pub enum SystemHook {
     /// first system that answers decides; none answering, the framework's
     /// rule (the custom level, NumbrOpn and the hand-shrink bug).
     CustomHandSize,
+    /// `custom.deal(side)`: the side's custom screen deals, before
+    /// `custom.open`: the folder as the last screen left it (the chips used
+    /// still leave their places empty: `custom.folder`), with the
+    /// framework's hand size (`custom.hand_size`); BN5's custom screen
+    /// opening (0x08022C5C) offers a worried or dark MegaMan a dark chip
+    /// there (0x08025114, its light and dark system's). Its result is
+    /// unused.
+    CustomDeal,
     /// `custom.open(side)`: the side's custom screen opens, before its hand
     /// size and its layout (BN6's: ChargeCross's screens counted, the
     /// round's first screen forgetting the round's Beast Out). Its result
@@ -338,6 +358,8 @@ impl SystemHook {
             SystemHook::FolderCheck => "folder_check",
             SystemHook::NaviIntake => "navi_intake",
             SystemHook::ChipCheck => "chip_check",
+            SystemHook::ChipSubstitute => "chip_substitute",
+            SystemHook::ChipPrepared => "chip_prepared",
             SystemHook::ChipUsed => "chip_used",
             SystemHook::Controller => "controller",
             SystemHook::FormReverted => "form_reverted",
@@ -348,6 +370,7 @@ impl SystemHook {
             SystemHook::NaviPalette => "navi_palette",
             SystemHook::NaviBug => "navi_bug",
             SystemHook::CustomHandSize => "custom.hand_size",
+            SystemHook::CustomDeal => "custom.deal",
             SystemHook::CustomOpen => "custom.open",
             SystemHook::CustomConfirmed => "custom.confirmed",
             SystemHook::CustomKeys => "custom.keys",
@@ -363,7 +386,7 @@ impl SystemHook {
         }
     }
 
-    pub const ALL: [SystemHook; 31] = [
+    pub const ALL: [SystemHook; 34] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -373,6 +396,8 @@ impl SystemHook {
         SystemHook::FolderCheck,
         SystemHook::NaviIntake,
         SystemHook::ChipCheck,
+        SystemHook::ChipSubstitute,
+        SystemHook::ChipPrepared,
         SystemHook::ChipUsed,
         SystemHook::Controller,
         SystemHook::FormReverted,
@@ -388,6 +413,7 @@ impl SystemHook {
         SystemHook::ButtonState,
         SystemHook::ButtonPressed,
         SystemHook::CustomOpen,
+        SystemHook::CustomDeal,
         SystemHook::CustomConfirmed,
         SystemHook::WindowUpdate,
         SystemHook::ButtonTakenBack,

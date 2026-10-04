@@ -358,7 +358,7 @@ fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
     }
     let routine = if source == 2 {
         a.charge_shot
-    } else if form_of(b, r).kind.is_beast() && uses_alt_a_charge(b, r) {
+    } else if form_of(b, r).traits.has(crate::content::FormTraits::ALT_CHARGE_TIME) && uses_alt_a_charge(b, r) {
         a.alt_a_charge
     } else {
         a.a_charge
