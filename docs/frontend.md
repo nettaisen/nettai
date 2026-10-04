@@ -786,7 +786,7 @@ them).
   always). A console of the other version shows the counterpart's there:
   the chip window's picture, the icons in the custom screen's slots and
   column, and the icons over the navi are listed as known
-  (`lookups::other_versions_art`).
+  (`lookups::other_versions_icon`).
 - **Deliberate: the Gregar and Falzar chips' pictures.** Each Japanese ROM
   has one picture for both chips, its own beast; the pack has each chip's
   own (Gregar's from the Japanese Gregar ROM, Falzar's from the Japanese
