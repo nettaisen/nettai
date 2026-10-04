@@ -11,6 +11,6 @@ return common.make {
     id = "bn5:antirecv/controller",
     changer = panel_changer.kind,
     bubble = rising_bubble.kind,
-    tick_sound = asset.sound("bn6:panel-change-tick"),
-    poison_sound = asset.sound("bn6:panel-poison"),
+    tick_sound = asset.sound("bn5:panel-change-tick"),
+    poison_sound = asset.sound("bn5:panel-poison"),
 }

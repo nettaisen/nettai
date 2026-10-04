@@ -145,23 +145,23 @@ fn an_unknown_name_is_refused() {
     says(parse(&content, &side("protoman", &TANGO_BN5, ""), &ok).unwrap_err(), "left: no navi \"protoman\" in bn5");
     let crosses = bn5(&TANGO_BN5, "crosses = [\"heatcross\"]");
     says(parse(&content, &crosses, &ok).unwrap_err(), "left: no Cross \"heatcross\" in bn5");
-    // A chip of BN6's alone (DeltaRay), a qualified name, a misspelling:
+    // A chip of BN6's alone (HeatMan), a qualified name, a misspelling:
     // one error.
     let six = bn6_content();
-    assert!(crate::ids::chip(&six, "bn6", "deltaray").is_some() && crate::ids::chip(&content, "bn5", "deltaray").is_none());
-    for name in ["deltaray", "bn6:cannon", "bn5:cannon", "canon"] {
+    assert!(crate::ids::chip(&six, "bn6", "heatman").is_some() && crate::ids::chip(&content, "bn5", "heatman").is_none());
+    for name in ["heatman", "bn6:cannon", "bn5:cannon", "canon"] {
         let chips = with(&TANGO_BN5, 0, &[]);
         let mut chips = refs(&chips);
         let entry = format!("{name} A");
         chips[3] = &entry;
         says(parse(&content, &bn5(&chips, ""), &ok).unwrap_err(), &format!("left: folder entry 3: no chip {name:?} in bn5"));
     }
-    // A BN5 chip (DarkThnd) in a BN6 match.
-    assert!(crate::ids::chip(&content, "bn5", "darkthnd").is_some() && crate::ids::chip(&six, "bn6", "darkthnd").is_none());
+    // A BN5 chip (GyroMan) in a BN6 match.
+    assert!(crate::ids::chip(&content, "bn5", "gyroman").is_some() && crate::ids::chip(&six, "bn6", "gyroman").is_none());
     let mut chips = BN6.to_vec();
-    chips[0] = "darkthnd M";
+    chips[0] = "gyroman G";
     let e = parse_in(&six, "bn6", &side("megaman", &chips, ""), &side("megaman", &BN6, "")).unwrap_err();
-    says(e, "left: folder entry 0: no chip \"darkthnd\" in bn6");
+    says(e, "left: folder entry 0: no chip \"gyroman\" in bn6");
     // A game the content hasn't (BN6's file on BN5's content, a game no
     // content has); a ruleset the game hasn't.
     let text = match_text(&content, "bn5", &ok, &ok);

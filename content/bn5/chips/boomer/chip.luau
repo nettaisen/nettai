@@ -32,5 +32,6 @@ return define.chip {
     lockout = 30,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    instant = boomerang.instant(kind, VARIANT),
+    -- (Strong: BN5's instant chip dispatch leaves 0x01000005 in the boomerang's parameters, its Param4 1.)
+    instant = boomerang.instant(kind, VARIANT, true),
 }

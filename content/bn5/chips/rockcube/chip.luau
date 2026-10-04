@@ -1,6 +1,9 @@
 --!strict
--- RockCube (BN5 chip 0x063): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- RockCube (BN5 chip 0x063): a dimming that sets a rock cube rising on the panel in front of the user (./cube, the
+-- dimming handler's subtype 20).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local cube = require("./cube")
 
 return define.chip {
     id = "bn5:rockcube",
@@ -16,4 +19,5 @@ return define.chip {
     flags = { "dimming", "standard_library", "library" },
     extra_flags = { 128 },
     slot_in_limit = 3,
+    dimming = cube.hook,
 }

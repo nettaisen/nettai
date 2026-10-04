@@ -9,8 +9,8 @@ local panel_changer = {}
 -- A change (a "panel-change" record).
 panel_changer.change = common.change
 
-panel_changer.TICK_SOUND = asset.sound("bn6:panel-change-tick")
-panel_changer.CHANGE_SOUND = asset.sound("bn6:panel-change")
+panel_changer.TICK_SOUND = asset.sound("bn5:panel-change-tick")
+panel_changer.CHANGE_SOUND = asset.sound("bn5:panel-change")
 
 panel_changer.kind = common.make_kind("bn5:panel-changer")
 

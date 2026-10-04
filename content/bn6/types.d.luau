@@ -99,20 +99,6 @@ export type FlashBombVariant = {
 
 -- ---- The field objects (chips/rockcube/rock, objects/boulder) ---------------
 
--- A Wind's or Fan's fan (chips/wind/fan): its palette; `pulls`: it blows
--- Fan's pulling gust from the far column rather than Wind's pushing one
--- from the enemy's front column; ticks from becoming its side's wind to
--- the first gust; HP; its identity (what it is taken for) and how it looks
--- absorbed (objects/absorbed-obstacle's `look`).
-export type FanVariant = {
-    palette: number,
-    pulls: boolean,
-    wait: number,
-    hp: number,
-    identity: Identity,
-    absorbed: AbsorbedLook,
-}
-
 -- What an element pillar is spawned with (objects/element-pillar; the
 -- original's four parameters): lightning (it paralyzes and cracks its
 -- panel) rather than flames; how long it stands; the ticks it is left once

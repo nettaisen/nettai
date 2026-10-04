@@ -8,7 +8,7 @@
 
 local collision = require("../../rules/collision")
 local controller = require("@exelib/instruments/controller")
-local effects = require("@bn6/lib/effects")
+local effects = require("../effects")
 local instrument = require("@exelib/instruments/instrument")
 
 local bn5_instrument = {}
