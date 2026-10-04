@@ -6,7 +6,7 @@
 
 local collision = require("../../rules/collision")
 local common = require("@common/justcone/strike")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
 
 -- The fist (attack object #0xAE, 0x080DBDA4).
