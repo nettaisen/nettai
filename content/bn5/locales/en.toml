@@ -37,6 +37,7 @@ language = "en"
 "bn5:batcan3" = { name = "BatCan3", description = "Recover\nShadeMan\nHP" }
 "bn5:batcan4" = { name = "BatCan4", description = "Dstb Atk!\n3 Disturb\nAttacks!" }
 "bn5:bblwrap" = { name = "BblWrap", description = "Weak\nagainst\nelec atk" }
+"bn5:beat" = { name = "Beat", description = "" }
 "bn5:bighook" = { name = "BigHook", description = "Hook\natk 2 sq\nwide" }
 "bn5:bignoise" = { name = "BigNoise", description = "Generates\nultrasonc\nwaves!" }
 "bn5:blakwing" = { name = "BlakWing", description = "Wing atk\nfrom a\ncave" }
@@ -263,6 +264,7 @@ language = "en"
 "bn5:roll" = { name = "Roll", description = "Attack an\nenmy,then\nheals you" }
 "bn5:roll-ds" = { name = "Roll\uE008", description = "Attack an\nenmy,then\nheals you" }
 "bn5:roll-sp" = { name = "Roll\uE003", description = "Attack an\nenmy,then\nheals you" }
+"bn5:rush" = { name = "Rush", description = "" }
 "bn5:seaseed" = { name = "SeaSeed", description = "Makes 9sq\nwtr zone\n3sq ahead" }
 "bn5:serchman" = { name = "SerchMan", description = "Aim\nand fire\n5 shots" }
 "bn5:serchmn-ds" = { name = "SerchMn\uE008", description = "Aim\nand fire\n5 shots" }
@@ -300,6 +302,7 @@ language = "en"
 "bn5:suprvulc" = { name = "SuprVulc", description = "12-shot\nvulcan\ncannon" }
 "bn5:sword" = { name = "Sword", description = "Cuts enmy\nin front!\nRange: 1" }
 "bn5:swrdmode" = { name = "SwrdMode", description = "ミテイ" }
+"bn5:tango" = { name = "Tango", description = "" }
 "bn5:tankcan1" = { name = "TankCan1", description = "3sq blast\nif hits\nend row" }
 "bn5:tankcan2" = { name = "TankCan2", description = "3sq blast\nif hits\nend row" }
 "bn5:tankcan3" = { name = "TankCan3", description = "3sq blast\nif hits\nend row" }
