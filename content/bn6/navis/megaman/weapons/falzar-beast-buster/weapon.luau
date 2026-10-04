@@ -5,7 +5,7 @@
 -- (`sub_80EC5BC`). The navi raises the buster and fires the flying shot
 -- (objects/flying-shot) from the panel in front. The shots of one attack
 -- cycle single, volley of three, volley of three; in Beast Over (or with a
--- Cross special in the per-player gauge mode) the cycle starts at a volley
+-- Cross special in the chip gate battle) the cycle starts at a volley
 -- and eight more shots follow. Holding B keeps it firing. See
 -- docs/engine/chips.md §4.6.
 

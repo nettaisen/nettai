@@ -281,11 +281,9 @@ pub(crate) fn install(
             c.made.push(Made { registry, module: at, ordinal, record_type, table: table.clone() });
             Ok(table)
         };
-        let f = if matches!(registry, Registry::Record | Registry::Rules) {
-            // `define.record(type, spec)`, `define.rules(section, spec)`:
-            // the string is the record's type, or the section's name (its
-            // key).
-            let what = if registry == Registry::Record { "define.record(type, spec): the type" } else { "define.rules(section, spec): the section" };
+        let f = if registry == Registry::Record {
+            // `define.record(type, spec)`: the string is the record's type.
+            let what = "define.record(type, spec): the type";
             lua.create_function(move |_, (name, spec): (LuaValue, LuaValue)| {
                 let LuaValue::String(t) = name else {
                     return Err(mlua::Error::runtime(format!("{what} is a string")));
@@ -341,7 +339,7 @@ pub(crate) fn finish(
 
     // Explicit ids, local to the game (`cannon`, `eraseman/mark`; the user:
     // "no i don't want qualified ids since you can't cross between games
-    // anymore"); a section's name too (`panels`), and the roles' (`roles`).
+    // anymore").
     let full = |what: &str, id: &str, kind: &str| -> Result<String, String> {
         if !valid_key(id) {
             return Err(format!("{what}: {id:?} is not a valid {kind} (lowercase words in -, joined with /: \"eraseman/mark\")"));
@@ -352,16 +350,8 @@ pub(crate) fn finish(
     let mut unwritten = Vec::new();
     for (i, m) in made.iter().enumerate() {
         let what = format!("{}: define.{}", m.module, m.registry.name());
-        if m.registry == Registry::Rules {
-            let name = m.record_type.clone().unwrap_or_default();
-            match full(&what, &name, "section name") {
-                Ok(k) => keys[i] = Some(k),
-                Err(e) => unwritten.push(e),
-            }
-            continue;
-        }
         match m.table.raw_get::<LuaValue>("id").map_err(|e| format!("{what}: {e}"))? {
-            LuaValue::Nil if m.registry.keyed() || m.registry == Registry::Roles => return Err(format!("{what} needs an `id`")),
+            LuaValue::Nil if m.registry.keyed() => return Err(format!("{what} needs an `id`")),
             LuaValue::Nil => {}
             LuaValue::String(s) => {
                 let id = s.to_str().map_err(|e| format!("{what}: {e}"))?.to_string();

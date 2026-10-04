@@ -32,4 +32,20 @@ return define.ruleset {
         -- The folder rules: what BN5's folder editor allows (a tool's question, never the simulation's).
         folder,
     },
+    -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
+    banners = require("./banners"),
+    buster = require("./buster"),
+    chip_use = require("./chip-use"),
+    custom_screen = require("./custom-screen"),
+    effects = require("./effects"),
+    elements = require("./elements"),
+    flow = require("./flow"),
+    math = require("./math"),
+    navicust = require("./navicust/section"),
+    panels = require("./panels"),
+    pools = require("./pools"),
+    reactions = require("./reactions"),
+    roles = require("./roles"),
+    sp_chips = require("./sp-chips"),
+    status = require("./status").rules,
 }

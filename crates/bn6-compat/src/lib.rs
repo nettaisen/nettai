@@ -410,9 +410,8 @@ pub struct Compat {
     pub navicust: NaviCustNumbers,
     /// The kinds by the slot they fill.
     slots: BTreeMap<(Pool, u8), String>,
-    /// The game whose ids it numbers (`bn6`): its keys are those ids, in
-    /// full (`bn6:minibomb`; docs/design/rules-in-luau.md, the flat
-    /// namespace).
+    /// The game whose ids it numbers (`bn6`): its keys are those ids, local
+    /// to the game (`minibomb`; docs/design/content-model-v2.md §4.0).
     pub root: String,
 }
 

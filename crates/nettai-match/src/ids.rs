@@ -6,9 +6,11 @@
 //! game hasn't is the ordinary "no chip `x` in bn6".
 //!
 //! Every lookup goes through [`key`] (a game and a local name to the
-//! content's key), and every name written through [`local`]: the content
-//! keys its definitions in full today (`bn6:cannon`), and when it keys them
-//! by local name, these two are what changes.
+//! content's key: the name itself, when the content is that game's), and
+//! every name written through [`local`]: the content keys its definitions
+//! by their local names (docs/design/content-model-v2.md §4.0), and a
+//! support pack's anonymous definitions by their module (`exelib:regions#57`),
+//! which no match names.
 
 use nettai_battle::content::Content;
 use nettai_content_api::{
@@ -16,9 +18,10 @@ use nettai_content_api::{
     WeaponHandle, keys,
 };
 
-/// The content's key of the definition named `name` in `game`.
-pub fn key(game: &str, name: &str) -> String {
-    format!("{game}{}{name}", keys::SEPARATOR)
+/// The content's key of the definition named `name` in `game`: the name,
+/// when `content` is that game's; none in another game's content.
+pub fn key<'n>(content: &Content, game: &str, name: &'n str) -> Option<&'n str> {
+    (content.game() == game && keys::root_of(name).is_none()).then_some(name)
 }
 
 /// The name a match writes for the definition keyed `key` (its game's).
@@ -26,55 +29,56 @@ pub fn local(key: &str) -> &str {
     keys::local(key)
 }
 
-/// Whether the definition keyed `key` is one of `game`'s.
-pub fn in_game(game: &str, key: &str) -> bool {
-    keys::root_of(key) == Some(game)
+/// Whether the definition keyed `key` is one of `game`'s, the game of the
+/// content it is in (not a support pack's anonymous one).
+pub fn in_game(_game: &str, key: &str) -> bool {
+    keys::root_of(key).is_none()
 }
 
 pub fn chip(content: &Content, game: &str, name: &str) -> Option<ChipHandle> {
-    content.defs.chip_by_key(&key(game, name))
+    key(content, game, name).and_then(|k| content.defs.chip_by_key(k))
 }
 
 pub fn navi(content: &Content, game: &str, name: &str) -> Option<NaviHandle> {
-    content.defs.navi_by_key(&key(game, name))
+    key(content, game, name).and_then(|k| content.defs.navi_by_key(k))
 }
 
 pub fn ruleset(content: &Content, game: &str, name: &str) -> Option<RulesetHandle> {
-    content.defs.ruleset_by_key(&key(game, name))
+    key(content, game, name).and_then(|k| content.defs.ruleset_by_key(k))
 }
 
 pub fn form(content: &Content, game: &str, name: &str) -> Option<FormHandle> {
-    content.defs.form_by_key(&key(game, name))
+    key(content, game, name).and_then(|k| content.defs.form_by_key(k))
 }
 
 pub fn stage(content: &Content, game: &str, name: &str) -> Option<StageHandle> {
-    content.defs.stage_by_key(&key(game, name))
+    key(content, game, name).and_then(|k| content.defs.stage_by_key(k))
 }
 
 pub fn patch_card(content: &Content, game: &str, name: &str) -> Option<PatchCardHandle> {
-    content.defs.patch_card_by_key(&key(game, name))
+    key(content, game, name).and_then(|k| content.defs.patch_card_by_key(k))
 }
 
 pub fn navicust_program(content: &Content, game: &str, name: &str) -> Option<NaviCustProgramHandle> {
-    content.defs.navicust_program_by_key(&key(game, name))
+    key(content, game, name).and_then(|k| content.defs.navicust_program_by_key(k))
 }
 
 pub fn weapon(content: &Content, game: &str, name: &str) -> Option<WeaponHandle> {
-    content.defs.weapon_by_key(&key(game, name))
+    key(content, game, name).and_then(|k| content.defs.weapon_by_key(k))
 }
 
 pub fn record(content: &Content, game: &str, name: &str) -> Option<RecordHandle> {
-    content.defs.record(&key(game, name))
+    key(content, game, name).and_then(|k| content.defs.record(k))
 }
 
 /// A background of `game`'s pack by name.
 pub fn background(content: &Content, game: &str, name: &str) -> Option<nettai_battle::content::BackgroundId> {
-    content.assets.handle(AssetKind::Background, &key(game, name)).map(nettai_battle::content::BackgroundId)
+    key(content, game, name).and_then(|k| content.assets.handle(AssetKind::Background, k)).map(nettai_battle::content::BackgroundId)
 }
 
 /// The names of `game`'s backgrounds, in order.
 pub fn backgrounds<'c>(content: &'c Content, game: &str) -> Vec<&'c str> {
-    content.assets.backgrounds.keys().filter(|k| in_game(game, k)).map(|k| local(k)).collect()
+    (content.game() == game).then(|| content.assets.backgrounds.keys().map(|k| local(k)).collect()).unwrap_or_default()
 }
 
 /// The games a match on `content` can be of: its game, when it has a stock
@@ -99,7 +103,7 @@ mod tests {
         assert_eq!(local(&content.defs.chip(six).key), "cannon");
         assert!(form(&content, "bn6", "heatcross").is_some());
         assert_eq!(chip(&content, "bn5", "cannon"), None);
-        assert_eq!(chip(&content, "bn6", "bn6:cannon"), None);
+        assert_eq!(chip(&content, "bn6", "bn6:cannon"), None); // (written in full)
         assert_eq!(ruleset(&content, "bn6", "stock").map(|r| content.defs.ruleset(r).key.as_str()), Some("stock"));
         assert_eq!(games(&content), ["bn6"]);
     }

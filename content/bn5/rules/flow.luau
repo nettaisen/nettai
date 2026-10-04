@@ -9,7 +9,7 @@
 -- reads of a console's own game): its custom screen's close starts the HUD's chip window (0x080230CC), and its
 -- intro fades in from black (0x080E0698 tests a byte the open bus gives).
 
-return define.rules("flow", {
+return {
     result_words = 49,
     sequencer_before_custom = false,
     escape_check = false,
@@ -18,4 +18,4 @@ return define.rules("flow", {
     intro_from_black = true,
     -- No low-HP music: BN5's ROM has no tempo or pitch control (BN6's `sub_8009158` switch is absent).
     low_hp_music = false,
-})
+}

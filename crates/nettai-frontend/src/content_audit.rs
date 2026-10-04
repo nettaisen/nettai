@@ -61,7 +61,7 @@ pub struct ContentAudit {
     /// What is missing: one line each, a language's other than the
     /// content's own marked with it.
     pub problems: Vec<String>,
-    /// The strings a language's table lacks (`ja: chips.bn6:hidden.name`),
+    /// The strings a language's table lacks (`ja: chips.hidden.name`),
     /// which show in the content's own: not problems.
     pub untranslated: Vec<String>,
     /// What is drawn otherwise by design (a panel type no loaded pack's
@@ -437,11 +437,11 @@ mod tests {
     }
 
     /// A lookup by the wrong key fails for every chip (R1's: a chip's icon
-    /// by its qualified key, where the pack names it by the key its root
-    /// writes), not only for the chips a trace shows.
+    /// by another key than the pack names it by, here one written with its
+    /// game), not only for the chips a trace shows.
     #[test]
     fn a_lookup_by_the_wrong_key_fails_for_every_chip() {
-        assert_eq!(chips_without_icons(|key| nettai_content_api::keys::local(key).to_string()), 0);
-        assert_eq!(chips_without_icons(str::to_string), testing::content().defs.chips.len());
+        assert_eq!(chips_without_icons(str::to_string), 0);
+        assert_eq!(chips_without_icons(|key| format!("{}:{key}", testing::ROOT)), testing::content().defs.chips.len());
     }
 }

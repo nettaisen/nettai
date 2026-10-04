@@ -1592,9 +1592,9 @@ declare int: {
 
 -- ---- Definitions and assets (docs/design/content-model-v2.md §3) -----------------------------
 
--- Assets, named in full while content loads (`asset.sprite("bn6:bomb")`: the
--- pack's game, then its name, a game's compat/assets.toml's): one value per asset. (`SpriteAsset`, since
--- `Sprite` is an object's sprite.)
+-- Assets, named while content loads by the game's asset pack's names (`asset.sprite("bomb")`, a game's
+-- compat/assets.toml's): one value per asset. Only a game's modules have `asset`; a support pack's take
+-- theirs from their callers. (`SpriteAsset`, since `Sprite` is an object's sprite.)
 declare class SpriteAsset
     name: string
 end
@@ -1811,10 +1811,18 @@ export type SystemSpec = {
 export type System = SystemSpec
 
 -- A match's rules: a list of systems, which the framework calls in this
--- order. A game's own is its `stock` ruleset (one per game). A ruleset made
--- from another (`base`, a variant) has its base's systems less `remove`,
--- with `add` after them. A match plays one game by one of its rulesets
--- (docs/design/rules-in-luau.md §2.3).
+-- order. A game's own is its `stock` ruleset (one per game, its
+-- rules/init.luau: a game's rules are one definition). A ruleset made from
+-- another (`base`, a variant) has its base's systems less `remove`, with
+-- `add` after them, and changes nothing else. A match plays one game by one
+-- of its rulesets (docs/design/rules-in-luau.md §2.3).
+--
+-- The stock ruleset alone also holds the game's rule sections
+-- (docs/design/content-model-v2.md §3.8: tables of rules no entity owns,
+-- each a plain table its module returns, `panels = require("./panels")`),
+-- which the engine reads against its schemas when the ruleset is defined,
+-- and the game's roles (§7.4, `roles = require("./roles")`). A section the
+-- stock ruleset doesn't name keeps the engine's table.
 export type RulesetSpec = {
     id: string,
     stock: boolean?,
@@ -1822,6 +1830,24 @@ export type RulesetSpec = {
     base: Ruleset?,
     add: { System }?,
     remove: { System }?,
+    banners: any?,
+    berserk: any?,
+    buster: any?,
+    chip_use: any?,
+    cross_special: any?,
+    custom_screen: any?,
+    effects: any?,
+    elements: any?,
+    flow: any?,
+    lockon: any?,
+    math: any?,
+    navicust: any?,
+    panels: any?,
+    pools: any?,
+    reactions: any?,
+    sp_chips: any?,
+    status: any?,
+    roles: RolesSpec?,
 }
 export type Ruleset = RulesetSpec
 
@@ -2503,10 +2529,9 @@ export type CollisionTypeSpec = { id: string, side0: number, side1: number, row_
 export type CollisionType = CollisionTypeSpec
 
 -- What the ruleset needs from content by role (rules/roles.luau, once per
--- game): each role names the definition that fills it. `id` names the game
--- whose roles they are (`bn6:roles`).
+-- game: a plain table, the stock ruleset's `roles`): each role names the
+-- definition that fills it.
 export type RolesSpec = {
-    id: string,
     actions: {
         anti_damage_counter: Action?,
         anti_sword_counter: Action?,
@@ -2723,12 +2748,9 @@ declare define: {
     identity: (spec: IdentitySpec) -> Identity,
     patch_card: (spec: PatchCardSpec) -> PatchCard,
     navicust_program: (spec: NaviCustProgramSpec) -> NaviCustProgram,
-    -- A rule section (§3.8): one table of rules no entity owns, by its
-    -- section name (`define.rules("elements", { ... })`).
-    rules: <T>(section: string, spec: T) -> T,
-    roles: (spec: RolesSpec) -> RolesSpec,
     -- A system of a game's rules, and a player's ruleset
-    -- (docs/design/rules-in-luau.md §2.2).
+    -- (docs/design/rules-in-luau.md §2.2; a game's stock ruleset also
+    -- holds its rule sections and roles).
     system: (spec: SystemSpec) -> System,
     ruleset: (spec: RulesetSpec) -> Ruleset,
     -- Luau-only data with a handle and a type name, which a reference field
@@ -2816,6 +2838,8 @@ declare custom: {
     },
 }
 
+-- The running system of the game's ruleset: only a game's modules have it
+-- (a support pack has no game context, docs/design/content-model-v2.md §4.0).
 declare system: {
     -- The system's state of the side it was called for (cast it to its
     -- declared type: `system.state() :: State`).

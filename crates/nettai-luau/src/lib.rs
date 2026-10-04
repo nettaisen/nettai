@@ -47,10 +47,10 @@ use mlua::chunk::ChunkMode;
 use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
 
 /// Content's scripts: module name to source text, and bytecode already
-/// compiled from them. A module's name is its root's and its path in the
-/// root without `.luau` (`bn6:chips/minibomb/chip`, docs/design/
-/// rules-in-luau.md §7.2); the definitions a module makes are its root's
-/// (`bn6:minibomb`).
+/// compiled from them. A module's name is its pack's and its path in the
+/// pack without `.luau` (`bn6:chips/minibomb/chip`; docs/design/
+/// content-model-v2.md §4.0); the definitions a module makes are keyed
+/// local to the game (`minibomb`).
 #[derive(Clone, Debug, Default)]
 pub struct Pack {
     modules: BTreeMap<String, String>,
@@ -424,6 +424,14 @@ struct Loader {
 }
 
 fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Result<LuaValue> {
+    // (A folder names its `init` module, as a require does: `bn6:rules` is
+    // rules/init.luau.)
+    let folder = keys::init_of(path);
+    let path = if !loader.borrow().pack.modules.contains_key(path) && loader.borrow().pack.modules.contains_key(&folder) {
+        folder.as_str()
+    } else {
+        path
+    };
     let source = {
         let l = loader.borrow();
         if let Some(v) = l.loaded.get(path) {

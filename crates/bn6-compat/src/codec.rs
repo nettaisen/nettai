@@ -496,7 +496,7 @@ pub fn battle_folder_bytes(f: &BattleFolder, ids: &Ids) -> [u8; 2 * FOLDER_SIZE]
 
 /// A chip hand from the game's 0x50-byte chip block (0xFFFF: no chip, in
 /// the chips and the selection). Byte 1 is always 0 in battle (only the
-/// battle flag 0x40 mode's unreferenced routines use it) and is not kept.
+/// the own-gauges mode's unreferenced routines use it) and is not kept.
 pub fn chip_hand(b: &[u8], ids: &Ids) -> ChipHand {
     let u16s = |off: usize| -> [u16; 6] { std::array::from_fn(|i| u16::from_le_bytes([b[off + 2 * i], b[off + 2 * i + 1]])) };
     ChipHand {

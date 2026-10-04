@@ -78,8 +78,19 @@ local forms = require("./forms/system")
 return {
     counter = counter,
     marker = marker,
-    -- The test content's own rules.
-    stock = define.ruleset { id = "stock", stock = true, systems = { beast, counter, forms.system, emotion.system } },
+    -- The test content's own rules: its systems, its rule sections (BN6's
+    -- berserk, buster and math, its own Cross special; the others are its
+    -- Rust tables) and its roles.
+    stock = define.ruleset {
+        id = "stock",
+        stock = true,
+        systems = { beast, counter, forms.system, emotion.system },
+        berserk = require("./berserk"),
+        buster = require("./buster"),
+        cross_special = require("./cross-special"),
+        math = require("./math"),
+        roles = require("./roles"),
+    },
     -- Another player's: the marker first, then the counter.
     other = define.ruleset { id = "test-other", systems = { marker, counter } },
     -- BN6's patch cards, then the counter.

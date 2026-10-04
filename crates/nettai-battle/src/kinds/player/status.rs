@@ -234,8 +234,9 @@ fn bug_effect(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_801A45C`: a counter hit fills the attacker's per-side gauge (flag
-/// 0x40 mode), is counted, and closes the counter window.
+/// `sub_801A45C`: a counter hit fills the attacker's own gauge (the
+/// own-gauges mode, battle flag 0x40), is counted, and closes the counter
+/// window.
 fn counter_hit_bookkeeping(b: &mut Battle, r: ObjectRef) {
     if coll(b, r).acc.hit_flags & 0x40 == 0 {
         return;
@@ -973,7 +974,7 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
 /// `sub_801728E`): the other player's navi blinks blue while it can be
 /// countered, to a local player in Full Synchro; BN5's no-charge drive
 /// flickers gray its last 180 ticks (0x080136E0, between the two); in the
-/// per-player gauges' mode a navi glows yellow while its SELECT special
+/// own-gauges mode a navi glows yellow while its SELECT special
 /// runs.
 fn counter_shader(b: &mut Battle, r: ObjectRef) {
     let t = b.round.battle_time;

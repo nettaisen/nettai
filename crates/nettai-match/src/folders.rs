@@ -211,7 +211,7 @@ mod tests {
         assert_eq!(said(&base(chips)), Vec::<String>::new());
         let mut six = chips;
         six[5] = chip("recov10");
-        assert!(said(&base(six)).iter().any(|v| v.contains("copies: 6 copies of bn6:recov10")));
+        assert!(said(&base(six)).iter().any(|v| v.contains("copies: 6 copies of recov10")));
         // A code the chip doesn't come in.
         let mut code = chips;
         code[0].code = ChipCode(25);
@@ -230,7 +230,7 @@ mod tests {
         let mut regular = base(chips);
         regular.chips[10] = chip("roll3");
         regular.regular = Some(10);
-        assert!(said(&regular).iter().any(|v| v.contains("the Regular chip bn6:roll3")));
+        assert!(said(&regular).iter().any(|v| v.contains("the Regular chip roll3")));
         // Tag chips: two entries of 60 MB together at most, not the Regular.
         let mut tags = base(chips);
         tags.tags = Some((5, 6));
@@ -240,6 +240,6 @@ mod tests {
         // A chip the pack doesn't list.
         let mut dark = chips;
         dark[0] = chip("drksword");
-        assert!(said(&base(dark)).iter().any(|v| v.contains("chip: entry 0: bn6:drksword is no chip a folder can hold")));
+        assert!(said(&base(dark)).iter().any(|v| v.contains("chip: entry 0: drksword is no chip a folder can hold")));
     }
 }

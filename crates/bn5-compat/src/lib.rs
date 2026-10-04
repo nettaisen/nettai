@@ -13,9 +13,9 @@
 //! - `trace` (feature `trace`): the chip lab's BN5 recordings, read,
 //!   decoded and replayed (docs/design/bn5-map.md §15.5).
 //!
-//! Keys: the tables are keyed by ids in full (`bn5:cannon`, a BN6 kind BN5
-//! numbers `bn6:...`), as content writes them (docs/design/rules-in-luau.md,
-//! the flat namespace), and hand them out as they are.
+//! Keys: the tables are keyed by BN5's ids, local to the game (`cannon`), as
+//! content writes them (docs/design/content-model-v2.md §4.0), and hand
+//! them out as they are.
 //!
 //! The engine never reads any of it (a test guards it). docs/design/
 //! bn5-map.md §13 lists what of BN5's records has no engine counterpart.
@@ -31,9 +31,8 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// BN5's game: its ids' prefix (content/bn5's). Compat's tables are keyed
-/// by ids in full (`bn5:cannon`; docs/design/rules-in-luau.md, the flat
-/// namespace).
+/// BN5's game (content/bn5). Compat's tables are keyed by its ids, local
+/// to the game (`cannon`; docs/design/content-model-v2.md §4.0).
 pub const ROOT: &str = "bn5";
 
 /// A BN5 game's version.
@@ -485,7 +484,7 @@ impl Compat {
             .ok_or_else(|| format!("patch-cards.toml has no card {number} in {version:?}"))
     }
 
-    /// A chip's id (`bn5:cannon`) by its number.
+    /// A chip's id (`cannon`) by its number.
     pub fn chip_key(&self, id: u16) -> Option<&str> {
         self.chip_keys.get(&id).map(String::as_str)
     }
@@ -533,7 +532,7 @@ impl Compat {
         self.records.barriers.iter().find(|&(_, &v)| v == n).map(|(k, _)| Some(k.clone())).ok_or_else(|| format!("barrier type {n}"))
     }
 
-    /// A status's id (`bn5:paralyze-90`) by a hit's status byte.
+    /// A status's id (`paralyze-90`) by a hit's status byte.
     pub fn status(&self, byte: u8) -> Option<String> {
         self.rules.statuses.iter().find(|&(_, &n)| n == byte).map(|(k, _)| k.clone())
     }

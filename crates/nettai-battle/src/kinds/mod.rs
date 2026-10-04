@@ -256,7 +256,7 @@ pub fn shift_damage_carry(b: &mut Battle) {
 /// indexes with the chip's damage past 999; the table ends at formula 44).
 pub fn chip_damage_formula(b: &Battle, id: nettai_content_api::ChipHandle, side: u8, formula: &crate::content::DamageFormula) -> u16 {
     use crate::content::DamageFormula as F;
-    // BN5's: a fixed damage in the battle flag 0x40 mode.
+    // BN5's: a fixed damage in the own-gauges mode.
     if let F::SpNavi { operation_battle: Some(d), .. } | F::Count { operation_battle: Some(d), .. } = formula
         && b.round.flags & crate::battle::battle_flags::OWN_GAUGES != 0
     {
@@ -303,7 +303,7 @@ fn opponent_hp(b: &Battle, side: u8) -> u16 {
 }
 
 /// `sub_8010B78`: damage by how full the custom gauge is (the side's own
-/// gauge plus 0x1500 in the battle flag 0x40 mode): 10 to 32 over the first
+/// gauge plus 0x1500 in the own-gauges mode): 10 to 32 over the first
 /// half, to 128 by seven eighths, to 255 short of full; a full gauge (or
 /// more) gives 10.
 pub(crate) fn gauge_damage(b: &Battle, side: u8) -> u16 {
@@ -325,7 +325,7 @@ pub(crate) fn gauge_damage(b: &Battle, side: u8) -> u16 {
 }
 
 /// BN5's 0x0800EB1E (CusVolt's formulas 73 to 75): `base` plus 100 by the
-/// gauge's level (the side's own gauge in the battle flag 0x40 mode, with
+/// gauge's level (the side's own gauge in the own-gauges mode, with
 /// none of `sub_8010B78`'s 0x1500): 100 × level / 95 below level 96, 100 to
 /// level 126, nothing from 127.
 fn gauge_level_damage(b: &Battle, side: u8, base: u16) -> u16 {

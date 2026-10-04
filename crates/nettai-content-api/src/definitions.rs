@@ -36,7 +36,7 @@ pub struct Definitions {
 /// definitions each lists. Every definition of these registries is made by
 /// a module its game pack's manifest lists in its registry's list.
 pub const GAME_LISTS: &[(&str, &[Registry])] = &[
-    ("rules", &[Registry::Ruleset, Registry::Roles, Registry::Rules]),
+    ("rules", &[Registry::Ruleset]),
     ("chips", &[Registry::Chip]),
     ("navis", &[Registry::Navi]),
     ("forms", &[Registry::Form]),

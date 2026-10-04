@@ -16,5 +16,5 @@ return common.make {
     is = collision.attack,
     hits = collision.hits_navis,
     reload_anim = false,
-    per_player_hit = nil,
+    own_gauges_hit = nil,
 }
