@@ -8,10 +8,9 @@
 -- for the port's BN5 definitions (docs/design/bn5-map.md §15); the content check lists them as unfilled,
 -- and a battle stops at the first it needs.
 --
--- Not filled for want of a BN5 counterpart: Full Synchro's aura (BN6's), the
--- freeze and bubble sounds and sprites (BN5 has neither status), the eruption's (BN5's lava panels
--- don't erupt: they burn and go, §15), the Cross and Beast Out sounds and the custom screen's Cross
--- window, re-deal and scrap (BN6's).
+-- Not filled for want of a BN5 counterpart: the freeze and bubble sounds and sprites (BN5 has neither status), the
+-- eruption's (BN5's lava panels don't erupt: they burn and go, §15), the Cross and Beast Out sounds and the custom
+-- screen's Cross window, re-deal and scrap (BN6's).
 
 local antidmg_counter = require("../chips/antidmg/counter")
 local barriers = require("../lib/barriers")
@@ -171,6 +170,9 @@ return define.roles {
         confusion = asset.sprite("bn5:confusion"),
         blindness = asset.sprite("bn5:blindness"),
         immobilized = asset.sprite("bn5:immobilized"),
+        -- The Full Synchro aura (actor object 0x5E, 0x080C4608: 14-16, BN6's sprite numbers; its animation the navi's
+        -- actor record's AI index).
+        full_synchro_aura = asset.sprite("bn5:full-synchro-aura"),
     },
     hooks = {
         -- The first barrier: the navi enters with the barrier its stats name (FstBarr's, BN6's code), and its
